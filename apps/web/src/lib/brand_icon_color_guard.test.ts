@@ -57,6 +57,21 @@ test('web logo-mark + wordmark SVGs reuse the same gradient stops', () => {
 	}
 });
 
+test('the brand SVGs draw their words as outlines, never as live text', () => {
+	// An <img> SVG cannot load a webfont, so live <text> renders in whatever
+	// face the viewing device has. The wordmark drew "Threkir" in system-ui:
+	// Noto Sans fitted its canvas, CI's DejaVu Sans overran it and clipped the
+	// name to "Threki" (run 35134263272). assets/gen-wordmark.sh outlines it.
+	for (const file of ['logo-mark.svg', 'wordmark.svg', 'wordmark-light.svg', 'bimi-logo.svg']) {
+		const svg = readWeb('static', file);
+		assert.doesNotMatch(
+			svg,
+			/<text[\s>]/,
+			`${file} draws live <text>; outline it (assets/gen-wordmark.sh for the wordmarks)`,
+		);
+	}
+});
+
 test('Android brand_ember colour resource matches the master ember stop', () => {
 	// Android colours are #AARRGGBB; the ember stop is fully opaque.
 	const colors = readRepo(

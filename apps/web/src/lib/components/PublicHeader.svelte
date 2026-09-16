@@ -29,7 +29,11 @@
 			<a href="/dashboard" class="nav-signin">{m('landing.openApp')}</a>
 		{:else}
 			<a href="/login" class="nav-signin">{m('landing.signIn')}</a>
-			<a href="/login" class="nav-cta">{m('landing.getStartedFree')}</a>
+			<!-- ?signup=1 or the two pills are one button wearing two labels:
+			     /login renders the sign-in form, and a visitor who clicked
+			     "Get started free" landed under the headline "Sign in to your
+			     account". The Learn CTAs have always carried the flag. -->
+			<a href="/login?signup=1" class="nav-cta">{m('landing.getStartedFree')}</a>
 		{/if}
 	</div>
 </nav>

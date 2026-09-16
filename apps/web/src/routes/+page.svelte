@@ -103,7 +103,7 @@
 		<h1>{m('landing.heroHeadline')}</h1>
 		<p class="hero-sub">{m('landing.heroSub')}</p>
 		<div class="hero-actions">
-			<a href="/login" class="btn btn-primary btn-lg">{m('landing.getStarted')}</a>
+			<a href="/login?signup=1" class="btn btn-primary btn-lg">{m('landing.getStarted')}</a>
 			<a href="#features" class="btn btn-outline btn-lg">{m('landing.seeItWorking')}</a>
 		</div>
 	</div>
@@ -186,7 +186,7 @@
 <section class="closing-cta" use:reveal>
 	<h2>{m('landing.closingTitle')}</h2>
 	<p>{m('landing.closingBody')}</p>
-	<a href="/login" class="btn btn-primary btn-lg">{m('landing.createFreeAccount')}</a>
+	<a href="/login?signup=1" class="btn btn-primary btn-lg">{m('landing.createFreeAccount')}</a>
 </section>
 
 <PublicFooter />

@@ -161,7 +161,7 @@ test.describe('/ (landing)', () => {
 		await expect(cta).toBeVisible();
 		await expect(
 			cta.getByRole('link', { name: 'Create a free account' })
-		).toHaveAttribute('href', '/login');
+		).toHaveAttribute('href', '/login?signup=1');
 	});
 
 	test('the hero shows the product, drawn by the real renderer', async ({ page }) => {
@@ -206,7 +206,36 @@ test.describe('/ (landing)', () => {
 
 	test('the header offers a sign-up CTA alongside sign-in', async ({ page }) => {
 		await page.goto('/');
-		await expect(page.locator('.nav-cta')).toHaveAttribute('href', '/login');
+		await expect(page.locator('.nav-cta')).toHaveAttribute('href', '/login?signup=1');
+	});
+
+	test('sign-in and the sign-up CTAs land on DIFFERENT forms', async ({ page }) => {
+		// They were one button wearing two labels: every landing CTA pointed
+		// at bare /login, which renders the sign-in form, so a visitor who
+		// clicked "Create a free account" arrived under the headline "Sign in
+		// to your account". Asserted on the rendered form rather than the
+		// href, because the href is only the mechanism.
+		await page.goto('/');
+		await page.locator('.nav-signin').click();
+		await expect(
+			page.getByRole('heading', { name: /sign in to your account/i })
+		).toBeVisible();
+
+		await page.goto('/');
+		await page.locator('.nav-cta').click();
+		await expect(page.getByRole('heading', { name: /create an account/i })).toBeVisible();
+
+		for (const [where, name] of [
+			['main.hero', 'Get Started'],
+			['section.closing-cta', 'Create a free account'],
+		] as const) {
+			await page.goto('/');
+			await page.locator(where).getByRole('link', { name }).click();
+			await expect(
+				page.getByRole('heading', { name: /create an account/i }),
+				`${name} landed on the sign-in form`
+			).toBeVisible();
+		}
 	});
 
 	test('hero CTAs stay on one line at 390px', async ({ page }) => {

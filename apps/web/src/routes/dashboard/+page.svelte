@@ -19,6 +19,7 @@
 		type PeriodSummaryRun,
 	} from '$lib/core/data';
 	import { dashboardRunsWindowStart } from '$lib/core/dashboard_runs';
+	import type { WeekBar } from '$lib/core/weekly_mileage';
 	import {
 		computeSnapshot,
 		recoveryAdvice,
@@ -99,7 +100,7 @@
 		totalRuns: 0,
 		longestRunM: 0,
 	});
-	let weeklyMileage = $state<{ week: string; distance_m: number }[]>([]);
+	let weeklyMileage = $state<WeekBar[]>([]);
 	let personalRecords = $state<{ key: string; distance: string; time_s: number; date: string }[]>([]);
 	// Distance keys the runner has chosen to hide (comeback persona #28). Stored
 	// in the universal `hidden_prs` settings bag, so it roams across devices.
@@ -918,11 +919,18 @@
 	let mileageData = $derived.by(() => {
 		if (mileageView === 'weekly') return weeklyMileage;
 
-		const groups = new Map<string, { distance_m: number; display: string }>();
+		const groups = new Map<
+			string,
+			{ distance_m: number; display: string; axis: string }
+		>();
 		for (const run of filteredRuns) {
 			const d = new Date(run.started_at);
 			let sortKey: string;
 			let display: string;
+			// The axis label is formatted in its own right rather than cut out
+			// of `display` — see WeekBar.axis in core/weekly_mileage.ts for
+			// what splitting a localised date on a space did to five locales.
+			let axis: string;
 			if (mileageView === 'monthly') {
 				// `YYYY-MM` is locale-independent + sort-stable. Pad
 				// month to 2 digits so a January 2026 row sorts before
@@ -936,21 +944,24 @@
 					month: 'short',
 					year: 'numeric',
 				});
+				axis = d.toLocaleDateString(activeFormatLocale(), { month: 'short' });
 			} else {
 				sortKey = String(d.getFullYear());
 				display = sortKey;
+				axis = sortKey;
 			}
 			const cur = groups.get(sortKey);
 			if (cur) {
 				cur.distance_m += run.distance_m;
 			} else {
-				groups.set(sortKey, { distance_m: run.distance_m, display });
+				groups.set(sortKey, { distance_m: run.distance_m, display, axis });
 			}
 		}
 		return Array.from(groups.entries())
 			.sort(([a], [b]) => a.localeCompare(b))
 			.map(([, v]) => ({
 				week: v.display,
+				axis: v.axis,
 				distance_m: Math.round(v.distance_m),
 			}));
 	});
@@ -1592,14 +1603,19 @@
 					<p class="empty-text">{m('dash.mileageEmpty')}</p>
 				{:else}
 					<div class="chart">
-						{#each mileageData as week}
-							<div class="bar-col">
-								<div class="bar-tooltip">{formatDistance(week.distance_m)}</div>
+						{#each mileageData as week (week.week)}
+							<!-- `class:empty` rather than a hidden column: a week with
+							     no run is the chart's most load-bearing datum, and the
+							     slot has to be visibly there for the gap to read as a
+							     gap. The bar keeps its zero height and the column
+							     shows a baseline tick instead. -->
+							<div class="bar-col" class:empty={week.distance_m === 0}>
+								<div class="bar-tooltip">{week.week} · {formatDistance(week.distance_m)}</div>
 								<div
 									class="bar"
 									style="height: {(week.distance_m / maxBar) * 100}%"
 								></div>
-								<span class="bar-label">{week.week.split(' ')[0]}</span>
+								<span class="bar-label">{week.axis}</span>
 							</div>
 						{/each}
 					</div>
@@ -3328,6 +3344,8 @@
 	.bar-tooltip {
 		position: absolute;
 		top: -1.5rem;
+		left: 50%;
+		transform: translateX(-50%);
 		font-size: var(--font-size-section-label);
 		font-weight: 600;
 		color: var(--color-text-secondary);
@@ -3354,6 +3372,18 @@
 			var(--color-primary-hover) 0%,
 			var(--color-secondary) 100%
 		);
+	}
+	/* An empty week must not borrow the 4px min-height every bar carries: a
+	   stub above a zero reads as "a short run", which is the opposite of what
+	   happened. It flattens to a neutral rule on the axis instead — present,
+	   so the gap is visible, and plainly not a quantity. */
+	.bar-col.empty .bar {
+		min-height: 2px;
+		background: var(--color-border);
+		border-radius: var(--radius-pill);
+	}
+	.bar-col.empty:hover .bar {
+		background: var(--color-text-tertiary);
 	}
 	.bar-label {
 		font-size: 0.65rem;

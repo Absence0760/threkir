@@ -53,6 +53,32 @@
 
 	const splitPeak = Math.max(...DEMO_SPLITS.map((s) => s.seconds));
 	const splitFloor = Math.min(...DEMO_SPLITS.map((s) => s.seconds));
+
+	/// Fade each section up as it comes into view. An action rather than a
+	/// CSS-only effect because the resting state has to be the VISIBLE one:
+	/// a stylesheet that hides sections until a class arrives leaves the
+	/// whole page blank if the script never runs, which is the state a
+	/// crawler and a no-JS visitor see. Here the element only ever gets
+	/// hidden by code that is also able to reveal it.
+	function reveal(node: HTMLElement) {
+		if (!browser) return;
+		const motionOk = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+		if (motionOk?.matches || typeof IntersectionObserver === 'undefined') return;
+
+		node.classList.add('pre-reveal');
+		const observer = new IntersectionObserver(
+			(entries) => {
+				for (const entry of entries) {
+					if (!entry.isIntersecting) continue;
+					entry.target.classList.remove('pre-reveal');
+					observer.unobserve(entry.target);
+				}
+			},
+			{ rootMargin: '0px 0px -8% 0px' },
+		);
+		observer.observe(node);
+		return { destroy: () => observer.disconnect() };
+	}
 </script>
 
 <SeoHead
@@ -87,7 +113,7 @@
 	</div>
 </main>
 
-<section id="features" class="features">
+<section id="features" class="features" use:reveal>
 	<article class="feature">
 		<div class="feature-visual feature-visual--map">
 			<TrackPreview points={DEMO_TRACK} aspect={2.1} />
@@ -135,7 +161,7 @@
 	</article>
 </section>
 
-<section id="apps" class="apps-section">
+<section id="apps" class="apps-section" use:reveal>
 	<div class="section-head">
 		<h2>{m('landing.appsSectionTitle')}</h2>
 		<p>{m('landing.appsSectionSub')}</p>
@@ -157,7 +183,7 @@
 	<p class="platforms-note">{m('landing.platformsNote')}</p>
 </section>
 
-<section class="closing-cta">
+<section class="closing-cta" use:reveal>
 	<h2>{m('landing.closingTitle')}</h2>
 	<p>{m('landing.closingBody')}</p>
 	<a href="/login" class="btn btn-primary btn-lg">{m('landing.createFreeAccount')}</a>
@@ -167,6 +193,33 @@
 {/if}
 
 <style>
+	/* Resting state is visible; `reveal` adds .pre-reveal only when it is
+	   also able to take it off again. */
+	.features,
+	.apps-section,
+	.closing-cta {
+		transition:
+			opacity 420ms ease,
+			transform 420ms ease;
+	}
+
+	:global(.pre-reveal) {
+		opacity: 0;
+		transform: translateY(1.25rem);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		:global(.pre-reveal) {
+			opacity: 1;
+			transform: none;
+		}
+		.features,
+		.apps-section,
+		.closing-cta {
+			transition: none;
+		}
+	}
+
 	.landing-loading {
 		display: flex;
 		align-items: center;

@@ -394,20 +394,29 @@ test.describe('/routes/new — Route Builder control surface', () => {
 		expect(parseFloat(hovered)).toBeLessThan(0.5);
 	});
 
-	test('OSRM total failure → routed stays false → Save button stays disabled', async ({
+	test('OSRM total failure → amber warning, straight lines, Save still enabled', async ({
 		page
 	}) => {
-		// Regression: a failed OSRM run must not leave Save enabled with
-		// a stale or empty polyline. Routing is now automatic — dropping
-		// the second waypoint kicks off the snap with no button press.
-		// Intercept every OSRM segment with a 503 so the auto-route
-		// fails, drop two waypoints via the builder's dev-exposed
-		// addWaypoint API (synthetic canvas clicks don't land reliably on
-		// MapLibre's WebGL pointer pipeline in headless chromium), and
-		// assert the gate stays armed. All OSRM traffic rides the
+		// An engine outage is not a dead end. A deploy with no OSRM_URL
+		// answers 501 on every segment (that is what prod did), and the
+		// builder used to throw on okSegments === 0, clear the polyline
+		// and leave `routed` false — which disabled Save, GPX and KML
+		// with no way back short of reloading. Every segment already
+		// carries a straight-line fallback, so the route the user drew
+		// stays saveable and the banner is amber, not red.
+		//
+		// Routing is automatic — dropping the second waypoint kicks off
+		// the snap with no button press. Waypoints go in via the
+		// builder's dev-exposed addWaypoint API (synthetic canvas clicks
+		// don't land reliably on MapLibre's WebGL pointer pipeline in
+		// headless chromium). All OSRM traffic rides the
 		// /api/routes/osrm proxy (issue #198), so that's the intercept.
 		await page.route('**/api/routes/osrm/**', (route) =>
-			route.fulfill({ status: 503, body: '{}' })
+			route.fulfill({
+				status: 501,
+				contentType: 'application/json',
+				body: JSON.stringify({ error: 'waypoint routing is not configured' })
+			})
 		);
 
 		await page.goto('/routes/new');
@@ -419,14 +428,16 @@ test.describe('/routes/new — Route Builder control surface', () => {
 		]);
 
 		// The auto-route fires after the debounce and settles (1 segment
-		// × 2 retries × 8s timeout cap). Error banner is red
-		// (.routing-error without .routing-warning).
+		// × 2 retries × 8s timeout cap). Amber, not red: the route is
+		// degraded, not lost.
 		const banner = page.locator('.routing-error');
 		await expect(banner).toBeVisible({ timeout: 30_000 });
-		await expect(banner).not.toHaveClass(/routing-warning/);
+		await expect(banner).toHaveClass(/routing-warning/);
 
-		// Save button stays disabled — routed didn't flip true.
-		await expect(page.getByRole('button', { name: /Save Route/ })).toBeDisabled();
+		// The three actions that depend on `routed` all stay usable.
+		await expect(page.getByRole('button', { name: /Save Route/ })).toBeEnabled();
+		await expect(page.getByRole('button', { name: 'GPX' })).toBeEnabled();
+		await expect(page.getByRole('button', { name: 'KML' })).toBeEnabled();
 	});
 
 	test('auto-routing fetches only the new segment per added waypoint (cache)', async ({

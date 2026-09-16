@@ -29035,3 +29035,25 @@ are read correctly, and a rewrite changes exactly one line and keeps the file
 mode. The guard's own suite mutates the real tree. The lookup was also run
 read-only against the real estate config, where prod and the keystore resolve to
 ARNs, preview to its placeholder and `running/…` to no rule.
+
+## 1616. A routing outage degrades the route builder; it does not disable Save
+
+`/routes/new` snaps each waypoint pair through `/api/routes/osrm/*`, and `recalculateRoute` already builds every segment as a straight line first, upgrading the ones OSRM answers for. When *some* segments failed, that fallback carried the route and the user got an amber warning naming the pins to nudge. When *all* of them failed, the same function threw, the catch cleared `routeCoordinates`, and the parent's `routed` flag — the sole gate on Save, GPX and KML — went false with no way back short of reloading the page.
+
+That is the wrong shape for the failure it was handling, because a total failure is overwhelmingly an *engine* problem, not a *geography* problem: prod ran with `OSRM_URL` unset, so the proxy answered 501 on every segment and no route drawn on the site could be saved at all. Partial failure means the user clicked somewhere unroutable; total failure means the service is gone. The first is worth blocking on, the second is worth working around — and the work-around was already sitting in `perSegment`, fully built.
+
+[§ 198](#198) had described this exact behaviour as already true ("unset `OSRM_URL` → 501, builder degrades to straight-line segments"), and `infra/envs/prod/variables.tf` repeats the claim in the `osrm_url` description. Both were aspirational. The code now matches them: total failure keeps the straight-line polyline, emits `routeBuilder.routingUnavailableStraightLines` at `warning` severity, and leaves the route saveable and exportable as drawn.
+
+`generateLoop` is the one caller that still needs the hard failure, and it opts in through a new `requireSnappedSegments` flag rather than inheriting it. Its waypoints are invisible scaffolding seeds chosen to hit a target distance — a "generated loop" whose every segment is a straight line between them is not a route anybody asked for, and letting it through would hand the user a triangle and call it a 10k. The flag is separate from `suppressSoftWarnings` even though generateLoop is currently the only caller of both, because they answer different questions ("who narrates the failure" vs "is this failure fatal") and the next caller may want one without the other.
+
+The e2e test that pinned the old behaviour is retired, not relaxed: `builder.spec.ts`'s "OSRM total failure → Save button stays disabled" asserted precisely the bug, down to the red-not-amber banner class. It now pins the degraded path, including GPX and KML, which share the gate and so shared the outage.
+
+## 1617. A labelled button row in a resizable pane has to be told it may wrap
+
+The route builder's sidebar is a `SplitPane` pane the user can drag down to 280px, and two of its rows are flex rows of icon-plus-label buttons: the waypoint toolbar and the primary actions. Both were `display: flex` with no `flex-wrap`, and the toolbar's buttons carried `flex: 1` — which reads as "these will shrink to fit" and does not, because a flex item's `min-width` is `auto`, so each button floors at its own icon+label min-content width and the row overflows instead.
+
+Nothing enforced the fit, so it decayed by addition. `aa28baf65` added a fourth button (Add point) to a three-button row; at the pane's default `initialFraction={0.28}` the row then needed 379px inside a 242px content box, and the primary actions needed 294px. Clear rendered entirely outside the pane and the panel became horizontally scrollable — which is how a user ends up looking at a sidebar whose left edge reads "OFILE" and reporting that the page "regressed badly". The container queries added by `e9ec3f24a` shrink the surface and map-style toggles below 360px and never covered either of these rows.
+
+Both rows now wrap, and the buttons carry `min-width: 0` so they may also shrink before they do. Wrapping is preferred to dropping the labels at narrow widths: an icon-only Undo and an icon-only Out-and-back are not distinguishable to someone who has not already learned them, and the pane has vertical room to spare.
+
+The guard is measured, not asserted: `tests-e2e/routes/builder-panel-fit.spec.ts` compares `scrollWidth` to `clientWidth` for each row at the default split and again at the 280px minimum, and checks each toolbar button's right edge against the pane's. A `toBeVisible()` assertion cannot catch this — Playwright reports a button that has been clipped entirely outside its scroll container as visible, which is why 46 existing builder tests passed against a panel with a button missing from it.

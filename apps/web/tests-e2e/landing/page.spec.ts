@@ -15,16 +15,19 @@ test.describe('/ (landing)', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test('anon visitor sees hero + Get Started CTA', async ({ page }) => {
-		// The h1 is split across <br/>s; the accessible name is the
-		// concatenated text "Plan routes. Track runs. Analyse
-		// everything." Match by the leading phrase.
+		// One balanced string now, not three <br/>-separated lines: the
+		// hardcoded breaks forced three lines at every width and still
+		// wrapped to four on a phone.
 		await page.goto('/');
 
 		await expect(
 			page.getByRole('heading', { name: /Plan routes/, level: 1 })
 		).toBeVisible();
+		// Scoped to the hero: getByRole matches the accessible name as a
+		// SUBSTRING, so the header's "Get started free" also answers to
+		// "Get Started".
 		await expect(
-			page.getByRole('link', { name: 'Get Started' })
+			page.locator('main.hero').getByRole('link', { name: 'Get Started' })
 		).toBeVisible();
 	});
 
@@ -32,7 +35,7 @@ test.describe('/ (landing)', () => {
 		// Click-through pin. A regression that wired the CTA to a
 		// nonexistent route would surface as a hard 404 here.
 		await page.goto('/');
-		await page.getByRole('link', { name: 'Get Started' }).click();
+		await page.locator('main.hero').getByRole('link', { name: 'Get Started' }).click();
 		await page.waitForURL(/\/login/, { timeout: 10_000 });
 	});
 
@@ -145,13 +148,81 @@ test.describe('/ (landing)', () => {
 
 	test('closing CTA section points anon users at /login', async ({ page }) => {
 		await page.goto('/');
-		// The "Ready to log your next run?" closing CTA has its own
-		// "Sign in to continue" link. Anchor on the section's link.
+		// "Sign in to continue" was a system message standing in for a
+		// call to action, and it pointed at the same /login as the hero.
 		const cta = page.locator('section.closing-cta');
 		await expect(cta).toBeVisible();
-		await expect(cta.getByRole('link', { name: /Sign in to continue/ })).toHaveAttribute(
-			'href',
-			'/login'
+		await expect(
+			cta.getByRole('link', { name: 'Create a free account' })
+		).toHaveAttribute('href', '/login');
+	});
+
+	test('the hero shows the product, drawn by the real renderer', async ({ page }) => {
+		// The page carried no pixel of the product before this. The shot is
+		// the app's own TrackPreview over static demo data rather than a
+		// screenshot, so a UI change moves it automatically — assert the
+		// live SVG is there, not that an <img> loaded.
+		await page.goto('/');
+		const shot = page.locator('main.hero figure.shot');
+		await expect(shot).toBeVisible();
+		await expect(shot.locator('svg.track-preview').first()).toBeVisible();
+		// Captioned for screen readers; the frames themselves are decorative.
+		await expect(shot.locator('figcaption')).toHaveText(/sample run/i);
+	});
+
+	test('every feature card leads with a visual, and none is an icon', async ({ page }) => {
+		await page.goto('/');
+		const cards = page.locator('section#features article.feature');
+		await expect(cards).toHaveCount(4);
+		for (let i = 0; i < 4; i++) {
+			await expect(cards.nth(i).locator('.feature-visual')).toBeVisible();
+			await expect(cards.nth(i).locator('.feature-eyebrow')).toBeVisible();
+		}
+		// The Material Symbols icons the cards used to lead with are gone;
+		// leaving one behind would also keep its glyph in the subset font.
+		await expect(page.locator('section#features .material-symbols')).toHaveCount(0);
+	});
+
+	test('the platforms strip states testing status without four vapour cards', async ({
+		page,
+	}) => {
+		await page.goto('/');
+		const pills = page.locator('section#apps li.platform');
+		await expect(pills).toHaveCount(5);
+		// Web is the only one a visitor can actually use today.
+		await expect(pills.filter({ hasText: 'Web' }).first()).not.toHaveClass(/pending/);
+		await expect(page.locator('section#apps li.platform.pending')).toHaveCount(4);
+		await expect(page.locator('section#apps .platforms-note')).toContainText(
+			/not in the app stores yet/i
 		);
+	});
+
+	test('the header offers a sign-up CTA alongside sign-in', async ({ page }) => {
+		await page.goto('/');
+		await expect(page.locator('.nav-cta')).toHaveAttribute('href', '/login');
+	});
+
+	test('hero CTAs stay on one line at 390px', async ({ page }) => {
+		// Both buttons broke across two lines at phone width until .btn got
+		// white-space: nowrap. Measured rather than eyeballed: a single-line
+		// button is shorter than one-and-a-half line-heights.
+		await page.setViewportSize({ width: 390, height: 844 });
+		await page.goto('/');
+		for (const name of ['Get Started', 'See it working']) {
+			const box = await page.locator('main.hero').getByRole('link', { name }).boundingBox();
+			expect(box, `${name} has no box`).not.toBeNull();
+			expect(box!.height, `${name} wrapped to a second line`).toBeLessThan(64);
+		}
+	});
+
+	test('sections are visible without JS-driven reveal', async ({ page }) => {
+		// The reveal hides a section only from code that can also unhide it.
+		// A stylesheet that hid them until a class arrived would leave a
+		// crawler — and anyone whose script failed — looking at a blank page.
+		await page.emulateMedia({ reducedMotion: 'reduce' });
+		await page.goto('/');
+		await expect(page.locator('section#features')).toBeVisible();
+		await expect(page.locator('section.closing-cta')).toBeVisible();
+		await expect(page.locator('.pre-reveal')).toHaveCount(0);
 	});
 });

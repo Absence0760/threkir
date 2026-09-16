@@ -5,7 +5,6 @@
 		DEMO_HR_ZONES,
 		DEMO_SPLITS,
 		DEMO_TRACK,
-		formatSplit,
 	} from '$lib/marketing/demo_preview';
 
 	// The landing hero's product shot. Everything inside the two device
@@ -29,7 +28,7 @@
 	}
 </script>
 
-<figure class="preview">
+<figure class="shot">
 	<figcaption class="visually-hidden">{m('landing.previewCaption')}</figcaption>
 
 	<div class="browser" aria-hidden="true">
@@ -41,7 +40,7 @@
 		</div>
 
 		<div class="app">
-			<div class="map">
+			<div class="trace">
 				<TrackPreview points={DEMO_TRACK} aspect={1.35} />
 			</div>
 
@@ -61,19 +60,18 @@
 					</div>
 				</div>
 
-				<div class="block">
+				<div class="metric-block">
 					<span class="block-label">{m('landing.previewSplits')}</span>
 					<div class="splits">
 						{#each DEMO_SPLITS as split (split.km)}
 							<div class="split">
 								<div class="bar" style="height: {barHeight(split.seconds)}%"></div>
-								<span class="bar-caption">{formatSplit(split.seconds)}</span>
 							</div>
 						{/each}
 					</div>
 				</div>
 
-				<div class="block">
+				<div class="metric-block">
 					<span class="block-label">{m('landing.previewZones')}</span>
 					<div class="zones">
 						{#each DEMO_HR_ZONES as share, i (i)}
@@ -85,15 +83,15 @@
 		</div>
 	</div>
 
-	<div class="phone" aria-hidden="true">
-		<div class="screen">
+	<div class="handset" aria-hidden="true">
+		<div class="handset-screen">
 			<span class="rec"><span class="rec-dot"></span>{m('landing.previewRecording')}</span>
-			<span class="clock">24:17</span>
-			<div class="phone-stats">
-				<div><span class="stat-label">{m('landing.previewDistance')}</span><span class="phone-value">4.82</span></div>
-				<div><span class="stat-label">{m('landing.previewPace')}</span><span class="phone-value">5:02</span></div>
+			<span class="elapsed">24:17</span>
+			<div class="handset-stats">
+				<div><span class="stat-label">{m('landing.previewDistance')}</span><span class="handset-value">4.82</span></div>
+				<div><span class="stat-label">{m('landing.previewPace')}</span><span class="handset-value">5:02</span></div>
 			</div>
-			<div class="phone-map">
+			<div class="handset-trace">
 				<TrackPreview points={DEMO_TRACK} aspect={0.95} />
 			</div>
 		</div>
@@ -101,7 +99,7 @@
 </figure>
 
 <style>
-	.preview {
+	.shot {
 		position: relative;
 		margin: 0 auto;
 		max-width: 60rem;
@@ -142,17 +140,17 @@
 		border-radius: var(--radius-pill);
 		background: var(--color-bg);
 		border: 1px solid var(--color-border);
-		font-size: 0.7rem;
+		font-size: var(--font-size-section-label);
 		color: var(--color-text-tertiary);
 	}
 
 	.app {
 		display: grid;
 		grid-template-columns: 1.35fr 1fr;
-		min-height: 20rem;
+		min-height: 23rem;
 	}
 
-	.map {
+	.trace {
 		background: var(--color-bg-tertiary);
 		border-inline-end: 1px solid var(--color-border);
 		padding: var(--space-md);
@@ -178,7 +176,7 @@
 	}
 
 	.stat-label,
-	.block-label {
+	.metric-label {
 		font-size: var(--font-size-section-label);
 		font-weight: 700;
 		letter-spacing: 0.07em;
@@ -194,13 +192,13 @@
 	}
 
 	.stat-value small {
-		font-size: 0.7rem;
+		font-size: var(--font-size-section-label);
 		font-weight: 600;
 		color: var(--color-text-tertiary);
 		margin-inline-start: 0.1rem;
 	}
 
-	.block {
+	.metric-block {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-sm);
@@ -229,12 +227,6 @@
 		background: var(--color-primary);
 	}
 
-	.bar-caption {
-		font-size: 0.55rem;
-		color: var(--color-text-tertiary);
-		font-variant-numeric: tabular-nums;
-	}
-
 	.zones {
 		display: flex;
 		height: 0.6rem;
@@ -256,18 +248,18 @@
 
 	/* --- phone frame --------------------------------------------------- */
 
-	.phone {
+	.handset {
 		position: absolute;
-		inset-block-end: -2.5rem;
-		inset-inline-end: -1rem;
-		width: 11rem;
+		inset-block-end: -3.25rem;
+		inset-inline-end: -1.75rem;
+		width: 10rem;
 		border-radius: 1.75rem;
 		padding: 0.4rem;
 		background: var(--color-text);
 		box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.5);
 	}
 
-	.screen {
+	.handset-screen {
 		border-radius: 1.4rem;
 		background: var(--color-surface);
 		padding: var(--space-md) var(--space-sm) var(--space-sm);
@@ -295,8 +287,8 @@
 		background: var(--color-danger);
 	}
 
-	.clock {
-		font-size: 1.9rem;
+	.elapsed {
+		font-size: 1.6rem;
 		font-weight: 800;
 		letter-spacing: -0.02em;
 		color: var(--color-text);
@@ -304,30 +296,30 @@
 		line-height: 1.1;
 	}
 
-	.phone-stats {
+	.handset-stats {
 		display: flex;
 		gap: var(--space-md);
 		width: 100%;
 		justify-content: center;
 	}
 
-	.phone-stats > div {
+	.handset-stats > div {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		gap: var(--space-2xs);
 	}
 
-	.phone-value {
+	.handset-value {
 		font-size: 0.95rem;
 		font-weight: 700;
 		color: var(--color-text);
 		font-variant-numeric: tabular-nums;
 	}
 
-	.phone-map {
+	.handset-trace {
 		width: 100%;
-		height: 5rem;
+		height: 4rem;
 		border-radius: var(--radius-md);
 		background: var(--color-bg-tertiary);
 		padding: var(--space-xs);
@@ -338,7 +330,7 @@
 	   steps out of the overlap and the two frames stack. */
 	@media (max-width: 60rem) {
 		.app { grid-template-columns: minmax(0, 1fr); }
-		.map { border-inline-end: none; border-block-end: 1px solid var(--color-border); }
-		.phone { display: none; }
+		.trace { border-inline-end: none; border-block-end: 1px solid var(--color-border); }
+		.handset { display: none; }
 	}
 </style>

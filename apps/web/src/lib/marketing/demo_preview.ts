@@ -103,10 +103,3 @@ export const DEMO_SPLITS: DemoSplit[] = [
 
 /// Share of time in each of the five heart-rate zones, as whole percentages.
 export const DEMO_HR_ZONES: number[] = [8, 21, 38, 24, 9];
-
-/// Formats a split duration the way the run-detail splits table does.
-export function formatSplit(seconds: number): string {
-	const m = Math.floor(seconds / 60);
-	const s = seconds % 60;
-	return `${m}:${String(s).padStart(2, '0')}`;
-}

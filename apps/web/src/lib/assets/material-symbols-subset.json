@@ -21,9 +21,9 @@
 	],
 	"subset": {
 		"bytes": 70416,
-		"sha256": "d148ef4632eba71cde23cf9438c993c3e7eebccd27d18d5e813faaea6ce74b25",
-		"glyphs": 311,
-		"ligatures": 420
+		"sha256": "73bd04472782e237545405320589ca042e097be1f16eb07cb22db9e95b0e4373",
+		"glyphs": 310,
+		"ligatures": 419
 	},
 	"icons": [
 		"10k",
@@ -39,7 +39,6 @@
 		"add_road",
 		"ads_click",
 		"alt_route",
-		"analytics",
 		"anchor",
 		"android",
 		"apps",

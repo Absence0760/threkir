@@ -558,9 +558,12 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 	// Marketing hero + closing-CTA ramps and the on-hero button. Every ink
 	// over them is measured by gradient_foreground_guard.test.ts.
 	'routes/+page.svelte': {
-		'0F172A': [1, 'gradient-stop'], '1E1B4B': [2, 'gradient-stop'],
-		'4F46E5': [3, 'gradient-stop'], '7C3AED': [1, 'gradient-stop'],
-		FFFFFF: [4, 'fixed-canvas'], F0EFFF: [1, 'fixed-canvas'],
+		'140A18': [1, 'gradient-stop'], '3A0F33': [1, 'gradient-stop'],
+		'6E1450': [1, 'gradient-stop'], A01E77: [1, 'gradient-stop'],
+		'102A32': [1, 'gradient-stop'], '2C5F6E': [1, 'gradient-stop'],
+		FFFFFF: [5, 'fixed-canvas'], '8A1A62': [1, 'fixed-canvas'],
+		FDEFF7: [1, 'fixed-canvas'], '1F4854': [1, 'fixed-canvas'],
+		EAF3F5: [1, 'fixed-canvas'],
 	},
 	// Header over that same hero: white hover ink, 5.699:1 on the ramp's
 	// palest stop.

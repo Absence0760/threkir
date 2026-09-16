@@ -1,11 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-	DEMO_HR_ZONES,
-	DEMO_SPLITS,
-	DEMO_TRACK,
-	formatSplit,
-} from './demo_preview';
+import { DEMO_HR_ZONES, DEMO_SPLITS, DEMO_TRACK } from './demo_preview';
 
 // The landing page renders this data through the product's own components,
 // so a malformed point or an out-of-range percentage is a visible marketing
@@ -57,12 +52,4 @@ test('heart-rate zones are whole percentages summing to 100', () => {
 		100,
 		'the stacked bar must fill exactly',
 	);
-});
-
-test('formatSplit renders m:ss with a zero-padded seconds field', () => {
-	assert.equal(formatSplit(311), '5:11');
-	assert.equal(formatSplit(272), '4:32');
-	assert.equal(formatSplit(305), '5:05');
-	assert.equal(formatSplit(60), '1:00');
-	assert.equal(formatSplit(59), '0:59');
 });

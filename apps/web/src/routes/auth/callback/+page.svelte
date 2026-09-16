@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { goto, replaceState } from '$app/navigation';
 	import { supabase } from '$lib/core/supabase';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { m } from '$lib/i18n/store.svelte';
@@ -24,8 +24,11 @@
 
 		// The token is a one-time credential sitting in the address bar;
 		// drop it before the page can hand it to anything as a referrer,
-		// and so a reload can't retry an already-spent token.
-		history.replaceState(null, '', window.location.pathname);
+		// and so a reload can't retry an already-spent token. Through
+		// SvelteKit's own replaceState, not the history API directly —
+		// a bare history call desynchronises the router from the URL it
+		// thinks it is on, and the navigations below run off that.
+		replaceState(window.location.pathname, {});
 
 		if (authError) {
 			// The client's detectSessionInUrl bootstrap can win a race with

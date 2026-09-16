@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { goto, replaceState } from '$app/navigation';
 	import { supabase } from '$lib/core/supabase';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { checkPasswordPair } from '$lib/core/auth_gates';
@@ -32,7 +32,9 @@
 		if (otp) {
 			await supabase.auth.verifyOtp(otp);
 			// One-time credential — keep it out of referrers and reloads.
-			history.replaceState(null, '', window.location.pathname);
+			// Through SvelteKit's own replaceState: a bare history call
+			// desynchronises the router from the URL it thinks it is on.
+			replaceState(window.location.pathname, {});
 		}
 		await auth.ready();
 		ready = true;

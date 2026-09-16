@@ -1,6 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { strayConfirmationTarget, verifyConsentStamped } from './auth_confirmation.js';
+import {
+	emailOtpLink,
+	strayConfirmationTarget,
+	verifyConsentStamped,
+} from './auth_confirmation.js';
 
 // --- strayConfirmationTarget -------------------------------------------
 //
@@ -108,4 +112,48 @@ test('a failed read fails CLOSED, never open', async () => {
 		}),
 		'needs-consent',
 	);
+});
+
+// --- emailOtpLink -------------------------------------------------------
+//
+// The device-independent half of email confirmation. A token_hash mints
+// a session in whatever browser opened the mail; the PKCE code it
+// replaced could only be exchanged where the flow started.
+
+test('token_hash + type is read off the landing URL', () => {
+	assert.deepEqual(emailOtpLink('?token_hash=abc&type=signup'), {
+		token_hash: 'abc',
+		type: 'signup',
+	});
+});
+
+test('recovery, invite, magiclink and both email-change spellings are all links', () => {
+	for (const type of ['recovery', 'invite', 'magiclink', 'email_change', 'email']) {
+		assert.deepEqual(emailOtpLink(`?token_hash=h&type=${type}`), { token_hash: 'h', type });
+	}
+});
+
+test('an unknown type is not a link — verifyOtp would reject it anyway', () => {
+	assert.equal(emailOtpLink('?token_hash=abc&type=phone_change'), null);
+});
+
+test('either half missing is not a link', () => {
+	assert.equal(emailOtpLink('?type=signup'), null);
+	assert.equal(emailOtpLink('?token_hash=abc'), null);
+	assert.equal(emailOtpLink(''), null);
+});
+
+test('an OAuth callback is left to the PKCE exchange', () => {
+	assert.equal(emailOtpLink('?code=abc123'), null);
+});
+
+test('a token_hash landing on the wrong route is routed to the callback', () => {
+	assert.equal(
+		strayConfirmationTarget('/', '?token_hash=abc&type=signup', ''),
+		'/auth/callback?token_hash=abc&type=signup',
+	);
+});
+
+test('the reset page owns its own token_hash', () => {
+	assert.equal(strayConfirmationTarget('/auth/reset', '?token_hash=abc&type=recovery', ''), null);
 });

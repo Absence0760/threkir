@@ -227,11 +227,12 @@ test.describe('/login', () => {
 			expect(link).toContain('/auth/reset');
 
 			// Step 5: visit the reset link in a new page (a fresh tab
-			// captures the supabase-js URL-hash consumption cleanly,
-			// without competing auth state from the /login tab).
-			// Mailpit gives us the verify-link form
-			//   <supabase>/auth/v1/verify?token=...&type=recovery&redirect_to=<origin>/auth/reset
-			// which 302s to the origin with the access_token in the hash.
+			// captures the token redemption cleanly, without competing
+			// auth state from the /login tab). Mailpit gives us
+			//   <origin>/auth/reset?token_hash=...&type=recovery
+			// which the landing page redeems via verifyOtp. The
+			// cross-browser case — mail opened somewhere that never held
+			// the PKCE verifier — is pinned in reset.spec.ts.
 			const resetPage = await context.newPage();
 			await resetPage.goto(link);
 			await expect(resetPage.getByRole('heading', { name: 'Set a new password' }))

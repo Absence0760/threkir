@@ -46,6 +46,7 @@ test.describe('no horizontal document scroll at 300 / 320 / 360 px', () => {
 			'/dashboard',
 			'/runs',
 			'/routes',
+			'/segments',
 			'/explore',
 			'/history',
 			'/gym',

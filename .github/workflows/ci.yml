@@ -191,7 +191,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+      # `go install` reaches proxy.golang.org for actionlint and its module
+      # graph, and that fetch has failed mid-stream on a transient HTTP/2
+      # error, taking the whole job down on a PR that touched no workflow.
+      # Same shape as the Deno cache warm below, for the same reason: the
+      # network is the flake, so the fetch retries and only a persistent
+      # failure is a verdict.
+      - name: Install actionlint
+        run: |
+          for attempt in 1 2 3; do
+            if go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12; then
+              exit 0
+            fi
+            echo "::warning::actionlint install attempt $attempt failed (proxy.golang.org transient?); retrying"
+            sleep $((attempt * 5))
+          done
+          echo "::error::actionlint install failed after 3 attempts. Nothing here is about the workflows themselves — this is the Go module fetch, before any lint has run."
+          exit 1
       # -shellcheck= / -pyflakes= disable the external-linter integrations:
       # the runner image ships shellcheck, whose style findings across every
       # existing run block would fail this job. The gate's purpose is only

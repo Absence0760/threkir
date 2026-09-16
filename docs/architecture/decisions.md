@@ -29050,7 +29050,27 @@ The regression test pins **both** directions, which is the non-obvious half: a r
 
 Web only for now; `dashboard_screen.dart` still composes its stack for a runless account (§ 24).
 
-## 1617. A routing outage degrades the route builder; it does not disable Save
+## 1617. The actionlint install retries its fetch, and that is not the retry this repo forbids
+
+`workflow-lint` installed actionlint with a bare `go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12`. On 2026-09-16 that fetch died mid-stream — `go.yaml.in/yaml/v4@v4.0.0-rc.3: read "https://proxy.golang.org/…": stream error; INTERNAL_ERROR` — and took the job red on a PR whose diff touched no workflow file at all. Nothing had been linted yet; the verdict was about the Go module proxy's TCP connection.
+
+The step now wraps the `go install` in the same three-attempt loop with backoff that the Deno cache warm above it has carried since § 775, down to the `::warning::` per attempt and the `::error::` that names the fetch rather than the workflows.
+
+Which cuts against the house rule that a retry must never be reached for in place of a root-cause fix — so the distinction is worth stating once. That rule is about a retry that hides a defect in the code under test: a flaky assertion, a race the test keeps losing, a timeout raised until a slow path fits under it. Here the code under test has not run. The failure is entirely in fetching a third-party binary over someone else's network, where a transient stream error is the expected failure mode and a persistent one is still a verdict — three attempts fail the job exactly as one did. The rule to apply to a retry is whose failure it absorbs, not whether it is a retry.
+
+## 1618. An auth email carries a `token_hash`, not a PKCE code — the reader is never the browser that started the flow
+
+A GoTrue `/auth/v1/verify?token=…` link confirms the token server-side and then hands the session back to the landing page as a PKCE `?code=`. Only the browser that STARTED the flow can exchange that code: it alone holds the code verifier, in its own storage. Mail is not read there. It is read in the iOS Mail in-app browser, in webmail in a second browser, on the other device — so `/auth/callback` answered a real sign-up confirmation with "PKCE code verifier not found in storage", *after* GoTrue had already marked the address confirmed. The account existed and worked; the link that created it looked broken. The same held for password recovery, where the dead end is worse: the landing page's only other branch is "this reset link is invalid or has expired", which is a lie about a token that was just spent.
+
+The link now points straight at the web landing carrying `token_hash` + `type`, and the page redeems it with `verifyOtp`. That mints the session from the hash alone — no verifier, no originating browser — so it works wherever the mail was opened. `/auth/callback` keeps the `exchangeCodeForSession` branch for OAuth, where the flow genuinely does begin and end in one browser, and `/auth/reset` redeems its own hash before the session check it already had.
+
+A non-http(s) `redirect_to` keeps the verify hop, and that is not a leftover: the mobile deep link `com.threkir.app://login-callback` returns into the app that started the flow and still holds its verifier, and `supabase_flutter` completes the session from the `?code=` shape only. So the rule is the scheme, not the platform — `buildActionUrl` reads it off `redirect_to`, and a missing `redirect_to` falls back to the hop as well.
+
+Two consequences worth stating. The hash is a one-time credential in a query string, so both landings replace it away before anything can read it as a referrer or a reload can retry a spent token — through `replaceState` from `$app/navigation` rather than the history API directly, because a bare `history.replaceState` leaves SvelteKit's router believing it is still on the URL that carried the token, and the callback navigates onward from exactly that state. And `strayConfirmationTarget` now counts a `token_hash` alongside a `code`: a hosted project whose Redirect-URLs allow-list drops our landing sends the confirmation to the Site URL instead, and the Art 8 consent gate must still run there (§ 363's reason, one shape wider).
+
+The regression test is the shape of the bug rather than of the fix: `reset.spec.ts` opens the emailed link in a separate Playwright **context**, not another tab, because a second tab shares the storage that made the old link work in CI while it failed for every real person.
+
+## 1619. A routing outage degrades the route builder; it does not disable Save
 
 `/routes/new` snaps each waypoint pair through `/api/routes/osrm/*`, and `recalculateRoute` already builds every segment as a straight line first, upgrading the ones OSRM answers for. When *some* segments failed, that fallback carried the route and the user got an amber warning naming the pins to nudge. When *all* of them failed, the same function threw, the catch cleared `routeCoordinates`, and the parent's `routed` flag — the sole gate on Save, GPX and KML — went false with no way back short of reloading the page.
 
@@ -29062,7 +29082,7 @@ That is the wrong shape for the failure it was handling, because a total failure
 
 The e2e test that pinned the old behaviour is retired, not relaxed: `builder.spec.ts`'s "OSRM total failure → Save button stays disabled" asserted precisely the bug, down to the red-not-amber banner class. It now pins the degraded path, including GPX and KML, which share the gate and so shared the outage.
 
-## 1618. A labelled button row in a resizable pane has to be told it may wrap
+## 1620. A labelled button row in a resizable pane has to be told it may wrap
 
 The route builder's sidebar is a `SplitPane` pane the user can drag down to 280px, and two of its rows are flex rows of icon-plus-label buttons: the waypoint toolbar and the primary actions. Both were `display: flex` with no `flex-wrap`, and the toolbar's buttons carried `flex: 1` — which reads as "these will shrink to fit" and does not, because a flex item's `min-width` is `auto`, so each button floors at its own icon+label min-content width and the row overflows instead.
 

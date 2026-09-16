@@ -346,6 +346,40 @@ export function buildVerifyUrl(
   return url;
 }
 
+/// The link an auth email actually ships.
+///
+/// GoTrue's `/auth/v1/verify` confirms the token server-side and then
+/// hands the session back to the landing page as a PKCE `?code=`, which
+/// ONLY the browser that started the flow can exchange — it alone holds
+/// the code verifier. Mail is read wherever the person happens to be
+/// (the iOS Mail in-app browser, webmail in a second browser, another
+/// device), so on the web that hop is a dead end: the address gets
+/// confirmed and the landing still fails with "PKCE code verifier not
+/// found in storage". Pointing the link straight at the web landing
+/// with `token_hash` + `type` lets it call `verifyOtp`, which mints the
+/// session from the hash alone, in any browser.
+///
+/// A non-http(s) target — the mobile custom-scheme deep link — keeps
+/// the verify hop: there the flow starts and finishes inside one app,
+/// which does hold the verifier, and supabase_flutter only understands
+/// the code form.
+export function buildActionUrl(
+  supabaseUrl: string,
+  tokenHash: string,
+  verifyType: string,
+  redirectTo: string | undefined,
+): string {
+  if (!redirectTo || !/^https?:\/\//i.test(redirectTo)) {
+    return buildVerifyUrl(supabaseUrl, tokenHash, verifyType, redirectTo);
+  }
+  const hashAt = redirectTo.indexOf('#');
+  const base = hashAt === -1 ? redirectTo : redirectTo.slice(0, hashAt);
+  const fragment = hashAt === -1 ? '' : redirectTo.slice(hashAt);
+  const sep = base.includes('?') ? '&' : '?';
+  return `${base}${sep}token_hash=${encodeURIComponent(tokenHash)}` +
+    `&type=${encodeURIComponent(verifyType)}${fragment}`;
+}
+
 // ─────────────────── catalogue ───────────────────
 
 export interface AuthEmailStrings {
@@ -1098,7 +1132,7 @@ export function renderAuthEmail(
   const strings = lookupAuthEmailStrings(loc, send.catalogueKey);
   const shared = authEmailShared[loc] ?? authEmailShared.en;
   const link = send.verifyType && send.tokenHash
-    ? buildVerifyUrl(opts.supabaseUrl, send.tokenHash, send.verifyType, opts.redirectTo)
+    ? buildActionUrl(opts.supabaseUrl, send.tokenHash, send.verifyType, opts.redirectTo)
     : '';
   const codeOnly = !link && send.token !== '';
   const altCode = link && send.token !== '' ? send.token : '';

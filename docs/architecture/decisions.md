@@ -29036,7 +29036,21 @@ mode. The guard's own suite mutates the real tree. The lookup was also run
 read-only against the real estate config, where prod and the keystore resolve to
 ARNs, preview to its placeholder and `running/…` to no rule.
 
-## 1616. An auth email carries a `token_hash`, not a PKCE code — the reader is never the browser that started the flow
+## 1616. A dashboard with nothing to show gets one action, not thirteen cards that each self-hide correctly
+
+`/dashboard` derives thirteen cards from runs and gym sessions, and every one of them already handled its own emptiness properly — the lift card self-hides, the nutrition rings self-hide, the intensity card self-hides, the mileage chart words its own hint. Each was individually right and the page was collectively useless: an account with no runs got a heading over a column of correct nothing, with the only "add a run" call to action ~700 lines down, underneath the VO₂ max / CTL / ATL / TSB row. That is the screen a runner lands on straight out of onboarding, so the one action that makes the product work at all was the hardest thing on the page to find, sitting beneath the content least likely to mean anything to them.
+
+The fix is a gate on the whole block rather than a fourteenth self-hiding card, because the failure is not a card's — it is what thirteen correct self-hides compose into. `isNewAccount` swaps the entire derived-metric region for `DashboardFirstRun.svelte`. This reads like an inversion of [`multi_modal.md` § Home rule 4](../features/multi_modal.md) ("no data is omitted entirely — not greyed out, not a 'start logging' placeholder taking a full card") and is not: that rule governs one empty modality inside a populated Home and still holds unchanged. The whole-account case is a different one, and the rule never had an opinion about it.
+
+Three things about the signal, each of which was a wrong answer first. It reads **all-time** run count, not the dashboard's own 90-day window, because a returning runner whose history predates the window is not a new account and must not be told to log their first run. It counts **gym sessions** too, since a lifter who has never run has done plenty. And it deliberately ignores **nutrition**: `todaysFood` only ever holds the current calendar day, so it can answer "did you eat today" but never "has this account done anything", and wiring it in would have made the state flicker back at midnight.
+
+The plan hero and the upcoming-event card render **above** the gate rather than inside it, because onboarding's closing CTA creates a training plan before any run exists — a brand-new account can legitimately have one, and hiding it to show "you have nothing yet" would contradict the plan sitting in the database. The copy has a second variant for that case.
+
+The regression test pins **both** directions, which is the non-obvious half: a regression that never shows the card merely restores the old empty grid, but one that never stops showing it hides the dashboard from every real account, and only the second is a catastrophe. `dashboard/page.spec.ts` had to change too — it asserted that a runless account sees the Mileage card's empty-state hint, which is precisely the behaviour being removed. That assertion is retired rather than relaxed, and the test now pins what its own comment always claimed to be about: no derived-metric jargon reaches a Day-One runner. `dash.mileageEmpty` stays live for an account that has runs but none inside the chart window.
+
+Web only for now; `dashboard_screen.dart` still composes its stack for a runless account (§ 24).
+
+## 1617. An auth email carries a `token_hash`, not a PKCE code — the reader is never the browser that started the flow
 
 A GoTrue `/auth/v1/verify?token=…` link confirms the token server-side and then hands the session back to the landing page as a PKCE `?code=`. Only the browser that STARTED the flow can exchange that code: it alone holds the code verifier, in its own storage. Mail is not read there. It is read in the iOS Mail in-app browser, in webmail in a second browser, on the other device — so `/auth/callback` answered a real sign-up confirmation with "PKCE code verifier not found in storage", *after* GoTrue had already marked the address confirmed. The account existed and worked; the link that created it looked broken. The same held for password recovery, where the dead end is worse: the landing page's only other branch is "this reset link is invalid or has expired", which is a lie about a token that was just spent.
 

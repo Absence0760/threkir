@@ -300,7 +300,7 @@ Dashboard → Auth → Hooks in prod):
   non-http(s) target (the mobile `com.threkir.app://` deep link, where the
   flow starts and finishes in one app that holds its PKCE verifier, and
   `supabase_flutter` only understands the resulting `?code=`) and for a
-  missing `redirect_to`. See `decisions.md § 1617` and
+  missing `redirect_to`. See `decisions.md § 1618` and
   `docs/features/web_app_auth.md § Email confirmation redirect`. The OTP
   code rides along as the link alternative. The verify-hop base is
   `API_EXTERNAL_URL`

@@ -29050,7 +29050,15 @@ The regression test pins **both** directions, which is the non-obvious half: a r
 
 Web only for now; `dashboard_screen.dart` still composes its stack for a runless account (§ 24).
 
-## 1617. An auth email carries a `token_hash`, not a PKCE code — the reader is never the browser that started the flow
+## 1617. The actionlint install retries its fetch, and that is not the retry this repo forbids
+
+`workflow-lint` installed actionlint with a bare `go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12`. On 2026-09-16 that fetch died mid-stream — `go.yaml.in/yaml/v4@v4.0.0-rc.3: read "https://proxy.golang.org/…": stream error; INTERNAL_ERROR` — and took the job red on a PR whose diff touched no workflow file at all. Nothing had been linted yet; the verdict was about the Go module proxy's TCP connection.
+
+The step now wraps the `go install` in the same three-attempt loop with backoff that the Deno cache warm above it has carried since § 775, down to the `::warning::` per attempt and the `::error::` that names the fetch rather than the workflows.
+
+Which cuts against the house rule that a retry must never be reached for in place of a root-cause fix — so the distinction is worth stating once. That rule is about a retry that hides a defect in the code under test: a flaky assertion, a race the test keeps losing, a timeout raised until a slow path fits under it. Here the code under test has not run. The failure is entirely in fetching a third-party binary over someone else's network, where a transient stream error is the expected failure mode and a persistent one is still a verdict — three attempts fail the job exactly as one did. The rule to apply to a retry is whose failure it absorbs, not whether it is a retry.
+
+## 1618. An auth email carries a `token_hash`, not a PKCE code — the reader is never the browser that started the flow
 
 A GoTrue `/auth/v1/verify?token=…` link confirms the token server-side and then hands the session back to the landing page as a PKCE `?code=`. Only the browser that STARTED the flow can exchange that code: it alone holds the code verifier, in its own storage. Mail is not read there. It is read in the iOS Mail in-app browser, in webmail in a second browser, on the other device — so `/auth/callback` answered a real sign-up confirmation with "PKCE code verifier not found in storage", *after* GoTrue had already marked the address confirmed. The account existed and worked; the link that created it looked broken. The same held for password recovery, where the dead end is worse: the landing page's only other branch is "this reset link is invalid or has expired", which is a lie about a token that was just spent.
 

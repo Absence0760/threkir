@@ -4,7 +4,7 @@
 # project's sops-encrypted secrets, by adding kms:Decrypt + kms:Encrypt
 # to the per-env KMS key policy.
 #
-# project-running uses per-env KMS keys (one per `infra/envs/<env>`)
+# Threkir uses per-env KMS keys (one per `infra/envs/<env>`)
 # rather than a single shared key, so onboarding is a per-env action.
 #
 # What this does:
@@ -133,7 +133,7 @@ log "On their machine they need:"
 dim "  - aws CLI v2 + sops"
 dim "  - aws sso login as a profile that resolves to the granted principal"
 dim "  - the PRIVATE estate repo cloned as a sibling (git clone …/infra-secrets ../infra-secrets)"
-dim "  - 'sops --decrypt ../infra-secrets/running/<env>.sops.yaml' should now succeed"
+dim "  - 'sops --decrypt ../infra-secrets/threkir/<env>.sops.yaml' should now succeed"
 log ""
 log "If the principal is a role, they assume it via 'aws sts assume-role' or via"
 log "an IAM Identity Center permission set that maps to it."

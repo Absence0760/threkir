@@ -1,11 +1,11 @@
 {
 	"generator": "scripts/gen_web_icon_font.mjs",
 	"upstream": {
-		"package": "material-symbols@0.47.0",
+		"package": "material-symbols@0.47.2",
 		"file": "material-symbols-outlined.woff2",
-		"bytes": 3963852,
-		"sha256": "329f6eb34ac05b0c0b1bb172e36d004bbc57cb5112abeeccc70755afdc4f2d8d",
-		"ligatures": 4275
+		"bytes": 3980092,
+		"sha256": "167a5e473546503fdbeff71cd607455adba816e3d99f8e25b27bfafecb20fe4a",
+		"ligatures": 4284
 	},
 	"pinnedAxes": {
 		"GRAD": 0,
@@ -20,10 +20,10 @@
 		"rclt"
 	],
 	"subset": {
-		"bytes": 70416,
-		"sha256": "73bd04472782e237545405320589ca042e097be1f16eb07cb22db9e95b0e4373",
-		"glyphs": 310,
-		"ligatures": 419
+		"bytes": 70388,
+		"sha256": "89c8c0ea1f4710fdfcdbc39f36619c553c43e7626d0b1eca6d2f64578a3afb73",
+		"glyphs": 311,
+		"ligatures": 420
 	},
 	"icons": [
 		"10k",
@@ -39,6 +39,7 @@
 		"add_road",
 		"ads_click",
 		"alt_route",
+		"analytics",
 		"anchor",
 		"android",
 		"apps",

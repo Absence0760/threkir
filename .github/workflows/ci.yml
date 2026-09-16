@@ -872,7 +872,7 @@ jobs:
             echo "Reproduce with: node --test infra/modules/web-stack/functions/www_redirect.test.mjs (stdlib only, no install needed)."
             exit 1
           fi
-      - uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+      - uses: ./.github/actions/setup-supabase-cli
         with:
           version: 2.84.2
       # Retry + port-cleanup rationale lives in the composite action.
@@ -1650,7 +1650,7 @@ jobs:
     # The Terraform under infra/ provisions the production web stack, the KMS
     # keys behind sops, the GitHub OIDC deploy roles and DNS, and most of what
     # is load-bearing about it was stated in prose and enforced by nothing.
-    # Two guards, both offline — no AWS credentials, no `terraform init`, so
+    # Four guards, all offline — no AWS credentials, no `terraform init`, so
     # this job needs neither the Terraform CLI nor a network round trip:
     #
     #   check_infra_iam.mjs      the OIDC trust contract (StringEquals on a
@@ -1677,6 +1677,14 @@ jobs:
     #                            — the only signal a Lambda-origin failure has,
     #                            since the distribution-wide 403 fallback
     #                            rewrites one into a 200 shell.
+    #   check_estate_slot.mjs    the private estate secrets slot named once, in
+    #                            bin/lib/estate.sh, and the Terraform
+    #                            secrets_file defaults, every bin/ script and
+    #                            every operator doc agreeing with it — beside
+    #                            the suites for that lib's sops creation-rule
+    #                            lookup and for the scripts that read the
+    #                            estate through it, driven against a fixture
+    #                            estate with aws/terraform/sops stubbed (§ 1615).
     #
     # Each guard's own `node --test` suite runs beside it: a parser that
     # silently stops matching passes vacuously, which is the failure mode a
@@ -1718,6 +1726,27 @@ jobs:
           fi
           if ! node --test scripts/check_infra_coverage.test.mjs; then
             echo "::error::The infra coverage guard's own unit tests failed. The Terraform itself is fine — the check above just passed — so this is a defect in scripts/check_infra_coverage.mjs."
+            exit 1
+          fi
+      - name: The estate secrets slot, named once
+        run: |
+          if ! node scripts/check_estate_slot.mjs; then
+            echo "::error::A path into the private estate secrets repo names a slot other than the one bin/lib/estate.sh declares, a bin/ script resolves the estate on its own, or a Terraform secrets_file default has moved. Nothing here is about IAM scope, error responses or alarm coverage; those are the other checks in this job."
+            echo "The failing line above names the file, the line and the slot it found. decisions § 1615 is why the slot is named in exactly one place."
+            exit 1
+          fi
+          if ! node --test scripts/check_estate_slot.test.mjs; then
+            echo "::error::The estate slot guard's own unit tests failed. The tree itself is fine — the check above just passed — so this is a defect in scripts/check_estate_slot.mjs, and a scan that stopped matching would have passed the check vacuously."
+            exit 1
+          fi
+          if ! node --test scripts/bin_lib_estate.test.mjs; then
+            echo "::error::bin/lib/estate.sh's unit tests failed: its sops creation-rule lookup no longer picks the rule sops would, or a rewrite changes more than the one kms value. sops-init.sh, key-rotate.sh, secret-set.sh, aws-preflight.sh and disaster-recovery.sh all read the estate through it."
+            echo "Reproduce with: node --test scripts/bin_lib_estate.test.mjs (needs bash and awk, no install)."
+            exit 1
+          fi
+          if ! node --test scripts/bin_estate_scripts.test.mjs; then
+            echo "::error::A bin/ script that reads the private estate secrets repo no longer behaves as pinned against the fixture estate: sops-init.sh wiring or seeding, key-rotate.sh or secret-set.sh resolving the slot file, or aws-preflight.sh's account pin and estate hard failures. The failing test names the script and the case."
+            echo "Reproduce with: node --test scripts/bin_estate_scripts.test.mjs (needs bash, awk, jq and git; aws, terraform, sops and gh are stubbed)."
             exit 1
           fi
 
@@ -1785,7 +1814,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: "21"
@@ -2303,7 +2332,7 @@ jobs:
     # PR so the toolchain stays green.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: "21"
@@ -2425,7 +2454,7 @@ jobs:
         with:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
-      - uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+      - uses: ./.github/actions/setup-supabase-cli
         with:
           version: 2.84.2
       # Retry + port-cleanup rationale lives in the composite action.
@@ -2453,7 +2482,7 @@ jobs:
         with:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
-      - uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+      - uses: ./.github/actions/setup-supabase-cli
         with:
           version: 2.84.2
       # Boot the local stack and apply seed.sql so the seed user
@@ -2540,7 +2569,7 @@ jobs:
           node-version: 24.20.0
           cache: npm
       - run: npm ci
-      - uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+      - uses: ./.github/actions/setup-supabase-cli
         with:
           version: 2.84.2
       # supabase start applies migrations + seed.sql; the seed user
@@ -2789,7 +2818,7 @@ jobs:
             echo "Reproduce locally with: node apps/backend/scripts/check_edge_function_test_vacuity.mjs --report"
             exit 1
           fi
-      - uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+      - uses: ./.github/actions/setup-supabase-cli
         with:
           version: 2.84.2
       # Retry + port-cleanup rationale lives in the composite action.
@@ -2993,7 +3022,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+      - uses: ./.github/actions/setup-supabase-cli
         with:
           version: 2.84.2
       # For the refusal-assertion guard below. It imports nothing outside
@@ -3116,7 +3145,7 @@ jobs:
         shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         with:
           version: 10
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -3129,7 +3158,7 @@ jobs:
           # dev server dies before Playwright's webServer connects.
           node-version: 24.20.0
           cache: pnpm
-      - uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+      - uses: ./.github/actions/setup-supabase-cli
         with:
           version: 2.84.2
       # `supabase start` brings the stack up, applies every migration,
@@ -3248,7 +3277,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         with:
           version: 10
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -3261,7 +3290,7 @@ jobs:
         with:
           go-version-file: apps/job_worker/go.mod
           cache-dependency-path: apps/job_worker/go.sum
-      - uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+      - uses: ./.github/actions/setup-supabase-cli
         with:
           version: 2.84.2
       - name: Start local Supabase stack
@@ -3340,7 +3369,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         with:
           version: 10
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -3353,7 +3382,7 @@ jobs:
         with:
           go-version-file: apps/job_worker/go.mod
           cache-dependency-path: apps/job_worker/go.sum
-      - uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+      - uses: ./.github/actions/setup-supabase-cli
         with:
           version: 2.84.2
       - name: Start local Supabase stack
@@ -3455,14 +3484,14 @@ jobs:
       SSO_MOCK_OIDC_PORT: "9888"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         with:
           version: 10
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24.20.0
           cache: pnpm
-      - uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+      - uses: ./.github/actions/setup-supabase-cli
         with:
           version: 2.84.2
       - name: Start local Supabase stack

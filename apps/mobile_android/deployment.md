@@ -94,15 +94,15 @@ base64 -w0 -i upload-keystore.jks | xclip -selection clipboard
 # irreplaceable.
 ```
 
-**Canonical backup: the private estate secrets repo** (`Absence0760/infra-secrets`, cloned as a sibling at `../infra-secrets`) at `running/android-upload-keystore.sops.yaml` — the `.jks` (base64), the key alias, and both passwords, sops-encrypted under the running prod web-stack KMS key (access = IAM `kms:Decrypt`, backed up 2026-07-21 and verified byte-identical). The GitHub Secret is a **signing copy, not a backup**: GitHub secrets are write-only, so CI can sign with it forever but nobody can ever read the keystore back out. The release operator's workstation holds a working copy of the `.jks`.
+**Canonical backup: the private estate secrets repo** (`Absence0760/infra-secrets`, cloned as a sibling at `../infra-secrets`) at `threkir/android-upload-keystore.sops.yaml` — the `.jks` (base64), the key alias, and both passwords, sops-encrypted under the threkir prod web-stack KMS key (access = IAM `kms:Decrypt`, backed up 2026-07-21 and verified byte-identical). The GitHub Secret is a **signing copy, not a backup**: GitHub secrets are write-only, so CI can sign with it forever but nobody can ever read the keystore back out. The release operator's workstation holds a working copy of the `.jks`.
 
 Restore after a lost workstation:
 
 ```bash
-AWS_PROFILE=running sops --decrypt --extract '["keystore_jks_base64"]' ../infra-secrets/running/android-upload-keystore.sops.yaml | base64 -d > upload-keystore.jks
+AWS_PROFILE=threkir sops --decrypt --extract '["keystore_jks_base64"]' ../infra-secrets/threkir/android-upload-keystore.sops.yaml | base64 -d > upload-keystore.jks
 ```
 
-The passwords live in the same file (`sops ../infra-secrets/running/android-upload-keystore.sops.yaml` to view), and in the owner's Bitwarden.
+The passwords live in the same file (`sops ../infra-secrets/threkir/android-upload-keystore.sops.yaml` to view), and in the owner's Bitwarden.
 
 ### GitHub Secrets required
 

@@ -5,7 +5,7 @@ description: Single table listing every user-visible feature with a per-platform
 
 # Cross-platform feature parity matrix
 
-> **iOS + Apple Watch are deferred.** The landing page's platform strip marks both "In testing" — built, not in the stores (decisions § 1611) — and the team is not actively pushing them forward right now. Nothing in either column has been observed running on a Mac build, simulator or device. The Apple columns will be re-energised when the deferral is lifted; until then, prioritise Android / Wear OS / Web work first. How to read the **iOS** column is stated once, under [What an iOS cell means](#what-an-ios-cell-means); the Apple Watch column is a separate native Swift codebase and is not covered by that rule.
+> **iOS + Apple Watch are deferred.** The landing page's platform strip marks both "In testing" — built, not in the stores (decisions § 1616) — and the team is not actively pushing them forward right now. Nothing in either column has been observed running on a Mac build, simulator or device. The Apple columns will be re-energised when the deferral is lifted; until then, prioritise Android / Wear OS / Web work first. How to read the **iOS** column is stated once, under [What an iOS cell means](#what-an-ios-cell-means); the Apple Watch column is a separate native Swift codebase and is not covered by that rule.
 
 The app ships on five surfaces — **Android**, **iOS** *(deferred)*, **Web**, **Wear OS**, **Apple Watch** *(deferred)* — and features drift between them. This doc is the single place where that drift is visible. Every user-facing feature has a row, every platform has a column, and every cell uses one of the four symbols the Legend below defines.
 

@@ -1131,7 +1131,7 @@ tests-e2e/
     cta-links-resolve.spec.ts  — anon clicks the feature CTA → lands on /login (auth funnel), not a hard 404
   dashboard-period.spec.ts     — /dashboard/period/[type]/[date] (week + month deep links + invalid-date fallback)
   login.spec.ts                — /login (failed sign-in; sign-up: ?signup=1; forgot-password full round-trip via Mailpit; happy sign-in path in cross-cutting/sign-in-out)
-  auth/shell.spec.ts           — AuthShell on /login, ?signup=1, /auth/reset, /auth/confirm-age, /auth/callback: one page-owned main landmark, a route home, decorative loaded art; panel copy never overlaps the art at 1440x900 or 1280x720; phone band + no sideways scroll + one-line OAuth labels; reduced motion finished on first frame
+  auth/shell.spec.ts           — AuthShell on /login, ?signup=1, /auth/reset, /auth/confirm-age, /auth/callback: one page-owned main landmark, a route home, decorative loaded art; panel copy never overlaps the art at 1440x900 or 1280x720; phone band + no sideways scroll + one-line OAuth labels under a wide-glyph stress (the page loads no text webfont, and CI's DejaVu Sans wrapped a label this host's Noto Sans fitted); reduced motion finished on first frame
   onboarding/design.spec.ts    — /onboarding on AuthShell (no writes): the named progressbar and the panel rail track the step, a build with no push key walks no notifications step (rail and count alike), a step change focuses the new question's heading (Continue and Back), each single-choice group is named by its question, reduced motion shows the new step whole on its first frame, the phone layout carries the step count with no sideways scroll
   dashboard.spec.ts            — /dashboard
   feed.spec.ts                 — /feed

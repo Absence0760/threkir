@@ -673,6 +673,7 @@
 	}
 
 	.btn-google {
+		position: relative;
 		background: var(--color-surface);
 		border: 1.5px solid var(--color-border);
 		color: var(--color-text);
@@ -695,16 +696,30 @@
 		box-shadow: var(--shadow-md);
 	}
 
+	/* A badge on the button's top corner, not a pill in its text line. In the
+	   line it shared the width with the label, so whether "Continue with
+	   Apple" fitted on a phone depended on the device's fallback font: Noto
+	   Sans fitted, DejaVu Sans wrapped (CI run 35134263272). Out of the line,
+	   the label has the whole button.
+	   The primary pair rather than a translucent white, which read on the
+	   black Apple button and vanished on the white Google one. It stays in
+	   the button's text, so the accessible name still says "Soon". */
 	.soon-pill {
+		position: absolute;
+		top: 0;
+		inset-inline-end: var(--space-md);
+		translate: 0 -50%;
 		font-size: var(--font-size-section-label);
 		font-weight: 700;
+		line-height: 1.3;
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
-		padding: 0.1rem 0.45rem;
+		padding: 0.1rem 0.5rem;
 		border-radius: 9999px;
-		background: rgba(255, 255, 255, 0.18);
-		color: rgba(255, 255, 255, 0.9);
-		margin-inline-start: 0.4rem;
+		background: var(--color-primary);
+		color: var(--color-on-primary);
+		box-shadow: 0 0 0 2px var(--color-surface);
+		pointer-events: none;
 	}
 
 	:global(html[data-theme='dark']) .btn-apple {

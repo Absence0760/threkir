@@ -3,6 +3,8 @@
 	import { buildLearnCanonical, buildLearnCollectionJsonLd } from '$lib/learn/learn_meta';
 	import { guidesByCategory } from '$lib/learn/guides';
 	import GuideCard from '$lib/components/GuideCard.svelte';
+	import LearnCategoryNav from '$lib/components/LearnCategoryNav.svelte';
+	import LearnSignupCta from '$lib/components/LearnSignupCta.svelte';
 	import LearnPage from '$lib/components/LearnPage.svelte';
 	import LearnBreadcrumb from '$lib/components/LearnBreadcrumb.svelte';
 
@@ -65,13 +67,7 @@
 	</section>
 
 	<main class="content learn-column" id="main-content">
-		<nav class="categories" aria-label={m('learn.browseByCategory')}>
-			{#each data.categories as category (category.id)}
-				<a class="category-chip" href="/learn/category/{category.id}">
-					{m(category.labelKey)}
-				</a>
-			{/each}
-		</nav>
+		<LearnCategoryNav />
 
 		{#if featured}
 			<section class="featured-section" aria-labelledby="learn-featured">
@@ -92,12 +88,7 @@
 		{/if}
 	</main>
 
-	<section class="signup-cta learn-column" aria-labelledby="learn-cta-heading">
-		<p class="kicker">{m('learn.ctaKicker')}</p>
-		<h2 id="learn-cta-heading">{m('learn.ctaHeading')}</h2>
-		<p class="signup-sub">{m('learn.ctaSub')}</p>
-		<a class="btn btn-primary" href="/login?signup=1">{m('learn.ctaButton')}</a>
-	</section>
+	<LearnSignupCta />
 </LearnPage>
 
 <style>
@@ -137,28 +128,8 @@
 		gap: var(--space-xl);
 	}
 
-	.categories {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-sm);
-	}
 
-	.category-chip {
-		padding: 0.4rem var(--space-md);
-		border-radius: var(--radius-pill);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		font-size: 0.9rem;
-		font-weight: 600;
-		color: var(--color-text-secondary);
-		text-decoration: none;
-		transition: all var(--transition-base);
-	}
 
-	.category-chip:hover {
-		border-color: var(--color-primary);
-		color: var(--color-primary);
-	}
 
 	.section-label {
 		font-size: var(--font-size-section-label);
@@ -177,25 +148,8 @@
 		gap: var(--space-md);
 	}
 
-	.signup-cta {
-		padding: var(--space-xl) var(--space-md);
-		text-align: center;
-	}
 
-	.signup-cta h2 {
-		font-size: 1.4rem;
-		font-weight: 700;
-		margin: 0 0 var(--space-sm);
-		color: var(--color-text);
-	}
 
-	.signup-sub {
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		max-width: 32rem;
-		margin: 0 auto var(--space-md);
-		line-height: 1.5;
-	}
 
 	@media (min-width: 48rem) {
 		.hero {

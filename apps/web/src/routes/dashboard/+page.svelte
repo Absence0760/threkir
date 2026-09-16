@@ -60,6 +60,7 @@
 	import TrendDeltasCard from '$lib/components/TrendDeltasCard.svelte';
 	import LoadRampCard from '$lib/components/LoadRampCard.svelte';
 	import ComebackCard from '$lib/components/ComebackCard.svelte';
+	import DashboardFirstRun from '$lib/components/DashboardFirstRun.svelte';
 	import { workoutKindLabel } from '$lib/training/workout_labels';
 	import WorkoutEditor from '$lib/components/WorkoutEditor.svelte';
 	import PeriodSummary from '$lib/components/PeriodSummary.svelte';
@@ -201,6 +202,15 @@
 	// read `gymWorkouts` + a sets-by-workout map. All self-hide when empty.
 	let gymWorkouts = $state<GymWorkout[]>([]);
 	let gymHistory = $state<GymSetWithDate[]>([]);
+	// A brand-new account — no run ever logged (all-time, not the dashboard's
+	// 90-day window) and no gym session. Every card below this point derives
+	// from one or the other, so without this branch the first screen after
+	// onboarding is eleven empty cards with the only "add a run" CTA 700 lines
+	// further down the page, under the training-load model. #905.
+	// Deliberately not gated on nutrition: `todaysFood` only ever holds the
+	// current calendar day, so it cannot answer "has this account done
+	// anything yet".
+	let isNewAccount = $derived(allTimeStats.totalRuns === 0 && gymWorkouts.length === 0);
 	let lifts = $derived(liftsFromSetHistory(gymHistory));
 	// Today's nutrition — the "today's modality" rings card (multi_modal.md §
 	// Home), mirroring the mobile NutritionRingsCard + the today's-lift card
@@ -1193,646 +1203,654 @@
 			<NutritionRingsCard consumed={nutritionConsumed} targets={nutritionTargets} />
 		{/if}
 
-		<!-- Source filter — applies to every metric below the today
-		     card / upcoming event. Sits up here so the user understands
-		     which slice of their data drives the analytics that follow.
-		     Year-recap link rides on the right side of the same row so
-		     the dashboard doesn't burn two horizontal rails on a single
-		     line of controls. -->
-		<div class="filter-row">
-			<div class="filter-chips">
-				{#each sources as src}
-					<button
-						class="filter-btn"
-						class:active={sourceFilter === src.value}
-						onclick={() => (sourceFilter = src.value)}
-					>
-						{sourceChipLabel(src.label)}
-					</button>
-				{/each}
-			</div>
-			<a href="/recap/{new Date().getFullYear()}" class="recap-link">
-				<span class="material-symbols">auto_awesome</span>
-				{m('dash.viewRecap', { year: new Date().getFullYear() })}
-			</a>
-		</div>
-		<div class="stat-grid">
-			<button
-				type="button"
-				class="stat-card stat-card-button"
-				onclick={() => (periodModal = { type: 'week', date: new Date() })}
-			>
-				<span class="stat-label">{m('dash.statThisWeek')}</span>
-				<span class="stat-value">{formatDistance(thisWeekDistance)}</span>
-				<span class="stat-sub">
-					{thisWeekActivityCount === 1
-						? m('dash.activityCountOne', { n: thisWeekActivityCount })
-						: m('dash.activityCountOther', { n: thisWeekActivityCount })}
-					{#if thisWeekManualWorkouts.length > 0}
-						<span class="manual-hint">
-							{m('dash.inclMarkedDone', { n: thisWeekManualWorkouts.length })}
-						</span>
-					{/if}
-				</span>
-			</button>
-			<div class="stat-card">
-				<span class="stat-label">{m('dash.statTotalRuns')}</span>
-				<span class="stat-value" data-testid="dash-total-runs">{totalRuns}</span>
-				<span class="stat-sub">{m('dash.allSources')}</span>
-			</div>
-			<button
-				type="button"
-				class="stat-card stat-card-button"
-				onclick={() => (periodModal = { type: 'all', date: new Date() })}
-			>
-				<span class="stat-label">{m('dash.statLongestRun')}</span>
-				<span class="stat-value">{formatDistance(longestRun)}</span>
-				<span class="stat-sub">{m('dash.allTime')}</span>
-			</button>
-			<div class="stat-card">
-				<span class="stat-label">{m('dash.statThisWeekVert')}</span>
-				<span class="stat-value">{formatElevation(thisWeekVertMetres)}</span>
-				<span class="stat-sub">{m('dash.elevationGain')}</span>
-			</div>
-			<div class="stat-card">
-				<span class="stat-label">{m('dash.statThisWeekPace')}</span>
-				<span class="stat-value">
-					{thisWeekRuns.length > 0
-						? formatPace(
-								thisWeekRuns.reduce((s, r) => s + r.duration_s, 0),
-								thisWeekDistance,
-							)
-						: '--'}
-				</span>
-				<span class="stat-sub">{m('dash.average')}</span>
-			</div>
-			<div class="stat-card" class:streak-active={streakCard.current > 0}>
-				<span class="stat-label">{m('dash.statStreak')}</span>
-				<span class="stat-value">
-					{streakCard.current}
-					<span class="stat-unit">{streakCard.current === 1 ? m('dash.dayUnit') : m('dash.daysUnit')}</span>
-				</span>
-				<span class="stat-sub">
-					{#if streakCard.sub.kind === 'best'}
-						{streakCard.sub.n === 1
-							? m('dash.streakBestOne', { n: streakCard.sub.n })
-							: m('dash.streakBestOther', { n: streakCard.sub.n })}
-					{:else if streakCard.sub.kind === 'allTimeBest'}
-						{m('dash.streakAllTimeBest')}
-					{:else if streakCard.sub.kind === 'restart'}
-						{m('dash.streakRunToRestart')}
-					{:else if streakCard.sub.kind === 'start'}
-						{m('dash.streakRunToStart')}
-					{/if}
-				</span>
-			</div>
-		</div>
-
-		<!-- Current calendar-week activity ribbon — the day-by-day shape
-		     behind the "This Week" stat card. Honours week_start_day +
-		     the source filter (filteredRuns). Distinct from the plan-detail
-		     CurrentWeekStrip, which anchors to the plan's week, not the
-		     calendar. Pure derivation in lib/training/current_week.ts. -->
-		<ThisWeekStrip activities={filteredRuns} weekStart={weekStartDay} {now} />
-
-		<!-- Week-over-week + month-over-month trend deltas on the summary
-		     stats (distance / time / runs). Compares each period-to-date
-		     against the same to-date slice of the prior period so a mid-week
-		     glance is honest. Scoped to filteredRuns + week_start_day so it
-		     agrees with the stat grid above. Self-hides with no activity.
-		     Pure derivation in lib/training/trend_deltas.ts. Backlog #11. -->
-		<TrendDeltasCard runs={filteredRuns} weekStart={weekStartDay} {now} />
-
-		<!-- Self-hiding challenges strip: renders nothing when the user is in
-		     no live challenge (data-presence self-hide, matching the gym /
-		     nutrition cards). challenges.md. -->
-		<ChallengesPanel />
-
-		<!-- Multi-metric goals — local-only. Lives directly under the
-		     stat-grid so the "what am I working toward?" lens sits next
-		     to the "where am I right now?" stats. Empty state is a
-		     proper card (icon + heading + explainer + primary CTA), not
-		     a one-line grey sentence. The legacy `weekly_mileage_goal_m`
-		     setting (still shared with Android via Settings → Preferences)
-		     is surfaced as a synthetic weekly distance goal so it shows
-		     up here without needing a separate card. -->
-		<section class="goals-section">
-			<header class="goals-header">
-				<h2>{m('dash.goalsTitle')}</h2>
-				{#if displayGoals.length > 0}
-					<button type="button" class="link-btn" onclick={openNewGoal}>
-						{m('dash.addGoalLink')}
-					</button>
-				{/if}
-			</header>
-			{#if displayGoals.length === 0}
-				<div class="goals-empty-card">
-					<span class="material-symbols goals-empty-icon" aria-hidden="true">flag</span>
-					<div class="goals-empty-body">
-						<h3>{m('dash.noGoalsSet')}</h3>
-						<p>
-							{m('dash.noGoalsBody')}
-						</p>
-					</div>
-					<button type="button" class="btn btn-primary" onclick={openNewGoal}>
-						<span class="material-symbols">add</span>
-						{m('dash.addGoal')}
-					</button>
-				</div>
-			{:else}
-				<div class="goal-grid">
-					{#each displayGoals as g (g.id)}
-						{@const p = evaluateGoal(g, runs, new Date(), weekStartDay)}
-						{@const isSynthetic = g.id === SYNTHETIC_WEEKLY_GOAL_ID}
-						{@const isDone = p.overallPercent >= 1}
+		<!-- A brand-new account has nothing to derive any of the cards below
+		     from, so it gets one screen with one action instead of eleven empty
+		     ones. The plan hero and the upcoming-event card above still render:
+		     onboarding creates a plan before the first run exists. #905. -->
+		{#if isNewAccount}
+			<DashboardFirstRun hasPlan={planOverview != null} />
+		{:else}
+			<!-- Source filter — applies to every metric below the today
+			     card / upcoming event. Sits up here so the user understands
+			     which slice of their data drives the analytics that follow.
+			     Year-recap link rides on the right side of the same row so
+			     the dashboard doesn't burn two horizontal rails on a single
+			     line of controls. -->
+			<div class="filter-row">
+				<div class="filter-chips">
+					{#each sources as src}
 						<button
-							class="goal-card"
-							class:goal-card-done={isDone}
-							type="button"
-							onclick={() =>
-								isSynthetic ? goto('/settings/preferences') : openEditGoal(g)}
+							class="filter-btn"
+							class:active={sourceFilter === src.value}
+							onclick={() => (sourceFilter = src.value)}
 						>
-							<header class="goal-card-top">
-								<span class="goal-period">{periodLabel(g.period)}</span>
-								<span class="goal-card-top-right">
-									{#if isDone}
-										<span class="goal-done-badge">
-											<span class="material-symbols">check_circle</span>
-											{m('dash.doneBadge')}
-										</span>
-									{/if}
-									<span class="goal-overall">
-										{Math.round(p.overallPercent * 100)}%
-									</span>
-								</span>
-							</header>
-							<ul class="goal-targets">
-								{#each p.targets as t}
-									<li>
-										<div class="goal-target-top">
-											<span>{t.label}</span>
-											<span class="goal-target-value">
-												{t.currentLabel} / {t.targetLabel}
-											</span>
-										</div>
-										<div class="goal-target-bar">
-											<div
-												class="goal-target-fill"
-												class:complete={t.complete}
-												style="width: {Math.round(t.percent * 100)}%"
-											></div>
-										</div>
-									</li>
-								{/each}
-							</ul>
-							{#if isSynthetic}
-								<p class="goal-card-footer">{m('dash.fromSettingsEditThere')}</p>
-							{/if}
+							{sourceChipLabel(src.label)}
 						</button>
 					{/each}
 				</div>
-			{/if}
-		</section>
-
-		<!-- Fitness snapshot — VO2 max + training-load (ATL / CTL / TSB)
-		     + a rule-based recovery advice line. Computed client-side
-		     from recent runs via `lib/fitness.ts`; persisted to
-		     `fitness_snapshots` on every dashboard open so the trend
-		     chart has history. Hides when the user has no qualifying
-		     runs yet (short / non-recording sources only). -->
-		<!-- Readiness-to-run — single 0-100 number with band-aware
-		     accent. Inputs today are TSB-only; sleep + resting-HR pipe
-		     through the `readiness.ts` helper unchanged once Health
-		     Connect / HealthKit reads land. Hide entirely when there's
-		     nothing to score (no TSB, no qualifying runs). -->
-		{#if loadNow != null}
-			<section class="readiness-card readiness-{readiness.band}">
-				<div class="readiness-head">
-					<span class="readiness-label">{m('dash.readinessLabel')}</span>
-					<span class="readiness-band">{readiness.band}</span>
-				</div>
-				<div class="readiness-score">{readiness.score}</div>
-				<p class="readiness-advice">{readiness.advice}</p>
-				{#if readiness.contributors.length > 0}
-					<ul class="readiness-contribs">
-						{#each readiness.contributors as c (c.name)}
-							<li>
-								<span class="contrib-name">{c.name}</span>
-								<span class="contrib-delta" class:positive={c.delta > 0} class:negative={c.delta < 0}>
-									{c.delta > 0 ? '+' : ''}{c.delta}
-								</span>
-							</li>
-						{/each}
-					</ul>
-				{/if}
-			</section>
-		{/if}
-
-		{#if liveSnap.vo2Max != null || loadNow != null}
-			<section class="fitness-card">
-				<div class="fitness-row">
-					<div
-						class="fitness-metric"
-						title={m('dash.vo2maxTooltip')}
-					>
-						<span class="fitness-label">VO₂ max</span>
-						<span class="fitness-value">
-							{liveSnap.vo2Max != null ? liveSnap.vo2Max.toFixed(1) : '—'}
-						</span>
-						<span class="fitness-unit">ml/kg/min</span>
-					</div>
-					{#if loadNow != null}
-						<div
-							class="fitness-metric"
-							title={m('dash.ctlTooltip')}
-						>
-							<span class="fitness-label">{m('dash.ctlLabel')}</span>
-							<span class="fitness-value">{loadNow.ctl.toFixed(0)}</span>
-							<span class="fitness-unit">{m('dash.ctlUnit')}</span>
-						</div>
-						<div
-							class="fitness-metric"
-							title={m('dash.atlTooltip')}
-						>
-							<span class="fitness-label">{m('dash.atlLabel')}</span>
-							<span class="fitness-value">{loadNow.atl.toFixed(0)}</span>
-							<span class="fitness-unit">{m('dash.atlUnit')}</span>
-						</div>
-						<div
-							class="fitness-metric"
-							title={m('dash.tsbTooltip')}
-						>
-							<span class="fitness-label">{m('dash.tsbLabel')}</span>
-							<span
-								class="fitness-value"
-								class:tsb-neg={loadNow.tsb < -10}
-								class:tsb-pos={loadNow.tsb > 10}
-							>
-								{(loadNow.tsb > 0 ? '+' : '') + loadNow.tsb.toFixed(0)}
+				<a href="/recap/{new Date().getFullYear()}" class="recap-link">
+					<span class="material-symbols">auto_awesome</span>
+					{m('dash.viewRecap', { year: new Date().getFullYear() })}
+				</a>
+			</div>
+			<div class="stat-grid">
+				<button
+					type="button"
+					class="stat-card stat-card-button"
+					onclick={() => (periodModal = { type: 'week', date: new Date() })}
+				>
+					<span class="stat-label">{m('dash.statThisWeek')}</span>
+					<span class="stat-value">{formatDistance(thisWeekDistance)}</span>
+					<span class="stat-sub">
+						{thisWeekActivityCount === 1
+							? m('dash.activityCountOne', { n: thisWeekActivityCount })
+							: m('dash.activityCountOther', { n: thisWeekActivityCount })}
+						{#if thisWeekManualWorkouts.length > 0}
+							<span class="manual-hint">
+								{m('dash.inclMarkedDone', { n: thisWeekManualWorkouts.length })}
 							</span>
-							<span class="fitness-unit">{m('dash.tsbUnit')}</span>
-						</div>
-					{/if}
-				</div>
-				<p class="fitness-advice">
-					{recoveryAdvice(loadNow?.tsb ?? null, loadNow?.ctl ?? null, isReturningFromLayoff(runs))}
-				</p>
-				{#if daysToHard != null}
-					<p class="fitness-next-hard">
-						{daysToHard === 1
-							? m('dash.nextHardOne')
-							: m('dash.nextHardOther', { days: daysToHard })}
-					</p>
-				{/if}
-				{#if excludeGymFromReadiness && hasRecentLift}
-					<p class="fitness-gym-note" data-testid="gym-readiness-note">
-						<span class="material-symbols" aria-hidden="true">fitness_center</span>
-						{m('dash.gymReadinessExcluded')}
-					</p>
-				{:else if !excludeGymFromReadiness && hasRecentLift}
-					<p class="fitness-gym-note" data-testid="gym-readiness-note">
-						<span class="material-symbols" aria-hidden="true">fitness_center</span>
-						{m('dash.gymReadinessIncluded')}
-					</p>
-				{/if}
-				{#if trendPath}
-					<!-- Trend sparkline: VO2 max over the persisted
-					     snapshot history. Rendered as an inline SVG path
-					     — no chart lib needed for a shape this simple. -->
-					<svg class="trend" viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true">
-						<path d={trendPath} stroke="currentColor" stroke-width="1.5" fill="none" />
-					</svg>
-				{/if}
-			</section>
-		{/if}
-
-		<!-- Training-load curves over the last 90 days (decisions §34).
-		     Uses TRIMP when avg_bpm + HR prefs are available, distance
-		     fallback otherwise. Hides when there's nothing to plot. -->
-		{#if runs.length > 0}
-			<section class="fitness-card">
-				<TrainingLoadChart points={trainingLoadSeries} hasHr={trainingLoadHasHr} />
-			</section>
-		{/if}
-
-		<!-- Multi-distance race-time predictor — projects the 5K / 10K / Half /
-		     Marathon ladder from recency-weighted qualifying efforts, each rung
-		     graded for confidence. Self-hides when no run qualifies (its own
-		     null return). Backlog #11 (advanced analytics polish). -->
-		<RacePredictorCard {runs} />
-
-		<!-- Training consistency — the fraction of the last 12 calendar weeks
-		     with any activity, the trailing active-week streak, and whether
-		     weekly volume is steady or spiky. A distinct signal from VDOT
-		     (fitness ceiling), the load trio (acute fatigue/form), and the
-		     day-streak (consecutive days). Scoped to filteredRuns so the
-		     source filter + activity-type view carry through, like the week
-		     strip + streak card. Self-hides with < 2 active weeks. Backlog #11
-		     (advanced analytics polish). -->
-		<ConsistencyCard activities={filteredRuns} weekStart={weekStartDay} {now} />
-
-		<!-- Easy / hard intensity balance — the time-weighted easy vs hard
-		     split against the ~80/20 polarised-training guideline, with a
-		     verdict (on guideline / too hard / all easy). Classifies each run
-		     by pace against the runner's own VDOT-derived threshold (same
-		     anchor as the load trio). Self-hides when no threshold derives or
-		     the sample is too small. Pure derivation in
-		     lib/training/intensity.ts. Backlog #11. -->
-		<IntensityBalanceCard runs={filteredRuns} />
-
-		<!-- Training-load ramp — the runner's own acute:chronic workload ratio
-		     and its injury-risk band. The same ACWR policy the coach roster
-		     classifies athletes through (lib/training/coach_load.ts), finally
-		     shown to the runner it describes; most runners have no coach, so
-		     this signal had no reader. Distinct from the readiness ring, which
-		     scores TODAY (form + sleep + resting HR) rather than the last
-		     month's ramp. Scoped to filteredRuns like its neighbours;
-		     self-hides below MIN_ACTIVE_WEEKS of history rather than dividing
-		     by a base that isn't there. Pure derivation in
-		     lib/training/self_load.ts. -->
-		<LoadRampCard runs={filteredRuns} />
-
-		<!-- The same question for the runner the ratio above refuses to grade:
-		     back from a break, no chronic month to divide by, and so no card at
-		     all in exactly the case that most warrants one. Anchored on their
-		     own pre-break weekly average instead of a near-empty one. Mutually
-		     exclusive with LoadRampCard by construction (same activeWeeks gate,
-		     read the other way), pinned by a unit test. Pure derivation in
-		     lib/training/comeback.ts. -->
-		<ComebackCard runs={filteredRuns} />
-
-		<!-- Mileage chart -->
-		<section class="card-elevated">
-			<div class="chart-header">
-				<h2>{m('dash.mileageTitle')}</h2>
-				<div class="view-toggle">
-					<button class:active={mileageView === 'weekly'} onclick={() => (mileageView = 'weekly')}>{m('dash.viewWeek')}</button>
-					<button class:active={mileageView === 'monthly'} onclick={() => (mileageView = 'monthly')}>{m('dash.viewMonth')}</button>
-					<button class:active={mileageView === 'yearly'} onclick={() => (mileageView = 'yearly')}>{m('dash.viewYear')}</button>
-				</div>
-			</div>
-			{#if mileageData.length === 0}
-				<p class="empty-text">{m('dash.mileageEmpty')}</p>
-			{:else}
-				<div class="chart">
-					{#each mileageData as week}
-						<div class="bar-col">
-							<div class="bar-tooltip">{formatDistance(week.distance_m)}</div>
-							<div
-								class="bar"
-								style="height: {(week.distance_m / maxBar) * 100}%"
-							></div>
-							<span class="bar-label">{week.week.split(' ')[0]}</span>
-						</div>
-					{/each}
-				</div>
-			{/if}
-		</section>
-
-		<!-- Training intensity — time in HR zones over the last 30/365 days
-		     (window mirrors the Mileage view). Empty state links to
-		     /settings/preferences#heart-rate-zones when the user hasn't set zones,
-		     or to the same anchor with a "no HR data" hint when zones
-		     are set but no run in window carries avg_bpm.
-		     Layered resilience: hrZones load is wrapped in onMount; a
-		     failure leaves the card in its empty state and never blocks
-		     the rest of the dashboard. Per-point analysis from the
-		     gzipped track is the eventual accuracy upgrade. -->
-		{#if runs.length > 0}
-		<section class="card-elevated intensity-card">
-			<div class="card-head">
-				<h2>{m('dash.trainingIntensityTitle')}</h2>
-				{#if hrZones && intensityBreakdown && intensityBreakdown.total > 0}
-					<span class="intensity-window">
-						{intensityWindow === '30d'
-							? m('dash.windowLast30Days')
-							: intensityWindow === '90d'
-								? m('dash.windowLast90Days')
-								: m('dash.windowLast12Months')}
-						· {intensityBreakdown.hrTrackedRuns === 1
-							? m('dash.runsWithHrOne', { n: intensityBreakdown.hrTrackedRuns })
-							: m('dash.runsWithHrOther', { n: intensityBreakdown.hrTrackedRuns })}
+						{/if}
 					</span>
-				{/if}
+				</button>
+				<div class="stat-card">
+					<span class="stat-label">{m('dash.statTotalRuns')}</span>
+					<span class="stat-value" data-testid="dash-total-runs">{totalRuns}</span>
+					<span class="stat-sub">{m('dash.allSources')}</span>
+				</div>
+				<button
+					type="button"
+					class="stat-card stat-card-button"
+					onclick={() => (periodModal = { type: 'all', date: new Date() })}
+				>
+					<span class="stat-label">{m('dash.statLongestRun')}</span>
+					<span class="stat-value">{formatDistance(longestRun)}</span>
+					<span class="stat-sub">{m('dash.allTime')}</span>
+				</button>
+				<div class="stat-card">
+					<span class="stat-label">{m('dash.statThisWeekVert')}</span>
+					<span class="stat-value">{formatElevation(thisWeekVertMetres)}</span>
+					<span class="stat-sub">{m('dash.elevationGain')}</span>
+				</div>
+				<div class="stat-card">
+					<span class="stat-label">{m('dash.statThisWeekPace')}</span>
+					<span class="stat-value">
+						{thisWeekRuns.length > 0
+							? formatPace(
+									thisWeekRuns.reduce((s, r) => s + r.duration_s, 0),
+									thisWeekDistance,
+								)
+							: '--'}
+					</span>
+					<span class="stat-sub">{m('dash.average')}</span>
+				</div>
+				<div class="stat-card" class:streak-active={streakCard.current > 0}>
+					<span class="stat-label">{m('dash.statStreak')}</span>
+					<span class="stat-value">
+						{streakCard.current}
+						<span class="stat-unit">{streakCard.current === 1 ? m('dash.dayUnit') : m('dash.daysUnit')}</span>
+					</span>
+					<span class="stat-sub">
+						{#if streakCard.sub.kind === 'best'}
+							{streakCard.sub.n === 1
+								? m('dash.streakBestOne', { n: streakCard.sub.n })
+								: m('dash.streakBestOther', { n: streakCard.sub.n })}
+						{:else if streakCard.sub.kind === 'allTimeBest'}
+							{m('dash.streakAllTimeBest')}
+						{:else if streakCard.sub.kind === 'restart'}
+							{m('dash.streakRunToRestart')}
+						{:else if streakCard.sub.kind === 'start'}
+							{m('dash.streakRunToStart')}
+						{/if}
+					</span>
+				</div>
 			</div>
-			{#if !hrZones}
-				<div class="intensity-empty">
-					<span class="material-symbols intensity-empty-icon">favorite</span>
-					<div class="intensity-empty-body">
-						<strong>{m('dash.setHrZonesTitle')}</strong>
-						<p>{m('dash.setHrZonesBody')}</p>
-					</div>
-					<a class="btn btn-primary btn-sm" href="/settings/preferences#heart-rate-zones">
-						{m('dash.setZones')}
-					</a>
-				</div>
-			{:else if !intensityBreakdown || intensityBreakdown.total === 0}
-				<div class="intensity-empty">
-					<span class="material-symbols intensity-empty-icon">monitoring</span>
-					<div class="intensity-empty-body">
-						<strong>{m('dash.noHrDataTitle')}</strong>
-						<p>{m('dash.noHrDataBody')}</p>
-					</div>
-					<a class="btn btn-secondary btn-sm" href="/settings/preferences#heart-rate-zones">
-						{m('dash.reviewZones')}
-					</a>
-				</div>
-			{:else}
-				{@const zb = intensityBreakdown}
-				<ul class="zone-list">
-					{#each zb.zoneSeconds as secs, i}
-						{@const pct = secs / zb.total}
-						<li class="zone-row zone-row-{i + 1}">
-							<span class="zone-name">Z{i + 1}</span>
-							<div class="zone-bar-wrap">
-								<div class="zone-bar" style="width: {Math.max(pct * 100, secs > 0 ? 1.5 : 0)}%"></div>
-							</div>
-							<span class="zone-duration">{fmtCompactDuration(secs)}</span>
-							<span class="zone-pct">{Math.round(pct * 100)}%</span>
-						</li>
-					{/each}
-				</ul>
-				<p class="intensity-foot">
-					{m('dash.intensityFoot', { total: fmtCompactDuration(zb.total) })}
-				</p>
-			{/if}
-		</section>
-		{/if}
 
-		<div class="two-col">
-			<!-- Personal records -->
-			<section class="card-elevated">
-				<h2>{m('dash.personalRecordsTitle')}</h2>
-				{#if visiblePrs.length > 0}
-					{#if isReturningRunner && allPrsStale}
-						<p class="pr-stale-note">
-							{m('dash.prStaleNote')}
-						</p>
+			<!-- Current calendar-week activity ribbon — the day-by-day shape
+			     behind the "This Week" stat card. Honours week_start_day +
+			     the source filter (filteredRuns). Distinct from the plan-detail
+			     CurrentWeekStrip, which anchors to the plan's week, not the
+			     calendar. Pure derivation in lib/training/current_week.ts. -->
+			<ThisWeekStrip activities={filteredRuns} weekStart={weekStartDay} {now} />
+
+			<!-- Week-over-week + month-over-month trend deltas on the summary
+			     stats (distance / time / runs). Compares each period-to-date
+			     against the same to-date slice of the prior period so a mid-week
+			     glance is honest. Scoped to filteredRuns + week_start_day so it
+			     agrees with the stat grid above. Self-hides with no activity.
+			     Pure derivation in lib/training/trend_deltas.ts. Backlog #11. -->
+			<TrendDeltasCard runs={filteredRuns} weekStart={weekStartDay} {now} />
+
+			<!-- Self-hiding challenges strip: renders nothing when the user is in
+			     no live challenge (data-presence self-hide, matching the gym /
+			     nutrition cards). challenges.md. -->
+			<ChallengesPanel />
+
+			<!-- Multi-metric goals — local-only. Lives directly under the
+			     stat-grid so the "what am I working toward?" lens sits next
+			     to the "where am I right now?" stats. Empty state is a
+			     proper card (icon + heading + explainer + primary CTA), not
+			     a one-line grey sentence. The legacy `weekly_mileage_goal_m`
+			     setting (still shared with Android via Settings → Preferences)
+			     is surfaced as a synthetic weekly distance goal so it shows
+			     up here without needing a separate card. -->
+			<section class="goals-section">
+				<header class="goals-header">
+					<h2>{m('dash.goalsTitle')}</h2>
+					{#if displayGoals.length > 0}
+						<button type="button" class="link-btn" onclick={openNewGoal}>
+							{m('dash.addGoalLink')}
+						</button>
 					{/if}
-					<div class="table-scroll" tabindex="0">
-						<table class="pr-table">
-							<thead>
-								<tr>
-									<th>{m('dash.prColDistance')}</th>
-									<th>{m('dash.prColTime')}</th>
-									<th>{m('dash.prColDate')}</th>
-									{#if showAgeGradeCol}
-										<th class="pr-age-grade-th">{m('dash.prColAgeGrade')}</th>
-									{/if}
-									<th></th>
-								</tr>
-							</thead>
-							<tbody>
-								{#each visiblePrs as pr}
-									<tr>
-										<td class="pr-distance">{pr.distance}</td>
-										<td class="pr-time">{formatDuration(pr.time_s)}</td>
-										<td class="pr-date">
-											{formatDate(pr.date)}
-											<span class="pr-age">{relativeAge(pr.date)}</span>
-										</td>
-										{#if showAgeGradeCol}
-											<td class="pr-age-grade" title={m('dash.prAgeGradeTitle')}>
-												{prAgeGrades[pr.key] ?? '—'}
-											</td>
-										{/if}
-										<td>
-											<button
-												type="button"
-												class="pr-hide"
-												title={m('dash.hideRecordTitle')}
-												aria-label={m('dash.hideRecordAria', { distance: pr.distance })}
-												onclick={() => hidePr(pr.key)}>×</button
-											>
-										</td>
-									</tr>
-								{/each}
-							</tbody>
-						</table>
+				</header>
+				{#if displayGoals.length === 0}
+					<div class="goals-empty-card">
+						<span class="material-symbols goals-empty-icon" aria-hidden="true">flag</span>
+						<div class="goals-empty-body">
+							<h3>{m('dash.noGoalsSet')}</h3>
+							<p>
+								{m('dash.noGoalsBody')}
+							</p>
+						</div>
+						<button type="button" class="btn btn-primary" onclick={openNewGoal}>
+							<span class="material-symbols">add</span>
+							{m('dash.addGoal')}
+						</button>
 					</div>
-				{:else if personalRecords.length === 0}
-					<p class="empty-text">{m('dash.prEmptyNoRuns')}</p>
 				{:else}
-					<p class="empty-text">{m('dash.prAllHidden')}</p>
+					<div class="goal-grid">
+						{#each displayGoals as g (g.id)}
+							{@const p = evaluateGoal(g, runs, new Date(), weekStartDay)}
+							{@const isSynthetic = g.id === SYNTHETIC_WEEKLY_GOAL_ID}
+							{@const isDone = p.overallPercent >= 1}
+							<button
+								class="goal-card"
+								class:goal-card-done={isDone}
+								type="button"
+								onclick={() =>
+									isSynthetic ? goto('/settings/preferences') : openEditGoal(g)}
+							>
+								<header class="goal-card-top">
+									<span class="goal-period">{periodLabel(g.period)}</span>
+									<span class="goal-card-top-right">
+										{#if isDone}
+											<span class="goal-done-badge">
+												<span class="material-symbols">check_circle</span>
+												{m('dash.doneBadge')}
+											</span>
+										{/if}
+										<span class="goal-overall">
+											{Math.round(p.overallPercent * 100)}%
+										</span>
+									</span>
+								</header>
+								<ul class="goal-targets">
+									{#each p.targets as t}
+										<li>
+											<div class="goal-target-top">
+												<span>{t.label}</span>
+												<span class="goal-target-value">
+													{t.currentLabel} / {t.targetLabel}
+												</span>
+											</div>
+											<div class="goal-target-bar">
+												<div
+													class="goal-target-fill"
+													class:complete={t.complete}
+													style="width: {Math.round(t.percent * 100)}%"
+												></div>
+											</div>
+										</li>
+									{/each}
+								</ul>
+								{#if isSynthetic}
+									<p class="goal-card-footer">{m('dash.fromSettingsEditThere')}</p>
+								{/if}
+							</button>
+						{/each}
+					</div>
 				{/if}
-				{#if hiddenPrRows.length > 0}
-					<button
-						type="button"
-						class="pr-show-hidden"
-						onclick={() => (showHiddenPrs = !showHiddenPrs)}
-						aria-expanded={showHiddenPrs}
-					>
-						{showHiddenPrs ? m('dash.hideHidden') : m('dash.showHidden', { n: hiddenPrRows.length })}
-					</button>
-					{#if showHiddenPrs}
-						<ul class="pr-hidden-list">
-							{#each hiddenPrRows as pr}
+			</section>
+
+			<!-- Fitness snapshot — VO2 max + training-load (ATL / CTL / TSB)
+			     + a rule-based recovery advice line. Computed client-side
+			     from recent runs via `lib/fitness.ts`; persisted to
+			     `fitness_snapshots` on every dashboard open so the trend
+			     chart has history. Hides when the user has no qualifying
+			     runs yet (short / non-recording sources only). -->
+			<!-- Readiness-to-run — single 0-100 number with band-aware
+			     accent. Inputs today are TSB-only; sleep + resting-HR pipe
+			     through the `readiness.ts` helper unchanged once Health
+			     Connect / HealthKit reads land. Hide entirely when there's
+			     nothing to score (no TSB, no qualifying runs). -->
+			{#if loadNow != null}
+				<section class="readiness-card readiness-{readiness.band}">
+					<div class="readiness-head">
+						<span class="readiness-label">{m('dash.readinessLabel')}</span>
+						<span class="readiness-band">{readiness.band}</span>
+					</div>
+					<div class="readiness-score">{readiness.score}</div>
+					<p class="readiness-advice">{readiness.advice}</p>
+					{#if readiness.contributors.length > 0}
+						<ul class="readiness-contribs">
+							{#each readiness.contributors as c (c.name)}
 								<li>
-									<span>{pr.distance} · {formatDuration(pr.time_s)}</span>
-									<button type="button" class="pr-unhide" onclick={() => unhidePr(pr.key)}>
-										{m('dash.unhide')}
-									</button>
+									<span class="contrib-name">{c.name}</span>
+									<span class="contrib-delta" class:positive={c.delta > 0} class:negative={c.delta < 0}>
+										{c.delta > 0 ? '+' : ''}{c.delta}
+									</span>
 								</li>
 							{/each}
 						</ul>
 					{/if}
+				</section>
+			{/if}
+
+			{#if liveSnap.vo2Max != null || loadNow != null}
+				<section class="fitness-card">
+					<div class="fitness-row">
+						<div
+							class="fitness-metric"
+							title={m('dash.vo2maxTooltip')}
+						>
+							<span class="fitness-label">VO₂ max</span>
+							<span class="fitness-value">
+								{liveSnap.vo2Max != null ? liveSnap.vo2Max.toFixed(1) : '—'}
+							</span>
+							<span class="fitness-unit">ml/kg/min</span>
+						</div>
+						{#if loadNow != null}
+							<div
+								class="fitness-metric"
+								title={m('dash.ctlTooltip')}
+							>
+								<span class="fitness-label">{m('dash.ctlLabel')}</span>
+								<span class="fitness-value">{loadNow.ctl.toFixed(0)}</span>
+								<span class="fitness-unit">{m('dash.ctlUnit')}</span>
+							</div>
+							<div
+								class="fitness-metric"
+								title={m('dash.atlTooltip')}
+							>
+								<span class="fitness-label">{m('dash.atlLabel')}</span>
+								<span class="fitness-value">{loadNow.atl.toFixed(0)}</span>
+								<span class="fitness-unit">{m('dash.atlUnit')}</span>
+							</div>
+							<div
+								class="fitness-metric"
+								title={m('dash.tsbTooltip')}
+							>
+								<span class="fitness-label">{m('dash.tsbLabel')}</span>
+								<span
+									class="fitness-value"
+									class:tsb-neg={loadNow.tsb < -10}
+									class:tsb-pos={loadNow.tsb > 10}
+								>
+									{(loadNow.tsb > 0 ? '+' : '') + loadNow.tsb.toFixed(0)}
+								</span>
+								<span class="fitness-unit">{m('dash.tsbUnit')}</span>
+							</div>
+						{/if}
+					</div>
+					<p class="fitness-advice">
+						{recoveryAdvice(loadNow?.tsb ?? null, loadNow?.ctl ?? null, isReturningFromLayoff(runs))}
+					</p>
+					{#if daysToHard != null}
+						<p class="fitness-next-hard">
+							{daysToHard === 1
+								? m('dash.nextHardOne')
+								: m('dash.nextHardOther', { days: daysToHard })}
+						</p>
+					{/if}
+					{#if excludeGymFromReadiness && hasRecentLift}
+						<p class="fitness-gym-note" data-testid="gym-readiness-note">
+							<span class="material-symbols" aria-hidden="true">fitness_center</span>
+							{m('dash.gymReadinessExcluded')}
+						</p>
+					{:else if !excludeGymFromReadiness && hasRecentLift}
+						<p class="fitness-gym-note" data-testid="gym-readiness-note">
+							<span class="material-symbols" aria-hidden="true">fitness_center</span>
+							{m('dash.gymReadinessIncluded')}
+						</p>
+					{/if}
+					{#if trendPath}
+						<!-- Trend sparkline: VO2 max over the persisted
+						     snapshot history. Rendered as an inline SVG path
+						     — no chart lib needed for a shape this simple. -->
+						<svg class="trend" viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true">
+							<path d={trendPath} stroke="currentColor" stroke-width="1.5" fill="none" />
+						</svg>
+					{/if}
+				</section>
+			{/if}
+
+			<!-- Training-load curves over the last 90 days (decisions §34).
+			     Uses TRIMP when avg_bpm + HR prefs are available, distance
+			     fallback otherwise. Hides when there's nothing to plot. -->
+			{#if runs.length > 0}
+				<section class="fitness-card">
+					<TrainingLoadChart points={trainingLoadSeries} hasHr={trainingLoadHasHr} />
+				</section>
+			{/if}
+
+			<!-- Multi-distance race-time predictor — projects the 5K / 10K / Half /
+			     Marathon ladder from recency-weighted qualifying efforts, each rung
+			     graded for confidence. Self-hides when no run qualifies (its own
+			     null return). Backlog #11 (advanced analytics polish). -->
+			<RacePredictorCard {runs} />
+
+			<!-- Training consistency — the fraction of the last 12 calendar weeks
+			     with any activity, the trailing active-week streak, and whether
+			     weekly volume is steady or spiky. A distinct signal from VDOT
+			     (fitness ceiling), the load trio (acute fatigue/form), and the
+			     day-streak (consecutive days). Scoped to filteredRuns so the
+			     source filter + activity-type view carry through, like the week
+			     strip + streak card. Self-hides with < 2 active weeks. Backlog #11
+			     (advanced analytics polish). -->
+			<ConsistencyCard activities={filteredRuns} weekStart={weekStartDay} {now} />
+
+			<!-- Easy / hard intensity balance — the time-weighted easy vs hard
+			     split against the ~80/20 polarised-training guideline, with a
+			     verdict (on guideline / too hard / all easy). Classifies each run
+			     by pace against the runner's own VDOT-derived threshold (same
+			     anchor as the load trio). Self-hides when no threshold derives or
+			     the sample is too small. Pure derivation in
+			     lib/training/intensity.ts. Backlog #11. -->
+			<IntensityBalanceCard runs={filteredRuns} />
+
+			<!-- Training-load ramp — the runner's own acute:chronic workload ratio
+			     and its injury-risk band. The same ACWR policy the coach roster
+			     classifies athletes through (lib/training/coach_load.ts), finally
+			     shown to the runner it describes; most runners have no coach, so
+			     this signal had no reader. Distinct from the readiness ring, which
+			     scores TODAY (form + sleep + resting HR) rather than the last
+			     month's ramp. Scoped to filteredRuns like its neighbours;
+			     self-hides below MIN_ACTIVE_WEEKS of history rather than dividing
+			     by a base that isn't there. Pure derivation in
+			     lib/training/self_load.ts. -->
+			<LoadRampCard runs={filteredRuns} />
+
+			<!-- The same question for the runner the ratio above refuses to grade:
+			     back from a break, no chronic month to divide by, and so no card at
+			     all in exactly the case that most warrants one. Anchored on their
+			     own pre-break weekly average instead of a near-empty one. Mutually
+			     exclusive with LoadRampCard by construction (same activeWeeks gate,
+			     read the other way), pinned by a unit test. Pure derivation in
+			     lib/training/comeback.ts. -->
+			<ComebackCard runs={filteredRuns} />
+
+			<!-- Mileage chart -->
+			<section class="card-elevated">
+				<div class="chart-header">
+					<h2>{m('dash.mileageTitle')}</h2>
+					<div class="view-toggle">
+						<button class:active={mileageView === 'weekly'} onclick={() => (mileageView = 'weekly')}>{m('dash.viewWeek')}</button>
+						<button class:active={mileageView === 'monthly'} onclick={() => (mileageView = 'monthly')}>{m('dash.viewMonth')}</button>
+						<button class:active={mileageView === 'yearly'} onclick={() => (mileageView = 'yearly')}>{m('dash.viewYear')}</button>
+					</div>
+				</div>
+				{#if mileageData.length === 0}
+					<p class="empty-text">{m('dash.mileageEmpty')}</p>
+				{:else}
+					<div class="chart">
+						{#each mileageData as week}
+							<div class="bar-col">
+								<div class="bar-tooltip">{formatDistance(week.distance_m)}</div>
+								<div
+									class="bar"
+									style="height: {(week.distance_m / maxBar) * 100}%"
+								></div>
+								<span class="bar-label">{week.week.split(' ')[0]}</span>
+							</div>
+						{/each}
+					</div>
 				{/if}
 			</section>
 
-			<!-- Recent runs -->
-			<section class="card-elevated">
-				<h2>{m('dash.recentRunsTitle')}</h2>
-				{#if filteredRuns.length > 0}
-					<div class="run-list">
-						{#each filteredRuns.slice(0, 7) as run}
-							<a href="/runs/{run.id}" class="run-row">
-								<div class="run-info">
-									<span class="run-date">{formatDateShort(run.started_at)}</span>
-									<span class="run-distance">{formatDistance(run.distance_m)}</span>
+			<!-- Training intensity — time in HR zones over the last 30/365 days
+			     (window mirrors the Mileage view). Empty state links to
+			     /settings/preferences#heart-rate-zones when the user hasn't set zones,
+			     or to the same anchor with a "no HR data" hint when zones
+			     are set but no run in window carries avg_bpm.
+			     Layered resilience: hrZones load is wrapped in onMount; a
+			     failure leaves the card in its empty state and never blocks
+			     the rest of the dashboard. Per-point analysis from the
+			     gzipped track is the eventual accuracy upgrade. -->
+			{#if runs.length > 0}
+			<section class="card-elevated intensity-card">
+				<div class="card-head">
+					<h2>{m('dash.trainingIntensityTitle')}</h2>
+					{#if hrZones && intensityBreakdown && intensityBreakdown.total > 0}
+						<span class="intensity-window">
+							{intensityWindow === '30d'
+								? m('dash.windowLast30Days')
+								: intensityWindow === '90d'
+									? m('dash.windowLast90Days')
+									: m('dash.windowLast12Months')}
+							· {intensityBreakdown.hrTrackedRuns === 1
+								? m('dash.runsWithHrOne', { n: intensityBreakdown.hrTrackedRuns })
+								: m('dash.runsWithHrOther', { n: intensityBreakdown.hrTrackedRuns })}
+						</span>
+					{/if}
+				</div>
+				{#if !hrZones}
+					<div class="intensity-empty">
+						<span class="material-symbols intensity-empty-icon">favorite</span>
+						<div class="intensity-empty-body">
+							<strong>{m('dash.setHrZonesTitle')}</strong>
+							<p>{m('dash.setHrZonesBody')}</p>
+						</div>
+						<a class="btn btn-primary btn-sm" href="/settings/preferences#heart-rate-zones">
+							{m('dash.setZones')}
+						</a>
+					</div>
+				{:else if !intensityBreakdown || intensityBreakdown.total === 0}
+					<div class="intensity-empty">
+						<span class="material-symbols intensity-empty-icon">monitoring</span>
+						<div class="intensity-empty-body">
+							<strong>{m('dash.noHrDataTitle')}</strong>
+							<p>{m('dash.noHrDataBody')}</p>
+						</div>
+						<a class="btn btn-secondary btn-sm" href="/settings/preferences#heart-rate-zones">
+							{m('dash.reviewZones')}
+						</a>
+					</div>
+				{:else}
+					{@const zb = intensityBreakdown}
+					<ul class="zone-list">
+						{#each zb.zoneSeconds as secs, i}
+							{@const pct = secs / zb.total}
+							<li class="zone-row zone-row-{i + 1}">
+								<span class="zone-name">Z{i + 1}</span>
+								<div class="zone-bar-wrap">
+									<div class="zone-bar" style="width: {Math.max(pct * 100, secs > 0 ? 1.5 : 0)}%"></div>
 								</div>
-								<div class="run-meta">
-									<span class="run-pace">{formatPace(run.duration_s, run.distance_m)}</span>
-									<span class="source-badge" style="background: {sourceColor(run.source)}; color: {sourceInk(run.source)}">{sourceLabel(run.source)}</span>
+								<span class="zone-duration">{fmtCompactDuration(secs)}</span>
+								<span class="zone-pct">{Math.round(pct * 100)}%</span>
+							</li>
+						{/each}
+					</ul>
+					<p class="intensity-foot">
+						{m('dash.intensityFoot', { total: fmtCompactDuration(zb.total) })}
+					</p>
+				{/if}
+			</section>
+			{/if}
+
+			<div class="two-col">
+				<!-- Personal records -->
+				<section class="card-elevated">
+					<h2>{m('dash.personalRecordsTitle')}</h2>
+					{#if visiblePrs.length > 0}
+						{#if isReturningRunner && allPrsStale}
+							<p class="pr-stale-note">
+								{m('dash.prStaleNote')}
+							</p>
+						{/if}
+						<div class="table-scroll" tabindex="0">
+							<table class="pr-table">
+								<thead>
+									<tr>
+										<th>{m('dash.prColDistance')}</th>
+										<th>{m('dash.prColTime')}</th>
+										<th>{m('dash.prColDate')}</th>
+										{#if showAgeGradeCol}
+											<th class="pr-age-grade-th">{m('dash.prColAgeGrade')}</th>
+										{/if}
+										<th></th>
+									</tr>
+								</thead>
+								<tbody>
+									{#each visiblePrs as pr}
+										<tr>
+											<td class="pr-distance">{pr.distance}</td>
+											<td class="pr-time">{formatDuration(pr.time_s)}</td>
+											<td class="pr-date">
+												{formatDate(pr.date)}
+												<span class="pr-age">{relativeAge(pr.date)}</span>
+											</td>
+											{#if showAgeGradeCol}
+												<td class="pr-age-grade" title={m('dash.prAgeGradeTitle')}>
+													{prAgeGrades[pr.key] ?? '—'}
+												</td>
+											{/if}
+											<td>
+												<button
+													type="button"
+													class="pr-hide"
+													title={m('dash.hideRecordTitle')}
+													aria-label={m('dash.hideRecordAria', { distance: pr.distance })}
+													onclick={() => hidePr(pr.key)}>×</button
+												>
+											</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					{:else if personalRecords.length === 0}
+						<p class="empty-text">{m('dash.prEmptyNoRuns')}</p>
+					{:else}
+						<p class="empty-text">{m('dash.prAllHidden')}</p>
+					{/if}
+					{#if hiddenPrRows.length > 0}
+						<button
+							type="button"
+							class="pr-show-hidden"
+							onclick={() => (showHiddenPrs = !showHiddenPrs)}
+							aria-expanded={showHiddenPrs}
+						>
+							{showHiddenPrs ? m('dash.hideHidden') : m('dash.showHidden', { n: hiddenPrRows.length })}
+						</button>
+						{#if showHiddenPrs}
+							<ul class="pr-hidden-list">
+								{#each hiddenPrRows as pr}
+									<li>
+										<span>{pr.distance} · {formatDuration(pr.time_s)}</span>
+										<button type="button" class="pr-unhide" onclick={() => unhidePr(pr.key)}>
+											{m('dash.unhide')}
+										</button>
+									</li>
+								{/each}
+							</ul>
+						{/if}
+					{/if}
+				</section>
+
+				<!-- Recent runs -->
+				<section class="card-elevated">
+					<h2>{m('dash.recentRunsTitle')}</h2>
+					{#if filteredRuns.length > 0}
+						<div class="run-list">
+							{#each filteredRuns.slice(0, 7) as run}
+								<a href="/runs/{run.id}" class="run-row">
+									<div class="run-info">
+										<span class="run-date">{formatDateShort(run.started_at)}</span>
+										<span class="run-distance">{formatDistance(run.distance_m)}</span>
+									</div>
+									<div class="run-meta">
+										<span class="run-pace">{formatPace(run.duration_s, run.distance_m)}</span>
+										<span class="source-badge" style="background: {sourceColor(run.source)}; color: {sourceInk(run.source)}">{sourceLabel(run.source)}</span>
+									</div>
+								</a>
+							{/each}
+						</div>
+					{:else if sourceFilter === 'all'}
+						<p class="empty-text">
+							{m('dash.recentEmptyAll')}
+						</p>
+						<div class="recent-empty-actions">
+							<a class="btn btn-primary btn-sm" href="/runs/new">{m('dash.addARun')}</a>
+							<a class="btn btn-outline btn-sm" href="/settings/integrations">{m('dash.importFromStravaGarmin')}</a>
+						</div>
+					{:else}
+						<p class="empty-text">
+							{m('dash.recentEmptyFiltered', {
+								source: sourceChipLabel(sources.find((s) => s.value === sourceFilter)?.label ?? sourceFilter),
+							})}
+						</p>
+					{/if}
+				</section>
+			</div>
+
+			<!-- Recent lifts — gym trend card (multi_modal.md § Home). Self-
+			     hides unless the user has logged a session. Mirrors the
+			     "Recent runs" list above it. -->
+			{#if gymWorkouts.length > 0}
+				<section class="card-elevated">
+					<div class="card-head">
+						<h2>{m('dash.recentLiftsTitle')}</h2>
+						<a class="link-btn" href="/gym">{m('dash.viewAllGym')}</a>
+					</div>
+					<div class="run-list">
+						{#each gymWorkouts.slice(0, 5) as w (w.id)}
+							<a href="/gym/{w.id}" class="run-row">
+								<div class="run-info">
+									<span class="run-date">{formatDateShort(w.started_at)}</span>
+									<span class="run-distance">{w.title || m('gym.untitled')}</span>
+								</div>
+								<div class="run-meta lift-row-meta">
+									<span class="run-pace">{m('gym.exercisesShort', { count: liftExerciseCount(w.id) })}</span>
+									{#if liftVolume(w.id) > 0}
+										<span class="lift-volume">{m('gym.volumeShort', { volume: liftVolume(w.id).toLocaleString() })}</span>
+									{/if}
 								</div>
 							</a>
 						{/each}
 					</div>
-				{:else if sourceFilter === 'all'}
-					<p class="empty-text">
-						{m('dash.recentEmptyAll')}
-					</p>
-					<div class="recent-empty-actions">
-						<a class="btn btn-primary btn-sm" href="/runs/new">{m('dash.addARun')}</a>
-						<a class="btn btn-outline btn-sm" href="/settings/integrations">{m('dash.importFromStravaGarmin')}</a>
+				</section>
+			{/if}
+
+			<!-- First-run gym affordance — one slim line, below the fold, for a
+			     runner who hasn't logged a lift yet (the web equivalent of
+			     mobile's always-present Log sheet — discoverability without an
+			     empty card / zeroed chart, anti-clutter checklist). -->
+			{#if !loading && gymWorkouts.length === 0}
+				<a class="gym-footer-prompt" href="/gym">
+					<span class="material-symbols">fitness_center</span>
+					<span>{m('dash.gymFooterPrompt')}</span>
+					<span class="gym-footer-cta">{m('dash.logALift')}</span>
+				</a>
+			{/if}
+
+			{#if coachOn}
+				<a class="coach-promo" href="/coach">
+					<div class="coach-icon">
+						<span class="material-symbols">sports</span>
 					</div>
-				{:else}
-					<p class="empty-text">
-						{m('dash.recentEmptyFiltered', {
-							source: sourceChipLabel(sources.find((s) => s.value === sourceFilter)?.label ?? sourceFilter),
-						})}
-					</p>
-				{/if}
-			</section>
-		</div>
-
-		<!-- Recent lifts — gym trend card (multi_modal.md § Home). Self-
-		     hides unless the user has logged a session. Mirrors the
-		     "Recent runs" list above it. -->
-		{#if gymWorkouts.length > 0}
-			<section class="card-elevated">
-				<div class="card-head">
-					<h2>{m('dash.recentLiftsTitle')}</h2>
-					<a class="link-btn" href="/gym">{m('dash.viewAllGym')}</a>
-				</div>
-				<div class="run-list">
-					{#each gymWorkouts.slice(0, 5) as w (w.id)}
-						<a href="/gym/{w.id}" class="run-row">
-							<div class="run-info">
-								<span class="run-date">{formatDateShort(w.started_at)}</span>
-								<span class="run-distance">{w.title || m('gym.untitled')}</span>
-							</div>
-							<div class="run-meta lift-row-meta">
-								<span class="run-pace">{m('gym.exercisesShort', { count: liftExerciseCount(w.id) })}</span>
-								{#if liftVolume(w.id) > 0}
-									<span class="lift-volume">{m('gym.volumeShort', { volume: liftVolume(w.id).toLocaleString() })}</span>
-								{/if}
-							</div>
-						</a>
-					{/each}
-				</div>
-			</section>
-		{/if}
-
-		<!-- First-run gym affordance — one slim line, below the fold, for a
-		     runner who hasn't logged a lift yet (the web equivalent of
-		     mobile's always-present Log sheet — discoverability without an
-		     empty card / zeroed chart, anti-clutter checklist). -->
-		{#if !loading && gymWorkouts.length === 0}
-			<a class="gym-footer-prompt" href="/gym">
-				<span class="material-symbols">fitness_center</span>
-				<span>{m('dash.gymFooterPrompt')}</span>
-				<span class="gym-footer-cta">{m('dash.logALift')}</span>
-			</a>
-		{/if}
-
-		{#if coachOn}
-			<a class="coach-promo" href="/coach">
-				<div class="coach-icon">
-					<span class="material-symbols">sports</span>
-				</div>
-				<div class="coach-body">
-					<span class="today-label">{m('dash.askTheCoachKicker')}</span>
-					<strong>{m('dash.coachPromoQuestion')}</strong>
-					<span class="coach-sub">
-						{#if planOverview}
-							{m('dash.coachGroundedPlan')}
-						{:else}
-							{m('dash.coachGroundedRuns')}
-						{/if}
-					</span>
-				</div>
-				<span class="material-symbols coach-arrow">chevron_right</span>
-			</a>
+					<div class="coach-body">
+						<span class="today-label">{m('dash.askTheCoachKicker')}</span>
+						<strong>{m('dash.coachPromoQuestion')}</strong>
+						<span class="coach-sub">
+							{#if planOverview}
+								{m('dash.coachGroundedPlan')}
+							{:else}
+								{m('dash.coachGroundedRuns')}
+							{/if}
+						</span>
+					</div>
+					<span class="material-symbols coach-arrow">chevron_right</span>
+				</a>
+			{/if}
 		{/if}
 	{/if}
 </div>

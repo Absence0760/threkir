@@ -275,6 +275,30 @@ becomes an **action button**, not a tab.
 > the five most-recent sessions, each tapping into gym detail) sits below the
 > training-load chart, self-hiding when the gym store is empty — mirroring web
 > `/dashboard`'s recent-lifts card.
+>
+> **Status (web — shipped 2026-09-16, #905):** an account with **no runs
+> all-time and no gym sessions** does not get the card stack at all. The whole
+> derived-metric block is gated on `isNewAccount` and replaced by
+> `DashboardFirstRun.svelte` — one heading, one primary action (`/runs/new`),
+> an import alternative (`/settings/integrations`), and two quiet hints
+> (record on the phone, log a lift). The plan hero and the upcoming-event card
+> still render above it, because onboarding's closing CTA creates a plan
+> before any run exists; the body copy switches to acknowledge it.
+>
+> This does **not** contradict rule 4 below. That rule governs a *modality*
+> with no data inside an otherwise-populated Home, and it still holds: the
+> lift, nutrition and intensity cards self-hide exactly as before. The
+> whole-account case is a different one — thirteen self-hiding cards that all
+> self-hide at once leave a page with a heading and nothing under it, which is
+> the state a runner lands on straight out of onboarding. Nutrition is
+> deliberately not part of the signal: `todaysFood` only holds the current
+> calendar day, so it cannot answer whether the account has ever done
+> anything. e2e `tests-e2e/dashboard/dashboard-first-run.spec.ts` pins both
+> directions of the branch.
+>
+> **Mobile: not yet.** `dashboard_screen.dart` still composes its stack for a
+> runless account. Web-first per [decisions § 24](../architecture/decisions.md);
+> tracked as part of #905.
 
 Home is a vertical scroll of cards. The order is **driven by what the
 user logs**, not a fixed grid. The ordering algorithm:

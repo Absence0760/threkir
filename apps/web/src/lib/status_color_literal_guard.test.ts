@@ -604,12 +604,15 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 	// Header over that same hero: white hover ink, 5.699:1 on the ramp's
 	// palest stop.
 	'lib/components/PublicHeader.svelte': { FFFFFF: [2, 'fixed-canvas'] },
-	// Sign-in brand pane (a fixed canvas; ramp + white copy measured per
-	// veil by gradient_foreground_guard.test.ts), the Google "G" mark, and
-	// Apple's required black button plus its hairline.
+	// Sign-in brand canvas — the >=56rem pane and the <56rem band, which are
+	// mirror images of each other. A fixed canvas in both themes: the white
+	// copy, both eyebrow pills and the bullet ticks, all measured on
+	// --brand-ramp under each bloom by gradient_foreground_guard.test.ts.
+	// Then the Google "G" mark and Apple's required black button plus its
+	// hairline. The three ramp stops that used to sit here are gone — both
+	// halves paint the shared token, whose stops are an app.css declaration.
 	'routes/login/+page.svelte': {
-		'2A4E5A': [1, 'gradient-stop'], '3A5A66': [1, 'gradient-stop'], '7E4527': [1, 'gradient-stop'],
-		FFFFFF: [2, 'fixed-canvas'],
+		FFFFFF: [5, 'fixed-canvas'],
 		'4285F4': [1, 'brand-mark'], '34A853': [1, 'brand-mark'],
 		FBBC05: [1, 'brand-mark'], EA4335: [1, 'brand-mark'],
 		'1A1A1A': [1, 'brand-mark'], '334155': [1, 'brand-mark'],

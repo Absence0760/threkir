@@ -23,6 +23,7 @@
 	import { googleAuthEnabled } from '$lib/core/google_auth_flag';
 	import { m } from '$lib/i18n/store.svelte';
 	import PasswordInput from '$lib/components/PasswordInput.svelte';
+	import AuthShowcase from '$lib/components/marketing/AuthShowcase.svelte';
 
 	// Fail-closed: off until the Supabase `google` provider is wired
 	// (PUBLIC_GOOGLE_AUTH_ENABLED). When off the button shows a "coming
@@ -292,12 +293,28 @@
 
 <div class="login-page">
 	<!--
-		Not aria-hidden. The pane is display:none below 56rem and display:flex
-		above it, and `.logo-mobile` inside the form card is the mirror image —
-		so on every desktop viewport the link below is the ONLY route home, and
-		hiding the subtree left it focusable but nameless and roleless
-		(axe aria-hidden-focus; WCAG 4.1.2 + 2.4.3). Only one of the two logo
-		links is ever rendered, so exposing this one duplicates nothing.
+		The narrow-viewport half of the brand canvas. Below 56rem the pane
+		below is display:none, and what was left was a form floating on bare
+		cream — the desktop screen carried the product and the phone screen,
+		which is where a runner actually signs up, carried nothing.
+
+		It is also the one logo link at this width: `.brand-pane` (>=56rem)
+		and this band (<56rem) are mirror images, each display:none where the
+		other shows, so exactly one of the two is ever rendered and neither is
+		aria-hidden — hiding a focusable subtree leaves the link focusable but
+		nameless and roleless (axe aria-hidden-focus; WCAG 4.1.2 + 2.4.3).
+		The form card's own `.logo-mobile` was the third copy and is gone.
+	-->
+	<div class="brand-band">
+		<a href="/" class="brand-logo">
+			<img src="/logo-mark.svg" alt="" class="brand-mark" />
+			<span class="brand-name">Threkir</span>
+		</a>
+		<p class="band-eyebrow">{m('landing.heroEyebrow')}</p>
+	</div>
+
+	<!--
+		Not aria-hidden, for the reason above.
 	-->
 	<aside class="brand-pane">
 		<a href="/" class="brand-logo">
@@ -305,21 +322,25 @@
 			<span class="brand-name">Threkir</span>
 		</a>
 		<div class="brand-copy">
-			<!-- The form card renders the same `kicker` string, and both panes are
-			     on screen together above 56rem; only this copy is redundant. -->
-			<p class="brand-kicker" aria-hidden="true">{kicker}</p>
+			<!-- The pane used to repeat the form card's own `kicker` here, with
+			     both panes on screen together above 56rem — the same two words
+			     twice, 700px apart. This carries the landing page's eyebrow
+			     instead: one promise, already translated, and the screen a
+			     visitor arrives from said it too. -->
+			<p class="brand-eyebrow">{m('landing.heroEyebrow')}</p>
 			<h2 class="brand-headline">{m('login.brandHeadline')}</h2>
+			<AuthShowcase />
 			<ul class="brand-bullets">
 				<li>
-					<span class="bullet-dot" aria-hidden="true"></span>
+					<span class="bullet-tick material-symbols" aria-hidden="true">check</span>
 					<span>{m('login.bullet1')}</span>
 				</li>
 				<li>
-					<span class="bullet-dot" aria-hidden="true"></span>
+					<span class="bullet-tick material-symbols" aria-hidden="true">check</span>
 					<span>{m('login.bullet2')}</span>
 				</li>
 				<li>
-					<span class="bullet-dot" aria-hidden="true"></span>
+					<span class="bullet-tick material-symbols" aria-hidden="true">check</span>
 					<span>{m('login.bullet3')}</span>
 				</li>
 			</ul>
@@ -329,11 +350,6 @@
 
 	<main class="form-pane" id="main-content">
 		<div class="login-card">
-			<a href="/" class="logo logo-mobile">
-				<img src="/logo-mark.svg" alt="" class="logo-mark" />
-				<span>Threkir</span>
-			</a>
-
 			<p class="kicker">{kicker}</p>
 			<h1>{headline}</h1>
 			<p class="subtitle">{subtitle}</p>
@@ -515,11 +531,52 @@
 		min-height: 100vh;
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
+		/* Two rows below 56rem — the band, then the form — collapsing to one
+		   at the breakpoint where the band goes away and the pane arrives. */
+		grid-template-rows: auto 1fr;
 		background: var(--color-bg);
 	}
 
 	.brand-pane {
 		display: none;
+	}
+
+	/* The narrow-viewport brand canvas. Deliberately short: it is a header,
+	   not a hero, and a phone signing in has one job below it. The form card
+	   rises into it by a negative margin so the two read as one surface
+	   rather than as a coloured strip with a gap under it. */
+	.brand-band {
+		background: var(--brand-ramp);
+		color: #FFFFFF;
+		/* The block-end padding is the overlap plus a gap, so the card rises
+		   into the ramp without landing on the eyebrow pill above it. */
+		padding: var(--space-xl) var(--space-md) calc(var(--space-2xl) + var(--space-md));
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--space-md);
+	}
+
+	.band-eyebrow {
+		text-transform: uppercase;
+		letter-spacing: 0.14em;
+		font-size: var(--font-size-section-label);
+		font-weight: 700;
+		color: #FFFFFF;
+		background: rgba(255, 255, 255, 0.12);
+		border: 1px solid rgba(255, 255, 255, 0.28);
+		border-radius: var(--radius-pill);
+		padding: 0.3rem 0.8rem;
+		margin: 0;
+	}
+
+	@media (min-width: 56rem) {
+		.login-page {
+			grid-template-rows: 1fr;
+		}
+		.brand-band {
+			display: none;
+		}
 	}
 
 	@media (min-width: 56rem) {
@@ -533,31 +590,43 @@
 			order: 1;
 			display: flex;
 			flex-direction: column;
-			justify-content: space-between;
+			justify-content: center;
+			gap: var(--space-xl);
 			padding: var(--space-2xl);
-			/* Deepened so the white copy clears AA at EVERY stop, under either
-			   radial veil below at its own peak: 5.222 / 4.635 / 4.780:1. The
-			   ramp it replaces ended on #F2A07B, where white reads 2.081:1 —
-			   the same figure § 511 found under .btn-primary and § 519 found
-			   over a gradient. A fixed brand canvas is exempt from THEMING,
-			   not from contrast (§ 511's print-sheet amber). */
-			background: linear-gradient(150deg, #2A4E5A 0%, #3A5A66 45%, #7E4527 100%);
+			/* The same --brand-ramp the marketing hero paints. This pane used
+			   to carry a teal-to-brown ramp of its own, so the screen a
+			   visitor arrived from and the screen they signed in on wore two
+			   different brands. A fixed brand canvas is exempt from THEMING,
+			   not from contrast (§ 511's print-sheet amber), so the ink is a
+			   literal white and every stop of the ramp is measured under it —
+			   and under each of the two blooms below at its own peak — in
+			   gradient_foreground_guard.test.ts. */
+			background: var(--brand-ramp);
 			color: #FFFFFF;
 			position: relative;
 			overflow: hidden;
 		}
+		/* The hero's two blooms, in the hero's order: the wordmark's orange
+		   (which cannot carry copy at 3.139:1 and so appears only as light)
+		   and the product's teal. */
 		.brand-pane::before {
 			content: '';
 			position: absolute;
-			inset: -20% -10% -10% -20%;
-			background: radial-gradient(ellipse at 30% 20%, rgba(255, 255, 255, 0.18) 0%, transparent 55%);
+			top: -40%;
+			inset-inline-end: -25%;
+			width: 70%;
+			height: 180%;
+			background: radial-gradient(ellipse, rgba(254, 89, 50, 0.18) 0%, transparent 70%);
 			pointer-events: none;
 		}
 		.brand-pane::after {
 			content: '';
 			position: absolute;
-			inset: -20% -20% -30% -10%;
-			background: radial-gradient(ellipse at 80% 90%, rgba(185, 167, 232, 0.35) 0%, transparent 55%);
+			bottom: -40%;
+			inset-inline-start: -15%;
+			width: 60%;
+			height: 170%;
+			background: radial-gradient(ellipse, rgba(44, 95, 110, 0.18) 0%, transparent 70%);
 			pointer-events: none;
 		}
 	}
@@ -567,6 +636,23 @@
 	.brand-foot {
 		position: relative;
 		z-index: 1;
+	}
+
+	/* The pane centres its copy, so the logo and the footnote are lifted out
+	   of the flow to the corners rather than stretching the stack — the old
+	   space-between left two ~180px voids around a block of three bullets. */
+	@media (min-width: 56rem) {
+		.brand-logo {
+			position: absolute;
+			top: var(--space-2xl);
+			inset-inline-start: var(--space-2xl);
+		}
+		.brand-foot {
+			position: absolute;
+			bottom: var(--space-2xl);
+			inset-inline-start: var(--space-2xl);
+			inset-inline-end: var(--space-2xl);
+		}
 	}
 
 	.brand-logo {
@@ -591,55 +677,75 @@
 
 	.brand-copy {
 		max-width: 32rem;
+		display: flex;
+		flex-direction: column;
 	}
 
-	.brand-kicker {
+	/* The landing hero's eyebrow, same treatment: a pill reads as a badge
+	   the product is wearing, where tracked text alone read as a label
+	   someone forgot to style. */
+	.brand-eyebrow {
+		align-self: flex-start;
 		text-transform: uppercase;
-		letter-spacing: 0.12em;
-		font-size: 0.78rem;
+		letter-spacing: 0.14em;
+		font-size: var(--font-size-section-label);
 		font-weight: 700;
-		opacity: 0.85;
-		margin: 0 0 var(--space-sm);
+		color: #FFFFFF;
+		background: rgba(255, 255, 255, 0.12);
+		border: 1px solid rgba(255, 255, 255, 0.28);
+		border-radius: var(--radius-pill);
+		padding: 0.3rem 0.8rem;
+		margin: 0 0 var(--space-md);
 	}
 
 	.brand-headline {
-		font-size: 2.25rem;
+		font-size: 2rem;
 		line-height: 1.15;
 		font-weight: 800;
-		margin: 0 0 var(--space-lg);
+		margin: 0 0 var(--space-xl);
 		letter-spacing: -0.02em;
+		max-width: 22ch;
 	}
 
 	@media (min-width: 72rem) {
 		.brand-headline {
-			font-size: 2.75rem;
+			font-size: 2.4rem;
 		}
 	}
 
 	.brand-bullets {
 		list-style: none;
 		padding: 0;
-		margin: 0;
+		margin: var(--space-xl) 0 0;
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-md);
+		gap: var(--space-sm);
 	}
 	.brand-bullets li {
 		display: flex;
 		align-items: flex-start;
 		gap: var(--space-sm);
-		font-size: 0.98rem;
+		font-size: 0.95rem;
 		line-height: 1.5;
-		opacity: 0.95;
 	}
-	.bullet-dot {
+	/* A dot says "item in a list"; a tick says "yes, this one too". Same
+	   glyph the app uses for a satisfied condition, and already in the
+	   subsetted font. Sized in rem rather than inherited so the disc keeps
+	   its circle when the line-height around it changes. */
+	.bullet-tick {
 		flex-shrink: 0;
-		width: 0.55rem;
-		height: 0.55rem;
+		display: grid;
+		place-items: center;
+		width: 1.25rem;
+		height: 1.25rem;
+		margin-top: 0.1rem;
 		border-radius: 50%;
-		background: #FFFFFF;
-		margin-top: 0.45rem;
-		box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.15);
+		background: rgba(255, 255, 255, 0.16);
+		font-size: 0.85rem;
+		/* 4.78:1 on the palest stop of the ramp under the orange bloom, the
+		   tightest ground on the pane — a 3:1 non-text floor would do for a
+		   decorative tick, but this one sits inside a text line. */
+		color: #FFFFFF;
 	}
 
 	.brand-foot {
@@ -654,8 +760,8 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		justify-content: center;
-		padding: var(--space-xl) var(--space-md);
+		justify-content: flex-start;
+		padding: 0 var(--space-md) var(--space-xl);
 		gap: var(--space-md);
 	}
 
@@ -675,6 +781,10 @@
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-xl);
 		box-shadow: var(--shadow-lg);
+		/* Overlaps the band's bottom padding. Matches that padding exactly,
+		   so the card's top edge lands where the ramp's colour still is. */
+		margin-top: calc(-1 * var(--space-2xl));
+		position: relative;
 	}
 
 	@media (min-width: 56rem) {
@@ -683,40 +793,8 @@
 			box-shadow: none;
 			background: transparent;
 			padding: 0;
+			margin-top: 0;
 		}
-	}
-
-	.logo {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-sm);
-		font-weight: 700;
-		font-size: 1.25rem;
-		color: var(--color-text);
-		text-decoration: none;
-		margin-bottom: var(--space-xl);
-	}
-	.logo-mobile {
-		display: inline-flex;
-	}
-	@media (min-width: 56rem) {
-		.logo-mobile {
-			display: none;
-		}
-	}
-	.logo .logo-mark {
-		width: 2rem;
-		height: 2rem;
-		border-radius: var(--radius-md);
-		display: block;
-		box-shadow: var(--shadow-sm);
-		object-fit: cover;
-	}
-	.logo span {
-		background: var(--gradient-primary);
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
 	}
 
 	.kicker {

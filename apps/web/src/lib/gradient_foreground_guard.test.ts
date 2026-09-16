@@ -85,18 +85,6 @@ type Ramp = {
 
 const RAMPS: Ramp[] = [
 	{
-		file: 'routes/login/+page.svelte',
-		anchor: 'background: linear-gradient(150deg,',
-		stops: 3,
-		ink: '#FFFFFF',
-		floor: 4.5,
-		veils: [
-			{ colour: '#FFFFFF', alpha: 0.18, why: '.brand-pane::before sheen at 30%/20%' },
-			{ colour: '#B9A7E8', alpha: 0.35, why: '.brand-pane::after lilac at 80%/90%' },
-		],
-		why: 'the sign-in brand pane carries the product copy',
-	},
-	{
 		file: 'routes/runs/[id]/+page.svelte',
 		anchor: 'background: linear-gradient(135deg, #9B4A24',
 		stops: 3,
@@ -104,11 +92,19 @@ const RAMPS: Ramp[] = [
 		floor: 4.5,
 		why: 'the 1080x1080 share card rasterises to a PNG that leaves the device',
 	},
-	// --brand-ramp is one declaration with two consumers, and a veil belongs
-	// to the CONSUMER, not to the ramp — the hero's blooms are not on the
-	// sign-in pane and vice versa. So both entries read the same app.css line
-	// and each measures its own surface: stacking every veil of both would
-	// assert a composite no pixel of either surface shows.
+	// --brand-ramp is one declaration with two consumers — the marketing hero
+	// and the sign-in brand pane — and both paint the SAME two blooms at the
+	// same peaks, so one entry covers both. A veil belongs to the consumer
+	// rather than to the ramp, so a surface that adds a bloom of its own adds
+	// an entry here over this same line; the veils are still measured one at
+	// a time, because stacking them would assert a composite that no pixel of
+	// either surface shows.
+	//
+	// The login pane's ink is the stricter of the two: a literal #FFFFFF
+	// (the pane is a fixed brand canvas in both themes) against the hero's
+	// translucent 0.85 white, which resolves lighter over every stop. Both
+	// are checked — the entry below carries the hero's, and the pane's own
+	// is measured by the literal-ink entry that follows it.
 	{
 		file: 'app.css',
 		anchor: '--brand-ramp: linear-gradient(150deg,',
@@ -120,6 +116,18 @@ const RAMPS: Ramp[] = [
 			{ colour: '#2C5F6E', alpha: 0.18, why: '.hero-glow::after product teal' },
 		],
 		why: 'the marketing hero headline + subhead',
+	},
+	{
+		file: 'app.css',
+		anchor: '--brand-ramp: linear-gradient(150deg,',
+		stops: 4,
+		ink: '#FFFFFF',
+		floor: 4.5,
+		veils: [
+			{ colour: '#FE5932', alpha: 0.18, why: '.brand-pane::before wordmark orange' },
+			{ colour: '#2C5F6E', alpha: 0.18, why: '.brand-pane::after product teal' },
+		],
+		why: 'the sign-in brand pane headline, bullets and footnote',
 	},
 	{
 		file: 'lib/components/LearnPage.svelte',

@@ -2,21 +2,18 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { m } from '$lib/i18n/store.svelte';
 
-	// overlay = transparent white-on-dark chrome laid over the landing
-	// hero; solid = the same nav on a themed surface for the other
-	// public pages (/learn). One component so the marketing surface
-	// can't drift between the two again.
-	let { overlay = false }: { overlay?: boolean } = $props();
+	// This bar is only ever drawn over a dark ramp -- the landing hero, or
+	// the brand band every /learn route opens on -- so it is transparent
+	// white-on-dark chrome, full stop. It used to carry a second `solid`
+	// variant for a themed surface; once /learn gained its band nothing
+	// rendered it, and a variant nothing renders is a variant nothing keeps
+	// working. `learn_band_guard.test.ts` holds the premise: a route that
+	// mounts LearnPage must also render a .learn-band.
 </script>
 
-<nav class="landing-nav" class:overlay class:solid={!overlay}>
+<nav class="landing-nav">
 	<a href="/" class="landing-logo" aria-label="Threkir">
-		{#if overlay}
-			<img src="/wordmark-light.svg" alt="Threkir" class="landing-wordmark" />
-		{:else}
-			<img src="/wordmark.svg" alt="Threkir" class="landing-wordmark on-light" />
-			<img src="/wordmark-light.svg" alt="Threkir" class="landing-wordmark on-dark" />
-		{/if}
+		<img src="/wordmark-light.svg" alt="Threkir" class="landing-wordmark" />
 	</a>
 	<!-- Apps + Features were in-page anchors to sections one scroll away on a
 	     four-section page, and they were already hidden below 768px -- the
@@ -41,31 +38,20 @@
 </nav>
 
 <style>
-	/* Both variants share their box metrics, so the wordmark, the nav
-	   links, and the Sign In pill land in exactly the same place on the
-	   landing page and on /learn. The variants used to set their own
-	   padding and disagreed — solid was 15px shorter, so every item in
-	   the header jumped up 8px when a visitor clicked Learn. Only what
-	   MUST differ between an overlay and an in-flow bar (position,
-	   ground, border) belongs in the variant blocks below. */
+	/* One bar, one set of box metrics. There were two variants, and they set
+	   their own padding and disagreed — solid came out 15px shorter, so every
+	   item jumped 8px when a visitor clicked Learn. learn/chrome.spec.ts still
+	   pins the geometry across / and /learn. */
 	.landing-nav {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
 		padding: var(--space-lg) var(--space-2xl);
-	}
-
-	.landing-nav.overlay {
 		position: absolute;
 		top: 0;
 		inset-inline-start: 0;
 		inset-inline-end: 0;
 		z-index: 10;
-	}
-
-	.landing-nav.solid {
-		background: var(--color-surface);
-		border-bottom: 1px solid var(--color-border);
 	}
 
 	.landing-logo {
@@ -74,33 +60,12 @@
 		text-decoration: none;
 	}
 
+	/* Always the white wordmark: the bar only ever sits on a dark ramp, so
+	   the theme-swapped pair the solid variant needed is gone with it. */
 	.landing-wordmark {
 		height: 2rem;
 		width: auto;
 		display: block;
-	}
-
-	/* The solid header sits on a themed surface, so swap between the
-	   dark-text and white-text wordmarks with the theme (explicit
-	   html[data-theme] wins; auto/unset follows the OS preference). */
-	.solid .landing-wordmark.on-dark {
-		display: none;
-	}
-	:global([data-theme='dark']) .solid .landing-wordmark.on-light {
-		display: none;
-	}
-	:global([data-theme='dark']) .solid .landing-wordmark.on-dark {
-		display: block;
-	}
-	@media (prefers-color-scheme: dark) {
-		:global([data-theme='auto']) .solid .landing-wordmark.on-light,
-		:global(html:not([data-theme])) .solid .landing-wordmark.on-light {
-			display: none;
-		}
-		:global([data-theme='auto']) .solid .landing-wordmark.on-dark,
-		:global(html:not([data-theme])) .solid .landing-wordmark.on-dark {
-			display: block;
-		}
 	}
 
 	.nav-links {
@@ -112,52 +77,28 @@
 	.nav-link {
 		font-size: 0.9rem;
 		font-weight: 500;
+		color: rgba(255, 255, 255, 0.72);
 		transition: color var(--transition-fast);
 	}
 
-	.overlay .nav-link {
-		color: rgba(255, 255, 255, 0.72);
-	}
-
-	.overlay .nav-link:hover {
+	.nav-link:hover {
 		color: #ffffff;
-	}
-
-	.solid .nav-link {
-		color: var(--color-text-secondary);
-	}
-
-	.solid .nav-link:hover {
-		color: var(--color-text);
 	}
 
 	.nav-signin {
 		font-weight: 500;
 		padding: var(--space-sm) var(--space-lg);
 		border-radius: var(--radius-md);
-		transition: all var(--transition-fast);
-	}
-
-	.overlay .nav-signin {
 		color: rgba(255, 255, 255, 0.8);
 		border: 1px solid rgba(255, 255, 255, 0.25);
 		backdrop-filter: blur(8px);
+		transition: all var(--transition-fast);
 	}
 
-	.overlay .nav-signin:hover {
+	.nav-signin:hover {
 		border-color: rgba(255, 255, 255, 0.6);
 		color: #ffffff;
 		background: rgba(255, 255, 255, 0.1);
-	}
-
-	.solid .nav-signin {
-		color: var(--color-text-secondary);
-		border: 1px solid var(--color-border);
-	}
-
-	.solid .nav-signin:hover {
-		border-color: var(--color-primary);
-		color: var(--color-primary);
 	}
 
 	@media (max-width: 768px) {

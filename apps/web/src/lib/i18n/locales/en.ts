@@ -2324,7 +2324,6 @@ export const en = {
 	"landing.navFeatures": "Features",
 	"landing.navLearn": "Learn",
 	"landing.signIn": "Sign In",
-	"landing.getStartedFree": "Get started free",
 	"landing.openApp": "Open app",
 	"landing.getStarted": "Get Started",
 	"landing.featureRouteBuilderTitle": "Route Builder",

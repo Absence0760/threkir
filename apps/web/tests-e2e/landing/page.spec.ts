@@ -204,9 +204,14 @@ test.describe('/ (landing)', () => {
 		);
 	});
 
-	test('the header offers a sign-up CTA alongside sign-in', async ({ page }) => {
+	test('the header carries sign-in only, not a second CTA', async ({ page }) => {
+		// A "Get started free" pill sat beside Sign In. The header is
+		// position:absolute, not sticky, so it is on screen only at the very
+		// top — where the hero's own, larger CTA already is — and gone by the
+		// time a reader would want one.
 		await page.goto('/');
-		await expect(page.locator('.nav-cta')).toHaveAttribute('href', '/login?signup=1');
+		await expect(page.locator('.nav-signin')).toHaveAttribute('href', '/login');
+		await expect(page.locator('.nav-cta')).toHaveCount(0);
 	});
 
 	test('sign-in and the sign-up CTAs land on DIFFERENT forms', async ({ page }) => {
@@ -220,10 +225,6 @@ test.describe('/ (landing)', () => {
 		await expect(
 			page.getByRole('heading', { name: /sign in to your account/i })
 		).toBeVisible();
-
-		await page.goto('/');
-		await page.locator('.nav-cta').click();
-		await expect(page.getByRole('heading', { name: /create an account/i })).toBeVisible();
 
 		for (const [where, name] of [
 			['main.hero', 'Get Started'],

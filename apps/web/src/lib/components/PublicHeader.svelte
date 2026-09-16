@@ -22,18 +22,20 @@
 	     four-section page, and they were already hidden below 768px -- the
 	     mobile bar has always shipped without them. They stay in the footer,
 	     where a site map belongs, and the section ids stay live for the deep
-	     links that target them. -->
+	     links that target them.
+
+	     A "Get started free" pill sat beside Sign In too. This header is
+	     position:absolute, not sticky, so it is on screen only at the very
+	     top -- where the hero's own, much larger CTA is already visible --
+	     and gone by the time a reader would want one. It was visible only
+	     while redundant. Sign In stays because a returning visitor has
+	     nothing else to aim at; new visitors have the hero. -->
 	<div class="nav-links">
 		<a href="/learn" class="nav-link">{m('landing.navLearn')}</a>
 		{#if auth.loggedIn}
 			<a href="/dashboard" class="nav-signin">{m('landing.openApp')}</a>
 		{:else}
 			<a href="/login" class="nav-signin">{m('landing.signIn')}</a>
-			<!-- ?signup=1 or the two pills are one button wearing two labels:
-			     /login renders the sign-in form, and a visitor who clicked
-			     "Get started free" landed under the headline "Sign in to your
-			     account". The Learn CTAs have always carried the flag. -->
-			<a href="/login?signup=1" class="nav-cta">{m('landing.getStartedFree')}</a>
 		{/if}
 	</div>
 </nav>
@@ -158,38 +160,14 @@
 		color: var(--color-primary);
 	}
 
-	/* Filled in BOTH variants from the primary pair rather than a white pill
-	   with a frozen ink: white reads as the primary action on the hero ramp
-	   and disappears on /learn's light surface, and app.css already holds
-	   --color-primary / --color-on-primary to AA in both themes. */
-	.nav-cta {
-		font-weight: 600;
-		padding: var(--space-sm) var(--space-lg);
-		border-radius: var(--radius-md);
-		background: var(--color-primary);
-		color: var(--color-on-primary);
-		border: 1px solid transparent;
-		white-space: nowrap;
-		transition: all var(--transition-fast);
-	}
-
-	.nav-cta:hover {
-		background: var(--color-primary-hover);
-	}
-
 	@media (max-width: 768px) {
 		.nav-link {
 			display: none;
 		}
-		/* Both pills stay. Hiding Sign In to make room was tried and is the
-		   wrong trade — a returning visitor needs it more than a new one
-		   needs a second CTA — and it breaks the /-vs-/learn header parity
-		   that learn/chrome.spec.ts pins. Shrink them instead. */
 		.nav-links {
 			gap: var(--space-sm);
 		}
-		.nav-signin,
-		.nav-cta {
+		.nav-signin {
 			padding: var(--space-sm) var(--space-md);
 			font-size: 0.85rem;
 		}

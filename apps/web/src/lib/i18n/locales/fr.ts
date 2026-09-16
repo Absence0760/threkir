@@ -2313,7 +2313,6 @@ export const messages = {
 	"landing.navFeatures": "Fonctionnalités",
 	"landing.navLearn": "Apprendre",
 	"landing.signIn": "Se connecter",
-	"landing.getStartedFree": "Commencer gratuitement",
 	"landing.openApp": "Ouvrir l'app",
 	"landing.getStarted": "Commencer",
 	"landing.featureRouteBuilderTitle": "Créateur d'itinéraires",

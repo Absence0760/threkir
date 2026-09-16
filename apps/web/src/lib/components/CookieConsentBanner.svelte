@@ -127,10 +127,27 @@
 		gap: var(--space-sm);
 		justify-content: flex-end;
 	}
+	/* On a phone this card stood ~230 px tall and covered the bottom 40% of
+	   the landing hero -- the first thing a new visitor sees. Bounded rather
+	   than abridged: the disclosure names Sentry, map tiles, the AI Coach and
+	   Storage URLs, and deciding which of those a visitor no longer needs to
+	   be told about is a CISO/counsel call, not a layout one. Capping the
+	   height keeps every word reachable while the banner stops owning the
+	   fold. Laying it out as a ROW instead was tried and is worse -- it
+	   narrows the copy column and the paragraph grows taller than it started.
+	
+	   Full width stays off the table at every size: the /runs bulk-bar and
+	   the /runs/new Save button live in the bottom-right corner. */
 	@media (max-width: 48rem) {
 		.banner {
 			inset-inline-start: var(--space-md);
 			width: auto;
+			max-height: 38vh;
+			overflow-y: auto;
+			overscroll-behavior: contain;
+		}
+		.copy p {
+			font-size: 0.8rem;
 		}
 	}
 

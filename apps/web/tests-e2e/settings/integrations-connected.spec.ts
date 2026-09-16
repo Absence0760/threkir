@@ -412,9 +412,14 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 		await expect(bulkCard.locator('input[type="file"]')).toHaveCount(1);
 	});
 
-	test('already-connected Garmin renders connected card + Disconnect button', async ({
+	test('a connected Garmin row is still shown, and says it can no longer sync', async ({
 		page,
 	}) => {
+		// Garmin Connect is gated `unbuilt` — its OAuth leg is blocked on
+		// Garmin's developer programme — so the card is no longer offered to a
+		// runner who has no row. A row that already exists is a different
+		// matter: hiding it would strand it, leaving no surface to disconnect
+		// from. So it renders, without an action that cannot run, and says why.
 		await plantIntegration({
 			provider: 'garmin',
 			lastSyncAt: '2026-05-09T12:30:00Z',
@@ -422,13 +427,32 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 
 		await page.goto('/settings/integrations');
 
-		const garminCard = page.locator('.integration-card', { hasText: 'Garmin Connect' });
+		const garminCard = page.getByTestId('integration-garmin');
 		await expect(garminCard).toBeVisible({ timeout: 10_000 });
 		await expect(garminCard).toHaveClass(/connected/);
 		await expect(garminCard.getByText(/Last synced/i)).toBeVisible();
+		await expect(page.getByTestId('stranded-garmin')).toBeVisible();
 		await expect(garminCard.getByRole('button', { name: 'Disconnect' })).toBeVisible();
 		// Garmin has no live OAuth (bulk-import only), so no Sync-now affordance.
 		await expect(garminCard.getByRole('button', { name: /Sync/i })).toHaveCount(0);
+	});
+
+	test('an unconnected Garmin / HealthKit card is not offered at all', async ({ page }) => {
+		// The pair no operator can configure into existence: Garmin Connect's
+		// OAuth is blocked upstream, and HealthKit is an on-device iOS API a
+		// browser has nothing to connect to. Both used to render a live Connect
+		// button that wrote a placeholder row and synced nothing.
+		// USER_B starts with zero `integrations` rows and afterEach keeps it
+		// that way, so nothing needs planting or clearing here.
+		await page.goto('/settings/integrations');
+		await expect(page.getByTestId('integration-parkrun')).toBeVisible({ timeout: 10_000 });
+
+		await expect(page.getByTestId('integration-garmin')).toHaveCount(0);
+		await expect(page.getByTestId('integration-healthkit')).toHaveCount(0);
+		// The Garmin path that DOES work on this deployment is still offered.
+		await expect(
+			page.locator('section.bulk-import').filter({ hasText: 'Bulk import from a Garmin export' })
+		).toBeVisible();
 	});
 
 	test('already-connected parkrun + disconnect round-trip', async ({ page }) => {

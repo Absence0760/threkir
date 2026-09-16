@@ -30,8 +30,9 @@ import { readCount, readRows } from '../fixtures/db-read';
  * its dedupe key, not the GPS trace.
  *
  *   1. CONNECT a provider. USER_A has strava + parkrun pre-seeded but
- *      NO garmin row (seed.sql), so Garmin is the clean connect/disconnect
- *      subject — `connectIntegration('garmin')` is the non-OAuth
+ *      a parkrun row (seed.sql) which this test deletes first, so parkrun
+ *      is the clean connect/disconnect subject — `connectIntegration('parkrun')`
+ *      is the only non-OAuth
  *      placeholder upsert (data.ts), and the card flips to `.connected`.
  *      (Strava itself stays seed-connected throughout; we never touch
  *      its row, so no cross-spec clash.)
@@ -51,7 +52,7 @@ import { readCount, readRows } from '../fixtures/db-read';
  *      0 imported · 1 skipped"; the backend row count for this
  *      external_id stays exactly 1 (the dedupe contract threaded, not
  *      asserted as a raw 23505 like runs-external-id-dedupe does).
- *   5. DISCONNECT Garmin (ConfirmDialog → DELETE for the non-strava
+ *   5. DISCONNECT parkrun (ConfirmDialog → DELETE for the non-strava
  *      path) — card flips back to disconnected, the integrations row is
  *      gone.
  *
@@ -124,7 +125,7 @@ async function buildStravaZip(opts: {
 test.describe('third-party import journey', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
-	test('connect Garmin → import a Strava activity → threads /runs + detail → re-import de-duped → disconnect', async ({
+	test('connect parkrun → import a Strava activity → threads /runs + detail → re-import de-duped → disconnect', async ({
 		page
 	}) => {
 		const admin = getAdminClient();
@@ -145,7 +146,7 @@ test.describe('third-party import journey', () => {
 		// sweeps exactly what this test planted.
 		let runId = '';
 
-		// USER_A must NOT already have a garmin integration row (seed only
+		// USER_A must NOT already have a parkrun integration row (the seed
 		// gives strava + parkrun) — clear defensively so step 1's connect
 		// is a true 0→1, and so a prior interrupted run can't leave a
 		// stale row that makes the card render connected before we click.
@@ -153,35 +154,39 @@ test.describe('third-party import journey', () => {
 			.from('integrations')
 			.delete()
 			.eq('user_id', USER_A.id)
-			.eq('provider', 'garmin');
+			.eq('provider', 'parkrun');
 
 		try {
-			// ── 1. Connect a provider (Garmin, the non-OAuth path) ──────
-			await test.step('USER_A connects Garmin from the integrations page', async () => {
+			// ── 1. Connect a provider (parkrun, the non-OAuth path) ─────
+			// Garmin used to be this subject. It no longer renders a Connect
+			// button at all: its OAuth leg is blocked on Garmin's developer
+			// programme, so the catalogue gates it `unbuilt` and the card is
+			// offered only to a runner who already has a (placeholder) row.
+			await test.step('USER_A connects parkrun from the integrations page', async () => {
 				await page.goto('/settings/integrations');
-				const garminCard = page.locator('.integration-card', {
-					hasText: 'Garmin Connect'
+				const parkrunCard = page.locator('.integration-card', {
+					hasText: 'parkrun'
 				});
-				await expect(garminCard).toBeVisible({ timeout: 10_000 });
-				await expect(garminCard).not.toHaveClass(/connected/);
+				await expect(parkrunCard).toBeVisible({ timeout: 10_000 });
+				await expect(parkrunCard).not.toHaveClass(/connected/);
 
-				await garminCard.getByRole('button', { name: 'Connect' }).click();
+				await parkrunCard.getByRole('button', { name: 'Connect' }).click();
 
 				// connectIntegration upserts the row; the card flips to the
 				// connected style (border-inline-start accent in the SFC).
-				await expect(garminCard).toHaveClass(/connected/, { timeout: 10_000 });
+				await expect(parkrunCard).toHaveClass(/connected/, { timeout: 10_000 });
 				await expect(
-					garminCard.getByRole('button', { name: 'Disconnect' })
+					parkrunCard.getByRole('button', { name: 'Disconnect' })
 				).toBeVisible();
 
-				// Backend: exactly one (live) garmin row for USER_A.
+				// Backend: exactly one (live) parkrun row for USER_A.
 				const rows = await readRows(
 					'integrations by user_id+provider',
 					admin
 						.from('integrations')
 						.select('id, disconnected_at')
 						.eq('user_id', USER_A.id)
-						.eq('provider', 'garmin')
+						.eq('provider', 'parkrun')
 				);
 				expect(rows).toHaveLength(1);
 				expect(rows![0].disconnected_at).toBeNull();
@@ -309,25 +314,25 @@ test.describe('third-party import journey', () => {
 			});
 
 			// ── 5. Disconnect the provider ──────────────────────────────
-			await test.step('USER_A disconnects Garmin; the card flips back and the row is gone', async () => {
+			await test.step('USER_A disconnects parkrun; the card flips back and the row is gone', async () => {
 				await page.goto('/settings/integrations');
-				const garminCard = page.locator('.integration-card', {
-					hasText: 'Garmin Connect'
+				const parkrunCard = page.locator('.integration-card', {
+					hasText: 'parkrun'
 				});
-				await expect(garminCard).toHaveClass(/connected/, { timeout: 10_000 });
+				await expect(parkrunCard).toHaveClass(/connected/, { timeout: 10_000 });
 
-				await garminCard.getByRole('button', { name: 'Disconnect' }).click();
+				await parkrunCard.getByRole('button', { name: 'Disconnect' }).click();
 				const confirm = page.locator('.modal', {
 					hasText: 'Disconnect integration?'
 				});
 				await expect(confirm).toBeVisible({ timeout: 5_000 });
 				await confirm.getByRole('button', { name: 'Disconnect' }).click();
 
-				await expect(garminCard).not.toHaveClass(/connected/, {
+				await expect(parkrunCard).not.toHaveClass(/connected/, {
 					timeout: 5_000
 				});
 				await expect(
-					garminCard.getByRole('button', { name: 'Connect' })
+					parkrunCard.getByRole('button', { name: 'Connect' })
 				).toBeVisible();
 
 				// Backend: the non-strava disconnect path is a hard DELETE
@@ -338,20 +343,24 @@ test.describe('third-party import journey', () => {
 						.from('integrations')
 						.select('id')
 						.eq('user_id', USER_A.id)
-						.eq('provider', 'garmin')
+						.eq('provider', 'parkrun')
 				);
 				expect(rows).toHaveLength(0);
 			});
 		} finally {
-			// Sweep the imported run + any garmin integration row this test
-			// planted (the UI disconnect may not have run if the journey
-			// failed earlier). Strava's seed row is untouched throughout.
+			// Sweep the imported run, then put parkrun back the way seed.sql
+			// left it — this journey deletes that row to get a clean 0→1, and
+			// the other integrations specs read it as connected. Strava's seed
+			// row is untouched throughout.
 			if (runId) await admin.from('runs').delete().eq('id', runId);
-			await admin
-				.from('integrations')
-				.delete()
-				.eq('user_id', USER_A.id)
-				.eq('provider', 'garmin');
+			await admin.from('integrations').upsert(
+				{
+					user_id: USER_A.id,
+					provider: 'parkrun',
+					last_sync_at: '2026-04-01T10:00:00Z'
+				},
+				{ onConflict: 'user_id,provider' }
+			);
 		}
 	});
 });

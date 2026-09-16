@@ -33,16 +33,16 @@ test.describe('ChronoTrack gate (unconfigured credentials)', () => {
 		if (listingId) await deleteRaceListing(listingId);
 	});
 
-	test('settings card shows the unavailable explainer, no open action', async ({ page }) => {
+	test('the settings card is not offered at all', async ({ page }) => {
+		// The card used to render with an explainer where its action would be.
+		// It is now filtered out of the page entirely: Settings offers what this
+		// deployment can honour, and the explainer a runner actually needs lives
+		// on the race whose result they are trying to import (asserted below).
 		await page.goto('/settings/integrations');
+		await expect(page.getByTestId('integration-parkrun')).toBeVisible({ timeout: 10_000 });
 
-		const card = page.getByTestId('chronotrack-card');
-		await expect(card).toBeVisible({ timeout: 10_000 });
-		await expect(card.getByTestId('chronotrack-unavailable')).toBeVisible({ timeout: 10_000 });
-		await expect(card.getByTestId('chronotrack-open')).toHaveCount(0);
-
-		// parkrun stays available (fail-closed is scoped to the API providers).
-		await expect(page.getByText('parkrun', { exact: true })).toBeVisible();
+		await expect(page.getByTestId('chronotrack-card')).toHaveCount(0);
+		await expect(page.getByTestId('chronotrack-open')).toHaveCount(0);
 	});
 
 	test('the race calendar import modal names ChronoTrack, not RunSignUp', async ({ page }) => {

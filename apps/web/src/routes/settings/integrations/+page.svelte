@@ -6,14 +6,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { auth } from '$lib/stores/auth.svelte';
-	import {
-		fetchIntegrations,
-		connectIntegration,
-		disconnectIntegration,
-		isRunSignUpConfigured,
-		isUltraSignUpConfigured,
-		isChronoTrackConfigured,
-	} from '$lib/core/data';
+	import { fetchIntegrations, connectIntegration, disconnectIntegration } from '$lib/core/data';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import {
 		stravaAuthUrl,
@@ -35,6 +28,17 @@
 	import { importRefusalMessage } from '$lib/i18n/import_refusal_message';
 	import { browser } from '$app/environment';
 	import { parkrunLikelyUnavailable } from '$lib/integrations/parkrun_regions';
+	import {
+		CONNECT_INTEGRATIONS,
+		RACE_INTEGRATIONS,
+		resolveIntegrationVerdicts,
+	} from '$lib/integrations/availability';
+	import {
+		integrationIsStranded,
+		visibleIntegrations,
+		type GateVerdict,
+	} from '$lib/integrations/integration_visibility';
+	import InfoTip from '$lib/components/InfoTip.svelte';
 
 	interface IntegrationUI {
 		provider: string;
@@ -45,40 +49,52 @@
 		loading: boolean;
 	}
 
-	// Static shape only (brand name + icon). The translatable description is
+	// Brand name + icon come from the catalogue; the translatable description is
 	// NOT stored here — it's rendered reactively in the template via m() so it
 	// tracks locale changes (storing it in the integrations $state below would
 	// capture one locale at init).
-	const providers: Omit<IntegrationUI, 'connected' | 'lastSync' | 'loading'>[] = [
-		{ provider: 'strava', name: 'Strava', icon: 'directions_run' },
-		{ provider: 'parkrun', name: 'parkrun', icon: 'emoji_events' },
-		{ provider: 'garmin', name: 'Garmin Connect', icon: 'watch' },
-		{ provider: 'healthkit', name: 'Apple HealthKit', icon: 'favorite' },
-	];
-
 	let integrations = $state<IntegrationUI[]>(
-		providers.map((p) => ({ ...p, connected: false, lastSync: null, loading: false }))
+		CONNECT_INTEGRATIONS.map((p) => ({
+			provider: p.provider,
+			name: p.name,
+			icon: p.icon,
+			connected: false,
+			lastSync: null,
+			loading: false,
+		}))
 	);
 
+	// Resolved gate answers, keyed by provider. Starts EMPTY, which every gate
+	// reads as `pending` — so no card is offered before its gate has answered,
+	// and a deployment that configured none of this offers none of it.
+	let verdicts = $state<Record<string, GateVerdict>>({});
+
+	const connectedProviders = $derived(
+		integrations.filter((i) => i.connected).map((i) => i.provider)
+	);
+	const visibleConnect = $derived(
+		visibleIntegrations(CONNECT_INTEGRATIONS, verdicts, connectedProviders)
+	);
+	// The race cards hold no `integrations` row — the import is a per-race act
+	// on /races, not a stored connection — so nothing can be connected here.
+	const visibleRace = $derived(visibleIntegrations(RACE_INTEGRATIONS, verdicts, []));
+
+	function uiFor(provider: string): IntegrationUI {
+		// Every visible card is one of the catalogue entries `integrations` was
+		// built from, so this cannot miss.
+		return integrations.find((i) => i.provider === provider)!;
+	}
+
 	let pageLoading = $state(true);
-	let confirmingDisconnect = $state<number | null>(null);
+	// The provider whose disconnect is awaiting confirmation. Keyed by provider
+	// rather than by index: the rendered list is now a filtered view of the
+	// catalogue, so an index into it means nothing to `integrations`.
+	let confirmingDisconnect = $state<string | null>(null);
 
 	// parkrun runs in ~20 countries; outside its footprint the card keeps
 	// working (an expat can still connect an athlete ID) but discloses that
 	// there may be no events nearby instead of presenting as universal.
 	const parkrunRegionNote = browser ? parkrunLikelyUnavailable(navigator.language) : false;
-
-	// RunSignUp race-results import runs through the race-results-import EF (no
-	// stored integration row). The whole leg is gated on a server-side API key;
-	// probe it once so the card can show the unavailable explainer fail-closed.
-	let runSignUpAvailable = $state(false);
-
-	// UltraSignup (trail/ultra results) is the same fail-closed shape on its own
-	// server-side key; probe it independently so the card can show the explainer.
-	let ultraSignUpAvailable = $state(false);
-	// ChronoTrack race-results import runs through the same EF behind its own
-	// CHRONOTRACK_* credential gate; probe it once for the same fail-closed card.
-	let chronoTrackAvailable = $state(false);
 
 	async function refreshIntegrations() {
 		const saved = await fetchIntegrations();
@@ -145,32 +161,16 @@
 			}
 		}
 
-		try {
-			runSignUpAvailable = await isRunSignUpConfigured();
-		} catch {
-			runSignUpAvailable = false;
-		}
-
-		try {
-			ultraSignUpAvailable = await isUltraSignUpConfigured();
-		} catch {
-			ultraSignUpAvailable = false;
-		}
-
-		try {
-			chronoTrackAvailable = await isChronoTrackConfigured();
-		} catch {
-			chronoTrackAvailable = false;
-		}
+		// Resolved before the skeleton clears, so a card never renders and then
+		// vanishes under the runner as its probe lands.
+		verdicts = await resolveIntegrationVerdicts();
 
 		pageLoading = false;
 	});
 
-	async function toggle(index: number) {
-		const item = integrations[index];
-
+	async function toggle(item: IntegrationUI) {
 		if (item.connected) {
-			confirmingDisconnect = index;
+			confirmingDisconnect = item.provider;
 			return;
 		}
 
@@ -208,9 +208,9 @@
 	}
 
 	async function performDisconnect() {
-		const index = confirmingDisconnect;
-		if (index == null) return;
-		const item = integrations[index];
+		const provider = confirmingDisconnect;
+		if (provider === null) return;
+		const item = uiFor(provider);
 		confirmingDisconnect = null;
 		item.loading = true;
 		try {
@@ -336,8 +336,7 @@
 	// again" is still on the card when they come back.
 	let stravaPartial = $state<{ resumable: boolean } | null>(null);
 
-	async function handleSyncStrava(index: number) {
-		const item = integrations[index];
+	async function handleSyncStrava(item: IntegrationUI) {
 		item.loading = true;
 		try {
 			const result = await syncStrava(stravaLookbackDays);
@@ -401,17 +400,36 @@
 				</p>
 			</section>
 		{/if}
+		{#if visibleConnect.length > 0}
 		<section class="provider-section">
 			<h2>{m('settingsIntegrations.availableHeading')}</h2>
 			<div class="integration-list">
-			{#each integrations as integration, i}
-				<div class="integration-card" class:connected={integration.connected}>
+			{#each visibleConnect as gated (gated.spec.provider)}
+				{@const integration = uiFor(gated.spec.provider)}
+				<div
+					class="integration-card"
+					class:connected={integration.connected}
+					data-testid="integration-{integration.provider}"
+				>
 					<div class="integration-icon" data-provider={integration.provider} aria-hidden="true">
 						<span class="material-symbols">{integration.icon}</span>
 					</div>
 					<div class="integration-info">
-						<h3>{integration.name}</h3>
+						<h3>
+							{integration.name}
+							<InfoTip
+								label={m('settingsIntegrations.infoAbout', { name: integration.name })}
+								title={integration.name}
+								body={m(`settingsIntegrations.${integration.provider}Info` as MessageKey)}
+								testId="info-{integration.provider}"
+							/>
+						</h3>
 						<p>{m(`settingsIntegrations.${integration.provider}Description` as MessageKey)}</p>
+						{#if integrationIsStranded(gated.status, gated.connected)}
+							<p class="sync-note" data-testid="stranded-{integration.provider}">
+								{m('settingsIntegrations.strandedNote')}
+							</p>
+						{/if}
 						{#if integration.provider === 'parkrun' && parkrunRegionNote}
 							<p class="sync-note">{m('settingsIntegrations.parkrunRegionNote')}</p>
 						{/if}
@@ -457,7 +475,7 @@
 							<button
 								class="btn btn-sync"
 								disabled={integration.loading}
-								onclick={() => handleSyncStrava(i)}
+								onclick={() => handleSyncStrava(integration)}
 							>
 								{integration.loading ? m('settingsIntegrations.syncing') : m('settingsIntegrations.syncNow')}
 							</button>
@@ -467,7 +485,7 @@
 							class:btn-disconnect={integration.connected}
 							class:btn-connect={!integration.connected}
 							disabled={integration.loading}
-							onclick={() => toggle(i)}
+							onclick={() => toggle(integration)}
 						>
 							{#if integration.loading}
 								...
@@ -480,9 +498,18 @@
 			{/each}
 			</div>
 		</section>
+		{/if}
 
 		<section class="card bulk-import">
-			<h2>{m('settingsIntegrations.stravaBulkHeading')}</h2>
+			<h2>
+				{m('settingsIntegrations.stravaBulkHeading')}
+				<InfoTip
+					label={m('settingsIntegrations.infoAbout', { name: 'Strava' })}
+					title={m('settingsIntegrations.stravaBulkHeading')}
+					body={m('settingsIntegrations.stravaBulkInfo')}
+					testId="info-strava-bulk"
+				/>
+			</h2>
 			<p class="card-sub">
 				{m('settingsIntegrations.stravaBulkPrefix')}<a href="https://www.strava.com/athlete/delete_your_account" target="_blank" rel="noopener noreferrer"
 					>{m('settingsIntegrations.stravaBulkLink')}</a
@@ -557,7 +584,15 @@
 		</section>
 
 		<section class="card bulk-import">
-			<h2>{m('settingsIntegrations.garminBulkHeading')}</h2>
+			<h2>
+				{m('settingsIntegrations.garminBulkHeading')}
+				<InfoTip
+					label={m('settingsIntegrations.infoAbout', { name: 'Garmin' })}
+					title={m('settingsIntegrations.garminBulkHeading')}
+					body={m('settingsIntegrations.garminBulkInfo')}
+					testId="info-garmin-bulk"
+				/>
+			</h2>
 			<p class="card-sub">
 				{m('settingsIntegrations.garminBulkFrag1')}<code>.fit</code>{m('settingsIntegrations.garminBulkFrag2')}<code>.zip</code>{m('settingsIntegrations.garminBulkFrag3')}<a href="https://www.garmin.com/account/datamanagement/exportdata/" target="_blank" rel="noopener noreferrer"
 					>{m('settingsIntegrations.garminBulkLink')}</a
@@ -623,62 +658,28 @@
 			{/if}
 		</section>
 
-		<section class="card runsignup-card" data-testid="runsignup-card">
-			<div class="integration-icon" data-provider="runsignup" aria-hidden="true">
-				<span class="material-symbols">flag</span>
-			</div>
-			<div class="runsignup-body">
-				<h2>{m('integrations.runsignup')}</h2>
-				<p class="card-sub">{m('integrations.runsignupConnect')}</p>
-				{#if runSignUpAvailable}
-					<a class="btn btn-connect" href="/races" data-testid="runsignup-open">
-						{m('integrations.runsignupOpen')}
+		{#each visibleRace as gated (gated.spec.provider)}
+			<section class="card runsignup-card" data-testid="{gated.spec.provider}-card">
+				<div class="integration-icon" data-provider={gated.spec.provider} aria-hidden="true">
+					<span class="material-symbols">{gated.spec.icon}</span>
+				</div>
+				<div class="runsignup-body">
+					<h2>
+						{m(`integrations.${gated.spec.provider}` as MessageKey)}
+						<InfoTip
+							label={m('settingsIntegrations.infoAbout', { name: gated.spec.name })}
+							title={gated.spec.name}
+							body={m(`integrations.${gated.spec.provider}Info` as MessageKey)}
+							testId="info-{gated.spec.provider}"
+						/>
+					</h2>
+					<p class="card-sub">{m(`integrations.${gated.spec.provider}Connect` as MessageKey)}</p>
+					<a class="btn btn-connect" href="/races" data-testid="{gated.spec.provider}-open">
+						{m(`integrations.${gated.spec.provider}Open` as MessageKey)}
 					</a>
-				{:else}
-					<p class="runsignup-unavailable" data-testid="runsignup-unavailable" role="status">
-						{m('integrations.runsignupUnavailable')}
-					</p>
-				{/if}
-			</div>
-		</section>
-
-		<section class="card runsignup-card" data-testid="ultrasignup-card">
-			<div class="integration-icon" data-provider="ultrasignup" aria-hidden="true">
-				<span class="material-symbols">terrain</span>
-			</div>
-			<div class="runsignup-body">
-				<h2>{m('integrations.ultrasignup')}</h2>
-				<p class="card-sub">{m('integrations.ultrasignupConnect')}</p>
-				{#if ultraSignUpAvailable}
-					<a class="btn btn-connect" href="/races" data-testid="ultrasignup-open">
-						{m('integrations.ultrasignupOpen')}
-					</a>
-				{:else}
-					<p class="runsignup-unavailable" data-testid="ultrasignup-unavailable" role="status">
-						{m('integrations.ultrasignupUnavailable')}
-					</p>
-				{/if}
-			</div>
-		</section>
-
-		<section class="card runsignup-card" data-testid="chronotrack-card">
-			<div class="integration-icon" data-provider="chronotrack" aria-hidden="true">
-				<span class="material-symbols">timer</span>
-			</div>
-			<div class="runsignup-body">
-				<h2>{m('integrations.chronotrack')}</h2>
-				<p class="card-sub">{m('integrations.chronotrackConnect')}</p>
-				{#if chronoTrackAvailable}
-					<a class="btn btn-connect" href="/races" data-testid="chronotrack-open">
-						{m('integrations.chronotrackOpen')}
-					</a>
-				{:else}
-					<p class="runsignup-unavailable" data-testid="chronotrack-unavailable" role="status">
-						{m('integrations.chronotrackUnavailable')}
-					</p>
-				{/if}
-			</div>
-		</section>
+				</div>
+			</section>
+		{/each}
 	{/if}
 </div>
 
@@ -686,7 +687,7 @@
 	open={confirmingDisconnect !== null}
 	title={m('settingsIntegrations.disconnectDialogTitle')}
 	message={confirmingDisconnect !== null
-		? m('settingsIntegrations.disconnectDialogMessage', { name: integrations[confirmingDisconnect].name })
+		? m('settingsIntegrations.disconnectDialogMessage', { name: uiFor(confirmingDisconnect).name })
 		: ''}
 	confirmLabel={m('settingsIntegrations.disconnect')}
 	danger

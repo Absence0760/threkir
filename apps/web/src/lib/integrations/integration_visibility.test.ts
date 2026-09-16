@@ -7,6 +7,7 @@ import { strict as assert } from 'node:assert';
 import {
 	gateIntegrations,
 	integrationIsActionable,
+	integrationIsStranded,
 	integrationIsVisible,
 	integrationStatus,
 	visibleIntegrations,
@@ -109,4 +110,17 @@ test('grading never mutates the catalogue it was handed', () => {
 	const before = JSON.stringify(SPECS);
 	gateIntegrations(SPECS, { strava: true }, ['strava']);
 	assert.equal(JSON.stringify(SPECS), before);
+});
+
+test('only a connected row against a leg that exists nowhere is stranded', () => {
+	// `unconfigured` is deliberately NOT stranded: the env var gates starting a
+	// new grant, not syncing one that already exists.
+	assert.equal(integrationIsStranded('unconfigured', true), false);
+	assert.equal(integrationIsStranded('usable', true), false);
+	assert.equal(integrationIsStranded('pending', true), false);
+	assert.equal(integrationIsStranded('unsupported', true), true);
+	assert.equal(integrationIsStranded('unbuilt', true), true);
+	for (const status of ['usable', 'pending', 'unconfigured', 'unsupported', 'unbuilt'] as const) {
+		assert.equal(integrationIsStranded(status, false), false, status);
+	}
 });

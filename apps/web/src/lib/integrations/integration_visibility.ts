@@ -88,6 +88,26 @@ export function integrationIsVisible(status: IntegrationStatus, connected: boole
 	return connected || status === 'usable';
 }
 
+/// Whether a connected row is STRANDED — still linked to the account, but
+/// attached to something this client can never drive.
+///
+/// Narrower than `!actionable` on purpose. An `unconfigured` Strava is not
+/// stranded: `PUBLIC_STRAVA_CLIENT_ID` builds the OAuth redirect and so gates
+/// starting a NEW grant, while syncing an existing one runs entirely on the
+/// Edge Function's own server-side credentials. Saying "this can't sync here"
+/// over a connection that syncs fine would be its own lie, and the sync's real
+/// refusal already has a sentence of its own.
+///
+/// `unsupported` and `unbuilt` are different: no leg exists on any deployment,
+/// so a row against one is a placeholder an earlier ungated card wrote, and
+/// disconnecting it is the only thing left to do with it.
+export function integrationIsStranded(
+	status: IntegrationStatus,
+	connected: boolean
+): boolean {
+	return connected && (status === 'unsupported' || status === 'unbuilt');
+}
+
 export interface IntegrationGated<T extends { provider: string; gate: IntegrationGate }> {
 	spec: T;
 	status: IntegrationStatus;

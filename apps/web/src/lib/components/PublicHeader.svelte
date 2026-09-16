@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { auth } from '$lib/stores/auth.svelte';
 	import { m } from '$lib/i18n/store.svelte';
+	import MotionToggle from '$lib/components/marketing/MotionToggle.svelte';
+
+	/// The landing page runs continuous motion and owes it a pause control
+	/// (WCAG 2.2.2); /learn runs none, so only the page that moves asks for it.
+	let { motionToggle = false }: { motionToggle?: boolean } = $props();
 
 	// This bar is only ever drawn over a dark ramp -- the landing hero, or
 	// the brand band every /learn route opens on -- so it is transparent
@@ -28,6 +33,9 @@
 	     while redundant. Sign In stays because a returning visitor has
 	     nothing else to aim at; new visitors have the hero. -->
 	<div class="nav-links">
+		{#if motionToggle}
+			<MotionToggle />
+		{/if}
 		<a href="/learn" class="nav-link">{m('landing.navLearn')}</a>
 		{#if auth.loggedIn}
 			<a href="/dashboard" class="nav-signin">{m('landing.openApp')}</a>

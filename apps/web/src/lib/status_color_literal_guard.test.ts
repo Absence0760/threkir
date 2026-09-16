@@ -602,8 +602,9 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 		FFFFFF: [1, 'fixed-canvas'],
 	},
 	// Header over that same hero: white hover ink, 5.699:1 on the ramp's
-	// palest stop.
+	// palest stop. The motion toggle sits in the same bar with the same two.
 	'lib/components/PublicHeader.svelte': { FFFFFF: [2, 'fixed-canvas'] },
+	'lib/components/marketing/MotionToggle.svelte': { FFFFFF: [2, 'fixed-canvas'] },
 	// Sign-in brand pane (a fixed canvas; ramp + white copy measured per
 	// veil by gradient_foreground_guard.test.ts), the Google "G" mark, and
 	// Apple's required black button plus its hairline.

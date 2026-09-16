@@ -88,4 +88,49 @@ test.describe('/dashboard layout', () => {
 			expect(label.trim(), 'a weekly axis label must be a day number').toMatch(/^\d{1,2}$/);
 		}
 	});
+
+	test('the mileage chart stays inside its card at 300px, whichever bar is read', async ({
+		page
+	}) => {
+		// Each bar used to carry its own tooltip centred on its column. Twelve
+		// columns in a phone-width card are narrower than a "Sep 7 · 8.00 km"
+		// label, so the outer bars' labels overhung the card, and the last
+		// one ran past the viewport and scrolled the page sideways at rest —
+		// an opacity-0 box still has layout. The reflow sweep caught it only
+		// on a day whose latest week had a run (the label is shorter at zero),
+		// which is why this asserts containment directly, for the two edge
+		// bars, while one of them is being read.
+		await page.setViewportSize({ width: 300, height: 720 });
+		await page.goto('/dashboard');
+		await page.waitForLoadState('networkidle');
+
+		const bars = page.locator('.bar-col');
+		const count = await bars.count();
+		test.skip(count === 0, 'no run in the mileage window on the day the seed was reset');
+
+		const card = page.locator('section.card-elevated', { has: page.locator('.chart') });
+		const readout = page.getByTestId('mileage-readout');
+
+		for (const index of [0, count - 1]) {
+			await bars.nth(index).hover();
+			await expect(readout, `reading bar ${index} fills the readout`).toContainText('·');
+
+			const overhang = await card.evaluate((el) => {
+				const box = el.getBoundingClientRect();
+				return [...el.querySelectorAll('*')]
+					.map((child) => child.getBoundingClientRect())
+					.filter((r) => r.width > 0 && (r.left < box.left - 0.5 || r.right > box.right + 0.5))
+					.map((r) => `${Math.round(r.left)}..${Math.round(r.right)}`);
+			});
+			expect(overhang, `bar ${index}: nothing in the card may draw outside it`).toEqual([]);
+
+			const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+				scrollWidth: document.documentElement.scrollWidth,
+				clientWidth: document.documentElement.clientWidth
+			}));
+			expect(scrollWidth, `bar ${index}: the page must not scroll sideways`).toBeLessThanOrEqual(
+				clientWidth
+			);
+		}
+	});
 });

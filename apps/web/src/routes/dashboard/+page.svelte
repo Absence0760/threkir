@@ -966,6 +966,14 @@
 			}));
 	});
 
+	// The bar whose date + distance the readout above the chart shows. An
+	// index rather than the row, so a view toggle mid-hover reads whatever
+	// now sits in that slot instead of holding a row from the old view.
+	let mileageInspect = $state<number | null>(null);
+	let inspectedBar = $derived(
+		mileageInspect === null ? null : (mileageData[mileageInspect] ?? null)
+	);
+
 	let maxBar = $derived(
 		mileageData.length > 0 ? Math.max(...mileageData.map((w) => w.distance_m)) : 1
 	);
@@ -1622,15 +1630,43 @@
 				{#if mileageData.length === 0}
 					<p class="empty-text">{m('dash.mileageEmpty')}</p>
 				{:else}
-					<div class="chart">
-						{#each mileageData as week (week.week)}
+					<!-- A readout rail above the chart, the shape ElevationProfile
+					     uses, rather than a tooltip per bar. A tooltip centred on
+					     its column overhung the card once the window became twelve
+					     narrow weeks: the last bar's label ran past a 300px
+					     viewport and scrolled the page sideways even at opacity 0,
+					     because a transparent box still has layout. The rail is in
+					     flow, reserves its line so the bars never jump, and wraps
+					     inside the card in any locale. -->
+					<p class="chart-readout" data-testid="mileage-readout">
+						{#if inspectedBar}{inspectedBar.week} · {formatDistance(inspectedBar.distance_m)}{/if}
+					</p>
+					<!-- A list of named weeks, so the figures the readout shows on
+					     hover are also what a screen reader reads per bar. -->
+					<div
+						class="chart"
+						role="list"
+						onpointerleave={(e) => {
+							// A touch lifts before it leaves, so clearing on a touch
+							// pointerleave would wipe the reading the tap just made.
+							if (e.pointerType !== 'touch') mileageInspect = null;
+						}}
+					>
+						{#each mileageData as week, i (week.week)}
 							<!-- `class:empty` rather than a hidden column: a week with
 							     no run is the chart's most load-bearing datum, and the
 							     slot has to be visibly there for the gap to read as a
 							     gap. The bar keeps its zero height and the column
 							     shows a baseline tick instead. -->
-							<div class="bar-col" class:empty={week.distance_m === 0}>
-								<div class="bar-tooltip">{week.week} · {formatDistance(week.distance_m)}</div>
+							<div
+								class="bar-col"
+								role="listitem"
+								aria-label="{week.week} · {formatDistance(week.distance_m)}"
+								class:empty={week.distance_m === 0}
+								class:inspected={mileageInspect === i}
+								onpointerenter={() => (mileageInspect = i)}
+								onpointerdown={() => (mileageInspect = i)}
+							>
 								<div
 									class="bar"
 									style="height: {(week.distance_m / maxBar) * 100}%"
@@ -3382,21 +3418,16 @@
 		align-items: center;
 		height: 100%;
 		justify-content: flex-end;
-		position: relative;
 	}
-	.bar-col:hover .bar-tooltip { opacity: 1; }
-	.bar-tooltip {
-		position: absolute;
-		top: -1.5rem;
-		left: 50%;
-		transform: translateX(-50%);
+	.chart-readout {
+		margin: var(--space-sm) 0 0;
+		min-height: 1.5em;
+		line-height: 1.5;
 		font-size: var(--font-size-section-label);
 		font-weight: 600;
 		color: var(--color-text-secondary);
-		opacity: 0;
-		transition: opacity var(--transition-fast);
-		white-space: nowrap;
 		font-variant-numeric: tabular-nums;
+		overflow-wrap: anywhere;
 	}
 	.bar {
 		width: 100%;
@@ -3410,7 +3441,8 @@
 		min-height: 4px;
 		transition: height var(--transition-base), background var(--transition-fast);
 	}
-	.bar-col:hover .bar {
+	.bar-col:hover .bar,
+	.bar-col.inspected .bar {
 		background: linear-gradient(
 			180deg,
 			var(--color-primary-hover) 0%,
@@ -3426,7 +3458,8 @@
 		background: var(--color-border);
 		border-radius: var(--radius-pill);
 	}
-	.bar-col.empty:hover .bar {
+	.bar-col.empty:hover .bar,
+	.bar-col.empty.inspected .bar {
 		background: var(--color-text-tertiary);
 	}
 	.bar-label {

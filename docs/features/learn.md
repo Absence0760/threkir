@@ -106,6 +106,8 @@ The hub renders **category chips → one promoted guide → one grid of everythi
 
 The ItemList JSON-LD is still built from the same category-then-order sequence, so the structured data describes the order a reader actually sees.
 
+A **category page wears the same furniture as the hub** — kicker, chip row with its own chip marked `aria-current="page"`, grid, closing CTA. It used to be a breadcrumb, a bare `h1` and a grid, which read as a different site and made the breadcrumb the only way out; the chips are what let a reader move sideways between categories. `LearnCategoryNav.svelte` and `LearnSignupCta.svelte` are shared by both (distinct from `LearnCta.svelte`, which is the per-article CTA pointing at the app feature a guide teaches).
+
 **Reading time** is `estimateReadingMinutes` in `guides_index.ts` (pure, unit-tested) over a second `import.meta.glob` of the same files as `?raw` — the compiled module exposes frontmatter and a Svelte component, and neither can be word-counted. Both globs resolve at build time. It is keyed on the **English** source: a localized file is a translation of the same guide, so its word count differs by language rather than by how much there is to read. Every English guide currently lands on 2 minutes because they are all 431-523 words; the figure differentiates as the library grows.
 
 **Web-only. The twin invariant does not apply** (acquisition/SEO content, like the landing page / `/privacy` / `/compare`). A future single in-app "Learn / Guides" link opening the web hub is a one-link follow-up, not a screen and not a twin obligation.

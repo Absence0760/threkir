@@ -1532,7 +1532,7 @@
 		<h2>{m('settingsAccount.notificationsHeading')}</h2>
 		{#if !pushSupported}
 			<p class="section-desc">
-				{m('settingsAccount.pushUnsupportedPrefix')}<code>PUBLIC_VAPID_PUBLIC_KEY</code>{m('settingsAccount.pushUnsupportedSuffix')}
+				{m('settingsAccount.pushUnsupported')}
 			</p>
 		{:else if pushPermissionState === 'denied'}
 			<p class="section-desc">

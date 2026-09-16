@@ -147,7 +147,7 @@ export const RELATIVE_DECLARATION = new RegExp(
 /// against a census of 106 it had 46 of slack, so the 25 % of the tree the
 /// reader could not see (decisions § 1243) passed it unremarked — the guard's
 /// own failure mode, undetected by the check written for it.
-export const MIN_DECLARATIONS = 178;
+export const MIN_DECLARATIONS = 182;
 
 /**
  * @typedef {{ file: string, counterpart: string, reason: string }} KnownGap

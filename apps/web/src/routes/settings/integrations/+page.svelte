@@ -415,15 +415,15 @@
 						<span class="material-symbols">{integration.icon}</span>
 					</div>
 					<div class="integration-info">
-						<h3>
-							{integration.name}
+						<div class="title-row">
+							<h3>{integration.name}</h3>
 							<InfoTip
 								label={m('settingsIntegrations.infoAbout', { name: integration.name })}
 								title={integration.name}
 								body={m(`settingsIntegrations.${integration.provider}Info` as MessageKey)}
 								testId="info-{integration.provider}"
 							/>
-						</h3>
+						</div>
 						<p>{m(`settingsIntegrations.${integration.provider}Description` as MessageKey)}</p>
 						{#if integrationIsStranded(gated.status, gated.connected)}
 							<p class="sync-note" data-testid="stranded-{integration.provider}">
@@ -501,15 +501,15 @@
 		{/if}
 
 		<section class="card bulk-import">
-			<h2>
-				{m('settingsIntegrations.stravaBulkHeading')}
+			<div class="title-row">
+				<h2>{m('settingsIntegrations.stravaBulkHeading')}</h2>
 				<InfoTip
 					label={m('settingsIntegrations.infoAbout', { name: 'Strava' })}
 					title={m('settingsIntegrations.stravaBulkHeading')}
 					body={m('settingsIntegrations.stravaBulkInfo')}
 					testId="info-strava-bulk"
 				/>
-			</h2>
+			</div>
 			<p class="card-sub">
 				{m('settingsIntegrations.stravaBulkPrefix')}<a href="https://www.strava.com/athlete/delete_your_account" target="_blank" rel="noopener noreferrer"
 					>{m('settingsIntegrations.stravaBulkLink')}</a
@@ -584,15 +584,15 @@
 		</section>
 
 		<section class="card bulk-import">
-			<h2>
-				{m('settingsIntegrations.garminBulkHeading')}
+			<div class="title-row">
+				<h2>{m('settingsIntegrations.garminBulkHeading')}</h2>
 				<InfoTip
 					label={m('settingsIntegrations.infoAbout', { name: 'Garmin' })}
 					title={m('settingsIntegrations.garminBulkHeading')}
 					body={m('settingsIntegrations.garminBulkInfo')}
 					testId="info-garmin-bulk"
 				/>
-			</h2>
+			</div>
 			<p class="card-sub">
 				{m('settingsIntegrations.garminBulkFrag1')}<code>.fit</code>{m('settingsIntegrations.garminBulkFrag2')}<code>.zip</code>{m('settingsIntegrations.garminBulkFrag3')}<a href="https://www.garmin.com/account/datamanagement/exportdata/" target="_blank" rel="noopener noreferrer"
 					>{m('settingsIntegrations.garminBulkLink')}</a
@@ -664,15 +664,15 @@
 					<span class="material-symbols">{gated.spec.icon}</span>
 				</div>
 				<div class="runsignup-body">
-					<h2>
-						{m(`integrations.${gated.spec.provider}` as MessageKey)}
+					<div class="title-row">
+						<h2>{m(`integrations.${gated.spec.provider}` as MessageKey)}</h2>
 						<InfoTip
 							label={m('settingsIntegrations.infoAbout', { name: gated.spec.name })}
 							title={gated.spec.name}
 							body={m(`integrations.${gated.spec.provider}Info` as MessageKey)}
 							testId="info-{gated.spec.provider}"
 						/>
-					</h2>
+					</div>
 					<p class="card-sub">{m(`integrations.${gated.spec.provider}Connect` as MessageKey)}</p>
 					<a class="btn btn-connect" href="/races" data-testid="{gated.spec.provider}-open">
 						{m(`integrations.${gated.spec.provider}Open` as MessageKey)}
@@ -967,6 +967,26 @@
 	.card h2 {
 		font-size: 1rem;
 		font-weight: 700;
+		margin: 0 0 var(--space-xs);
+	}
+	/* The heading and its (i) sit side by side in a row rather than the tip
+	   nesting inside the heading, where its "About …" label would be read
+	   as part of the heading's name (info_tip_placement_guard.test.ts). The
+	   row takes over the margin each heading carried, so it must follow
+	   `.card h2` for the reset below to win. */
+	.title-row {
+		display: flex;
+		align-items: center;
+		gap: var(--space-xs);
+	}
+	.title-row > h2,
+	.title-row > h3 {
+		margin: 0;
+	}
+	.integration-info .title-row {
+		margin-bottom: 0.125rem;
+	}
+	.card .title-row {
 		margin: 0 0 var(--space-xs);
 	}
 	.card-sub {

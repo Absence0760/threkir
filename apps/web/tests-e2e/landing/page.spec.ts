@@ -39,20 +39,27 @@ test.describe('/ (landing)', () => {
 		await page.waitForURL(/\/login/, { timeout: 10_000 });
 	});
 
-	test('top nav anchor links jump to in-page sections', async ({ page }) => {
-		// The "Apps" + "Features" nav links use /#apps / /#features
-		// fragment scrolls (root-anchored so the shared PublicHeader
-		// resolves them from /learn too). Pin the targets exist so a
-		// refactor that renames a section id surfaces here.
+	test('the in-page sections stay addressable, and only the footer links them', async ({
+		page,
+	}) => {
+		// Apps + Features were header anchors to sections one scroll away, and
+		// were already hidden below 768px. They live in the footer now; the
+		// section ids stay live because the footer -- and any deep link --
+		// still targets them.
 		await page.goto('/');
 		await expect(page.locator('section#apps')).toBeVisible();
 		await expect(page.locator('section#features')).toBeVisible();
-		// Nav links carry the matching href.
-		await expect(page.getByRole('link', { name: 'Apps' }).first()).toHaveAttribute(
+
+		const nav = page.locator('nav.landing-nav');
+		await expect(nav.getByRole('link', { name: 'Apps' })).toHaveCount(0);
+		await expect(nav.getByRole('link', { name: 'Features' })).toHaveCount(0);
+
+		const footer = page.locator('footer.landing-footer');
+		await expect(footer.getByRole('link', { name: 'Apps' })).toHaveAttribute(
 			'href',
 			'/#apps'
 		);
-		await expect(page.getByRole('link', { name: 'Features' }).first()).toHaveAttribute(
+		await expect(footer.getByRole('link', { name: 'Features' })).toHaveAttribute(
 			'href',
 			'/#features'
 		);

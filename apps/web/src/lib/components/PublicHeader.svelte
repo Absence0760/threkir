@@ -18,9 +18,12 @@
 			<img src="/wordmark-light.svg" alt="Threkir" class="landing-wordmark on-dark" />
 		{/if}
 	</a>
+	<!-- Apps + Features were in-page anchors to sections one scroll away on a
+	     four-section page, and they were already hidden below 768px -- the
+	     mobile bar has always shipped without them. They stay in the footer,
+	     where a site map belongs, and the section ids stay live for the deep
+	     links that target them. -->
 	<div class="nav-links">
-		<a href="/#apps" class="nav-link">{m('landing.navApps')}</a>
-		<a href="/#features" class="nav-link">{m('landing.navFeatures')}</a>
 		<a href="/learn" class="nav-link">{m('landing.navLearn')}</a>
 		{#if auth.loggedIn}
 			<a href="/dashboard" class="nav-signin">{m('landing.openApp')}</a>

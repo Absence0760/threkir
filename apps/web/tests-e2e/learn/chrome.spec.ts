@@ -29,13 +29,8 @@ test.describe('/learn shared public chrome', () => {
 			await expect(logo).toHaveAttribute('href', '/');
 			await expect(logo.locator('img[alt="Threkir"]').first()).toBeVisible();
 
-			// Same nav links as the landing page, root-anchored so the
-			// fragment targets resolve from /learn.
-			await expect(nav.getByRole('link', { name: 'Apps' })).toHaveAttribute('href', '/#apps');
-			await expect(nav.getByRole('link', { name: 'Features' })).toHaveAttribute(
-				'href',
-				'/#features'
-			);
+			// Same nav as the landing page. The in-page Apps + Features
+			// anchors are gone from the bar, so nothing here is a fragment.
 			await expect(nav.getByRole('link', { name: 'Learn' })).toHaveAttribute('href', '/learn');
 			await expect(nav.locator('.nav-signin')).toHaveAttribute('href', '/login');
 		});

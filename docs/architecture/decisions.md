@@ -29049,3 +29049,11 @@ The plan hero and the upcoming-event card render **above** the gate rather than 
 The regression test pins **both** directions, which is the non-obvious half: a regression that never shows the card merely restores the old empty grid, but one that never stops showing it hides the dashboard from every real account, and only the second is a catastrophe. `dashboard/page.spec.ts` had to change too — it asserted that a runless account sees the Mileage card's empty-state hint, which is precisely the behaviour being removed. That assertion is retired rather than relaxed, and the test now pins what its own comment always claimed to be about: no derived-metric jargon reaches a Day-One runner. `dash.mileageEmpty` stays live for an account that has runs but none inside the chart window.
 
 Web only for now; `dashboard_screen.dart` still composes its stack for a runless account (§ 24).
+
+## 1617. The actionlint install retries its fetch, and that is not the retry this repo forbids
+
+`workflow-lint` installed actionlint with a bare `go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12`. On 2026-09-16 that fetch died mid-stream — `go.yaml.in/yaml/v4@v4.0.0-rc.3: read "https://proxy.golang.org/…": stream error; INTERNAL_ERROR` — and took the job red on a PR whose diff touched no workflow file at all. Nothing had been linted yet; the verdict was about the Go module proxy's TCP connection.
+
+The step now wraps the `go install` in the same three-attempt loop with backoff that the Deno cache warm above it has carried since § 775, down to the `::warning::` per attempt and the `::error::` that names the fetch rather than the workflows.
+
+Which cuts against the house rule that a retry must never be reached for in place of a root-cause fix — so the distinction is worth stating once. That rule is about a retry that hides a defect in the code under test: a flaky assertion, a race the test keeps losing, a timeout raised until a slow path fits under it. Here the code under test has not run. The failure is entirely in fetching a third-party binary over someone else's network, where a transient stream error is the expected failure mode and a persistent one is still a verdict — three attempts fail the job exactly as one did. The rule to apply to a retry is whose failure it absorbs, not whether it is a retry.

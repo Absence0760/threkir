@@ -113,8 +113,17 @@ const RAMPS: Ramp[] = [
 		veils: [
 			{ colour: '#FE5932', alpha: 0.18, why: '.hero-glow::before wordmark orange' },
 			{ colour: '#2C5F6E', alpha: 0.18, why: '.hero-glow::after product teal' },
+			{ colour: '#FFFFFF', alpha: 0.07, why: '.topo--hero contour lines' },
 		],
 		why: 'the marketing hero headline + subhead',
+	},
+	{
+		file: 'routes/+page.svelte',
+		anchor: 'background: linear-gradient(140deg, #A01E77',
+		stops: 2,
+		ink: '#FFFFFF',
+		floor: 4.5,
+		why: 'the landing journey step numbers (0.95rem bold is not large text)',
 	},
 	{
 		file: 'lib/components/LearnPage.svelte',
@@ -130,6 +139,11 @@ const RAMPS: Ramp[] = [
 		stops: 2,
 		ink: 'rgba(255, 255, 255, 0.85)',
 		floor: 4.5,
+		veils: [
+			{ colour: '#FE5932', alpha: 0.2, why: '.closing-glow::before ember' },
+			{ colour: '#A01E77', alpha: 0.22, why: '.closing-glow::after magenta' },
+			{ colour: '#FFFFFF', alpha: 0.06, why: '.topo--closing contour lines' },
+		],
 		why: 'the closing call-to-action block',
 	},
 ];

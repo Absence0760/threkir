@@ -3,7 +3,13 @@
 	import TrackPreview from '$lib/components/TrackPreview.svelte';
 	import MapBackdrop from './MapBackdrop.svelte';
 	import { m } from '$lib/i18n/store.svelte';
+	import { DEFAULT_SITE_URL } from '$lib/core/site_url';
+	import { countUp } from '$lib/motion/actions';
+	import { motion } from '$lib/motion/motion.svelte';
+	import { tickClock } from '$lib/motion/motion';
 	import {
+		DEMO_ELEVATION,
+		DEMO_HEART_RATE,
 		DEMO_HR_ZONES,
 		DEMO_SPLITS,
 		DEMO_TRACK,
@@ -29,6 +35,40 @@
 
 	const slowest = Math.max(...DEMO_SPLITS.map((s) => s.seconds));
 	const fastest = Math.min(...DEMO_SPLITS.map((s) => s.seconds));
+	const fastestLabel = `${Math.floor(fastest / 60)}:${String(fastest % 60).padStart(2, '0')}`;
+	const avgBpm = Math.round(DEMO_HEART_RATE.reduce((a, b) => a + b, 0) / DEMO_HEART_RATE.length);
+
+	// The address bar reads the brand origin from its one definition rather
+	// than spelling it, so a domain move cannot leave the shot behind.
+	const SHOT_ADDRESS = `${new URL(DEFAULT_SITE_URL).host}/runs`;
+
+	// The app's sidebar, as icons only. Every one is already in the icon
+	// subset because the real sidebar names it.
+	const RAIL = ['directions_run', 'route', 'monitoring', 'calendar_month', 'group'];
+
+	/// A series drawn into a 100-wide viewBox as a smoothed line and the area
+	/// under it. The chart is stretched to its box (preserveAspectRatio none)
+	/// and the line keeps its weight with non-scaling-stroke.
+	function chart(values: number[], height: number, pad = 3): { line: string; area: string } {
+		const lo = Math.min(...values);
+		const hi = Math.max(...values);
+		const pts = values.map((v, i): [number, number] => [
+			(i / (values.length - 1)) * 100,
+			height - pad - ((v - lo) / (hi - lo || 1)) * (height - pad * 2),
+		]);
+		let line = `M${pts[0][0].toFixed(2)} ${pts[0][1].toFixed(2)}`;
+		for (let i = 1; i < pts.length - 1; i++) {
+			const [x, y] = pts[i];
+			const [nx, ny] = pts[i + 1];
+			line += `Q${x.toFixed(2)} ${y.toFixed(2)} ${((x + nx) / 2).toFixed(2)} ${((y + ny) / 2).toFixed(2)}`;
+		}
+		const [lx, ly] = pts[pts.length - 1];
+		line += `L${lx.toFixed(2)} ${ly.toFixed(2)}`;
+		return { line, area: `${line}L100 ${height}L0 ${height}Z` };
+	}
+
+	const heart = chart(DEMO_HEART_RATE, 36);
+	const elevation = chart(DEMO_ELEVATION, 24);
 
 	// Bar heights spread across the real range rather than starting at
 	// zero: eight bars within 40s of each other would otherwise read as a
@@ -38,9 +78,73 @@
 		return 22 + ((slowest - seconds) / span) * 78;
 	}
 
+	// The phone is mid-run, so its clock runs. Markup carries the starting
+	// reading, which is what a visitor without script, or with motion off,
+	// sees; the ticker only advances it while the phone is on screen, the tab
+	// is visible, and nothing asked for stillness. 302 s/km is the 5:02 pace
+	// printed beside it, so the distance agrees with the clock.
+	let elapsed = $state('24:17');
+	let distanceKm = $state(4.82);
+	const PACE_S_PER_KM = 302;
+
+	function liveClock(node: HTMLElement) {
+		if (!browser || typeof IntersectionObserver === 'undefined') return;
+		let onScreen = false;
+		const observer = new IntersectionObserver((entries) => {
+			onScreen = entries.some((e) => e.isIntersecting);
+		});
+		observer.observe(node);
+		const timer = setInterval(() => {
+			if (!onScreen || motion.still || document.hidden) return;
+			elapsed = tickClock(elapsed);
+			distanceKm += 1 / PACE_S_PER_KM;
+		}, 1000);
+		return {
+			destroy() {
+				observer.disconnect();
+				clearInterval(timer);
+			},
+		};
+	}
+
+	/// Kilometre markers along the desktop route, placed from the rendered
+	/// path itself so they sit on the line TrackPreview drew. Decoration, not
+	/// motion, so it runs whatever the motion setting.
+	function kmMarkers(node: HTMLElement) {
+		if (!browser) return;
+		const route = node.querySelectorAll<SVGPathElement>('svg.track-preview path')[1];
+		const svg = route?.ownerSVGElement;
+		const length = route?.getTotalLength?.() ?? 0;
+		if (!svg || !length) return;
+		const NS = 'http://www.w3.org/2000/svg';
+		const LOOP_KM = 8.04;
+		const added: Element[] = [];
+		for (const km of [2, 4, 6]) {
+			const at = route.getPointAtLength((length * km) / LOOP_KM);
+			const mark = document.createElementNS(NS, 'g');
+			mark.setAttribute('class', 'km-mark');
+			mark.setAttribute('transform', `translate(${at.x.toFixed(2)} ${at.y.toFixed(2)})`);
+			const disc = document.createElementNS(NS, 'circle');
+			disc.setAttribute('r', '4.6');
+			const label = document.createElementNS(NS, 'text');
+			label.setAttribute('text-anchor', 'middle');
+			label.setAttribute('dominant-baseline', 'central');
+			label.setAttribute('font-size', '5.2');
+			label.textContent = String(km);
+			mark.append(disc, label);
+			svg.append(mark);
+			added.push(mark);
+		}
+		return {
+			destroy() {
+				for (const el of added) el.remove();
+			},
+		};
+	}
+
 	/// Plays the shot once: the route draws itself, its direction chevrons
-	/// and end caps fade in behind it, then the splits rise and the zone bar
-	/// wipes across.
+	/// and end caps fade in behind it, then the splits rise, the heart-rate
+	/// and elevation lines trace across and the zone bar wipes in.
 	///
 	/// Driven from here rather than from TrackPreview, which is the same
 	/// component the /runs and /routes lists draw with — a marketing
@@ -91,12 +195,15 @@
 				const NS = 'http://www.w3.org/2000/svg';
 				const pacer = document.createElementNS(NS, 'g');
 				pacer.setAttribute('class', 'pacer');
+				const ring = document.createElementNS(NS, 'circle');
+				ring.setAttribute('class', 'pacer-ring');
+				ring.setAttribute('r', '8.5');
 				const disc = document.createElementNS(NS, 'circle');
-				disc.setAttribute('r', '5');
+				disc.setAttribute('r', '6');
 				const figure = document.createElementNS(NS, 'path');
 				figure.setAttribute('d', RUNNER_GLYPH);
-				figure.setAttribute('transform', 'translate(-3.5 -3.5) scale(0.29)');
-				pacer.append(disc, figure);
+				figure.setAttribute('transform', 'translate(-4.2 -4.2) scale(0.35)');
+				pacer.append(ring, disc, figure);
 				pacer.style.offsetPath = `path("${d}")`;
 				svg.append(pacer);
 			}
@@ -118,6 +225,21 @@
 				bar.animate([{ transform: 'scaleY(0)' }, { transform: 'scaleY(1)' }], {
 					duration: 520,
 					delay: 900 + i * 70,
+					easing: EASE,
+					fill: 'backwards',
+				}),
+			);
+		});
+
+		// The charts wipe in along the inline axis. A clip rather than a dash
+		// draw: the lines keep their weight with non-scaling-stroke, and a
+		// dash pattern measured in user units breaks under it.
+		const fromStart = getComputedStyle(node).direction === 'rtl' ? 'inset(0 0 0 100%)' : 'inset(0 100% 0 0)';
+		node.querySelectorAll<SVGSVGElement>('svg.chart').forEach((chartEl, i) => {
+			plays.push(
+				chartEl.animate([{ clipPath: fromStart }, { clipPath: 'inset(0 0 0 0)' }], {
+					duration: 1500,
+					delay: 1000 + i * 250,
 					easing: EASE,
 					fill: 'backwards',
 				}),
@@ -148,44 +270,91 @@
 	<figcaption class="visually-hidden">{m('landing.previewCaption')}</figcaption>
 
 	<div class="browser" aria-hidden="true">
+		<!-- One gradient for every route in the shot: the wordmark's ramp, so
+		     the product's line and the hero's rendered line are the same line. -->
+		<svg class="shot-defs" width="0" height="0">
+			<defs>
+				<linearGradient id="shot-route" x1="0" y1="0" x2="1" y2="1">
+					<stop offset="0" style="stop-color: var(--brand-ember)" />
+					<stop offset="1" style="stop-color: var(--brand-magenta)" />
+				</linearGradient>
+			</defs>
+		</svg>
+
 		<div class="chrome">
-			<span class="dot"></span>
-			<span class="dot"></span>
-			<span class="dot"></span>
-			<span class="url">threkir.app</span>
+			<span class="lights"><span></span><span></span><span></span></span>
+			<span class="url"><span class="material-symbols">lock</span>{SHOT_ADDRESS}</span>
 		</div>
 
 		<div class="app">
-			<div class="trace">
+			<nav class="rail">
+				<img class="rail-logo" src="/logo-mark.svg" alt="" width="28" height="28" />
+				{#each RAIL as icon, i (icon)}
+					<span class="rail-item" class:rail-item--on={i === 0}><span class="material-symbols">{icon}</span></span>
+				{/each}
+			</nav>
+
+			<div class="trace" use:kmMarkers>
 				<MapBackdrop />
-				<TrackPreview points={DEMO_TRACK} aspect={1.35} />
+				<TrackPreview points={DEMO_TRACK} aspect={1.25} color="url(#shot-route)" />
+				<div class="elev-card">
+					<span class="metric-label">{m('landing.previewElevation')}</span>
+					<svg class="chart" viewBox="0 0 100 24" preserveAspectRatio="none">
+						<path class="chart-area chart-area--elev" d={elevation.area} />
+						<path class="chart-line chart-line--elev" d={elevation.line} />
+					</svg>
+				</div>
 			</div>
 
 			<div class="panel">
+				<div class="panel-head">
+					<span class="run-title">{m('landing.previewRunTitle')}</span>
+					<span class="run-avatar"></span>
+				</div>
+
 				<div class="stats">
 					<div class="stat">
 						<span class="stat-label">{m('landing.previewDistance')}</span>
-						<span class="stat-value">8.04<small>km</small></span>
+						<span class="stat-value"><span use:countUp={{ delay: 700 }}>8.04</span><small>km</small></span>
 					</div>
 					<div class="stat">
 						<span class="stat-label">{m('landing.previewTime')}</span>
-						<span class="stat-value">39:54</span>
+						<span class="stat-value"><span use:countUp={{ delay: 780 }}>39:54</span></span>
 					</div>
 					<div class="stat">
 						<span class="stat-label">{m('landing.previewPace')}</span>
-						<span class="stat-value">4:58<small>/km</small></span>
+						<span class="stat-value"><span use:countUp={{ delay: 860 }}>4:58</span><small>/km</small></span>
 					</div>
 				</div>
 
 				<div class="metric-block">
-					<span class="metric-label">{m('landing.previewSplits')}</span>
+					<div class="metric-row">
+						<span class="metric-label">{m('landing.previewSplits')}</span>
+						<span class="metric-note">{m('landing.previewFastest')} <strong>{fastestLabel}</strong></span>
+					</div>
 					<div class="splits">
 						{#each DEMO_SPLITS as split (split.km)}
 							<div class="split">
-								<div class="bar" style="height: {barHeight(split.seconds)}%"></div>
+								<div
+									class="bar"
+									class:bar--best={split.seconds === fastest}
+									style="height: {barHeight(split.seconds)}%"
+								></div>
+								<span class="split-km">{split.km}</span>
 							</div>
 						{/each}
 					</div>
+				</div>
+
+				<div class="metric-block">
+					<div class="metric-row">
+						<span class="metric-label">{m('landing.previewHeartRate')}</span>
+						<span class="metric-note"><strong>{avgBpm}</strong> bpm</span>
+					</div>
+					<svg class="chart chart--heart" viewBox="0 0 100 36" preserveAspectRatio="none">
+						<path class="chart-area chart-area--heart" d={heart.area} />
+						<path class="chart-line chart-line--heart" d={heart.line} />
+					</svg>
 				</div>
 
 				<div class="metric-block">
@@ -230,13 +399,13 @@
 				</span>
 			</div>
 
-			<div class="handset-app">
+			<div class="handset-app" use:liveClock>
 				<span class="rec"><span class="rec-dot"></span>{m('landing.previewRecording')}</span>
-				<span class="elapsed">24:17</span>
+				<span class="elapsed">{elapsed}</span>
 				<div class="handset-stats">
 					<div>
 						<span class="stat-label">{m('landing.previewDistance')}</span>
-						<span class="handset-value">4.82</span>
+						<span class="handset-value">{distanceKm.toFixed(2)}</span>
 					</div>
 					<div>
 						<span class="stat-label">{m('landing.previewPace')}</span>
@@ -245,7 +414,11 @@
 				</div>
 				<div class="handset-trace">
 					<MapBackdrop />
-					<TrackPreview points={DEMO_TRACK} aspect={0.95} />
+					<TrackPreview points={DEMO_TRACK} aspect={0.95} color="url(#shot-route)" />
+				</div>
+				<div class="controls">
+					<span class="control control--stop"></span>
+					<span class="control control--pause"></span>
 				</div>
 			</div>
 
@@ -261,64 +434,203 @@
 		margin: 0 auto;
 		max-width: 60rem;
 		width: 100%;
+		/* The hero centres its copy; an app screen does not. */
+		text-align: start;
+	}
+
+	/* A soft bloom behind the frames, in the wordmark's two ends, so the
+	   shot sits IN the hero's light rather than pasted over it. */
+	.shot::before {
+		content: '';
+		position: absolute;
+		inset: 8% 6% -4%;
+		z-index: -1;
+		border-radius: 50%;
+		background:
+			radial-gradient(closest-side at 30% 60%, rgba(254, 89, 50, 0.35), transparent),
+			radial-gradient(closest-side at 72% 40%, rgba(160, 30, 119, 0.4), transparent);
+		filter: blur(2.5rem);
+		pointer-events: none;
 	}
 
 	/* --- desktop frame ------------------------------------------------ */
 
+	.shot-defs {
+		position: absolute;
+		width: 0;
+		height: 0;
+	}
+
 	.browser {
-		border-radius: var(--radius-xl);
+		border-radius: 1.1rem;
 		overflow: hidden;
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
-		/* A deeper shadow than --shadow-lg: this floats over a dark hero
-		   ramp, where the token's near-black at 10% is invisible. */
-		box-shadow: 0 2rem 4rem rgba(0, 0, 0, 0.45);
+		/* Deeper than --shadow-lg: this floats over a dark hero ramp, where the
+		   token's near-black at 10% is invisible. The inset line is the lit top
+		   edge of a pane of glass. */
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.08),
+			0 2.5rem 5rem -1rem rgba(0, 0, 0, 0.55),
+			0 0 0 1px rgba(255, 255, 255, 0.04);
 	}
 
 	.chrome {
+		position: relative;
 		display: flex;
 		align-items: center;
-		gap: var(--space-xs);
-		padding: var(--space-sm) var(--space-md);
-		background: var(--color-bg-secondary);
+		justify-content: center;
+		height: 2.4rem;
+		padding: 0 var(--space-md);
+		background: color-mix(in srgb, var(--color-bg-secondary) 85%, var(--color-surface));
 		border-bottom: 1px solid var(--color-border);
 	}
 
-	.dot {
-		width: 0.55rem;
-		height: 0.55rem;
-		border-radius: var(--radius-pill);
-		background: var(--color-border);
+	.lights {
+		position: absolute;
+		inset-inline-start: var(--space-md);
+		display: flex;
+		gap: 0.4rem;
 	}
 
-	.url {
-		margin-inline-start: var(--space-md);
-		padding: 0.15rem var(--space-md);
+	.lights span {
+		width: 0.62rem;
+		height: 0.62rem;
 		border-radius: var(--radius-pill);
+		background: var(--color-danger);
+	}
+
+	.lights span:nth-child(2) { background: var(--color-warning); }
+	.lights span:nth-child(3) { background: var(--color-success); }
+
+	.url {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		min-width: 40%;
+		justify-content: center;
+		padding: 0.22rem var(--space-md);
+		border-radius: var(--radius-md);
 		background: var(--color-bg);
 		border: 1px solid var(--color-border);
 		font-size: var(--font-size-section-label);
-		color: var(--color-text-tertiary);
+		font-weight: 500;
+		color: var(--color-text-secondary);
+	}
+
+	.url .material-symbols {
+		font-size: 0.8rem;
+		color: var(--color-success-text);
 	}
 
 	.app {
 		display: grid;
-		grid-template-columns: 1.35fr 1fr;
-		min-height: 23rem;
+		grid-template-columns: 3.4rem minmax(0, 1.4fr) minmax(0, 1fr);
+		height: 25rem;
+	}
+
+	.rail {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.35rem;
+		padding: var(--space-md) 0;
+		background: color-mix(in srgb, var(--color-bg-secondary) 70%, var(--color-surface));
+		border-inline-end: 1px solid var(--color-border);
+	}
+
+	.rail-logo {
+		width: 1.75rem;
+		height: 1.75rem;
+		border-radius: 0.5rem;
+		margin-bottom: var(--space-sm);
+	}
+
+	.rail-item {
+		display: grid;
+		place-items: center;
+		width: 2.2rem;
+		height: 2.2rem;
+		border-radius: 0.65rem;
+		color: var(--color-text-tertiary);
+	}
+
+	.rail-item .material-symbols {
+		font-size: 1.2rem;
+	}
+
+	.rail-item--on {
+		color: var(--color-primary);
+		background: var(--color-primary-light);
+		box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 30%, transparent);
 	}
 
 	.trace {
 		position: relative;
+		overflow: hidden;
 		background: var(--color-bg-tertiary);
-		border-inline-end: 1px solid var(--color-border);
-		padding: var(--space-md);
+		padding: var(--space-md) var(--space-md) 4.5rem;
 	}
 
+	/* A glass readout over the map, the way the run page overlays its
+	   elevation profile. */
+	.elev-card {
+		position: absolute;
+		z-index: 2;
+		inset-inline: var(--space-md);
+		bottom: var(--space-md);
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+		padding: 0.5rem 0.75rem 0.4rem;
+		border-radius: 0.8rem;
+		background: color-mix(in srgb, var(--color-surface) 78%, transparent);
+		border: 1px solid var(--color-border);
+		backdrop-filter: blur(10px);
+		box-shadow: 0 0.75rem 1.5rem -0.75rem rgba(0, 0, 0, 0.35);
+	}
+
+	.elev-card .chart {
+		height: 2rem;
+	}
+
+	/* The inline-end padding is the phone's lane: it hangs over this edge,
+	   and at a laptop width there is no room beside the frame to push it
+	   further out without it leaving the page. */
 	.panel {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-lg);
-		padding: var(--space-lg);
+		gap: var(--space-md);
+		padding: var(--space-md) 3.75rem var(--space-md) var(--space-lg);
+		min-width: 0;
+	}
+
+	.panel-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-sm);
+		padding-bottom: var(--space-sm);
+		border-bottom: 1px solid var(--color-border);
+	}
+
+	.run-title {
+		font-size: 0.95rem;
+		font-weight: 700;
+		letter-spacing: -0.01em;
+		color: var(--color-text);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.run-avatar {
+		flex-shrink: 0;
+		width: 1.5rem;
+		height: 1.5rem;
+		border-radius: var(--radius-pill);
+		background: linear-gradient(135deg, var(--brand-ember), var(--brand-magenta));
+		box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 3px var(--color-fill-subtle);
 	}
 
 	.stats {
@@ -330,7 +642,7 @@
 	.stat {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-2xs);
+		gap: 0.1rem;
 	}
 
 	.stat-label,
@@ -343,8 +655,9 @@
 	}
 
 	.stat-value {
-		font-size: 1.15rem;
-		font-weight: 700;
+		font-size: 1.3rem;
+		font-weight: 800;
+		letter-spacing: -0.02em;
 		color: var(--color-text);
 		font-variant-numeric: tabular-nums;
 	}
@@ -353,53 +666,128 @@
 		font-size: var(--font-size-section-label);
 		font-weight: 600;
 		color: var(--color-text-tertiary);
-		margin-inline-start: 0.1rem;
+		margin-inline-start: 0.15rem;
 	}
 
 	.metric-block {
 		display: flex;
 		flex-direction: column;
+		gap: 0.45rem;
+	}
+
+	.metric-row {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
 		gap: var(--space-sm);
+	}
+
+	.metric-note {
+		font-size: var(--font-size-section-label);
+		color: var(--color-text-secondary);
+		white-space: nowrap;
+	}
+
+	.metric-note strong {
+		font-size: 0.8rem;
+		font-weight: 800;
+		color: var(--color-text);
+		font-variant-numeric: tabular-nums;
 	}
 
 	.splits {
 		display: flex;
 		align-items: flex-end;
-		gap: var(--space-xs);
-		height: 4.5rem;
+		gap: 0.3rem;
+		height: 4.25rem;
+		padding-bottom: 1rem;
 	}
 
 	.split {
+		position: relative;
 		flex: 1;
 		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: flex-end;
+		align-items: flex-end;
 		height: 100%;
-		gap: var(--space-2xs);
 	}
 
 	.bar {
 		width: 100%;
 		transform-origin: bottom;
-		border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-		background: var(--color-primary);
+		border-radius: 0.35rem 0.35rem 0.12rem 0.12rem;
+		background: linear-gradient(
+			180deg,
+			color-mix(in srgb, var(--color-primary) 85%, var(--color-surface)),
+			color-mix(in srgb, var(--color-primary) 45%, var(--color-surface))
+		);
+	}
+
+	.bar--best {
+		background: linear-gradient(180deg, var(--brand-ember), var(--brand-magenta));
+		box-shadow: 0 0 1rem rgba(254, 89, 50, 0.45);
+	}
+
+	.split-km {
+		position: absolute;
+		bottom: -1rem;
+		inset-inline: 0;
+		text-align: center;
+		font-size: var(--font-size-section-label);
+		font-weight: 600;
+		color: var(--color-text-tertiary);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.chart {
+		display: block;
+		width: 100%;
+		overflow: visible;
+	}
+
+	.chart--heart {
+		height: 2.9rem;
+	}
+
+	.chart-line {
+		fill: none;
+		stroke-width: 2.2;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+		vector-effect: non-scaling-stroke;
+	}
+
+	.chart-line--heart {
+		stroke: url(#shot-route);
+	}
+
+	.chart-line--elev {
+		stroke: var(--color-primary);
+	}
+
+	.chart-area--heart {
+		fill: url(#shot-route);
+		opacity: 0.18;
+	}
+
+	.chart-area--elev {
+		fill: var(--color-primary);
+		opacity: 0.16;
 	}
 
 	.zones {
 		display: flex;
+		gap: 3px;
 		/* The bar wipes in from the inline START, which is the right edge in
 		   RTL. transform-origin has no logical form, so the position is
 		   computed: --dir-sign is 1 in LTR (0% = left) and -1 in RTL (100%
 		   = right). */
 		transform-origin: calc(50% - 50% * var(--dir-sign)) center;
-		height: 0.6rem;
-		border-radius: var(--radius-pill);
-		overflow: hidden;
+		height: 0.55rem;
 	}
 
 	.zone {
 		display: block;
+		border-radius: var(--radius-pill);
 	}
 
 	/* One class per band rather than an interpolated `var(--zone-{i})`:
@@ -417,10 +805,11 @@
 	   actual positions, a Dynamic Island, a status bar and a home indicator.
 	   Everything is drawn from tokens, so it follows the theme like the rest
 	   of the shot. */
+	/* Hangs off the frame's bottom corner, clear of the panel's readings. */
 	.handset {
 		position: absolute;
-		inset-block-end: -3rem;
-		inset-inline-end: -3.5rem;
+		inset-block-end: -5rem;
+		inset-inline-end: -4rem;
 		width: 7.6rem;
 		aspect-ratio: 9 / 19.5;
 		border-radius: 1.6rem;
@@ -600,6 +989,55 @@
 		font-variant-numeric: tabular-nums;
 	}
 
+	/* Stop and pause, drawn rather than iconised: a square and two bars read
+	   at this scale where a glyph would blur. */
+	.controls {
+		display: flex;
+		justify-content: center;
+		gap: 0.7rem;
+		padding: 0.35rem 0 0.1rem;
+	}
+
+	.control {
+		position: relative;
+		display: block;
+		width: 1.55rem;
+		height: 1.55rem;
+		border-radius: var(--radius-pill);
+	}
+
+	.control--stop {
+		background: var(--color-bg-tertiary);
+		box-shadow: inset 0 0 0 1px var(--color-fill-subtle);
+	}
+
+	.control--stop::after {
+		content: '';
+		position: absolute;
+		inset: 33%;
+		border-radius: 2px;
+		background: var(--color-danger);
+	}
+
+	.control--pause {
+		background: linear-gradient(135deg, var(--brand-ember), var(--brand-magenta));
+		box-shadow: 0 0.3rem 0.8rem -0.2rem rgba(254, 89, 50, 0.6);
+	}
+
+	.control--pause::before,
+	.control--pause::after {
+		content: '';
+		position: absolute;
+		top: 32%;
+		bottom: 32%;
+		width: 12%;
+		border-radius: 1px;
+		background: var(--color-on-primary);
+	}
+
+	.control--pause::before { inset-inline-start: 34%; }
+	.control--pause::after { inset-inline-end: 34%; }
+
 	.handset-trace {
 		position: relative;
 		overflow: hidden;
@@ -612,40 +1050,72 @@
 		margin-block-start: var(--space-2xs);
 	}
 
-	/* Below ~60rem the phone would cover the desktop frame's panel, so it
-	   steps out of the overlap and the two frames stack. */
+	/* Below ~60rem the phone would cover the panel, so it steps out, the rail
+	   goes (a phone-width app has none), and map and panel stack. */
 	@media (max-width: 60rem) {
-		.app { grid-template-columns: minmax(0, 1fr); }
-		.trace { border-inline-end: none; border-block-end: 1px solid var(--color-border); }
+		.app {
+			grid-template-columns: minmax(0, 1fr);
+			height: auto;
+		}
+		.rail { display: none; }
+		.panel { padding-inline-end: var(--space-lg); }
+		.trace {
+			height: 17rem;
+			border-block-end: 1px solid var(--color-border);
+		}
 		.handset { display: none; }
 	}
 
 	/* TrackPreview draws a white casing under the line so it survives on top
-	   of map tiles. There are no tiles here, and at this size the casing read
-	   as a thick rubbery outline around the route rather than as contrast.
-	   Thinned from the outside so the list-card renderer keeps its own. */
-	.trace :global(svg.track-preview path:first-of-type),
-	.handset-trace :global(svg.track-preview path:first-of-type) {
-		stroke-width: 3.2;
-		stroke-opacity: 0.16;
+	   of map tiles. There are no tiles here, so the casing becomes the route's
+	   glow: the same gradient, wide and faint. Drawn as geometry rather than a
+	   drop-shadow filter, because a filter on the SVG rasterises everything in
+	   it, the runner included, and softens its edges. Styled from the outside
+	   so the list-card renderer keeps its own casing. */
+	/* Child combinators throughout: the runner's glyph is also the first
+	   path in its own group, and a descendant selector stroked it with this
+	   glow, which read as a blurred runner. */
+	.trace :global(svg.track-preview > path:first-of-type),
+	.handset-trace :global(svg.track-preview > path:first-of-type) {
+		stroke: url(#shot-route);
+		stroke-width: 9;
+		stroke-opacity: 0.22;
 	}
 
-	.trace :global(svg.track-preview path:nth-of-type(2)),
-	.handset-trace :global(svg.track-preview path:nth-of-type(2)) {
-		stroke-width: 2.2;
+	.trace :global(svg.track-preview > path:nth-of-type(2)),
+	.handset-trace :global(svg.track-preview > path:nth-of-type(2)) {
+		stroke-width: 2.8;
 	}
 
 	/* The direction chevrons are a list-card affordance; beside a moving
-	   runner they are noise. */
-	.trace :global(svg.track-preview g:not(.pacer)),
-	.handset-trace :global(svg.track-preview g:not(.pacer)) {
-		opacity: 0.35;
+	   runner and kilometre markers they are noise. */
+	.trace :global(svg.track-preview > g:not(.pacer):not(.km-mark)),
+	.handset-trace :global(svg.track-preview > g:not(.pacer)) {
+		display: none;
+	}
+
+	.trace :global(.km-mark circle) {
+		fill: var(--color-surface);
+		stroke: url(#shot-route);
+		stroke-width: 1.4;
+	}
+
+	.trace :global(.km-mark text) {
+		fill: var(--color-text);
+		font-weight: 800;
 	}
 
 	.shot :global(.pacer circle) {
 		fill: var(--color-primary);
 		stroke: var(--color-surface);
-		stroke-width: 1.2;
+		stroke-width: 1.4;
+	}
+
+	.shot :global(.pacer .pacer-ring) {
+		fill: none;
+		stroke: var(--color-primary);
+		stroke-width: 1;
+		stroke-opacity: 0.35;
 	}
 
 	/* TrackPreview's start/end caps mark where a finished trace begins and

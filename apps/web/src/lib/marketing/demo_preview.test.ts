@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DEMO_HR_ZONES, DEMO_SPLITS, DEMO_TRACK } from './demo_preview';
+import {
+	DEMO_ELEVATION,
+	DEMO_HEART_RATE,
+	DEMO_HR_ZONES,
+	DEMO_SPLITS,
+	DEMO_TRACK,
+} from './demo_preview';
 
 // The landing page renders this data through the product's own components,
 // so a malformed point or an out-of-range percentage is a visible marketing
@@ -52,4 +58,30 @@ test('heart-rate zones are whole percentages summing to 100', () => {
 		100,
 		'the stacked bar must fill exactly',
 	);
+});
+
+test('the heart-rate trace covers the run at plausible, whole bpm', () => {
+	// One a minute across a 39:54 run.
+	assert.equal(DEMO_HEART_RATE.length, 40);
+	for (const bpm of DEMO_HEART_RATE) {
+		assert.ok(Number.isInteger(bpm) && bpm >= 90 && bpm <= 200, `implausible ${bpm} bpm`);
+	}
+});
+
+test('the heart-rate trace rises with the negative split', () => {
+	// The splits get faster toward the end; a heart rate that fell over the
+	// same stretch would contradict the chart beside it.
+	const quarter = Math.floor(DEMO_HEART_RATE.length / 4);
+	const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+	assert.ok(
+		mean(DEMO_HEART_RATE.slice(-quarter)) > mean(DEMO_HEART_RATE.slice(quarter, -quarter)),
+		'the closing quarter should run hotter than the middle',
+	);
+});
+
+test('the elevation profile is a closed loop with a visible shape', () => {
+	assert.ok(DEMO_ELEVATION.length >= 16, 'too few readings to draw a profile');
+	assert.equal(DEMO_ELEVATION[0], DEMO_ELEVATION[DEMO_ELEVATION.length - 1], 'a loop ends where it starts');
+	for (const m of DEMO_ELEVATION) assert.ok(Number.isFinite(m) && m >= 0 && m < 3000, `bad height ${m}`);
+	assert.ok(Math.max(...DEMO_ELEVATION) - Math.min(...DEMO_ELEVATION) >= 10, 'the profile would draw flat');
 });

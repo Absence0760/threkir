@@ -103,3 +103,21 @@ export const DEMO_SPLITS: DemoSplit[] = [
 
 /// Share of time in each of the five heart-rate zones, as whole percentages.
 export const DEMO_HR_ZONES: number[] = [8, 21, 38, 24, 9];
+
+/// Heart rate through the run, one reading a minute across the 39:54, in bpm.
+/// Generated, not recorded: a warm-up climb, a steady middle with a small
+/// wander, and the late rise the negative split above implies. It lives apart
+/// from DEMO_TRACK, whose points must never look like captured telemetry.
+export const DEMO_HEART_RATE: number[] = [
+	118, 130, 135, 140, 141, 140, 145, 146, 148, 150, 147, 147, 146, 145, 149, 150, 149, 150,
+	146, 145, 148, 147, 150, 151, 148, 148, 146, 146, 149, 149, 150, 152, 150, 154, 156, 159,
+	165, 167, 167, 170,
+];
+
+/// Elevation around the loop, one reading every quarter kilometre, in metres.
+/// A gentle park profile; it starts and ends at the same height because the
+/// route is a closed loop.
+export const DEMO_ELEVATION: number[] = [
+	33, 36, 36, 34, 30, 29, 29, 30, 30, 29, 28, 28, 29, 29, 27, 22, 16, 13, 12, 13, 14, 14, 15,
+	17, 20, 23, 24, 22, 20, 19, 22, 25, 33,
+];

@@ -13,18 +13,83 @@
 	// third party, no consent question, and every colour a token, so it
 	// follows the theme like the rest of the shot. It is plainly stylised
 	// rather than dressed up as a real place.
+	//
+	// It is drawn the way a map is layered: water and parks, then building
+	// blocks, then every road's casing, then every road's fill, so crossings
+	// merge instead of stacking. Two street districts at different angles and
+	// two arterials that ignore both are what keep it from reading as graph
+	// paper.
 
 	// Class names here deliberately avoid the Material Symbols vocabulary.
-	// The icon-font generator treats any quoted string in it as a render
-	// site, so a one-word class name that happens to be a ligature pulls a
-	// glyph nothing draws into the subset and fails the build. Three of the
-	// obvious names for these shapes are ligatures; these are not. The scan
-	// does not skip comments either, so naming them here would reintroduce
-	// the very collision this note is about.
-	//
-	// Irregular spacing on purpose — an even grid reads as graph paper.
-	const ACROSS = [17, 43, 74, 101, 129, 152];
-	const DOWN = [21, 49, 78, 112, 147, 181, 214];
+	// The icon-font generator treats any quoted single word in it as a render
+	// site, so a class that happens to be a ligature pulls a glyph nothing
+	// draws into the subset. Every class below is hyphenated for that reason.
+
+	type Pt = [number, number];
+	type District = { origin: Pt; angle: number; rows: number; cols: number; dy: number; dx: number };
+
+	const DISTRICTS: District[] = [
+		{ origin: [-14, 40], angle: -6, rows: 5, cols: 7, dy: 25, dx: 22 },
+		{ origin: [128, -18], angle: 14, rows: 5, cols: 5, dy: 24, dx: 27 },
+	];
+
+	// Parks and the lake, as ellipses, so blocks can be kept out of them.
+	const OPEN_GROUND = [
+		{ cx: 176, cy: 108, rx: 34, ry: 20 },
+		{ cx: 42, cy: 22, rx: 30, ry: 15 },
+		{ cx: 214, cy: 30, rx: 22, ry: 13 },
+	];
+
+	function rotate([x, y]: Pt, [ox, oy]: Pt, degrees: number): Pt {
+		const r = (degrees * Math.PI) / 180;
+		return [ox + x * Math.cos(r) - y * Math.sin(r), oy + x * Math.sin(r) + y * Math.cos(r)];
+	}
+
+	function inOpenGround([x, y]: Pt): boolean {
+		return OPEN_GROUND.some((e) => ((x - e.cx) / e.rx) ** 2 + ((y - e.cy) / e.ry) ** 2 < 1.2);
+	}
+
+	// A fixed hash, not Math.random: the same map on every render and in SSR.
+	function hash(n: number): number {
+		const v = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+		return v - Math.floor(v);
+	}
+
+	const streets: string[] = [];
+	const blocks: { x: number; y: number; w: number; h: number; t: string }[] = [];
+
+	DISTRICTS.forEach((d, di) => {
+		const at = (p: Pt) => rotate(p, d.origin, d.angle).map((v) => v.toFixed(1)).join(' ');
+		const width = d.cols * d.dx;
+		const height = d.rows * d.dy;
+		for (let r = 0; r <= d.rows; r++) streets.push(`M${at([0, r * d.dy])}L${at([width, r * d.dy])}`);
+		for (let c = 0; c <= d.cols; c++) streets.push(`M${at([c * d.dx, 0])}L${at([c * d.dx, height])}`);
+
+		for (let r = 0; r < d.rows; r++) {
+			for (let c = 0; c < d.cols; c++) {
+				const seed = di * 100 + r * 10 + c;
+				const centre = rotate([(c + 0.5) * d.dx, (r + 0.5) * d.dy], d.origin, d.angle);
+				if (inOpenGround(centre) || hash(seed) < 0.18) continue;
+				const split = hash(seed + 0.5) > 0.55;
+				const pad = 3.2;
+				const w = d.dx - pad * 2;
+				const h = d.dy - pad * 2;
+				const t = `rotate(${d.angle} ${d.origin[0]} ${d.origin[1]})`;
+				const x = d.origin[0] + c * d.dx + pad;
+				const y = d.origin[1] + r * d.dy + pad;
+				if (split) {
+					blocks.push({ x, y, w: w * 0.46, h, t }, { x: x + w * 0.54, y, w: w * 0.46, h, t });
+				} else {
+					blocks.push({ x, y, w, h, t });
+				}
+			}
+		}
+	});
+
+	const ARTERIALS = [
+		'M-8 118 C 40 96, 86 104, 120 76 S 188 30, 252 44',
+		'M92 -8 C 100 40, 128 70, 124 112 S 150 160, 170 172',
+	];
 </script>
 
 <svg
@@ -34,37 +99,31 @@
 	aria-hidden="true"
 	focusable="false"
 >
-	<!-- Parkland -->
 	<path
-		class="greenspace"
-		d="M132 18 Q168 10 196 24 Q214 34 210 56 Q206 78 178 84 Q148 90 134 72 Q122 52 132 18 Z"
+		class="map-river"
+		d="M-8 146 C 30 132, 64 150, 104 142 S 170 120, 206 136 S 236 150, 250 146"
 	/>
-	<path class="greenspace" d="M8 92 Q34 84 52 96 Q62 112 44 124 Q20 132 8 118 Z" />
-
-	<!-- Water -->
-	<path
-		class="river"
-		d="M-6 132 Q44 120 82 100 Q122 80 168 96 Q206 110 248 98"
-	/>
-
-	<!-- Street grid -->
-	{#each ACROSS as y (y)}
-		<line class="street" x1="-4" y1={y} x2="244" y2={y} />
+	<ellipse class="map-lake" cx="214" cy="30" rx="20" ry="11" />
+	{#each OPEN_GROUND.slice(0, 2) as e, i (i)}
+		<ellipse class="map-park" cx={e.cx} cy={e.cy} rx={e.rx} ry={e.ry} />
 	{/each}
-	{#each DOWN as x (x)}
-		<line class="street" x1={x} y1="-4" x2={x} y2="164" />
-	{/each}
-	<!-- Two roads that ignore the grid, which is what keeps it from reading
-	     as graph paper. -->
-	<path class="street arterial" d="M-4 8 Q70 38 118 56 Q172 76 244 70" />
-	<path class="street arterial" d="M56 -4 Q72 52 108 92 Q140 128 150 164" />
 
-	<!-- A few blocks, so the grid encloses something -->
-	<rect class="parcel" x="24" y="24" width="24" height="18" rx="1.5" />
-	<rect class="parcel" x="80" y="53" width="18" height="18" rx="1.5" />
-	<rect class="parcel" x="106" y="106" width="20" height="14" rx="1.5" />
-	<rect class="parcel" x="158" y="128" width="26" height="16" rx="1.5" />
-	<rect class="parcel" x="190" y="104" width="18" height="20" rx="1.5" />
+	{#each blocks as b, i (i)}
+		<rect class="map-block" x={b.x} y={b.y} width={b.w} height={b.h} rx="1.4" transform={b.t} />
+	{/each}
+
+	{#each streets as d, i (i)}
+		<path class="map-street-casing" {d} />
+	{/each}
+	{#each ARTERIALS as d, i (i)}
+		<path class="map-arterial-casing" {d} />
+	{/each}
+	{#each streets as d, i (i)}
+		<path class="map-street" {d} />
+	{/each}
+	{#each ARTERIALS as d, i (i)}
+		<path class="map-arterial" {d} />
+	{/each}
 </svg>
 
 <style>
@@ -76,40 +135,70 @@
 		display: block;
 	}
 
-	/* Deliberately faint. The route is the subject; this only has to stop the
-	   panel reading as an empty frame. */
-	/* The -text variants, not the base tokens: contrast_guard bans a bare
+	/* Deliberately quiet. The route is the subject; this only has to stop the
+	   panel reading as an empty frame, and read as a place.
+
+	   The -text variants, not the base tokens: contrast_guard bans a bare
 	   accent as a fill or stroke because it fails AA wherever it lands on a
-	   light surface. These are decorative and faint, but the theme-aware
-	   variant is the right value anyway — the base green is candy-bright
-	   against a paper basemap. */
-	.greenspace {
+	   light surface. These are decorative, but the theme-aware variant is the
+	   right value anyway — the base green is candy-bright on a paper map.
+
+	   Road fills are the page ground (--color-bg) over a border-tinted casing:
+	   lighter than the land in light mode and darker than it in dark, which
+	   reads as a road in both, where --color-surface would vanish into the
+	   dark land it equals. */
+	.map-park {
 		fill: var(--color-success-text);
-		opacity: 0.18;
+		opacity: 0.2;
 	}
 
-	.river {
+	.map-river {
 		fill: none;
 		stroke: var(--color-accent-cyan-text);
-		stroke-width: 11;
+		stroke-width: 12;
 		stroke-linecap: round;
-		opacity: 0.24;
+		opacity: 0.3;
 	}
 
-	.street {
-		fill: none;
-		stroke: var(--color-text-tertiary);
-		stroke-width: 0.9;
-		opacity: 0.28;
+	.map-lake {
+		fill: var(--color-accent-cyan-text);
+		opacity: 0.3;
 	}
 
-	.arterial {
-		stroke-width: 2.2;
-		opacity: 0.34;
-	}
-
-	.parcel {
+	.map-block {
 		fill: var(--color-text-tertiary);
-		opacity: 0.1;
+		opacity: 0.11;
+	}
+
+	.map-street-casing,
+	.map-arterial-casing,
+	.map-street,
+	.map-arterial {
+		fill: none;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+
+	.map-street-casing {
+		stroke: var(--color-border);
+		stroke-width: 2.8;
+		opacity: 0.22;
+	}
+
+	.map-street {
+		stroke: var(--color-bg);
+		stroke-width: 1.8;
+		opacity: 0.9;
+	}
+
+	.map-arterial-casing {
+		stroke: var(--color-border);
+		stroke-width: 6;
+		opacity: 0.3;
+	}
+
+	.map-arterial {
+		stroke: var(--color-bg);
+		stroke-width: 4.2;
 	}
 </style>

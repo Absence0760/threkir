@@ -572,13 +572,15 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 	'lib/components/RouteHeatmap.svelte': {
 		'7FB3C2': [1, 'cartographic'], F2A07B: [2, 'cartographic'],
 	},
-	// Marketing hero + closing-CTA ramps and the on-hero button. Every ink
-	// over them is measured by gradient_foreground_guard.test.ts.
+	// Marketing hero + closing-CTA ramps, the journey step-number disc and the
+	// on-hero button. Every ink over them is measured by
+	// gradient_foreground_guard.test.ts. The decorative brand hues (rail,
+	// fastest split) read --brand-ember / --brand-magenta instead.
 	'routes/+page.svelte': {
 		'140A18': [1, 'gradient-stop'], '3A0F33': [1, 'gradient-stop'],
-		'6E1450': [1, 'gradient-stop'], A01E77: [1, 'gradient-stop'],
+		'6E1450': [2, 'gradient-stop'], A01E77: [2, 'gradient-stop'],
 		'102A32': [1, 'gradient-stop'], '2C5F6E': [1, 'gradient-stop'],
-		FFFFFF: [5, 'fixed-canvas'], '8A1A62': [1, 'fixed-canvas'],
+		FFFFFF: [6, 'fixed-canvas'], '8A1A62': [1, 'fixed-canvas'],
 		FDEFF7: [1, 'fixed-canvas'], '1F4854': [1, 'fixed-canvas'],
 		EAF3F5: [1, 'fixed-canvas'],
 	},

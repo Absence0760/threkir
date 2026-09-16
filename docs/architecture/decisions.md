@@ -29049,3 +29049,37 @@ The plan hero and the upcoming-event card render **above** the gate rather than 
 The regression test pins **both** directions, which is the non-obvious half: a regression that never shows the card merely restores the old empty grid, but one that never stops showing it hides the dashboard from every real account, and only the second is a catastrophe. `dashboard/page.spec.ts` had to change too — it asserted that a runless account sees the Mileage card's empty-state hint, which is precisely the behaviour being removed. That assertion is retired rather than relaxed, and the test now pins what its own comment always claimed to be about: no derived-metric jargon reaches a Day-One runner. `dash.mileageEmpty` stays live for an account that has runs but none inside the chart window.
 
 Web only for now; `dashboard_screen.dart` still composes its stack for a runless account (§ 24).
+## 1617. A deployment offers the integrations it can honour, and nothing else — one gate, fail-closed, with the connected row always kept
+
+`/settings/integrations` built its provider list from a hardcoded array and rendered an identical, enabled **Connect** button for every entry. Four providers, four different truths behind that one button:
+
+- **Strava** had a real gate, `isStravaConfigured()`, and consulted it **inside the click handler**. On a deployment with no `PUBLIC_STRAVA_CLIENT_ID` the runner got a live button and an error toast *after* the tap — the disclosure arrived only once they had already asked for the thing.
+- **parkrun** had no gate at all.
+- **Garmin Connect** had no gate and no leg: its OAuth is blocked on Garmin's developer programme (NDA, multi-week review), so no operator can configure it into existence. Connect wrote a placeholder `integrations` row and synced nothing, forever.
+- **Apple HealthKit** had no gate and can never have a leg here: it is an on-device iOS framework with no web binding. A browser has nothing to connect to.
+
+The three race-results cards were the one surface that got it right, probing their Edge Function fail-closed and rendering an explainer where the action would be.
+
+The rules now live in one pure module, `integration_visibility.ts` (↔ `integration_visibility.dart`), and every surface renders through it. Four things it decides, and each was a choice:
+
+**A gate is a fact about the provider, not about the deployment.** `env` and `probe` are unset *today*; `unsupported` and `unbuilt` describe something nobody can provision. Collapsing them would have made the Garmin card look like a configuration anyone could fix.
+
+**Pending is not the same as refused.** An unresolved probe hides like a refused one — fail-closed — but does not get the "not configured here" sentence, because until the probe lands there is nothing true to say. Web resolves every gate before the skeleton clears, so no card renders and then vanishes.
+
+**A connected row is always visible, whatever its gate says.** A row outlives the configuration that created it: a deployment can lose its Strava client ID, and the placeholder Garmin / HealthKit rows the old ungated cards wrote are out there on real accounts. Hiding those would strand them — no surface to see the connection, none to disconnect it, and on Strava's path a stored grant still rotating its token server-side with nothing admitting it exists.
+
+**Stranded is narrower than not-actionable.** `PUBLIC_STRAVA_CLIENT_ID` builds the OAuth redirect, so it gates starting a *new* grant; syncing an existing one runs on the Edge Function's own server-side credentials and still works. Only `unsupported` / `unbuilt` rows get the "this can't sync here" note, and Sync now stays on a connected Strava card. Telling a runner their working connection is broken is its own lie.
+
+What is deliberately **never** gated is the part that needs no deployment: web's two bulk importers parse a file in the browser, and mobile's heart-rate strap, treadmill and watch relay are on-device. Those are the paths a minimal deployment always has, and hiding them alongside the account cards would leave a runner with no way to get their history in at all.
+
+parkrun gained a reachability probe of its own (`parkrun-import`, `{probe: true}`). It has no credential, so the question is not "is a key set" but "is this function deployed" — the one a minimal deployment answers no to. Charged to its own generous bucket for the reason [§ 1007](#1007) gives for its sibling: the import bucket is 4/hour, so probing on it would have let a few Settings loads consume a runner's whole import allowance, and an exhausted bucket answers 429, which every client grades as "provider unavailable".
+
+**This amends [§ 488](#488).** That entry kept every race tile tappable whatever its probe said, on the reasoning that the tile is a secondary deep link into the race calendar and the calendar's search never needed a provider key. The reasoning holds for the *calendar*; it does not hold for the *tile*, which advertises that provider's import by name. The calendar has its own entry point (mobile's fitness hub, web's `/races` nav), so the deep link survives the tile's removal. The explainer a runner actually needs — "this provider's import isn't available" — stays on the race whose result they are trying to import, where `RACE_IMPORT_LEGS[*].unavailableKey` already puts it and where it names the right provider.
+
+## 1618. The (i) is a disclosure, not a tooltip, and its accessible name is the subject
+
+A new runner does not know what parkrun is, what an athlete number is for, or which timing company ran their race. Every integration card and tile now carries an `InfoTip` — a button that opens what the feature *is* and *how to use it*.
+
+Three constraints shaped it. It is **not** a native `title=` tooltip: a tooltip never appears on touch, which is where most of this app is read, and cannot hold two or three sentences or a link. Its accessible name is **"About {name}"**, never "info" — a screen-reader user meeting six of these on one page cannot otherwise tell them apart. And the two platforms use different mechanics on purpose: web anchors a popover (Escape closes it and returns focus, an outside click closes without yanking focus back), while mobile opens a dialog, because there is no room beside a `ListTile` on a phone for a panel.
+
+Copy is per-platform where the instruction is. Web's parkrun tip points at Settings → Account, which is where that import actually lives on web; mobile's says to tap the tile, which is where it lives there. A shared string would have been wrong on one of them.

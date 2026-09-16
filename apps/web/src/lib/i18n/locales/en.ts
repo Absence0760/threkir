@@ -448,7 +448,7 @@ export const en = {
 	"onboarding.step1Title": "What should we call you?",
 	"onboarding.step1Hint": "Your display name shows up on the runs + comments you share. You can change it any time in Settings.",
 	"onboarding.displayNameLabel": "Display name",
-	"onboarding.displayNamePlaceholder": "e.g. Alex Chen",
+	"onboarding.displayNamePlaceholder": "Your name or a nickname",
 	"onboarding.step2Title": "Kilometres or miles?",
 	"onboarding.step2Hint": "Drives every distance + pace label in the app. You can switch any time in Settings → Preferences.",
 	"onboarding.unitKm": "Kilometres",

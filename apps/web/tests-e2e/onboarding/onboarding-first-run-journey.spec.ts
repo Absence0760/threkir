@@ -168,14 +168,9 @@ test.describe('onboarding → first run → dashboard journey', () => {
 				await page.getByRole('radio', { name: /Private/i }).click();
 				await page.getByRole('button', { name: 'Continue' }).click();
 
-				// Step 6 — notifications. Continue past (CDP-tier permission
-				// is out of scope, same as wizard.spec.ts).
-				await expect(
-					page.getByRole('heading', { name: /Notifications/i })
-				).toBeVisible();
-				await page.getByRole('button', { name: 'Continue' }).click();
-
-				// Step 7 — done. The "Open dashboard" button persists the
+				// No notifications step: this build has no push key, so there
+				// is nothing to turn on (same as wizard.spec.ts).
+				// Done. The "Open dashboard" button persists the
 				// answers + stamps onboarded_at, then full-page-navs.
 				await expect(
 					page.getByRole('heading', { name: /All set/i })

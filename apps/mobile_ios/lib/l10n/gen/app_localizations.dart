@@ -20595,6 +20595,42 @@ abstract class AppLocalizations {
   /// **'Open the race calendar'**
   String get integrationsRunsignupOpen;
 
+  /// Accessible label for the (i) button beside an integration tile; names the provider so several on one screen stay distinguishable
+  ///
+  /// In en, this message translates to:
+  /// **'About {name}'**
+  String integrationsInfoAbout(String name);
+
+  /// Info-tip body for the Strava tile: what Strava is and what connecting it does
+  ///
+  /// In en, this message translates to:
+  /// **'Strava is a popular app for recording and sharing runs. Connecting it copies your Strava activities across — the last 90 days first, then each new one as it appears. You\'ll sign in to Strava and approve access, and you can disconnect at any time.'**
+  String get integrationsStravaInfo;
+
+  /// Info-tip body for the parkrun tile: what parkrun is and where the athlete number comes from
+  ///
+  /// In en, this message translates to:
+  /// **'parkrun is a free, weekly, timed 5k held in parks around the world. Tap this tile and enter the athlete number from your parkrun barcode (the one starting with A) to pull in every parkrun you\'ve finished, with your time and age grade.'**
+  String get integrationsParkrunInfo;
+
+  /// Info-tip body for the RunSignUp tile: what RunSignUp is and how to import a result
+  ///
+  /// In en, this message translates to:
+  /// **'RunSignUp handles entries and results for thousands of road races. If you ran one, find the race in the race calendar and enter the bib number you wore — your official time and splits are attached to that run.'**
+  String get integrationsRunsignupInfo;
+
+  /// Info-tip body for the UltraSignup tile: what UltraSignup is and how to import a result
+  ///
+  /// In en, this message translates to:
+  /// **'UltraSignup handles entries and results for trail and ultra races. Find your race in the race calendar and give your UltraSignup athlete ID to pull your finishing times across.'**
+  String get integrationsUltrasignupInfo;
+
+  /// Info-tip body for the ChronoTrack tile: what ChronoTrack is and how to import a result
+  ///
+  /// In en, this message translates to:
+  /// **'ChronoTrack times a lot of road races with chips and mats. If your race was ChronoTrack-timed, find it in the race calendar and enter your bib number to pull in your official result.'**
+  String get integrationsChronotrackInfo;
+
   /// Explainer when the RunSignUp key is unconfigured
   ///
   /// In en, this message translates to:

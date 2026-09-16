@@ -18,7 +18,7 @@
 		type FitnessSnapshotRow,
 		type PeriodSummaryRun,
 	} from '$lib/core/data';
-	import { dashboardRunsWindowStart } from '$lib/core/dashboard_runs';
+	import { dashboardRunsWindowStart, visibleRunSources } from '$lib/core/dashboard_runs';
 	import {
 		computeSnapshot,
 		recoveryAdvice,
@@ -474,6 +474,15 @@
 		{ value: 'parkrun', label: 'parkrun' },
 		{ value: 'healthkit', label: 'HealthKit' },
 	];
+	/// Only the sources this runner actually has runs from. A chip for a
+	/// source they have never used resolves to an empty dashboard, and on a
+	/// deployment that cannot connect that provider it is a control for
+	/// something that does not exist here at all. Measured against the runs the
+	/// chips filter, not against what is configured, so a deployment that later
+	/// loses its Strava client ID still lets a runner filter the Strava runs
+	/// they already have.
+	const visibleSources = $derived(visibleRunSources(sources, runs.map((r) => r.source)));
+
 	/// Locale-aware display label for a source chip. `sources[].label`
 	/// stays an English literal for the two translatable values ("All",
 	/// "Recorded") so the empty-state fallback keeps a stable string;
@@ -1217,17 +1226,19 @@
 			     the dashboard doesn't burn two horizontal rails on a single
 			     line of controls. -->
 			<div class="filter-row">
-				<div class="filter-chips">
-					{#each sources as src}
-						<button
-							class="filter-btn"
-							class:active={sourceFilter === src.value}
-							onclick={() => (sourceFilter = src.value)}
-						>
-							{sourceChipLabel(src.label)}
-						</button>
-					{/each}
-				</div>
+				{#if visibleSources.length > 0}
+					<div class="filter-chips">
+						{#each visibleSources as src (src.value)}
+							<button
+								class="filter-btn"
+								class:active={sourceFilter === src.value}
+								onclick={() => (sourceFilter = src.value)}
+							>
+								{sourceChipLabel(src.label)}
+							</button>
+						{/each}
+					</div>
+				{/if}
 				<a href="/recap/{new Date().getFullYear()}" class="recap-link">
 					<span class="material-symbols">auto_awesome</span>
 					{m('dash.viewRecap', { year: new Date().getFullYear() })}

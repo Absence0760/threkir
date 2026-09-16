@@ -11886,6 +11886,31 @@ class AppLocalizationsJa extends AppLocalizations {
   String get integrationsRunsignupOpen => 'レースカレンダーを開く';
 
   @override
+  String integrationsInfoAbout(String name) {
+    return '$name について';
+  }
+
+  @override
+  String get integrationsStravaInfo =>
+      'Strava はランの記録と共有に広く使われているアプリです。連携すると Strava のアクティビティが取り込まれます。まず直近 90 日分、その後は新しいアクティビティが出るたびに取り込まれます。Strava にサインインしてアクセスを許可します。連携はいつでも解除できます。';
+
+  @override
+  String get integrationsParkrunInfo =>
+      'parkrun は世界各地の公園で毎週開催される、無料で計測付きの 5km ランです。このタイルをタップし、parkrun のバーコードにあるアスリート番号（A で始まる番号）を入力すると、完走したすべての parkrun をタイムとエイジグレードつきで取り込めます。';
+
+  @override
+  String get integrationsRunsignupInfo =>
+      'RunSignUp は数千のロードレースのエントリーと結果を扱っています。出走したレースをレースカレンダーで探し、着けていたゼッケン番号を入力すると、公式タイムとスプリットがそのランに紐づきます。';
+
+  @override
+  String get integrationsUltrasignupInfo =>
+      'UltraSignup はトレイル・ウルトラレースのエントリーと結果を扱っています。レースカレンダーでレースを探し、UltraSignup のアスリート ID を入力すると、フィニッシュタイムを取り込めます。';
+
+  @override
+  String get integrationsChronotrackInfo =>
+      'ChronoTrack はチップとマットで多くのロードレースを計測しています。あなたのレースが ChronoTrack 計測だった場合は、レースカレンダーで探してゼッケン番号を入力すると、公式結果を取り込めます。';
+
+  @override
   String get integrationsRunsignupUnavailable =>
       'RunSignUpのインポートはまだ利用できません。parkrunと手動での貼り付けは引き続き利用できます。';
 

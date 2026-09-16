@@ -8,6 +8,7 @@ import '../lib/ble_heart_rate.dart';
 import '../lib/ble_treadmill.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
+import '../lib/race_service.dart';
 import '../lib/screens/settings_integrations_screen.dart';
 
 class _FakeApi extends ApiClient {
@@ -16,6 +17,16 @@ class _FakeApi extends ApiClient {
 
   @override
   Future<List<IntegrationRow>> fetchIntegrations() async => const [];
+}
+
+/// The parkrun tile is drawn only once its Edge Function has answered, so a
+/// screen pumped without this stub renders no parkrun tile at all.
+class _FakeRaceService extends RaceService {
+  @override
+  Future<bool> isParkrunConfigured() async => true;
+
+  @override
+  Future<bool> isProviderConfigured(String provider) async => false;
 }
 
 Future<void> _pump(WidgetTester tester, Locale deviceLocale) async {
@@ -34,6 +45,7 @@ Future<void> _pump(WidgetTester tester, Locale deviceLocale) async {
         heartRate: BleHeartRate(),
         treadmill: BleTreadmill(),
         preferences: prefs,
+        raceService: _FakeRaceService(),
       ),
     ),
   );

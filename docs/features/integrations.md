@@ -4,7 +4,7 @@ A reference for every external data source the app connects to, how each integra
 
 ---
 
-**Contents:** [Overview](#overview) · [Apple HealthKit](#apple-healthkit) · [Android Health Connect](#android-health-connect) · [Strava](#strava) · [parkrun](#parkrun) · [Garmin Connect](#garmin-connect) · [Race results (RunSignUp + general scraping)](#race-results-runsignup--general-scraping) · [Treadmills (BLE FTMS)](#treadmills-ble-ftms) · [The `health` Flutter package](#the-health-flutter-package) · [Deduplication strategy](#deduplication-strategy)
+**Contents:** [Overview](#overview) · [Which integrations a deployment offers](#which-integrations-a-deployment-offers) · [Apple HealthKit](#apple-healthkit) · [Android Health Connect](#android-health-connect) · [Strava](#strava) · [parkrun](#parkrun) · [Garmin Connect](#garmin-connect) · [Race results (RunSignUp + general scraping)](#race-results-runsignup--general-scraping) · [Treadmills (BLE FTMS)](#treadmills-ble-ftms) · [The `health` Flutter package](#the-health-flutter-package) · [Deduplication strategy](#deduplication-strategy)
 
 > The Treadmills (BLE FTMS) integration has **shipped on mobile**, including the live run-screen treadmill-mode toggle. The watch (Wear OS / watchOS) BLE plumbing is the remaining follow-up.
 
@@ -19,6 +19,35 @@ A reference for every external data source the app connects to, how each integra
 | Garmin Connect | Official developer program | OAuth 2.0 + webhook | .FIT files, HR, training data | Phase 3 |
 | RunSignUp | Official REST API | API key | Race results by participant | Phase 3 |
 | Race results (general) | HTML scrape | Bib number (public) | Finishing times, splits | Phase 3 |
+
+---
+
+## Which integrations a deployment offers
+
+Every integration surface renders through one gate, so a deployment offers only what it can actually honour. The rules are the `integration_visibility` parity pair (`apps/web/src/lib/integrations/integration_visibility.ts` ↔ `apps/mobile_android/lib/integration_visibility.dart`); the catalogue that feeds them is web's `integrations/availability.ts` and mobile's `_connectSpecs` + `raceImportProviders`. Rationale in [decisions.md § 1621](../architecture/decisions.md).
+
+A provider declares **how** its availability is decided, and the kind is a fact about the provider rather than about one deployment:
+
+| Gate | Decided by | Providers |
+|---|---|---|
+| `env` | A build-time public env var | Strava (`PUBLIC_STRAVA_CLIENT_ID` on web, `STRAVA_CLIENT_ID` in dotenv on mobile) |
+| `probe` | An Edge Function probe, fail-closed | parkrun (`parkrun-import`), RunSignUp / UltraSignup / ChronoTrack (`race-results-import`) |
+| `always` | Nothing — the work is entirely client-side | The Strava + Garmin bulk importers (web), the BLE strap / treadmill / watch relay (mobile) |
+| `unsupported` | Cannot work on this client at all | Apple HealthKit **on web** — an on-device iOS framework with no web binding |
+| `unbuilt` | No leg exists on any deployment | Garmin Connect OAuth — blocked on Garmin's developer programme |
+
+The resolved answer is `true` / `false` / **not yet** (a probe in flight), and the three are distinct: a pending gate hides like a refused one, but carries no explainer, because there is nothing true to say until the probe lands. Web resolves every gate before the loading skeleton clears, so a card never renders and then vanishes.
+
+Two rules sit on top:
+
+- **A connected row is always visible, whatever its gate says.** A row outlives the configuration that created it, and the placeholder Garmin / HealthKit rows the old ungated cards wrote are on real accounts. Hiding one would leave no surface to disconnect it from.
+- **Stranded is narrower than not-actionable.** The Strava env var gates starting a *new* grant (it builds the OAuth redirect); syncing an existing one runs on the Edge Function's own credentials and still works, so a connected Strava keeps **Sync now** on a deployment with no client ID. Only `unsupported` / `unbuilt` rows get the "this can't sync here" note.
+
+`parkrun-import` accepts `{probe: true}` for this — parkrun has no credential, so the question is whether the function is deployed at all. It is authenticated, answered before the outbound scrape, and charged to its own `parkrun-import:probe` bucket (60/240 per hour) rather than the 4/hour import bucket, so opening Settings cannot consume a runner's import allowance.
+
+**Every card and tile also carries an `(i)`** explaining what the provider is and how to use it — `InfoTip.svelte` on web, `widgets/info_tip.dart` on mobile ([decisions.md § 1622](../architecture/decisions.md)). The copy is per-platform where the instruction differs: web's parkrun tip sends the runner to Settings → Account, where that import lives on web; mobile's says to tap the tile.
+
+**Adding a provider** means adding a catalogue entry with its gate, a `*Info` string in all seven locales on each platform it ships to, and — for a `probe` gate — the probe itself. A provider with no gate is not a thing the catalogue can express.
 
 ---
 

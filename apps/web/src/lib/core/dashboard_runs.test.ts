@@ -23,6 +23,7 @@ import {
 	DASHBOARD_RUNS_WINDOW_DAYS,
 	dashboardRunsWindowStart,
 	periodNeedsFullHistory,
+	visibleRunSources,
 	type PeriodType,
 } from './dashboard_runs';
 import { computeRunStreaks } from '../runs/streaks';
@@ -249,4 +250,32 @@ test('a month older than the window is rolled up from the real history', () => {
 		return t >= monthStart.getTime() && t < monthEnd;
 	});
 	assert.ok(inMonth.length > 0, 'a month inside the runner history must not roll up empty');
+});
+
+test('a source with no runs behind it is not offered as a filter', () => {
+	const chips = [
+		{ value: 'all' },
+		{ value: 'app' },
+		{ value: 'strava' },
+		{ value: 'parkrun' },
+		{ value: 'healthkit' }
+	];
+	assert.deepEqual(
+		visibleRunSources(chips, ['app', 'app', 'strava']).map((c) => c.value),
+		['all', 'app', 'strava']
+	);
+});
+
+test('the filter row collapses when there is nothing to filter between', () => {
+	const chips = [{ value: 'all' }, { value: 'app' }, { value: 'strava' }];
+	assert.deepEqual(visibleRunSources(chips, []), []);
+	assert.deepEqual(visibleRunSources(chips, ['app', 'app', 'app']), []);
+});
+
+test('a null or undefined source counts as no source, not as a source named null', () => {
+	const chips = [{ value: 'all' }, { value: 'app' }, { value: 'strava' }];
+	assert.deepEqual(
+		visibleRunSources(chips, ['app', null, undefined, 'strava']).map((c) => c.value),
+		['all', 'app', 'strava']
+	);
 });

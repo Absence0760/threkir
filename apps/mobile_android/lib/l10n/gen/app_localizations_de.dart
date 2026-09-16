@@ -12489,6 +12489,31 @@ class AppLocalizationsDe extends AppLocalizations {
   String get integrationsRunsignupOpen => 'Rennkalender öffnen';
 
   @override
+  String integrationsInfoAbout(String name) {
+    return 'Über $name';
+  }
+
+  @override
+  String get integrationsStravaInfo =>
+      'Strava ist eine beliebte App zum Aufzeichnen und Teilen von Läufen. Beim Verbinden werden deine Strava-Aktivitäten übernommen — zuerst die letzten 90 Tage, danach jede neue Aktivität, sobald sie erscheint. Du meldest dich bei Strava an und erteilst die Freigabe; du kannst die Verbindung jederzeit trennen.';
+
+  @override
+  String get integrationsParkrunInfo =>
+      'parkrun ist ein kostenloser, wöchentlicher 5-km-Lauf mit Zeitmessung in Parks weltweit. Tippe auf diese Kachel und gib die Athletennummer von deinem parkrun-Barcode ein (sie beginnt mit A), um jeden von dir absolvierten parkrun mit Zeit und Altersklassenwertung zu holen.';
+
+  @override
+  String get integrationsRunsignupInfo =>
+      'RunSignUp verwaltet Anmeldungen und Ergebnisse für Tausende von Straßenläufen. Wenn du bei einem mitgelaufen bist, such den Lauf im Rennkalender und gib deine Startnummer ein — deine offizielle Zeit und die Zwischenzeiten werden dem Lauf zugeordnet.';
+
+  @override
+  String get integrationsUltrasignupInfo =>
+      'UltraSignup verwaltet Anmeldungen und Ergebnisse für Trail- und Ultraläufe. Such deinen Lauf im Rennkalender und gib deine UltraSignup-Athleten-ID an, um deine Zielzeiten zu übernehmen.';
+
+  @override
+  String get integrationsChronotrackInfo =>
+      'ChronoTrack misst mit Chips und Matten die Zeiten vieler Straßenläufe. Wenn dein Lauf von ChronoTrack gemessen wurde, such ihn im Rennkalender und gib deine Startnummer ein, um dein offizielles Ergebnis zu holen.';
+
+  @override
   String get integrationsRunsignupUnavailable =>
       'RunSignUp-Import ist noch nicht verfügbar. parkrun und manuelles Einfügen funktionieren weiterhin.';
 

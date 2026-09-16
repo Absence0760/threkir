@@ -12503,6 +12503,31 @@ class AppLocalizationsFr extends AppLocalizations {
   String get integrationsRunsignupOpen => 'Ouvrir le calendrier des courses';
 
   @override
+  String integrationsInfoAbout(String name) {
+    return 'À propos de $name';
+  }
+
+  @override
+  String get integrationsStravaInfo =>
+      'Strava est une appli populaire pour enregistrer et partager ses courses. En la connectant, tes activités Strava sont copiées : les 90 derniers jours d\'abord, puis chaque nouvelle activité dès qu\'elle apparaît. Tu te connectes à Strava et tu autorises l\'accès ; tu peux te déconnecter à tout moment.';
+
+  @override
+  String get integrationsParkrunInfo =>
+      'parkrun est un 5 km gratuit et chronométré, organisé chaque semaine dans des parcs partout dans le monde. Touche cette tuile et saisis le numéro d\'athlète de ton code-barres parkrun (celui qui commence par A) pour récupérer tous les parkrun que tu as terminés, avec ton temps et ton indice d\'âge.';
+
+  @override
+  String get integrationsRunsignupInfo =>
+      'RunSignUp gère les inscriptions et les résultats de milliers de courses sur route. Si tu en as couru une, retrouve-la dans le calendrier des courses et saisis ton dossard : ton temps officiel et tes intermédiaires sont rattachés à cette course.';
+
+  @override
+  String get integrationsUltrasignupInfo =>
+      'UltraSignup gère les inscriptions et les résultats des courses de trail et d\'ultra. Retrouve ta course dans le calendrier et indique ton identifiant d\'athlète UltraSignup pour récupérer tes temps d\'arrivée.';
+
+  @override
+  String get integrationsChronotrackInfo =>
+      'ChronoTrack chronomètre de nombreuses courses sur route avec des puces et des tapis. Si ta course a été chronométrée par ChronoTrack, retrouve-la dans le calendrier et saisis ton dossard pour récupérer ton résultat officiel.';
+
+  @override
   String get integrationsRunsignupUnavailable =>
       'L\'import RunSignUp n\'est pas encore disponible. parkrun et le collage manuel fonctionnent toujours.';
 

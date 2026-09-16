@@ -116,9 +116,14 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 
 		await confirm.getByRole('button', { name: 'Disconnect' }).click();
 
-		await expect(stravaCard).not.toHaveClass(/connected/, { timeout: 5_000 });
-		await expect(stravaCard.getByRole('button', { name: 'Connect' })).toBeVisible();
-		await expect(stravaCard.getByRole('button', { name: /Sync/i })).toHaveCount(0);
+		// The card LEAVES on a build with no `PUBLIC_STRAVA_CLIENT_ID` — which is
+		// every local / CI build, and the shape a minimal deployment has. It was
+		// only on screen because a row existed; with the row gone there is no
+		// grant to disconnect and no OAuth redirect this build could start, so
+		// offering Connect would be an invitation to the error toast the gate
+		// exists to precede.
+		await expect(stravaCard).toHaveCount(0, { timeout: 5_000 });
+		await expect(page.getByTestId('integration-parkrun')).toBeVisible();
 
 		// audit/strava May 2026 High #1 — the disconnect flow now
 		// STAMPS `disconnected_at` rather than DELETEing the row.
@@ -341,7 +346,9 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 	});
 
 	test('Connect failure surfaces an error toast', async ({ page }) => {
-		// Non-Strava providers use the placeholder upsert-connect path.
+		// parkrun is the one provider left on the placeholder upsert-connect
+		// path: Strava goes through OAuth, and Garmin / HealthKit are no longer
+		// offered a Connect button at all.
 		await page.route('**/rest/v1/integrations**', async (route) => {
 			const m = route.request().method();
 			if (m === 'POST' || m === 'PATCH') {
@@ -356,12 +363,12 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 		});
 
 		await page.goto('/settings/integrations');
-		const garminCard = page.locator('.integration-card', { hasText: 'Garmin' });
-		await expect(garminCard).toBeVisible({ timeout: 10_000 });
-		await garminCard.getByRole('button', { name: 'Connect' }).click();
+		const parkrunCard = page.getByTestId('integration-parkrun');
+		await expect(parkrunCard).toBeVisible({ timeout: 10_000 });
+		await parkrunCard.getByRole('button', { name: 'Connect' }).click();
 
 		await expect(page.locator('.toast-error')).toBeVisible({ timeout: 5_000 });
-		await expect(garminCard).not.toHaveClass(/connected/);
+		await expect(parkrunCard).not.toHaveClass(/connected/);
 	});
 
 	test('Disconnect cancel keeps the integration connected', async ({ page }) => {
@@ -412,9 +419,14 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 		await expect(bulkCard.locator('input[type="file"]')).toHaveCount(1);
 	});
 
-	test('already-connected Garmin renders connected card + Disconnect button', async ({
+	test('a connected Garmin row is still shown, and says it can no longer sync', async ({
 		page,
 	}) => {
+		// Garmin Connect is gated `unbuilt` — its OAuth leg is blocked on
+		// Garmin's developer programme — so the card is no longer offered to a
+		// runner who has no row. A row that already exists is a different
+		// matter: hiding it would strand it, leaving no surface to disconnect
+		// from. So it renders, without an action that cannot run, and says why.
 		await plantIntegration({
 			provider: 'garmin',
 			lastSyncAt: '2026-05-09T12:30:00Z',
@@ -422,13 +434,32 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 
 		await page.goto('/settings/integrations');
 
-		const garminCard = page.locator('.integration-card', { hasText: 'Garmin Connect' });
+		const garminCard = page.getByTestId('integration-garmin');
 		await expect(garminCard).toBeVisible({ timeout: 10_000 });
 		await expect(garminCard).toHaveClass(/connected/);
 		await expect(garminCard.getByText(/Last synced/i)).toBeVisible();
+		await expect(page.getByTestId('stranded-garmin')).toBeVisible();
 		await expect(garminCard.getByRole('button', { name: 'Disconnect' })).toBeVisible();
 		// Garmin has no live OAuth (bulk-import only), so no Sync-now affordance.
 		await expect(garminCard.getByRole('button', { name: /Sync/i })).toHaveCount(0);
+	});
+
+	test('an unconnected Garmin / HealthKit card is not offered at all', async ({ page }) => {
+		// The pair no operator can configure into existence: Garmin Connect's
+		// OAuth is blocked upstream, and HealthKit is an on-device iOS API a
+		// browser has nothing to connect to. Both used to render a live Connect
+		// button that wrote a placeholder row and synced nothing.
+		// USER_B starts with zero `integrations` rows and afterEach keeps it
+		// that way, so nothing needs planting or clearing here.
+		await page.goto('/settings/integrations');
+		await expect(page.getByTestId('integration-parkrun')).toBeVisible({ timeout: 10_000 });
+
+		await expect(page.getByTestId('integration-garmin')).toHaveCount(0);
+		await expect(page.getByTestId('integration-healthkit')).toHaveCount(0);
+		// The Garmin path that DOES work on this deployment is still offered.
+		await expect(
+			page.locator('section.bulk-import').filter({ hasText: 'Bulk import from a Garmin export' })
+		).toBeVisible();
 	});
 
 	test('already-connected parkrun + disconnect round-trip', async ({ page }) => {

@@ -5,15 +5,27 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { m } from '$lib/i18n/store.svelte';
 	import { defaultUnitForLocale } from '$lib/format/locale_defaults';
-	import { verifyConsentStamped } from '$lib/core/auth_confirmation';
+	import { emailOtpLink, verifyConsentStamped } from '$lib/core/auth_confirmation';
 
 	let error = $state('');
 
 	onMount(async () => {
-		// Supabase PKCE flow: auth code arrives in the query string (?code=…), not the hash.
-		const { error: authError } = await supabase.auth.exchangeCodeForSession(
-			window.location.search.substring(1)
-		);
+		// Two shapes land here. An email link carries `token_hash` +
+		// `type`, which `verifyOtp` turns into a session from any
+		// browser — mail is read wherever the person happens to be, and
+		// the PKCE `?code=` shape can only be exchanged by the browser
+		// that started the flow. OAuth still arrives as `?code=`, and
+		// there the flow begins and ends in one browser, so the verifier
+		// is present.
+		const otp = emailOtpLink(window.location.search);
+		const { error: authError } = otp
+			? await supabase.auth.verifyOtp(otp)
+			: await supabase.auth.exchangeCodeForSession(window.location.search.substring(1));
+
+		// The token is a one-time credential sitting in the address bar;
+		// drop it before the page can hand it to anything as a referrer,
+		// and so a reload can't retry an already-spent token.
+		history.replaceState(null, '', window.location.pathname);
 
 		if (authError) {
 			// The client's detectSessionInUrl bootstrap can win a race with

@@ -12,7 +12,7 @@ All of the following run in CI against the local Supabase stack. The seed user (
 |---|---|---|
 | Landing | `landing/page.spec.ts` | Page renders, footer present |
 | Sign in (email + password) | `auth/login.spec.ts` | Rejects bad creds, happy-path resets password |
-| Sign up | `auth/login.spec.ts` + `auth/signup-age-gate.spec.ts` | 16+ + ToS gating, happy-path signup ends on /dashboard |
+| Sign up | `auth/login.spec.ts` + `auth/signup-age-gate.spec.ts` + `auth/signup-confirmation-pending.spec.ts` | 16+ + ToS gating, happy-path signup ends on /dashboard, and the confirmation-pending outcome drops back to the sign-in form (identically for an already-registered address) |
 | Password reset via Mailpit | `auth/reset.spec.ts` | Recovery email → reset → new password → re-sign-in |
 | /privacy, /terms, /cookie-notice | `legal/pages.spec.ts` | Pages render with draft banner |
 | Cookie consent banner | `cross-cutting/cookie-consent.spec.ts` | Show / hide / persist / Sentry gate |

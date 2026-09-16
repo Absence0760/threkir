@@ -1,5 +1,5 @@
-import { formatDuration } from '$lib/format/time';
-import { paceMinutesSeconds } from '$lib/format/pace_format';
+import { formatDuration } from '../format/time';
+import { paceMinutesSeconds } from '../format/pace_format';
 import type { TrackPoint } from '$lib/types';
 
 /// Static demo data for the public landing page's product preview.

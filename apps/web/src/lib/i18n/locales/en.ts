@@ -1318,6 +1318,8 @@ export const en = {
 	"settingsAccount.title": "Account",
 	"settingsAccount.tagline": "Your identity, sign-in methods, notifications, backups, and the controls for leaving — everything that's about you, not how you record.",
 	"settingsAccount.profileHeading": "Profile",
+	"settingsAccount.profileLoadFailed": "Couldn't load your profile. Try again before making changes — saving now would overwrite your saved profile with blanks.",
+	"settingsAccount.retry": "Retry",
 	"settingsAccount.displayName": "Display Name",
 	"settingsAccount.handleLabel": "Username",
 	"settingsAccount.handlePlaceholder": "yourname",

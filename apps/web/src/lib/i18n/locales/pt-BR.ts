@@ -1305,6 +1305,8 @@ export const messages = {
 	"settingsAccount.title": "Conta",
 	"settingsAccount.tagline": "Sua identidade, métodos de login, notificações, backups e os controles para sair — tudo o que diz respeito a você, não a como você registra.",
 	"settingsAccount.profileHeading": "Perfil",
+	"settingsAccount.profileLoadFailed": "Não foi possível carregar seu perfil. Tente novamente antes de fazer alterações — salvar agora substituiria seu perfil salvo por campos vazios.",
+	"settingsAccount.retry": "Tentar novamente",
 	"settingsAccount.displayName": "Nome de exibição",
 	"settingsAccount.handleLabel": "Nome de usuário",
 	"settingsAccount.handlePlaceholder": "seunome",

@@ -82,6 +82,11 @@
 	let handleSaved = $state(false);
 	let handleError = $state<string | null>(null);
 	let handleChanged = $derived(handle.trim().toLowerCase() !== handleInitial);
+	// The profile card edits values read on mount, so it stays closed until
+	// that read lands: input typed sooner is overwritten when it does, and a
+	// save after a failed read writes blanks over the stored profile.
+	let profileLoad = $state<'loading' | 'ready' | 'failed'>('loading');
+	let profileLoadError = $state<string | null>(null);
 	let avatarUrl = $state<string | null>(auth.user?.avatar_url ?? null);
 	let avatarBusy = $state(false);
 	let avatarFileInput: HTMLInputElement;
@@ -292,54 +297,69 @@
 		// resolves, so a hard reload onto /settings/account can mount
 		// with auth.user still null. The $state declarations above
 		// initialised from `auth.user?.X ?? ''` at module-evaluate time
-		// — empty if auth wasn't ready yet. Wait for the form to hydrate
-		// with the saved profile values before the user can type into an
-		// empty field and clobber them on save.
+		// — empty if auth wasn't ready yet.
 		await auth.ready();
 		if (!auth.user) return;
-		displayName = auth.user.display_name ?? '';
-		parkrunNumber = auth.user.parkrun_number ?? '';
-		// Load settings bag for DOB / HR fields.
-		const { data } = await supabase
-			.from('user_settings')
-			.select('prefs')
-			.eq('user_id', auth.user.id)
-			.maybeSingle();
-		if (data?.prefs && typeof data.prefs === 'object') {
-			const p = data.prefs as Record<string, unknown>;
-			// Legacy fallback only — the canonical age record read below wins.
-			dateOfBirth = (p.date_of_birth as string) ?? '';
-			restingHr = (p.resting_hr_bpm as number)?.toString() ?? '';
-			maxHr = (p.max_hr_bpm as number)?.toString() ?? '';
-			const mode = p.cycle_tracking_mode;
-			cycleMode = mode === 'cycle' || mode === 'pregnancy' ? mode : 'off';
-			cycleLengthDays = (p.cycle_length_days as number)?.toString() ?? '28';
-			cycleLastPeriodStart = (p.cycle_last_period_start as string) ?? '';
-			pregnancyDueDate = (p.pregnancy_due_date as string) ?? '';
-		}
-		// Self-read goes through the get_my_profile() SECURITY DEFINER RPC:
-		// health_data_consent_at is deny-by-default for direct authenticated
-		// SELECTs (column lockdown, 20260707_001) — a direct select 403s.
-		const { data: prof } = await supabase.rpc('get_my_profile');
-		// Sync the avatar from the freshly-read profile — the $state was seeded
-		// from auth.user at component init, which may not have hydrated yet.
-		avatarUrl = (prof?.avatar_url as string | null) ?? null;
-		handleInitial = (prof?.handle as string | null) ?? '';
-		handle = handleInitial;
-		healthDataConsentAt = (prof?.health_data_consent_at as string | null) ?? null;
-		// The age record is the source of truth for the field; the prefs bag
-		// read above only covers a legacy account that never wrote the
-		// column (§ 718). A withdrawal clears the mirror but not the record,
-		// so reading the bag alone would blank a DOB that is still on file.
-		dateOfBirth = (prof?.date_of_birth as string | null) ?? dateOfBirth;
-		aiDisclosure = aiDisclosureFromProfileRow(prof);
-		// Pre-tick the box if consent is already on record so a user can
-		// edit DOB / HR without re-consenting on every visit.
-		healthDataConsent = healthDataConsentAt != null;
+		await loadProfile();
 		await loadIdentities();
 		await refreshPushState();
 		await resumeExportJob();
 	});
+
+	async function loadProfile() {
+		const user = auth.user;
+		if (!user) return;
+		profileLoad = 'loading';
+		profileLoadError = null;
+		try {
+			displayName = user.display_name ?? '';
+			parkrunNumber = user.parkrun_number ?? '';
+			// Load settings bag for DOB / HR fields.
+			const { data, error: settingsError } = await supabase
+				.from('user_settings')
+				.select('prefs')
+				.eq('user_id', user.id)
+				.maybeSingle();
+			if (settingsError) throw new Error(settingsError.message);
+			if (data?.prefs && typeof data.prefs === 'object') {
+				const p = data.prefs as Record<string, unknown>;
+				// Legacy fallback only — the canonical age record read below wins.
+				dateOfBirth = (p.date_of_birth as string) ?? '';
+				restingHr = (p.resting_hr_bpm as number)?.toString() ?? '';
+				maxHr = (p.max_hr_bpm as number)?.toString() ?? '';
+				const mode = p.cycle_tracking_mode;
+				cycleMode = mode === 'cycle' || mode === 'pregnancy' ? mode : 'off';
+				cycleLengthDays = (p.cycle_length_days as number)?.toString() ?? '28';
+				cycleLastPeriodStart = (p.cycle_last_period_start as string) ?? '';
+				pregnancyDueDate = (p.pregnancy_due_date as string) ?? '';
+			}
+			// Self-read goes through the get_my_profile() SECURITY DEFINER RPC:
+			// health_data_consent_at is deny-by-default for direct authenticated
+			// SELECTs (column lockdown, 20260707_001) — a direct select 403s.
+			const { data: prof, error: profileError } = await supabase.rpc('get_my_profile');
+			if (profileError) throw new Error(profileError.message);
+			// Sync the avatar from the freshly-read profile — the $state was seeded
+			// from auth.user at component init, which may not have hydrated yet.
+			avatarUrl = (prof?.avatar_url as string | null) ?? null;
+			handleInitial = (prof?.handle as string | null) ?? '';
+			handle = handleInitial;
+			healthDataConsentAt = (prof?.health_data_consent_at as string | null) ?? null;
+			// The age record is the source of truth for the field; the prefs bag
+			// read above only covers a legacy account that never wrote the
+			// column (§ 718). A withdrawal clears the mirror but not the record,
+			// so reading the bag alone would blank a DOB that is still on file.
+			dateOfBirth = (prof?.date_of_birth as string | null) ?? dateOfBirth;
+			aiDisclosure = aiDisclosureFromProfileRow(prof);
+			// Pre-tick the box if consent is already on record so a user can
+			// edit DOB / HR without re-consenting on every visit.
+			healthDataConsent = healthDataConsentAt != null;
+			profileLoad = 'ready';
+		} catch (e) {
+			console.warn('Profile load failed', e);
+			profileLoadError = (e as Error).message;
+			profileLoad = 'failed';
+		}
+	}
 
 	/// Pick up an export that was already building (or has since
 	/// finished) when the page mounts. The whole point of the queued
@@ -499,7 +519,7 @@
 	}
 
 	async function saveHandle() {
-		if (!auth.user || handleSaving) return;
+		if (!auth.user || handleSaving || profileLoad !== 'ready') return;
 		handleSaving = true;
 		handleSaved = false;
 		handleError = null;
@@ -525,7 +545,7 @@
 	}
 
 	async function handleSave() {
-		if (!auth.user) return;
+		if (!auth.user || profileLoad !== 'ready') return;
 		// Checked here as well as on the button's disabled state so the value
 		// cannot reach the prefs upsert through any other path.
 		if (maxHrOutOfRange) {
@@ -1167,229 +1187,241 @@
 	<!-- Profile -->
 	<section class="card">
 		<h2>{m('settingsAccount.profileHeading')}</h2>
-		<div class="avatar-row">
-			<Avatar url={avatarUrl} name={displayName} size="4rem" font="1.5rem" />
-			<div class="avatar-actions">
-				<input
-					bind:this={avatarFileInput}
-					type="file"
-					accept="image/jpeg,image/png,image/webp"
-					onchange={handleAvatarSelect}
-					style="display: none"
-					data-testid="avatar-file-input"
-				/>
-				<button
-					type="button"
-					class="btn btn-outline btn-sm"
-					onclick={() => avatarFileInput.click()}
-					disabled={avatarBusy}
-					data-testid="avatar-change"
-				>
-					{avatarBusy ? m('settingsAccount.avatarUploading') : m('settingsAccount.avatarChange')}
-				</button>
-				{#if avatarUrl}
+		{#if profileLoad === 'failed'}
+			<div class="load-error-banner" role="alert" data-testid="profile-load-error">
+				<span class="material-symbols" aria-hidden="true">error</span>
+				<div>
+					<strong>{m('settingsAccount.profileLoadFailed')}</strong>
+					<span class="load-error-detail">{profileLoadError}</span>
+				</div>
+				<button class="btn btn-outline" type="button" onclick={() => void loadProfile()} data-testid="profile-load-retry">{m('settingsAccount.retry')}</button>
+			</div>
+		{/if}
+		<fieldset class="profile-fields" disabled={profileLoad !== 'ready'} aria-busy={profileLoad === 'loading'}>
+			<div class="avatar-row">
+				<Avatar url={avatarUrl} name={displayName} size="4rem" font="1.5rem" />
+				<div class="avatar-actions">
+					<input
+						bind:this={avatarFileInput}
+						type="file"
+						accept="image/jpeg,image/png,image/webp"
+						onchange={handleAvatarSelect}
+						style="display: none"
+						data-testid="avatar-file-input"
+					/>
 					<button
 						type="button"
 						class="btn btn-outline btn-sm"
-						onclick={() => (showAvatarRemoveConfirm = true)}
+						onclick={() => avatarFileInput.click()}
 						disabled={avatarBusy}
-						data-testid="avatar-remove"
+						data-testid="avatar-change"
 					>
-						{m('settingsAccount.avatarRemove')}
+						{avatarBusy ? m('settingsAccount.avatarUploading') : m('settingsAccount.avatarChange')}
 					</button>
-				{/if}
-				<p class="section-desc avatar-hint">{m('settingsAccount.avatarHint')}</p>
-			</div>
-		</div>
-		<div class="form-grid">
-			<label>
-				<span class="label-text">{m('settingsAccount.displayName')}</span>
-				<input type="text" bind:value={displayName} maxlength={TEXT_LIMITS.displayName} />
-			</label>
-			<label>
-				<span class="label-text">{m('settingsAccount.handleLabel')}</span>
-				<div class="handle-row">
-					<span class="handle-at" aria-hidden="true">@</span>
-					<input
-						type="text"
-						class="handle-input"
-						bind:value={handle}
-						placeholder={m('settingsAccount.handlePlaceholder')}
-						autocomplete="off"
-						autocapitalize="none"
-						spellcheck="false"
-						maxlength="30"
-						data-testid="handle-input"
-						oninput={() => {
-							handleSaved = false;
-							handleError = null;
-						}}
-					/>
-					<button
-						type="button"
-						class="btn btn-outline btn-sm handle-save-btn"
-						onclick={saveHandle}
-						disabled={handleSaving || !handleChanged}
-						data-testid="handle-save"
-					>
-						{handleSaving
-							? m('settingsAccount.handleSaving')
-							: handleSaved
-								? m('settingsAccount.handleSaved')
-								: m('settingsAccount.handleSave')}
-					</button>
-				</div>
-				<span class="handle-help">{m('settingsAccount.handleHelp')}</span>
-				{#if handleError}<p class="error-text" role="alert" data-testid="handle-error">{handleError}</p>{/if}
-			</label>
-			<label>
-				<span class="label-text">{m('settingsAccount.email')}</span>
-				<input type="email" value={auth.user?.email ?? ''} disabled />
-				{#if !emailEditing}
-					<button
-						type="button"
-						class="btn btn-outline btn-sm email-change-btn"
-						onclick={() => {
-							emailEditing = true;
-							emailChangeError = null;
-						}}
-						data-testid="change-email"
-					>
-						{m('settingsAccount.changeEmail')}
-					</button>
-				{:else}
-					<input
-						type="email"
-						bind:value={newEmail}
-						placeholder={m('settingsAccount.newEmailPlaceholder')}
-						autocomplete="email"
-						data-testid="new-email-input"
-					/>
-					<div class="btn-row email-change-actions">
-						<button
-							type="button"
-							class="btn btn-primary btn-sm"
-							onclick={handleChangeEmail}
-							disabled={emailChanging || !newEmail}
-							data-testid="submit-email-change"
-						>
-							{emailChanging
-								? m('settingsAccount.emailChangeSending')
-								: m('settingsAccount.emailChangeSubmit')}
-						</button>
+					{#if avatarUrl}
 						<button
 							type="button"
 							class="btn btn-outline btn-sm"
-							onclick={cancelEmailChange}
-							disabled={emailChanging}
+							onclick={() => (showAvatarRemoveConfirm = true)}
+							disabled={avatarBusy}
+							data-testid="avatar-remove"
 						>
-							{m('settingsAccount.emailChangeCancel')}
+							{m('settingsAccount.avatarRemove')}
+						</button>
+					{/if}
+					<p class="section-desc avatar-hint">{m('settingsAccount.avatarHint')}</p>
+				</div>
+			</div>
+			<div class="form-grid">
+				<label>
+					<span class="label-text">{m('settingsAccount.displayName')}</span>
+					<input type="text" bind:value={displayName} maxlength={TEXT_LIMITS.displayName} />
+				</label>
+				<label>
+					<span class="label-text">{m('settingsAccount.handleLabel')}</span>
+					<div class="handle-row">
+						<span class="handle-at" aria-hidden="true">@</span>
+						<input
+							type="text"
+							class="handle-input"
+							bind:value={handle}
+							placeholder={m('settingsAccount.handlePlaceholder')}
+							autocomplete="off"
+							autocapitalize="none"
+							spellcheck="false"
+							maxlength="30"
+							data-testid="handle-input"
+							oninput={() => {
+								handleSaved = false;
+								handleError = null;
+							}}
+						/>
+						<button
+							type="button"
+							class="btn btn-outline btn-sm handle-save-btn"
+							onclick={saveHandle}
+							disabled={handleSaving || !handleChanged}
+							data-testid="handle-save"
+						>
+							{handleSaving
+								? m('settingsAccount.handleSaving')
+								: handleSaved
+									? m('settingsAccount.handleSaved')
+									: m('settingsAccount.handleSave')}
 						</button>
 					</div>
-				{/if}
-				{#if emailChangeError}<p class="error-text" role="alert">{emailChangeError}</p>{/if}
-				{#if pendingEmail}
-					<p class="ok-text" data-testid="email-change-pending">
-						{m('settingsAccount.emailChangePending', {
-							old: pendingOldEmail,
-							new: pendingEmail,
-						})}
-					</p>
-				{/if}
-			</label>
-			<label>
-				<span class="label-text">{m('settingsAccount.parkrunNumber')}</span>
-				<input
-					type="text"
-					bind:value={parkrunNumber}
-					maxlength={lengthLimit('user_profiles.parkrun_number')}
-					placeholder="A123456"
-				/>
-				{#if parkrunNumber && parkrunNumber.trim().length > 0}
-					<button
-						type="button"
-						class="btn btn-outline btn-sm parkrun-import-btn"
-						onclick={handleParkrunImport}
-						disabled={parkrunImporting}
-					>
-						{parkrunImporting ? m('settingsAccount.importing') : m('settingsAccount.pullParkrun')}
-					</button>
-				{/if}
-			</label>
-			<label>
-				<span class="label-text">{m('settingsAccount.dateOfBirth')}</span>
-				<!-- Not consent-disabled: the column it writes is the under-18
-				     discoverability floor's age record (§ 718). Consent gates
-				     the Art 9 prefs mirror, not the field. -->
-				<input type="date" bind:value={dateOfBirth} max={new Date().toISOString().slice(0, 10)} data-testid="date-of-birth" />
-			</label>
-			<label>
-				<span class="label-text">{m('settingsAccount.restingHr')}</span>
-				<input type="number" bind:value={restingHr} placeholder={m('settingsAccount.restingHrPlaceholder')} min={RESTING_HR_BPM_MIN} max={RESTING_HR_BPM_MAX} aria-invalid={restingHrOutOfRange} data-testid="resting-hr" />
-				{#if restingHrOutOfRange}
-					<span class="field-error" data-testid="resting-hr-error">{m('limits.restingHrOutOfRange', restingHrBounds)}</span>
-				{/if}
-			</label>
-			<label>
-				<span class="label-text">{m('settingsAccount.maxHr')}</span>
-				<input type="number" bind:value={maxHr} placeholder={m('settingsAccount.maxHrPlaceholder')} min={MAX_HR_BPM_MIN} max={MAX_HR_BPM_MAX} aria-invalid={maxHrOutOfRange} data-testid="max-hr" />
-				{#if maxHrOutOfRange}
-					<span class="field-error" data-testid="max-hr-error">{m('limits.maxHrOutOfRange', maxHrBounds)}</span>
-				{/if}
-			</label>
-		</div>
-		<label class="consent-checkbox">
-			<input type="checkbox" bind:checked={healthDataConsent} />
-			<span>
-				{m('settingsAccount.healthConsentLabel')}
-			</span>
-		</label>
-		{#if healthDataConsentAt}
-			<p class="section-desc consent-recorded">
-				{m('settingsAccount.consentRecorded', { date: new Date(healthDataConsentAt).toLocaleDateString() })}
-			</p>
-		{/if}
-		{#if cyclePlansEnabled}
-			<div class="cycle-block" data-testid="cycle-plans-inputs">
-				<h3 class="cycle-heading">{m('settingsAccount.cycleHeading')}</h3>
-				<p class="section-desc">{m('settingsAccount.cycleDescription')}</p>
-				<label>
-					<span class="label-text">{m('settingsAccount.cycleMode')}</span>
-					<select bind:value={cycleMode} disabled={!healthDataConsent}>
-						<option value="off">{m('settingsAccount.cycleModeOff')}</option>
-						<option value="cycle">{m('settingsAccount.cycleModeCycle')}</option>
-						<option value="pregnancy">{m('settingsAccount.cycleModePregnancy')}</option>
-					</select>
+					<span class="handle-help">{m('settingsAccount.handleHelp')}</span>
+					{#if handleError}<p class="error-text" role="alert" data-testid="handle-error">{handleError}</p>{/if}
 				</label>
-				{#if cycleMode === 'cycle'}
-					<label>
-						<span class="label-text">{m('settingsAccount.cycleLength')}</span>
+				<label>
+					<span class="label-text">{m('settingsAccount.email')}</span>
+					<input type="email" value={auth.user?.email ?? ''} disabled />
+					{#if !emailEditing}
+						<button
+							type="button"
+							class="btn btn-outline btn-sm email-change-btn"
+							onclick={() => {
+								emailEditing = true;
+								emailChangeError = null;
+							}}
+							data-testid="change-email"
+						>
+							{m('settingsAccount.changeEmail')}
+						</button>
+					{:else}
 						<input
-							type="number"
-							bind:value={cycleLengthDays}
-							disabled={!healthDataConsent}
-							min={MIN_CYCLE_LENGTH_DAYS}
-							max={MAX_CYCLE_LENGTH_DAYS}
+							type="email"
+							bind:value={newEmail}
+							placeholder={m('settingsAccount.newEmailPlaceholder')}
+							autocomplete="email"
+							data-testid="new-email-input"
 						/>
-					</label>
-					<label>
-						<span class="label-text">{m('settingsAccount.cycleLastPeriod')}</span>
-						<input type="date" bind:value={cycleLastPeriodStart} disabled={!healthDataConsent} />
-					</label>
-				{:else if cycleMode === 'pregnancy'}
-					<label>
-						<span class="label-text">{m('settingsAccount.pregnancyDueDate')}</span>
-						<input type="date" bind:value={pregnancyDueDate} disabled={!healthDataConsent} />
-					</label>
-					<p class="section-desc cycle-disclaimer" data-testid="pregnancy-disclaimer">
-						{m('settingsAccount.pregnancyDisclaimer')}
-					</p>
-				{/if}
+						<div class="btn-row email-change-actions">
+							<button
+								type="button"
+								class="btn btn-primary btn-sm"
+								onclick={handleChangeEmail}
+								disabled={emailChanging || !newEmail}
+								data-testid="submit-email-change"
+							>
+								{emailChanging
+									? m('settingsAccount.emailChangeSending')
+									: m('settingsAccount.emailChangeSubmit')}
+							</button>
+							<button
+								type="button"
+								class="btn btn-outline btn-sm"
+								onclick={cancelEmailChange}
+								disabled={emailChanging}
+							>
+								{m('settingsAccount.emailChangeCancel')}
+							</button>
+						</div>
+					{/if}
+					{#if emailChangeError}<p class="error-text" role="alert">{emailChangeError}</p>{/if}
+					{#if pendingEmail}
+						<p class="ok-text" data-testid="email-change-pending">
+							{m('settingsAccount.emailChangePending', {
+								old: pendingOldEmail,
+								new: pendingEmail,
+							})}
+						</p>
+					{/if}
+				</label>
+				<label>
+					<span class="label-text">{m('settingsAccount.parkrunNumber')}</span>
+					<input
+						type="text"
+						bind:value={parkrunNumber}
+						maxlength={lengthLimit('user_profiles.parkrun_number')}
+						placeholder="A123456"
+					/>
+					{#if parkrunNumber && parkrunNumber.trim().length > 0}
+						<button
+							type="button"
+							class="btn btn-outline btn-sm parkrun-import-btn"
+							onclick={handleParkrunImport}
+							disabled={parkrunImporting}
+						>
+							{parkrunImporting ? m('settingsAccount.importing') : m('settingsAccount.pullParkrun')}
+						</button>
+					{/if}
+				</label>
+				<label>
+					<span class="label-text">{m('settingsAccount.dateOfBirth')}</span>
+					<!-- Not consent-disabled: the column it writes is the under-18
+					     discoverability floor's age record (§ 718). Consent gates
+					     the Art 9 prefs mirror, not the field. -->
+					<input type="date" bind:value={dateOfBirth} max={new Date().toISOString().slice(0, 10)} data-testid="date-of-birth" />
+				</label>
+				<label>
+					<span class="label-text">{m('settingsAccount.restingHr')}</span>
+					<input type="number" bind:value={restingHr} placeholder={m('settingsAccount.restingHrPlaceholder')} min={RESTING_HR_BPM_MIN} max={RESTING_HR_BPM_MAX} aria-invalid={restingHrOutOfRange} data-testid="resting-hr" />
+					{#if restingHrOutOfRange}
+						<span class="field-error" data-testid="resting-hr-error">{m('limits.restingHrOutOfRange', restingHrBounds)}</span>
+					{/if}
+				</label>
+				<label>
+					<span class="label-text">{m('settingsAccount.maxHr')}</span>
+					<input type="number" bind:value={maxHr} placeholder={m('settingsAccount.maxHrPlaceholder')} min={MAX_HR_BPM_MIN} max={MAX_HR_BPM_MAX} aria-invalid={maxHrOutOfRange} data-testid="max-hr" />
+					{#if maxHrOutOfRange}
+						<span class="field-error" data-testid="max-hr-error">{m('limits.maxHrOutOfRange', maxHrBounds)}</span>
+					{/if}
+				</label>
 			</div>
-		{/if}
-		<button class="btn btn-primary btn-save" onclick={handleSave} disabled={saving || maxHrOutOfRange || restingHrOutOfRange}>
-			{saving ? m('settingsAccount.saving') : saved ? m('settingsAccount.savedDone') : m('settingsAccount.saveProfile')}
-		</button>
+			<label class="consent-checkbox">
+				<input type="checkbox" bind:checked={healthDataConsent} />
+				<span>
+					{m('settingsAccount.healthConsentLabel')}
+				</span>
+			</label>
+			{#if healthDataConsentAt}
+				<p class="section-desc consent-recorded">
+					{m('settingsAccount.consentRecorded', { date: new Date(healthDataConsentAt).toLocaleDateString() })}
+				</p>
+			{/if}
+			{#if cyclePlansEnabled}
+				<div class="cycle-block" data-testid="cycle-plans-inputs">
+					<h3 class="cycle-heading">{m('settingsAccount.cycleHeading')}</h3>
+					<p class="section-desc">{m('settingsAccount.cycleDescription')}</p>
+					<label>
+						<span class="label-text">{m('settingsAccount.cycleMode')}</span>
+						<select bind:value={cycleMode} disabled={!healthDataConsent}>
+							<option value="off">{m('settingsAccount.cycleModeOff')}</option>
+							<option value="cycle">{m('settingsAccount.cycleModeCycle')}</option>
+							<option value="pregnancy">{m('settingsAccount.cycleModePregnancy')}</option>
+						</select>
+					</label>
+					{#if cycleMode === 'cycle'}
+						<label>
+							<span class="label-text">{m('settingsAccount.cycleLength')}</span>
+							<input
+								type="number"
+								bind:value={cycleLengthDays}
+								disabled={!healthDataConsent}
+								min={MIN_CYCLE_LENGTH_DAYS}
+								max={MAX_CYCLE_LENGTH_DAYS}
+							/>
+						</label>
+						<label>
+							<span class="label-text">{m('settingsAccount.cycleLastPeriod')}</span>
+							<input type="date" bind:value={cycleLastPeriodStart} disabled={!healthDataConsent} />
+						</label>
+					{:else if cycleMode === 'pregnancy'}
+						<label>
+							<span class="label-text">{m('settingsAccount.pregnancyDueDate')}</span>
+							<input type="date" bind:value={pregnancyDueDate} disabled={!healthDataConsent} />
+						</label>
+						<p class="section-desc cycle-disclaimer" data-testid="pregnancy-disclaimer">
+							{m('settingsAccount.pregnancyDisclaimer')}
+						</p>
+					{/if}
+				</div>
+			{/if}
+			<button class="btn btn-primary btn-save" onclick={handleSave} disabled={saving || maxHrOutOfRange || restingHrOutOfRange}>
+				{saving ? m('settingsAccount.saving') : saved ? m('settingsAccount.savedDone') : m('settingsAccount.saveProfile')}
+			</button>
+		</fieldset>
 	</section>
 
 	<!-- Sign-in methods -->
@@ -1843,6 +1875,32 @@
 	}
 	h2 { font-size: 0.9rem; font-weight: 600; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-lg); }
 	.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-lg); margin-bottom: var(--space-xl); }
+	.profile-fields { border: 0; margin: 0; padding: 0; min-width: 0; }
+	.load-error-banner {
+		display: flex;
+		align-items: center;
+		gap: var(--space-md);
+		padding: var(--space-md) var(--space-lg);
+		margin-bottom: var(--space-lg);
+		background: var(--color-danger-light);
+		border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
+		border-radius: var(--radius-md);
+		color: var(--color-text);
+	}
+	.load-error-banner > div {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+	}
+	.load-error-detail {
+		font-size: 0.78rem;
+		color: var(--color-text-tertiary);
+	}
+	.load-error-banner .material-symbols {
+		color: var(--color-danger-text);
+		font-size: 1.4rem;
+	}
 	.card-danger { border-color: rgba(229, 57, 53, 0.3); }
 	.avatar-row { display: flex; align-items: flex-start; gap: var(--space-md); margin-bottom: var(--space-lg); }
 	.avatar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }

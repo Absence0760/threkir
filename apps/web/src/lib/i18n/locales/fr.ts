@@ -1306,6 +1306,8 @@ export const messages = {
 	"settingsAccount.title": "Compte",
 	"settingsAccount.tagline": "Ton identité, tes méthodes de connexion, tes notifications, tes sauvegardes et les options pour partir — tout ce qui te concerne, pas la façon dont tu enregistres.",
 	"settingsAccount.profileHeading": "Profil",
+	"settingsAccount.profileLoadFailed": "Impossible de charger votre profil. Réessayez avant de faire des modifications : enregistrer maintenant remplacerait votre profil enregistré par des champs vides.",
+	"settingsAccount.retry": "Réessayer",
 	"settingsAccount.displayName": "Nom affiché",
 	"settingsAccount.handleLabel": "Nom d'utilisateur",
 	"settingsAccount.handlePlaceholder": "votrenom",

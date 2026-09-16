@@ -1301,6 +1301,8 @@ export const messages = {
 	"settingsAccount.title": "アカウント",
 	"settingsAccount.tagline": "あなたのアイデンティティ、ログイン方法、通知、バックアップ、退会のための操作 — 記録方法ではなく、あなた自身に関するすべて。",
 	"settingsAccount.profileHeading": "プロフィール",
+	"settingsAccount.profileLoadFailed": "プロフィールを読み込めませんでした。変更する前にもう一度お試しください。このまま保存すると、保存済みのプロフィールが空の値で上書きされます。",
+	"settingsAccount.retry": "再試行",
 	"settingsAccount.displayName": "表示名",
 	"settingsAccount.handleLabel": "ユーザー名",
 	"settingsAccount.handlePlaceholder": "yourname",

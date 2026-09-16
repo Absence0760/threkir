@@ -57,8 +57,6 @@ const STATIC_DEMO_MOUNTS: Record<string, RegExp> = {
 		/import \{[^}]*\bDEMO_TRACK\b[^}]*\} from '\$lib\/marketing\/demo_preview'/,
 	'lib/components/marketing/ProductPreview.svelte':
 		/import \{[^}]*\bDEMO_TRACK\b[^}]*\} from '\$lib\/marketing\/demo_preview'/,
-	'lib/components/marketing/AuthShowcase.svelte':
-		/import \{[^}]*\bDEMO_TRACK\b[^}]*\} from '\$lib\/marketing\/demo_preview'/,
 };
 
 function svelteFiles(dir: string, out: string[] = []): string[] {

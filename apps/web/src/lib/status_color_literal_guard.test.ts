@@ -572,13 +572,16 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 	'lib/components/RouteHeatmap.svelte': {
 		'7FB3C2': [1, 'cartographic'], F2A07B: [2, 'cartographic'],
 	},
-	// The closing-CTA ramp and the on-hero button. The four hero stops that
-	// used to sit here are gone from this file: the hero paints --brand-ramp,
-	// whose stops are an app.css DECLARATION and so are spared by name. Every
-	// ink over either ramp is measured by gradient_foreground_guard.test.ts.
+	// The closing-CTA ramp, the journey step-number disc and the on-hero
+	// button. The hero's four stops are not here: the hero paints
+	// --brand-ramp, whose stops are an app.css DECLARATION and so are spared by
+	// name. Every ink over these ramps is measured by
+	// gradient_foreground_guard.test.ts. The decorative brand hues (rail,
+	// fastest split) read --brand-ember / --brand-magenta instead.
 	'routes/+page.svelte': {
+		'6E1450': [1, 'gradient-stop'], A01E77: [1, 'gradient-stop'],
 		'102A32': [1, 'gradient-stop'], '2C5F6E': [1, 'gradient-stop'],
-		FFFFFF: [5, 'fixed-canvas'], '8A1A62': [1, 'fixed-canvas'],
+		FFFFFF: [6, 'fixed-canvas'], '8A1A62': [1, 'fixed-canvas'],
 		FDEFF7: [1, 'fixed-canvas'], '1F4854': [1, 'fixed-canvas'],
 		EAF3F5: [1, 'fixed-canvas'],
 	},
@@ -602,26 +605,32 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 		FFFFFF: [1, 'fixed-canvas'],
 	},
 	// Header over that same hero: white hover ink, 5.699:1 on the ramp's
-	// palest stop.
+	// palest stop. The motion toggle sits in the same bar with the same two.
 	'lib/components/PublicHeader.svelte': { FFFFFF: [2, 'fixed-canvas'] },
-	// The contour stroke on the brand canvas. A fixed canvas in both themes,
-	// like the copy it sits behind: the ramp under it does not follow the
-	// theme, so a token here would invert the lines out of existence in one
-	// of them. Peak stroke-opacity is 0.114, and every ramp stop is measured
-	// under it as a veil in gradient_foreground_guard.test.ts.
-	'lib/components/marketing/BrandTexture.svelte': { FFFFFF: [1, 'fixed-canvas'] },
-	// Sign-in brand canvas — the >=56rem pane and the <56rem band, which are
-	// mirror images of each other. A fixed canvas in both themes: the white
-	// copy, both eyebrow pills and the bullet ticks, all measured on
-	// --brand-ramp under each bloom by gradient_foreground_guard.test.ts.
-	// Then the Google "G" mark and Apple's required black button plus its
-	// hairline. The three ramp stops that used to sit here are gone — both
-	// halves paint the shared token, whose stops are an app.css declaration.
+	'lib/components/marketing/MotionToggle.svelte': { FFFFFF: [2, 'fixed-canvas'] },
+	// The auth shell's brand panel paints --brand-ramp, so its stops are an
+	// app.css declaration and are not listed. What is left is the panel's white
+	// copy and the recording readout's peach label and white figure on its
+	// fixed glass scrim.
+	'lib/components/auth/AuthShell.svelte': {
+		FFFFFF: [2, 'fixed-canvas'], FFB59C: [1, 'fixed-canvas'],
+	},
+	// Panel copy on AuthShell's --brand-ramp (the peach kicker and bullet
+	// marks, measured per veil by gradient_foreground_guard.test.ts), the
+	// Google "G" mark, and Apple's required black button plus its hairline.
 	'routes/login/+page.svelte': {
-		FFFFFF: [5, 'fixed-canvas'],
+		FFD6C8: [2, 'fixed-canvas'],
 		'4285F4': [1, 'brand-mark'], '34A853': [1, 'brand-mark'],
 		FBBC05: [1, 'brand-mark'], EA4335: [1, 'brand-mark'],
 		'1A1A1A': [1, 'brand-mark'], '334155': [1, 'brand-mark'],
+	},
+	// Onboarding's copy on the same AuthShell panel: the peach kicker and
+	// done-step check (the kicker measured per veil by
+	// gradient_foreground_guard.test.ts), the current step's white disc with a
+	// plum numeral (11.18:1) and its white label, and the white check on the
+	// finish badge's brand gradient (a 3:1 glyph: 3.14:1 at the ember end).
+	'routes/onboarding/+page.svelte': {
+		FFD6C8: [2, 'fixed-canvas'], FFFFFF: [3, 'fixed-canvas'], '6E1450': [1, 'fixed-canvas'],
 	},
 	// The same two marks on the linked-accounts rows.
 	'routes/settings/account/+page.svelte': {

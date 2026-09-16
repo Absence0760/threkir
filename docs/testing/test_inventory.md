@@ -1088,7 +1088,7 @@ Run the pure-helper slices with `cd apps/backend && deno test --no-check supabas
 
 The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets to drive and are exercised manually only — see [apps/backend/CLAUDE.md § Testing without real credentials](../../apps/backend/CLAUDE.md#testing-without-real-credentials).
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 1,829 declared tests across 483 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 1,847 declared tests across 485 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 
@@ -1119,7 +1119,9 @@ The suite mirrors `apps/web/src/routes/`, with two flat concern folders for thin
 ```
 tests-e2e/
   fixtures/                    — globalSetup, helpers, browser-zone dates, seeded constants, users
-  landing.spec.ts              — /
+  landing/                     — / (anon storageState)
+    page.spec.ts               — hero + CTAs, SEO head, product shot drawn by the real renderer (a runner travels it; its glyph carries no route-glow stroke), feature steps, platforms strip, header, one-line CTAs at 390px
+    motion.spec.ts             — the motion contract (conventions § Web motion): reveals settle opaque; reduced motion hides nothing and loops nothing; the pause control stops every loop and the phone clock, then resumes; pausing before scrolling means sections arrive at rest; no copy on the rendered terrain at 1440/390px; h1→h2→h3 outline; no sideways scroll at 390px
   explore.spec.ts              — /explore (redirects to /routes?tab=explore)
   learn/                       — public Learn/guides surface (anon storageState; learn.md, decisions §161)
     hub.spec.ts                — /learn renders the hub heading + ≥1 guide card; a card link resolves to /learn/[slug] (no 404)
@@ -1129,6 +1131,8 @@ tests-e2e/
     cta-links-resolve.spec.ts  — anon clicks the feature CTA → lands on /login (auth funnel), not a hard 404
   dashboard-period.spec.ts     — /dashboard/period/[type]/[date] (week + month deep links + invalid-date fallback)
   login.spec.ts                — /login (failed sign-in; sign-up: ?signup=1; forgot-password full round-trip via Mailpit; happy sign-in path in cross-cutting/sign-in-out)
+  auth/shell.spec.ts           — AuthShell on /login, ?signup=1, /auth/reset, /auth/confirm-age, /auth/callback: one page-owned main landmark, a route home, decorative loaded art; panel copy never overlaps the art at 1440x900 or 1280x720; phone band + no sideways scroll + one-line OAuth labels; reduced motion finished on first frame
+  onboarding/design.spec.ts    — /onboarding on AuthShell (no writes): the named progressbar and the panel rail track the step, a step change focuses the new question's heading (Continue and Back), each single-choice group is named by its question, reduced motion shows the new step whole on its first frame, the phone layout carries the step count with no sideways scroll
   dashboard.spec.ts            — /dashboard
   feed.spec.ts                 — /feed
   coach.spec.ts                — /coach (mount, dropdowns, send → mocked SSE assistant bubble)

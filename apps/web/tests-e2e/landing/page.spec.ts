@@ -253,14 +253,18 @@ test.describe('/ (landing)', () => {
 	});
 
 	test('sections are visible without JS-driven reveal', async ({ page }) => {
-		// The reveal hides a section only from code that can also unhide it.
-		// A stylesheet that hid them until a class arrived would leave a
-		// crawler — and anyone whose script failed — looking at a blank page.
+		// The reveal hides a section only from code that can also unhide it,
+		// and it hides nothing at all under reduced motion. A stylesheet that
+		// hid them until a class arrived would leave a crawler — and anyone
+		// whose script failed — looking at a blank page.
 		await page.emulateMedia({ reducedMotion: 'reduce' });
 		await page.goto('/');
 		await expect(page.locator('section#features')).toBeVisible();
 		await expect(page.locator('section.closing-cta')).toBeVisible();
-		await expect(page.locator('.pre-reveal')).toHaveCount(0);
+		const scriptHidden = await page
+			.locator('section#features *, section#apps *, section.closing-cta *')
+			.evaluateAll((els) => els.filter((el) => (el as HTMLElement).style.opacity === '0').length);
+		expect(scriptHidden).toBe(0);
 	});
 
 	test('a runner travels the route in the product shot', async ({ page }) => {
@@ -276,6 +280,21 @@ test.describe('/ (landing)', () => {
 		const first = await distance();
 		await page.waitForTimeout(900);
 		expect(await distance(), 'the marker is not moving').not.toBe(first);
+	});
+
+	test("the runner's glyph is not stroked as part of the route", async ({ page }) => {
+		// The route's glow is TrackPreview's casing path restyled, and the
+		// runner's figure is the first <path> in its own group — a descendant
+		// selector stroked it too, and a 9-unit translucent outline on a glyph
+		// reads as a blurred runner.
+		await page.goto('/');
+		const figure = page.locator('.trace .pacer path');
+		await expect(figure).toHaveCount(1);
+		const stroke = await figure.evaluate((el) => {
+			const cs = getComputedStyle(el);
+			return { stroke: cs.stroke, width: cs.strokeWidth };
+		});
+		expect(stroke.stroke === 'none' || stroke.width === '0px', JSON.stringify(stroke)).toBe(true);
 	});
 
 	test('reduced motion leaves the shot finished and still', async ({ page }) => {

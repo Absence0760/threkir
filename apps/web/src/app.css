@@ -80,6 +80,13 @@
 	--color-success-text: #2E6B3C;
 	--color-danger-text: #A93B2E;
 
+	/* The wordmark's two ends, for decoration on the public pages: the landing
+	   journey rail, the fastest split, a recording dot. Theme-independent,
+	   because the wordmark is one file in both themes. Never a text ink:
+	   white on ember reads 3.139:1, and ember on the light page is lower. */
+	--brand-ember: #FE5932;
+	--brand-magenta: #A01E77;
+
 	/* Rank-1 / segment-crown gold, as a fill + its own foreground. Mirrors
 	   mobile's AppSemanticColors.crown / onCrown so a leaderboard pill reads
 	   the same on both platforms. Theme-aware because a single gold cannot be
@@ -386,6 +393,9 @@
 	   visitor entering /runs select mode hits both a banner and the
 	   bulk-bar at the same coordinates and can't see the banner. */
 	--z-sidebar: 10;
+	/* The public pages' fixed header: above page content (the landing shot
+	   and cards stack at 1-3), below every overlay. */
+	--z-public-header: 50;
 	--z-modal-backdrop: 200;
 	--z-modal: 201;
 	--z-toast: 300;
@@ -808,9 +818,26 @@ img {
 	*::after {
 		animation-duration: 0.01ms !important;
 		animation-iteration-count: 1 !important;
+		/* Delays too, not only durations: a staggered entrance declared with
+		   `animation: rise 700ms 480ms both` holds its FIRST keyframe through
+		   the delay, so collapsing the duration alone left that text invisible
+		   for the delay on exactly the visitor who asked for nothing to move. */
+		animation-delay: 0s !important;
 		transition-duration: 0.01ms !important;
+		transition-delay: 0s !important;
 		scroll-behavior: auto !important;
 	}
+}
+
+/*
+ * In-page motion pause (WCAG 2.2.2), set by MotionToggle through the motion
+ * store. Scoped to `.motion-scope` so a visitor who paused the landing page
+ * does not also freeze the app's loading spinners after signing in.
+ */
+:root[data-motion='paused'] .motion-scope *,
+:root[data-motion='paused'] .motion-scope *::before,
+:root[data-motion='paused'] .motion-scope *::after {
+	animation-play-state: paused !important;
 }
 
 /*

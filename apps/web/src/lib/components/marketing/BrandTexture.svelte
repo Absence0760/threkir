@@ -14,10 +14,15 @@
 	// binary. It is also not a MAP — the geometry is a synthesised field, so
 	// there is no real place here and nothing to read a location out of.
 	//
-	// `box` is the coordinate space the field is traced in. The pane passes a
-	// portrait one and the band a wide one, so the two halves of the canvas
-	// show the same landscape at different crops rather than the same picture
-	// squashed twice.
+	// The width by height props are the coordinate space the field is traced
+	// in. The pane passes a portrait one and the band a wide one, so the two
+	// halves of the canvas show the same landscape at different crops rather
+	// than the same picture squashed twice.
+	//
+	// The class is hyphenated on purpose. The icon-font generator reads every
+	// quoted bare `[a-z0-9_]+` token as a possible icon, so a one-word class
+	// that happens to be a Material Symbols ligature pulls a glyph nothing
+	// draws into the subset; a hyphen can never be one.
 
 	// `strength` scales every line's opacity. The brand canvas is a fixed
 	// dark surface and takes the default; a THEME surface needs both a
@@ -34,7 +39,7 @@
 </script>
 
 <svg
-	class="texture"
+	class="contour-field"
 	viewBox="0 0 {width} {height}"
 	preserveAspectRatio="xMidYMid slice"
 	aria-hidden="true"
@@ -51,7 +56,7 @@
 </svg>
 
 <style>
-	.texture {
+	.contour-field {
 		position: absolute;
 		inset: 0;
 		width: 100%;

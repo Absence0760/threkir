@@ -102,7 +102,7 @@ test.describe('/login brand canvas', () => {
 		// Both are decoration, so both must be out of the accessibility tree
 		// and out of the way of a pointer — a full-bleed overlay that
 		// swallowed clicks would break the form under it.
-		const texture = page.locator('svg.texture:visible');
+		const texture = page.locator('svg.contour-field:visible');
 		await expect(texture).toHaveCount(2);
 		for (let i = 0; i < 2; i++) {
 			await expect(texture.nth(i)).toHaveAttribute('aria-hidden', 'true');

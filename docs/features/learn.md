@@ -12,7 +12,7 @@ Each guide is a markdown / MDsvex file committed in the repo, loaded by a build-
 
 | URL | Route | Prerender |
 |---|---|---|
-| `/learn` | `routes/learn/+page.{svelte,ts}` — the hub (category sections of guide cards) | `prerender = true` |
+| `/learn` | `routes/learn/+page.{svelte,ts}` — the hub (category chips, a promoted guide, then one grid of all guides) | `prerender = true` |
 | `/learn/<slug>` | `routes/learn/[slug]/+page.{svelte,ts}` — a single article (mdsvex body) | `true` + `entries()` over guide slugs |
 | `/learn/category/<id>` | `routes/learn/category/[category]/+page.{svelte,ts}` — guides in one category | `true` + `entries()` over `CATEGORIES` |
 
@@ -100,10 +100,18 @@ Two layers:
 
 ## Mobile / watch
 
+## Hub layout
+
+The hub renders **category chips → one promoted guide → one grid of everything else**, not a section per category. It used to be the latter, and five of the seven categories hold a single guide: each produced a heading, one card, and an `auto-fill` grid whose remaining tracks stayed empty, so most of the page was dead space and eight guides took a full screen of scrolling to reach. The chips carry the per-category browse the headings used to (`/learn/category/<id>`, which already existed and was otherwise unlinked), and the first guide in category-then-order sequence is promoted as the obvious starting point. The grid is `auto-fit`, not `auto-fill` — with a short final row `auto-fill` keeps the empty tracks and the last card sits in a 17rem slot beside a void.
+
+The ItemList JSON-LD is still built from the same category-then-order sequence, so the structured data describes the order a reader actually sees.
+
+**Reading time** is `estimateReadingMinutes` in `guides_index.ts` (pure, unit-tested) over a second `import.meta.glob` of the same files as `?raw` — the compiled module exposes frontmatter and a Svelte component, and neither can be word-counted. Both globs resolve at build time. It is keyed on the **English** source: a localized file is a translation of the same guide, so its word count differs by language rather than by how much there is to read. Every English guide currently lands on 2 minutes because they are all 431-523 words; the figure differentiates as the library grows.
+
 **Web-only. The twin invariant does not apply** (acquisition/SEO content, like the landing page / `/privacy` / `/compare`). A future single in-app "Learn / Guides" link opening the web hub is a one-link follow-up, not a screen and not a twin obligation.
 
 ## Tests
 
 - Unit (`npx tsx --test`): `guides.test.ts`, `learn_meta.test.ts`, `sitemap.test.ts` (extended).
-- Playwright (`apps/web/tests-e2e/learn/`): `hub`, `article`, `seo`, `category`, `cta-links-resolve`, `localized-prose` (localized body + H1, English fallback + notice, localized hub-card title), `chrome` (the shared PublicHeader/PublicFooter landing chrome on all three learn routes).
+- Playwright (`apps/web/tests-e2e/learn/`): `hub` (one grid + a promoted guide, chips resolve, every card states a reading time), `article` (plus the Keep-reading block and the header's reading time), `seo`, `category`, `cta-links-resolve`, `localized-prose` (localized body + H1, English fallback + notice, localized hub-card title), `chrome` (the shared PublicHeader/PublicFooter landing chrome on all three learn routes).
 - Artifact guards (`apps/web/src/lib/seo/`): `learn_structured_data.test.ts` reads the BUILT pages and pins one JSON-LD block per learn route whose `@type` matches the route kind, a breadcrumb of the right depth whose last rung links nowhere, and a non-empty self-consistent `ItemList` on the two index kinds; `document_title.test.ts` pins that every prerendered page carries exactly one `<title>`, its own. Both self-skip when `apps/web/build` is absent, so they bind only after a production build (decisions § 1167 + § 1168).

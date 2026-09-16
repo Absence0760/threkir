@@ -619,7 +619,7 @@ TypeScript unit tests for the pure segment-effort compute (`lib/segments.ts`, de
 
 The synthetic `straightTrack` helper builds a meridian-aligned sequence of `(lat, lng, ts)` so haversine cumulative distance matches `(i * stepM)` to within ~0.5m.
 
-### `apps/web/src/lib/learn/*.test.ts` — 56 tests across 4 files (Learn/guides, `learn.md`, decisions §161)
+### `apps/web/src/lib/learn/*.test.ts` — 58 tests across 4 files (Learn/guides, `learn.md`, decisions §161)
 
 Run with `npx tsx --test src/lib/learn/guides.test.ts src/lib/learn/learn_meta.test.ts` from `apps/web`. Web-only (no Dart twin).
 
@@ -1088,7 +1088,7 @@ Run the pure-helper slices with `cd apps/backend && deno test --no-check supabas
 
 The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets to drive and are exercised manually only — see [apps/backend/CLAUDE.md § Testing without real credentials](../../apps/backend/CLAUDE.md#testing-without-real-credentials).
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 1,811 declared tests across 479 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 1,816 declared tests across 479 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 

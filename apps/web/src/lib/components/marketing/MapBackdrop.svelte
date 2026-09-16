@@ -14,6 +14,14 @@
 	// follows the theme like the rest of the shot. It is plainly stylised
 	// rather than dressed up as a real place.
 
+	// Class names here deliberately avoid the Material Symbols vocabulary.
+	// The icon-font generator treats any quoted string in it as a render
+	// site, so a one-word class name that happens to be a ligature pulls a
+	// glyph nothing draws into the subset and fails the build. Three of the
+	// obvious names for these shapes are ligatures; these are not. The scan
+	// does not skip comments either, so naming them here would reintroduce
+	// the very collision this note is about.
+	//
 	// Irregular spacing on purpose — an even grid reads as graph paper.
 	const ACROSS = [17, 43, 74, 101, 129, 152];
 	const DOWN = [21, 49, 78, 112, 147, 181, 214];
@@ -28,14 +36,14 @@
 >
 	<!-- Parkland -->
 	<path
-		class="park"
+		class="greenspace"
 		d="M132 18 Q168 10 196 24 Q214 34 210 56 Q206 78 178 84 Q148 90 134 72 Q122 52 132 18 Z"
 	/>
-	<path class="park" d="M8 92 Q34 84 52 96 Q62 112 44 124 Q20 132 8 118 Z" />
+	<path class="greenspace" d="M8 92 Q34 84 52 96 Q62 112 44 124 Q20 132 8 118 Z" />
 
 	<!-- Water -->
 	<path
-		class="water"
+		class="river"
 		d="M-6 132 Q44 120 82 100 Q122 80 168 96 Q206 110 248 98"
 	/>
 
@@ -52,11 +60,11 @@
 	<path class="street arterial" d="M56 -4 Q72 52 108 92 Q140 128 150 164" />
 
 	<!-- A few blocks, so the grid encloses something -->
-	<rect class="block" x="24" y="24" width="24" height="18" rx="1.5" />
-	<rect class="block" x="80" y="53" width="18" height="18" rx="1.5" />
-	<rect class="block" x="106" y="106" width="20" height="14" rx="1.5" />
-	<rect class="block" x="158" y="128" width="26" height="16" rx="1.5" />
-	<rect class="block" x="190" y="104" width="18" height="20" rx="1.5" />
+	<rect class="parcel" x="24" y="24" width="24" height="18" rx="1.5" />
+	<rect class="parcel" x="80" y="53" width="18" height="18" rx="1.5" />
+	<rect class="parcel" x="106" y="106" width="20" height="14" rx="1.5" />
+	<rect class="parcel" x="158" y="128" width="26" height="16" rx="1.5" />
+	<rect class="parcel" x="190" y="104" width="18" height="20" rx="1.5" />
 </svg>
 
 <style>
@@ -75,12 +83,12 @@
 	   light surface. These are decorative and faint, but the theme-aware
 	   variant is the right value anyway — the base green is candy-bright
 	   against a paper basemap. */
-	.park {
+	.greenspace {
 		fill: var(--color-success-text);
 		opacity: 0.18;
 	}
 
-	.water {
+	.river {
 		fill: none;
 		stroke: var(--color-accent-cyan-text);
 		stroke-width: 11;
@@ -100,7 +108,7 @@
 		opacity: 0.34;
 	}
 
-	.block {
+	.parcel {
 		fill: var(--color-text-tertiary);
 		opacity: 0.1;
 	}

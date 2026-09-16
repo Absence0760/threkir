@@ -607,12 +607,18 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 	// palest stop. The motion toggle sits in the same bar with the same two.
 	'lib/components/PublicHeader.svelte': { FFFFFF: [2, 'fixed-canvas'] },
 	'lib/components/marketing/MotionToggle.svelte': { FFFFFF: [2, 'fixed-canvas'] },
-	// Sign-in brand pane (a fixed canvas; ramp + white copy measured per
-	// veil by gradient_foreground_guard.test.ts), the Google "G" mark, and
-	// Apple's required black button plus its hairline.
+	// The auth brand panel: the landing ramp's plum stops (inks measured per
+	// veil by gradient_foreground_guard.test.ts), and the recording readout's
+	// peach label and white figure on its fixed glass scrim.
+	'lib/components/auth/AuthShell.svelte': {
+		'140A18': [1, 'gradient-stop'], '3A0F33': [1, 'gradient-stop'], '6E1450': [1, 'gradient-stop'],
+		FFFFFF: [2, 'fixed-canvas'], FFB59C: [1, 'fixed-canvas'],
+	},
+	// Panel copy on AuthShell's fixed ramp (the peach kicker and bullet marks,
+	// measured per veil by gradient_foreground_guard.test.ts), the Google "G"
+	// mark, and Apple's required black button plus its hairline.
 	'routes/login/+page.svelte': {
-		'2A4E5A': [1, 'gradient-stop'], '3A5A66': [1, 'gradient-stop'], '7E4527': [1, 'gradient-stop'],
-		FFFFFF: [2, 'fixed-canvas'],
+		FFB59C: [2, 'fixed-canvas'],
 		'4285F4': [1, 'brand-mark'], '34A853': [1, 'brand-mark'],
 		FBBC05: [1, 'brand-mark'], EA4335: [1, 'brand-mark'],
 		'1A1A1A': [1, 'brand-mark'], '334155': [1, 'brand-mark'],

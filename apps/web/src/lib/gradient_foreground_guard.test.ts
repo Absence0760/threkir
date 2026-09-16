@@ -84,17 +84,33 @@ type Ramp = {
 };
 
 const RAMPS: Ramp[] = [
+	// The auth shell's brand panel. Two inks ride it — the 0.85 white of the
+	// panel's body copy and the peach kicker / bullet marks — and each is
+	// measured bare and under both veils. The terrain art sits below the copy
+	// in flow, so no ink is ever set on the picture.
 	{
-		file: 'routes/login/+page.svelte',
-		anchor: 'background: linear-gradient(150deg,',
+		file: 'lib/components/auth/AuthShell.svelte',
+		anchor: 'background: linear-gradient(165deg, #140A18',
 		stops: 3,
-		ink: '#FFFFFF',
+		ink: 'rgba(255, 255, 255, 0.85)',
 		floor: 4.5,
 		veils: [
-			{ colour: '#FFFFFF', alpha: 0.18, why: '.brand-pane::before sheen at 30%/20%' },
-			{ colour: '#B9A7E8', alpha: 0.35, why: '.brand-pane::after lilac at 80%/90%' },
+			{ colour: '#FE5932', alpha: 0.18, why: '.auth-panel::before ember glow' },
+			{ colour: '#FFFFFF', alpha: 0.07, why: '.panel-topo contour lines' },
 		],
-		why: 'the sign-in brand pane carries the product copy',
+		why: 'the auth panel body copy (brand foot, bullets)',
+	},
+	{
+		file: 'lib/components/auth/AuthShell.svelte',
+		anchor: 'background: linear-gradient(165deg, #140A18',
+		stops: 3,
+		ink: '#FFB59C',
+		floor: 4.5,
+		veils: [
+			{ colour: '#FE5932', alpha: 0.18, why: '.auth-panel::before ember glow' },
+			{ colour: '#FFFFFF', alpha: 0.07, why: '.panel-topo contour lines' },
+		],
+		why: 'the auth panel kicker and bullet marks',
 	},
 	{
 		file: 'routes/runs/[id]/+page.svelte',

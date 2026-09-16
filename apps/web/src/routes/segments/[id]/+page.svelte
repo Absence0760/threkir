@@ -99,9 +99,9 @@
 </script>
 
 {#if loading}
-	<div class="segment-detail"><p class="loading">&nbsp;</p></div>
+	<div class="page"><p class="loading">&nbsp;</p></div>
 {:else if loadFailed}
-	<div class="segment-detail">
+	<div class="page">
 		<a href="/segments" class="back-link">
 			<span class="material-symbols" aria-hidden="true">arrow_back</span>
 			{m('segments.browseTitle')}
@@ -115,7 +115,7 @@
 		</div>
 	</div>
 {:else if !segment}
-	<div class="segment-detail">
+	<div class="page">
 		<a href="/segments" class="back-link">
 			<span class="material-symbols" aria-hidden="true">arrow_back</span>
 			{m('segments.browseTitle')}
@@ -126,7 +126,7 @@
 		</div>
 	</div>
 {:else}
-	<div class="segment-detail">
+	<div class="page">
 		<a href="/segments" class="back-link">
 			<span class="material-symbols" aria-hidden="true">arrow_back</span>
 			{m('segments.browseTitle')}
@@ -268,18 +268,14 @@
 {/if}
 
 <style>
-	.segment-detail {
-		max-width: 760px;
-		margin: 0 auto;
-		padding: var(--space-lg) var(--space-md);
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-lg);
+	.page {
+		padding: var(--page-padding-y) var(--page-padding-x);
 	}
 	.back-link {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.3rem;
+		margin-bottom: var(--space-md);
 		color: var(--color-text-secondary);
 		font-size: 0.85rem;
 		text-decoration: none;
@@ -304,8 +300,7 @@
 		gap: var(--space-sm);
 	}
 	.detail-header h1 {
-		margin: 0 0 0.3rem;
-		font-size: 1.4rem;
+		margin: 0 0 0.25rem;
 	}
 	.region {
 		display: inline-flex;
@@ -318,10 +313,17 @@
 	.region .material-symbols {
 		font-size: 1rem;
 	}
+	/* The page fills the screen (conventions.md "Web page padding"), but three
+	   blocks read as broken when they do: stat cells split across a 1400 px row
+	   leave each one mostly empty, a leaderboard row strands the time a
+	   screen-width away from the name it belongs to, and the description runs
+	   past a readable measure. Cap the blocks, not the page — the map keeps the
+	   full width, which is the one thing here that gains from it. */
 	.key-stats {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(min(120px, 100%), 1fr));
 		gap: 1px;
+		max-width: 48rem;
 		background: var(--color-border);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-md);
@@ -356,8 +358,12 @@
 	}
 	.description {
 		margin: var(--space-md) 0 0;
+		max-width: 48rem;
 		color: var(--color-text-secondary);
 		line-height: 1.5;
+	}
+	.section {
+		margin-top: var(--space-lg);
 	}
 	.section h2 {
 		margin: 0 0 var(--space-sm);
@@ -426,6 +432,7 @@
 		list-style: none;
 		margin: 0;
 		padding: 0;
+		max-width: 48rem;
 		display: flex;
 		flex-direction: column;
 	}

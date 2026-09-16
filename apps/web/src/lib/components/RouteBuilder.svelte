@@ -669,10 +669,15 @@
 		/// Suppress the deviation / detour / partial-success warnings.
 		/// generateLoop's scaffolding waypoints are invisible, so
 		/// telling the user to "drag the red markers" makes no sense.
-		/// Hard failures (okSegments === 0 → throw → catch → onerror)
-		/// still bubble — the caller can replace that with a
-		/// generation-specific message.
 		suppressSoftWarnings?: boolean;
+		/// Treat "no segment snapped" as a hard failure (throw → catch →
+		/// onerror → the parent clears `routed`) instead of keeping the
+		/// straight-line fallback. Only generateLoop wants this: a loop
+		/// whose every segment is a straight line between invisible
+		/// scaffolding seeds is not a route the user asked for, so it
+		/// must fail and let the caller emit its own message. A user
+		/// drawing waypoints by hand keeps what they drew.
+		requireSnappedSegments?: boolean;
 	} = {}): Promise<boolean> {
 		if (waypoints.length < 2) {
 			routeCoordinates = [];
@@ -828,7 +833,16 @@
 				}
 			}
 
-			if (okSegments === 0) {
+			// A total snap failure is an engine outage, not a dead end: a
+			// deploy with no OSRM_URL answers 501 on every segment, and
+			// every entry in `perSegment` already carries its straight-line
+			// fallback. Throwing here cleared `routeCoordinates`, which the
+			// parent reads as `routed: false` and uses to disable Save /
+			// GPX / KML — so an unreachable engine made the builder
+			// unusable rather than degrading it. generateLoop is the one
+			// caller that genuinely needs the hard failure: a polyline that
+			// never touched a road is not a generated loop.
+			if (okSegments === 0 && opts.requireSnappedSegments) {
 				throw new Error(
 					t('routeBuilder.routingServiceUnavailable')
 				);
@@ -868,7 +882,11 @@
 				// couldn't snap, fall back to straight lines through them,
 				// and tell the user which markers to nudge if they want a
 				// snapped route.
-				if (!opts.suppressSoftWarnings) {
+				if (!opts.suppressSoftWarnings && okSegments === 0) {
+					// Nothing snapped at all — naming individual waypoints
+					// would blame the user's clicks for an outage.
+					onerror(t('routeBuilder.routingUnavailableStraightLines'), 'warning');
+				} else if (!opts.suppressSoftWarnings) {
 					const failedWaypoints = identifyFailedWaypoints(perSegment);
 					const failedSegments = perSegment.length - okSegments;
 					const wpList = formatWaypointRanges(failedWaypoints);
@@ -1694,7 +1712,11 @@
 			routeCoordinates = [];
 			routeElevations = [];
 
-			await recalculateRoute({ skipBusyToggle: true, suppressSoftWarnings: true });
+			await recalculateRoute({
+				skipBusyToggle: true,
+				suppressSoftWarnings: true,
+				requireSnappedSegments: true,
+			});
 
 			if (routeVersion !== beforeIter + 1) return false;
 
@@ -1780,8 +1802,8 @@
 		// Hard failure: every iteration's recalculateRoute either
 		// snapped no segments (radius too small for the road network)
 		// or got interrupted by a mutation. The generic "Routing
-		// service unavailable" was suppressed (suppressSoftWarnings)
-		// so we can surface a generation-specific message instead.
+		// service unavailable" thrown under requireSnappedSegments was
+		// suppressed, so we surface a generation-specific message instead.
 		onerror(
 			t('routeBuilder.couldntGenerateLoop', { target: formatDistance(targetDistanceM) }),
 			'error',
@@ -1871,13 +1893,16 @@
 	 * route-builder recentre e2e tests. jumpTo sets the camera immediately and
 	 * works regardless of load state, so the recentre is never lost.
 	 */
-	function recentreMap(center: [number, number], zoom: number) {
-		if (!map) return;
+	function recentreMap(center: [number, number], zoom: number): boolean {
+		// No map yet means the consent gate hasn't been taken — see the
+		// `flyTo` note. Report it rather than swallowing the recentre.
+		if (!map) return false;
 		if (map.loaded()) {
 			map.flyTo({ center, zoom, duration: RECENTRE_FLY_MS });
 		} else {
 			map.jumpTo({ center, zoom });
 		}
+		return true;
 	}
 
 	/**
@@ -1886,9 +1911,14 @@
 	 * Generate start/end gives visual confirmation — pre-fix those only
 	 * updated a sidebar label and painted a marker that could be
 	 * off-screen, so on the default world view the click looked dead.
+	 *
+	 * Returns false when there is no map to move — the tile-provider
+	 * consent gate is still up, so the whole map surface is a placeholder
+	 * card. The caller owns telling the user that; swallowing it here is
+	 * what made "use my location" look dead on an unconsented page.
 	 */
-	export function flyTo(lngLat: { lng: number; lat: number }, zoom = 15) {
-		recentreMap([lngLat.lng, lngLat.lat], zoom);
+	export function flyTo(lngLat: { lng: number; lat: number }, zoom = 15): boolean {
+		return recentreMap([lngLat.lng, lngLat.lat], zoom);
 	}
 
 	/**

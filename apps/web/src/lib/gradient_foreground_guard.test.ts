@@ -126,6 +126,10 @@ const RAMPS: Ramp[] = [
 		veils: [
 			{ colour: '#FE5932', alpha: 0.18, why: '.brand-pane::before wordmark orange' },
 			{ colour: '#2C5F6E', alpha: 0.18, why: '.brand-pane::after product teal' },
+			// BrandTexture's brightest contour line. A 1.25px stroke is not a
+			// veil in the sense the other two are, but a glyph CAN land on one,
+			// and the peak alpha is the only honest ground to measure then.
+			{ colour: '#FFFFFF', alpha: 0.114, why: 'BrandTexture top contour at i=8' },
 		],
 		why: 'the sign-in brand pane headline, bullets and footnote',
 	},

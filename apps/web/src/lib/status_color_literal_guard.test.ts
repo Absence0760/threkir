@@ -604,6 +604,12 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 	// Header over that same hero: white hover ink, 5.699:1 on the ramp's
 	// palest stop.
 	'lib/components/PublicHeader.svelte': { FFFFFF: [2, 'fixed-canvas'] },
+	// The contour stroke on the brand canvas. A fixed canvas in both themes,
+	// like the copy it sits behind: the ramp under it does not follow the
+	// theme, so a token here would invert the lines out of existence in one
+	// of them. Peak stroke-opacity is 0.114, and every ramp stop is measured
+	// under it as a veil in gradient_foreground_guard.test.ts.
+	'lib/components/marketing/BrandTexture.svelte': { FFFFFF: [1, 'fixed-canvas'] },
 	// Sign-in brand canvas — the >=56rem pane and the <56rem band, which are
 	// mirror images of each other. A fixed canvas in both themes: the white
 	// copy, both eyebrow pills and the bullet ticks, all measured on

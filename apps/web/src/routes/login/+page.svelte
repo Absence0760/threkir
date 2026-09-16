@@ -24,6 +24,7 @@
 	import { m } from '$lib/i18n/store.svelte';
 	import PasswordInput from '$lib/components/PasswordInput.svelte';
 	import AuthShowcase from '$lib/components/marketing/AuthShowcase.svelte';
+	import BrandTexture from '$lib/components/marketing/BrandTexture.svelte';
 
 	// Fail-closed: off until the Supabase `google` provider is wired
 	// (PUBLIC_GOOGLE_AUTH_ENABLED). When off the button shows a "coming
@@ -306,6 +307,7 @@
 		The form card's own `.logo-mobile` was the third copy and is gone.
 	-->
 	<div class="brand-band">
+		<BrandTexture width={760} height={230} />
 		<a href="/" class="brand-logo">
 			<img src="/logo-mark.svg" alt="" class="brand-mark" />
 			<span class="brand-name">Threkir</span>
@@ -317,6 +319,7 @@
 		Not aria-hidden, for the reason above.
 	-->
 	<aside class="brand-pane">
+		<BrandTexture />
 		<a href="/" class="brand-logo">
 			<img src="/logo-mark.svg" alt="" class="brand-mark" />
 			<span class="brand-name">Threkir</span>
@@ -349,6 +352,11 @@
 	</aside>
 
 	<main class="form-pane" id="main-content">
+		<!-- The same terrain as the brand canvas, in the theme's own ink and a
+		     third of the strength: the two halves of the screen are then one
+		     place seen from either side of a fold, rather than a designed pane
+		     beside a blank one. -->
+		<BrandTexture width={760} height={900} strength={0.55} tint="var(--color-primary)" />
 		<div class="login-card">
 			<p class="kicker">{kicker}</p>
 			<h1>{headline}</h1>
@@ -546,6 +554,8 @@
 	   rises into it by a negative margin so the two read as one surface
 	   rather than as a coloured strip with a gap under it. */
 	.brand-band {
+		position: relative;
+		overflow: hidden;
 		background: var(--brand-ramp);
 		color: #FFFFFF;
 		/* The block-end padding is the overlap plus a gap, so the card rises
@@ -558,6 +568,8 @@
 	}
 
 	.band-eyebrow {
+		position: relative;
+		z-index: 1;
 		text-transform: uppercase;
 		letter-spacing: 0.14em;
 		font-size: var(--font-size-section-label);
@@ -757,6 +769,8 @@
 	}
 
 	.form-pane {
+		position: relative;
+		overflow: hidden;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -785,6 +799,7 @@
 		   so the card's top edge lands where the ramp's colour still is. */
 		margin-top: calc(-1 * var(--space-2xl));
 		position: relative;
+		z-index: 1;
 	}
 
 	@media (min-width: 56rem) {
@@ -1021,6 +1036,8 @@
 	}
 
 	.form-pane-foot {
+		position: relative;
+		z-index: 1;
 		max-width: 26rem;
 		text-align: center;
 		font-size: 0.8rem;

@@ -89,4 +89,33 @@ test.describe('/login brand canvas', () => {
 		await expect(page.getByText('Welcome back', { exact: true })).toHaveCount(1);
 		await expect(page.locator('.brand-eyebrow:visible')).toHaveCount(1);
 	});
+
+	test('the terrain is decorative, and the same terrain on both halves', async ({ page }) => {
+		await page.setViewportSize(DESKTOP);
+		await page.goto('/login');
+
+		// Two crops of one field are ON SCREEN here — the pane's portrait box
+		// and the form side's tinted copy. The band's is in the DOM too, at
+		// display:none, which is why this counts the visible ones: the claim
+		// is about what a visitor sees at this width.
+		//
+		// Both are decoration, so both must be out of the accessibility tree
+		// and out of the way of a pointer — a full-bleed overlay that
+		// swallowed clicks would break the form under it.
+		const texture = page.locator('svg.texture:visible');
+		await expect(texture).toHaveCount(2);
+		for (let i = 0; i < 2; i++) {
+			await expect(texture.nth(i)).toHaveAttribute('aria-hidden', 'true');
+			await expect(
+				texture.nth(i).locator('path').first(),
+				'a level line must actually render'
+			).toBeAttached();
+			await expect(texture.nth(i)).toHaveCSS('pointer-events', 'none');
+		}
+
+		// Which is only worth asserting if the form still takes a click
+		// THROUGH it: the texture covers the whole pane, including the fields.
+		await page.locator('input[type="email"]').click();
+		await expect(page.locator('input[type="email"]')).toBeFocused();
+	});
 });

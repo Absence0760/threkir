@@ -87,30 +87,40 @@
 	{@html `<script type="application/ld+json">${jsonLd}</script>`}
 </svelte:head>
 
-<LearnPage width="prose">
+<LearnPage width="prose" banner>
 	<!-- Wraps rather than replaces the <article>: a guide is genuinely an
 	     article (its JSON-LD says so), and .learn-article centres itself inside
 	     whatever full-width flex child holds it, so the wrapper costs no layout. -->
 	<main id="main-content">
-	<article class="learn-article learn-column">
-		<LearnBreadcrumb
-			crumbs={[
-				{ href: '/', label: m('learn.breadcrumbHome') },
-				{ href: '/learn', label: m('learn.breadcrumbLearn') },
-				...(category
-					? [{ href: `/learn/category/${category.id}`, label: m(category.labelKey) }]
-					: []),
-			]}
-		/>
+	<article class="learn-article">
+		<!-- The band is the article's own <header>, so the h1 stays inside the
+		     <article> its JSON-LD describes. .learn-article no longer carries
+		     the column; the band and the body each carry one, which keeps
+		     their left edges shared (layout.spec.ts) while the band itself
+		     runs full-bleed. -->
+		<div class="learn-band">
+			<header class="article-head learn-column">
+				<LearnBreadcrumb
+					crumbs={[
+						{ href: '/', label: m('learn.breadcrumbHome') },
+						{ href: '/learn', label: m('learn.breadcrumbLearn') },
+						...(category
+							? [{ href: `/learn/category/${category.id}`, label: m(category.labelKey) }]
+							: []),
+					]}
+				/>
 
-		<h1>{guide.title}</h1>
-		<p class="updated">
-			{m('learn.lastUpdated', { date: formatDate(data.guide.updated) })}
-			{#if minutes !== null}
-				<span class="dot" aria-hidden="true">·</span>{m('learn.readingTime', { minutes })}
-			{/if}
-		</p>
+				<h1>{guide.title}</h1>
+				<p class="updated">
+					{m('learn.lastUpdated', { date: formatDate(data.guide.updated) })}
+					{#if minutes !== null}
+						<span class="dot" aria-hidden="true">·</span>{m('learn.readingTime', { minutes })}
+					{/if}
+				</p>
+			</header>
+		</div>
 
+	<div class="article-body learn-column">
 		{#if showFallbackNotice}
 			<p class="fallback-notice">{m('learn.englishFallbackNotice')}</p>
 		{/if}
@@ -131,12 +141,17 @@
 				</div>
 			</section>
 		{/if}
+	</div>
 	</article>
 	</main>
 </LearnPage>
 
 <style>
-	.learn-article {
+	.article-head {
+		padding: var(--space-xl) var(--space-md) var(--space-lg);
+	}
+
+	.article-body {
 		padding: var(--space-xl) var(--space-md);
 	}
 
@@ -207,8 +222,14 @@
 	}
 
 	@media (min-width: 48rem) {
-		.learn-article {
-			padding: var(--space-2xl) var(--space-md);
+		/* The padding lives on the two bands now, not on the <article>: the
+		   band must reach the viewport edge or the overlay header's white ink
+		   sits on the page background instead of on the ramp. */
+		.article-head {
+			padding-block: var(--space-2xl) var(--space-lg);
+		}
+		.article-body {
+			padding-block: var(--space-2xl);
 		}
 		.learn-article h1 {
 			font-size: 2.4rem;

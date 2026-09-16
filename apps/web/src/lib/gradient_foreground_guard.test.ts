@@ -117,6 +117,14 @@ const RAMPS: Ramp[] = [
 		why: 'the marketing hero headline + subhead',
 	},
 	{
+		file: 'lib/components/LearnPage.svelte',
+		anchor: 'background: linear-gradient(135deg, #140A18',
+		stops: 2,
+		ink: 'rgba(255, 255, 255, 0.85)',
+		floor: 4.5,
+		why: 'the Learn band carries the breadcrumb, kicker, heading and subhead',
+	},
+	{
 		file: 'routes/+page.svelte',
 		anchor: 'background: linear-gradient(135deg, #102A32',
 		stops: 2,

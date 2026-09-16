@@ -577,6 +577,13 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 		'4A4750': [1, 'fixed-canvas'], '23222A': [1, 'fixed-canvas'],
 		'0B0B0F': [1, 'fixed-canvas'],
 	},
+	// The Learn band: the landing ramp stopped early, so an index page gets a
+	// strip rather than a hero. A fixed dark canvas, which is why the inks on
+	// it are literals too — the theme's text tokens are dark-on-dark here.
+	'lib/components/LearnPage.svelte': {
+		'140A18': [1, 'gradient-stop'], '6E1450': [1, 'gradient-stop'],
+		FFFFFF: [1, 'fixed-canvas'],
+	},
 	// Header over that same hero: white hover ink, 5.699:1 on the ramp's
 	// palest stop.
 	'lib/components/PublicHeader.svelte': { FFFFFF: [2, 'fixed-canvas'] },

@@ -49,8 +49,9 @@
 	{@html `<script type="application/ld+json">${jsonLd}</script>`}
 </svelte:head>
 
-<LearnPage>
-	<section class="hero learn-column">
+<LearnPage banner>
+	<div class="learn-band">
+		<section class="hero learn-column">
 		<LearnBreadcrumb
 			crumbs={[
 				{ href: '/', label: m('learn.breadcrumbHome') },
@@ -59,7 +60,8 @@
 		/>
 		<p class="kicker">{m('learn.hubKicker')}</p>
 		<h1>{categoryLabel}</h1>
-	</section>
+		</section>
+	</div>
 
 	<main class="content learn-column" id="main-content">
 		<LearnCategoryNav current={data.category.id} />

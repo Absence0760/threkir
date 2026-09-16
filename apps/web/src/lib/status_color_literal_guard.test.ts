@@ -565,6 +565,18 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 		FDEFF7: [1, 'fixed-canvas'], '1F4854': [1, 'fixed-canvas'],
 		EAF3F5: [1, 'fixed-canvas'],
 	},
+	// The landing product shot's phone frame: a scale model of a device, so
+	// its titanium body, side buttons and Dynamic Island are the colours of an
+	// OBJECT rather than of a surface. A real phone is the same grey in dark
+	// mode, which is exactly why these do not follow the theme -- everything
+	// on the SCREEN inside the frame does. No text sits on any of them (the
+	// frame is aria-hidden), so no contrast bar applies.
+	'lib/components/marketing/ProductPreview.svelte': {
+		'6E6A72': [1, 'fixed-canvas'], '2A2830': [1, 'fixed-canvas'],
+		'1A1920': [1, 'fixed-canvas'], '55525C': [1, 'fixed-canvas'],
+		'4A4750': [1, 'fixed-canvas'], '23222A': [1, 'fixed-canvas'],
+		'0B0B0F': [1, 'fixed-canvas'],
+	},
 	// Header over that same hero: white hover ink, 5.699:1 on the ramp's
 	// palest stop.
 	'lib/components/PublicHeader.svelte': { FFFFFF: [2, 'fixed-canvas'] },

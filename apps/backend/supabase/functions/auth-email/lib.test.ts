@@ -458,7 +458,8 @@ Deno.test('buildActionUrl — a custom-scheme (mobile) target keeps the verify h
   // produces, and the app holds its own verifier, so nothing is stranded.
   assertEquals(
     buildActionUrl('http://127.0.0.1:54321', 'h', 'signup', 'com.threkir.app://login-callback'),
-    buildVerifyUrl('http://127.0.0.1:54321', 'h', 'signup', 'com.threkir.app://login-callback'),
+    'http://127.0.0.1:54321/auth/v1/verify?token=h&type=signup' +
+      '&redirect_to=com.threkir.app://login-callback',
   );
 });
 

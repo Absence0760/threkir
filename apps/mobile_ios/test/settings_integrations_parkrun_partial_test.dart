@@ -8,6 +8,7 @@ import '../lib/ble_heart_rate.dart';
 import '../lib/ble_treadmill.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
+import '../lib/race_service.dart';
 import '../lib/screens/settings_integrations_screen.dart';
 
 /// `parkrun-import` bounds the result set at `MAX_PARKRUN_ROWS` and says so
@@ -36,6 +37,16 @@ class _FakeApi extends ApiClient {
       result;
 }
 
+/// The parkrun tile is drawn only once its Edge Function has answered, so a
+/// screen pumped without this stub renders no parkrun tile at all.
+class _FakeRaceService extends RaceService {
+  @override
+  Future<bool> isParkrunConfigured() async => true;
+
+  @override
+  Future<bool> isProviderConfigured(String provider) async => false;
+}
+
 Future<AppLocalizations> _pump(
     WidgetTester tester, ImportCompleteness result) async {
   SharedPreferences.setMockInitialValues({});
@@ -51,6 +62,7 @@ Future<AppLocalizations> _pump(
         heartRate: BleHeartRate(),
         treadmill: BleTreadmill(),
         preferences: prefs,
+        raceService: _FakeRaceService(),
       ),
     ),
   );

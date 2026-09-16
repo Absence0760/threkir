@@ -12349,6 +12349,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get integrationsRunsignupOpen => 'Open the race calendar';
 
   @override
+  String integrationsInfoAbout(String name) {
+    return 'About $name';
+  }
+
+  @override
+  String get integrationsStravaInfo =>
+      'Strava is a popular app for recording and sharing runs. Connecting it copies your Strava activities across — the last 90 days first, then each new one as it appears. You\'ll sign in to Strava and approve access, and you can disconnect at any time.';
+
+  @override
+  String get integrationsParkrunInfo =>
+      'parkrun is a free, weekly, timed 5k held in parks around the world. Tap this tile and enter the athlete number from your parkrun barcode (the one starting with A) to pull in every parkrun you\'ve finished, with your time and age grade.';
+
+  @override
+  String get integrationsRunsignupInfo =>
+      'RunSignUp handles entries and results for thousands of road races. If you ran one, find the race in the race calendar and enter the bib number you wore — your official time and splits are attached to that run.';
+
+  @override
+  String get integrationsUltrasignupInfo =>
+      'UltraSignup handles entries and results for trail and ultra races. Find your race in the race calendar and give your UltraSignup athlete ID to pull your finishing times across.';
+
+  @override
+  String get integrationsChronotrackInfo =>
+      'ChronoTrack times a lot of road races with chips and mats. If your race was ChronoTrack-timed, find it in the race calendar and enter your bib number to pull in your official result.';
+
+  @override
   String get integrationsRunsignupUnavailable =>
       'RunSignUp import isn\'t available yet. parkrun and manual paste still work.';
 

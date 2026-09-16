@@ -12476,6 +12476,31 @@ class AppLocalizationsEs extends AppLocalizations {
   String get integrationsRunsignupOpen => 'Abrir el calendario de carreras';
 
   @override
+  String integrationsInfoAbout(String name) {
+    return 'Acerca de $name';
+  }
+
+  @override
+  String get integrationsStravaInfo =>
+      'Strava es una app popular para grabar y compartir carreras. Al conectarla se copian tus actividades de Strava: primero los últimos 90 días y después cada actividad nueva según aparece. Iniciarás sesión en Strava y darás permiso; puedes desconectarla cuando quieras.';
+
+  @override
+  String get integrationsParkrunInfo =>
+      'parkrun es un 5k gratuito y cronometrado que se celebra cada semana en parques de todo el mundo. Toca esta ficha e introduce el número de atleta de tu código de barras de parkrun (el que empieza por A) para traer todos los parkrun que has terminado, con tu tiempo y tu grado por edad.';
+
+  @override
+  String get integrationsRunsignupInfo =>
+      'RunSignUp gestiona inscripciones y resultados de miles de carreras en asfalto. Si corriste una, búscala en el calendario de carreras e introduce el dorsal que llevabas: tu tiempo oficial y tus parciales se asocian a esa carrera.';
+
+  @override
+  String get integrationsUltrasignupInfo =>
+      'UltraSignup gestiona inscripciones y resultados de carreras de trail y ultra. Busca tu carrera en el calendario e indica tu ID de atleta de UltraSignup para traer tus tiempos de meta.';
+
+  @override
+  String get integrationsChronotrackInfo =>
+      'ChronoTrack cronometra muchas carreras en asfalto con chips y alfombras. Si tu carrera la cronometró ChronoTrack, búscala en el calendario e introduce tu dorsal para traer tu resultado oficial.';
+
+  @override
   String get integrationsRunsignupUnavailable =>
       'La importación de RunSignUp aún no está disponible. parkrun y el pegado manual siguen funcionando.';
 

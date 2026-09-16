@@ -18,12 +18,18 @@ class RaceProviderLabels {
   final String unavailable;
   final String open;
 
+  /// What the provider IS and how to use it, shown behind the tile's (i). A
+  /// new runner has no idea what a bib number is for, let alone which timing
+  /// company ran their race.
+  final String info;
+
   const RaceProviderLabels({
     required this.icon,
     required this.name,
     required this.connect,
     required this.unavailable,
     required this.open,
+    required this.info,
   });
 }
 
@@ -34,6 +40,7 @@ Map<String, RaceProviderLabels> raceProviderLabels(AppLocalizations l10n) => {
         connect: l10n.integrationsRunsignupConnect,
         unavailable: l10n.integrationsRunsignupUnavailable,
         open: l10n.integrationsRunsignupOpen,
+        info: l10n.integrationsRunsignupInfo,
       ),
       'ultrasignup': RaceProviderLabels(
         icon: Icons.terrain,
@@ -41,6 +48,7 @@ Map<String, RaceProviderLabels> raceProviderLabels(AppLocalizations l10n) => {
         connect: l10n.integrationsUltrasignupConnect,
         unavailable: l10n.integrationsUltrasignupUnavailable,
         open: l10n.integrationsUltrasignupOpen,
+        info: l10n.integrationsUltrasignupInfo,
       ),
       'chronotrack': RaceProviderLabels(
         icon: Icons.timer,
@@ -48,5 +56,6 @@ Map<String, RaceProviderLabels> raceProviderLabels(AppLocalizations l10n) => {
         connect: l10n.integrationsChronotrackConnect,
         unavailable: l10n.integrationsChronotrackUnavailable,
         open: l10n.integrationsChronotrackOpen,
+        info: l10n.integrationsChronotrackInfo,
       ),
     };

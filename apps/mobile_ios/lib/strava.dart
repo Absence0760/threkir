@@ -89,8 +89,21 @@ String mintStravaOAuthState() {
 
 /// True when `STRAVA_CLIENT_ID` is present in `dotenv.env` and not the
 /// `12345` placeholder. Mirrors the web's `isStravaConfigured` check.
+///
+/// Total, and fail-closed on the throw: `dotenv.env` raises
+/// `NotInitializedError` when no `.env` was loaded, which is every widget test
+/// and any build whose asset is missing. That was survivable while the only
+/// caller was inside a tap handler; it is not now that the settings screen asks
+/// at `initState` to decide whether to draw the tile at all, where the throw
+/// would take the whole screen down over a question whose honest answer is no.
 bool isStravaConfigured({String? keyOverride}) {
-  final key = keyOverride ?? dotenv.env[_kEnvKey] ?? '';
+  if (keyOverride != null) return keyOverride.isNotEmpty && keyOverride != '12345';
+  String key;
+  try {
+    key = dotenv.env[_kEnvKey] ?? '';
+  } catch (_) {
+    return false;
+  }
   return key.isNotEmpty && key != '12345';
 }
 

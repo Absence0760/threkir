@@ -116,9 +116,14 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 
 		await confirm.getByRole('button', { name: 'Disconnect' }).click();
 
-		await expect(stravaCard).not.toHaveClass(/connected/, { timeout: 5_000 });
-		await expect(stravaCard.getByRole('button', { name: 'Connect' })).toBeVisible();
-		await expect(stravaCard.getByRole('button', { name: /Sync/i })).toHaveCount(0);
+		// The card LEAVES on a build with no `PUBLIC_STRAVA_CLIENT_ID` — which is
+		// every local / CI build, and the shape a minimal deployment has. It was
+		// only on screen because a row existed; with the row gone there is no
+		// grant to disconnect and no OAuth redirect this build could start, so
+		// offering Connect would be an invitation to the error toast the gate
+		// exists to precede.
+		await expect(stravaCard).toHaveCount(0, { timeout: 5_000 });
+		await expect(page.getByTestId('integration-parkrun')).toBeVisible();
 
 		// audit/strava May 2026 High #1 — the disconnect flow now
 		// STAMPS `disconnected_at` rather than DELETEing the row.
@@ -341,7 +346,9 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 	});
 
 	test('Connect failure surfaces an error toast', async ({ page }) => {
-		// Non-Strava providers use the placeholder upsert-connect path.
+		// parkrun is the one provider left on the placeholder upsert-connect
+		// path: Strava goes through OAuth, and Garmin / HealthKit are no longer
+		// offered a Connect button at all.
 		await page.route('**/rest/v1/integrations**', async (route) => {
 			const m = route.request().method();
 			if (m === 'POST' || m === 'PATCH') {
@@ -356,12 +363,12 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 		});
 
 		await page.goto('/settings/integrations');
-		const garminCard = page.locator('.integration-card', { hasText: 'Garmin' });
-		await expect(garminCard).toBeVisible({ timeout: 10_000 });
-		await garminCard.getByRole('button', { name: 'Connect' }).click();
+		const parkrunCard = page.getByTestId('integration-parkrun');
+		await expect(parkrunCard).toBeVisible({ timeout: 10_000 });
+		await parkrunCard.getByRole('button', { name: 'Connect' }).click();
 
 		await expect(page.locator('.toast-error')).toBeVisible({ timeout: 5_000 });
-		await expect(garminCard).not.toHaveClass(/connected/);
+		await expect(parkrunCard).not.toHaveClass(/connected/);
 	});
 
 	test('Disconnect cancel keeps the integration connected', async ({ page }) => {

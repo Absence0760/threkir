@@ -104,9 +104,14 @@ const RAMPS: Ramp[] = [
 		floor: 4.5,
 		why: 'the 1080x1080 share card rasterises to a PNG that leaves the device',
 	},
+	// --brand-ramp is one declaration with two consumers, and a veil belongs
+	// to the CONSUMER, not to the ramp — the hero's blooms are not on the
+	// sign-in pane and vice versa. So both entries read the same app.css line
+	// and each measures its own surface: stacking every veil of both would
+	// assert a composite no pixel of either surface shows.
 	{
-		file: 'routes/+page.svelte',
-		anchor: 'background: linear-gradient(150deg, #140A18',
+		file: 'app.css',
+		anchor: '--brand-ramp: linear-gradient(150deg,',
 		stops: 4,
 		ink: 'rgba(255, 255, 255, 0.85)',
 		floor: 4.5,

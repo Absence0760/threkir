@@ -231,22 +231,18 @@
 		background: var(--color-bg);
 	}
 
-	/* The hero ramp is the WORDMARK's gradient taken to a legible depth.
-	   It used to be #0F172A -> #7C3AED, a stock indigo/violet that appears
-	   nowhere else in the product: the wordmark is #FE5932 -> #A01E77 and
-	   the app chrome is teal + terracotta, so the first screen a visitor
-	   saw belonged to a different brand than the one behind the sign-in.
-	   The orange end cannot carry body copy (3.139:1 under white), so the
-	   ramp runs dark-plum -> the wordmark's magenta terminus and the
-	   orange returns as a glow in .hero-glow, where no text sits on it.
-	   Every stop and both veils are measured in
+	/* --brand-ramp is the wordmark's gradient taken to a legible depth; it
+	   replaced a stock indigo/violet that appeared nowhere else in the
+	   product. The sign-in brand pane paints the same token, so the first
+	   screen a visitor sees and the one they sign in on cannot drift apart.
+	   Every stop and both veils below are measured in
 	   gradient_foreground_guard.test.ts. */
 	.hero {
 		display: grid;
 		justify-items: center;
 		padding: 9rem var(--space-2xl) 0;
 		text-align: center;
-		background: linear-gradient(150deg, #140A18 0%, #3A0F33 32%, #6E1450 66%, #A01E77 100%);
+		background: var(--brand-ramp);
 		position: relative;
 	}
 

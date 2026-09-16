@@ -301,6 +301,22 @@
 		var(--color-primary) 0%,
 		var(--color-secondary-text) 100%
 	);
+	/* The BRAND CANVAS ramp — the wordmark's own gradient (#FE5932 -> #A01E77)
+	   taken to a legible depth. Every unauthenticated full-bleed dark surface
+	   reads this one declaration: the marketing hero and the sign-in brand
+	   pane. It was inline in the hero, and the sign-in pane carried a
+	   SEPARATE teal-to-brown ramp of its own — so the first screen a visitor
+	   saw and the screen they signed in on wore two different brands, and
+	   nothing failed when one moved. A visitor crossing from one to the other
+	   is the person who notices.
+	   Not theme-keyed: a fixed brand canvas is exempt from THEMING, not from
+	   contrast (§ 511's print-sheet amber), so the ink on it is a literal
+	   white and every stop is measured under it — plus each consumer's own
+	   veils, at their own peaks — in gradient_foreground_guard.test.ts. The
+	   orange end of the wordmark cannot carry body copy (3.139:1 under
+	   white), which is why it terminates on the magenta and returns only as
+	   a glow where no text sits. */
+	--brand-ramp: linear-gradient(150deg, #140A18 0%, #3A0F33 32%, #6E1450 66%, #A01E77 100%);
 	--gradient-surface: linear-gradient(135deg, rgba(44, 95, 110, 0.04) 0%, rgba(242, 160, 123, 0.04) 100%);
 	--gradient-sidebar: linear-gradient(180deg, #FFFFFF 0%, #F1ECE0 100%);
 

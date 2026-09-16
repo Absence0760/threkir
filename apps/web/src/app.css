@@ -377,6 +377,9 @@
 	   visitor entering /runs select mode hits both a banner and the
 	   bulk-bar at the same coordinates and can't see the banner. */
 	--z-sidebar: 10;
+	/* The public pages' fixed header: above page content (the landing shot
+	   and cards stack at 1-3), below every overlay. */
+	--z-public-header: 50;
 	--z-modal-backdrop: 200;
 	--z-modal: 201;
 	--z-toast: 300;

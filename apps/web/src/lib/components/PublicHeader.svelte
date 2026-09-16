@@ -7,16 +7,32 @@
 	/// (WCAG 2.2.2); /learn runs none, so only the page that moves asks for it.
 	let { motionToggle = false }: { motionToggle?: boolean } = $props();
 
-	// This bar is only ever drawn over a dark ramp -- the landing hero, or
-	// the brand band every /learn route opens on -- so it is transparent
-	// white-on-dark chrome, full stop. It used to carry a second `solid`
-	// variant for a themed surface; once /learn gained its band nothing
-	// rendered it, and a variant nothing renders is a variant nothing keeps
-	// working. `learn_band_guard.test.ts` holds the premise: a route that
-	// mounts LearnPage must also render a .learn-band.
+	// White-on-dark chrome, full stop. At the top of the page it is
+	// transparent over a dark ramp -- the landing hero, or the brand band every
+	// /learn route opens on -- and `learn_band_guard.test.ts` holds that
+	// pairing. It stays on screen as the page scrolls, and from the first few
+	// pixels of scroll it paints its own plum glass, because from there the
+	// ground under it is whatever content is passing: the same guard measures
+	// every ink on that glass over the lightest ground a page can put under it.
+	// It used to carry a second `solid` variant for a themed surface; a
+	// variant nothing renders is a variant nothing keeps working.
+	let scrolled = $state(false);
+
+	function trackScroll(_node: HTMLElement) {
+		const update = () => {
+			scrolled = window.scrollY > 8;
+		};
+		update();
+		window.addEventListener('scroll', update, { passive: true });
+		return {
+			destroy() {
+				window.removeEventListener('scroll', update);
+			},
+		};
+	}
 </script>
 
-<nav class="landing-nav">
+<nav class="landing-nav" class:landing-nav--scrolled={scrolled} use:trackScroll>
 	<a href="/" class="landing-logo" aria-label="Threkir">
 		<img src="/wordmark-light.svg" alt="Threkir" class="landing-wordmark" />
 	</a>
@@ -26,12 +42,10 @@
 	     where a site map belongs, and the section ids stay live for the deep
 	     links that target them.
 
-	     A "Get started free" pill sat beside Sign In too. This header is
-	     position:absolute, not sticky, so it is on screen only at the very
-	     top -- where the hero's own, much larger CTA is already visible --
-	     and gone by the time a reader would want one. It was visible only
-	     while redundant. Sign In stays because a returning visitor has
-	     nothing else to aim at; new visitors have the hero. -->
+	     A "Get started free" pill sat beside Sign In too, and went when the
+	     bar was still position:absolute and so on screen only beside the
+	     hero's own, larger CTA. Sign In stays because a returning visitor has
+	     nothing else to aim at. -->
 	<div class="nav-links">
 		{#if motionToggle}
 			<MotionToggle />
@@ -55,11 +69,37 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: var(--space-lg) var(--space-2xl);
-		position: absolute;
+		position: fixed;
 		top: 0;
 		inset-inline-start: 0;
 		inset-inline-end: 0;
-		z-index: 10;
+		z-index: var(--z-public-header);
+		border-bottom: 1px solid transparent;
+		transition:
+			background var(--transition-base),
+			padding var(--transition-base),
+			border-color var(--transition-base),
+			box-shadow var(--transition-base);
+	}
+
+	/* The glass the bar paints once content scrolls under it. Every ink in
+	   this file is measured over it, composited on white, by
+	   learn_band_guard.test.ts -- lighten the alpha and that fails. */
+	.landing-nav--scrolled {
+		padding-block: var(--space-sm);
+		background: rgba(20, 10, 24, 0.8);
+		backdrop-filter: blur(14px) saturate(1.3);
+		border-bottom-color: rgba(255, 255, 255, 0.08);
+		box-shadow: 0 0.75rem 2rem -1rem rgba(0, 0, 0, 0.5);
+	}
+
+	/* The bar covers the top of the viewport, so an anchor jump or a
+	   keyboard-focused element must stop below it (WCAG 2.4.11). Sized to the
+	   bar at its TALLEST, unscrolled (91px): a jump from the top of the page
+	   lands while the bar is still compacting. Scoped to pages that render
+	   the bar. */
+	:global(html:has(.landing-nav)) {
+		scroll-padding-top: 6.25rem;
 	}
 
 	.landing-logo {

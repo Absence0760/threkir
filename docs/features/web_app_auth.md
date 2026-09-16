@@ -130,6 +130,8 @@ Three sign-in methods, all hitting Supabase Auth:
 
 OAuth flows redirect to `/auth/callback`, which calls `auth.refreshSession()` and routes to `/dashboard`.
 
+**Layout.** `/login` (sign-in, sign-up and the reset request) and the three pages a new account walks through next — `/auth/reset`, `/auth/confirm-age`, `/auth/callback` — all mount `lib/components/auth/AuthShell.svelte`: a form card beside a fixed plum brand panel with the rendered terrain art, which collapses to a short band the card rides over on a phone. Each page still owns its `<main id="main-content" class="auth-card">` and passes it in as children (`shellless_landmark_guards` reads the landmark from the page source). `/login` passes the panel copy as a `panel` snippet; the `/auth/*` pages leave it out for a brand-only panel. The shell's motion plays once and ends — see [conventions § Web motion](../architecture/conventions.md#web-motion--the-resting-state-is-the-markups-own) and [decisions § 1620](../architecture/decisions.md). Pinned by `tests-e2e/auth/shell.spec.ts`.
+
 ---
 
 ## Auth error surfacing

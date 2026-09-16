@@ -80,7 +80,7 @@ test('ONBOARDING_TOTAL_STEPS matches the wizard step count', () => {
 test('the full wizard is the seven steps, in order', () => {
 	assert.deepEqual(
 		[...ONBOARDING_STEPS],
-		['name', 'units', 'goal', 'about', 'privacy', 'notifications', 'done'],
+		['name', 'units', 'goal', 'about', 'run-privacy', 'notifications', 'done'],
 	);
 	assert.equal(ONBOARDING_TOTAL_STEPS, ONBOARDING_STEPS.length);
 });

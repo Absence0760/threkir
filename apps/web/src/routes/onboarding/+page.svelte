@@ -178,7 +178,7 @@
 		units: 'onboarding.rail.units',
 		goal: 'onboarding.rail.goal',
 		about: 'onboarding.rail.about',
-		privacy: 'onboarding.rail.privacy',
+		'run-privacy': 'onboarding.rail.privacy',
 		notifications: 'onboarding.rail.notifications',
 		done: 'onboarding.rail.done',
 	} as const satisfies Record<OnboardingStep, string>;
@@ -559,7 +559,7 @@
 					</label>
 				{/if}
 			</section>
-		{:else if current === 'privacy'}
+		{:else if current === 'run-privacy'}
 			<section aria-labelledby="step-privacy-title">
 				<span class="step-icon" aria-hidden="true"><span class="material-symbols">verified_user</span></span>
 				<h1 id="step-privacy-title" tabindex="-1">{m('onboarding.step5Title')}</h1>

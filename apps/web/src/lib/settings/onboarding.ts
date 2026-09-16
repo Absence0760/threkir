@@ -46,12 +46,18 @@ export type PrimaryGoal = (typeof PRIMARY_GOAL_VALUES)[number];
 
 /// The wizard's steps, in order. Add a step here (and its <section> +
 /// bound state in /onboarding/+page.svelte).
+///
+/// A step id is a quoted string under apps/web/src, and the icon-font
+/// generator reads every quoted bare word as a possible icon name. The
+/// privacy step's obvious one-word id is a Material Symbols ligature, so it
+/// pulled a glyph nothing draws into the subset and failed the build; the
+/// hyphen keeps it out. Check a new id against the vocabulary the same way.
 export const ONBOARDING_STEPS = [
 	'name',
 	'units',
 	'goal',
 	'about',
-	'privacy',
+	'run-privacy',
 	'notifications',
 	'done',
 ] as const;

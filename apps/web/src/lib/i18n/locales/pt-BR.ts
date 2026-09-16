@@ -436,7 +436,7 @@ export const messages = {
 	"onboarding.step1Title": "Como devemos te chamar?",
 	"onboarding.step1Hint": "Seu nome de exibição aparece nas corridas e comentários que você compartilha. Você pode alterá-lo quando quiser em Configurações.",
 	"onboarding.displayNameLabel": "Nome de exibição",
-	"onboarding.displayNamePlaceholder": "ex.: Alex Chen",
+	"onboarding.displayNamePlaceholder": "Seu nome ou um apelido",
 	"onboarding.step2Title": "Quilômetros ou milhas?",
 	"onboarding.step2Hint": "Define todos os rótulos de distância e ritmo no app. Você pode trocar quando quiser em Configurações → Preferências.",
 	"onboarding.unitKm": "Quilômetros",

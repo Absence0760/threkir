@@ -44,10 +44,51 @@ export type PrimaryGoal = (typeof PRIMARY_GOAL_VALUES)[number];
 /// likewise). Hard-coding English label strings into this pure parity
 /// contract would re-introduce English-in-the-helper.
 
-/// Total wizard steps. Drives the progress-dot indicator + the
-/// per-step navigation math. Increment when adding a step (and add
-/// the step's <section> + bound state in /onboarding/+page.svelte).
-export const ONBOARDING_TOTAL_STEPS = 7;
+/// The wizard's steps, in order. Add a step here (and its <section> +
+/// bound state in /onboarding/+page.svelte).
+///
+/// A step id is a quoted string under apps/web/src, and the icon-font
+/// generator reads every quoted bare word as a possible icon name. The
+/// privacy step's obvious one-word id is a Material Symbols ligature, so it
+/// pulled a glyph nothing draws into the subset and failed the build; the
+/// hyphen keeps it out. Check a new id against the vocabulary the same way.
+export const ONBOARDING_STEPS = [
+	'name',
+	'units',
+	'goal',
+	'about',
+	'run-privacy',
+	'notifications',
+	'done',
+] as const;
+
+export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
+
+/// The full wizard. Mobile shows every step, so this is the figure its
+/// `onboardingTotalSteps` twin mirrors; web may walk fewer (below).
+export const ONBOARDING_TOTAL_STEPS = ONBOARDING_STEPS.length;
+
+export interface PushAvailability {
+	/// Browser support AND a deployed notification key (`isPushSupported`).
+	supported: boolean;
+	permission: NotificationPermission | 'unsupported';
+	subscribed: boolean;
+}
+
+/// The steps a visitor walks on the web. The notifications step does one
+/// thing there — turn on push for THIS browser — so it is shown only when that
+/// can happen. Unsupported, blocked, or already on, it was a screen explaining
+/// that nothing could be done, placed in the way of finishing. Mobile's step
+/// is different (a level that applies wherever the account is signed in, so it
+/// always has a choice to make) and keeps its seven; this is web-only.
+export function visibleOnboardingSteps(push: PushAvailability): OnboardingStep[] {
+	const canEnable =
+		push.supported &&
+		!push.subscribed &&
+		push.permission !== 'denied' &&
+		push.permission !== 'unsupported';
+	return ONBOARDING_STEPS.filter((step) => step !== 'notifications' || canEnable);
+}
 
 export interface PlanPreset {
 	goalEvent: GoalEvent;

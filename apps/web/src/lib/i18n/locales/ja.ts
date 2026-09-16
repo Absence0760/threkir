@@ -432,7 +432,7 @@ export const messages = {
 	"onboarding.step1Title": "なんとお呼びすればいいですか？",
 	"onboarding.step1Hint": "表示名は共有するランやコメントに表示されます。設定からいつでも変更できます。",
 	"onboarding.displayNameLabel": "表示名",
-	"onboarding.displayNamePlaceholder": "例: Alex Chen",
+	"onboarding.displayNamePlaceholder": "名前またはニックネーム",
 	"onboarding.step2Title": "キロメートルとマイル、どちらにしますか？",
 	"onboarding.step2Hint": "アプリ内のすべての距離・ペース表示に反映されます。設定 → 環境設定でいつでも切り替えられます。",
 	"onboarding.unitKm": "キロメートル",

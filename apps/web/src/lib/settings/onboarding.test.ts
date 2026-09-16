@@ -2,7 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+	ONBOARDING_STEPS,
 	ONBOARDING_TOTAL_STEPS,
+	visibleOnboardingSteps,
 	PRIMARY_GOAL_KEY,
 	PRIMARY_GOAL_VALUES,
 	planPresetForGoal,
@@ -73,4 +75,35 @@ test('ONBOARDING_TOTAL_STEPS matches the wizard step count', () => {
 	// versa. Pin the constant; the page-level test counts the
 	// rendered <section> blocks.
 	assert.equal(ONBOARDING_TOTAL_STEPS, 7);
+});
+
+test('the full wizard is the seven steps, in order', () => {
+	assert.deepEqual(
+		[...ONBOARDING_STEPS],
+		['name', 'units', 'goal', 'about', 'run-privacy', 'notifications', 'done'],
+	);
+	assert.equal(ONBOARDING_TOTAL_STEPS, ONBOARDING_STEPS.length);
+});
+
+test('the notifications step appears only when push can be turned on here', () => {
+	const withPush = visibleOnboardingSteps({ supported: true, permission: 'default', subscribed: false });
+	assert.deepEqual(withPush, [...ONBOARDING_STEPS]);
+
+	for (const [why, push] of [
+		['no browser support or no deployed key', { supported: false, permission: 'default', subscribed: false }],
+		['blocked in the browser', { supported: true, permission: 'denied', subscribed: false }],
+		['no Notification API at all', { supported: true, permission: 'unsupported', subscribed: false }],
+		['already on for this device', { supported: true, permission: 'granted', subscribed: true }],
+	] as const) {
+		const steps = visibleOnboardingSteps(push);
+		assert.ok(!steps.includes('notifications'), why);
+		assert.equal(steps.length, ONBOARDING_TOTAL_STEPS - 1, why);
+		assert.equal(steps[steps.length - 1], 'done', `${why}: the wizard still ends on done`);
+	}
+});
+
+test('granted but not yet subscribed still offers the step', () => {
+	// Permission granted to the site does not mean this device is subscribed.
+	const steps = visibleOnboardingSteps({ supported: true, permission: 'granted', subscribed: false });
+	assert.ok(steps.includes('notifications'));
 });

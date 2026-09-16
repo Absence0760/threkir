@@ -25,17 +25,26 @@
 		getCurrentSubscription,
 	} from '$lib/util/push';
 	import {
-		ONBOARDING_TOTAL_STEPS,
+		ONBOARDING_STEPS,
 		PRIMARY_GOAL_KEY,
 		PRIMARY_GOAL_VALUES,
+		visibleOnboardingSteps,
+		type OnboardingStep,
 		type PrimaryGoal,
 	} from '$lib/settings/onboarding';
 
-	/// Step state. Bounded 1..ONBOARDING_TOTAL_STEPS. Persona-hunt
+	/// Step state, a 1-based index into `steps`. Persona-hunt
 	/// new-runner finding-area #1: a Garmin-style step-by-step is
 	/// lower cognitive load than a single long form, especially for
 	/// the new-runner persona who's overwhelmed by choice.
 	let step = $state(1);
+
+	// The steps this visitor walks. Settled in onMount, before the wizard
+	// renders: the notifications step only appears when push can actually be
+	// turned on in this browser (visibleOnboardingSteps).
+	let steps = $state<OnboardingStep[]>([...ONBOARDING_STEPS]);
+	const total = $derived(steps.length);
+	const current = $derived<OnboardingStep>(steps[step - 1]);
 
 	// ── Step 1: display name ──────────────────────────────────
 	let displayName = $state('');
@@ -94,7 +103,7 @@
 	// overrode a mobile user's private choice. Persona-hunt new #56.
 	let privacyDefault = $state<'public' | 'followers' | 'private'>('private');
 
-	// ── Step 6: notifications ─────────────────────────────────
+	// ── Step 6: notifications (web shows it only when push can be turned on) ──
 	const pushSupported = isPushSupported();
 	let pushSubscribed = $state(false);
 	let pushBusy = $state(false);
@@ -124,6 +133,11 @@
 		if (pushSupported) {
 			pushSubscribed = !!(await getCurrentSubscription());
 		}
+		steps = visibleOnboardingSteps({
+			supported: pushSupported,
+			permission: pushPermission(),
+			subscribed: pushSubscribed,
+		});
 		ready = true;
 	});
 
@@ -132,7 +146,7 @@
 	let direction = $state<1 | -1>(1);
 
 	function next() {
-		if (step < ONBOARDING_TOTAL_STEPS) {
+		if (step < total) {
 			direction = 1;
 			step += 1;
 		}
@@ -159,15 +173,15 @@
 	});
 
 	// The panel's step list. Short names, keyed by step.
-	const RAIL = [
-		'onboarding.rail.name',
-		'onboarding.rail.units',
-		'onboarding.rail.goal',
-		'onboarding.rail.about',
-		'onboarding.rail.privacy',
-		'onboarding.rail.notifications',
-		'onboarding.rail.done',
-	] as const;
+	const RAIL_NAME = {
+		name: 'onboarding.rail.name',
+		units: 'onboarding.rail.units',
+		goal: 'onboarding.rail.goal',
+		about: 'onboarding.rail.about',
+		'run-privacy': 'onboarding.rail.privacy',
+		notifications: 'onboarding.rail.notifications',
+		done: 'onboarding.rail.done',
+	} as const satisfies Record<OnboardingStep, string>;
 
 	// One glyph per goal, all already in the icon subset.
 	const GOAL_ICON: Record<PrimaryGoal, string> = {
@@ -279,7 +293,7 @@
 		// component instance.
 	}
 
-	/// Final "Open dashboard" button on Step 7. Persists everything
+	/// Final "Open dashboard" button on the done step. Persists everything
 	/// the runner answered along the way: display name, units, goal,
 	/// optional demographics (with GDPR Art 9 consent), privacy
 	/// default. Stamps `onboarded_at` so the gate releases.
@@ -308,7 +322,7 @@
 			// isBodyWeightInRangeKg is the same gate the Continue button's
 			// disabled state checks — kept here too so an out-of-bounds value
 			// can never reach the TDEE/hydration math even via a path that
-			// bypasses step 4 (e.g. the step-7 CTA reached after Skip).
+			// bypasses the about step (e.g. the done step's CTA reached after Skip).
 			if (weightKg != null && weightKg > 0 && isBodyWeightInRangeKg(weightKg)) {
 				bagChanges.body_weight_kg = roundWeight(weightKg);
 			}
@@ -384,18 +398,18 @@
 
 <AuthShell wide>
 	{#snippet panel()}
-		<p class="panel-kicker">{m('onboarding.stepCount', { index: step, total: ONBOARDING_TOTAL_STEPS })}</p>
+		<p class="panel-kicker">{m('onboarding.stepCount', { index: step, total })}</p>
 		<h2 class="panel-title">{m('onboarding.panelTitle')}</h2>
 		<p class="panel-sub">{m('onboarding.panelSub')}</p>
 		<!-- A picture of the progressbar in the card, which is what assistive
 		     technology reads; this copy is for the eye. -->
 		<ol class="rail" aria-hidden="true">
-			{#each RAIL as key, i (key)}
+			{#each steps as id, i (id)}
 				<li class:rail-done={i + 1 < step} class:rail-now={i + 1 === step}>
 					<span class="rail-mark">
 						{#if i + 1 < step}<span class="material-symbols">check</span>{:else}{i + 1}{/if}
 					</span>
-					<span class="rail-name">{m(key)}</span>
+					<span class="rail-name">{m(RAIL_NAME[id])}</span>
 				</li>
 			{/each}
 		</ol>
@@ -406,29 +420,29 @@
 			<div
 				class="progress-track"
 				role="progressbar"
-				aria-label={m('onboarding.stepCount', { index: step, total: ONBOARDING_TOTAL_STEPS })}
+				aria-label={m('onboarding.stepCount', { index: step, total })}
 				aria-valuemin="1"
-				aria-valuemax={ONBOARDING_TOTAL_STEPS}
+				aria-valuemax={total}
 				aria-valuenow={step}
 			>
-				<span class="progress-fill" style="--progress: {step / ONBOARDING_TOTAL_STEPS}"></span>
+				<span class="progress-fill" style="--progress: {step / total}"></span>
 			</div>
 			<button type="button" class="skip-all" onclick={skipOnboarding} disabled={saving}>
 				{m('onboarding.skipOnboarding')}
 			</button>
 		</div>
 		<p class="step-count" aria-hidden="true">
-			{m('onboarding.stepCount', { index: step, total: ONBOARDING_TOTAL_STEPS })}
+			{m('onboarding.stepCount', { index: step, total })}
 		</p>
 
 		{#key step}
 		<div class="step-frame" style="--from: {direction}">
 		{#if !ready}
 			<p class="loading-hint">{m('shell.loading')}</p>
-		{:else if step === 1}
-			<section aria-labelledby="step-1-title">
+		{:else if current === 'name'}
+			<section aria-labelledby="step-name-title">
 				<span class="step-icon" aria-hidden="true"><span class="material-symbols">badge</span></span>
-				<h1 id="step-1-title" tabindex="-1">{m('onboarding.step1Title')}</h1>
+				<h1 id="step-name-title" tabindex="-1">{m('onboarding.step1Title')}</h1>
 				<p class="hint">{m('onboarding.step1Hint')}</p>
 				<label class="field">
 					<span class="label-text">{m('onboarding.displayNameLabel')}</span>
@@ -440,12 +454,12 @@
 					/>
 				</label>
 			</section>
-		{:else if step === 2}
-			<section aria-labelledby="step-2-title">
+		{:else if current === 'units'}
+			<section aria-labelledby="step-units-title">
 				<span class="step-icon" aria-hidden="true"><span class="material-symbols">straighten</span></span>
-				<h1 id="step-2-title" tabindex="-1">{m('onboarding.step2Title')}</h1>
+				<h1 id="step-units-title" tabindex="-1">{m('onboarding.step2Title')}</h1>
 				<p class="hint">{m('onboarding.step2Hint')}</p>
-				<div class="unit-tiles" role="radiogroup" aria-labelledby="step-2-title">
+				<div class="unit-tiles" role="radiogroup" aria-labelledby="step-units-title">
 					<button
 						type="button"
 						class="choice unit-tile"
@@ -478,12 +492,12 @@
 					</button>
 				</div>
 			</section>
-		{:else if step === 3}
-			<section aria-labelledby="step-3-title">
+		{:else if current === 'goal'}
+			<section aria-labelledby="step-goal-title">
 				<span class="step-icon" aria-hidden="true"><span class="material-symbols">flag</span></span>
-				<h1 id="step-3-title" tabindex="-1">{m('onboarding.step3Title')}</h1>
+				<h1 id="step-goal-title" tabindex="-1">{m('onboarding.step3Title')}</h1>
 				<p class="hint">{m('onboarding.step3Hint')}</p>
-				<div class="goal-grid" role="radiogroup" aria-labelledby="step-3-title">
+				<div class="goal-grid" role="radiogroup" aria-labelledby="step-goal-title">
 					{#each PRIMARY_GOAL_VALUES as v (v)}
 						<button
 							type="button"
@@ -500,10 +514,10 @@
 					{/each}
 				</div>
 			</section>
-		{:else if step === 4}
-			<section aria-labelledby="step-4-title">
+		{:else if current === 'about'}
+			<section aria-labelledby="step-about-title">
 				<span class="step-icon" aria-hidden="true"><span class="material-symbols">person</span></span>
-				<h1 id="step-4-title" tabindex="-1">{m('onboarding.step4Title')}</h1>
+				<h1 id="step-about-title" tabindex="-1">{m('onboarding.step4Title')}</h1>
 				<p class="hint">{m('onboarding.step4Hint')}</p>
 				<div class="field-row">
 					<label class="field">
@@ -545,12 +559,12 @@
 					</label>
 				{/if}
 			</section>
-		{:else if step === 5}
-			<section aria-labelledby="step-5-title">
+		{:else if current === 'run-privacy'}
+			<section aria-labelledby="step-privacy-title">
 				<span class="step-icon" aria-hidden="true"><span class="material-symbols">verified_user</span></span>
-				<h1 id="step-5-title" tabindex="-1">{m('onboarding.step5Title')}</h1>
+				<h1 id="step-privacy-title" tabindex="-1">{m('onboarding.step5Title')}</h1>
 				<p class="hint">{m('onboarding.step5Hint')}</p>
-				<div class="privacy-list" role="radiogroup" aria-labelledby="step-5-title">
+				<div class="privacy-list" role="radiogroup" aria-labelledby="step-privacy-title">
 					{#each [
 						{ value: 'private', name: m('onboarding.privacyPrivate'), desc: m('onboarding.privacyPrivateDesc') },
 						{ value: 'followers', name: m('onboarding.privacyFollowers'), desc: m('onboarding.privacyFollowersDesc') },
@@ -574,10 +588,10 @@
 					{/each}
 				</div>
 			</section>
-		{:else if step === 6}
-			<section aria-labelledby="step-6-title">
+		{:else if current === 'notifications'}
+			<section aria-labelledby="step-notifications-title">
 				<span class="step-icon step-icon--bell" aria-hidden="true"><span class="material-symbols">notifications_active</span></span>
-				<h1 id="step-6-title" tabindex="-1">{m('onboarding.step6Title')}</h1>
+				<h1 id="step-notifications-title" tabindex="-1">{m('onboarding.step6Title')}</h1>
 				<p class="hint">{m('onboarding.step6Hint')}</p>
 				{#if !pushSupported}
 					<p class="not-available">{m('onboarding.pushUnsupported')}</p>
@@ -600,13 +614,13 @@
 					</button>
 				{/if}
 			</section>
-		{:else if step === 7}
-			<section class="finish" aria-labelledby="step-7-title">
+		{:else if current === 'done'}
+			<section class="finish" aria-labelledby="step-done-title">
 				<span class="done-badge" aria-hidden="true">
 					<span class="done-ring"></span>
 					<span class="material-symbols">check</span>
 				</span>
-				<h1 id="step-7-title" tabindex="-1">{m('onboarding.step7Title')}</h1>
+				<h1 id="step-done-title" tabindex="-1">{m('onboarding.step7Title')}</h1>
 				<p class="hint">{m('onboarding.step7Hint')}</p>
 				{#if primaryGoal}
 					<button
@@ -635,22 +649,22 @@
 				<span></span>
 			{/if}
 			<div class="nav-right">
-				{#if step !== 7 && step !== 1 && step !== 5 && step !== 2}
+				{#if current === 'goal' || current === 'about' || current === 'notifications'}
 					<button
 						type="button"
 						class="skip-step"
 						onclick={skipStep}
-						disabled={saving || (step === 4 && weightOutOfRange)}
+						disabled={saving || (current === 'about' && weightOutOfRange)}
 					>
 						{m('onboarding.skip')}
 					</button>
 				{/if}
-				{#if step < ONBOARDING_TOTAL_STEPS}
+				{#if step < total}
 					<button
 						type="button"
 						class="btn btn-primary nav-next"
 						onclick={next}
-						disabled={saving || (step === 4 && weightOutOfRange)}
+						disabled={saving || (current === 'about' && weightOutOfRange)}
 					>
 						{m('onboarding.continue')}
 						<span class="material-symbols" aria-hidden="true">arrow_forward</span>

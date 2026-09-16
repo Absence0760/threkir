@@ -437,7 +437,7 @@ export const messages = {
 	"onboarding.step1Title": "Comment doit-on t'appeler ?",
 	"onboarding.step1Hint": "Ton nom affiché apparaît sur les courses et commentaires que tu partages. Tu peux le changer à tout moment dans les réglages.",
 	"onboarding.displayNameLabel": "Nom affiché",
-	"onboarding.displayNamePlaceholder": "p. ex. Alex Chen",
+	"onboarding.displayNamePlaceholder": "Votre nom ou un surnom",
 	"onboarding.step2Title": "Kilomètres ou miles ?",
 	"onboarding.step2Hint": "Détermine chaque affichage de distance et d'allure dans l'app. Tu peux changer à tout moment dans Réglages → Préférences.",
 	"onboarding.unitKm": "Kilomètres",

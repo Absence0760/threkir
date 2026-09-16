@@ -437,7 +437,7 @@ export const messages = {
 	"onboarding.step1Title": "Wie sollen wir dich nennen?",
 	"onboarding.step1Hint": "Dein Anzeigename erscheint bei den Läufen und Kommentaren, die du teilst. Du kannst ihn jederzeit in den Einstellungen ändern.",
 	"onboarding.displayNameLabel": "Anzeigename",
-	"onboarding.displayNamePlaceholder": "z. B. Alex Chen",
+	"onboarding.displayNamePlaceholder": "Dein Name oder ein Spitzname",
 	"onboarding.step2Title": "Kilometer oder Meilen?",
 	"onboarding.step2Hint": "Steuert jede Distanz- und Tempoanzeige in der App. Du kannst jederzeit unter Einstellungen → Präferenzen wechseln.",
 	"onboarding.unitKm": "Kilometer",

@@ -22,17 +22,28 @@ test.describe('/onboarding design', () => {
 		await expect(page.locator('main#main-content')).toHaveCount(1);
 		await expect(page.locator('aside.auth-panel')).toBeVisible();
 
-		const progress = page.getByRole('progressbar', { name: 'Step 1 of 7' });
+		const progress = page.getByRole('progressbar', { name: 'Step 1 of 6' });
 		await expect(progress).toHaveAttribute('aria-valuenow', '1');
 		await expect(page.locator('.rail li.rail-now')).toHaveText(/Name/);
 
 		await page.getByRole('button', { name: 'Continue' }).click();
-		await expect(page.getByRole('progressbar', { name: 'Step 2 of 7' })).toHaveAttribute(
+		await expect(page.getByRole('progressbar', { name: 'Step 2 of 6' })).toHaveAttribute(
 			'aria-valuenow',
 			'2',
 		);
 		await expect(page.locator('.rail li.rail-now')).toHaveText(/Units/);
 		await expect(page.locator('.rail li.rail-done')).toHaveCount(1);
+	});
+
+	test('with nothing to turn on, the wizard has no notifications step', async ({ page }) => {
+		// This build has no push key, so the step would only explain that
+		// nothing can be enabled. It is left out of the walk, the rail and the
+		// count alike (visibleOnboardingSteps); a build that can push shows it.
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await page.goto('/onboarding');
+		await expect(page.getByRole('heading', { name: /What should we call you/i })).toBeVisible();
+		await expect(page.locator('.rail li')).toHaveCount(6);
+		await expect(page.locator('.rail')).not.toContainText('Notifications');
 	});
 
 	test('a step change moves focus to the new question', async ({ page }) => {

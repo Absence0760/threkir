@@ -100,7 +100,14 @@ test.describe('AuthShell', () => {
 			() => document.documentElement.scrollWidth - document.documentElement.clientWidth,
 		);
 		expect(overflow).toBeLessThanOrEqual(0);
-		// Both OAuth buttons keep their label on one line inside the card.
+		// Both OAuth buttons keep their label on one line inside the card, and
+		// on every host. The page loads no text webfont, so a button renders in
+		// whatever sans-serif the device falls back to: this machine's Noto Sans
+		// fitted "Continue with Apple" + its pill at 390px while CI's Ubuntu
+		// runner, rendering DejaVu Sans, wrapped it (run 35134263272). Widening
+		// every glyph by DejaVu's margin makes the check mean the same thing
+		// wherever it runs.
+		await page.addStyleTag({ content: 'main.auth-card * { letter-spacing: 0.08em !important; }' });
 		for (const name of [/Continue with Google/, /Continue with Apple/]) {
 			const box = await page.getByRole('button', { name }).boundingBox();
 			expect(box!.height, `${name} wrapped`).toBeLessThan(56);

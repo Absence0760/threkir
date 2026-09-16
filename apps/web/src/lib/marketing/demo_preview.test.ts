@@ -1,6 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DEMO_HR_ZONES, DEMO_SPLITS, DEMO_TRACK } from './demo_preview';
+import {
+	DEMO_DISTANCE_KM,
+	DEMO_DISTANCE_LABEL,
+	DEMO_HR_ZONES,
+	DEMO_PACE_LABEL,
+	DEMO_PACE_SECONDS_PER_KM,
+	DEMO_SPLITS,
+	DEMO_TIME_LABEL,
+	DEMO_TOTAL_SECONDS,
+	DEMO_TRACK,
+} from './demo_preview';
 
 // The landing page renders this data through the product's own components,
 // so a malformed point or an out-of-range percentage is a visible marketing
@@ -52,4 +62,32 @@ test('heart-rate zones are whole percentages summing to 100', () => {
 		100,
 		'the stacked bar must fill exactly',
 	);
+});
+
+test('the headline figures agree with the splits they sit above', () => {
+	// The defect these constants close: the markup read 8.04 km / 39:54 /
+	// 4:58 per km over bars summing to 39:14 at 4:54. A visitor who reads
+	// the split table — which is the visitor this card is FOR — can do that
+	// arithmetic, so the three figures are derived and this is the check
+	// that they still are.
+	assert.equal(
+		DEMO_TOTAL_SECONDS,
+		DEMO_SPLITS.reduce((t, s) => t + s.seconds, 0),
+		'the time is the sum of the bars or it is decoration',
+	);
+	assert.equal(DEMO_DISTANCE_KM, DEMO_SPLITS.length, 'each split is one kilometre');
+	assert.equal(DEMO_PACE_SECONDS_PER_KM, DEMO_TOTAL_SECONDS / DEMO_DISTANCE_KM);
+	// Every split is a kilometre inside the run, so the average pace has to
+	// land between the quickest and the slowest of them.
+	const secs = DEMO_SPLITS.map((s) => s.seconds);
+	assert.ok(DEMO_PACE_SECONDS_PER_KM >= Math.min(...secs));
+	assert.ok(DEMO_PACE_SECONDS_PER_KM <= Math.max(...secs));
+});
+
+test('the rendered labels are the shapes the card lays out for', () => {
+	// The card gives each figure a fixed slot, so a label that grew an hours
+	// field or a third decimal would overflow it rather than wrap.
+	assert.match(DEMO_TIME_LABEL, /^\d{1,2}:[0-5]\d$/);
+	assert.match(DEMO_PACE_LABEL, /^\d:[0-5]\d$/);
+	assert.match(DEMO_DISTANCE_LABEL, /^\d+\.\d{2}$/);
 });

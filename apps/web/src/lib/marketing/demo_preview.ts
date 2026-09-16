@@ -1,3 +1,5 @@
+import { formatDuration } from '$lib/format/time';
+import { paceMinutesSeconds } from '$lib/format/pace_format';
 import type { TrackPoint } from '$lib/types';
 
 /// Static demo data for the public landing page's product preview.
@@ -100,6 +102,32 @@ export const DEMO_SPLITS: DemoSplit[] = [
 	{ km: 7, seconds: 284 },
 	{ km: 8, seconds: 272 },
 ];
+
+/// The sample run's three headline figures, DERIVED from the splits above.
+///
+/// They were three literals in the preview markup — `8.04 km`, `39:54`,
+/// `4:58/km` — sitting directly above the eight bars that contradict them:
+/// the splits sum to 39:14 at 4:54/km, so the page advertised a run 40 s
+/// slower than the chart beneath it, to an audience that reads split tables
+/// for pleasure. Nothing failed, because a number typed into markup has
+/// nothing to be checked against.
+///
+/// Formatted through the product's own `formatDuration` / `paceMinutesSeconds`
+/// for the same reason the route is drawn by `TrackPreview` rather than
+/// screenshotted: the figure on the marketing page is then produced by the
+/// code that produces it in the app, and a change to either follows.
+export const DEMO_DISTANCE_KM = DEMO_SPLITS.length;
+
+export const DEMO_TOTAL_SECONDS = DEMO_SPLITS.reduce((t, s) => t + s.seconds, 0);
+
+export const DEMO_PACE_SECONDS_PER_KM = DEMO_TOTAL_SECONDS / DEMO_DISTANCE_KM;
+
+/// `8.00` — two decimals, matching how the product writes a run distance.
+export const DEMO_DISTANCE_LABEL = DEMO_DISTANCE_KM.toFixed(2);
+
+export const DEMO_TIME_LABEL = formatDuration(DEMO_TOTAL_SECONDS);
+
+export const DEMO_PACE_LABEL = paceMinutesSeconds(DEMO_PACE_SECONDS_PER_KM);
 
 /// Share of time in each of the five heart-rate zones, as whole percentages.
 export const DEMO_HR_ZONES: number[] = [8, 21, 38, 24, 9];

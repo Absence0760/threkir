@@ -4,8 +4,11 @@
 	import MapBackdrop from './MapBackdrop.svelte';
 	import { m } from '$lib/i18n/store.svelte';
 	import {
+		DEMO_DISTANCE_LABEL,
 		DEMO_HR_ZONES,
+		DEMO_PACE_LABEL,
 		DEMO_SPLITS,
+		DEMO_TIME_LABEL,
 		DEMO_TRACK,
 	} from '$lib/marketing/demo_preview';
 
@@ -165,15 +168,15 @@
 				<div class="stats">
 					<div class="stat">
 						<span class="stat-label">{m('landing.previewDistance')}</span>
-						<span class="stat-value">8.04<small>km</small></span>
+						<span class="stat-value">{DEMO_DISTANCE_LABEL}<small>km</small></span>
 					</div>
 					<div class="stat">
 						<span class="stat-label">{m('landing.previewTime')}</span>
-						<span class="stat-value">39:54</span>
+						<span class="stat-value">{DEMO_TIME_LABEL}</span>
 					</div>
 					<div class="stat">
 						<span class="stat-label">{m('landing.previewPace')}</span>
-						<span class="stat-value">4:58<small>/km</small></span>
+						<span class="stat-value">{DEMO_PACE_LABEL}<small>/km</small></span>
 					</div>
 				</div>
 

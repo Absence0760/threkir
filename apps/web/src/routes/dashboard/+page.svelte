@@ -1428,6 +1428,11 @@
 			     `fitness_snapshots` on every dashboard open so the trend
 			     chart has history. Hides when the user has no qualifying
 			     runs yet (short / non-recording sources only). -->
+			<!-- Today's-form band: the readiness score beside the fitness
+			     snapshot it is derived from. Both cards self-hide and the band
+			     is auto-fit, so one alone takes the full width rather than
+			     leaving a hole where the other would have been. -->
+			<div class="metric-band">
 			<!-- Readiness-to-run — single 0-100 number with band-aware
 			     accent. Inputs today are TSB-only; sleep + resting-HR pipe
 			     through the `readiness.ts` helper unchanged once Health
@@ -1534,6 +1539,21 @@
 				</section>
 			{/if}
 
+			</div>
+
+			<!-- Analytics band: every card-weight block between here and the
+			     intensity card. Each was a full-width slab in one flex column,
+			     so a 1,440 px screen showed a single column of them and the
+			     page ran to ~3,900 px — three screens of scrolling for what
+			     fits in one and a half. Most of them self-hide, which is why
+			     the band is auto-fit rather than a fixed span count: what
+			     renders decides the shape.
+
+			     auto-fit rather than auto-fill: with a short final row
+			     auto-fill keeps the empty tracks and the last card sits in a
+			     24rem slot beside a void, which is the defect § 901 fixed on
+			     the Learn hub. -->
+			<div class="metric-band">
 			<!-- Training-load curves over the last 90 days (decisions §34).
 			     Uses TRIMP when avg_bpm + HR prefs are available, distance
 			     fallback otherwise. Hides when there's nothing to plot. -->
@@ -1691,6 +1711,8 @@
 				{/if}
 			</section>
 			{/if}
+
+			</div>
 
 			<div class="two-col">
 				<!-- Personal records -->
@@ -2526,6 +2548,25 @@
 		flex-shrink: 0;
 	}
 
+	/* A row of equal-weight metric cards. Every card on this page used to be
+	   a full-width slab in one flex column, so a 1,440 px screen showed a
+	   single column of them and the page ran to ~4,000 px — three screens of
+	   scrolling for what fits in one and a half.
+
+	   auto-fit rather than auto-fill: with a short final row auto-fill keeps
+	   the empty tracks and the last card sits in a 24rem slot beside a void,
+	   which is the same defect § 901 fixed on the Learn hub. Every card in a
+	   band self-hides, so short rows are the common case here, not the edge
+	   one. The cards are the grid items themselves (each component's root is
+	   a `section.card-elevated`), so they stretch to the tallest in the row
+	   without a height rule. */
+	.metric-band {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(24rem, 100%), 1fr));
+		gap: var(--space-lg);
+		align-items: stretch;
+	}
+
 	.stat-grid {
 		display: grid;
 		/* 6 columns to match the 6 stat cards rendered on desktop
@@ -2984,7 +3025,10 @@
 	.goals-empty-card .btn :global(.material-symbols) { font-size: 1.05rem; }
 	.goal-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(min(24rem, 100%), 1fr));
+		/* auto-fit: one goal under auto-fill sat in a 24rem track with two
+		   empty ones beside it, which is what put a card at a third of the
+		   width in the middle of a page of full-width blocks. */
+		grid-template-columns: repeat(auto-fit, minmax(min(24rem, 100%), 1fr));
 		gap: var(--space-lg);
 	}
 	.goal-card {

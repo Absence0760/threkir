@@ -29035,3 +29035,15 @@ are read correctly, and a rewrite changes exactly one line and keeps the file
 mode. The guard's own suite mutates the real tree. The lookup was also run
 read-only against the real estate config, where prod and the keystore resolve to
 ARNs, preview to its placeholder and `running/…` to no rule.
+
+## 1616. An auth email carries a `token_hash`, not a PKCE code — the reader is never the browser that started the flow
+
+A GoTrue `/auth/v1/verify?token=…` link confirms the token server-side and then hands the session back to the landing page as a PKCE `?code=`. Only the browser that STARTED the flow can exchange that code: it alone holds the code verifier, in its own storage. Mail is not read there. It is read in the iOS Mail in-app browser, in webmail in a second browser, on the other device — so `/auth/callback` answered a real sign-up confirmation with "PKCE code verifier not found in storage", *after* GoTrue had already marked the address confirmed. The account existed and worked; the link that created it looked broken. The same held for password recovery, where the dead end is worse: the landing page's only other branch is "this reset link is invalid or has expired", which is a lie about a token that was just spent.
+
+The link now points straight at the web landing carrying `token_hash` + `type`, and the page redeems it with `verifyOtp`. That mints the session from the hash alone — no verifier, no originating browser — so it works wherever the mail was opened. `/auth/callback` keeps the `exchangeCodeForSession` branch for OAuth, where the flow genuinely does begin and end in one browser, and `/auth/reset` redeems its own hash before the session check it already had.
+
+A non-http(s) `redirect_to` keeps the verify hop, and that is not a leftover: the mobile deep link `com.threkir.app://login-callback` returns into the app that started the flow and still holds its verifier, and `supabase_flutter` completes the session from the `?code=` shape only. So the rule is the scheme, not the platform — `buildActionUrl` reads it off `redirect_to`, and a missing `redirect_to` falls back to the hop as well.
+
+Two consequences worth stating. The hash is a one-time credential in a query string, so both landings `history.replaceState` it away before anything can read it as a referrer or a reload can retry a spent token. And `strayConfirmationTarget` now counts a `token_hash` alongside a `code`: a hosted project whose Redirect-URLs allow-list drops our landing sends the confirmation to the Site URL instead, and the Art 8 consent gate must still run there (§ 363's reason, one shape wider).
+
+The regression test is the shape of the bug rather than of the fix: `reset.spec.ts` opens the emailed link in a separate Playwright **context**, not another tab, because a second tab shares the storage that made the old link work in CI while it failed for every real person.

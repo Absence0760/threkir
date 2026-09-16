@@ -290,11 +290,20 @@ Dashboard → Auth → Hooks in prod):
   `password_changed_notification`. Unknown/future action types fall through
   to an informational default and never fail the hook — a hook failure
   surfaces as a GoTrue API error to the user mid-signup/reset.
-- **Verify link** — built byte-compatible with GoTrue's own
-  `{base}/auth/v1/verify?token={token_hash}&type={action}&redirect_to=…`
-  (including GoTrue's leave-unencoded-unless-`&=#` redirect quirk), so the web
-  e2e reset flow's `extractLink` + `/auth/reset` greps keep working. The OTP
-  code rides along as the link alternative. The base is `API_EXTERNAL_URL`
+- **Action link** — for an http(s) landing (every web flow) the link points
+  straight at that landing carrying the hash the page redeems:
+  `{redirect_to}?token_hash={token_hash}&type={action}`. `verifyOtp` mints the
+  session from the hash alone, so it works in whatever browser opened the
+  mail. The GoTrue `{base}/auth/v1/verify?token=…&type=…&redirect_to=…` hop —
+  byte-compatible with GoTrue's own, including the
+  leave-unencoded-unless-`&=#` redirect quirk — is kept only for a
+  non-http(s) target (the mobile `com.threkir.app://` deep link, where the
+  flow starts and finishes in one app that holds its PKCE verifier, and
+  `supabase_flutter` only understands the resulting `?code=`) and for a
+  missing `redirect_to`. See `decisions.md § 1616` and
+  `docs/features/web_app_auth.md § Email confirmation redirect`. The OTP
+  code rides along as the link alternative. The verify-hop base is
+  `API_EXTERNAL_URL`
   when set, else the runtime-injected `SUPABASE_URL`: the local stack injects
   the Docker-internal `http://kong:8000` as `SUPABASE_URL`, which no browser
   resolves (CI run 28707481878 broke every reset-password e2e this way), so

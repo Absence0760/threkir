@@ -2308,6 +2308,7 @@ export const messages = {
 	"landing.navFeatures": "機能",
 	"landing.navLearn": "学ぶ",
 	"landing.signIn": "ログイン",
+	"landing.getStartedFree": "無料で始める",
 	"landing.openApp": "アプリを開く",
 	"landing.getStarted": "はじめる",
 	"landing.featureRouteBuilderTitle": "ルートビルダー",

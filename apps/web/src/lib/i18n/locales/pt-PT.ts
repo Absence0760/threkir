@@ -2312,6 +2312,7 @@ export const messages = {
 	"landing.navFeatures": "Recursos",
 	"landing.navLearn": "Aprender",
 	"landing.signIn": "Entrar",
+	"landing.getStartedFree": "Começar grátis",
 	"landing.openApp": "Abrir o app",
 	"landing.getStarted": "Começar",
 	"landing.featureRouteBuilderTitle": "Criador de rotas",

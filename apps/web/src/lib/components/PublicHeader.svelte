@@ -26,6 +26,7 @@
 			<a href="/dashboard" class="nav-signin">{m('landing.openApp')}</a>
 		{:else}
 			<a href="/login" class="nav-signin">{m('landing.signIn')}</a>
+			<a href="/login" class="nav-cta">{m('landing.getStartedFree')}</a>
 		{/if}
 	</div>
 </nav>
@@ -150,9 +151,40 @@
 		color: var(--color-primary);
 	}
 
+	/* Filled in BOTH variants from the primary pair rather than a white pill
+	   with a frozen ink: white reads as the primary action on the hero ramp
+	   and disappears on /learn's light surface, and app.css already holds
+	   --color-primary / --color-on-primary to AA in both themes. */
+	.nav-cta {
+		font-weight: 600;
+		padding: var(--space-sm) var(--space-lg);
+		border-radius: var(--radius-md);
+		background: var(--color-primary);
+		color: var(--color-on-primary);
+		border: 1px solid transparent;
+		white-space: nowrap;
+		transition: all var(--transition-fast);
+	}
+
+	.nav-cta:hover {
+		background: var(--color-primary-hover);
+	}
+
 	@media (max-width: 768px) {
 		.nav-link {
 			display: none;
+		}
+		/* Both pills stay. Hiding Sign In to make room was tried and is the
+		   wrong trade — a returning visitor needs it more than a new one
+		   needs a second CTA — and it breaks the /-vs-/learn header parity
+		   that learn/chrome.spec.ts pins. Shrink them instead. */
+		.nav-links {
+			gap: var(--space-sm);
+		}
+		.nav-signin,
+		.nav-cta {
+			padding: var(--space-sm) var(--space-md);
+			font-size: 0.85rem;
 		}
 	}
 </style>

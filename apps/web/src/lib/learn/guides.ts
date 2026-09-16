@@ -31,6 +31,34 @@ const DEFAULT_LOCALE = idx.DEFAULT_LOCALE;
 
 const modules = import.meta.glob<GuideModule>('./guides/*.md', { eager: true });
 
+/// The same files again as raw text, purely to count words for the reading
+/// estimate. The compiled module exposes frontmatter and a Svelte component
+/// and neither can be counted, so the source is read a second time; both
+/// globs resolve at build time, so this costs nothing at runtime.
+const sources = import.meta.glob<string>('./guides/*.md', {
+	eager: true,
+	query: '?raw',
+	import: 'default',
+});
+
+const READING_MINUTES: Record<string, number> = (() => {
+	const out: Record<string, number> = {};
+	for (const [path, raw] of Object.entries(sources)) {
+		const { slug, locale } = parseFilename(path);
+		// Keyed on the English source: a localized file is a translation of
+		// the same guide and its word count differs by language, not by how
+		// much there is to read.
+		if (locale === DEFAULT_LOCALE) out[slug] = idx.estimateReadingMinutes(raw);
+	}
+	return out;
+})();
+
+/// Whole minutes to read a guide, or `null` for a slug with no source — a
+/// card renders no estimate rather than a wrong one.
+export function readingMinutes(slug: string): number | null {
+	return READING_MINUTES[slug] ?? null;
+}
+
 /// Parse a glob path like `./guides/road-running-101.de.md` into
 /// `{ slug: 'road-running-101', locale: 'de' }`. A file with no locale
 /// segment (`road-running-101.md`) is the English source.

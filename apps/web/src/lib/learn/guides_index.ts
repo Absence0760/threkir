@@ -197,3 +197,33 @@ export function nonEmptyCategories(entries: GuideIndexEntry[]) {
 		(a, b) => a.order - b.order,
 	);
 }
+
+/// Words a typical adult reads per minute of prose. 200 is the low end of the
+/// usual 200-250 range, chosen so the estimate errs generous — a guide that
+/// takes longer than promised is a worse surprise than one that takes less.
+const WORDS_PER_MINUTE = 200;
+
+/**
+ * Estimate a guide's reading time in whole minutes from its raw markdown.
+ *
+ * The body is stripped of everything a reader does not read WORD BY WORD
+ * before counting: YAML frontmatter, fenced code, inline code, image alts,
+ * link URLs (the link TEXT stays, because that is read) and the punctuation
+ * of headings, emphasis and list markers. Counting the raw file instead
+ * inflates every guide by its frontmatter and its link targets.
+ *
+ * Always at least 1 — "0 min read" reads as an error, not as a short guide.
+ */
+export function estimateReadingMinutes(markdown: string): number {
+	const prose = markdown
+		.replace(/^---\n[\s\S]*?\n---\n/, '')
+		.replace(/```[\s\S]*?```/g, ' ')
+		.replace(/`[^`]*`/g, ' ')
+		.replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+		.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+		.replace(/^[>\s]*[-*+]\s+/gm, ' ')
+		.replace(/^#{1,6}\s+/gm, ' ')
+		.replace(/[*_~#>|]/g, ' ');
+	const words = prose.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w));
+	return Math.max(1, Math.round(words.length / WORDS_PER_MINUTE));
+}

@@ -20,10 +20,10 @@
 		"rclt"
 	],
 	"subset": {
-		"bytes": 70388,
-		"sha256": "89c8c0ea1f4710fdfcdbc39f36619c553c43e7626d0b1eca6d2f64578a3afb73",
-		"glyphs": 311,
-		"ligatures": 420
+		"bytes": 70444,
+		"sha256": "a2f52dfe50c15e59035ec6708201ac5c6086e775e5bee223c8625eb9085e1d48",
+		"glyphs": 310,
+		"ligatures": 419
 	},
 	"icons": [
 		"10k",
@@ -39,7 +39,6 @@
 		"add_road",
 		"ads_click",
 		"alt_route",
-		"analytics",
 		"anchor",
 		"android",
 		"apps",

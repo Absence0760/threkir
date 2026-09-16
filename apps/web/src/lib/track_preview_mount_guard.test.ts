@@ -38,6 +38,27 @@ const CLIPPING_WRAPPERS: Record<string, RegExp> = {
 		/import \{[^}]*\bfetchRouteById\b[^}]*\} from '\$lib\/core\/data'/,
 };
 
+/**
+ * Surfaces that mount the renderer with STATIC DEMO GEOMETRY rather than with
+ * anybody's recorded track. The public landing page shows the product drawing
+ * a route, and it draws the real one — a picture of the renderer would be a
+ * screenshot that goes stale, which is the whole reason § 33's concern does
+ * not reach here: there is no owner, no viewer and no row, so there is nothing
+ * to clip.
+ *
+ * Held to the same discipline as the clipping wrappers rather than listed as
+ * exemptions: each must import its points from the demo module BY NAME, and
+ * the companion assertion below also fails if one of them reaches the data
+ * layer or the auth store — which is what turning this into a real-track mount
+ * would look like.
+ */
+const STATIC_DEMO_MOUNTS: Record<string, RegExp> = {
+	'routes/+page.svelte':
+		/import \{[^}]*\bDEMO_TRACK\b[^}]*\} from '\$lib\/marketing\/demo_preview'/,
+	'lib/components/marketing/ProductPreview.svelte':
+		/import \{[^}]*\bDEMO_TRACK\b[^}]*\} from '\$lib\/marketing\/demo_preview'/,
+};
+
 function svelteFiles(dir: string, out: string[] = []): string[] {
 	for (const entry of readdirSync(dir)) {
 		if (entry === 'node_modules') continue;
@@ -101,7 +122,7 @@ test('the scan reaches the tree and still sees a real mount', () => {
 	// drift away from what it is checking.
 	const files = svelteFiles(SRC);
 	assert.ok(files.length > 100, `the walk reached only ${files.length} .svelte files`);
-	for (const path of Object.keys(CLIPPING_WRAPPERS)) {
+	for (const path of [...Object.keys(CLIPPING_WRAPPERS), ...Object.keys(STATIC_DEMO_MOUNTS)]) {
 		assert.ok(
 			mountsTrackPreview(join(SRC, path)),
 			`${path} is permitted because it mounts TrackPreview, and the scan can no ` +
@@ -120,6 +141,7 @@ test('only a clip-aware wrapper mounts the unclipped renderer', () => {
 		const path = rel(file);
 		if (path === 'lib/components/TrackPreview.svelte') continue;
 		if (path in CLIPPING_WRAPPERS) continue;
+		if (path in STATIC_DEMO_MOUNTS) continue;
 		if (mountsTrackPreview(file)) offenders.push(path);
 	}
 	assert.deepEqual(
@@ -229,4 +251,46 @@ test('a slash-star inside markup opens nothing, and an emoji shifts nothing', ()
 	assert.ok(!blanked.includes('/'), 'no comment character may survive the blanking');
 	assert.match(blanked, /const b = 2;/);
 	assert.equal(blanked.length, shifted.length);
+});
+
+test('every static-demo mount still draws demo geometry and nothing live', () => {
+	for (const [path, imports] of Object.entries(STATIC_DEMO_MOUNTS)) {
+		const file = join(SRC, path);
+		let raw: string;
+		try {
+			raw = readFileSync(file, 'utf-8');
+		} catch {
+			throw new Error(`${path} is permitted but no longer readable`);
+		}
+		const source = withoutComments(raw);
+		assert.match(
+			source,
+			imports,
+			`${path} may mount TrackPreview only because its points come from the demo ` +
+				'module by that name. It no longer imports them — restore the import or ' +
+				'take it out of STATIC_DEMO_MOUNTS.',
+		);
+		assert.ok(
+			mountsTrackPreview(file),
+			`${path} no longer mounts TrackPreview — drop it from STATIC_DEMO_MOUNTS so ` +
+				'the entry cannot outlive what it covers.',
+		);
+		// The exemption rests entirely on the POINTS being synthetic, so that is
+		// what gets checked — not a proxy like "imports no auth store", which the
+		// landing page trips legitimately for its logged-in redirect. Every mount
+		// in a demo surface must bind `points` to a DEMO_* identifier; the moment
+		// one is handed a row's waypoints instead, § 33 applies again and the file
+		// belongs behind a clipping wrapper.
+		const mounts = [...source.matchAll(/<TrackPreview\b[^>]*/g)].map((mm) => mm[0]);
+		assert.ok(mounts.length > 0, `${path} mounts nothing to check`);
+		for (const mount of mounts) {
+			assert.match(
+				mount,
+				/\bpoints=\{DEMO_[A-Z_]+\}/,
+				`${path} is permitted only for static demo geometry, but a TrackPreview ` +
+					`here takes its points from something else:\n  ${mount.trim()}\n` +
+					'Route a real track through RunTrackPreview / RouteTrackPreview instead.',
+			);
+		}
+	}
 });

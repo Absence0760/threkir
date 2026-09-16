@@ -1433,31 +1433,29 @@ test('every ink on the race-day fixed canvas clears AA over its own veil', () =>
 	assert.deepEqual(thin, [], 'a foreground on the hero may not be thinned below 0.9.');
 });
 
-// The public landing's four feature-icon accents. Each is a base token's tint
-// under a theme-aware ink, and the rules are READ OUT OF THE SOURCE so the pair
-// cannot drift apart or be re-frozen as a hex: the four literals they replace
-// (#4F46E5 / #EC4899 / #10B981 / #F97316) each failed in exactly one theme
-// because a fixed hue cannot suit both a near-white and a dark-violet card.
-// Marketing copy is still content, so the 4.5:1 floor applies rather than 3:1.
+// The public landing's four feature accents. They were icon inks on a 12% tint
+// until the icons were replaced by product previews; they are now the eyebrow
+// labels, read straight off --color-surface. The rules are still READ OUT OF
+// THE SOURCE so a re-frozen hex cannot creep back: the four literals they
+// originally replaced (#4F46E5 / #EC4899 / #10B981 / #F97316) each failed in
+// exactly one theme, because a fixed hue cannot suit both a near-white and a
+// dark card. An eyebrow is small but it is still content, so the 4.5:1 floor
+// applies rather than 3:1.
 for (const { label, marker } of THEMES) {
 	test(`landing feature-icon accents meet AA on their own tint — ${label}`, () => {
 		const page = readFileSync(resolve(__dirname, '../routes/+page.svelte'), 'utf-8');
 		const rules = [
 			...page.matchAll(
-				/\.feature:nth-child\((\d)\) \.feature-icon \{\s*background:\s*color-mix\(in srgb, var\(--([\w-]+)\) (\d+)%, var\(--([\w-]+)\)\);\s*color:\s*var\(--([\w-]+)\);/g,
+				/\.feature:nth-child\((\d)\) \.feature-eyebrow \{ color: var\(--([\w-]+)\); \}/g,
 			),
 		];
 		assert.equal(rules.length, 4, 'the landing must declare four token-based feature accents');
-		for (const [, nth, base, pct, surfaceName, ink] of rules) {
-			const tint = mixOverHex(
-				resolveToken(marker, base),
-				Number(pct),
-				resolveToken(marker, surfaceName),
-			);
-			const ratio = contrastRatio(resolveToken(marker, ink), tint);
+		const ground = resolveToken(marker, 'color-surface');
+		for (const [, nth, ink] of rules) {
+			const ratio = contrastRatio(resolveToken(marker, ink), ground);
 			assert.ok(
 				ratio >= AA_NORMAL,
-				`feature card ${nth}: --${ink} on --${base}@${pct}% over --${surfaceName} (${tint}) is ${ratio.toFixed(3)}:1 in ${label}; WCAG AA requires >=${AA_NORMAL}:1.`,
+				`feature card ${nth}: --${ink} on --color-surface (${ground}) is ${ratio.toFixed(3)}:1 in ${label}; WCAG AA requires >=${AA_NORMAL}:1.`,
 			);
 		}
 	});

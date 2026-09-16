@@ -213,20 +213,16 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		await page.getByRole('radio', { name: /Private/i }).click();
 		await page.getByRole('button', { name: 'Continue' }).click();
 
-		// Step 6 — notifications (skip; CDP-tier consent flow needs a
-		// real Notification permission, out of scope for the wizard
-		// pin)
-		await expect(
-			page.getByRole('heading', { name: /Notifications/i })
-		).toBeVisible();
-		await page.getByRole('button', { name: 'Continue' }).click();
-
-		// Step 7 — done. Because a goal (10K) was chosen, the goal-keyed
+		// No notifications step: this build has no push key, so there is nothing
+		// to turn on and the wizard goes straight to done (visibleOnboardingSteps).
+		// Done. Because a goal (10K) was chosen, the goal-keyed
 		// "Create my training plan" CTA is offered alongside the neutral
 		// dashboard exit (runner-new discoverability nudge).
 		await expect(
 			page.getByRole('heading', { name: /All set/i })
 		).toBeVisible();
+		await expect(page.getByRole('heading', { name: /Notifications/i })).toHaveCount(0);
+		await expect(page.getByRole('progressbar', { name: 'Step 6 of 6' })).toBeVisible();
 		await expect(
 			page.getByRole('button', { name: 'Create my training plan' })
 		).toBeVisible();
@@ -314,9 +310,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		// Step 5 — privacy
 		await page.getByRole('radio', { name: /Private/i }).click();
 		await page.getByRole('button', { name: 'Continue' }).click();
-		// Step 6 — notifications
-		await page.getByRole('button', { name: 'Continue' }).click();
-		// Step 7 — finish
+		// Done (no notifications step without a push key)
 		await page.getByRole('button', { name: 'Open dashboard' }).click();
 		await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
 
@@ -369,9 +363,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		// Step 5 — privacy
 		await page.getByRole('radio', { name: /Private/i }).click();
 		await page.getByRole('button', { name: 'Continue' }).click();
-		// Step 6 — notifications
-		await page.getByRole('button', { name: 'Continue' }).click();
-		// Step 7 — finish
+		// Done (no notifications step without a push key)
 		await page.getByRole('button', { name: 'Open dashboard' }).click();
 		await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
 
@@ -437,9 +429,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		// Step 5 — privacy
 		await page.getByRole('radio', { name: /Private/i }).click();
 		await page.getByRole('button', { name: 'Continue' }).click();
-		// Step 6 — notifications
-		await page.getByRole('button', { name: 'Continue' }).click();
-		// Step 7 — finish
+		// Done (no notifications step without a push key)
 		await page.getByRole('button', { name: 'Open dashboard' }).click();
 		await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
 
@@ -470,11 +460,13 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		await expect(
 			page.getByRole('heading', { name: /What should we call you/i })
 		).toBeVisible();
-		// Steps 1-6: advance without entering or choosing anything.
-		for (let i = 0; i < 6; i++) {
+		// Every step before done: advance without entering or choosing
+		// anything. Five, because without a push key there is no
+		// notifications step.
+		for (let i = 0; i < 5; i++) {
 			await page.getByRole('button', { name: 'Continue' }).click();
 		}
-		// Step 7 — no goal was chosen, so only the neutral exit renders.
+		// Done — no goal was chosen, so only the neutral exit renders.
 		await expect(page.getByRole('heading', { name: /All set/i })).toBeVisible();
 		await expect(
 			page.getByRole('button', { name: 'Create my training plan' })

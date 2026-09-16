@@ -23,6 +23,7 @@
 	import { googleAuthEnabled } from '$lib/core/google_auth_flag';
 	import { m } from '$lib/i18n/store.svelte';
 	import PasswordInput from '$lib/components/PasswordInput.svelte';
+	import AuthShell from '$lib/components/auth/AuthShell.svelte';
 
 	// Fail-closed: off until the Supabase `google` provider is wired
 	// (PUBLIC_GOOGLE_AUTH_ENABLED). When off the button shows a "coming
@@ -311,454 +312,327 @@
 	);
 </script>
 
-<div class="login-page">
-	<!--
-		Not aria-hidden. The pane is display:none below 56rem and display:flex
-		above it, and `.logo-mobile` inside the form card is the mirror image —
-		so on every desktop viewport the link below is the ONLY route home, and
-		hiding the subtree left it focusable but nameless and roleless
-		(axe aria-hidden-focus; WCAG 4.1.2 + 2.4.3). Only one of the two logo
-		links is ever rendered, so exposing this one duplicates nothing.
-	-->
-	<aside class="brand-pane">
-		<a href="/" class="brand-logo">
-			<img src="/logo-mark.svg" alt="" class="brand-mark" />
-			<span class="brand-name">Threkir</span>
-		</a>
-		<div class="brand-copy">
-			<!-- The form card renders the same `kicker` string, and both panes are
-			     on screen together above 56rem; only this copy is redundant. -->
-			<p class="brand-kicker" aria-hidden="true">{kicker}</p>
-			<h2 class="brand-headline">{m('login.brandHeadline')}</h2>
-			<ul class="brand-bullets">
-				<li>
-					<span class="bullet-dot" aria-hidden="true"></span>
-					<span>{m('login.bullet1')}</span>
+<AuthShell>
+	{#snippet panel()}
+		<!-- The landing page's eyebrow, not the card's own kicker: both halves
+		     are on screen together above 56rem, and repeating the card's words
+		     put "Welcome back" on the screen twice. -->
+		<p class="brand-kicker">{m('landing.heroEyebrow')}</p>
+		<h2 class="brand-headline">{m('login.brandHeadline')}</h2>
+		<ul class="brand-bullets">
+			{#each [m('login.bullet1'), m('login.bullet2'), m('login.bullet3')] as bullet, i (i)}
+				<li style="--enter-at: {380 + i * 110}ms">
+					<span class="bullet-mark" aria-hidden="true"><span class="material-symbols">check</span></span>
+					<span>{bullet}</span>
 				</li>
-				<li>
-					<span class="bullet-dot" aria-hidden="true"></span>
-					<span>{m('login.bullet2')}</span>
-				</li>
-				<li>
-					<span class="bullet-dot" aria-hidden="true"></span>
-					<span>{m('login.bullet3')}</span>
-				</li>
-			</ul>
-		</div>
+			{/each}
+		</ul>
 		<p class="brand-foot">{m('login.brandFoot')}</p>
-	</aside>
+	{/snippet}
 
-	<main class="form-pane" id="main-content">
-		<div class="login-card">
-			<a href="/" class="logo logo-mobile">
-				<img src="/logo-mark.svg" alt="" class="logo-mark" />
-				<span>Threkir</span>
-			</a>
+	<main class="auth-card login-card" id="main-content">
+		<p class="kicker">{kicker}</p>
+		<h1>{headline}</h1>
+		<p class="subtitle">{subtitle}</p>
 
-			<p class="kicker">{kicker}</p>
-			<h1>{headline}</h1>
-			<p class="subtitle">{subtitle}</p>
-
-			{#if error}
-				<div class="error" role="alert">
-					{error}
-					{#if resendFor}
-						<button
-							type="button"
-							class="link-btn resend-btn"
-							onclick={handleResendConfirmation}
-							disabled={loading}
-						>
-							{m('login.resendConfirmation')}
-						</button>
-					{/if}
-				</div>
-			{/if}
-			<!-- Permanently mounted: a live region announces changes made INSIDE
-			     it, not its own arrival, so a region that appears together with
-			     its first message announces nothing (decisions.md § 736). -->
-			<div role="status" aria-live="polite">
-				{#if info}
-					<div class="info">{info}</div>
-				{/if}
-			</div>
-
-			{#if !isReset}
-				<div class="login-buttons">
+		{#if error}
+			<div class="error" role="alert">
+				{error}
+				{#if resendFor}
 					<button
-						class="btn btn-google"
-						onclick={googleEnabled ? handleGoogleSignIn : handleGoogleSoon}
+						type="button"
+						class="link-btn resend-btn"
+						onclick={handleResendConfirmation}
 						disabled={loading}
 					>
-						<svg class="oauth-icon" viewBox="0 0 24 24" width="20" height="20">
-							<path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
-							<path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-							<path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-							<path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-						</svg>
-						{m('login.continueGoogle')}
-						{#if !googleEnabled}
-							<span class="soon-pill">{m('login.soon')}</span>
-						{/if}
+						{m('login.resendConfirmation')}
 					</button>
-
-					<button class="btn btn-apple" onclick={handleAppleSignIn} disabled={loading}>
-						<svg class="oauth-icon" viewBox="0 0 24 24" width="20" height="20" fill="white">
-							<path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-						</svg>
-						{m('login.continueApple')}
-						<span class="soon-pill">{m('login.soon')}</span>
-					</button>
-				</div>
-
-				<div class="divider">
-					<span>{m('login.orEmail')}</span>
-				</div>
-			{/if}
-
-			<form class="email-form" onsubmit={handleEmailSubmit}>
-				<!--
-					audit/accessibility High (May 2026): inputs used
-					placeholder-only — disappears as the user types and
-					screen readers announce just "edit text" without a
-					persistent name. Add a visually-hidden <label> via
-					.visually-hidden (defined in app.css). aria-label
-					alone is also valid per WCAG 3.3.2 but explicit
-					<label for> is the most compatible form.
-				-->
-				<label for="login-email" class="visually-hidden">{m('login.emailPlaceholder')}</label>
-				<input
-					id="login-email"
-					type="email"
-					bind:value={email}
-					placeholder={m('login.emailPlaceholder')}
-					required
-					autocomplete="email"
-				/>
-				{#if !isReset}
-					<label for="login-password" class="visually-hidden">{m('login.passwordPlaceholder')}</label>
-					<PasswordInput
-						id="login-password"
-						bind:value={password}
-						placeholder={m('login.passwordPlaceholder')}
-						required
-						minlength={isSignUp ? PASSWORD_MIN_LENGTH : undefined}
-						autocomplete={isSignUp ? 'new-password' : 'current-password'}
-						toggleDisabled={!hydrated}
-					/>
-					{#if isSignUp}
-						<label for="login-confirm-password" class="visually-hidden">
-							{m('login.confirmPasswordPlaceholder')}
-						</label>
-						<PasswordInput
-							id="login-confirm-password"
-							bind:value={confirmPassword}
-							placeholder={m('login.confirmPasswordPlaceholder')}
-							required
-							minlength={PASSWORD_MIN_LENGTH}
-							autocomplete="new-password"
-							toggleDisabled={!hydrated}
-						/>
-					{/if}
 				{/if}
-				{#if isSignUp}
-					<label class="signup-check">
-						<input type="checkbox" bind:checked={confirmAdult} required />
-						<span>{m('login.confirmAdult')}</span>
-					</label>
-					<label class="signup-check">
-						<input type="checkbox" bind:checked={acceptTerms} required />
-						<span>
-							{m('login.agreePrefix')}
-							<a href="/terms" target="_blank" rel="noopener noreferrer">{m('legal.termsOfService')}</a>
-							{m('login.agreeBetween')}
-							<a href="/privacy" target="_blank" rel="noopener noreferrer">{m('legal.privacyPolicy')}</a>{m('login.agreeSuffix')}
-						</span>
-					</label>
-				{/if}
-				<button
-					type="submit"
-					class="btn btn-email"
-					disabled={!hydrated || loading || (isSignUp && (!confirmAdult || !acceptTerms))}
-				>
-					{#if loading}
-						{#if isReset}{m('login.sending')}{:else}{isSignUp ? m('login.signingUp') : m('login.signingIn')}{/if}
-					{:else if isReset}
-						{m('login.sendResetLink')}
-					{:else}
-						{isSignUp ? m('login.signUp') : m('login.signIn')}
-					{/if}
-				</button>
-			</form>
-
-			{#if isReset}
-				<p class="toggle-mode">
-					<button type="button" class="link-btn" onclick={() => { isReset = false; error = ''; info = ''; }}>
-						{m('login.backToSignIn')}
-					</button>
-				</p>
-			{:else}
-				<p class="toggle-mode">
-					{isSignUp ? m('login.haveAccount') : m('login.noAccount')}
-					<button type="button" class="link-btn" onclick={() => { isSignUp = !isSignUp; error = ''; info = ''; }}>
-						{isSignUp ? m('login.toggleToSignIn') : m('login.toggleToSignUp')}
-					</button>
-				</p>
-				{#if !isSignUp}
-					<p class="toggle-mode">
-						<button type="button" class="link-btn" onclick={() => { isReset = true; error = ''; password = ''; confirmPassword = ''; }}>
-							{m('login.kicker.reset')}
-						</button>
-					</p>
-				{/if}
-			{/if}
-
-			{#if !isSignUp}
-				<p class="terms">
-					{m('login.termsPrefix')}
-					<a href="/terms" target="_blank" rel="noopener noreferrer">{m('legal.termsOfService')}</a>
-					{m('login.termsBetween')}
-					<a href="/privacy" target="_blank" rel="noopener noreferrer">{m('legal.privacyPolicy')}</a>{m('login.termsSuffix')}
-				</p>
+			</div>
+		{/if}
+		<!-- Permanently mounted: a live region announces changes made INSIDE
+		     it, not its own arrival, so a region that appears together with
+		     its first message announces nothing (decisions.md § 736). -->
+		<div role="status" aria-live="polite">
+			{#if info}
+				<div class="info">{info}</div>
 			{/if}
 		</div>
 
 		{#if !isReset}
-			<p class="form-pane-foot">
-				{m('login.formFoot')}
+			<div class="login-buttons">
+				<button
+					class="btn btn-google"
+					onclick={googleEnabled ? handleGoogleSignIn : handleGoogleSoon}
+					disabled={loading}
+				>
+					<svg class="oauth-icon" viewBox="0 0 24 24" width="20" height="20">
+						<path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+						<path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+						<path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+						<path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+					</svg>
+					{m('login.continueGoogle')}
+					{#if !googleEnabled}
+						<span class="soon-pill">{m('login.soon')}</span>
+					{/if}
+				</button>
+
+				<button class="btn btn-apple" onclick={handleAppleSignIn} disabled={loading}>
+					<svg class="oauth-icon" viewBox="0 0 24 24" width="20" height="20" fill="white">
+						<path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+					</svg>
+					{m('login.continueApple')}
+					<span class="soon-pill">{m('login.soon')}</span>
+				</button>
+			</div>
+
+			<div class="divider">
+				<span>{m('login.orEmail')}</span>
+			</div>
+		{/if}
+
+		<form class="email-form" onsubmit={handleEmailSubmit}>
+			<!--
+				audit/accessibility High (May 2026): inputs used
+				placeholder-only — disappears as the user types and
+				screen readers announce just "edit text" without a
+				persistent name. Add a visually-hidden <label> via
+				.visually-hidden (defined in app.css). aria-label
+				alone is also valid per WCAG 3.3.2 but explicit
+				<label for> is the most compatible form.
+			-->
+			<label for="login-email" class="visually-hidden">{m('login.emailPlaceholder')}</label>
+			<input
+				id="login-email"
+				type="email"
+				bind:value={email}
+				placeholder={m('login.emailPlaceholder')}
+				required
+				autocomplete="email"
+			/>
+			{#if !isReset}
+				<label for="login-password" class="visually-hidden">{m('login.passwordPlaceholder')}</label>
+				<PasswordInput
+					id="login-password"
+					bind:value={password}
+					placeholder={m('login.passwordPlaceholder')}
+					required
+					minlength={isSignUp ? PASSWORD_MIN_LENGTH : undefined}
+					autocomplete={isSignUp ? 'new-password' : 'current-password'}
+					toggleDisabled={!hydrated}
+				/>
+				{#if isSignUp}
+					<label for="login-confirm-password" class="visually-hidden">
+						{m('login.confirmPasswordPlaceholder')}
+					</label>
+					<PasswordInput
+						id="login-confirm-password"
+						bind:value={confirmPassword}
+						placeholder={m('login.confirmPasswordPlaceholder')}
+						required
+						minlength={PASSWORD_MIN_LENGTH}
+						autocomplete="new-password"
+						toggleDisabled={!hydrated}
+					/>
+				{/if}
+			{/if}
+			{#if isSignUp}
+				<label class="signup-check">
+					<input type="checkbox" bind:checked={confirmAdult} required />
+					<span>{m('login.confirmAdult')}</span>
+				</label>
+				<label class="signup-check">
+					<input type="checkbox" bind:checked={acceptTerms} required />
+					<span>
+						{m('login.agreePrefix')}
+						<a href="/terms" target="_blank" rel="noopener noreferrer">{m('legal.termsOfService')}</a>
+						{m('login.agreeBetween')}
+						<a href="/privacy" target="_blank" rel="noopener noreferrer">{m('legal.privacyPolicy')}</a>{m('login.agreeSuffix')}
+					</span>
+				</label>
+			{/if}
+			<button
+				type="submit"
+				class="btn btn-email"
+				disabled={!hydrated || loading || (isSignUp && (!confirmAdult || !acceptTerms))}
+			>
+				{#if loading}
+					{#if isReset}{m('login.sending')}{:else}{isSignUp ? m('login.signingUp') : m('login.signingIn')}{/if}
+				{:else if isReset}
+					{m('login.sendResetLink')}
+				{:else}
+					{isSignUp ? m('login.signUp') : m('login.signIn')}
+				{/if}
+			</button>
+		</form>
+
+		{#if isReset}
+			<p class="toggle-mode">
+				<button type="button" class="link-btn" onclick={() => { isReset = false; error = ''; info = ''; }}>
+					{m('login.backToSignIn')}
+				</button>
+			</p>
+		{:else}
+			<p class="toggle-mode">
+				{isSignUp ? m('login.haveAccount') : m('login.noAccount')}
+				<button type="button" class="link-btn" onclick={() => { isSignUp = !isSignUp; error = ''; info = ''; }}>
+					{isSignUp ? m('login.toggleToSignIn') : m('login.toggleToSignUp')}
+				</button>
+			</p>
+			{#if !isSignUp}
+				<p class="toggle-mode">
+					<button type="button" class="link-btn" onclick={() => { isReset = true; error = ''; password = ''; confirmPassword = ''; }}>
+						{m('login.kicker.reset')}
+					</button>
+				</p>
+			{/if}
+		{/if}
+
+		{#if !isSignUp}
+			<p class="terms">
+				{m('login.termsPrefix')}
+				<a href="/terms" target="_blank" rel="noopener noreferrer">{m('legal.termsOfService')}</a>
+				{m('login.termsBetween')}
+				<a href="/privacy" target="_blank" rel="noopener noreferrer">{m('legal.privacyPolicy')}</a>{m('login.termsSuffix')}
 			</p>
 		{/if}
 	</main>
-</div>
+
+	{#if !isReset}
+		<p class="form-pane-foot">
+			{m('login.formFoot')}
+		</p>
+	{/if}
+</AuthShell>
 
 <style>
-	.login-page {
-		min-height: 100vh;
-		display: grid;
-		grid-template-columns: minmax(0, 1fr);
-		background: var(--color-bg);
-	}
+	/* Layout, the brand panel and the card chrome belong to AuthShell. What
+	   stays here is the copy the panel carries and the form's own controls. */
 
-	.brand-pane {
-		display: none;
-	}
-
-	@media (min-width: 56rem) {
-		.login-page {
-			grid-template-columns: minmax(28rem, 0.95fr) minmax(0, 1.05fr);
-		}
-		.form-pane {
-			order: 0;
-		}
-		.brand-pane {
-			order: 1;
-			display: flex;
-			flex-direction: column;
-			justify-content: space-between;
-			padding: var(--space-2xl);
-			/* Deepened so the white copy clears AA at EVERY stop, under either
-			   radial veil below at its own peak: 5.222 / 4.635 / 4.780:1. The
-			   ramp it replaces ended on #F2A07B, where white reads 2.081:1 —
-			   the same figure § 511 found under .btn-primary and § 519 found
-			   over a gradient. A fixed brand canvas is exempt from THEMING,
-			   not from contrast (§ 511's print-sheet amber). */
-			background: linear-gradient(150deg, #2A4E5A 0%, #3A5A66 45%, #7E4527 100%);
-			color: #FFFFFF;
-			position: relative;
-			overflow: hidden;
-		}
-		.brand-pane::before {
-			content: '';
-			position: absolute;
-			inset: -20% -10% -10% -20%;
-			background: radial-gradient(ellipse at 30% 20%, rgba(255, 255, 255, 0.18) 0%, transparent 55%);
-			pointer-events: none;
-		}
-		.brand-pane::after {
-			content: '';
-			position: absolute;
-			inset: -20% -20% -30% -10%;
-			background: radial-gradient(ellipse at 80% 90%, rgba(185, 167, 232, 0.35) 0%, transparent 55%);
-			pointer-events: none;
-		}
-	}
-
-	.brand-logo,
-	.brand-copy,
-	.brand-foot {
-		position: relative;
-		z-index: 1;
-	}
-
-	.brand-logo {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-sm);
-		text-decoration: none;
-		color: inherit;
-	}
-	.brand-mark {
-		width: 2.5rem;
-		height: 2.5rem;
-		border-radius: var(--radius-md);
-		object-fit: cover;
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
-	}
-	.brand-name {
-		font-weight: 700;
-		font-size: 1.4rem;
-		letter-spacing: -0.01em;
-	}
-
-	.brand-copy {
-		max-width: 32rem;
-	}
+	/* --- panel copy (white on the shell's measured plum ramp) ------------ */
 
 	.brand-kicker {
 		text-transform: uppercase;
-		letter-spacing: 0.12em;
+		letter-spacing: 0.14em;
 		font-size: 0.78rem;
 		font-weight: 700;
-		opacity: 0.85;
-		margin: 0 0 var(--space-sm);
+		color: #FFD6C8;
+		margin: 0 0 var(--space-md);
 	}
 
 	.brand-headline {
-		font-size: 2.25rem;
-		line-height: 1.15;
+		font-size: clamp(2.1rem, 3.2vw, 3rem);
+		line-height: 1.08;
 		font-weight: 800;
-		margin: 0 0 var(--space-lg);
-		letter-spacing: -0.02em;
-	}
-
-	@media (min-width: 72rem) {
-		.brand-headline {
-			font-size: 2.75rem;
-		}
+		margin: 0 0 var(--space-xl);
+		letter-spacing: -0.03em;
+		text-wrap: balance;
+		text-shadow: 0 0.5rem 2rem rgba(20, 10, 24, 0.5);
 	}
 
 	.brand-bullets {
 		list-style: none;
 		padding: 0;
-		margin: 0;
+		margin: 0 0 var(--space-xl);
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-md);
 	}
+
 	.brand-bullets li {
 		display: flex;
 		align-items: flex-start;
 		gap: var(--space-sm);
-		font-size: 0.98rem;
+		font-size: 1rem;
 		line-height: 1.5;
-		opacity: 0.95;
 	}
-	.bullet-dot {
+
+	.bullet-mark {
 		flex-shrink: 0;
-		width: 0.55rem;
-		height: 0.55rem;
-		border-radius: 50%;
-		background: #FFFFFF;
-		margin-top: 0.45rem;
-		box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.15);
+		display: grid;
+		place-items: center;
+		width: 1.6rem;
+		height: 1.6rem;
+		margin-top: -0.05rem;
+		border-radius: var(--radius-pill);
+		background: rgba(255, 255, 255, 0.12);
+		border: 1px solid rgba(255, 255, 255, 0.28);
+		color: #FFD6C8;
+	}
+
+	.bullet-mark .material-symbols {
+		font-size: 1.05rem;
 	}
 
 	.brand-foot {
-		font-size: 0.85rem;
-		opacity: 0.8;
-		max-width: 32rem;
-		line-height: 1.5;
+		font-size: 0.88rem;
+		/* 0.85 white, measured like the hero subhead at every stop and veil. */
+		color: rgba(255, 255, 255, 0.85);
+		max-width: 30rem;
+		line-height: 1.55;
 		margin: 0;
 	}
 
-	.form-pane {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		padding: var(--space-xl) var(--space-md);
-		gap: var(--space-md);
-	}
-
-	@media (min-width: 56rem) {
-		.form-pane {
-			padding: var(--space-2xl);
-			justify-content: center;
+	/* Entrances only for visitors who accept motion: a `from` keyframe that
+	   hides content still paints for one frame under the global reduced-motion
+	   rule, before the timeline ticks. */
+	@media (prefers-reduced-motion: no-preference) {
+		.brand-kicker {
+			animation: copy-rise 800ms cubic-bezier(0.22, 1, 0.36, 1) 150ms backwards;
+		}
+		.brand-headline {
+			animation: copy-rise 900ms cubic-bezier(0.22, 1, 0.36, 1) 240ms backwards;
+		}
+		.brand-bullets li {
+			animation: copy-rise 800ms cubic-bezier(0.22, 1, 0.36, 1) var(--enter-at, 0ms) backwards;
+		}
+		.brand-foot {
+			animation: copy-rise 800ms cubic-bezier(0.22, 1, 0.36, 1) 760ms backwards;
+		}
+		.error {
+			animation: nudge 360ms ease-out;
 		}
 	}
+
+	@keyframes copy-rise {
+		from {
+			opacity: 0;
+			transform: translateY(0.9rem);
+		}
+	}
+
+	/* --- card ------------------------------------------------------------ */
 
 	.login-card {
-		width: 100%;
-		max-width: 26rem;
-		padding: var(--space-xl);
 		text-align: center;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-xl);
-		box-shadow: var(--shadow-lg);
-	}
-
-	@media (min-width: 56rem) {
-		.login-card {
-			border: none;
-			box-shadow: none;
-			background: transparent;
-			padding: 0;
-		}
-	}
-
-	.logo {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-sm);
-		font-weight: 700;
-		font-size: 1.25rem;
-		color: var(--color-text);
-		text-decoration: none;
-		margin-bottom: var(--space-xl);
-	}
-	.logo-mobile {
-		display: inline-flex;
-	}
-	@media (min-width: 56rem) {
-		.logo-mobile {
-			display: none;
-		}
-	}
-	.logo .logo-mark {
-		width: 2rem;
-		height: 2rem;
-		border-radius: var(--radius-md);
-		display: block;
-		box-shadow: var(--shadow-sm);
-		object-fit: cover;
-	}
-	.logo span {
-		background: var(--gradient-primary);
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
 	}
 
 	.kicker {
+		display: inline-block;
 		text-transform: uppercase;
-		letter-spacing: 0.1em;
-		font-size: 0.72rem;
+		letter-spacing: 0.12em;
+		font-size: var(--font-size-section-label);
 		font-weight: 700;
-		color: var(--color-text-tertiary);
-		margin: 0 0 var(--space-xs);
+		color: var(--color-primary);
+		background: var(--color-primary-light);
+		border-radius: var(--radius-pill);
+		padding: 0.3rem 0.75rem;
+		margin: 0 0 var(--space-md);
 	}
 
 	h1 {
-		font-size: 1.6rem;
+		font-size: 1.85rem;
 		font-weight: 800;
 		margin: 0 0 var(--space-xs);
-		letter-spacing: -0.01em;
+		letter-spacing: -0.025em;
+		line-height: 1.15;
 		color: var(--color-text);
+		text-wrap: balance;
 	}
 
 	.subtitle {
-		font-size: 0.92rem;
+		font-size: 0.95rem;
 		color: var(--color-text-secondary);
 		margin: 0 0 var(--space-xl);
 		line-height: 1.5;
@@ -769,17 +643,25 @@
 		border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
 		color: var(--color-danger-text);
 		padding: var(--space-sm) var(--space-md);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-lg);
 		font-size: 0.85rem;
 		margin-bottom: var(--space-md);
 		text-align: start;
 	}
+
+	/* One small shake as an error lands, so the eye goes to it. Ends. */
+	@keyframes nudge {
+		20% { transform: translateX(calc(-4px * var(--dir-sign))); }
+		45% { transform: translateX(calc(4px * var(--dir-sign))); }
+		70% { transform: translateX(calc(-2px * var(--dir-sign))); }
+	}
+
 	.info {
 		background: var(--color-bg-secondary);
 		border: 1px solid var(--color-border);
 		color: var(--color-text);
 		padding: var(--space-sm) var(--space-md);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-lg);
 		font-size: 0.85rem;
 		margin-bottom: var(--space-md);
 		text-align: start;
@@ -795,11 +677,25 @@
 	.btn-apple,
 	.btn-email {
 		width: 100%;
-		padding: 0.85rem var(--space-lg);
+		min-height: 3rem;
+		padding: 0.8rem var(--space-lg);
+		border-radius: var(--radius-lg);
 		font-size: 0.95rem;
+		transition:
+			transform var(--transition-base),
+			box-shadow var(--transition-base),
+			border-color var(--transition-base),
+			background var(--transition-base);
+	}
+
+	.btn-google:hover:not(:disabled),
+	.btn-apple:hover:not(:disabled),
+	.btn-email:hover:not(:disabled) {
+		transform: translateY(-1px);
 	}
 
 	.btn-google {
+		position: relative;
 		background: var(--color-surface);
 		border: 1.5px solid var(--color-border);
 		color: var(--color-text);
@@ -807,7 +703,7 @@
 
 	.btn-google:hover:not(:disabled) {
 		border-color: var(--color-text-secondary);
-		box-shadow: var(--shadow-sm);
+		box-shadow: var(--shadow-md);
 	}
 
 	.btn-apple {
@@ -819,18 +715,33 @@
 
 	.btn-apple:hover:not(:disabled) {
 		background: #1a1a1a;
+		box-shadow: var(--shadow-md);
 	}
 
+	/* A badge on the button's top corner, not a pill in its text line. In the
+	   line it shared the width with the label, so whether "Continue with
+	   Apple" fitted on a phone depended on the device's fallback font: Noto
+	   Sans fitted, DejaVu Sans wrapped (CI run 35134263272). Out of the line,
+	   the label has the whole button.
+	   The primary pair rather than a translucent white, which read on the
+	   black Apple button and vanished on the white Google one. It stays in
+	   the button's text, so the accessible name still says "Soon". */
 	.soon-pill {
+		position: absolute;
+		top: 0;
+		inset-inline-end: var(--space-md);
+		translate: 0 -50%;
 		font-size: var(--font-size-section-label);
 		font-weight: 700;
+		line-height: 1.3;
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
-		padding: 0.1rem 0.45rem;
+		padding: 0.1rem 0.5rem;
 		border-radius: 9999px;
-		background: rgba(255, 255, 255, 0.18);
-		color: rgba(255, 255, 255, 0.9);
-		margin-inline-start: 0.4rem;
+		background: var(--color-primary);
+		color: var(--color-on-primary);
+		box-shadow: 0 0 0 2px var(--color-surface);
+		pointer-events: none;
 	}
 
 	:global(html[data-theme='dark']) .btn-apple {
@@ -905,11 +816,12 @@
 		border: none;
 		font-weight: 600;
 		margin-top: var(--space-xs);
+		box-shadow: 0 0.6rem 1.4rem -0.6rem color-mix(in srgb, var(--color-primary) 60%, transparent);
 	}
 
 	.btn-email:hover:not(:disabled) {
 		filter: brightness(1.05);
-		box-shadow: 0 4px 14px color-mix(in srgb, var(--color-primary) 30%, transparent);
+		box-shadow: 0 0.9rem 1.8rem -0.6rem color-mix(in srgb, var(--color-primary) 70%, transparent);
 	}
 
 	.toggle-mode {

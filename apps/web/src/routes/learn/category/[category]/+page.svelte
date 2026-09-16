@@ -6,6 +6,8 @@
 		buildLearnCollectionJsonLd,
 	} from '$lib/learn/learn_meta';
 	import GuideCard from '$lib/components/GuideCard.svelte';
+	import LearnCategoryNav from '$lib/components/LearnCategoryNav.svelte';
+	import LearnSignupCta from '$lib/components/LearnSignupCta.svelte';
 	import LearnPage from '$lib/components/LearnPage.svelte';
 	import LearnBreadcrumb from '$lib/components/LearnBreadcrumb.svelte';
 
@@ -48,28 +50,44 @@
 </svelte:head>
 
 <LearnPage>
-	<section class="hero learn-column">
+	<div class="learn-band">
+		<section class="hero learn-column">
 		<LearnBreadcrumb
 			crumbs={[
 				{ href: '/', label: m('learn.breadcrumbHome') },
 				{ href: '/learn', label: m('learn.breadcrumbLearn') },
 			]}
 		/>
+		<p class="kicker">{m('learn.hubKicker')}</p>
 		<h1>{categoryLabel}</h1>
-	</section>
+		</section>
+	</div>
 
 	<main class="content learn-column" id="main-content">
+		<LearnCategoryNav current={data.category.id} />
+
 		<div class="guide-grid">
 			{#each data.guides as guide (guide.slug)}
 				<GuideCard {guide} />
 			{/each}
 		</div>
 	</main>
+
+	<LearnSignupCta />
 </LearnPage>
 
 <style>
 	.hero {
 		padding: var(--space-xl) var(--space-md) var(--space-sm);
+	}
+
+	.kicker {
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+		font-size: 0.75rem;
+		font-weight: 700;
+		color: var(--color-text-tertiary);
+		margin: 0 0 var(--space-sm);
 	}
 
 	.hero h1 {
@@ -81,11 +99,16 @@
 
 	.content {
 		padding: var(--space-md);
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xl);
 	}
 
+	/* auto-fit, matching the hub: with a short row auto-fill keeps the empty
+	   tracks and a lone card sits in a 17rem slot beside a void. */
 	.guide-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(min(16rem, 100%), 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
 		gap: var(--space-md);
 	}
 

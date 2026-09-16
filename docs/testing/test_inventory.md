@@ -619,7 +619,7 @@ TypeScript unit tests for the pure segment-effort compute (`lib/segments.ts`, de
 
 The synthetic `straightTrack` helper builds a meridian-aligned sequence of `(lat, lng, ts)` so haversine cumulative distance matches `(i * stepM)` to within ~0.5m.
 
-### `apps/web/src/lib/learn/*.test.ts` — 56 tests across 4 files (Learn/guides, `learn.md`, decisions §161)
+### `apps/web/src/lib/learn/*.test.ts` — 58 tests across 4 files (Learn/guides, `learn.md`, decisions §161)
 
 Run with `npx tsx --test src/lib/learn/guides.test.ts src/lib/learn/learn_meta.test.ts` from `apps/web`. Web-only (no Dart twin).
 
@@ -805,7 +805,7 @@ Pure tests for the universal + per-device prefs overlay helper extracted from `s
 
 Cross-platform contract test against `fixtures/watch_run_payload.json`. The same fixture is decoded by `apps/mobile_android/test/watch_payload_fixture_test.dart`, its `mobile_ios` mirror, and the Wear OS Kotlin test (`apps/watch_wear/.../WatchRunPayloadFixtureTest.kt`). Editing the fixture without updating all three platform tests is a deliberate hard-fail. Web's slice asserts: source parses to a valid `RunSource`, `metadata.activity_type` is a registered value, `avg_bpm` is positive, laps use the canonical 1-based `index` + cumulative-BEFORE `start_offset_s` shape with deltas accumulating correctly, and the row + payload sources agree.
 
-### `apps/web/src/lib/i18n/*.test.ts` — 117 tests across 14 files
+### `apps/web/src/lib/i18n/*.test.ts` — 118 tests across 14 files
 
 Run with `npx tsx --test 'src/lib/i18n/*.test.ts'` from `apps/web`. The headline is the DECLARATION sum `grep -cE` reports and is what `check_test_inventory_counts.mjs` re-derives; the per-suite figures below are RUNTIME counts, because four of these suites loop over `SUPPORTED_LOCALES` and declare one `test(` where the runner reports seven. The web i18n runtime (decisions §108) plus its declaration-site guards. **Seven locales ship** — `en, de, fr, es, ja, pt-BR, pt-PT` — and four of these suites are parameterised over `SUPPORTED_LOCALES`, so a new locale adds tests rather than needing them written: `messages_parity.test.ts` (7 — one per locale: the catalogue loads, carries exactly `en.ts`'s key set with no empty values, and keeps every `{placeholder}`), `rate_limit_message.test.ts` (23 — six `en` cases pinning the exact sentences, two per locale, plus three that derive the bucket set from the `enforce_create_rate_limit` call sites in the migrations: every throttled bucket must name its own act rather than degrade to `rateLimit.generic`, the suite's own bucket list must be the SQL's, and no `BUCKET_KEY` entry may name a bucket that has stopped being throttled), and `error_framing.test.ts` (8) + `nutrition_add_failed.test.ts` (9), one case per locale each that the framed-error keys exist, are translated, and keep the `{error}` slot. `locale.test.ts` (9) covers pure negotiation — q-weight ordering, exact-then-base resolution, and that **both** Portuguese catalogues are reachable by their own tag. `locale_reach.test.ts` (20) holds every site that names the locale set to `SUPPORTED_LOCALES`: a catalogue file + `LOCALE_LABELS` entry + `CATALOGUE_LOADERS` loader for exactly the supported set, the Settings language picker derived rather than listed, every localized Learn guide suffix a locale we ship, every base language reaching a locale unless `BASE_FALLBACK_EXEMPT` records why (its one entry is `pt-BR` — `BASE_TO_LOCALE.pt` points at `pt-PT`, so Brazilian is reached by its exact tag, which is the tag every browser and both phone platforms actually send), and a source scan that fails any file spelling the locale set out instead of deriving it, with a matcher fixture so the scan cannot silently stop matching. It also carries the **Portuguese-variant** guards that grew with the derived pt-PT catalogue, none of which any other locale needs: that neither catalogue reads as the variant it is not (`BRAZILIAN_ONLY` / `EUROPEAN_ONLY` word lists, with `VARIANT_SENSE_EXEMPT` naming the keys where a word carries its other sense), that a sense-split word survives only where that sense was recorded, that the wrist and watch pt-PT catalogues read as European too, that **both** catalogues address the reader in one register (tu markers, enclitic, proclitic and preterite — both, because a tu marker in the reference makes the derived scan blind, decisions §784), that pt-PT uses no tu imperative its Brazilian twin does not (derived by stem, not listed), that a pt-PT fragment keeps the edge whitespace its Brazilian twin assembles with, that a gender-flipped European noun agrees with the determiner governing it, and — added 2026-09-01 ([decisions § 873](../architecture/decisions.md)) — that **no catalogue value opens with a capital where another value interpolates it mid-sentence**, scanned out of source (`m('outer', { slot: m('inner') })`, brace-matched, `??`-fallback shape included) and measured **cross-locale** rather than pt-PT-against-pt-BR, with `INTERPOLATED_CAPITAL_EXEMPT` (3 entries — slots that normally hold a person's name, an event title, or a whole sentence), German excluded because it capitalises every common noun, a matcher fixture over five sources, and and a liveness test that drops an exemption covering nothing. `interpolate.test.ts` (20) covers `{var}` substitution plus the inline `{n, plural, one {…} other {…}}` CLDR selection. `enum_vocabulary.test.ts` (6), `destination_names.test.ts` (2) and `notification_phrasing.test.ts` (3) are the §547 / §572 naming guards — each loops every locale internally, so its count does not move when a locale ships.
 
@@ -853,7 +853,7 @@ The notification → deep-link routing (was 13). `row.kind` is typed `string` so
 
 The chunked following-feed reads (was 12). Three added cases: `FEED_FOLLOWEE_CHUNK` and `packages/api_client/lib/src/chunk.dart`'s `kInFilterChunk` each name the other as a mirror in their own docs and nothing compared them — the pair is in neither the parity-pair registry nor `check_shared_constants.mjs`, so bumping one alone is a silent split and the platform that went too high loses whole reads on a gateway that answers 200 with an empty match ([decisions § 653](../architecture/decisions.md)). Plus the negative-limit clamp (`slice(0, -1)` drops the last row and returns the rest) and the documented later-chunk-wins fold, which every other case cannot see because it merges disjoint ids.
 
-### `apps/web/src/lib/track_preview_mount_guard.test.ts` — 7 tests · `live_region_mount_guard.test.ts` — 3 tests
+### `apps/web/src/lib/track_preview_mount_guard.test.ts` — 8 tests · `live_region_mount_guard.test.ts` — 3 tests
 
 Both gained a non-vacuity control (was 5 and 2). Each guard reports an empty offender list when it works AND when it sees nothing at all, and only the matcher half had fixtures: a walk that reaches no file, an `aria-live` filter that stops matching the app's own markup, or a `<TrackPreview` matcher that stops seeing a mount each turns the guard into a green check over an unscanned tree ([§ 762](../architecture/decisions.md)'s rule, applied to two guards that predate it). The `TrackPreview` control is a POSITIVE one taken off the real permitted wrappers rather than a fixture, so it cannot drift away from what it checks.
 
@@ -1088,7 +1088,7 @@ Run the pure-helper slices with `cd apps/backend && deno test --no-check supabas
 
 The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets to drive and are exercised manually only — see [apps/backend/CLAUDE.md § Testing without real credentials](../../apps/backend/CLAUDE.md#testing-without-real-credentials).
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 1,818 declared tests across 485 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 1,861 declared tests across 489 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 
@@ -1119,7 +1119,9 @@ The suite mirrors `apps/web/src/routes/`, with two flat concern folders for thin
 ```
 tests-e2e/
   fixtures/                    — globalSetup, helpers, browser-zone dates, seeded constants, users
-  landing.spec.ts              — /
+  landing/                     — / (anon storageState)
+    page.spec.ts               — hero + CTAs, SEO head, product shot drawn by the real renderer (a runner travels it; its glyph carries no route-glow stroke), feature steps, platforms strip, header, one-line CTAs at 390px
+    motion.spec.ts             — the motion contract (conventions § Web motion): reveals settle opaque; reduced motion hides nothing and loops nothing; the pause control stops every loop and the phone clock, then resumes; pausing before scrolling means sections arrive at rest; no copy on the rendered terrain at 1440/390px; h1→h2→h3 outline; no sideways scroll at 390px
   explore.spec.ts              — /explore (redirects to /routes?tab=explore)
   learn/                       — public Learn/guides surface (anon storageState; learn.md, decisions §161)
     hub.spec.ts                — /learn renders the hub heading + ≥1 guide card; a card link resolves to /learn/[slug] (no 404)
@@ -1129,6 +1131,8 @@ tests-e2e/
     cta-links-resolve.spec.ts  — anon clicks the feature CTA → lands on /login (auth funnel), not a hard 404
   dashboard-period.spec.ts     — /dashboard/period/[type]/[date] (week + month deep links + invalid-date fallback)
   login.spec.ts                — /login (failed sign-in; sign-up: ?signup=1; forgot-password full round-trip via Mailpit; happy sign-in path in cross-cutting/sign-in-out)
+  auth/shell.spec.ts           — AuthShell on /login, ?signup=1, /auth/reset, /auth/confirm-age, /auth/callback: one page-owned main landmark, a route home, decorative loaded art; panel copy never overlaps the art at 1440x900 or 1280x720; phone band + no sideways scroll + one-line OAuth labels under a wide-glyph stress (the page loads no text webfont, and CI's DejaVu Sans wrapped a label this host's Noto Sans fitted); reduced motion finished on first frame
+  onboarding/design.spec.ts    — /onboarding on AuthShell (no writes): the named progressbar and the panel rail track the step, a build with no push key walks no notifications step (rail and count alike), a step change focuses the new question's heading (Continue and Back), each single-choice group is named by its question, reduced motion shows the new step whole on its first frame, the phone layout carries the step count with no sideways scroll
   dashboard.spec.ts            — /dashboard
   feed.spec.ts                 — /feed
   coach.spec.ts                — /coach (mount, dropdowns, send → mocked SSE assistant bubble)

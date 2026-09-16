@@ -9,6 +9,7 @@ import {
 	guidesByCategory,
 	nonEmptyCategories,
 	frontmatterDate,
+	estimateReadingMinutes,
 	type GuideIndexEntry,
 } from './guides_index';
 import { CATEGORIES } from './categories';
@@ -245,4 +246,36 @@ test('frontmatterDate leaves a real time of day alone', () => {
 	]) {
 		assert.equal(frontmatterDate(iso), iso, iso);
 	}
+});
+
+test('estimateReadingMinutes counts prose, not markup', () => {
+	// Frontmatter, a fenced block, an image and a link target are all in the
+	// file but none of them is read word by word. The link TEXT is.
+	const markdown = [
+		'---',
+		'title: A guide',
+		'description: Something long enough to skew a short count',
+		'---',
+		'# Heading',
+		'',
+		'```js',
+		'const ignored = "this is not prose and must not be counted at all";',
+		'```',
+		'',
+		'![alt text that is not read aloud](/some/very/long/image/path.png)',
+		'',
+		'See [the pacing guide](/learn/how-to-pace-your-first-race) for more.',
+		'',
+		'- **one** two three',
+	].join('\n');
+	// Counted words: Heading, See, the, pacing, guide, for, more, one, two,
+	// three = 10 -> rounds to the 1-minute floor.
+	assert.equal(estimateReadingMinutes(markdown), 1);
+});
+
+test('estimateReadingMinutes scales with real length and never returns zero', () => {
+	assert.equal(estimateReadingMinutes(''), 1, 'an empty guide still reads as 1');
+	assert.equal(estimateReadingMinutes('word '.repeat(200).trim()), 1);
+	assert.equal(estimateReadingMinutes('word '.repeat(700).trim()), 4);
+	assert.equal(estimateReadingMinutes('word '.repeat(1500).trim()), 8);
 });

@@ -19,6 +19,7 @@
 		type PeriodSummaryRun,
 	} from '$lib/core/data';
 	import { dashboardRunsWindowStart, visibleRunSources } from '$lib/core/dashboard_runs';
+	import type { WeekBar } from '$lib/core/weekly_mileage';
 	import {
 		computeSnapshot,
 		recoveryAdvice,
@@ -99,7 +100,7 @@
 		totalRuns: 0,
 		longestRunM: 0,
 	});
-	let weeklyMileage = $state<{ week: string; distance_m: number }[]>([]);
+	let weeklyMileage = $state<WeekBar[]>([]);
 	let personalRecords = $state<{ key: string; distance: string; time_s: number; date: string }[]>([]);
 	// Distance keys the runner has chosen to hide (comeback persona #28). Stored
 	// in the universal `hidden_prs` settings bag, so it roams across devices.
@@ -927,11 +928,18 @@
 	let mileageData = $derived.by(() => {
 		if (mileageView === 'weekly') return weeklyMileage;
 
-		const groups = new Map<string, { distance_m: number; display: string }>();
+		const groups = new Map<
+			string,
+			{ distance_m: number; display: string; axis: string }
+		>();
 		for (const run of filteredRuns) {
 			const d = new Date(run.started_at);
 			let sortKey: string;
 			let display: string;
+			// The axis label is formatted in its own right rather than cut out
+			// of `display` — see WeekBar.axis in core/weekly_mileage.ts for
+			// what splitting a localised date on a space did to five locales.
+			let axis: string;
 			if (mileageView === 'monthly') {
 				// `YYYY-MM` is locale-independent + sort-stable. Pad
 				// month to 2 digits so a January 2026 row sorts before
@@ -945,28 +953,56 @@
 					month: 'short',
 					year: 'numeric',
 				});
+				axis = d.toLocaleDateString(activeFormatLocale(), { month: 'short' });
 			} else {
 				sortKey = String(d.getFullYear());
 				display = sortKey;
+				axis = sortKey;
 			}
 			const cur = groups.get(sortKey);
 			if (cur) {
 				cur.distance_m += run.distance_m;
 			} else {
-				groups.set(sortKey, { distance_m: run.distance_m, display });
+				groups.set(sortKey, { distance_m: run.distance_m, display, axis });
 			}
 		}
 		return Array.from(groups.entries())
 			.sort(([a], [b]) => a.localeCompare(b))
 			.map(([, v]) => ({
 				week: v.display,
+				axis: v.axis,
 				distance_m: Math.round(v.distance_m),
 			}));
 	});
 
+	// The bar whose date + distance the readout above the chart shows. An
+	// index rather than the row, so a view toggle mid-hover reads whatever
+	// now sits in that slot instead of holding a row from the old view.
+	let mileageInspect = $state<number | null>(null);
+	let inspectedBar = $derived(
+		mileageInspect === null ? null : (mileageData[mileageInspect] ?? null)
+	);
+
 	let maxBar = $derived(
 		mileageData.length > 0 ? Math.max(...mileageData.map((w) => w.distance_m)) : 1
 	);
+
+	// Once a column may be narrower than its label, a narrow chart sets the
+	// labels edge to edge and "13 20 27" reads as "132027". Which labels fit
+	// depends on the rendered width of THIS chart, this locale's labels and
+	// this device's font, and the monthly and yearly views have no fixed
+	// bucket count — so it is measured rather than broken at a width. Every
+	// Nth label is kept, counted back from the latest bucket so the current
+	// period is always the one named.
+	const AXIS_LABEL_GAP_PX = 6;
+	let chartWidth = $state(0);
+	let axisLabelWidths = $state<number[]>([]);
+	let axisLabelStep = $derived.by(() => {
+		const count = mileageData.length;
+		if (count === 0 || chartWidth === 0) return 1;
+		const widest = Math.max(0, ...axisLabelWidths.slice(0, count));
+		return Math.max(1, Math.ceil((widest + AXIS_LABEL_GAP_PX) / (chartWidth / count)));
+	});
 </script>
 
 <svelte:head>
@@ -1428,6 +1464,11 @@
 			     `fitness_snapshots` on every dashboard open so the trend
 			     chart has history. Hides when the user has no qualifying
 			     runs yet (short / non-recording sources only). -->
+			<!-- Today's-form band: the readiness score beside the fitness
+			     snapshot it is derived from. Both cards self-hide and the band
+			     is auto-fit, so one alone takes the full width rather than
+			     leaving a hole where the other would have been. -->
+			<div class="metric-band">
 			<!-- Readiness-to-run — single 0-100 number with band-aware
 			     accent. Inputs today are TSB-only; sleep + resting-HR pipe
 			     through the `readiness.ts` helper unchanged once Health
@@ -1534,6 +1575,21 @@
 				</section>
 			{/if}
 
+			</div>
+
+			<!-- Analytics band: every card-weight block between here and the
+			     intensity card. Each was a full-width slab in one flex column,
+			     so a 1,440 px screen showed a single column of them and the
+			     page ran to ~3,900 px — three screens of scrolling for what
+			     fits in one and a half. Most of them self-hide, which is why
+			     the band is auto-fit rather than a fixed span count: what
+			     renders decides the shape.
+
+			     auto-fit rather than auto-fill: with a short final row
+			     auto-fill keeps the empty tracks and the last card sits in a
+			     24rem slot beside a void, which is the defect § 901 fixed on
+			     the Learn hub. -->
+			<div class="metric-band">
 			<!-- Training-load curves over the last 90 days (decisions §34).
 			     Uses TRIMP when avg_bpm + HR prefs are available, distance
 			     fallback otherwise. Hides when there's nothing to plot. -->
@@ -1602,15 +1658,53 @@
 				{#if mileageData.length === 0}
 					<p class="empty-text">{m('dash.mileageEmpty')}</p>
 				{:else}
-					<div class="chart">
-						{#each mileageData as week}
-							<div class="bar-col">
-								<div class="bar-tooltip">{formatDistance(week.distance_m)}</div>
+					<!-- A readout rail above the chart, the shape ElevationProfile
+					     uses, rather than a tooltip per bar. A tooltip centred on
+					     its column overhung the card once the window became twelve
+					     narrow weeks: the last bar's label ran past a 300px
+					     viewport and scrolled the page sideways even at opacity 0,
+					     because a transparent box still has layout. The rail is in
+					     flow, reserves its line so the bars never jump, and wraps
+					     inside the card in any locale. -->
+					<p class="chart-readout" data-testid="mileage-readout">
+						{#if inspectedBar}{inspectedBar.week} · {formatDistance(inspectedBar.distance_m)}{/if}
+					</p>
+					<!-- A list of named weeks, so the figures the readout shows on
+					     hover are also what a screen reader reads per bar. -->
+					<div
+						class="chart"
+						role="list"
+						bind:clientWidth={chartWidth}
+						onpointerleave={(e) => {
+							// A touch lifts before it leaves, so clearing on a touch
+							// pointerleave would wipe the reading the tap just made.
+							if (e.pointerType !== 'touch') mileageInspect = null;
+						}}
+					>
+						{#each mileageData as week, i (week.week)}
+							<!-- `class:empty` rather than a hidden column: a week with
+							     no run is the chart's most load-bearing datum, and the
+							     slot has to be visibly there for the gap to read as a
+							     gap. The bar keeps its zero height and the column
+							     shows a baseline tick instead. -->
+							<div
+								class="bar-col"
+								role="listitem"
+								aria-label="{week.week} · {formatDistance(week.distance_m)}"
+								class:empty={week.distance_m === 0}
+								class:inspected={mileageInspect === i}
+								onpointerenter={() => (mileageInspect = i)}
+								onpointerdown={() => (mileageInspect = i)}
+							>
 								<div
 									class="bar"
 									style="height: {(week.distance_m / maxBar) * 100}%"
 								></div>
-								<span class="bar-label">{week.week.split(' ')[0]}</span>
+								<span
+									class="bar-label"
+									class:thinned={(mileageData.length - 1 - i) % axisLabelStep !== 0}
+									bind:offsetWidth={axisLabelWidths[i]}>{week.axis}</span
+								>
 							</div>
 						{/each}
 					</div>
@@ -1686,6 +1780,8 @@
 				{/if}
 			</section>
 			{/if}
+
+			</div>
 
 			<div class="two-col">
 				<!-- Personal records -->
@@ -2521,6 +2617,25 @@
 		flex-shrink: 0;
 	}
 
+	/* A row of equal-weight metric cards. Every card on this page used to be
+	   a full-width slab in one flex column, so a 1,440 px screen showed a
+	   single column of them and the page ran to ~4,000 px — three screens of
+	   scrolling for what fits in one and a half.
+
+	   auto-fit rather than auto-fill: with a short final row auto-fill keeps
+	   the empty tracks and the last card sits in a 24rem slot beside a void,
+	   which is the same defect § 901 fixed on the Learn hub. Every card in a
+	   band self-hides, so short rows are the common case here, not the edge
+	   one. The cards are the grid items themselves (each component's root is
+	   a `section.card-elevated`), so they stretch to the tallest in the row
+	   without a height rule. */
+	.metric-band {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(24rem, 100%), 1fr));
+		gap: var(--space-lg);
+		align-items: stretch;
+	}
+
 	.stat-grid {
 		display: grid;
 		/* 6 columns to match the 6 stat cards rendered on desktop
@@ -2979,7 +3094,10 @@
 	.goals-empty-card .btn :global(.material-symbols) { font-size: 1.05rem; }
 	.goal-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(min(24rem, 100%), 1fr));
+		/* auto-fit: one goal under auto-fill sat in a 24rem track with two
+		   empty ones beside it, which is what put a card at a third of the
+		   width in the middle of a page of full-width blocks. */
+		grid-template-columns: repeat(auto-fit, minmax(min(24rem, 100%), 1fr));
 		gap: var(--space-lg);
 	}
 	.goal-card {
@@ -3319,33 +3437,36 @@
 		color: var(--color-text-secondary);
 	}
 
+	/* Twelve weekly columns have to fit a phone-width card, so neither the
+	   gap nor a column's axis label may set the chart's minimum width. A
+	   flex item floors at its min-content by default, which made each
+	   column exactly as wide as its label and pushed the row past the card
+	   on any font whose digits run wider. */
 	.chart {
 		display: flex;
 		align-items: flex-end;
-		gap: var(--space-sm);
+		gap: min(var(--space-sm), 2%);
 		height: 12rem;
 		padding-top: var(--space-md);
 	}
 	.bar-col {
 		flex: 1;
+		min-width: 0;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		height: 100%;
 		justify-content: flex-end;
-		position: relative;
 	}
-	.bar-col:hover .bar-tooltip { opacity: 1; }
-	.bar-tooltip {
-		position: absolute;
-		top: -1.5rem;
+	.chart-readout {
+		margin: var(--space-sm) 0 0;
+		min-height: 1.5em;
+		line-height: 1.5;
 		font-size: var(--font-size-section-label);
 		font-weight: 600;
 		color: var(--color-text-secondary);
-		opacity: 0;
-		transition: opacity var(--transition-fast);
-		white-space: nowrap;
 		font-variant-numeric: tabular-nums;
+		overflow-wrap: anywhere;
 	}
 	.bar {
 		width: 100%;
@@ -3359,17 +3480,38 @@
 		min-height: 4px;
 		transition: height var(--transition-base), background var(--transition-fast);
 	}
-	.bar-col:hover .bar {
+	.bar-col:hover .bar,
+	.bar-col.inspected .bar {
 		background: linear-gradient(
 			180deg,
 			var(--color-primary-hover) 0%,
 			var(--color-secondary) 100%
 		);
 	}
+	/* An empty week must not borrow the 4px min-height every bar carries: a
+	   stub above a zero reads as "a short run", which is the opposite of what
+	   happened. It flattens to a neutral rule on the axis instead — present,
+	   so the gap is visible, and plainly not a quantity. */
+	.bar-col.empty .bar {
+		min-height: 2px;
+		background: var(--color-border);
+		border-radius: var(--radius-pill);
+	}
+	.bar-col.empty:hover .bar,
+	.bar-col.empty.inspected .bar {
+		background: var(--color-text-tertiary);
+	}
 	.bar-label {
 		font-size: 0.65rem;
 		color: var(--color-text-tertiary);
 		margin-top: var(--space-xs);
+		white-space: nowrap;
+	}
+	/* Hidden rather than removed, so the label keeps being measured and a
+	   wider chart can bring it back. The column's aria-label names the
+	   bucket either way. */
+	.bar-label.thinned {
+		visibility: hidden;
 	}
 
 	.two-col {

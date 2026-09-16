@@ -80,6 +80,13 @@
 	--color-success-text: #2E6B3C;
 	--color-danger-text: #A93B2E;
 
+	/* The wordmark's two ends, for decoration on the public pages: the landing
+	   journey rail, the fastest split, a recording dot. Theme-independent,
+	   because the wordmark is one file in both themes. Never a text ink:
+	   white on ember reads 3.139:1, and ember on the light page is lower. */
+	--brand-ember: #FE5932;
+	--brand-magenta: #A01E77;
+
 	/* Rank-1 / segment-crown gold, as a fill + its own foreground. Mirrors
 	   mobile's AppSemanticColors.crown / onCrown so a leaderboard pill reads
 	   the same on both platforms. Theme-aware because a single gold cannot be
@@ -301,6 +308,22 @@
 		var(--color-primary) 0%,
 		var(--color-secondary-text) 100%
 	);
+	/* The BRAND CANVAS ramp — the wordmark's own gradient (#FE5932 -> #A01E77)
+	   taken to a legible depth. Every unauthenticated full-bleed dark surface
+	   reads this one declaration: the marketing hero and the sign-in brand
+	   pane. It was inline in the hero, and the sign-in pane carried a
+	   SEPARATE teal-to-brown ramp of its own — so the first screen a visitor
+	   saw and the screen they signed in on wore two different brands, and
+	   nothing failed when one moved. A visitor crossing from one to the other
+	   is the person who notices.
+	   Not theme-keyed: a fixed brand canvas is exempt from THEMING, not from
+	   contrast (§ 511's print-sheet amber), so the ink on it is a literal
+	   white and every stop is measured under it — plus each consumer's own
+	   veils, at their own peaks — in gradient_foreground_guard.test.ts. The
+	   orange end of the wordmark cannot carry body copy (3.139:1 under
+	   white), which is why it terminates on the magenta and returns only as
+	   a glow where no text sits. */
+	--brand-ramp: linear-gradient(150deg, #140A18 0%, #3A0F33 32%, #6E1450 66%, #A01E77 100%);
 	--gradient-surface: linear-gradient(135deg, rgba(44, 95, 110, 0.04) 0%, rgba(242, 160, 123, 0.04) 100%);
 	--gradient-sidebar: linear-gradient(180deg, #FFFFFF 0%, #F1ECE0 100%);
 
@@ -370,6 +393,9 @@
 	   visitor entering /runs select mode hits both a banner and the
 	   bulk-bar at the same coordinates and can't see the banner. */
 	--z-sidebar: 10;
+	/* The public pages' fixed header: above page content (the landing shot
+	   and cards stack at 1-3), below every overlay. */
+	--z-public-header: 50;
 	--z-modal-backdrop: 200;
 	--z-modal: 201;
 	--z-toast: 300;
@@ -792,9 +818,26 @@ img {
 	*::after {
 		animation-duration: 0.01ms !important;
 		animation-iteration-count: 1 !important;
+		/* Delays too, not only durations: a staggered entrance declared with
+		   `animation: rise 700ms 480ms both` holds its FIRST keyframe through
+		   the delay, so collapsing the duration alone left that text invisible
+		   for the delay on exactly the visitor who asked for nothing to move. */
+		animation-delay: 0s !important;
 		transition-duration: 0.01ms !important;
+		transition-delay: 0s !important;
 		scroll-behavior: auto !important;
 	}
+}
+
+/*
+ * In-page motion pause (WCAG 2.2.2), set by MotionToggle through the motion
+ * store. Scoped to `.motion-scope` so a visitor who paused the landing page
+ * does not also freeze the app's loading spinners after signing in.
+ */
+:root[data-motion='paused'] .motion-scope *,
+:root[data-motion='paused'] .motion-scope *::before,
+:root[data-motion='paused'] .motion-scope *::after {
+	animation-play-state: paused !important;
 }
 
 /*
@@ -810,7 +853,11 @@ img {
 	z-index: 9999;
 	padding: var(--space-sm) var(--space-md);
 	background: var(--color-primary);
-	color: #fff;
+	/* NOT a frozen white: --color-primary flips to a light coral in dark,
+	   where white reads 2.081:1. On the token it is 9.120 dark / 7.073 light.
+	   This is the same defect § 506 minted --color-on-primary for, on the one
+	   control a keyboard user reaches before anything else. */
+	color: var(--color-on-primary);
 	text-decoration: none;
 	/* Pinned to the inline-start corner, so the one rounded corner is the
 	   block-end/inline-end one. The physical `0 0 X 0` shorthand kept it

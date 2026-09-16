@@ -16,10 +16,10 @@
 //
 // A translucent veil drawn OVER a ramp lightens what the ink lands on, so
 // each entry declares its veils and every stop is measured bare and under
-// each veil at that veil's own peak. The two radial veils on the login pane
-// are anchored at opposite corners (30%/20% and 80%/90%, both transparent by
-// 55%), so they are measured one at a time rather than stacked: stacking them
-// would assert a composite that no pixel of the pane actually shows.
+// each veil at that veil's own peak. A surface's glows are anchored at
+// different corners and fade out before they meet, so they are measured one
+// at a time rather than stacked: stacking them would assert a composite that
+// no pixel of the surface actually shows.
 //
 // Invocation:
 //   npx tsx --test src/lib/gradient_foreground_guard.test.ts
@@ -85,18 +85,6 @@ type Ramp = {
 
 const RAMPS: Ramp[] = [
 	{
-		file: 'routes/login/+page.svelte',
-		anchor: 'background: linear-gradient(150deg,',
-		stops: 3,
-		ink: '#FFFFFF',
-		floor: 4.5,
-		veils: [
-			{ colour: '#FFFFFF', alpha: 0.18, why: '.brand-pane::before sheen at 30%/20%' },
-			{ colour: '#B9A7E8', alpha: 0.35, why: '.brand-pane::after lilac at 80%/90%' },
-		],
-		why: 'the sign-in brand pane carries the product copy',
-	},
-	{
 		file: 'routes/runs/[id]/+page.svelte',
 		anchor: 'background: linear-gradient(135deg, #9B4A24',
 		stops: 3,
@@ -104,20 +92,80 @@ const RAMPS: Ramp[] = [
 		floor: 4.5,
 		why: 'the 1080x1080 share card rasterises to a PNG that leaves the device',
 	},
+	// --brand-ramp is one declaration with two consumers — the marketing hero
+	// and the auth shell's brand panel (sign-in, sign-up, the /auth pages and
+	// onboarding). A veil belongs to the consumer rather than to the ramp, so
+	// each surface carries its own entries over this same line, one per ink
+	// it draws; the veils are still measured one at a time, because stacking
+	// them would assert a composite that no pixel of either surface shows.
+	//
+	// A translucent white is the weaker of the two whites on a dark ground: it
+	// resolves toward the stop beneath it. So the 0.85 inks are the entries,
+	// and the literal #FFFFFF headlines on either surface clear by implication.
 	{
-		file: 'routes/+page.svelte',
-		anchor: 'background: linear-gradient(150deg, #0F172A',
+		file: 'app.css',
+		anchor: '--brand-ramp: linear-gradient(150deg,',
 		stops: 4,
 		ink: 'rgba(255, 255, 255, 0.85)',
 		floor: 4.5,
+		veils: [
+			{ colour: '#FE5932', alpha: 0.18, why: '.hero-glow::before wordmark orange' },
+			{ colour: '#2C5F6E', alpha: 0.18, why: '.hero-glow::after product teal' },
+			{ colour: '#FFFFFF', alpha: 0.07, why: '.topo--hero contour lines' },
+		],
 		why: 'the marketing hero headline + subhead',
 	},
 	{
-		file: 'routes/+page.svelte',
-		anchor: 'background: linear-gradient(135deg, #1E1B4B',
-		stops: 2,
-		ink: '#ffffff',
+		file: 'app.css',
+		anchor: '--brand-ramp: linear-gradient(150deg,',
+		stops: 4,
+		ink: 'rgba(255, 255, 255, 0.85)',
 		floor: 4.5,
+		veils: [
+			{ colour: '#FE5932', alpha: 0.18, why: '.auth-panel::before ember glow' },
+			{ colour: '#FFFFFF', alpha: 0.07, why: '.panel-topo contour lines' },
+		],
+		why: 'the auth panel body copy (brand foot, bullets, onboarding rail)',
+	},
+	{
+		file: 'app.css',
+		anchor: '--brand-ramp: linear-gradient(150deg,',
+		stops: 4,
+		ink: '#FFD6C8',
+		floor: 4.5,
+		veils: [
+			{ colour: '#FE5932', alpha: 0.18, why: '.auth-panel::before ember glow' },
+			{ colour: '#FFFFFF', alpha: 0.07, why: '.panel-topo contour lines' },
+		],
+		why: 'the auth panel peach kickers and marks (4.633:1 at the magenta stop under the ember glow)',
+	},
+	{
+		file: 'routes/+page.svelte',
+		anchor: 'background: linear-gradient(140deg, #A01E77',
+		stops: 2,
+		ink: '#FFFFFF',
+		floor: 4.5,
+		why: 'the landing journey step numbers (0.95rem bold is not large text)',
+	},
+	{
+		file: 'lib/components/LearnPage.svelte',
+		anchor: 'background: linear-gradient(135deg, #140A18',
+		stops: 2,
+		ink: 'rgba(255, 255, 255, 0.85)',
+		floor: 4.5,
+		why: 'the Learn band carries the breadcrumb, kicker, heading and subhead',
+	},
+	{
+		file: 'routes/+page.svelte',
+		anchor: 'background: linear-gradient(135deg, #102A32',
+		stops: 2,
+		ink: 'rgba(255, 255, 255, 0.85)',
+		floor: 4.5,
+		veils: [
+			{ colour: '#FE5932', alpha: 0.2, why: '.closing-glow::before ember' },
+			{ colour: '#A01E77', alpha: 0.22, why: '.closing-glow::after magenta' },
+			{ colour: '#FFFFFF', alpha: 0.06, why: '.topo--closing contour lines' },
+		],
 		why: 'the closing call-to-action block',
 	},
 ];

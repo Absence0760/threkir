@@ -12,15 +12,21 @@ Each guide is a markdown / MDsvex file committed in the repo, loaded by a build-
 
 | URL | Route | Prerender |
 |---|---|---|
-| `/learn` | `routes/learn/+page.{svelte,ts}` — the hub (category sections of guide cards) | `prerender = true` |
+| `/learn` | `routes/learn/+page.{svelte,ts}` — the hub (category chips, a promoted guide, then one grid of all guides) | `prerender = true` |
 | `/learn/<slug>` | `routes/learn/[slug]/+page.{svelte,ts}` — a single article (mdsvex body) | `true` + `entries()` over guide slugs |
 | `/learn/category/<id>` | `routes/learn/category/[category]/+page.{svelte,ts}` — guides in one category | `true` + `entries()` over `CATEGORIES` |
 
 `/learn` is **shell-less + anon** in `routes/+layout.svelte` (a marketing surface, never wrapped in the app sidebar — the `path.startsWith('/learn')` prefix in `isShellless`, which `isAnonAllowed` is a superset of).
 
+All three learn routes open on a **full-bleed brand band** — the landing hero's ramp, stopped early, so an index page gets a strip rather than a hero — and the header sits transparent over it exactly as it does over the landing hero. Before that, clicking Learn went from a magenta hero under a transparent bar to a WHITE header bar over a cream body, and Learn read as a different site. The band is `LearnPage`'s `banner` prop plus a `.learn-band` wrapper in the page; everything inside it sits on a fixed dark canvas, so its inks are literals rather than theme tokens (they would be dark-on-dark in light mode) and both stops are measured in `gradient_foreground_guard.test.ts`.
+
+On a guide, the band is the `<article>`'s own `<header>`, so the `h1` stays inside the article its JSON-LD describes. `.learn-article` therefore carries no column or padding of its own — the band and the body each carry a `learn-column`, which is what keeps their left edges shared for `layout.spec.ts`. Padding on the `<article>` is what broke the first attempt: it inset the band from the viewport edge, and the overlay header's white ink landed on the page background instead of on the ramp.
+
+The hub and category column widens to **76rem above 90rem of viewport** — 64rem fits three 17rem cards and leaves ~200 px of margin either side on a 1440 px screen, where 76rem fits four. The `prose` measure is deliberately untouched: a reading column does not want the width.
+
 All three learn routes wear one page shell, **`LearnPage.svelte`**, which owns the wrapper, the chrome, and — critically — the single definition of the column every band sits in. Add `class="learn-column"` to a band; never re-declare `max-width` on a learn page. Each route used to hand-roll its own wrapper + widths and they drifted: the hub's header ended up in a 56rem column above a 64rem card grid, so the heading and the cards it labels did not share a left edge, and the hub centred its header where both siblings left-align. `tests-e2e/learn/layout.spec.ts` asserts the geometry (breadcrumb / `h1` / first body element share a left edge, at two widths) rather than the CSS, so any rule that breaks the alignment surfaces there. A guide passes `width="prose"` for the 44rem reading measure; hub and category take the default `wide`.
 
-All three also render the **same public-site chrome as the landing page** via the shared `PublicHeader` / `PublicFooter` components (issue #212): wordmark logo + Apps / Features / Learn nav + a Sign In pill (which flips to "Open app" → `/dashboard` for a signed-in visitor after hydration), and the landing footer's tagline + nav/legal links. The landing page consumes the same components with `PublicHeader`'s `overlay` prop (transparent, white-on-dark, absolutely positioned over the hero); learn uses the default solid variant (themed surface + border, theme-swapped wordmark). Nav anchors are root-anchored (`/#apps`, `/#features`) so they resolve from `/learn`. Both components are prerender-safe — the static HTML bakes the signed-out state and the auth store swaps it client-side.
+All three also render the **same public-site chrome as the landing page** via the shared `PublicHeader` / `PublicFooter` components (issue #212): wordmark logo + Apps / Features / Learn nav + a Sign In pill (which flips to "Open app" → `/dashboard` for a signed-in visitor after hydration), and the landing footer's tagline + nav/legal links. `PublicHeader` has one variant: white-on-dark, fixed to the top of the viewport, transparent over the band or hero it opens on, and painting its own plum glass once the page scrolls (every ink on that glass measured over white by `learn_band_guard.test.ts`; `scroll-padding-top` keeps anchor jumps and focus below it). The landing page additionally passes `motionToggle` for its pause control ([decisions § 1626](../architecture/decisions.md)). Nav anchors are root-anchored (`/#apps`, `/#features`) so they resolve from `/learn`. Both components are prerender-safe — the static HTML bakes the signed-out state and the auth store swaps it client-side.
 
 ## Where the code lives
 
@@ -40,7 +46,7 @@ apps/web/src/lib/components/
   LearnCta.svelte      # end-of-article CTA card (feature link + sign-up)
   LearnPage.svelte     # the page shell all three routes wear: wrapper + PublicHeader/Footer + the ONE column definition (`width="wide"` 64rem | `"prose"` 44rem)
   LearnBreadcrumb.svelte # ancestors-only breadcrumb trail (the h1 is the current step)
-  PublicHeader.svelte  # shared public-site nav (landing overlay variant + solid learn variant)
+  PublicHeader.svelte  # shared public-site nav (fixed; transparent at the top, plum glass once scrolled)
   PublicFooter.svelte  # shared public-site footer (tagline + nav/legal links)
 apps/web/static/og-default.png   # 1200x630 branded OG fallback card
 ```
@@ -100,10 +106,20 @@ Two layers:
 
 ## Mobile / watch
 
+## Hub layout
+
+The hub renders **category chips → one promoted guide → one grid of everything else**, not a section per category. It used to be the latter, and five of the seven categories hold a single guide: each produced a heading, one card, and an `auto-fill` grid whose remaining tracks stayed empty, so most of the page was dead space and eight guides took a full screen of scrolling to reach. The chips carry the per-category browse the headings used to (`/learn/category/<id>`, which already existed and was otherwise unlinked), and the first guide in category-then-order sequence is promoted as the obvious starting point. The grid is `auto-fit`, not `auto-fill` — with a short final row `auto-fill` keeps the empty tracks and the last card sits in a 17rem slot beside a void.
+
+The ItemList JSON-LD is still built from the same category-then-order sequence, so the structured data describes the order a reader actually sees.
+
+A **category page wears the same furniture as the hub** — kicker, chip row with its own chip marked `aria-current="page"`, grid, closing CTA. It used to be a breadcrumb, a bare `h1` and a grid, which read as a different site and made the breadcrumb the only way out; the chips are what let a reader move sideways between categories. `LearnCategoryNav.svelte` and `LearnSignupCta.svelte` are shared by both (distinct from `LearnCta.svelte`, which is the per-article CTA pointing at the app feature a guide teaches).
+
+**Reading time** is `estimateReadingMinutes` in `guides_index.ts` (pure, unit-tested) over a second `import.meta.glob` of the same files as `?raw` — the compiled module exposes frontmatter and a Svelte component, and neither can be word-counted. Both globs resolve at build time. It is keyed on the **English** source: a localized file is a translation of the same guide, so its word count differs by language rather than by how much there is to read. Every English guide currently lands on 2 minutes because they are all 431-523 words; the figure differentiates as the library grows.
+
 **Web-only. The twin invariant does not apply** (acquisition/SEO content, like the landing page / `/privacy` / `/compare`). A future single in-app "Learn / Guides" link opening the web hub is a one-link follow-up, not a screen and not a twin obligation.
 
 ## Tests
 
 - Unit (`npx tsx --test`): `guides.test.ts`, `learn_meta.test.ts`, `sitemap.test.ts` (extended).
-- Playwright (`apps/web/tests-e2e/learn/`): `hub`, `article`, `seo`, `category`, `cta-links-resolve`, `localized-prose` (localized body + H1, English fallback + notice, localized hub-card title), `chrome` (the shared PublicHeader/PublicFooter landing chrome on all three learn routes).
+- Playwright (`apps/web/tests-e2e/learn/`): `hub` (one grid + a promoted guide, chips resolve, every card states a reading time), `article` (plus the Keep-reading block and the header's reading time), `seo`, `category`, `cta-links-resolve`, `localized-prose` (localized body + H1, English fallback + notice, localized hub-card title), `chrome` (the shared PublicHeader/PublicFooter landing chrome on all three learn routes, the header pinned with its glass once scrolled on `/` and `/learn`, and an in-page jump stopping below it).
 - Artifact guards (`apps/web/src/lib/seo/`): `learn_structured_data.test.ts` reads the BUILT pages and pins one JSON-LD block per learn route whose `@type` matches the route kind, a breadcrumb of the right depth whose last rung links nowhere, and a non-empty self-consistent `ItemList` on the two index kinds; `document_title.test.ts` pins that every prerendered page carries exactly one `<title>`, its own. Both self-skip when `apps/web/build` is absent, so they bind only after a production build (decisions § 1167 + § 1168).

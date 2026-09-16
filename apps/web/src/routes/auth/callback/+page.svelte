@@ -6,6 +6,7 @@
 	import { m } from '$lib/i18n/store.svelte';
 	import { defaultUnitForLocale } from '$lib/format/locale_defaults';
 	import { emailOtpLink, verifyConsentStamped } from '$lib/core/auth_confirmation';
+	import AuthShell from '$lib/components/auth/AuthShell.svelte';
 
 	let error = $state('');
 
@@ -84,27 +85,75 @@
 	});
 </script>
 
-<main class="callback-page" id="main-content">
-	{#if error}
-		<p class="error">{m('authCallback.failed', { error })}</p>
-		<a href="/login">{m('authCallback.backToLogin')}</a>
-	{:else}
-		<p>{m('authCallback.signingIn')}</p>
-	{/if}
-</main>
+<AuthShell>
+	<main class="auth-card callback-card" id="main-content">
+		{#if error}
+			<span class="status status--error" aria-hidden="true">
+				<span class="material-symbols">error</span>
+			</span>
+			<p class="message error" role="alert">{m('authCallback.failed', { error })}</p>
+			<a class="btn btn-primary back" href="/login">{m('authCallback.backToLogin')}</a>
+		{:else}
+			<span class="status status--busy" aria-hidden="true"></span>
+			<p class="message">{m('authCallback.signingIn')}</p>
+		{/if}
+	</main>
+</AuthShell>
 
 <style>
-	.callback-page {
+	/* The card chrome and the brand panel belong to AuthShell. */
+	.callback-card {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		justify-content: center;
-		min-height: 100vh;
-		gap: 1rem;
+		gap: var(--space-md);
+		text-align: center;
+	}
+
+	.status {
+		display: grid;
+		place-items: center;
+		width: 3.5rem;
+		height: 3.5rem;
+		border-radius: var(--radius-pill);
+	}
+
+	/* A loading indicator, not decoration: it stops when the page navigates,
+	   and the global reduced-motion rule stills it. */
+	.status--busy {
+		border: 3px solid var(--color-border);
+		border-top-color: var(--color-primary);
+		animation: spin 900ms linear infinite;
+	}
+
+	@keyframes spin {
+		to { transform: rotate(360deg); }
+	}
+
+	.status--error {
+		background: var(--color-danger-light);
+		color: var(--color-danger-text);
+	}
+
+	.status--error .material-symbols {
+		font-size: 1.9rem;
+	}
+
+	.message {
+		margin: 0;
 		color: var(--color-text-secondary);
+		line-height: 1.55;
+		overflow-wrap: anywhere;
 	}
 
 	.error {
 		color: var(--color-danger-text);
+	}
+
+	.back {
+		width: 100%;
+		min-height: 3rem;
+		border-radius: var(--radius-lg);
+		margin-top: var(--space-xs);
 	}
 </style>

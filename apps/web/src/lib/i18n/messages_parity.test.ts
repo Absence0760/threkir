@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { en } from './locales/en';
 import { SUPPORTED_LOCALES } from './locale';
 import { CATALOGUE_LOADERS } from './catalogues';
@@ -32,5 +33,33 @@ for (const loc of SUPPORTED_LOCALES) {
 				`${loc}.${key} placeholder mismatch`,
 			);
 		}
+	});
+}
+
+// A catalogue is an object literal, so a key written twice is not an error --
+// the later wins and `Object.keys` reports it once, which means every
+// assertion above passes while the shipped string is the stale one. That is
+// not hypothetical: the landing hero shipped its OLD subhead this way, with a
+// green parity suite, because a new copy deck was appended above the original
+// key instead of replacing it. Source-level, because by the time the module
+// has been evaluated the evidence is gone.
+for (const loc of SUPPORTED_LOCALES) {
+	test(`${loc}: no key is declared twice in the source`, async () => {
+		const file = new URL(`./locales/${loc}.ts`, import.meta.url);
+		const source = await readFile(file, 'utf-8');
+		const seen = new Set<string>();
+		const duplicated: string[] = [];
+		for (const line of source.split('\n')) {
+			const key = /^\t"([^"]+)": /.exec(line)?.[1] ?? /^\t'([^']+)': /.exec(line)?.[1];
+			if (key === undefined) continue;
+			if (seen.has(key)) duplicated.push(key);
+			seen.add(key);
+		}
+		assert.deepEqual(
+			duplicated,
+			[],
+			`${loc} declares these keys more than once; the last one silently wins, so ` +
+				'the string you edited may not be the string that ships',
+		);
 	});
 }

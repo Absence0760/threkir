@@ -3,6 +3,8 @@
 	import { buildLearnCanonical, buildLearnCollectionJsonLd } from '$lib/learn/learn_meta';
 	import { guidesByCategory } from '$lib/learn/guides';
 	import GuideCard from '$lib/components/GuideCard.svelte';
+	import LearnCategoryNav from '$lib/components/LearnCategoryNav.svelte';
+	import LearnSignupCta from '$lib/components/LearnSignupCta.svelte';
 	import LearnPage from '$lib/components/LearnPage.svelte';
 	import LearnBreadcrumb from '$lib/components/LearnBreadcrumb.svelte';
 
@@ -12,13 +14,20 @@
 	const pageDesc = $derived(m('learn.hubPageDescription'));
 	const canonicalUrl = $derived(buildLearnCanonical(data.siteUrl, '/learn'));
 
-	// The guides in the order the sections below render them, so the ItemList
-	// describes the page a reader sees rather than a second ordering.
-	const listedGuides = $derived(
-		data.categories
-			.flatMap((c) => guidesByCategory(c.id))
-			.map((g) => ({ slug: g.slug, title: g.title })),
-	);
+	// Category order first, guide order within it — the same sequence the
+	// grid renders, so the ItemList describes the page a reader sees rather
+	// than a second ordering.
+	const ordered = $derived(data.categories.flatMap((c) => guidesByCategory(c.id)));
+	const listedGuides = $derived(ordered.map((g) => ({ slug: g.slug, title: g.title })));
+
+	// The hub used to render one section per category, and five of the seven
+	// hold a single guide — a heading, one card, and an `auto-fill` grid whose
+	// remaining tracks stayed empty, so the page was mostly dead space. One
+	// grid of everything, with the category chips carrying the per-category
+	// browse that the section headings used to, and the first guide promoted
+	// as the obvious place to start.
+	const featured = $derived(ordered[0]);
+	const rest = $derived(ordered.slice(1));
 	const jsonLd = $derived(
 		buildLearnCollectionJsonLd({
 			title: pageTitle,
@@ -50,32 +59,38 @@
 </svelte:head>
 
 <LearnPage>
-	<section class="hero learn-column">
+	<div class="learn-band">
+		<section class="hero learn-column">
 		<LearnBreadcrumb crumbs={[{ href: '/', label: m('learn.breadcrumbHome') }]} />
 		<p class="kicker">{m('learn.hubKicker')}</p>
 		<h1>{m('learn.hubTitle')}</h1>
 		<p class="hero-sub">{m('learn.hubSub')}</p>
-	</section>
+		</section>
+	</div>
 
 	<main class="content learn-column" id="main-content">
-		{#each data.categories as category (category.id)}
-			<section class="category-section" aria-labelledby="cat-{category.id}">
-				<h2 id="cat-{category.id}">{m(category.labelKey)}</h2>
+		<LearnCategoryNav />
+
+		{#if featured}
+			<section class="featured-section" aria-labelledby="learn-featured">
+				<h2 id="learn-featured" class="section-label">{m('learn.startHere')}</h2>
+				<GuideCard guide={featured} featured />
+			</section>
+		{/if}
+
+		{#if rest.length}
+			<section class="all-section" aria-labelledby="learn-all">
+				<h2 id="learn-all" class="section-label">{m('learn.allGuides')}</h2>
 				<div class="guide-grid">
-					{#each guidesByCategory(category.id) as guide (guide.slug)}
+					{#each rest as guide (guide.slug)}
 						<GuideCard {guide} />
 					{/each}
 				</div>
 			</section>
-		{/each}
+		{/if}
 	</main>
 
-	<section class="signup-cta learn-column" aria-labelledby="learn-cta-heading">
-		<p class="kicker">{m('learn.ctaKicker')}</p>
-		<h2 id="learn-cta-heading">{m('learn.ctaHeading')}</h2>
-		<p class="signup-sub">{m('learn.ctaSub')}</p>
-		<a class="btn btn-primary" href="/login?signup=1">{m('learn.ctaButton')}</a>
-	</section>
+	<LearnSignupCta />
 </LearnPage>
 
 <style>
@@ -115,38 +130,28 @@
 		gap: var(--space-xl);
 	}
 
-	.category-section h2 {
-		font-size: 1.3rem;
+
+
+
+	.section-label {
+		font-size: var(--font-size-section-label);
 		font-weight: 700;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--color-text-tertiary);
 		margin: 0 0 var(--space-md);
-		color: var(--color-text);
 	}
 
+	/* `auto-fit`, not `auto-fill`: with a short final row auto-fill keeps the
+	   empty tracks and the last card sits in a 17rem slot beside a void. */
 	.guide-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(min(16rem, 100%), 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
 		gap: var(--space-md);
 	}
 
-	.signup-cta {
-		padding: var(--space-xl) var(--space-md);
-		text-align: center;
-	}
 
-	.signup-cta h2 {
-		font-size: 1.4rem;
-		font-weight: 700;
-		margin: 0 0 var(--space-sm);
-		color: var(--color-text);
-	}
 
-	.signup-sub {
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		max-width: 32rem;
-		margin: 0 auto var(--space-md);
-		line-height: 1.5;
-	}
 
 	@media (min-width: 48rem) {
 		.hero {

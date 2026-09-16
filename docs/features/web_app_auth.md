@@ -130,6 +130,10 @@ Three sign-in methods, all hitting Supabase Auth:
 
 OAuth flows redirect to `/auth/callback`, which calls `auth.refreshSession()` and routes to `/dashboard`.
 
+**Layout.** `/login` (sign-in, sign-up and the reset request), the three pages a new account walks through next — `/auth/reset`, `/auth/confirm-age`, `/auth/callback` — and `/onboarding` (with `wide`, for its choice grid) all mount `lib/components/auth/AuthShell.svelte`: a form card beside a fixed plum brand panel with the rendered terrain art, which collapses to a short band the card rides over on a phone. Each page still owns its `<main id="main-content" class="auth-card">` and passes it in as children (`shellless_landmark_guards` reads the landmark from the page source). `/login` passes the panel copy as a `panel` snippet; the `/auth/*` pages leave it out for a brand-only panel. The shell's motion plays once and ends — see [conventions § Web motion](../architecture/conventions.md#web-motion--the-resting-state-is-the-markups-own) and [decisions § 1626](../architecture/decisions.md). Pinned by `tests-e2e/auth/shell.spec.ts`.
+
+The panel paints `--brand-ramp`, the one declaration the marketing hero paints too ([decisions.md § 1627](../architecture/decisions.md)), and every ink on it is measured at every stop under the panel's own veils in `gradient_foreground_guard.test.ts`. Its logo link is the page's only link home at every width, and it is never `aria-hidden`: hiding a focusable subtree leaves the link focusable but nameless (axe `aria-hidden-focus`, WCAG 4.1.2 + 2.4.3). `/login`'s panel opens on the landing page's eyebrow rather than repeating the card's own kicker. A separate brand canvas for `/login` alone, built on a parallel branch, was retired when the two met ([decisions.md § 1633](../architecture/decisions.md)); `shell.spec.ts` kept its screen-level assertions.
+
 ---
 
 ## Auth error surfacing

@@ -15,16 +15,19 @@ test.describe('/ (landing)', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test('anon visitor sees hero + Get Started CTA', async ({ page }) => {
-		// The h1 is split across <br/>s; the accessible name is the
-		// concatenated text "Plan routes. Track runs. Analyse
-		// everything." Match by the leading phrase.
+		// One balanced string now, not three <br/>-separated lines: the
+		// hardcoded breaks forced three lines at every width and still
+		// wrapped to four on a phone.
 		await page.goto('/');
 
 		await expect(
 			page.getByRole('heading', { name: /Plan routes/, level: 1 })
 		).toBeVisible();
+		// Scoped to the hero: getByRole matches the accessible name as a
+		// SUBSTRING, so the header's "Get started free" also answers to
+		// "Get Started".
 		await expect(
-			page.getByRole('link', { name: 'Get Started' })
+			page.locator('main.hero').getByRole('link', { name: 'Get Started' })
 		).toBeVisible();
 	});
 
@@ -32,24 +35,31 @@ test.describe('/ (landing)', () => {
 		// Click-through pin. A regression that wired the CTA to a
 		// nonexistent route would surface as a hard 404 here.
 		await page.goto('/');
-		await page.getByRole('link', { name: 'Get Started' }).click();
+		await page.locator('main.hero').getByRole('link', { name: 'Get Started' }).click();
 		await page.waitForURL(/\/login/, { timeout: 10_000 });
 	});
 
-	test('top nav anchor links jump to in-page sections', async ({ page }) => {
-		// The "Apps" + "Features" nav links use /#apps / /#features
-		// fragment scrolls (root-anchored so the shared PublicHeader
-		// resolves them from /learn too). Pin the targets exist so a
-		// refactor that renames a section id surfaces here.
+	test('the in-page sections stay addressable, and only the footer links them', async ({
+		page,
+	}) => {
+		// Apps + Features were header anchors to sections one scroll away, and
+		// were already hidden below 768px. They live in the footer now; the
+		// section ids stay live because the footer -- and any deep link --
+		// still targets them.
 		await page.goto('/');
 		await expect(page.locator('section#apps')).toBeVisible();
 		await expect(page.locator('section#features')).toBeVisible();
-		// Nav links carry the matching href.
-		await expect(page.getByRole('link', { name: 'Apps' }).first()).toHaveAttribute(
+
+		const nav = page.locator('nav.landing-nav');
+		await expect(nav.getByRole('link', { name: 'Apps' })).toHaveCount(0);
+		await expect(nav.getByRole('link', { name: 'Features' })).toHaveCount(0);
+
+		const footer = page.locator('footer.landing-footer');
+		await expect(footer.getByRole('link', { name: 'Apps' })).toHaveAttribute(
 			'href',
 			'/#apps'
 		);
-		await expect(page.getByRole('link', { name: 'Features' }).first()).toHaveAttribute(
+		await expect(footer.getByRole('link', { name: 'Features' })).toHaveAttribute(
 			'href',
 			'/#features'
 		);
@@ -145,13 +155,170 @@ test.describe('/ (landing)', () => {
 
 	test('closing CTA section points anon users at /login', async ({ page }) => {
 		await page.goto('/');
-		// The "Ready to log your next run?" closing CTA has its own
-		// "Sign in to continue" link. Anchor on the section's link.
+		// "Sign in to continue" was a system message standing in for a
+		// call to action, and it pointed at the same /login as the hero.
 		const cta = page.locator('section.closing-cta');
 		await expect(cta).toBeVisible();
-		await expect(cta.getByRole('link', { name: /Sign in to continue/ })).toHaveAttribute(
-			'href',
-			'/login'
+		await expect(
+			cta.getByRole('link', { name: 'Create a free account' })
+		).toHaveAttribute('href', '/login?signup=1');
+	});
+
+	test('the hero shows the product, drawn by the real renderer', async ({ page }) => {
+		// The page carried no pixel of the product before this. The shot is
+		// the app's own TrackPreview over static demo data rather than a
+		// screenshot, so a UI change moves it automatically — assert the
+		// live SVG is there, not that an <img> loaded.
+		await page.goto('/');
+		const shot = page.locator('main.hero figure.shot');
+		await expect(shot).toBeVisible();
+		await expect(shot.locator('svg.track-preview').first()).toBeVisible();
+		// Captioned for screen readers; the frames themselves are decorative.
+		await expect(shot.locator('figcaption')).toHaveText(/sample run/i);
+	});
+
+	test('every feature card leads with a visual, and none is an icon', async ({ page }) => {
+		await page.goto('/');
+		const cards = page.locator('section#features article.feature');
+		await expect(cards).toHaveCount(4);
+		for (let i = 0; i < 4; i++) {
+			await expect(cards.nth(i).locator('.feature-visual')).toBeVisible();
+			await expect(cards.nth(i).locator('.feature-eyebrow')).toBeVisible();
+		}
+		// The Material Symbols icons the cards used to lead with are gone;
+		// leaving one behind would also keep its glyph in the subset font.
+		await expect(page.locator('section#features .material-symbols')).toHaveCount(0);
+	});
+
+	test('the platforms strip states testing status without four vapour cards', async ({
+		page,
+	}) => {
+		await page.goto('/');
+		const pills = page.locator('section#apps li.platform');
+		await expect(pills).toHaveCount(5);
+		// Web is the only one a visitor can actually use today.
+		await expect(pills.filter({ hasText: 'Web' }).first()).not.toHaveClass(/pending/);
+		await expect(page.locator('section#apps li.platform.pending')).toHaveCount(4);
+		await expect(page.locator('section#apps .platforms-note')).toContainText(
+			/not in the app stores yet/i
 		);
+	});
+
+	test('the header carries sign-in only, not a second CTA', async ({ page }) => {
+		// A "Get started free" pill sat beside Sign In. The header is
+		// position:absolute, not sticky, so it is on screen only at the very
+		// top — where the hero's own, larger CTA already is — and gone by the
+		// time a reader would want one.
+		await page.goto('/');
+		await expect(page.locator('.nav-signin')).toHaveAttribute('href', '/login');
+		await expect(page.locator('.nav-cta')).toHaveCount(0);
+	});
+
+	test('sign-in and the sign-up CTAs land on DIFFERENT forms', async ({ page }) => {
+		// They were one button wearing two labels: every landing CTA pointed
+		// at bare /login, which renders the sign-in form, so a visitor who
+		// clicked "Create a free account" arrived under the headline "Sign in
+		// to your account". Asserted on the rendered form rather than the
+		// href, because the href is only the mechanism.
+		await page.goto('/');
+		await page.locator('.nav-signin').click();
+		await expect(
+			page.getByRole('heading', { name: /sign in to your account/i })
+		).toBeVisible();
+
+		for (const [where, name] of [
+			['main.hero', 'Get Started'],
+			['section.closing-cta', 'Create a free account'],
+		] as const) {
+			await page.goto('/');
+			await page.locator(where).getByRole('link', { name }).click();
+			await expect(
+				page.getByRole('heading', { name: /create an account/i }),
+				`${name} landed on the sign-in form`
+			).toBeVisible();
+		}
+	});
+
+	test('hero CTAs stay on one line at 390px', async ({ page }) => {
+		// Both buttons broke across two lines at phone width until .btn got
+		// white-space: nowrap. Measured rather than eyeballed: a single-line
+		// button is shorter than one-and-a-half line-heights.
+		await page.setViewportSize({ width: 390, height: 844 });
+		await page.goto('/');
+		for (const name of ['Get Started', 'See it working']) {
+			const box = await page.locator('main.hero').getByRole('link', { name }).boundingBox();
+			expect(box, `${name} has no box`).not.toBeNull();
+			expect(box!.height, `${name} wrapped to a second line`).toBeLessThan(64);
+		}
+	});
+
+	test('sections are visible without JS-driven reveal', async ({ page }) => {
+		// The reveal hides a section only from code that can also unhide it,
+		// and it hides nothing at all under reduced motion. A stylesheet that
+		// hid them until a class arrived would leave a crawler — and anyone
+		// whose script failed — looking at a blank page.
+		await page.emulateMedia({ reducedMotion: 'reduce' });
+		await page.goto('/');
+		await expect(page.locator('section#features')).toBeVisible();
+		await expect(page.locator('section.closing-cta')).toBeVisible();
+		const scriptHidden = await page
+			.locator('section#features *, section#apps *, section.closing-cta *')
+			.evaluateAll((els) => els.filter((el) => (el as HTMLElement).style.opacity === '0').length);
+		expect(scriptHidden).toBe(0);
+	});
+
+	test('a runner travels the route in the product shot', async ({ page }) => {
+		await page.goto('/');
+		// One per frame — the browser trace and the phone's. The marker is
+		// appended by the parent, so TrackPreview stays a plain renderer.
+		await expect(page.locator('figure.shot .pacer')).toHaveCount(2);
+		const distance = () =>
+			page
+				.locator('figure.shot .pacer')
+				.first()
+				.evaluate((el) => getComputedStyle(el).offsetDistance);
+		const first = await distance();
+		await page.waitForTimeout(900);
+		expect(await distance(), 'the marker is not moving').not.toBe(first);
+	});
+
+	test("the runner's glyph is not stroked as part of the route", async ({ page }) => {
+		// The route's glow is TrackPreview's casing path restyled, and the
+		// runner's figure is the first <path> in its own group — a descendant
+		// selector stroked it too, and a 9-unit translucent outline on a glyph
+		// reads as a blurred runner.
+		await page.goto('/');
+		const figure = page.locator('.trace .pacer path');
+		await expect(figure).toHaveCount(1);
+		const stroke = await figure.evaluate((el) => {
+			const cs = getComputedStyle(el);
+			return { stroke: cs.stroke, width: cs.strokeWidth };
+		});
+		expect(stroke.stroke === 'none' || stroke.width === '0px', JSON.stringify(stroke)).toBe(true);
+	});
+
+	test('reduced motion leaves the shot finished and still', async ({ page }) => {
+		// Every animated element's resting state is its FINISHED state, so
+		// suppressing motion must leave a complete shot rather than an empty
+		// frame — no marker, no half-drawn route, no collapsed bars.
+		await page.emulateMedia({ reducedMotion: 'reduce' });
+		await page.goto('/');
+		await expect(page.locator('figure.shot')).toBeVisible();
+		await expect(page.locator('figure.shot .pacer')).toHaveCount(0);
+		const dashed = await page
+			.locator('figure.shot svg.track-preview path')
+			.evaluateAll((els) =>
+				els.filter((el) => {
+					const s = getComputedStyle(el);
+					return s.strokeDashoffset !== '0px' && s.strokeDashoffset !== 'none';
+				}).length
+			);
+		expect(dashed, 'a route path is left partly undrawn').toBe(0);
+		const bars = page.locator('figure.shot .bar');
+		expect(await bars.count()).toBeGreaterThan(0);
+		const collapsed = await bars.evaluateAll(
+			(els) => els.filter((el) => el.getBoundingClientRect().height < 1).length
+		);
+		expect(collapsed, 'a split bar is left collapsed').toBe(0);
 	});
 });

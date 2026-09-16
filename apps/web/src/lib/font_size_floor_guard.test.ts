@@ -184,6 +184,13 @@ const AT_OR_UNDER_TOKEN = <Record<string, number>>{
 	// `route_builder_screen.dart` for exactly this). `.shortcuts-hint kbd` is a
 	// keyboard-shortcut hint in flowing layout and is plain debt.
 	'lib/components/RouteBuilder.svelte': 3,
+	// One: the `9:41` clock in the landing product shot's phone frame. The
+	// frame is a scale MODEL of a device -- Dynamic Island, side buttons,
+	// status bar, home indicator -- inside an aria-hidden figure, so the
+	// clock is a dimension of the drawing in the same sense as a km-pin
+	// numeral, not a label anybody is asked to read. The stats ON the phone's
+	// screen are product content and do keep the token.
+	'lib/components/marketing/ProductPreview.svelte': 1,
 
 	// --- Micro-labels that are simply under the floor. Every one of these is
 	// owed a fix; they are pinned so the count can only shrink, not so they are
@@ -251,12 +258,12 @@ test(`no font-size literal spells the ${TOKEN_PX} px token's own value`, () => {
 // a population so the assertion cannot pass over an empty set, and separately from
 // the per-file list because the two counts differ per file (`ElevationProfile`
 // carries three at or under the token but only one under the floor).
-test(`exactly nine font-size declarations sit below the ${FLOOR_PX} px floor § 482 pins`, () => {
+test(`exactly ten font-size declarations sit below the ${FLOOR_PX} px floor § 482 pins`, () => {
 	const under = scanFontSizes().sized.filter((d) => d.px < FLOOR_PX);
 	assert.equal(
 		under.length,
-		9,
-		`${under.length} declarations sit under the ${FLOOR_PX} px floor, expected 9. Each is listed ` +
+		10,
+		`${under.length} declarations sit under the ${FLOOR_PX} px floor, expected 10. Each is listed ` +
 			`in AT_OR_UNDER_TOKEN with a reason; raising one means lowering this number too:\n` +
 			under.map((d) => `  ${d.px.toFixed(2)}px  ${d.file}:${d.line}  ${d.raw}`).join('\n'),
 	);

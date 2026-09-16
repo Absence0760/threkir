@@ -429,15 +429,32 @@ test('the global-colour-fallback scan spares a per-instance default', () => {
 // with a fill that flips to a light coral in dark, so the app's primary button
 // drew 2.081:1 label text in one of two themes (9.120:1 on the token).
 test('app.css pairs a --color-primary fill with --color-on-primary, not a literal', () => {
+	// Derived, not a named selector. This checked `.btn-primary` alone and
+	// therefore could not see `.skip-link`, which had the identical defect --
+	// `background: var(--color-primary); color: #fff` -- and so shipped
+	// 2.081:1 in dark on the one control a keyboard user reaches before
+	// anything else. A list of one rots exactly like a list of four.
 	const css = readFileSync(join(SRC_ROOT, 'app.css'), 'utf-8');
-	const rule = css.match(/\.btn-primary\s*\{[^}]*\}/);
-	assert.ok(rule, 'app.css is missing the .btn-primary rule');
-	assert.match(
-		rule![0],
-		/color:\s*var\(--color-on-primary\)/,
-		'.btn-primary fills with --color-primary, which is a dark teal in light and a ' +
-			'light coral in dark; its label must take --color-on-primary rather than a ' +
-			`frozen white. Rule was:\n${rule![0]}`,
+	const rules = [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)].filter(([, , body]) =>
+		/(?:background|background-color)\s*:\s*var\(--color-primary\)\s*;/.test(body),
+	);
+	assert.ok(rules.length >= 2, `expected the primary-filled rules, found ${rules.length}`);
+
+	const offenders: string[] = [];
+	for (const [, selector, body] of rules) {
+		// A rule that sets no colour inherits one, which is a different
+		// question; this is about a frozen ink declared ON a flipping fill.
+		if (!/(?<!-)color\s*:/.test(body)) continue;
+		if (!/(?<!-)color:\s*var\(--color-on-primary\)/.test(body)) {
+			offenders.push(selector.trim().split('\n').pop()!.trim());
+		}
+	}
+	assert.deepEqual(
+		offenders,
+		[],
+		'--color-primary is a dark teal in light and a light coral in dark, so an ink ' +
+			'declared on it must be --color-on-primary rather than a frozen value ' +
+			`(white reads 2.081:1 on the coral). Offending rules:\n  ${offenders.join('\n  ')}`,
 	);
 });
 
@@ -555,25 +572,65 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 	'lib/components/RouteHeatmap.svelte': {
 		'7FB3C2': [1, 'cartographic'], F2A07B: [2, 'cartographic'],
 	},
-	// Marketing hero + closing-CTA ramps and the on-hero button. Every ink
-	// over them is measured by gradient_foreground_guard.test.ts.
+	// The closing-CTA ramp, the journey step-number disc and the on-hero
+	// button. The hero's four stops are not here: the hero paints
+	// --brand-ramp, whose stops are an app.css DECLARATION and so are spared by
+	// name. Every ink over these ramps is measured by
+	// gradient_foreground_guard.test.ts. The decorative brand hues (rail,
+	// fastest split) read --brand-ember / --brand-magenta instead.
 	'routes/+page.svelte': {
-		'0F172A': [1, 'gradient-stop'], '1E1B4B': [2, 'gradient-stop'],
-		'4F46E5': [3, 'gradient-stop'], '7C3AED': [1, 'gradient-stop'],
-		FFFFFF: [4, 'fixed-canvas'], F0EFFF: [1, 'fixed-canvas'],
+		'6E1450': [1, 'gradient-stop'], A01E77: [1, 'gradient-stop'],
+		'102A32': [1, 'gradient-stop'], '2C5F6E': [1, 'gradient-stop'],
+		FFFFFF: [6, 'fixed-canvas'], '8A1A62': [1, 'fixed-canvas'],
+		FDEFF7: [1, 'fixed-canvas'], '1F4854': [1, 'fixed-canvas'],
+		EAF3F5: [1, 'fixed-canvas'],
+	},
+	// The landing product shot's phone frame: a scale model of a device, so
+	// its titanium body, side buttons and Dynamic Island are the colours of an
+	// OBJECT rather than of a surface. A real phone is the same grey in dark
+	// mode, which is exactly why these do not follow the theme -- everything
+	// on the SCREEN inside the frame does. No text sits on any of them (the
+	// frame is aria-hidden), so no contrast bar applies.
+	'lib/components/marketing/ProductPreview.svelte': {
+		'6E6A72': [1, 'fixed-canvas'], '2A2830': [1, 'fixed-canvas'],
+		'1A1920': [1, 'fixed-canvas'], '55525C': [1, 'fixed-canvas'],
+		'4A4750': [1, 'fixed-canvas'], '23222A': [1, 'fixed-canvas'],
+		'0B0B0F': [1, 'fixed-canvas'],
+	},
+	// The Learn band: the landing ramp stopped early, so an index page gets a
+	// strip rather than a hero. A fixed dark canvas, which is why the inks on
+	// it are literals too — the theme's text tokens are dark-on-dark here.
+	'lib/components/LearnPage.svelte': {
+		'140A18': [1, 'gradient-stop'], '6E1450': [1, 'gradient-stop'],
+		FFFFFF: [1, 'fixed-canvas'],
 	},
 	// Header over that same hero: white hover ink, 5.699:1 on the ramp's
-	// palest stop.
+	// palest stop. The motion toggle sits in the same bar with the same two.
 	'lib/components/PublicHeader.svelte': { FFFFFF: [2, 'fixed-canvas'] },
-	// Sign-in brand pane (a fixed canvas; ramp + white copy measured per
-	// veil by gradient_foreground_guard.test.ts), the Google "G" mark, and
-	// Apple's required black button plus its hairline.
+	'lib/components/marketing/MotionToggle.svelte': { FFFFFF: [2, 'fixed-canvas'] },
+	// The auth shell's brand panel paints --brand-ramp, so its stops are an
+	// app.css declaration and are not listed. What is left is the panel's white
+	// copy and the recording readout's peach label and white figure on its
+	// fixed glass scrim.
+	'lib/components/auth/AuthShell.svelte': {
+		FFFFFF: [2, 'fixed-canvas'], FFB59C: [1, 'fixed-canvas'],
+	},
+	// Panel copy on AuthShell's --brand-ramp (the peach kicker and bullet
+	// marks, measured per veil by gradient_foreground_guard.test.ts), the
+	// Google "G" mark, and Apple's required black button plus its hairline.
 	'routes/login/+page.svelte': {
-		'2A4E5A': [1, 'gradient-stop'], '3A5A66': [1, 'gradient-stop'], '7E4527': [1, 'gradient-stop'],
-		FFFFFF: [2, 'fixed-canvas'],
+		FFD6C8: [2, 'fixed-canvas'],
 		'4285F4': [1, 'brand-mark'], '34A853': [1, 'brand-mark'],
 		FBBC05: [1, 'brand-mark'], EA4335: [1, 'brand-mark'],
 		'1A1A1A': [1, 'brand-mark'], '334155': [1, 'brand-mark'],
+	},
+	// Onboarding's copy on the same AuthShell panel: the peach kicker and
+	// done-step check (the kicker measured per veil by
+	// gradient_foreground_guard.test.ts), the current step's white disc with a
+	// plum numeral (11.18:1) and its white label, and the white check on the
+	// finish badge's brand gradient (a 3:1 glyph: 3.14:1 at the ember end).
+	'routes/onboarding/+page.svelte': {
+		FFD6C8: [2, 'fixed-canvas'], FFFFFF: [3, 'fixed-canvas'], '6E1450': [1, 'fixed-canvas'],
 	},
 	// The same two marks on the linked-accounts rows.
 	'routes/settings/account/+page.svelte': {

@@ -819,6 +819,17 @@ Sidebar palette is theme-aware via CSS variables in `app.css`: `--gradient-sideb
 
 The sidebar is collapsible — there's a `menu` / `menu_open` icon button in `.sidebar-head` that toggles between full width (`var(--sidebar-width)`, ~15rem) and an icon-only rail (`var(--sidebar-collapsed-width)`, ~4.5rem). State persists in `localStorage` under the key `sidebar_collapsed` (`'1'` / `'0'`). When collapsed, `.nav-label` and `.user-details` are hidden via `visibility: hidden; width: 0`; the logo is `display: none` so the menu button stands alone on the rail. Don't add features that assume the sidebar is always expanded — width-sensitive content lives in `.main-content`, which has its own `margin-left` transition.
 
+## Web motion — the resting state is the markup's own
+
+Motion on the public pages (`/`, `/login`, `/auth/*`) is a decoration over a finished page, never a requirement for seeing one ([decisions § 1626](decisions.md)). Four rules, each pinned by `tests-e2e/landing/motion.spec.ts` or `tests-e2e/auth/shell.spec.ts`:
+
+1. **The last keyframe is the resting state.** An entrance animates FROM hidden TO the element's own style with `fill: backwards` (CSS) or `fill: 'backwards'` (WAAPI), never to a state that only a `forwards` fill holds. No JS, a failed hydration and reduced motion all leave the finished page.
+2. **Only script that can reveal an element may hide it.** Scroll reveals go through `use:reveal` from `lib/motion/actions.ts`, which sets the hidden starting state itself, never through a stylesheet class a script later removes, and leaves anything already on screen at mount alone. Its `[data-grow]`, `[data-draw]` and `[data-pop]` hooks animate a card's figure as the card arrives.
+3. **Entrances are declared under `@media (prefers-reduced-motion: no-preference)`.** The global reduced-motion rule in `app.css` shrinks durations and zeroes delays, but a `from` keyframe that hides content still paints for one frame before the timeline ticks. Don't rely on the catch-all for anything that starts hidden.
+4. **Motion that starts on its own and lasts past five seconds needs an in-page stop** (WCAG 2.2.2). Put it inside `.motion-scope` and pass `motionToggle` to `PublicHeader`; a script-driven loop or a not-yet-started reveal reads `motion.still` from `lib/motion/motion.svelte.ts` when it would begin. A form page carries no decorative continuous motion. The one loop allowed there is a functional loading indicator (the `/auth/callback` spinner): it reports status, stops when the page navigates, and the global reduced-motion rule stills it, which is 2.2.2's "essential" exception rather than decoration.
+
+Scroll-linked effects (`animation-timeline: view()` / `scroll()`) go inside `@supports` plus the no-preference query, so a browser without scroll timelines shows the finished state. Rendered art never sits under copy (the gradient guard cannot measure a raster). Regenerate it with `assets/marketing/gen-marketing.sh`; don't hand-edit the WebP or SVG.
+
 ## Material Symbols icons
 
 The web app loads Material Symbols Outlined as a webfont and renders icons via **font ligatures** — `<span class="material-symbols">close</span>`, `<span class="material-symbols">menu_open</span>`, etc. Ligatures only form when the icon name is the only text node inside the span, **with no surrounding whitespace**. That means `<span class="material-symbols">{cond ? 'menu' : 'menu_open'}</span>` works, but breaking the expression onto its own line — leaving newlines and indentation between the tags — makes the browser render the literal text `"menu_open"`. Keep dynamic icon names on the same line as their tags.
@@ -972,6 +983,29 @@ Pairwise 3:1 between marks is often unreachable — *n* marks need 3^(n−1) and
 ## Chart scales — a normalised plot must still show magnitude
 
 A min/max-normalised series drawn without an axis shows shape and hides scale: CTL 45 and CTL 450 render pixel-identically. Any plot that normalises to its own extremes owes a labelled y-scale — a gutter, round ticks off a 1/2/5×10^n ladder, and gridlines. On web, y labels go in a **CSS gutter beside** the SVG when the chart uses `preserveAspectRatio="none"`; text inside that viewBox is stretched horizontally at every viewport width.
+
+## A localised string is prose — never recover a part of it by cutting it up
+
+`toLocaleDateString` and friends return output written for a human in their
+language, not a record with fields. Splitting, slicing or regexing one to get
+"just the day" or "just the month" encodes one locale's word order as a
+universal, and it fails silently in every other one.
+
+The dashboard's mileage axis shipped `week.split(' ')[0]` against a
+`{ day: 'numeric', month: 'short' }` label. en-GB gives `31 Aug` → `31`, which
+is what the author saw. en-US gives `Aug 31` → **`Aug` under every bar in
+August**; de gives `31. Aug.` → `31.`; ja gives `8月31日`, which contains no
+space, so the whole date landed under a 30 px bar
+([decisions.md § 1630](decisions.md)).
+
+**Format the part you want in its own right.** Call the formatter again with
+the fields you need (`{ day: 'numeric' }`), or use `Intl.DateTimeFormat`'s
+`formatToParts` when several parts are wanted from one call. Where both a long
+and a short form are needed, carry both: `WeekBar` has `week` for the hover and
+`axis` for the tick, each formatted separately. The same rule holds for a
+number — never parse back a string `Intl.NumberFormat` produced — and for a
+duration or pace, which is why `paceMinutesSeconds` takes seconds rather than a
+formatted string.
 
 ## Mobile component themes — style in `AppTheme`, not at the call site
 

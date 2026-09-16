@@ -796,7 +796,11 @@ img {
 	z-index: 9999;
 	padding: var(--space-sm) var(--space-md);
 	background: var(--color-primary);
-	color: #fff;
+	/* NOT a frozen white: --color-primary flips to a light coral in dark,
+	   where white reads 2.081:1. On the token it is 9.120 dark / 7.073 light.
+	   This is the same defect § 506 minted --color-on-primary for, on the one
+	   control a keyboard user reaches before anything else. */
+	color: var(--color-on-primary);
 	text-decoration: none;
 	/* Pinned to the inline-start corner, so the one rounded corner is the
 	   block-end/inline-end one. The physical `0 0 X 0` shorthand kept it

@@ -429,15 +429,32 @@ test('the global-colour-fallback scan spares a per-instance default', () => {
 // with a fill that flips to a light coral in dark, so the app's primary button
 // drew 2.081:1 label text in one of two themes (9.120:1 on the token).
 test('app.css pairs a --color-primary fill with --color-on-primary, not a literal', () => {
+	// Derived, not a named selector. This checked `.btn-primary` alone and
+	// therefore could not see `.skip-link`, which had the identical defect --
+	// `background: var(--color-primary); color: #fff` -- and so shipped
+	// 2.081:1 in dark on the one control a keyboard user reaches before
+	// anything else. A list of one rots exactly like a list of four.
 	const css = readFileSync(join(SRC_ROOT, 'app.css'), 'utf-8');
-	const rule = css.match(/\.btn-primary\s*\{[^}]*\}/);
-	assert.ok(rule, 'app.css is missing the .btn-primary rule');
-	assert.match(
-		rule![0],
-		/color:\s*var\(--color-on-primary\)/,
-		'.btn-primary fills with --color-primary, which is a dark teal in light and a ' +
-			'light coral in dark; its label must take --color-on-primary rather than a ' +
-			`frozen white. Rule was:\n${rule![0]}`,
+	const rules = [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)].filter(([, , body]) =>
+		/(?:background|background-color)\s*:\s*var\(--color-primary\)\s*;/.test(body),
+	);
+	assert.ok(rules.length >= 2, `expected the primary-filled rules, found ${rules.length}`);
+
+	const offenders: string[] = [];
+	for (const [, selector, body] of rules) {
+		// A rule that sets no colour inherits one, which is a different
+		// question; this is about a frozen ink declared ON a flipping fill.
+		if (!/(?<!-)color\s*:/.test(body)) continue;
+		if (!/(?<!-)color:\s*var\(--color-on-primary\)/.test(body)) {
+			offenders.push(selector.trim().split('\n').pop()!.trim());
+		}
+	}
+	assert.deepEqual(
+		offenders,
+		[],
+		'--color-primary is a dark teal in light and a light coral in dark, so an ink ' +
+			'declared on it must be --color-on-primary rather than a frozen value ' +
+			`(white reads 2.081:1 on the coral). Offending rules:\n  ${offenders.join('\n  ')}`,
 	);
 });
 

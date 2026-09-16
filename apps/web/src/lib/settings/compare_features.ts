@@ -36,7 +36,7 @@ export const COMPARE_SECTIONS: CompareSection[] = [
 				ours: 'yes',
 				stravaFree: 'yes',
 				stravaPro: 'yes',
-				note: 'Server-side clipping via SECURITY DEFINER RPC so zones never leave the database.',
+				note: 'Your chosen zones are cut out on our servers, so the hidden part of the track is never sent to anyone.',
 			},
 			{
 				name: 'Live spectator tracking',
@@ -61,7 +61,7 @@ export const COMPARE_SECTIONS: CompareSection[] = [
 				ours: 'yes',
 				stravaFree: 'no',
 				stravaPro: 'yes',
-				note: 'NRC-style pace-coloured polyline with age-band fade.',
+				note: 'The line on the map is coloured by how fast you were running at each point.',
 			},
 			{
 				name: 'Best-effort detection (1k / 5k / 10k / HM / FM in a single run)',

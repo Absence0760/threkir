@@ -108,6 +108,30 @@ test.describe('/dashboard layout', () => {
 		const count = await bars.count();
 		test.skip(count === 0, 'no run in the mileage window on the day the seed was reset');
 
+		// Containment in the card alone only failed where the font's digits ran
+		// wide enough to cross the card's padding, so it passed on one machine
+		// and failed on CI. The cause is font-independent: a flex column that
+		// floors at its label's min-content. Equal columns say the track is
+		// sized by the chart, and the labels still shown must not touch, since
+		// shrinking the columns is what lets them run together.
+		const axis = await page.locator('.chart').evaluate((chart) => {
+			const cols = [...chart.querySelectorAll('.bar-col')].map((c) => c.getBoundingClientRect().width);
+			const labels = [...chart.querySelectorAll('.bar-label')];
+			const shown = labels
+				.filter((l) => getComputedStyle(l).visibility !== 'hidden')
+				.map((l) => l.getBoundingClientRect());
+			return {
+				colSpread: Math.max(...cols) - Math.min(...cols),
+				gaps: shown.slice(1).map((r, i) => r.left - shown[i].right),
+				latestShown: getComputedStyle(labels[labels.length - 1]).visibility !== 'hidden'
+			};
+		});
+		expect(axis.colSpread, 'every column takes an equal share, whatever its label').toBeLessThan(0.5);
+		for (const gap of axis.gaps) {
+			expect(gap, 'the axis labels still shown must not run together').toBeGreaterThanOrEqual(2);
+		}
+		expect(axis.latestShown, 'the current period keeps its label').toBe(true);
+
 		const card = page.locator('section.card-elevated', { has: page.locator('.chart') });
 		const readout = page.getByTestId('mileage-readout');
 

@@ -977,6 +977,23 @@
 	let maxBar = $derived(
 		mileageData.length > 0 ? Math.max(...mileageData.map((w) => w.distance_m)) : 1
 	);
+
+	// Once a column may be narrower than its label, a narrow chart sets the
+	// labels edge to edge and "13 20 27" reads as "132027". Which labels fit
+	// depends on the rendered width of THIS chart, this locale's labels and
+	// this device's font, and the monthly and yearly views have no fixed
+	// bucket count — so it is measured rather than broken at a width. Every
+	// Nth label is kept, counted back from the latest bucket so the current
+	// period is always the one named.
+	const AXIS_LABEL_GAP_PX = 6;
+	let chartWidth = $state(0);
+	let axisLabelWidths = $state<number[]>([]);
+	let axisLabelStep = $derived.by(() => {
+		const count = mileageData.length;
+		if (count === 0 || chartWidth === 0) return 1;
+		const widest = Math.max(0, ...axisLabelWidths.slice(0, count));
+		return Math.max(1, Math.ceil((widest + AXIS_LABEL_GAP_PX) / (chartWidth / count)));
+	});
 </script>
 
 <svelte:head>
@@ -1646,6 +1663,7 @@
 					<div
 						class="chart"
 						role="list"
+						bind:clientWidth={chartWidth}
 						onpointerleave={(e) => {
 							// A touch lifts before it leaves, so clearing on a touch
 							// pointerleave would wipe the reading the tap just made.
@@ -1671,7 +1689,11 @@
 									class="bar"
 									style="height: {(week.distance_m / maxBar) * 100}%"
 								></div>
-								<span class="bar-label">{week.axis}</span>
+								<span
+									class="bar-label"
+									class:thinned={(mileageData.length - 1 - i) % axisLabelStep !== 0}
+									bind:offsetWidth={axisLabelWidths[i]}>{week.axis}</span
+								>
 							</div>
 						{/each}
 					</div>
@@ -3404,15 +3426,21 @@
 		color: var(--color-text-secondary);
 	}
 
+	/* Twelve weekly columns have to fit a phone-width card, so neither the
+	   gap nor a column's axis label may set the chart's minimum width. A
+	   flex item floors at its min-content by default, which made each
+	   column exactly as wide as its label and pushed the row past the card
+	   on any font whose digits run wider. */
 	.chart {
 		display: flex;
 		align-items: flex-end;
-		gap: var(--space-sm);
+		gap: min(var(--space-sm), 2%);
 		height: 12rem;
 		padding-top: var(--space-md);
 	}
 	.bar-col {
 		flex: 1;
+		min-width: 0;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -3466,6 +3494,13 @@
 		font-size: 0.65rem;
 		color: var(--color-text-tertiary);
 		margin-top: var(--space-xs);
+		white-space: nowrap;
+	}
+	/* Hidden rather than removed, so the label keeps being measured and a
+	   wider chart can bring it back. The column's aria-label names the
+	   bucket either way. */
+	.bar-label.thinned {
+		visibility: hidden;
 	}
 
 	.two-col {

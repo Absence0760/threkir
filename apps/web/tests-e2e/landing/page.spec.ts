@@ -225,4 +225,44 @@ test.describe('/ (landing)', () => {
 		await expect(page.locator('section.closing-cta')).toBeVisible();
 		await expect(page.locator('.pre-reveal')).toHaveCount(0);
 	});
+
+	test('a runner travels the route in the product shot', async ({ page }) => {
+		await page.goto('/');
+		// One per frame — the browser trace and the phone's. The marker is
+		// appended by the parent, so TrackPreview stays a plain renderer.
+		await expect(page.locator('figure.shot .pacer')).toHaveCount(2);
+		const distance = () =>
+			page
+				.locator('figure.shot .pacer')
+				.first()
+				.evaluate((el) => getComputedStyle(el).offsetDistance);
+		const first = await distance();
+		await page.waitForTimeout(900);
+		expect(await distance(), 'the marker is not moving').not.toBe(first);
+	});
+
+	test('reduced motion leaves the shot finished and still', async ({ page }) => {
+		// Every animated element's resting state is its FINISHED state, so
+		// suppressing motion must leave a complete shot rather than an empty
+		// frame — no marker, no half-drawn route, no collapsed bars.
+		await page.emulateMedia({ reducedMotion: 'reduce' });
+		await page.goto('/');
+		await expect(page.locator('figure.shot')).toBeVisible();
+		await expect(page.locator('figure.shot .pacer')).toHaveCount(0);
+		const dashed = await page
+			.locator('figure.shot svg.track-preview path')
+			.evaluateAll((els) =>
+				els.filter((el) => {
+					const s = getComputedStyle(el);
+					return s.strokeDashoffset !== '0px' && s.strokeDashoffset !== 'none';
+				}).length
+			);
+		expect(dashed, 'a route path is left partly undrawn').toBe(0);
+		const bars = page.locator('figure.shot .bar');
+		expect(await bars.count()).toBeGreaterThan(0);
+		const collapsed = await bars.evaluateAll(
+			(els) => els.filter((el) => el.getBoundingClientRect().height < 1).length
+		);
+		expect(collapsed, 'a split bar is left collapsed').toBe(0);
+	});
 });

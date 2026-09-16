@@ -466,7 +466,7 @@ test('RouteBuilder.svelte: exposes a flyTo export that recentres the map', () =>
 	const src = read('src/lib/components/RouteBuilder.svelte');
 	assert.match(
 		src,
-		/export function flyTo\(\s*lngLat[^)]*\)\s*\{[\s\S]*?recentreMap\(/,
+		/export function flyTo\(\s*lngLat[^)]*\)(?::\s*\w+)?\s*\{[\s\S]*?recentreMap\(/,
 		'RouteBuilder must export flyTo() that recentres the map — the page ' +
 			'uses it to recentre on a located / typed Generate start/end so ' +
 			'the click has visible feedback.',
@@ -487,7 +487,7 @@ test('RouteBuilder.svelte: recentre jumps instead of animating until the map is 
 	// must route through recentreMap so none of them can re-introduce a raw
 	// pre-load flyTo.
 	const src = read('src/lib/components/RouteBuilder.svelte');
-	const fn = src.match(/function recentreMap\([^)]*\)\s*\{[\s\S]*?\n\t\}/);
+	const fn = src.match(/function recentreMap\([^)]*\)(?::\s*\w+)?\s*\{[\s\S]*?\n\t\}/);
 	assert.ok(fn, 'recentreMap() must exist');
 	assert.match(fn![0], /map\.loaded\(\)/, 'recentreMap must gate on map.loaded()');
 	assert.match(

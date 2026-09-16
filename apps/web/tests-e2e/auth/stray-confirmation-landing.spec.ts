@@ -19,12 +19,44 @@ import { expect, test } from '@playwright/test';
 test.describe('Stray signup-confirmation landing', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
-	test('a PKCE code on the app root is routed to /auth/callback', async ({ page }) => {
+	test('a PKCE code on the app root is routed to /auth/callback, which then scrubs it', async ({
+		page,
+	}) => {
+		// The callback drops the one-time credential from the address bar
+		// the moment it has been spent, so the URL at rest cannot show that
+		// the hop carried the code across. Record every address the history
+		// API is handed instead — asserting only the resting URL would pass
+		// on a regression that hopped to /auth/callback with nothing to
+		// redeem.
+		await page.addInitScript(() => {
+			const seen: string[] = [];
+			(window as unknown as { __historyUrls: string[] }).__historyUrls = seen;
+			for (const name of ['pushState', 'replaceState'] as const) {
+				const original = history[name].bind(history);
+				history[name] = (...args: Parameters<History['pushState']>) => {
+					const result = original(...args);
+					seen.push(location.href);
+					return result;
+				};
+			}
+		});
+
 		await page.goto('/?code=e2e-stray-confirmation-code');
 
-		await expect(page).toHaveURL(/\/auth\/callback\?code=e2e-stray-confirmation-code/, {
-			timeout: 10_000,
-		});
+		await expect
+			.poll(
+				() =>
+					page.evaluate(() =>
+						(window as unknown as { __historyUrls: string[] }).__historyUrls.some((url) =>
+							url.includes('/auth/callback?code=e2e-stray-confirmation-code'),
+						),
+					),
+				{ timeout: 10_000 },
+			)
+			.toBe(true);
+		// Spent, and gone from the address bar: a reload cannot retry it and
+		// no outbound referrer can carry it.
+		await expect(page).toHaveURL(/\/auth\/callback$/);
 		// The callback owns the exchange; a bogus code fails it and shows
 		// the recovery affordance rather than silently seating a session.
 		await expect(page.getByRole('link', { name: /back to (sign in|login)/i })).toBeVisible();

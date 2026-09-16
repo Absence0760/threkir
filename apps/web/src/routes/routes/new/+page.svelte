@@ -529,7 +529,14 @@
 				// only updated the sidebar label + painted a marker that
 				// could be off-screen, so on the default world view the
 				// button looked dead — the reported "does nothing".
-				builder?.flyTo(point);
+				//
+				// Before the tile-provider consent gate is taken there is no
+				// map to pan at all, and the sidebar label is the only thing
+				// that moves — which reads as a dead button a second time.
+				// Say so instead of letting the recentre vanish.
+				if (builder?.flyTo(point) === false) {
+					showToast(m('routeNew.loadMapToSeeLocation'), 'info');
+				}
 			},
 			(err) => {
 				// Don't fail silently — the old empty callback left the button
@@ -1856,15 +1863,23 @@
 	 * button variants — the buttons themselves use `.btn` / `.btn-ghost`
 	 * / `.btn-primary` etc. from app.css (per conventions § Web buttons).
 	 */
+	/* Wraps because the row grew a fourth button (Add point) while the
+	 * pane's default width stayed at 0.28 of the split. `flex: 1` alone
+	 * does not save it: a flex item's `min-width` is `auto`, so each
+	 * button floors at its icon+label min-content width and the row
+	 * overflows instead of shrinking — at the default split that hid
+	 * Clear completely and made the panel scroll sideways. */
 	.toolbar-group {
 		display: flex;
+		flex-wrap: wrap;
 		gap: var(--space-2xs);
 		padding: var(--space-2xs);
 		background: var(--color-bg-secondary);
 		border-radius: var(--radius-md);
 	}
 	.toolbar-group .btn {
-		flex: 1;
+		flex: 1 1 auto;
+		min-width: 0;
 		justify-content: center;
 		padding: var(--space-xs) var(--space-sm);
 	}
@@ -1981,10 +1996,17 @@
 
 	.primary-actions {
 		display: flex;
+		flex-wrap: wrap;
 		gap: var(--space-sm);
 	}
+	/* Save grows into whatever the row has left; when the three no
+	 * longer fit, GPX + KML wrap under it rather than hanging off the
+	 * panel's edge. */
 	.primary-actions .btn:first-child {
-		flex: 1;
+		flex: 1 1 auto;
+	}
+	.primary-actions .btn {
+		min-width: 0;
 	}
 
 	/*

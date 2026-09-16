@@ -24,7 +24,7 @@ A reference for every external data source the app connects to, how each integra
 
 ## Which integrations a deployment offers
 
-Every integration surface renders through one gate, so a deployment offers only what it can actually honour. The rules are the `integration_visibility` parity pair (`apps/web/src/lib/integrations/integration_visibility.ts` ↔ `apps/mobile_android/lib/integration_visibility.dart`); the catalogue that feeds them is web's `integrations/availability.ts` and mobile's `_connectSpecs` + `raceImportProviders`. Rationale in [decisions.md § 1617](../architecture/decisions.md).
+Every integration surface renders through one gate, so a deployment offers only what it can actually honour. The rules are the `integration_visibility` parity pair (`apps/web/src/lib/integrations/integration_visibility.ts` ↔ `apps/mobile_android/lib/integration_visibility.dart`); the catalogue that feeds them is web's `integrations/availability.ts` and mobile's `_connectSpecs` + `raceImportProviders`. Rationale in [decisions.md § 1621](../architecture/decisions.md).
 
 A provider declares **how** its availability is decided, and the kind is a fact about the provider rather than about one deployment:
 
@@ -45,7 +45,7 @@ Two rules sit on top:
 
 `parkrun-import` accepts `{probe: true}` for this — parkrun has no credential, so the question is whether the function is deployed at all. It is authenticated, answered before the outbound scrape, and charged to its own `parkrun-import:probe` bucket (60/240 per hour) rather than the 4/hour import bucket, so opening Settings cannot consume a runner's import allowance.
 
-**Every card and tile also carries an `(i)`** explaining what the provider is and how to use it — `InfoTip.svelte` on web, `widgets/info_tip.dart` on mobile ([decisions.md § 1618](../architecture/decisions.md)). The copy is per-platform where the instruction differs: web's parkrun tip sends the runner to Settings → Account, where that import lives on web; mobile's says to tap the tile.
+**Every card and tile also carries an `(i)`** explaining what the provider is and how to use it — `InfoTip.svelte` on web, `widgets/info_tip.dart` on mobile ([decisions.md § 1622](../architecture/decisions.md)). The copy is per-platform where the instruction differs: web's parkrun tip sends the runner to Settings → Account, where that import lives on web; mobile's says to tap the tile.
 
 **Adding a provider** means adding a catalogue entry with its gate, a `*Info` string in all seven locales on each platform it ships to, and — for a `probe` gate — the probe itself. A provider with no gate is not a thing the catalogue can express.
 

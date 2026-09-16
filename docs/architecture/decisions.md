@@ -29049,7 +29049,50 @@ The plan hero and the upcoming-event card render **above** the gate rather than 
 The regression test pins **both** directions, which is the non-obvious half: a regression that never shows the card merely restores the old empty grid, but one that never stops showing it hides the dashboard from every real account, and only the second is a catastrophe. `dashboard/page.spec.ts` had to change too — it asserted that a runless account sees the Mileage card's empty-state hint, which is precisely the behaviour being removed. That assertion is retired rather than relaxed, and the test now pins what its own comment always claimed to be about: no derived-metric jargon reaches a Day-One runner. `dash.mileageEmpty` stays live for an account that has runs but none inside the chart window.
 
 Web only for now; `dashboard_screen.dart` still composes its stack for a runless account (§ 24).
-## 1617. A deployment offers the integrations it can honour, and nothing else — one gate, fail-closed, with the connected row always kept
+
+## 1617. The actionlint install retries its fetch, and that is not the retry this repo forbids
+
+`workflow-lint` installed actionlint with a bare `go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12`. On 2026-09-16 that fetch died mid-stream — `go.yaml.in/yaml/v4@v4.0.0-rc.3: read "https://proxy.golang.org/…": stream error; INTERNAL_ERROR` — and took the job red on a PR whose diff touched no workflow file at all. Nothing had been linted yet; the verdict was about the Go module proxy's TCP connection.
+
+The step now wraps the `go install` in the same three-attempt loop with backoff that the Deno cache warm above it has carried since § 775, down to the `::warning::` per attempt and the `::error::` that names the fetch rather than the workflows.
+
+Which cuts against the house rule that a retry must never be reached for in place of a root-cause fix — so the distinction is worth stating once. That rule is about a retry that hides a defect in the code under test: a flaky assertion, a race the test keeps losing, a timeout raised until a slow path fits under it. Here the code under test has not run. The failure is entirely in fetching a third-party binary over someone else's network, where a transient stream error is the expected failure mode and a persistent one is still a verdict — three attempts fail the job exactly as one did. The rule to apply to a retry is whose failure it absorbs, not whether it is a retry.
+
+## 1618. An auth email carries a `token_hash`, not a PKCE code — the reader is never the browser that started the flow
+
+A GoTrue `/auth/v1/verify?token=…` link confirms the token server-side and then hands the session back to the landing page as a PKCE `?code=`. Only the browser that STARTED the flow can exchange that code: it alone holds the code verifier, in its own storage. Mail is not read there. It is read in the iOS Mail in-app browser, in webmail in a second browser, on the other device — so `/auth/callback` answered a real sign-up confirmation with "PKCE code verifier not found in storage", *after* GoTrue had already marked the address confirmed. The account existed and worked; the link that created it looked broken. The same held for password recovery, where the dead end is worse: the landing page's only other branch is "this reset link is invalid or has expired", which is a lie about a token that was just spent.
+
+The link now points straight at the web landing carrying `token_hash` + `type`, and the page redeems it with `verifyOtp`. That mints the session from the hash alone — no verifier, no originating browser — so it works wherever the mail was opened. `/auth/callback` keeps the `exchangeCodeForSession` branch for OAuth, where the flow genuinely does begin and end in one browser, and `/auth/reset` redeems its own hash before the session check it already had.
+
+A non-http(s) `redirect_to` keeps the verify hop, and that is not a leftover: the mobile deep link `com.threkir.app://login-callback` returns into the app that started the flow and still holds its verifier, and `supabase_flutter` completes the session from the `?code=` shape only. So the rule is the scheme, not the platform — `buildActionUrl` reads it off `redirect_to`, and a missing `redirect_to` falls back to the hop as well.
+
+Two consequences worth stating. The hash is a one-time credential in a query string, so both landings replace it away before anything can read it as a referrer or a reload can retry a spent token — through `replaceState` from `$app/navigation` rather than the history API directly, because a bare `history.replaceState` leaves SvelteKit's router believing it is still on the URL that carried the token, and the callback navigates onward from exactly that state. And `strayConfirmationTarget` now counts a `token_hash` alongside a `code`: a hosted project whose Redirect-URLs allow-list drops our landing sends the confirmation to the Site URL instead, and the Art 8 consent gate must still run there (§ 363's reason, one shape wider).
+
+The regression test is the shape of the bug rather than of the fix: `reset.spec.ts` opens the emailed link in a separate Playwright **context**, not another tab, because a second tab shares the storage that made the old link work in CI while it failed for every real person.
+
+## 1619. A routing outage degrades the route builder; it does not disable Save
+
+`/routes/new` snaps each waypoint pair through `/api/routes/osrm/*`, and `recalculateRoute` already builds every segment as a straight line first, upgrading the ones OSRM answers for. When *some* segments failed, that fallback carried the route and the user got an amber warning naming the pins to nudge. When *all* of them failed, the same function threw, the catch cleared `routeCoordinates`, and the parent's `routed` flag — the sole gate on Save, GPX and KML — went false with no way back short of reloading the page.
+
+That is the wrong shape for the failure it was handling, because a total failure is overwhelmingly an *engine* problem, not a *geography* problem: prod ran with `OSRM_URL` unset, so the proxy answered 501 on every segment and no route drawn on the site could be saved at all. Partial failure means the user clicked somewhere unroutable; total failure means the service is gone. The first is worth blocking on, the second is worth working around — and the work-around was already sitting in `perSegment`, fully built.
+
+[§ 242](#242-route-builder-osrm-calls-go-through-a-server-side-proxy-on-web-mobile-keeps-calling-the-self-hosted-engine-directly) had described this exact behaviour as already true ("unset `OSRM_URL` → 501, builder degrades to straight-line segments"), and `infra/envs/prod/variables.tf` repeats the claim in the `osrm_url` description. Both were aspirational. The code now matches them: total failure keeps the straight-line polyline, emits `routeBuilder.routingUnavailableStraightLines` at `warning` severity, and leaves the route saveable and exportable as drawn.
+
+`generateLoop` is the one caller that still needs the hard failure, and it opts in through a new `requireSnappedSegments` flag rather than inheriting it. Its waypoints are invisible scaffolding seeds chosen to hit a target distance — a "generated loop" whose every segment is a straight line between them is not a route anybody asked for, and letting it through would hand the user a triangle and call it a 10k. The flag is separate from `suppressSoftWarnings` even though generateLoop is currently the only caller of both, because they answer different questions ("who narrates the failure" vs "is this failure fatal") and the next caller may want one without the other.
+
+The e2e test that pinned the old behaviour is retired, not relaxed: `builder.spec.ts`'s "OSRM total failure → Save button stays disabled" asserted precisely the bug, down to the red-not-amber banner class. It now pins the degraded path, including GPX and KML, which share the gate and so shared the outage.
+
+## 1620. A labelled button row in a resizable pane has to be told it may wrap
+
+The route builder's sidebar is a `SplitPane` pane the user can drag down to 280px, and two of its rows are flex rows of icon-plus-label buttons: the waypoint toolbar and the primary actions. Both were `display: flex` with no `flex-wrap`, and the toolbar's buttons carried `flex: 1` — which reads as "these will shrink to fit" and does not, because a flex item's `min-width` is `auto`, so each button floors at its own icon+label min-content width and the row overflows instead.
+
+Nothing enforced the fit, so it decayed by addition. `aa28baf65` added a fourth button (Add point) to a three-button row; at the pane's default `initialFraction={0.28}` the row then needed 379px inside a 242px content box, and the primary actions needed 294px. Clear rendered entirely outside the pane and the panel became horizontally scrollable — which is how a user ends up looking at a sidebar whose left edge reads "OFILE" and reporting that the page "regressed badly". The container queries added by `e9ec3f24a` shrink the surface and map-style toggles below 360px and never covered either of these rows.
+
+Both rows now wrap, and the buttons carry `min-width: 0` so they may also shrink before they do. Wrapping is preferred to dropping the labels at narrow widths: an icon-only Undo and an icon-only Out-and-back are not distinguishable to someone who has not already learned them, and the pane has vertical room to spare.
+
+The guard is measured, not asserted: `tests-e2e/routes/builder-panel-fit.spec.ts` compares `scrollWidth` to `clientWidth` for each row at the default split and again at the 280px minimum, and checks each toolbar button's right edge against the pane's. A `toBeVisible()` assertion cannot catch this — Playwright reports a button that has been clipped entirely outside its scroll container as visible, which is why 46 existing builder tests passed against a panel with a button missing from it.
+
+## 1621. A deployment offers the integrations it can honour, and nothing else — one gate, fail-closed, with the connected row always kept
 
 `/settings/integrations` built its provider list from a hardcoded array and rendered an identical, enabled **Connect** button for every entry. Four providers, four different truths behind that one button:
 
@@ -29076,7 +29119,7 @@ parkrun gained a reachability probe of its own (`parkrun-import`, `{probe: true}
 
 **This amends [§ 488](#488-planning-gets-a-destination-a-labelled-in-body-peer-strip-on-the-run-and-gym-surfaces-not-a-sixth-nav-slot).** That entry kept every race tile tappable whatever its probe said, on the reasoning that the tile is a secondary deep link into the race calendar and the calendar's search never needed a provider key. The reasoning holds for the *calendar*; it does not hold for the *tile*, which advertises that provider's import by name. The calendar has its own entry point (mobile's fitness hub, web's `/races` nav), so the deep link survives the tile's removal. The explainer a runner actually needs — "this provider's import isn't available" — stays on the race whose result they are trying to import, where `RACE_IMPORT_LEGS[*].unavailableKey` already puts it and where it names the right provider.
 
-## 1618. The (i) is a disclosure, not a tooltip, and its accessible name is the subject
+## 1622. The (i) is a disclosure, not a tooltip, and its accessible name is the subject
 
 A new runner does not know what parkrun is, what an athlete number is for, or which timing company ran their race. Every integration card and tile now carries an `InfoTip` — a button that opens what the feature *is* and *how to use it*.
 

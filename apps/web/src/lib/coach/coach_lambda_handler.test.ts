@@ -53,10 +53,19 @@ const responseStream = {
 	},
 };
 
+// Every env var the wrapper reads is pinned here, INCLUDING the ones this
+// file only ever wants absent. `local_testing_stubs.md` has developers export
+// OPENAI_BASE_URL + OPENAI_API_KEY to point the coach at a local Ollama, so a
+// case that means "openai with no base URL" silently became "openai with the
+// developer's base URL" on their machine and passed the gate it exists to
+// prove. Clearing COACH_PROVIDER alone left the file green on clean CI and red
+// on exactly the machines the stub doc tells people to set up.
 process.env.PUBLIC_SUPABASE_URL = 'http://supabase.invalid';
 process.env.PUBLIC_SUPABASE_ANON_KEY = 'anon';
 process.env.ANTHROPIC_API_KEY = 'sk-test-not-used';
 delete process.env.COACH_PROVIDER;
+delete process.env.OPENAI_BASE_URL;
+delete process.env.OPENAI_API_KEY;
 
 const { handler } = (await import('../../../lambda/coach/src/index.js')) as {
 	handler: (event: unknown, stream: unknown, context: unknown) => Promise<void>;

@@ -58,7 +58,7 @@
 	{@html `<script type="application/ld+json">${jsonLd}</script>`}
 </svelte:head>
 
-<LearnPage banner>
+<LearnPage>
 	<div class="learn-band">
 		<section class="hero learn-column">
 		<LearnBreadcrumb crumbs={[{ href: '/', label: m('learn.breadcrumbHome') }]} />

@@ -5,20 +5,11 @@
 
 	// `prose` narrows the column to a reading measure for a guide body;
 	// `wide` is the card-grid width the hub and category pages share.
-	// `banner` puts the brand ramp behind the page's top band and flips the
-	// header to its transparent overlay variant — the same chrome the landing
-	// page wears. Without it, clicking Learn went from a magenta hero under a
-	// transparent bar to a WHITE header bar over a cream body, which is the
-	// jump that made Learn read as another site.
-	let {
-		width = 'wide',
-		banner = false,
-		children,
-	}: { width?: 'wide' | 'prose'; banner?: boolean; children: Snippet } = $props();
+	let { width = 'wide', children }: { width?: 'wide' | 'prose'; children: Snippet } = $props();
 </script>
 
 <div class="learn-page" class:prose={width === 'prose'}>
-	<PublicHeader overlay={banner} />
+	<PublicHeader />
 	{@render children()}
 	<PublicFooter />
 </div>
@@ -26,6 +17,9 @@
 <style>
 	.learn-page {
 		--learn-col: 64rem;
+		/* 64rem fits three 17rem cards and leaves ~200px of margin either side
+		   on a 1440px screen. 76rem fits four and uses it. The prose measure
+		   below is untouched — a reading column does not want the width. */
 		min-height: 100vh;
 		background: var(--color-bg);
 		display: flex;
@@ -34,6 +28,15 @@
 
 	.learn-page.prose {
 		--learn-col: 44rem;
+	}
+
+	@media (min-width: 90rem) {
+		.learn-page {
+			--learn-col: 76rem;
+		}
+		.learn-page.prose {
+			--learn-col: 44rem;
+		}
 	}
 
 	/* One definition of the column every band on a learn page sits in.

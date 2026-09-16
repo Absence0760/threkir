@@ -87,7 +87,7 @@
 	{@html `<script type="application/ld+json">${jsonLd}</script>`}
 </svelte:head>
 
-<LearnPage width="prose" banner>
+<LearnPage width="prose">
 	<!-- Wraps rather than replaces the <article>: a guide is genuinely an
 	     article (its JSON-LD says so), and .learn-article centres itself inside
 	     whatever full-width flex child holds it, so the wrapper costs no layout. -->

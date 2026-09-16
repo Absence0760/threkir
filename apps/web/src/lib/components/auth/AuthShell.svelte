@@ -22,10 +22,14 @@
 	let {
 		children,
 		panel,
+		wide = false,
 	}: {
 		children: Snippet;
 		/// The panel's copy. Omitted, the panel is brand-only: logo and art.
 		panel?: Snippet;
+		/// A wider card, for a page whose choices sit in a grid (onboarding)
+		/// rather than one column of fields.
+		wide?: boolean;
 	} = $props();
 </script>
 
@@ -74,7 +78,7 @@
 		</div>
 	</aside>
 
-	<div class="auth-side">
+	<div class="auth-side" class:auth-side--wide={wide}>
 		{@render children()}
 	</div>
 </div>
@@ -225,6 +229,10 @@
 		.panel-card {
 			animation: card-float-in 1100ms var(--ease-out) 700ms backwards;
 		}
+	}
+
+	.auth-side--wide :global(.auth-card) {
+		max-width: 34rem;
 	}
 
 	@keyframes card-rise {

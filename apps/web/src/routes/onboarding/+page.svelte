@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { TEXT_LIMITS } from '$lib/core/text_limits';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
+	import AuthShell from '$lib/components/auth/AuthShell.svelte';
 	import { browser } from '$app/environment';
 	import { m } from '$lib/i18n/store.svelte';
 	import { defaultUnitForLocale } from '$lib/format/locale_defaults';
@@ -126,13 +127,59 @@
 		ready = true;
 	});
 
+	// Which way the last step change went, so the incoming step slides in
+	// from the side the reader is moving toward.
+	let direction = $state<1 | -1>(1);
+
 	function next() {
-		if (step < ONBOARDING_TOTAL_STEPS) step += 1;
+		if (step < ONBOARDING_TOTAL_STEPS) {
+			direction = 1;
+			step += 1;
+		}
 	}
 
 	function back() {
-		if (step > 1) step -= 1;
+		if (step > 1) {
+			direction = -1;
+			step -= 1;
+		}
 	}
+
+	// A step change replaces the whole card body, so without this, focus
+	// stays on a Continue button that now belongs to a different question
+	// and a screen reader announces nothing. Moving it to the new step's
+	// heading reads the question out. The first render is left alone.
+	let card = $state<HTMLElement | null>(null);
+	let shownStep = 1;
+	$effect(() => {
+		const current = step;
+		if (!ready || current === shownStep) return;
+		shownStep = current;
+		tick().then(() => card?.querySelector<HTMLElement>('.step-frame h1')?.focus());
+	});
+
+	// The panel's step list. Short names, keyed by step.
+	const RAIL = [
+		'onboarding.rail.name',
+		'onboarding.rail.units',
+		'onboarding.rail.goal',
+		'onboarding.rail.about',
+		'onboarding.rail.privacy',
+		'onboarding.rail.notifications',
+		'onboarding.rail.done',
+	] as const;
+
+	// One glyph per goal, all already in the icon subset.
+	const GOAL_ICON: Record<PrimaryGoal, string> = {
+		general_fitness: 'favorite',
+		weight_loss: 'local_fire_department',
+		'5k': 'directions_run',
+		'10k': 'sprint',
+		half_marathon: 'military_tech',
+		marathon: 'emoji_events',
+	};
+
+	const PRIVACY_ICON = { private: 'lock', followers: 'group', public: 'public' } as const;
 
 	function skipStep() {
 		// Per-step skip — keeps the wizard moving without forcing the
@@ -335,29 +382,54 @@
 	<title>{m('onboarding.pageTitle')}</title>
 </svelte:head>
 
-<div class="onboarding-shell">
-	<header class="head">
-		<div class="brand">Threkir</div>
-		<button type="button" class="skip-all" onclick={skipOnboarding} disabled={saving}>
-			{m('onboarding.skipOnboarding')}
-		</button>
-	</header>
+<AuthShell wide>
+	{#snippet panel()}
+		<p class="panel-kicker">{m('onboarding.stepCount', { index: step, total: ONBOARDING_TOTAL_STEPS })}</p>
+		<h2 class="panel-title">{m('onboarding.panelTitle')}</h2>
+		<p class="panel-sub">{m('onboarding.panelSub')}</p>
+		<!-- A picture of the progressbar in the card, which is what assistive
+		     technology reads; this copy is for the eye. -->
+		<ol class="rail" aria-hidden="true">
+			{#each RAIL as key, i (key)}
+				<li class:rail-done={i + 1 < step} class:rail-now={i + 1 === step}>
+					<span class="rail-mark">
+						{#if i + 1 < step}<span class="material-symbols">check</span>{:else}{i + 1}{/if}
+					</span>
+					<span class="rail-name">{m(key)}</span>
+				</li>
+			{/each}
+		</ol>
+	{/snippet}
 
-	<div class="progress" role="progressbar" aria-valuemin="1" aria-valuemax={ONBOARDING_TOTAL_STEPS} aria-valuenow={step}>
-		{#each Array(ONBOARDING_TOTAL_STEPS) as _, i (i)}
-			<span class="dot" class:active={i + 1 === step} class:done={i + 1 < step}></span>
-		{/each}
-	</div>
+	<main class="auth-card onboarding-card" id="main-content" bind:this={card}>
+		<div class="card-top">
+			<div
+				class="progress-track"
+				role="progressbar"
+				aria-label={m('onboarding.stepCount', { index: step, total: ONBOARDING_TOTAL_STEPS })}
+				aria-valuemin="1"
+				aria-valuemax={ONBOARDING_TOTAL_STEPS}
+				aria-valuenow={step}
+			>
+				<span class="progress-fill" style="--progress: {step / ONBOARDING_TOTAL_STEPS}"></span>
+			</div>
+			<button type="button" class="skip-all" onclick={skipOnboarding} disabled={saving}>
+				{m('onboarding.skipOnboarding')}
+			</button>
+		</div>
+		<p class="step-count" aria-hidden="true">
+			{m('onboarding.stepCount', { index: step, total: ONBOARDING_TOTAL_STEPS })}
+		</p>
 
-	<main class="card" id="main-content">
+		{#key step}
+		<div class="step-frame" style="--from: {direction}">
 		{#if !ready}
 			<p class="loading-hint">{m('shell.loading')}</p>
 		{:else if step === 1}
 			<section aria-labelledby="step-1-title">
-				<h1 id="step-1-title">{m('onboarding.step1Title')}</h1>
-				<p class="hint">
-					{m('onboarding.step1Hint')}
-				</p>
+				<span class="step-icon" aria-hidden="true"><span class="material-symbols">badge</span></span>
+				<h1 id="step-1-title" tabindex="-1">{m('onboarding.step1Title')}</h1>
+				<p class="hint">{m('onboarding.step1Hint')}</p>
 				<label class="field">
 					<span class="label-text">{m('onboarding.displayNameLabel')}</span>
 					<input
@@ -370,77 +442,84 @@
 			</section>
 		{:else if step === 2}
 			<section aria-labelledby="step-2-title">
-				<h1 id="step-2-title">{m('onboarding.step2Title')}</h1>
-				<p class="hint">
-					{m('onboarding.step2Hint')}
-				</p>
-				<div class="unit-toggle" role="radiogroup">
+				<span class="step-icon" aria-hidden="true"><span class="material-symbols">straighten</span></span>
+				<h1 id="step-2-title" tabindex="-1">{m('onboarding.step2Title')}</h1>
+				<p class="hint">{m('onboarding.step2Hint')}</p>
+				<div class="unit-tiles" role="radiogroup" aria-labelledby="step-2-title">
 					<button
 						type="button"
-						class="unit-option"
+						class="choice unit-tile"
 						class:selected={preferredUnit === 'km'}
 						role="radio"
 						aria-checked={preferredUnit === 'km'}
 						onclick={() => (preferredUnit = 'km')}
 					>
-						<span class="unit-name">{m('onboarding.unitKm')}</span>
-						<span class="unit-sample">{m('onboarding.unitKmSample')}</span>
+						<span class="unit-abbr" aria-hidden="true">km</span>
+						<span class="choice-text">
+							<span class="choice-name">{m('onboarding.unitKm')}</span>
+							<span class="choice-desc unit-sample">{m('onboarding.unitKmSample')}</span>
+						</span>
+						<span class="choice-mark" aria-hidden="true"></span>
 					</button>
 					<button
 						type="button"
-						class="unit-option"
+						class="choice unit-tile"
 						class:selected={preferredUnit === 'mi'}
 						role="radio"
 						aria-checked={preferredUnit === 'mi'}
 						onclick={() => (preferredUnit = 'mi')}
 					>
-						<span class="unit-name">{m('onboarding.unitMi')}</span>
-						<span class="unit-sample">{m('onboarding.unitMiSample')}</span>
+						<span class="unit-abbr" aria-hidden="true">mi</span>
+						<span class="choice-text">
+							<span class="choice-name">{m('onboarding.unitMi')}</span>
+							<span class="choice-desc unit-sample">{m('onboarding.unitMiSample')}</span>
+						</span>
+						<span class="choice-mark" aria-hidden="true"></span>
 					</button>
 				</div>
 			</section>
 		{:else if step === 3}
 			<section aria-labelledby="step-3-title">
-				<h1 id="step-3-title">{m('onboarding.step3Title')}</h1>
-				<p class="hint">
-					{m('onboarding.step3Hint')}
-				</p>
-				<div class="goal-grid" role="radiogroup">
-					{#each PRIMARY_GOAL_VALUES as v}
+				<span class="step-icon" aria-hidden="true"><span class="material-symbols">flag</span></span>
+				<h1 id="step-3-title" tabindex="-1">{m('onboarding.step3Title')}</h1>
+				<p class="hint">{m('onboarding.step3Hint')}</p>
+				<div class="goal-grid" role="radiogroup" aria-labelledby="step-3-title">
+					{#each PRIMARY_GOAL_VALUES as v (v)}
 						<button
 							type="button"
-							class="goal-option"
+							class="choice goal-tile"
 							class:selected={primaryGoal === v}
 							role="radio"
 							aria-checked={primaryGoal === v}
 							onclick={() => (primaryGoal = v)}
 						>
-							{m(`onboarding.goal.${v}`)}
+							<span class="goal-glyph" aria-hidden="true"><span class="material-symbols">{GOAL_ICON[v]}</span></span>
+							<span class="choice-name">{m(`onboarding.goal.${v}`)}</span>
+							<span class="choice-mark" aria-hidden="true"></span>
 						</button>
 					{/each}
 				</div>
 			</section>
 		{:else if step === 4}
 			<section aria-labelledby="step-4-title">
-				<h1 id="step-4-title">{m('onboarding.step4Title')}</h1>
-				<p class="hint">
-					{m('onboarding.step4Hint')}
-				</p>
-				<label class="field">
-					<span class="label-text">{m('onboarding.genderLabel')}</span>
-					<select bind:value={gender}>
-						<option value="">{m('onboarding.genderPreferNot')}</option>
-						<option value="female">{m('onboarding.genderFemale')}</option>
-						<option value="male">{m('onboarding.genderMale')}</option>
-					</select>
-				</label>
-				<label class="field">
-					<span class="label-text">{m('onboarding.dobLabel')}</span>
-					<input type="date" bind:value={dateOfBirth} max={new Date().toISOString().slice(0, 10)} />
-					<span class="field-note">
-						{m('onboarding.dobNote')}
-					</span>
-				</label>
+				<span class="step-icon" aria-hidden="true"><span class="material-symbols">person</span></span>
+				<h1 id="step-4-title" tabindex="-1">{m('onboarding.step4Title')}</h1>
+				<p class="hint">{m('onboarding.step4Hint')}</p>
+				<div class="field-row">
+					<label class="field">
+						<span class="label-text">{m('onboarding.genderLabel')}</span>
+						<select bind:value={gender}>
+							<option value="">{m('onboarding.genderPreferNot')}</option>
+							<option value="female">{m('onboarding.genderFemale')}</option>
+							<option value="male">{m('onboarding.genderMale')}</option>
+						</select>
+					</label>
+					<label class="field">
+						<span class="label-text">{m('onboarding.dobLabel')}</span>
+						<input type="date" bind:value={dateOfBirth} max={new Date().toISOString().slice(0, 10)} />
+					</label>
+				</div>
+				<p class="field-note">{m('onboarding.dobNote')}</p>
 				<label class="field">
 					<span class="label-text">{m('onboarding.weightLabel', { unit: weightUnit })}</span>
 					<input
@@ -462,88 +541,73 @@
 				{#if gender || dateOfBirth}
 					<label class="consent-row">
 						<input type="checkbox" bind:checked={healthDataConsent} />
-						<span>
-							{m('onboarding.healthConsent')}
-						</span>
+						<span>{m('onboarding.healthConsent')}</span>
 					</label>
 				{/if}
 			</section>
 		{:else if step === 5}
 			<section aria-labelledby="step-5-title">
-				<h1 id="step-5-title">{m('onboarding.step5Title')}</h1>
-				<p class="hint">
-					{m('onboarding.step5Hint')}
-				</p>
-				<div class="privacy-list" role="radiogroup">
-					<button
-						type="button"
-						class="privacy-option"
-						class:selected={privacyDefault === 'private'}
-						role="radio"
-						aria-checked={privacyDefault === 'private'}
-						onclick={() => (privacyDefault = 'private')}
-					>
-						<strong>{m('onboarding.privacyPrivate')}</strong>
-						<span>{m('onboarding.privacyPrivateDesc')}</span>
-					</button>
-					<button
-						type="button"
-						class="privacy-option"
-						class:selected={privacyDefault === 'followers'}
-						role="radio"
-						aria-checked={privacyDefault === 'followers'}
-						onclick={() => (privacyDefault = 'followers')}
-					>
-						<strong>{m('onboarding.privacyFollowers')}</strong>
-						<span>{m('onboarding.privacyFollowersDesc')}</span>
-					</button>
-					<button
-						type="button"
-						class="privacy-option"
-						class:selected={privacyDefault === 'public'}
-						role="radio"
-						aria-checked={privacyDefault === 'public'}
-						onclick={() => (privacyDefault = 'public')}
-					>
-						<strong>{m('onboarding.privacyPublic')}</strong>
-						<span>{m('onboarding.privacyPublicDesc')}</span>
-					</button>
+				<span class="step-icon" aria-hidden="true"><span class="material-symbols">verified_user</span></span>
+				<h1 id="step-5-title" tabindex="-1">{m('onboarding.step5Title')}</h1>
+				<p class="hint">{m('onboarding.step5Hint')}</p>
+				<div class="privacy-list" role="radiogroup" aria-labelledby="step-5-title">
+					{#each [
+						{ value: 'private', name: m('onboarding.privacyPrivate'), desc: m('onboarding.privacyPrivateDesc') },
+						{ value: 'followers', name: m('onboarding.privacyFollowers'), desc: m('onboarding.privacyFollowersDesc') },
+						{ value: 'public', name: m('onboarding.privacyPublic'), desc: m('onboarding.privacyPublicDesc') },
+					] as const as option (option.value)}
+						<button
+							type="button"
+							class="choice privacy-row"
+							class:selected={privacyDefault === option.value}
+							role="radio"
+							aria-checked={privacyDefault === option.value}
+							onclick={() => (privacyDefault = option.value)}
+						>
+							<span class="goal-glyph" aria-hidden="true"><span class="material-symbols">{PRIVACY_ICON[option.value]}</span></span>
+							<span class="choice-text">
+								<strong class="choice-name">{option.name}</strong>
+								<span class="choice-desc">{option.desc}</span>
+							</span>
+							<span class="choice-mark" aria-hidden="true"></span>
+						</button>
+					{/each}
 				</div>
 			</section>
 		{:else if step === 6}
 			<section aria-labelledby="step-6-title">
-				<h1 id="step-6-title">{m('onboarding.step6Title')}</h1>
-				<p class="hint">
-					{m('onboarding.step6Hint')}
-				</p>
+				<span class="step-icon step-icon--bell" aria-hidden="true"><span class="material-symbols">notifications_active</span></span>
+				<h1 id="step-6-title" tabindex="-1">{m('onboarding.step6Title')}</h1>
+				<p class="hint">{m('onboarding.step6Hint')}</p>
 				{#if !pushSupported}
-					<p class="not-available">
-						{m('onboarding.pushUnsupported')}
-					</p>
+					<p class="not-available">{m('onboarding.pushUnsupported')}</p>
 				{:else if pushPermission() === 'denied'}
-					<p class="not-available">
-						{m('onboarding.pushBlocked')}
-					</p>
+					<p class="not-available">{m('onboarding.pushBlocked')}</p>
 				{:else if pushSubscribed}
-					<p class="success-text">{m('onboarding.pushEnabled')}</p>
+					<p class="success-text">
+						<span class="material-symbols" aria-hidden="true">check_circle</span>
+						{m('onboarding.pushEnabled')}
+					</p>
 				{:else}
 					<button
 						type="button"
-						class="btn btn-primary"
+						class="btn btn-primary push-cta"
 						onclick={handleEnablePush}
 						disabled={pushBusy}
 					>
-						<span class="material-symbols">notifications_active</span>
+						<span class="material-symbols" aria-hidden="true">notifications_active</span>
 						{pushBusy ? m('onboarding.pushEnabling') : m('onboarding.pushEnable')}
 					</button>
 				{/if}
 			</section>
 		{:else if step === 7}
-			<section aria-labelledby="step-7-title">
-				<h1 id="step-7-title">{m('onboarding.step7Title')}</h1>
-				<p class="hint">
-					{m('onboarding.step7Hint')}
-				</p>
+			<section class="finish" aria-labelledby="step-7-title">
+				<span class="done-badge" aria-hidden="true">
+					<span class="done-ring"></span>
+					<span class="material-symbols">check</span>
+				</span>
+				<h1 id="step-7-title" tabindex="-1">{m('onboarding.step7Title')}</h1>
+				<p class="hint">{m('onboarding.step7Hint')}</p>
 				{#if primaryGoal}
 					<button
 						type="button"
@@ -551,16 +615,20 @@
 						onclick={() => finishAndExit(`/plans/new?type=training&goal=${primaryGoal}`)}
 						disabled={saving}
 					>
+						<span class="material-symbols" aria-hidden="true">{GOAL_ICON[primaryGoal]}</span>
 						{saving ? m('onboarding.saving') : m('onboarding.createPlanCta')}
 					</button>
 				{/if}
 			</section>
 		{/if}
+		</div>
+		{/key}
 
 		{#if ready}
 		<div class="nav-row">
 			{#if step > 1}
-				<button type="button" class="btn btn-outline" onclick={back} disabled={saving}>
+				<button type="button" class="btn btn-outline nav-back" onclick={back} disabled={saving}>
+					<span class="material-symbols" aria-hidden="true">arrow_back</span>
 					{m('onboarding.back')}
 				</button>
 			{:else}
@@ -580,16 +648,17 @@
 				{#if step < ONBOARDING_TOTAL_STEPS}
 					<button
 						type="button"
-						class="btn btn-primary"
+						class="btn btn-primary nav-next"
 						onclick={next}
 						disabled={saving || (step === 4 && weightOutOfRange)}
 					>
 						{m('onboarding.continue')}
+						<span class="material-symbols" aria-hidden="true">arrow_forward</span>
 					</button>
 				{:else}
 					<button
 						type="button"
-						class="btn {primaryGoal ? 'btn-outline' : 'btn-primary'}"
+						class="btn nav-next {primaryGoal ? 'btn-outline' : 'btn-primary'}"
 						onclick={() => finishAndExit()}
 						disabled={saving}
 					>
@@ -600,95 +669,243 @@
 		</div>
 		{/if}
 	</main>
-</div>
+</AuthShell>
 
 <style>
-	.onboarding-shell {
-		min-height: 100vh;
+	/* Layout, the brand panel and the card chrome belong to AuthShell (the
+	   same shell as sign-up, so the journey is one design from the landing
+	   page into the app). What is here is the wizard's own furniture. */
+
+	/* --- panel copy (inks measured on AuthShell's ramp) ------------------ */
+
+	.panel-kicker {
+		margin: 0 0 var(--space-sm);
+		font-size: 0.78rem;
+		font-weight: 700;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: #FFB59C;
+	}
+
+	.panel-title {
+		margin: 0 0 var(--space-sm);
+		font-size: clamp(1.8rem, 2.6vw, 2.4rem);
+		font-weight: 800;
+		line-height: 1.1;
+		letter-spacing: -0.03em;
+		text-wrap: balance;
+	}
+
+	.panel-sub {
+		margin: 0 0 var(--space-xl);
+		max-width: 26rem;
+		font-size: 0.95rem;
+		line-height: 1.55;
+		color: rgba(255, 255, 255, 0.85);
+	}
+
+	.rail {
+		list-style: none;
+		margin: 0;
+		padding: 0;
 		display: flex;
 		flex-direction: column;
-		background: var(--color-bg);
-		padding: var(--space-lg);
+		gap: 0.35rem;
 	}
-	.head {
+
+	.rail li {
+		position: relative;
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		margin-bottom: var(--space-xl);
+		gap: var(--space-sm);
+		font-size: 0.92rem;
+		color: rgba(255, 255, 255, 0.85);
 	}
-	.brand {
-		font-size: 1.1rem;
+
+	/* The line joining each mark to the next. */
+	.rail li:not(:last-child)::after {
+		content: '';
+		position: absolute;
+		inset-inline-start: 0.8rem;
+		top: 1.75rem;
+		height: 0.35rem;
+		width: 1px;
+		background: rgba(255, 255, 255, 0.25);
+	}
+
+	.rail-mark {
+		flex-shrink: 0;
+		display: grid;
+		place-items: center;
+		width: 1.6rem;
+		height: 1.6rem;
+		border-radius: var(--radius-pill);
+		border: 1px solid rgba(255, 255, 255, 0.3);
+		font-size: 0.8rem;
 		font-weight: 700;
-		color: var(--color-primary);
+		font-variant-numeric: tabular-nums;
+		transition: background var(--transition-base), border-color var(--transition-base);
 	}
+
+	.rail-mark .material-symbols {
+		font-size: 1rem;
+	}
+
+	.rail-done .rail-mark {
+		border-color: transparent;
+		background: rgba(255, 255, 255, 0.14);
+		color: #FFB59C;
+	}
+
+	/* White disc, plum numeral: 11.18:1, and no text on a gradient. */
+	.rail-now .rail-mark {
+		border-color: transparent;
+		background: #FFFFFF;
+		color: #6E1450;
+		box-shadow: 0 0 0 0.3rem rgba(255, 255, 255, 0.14);
+	}
+
+	.rail-now .rail-name {
+		font-weight: 700;
+		color: #FFFFFF;
+	}
+
+	/* --- card ------------------------------------------------------------ */
+
+	.card-top {
+		display: flex;
+		align-items: center;
+		gap: var(--space-md);
+	}
+
+	.progress-track {
+		flex: 1;
+		height: 0.4rem;
+		border-radius: var(--radius-pill);
+		background: var(--color-bg-tertiary);
+		overflow: hidden;
+	}
+
+	.progress-fill {
+		display: block;
+		height: 100%;
+		width: calc(var(--progress) * 100%);
+		border-radius: inherit;
+		background: linear-gradient(90deg, var(--brand-ember), var(--brand-magenta));
+		transition: width 500ms cubic-bezier(0.22, 1, 0.36, 1);
+	}
+
 	.skip-all {
+		flex-shrink: 0;
 		background: none;
 		border: none;
+		padding: var(--space-2xs) 0;
 		color: var(--color-text-secondary);
 		font-size: 0.85rem;
 		cursor: pointer;
 		text-decoration: underline;
+		text-underline-offset: 0.2em;
 	}
 	.skip-all:hover { color: var(--color-text); }
 	.skip-all:disabled { opacity: 0.5; cursor: not-allowed; }
 
-	.progress {
-		display: flex;
-		gap: 0.5rem;
-		justify-content: center;
-		margin-bottom: var(--space-xl);
+	.step-count {
+		margin: var(--space-sm) 0 var(--space-lg);
+		font-size: var(--font-size-section-label);
+		font-weight: 700;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--color-text-tertiary);
 	}
-	.dot {
-		width: 0.55rem;
-		height: 0.55rem;
-		border-radius: 50%;
-		background: var(--color-bg-tertiary);
-		transition: background var(--transition-fast);
-	}
-	.dot.done { background: color-mix(in srgb, var(--color-primary) 50%, transparent); }
-	.dot.active { background: var(--color-primary); transform: scale(1.2); }
 
-	.card {
-		max-width: 36rem;
-		width: 100%;
-		margin: 0 auto;
-		background: var(--color-surface);
+	/* The panel's kicker says the same thing beside the card on a desktop;
+	   on a phone the panel is a band with no copy, so the card says it. */
+	@media (min-width: 56rem) {
+		.step-count {
+			visibility: hidden;
+			margin-bottom: var(--space-sm);
+		}
+	}
+
+	/* Each step slides in from the side the reader is moving toward. The
+	   frame is re-keyed per step, so this plays on every change; declared
+	   only for visitors who accept motion. */
+	@media (prefers-reduced-motion: no-preference) {
+		.step-frame {
+			animation: step-in 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+		}
+	}
+
+	@keyframes step-in {
+		from {
+			opacity: 0;
+			transform: translateX(calc(1.5rem * var(--from) * var(--dir-sign)));
+		}
+	}
+
+	section { display: flex; flex-direction: column; gap: var(--space-md); }
+
+	.step-icon {
+		display: grid;
+		place-items: center;
+		width: 2.75rem;
+		height: 2.75rem;
+		border-radius: 0.9rem;
+		background: var(--color-primary-light);
+		color: var(--color-primary);
+	}
+
+	.step-icon .material-symbols {
+		font-size: 1.5rem;
+	}
+
+	h1 {
+		font-size: 1.75rem;
+		font-weight: 800;
+		line-height: 1.15;
+		letter-spacing: -0.025em;
+		margin: 0;
+		text-wrap: balance;
+	}
+
+	.hint {
+		font-size: 0.95rem;
+		color: var(--color-text-secondary);
+		line-height: 1.55;
+		margin: 0 0 var(--space-sm);
+	}
+
+	.loading-hint {
+		color: var(--color-text-secondary);
+		margin: var(--space-xl) 0;
+	}
+
+	.field { display: flex; flex-direction: column; gap: 0.4rem; }
+	.field-row {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--space-md);
+	}
+	@media (min-width: 32rem) {
+		.field-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	}
+	.label-text { font-size: 0.85rem; color: var(--color-text-secondary); font-weight: 600; }
+	.field-note { font-size: 0.8rem; color: var(--color-text-secondary); line-height: 1.5; margin: calc(-1 * var(--space-xs)) 0 0; }
+	.field-error { font-size: 0.8rem; color: var(--color-danger-text); line-height: 1.45; }
+	.field input, .field select {
+		min-height: 2.9rem;
+		padding: 0.65rem 0.8rem;
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-lg);
-		padding: var(--space-2xl);
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-lg);
-	}
-	h1 {
-		font-size: 1.5rem;
-		font-weight: 700;
-		margin: 0 0 var(--space-xs);
-	}
-	.hint {
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-		margin: 0 0 var(--space-lg);
-	}
-	section { display: flex; flex-direction: column; gap: var(--space-md); }
-	.create-plan-cta { align-self: flex-start; }
-
-	.field { display: flex; flex-direction: column; gap: 0.35rem; }
-	.label-text { font-size: 0.85rem; color: var(--color-text-secondary); font-weight: 500; }
-	.field-note { font-size: 0.78rem; color: var(--color-text-tertiary); line-height: 1.45; }
-	.field-error { font-size: 0.78rem; color: var(--color-danger-text); line-height: 1.45; }
-	.field input, .field select {
-		padding: 0.6rem 0.7rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
 		background: var(--color-bg);
 		color: var(--color-text);
 		font-size: 1rem;
+		transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 	}
 	.field input:focus, .field select:focus {
 		outline: none;
 		border-color: var(--color-primary);
+		box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 18%, transparent);
 	}
 	/* Keyboard-only focus retains a visible indicator per
 	   WCAG 2.4.7 (Focus Visible) + 2.4.11 (Focus Appearance).
@@ -702,34 +919,97 @@
 		outline-offset: 2px;
 	}
 
-	.unit-toggle, .privacy-list { display: flex; flex-direction: column; gap: var(--space-sm); }
-	@media (min-width: 32rem) {
-		.unit-toggle { flex-direction: row; }
-		.unit-option { flex: 1; }
-	}
-	.unit-option, .privacy-option, .goal-option {
+	/* --- choices --------------------------------------------------------- */
+
+	/* One tile shape for every single-choice question: a whole-row target,
+	   a radio mark that fills when chosen, and a ring rather than a colour
+	   change alone, so the choice reads without relying on hue. */
+	.choice {
+		position: relative;
 		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
+		align-items: center;
+		gap: var(--space-sm);
+		width: 100%;
 		padding: var(--space-md);
-		background: var(--color-bg);
+		background: var(--color-surface);
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-lg);
 		text-align: start;
 		color: var(--color-text);
+		font: inherit;
 		font-size: 0.95rem;
 		cursor: pointer;
-		transition: border-color var(--transition-fast), background var(--transition-fast);
+		transition:
+			border-color var(--transition-fast),
+			background var(--transition-fast),
+			box-shadow var(--transition-fast),
+			transform var(--transition-fast);
 	}
-	.unit-option:hover, .privacy-option:hover, .goal-option:hover {
+
+	.choice:hover {
 		border-color: var(--color-primary);
+		transform: translateY(-1px);
 	}
-	.unit-option.selected, .privacy-option.selected, .goal-option.selected {
+
+	.choice.selected {
 		border-color: var(--color-primary);
-		background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+		background: var(--color-primary-light);
+		box-shadow: inset 0 0 0 1px var(--color-primary);
 	}
-	.unit-name { font-weight: 600; }
-	.unit-sample { font-size: 0.8rem; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+
+	.choice-text {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+	}
+
+	.choice-name { font-weight: 600; }
+	.choice-desc { font-size: 0.85rem; color: var(--color-text-secondary); line-height: 1.45; }
+
+	.choice-mark {
+		flex-shrink: 0;
+		width: 1.15rem;
+		height: 1.15rem;
+		margin-inline-start: auto;
+		border-radius: var(--radius-pill);
+		border: 2px solid var(--color-border);
+		transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+	}
+
+	.choice.selected .choice-mark {
+		border-color: var(--color-primary);
+		box-shadow: inset 0 0 0 0.2rem var(--color-surface);
+		background: var(--color-primary);
+	}
+
+	.unit-tiles, .privacy-list { display: flex; flex-direction: column; gap: var(--space-sm); }
+	@media (min-width: 32rem) {
+		.unit-tiles { flex-direction: row; }
+	}
+
+	.unit-abbr {
+		flex-shrink: 0;
+		display: grid;
+		place-items: center;
+		width: 2.75rem;
+		height: 2.75rem;
+		border-radius: 0.8rem;
+		background: var(--color-bg-tertiary);
+		font-size: 1rem;
+		font-weight: 800;
+		letter-spacing: -0.02em;
+		color: var(--color-text);
+	}
+
+	.choice.selected .unit-abbr,
+	.choice.selected .goal-glyph {
+		background: var(--color-primary);
+		color: var(--color-on-primary);
+	}
+
+	.unit-sample { font-variant-numeric: tabular-nums; }
 
 	.goal-grid {
 		display: grid;
@@ -739,52 +1019,152 @@
 	@media (min-width: 32rem) {
 		.goal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 	}
-	.goal-option { padding: 0.85rem var(--space-md); font-weight: 500; }
 
-	.privacy-option strong { font-size: 0.95rem; font-weight: 600; }
-	.privacy-option span { font-size: 0.82rem; color: var(--color-text-secondary); line-height: 1.45; }
+	.goal-glyph {
+		flex-shrink: 0;
+		display: grid;
+		place-items: center;
+		width: 2.4rem;
+		height: 2.4rem;
+		border-radius: 0.75rem;
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-secondary);
+		transition: background var(--transition-fast), color var(--transition-fast);
+	}
+
+	.goal-glyph .material-symbols {
+		font-size: 1.3rem;
+	}
 
 	.consent-row {
 		display: flex;
-		gap: 0.55rem;
+		gap: 0.6rem;
 		align-items: flex-start;
 		padding: var(--space-md);
 		background: var(--color-bg-secondary);
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		font-size: 0.82rem;
+		border-radius: var(--radius-lg);
+		font-size: 0.85rem;
 		color: var(--color-text-secondary);
 		line-height: 1.5;
+		cursor: pointer;
+	}
+	.consent-row:has(input:checked) {
+		border-color: var(--color-primary);
+		background: var(--color-primary-light);
 	}
 	.consent-row input { margin-top: 0.2rem; flex-shrink: 0; }
 
 	.not-available {
-		font-size: 0.88rem;
+		font-size: 0.9rem;
 		color: var(--color-text-secondary);
 		line-height: 1.5;
 		padding: var(--space-md);
 		background: var(--color-bg-secondary);
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-lg);
 		margin: 0;
 	}
+
 	.success-text {
-		font-size: 0.92rem;
+		display: flex;
+		align-items: center;
+		gap: var(--space-xs);
+		font-size: 0.95rem;
 		color: var(--color-success-text);
 		margin: 0;
 	}
+
+	.push-cta,
+	.create-plan-cta {
+		align-self: flex-start;
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-xs);
+	}
+
+	/* --- finish ---------------------------------------------------------- */
+
+	.finish {
+		align-items: center;
+		text-align: center;
+		padding-top: var(--space-md);
+	}
+
+	.finish .create-plan-cta {
+		align-self: center;
+	}
+
+	.done-badge {
+		position: relative;
+		display: grid;
+		place-items: center;
+		width: 4.5rem;
+		height: 4.5rem;
+		border-radius: var(--radius-pill);
+		background: linear-gradient(140deg, var(--brand-ember), var(--brand-magenta));
+		color: #FFFFFF;
+		box-shadow: 0 1rem 2.5rem -0.75rem rgba(160, 30, 119, 0.6);
+	}
+
+	.done-badge .material-symbols {
+		font-size: 2.4rem;
+	}
+
+	.done-ring {
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+		border: 2px solid var(--brand-ember);
+		opacity: 0;
+	}
+
+	/* Arrives once: the badge pops and a ring spreads out and fades. */
+	@media (prefers-reduced-motion: no-preference) {
+		.done-badge {
+			animation: badge-pop 700ms cubic-bezier(0.34, 1.56, 0.64, 1) 120ms backwards;
+		}
+		.done-ring {
+			animation: ring-out 1100ms ease-out 300ms;
+		}
+	}
+
+	@keyframes badge-pop {
+		from { transform: scale(0.4); opacity: 0; }
+	}
+
+	@keyframes ring-out {
+		from { transform: scale(1); opacity: 0.8; }
+		to { transform: scale(1.9); opacity: 0; }
+	}
+
+	/* --- navigation ------------------------------------------------------ */
 
 	.nav-row {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: var(--space-md);
-		margin-top: var(--space-md);
+		margin-top: var(--space-xl);
+		padding-top: var(--space-lg);
+		border-top: 1px solid var(--color-border);
 	}
 	.nav-right {
 		display: flex;
 		align-items: center;
 		gap: var(--space-sm);
+	}
+	.nav-back,
+	.nav-next {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2xs);
+		min-height: 2.75rem;
+		border-radius: var(--radius-lg);
+	}
+	.nav-back .material-symbols,
+	.nav-next .material-symbols {
+		font-size: 1.15rem;
 	}
 	.skip-step {
 		background: none;

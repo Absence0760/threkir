@@ -623,6 +623,14 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 		FBBC05: [1, 'brand-mark'], EA4335: [1, 'brand-mark'],
 		'1A1A1A': [1, 'brand-mark'], '334155': [1, 'brand-mark'],
 	},
+	// Onboarding's copy on the same AuthShell ramp: the peach kicker and
+	// done-step check (the kicker measured per veil by
+	// gradient_foreground_guard.test.ts), the current step's white disc with a
+	// plum numeral (11.18:1) and its white label, and the white check on the
+	// finish badge's brand gradient (a 3:1 glyph: 3.14:1 at the ember end).
+	'routes/onboarding/+page.svelte': {
+		FFB59C: [2, 'fixed-canvas'], FFFFFF: [3, 'fixed-canvas'], '6E1450': [1, 'fixed-canvas'],
+	},
 	// The same two marks on the linked-accounts rows.
 	'routes/settings/account/+page.svelte': {
 		'4285F4': [2, 'brand-mark'], '34A853': [2, 'brand-mark'],

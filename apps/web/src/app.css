@@ -749,6 +749,20 @@ body, .sidebar, .login-card {
 /* Hide material icon text until font loads */
 .material-symbols {
 	font-family: 'Material Symbols Outlined';
+	/*
+	 * An icon is a LIGATURE: the browser shapes the letters `terrain`
+	 * into one glyph. Both of these break that shaping, and the result
+	 * is the raw ligature name rendered in the fallback serif and
+	 * clipped by the `overflow` below to its first two letters — `TE`
+	 * where the icon goes. `letter-spacing` breaks it because a
+	 * per-character advance cannot be applied to a glyph that spans
+	 * several characters; `text-transform` breaks it because `TERRAIN`
+	 * is not a ligature the font carries. Neither is set here — they
+	 * are INHERITED from whatever uppercase/tracked label the icon sits
+	 * inside, which is why this reset has to be unconditional.
+	 */
+	letter-spacing: normal;
+	text-transform: none;
 	overflow: hidden;
 	width: 1.25em;
 	height: 1.25em;

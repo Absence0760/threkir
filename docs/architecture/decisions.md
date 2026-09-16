@@ -29036,7 +29036,21 @@ mode. The guard's own suite mutates the real tree. The lookup was also run
 read-only against the real estate config, where prod and the keystore resolve to
 ARNs, preview to its placeholder and `running/…` to no rule.
 
-## 1616. The landing page shows the product by RENDERING it, and wears the brand it signs you into
+## 1616. A dashboard with nothing to show gets one action, not thirteen cards that each self-hide correctly
+
+`/dashboard` derives thirteen cards from runs and gym sessions, and every one of them already handled its own emptiness properly — the lift card self-hides, the nutrition rings self-hide, the intensity card self-hides, the mileage chart words its own hint. Each was individually right and the page was collectively useless: an account with no runs got a heading over a column of correct nothing, with the only "add a run" call to action ~700 lines down, underneath the VO₂ max / CTL / ATL / TSB row. That is the screen a runner lands on straight out of onboarding, so the one action that makes the product work at all was the hardest thing on the page to find, sitting beneath the content least likely to mean anything to them.
+
+The fix is a gate on the whole block rather than a fourteenth self-hiding card, because the failure is not a card's — it is what thirteen correct self-hides compose into. `isNewAccount` swaps the entire derived-metric region for `DashboardFirstRun.svelte`. This reads like an inversion of [`multi_modal.md` § Home rule 4](../features/multi_modal.md) ("no data is omitted entirely — not greyed out, not a 'start logging' placeholder taking a full card") and is not: that rule governs one empty modality inside a populated Home and still holds unchanged. The whole-account case is a different one, and the rule never had an opinion about it.
+
+Three things about the signal, each of which was a wrong answer first. It reads **all-time** run count, not the dashboard's own 90-day window, because a returning runner whose history predates the window is not a new account and must not be told to log their first run. It counts **gym sessions** too, since a lifter who has never run has done plenty. And it deliberately ignores **nutrition**: `todaysFood` only ever holds the current calendar day, so it can answer "did you eat today" but never "has this account done anything", and wiring it in would have made the state flicker back at midnight.
+
+The plan hero and the upcoming-event card render **above** the gate rather than inside it, because onboarding's closing CTA creates a training plan before any run exists — a brand-new account can legitimately have one, and hiding it to show "you have nothing yet" would contradict the plan sitting in the database. The copy has a second variant for that case.
+
+The regression test pins **both** directions, which is the non-obvious half: a regression that never shows the card merely restores the old empty grid, but one that never stops showing it hides the dashboard from every real account, and only the second is a catastrophe. `dashboard/page.spec.ts` had to change too — it asserted that a runless account sees the Mileage card's empty-state hint, which is precisely the behaviour being removed. That assertion is retired rather than relaxed, and the test now pins what its own comment always claimed to be about: no derived-metric jargon reaches a Day-One runner. `dash.mileageEmpty` stays live for an account that has runs but none inside the chart window.
+
+Web only for now; `dashboard_screen.dart` still composes its stack for a runless account (§ 24).
+
+## 1617. The landing page shows the product by RENDERING it, and wears the brand it signs you into
 
 The public landing page was 100% assertion and 0% evidence: four Material Symbols icons over four claims, a five-card platform grid with COMING SOON stamped on four of them, and a `#0F172A -> #7C3AED` hero ramp. Stock indigo/violet appears nowhere else in this product — the wordmark is `#FE5932 -> #A01E77` and the app chrome is teal `#2C5F6E` with terracotta — so the first screen a visitor saw belonged to a different brand than the one waiting behind the sign-in, and nothing on the page was a picture of the thing being sold.
 
@@ -29048,19 +29062,19 @@ Two smaller things fell out and are worth recording because neither is visible f
 
 What did NOT change is the consent banner's copy. It stood ~230 px tall over the bottom of the hero on a phone, and the tempting fix is to shorten the disclosure; which of Sentry, map tiles, the AI Coach and Storage URLs a visitor no longer needs telling about is a CISO/counsel call, not a layout one. The banner is bounded by a height cap with every word still reachable, and the laid-out-as-a-row alternative was measured and is worse — it narrows the copy column until the paragraph is taller than it started.
 
-## 1617. The landing route rides a DRAWN basemap, because the real one is consent-gated
+## 1618. The landing route rides a DRAWN basemap, because the real one is consent-gated
 
 `TrackPreview` draws a polyline and nothing else. In the app a basemap sits under it, fetched from MapTiler's static-map endpoint — and that fetch is held until consent, because the endpoint logs the requester IP and the preview renders on anonymous surfaces (`RouteTrackPreview`, audit/cookie-consent). The landing page is the highest-traffic anonymous surface in the product, so it is the last place that request may fire before the banner is answered. The result was a route floating on a flat panel, which reads as a tile layer that failed to load rather than as a deliberate omission.
 
-Waiting for consent was considered and rejected: most visitors never accept, so the hero would stay flat for the majority, and it would put a MapTiler quota on the busiest page in the product. A raster fallback reintroduces the staleness and binary-weight problem § 1616 exists to avoid.
+Waiting for consent was considered and rejected: most visitors never accept, so the hero would stay flat for the majority, and it would put a MapTiler quota on the busiest page in the product. A raster fallback reintroduces the staleness and binary-weight problem § 1617 exists to avoid.
 
 So the basemap is **drawn**: `MapBackdrop.svelte`, deterministic geometry — an irregular street grid, two arterials that ignore it, parkland, a river, a few blocks — with every colour a token, so it follows the theme like the rest of the shot. No network, no third party, no consent question, and nothing to go stale. It is plainly stylised rather than dressed as a real place, which is the honest register for a marketing illustration.
 
 `contrast_guard` caught the first draft using `--color-success` and `--color-accent-cyan` directly: a bare accent token as a fill or stroke fails AA wherever it lands on a light surface. The `-text` variants were the right values anyway — the base green is candy-bright against a paper basemap.
 
-## 1618. The public header lost its second variant, and a guard took over the premise it rested on
+## 1619. The public header lost its second variant, and a guard took over the premise it rested on
 
-`PublicHeader` carried an `overlay` (transparent, white-on-dark) and a `solid` (themed surface) variant. Once § 1616's brand band reached every `/learn` route, nothing rendered `solid` — and a variant nothing renders is a variant nothing keeps working. It is gone, along with the theme-swapped wordmark pair it needed and the `banner` prop that selected it.
+`PublicHeader` carried an `overlay` (transparent, white-on-dark) and a `solid` (themed surface) variant. Once § 1617's brand band reached every `/learn` route, nothing rendered `solid` — and a variant nothing renders is a variant nothing keeps working. It is gone, along with the theme-swapped wordmark pair it needed and the `banner` prop that selected it.
 
 That trades a dead branch for an unwritten premise: the bar now paints no ground of its own and draws white text, which is legible only over a dark ramp. A new public page that mounts it and forgets the ramp gets white-on-cream — invisible, and invisible in a way neither the type-checker nor the contrast guards can see, because the header and the ramp live in different files. `learn_band_guard.test.ts` asserts the pairing at the source: a route mounting `PublicHeader` or `LearnPage` must also render a `.learn-band` or the landing `hero`.
 

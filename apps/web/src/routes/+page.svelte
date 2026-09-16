@@ -8,6 +8,7 @@
 	import PublicFooter from '$lib/components/PublicFooter.svelte';
 	import ProductPreview from '$lib/components/marketing/ProductPreview.svelte';
 	import TrackPreview from '$lib/components/TrackPreview.svelte';
+	import MapBackdrop from '$lib/components/marketing/MapBackdrop.svelte';
 	import { DEMO_SPLITS, DEMO_TRACK } from '$lib/marketing/demo_preview';
 	import { buildOrganizationJsonLd, buildWebSiteJsonLd } from '$lib/share/site_meta';
 	import { normaliseSiteUrl } from '$lib/share/share_meta';
@@ -93,7 +94,7 @@
 		<span>{m('landing.loading')}</span>
 	</main>
 {:else}
-<PublicHeader overlay />
+<PublicHeader />
 
 <main class="hero" id="main-content">
 	<div class="hero-glow" aria-hidden="true"></div>
@@ -116,6 +117,7 @@
 <section id="features" class="features" use:reveal>
 	<article class="feature">
 		<div class="feature-visual feature-visual--map">
+			<MapBackdrop />
 			<TrackPreview points={DEMO_TRACK} aspect={2.1} />
 		</div>
 		<span class="feature-eyebrow">{m('landing.featureRouteBuilderTitle')}</span>
@@ -414,6 +416,7 @@
 	   standing in for it. The map is the product's own TrackPreview; the
 	   rest are the real shapes of the surfaces they name. */
 	.feature-visual {
+		position: relative;
 		height: 6.5rem;
 		border-radius: var(--radius-lg);
 		background: var(--color-bg-tertiary);
@@ -421,6 +424,11 @@
 		margin-bottom: var(--space-md);
 		padding: var(--space-sm);
 		overflow: hidden;
+	}
+
+	.feature-visual--map :global(svg.track-preview) {
+		position: relative;
+		z-index: 1;
 	}
 
 	.feature-visual--chart {

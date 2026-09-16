@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import TrackPreview from '$lib/components/TrackPreview.svelte';
+	import MapBackdrop from './MapBackdrop.svelte';
 	import { m } from '$lib/i18n/store.svelte';
 	import {
 		DEMO_HR_ZONES,
@@ -156,6 +157,7 @@
 
 		<div class="app">
 			<div class="trace">
+				<MapBackdrop />
 				<TrackPreview points={DEMO_TRACK} aspect={1.35} />
 			</div>
 
@@ -242,6 +244,7 @@
 					</div>
 				</div>
 				<div class="handset-trace">
+					<MapBackdrop />
 					<TrackPreview points={DEMO_TRACK} aspect={0.95} />
 				</div>
 			</div>
@@ -305,6 +308,7 @@
 	}
 
 	.trace {
+		position: relative;
 		background: var(--color-bg-tertiary);
 		border-inline-end: 1px solid var(--color-border);
 		padding: var(--space-md);
@@ -597,6 +601,8 @@
 	}
 
 	.handset-trace {
+		position: relative;
+		overflow: hidden;
 		width: 100%;
 		flex: 1;
 		min-height: 0;
@@ -678,5 +684,12 @@
 		.shot :global(.pacer) {
 			display: none;
 		}
+	}
+
+	/* The route rides above the drawn basemap. */
+	.trace :global(svg.track-preview),
+	.handset-trace :global(svg.track-preview) {
+		position: relative;
+		z-index: 1;
 	}
 </style>

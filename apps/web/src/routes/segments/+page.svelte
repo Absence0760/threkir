@@ -74,9 +74,9 @@
 
 <svelte:head><title>{m('segments.browseTitle')}</title></svelte:head>
 
-<div class="catalogue">
+<div class="page">
 	<RunSurfaceTabs active="segments" />
-	<header class="catalogue-header">
+	<header class="page-header">
 		<h1>{m('segments.browseTitle')}</h1>
 		<p class="subtitle">{m('segments.browseIntro')}</p>
 	</header>
@@ -197,20 +197,17 @@
 </div>
 
 <style>
-	.catalogue {
-		max-width: 900px;
-		margin: 0 auto;
-		padding: var(--space-lg) var(--space-md);
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-lg);
+	.page {
+		padding: var(--page-padding-y) var(--page-padding-x);
 	}
-	.catalogue-header h1 {
-		margin: 0 0 0.3rem;
-		font-size: 1.4rem;
+	.page-header {
+		margin-bottom: var(--space-xl);
+	}
+	.page-header h1 {
+		margin: 0;
 	}
 	.subtitle {
-		margin: 0;
+		margin: 0.25rem 0 0;
 		color: var(--color-text-secondary);
 		font-size: 0.9rem;
 		line-height: 1.5;
@@ -249,6 +246,7 @@
 		flex-wrap: wrap;
 		align-items: end;
 		gap: var(--space-sm);
+		margin-bottom: var(--space-md);
 		padding: var(--space-sm);
 		background: var(--color-bg-secondary);
 		border-radius: var(--radius-sm);
@@ -291,6 +289,9 @@
 	.clear-btn:hover {
 		color: var(--color-primary);
 		border-color: var(--color-primary);
+	}
+	.results-status {
+		margin-bottom: var(--space-sm);
 	}
 	.count {
 		margin: 0;

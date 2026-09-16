@@ -121,7 +121,7 @@ Deno.test('handler — unconfigured SMTP is 503 after a valid signature', async 
   assertEquals(sent.length, 0);
 });
 
-Deno.test('handler — valid signup sends one localized mail with the verify link', async () => {
+Deno.test('handler — valid signup sends one localized mail with the confirm link', async () => {
   const { deps, sent, localeCalls } = makeDeps({ locale: 'de' });
   const res = await makeAuthEmailHandler(deps)(await signedRequest(SIGNUP_PAYLOAD));
   assertEquals(res.status, 200);
@@ -132,8 +132,32 @@ Deno.test('handler — valid signup sends one localized mail with the verify lin
   assertStringIncludes(sent[0].mime, btoa(new TextEncoder().encode('Bestätige deine E-Mail-Adresse').reduce((s, b) => s + String.fromCharCode(b), '')));
   assertStringIncludes(
     sent[0].mime,
-    'http://127.0.0.1:54321/auth/v1/verify?token=pkce_hash&type=signup&redirect_to=http://localhost:7777/auth/callback',
+    'http://localhost:7777/auth/callback?token_hash=pkce_hash&type=signup',
   );
+});
+
+Deno.test('handler — a mobile deep link keeps the GoTrue verify hop', async () => {
+  // The custom-scheme target is the mobile app, where the flow starts
+  // and finishes in one process that still holds its PKCE verifier —
+  // and supabase_flutter only understands the `?code=` the verify hop
+  // produces. Only an http(s) landing gets the token_hash form.
+  const { deps, sent } = makeDeps({});
+  const res = await makeAuthEmailHandler(deps)(
+    await signedRequest({
+      ...SIGNUP_PAYLOAD,
+      email_data: {
+        ...SIGNUP_PAYLOAD.email_data,
+        redirect_to: 'com.threkir.app://login-callback',
+      },
+    }),
+  );
+  assertEquals(res.status, 200);
+  assertEquals(sent.length, 1);
+  assertStringIncludes(
+    sent[0].mime,
+    'http://127.0.0.1:54321/auth/v1/verify?token=pkce_hash&type=signup',
+  );
+  assertStringIncludes(sent[0].mime, 'com.threkir.app://login-callback');
 });
 
 Deno.test('handler — API_EXTERNAL_URL beats the Docker-internal SUPABASE_URL in verify links', async () => {
@@ -141,14 +165,23 @@ Deno.test('handler — API_EXTERNAL_URL beats the Docker-internal SUPABASE_URL i
   // runtime; a verify link built from it is unreachable from any browser
   // (broke the reset-password e2es in CI run 28707481878). The committed
   // supabase/functions/.env pins API_EXTERNAL_URL to the host-reachable
-  // origin — it must win whenever both are set.
+  // origin — it must win whenever both are set. Only the verify-hop
+  // shape embeds that origin, so drive the deep-link payload.
   const { deps, sent } = makeDeps({
     env: {
       SUPABASE_URL: 'http://kong:8000',
       API_EXTERNAL_URL: 'http://127.0.0.1:54321',
     },
   });
-  const res = await makeAuthEmailHandler(deps)(await signedRequest(SIGNUP_PAYLOAD));
+  const res = await makeAuthEmailHandler(deps)(
+    await signedRequest({
+      ...SIGNUP_PAYLOAD,
+      email_data: {
+        ...SIGNUP_PAYLOAD.email_data,
+        redirect_to: 'com.threkir.app://login-callback',
+      },
+    }),
+  );
   assertEquals(res.status, 200);
   assertEquals(sent.length, 1);
   assertStringIncludes(

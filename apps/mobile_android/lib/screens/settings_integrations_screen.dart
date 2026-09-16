@@ -9,6 +9,7 @@ import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../column_limits.dart';
+import '../integration_visibility.dart';
 import '../ble_heart_rate.dart';
 import '../ble_treadmill.dart';
 import '../health_connect_exporter.dart';
@@ -20,6 +21,7 @@ import '../race_service.dart';
 import '../settings_sync.dart';
 import '../share_sheet.dart';
 import '../strava.dart';
+import '../widgets/info_tip.dart';
 import '../widgets/top_banner.dart';
 import 'races_screen.dart';
 import 'watch_live_screen.dart';
@@ -65,15 +67,43 @@ class _SettingsIntegrationsScreenState
   /// ages out unnoticed. Null once a walk has reached the end of the window.
   bool? _stravaResumable;
   late final RaceService _raceService = widget.raceService ?? RaceService();
-  final Map<String, bool> _providerAvailable = {};
+
+  /// Resolved gate answers, keyed by provider. Starts EMPTY, which every gate
+  /// reads as `pending` — so no tile is offered before its gate has answered,
+  /// and a deployment that configured none of this offers none of it.
+  final Map<String, bool?> _verdicts = {};
+
+  /// The account-connection tiles, in render order. parkrun is a real import on
+  /// this client (web's card only records that the runner takes part), so it is
+  /// gated on its Edge Function being reachable rather than on a credential.
+  static const _connectSpecs = [
+    IntegrationSpec(provider: 'strava', gate: IntegrationGate.env),
+    IntegrationSpec(provider: 'parkrun', gate: IntegrationGate.probe),
+  ];
 
   @override
   void initState() {
     super.initState();
     _refreshIntegrations();
+    // Synchronous, so the Strava tile never renders and then vanishes.
+    _verdicts['strava'] = isStravaConfigured();
+    _probeParkrun();
     for (final spec in raceImportProviders) {
       _probeRaceProvider(spec.provider);
     }
+  }
+
+  /// parkrun needs no credential, so this asks only whether its Edge Function
+  /// is reachable on this deployment — the question a minimal deployment
+  /// answers no to, and the one that used to be skipped entirely.
+  Future<void> _probeParkrun() async {
+    var ok = false;
+    try {
+      ok = await _raceService.isParkrunConfigured();
+    } catch (e) {
+      debugPrint('settings: parkrun probe failed: $e');
+    }
+    if (mounted) setState(() => _verdicts['parkrun'] = ok);
   }
 
   /// A probe is a network call (L4): each provider degrades to unavailable on
@@ -86,7 +116,7 @@ class _SettingsIntegrationsScreenState
     } catch (e) {
       debugPrint('settings: $provider probe failed: $e');
     }
-    if (mounted) setState(() => _providerAvailable[provider] = ok);
+    if (mounted) setState(() => _verdicts[provider] = ok);
   }
 
   Future<void> _refreshIntegrations() async {
@@ -471,7 +501,14 @@ class _SettingsIntegrationsScreenState
     final resumable = _stravaResumable;
     return ListTile(
       leading: const Icon(Icons.sync, color: Color(0xFFFC4C02)),
-      title: Text(l10n.integrationsStravaName),
+      title: infoTipTitle(
+        l10n.integrationsStravaName,
+        InfoTipButton(
+          label: l10n.integrationsInfoAbout(l10n.integrationsStravaName),
+          title: l10n.integrationsStravaName,
+          body: l10n.integrationsStravaInfo,
+        ),
+      ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -528,42 +565,68 @@ class _SettingsIntegrationsScreenState
         child: ListView(
           children: [
             if (signedIn) ...[
-              _buildStravaTile(),
-              ListTile(
-                leading: const Icon(Icons.directions_run),
-                title: Text(l10n.integrationsParkrunName),
-                // Outside parkrun's ~20-country footprint the tile stays
-                // tappable (an expat can still import by athlete ID) but
-                // discloses that there may be no events nearby, mirroring
-                // web's parkrun_regions.ts note.
-                subtitle: Text(parkrunLikelyUnavailable(WidgetsBinding
-                        .instance.platformDispatcher.locale
-                        .toLanguageTag())
-                    ? l10n.integrationsParkrunRegionNote
-                    : l10n.integrationsParkrunTileSubtitle),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: _importParkrun,
-              ),
-              // Every provider tile stays tappable whatever its probe says:
-              // they are secondary deep links into the race calendar, whose
-              // search never needed a provider key. The subtitle discloses
-              // whether THAT provider's import leg is live; the second line
-              // says where the tap actually goes (decisions § 488).
-              for (final spec in raceImportProviders)
-                if (raceProviderLabels(l10n)[spec.provider] case final p?)
+              // Only what this deployment can honour. A tile whose gate has not
+              // answered, or has answered no, is not drawn — except while a
+              // connected row for it exists, which keeps a disconnect reachable
+              // after the configuration behind it goes away.
+              for (final gated in visibleIntegrations(
+                _connectSpecs,
+                _verdicts,
+                [for (final i in _integrations) i.provider],
+              ))
+                if (gated.spec.provider == 'strava')
+                  _buildStravaTile()
+                else
                   ListTile(
-                    isThreeLine: true,
-                    leading: Icon(p.icon),
-                    title: Text(p.name),
-                    subtitle: _integrationSubtitle(
-                      (_providerAvailable[spec.provider] ?? false)
-                          ? p.connect
-                          : p.unavailable,
-                      p.open,
+                    leading: const Icon(Icons.directions_run),
+                    title: infoTipTitle(
+                      l10n.integrationsParkrunName,
+                      InfoTipButton(
+                        label: l10n
+                            .integrationsInfoAbout(l10n.integrationsParkrunName),
+                        title: l10n.integrationsParkrunName,
+                        body: l10n.integrationsParkrunInfo,
+                      ),
                     ),
+                    // Inside parkrun's ~20-country footprint the tile says what
+                    // it does; outside it, that there may be no events nearby.
+                    // The tile stays tappable either way — an expat can still
+                    // import by athlete ID. Mirrors web's parkrun_regions.ts.
+                    subtitle: Text(parkrunLikelyUnavailable(WidgetsBinding
+                            .instance.platformDispatcher.locale
+                            .toLanguageTag())
+                        ? l10n.integrationsParkrunRegionNote
+                        : l10n.integrationsParkrunTileSubtitle),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: _openRaces,
+                    onTap: _importParkrun,
                   ),
+              // Each race tile used to stay tappable whatever its probe said,
+              // on the reasoning that it is a secondary deep link into the race
+              // calendar and the calendar's search never needed a provider key
+              // (decisions § 488). What it advertises, though, is THAT
+              // provider's import, and the calendar has its own entry point on
+              // the fitness hub — so a tile for a leg this deployment cannot run
+              // is an offer with nothing behind it. The explainer a runner
+              // actually needs stays on the race whose result they are trying to
+              // import (§ 488 amendment).
+              for (final spec in raceImportProviders)
+                if (_verdicts[spec.provider] ?? false)
+                  if (raceProviderLabels(l10n)[spec.provider] case final p?)
+                    ListTile(
+                      isThreeLine: true,
+                      leading: Icon(p.icon),
+                      title: infoTipTitle(
+                        p.name,
+                        InfoTipButton(
+                          label: l10n.integrationsInfoAbout(p.name),
+                          title: p.name,
+                          body: p.info,
+                        ),
+                      ),
+                      subtitle: _integrationSubtitle(p.connect, p.open),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: _openRaces,
+                    ),
             ] else
               ListTile(
                 leading: const Icon(Icons.lock_outline),

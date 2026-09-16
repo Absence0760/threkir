@@ -37,7 +37,6 @@ test.describe('/auth/reset', () => {
 
 	test('full round-trip: seeded user → email → reset → sign in with new password', async ({
 		page,
-		context,
 		browser,
 		baseURL
 	}) => {
@@ -65,7 +64,16 @@ test.describe('/auth/reset', () => {
 			const link = extractLink(msg);
 			expect(link).toContain('/auth/reset');
 
-			const resetPage = await context.newPage();
+			// Deliberately a SEPARATE browser context, not another tab:
+			// mail is opened wherever the person happens to be (the iOS
+			// Mail in-app browser, webmail in a second browser, another
+			// device), and nothing of the requesting browser's storage
+			// travels with them. The link used to hand back a PKCE code
+			// only the requesting browser could exchange, so every such
+			// reader hit "PKCE code verifier not found in storage"; the
+			// token_hash it carries now is redeemable anywhere.
+			const mailReader = await browser.newContext();
+			const resetPage = await mailReader.newPage();
 			await resetPage.addInitScript(() => {
 				localStorage.setItem(
 					'cookie_consent',
@@ -80,7 +88,7 @@ test.describe('/auth/reset', () => {
 			await resetPage.getByPlaceholder('Confirm new password').fill(newPassword);
 			await resetPage.getByRole('button', { name: 'Update password' }).click();
 			await resetPage.waitForURL(/\/dashboard/, { timeout: 15_000 });
-			await resetPage.close();
+			await mailReader.close();
 
 			const fresh = await page.context().browser()!.newContext();
 			const verifyPage = await fresh.newPage();
@@ -219,8 +227,8 @@ test.describe('/auth/reset', () => {
 			await expect(resetPage.getByRole('heading', { name: 'Set a new password' })).toBeVisible();
 			await resetPage.close();
 		} finally {
-			// The token has been consumed by the supabase-js URL parser
-			// but no updateUser ran — the seed password is intact. Reset
+			// The token has been redeemed by the landing page but no
+			// updateUser ran — the seed password is intact. Reset
 			// defensively anyway so a transient redirect that DID rotate
 			// can't poison the suite.
 			try {

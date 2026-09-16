@@ -12478,6 +12478,31 @@ class AppLocalizationsPt extends AppLocalizations {
   String get integrationsRunsignupOpen => 'Abrir o calendário de corridas';
 
   @override
+  String integrationsInfoAbout(String name) {
+    return 'Sobre o $name';
+  }
+
+  @override
+  String get integrationsStravaInfo =>
+      'O Strava é uma aplicação popular para registar e partilhar corridas. Ao ligá-lo, as suas atividades do Strava são copiadas: primeiro os últimos 90 dias e depois cada nova atividade à medida que aparece. Inicia sessão no Strava e autoriza o acesso, e pode desligar quando quiser.';
+
+  @override
+  String get integrationsParkrunInfo =>
+      'O parkrun é uma corrida de 5 km gratuita e cronometrada, realizada todas as semanas em parques por todo o mundo. Toque neste item e introduza o número de atleta do seu código de barras do parkrun (o que começa por A) para trazer todos os parkrun que concluiu, com o seu tempo e o índice por idade.';
+
+  @override
+  String get integrationsRunsignupInfo =>
+      'O RunSignUp trata de inscrições e resultados de milhares de corridas de estrada. Se correu uma, encontre-a no calendário de corridas e introduza o dorsal que usou — o seu tempo oficial e os parciais ficam associados a essa corrida.';
+
+  @override
+  String get integrationsUltrasignupInfo =>
+      'O UltraSignup trata de inscrições e resultados de corridas de trilho e ultra. Encontre a sua corrida no calendário e indique o seu ID de atleta do UltraSignup para trazer os seus tempos de chegada.';
+
+  @override
+  String get integrationsChronotrackInfo =>
+      'A ChronoTrack cronometra muitas corridas de estrada com chips e tapetes. Se a sua foi cronometrada pela ChronoTrack, encontre-a no calendário e introduza o seu dorsal para trazer o seu resultado oficial.';
+
+  @override
   String get integrationsRunsignupUnavailable =>
       'A importação do RunSignUp ainda não está disponível. O parkrun e a colagem manual continuam a funcionar.';
 
@@ -26515,6 +26540,31 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get integrationsRunsignupOpen => 'Abrir o calendário de corridas';
+
+  @override
+  String integrationsInfoAbout(String name) {
+    return 'Sobre o $name';
+  }
+
+  @override
+  String get integrationsStravaInfo =>
+      'O Strava é um app popular para registrar e compartilhar corridas. Ao conectar, suas atividades do Strava são copiadas: primeiro os últimos 90 dias e depois cada nova atividade conforme ela aparece. Você entra no Strava e autoriza o acesso, e pode desconectar quando quiser.';
+
+  @override
+  String get integrationsParkrunInfo =>
+      'O parkrun é uma corrida de 5 km gratuita e cronometrada, realizada toda semana em parques pelo mundo. Toque neste item e informe o número de atleta do seu código de barras do parkrun (o que começa com A) para trazer todos os parkrun que você concluiu, com seu tempo e seu índice por idade.';
+
+  @override
+  String get integrationsRunsignupInfo =>
+      'O RunSignUp cuida de inscrições e resultados de milhares de corridas de rua. Se você correu uma, encontre-a no calendário de corridas e informe o número de peito que usou — seu tempo oficial e suas parciais são anexados àquela corrida.';
+
+  @override
+  String get integrationsUltrasignupInfo =>
+      'O UltraSignup cuida de inscrições e resultados de corridas de trail e ultra. Encontre sua corrida no calendário e informe seu ID de atleta do UltraSignup para trazer seus tempos de chegada.';
+
+  @override
+  String get integrationsChronotrackInfo =>
+      'A ChronoTrack cronometra muitas corridas de rua com chips e tapetes. Se a sua foi cronometrada pela ChronoTrack, encontre-a no calendário e informe seu número de peito para trazer seu resultado oficial.';
 
   @override
   String get integrationsRunsignupUnavailable =>

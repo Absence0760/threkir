@@ -16,7 +16,10 @@ import { publishableKey } from '../_shared/api_keys.ts';
 import { reconcileImportBatch } from '../_shared/external_id_batch.ts';
 
 Deno.serve(withSentry('parkrun-import', async (req: Request) => {
-  const guarded = await readJsonWithLimit<{ athleteNumber?: unknown }>(req, 1024);
+  const guarded = await readJsonWithLimit<{ athleteNumber?: unknown; probe?: unknown }>(
+    req,
+    1024,
+  );
   if ('tooLarge' in guarded) return guarded.tooLarge;
 
   // Authenticate before parsing the body. Malformed JSON from an
@@ -36,6 +39,30 @@ Deno.serve(withSentry('parkrun-import', async (req: Request) => {
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: 'unauthorized' }, { status: 401 });
+
+  // Reachability probe (mirrors `race-results-import`'s). parkrun needs no
+  // credential, so the question this answers is not "is a key set" but "is this
+  // leg deployed at all" — the one a minimal deployment gets wrong. A client
+  // that cannot reach this function gets an error from supabase-js and grades it
+  // unavailable via `probeSaysConfigured`, which is what keeps the parkrun card
+  // off a deployment whose Edge Functions were never pushed.
+  //
+  // Charged to its own generous bucket for the reason § 1007 gives for the
+  // sibling: the import bucket is 4/hour, so probing on it would let a few
+  // Settings loads consume a runner's whole import allowance.
+  if (guarded.body?.probe === true) {
+    const probeDenied = await checkRateLimitTiered(
+      supabase,
+      user.id,
+      'parkrun-import:probe',
+      60,
+      240,
+      3600,
+      { failClosed: true },
+    );
+    if (probeDenied) return probeDenied;
+    return Response.json({ configured: true });
+  }
 
   // Honour the user's privacy_default for imported runs — parity with the
   // web createManualRun/saveRun + Strava/Garmin ZIP-import paths (persona

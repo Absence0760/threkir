@@ -2563,6 +2563,20 @@ export const RACE_IMPORT_UNAVAILABLE: Record<RaceImportLeg, string> = {
 	chronotrack: 'CHRONOTRACK_UNAVAILABLE'
 };
 
+/// Probe whether the parkrun import leg is reachable on this deployment.
+///
+/// parkrun needs no credential, so unlike its three race-results siblings this
+/// asks only whether the Edge Function is deployed — the question a minimal
+/// deployment answers no to and every client used to skip, rendering a Connect
+/// button for a function that is not there. Same fail-closed grading: only a
+/// clean 200 counts (see `probeSaysConfigured`).
+export async function isParkrunConfigured(): Promise<boolean> {
+	const { error } = await supabase.functions.invoke('parkrun-import', {
+		body: { probe: true }
+	});
+	return probeSaysConfigured(error);
+}
+
 /// Probe whether the RunSignUp RESULTS leg is configured server-side. Reports
 /// available only on a clean answer — see `probeSaysConfigured` for why any
 /// failure at all reads as unavailable. Drives the RunSignUp card + explainer.

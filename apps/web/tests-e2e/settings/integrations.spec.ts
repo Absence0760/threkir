@@ -4,38 +4,80 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
 
 /**
- * /settings/integrations — Strava / parkrun / Garmin Connect rows
- * with connect / sync / disconnect affordances. Strava is OAuth-
- * gated, parkrun is a one-button athlete-number scrape, Garmin is
- * bulk-import only.
+ * /settings/integrations — the provider cards, and the gate that decides
+ * which of them this deployment is allowed to offer.
  *
- * Future depth: Strava connect button click → mock OAuth flow,
- * parkrun import button against the seeded athlete number, Garmin
- * .fit / .zip upload + per-file progress.
+ * The page renders only what it can honour (`integration_visibility.ts`):
+ * Strava behind `PUBLIC_STRAVA_CLIENT_ID`, parkrun behind a reachability probe
+ * of its Edge Function, Garmin Connect and Apple HealthKit never — the first
+ * blocked on Garmin's developer programme, the second an on-device iOS API a
+ * browser cannot reach. A card is also always shown while a row for it exists,
+ * whatever the gate says, so a connection can still be disconnected.
+ *
+ * Local dev has no `PUBLIC_STRAVA_CLIENT_ID`, which is what makes the
+ * unconfigured branch reachable from here at all.
+ *
+ * Future depth: Strava connect button click → mock OAuth flow, parkrun import
+ * button against the seeded athlete number, Garmin .fit / .zip upload.
  */
 
 test.describe('/settings/integrations', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
-	test('integration list renders Strava + parkrun + Garmin rows', async ({
+	test('the list offers what this deployment can honour, and nothing else', async ({
 		page
 	}) => {
-		// The integrations page lists three providers regardless of
-		// connection state. Runner's seed has parkrun + strava
-		// connected (last_sync_at populated); garmin is unconnected.
-		// All three rows must appear — the list is built from a
-		// hardcoded array, but the connection state comes from a
-		// query, so a regression there could break the page render.
+		// Runner's seed has parkrun + strava connected (last_sync_at
+		// populated), so both render whatever their gate says. Garmin Connect
+		// and Apple HealthKit have no row and no leg, so neither is offered —
+		// they used to render a live Connect button that wrote a placeholder
+		// row and synced nothing.
+		await page.goto('/settings/integrations');
+
+		await expect(page.getByTestId('integration-strava')).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByTestId('integration-parkrun')).toBeVisible();
+		await expect(page.getByTestId('integration-garmin')).toHaveCount(0);
+		await expect(page.getByTestId('integration-healthkit')).toHaveCount(0);
+	});
+
+	test('every offered card carries an info tip that explains the feature', async ({
+		page
+	}) => {
+		// A new runner does not know what parkrun is, let alone what an athlete
+		// number is for. The (i) is the only place on this page that says so.
+		await page.goto('/settings/integrations');
+
+		const trigger = page.getByTestId('info-parkrun');
+		await expect(trigger).toBeVisible({ timeout: 10_000 });
+		await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+		await expect(page.getByTestId('info-parkrun-panel')).toHaveCount(0);
+
+		await trigger.click();
+		const panel = page.getByTestId('info-parkrun-panel');
+		await expect(panel).toBeVisible();
+		await expect(panel).toContainText(/5k/i);
+		await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+
+		// Escape closes it and puts focus back where the runner left it.
+		await page.keyboard.press('Escape');
+		await expect(panel).toHaveCount(0);
+		await expect(trigger).toBeFocused();
+	});
+
+	test('the bulk importers are offered even when no provider can be connected', async ({
+		page
+	}) => {
+		// They parse a file in the browser and need no credential and no Edge
+		// Function, so they are the one path a minimal deployment always has.
+		// Hiding them along with the account cards would leave a runner with no
+		// way to get their history in at all.
 		await page.goto('/settings/integrations');
 
 		await expect(
-			page.getByRole('heading', { name: 'Strava', exact: true })
-		).toBeVisible();
+			page.locator('section.bulk-import').filter({ hasText: 'Bulk import from a Strava export' })
+		).toBeVisible({ timeout: 10_000 });
 		await expect(
-			page.getByRole('heading', { name: 'parkrun', exact: true })
-		).toBeVisible();
-		await expect(
-			page.getByRole('heading', { name: 'Garmin Connect', exact: true })
+			page.locator('section.bulk-import').filter({ hasText: 'Bulk import from a Garmin export' })
 		).toBeVisible();
 	});
 
@@ -67,19 +109,14 @@ test.describe('/settings/integrations', () => {
 		await expect(parkrunCard).toHaveClass(/connected/, { timeout: 5_000 });
 	});
 
-	test('Strava Connect button on an unconnected user fires the OAuth path (toast OR strava.com redirect)', async ({
-		page,
-		context
+	test('an unconfigured Strava with no connection is not offered at all', async ({
+		page
 	}) => {
-		// Strava connect doesn't use the placeholder-connect path —
-		// clicking Connect either redirects to strava.com/oauth/authorize
-		// (live OAuth) or surfaces a "Strava is not configured" toast
-		// when PUBLIC_STRAVA_CLIENT_ID is missing. Local dev typically
-		// lacks the env var. Either branch is acceptable — the
-		// regression we'd miss is a silent click that does nothing.
-		//
-		// Set up by service-role: ensure Strava starts disconnected
-		// for this test; restore the seed state in the finally block.
+		// This used to be the "Connect fires the OAuth path" test, and what it
+		// actually asserted locally was the error toast that came back AFTER
+		// the tap — the only disclosure an unconfigured build ever made. The
+		// gate moves that disclosure ahead of the tap by not rendering the
+		// card, so there is no button left to press and no toast to raise.
 		const admin = getAdminClient();
 		try {
 			await admin
@@ -89,27 +126,10 @@ test.describe('/settings/integrations', () => {
 				.eq('provider', 'strava');
 
 			await page.goto('/settings/integrations');
-			const stravaCard = page.locator('.integration-card', { hasText: 'Strava' });
-			await expect(stravaCard).toBeVisible({ timeout: 10_000 });
-			await expect(stravaCard.getByRole('button', { name: 'Connect' }))
-				.toBeVisible({ timeout: 5_000 });
-
-			// Catch any external redirect to strava.com so the test
-			// doesn't actually leave localhost.
-			let stravaRedirect = false;
-			await context.route('**://www.strava.com/**', (route) => {
-				stravaRedirect = true;
-				route.fulfill({ status: 200, body: 'mock' });
-			});
-
-			await stravaCard.getByRole('button', { name: 'Connect' }).click();
-
-			const toast = page.getByText(/Strava is not configured/);
-			const ok = await Promise.race([
-				toast.waitFor({ timeout: 3_000 }).then(() => true).catch(() => false),
-				page.waitForTimeout(3_000).then(() => stravaRedirect)
-			]);
-			expect(ok).toBe(true);
+			// parkrun is the proof the page rendered rather than merely failing
+			// to reach the assertion below.
+			await expect(page.getByTestId('integration-parkrun')).toBeVisible({ timeout: 10_000 });
+			await expect(page.getByTestId('integration-strava')).toHaveCount(0);
 		} finally {
 			// Restore seed state — Strava connected with the seeded
 			// last_sync_at so downstream tests asserting that row holds.

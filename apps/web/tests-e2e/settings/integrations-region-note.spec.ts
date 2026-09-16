@@ -30,8 +30,12 @@ test.describe('parkrun region note', () => {
 			await expect(parkrunCard).toBeVisible({ timeout: 10_000 });
 			await expect(parkrunCard.locator('.sync-note')).toBeVisible();
 			// The connect/disconnect affordance stays — the note is a
-			// disclosure, not a gate.
-			await expect(parkrunCard.getByRole('button')).toBeVisible();
+			// disclosure, not a gate. Scoped to `.btn-group` rather than "the
+			// card's only button": the card also carries the (i) that explains
+			// what parkrun is, which is a second button and would make a bare
+			// getByRole ambiguous. Not named either, because the label is
+			// whichever locale this context negotiated.
+			await expect(parkrunCard.locator('.btn-group button')).toBeVisible();
 		} finally {
 			await ctx.close();
 		}

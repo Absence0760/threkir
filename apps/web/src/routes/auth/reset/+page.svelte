@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { goto, replaceState } from '$app/navigation';
 	import { supabase } from '$lib/core/supabase';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { checkPasswordPair } from '$lib/core/auth_gates';
+	import { emailOtpLink } from '$lib/core/auth_confirmation';
 	import { PASSWORD_MIN_LENGTH } from '$lib/core/auth_rules';
 	import { m } from '$lib/i18n/store.svelte';
 	import PasswordInput from '$lib/components/PasswordInput.svelte';
@@ -13,9 +14,10 @@
 	let confirmPassword = $state('');
 	let error = $state('');
 	let busy = $state(false);
-	// Recovery token arrives in the URL hash; supabase-js consumes it
-	// automatically (detectSessionInUrl=true) on this navigation, then
-	// fires onAuthStateChange with a PASSWORD_RECOVERY-tagged session.
+	// The recovery link carries `token_hash` + `type=recovery`, redeemed
+	// below; a link in either older shape (implicit `#access_token`, PKCE
+	// `?code=`) is consumed by supabase-js itself (detectSessionInUrl).
+	// Either way the page is usable once a session exists.
 	let ready = $state(false);
 	// True once updateUser succeeds. When the page unmounts WITHOUT
 	// the password having been changed, we sign the recovery session
@@ -23,6 +25,18 @@
 	let passwordChanged = $state(false);
 
 	onMount(async () => {
+		// Redeeming the hash mints the session in THIS browser, whichever
+		// one it is. The PKCE code the link used to carry could only be
+		// exchanged by the browser that requested the reset, which is
+		// rarely the one the mail gets opened in.
+		const otp = emailOtpLink(window.location.search);
+		if (otp) {
+			await supabase.auth.verifyOtp(otp);
+			// One-time credential — keep it out of referrers and reloads.
+			// Through SvelteKit's own replaceState: a bare history call
+			// desynchronises the router from the URL it thinks it is on.
+			replaceState(window.location.pathname, {});
+		}
 		await auth.ready();
 		ready = true;
 	});

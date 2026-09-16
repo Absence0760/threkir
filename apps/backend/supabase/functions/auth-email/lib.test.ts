@@ -12,6 +12,7 @@ import {
   authEmailCatalogue,
   authEmailShared,
   buildMime,
+  buildActionUrl,
   buildVerifyUrl,
   encodeHeaderWord,
   extractAddr,
@@ -422,6 +423,60 @@ Deno.test('buildVerifyUrl — redirect_to with &/=/# gets encoded', () => {
   assertStringIncludes(url, 'redirect_to=' + encodeURIComponent('http://a/b?c=1&d=2'));
 });
 
+// buildActionUrl is the shape that actually ships. A GoTrue verify hop
+// hands the session back as a PKCE code only the originating browser can
+// exchange, which is never the one the mail is opened in — see the
+// function's own note and docs/features/web_app_auth.md.
+Deno.test('buildActionUrl — an http landing gets the token_hash directly', () => {
+  assertEquals(
+    buildActionUrl(
+      'http://127.0.0.1:54321',
+      'abc123',
+      'recovery',
+      'http://localhost:7777/auth/reset',
+    ),
+    'http://localhost:7777/auth/reset?token_hash=abc123&type=recovery',
+  );
+});
+
+Deno.test('buildActionUrl — an existing query keeps its params', () => {
+  assertEquals(
+    buildActionUrl('http://x', 'h', 'signup', 'https://threkir.com/auth/callback?next=/routes'),
+    'https://threkir.com/auth/callback?next=/routes&token_hash=h&type=signup',
+  );
+});
+
+Deno.test('buildActionUrl — a fragment stays at the end, not swallowing the params', () => {
+  assertEquals(
+    buildActionUrl('http://x', 'h', 'magiclink', 'https://threkir.com/dashboard#top'),
+    'https://threkir.com/dashboard?token_hash=h&type=magiclink#top',
+  );
+});
+
+Deno.test('buildActionUrl — a custom-scheme (mobile) target keeps the verify hop', () => {
+  // supabase_flutter completes the deep link from the `?code=` the hop
+  // produces, and the app holds its own verifier, so nothing is stranded.
+  assertEquals(
+    buildActionUrl('http://127.0.0.1:54321', 'h', 'signup', 'com.threkir.app://login-callback'),
+    'http://127.0.0.1:54321/auth/v1/verify?token=h&type=signup' +
+      '&redirect_to=com.threkir.app://login-callback',
+  );
+});
+
+Deno.test('buildActionUrl — no redirect target falls back to the verify hop', () => {
+  assertEquals(
+    buildActionUrl('http://127.0.0.1:54321', 'h', 'signup', undefined),
+    'http://127.0.0.1:54321/auth/v1/verify?token=h&type=signup',
+  );
+});
+
+Deno.test('buildActionUrl — token hash is percent-encoded into the query', () => {
+  assertStringIncludes(
+    buildActionUrl('http://x', 'a b&c', 'signup', 'http://localhost:7777/auth/callback'),
+    'token_hash=' + encodeURIComponent('a b&c'),
+  );
+});
+
 Deno.test('renderAuthEmail — recovery: CTA verify link is the first URL in the HTML', () => {
   const [send] = planSends(
     { email: 'a@example.com' },
@@ -442,9 +497,8 @@ Deno.test('renderAuthEmail — recovery: CTA verify link is the first URL in the
   // the attribute-escaped &amp; — mirror both steps; it must be the
   // verify link.
   const firstUrl = r.html.match(/https?:\/\/[^\s"'<>]+/)![0].replace(/&amp;/g, '&');
-  assertStringIncludes(firstUrl, '/auth/v1/verify?token=thehash&type=recovery');
-  assertStringIncludes(firstUrl, '/auth/reset');
-  assertStringIncludes(r.text, '/auth/v1/verify?token=thehash&type=recovery');
+  assertEquals(firstUrl, 'http://localhost:7777/auth/reset?token_hash=thehash&type=recovery');
+  assertStringIncludes(r.text, '/auth/reset?token_hash=thehash&type=recovery');
   // The OTP code rides along as the link alternative.
   assertStringIncludes(r.html, '123456');
   assertStringIncludes(r.text, '123456');
@@ -488,16 +542,16 @@ Deno.test('renderAuthEmail — signup: confirm link + welcome copy render in eve
       redirectTo: 'http://localhost:7777/auth/callback',
     });
     const strings = authEmailCatalogue[locale].signup;
-    // The confirm link is byte-compatible with GoTrue's own and is the
-    // FIRST URL in the HTML (the e2e mail fixture grabs the first URL).
+    // The confirm link points at the web landing, carrying the token
+    // hash the page redeems, and is the FIRST URL in the HTML (the e2e
+    // mail fixture grabs the first URL).
     const firstUrl = r.html.match(/https?:\/\/[^\s"'<>]+/)![0].replace(/&amp;/g, '&');
     assertStringIncludes(
       firstUrl,
-      'http://127.0.0.1:54321/auth/v1/verify?token=signhash&type=signup',
-      `signup verify link drift in ${locale}`,
+      'http://localhost:7777/auth/callback?token_hash=signhash&type=signup',
+      `signup confirm link drift in ${locale}`,
     );
-    assertStringIncludes(firstUrl, '/auth/callback');
-    assertStringIncludes(r.text, '/auth/v1/verify?token=signhash&type=signup');
+    assertStringIncludes(r.text, '/auth/callback?token_hash=signhash&type=signup');
     // Localized subject / heading / CTA all render (none carry
     // HTML-special characters, so escapeHtml is identity here).
     assertEquals(r.subject, strings.subject, `signup subject drift in ${locale}`);

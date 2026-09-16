@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { goto } from '$app/navigation';
+	import { goto, replaceState } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { auth } from '$lib/stores/auth.svelte';
@@ -137,6 +137,27 @@
 		error = m('login.appleSoon');
 	}
 
+	// Both callers — a fresh sign-up and the emailExists collapse —
+	// must land here identically, or sign-up becomes an
+	// account-existence oracle again.
+	function showConfirmationPending(address: string) {
+		info = m('login.checkEmail', { email: address });
+		isSignUp = false;
+		password = '';
+		confirmPassword = '';
+		// Consent is affirmed per sign-up attempt, never carried across
+		// one: a later sign-up for another address must tick both again.
+		confirmAdult = false;
+		acceptTerms = false;
+		// ?signup=1 seeds the initial mode only, but leaving it on the
+		// URL means a refresh restores the form we just dismissed.
+		const url = new URL($page.url);
+		if (url.searchParams.has('signup')) {
+			url.searchParams.delete('signup');
+			replaceState(`${url.pathname}${url.search}`, {});
+		}
+	}
+
 	async function handleEmailSubmit(e: Event) {
 		e.preventDefault();
 		error = '';
@@ -200,7 +221,7 @@
 					// used to enumerate accounts). Either way there is no
 					// session to navigate with; show the check-your-email
 					// state instead of a silent non-event.
-					info = m('login.checkEmail', { email });
+					showConfirmationPending(email);
 					return;
 				}
 				// Server-side consent stamp on user_profiles. Also seeds
@@ -241,7 +262,7 @@
 			// GoTrue has email confirmations off. Login is untouched (an
 			// existing email there classifies as invalidCredentials).
 			if (isSignUp && !isReset && signUpErrorRevealsAccountExistence(kind)) {
-				info = m('login.checkEmail', { email });
+				showConfirmationPending(email);
 				return;
 			}
 			error = m(authErrorMessageKey(kind), { min: PASSWORD_MIN_LENGTH });
@@ -455,7 +476,7 @@
 		{:else}
 			<p class="toggle-mode">
 				{isSignUp ? m('login.haveAccount') : m('login.noAccount')}
-				<button type="button" class="link-btn" onclick={() => { isSignUp = !isSignUp; error = ''; }}>
+				<button type="button" class="link-btn" onclick={() => { isSignUp = !isSignUp; error = ''; info = ''; }}>
 					{isSignUp ? m('login.toggleToSignIn') : m('login.toggleToSignUp')}
 				</button>
 			</p>

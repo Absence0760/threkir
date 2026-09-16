@@ -466,6 +466,27 @@ class RaceService extends ChangeNotifier {
     }
   }
 
+  /// Whether the parkrun import leg is reachable on this deployment.
+  ///
+  /// parkrun needs no credential, so unlike the three race-results legs above
+  /// this asks only whether the Edge Function is deployed — the question a
+  /// minimal deployment answers no to and every client used to skip, offering
+  /// an import tile for a function that is not there. Same fail-closed shape:
+  /// only a call that does not throw counts.
+  ///
+  /// Lives here rather than on `ApiClient` so the settings screen reaches every
+  /// probe it draws through one seam, which is what lets its widget test inject
+  /// a stub for all of them at once.
+  Future<bool> isParkrunConfigured() async {
+    try {
+      await _c.functions.invoke('parkrun-import', body: {'probe': true});
+      return true;
+    } catch (e) {
+      debugPrint('RaceService: parkrun probe reports unavailable: $e');
+      return false;
+    }
+  }
+
   bool _isProviderNotConfigured(dynamic details) =>
       _detailsSay(details, 'provider_not_configured');
 

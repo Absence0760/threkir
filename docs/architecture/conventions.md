@@ -809,7 +809,7 @@ When you genuinely need a migration (e.g. on-disk data format changing), write t
 
 ## Web page padding
 
-Every top-level web page wraps its content in a `.page` div with `padding: var(--page-padding-y) var(--page-padding-x)` and is **left-aligned**. **Read the tokens, never the `--space-*` pair they resolve to** — they are 2rem / 3rem at desktop and narrow to `--space-lg` / `--space-md` below 40 rem, where a 3rem gutter each side costs 96px of a 320px screen on top of the 72px sidebar rail ([§ 535](decisions.md)) — do not add `margin: 0 auto`. The constant `var(--space-2xl)` left gutter is the gap between the sidebar and the content; centering with `margin: 0 auto` makes that gap balloon on wide screens whenever the page sets a small `max-width`, and makes navigating between pages feel like the content is jumping around. List and detail pages **do not set `max-width`** — they fill the available width so card grids, week strips, and run lists use the full screen instead of stranding empty space on the right. Focused single-form pages may still cap narrow (40–48rem) and tabbed settings panes cap at 64rem so labelled rows don't stretch awkwardly; everything else stays uncapped. Keep the horizontal padding fixed and don't centre. Public layouts without the sidebar (`/`, `/login`, `/share/...`, `/clubs/join/[token]`, `/live/...`) are exempt because they don't share the chrome and centring is the right call there.
+Every top-level web page wraps its content in a `.page` div with `padding: var(--page-padding-y) var(--page-padding-x)` and is **left-aligned**. **Read the tokens, never the `--space-*` pair they resolve to** — they are 2rem / 3rem at desktop and narrow to `--space-lg` / `--space-md` below 40 rem, where a 3rem gutter each side costs 96px of a 320px screen on top of the 72px sidebar rail ([§ 535](decisions.md)) — do not add `margin: 0 auto`. The constant `var(--space-2xl)` left gutter is the gap between the sidebar and the content; centering with `margin: 0 auto` makes that gap balloon on wide screens whenever the page sets a small `max-width`, and makes navigating between pages feel like the content is jumping around. List and detail pages **do not set `max-width`** — they fill the available width so card grids, week strips, and run lists use the full screen instead of stranding empty space on the right. Focused single-form pages may still cap narrow (40–48rem) and tabbed settings panes cap at 64rem so labelled rows don't stretch awkwardly; everything else stays uncapped. Keep the horizontal padding fixed and don't centre. When an uncapped page holds a block that reads as broken at full width — a stat strip whose three cells each end up mostly empty, a leaderboard row that strands the time a screen-width from the name, a paragraph past a readable measure — **cap that block, not the page** (`/segments/[id]` caps its stat strip, its leaderboard and its description at 48rem and lets the map keep the full width). Public layouts without the sidebar (`/`, `/login`, `/share/...`, `/clubs/join/[token]`, `/live/...`) are exempt because they don't share the chrome and centring is the right call there.
 
 ## Web page titles and sidebar chrome
 
@@ -821,7 +821,7 @@ The sidebar is collapsible — there's a `menu` / `menu_open` icon button in `.s
 
 ## Web motion — the resting state is the markup's own
 
-Motion on the public pages (`/`, `/login`, `/auth/*`) is a decoration over a finished page, never a requirement for seeing one ([decisions § 1620](decisions.md)). Four rules, each pinned by `tests-e2e/landing/motion.spec.ts` or `tests-e2e/auth/shell.spec.ts`:
+Motion on the public pages (`/`, `/login`, `/auth/*`) is a decoration over a finished page, never a requirement for seeing one ([decisions § 1626](decisions.md)). Four rules, each pinned by `tests-e2e/landing/motion.spec.ts` or `tests-e2e/auth/shell.spec.ts`:
 
 1. **The last keyframe is the resting state.** An entrance animates FROM hidden TO the element's own style with `fill: backwards` (CSS) or `fill: 'backwards'` (WAAPI), never to a state that only a `forwards` fill holds. No JS, a failed hydration and reduced motion all leave the finished page.
 2. **Only script that can reveal an element may hide it.** Scroll reveals go through `use:reveal` from `lib/motion/actions.ts`, which sets the hidden starting state itself, never through a stylesheet class a script later removes, and leaves anything already on screen at mount alone. Its `[data-grow]`, `[data-draw]` and `[data-pop]` hooks animate a card's figure as the card arrives.
@@ -996,7 +996,7 @@ The dashboard's mileage axis shipped `week.split(' ')[0]` against a
 is what the author saw. en-US gives `Aug 31` → **`Aug` under every bar in
 August**; de gives `31. Aug.` → `31.`; ja gives `8月31日`, which contains no
 space, so the whole date landed under a 30 px bar
-([decisions.md § 1624](decisions.md)).
+([decisions.md § 1630](decisions.md)).
 
 **Format the part you want in its own right.** Call the formatter again with
 the fields you need (`{ day: 'numeric' }`), or use `Intl.DateTimeFormat`'s

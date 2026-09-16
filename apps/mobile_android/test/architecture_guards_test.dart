@@ -5362,6 +5362,9 @@ void main() {
       // deduped against what is already there, so a wider window can only add
       // runs — there is nothing here to lose.
       'screens/settings_integrations_screen.dart::l10n.integrationsStravaLookbackTitle': 1,
+      // Explains what a feature is. Its only action is dismissal; nothing is
+      // decided here and nothing can be lost by tapping it.
+      'widgets/info_tip.dart::title': 1,
     };
 
     test('no AlertDialog outside the reviewed set omits error emphasis', () {

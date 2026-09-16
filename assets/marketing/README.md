@@ -1,6 +1,6 @@
 # Marketing art for the public pages
 
-Generated art for the landing page and the auth shell ([decisions.md § 1620](../../docs/architecture/decisions.md)). Everything here is a script, and the outputs are committed under `apps/web/static/marketing/`. Regenerate the art; don't edit the images by hand.
+Generated art for the landing page and the auth shell ([decisions.md § 1626](../../docs/architecture/decisions.md)). Everything here is a script, and the outputs are committed under `apps/web/static/marketing/`. Regenerate the art; don't edit the images by hand.
 
 | File | Tool | Role |
 |---|---|---|

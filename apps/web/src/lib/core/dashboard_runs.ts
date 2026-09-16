@@ -42,3 +42,31 @@ export function periodNeedsFullHistory(
 	if (type === 'all') return true;
 	return periodStart.getTime() < coveredFrom.getTime();
 }
+
+/// Which source chips the dashboard's filter row should offer.
+///
+/// The row used to render one chip per source in the vocabulary, so a runner
+/// who has never touched Strava was offered a Strava filter that resolves to an
+/// empty dashboard — on a deployment that may not be able to connect Strava at
+/// all. That is the same class of claim the integrations page was making, in
+/// the one place it still leaks: a control for something that isn't there.
+///
+/// Presence is measured against the runs the chips actually filter — the
+/// dashboard's own window — rather than against what is configured, because a
+/// deployment that later loses its Strava client ID must still let a runner
+/// filter the Strava runs they already have.
+///
+/// The `all` chip is kept whenever anything is, and the whole row collapses
+/// below two real sources: a lone "All / Recorded" pair is a filter with
+/// nothing to filter between.
+export function visibleRunSources<T extends { value: string }>(
+	chips: readonly T[],
+	runSources: Iterable<string | null | undefined>
+): T[] {
+	const present = new Set<string>();
+	for (const source of runSources) {
+		if (source) present.add(source);
+	}
+	if (present.size < 2) return [];
+	return chips.filter((c) => c.value === 'all' || present.has(c.value));
+}

@@ -130,6 +130,14 @@ Three sign-in methods, all hitting Supabase Auth:
 
 OAuth flows redirect to `/auth/callback`, which calls `auth.refreshSession()` and routes to `/dashboard`.
 
+### The brand canvas
+
+The route is two panes, and the brand half exists twice: a full-height `.brand-pane` from 56 rem up, and a short `.brand-band` below it. Each is `display: none` where the other shows, so **exactly one is ever rendered**, and neither is `aria-hidden` — each carries the page's only link home, and hiding a focusable subtree leaves the link focusable but nameless (axe `aria-hidden-focus`, WCAG 4.1.2 + 2.4.3). A third copy inside the form card is what the band replaced. `tests-e2e/auth/brand-canvas.spec.ts` asserts one visible `a[href="/"]` at both widths.
+
+Both halves paint `--brand-ramp`, the same token the marketing hero uses ([decisions.md § 1620](../architecture/decisions.md)) — the pane used to carry a teal-to-brown ramp of its own, so the screen a visitor arrived from and the screen they signed in on wore different brands. The ink on it is a literal `#FFFFFF` because a fixed brand canvas does not follow the theme; every ramp stop is measured under that ink, and under each bloom at its own peak, in `gradient_foreground_guard.test.ts`.
+
+The pane carries `AuthShowcase` — a compact run card drawn by `TrackPreview` over the same `DEMO_*` data as the landing hero, so the two cannot show different runs and neither can go stale as a screenshot would. It is registered in `track_preview_mount_guard.test.ts`'s `STATIC_DEMO_MOUNTS` (§ 33's second permitted category), which also checks that its `points` binds a `DEMO_*` identifier. Behind everything, `BrandTexture` draws contour lines traced from a height field ([decisions.md § 1622](../architecture/decisions.md)); the form side takes the same field in `--color-primary` at half strength, so the two halves read as one place.
+
 ---
 
 ## Auth error surfacing

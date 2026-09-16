@@ -973,6 +973,29 @@ Pairwise 3:1 between marks is often unreachable — *n* marks need 3^(n−1) and
 
 A min/max-normalised series drawn without an axis shows shape and hides scale: CTL 45 and CTL 450 render pixel-identically. Any plot that normalises to its own extremes owes a labelled y-scale — a gutter, round ticks off a 1/2/5×10^n ladder, and gridlines. On web, y labels go in a **CSS gutter beside** the SVG when the chart uses `preserveAspectRatio="none"`; text inside that viewBox is stretched horizontally at every viewport width.
 
+## A localised string is prose — never recover a part of it by cutting it up
+
+`toLocaleDateString` and friends return output written for a human in their
+language, not a record with fields. Splitting, slicing or regexing one to get
+"just the day" or "just the month" encodes one locale's word order as a
+universal, and it fails silently in every other one.
+
+The dashboard's mileage axis shipped `week.split(' ')[0]` against a
+`{ day: 'numeric', month: 'short' }` label. en-GB gives `31 Aug` → `31`, which
+is what the author saw. en-US gives `Aug 31` → **`Aug` under every bar in
+August**; de gives `31. Aug.` → `31.`; ja gives `8月31日`, which contains no
+space, so the whole date landed under a 30 px bar
+([decisions.md § 1623](decisions.md)).
+
+**Format the part you want in its own right.** Call the formatter again with
+the fields you need (`{ day: 'numeric' }`), or use `Intl.DateTimeFormat`'s
+`formatToParts` when several parts are wanted from one call. Where both a long
+and a short form are needed, carry both: `WeekBar` has `week` for the hover and
+`axis` for the tick, each formatted separately. The same rule holds for a
+number — never parse back a string `Intl.NumberFormat` produced — and for a
+duration or pace, which is why `paceMinutesSeconds` takes seconds rather than a
+formatted string.
+
 ## Mobile component themes — style in `AppTheme`, not at the call site
 
 On the Flutter apps, presentation that every instance of a widget should share lives in `packages/ui_kit/lib/src/theme/app_theme.dart` (both the `light` and `dark` getters), never repeated per call site. Five contracts are now themed, each guarded by a test in `packages/ui_kit/test/` ([decisions.md § 482](decisions.md) and [§ 487](decisions.md)):

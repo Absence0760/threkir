@@ -3281,6 +3281,8 @@
   "gymSessionKeepGoing": "Continuer la séance",
   "gymDraftTitle": "Séance en cours",
   "gymDraftSetCount": "{count, plural, =1{1 série enregistrée} other{{count} séries enregistrées}}",
+  "gymComposeDraftTitle": "Séance non terminée",
+  "gymComposeDraftBody": "Vous avez commencé cette séance sans jamais l'enregistrer.",
   "gymDraftResume": "Reprendre",
   "gymDraftSave": "Enregistrer en l'état",
   "gymSessionSaved": "Entraînement enregistré",

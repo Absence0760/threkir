@@ -3281,6 +3281,8 @@
   "gymSessionKeepGoing": "Continuar treinando",
   "gymDraftTitle": "Sessão em andamento",
   "gymDraftSetCount": "{count, plural, =1{1 série registrada} other{{count} séries registradas}}",
+  "gymComposeDraftTitle": "Treino não finalizado",
+  "gymComposeDraftBody": "Você começou este treino, mas nunca o salvou.",
   "gymDraftResume": "Retomar",
   "gymDraftSave": "Salvar como está",
   "gymSessionSaved": "Treino salvo",

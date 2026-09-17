@@ -14789,6 +14789,14 @@
       }
     }
   },
+  "gymComposeDraftTitle": "Unfinished workout",
+  "@gymComposeDraftTitle": {
+    "description": "Heading of the gym composer's recover card, offering back the half-built workout a killed composer left on disk"
+  },
+  "gymComposeDraftBody": "You started this workout but never saved it.",
+  "@gymComposeDraftBody": {
+    "description": "Body of the gym composer's recover card"
+  },
   "gymDraftResume": "Resume",
   "@gymDraftResume": {
     "description": "Resume-card action restoring the guided session from its draft"

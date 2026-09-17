@@ -11493,6 +11493,13 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get gymComposeDraftTitle => 'Séance non terminée';
+
+  @override
+  String get gymComposeDraftBody =>
+      'Vous avez commencé cette séance sans jamais l\'enregistrer.';
+
+  @override
   String get gymDraftResume => 'Reprendre';
 
   @override

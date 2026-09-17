@@ -11467,6 +11467,13 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get gymComposeDraftTitle => 'Treino por terminar';
+
+  @override
+  String get gymComposeDraftBody =>
+      'Começaste este treino mas nunca o guardaste.';
+
+  @override
   String get gymDraftResume => 'Retomar';
 
   @override
@@ -25636,6 +25643,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
     );
     return '$_temp0';
   }
+
+  @override
+  String get gymComposeDraftTitle => 'Treino não finalizado';
+
+  @override
+  String get gymComposeDraftBody =>
+      'Você começou este treino, mas nunca o salvou.';
 
   @override
   String get gymDraftResume => 'Retomar';

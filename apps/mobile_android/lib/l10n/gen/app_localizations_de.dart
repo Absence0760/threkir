@@ -11480,6 +11480,13 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get gymComposeDraftTitle => 'Nicht beendetes Workout';
+
+  @override
+  String get gymComposeDraftBody =>
+      'Du hast dieses Workout begonnen, aber nie gespeichert.';
+
+  @override
   String get gymDraftResume => 'Fortsetzen';
 
   @override

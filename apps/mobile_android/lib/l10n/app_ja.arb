@@ -3281,6 +3281,8 @@
   "gymSessionKeepGoing": "続ける",
   "gymDraftTitle": "進行中のワークアウト",
   "gymDraftSetCount": "{count, plural, other{{count}セット記録済み}}",
+  "gymComposeDraftTitle": "未完了のワークアウト",
+  "gymComposeDraftBody": "開始したまま保存していないワークアウトがあります。",
   "gymDraftResume": "再開",
   "gymDraftSave": "このまま保存",
   "gymSessionSaved": "ワークアウトを保存しました",

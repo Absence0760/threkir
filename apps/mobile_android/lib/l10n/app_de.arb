@@ -3281,6 +3281,8 @@
   "gymSessionKeepGoing": "Weitermachen",
   "gymDraftTitle": "Laufende Einheit",
   "gymDraftSetCount": "{count, plural, =1{1 Satz protokolliert} other{{count} Sätze protokolliert}}",
+  "gymComposeDraftTitle": "Nicht beendetes Workout",
+  "gymComposeDraftBody": "Du hast dieses Workout begonnen, aber nie gespeichert.",
   "gymDraftResume": "Fortsetzen",
   "gymDraftSave": "So speichern",
   "gymSessionSaved": "Training gespeichert",

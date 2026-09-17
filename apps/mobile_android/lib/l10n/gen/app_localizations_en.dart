@@ -11347,6 +11347,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get gymComposeDraftTitle => 'Unfinished workout';
+
+  @override
+  String get gymComposeDraftBody =>
+      'You started this workout but never saved it.';
+
+  @override
   String get gymDraftResume => 'Resume';
 
   @override

@@ -18825,6 +18825,18 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 set logged} other{{count} sets logged}}'**
   String gymDraftSetCount(int count);
 
+  /// Heading of the gym composer's recover card, offering back the half-built workout a killed composer left on disk
+  ///
+  /// In en, this message translates to:
+  /// **'Unfinished workout'**
+  String get gymComposeDraftTitle;
+
+  /// Body of the gym composer's recover card
+  ///
+  /// In en, this message translates to:
+  /// **'You started this workout but never saved it.'**
+  String get gymComposeDraftBody;
+
   /// Resume-card action restoring the guided session from its draft
   ///
   /// In en, this message translates to:

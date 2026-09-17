@@ -10900,6 +10900,12 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get gymComposeDraftTitle => '未完了のワークアウト';
+
+  @override
+  String get gymComposeDraftBody => '開始したまま保存していないワークアウトがあります。';
+
+  @override
   String get gymDraftResume => '再開';
 
   @override

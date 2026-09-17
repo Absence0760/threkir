@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart' show AppMotion, motionDuration;
 
@@ -44,28 +42,31 @@ const List<Offset> _kAnchoredSlotUnits = [
 /// to the picked [LogAction], or null on scrim tap / back — same contract as
 /// [showLogSheet] so the caller (HomeScreen) still owns the navigation.
 /// Distinct from the History Log FAB, which keeps the bottom sheet.
+///
+/// The fan is a transparent route rather than a bare `OverlayEntry`, because
+/// only what sits on the Navigator answers the system back gesture: as an
+/// overlay entry, back reached past the open fan and closed the app with it
+/// still on screen. The route carries no transition of its own — the arc's
+/// own stagger is the entrance.
 Future<LogAction?> showLogSpeedDial({
   required BuildContext context,
   LogAction? recent,
   Offset? anchor,
 }) {
-  final overlay = Overlay.of(context);
-  final completer = Completer<LogAction?>();
   final fabCentreFromBottom = MediaQuery.paddingOf(context).bottom + _kBarHeight;
-  late OverlayEntry entry;
-  entry = OverlayEntry(
-    builder: (_) => _LogSpeedDial(
-      recent: recent,
-      fabCentreFromBottom: fabCentreFromBottom,
-      anchor: anchor,
-      onClose: (action) {
-        entry.remove();
-        if (!completer.isCompleted) completer.complete(action);
-      },
+  return Navigator.of(context).push<LogAction>(
+    PageRouteBuilder<LogAction>(
+      opaque: false,
+      barrierDismissible: false,
+      transitionDuration: Duration.zero,
+      reverseTransitionDuration: Duration.zero,
+      pageBuilder: (_, _, _) => _LogSpeedDial(
+        recent: recent,
+        fabCentreFromBottom: fabCentreFromBottom,
+        anchor: anchor,
+      ),
     ),
   );
-  overlay.insert(entry);
-  return completer.future;
 }
 
 class _LogSpeedDial extends StatefulWidget {
@@ -76,13 +77,11 @@ class _LogSpeedDial extends StatefulWidget {
   /// bottom-docked centre FAB; non-null fans the arc to the right of the
   /// anchor instead (the NavigationRail Log button on expanded layouts).
   final Offset? anchor;
-  final void Function(LogAction? action) onClose;
 
   const _LogSpeedDial({
     required this.recent,
     required this.fabCentreFromBottom,
     required this.anchor,
-    required this.onClose,
   });
 
   @override
@@ -113,12 +112,12 @@ class _LogSpeedDialState extends State<_LogSpeedDial>
   }
 
   // Hand the result straight to the caller so navigation is as snappy as the
-  // old bottom sheet; the overlay is torn down at once (the fan-out is the
+  // old bottom sheet; the route is torn down at once (the fan-out is the
   // entrance flourish, there's no exit dance to wait on).
   void _close(LogAction? action) {
     if (_closing) return;
     _closing = true;
-    widget.onClose(action);
+    Navigator.of(context).pop(action);
   }
 
   @override

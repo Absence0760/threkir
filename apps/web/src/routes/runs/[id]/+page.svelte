@@ -82,7 +82,7 @@
 	import { supabase } from '$lib/core/supabase';
 	import { TABLES, METADATA_KEYS } from '$lib/core/schema';
 	import { m } from '$lib/i18n/store.svelte';
-	import { activityTypeIcon } from '$lib/runs/activity_type';
+	import { activityTypeIcon, activityUsesSpeed } from '$lib/runs/activity_type';
 	import { activityTypeLabel } from '$lib/runs/activity_type.svelte';
 	import { buildRunShareCanonical } from '$lib/share/share_meta';
 	import type { Run } from '$lib/types';
@@ -964,20 +964,17 @@
 		if (movingSeconds > 0 && movingSeconds !== run.duration_s) {
 			cells.push({ label: m('runDetail.moving'), value: formatDuration(movingSeconds) });
 		}
-		cells.push({
-			label: m('runDetail.avgPace'),
-			value: formatPace(paceSeconds, run.distance_m),
-		});
+		cells.push(
+			activityUsesSpeed(run.activity_type)
+				? { label: m('runDetail.avgSpeed'), value: formatSpeed(paceSeconds, run.distance_m) }
+				: { label: m('runDetail.avgPace'), value: formatPace(paceSeconds, run.distance_m) },
+		);
 		if (showGradeAdjustedPace && gradeAdjustedPace != null) {
 			cells.push({
 				label: m('runDetail.gradeAdjustedPace'),
 				value: formatPace(gradeAdjustedPace, 1000),
 			});
 		}
-		cells.push({
-			label: m('runDetail.avgSpeed'),
-			value: formatSpeed(paceSeconds, run.distance_m),
-		});
 		if (elevationGainM != null) {
 			cells.push({ label: m('runDetail.elevation'), value: `${elevationGainM} m` });
 		}
@@ -2968,9 +2965,6 @@
 		font-variant-numeric: tabular-nums;
 		color: var(--color-text);
 		line-height: 1.1;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
 	}
 
 	.key-stat-label {

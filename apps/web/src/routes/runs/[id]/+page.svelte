@@ -14,6 +14,7 @@
 	import ElevationProfile from '$lib/components/ElevationProfile.svelte';
 	import RunSocial from '$lib/components/RunSocial.svelte';
 	import RunShareView from '$lib/components/RunShareView.svelte';
+	import StaticMapImage from '$lib/components/StaticMapImage.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import ReportDialog from '$lib/components/ReportDialog.svelte';
 	import RunPhotos from '$lib/components/RunPhotos.svelte';
@@ -2241,13 +2242,15 @@
 				 anonymous so html-to-image's `toPng(...)` can read the
 				 pixel buffer back from the canvas (tileserver-gl +
 				 MapTiler both serve CORS headers, but the explicit
-				 attribute is what unlocks the canvas readback). -->
-			<img
+				 attribute is what unlocks the canvas readback). A map
+				 that fails to load leaves the stats-only card, not a
+				 broken image in the capture. -->
+			<StaticMapImage
 				src={shareMapUrl}
-				class="share-card-map"
 				alt=""
+				class="share-card-map"
 				crossorigin="anonymous"
-				data-testid="share-card-map"
+				testid="share-card-map"
 			/>
 		{/if}
 		<div class="share-card-stats">
@@ -3503,7 +3506,7 @@
 		text-transform: uppercase;
 		opacity: 0.9;
 	}
-	.share-card-map {
+	.share-card-inner :global(.share-card-map) {
 		display: block;
 		width: 100%;
 		height: 360px;

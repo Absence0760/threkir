@@ -5341,6 +5341,9 @@ void main() {
       'screens/run_detail_screen.dart::l10n.runDetailMakePrivateTitle': 1,
       'screens/run_detail_screen.dart::l10n.runDetailMakePublicTitle': 1,
       'screens/run_detail_screen.dart::l10n.runDetailSaveAsRouteTitle': 1,
+      // States what the OS just refused and offers the Settings shortcut.
+      // Either action finishes onboarding; nothing is discarded by it.
+      'screens/onboarding_screen.dart::l10n.onboardingLocationDeniedTitle': 1,
       // Recording nudges and prompts; none of them discards a run.
       'screens/run_screen.dart::_l10n.runBackgroundLocationNudgeTitle': 1,
       'screens/run_screen.dart::_l10n.runBatteryOptHintTitle': 1,

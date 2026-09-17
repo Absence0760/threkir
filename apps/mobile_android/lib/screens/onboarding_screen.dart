@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:api_client/api_client.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -46,16 +48,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   int get _pageCount => _infoPageCount + 1;
   bool get _onPrivacyPage => _page == _infoPageCount;
 
-  // Background-location disclosure copy mandated by Google Play's
-  // location policy: the in-app rationale must run BEFORE the OS
-  // permission dialog, must name the specific feature using
-  // background location, and must explain what happens if the user
-  // declines. Apple's App Review Guideline 5.1.5 also requires the
-  // same disclosure in the location strings (covered by
-  // NSLocationAlwaysAndWhenInUseUsageDescription on iOS, but the
-  // pre-prompt rationale here doubles as the cross-platform copy
-  // for the Play disclosure surface). /audit/app-store-privacy May
-  // 2026 High closeout.
+  // Location disclosure copy mandated by Google Play's location policy:
+  // the in-app rationale must run BEFORE the OS permission dialog, must
+  // name the specific feature using location, and must explain what
+  // happens if the user declines. Apple's App Review Guideline 5.1.5 wants
+  // the same in the location strings (NSLocationWhenInUseUsageDescription
+  // / NSLocationAlwaysAndWhenInUseUsageDescription on iOS).
+  //
+  // The two platforms get different copy because they genuinely differ:
+  // Android's first runtime dialog cannot grant more than "while using the
+  // app" (decisions.md § 611) and the "Allow all the time" upgrade is a
+  // separate trip to Settings that `run_screen` offers before the first
+  // run; on iOS "While Using the App" plus UIBackgroundModes:location IS a
+  // supported background-recording configuration, so there is no upgrade
+  // to promise and the Settings path named is iOS's.
   List<_PageData> _infoPages(AppLocalizations l10n) => [
         _PageData(
           icon: Icons.directions_run,
@@ -70,7 +76,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         _PageData(
           icon: Icons.location_on,
           title: l10n.onboardingLocationTitle,
-          description: l10n.onboardingLocationBody,
+          description: Platform.isIOS
+              ? l10n.onboardingLocationBodyIos
+              : l10n.onboardingLocationBodyAndroid,
         ),
       ];
 
@@ -102,21 +110,62 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       } catch (e) {
         debugPrint('onboarding privacy bag write failed (kept local): $e');
       }
-      await _requestLocationPermission();
+      final permission = await _requestLocationPermission();
+      if (!mounted) return;
+      // The outcome used to be thrown away, so a runner who tapped Deny
+      // finished onboarding having been told what declining would cost and
+      // then never told it had happened. A null result means the platform
+      // call itself failed — we don't know what the grant is, so we say
+      // nothing rather than accuse the OS of refusing.
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        await _disclosePermissionDenied();
+        if (!mounted) return;
+      }
       await widget.preferences.setOnboarded(true);
       if (!mounted) return;
       widget.onDone();
     }
   }
 
-  Future<void> _requestLocationPermission() async {
+  /// Requests the foreground ("while in use") grant — the only one either
+  /// platform's first runtime dialog can give — and returns what came back.
+  /// Null when the platform call threw, which is not a denial.
+  Future<LocationPermission?> _requestLocationPermission() async {
     try {
       final status = await Geolocator.checkPermission();
-      if (status == LocationPermission.denied) {
-        await Geolocator.requestPermission();
-      }
+      if (status != LocationPermission.denied) return status;
+      return await Geolocator.requestPermission();
     } catch (e) {
       debugPrint('Location permission request failed: $e');
+      return null;
+    }
+  }
+
+  Future<void> _disclosePermissionDenied() async {
+    final l10n = AppLocalizations.of(context);
+    final openSettings = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.onboardingLocationDeniedTitle),
+        content: Text(l10n.onboardingLocationDeniedBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.onboardingLocationDeniedContinue),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.onboardingLocationDeniedSettings),
+          ),
+        ],
+      ),
+    );
+    if (openSettings != true) return;
+    try {
+      await Geolocator.openAppSettings();
+    } catch (e) {
+      debugPrint('openAppSettings failed: $e');
     }
   }
 

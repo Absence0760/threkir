@@ -1267,8 +1267,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingLocationTitle => 'Location access';
 
   @override
-  String get onboardingLocationBody =>
-      'Threkir records your runs by sampling your GPS location while the app is in the foreground AND in the background (so it keeps tracking when your screen is off or you switch apps to take a photo). Location data is stored on your device and only uploaded to Threkir\'s servers when you choose to share or sync a run. If you decline background location, runs will stop recording the moment you switch away from the app — you can change this later in Settings → Apps → Threkir → Permissions.';
+  String get onboardingLocationBodyAndroid =>
+      'Threkir samples your GPS location to record a run, including while your screen is off — a notification shows whenever a run is recording. Your location stays on this device unless you sync or share a run. The next prompt grants access while the app is in use, which is all Android’s first prompt can give; before your first run Threkir offers the “Allow all the time” upgrade that keeps tracking reliable once you switch to another app. Decline, and runs still record time and steps — but no map, distance or pace.';
+
+  @override
+  String get onboardingLocationBodyIos =>
+      'Threkir samples your GPS location to record a run, including while your screen is off or you are in another app. Your location stays on this device unless you sync or share a run. You can change this any time in Settings › Privacy & Security › Location Services › Threkir. Decline, and runs still record time and steps — but no map, distance or pace.';
+
+  @override
+  String get onboardingLocationDeniedTitle => 'No location access';
+
+  @override
+  String get onboardingLocationDeniedBody =>
+      'Threkir can still time your runs and count steps, but without location there is no map, no distance and no pace. You can grant it whenever you like.';
+
+  @override
+  String get onboardingLocationDeniedSettings => 'Open settings';
+
+  @override
+  String get onboardingLocationDeniedContinue => 'Continue without it';
 
   @override
   String get onboardingPrivacyTitle => 'Who sees your runs?';

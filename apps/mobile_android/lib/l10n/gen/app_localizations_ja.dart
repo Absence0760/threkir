@@ -1223,8 +1223,25 @@ class AppLocalizationsJa extends AppLocalizations {
   String get onboardingLocationTitle => '位置情報へのアクセス';
 
   @override
-  String get onboardingLocationBody =>
-      'Threkirは、アプリがフォアグラウンドにあるときもバックグラウンドにあるときもGPS位置情報をサンプリングしてランを記録します（画面がオフのときや、写真を撮るためにアプリを切り替えたときも記録を続けます）。位置情報はデバイス上に保存され、あなたがランを共有または同期することを選んだときにのみThrekirのサーバーにアップロードされます。バックグラウンドの位置情報を拒否すると、アプリから離れた瞬間に記録が停止します。これは後で 設定 → アプリ → Threkir → 権限 で変更できます。';
+  String get onboardingLocationBodyAndroid =>
+      'Threkir はランを記録するために GPS の位置情報を取得します。画面がオフの間も記録し、記録中は通知が表示されます。位置情報は、ランを同期または共有しないかぎりこの端末に残ります。次の確認画面で許可されるのは「アプリの使用中のみ」で、Android の最初の確認ではそれ以上は許可できません。最初のランの前に、他のアプリに切り替えても記録を安定させる「常に許可」への変更を案内します。許可しない場合も時間と歩数は記録されますが、地図・距離・ペースは記録されません。';
+
+  @override
+  String get onboardingLocationBodyIos =>
+      'Threkir はランを記録するために GPS の位置情報を取得します。画面がオフの間や他のアプリを使っている間も記録します。位置情報は、ランを同期または共有しないかぎりこの端末に残ります。設定 › プライバシーとセキュリティ › 位置情報サービス › Threkir でいつでも変更できます。許可しない場合も時間と歩数は記録されますが、地図・距離・ペースは記録されません。';
+
+  @override
+  String get onboardingLocationDeniedTitle => '位置情報が許可されていません';
+
+  @override
+  String get onboardingLocationDeniedBody =>
+      'Threkir はランの計測と歩数のカウントを続けられますが、位置情報がないと地図・距離・ペースは記録されません。いつでも許可できます。';
+
+  @override
+  String get onboardingLocationDeniedSettings => '設定を開く';
+
+  @override
+  String get onboardingLocationDeniedContinue => '許可せずに続ける';
 
   @override
   String get onboardingPrivacyTitle => 'あなたのランを見られるのは誰？';

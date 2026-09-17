@@ -1278,8 +1278,25 @@ class AppLocalizationsEs extends AppLocalizations {
   String get onboardingLocationTitle => 'Acceso a la ubicación';
 
   @override
-  String get onboardingLocationBody =>
-      'Threkir registra tus carreras tomando muestras de tu ubicación GPS mientras la app está en primer plano Y en segundo plano (para seguir registrando cuando la pantalla está apagada o cambias de app para hacer una foto). Los datos de ubicación se guardan en tu dispositivo y solo se suben a los servidores de Threkir cuando decides compartir o sincronizar una carrera. Si rechazas la ubicación en segundo plano, las carreras dejarán de registrarse en cuanto salgas de la app: puedes cambiarlo más tarde en Ajustes → Apps → Threkir → Permisos.';
+  String get onboardingLocationBodyAndroid =>
+      'Threkir toma tu ubicación GPS para registrar una carrera, incluso con la pantalla apagada: una notificación indica que hay un registro en curso. Tu ubicación se queda en este dispositivo mientras no sincronices ni compartas una carrera. La siguiente solicitud concede el acceso mientras usas la app, que es todo lo que puede dar la primera solicitud de Android; antes de tu primera carrera, Threkir te ofrece pasar a «Permitir siempre», que mantiene el seguimiento fiable cuando cambias a otra app. Si lo rechazas, las carreras siguen registrando tiempo y pasos, pero sin mapa, distancia ni ritmo.';
+
+  @override
+  String get onboardingLocationBodyIos =>
+      'Threkir toma tu ubicación GPS para registrar una carrera, incluso con la pantalla apagada o mientras estás en otra app. Tu ubicación se queda en este dispositivo mientras no sincronices ni compartas una carrera. Puedes cambiarlo cuando quieras en Ajustes › Privacidad y seguridad › Localización › Threkir. Si lo rechazas, las carreras siguen registrando tiempo y pasos, pero sin mapa, distancia ni ritmo.';
+
+  @override
+  String get onboardingLocationDeniedTitle => 'Sin acceso a la ubicación';
+
+  @override
+  String get onboardingLocationDeniedBody =>
+      'Threkir puede seguir cronometrando tus carreras y contando pasos, pero sin ubicación no hay mapa, distancia ni ritmo. Puedes concederla cuando quieras.';
+
+  @override
+  String get onboardingLocationDeniedSettings => 'Abrir ajustes';
+
+  @override
+  String get onboardingLocationDeniedContinue => 'Continuar sin ella';
 
   @override
   String get onboardingPrivacyTitle => '¿Quién ve tus carreras?';

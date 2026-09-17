@@ -1284,8 +1284,25 @@ class AppLocalizationsFr extends AppLocalizations {
   String get onboardingLocationTitle => 'Accès à la localisation';
 
   @override
-  String get onboardingLocationBody =>
-      'Threkir enregistre vos courses en échantillonnant votre position GPS lorsque l\'app est au premier plan ET en arrière-plan (afin de continuer le suivi lorsque votre écran est éteint ou que vous changez d\'app pour prendre une photo). Les données de localisation sont stockées sur votre appareil et ne sont transmises aux serveurs de Threkir que lorsque vous choisissez de partager ou de synchroniser une course. Si vous refusez la localisation en arrière-plan, l\'enregistrement s\'arrêtera dès que vous quitterez l\'app — vous pourrez modifier cela plus tard dans Réglages → Apps → Threkir → Autorisations.';
+  String get onboardingLocationBodyAndroid =>
+      'Threkir relève votre position GPS pour enregistrer une course, y compris écran éteint — une notification indique qu’un enregistrement est en cours. Votre position reste sur cet appareil tant que vous ne synchronisez ni ne partagez une course. La demande suivante accorde l’accès pendant l’utilisation de l’app, ce que la première demande d’Android ne peut pas dépasser ; avant votre première course, Threkir propose le passage à « Toujours autoriser », qui fiabilise le suivi lorsque vous passez à une autre app. Si vous refusez, les courses enregistrent toujours le temps et les pas — mais ni carte, ni distance, ni allure.';
+
+  @override
+  String get onboardingLocationBodyIos =>
+      'Threkir relève votre position GPS pour enregistrer une course, y compris écran éteint ou lorsque vous êtes dans une autre app. Votre position reste sur cet appareil tant que vous ne synchronisez ni ne partagez une course. Vous pouvez le modifier à tout moment dans Réglages › Confidentialité et sécurité › Service de localisation › Threkir. Si vous refusez, les courses enregistrent toujours le temps et les pas — mais ni carte, ni distance, ni allure.';
+
+  @override
+  String get onboardingLocationDeniedTitle => 'Pas d’accès à la position';
+
+  @override
+  String get onboardingLocationDeniedBody =>
+      'Threkir peut toujours chronométrer vos courses et compter vos pas, mais sans la position il n’y a ni carte, ni distance, ni allure. Vous pouvez l’autoriser quand vous voulez.';
+
+  @override
+  String get onboardingLocationDeniedSettings => 'Ouvrir les réglages';
+
+  @override
+  String get onboardingLocationDeniedContinue => 'Continuer sans';
 
   @override
   String get onboardingPrivacyTitle => 'Qui voit vos courses ?';

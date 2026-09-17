@@ -7,18 +7,38 @@ import '../lib/preferences.dart';
 import '../lib/screens/onboarding_screen.dart';
 
 /// Stub the geolocator platform channel so the final-page "Grant
-/// permission" tap doesn't blow up on the missing native impl. Return
+/// permission" tap doesn't blow up on the missing native impl. Defaults to
 /// `always` (index 3) for checkPermission so the flow skips
-/// requestPermission and proceeds straight to completion.
-void _mockGeolocator(WidgetTester tester) {
+/// requestPermission and proceeds straight to completion. [check] /
+/// [request] take a `LocationPermission` index — 0 denied, 1 deniedForever,
+/// 2 whileInUse, 3 always. [opened] records an openAppSettings call.
+void _mockGeolocator(
+  WidgetTester tester, {
+  int check = 3,
+  int request = 3,
+  List<String>? calls,
+}) {
   const channel = MethodChannel('flutter.baseflow.com/geolocator');
   tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel,
       (call) async {
-    if (call.method == 'checkPermission') return 3; // LocationPermission.always
+    calls?.add(call.method);
+    if (call.method == 'checkPermission') return check;
+    if (call.method == 'requestPermission') return request;
+    if (call.method == 'openAppSettings') return true;
     return null;
   });
   addTearDown(() => tester.binding.defaultBinaryMessenger
       .setMockMethodCallHandler(channel, null));
+}
+
+Future<AppLocalizations> _l10n() =>
+    AppLocalizations.delegate.load(const Locale('en'));
+
+Future<void> _toLastPage(WidgetTester tester) async {
+  for (var i = 0; i < 3; i++) {
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+  }
 }
 
 Future<Preferences> _makePrefs() async {
@@ -165,6 +185,97 @@ void main() {
       expect(prefs.privacyDefault, 'followers');
       expect(prefs.onboarded, isTrue);
       expect(done, isTrue);
+    });
+
+    group('the location disclosure describes the grant that is requested',
+        () {
+      testWidgets('the Location page carries this platform\'s disclosure',
+          (tester) async {
+        // The host running the test is not iOS, so the Android branch is
+        // the one rendered; the iOS branch is checked as copy below.
+        final prefs = await _makePrefs();
+        await _pump(tester, prefs: prefs);
+        final l10n = await _l10n();
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.onboardingLocationBodyAndroid), findsOneWidget);
+      });
+
+      testWidgets('neither disclosure sends an iOS user down an Android path',
+          (tester) async {
+        // Regression: one shared string told every platform to visit
+        // "Settings > Apps > Threkir > Permissions", which does not exist
+        // on iOS.
+        final l10n = await _l10n();
+        expect(l10n.onboardingLocationBodyIos.toLowerCase().contains('android'),
+            isFalse);
+        expect(l10n.onboardingLocationBodyIos.contains('Location Services'),
+            isTrue);
+        expect(
+            l10n.onboardingLocationBodyAndroid, isNot(l10n.onboardingLocationBodyIos));
+      });
+
+      testWidgets('a denied grant is disclosed, not silently swallowed',
+          (tester) async {
+        final calls = <String>[];
+        _mockGeolocator(tester, check: 0, request: 0, calls: calls);
+        final prefs = await _makePrefs();
+        var done = false;
+        await _pump(tester, prefs: prefs, onDone: () => done = true);
+        final l10n = await _l10n();
+        await _toLastPage(tester);
+        await tester.tap(find.text('Grant permission'));
+        await tester.pumpAndSettle();
+
+        // The request actually ran, and its result reached the UI.
+        expect(calls, contains('requestPermission'));
+        expect(find.text(l10n.onboardingLocationDeniedTitle), findsOneWidget);
+        // Onboarding has NOT completed behind the dialog.
+        expect(prefs.onboarded, isFalse);
+        expect(done, isFalse);
+
+        await tester.tap(find.text(l10n.onboardingLocationDeniedContinue));
+        await tester.pumpAndSettle();
+        expect(prefs.onboarded, isTrue);
+        expect(done, isTrue);
+      });
+
+      testWidgets('the denial dialog can hand the runner to app settings',
+          (tester) async {
+        final calls = <String>[];
+        _mockGeolocator(tester, check: 1, request: 1, calls: calls);
+        final prefs = await _makePrefs();
+        await _pump(tester, prefs: prefs);
+        final l10n = await _l10n();
+        await _toLastPage(tester);
+        await tester.tap(find.text('Grant permission'));
+        await tester.pumpAndSettle();
+        // deniedForever: no point re-prompting, but the state is still
+        // disclosed rather than dropped.
+        expect(calls, isNot(contains('requestPermission')));
+        expect(find.text(l10n.onboardingLocationDeniedTitle), findsOneWidget);
+
+        await tester.tap(find.text(l10n.onboardingLocationDeniedSettings));
+        await tester.pumpAndSettle();
+        expect(calls, contains('openAppSettings'));
+        expect(prefs.onboarded, isTrue);
+      });
+
+      testWidgets('a while-in-use grant finishes with no dialog at all',
+          (tester) async {
+        // The grant the copy now describes — nothing to disclose.
+        _mockGeolocator(tester, check: 0, request: 2);
+        final prefs = await _makePrefs();
+        await _pump(tester, prefs: prefs);
+        final l10n = await _l10n();
+        await _toLastPage(tester);
+        await tester.tap(find.text('Grant permission'));
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.onboardingLocationDeniedTitle), findsNothing);
+        expect(prefs.onboarded, isTrue);
+      });
     });
 
     testWidgets('privacy default is private until the user changes it',

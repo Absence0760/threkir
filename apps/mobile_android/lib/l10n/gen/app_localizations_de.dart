@@ -1284,8 +1284,25 @@ class AppLocalizationsDe extends AppLocalizations {
   String get onboardingLocationTitle => 'Standortzugriff';
 
   @override
-  String get onboardingLocationBody =>
-      'Threkir zeichnet deine Läufe auf, indem deine GPS-Position erfasst wird, während die App im Vordergrund UND im Hintergrund läuft (damit die Aufzeichnung weiterläuft, wenn dein Bildschirm aus ist oder du zum Fotografieren die App wechselst). Standortdaten werden auf deinem Gerät gespeichert und nur dann auf die Server von Threkir hochgeladen, wenn du einen Lauf teilst oder synchronisierst. Wenn du den Hintergrundstandort ablehnst, stoppt die Aufzeichnung, sobald du die App verlässt – du kannst das später unter Einstellungen → Apps → Threkir → Berechtigungen ändern.';
+  String get onboardingLocationBodyAndroid =>
+      'Threkir erfasst deinen GPS-Standort, um einen Lauf aufzuzeichnen – auch bei ausgeschaltetem Bildschirm; eine Benachrichtigung zeigt an, dass gerade aufgezeichnet wird. Dein Standort bleibt auf diesem Gerät, solange du einen Lauf nicht synchronisierst oder teilst. Die nächste Abfrage erteilt den Zugriff während der App-Nutzung – mehr kann Androids erste Abfrage nicht geben; vor deinem ersten Lauf bietet Threkir die Erweiterung auf „Immer zulassen“ an, mit der die Aufzeichnung auch zuverlässig bleibt, wenn du zu einer anderen App wechselst. Lehnst du ab, zeichnen Läufe weiterhin Zeit und Schritte auf – aber keine Karte, Distanz oder Pace.';
+
+  @override
+  String get onboardingLocationBodyIos =>
+      'Threkir erfasst deinen GPS-Standort, um einen Lauf aufzuzeichnen – auch bei ausgeschaltetem Bildschirm oder wenn du in einer anderen App bist. Dein Standort bleibt auf diesem Gerät, solange du einen Lauf nicht synchronisierst oder teilst. Du kannst das jederzeit unter Einstellungen › Datenschutz & Sicherheit › Ortungsdienste › Threkir ändern. Lehnst du ab, zeichnen Läufe weiterhin Zeit und Schritte auf – aber keine Karte, Distanz oder Pace.';
+
+  @override
+  String get onboardingLocationDeniedTitle => 'Kein Standortzugriff';
+
+  @override
+  String get onboardingLocationDeniedBody =>
+      'Threkir kann deine Läufe weiterhin stoppen und Schritte zählen, aber ohne Standort gibt es keine Karte, keine Distanz und keine Pace. Du kannst den Zugriff jederzeit erteilen.';
+
+  @override
+  String get onboardingLocationDeniedSettings => 'Einstellungen öffnen';
+
+  @override
+  String get onboardingLocationDeniedContinue => 'Ohne fortfahren';
 
   @override
   String get onboardingPrivacyTitle => 'Wer sieht deine Läufe?';

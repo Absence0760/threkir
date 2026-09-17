@@ -1281,8 +1281,25 @@ class AppLocalizationsPt extends AppLocalizations {
   String get onboardingLocationTitle => 'Acesso à localização';
 
   @override
-  String get onboardingLocationBody =>
-      'O Threkir regista as suas corridas amostrando a sua localização por GPS enquanto o app está em primeiro plano E em segundo plano (para continuar a registar quando o ecrã está desligada ou troca de app para tirar uma fotografia). Os dados de localização ficam armazenados no seu dispositivo e só são enviados aos servidores do Threkir quando escolhe partilhar ou sincronizar uma corrida. Se recusar a localização em segundo plano, as corridas param de ser registadas no momento em que sai do app — pode mudar isto depois em Definições → Apps → Threkir → Permissões.';
+  String get onboardingLocationBodyAndroid =>
+      'O Threkir recolhe a sua localização GPS para registar uma corrida, incluindo com o ecrã desligado — uma notificação indica que há um registo a decorrer. A sua localização fica neste dispositivo enquanto não sincronizar nem partilhar uma corrida. O pedido seguinte concede o acesso durante a utilização da aplicação, que é tudo o que o primeiro pedido do Android pode dar; antes da sua primeira corrida, o Threkir propõe a passagem para «Permitir sempre», que mantém o seguimento fiável quando muda para outra aplicação. Se recusar, as corridas continuam a registar tempo e passos — mas sem mapa, distância ou ritmo.';
+
+  @override
+  String get onboardingLocationBodyIos =>
+      'O Threkir recolhe a sua localização GPS para registar uma corrida, incluindo com o ecrã desligado ou enquanto está noutra aplicação. A sua localização fica neste dispositivo enquanto não sincronizar nem partilhar uma corrida. Pode alterar isto a qualquer momento em Definições › Privacidade e Segurança › Serviços de Localização › Threkir. Se recusar, as corridas continuam a registar tempo e passos — mas sem mapa, distância ou ritmo.';
+
+  @override
+  String get onboardingLocationDeniedTitle => 'Sem acesso à localização';
+
+  @override
+  String get onboardingLocationDeniedBody =>
+      'O Threkir continua a cronometrar as suas corridas e a contar passos, mas sem localização não há mapa, distância nem ritmo. Pode conceder o acesso quando quiser.';
+
+  @override
+  String get onboardingLocationDeniedSettings => 'Abrir definições';
+
+  @override
+  String get onboardingLocationDeniedContinue => 'Continuar sem';
 
   @override
   String get onboardingPrivacyTitle => 'Quem vê as suas corridas?';
@@ -15406,8 +15423,25 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get onboardingLocationTitle => 'Acesso à localização';
 
   @override
-  String get onboardingLocationBody =>
-      'O Threkir registra suas corridas amostrando sua localização por GPS enquanto o app está em primeiro plano E em segundo plano (para continuar registrando quando a tela está desligada ou você troca de app para tirar uma foto). Os dados de localização ficam armazenados no seu dispositivo e só são enviados aos servidores do Threkir quando você escolhe compartilhar ou sincronizar uma corrida. Se você recusar a localização em segundo plano, as corridas param de ser registradas no momento em que você sai do app — você pode mudar isso depois em Configurações → Apps → Threkir → Permissões.';
+  String get onboardingLocationBodyAndroid =>
+      'O Threkir coleta sua localização GPS para gravar uma corrida, inclusive com a tela desligada — uma notificação mostra que há uma gravação em andamento. Sua localização fica neste dispositivo enquanto você não sincronizar nem compartilhar uma corrida. A próxima solicitação concede o acesso durante o uso do app, que é tudo o que a primeira solicitação do Android pode dar; antes da sua primeira corrida, o Threkir oferece a mudança para \"Permitir sempre\", que mantém o rastreamento confiável quando você troca de app. Se recusar, as corridas continuam registrando tempo e passos — mas sem mapa, distância ou ritmo.';
+
+  @override
+  String get onboardingLocationBodyIos =>
+      'O Threkir coleta sua localização GPS para gravar uma corrida, inclusive com a tela desligada ou enquanto você está em outro app. Sua localização fica neste dispositivo enquanto você não sincronizar nem compartilhar uma corrida. Você pode alterar isso quando quiser em Ajustes › Privacidade e Segurança › Serviços de Localização › Threkir. Se recusar, as corridas continuam registrando tempo e passos — mas sem mapa, distância ou ritmo.';
+
+  @override
+  String get onboardingLocationDeniedTitle => 'Sem acesso à localização';
+
+  @override
+  String get onboardingLocationDeniedBody =>
+      'O Threkir continua cronometrando suas corridas e contando passos, mas sem localização não há mapa, distância nem ritmo. Você pode conceder o acesso quando quiser.';
+
+  @override
+  String get onboardingLocationDeniedSettings => 'Abrir configurações';
+
+  @override
+  String get onboardingLocationDeniedContinue => 'Continuar sem';
 
   @override
   String get onboardingPrivacyTitle => 'Quem vê suas corridas?';

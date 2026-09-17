@@ -3348,6 +3348,10 @@
 		cursor: not-allowed;
 	}
 
+	.icon-btn.danger {
+		color: var(--color-danger-text);
+	}
+
 	.icon-btn.danger:hover:not(:disabled) {
 		background: var(--color-danger-light);
 		color: var(--color-danger-text);

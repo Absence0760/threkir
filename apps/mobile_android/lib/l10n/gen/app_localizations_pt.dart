@@ -14161,6 +14161,19 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get guidedRunUseThisRun => 'Utilizar esta corrida';
+
+  @override
+  String get backExitRecordingTitle => 'A corrida ainda está a ser gravada';
+
+  @override
+  String get backExitRecordingBody =>
+      'Sair da aplicação pode interromper a gravação. A tua corrida fica guardada, por isso podes retomá-la quando voltares.';
+
+  @override
+  String get backExitRecordingLeave => 'Sair mesmo assim';
+
+  @override
+  String get backExitRecordingStay => 'Continuar a gravar';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -28311,4 +28324,17 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get guidedRunUseThisRun => 'Usar esta corrida';
+
+  @override
+  String get backExitRecordingTitle => 'A corrida ainda está sendo gravada';
+
+  @override
+  String get backExitRecordingBody =>
+      'Sair do app pode interromper a gravação. Sua corrida fica salva, então você pode retomá-la quando voltar.';
+
+  @override
+  String get backExitRecordingLeave => 'Sair mesmo assim';
+
+  @override
+  String get backExitRecordingStay => 'Continuar gravando';
 }

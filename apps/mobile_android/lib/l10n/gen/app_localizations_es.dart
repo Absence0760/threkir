@@ -14159,4 +14159,17 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get guidedRunUseThisRun => 'Usar esta carrera';
+
+  @override
+  String get backExitRecordingTitle => 'La carrera sigue grabándose';
+
+  @override
+  String get backExitRecordingBody =>
+      'Salir de la app puede interrumpir la grabación. Tu carrera se conserva, así que podrás retomarla al volver.';
+
+  @override
+  String get backExitRecordingLeave => 'Salir igualmente';
+
+  @override
+  String get backExitRecordingStay => 'Seguir grabando';
 }

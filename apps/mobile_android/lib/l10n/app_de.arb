@@ -4094,5 +4094,9 @@
   "limitsServingsOutOfRange": "Gib eine Portionszahl zwischen {min} und {max} ein.",
   "runDetailGuidedRun": "Geführter Lauf: {title}",
   "runDetailGuidedRunUnavailable": "Geführter Lauf nicht mehr in der Bibliothek",
-  "guidedRunUseThisRun": "Diesen Lauf verwenden"
+  "guidedRunUseThisRun": "Diesen Lauf verwenden",
+  "backExitRecordingTitle": "Lauf wird noch aufgezeichnet",
+  "backExitRecordingBody": "Wenn du die App verlässt, kann die Aufzeichnung unterbrochen werden. Dein Lauf bleibt erhalten und du kannst ihn später fortsetzen.",
+  "backExitRecordingLeave": "Trotzdem verlassen",
+  "backExitRecordingStay": "Weiter aufzeichnen"
 }

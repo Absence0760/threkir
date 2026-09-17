@@ -4094,5 +4094,9 @@
   "limitsServingsOutOfRange": "Introduce un número de raciones entre {min} y {max}.",
   "runDetailGuidedRun": "Carrera guiada: {title}",
   "runDetailGuidedRunUnavailable": "La carrera guiada ya no está en la biblioteca",
-  "guidedRunUseThisRun": "Usar esta carrera"
+  "guidedRunUseThisRun": "Usar esta carrera",
+  "backExitRecordingTitle": "La carrera sigue grabándose",
+  "backExitRecordingBody": "Salir de la app puede interrumpir la grabación. Tu carrera se conserva, así que podrás retomarla al volver.",
+  "backExitRecordingLeave": "Salir igualmente",
+  "backExitRecordingStay": "Seguir grabando"
 }

@@ -4094,5 +4094,9 @@
   "limitsServingsOutOfRange": "{min}〜{max}の範囲で分量を入力してください。",
   "runDetailGuidedRun": "ガイド付きラン: {title}",
   "runDetailGuidedRunUnavailable": "このガイド付きランはライブラリにありません",
-  "guidedRunUseThisRun": "このランを使う"
+  "guidedRunUseThisRun": "このランを使う",
+  "backExitRecordingTitle": "ランを記録中です",
+  "backExitRecordingBody": "アプリを終了すると記録が中断されることがあります。ランは保存されるので、戻ったときに続きから再開できます。",
+  "backExitRecordingLeave": "終了する",
+  "backExitRecordingStay": "記録を続ける"
 }

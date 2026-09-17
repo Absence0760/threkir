@@ -14172,4 +14172,17 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get guidedRunUseThisRun => 'Diesen Lauf verwenden';
+
+  @override
+  String get backExitRecordingTitle => 'Lauf wird noch aufgezeichnet';
+
+  @override
+  String get backExitRecordingBody =>
+      'Wenn du die App verlässt, kann die Aufzeichnung unterbrochen werden. Dein Lauf bleibt erhalten und du kannst ihn später fortsetzen.';
+
+  @override
+  String get backExitRecordingLeave => 'Trotzdem verlassen';
+
+  @override
+  String get backExitRecordingStay => 'Weiter aufzeichnen';
 }

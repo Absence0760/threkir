@@ -14193,4 +14193,18 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get guidedRunUseThisRun => 'Utiliser cette course';
+
+  @override
+  String get backExitRecordingTitle =>
+      'Course toujours en cours d’enregistrement';
+
+  @override
+  String get backExitRecordingBody =>
+      'Quitter l’application peut interrompre l’enregistrement. Votre course est conservée, vous pourrez la reprendre à votre retour.';
+
+  @override
+  String get backExitRecordingLeave => 'Quitter quand même';
+
+  @override
+  String get backExitRecordingStay => 'Continuer l’enregistrement';
 }

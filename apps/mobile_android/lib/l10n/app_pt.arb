@@ -4094,5 +4094,9 @@
   "limitsServingsOutOfRange": "Introduza um número de doses entre {min} e {max}.",
   "runDetailGuidedRun": "Corrida guiada: {title}",
   "runDetailGuidedRunUnavailable": "Corrida guiada já não consta da biblioteca",
-  "guidedRunUseThisRun": "Utilizar esta corrida"
+  "guidedRunUseThisRun": "Utilizar esta corrida",
+  "backExitRecordingTitle": "A corrida ainda está a ser gravada",
+  "backExitRecordingBody": "Sair da aplicação pode interromper a gravação. A tua corrida fica guardada, por isso podes retomá-la quando voltares.",
+  "backExitRecordingLeave": "Sair mesmo assim",
+  "backExitRecordingStay": "Continuar a gravar"
 }

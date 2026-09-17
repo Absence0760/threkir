@@ -13500,4 +13500,17 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get guidedRunUseThisRun => 'このランを使う';
+
+  @override
+  String get backExitRecordingTitle => 'ランを記録中です';
+
+  @override
+  String get backExitRecordingBody =>
+      'アプリを終了すると記録が中断されることがあります。ランは保存されるので、戻ったときに続きから再開できます。';
+
+  @override
+  String get backExitRecordingLeave => '終了する';
+
+  @override
+  String get backExitRecordingStay => '記録を続ける';
 }

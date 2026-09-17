@@ -14014,4 +14014,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get guidedRunUseThisRun => 'Use this run';
+
+  @override
+  String get backExitRecordingTitle => 'Run still recording';
+
+  @override
+  String get backExitRecordingBody =>
+      'Leaving the app can interrupt the recording. Your run is kept, so you can pick it up when you come back.';
+
+  @override
+  String get backExitRecordingLeave => 'Leave anyway';
+
+  @override
+  String get backExitRecordingStay => 'Keep recording';
 }

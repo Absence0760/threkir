@@ -18006,5 +18006,21 @@
   "guidedRunUseThisRun": "Use this run",
   "@guidedRunUseThisRun": {
     "description": "Action on the guided-run detail screen that arms the script on the recorder"
+  },
+  "backExitRecordingTitle": "Run still recording",
+  "@backExitRecordingTitle": {
+    "description": "Title of the confirm shown when system back would close the app while a run is recording"
+  },
+  "backExitRecordingBody": "Leaving the app can interrupt the recording. Your run is kept, so you can pick it up when you come back.",
+  "@backExitRecordingBody": {
+    "description": "Body of the leave-while-recording confirm"
+  },
+  "backExitRecordingLeave": "Leave anyway",
+  "@backExitRecordingLeave": {
+    "description": "Confirm action: close the app although a run is recording"
+  },
+  "backExitRecordingStay": "Keep recording",
+  "@backExitRecordingStay": {
+    "description": "Cancel action: stay in the app and keep the recording running"
   }
 }

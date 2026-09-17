@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 
@@ -28,6 +29,7 @@ import '../shared_file_import.dart' show incomingRouteImport;
 import '../social_service.dart';
 import '../training_service.dart';
 import '../widgets/billing_issue_banner.dart';
+import '../widgets/confirm_destructive.dart';
 import '../widgets/log_sheet.dart';
 import '../widgets/log_speed_dial.dart';
 import '../widgets/top_banner.dart';
@@ -653,6 +655,57 @@ class _HomeScreenState extends State<HomeScreen>
     _currentIndex.value = index;
   }
 
+  /// Guards against a second confirm stacking on the first — on Android the
+  /// back gesture keeps firing while the dialog is up.
+  bool _confirmingExit = false;
+
+  /// System back. The shell is `MaterialApp.home`, so an unguarded back pops
+  /// the only route and closes the app from whichever destination the user
+  /// happened to be on. Back walks toward Home instead, and only Home leaves.
+  ///
+  /// A live recording never leaves silently: the Run page locks the swipe
+  /// mid-run (issue #490), which makes back the one gesture still available
+  /// there, and it would have taken the session with it.
+  Future<void> _onSystemBack(int index, bool recording) async {
+    if (index != _pageHome) {
+      _goToPage(_pageHome);
+      return;
+    }
+    if (!recording || _confirmingExit) return;
+    _confirmingExit = true;
+    final l10n = AppLocalizations.of(context);
+    final leave = await confirmDestructive(
+      context,
+      title: l10n.backExitRecordingTitle,
+      body: l10n.backExitRecordingBody,
+      confirmLabel: l10n.backExitRecordingLeave,
+      cancelLabel: l10n.backExitRecordingStay,
+    );
+    _confirmingExit = false;
+    if (leave && mounted) await SystemNavigator.pop();
+  }
+
+  /// Wraps the shell so the system back gesture navigates rather than exits.
+  /// Both notifiers feed only the `PopScope`'s `canPop`; the shell itself
+  /// rides through as the builders' `child`, so a page change still rebuilds
+  /// nothing but the nav bar.
+  Widget _backGuard(Widget shell) => ValueListenableBuilder<bool>(
+        valueListenable: runRecordingActive,
+        builder: (context, recording, child) => ValueListenableBuilder<int>(
+          valueListenable: _currentIndex,
+          builder: (context, index, inner) => PopScope(
+            canPop: index == _pageHome && !recording,
+            onPopInvokedWithResult: (didPop, _) {
+              if (didPop) return;
+              _onSystemBack(index, recording);
+            },
+            child: inner!,
+          ),
+          child: child,
+        ),
+        child: shell,
+      );
+
   // --- Centre Log button (multi_modal.md § Bottom nav) ---
 
   /// Tap on the centre Log button. When the user has opted to keep Run as
@@ -748,7 +801,7 @@ class _HomeScreenState extends State<HomeScreen>
       ],
     );
     if (widthClassOf(context) == WidthClass.expanded) {
-      return Scaffold(
+      return _backGuard(Scaffold(
         body: Row(
           children: [
             ValueListenableBuilder<int>(
@@ -804,9 +857,9 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ],
         ),
-      );
+      ));
     }
-    return Scaffold(
+    return _backGuard(Scaffold(
       body: body,
       floatingActionButton: _logFab(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
@@ -853,7 +906,7 @@ class _HomeScreenState extends State<HomeScreen>
           );
         },
       ),
-    );
+    ));
   }
 
   static const _railPages = [_pageHome, _pageFitness, _pageSocial, _pageYou];

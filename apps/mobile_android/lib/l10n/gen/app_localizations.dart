@@ -23438,6 +23438,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Use this run'**
   String get guidedRunUseThisRun;
+
+  /// Title of the confirm shown when system back would close the app while a run is recording
+  ///
+  /// In en, this message translates to:
+  /// **'Run still recording'**
+  String get backExitRecordingTitle;
+
+  /// Body of the leave-while-recording confirm
+  ///
+  /// In en, this message translates to:
+  /// **'Leaving the app can interrupt the recording. Your run is kept, so you can pick it up when you come back.'**
+  String get backExitRecordingBody;
+
+  /// Confirm action: close the app although a run is recording
+  ///
+  /// In en, this message translates to:
+  /// **'Leave anyway'**
+  String get backExitRecordingLeave;
+
+  /// Cancel action: stay in the app and keep the recording running
+  ///
+  /// In en, this message translates to:
+  /// **'Keep recording'**
+  String get backExitRecordingStay;
 }
 
 class _AppLocalizationsDelegate

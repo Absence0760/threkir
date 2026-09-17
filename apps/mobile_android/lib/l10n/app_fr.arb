@@ -4094,5 +4094,9 @@
   "limitsServingsOutOfRange": "Indique un nombre de portions entre {min} et {max}.",
   "runDetailGuidedRun": "Course guidée : {title}",
   "runDetailGuidedRunUnavailable": "Course guidée absente de la bibliothèque",
-  "guidedRunUseThisRun": "Utiliser cette course"
+  "guidedRunUseThisRun": "Utiliser cette course",
+  "backExitRecordingTitle": "Course toujours en cours d’enregistrement",
+  "backExitRecordingBody": "Quitter l’application peut interrompre l’enregistrement. Votre course est conservée, vous pourrez la reprendre à votre retour.",
+  "backExitRecordingLeave": "Quitter quand même",
+  "backExitRecordingStay": "Continuer l’enregistrement"
 }

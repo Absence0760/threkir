@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/audio_cues.dart';
@@ -468,6 +469,144 @@ void main() {
       expect(find.text('Runs'), findsWidgets,
           reason: 'the Fitness hub mounted, so the tap navigated the PageView '
               'despite the locked swipe physics');
+    });
+  });
+
+  group('system back walks toward Home and guards a live run', () {
+    /// Records the one platform call that closes the app, so a test can tell
+    /// "back navigated" from "back exited" — which is the whole distinction
+    /// the shell had no `PopScope` to make.
+    List<String> watchAppExit(WidgetTester tester) {
+      final calls = <String>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'SystemNavigator.pop') calls.add(call.method);
+          return null;
+        },
+      );
+      addTearDown(() => tester.binding.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null));
+      return calls;
+    }
+
+    double shellPage(WidgetTester tester) {
+      final controller =
+          tester.widget<PageView>(find.byType(PageView).first).controller!;
+      return controller.hasClients
+          ? controller.page!
+          : controller.initialPage.toDouble();
+    }
+
+    Future<void> goToFitness(WidgetTester tester) async {
+      await tester.tap(find.text('Fitness'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    testWidgets('back from another tab returns to Home instead of exiting',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final exits = watchAppExit(tester);
+      await goToFitness(tester);
+      expect(shellPage(tester), 1);
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+
+      expect(shellPage(tester), 0, reason: 'back moves toward Home');
+      expect(exits, isEmpty, reason: 'back from a tab must not close the app');
+    });
+
+    testWidgets('back from Home exits the app', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final exits = watchAppExit(tester);
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+
+      expect(exits, ['SystemNavigator.pop'],
+          reason: 'Home is the one destination back leaves from');
+    });
+
+    testWidgets('back from the Run page mid-recording lands on Home, not out',
+        (tester) async {
+      // The Run page locks the swipe mid-run (#490), so back is the only
+      // gesture left there — it has to be an exit from the PAGE, never from
+      // the app.
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final exits = watchAppExit(tester);
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.byTooltip('Log run'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(shellPage(tester), 2);
+      runRecordingActive.value = true;
+      await tester.pump();
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+
+      expect(shellPage(tester), 0);
+      expect(exits, isEmpty);
+      tester.takeException();
+    });
+
+    testWidgets('back from Home mid-recording confirms before leaving',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final exits = watchAppExit(tester);
+      runRecordingActive.value = true;
+      await tester.pump();
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.text('Run still recording'), findsOneWidget);
+      expect(exits, isEmpty,
+          reason: 'nothing leaves until the runner says so');
+    });
+
+    testWidgets('keeping the recording stays in the app', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final exits = watchAppExit(tester);
+      runRecordingActive.value = true;
+      await tester.pump();
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await tester.tap(find.text('Keep recording'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.text('Run still recording'), findsNothing);
+      expect(exits, isEmpty);
+    });
+
+    testWidgets('confirming the leave closes the app', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final exits = watchAppExit(tester);
+      runRecordingActive.value = true;
+      await tester.pump();
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await tester.tap(find.text('Leave anyway'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(exits, ['SystemNavigator.pop']);
     });
   });
 

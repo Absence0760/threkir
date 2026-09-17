@@ -677,6 +677,31 @@ test.describe('settings preference pages', () => {
 	});
 });
 
+test.describe('settings preference pages — every control explains itself', () => {
+	test.use({ storageState: USER_A.storageStatePath });
+
+	test('the explanation under a control is its accessible description', async ({ page }) => {
+		// #905 workstream 5: a one-line explanation sits under each control and
+		// is wired with aria-describedby, so a screen reader announces it without
+		// it becoming part of the control's name.
+		await page.goto('/settings/display');
+		await expect(page.getByTestId('language-select')).toHaveAccessibleDescription(
+			/language the app shows/i,
+			{ timeout: 10_000 }
+		);
+		await expect(page.getByTestId('language-select')).toHaveAccessibleName('Language');
+		await expect(page.getByRole('group', { name: 'Distance Unit' })).toHaveAccessibleDescription(
+			/kilometres or miles/i
+		);
+
+		await page.goto('/settings/training');
+		await expect(page.getByTestId('resting-hr')).toHaveAccessibleDescription(
+			/heart rate \(HR\).*beats per minute \(bpm\)/,
+			{ timeout: 10_000 }
+		);
+	});
+});
+
 test.describe('/settings/preferences — landing page for old links', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 

@@ -138,6 +138,7 @@
 						example: preferredUnit === 'mi' ? '25' : '40',
 					})}
 					aria-invalid={weeklyGoalOutOfRange}
+					aria-describedby="weekly-distance-goal-hint"
 					data-testid="weekly-distance-goal"
 					onblur={saveWeeklyGoal}
 				/>
@@ -151,6 +152,7 @@
 					</span>
 				{/if}
 			</label>
+			<p class="hint" id="weekly-distance-goal-hint">{m('prefs.weeklyDistanceGoalHint')}</p>
 		</div>
 	</section>
 
@@ -158,28 +160,34 @@
 		<h2>{m('prefs.heartRateZonesHeading')}</h2>
 		<p class="section-desc">{m('prefs.heartRateZonesDesc')}</p>
 		<div class="form-grid">
-			<label>
-				<span class="label-text">{m('prefs.restingHr')}</span>
-				<input type="number" bind:value={restingHr} min={RESTING_HR_BPM_MIN} max={RESTING_HR_BPM_MAX} placeholder={m('prefs.restingHrPlaceholder')} aria-invalid={restingHrOutOfRange} data-testid="resting-hr" onblur={saveRestingHr} />
-				{#if restingHrOutOfRange}
-					<span class="field-error" data-testid="resting-hr-error">{m('limits.restingHrOutOfRange', restingHrBounds)}</span>
-				{/if}
-			</label>
-			<label>
-				<span class="label-text">{m('prefs.maxHr')}</span>
-				<input type="number" bind:value={maxHr} min={MAX_HR_BPM_MIN} max={MAX_HR_BPM_MAX} placeholder={m('prefs.maxHrPlaceholder')} aria-invalid={maxHrOutOfRange} data-testid="max-hr" onblur={saveMaxHr} />
-				{#if maxHrOutOfRange}
-					<span class="field-error" data-testid="max-hr-error">{m('limits.maxHrOutOfRange', maxHrBounds)}</span>
-				{/if}
-			</label>
+			<div class="field">
+				<label>
+					<span class="label-text">{m('prefs.restingHr')}</span>
+					<input type="number" bind:value={restingHr} min={RESTING_HR_BPM_MIN} max={RESTING_HR_BPM_MAX} placeholder={m('prefs.restingHrPlaceholder')} aria-invalid={restingHrOutOfRange} aria-describedby="resting-hr-hint" data-testid="resting-hr" onblur={saveRestingHr} />
+					{#if restingHrOutOfRange}
+						<span class="field-error" data-testid="resting-hr-error">{m('limits.restingHrOutOfRange', restingHrBounds)}</span>
+					{/if}
+				</label>
+				<p class="hint" id="resting-hr-hint">{m('prefs.restingHrHint')}</p>
+			</div>
+			<div class="field">
+				<label>
+					<span class="label-text">{m('prefs.maxHr')}</span>
+					<input type="number" bind:value={maxHr} min={MAX_HR_BPM_MIN} max={MAX_HR_BPM_MAX} placeholder={m('prefs.maxHrPlaceholder')} aria-invalid={maxHrOutOfRange} aria-describedby="max-hr-hint" data-testid="max-hr" onblur={saveMaxHr} />
+					{#if maxHrOutOfRange}
+						<span class="field-error" data-testid="max-hr-error">{m('limits.maxHrOutOfRange', maxHrBounds)}</span>
+					{/if}
+				</label>
+				<p class="hint" id="max-hr-hint">{m('prefs.maxHrHint')}</p>
+			</div>
 		</div>
-		<p class="section-desc">{m('prefs.zonesUpperBoundDesc')}</p>
+		<p class="section-desc" id="hr-zones-desc">{m('prefs.zonesUpperBoundDesc')}</p>
 		<div class="form-grid zones">
-			<label><span class="label-text">{m('prefs.zone1Recovery')}</span><input type="number" bind:value={z1} placeholder="130" onblur={saveHrZones} /></label>
-			<label><span class="label-text">{m('prefs.zone2Easy')}</span><input type="number" bind:value={z2} placeholder="145" onblur={saveHrZones} /></label>
-			<label><span class="label-text">{m('prefs.zone3Tempo')}</span><input type="number" bind:value={z3} placeholder="160" onblur={saveHrZones} /></label>
-			<label><span class="label-text">{m('prefs.zone4Threshold')}</span><input type="number" bind:value={z4} placeholder="175" onblur={saveHrZones} /></label>
-			<label><span class="label-text">{m('prefs.zone5Max')}</span><input type="number" bind:value={z5} placeholder="195" onblur={saveHrZones} /></label>
+			<label><span class="label-text">{m('prefs.zone1Recovery')}</span><input type="number" bind:value={z1} placeholder="130" aria-describedby="hr-zones-desc" onblur={saveHrZones} /></label>
+			<label><span class="label-text">{m('prefs.zone2Easy')}</span><input type="number" bind:value={z2} placeholder="145" aria-describedby="hr-zones-desc" onblur={saveHrZones} /></label>
+			<label><span class="label-text">{m('prefs.zone3Tempo')}</span><input type="number" bind:value={z3} placeholder="160" aria-describedby="hr-zones-desc" onblur={saveHrZones} /></label>
+			<label><span class="label-text">{m('prefs.zone4Threshold')}</span><input type="number" bind:value={z4} placeholder="175" aria-describedby="hr-zones-desc" onblur={saveHrZones} /></label>
+			<label><span class="label-text">{m('prefs.zone5Max')}</span><input type="number" bind:value={z5} placeholder="195" aria-describedby="hr-zones-desc" onblur={saveHrZones} /></label>
 		</div>
 		<label class="checkbox-row">
 			<input type="checkbox" bind:checked={excludeGymFromReadiness} onchange={() => prefs.save({ exclude_gym_from_readiness: excludeGymFromReadiness })} />
@@ -193,44 +201,55 @@
 	<section class="card">
 		<h2>{m('prefs.raceFuelingHeading')}</h2>
 		<div class="form-grid">
-			<label>
-				<span class="label-text">{m('prefs.carbsPerHour')}</span>
-				<input
-					type="number"
-					min="0"
-					max="200"
-					inputmode="numeric"
-					bind:value={carbsPerHour}
-					data-testid="carbs-per-hour"
-					onblur={() => prefs.save({ carbs_per_hour: carbsPerHour ? parseInt(carbsPerHour, 10) || null : null })}
-				/>
-			</label>
-			<label>
-				<span class="label-text">{m('prefs.fluidPerHour')}</span>
-				<input
-					type="number"
-					min="0"
-					max="3000"
-					inputmode="numeric"
-					bind:value={fluidPerHour}
-					data-testid="fluid-per-hour"
-					onblur={() => prefs.save({ fluid_per_hour: fluidPerHour ? parseInt(fluidPerHour, 10) || null : null })}
-				/>
-			</label>
+			<div class="field">
+				<label>
+					<span class="label-text">{m('prefs.carbsPerHour')}</span>
+					<input
+						type="number"
+						min="0"
+						max="200"
+						inputmode="numeric"
+						bind:value={carbsPerHour}
+						aria-describedby="carbs-per-hour-hint"
+						data-testid="carbs-per-hour"
+						onblur={() => prefs.save({ carbs_per_hour: carbsPerHour ? parseInt(carbsPerHour, 10) || null : null })}
+					/>
+				</label>
+				<p class="hint" id="carbs-per-hour-hint">{m('prefs.carbsPerHourHint')}</p>
+			</div>
+			<div class="field">
+				<label>
+					<span class="label-text">{m('prefs.fluidPerHour')}</span>
+					<input
+						type="number"
+						min="0"
+						max="3000"
+						inputmode="numeric"
+						bind:value={fluidPerHour}
+						aria-describedby="fluid-per-hour-hint"
+						data-testid="fluid-per-hour"
+						onblur={() => prefs.save({ fluid_per_hour: fluidPerHour ? parseInt(fluidPerHour, 10) || null : null })}
+					/>
+				</label>
+				<p class="hint" id="fluid-per-hour-hint">{m('prefs.fluidPerHourHint')}</p>
+			</div>
 		</div>
 	</section>
 
 	<section class="card">
 		<h2>{m('prefs.aiCoachHeading')}</h2>
 		<div class="form-grid">
-			<label>
-				<span class="label-text">{m('prefs.coachPersonality')}</span>
-				<select bind:value={coachPersonality} onchange={() => prefs.save({ coach_personality: coachPersonality })}>
-					<option value="supportive">{m('prefs.coachSupportive')}</option>
-					<option value="drill_sergeant">{m('prefs.coachDrillSergeant')}</option>
-					<option value="analytical">{m('prefs.coachAnalytical')}</option>
-				</select>
-			</label>
+			<div class="field">
+				<label>
+					<span class="label-text">{m('prefs.coachPersonality')}</span>
+					<select bind:value={coachPersonality} onchange={() => prefs.save({ coach_personality: coachPersonality })} aria-describedby="coach-personality-hint">
+						<option value="supportive">{m('prefs.coachSupportive')}</option>
+						<option value="drill_sergeant">{m('prefs.coachDrillSergeant')}</option>
+						<option value="analytical">{m('prefs.coachAnalytical')}</option>
+					</select>
+				</label>
+				<p class="hint" id="coach-personality-hint">{m('prefs.coachPersonalityHint')}</p>
+			</div>
 		</div>
 	</section>
 </PrefsPage>

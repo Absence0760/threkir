@@ -127,17 +127,23 @@
 	<section class="card">
 		<h2>{m('prefs.yourRunsHeading')}</h2>
 		<div class="form-stack">
-			<label class="field">
-				<span class="label-text">{m('prefs.defaultVisibility')}</span>
-				<select bind:value={privacyDefault} onchange={() => prefs.save({ privacy_default: privacyDefault })}>
-					<option value="public">{m('prefs.visibilityPublic')}</option>
-					<option value="followers">{m('prefs.visibilityFollowers')}</option>
-					<option value="private">{m('prefs.visibilityPrivate')}</option>
-				</select>
-			</label>
+			<div class="field">
+				<label class="field">
+					<span class="label-text">{m('prefs.defaultVisibility')}</span>
+					<select bind:value={privacyDefault} onchange={() => prefs.save({ privacy_default: privacyDefault })} aria-describedby="default-visibility-hint">
+						<option value="public">{m('prefs.visibilityPublic')}</option>
+						<option value="followers">{m('prefs.visibilityFollowers')}</option>
+						<option value="private">{m('prefs.visibilityPrivate')}</option>
+					</select>
+				</label>
+				<p class="hint" id="default-visibility-hint">{m('prefs.defaultVisibilityHint')}</p>
+			</div>
 			<label class="checkbox-row">
 				<input type="checkbox" bind:checked={stravaAutoShare} onchange={() => prefs.save({ strava_auto_share: stravaAutoShare })} />
-				<span>{m('prefs.autoPushStrava')}</span>
+				<span>
+					{m('prefs.autoPushStrava')}
+					<span class="hint">{m('prefs.autoPushStravaHint')}</span>
+				</span>
 			</label>
 		</div>
 	</section>
@@ -166,7 +172,7 @@
 				</label>
 				<div class="nearby-area">
 					<span class="label-text">{m('prefs.nearbyAreaLabel')}</span>
-					<p class="hint" data-testid="nearby-area-status">
+					<p class="hint" id="nearby-area-status" data-testid="nearby-area-status">
 						{nearbyAreaLabel
 							? m('prefs.nearbyAreaCurrent', { label: nearbyAreaLabel })
 							: m('prefs.nearbyAreaNone')}
@@ -177,6 +183,7 @@
 							bind:value={nearbyAreaInput}
 							placeholder={m('prefs.nearbyAreaPlaceholder')}
 							aria-label={m('prefs.nearbyAreaLabel')}
+							aria-describedby="nearby-area-status"
 						/>
 						<button
 							type="button"
@@ -244,11 +251,12 @@
 	     on this state. -->
 	<section class="card">
 		<h2>{m('prefs.telemetryHeading')}</h2>
-		<p class="section-desc">{m('prefs.telemetryDesc')}</p>
+		<p class="section-desc" id="telemetry-desc">{m('prefs.telemetryDesc')}</p>
 		<label class="consent-checkbox">
 			<input
 				type="checkbox"
 				checked={consent.choice === 'accepted'}
+				aria-describedby="telemetry-desc"
 				onchange={(e) => {
 					const enabled = (e.currentTarget as HTMLInputElement).checked;
 					consent.set(enabled ? 'accepted' : 'rejected');

@@ -221,71 +221,84 @@
 	     declines the health checkbox (§ 718). -->
 	<section class="card" id="body-metrics">
 		<p class="section-desc">{m('prefs.demographicsDesc')}</p>
-		<p class="section-desc consent-notice">
+		<p class="section-desc consent-notice" id="health-consent-notice">
 			{m('prefs.demographicsConsentNotice')}
 			<a href="/privacy">{m('prefs.privacyPolicyLink')}</a>{m('prefs.demographicsConsentNoticeTail')}
 		</p>
 		<label class="consent-checkbox">
-			<input type="checkbox" bind:checked={healthDataConsent} />
+			<input type="checkbox" bind:checked={healthDataConsent} aria-describedby="health-consent-notice" />
 			<span>{m('prefs.demographicsConsent')}</span>
 		</label>
 		<div class="form-grid">
-			<label>
-				<span class="label-text">{m('prefs.gender')}</span>
-				<select bind:value={gender} disabled={!healthDataConsent}>
-					<option value="">{m('prefs.genderPreferNotToSay')}</option>
-					<option value="male">{m('prefs.genderMale')}</option>
-					<option value="female">{m('prefs.genderFemale')}</option>
-				</select>
-			</label>
-			<label>
-				<span class="label-text">{m('prefs.dateOfBirth')}</span>
-				<input
-					type="date"
-					bind:value={dateOfBirth}
-					max={new Date().toISOString().slice(0, 10)}
-					aria-describedby="dob-purpose"
-					data-testid="date-of-birth"
-				/>
-			</label>
-			<label>
-				<span class="label-text">{m('prefs.heightCm')}</span>
-				<input
-					type="number"
-					min={heightBounds.min}
-					max={heightBounds.max}
-					inputmode="numeric"
-					bind:value={heightCm}
-					disabled={!healthDataConsent}
-					aria-invalid={heightOutOfRange}
-					data-testid="height-cm"
-				/>
-				{#if heightOutOfRange}
-					<span class="field-error" data-testid="height-cm-error">
-						{m('limits.heightOutOfRange', heightBounds)}
-					</span>
-				{/if}
-			</label>
-			<label>
-				<span class="label-text">{m('prefs.weight')} ({weightUnit})</span>
-				<input
-					type="number"
-					min={weightBounds.min}
-					max={weightBounds.max}
-					inputmode="decimal"
-					bind:value={weightInput}
-					disabled={!healthDataConsent}
-					aria-invalid={weightOutOfRange}
-					data-testid="weight"
-				/>
-				{#if weightOutOfRange}
-					<span class="field-error" data-testid="weight-error">
-						{m('limits.weightOutOfRange', { ...weightBounds, unit: weightUnit })}
-					</span>
-				{/if}
-			</label>
+			<div class="field">
+				<label>
+					<span class="label-text">{m('prefs.gender')}</span>
+					<select bind:value={gender} disabled={!healthDataConsent} aria-describedby="gender-hint">
+						<option value="">{m('prefs.genderPreferNotToSay')}</option>
+						<option value="male">{m('prefs.genderMale')}</option>
+						<option value="female">{m('prefs.genderFemale')}</option>
+					</select>
+				</label>
+				<p class="hint" id="gender-hint">{m('prefs.genderHint')}</p>
+			</div>
+			<div class="field">
+				<label>
+					<span class="label-text">{m('prefs.dateOfBirth')}</span>
+					<input
+						type="date"
+						bind:value={dateOfBirth}
+						max={new Date().toISOString().slice(0, 10)}
+						aria-describedby="dob-purpose"
+						data-testid="date-of-birth"
+					/>
+				</label>
+				<p class="hint" id="dob-purpose">{m('prefs.dateOfBirthPurpose')}</p>
+			</div>
+			<div class="field">
+				<label>
+					<span class="label-text">{m('prefs.heightCm')}</span>
+					<input
+						type="number"
+						min={heightBounds.min}
+						max={heightBounds.max}
+						inputmode="numeric"
+						bind:value={heightCm}
+						disabled={!healthDataConsent}
+						aria-invalid={heightOutOfRange}
+						aria-describedby="height-hint"
+						data-testid="height-cm"
+					/>
+					{#if heightOutOfRange}
+						<span class="field-error" data-testid="height-cm-error">
+							{m('limits.heightOutOfRange', heightBounds)}
+						</span>
+					{/if}
+				</label>
+				<p class="hint" id="height-hint">{m('prefs.heightHint')}</p>
+			</div>
+			<div class="field">
+				<label>
+					<span class="label-text">{m('prefs.weight')} ({weightUnit})</span>
+					<input
+						type="number"
+						min={weightBounds.min}
+						max={weightBounds.max}
+						inputmode="decimal"
+						bind:value={weightInput}
+						disabled={!healthDataConsent}
+						aria-invalid={weightOutOfRange}
+						aria-describedby="weight-hint"
+						data-testid="weight"
+					/>
+					{#if weightOutOfRange}
+						<span class="field-error" data-testid="weight-error">
+							{m('limits.weightOutOfRange', { ...weightBounds, unit: weightUnit })}
+						</span>
+					{/if}
+				</label>
+				<p class="hint" id="weight-hint">{m('prefs.weightHint')}</p>
+			</div>
 		</div>
-		<p class="field-hint" id="dob-purpose">{m('prefs.dateOfBirthPurpose')}</p>
 		{#if healthDataConsentAt}
 			<p class="section-hint">
 				{m('prefs.consentRecordedOn', { date: new Date(healthDataConsentAt).toLocaleDateString() })}
@@ -311,30 +324,38 @@
 	<section class="card">
 		<h2>{m('prefs.nutritionTargetsHeading')}</h2>
 		<div class="form-grid">
-			<label>
-				<span class="label-text">{m('prefs.activityLevel')}</span>
-				<select
-					bind:value={nutritionActivityLevel}
-					onchange={() => prefs.save({ nutrition_activity_level: nutritionActivityLevel })}
-					data-testid="activity-level"
-				>
-					{#each ACTIVITY_LEVELS as lvl (lvl.key)}
-						<option value={lvl.key}>{m(`prefs.activity_${lvl.key}`)}</option>
-					{/each}
-				</select>
-			</label>
-			<label>
-				<span class="label-text">{m('prefs.weightGoal')}</span>
-				<select
-					bind:value={nutritionGoal}
-					onchange={() => prefs.save({ nutrition_goal: nutritionGoal })}
-					data-testid="weight-goal"
-				>
-					<option value="lose">{m('prefs.goalLose')}</option>
-					<option value="maintain">{m('prefs.goalMaintain')}</option>
-					<option value="gain">{m('prefs.goalGain')}</option>
-				</select>
-			</label>
+			<div class="field">
+				<label>
+					<span class="label-text">{m('prefs.activityLevel')}</span>
+					<select
+						bind:value={nutritionActivityLevel}
+						onchange={() => prefs.save({ nutrition_activity_level: nutritionActivityLevel })}
+						aria-describedby="activity-level-hint"
+						data-testid="activity-level"
+					>
+						{#each ACTIVITY_LEVELS as lvl (lvl.key)}
+							<option value={lvl.key}>{m(`prefs.activity_${lvl.key}`)}</option>
+						{/each}
+					</select>
+				</label>
+				<p class="hint" id="activity-level-hint">{m('prefs.activityLevelHint')}</p>
+			</div>
+			<div class="field">
+				<label>
+					<span class="label-text">{m('prefs.weightGoal')}</span>
+					<select
+						bind:value={nutritionGoal}
+						onchange={() => prefs.save({ nutrition_goal: nutritionGoal })}
+						aria-describedby="weight-goal-hint"
+						data-testid="weight-goal"
+					>
+						<option value="lose">{m('prefs.goalLose')}</option>
+						<option value="maintain">{m('prefs.goalMaintain')}</option>
+						<option value="gain">{m('prefs.goalGain')}</option>
+					</select>
+				</label>
+				<p class="hint" id="weight-goal-hint">{m('prefs.weightGoalHint')}</p>
+			</div>
 		</div>
 		<p class="section-hint">{m('prefs.nutritionTargetsHint')}</p>
 	</section>
@@ -355,5 +376,4 @@
 
 <style>
 	.btn-save { width: auto; }
-	.field-hint { color: var(--color-text-secondary); font-size: 0.8rem; line-height: 1.4; margin: 0 0 var(--space-md) 0; }
 </style>

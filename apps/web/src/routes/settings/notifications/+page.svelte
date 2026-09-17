@@ -50,24 +50,28 @@
 	<section class="card">
 		<h2>{m('prefs.emailPushHeading')}</h2>
 		<div class="form-grid">
-			<label>
-				<span class="label-text">{m('prefs.emailNotifications')}</span>
-				<select bind:value={emailNotifications} onchange={() => prefs.save({ email_notifications: emailNotifications })}>
-					<option value="important">{m('prefs.emailNotifImportant')}</option>
-					<option value="all">{m('prefs.emailNotifAll')}</option>
-					<option value="off">{m('prefs.emailNotifOff')}</option>
-				</select>
-			</label>
-			<p class="section-hint">{m('prefs.emailNotifHint')}</p>
-			<label>
-				<span class="label-text">{m('prefs.pushNotifications')}</span>
-				<select bind:value={pushNotifications} onchange={() => prefs.save({ push_notifications: pushNotifications })}>
-					<option value="important">{m('prefs.pushNotifImportant')}</option>
-					<option value="all">{m('prefs.pushNotifAll')}</option>
-					<option value="off">{m('prefs.pushNotifOff')}</option>
-				</select>
-			</label>
-			<p class="section-hint">{m('prefs.pushNotifHint')}</p>
+			<div class="field">
+				<label>
+					<span class="label-text">{m('prefs.emailNotifications')}</span>
+					<select bind:value={emailNotifications} onchange={() => prefs.save({ email_notifications: emailNotifications })} aria-describedby="email-notifications-hint">
+						<option value="important">{m('prefs.emailNotifImportant')}</option>
+						<option value="all">{m('prefs.emailNotifAll')}</option>
+						<option value="off">{m('prefs.emailNotifOff')}</option>
+					</select>
+				</label>
+				<p class="hint" id="email-notifications-hint">{m('prefs.emailNotifHint')}</p>
+			</div>
+			<div class="field">
+				<label>
+					<span class="label-text">{m('prefs.pushNotifications')}</span>
+					<select bind:value={pushNotifications} onchange={() => prefs.save({ push_notifications: pushNotifications })} aria-describedby="push-notifications-hint">
+						<option value="important">{m('prefs.pushNotifImportant')}</option>
+						<option value="all">{m('prefs.pushNotifAll')}</option>
+						<option value="off">{m('prefs.pushNotifOff')}</option>
+					</select>
+				</label>
+				<p class="hint" id="push-notifications-hint">{m('prefs.pushNotifHint')}</p>
+			</div>
 		</div>
 		<label class="checkbox-row">
 			<input

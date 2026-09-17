@@ -69,55 +69,68 @@
 	<section class="card">
 		<h2>{m('prefs.startingRunHeading')}</h2>
 		<div class="form-grid">
-			<label>
-				<span class="label-text">{m('prefs.defaultActivity')}</span>
-				<select bind:value={defaultActivity} onchange={() => prefs.save({ default_activity_type: defaultActivity })}>
-					{#each ACTIVITY_TYPES as a}
-						<option value={a}>{activityTypeLabel(a)}</option>
-					{/each}
-				</select>
-			</label>
+			<div class="field">
+				<label>
+					<span class="label-text">{m('prefs.defaultActivity')}</span>
+					<select bind:value={defaultActivity} onchange={() => prefs.save({ default_activity_type: defaultActivity })} aria-describedby="default-activity-hint">
+						{#each ACTIVITY_TYPES as a}
+							<option value={a}>{activityTypeLabel(a)}</option>
+						{/each}
+					</select>
+				</label>
+				<p class="hint" id="default-activity-hint">{m('prefs.defaultActivityHint')}</p>
+			</div>
 		</div>
 	</section>
 
 	<section class="card">
 		<h2>{m('prefs.voiceFeedbackHeading')}</h2>
 		<div class="form-grid">
-			<label class="checkbox-label">
+			<label class="checkbox-row master-toggle">
 				<input type="checkbox" bind:checked={voiceFeedbackEnabled} onchange={() => prefs.save({ voice_feedback_enabled: voiceFeedbackEnabled })} />
-				<span>{m('prefs.spokenSplits')}</span>
+				<span>
+					{m('prefs.spokenSplits')}
+					<span class="hint">{m('prefs.spokenSplitsHint')}</span>
+				</span>
 			</label>
 			{#if voiceFeedbackEnabled}
-				<label>
-					<span class="label-text">{m('prefs.cueDetail')}</span>
-					<select bind:value={voiceFeedbackVerbosity} onchange={() => prefs.save({ voice_feedback_verbosity: voiceFeedbackVerbosity })}>
-						<option value="full">{m('prefs.cueDetailFull')}</option>
-						<option value="minimal">{m('prefs.cueDetailMinimal')}</option>
-					</select>
-				</label>
-				<label>
-					<span class="label-text">{m('prefs.splitInterval', { unit: preferredUnit })}</span>
-					<!-- min/max/step are in the displayed unit by design — a 0.5–10
-					     range reads as round numbers whether the runner thinks in km
-					     or mi (a miles runner gets 0.5–10 mile splits, stored as the
-					     equivalent km). -->
-					<input
-						type="number"
-						value={preferredUnit === 'mi'
-							? (parseFloat(voiceFeedbackIntervalKm) / KM_PER_MI).toFixed(1)
-							: voiceFeedbackIntervalKm}
-						oninput={(e) => {
-							const n = parseFloat(e.currentTarget.value);
-							if (Number.isFinite(n)) {
-								voiceFeedbackIntervalKm = (preferredUnit === 'mi' ? n * KM_PER_MI : n).toString();
-							}
-						}}
-						step="0.5"
-						min="0.5"
-						max="10"
-						onblur={() => prefs.save({ voice_feedback_interval_km: parseFloat(voiceFeedbackIntervalKm) || 1.0 })}
-					/>
-				</label>
+				<div class="field">
+					<label>
+						<span class="label-text">{m('prefs.cueDetail')}</span>
+						<select bind:value={voiceFeedbackVerbosity} onchange={() => prefs.save({ voice_feedback_verbosity: voiceFeedbackVerbosity })} aria-describedby="cue-detail-hint">
+							<option value="full">{m('prefs.cueDetailFull')}</option>
+							<option value="minimal">{m('prefs.cueDetailMinimal')}</option>
+						</select>
+					</label>
+					<p class="hint" id="cue-detail-hint">{m('prefs.cueDetailHint')}</p>
+				</div>
+				<div class="field">
+					<label>
+						<span class="label-text">{m('prefs.splitInterval', { unit: preferredUnit })}</span>
+						<!-- min/max/step are in the displayed unit by design — a 0.5–10
+						     range reads as round numbers whether the runner thinks in km
+						     or mi (a miles runner gets 0.5–10 mile splits, stored as the
+						     equivalent km). -->
+						<input
+							type="number"
+							value={preferredUnit === 'mi'
+								? (parseFloat(voiceFeedbackIntervalKm) / KM_PER_MI).toFixed(1)
+								: voiceFeedbackIntervalKm}
+							oninput={(e) => {
+								const n = parseFloat(e.currentTarget.value);
+								if (Number.isFinite(n)) {
+									voiceFeedbackIntervalKm = (preferredUnit === 'mi' ? n * KM_PER_MI : n).toString();
+								}
+							}}
+							step="0.5"
+							min="0.5"
+							max="10"
+							aria-describedby="split-interval-hint"
+							onblur={() => prefs.save({ voice_feedback_interval_km: parseFloat(voiceFeedbackIntervalKm) || 1.0 })}
+						/>
+					</label>
+					<p class="hint" id="split-interval-hint">{m('prefs.splitIntervalHint')}</p>
+				</div>
 				<fieldset class="cue-list" data-testid="voice-cue-types">
 					<legend class="label-text">{m('prefs.voiceCueTypes')}</legend>
 					<p class="section-hint">{m('prefs.voiceCueTypesHint')}</p>
@@ -142,7 +155,7 @@
 </PrefsPage>
 
 <style>
-	.checkbox-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; padding-top: 1.2rem; }
+	.master-toggle { grid-column: 1 / -1; }
 	.cue-list {
 		grid-column: 1 / -1;
 		display: flex;

@@ -15,7 +15,7 @@ That is not an omission. An earlier revision of this agent transcribed all of it
 
 So: **Step 1 is not optional.** You read the contract from the tree before you touch anything, every time. The tree is the source of truth; this file tells you where to look and how to judge what you find.
 
-`apps/web/src/lib/ci_workflow_guards.test.ts` fails the PR if this file cites a repo path that no longer exists. That catches dead pointers. It cannot catch a *stale claim* about a live file — which is exactly why the claims are not here.
+`apps/web/src/lib/ux_agent_guards.test.ts` fails the PR if this file cites a repo path git no longer tracks. That catches dead pointers. It cannot catch a *stale claim* about a live file — which is exactly why the claims are not here.
 
 ## Step 0 — Route by platform
 
@@ -372,7 +372,7 @@ Same rule as Wear OS: complement, not mirror. See `decisions.md § 24`.
 
 ## What you are NOT
 
-- **An auditor.** You read and write. Pick the top five findings and apply them; don't degrade into a list of twelve maybes. (`/ux-hunt`, `/a11y-hunt` and `web-ux-critic` are the read-only siblings.)
+- **An auditor.** You read and write. Pick the top five findings and apply them; don't degrade into a list of twelve maybes. (`/ux-hunt`, `/a11y-hunt` and `/ux-critique` are the read-only siblings.)
 - **A test-writer.** You update *existing* tests when markup moves. You add a new one only when the redesign exposes a contract worth pinning.
 - **A commit-maker.** The user owns the commit.
 - **A doc-writer.** If the redesign affects docs per CLAUDE.md's Docs hygiene rule, call it out in "Notes for the human" so the user updates them in the same turn. Don't silently edit docs.

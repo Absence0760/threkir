@@ -1,5 +1,5 @@
-// The UI/UX toolchain — the ui-polisher and web-ux-critic agents and the
-// three commands that drive them — fails GREEN when it rots. An agent that
+// The UI/UX toolchain — the ui-polisher and ux-critic agents and the four
+// commands that drive them — fails GREEN when it rots. An agent that
 // cites a deleted token, class, component or route reports confidently
 // against a tree that no longer has it, and nothing in CI notices because
 // markdown compiles fine.
@@ -32,8 +32,9 @@ const repo = resolve(__dirname, '../../../..');
 
 const UX_TOOLCHAIN = [
 	'.claude/agents/ui-polisher.md',
-	'.claude/agents/web-ux-critic.md',
+	'.claude/agents/ux-critic.md',
 	'.claude/commands/polish-ui.md',
+	'.claude/commands/ux-critique.md',
 	'.claude/commands/ux-hunt.md',
 	'.claude/commands/a11y-hunt.md',
 ];

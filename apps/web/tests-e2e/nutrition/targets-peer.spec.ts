@@ -58,7 +58,7 @@ test.describe('/nutrition/targets — reachable, derived, editable', () => {
 		await expect(metrics).toContainText('178');
 		await expect(metrics.locator('input')).toHaveCount(0);
 		await page.getByTestId('targets-edit-metrics').click();
-		await expect(page).toHaveURL(/\/settings\/preferences#body-metrics$/);
+		await expect(page).toHaveURL(/\/settings\/body#body-metrics$/);
 		await expect(page.locator('#body-metrics')).toBeVisible();
 		await expect(page.getByTestId('height-cm')).toBeVisible();
 	});

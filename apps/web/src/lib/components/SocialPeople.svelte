@@ -258,7 +258,7 @@
 					<span class="material-symbols empty-icon" aria-hidden="true">near_me</span>
 					<h3>{m('socialNearby.empty')}</h3>
 					<p class="empty-text">{m('socialNearby.emptyHelp')}</p>
-					<a class="btn btn-outline" href="/settings/preferences">
+					<a class="btn btn-outline" href="/settings/privacy">
 						<span class="material-symbols" aria-hidden="true">settings</span>
 						{m('shell.settings')}
 					</a>

@@ -13,7 +13,8 @@ import { USER_A } from '../fixtures/users';
  * back the metres that were already stored rather than the rounded display.
  */
 
-const PAGE = '/settings/preferences';
+const PAGE = '/settings/training';
+const UNITS_PAGE = '/settings/display';
 const SEEDED_GOAL_M = 50000;
 
 async function storedGoal(): Promise<unknown> {
@@ -36,6 +37,7 @@ async function setStoredGoal(metres: number): Promise<void> {
 }
 
 async function pickUnit(page: Page, name: 'Miles' | 'Kilometres') {
+	await page.goto(UNITS_PAGE);
 	await page.getByRole('button', { name, exact: true }).click();
 	await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
 }
@@ -61,14 +63,13 @@ test.describe('weekly distance goal', () => {
 	});
 
 	test.afterEach(async ({ page }) => {
-		await page.goto(PAGE);
 		await pickUnit(page, 'Kilometres');
 		await setStoredGoal(SEEDED_GOAL_M);
 	});
 
 	test('is typed in kilometres and stored in metres', async ({ page }) => {
-		await page.goto(PAGE);
 		await pickUnit(page, 'Kilometres');
+		await page.goto(PAGE);
 
 		const goal = page.getByTestId('weekly-distance-goal');
 		await expect(page.getByText('Weekly distance goal (km)', { exact: true })).toBeVisible();
@@ -84,8 +85,8 @@ test.describe('weekly distance goal', () => {
 	test('reads in miles for a miles runner, and an untouched value does not drift', async ({
 		page
 	}) => {
-		await page.goto(PAGE);
 		await pickUnit(page, 'Miles');
+		await page.goto(PAGE);
 
 		const goal = page.getByTestId('weekly-distance-goal');
 		await expect(page.getByText('Weekly distance goal (mi)', { exact: true })).toBeVisible();
@@ -102,8 +103,8 @@ test.describe('weekly distance goal', () => {
 	});
 
 	test('a goal outside the range is refused in the field and not saved', async ({ page }) => {
-		await page.goto(PAGE);
 		await pickUnit(page, 'Kilometres');
+		await page.goto(PAGE);
 
 		const goal = page.getByTestId('weekly-distance-goal');
 		await goal.fill('600');
@@ -115,15 +116,23 @@ test.describe('weekly distance goal', () => {
 
 		// Edits on this page are coalesced into one write, so a refused goal
 		// that had been queued anyway would ride out on the next save.
+		const personality = page
+			.locator('label', { has: page.getByText('Coach Personality', { exact: true }) })
+			.locator('select');
+		const before = await personality.inputValue();
+		const next = before === 'analytical' ? 'supportive' : 'analytical';
 		const nextWrite = page.waitForRequest(
 			(req) =>
 				req.method() === 'POST' &&
 				req.url().includes('/rest/v1/user_settings') &&
-				(req.postData() ?? '').includes('"preferred_unit":"km"'),
+				(req.postData() ?? '').includes(`"coach_personality":"${next}"`),
 			{ timeout: 8_000 }
 		);
-		await page.getByRole('button', { name: 'Kilometres', exact: true }).click();
+		await personality.selectOption(next);
 		expect((await nextWrite).postData()).toContain(`"weekly_mileage_goal_m":${SEEDED_GOAL_M}`);
 		await expect.poll(storedGoal, { timeout: 5_000 }).toBe(SEEDED_GOAL_M);
+
+		await personality.selectOption(before);
+		await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
 	});
 });

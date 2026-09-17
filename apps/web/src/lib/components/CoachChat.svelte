@@ -940,7 +940,7 @@
 						{#if c.hrZonesLoaded}
 							<a
 								class="chip chip-link"
-								href="/settings/preferences#heart-rate-zones"
+								href="/settings/training#heart-rate-zones"
 								title={t('coachChat.hrZonesLoadedTitle')}
 								aria-label={t('coachChat.hrZonesLoadedTitle')}
 							>
@@ -949,7 +949,7 @@
 						{:else}
 							<a
 								class="chip chip-muted chip-link"
-								href="/settings/preferences#heart-rate-zones"
+								href="/settings/training#heart-rate-zones"
 								title={t('coachChat.noHrZonesTitle')}
 								aria-label={t('coachChat.noHrZonesTitle')}
 							>
@@ -959,7 +959,7 @@
 						{#if c.weeklyGoalMetres}
 							<a
 								class="chip chip-link"
-								href="/settings/preferences#weekly-mileage-goal"
+								href="/settings/training#weekly-distance-goal"
 								title={t('coachChat.weeklyGoalTitle')}
 							>
 								<span class="material-symbols">flag</span>
@@ -1367,7 +1367,7 @@
 	.chip .material-symbols { font-size: 0.85rem; line-height: 1; }
 	.chip-meta { color: inherit; opacity: 0.75; font-weight: 400; }
 	/* Settings shortcuts (HR zones, weekly goal) render as anchors so
-	   tapping the chip jumps to /settings/preferences with the right
+	   tapping the chip jumps to /settings/training with the right
 	   anchor. Match .chip styling exactly — no link-default underline,
 	   same colours, focus-visible outline for keyboard users. */
 	.chip-link {

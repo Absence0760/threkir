@@ -9,7 +9,7 @@ import { resolve } from 'node:path';
 // looks right, and nothing about it says it just spent the ungated child-safety
 // record on an Art 9 purpose. So it is pinned here rather than remembered.
 //
-// This list is health-USE surfaces only. `/settings/preferences` and
+// This list is health-USE surfaces only. `/settings/body` and
 // `/settings/account` read the column directly on purpose: they edit the age
 // record itself, and gating the editor is what produced § 718's deadlock (a
 // runner whose consent lapsed could neither save nor clear their own date).

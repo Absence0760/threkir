@@ -73,8 +73,8 @@ test.describe('surface smoke — authed', () => {
 			.toBeVisible({ timeout: 10_000 });
 	});
 
-	test('/settings/preferences mounts with the theme toggle', async ({ page }) => {
-		await page.goto('/settings/preferences');
+	test('/settings/display mounts with the theme toggle', async ({ page }) => {
+		await page.goto('/settings/display');
 		await expect(page.getByRole('button', { name: /^Auto$/ }))
 			.toBeVisible({ timeout: 10_000 });
 	});

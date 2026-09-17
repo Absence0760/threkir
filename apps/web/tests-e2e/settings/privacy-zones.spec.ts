@@ -4,7 +4,7 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
 
 /**
- * /settings/preferences — privacy zones CRUD round-trip.
+ * /settings/privacy — privacy zones CRUD round-trip.
  *
  * The PrivacyZonePicker modal mounts a MapLibre map for tap-to-add
  * which doesn't drive cleanly under Playwright. The test here covers
@@ -12,7 +12,7 @@ import { USER_A } from '../fixtures/users';
  *
  *   - Plant a zone in user_settings.prefs.privacy_zones via
  *     service-role (the shape mobile reads through `loadSettings`).
- *   - Reload /settings/preferences and confirm the zone-row renders
+ *   - Reload /settings/privacy and confirm the zone-row renders
  *     with the seeded coords + radius — this pins the read path.
  *   - Click Remove + Save Preferences. Reload. Zone is gone from the
  *     UI AND from the prefs blob.
@@ -58,7 +58,7 @@ async function getUserPrivacyZones(): Promise<unknown[]> {
 	return (prefs[PRIVACY_ZONES_KEY] as unknown[]) ?? [];
 }
 
-test.describe('/settings/preferences — privacy zones', () => {
+test.describe('/settings/privacy — privacy zones', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test('seeded zone renders + Remove + Save round-trip clears it from prefs', async ({
@@ -73,7 +73,7 @@ test.describe('/settings/preferences — privacy zones', () => {
 		await setUserPrivacyZones([seeded]);
 
 		try {
-			await page.goto('/settings/preferences');
+			await page.goto('/settings/privacy');
 
 			// Zone row renders with the seeded coords + radius.
 			const zoneRow = page.locator('.zone-list .zone-row').first();
@@ -122,7 +122,7 @@ test.describe('/settings/preferences — privacy zones', () => {
 		await setUserPrivacyZones([]);
 
 		try {
-			await page.goto('/settings/preferences');
+			await page.goto('/settings/privacy');
 
 			await expect(
 				page.getByText('No privacy zones yet.')

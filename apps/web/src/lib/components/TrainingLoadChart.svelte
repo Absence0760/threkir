@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { activeFormatLocale } from '$lib/format/time';
 	import { m as t } from '$lib/i18n/store.svelte';
+	import MetricLabel from '$lib/components/MetricLabel.svelte';
 	import type { TrainingLoadPoint } from '$lib/training/training_load';
 
 	interface Props {
@@ -109,7 +110,7 @@
 		<h2>{t('trainingLoad.heading')}</h2>
 		<p class="hint">
 			{#if hasHr}
-				{t('trainingLoad.hintTrimp', { n: points.length })}
+				<MetricLabel metric="trimp" sentence="trainingLoad.hintTrimp" params={{ n: points.length }} />
 			{:else}
 				{t('trainingLoad.hintVolume')}
 			{/if}

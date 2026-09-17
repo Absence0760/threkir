@@ -75,6 +75,30 @@ export const METRICS = {
 				'an accessible name for the chart, which spells out each acronym beside it',
 		},
 	},
+	ageGrade: {
+		label: 'metric.ageGrade.label',
+		definition: 'metric.ageGrade.definition',
+		term: /\b[Aa]ge grade\b/,
+	},
+	vert: {
+		label: 'metric.vert.label',
+		definition: 'metric.vert.definition',
+		variants: { thisWeek: 'dash.statThisWeekVert' },
+		// Not the `{vert}` placeholder, and not the `'vert'` challenge metric id.
+		term: /\bVert\b|(?<![{'"\w])vert(?![}'"\w])/,
+	},
+	trimp: {
+		label: 'metric.trimp.label',
+		definition: 'metric.trimp.definition',
+		sentences: ['trainingLoad.hintTrimp'],
+		term: /\bTRIMP\b/,
+	},
+	riegel: {
+		label: 'metric.riegel.label',
+		definition: 'metric.riegel.definition',
+		sentences: ['racePredictor.footnote', 'planEditor.recent5kHint'],
+		term: /\bRiegel\b/,
+	},
 } as const satisfies Record<string, MetricEntry>;
 
 export type MetricId = keyof typeof METRICS;

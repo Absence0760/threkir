@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import { createTrainingPlan, fetchActivePlanOverview, fetchRuns } from '$lib/core/data';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	import MetricLabel from '$lib/components/MetricLabel.svelte';
 	import {
 		GOAL_DISTANCES_M,
 		defaultPlanWeeks,
@@ -580,7 +581,7 @@
 
 			<fieldset>
 				<legend>{t('planEditor.recent5kTime')} <span class="optional">{t('planEditor.optional')}</span></legend>
-				<p class="hint">{t('planEditor.recent5kHint')}</p>
+				<p class="hint"><MetricLabel metric="riegel" sentence="planEditor.recent5kHint" /></p>
 				<div class="time-row">
 					<input type="number" min="0" max="59" bind:value={recent5kMin} placeholder={t('planEditor.placeholderMinutes')} />
 					<span>:</span>

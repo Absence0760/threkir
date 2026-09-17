@@ -1315,7 +1315,7 @@
 					<span class="stat-sub">{m('dash.allTime')}</span>
 				</button>
 				<div class="stat-card">
-					<span class="stat-label">{m('dash.statThisWeekVert')}</span>
+					<span class="stat-label"><MetricLabel metric="vert" variant="thisWeek" /></span>
 					<span class="stat-value">{formatElevation(thisWeekVertMetres)}</span>
 					<span class="stat-sub">{m('dash.elevationGain')}</span>
 				</div>
@@ -1790,7 +1790,7 @@
 										<th>{m('dash.prColTime')}</th>
 										<th>{m('dash.prColDate')}</th>
 										{#if showAgeGradeCol}
-											<th class="pr-age-grade-th">{m('dash.prColAgeGrade')}</th>
+											<th class="pr-age-grade-th"><MetricLabel metric="ageGrade" /></th>
 										{/if}
 										<th></th>
 									</tr>
@@ -1805,7 +1805,7 @@
 												<span class="pr-age">{relativeAge(pr.date)}</span>
 											</td>
 											{#if showAgeGradeCol}
-												<td class="pr-age-grade" title={m('dash.prAgeGradeTitle')}>
+												<td class="pr-age-grade">
 													{prAgeGrades[pr.key] ?? '—'}
 												</td>
 											{/if}

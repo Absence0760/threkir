@@ -106,6 +106,27 @@ test.describe('dashboard metric definitions', () => {
 		}
 	});
 
+	test('a term named mid-sentence renders in place, with its disclosure', async ({ browser }) => {
+		const ctx = await browser.newContext({ storageState: runner.storageStatePath });
+		await ctx.addInitScript(setConsentAccepted);
+		const page = await ctx.newPage();
+		try {
+			await openDashboard(page);
+			const footnote = page.getByTestId('race-predictor').locator('.footnote');
+			// The placeholder is filled, never shown, and the name sits inside
+			// the sentence rather than trailing after it.
+			await expect(footnote).toContainText('Predicted with the Riegel formula');
+			await expect(footnote).not.toContainText('{term}');
+
+			await footnote.getByRole('button', { name: 'About Riegel formula' }).click();
+			await expect(page.getByTestId('metric-definition-riegel')).toHaveText(
+				/Riegel formula — a standard way to predict your time/
+			);
+		} finally {
+			await ctx.close();
+		}
+	});
+
 	test('a tap on a phone opens a definition and a tap elsewhere closes it', async ({ browser }) => {
 		const ctx = await browser.newContext({
 			storageState: runner.storageStatePath,

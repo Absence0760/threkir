@@ -74,14 +74,19 @@ export function markupOf(source: string): string {
 		.replace(/<!--[\s\S]*?-->/g, blank);
 }
 
-/// The source a surface's string literals are read from: a `.ts` file whole,
-/// a `.svelte` file without its styles and HTML comments, JS comments blanked
-/// either way.
+/// The code a surface runs, at its original offsets: a `.ts` file whole; for
+/// a `.svelte` file its script bodies and every `{…}` expression, with the
+/// markup between them blanked. JS comments are blanked either way.
 function codeOf(file: string, source: string): string {
 	if (file.endsWith('.ts')) return stripComments(source);
-	return stripComments(
-		source.replace(/<style\b[\s\S]*?<\/style(?=[\s/>])[^>]*>/gi, blank).replace(/<!--[\s\S]*?-->/g, blank),
-	);
+	const keep: [number, number][] = parseMarkup(source).expressions;
+	for (const mm of source.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script(?=[\s/>])[^>]*>/gi)) {
+		const bodyStart = (mm.index ?? 0) + mm[0].indexOf('>') + 1;
+		keep.push([bodyStart, bodyStart + mm[1].length]);
+	}
+	const chars = blank(source).split('');
+	for (const [from, to] of keep) for (let k = from; k < to; k++) chars[k] = source[k];
+	return stripComments(chars.join(''));
 }
 
 /** Index just past the `{…}` expression opening at `i`, strings and template holes respected. */
@@ -138,6 +143,8 @@ interface Tag {
 
 interface Markup {
 	tags: Tag[];
+	/** `[start, end)` of every `{…}` expression, in text and in attributes alike. */
+	expressions: [number, number][];
 	/** Static text: text nodes outside `{…}` and quoted attribute values. */
 	text: { index: number; value: string }[];
 }
@@ -151,6 +158,9 @@ function stickyMatch(re: RegExp, src: string, at: number): string {
 	return re.exec(src)?.[0] ?? '';
 }
 
+/// Attributes whose value is plumbing rather than something a reader sees.
+const NOT_COPY = /^(class|id|metric|variant|sentence|href|src|srcset|type|name|for|role|style|rel|target|method|action|lang|dir|tabindex|autocomplete|inputmode|pattern|min|max|step|width|height|viewBox|d|fill|stroke(-[\w-]+)?|points|transform|xmlns|loading|decoding|slot|key|popover|form|accept|data-[\w-]+|aria-(controls|describedby|labelledby|hidden|expanded|current|live|haspopup|pressed|selected|checked|disabled|modal|level|valuemin|valuemax|valuenow)|on[\w:]+|(bind|class|use|transition|in|out|animate|style):[\w-]+)$/i;
+
 const VOID = new Set([
 	'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr',
 ]);
@@ -162,6 +172,7 @@ const VOID = new Set([
 export function parseMarkup(source: string): Markup {
 	const src = markupOf(source);
 	const tags: Tag[] = [];
+	const expressions: [number, number][] = [];
 	const text: Markup['text'] = [];
 	let i = 0;
 	let runStart = 0;
@@ -174,7 +185,9 @@ export function parseMarkup(source: string): Markup {
 		const c = src[i];
 		if (c === '{') {
 			flush();
-			i = skipExpression(src, i);
+			const end = skipExpression(src, i);
+			expressions.push([i, end]);
+			i = end;
 			runStart = i;
 			continue;
 		}
@@ -200,6 +213,7 @@ export function parseMarkup(source: string): Markup {
 					break;
 				} else if (ch === '{') {
 					const end = skipExpression(src, i);
+					expressions.push([i, end]);
 					attrs.push({ name: '', value: null, valueIndex: i, dynamic: true });
 					i = end;
 				} else {
@@ -215,10 +229,11 @@ export function parseMarkup(source: string): Markup {
 						const end = skipQuoted(src, i);
 						const value = src.slice(i + 1, end);
 						attrs.push({ name: attrName, value, valueIndex: i + 1, dynamic: false });
-						if (!value.includes('{')) text.push({ index: i + 1, value });
+						if (!value.includes('{') && !NOT_COPY.test(attrName)) text.push({ index: i + 1, value });
 						i = end + 1;
 					} else if (q === '{') {
 						const end = skipExpression(src, i);
+					expressions.push([i, end]);
 						attrs.push({ name: attrName, value: null, valueIndex: i, dynamic: true });
 						i = end;
 					} else {
@@ -237,7 +252,7 @@ export function parseMarkup(source: string): Markup {
 		i++;
 	}
 	flush();
-	return { tags, text };
+	return { tags, expressions, text };
 }
 
 const attr = (tag: Tag, name: string) => tag.attrs.find((a) => a.name === name);
@@ -359,6 +374,7 @@ test('rule 2 fixture: a term typed into markup is found; a class name, an expres
 	const vdot = /\bVDOT\b/;
 	assert.deepEqual(termHits(copyChunks('x.svelte', '<span>\n\tVDOT {plan.vdot}\n</span>'), vdot), [2]);
 	assert.deepEqual(termHits(copyChunks('x.svelte', '<span aria-label="VDOT">{n}</span>'), vdot), [1]);
+	assert.deepEqual(termHits(copyChunks('x.svelte', '<td class="VDOT" data-k="VDOT"><X metric="VDOT" /></td>'), vdot), []);
 	assert.deepEqual(termHits(copyChunks('x.svelte', '<span class="vdot">{"VDOT".length > 0 ? n : 0}</span>'), vdot), [1],
 		'a string literal inside an expression is still copy');
 	assert.deepEqual(termHits(copyChunks('x.svelte', '<!-- VDOT -->\n<span class="vdot">{n}</span>'), vdot), []);

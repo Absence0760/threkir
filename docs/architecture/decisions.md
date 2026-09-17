@@ -28839,7 +28839,6 @@ Both alerts are dismissed as won't-fix with that reasoning recorded on them. A d
 The split is by *when it is needed*, not by size: a rule a session must not violate stays in `CLAUDE.md`, a list it consults about the file it is opening moves to a doc `CLAUDE.md` points at. The parity registry moved to `docs/architecture/parity_pairs.md`; the two mobile inventories and the web one moved to siblings of the `CLAUDE.md` that owned them, which keeps every relative link inside them at the same depth — the parity bullet changed directory and its three repo-root-relative links broke, caught by `check_doc_links`. Nothing was reworded: the bullet keeps its one-line-then-blank-line shape because `check_parity_pair_registry` parses it, and the pair, path and watch-statement counts are unchanged at 126 / 517 / 113.
 
 Moving the list weakened a property nobody had written down. That guard's second check exists because "CLAUDE.md is what a session reads FIRST: a pair missing from it reads as a single-platform helper" — and the list is now in a file a session is not handed. So the guard gained a fifth property: the root `CLAUDE.md` must name `docs/architecture/parity_pairs.md`. It is checked on the repo-relative path rather than on any sentence around it, so the wording stays free and a moved or misspelt path does not, and it is the one absence that would leave the other four green while every pair read as single-platform. `check_watch_doc_counts` gained the new doc for the same reason in reverse: the `simplifyToBudget` clause naming the 256-point `CRS1` budget travelled with the bullet, and that guard refuses a template that matches nothing rather than passing over it — which is how the move was noticed at all.
-||||||| 41a0ad7a7
 
 ## 1611. A fixture date is an age, so a literal one stops being a fixture
 
@@ -28850,7 +28849,6 @@ The two halves of the damage are not symmetric, and the quieter one is worse. "m
 So the fix is to the instrument in both directions. `freshRecordedAt()` anchors every fixture `recorded_at` to now — the idiom the file's own `retention` group already used, which is why that group alone was immune — and the emptiness case now first asserts the row is resident, so a fixture the ingest drops for any reason fails the test instead of satisfying it. Checked by mutation rather than assumed: restoring the literal date fails TWO cases where it used to fail one. `instanceStart` stays a fixed instant on purpose; it is an occurrence key, not an age, and nothing prunes on it.
 
 This is the Dart analogue of § 728, where a Playwright seed's day came from the runner's zone instead of the browser's and was green sixteen hours a day. Same class — a fixture whose correctness depended on when it ran — and the same remedy, which is to derive the value rather than write it down.
-||||||| 41a0ad7a7
 
 ## 1612. A generic default is not a contract, so the Sentry error hook names its own type
 
@@ -28917,7 +28915,6 @@ the action rather than reaching past it. `edge_functions_typecheck_coverage.test
 matched the old `supabase/setup-cli` string to find where the stack comes up, so
 it learned the new name too — widened rather than repointed, and it still anchors
 on the same, earliest step.
-||||||| bd5e334c3
 
 ## 1614. The repo becomes `threkir`, and three other things that share the string do not
 

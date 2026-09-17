@@ -644,7 +644,7 @@
 					{/if}
 
 					{#if plan.vdot}
-						<p class="vdot">{t('planEditor.danielsVdot')} <strong>{plan.vdot.toFixed(1)}</strong></p>
+						<p class="vdot"><MetricLabel metric="vdot" /> <strong>{plan.vdot.toFixed(1)}</strong></p>
 					{/if}
 				{/if}
 
@@ -655,7 +655,10 @@
 					</div>
 				{/if}
 
-				<h3>{t('planEditor.weekOutline')}</h3>
+				<div class="outline-head">
+					<h3>{t('planEditor.weekOutline')}</h3>
+					<MetricLabel metric="planPhases" />
+				</div>
 				<p class="outline-hint">
 					{t('planEditor.outlineHint')}
 				</p>
@@ -953,6 +956,21 @@
 		font-weight: 500;
 		font-size: 0.82rem;
 		margin: 0;
+	}
+	.outline-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: var(--space-xs) var(--space-md);
+		margin-top: var(--space-md);
+	}
+	.outline-head h3 {
+		margin: 0;
+	}
+	.outline-head :global(.metric-label) {
+		font-size: 0.78rem;
+		color: var(--color-text-secondary);
 	}
 	.outline-hint {
 		font-size: 0.78rem;

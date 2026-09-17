@@ -99,6 +99,22 @@ export const METRICS = {
 		sentences: ['racePredictor.footnote', 'planEditor.recent5kHint'],
 		term: /\bRiegel\b/,
 	},
+	vdot: {
+		label: 'metric.vdot.label',
+		definition: 'metric.vdot.definition',
+		term: /\bVDOT\b/,
+	},
+	distanceBanked: {
+		label: 'planDetail.distanceBanked',
+		definition: 'metric.distanceBanked.definition',
+		term: /\b[Dd]istance banked\b/,
+	},
+	// No term: Base, Build and Peak are ordinary words elsewhere in the copy,
+	// so the phase names cannot be hunted for. The label is the guarded part.
+	planPhases: {
+		label: 'metric.planPhases.label',
+		definition: 'metric.planPhases.definition',
+	},
 } as const satisfies Record<string, MetricEntry>;
 
 export type MetricId = keyof typeof METRICS;

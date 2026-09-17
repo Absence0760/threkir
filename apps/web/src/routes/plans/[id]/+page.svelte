@@ -33,6 +33,7 @@
 	import { isAdaptiveFitnessGateEnabled } from '$lib/training/adaptive_fitness_flag';
 	import WorkoutEditor from '$lib/components/WorkoutEditor.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	import MetricLabel from '$lib/components/MetricLabel.svelte';
 	import PlanMetaEditor from '$lib/components/PlanMetaEditor.svelte';
 	import PlanCalendar from '$lib/components/PlanCalendar.svelte';
 	import CurrentWeekStrip from '$lib/components/CurrentWeekStrip.svelte';
@@ -1007,7 +1008,8 @@
 					{#if plan.vdot}
 						<span>
 							<span class="material-symbols">trending_up</span>
-							VDOT {Number(plan.vdot).toFixed(1)}
+							<MetricLabel metric="vdot" />
+							{Number(plan.vdot).toFixed(1)}
 						</span>
 					{/if}
 					{#if planPosition}
@@ -1060,19 +1062,22 @@
 		{#if orderedPhases.length > 1 || longestLongRunMetres != null || distanceBanked.plannedMetres > 0}
 			<section class="plan-progress">
 				{#if orderedPhases.length > 1}
-					<ol class="phase-marker" aria-label={m('planDetail.phaseMarkerAria')}>
-						{#each orderedPhases as ph (ph)}
-							<li class="phase-step" class:active={ph === currentPhase}>
-								{planPhaseLabel(ph)}
-							</li>
-						{/each}
-					</ol>
+					<div class="phase-marker-row">
+						<span class="phase-marker-label"><MetricLabel metric="planPhases" /></span>
+						<ol class="phase-marker" aria-label={m('planDetail.phaseMarkerAria')}>
+							{#each orderedPhases as ph (ph)}
+								<li class="phase-step" class:active={ph === currentPhase}>
+									{planPhaseLabel(ph)}
+								</li>
+							{/each}
+						</ol>
+					</div>
 				{/if}
 				<div class="plan-progress-stats">
 					{#if distanceBanked.plannedMetres > 0}
-						<div class="stat-chip" title={m('planDetail.distanceBanked')}>
+						<div class="stat-chip">
 							<span class="material-symbols">route</span>
-							<span class="stat-label">{m('planDetail.distanceBanked')}</span>
+							<span class="stat-label"><MetricLabel metric="distanceBanked" /></span>
 							<span class="stat-value">
 								{m('planDetail.distanceBankedValue', {
 									done: fmtKm(distanceBanked.completedMetres, 0),
@@ -1827,6 +1832,17 @@
 		justify-content: space-between;
 		gap: var(--space-md);
 		margin-bottom: var(--space-md);
+	}
+	.phase-marker-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.35rem var(--space-sm);
+	}
+	.phase-marker-label {
+		font-size: 0.78rem;
+		font-weight: 600;
+		color: var(--color-text-secondary);
 	}
 	.phase-marker {
 		display: flex;

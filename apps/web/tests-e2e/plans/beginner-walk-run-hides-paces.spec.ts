@@ -30,6 +30,7 @@ test.describe('/plans/new — beginner walk-run hides pace jargon', () => {
 		await expect(modal.getByText('Easy', { exact: true })).toBeVisible();
 		await expect(modal.getByText('Repetition', { exact: true })).toBeVisible();
 		await expect(modal.getByRole('heading', { name: 'Week outline' })).toBeVisible();
+		await expect(modal.locator('.vdot').getByRole('button', { name: 'About VDOT' })).toBeVisible();
 	});
 
 	test('enabling "New to running?" drops the pace zones + VDOT, keeps the outline', async ({
@@ -44,7 +45,7 @@ test.describe('/plans/new — beginner walk-run hides pace jargon', () => {
 		await expect(modal.locator('.paces')).toHaveCount(0);
 		await expect(modal.locator('.vdot')).toHaveCount(0);
 		await expect(modal.getByText('Repetition', { exact: true })).toHaveCount(0);
-		await expect(modal.getByText('Daniels VDOT:')).toHaveCount(0);
+		await expect(modal.getByTestId('metric-info-vdot')).toHaveCount(0);
 
 		// ...but the duration-based week outline still renders.
 		await expect(modal.getByRole('heading', { name: 'Week outline' })).toBeVisible();

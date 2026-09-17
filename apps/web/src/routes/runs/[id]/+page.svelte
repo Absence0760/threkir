@@ -2108,7 +2108,7 @@
 				{#if zoneCutoffs == null && maxHrBpm == null}
 					<p class="hr-disclaimer">
 						{m('runDetail.hrDisclaimerPrefix')}
-						<a href="/settings/preferences">{m('runDetail.hrDisclaimerLink')}</a>
+						<a href="/settings/training#heart-rate-zones">{m('runDetail.hrDisclaimerLink')}</a>
 						{m('runDetail.hrDisclaimerSuffix')}
 					</p>
 				{/if}

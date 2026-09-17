@@ -102,7 +102,7 @@ test.describe('/nutrition/targets — no body metrics yet', () => {
 		await expect(noTargets).toBeVisible();
 		await expect(page.getByTestId('add-body-metrics')).toHaveAttribute(
 			'href',
-			'/settings/preferences#body-metrics',
+			'/settings/body#body-metrics',
 		);
 
 		// The peer is reachable with no targets set — that user needs it most.
@@ -112,7 +112,7 @@ test.describe('/nutrition/targets — no body metrics yet', () => {
 		await expect(page.getByTestId('targets-goal')).toHaveCount(0);
 		await expect(page.getByTestId('targets-empty-cta')).toHaveAttribute(
 			'href',
-			'/settings/preferences#body-metrics',
+			'/settings/body#body-metrics',
 		);
 
 		// The two non-sensitive levers are still editable with no metrics set.

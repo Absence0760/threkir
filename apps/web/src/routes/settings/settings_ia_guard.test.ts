@@ -206,7 +206,7 @@ test('an old section link resolves, and anything else stays on the landing page'
 	}
 });
 
-test('every in-app link to a preferences section names one that resolves', () => {
+test('in-app code links a moved section at its new page, never through the landing redirect', () => {
 	const offenders: string[] = [];
 	const walk = (dir: string) => {
 		for (const entry of readdirSync(dir)) {
@@ -214,11 +214,16 @@ test('every in-app link to a preferences section names one that resolves', () =>
 			if (statSync(path).isDirectory()) walk(path);
 			else if (/\.(svelte|ts)$/.test(entry) && !/\.test\.ts$/.test(entry)) {
 				for (const m of readFileSync(path, 'utf8').matchAll(/\/settings\/preferences#([\w-]+)/g)) {
-					if (legacyPreferencesTarget(m[1]) === null) offenders.push(`${path}: #${m[1]}`);
+					const target = legacyPreferencesTarget(m[1]);
+					offenders.push(`${path}: #${m[1]} -> ${target ?? 'no settings page carries this section'}`);
 				}
 			}
 		}
 	};
 	walk(SRC_DIR);
-	assert.deepEqual(offenders, [], 'these links name a section no settings page carries');
+	assert.deepEqual(
+		offenders,
+		[],
+		'the #anchor redirect exists for bookmarks and old emails; a link the app renders itself names the page the section lives on'
+	);
 });

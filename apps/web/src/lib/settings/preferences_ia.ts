@@ -63,7 +63,7 @@ export const LEGACY_PREFERENCES_ANCHORS: Readonly<Record<string, string>> = {
 	'body-metrics': '/settings/body#body-metrics',
 };
 
-/// Where an old `/settings/preferences#anchor` link should land, or null when
+/// Where an old preferences-page `#section` link should land, or null when
 /// the hash names no section that moved.
 export function legacyPreferencesTarget(hash: string): string | null {
 	const anchor = hash.startsWith('#') ? hash.slice(1) : hash;

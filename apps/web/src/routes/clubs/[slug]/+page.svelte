@@ -759,7 +759,7 @@
 
 	function fmtKm(m: number | null | undefined): string {
 		// Defers to the unit-aware formatter in $lib/format/units.svelte so a
-		// km → mi preference flip on /settings/preferences re-renders
+		// km → mi preference flip on /settings/display re-renders
 		// every distance string on this page. The previous local
 		// implementation hardcoded " km" — the audit caught it.
 		if (m == null) return '';

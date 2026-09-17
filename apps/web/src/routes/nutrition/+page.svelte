@@ -751,7 +751,7 @@
 						<span class="material-symbols hint-icon" aria-hidden="true">info</span>
 						{m('nutrition.noTargets')}
 					</p>
-					<a class="btn btn-secondary btn-sm" href="/settings/preferences#body-metrics" data-testid="add-body-metrics">
+					<a class="btn btn-secondary btn-sm" href="/settings/body#body-metrics" data-testid="add-body-metrics">
 						<span class="material-symbols" aria-hidden="true">straighten</span>
 						{m('nutrition.addBodyMetrics')}
 					</a>

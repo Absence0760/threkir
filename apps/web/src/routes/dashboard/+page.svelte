@@ -395,7 +395,7 @@
 	/// via Settings → Preferences) is folded into the same Goals
 	/// section so the dashboard only has ONE goal surface. We surface
 	/// it as a read-only synthetic goal — clicking it routes to
-	/// /settings/preferences instead of opening the multi-metric
+	/// /settings/training instead of opening the multi-metric
 	/// editor — and skip rendering it if the user already has a
 	/// week-period distance goal of their own.
 	const SYNTHETIC_WEEKLY_GOAL_ID = '__weekly_mileage_pref__';
@@ -1445,7 +1445,7 @@
 								class:goal-card-done={isDone}
 								type="button"
 								onclick={() =>
-									isSynthetic ? goto('/settings/preferences') : openEditGoal(g)}
+									isSynthetic ? goto('/settings/training#weekly-distance-goal') : openEditGoal(g)}
 							>
 								<header class="goal-card-top">
 									<span class="goal-period">{periodLabel(g.period)}</span>
@@ -1732,7 +1732,7 @@
 
 			<!-- Training intensity — time in HR zones over the last 30/365 days
 			     (window mirrors the Mileage view). Empty state links to
-			     /settings/preferences#heart-rate-zones when the user hasn't set zones,
+			     /settings/training#heart-rate-zones when the user hasn't set zones,
 			     or to the same anchor with a "no HR data" hint when zones
 			     are set but no run in window carries avg_bpm.
 			     Layered resilience: hrZones load is wrapped in onMount; a
@@ -1763,7 +1763,7 @@
 							<strong>{m('dash.setHrZonesTitle')}</strong>
 							<p>{m('dash.setHrZonesBody')}</p>
 						</div>
-						<a class="btn btn-primary btn-sm" href="/settings/preferences#heart-rate-zones">
+						<a class="btn btn-primary btn-sm" href="/settings/training#heart-rate-zones">
 							{m('dash.setZones')}
 						</a>
 					</div>
@@ -1774,7 +1774,7 @@
 							<strong>{m('dash.noHrDataTitle')}</strong>
 							<p>{m('dash.noHrDataBody')}</p>
 						</div>
-						<a class="btn btn-secondary btn-sm" href="/settings/preferences#heart-rate-zones">
+						<a class="btn btn-secondary btn-sm" href="/settings/training#heart-rate-zones">
 							{m('dash.reviewZones')}
 						</a>
 					</div>

@@ -1247,7 +1247,7 @@ export const messages = {
 	"runDetail.min": "Min",
 	"runDetail.max": "Max",
 	"runDetail.hrDisclaimerPrefix": "Die Zonen verwenden eine altersgeschätzte maximale HF. Wenn du Herzfrequenzmedikamente nimmst (z. B. Betablocker) oder deine maximale HF gemessen hast, lege sie fest unter",
-	"runDetail.hrDisclaimerLink": "Einstellungen → Präferenzen",
+	"runDetail.hrDisclaimerLink": "Einstellungen → Voreinstellungen → Training",
 	"runDetail.hrDisclaimerSuffix": "für genaue Zonen.",
 	"runDetail.hrAvgOnly": "Es wurde nur die durchschnittliche Herzfrequenz des Laufs erfasst ({bpm} bpm). Eine Zonenverteilung benötigt Herzfrequenzwerte an jedem Punkt der Strecke; dieser Lauf enthält keine.",
 	"runDetail.hrCoverageNone": "Der Herzfrequenzsensor war bei diesem Lauf aktiv, lieferte aber keine Messwerte.",

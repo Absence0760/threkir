@@ -646,7 +646,7 @@ The pure coalescing auto-save queue every preference page shares (decisions § 1
 
 ### `apps/web/src/routes/settings/settings_ia_guard.test.ts` — 8 tests
 
-The reachability contract for the `/settings/preferences` split (issue #905, decisions § 1640). Reads `settings.md § Keys` and every settings `+page.svelte`: the registry and the declared homes name the same keys; the constants pages name keys through still spell them; every key is edited on exactly its declared page set (comments stripped); the nav and the landing page offer every split page; the landing page edits nothing; every legacy anchor lands on a page carrying that `id`; `legacyPreferencesTarget` resolves the three old anchors and nothing else (`#__proto__` included); and every in-app `/settings/preferences#…` link resolves.
+The reachability contract for the `/settings/preferences` split (issue #905, decisions § 1640). Reads `settings.md § Keys` and every settings `+page.svelte`: the registry and the declared homes name the same keys; the constants pages name keys through still spell them; every key is edited on exactly its declared page set (comments stripped); the nav and the landing page offer every split page; the landing page edits nothing; every legacy anchor lands on a page carrying that `id`; `legacyPreferencesTarget` resolves the three old anchors and nothing else (`#__proto__` included); and no link the app renders itself goes through that redirect — the dashboard, run detail and nutrition pages name the page a section now lives on, and the anchors stay for bookmarks and old emails.
 
 ### `apps/web/src/routes/settings/prefs_hints_guard.test.ts` — 3 tests
 

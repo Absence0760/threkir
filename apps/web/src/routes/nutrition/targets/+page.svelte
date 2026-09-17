@@ -245,7 +245,7 @@
 				<span class="material-symbols empty-icon" aria-hidden="true">straighten</span>
 				<h2>{m('nutrition.targets.emptyTitle')}</h2>
 				<p>{m('nutrition.targets.emptyBody')}</p>
-				<a class="btn btn-primary" href="/settings/preferences#body-metrics" data-testid="targets-empty-cta">
+				<a class="btn btn-primary" href="/settings/body#body-metrics" data-testid="targets-empty-cta">
 					{m('nutrition.addBodyMetrics')}
 				</a>
 			</section>
@@ -296,7 +296,7 @@
 		<section class="card-elevated metrics-card" data-testid="targets-metrics">
 			<div class="card-head">
 				<span class="section-label">{m('nutrition.targets.metricsHeading')}</span>
-				<a class="btn btn-secondary btn-sm" href="/settings/preferences#body-metrics" data-testid="targets-edit-metrics">
+				<a class="btn btn-secondary btn-sm" href="/settings/body#body-metrics" data-testid="targets-edit-metrics">
 					{m('nutrition.targets.editMetrics')}
 				</a>
 			</div>

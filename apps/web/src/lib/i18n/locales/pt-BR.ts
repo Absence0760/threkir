@@ -1246,7 +1246,7 @@ export const messages = {
 	"runDetail.min": "Mín",
 	"runDetail.max": "Máx",
 	"runDetail.hrDisclaimerPrefix": "As zonas usam uma FC máxima estimada pela idade. Se você toma medicação cardíaca (ex.: betabloqueadores) ou já mediu sua FC máxima, defina-a em",
-	"runDetail.hrDisclaimerLink": "Configurações → Preferências",
+	"runDetail.hrDisclaimerLink": "Configurações → Preferências → Treino",
 	"runDetail.hrDisclaimerSuffix": "para zonas precisas.",
 	"runDetail.hrAvgOnly": "Apenas a frequência cardíaca média da corrida foi capturada ({bpm} bpm). Uma distribuição de zonas precisa de leituras de frequência cardíaca em cada ponto do percurso, que esta corrida não registrou.",
 	"runDetail.hrCoverageNone": "O sensor de frequência cardíaca estava ativo nesta corrida, mas não registrou nenhuma leitura.",

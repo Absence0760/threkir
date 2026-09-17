@@ -1043,6 +1043,24 @@ abstract class AppLocalizations {
   /// **'low'**
   String get readinessBandLow;
 
+  /// Readiness breakdown: the points training balance (form) added to the score. Deliberately not the TSB stat's name, which labels a different number
+  ///
+  /// In en, this message translates to:
+  /// **'Training balance'**
+  String get readinessContributorForm;
+
+  /// Readiness breakdown: the points last night's sleep added to the score
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep'**
+  String get readinessContributorSleep;
+
+  /// Readiness breakdown: the points resting heart rate added to the score
+  ///
+  /// In en, this message translates to:
+  /// **'Resting heart rate'**
+  String get readinessContributorRestingHr;
+
   /// Diagnostic banner title shown when no map-tile source is configured (dev-facing)
   ///
   /// In en, this message translates to:
@@ -9430,11 +9448,11 @@ abstract class AppLocalizations {
   /// **'Running {pct}% over plan this week — ease back on the easy days so you don\'t dig a fatigue hole.'**
   String planDetailDriftOverFlag(int pct);
 
-  /// Plan-detail adherence/replan/duplicate
+  /// Plan-detail adherence: distance run so far this week against the week's planned distance, both already formatted with their unit
   ///
   /// In en, this message translates to:
-  /// **'Running {pct}% under plan this week — the planned volume drives the adaptation.'**
-  String planDetailDriftUnderFlag(int pct);
+  /// **'So far this week you\'ve run {done} of the {planned} planned.'**
+  String planDetailDriftUnderFlag(String done, String planned);
 
   /// Plan-detail adherence/replan/duplicate
   ///
@@ -13626,7 +13644,7 @@ abstract class AppLocalizations {
   /// Title of the dashboard mileage card
   ///
   /// In en, this message translates to:
-  /// **'Mileage'**
+  /// **'Distance'**
   String get mileageTitle;
 
   /// Weekly segment label on the mileage view toggle

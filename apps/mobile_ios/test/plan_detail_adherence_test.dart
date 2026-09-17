@@ -145,7 +145,9 @@ void main() {
         ),
       ]);
       await _pump(tester, training: training, social: social);
-      expect(find.textContaining('under plan this week'), findsOneWidget);
+      expect(find.textContaining('So far this week you'), findsOneWidget);
+      expect(find.textContaining('10.0 km'), findsOneWidget);
+      expect(find.textContaining('under plan'), findsNothing);
     });
 
     testWidgets('surfaces make-up advice for a missed long run', (tester) async {
@@ -193,7 +195,7 @@ void main() {
       ]);
       await _pump(tester,
           training: training, social: social, viewerId: 'someone-else');
-      expect(find.textContaining('under plan this week'), findsNothing);
+      expect(find.textContaining('So far this week you'), findsNothing);
       expect(find.text('Re-plan remaining weeks'), findsNothing);
     });
   });

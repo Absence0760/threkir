@@ -634,6 +634,15 @@ class AppLocalizationsPt extends AppLocalizations {
   String get readinessBandLow => 'baixa';
 
   @override
+  String get readinessContributorForm => 'Equilíbrio de treino';
+
+  @override
+  String get readinessContributorSleep => 'Sono';
+
+  @override
+  String get readinessContributorRestingHr => 'Frequência cardíaca em repouso';
+
+  @override
   String get missingMapTilesTitle =>
       'A utilizar tiles alternativos do OpenStreetMap';
 
@@ -5755,8 +5764,8 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String planDetailDriftUnderFlag(int pct) {
-    return 'Esta semana $pct% abaixo do plano — o volume planeado impulsiona a adaptação.';
+  String planDetailDriftUnderFlag(String done, String planned) {
+    return 'Até agora, esta semana correu $done dos $planned planeados.';
   }
 
   @override
@@ -8383,7 +8392,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get mileageTitle => 'Quilometragem';
+  String get mileageTitle => 'Distância';
 
   @override
   String get mileageWeek => 'Semana';
@@ -14705,6 +14714,15 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get readinessBandLow => 'baixa';
 
   @override
+  String get readinessContributorForm => 'Equilíbrio de treino';
+
+  @override
+  String get readinessContributorSleep => 'Sono';
+
+  @override
+  String get readinessContributorRestingHr => 'Frequência cardíaca em repouso';
+
+  @override
   String get missingMapTilesTitle =>
       'Usando tiles alternativos do OpenStreetMap';
 
@@ -19828,8 +19846,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String planDetailDriftUnderFlag(int pct) {
-    return 'Esta semana $pct% abaixo do plano — o volume planejado impulsiona a adaptação.';
+  String planDetailDriftUnderFlag(String done, String planned) {
+    return 'Até agora, nesta semana você correu $done dos $planned planejados.';
   }
 
   @override
@@ -22449,7 +22467,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get mileageTitle => 'Quilometragem';
+  String get mileageTitle => 'Distância';
 
   @override
   String get mileageWeek => 'Semana';

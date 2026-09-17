@@ -1107,7 +1107,8 @@
 									pct: Math.round(currentWeekDrift.driftFraction * 100)
 								})
 							: m('planDetail.driftUnderFlag', {
-									pct: Math.round(Math.abs(currentWeekDrift.driftFraction) * 100)
+									done: fmtKm(currentWeekDrift.actualMetres, 1),
+									planned: fmtKm(currentWeekDrift.plannedMetres, 1)
 								})}
 					</p>
 				{/if}

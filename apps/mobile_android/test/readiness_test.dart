@@ -69,7 +69,8 @@ void main() {
     test('TSB > +25 (over-tapered) → small negative not positive', () {
       final r = computeReadiness(const ReadinessInputs(tsb: 30));
       expect(r.score, 75 - 3);
-      final tsb = r.contributors.firstWhere((c) => c.name == 'Form (TSB)');
+      final tsb = r.contributors
+          .firstWhere((c) => c.kind == ReadinessContributorKind.form);
       expect(tsb.delta, -3);
       expect(tsb.note, matches(RegExp('Over-tapered')));
     });
@@ -152,6 +153,11 @@ void main() {
         baselineRestingHrBpm: 50,
       ));
       expect(r.contributors, hasLength(3));
+      expect(r.contributors.map((c) => c.kind).toList(), [
+        ReadinessContributorKind.form,
+        ReadinessContributorKind.sleep,
+        ReadinessContributorKind.restingHr,
+      ]);
       expect(r.contributors.map((c) => c.delta).toList(), [0, 0, 0]);
       expect(r.advice, startsWith('Form is neutral.'));
     });

@@ -632,6 +632,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get readinessBandLow => 'faible';
 
   @override
+  String get readinessContributorForm => 'Équilibre d\'entraînement';
+
+  @override
+  String get readinessContributorSleep => 'Sommeil';
+
+  @override
+  String get readinessContributorRestingHr => 'Fréquence cardiaque au repos';
+
+  @override
   String get missingMapTilesTitle =>
       'Utilisation des tuiles de secours OpenStreetMap';
 
@@ -5771,8 +5780,8 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String planDetailDriftUnderFlag(int pct) {
-    return '$pct% en dessous du plan cette semaine — le volume prévu pilote l’adaptation.';
+  String planDetailDriftUnderFlag(String done, String planned) {
+    return 'Cette semaine, tu en es à $done sur les $planned prévus.';
   }
 
   @override
@@ -8409,7 +8418,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get mileageTitle => 'Kilométrage';
+  String get mileageTitle => 'Distance';
 
   @override
   String get mileageWeek => 'Semaine';

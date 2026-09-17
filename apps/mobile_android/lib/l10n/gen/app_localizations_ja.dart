@@ -606,6 +606,15 @@ class AppLocalizationsJa extends AppLocalizations {
   String get readinessBandLow => '低い';
 
   @override
+  String get readinessContributorForm => 'トレーニングバランス';
+
+  @override
+  String get readinessContributorSleep => '睡眠';
+
+  @override
+  String get readinessContributorRestingHr => '安静時心拍数';
+
+  @override
   String get missingMapTilesTitle => 'OpenStreetMapの代替タイルを使用中';
 
   @override
@@ -5423,8 +5432,8 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String planDetailDriftUnderFlag(int pct) {
-    return '今週は計画より$pct%少なく走っています — 計画した走行量が適応を生みます。';
+  String planDetailDriftUnderFlag(String done, String planned) {
+    return '今週はここまで、予定の$plannedのうち$doneを走りました。';
   }
 
   @override
@@ -7931,7 +7940,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get mileageTitle => '走行距離';
+  String get mileageTitle => '距離';
 
   @override
   String get mileageWeek => '週';

@@ -265,7 +265,7 @@
 					<span class="material-symbols" aria-hidden="true">trophy</span>
 					<span class="destination-text">
 						<span class="destination-title" id="gym-records-title">{t('gym.records.link')}</span>
-						<span class="destination-desc" id="gym-records-desc">{t('gym.records.subtitle')}</span>
+						<span class="destination-desc" id="gym-records-desc">{t('gym.records.linkDesc')}</span>
 					</span>
 				</a>
 			{/if}

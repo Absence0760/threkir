@@ -4361,6 +4361,7 @@ export const messages = {
 	"gym.records.link": "Rekorde",
 	"gym.records.title": "Persönliche Rekorde",
 	"gym.records.subtitle": "Deine Bestleistung für jede gewichtete Übung. Jede Karte beginnt mit deinem besten {term}.",
+	"gym.records.linkDesc": "Deine Bestleistung für jede gewichtete Übung.",
 	"gym.records.empty": "Noch keine gewichteten Übungen erfasst. Trage ein Gewicht zu einem Satz ein, um deine Bestleistungen zu verfolgen.",
 	"gym.records.loadError": "Deine Rekorde konnten nicht geladen werden.",
 	"gym.records.lastDone": "Zuletzt {date}",

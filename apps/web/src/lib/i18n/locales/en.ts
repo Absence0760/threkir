@@ -4377,6 +4377,7 @@ export const en = {
 	"gym.records.link": "Records",
 	"gym.records.title": "Personal records",
 	"gym.records.subtitle": "Your best lift for every weighted exercise. Each card leads with your best {term}.",
+	"gym.records.linkDesc": "Your best lift for every weighted exercise.",
 	"gym.records.empty": "No weighted lifts logged yet. Add a weight to a set to start tracking your bests.",
 	"gym.records.loadError": "Couldn't load your records.",
 	"gym.records.lastDone": "Last {date}",

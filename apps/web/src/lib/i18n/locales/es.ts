@@ -4361,6 +4361,7 @@ export const messages = {
 	"gym.records.link": "Récords",
 	"gym.records.title": "Récords personales",
 	"gym.records.subtitle": "Tu mejor marca en cada ejercicio con peso. Cada tarjeta empieza por tu mejor {term}.",
+	"gym.records.linkDesc": "Tu mejor marca en cada ejercicio con peso.",
 	"gym.records.empty": "Aún no hay ejercicios con peso registrados. Añade un peso a una serie para empezar a seguir tus récords.",
 	"gym.records.loadError": "No se pudieron cargar tus récords.",
 	"gym.records.lastDone": "Último {date}",

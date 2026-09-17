@@ -4356,6 +4356,7 @@ export const messages = {
 	"gym.records.link": "記録",
 	"gym.records.title": "自己ベスト",
 	"gym.records.subtitle": "重量種目ごとのあなたのベスト記録。各カードの先頭は、あなたのベストの{term}です。",
+	"gym.records.linkDesc": "重量種目ごとのあなたのベスト記録。",
 	"gym.records.empty": "重量種目の記録はまだありません。セットに重量を入力すると自己ベストの記録が始まります。",
 	"gym.records.loadError": "記録を読み込めませんでした。",
 	"gym.records.lastDone": "最終 {date}",

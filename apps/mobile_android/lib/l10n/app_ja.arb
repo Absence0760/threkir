@@ -4098,5 +4098,6 @@
   "backExitRecordingTitle": "ランを記録中です",
   "backExitRecordingBody": "アプリを終了すると記録が中断されることがあります。ランは保存されるので、戻ったときに続きから再開できます。",
   "backExitRecordingLeave": "終了する",
-  "backExitRecordingStay": "記録を続ける"
+  "backExitRecordingStay": "記録を続ける",
+  "logAlreadyOnPage": "すでに{page}を開いています"
 }

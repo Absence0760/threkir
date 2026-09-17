@@ -4098,5 +4098,6 @@
   "backExitRecordingTitle": "Course toujours en cours d’enregistrement",
   "backExitRecordingBody": "Quitter l’application peut interrompre l’enregistrement. Votre course est conservée, vous pourrez la reprendre à votre retour.",
   "backExitRecordingLeave": "Quitter quand même",
-  "backExitRecordingStay": "Continuer l’enregistrement"
+  "backExitRecordingStay": "Continuer l’enregistrement",
+  "logAlreadyOnPage": "Vous êtes déjà sur {page}"
 }

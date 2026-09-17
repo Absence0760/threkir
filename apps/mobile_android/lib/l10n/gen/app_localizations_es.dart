@@ -14172,4 +14172,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get backExitRecordingStay => 'Seguir grabando';
+
+  @override
+  String logAlreadyOnPage(String page) {
+    return 'Ya estás en $page';
+  }
 }

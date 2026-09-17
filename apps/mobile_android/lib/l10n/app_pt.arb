@@ -4098,5 +4098,6 @@
   "backExitRecordingTitle": "A corrida ainda está a ser gravada",
   "backExitRecordingBody": "Sair da aplicação pode interromper a gravação. A sua corrida fica guardada, por isso pode retomá-la quando voltar.",
   "backExitRecordingLeave": "Sair mesmo assim",
-  "backExitRecordingStay": "Continuar a gravar"
+  "backExitRecordingStay": "Continuar a gravar",
+  "logAlreadyOnPage": "Já está em {page}"
 }

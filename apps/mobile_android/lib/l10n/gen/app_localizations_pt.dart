@@ -14174,6 +14174,11 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get backExitRecordingStay => 'Continuar a gravar';
+
+  @override
+  String logAlreadyOnPage(String page) {
+    return 'Já está em $page';
+  }
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -28337,4 +28342,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get backExitRecordingStay => 'Continuar gravando';
+
+  @override
+  String logAlreadyOnPage(String page) {
+    return 'Você já está em $page';
+  }
 }

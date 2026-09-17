@@ -23462,6 +23462,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Keep recording'**
   String get backExitRecordingStay;
+
+  /// Banner shown when a Log action names the capture page already on screen
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re already on {page}'**
+  String logAlreadyOnPage(String page);
 }
 
 class _AppLocalizationsDelegate

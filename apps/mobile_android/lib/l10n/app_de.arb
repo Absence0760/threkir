@@ -4098,5 +4098,6 @@
   "backExitRecordingTitle": "Lauf wird noch aufgezeichnet",
   "backExitRecordingBody": "Wenn du die App verlässt, kann die Aufzeichnung unterbrochen werden. Dein Lauf bleibt erhalten und du kannst ihn später fortsetzen.",
   "backExitRecordingLeave": "Trotzdem verlassen",
-  "backExitRecordingStay": "Weiter aufzeichnen"
+  "backExitRecordingStay": "Weiter aufzeichnen",
+  "logAlreadyOnPage": "Du bist bereits auf {page}"
 }

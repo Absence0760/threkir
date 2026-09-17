@@ -18022,5 +18022,14 @@
   "backExitRecordingStay": "Keep recording",
   "@backExitRecordingStay": {
     "description": "Cancel action: stay in the app and keep the recording running"
+  },
+  "logAlreadyOnPage": "You're already on {page}",
+  "@logAlreadyOnPage": {
+    "description": "Banner shown when a Log action names the capture page already on screen",
+    "placeholders": {
+      "page": {
+        "type": "String"
+      }
+    }
   }
 }

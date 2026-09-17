@@ -4098,5 +4098,6 @@
   "backExitRecordingTitle": "La carrera sigue grabándose",
   "backExitRecordingBody": "Salir de la app puede interrumpir la grabación. Tu carrera se conserva, así que podrás retomarla al volver.",
   "backExitRecordingLeave": "Salir igualmente",
-  "backExitRecordingStay": "Seguir grabando"
+  "backExitRecordingStay": "Seguir grabando",
+  "logAlreadyOnPage": "Ya estás en {page}"
 }

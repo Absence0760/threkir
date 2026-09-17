@@ -677,6 +677,34 @@ void main() {
       tester.takeException();
     });
 
+    testWidgets('a Log action for the page already showing says so',
+        (tester) async {
+      // Log -> Lift while the Gym page is already up navigated nowhere and
+      // showed nothing, so the fan just closed and the tap read as dropped.
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await _pump(tester, s);
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.byTooltip('Log lift'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(shellPage(tester), 3);
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.byTooltip('Log lift'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.text("You're already on Gym"), findsOneWidget);
+      expect(shellPage(tester), 3);
+      // showTopBanner arms an auto-dismiss timer; let it run out.
+      await tester.pump(const Duration(seconds: 8));
+    });
+
     testWidgets('long-press opens the menu for a pure runner', (tester) async {
       // It used to navigate straight to the last-logged modality with nothing
       // announced, so a press half a beat too long landed someone on

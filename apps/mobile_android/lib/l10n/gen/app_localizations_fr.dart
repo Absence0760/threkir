@@ -14207,4 +14207,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get backExitRecordingStay => 'Continuer l’enregistrement';
+
+  @override
+  String logAlreadyOnPage(String page) {
+    return 'Vous êtes déjà sur $page';
+  }
 }

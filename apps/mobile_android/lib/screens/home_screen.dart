@@ -753,15 +753,28 @@ class _HomeScreenState extends State<HomeScreen>
     // for as long as the session lasts (record the run, build the workout over
     // several sets, log the day's meals) rather than a one-shot modal that
     // closes after a single entry. Each page surfaces its composer one tap away.
-    switch (action) {
-      case LogAction.run:
-        _goToPage(_pageRun);
-      case LogAction.lift:
-        _goToPage(_pageGym);
-      case LogAction.food:
-        _goToPage(_pageFood);
+    final page = switch (action) {
+      LogAction.run => _pageRun,
+      LogAction.lift => _pageGym,
+      LogAction.food => _pageFood,
+    };
+    if (page == _currentIndex.value) {
+      // Picking the page you are already on is a no-op navigation, and the
+      // fan closing onto an unchanged screen reads as a dropped tap. Say
+      // where the tap went instead.
+      final l10n = AppLocalizations.of(context);
+      showTopBanner(context, l10n.logAlreadyOnPage(_logPageName(l10n, action)));
+      return;
     }
+    _goToPage(page);
   }
+
+  String _logPageName(AppLocalizations l10n, LogAction action) =>
+      switch (action) {
+        LogAction.run => l10n.navRun,
+        LogAction.lift => l10n.gymTitle,
+        LogAction.food => l10n.nutritionTitle,
+      };
 
   @override
   Widget build(BuildContext context) {

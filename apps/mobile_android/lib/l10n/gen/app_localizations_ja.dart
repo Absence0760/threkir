@@ -13514,4 +13514,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get backExitRecordingStay => '記録を続ける';
+
+  @override
+  String logAlreadyOnPage(String page) {
+    return 'すでに$pageを開いています';
+  }
 }

@@ -141,7 +141,7 @@ test.describe('/nutrition — multi-day week journey', () => {
 			// And the water budget chip is wired to that goal.
 			const chip = page.getByTestId('water-budget');
 			await expect(chip).toBeVisible();
-			await expect(chip).toContainText(/ml left|Goal reached/);
+			await expect(chip).toContainText(/L left|Goal reached/);
 		});
 
 		// ── 3. Log today's food via the real FoodLogEditor write path ────────

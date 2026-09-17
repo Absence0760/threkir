@@ -3106,12 +3106,12 @@
     }
   },
   "nutritionWaterGoalReached": "Objetivo alcanzado",
-  "nutritionWaterRemaining": "{n} ml restantes",
+  "nutritionWaterRemaining": "{n} L restantes",
   "@nutritionWaterRemaining": {
-    "description": "Water budget chip: ml still to drink",
+    "description": "Water budget chip: litres still to drink",
     "placeholders": {
       "n": {
-        "type": "int"
+        "type": "String"
       }
     }
   },

@@ -17985,11 +17985,11 @@ abstract class AppLocalizations {
   /// **'Goal reached'**
   String get nutritionWaterGoalReached;
 
-  /// Water budget chip: ml still to drink
+  /// Water budget chip: litres still to drink
   ///
   /// In en, this message translates to:
-  /// **'{n} ml left'**
-  String nutritionWaterRemaining(int n);
+  /// **'{n} L left'**
+  String nutritionWaterRemaining(String n);
 
   /// No description provided for @nutritionWeekOnGoal.
   ///

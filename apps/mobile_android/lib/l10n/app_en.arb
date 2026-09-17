@@ -14203,12 +14203,12 @@
     }
   },
   "nutritionWaterGoalReached": "Goal reached",
-  "nutritionWaterRemaining": "{n} ml left",
+  "nutritionWaterRemaining": "{n} L left",
   "@nutritionWaterRemaining": {
-    "description": "Water budget chip: ml still to drink",
+    "description": "Water budget chip: litres still to drink",
     "placeholders": {
       "n": {
-        "type": "int"
+        "type": "String"
       }
     }
   },

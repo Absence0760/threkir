@@ -10,10 +10,18 @@ import 'package:ui_kit/ui_kit.dart'
 import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart';
 import '../settings_sync.dart';
+import '../widgets/sign_in_required_state.dart' show resolveApiForSignIn;
+import 'sign_in_screen.dart';
+import 'sign_up_screen.dart';
 
-/// First-launch welcome flow. Three info pages, then a privacy-default
-/// chooser, followed by the location-permission request. Marks
-/// preferences.onboarded = true on completion.
+/// First-launch welcome flow. Three info pages, a privacy-default chooser
+/// that also runs the location-permission request, and finally the account
+/// offer. Marks preferences.onboarded = true on completion.
+///
+/// The account page is the only place a brand-new person is shown that an
+/// account exists: before it, the shortest route from a cold launch to
+/// "create account" was Settings, a tile whose subtitle never said so, the
+/// sign-in screen, and a scroll to its last button.
 class OnboardingScreen extends StatefulWidget {
   final Preferences preferences;
   final VoidCallback onDone;
@@ -22,11 +30,18 @@ class OnboardingScreen extends StatefulWidget {
   /// overridden by another device's default (persona #56).
   final SettingsSyncService? settingsSync;
 
+  /// The client the account page hands to sign-up / sign-in. Optional: the
+  /// caller rarely has one at first launch, so it falls back to the shared
+  /// resolver, which answers null on a build where Supabase never
+  /// initialized.
+  final ApiClient? apiClient;
+
   const OnboardingScreen({
     super.key,
     required this.preferences,
     required this.onDone,
     this.settingsSync,
+    this.apiClient,
   });
 
   @override
@@ -44,9 +59,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   /// The three info pages before the privacy chooser.
   static const int _infoPageCount = 3;
 
-  /// Total onboarding pages: the info pages + the privacy chooser.
-  int get _pageCount => _infoPageCount + 1;
+  /// The client the account page's buttons hand to sign-up / sign-in. Null
+  /// when Supabase never initialized, and the page is then dropped rather
+  /// than offering an account this build cannot create (issue #238).
+  ApiClient? get _api => resolveApiForSignIn(widget.apiClient);
+
+  bool get _hasAccountPage => _api != null;
+
+  /// Total onboarding pages: the info pages + the privacy chooser + the
+  /// account offer, when there is a backend to make an account on.
+  int get _pageCount => _infoPageCount + 1 + (_hasAccountPage ? 1 : 0);
   bool get _onPrivacyPage => _page == _infoPageCount;
+  bool get _onAccountPage => _hasAccountPage && _page == _infoPageCount + 1;
 
   // Location disclosure copy mandated by Google Play's location policy:
   // the in-app rationale must run BEFORE the OS permission dialog, must
@@ -83,49 +107,81 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ];
 
   Future<void> _next() async {
-    if (_page < _pageCount - 1) {
-      // `nextPage` is a driven scroll, which the platform reduce-motion flag
-      // does not reach (`AnimationController.unbounded` defaults to
-      // `AnimationBehavior.preserve`) and which asserts against a zero
-      // duration — so the reduced path has to be a jump, not a faster slide.
-      if (reduceMotion(context)) {
-        _controller.jumpToPage(_page + 1);
-      } else {
-        _controller.nextPage(
-          duration: AppMotion.standard,
-          curve: AppMotion.curveStandard,
-        );
-      }
-    } else {
-      // Persist the privacy choice locally (drives is_public on every
-      // run save) AND push it to the universal bag so it's an explicit
-      // value that roams + isn't overridden by another device's default
-      // (persona #56). The bag write is best-effort — the local pref is
-      // what protects new-run visibility immediately.
-      await widget.preferences.setPrivacyDefault(_privacyDefault);
-      try {
-        await widget.settingsSync?.updateUniversal(
-          <String, dynamic>{SettingsKeys.privacyDefault: _privacyDefault},
-        );
-      } catch (e) {
-        debugPrint('onboarding privacy bag write failed (kept local): $e');
-      }
-      final permission = await _requestLocationPermission();
+    if (_onPrivacyPage) {
+      await _commitPrivacyAndPermission();
       if (!mounted) return;
-      // The outcome used to be thrown away, so a runner who tapped Deny
-      // finished onboarding having been told what declining would cost and
-      // then never told it had happened. A null result means the platform
-      // call itself failed — we don't know what the grant is, so we say
-      // nothing rather than accuse the OS of refusing.
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        await _disclosePermissionDenied();
-        if (!mounted) return;
-      }
-      await widget.preferences.setOnboarded(true);
-      if (!mounted) return;
-      widget.onDone();
+      if (!_hasAccountPage) return _complete();
+      _advance();
+      return;
     }
+    if (_onAccountPage) return _complete();
+    _advance();
+  }
+
+  void _advance() {
+    // `nextPage` is a driven scroll, which the platform reduce-motion flag
+    // does not reach (`AnimationController.unbounded` defaults to
+    // `AnimationBehavior.preserve`) and which asserts against a zero
+    // duration — so the reduced path has to be a jump, not a faster slide.
+    if (reduceMotion(context)) {
+      _controller.jumpToPage(_page + 1);
+    } else {
+      _controller.nextPage(
+        duration: AppMotion.standard,
+        curve: AppMotion.curveStandard,
+      );
+    }
+  }
+
+  Future<void> _commitPrivacyAndPermission() async {
+    // Persist the privacy choice locally (drives is_public on every
+    // run save) AND push it to the universal bag so it's an explicit
+    // value that roams + isn't overridden by another device's default
+    // (persona #56). The bag write is best-effort — the local pref is
+    // what protects new-run visibility immediately.
+    await widget.preferences.setPrivacyDefault(_privacyDefault);
+    try {
+      await widget.settingsSync?.updateUniversal(
+        <String, dynamic>{SettingsKeys.privacyDefault: _privacyDefault},
+      );
+    } catch (e) {
+      debugPrint('onboarding privacy bag write failed (kept local): $e');
+    }
+    final permission = await _requestLocationPermission();
+    if (!mounted) return;
+    // The outcome used to be thrown away, so a runner who tapped Deny
+    // finished onboarding having been told what declining would cost and
+    // then never told it had happened. A null result means the platform
+    // call itself failed — we don't know what the grant is, so we say
+    // nothing rather than accuse the OS of refusing.
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      await _disclosePermissionDenied();
+    }
+  }
+
+  Future<void> _complete() async {
+    await widget.preferences.setOnboarded(true);
+    if (!mounted) return;
+    widget.onDone();
+  }
+
+  /// Opens sign-up or sign-in and, on a real session, finishes onboarding
+  /// straight into the signed-in dashboard. A sign-up that only sent a
+  /// confirmation email pops without a result and leaves the runner on this
+  /// page, where "Not now" is still there.
+  Future<void> _openAuth({required bool signUp}) async {
+    final api = _api;
+    if (api == null) return;
+    final signedIn = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => signUp
+            ? SignUpScreen(apiClient: api)
+            : SignInScreen(apiClient: api),
+      ),
+    );
+    if (!mounted || signedIn != true) return;
+    await _complete();
   }
 
   /// Requests the foreground ("while in use") grant — the only one either
@@ -187,6 +243,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 itemBuilder: (context, index) {
                   if (index == infoPages.length) {
                     return _buildPrivacyPage(theme, l10n);
+                  }
+                  if (index == infoPages.length + 1) {
+                    return _buildAccountPage(theme, l10n);
                   }
                   final p = infoPages[index];
                   // The Location page's Play-policy disclosure copy is
@@ -266,21 +325,79 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               padding: const EdgeInsets.all(24),
               child: SizedBox(
                 width: double.infinity,
-                child: FilledButton(
-                  onPressed: _next,
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: Text(
-                    _onPrivacyPage
-                        ? l10n.onboardingGrantPermission
-                        : l10n.onboardingNext,
-                  ),
-                ),
+                // The account page hosts its own two primary actions, so
+                // the footer there is the decline — it must not out-shout
+                // them.
+                child: _onAccountPage
+                    ? TextButton(
+                        onPressed: _next,
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: Text(l10n.onboardingAccountLater),
+                      )
+                    : FilledButton(
+                        onPressed: _next,
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: Text(
+                          _onPrivacyPage
+                              ? l10n.onboardingGrantPermission
+                              : l10n.onboardingNext,
+                        ),
+                      ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildAccountPage(ThemeData theme, AppLocalizations l10n) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 8),
+          Icon(Icons.cloud_sync_outlined,
+              size: 56, color: theme.colorScheme.primary),
+          const SizedBox(height: 20),
+          Text(
+            l10n.onboardingAccountTitle,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.headlineMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            l10n.onboardingAccountBody,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: () => _openAuth(signUp: true),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+            child: Text(l10n.onboardingAccountCreate),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            onPressed: () => _openAuth(signUp: false),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            child: Text(l10n.onboardingAccountSignIn),
+          ),
+        ],
       ),
     );
   }

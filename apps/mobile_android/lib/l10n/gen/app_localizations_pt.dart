@@ -1309,6 +1309,23 @@ class AppLocalizationsPt extends AppLocalizations {
       'Escolha uma predefinição para novas corridas. Pode alterá-la a qualquer momento nas Definições e substituí-la em qualquer corrida específica.';
 
   @override
+  String get onboardingAccountTitle =>
+      'Guarde as suas corridas para além deste telemóvel';
+
+  @override
+  String get onboardingAccountBody =>
+      'Uma conta sincroniza as suas corridas com a aplicação web e os seus outros dispositivos, e recupera-as se perder este. Pode correr sem ela: aqui tudo funciona offline, e pode criar uma mais tarde em Tu › Definições.';
+
+  @override
+  String get onboardingAccountCreate => 'Criar uma conta gratuita';
+
+  @override
+  String get onboardingAccountSignIn => 'Já tenho uma conta';
+
+  @override
+  String get onboardingAccountLater => 'Agora não';
+
+  @override
   String get onboardingGrantPermission => 'Conceder permissão';
 
   @override
@@ -15449,6 +15466,23 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get onboardingPrivacyBody =>
       'Escolha um padrão para novas corridas. Você pode alterá-lo a qualquer momento nas Configurações e substituí-lo em qualquer corrida específica.';
+
+  @override
+  String get onboardingAccountTitle =>
+      'Guarde suas corridas além deste celular';
+
+  @override
+  String get onboardingAccountBody =>
+      'Uma conta sincroniza suas corridas com o app web e seus outros dispositivos, e recupera tudo se você perder este. Você pode correr sem ela: aqui tudo funciona offline, e você pode criar uma mais tarde em Você › Configurações.';
+
+  @override
+  String get onboardingAccountCreate => 'Criar uma conta gratuita';
+
+  @override
+  String get onboardingAccountSignIn => 'Já tenho uma conta';
+
+  @override
+  String get onboardingAccountLater => 'Agora não';
 
   @override
   String get onboardingGrantPermission => 'Conceder permissão';

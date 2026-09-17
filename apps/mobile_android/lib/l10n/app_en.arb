@@ -1685,6 +1685,26 @@
   "@onboardingPrivacyBody": {
     "description": "Body of the privacy-default chooser onboarding page"
   },
+  "onboardingAccountTitle": "Keep your runs beyond this phone",
+  "@onboardingAccountTitle": {
+    "description": "Title of the final onboarding page, which offers account creation before the dashboard"
+  },
+  "onboardingAccountBody": "An account syncs your runs to the web app and your other devices, and gets them back if you lose this one. You can run without it — everything here works offline — and create one later from You › Settings.",
+  "@onboardingAccountBody": {
+    "description": "Body of the onboarding account page — what an account buys and that the app works without one"
+  },
+  "onboardingAccountCreate": "Create a free account",
+  "@onboardingAccountCreate": {
+    "description": "Primary action on the onboarding account page — opens sign-up"
+  },
+  "onboardingAccountSignIn": "I already have an account",
+  "@onboardingAccountSignIn": {
+    "description": "Secondary action on the onboarding account page — opens sign-in"
+  },
+  "onboardingAccountLater": "Not now",
+  "@onboardingAccountLater": {
+    "description": "Action that finishes onboarding without an account"
+  },
   "onboardingGrantPermission": "Grant permission",
   "@onboardingGrantPermission": {
     "description": "Bottom button label on the final onboarding page"

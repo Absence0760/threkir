@@ -1295,6 +1295,22 @@ class AppLocalizationsEn extends AppLocalizations {
       'Pick a default for new runs. You can change it any time in Settings, and override it on any single run.';
 
   @override
+  String get onboardingAccountTitle => 'Keep your runs beyond this phone';
+
+  @override
+  String get onboardingAccountBody =>
+      'An account syncs your runs to the web app and your other devices, and gets them back if you lose this one. You can run without it — everything here works offline — and create one later from You › Settings.';
+
+  @override
+  String get onboardingAccountCreate => 'Create a free account';
+
+  @override
+  String get onboardingAccountSignIn => 'I already have an account';
+
+  @override
+  String get onboardingAccountLater => 'Not now';
+
+  @override
   String get onboardingGrantPermission => 'Grant permission';
 
   @override

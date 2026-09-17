@@ -1251,6 +1251,22 @@ class AppLocalizationsJa extends AppLocalizations {
       '新しいランの初期設定を選びましょう。設定でいつでも変更でき、個々のランごとに上書きもできます。';
 
   @override
+  String get onboardingAccountTitle => 'この端末の外にもランを残す';
+
+  @override
+  String get onboardingAccountBody =>
+      'アカウントがあると、ランがウェブアプリや他の端末と同期され、この端末をなくしても取り戻せます。なくても走れます。ここではすべてオフラインで動作し、あとから「あなた」› 設定で作成できます。';
+
+  @override
+  String get onboardingAccountCreate => '無料アカウントを作成';
+
+  @override
+  String get onboardingAccountSignIn => 'アカウントを持っています';
+
+  @override
+  String get onboardingAccountLater => '今はしない';
+
+  @override
   String get onboardingGrantPermission => '権限を許可';
 
   @override

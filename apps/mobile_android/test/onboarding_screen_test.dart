@@ -1,3 +1,4 @@
+import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -41,6 +42,13 @@ Future<void> _toLastPage(WidgetTester tester) async {
   }
 }
 
+/// A client the account page can hand to sign-up / sign-in without a live
+/// Supabase behind it. Its presence is what makes the account page exist.
+class _FakeApi extends ApiClient {
+  @override
+  String? get userId => null;
+}
+
 Future<Preferences> _makePrefs() async {
   SharedPreferences.setMockInitialValues({});
   final p = Preferences();
@@ -52,6 +60,7 @@ Future<void> _pump(
   WidgetTester tester, {
   required Preferences prefs,
   VoidCallback? onDone,
+  ApiClient? apiClient,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -60,6 +69,7 @@ Future<void> _pump(
       home: OnboardingScreen(
         preferences: prefs,
         onDone: onDone ?? () {},
+        apiClient: apiClient,
       ),
     ),
   );
@@ -275,6 +285,99 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text(l10n.onboardingLocationDeniedTitle), findsNothing);
         expect(prefs.onboarded, isTrue);
+      });
+    });
+
+    group('the account offer (the only place a first-timer is told there '
+        'is one)', () {
+      testWidgets('a fifth page offers create-account and sign-in',
+          (tester) async {
+        _mockGeolocator(tester);
+        final prefs = await _makePrefs();
+        await _pump(tester, prefs: prefs, apiClient: _FakeApi());
+        final l10n = await _l10n();
+        expect(find.byType(AnimatedContainer), findsNWidgets(5));
+
+        await _toLastPage(tester);
+        await tester.tap(find.text('Grant permission'));
+        await tester.pumpAndSettle();
+
+        expect(find.text(l10n.onboardingAccountTitle), findsOneWidget);
+        expect(find.widgetWithText(FilledButton, l10n.onboardingAccountCreate),
+            findsOneWidget);
+        expect(
+            find.widgetWithText(OutlinedButton, l10n.onboardingAccountSignIn),
+            findsOneWidget);
+        // Reaching the offer does not itself finish onboarding.
+        expect(prefs.onboarded, isFalse);
+      });
+
+      testWidgets('Create a free account opens sign-up, two taps from launch '
+          'rather than nine', (tester) async {
+        _mockGeolocator(tester);
+        final prefs = await _makePrefs();
+        await _pump(tester, prefs: prefs, apiClient: _FakeApi());
+        final l10n = await _l10n();
+        await _toLastPage(tester);
+        await tester.tap(find.text('Grant permission'));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text(l10n.onboardingAccountCreate));
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.signUpHeadline), findsOneWidget);
+        expect(find.text(l10n.signUpConfirmPasswordLabel), findsOneWidget);
+      });
+
+      testWidgets('I already have an account opens sign-in', (tester) async {
+        _mockGeolocator(tester);
+        final prefs = await _makePrefs();
+        await _pump(tester, prefs: prefs, apiClient: _FakeApi());
+        final l10n = await _l10n();
+        await _toLastPage(tester);
+        await tester.tap(find.text('Grant permission'));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text(l10n.onboardingAccountSignIn));
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.signInHeadline), findsOneWidget);
+        expect(find.text(l10n.signInForgotPassword), findsOneWidget);
+      });
+
+      testWidgets('Not now finishes onboarding without an account',
+          (tester) async {
+        _mockGeolocator(tester);
+        final prefs = await _makePrefs();
+        var done = false;
+        await _pump(tester,
+            prefs: prefs, onDone: () => done = true, apiClient: _FakeApi());
+        final l10n = await _l10n();
+        await _toLastPage(tester);
+        await tester.tap(find.text('Grant permission'));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text(l10n.onboardingAccountLater));
+        await tester.pumpAndSettle();
+        expect(prefs.onboarded, isTrue);
+        expect(done, isTrue);
+      });
+
+      testWidgets('no backend means no account page, not a dead button',
+          (tester) async {
+        // Supabase never initialized: the offer would open a client whose
+        // every method throws, so the page is dropped and the privacy
+        // chooser stays the last one (issue #238).
+        _mockGeolocator(tester);
+        final prefs = await _makePrefs();
+        var done = false;
+        await _pump(tester, prefs: prefs, onDone: () => done = true);
+        final l10n = await _l10n();
+        expect(find.byType(AnimatedContainer), findsNWidgets(4));
+        await _toLastPage(tester);
+        await tester.tap(find.text('Grant permission'));
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.onboardingAccountTitle), findsNothing);
+        expect(prefs.onboarded, isTrue);
+        expect(done, isTrue);
       });
     });
 

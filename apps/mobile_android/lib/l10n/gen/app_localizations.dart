@@ -2237,6 +2237,36 @@ abstract class AppLocalizations {
   /// **'Pick a default for new runs. You can change it any time in Settings, and override it on any single run.'**
   String get onboardingPrivacyBody;
 
+  /// Title of the final onboarding page, which offers account creation before the dashboard
+  ///
+  /// In en, this message translates to:
+  /// **'Keep your runs beyond this phone'**
+  String get onboardingAccountTitle;
+
+  /// Body of the onboarding account page — what an account buys and that the app works without one
+  ///
+  /// In en, this message translates to:
+  /// **'An account syncs your runs to the web app and your other devices, and gets them back if you lose this one. You can run without it — everything here works offline — and create one later from You › Settings.'**
+  String get onboardingAccountBody;
+
+  /// Primary action on the onboarding account page — opens sign-up
+  ///
+  /// In en, this message translates to:
+  /// **'Create a free account'**
+  String get onboardingAccountCreate;
+
+  /// Secondary action on the onboarding account page — opens sign-in
+  ///
+  /// In en, this message translates to:
+  /// **'I already have an account'**
+  String get onboardingAccountSignIn;
+
+  /// Action that finishes onboarding without an account
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get onboardingAccountLater;
+
   /// Bottom button label on the final onboarding page
   ///
   /// In en, this message translates to:

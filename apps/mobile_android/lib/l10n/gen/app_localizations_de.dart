@@ -1312,6 +1312,23 @@ class AppLocalizationsDe extends AppLocalizations {
       'Wähle eine Standardeinstellung für neue Läufe. Du kannst sie jederzeit in den Einstellungen ändern und für jeden einzelnen Lauf überschreiben.';
 
   @override
+  String get onboardingAccountTitle =>
+      'Behalte deine Läufe über dieses Handy hinaus';
+
+  @override
+  String get onboardingAccountBody =>
+      'Ein Konto synchronisiert deine Läufe mit der Web-App und deinen anderen Geräten – und holt sie zurück, falls du dieses hier verlierst. Du kannst auch ohne Konto laufen: Hier funktioniert alles offline, und du kannst später unter „Du“ › Einstellungen eines anlegen.';
+
+  @override
+  String get onboardingAccountCreate => 'Kostenloses Konto erstellen';
+
+  @override
+  String get onboardingAccountSignIn => 'Ich habe bereits ein Konto';
+
+  @override
+  String get onboardingAccountLater => 'Jetzt nicht';
+
+  @override
   String get onboardingGrantPermission => 'Berechtigung erteilen';
 
   @override

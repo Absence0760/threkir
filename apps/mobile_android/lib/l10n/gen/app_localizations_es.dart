@@ -1306,6 +1306,23 @@ class AppLocalizationsEs extends AppLocalizations {
       'Elige un valor predeterminado para las nuevas carreras. Puedes cambiarlo cuando quieras en Ajustes y modificarlo en cualquier carrera concreta.';
 
   @override
+  String get onboardingAccountTitle =>
+      'Conserva tus carreras más allá de este teléfono';
+
+  @override
+  String get onboardingAccountBody =>
+      'Una cuenta sincroniza tus carreras con la app web y tus otros dispositivos, y las recupera si pierdes este. Puedes correr sin ella: aquí todo funciona sin conexión, y puedes crearla más tarde desde Tú › Ajustes.';
+
+  @override
+  String get onboardingAccountCreate => 'Crear una cuenta gratis';
+
+  @override
+  String get onboardingAccountSignIn => 'Ya tengo una cuenta';
+
+  @override
+  String get onboardingAccountLater => 'Ahora no';
+
+  @override
   String get onboardingGrantPermission => 'Conceder permiso';
 
   @override

@@ -1312,6 +1312,23 @@ class AppLocalizationsFr extends AppLocalizations {
       'Choisissez un réglage par défaut pour les nouvelles courses. Vous pouvez le modifier à tout moment dans les Réglages et le remplacer pour n\'importe quelle course.';
 
   @override
+  String get onboardingAccountTitle =>
+      'Gardez vos courses au-delà de ce téléphone';
+
+  @override
+  String get onboardingAccountBody =>
+      'Un compte synchronise vos courses avec l’app web et vos autres appareils, et les récupère si vous perdez celui-ci. Vous pouvez courir sans : tout fonctionne hors ligne ici, et vous pourrez en créer un plus tard depuis Vous › Réglages.';
+
+  @override
+  String get onboardingAccountCreate => 'Créer un compte gratuit';
+
+  @override
+  String get onboardingAccountSignIn => 'J’ai déjà un compte';
+
+  @override
+  String get onboardingAccountLater => 'Pas maintenant';
+
+  @override
   String get onboardingGrantPermission => 'Accorder l\'autorisation';
 
   @override

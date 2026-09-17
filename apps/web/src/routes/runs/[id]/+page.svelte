@@ -14,6 +14,7 @@
 	import ElevationProfile from '$lib/components/ElevationProfile.svelte';
 	import RunSocial from '$lib/components/RunSocial.svelte';
 	import RunShareView from '$lib/components/RunShareView.svelte';
+	import StaticMapImage from '$lib/components/StaticMapImage.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import ReportDialog from '$lib/components/ReportDialog.svelte';
 	import RunPhotos from '$lib/components/RunPhotos.svelte';
@@ -81,7 +82,7 @@
 	import { supabase } from '$lib/core/supabase';
 	import { TABLES, METADATA_KEYS } from '$lib/core/schema';
 	import { m } from '$lib/i18n/store.svelte';
-	import { activityTypeIcon } from '$lib/runs/activity_type';
+	import { activityTypeIcon, activityUsesSpeed } from '$lib/runs/activity_type';
 	import { activityTypeLabel } from '$lib/runs/activity_type.svelte';
 	import { buildRunShareCanonical } from '$lib/share/share_meta';
 	import type { Run } from '$lib/types';
@@ -963,20 +964,17 @@
 		if (movingSeconds > 0 && movingSeconds !== run.duration_s) {
 			cells.push({ label: m('runDetail.moving'), value: formatDuration(movingSeconds) });
 		}
-		cells.push({
-			label: m('runDetail.avgPace'),
-			value: formatPace(paceSeconds, run.distance_m),
-		});
+		cells.push(
+			activityUsesSpeed(run.activity_type)
+				? { label: m('runDetail.avgSpeed'), value: formatSpeed(paceSeconds, run.distance_m) }
+				: { label: m('runDetail.avgPace'), value: formatPace(paceSeconds, run.distance_m) },
+		);
 		if (showGradeAdjustedPace && gradeAdjustedPace != null) {
 			cells.push({
 				label: m('runDetail.gradeAdjustedPace'),
 				value: formatPace(gradeAdjustedPace, 1000),
 			});
 		}
-		cells.push({
-			label: m('runDetail.avgSpeed'),
-			value: formatSpeed(paceSeconds, run.distance_m),
-		});
 		if (elevationGainM != null) {
 			cells.push({ label: m('runDetail.elevation'), value: `${elevationGainM} m` });
 		}
@@ -1800,6 +1798,7 @@
 				<h2>{m('runDetail.elevationProfile')}</h2>
 				<ElevationProfile
 				{elevations}
+				totalGain={elevationGainM}
 				totalDistance={run.distance_m}
 				onhover={(idx) => (chartHoverIdx = idx)}
 			/>
@@ -2241,13 +2240,15 @@
 				 anonymous so html-to-image's `toPng(...)` can read the
 				 pixel buffer back from the canvas (tileserver-gl +
 				 MapTiler both serve CORS headers, but the explicit
-				 attribute is what unlocks the canvas readback). -->
-			<img
+				 attribute is what unlocks the canvas readback). A map
+				 that fails to load leaves the stats-only card, not a
+				 broken image in the capture. -->
+			<StaticMapImage
 				src={shareMapUrl}
-				class="share-card-map"
 				alt=""
+				class="share-card-map"
 				crossorigin="anonymous"
-				data-testid="share-card-map"
+				testid="share-card-map"
 			/>
 		{/if}
 		<div class="share-card-stats">
@@ -2964,9 +2965,6 @@
 		font-variant-numeric: tabular-nums;
 		color: var(--color-text);
 		line-height: 1.1;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
 	}
 
 	.key-stat-label {
@@ -3350,6 +3348,10 @@
 		cursor: not-allowed;
 	}
 
+	.icon-btn.danger {
+		color: var(--color-danger-text);
+	}
+
 	.icon-btn.danger:hover:not(:disabled) {
 		background: var(--color-danger-light);
 		color: var(--color-danger-text);
@@ -3503,7 +3505,7 @@
 		text-transform: uppercase;
 		opacity: 0.9;
 	}
-	.share-card-map {
+	.share-card-inner :global(.share-card-map) {
 		display: block;
 		width: 100%;
 		height: 360px;

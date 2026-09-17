@@ -4167,7 +4167,7 @@ export const messages = {
 	"nutrition.water": "水分",
 	"nutrition.waterAdd": "水分を追加",
 	"nutrition.waterRemove": "水分を減らす",
-	"nutrition.waterRemaining": "残り {n} ml",
+	"nutrition.waterRemaining": "残り {n} L",
 	"nutrition.waterGoalReached": "目標達成",
 	"nutrition.empty": "今日はまだ何も記録していません。",
 	"nutrition.slot_breakfast": "朝食",

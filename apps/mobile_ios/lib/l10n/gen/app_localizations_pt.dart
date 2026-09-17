@@ -10964,8 +10964,8 @@ class AppLocalizationsPt extends AppLocalizations {
   String get nutritionWaterGoalReached => 'Meta atingida';
 
   @override
-  String nutritionWaterRemaining(int n) {
-    return '$n ml restantes';
+  String nutritionWaterRemaining(String n) {
+    return '$n L restantes';
   }
 
   @override
@@ -25039,8 +25039,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get nutritionWaterGoalReached => 'Meta atingida';
 
   @override
-  String nutritionWaterRemaining(int n) {
-    return '$n ml restantes';
+  String nutritionWaterRemaining(String n) {
+    return '$n L restantes';
   }
 
   @override

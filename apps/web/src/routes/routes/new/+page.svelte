@@ -796,7 +796,7 @@
 			<div class="elevation-preview">
 				<span class="section-label">{m('routeNew.elevationProfile')}</span>
 				{#if elevations.length >= 2}
-					<ElevationProfile {elevations} totalDistance={distance} />
+					<ElevationProfile {elevations} totalGain={elevation} totalDistance={distance} />
 				{:else}
 					<div class="elevation-empty">
 						<span class="material-symbols">show_chart</span>

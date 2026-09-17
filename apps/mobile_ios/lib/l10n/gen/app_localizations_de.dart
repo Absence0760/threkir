@@ -10979,8 +10979,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get nutritionWaterGoalReached => 'Ziel erreicht';
 
   @override
-  String nutritionWaterRemaining(int n) {
-    return '$n ml übrig';
+  String nutritionWaterRemaining(String n) {
+    return '$n L übrig';
   }
 
   @override

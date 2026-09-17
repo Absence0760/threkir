@@ -27,6 +27,7 @@
 	import { onMount } from 'svelte';
 	import { env } from '$env/dynamic/public';
 	import TrackPreview from './TrackPreview.svelte';
+	import StaticMapImage from './StaticMapImage.svelte';
 	import { fetchTrackByPath, fetchClippedTrackForRun } from '$lib/core/data';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { isTrackOwner } from '$lib/runs/track_ownership';
@@ -157,6 +158,7 @@
 
 <div bind:this={el} class="wrap">
 	{#if points && points.length > 1}
+		{@const track = points}
 		{@const mapUrl =
 			buildLocalStaticMapUrl(points, {
 				w: 220,
@@ -180,18 +182,16 @@
 			<!-- Static-map background mirroring RouteTrackPreview. Real
 				 tiles read better than a bare SVG line on cards. Falls
 				 back to the SVG when neither MapTiler nor the local
-				 Protomaps server is configured. Lazy-load so a list
-				 of 50 runs doesn't fire 50 PNGs at page load. -->
-			<img
-				src={mapUrl}
-				class="map-img"
-				loading="lazy"
-				decoding="async"
-				alt=""
-				data-testid="run-preview-map"
-			/>
+				 Protomaps server is configured, or when the image
+				 request fails. Lazy-load so a list of 50 runs doesn't
+				 fire 50 PNGs at page load. -->
+			<StaticMapImage src={mapUrl} alt="" class="map-img" testid="run-preview-map" lazy>
+				{#snippet fallback()}
+					<TrackPreview points={track} />
+				{/snippet}
+			</StaticMapImage>
 		{:else}
-			<TrackPreview {points} />
+			<TrackPreview points={track} />
 		{/if}
 	{:else}
 		<span class="material-symbols placeholder">map</span>
@@ -205,6 +205,12 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
+	}
+	.wrap :global(.map-img) {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
 	}
 	.placeholder {
 		font-family: 'Material Symbols Outlined';

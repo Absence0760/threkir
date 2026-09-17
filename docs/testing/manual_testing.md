@@ -197,6 +197,7 @@ The most-tested surface in the codebase. The recording state machine + filter ch
 |---|---|
 | Web `/history` | List paginates, source + activity-type filters narrow the list, the timeline ordering is descending. |
 | Web `/runs/[id]` | Map renders the track (raw or matched — see [§ Map matching](#map-matching-server-side-snap)), elevation profile + splits + segments are populated, edit Title / Notes / Activity type round-trips through `data.ts:updateRun`. |
+| Web `/runs/[id]` key stats | Open a run, then a ride (activity `cycle`), with the map pane at its default width: a run shows AVG PACE and no AVG SPEED, a ride AVG SPEED and no AVG PACE, and no tile value ends in `…` (a long one wraps between number and unit). The trash icon at the end of the owner toolbar is red before you hover it. |
 | Web run share | Toggle `is_public` → copy link → open in incognito → page loads, track is privacy-clipped (see [§ Privacy zones](#privacy-zones)). |
 | Mobile run detail | Same map + splits + elevation; share-as-GPX produces a valid file; delete confirms then removes the run from the list and Storage. |
 | Mobile edit | Edit title + notes through the bottom sheet → reopens with values; offline edits sync when connectivity returns. |
@@ -209,6 +210,8 @@ The most-tested surface in the codebase. The recording state machine + filter ch
 | Scenario | Surface | Steps | Pass criteria |
 |---|---|---|---|
 | Browse my routes | Mobile + Web `/routes` | Default tab lists owned routes | Card per route with distance + thumbnail; tap opens detail. |
+| Map thumbnails survive a map outage | Web `/routes`, `/runs` | Accept the cookie banner with `PUBLIC_MAPTILER_KEY` set, then block `api.maptiler.com` in DevTools (Network → Block request domain) and reload | Every card draws its route line on the plain background; no broken-image icon anywhere. Unblock and reload — the map thumbnails return. |
+| Route detail states one climb | Web `/routes/[id]` for a route whose waypoints carry altitude (a saved run, a GPX import) | Compare the header's ELEVATION GAIN, the Elevation section's Gain tile and the figure under the chart | All three are the same number; Loss is present unless the route's stored climb is less than its profile's net rise. |
 | Explore community routes | Web `/routes?tab=explore` | Search a tag, browse the cards | `RouteExplorer` populates from `search_public_routes` RPC; clicking opens the detail screen. |
 | Create a route | Web `/routes/new` | Click points on the map, save with a name | Route saves; OSRM-snapped polyline (web snaps through the `/api/routes/osrm` proxy per [decisions.md §198](../architecture/decisions.md) — separate from the server-side run-match OSRM) appears in the saved-routes list. |
 | Create a route with the engine down | Web `/routes/new` | Point `OSRM_URL` at nothing (or block `/api/routes/osrm/*`), drop points, save | Amber banner says the points are joined by straight lines; **Save, GPX and KML all stay enabled** and the route saves as drawn ([decisions.md §1613](../architecture/decisions.md)). Generate-by-distance still refuses — an unsnapped loop is not a generated route. |

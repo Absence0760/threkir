@@ -402,13 +402,13 @@ test('RouteTrackPreview renders a static map image when a key is available', () 
 	);
 	assert.match(
 		src,
-		/loading="lazy"/,
+		/<StaticMapImage\b[^>]*\blazy\b/,
 		'Static-map images must be lazy-loaded — a long list of route ' +
 			'cards otherwise fires N MapTiler requests on page load.',
 	);
 	assert.match(
 		src,
-		/data-testid="route-preview-map"/,
+		/<StaticMapImage\b[^>]*\btestid="route-preview-map"/,
 		'The static-map img must be tagged with ' +
 			'data-testid="route-preview-map" so the e2e can pin it.',
 	);

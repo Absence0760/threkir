@@ -4172,7 +4172,7 @@ export const messages = {
 	"nutrition.water": "Agua",
 	"nutrition.waterAdd": "Añadir agua",
 	"nutrition.waterRemove": "Quitar agua",
-	"nutrition.waterRemaining": "{n} ml restantes",
+	"nutrition.waterRemaining": "{n} L restantes",
 	"nutrition.waterGoalReached": "Objetivo alcanzado",
 	"nutrition.empty": "Aún no has registrado comida hoy.",
 	"nutrition.slot_breakfast": "Desayuno",

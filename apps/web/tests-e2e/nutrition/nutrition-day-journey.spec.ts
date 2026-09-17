@@ -147,12 +147,14 @@ test.describe('/nutrition — day-in-the-life journey', () => {
 
 			const chip = page.getByTestId('water-budget');
 			await expect(chip).toBeVisible({ timeout: 10_000 });
-			await expect(chip).toContainText(/ml left/);
-			const before = parseInt((await chip.innerText()).replace(/\D/g, ''), 10);
+			await expect(chip).toContainText(/L left/);
+			const remainingMl = async () =>
+				Math.round(parseFloat((await chip.innerText()).replace(/[^\d.]/g, '')) * 1000);
+			const before = await remainingMl();
 
 			// One 250 ml add reduces the remaining by exactly one unit.
 			await page.getByTestId('add-water').click();
-			await expect(chip).toContainText(`${before - 250} ml left`);
+			await expect.poll(remainingMl).toBe(before - 250);
 
 			// Seed the per-day counter to one unit below the bodyweight-derived
 			// target (parsed from the "X / Y L" readout), reload, and the final
@@ -165,7 +167,7 @@ test.describe('/nutrition — day-in-the-life journey', () => {
 				{ key: waterStorageKey(USER_A.id), ml: targetMl - 250 },
 			);
 			await page.reload();
-			await expect(chip).toContainText(/ml left/);
+			await expect(chip).toContainText(/L left/);
 			await page.getByTestId('add-water').click();
 			await expect(chip).toContainText('Goal reached');
 

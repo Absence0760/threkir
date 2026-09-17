@@ -857,6 +857,18 @@ The chunked following-feed reads (was 12). Three added cases: `FEED_FOLLOWEE_CHU
 
 Both gained a non-vacuity control (was 5 and 2). Each guard reports an empty offender list when it works AND when it sees nothing at all, and only the matcher half had fixtures: a walk that reaches no file, an `aria-live` filter that stops matching the app's own markup, or a `<TrackPreview` matcher that stops seeing a mount each turns the guard into a green check over an unscanned tree ([§ 762](../architecture/decisions.md)'s rule, applied to two guards that predate it). The `TrackPreview` control is a POSITIVE one taken off the real permitted wrappers rather than a fixture, so it cannot drift away from what it checks.
 
+### `apps/web/src/lib/static_map_image_guard.test.ts` — 5 tests
+
+Every static-map image on web renders through `StaticMapImage.svelte`, which swaps a failed request for its fallback (issue #902 — a MapTiler outage used to leave a wall of broken route and run thumbnails). The four consumers are a closed registry keyed to the URL each renders, so a new file calling a static-map URL builder fails until it is listed; each must mount its URL through `<StaticMapImage src={…}>` and never a raw `<img>`, no `<img>` may build a URL inline, and the component's failure state must stay keyed to the URL that failed. A positive control proves the patterns see a real mount. The browser half is `tests-e2e/cross-cutting/static-map-fallback.spec.ts`.
+
+### `apps/web/src/lib/routes/route_elevation.test.ts` — 8 tests
+
+`routeElevation`, the one source for a route page's climb (issue #902). The stored `elevation_m` is the gain even when the waypoints sum to less (the seeded 320 m-over-100 m shape); descent is derived as climb minus the profile's net rise and is withheld when that goes negative; a loop descends what it climbs; a waypoint with no altitude is interpolated rather than drawn at sea level; no altitude or a flat line draws no profile. Web-only: mobile states the stored gain alone and draws no descent.
+
+### `apps/web/src/lib/runs/activity_type.test.ts` — 2 tests
+
+`activityUsesSpeed`: only `cycle` reads by speed, the twin of core_models' `ActivityType.usesSpeed`, and an untagged or unknown activity reads by pace. Drives the pace-or-speed key-stat tile on `/runs/[id]`.
+
 ### `apps/watch_wear/android/app/src/test/kotlin/**/*Test.kt` — 832 Wear OS Kotlin/JUnit tests across 81 files
 
 Run with `cd apps/watch_wear/android && ./gradlew testDebugUnitTest`. Pure-JVM tests — no Android instrumentation, no Robolectric. **Six of them read files outside this Gradle build** (the phone's two `Wear*Bridge.kt`, `apps/web/src/lib/core/env_flag.ts`, `docs/backend/metadata.md`, the `activity_type` migration and the two client label catalogues), plus the manifest, and none was a declared input of the test task until [decisions § 946](../architecture/decisions.md) — so a local run reported UP-TO-DATE and SUCCESSFUL on exactly the drift those guards exist to catch. They are declared now; if you add a guard that reads anything outside `app/src`, add it to `guardedCrossTreeFiles` / `guardedCrossTreeSets` in `app/build.gradle.kts` in the same change or it will not re-run when its subject changes. `ScreenWiringTest` also now pins the pre-run signed-out notice ([decisions § 948](../architecture/decisions.md)): the `!authed` branch renders `not_signed_in` and NOT `offline`, read branch-scoped so the sibling `!online && authed` branch a few lines above cannot satisfy it — two conditions sharing one string breaks nothing, so only an assertion about which branch says which can see it. The team deliberately avoided UI-test infrastructure (see `apps/watch_wear/CLAUDE.md`'s "layouts can't be unit-tested without Robolectric"); the pattern is to extract pure helpers from the Android-bound classes and exercise them at the JVM level.
@@ -1092,7 +1104,7 @@ Run the pure-helper slices with `cd apps/backend && deno test --no-check supabas
 
 The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets to drive and are exercised manually only — see [apps/backend/CLAUDE.md § Testing without real credentials](../../apps/backend/CLAUDE.md#testing-without-real-credentials).
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 1,867 declared tests across 493 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 1,873 declared tests across 496 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 
@@ -1148,7 +1160,8 @@ tests-e2e/
   runs/
     list.spec.ts               — /history (filter, sort, search, multi-select, create, delete; bulk-delete actually-deletes round-trip)
     new.spec.ts                — /runs/new standalone create form (RunEditor → land on /runs/[new])
-    detail.spec.ts             — /runs/[id] (edit, cancel, single-run delete via the trash icon)
+    detail.spec.ts             — /runs/[id] (edit, cancel, single-run delete via the trash icon; the trash icon carries the danger colour at rest, not only on hover — issue #902)
+    key-stats-fit.spec.ts      — /runs/[id] key-stat tiles: a run states pace and a ride speed, never both, and no value is clipped (`scrollWidth` vs `clientWidth` on every value — `12.0 km/h` used to render as `12.0 k…`, issue #902)
     cascade.spec.ts            — backend boundary: deleting a run sweeps every cascading child (kudos, comments, photos, segment_efforts, live_run_pings, run_matched_tracks, notifications) + the Storage object; run_photos cascade
     photos.spec.ts             — /runs/[id] RunPhotos: owner upload + caption edit + delete (with DB + Storage assertions)
     save-as-route.spec.ts      — /runs/[id] Save-as-route CRUD (prompt → /routes/[new])
@@ -1172,6 +1185,7 @@ tests-e2e/
   routes/
     list.spec.ts               — /routes (search, filter, tab switch)
     detail.spec.ts             — /routes/[id] (star, public toggle, tag add+remove, review submit + DB upsert)
+    elevation-single-source.spec.ts — /routes/[id] states one climb: the header, the Gain tile and the elevation chart's readout all read the stored `elevation_m` over waypoints that sum lower, with descent derived through the profile's endpoints (issue #902)
     detail-load-failure.spec.ts — /routes/[id] a failed read is not a deleted route: a 500 on the route read renders the retryable load error, never the not-found line, and Retry recovers
     import.spec.ts             — /routes Import-route modal: drop a GPX → preview → Save → land on /routes/[new]
   challenges/
@@ -1247,6 +1261,7 @@ tests-e2e/
     storage-boundaries.spec.ts — `runs` Storage bucket RLS via supabase-js: anon cannot download a private run's track via the bucket directly; cross-user authed download is denied; cross-user upload to another user's `{user_id}/` prefix is rejected. Defence-in-depth on top of the row-level RLS
     strava-import-guards.spec.ts — `strava-import` Edge Function pre-side-effect input validation (10 tests): missing Authorization → 401; missing/invalid action → 400; connect-action shape errors (code, scope, redirect_uri) → 400 with per-branch error code; **fail-closed-when-misconfigured**: with STRAVA_ALLOWED_REDIRECTS unset the EF returns 503 strava_not_configured rather than falling through to "allow any redirect"; sync lookbackDays out-of-range → 400. This lane can pin only that one allowlist branch — its edge runtime carries no `STRAVA_ALLOWED_REDIRECTS`, so every `connect` posted here short-circuits at the 503 whatever `redirect_uri` it claims. The accept and the not-in-the-list branches are pinned pure in `_shared/redirect_allowlist.test.ts`
     realtime.spec.ts           — service-role INSERT into club_posts pushes through Realtime to a subscribed /clubs/[slug] page (postgres_changes filter + debounced reload)
+    static-map-fallback.spec.ts — a static-map outage falls back instead of breaking the card: an init script traps the dev bootstrap's public env to add a MapTiler key, every MapTiler request is aborted, and the /routes + /runs thumbnails render the SVG track preview while the run share card drops its map, with no broken `<img>` left (issue #902)
     smoke.spec.ts              — surface smoke: every key page mounts past its loading shell with one stable selector visible (dashboard / feed / runs / routes / plans / clubs / coach / all settings tabs / detail pages / anon landing+login variants)
     surfaces.spec.ts           — detail-surface checks (back-link nav, owner-only affordances, tab switches, sidebar nav round-trips)
     triggers.spec.ts           — enroll_club_owner, notify_run_kudos, notify_run_comment, notify_user_follow, notify_run_comment_reply — all five fan-out triggers verified via service-role DB read after either a UI action or a service-role plant

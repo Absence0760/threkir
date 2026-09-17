@@ -36,3 +36,10 @@ export function activityTypeIcon(value: string | null | undefined): string {
 	const v = value ?? 'run';
 	return isActivityType(v) ? ACTIVITY_TYPE_ICONS[v] : ACTIVITY_TYPE_ICONS.run;
 }
+
+/// Whether an activity is read by speed rather than pace. A cyclist thinks in
+/// km/h and a runner in min/km, so a detail page states the one that fits and
+/// not both. Twin of `ActivityType.usesSpeed` in core_models.
+export function activityUsesSpeed(value: string | null | undefined): boolean {
+	return value === 'cycle';
+}

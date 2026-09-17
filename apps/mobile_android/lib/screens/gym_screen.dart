@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../adaptive_width.dart';
+import '../backend_timeout.dart';
 import '../exercise_records.dart';
 import '../gym_prs.dart';
 import '../gym_session_draft.dart';
@@ -164,7 +165,6 @@ class _GymScreenState extends State<GymScreen>
   @override
   bool get wantKeepAlive => true;
 
-  bool _refreshing = false;
   bool _isOnline = true;
 
   // Exercise catalogue (seeded globals + the user's customs, migration
@@ -241,9 +241,10 @@ class _GymScreenState extends State<GymScreen>
       if (mounted) setState(() => _isOnline = false);
       return;
     }
-    setState(() => _refreshing = true);
     try {
-      final fresh = await api.fetchGymWorkoutsWithSets(limit: 100);
+      final fresh = await api
+          .fetchGymWorkoutsWithSets(limit: 100)
+          .timeout(kBackendLoadTimeout);
       await widget.store.replaceFromServer(fresh, fetchLimit: 100);
       if (widget.store.hasPending) {
         await widget.store.syncWithServer(api);
@@ -254,7 +255,8 @@ class _GymScreenState extends State<GymScreen>
       // deleting the list would be a second untruth on top of the first — and
       // reports itself through [_catalogueUnavailable] rather than silently.
       try {
-        final cat = await api.fetchExerciseCatalogue();
+        final cat =
+            await api.fetchExerciseCatalogue().timeout(kBackendLoadTimeout);
         _catalogue.value = (
           entries: [
             for (final e in cat)
@@ -278,9 +280,8 @@ class _GymScreenState extends State<GymScreen>
     } catch (e) {
       _isOnline = false;
       debugPrint('gym_screen: refresh failed, using cache: $e');
-    } finally {
-      if (mounted) setState(() => _refreshing = false);
     }
+    if (mounted) setState(() {});
   }
 
   Future<void> _maybeSync() async {
@@ -458,10 +459,14 @@ class _GymScreenState extends State<GymScreen>
       appBar: AppBar(
         title: Text(l10n.gymTitle),
         actions: [
+          // Never gated on the arrival refresh: logging a lift is an
+          // offline-first write, and the one thing the refresh feeds the
+          // composer — the exercise catalogue — reaches an already-open sheet
+          // through its own listenable (§ 1571).
           IconButton(
             tooltip: l10n.gymLog,
             icon: const Icon(Icons.add),
-            onPressed: _refreshing ? null : _create,
+            onPressed: _create,
           ),
         ],
       ),

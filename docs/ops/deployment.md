@@ -374,6 +374,28 @@ Nothing in this repository can read, set, or verify any of the above -- branch
 protection is not readable by the workflow token -- so this section is the only
 record that the state was ever intended.
 
+### A merged PR's branch is deleted on merge
+
+**Automatically delete head branches** (`delete_branch_on_merge`) is on as of
+2026-09-16. It had been off, and 211 remote branches of merged PRs had piled up
+by then. They were deleted the same day, each one pushed with
+`--force-with-lease` on the head the PR merged, so nothing pushed after a merge
+could go with it.
+
+Two things follow for stacked PRs. Merging a parent **retargets** its open
+children onto the parent's base rather than closing them ([GitHub,
+2020-05-19](https://github.blog/changelog/2020-05-19-pull-request-retargeting/)).
+That retarget is an `edited` event, and no `ci.yml` job runs on `edited`, so a
+child whose parent just merged has to be pushed to before it gets a gate run.
+The child is also still carrying the parent's commits, not the squash `main`
+now holds, so merge `origin/main` into it as the root `CLAUDE.md` describes.
+
+The setting leaves two kinds of branch alone: the branch of a PR that was
+closed without merging, and a branch that never had a PR. On 2026-09-16 there
+were 16 and 20 of those. They were left for whoever owns them. Like branch
+protection, the setting is invisible from inside the tree, so this paragraph is
+the only record of it.
+
 ## Release vs deploy
 
 Two orthogonal axes. **Release** is "we cut a tagged version of the product"; **deploy** is "those bytes are now serving traffic". They overlap in different ways per service. Every `release-*.yml` deploy is **triggered by publishing a GitHub Release** for the tag below (a bare tag push no longer deploys — the published Release is the gate; see [releasing.md](releasing.md)):

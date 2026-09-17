@@ -6,6 +6,8 @@
 	import { fetchPublicRun, fetchClippedTrackForRun, fetchTrackByPath } from '$lib/core/data';
 	import RunMap from '$lib/components/RunMap.svelte';
 	import ElevationProfile from '$lib/components/ElevationProfile.svelte';
+	import { computeElevationGain } from '$lib/routes/route_simplify';
+	import { elevationSourceTrack } from '$lib/runs/key_stats';
 	import RunSocial from '$lib/components/RunSocial.svelte';
 	import RunPhotos from '$lib/components/RunPhotos.svelte';
 	import RunGearChips from '$lib/components/RunGearChips.svelte';
@@ -108,6 +110,10 @@
 	onMount(load);
 
 	let elevations = $derived(track.map((p) => p.ele ?? 0));
+	let elevationGainM = $derived.by(() => {
+		const source = elevationSourceTrack(track);
+		return source ? Math.round(computeElevationGain(source)) : null;
+	});
 
 	// Linked-cursor index — same shape as /runs/[id]. ElevationProfile
 	// onhover sets it; RunMap reads it. Idx-space is shared because
@@ -199,6 +205,7 @@
 			<h2>{m('runShareView.elevationProfile')}</h2>
 			<ElevationProfile
 				{elevations}
+				totalGain={elevationGainM}
 				totalDistance={run.distance_m}
 				onhover={(idx) => (chartHoverIdx = idx)}
 			/>

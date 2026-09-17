@@ -1801,6 +1801,7 @@
 				<h2>{m('runDetail.elevationProfile')}</h2>
 				<ElevationProfile
 				{elevations}
+				totalGain={elevationGainM}
 				totalDistance={run.distance_m}
 				onhover={(idx) => (chartHoverIdx = idx)}
 			/>

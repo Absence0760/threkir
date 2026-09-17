@@ -1,3 +1,4 @@
+import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,18 +8,45 @@ import '../lib/preferences.dart';
 import '../lib/screens/onboarding_screen.dart';
 
 /// Stub the geolocator platform channel so the final-page "Grant
-/// permission" tap doesn't blow up on the missing native impl. Return
+/// permission" tap doesn't blow up on the missing native impl. Defaults to
 /// `always` (index 3) for checkPermission so the flow skips
-/// requestPermission and proceeds straight to completion.
-void _mockGeolocator(WidgetTester tester) {
+/// requestPermission and proceeds straight to completion. [check] /
+/// [request] take a `LocationPermission` index — 0 denied, 1 deniedForever,
+/// 2 whileInUse, 3 always. [opened] records an openAppSettings call.
+void _mockGeolocator(
+  WidgetTester tester, {
+  int check = 3,
+  int request = 3,
+  List<String>? calls,
+}) {
   const channel = MethodChannel('flutter.baseflow.com/geolocator');
   tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel,
       (call) async {
-    if (call.method == 'checkPermission') return 3; // LocationPermission.always
+    calls?.add(call.method);
+    if (call.method == 'checkPermission') return check;
+    if (call.method == 'requestPermission') return request;
+    if (call.method == 'openAppSettings') return true;
     return null;
   });
   addTearDown(() => tester.binding.defaultBinaryMessenger
       .setMockMethodCallHandler(channel, null));
+}
+
+Future<AppLocalizations> _l10n() =>
+    AppLocalizations.delegate.load(const Locale('en'));
+
+Future<void> _toLastPage(WidgetTester tester) async {
+  for (var i = 0; i < 3; i++) {
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+  }
+}
+
+/// A client the account page can hand to sign-up / sign-in without a live
+/// Supabase behind it. Its presence is what makes the account page exist.
+class _FakeApi extends ApiClient {
+  @override
+  String? get userId => null;
 }
 
 Future<Preferences> _makePrefs() async {
@@ -32,6 +60,7 @@ Future<void> _pump(
   WidgetTester tester, {
   required Preferences prefs,
   VoidCallback? onDone,
+  ApiClient? apiClient,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -40,6 +69,7 @@ Future<void> _pump(
       home: OnboardingScreen(
         preferences: prefs,
         onDone: onDone ?? () {},
+        apiClient: apiClient,
       ),
     ),
   );
@@ -165,6 +195,190 @@ void main() {
       expect(prefs.privacyDefault, 'followers');
       expect(prefs.onboarded, isTrue);
       expect(done, isTrue);
+    });
+
+    group('the location disclosure describes the grant that is requested',
+        () {
+      testWidgets('the Location page carries this platform\'s disclosure',
+          (tester) async {
+        // The host running the test is not iOS, so the Android branch is
+        // the one rendered; the iOS branch is checked as copy below.
+        final prefs = await _makePrefs();
+        await _pump(tester, prefs: prefs);
+        final l10n = await _l10n();
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.onboardingLocationBodyAndroid), findsOneWidget);
+      });
+
+      testWidgets('neither disclosure sends an iOS user down an Android path',
+          (tester) async {
+        // Regression: one shared string told every platform to visit
+        // "Settings > Apps > Threkir > Permissions", which does not exist
+        // on iOS.
+        final l10n = await _l10n();
+        expect(l10n.onboardingLocationBodyIos.toLowerCase().contains('android'),
+            isFalse);
+        expect(l10n.onboardingLocationBodyIos.contains('Location Services'),
+            isTrue);
+        expect(
+            l10n.onboardingLocationBodyAndroid, isNot(l10n.onboardingLocationBodyIos));
+      });
+
+      testWidgets('a denied grant is disclosed, not silently swallowed',
+          (tester) async {
+        final calls = <String>[];
+        _mockGeolocator(tester, check: 0, request: 0, calls: calls);
+        final prefs = await _makePrefs();
+        var done = false;
+        await _pump(tester, prefs: prefs, onDone: () => done = true);
+        final l10n = await _l10n();
+        await _toLastPage(tester);
+        await tester.tap(find.text('Grant permission'));
+        await tester.pumpAndSettle();
+
+        // The request actually ran, and its result reached the UI.
+        expect(calls, contains('requestPermission'));
+        expect(find.text(l10n.onboardingLocationDeniedTitle), findsOneWidget);
+        // Onboarding has NOT completed behind the dialog.
+        expect(prefs.onboarded, isFalse);
+        expect(done, isFalse);
+
+        await tester.tap(find.text(l10n.onboardingLocationDeniedContinue));
+        await tester.pumpAndSettle();
+        expect(prefs.onboarded, isTrue);
+        expect(done, isTrue);
+      });
+
+      testWidgets('the denial dialog can hand the runner to app settings',
+          (tester) async {
+        final calls = <String>[];
+        _mockGeolocator(tester, check: 1, request: 1, calls: calls);
+        final prefs = await _makePrefs();
+        await _pump(tester, prefs: prefs);
+        final l10n = await _l10n();
+        await _toLastPage(tester);
+        await tester.tap(find.text('Grant permission'));
+        await tester.pumpAndSettle();
+        // deniedForever: no point re-prompting, but the state is still
+        // disclosed rather than dropped.
+        expect(calls, isNot(contains('requestPermission')));
+        expect(find.text(l10n.onboardingLocationDeniedTitle), findsOneWidget);
+
+        await tester.tap(find.text(l10n.onboardingLocationDeniedSettings));
+        await tester.pumpAndSettle();
+        expect(calls, contains('openAppSettings'));
+        expect(prefs.onboarded, isTrue);
+      });
+
+      testWidgets('a while-in-use grant finishes with no dialog at all',
+          (tester) async {
+        // The grant the copy now describes — nothing to disclose.
+        _mockGeolocator(tester, check: 0, request: 2);
+        final prefs = await _makePrefs();
+        await _pump(tester, prefs: prefs);
+        final l10n = await _l10n();
+        await _toLastPage(tester);
+        await tester.tap(find.text('Grant permission'));
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.onboardingLocationDeniedTitle), findsNothing);
+        expect(prefs.onboarded, isTrue);
+      });
+    });
+
+    group('the account offer (the only place a first-timer is told there '
+        'is one)', () {
+      testWidgets('a fifth page offers create-account and sign-in',
+          (tester) async {
+        _mockGeolocator(tester);
+        final prefs = await _makePrefs();
+        await _pump(tester, prefs: prefs, apiClient: _FakeApi());
+        final l10n = await _l10n();
+        expect(find.byType(AnimatedContainer), findsNWidgets(5));
+
+        await _toLastPage(tester);
+        await tester.tap(find.text('Grant permission'));
+        await tester.pumpAndSettle();
+
+        expect(find.text(l10n.onboardingAccountTitle), findsOneWidget);
+        expect(find.widgetWithText(FilledButton, l10n.onboardingAccountCreate),
+            findsOneWidget);
+        expect(
+            find.widgetWithText(OutlinedButton, l10n.onboardingAccountSignIn),
+            findsOneWidget);
+        // Reaching the offer does not itself finish onboarding.
+        expect(prefs.onboarded, isFalse);
+      });
+
+      testWidgets('Create a free account opens sign-up, two taps from launch '
+          'rather than nine', (tester) async {
+        _mockGeolocator(tester);
+        final prefs = await _makePrefs();
+        await _pump(tester, prefs: prefs, apiClient: _FakeApi());
+        final l10n = await _l10n();
+        await _toLastPage(tester);
+        await tester.tap(find.text('Grant permission'));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text(l10n.onboardingAccountCreate));
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.signUpHeadline), findsOneWidget);
+        expect(find.text(l10n.signUpConfirmPasswordLabel), findsOneWidget);
+      });
+
+      testWidgets('I already have an account opens sign-in', (tester) async {
+        _mockGeolocator(tester);
+        final prefs = await _makePrefs();
+        await _pump(tester, prefs: prefs, apiClient: _FakeApi());
+        final l10n = await _l10n();
+        await _toLastPage(tester);
+        await tester.tap(find.text('Grant permission'));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text(l10n.onboardingAccountSignIn));
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.signInHeadline), findsOneWidget);
+        expect(find.text(l10n.signInForgotPassword), findsOneWidget);
+      });
+
+      testWidgets('Not now finishes onboarding without an account',
+          (tester) async {
+        _mockGeolocator(tester);
+        final prefs = await _makePrefs();
+        var done = false;
+        await _pump(tester,
+            prefs: prefs, onDone: () => done = true, apiClient: _FakeApi());
+        final l10n = await _l10n();
+        await _toLastPage(tester);
+        await tester.tap(find.text('Grant permission'));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text(l10n.onboardingAccountLater));
+        await tester.pumpAndSettle();
+        expect(prefs.onboarded, isTrue);
+        expect(done, isTrue);
+      });
+
+      testWidgets('no backend means no account page, not a dead button',
+          (tester) async {
+        // Supabase never initialized: the offer would open a client whose
+        // every method throws, so the page is dropped and the privacy
+        // chooser stays the last one (issue #238).
+        _mockGeolocator(tester);
+        final prefs = await _makePrefs();
+        var done = false;
+        await _pump(tester, prefs: prefs, onDone: () => done = true);
+        final l10n = await _l10n();
+        expect(find.byType(AnimatedContainer), findsNWidgets(4));
+        await _toLastPage(tester);
+        await tester.tap(find.text('Grant permission'));
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.onboardingAccountTitle), findsNothing);
+        expect(prefs.onboarded, isTrue);
+        expect(done, isTrue);
+      });
     });
 
     testWidgets('privacy default is private until the user changes it',

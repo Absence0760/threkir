@@ -385,5 +385,33 @@ void main() {
         isNot(contains('TextInput.finishAutofillContext')),
       );
     });
+
+    testWidgets('the create-account route sits above the OAuth block, not '
+        'below the fold', (tester) async {
+      // A first-timer arriving here has no account; the affordance that
+      // makes one used to be the last widget on a scrolling screen.
+      // A typical phone viewport, not the 800x600 test default.
+      tester.view.physicalSize = const Size(400, 880);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      await _pump(tester, _FakeApiClient());
+      final create = find.widgetWithText(
+          OutlinedButton, l10n.signInCreateAccountPrompt);
+      expect(create, findsOneWidget);
+      expect(tester.getTopLeft(create).dy,
+          lessThan(tester.getTopLeft(find.text(l10n.authOrDivider)).dy));
+      // And it lands on the first screenful, which is the whole point.
+      expect(tester.getBottomLeft(create).dy, lessThanOrEqualTo(880.0));
+    });
+
+    testWidgets('it opens sign-up', (tester) async {
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      await _pump(tester, _FakeApiClient());
+      await tester.tap(
+          find.widgetWithText(OutlinedButton, l10n.signInCreateAccountPrompt));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.signUpHeadline), findsOneWidget);
+    });
   });
 }

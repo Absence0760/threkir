@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, SelectionHint;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSemanticColors, EmptyState, SelectionHint;
 
 import '../adaptive_width.dart';
 import '../auth_error.dart';
+import '../backend_timeout.dart';
 import '../fab_clearance.dart';
 import '../goals.dart';
 import '../l10n/date_format.dart';
@@ -24,6 +26,7 @@ import '../preferences.dart';
 import '../runs_history_items.dart';
 import '../settings_sync.dart';
 import '../widgets/activity_timeline_list.dart';
+import '../widgets/error_state.dart';
 import '../widgets/gym_compose_sheet.dart';
 import '../widgets/log_sheet.dart';
 import '../widgets/nutrition_log_sheet.dart';
@@ -87,6 +90,13 @@ class RunsScreen extends StatefulWidget {
   /// Null keeps the range + count title (the All tab + standalone mounts).
   final String? titleText;
 
+  /// When false the screen renders no add FAB of its own. The Fitness hub's
+  /// History tab passes false: its add is the cross-modal run / lift / meal
+  /// picker, which is exactly what the shell's centre Log button one row below
+  /// already opens — two "+" buttons on screen at once for one action. Every
+  /// other mount's add is modality-specific, so it keeps its FAB.
+  final bool showAddFab;
+
   const RunsScreen({
     super.key,
     this.apiClient,
@@ -100,6 +110,7 @@ class RunsScreen extends StatefulWidget {
     this.surfacePeers,
     this.showSyncActions = true,
     this.titleText,
+    this.showAddFab = true,
   });
 
   @override
@@ -167,7 +178,16 @@ bool shouldShowRunsLoadMore({
   return true;
 }
 
-class _RunsScreenState extends State<RunsScreen> {
+class _RunsScreenState extends State<RunsScreen>
+    with AutomaticKeepAliveClientMixin {
+  /// The Fitness hub mounts this screen inside a `TabBarView`, which is a
+  /// `PageView` with no cache extent: without this the tab is torn down the
+  /// moment the user taps a sibling, re-running the whole network fan-out and
+  /// throwing away the filters, paging window and scroll offset. The shell's
+  /// own pages already keep state this way (`_LazyKeepAliveTab`).
+  @override
+  bool get wantKeepAlive => true;
+
   bool _syncing = false;
   bool _fetching = false;
   _RunsSort _sort = _RunsSort.newest;
@@ -225,6 +245,13 @@ class _RunsScreenState extends State<RunsScreen> {
   List<ActivityRow> _activities = const [];
   bool _hasLift = false;
   bool _hasMeal = false;
+
+  /// True when the last modality hydrate failed. A failed read is not an empty
+  /// result: without this a dropped connection silently changed what this
+  /// surface IS — timeline and History title give way to the run list and its
+  /// toolbar — with nothing saying so and no way to retry. Mirrors web
+  /// `/history`'s `history-load-error` card.
+  bool _modalityLoadFailed = false;
   _HistoryKind _kind = _HistoryKind.all;
 
   /// True once a SECOND modality has data AND the gym store is wired in
@@ -290,27 +317,44 @@ class _RunsScreenState extends State<RunsScreen> {
     final api = widget.apiClient;
     final gymStore = widget.gymStore;
     if (api == null || api.userId == null || gymStore == null) return;
+    var failed = false;
     try {
-      final fresh = await api.fetchGymWorkoutsWithSets(limit: 100);
+      final fresh = await api
+          .fetchGymWorkoutsWithSets(limit: 100)
+          .timeout(kBackendLoadTimeout);
       await gymStore.replaceFromServer(fresh, fetchLimit: 100);
     } catch (e) {
+      failed = true;
       debugPrint('History gym hydrate failed: $e');
     }
     final foodStore = widget.foodStore;
-    if (foodStore == null) return;
-    try {
-      final now = DateTime.now();
-      final weekStart = DateTime(now.year, now.month, now.day - 6);
-      final tomorrow = DateTime(now.year, now.month, now.day + 1);
-      final fresh = await api.fetchFoodLog(from: weekStart, to: tomorrow);
-      await foodStore.replaceFromServer(
-        [for (final r in fresh) r.toJson()],
-        windowStart: weekStart,
-        windowEnd: tomorrow,
-      );
-    } catch (e) {
-      debugPrint('History food hydrate failed: $e');
+    if (foodStore != null) {
+      try {
+        final now = DateTime.now();
+        final weekStart = DateTime(now.year, now.month, now.day - 6);
+        final tomorrow = DateTime(now.year, now.month, now.day + 1);
+        final fresh = await api
+            .fetchFoodLog(from: weekStart, to: tomorrow)
+            .timeout(kBackendLoadTimeout);
+        await foodStore.replaceFromServer(
+          [for (final r in fresh) r.toJson()],
+          windowStart: weekStart,
+          windowEnd: tomorrow,
+        );
+      } catch (e) {
+        failed = true;
+        debugPrint('History food hydrate failed: $e');
+      }
     }
+    if (!mounted || failed == _modalityLoadFailed) return;
+    setState(() => _modalityLoadFailed = failed);
+  }
+
+  /// Re-run the hydrate from the error affordance. Clearing the flag first is
+  /// the only feedback the tap gets — a second failure sets it straight back.
+  void _retryModalities() {
+    setState(() => _modalityLoadFailed = false);
+    _hydrateModalities();
   }
 
   /// Rebuild the unified timeline from the local stores — synchronous, no
@@ -956,6 +1000,7 @@ class _RunsScreenState extends State<RunsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final unit = widget.preferences.unit;
@@ -977,7 +1022,8 @@ class _RunsScreenState extends State<RunsScreen> {
                   Expanded(child: _buildBody(theme, l10n, unit, totalCount)),
                 ],
               ),
-        floatingActionButton: _selecting ? null : _buildAddFab(l10n),
+        floatingActionButton:
+            (_selecting || !widget.showAddFab) ? null : _buildAddFab(l10n),
       ),
     );
   }
@@ -996,7 +1042,10 @@ class _RunsScreenState extends State<RunsScreen> {
       _HistoryKind.meal => (l10n.logFood, l10n.historyLogTooltip, _openAddMeal),
     };
     return FloatingActionButton.extended(
-      heroTag: 'history_add_fab',
+      // The Fitness hub mounts this screen twice, side by side, and both stay
+      // alive now — a constant tag would put two heroes with one tag in the
+      // same Navigator subtree, which asserts on every push out of the hub.
+      heroTag: ObjectKey(this),
       onPressed: onPressed,
       icon: const Icon(Icons.add),
       label: Text(label),
@@ -1311,7 +1360,27 @@ class _RunsScreenState extends State<RunsScreen> {
     // their timeline — only fall back to the "no runs" empty state when there
     // is genuinely nothing across any modality (mirrors web's gym-only fix).
     if (totalCount == 0 && !_hasModalityData) {
-      return _EmptyRuns(theme: theme, l10n: l10n);
+      // Nothing to show AND the read failed is the case web's error card
+      // exists for: "no lifts yet" and "we could not ask" are different
+      // answers, and only one of them has a retry.
+      if (_modalityLoadFailed) {
+        return ErrorState(
+          message: l10n.historyModalityLoadFailed,
+          onRetry: _retryModalities,
+        );
+      }
+      // This is where a brand-new account lands, so it owes an action rather
+      // than only a sentence: the body names the shell's Log button (the Run
+      // tab it used to name was deleted by decisions § 139) and the CTA logs
+      // a run the user has already finished, which is the one add this screen
+      // can perform on its own.
+      return EmptyState(
+        icon: Icons.directions_run,
+        title: l10n.historyEmptyTitle,
+        body: l10n.historyEmptyBody,
+        ctaLabel: l10n.historyAddRun,
+        onCta: _openAddRun,
+      );
     }
 
     Widget content;
@@ -1335,7 +1404,44 @@ class _RunsScreenState extends State<RunsScreen> {
       );
     }
 
-    if (!_showChips) return content;
+    if (_showChips) content = _withKindChips(content, l10n);
+    if (!_modalityLoadFailed) return content;
+    // There IS local content, so replacing it with the error card would be a
+    // worse lie than the one being fixed — say the surface may be showing less
+    // than it holds, and keep the rows.
+    return Column(
+      children: [
+        Material(
+          color: theme.colorScheme.errorContainer,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+            child: Row(
+              children: [
+                Icon(Icons.cloud_off,
+                    size: 16, color: theme.colorScheme.onErrorContainer),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    l10n.historyModalityLoadFailed,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onErrorContainer,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _retryModalities,
+                  child: Text(l10n.errorStateRetry),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Expanded(child: content),
+      ],
+    );
+  }
+
+  Widget _withKindChips(Widget content, AppLocalizations l10n) {
     return Column(
       children: [
         Row(
@@ -1778,33 +1884,6 @@ class _KindChipRow extends StatelessWidget {
             ],
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _EmptyRuns extends StatelessWidget {
-  final ThemeData theme;
-  final AppLocalizations l10n;
-  const _EmptyRuns({required this.theme, required this.l10n});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.directions_run, size: 64, color: theme.colorScheme.outline),
-          const SizedBox(height: 16),
-          Text(l10n.historyEmptyTitle, style: theme.textTheme.headlineSmall),
-          const SizedBox(height: 8),
-          Text(
-            l10n.historyEmptyBody,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:api_client/api_client.dart';
@@ -104,8 +105,20 @@ class NutritionScreen extends StatefulWidget {
 
 const _waterUnitMl = 250;
 
-class _NutritionScreenState extends State<NutritionScreen> {
-  bool _refreshing = false;
+/// Deadline for the whole arrival refresh. Generous — it is a ceiling on a
+/// stall, not a latency budget.
+const _kRefreshTimeout = Duration(seconds: 25);
+
+class _NutritionScreenState extends State<NutritionScreen>
+    with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
+  /// This screen is a tab body of `fitness_hub_screen`'s `TabBarView`,
+  /// which disposes the tabs either side of the visible one. Without this
+  /// the whole arrival refresh — seven round trips — reran on every return
+  /// to the tab, and the day the user had stepped to was lost with it.
+  /// Matches `RunsScreen` / `GymScreen`, the hub's sibling tabs.
+  @override
+  bool get wantKeepAlive => true;
+
   bool _isOnline = true;
   NutritionTargets? _targets;
   int _waterMl = 0;
@@ -133,6 +146,8 @@ class _NutritionScreenState extends State<NutritionScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _armMidnightRoll();
     widget.store.addListener(_onStoreChange);
     _templateStore.addListener(_onStoreChange);
     _recipeStore.addListener(_onStoreChange);
@@ -162,6 +177,8 @@ class _NutritionScreenState extends State<NutritionScreen> {
 
   @override
   void dispose() {
+    _midnightRoll?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     widget.store.removeListener(_onStoreChange);
     _templateStore.removeListener(_onStoreChange);
     _recipeStore.removeListener(_onStoreChange);
@@ -190,11 +207,61 @@ class _NutritionScreenState extends State<NutritionScreen> {
     await prefs.setInt(_waterKey(), ml);
   }
 
+  /// The day the user explicitly stepped to, or null while the diary is
+  /// following today. Held as an ABSENCE rather than as a stored "today":
+  /// this is a keep-alive tab that is never torn down, so a stored value kept
+  /// the day of first mount for the life of the process and filed the next
+  /// morning's breakfast into yesterday (issue #921). Web has the property for
+  /// free by re-deriving from `?date=` on every render.
+  String? _pinnedDate;
+
   /// The `YYYY-MM-DD` calendar day the diary is showing. A local-calendar
   /// identity, never an instant: it is only ever assigned from the `diary_day`
   /// helpers, which step through `DateTime(y, m, d + n)` so a 23- or 25-hour
   /// DST day cannot repeat or skip one.
-  String _viewDate = isoDateOf(DateTime.now());
+  String get _viewDate => resolveDiaryDate(_pinnedDate, DateTime.now());
+
+  /// The day the resident cache (`_targets`, `_exerciseMinutes`, the store
+  /// window) was last filled for. Resuming after it has rolled re-fetches.
+  String _loadedDay = isoDateOf(DateTime.now());
+
+  /// Fires at the next local midnight, when the day the diary calls "Today"
+  /// stops being today. A device asleep across midnight may not run it on
+  /// time, so [didChangeAppLifecycleState] re-checks on resume and both paths
+  /// re-arm through here.
+  Timer? _midnightRoll;
+
+  void _armMidnightRoll() {
+    _midnightRoll?.cancel();
+    _midnightRoll = Timer(
+      Duration(milliseconds: msUntilNextLocalMidnight(DateTime.now())),
+      _rollDay,
+    );
+  }
+
+  /// The timer fires AT the boundary, so the day has rolled by construction —
+  /// no comparison to make. A pinned past day keeps its data and only its
+  /// label moves ("Yesterday" becomes a date), so it re-renders without
+  /// re-fetching.
+  void _rollDay() {
+    if (!mounted) return;
+    _armMidnightRoll();
+    setState(() {});
+    if (_pinnedDate != null) return;
+    _loadWater();
+    _refresh();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    // A sleeping device is not obliged to have run the timer on time, so
+    // resume re-arms it and catches up on whatever it missed.
+    _armMidnightRoll();
+    if (_viewDate == _loadedDay) return;
+    _loadWater();
+    _refresh();
+  }
 
   DiaryWindow get _dayWindow {
     final w = diaryWindow(_viewDate);
@@ -206,7 +273,8 @@ class _NutritionScreenState extends State<NutritionScreen> {
 
   void _goToDay(String iso) {
     if (iso == _viewDate) return;
-    setState(() => _viewDate = iso);
+    setState(() =>
+        _pinnedDate = isDiaryToday(iso, DateTime.now()) ? null : iso);
     _loadWater();
     _refresh();
   }
@@ -217,35 +285,41 @@ class _NutritionScreenState extends State<NutritionScreen> {
       if (mounted) setState(() => _isOnline = false);
       return;
     }
-    setState(() => _refreshing = true);
+    final day = _viewDate;
     try {
-      // Pull the 7 days ending on the viewed day so both its list and the
-      // trend derive from the one cache. A row outside that window is
-      // preserved rather than pruned, so stepping back does not evict today.
-      final trend = diaryWindow(_viewDate, 7) ?? _dayWindow;
-      final fresh = await api.fetchFoodLog(from: trend.start, to: trend.end);
-      await widget.store.replaceFromServer(
-        [for (final r in fresh) r.toJson()],
-        windowStart: trend.start,
-        windowEnd: trend.end,
-      );
-      if (widget.store.hasPending) await widget.store.syncWithServer(api);
-      await _hydrateTemplates(api);
-      await _hydrateRecipes(api);
-      _weightKg = await api.fetchLatestBodyWeightKg();
-      final exercise = await _dayExercise(api, _weightKg);
-      _exerciseMinutes = exercise.minutes;
-      _targets = await loadNutritionTargets(
-        api,
-        widget.settingsSync?.service,
-        exerciseKcal: exercise.kcal.toDouble(),
-      );
+      // Seven sequential round trips against a deadline. Without one a stalled
+      // socket left the spinner up for the OS connect timeout (minutes on a
+      // flaky cell link) and the screen claiming to be online the whole time.
+      await Future<void>.sync(() async {
+        // Pull the 7 days ending on the viewed day so both its list and the
+        // trend derive from the one cache. A row outside that window is
+        // preserved rather than pruned, so stepping back does not evict today.
+        final trend = diaryWindow(day, 7) ?? _dayWindow;
+        final fresh = await api.fetchFoodLog(from: trend.start, to: trend.end);
+        await widget.store.replaceFromServer(
+          [for (final r in fresh) r.toJson()],
+          windowStart: trend.start,
+          windowEnd: trend.end,
+        );
+        if (widget.store.hasPending) await widget.store.syncWithServer(api);
+        await _hydrateTemplates(api);
+        await _hydrateRecipes(api);
+        _weightKg = await api.fetchLatestBodyWeightKg();
+        final exercise = await _dayExercise(api, _weightKg);
+        _exerciseMinutes = exercise.minutes;
+        _targets = await loadNutritionTargets(
+          api,
+          widget.settingsSync?.service,
+          exerciseKcal: exercise.kcal.toDouble(),
+        );
+      }).timeout(_kRefreshTimeout);
+      _loadedDay = day;
       _isOnline = true;
     } catch (e) {
       _isOnline = false;
       debugPrint('nutrition_screen: refresh failed, using cache: $e');
     } finally {
-      if (mounted) setState(() => _refreshing = false);
+      if (mounted) setState(() {});
     }
   }
 
@@ -874,6 +948,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final today = _dayEntries;
@@ -882,22 +957,27 @@ class _NutritionScreenState extends State<NutritionScreen> {
       appBar: AppBar(
         title: Text(l10n.nutritionTitle),
         actions: [
+          // None of the three is gated on `_refreshing`: every one of them
+          // writes through the offline-first store, which needs no server and
+          // no arrival refresh, and the add control is the only way into the
+          // composer. Disabling them for the refresh made the surface's whole
+          // point unavailable for its slowest seven seconds (issue #921).
           if (today.isNotEmpty)
             IconButton(
               tooltip: l10n.nutritionSaveAsMeal,
               icon: const Icon(Icons.bookmark_add_outlined),
-              onPressed: (_refreshing || _savingMeal) ? null : _saveAsMeal,
+              onPressed: _savingMeal ? null : _saveAsMeal,
             ),
           if (today.isNotEmpty)
             IconButton(
               tooltip: l10n.nutritionSaveAsRecipe,
               icon: const Icon(Icons.menu_book_outlined),
-              onPressed: (_refreshing || _savingRecipe) ? null : _saveAsRecipe,
+              onPressed: _savingRecipe ? null : _saveAsRecipe,
             ),
           IconButton(
             tooltip: l10n.nutritionLogFood,
             icon: const Icon(Icons.add),
-            onPressed: _refreshing ? null : _logFood,
+            onPressed: _logFood,
           ),
         ],
       ),

@@ -667,4 +667,64 @@ void main() {
     // Blank title → the localised "Routines" fallback, never an empty AppBar.
     expect(find.text('Routines'), findsOneWidget);
   });
+
+  group('the set-entry row', () {
+    /// Mount the session at a surface size + OS text scale.
+    Future<void> pumpAt(
+      WidgetTester tester,
+      LocalGymStore store,
+      StoredRoutine routine, {
+      required double scale,
+      required double width,
+    }) async {
+      await tester.binding.setSurfaceSize(Size(width, 1400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: TextScaler.linear(scale)),
+          child: child!,
+        ),
+        home: GymSessionScreen(api: null, routine: routine, gymStore: store),
+      ));
+      await tester.pump();
+    }
+
+    testWidgets('Log set sits below the fields it commits', (tester) async {
+      final g = await _gymStore(tester);
+      addTearDown(() => g.dir.deleteSync(recursive: true));
+
+      await tester.pumpWidget(_screen(g.store, _routine()));
+      await tester.pump();
+
+      final logSet =
+          tester.getRect(find.widgetWithText(FilledButton, 'Complete set'));
+      for (final label in ['Reps', 'kg', 'RPE']) {
+        final field = tester.getRect(find.widgetWithText(TextField, label));
+        expect(logSet.top, greaterThanOrEqualTo(field.bottom),
+            reason: '$label must be entered before the control that logs it');
+      }
+    });
+
+    // Pins the DERIVATION, not a dp fit: flutter_test's font is fixed-advance
+    // (conventions.md § 500), so "it fits here" is not a claim about a device.
+    // What is checkable is that the row keeps its 1.0x shape and gives the
+    // labels more width as the OS text size grows.
+    testWidgets('keeps the three fields on one row at 1.0x', (tester) async {
+      final g = await _gymStore(tester);
+      addTearDown(() => g.dir.deleteSync(recursive: true));
+
+      await pumpAt(tester, g.store, _routine(), scale: 1.0, width: 400);
+
+      final reps = tester.getRect(find.widgetWithText(TextField, 'Reps'));
+      final weight = tester.getRect(find.widgetWithText(TextField, 'kg'));
+      final rpe = tester.getRect(find.widgetWithText(TextField, 'RPE'));
+      expect(weight.top, reps.top);
+      expect(rpe.top, reps.top);
+      expect(weight.left, greaterThan(reps.right));
+      expect(rpe.left, greaterThan(weight.right));
+    });
+  });
 }

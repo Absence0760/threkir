@@ -58,6 +58,14 @@ class _HydrationProbeApi extends ApiClient {
     gymFetches++;
     throw StateError('probe: server unavailable');
   }
+
+  @override
+  Future<List<FoodLogRow>> fetchFoodLog({
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    throw StateError('probe: server unavailable');
+  }
 }
 
 void main() {
@@ -280,6 +288,41 @@ void main() {
     await pump(tester, withGym: true, api: api);
     expect(api.gymFetches, greaterThan(0),
         reason: 'History should hydrate the gym store on mount');
+  });
+
+  // A failed read is not an empty result. Both hops used to be swallowed into
+  // a debugPrint, so a dropped connection rendered as the "no runs yet" state
+  // (or, with runs, as the run list instead of the timeline) with nothing to
+  // say so. Mirrors web /history's `history-load-error` card.
+  testWidgets('a failed modality hydrate with nothing to show offers a retry',
+      (tester) async {
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    final api = _HydrationProbeApi();
+    await pump(tester, withGym: true, api: api);
+    expect(find.text(l10n.historyModalityLoadFailed), findsOneWidget);
+    expect(find.text(l10n.historyEmptyTitle), findsNothing);
+
+    final before = api.gymFetches;
+    await tester.tap(find.text(l10n.errorStateRetry));
+    await tester.pumpAndSettle();
+    expect(api.gymFetches, greaterThan(before),
+        reason: 'Retry should re-run the hydrate');
+    // Still failing, so the surface says so again rather than falling back to
+    // the empty state.
+    expect(find.text(l10n.historyModalityLoadFailed), findsOneWidget);
+  });
+
+  testWidgets('a failed modality hydrate keeps the local rows and warns above '
+      'them', (tester) async {
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    await pump(tester,
+        runs: [runRow('r1')], withGym: true, api: _HydrationProbeApi());
+    // The locally-held run is still listed — replacing it with an error card
+    // would hide data the device really has.
+    expect(find.byType(RunsScreen), findsOneWidget);
+    expect(find.text(l10n.historyModalityLoadFailed), findsOneWidget);
+    expect(find.text(l10n.errorStateRetry), findsOneWidget);
+    expect(find.text(l10n.historyEmptyTitle), findsNothing);
   });
 
   testWidgets('expanded width caps the timeline at kContentMaxWidth',

@@ -747,7 +747,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get prefsKeepRunPrimary => 'ランを主要操作にする';
 
   @override
-  String get prefsKeepRunPrimarySubtitle => '中央のボタンでランを開始、長押しで全メニューを表示';
+  String get prefsKeepRunPrimarySubtitle =>
+      '中央のボタンをタップしてランを開始します。筋トレや食事を記録するまではもともと有効です。長押しすると常に記録メニューが開きます';
 
   @override
   String get bodyMetricsTitle => '身体データ';
@@ -1223,8 +1224,25 @@ class AppLocalizationsJa extends AppLocalizations {
   String get onboardingLocationTitle => '位置情報へのアクセス';
 
   @override
-  String get onboardingLocationBody =>
-      'Threkirは、アプリがフォアグラウンドにあるときもバックグラウンドにあるときもGPS位置情報をサンプリングしてランを記録します（画面がオフのときや、写真を撮るためにアプリを切り替えたときも記録を続けます）。位置情報はデバイス上に保存され、あなたがランを共有または同期することを選んだときにのみThrekirのサーバーにアップロードされます。バックグラウンドの位置情報を拒否すると、アプリから離れた瞬間に記録が停止します。これは後で 設定 → アプリ → Threkir → 権限 で変更できます。';
+  String get onboardingLocationBodyAndroid =>
+      'Threkir はランを記録するために GPS の位置情報を取得します。画面がオフの間も記録し、記録中は通知が表示されます。位置情報は、ランを同期または共有しないかぎりこの端末に残ります。次の確認画面で許可されるのは「アプリの使用中のみ」で、Android の最初の確認ではそれ以上は許可できません。最初のランの前に、他のアプリに切り替えても記録を安定させる「常に許可」への変更を案内します。許可しない場合も時間と歩数は記録されますが、地図・距離・ペースは記録されません。';
+
+  @override
+  String get onboardingLocationBodyIos =>
+      'Threkir はランを記録するために GPS の位置情報を取得します。画面がオフの間や他のアプリを使っている間も記録します。位置情報は、ランを同期または共有しないかぎりこの端末に残ります。設定 › プライバシーとセキュリティ › 位置情報サービス › Threkir でいつでも変更できます。許可しない場合も時間と歩数は記録されますが、地図・距離・ペースは記録されません。';
+
+  @override
+  String get onboardingLocationDeniedTitle => '位置情報が許可されていません';
+
+  @override
+  String get onboardingLocationDeniedBody =>
+      'Threkir はランの計測と歩数のカウントを続けられますが、位置情報がないと地図・距離・ペースは記録されません。いつでも許可できます。';
+
+  @override
+  String get onboardingLocationDeniedSettings => '設定を開く';
+
+  @override
+  String get onboardingLocationDeniedContinue => '許可せずに続ける';
 
   @override
   String get onboardingPrivacyTitle => 'あなたのランを見られるのは誰？';
@@ -1232,6 +1250,22 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get onboardingPrivacyBody =>
       '新しいランの初期設定を選びましょう。設定でいつでも変更でき、個々のランごとに上書きもできます。';
+
+  @override
+  String get onboardingAccountTitle => 'この端末の外にもランを残す';
+
+  @override
+  String get onboardingAccountBody =>
+      'アカウントがあると、ランがウェブアプリや他の端末と同期され、この端末をなくしても取り戻せます。なくても走れます。ここではすべてオフラインで動作し、あとから「あなた」› 設定で作成できます。';
+
+  @override
+  String get onboardingAccountCreate => '無料アカウントを作成';
+
+  @override
+  String get onboardingAccountSignIn => 'アカウントを持っています';
+
+  @override
+  String get onboardingAccountLater => '今はしない';
 
   @override
   String get onboardingGrantPermission => '権限を許可';
@@ -1247,6 +1281,18 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get setupSkipStep => 'スキップ';
+
+  @override
+  String get setupLeaveTitle => 'セットアップを終了しますか？';
+
+  @override
+  String get setupLeaveBody => 'ここで入力した内容は保存されません。あとで設定からすべて指定できます。';
+
+  @override
+  String get setupLeaveStay => 'セットアップを続ける';
+
+  @override
+  String get setupLeaveConfirm => '終了';
 
   @override
   String get setupBack => '戻る';
@@ -2066,6 +2112,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get historyKindMeals => '食事';
 
   @override
+  String get historyModalityLoadFailed => '筋トレと食事を読み込めませんでした';
+
+  @override
   String get historyViewAll => 'すべて表示';
 
   @override
@@ -2094,7 +2143,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get historyEmptyTitle => 'まだランがありません';
 
   @override
-  String get historyEmptyBody => '「ラン」タブをタップして最初のランを始めましょう';
+  String get historyEmptyBody => '「記録」をタップしてランを記録するか、すでに走ったランを追加しましょう';
 
   @override
   String get historyFilterAll => 'すべて';
@@ -9916,9 +9965,6 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get gymRoutineStart => 'ルーティンを開始';
-
-  @override
   String get gymRoutinePublishLabel => 'クラブに公開';
 
   @override
@@ -10849,6 +10895,12 @@ class AppLocalizationsJa extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get gymComposeDraftTitle => '未完了のワークアウト';
+
+  @override
+  String get gymComposeDraftBody => '開始したまま保存していないワークアウトがあります。';
 
   @override
   String get gymDraftResume => '再開';
@@ -13452,4 +13504,22 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get guidedRunUseThisRun => 'このランを使う';
+
+  @override
+  String get backExitRecordingTitle => 'ランを記録中です';
+
+  @override
+  String get backExitRecordingBody =>
+      'アプリを終了すると記録が中断されることがあります。ランは保存されるので、戻ったときに続きから再開できます。';
+
+  @override
+  String get backExitRecordingLeave => '終了する';
+
+  @override
+  String get backExitRecordingStay => '記録を続ける';
+
+  @override
+  String logAlreadyOnPage(String page) {
+    return 'すでに$pageを開いています';
+  }
 }

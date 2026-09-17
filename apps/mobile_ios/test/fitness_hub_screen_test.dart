@@ -250,6 +250,57 @@ void main() {
     expect(find.byType(NutritionScreen), findsOneWidget);
   });
 
+  // The hub's TabBarView is a PageView with no cache extent, so before the
+  // keep-alive mixin every tap on the strip destroyed one screen and rebuilt
+  // the next from nothing — re-running its arrival fetches and resetting its
+  // filters, paging and scroll. Identity of the State object is the property
+  // that says the screen survived; a rebuilt tab gets a fresh one.
+  testWidgets('a tab switch keeps the sibling screens alive', (tester) async {
+    await pump(tester, runs: [runRow('r1')]);
+    State stateFor(String key) =>
+        tester.state(find.byKey(PageStorageKey<String>(key)));
+
+    final history = stateFor('fitness-all');
+    await tester.tap(find.text('Gym').first);
+    await tester.pumpAndSettle();
+    final gym = stateFor('fitness-gym');
+
+    await tester.tap(find.text('History').first);
+    await tester.pumpAndSettle();
+    expect(identical(stateFor('fitness-all'), history), isTrue,
+        reason: 'History was rebuilt from scratch on the way back');
+
+    await tester.tap(find.text('Gym').first);
+    await tester.pumpAndSettle();
+    expect(identical(stateFor('fitness-gym'), gym), isTrue,
+        reason: 'Gym was rebuilt from scratch on the way back');
+  });
+
+  // Before this, the add affordance moved as you walked the strip — a
+  // bottom-right FAB on History and Runs, a top-right glyph on Gym and
+  // Nutrition — and on History it sat beside the shell's centre Log button
+  // opening the same run / lift / meal picker. Now each modality tab carries
+  // one FAB and the cross-modal History tab defers to the shell.
+  testWidgets('every modality tab puts its add in the same place; History '
+      'defers to the shell', (tester) async {
+    await pump(tester, runs: [runRow('r1')]);
+    expect(find.byType(FloatingActionButton), findsNothing);
+    expect(find.byIcon(Icons.add), findsNothing);
+
+    await tester.tap(find.text('Runs').first);
+    await tester.pumpAndSettle();
+    expect(find.byType(FloatingActionButton), findsOneWidget);
+
+    await tester.tap(find.text('Gym').first);
+    await tester.pumpAndSettle();
+    expect(find.byType(FloatingActionButton), findsOneWidget);
+    // And no second add hiding in the toolbar it used to live in.
+    expect(
+      find.descendant(of: find.byType(AppBar), matching: find.byIcon(Icons.add)),
+      findsNothing,
+    );
+  });
+
   // `initialTab` was a raw int documented in a comment. No production caller
   // passed a non-default value, so the § 490 bug was not live here — but the
   // seam was the same shape that produced it, where a stale literal stays in

@@ -4,6 +4,38 @@ import 'package:flutter_test/flutter_test.dart';
 import '../lib/preferences.dart';
 
 void main() {
+  group('runIsPrimaryLogAction', () {
+    test('a pure runner gets the one-tap run start with no preference set', () {
+      expect(
+        runIsPrimaryLogAction(
+            keepRunPrimary: false, hasGymData: false, hasFoodData: false),
+        isTrue,
+        reason: 'the fan has nothing to choose between, so it is pure cost',
+      );
+    });
+
+    test('either other modality having data brings the fan back', () {
+      expect(
+        runIsPrimaryLogAction(
+            keepRunPrimary: false, hasGymData: true, hasFoodData: false),
+        isFalse,
+      );
+      expect(
+        runIsPrimaryLogAction(
+            keepRunPrimary: false, hasGymData: false, hasFoodData: true),
+        isFalse,
+      );
+    });
+
+    test('the explicit preference pins the run start over the data', () {
+      expect(
+        runIsPrimaryLogAction(
+            keepRunPrimary: true, hasGymData: true, hasFoodData: true),
+        isTrue,
+      );
+    });
+  });
+
   group('ActivityType.splitIntervalMetresFor', () {
     test('an imperial runner gets mile splits by default', () {
       // The default used to be a flat 1 km whatever the preference, so an

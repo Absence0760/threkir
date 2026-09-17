@@ -1016,7 +1016,7 @@
   "@prefsKeepRunPrimary": {
     "description": "Settings toggle: make the centre Log button start a run on a single tap"
   },
-  "prefsKeepRunPrimarySubtitle": "Tap the centre button to start a run; long-press for the full log menu",
+  "prefsKeepRunPrimarySubtitle": "Tap the centre button to start a run. Already on until you log a lift or a meal; long-press always opens the log menu",
   "@prefsKeepRunPrimarySubtitle": {
     "description": "Subtitle for the run-as-primary-action settings toggle"
   },
@@ -1653,9 +1653,29 @@
   "@onboardingLocationTitle": {
     "description": "Title of the location-disclosure onboarding slide"
   },
-  "onboardingLocationBody": "Threkir records your runs by sampling your GPS location while the app is in the foreground AND in the background (so it keeps tracking when your screen is off or you switch apps to take a photo). Location data is stored on your device and only uploaded to Threkir's servers when you choose to share or sync a run. If you decline background location, runs will stop recording the moment you switch away from the app — you can change this later in Settings → Apps → Threkir → Permissions.",
-  "@onboardingLocationBody": {
-    "description": "Play-policy background-location disclosure body on the location onboarding slide"
+  "onboardingLocationBodyAndroid": "Threkir samples your GPS location to record a run, including while your screen is off — a notification shows whenever a run is recording. Your location stays on this device unless you sync or share a run. The next prompt grants access while the app is in use, which is all Android’s first prompt can give; before your first run Threkir offers the “Allow all the time” upgrade that keeps tracking reliable once you switch to another app. Decline, and runs still record time and steps — but no map, distance or pace.",
+  "@onboardingLocationBodyAndroid": {
+    "description": "Android location disclosure on the onboarding Location page — describes the while-in-use grant the app actually requests and the later Allow-all-the-time upgrade (Play location policy)"
+  },
+  "onboardingLocationBodyIos": "Threkir samples your GPS location to record a run, including while your screen is off or you are in another app. Your location stays on this device unless you sync or share a run. You can change this any time in Settings › Privacy & Security › Location Services › Threkir. Decline, and runs still record time and steps — but no map, distance or pace.",
+  "@onboardingLocationBodyIos": {
+    "description": "iOS location disclosure on the onboarding Location page — names the iOS Settings path, not the Android one"
+  },
+  "onboardingLocationDeniedTitle": "No location access",
+  "@onboardingLocationDeniedTitle": {
+    "description": "Title of the dialog shown when the onboarding location request came back denied"
+  },
+  "onboardingLocationDeniedBody": "Threkir can still time your runs and count steps, but without location there is no map, no distance and no pace. You can grant it whenever you like.",
+  "@onboardingLocationDeniedBody": {
+    "description": "Body of the onboarding location-denied dialog — names what a run records without location"
+  },
+  "onboardingLocationDeniedSettings": "Open settings",
+  "@onboardingLocationDeniedSettings": {
+    "description": "Action on the onboarding location-denied dialog that opens the OS app-settings page"
+  },
+  "onboardingLocationDeniedContinue": "Continue without it",
+  "@onboardingLocationDeniedContinue": {
+    "description": "Action on the onboarding location-denied dialog that finishes onboarding without location"
   },
   "onboardingPrivacyTitle": "Who sees your runs?",
   "@onboardingPrivacyTitle": {
@@ -1664,6 +1684,26 @@
   "onboardingPrivacyBody": "Pick a default for new runs. You can change it any time in Settings, and override it on any single run.",
   "@onboardingPrivacyBody": {
     "description": "Body of the privacy-default chooser onboarding page"
+  },
+  "onboardingAccountTitle": "Keep your runs beyond this phone",
+  "@onboardingAccountTitle": {
+    "description": "Title of the final onboarding page, which offers account creation before the dashboard"
+  },
+  "onboardingAccountBody": "An account syncs your runs to the web app and your other devices, and gets them back if you lose this one. You can run without it — everything here works offline — and create one later from You › Settings.",
+  "@onboardingAccountBody": {
+    "description": "Body of the onboarding account page — what an account buys and that the app works without one"
+  },
+  "onboardingAccountCreate": "Create a free account",
+  "@onboardingAccountCreate": {
+    "description": "Primary action on the onboarding account page — opens sign-up"
+  },
+  "onboardingAccountSignIn": "I already have an account",
+  "@onboardingAccountSignIn": {
+    "description": "Secondary action on the onboarding account page — opens sign-in"
+  },
+  "onboardingAccountLater": "Not now",
+  "@onboardingAccountLater": {
+    "description": "Action that finishes onboarding without an account"
   },
   "onboardingGrantPermission": "Grant permission",
   "@onboardingGrantPermission": {
@@ -1684,6 +1724,22 @@
   "setupSkipStep": "Skip",
   "@setupSkipStep": {
     "description": "Action that skips the current setup-wizard step"
+  },
+  "setupLeaveTitle": "Leave setup?",
+  "@setupLeaveTitle": {
+    "description": "Title of the confirm dialog raised when the OS back gesture is used on the first setup-wizard step"
+  },
+  "setupLeaveBody": "Anything you've entered here won't be saved. You can set all of it up later from Settings.",
+  "@setupLeaveBody": {
+    "description": "Body of the setup-wizard leave-confirmation dialog"
+  },
+  "setupLeaveStay": "Keep setting up",
+  "@setupLeaveStay": {
+    "description": "Dismiss action on the setup-wizard leave dialog"
+  },
+  "setupLeaveConfirm": "Leave",
+  "@setupLeaveConfirm": {
+    "description": "Confirm action on the setup-wizard leave dialog — exits the wizard the same way the header Skip does"
   },
   "setupBack": "Back",
   "@setupBack": {
@@ -2816,6 +2872,10 @@
   "@historyKindMeals": {
     "description": "Unified-timeline kind chip: logged meals only"
   },
+  "historyModalityLoadFailed": "Couldn't load your lifts and meals",
+  "@historyModalityLoadFailed": {
+    "description": "Error shown when the History tab could not read the lift / meal modalities from the server"
+  },
   "historyViewAll": "View all",
   "@historyViewAll": {
     "description": "Link from a single-modality History tab to that modality's full page (runs list / gym / nutrition)"
@@ -2858,7 +2918,7 @@
   "@historyEmptyTitle": {
     "description": "Empty-state title shown when the store has no runs at all"
   },
-  "historyEmptyBody": "Tap the Run tab to start your first run",
+  "historyEmptyBody": "Tap Log to record a run, or add one you have already finished",
   "@historyEmptyBody": {
     "description": "Empty-state body shown when the store has no runs at all"
   },
@@ -13727,7 +13787,6 @@
       }
     }
   },
-  "gymRoutineStart": "Start routine",
   "gymRoutinePublishLabel": "Publish to a club",
   "@gymRoutinePublishLabel": {
     "description": "Label above the publish-as-template control on the routine detail screen"
@@ -14728,6 +14787,14 @@
         "type": "int"
       }
     }
+  },
+  "gymComposeDraftTitle": "Unfinished workout",
+  "@gymComposeDraftTitle": {
+    "description": "Heading of the gym composer's recover card, offering back the half-built workout a killed composer left on disk"
+  },
+  "gymComposeDraftBody": "You started this workout but never saved it.",
+  "@gymComposeDraftBody": {
+    "description": "Body of the gym composer's recover card"
   },
   "gymDraftResume": "Resume",
   "@gymDraftResume": {
@@ -17946,5 +18013,30 @@
   "guidedRunUseThisRun": "Use this run",
   "@guidedRunUseThisRun": {
     "description": "Action on the guided-run detail screen that arms the script on the recorder"
+  },
+  "backExitRecordingTitle": "Run still recording",
+  "@backExitRecordingTitle": {
+    "description": "Title of the confirm shown when system back would close the app while a run is recording"
+  },
+  "backExitRecordingBody": "Leaving the app can interrupt the recording. Your run is kept, so you can pick it up when you come back.",
+  "@backExitRecordingBody": {
+    "description": "Body of the leave-while-recording confirm"
+  },
+  "backExitRecordingLeave": "Leave anyway",
+  "@backExitRecordingLeave": {
+    "description": "Confirm action: close the app although a run is recording"
+  },
+  "backExitRecordingStay": "Keep recording",
+  "@backExitRecordingStay": {
+    "description": "Cancel action: stay in the app and keep the recording running"
+  },
+  "logAlreadyOnPage": "You're already on {page}",
+  "@logAlreadyOnPage": {
+    "description": "Banner shown when a Log action names the capture page already on screen",
+    "placeholders": {
+      "page": {
+        "type": "String"
+      }
+    }
   }
 }

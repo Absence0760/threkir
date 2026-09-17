@@ -81,6 +81,25 @@ class SplitPaceMode {
   static String coerce(String? raw) => all.contains(raw) ? raw! : split;
 }
 
+/// Whether the centre Log button's tap starts a run outright rather than
+/// fanning the three capture actions.
+///
+/// Derived from data presence, like every other §63 self-hiding rule: until
+/// a lift or a meal has been logged the fan has nothing to choose between,
+/// so it costs a pure runner a tap and an animation on every single run —
+/// which is the downgrade `multi_modal.md § Protect the core runner` says
+/// that runner must never take. [keepRunPrimary] is the explicit override,
+/// for someone who logs other modalities and still wants the one-tap start.
+///
+/// The fan stays reachable either way: the Log button's long-press always
+/// opens it, and Fitness → Gym / Nutrition are always-present destinations.
+bool runIsPrimaryLogAction({
+  required bool keepRunPrimary,
+  required bool hasGymData,
+  required bool hasFoodData,
+}) =>
+    keepRunPrimary || (!hasGymData && !hasFoodData);
+
 /// App-wide user preferences (units, audio cues, etc.).
 class Preferences extends ChangeNotifier {
   static const _kUseMiles = 'use_miles';
@@ -370,10 +389,10 @@ class Preferences extends ChangeNotifier {
   /// kg — see [WeightFormat]. Defaults to kg.
   WeightUnit get weightUnit => _weightUnit;
 
-  /// Phase 4 multi-modal nav: when true the centre Log button starts a run
-  /// on a single tap (long-press opens the full Log sheet), preserving the
-  /// one-tap run start a pure runner relies on. Defaults to false (tap opens
-  /// the sheet; long-press repeats the last logged modality).
+  /// Phase 4 multi-modal nav: pins the centre Log button's tap to "start a
+  /// run", for someone who logs other modalities too. Off by default, at
+  /// which point [runIsPrimaryLogAction] derives the same behaviour from
+  /// data presence for as long as the user has logged no lift and no meal.
   bool get keepRunPrimary => _keepRunPrimary;
 
   Future<void> setKeepRunPrimary(bool v) async {
@@ -383,8 +402,8 @@ class Preferences extends ChangeNotifier {
   }
 
   /// The capture type last logged via the Log button — `run` / `lift` /
-  /// `meal` / `snack`, or null when nothing has been logged yet. Drives the
-  /// long-press repeat-last gesture and the Log sheet's ordering.
+  /// `meal` / `snack`, or null when nothing has been logged yet. Floats that
+  /// action to the top of the Log fan.
   String? get lastLogType => _lastLogType;
 
   Future<void> setLastLogType(String type) async {

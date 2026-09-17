@@ -190,6 +190,11 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
             gymStore: widget.gymStore,
             foodStore: widget.foodStore,
             showKindChips: false,
+            // The shell's centre Log button, one row below this tab, already
+            // opens the cross-modal run / lift / meal picker this tab's own
+            // FAB opened. The modality tabs keep theirs — those add into one
+            // modality, which the shell's picker does not.
+            showAddFab: false,
           ),
           RunsScreen(
             key: const PageStorageKey('fitness-runs'),

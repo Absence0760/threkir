@@ -140,6 +140,15 @@ Future<void> _pump(WidgetTester tester, dynamic s, {ApiClient? api}) async {
   await tester.pump();
 }
 
+/// A logged lift is what puts the fan back on the Log button's tap: with no
+/// gym and no food data the shell derives a one-tap run start instead
+/// (decisions § 63 self-hiding).
+Future<void> _seedLoggedLift(WidgetTester tester, dynamic s) async {
+  await tester.runAsync(() async {
+    await s.gymStore.createLocal(title: 'Push day', startedAt: DateTime.now());
+  });
+}
+
 class _StampApi extends ApiClient {
   int markOnboardedCalls = 0;
   bool failStamp = false;
@@ -274,6 +283,7 @@ void main() {
     testWidgets('tapping the Log FAB fans the capture speed-dial (default mode)',
         (tester) async {
       final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
       await _pump(tester, s);
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pump();
@@ -288,6 +298,7 @@ void main() {
     testWidgets('keepRunPrimary: tapping the Log FAB starts a run, no menu',
         (tester) async {
       final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
       await s.prefs.setKeepRunPrimary(true);
       await _pump(tester, s);
       await tester.tap(find.byType(FloatingActionButton));
@@ -299,6 +310,7 @@ void main() {
 
     testWidgets('picking Log lift lands on the Gym dwell-in page', (tester) async {
       final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
       await _pump(tester, s);
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pump();
@@ -316,6 +328,7 @@ void main() {
     testWidgets('picking Log food lands on the Nutrition dwell-in page',
         (tester) async {
       final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
       await _pump(tester, s);
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pump();
@@ -370,6 +383,7 @@ void main() {
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.reset);
       final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
       await _pump(tester, s);
       await tester.tap(find.text('Fitness'));
       await tester.pump();
@@ -542,9 +556,6 @@ void main() {
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
-      await tester.tap(find.byTooltip('Log run'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 400));
       expect(shellPage(tester), 2);
       runRecordingActive.value = true;
       await tester.pump();
@@ -607,6 +618,94 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
 
       expect(exits, ['SystemNavigator.pop']);
+    });
+  });
+
+  group('the centre Log button — one tap for the runner, one meaning for the '
+      'long-press', () {
+    double shellPage(WidgetTester tester) {
+      final controller =
+          tester.widget<PageView>(find.byType(PageView).first).controller!;
+      return controller.hasClients
+          ? controller.page!
+          : controller.initialPage.toDouble();
+    }
+
+    testWidgets('a runner with no lift or meal logged starts a run in one tap',
+        (tester) async {
+      // Every run used to cost FAB -> fan -> "Log run" -> Start unless the
+      // runner found a Settings switch. The fan is derived from data now, so
+      // a pure runner never sees one they have nothing to pick from.
+      final s = await _makeStores();
+      await _pump(tester, s);
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log lift'), findsNothing);
+      expect(shellPage(tester), 2, reason: 'the tap landed on the recorder');
+      tester.takeException();
+    });
+
+    testWidgets('one logged lift brings the fan back on tap', (tester) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await _pump(tester, s);
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log lift'), findsOneWidget);
+      expect(shellPage(tester), 0, reason: 'the fan is a picker, not a jump');
+    });
+
+    testWidgets('the explicit preference still pins the run start',
+        (tester) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await s.prefs.setKeepRunPrimary(true);
+      await _pump(tester, s);
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log lift'), findsNothing);
+      expect(shellPage(tester), 2);
+      tester.takeException();
+    });
+
+    testWidgets('long-press opens the menu for a pure runner', (tester) async {
+      // It used to navigate straight to the last-logged modality with nothing
+      // announced, so a press half a beat too long landed someone on
+      // Nutrition.
+      final s = await _makeStores();
+      await s.prefs.setLastLogType('food');
+      await _pump(tester, s);
+
+      await tester.longPress(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log food'), findsOneWidget);
+      expect(shellPage(tester), 0,
+          reason: 'a long press picks, it never navigates on its own');
+    });
+
+    testWidgets('long-press opens the menu with the preference on too',
+        (tester) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await s.prefs.setKeepRunPrimary(true);
+      await _pump(tester, s);
+
+      await tester.longPress(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log lift'), findsOneWidget);
     });
   });
 

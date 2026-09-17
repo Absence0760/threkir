@@ -203,7 +203,7 @@
   "logLift": "筋トレを記録",
   "logFood": "食事を記録",
   "prefsKeepRunPrimary": "ランを主要操作にする",
-  "prefsKeepRunPrimarySubtitle": "中央のボタンでランを開始、長押しで全メニューを表示",
+  "prefsKeepRunPrimarySubtitle": "中央のボタンをタップしてランを開始します。筋トレや食事を記録するまではもともと有効です。長押しすると常に記録メニューが開きます",
   "bodyMetricsTitle": "身体データ",
   "bodyMetricsTileSubtitle": "身長・体重・栄養目標",
   "bodyMetricsConsentTitle": "健康データを保存",

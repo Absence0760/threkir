@@ -769,7 +769,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prefsKeepRunPrimarySubtitle =>
-      'Tap the centre button to start a run; long-press for the full log menu';
+      'Tap the centre button to start a run. Already on until you log a lift or a meal; long-press always opens the log menu';
 
   @override
   String get bodyMetricsTitle => 'Body metrics';

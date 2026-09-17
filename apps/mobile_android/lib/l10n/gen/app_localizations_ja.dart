@@ -747,7 +747,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get prefsKeepRunPrimary => 'ランを主要操作にする';
 
   @override
-  String get prefsKeepRunPrimarySubtitle => '中央のボタンでランを開始、長押しで全メニューを表示';
+  String get prefsKeepRunPrimarySubtitle =>
+      '中央のボタンをタップしてランを開始します。筋トレや食事を記録するまではもともと有効です。長押しすると常に記録メニューが開きます';
 
   @override
   String get bodyMetricsTitle => '身体データ';

@@ -203,7 +203,7 @@
   "logLift": "Registar musculação",
   "logFood": "Registar comida",
   "prefsKeepRunPrimary": "Corrida como ação principal",
-  "prefsKeepRunPrimarySubtitle": "Toque no botão central para iniciar uma corrida; mantenha pressionado para o menu completo",
+  "prefsKeepRunPrimarySubtitle": "Toque no botão central para iniciar uma corrida. Já fica ativo até registar um treino de força ou uma refeição; manter premido abre sempre o menu de registo",
   "bodyMetricsTitle": "Dados corporais",
   "bodyMetricsTileSubtitle": "Altura, peso e metas nutricionais",
   "bodyMetricsConsentTitle": "Armazenar dados de saúde",
@@ -4096,7 +4096,7 @@
   "runDetailGuidedRunUnavailable": "Corrida guiada já não consta da biblioteca",
   "guidedRunUseThisRun": "Utilizar esta corrida",
   "backExitRecordingTitle": "A corrida ainda está a ser gravada",
-  "backExitRecordingBody": "Sair da aplicação pode interromper a gravação. A tua corrida fica guardada, por isso podes retomá-la quando voltares.",
+  "backExitRecordingBody": "Sair da aplicação pode interromper a gravação. A sua corrida fica guardada, por isso pode retomá-la quando voltar.",
   "backExitRecordingLeave": "Sair mesmo assim",
   "backExitRecordingStay": "Continuar a gravar"
 }

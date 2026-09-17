@@ -708,29 +708,30 @@ class _HomeScreenState extends State<HomeScreen>
 
   // --- Centre Log button (multi_modal.md § Bottom nav) ---
 
-  /// Tap on the centre Log button. When the user has opted to keep Run as
-  /// the one-tap primary action, this starts a run directly; otherwise it
-  /// opens the Log capture sheet.
+  /// Whether a tap on the centre Log button starts a run outright. Read at
+  /// gesture time from the live stores rather than cached at build time, so
+  /// the day's first logged lift flips it without a rebuild.
+  bool get _runIsPrimary => runIsPrimaryLogAction(
+        keepRunPrimary: widget.preferences.keepRunPrimary,
+        hasGymData: widget.gymStore.workouts.isNotEmpty,
+        hasFoodData: widget.foodStore.rows.isNotEmpty,
+      );
+
+  /// Tap on the centre Log button: the primary capture action for this user.
   void _onLogTap({Offset? anchor}) {
-    if (widget.preferences.keepRunPrimary) {
+    if (_runIsPrimary) {
       _performLogAction(LogAction.run);
     } else {
       _openLogMenu(anchor: anchor);
     }
   }
 
-  /// Long-press on the centre Log button. In runner-primary mode this opens
-  /// the full menu (so gym / nutrition stay reachable); otherwise it
-  /// repeats the last logged modality — preserving the one-gesture "start a
-  /// run" muscle memory for a pure runner.
-  void _onLogLongPress({Offset? anchor}) {
-    if (widget.preferences.keepRunPrimary) {
-      _openLogMenu(anchor: anchor);
-    } else {
-      _performLogAction(
-          logActionFromWire(widget.preferences.lastLogType) ?? LogAction.run);
-    }
-  }
+  /// Long-press on the centre Log button always opens the full capture menu.
+  /// It used to mean one of two opposite things depending on a preference —
+  /// open the menu, or navigate straight to the last-logged modality with
+  /// nothing announced — so a press half a beat too long landed a runner on
+  /// Nutrition. One gesture, one meaning.
+  void _onLogLongPress({Offset? anchor}) => _openLogMenu(anchor: anchor);
 
   // The centre Log button fans the three capture actions up above itself
   // (speed-dial) rather than opening a bottom sheet; the History Log FAB keeps
@@ -940,10 +941,20 @@ class _HomeScreenState extends State<HomeScreen>
           child: Semantics(
             button: true,
             label: l10n.logA11yLabel,
-            child: FloatingActionButton(
-              onPressed: () => _onLogTap(anchor: anchorOf()),
-              tooltip: l10n.navLog,
-              child: const Icon(Icons.add),
+            // The tooltip is OURS and manually triggered, never the
+            // FloatingActionButton's own: a `tooltip:` builds a Tooltip
+            // INSIDE the button, whose long-press recognizer enters the
+            // gesture arena ahead of this GestureDetector's and wins every
+            // time — which left the long-press affordance dead on the phone
+            // FAB. The visible caption under the button carries the label
+            // anyway (#256), so nothing is lost by not showing it on hold.
+            child: Tooltip(
+              message: l10n.navLog,
+              triggerMode: TooltipTriggerMode.manual,
+              child: FloatingActionButton(
+                onPressed: () => _onLogTap(anchor: anchorOf()),
+                child: const Icon(Icons.add),
+              ),
             ),
           ),
         );

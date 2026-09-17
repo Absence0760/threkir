@@ -779,7 +779,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get prefsKeepRunPrimarySubtitle =>
-      'Mittlere Taste startet einen Lauf; lange drücken für das vollständige Menü';
+      'Tippe auf die mittlere Schaltfläche, um einen Lauf zu starten. Bis zum ersten Kraft- oder Mahlzeiteintrag ist das ohnehin aktiv; langes Drücken öffnet immer das Log-Menü';
 
   @override
   String get bodyMetricsTitle => 'Körperdaten';

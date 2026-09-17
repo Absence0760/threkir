@@ -778,7 +778,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get prefsKeepRunPrimarySubtitle =>
-      'Toque no botão central para iniciar uma corrida; mantenha pressionado para o menu completo';
+      'Toque no botão central para iniciar uma corrida. Já fica ativo até registar um treino de força ou uma refeição; manter premido abre sempre o menu de registo';
 
   @override
   String get bodyMetricsTitle => 'Dados corporais';
@@ -14167,7 +14167,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get backExitRecordingBody =>
-      'Sair da aplicação pode interromper a gravação. A tua corrida fica guardada, por isso podes retomá-la quando voltares.';
+      'Sair da aplicação pode interromper a gravação. A sua corrida fica guardada, por isso pode retomá-la quando voltar.';
 
   @override
   String get backExitRecordingLeave => 'Sair mesmo assim';
@@ -14950,7 +14950,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get prefsKeepRunPrimarySubtitle =>
-      'Toque no botão central para iniciar uma corrida; mantenha pressionado para o menu completo';
+      'Toque no botão central para iniciar uma corrida. Já fica ativo até você registrar um treino de força ou uma refeição; pressione e segure para sempre abrir o menu de registro';
 
   @override
   String get bodyMetricsTitle => 'Dados corporais';

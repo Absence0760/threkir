@@ -776,7 +776,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get prefsKeepRunPrimarySubtitle =>
-      'Appuyez sur le bouton central pour démarrer une course ; appui long pour le menu complet';
+      'Touchez le bouton central pour démarrer une course. Déjà actif tant que vous n’avez enregistré ni séance de muscu ni repas ; un appui long ouvre toujours le menu d’enregistrement';
 
   @override
   String get bodyMetricsTitle => 'Données corporelles';

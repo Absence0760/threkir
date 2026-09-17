@@ -1328,7 +1328,7 @@ abstract class AppLocalizations {
   /// Subtitle for the run-as-primary-action settings toggle
   ///
   /// In en, this message translates to:
-  /// **'Tap the centre button to start a run; long-press for the full log menu'**
+  /// **'Tap the centre button to start a run. Already on until you log a lift or a meal; long-press always opens the log menu'**
   String get prefsKeepRunPrimarySubtitle;
 
   /// Title of the body-metrics settings screen

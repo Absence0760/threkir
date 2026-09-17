@@ -775,7 +775,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get prefsKeepRunPrimarySubtitle =>
-      'Toca el botón central para iniciar una carrera; mantén pulsado para el menú completo';
+      'Toca el botón central para empezar una carrera. Ya está activo hasta que registres una sesión de fuerza o una comida; mantén pulsado para abrir siempre el menú de registro';
 
   @override
   String get bodyMetricsTitle => 'Datos corporales';

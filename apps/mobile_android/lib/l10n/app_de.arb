@@ -203,7 +203,7 @@
   "logLift": "Training erfassen",
   "logFood": "Essen erfassen",
   "prefsKeepRunPrimary": "Lauf als primäre Aktion",
-  "prefsKeepRunPrimarySubtitle": "Mittlere Taste startet einen Lauf; lange drücken für das vollständige Menü",
+  "prefsKeepRunPrimarySubtitle": "Tippe auf die mittlere Schaltfläche, um einen Lauf zu starten. Bis zum ersten Kraft- oder Mahlzeiteintrag ist das ohnehin aktiv; langes Drücken öffnet immer das Log-Menü",
   "bodyMetricsTitle": "Körperdaten",
   "bodyMetricsTileSubtitle": "Größe, Gewicht & Nährwertziele",
   "bodyMetricsConsentTitle": "Gesundheitsdaten speichern",

@@ -1016,7 +1016,7 @@
   "@prefsKeepRunPrimary": {
     "description": "Settings toggle: make the centre Log button start a run on a single tap"
   },
-  "prefsKeepRunPrimarySubtitle": "Tap the centre button to start a run; long-press for the full log menu",
+  "prefsKeepRunPrimarySubtitle": "Tap the centre button to start a run. Already on until you log a lift or a meal; long-press always opens the log menu",
   "@prefsKeepRunPrimarySubtitle": {
     "description": "Subtitle for the run-as-primary-action settings toggle"
   },

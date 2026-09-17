@@ -203,7 +203,7 @@
   "logLift": "Registrar musculação",
   "logFood": "Registrar comida",
   "prefsKeepRunPrimary": "Corrida como ação principal",
-  "prefsKeepRunPrimarySubtitle": "Toque no botão central para iniciar uma corrida; mantenha pressionado para o menu completo",
+  "prefsKeepRunPrimarySubtitle": "Toque no botão central para iniciar uma corrida. Já fica ativo até você registrar um treino de força ou uma refeição; pressione e segure para sempre abrir o menu de registro",
   "bodyMetricsTitle": "Dados corporais",
   "bodyMetricsTileSubtitle": "Altura, peso e metas nutricionais",
   "bodyMetricsConsentTitle": "Armazenar dados de saúde",

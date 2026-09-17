@@ -2967,13 +2967,14 @@
 	/* A value wraps between number and unit. A duration has no such break:
 	   "10:00:00" is one token about five ems wide, and in a two-column panel
 	   it was wider than its tile, so the size is capped at a fifth of the
-	   tile's width. The chosen sizes below are the ceiling, not the size, and
-	   a longer unbreakable word (a localised activity name) breaks rather
-	   than running out of the tile. */
+	   tile's width. The narrower sizes the queries above choose are the
+	   ceiling, not the size; they set the property rather than declaring a
+	   default here, which as the later rule would win over them. A longer
+	   unbreakable word (a localised activity name) breaks rather than running
+	   out of the tile. */
 	.key-stat-value {
-		--key-stat-value-size: 1.5rem;
 		font-variant-numeric: tabular-nums lining-nums;
-		font-size: clamp(1rem, 19cqi, var(--key-stat-value-size));
+		font-size: clamp(1rem, 19cqi, var(--key-stat-value-size, 1.5rem));
 		font-weight: 700;
 		font-variant-numeric: tabular-nums;
 		color: var(--color-text);

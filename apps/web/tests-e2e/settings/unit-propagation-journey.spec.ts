@@ -18,7 +18,7 @@ import { insertRun } from '../fixtures/simulate';
  *     EventEditor + RaceDayPanel LABELS.
  *
  * What none of them does, and this one does: drive the pref change
- * through the REAL Settings → Preferences UI toggle (not a service-role
+ * through the REAL Settings → Units & display UI toggle (not a service-role
  * write) and then prove the new value lands on MULTIPLE distinct
  * surfaces — /runs list, /dashboard recent-runs, /runs/[id] detail — in
  * ONE journey, then revert and prove every surface reverts too.
@@ -154,8 +154,8 @@ test.describe('saga: unit pref flip propagates across runs list + dashboard + de
 			// ── Step 3: flip the unit to MILES via the real Settings UI ─
 			// The headline action of the journey: drive the pref change
 			// through the canonical toggle, not a service-role write.
-			await test.step('flip to Miles in Settings → Preferences', async () => {
-				await page.goto('/settings/preferences');
+			await test.step('flip to Miles in Settings → Units & display', async () => {
+				await page.goto('/settings/display');
 				await page.getByRole('button', { name: 'Miles', exact: true }).click();
 				await expect(page.getByTestId('save-status')).toContainText('Saved', {
 					timeout: 8_000,
@@ -214,7 +214,7 @@ test.describe('saga: unit pref flip propagates across runs list + dashboard + de
 			// value anywhere (memoised derived, write-time format) — the
 			// runs would otherwise stay stuck at mi.
 			await test.step('revert to Kilometres → all surfaces show km again', async () => {
-				await page.goto('/settings/preferences');
+				await page.goto('/settings/display');
 				await page
 					.getByRole('button', { name: 'Kilometres', exact: true })
 					.click();

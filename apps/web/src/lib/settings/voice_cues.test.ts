@@ -103,18 +103,18 @@ test('the master-gate default agrees with the Dart local default', () => {
 	);
 });
 
-test('the web preferences page loads the master gate through the shared default', () => {
+test('the web recording settings page loads the master gate through the shared default', () => {
 	const page = readFileSync(
-		resolve(__dirname, '../../routes/settings/preferences/+page.svelte'),
+		resolve(__dirname, '../../routes/settings/recording/+page.svelte'),
 		'utf-8',
 	);
 	assert.ok(
 		page.includes("effective(settings, 'voice_feedback_enabled', VOICE_FEEDBACK_ENABLED_DEFAULT)"),
-		'preferences page must load voice_feedback_enabled through VOICE_FEEDBACK_ENABLED_DEFAULT',
+		'the recording settings page must load voice_feedback_enabled through VOICE_FEEDBACK_ENABLED_DEFAULT',
 	);
 	assert.ok(
 		!/['"]voice_feedback_enabled['"]\s*,\s*(true|false)/.test(page),
-		'preferences page must not hard-code a voice_feedback_enabled fallback literal',
+		'the recording settings page must not hard-code a voice_feedback_enabled fallback literal',
 	);
 });
 

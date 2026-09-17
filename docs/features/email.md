@@ -162,7 +162,7 @@ Shared pieces:
 - **Preference** — `user_settings.prefs.email_notifications` (`all | important
   | off`, default `important`) gates the **notification** channel only;
   transactional/lifecycle mail ignores it (you can't opt out of a receipt).
-  Toggle on web `/settings/preferences` + mobile Settings → Preferences.
+  Toggle on web `/settings/notifications` + mobile Settings → Preferences.
   Registry: `docs/backend/settings.md`.
 - **Per-kind mutes** — `mailer.go` `kindMutePrefKey` maps a notification kind to
   a prefs-bag key that silences it on the OUTBOUND channels (email + both
@@ -374,7 +374,7 @@ Dashboard → Auth → Hooks in prod):
   `digest_builder.go` (`EnqueueAllWeeklyDigests`) stays the manual backfill path
   and is deliberately unscheduled; the scheduled producer is the SQL
   `enqueue_weekly_digests()` that `20270220_001` puts on `pg_cron`. The **opt-in
-  preference toggle** ships on web `/settings/preferences` + mobile Settings →
+  preference toggle** ships on web `/settings/notifications` + mobile Settings →
   Preferences (default off). The **provider bounce/complaint suppression
   webhook** is now built (`POST /v1/email/bounce`, worker
   `internal/bouncehook/` — parses Resend event JSON / SES-over-SNS
@@ -433,7 +433,7 @@ Dashboard → Auth → Hooks in prod):
   inline-address template to `handleAccountDeletionReceipt`, which dedups on a
   SHA-256 hash of the address via the non-cascading `account_deletion_receipts`
   table (`lifecycle_email_log` would have cascaded away with the user). The
-  receipt copy carries no `/settings/preferences` link (the account is gone).
+  receipt copy carries no preferences link, old or new (the account is gone).
   Because the EF holds no catalogue of its own, `normalizeReceiptLocale` can
   name a locale the worker has no `account_deleted` copy for and the receipt
   would silently arrive in English. `lib.test.ts` therefore parses the worker's
@@ -447,7 +447,7 @@ Dashboard → Auth → Hooks in prod):
   operator-generated `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` (self-generated, not a
   third-party credential); unset → jobs finish done, rows stay pending. The
   `push_notifications` category toggle ships on both platforms
-  (`settings/preferences/+page.svelte`, `settings_preferences_screen.dart`);
+  (`settings/notifications/+page.svelte`, `settings_preferences_screen.dart`);
   gating works on the `important` default without it.
 - [~] **Native push (FCM / APNs)** — code complete, send gated; the open half is **Native push delivery** in [`followups.md`](../product/followups.md). Backend + client BUILT 2026-06-19 (migration
   `20270212_001`, `native_push` kind), **send gated on operator credentials**. Same
@@ -714,7 +714,7 @@ The code side is built and committed:
   byte-identical iOS twin) add/confirm/remove + incoming-request confirm/decline;
   schema in `docs/backend/api_database.md`. The email-link confirm page stays
   web-only (no mobile deep-link route).
-- Clients (locale write): web `apps/web/src/routes/settings/preferences/`,
+- Clients (locale write): web `apps/web/src/lib/settings/prefs_page.svelte.ts` (backfill on any preference page) + `apps/web/src/routes/settings/display/` (the language picker),
   mobile `apps/mobile_android/lib/screens/settings_preferences_screen.dart`.
 - Auth emails: `apps/backend/supabase/functions/auth-email/` — `lib.ts`
   (Standard Webhooks verification + the six-locale catalogue + send plan +

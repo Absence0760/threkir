@@ -10144,11 +10144,11 @@ abstract class AppLocalizations {
   /// **'HR'**
   String get coachContextHr;
 
-  /// Context-strip weekly-goal chip
+  /// Context-strip weekly-goal chip, in the runner's own distance unit
   ///
   /// In en, this message translates to:
-  /// **'{km} km/wk'**
-  String coachContextWeeklyGoal(String km);
+  /// **'{distance} {unit}/wk'**
+  String coachContextWeeklyGoal(String distance, String unit);
 
   /// Archive-view banner text
   ///
@@ -12970,10 +12970,10 @@ abstract class AppLocalizations {
   /// **'Heart-rate zones (upper bounds, bpm)'**
   String get prefsHrZonesDialogTitle;
 
-  /// Tile and dialog title for the weekly mileage goal
+  /// Tile and dialog title for the weekly distance goal, which is entered in km or mi
   ///
   /// In en, this message translates to:
-  /// **'Weekly mileage goal'**
+  /// **'Weekly distance goal'**
   String get prefsWeeklyGoal;
 
   /// Section header for activity and recording settings

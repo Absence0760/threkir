@@ -8275,11 +8275,14 @@
   "@coachContextHr": {
     "description": "Context-strip heart-rate-zones chip"
   },
-  "coachContextWeeklyGoal": "{km} km/wk",
+  "coachContextWeeklyGoal": "{distance} {unit}/wk",
   "@coachContextWeeklyGoal": {
-    "description": "Context-strip weekly-goal chip",
+    "description": "Context-strip weekly-goal chip, in the runner's own distance unit",
     "placeholders": {
-      "km": {
+      "distance": {
+        "type": "String"
+      },
+      "unit": {
         "type": "String"
       }
     }
@@ -10539,9 +10542,9 @@
   "@prefsHrZonesDialogTitle": {
     "description": "Dialog title for editing heart-rate zones"
   },
-  "prefsWeeklyGoal": "Weekly mileage goal",
+  "prefsWeeklyGoal": "Weekly distance goal",
   "@prefsWeeklyGoal": {
-    "description": "Tile and dialog title for the weekly mileage goal"
+    "description": "Tile and dialog title for the weekly distance goal, which is entered in km or mi"
   },
   "prefsSectionActivityRecording": "Activity & recording",
   "@prefsSectionActivityRecording": {

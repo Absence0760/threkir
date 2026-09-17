@@ -90,7 +90,7 @@ test('SegmentsPanel.svelte toggle does not double-fire the leaderboard fetch', (
 	);
 });
 
-test('Settings → preferences writes gender + date_of_birth to user_profiles', () => {
+test('Settings → body metrics writes gender + date_of_birth to user_profiles', () => {
 	// Reason: tiered leaderboards depend on user_profiles.gender +
 	// date_of_birth. If the settings page stops persisting them the
 	// filter dropdowns silently return empty for every user.
@@ -100,7 +100,7 @@ test('Settings → preferences writes gender + date_of_birth to user_profiles', 
 	// discoverability floor — a child-protection purpose — so its column
 	// write carries no consent term at all; the consent gate moved to the
 	// user_settings.prefs mirror, which is what the Art 9 read paths use.
-	const source = read('src/routes/settings/preferences/+page.svelte');
+	const source = read('src/routes/settings/body/+page.svelte');
 	assert.match(source, /user_profiles/, 'page must talk to user_profiles');
 	assert.match(
 		source,
@@ -124,19 +124,19 @@ test('Settings → preferences writes gender + date_of_birth to user_profiles', 
 	);
 });
 
-test('Settings → preferences leaves DOB out of the consent-required refusal', () => {
+test('Settings → body metrics leaves DOB out of the consent-required refusal', () => {
 	// A minor who declines the Art 9 checkbox must still be able to record
 	// a DOB — refusing the save left them with a NULL age record and fully
 	// discoverable in people-search, the exact fail-open the floor closes.
-	const source = read('src/routes/settings/preferences/+page.svelte');
+	const source = read('src/routes/settings/body/+page.svelte');
 	const gate = source.match(/const hasDemographic = [^;]+;/);
 	assert.ok(gate, 'hasDemographic gate not found');
 	assert.doesNotMatch(gate![0], /dateOfBirth/, 'DOB must not gate the demographics save');
 	assert.match(gate![0], /gender/, 'gender must still gate the demographics save');
 });
 
-test('Settings → preferences does not consent-disable the DOB input', () => {
-	const source = read('src/routes/settings/preferences/+page.svelte');
+test('Settings → body metrics does not consent-disable the DOB input', () => {
+	const source = read('src/routes/settings/body/+page.svelte');
 	const dobInput = source
 		.split('\n')
 		.find((l) => l.includes('bind:value={dateOfBirth}'));
@@ -148,8 +148,8 @@ test('Settings → preferences does not consent-disable the DOB input', () => {
 	);
 });
 
-test('Settings → preferences hydrates gender + dob from user_profiles on load', () => {
-	const source = read('src/routes/settings/preferences/+page.svelte');
+test('Settings → body metrics hydrates gender + dob from user_profiles on load', () => {
+	const source = read('src/routes/settings/body/+page.svelte');
 	// gender / date_of_birth / health_data_consent_at are deny-by-default
 	// columns for direct authenticated SELECTs (column lockdown,
 	// 20260707_001) — a direct .select() 403s, so the self-read goes through
@@ -157,10 +157,10 @@ test('Settings → preferences hydrates gender + dob from user_profiles on load'
 	assert.match(
 		source,
 		/get_my_profile/,
-		'preferences must self-read the profile via get_my_profile() (direct column select 403s)',
+		'the body metrics page must self-read the profile via get_my_profile() (direct column select 403s)',
 	);
-	assert.match(source, /prof\.gender/, 'preferences must read gender to populate the form');
-	assert.match(source, /prof\.date_of_birth/, 'preferences must read DOB to populate the form');
+	assert.match(source, /prof\.gender/, 'the body metrics page must read gender to populate the form');
+	assert.match(source, /prof\.date_of_birth/, 'the body metrics page must read DOB to populate the form');
 });
 
 test('SegmentsPanel.svelte renders a KOM/QOM crown on the rank-1 row', () => {

@@ -6199,8 +6199,8 @@ class AppLocalizationsPt extends AppLocalizations {
   String get coachContextHr => 'FC';
 
   @override
-  String coachContextWeeklyGoal(String km) {
-    return '$km km/sem.';
+  String coachContextWeeklyGoal(String distance, String unit) {
+    return '$distance $unit/sem.';
   }
 
   @override
@@ -7978,7 +7978,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'Zonas de frequência cardíaca (limites superiores, bpm)';
 
   @override
-  String get prefsWeeklyGoal => 'Meta de quilometragem semanal';
+  String get prefsWeeklyGoal => 'Meta de distância semanal';
 
   @override
   String get prefsSectionActivityRecording => 'Atividade e gravação';
@@ -20303,8 +20303,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get coachContextHr => 'FC';
 
   @override
-  String coachContextWeeklyGoal(String km) {
-    return '$km km/sem.';
+  String coachContextWeeklyGoal(String distance, String unit) {
+    return '$distance $unit/sem.';
   }
 
   @override
@@ -22077,7 +22077,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Zonas de frequência cardíaca (limites superiores, bpm)';
 
   @override
-  String get prefsWeeklyGoal => 'Meta de quilometragem semanal';
+  String get prefsWeeklyGoal => 'Meta de distância semanal';
 
   @override
   String get prefsSectionActivityRecording => 'Atividade e gravação';

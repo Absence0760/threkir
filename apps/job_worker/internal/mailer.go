@@ -46,6 +46,11 @@ type Email struct {
 const (
 	brandName  = "Threkir"
 	brandColor = "#2C5F6E"
+
+	// emailLogoPath is the brand mark the HTML header renders, served off
+	// the apex CloudFront distribution from apps/web/static/. Regenerate
+	// the asset with assets/gen-email-logo.sh.
+	emailLogoPath = "/email-logo.png"
 )
 
 // SMTPSender sends via a plain SMTP server. Auth is nil for an
@@ -160,6 +165,7 @@ func extractAddr(from string) string {
 // adding a template is just filling these fields.
 type emailContent struct {
 	lang              string // <html lang> (BCP-47); "" → "en"
+	logoURL           string // absolute URL of the header mark ("" → wordmark only)
 	subject           string
 	preheader         string   // inbox preview snippet
 	heading           string   // H1
@@ -206,6 +212,38 @@ func renderTextBody(c emailContent) string {
 	return b.String()
 }
 
+// renderBrandLockup is the header bar's contents: the brand mark beside the
+// wordmark. The mark carries alt="" deliberately — the wordmark next to it
+// already says "Threkir", so a populated alt makes a screen reader announce
+// the brand twice. With no logo URL the wordmark stands alone, which is also
+// what every client that blocks remote images shows.
+func renderBrandLockup(logoURL string) string {
+	wordmark := fmt.Sprintf(
+		`<span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px;">%s</span>`,
+		brandName)
+	if logoURL == "" {
+		return wordmark
+	}
+	return fmt.Sprintf(
+		`<table role="presentation" cellpadding="0" cellspacing="0"><tr>`+
+			`<td style="padding-right:12px;line-height:0;"><img src="%s" width="32" height="32" alt="" style="display:block;border:0;"></td>`+
+			`<td style="vertical-align:middle;">%s</td>`+
+			`</tr></table>`,
+		html.EscapeString(logoURL), wordmark)
+}
+
+// emailLogoURL resolves the header mark against the deployment's base URL.
+// An empty base yields "", which renders the header as the wordmark alone
+// rather than a broken image — a preview/dev worker with no APP_BASE_URL set
+// still sends a coherent email.
+func emailLogoURL(baseURL string) string {
+	base := strings.TrimRight(baseURL, "/")
+	if base == "" {
+		return ""
+	}
+	return base + emailLogoPath
+}
+
 // renderHTMLBody builds an email-client-safe HTML message: table layout,
 // inline styles, ≤600px centred card, a branded header bar, an H1, body
 // paragraphs, a bulletproof CTA button, and a muted footer. The preheader
@@ -248,12 +286,12 @@ func renderHTMLBody(c emailContent) string {
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">%s</div>
 <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;"><tr><td align="center" style="padding:24px 12px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%%;background:#ffffff;border-radius:12px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-<tr><td style="background:%s;padding:20px 32px;"><span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px;">%s</span></td></tr>
+<tr><td style="background:%s;padding:20px 32px;">%s</td></tr>
 <tr><td style="padding:32px;"><h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;color:#111827;">%s</h1>%s%s</td></tr>
 <tr><td style="padding:20px 32px;border-top:1px solid #e5e7eb;"><p style="margin:0;font-size:12px;line-height:1.5;color:#9ca3af;">%s</p></td></tr>
 </table></td></tr></table>
 </body></html>`,
-		lang, html.EscapeString(c.preheader), brandColor, brandName,
+		lang, html.EscapeString(c.preheader), brandColor, renderBrandLockup(c.logoURL),
 		html.EscapeString(c.heading), paras.String(), cta, footer)
 }
 
@@ -399,6 +437,7 @@ func renderNotificationEmail(n NotificationRow, baseURL, locale string) Email {
 	s := lookupEmailStrings(loc, keyForKind(n.Kind))
 	shared := lookupEmailShared(loc)
 	return composeEmail(emailContent{
+		logoURL:         emailLogoURL(baseURL),
 		lang:            loc,
 		subject:         s.subject,
 		preheader:       s.preheader,
@@ -575,6 +614,7 @@ func renderLifecycleEmail(template, baseURL, locale string) (Email, bool) {
 	// notification-preferences link a deleted user can't use.
 	if template == "account_deleted" {
 		return composeEmail(emailContent{
+			logoURL:   emailLogoURL(baseURL),
 			lang:      loc,
 			subject:   s.subject,
 			preheader: s.preheader,
@@ -595,6 +635,7 @@ func renderLifecycleEmail(template, baseURL, locale string) (Email, bool) {
 	}
 
 	return composeEmail(emailContent{
+		logoURL:         emailLogoURL(baseURL),
 		lang:            loc,
 		subject:         s.subject,
 		preheader:       s.preheader,
@@ -639,6 +680,7 @@ func renderSafetyEmail(p SafetyEmailPayload, baseURL, locale string) (Email, boo
 	case "finish":
 		s := lookupEmailStrings(loc, "safety_finish")
 		return composeEmail(emailContent{
+			logoURL:   emailLogoURL(baseURL),
 			lang:      loc,
 			subject:   fmt.Sprintf(s.subject, owner),
 			preheader: s.preheader,
@@ -654,6 +696,7 @@ func renderSafetyEmail(p SafetyEmailPayload, baseURL, locale string) (Email, boo
 	case "confirm":
 		s := lookupEmailStrings(loc, "safety_confirm")
 		return composeEmail(emailContent{
+			logoURL:   emailLogoURL(baseURL),
 			lang:      loc,
 			subject:   fmt.Sprintf(s.subject, owner),
 			preheader: s.preheader,
@@ -684,6 +727,7 @@ func renderSafetyEmail(p SafetyEmailPayload, baseURL, locale string) (Email, boo
 			ctaURL = base + "/live/" + *p.RunID
 		}
 		return composeEmail(emailContent{
+			logoURL:   emailLogoURL(baseURL),
 			lang:      loc,
 			subject:   fmt.Sprintf(s.subject, owner),
 			preheader: s.preheader,
@@ -711,6 +755,7 @@ func renderSafetyEmail(p SafetyEmailPayload, baseURL, locale string) (Email, boo
 			ctaURL = base + "/live/" + *p.RunID
 		}
 		return composeEmail(emailContent{
+			logoURL:   emailLogoURL(baseURL),
 			lang:      loc,
 			subject:   fmt.Sprintf(s.subject, owner),
 			preheader: s.preheader,
@@ -760,6 +805,7 @@ func renderWeeklyDigest(s DigestSummary, baseURL, locale, unsubURL string) Email
 	}
 
 	return composeEmail(emailContent{
+		logoURL:         emailLogoURL(baseURL),
 		lang:            loc,
 		subject:         cat.subject,
 		preheader:       cat.preheader,
@@ -814,6 +860,7 @@ func renderLifecycleDrip(template, baseURL, locale, unsubURL string) (Email, boo
 	shared := lookupEmailShared(loc)
 
 	return composeEmail(emailContent{
+		logoURL:           emailLogoURL(baseURL),
 		lang:              loc,
 		subject:           cat.subject,
 		preheader:         cat.preheader,

@@ -62,6 +62,7 @@
 	import LoadRampCard from '$lib/components/LoadRampCard.svelte';
 	import ComebackCard from '$lib/components/ComebackCard.svelte';
 	import DashboardFirstRun from '$lib/components/DashboardFirstRun.svelte';
+	import MetricLabel from '$lib/components/MetricLabel.svelte';
 	import { workoutKindLabel } from '$lib/training/workout_labels';
 	import WorkoutEditor from '$lib/components/WorkoutEditor.svelte';
 	import PeriodSummary from '$lib/components/PeriodSummary.svelte';
@@ -1500,38 +1501,26 @@
 			{#if liveSnap.vo2Max != null || loadNow != null}
 				<section class="fitness-card">
 					<div class="fitness-row">
-						<div
-							class="fitness-metric"
-							title={m('dash.vo2maxTooltip')}
-						>
-							<span class="fitness-label">VO₂ max</span>
+						<div class="fitness-metric">
+							<span class="fitness-label"><MetricLabel metric="vo2max" /></span>
 							<span class="fitness-value">
 								{liveSnap.vo2Max != null ? liveSnap.vo2Max.toFixed(1) : '—'}
 							</span>
 							<span class="fitness-unit">ml/kg/min</span>
 						</div>
 						{#if loadNow != null}
-							<div
-								class="fitness-metric"
-								title={m('dash.ctlTooltip')}
-							>
-								<span class="fitness-label">{m('dash.ctlLabel')}</span>
+							<div class="fitness-metric">
+								<span class="fitness-label"><MetricLabel metric="ctl" /></span>
 								<span class="fitness-value">{loadNow.ctl.toFixed(0)}</span>
 								<span class="fitness-unit">{m('dash.ctlUnit')}</span>
 							</div>
-							<div
-								class="fitness-metric"
-								title={m('dash.atlTooltip')}
-							>
-								<span class="fitness-label">{m('dash.atlLabel')}</span>
+							<div class="fitness-metric">
+								<span class="fitness-label"><MetricLabel metric="atl" /></span>
 								<span class="fitness-value">{loadNow.atl.toFixed(0)}</span>
 								<span class="fitness-unit">{m('dash.atlUnit')}</span>
 							</div>
-							<div
-								class="fitness-metric"
-								title={m('dash.tsbTooltip')}
-							>
-								<span class="fitness-label">{m('dash.tsbLabel')}</span>
+							<div class="fitness-metric">
+								<span class="fitness-label"><MetricLabel metric="tsb" /></span>
 								<span
 									class="fitness-value"
 									class:tsb-neg={loadNow.tsb < -10}

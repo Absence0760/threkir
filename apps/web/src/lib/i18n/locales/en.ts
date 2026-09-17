@@ -16,6 +16,7 @@ export const en = {
 	'common.unsavedTitle': 'Discard changes?',
 	'common.unsavedBody': 'You have unsaved changes. Leave without saving?',
 	'common.discard': 'Discard',
+	"metricLabel.about": "About {name}",
 	// Rate-limit refusals (postgres P0001 from enforce_create_rate_limit).
 	// The bucket picks the whole sentence; {wait} is the one noun phrase
 	// slotted into it. See i18n/rate_limit_message.ts + decisions § 744.
@@ -361,6 +362,7 @@ export const en = {
 	"dash.fromSettingsEditThere": "From Settings · Edit there",
 	"dash.readinessLabel": "Readiness",
 	"dash.vo2maxTooltip": "VO₂ max — your aerobic engine: how much oxygen your body can use per minute. Higher is fitter.",
+	"metric.vo2max.label": "VO₂ max",
 	"dash.ctlTooltip": "Fitness (CTL) — your rolling 42-day training load. Builds slowly; this is your endurance base.",
 	"dash.ctlLabel": "CTL (fitness)",
 	"dash.ctlUnit": "42-day load",

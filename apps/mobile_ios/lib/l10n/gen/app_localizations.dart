@@ -10875,6 +10875,12 @@ abstract class AppLocalizations {
   /// **'Couldn\'t update your display name. Please try again.'**
   String get settingsAccountDisplayNameUpdateFailed;
 
+  /// Shown in place of the profile photo and display-name tiles when the profile read fails; paired with a Retry button
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your profile, so your photo and display name can\'t be changed yet.'**
+  String get settingsAccountProfileLoadFailed;
+
   /// Banner shown after enabling error reporting
   ///
   /// In en, this message translates to:

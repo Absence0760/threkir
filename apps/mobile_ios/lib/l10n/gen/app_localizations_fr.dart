@@ -6690,6 +6690,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Échec de la mise à jour du nom affiché. Réessaie.';
 
   @override
+  String get settingsAccountProfileLoadFailed =>
+      'Impossible de charger ton profil : tu ne peux pas encore modifier ta photo ni ton nom affiché.';
+
+  @override
   String get settingsAccountErrorReportingEnabled =>
       'Rapports d\'erreur activés — redémarre l\'app pour appliquer.';
 

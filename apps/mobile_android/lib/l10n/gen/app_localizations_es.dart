@@ -6666,6 +6666,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudo actualizar el nombre visible. Inténtalo de nuevo.';
 
   @override
+  String get settingsAccountProfileLoadFailed =>
+      'No se pudo cargar tu perfil, así que todavía no puedes cambiar la foto ni el nombre visible.';
+
+  @override
   String get settingsAccountErrorReportingEnabled =>
       'Informes de errores activados: reinicia la app para aplicar.';
 

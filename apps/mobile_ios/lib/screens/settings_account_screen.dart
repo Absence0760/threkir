@@ -34,6 +34,8 @@ import '../widgets/top_banner.dart';
 import 'import_screen.dart';
 import 'sign_in_screen.dart';
 
+enum _ProfileLoad { loading, ready, failed }
+
 class SettingsAccountScreen extends StatefulWidget {
   final ApiClient? apiClient;
   final Preferences preferences;
@@ -119,6 +121,14 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
   String? _displayName;
   bool _displayNameBusy = false;
 
+  // The photo and display-name controls edit values read on mount, so they
+  // stay closed until that read lands: the name editor is seeded from
+  // [_displayName], and one opened over a pending or failed read saves a
+  // blank over the stored name. The generation drops a read that an auth
+  // change or a retry has superseded.
+  _ProfileLoad _profileLoad = _ProfileLoad.loading;
+  int _profileLoadGeneration = 0;
+
   // Change-email flow: GoTrue's secure email change confirms from BOTH
   // the old and the new address, so the account email doesn't flip until
   // both links are followed. We surface a persistent "confirmation
@@ -132,7 +142,7 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
     super.initState();
     widget.preferences.addListener(_onChange);
     _loadAiDisclosure();
-    _loadAvatar();
+    unawaited(_loadProfile());
     unawaited(_resumeExportJob());
   }
 
@@ -161,6 +171,8 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
     setState(() {
       _disclosure = const AiDisclosureRecord();
       _avatarUrl = null;
+      _displayName = null;
+      _profileLoad = _ProfileLoad.loading;
       _exportJob = null;
       _exportShortfall = null;
       _exportStatusUnreadable = false;
@@ -168,7 +180,7 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
       _lastBackupWasOnDevice = false;
     });
     _loadAiDisclosure();
-    _loadAvatar();
+    unawaited(_loadProfile());
     unawaited(_resumeExportJob());
   }
 
@@ -402,20 +414,28 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
     }
   }
 
-  Future<void> _loadAvatar() async {
+  Future<void> _loadProfile() async {
+    final generation = ++_profileLoadGeneration;
     final api = widget.apiClient;
     if (api == null || api.userId == null) return;
     try {
       final profile = await api.fetchMyProfile();
-      if (mounted) {
-        setState(() {
-          _avatarUrl = profile?.avatarUrl;
-          _displayName = profile?.displayName;
-        });
-      }
-    } catch (_) {
-      // Non-fatal: the tile falls back to the email initial.
+      if (!mounted || generation != _profileLoadGeneration) return;
+      setState(() {
+        _avatarUrl = profile?.avatarUrl;
+        _displayName = profile?.displayName;
+        _profileLoad = _ProfileLoad.ready;
+      });
+    } catch (e) {
+      debugPrint('settings account: profile load failed: $e');
+      if (!mounted || generation != _profileLoadGeneration) return;
+      setState(() => _profileLoad = _ProfileLoad.failed);
     }
+  }
+
+  Future<void> _retryProfileLoad() async {
+    setState(() => _profileLoad = _ProfileLoad.loading);
+    await _loadProfile();
   }
 
   Future<void> _editDisplayName() async {
@@ -425,6 +445,7 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
       showTopBanner(context, l10n.settingsAccountSignInToSync);
       return;
     }
+    if (_profileLoad != _ProfileLoad.ready) return;
     final ctl = TextEditingController(text: _displayName ?? '');
     final saved = await showDialog<String>(
       context: context,
@@ -475,6 +496,7 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
       showTopBanner(context, l10n.settingsAccountSignInToSync);
       return;
     }
+    if (_profileLoad != _ProfileLoad.ready) return;
     XFile? f;
     try {
       f = await _avatarPicker.pickImage(
@@ -532,7 +554,7 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
   Future<void> _removeAvatar() async {
     final api = widget.apiClient;
     final l10n = AppLocalizations.of(context);
-    if (api == null) return;
+    if (api == null || _profileLoad != _ProfileLoad.ready) return;
     final ok = await confirmDestructive(
       context,
       title: l10n.settingsAccountAvatarRemoveTitle,
@@ -1319,8 +1341,20 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
                       child: Text(l10n.settingsAccountSignIn),
                     ),
             ),
-            if (signedIn)
+            if (signedIn && _profileLoad == _ProfileLoad.failed)
               ListTile(
+                key: const ValueKey('account-profile-load-error'),
+                leading: Icon(Icons.error_outline,
+                    color: theme.colorScheme.error),
+                title: Text(l10n.settingsAccountProfileLoadFailed),
+                trailing: TextButton(
+                  onPressed: _retryProfileLoad,
+                  child: Text(l10n.errorStateRetry),
+                ),
+              ),
+            if (signedIn && _profileLoad != _ProfileLoad.failed)
+              ListTile(
+                enabled: _profileLoad == _ProfileLoad.ready,
                 leading: IdentityAvatar(
                   seed: widget.apiClient?.userId ?? email,
                   name: email,
@@ -1329,7 +1363,7 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
                 ),
                 title: Text(l10n.settingsAccountAvatar),
                 subtitle: Text(l10n.settingsAccountAvatarHint),
-                trailing: _avatarBusy
+                trailing: _avatarBusy || _profileLoad == _ProfileLoad.loading
                     ? const SizedBox(
                         width: 20,
                         height: 20,
@@ -1344,14 +1378,17 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
                         : const Icon(Icons.photo_camera),
                 onTap: _avatarBusy ? null : _pickAvatar,
               ),
-            if (signedIn)
+            if (signedIn && _profileLoad != _ProfileLoad.failed)
               ListTile(
+                enabled: _profileLoad == _ProfileLoad.ready,
                 leading: const Icon(Icons.badge_outlined),
                 title: Text(l10n.settingsAccountDisplayName),
                 subtitle: Text(
-                  (_displayName != null && _displayName!.isNotEmpty)
-                      ? _displayName!
-                      : l10n.settingsAccountDisplayNameUnset,
+                  _profileLoad == _ProfileLoad.loading
+                      ? l10n.commonLoading
+                      : (_displayName != null && _displayName!.isNotEmpty)
+                          ? _displayName!
+                          : l10n.settingsAccountDisplayNameUnset,
                 ),
                 trailing: _displayNameBusy
                     ? const SizedBox(

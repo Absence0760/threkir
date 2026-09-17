@@ -1837,6 +1837,7 @@
   "settingsAccountDisplayNameUnset": "未設定 —「Runner」として表示されます",
   "settingsAccountDisplayNameUpdated": "表示名を更新しました",
   "settingsAccountDisplayNameUpdateFailed": "表示名を更新できませんでした。もう一度お試しください。",
+  "settingsAccountProfileLoadFailed": "プロフィールを読み込めなかったため、写真と表示名はまだ変更できません。",
   "settingsAccountErrorReportingEnabled": "エラーレポートを有効にしました — 適用するにはアプリを再起動してください。",
   "settingsAccountErrorReportingDisabled": "エラーレポートを無効にしました — 適用するにはアプリを再起動してください。",
   "settingsAccountImport": "別のアプリからインポート",

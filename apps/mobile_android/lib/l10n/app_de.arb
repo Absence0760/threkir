@@ -1837,6 +1837,7 @@
   "settingsAccountDisplayNameUnset": "Nicht festgelegt — du erscheinst als „Runner“",
   "settingsAccountDisplayNameUpdated": "Anzeigename aktualisiert",
   "settingsAccountDisplayNameUpdateFailed": "Anzeigename konnte nicht aktualisiert werden. Bitte versuche es erneut.",
+  "settingsAccountProfileLoadFailed": "Dein Profil konnte nicht geladen werden, daher kannst du Foto und Anzeigenamen noch nicht ändern.",
   "settingsAccountErrorReportingEnabled": "Fehlerberichte aktiviert — App neu starten, um sie anzuwenden.",
   "settingsAccountErrorReportingDisabled": "Fehlerberichte deaktiviert — App neu starten, um sie anzuwenden.",
   "settingsAccountImport": "Aus einer anderen App importieren",

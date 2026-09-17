@@ -12,6 +12,8 @@ import 'package:core_models/core_models.dart'
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'gym_prs.dart' show namesAnExercise;
+
 /// One half-typed set row of a gym-composer draft.
 ///
 /// Every field is the RAW string the athlete typed, not a parsed number: what
@@ -65,7 +67,10 @@ class GymComposeDraftExercise {
   final String name;
   final List<GymComposeDraftSet> sets;
 
-  bool get isEmpty => name.trim().isEmpty && sets.every((s) => s.isEmpty);
+  /// Blankness on the folded KEY, never on the spelling: `trim()` happens to
+  /// strip exactly the folded class on this runtime, and the web twin's does
+  /// not (decisions § 1367).
+  bool get isEmpty => !namesAnExercise(name) && sets.every((s) => s.isEmpty);
 
   Map<String, dynamic> toJson() => {
         'name': name,

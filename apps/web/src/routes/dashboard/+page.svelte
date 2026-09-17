@@ -3359,7 +3359,10 @@
 	   card. Cool → hot ramp from Z1 (cyan) to Z5 (danger) matches the
 	   palette already in `app.css`. Zone rows use a fixed-template grid
 	   so the bars align across rows regardless of label length. */
-	.intensity-card { transition: box-shadow var(--transition-base); }
+	.intensity-card {
+		container: intensity / inline-size;
+		transition: box-shadow var(--transition-base);
+	}
 	.intensity-window {
 		font-size: 0.78rem;
 		color: var(--color-text-tertiary);
@@ -3381,6 +3384,22 @@
 		grid-column: 1 / -1;
 		grid-template-columns: subgrid;
 		align-items: center;
+	}
+	/* A named zone is wider than a bare "Z4", and beside its bar, time and
+	   share it no longer fits a phone-width card: "(threshold)" cannot break,
+	   so the row overflowed the card and scrolled the page sideways at 300 px.
+	   Below this width the name takes its own line and the bar keeps a column
+	   that still lines up across rows. */
+	@container intensity (max-width: 22rem) {
+		.zone-list {
+			grid-template-columns: minmax(0, 1fr) max-content max-content;
+		}
+		.zone-row {
+			row-gap: var(--space-xs);
+		}
+		.zone-name {
+			grid-column: 1 / -1;
+		}
 	}
 	.zone-name {
 		font-size: 0.85rem;

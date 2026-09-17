@@ -1685,6 +1685,22 @@
   "@setupSkipStep": {
     "description": "Action that skips the current setup-wizard step"
   },
+  "setupLeaveTitle": "Leave setup?",
+  "@setupLeaveTitle": {
+    "description": "Title of the confirm dialog raised when the OS back gesture is used on the first setup-wizard step"
+  },
+  "setupLeaveBody": "Anything you've entered here won't be saved. You can set all of it up later from Settings.",
+  "@setupLeaveBody": {
+    "description": "Body of the setup-wizard leave-confirmation dialog"
+  },
+  "setupLeaveStay": "Keep setting up",
+  "@setupLeaveStay": {
+    "description": "Dismiss action on the setup-wizard leave dialog"
+  },
+  "setupLeaveConfirm": "Leave",
+  "@setupLeaveConfirm": {
+    "description": "Confirm action on the setup-wizard leave dialog — exits the wizard the same way the header Skip does"
+  },
   "setupBack": "Back",
   "@setupBack": {
     "description": "Button that goes to the previous setup-wizard step"

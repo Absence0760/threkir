@@ -98,6 +98,21 @@ Future<void> _pump(
   await tester.pumpAndSettle();
 }
 
+/// Tap the wizard's single forward button. Its label is Continue on a step
+/// that has an answer and Skip on one that doesn't, so a test walking the
+/// wizard can't hard-code either.
+Future<void> _forward(WidgetTester tester, AppLocalizations l10n) async {
+  final skip = find.widgetWithText(FilledButton, l10n.setupSkipStep);
+  await tester
+      .tap(skip.evaluate().isEmpty ? find.text(l10n.setupContinue) : skip);
+  await tester.pumpAndSettle();
+}
+
+/// The number of forward taps between the first step and the last, for the
+/// step list a signed-out-at-launch fixture produces.
+int _forwardTaps(Preferences prefs) =>
+    visibleSetupWizardSteps(privacyAlreadyChosen: prefs.onboarded).length - 1;
+
 void main() {
   group('SetupWizardScreen', () {
     testWidgets('renders the first step + a Skip header action', (tester) async {
@@ -126,8 +141,7 @@ void main() {
       final l10n = await AppLocalizations.delegate.load(const Locale('en'));
       // Walk all steps via Continue; the final step shows Open dashboard.
       for (var i = 0; i < onboardingTotalSteps - 1; i++) {
-        await tester.tap(find.text(l10n.setupContinue));
-        await tester.pumpAndSettle();
+        await _forward(tester, l10n);
       }
       expect(find.text(l10n.setupOpenDashboard), findsOneWidget);
     });
@@ -144,18 +158,15 @@ void main() {
       await _pump(tester, api, await _prefs());
       final l10n = await AppLocalizations.delegate.load(const Locale('en'));
       // Advance to the goal step (index 2) and pick a goal.
-      await tester.tap(find.text(l10n.setupContinue));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text(l10n.setupContinue));
-      await tester.pumpAndSettle();
+      await _forward(tester, l10n);
+      await _forward(tester, l10n);
       await tester.ensureVisible(find.text(l10n.setupGoal5k));
       await tester.pump();
       await tester.tap(find.text(l10n.setupGoal5k));
       await tester.pump();
       // Advance to the final step.
       for (var i = 2; i < onboardingTotalSteps - 1; i++) {
-        await tester.tap(find.text(l10n.setupContinue));
-        await tester.pumpAndSettle();
+        await _forward(tester, l10n);
       }
       expect(find.widgetWithText(FilledButton, l10n.setupCreatePlanCta),
           findsOneWidget);
@@ -174,17 +185,14 @@ void main() {
 
       // Step 1: name.
       await tester.enterText(find.byType(TextField).first, 'Alex Runner');
-      await tester.tap(find.text(l10n.setupContinue));
-      await tester.pumpAndSettle();
+      await _forward(tester, l10n);
       // Step 2: pick miles.
       await tester.tap(find.text(l10n.setupUnitMi));
       await tester.pump();
-      await tester.tap(find.text(l10n.setupContinue));
-      await tester.pumpAndSettle();
+      await _forward(tester, l10n);
       // Remaining steps: just advance.
       for (var i = 2; i < onboardingTotalSteps - 1; i++) {
-        await tester.tap(find.text(l10n.setupContinue));
-        await tester.pumpAndSettle();
+        await _forward(tester, l10n);
       }
       // Final step: Open dashboard. Settle the success toast's timer +
       // the pop animation so no timer outlives the disposed tree.
@@ -206,8 +214,7 @@ void main() {
       final l10n = await AppLocalizations.delegate.load(const Locale('en'));
       // Advance to the About-you step (step index 3).
       for (var i = 0; i < 3; i++) {
-        await tester.tap(find.text(l10n.setupContinue));
-        await tester.pumpAndSettle();
+        await _forward(tester, l10n);
       }
       // No demographic chosen yet → no consent checkbox.
       expect(find.byType(CheckboxListTile), findsNothing);
@@ -227,14 +234,230 @@ void main() {
       await _pump(tester, api, await _prefs());
       final l10n = await AppLocalizations.delegate.load(const Locale('en'));
       for (var i = 0; i < 3; i++) {
-        await tester.tap(find.text(l10n.setupContinue));
-        await tester.pumpAndSettle();
+        await _forward(tester, l10n);
       }
       await tester.ensureVisible(find.text(l10n.setupDobPlaceholder));
       await tester.pump();
       await tester.tap(find.text(l10n.setupDobPlaceholder));
       await tester.pumpAndSettle();
       expect(find.byType(YearPicker), findsOneWidget);
+    });
+
+    group('run privacy is asked once, at launch (not twice)', () {
+      Future<Preferences> onboardedPrefs(String privacy) async {
+        SharedPreferences.setMockInitialValues({});
+        final p = Preferences();
+        await p.init();
+        await p.setOnboarded(true);
+        await p.setPrivacyDefault(privacy);
+        return p;
+      }
+
+      testWidgets('the wizard drops its privacy step when the launch flow '
+          'already asked', (tester) async {
+        final api = _FakeApi();
+        final prefs = await onboardedPrefs('public');
+        await _pump(tester, api, prefs);
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+
+        // One dot fewer than the full wizard, and the privacy step is never
+        // reached on the way to the end.
+        expect(_forwardTaps(prefs), onboardingTotalSteps - 2);
+        for (var i = 0; i < _forwardTaps(prefs); i++) {
+          expect(find.text(l10n.setupPrivacyTitle), findsNothing);
+          await _forward(tester, l10n);
+        }
+        expect(find.text(l10n.setupPrivacyTitle), findsNothing);
+        expect(find.text(l10n.setupOpenDashboard), findsOneWidget);
+      });
+
+      testWidgets('Finish writes the answer given at launch, not a '
+          'hard-coded private', (tester) async {
+        final api = _FakeApi();
+        final fake = _FakeSettingsService();
+        final prefs = await onboardedPrefs('public');
+        final sync = SettingsSyncService(
+          preferences: prefs,
+          serviceLoader: () async => fake,
+        );
+        await _pump(tester, api, prefs, settingsSync: sync);
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+
+        for (var i = 0; i < _forwardTaps(prefs); i++) {
+          await _forward(tester, l10n);
+        }
+        await tester.tap(find.text(l10n.setupOpenDashboard));
+        await tester.pumpAndSettle(const Duration(seconds: 4));
+
+        expect(fake.universalWrites.single[SettingsKeys.privacyDefault],
+            'public');
+        expect(prefs.privacyDefault, 'public');
+      });
+
+      testWidgets('a wizard reached without the launch flow still asks',
+          (tester) async {
+        // Signed in on a device whose local onboarding never ran — the
+        // wizard is then the only place the question gets asked.
+        final api = _FakeApi();
+        final prefs = await _prefs();
+        await _pump(tester, api, prefs);
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        for (var i = 0; i < 4; i++) {
+          await _forward(tester, l10n);
+        }
+        expect(find.text(l10n.setupPrivacyTitle), findsOneWidget);
+      });
+    });
+
+    group('one forward button, labelled for what it does', () {
+      testWidgets('an unanswered optional step offers Skip, and only Skip',
+          (tester) async {
+        final api = _FakeApi();
+        await _pump(tester, api, await _prefs());
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+
+        // Step 0 (name) starts empty.
+        expect(find.widgetWithText(FilledButton, l10n.setupSkipStep),
+            findsOneWidget);
+        expect(find.text(l10n.setupContinue), findsNothing);
+
+        await tester.enterText(find.byType(TextField).first, 'Alex');
+        await tester.pump();
+        expect(find.widgetWithText(FilledButton, l10n.setupContinue),
+            findsOneWidget);
+        expect(find.text(l10n.setupSkipStep), findsNothing);
+      });
+
+      testWidgets('a pre-answered step only ever offers Continue',
+          (tester) async {
+        // Units is seeded from the locale, so there is nothing to skip.
+        final api = _FakeApi();
+        await _pump(tester, api, await _prefs());
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        await _forward(tester, l10n);
+        expect(find.text(l10n.setupUnitsTitle), findsOneWidget);
+        expect(find.widgetWithText(FilledButton, l10n.setupContinue),
+            findsOneWidget);
+        expect(find.text(l10n.setupSkipStep), findsNothing);
+      });
+
+      testWidgets('the goal step flips to Continue once a goal is picked',
+          (tester) async {
+        final api = _FakeApi();
+        await _pump(tester, api, await _prefs());
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        await _forward(tester, l10n);
+        await _forward(tester, l10n);
+        expect(find.text(l10n.setupSkipStep), findsOneWidget);
+        await tester.ensureVisible(find.text(l10n.setupGoal5k));
+        await tester.pump();
+        await tester.tap(find.text(l10n.setupGoal5k));
+        await tester.pump();
+        expect(find.widgetWithText(FilledButton, l10n.setupContinue),
+            findsOneWidget);
+      });
+    });
+
+    group('the OS back gesture', () {
+      testWidgets('steps back through the wizard instead of doing nothing',
+          (tester) async {
+        final api = _FakeApi();
+        await _pump(tester, api, await _prefs());
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        await _forward(tester, l10n);
+        expect(find.text(l10n.setupUnitsTitle), findsOneWidget);
+
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+
+        expect(find.text(l10n.setupNameTitle), findsOneWidget);
+        // Still on the wizard — the gesture never pops the route itself.
+        expect(find.text('open'), findsNothing);
+      });
+
+      testWidgets('on the first step it confirms, and Stay keeps the answers',
+          (tester) async {
+        final api = _FakeApi();
+        await _pump(tester, api, await _prefs());
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        await tester.enterText(find.byType(TextField).first, 'Alex');
+        await tester.pump();
+
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.setupLeaveTitle), findsOneWidget);
+
+        await tester.tap(find.widgetWithText(TextButton, l10n.setupLeaveStay));
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.setupNameTitle), findsOneWidget);
+        expect(api.markOnboardedCalled, isFalse);
+        expect(
+            tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+            'Alex');
+      });
+
+      testWidgets('confirming leaves the same way the header Skip does',
+          (tester) async {
+        final api = _FakeApi();
+        await _pump(tester, api, await _prefs());
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        await tester
+            .tap(find.widgetWithText(TextButton, l10n.setupLeaveConfirm));
+        await tester.pumpAndSettle();
+
+        expect(api.markOnboardedCalled, isTrue);
+        expect(api.completeOnboardingCalled, isFalse);
+        expect(find.text('open'), findsOneWidget);
+      });
+    });
+
+    group('answers survive a process death', () {
+      testWidgets('the typed name, the picked goal and the step cursor all '
+          'come back', (tester) async {
+        final api = _FakeApi();
+        final prefs = await _prefs();
+        // Mounted as `home` so the restored tree is the wizard itself —
+        // the route stack is the shell's to restore, not this screen's.
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: SetupWizardScreen(apiClient: api, preferences: prefs),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+
+        await tester.enterText(find.byType(TextField).first, 'Alex Runner');
+        await tester.pump();
+        await _forward(tester, l10n);
+        await _forward(tester, l10n);
+        await tester.ensureVisible(find.text(l10n.setupGoal5k));
+        await tester.pump();
+        await tester.tap(find.text(l10n.setupGoal5k));
+        await tester.pumpAndSettle();
+
+        await tester.restartAndRestore();
+        await tester.pumpAndSettle();
+
+        expect(find.text(l10n.setupGoalTitle), findsOneWidget);
+        expect(
+          tester.widget<Card>(find.ancestor(
+              of: find.text(l10n.setupGoal5k), matching: find.byType(Card))),
+          isNotNull,
+        );
+        expect(find.byIcon(Icons.check_circle), findsOneWidget);
+        await tester.tap(find.text(l10n.setupBack));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(l10n.setupBack));
+        await tester.pumpAndSettle();
+        expect(
+            tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+            'Alex Runner');
+      });
     });
 
     group('offline fail-safe exit (issue #246)', () {
@@ -279,8 +502,7 @@ void main() {
         final l10n = await AppLocalizations.delegate.load(const Locale('en'));
 
         for (var i = 0; i < onboardingTotalSteps - 1; i++) {
-          await tester.tap(find.text(l10n.setupContinue));
-          await tester.pumpAndSettle();
+          await _forward(tester, l10n);
         }
         await tester.tap(find.text(l10n.setupOpenDashboard));
         await tester.pumpAndSettle(const Duration(seconds: 4));
@@ -297,8 +519,7 @@ void main() {
     group('locale-derived unit default', () {
       Future<void> finish(WidgetTester tester, AppLocalizations l10n) async {
         for (var i = 0; i < onboardingTotalSteps - 1; i++) {
-          await tester.tap(find.text(l10n.setupContinue));
-          await tester.pumpAndSettle();
+          await _forward(tester, l10n);
         }
         await tester.tap(find.text(l10n.setupOpenDashboard));
         await tester.pumpAndSettle(const Duration(seconds: 4));
@@ -354,9 +575,8 @@ void main() {
         final l10n = await AppLocalizations.delegate.load(const Locale('en'));
 
         // Advance one step so the Back button shares the row with the
-        // wrapped Skip + Continue cluster.
-        await tester.tap(find.text(l10n.setupContinue));
-        await tester.pumpAndSettle();
+        // wrapped forward button.
+        await _forward(tester, l10n);
 
         expect(find.text(l10n.setupBack), findsOneWidget);
         expect(
@@ -386,17 +606,14 @@ void main() {
         await _pump(tester, api, await _prefs(), settingsSync: sync);
         final l10n = await AppLocalizations.delegate.load(const Locale('en'));
 
-        await tester.tap(find.text(l10n.setupContinue));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text(l10n.setupContinue));
-        await tester.pumpAndSettle();
+        await _forward(tester, l10n);
+        await _forward(tester, l10n);
         await tester.ensureVisible(find.text(l10n.setupGoal5k));
         await tester.pump();
         await tester.tap(find.text(l10n.setupGoal5k));
         await tester.pump();
         for (var i = 2; i < onboardingTotalSteps - 1; i++) {
-          await tester.tap(find.text(l10n.setupContinue));
-          await tester.pumpAndSettle();
+          await _forward(tester, l10n);
         }
         await tester.tap(find.text(l10n.setupCreatePlanCta));
         await tester.pumpAndSettle(const Duration(seconds: 7));
@@ -420,8 +637,7 @@ void main() {
         final l10n = await AppLocalizations.delegate.load(const Locale('en'));
 
         for (var i = 0; i < onboardingTotalSteps - 1; i++) {
-          await tester.tap(find.text(l10n.setupContinue));
-          await tester.pumpAndSettle();
+          await _forward(tester, l10n);
         }
         await tester.tap(find.text(l10n.setupOpenDashboard));
         await tester.pump();

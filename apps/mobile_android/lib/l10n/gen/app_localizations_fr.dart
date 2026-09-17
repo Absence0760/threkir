@@ -1310,6 +1310,19 @@ class AppLocalizationsFr extends AppLocalizations {
   String get setupSkipStep => 'Ignorer';
 
   @override
+  String get setupLeaveTitle => 'Quitter la configuration ?';
+
+  @override
+  String get setupLeaveBody =>
+      'Ce que vous avez saisi ici ne sera pas enregistré. Vous pourrez tout configurer plus tard depuis les Réglages.';
+
+  @override
+  String get setupLeaveStay => 'Continuer la configuration';
+
+  @override
+  String get setupLeaveConfirm => 'Quitter';
+
+  @override
   String get setupBack => 'Retour';
 
   @override

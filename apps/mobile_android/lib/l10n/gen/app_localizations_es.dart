@@ -1304,6 +1304,19 @@ class AppLocalizationsEs extends AppLocalizations {
   String get setupSkipStep => 'Omitir';
 
   @override
+  String get setupLeaveTitle => '¿Salir de la configuración?';
+
+  @override
+  String get setupLeaveBody =>
+      'Lo que hayas escrito aquí no se guardará. Puedes configurarlo todo más tarde desde Ajustes.';
+
+  @override
+  String get setupLeaveStay => 'Seguir configurando';
+
+  @override
+  String get setupLeaveConfirm => 'Salir';
+
+  @override
   String get setupBack => 'Atrás';
 
   @override

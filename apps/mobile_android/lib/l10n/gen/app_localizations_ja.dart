@@ -1249,6 +1249,18 @@ class AppLocalizationsJa extends AppLocalizations {
   String get setupSkipStep => 'スキップ';
 
   @override
+  String get setupLeaveTitle => 'セットアップを終了しますか？';
+
+  @override
+  String get setupLeaveBody => 'ここで入力した内容は保存されません。あとで設定からすべて指定できます。';
+
+  @override
+  String get setupLeaveStay => 'セットアップを続ける';
+
+  @override
+  String get setupLeaveConfirm => '終了';
+
+  @override
   String get setupBack => '戻る';
 
   @override

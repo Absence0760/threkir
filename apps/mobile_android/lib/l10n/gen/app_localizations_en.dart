@@ -1293,6 +1293,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setupSkipStep => 'Skip';
 
   @override
+  String get setupLeaveTitle => 'Leave setup?';
+
+  @override
+  String get setupLeaveBody =>
+      'Anything you\'ve entered here won\'t be saved. You can set all of it up later from Settings.';
+
+  @override
+  String get setupLeaveStay => 'Keep setting up';
+
+  @override
+  String get setupLeaveConfirm => 'Leave';
+
+  @override
   String get setupBack => 'Back';
 
   @override

@@ -1307,6 +1307,19 @@ class AppLocalizationsPt extends AppLocalizations {
   String get setupSkipStep => 'Saltar';
 
   @override
+  String get setupLeaveTitle => 'Sair da configuração?';
+
+  @override
+  String get setupLeaveBody =>
+      'O que introduziu aqui não será guardado. Pode configurar tudo mais tarde nas Definições.';
+
+  @override
+  String get setupLeaveStay => 'Continuar a configurar';
+
+  @override
+  String get setupLeaveConfirm => 'Sair';
+
+  @override
   String get setupBack => 'Voltar';
 
   @override
@@ -15417,6 +15430,19 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get setupSkipStep => 'Pular';
+
+  @override
+  String get setupLeaveTitle => 'Sair da configuração?';
+
+  @override
+  String get setupLeaveBody =>
+      'O que você digitou aqui não será salvo. Você pode configurar tudo mais tarde nas Configurações.';
+
+  @override
+  String get setupLeaveStay => 'Continuar configurando';
+
+  @override
+  String get setupLeaveConfirm => 'Sair';
 
   @override
   String get setupBack => 'Voltar';

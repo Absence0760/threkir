@@ -1310,6 +1310,19 @@ class AppLocalizationsDe extends AppLocalizations {
   String get setupSkipStep => 'Überspringen';
 
   @override
+  String get setupLeaveTitle => 'Einrichtung verlassen?';
+
+  @override
+  String get setupLeaveBody =>
+      'Was du hier eingegeben hast, wird nicht gespeichert. Du kannst alles später in den Einstellungen festlegen.';
+
+  @override
+  String get setupLeaveStay => 'Weiter einrichten';
+
+  @override
+  String get setupLeaveConfirm => 'Verlassen';
+
+  @override
   String get setupBack => 'Zurück';
 
   @override

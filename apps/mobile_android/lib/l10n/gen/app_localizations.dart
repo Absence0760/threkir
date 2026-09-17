@@ -2237,6 +2237,30 @@ abstract class AppLocalizations {
   /// **'Skip'**
   String get setupSkipStep;
 
+  /// Title of the confirm dialog raised when the OS back gesture is used on the first setup-wizard step
+  ///
+  /// In en, this message translates to:
+  /// **'Leave setup?'**
+  String get setupLeaveTitle;
+
+  /// Body of the setup-wizard leave-confirmation dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Anything you\'ve entered here won\'t be saved. You can set all of it up later from Settings.'**
+  String get setupLeaveBody;
+
+  /// Dismiss action on the setup-wizard leave dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Keep setting up'**
+  String get setupLeaveStay;
+
+  /// Confirm action on the setup-wizard leave dialog — exits the wizard the same way the header Skip does
+  ///
+  /// In en, this message translates to:
+  /// **'Leave'**
+  String get setupLeaveConfirm;
+
   /// Button that goes to the previous setup-wizard step
   ///
   /// In en, this message translates to:

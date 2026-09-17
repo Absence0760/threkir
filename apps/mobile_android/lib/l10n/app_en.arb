@@ -944,6 +944,14 @@
   "@gymTabRecords": {
     "description": "Gym peer strip entry opening personal records"
   },
+  "gymPeerRoutines": "Gym routines",
+  "@gymPeerRoutines": {
+    "description": "Gym peer strip entry opening the reusable strength routine library; named apart from session plans"
+  },
+  "gymPeerSessions": "Session plans",
+  "@gymPeerSessions": {
+    "description": "Gym peer strip entry opening timed yoga/pilates session plans; named apart from gym routines"
+  },
   "homeAskCoach": "Ask your coach",
   "@homeAskCoach": {
     "description": "Title of the pinned coach entry at the top of the Home dashboard"

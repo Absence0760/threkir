@@ -720,6 +720,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get gymTabRecords => 'Records';
 
   @override
+  String get gymPeerRoutines => 'Routines de gym';
+
+  @override
+  String get gymPeerSessions => 'Plans de séance';
+
+  @override
   String get homeAskCoach => 'Demander au coach';
 
   @override

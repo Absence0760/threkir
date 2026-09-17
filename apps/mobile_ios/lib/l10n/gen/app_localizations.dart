@@ -1217,6 +1217,18 @@ abstract class AppLocalizations {
   /// **'Records'**
   String get gymTabRecords;
 
+  /// Gym peer strip entry opening the reusable strength routine library; named apart from session plans
+  ///
+  /// In en, this message translates to:
+  /// **'Gym routines'**
+  String get gymPeerRoutines;
+
+  /// Gym peer strip entry opening timed yoga/pilates session plans; named apart from gym routines
+  ///
+  /// In en, this message translates to:
+  /// **'Session plans'**
+  String get gymPeerSessions;
+
   /// Title of the pinned coach entry at the top of the Home dashboard
   ///
   /// In en, this message translates to:

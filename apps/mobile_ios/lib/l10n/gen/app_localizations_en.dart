@@ -713,6 +713,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gymTabRecords => 'Records';
 
   @override
+  String get gymPeerRoutines => 'Gym routines';
+
+  @override
+  String get gymPeerSessions => 'Session plans';
+
+  @override
   String get homeAskCoach => 'Ask your coach';
 
   @override

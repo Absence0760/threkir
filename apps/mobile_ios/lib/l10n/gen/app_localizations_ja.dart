@@ -693,6 +693,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get gymTabRecords => '記録';
 
   @override
+  String get gymPeerRoutines => 'ジムルーティン';
+
+  @override
+  String get gymPeerSessions => 'セッションプラン';
+
+  @override
   String get homeAskCoach => 'コーチに相談';
 
   @override

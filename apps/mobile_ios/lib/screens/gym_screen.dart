@@ -121,10 +121,11 @@ List<String> gymExerciseSuggestions(List<StoredGymWorkout> workouts) {
 /// fetch overlays the latest workouts on mount and pending writes drain on
 /// the next online refresh.
 ///
-/// A labelled peer strip `Log · Routines · Sessions · Records` sits above the
-/// list, mirroring web `/gym`'s header links — the gym's planning surfaces
-/// (routines, session plans) are named destinations rather than tooltip-only
-/// AppBar glyphs (decisions § 488).
+/// A labelled peer strip `Log · Gym routines · Session plans · Records` sits
+/// above the list, mirroring web `/gym`'s destination links — the gym's
+/// planning surfaces are named destinations rather than tooltip-only AppBar
+/// glyphs (decisions § 488), and the two planning names say which is the
+/// strength template and which the timed yoga / pilates sequence.
 class GymScreen extends StatefulWidget {
   /// Optional. When null (no Supabase env vars OR signed-out) the screen
   /// reads + writes exclusively to [LocalGymStore]; the pending queue
@@ -320,18 +321,19 @@ class _GymScreenState extends State<GymScreen> {
     );
   }
 
-  /// `Log · Routines · Sessions · Records`. Routines waits on the routine
-  /// store's disk hydration; Sessions reads the server, so it needs a
-  /// signed-in client; Records is data-gated exactly as web's header link is.
+  /// `Log · Gym routines · Session plans · Records`. Routines waits on the
+  /// routine store's disk hydration; session plans read the server, so they
+  /// need a signed-in client; Records is data-gated exactly as web's link is.
   List<SurfacePeer> _peers(
       AppLocalizations l10n, List<StoredGymWorkout> workouts) {
     final api = widget.api;
     return [
       SurfacePeer(label: l10n.gymTabLog),
       if (_routineStoreReady)
-        SurfacePeer(label: l10n.gymRoutineTitle, onTap: _openRoutines),
+        SurfacePeer(label: l10n.gymPeerRoutines, onTap: _openRoutines),
       if (api != null && api.userId != null)
-        SurfacePeer(label: l10n.sessionTitle, onTap: () => _openSessions(api)),
+        SurfacePeer(
+            label: l10n.gymPeerSessions, onTap: () => _openSessions(api)),
       if (exerciseRecords(gymSetHistory(workouts)).isNotEmpty)
         SurfacePeer(label: l10n.gymTabRecords, onTap: _openRecords),
     ];

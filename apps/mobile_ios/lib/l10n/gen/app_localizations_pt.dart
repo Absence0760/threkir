@@ -722,6 +722,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get gymTabRecords => 'Recordes';
 
   @override
+  String get gymPeerRoutines => 'Rotinas de ginásio';
+
+  @override
+  String get gymPeerSessions => 'Planos de sessão';
+
+  @override
   String get homeAskCoach => 'Pergunte ao seu treinador';
 
   @override
@@ -14794,6 +14800,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get gymTabRecords => 'Recordes';
+
+  @override
+  String get gymPeerRoutines => 'Rotinas de academia';
+
+  @override
+  String get gymPeerSessions => 'Planos de sessão';
 
   @override
   String get homeAskCoach => 'Pergunte ao seu treinador';

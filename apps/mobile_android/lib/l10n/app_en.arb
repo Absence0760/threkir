@@ -15766,6 +15766,10 @@
   "@challengesDelete": {
     "description": "Delete a challenge button"
   },
+  "challengesDeleteChallenge": "Delete challenge",
+  "@challengesDeleteChallenge": {
+    "description": "Overflow-menu action that deletes the whole challenge, named for what it deletes"
+  },
   "challengesMetricDistance": "Distance",
   "@challengesMetricDistance": {
     "description": "Distance metric label"

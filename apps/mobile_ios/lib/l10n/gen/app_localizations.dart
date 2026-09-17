@@ -20013,6 +20013,12 @@ abstract class AppLocalizations {
   /// **'Delete'**
   String get challengesDelete;
 
+  /// Overflow-menu action that deletes the whole challenge, named for what it deletes
+  ///
+  /// In en, this message translates to:
+  /// **'Delete challenge'**
+  String get challengesDeleteChallenge;
+
   /// Distance metric label
   ///
   /// In en, this message translates to:

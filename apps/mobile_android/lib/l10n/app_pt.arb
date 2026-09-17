@@ -3479,6 +3479,7 @@
   "challengesJoin": "Entrar",
   "challengesLeave": "Sair",
   "challengesDelete": "Eliminar",
+  "challengesDeleteChallenge": "Eliminar desafio",
   "challengesMetricDistance": "Distância",
   "challengesMetricDuration": "Tempo",
   "challengesMetricVert": "Elevação",

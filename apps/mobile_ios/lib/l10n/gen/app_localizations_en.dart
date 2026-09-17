@@ -12019,6 +12019,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get challengesDelete => 'Delete';
 
   @override
+  String get challengesDeleteChallenge => 'Delete challenge';
+
+  @override
   String get challengesMetricDistance => 'Distance';
 
   @override

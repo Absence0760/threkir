@@ -12172,6 +12172,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get challengesDelete => 'Supprimer';
 
   @override
+  String get challengesDeleteChallenge => 'Supprimer le défi';
+
+  @override
   String get challengesMetricDistance => 'Distance';
 
   @override

@@ -3479,6 +3479,7 @@
   "challengesJoin": "参加",
   "challengesLeave": "退出",
   "challengesDelete": "削除",
+  "challengesDeleteChallenge": "チャレンジを削除",
   "challengesMetricDistance": "距離",
   "challengesMetricDuration": "時間",
   "challengesMetricVert": "獲得標高",

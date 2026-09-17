@@ -11563,6 +11563,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get challengesDelete => '削除';
 
   @override
+  String get challengesDeleteChallenge => 'チャレンジを削除';
+
+  @override
   String get challengesMetricDistance => '距離';
 
   @override

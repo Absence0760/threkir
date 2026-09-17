@@ -12144,6 +12144,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get challengesDelete => 'Eliminar';
 
   @override
+  String get challengesDeleteChallenge => 'Eliminar desafío';
+
+  @override
   String get challengesMetricDistance => 'Distancia';
 
   @override

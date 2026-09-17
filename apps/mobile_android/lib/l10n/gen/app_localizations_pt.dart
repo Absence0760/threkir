@@ -12146,6 +12146,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get challengesDelete => 'Eliminar';
 
   @override
+  String get challengesDeleteChallenge => 'Eliminar desafio';
+
+  @override
   String get challengesMetricDistance => 'Distância';
 
   @override
@@ -26208,6 +26211,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get challengesDelete => 'Excluir';
+
+  @override
+  String get challengesDeleteChallenge => 'Excluir desafio';
 
   @override
   String get challengesMetricDistance => 'Distância';

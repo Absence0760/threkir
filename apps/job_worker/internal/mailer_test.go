@@ -161,7 +161,7 @@ func TestRenderNotificationEmail_EventReminderDeepLink(t *testing.T) {
 	if !strings.Contains(msg.Body, "https://threkir.test/events/evt-42") {
 		t.Errorf("body should deep-link to the event, got:\n%s", msg.Body)
 	}
-	if msg.ListUnsubscribe != "https://threkir.test/settings/preferences" {
+	if msg.ListUnsubscribe != "https://threkir.test/settings/notifications" {
 		t.Errorf("unexpected unsubscribe URL: %q", msg.ListUnsubscribe)
 	}
 	// Trailing slash on baseURL must not double up.
@@ -256,11 +256,11 @@ func TestRenderNotificationEmail_AllKinds(t *testing.T) {
 		if !strings.Contains(msg.HTML, brandName) {
 			t.Errorf("%s: HTML missing the %s brand header", c.kind, brandName)
 		}
-		if msg.ListUnsubscribe != base+"/settings/preferences" {
+		if msg.ListUnsubscribe != base+"/settings/notifications" {
 			t.Errorf("%s: unexpected unsubscribe URL %q", c.kind, msg.ListUnsubscribe)
 		}
-		if !strings.Contains(msg.Body, base+"/settings/preferences") ||
-			!strings.Contains(msg.HTML, base+"/settings/preferences") {
+		if !strings.Contains(msg.Body, base+"/settings/notifications") ||
+			!strings.Contains(msg.HTML, base+"/settings/notifications") {
 			t.Errorf("%s: missing manage-preferences footer", c.kind)
 		}
 	}
@@ -367,8 +367,8 @@ func TestRenderLifecycleEmail_Welcome(t *testing.T) {
 	if !strings.Contains(msg.Body, "Thanks for signing up") {
 		t.Errorf("body should thank the user:\n%s", msg.Body)
 	}
-	if !strings.Contains(msg.Body, "https://threkir.test/settings/preferences") {
-		t.Errorf("body should link to preferences:\n%s", msg.Body)
+	if !strings.Contains(msg.Body, "https://threkir.test/settings/notifications") {
+		t.Errorf("body should link to the notification preferences:\n%s", msg.Body)
 	}
 	// No trailing-slash double-up from the base URL.
 	if strings.Contains(msg.Body, "threkir.test//") {
@@ -386,7 +386,7 @@ func TestRenderLifecycleEmail_Welcome(t *testing.T) {
 		"<!DOCTYPE html>", brandName,
 		"Welcome to Threkir",
 		`href="https://threkir.test"`, // CTA → app root (no trailing slash)
-		"https://threkir.test/settings/preferences",
+		"https://threkir.test/settings/notifications",
 	} {
 		if !strings.Contains(msg.HTML, want) {
 			t.Errorf("welcome HTML missing %q in:\n%s", want, msg.HTML)
@@ -431,13 +431,13 @@ func TestBuildMIME_HeadersAndCRLF(t *testing.T) {
 	raw := buildMIME("Threkir <noreply@threkir.com>", "runner@test.com", Email{
 		Subject:         "Hi",
 		Body:            "line one\nline two",
-		ListUnsubscribe: "https://threkir.test/settings/preferences",
+		ListUnsubscribe: "https://threkir.test/settings/notifications",
 	})
 	for _, want := range []string{
 		"From: Threkir <noreply@threkir.com>\r\n",
 		"To: runner@test.com\r\n",
 		"Subject: Hi\r\n",
-		"List-Unsubscribe: <https://threkir.test/settings/preferences>\r\n",
+		"List-Unsubscribe: <https://threkir.test/settings/notifications>\r\n",
 		"Content-Type: text/plain; charset=UTF-8\r\n",
 		"\r\n\r\n",             // header/body separator
 		"line one\r\nline two", // body LF rewritten to CRLF

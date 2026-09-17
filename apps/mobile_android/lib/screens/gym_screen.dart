@@ -6,6 +6,7 @@ import 'package:ui_kit/ui_kit.dart';
 import '../adaptive_width.dart';
 import '../backend_timeout.dart';
 import '../exercise_records.dart';
+import '../fab_clearance.dart';
 import '../gym_prs.dart';
 import '../gym_session_draft.dart';
 import '../l10n/date_format.dart';
@@ -456,19 +457,23 @@ class _GymScreenState extends State<GymScreen>
     final workouts = widget.store.workouts;
     final pending = widget.store.hasPending || _routineStore.hasPending;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.gymTitle),
-        actions: [
-          // Never gated on the arrival refresh: logging a lift is an
-          // offline-first write, and the one thing the refresh feeds the
-          // composer — the exercise catalogue — reaches an already-open sheet
-          // through its own listenable (§ 1571).
-          IconButton(
-            tooltip: l10n.gymLog,
-            icon: const Icon(Icons.add),
-            onPressed: _create,
-          ),
-        ],
+      appBar: AppBar(title: Text(l10n.gymTitle)),
+      // The Fitness hub's modality tabs all put their add in the same place,
+      // so switching tabs doesn't move the one control the surface exists for
+      // — it used to be a top-right glyph here and a bottom-right FAB on the
+      // run tabs. Never gated on the arrival refresh: logging a lift is an
+      // offline-first write, and the one thing that refresh feeds the composer
+      // — the exercise catalogue — reaches an already-open sheet through its
+      // own listenable (§ 1571).
+      //
+      // The tag is per-mount because the hub's Gym tab and the shell's Gym
+      // capture page are both alive at once.
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: ObjectKey(this),
+        onPressed: _create,
+        icon: const Icon(Icons.add),
+        label: Text(l10n.gymLog),
+        tooltip: l10n.gymLog,
       ),
       body: contentColumn(
         context,
@@ -527,7 +532,7 @@ class _GymScreenState extends State<GymScreen>
     final prIds = gymPrWorkoutIds(workouts);
     final tag = localeToTag(Localizations.localeOf(context));
     return ListView.separated(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, fabScrollClearance(context)),
       itemCount: workouts.length,
       separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (_, i) {

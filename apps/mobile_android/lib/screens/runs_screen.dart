@@ -90,6 +90,13 @@ class RunsScreen extends StatefulWidget {
   /// Null keeps the range + count title (the All tab + standalone mounts).
   final String? titleText;
 
+  /// When false the screen renders no add FAB of its own. The Fitness hub's
+  /// History tab passes false: its add is the cross-modal run / lift / meal
+  /// picker, which is exactly what the shell's centre Log button one row below
+  /// already opens — two "+" buttons on screen at once for one action. Every
+  /// other mount's add is modality-specific, so it keeps its FAB.
+  final bool showAddFab;
+
   const RunsScreen({
     super.key,
     this.apiClient,
@@ -103,6 +110,7 @@ class RunsScreen extends StatefulWidget {
     this.surfacePeers,
     this.showSyncActions = true,
     this.titleText,
+    this.showAddFab = true,
   });
 
   @override
@@ -1014,7 +1022,8 @@ class _RunsScreenState extends State<RunsScreen>
                   Expanded(child: _buildBody(theme, l10n, unit, totalCount)),
                 ],
               ),
-        floatingActionButton: _selecting ? null : _buildAddFab(l10n),
+        floatingActionButton:
+            (_selecting || !widget.showAddFab) ? null : _buildAddFab(l10n),
       ),
     );
   }

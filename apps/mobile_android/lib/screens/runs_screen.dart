@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, SelectionHint;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSemanticColors, EmptyState, SelectionHint;
 
 import '../adaptive_width.dart';
 import '../auth_error.dart';
@@ -1324,7 +1325,18 @@ class _RunsScreenState extends State<RunsScreen>
     // their timeline — only fall back to the "no runs" empty state when there
     // is genuinely nothing across any modality (mirrors web's gym-only fix).
     if (totalCount == 0 && !_hasModalityData) {
-      return _EmptyRuns(theme: theme, l10n: l10n);
+      // This is where a brand-new account lands, so it owes an action rather
+      // than only a sentence: the body names the shell's Log button (the Run
+      // tab it used to name was deleted by decisions § 139) and the CTA logs
+      // a run the user has already finished, which is the one add this screen
+      // can perform on its own.
+      return EmptyState(
+        icon: Icons.directions_run,
+        title: l10n.historyEmptyTitle,
+        body: l10n.historyEmptyBody,
+        ctaLabel: l10n.historyAddRun,
+        onCta: _openAddRun,
+      );
     }
 
     Widget content;
@@ -1791,33 +1803,6 @@ class _KindChipRow extends StatelessWidget {
             ],
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _EmptyRuns extends StatelessWidget {
-  final ThemeData theme;
-  final AppLocalizations l10n;
-  const _EmptyRuns({required this.theme, required this.l10n});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.directions_run, size: 64, color: theme.colorScheme.outline),
-          const SizedBox(height: 16),
-          Text(l10n.historyEmptyTitle, style: theme.textTheme.headlineSmall),
-          const SizedBox(height: 8),
-          Text(
-            l10n.historyEmptyBody,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
       ),
     );
   }

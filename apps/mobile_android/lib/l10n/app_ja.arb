@@ -603,7 +603,7 @@
   "historyTimelineEmpty": "このビューにはまだ記録がありません。",
   "historyClearFilters": "フィルターをクリア",
   "historyEmptyTitle": "まだランがありません",
-  "historyEmptyBody": "「ラン」タブをタップして最初のランを始めましょう",
+  "historyEmptyBody": "「記録」をタップしてランを記録するか、すでに走ったランを追加しましょう",
   "historyFilterAll": "すべて",
   "historySourceAll": "すべてのソース",
   "historySourceLabel": "ソース: {source}",

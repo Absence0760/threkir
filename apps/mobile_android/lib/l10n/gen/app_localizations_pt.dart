@@ -2210,7 +2210,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get historyEmptyBody =>
-      'Toque na separador Correr para iniciar a sua primeira corrida';
+      'Toque em Registar para gravar uma corrida ou adicione uma que já tenha feito';
 
   @override
   String get historyFilterAll => 'Todas';
@@ -16318,7 +16318,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get historyEmptyBody =>
-      'Toque na aba Correr para iniciar sua primeira corrida';
+      'Toque em Registrar para gravar uma corrida ou adicione uma que você já fez';
 
   @override
   String get historyFilterAll => 'Todas';

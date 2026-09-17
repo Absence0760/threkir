@@ -2094,7 +2094,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get historyEmptyTitle => 'まだランがありません';
 
   @override
-  String get historyEmptyBody => '「ラン」タブをタップして最初のランを始めましょう';
+  String get historyEmptyBody => '「記録」をタップしてランを記録するか、すでに走ったランを追加しましょう';
 
   @override
   String get historyFilterAll => 'すべて';

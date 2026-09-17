@@ -603,7 +603,7 @@
   "historyTimelineEmpty": "Nada registrado nesta visualização ainda.",
   "historyClearFilters": "Limpar filtros",
   "historyEmptyTitle": "Ainda não há corridas",
-  "historyEmptyBody": "Toque na aba Correr para iniciar sua primeira corrida",
+  "historyEmptyBody": "Toque em Registrar para gravar uma corrida ou adicione uma que você já fez",
   "historyFilterAll": "Todas",
   "historySourceAll": "Todas as fontes",
   "historySourceLabel": "Fonte: {source}",

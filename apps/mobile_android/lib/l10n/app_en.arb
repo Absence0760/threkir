@@ -2858,7 +2858,7 @@
   "@historyEmptyTitle": {
     "description": "Empty-state title shown when the store has no runs at all"
   },
-  "historyEmptyBody": "Tap the Run tab to start your first run",
+  "historyEmptyBody": "Tap Log to record a run, or add one you have already finished",
   "@historyEmptyBody": {
     "description": "Empty-state body shown when the store has no runs at all"
   },

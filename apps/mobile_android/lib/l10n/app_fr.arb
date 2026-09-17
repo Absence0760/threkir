@@ -603,7 +603,7 @@
   "historyTimelineEmpty": "Rien d'enregistré dans cette vue pour l'instant.",
   "historyClearFilters": "Effacer les filtres",
   "historyEmptyTitle": "Aucune course pour l'instant",
-  "historyEmptyBody": "Touchez l'onglet Course pour démarrer votre première course",
+  "historyEmptyBody": "Touchez Ajouter pour enregistrer une course, ou ajoutez-en une déjà terminée",
   "historyFilterAll": "Toutes",
   "historySourceAll": "Toutes les sources",
   "historySourceLabel": "Source : {source}",

@@ -2219,7 +2219,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get historyEmptyBody =>
-      'Touchez l\'onglet Course pour démarrer votre première course';
+      'Touchez Ajouter pour enregistrer une course, ou ajoutez-en une déjà terminée';
 
   @override
   String get historyFilterAll => 'Toutes';

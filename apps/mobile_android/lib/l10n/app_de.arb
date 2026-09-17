@@ -603,7 +603,7 @@
   "historyTimelineEmpty": "In dieser Ansicht ist noch nichts erfasst.",
   "historyClearFilters": "Filter zurücksetzen",
   "historyEmptyTitle": "Noch keine Läufe",
-  "historyEmptyBody": "Tippe auf den Lauf-Tab, um deinen ersten Lauf zu starten",
+  "historyEmptyBody": "Tippe auf Erfassen, um einen Lauf aufzuzeichnen, oder füge einen bereits absolvierten hinzu",
   "historyFilterAll": "Alle",
   "historySourceAll": "Alle Quellen",
   "historySourceLabel": "Quelle: {source}",

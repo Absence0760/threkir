@@ -2188,7 +2188,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyEmptyTitle => 'No runs yet';
 
   @override
-  String get historyEmptyBody => 'Tap the Run tab to start your first run';
+  String get historyEmptyBody =>
+      'Tap Log to record a run, or add one you have already finished';
 
   @override
   String get historyFilterAll => 'All';

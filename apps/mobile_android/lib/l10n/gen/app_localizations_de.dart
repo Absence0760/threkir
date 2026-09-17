@@ -2215,7 +2215,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get historyEmptyBody =>
-      'Tippe auf den Lauf-Tab, um deinen ersten Lauf zu starten';
+      'Tippe auf Erfassen, um einen Lauf aufzuzeichnen, oder füge einen bereits absolvierten hinzu';
 
   @override
   String get historyFilterAll => 'Alle';

@@ -2210,7 +2210,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get historyEmptyBody =>
-      'Toca la pestaña Correr para iniciar tu primera carrera';
+      'Toca Registrar para grabar una carrera o añade una que ya hayas hecho';
 
   @override
   String get historyFilterAll => 'Todas';

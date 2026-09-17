@@ -3734,7 +3734,7 @@ abstract class AppLocalizations {
   /// Empty-state body shown when the store has no runs at all
   ///
   /// In en, this message translates to:
-  /// **'Tap the Run tab to start your first run'**
+  /// **'Tap Log to record a run, or add one you have already finished'**
   String get historyEmptyBody;
 
   /// Activity filter chip that clears the activity filter (shows all activities)

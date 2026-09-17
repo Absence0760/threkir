@@ -6626,6 +6626,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t update your display name. Please try again.';
 
   @override
+  String get settingsAccountProfileLoadFailed =>
+      'Couldn\'t load your profile, so your photo and display name can\'t be changed yet.';
+
+  @override
   String get settingsAccountErrorReportingEnabled =>
       'Error reporting enabled — restart the app to apply.';
 

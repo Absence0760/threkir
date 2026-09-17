@@ -1847,6 +1847,7 @@
   "settingsAccountDisplayNameUnset": "Non défini — tu apparais comme « Runner »",
   "settingsAccountDisplayNameUpdated": "Nom affiché mis à jour",
   "settingsAccountDisplayNameUpdateFailed": "Échec de la mise à jour du nom affiché. Réessaie.",
+  "settingsAccountProfileLoadFailed": "Impossible de charger ton profil : tu ne peux pas encore modifier ta photo ni ton nom affiché.",
   "settingsAccountErrorReportingEnabled": "Rapports d'erreur activés — redémarre l'app pour appliquer.",
   "settingsAccountErrorReportingDisabled": "Rapports d'erreur désactivés — redémarre l'app pour appliquer.",
   "settingsAccountImport": "Importer depuis une autre app",

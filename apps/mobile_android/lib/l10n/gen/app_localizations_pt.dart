@@ -6696,6 +6696,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Falha ao atualizar o nome de exibição. Tente novamente.';
 
   @override
+  String get settingsAccountProfileLoadFailed =>
+      'Não foi possível carregar o seu perfil, por isso ainda não pode alterar a foto nem o nome de exibição.';
+
+  @override
   String get settingsAccountErrorReportingEnabled =>
       'Relatórios de erro ativados — reinicie o app para aplicar.';
 
@@ -20795,6 +20799,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get settingsAccountDisplayNameUpdateFailed =>
       'Falha ao atualizar o nome de exibição. Tente novamente.';
+
+  @override
+  String get settingsAccountProfileLoadFailed =>
+      'Não foi possível carregar seu perfil, então você ainda não pode alterar a foto nem o nome de exibição.';
 
   @override
   String get settingsAccountErrorReportingEnabled =>

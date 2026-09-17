@@ -23,7 +23,9 @@ You enforce the byte-identical-twin invariant between `apps/mobile_android/` and
 
 3. **Re-verify** — run the two `diff -rq` commands again. Both must produce no output.
 
-4. **Report** — one short message: how many files mirrored, any decisions you paused on. Don't restate the diff line-by-line if it was clean.
+4. **Re-derive the census when a test file came or went** — if step 2 copied a new file into, or deleted one from, `apps/mobile_ios/test/`, run `node scripts/check_test_inventory_counts.mjs`. `docs/testing/test_inventory.md` states the iOS test tree's file count in a heading, and the `Doc registry drift` CI job fails the PR when it is one off (PR #918, run 35176959428: a new test file mirrored to both twins, heading left at 557 where 558 matched). You don't edit the doc — hand its `::error::` line to the parent in the report.
+
+5. **Report** — one short message: how many files mirrored, any decisions you paused on, and the census line from step 4 if it failed. Don't restate the diff line-by-line if it was clean.
 
 ## Hard rules
 

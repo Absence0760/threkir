@@ -6310,6 +6310,10 @@ class AppLocalizationsJa extends AppLocalizations {
       '表示名を更新できませんでした。もう一度お試しください。';
 
   @override
+  String get settingsAccountProfileLoadFailed =>
+      'プロフィールを読み込めなかったため、写真と表示名はまだ変更できません。';
+
+  @override
   String get settingsAccountErrorReportingEnabled =>
       'エラーレポートを有効にしました — 適用するにはアプリを再起動してください。';
 

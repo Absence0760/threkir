@@ -8894,6 +8894,10 @@
   "@settingsAccountDisplayNameUpdateFailed": {
     "description": "Banner shown when the display-name save fails"
   },
+  "settingsAccountProfileLoadFailed": "Couldn't load your profile, so your photo and display name can't be changed yet.",
+  "@settingsAccountProfileLoadFailed": {
+    "description": "Shown in place of the profile photo and display-name tiles when the profile read fails; paired with a Retry button"
+  },
   "settingsAccountErrorReportingEnabled": "Error reporting enabled — restart the app to apply.",
   "@settingsAccountErrorReportingEnabled": {
     "description": "Banner shown after enabling error reporting"

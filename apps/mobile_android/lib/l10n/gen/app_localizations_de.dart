@@ -6710,6 +6710,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Anzeigename konnte nicht aktualisiert werden. Bitte versuche es erneut.';
 
   @override
+  String get settingsAccountProfileLoadFailed =>
+      'Dein Profil konnte nicht geladen werden, daher kannst du Foto und Anzeigenamen noch nicht ändern.';
+
+  @override
   String get settingsAccountErrorReportingEnabled =>
       'Fehlerberichte aktiviert — App neu starten, um sie anzuwenden.';
 

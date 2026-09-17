@@ -48,7 +48,7 @@ test.describe('gym metric labels', () => {
 	test('the records page names the estimate in its subtitle, with a disclosure', async ({ page }) => {
 		await page.goto('/gym/records');
 		const subtitle = page.locator('.head-sub');
-		await expect(subtitle).toContainText('Each card leads with your best estimated one-rep max (1RM).');
+		await expect(subtitle).toContainText('Each card leads with your best estimated one-rep max (1RM)');
 		await expect(subtitle).not.toContainText('{term}');
 		await subtitle.getByRole('button', { name: /^About estimated one-rep max/ }).click();
 		await expect(page.getByTestId('metric-definition-e1rm')).toBeVisible();

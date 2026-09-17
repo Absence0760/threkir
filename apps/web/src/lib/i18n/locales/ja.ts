@@ -4355,8 +4355,11 @@ export const messages = {
 	// Gym routines (gym_programming.md slice P1)
 	"gym.routine.title": "ルーティン",
 	"gym.routine.subtitle": "{count, plural, other {#件のルーティン}}",
-	"gym.routine.link": "ルーティン",
-	"gym.sessions.link": "セッション",
+	"gym.routine.link": "ジムルーティン",
+	"gym.routine.linkDesc": "繰り返し使える筋トレメニュー：種目ごとのセット数・回数・重量。",
+	"gym.sessions.link": "セッションプラン",
+	"gym.sessions.linkDesc": "タイマーに沿って進めるヨガ・ピラティス・モビリティのシーケンス。",
+	"gym.destinationsAria": "ルーティン、セッションプラン、記録",
 	"gym.routine.new": "新しいルーティン",
 	"gym.routine.loadError": "ルーティンを読み込めませんでした。",
 	"gym.routine.deleteFailed": "このルーティンを削除できませんでした。",

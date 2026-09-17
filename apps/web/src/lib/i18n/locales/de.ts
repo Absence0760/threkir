@@ -4360,8 +4360,11 @@ export const messages = {
 	// Gym routines (gym_programming.md slice P1)
 	"gym.routine.title": "Routinen",
 	"gym.routine.subtitle": "{count, plural, one {# Routine} other {# Routinen}}",
-	"gym.routine.link": "Routinen",
-	"gym.sessions.link": "Sessions",
+	"gym.routine.link": "Gym-Routinen",
+	"gym.routine.linkDesc": "Wiederverwendbare Krafttrainings: Übungen mit Sätzen, Wiederholungen und Gewicht.",
+	"gym.sessions.link": "Session-Pläne",
+	"gym.sessions.linkDesc": "Zeitlich getaktete Yoga-, Pilates- und Mobility-Abfolgen zum Mitmachen.",
+	"gym.destinationsAria": "Routinen, Session-Pläne und Rekorde",
 	"gym.routine.new": "Neue Routine",
 	"gym.routine.loadError": "Deine Routinen konnten nicht geladen werden.",
 	"gym.routine.deleteFailed": "Diese Routine konnte nicht gelöscht werden.",

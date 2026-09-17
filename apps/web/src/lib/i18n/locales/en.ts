@@ -4377,8 +4377,11 @@ export const en = {
 	// Gym routines (gym_programming.md slice P1)
 	"gym.routine.title": "Routines",
 	"gym.routine.subtitle": "{count, plural, one {# routine} other {# routines}}",
-	"gym.routine.link": "Routines",
-	"gym.sessions.link": "Sessions",
+	"gym.routine.link": "Gym routines",
+	"gym.routine.linkDesc": "Reusable strength workouts: exercises with sets, reps and load.",
+	"gym.sessions.link": "Session plans",
+	"gym.sessions.linkDesc": "Timed yoga, pilates and mobility sequences to follow along with.",
+	"gym.destinationsAria": "Routines, session plans and records",
 	"gym.routine.new": "New routine",
 	"gym.routine.loadError": "Couldn't load your routines.",
 	"gym.routine.deleteFailed": "Couldn’t delete this routine.",

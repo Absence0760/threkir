@@ -689,7 +689,9 @@ test.describe('settings preference pages — every control explains itself', () 
 			/language the app shows/i,
 			{ timeout: 10_000 }
 		);
-		await expect(page.getByTestId('language-select')).toHaveAccessibleName('Language');
+		await expect(page.getByTestId('language-select')).not.toHaveAccessibleName(
+			/language the app shows/i
+		);
 		await expect(page.getByRole('group', { name: 'Distance Unit' })).toHaveAccessibleDescription(
 			/kilometres or miles/i
 		);

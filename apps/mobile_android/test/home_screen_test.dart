@@ -684,7 +684,9 @@ void main() {
       final s = await _makeStores();
       await _seedLoggedLift(tester, s);
       await _pump(tester, s);
-      await tester.tap(find.byType(FloatingActionButton));
+      // Scoped to the shell's centre Log FAB by its tooltip: the Gym page
+      // carries its own add FAB, so byType matches two here.
+      await tester.tap(find.byTooltip('Log'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       await tester.tap(find.byTooltip('Log lift'));
@@ -692,7 +694,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       expect(shellPage(tester), 3);
 
-      await tester.tap(find.byType(FloatingActionButton));
+      // Scoped to the shell's centre Log FAB by its tooltip: the Gym page
+      // carries its own add FAB, so byType matches two here.
+      await tester.tap(find.byTooltip('Log'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       await tester.tap(find.byTooltip('Log lift'));

@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppMotion, motionDuration, reduceMotion;
+    show AppIconSize, AppMotion, motionDuration, reduceMotion;
 
 import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart';
@@ -364,7 +364,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         children: [
           const SizedBox(height: 8),
           Icon(Icons.cloud_sync_outlined,
-              size: 56, color: theme.colorScheme.primary),
+              size: AppIconSize.hero, color: theme.colorScheme.primary),
           const SizedBox(height: 20),
           Text(
             l10n.onboardingAccountTitle,

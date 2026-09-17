@@ -15,6 +15,7 @@ import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/dashboard_screen.dart';
+import '../lib/widgets/pending_sync_banner.dart';
 import 'pump_until.dart';
 import 'store_write_watch.dart';
 
@@ -217,6 +218,35 @@ void main() {
       await pumpUntil(
           tester, () => find.text('Welcome!').evaluate().isNotEmpty,
           describe: 'the history probe to come back empty');
+      await pumpUntilStoreWritesSettle(tester);
+    });
+  });
+
+  group('Home discloses what has not reached the server', () {
+    testWidgets('an unsynced lift raises the banner Home never had',
+        (tester) async {
+      final s = await _stores();
+      await tester.runAsync(() => s.gymStore.createLocal(
+            title: 'Push day',
+            startedAt: DateTime.now(),
+            sets: const [
+              (
+                exerciseName: 'Bench',
+                reps: 8,
+                weightKg: 60.0,
+                rpe: null,
+                setType: null,
+                durationS: null,
+                exerciseId: null,
+              ),
+            ],
+          ));
+      await _pump(tester, s);
+      await tester.pump();
+      // Home was the one offline-first surface with no pending disclosure at
+      // all, so a row that never reached the server was invisible here.
+      expect(find.byType(PendingSyncBanner), findsOneWidget);
+      expect(find.textContaining('saved on this device'), findsOneWidget);
       await pumpUntilStoreWritesSettle(tester);
     });
   });

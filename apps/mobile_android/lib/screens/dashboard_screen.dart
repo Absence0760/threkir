@@ -1120,6 +1120,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             children: [
               actionToolbar,
+              pendingBanner,
               if (coach != null) ...[coach, _kSectionGap],
               if (workoutCard != null || modalityBody != null)
                 Row(
@@ -1176,6 +1177,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           children: [
             actionToolbar,
+            pendingBanner,
             if (coach != null) ...[coach, _kSectionGap],
             if (workoutCard != null) ...[workoutCard, _kSectionGap],
             // Today's logged non-run modalities (gym + nutrition).

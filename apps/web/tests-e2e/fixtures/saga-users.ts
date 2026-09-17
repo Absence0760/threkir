@@ -122,7 +122,15 @@ export async function createSagaUsers(
 	try {
 		await Promise.all(
 			users.map(async (user, i) => {
-				const ctx = await browser.newContext({ baseURL });
+				// An explicit empty state. Inside a test, `test.use({ storageState })`
+				// is the default for every context the worker opens, this one
+				// included, so a caller under USER_A reached /login signed in,
+				// was sent on to /dashboard, and waited out its test for an
+				// email field that never rendered.
+				const ctx = await browser.newContext({
+					baseURL,
+					storageState: { cookies: [], origins: [] }
+				});
 				const page = await ctx.newPage();
 				try {
 					await page.goto('/login');

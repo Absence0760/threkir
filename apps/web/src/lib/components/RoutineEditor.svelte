@@ -4,6 +4,8 @@
 	import { namesAnExercise, normaliseExerciseName } from '$lib/gym/gym_prs';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { m as t } from '$lib/i18n/store.svelte';
+	import MetricLabel from '$lib/components/MetricLabel.svelte';
+	import { metricName } from '$lib/metrics/metric_name';
 	import { parseWeight, weightInputValue, weightUnitLabel } from '$lib/format/units.svelte';
 	import type { PrefillExercise } from '$lib/gym/gym_routine';
 	import { assignSupersetGroups } from '$lib/gym/routine_editor_build';
@@ -32,6 +34,7 @@
 		oncreated,
 		oncancel,
 	}: Props = $props();
+	const uid = $props.id();
 
 	// The numeric fields bind to `<input type="number">`, whose bind:value coerces
 	// to a number at runtime even though we seed them with '' (see apps/web/CLAUDE.md);
@@ -301,7 +304,7 @@
 						>
 					{/if}
 					<span class="section-label set-cap">{t('gym.routine.restLabel')}</span>
-					<span class="section-label set-cap">{t('gym.rpe')}</span>
+					<span class="section-label set-cap"><MetricLabel metric="rpe" /></span>
 					<span></span>
 				</div>
 
@@ -394,7 +397,7 @@
 							max="10"
 							step="0.5"
 							bind:value={exercises[ei].sets[si].rpe}
-							aria-label={t('gym.rpe')}
+							aria-label={metricName('rpe')}
 							data-testid="routine-set-rpe"
 						/>
 
@@ -459,9 +462,12 @@
 					{/if}
 
 					{#if ex.progression === 'percent_cycle'}
-						<label class="field">
-							<span class="section-label">{t('gym.routine.progression.percentLabel')}</span>
+						<div class="field">
+							<span class="section-label"
+								><MetricLabel metric="e1rm" variant="percent" labelFor="{uid}-pct-{ei}" /></span
+							>
 							<input
+								id="{uid}-pct-{ei}"
 								class="text-input"
 								type="number"
 								inputmode="decimal"
@@ -470,12 +476,19 @@
 								bind:value={exercises[ei].percent}
 								data-testid="routine-progression-percent"
 							/>
-						</label>
-						<label class="field">
+						</div>
+						<div class="field">
 							<span class="section-label"
-								>{t('gym.routine.progression.oneRmLabel', { unit: weightUnitLabel() })}</span
+								><MetricLabel
+									metric="e1rm"
+									variant="oneRm"
+									params={{ unit: weightUnitLabel() }}
+									labelFor="{uid}-onerm-{ei}"
+									plain
+								/></span
 							>
 							<input
+								id="{uid}-onerm-{ei}"
 								class="text-input"
 								type="number"
 								inputmode="decimal"
@@ -483,13 +496,16 @@
 								bind:value={exercises[ei].oneRm}
 								data-testid="routine-progression-onerm"
 							/>
-						</label>
+						</div>
 					{/if}
 
 					{#if ex.progression === 'rpe_autoreg'}
-						<label class="field">
-							<span class="section-label">{t('gym.routine.progression.targetRpeLabel')}</span>
+						<div class="field">
+							<span class="section-label"
+								><MetricLabel metric="rpe" variant="target" labelFor="{uid}-target-rpe-{ei}" plain /></span
+							>
 							<input
+								id="{uid}-target-rpe-{ei}"
 								class="text-input"
 								type="number"
 								inputmode="decimal"
@@ -499,7 +515,7 @@
 								bind:value={exercises[ei].targetRpe}
 								data-testid="routine-progression-rpe"
 							/>
-						</label>
+						</div>
 					{/if}
 				</div>
 			</details>

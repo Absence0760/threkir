@@ -5,6 +5,7 @@
 	import { formatDate } from '$lib/format/time';
 	import { formatWeight } from '$lib/format/units.svelte';
 	import { m as t } from '$lib/i18n/store.svelte';
+	import MetricLabel from '$lib/components/MetricLabel.svelte';
 
 	let records = $state<ExerciseRecord[]>([]);
 	let loading = $state(true);
@@ -47,7 +48,7 @@
 
 	<header class="page-header">
 		<h1>{t('gym.records.title')}</h1>
-		<p class="head-sub">{t('gym.records.subtitle')}</p>
+		<p class="head-sub"><MetricLabel metric="e1rm" variant="inline" sentence="gym.records.subtitle" /></p>
 	</header>
 
 	{#if loading}
@@ -85,7 +86,7 @@
 					<dl class="metrics">
 						{#if r.bestEst1RmKg != null}
 							<div class="metric metric-primary">
-								<dt class="section-label">{t('gym.pr.e1rm')}</dt>
+								<dt class="section-label"><MetricLabel metric="e1rm" plain /></dt>
 								<dd>{formatWeight(r.bestEst1RmKg)}</dd>
 							</div>
 						{/if}

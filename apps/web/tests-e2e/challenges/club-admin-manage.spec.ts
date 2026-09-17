@@ -71,7 +71,9 @@ test.describe('/challenges/[id] — non-creator club admin can manage', () => {
 		await expect(page.getByRole('button', { name: 'Edit challenge' })).toBeVisible({
 			timeout: 10_000
 		});
-		const deleteBtn = page.getByRole('button', { name: /^Delete$/ });
+		const deleteBtn = page
+			.getByRole('region', { name: 'Danger zone' })
+			.getByRole('button', { name: 'Delete challenge' });
 		await expect(deleteBtn).toBeVisible();
 
 		// Functional: the delete goes through (RLS permits the club admin).

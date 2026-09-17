@@ -22,12 +22,18 @@ class ReadinessInputs {
 
 enum ReadinessBand { low, moderate, high }
 
+/// Which input a contribution came from. The UI names it in the reader's
+/// locale. The form input is deliberately not labelled like the TSB stat it is
+/// derived from: this is the POINTS form added to the score, not the TSB value,
+/// and one name over two different numbers read as a contradiction (#902).
+enum ReadinessContributorKind { form, sleep, restingHr }
+
 class ReadinessContribution {
-  final String name;
+  final ReadinessContributorKind kind;
   final int delta;
   final String note;
   const ReadinessContribution({
-    required this.name,
+    required this.kind,
     required this.delta,
     required this.note,
   });
@@ -82,7 +88,8 @@ ReadinessContribution? _scoreTsb(double? tsb) {
     delta = -3;
     note = 'Over-tapered — edge may be blunted';
   }
-  return ReadinessContribution(name: 'Form (TSB)', delta: delta, note: note);
+  return ReadinessContribution(
+      kind: ReadinessContributorKind.form, delta: delta, note: note);
 }
 
 ReadinessContribution? _scoreSleep(double? hours) {
@@ -105,7 +112,8 @@ ReadinessContribution? _scoreSleep(double? hours) {
     delta = 0;
     note = 'Extended sleep — recovery should be solid';
   }
-  return ReadinessContribution(name: 'Sleep', delta: delta, note: note);
+  return ReadinessContribution(
+      kind: ReadinessContributorKind.sleep, delta: delta, note: note);
 }
 
 ReadinessContribution? _scoreRestingHr(int? resting, int? baseline) {
@@ -129,7 +137,8 @@ ReadinessContribution? _scoreRestingHr(int? resting, int? baseline) {
     delta = 3;
     note = 'Resting HR below baseline — well recovered';
   }
-  return ReadinessContribution(name: 'Resting HR', delta: delta, note: note);
+  return ReadinessContribution(
+      kind: ReadinessContributorKind.restingHr, delta: delta, note: note);
 }
 
 String _dominantAdvice(

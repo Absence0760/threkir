@@ -61,7 +61,7 @@
 	let primaryGoal = $state<PrimaryGoal | null>(null);
 
 	// ── Step 4: about you (gender + DOB + weight + Art 9 consent) ──
-	// Identical shape to /settings/preferences so the same fields
+	// Identical shape to /settings/body so the same fields
 	// land in the same columns. Consent gates the health-data *use* —
 	// gender, the prefs-bag mirror, and the consent timestamp are only
 	// written when the box is ticked. The bare `date_of_birth` column,

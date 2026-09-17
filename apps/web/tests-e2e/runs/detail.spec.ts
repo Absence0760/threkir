@@ -211,6 +211,31 @@ test.describe('/runs/[id]', () => {
 		expect(stillThere).toBeNull();
 	});
 
+	test('the delete icon reads as destructive at rest, not only on hover', async ({ page }) => {
+		// Issue #902: `.icon-btn.danger` changed colour only on `:hover`, so
+		// on a touch screen delete was the same grey glyph as edit, share and
+		// the other toolbar icons beside it. The pointer is parked away from
+		// the toolbar so the reading is the resting state.
+		await page.goto(`/runs/${RUNNER_PUBLIC_RUN_ID}`);
+		const toolbar = page.getByRole('toolbar', { name: 'Run actions' });
+		const del = toolbar.locator('button.icon-btn.danger');
+		await expect(del).toBeVisible();
+		await page.mouse.move(0, 0);
+
+		const color = (btn: typeof del) => btn.evaluate((el) => getComputedStyle(el).color);
+		const dangerText = await page.evaluate(() => {
+			const probe = document.createElement('span');
+			probe.style.color = 'var(--color-danger-text)';
+			document.body.append(probe);
+			const resolved = getComputedStyle(probe).color;
+			probe.remove();
+			return resolved;
+		});
+		const edit = toolbar.locator('button.icon-btn').first();
+		expect(await color(del)).toBe(dangerText);
+		expect(await color(edit)).not.toBe(dangerText);
+	});
+
 	test('Share link button on a private run flips is_public=true and opens /share/run for anon', async ({
 		page,
 		context

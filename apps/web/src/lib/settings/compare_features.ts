@@ -100,13 +100,13 @@ export const COMPARE_SECTIONS: CompareSection[] = [
 				stravaPro: 'yes',
 			},
 			{
-				name: 'Gender + age-band tiered leaderboards (KOM/QOM tiers)',
+				name: 'Gender + age-band tiered leaderboards',
 				ours: 'yes',
 				stravaFree: 'no',
 				stravaPro: 'yes',
 			},
 			{
-				name: 'KOM/QOM crowns on rank-1',
+				name: 'KOM/QOM (King / Queen of the Mountain) crowns on rank-1',
 				ours: 'yes',
 				stravaFree: 'yes',
 				stravaPro: 'yes',

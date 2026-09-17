@@ -4,8 +4,11 @@ import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
 import { USER_A } from '../fixtures/users';
 
 /**
- * /settings/preferences — units / pace format / map style / theme /
- * default activity / privacy zones / coach personality, etc.
+ * The preference pages /settings/preferences was split into (issue #905) —
+ * units / pace format / map style / theme on /settings/display, the channels
+ * and optional emails on /settings/notifications, heart rate on
+ * /settings/training, demographics on /settings/body — plus the landing page
+ * the old URL became and the redirects its section anchors now take.
  *
  * The theme toggle is the load-bearing test today because it pins
  * BOTH the localStorage round-trip AND the html[data-theme] attribute
@@ -14,7 +17,7 @@ import { USER_A } from '../fixtures/users';
  * feedback toggle persists.
  */
 
-test.describe('/settings/preferences', () => {
+test.describe('settings preference pages', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test('distance unit toggle: km → mi propagates to /runs after save', async ({
@@ -27,7 +30,7 @@ test.describe('/settings/preferences', () => {
 		// /runs → assert distances render with " mi" suffix instead
 		// of " km". Catches regressions in the auth store's setUnit
 		// fan-out OR the Save handler dropping preferredUnit.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 
 		// Switch to Miles.
 		await page.getByRole('button', { name: 'Miles', exact: true }).click();
@@ -41,7 +44,7 @@ test.describe('/settings/preferences', () => {
 		await expect(firstStat).toContainText('mi');
 
 		// Restore to km so subsequent tests render against the default.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await page.getByRole('button', { name: 'Kilometres', exact: true }).click();
 		await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
 	});
@@ -57,7 +60,7 @@ test.describe('/settings/preferences', () => {
 		// import the formatter (hardcoding " km" in the template) OR
 		// from `auth.setUnit(...)` not running on a fresh page mount.
 		// Touching multiple surfaces in one test catches both classes.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 
 		await page.getByRole('button', { name: 'Miles', exact: true }).click();
 		await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
@@ -102,7 +105,7 @@ test.describe('/settings/preferences', () => {
 		await expect(firstWeekVolume).toContainText('mi', { timeout: 10_000 });
 
 		// Restore to km so subsequent tests render against the default.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await page.getByRole('button', { name: 'Kilometres', exact: true }).click();
 		await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
 	});
@@ -116,7 +119,7 @@ test.describe('/settings/preferences', () => {
 		// surface in the app re-render except this one. The audit
 		// caught it; this test pins the new unit-aware bindings so it
 		// can't silently regress.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await page.getByRole('button', { name: 'Miles', exact: true }).click();
 		await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
 
@@ -150,7 +153,7 @@ test.describe('/settings/preferences', () => {
 			await expect(generateBtn).not.toContainText(/\bkm\b/);
 		} finally {
 			// Restore to km so subsequent tests render against the default.
-			await page.goto('/settings/preferences');
+			await page.goto('/settings/display');
 			await page.getByRole('button', { name: 'Kilometres', exact: true }).click();
 			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
 		}
@@ -167,7 +170,7 @@ test.describe('/settings/preferences', () => {
 		// The propagation to formatPace currently goes through
 		// preferred_unit (not pace_format) — see units.svelte.ts.
 		// Pinning the persistence is the load-bearing assertion.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		// Needed: inputValue() below snapshots — no auto-retry — so a
 		// pre-fetch read would capture the default rather than the
 		// user's saved selection.
@@ -198,7 +201,7 @@ test.describe('/settings/preferences', () => {
 		// and the value survives a reload — a regression that dropped the
 		// key from the autoSave payload would silently leave every user on
 		// the default forever.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/notifications');
 		await page.waitForLoadState('networkidle');
 
 		const sel = page
@@ -234,7 +237,7 @@ test.describe('/settings/preferences', () => {
 		// independent key from email_notifications (muting email must not
 		// mute push). The load-bearing assertion is the picker writes the
 		// bag and the value survives a reload.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/notifications');
 		await page.waitForLoadState('networkidle');
 
 		const sel = page
@@ -271,7 +274,7 @@ test.describe('/settings/preferences', () => {
 		// load-bearing assertion is that the toggle writes the bag with the
 		// 'on'/'off' string and survives a reload — a regression that dropped
 		// the key from autoSave would leave every user permanently opted out.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/notifications');
 		await page.waitForLoadState('networkidle');
 
 		const toggle = page.getByTestId('email-weekly-digest');
@@ -322,7 +325,7 @@ test.describe('/settings/preferences', () => {
 		// The Go worker's lifecycle_drip handler reads it server-side, so the
 		// load-bearing assertion is that the toggle writes the bag with the
 		// 'on'/'off' string and survives a reload.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/notifications');
 		await page.waitForLoadState('networkidle');
 
 		const toggle = page.getByTestId('email-lifecycle-drip');
@@ -369,7 +372,7 @@ test.describe('/settings/preferences', () => {
 		// email (decisions §120). Assert the write actually fires by catching
 		// the user_settings upsert — a regression dropping it would silently
 		// leave every user's email in English.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await page.waitForLoadState('networkidle');
 
 		const sel = page.getByTestId('language-select');
@@ -399,7 +402,7 @@ test.describe('/settings/preferences', () => {
 		// regression that dropped map_style from the saved prefs blob
 		// (it shares a single Save handler with theme + unit) would
 		// surface here.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 
 		// Pick Satellite via the labelled <select>.
 		const sel = page
@@ -428,7 +431,7 @@ test.describe('/settings/preferences', () => {
 		// Pin: both inputs render under the HR section, persist through the
 		// same Save handler as every other pref, and survive reload. The
 		// clear-to-null path matters (an empty input must NOT write 0).
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/training');
 		await page.waitForLoadState('networkidle');
 
 		const resting = page
@@ -471,7 +474,7 @@ test.describe('/settings/preferences', () => {
 		// "user picks dark, comes back tomorrow, sees light" which is
 		// a subtle UX bug you'd never catch without an integration
 		// test.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 
 		await page.getByRole('button', { name: 'Dark', exact: true }).click();
 		await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
@@ -495,7 +498,7 @@ test.describe('/settings/preferences', () => {
 		// rearm). A regression that never showed the cue, or left it stuck on
 		// "Saved", surfaces here. Errors still toast; the happy path is silent
 		// beyond this cue.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		const status = page.getByTestId('save-status');
 
 		await page.getByRole('button', { name: 'Miles', exact: true }).click();
@@ -516,7 +519,7 @@ test.describe('/settings/preferences', () => {
 		// change must NOT trigger the auto-save path. This pins the deliberate
 		// asymmetry. All interactions here are in-memory (nothing is saved, so
 		// USER_A's stored consent + profile are untouched).
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/body');
 		await expect(page.getByTestId('save-demographics')).toBeVisible();
 
 		const consent = page
@@ -551,7 +554,7 @@ test.describe('/settings/preferences', () => {
 		// and a typed 600 kg used to round-trip as a raw postgres 23514 naming a
 		// constraint and no field (decisions § 792). All in-memory: the Save
 		// button is disabled throughout, so nothing is written for USER_A.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/body');
 		const consent = page
 			.locator('label.consent-checkbox', { hasText: 'date of birth' })
 			.locator('input[type="checkbox"]');
@@ -589,7 +592,7 @@ test.describe('/settings/preferences', () => {
 		// mirror and the other three fields, which stay disabled here.
 		// In-memory only: nothing is saved, so USER_A's stored state is
 		// untouched.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/body');
 		const consent = page
 			.locator('label.consent-checkbox', { hasText: 'date of birth' })
 			.locator('input[type="checkbox"]');
@@ -621,7 +624,7 @@ test.describe('/settings/preferences', () => {
 			await route.continue();
 		});
 
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 
 		await expect(page.locator('.skel-card').first()).toBeVisible({
 			timeout: 5_000
@@ -643,7 +646,7 @@ test.describe('/settings/preferences', () => {
 		// `prefs.activity_*` i18n keys (not ACTIVITY_LEVELS[].label), so those
 		// strings must NOT describe weekly exercise frequency — that wording
 		// guides a runner into the exact double-count this avoids.
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/body');
 		const optionText = (
 			await page.getByTestId('activity-level').locator('option').allInnerTexts()
 		)
@@ -663,7 +666,7 @@ test.describe('/settings/preferences', () => {
 		// picker: no `min` fencing off realistic birth years, and a `max`
 		// of today blocking future DOBs — mirrors the /onboarding DOB
 		// field (issue #222).
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/body');
 		const dob = page.getByLabel('Date of birth', { exact: true });
 		const max = await dob.getAttribute('max');
 		expect(max).toMatch(/^\d{4}-\d{2}-\d{2}$/);
@@ -672,6 +675,68 @@ test.describe('/settings/preferences', () => {
 		);
 		expect(await dob.getAttribute('min')).toBeNull();
 	});
+});
+
+test.describe('settings preference pages — every control explains itself', () => {
+	test.use({ storageState: USER_A.storageStatePath });
+
+	test('the explanation under a control is its accessible description', async ({ page }) => {
+		// #905 workstream 5: a one-line explanation sits under each control and
+		// is wired with aria-describedby, so a screen reader announces it without
+		// it becoming part of the control's name.
+		await page.goto('/settings/display');
+		await expect(page.getByTestId('language-select')).toHaveAccessibleDescription(
+			/language the app shows/i,
+			{ timeout: 10_000 }
+		);
+		await expect(page.getByTestId('language-select')).not.toHaveAccessibleName(
+			/language the app shows/i
+		);
+		await expect(page.getByRole('group', { name: 'Distance Unit' })).toHaveAccessibleDescription(
+			/kilometres or miles/i
+		);
+
+		await page.goto('/settings/training');
+		await expect(page.getByTestId('resting-hr')).toHaveAccessibleDescription(
+			/heart rate \(HR\).*beats per minute \(bpm\)/,
+			{ timeout: 10_000 }
+		);
+	});
+});
+
+test.describe('/settings/preferences — landing page for old links', () => {
+	test.use({ storageState: USER_A.storageStatePath });
+
+	test('lists every preference group, each linking to its page', async ({ page }) => {
+		await page.goto('/settings/preferences');
+		const groups = page.getByTestId('preferences-groups');
+		await expect(groups).toBeVisible({ timeout: 10_000 });
+		for (const [href, name] of [
+			['/settings/display', 'Units & display'],
+			['/settings/recording', 'Recording & voice'],
+			['/settings/training', 'Training'],
+			['/settings/privacy', 'Privacy & sharing'],
+			['/settings/notifications', 'Notifications'],
+			['/settings/body', 'Body metrics'],
+		] as const) {
+			await expect(groups.locator(`a[href="${href}"]`)).toContainText(name);
+		}
+		await groups.locator('a[href="/settings/notifications"]').click();
+		await expect(page).toHaveURL(/\/settings\/notifications$/);
+		await expect(page.getByTestId('email-weekly-digest')).toBeVisible({ timeout: 10_000 });
+	});
+
+	for (const [anchor, path, landmark] of [
+		['heart-rate-zones', '/settings/training', 'max-hr'],
+		['weekly-mileage-goal', '/settings/training', 'weekly-distance-goal'],
+		['body-metrics', '/settings/body', 'save-demographics'],
+	] as const) {
+		test(`an old #${anchor} link lands on the section's new page`, async ({ page }) => {
+			await page.goto(`/settings/preferences#${anchor}`);
+			await expect(page).toHaveURL(new RegExp(`${path}#`), { timeout: 10_000 });
+			await expect(page.getByTestId(landmark)).toBeVisible({ timeout: 10_000 });
+		});
+	}
 });
 
 test.describe('/settings/preferences — anon', () => {

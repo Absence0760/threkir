@@ -407,12 +407,18 @@ func renderNotificationEmail(n NotificationRow, baseURL, locale string) Email {
 		ctaLabel:        s.cta,
 		ctaURL:          pathForKind(n.Kind, base, n),
 		footer:          shared.footerNotification,
-		prefsURL:        base + "/settings/preferences",
+		prefsURL:        base + notificationPrefsPath,
 		prefsLabel:      shared.managePrefsLabel,
 		prefsTextPrefix: shared.managePrefsTextPrefix,
-		listUnsub:       base + "/settings/preferences",
+		listUnsub:       base + notificationPrefsPath,
 	})
 }
+
+// notificationPrefsPath is where an email's "manage preferences" footer and its
+// List-Unsubscribe header send the reader: the web page holding the email and
+// push channels and the optional-email toggles. /settings/preferences, the URL
+// older mail carries, is now a landing page that links there.
+const notificationPrefsPath = "/settings/notifications"
 
 // pathForKind maps a notification kind to its deep link. One place so a new
 // kind is a single edit alongside its catalogue entry, shared by the email,
@@ -566,7 +572,7 @@ func renderLifecycleEmail(template, baseURL, locale string) (Email, bool) {
 	// account_deleted has no account left to manage — no prefs link, no CTA
 	// (the catalogue leaves the CTA empty), and its own footer. Render it
 	// before the standard transactional path so it never grows a dead
-	// /settings/preferences link a deleted user can't use.
+	// notification-preferences link a deleted user can't use.
 	if template == "account_deleted" {
 		return composeEmail(emailContent{
 			lang:      loc,
@@ -597,7 +603,7 @@ func renderLifecycleEmail(template, baseURL, locale string) (Email, bool) {
 		ctaLabel:        s.cta,
 		ctaURL:          lifecycleCtaURL(template, base),
 		footer:          footer,
-		prefsURL:        base + "/settings/preferences",
+		prefsURL:        base + notificationPrefsPath,
 		prefsLabel:      shared.managePrefsLabel,
 		prefsTextPrefix: shared.managePrefsTextPrefix,
 		// transactional — no List-Unsubscribe.

@@ -854,7 +854,7 @@
 									<span class="run-stat-value"
 										>{formatElevation((run.metadata as Record<string, unknown>).elevation_m as number)}</span
 									>
-									<span class="run-stat-label section-label">{m('runs.statVert')}</span>
+									<span class="run-stat-label section-label">{m('runDetail.elevation')}</span>
 								</div>
 							{/if}
 						</div>

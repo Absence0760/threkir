@@ -1493,7 +1493,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
                   style: theme.textTheme.bodyMedium,
                 ),
                 const SizedBox(width: 8),
-                _waterChip(theme, l10n, budget),
+                _waterChip(theme, l10n, budget, tag),
               ],
             ),
             const SizedBox(height: 8),
@@ -1542,10 +1542,12 @@ class _NutritionScreenState extends State<NutritionScreen> {
     );
   }
 
-  Widget _waterChip(ThemeData theme, AppLocalizations l10n, HydrationBudget b) {
+  Widget _waterChip(
+      ThemeData theme, AppLocalizations l10n, HydrationBudget b, String tag) {
     final reached = b.reached;
-    final text =
-        reached ? l10n.nutritionWaterGoalReached : l10n.nutritionWaterRemaining(b.remainingMl);
+    final text = reached
+        ? l10n.nutritionWaterGoalReached
+        : l10n.nutritionWaterRemaining(_litres(b.remainingMl, tag));
     final bg = reached
         ? theme.colorScheme.secondaryContainer
         : theme.colorScheme.surfaceContainerHighest;

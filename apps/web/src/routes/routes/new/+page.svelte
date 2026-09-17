@@ -115,7 +115,7 @@
 
 	// Reactive: tracks the module-level unit signal so every km/mi
 	// label in the template re-renders the instant the user flips the
-	// preference on /settings/preferences. Without these derived
+	// preference on /settings/display. Without these derived
 	// values, the route builder kept showing km even after Save —
 	// formatDistance-based pages already worked because they read the
 	// signal indirectly; these inline strings were hardcoded.
@@ -796,7 +796,7 @@
 			<div class="elevation-preview">
 				<span class="section-label">{m('routeNew.elevationProfile')}</span>
 				{#if elevations.length >= 2}
-					<ElevationProfile {elevations} totalDistance={distance} />
+					<ElevationProfile {elevations} totalGain={elevation} totalDistance={distance} />
 				{:else}
 					<div class="elevation-empty">
 						<span class="material-symbols">show_chart</span>

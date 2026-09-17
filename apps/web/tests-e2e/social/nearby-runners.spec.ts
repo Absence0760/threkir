@@ -8,7 +8,7 @@ import { USER_A } from '../fixtures/users';
  * sign-off (person-location is Art 9-adjacent data). The test build does not
  * set the flag, so the whole person-location surface must be absent — no
  * "Runners nearby" section on the People tab, no coarse-area setter in
- * Settings → Preferences. This pins the fail-closed render gate.
+ * Settings → Privacy & sharing. This pins the fail-closed render gate.
  */
 test.describe('runners nearby — default-off gate', () => {
 	test.use({ storageState: USER_A.storageStatePath });
@@ -21,8 +21,8 @@ test.describe('runners nearby — default-off gate', () => {
 		await expect(page.getByRole('heading', { name: 'Runners nearby' })).toHaveCount(0);
 	});
 
-	test('the coarse-area setter is absent in Preferences by default', async ({ page }) => {
-		await page.goto('/settings/preferences');
+	test('the coarse-area setter is absent in Privacy & sharing by default', async ({ page }) => {
+		await page.goto('/settings/privacy');
 		// The existing search opt-out row must render (proves the section loaded)…
 		await expect(page.getByText('Show me in name search')).toBeVisible({ timeout: 10_000 });
 		// …while the nearby opt-in + area setter stay gated off.

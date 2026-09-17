@@ -154,8 +154,9 @@ func TestAccountDeletionReceipt_CheckErrorPropagatesUnsent(t *testing.T) {
 	}
 }
 
-// The receipt copy must not carry a /settings/preferences link — the account
-// is gone, so there's nothing to manage.
+// The receipt copy must not carry a preferences link — the account is gone, so
+// there's nothing to manage. Both the notifications page and the older
+// /settings/preferences URL are checked.
 func TestAccountDeletionReceipt_NoPreferencesLink(t *testing.T) {
 	be := &fakeBackend{}
 	sender := &fakeEmailSender{}
@@ -164,9 +165,11 @@ func TestAccountDeletionReceipt_NoPreferencesLink(t *testing.T) {
 	if err := w.handleLifecycleEmail(context.Background(), deletionReceiptJob("gone@test.com", "en")); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
-	if strings.Contains(sender.sent[0].msg.HTML, "/settings/preferences") ||
-		strings.Contains(sender.sent[0].msg.Body, "/settings/preferences") {
-		t.Error("deletion receipt must not link to settings/preferences — the account is gone")
+	for _, path := range []string{"/settings/preferences", "/settings/notifications"} {
+		if strings.Contains(sender.sent[0].msg.HTML, path) ||
+			strings.Contains(sender.sent[0].msg.Body, path) {
+			t.Errorf("deletion receipt must not link to %s — the account is gone", path)
+		}
 	}
 	if sender.sent[0].msg.ListUnsubscribe != "" {
 		t.Error("deletion receipt must not carry a List-Unsubscribe header")

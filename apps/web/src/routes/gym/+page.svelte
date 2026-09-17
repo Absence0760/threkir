@@ -174,24 +174,6 @@
 			{/if}
 		</div>
 		<div class="head-actions">
-			{#if !loading && workouts.length > 0}
-				<a class="btn btn-secondary" href="/gym/routines" data-testid="gym-routines-link">
-					<span class="material-symbols" aria-hidden="true">list_alt</span>
-					{t('gym.routine.link')}
-				</a>
-			{/if}
-			{#if !loading && sessionPlanCount > 0}
-				<a class="btn btn-secondary" href="/sessions" data-testid="gym-sessions-link">
-					<span class="material-symbols" aria-hidden="true">self_improvement</span>
-					{t('gym.sessions.link')}
-				</a>
-			{/if}
-			{#if !loading && hasWeightedRecords}
-				<a class="btn btn-secondary" href="/gym/records" data-testid="gym-records-link">
-					<span class="material-symbols" aria-hidden="true">trophy</span>
-					{t('gym.records.link')}
-				</a>
-			{/if}
 			<button class="btn btn-primary" onclick={() => (showCreate = true)} data-testid="gym-log">
 				<span class="material-symbols" aria-hidden="true">add</span>
 				{t('gym.log')}
@@ -238,6 +220,56 @@
 				</button>
 			</div>
 		</div>
+	{/if}
+
+	{#if !loading && (workouts.length > 0 || sessionPlanCount > 0 || hasWeightedRecords)}
+		<nav class="destinations" aria-label={t('gym.destinationsAria')}>
+			{#if workouts.length > 0}
+				<a
+					class="destination"
+					href="/gym/routines"
+					data-testid="gym-routines-link"
+					aria-labelledby="gym-routines-title"
+					aria-describedby="gym-routines-desc"
+				>
+					<span class="material-symbols" aria-hidden="true">list_alt</span>
+					<span class="destination-text">
+						<span class="destination-title" id="gym-routines-title">{t('gym.routine.link')}</span>
+						<span class="destination-desc" id="gym-routines-desc">{t('gym.routine.linkDesc')}</span>
+					</span>
+				</a>
+			{/if}
+			{#if sessionPlanCount > 0}
+				<a
+					class="destination"
+					href="/sessions"
+					data-testid="gym-sessions-link"
+					aria-labelledby="gym-sessions-title"
+					aria-describedby="gym-sessions-desc"
+				>
+					<span class="material-symbols" aria-hidden="true">self_improvement</span>
+					<span class="destination-text">
+						<span class="destination-title" id="gym-sessions-title">{t('gym.sessions.link')}</span>
+						<span class="destination-desc" id="gym-sessions-desc">{t('gym.sessions.linkDesc')}</span>
+					</span>
+				</a>
+			{/if}
+			{#if hasWeightedRecords}
+				<a
+					class="destination"
+					href="/gym/records"
+					data-testid="gym-records-link"
+					aria-labelledby="gym-records-title"
+					aria-describedby="gym-records-desc"
+				>
+					<span class="material-symbols" aria-hidden="true">trophy</span>
+					<span class="destination-text">
+						<span class="destination-title" id="gym-records-title">{t('gym.records.link')}</span>
+						<span class="destination-desc" id="gym-records-desc">{t('gym.records.linkDesc')}</span>
+					</span>
+				</a>
+			{/if}
+		</nav>
 	{/if}
 
 	{#if loading}
@@ -368,6 +400,50 @@
 	}
 	.page-header .material-symbols {
 		font-size: 1.1rem;
+	}
+
+	.destinations {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(min(16rem, 100%), 1fr));
+		gap: var(--space-sm);
+		margin-bottom: var(--space-xl);
+	}
+	.destination {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--space-sm);
+		padding: var(--space-md);
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		color: var(--color-text);
+		text-decoration: none;
+		transition: border-color var(--transition-fast);
+	}
+	.destination:hover {
+		border-color: var(--color-primary);
+	}
+	/* The icon is a fixed box beside a description that wraps. As a flex
+	   item it shrank with the text, and a glyph narrower than its box is
+	   clipped to a sliver. */
+	.destination .material-symbols {
+		flex-shrink: 0;
+		font-size: 1.25rem;
+		color: var(--color-primary);
+	}
+	.destination-text {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2xs);
+		min-width: 0;
+	}
+	.destination-title {
+		font-weight: 600;
+	}
+	.destination-desc {
+		font-size: 0.85rem;
+		line-height: 1.4;
+		color: var(--color-text-secondary);
 	}
 
 	.draft-card {

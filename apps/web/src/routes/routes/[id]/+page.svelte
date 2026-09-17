@@ -22,6 +22,7 @@
 	import SendRouteDialog from '$lib/components/SendRouteDialog.svelte';
 	import RoutePreviewScrubber from '$lib/components/RoutePreviewScrubber.svelte';
 	import { interpolateAlongRoute } from '$lib/routes/route_geometry';
+	import { routeElevation } from '$lib/routes/route_elevation';
 	import { buildRouteShareCanonical } from '$lib/share/share_meta';
 	import { describeRoute, localisedTemplate } from '$lib/routes/route_description';
 	import { requestAiDescription } from '$lib/routes/route_describe_client';
@@ -444,18 +445,10 @@
 		}
 	}
 
-	// Derive elevations from displayWaypoints (not route.waypoints
-	// directly) so the chart's idx-space lines up with what the map
-	// is actually drawing. Non-owners get a clipped polyline; their
-	// chart idx → map marker must hit the same point on the clipped
-	// trace, not the original.
-	let elevations = $derived(displayWaypoints.map((w) => w.ele ?? 0));
-	// Hide the elevation profile when waypoints have no real elevation
-	// data (community routes imported without per-waypoint ele still
-	// have a stored total gain in route.elevation_m). Without this guard
-	// the chart renders as a flat line at zero, which looks broken next
-	// to the non-zero "X m elevation gain" label.
-	let hasElevationData = $derived(elevations.length > 1 && Math.max(...elevations) > Math.min(...elevations));
+	// The profile derives from displayWaypoints (not route.waypoints) so
+	// the chart's idx-space lines up with what the map is drawing: a
+	// non-owner's chart idx → map marker must hit the clipped trace.
+	let elevation = $derived(routeElevation(route?.elevation_m ?? 0, displayWaypoints));
 
 	/// Linked-cursor index — same shape as /runs/[id]. ElevationProfile
 	/// onhover sets it; RunMap reads it.
@@ -475,34 +468,6 @@
 			scrubFraction,
 		);
 		return interp ? [interp.lng, interp.lat] : null;
-	});
-
-	/// Per-waypoint elevation rollup. Walks once: total gain (sum of
-	/// positive deltas), total loss (sum of negative deltas), and the
-	/// min / max altitude. Used by the elevation summary tile above
-	/// the chart.
-	let elevationStats = $derived.by(() => {
-		const eles = elevations;
-		if (eles.length < 2 || !hasElevationData) {
-			return { gain: 0, loss: 0, min: 0, max: 0 };
-		}
-		let gain = 0;
-		let loss = 0;
-		let min = eles[0];
-		let max = eles[0];
-		for (let i = 1; i < eles.length; i++) {
-			const d = eles[i] - eles[i - 1];
-			if (d > 0) gain += d;
-			else loss += -d;
-			if (eles[i] < min) min = eles[i];
-			if (eles[i] > max) max = eles[i];
-		}
-		return {
-			gain: Math.round(gain),
-			loss: Math.round(loss),
-			min: Math.round(min),
-			max: Math.round(max),
-		};
 	});
 
 	// Send the back link wherever the user came from. Defaults to /routes
@@ -602,7 +567,7 @@
 						</div>
 						{#if route.elevation_m != null && route.elevation_m > 0}
 							<div class="key-stat">
-								<span class="key-stat-value">{route.elevation_m} m</span>
+								<span class="key-stat-value" data-testid="route-key-gain">{elevation.gain} m</span>
 								<span class="key-stat-label">{m('routeDetail.statElevationGain')}</span>
 							</div>
 						{/if}
@@ -744,10 +709,10 @@
 				</div>
 			{/if}
 
-			<!-- Elevation summary — always rendered when the route stores
-			     a non-zero gain. Per-waypoint min/max/loss are derived
-			     from the elevations array; routes without per-point
-			     elevation data fall back to the stored gain only. -->
+			<!-- Elevation summary — rendered when the route stores a
+			     non-zero gain, and the gain is always that stored figure
+			     (routeElevation). Loss / max / min and the chart need
+			     waypoints that carry altitude. -->
 			<!-- Preview scrubber — drag the thumb to see a pulsing
 				 dot move along the route polyline on the map. Lives
 				 in the info panel (not below the map) so it's always
@@ -773,38 +738,39 @@
 								<span class="material-symbols">trending_up</span>
 								{m('routeDetail.elevGain')}
 							</span>
-							<span class="elev-value">
-								{(hasElevationData ? elevationStats.gain : route.elevation_m)} m
-							</span>
+							<span class="elev-value" data-testid="route-elev-gain">{elevation.gain} m</span>
 						</div>
-						{#if hasElevationData}
+						{#if elevation.loss != null}
 							<div class="elev-tile">
 								<span class="elev-label">
 									<span class="material-symbols">trending_down</span>
 									{m('routeDetail.elevLoss')}
 								</span>
-								<span class="elev-value">{elevationStats.loss} m</span>
+								<span class="elev-value">{elevation.loss} m</span>
 							</div>
+						{/if}
+						{#if elevation.profile}
 							<div class="elev-tile">
 								<span class="elev-label">
 									<span class="material-symbols">terrain</span>
 									{m('routeDetail.elevMax')}
 								</span>
-								<span class="elev-value">{elevationStats.max} m</span>
+								<span class="elev-value">{elevation.max} m</span>
 							</div>
 							<div class="elev-tile">
 								<span class="elev-label">
 									<span class="material-symbols">vertical_align_bottom</span>
 									{m('routeDetail.elevMin')}
 								</span>
-								<span class="elev-value">{elevationStats.min} m</span>
+								<span class="elev-value">{elevation.min} m</span>
 							</div>
 						{/if}
 					</div>
-					{#if hasElevationData}
+					{#if elevation.profile}
 						<div class="elev-chart">
 							<ElevationProfile
-								{elevations}
+								elevations={elevation.profile}
+								totalGain={elevation.gain}
 								totalDistance={route.distance_m}
 								onhover={(idx) => (chartHoverIdx = idx)}
 							/>

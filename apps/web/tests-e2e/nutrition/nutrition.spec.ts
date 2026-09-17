@@ -267,13 +267,16 @@ test.describe('/nutrition — manual log, render, water', () => {
 
 		const chip = page.getByTestId('water-budget');
 		await expect(chip).toBeVisible();
-		await expect(chip).toContainText(/ml left/);
-		const beforeText = await chip.innerText();
-		const beforeRemaining = parseInt(beforeText.replace(/\D/g, ''), 10);
+		// Issue #902: the chip states what is left in the readout's own unit,
+		// where it used to state millilitres beside a litre readout.
+		await expect(chip).toHaveText(/^[\d.]+ L left$/);
+		const remainingMl = async () =>
+			Math.round(parseFloat((await chip.innerText()).replace(/[^\d.]/g, '')) * 1000);
+		const beforeRemaining = await remainingMl();
 
 		// One 250 ml add reduces the remaining by exactly one unit.
 		await page.getByTestId('add-water').click();
-		await expect(chip).toContainText(`${beforeRemaining - 250} ml left`);
+		await expect.poll(remainingMl).toBe(beforeRemaining - 250);
 
 		// Drive the chip across the goal: seed the per-day counter to one unit
 		// below the target (parsed from the "X / Y L" readout), reload, and the
@@ -285,7 +288,7 @@ test.describe('/nutrition — manual log, render, water', () => {
 			{ key: waterStorageKey(USER_A.id), ml: targetMl - 250 },
 		);
 		await page.reload();
-		await expect(chip).toContainText(/ml left/);
+		await expect(chip).toContainText(/L left/);
 		await page.getByTestId('add-water').click();
 		await expect(chip).toContainText('Goal reached');
 		await expect(page.locator('.water-pips')).toHaveClass(/water-pips-reached/);

@@ -46,7 +46,7 @@ import { readRow, readRows } from '../fixtures/db-read';
  *      re-linked completes its OWN long run; the missed flag + re-plan
  *      both key off the OTHER, uncompleted, past long run — re-plan skips
  *      completed long runs.)
- *   6. RE-PLAN remaining weeks: "Re-plan remaining weeks" →
+ *   6. RE-PLAN remaining weeks: Adjust plan → "Re-plan remaining weeks" →
  *      .replan-preview proposes a make-up on the future long run (off the
  *      uncompleted missed long) → Apply changes → only the FUTURE long
  *      run's target_distance_m is rewritten (capped to 1.15×); both PAST
@@ -307,7 +307,11 @@ test.describe('plan adherence + re-plan journey', () => {
 
 		// ── 6. Re-plan proposes + applies a future-only make-up ────────
 		await test.step('re-plan bumps the FUTURE long run, freezes the past', async () => {
-			await page.getByRole('button', { name: /Re-plan remaining weeks/ }).click();
+			await page.getByRole('button', { name: 'Adjust plan' }).click();
+			await page
+				.getByTestId('adjust-plan-dialog')
+				.getByRole('button', { name: /Re-plan remaining weeks/ })
+				.click();
 
 			const preview = page.locator('.replan-preview');
 			await expect(preview).toBeVisible({ timeout: 10_000 });

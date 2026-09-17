@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { siteOrigin } from '$lib/core/site_url';
+	import MetricLabel from '$lib/components/MetricLabel.svelte';
+	import type { MetricId } from '$lib/metrics/metric_registry';
 	import { onMount } from 'svelte';
 	import { fmtPace, getUnit, formatPaceNoSuffix } from '$lib/format/units.svelte';
 
@@ -14,6 +16,7 @@
 	import ElevationProfile from '$lib/components/ElevationProfile.svelte';
 	import RunSocial from '$lib/components/RunSocial.svelte';
 	import RunShareView from '$lib/components/RunShareView.svelte';
+	import StaticMapImage from '$lib/components/StaticMapImage.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import ReportDialog from '$lib/components/ReportDialog.svelte';
 	import RunPhotos from '$lib/components/RunPhotos.svelte';
@@ -81,7 +84,7 @@
 	import { supabase } from '$lib/core/supabase';
 	import { TABLES, METADATA_KEYS } from '$lib/core/schema';
 	import { m } from '$lib/i18n/store.svelte';
-	import { activityTypeIcon } from '$lib/runs/activity_type';
+	import { activityTypeIcon, activityUsesSpeed } from '$lib/runs/activity_type';
 	import { activityTypeLabel } from '$lib/runs/activity_type.svelte';
 	import { buildRunShareCanonical } from '$lib/share/share_meta';
 	import type { Run } from '$lib/types';
@@ -954,29 +957,27 @@
 	/// template: it counted Calories among six stats that "never hide" while
 	/// the template gated them, so the filler flipped the wrong way whenever
 	/// the estimate was unusable or the pref was off (decisions § 1164).
-	let keyStats = $derived.by<{ label: string; value: string }[]>(() => {
+	type KeyStat = { value: string } & ({ label: string } | { metric: MetricId });
+	let keyStats = $derived.by<KeyStat[]>(() => {
 		if (!run) return [];
-		const cells: { label: string; value: string }[] = [
+		const cells: KeyStat[] = [
 			{ label: m('runDetail.distance'), value: formatDistance(run.distance_m) },
 			{ label: m('runDetail.time'), value: formatDuration(run.duration_s) },
 		];
 		if (movingSeconds > 0 && movingSeconds !== run.duration_s) {
 			cells.push({ label: m('runDetail.moving'), value: formatDuration(movingSeconds) });
 		}
-		cells.push({
-			label: m('runDetail.avgPace'),
-			value: formatPace(paceSeconds, run.distance_m),
-		});
+		cells.push(
+			activityUsesSpeed(run.activity_type)
+				? { label: m('runDetail.avgSpeed'), value: formatSpeed(paceSeconds, run.distance_m) }
+				: { label: m('runDetail.avgPace'), value: formatPace(paceSeconds, run.distance_m) },
+		);
 		if (showGradeAdjustedPace && gradeAdjustedPace != null) {
 			cells.push({
 				label: m('runDetail.gradeAdjustedPace'),
 				value: formatPace(gradeAdjustedPace, 1000),
 			});
 		}
-		cells.push({
-			label: m('runDetail.avgSpeed'),
-			value: formatSpeed(paceSeconds, run.distance_m),
-		});
 		if (elevationGainM != null) {
 			cells.push({ label: m('runDetail.elevation'), value: `${elevationGainM} m` });
 		}
@@ -993,7 +994,7 @@
 			cells.push({ label: m('runDetail.avgHrBpm'), value: String(avgBpm) });
 		}
 		if (ageGrade != null) {
-			cells.push({ label: m('runDetail.ageGrade'), value: ageGrade });
+			cells.push({ metric: 'ageGrade', value: ageGrade });
 		}
 		return cells;
 	});
@@ -1753,7 +1754,9 @@
 			{#each keyStats as stat}
 				<div class="key-stat">
 					<span class="key-stat-value">{stat.value}</span>
-					<span class="key-stat-label">{stat.label}</span>
+					<span class="key-stat-label"
+						>{#if 'metric' in stat}<MetricLabel metric={stat.metric} />{:else}{stat.label}{/if}</span
+					>
 				</div>
 			{/each}
 			<!-- Parity filler. The auto-fit key-stats grid looks broken
@@ -1800,6 +1803,7 @@
 				<h2>{m('runDetail.elevationProfile')}</h2>
 				<ElevationProfile
 				{elevations}
+				totalGain={elevationGainM}
 				totalDistance={run.distance_m}
 				onhover={(idx) => (chartHoverIdx = idx)}
 			/>
@@ -2104,7 +2108,7 @@
 				{#if zoneCutoffs == null && maxHrBpm == null}
 					<p class="hr-disclaimer">
 						{m('runDetail.hrDisclaimerPrefix')}
-						<a href="/settings/preferences">{m('runDetail.hrDisclaimerLink')}</a>
+						<a href="/settings/training#heart-rate-zones">{m('runDetail.hrDisclaimerLink')}</a>
 						{m('runDetail.hrDisclaimerSuffix')}
 					</p>
 				{/if}
@@ -2241,13 +2245,15 @@
 				 anonymous so html-to-image's `toPng(...)` can read the
 				 pixel buffer back from the canvas (tileserver-gl +
 				 MapTiler both serve CORS headers, but the explicit
-				 attribute is what unlocks the canvas readback). -->
-			<img
+				 attribute is what unlocks the canvas readback). A map
+				 that fails to load leaves the stats-only card, not a
+				 broken image in the capture. -->
+			<StaticMapImage
 				src={shareMapUrl}
-				class="share-card-map"
 				alt=""
+				class="share-card-map"
 				crossorigin="anonymous"
-				data-testid="share-card-map"
+				testid="share-card-map"
 			/>
 		{/if}
 		<div class="share-card-stats">
@@ -2429,7 +2435,7 @@
 
 	@media (max-width: 640px) {
 		.key-stat-value {
-			font-size: 1.3rem;
+			--key-stat-value-size: 1.3rem;
 		}
 		h1 {
 			font-size: 1.3rem;
@@ -2453,7 +2459,7 @@
 			padding: var(--space-lg);
 		}
 		.key-stat-value {
-			font-size: 1.25rem;
+			--key-stat-value-size: 1.25rem;
 		}
 		.detail-header {
 			margin-bottom: var(--space-lg);
@@ -2941,6 +2947,7 @@
 		min-width: 0;
 		padding: var(--space-md) var(--space-lg);
 		background: var(--color-bg-secondary);
+		container-type: inline-size;
 	}
 
 	/* The Activity-type filler tile pairs an icon with the label
@@ -2957,16 +2964,22 @@
 		color: var(--color-text-secondary);
 	}
 
+	/* A value wraps between number and unit. A duration has no such break:
+	   "10:00:00" is one token about five ems wide, and in a two-column panel
+	   it was wider than its tile, so the size is capped at a fifth of the
+	   tile's width. The narrower sizes the queries above choose are the
+	   ceiling, not the size; they set the property rather than declaring a
+	   default here, which as the later rule would win over them. A longer
+	   unbreakable word (a localised activity name) breaks rather than running
+	   out of the tile. */
 	.key-stat-value {
 		font-variant-numeric: tabular-nums lining-nums;
-		font-size: 1.5rem;
+		font-size: clamp(1rem, 19cqi, var(--key-stat-value-size, 1.5rem));
 		font-weight: 700;
 		font-variant-numeric: tabular-nums;
 		color: var(--color-text);
 		line-height: 1.1;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
+		overflow-wrap: anywhere;
 	}
 
 	.key-stat-label {
@@ -3350,6 +3363,10 @@
 		cursor: not-allowed;
 	}
 
+	.icon-btn.danger {
+		color: var(--color-danger-text);
+	}
+
 	.icon-btn.danger:hover:not(:disabled) {
 		background: var(--color-danger-light);
 		color: var(--color-danger-text);
@@ -3503,7 +3520,7 @@
 		text-transform: uppercase;
 		opacity: 0.9;
 	}
-	.share-card-map {
+	.share-card-inner :global(.share-card-map) {
 		display: block;
 		width: 100%;
 		height: 360px;

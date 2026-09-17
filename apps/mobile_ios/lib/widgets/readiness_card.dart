@@ -119,6 +119,13 @@ class _ContributorChip extends StatelessWidget {
   final ReadinessContribution contribution;
   const _ContributorChip({required this.contribution});
 
+  static String _name(AppLocalizations l10n, ReadinessContributorKind kind) =>
+      switch (kind) {
+        ReadinessContributorKind.form => l10n.readinessContributorForm,
+        ReadinessContributorKind.sleep => l10n.readinessContributorSleep,
+        ReadinessContributorKind.restingHr => l10n.readinessContributorRestingHr,
+      };
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -135,7 +142,7 @@ class _ContributorChip extends StatelessWidget {
       children: [
         Flexible(
           child: Text(
-            contribution.name,
+            _name(AppLocalizations.of(context), contribution.kind),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.bodySmall?.copyWith(

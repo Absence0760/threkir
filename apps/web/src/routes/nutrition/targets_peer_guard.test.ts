@@ -8,7 +8,7 @@ import { CATALOGUE_LOADERS } from '../../lib/i18n/catalogues';
 const DAY = readFileSync(new URL('./+page.svelte', import.meta.url), 'utf8');
 const TARGETS = readFileSync(new URL('./targets/+page.svelte', import.meta.url), 'utf8');
 const PREFS = readFileSync(
-	new URL('../settings/preferences/+page.svelte', import.meta.url),
+	new URL('../settings/body/+page.svelte', import.meta.url),
 	'utf8',
 );
 
@@ -34,18 +34,18 @@ test('/nutrition links to the targets peer, ungated', () => {
 	assert.doesNotMatch(head, /\{#if/);
 });
 
-test('both body-metrics CTAs deep-link to a section the preferences page still carries', () => {
+test('both body-metrics CTAs deep-link to a section the settings still carry', () => {
 	for (const [name, src] of [
 		['nutrition', DAY],
 		['nutrition/targets', TARGETS],
 	] as const) {
 		assert.match(
 			src,
-			/href="\/settings\/preferences#body-metrics"/,
+			/href="\/settings\/body#body-metrics"/,
 			`${name} lost its body-metrics deep link`,
 		);
 	}
-	assert.match(PREFS, /id="body-metrics"/, 'preferences dropped the body-metrics anchor');
+	assert.match(PREFS, /id="body-metrics"/, 'the body metrics page dropped the body-metrics anchor');
 });
 
 test('the targets peer does not become a second Art 9 entry point', () => {

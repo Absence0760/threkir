@@ -3,7 +3,7 @@
 /// Mirrors the pattern used by `units.svelte.ts`: a module-level reactive
 /// signal that any view (notably `RunMap`) can read with `getMapStyle()`
 /// to re-render automatically when the user flips the setting on
-/// `/settings/preferences`. The preferences page calls `setMapStyle(...)`
+/// `/settings/display`. The display page calls `setMapStyle(...)`
 /// when saving, and the root layout calls it once on mount with the
 /// effective value from the settings bag.
 

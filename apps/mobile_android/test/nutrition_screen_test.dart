@@ -472,7 +472,8 @@ void main() {
     }
   });
 
-  testWidgets('water card shows the litre readout + a remaining chip',
+  testWidgets(
+      'water card states the goal and what is left in one unit, litres',
       (tester) async {
     final f = await _store('water_target_');
     try {
@@ -480,7 +481,12 @@ void main() {
       await tester.pump();
       // Offline (no body weight) → flat 2 L goal, nothing drunk yet.
       expect(find.text('0 / 2 L'), findsOneWidget);
-      expect(find.text('2000 ml left'), findsOneWidget);
+      expect(find.text('2 L left'), findsOneWidget);
+      await tester.tap(find.byTooltip('Add water'));
+      await _pumpUntil(tester, () => tester.any(find.text('1.75 L left')),
+          describe: 'the remaining chip to drop by one 250 ml unit');
+      expect(find.text('0.25 / 2 L'), findsOneWidget);
+      expect(find.textContaining('ml left'), findsNothing);
     } finally {
       f.dir.deleteSync(recursive: true);
     }

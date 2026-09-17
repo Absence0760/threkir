@@ -634,6 +634,30 @@ class AppLocalizationsPt extends AppLocalizations {
   String get readinessBandLow => 'baixa';
 
   @override
+  String get readinessContributorForm => 'Equilíbrio de treino';
+
+  @override
+  String get readinessContributorSleep => 'Sono';
+
+  @override
+  String get readinessContributorRestingHr => 'Frequência cardíaca em repouso';
+
+  @override
+  String get intensityZone1 => 'Z1 (recuperação)';
+
+  @override
+  String get intensityZone2 => 'Z2 (leve)';
+
+  @override
+  String get intensityZone3 => 'Z3 (tempo)';
+
+  @override
+  String get intensityZone4 => 'Z4 (limiar)';
+
+  @override
+  String get intensityZone5 => 'Z5 (máx)';
+
+  @override
   String get missingMapTilesTitle =>
       'A utilizar tiles alternativos do OpenStreetMap';
 
@@ -720,6 +744,12 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get gymTabRecords => 'Recordes';
+
+  @override
+  String get gymPeerRoutines => 'Rotinas de ginásio';
+
+  @override
+  String get gymPeerSessions => 'Planos de sessão';
 
   @override
   String get homeAskCoach => 'Pergunte ao seu treinador';
@@ -5755,8 +5785,8 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String planDetailDriftUnderFlag(int pct) {
-    return 'Esta semana $pct% abaixo do plano — o volume planeado impulsiona a adaptação.';
+  String planDetailDriftUnderFlag(String done, String planned) {
+    return 'Até agora, esta semana correu $done dos $planned planeados.';
   }
 
   @override
@@ -6169,8 +6199,8 @@ class AppLocalizationsPt extends AppLocalizations {
   String get coachContextHr => 'FC';
 
   @override
-  String coachContextWeeklyGoal(String km) {
-    return '$km km/sem.';
+  String coachContextWeeklyGoal(String distance, String unit) {
+    return '$distance $unit/sem.';
   }
 
   @override
@@ -7952,7 +7982,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'Zonas de frequência cardíaca (limites superiores, bpm)';
 
   @override
-  String get prefsWeeklyGoal => 'Meta de quilometragem semanal';
+  String get prefsWeeklyGoal => 'Meta de distância semanal';
 
   @override
   String get prefsSectionActivityRecording => 'Atividade e gravação';
@@ -8387,7 +8417,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get mileageTitle => 'Quilometragem';
+  String get mileageTitle => 'Distância';
 
   @override
   String get mileageWeek => 'Semana';
@@ -10962,8 +10992,8 @@ class AppLocalizationsPt extends AppLocalizations {
   String get nutritionWaterGoalReached => 'Meta atingida';
 
   @override
-  String nutritionWaterRemaining(int n) {
-    return '$n ml restantes';
+  String nutritionWaterRemaining(String n) {
+    return '$n L restantes';
   }
 
   @override
@@ -12148,6 +12178,9 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get challengesDelete => 'Eliminar';
+
+  @override
+  String get challengesDeleteChallenge => 'Eliminar desafio';
 
   @override
   String get challengesMetricDistance => 'Distância';
@@ -14709,6 +14742,30 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get readinessBandLow => 'baixa';
 
   @override
+  String get readinessContributorForm => 'Equilíbrio de treino';
+
+  @override
+  String get readinessContributorSleep => 'Sono';
+
+  @override
+  String get readinessContributorRestingHr => 'Frequência cardíaca em repouso';
+
+  @override
+  String get intensityZone1 => 'Z1 (recuperação)';
+
+  @override
+  String get intensityZone2 => 'Z2 (leve)';
+
+  @override
+  String get intensityZone3 => 'Z3 (tempo)';
+
+  @override
+  String get intensityZone4 => 'Z4 (limiar)';
+
+  @override
+  String get intensityZone5 => 'Z5 (máx)';
+
+  @override
   String get missingMapTilesTitle =>
       'Usando tiles alternativos do OpenStreetMap';
 
@@ -14795,6 +14852,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get gymTabRecords => 'Recordes';
+
+  @override
+  String get gymPeerRoutines => 'Rotinas de academia';
+
+  @override
+  String get gymPeerSessions => 'Planos de sessão';
 
   @override
   String get homeAskCoach => 'Pergunte ao seu treinador';
@@ -19832,8 +19895,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String planDetailDriftUnderFlag(int pct) {
-    return 'Esta semana $pct% abaixo do plano — o volume planejado impulsiona a adaptação.';
+  String planDetailDriftUnderFlag(String done, String planned) {
+    return 'Até agora, nesta semana você correu $done dos $planned planejados.';
   }
 
   @override
@@ -20244,8 +20307,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get coachContextHr => 'FC';
 
   @override
-  String coachContextWeeklyGoal(String km) {
-    return '$km km/sem.';
+  String coachContextWeeklyGoal(String distance, String unit) {
+    return '$distance $unit/sem.';
   }
 
   @override
@@ -22022,7 +22085,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Zonas de frequência cardíaca (limites superiores, bpm)';
 
   @override
-  String get prefsWeeklyGoal => 'Meta de quilometragem semanal';
+  String get prefsWeeklyGoal => 'Meta de distância semanal';
 
   @override
   String get prefsSectionActivityRecording => 'Atividade e gravação';
@@ -22457,7 +22520,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get mileageTitle => 'Quilometragem';
+  String get mileageTitle => 'Distância';
 
   @override
   String get mileageWeek => 'Semana';
@@ -25032,8 +25095,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get nutritionWaterGoalReached => 'Meta atingida';
 
   @override
-  String nutritionWaterRemaining(int n) {
-    return '$n ml restantes';
+  String nutritionWaterRemaining(String n) {
+    return '$n L restantes';
   }
 
   @override
@@ -26216,6 +26279,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get challengesDelete => 'Excluir';
+
+  @override
+  String get challengesDeleteChallenge => 'Excluir desafio';
 
   @override
   String get challengesMetricDistance => 'Distância';

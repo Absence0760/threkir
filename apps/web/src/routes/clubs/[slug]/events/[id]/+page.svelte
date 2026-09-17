@@ -3,6 +3,7 @@
 	import { lengthLimit } from '$lib/core/column_limits';
 	import { onMount, onDestroy } from 'svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
+	import StaticMapImage from '$lib/components/StaticMapImage.svelte';
 	import { initial, hashHue } from '$lib/format/avatar';
 	import { formatDuration as baseDuration, activeFormatLocale } from '$lib/format/time';
 	import { page } from '$app/stores';
@@ -1625,15 +1626,19 @@
 				{#if meetPoint}
 					<div class="meet-point">
 						{#if meetMapUrl}
-							<a
-								class="meet-map"
-								href={directionsHref}
-								target="_blank"
-								rel="noopener noreferrer"
-								aria-label={m('clubEvent.openMeetInMaps')}
-							>
-								<img src={meetMapUrl} alt={m('clubEvent.meetMapAlt')} loading="lazy" />
-							</a>
+							<StaticMapImage src={meetMapUrl} alt={m('clubEvent.meetMapAlt')} lazy>
+								{#snippet frame(image)}
+									<a
+										class="meet-map"
+										href={directionsHref}
+										target="_blank"
+										rel="noopener noreferrer"
+										aria-label={m('clubEvent.openMeetInMaps')}
+									>
+										{@render image()}
+									</a>
+								{/snippet}
+							</StaticMapImage>
 						{:else if (env.PUBLIC_MAPTILER_KEY ?? '') && !consent.accepted && !meetMapConsented}
 							<div class="meet-map-consent" data-testid="meet-map-consent">
 								<h3>{m('runMap.consentTitle')}</h3>
@@ -2996,7 +3001,7 @@
 		border: 1px solid var(--color-border);
 	}
 
-	.meet-map img {
+	.meet-map :global(img) {
 		display: block;
 		width: 320px;
 		max-width: 100%;

@@ -103,10 +103,10 @@ test.describe('form-control accessible names', () => {
 		test('/settings/devices override value control exposes an accessible name', async ({
 			page,
 		}) => {
-			// loadSettings (called by /settings/preferences onMount) provisions
+			// loadSettings (called by /settings/display onMount) provisions
 			// this browser's device row, so /settings/devices has a current
 			// device with an "Add override" affordance.
-			await page.goto('/settings/preferences');
+			await page.goto('/settings/display');
 			await expect(page.getByRole('heading', { name: 'Units & Display' })).toBeVisible({
 				timeout: 10_000,
 			});

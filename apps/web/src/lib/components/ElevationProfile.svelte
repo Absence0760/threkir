@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { formatDistance } from '$lib/format/units.svelte';
 	import { minMax } from '$lib/util/min_max';
-	import { computeElevationGain } from '$lib/routes/route_simplify';
 	import { m } from '$lib/i18n/store.svelte';
 
 	/// `onhover` is fired with the elevations-index the user is
@@ -9,12 +8,19 @@
 	/// The parent maps that index back to a lat/lng on the track and
 	/// paints a hover marker on the map — the chart-to-map linked
 	/// cursor / brushing pattern Nike Run Club + Strava both ship.
+	///
+	/// `totalGain` is the page's own climb figure, never one this chart
+	/// derives: the series it draws can be a simplified or privacy-clipped
+	/// line whose summed climb reads lower than the route's, and the page
+	/// already states the climb beside it (issue #902). Null hides it.
 	let {
 		elevations = [],
+		totalGain,
 		totalDistance = 0,
 		onhover,
 	}: {
 		elevations: number[];
+		totalGain: number | null;
 		totalDistance: number;
 		onhover?: (idx: number | null) => void;
 	} = $props();
@@ -36,14 +42,6 @@
 	let minEle = $derived(extent?.min ?? 0);
 	let maxEle = $derived(extent?.max ?? 100);
 	let eleRange = $derived(Math.max(maxEle - minEle, 1));
-
-	/// Total elevation gain, through the same gated reduction the route
-	/// detail tile uses. A local sum of every positive delta has no noise
-	/// floor, so on a real GPS altitude series it reports the sampling
-	/// jitter as climb -- measured at 116,484 m against a 600 m truth.
-	let totalGain = $derived(
-		Math.round(computeElevationGain(elevations.map((ele) => ({ lat: 0, lng: 0, ele })))),
-	);
 
 	function xFor(i: number): number {
 		if (elevations.length < 2) return padding.left;
@@ -185,10 +183,12 @@
 			</span>
 		{:else if elevations.length >= 2}
 			<span class="tt-hint">{m('elevationProfile.tapOrDragToInspect')}</span>
-			<span class="tt-cell tt-cell-right">
-				<span class="tt-label">{m('elevationProfile.totalGain')}</span>
-				<span class="tt-value">{totalGain} m</span>
-			</span>
+			{#if totalGain != null}
+				<span class="tt-cell tt-cell-right">
+					<span class="tt-label">{m('elevationProfile.totalGain')}</span>
+					<span class="tt-value" data-testid="elevation-profile-total-gain">{totalGain} m</span>
+				</span>
+			{/if}
 		{/if}
 	</div>
 

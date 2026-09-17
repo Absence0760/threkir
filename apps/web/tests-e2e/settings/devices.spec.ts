@@ -9,7 +9,7 @@ import { readRows } from '../fixtures/db-read';
  * `device_id` into localStorage on first read; the matching
  * `user_device_settings` row is auto-provisioned by `loadSettings` on
  * first access (i.e. the first time the user opens any settings tab).
- * /settings/preferences's onMount calls loadSettings → upsert, so the
+ * /settings/display's onMount calls loadSettings → upsert, so the
  * row exists by the time the test lands on /settings/devices.
  *
  * Planted fixture rows are torn down in afterEach so successive tests
@@ -35,7 +35,7 @@ test.describe('/settings/devices', () => {
 	});
 
 	test('current browser shows up with a "This device" badge', async ({ page }) => {
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await expect(page.getByRole('heading', { name: 'Units & Display' })).toBeVisible({
 			timeout: 10_000,
 		});
@@ -53,7 +53,7 @@ test.describe('/settings/devices', () => {
 	});
 
 	test('current device label is editable inline + persists across reload', async ({ page }) => {
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await expect(page.getByRole('heading', { name: 'Units & Display' })).toBeVisible({
 			timeout: 10_000,
 		});
@@ -82,7 +82,7 @@ test.describe('/settings/devices', () => {
 	test('push notification toggle appears on the current device + reflects browser permission state', async ({
 		page,
 	}) => {
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await expect(page.getByRole('heading', { name: 'Units & Display' })).toBeVisible({
 			timeout: 10_000,
 		});
@@ -126,7 +126,7 @@ test.describe('/settings/devices', () => {
 			},
 		});
 
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await expect(page.getByRole('heading', { name: 'Units & Display' })).toBeVisible({
 			timeout: 10_000,
 		});
@@ -149,7 +149,7 @@ test.describe('/settings/devices', () => {
 			prefs: { map_style: 'satellite', voice_feedback_enabled: false },
 		});
 
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await expect(page.getByRole('heading', { name: 'Units & Display' })).toBeVisible({
 			timeout: 10_000,
 		});
@@ -178,7 +178,7 @@ test.describe('/settings/devices', () => {
 			prefs: { map_style: 'satellite' }
 		});
 
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await expect(page.getByRole('heading', { name: 'Units & Display' })).toBeVisible({
 			timeout: 10_000
 		});
@@ -223,7 +223,7 @@ test.describe('/settings/devices', () => {
 			prefs: { map_style: 'satellite' }
 		});
 
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await expect(page.getByRole('heading', { name: 'Units & Display' })).toBeVisible({
 			timeout: 10_000
 		});
@@ -268,7 +268,7 @@ test.describe('/settings/devices', () => {
 			prefs: {},
 		});
 
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await expect(page.getByRole('heading', { name: 'Units & Display' })).toBeVisible({
 			timeout: 10_000,
 		});

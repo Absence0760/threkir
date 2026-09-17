@@ -12,6 +12,7 @@
 	} from '$lib/gym/gym_stopwatch';
 	import { weightInputValue, parseWeight, weightUnitLabel } from '$lib/format/units.svelte';
 	import { m as t } from '$lib/i18n/store.svelte';
+	import MetricLabel from '$lib/components/MetricLabel.svelte';
 
 	interface Props {
 		step: RoutineStep;
@@ -25,6 +26,7 @@
 	}
 
 	let { step, index, total, entered, onComplete, onSkip, onRewind, onAbandon }: Props = $props();
+	const uid = $props.id();
 
 	let repsStr = $state('');
 	let weightStr = $state('');
@@ -260,9 +262,10 @@
 				data-testid="gym-set-weight"
 			/>
 		</label>
-		<label class="field">
-			<span class="field-label section-label">{t('gym.rpe')}</span>
+		<div class="field">
+			<span class="field-label section-label"><MetricLabel metric="rpe" labelFor="{uid}-rpe" /></span>
 			<input
+				id="{uid}-rpe"
 				type="number"
 				inputmode="decimal"
 				min="0"
@@ -271,7 +274,7 @@
 				bind:value={rpeStr}
 				data-testid="gym-set-rpe"
 			/>
-		</label>
+		</div>
 		{#if step.targetDistanceM != null}
 			<label class="field">
 				<span class="field-label section-label">{t('gym.distanceUnit')}</span>

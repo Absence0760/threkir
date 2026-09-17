@@ -729,7 +729,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
         Icons.insights,
         drift.direction == DriftDirection.over
             ? l10n.planDetailDriftOverFlag(pctOff)
-            : l10n.planDetailDriftUnderFlag(pctOff),
+            : l10n.planDetailDriftUnderFlag(
+                fmtKm(drift.actualMetres), fmtKm(drift.plannedMetres)),
       ));
     }
     if (missed != null) {

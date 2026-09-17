@@ -828,6 +828,38 @@
   "@readinessBandLow": {
     "description": "Readiness band pill label for a low readiness score"
   },
+  "readinessContributorForm": "Training balance",
+  "@readinessContributorForm": {
+    "description": "Readiness breakdown: the points training balance (form) added to the score. Deliberately not the TSB stat's name, which labels a different number"
+  },
+  "readinessContributorSleep": "Sleep",
+  "@readinessContributorSleep": {
+    "description": "Readiness breakdown: the points last night's sleep added to the score"
+  },
+  "readinessContributorRestingHr": "Resting heart rate",
+  "@readinessContributorRestingHr": {
+    "description": "Readiness breakdown: the points resting heart rate added to the score"
+  },
+  "intensityZone1": "Z1 (recovery)",
+  "@intensityZone1": {
+    "description": "Training intensity legend: heart-rate zone 1, named as on web Preferences"
+  },
+  "intensityZone2": "Z2 (easy)",
+  "@intensityZone2": {
+    "description": "Training intensity legend: heart-rate zone 2"
+  },
+  "intensityZone3": "Z3 (tempo)",
+  "@intensityZone3": {
+    "description": "Training intensity legend: heart-rate zone 3"
+  },
+  "intensityZone4": "Z4 (threshold)",
+  "@intensityZone4": {
+    "description": "Training intensity legend: heart-rate zone 4"
+  },
+  "intensityZone5": "Z5 (max)",
+  "@intensityZone5": {
+    "description": "Training intensity legend: heart-rate zone 5"
+  },
   "missingMapTilesTitle": "Using OpenStreetMap fallback tiles",
   "@missingMapTilesTitle": {
     "description": "Diagnostic banner title shown when no map-tile source is configured (dev-facing)"
@@ -943,6 +975,14 @@
   "gymTabRecords": "Records",
   "@gymTabRecords": {
     "description": "Gym peer strip entry opening personal records"
+  },
+  "gymPeerRoutines": "Gym routines",
+  "@gymPeerRoutines": {
+    "description": "Gym peer strip entry opening the reusable strength routine library; named apart from session plans"
+  },
+  "gymPeerSessions": "Session plans",
+  "@gymPeerSessions": {
+    "description": "Gym peer strip entry opening timed yoga/pilates session plans; named apart from gym routines"
   },
   "homeAskCoach": "Ask your coach",
   "@homeAskCoach": {
@@ -7727,12 +7767,15 @@
       }
     }
   },
-  "planDetailDriftUnderFlag": "Running {pct}% under plan this week — the planned volume drives the adaptation.",
+  "planDetailDriftUnderFlag": "So far this week you've run {done} of the {planned} planned.",
   "@planDetailDriftUnderFlag": {
-    "description": "Plan-detail adherence/replan/duplicate",
+    "description": "Plan-detail adherence: distance run so far this week against the week's planned distance, both already formatted with their unit",
     "placeholders": {
-      "pct": {
-        "type": "int"
+      "done": {
+        "type": "String"
+      },
+      "planned": {
+        "type": "String"
       }
     }
   },
@@ -8232,11 +8275,14 @@
   "@coachContextHr": {
     "description": "Context-strip heart-rate-zones chip"
   },
-  "coachContextWeeklyGoal": "{km} km/wk",
+  "coachContextWeeklyGoal": "{distance} {unit}/wk",
   "@coachContextWeeklyGoal": {
-    "description": "Context-strip weekly-goal chip",
+    "description": "Context-strip weekly-goal chip, in the runner's own distance unit",
     "placeholders": {
-      "km": {
+      "distance": {
+        "type": "String"
+      },
+      "unit": {
         "type": "String"
       }
     }
@@ -10500,9 +10546,9 @@
   "@prefsHrZonesDialogTitle": {
     "description": "Dialog title for editing heart-rate zones"
   },
-  "prefsWeeklyGoal": "Weekly mileage goal",
+  "prefsWeeklyGoal": "Weekly distance goal",
   "@prefsWeeklyGoal": {
-    "description": "Tile and dialog title for the weekly mileage goal"
+    "description": "Tile and dialog title for the weekly distance goal, which is entered in km or mi"
   },
   "prefsSectionActivityRecording": "Activity & recording",
   "@prefsSectionActivityRecording": {
@@ -11073,7 +11119,7 @@
       }
     }
   },
-  "mileageTitle": "Mileage",
+  "mileageTitle": "Distance",
   "@mileageTitle": {
     "description": "Title of the dashboard mileage card"
   },
@@ -14207,12 +14253,12 @@
     }
   },
   "nutritionWaterGoalReached": "Goal reached",
-  "nutritionWaterRemaining": "{n} ml left",
+  "nutritionWaterRemaining": "{n} L left",
   "@nutritionWaterRemaining": {
-    "description": "Water budget chip: ml still to drink",
+    "description": "Water budget chip: litres still to drink",
     "placeholders": {
       "n": {
-        "type": "int"
+        "type": "String"
       }
     }
   },
@@ -15769,6 +15815,10 @@
   "challengesDelete": "Delete",
   "@challengesDelete": {
     "description": "Delete a challenge button"
+  },
+  "challengesDeleteChallenge": "Delete challenge",
+  "@challengesDeleteChallenge": {
+    "description": "Overflow-menu action that deletes the whole challenge, named for what it deletes"
   },
   "challengesMetricDistance": "Distance",
   "@challengesMetricDistance": {

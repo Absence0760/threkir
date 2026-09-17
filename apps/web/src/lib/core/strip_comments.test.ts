@@ -3,7 +3,7 @@ import { strict as assert } from 'node:assert';
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { stripComments } from './strip_comments';
+import { stripComments, stripSvelteComments } from './strip_comments';
 
 const sp = (n: number) => ' '.repeat(n);
 
@@ -92,6 +92,19 @@ test('offsets and line count are the source file’s own', () => {
 	const out = stripComments(src);
 	assert.equal(out.length, src.length);
 	assert.equal(out.split('\n').length, src.split('\n').length);
+});
+
+test('a Svelte file loses its markup and script comments, and keeps its offsets', () => {
+	const src = '<script>\n\t// bound to <input type="number">\n</script>\n<!-- <input> -->\n<input id="a" />';
+	const out = stripSvelteComments(src);
+	assert.equal(out.length, src.length);
+	assert.equal(out.match(/<input/g)?.length, 1);
+	assert.equal(out.indexOf('<input id="a"'), src.indexOf('<input id="a"'));
+});
+
+test('an unterminated markup comment is blanked to end of file, and a split opener is not rebuilt', () => {
+	assert.equal(stripSvelteComments('a\n<!-- open\nb'), 'a\n' + sp(9) + '\n' + sp(1));
+	assert.ok(!stripSvelteComments('<!-' + '<!-- x -->' + '- <input> -->').includes('<!--'));
 });
 
 test('stripping this tree preserves length and is idempotent', () => {

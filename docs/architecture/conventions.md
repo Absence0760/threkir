@@ -1273,7 +1273,7 @@ setting. The list is the optimistic surface; a server-sourced aggregate is not.
 
 **A timed undo is an accessibility surface.** WCAG 2.2.1 requires the limit be
 turnable-off, adjustable, or extendable; the `undo_window_s` preference
-(`/settings/preferences` on web, Settings → Preferences on mobile, registered in
+(`/settings/display` on web, Settings → Preferences on mobile, registered in
 [settings.md](../backend/settings.md)) carries a `0` = *no time limit* choice, and
 hover/focus (web) or backgrounding (mobile) pauses a running window. Keep the
 countdown out of the announced region — a ticking number re-announces on every

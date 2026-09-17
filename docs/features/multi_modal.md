@@ -726,7 +726,8 @@ composer is a modal sheet, matching `gear_form_sheet` / `goal_editor_sheet`.
 > **height / weight / DOB / sex stay editable in Settings only** — they are Art 9
 > special-category data behind an explicit-consent gate, and a second entry
 > point would be a second consent surface. Both surfaces deep-link
-> `/settings/preferences#body-metrics`. Deliberately **not** a new always-on
+> `/settings/preferences#body-metrics` (which, since the #905 settings split, redirects to
+> `/settings/body#body-metrics`). Deliberately **not** a new always-on
 > card on the day view: `/nutrition` keeps exactly one primary action
 > (anti-clutter checklist).
 

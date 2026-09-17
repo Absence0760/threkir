@@ -25,6 +25,7 @@ For the unit / widget test suites that run automatically, see [testing.md](testi
 - [Photos on runs](#photos-on-runs)
 - [Live race spectator + race mode](#live-race-spectator--race-mode)
 - [Imports — Strava, Garmin, parkrun, Health Connect, HealthKit](#imports--strava-garmin-parkrun-health-connect-healthkit)
+- [Settings — preference pages](#settings--preference-pages)
 - [Privacy zones](#privacy-zones)
 - [Paywall and RevenueCat](#paywall-and-revenuecat)
 - [Backup, restore, account deletion, GDPR export](#backup-restore-account-deletion-gdpr-export)
@@ -160,7 +161,7 @@ The most-tested surface in the codebase. The recording state machine + filter ch
 | Workout execution | Start a `plans/[id]/workouts/[wid]` from the home Today card | Live workout band shows current step; Skip / Abandon work; finished metadata carries `plan_workout_id` + `workout_step_results` (see [workout_execution.md](../features/workout_execution.md)). |
 | Crash recovery | Open run, get to ~1 km, force-kill the process, re-open | Home screen surfaces a "Recover unsaved run?" prompt; accepting saves a run reconstructed from the incremental snapshot with `metadata.recovered_from_crash=true`. |
 | Per-cue voice toggles (#607) | Settings → Preferences → "Spoken cues": switch Splits off, leave Pace alerts on → record past a split with a target pace set | No split announcement; pace alert still speaks and includes the amount ("Speed up by 15 seconds per kilometre"). Toggles survive an app restart and sync to the device bag (`voice_cue_types`). |
-| Per-cue voice toggles set from web (#607) | On web, Settings → Preferences → enable "Spoken split announcements" → under "Spoken cues" switch Off-route warning off. Then sign in on the phone (or sign out/in) and open Settings → Preferences | The phone's "Off-route warning" switch reads off, and no other cue changed. Web writes the UNIVERSAL bag (a browser is its own device row and never records) and the phone reads universal-then-device, so a phone-side override for the same cue still wins — see [decisions.md § 469](../architecture/decisions.md). |
+| Per-cue voice toggles set from web (#607) | On web, Settings → Recording & voice (`/settings/recording`) → enable "Spoken split announcements" → under "Spoken cues" switch Off-route warning off. Then sign in on the phone (or sign out/in) and open Settings → Preferences | The phone's "Off-route warning" switch reads off, and no other cue changed. Web writes the UNIVERSAL bag (a browser is its own device row and never records) and the phone reads universal-then-device, so a phone-side override for the same cue still wins — see [decisions.md § 469](../architecture/decisions.md). |
 | Cutoff catch-up cue (#607) | Follow a route whose markers carry cutoffs; simulate GPS slower than the cutoff demands | When the next-cutoff card turns tight/behind, TTS speaks "Next cutoff in X. You need M minutes S seconds per kilometre to make it" — immediately on a WORSENING status change (tight→behind; improvement flapping never bypasses), then at most every 2 min, and never while manually paused; once the limit has truly passed it says the limit has passed (no impossible pace, and never within 50 m of the cutoff where the pace projection is merely meaningless). |
 | Marker target cue (#608) | On web, give a route marker a target time (or roadbook → "Save as marker targets") → follow the route past the marker | Crossing the marker speaks "{label}: {time} ahead of/behind plan" (or "on plan" within ±15 s), once per marker even with GPS jitter. Gated on the "Course marker targets" toggle. |
 | Race strategy 10-10-10 (#609) | Pre-run → "Race strategy" → 10-10-10, distance prefilled from route, goal time set → record through a phase boundary | Phase chip shows "Phase 1/3 — Hold back · pace"; crossing 38.1 % of the distance speaks "Phase 2 of 3. Settle into your goal pace. Target …"; pace alerts use the phase target; saved run carries `metadata.pacing_strategy` per [metadata.md](../backend/metadata.md). |
@@ -372,13 +373,30 @@ See [decisions.md §36](../architecture/decisions.md#36-photos-on-runs-own-table
 
 ---
 
+## Settings — preference pages
+
+The single `/settings/preferences` page was split by topic (issue #905, [decisions § 1634](../architecture/decisions.md)); where each key now lives is in [settings.md § Where each key is edited on web](../backend/settings.md#where-each-key-is-edited-on-web).
+
+| Scenario | Steps | Pass |
+|---|---|---|
+| Nav | Web: open `/settings/account` | The side nav shows four sections — Profile (Account, Body metrics, Safety), Preferences (Units & display, Recording & voice, Training, Privacy & sharing, Notifications), Apps & data, Account & legal. There is no "Preferences" tab linking to `/settings/preferences`. |
+| Landing page | Open `/settings/preferences` with no hash | A list of the six groups, each with a one-line summary; clicking one opens that page. Nothing on it is editable. |
+| Old section links | Open `/settings/preferences#heart-rate-zones`, then `#weekly-mileage-goal`, then `#body-metrics` | Each replaces the URL with `/settings/training#heart-rate-zones`, `/settings/training#weekly-distance-goal` and `/settings/body#body-metrics`, and scrolls to that section once it has loaded. Browser Back does not return to the landing page. |
+| Email footer | Trigger any notification email to Mailpit (`:54324`) | "Manage preferences" and the `List-Unsubscribe` header both point at `/settings/notifications`. An older email's `/settings/preferences` link still lands on the landing page. |
+| Save + load failure | On any preference page change a select; then block `get_my_profile` in devtools and open Body metrics from the nav | The header shows Saving… then Saved. With the read blocked, an alert with Retry replaces the form (no defaults are shown), and Retry restores it once unblocked. |
+| Every control explained | Walk the six pages | Every select, field and toggle group has one plain line under it, and a screen reader announces it as the control's description. Hints spell out HR, bpm, kg, lbs, km/h, mph, cm and AI. |
+| Weekly distance goal (web) | `/settings/display` → Kilometres, then `/settings/training` → type 42.2 in "Weekly distance goal (km)" and tab away; reload | Field reads 42.2; `user_settings.prefs.weekly_mileage_goal_m` is 42200. Switch to Miles: the field reads 26.2 (mi). Focus and blur without typing: the stored value does not change. 600 shows "Enter a goal between 0.1 and 500 km." and nothing is saved. |
+| Weekly distance goal (mobile) | Settings → Preferences → Weekly distance goal, with Use miles on and a 50000 m goal stored | Tile reads "31.1 mi / week"; the dialog pre-fills 31.1 with an "mi" suffix; Save without editing leaves 50000. The coach context chip reads "31.1 mi/wk". |
+
+---
+
 ## Privacy zones
 
 See [decisions.md §33](../architecture/decisions.md#33-privacy-zones-live-in-user_settings-clipping-is-client-side-nearby-leak-is-a-known-v1-gap).
 
 | Scenario | Steps | Pass |
 |---|---|---|
-| Configure zones | Web `/settings/account` → Privacy zones | `PrivacyZonePicker` (MapLibre) lets you draw circular zones; persists to `user_settings.prefs.privacy_zones`. |
+| Configure zones | Web `/settings/privacy` → Privacy zones | `PrivacyZonePicker` (MapLibre) lets you draw circular zones; persists to `user_settings.prefs.privacy_zones`. |
 | Owner view | Open `/runs/[id]` of a clipped run as the owner | Full track visible — owner is exempt. |
 | Public viewer | Same run via `/share/run/[id]` in incognito | Track is clipped: leading + trailing in-zone points removed via the `clip_track_for_user` RPC, contiguous middle returned. Zones never leave the database. |
 | Cap | Run with >50 000 points (synthetic) | RPC truncates to bound the dense-grid probe attack. |

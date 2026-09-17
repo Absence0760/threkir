@@ -12,6 +12,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { en } from '../../lib/i18n/locales/en';
+import { stripSvelteComments } from '../../lib/core/strip_comments';
 
 const SETTINGS_DIR = dirname(fileURLToPath(import.meta.url));
 const PAGES = ['display', 'recording', 'training', 'body', 'privacy', 'notifications'];
@@ -60,7 +61,7 @@ function explained(source: string, control: Control): string | null {
 for (const page of PAGES) {
 	test(`every control on /settings/${page} has a plain explanation`, () => {
 		const source = readFileSync(join(SETTINGS_DIR, page, '+page.svelte'), 'utf8');
-		const found = controls(source);
+		const found = controls(stripSvelteComments(source));
 		assert.ok(found.length > 0, `found no controls on /settings/${page} — the scan stopped matching`);
 		const missing = found
 			.map((c) => ({ c, why: explained(source, c) }))

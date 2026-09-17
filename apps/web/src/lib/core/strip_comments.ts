@@ -224,3 +224,19 @@ export function stripComments(source: string): string {
 
 	return out.join('');
 }
+
+/**
+ * `stripComments` for a Svelte file: markup comments are blanked in place
+ * first, then the script comments. Blanking rather than deleting keeps every
+ * offset the file's own, and means no removal can splice two fragments into a
+ * `<!--` that was not there (`<!-` + `<!-- x -->` + `- … -->`).
+ */
+export function stripSvelteComments(source: string): string {
+	let markup = '';
+	let at = 0;
+	for (const m of source.matchAll(/<!--[\s\S]*?(?:-->|$)/g)) {
+		markup += source.slice(at, m.index) + m[0].replace(/[^\n]/g, ' ');
+		at = m.index + m[0].length;
+	}
+	return stripComments(markup + source.slice(at));
+}

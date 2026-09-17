@@ -10,7 +10,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -19,6 +19,7 @@ import {
 	PREFERENCES_PAGES,
 	legacyPreferencesTarget,
 } from '../../lib/settings/preferences_ia';
+import { stripSvelteComments } from '../../lib/core/strip_comments';
 import { WEEKLY_GOAL_KEY } from '../../lib/settings/weekly_goal';
 import { PRIVACY_ZONES_KEY } from '../../lib/routes/privacy';
 
@@ -108,22 +109,18 @@ function registryKeys(): string[] {
 
 function settingsPages(): Map<string, string> {
 	const pages = new Map<string, string>();
-	for (const entry of readdirSync(SETTINGS_DIR)) {
-		const file = join(SETTINGS_DIR, entry, '+page.svelte');
-		if (statSync(join(SETTINGS_DIR, entry)).isDirectory() && existsSync(file)) {
-			pages.set(entry, readFileSync(file, 'utf8'));
-		}
+	for (const entry of readdirSync(SETTINGS_DIR, { withFileTypes: true })) {
+		if (!entry.isDirectory()) continue;
+		const file = join(SETTINGS_DIR, entry.name, '+page.svelte');
+		if (existsSync(file)) pages.set(entry.name, readFileSync(file, 'utf8'));
 	}
 	return pages;
 }
 
-/// Comments are stripped first: a page explaining that it no longer writes a
+/// Comments are blanked first: a page explaining that it no longer writes a
 /// key is not an editor of it.
 function code(source: string): string {
-	return source
-		.replace(/<!--[\s\S]*?-->/g, '')
-		.replace(/\/\*[\s\S]*?\*\//g, '')
-		.replace(/(^|[^:\\])\/\/.*$/gm, '$1');
+	return stripSvelteComments(source);
 }
 
 function names(source: string, key: string, via?: string): boolean {
@@ -209,10 +206,10 @@ test('an old section link resolves, and anything else stays on the landing page'
 test('in-app code links a moved section at its new page, never through the landing redirect', () => {
 	const offenders: string[] = [];
 	const walk = (dir: string) => {
-		for (const entry of readdirSync(dir)) {
-			const path = join(dir, entry);
-			if (statSync(path).isDirectory()) walk(path);
-			else if (/\.(svelte|ts)$/.test(entry) && !/\.test\.ts$/.test(entry)) {
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			const path = join(dir, entry.name);
+			if (entry.isDirectory()) walk(path);
+			else if (/\.(svelte|ts)$/.test(entry.name) && !/\.test\.ts$/.test(entry.name)) {
 				for (const m of readFileSync(path, 'utf8').matchAll(/\/settings\/preferences#([\w-]+)/g)) {
 					const target = legacyPreferencesTarget(m[1]);
 					offenders.push(`${path}: #${m[1]} -> ${target ?? 'no settings page carries this section'}`);

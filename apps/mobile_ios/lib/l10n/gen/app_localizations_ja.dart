@@ -615,6 +615,21 @@ class AppLocalizationsJa extends AppLocalizations {
   String get readinessContributorRestingHr => '安静時心拍数';
 
   @override
+  String get intensityZone1 => 'Z1（リカバリー）';
+
+  @override
+  String get intensityZone2 => 'Z2（イージー）';
+
+  @override
+  String get intensityZone3 => 'Z3（テンポ）';
+
+  @override
+  String get intensityZone4 => 'Z4（閾値）';
+
+  @override
+  String get intensityZone5 => 'Z5（最大）';
+
+  @override
   String get missingMapTilesTitle => 'OpenStreetMapの代替タイルを使用中';
 
   @override

@@ -640,6 +640,21 @@ class AppLocalizationsEs extends AppLocalizations {
   String get readinessContributorRestingHr => 'Frecuencia cardíaca en reposo';
 
   @override
+  String get intensityZone1 => 'Z1 (recuperación)';
+
+  @override
+  String get intensityZone2 => 'Z2 (suave)';
+
+  @override
+  String get intensityZone3 => 'Z3 (tempo)';
+
+  @override
+  String get intensityZone4 => 'Z4 (umbral)';
+
+  @override
+  String get intensityZone5 => 'Z5 (máx)';
+
+  @override
   String get missingMapTilesTitle =>
       'Usando teselas de respaldo de OpenStreetMap';
 

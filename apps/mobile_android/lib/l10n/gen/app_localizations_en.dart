@@ -635,6 +635,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get readinessContributorRestingHr => 'Resting heart rate';
 
   @override
+  String get intensityZone1 => 'Z1 (recovery)';
+
+  @override
+  String get intensityZone2 => 'Z2 (easy)';
+
+  @override
+  String get intensityZone3 => 'Z3 (tempo)';
+
+  @override
+  String get intensityZone4 => 'Z4 (threshold)';
+
+  @override
+  String get intensityZone5 => 'Z5 (max)';
+
+  @override
   String get missingMapTilesTitle => 'Using OpenStreetMap fallback tiles';
 
   @override

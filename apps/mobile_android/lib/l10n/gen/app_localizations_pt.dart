@@ -643,6 +643,21 @@ class AppLocalizationsPt extends AppLocalizations {
   String get readinessContributorRestingHr => 'Frequência cardíaca em repouso';
 
   @override
+  String get intensityZone1 => 'Z1 (recuperação)';
+
+  @override
+  String get intensityZone2 => 'Z2 (leve)';
+
+  @override
+  String get intensityZone3 => 'Z3 (tempo)';
+
+  @override
+  String get intensityZone4 => 'Z4 (limiar)';
+
+  @override
+  String get intensityZone5 => 'Z5 (máx)';
+
+  @override
   String get missingMapTilesTitle =>
       'A utilizar tiles alternativos do OpenStreetMap';
 
@@ -14721,6 +14736,21 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get readinessContributorRestingHr => 'Frequência cardíaca em repouso';
+
+  @override
+  String get intensityZone1 => 'Z1 (recuperação)';
+
+  @override
+  String get intensityZone2 => 'Z2 (leve)';
+
+  @override
+  String get intensityZone3 => 'Z3 (tempo)';
+
+  @override
+  String get intensityZone4 => 'Z4 (limiar)';
+
+  @override
+  String get intensityZone5 => 'Z5 (máx)';
 
   @override
   String get missingMapTilesTitle =>

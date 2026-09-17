@@ -1061,6 +1061,36 @@ abstract class AppLocalizations {
   /// **'Resting heart rate'**
   String get readinessContributorRestingHr;
 
+  /// Training intensity legend: heart-rate zone 1, named as on web Preferences
+  ///
+  /// In en, this message translates to:
+  /// **'Z1 (recovery)'**
+  String get intensityZone1;
+
+  /// Training intensity legend: heart-rate zone 2
+  ///
+  /// In en, this message translates to:
+  /// **'Z2 (easy)'**
+  String get intensityZone2;
+
+  /// Training intensity legend: heart-rate zone 3
+  ///
+  /// In en, this message translates to:
+  /// **'Z3 (tempo)'**
+  String get intensityZone3;
+
+  /// Training intensity legend: heart-rate zone 4
+  ///
+  /// In en, this message translates to:
+  /// **'Z4 (threshold)'**
+  String get intensityZone4;
+
+  /// Training intensity legend: heart-rate zone 5
+  ///
+  /// In en, this message translates to:
+  /// **'Z5 (max)'**
+  String get intensityZone5;
+
   /// Diagnostic banner title shown when no map-tile source is configured (dev-facing)
   ///
   /// In en, this message translates to:

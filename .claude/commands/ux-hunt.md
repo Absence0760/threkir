@@ -22,7 +22,7 @@ This is the repeatable **hunt → triage → fix (web↔mobile pairs) → test �
 ## The anti-pattern checklist (what to hunt)
 
 In this codebase the recurring, high-value ones — roughly in order of how often they turn up:
-1. **Destructive action without confirmation** — delete / remove / leave / discard / clear / DNF / disconnect that fires on one tap. *By far the most common finding; it's usually present on BOTH platforms.*
+1. **Destructive action with no guard at all** — delete / remove / leave / discard / clear / DNF / disconnect that fires on one tap with neither a confirm nor an undo. *By far the most common finding; it's usually present on BOTH platforms.* Its mirror image counts too: an action carrying **both** a confirm and an undo, or an "undo" that cannot actually reverse what was done. Read [`conventions.md` § Destructive actions](../../docs/architecture/conventions.md) before filing either — the rule is one guard, chosen by whether the action is honestly reversible.
 2. **Swallowed / indistinguishable failures** — an empty `catch`, a `catch` that only `debugPrint`s on a **primary** action, or a data-layer helper that returns `[]`/`null` on error so the UI shows "empty" instead of "failed" with no retry.
 3. **Double-submit** — an async action button (save/create/post/reply/join/invite/follow/upload/import/sync) with no in-flight guard + no disabled state → dupes or a crash.
 4. **Missing loading / empty / error states** — a blank flash, an infinite spinner on reject, or no empty-state message.
@@ -48,8 +48,11 @@ The biggest lever: when the same anti-pattern exists on both web and mobile, fix
 
 Per piece (one anti-pattern = one or two commits — web commit, mobile commit):
 
-- **Web confirm** → the shared `ConfirmDialog.svelte` (`open` bound to a `confirm…Id` state; `onconfirm` runs the mutation with a busy guard + error toast). Don't hand-roll a dialog.
-- **Mobile confirm** → the `showDialog<bool>` + `AlertDialog` idiom (Cancel + a `colorScheme.error` confirm button); only run the mutation on `true`. Put the confirm in a **testable** widget where you can (a public `@visibleForTesting` section widget) rather than a private `State` method.
+- **Destructive action** → pick the ONE guard the action earns, per [`conventions.md` § Destructive actions](../../docs/architecture/conventions.md). Confirm **or** undo, never both.
+  - **Undoable** → `deferDestructive` (`apps/web/src/lib/stores/undo.svelte.ts`) and **no** `ConfirmDialog`. The row leaves the local list at once and the server mutation is held for the undo window, so Undo cancels a timer rather than compensating for a completed delete — it cannot fail. Snapshot the list before filtering so ordering survives the restore, and filter out any children the delete would cascade or the list renders orphans.
+  - **Not undoable** → keep the confirm: the shared `ConfirmDialog.svelte` (`open` bound to a `confirm…Id` state; `onconfirm` runs the mutation with a busy guard + error toast). Don't hand-roll a dialog. This is for a delete that cascades something the actor could not reconstruct, or an authored reusable artefact (a routine, a saved meal, a plan) rather than a line of data.
+  - Adding a confirm to something that should have had an undo is not a fix — it is the next finding.
+- **Mobile confirm** (when the action earned a confirm, per above) → the `showDialog<bool>` + `AlertDialog` idiom (Cancel + a `colorScheme.error` confirm button); only run the mutation on `true`. Put the confirm in a **testable** widget where you can (a public `@visibleForTesting` section widget) rather than a private `State` method.
 - **Swallowed failure** → surface it: a page error banner / `showTopBanner` (mobile) / a distinct error+retry state. If a **data-layer helper swallows to `[]`/`null`** and has a single caller, make it **throw** and let the caller catch — that's the root-cause fix (don't paper the symptom in the UI).
 - **Double-submit** → a `…Busy`/`…Id` guard: early-return while in flight + `disabled` on the button.
 - **i18n** → add the key to **every** web locale (`apps/web/src/lib/i18n/locales/*.ts` — read the directory, do not assume a count; `messages_parity.test.ts` enforces parity) AND all the mobile ARBs (`apps/mobile_android/lib/l10n/app_*.arb` incl. the base `pt`; a `{placeholder}` key needs an `@key` metadata block with `placeholders` in `app_en.arb`), then `flutter gen-l10n`.

@@ -167,7 +167,16 @@ bool shouldShowRunsLoadMore({
   return true;
 }
 
-class _RunsScreenState extends State<RunsScreen> {
+class _RunsScreenState extends State<RunsScreen>
+    with AutomaticKeepAliveClientMixin {
+  /// The Fitness hub mounts this screen inside a `TabBarView`, which is a
+  /// `PageView` with no cache extent: without this the tab is torn down the
+  /// moment the user taps a sibling, re-running the whole network fan-out and
+  /// throwing away the filters, paging window and scroll offset. The shell's
+  /// own pages already keep state this way (`_LazyKeepAliveTab`).
+  @override
+  bool get wantKeepAlive => true;
+
   bool _syncing = false;
   bool _fetching = false;
   _RunsSort _sort = _RunsSort.newest;
@@ -956,6 +965,7 @@ class _RunsScreenState extends State<RunsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final unit = widget.preferences.unit;
@@ -996,7 +1006,10 @@ class _RunsScreenState extends State<RunsScreen> {
       _HistoryKind.meal => (l10n.logFood, l10n.historyLogTooltip, _openAddMeal),
     };
     return FloatingActionButton.extended(
-      heroTag: 'history_add_fab',
+      // The Fitness hub mounts this screen twice, side by side, and both stay
+      // alive now — a constant tag would put two heroes with one tag in the
+      // same Navigator subtree, which asserts on every push out of the hub.
+      heroTag: ObjectKey(this),
       onPressed: onPressed,
       icon: const Icon(Icons.add),
       label: Text(label),

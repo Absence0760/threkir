@@ -154,7 +154,16 @@ class GymScreen extends StatefulWidget {
   State<GymScreen> createState() => _GymScreenState();
 }
 
-class _GymScreenState extends State<GymScreen> {
+class _GymScreenState extends State<GymScreen>
+    with AutomaticKeepAliveClientMixin {
+  /// The Fitness hub mounts this screen inside a `TabBarView`, which is a
+  /// `PageView` with no cache extent: without this the tab is torn down the
+  /// moment the user taps a sibling, re-running the arrival refresh and
+  /// dropping the scroll position. The shell's own pages already keep state
+  /// this way (`_LazyKeepAliveTab`).
+  @override
+  bool get wantKeepAlive => true;
+
   bool _refreshing = false;
   bool _isOnline = true;
 
@@ -440,6 +449,7 @@ class _GymScreenState extends State<GymScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final workouts = widget.store.workouts;

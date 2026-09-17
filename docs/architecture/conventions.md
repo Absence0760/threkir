@@ -1311,6 +1311,27 @@ are mobile-specific:
   `deferred-commit undo outlives its surface` group in
   `architecture_guards_test.dart`.
 
+### Where a whole-entity delete lives — never the primary slot
+
+The guard above decides *how* a delete asks; this decides *where* it sits. A
+delete that removes a whole entity other people depend on — a club, a
+challenge, the account — is never a primary action. It does not share a row
+with Join / Leave / Edit / New, and it is never a bare verb.
+
+- **Web** renders it in `DangerZone` (`$lib/components/DangerZone.svelte`)
+  after the page's own content: a labelled region, one line saying what the
+  delete removes, and a `btn-danger` named for what it deletes ("Delete club",
+  "Delete challenge"), still routed through `ConfirmDialog`. `/settings/account`,
+  `/clubs/[slug]` and `/challenges/[id]` use it; don't hand-roll another
+  danger card.
+- **Mobile** passes it to `AppBarActions` as `destructive: true`, which is never
+  promoted to a visible toolbar icon and renders last in the overflow menu,
+  labelled, in the error colour (see *Mobile app-bar actions* and decisions
+  § 498) — even when it is the screen's only action.
+
+A delete of one row inside a list (a post, a set, a gear item) is not this
+rule: an inline, labelled per-row control is fine there. See decisions § 1634.
+
 ## Web cards — `.card-elevated` is the shared elevated panel
 
 The app has **two** card flavours, and the distinction is load-bearing — don't collapse them:

@@ -7,6 +7,17 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/sign_up_screen.dart';
 
 class _FakeApiClient extends ApiClient {
+  String? capturedResendEmail;
+  int resendCalls = 0;
+  Object? resendErrorToThrow;
+
+  @override
+  Future<void> resendSignUpConfirmation({required String email}) async {
+    resendCalls += 1;
+    capturedResendEmail = email;
+    if (resendErrorToThrow != null) throw resendErrorToThrow!;
+  }
+
   String? capturedEmail;
   String? capturedPassword;
   DateTime? capturedAgeConfirmedAt;
@@ -709,6 +720,117 @@ void main() {
       await tester.tap(find.textContaining('Sign in'));
       await tester.pumpAndSettle();
       expect(find.byType(SignUpScreen), findsNothing);
+    });
+
+    // ─────────── Consent errors land on the consent (#921) ───────────
+
+    testWidgets('an unticked gate is named at the checkbox, not above the form',
+        (tester) async {
+      // The message used to render above BOTH checkboxes, i.e. above the
+      // thing it was about and, on a phone, off the bottom of the screen.
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      final client = _FakeApiClient();
+      await _pump(tester, client);
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Email'), 'new@b.com');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Password'), 'password1');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Confirm password'), 'password1');
+      await tester.tap(find.byType(FilledButton));
+      await tester.pump();
+
+      expect(client.capturedEmail, isNull);
+      // Both gates report, each inside its own tile.
+      for (final msg in [l10n.signUpErrorConfirmAge, l10n.signUpErrorAcceptTerms]) {
+        expect(find.text(msg), findsOneWidget);
+        expect(
+            find.ancestor(
+                of: find.text(msg), matching: find.byType(CheckboxListTile)),
+            findsOneWidget);
+      }
+      // And the age message sits below its own checkbox.
+      expect(
+        tester.getTopLeft(find.text(l10n.signUpErrorConfirmAge)).dy,
+        greaterThan(tester.getTopLeft(find.byType(Checkbox).at(0)).dy),
+      );
+    });
+
+    testWidgets('ticking a gate clears only its own message', (tester) async {
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      await _pump(tester, _FakeApiClient());
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Email'), 'new@b.com');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Password'), 'password1');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Confirm password'), 'password1');
+      await tester.tap(find.byType(FilledButton));
+      await tester.pump();
+
+      await tester.tap(find.byType(Checkbox).at(0));
+      await tester.pump();
+      expect(find.text(l10n.signUpErrorConfirmAge), findsNothing);
+      expect(find.text(l10n.signUpErrorAcceptTerms), findsOneWidget);
+    });
+
+    // ─────────── Check-your-email can resend (#921) ───────────
+
+    Future<void> toCheckEmail(
+        WidgetTester tester, _FakeApiClient client) async {
+      await _pump(tester, client);
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Email'), 'new@b.com');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Password'), 'password1');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Confirm password'), 'password1');
+      await tester.tap(find.byType(Checkbox).at(0));
+      await tester.tap(find.byType(Checkbox).at(1));
+      await tester.pump();
+      await tester.tap(find.byType(FilledButton));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('check-your-email can re-send without leaving the screen',
+        (tester) async {
+      // Before: the only resend lived behind a deliberately failed sign-in
+      // on the previous screen.
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      final client = _FakeApiClient()..needsEmailConfirmation = true;
+      await toCheckEmail(tester, client);
+
+      expect(find.text(l10n.signInResendConfirmation), findsOneWidget);
+      await tester.tap(find.text(l10n.signInResendConfirmation));
+      await tester.pump();
+      expect(client.resendCalls, 1);
+      expect(client.capturedResendEmail, 'new@b.com');
+      expect(find.text(l10n.signInConfirmationResent), findsOneWidget);
+      expect(find.text(l10n.signUpCheckEmailTitle), findsOneWidget);
+      // Drain the banner's auto-dismiss timer.
+      await tester.pumpAndSettle(const Duration(seconds: 6));
+    });
+
+    testWidgets('a failed re-send reads identically to a successful one',
+        (tester) async {
+      // The check-your-email state is also what an ALREADY registered
+      // address sees (#454), and GoTrue errors a signup resend for a
+      // confirmed account — so the two outcomes must be indistinguishable
+      // or the button becomes the enumeration oracle again.
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      final client = _FakeApiClient()
+        ..needsEmailConfirmation = true
+        ..resendErrorToThrow = Exception('User already confirmed');
+      await toCheckEmail(tester, client);
+
+      await tester.tap(find.text(l10n.signInResendConfirmation));
+      await tester.pump();
+      expect(client.resendCalls, 1);
+      expect(find.text(l10n.signInConfirmationResent), findsOneWidget);
+      // No error text anywhere, and the screen is unchanged.
+      expect(find.text(l10n.signUpCheckEmailTitle), findsOneWidget);
+      expect(find.textContaining('already'), findsNothing);
+      await tester.pumpAndSettle(const Duration(seconds: 6));
     });
   });
 }

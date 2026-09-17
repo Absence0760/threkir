@@ -276,8 +276,6 @@ const SENSE_SPLIT: Record<string, { word: RegExp; onlyAt: string[] }> = {
 	"pt-PT": {
 		word: /(?<![a-zà-ÿ])padr(ão|ões)(?![a-zà-ÿ])/iu,
 		onlyAt: [
-			// "the world standard for your age and sex"
-			"dash.prAgeGradeTitle",
 			// "the pattern most associated with injury"
 			"loadRamp.meaning_high",
 		],

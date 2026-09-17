@@ -8,6 +8,7 @@
 	import { formatWeight } from '$lib/format/units.svelte';
 	import { smartBack } from '$lib/util/smart_back';
 	import { m as t } from '$lib/i18n/store.svelte';
+	import MetricLabel from '$lib/components/MetricLabel.svelte';
 
 	const back = smartBack();
 	const name = $derived($page.url.searchParams.get('name') ?? '');
@@ -123,7 +124,7 @@
 			<div class="headline">
 				{#if progress.latestEst1RmKg != null}
 					<span class="big-1rm">{formatWeight(progress.latestEst1RmKg)}</span>
-					<span class="section-label">{t('gym.pr.e1rm')}</span>
+					<span class="section-label"><MetricLabel metric="e1rm" /></span>
 				{/if}
 				{#if progress.est1RmDeltaKg != null}
 					<span class="delta delta-{deltaDir(progress)}">
@@ -156,7 +157,7 @@
 							{#if s.isEst1RmPr}
 								<span class="pr-badge">
 									<span class="material-symbols" aria-hidden="true">trophy</span>
-									{t('gym.pr.e1rm')}
+									<MetricLabel metric="e1rm" plain />
 								</span>
 							{/if}
 							<span class="row-top-set">{topSetLine(s)}</span>
@@ -166,7 +167,7 @@
 								<div class="bar-fill" style="width: {barPct(s)}%"></div>
 							</div>
 							<div class="row-metrics">
-								<span>{formatWeight(s.bestEst1RmKg)} <span class="section-label">{t('gym.pr.e1rm')}</span></span>
+								<span>{formatWeight(s.bestEst1RmKg)} <span class="section-label"><MetricLabel metric="e1rm" plain /></span></span>
 								{#if s.volumeKg > 0}
 									<span>{formatWeight(s.volumeKg)} <span class="section-label">{t('gym.volumeLabel')}</span></span>
 								{/if}

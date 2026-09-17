@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { siteOrigin } from '$lib/core/site_url';
+	import MetricLabel from '$lib/components/MetricLabel.svelte';
+	import type { MetricId } from '$lib/metrics/metric_registry';
 	import { onMount } from 'svelte';
 	import { fmtPace, getUnit, formatPaceNoSuffix } from '$lib/format/units.svelte';
 
@@ -955,9 +957,10 @@
 	/// template: it counted Calories among six stats that "never hide" while
 	/// the template gated them, so the filler flipped the wrong way whenever
 	/// the estimate was unusable or the pref was off (decisions § 1164).
-	let keyStats = $derived.by<{ label: string; value: string }[]>(() => {
+	type KeyStat = { value: string } & ({ label: string } | { metric: MetricId });
+	let keyStats = $derived.by<KeyStat[]>(() => {
 		if (!run) return [];
-		const cells: { label: string; value: string }[] = [
+		const cells: KeyStat[] = [
 			{ label: m('runDetail.distance'), value: formatDistance(run.distance_m) },
 			{ label: m('runDetail.time'), value: formatDuration(run.duration_s) },
 		];
@@ -991,7 +994,7 @@
 			cells.push({ label: m('runDetail.avgHrBpm'), value: String(avgBpm) });
 		}
 		if (ageGrade != null) {
-			cells.push({ label: m('runDetail.ageGrade'), value: ageGrade });
+			cells.push({ metric: 'ageGrade', value: ageGrade });
 		}
 		return cells;
 	});
@@ -1751,7 +1754,9 @@
 			{#each keyStats as stat}
 				<div class="key-stat">
 					<span class="key-stat-value">{stat.value}</span>
-					<span class="key-stat-label">{stat.label}</span>
+					<span class="key-stat-label"
+						>{#if 'metric' in stat}<MetricLabel metric={stat.metric} />{:else}{stat.label}{/if}</span
+					>
 				</div>
 			{/each}
 			<!-- Parity filler. The auto-fit key-stats grid looks broken

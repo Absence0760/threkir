@@ -706,6 +706,10 @@ Web half of the four-platform `runs.metadata` drift guard (Dart `metadata_regist
 
 Every HTML end tag written into a regex under `apps/web/src` or `apps/web/lambda` must close the way a parser does — `</name` followed by whitespace, `/` or `>`, then junk to the first `>` (CodeQL `js/bad-tag-filter`). Scoped to the raw-text / RCDATA elements plus `head`, which is where the damage lands: a lazy body that cannot see its close runs on to the next one in the document, and `</head>` is a splice point whose loss drops a whole `<head>` injection. 20 occurrences today; 19 were intolerant before [decisions § 1086](../architecture/decisions.md). XML end tags are deliberately out of scope. The second test fails a declared exemption that no longer names an intolerant spelling.
 
+### `apps/web/src/lib/metrics/metric_label_guard.test.ts` — 13 tests
+
+No derived metric reaches a runner without its definition ([decisions § 1639](../architecture/decisions.md)). Reads `METRICS` and `JARGON` from `lib/metrics/metric_registry.ts` itself, so the rule and the list cannot drift, and scans `routes/**` + `lib/components/**` (production `.ts` / `.svelte`). Five rules, each with a fixture proving it can fail: a registered name or definition key is never spelled in a surface (it renders only through `<MetricLabel>`); a registered term is never typed into markup or a string literal; English copy that carries a term is its label, its definition, a `{term}` sentence owned by exactly one metric, or an `expandedIn` exemption that still carries the term; a disclosure never sits inside a `<button>`, `<label>`, `<summary>`, `<select>` or `aria-hidden` subtree; a `plain` label (including a runtime `plain={…}`) has an interactive label for the same metric in its file, and every registered metric renders somewhere. Failed on the unchanged dashboard with seven key mentions.
+
 ### `apps/web/src/lib/response_body_parse_guard.test.ts` — 1 test
 
 Every `await res.json()` / `.text()` in production web source must sit inside a `try`, carry a `.catch`, or be registered with a count and a reason. The rule cannot be keyed on the return type — `lookupBarcode` returns `Promise<T | null>` and throws on a parse failure deliberately — so the register is hand-written and fails in both directions: an unguarded parse in an unregistered file, and a registered file whose count moved. 33 sites, 8 registered as throw-contracted across three files. [decisions § 1087](../architecture/decisions.md).
@@ -1104,7 +1108,7 @@ Run the pure-helper slices with `cd apps/backend && deno test --no-check supabas
 
 The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets to drive and are exercised manually only — see [apps/backend/CLAUDE.md § Testing without real credentials](../../apps/backend/CLAUDE.md#testing-without-real-credentials).
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 1,873 declared tests across 496 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 1,880 declared tests across 499 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 

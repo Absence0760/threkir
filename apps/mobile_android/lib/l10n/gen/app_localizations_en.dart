@@ -626,6 +626,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get readinessBandLow => 'low';
 
   @override
+  String get readinessContributorForm => 'Training balance';
+
+  @override
+  String get readinessContributorSleep => 'Sleep';
+
+  @override
+  String get readinessContributorRestingHr => 'Resting heart rate';
+
+  @override
+  String get intensityZone1 => 'Z1 (recovery)';
+
+  @override
+  String get intensityZone2 => 'Z2 (easy)';
+
+  @override
+  String get intensityZone3 => 'Z3 (tempo)';
+
+  @override
+  String get intensityZone4 => 'Z4 (threshold)';
+
+  @override
+  String get intensityZone5 => 'Z5 (max)';
+
+  @override
   String get missingMapTilesTitle => 'Using OpenStreetMap fallback tiles';
 
   @override
@@ -5707,8 +5731,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String planDetailDriftUnderFlag(int pct) {
-    return 'Running $pct% under plan this week — the planned volume drives the adaptation.';
+  String planDetailDriftUnderFlag(String done, String planned) {
+    return 'So far this week you\'ve run $done of the $planned planned.';
   }
 
   @override
@@ -8302,7 +8326,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get mileageTitle => 'Mileage';
+  String get mileageTitle => 'Distance';
 
   @override
   String get mileageWeek => 'Week';

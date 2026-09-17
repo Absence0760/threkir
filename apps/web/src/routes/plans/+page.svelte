@@ -13,6 +13,7 @@
 
 	import RunSurfaceTabs from '$lib/components/RunSurfaceTabs.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	import MetricLabel from '$lib/components/MetricLabel.svelte';
 	import PlanEditor from '$lib/components/PlanEditor.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import type { TrainingPlan, PlanStatus } from '$lib/types';
@@ -334,7 +335,7 @@
 						</div>
 						{#if p.vdot}
 							<div class="hero-metric">
-								<span class="section-label">VDOT</span>
+								<span class="section-label"><MetricLabel metric="vdot" /></span>
 								<span class="hero-value">{Number(p.vdot).toFixed(1)}</span>
 							</div>
 						{/if}

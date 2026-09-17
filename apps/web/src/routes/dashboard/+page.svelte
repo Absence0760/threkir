@@ -34,7 +34,7 @@
 
 	// Hide the "Ask the Coach" promo when the Coach is off (rock-bottom deploy).
 	const coachOn = coachEnabled();
-	import { computeReadiness } from '$lib/training/readiness';
+	import { computeReadiness, type ReadinessContributorKind } from '$lib/training/readiness';
 	import { computeTrainingLoadSeries, hasTrimpSignal } from '$lib/training/training_load';
 	import { fetchGymSetHistory, fetchGymWorkouts } from '$lib/core/data';
 	import { fetchFoodLog, fetchLatestWeightKg, type FoodEntry } from '$lib/core/data';
@@ -62,6 +62,7 @@
 	import LoadRampCard from '$lib/components/LoadRampCard.svelte';
 	import ComebackCard from '$lib/components/ComebackCard.svelte';
 	import DashboardFirstRun from '$lib/components/DashboardFirstRun.svelte';
+	import MetricLabel from '$lib/components/MetricLabel.svelte';
 	import { workoutKindLabel } from '$lib/training/workout_labels';
 	import WorkoutEditor from '$lib/components/WorkoutEditor.svelte';
 	import PeriodSummary from '$lib/components/PeriodSummary.svelte';
@@ -75,9 +76,10 @@
 	import { loadSettings, peekCachedSettings, effective, updateUniversal } from '$lib/settings/settings';
 	import { relativeAge } from '$lib/runs/pr_recency';
 	import type { LoadedSettings } from '$lib/settings/settings';
-	import { fmtKm, fmtPace, formatElevation, setUnit } from '$lib/format/units.svelte';
+	import { fmtKm, fmtPace, formatElevation, formatWeight, setUnit } from '$lib/format/units.svelte';
 	import { paceMinutesSeconds } from '$lib/format/pace_format';
 	import { currentLocale, m } from '$lib/i18n/store.svelte';
+	import type { MessageKey } from '$lib/i18n/messages';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import {
@@ -305,6 +307,22 @@
 	/// user hasn't configured zones, so the intensity card shows the
 	/// configure-zones empty state.
 	let hrZones = $state<{ z1: number; z2: number; z3: number; z4: number; z5: number } | null>(null);
+
+	/// The zone names Preferences sets them under, so a runner reads the same
+	/// words in both places rather than bare digits here.
+	const ZONE_NAMES = [
+		'prefs.zone1Recovery',
+		'prefs.zone2Easy',
+		'prefs.zone3Tempo',
+		'prefs.zone4Threshold',
+		'prefs.zone5Max',
+	] as const;
+
+	const CONTRIBUTOR_NAMES: Record<ReadinessContributorKind, MessageKey> = {
+		form: 'dash.readinessFromForm',
+		sleep: 'dash.readinessFromSleep',
+		resting_hr: 'dash.readinessFromRestingHr',
+	};
 
 	/// Time spent in each HR zone over the configurable mileage window.
 	/// MVP classifies the whole run by `metadata.avg_bpm` against the
@@ -1231,7 +1249,7 @@
 					<span class="today-lift-meta">
 						{m('gym.exercisesShort', { count: liftExerciseCount(latestTodayLift.id) })}
 						{#if liftVolume(latestTodayLift.id) > 0}
-							&middot; {m('gym.volumeShort', { volume: liftVolume(latestTodayLift.id).toLocaleString() })}
+							&middot; {formatWeight(liftVolume(latestTodayLift.id))}
 						{/if}
 					</span>
 				</div>
@@ -1287,17 +1305,24 @@
 					onclick={() => (periodModal = { type: 'week', date: new Date() })}
 				>
 					<span class="stat-label">{m('dash.statThisWeek')}</span>
-					<span class="stat-value">{formatDistance(thisWeekDistance)}</span>
-					<span class="stat-sub">
-						{thisWeekActivityCount === 1
-							? m('dash.activityCountOne', { n: thisWeekActivityCount })
-							: m('dash.activityCountOther', { n: thisWeekActivityCount })}
-						{#if thisWeekManualWorkouts.length > 0}
-							<span class="manual-hint">
-								{m('dash.inclMarkedDone', { n: thisWeekManualWorkouts.length })}
-							</span>
-						{/if}
-					</span>
+					<!-- A week with nothing in it says so in words. "0 m" beside a
+					     lifetime total reads as a measurement of this week. -->
+					{#if thisWeekActivityCount === 0}
+						<span class="stat-value stat-value-empty">{m('dash.weekEmptyValue')}</span>
+						<span class="stat-sub">{m('dash.weekEmptySub')}</span>
+					{:else}
+						<span class="stat-value">{formatDistance(thisWeekDistance)}</span>
+						<span class="stat-sub">
+							{thisWeekActivityCount === 1
+								? m('dash.activityCountOne', { n: thisWeekActivityCount })
+								: m('dash.activityCountOther', { n: thisWeekActivityCount })}
+							{#if thisWeekManualWorkouts.length > 0}
+								<span class="manual-hint">
+									{m('dash.inclMarkedDone', { n: thisWeekManualWorkouts.length })}
+								</span>
+							{/if}
+						</span>
+					{/if}
 				</button>
 				<div class="stat-card">
 					<span class="stat-label">{m('dash.statTotalRuns')}</span>
@@ -1314,21 +1339,27 @@
 					<span class="stat-sub">{m('dash.allTime')}</span>
 				</button>
 				<div class="stat-card">
-					<span class="stat-label">{m('dash.statThisWeekVert')}</span>
-					<span class="stat-value">{formatElevation(thisWeekVertMetres)}</span>
-					<span class="stat-sub">{m('dash.elevationGain')}</span>
+					<span class="stat-label"><MetricLabel metric="vert" variant="thisWeek" /></span>
+					{#if thisWeekRuns.length === 0}
+						<span class="stat-value stat-value-empty">{m('dash.weekEmptyValue')}</span>
+					{:else}
+						<span class="stat-value">{formatElevation(thisWeekVertMetres)}</span>
+						<span class="stat-sub">{m('dash.elevationGain')}</span>
+					{/if}
 				</div>
 				<div class="stat-card">
 					<span class="stat-label">{m('dash.statThisWeekPace')}</span>
-					<span class="stat-value">
-						{thisWeekRuns.length > 0
-							? formatPace(
-									thisWeekRuns.reduce((s, r) => s + r.duration_s, 0),
-									thisWeekDistance,
-								)
-							: '--'}
-					</span>
-					<span class="stat-sub">{m('dash.average')}</span>
+					{#if thisWeekRuns.length === 0}
+						<span class="stat-value stat-value-empty">{m('dash.weekEmptyValue')}</span>
+					{:else}
+						<span class="stat-value">
+							{formatPace(
+								thisWeekRuns.reduce((s, r) => s + r.duration_s, 0),
+								thisWeekDistance,
+							)}
+						</span>
+						<span class="stat-sub">{m('dash.average')}</span>
+					{/if}
 				</div>
 				<div class="stat-card" class:streak-active={streakCard.current > 0}>
 					<span class="stat-label">{m('dash.statStreak')}</span>
@@ -1484,9 +1515,9 @@
 					<p class="readiness-advice">{readiness.advice}</p>
 					{#if readiness.contributors.length > 0}
 						<ul class="readiness-contribs">
-							{#each readiness.contributors as c (c.name)}
+							{#each readiness.contributors as c (c.kind)}
 								<li>
-									<span class="contrib-name">{c.name}</span>
+									<span class="contrib-name">{m(CONTRIBUTOR_NAMES[c.kind])}</span>
 									<span class="contrib-delta" class:positive={c.delta > 0} class:negative={c.delta < 0}>
 										{c.delta > 0 ? '+' : ''}{c.delta}
 									</span>
@@ -1500,38 +1531,26 @@
 			{#if liveSnap.vo2Max != null || loadNow != null}
 				<section class="fitness-card">
 					<div class="fitness-row">
-						<div
-							class="fitness-metric"
-							title={m('dash.vo2maxTooltip')}
-						>
-							<span class="fitness-label">VO₂ max</span>
+						<div class="fitness-metric">
+							<span class="fitness-label"><MetricLabel metric="vo2max" /></span>
 							<span class="fitness-value">
 								{liveSnap.vo2Max != null ? liveSnap.vo2Max.toFixed(1) : '—'}
 							</span>
 							<span class="fitness-unit">ml/kg/min</span>
 						</div>
 						{#if loadNow != null}
-							<div
-								class="fitness-metric"
-								title={m('dash.ctlTooltip')}
-							>
-								<span class="fitness-label">{m('dash.ctlLabel')}</span>
+							<div class="fitness-metric">
+								<span class="fitness-label"><MetricLabel metric="ctl" /></span>
 								<span class="fitness-value">{loadNow.ctl.toFixed(0)}</span>
 								<span class="fitness-unit">{m('dash.ctlUnit')}</span>
 							</div>
-							<div
-								class="fitness-metric"
-								title={m('dash.atlTooltip')}
-							>
-								<span class="fitness-label">{m('dash.atlLabel')}</span>
+							<div class="fitness-metric">
+								<span class="fitness-label"><MetricLabel metric="atl" /></span>
 								<span class="fitness-value">{loadNow.atl.toFixed(0)}</span>
 								<span class="fitness-unit">{m('dash.atlUnit')}</span>
 							</div>
-							<div
-								class="fitness-metric"
-								title={m('dash.tsbTooltip')}
-							>
-								<span class="fitness-label">{m('dash.tsbLabel')}</span>
+							<div class="fitness-metric">
+								<span class="fitness-label"><MetricLabel metric="tsb" /></span>
 								<span
 									class="fitness-value"
 									class:tsb-neg={loadNow.tsb < -10}
@@ -1765,7 +1784,7 @@
 						{#each zb.zoneSeconds as secs, i}
 							{@const pct = secs / zb.total}
 							<li class="zone-row zone-row-{i + 1}">
-								<span class="zone-name">Z{i + 1}</span>
+								<span class="zone-name">{m(ZONE_NAMES[i])}</span>
 								<div class="zone-bar-wrap">
 									<div class="zone-bar" style="width: {Math.max(pct * 100, secs > 0 ? 1.5 : 0)}%"></div>
 								</div>
@@ -1801,7 +1820,7 @@
 										<th>{m('dash.prColTime')}</th>
 										<th>{m('dash.prColDate')}</th>
 										{#if showAgeGradeCol}
-											<th class="pr-age-grade-th">{m('dash.prColAgeGrade')}</th>
+											<th class="pr-age-grade-th"><MetricLabel metric="ageGrade" /></th>
 										{/if}
 										<th></th>
 									</tr>
@@ -1816,7 +1835,7 @@
 												<span class="pr-age">{relativeAge(pr.date)}</span>
 											</td>
 											{#if showAgeGradeCol}
-												<td class="pr-age-grade" title={m('dash.prAgeGradeTitle')}>
+												<td class="pr-age-grade">
 													{prAgeGrades[pr.key] ?? '—'}
 												</td>
 											{/if}
@@ -1918,7 +1937,7 @@
 								<div class="run-meta lift-row-meta">
 									<span class="run-pace">{m('gym.exercisesShort', { count: liftExerciseCount(w.id) })}</span>
 									{#if liftVolume(w.id) > 0}
-										<span class="lift-volume">{m('gym.volumeShort', { volume: liftVolume(w.id).toLocaleString() })}</span>
+										<span class="lift-volume">{formatWeight(liftVolume(w.id))}</span>
 									{/if}
 								</div>
 							</a>
@@ -3298,6 +3317,12 @@
 		font-variant-numeric: tabular-nums;
 		line-height: 1.1;
 	}
+	.stat-value.stat-value-empty {
+		font-size: 1rem;
+		font-weight: 600;
+		color: var(--color-text-secondary);
+		line-height: 1.3;
+	}
 	.stat-unit {
 		font-size: 0.85rem;
 		font-weight: 600;
@@ -3340,18 +3365,22 @@
 		color: var(--color-text-tertiary);
 		font-variant-numeric: tabular-nums;
 	}
+	/* One column template shared by every row through subgrid, so a zone's
+	   name sizes its own column once instead of a fixed width it overflows. */
 	.zone-list {
 		list-style: none;
 		margin: 0;
 		padding: 0;
 		display: grid;
-		gap: var(--space-sm);
+		grid-template-columns: fit-content(9rem) minmax(0, 1fr) max-content max-content;
+		column-gap: var(--space-md);
+		row-gap: var(--space-sm);
 	}
 	.zone-row {
 		display: grid;
-		grid-template-columns: 2.25rem 1fr 4.5rem 2.5rem;
+		grid-column: 1 / -1;
+		grid-template-columns: subgrid;
 		align-items: center;
-		gap: var(--space-md);
 	}
 	.zone-name {
 		font-size: 0.85rem;
@@ -3707,9 +3736,8 @@
 			flex-direction: column;
 			align-items: flex-start;
 		}
-		.zone-row {
-			grid-template-columns: 2rem 1fr 3.75rem 2.25rem;
-			gap: var(--space-sm);
+		.zone-list {
+			column-gap: var(--space-sm);
 		}
 	}
 	@media (max-width: 480px) {

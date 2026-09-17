@@ -26,9 +26,16 @@ export interface ReadinessInputs {
 
 export type ReadinessBand = 'low' | 'moderate' | 'high';
 
+/**
+ * Which input a contribution came from. The UI names it in the reader's
+ * locale. The form input is deliberately not labelled like the TSB tile it is
+ * derived from: this is the POINTS form added to the score, not the TSB value,
+ * and one name over two different numbers read as a contradiction (#902).
+ */
+export type ReadinessContributorKind = 'form' | 'sleep' | 'resting_hr';
+
 export interface ReadinessContribution {
-	/** Short label — UI surfaces it in a per-input list. */
-	name: string;
+	kind: ReadinessContributorKind;
 	/** Signed delta this input added to the score. */
 	delta: number;
 	/** One-line reason. */
@@ -95,7 +102,7 @@ function scoreTsb(tsb: number | null): ReadinessContribution | null {
 		delta = -3;
 		note = 'Over-tapered — edge may be blunted';
 	}
-	return { name: 'Form (TSB)', delta, note };
+	return { kind: 'form', delta, note };
 }
 
 function scoreSleep(hours: number | null | undefined): ReadinessContribution | null {
@@ -118,7 +125,7 @@ function scoreSleep(hours: number | null | undefined): ReadinessContribution | n
 		delta = 0;
 		note = 'Extended sleep — recovery should be solid';
 	}
-	return { name: 'Sleep', delta, note };
+	return { kind: 'sleep', delta, note };
 }
 
 function scoreRestingHr(
@@ -145,7 +152,7 @@ function scoreRestingHr(
 		delta = 3;
 		note = 'Resting HR below baseline — well recovered';
 	}
-	return { name: 'Resting HR', delta, note };
+	return { kind: 'resting_hr', delta, note };
 }
 
 /** Pick the contributor that pushed the score the most (in absolute terms). */

@@ -4,6 +4,7 @@
 	import { fmtSplitTime } from '$lib/runs/race_day';
 	import { fmtKm, fmtPace } from '$lib/format/units.svelte';
 	import { m } from '$lib/i18n/store.svelte';
+	import MetricLabel from '$lib/components/MetricLabel.svelte';
 
 	interface Props {
 		runs: readonly RunForFitness[];
@@ -70,7 +71,7 @@
 				</tbody>
 			</table>
 		</div>
-		<p class="footnote">{m('racePredictor.footnote')}</p>
+		<p class="footnote"><MetricLabel metric="riegel" sentence="racePredictor.footnote" /></p>
 	</section>
 {/if}
 

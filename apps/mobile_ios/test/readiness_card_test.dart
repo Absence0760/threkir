@@ -41,6 +41,14 @@ void main() {
       expect(find.text('Readiness'), findsOneWidget);
     });
 
+    testWidgets(
+        'the form contribution is named apart from the TSB stat it comes from',
+        (tester) async {
+      await _pump(tester);
+      expect(find.text('Training balance'), findsOneWidget);
+      expect(find.textContaining('TSB'), findsNothing);
+    });
+
     testWidgets('header row survives a narrow width without overflowing',
         (tester) async {
       await _pump(tester, width: 200);

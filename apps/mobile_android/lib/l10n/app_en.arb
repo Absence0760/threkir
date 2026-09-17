@@ -828,6 +828,38 @@
   "@readinessBandLow": {
     "description": "Readiness band pill label for a low readiness score"
   },
+  "readinessContributorForm": "Training balance",
+  "@readinessContributorForm": {
+    "description": "Readiness breakdown: the points training balance (form) added to the score. Deliberately not the TSB stat's name, which labels a different number"
+  },
+  "readinessContributorSleep": "Sleep",
+  "@readinessContributorSleep": {
+    "description": "Readiness breakdown: the points last night's sleep added to the score"
+  },
+  "readinessContributorRestingHr": "Resting heart rate",
+  "@readinessContributorRestingHr": {
+    "description": "Readiness breakdown: the points resting heart rate added to the score"
+  },
+  "intensityZone1": "Z1 (recovery)",
+  "@intensityZone1": {
+    "description": "Training intensity legend: heart-rate zone 1, named as on web Preferences"
+  },
+  "intensityZone2": "Z2 (easy)",
+  "@intensityZone2": {
+    "description": "Training intensity legend: heart-rate zone 2"
+  },
+  "intensityZone3": "Z3 (tempo)",
+  "@intensityZone3": {
+    "description": "Training intensity legend: heart-rate zone 3"
+  },
+  "intensityZone4": "Z4 (threshold)",
+  "@intensityZone4": {
+    "description": "Training intensity legend: heart-rate zone 4"
+  },
+  "intensityZone5": "Z5 (max)",
+  "@intensityZone5": {
+    "description": "Training intensity legend: heart-rate zone 5"
+  },
   "missingMapTilesTitle": "Using OpenStreetMap fallback tiles",
   "@missingMapTilesTitle": {
     "description": "Diagnostic banner title shown when no map-tile source is configured (dev-facing)"
@@ -7735,12 +7767,15 @@
       }
     }
   },
-  "planDetailDriftUnderFlag": "Running {pct}% under plan this week — the planned volume drives the adaptation.",
+  "planDetailDriftUnderFlag": "So far this week you've run {done} of the {planned} planned.",
   "@planDetailDriftUnderFlag": {
-    "description": "Plan-detail adherence/replan/duplicate",
+    "description": "Plan-detail adherence: distance run so far this week against the week's planned distance, both already formatted with their unit",
     "placeholders": {
-      "pct": {
-        "type": "int"
+      "done": {
+        "type": "String"
+      },
+      "planned": {
+        "type": "String"
       }
     }
   },
@@ -11077,7 +11112,7 @@
       }
     }
   },
-  "mileageTitle": "Mileage",
+  "mileageTitle": "Distance",
   "@mileageTitle": {
     "description": "Title of the dashboard mileage card"
   },

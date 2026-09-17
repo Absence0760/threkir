@@ -66,6 +66,15 @@
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { consent } from '$lib/settings/consent.svelte';
 	import { numberInputValue } from '$lib/settings/number_input';
+	import {
+		WEEKLY_GOAL_KEY,
+		WEEKLY_GOAL_MAX,
+		WEEKLY_GOAL_MIN,
+		isUsableWeeklyGoalInput,
+		weeklyGoalFromInput,
+		weeklyGoalToInput,
+	} from '$lib/settings/weekly_goal';
+	import { formatDecimal, formatInteger } from '$lib/format/number';
 	import type { PrefsBag } from '$lib/settings/settings';
 	import type { Updatable } from '$lib/core/database';
 
@@ -99,7 +108,20 @@
 	// WCAG 2.2.1 "Turn off": the 0 choice removes the undo window's time
 	// limit entirely, so reaching Undo never means beating a countdown.
 	let undoWindowS = $state<number>(DEFAULT_UNDO_WINDOW_S);
-	let weeklyMileageGoal = $state('');
+	let weeklyGoalStoredM = $state<number | null>(null);
+	let weeklyGoalInput = $state<number | null>(null);
+	const weeklyGoalTyped = $derived(
+		typeof weeklyGoalInput === 'number' && Number.isFinite(weeklyGoalInput) ? weeklyGoalInput : null,
+	);
+	const weeklyGoalOutOfRange = $derived(
+		weeklyGoalTyped !== null && !isUsableWeeklyGoalInput(weeklyGoalTyped),
+	);
+
+	function saveWeeklyGoal() {
+		if (weeklyGoalOutOfRange) return;
+		weeklyGoalStoredM = weeklyGoalFromInput(weeklyGoalTyped, preferredUnit, weeklyGoalStoredM);
+		autoSave({ [WEEKLY_GOAL_KEY]: weeklyGoalStoredM });
+	}
 	// Race-fueling intake rates — the per-hour carbs + fluid the roadbook fuel
 	// plan scales onto each leg. Defaults 60 g/hr + 500 ml/hr (fuel_plan.ts).
 	let carbsPerHour = $state('60');
@@ -308,6 +330,7 @@
 			paceFormat = next === 'mi' ? 'min_per_mi' : 'min_per_km';
 		}
 		setUnit(next);
+		weeklyGoalInput = weeklyGoalToInput(weeklyGoalStoredM, next);
 		// Dual-write the profile column the auth store + leaderboard RPCs read
 		// on the next load. AWAIT it (not fire-and-forget) so the "Saved" cue —
 		// and therefore a subsequent reload — reflects the change deterministically.
@@ -486,7 +509,8 @@
 			undoWindowS = undoWindowSFromPref(effective<number>(settings, 'undo_window_s'));
 			setUndoWindowS(undoWindowS);
 			privacyDefault = effective(settings, 'privacy_default', 'followers') ?? 'followers';
-			weeklyMileageGoal = (effective<number>(settings, 'weekly_mileage_goal_m') ?? '')?.toString() ?? '';
+			weeklyGoalStoredM = effective<number>(settings, WEEKLY_GOAL_KEY) ?? null;
+			weeklyGoalInput = weeklyGoalToInput(weeklyGoalStoredM, preferredUnit);
 			carbsPerHour = (effective<number>(settings, 'carbs_per_hour', 60) ?? 60).toString();
 			fluidPerHour = (effective<number>(settings, 'fluid_per_hour', 500) ?? 500).toString();
 			coachPersonality = effective(settings, 'coach_personality', 'supportive') ?? 'supportive';
@@ -982,13 +1006,30 @@
 					</fieldset>
 				{/if}
 				<label id="weekly-mileage-goal">
-					<span class="label-text">{m('prefs.weeklyMileageGoal')}</span>
+					<span class="label-text">{m('prefs.weeklyDistanceGoal', { unit: preferredUnit })}</span>
 					<input
 						type="number"
-						bind:value={weeklyMileageGoal}
-						placeholder={m('prefs.weeklyMileageGoalPlaceholder')}
-						onblur={() => autoSave({ weekly_mileage_goal_m: weeklyMileageGoal ? parseInt(weeklyMileageGoal, 10) || null : null })}
+						inputmode="decimal"
+						step="0.1"
+						min={WEEKLY_GOAL_MIN}
+						max={WEEKLY_GOAL_MAX}
+						bind:value={weeklyGoalInput}
+						placeholder={m('prefs.weeklyDistanceGoalPlaceholder', {
+							example: preferredUnit === 'mi' ? '25' : '40',
+						})}
+						aria-invalid={weeklyGoalOutOfRange}
+						data-testid="weekly-distance-goal"
+						onblur={saveWeeklyGoal}
 					/>
+					{#if weeklyGoalOutOfRange}
+						<span class="field-error" data-testid="weekly-distance-goal-error">
+							{m('prefs.weeklyDistanceGoalOutOfRange', {
+								min: formatDecimal(WEEKLY_GOAL_MIN, 1, currentLocale()),
+								max: formatInteger(WEEKLY_GOAL_MAX, currentLocale()),
+								unit: preferredUnit,
+							})}
+						</span>
+					{/if}
 				</label>
 				<label>
 					<span class="label-text">{m('prefs.carbsPerHour')}</span>

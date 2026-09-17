@@ -24,11 +24,13 @@ import '../ai_disclosure.dart';
 import '../backend_timeout.dart';
 import '../auth_error.dart';
 import '../payload_hash.dart';
+import '../preferences.dart' show activeDistanceUnit;
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../l10n/number_format.dart';
 import '../training_service.dart';
+import '../weekly_goal.dart';
 import '../widgets/ai_disclosure_notice.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/sign_in_required_state.dart';
@@ -1248,10 +1250,14 @@ class _CoachScreenState extends State<CoachScreen> {
     if (c.hrZonesLoaded) {
       chips.add(_chip(cs, icon: Icons.monitor_heart, label: l10n.coachContextHr));
     }
-    if (c.weeklyGoalMetres != null) {
-      final km =
-          formatFixed(c.weeklyGoalMetres! / 1000, 0, activeLocaleTag);
-      chips.add(_chip(cs, icon: Icons.flag_outlined, label: l10n.coachContextWeeklyGoal(km)));
+    final unit = activeDistanceUnit;
+    final goal = weeklyGoalToInput(c.weeklyGoalMetres, unit);
+    if (goal != null) {
+      final distance = formatFixed(
+          goal, goal == goal.roundToDouble() ? 0 : 1, activeLocaleTag);
+      chips.add(_chip(cs,
+          icon: Icons.flag_outlined,
+          label: l10n.coachContextWeeklyGoal(distance, unit.name)));
     }
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),

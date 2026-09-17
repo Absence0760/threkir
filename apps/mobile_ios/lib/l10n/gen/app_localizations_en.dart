@@ -6108,8 +6108,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get coachContextHr => 'HR';
 
   @override
-  String coachContextWeeklyGoal(String km) {
-    return '$km km/wk';
+  String coachContextWeeklyGoal(String distance, String unit) {
+    return '$distance $unit/wk';
   }
 
   @override
@@ -7863,7 +7863,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prefsHrZonesDialogTitle => 'Heart-rate zones (upper bounds, bpm)';
 
   @override
-  String get prefsWeeklyGoal => 'Weekly mileage goal';
+  String get prefsWeeklyGoal => 'Weekly distance goal';
 
   @override
   String get prefsSectionActivityRecording => 'Activity & recording';

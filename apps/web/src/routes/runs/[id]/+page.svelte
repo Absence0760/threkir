@@ -2435,7 +2435,7 @@
 
 	@media (max-width: 640px) {
 		.key-stat-value {
-			font-size: 1.3rem;
+			--key-stat-value-size: 1.3rem;
 		}
 		h1 {
 			font-size: 1.3rem;
@@ -2459,7 +2459,7 @@
 			padding: var(--space-lg);
 		}
 		.key-stat-value {
-			font-size: 1.25rem;
+			--key-stat-value-size: 1.25rem;
 		}
 		.detail-header {
 			margin-bottom: var(--space-lg);
@@ -2947,6 +2947,7 @@
 		min-width: 0;
 		padding: var(--space-md) var(--space-lg);
 		background: var(--color-bg-secondary);
+		container-type: inline-size;
 	}
 
 	/* The Activity-type filler tile pairs an icon with the label
@@ -2963,13 +2964,21 @@
 		color: var(--color-text-secondary);
 	}
 
+	/* A value wraps between number and unit. A duration has no such break:
+	   "10:00:00" is one token about five ems wide, and in a two-column panel
+	   it was wider than its tile, so the size is capped at a fifth of the
+	   tile's width. The chosen sizes below are the ceiling, not the size, and
+	   a longer unbreakable word (a localised activity name) breaks rather
+	   than running out of the tile. */
 	.key-stat-value {
+		--key-stat-value-size: 1.5rem;
 		font-variant-numeric: tabular-nums lining-nums;
-		font-size: 1.5rem;
+		font-size: clamp(1rem, 19cqi, var(--key-stat-value-size));
 		font-weight: 700;
 		font-variant-numeric: tabular-nums;
 		color: var(--color-text);
 		line-height: 1.1;
+		overflow-wrap: anywhere;
 	}
 
 	.key-stat-label {

@@ -92,14 +92,7 @@ test.describe('/plans/[id] adherence flags', () => {
 			await admin.from('training_plans').delete().eq('id', planId);
 		}
 	});
-});
 
-// Outside the describe above on purpose. `test.use({ storageState })` becomes
-// the default for every context the worker opens, including the one
-// `createSagaUsers` signs its user in from, so under USER_A that context
-// arrived at /login already signed in, was sent on to /dashboard, and waited
-// out the test for an email field that was never rendered.
-test.describe('/plans/[id] adherence flags — a runner with one run this week', () => {
 	// The under-running flag used to read "Running 100% under plan this week —
 	// the planned volume drives the adaptation.", which means "you have run
 	// none of it" and reads as praise (#902 section 1.7). It now states the two

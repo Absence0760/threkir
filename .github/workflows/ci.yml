@@ -1203,7 +1203,7 @@ jobs:
     #   check_conflict_markers.mjs     — no tracked file carries a line git
     #     writes as a merge-conflict marker. Three diff3 `|||||||` base markers
     #     reached decisions.md through resolved squash merges and rendered as
-    #     stray prose nobody read as a leftover.
+    #     stray prose nobody read as a leftover (decisions § 1641).
     #     Reads the whole tree, not only markdown, but lives here because the
     #     docs-only diff is the one most likely to carry one and the one every
     #     code-gated job skips.

@@ -115,7 +115,62 @@ export const METRICS = {
 		label: 'metric.planPhases.label',
 		definition: 'metric.planPhases.definition',
 	},
+	e1rm: {
+		label: 'gym.pr.e1rm',
+		definition: 'metric.e1rm.definition',
+		variants: {
+			percent: 'gym.routine.progression.percentLabel',
+			oneRm: 'gym.routine.progression.oneRmLabel',
+			inline: 'metric.e1rm.inline',
+		},
+		sentences: ['gym.records.subtitle'],
+		term: /\b1RM\b/,
+		expandedIn: {
+			'gym.routine.progression.percent_cycle':
+				'an <option>, which cannot hold a disclosure, so the string spells out one-rep max',
+		},
+	},
+	rpe: {
+		label: 'gym.rpe',
+		definition: 'metric.rpe.definition',
+		variants: { target: 'gym.routine.progression.targetRpeLabel' },
+		term: /\bRPE\b/,
+		expandedIn: {
+			'gym.routine.progression.rpe_autoreg':
+				'an <option>, which cannot hold a disclosure, so the string spells out perceived effort',
+		},
+	},
+	kom: {
+		label: 'metric.kom.label',
+		definition: 'metric.kom.definition',
+		sentences: ['compare.tagline'],
+		term: /\b[KQ]OM\b/,
+	},
 } as const satisfies Record<string, MetricEntry>;
+
+export interface JargonEntry {
+	/** How the jargon is spelled in English. */
+	readonly term: RegExp;
+	/** What copy says instead, for the guard's failure message. */
+	readonly insteadSay: string;
+	readonly expandedIn?: Readonly<Partial<Record<MessageKey, string>>>;
+}
+
+/**
+ * Jargon that is not a metric and needs no disclosure, because plain words
+ * say it better. The guard holds these to the same two rules as a metric's
+ * term: never typed into a surface, never in English copy unless the same
+ * string spells it out.
+ */
+export const JARGON = {
+	tts: {
+		term: /\bTTS\b/,
+		insteadSay: 'what the phone does: it reads the cues aloud',
+		expandedIn: {
+			'settingsDevices.keyVoiceFeedback': 'names the feature, voice feedback, beside the acronym',
+		},
+	},
+} as const satisfies Record<string, JargonEntry>;
 
 export type MetricId = keyof typeof METRICS;
 

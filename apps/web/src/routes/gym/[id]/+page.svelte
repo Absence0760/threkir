@@ -40,6 +40,7 @@
 	import { reviewFromMetadata } from '$lib/gym/gym_workout_review';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { m as t } from '$lib/i18n/store.svelte';
+	import MetricLabel from '$lib/components/MetricLabel.svelte';
 	import { env } from '$env/dynamic/public';
 	import { buildWorkoutShareCanonical } from '$lib/share/share_workout_meta';
 
@@ -306,12 +307,8 @@
 		return `${deltaKg > 0 ? '+' : '−'}${formatWeight(Math.abs(deltaKg))}`;
 	}
 
-	function prLabel(kind: PrKind): string {
-		return kind === 'weight'
-			? t('gym.pr.weight')
-			: kind === 'volume'
-				? t('gym.pr.volume')
-				: t('gym.pr.e1rm');
+	function prLabel(kind: Exclude<PrKind, 'e1rm'>): string {
+		return kind === 'weight' ? t('gym.pr.weight') : t('gym.pr.volume');
 	}
 	// Only surface a chip for non-default roles; a plain working set shows
 	// nothing so the common case stays uncluttered.
@@ -558,7 +555,7 @@
 					{#each prByExercise.get(block.key) ?? [] as kind (kind)}
 						<span class="pr-chip">
 							<span class="material-symbols" aria-hidden="true">trophy</span>
-							{prLabel(kind)}
+							{#if kind === 'e1rm'}<MetricLabel metric="e1rm" />{:else}{prLabel(kind)}{/if}
 						</span>
 					{/each}
 				</div>
@@ -578,12 +575,14 @@
 						<span class="material-symbols lt-chevron" aria-hidden="true">chevron_right</span>
 					</a>
 				{/if}
+				<!-- The column header sits outside the list, so it is not counted as a
+				     set, and only the RPE caption is exposed: it carries a disclosure. -->
+				<div class="sets-head">
+					<span class="set-n" aria-hidden="true"></span>
+					<span class="set-val section-label" aria-hidden="true">{t('gym.reps')} × {t('gym.weightUnit', { unit: weightUnitLabel() })}</span>
+					<span class="rpe section-label"><MetricLabel metric="rpe" /></span>
+				</div>
 				<ol class="sets">
-					<li class="sets-head" aria-hidden="true">
-						<span class="set-n"></span>
-						<span class="set-val section-label">{t('gym.reps')} × {t('gym.weightUnit', { unit: weightUnitLabel() })}</span>
-						<span class="rpe section-label">{t('gym.rpe')}</span>
-					</li>
 					{#each block.sets as s (s.id)}
 						<li>
 							<span class="set-n">{t('gym.setN', { n: s.set_index + 1 })}</span>
@@ -840,17 +839,19 @@
 		display: flex;
 		flex-direction: column;
 	}
-	.sets li {
+	.sets li,
+	.sets-head {
 		display: grid;
 		grid-template-columns: minmax(0, 4rem) minmax(0, 1fr) minmax(0, 4rem);
 		align-items: center;
 		gap: var(--space-sm);
 		padding: var(--space-xs) 0;
 	}
-	.sets li + li:not(.sets-head) {
+	.sets li + li {
 		border-top: 1px solid var(--color-border);
 	}
 	.sets-head {
+		padding-top: 0;
 		padding-bottom: var(--space-2xs);
 	}
 	.sets-head .set-val,

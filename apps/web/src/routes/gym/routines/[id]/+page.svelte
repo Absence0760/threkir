@@ -18,6 +18,7 @@
 	import GymRoutineHistory from '$lib/components/GymRoutineHistory.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { m as t } from '$lib/i18n/store.svelte';
+	import MetricLabel from '$lib/components/MetricLabel.svelte';
 
 	let detail = $state<GymRoutineDetail | null>(null);
 	let loading = $state(true);
@@ -275,7 +276,7 @@
 								<tr>
 									<th class="section-label">{t('gym.routine.setType')}</th>
 									<th class="section-label">{t('gym.routine.targetReps')}</th>
-									<th class="section-label">{t('gym.rpe')}</th>
+									<th class="section-label"><MetricLabel metric="rpe" /></th>
 									<th class="section-label">{t('gym.routine.restLabel')}</th>
 								</tr>
 							</thead>

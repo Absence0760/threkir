@@ -26,6 +26,13 @@
 //  5. A `plain` label, used where no disclosure can go, is only allowed in a
 //     file that also renders the interactive one, and every registered metric
 //     is rendered somewhere.
+//
+// `JARGON` entries — terms plain words replace outright — are held to rules 2
+// and 3.
+//
+// A link is deliberately not a forbidden ancestor. A link's children are not
+// presentational the way a button's are, so the disclosure stays its own
+// control, and the component cancels the press so the card does not navigate.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -34,13 +41,21 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { en } from '../i18n/locales/en';
 import { stripComments } from '../core/strip_comments';
-import { METRICS, TERM_PLACEHOLDER, nameKeys, type MetricEntry } from './metric_registry';
+import {
+	JARGON,
+	METRICS,
+	TERM_PLACEHOLDER,
+	nameKeys,
+	type JargonEntry,
+	type MetricEntry,
+} from './metric_registry';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SRC = join(HERE, '..', '..');
 const SURFACE_ROOTS = [join(SRC, 'routes'), join(SRC, 'lib', 'components')];
 
 const ENTRIES = Object.entries(METRICS) as [string, MetricEntry][];
+const JARGON_ENTRIES = Object.entries(JARGON) as [string, JargonEntry][];
 const EN = en as Record<string, string>;
 
 function surfaceFiles(): string[] {
@@ -267,7 +282,8 @@ function forbiddenAncestor(tag: Tag): string | null {
 
 export interface LabelUse {
 	metric: string | null;
-	plain: boolean;
+	/** `maybe` when `plain={…}` is decided at runtime. */
+	plain: 'yes' | 'no' | 'maybe';
 	sentence: string | null;
 	/** The line the `sentence` value sits on, which a multi-line tag moves off `line`. */
 	sentenceLine: number | null;
@@ -287,9 +303,11 @@ export function metricLabelUses(source: string): LabelUse[] {
 			continue;
 		}
 		if (tag.name === 'MetricLabel') {
-			const plain = tag.attrs.some((a) => a.name === 'plain' && a.value !== 'false');
+			const plainAttr = attr(tag, 'plain');
+			const plain = !plainAttr || plainAttr.value === 'false' ? 'no' : plainAttr.dynamic ? 'maybe' : 'yes';
 			const sentence = attr(tag, 'sentence');
-			const blocked = plain ? null : stack.map(forbiddenAncestor).find((r) => r !== null) ?? null;
+			const blocked =
+				plain === 'yes' ? null : stack.map(forbiddenAncestor).find((r) => r !== null) ?? null;
 			uses.push({
 				metric: attr(tag, 'metric')?.value ?? null,
 				plain,
@@ -350,11 +368,13 @@ export function termHits(chunks: { line: number; value: string }[], term: RegExp
 }
 
 /** English keys whose copy carries a term without being allowed to. */
-export function unexplainedCopy(entry: MetricEntry, catalogue: Record<string, string>): string[] {
+export function unexplainedCopy(
+	entry: MetricEntry | JargonEntry,
+	catalogue: Record<string, string>,
+): string[] {
 	if (!entry.term) return [];
 	const allowed = new Set<string>([
-		...nameKeys(entry),
-		entry.definition,
+		...('label' in entry ? [...nameKeys(entry), entry.definition] : []),
 		...Object.keys(entry.expandedIn ?? {}),
 	]);
 	return Object.entries(catalogue)
@@ -410,23 +430,25 @@ test('rule 4 fixture: a disclosure inside a button, a label or an aria-hidden ro
 			'<label><MetricLabel metric="rpe" plain /></label>',
 			'<div>{#if x < 3}<MetricLabel metric="rpe" />{/if}</div>',
 			'<a href="/x"><MetricLabel metric="rpe" /></a>',
+			'<label><MetricLabel metric="rpe" plain={i > 0} /></label>',
 		].join('\n'),
 	);
 	assert.deepEqual(
 		uses.map((u) => u.blockedBy),
-		['<button>', '<label>', 'aria-hidden="true"', null, null, null],
+		['<button>', '<label>', 'aria-hidden="true"', null, null, null, '<label>'],
 	);
-	assert.deepEqual(uses.map((u) => u.line), [1, 2, 3, 4, 5, 6]);
+	assert.deepEqual(uses.map((u) => u.line), [1, 2, 3, 4, 5, 6, 7]);
 });
 
 test('rule 5 fixture: plain and sentence attributes are read', () => {
 	const [a, b] = metricLabelUses(
-		'<MetricLabel metric="riegel" sentence="racePredictor.footnote" />\n<MetricLabel plain metric="e1rm" />',
+		'<MetricLabel metric="riegel" sentence="racePredictor.footnote" />\n<MetricLabel plain metric="e1rm" />\n<MetricLabel metric="rpe" plain={si > 0} />',
 	);
 	assert.equal(a.sentence, 'racePredictor.footnote');
-	assert.equal(a.plain, false);
-	assert.equal(b.plain, true);
+	assert.equal(a.plain, 'no');
+	assert.equal(b.plain, 'yes');
 	assert.equal(b.metric, 'e1rm');
+	assert.equal(metricLabelUses('<MetricLabel metric="rpe" plain={si > 0} />')[0].plain, 'maybe');
 });
 
 // ─────────── The tree ───────────
@@ -474,6 +496,13 @@ test('rule 2: no registered term is typed straight into a surface', () => {
 			for (const line of termHits(chunks, entry.term)) offenders.push(`${rel}:${line} ${entry.term} (${id})`);
 		}
 	}
+	for (const [id, entry] of JARGON_ENTRIES) {
+		for (const { rel, chunks } of FILES) {
+			for (const line of termHits(chunks, entry.term)) {
+				offenders.push(`${rel}:${line} ${entry.term} (${id}: say ${entry.insteadSay})`);
+			}
+		}
+	}
 	assert.deepEqual(
 		offenders,
 		[],
@@ -495,6 +524,16 @@ test('rule 3: English copy never carries a term without its expansion, and no ex
 		}
 		for (const key of [...nameKeys(entry), entry.definition]) {
 			if (!(key in EN)) offenders.push(`${key} (${id}): registered but not in the catalogue`);
+		}
+	}
+	for (const [id, entry] of JARGON_ENTRIES) {
+		for (const key of unexplainedCopy(entry, EN)) {
+			offenders.push(`${key} (${id}: say ${entry.insteadSay}): ${EN[key]}`);
+		}
+		for (const key of Object.keys(entry.expandedIn ?? {})) {
+			if (!(key in EN) || !entry.term.test(EN[key])) {
+				offenders.push(`${key} (${id}): exempted but no longer carries ${entry.term}`);
+			}
 		}
 	}
 	assert.deepEqual(
@@ -561,11 +600,12 @@ test('rule 5: a plain label has an interactive sibling in its file, and every me
 	const offenders: string[] = [];
 	const rendered = new Set<string>();
 	for (const { rel, source, uses } of FILES) {
-		const interactive = new Set(uses.filter((u) => !u.plain).map((u) => u.metric));
+		const interactive = new Set(uses.filter((u) => u.plain === 'no').map((u) => u.metric));
 		for (const use of uses) {
 			if (use.metric) rendered.add(use.metric);
-			if (use.plain && !use.metric) offenders.push(`${rel}:${use.line} a plain label needs a literal metric`);
-			if (use.plain && use.metric && !interactive.has(use.metric)) {
+			const mayBePlain = use.plain !== 'no';
+			if (mayBePlain && !use.metric) offenders.push(`${rel}:${use.line} a plain label needs a literal metric`);
+			if (mayBePlain && use.metric && !interactive.has(use.metric)) {
 				offenders.push(`${rel}:${use.line} plain metric="${use.metric}" with no interactive label in the file`);
 			}
 		}

@@ -20,6 +20,7 @@
 	import { m } from '$lib/i18n/store.svelte';
 	import type { MessageKey } from '$lib/i18n/messages';
 	import { METRICS, splitAtTerm, type MetricEntry, type MetricId } from '$lib/metrics/metric_registry';
+	import { metricName } from '$lib/metrics/metric_name';
 
 	interface Props {
 		metric: MetricId;
@@ -33,13 +34,15 @@
 		/// where its `{term}` placeholder sits.
 		sentence?: MessageKey;
 		params?: Record<string, string | number>;
+		/// The id of the input this name captions. The name then renders as that
+		/// input's `<label>`, with the disclosure beside the label rather than
+		/// inside it, where it would take the label's click and its name.
+		labelFor?: string;
 	}
-	let { metric, variant, plain = false, sentence, params }: Props = $props();
+	let { metric, variant, plain = false, sentence, params, labelFor }: Props = $props();
 
 	const entry: MetricEntry = $derived(METRICS[metric]);
-	const name = $derived(
-		m((variant ? entry.variants?.[variant] : undefined) ?? entry.label, params),
-	);
+	const name = $derived(metricName(metric, variant, params));
 	const parts = $derived(sentence ? splitAtTerm(m(sentence, params)) : null);
 
 	const uid = $props.id();
@@ -117,12 +120,14 @@
 	onDestroy(detach);
 </script>
 
+{#snippet text()}{#if labelFor}<label class="metric-caption" for={labelFor}>{name}</label>{:else}{name}{/if}{/snippet}
+
 {#snippet label()}
 	{#if plain}
-		<span class="metric-label" data-metric={metric}>{name}</span>
+		<span class="metric-label" data-metric={metric}>{@render text()}</span>
 	{:else}
 		<span class="metric-label" data-metric={metric}
-			>{name}<button
+			>{@render text()}<button
 				bind:this={trigger}
 				type="button"
 				class="metric-info"
@@ -150,6 +155,17 @@
 <style>
 	.metric-label {
 		display: inline;
+	}
+
+	/* A form layer styles every <label> as a stacked field; this one is a
+	   caption inside a line and keeps whatever its container sets. */
+	.metric-caption {
+		display: inline;
+		margin: 0;
+		font: inherit;
+		color: inherit;
+		letter-spacing: inherit;
+		text-transform: inherit;
 	}
 
 	.metric-info {

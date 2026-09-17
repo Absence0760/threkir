@@ -128,9 +128,9 @@ test.describe('/gym — log, PR badge, detail, delete', () => {
 		await expect(page.locator('.error-banner')).toHaveCount(0, { timeout: 10_000 });
 	});
 
-	test('Gym → Sessions link surfaces when the user has a session plan', async ({ page }) => {
-		// Session plans are otherwise undiscoverable from the main nav — the Gym
-		// header surfaces a Sessions link, self-hiding on session-plan presence
+	test('Gym → Session plans link surfaces when the user has a session plan', async ({ page }) => {
+		// Session plans are otherwise undiscoverable from the main nav — /gym
+		// surfaces a Session plans link, self-hiding on session-plan presence
 		// (independent of gym-workout count). Seed one plan, assert the link
 		// appears and lands on /sessions.
 		const admin = getAdminClient();

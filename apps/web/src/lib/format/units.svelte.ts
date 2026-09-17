@@ -2,7 +2,7 @@
 ///
 /// `preferredUnit` is a module-level reactive signal — any Svelte view
 /// that calls `formatDistance` or `formatPace` re-renders automatically
-/// when the user flips the setting on `/settings/preferences`. The auth
+/// when the user flips the setting on `/settings/display`. The auth
 /// store calls `setUnit(...)` once after the profile loads so all views
 /// pick up the saved preference without plumbing it through every call.
 ///

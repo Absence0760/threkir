@@ -74,7 +74,7 @@ pending), so a later credentialed deploy delivers the backlog.
   same shape as `email_notifications`, independent channel) — already the gate
   used by `web_push`; native push reuses the **same** pref (one "push" channel
   covers browser + native, per the docs). Toggle already exists on web
-  `apps/web/src/routes/settings/preferences/+page.svelte` + mobile
+  `apps/web/src/routes/settings/notifications/+page.svelte` + mobile
   `apps/mobile_android/lib/screens/settings_preferences_screen.dart`.
 - **Docs:** `docs/features/email.md` — the "Native push (FCM / APNs)" bullet
   under "Planned / not built" explicitly states the design ("Same notifications
@@ -167,7 +167,7 @@ Native push is a **device-only capability** (physical-exception list, §24): a
 browser cannot register an FCM/APNs token. So the **client** leg is mobile-only.
 The **server** leg (worker) is shared infra, not a web UI. Web work is minimal:
 - No new web UI — the `push_notifications` pref toggle already exists on
-  `/settings/preferences`. (Confirm copy still reads as a single "Push" channel
+  `/settings/notifications`. (Confirm copy still reads as a single "Push" channel
   covering browser + phone; tweak `settings.*` i18n if it implied browser-only.)
 - `docs/backend/settings.md` registry note: `push_notifications` now gates
   native push too (no new key).

@@ -41,7 +41,7 @@ import { USER_A } from '../fixtures/users';
  *   5. Verify the adherence banner renders: the over-running drift
  *      flag (.adherence-flag.drift-over) and the missed-long-run
  *      make-up flag (.adherence-flag.missed-make_up).
- *   6. Exercise the Re-plan flow: "Re-plan remaining weeks" →
+ *   6. Exercise the Re-plan flow: Adjust plan → "Re-plan remaining weeks" →
  *      .replan-preview proposes a make-up on the next long run →
  *      Apply changes → the future long run's target_distance_m is
  *      rewritten (capped to 1.15×).
@@ -261,7 +261,11 @@ test.describe('plan progress journey', () => {
 
 		// ── 6. Re-plan flow proposes + applies a make-up ───────────
 		await test.step('re-plan proposes a make-up and Apply rewrites the future long run', async () => {
-			await page.getByRole('button', { name: /Re-plan remaining weeks/ }).click();
+			await page.getByRole('button', { name: 'Adjust plan' }).click();
+			await page
+				.getByTestId('adjust-plan-dialog')
+				.getByRole('button', { name: /Re-plan remaining weeks/ })
+				.click();
 
 			const preview = page.locator('.replan-preview');
 			await expect(preview).toBeVisible({ timeout: 10_000 });

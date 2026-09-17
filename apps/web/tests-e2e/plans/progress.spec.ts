@@ -62,13 +62,19 @@ test.describe('/plans/[id] progress header', () => {
 			await expect(page.locator('.phase-marker .phase-step.active')).toHaveText(/Base/);
 
 			// Longest long run stat renders the 24 km figure.
-			const longestValue = page.locator('.stat-chip[title="Longest long run"] .stat-value');
+			const chips = page.locator('.plan-progress-stats .stat-chip');
+			const longestValue = chips
+				.filter({ has: page.locator('.stat-label', { hasText: /^Longest long run$/ }) })
+				.locator('.stat-value');
 			await expect(longestValue).toBeVisible();
 			await expect(longestValue).toHaveText(/24/);
 
 			// Distance-banked stat: the one completed 24 km long run is both
-			// the banked total and the whole planned distance (24 of 24).
-			const bankedValue = page.locator('.stat-chip[title="Distance banked"] .stat-value');
+			// the banked total and the whole planned distance (24 of 24). The
+			// name is a MetricLabel, so the chip is found by the metric it names.
+			const bankedValue = chips
+				.filter({ has: page.locator('[data-metric="distanceBanked"]') })
+				.locator('.stat-value');
 			await expect(bankedValue).toBeVisible();
 			await expect(bankedValue).toHaveText(/24.*24/);
 		} finally {

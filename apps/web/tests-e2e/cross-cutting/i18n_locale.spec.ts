@@ -111,11 +111,11 @@ test.describe('i18n locale negotiation', () => {
 	});
 });
 
-test.describe('i18n language picker (settings → preferences)', () => {
+test.describe('i18n language picker (settings → units & display)', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test('picking a language translates the chrome and persists across reload', async ({ page }) => {
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		// Seeded user is an English (en-GB) browser → English chrome.
 		await expect(page.locator('.nav-label').first()).toHaveText('Dashboard');
 
@@ -145,7 +145,7 @@ test.describe('i18n language picker (settings → preferences)', () => {
 		await page.goto(runUrl);
 		await expect(page.getByText('6.50 km').first()).toBeVisible();
 
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await page.locator('[data-testid="language-select"]').selectOption('de');
 		await expect(page.locator('html')).toHaveAttribute('lang', 'de');
 
@@ -154,7 +154,7 @@ test.describe('i18n language picker (settings → preferences)', () => {
 		await expect(page.getByText('6,50 km').first()).toBeVisible();
 		await expect(page.getByText('6.50 km')).toHaveCount(0);
 
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await page.locator('[data-testid="language-select"]').selectOption('en');
 	});
 
@@ -166,7 +166,7 @@ test.describe('i18n language picker (settings → preferences)', () => {
 		await page.goto(runUrl);
 		await expect(page.getByText(/15 May 2026/).first()).toBeVisible();
 
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await page.locator('[data-testid="language-select"]').selectOption('de');
 		// setLocale is async (it loads the locale chunk before writing the
 		// choice to localStorage + flipping <html lang>). Wait for that to
@@ -178,7 +178,7 @@ test.describe('i18n language picker (settings → preferences)', () => {
 		await expect(page.getByText(/Mai 2026/).first()).toBeVisible();
 		await expect(page.getByText(/15 May 2026/)).toHaveCount(0);
 
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await page.locator('[data-testid="language-select"]').selectOption('en');
 	});
 
@@ -188,7 +188,7 @@ test.describe('i18n language picker (settings → preferences)', () => {
 		// Monday-first (default), English abbreviations.
 		await expect(page.locator('.dow-row span').first()).toHaveText('Mon');
 
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await page.locator('[data-testid="language-select"]').selectOption('de');
 		// setLocale is async (it loads the locale chunk before writing the
 		// choice to localStorage + flipping <html lang>). Wait for that to
@@ -202,7 +202,7 @@ test.describe('i18n language picker (settings → preferences)', () => {
 			/Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember/,
 		);
 
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/display');
 		await page.locator('[data-testid="language-select"]').selectOption('en');
 	});
 });

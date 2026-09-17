@@ -51,7 +51,7 @@ test.describe('/dashboard — universal prefs cache', () => {
 		// The fitness card is gated on a successful settings load, so
 		// once the heading is visible the cache write has happened.
 		await expect(
-			page.getByRole('heading', { name: /mileage/i, level: 2 }),
+			page.getByRole('heading', { name: 'Distance', exact: true, level: 2 }),
 		).toBeVisible();
 
 		// Poll because the cache write happens after the dashboard's
@@ -80,7 +80,7 @@ test.describe('/dashboard — universal prefs cache', () => {
 		// First visit: prime the cache.
 		await page.goto('/dashboard');
 		await expect(
-			page.getByRole('heading', { name: /mileage/i, level: 2 }),
+			page.getByRole('heading', { name: 'Distance', exact: true, level: 2 }),
 		).toBeVisible();
 		await expect
 			.poll(
@@ -109,7 +109,7 @@ test.describe('/dashboard — universal prefs cache', () => {
 		// 10s). The assertion still proves the cache is load-bearing — it just
 		// tolerates heavy-shard latency instead of flaking on it.
 		await expect(
-			page.getByRole('heading', { name: /mileage/i, level: 2 }),
+			page.getByRole('heading', { name: 'Distance', exact: true, level: 2 }),
 		).toBeVisible({ timeout: 20_000 });
 
 		// Cache still has the planted prefs — a regression that
@@ -132,7 +132,7 @@ test.describe('/dashboard — universal prefs cache', () => {
 		try {
 			await page.goto('/dashboard');
 			await expect(
-				page.getByRole('heading', { name: /mileage/i, level: 2 }),
+				page.getByRole('heading', { name: 'Distance', exact: true, level: 2 }),
 			).toBeVisible();
 			await expect
 				.poll(

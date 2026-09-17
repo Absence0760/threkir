@@ -317,6 +317,7 @@ The rule when adding any feature that touches a mature flow (recording, sync, au
 3. **Wrap risky subtrees.** User-facing surfaces that depend on complex third-party widgets (`flutter_map` is the prime example) need a release-mode `ErrorWidget.builder` override so a subtree crash replaces *only* that subtree, not the entire screen. Debug keeps the default red screen.
 4. **A `try` covers what it `await`s, not what it starts.** `return someAsyncCall();` inside a `try` hands the future to the caller before it completes, so a rejection lands upstream of your `catch` and any fallback in it silently never runs — the failure mode is a degradation path that reads as handled and is dead. Write `return await …` whenever the `try` is there to catch something. Dart 3.13's `unawaited_return_in_try_block` flags this; see `decisions.md` § 595 for the case that motivated it.
 5. **Independent fetches get independent error state.** A screen that loads several unrelated sections (a profile's Runs / Achievements / Followers / Following / Notifications tabs) must give each its own loading + error + retry, not bundle them into one `Future.wait` under a single `try`/`catch` — one failed call there blanks every section, including the ones that succeeded. Only a fetch the whole page structurally needs (the profile header's summary) may gate the page; each per-section fetch owns a scoped `ErrorState` + Retry. See `apps/mobile_android/lib/screens/profile_screen.dart` (`#508`).
+6. **A decorative remote image falls back when its request fails, not only when no URL can be built.** On web every static-map `<img>` renders through `StaticMapImage.svelte`, which swaps a failed image for a fallback snippet (the SVG track preview on thumbnails, nothing on the share card) — a MapTiler outage once left every route and run card a broken image. `static_map_image_guard.test.ts` fails a new static-map consumer that bypasses it; mobile's equivalent is an `errorBuilder` on `Image.network` ([decisions § 1636](decisions.md)).
 
 The canonical write-up with the L0–L4 table and failure modes is [run_recording.md § Hardening § Layering](../features/run_recording.md#layering). Read it before touching the recording stack; copy the pattern when building the next "basics must always work" surface (e.g. sync, auth, navigation).
 
@@ -838,6 +839,19 @@ The class is always **`material-symbols`** — the one styled in `app.css` with 
 
 **The font is a subset, so adding a new icon means regenerating it.** `apps/web/src/lib/assets/material-symbols-subset.woff2` carries only the icons this tree names — 347 of the font's 4271, 74 KB against the full font's 3866 KB ([decisions § 780](decisions.md)). The set is derived from the source, not hand-listed: element text at every render site, plus every quoted `[a-z0-9_]+` literal under `src` that the upstream font can render, which is how a name reaching the span through `{item.icon}` gets found. Adding an icon the subset does not carry fails `build-web` with the name in the message; fix it with `pnpm gen:icon-font` and commit the regenerated `.woff2` **and** its `.json` manifest. `@font-face` and `font-display: block` live in `app.css` — `block` is deliberate, because for a ligature font every other value paints the icon's NAME in the fallback face while it loads.
 
+## Web derived metrics — through `<MetricLabel>`, never a bare acronym or a `title=`
+
+A derived metric's name (VO₂ max, CTL / ATL / TSB, VDOT, 1RM, RPE, age grade, vert, TRIMP, the Riegel formula, KOM/QOM, distance banked, the plan phases) renders through **`<MetricLabel metric="…" />`** (`lib/components/MetricLabel.svelte`), which puts a one-line plain-English definition behind a button a runner can open by touch or keyboard. The names and definitions live in **one registry**, `lib/metrics/metric_registry.ts`; add a metric there, with its definition in all seven locales, before rendering it anywhere.
+
+- **Never a `title=` tooltip for a definition.** It never appears on touch, a keyboard cannot reach it, and screen readers announce it inconsistently — the dashboard's four definitions existed in every locale and nobody on a phone could read them ([decisions § 1639](decisions.md)).
+- **Mid-sentence**, give the catalogue string a `{term}` placeholder, list the key in the entry's `sentences`, and render `<MetricLabel metric="…" sentence="key" />`.
+- **Captioning an input**, pass `labelFor={inputId}` and make the wrapper a `<div>`, not a `<label>`: the component renders the `<label for>` and the disclosure side by side. An input named by `aria-label` reads the name through `metricName()` (`lib/metrics/metric_name.ts`).
+- **Where no disclosure can sit** (an `aria-hidden` header, a `<label>`, a repeated row) use `plain`, and render the interactive label for the same metric elsewhere in the file.
+- **An `<option>`** cannot hold a disclosure, so its string spells the term out and is registered under `expandedIn` with the reason.
+- **Jargon that is not a metric** (TTS) goes in `JARGON` and is replaced with plain words rather than defined.
+
+`src/lib/metrics/metric_label_guard.test.ts` enforces all of it from the registry itself and fails the unit job on a key rendered around the component, a term typed into markup, English copy carrying a term with no expansion, a disclosure in a forbidden ancestor, or a plain label with no interactive sibling.
+
 ## Mobile in-app notifications — `showTopBanner`
 
 On the Flutter apps (`apps/mobile_android`, `apps/mobile_ios`), the canonical transient notification primitive is `showTopBanner(context, message, ...)` from `lib/widgets/top_banner.dart`. It renders a top-anchored pill via `Overlay`, auto-positions below an `AppBar` when one is present, and coalesces to a single banner at a time.
@@ -1273,7 +1287,7 @@ setting. The list is the optimistic surface; a server-sourced aggregate is not.
 
 **A timed undo is an accessibility surface.** WCAG 2.2.1 requires the limit be
 turnable-off, adjustable, or extendable; the `undo_window_s` preference
-(`/settings/preferences` on web, Settings → Preferences on mobile, registered in
+(`/settings/display` on web, Settings → Preferences on mobile, registered in
 [settings.md](../backend/settings.md)) carries a `0` = *no time limit* choice, and
 hover/focus (web) or backgrounding (mobile) pauses a running window. Keep the
 countdown out of the announced region — a ticking number re-announces on every
@@ -1310,6 +1324,27 @@ are mobile-specific:
   gone self-heals. All three are pinned per call site by the
   `deferred-commit undo outlives its surface` group in
   `architecture_guards_test.dart`.
+
+### Where a whole-entity delete lives — never the primary slot
+
+The guard above decides *how* a delete asks; this decides *where* it sits. A
+delete that removes a whole entity other people depend on — a club, a
+challenge, the account — is never a primary action. It does not share a row
+with Join / Leave / Edit / New, and it is never a bare verb.
+
+- **Web** renders it in `DangerZone` (`$lib/components/DangerZone.svelte`)
+  after the page's own content: a labelled region, one line saying what the
+  delete removes, and a `btn-danger` named for what it deletes ("Delete club",
+  "Delete challenge"), still routed through `ConfirmDialog`. `/settings/account`,
+  `/clubs/[slug]` and `/challenges/[id]` use it; don't hand-roll another
+  danger card.
+- **Mobile** passes it to `AppBarActions` as `destructive: true`, which is never
+  promoted to a visible toolbar icon and renders last in the overflow menu,
+  labelled, in the error colour (see *Mobile app-bar actions* and decisions
+  § 498) — even when it is the screen's only action.
+
+A delete of one row inside a list (a post, a set, a gear item) is not this
+rule: an inline, labelled per-row control is fine there. See decisions § 1634.
 
 ## Web cards — `.card-elevated` is the shared elevated panel
 

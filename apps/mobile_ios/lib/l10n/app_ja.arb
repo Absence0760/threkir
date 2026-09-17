@@ -156,6 +156,14 @@
   "readinessBandHigh": "高い",
   "readinessBandModerate": "普通",
   "readinessBandLow": "低い",
+  "readinessContributorForm": "トレーニングバランス",
+  "readinessContributorSleep": "睡眠",
+  "readinessContributorRestingHr": "安静時心拍数",
+  "intensityZone1": "Z1（リカバリー）",
+  "intensityZone2": "Z2（イージー）",
+  "intensityZone3": "Z3（テンポ）",
+  "intensityZone4": "Z4（閾値）",
+  "intensityZone5": "Z5（最大）",
   "missingMapTilesTitle": "OpenStreetMapの代替タイルを使用中",
   "prefsLanguage": "言語",
   "prefsLanguageSystem": "システムのデフォルト",
@@ -185,6 +193,8 @@
   "gymSurfaceLabel": "ジムセクション",
   "gymTabLog": "ログ",
   "gymTabRecords": "記録",
+  "gymPeerRoutines": "ジムルーティン",
+  "gymPeerSessions": "セッションプラン",
   "homeAskCoach": "コーチに相談",
   "homeAskCoachSubtitle": "ラン・筋トレ・栄養のアドバイス",
   "youProfileTitle": "あなたのプロフィール",
@@ -1597,7 +1607,7 @@
   "planDetailCompleted": "完了",
   "planDetailWeek": "第{number}週",
   "planDetailDriftOverFlag": "今週は計画より{pct}%多く走っています — 疲労を溜めないよう、楽な日は控えめに。",
-  "planDetailDriftUnderFlag": "今週は計画より{pct}%少なく走っています — 計画した走行量が適応を生みます。",
+  "planDetailDriftUnderFlag": "今週はここまで、予定の{planned}のうち{done}を走りました。",
   "planDetailMissedLongMakeUp": "今週のロング走を逃しました — 可能なら入れましょう。最も重要なセッションです。",
   "planDetailMissedLongTaper": "ロング走を逃しましたが、テーパー中です — 諦めてレースに向け疲労を抜きましょう。",
   "planDetailMissedLongRecovery": "ロング走を逃しました — 取り戻さなくて大丈夫。回復週が来るので体は休息を活かします。",
@@ -1706,7 +1716,7 @@
   "coachContextNoRuns": "ランなし",
   "coachContextLast": "直近",
   "coachContextHr": "心拍",
-  "coachContextWeeklyGoal": "週{km}km",
+  "coachContextWeeklyGoal": "週{distance}{unit}",
   "coachArchiveBanner": "アーカイブを表示中 · {label} · 読み取り専用",
   "coachBackToActive": "進行中に戻る",
   "coachLimitReachedPro": "1日の上限に達しました。明日また来てください。",
@@ -2188,7 +2198,7 @@
   "prefsFluidPerHourValue": "{ml} ml/h",
   "prefsHrZones": "心拍ゾーン",
   "prefsHrZonesDialogTitle": "心拍ゾーン（上限、bpm）",
-  "prefsWeeklyGoal": "週間走行距離の目標",
+  "prefsWeeklyGoal": "週間距離の目標",
   "prefsSectionActivityRecording": "アクティビティと記録",
   "prefsSectionTrainingDemographics": "トレーニングと属性情報",
   "prefsSectionPrivacySharing": "プライバシーと共有",
@@ -2302,7 +2312,7 @@
   "intensityTitle": "トレーニング強度",
   "intensityWindow": "直近{days}日",
   "intensityBasedOn": "心拍記録のある{count, plural, other{{count}件のラン}}に基づく",
-  "mileageTitle": "走行距離",
+  "mileageTitle": "距離",
   "mileageWeek": "週",
   "mileageMonth": "月",
   "mileageYear": "年",
@@ -3106,12 +3116,12 @@
     }
   },
   "nutritionWaterGoalReached": "目標達成",
-  "nutritionWaterRemaining": "残り {n} ml",
+  "nutritionWaterRemaining": "残り {n} L",
   "@nutritionWaterRemaining": {
-    "description": "Water budget chip: ml still to drink",
+    "description": "Water budget chip: litres still to drink",
     "placeholders": {
       "n": {
-        "type": "int"
+        "type": "String"
       }
     }
   },
@@ -3479,6 +3489,7 @@
   "challengesJoin": "参加",
   "challengesLeave": "退出",
   "challengesDelete": "削除",
+  "challengesDeleteChallenge": "チャレンジを削除",
   "challengesMetricDistance": "距離",
   "challengesMetricDuration": "時間",
   "challengesMetricVert": "獲得標高",

@@ -5,6 +5,7 @@
 		type FeatureSupport,
 	} from '$lib/settings/compare_features';
 	import { m } from '$lib/i18n/store.svelte';
+	import MetricLabel from '$lib/components/MetricLabel.svelte';
 	import { coachEnabled } from '$lib/coach/coach_flag';
 
 	// Drop the "AI Coach" explore link when the Coach is off (rock-bottom).
@@ -28,7 +29,7 @@
 		<p class="kicker">{m('compare.kicker')}</p>
 		<h1>{m('compare.heroHeading')}</h1>
 		<p class="tagline">
-			{m('compare.tagline')}
+			<MetricLabel metric="kom" sentence="compare.tagline" />
 		</p>
 
 		<div class="price-cards">

@@ -61,7 +61,7 @@ test('clamps to 0..100 on extreme inputs', () => {
 test('TSB > +25 (over-tapered) → small negative not positive', () => {
 	const r = computeReadiness({ tsb: 30 });
 	assert.equal(r.score, 75 - 3);
-	const tsb = r.contributors.find((c) => c.name === 'Form (TSB)');
+	const tsb = r.contributors.find((c) => c.kind === 'form');
 	assert.equal(tsb!.delta, -3);
 	assert.match(tsb!.note, /Over-tapered/);
 });
@@ -132,6 +132,10 @@ test('an all-zero tie still resolves to the first contributor', () => {
 		baselineRestingHrBpm: 50,
 	});
 	assert.equal(r.contributors.length, 3);
+	assert.deepEqual(
+		r.contributors.map((c) => c.kind),
+		['form', 'sleep', 'resting_hr'],
+	);
 	assert.deepEqual(
 		r.contributors.map((c) => c.delta),
 		[0, 0, 0],

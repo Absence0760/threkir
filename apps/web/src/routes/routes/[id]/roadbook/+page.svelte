@@ -2,6 +2,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { m } from '$lib/i18n/store.svelte';
+	import MetricLabel from '$lib/components/MetricLabel.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { fetchRouteById, fetchRouteMarkers, updateRouteMarker } from '$lib/core/data';
 	import type { Route, RouteMarker } from '$lib/types';
@@ -465,7 +466,7 @@
 					<tr>
 						<th>{m('roadbook.colCheckpoint')}</th>
 						<th class="num">{m('roadbook.colDistance')}</th>
-						<th class="num">{m('roadbook.colVert')}</th>
+						<th class="num"><MetricLabel metric="vert" /></th>
 						<th class="num">{m('roadbook.colLegPace')}</th>
 						<th class="num">{m('roadbook.colArrival')}</th>
 						{#if hasTargets}

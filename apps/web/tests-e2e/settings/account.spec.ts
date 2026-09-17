@@ -136,7 +136,7 @@ test.describe('/settings/account', () => {
 	test('Date of birth input caps at today and leaves birth years unbounded', async ({
 		page
 	}) => {
-		// Mirrors /settings/preferences + /onboarding: `max` of today
+		// Mirrors /settings/body + /onboarding: `max` of today
 		// blocks a future DOB, and no `min` fences off realistic birth
 		// years decades back (issue #222).
 		await page.goto('/settings/account');

@@ -2,7 +2,7 @@
 // /settings/account page. The account page persists date_of_birth into
 // user_settings.prefs (read by coach/context.ts). Before this gate it was
 // an unguarded second write path that bypassed the consent flow enforced
-// on /settings/preferences. If a future edit removes the gate, DOB starts
+// on /settings/body. If a future edit removes the gate, DOB starts
 // persisting again without explicit consent — a GDPR Art 9 regression.
 //
 // The gate is on the MIRROR, not on the field. `user_profiles.date_of_birth`

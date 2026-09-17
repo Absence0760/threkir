@@ -212,11 +212,17 @@ class _ZoneLegend extends StatelessWidget {
   final IntensityBreakdown breakdown;
   const _ZoneLegend({required this.breakdown});
 
-  static const _labels = <String>['Z1', 'Z2', 'Z3', 'Z4', 'Z5'];
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final labels = [
+      l10n.intensityZone1,
+      l10n.intensityZone2,
+      l10n.intensityZone3,
+      l10n.intensityZone4,
+      l10n.intensityZone5,
+    ];
     final total = breakdown.totalSeconds;
     return Wrap(
       spacing: 12,
@@ -236,7 +242,7 @@ class _ZoneLegend extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                _labels[i],
+                labels[i],
                 style: theme.textTheme.labelSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),

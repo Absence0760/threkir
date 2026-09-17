@@ -5,6 +5,7 @@ import '../challenge_list.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../leaderboard_standing.dart';
 import '../social_service.dart';
+import '../widgets/app_bar_actions.dart';
 import '../widgets/challenge_progress_bar.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/error_state.dart';
@@ -149,10 +150,15 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
         title: Text(c?.title ?? l10n.challengesTitle),
         actions: [
           if (isCreator)
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
-              tooltip: l10n.challengesDelete,
-              onPressed: _delete,
+            AppBarActions(
+              actions: [
+                AppBarAction(
+                  icon: const Icon(Icons.delete_outline),
+                  label: l10n.challengesDeleteChallenge,
+                  onPressed: _delete,
+                  destructive: true,
+                ),
+              ],
             ),
         ],
       ),

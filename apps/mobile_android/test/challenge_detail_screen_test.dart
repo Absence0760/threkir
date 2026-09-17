@@ -263,6 +263,42 @@ void main() {
     expect(find.text('0.00 km of 100.00 km'), findsNothing);
   });
 
+  testWidgets(
+      'delete is never a bare toolbar icon: it sits labelled in the overflow menu',
+      (tester) async {
+    await tester.pumpWidget(_app(_FakeSocial(
+      _ch(myValue: 20000, creatorId: 'me'),
+    )));
+    await tester.pump(); // load
+
+    expect(find.byIcon(Icons.delete_outline), findsNothing);
+
+    await tester.tap(find.byTooltip('More'));
+    await tester.pumpAndSettle();
+
+    final item = find.widgetWithText(PopupMenuItem<int>, 'Delete challenge');
+    expect(item, findsOneWidget);
+    await tester.tap(item);
+    await tester.pumpAndSettle();
+
+    final dialog = find.byType(AlertDialog);
+    expect(
+      find.descendant(of: dialog, matching: find.text('Delete challenge?')),
+      findsOneWidget,
+    );
+    await tester.tap(find.descendant(of: dialog, matching: find.text('Cancel')));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  testWidgets('a non-creator gets no delete action at all', (tester) async {
+    await tester.pumpWidget(_app(_FakeSocial(_ch(myValue: 20000))));
+    await tester.pump(); // load
+
+    expect(find.byTooltip('More'), findsNothing);
+    expect(find.text('Delete challenge'), findsNothing);
+  });
+
   testWidgets('a failed delete shows the delete-specific message', (tester) async {
     await tester.pumpWidget(_app(_FakeSocial(
       _ch(myValue: 20000, creatorId: 'me'),
@@ -270,8 +306,10 @@ void main() {
     )));
     await tester.pump(); // load
 
-    // Owner sees the delete action.
-    await tester.tap(find.byIcon(Icons.delete_outline));
+    // Owner reaches the delete action through the overflow menu.
+    await tester.tap(find.byTooltip('More'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete challenge'));
     await tester.pumpAndSettle(); // open the confirm dialog
 
     // Confirm the deletion.

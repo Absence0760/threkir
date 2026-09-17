@@ -27,7 +27,7 @@ async function getUserPrivacyZones(): Promise<
 	);
 }
 
-test.describe('/settings/preferences — PrivacyZonePicker (MapLibre modal)', () => {
+test.describe('/settings/privacy — PrivacyZonePicker (MapLibre modal)', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
@@ -47,7 +47,7 @@ test.describe('/settings/preferences — PrivacyZonePicker (MapLibre modal)', ()
 	test('Add-zone modal mounts PrivacyZonePicker with map + radius + disabled Add button', async ({
 		page
 	}) => {
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/privacy');
 
 		await expect(page.getByText('No privacy zones yet.')).toBeVisible({ timeout: 10_000 });
 
@@ -76,7 +76,7 @@ test.describe('/settings/preferences — PrivacyZonePicker (MapLibre modal)', ()
 	test('Map click places marker, enables Add zone, persists zone to user_settings, then Remove clears it', async ({
 		page
 	}) => {
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/privacy');
 
 		await page.getByRole('button', { name: /Add a zone/ }).click();
 
@@ -152,7 +152,7 @@ test.describe('/settings/preferences — PrivacyZonePicker (MapLibre modal)', ()
 	test('Radius slider drives the picker state (data-layer fallback for canvas-bridge flake)', async ({
 		page
 	}) => {
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/privacy');
 
 		await page.getByRole('button', { name: /Add a zone/ }).click();
 		const modal = page.locator('.modal', { hasText: 'Add a privacy zone' });

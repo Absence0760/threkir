@@ -20,6 +20,7 @@ import '../push_messaging_bridge.dart';
 import '../settings_sync.dart';
 import '../typed_decimal.dart';
 import '../undo_queue.dart';
+import '../weekly_goal.dart';
 import '../widgets/top_banner.dart';
 import 'nearby_area_screen.dart';
 import 'privacy_zones_screen.dart';
@@ -437,15 +438,16 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
 
   String _weeklyGoalSummary() {
     final l10n = AppLocalizations.of(context);
-    final metres = _bagValue<num>(
-      SettingsKeys.weeklyMileageGoalMetres,
-    )?.toDouble();
-    if (metres == null) return l10n.prefsNotSet;
-    final useMiles = widget.preferences.useMiles;
-    final display = useMiles ? metres / 1609.344 : metres / 1000;
+    final unit = widget.preferences.unit;
+    final display = weeklyGoalToInput(
+      _bagValue<num>(SettingsKeys.weeklyMileageGoalMetres),
+      unit,
+    );
+    if (display == null) return l10n.prefsNotSet;
     return l10n.prefsWeeklyGoalSummary(
-      formatFixed(display, display < 10 ? 1 : 0, activeLocaleTag),
-      useMiles ? 'mi' : 'km',
+      formatFixed(display, display == display.roundToDouble() ? 0 : 1,
+          activeLocaleTag),
+      unit.name,
     );
   }
 
@@ -1199,19 +1201,14 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
   }
 
   Future<void> _editWeeklyGoal() async {
-    final current = _bagValue<num>(
-      SettingsKeys.weeklyMileageGoalMetres,
-    )?.toDouble();
-    final useMiles = widget.preferences.useMiles;
-    final currentDisplay = current == null
-        ? null
-        : (useMiles ? current / 1609.344 : current / 1000);
+    final stored = _bagValue<num>(SettingsKeys.weeklyMileageGoalMetres);
+    final unit = widget.preferences.unit;
     final picked = await _pickDouble(
       title: AppLocalizations.of(context).prefsWeeklyGoal,
-      current: currentDisplay,
-      suffix: useMiles ? 'mi' : 'km',
-      minValue: 0.1,
-      maxValue: 500,
+      current: weeklyGoalToInput(stored, unit),
+      suffix: unit.name,
+      minValue: kWeeklyGoalMin,
+      maxValue: kWeeklyGoalMax,
     );
     if (picked == null) return;
     if (picked == -1.0) {
@@ -1224,8 +1221,8 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
         await widget.preferences.removeGoal(existing.id);
       }
     } else {
-      final metres = useMiles ? picked * 1609.344 : picked * 1000;
-      await _putUniversal(SettingsKeys.weeklyMileageGoalMetres, metres.round());
+      final metres = weeklyGoalFromInput(picked, unit, stored)!;
+      await _putUniversal(SettingsKeys.weeklyMileageGoalMetres, metres);
       final existing = widget.preferences.goals.firstWhere(
         (g) => g.period == GoalPeriod.week && g.distanceMetres != null,
         orElse: () => const RunGoal(id: '', period: GoalPeriod.week),
@@ -1234,7 +1231,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
         RunGoal(
           id: existing.id.isEmpty ? newGoalId() : existing.id,
           period: GoalPeriod.week,
-          distanceMetres: metres,
+          distanceMetres: metres.toDouble(),
           title: existing.title,
           timeSeconds: existing.timeSeconds,
           avgPaceSecPerKm: existing.avgPaceSecPerKm,

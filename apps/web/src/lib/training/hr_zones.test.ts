@@ -94,7 +94,7 @@ test('a zero max HR is ignored, not applied as a ceiling', () => {
 test('both web max_hr_bpm write paths gate on the shared predicate', () => {
 	const pages = [
 		'../../routes/settings/account/+page.svelte',
-		'../../routes/settings/preferences/+page.svelte'
+		'../../routes/settings/training/+page.svelte'
 	];
 	for (const rel of pages) {
 		const src = readFileSync(new URL(rel, import.meta.url), 'utf8');
@@ -131,7 +131,7 @@ test('isUsableMaxHrBpm rejects the absent and unparseable inputs', () => {
 test('both web resting_hr_bpm write paths gate on the shared predicate', () => {
 	const pages = [
 		'../../routes/settings/account/+page.svelte',
-		'../../routes/settings/preferences/+page.svelte'
+		'../../routes/settings/training/+page.svelte'
 	];
 	for (const rel of pages) {
 		const src = readFileSync(new URL(rel, import.meta.url), 'utf8');

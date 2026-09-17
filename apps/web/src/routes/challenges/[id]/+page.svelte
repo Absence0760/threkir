@@ -16,6 +16,7 @@
 	import ChallengeEditor from '$lib/components/ChallengeEditor.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	import DangerZone from '$lib/components/DangerZone.svelte';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { m } from '$lib/i18n/store.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
@@ -248,9 +249,6 @@
 				<button type="button" class="btn btn-secondary" onclick={() => (editing = true)}>
 					{m('challenges.edit')}
 				</button>
-				<button type="button" class="btn btn-danger" disabled={busy} onclick={() => (confirmDelete = true)}>
-					{m('challenges.delete')}
-				</button>
 			{/if}
 		</div>
 
@@ -265,6 +263,17 @@
 				meTeamId={myTeamId}
 			/>
 		</section>
+
+		{#if canManageChallenge}
+			<DangerZone
+				heading={m('challenges.dangerZoneHeading')}
+				description={m('challenges.dangerZoneDesc')}
+			>
+				<button type="button" class="btn btn-danger" disabled={busy} onclick={() => (confirmDelete = true)}>
+					{m('challenges.deleteChallenge')}
+				</button>
+			</DangerZone>
+		{/if}
 	{/if}
 </div>
 

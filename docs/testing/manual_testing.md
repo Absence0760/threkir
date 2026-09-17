@@ -25,6 +25,7 @@ For the unit / widget test suites that run automatically, see [testing.md](testi
 - [Photos on runs](#photos-on-runs)
 - [Live race spectator + race mode](#live-race-spectator--race-mode)
 - [Imports — Strava, Garmin, parkrun, Health Connect, HealthKit](#imports--strava-garmin-parkrun-health-connect-healthkit)
+- [Settings — preference pages](#settings--preference-pages)
 - [Privacy zones](#privacy-zones)
 - [Paywall and RevenueCat](#paywall-and-revenuecat)
 - [Backup, restore, account deletion, GDPR export](#backup-restore-account-deletion-gdpr-export)
@@ -160,7 +161,7 @@ The most-tested surface in the codebase. The recording state machine + filter ch
 | Workout execution | Start a `plans/[id]/workouts/[wid]` from the home Today card | Live workout band shows current step; Skip / Abandon work; finished metadata carries `plan_workout_id` + `workout_step_results` (see [workout_execution.md](../features/workout_execution.md)). |
 | Crash recovery | Open run, get to ~1 km, force-kill the process, re-open | Home screen surfaces a "Recover unsaved run?" prompt; accepting saves a run reconstructed from the incremental snapshot with `metadata.recovered_from_crash=true`. |
 | Per-cue voice toggles (#607) | Settings → Preferences → "Spoken cues": switch Splits off, leave Pace alerts on → record past a split with a target pace set | No split announcement; pace alert still speaks and includes the amount ("Speed up by 15 seconds per kilometre"). Toggles survive an app restart and sync to the device bag (`voice_cue_types`). |
-| Per-cue voice toggles set from web (#607) | On web, Settings → Preferences → enable "Spoken split announcements" → under "Spoken cues" switch Off-route warning off. Then sign in on the phone (or sign out/in) and open Settings → Preferences | The phone's "Off-route warning" switch reads off, and no other cue changed. Web writes the UNIVERSAL bag (a browser is its own device row and never records) and the phone reads universal-then-device, so a phone-side override for the same cue still wins — see [decisions.md § 469](../architecture/decisions.md). |
+| Per-cue voice toggles set from web (#607) | On web, Settings → Recording & voice (`/settings/recording`) → enable "Spoken split announcements" → under "Spoken cues" switch Off-route warning off. Then sign in on the phone (or sign out/in) and open Settings → Preferences | The phone's "Off-route warning" switch reads off, and no other cue changed. Web writes the UNIVERSAL bag (a browser is its own device row and never records) and the phone reads universal-then-device, so a phone-side override for the same cue still wins — see [decisions.md § 469](../architecture/decisions.md). |
 | Cutoff catch-up cue (#607) | Follow a route whose markers carry cutoffs; simulate GPS slower than the cutoff demands | When the next-cutoff card turns tight/behind, TTS speaks "Next cutoff in X. You need M minutes S seconds per kilometre to make it" — immediately on a WORSENING status change (tight→behind; improvement flapping never bypasses), then at most every 2 min, and never while manually paused; once the limit has truly passed it says the limit has passed (no impossible pace, and never within 50 m of the cutoff where the pace projection is merely meaningless). |
 | Marker target cue (#608) | On web, give a route marker a target time (or roadbook → "Save as marker targets") → follow the route past the marker | Crossing the marker speaks "{label}: {time} ahead of/behind plan" (or "on plan" within ±15 s), once per marker even with GPS jitter. Gated on the "Course marker targets" toggle. |
 | Race strategy 10-10-10 (#609) | Pre-run → "Race strategy" → 10-10-10, distance prefilled from route, goal time set → record through a phase boundary | Phase chip shows "Phase 1/3 — Hold back · pace"; crossing 38.1 % of the distance speaks "Phase 2 of 3. Settle into your goal pace. Target …"; pace alerts use the phase target; saved run carries `metadata.pacing_strategy` per [metadata.md](../backend/metadata.md). |
@@ -197,6 +198,7 @@ The most-tested surface in the codebase. The recording state machine + filter ch
 |---|---|
 | Web `/history` | List paginates, source + activity-type filters narrow the list, the timeline ordering is descending. |
 | Web `/runs/[id]` | Map renders the track (raw or matched — see [§ Map matching](#map-matching-server-side-snap)), elevation profile + splits + segments are populated, edit Title / Notes / Activity type round-trips through `data.ts:updateRun`. |
+| Web `/runs/[id]` key stats | Open a run, then a ride (activity `cycle`), with the map pane at its default width: a run shows AVG PACE and no AVG SPEED, a ride AVG SPEED and no AVG PACE, and no tile value ends in `…` (a long one wraps between number and unit). The trash icon at the end of the owner toolbar is red before you hover it. |
 | Web run share | Toggle `is_public` → copy link → open in incognito → page loads, track is privacy-clipped (see [§ Privacy zones](#privacy-zones)). |
 | Mobile run detail | Same map + splits + elevation; share-as-GPX produces a valid file; delete confirms then removes the run from the list and Storage. |
 | Mobile edit | Edit title + notes through the bottom sheet → reopens with values; offline edits sync when connectivity returns. |
@@ -209,6 +211,8 @@ The most-tested surface in the codebase. The recording state machine + filter ch
 | Scenario | Surface | Steps | Pass criteria |
 |---|---|---|---|
 | Browse my routes | Mobile + Web `/routes` | Default tab lists owned routes | Card per route with distance + thumbnail; tap opens detail. |
+| Map thumbnails survive a map outage | Web `/routes`, `/runs` | Accept the cookie banner with `PUBLIC_MAPTILER_KEY` set, then block `api.maptiler.com` in DevTools (Network → Block request domain) and reload | Every card draws its route line on the plain background; no broken-image icon anywhere. Unblock and reload — the map thumbnails return. |
+| Route detail states one climb | Web `/routes/[id]` for a route whose waypoints carry altitude (a saved run, a GPX import) | Compare the header's ELEVATION GAIN, the Elevation section's Gain tile and the figure under the chart | All three are the same number; Loss is present unless the route's stored climb is less than its profile's net rise. |
 | Explore community routes | Web `/routes?tab=explore` | Search a tag, browse the cards | `RouteExplorer` populates from `search_public_routes` RPC; clicking opens the detail screen. |
 | Create a route | Web `/routes/new` | Click points on the map, save with a name | Route saves; OSRM-snapped polyline (web snaps through the `/api/routes/osrm` proxy per [decisions.md §198](../architecture/decisions.md) — separate from the server-side run-match OSRM) appears in the saved-routes list. |
 | Create a route with the engine down | Web `/routes/new` | Point `OSRM_URL` at nothing (or block `/api/routes/osrm/*`), drop points, save | Amber banner says the points are joined by straight lines; **Save, GPX and KML all stay enabled** and the route saves as drawn ([decisions.md §1613](../architecture/decisions.md)). Generate-by-distance still refuses — an unsnapped loop is not a generated route. |
@@ -271,6 +275,8 @@ See [training.md](../features/training.md) for the engine + week phasing logic, 
 |---|---|---|
 | Generate a plan | Web `/plans/new` → wizard | Plan creates with N weeks of phased volume; week grid editable; submit persists `training_plans` + `plan_weeks` + `plan_workouts`. |
 | Edit a plan's meta | Web `/plans/[id]` → Edit-plan button | Owner-only `PlanMetaEditor` modal; non-owners get a 403 from RLS. |
+| Adjust a plan | Web `/plans/[id]` as the owner → Adjust plan | One dialog lists Shift dates, Re-plan remaining weeks, Adaptive re-plan and Pause plan (Resume plan on a paused plan), each with a sentence on what it does and when to use it; none of them sits loose on the page. Shift and Pause open the confirm dialog and Cancel changes nothing; each re-plan either toasts "on track" or shows the preview under the adherence flags with focus on its heading, and Cancel returns focus to Adjust plan. |
+| Publish a plan | Web `/plans/[id]` as the owner, scroll past the week-by-week plan | Share & publish section holds Publish as a club template (only with an admin club) and Public plan library; neither row appears between the header and the plan, and neither renders on a template. |
 | Execute a workout | Mobile Today card → Start | Live workout band shows current step; Skip / Abandon callbacks work; finished run carries `plan_workout_id` + `workout_step_results` + `workout_adherence` per [metadata.md](../backend/metadata.md). |
 | Workout review | Mobile run detail of a plan run | "Workout review" section renders one row per step; on / amber / off tones based on the 10 s tolerance; em-dash for null pace. |
 | Auto-link to plan workout | Record a run on the same date as a scheduled workout | `autoMatchRunToPlanWorkout` ties the run to the workout; the workout flips to completed. |
@@ -300,6 +306,8 @@ See [clubs.md](../features/clubs.md) for the deferred items.
 | Scenario | Steps | Pass |
 |---|---|---|
 | Create a club | Web `/clubs/new` | Club created with visibility + join policy; creator becomes admin. |
+| Delete a club | Web `/clubs/[slug]` as the owner | The hero shows New event and Edit club but no delete; Delete club sits in the Danger zone after the tab content, asks in a confirm dialog, and Cancel keeps the club. An admin who is not the owner sees no Danger zone. |
+| Delete a challenge | Web `/challenges/[id]` as the creator (or a club admin of a club challenge); mobile challenge detail as the creator | Web: the Leave / Edit challenge row has no delete; Delete challenge sits in the Danger zone after the leaderboard and confirms. Mobile: no delete icon in the AppBar; the overflow menu's red Delete challenge item confirms. |
 | Invite link | Club → Invite | Generate token; `/clubs/join/[token]` redeems via `join_club_by_token` RPC. Atomic — partial failures roll back. |
 | Club feed | `/clubs/[slug]/feed` | Threaded posts; admins can pin / delete; per-event update threads. |
 | Create event | `/clubs/[slug]/events/new` | One-off OR weekly/biweekly/monthly recurrence (see `recurrence_test.dart` — 8 tests pin the expansion). RSVP per-instance. |
@@ -372,13 +380,30 @@ See [decisions.md §36](../architecture/decisions.md#36-photos-on-runs-own-table
 
 ---
 
+## Settings — preference pages
+
+The single `/settings/preferences` page was split by topic (issue #905, [decisions § 1640](../architecture/decisions.md)); where each key now lives is in [settings.md § Where each key is edited on web](../backend/settings.md#where-each-key-is-edited-on-web).
+
+| Scenario | Steps | Pass |
+|---|---|---|
+| Nav | Web: open `/settings/account` | The side nav shows four sections — Profile (Account, Body metrics, Safety), Preferences (Units & display, Recording & voice, Training, Privacy & sharing, Notifications), Apps & data, Account & legal. There is no "Preferences" tab linking to `/settings/preferences`. |
+| Landing page | Open `/settings/preferences` with no hash | A list of the six groups, each with a one-line summary; clicking one opens that page. Nothing on it is editable. |
+| Old section links | Open `/settings/preferences#heart-rate-zones`, then `#weekly-mileage-goal`, then `#body-metrics` | Each replaces the URL with `/settings/training#heart-rate-zones`, `/settings/training#weekly-distance-goal` and `/settings/body#body-metrics`, and scrolls to that section once it has loaded. Browser Back does not return to the landing page. |
+| Email footer | Trigger any notification email to Mailpit (`:54324`) | "Manage preferences" and the `List-Unsubscribe` header both point at `/settings/notifications`. An older email's `/settings/preferences` link still lands on the landing page. |
+| Save + load failure | On any preference page change a select; then block `get_my_profile` in devtools and open Body metrics from the nav | The header shows Saving… then Saved. With the read blocked, an alert with Retry replaces the form (no defaults are shown), and Retry restores it once unblocked. |
+| Every control explained | Walk the six pages | Every select, field and toggle group has one plain line under it, and a screen reader announces it as the control's description. Hints spell out HR, bpm, kg, lbs, km/h, mph, cm and AI. |
+| Weekly distance goal (web) | `/settings/display` → Kilometres, then `/settings/training` → type 42.2 in "Weekly distance goal (km)" and tab away; reload | Field reads 42.2; `user_settings.prefs.weekly_mileage_goal_m` is 42200. Switch to Miles: the field reads 26.2 (mi). Focus and blur without typing: the stored value does not change. 600 shows "Enter a goal between 0.1 and 500 km." and nothing is saved. |
+| Weekly distance goal (mobile) | Settings → Preferences → Weekly distance goal, with Use miles on and a 50000 m goal stored | Tile reads "31.1 mi / week"; the dialog pre-fills 31.1 with an "mi" suffix; Save without editing leaves 50000. The coach context chip reads "31.1 mi/wk". |
+
+---
+
 ## Privacy zones
 
 See [decisions.md §33](../architecture/decisions.md#33-privacy-zones-live-in-user_settings-clipping-is-client-side-nearby-leak-is-a-known-v1-gap).
 
 | Scenario | Steps | Pass |
 |---|---|---|
-| Configure zones | Web `/settings/account` → Privacy zones | `PrivacyZonePicker` (MapLibre) lets you draw circular zones; persists to `user_settings.prefs.privacy_zones`. |
+| Configure zones | Web `/settings/privacy` → Privacy zones | `PrivacyZonePicker` (MapLibre) lets you draw circular zones; persists to `user_settings.prefs.privacy_zones`. |
 | Owner view | Open `/runs/[id]` of a clipped run as the owner | Full track visible — owner is exempt. |
 | Public viewer | Same run via `/share/run/[id]` in incognito | Track is clipped: leading + trailing in-zone points removed via the `clip_track_for_user` RPC, contiguous middle returned. Zones never leave the database. |
 | Cap | Run with >50 000 points (synthetic) | RPC truncates to bound the dense-grid probe attack. |

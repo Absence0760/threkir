@@ -4,6 +4,7 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { supabase } from '$lib/core/supabase';
 	import { m } from '$lib/i18n/store.svelte';
+	import { BODY_METRICS_PAGE, PREFERENCES_PAGES } from '$lib/settings/preferences_ia';
 
 	type Tab = { href: string; label: string; icon: string };
 	type Section = { label: string; tabs: Tab[] };
@@ -40,9 +41,13 @@
 			label: m('settingsLayout.sectionProfile'),
 			tabs: [
 				{ href: '/settings/account', label: m('settingsLayout.tabAccount'), icon: 'person' },
-				{ href: '/settings/preferences', label: m('settingsLayout.tabPreferences'), icon: 'tune' },
+				{ href: BODY_METRICS_PAGE.href, label: m(BODY_METRICS_PAGE.label), icon: BODY_METRICS_PAGE.icon },
 				{ href: '/settings/safety', label: m('safety.navTab'), icon: 'emergency' },
 			],
+		},
+		{
+			label: m('settingsLayout.sectionPreferences'),
+			tabs: PREFERENCES_PAGES.map((p) => ({ href: p.href, label: m(p.label), icon: p.icon })),
 		},
 		{
 			label: m('settingsLayout.sectionAppsData'),

@@ -140,9 +140,10 @@ void main() {
         hrZones: zones,
         now: now,
       );
-      // Pin labels Z1..Z5.
-      expect(find.text('Z1'), findsOneWidget);
-      expect(find.text('Z5'), findsOneWidget);
+      // Zones by name, not bare digit (#902 section 1.3).
+      expect(find.text('Z1 (recovery)'), findsOneWidget);
+      expect(find.text('Z5 (max)'), findsOneWidget);
+      expect(find.text('Z1'), findsNothing);
       // Percentages — pin Z3 (20%) which is the cleanest math.
       expect(find.text('20%'), findsOneWidget);
     });

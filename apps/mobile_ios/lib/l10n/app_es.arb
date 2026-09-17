@@ -156,6 +156,14 @@
   "readinessBandHigh": "alta",
   "readinessBandModerate": "moderada",
   "readinessBandLow": "baja",
+  "readinessContributorForm": "Equilibrio de entrenamiento",
+  "readinessContributorSleep": "Sueño",
+  "readinessContributorRestingHr": "Frecuencia cardíaca en reposo",
+  "intensityZone1": "Z1 (recuperación)",
+  "intensityZone2": "Z2 (suave)",
+  "intensityZone3": "Z3 (tempo)",
+  "intensityZone4": "Z4 (umbral)",
+  "intensityZone5": "Z5 (máx)",
   "missingMapTilesTitle": "Usando teselas de respaldo de OpenStreetMap",
   "prefsLanguage": "Idioma",
   "prefsLanguageSystem": "Predeterminado del sistema",
@@ -185,6 +193,8 @@
   "gymSurfaceLabel": "Secciones del gimnasio",
   "gymTabLog": "Registro",
   "gymTabRecords": "Récords",
+  "gymPeerRoutines": "Rutinas de gimnasio",
+  "gymPeerSessions": "Planes de sesión",
   "homeAskCoach": "Pregunta a tu entrenador",
   "homeAskCoachSubtitle": "Consejos sobre tus carreras, gimnasio y nutrición",
   "youProfileTitle": "Tu perfil",
@@ -1597,7 +1607,7 @@
   "planDetailCompleted": "Completado",
   "planDetailWeek": "Semana {number}",
   "planDetailDriftOverFlag": "Esta semana {pct}% por encima del plan — afloja en los días suaves para no cavar un hoyo de fatiga.",
-  "planDetailDriftUnderFlag": "Esta semana {pct}% por debajo del plan — el volumen previsto impulsa la adaptación.",
+  "planDetailDriftUnderFlag": "Esta semana llevas {done} de los {planned} previstos.",
   "planDetailMissedLongMakeUp": "Te perdiste la tirada larga de esta semana — encájala si puedes. Es la sesión que más importa.",
   "planDetailMissedLongTaper": "Te perdiste una tirada larga, pero estás afinando — déjala y llega fresco al día de la carrera.",
   "planDetailMissedLongRecovery": "Te perdiste una tirada larga — no la recuperes. Viene una semana de descarga y tu cuerpo aprovechará el descanso.",
@@ -1706,7 +1716,7 @@
   "coachContextNoRuns": "Sin carreras",
   "coachContextLast": "Últimas",
   "coachContextHr": "FC",
-  "coachContextWeeklyGoal": "{km} km/sem.",
+  "coachContextWeeklyGoal": "{distance} {unit}/sem.",
   "coachArchiveBanner": "Viendo archivo · {label} · solo lectura",
   "coachBackToActive": "Volver al activo",
   "coachLimitReachedPro": "Límite diario alcanzado. Vuelve mañana.",
@@ -2188,7 +2198,7 @@
   "prefsFluidPerHourValue": "{ml} ml/h",
   "prefsHrZones": "Zonas de frecuencia cardíaca",
   "prefsHrZonesDialogTitle": "Zonas de frecuencia cardíaca (límites superiores, ppm)",
-  "prefsWeeklyGoal": "Objetivo de kilometraje semanal",
+  "prefsWeeklyGoal": "Objetivo de distancia semanal",
   "prefsSectionActivityRecording": "Actividad y grabación",
   "prefsSectionTrainingDemographics": "Entrenamiento y datos demográficos",
   "prefsSectionPrivacySharing": "Privacidad y uso compartido",
@@ -2302,7 +2312,7 @@
   "intensityTitle": "INTENSIDAD DE ENTRENAMIENTO",
   "intensityWindow": "últimos {days} días",
   "intensityBasedOn": "Según {count, plural, one{{count} carrera con FC} other{{count} carreras con FC}}",
-  "mileageTitle": "Kilometraje",
+  "mileageTitle": "Distancia",
   "mileageWeek": "Semana",
   "mileageMonth": "Mes",
   "mileageYear": "Año",
@@ -3106,12 +3116,12 @@
     }
   },
   "nutritionWaterGoalReached": "Objetivo alcanzado",
-  "nutritionWaterRemaining": "{n} ml restantes",
+  "nutritionWaterRemaining": "{n} L restantes",
   "@nutritionWaterRemaining": {
-    "description": "Water budget chip: ml still to drink",
+    "description": "Water budget chip: litres still to drink",
     "placeholders": {
       "n": {
-        "type": "int"
+        "type": "String"
       }
     }
   },
@@ -3479,6 +3489,7 @@
   "challengesJoin": "Unirse",
   "challengesLeave": "Salir",
   "challengesDelete": "Eliminar",
+  "challengesDeleteChallenge": "Eliminar desafío",
   "challengesMetricDistance": "Distancia",
   "challengesMetricDuration": "Tiempo",
   "challengesMetricVert": "Desnivel",

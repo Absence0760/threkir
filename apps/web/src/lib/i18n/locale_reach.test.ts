@@ -111,7 +111,7 @@ test("every shipped locale is reachable by its exact tag", () => {
 
 test("the language picker is derived from the supported set, not listed", () => {
   const page = readFileSync(
-    join(SRC, "routes", "settings", "preferences", "+page.svelte"),
+    join(SRC, "routes", "settings", "display", "+page.svelte"),
     "utf8",
   );
   const select = page.slice(page.indexOf('data-testid="language-select"'));
@@ -276,8 +276,6 @@ const SENSE_SPLIT: Record<string, { word: RegExp; onlyAt: string[] }> = {
 	"pt-PT": {
 		word: /(?<![a-zà-ÿ])padr(ão|ões)(?![a-zà-ÿ])/iu,
 		onlyAt: [
-			// "the world standard for your age and sex"
-			"dash.prAgeGradeTitle",
 			// "the pattern most associated with injury"
 			"loadRamp.meaning_high",
 		],

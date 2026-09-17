@@ -64,7 +64,8 @@
 	} from '$lib/nutrition/diary_day';
 	import { formatDate } from '$lib/format/time';
 	import type { FoodMacros } from '$lib/nutrition/food_search';
-	import { m } from '$lib/i18n/store.svelte';
+	import { currentLocale, m } from '$lib/i18n/store.svelte';
+	import { formatDecimal } from '$lib/format/number';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { deferDestructive } from '$lib/stores/undo.svelte';
 	import Modal from '$lib/components/Modal.svelte';
@@ -133,7 +134,7 @@
 	}
 
 	function litres(ml: number): string {
-		return (ml / 1000).toFixed(2).replace(/\.?0+$/, '');
+		return formatDecimal(ml / 1000, 2, currentLocale()).replace(/[.,]?0+$/, '');
 	}
 
 	onMount(async () => {
@@ -750,7 +751,7 @@
 						<span class="material-symbols hint-icon" aria-hidden="true">info</span>
 						{m('nutrition.noTargets')}
 					</p>
-					<a class="btn btn-secondary btn-sm" href="/settings/preferences#body-metrics" data-testid="add-body-metrics">
+					<a class="btn btn-secondary btn-sm" href="/settings/body#body-metrics" data-testid="add-body-metrics">
 						<span class="material-symbols" aria-hidden="true">straighten</span>
 						{m('nutrition.addBodyMetrics')}
 					</a>
@@ -768,7 +769,7 @@
 					{#if waterBudget.reached}
 						<span class="budget-chip budget-on" data-testid="water-budget">{m('nutrition.waterGoalReached')}</span>
 					{:else}
-						<span class="budget-chip budget-left" data-testid="water-budget">{m('nutrition.waterRemaining', { n: waterBudget.remainingMl })}</span>
+						<span class="budget-chip budget-left" data-testid="water-budget">{m('nutrition.waterRemaining', { n: litres(waterBudget.remainingMl) })}</span>
 					{/if}
 				</div>
 			</div>

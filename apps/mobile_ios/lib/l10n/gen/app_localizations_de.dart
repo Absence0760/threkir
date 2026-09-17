@@ -635,6 +635,30 @@ class AppLocalizationsDe extends AppLocalizations {
   String get readinessBandLow => 'niedrig';
 
   @override
+  String get readinessContributorForm => 'Trainingsbalance';
+
+  @override
+  String get readinessContributorSleep => 'Schlaf';
+
+  @override
+  String get readinessContributorRestingHr => 'Ruhepuls';
+
+  @override
+  String get intensityZone1 => 'Z1 (Erholung)';
+
+  @override
+  String get intensityZone2 => 'Z2 (locker)';
+
+  @override
+  String get intensityZone3 => 'Z3 (Tempo)';
+
+  @override
+  String get intensityZone4 => 'Z4 (Schwelle)';
+
+  @override
+  String get intensityZone5 => 'Z5 (max)';
+
+  @override
   String get missingMapTilesTitle =>
       'OpenStreetMap-Ersatzkacheln werden verwendet';
 
@@ -721,6 +745,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get gymTabRecords => 'Rekorde';
+
+  @override
+  String get gymPeerRoutines => 'Gym-Routinen';
+
+  @override
+  String get gymPeerSessions => 'Session-Pläne';
 
   @override
   String get homeAskCoach => 'Coach fragen';
@@ -5771,8 +5801,8 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String planDetailDriftUnderFlag(int pct) {
-    return 'Diese Woche $pct% unter Plan — der geplante Umfang treibt die Anpassung.';
+  String planDetailDriftUnderFlag(String done, String planned) {
+    return 'Diese Woche bisher gelaufen: $done von $planned geplant.';
   }
 
   @override
@@ -6182,8 +6212,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get coachContextHr => 'HF';
 
   @override
-  String coachContextWeeklyGoal(String km) {
-    return '$km km/Wo.';
+  String coachContextWeeklyGoal(String distance, String unit) {
+    return '$distance $unit/Wo.';
   }
 
   @override
@@ -7960,7 +7990,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get prefsHrZonesDialogTitle => 'Herzfrequenzzonen (Obergrenzen, bpm)';
 
   @override
-  String get prefsWeeklyGoal => 'Wöchentliches Kilometerziel';
+  String get prefsWeeklyGoal => 'Wöchentliches Distanzziel';
 
   @override
   String get prefsSectionActivityRecording => 'Aktivität & Aufzeichnung';
@@ -8399,7 +8429,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get mileageTitle => 'Kilometerleistung';
+  String get mileageTitle => 'Distanz';
 
   @override
   String get mileageWeek => 'Woche';
@@ -10973,8 +11003,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get nutritionWaterGoalReached => 'Ziel erreicht';
 
   @override
-  String nutritionWaterRemaining(int n) {
-    return '$n ml übrig';
+  String nutritionWaterRemaining(String n) {
+    return '$n L übrig';
   }
 
   @override
@@ -12156,6 +12186,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get challengesDelete => 'Löschen';
+
+  @override
+  String get challengesDeleteChallenge => 'Challenge löschen';
 
   @override
   String get challengesMetricDistance => 'Distanz';

@@ -25,7 +25,7 @@ const queue = createUndoQueue({
 });
 
 /// Hydrated from the `undo_window_s` pref by the root layout and by
-/// `/settings/preferences` on change. Read at defer time, so changing it
+/// `/settings/display` on change. Read at defer time, so changing it
 /// never shortens a window already running.
 export function setUndoWindowS(raw: unknown): void {
 	windowS = undoWindowSFromPref(raw);

@@ -4,7 +4,7 @@ import { VOICE_CUE_IDS } from '../../src/lib/settings/voice_cues';
 import { USER_A } from '../fixtures/users';
 
 /**
- * /settings/preferences — the per-cue voice-cue toggles (issue #607).
+ * /settings/recording — the per-cue voice-cue toggles (issue #607).
  *
  * The cue map is SPARSE: an id absent from `voice_cue_types` is ON. So the
  * two things worth pinning end-to-end are (a) a fresh account renders every
@@ -24,11 +24,11 @@ async function setMaster(page: Page, on: boolean) {
 	}
 }
 
-test.describe('/settings/preferences voice cues', () => {
+test.describe('/settings/recording voice cues', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test('per-cue toggles default on, and turning one off round-trips', async ({ page }) => {
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/recording');
 		await setMaster(page, true);
 
 		const cueList = page.getByTestId('voice-cue-types');
@@ -55,7 +55,7 @@ test.describe('/settings/preferences voice cues', () => {
 			await expect(page.getByTestId('voice-cue-splits')).toBeChecked();
 			await expect(page.getByTestId('voice-cue-cutoff_catch_up')).toBeChecked();
 		} finally {
-			await page.goto('/settings/preferences');
+			await page.goto('/settings/recording');
 			await setMaster(page, true);
 			await page.getByTestId('voice-cue-off_route').check();
 			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
@@ -64,7 +64,7 @@ test.describe('/settings/preferences voice cues', () => {
 	});
 
 	test('the cue list is hidden until spoken cues are switched on', async ({ page }) => {
-		await page.goto('/settings/preferences');
+		await page.goto('/settings/recording');
 		await setMaster(page, false);
 		await expect(page.getByTestId('voice-cue-types')).toBeHidden();
 

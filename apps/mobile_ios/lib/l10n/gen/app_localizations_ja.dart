@@ -606,6 +606,30 @@ class AppLocalizationsJa extends AppLocalizations {
   String get readinessBandLow => '低い';
 
   @override
+  String get readinessContributorForm => 'トレーニングバランス';
+
+  @override
+  String get readinessContributorSleep => '睡眠';
+
+  @override
+  String get readinessContributorRestingHr => '安静時心拍数';
+
+  @override
+  String get intensityZone1 => 'Z1（リカバリー）';
+
+  @override
+  String get intensityZone2 => 'Z2（イージー）';
+
+  @override
+  String get intensityZone3 => 'Z3（テンポ）';
+
+  @override
+  String get intensityZone4 => 'Z4（閾値）';
+
+  @override
+  String get intensityZone5 => 'Z5（最大）';
+
+  @override
   String get missingMapTilesTitle => 'OpenStreetMapの代替タイルを使用中';
 
   @override
@@ -691,6 +715,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get gymTabRecords => '記録';
+
+  @override
+  String get gymPeerRoutines => 'ジムルーティン';
+
+  @override
+  String get gymPeerSessions => 'セッションプラン';
 
   @override
   String get homeAskCoach => 'コーチに相談';
@@ -5423,8 +5453,8 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String planDetailDriftUnderFlag(int pct) {
-    return '今週は計画より$pct%少なく走っています — 計画した走行量が適応を生みます。';
+  String planDetailDriftUnderFlag(String done, String planned) {
+    return '今週はここまで、予定の$plannedのうち$doneを走りました。';
   }
 
   @override
@@ -5813,8 +5843,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get coachContextHr => '心拍';
 
   @override
-  String coachContextWeeklyGoal(String km) {
-    return '週${km}km';
+  String coachContextWeeklyGoal(String distance, String unit) {
+    return '週$distance$unit';
   }
 
   @override
@@ -7512,7 +7542,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get prefsHrZonesDialogTitle => '心拍ゾーン（上限、bpm）';
 
   @override
-  String get prefsWeeklyGoal => '週間走行距離の目標';
+  String get prefsWeeklyGoal => '週間距離の目標';
 
   @override
   String get prefsSectionActivityRecording => 'アクティビティと記録';
@@ -7931,7 +7961,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get mileageTitle => '走行距離';
+  String get mileageTitle => '距離';
 
   @override
   String get mileageWeek => '週';
@@ -10409,8 +10439,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get nutritionWaterGoalReached => '目標達成';
 
   @override
-  String nutritionWaterRemaining(int n) {
-    return '残り $n ml';
+  String nutritionWaterRemaining(String n) {
+    return '残り $n L';
   }
 
   @override
@@ -11561,6 +11591,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get challengesDelete => '削除';
+
+  @override
+  String get challengesDeleteChallenge => 'チャレンジを削除';
 
   @override
   String get challengesMetricDistance => '距離';

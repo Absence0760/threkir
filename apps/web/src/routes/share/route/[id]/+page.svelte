@@ -5,6 +5,7 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import RunMap from '$lib/components/RunMap.svelte';
 	import ElevationProfile from '$lib/components/ElevationProfile.svelte';
+	import { routeElevation } from '$lib/routes/route_elevation';
 	import RoutePhotos from '$lib/components/RoutePhotos.svelte';
 	import RouteConditions from '$lib/components/RouteConditions.svelte';
 	import SharePageShell from '$lib/components/SharePageShell.svelte';
@@ -53,10 +54,7 @@
 
 	onMount(load);
 
-	let elevations = $derived(waypoints.map((w) => w.ele ?? 0));
-	let hasElevationData = $derived(
-		elevations.length > 1 && Math.max(...elevations) > Math.min(...elevations)
-	);
+	let elevation = $derived(routeElevation(route?.elevation_m ?? 0, waypoints));
 	let metaSource = $derived(route ?? data.route ?? null);
 	let pageTitle = $derived(buildRouteShareTitle(metaSource));
 	let pageDesc = $derived(buildRouteShareDescription(metaSource));
@@ -130,7 +128,7 @@
 				<span>{formatDistance(route.distance_m)}</span>
 				{#if route.elevation_m}
 					<span class="meta-sep">&middot;</span>
-					<span>{m('shareRoute.elevationValue', { n: route.elevation_m })}</span>
+					<span>{m('shareRoute.elevationValue', { n: elevation.gain })}</span>
 				{/if}
 				{#if route.surface}
 					<span class="meta-sep">&middot;</span>
@@ -145,10 +143,14 @@
 					<RunMap track={waypoints} requireExplicitConsent />
 				</div>
 
-				{#if hasElevationData}
+				{#if elevation.profile}
 					<section class="card">
 						<h2>{m('shareRoute.elevationProfile')}</h2>
-						<ElevationProfile {elevations} totalDistance={route.distance_m} />
+						<ElevationProfile
+							elevations={elevation.profile}
+							totalGain={route.elevation_m ? elevation.gain : null}
+							totalDistance={route.distance_m}
+						/>
 					</section>
 				{/if}
 			{/if}

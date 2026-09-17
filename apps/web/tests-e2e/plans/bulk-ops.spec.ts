@@ -37,8 +37,10 @@ test.describe('/plans/[id] bulk ops', () => {
 			await page.goto(`/plans/${planId}`);
 			await expect(page.getByRole('heading', { level: 1, name: 'e2e shift' })).toBeVisible({ timeout: 10_000 });
 
-			await page.locator('.shift-control input').fill('7');
-			await page.getByRole('button', { name: 'Shift dates' }).click();
+			await page.getByRole('button', { name: 'Adjust plan' }).click();
+			const adjust = page.getByTestId('adjust-plan-dialog');
+			await adjust.locator('.shift-control input').fill('7');
+			await adjust.getByRole('button', { name: 'Shift dates' }).click();
 			await page
 				.locator('[data-testid="bulk-confirm-dialog"]')
 				.getByRole('button', { name: 'Apply' })

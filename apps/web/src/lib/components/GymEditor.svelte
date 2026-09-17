@@ -17,6 +17,8 @@
 	import { m as t } from '$lib/i18n/store.svelte';
 	import { parseWeight, weightInputValue, weightUnitLabel } from '$lib/format/units.svelte';
 	import Modal from '$lib/components/Modal.svelte';
+	import MetricLabel from '$lib/components/MetricLabel.svelte';
+	import { metricName } from '$lib/metrics/metric_name';
 	import ExerciseCataloguePicker from '$lib/components/ExerciseCataloguePicker.svelte';
 	import UnsavedChangesGuard from '$lib/components/UnsavedChangesGuard.svelte';
 	import { trackDirty } from '$lib/core/form_dirty';
@@ -69,6 +71,7 @@
 		onupdated,
 		oncancel
 	}: Props = $props();
+	const uid = $props.id();
 
 	/// Customs created from the picker this session, kept locally so they bind +
 	/// autocomplete immediately without waiting for the host to reload.
@@ -337,19 +340,22 @@
 				</button>
 			</div>
 			<div class="set-grid">
-				<div class="set-head" aria-hidden="true">
-					<span class="set-label"></span>
-					<span class="section-label set-cap">{t('gym.routine.setType')}</span>
-					<span class="section-label set-cap">{t('gym.reps')}</span>
-					<span class="section-label set-cap">{t('gym.weightUnit', { unit: weightUnitLabel() })}</span>
-					<span class="section-label set-cap">{t('gym.rpe')}</span>
-					<span class="section-label set-cap">{t('gym.duration')}</span>
-					<span></span>
+				<!-- Every caption but RPE's is hidden from assistive tech, because each
+				     input carries its own name; RPE's stays exposed so its definition
+				     can be opened from the header on a wide screen. -->
+				<div class="set-head">
+					<span class="set-label" aria-hidden="true"></span>
+					<span class="section-label set-cap" aria-hidden="true">{t('gym.routine.setType')}</span>
+					<span class="section-label set-cap" aria-hidden="true">{t('gym.reps')}</span>
+					<span class="section-label set-cap" aria-hidden="true">{t('gym.weightUnit', { unit: weightUnitLabel() })}</span>
+					<span class="section-label set-cap"><MetricLabel metric="rpe" /></span>
+					<span class="section-label set-cap" aria-hidden="true">{t('gym.duration')}</span>
+					<span aria-hidden="true"></span>
 				</div>
 				{#each ex.sets as _set, si (si)}
 					<div class="set-row">
 						<span class="set-label">{t('gym.setN', { n: si + 1 })}</span>
-						<label class="set-field">
+						<label class="set-field set-field-type">
 							<span class="section-label set-cap-inline">{t('gym.routine.setType')}</span>
 							<select
 								class="set-type"
@@ -383,18 +389,24 @@
 								bind:value={exercises[ei].sets[si].weight}
 							/>
 						</label>
-						<label class="set-field">
-							<span class="section-label set-cap-inline">{t('gym.rpe')}</span>
+						<!-- A div, not a label: the caption carries a disclosure button,
+						     which inside a label would take the label's click. One
+						     disclosure per exercise, on its first set. -->
+						<div class="set-field">
+							<span class="section-label set-cap-inline"
+								><MetricLabel metric="rpe" labelFor="{uid}-rpe-{ei}-{si}" plain={si > 0} /></span
+							>
 							<input
+								id="{uid}-rpe-{ei}-{si}"
 								type="number"
 								inputmode="decimal"
 								min="0"
 								max="10"
 								step="0.5"
-								aria-label={t('gym.rpe')}
+								aria-label={metricName('rpe')}
 								bind:value={exercises[ei].sets[si].rpe}
 							/>
-						</label>
+						</div>
 						<label class="set-field">
 							<span class="section-label set-cap-inline">{t('gym.duration')}</span>
 							<input
@@ -619,7 +631,7 @@
 		}
 		/* The set-type picker spans the full width above the numeric fields so
 		   the dropdown stays legible on a phone. */
-		.set-row .set-field:first-of-type {
+		.set-row .set-field-type {
 			grid-column: 1 / -1;
 		}
 		.set-field {

@@ -249,17 +249,19 @@ test('/share/run/[id] (RunShareView) wires the same linked cursor', () => {
 
 test('/routes/[id] wires the linked cursor and aligns elevations with displayWaypoints', () => {
 	const src = read('src/routes/routes/[id]/+page.svelte');
-	// Elevations must be derived from displayWaypoints (not the raw
+	// The profile must be drawn from displayWaypoints (not the raw
 	// route.waypoints) so the chart idx-space matches the clipped
 	// polyline non-owners see. Without this, the chart's idx → map
-	// marker lookup lands at a point the user can't see.
+	// marker lookup lands at a point the user can't see. routeElevation
+	// returns its profile 1:1 with the waypoints it is given.
 	assert.match(
 		src,
-		/let elevations\s*=\s*\$derived\(displayWaypoints\.map/,
+		/let elevation\s*=\s*\$derived\(routeElevation\([^,]+,\s*displayWaypoints\)\)/,
 		'/routes/[id] elevations must derive from displayWaypoints, not ' +
 			'route.waypoints — keeps the chart idx-space aligned with the ' +
 			'polyline (matters for non-owners with a clipped trace).',
 	);
+	assert.match(src, /elevations=\{elevation\.profile\}/);
 	assert.match(src, /let chartHoverIdx/);
 	assert.match(src, /hoverIdx=\{chartHoverIdx\}/);
 	assert.match(src, /onhover=\{\(idx\)\s*=>\s*\(chartHoverIdx = idx\)\}/);
@@ -402,13 +404,13 @@ test('RouteTrackPreview renders a static map image when a key is available', () 
 	);
 	assert.match(
 		src,
-		/loading="lazy"/,
+		/<StaticMapImage\b[^>]*\blazy\b/,
 		'Static-map images must be lazy-loaded — a long list of route ' +
 			'cards otherwise fires N MapTiler requests on page load.',
 	);
 	assert.match(
 		src,
-		/data-testid="route-preview-map"/,
+		/<StaticMapImage\b[^>]*\btestid="route-preview-map"/,
 		'The static-map img must be tagged with ' +
 			'data-testid="route-preview-map" so the e2e can pin it.',
 	);

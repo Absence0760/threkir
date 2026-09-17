@@ -1043,6 +1043,54 @@ abstract class AppLocalizations {
   /// **'low'**
   String get readinessBandLow;
 
+  /// Readiness breakdown: the points training balance (form) added to the score. Deliberately not the TSB stat's name, which labels a different number
+  ///
+  /// In en, this message translates to:
+  /// **'Training balance'**
+  String get readinessContributorForm;
+
+  /// Readiness breakdown: the points last night's sleep added to the score
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep'**
+  String get readinessContributorSleep;
+
+  /// Readiness breakdown: the points resting heart rate added to the score
+  ///
+  /// In en, this message translates to:
+  /// **'Resting heart rate'**
+  String get readinessContributorRestingHr;
+
+  /// Training intensity legend: heart-rate zone 1, named as on web Preferences
+  ///
+  /// In en, this message translates to:
+  /// **'Z1 (recovery)'**
+  String get intensityZone1;
+
+  /// Training intensity legend: heart-rate zone 2
+  ///
+  /// In en, this message translates to:
+  /// **'Z2 (easy)'**
+  String get intensityZone2;
+
+  /// Training intensity legend: heart-rate zone 3
+  ///
+  /// In en, this message translates to:
+  /// **'Z3 (tempo)'**
+  String get intensityZone3;
+
+  /// Training intensity legend: heart-rate zone 4
+  ///
+  /// In en, this message translates to:
+  /// **'Z4 (threshold)'**
+  String get intensityZone4;
+
+  /// Training intensity legend: heart-rate zone 5
+  ///
+  /// In en, this message translates to:
+  /// **'Z5 (max)'**
+  String get intensityZone5;
+
   /// Diagnostic banner title shown when no map-tile source is configured (dev-facing)
   ///
   /// In en, this message translates to:
@@ -1216,6 +1264,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Records'**
   String get gymTabRecords;
+
+  /// Gym peer strip entry opening the reusable strength routine library; named apart from session plans
+  ///
+  /// In en, this message translates to:
+  /// **'Gym routines'**
+  String get gymPeerRoutines;
+
+  /// Gym peer strip entry opening timed yoga/pilates session plans; named apart from gym routines
+  ///
+  /// In en, this message translates to:
+  /// **'Session plans'**
+  String get gymPeerSessions;
 
   /// Title of the pinned coach entry at the top of the Home dashboard
   ///
@@ -9430,11 +9490,11 @@ abstract class AppLocalizations {
   /// **'Running {pct}% over plan this week — ease back on the easy days so you don\'t dig a fatigue hole.'**
   String planDetailDriftOverFlag(int pct);
 
-  /// Plan-detail adherence/replan/duplicate
+  /// Plan-detail adherence: distance run so far this week against the week's planned distance, both already formatted with their unit
   ///
   /// In en, this message translates to:
-  /// **'Running {pct}% under plan this week — the planned volume drives the adaptation.'**
-  String planDetailDriftUnderFlag(int pct);
+  /// **'So far this week you\'ve run {done} of the {planned} planned.'**
+  String planDetailDriftUnderFlag(String done, String planned);
 
   /// Plan-detail adherence/replan/duplicate
   ///
@@ -10084,11 +10144,11 @@ abstract class AppLocalizations {
   /// **'HR'**
   String get coachContextHr;
 
-  /// Context-strip weekly-goal chip
+  /// Context-strip weekly-goal chip, in the runner's own distance unit
   ///
   /// In en, this message translates to:
-  /// **'{km} km/wk'**
-  String coachContextWeeklyGoal(String km);
+  /// **'{distance} {unit}/wk'**
+  String coachContextWeeklyGoal(String distance, String unit);
 
   /// Archive-view banner text
   ///
@@ -12910,10 +12970,10 @@ abstract class AppLocalizations {
   /// **'Heart-rate zones (upper bounds, bpm)'**
   String get prefsHrZonesDialogTitle;
 
-  /// Tile and dialog title for the weekly mileage goal
+  /// Tile and dialog title for the weekly distance goal, which is entered in km or mi
   ///
   /// In en, this message translates to:
-  /// **'Weekly mileage goal'**
+  /// **'Weekly distance goal'**
   String get prefsWeeklyGoal;
 
   /// Section header for activity and recording settings
@@ -13626,7 +13686,7 @@ abstract class AppLocalizations {
   /// Title of the dashboard mileage card
   ///
   /// In en, this message translates to:
-  /// **'Mileage'**
+  /// **'Distance'**
   String get mileageTitle;
 
   /// Weekly segment label on the mileage view toggle
@@ -17985,11 +18045,11 @@ abstract class AppLocalizations {
   /// **'Goal reached'**
   String get nutritionWaterGoalReached;
 
-  /// Water budget chip: ml still to drink
+  /// Water budget chip: litres still to drink
   ///
   /// In en, this message translates to:
-  /// **'{n} ml left'**
-  String nutritionWaterRemaining(int n);
+  /// **'{n} L left'**
+  String nutritionWaterRemaining(String n);
 
   /// No description provided for @nutritionWeekOnGoal.
   ///
@@ -20012,6 +20072,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete'**
   String get challengesDelete;
+
+  /// Overflow-menu action that deletes the whole challenge, named for what it deletes
+  ///
+  /// In en, this message translates to:
+  /// **'Delete challenge'**
+  String get challengesDeleteChallenge;
 
   /// Distance metric label
   ///

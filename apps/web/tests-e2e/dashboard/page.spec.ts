@@ -20,11 +20,11 @@ test.describe('/dashboard', () => {
 	test('renders with seeded mileage + recent runs', async ({ page }) => {
 		await page.goto('/dashboard');
 
-		// "Mileage" + "Recent Runs" are h2's on the dashboard. Asserting
+		// "Distance" + "Recent Runs" are h2's on the dashboard. Asserting
 		// them proves the page rendered past the loading skeleton AND
 		// the per-section components loaded their seeded data.
 		await expect(
-			page.getByRole('heading', { name: /mileage/i, level: 2 })
+			page.getByRole('heading', { name: 'Distance', exact: true, level: 2 })
 		).toBeVisible();
 		await expect(
 			page.getByRole('heading', { name: /recent runs/i, level: 2 })

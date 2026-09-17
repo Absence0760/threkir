@@ -1237,53 +1237,6 @@
 			</section>
 		{/if}
 
-		{#if !plan.is_template && adminClubs.length > 0 && plan.user_id === auth.user?.id}
-			<section class="publish-row">
-				<span class="publish-label">{m('planDetail.publishLabel')}</span>
-				<select bind:value={publishingTo} aria-label={m('planDetail.clubToPublishAria')}>
-					<option value="">{m('planDetail.pickAClub')}</option>
-					{#each adminClubs as c (c.id)}
-						<option value={c.id}>{c.name}</option>
-					{/each}
-				</select>
-				<button
-					class="btn btn-outline"
-					type="button"
-					disabled={!publishingTo || publishingBusy}
-					onclick={publishAsTemplate}
-				>
-					{m('planDetail.publish')}
-				</button>
-			</section>
-		{/if}
-
-		{#if !plan.is_template && plan.user_id === auth.user?.id}
-			<section class="publish-row">
-				<span class="publish-label">{m('planDetail.publishLibraryLabel')}</span>
-				{#if publishedTemplate}
-					<span class="publish-hint">{m('planDetail.alreadyPublished')}</span>
-					<button
-						class="btn btn-outline"
-						type="button"
-						disabled={libraryBusy}
-						onclick={unpublishFromLibraryAction}
-					>
-						{m('planDetail.unpublishLibrary')}
-					</button>
-				{:else}
-					<span class="publish-hint">{m('planDetail.publishLibraryHint')}</span>
-					<button
-						class="btn btn-outline"
-						type="button"
-						disabled={libraryBusy}
-						onclick={publishToLibrary}
-					>
-						{m('planDetail.publishLibrary')}
-					</button>
-				{/if}
-			</section>
-		{/if}
-
 		<CurrentWeekStrip
 			startDate={plan.start_date}
 			{currentWeek}
@@ -1517,6 +1470,55 @@
 			</div>
 			<span class="material-symbols arrow">chevron_right</span>
 		</a>
+
+		{#if !plan.is_template && plan.user_id === auth.user?.id}
+			<section class="publish-section" aria-labelledby="publish-section-title">
+				<h2 class="section-title" id="publish-section-title">{m('planDetail.shareSectionTitle')}</h2>
+				{#if adminClubs.length > 0}
+					<div class="publish-row">
+						<span class="publish-label">{m('planDetail.publishLabel')}</span>
+						<select bind:value={publishingTo} aria-label={m('planDetail.clubToPublishAria')}>
+							<option value="">{m('planDetail.pickAClub')}</option>
+							{#each adminClubs as c (c.id)}
+								<option value={c.id}>{c.name}</option>
+							{/each}
+						</select>
+						<button
+							class="btn btn-outline"
+							type="button"
+							disabled={!publishingTo || publishingBusy}
+							onclick={publishAsTemplate}
+						>
+							{m('planDetail.publish')}
+						</button>
+					</div>
+				{/if}
+				<div class="publish-row">
+					<span class="publish-label">{m('planDetail.publishLibraryLabel')}</span>
+					{#if publishedTemplate}
+						<span class="publish-hint">{m('planDetail.alreadyPublished')}</span>
+						<button
+							class="btn btn-outline"
+							type="button"
+							disabled={libraryBusy}
+							onclick={unpublishFromLibraryAction}
+						>
+							{m('planDetail.unpublishLibrary')}
+						</button>
+					{:else}
+						<span class="publish-hint">{m('planDetail.publishLibraryHint')}</span>
+						<button
+							class="btn btn-outline"
+							type="button"
+							disabled={libraryBusy}
+							onclick={publishToLibrary}
+						>
+							{m('planDetail.publishLibrary')}
+						</button>
+					{/if}
+				</div>
+			</section>
+		{/if}
 	</div>
 {/if}
 
@@ -1912,13 +1914,16 @@
 		color: var(--color-text-secondary);
 	}
 
+	.publish-section {
+		margin-top: var(--space-xl);
+	}
 	.publish-row {
 		display: flex;
 		align-items: center;
 		gap: var(--space-sm);
 		flex-wrap: wrap;
 		padding: var(--space-md) var(--space-lg);
-		margin: var(--space-md) 0;
+		margin: var(--space-sm) 0;
 		background: var(--color-surface);
 		border: 1px dashed var(--color-border);
 		border-radius: var(--radius-md);

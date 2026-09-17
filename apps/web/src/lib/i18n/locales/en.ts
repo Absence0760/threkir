@@ -637,6 +637,7 @@ export const en = {
 	"planDetail.done": "done",
 	"planDetail.coachLinkTitle": "Ask the coach about this plan",
 	"planDetail.coachLinkSubtitle": "Should I run today? Am I on track? Why this week's long run?",
+	"planDetail.shareSectionTitle": "Share & publish",
 	"planDetail.publishLibraryLabel": "Public plan library",
 	"planDetail.publishLibrary": "Publish to library",
 	"planDetail.publishLibraryHint": "Share a copy of this plan so anyone can clone it. Your fitness numbers are not shared.",

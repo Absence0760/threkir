@@ -621,6 +621,7 @@ export const messages = {
 	"planDetail.done": "完了",
 	"planDetail.coachLinkTitle": "このプランについてコーチに聞く",
 	"planDetail.coachLinkSubtitle": "今日は走るべき？順調？今週のロング走の理由は？",
+	"planDetail.shareSectionTitle": "共有と公開",
 	"planDetail.publishLibraryLabel": "公開プランライブラリ",
 	"planDetail.publishLibrary": "ライブラリに公開",
 	"planDetail.publishLibraryHint": "このプランのコピーを共有して、誰でもクローンできるようにします。フィットネス数値は共有されません。",

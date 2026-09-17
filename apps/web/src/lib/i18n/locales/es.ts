@@ -626,6 +626,7 @@ export const messages = {
 	"planDetail.done": "hechos",
 	"planDetail.coachLinkTitle": "Pregúntale al coach sobre este plan",
 	"planDetail.coachLinkSubtitle": "¿Debería correr hoy? ¿Voy por buen camino? ¿Por qué la tirada larga de esta semana?",
+	"planDetail.shareSectionTitle": "Compartir y publicar",
 	"planDetail.publishLibraryLabel": "Biblioteca pública de planes",
 	"planDetail.publishLibrary": "Publicar en la biblioteca",
 	"planDetail.publishLibraryHint": "Comparte una copia de este plan para que cualquiera pueda clonarlo. Tus datos de forma física no se comparten.",

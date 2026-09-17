@@ -48,7 +48,11 @@ test.describe('/plans/[id] re-plan', () => {
 			await expect(page.getByRole('heading', { level: 1, name: 'e2e replan' }))
 				.toBeVisible({ timeout: 10_000 });
 
-			await page.getByRole('button', { name: /Re-plan remaining weeks/ }).click();
+			await page.getByRole('button', { name: 'Adjust plan' }).click();
+			await page
+				.getByTestId('adjust-plan-dialog')
+				.getByRole('button', { name: /Re-plan remaining weeks/ })
+				.click();
 
 			// Preview shows a make-up change.
 			const preview = page.locator('.replan-preview');

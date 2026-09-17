@@ -33,6 +33,7 @@
 	import { isAdaptiveFitnessGateEnabled } from '$lib/training/adaptive_fitness_flag';
 	import WorkoutEditor from '$lib/components/WorkoutEditor.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	import Modal from '$lib/components/Modal.svelte';
 	import PlanMetaEditor from '$lib/components/PlanMetaEditor.svelte';
 	import PlanCalendar from '$lib/components/PlanCalendar.svelte';
 	import CurrentWeekStrip from '$lib/components/CurrentWeekStrip.svelte';
@@ -244,6 +245,37 @@
 	// runner's consented prefs on mount and stays null when unconfigured.
 	const cyclePlansEnabled = isCyclePlansEnabled();
 	let cyclePlanConfig = $state<CyclePlanConfig | null>(null);
+
+	// ─── Adjust plan (owner-only) ───
+	// One entry point for every whole-plan change. Each option closes the
+	// dialog before opening its own flow: the Modal restores focus on close, so
+	// letting that settle first keeps it from landing behind the next dialog.
+	let adjustOpen = $state(false);
+	let adjustButton = $state<HTMLButtonElement>();
+	let replanPreviewHeading = $state<HTMLHeadingElement>();
+
+	async function chooseConfirmed(
+		c: { kind: 'shift' } | { kind: 'cycle' } | { kind: 'pause' } | { kind: 'resume' },
+	): Promise<void> {
+		adjustOpen = false;
+		await tick();
+		bulkConfirm = c;
+	}
+
+	async function chooseReplan(propose: () => void): Promise<void> {
+		adjustOpen = false;
+		await tick();
+		propose();
+		await tick();
+		replanPreviewHeading?.focus();
+	}
+
+	async function dismissReplan(): Promise<void> {
+		replanPreview = null;
+		adaptiveInfo = null;
+		await tick();
+		adjustButton?.focus();
+	}
 
 	function runBulkConfirm(): void {
 		const c = bulkConfirm;
@@ -958,6 +990,16 @@
 							<span class="material-symbols">edit</span>
 							{m('planDetail.editPlan')}
 						</button>
+						<button
+							type="button"
+							class="btn btn-outline btn-sm hero-edit"
+							aria-haspopup="dialog"
+							bind:this={adjustButton}
+							onclick={() => (adjustOpen = true)}
+						>
+							<span class="material-symbols" aria-hidden="true">tune</span>
+							{m('planDetail.adjustPlan')}
+						</button>
 					{/if}
 					{#if isOwner && workouts.length > 0}
 						<details class="export-menu" bind:this={exportMenu} ontoggle={onExportToggle}>
@@ -1119,6 +1161,31 @@
 			</section>
 		{/if}
 
+		{#if isOwner && !plan.is_template && replanPreview}
+			<section class="replan-preview" aria-label={m('planDetail.replanPreviewAria')}>
+				<h3 tabindex="-1" bind:this={replanPreviewHeading}>{m('planDetail.replanPreviewTitle')}</h3>
+				{#if adaptiveInfo}
+					<p class="replan-adaptive-badge">{adaptiveBadgeText(adaptiveInfo)}</p>
+				{/if}
+				<ul>
+					{#each replanPreview as c (c.workoutId)}
+						<li>
+							<span class="replan-date">{c.scheduledDate}</span>
+							<span class="replan-change">{replanChangeLabel(c)}</span>
+						</li>
+					{/each}
+				</ul>
+				<div class="replan-actions">
+					<button type="button" class="btn btn-secondary btn-sm" onclick={dismissReplan} disabled={bulkBusy}>
+						{m('planDetail.replanCancel')}
+					</button>
+					<button type="button" class="btn btn-primary btn-sm" onclick={applyReplan} disabled={bulkBusy}>
+						{m('planDetail.replanApply')}
+					</button>
+				</div>
+			</section>
+		{/if}
+
 		{#if Array.isArray(plan.rules) && plan.rules.length > 0}
 			<aside class="rules-card">
 				<h3>{m('planDetail.rulesTitle')}</h3>
@@ -1257,117 +1324,6 @@
 				onSelect={(wo) => (editing = wo)}
 			/>
 		</section>
-
-		{#if isOwner && !plan.is_template}
-			<section class="plan-tools">
-				<span class="tools-label">{m('planDetail.shiftPlanLabel')}</span>
-				<div class="shift-control">
-					<input
-						type="number"
-						bind:value={shiftDays}
-						step="1"
-						aria-label={m('planDetail.shiftDaysAria')}
-						disabled={bulkBusy}
-					/>
-					<span class="shift-unit">{m('planDetail.days')}</span>
-					<button
-						type="button"
-						class="btn btn-outline btn-sm"
-						onclick={() => (bulkConfirm = { kind: 'shift' })}
-						disabled={bulkBusy || !shiftDays}
-					>
-						{m('planDetail.shiftApply')}
-					</button>
-				</div>
-				<div class="replan-buttons">
-					<button
-						type="button"
-						class="btn btn-outline btn-sm replan-btn"
-						onclick={proposeReplan}
-						disabled={bulkBusy}
-					>
-						<span class="material-symbols">auto_fix_high</span>
-						{m('planDetail.replan')}
-					</button>
-					<button
-						type="button"
-						class="btn btn-outline btn-sm replan-btn"
-						onclick={proposeAdaptiveReplan}
-						disabled={bulkBusy}
-						title={m('planDetail.adaptiveReplanHint')}
-					>
-						<span class="material-symbols">trending_up</span>
-						{m('planDetail.adaptiveReplan')}
-					</button>
-				</div>
-				<div class="plan-lifecycle" data-testid="plan-lifecycle">
-					{#if plan.status === 'paused'}
-						<button
-							type="button"
-							class="btn btn-outline btn-sm"
-							onclick={() => (bulkConfirm = { kind: 'resume' })}
-							disabled={bulkBusy}
-						>
-							<span class="material-symbols">play_arrow</span>
-							{m('planDetail.resumePlan')}
-						</button>
-					{:else if plan.status === 'active'}
-						<button
-							type="button"
-							class="btn btn-outline btn-sm"
-							onclick={() => (bulkConfirm = { kind: 'pause' })}
-							disabled={bulkBusy}
-						>
-							<span class="material-symbols">pause</span>
-							{m('planDetail.pausePlan')}
-						</button>
-					{/if}
-					{#if cyclePlansEnabled && cyclePlanConfig}
-						<button
-							type="button"
-							class="btn btn-outline btn-sm"
-							data-testid="cycle-adjust-btn"
-							onclick={() => (bulkConfirm = { kind: 'cycle' })}
-							disabled={bulkBusy}
-						>
-							<span class="material-symbols">favorite</span>
-							{cyclePlanConfig.mode === 'pregnancy'
-								? m('planDetail.cycleAdjustPregnancy')
-								: m('planDetail.cycleAdjustCycle')}
-						</button>
-					{:else if cyclePlansEnabled}
-						<a class="cycle-setup-hint" href="/settings/account">
-							{m('planDetail.cycleAdjustConfigure')}
-						</a>
-					{/if}
-				</div>
-			</section>
-
-			{#if replanPreview}
-				<section class="replan-preview" aria-label={m('planDetail.replanPreviewAria')}>
-					<h3>{m('planDetail.replanPreviewTitle')}</h3>
-					{#if adaptiveInfo}
-						<p class="replan-adaptive-badge">{adaptiveBadgeText(adaptiveInfo)}</p>
-					{/if}
-					<ul>
-						{#each replanPreview as c (c.workoutId)}
-							<li>
-								<span class="replan-date">{c.scheduledDate}</span>
-								<span class="replan-change">{replanChangeLabel(c)}</span>
-							</li>
-						{/each}
-					</ul>
-					<div class="replan-actions">
-						<button type="button" class="btn btn-secondary btn-sm" onclick={() => { replanPreview = null; adaptiveInfo = null; }} disabled={bulkBusy}>
-							{m('planDetail.replanCancel')}
-						</button>
-						<button type="button" class="btn btn-primary btn-sm" onclick={applyReplan} disabled={bulkBusy}>
-							{m('planDetail.replanApply')}
-						</button>
-					</div>
-				</section>
-			{/if}
-		{/if}
 
 		<section class="weeks">
 			<h2 class="section-title">{m('planDetail.weekByWeek')}</h2>
@@ -1542,6 +1498,120 @@
 			await load();
 		}}
 	/>
+{/if}
+
+{#if plan && isOwner && !plan.is_template}
+	<Modal
+		open={adjustOpen}
+		title={m('planDetail.adjustPlan')}
+		onclose={() => (adjustOpen = false)}
+		data-testid="adjust-plan-dialog"
+	>
+		<p class="adjust-intro">{m('planDetail.adjustPlanIntro')}</p>
+		<ul class="adjust-options">
+			<li class="adjust-option">
+				<div class="shift-control">
+					<input
+						type="number"
+						bind:value={shiftDays}
+						step="1"
+						aria-label={m('planDetail.shiftDaysAria')}
+						disabled={bulkBusy}
+					/>
+					<span class="shift-unit">{m('planDetail.days')}</span>
+					<button
+						type="button"
+						class="btn btn-outline btn-sm adjust-option-btn"
+						aria-describedby="adjust-shift-desc"
+						onclick={() => chooseConfirmed({ kind: 'shift' })}
+						disabled={bulkBusy || !shiftDays}
+					>
+						<span class="material-symbols" aria-hidden="true">date_range</span>
+						{m('planDetail.shiftApply')}
+					</button>
+				</div>
+				<p class="adjust-option-desc" id="adjust-shift-desc">{m('planDetail.adjustShiftDesc')}</p>
+			</li>
+			<li class="adjust-option">
+				<button
+					type="button"
+					class="btn btn-outline btn-sm adjust-option-btn"
+					aria-describedby="adjust-replan-desc"
+					onclick={() => chooseReplan(proposeReplan)}
+					disabled={bulkBusy}
+				>
+					<span class="material-symbols" aria-hidden="true">auto_fix_high</span>
+					{m('planDetail.replan')}
+				</button>
+				<p class="adjust-option-desc" id="adjust-replan-desc">{m('planDetail.adjustReplanDesc')}</p>
+			</li>
+			<li class="adjust-option">
+				<button
+					type="button"
+					class="btn btn-outline btn-sm adjust-option-btn"
+					aria-describedby="adjust-adaptive-desc"
+					onclick={() => chooseReplan(proposeAdaptiveReplan)}
+					disabled={bulkBusy}
+				>
+					<span class="material-symbols" aria-hidden="true">trending_up</span>
+					{m('planDetail.adaptiveReplan')}
+				</button>
+				<p class="adjust-option-desc" id="adjust-adaptive-desc">{m('planDetail.adjustAdaptiveDesc')}</p>
+			</li>
+			{#if plan.status === 'paused' || plan.status === 'active'}
+				<li class="adjust-option">
+					<button
+						type="button"
+						class="btn btn-outline btn-sm adjust-option-btn"
+						aria-describedby="adjust-lifecycle-desc"
+						onclick={() => chooseConfirmed({ kind: plan?.status === 'paused' ? 'resume' : 'pause' })}
+						disabled={bulkBusy}
+					>
+						{#if plan.status === 'paused'}
+							<span class="material-symbols" aria-hidden="true">play_arrow</span>
+							{m('planDetail.resumePlan')}
+						{:else}
+							<span class="material-symbols" aria-hidden="true">pause</span>
+							{m('planDetail.pausePlan')}
+						{/if}
+					</button>
+					<p class="adjust-option-desc" id="adjust-lifecycle-desc">
+						{plan.status === 'paused'
+							? m('planDetail.adjustResumeDesc')
+							: m('planDetail.adjustPauseDesc')}
+					</p>
+				</li>
+			{/if}
+			{#if cyclePlansEnabled && cyclePlanConfig}
+				<li class="adjust-option">
+					<button
+						type="button"
+						class="btn btn-outline btn-sm adjust-option-btn"
+						data-testid="cycle-adjust-btn"
+						aria-describedby="adjust-cycle-desc"
+						onclick={() => chooseConfirmed({ kind: 'cycle' })}
+						disabled={bulkBusy}
+					>
+						<span class="material-symbols" aria-hidden="true">favorite</span>
+						{cyclePlanConfig.mode === 'pregnancy'
+							? m('planDetail.cycleAdjustPregnancy')
+							: m('planDetail.cycleAdjustCycle')}
+					</button>
+					<p class="adjust-option-desc" id="adjust-cycle-desc">
+						{cyclePlanConfig.mode === 'pregnancy'
+							? m('planDetail.adjustPregnancyDesc')
+							: m('planDetail.adjustCycleDesc')}
+					</p>
+				</li>
+			{:else if cyclePlansEnabled}
+				<li class="adjust-option">
+					<a class="cycle-setup-hint" href="/settings/account">
+						{m('planDetail.cycleAdjustConfigure')}
+					</a>
+				</li>
+			{/if}
+		</ul>
+	</Modal>
 {/if}
 
 <ConfirmDialog
@@ -1928,16 +1998,35 @@
 		border: 1px dashed var(--color-border);
 		border-radius: var(--radius-md);
 	}
-	.plan-tools {
+	.adjust-intro {
+		margin: 0 0 var(--space-md);
+		font-size: 0.9rem;
+		color: var(--color-text-secondary);
+	}
+	.adjust-options {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+	}
+	.adjust-option {
 		display: flex;
 		flex-direction: column;
 		align-items: flex-start;
-		gap: var(--space-sm);
-		margin: var(--space-md) 0;
+		gap: var(--space-xs);
+		padding: var(--space-md) 0;
+		border-top: 1px solid var(--color-border);
 	}
-	.tools-label {
-		font-size: 0.9rem;
-		font-weight: 600;
+	.adjust-option-btn .material-symbols {
+		font-size: 1rem;
+		vertical-align: -2px;
+		margin-inline-end: 0.2rem;
+	}
+	.adjust-option-desc {
+		margin: 0;
+		font-size: 0.85rem;
+		line-height: 1.45;
 		color: var(--color-text-secondary);
 	}
 	.shift-control {
@@ -1981,26 +2070,6 @@
 	}
 	.week-recovery-btn .material-symbols {
 		font-size: 0.95rem;
-	}
-	.replan-btn {
-		align-self: flex-start;
-	}
-	.replan-btn .material-symbols {
-		font-size: 1rem;
-		vertical-align: -2px;
-		margin-inline-end: 0.2rem;
-	}
-	.replan-buttons {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-sm);
-	}
-	.plan-lifecycle {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: var(--space-sm);
-		margin-top: var(--space-sm);
 	}
 	.cycle-setup-hint {
 		font-size: 0.85rem;

@@ -2066,6 +2066,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get historyKindMeals => '食事';
 
   @override
+  String get historyModalityLoadFailed => '筋トレと食事を読み込めませんでした';
+
+  @override
   String get historyViewAll => 'すべて表示';
 
   @override

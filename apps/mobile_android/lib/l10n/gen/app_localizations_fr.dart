@@ -2189,6 +2189,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get historyKindMeals => 'Repas';
 
   @override
+  String get historyModalityLoadFailed =>
+      'Impossible de charger vos séances de muscu et vos repas';
+
+  @override
   String get historyViewAll => 'Tout voir';
 
   @override

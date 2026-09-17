@@ -595,6 +595,7 @@
   "historyKindRuns": "Corridas",
   "historyKindLifts": "Musculação",
   "historyKindMeals": "Refeições",
+  "historyModalityLoadFailed": "Não foi possível carregar a sua musculação e as suas refeições",
   "historyViewAll": "Ver tudo",
   "historyToday": "Hoje",
   "historyYesterday": "Ontem",

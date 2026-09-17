@@ -2180,6 +2180,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get historyKindMeals => 'Comidas';
 
   @override
+  String get historyModalityLoadFailed =>
+      'No se pudieron cargar tus pesas y comidas';
+
+  @override
   String get historyViewAll => 'Ver todo';
 
   @override

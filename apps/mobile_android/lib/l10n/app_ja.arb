@@ -595,6 +595,7 @@
   "historyKindRuns": "ラン",
   "historyKindLifts": "筋トレ",
   "historyKindMeals": "食事",
+  "historyModalityLoadFailed": "筋トレと食事を読み込めませんでした",
   "historyViewAll": "すべて表示",
   "historyToday": "今日",
   "historyYesterday": "昨日",

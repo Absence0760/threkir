@@ -595,6 +595,7 @@
   "historyKindRuns": "Courses",
   "historyKindLifts": "Muscu",
   "historyKindMeals": "Repas",
+  "historyModalityLoadFailed": "Impossible de charger vos séances de muscu et vos repas",
   "historyViewAll": "Tout voir",
   "historyToday": "Aujourd'hui",
   "historyYesterday": "Hier",

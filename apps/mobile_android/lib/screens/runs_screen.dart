@@ -10,6 +10,7 @@ import 'package:ui_kit/ui_kit.dart'
 
 import '../adaptive_width.dart';
 import '../auth_error.dart';
+import '../backend_timeout.dart';
 import '../fab_clearance.dart';
 import '../goals.dart';
 import '../l10n/date_format.dart';
@@ -25,6 +26,7 @@ import '../preferences.dart';
 import '../runs_history_items.dart';
 import '../settings_sync.dart';
 import '../widgets/activity_timeline_list.dart';
+import '../widgets/error_state.dart';
 import '../widgets/gym_compose_sheet.dart';
 import '../widgets/log_sheet.dart';
 import '../widgets/nutrition_log_sheet.dart';
@@ -235,6 +237,13 @@ class _RunsScreenState extends State<RunsScreen>
   List<ActivityRow> _activities = const [];
   bool _hasLift = false;
   bool _hasMeal = false;
+
+  /// True when the last modality hydrate failed. A failed read is not an empty
+  /// result: without this a dropped connection silently changed what this
+  /// surface IS — timeline and History title give way to the run list and its
+  /// toolbar — with nothing saying so and no way to retry. Mirrors web
+  /// `/history`'s `history-load-error` card.
+  bool _modalityLoadFailed = false;
   _HistoryKind _kind = _HistoryKind.all;
 
   /// True once a SECOND modality has data AND the gym store is wired in
@@ -300,27 +309,44 @@ class _RunsScreenState extends State<RunsScreen>
     final api = widget.apiClient;
     final gymStore = widget.gymStore;
     if (api == null || api.userId == null || gymStore == null) return;
+    var failed = false;
     try {
-      final fresh = await api.fetchGymWorkoutsWithSets(limit: 100);
+      final fresh = await api
+          .fetchGymWorkoutsWithSets(limit: 100)
+          .timeout(kBackendLoadTimeout);
       await gymStore.replaceFromServer(fresh, fetchLimit: 100);
     } catch (e) {
+      failed = true;
       debugPrint('History gym hydrate failed: $e');
     }
     final foodStore = widget.foodStore;
-    if (foodStore == null) return;
-    try {
-      final now = DateTime.now();
-      final weekStart = DateTime(now.year, now.month, now.day - 6);
-      final tomorrow = DateTime(now.year, now.month, now.day + 1);
-      final fresh = await api.fetchFoodLog(from: weekStart, to: tomorrow);
-      await foodStore.replaceFromServer(
-        [for (final r in fresh) r.toJson()],
-        windowStart: weekStart,
-        windowEnd: tomorrow,
-      );
-    } catch (e) {
-      debugPrint('History food hydrate failed: $e');
+    if (foodStore != null) {
+      try {
+        final now = DateTime.now();
+        final weekStart = DateTime(now.year, now.month, now.day - 6);
+        final tomorrow = DateTime(now.year, now.month, now.day + 1);
+        final fresh = await api
+            .fetchFoodLog(from: weekStart, to: tomorrow)
+            .timeout(kBackendLoadTimeout);
+        await foodStore.replaceFromServer(
+          [for (final r in fresh) r.toJson()],
+          windowStart: weekStart,
+          windowEnd: tomorrow,
+        );
+      } catch (e) {
+        failed = true;
+        debugPrint('History food hydrate failed: $e');
+      }
     }
+    if (!mounted || failed == _modalityLoadFailed) return;
+    setState(() => _modalityLoadFailed = failed);
+  }
+
+  /// Re-run the hydrate from the error affordance. Clearing the flag first is
+  /// the only feedback the tap gets — a second failure sets it straight back.
+  void _retryModalities() {
+    setState(() => _modalityLoadFailed = false);
+    _hydrateModalities();
   }
 
   /// Rebuild the unified timeline from the local stores — synchronous, no
@@ -1325,6 +1351,15 @@ class _RunsScreenState extends State<RunsScreen>
     // their timeline — only fall back to the "no runs" empty state when there
     // is genuinely nothing across any modality (mirrors web's gym-only fix).
     if (totalCount == 0 && !_hasModalityData) {
+      // Nothing to show AND the read failed is the case web's error card
+      // exists for: "no lifts yet" and "we could not ask" are different
+      // answers, and only one of them has a retry.
+      if (_modalityLoadFailed) {
+        return ErrorState(
+          message: l10n.historyModalityLoadFailed,
+          onRetry: _retryModalities,
+        );
+      }
       // This is where a brand-new account lands, so it owes an action rather
       // than only a sentence: the body names the shell's Log button (the Run
       // tab it used to name was deleted by decisions § 139) and the CTA logs
@@ -1360,7 +1395,44 @@ class _RunsScreenState extends State<RunsScreen>
       );
     }
 
-    if (!_showChips) return content;
+    if (_showChips) content = _withKindChips(content, l10n);
+    if (!_modalityLoadFailed) return content;
+    // There IS local content, so replacing it with the error card would be a
+    // worse lie than the one being fixed — say the surface may be showing less
+    // than it holds, and keep the rows.
+    return Column(
+      children: [
+        Material(
+          color: theme.colorScheme.errorContainer,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+            child: Row(
+              children: [
+                Icon(Icons.cloud_off,
+                    size: 16, color: theme.colorScheme.onErrorContainer),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    l10n.historyModalityLoadFailed,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onErrorContainer,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _retryModalities,
+                  child: Text(l10n.errorStateRetry),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Expanded(child: content),
+      ],
+    );
+  }
+
+  Widget _withKindChips(Widget content, AppLocalizations l10n) {
     return Column(
       children: [
         Row(

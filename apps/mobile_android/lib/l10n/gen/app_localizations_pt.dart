@@ -2181,6 +2181,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get historyKindMeals => 'Refeições';
 
   @override
+  String get historyModalityLoadFailed =>
+      'Não foi possível carregar a sua musculação e as suas refeições';
+
+  @override
   String get historyViewAll => 'Ver tudo';
 
   @override
@@ -16286,6 +16290,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get historyKindMeals => 'Refeições';
+
+  @override
+  String get historyModalityLoadFailed =>
+      'Não foi possível carregar sua musculação e suas refeições';
 
   @override
   String get historyViewAll => 'Ver tudo';

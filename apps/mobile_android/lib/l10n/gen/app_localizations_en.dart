@@ -2160,6 +2160,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyKindMeals => 'Meals';
 
   @override
+  String get historyModalityLoadFailed => 'Couldn\'t load your lifts and meals';
+
+  @override
   String get historyViewAll => 'View all';
 
   @override

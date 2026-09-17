@@ -2816,6 +2816,10 @@
   "@historyKindMeals": {
     "description": "Unified-timeline kind chip: logged meals only"
   },
+  "historyModalityLoadFailed": "Couldn't load your lifts and meals",
+  "@historyModalityLoadFailed": {
+    "description": "Error shown when the History tab could not read the lift / meal modalities from the server"
+  },
   "historyViewAll": "View all",
   "@historyViewAll": {
     "description": "Link from a single-modality History tab to that modality's full page (runs list / gym / nutrition)"

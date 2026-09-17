@@ -3683,6 +3683,12 @@ abstract class AppLocalizations {
   /// **'Meals'**
   String get historyKindMeals;
 
+  /// Error shown when the History tab could not read the lift / meal modalities from the server
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your lifts and meals'**
+  String get historyModalityLoadFailed;
+
   /// Link from a single-modality History tab to that modality's full page (runs list / gym / nutrition)
   ///
   /// In en, this message translates to:

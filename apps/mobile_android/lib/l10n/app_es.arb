@@ -595,6 +595,7 @@
   "historyKindRuns": "Carreras",
   "historyKindLifts": "Pesas",
   "historyKindMeals": "Comidas",
+  "historyModalityLoadFailed": "No se pudieron cargar tus pesas y comidas",
   "historyViewAll": "Ver todo",
   "historyToday": "Hoy",
   "historyYesterday": "Ayer",

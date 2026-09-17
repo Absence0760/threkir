@@ -423,7 +423,11 @@
 	.destination:hover {
 		border-color: var(--color-primary);
 	}
+	/* The icon is a fixed box beside a description that wraps. As a flex
+	   item it shrank with the text, and a glyph narrower than its box is
+	   clipped to a sliver. */
 	.destination .material-symbols {
+		flex-shrink: 0;
 		font-size: 1.25rem;
 		color: var(--color-primary);
 	}

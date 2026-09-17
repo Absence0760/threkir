@@ -838,6 +838,19 @@ The class is always **`material-symbols`** — the one styled in `app.css` with 
 
 **The font is a subset, so adding a new icon means regenerating it.** `apps/web/src/lib/assets/material-symbols-subset.woff2` carries only the icons this tree names — 347 of the font's 4271, 74 KB against the full font's 3866 KB ([decisions § 780](decisions.md)). The set is derived from the source, not hand-listed: element text at every render site, plus every quoted `[a-z0-9_]+` literal under `src` that the upstream font can render, which is how a name reaching the span through `{item.icon}` gets found. Adding an icon the subset does not carry fails `build-web` with the name in the message; fix it with `pnpm gen:icon-font` and commit the regenerated `.woff2` **and** its `.json` manifest. `@font-face` and `font-display: block` live in `app.css` — `block` is deliberate, because for a ligature font every other value paints the icon's NAME in the fallback face while it loads.
 
+## Web derived metrics — through `<MetricLabel>`, never a bare acronym or a `title=`
+
+A derived metric's name (VO₂ max, CTL / ATL / TSB, VDOT, 1RM, RPE, age grade, vert, TRIMP, the Riegel formula, KOM/QOM, distance banked, the plan phases) renders through **`<MetricLabel metric="…" />`** (`lib/components/MetricLabel.svelte`), which puts a one-line plain-English definition behind a button a runner can open by touch or keyboard. The names and definitions live in **one registry**, `lib/metrics/metric_registry.ts`; add a metric there, with its definition in all seven locales, before rendering it anywhere.
+
+- **Never a `title=` tooltip for a definition.** It never appears on touch, a keyboard cannot reach it, and screen readers announce it inconsistently — the dashboard's four definitions existed in every locale and nobody on a phone could read them ([decisions § 1634](decisions.md)).
+- **Mid-sentence**, give the catalogue string a `{term}` placeholder, list the key in the entry's `sentences`, and render `<MetricLabel metric="…" sentence="key" />`.
+- **Captioning an input**, pass `labelFor={inputId}` and make the wrapper a `<div>`, not a `<label>`: the component renders the `<label for>` and the disclosure side by side. An input named by `aria-label` reads the name through `metricName()` (`lib/metrics/metric_name.ts`).
+- **Where no disclosure can sit** (an `aria-hidden` header, a `<label>`, a repeated row) use `plain`, and render the interactive label for the same metric elsewhere in the file.
+- **An `<option>`** cannot hold a disclosure, so its string spells the term out and is registered under `expandedIn` with the reason.
+- **Jargon that is not a metric** (TTS) goes in `JARGON` and is replaced with plain words rather than defined.
+
+`src/lib/metrics/metric_label_guard.test.ts` enforces all of it from the registry itself and fails the unit job on a key rendered around the component, a term typed into markup, English copy carrying a term with no expansion, a disclosure in a forbidden ancestor, or a plain label with no interactive sibling.
+
 ## Mobile in-app notifications — `showTopBanner`
 
 On the Flutter apps (`apps/mobile_android`, `apps/mobile_ios`), the canonical transient notification primitive is `showTopBanner(context, message, ...)` from `lib/widgets/top_banner.dart`. It renders a top-anchored pill via `Overlay`, auto-positions below an `AppBar` when one is present, and coalesces to a single banner at a time.

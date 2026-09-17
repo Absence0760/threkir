@@ -6,6 +6,7 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	import DangerZone from '$lib/components/DangerZone.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import AiDisclosureNotice from '$lib/components/AiDisclosureNotice.svelte';
 	import { supabase } from '$lib/core/supabase';
@@ -1800,14 +1801,14 @@
 		danger
 	/>
 
-	<!-- Danger zone -->
-	<section class="card card-danger">
-		<h2 class="danger-heading">{m('settingsAccount.dangerZoneHeading')}</h2>
-		<p class="section-desc">{m('settingsAccount.dangerZoneDesc')}</p>
+	<DangerZone
+		heading={m('settingsAccount.dangerZoneHeading')}
+		description={m('settingsAccount.dangerZoneDesc')}
+	>
 		<button class="btn btn-danger" onclick={() => (showDeleteAccount = true)} disabled={deleting}>
 			{deleting ? m('settingsAccount.deleting') : m('settingsAccount.deleteAccount')}
 		</button>
-	</section>
+	</DangerZone>
 </div>
 
 <ConfirmDialog
@@ -1901,7 +1902,6 @@
 		color: var(--color-danger-text);
 		font-size: 1.4rem;
 	}
-	.card-danger { border-color: rgba(229, 57, 53, 0.3); }
 	.avatar-row { display: flex; align-items: flex-start; gap: var(--space-md); margin-bottom: var(--space-lg); }
 	.avatar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
 	.avatar-hint { flex-basis: 100%; margin-bottom: 0; }
@@ -1937,7 +1937,6 @@
 	.error-text { color: var(--color-danger-text); font-size: 0.85rem; margin-top: var(--space-sm); }
 	.ok-text { color: var(--color-success-text); font-size: 0.85rem; margin-top: var(--space-sm); }
 	.warn-text { color: var(--color-warning-text); font-size: 0.85rem; margin-top: var(--space-sm); }
-	.danger-heading { color: var(--color-danger-text); }
 	.material-symbols { font-family: 'Material Symbols Outlined'; font-size: 1.1rem; }
 	.muted { color: var(--color-text-tertiary); font-size: 0.9rem; }
 	.identity-list { list-style: none; padding: 0; margin: 0 0 var(--space-md); display: flex; flex-direction: column; gap: var(--space-sm); }

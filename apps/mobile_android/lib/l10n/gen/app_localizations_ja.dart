@@ -9965,9 +9965,6 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get gymRoutineStart => 'ルーティンを開始';
-
-  @override
   String get gymRoutinePublishLabel => 'クラブに公開';
 
   @override

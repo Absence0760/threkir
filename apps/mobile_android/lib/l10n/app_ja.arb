@@ -2941,7 +2941,6 @@
   "gymRoutineBack": "ルーティンに戻る",
   "gymRoutineNotFound": "ルーティンが見つかりません。",
   "gymRoutineExerciseCount": "{count, plural, other{{count}種目}}",
-  "gymRoutineStart": "ルーティンを開始",
   "gymRoutinePublishLabel": "クラブに公開",
   "gymRoutinePublishPick": "クラブを選択…",
   "gymRoutinePublish": "公開",

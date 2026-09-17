@@ -192,8 +192,12 @@ void main() {
       expect(find.text('Warm-up'), findsOneWidget);
       expect(find.text('Superset 1'), findsOneWidget);
       expect(find.text('Linear'), findsOneWidget);
-      // Start FAB present (P1 prefill-only).
-      expect(find.text('Start routine'), findsOneWidget);
+      // ONE primary action, matching web's single Start: the guided runner.
+      // The P1 prefill-only 'Start routine' FAB used to stack above it with
+      // nothing distinguishing the two.
+      expect(find.text('Start session'), findsOneWidget);
+      expect(find.text('Start routine'), findsNothing);
+      expect(find.byType(FloatingActionButton), findsOneWidget);
     } finally {
       f.dir.deleteSync(recursive: true);
     }
@@ -205,7 +209,7 @@ void main() {
       await tester.pumpWidget(_app(f.store, f.gym, 'nope'));
       await tester.pump();
       expect(find.text('Routine not found.'), findsOneWidget);
-      expect(find.text('Start routine'), findsNothing);
+      expect(find.text('Start session'), findsNothing);
     } finally {
       f.dir.deleteSync(recursive: true);
     }

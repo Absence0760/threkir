@@ -17205,12 +17205,6 @@ abstract class AppLocalizations {
   /// **'{count, plural, one{{count} exercise} other{{count} exercises}}'**
   String gymRoutineExerciseCount(int count);
 
-  /// No description provided for @gymRoutineStart.
-  ///
-  /// In en, this message translates to:
-  /// **'Start routine'**
-  String get gymRoutineStart;
-
   /// Label above the publish-as-template control on the routine detail screen
   ///
   /// In en, this message translates to:

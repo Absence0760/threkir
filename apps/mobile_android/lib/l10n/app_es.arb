@@ -2941,7 +2941,6 @@
   "gymRoutineBack": "Volver a rutinas",
   "gymRoutineNotFound": "Rutina no encontrada.",
   "gymRoutineExerciseCount": "{count, plural, one{{count} ejercicio} other{{count} ejercicios}}",
-  "gymRoutineStart": "Iniciar rutina",
   "gymRoutinePublishLabel": "Publicar en un club",
   "gymRoutinePublishPick": "Elige un club…",
   "gymRoutinePublish": "Publicar",

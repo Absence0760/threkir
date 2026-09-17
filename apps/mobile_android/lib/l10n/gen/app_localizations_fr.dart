@@ -10527,9 +10527,6 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get gymRoutineStart => 'Démarrer la routine';
-
-  @override
   String get gymRoutinePublishLabel => 'Publier dans un club';
 
   @override

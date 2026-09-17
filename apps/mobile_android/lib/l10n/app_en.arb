@@ -13787,7 +13787,6 @@
       }
     }
   },
-  "gymRoutineStart": "Start routine",
   "gymRoutinePublishLabel": "Publish to a club",
   "@gymRoutinePublishLabel": {
     "description": "Label above the publish-as-template control on the routine detail screen"

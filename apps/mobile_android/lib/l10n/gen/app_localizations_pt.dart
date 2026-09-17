@@ -10502,9 +10502,6 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get gymRoutineStart => 'Iniciar rotina';
-
-  @override
   String get gymRoutinePublishLabel => 'Publicar num clube';
 
   @override
@@ -24679,9 +24676,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
     );
     return '$_temp0';
   }
-
-  @override
-  String get gymRoutineStart => 'Iniciar rotina';
 
   @override
   String get gymRoutinePublishLabel => 'Publicar em um clube';

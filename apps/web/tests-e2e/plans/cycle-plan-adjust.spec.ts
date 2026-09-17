@@ -72,13 +72,15 @@ test.describe('/plans/[id] pause + resume', () => {
 			const dialog = page.locator('[data-testid="bulk-confirm-dialog"]');
 
 			// Pause.
-			await page.getByRole('button', { name: /Pause plan/ }).click();
+			await page.getByRole('button', { name: 'Adjust plan' }).click();
+			await page.getByTestId('adjust-plan-dialog').getByRole('button', { name: /Pause plan/ }).click();
 			await expect(dialog).toBeVisible();
 			await dialog.getByRole('button', { name: 'Apply' }).click();
 			await expect.poll(status).toBe('paused');
 
 			// Resume.
-			await page.getByRole('button', { name: /Resume plan/ }).click();
+			await page.getByRole('button', { name: 'Adjust plan' }).click();
+			await page.getByTestId('adjust-plan-dialog').getByRole('button', { name: /Resume plan/ }).click();
 			await expect(dialog).toBeVisible();
 			await dialog.getByRole('button', { name: 'Apply' }).click();
 			await expect.poll(status).toBe('active');
@@ -156,6 +158,7 @@ test.describe('/plans/[id] cycle adjust (flag-gated)', () => {
 			).toBeVisible({ timeout: 10_000 });
 
 			const dialog = page.locator('[data-testid="bulk-confirm-dialog"]');
+			await page.getByRole('button', { name: 'Adjust plan' }).click();
 			await page.locator('[data-testid="cycle-adjust-btn"]').click();
 			await expect(dialog).toBeVisible();
 			await dialog.getByRole('button', { name: 'Apply' }).click();

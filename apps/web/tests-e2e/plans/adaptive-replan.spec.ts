@@ -50,7 +50,8 @@ test.describe('/plans/[id] adaptive re-plan', () => {
 			await expect(page.getByRole('heading', { level: 1, name: 'e2e adaptive replan' }))
 				.toBeVisible({ timeout: 10_000 });
 
-			await page.getByRole('button', { name: 'Adaptive re-plan' }).click();
+			await page.getByRole('button', { name: 'Adjust plan' }).click();
+			await page.getByTestId('adjust-plan-dialog').getByRole('button', { name: 'Adaptive re-plan' }).click();
 
 			const preview = page.locator('.replan-preview');
 			await expect(preview).toBeVisible({ timeout: 10_000 });

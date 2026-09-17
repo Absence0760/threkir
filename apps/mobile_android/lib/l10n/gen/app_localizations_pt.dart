@@ -722,6 +722,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get gymTabRecords => 'Recordes';
 
   @override
+  String get gymPeerRoutines => 'Rotinas de ginásio';
+
+  @override
+  String get gymPeerSessions => 'Planos de sessão';
+
+  @override
   String get homeAskCoach => 'Pergunte ao seu treinador';
 
   @override
@@ -12146,6 +12152,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get challengesDelete => 'Eliminar';
 
   @override
+  String get challengesDeleteChallenge => 'Eliminar desafio';
+
+  @override
   String get challengesMetricDistance => 'Distância';
 
   @override
@@ -14791,6 +14800,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get gymTabRecords => 'Recordes';
+
+  @override
+  String get gymPeerRoutines => 'Rotinas de academia';
+
+  @override
+  String get gymPeerSessions => 'Planos de sessão';
 
   @override
   String get homeAskCoach => 'Pergunte ao seu treinador';
@@ -26208,6 +26223,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get challengesDelete => 'Excluir';
+
+  @override
+  String get challengesDeleteChallenge => 'Excluir desafio';
 
   @override
   String get challengesMetricDistance => 'Distância';

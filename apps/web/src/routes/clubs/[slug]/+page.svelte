@@ -54,6 +54,7 @@
 	import type { RouteListItem } from '$lib/routes/route_list_columns';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	import DangerZone from '$lib/components/DangerZone.svelte';
 	import EventEditor from '$lib/components/EventEditor.svelte';
 	import ClubEditor from '$lib/components/ClubEditor.svelte';
 	import Modal from '$lib/components/Modal.svelte';
@@ -946,9 +947,7 @@
 							{tr('clubHome.joinClub')}
 						{/if}
 					</button>
-				{:else if club.viewer_role === 'owner'}
-					<button class="btn-secondary danger" onclick={handleDeleteClub}>{tr('clubHome.deleteClub')}</button>
-				{:else}
+				{:else if club.viewer_role !== 'owner'}
 					<button class="btn-secondary" onclick={leave} disabled={joinBusy}>
 						{joinBusy ? tr('clubHome.leaving') : tr('clubHome.leave')}
 					</button>
@@ -1658,6 +1657,17 @@
 				{/if}
 			{/if}
 		{/if}
+
+		{#if club.viewer_role === 'owner'}
+			<DangerZone
+				heading={tr('clubHome.dangerZoneHeading')}
+				description={tr('clubHome.dangerZoneDesc')}
+			>
+				<button class="btn btn-danger" type="button" onclick={handleDeleteClub}>
+					{tr('clubHome.deleteClub')}
+				</button>
+			</DangerZone>
+		{/if}
 	</div>
 
 <ConfirmDialog
@@ -1900,14 +1910,6 @@
 		flex-direction: column;
 		gap: 0.5rem;
 		align-items: stretch;
-	}
-
-	.btn-secondary.danger {
-		color: var(--color-danger-text);
-		border-color: var(--color-danger-light);
-	}
-	.btn-secondary.danger:hover {
-		background: var(--color-danger-light);
 	}
 
 	.badge {

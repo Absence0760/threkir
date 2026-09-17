@@ -720,6 +720,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get gymTabRecords => 'Records';
 
   @override
+  String get gymPeerRoutines => 'Routines de gym';
+
+  @override
+  String get gymPeerSessions => 'Plans de séance';
+
+  @override
   String get homeAskCoach => 'Demander au coach';
 
   @override
@@ -12170,6 +12176,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get challengesDelete => 'Supprimer';
+
+  @override
+  String get challengesDeleteChallenge => 'Supprimer le défi';
 
   @override
   String get challengesMetricDistance => 'Distance';

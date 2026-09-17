@@ -719,6 +719,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get gymTabRecords => 'Récords';
 
   @override
+  String get gymPeerRoutines => 'Rutinas de gimnasio';
+
+  @override
+  String get gymPeerSessions => 'Planes de sesión';
+
+  @override
   String get homeAskCoach => 'Pregunta a tu entrenador';
 
   @override
@@ -12142,6 +12148,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get challengesDelete => 'Eliminar';
+
+  @override
+  String get challengesDeleteChallenge => 'Eliminar desafío';
 
   @override
   String get challengesMetricDistance => 'Distancia';

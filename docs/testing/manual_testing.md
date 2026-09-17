@@ -271,6 +271,8 @@ See [training.md](../features/training.md) for the engine + week phasing logic, 
 |---|---|---|
 | Generate a plan | Web `/plans/new` → wizard | Plan creates with N weeks of phased volume; week grid editable; submit persists `training_plans` + `plan_weeks` + `plan_workouts`. |
 | Edit a plan's meta | Web `/plans/[id]` → Edit-plan button | Owner-only `PlanMetaEditor` modal; non-owners get a 403 from RLS. |
+| Adjust a plan | Web `/plans/[id]` as the owner → Adjust plan | One dialog lists Shift dates, Re-plan remaining weeks, Adaptive re-plan and Pause plan (Resume plan on a paused plan), each with a sentence on what it does and when to use it; none of them sits loose on the page. Shift and Pause open the confirm dialog and Cancel changes nothing; each re-plan either toasts "on track" or shows the preview under the adherence flags with focus on its heading, and Cancel returns focus to Adjust plan. |
+| Publish a plan | Web `/plans/[id]` as the owner, scroll past the week-by-week plan | Share & publish section holds Publish as a club template (only with an admin club) and Public plan library; neither row appears between the header and the plan, and neither renders on a template. |
 | Execute a workout | Mobile Today card → Start | Live workout band shows current step; Skip / Abandon callbacks work; finished run carries `plan_workout_id` + `workout_step_results` + `workout_adherence` per [metadata.md](../backend/metadata.md). |
 | Workout review | Mobile run detail of a plan run | "Workout review" section renders one row per step; on / amber / off tones based on the 10 s tolerance; em-dash for null pace. |
 | Auto-link to plan workout | Record a run on the same date as a scheduled workout | `autoMatchRunToPlanWorkout` ties the run to the workout; the workout flips to completed. |
@@ -300,6 +302,8 @@ See [clubs.md](../features/clubs.md) for the deferred items.
 | Scenario | Steps | Pass |
 |---|---|---|
 | Create a club | Web `/clubs/new` | Club created with visibility + join policy; creator becomes admin. |
+| Delete a club | Web `/clubs/[slug]` as the owner | The hero shows New event and Edit club but no delete; Delete club sits in the Danger zone after the tab content, asks in a confirm dialog, and Cancel keeps the club. An admin who is not the owner sees no Danger zone. |
+| Delete a challenge | Web `/challenges/[id]` as the creator (or a club admin of a club challenge); mobile challenge detail as the creator | Web: the Leave / Edit challenge row has no delete; Delete challenge sits in the Danger zone after the leaderboard and confirms. Mobile: no delete icon in the AppBar; the overflow menu's red Delete challenge item confirms. |
 | Invite link | Club → Invite | Generate token; `/clubs/join/[token]` redeems via `join_club_by_token` RPC. Atomic — partial failures roll back. |
 | Club feed | `/clubs/[slug]/feed` | Threaded posts; admins can pin / delete; per-event update threads. |
 | Create event | `/clubs/[slug]/events/new` | One-off OR weekly/biweekly/monthly recurrence (see `recurrence_test.dart` — 8 tests pin the expansion). RSVP per-instance. |

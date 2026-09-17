@@ -583,7 +583,7 @@ void main() {
       return (store: store, routines: routines, dir: dir);
     }
 
-    testWidgets('names Log + Routines; Records only once a record exists',
+    testWidgets('names Log + Gym routines; Records only once a record exists',
         (tester) async {
       final s = await seed(tester);
       await tester.pumpWidget(_gymScreen(s.store, s.routines));
@@ -593,12 +593,14 @@ void main() {
       expect(strip, findsOneWidget);
       expect(
           find.descendant(of: strip, matching: find.text('Log')), findsOneWidget);
-      expect(find.descendant(of: strip, matching: find.text('Routines')),
+      expect(find.descendant(of: strip, matching: find.text('Gym routines')),
           findsOneWidget);
+      expect(find.descendant(of: strip, matching: find.text('Routines')),
+          findsNothing);
       expect(find.descendant(of: strip, matching: find.text('Records')),
           findsNothing);
       // Signed out, so the server-backed session plans are not offered.
-      expect(find.descendant(of: strip, matching: find.text('Sessions')),
+      expect(find.descendant(of: strip, matching: find.text('Session plans')),
           findsNothing);
     });
 
@@ -616,7 +618,7 @@ void main() {
       expect(find.byType(GymRecordsScreen), findsOneWidget);
     });
 
-    testWidgets('an un-init()ed routine store hides the Routines peer',
+    testWidgets('an un-init()ed routine store hides the Gym routines peer',
         (tester) async {
       // A routine store whose init() threw is resident but directoryless, and
       // every write to it then refuses (decisions § 660). Offering the peer
@@ -626,7 +628,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(
           find.descendant(
-              of: find.byType(SurfacePeerStrip), matching: find.text('Routines')),
+              of: find.byType(SurfacePeerStrip),
+              matching: find.text('Gym routines')),
           findsNothing);
       expect(
           find.descendant(
@@ -634,12 +637,13 @@ void main() {
           findsOneWidget);
     });
 
-    testWidgets('Routines opens the routine library', (tester) async {
+    testWidgets('Gym routines opens the routine library', (tester) async {
       final s = await seed(tester);
       await tester.pumpWidget(_gymScreen(s.store, s.routines));
       await tester.pumpAndSettle();
       await tester.tap(find.descendant(
-          of: find.byType(SurfacePeerStrip), matching: find.text('Routines')));
+          of: find.byType(SurfacePeerStrip),
+          matching: find.text('Gym routines')));
       await tester.pumpAndSettle();
       expect(find.byType(RoutineLibraryScreen), findsOneWidget);
     });
@@ -658,9 +662,12 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      final sessions = find.descendant(
-          of: find.byType(SurfacePeerStrip), matching: find.text('Sessions'));
+      final strip = find.byType(SurfacePeerStrip);
+      final sessions =
+          find.descendant(of: strip, matching: find.text('Session plans'));
       expect(sessions, findsOneWidget);
+      expect(find.descendant(of: strip, matching: find.text('Sessions')),
+          findsNothing);
       await tester.tap(sessions);
       await tester.pumpAndSettle();
       expect(find.byType(SessionsScreen), findsOneWidget);

@@ -693,6 +693,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get gymTabRecords => '記録';
 
   @override
+  String get gymPeerRoutines => 'ジムルーティン';
+
+  @override
+  String get gymPeerSessions => 'セッションプラン';
+
+  @override
   String get homeAskCoach => 'コーチに相談';
 
   @override
@@ -11561,6 +11567,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get challengesDelete => '削除';
+
+  @override
+  String get challengesDeleteChallenge => 'チャレンジを削除';
 
   @override
   String get challengesMetricDistance => '距離';

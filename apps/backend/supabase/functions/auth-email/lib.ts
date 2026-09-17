@@ -16,6 +16,25 @@ import { timingSafeEqual } from '../_shared/webhook_security.ts';
 
 const BRAND_NAME = 'Threkir';
 const BRAND_COLOR = '#2C5F6E';
+/// The header mark, served off the web apex (apps/web/static/email-logo.png).
+/// Resolved against the GoTrue Site URL rather than SUPABASE_URL — the asset
+/// lives with the web app, not the API.
+const BRAND_LOGO_PATH = '/email-logo.png';
+
+/// The header bar's contents: the mark beside the wordmark, matching the Go
+/// worker's renderBrandLockup. alt is empty on purpose — the wordmark next to
+/// it already says the brand, so a populated alt announces it twice. With no
+/// site URL the wordmark stands alone rather than a broken image.
+function renderBrandLockup(siteUrl: string | undefined): string {
+  const wordmark =
+    `<span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px;">${BRAND_NAME}</span>`;
+  const base = (siteUrl ?? '').replace(/\/+$/, '');
+  if (!base) return wordmark;
+  return `<table role="presentation" cellpadding="0" cellspacing="0"><tr>` +
+    `<td style="padding-right:12px;line-height:0;"><img src="${escapeHtml(base + BRAND_LOGO_PATH)}" width="32" height="32" alt="" style="display:block;border:0;"></td>` +
+    `<td style="vertical-align:middle;">${wordmark}</td>` +
+    `</tr></table>`;
+}
 
 // ─────────────────── Standard Webhooks verification ───────────────────
 
@@ -1119,14 +1138,16 @@ function escapeHtml(s: string): string {
 
 /// Layout port of the worker's renderTextBody/renderHTMLBody: hidden
 /// preheader, branded header bar, H1, paragraphs, bulletproof CTA
-/// button, muted footer. The CTA verify link is the ONLY URL in the
-/// message — the web e2e mail fixture extracts the first URL it finds,
-/// so nothing may link before it. The OTP code, when present, renders
-/// as its own spaced block below the paragraphs.
+/// button, muted footer. The CTA verify link is the only ANCHOR in the
+/// message, which is what the web e2e mail fixture keys on; the header
+/// mark's <img src> precedes it, so a first-URL match would return the
+/// logo (see tests-e2e/fixtures/mailpit.ts). Do not add a second anchor
+/// above the CTA. The OTP code, when present, renders as its own spaced
+/// block below the paragraphs.
 export function renderAuthEmail(
   locale: string,
   send: PlannedSend,
-  opts: { supabaseUrl: string; redirectTo?: string },
+  opts: { supabaseUrl: string; redirectTo?: string; siteUrl?: string },
 ): RenderedAuthEmail {
   const loc = normalizeEmailLocale(locale);
   const strings = lookupAuthEmailStrings(loc, send.catalogueKey);
@@ -1168,7 +1189,7 @@ export function renderAuthEmail(
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(strings.preheader)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;"><tr><td align="center" style="padding:24px 12px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-<tr><td style="background:${BRAND_COLOR};padding:20px 32px;"><span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px;">${BRAND_NAME}</span></td></tr>
+<tr><td style="background:${BRAND_COLOR};padding:20px 32px;">${renderBrandLockup(opts.siteUrl)}</td></tr>
 <tr><td style="padding:32px;"><h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;color:#111827;">${escapeHtml(strings.heading)}</h1>${paras}${cta}</td></tr>
 <tr><td style="padding:20px 32px;border-top:1px solid #e5e7eb;"><p style="margin:0;font-size:12px;line-height:1.5;color:#9ca3af;">${escapeHtml(shared.footer)}</p></td></tr>
 </table></td></tr></table>

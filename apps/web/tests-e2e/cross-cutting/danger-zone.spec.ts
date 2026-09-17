@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { readMaybeRow } from '../fixtures/db-read';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
 
@@ -48,8 +49,11 @@ test.describe('destructive deletes live in a danger zone', () => {
 		await dialog.getByRole('button', { name: 'Cancel' }).click();
 		await expect(dialog).toHaveCount(0);
 
-		const club = await getAdminClient().from('clubs').select('id').eq('slug', RICHMOND_SLUG).maybeSingle();
-		expect(club.data).not.toBeNull();
+		const club = await readMaybeRow(
+			'the club after Cancel',
+			getAdminClient().from('clubs').select('id').eq('slug', RICHMOND_SLUG).maybeSingle()
+		);
+		expect(club).not.toBeNull();
 	});
 
 	test('/challenges/[id]: Delete challenge is separated from Leave and Edit, and asks first', async ({
@@ -88,8 +92,11 @@ test.describe('destructive deletes live in a danger zone', () => {
 			await dialog.getByRole('button', { name: 'Cancel' }).click();
 			await expect(dialog).toHaveCount(0);
 
-			const still = await admin.from('challenges').select('id').eq('id', challengeId).maybeSingle();
-			expect(still.data).not.toBeNull();
+			const still = await readMaybeRow(
+				'the challenge after Cancel',
+				admin.from('challenges').select('id').eq('id', challengeId).maybeSingle()
+			);
+			expect(still).not.toBeNull();
 		} finally {
 			await admin.from('challenges').delete().eq('id', challengeId);
 		}

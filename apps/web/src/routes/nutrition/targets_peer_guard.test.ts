@@ -41,7 +41,7 @@ test('both body-metrics CTAs deep-link to a section the settings still carry', (
 	] as const) {
 		assert.match(
 			src,
-			/href="\/settings\/preferences#body-metrics"/,
+			/href="\/settings\/body#body-metrics"/,
 			`${name} lost its body-metrics deep link`,
 		);
 	}

@@ -195,18 +195,31 @@ void main() {
           reason: 'mirrors the auto_awesome glyph web pairs with the label');
     });
 
-    test('the toolbar is down to four glyphs', () {
-      // Five unlabelled glyphs crowded the toolbar; removing the recap leaves
-      // coach / feed / notification bell / profile.
+    test('the toolbar is down to three glyphs, none of them a duplicate', () {
+      // Five unlabelled glyphs crowded the toolbar. The recap went first;
+      // the coach followed (issue #921) because `_coachEntry()` is a labelled
+      // card 8 dp below it, which left the glyph as a second, mute route to
+      // one screen. Feed / bell / profile have no other entry point on Home.
       final start = src.indexOf('final actions = <Widget>[');
       final end = src.indexOf('final actionToolbar', start);
       expect(start, greaterThan(0));
       expect(end, greaterThan(start));
       final block = src.substring(start, end);
-      expect('IconButton('.allMatches(block).length, 3,
-          reason: 'coach + feed + profile are IconButtons; the bell is its '
-              'own widget, so four glyphs in total');
+      expect('IconButton('.allMatches(block).length, 2,
+          reason: 'feed + profile are IconButtons; the bell is its own '
+              'widget, so three glyphs in total');
       expect(block.contains('NotificationBell('), isTrue);
+      expect(block.contains('Icons.psychology_outlined'), isFalse,
+          reason: 'the coach is reached by its labelled card, not a glyph');
+    });
+
+    test('the toolbar names the surface it sits on', () {
+      // Home opened on glyphs and no title at all; the bottom-nav label that
+      // named it is at the far end of the phone.
+      final at = src.indexOf('final actionToolbar');
+      final block = src.substring(at, at + 600);
+      expect(block.contains('l10n.navHome'), isTrue,
+          reason: 'the inline toolbar carries the surface title');
     });
   });
 }

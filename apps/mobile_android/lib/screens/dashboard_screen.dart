@@ -3,7 +3,13 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppSemanticColors, ChartCardHeader, ChartPalette, ProgressBar;
+    show
+        ActivityLoaderKind,
+        AppSemanticColors,
+        ChartCardHeader,
+        ChartPalette,
+        FullBodyLoader,
+        ProgressBar;
 
 import '../adaptive_width.dart';
 import '../age_grade.dart';
@@ -33,6 +39,7 @@ import '../widgets/load_ramp_card.dart';
 import '../widgets/race_predictor_card.dart';
 import '../widgets/gym_summary_card.dart';
 import '../widgets/notification_bell.dart';
+import '../widgets/pending_sync_banner.dart';
 import '../run_intensity.dart';
 import '../widgets/intensity_card.dart';
 import '../widgets/mileage_trend_card.dart';
@@ -111,8 +118,21 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
+/// What the SERVER says about this account's history — the one thing the
+/// runless welcome state is a claim about and local disk cannot answer. A
+/// fresh install hydrates an empty store before the first frame, so a
+/// disk-only gate told the owner of 500 synced runs they had never run
+/// (issue #921).
+enum _AccountHistory { unknown, none, some }
+
 class _DashboardScreenState extends State<DashboardScreen>
-    with AuthChangeAware<DashboardScreen> {
+    with AuthChangeAware<DashboardScreen>, WidgetsBindingObserver {
+  _AccountHistory _history = _AccountHistory.unknown;
+
+  /// Whether the last hydrate reached the server. Feeds the pending-sync
+  /// banner's retry affordance, nothing else.
+  bool _isOnline = true;
+
   /// Memoised fastest-5k window per run id. Rescanning a 200-run history
   /// with several thousand waypoints each on every rebuild (and the
   /// dashboard rebuilds every time a listener fires) is the hottest loop
@@ -163,6 +183,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     widget.gymStore.addListener(_onChange);
     widget.foodStore.addListener(_onChange);
     widget.training?.addListener(_refreshPlanOverview);
+    WidgetsBinding.instance.addObserver(this);
     _refreshPlanOverview();
     _hydrateModalities();
     _loadPersonalRecords();
@@ -172,6 +193,32 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   @override
   ApiClient? get authApi => widget.apiClient;
+
+  /// Every loader this screen owns, in parallel. Home is page 0 of a
+  /// never-torn-down keep-alive `PageView`, so before this its five loaders
+  /// ran once at mount and never again: `SyncService` kept the runs list
+  /// moving on resume while the PBs, the streak, the plan and the meals sat
+  /// at whatever they were when the app first opened (issue #921).
+  Future<void> _refreshAll() async {
+    try {
+      await Future.wait([
+        _refreshPlanOverview(),
+        _hydrateModalities(),
+        _loadPersonalRecords(),
+        _loadViewerProfile(),
+        _loadRunStreaks(),
+      ]);
+    } catch (e) {
+      // Each loader already degrades on its own; this only stops one of them
+      // failing the pull-to-refresh gesture for the other four.
+      debugPrint('dashboard refresh failed: $e');
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refreshAll();
+  }
 
   /// The dashboard is page 0 of the never-torn-down keep-alive PageView,
   /// so its initState-fetched per-user caches outlive the session that
@@ -186,6 +233,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       _nutritionTargets = null;
       _viewerProfile = null;
       _allTimeStreaks = null;
+      _history = _AccountHistory.unknown;
       _bestEffortCache.clear();
     });
     _refreshPlanOverview();
@@ -269,6 +317,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     widget.gymStore.removeListener(_onChange);
     widget.foodStore.removeListener(_onChange);
     widget.training?.removeListener(_refreshPlanOverview);
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -284,12 +333,42 @@ class _DashboardScreenState extends State<DashboardScreen>
   /// must not block the food fetch, and neither can break the dashboard.
   Future<void> _hydrateModalities() async {
     final api = widget.apiClient;
-    if (api == null || api.userId == null) return;
+    if (api == null || api.userId == null) {
+      // Signed out, the local disk IS the whole truth about this device.
+      if (mounted) setState(() => _history = _AccountHistory.none);
+      return;
+    }
+    var hasHistory = false;
+    var online = true;
     try {
       final fresh = await api.fetchGymWorkoutsWithSets(limit: 100);
       await widget.gymStore.replaceFromServer(fresh, fetchLimit: 100);
+      hasHistory = hasHistory || fresh.isNotEmpty;
     } catch (e) {
       debugPrint('dashboard gym hydrate failed: $e');
+      online = false;
+    }
+    try {
+      // One row is the whole question: has this account ever recorded a run?
+      // The runs themselves are SyncService's job, not this screen's.
+      hasHistory = hasHistory || (await api.getRuns(limit: 1)).isNotEmpty;
+    } catch (e) {
+      debugPrint('dashboard run probe failed: $e');
+      online = false;
+    }
+    // Answered as early as it can be: the two hops above are the whole
+    // question, and the food + target hops below would otherwise hold the
+    // welcome state behind two calls that cannot change the answer.
+    if (mounted) {
+      setState(() {
+        _isOnline = online;
+        // Offline with an empty disk resolves to `none` rather than staying
+        // unknown: there is nothing to show either way, and the welcome
+        // state's own actions (record, import) are the only useful thing
+        // left — a permanent loader would not be more honest, just less
+        // usable.
+        _history = hasHistory ? _AccountHistory.some : _AccountHistory.none;
+      });
     }
     try {
       final now = DateTime.now();
@@ -685,24 +764,16 @@ class _DashboardScreenState extends State<DashboardScreen>
     final viewerId = api?.userId;
 
     // Inline action toolbar — replaces the previous AppBar so the
-    // dashboard's content can sit flush with the top inset. Empty
-    // when there's no signed-in api (the welcome state takes over).
+    // dashboard's content can sit flush with the top inset.
+    //
+    // The Coach glyph is deliberately absent: `_coachEntry()` is a labelled
+    // card 8 dp below it, so the toolbar's leading icon was a second, mute
+    // route to the same screen — and a tooltip is not a label on a touch
+    // device (#666 I8, the ruling that turned the recap glyph into the
+    // labelled link under the period cards). The three that remain are
+    // destinations with no other entry point on Home.
     final actions = <Widget>[
       if (api != null) ...[
-        if (widget.training != null)
-          IconButton(
-            tooltip: l10n.dashboardCoachTooltip,
-            icon: const Icon(Icons.psychology_outlined),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => CoachScreen(
-                  api: api,
-                  training: widget.training!,
-                ),
-              ),
-            ),
-          ),
         IconButton(
           tooltip: l10n.dashboardFeedTooltip,
           icon: const Icon(Icons.dynamic_feed_outlined),
@@ -725,26 +796,98 @@ class _DashboardScreenState extends State<DashboardScreen>
           ),
       ],
     ];
-    final actionToolbar = actions.isEmpty
-        ? null
-        : Padding(
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: actions,
-            ),
-          );
+    // Home opened on four glyphs and no title at all — nothing on the screen
+    // said which surface it was, and the bottom-nav label is 700 dp away at
+    // the other end of the phone. The title is the row's first child so the
+    // actions read as belonging to it.
+    final actionToolbar = Padding(
+      padding: EdgeInsets.fromLTRB(16, 8, actions.isEmpty ? 16 : 8, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(l10n.navHome, style: theme.textTheme.headlineSmall),
+          ),
+          ...actions,
+        ],
+      ),
+    );
+
+    // Active-plan hero + the goals block: both outlive the welcome state,
+    // because onboarding can mint a plan and a goal before the first run
+    // exists and neither is a derived metric.
+    final heroWorkoutCard = _planOverview?.todayWorkout != null
+        ? TodaysWorkoutCard(
+            overview: _planOverview!,
+            onTap: _openTodayWorkout,
+          )
+        : null;
+    final pendingBanner = PendingSyncBanner(
+      api: api,
+      isOnline: _isOnline,
+      stores: [widget.gymStore, widget.foodStore],
+    );
+
+    // Web's `isNewAccount`: no runs all-time AND no gym sessions. A goal is
+    // deliberately not in it — the welcome copy offers "set a goal" as one of
+    // its own three actions, and the old `runs.isEmpty && goals.isEmpty` gate
+    // had accepting that offer replace the welcome with three zeroed period
+    // cards, a 0-day streak, a blank 20-week heatmap and an empty load chart.
+    // A lifter with 50 sessions and no runs got the same screen telling them
+    // to record a run (issue #921).
+    final hasLocalHistory =
+        runs.isNotEmpty || widget.gymStore.workouts.isNotEmpty;
 
     final Widget content;
-    if (runs.isEmpty && goals.isEmpty) {
-      content = Column(
+    if (!hasLocalHistory && _history != _AccountHistory.none) {
+      // Either the server has not answered yet or it says there IS history
+      // that this device's disk has not received. Neither is a runless
+      // account, so neither may be told it has never run.
+      content = ListView(
+        // Shorter than the viewport, so without this the pull-to-refresh
+        // gesture has no overscroll to report and silently does nothing.
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         children: [
-          if (actionToolbar != null) actionToolbar,
-          // #272: no "Ask your coach" card on the brand-new zero-runs
-          // welcome screen — it used to dominate above the onboarding
-          // buttons. It returns once the runner has data (the
-          // non-empty branch, gated on runs.isNotEmpty below).
-          Expanded(
+          actionToolbar,
+          pendingBanner,
+          const SizedBox(height: 48),
+          FullBodyLoader(
+            kind: ActivityLoaderKind.run,
+            label: l10n.commonLoading,
+          ),
+        ],
+      );
+    } else if (!hasLocalHistory) {
+      content = CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                actionToolbar,
+                pendingBanner,
+                // #272: no "Ask your coach" card on the brand-new zero-runs
+                // welcome screen — it used to dominate above the onboarding
+                // buttons. It returns once the runner has data (the
+                // non-empty branch, gated on runs.isNotEmpty below).
+                if (heroWorkoutCard != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: heroWorkoutCard,
+                  ),
+                if (goals.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: _goalsSection(theme, unit, runs, goals, now),
+                  ),
+              ],
+            ),
+          ),
+          // Fills the rest of the viewport so the welcome block stays
+          // centred when nothing sits above it, and scrolls once a plan or
+          // a goal does.
+          SliverFillRemaining(
+            hasScrollBody: false,
             child: _WelcomeEmpty(
               theme: theme,
               onStartRun: widget.onStartRun,
@@ -764,12 +907,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       // Active-plan hero: surface the day's structured workout above
       // goals so a plan-runner sees what's next before scrolling. Hidden
       // when no active plan or no workout today.
-      final workoutCard = _planOverview?.todayWorkout != null
-          ? TodaysWorkoutCard(
-              overview: _planOverview!,
-              onTap: _openTodayWorkout,
-            )
-          : null;
+      final workoutCard = heroWorkoutCard;
       final goalsSection = _goalsSection(theme, unit, runs, goals, now);
       // Compact 3-column stat strip — replaced the previous stacked
       // "This Week" / "This Month" / "All Time" cards (~480 px each +
@@ -981,7 +1119,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           ListView(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             children: [
-              if (actionToolbar != null) actionToolbar,
+              actionToolbar,
               if (coach != null) ...[coach, _kSectionGap],
               if (workoutCard != null || modalityBody != null)
                 Row(
@@ -1037,7 +1175,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         content = ListView(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           children: [
-            if (actionToolbar != null) actionToolbar,
+            actionToolbar,
             if (coach != null) ...[coach, _kSectionGap],
             if (workoutCard != null) ...[workoutCard, _kSectionGap],
             // Today's logged non-run modalities (gym + nutrition).
@@ -1081,7 +1219,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       // that inset implicitly before).
       body: SafeArea(
         bottom: false,
-        child: content,
+        child: RefreshIndicator(onRefresh: _refreshAll, child: content),
       ),
     );
   }

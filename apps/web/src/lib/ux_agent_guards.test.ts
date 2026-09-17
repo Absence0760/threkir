@@ -23,6 +23,7 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { readFileSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { resolve, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -58,7 +59,36 @@ function citations(file: string): string[] {
 	return [...src.matchAll(/`([^`\n]+)`/g)].map((m) => m[1].trim()).filter(isClaim);
 }
 
-test('every repo path the UX toolchain cites still exists', () => {
+// Liveness is decided against git, not the filesystem, so the answer is the
+// same in a fresh clone as on a workstation that has run the suites. A path
+// is live when it is TRACKED, or when it is IGNORED — an ignored path is one
+// the repo deliberately does not carry but the flow still names, such as the
+// Playwright storage states globalSetup writes into `tests-e2e/.auth/`.
+// Checking `existsSync` instead would have passed those on a machine that had
+// run the e2e suite and failed them everywhere else.
+const tracked = new Set(
+	execFileSync('git', ['ls-files'], { cwd: repo, encoding: 'utf-8', maxBuffer: 64 << 20 })
+		.split('\n')
+		.filter(Boolean),
+);
+const trackedDirs = new Set<string>();
+for (const f of tracked) {
+	const parts = f.split('/');
+	for (let i = 1; i < parts.length; i++) trackedDirs.add(parts.slice(0, i).join('/'));
+}
+
+function isLive(p: string): boolean {
+	const clean = p.replace(/\/$/, '');
+	if (tracked.has(clean) || trackedDirs.has(clean)) return true;
+	try {
+		execFileSync('git', ['check-ignore', '-q', '--', clean], { cwd: repo });
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+test('every repo path the UX toolchain cites is still tracked (or deliberately ignored)', () => {
 	const dead: string[] = [];
 	let checked = 0;
 
@@ -66,7 +96,7 @@ test('every repo path the UX toolchain cites still exists', () => {
 		assert.ok(existsSync(resolve(repo, file)), `${file} is listed in UX_TOOLCHAIN but missing.`);
 		for (const p of citations(file)) {
 			checked++;
-			if (!existsSync(resolve(repo, p))) dead.push(`${file} -> ${p}`);
+			if (!isLive(p)) dead.push(`${file} -> ${p}`);
 		}
 	}
 
@@ -74,7 +104,7 @@ test('every repo path the UX toolchain cites still exists', () => {
 	assert.deepEqual(
 		dead,
 		[],
-		`these agent/command files point at paths the tree no longer has, so the agent ` +
+		`these agent/command files point at paths git no longer tracks, so the agent ` +
 			`will read nothing and proceed on memory: ${dead.join('; ')}. Update the ` +
 			`citation to where the thing lives now — do not delete the pointer.`,
 	);

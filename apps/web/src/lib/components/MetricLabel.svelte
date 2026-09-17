@@ -16,7 +16,7 @@
 	/// positioned panel is clipped by the first and dragged by the second. It
 	/// stays in the DOM beside its trigger either way, so reading order, focus
 	/// order and the live region are the same with or without the API.
-	import { onDestroy, untrack } from 'svelte';
+	import { untrack } from 'svelte';
 	import { m } from '$lib/i18n/store.svelte';
 	import type { MessageKey } from '$lib/i18n/messages';
 	import { METRICS, splitAtTerm, type MetricEntry, type MetricId } from '$lib/metrics/metric_registry';
@@ -99,13 +99,10 @@
 		}
 	}
 
-	function detach() {
-		document.removeEventListener('pointerdown', onDocPointer, true);
-		document.removeEventListener('keydown', onKeydown);
-		removeEventListener('scroll', place, true);
-		removeEventListener('resize', place);
-	}
-
+	// The listeners live only while the panel is open, and the effect's
+	// teardown removes them on close and on unmount alike. An `onDestroy` would
+	// also run in the server renderer, where there is no `document`, and throw
+	// on every server-rendered page that shows a metric name.
 	$effect(() => {
 		if (!open || !panel) return;
 		if (supportsPopover(panel) && !panel.matches(':popover-open')) panel.showPopover();
@@ -114,10 +111,13 @@
 		document.addEventListener('keydown', onKeydown);
 		addEventListener('scroll', place, { capture: true, passive: true });
 		addEventListener('resize', place, { passive: true });
-		return detach;
+		return () => {
+			document.removeEventListener('pointerdown', onDocPointer, true);
+			document.removeEventListener('keydown', onKeydown);
+			removeEventListener('scroll', place, true);
+			removeEventListener('resize', place);
+		};
 	});
-
-	onDestroy(detach);
 </script>
 
 {#snippet text()}{#if labelFor}<label class="metric-caption" for={labelFor}>{name}</label>{:else}{name}{/if}{/snippet}

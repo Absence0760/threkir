@@ -511,6 +511,17 @@ whole. **Never pass a `.slice()` result into a meta tag**; the budget is a
 ceiling on characters, not on bytes or on pixels, and no consumer's own
 truncation is being predicted here.
 
+The cluster guarantee is unconditional on every runtime that serves a crawler —
+each share Lambda is Node 24 with full ICU — and conditional in the tab on
+exactly Firefox 121-124, the only slice of the stated browser floor without
+`Intl.Segmenter`. There the cut degrades to the § 1478 code-unit one, so a
+title can differ between what the crawler was served and what the reader's tab
+shows. That is a kept, dated exception rather than an open question:
+`browser_baseline_guard.test.ts` carries it with the release that retires it,
+and fails the moment the floor reaches Firefox 125
+([§ 1658](../architecture/decisions.md), and
+[conventions.md § Web browser baseline](../architecture/conventions.md)).
+
 `share/share_head_clipping.test.ts` is the census half, and the sibling of
 `share_head_escaping.test.ts`: that one proves a hostile field cannot break out
 of the markup, this one proves an enormous one cannot get in at all. It calls

@@ -28,7 +28,6 @@ import {
 	INGEST,
 	ROUTE_BRIDGE,
 	PHONE_PBXPROJ,
-	UNGUARDED_DESTRUCTIVE,
 	WEAR_COVERAGE,
 	check,
 	credentialSites,
@@ -810,20 +809,67 @@ test('claim (8) fails when every confirmationDialog is deleted', () => {
 	);
 });
 
-test('claim (8) fails on an exemption for a button that no longer exists', () => {
-	assert.ok(
-		Object.keys(UNGUARDED_DESTRUCTIVE).length > 0,
-		'the register is empty, so the staleness test below proves nothing',
-	);
+// --- claim 15: the stop control is held, not tapped -------------------------
+
+test('claim (15) fails when a Button ends the recording on a tap', () => {
 	const { errors } = runMutated((dir) => {
-		const f = join(dir, SYNC);
-		writeFileSync(
-			f,
-			readFileSync(f, 'utf8').replace('Button("Stop", role: .destructive)', 'Button("Halt", role: .destructive)'),
+		edit(dir, SYNC, (s) =>
+			s.replace(
+				'HoldToStopButton { workoutManager.stop() }',
+				'Button("Stop") { workoutManager.stop() }',
+			),
 		);
 	});
 	assert.ok(
-		errors.some((e) => e.includes('UNGUARDED_DESTRUCTIVE exempts a destructive Button')),
+		errors.some((e) => e.includes('ends the recording on a single tap')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (15) fails when one of the two stop sites loses its hold', () => {
+	// The paused screen's Stop is the one a reader forgets: Wear OS renders
+	// both from one composable, this app has two call sites.
+	const { errors } = runMutated((dir) => {
+		edit(dir, SYNC, (s) =>
+			s.replace('HoldToStopButton { workoutManager.stop() }', 'tapped { workoutManager.stop() }'),
+		);
+	});
+	assert.ok(
+		errors.some((e) => e.includes('HoldToStopButton')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (15) fails when the press duration no longer decides the stop', () => {
+	// A ring that fills while something else decides when to fire reads as a
+	// guard and is not one — and nothing about the gesture would say so.
+	const { errors } = runMutated((dir) => {
+		edit(dir, SYNC, (s) => s.replaceAll('HoldToStop.isComplete(', 'alwaysTrue('));
+	});
+	assert.ok(
+		errors.some((e) => e.includes('no longer calls `HoldToStop.isComplete`')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (15) fails vacuity rather than passing when no stop call is left to read', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, SYNC, (s) => s.replaceAll('workoutManager.stop()', 'workoutManager.halt()'));
+	});
+	assert.ok(
+		errors.some((e) => e.includes('claim (15) would pass vacuously')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (15) fails when the duration constant is unreadable', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, join('WatchApp', 'HoldToStop.swift'), (s) =>
+			s.replace('static let duration: TimeInterval = 0.8', 'static let duration = holdMs()'),
+		);
+	});
+	assert.ok(
+		errors.some((e) => e.includes('`HoldToStop.duration` is unreadable')),
 		errors.join('\n'),
 	);
 });

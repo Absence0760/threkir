@@ -122,17 +122,6 @@
         "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Distância" } }
       }
     },
-    "Ends the run and opens the summary" : {
-      "comment" : "VoiceOver hint on the Stop button.",
-      "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Beendet den Lauf und öffnet die Zusammenfassung" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Finaliza la carrera y abre el resumen" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Termine la course et ouvre le récapitulatif" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ランを終了してサマリーを開きます" } },
-        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Encerra a corrida e abre o resumo" } },
-        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Termina a corrida e abre o resumo" } }
-      }
-    },
     "HR" : {
       "comment" : "Heart-rate stat column header; short abbreviation.",
       "localizations" : {
@@ -704,6 +693,17 @@
         "ja" : { "stringUnit" : { "state" : "translated", "value" : "カウントダウンをキャンセル" } },
         "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Cancelar a contagem regressiva" } },
         "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Cancelar a contagem decrescente" } }
+      }
+    },
+    "Hold to end the run and open the summary" : {
+      "comment" : "VoiceOver hint on the in-run Stop control, which fires only after an 800 ms press.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gedrückt halten, um den Lauf zu beenden und die Zusammenfassung zu öffnen" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Mantén pulsado para terminar la carrera y abrir el resumen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Maintenez pour terminer la course et ouvrir le récapitulatif" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "長押しでランを終了し、サマリーを開きます" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Mantenha pressionado para encerrar a corrida e abrir o resumo" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Mantenha premido para terminar a corrida e abrir o resumo" } }
       }
     }
   }

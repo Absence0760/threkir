@@ -430,14 +430,84 @@ struct RunStatsView: View {
                 .tint(AppTheme.duskDeep)
                 .accessibilityHint("Pauses the recording without ending it")
 
-                Button("Stop") {
-                    workoutManager.stop()
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(AppTheme.error)
-                .accessibilityHint("Ends the run and opens the summary")
+                HoldToStopButton { workoutManager.stop() }
             }
         }
+    }
+}
+
+// MARK: - Hold to Stop
+
+/// Stop, gated on an 800 ms press with a ring that fills as it is held —
+/// Wear OS's `HoldToStopButton`. Releasing early cancels and the ring falls
+/// back to empty, so an accidental brush costs nothing and a deliberate press
+/// costs less than a second.
+///
+/// See `HoldToStop` for why this control is held rather than confirmed.
+struct HoldToStopButton: View {
+    let onStop: () -> Void
+
+    @State private var progress: Double = 0
+    @State private var holdTask: Task<Void, Never>?
+
+    private let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+
+    var body: some View {
+        Text("Stop")
+            .font(.body)
+            .foregroundColor(AppTheme.parchment)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 6)
+            .background(shape.fill(AppTheme.error))
+            .overlay(
+                shape
+                    .trim(from: 0, to: progress)
+                    .stroke(
+                        AppTheme.parchment,
+                        style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                    )
+            )
+            .contentShape(shape)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in beginHold() }
+                    .onEnded { _ in cancelHold() }
+            )
+            .onDisappear { cancelHold() }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Stop")
+            .accessibilityHint("Hold to end the run and open the summary")
+            .accessibilityAddTraits(.isButton)
+            // VoiceOver activates by double-tap, which is already the
+            // deliberate press the hold exists to require — and a hold is not
+            // something the rotor can perform at all. Holding the assistive
+            // path to the same gesture would make Stop unreachable rather
+            // than safer.
+            .accessibilityAction { onStop() }
+    }
+
+    private func beginHold() {
+        guard holdTask == nil else { return }
+        holdTask = Task { @MainActor in
+            let started = Date()
+            while !Task.isCancelled {
+                let elapsed = Date().timeIntervalSince(started)
+                progress = HoldToStop.progress(elapsed: elapsed)
+                if HoldToStop.isComplete(elapsed: elapsed) {
+                    holdTask = nil
+                    progress = 0
+                    onStop()
+                    return
+                }
+                try? await Task.sleep(nanoseconds: NSEC_PER_SEC / 60)
+            }
+        }
+    }
+
+    private func cancelHold() {
+        holdTask?.cancel()
+        holdTask = nil
+        progress = 0
     }
 }
 
@@ -513,11 +583,7 @@ struct PausedView: View {
             .tint(AppTheme.coralDeep)
             .accessibilityHint("Resumes the paused recording")
 
-            Button("Stop", role: .destructive) {
-                workoutManager.stop()
-            }
-            .font(.caption)
-            .accessibilityHint("Ends the run and opens the summary")
+            HoldToStopButton { workoutManager.stop() }
         }
     }
 }

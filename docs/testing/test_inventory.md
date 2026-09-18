@@ -1136,7 +1136,7 @@ Run the pure-helper slices with `cd apps/backend && deno test --no-check supabas
 
 The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets to drive and are exercised manually only — see [apps/backend/CLAUDE.md § Testing without real credentials](../../apps/backend/CLAUDE.md#testing-without-real-credentials).
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 1,891 declared tests across 501 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 1,893 declared tests across 502 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 
@@ -1231,6 +1231,7 @@ tests-e2e/
     detail.spec.ts             — /plans/[id] (week grid, workout-day modal, PlanMetaEditor rename, publish-as-club-template)
     adjust-plan.spec.ts        — /plans/[id] Adjust plan (decisions § 1635): Shift dates / Re-plan remaining weeks / Adaptive re-plan / Pause plan are not loose on the page; the dialog lists all four, each with an accessible description saying what it does and when to use it, and each reaches its own flow (shift + pause confirm, both re-plans preview with the heading focused) with nothing written until confirmed
     publish-placement.spec.ts  — /plans/[id] both publish rows (club template, public library) sit in the labelled Share & publish section and follow the week-by-week plan in DOM order
+    reading-order.spec.ts      — /plans/[id] leads with today's session then this week, and every secondary block (Plan progress, Calendar, Week by week, Share & publish) follows them as a named `<details>` (decisions § 1658); second case shuts the Calendar expander, waits for the per-account blob `util/disclosure_state.ts` writes, reloads and finds it still shut with its siblings untouched. Asserted on the `<details>`'s own `open`, because Chromium hides a closed one through `::details-content`, which Playwright still reports as visible
     workout-detail.spec.ts     — /plans/[id]/workouts/[wid] (kind heading, back link)
   clubs/
     list.spec.ts               — /clubs (My + Browse tabs)

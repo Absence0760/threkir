@@ -172,6 +172,47 @@ Not paging on:
 - Single client-side JS error (Sentry rolls up; investigate on a schedule)
 - Worker `defer_job` calls (those are the *correct* response to a transient)
 
+### Synthetic checks on an API path assert `content-type`, not status
+
+The distribution maps `403 -> 200 /200.html` for **every** origin at once —
+`CustomErrorResponses` is a member of `DistributionConfig` and `CacheBehavior`
+has no error-response member at all, so the API behaviours cannot opt out of it
+([CloudFront API reference](https://docs.aws.amazon.com/cloudfront/latest/APIReference/API_CacheBehavior.html),
+confirmed 2026-09-18). The mapping is load-bearing — every SPA deep link is a
+missing S3 key, i.e. a 403 — and its cost is that **a refusal from any origin
+reaches the caller as `200 text/html`**. No status-code check can tell that from
+a working endpoint, which is how a malformed request read as a production outage
+in September 2026 and produced a merged fix for a bug that did not exist (#938,
+reverted by #941; [decisions § 1656](../architecture/decisions.md)).
+
+`bin/preview-status.sh <env>` step 2 runs
+[`scripts/probe_api_content_type.mjs`](../../scripts/probe_api_content_type.mjs),
+which derives every `/api/*` cache behaviour from
+`infra/modules/web-stack/main.tf` and asserts that each answers
+`application/json` on both GET and POST. Every API Lambda in this tree answers
+`application/json` for its refusals too, so an unauthenticated request is a
+complete test. Run it against any deployed host on its own:
+
+```bash
+node scripts/probe_api_content_type.mjs --host threkir.com
+node scripts/probe_api_content_type.mjs --derive   # offline; what CI runs
+```
+
+Two things follow for anyone adding an external monitor or debugging by hand:
+
+- **An HTML body on an `/api/*` path is a masked 403, not a broken handler.**
+  Check both CloudFront invoke grants on the function (`lambda:InvokeFunctionUrl`
+  **and** `lambda:InvokeFunction`, issue #590) before looking at the code — a
+  Function-URL refusal happens above the function, so there is no invocation,
+  no `Errors` metric and no log line to find.
+- **A POST through CloudFront must carry `x-amz-content-sha256`.** CloudFront
+  signs the origin request with sigv4 and "Lambda doesn't support unsigned
+  payloads"
+  ([OAC for Lambda function URLs](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html)),
+  so a POST without the viewer-supplied payload hash is refused at the origin
+  and served as the shell. It is the caller's header, not something an origin
+  request policy can add — #938 tried that and CloudFront refuses it.
+
 ---
 
 ## Backups and disaster recovery

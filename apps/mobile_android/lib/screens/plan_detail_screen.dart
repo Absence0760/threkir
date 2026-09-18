@@ -190,20 +190,27 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     );
   }
 
-  /// Summed actual run mileage dated inside `[weekIndex]`'s 7-day window.
-  double _actualMetresForWeek(TrainingPlanRow plan, int weekIndex) {
+  /// Actual runs dated inside `[weekIndex]`'s 7-day window, on their local
+  /// calendar day.
+  List<DriftRun> _runsForWeek(TrainingPlanRow plan, int weekIndex) {
     // Calendar days, not 24-hour spans: a plan whose weeks cross a DST
     // transition would otherwise shift every later boundary by an hour, and
     // a run logged in that hour lands in the wrong week.
     final weekStart = addDays(plan.startDate, weekIndex * 7);
     final weekEnd = addDays(weekStart, 7);
-    var actual = 0.0;
+    final runs = <DriftRun>[];
     for (final r in _recentRuns) {
       final t = r.startedAt.toLocal();
-      if (!t.isBefore(weekStart) && t.isBefore(weekEnd)) actual += r.distanceM;
+      if (!t.isBefore(weekStart) && t.isBefore(weekEnd)) {
+        runs.add(DriftRun(date: toIsoDate(t), distanceM: r.distanceM));
+      }
     }
-    return actual;
+    return runs;
   }
+
+  /// Summed actual run mileage dated inside `[weekIndex]`'s 7-day window.
+  double _actualMetresForWeek(TrainingPlanRow plan, int weekIndex) =>
+      _runsForWeek(plan, weekIndex).fold(0.0, (s, r) => s + r.distanceM);
 
   double _plannedMetresForWeek(PlanWeekRow week) {
     var planned = week.targetVolumeM ?? 0;
@@ -216,14 +223,27 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     return planned;
   }
 
-  /// Current-week mileage drift, or null when on-track / not the owner.
+  /// Current-week mileage drift vs the plan TO DATE, or null when on-track /
+  /// not the owner. Both sides are windowed to the week's days that have
+  /// already ended, so a part-elapsed week is not judged against its full
+  /// seven-day target.
   WeeklyDrift? _currentWeekDrift(TrainingPlanRow plan) {
     if (!_isOwner(plan) || _weeks.isEmpty) return null;
     final idx = _currentWeekIndex(plan);
     if (idx >= _weeks.length) return null;
     final week = _weeks[idx];
-    final d = weeklyDrift(
-        _plannedMetresForWeek(week), _actualMetresForWeek(plan, idx));
+    final d = weeklyDriftToDate(
+      workouts: (_byWeek[week.id] ?? const <PlanWorkoutRow>[])
+          .map((w) => DriftWorkout(
+                scheduledDate: toIsoDate(w.scheduledDate),
+                kind: w.kind,
+                targetDistanceM: w.targetDistanceM,
+              ))
+          .toList(),
+      runs: _runsForWeek(plan, idx),
+      today: toIsoDate(DateTime.now()),
+      weekTargetVolumeM: week.targetVolumeM,
+    );
     return d.flagged ? d : null;
   }
 

@@ -7818,7 +7818,7 @@
       }
     }
   },
-  "planDetailDriftOverFlag": "Running {pct}% over plan this week — ease back on the easy days so you don't dig a fatigue hole.",
+  "planDetailDriftOverFlag": "Running {pct}% over plan so far this week — ease back on the easy days so you don't dig a fatigue hole.",
   "@planDetailDriftOverFlag": {
     "description": "Plan-detail adherence/replan/duplicate",
     "placeholders": {
@@ -7827,9 +7827,9 @@
       }
     }
   },
-  "planDetailDriftUnderFlag": "So far this week you've run {done} of the {planned} planned.",
+  "planDetailDriftUnderFlag": "So far this week you've run {done} of the {planned} due by now.",
   "@planDetailDriftUnderFlag": {
-    "description": "Plan-detail adherence: distance run so far this week against the week's planned distance, both already formatted with their unit",
+    "description": "Plan-detail adherence: distance run so far this week against the distance the plan has asked for up to today, both already formatted with their unit",
     "placeholders": {
       "done": {
         "type": "String"

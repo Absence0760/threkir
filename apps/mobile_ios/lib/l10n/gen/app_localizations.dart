@@ -9577,13 +9577,13 @@ abstract class AppLocalizations {
   /// Plan-detail adherence/replan/duplicate
   ///
   /// In en, this message translates to:
-  /// **'Running {pct}% over plan this week — ease back on the easy days so you don\'t dig a fatigue hole.'**
+  /// **'Running {pct}% over plan so far this week — ease back on the easy days so you don\'t dig a fatigue hole.'**
   String planDetailDriftOverFlag(int pct);
 
-  /// Plan-detail adherence: distance run so far this week against the week's planned distance, both already formatted with their unit
+  /// Plan-detail adherence: distance run so far this week against the distance the plan has asked for up to today, both already formatted with their unit
   ///
   /// In en, this message translates to:
-  /// **'So far this week you\'ve run {done} of the {planned} planned.'**
+  /// **'So far this week you\'ve run {done} of the {planned} due by now.'**
   String planDetailDriftUnderFlag(String done, String planned);
 
   /// Plan-detail adherence/replan/duplicate

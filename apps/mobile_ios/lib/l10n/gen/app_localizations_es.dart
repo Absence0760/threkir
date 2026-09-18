@@ -5830,12 +5830,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String planDetailDriftOverFlag(int pct) {
-    return 'Esta semana $pct% por encima del plan — afloja en los días suaves para no cavar un hoyo de fatiga.';
+    return 'Esta semana, de momento $pct% por encima del plan — afloja en los días suaves para no cavar un hoyo de fatiga.';
   }
 
   @override
   String planDetailDriftUnderFlag(String done, String planned) {
-    return 'Esta semana llevas $done de los $planned previstos.';
+    return 'Esta semana llevas $done de los $planned previstos hasta ahora.';
   }
 
   @override

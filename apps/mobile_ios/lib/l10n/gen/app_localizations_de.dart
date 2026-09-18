@@ -5848,12 +5848,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String planDetailDriftOverFlag(int pct) {
-    return 'Diese Woche $pct% über Plan — nimm an den lockeren Tagen zurück, damit du kein Müdigkeitsloch gräbst.';
+    return 'Diese Woche bisher $pct% über Plan — nimm an den lockeren Tagen zurück, damit du kein Müdigkeitsloch gräbst.';
   }
 
   @override
   String planDetailDriftUnderFlag(String done, String planned) {
-    return 'Diese Woche bisher gelaufen: $done von $planned geplant.';
+    return 'Diese Woche bisher gelaufen: $done von $planned, die bis jetzt geplant waren.';
   }
 
   @override

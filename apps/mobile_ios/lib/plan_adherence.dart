@@ -4,7 +4,10 @@
 ///  1. Weekly mileage drift — flags when actual weekly volume runs more
 ///     than ±20% off the plan. BOTH directions matter: under-running loses
 ///     the adaptation; over-running the easy weeks is the classic way a
-///     motivated runner digs a fatigue hole.
+///     motivated runner digs a fatigue hole. `weeklyDrift` takes a finished
+///     week's two totals; a week still in progress goes through
+///     `weeklyDriftToDate`, which windows both sides to the days that have
+///     already ended.
 ///
 ///  2. Missed-long-run advice — a make-up / skip recommendation for a long
 ///     run the runner blew past, driven by training phase and proximity to
@@ -74,6 +77,80 @@ WeeklyDrift weeklyDrift(
     direction: direction,
     flagged: direction != DriftDirection.onTrack,
   );
+}
+
+/// One plan workout, reduced to what the to-date baseline needs.
+class DriftWorkout {
+  /// Local ISO date (YYYY-MM-DD) the workout is scheduled for.
+  final String scheduledDate;
+
+  /// Workout kind from the plan (`long`, `rest`, …).
+  final String kind;
+  final double? targetDistanceM;
+
+  const DriftWorkout({
+    required this.scheduledDate,
+    required this.kind,
+    required this.targetDistanceM,
+  });
+}
+
+/// One logged run, already scoped by the caller to the plan week.
+class DriftRun {
+  /// Local ISO date (YYYY-MM-DD) the run started on.
+  final String date;
+  final double distanceM;
+
+  const DriftRun({required this.date, required this.distanceM});
+}
+
+/// Current-week drift measured against the plan TO DATE rather than the whole
+/// week. The window is the week's days that have already ended —
+/// `scheduledDate < today` on the planned side, run date `< today` on the
+/// actual side — so a session still due at the end of today counts on neither.
+/// Against the full seven-day target, a runner who had done exactly what
+/// Monday to Wednesday asked for was told they were far under plan, every
+/// week, until Sunday night.
+///
+/// The week's declared `target_volume_m` stays authoritative on how much the
+/// week is worth; the per-workout distances only supply its shape, scaled onto
+/// that total. A week that declares a volume but places none of it on a
+/// workout cannot be placed in time at all, and yields the neutral unflagged
+/// result rather than a baseline guessed from elapsed days.
+WeeklyDrift weeklyDriftToDate({
+  required List<DriftWorkout> workouts,
+  required List<DriftRun> runs,
+
+  /// Local ISO date (YYYY-MM-DD) for the runner's today.
+  required String today,
+
+  /// The week's declared volume target, when the plan sets one.
+  double? weekTargetVolumeM,
+  double threshold = planDriftThreshold,
+}) {
+  var plannedElapsed = 0.0;
+  var plannedWeek = 0.0;
+  for (final w in workouts) {
+    if (w.kind == 'rest') continue;
+    final d = (w.targetDistanceM ?? 0) < 0 ? 0.0 : (w.targetDistanceM ?? 0);
+    plannedWeek += d;
+    if (w.scheduledDate.compareTo(today) < 0) plannedElapsed += d;
+  }
+
+  final target =
+      (weekTargetVolumeM ?? 0) < 0 ? 0.0 : (weekTargetVolumeM ?? 0);
+  final planned = target > 0
+      ? (plannedWeek > 0 ? target * plannedElapsed / plannedWeek : 0.0)
+      : plannedElapsed;
+
+  var actual = 0.0;
+  for (final r in runs) {
+    if (r.date.compareTo(today) < 0) {
+      actual += r.distanceM < 0 ? 0.0 : r.distanceM;
+    }
+  }
+
+  return weeklyDrift(planned, actual, threshold: threshold);
 }
 
 enum MakeUpRecommendation { makeUp, skip }

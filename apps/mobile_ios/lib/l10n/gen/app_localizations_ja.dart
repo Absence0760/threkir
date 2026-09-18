@@ -5498,12 +5498,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String planDetailDriftOverFlag(int pct) {
-    return '今週は計画より$pct%多く走っています — 疲労を溜めないよう、楽な日は控えめに。';
+    return '今週はここまで、計画より$pct%多く走っています — 疲労を溜めないよう、楽な日は控えめに。';
   }
 
   @override
   String planDetailDriftUnderFlag(String done, String planned) {
-    return '今週はここまで、予定の$plannedのうち$doneを走りました。';
+    return '今週はここまでの予定$plannedのうち$doneを走りました。';
   }
 
   @override

@@ -4,6 +4,15 @@ import workmanager_apple
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+  // No `FirebaseApp.configure()` here, and the Firebase console's "Add
+  // initialisation code" step is what asks for one. `firebase_core` owns
+  // initialisation from Dart — `initFirebaseForPush()` calls
+  // `Firebase.initializeApp()` inside a try/catch so an absent
+  // GoogleService-Info.plist disables push instead of taking the app down.
+  // Configuring here instead moves that to launch, in Swift, where the catch
+  // is not. The console's SDK step is equally inapplicable: the Firebase pods
+  // arrive through the FlutterFire plugins' generated Podfile, so adding Swift
+  // Package Manager packages by hand would resolve the SDK a second time.
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?

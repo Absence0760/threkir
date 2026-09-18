@@ -50,6 +50,7 @@ const SURFACES: Array<{ name: string; file: string }> = [
 	{ name: '/segments', file: 'routes/segments/+page.svelte' },
 	{ name: '/races', file: 'routes/races/+page.svelte' },
 	{ name: '/routes/new', file: 'routes/routes/new/+page.svelte' },
+	{ name: '/onboarding', file: 'routes/onboarding/+page.svelte' },
 ];
 
 /// The opening tag starting at `start`, read up to the `>` that closes it

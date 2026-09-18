@@ -284,6 +284,23 @@ test.describe('every swept gym and session control renders its explanation', () 
 test.describe('every swept filter and preference control renders its explanation', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
+	test('/onboarding — every step of the wizard', async ({ page }) => {
+		// The wizard already carried a per-step explanation; what it did not
+		// carry was the link from the control to it, so this reads the step
+		// hints back off the controls rather than off the page.
+		await page.goto('/onboarding');
+		const frame = page.locator('.step-frame');
+		await expect(frame).toBeVisible({ timeout: 15_000 });
+		const next = page.getByRole('button', { name: 'Continue' }).first();
+		for (let step = 0; step < 6; step++) {
+			await assertEveryControlExplained(frame, `/onboarding (step ${step + 1})`);
+			if ((await next.count()) === 0) break;
+			if (!(await next.isEnabled())) break;
+			await next.click();
+			await page.waitForTimeout(400);
+		}
+	});
+
 	test('/nutrition/targets — the two defaults', async ({ page }) => {
 		await page.goto('/nutrition/targets');
 		const card = page.locator('.defaults-card');

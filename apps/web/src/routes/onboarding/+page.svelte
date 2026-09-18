@@ -455,7 +455,7 @@
 			<section aria-labelledby="step-name-title">
 				<span class="step-icon" aria-hidden="true"><span class="material-symbols">badge</span></span>
 				<h1 id="step-name-title" tabindex="-1">{m('onboarding.step1Title')}</h1>
-				<p class="hint">{m('onboarding.step1Hint')}</p>
+				<p class="hint" id="onboarding-name-hint">{m('onboarding.step1Hint')}</p>
 				<label class="field">
 					<span class="label-text">{m('onboarding.displayNameLabel')}</span>
 					<input
@@ -463,6 +463,7 @@
 						bind:value={displayName}
 						maxlength={TEXT_LIMITS.displayName}
 						placeholder={m('onboarding.displayNamePlaceholder')}
+						aria-describedby="onboarding-name-hint"
 					/>
 				</label>
 			</section>
@@ -470,8 +471,13 @@
 			<section aria-labelledby="step-units-title">
 				<span class="step-icon" aria-hidden="true"><span class="material-symbols">straighten</span></span>
 				<h1 id="step-units-title" tabindex="-1">{m('onboarding.step2Title')}</h1>
-				<p class="hint">{m('onboarding.step2Hint')}</p>
-				<div class="unit-tiles" role="radiogroup" aria-labelledby="step-units-title">
+				<p class="hint" id="onboarding-units-hint">{m('onboarding.step2Hint')}</p>
+				<div
+					class="unit-tiles"
+					role="radiogroup"
+					aria-labelledby="step-units-title"
+					aria-describedby="onboarding-units-hint"
+				>
 					<button
 						type="button"
 						class="choice unit-tile"
@@ -508,8 +514,13 @@
 			<section aria-labelledby="step-goal-title">
 				<span class="step-icon" aria-hidden="true"><span class="material-symbols">flag</span></span>
 				<h1 id="step-goal-title" tabindex="-1">{m('onboarding.step3Title')}</h1>
-				<p class="hint">{m('onboarding.step3Hint')}</p>
-				<div class="goal-grid" role="radiogroup" aria-labelledby="step-goal-title">
+				<p class="hint" id="onboarding-goal-hint">{m('onboarding.step3Hint')}</p>
+				<div
+					class="goal-grid"
+					role="radiogroup"
+					aria-labelledby="step-goal-title"
+					aria-describedby="onboarding-goal-hint"
+				>
 					{#each PRIMARY_GOAL_VALUES as v (v)}
 						<button
 							type="button"
@@ -530,11 +541,11 @@
 			<section aria-labelledby="step-about-title">
 				<span class="step-icon" aria-hidden="true"><span class="material-symbols">person</span></span>
 				<h1 id="step-about-title" tabindex="-1">{m('onboarding.step4Title')}</h1>
-				<p class="hint">{m('onboarding.step4Hint')}</p>
+				<p class="hint" id="onboarding-about-hint">{m('onboarding.step4Hint')}</p>
 				<div class="field-row">
 					<label class="field">
 						<span class="label-text">{m('onboarding.genderLabel')}</span>
-						<select bind:value={gender}>
+						<select bind:value={gender} aria-describedby="onboarding-about-hint">
 							<option value="">{m('onboarding.genderPreferNot')}</option>
 							<option value="female">{m('onboarding.genderFemale')}</option>
 							<option value="male">{m('onboarding.genderMale')}</option>
@@ -542,10 +553,15 @@
 					</label>
 					<label class="field">
 						<span class="label-text">{m('onboarding.dobLabel')}</span>
-						<input type="date" bind:value={dateOfBirth} max={new Date().toISOString().slice(0, 10)} />
+						<input
+							type="date"
+							bind:value={dateOfBirth}
+							max={new Date().toISOString().slice(0, 10)}
+							aria-describedby="onboarding-dob-note"
+						/>
 					</label>
 				</div>
-				<p class="field-note">{m('onboarding.dobNote')}</p>
+				<p class="field-note" id="onboarding-dob-note">{m('onboarding.dobNote')}</p>
 				<label class="field">
 					<span class="label-text">{m('onboarding.weightLabel', { unit: weightUnit })}</span>
 					<input
@@ -557,6 +573,7 @@
 						bind:value={bodyWeight}
 						placeholder={m('onboarding.weightPlaceholder', { example: weightUnit === 'lbs' ? 155 : 70 })}
 						aria-invalid={weightOutOfRange}
+						aria-describedby="onboarding-about-hint"
 					/>
 					{#if weightOutOfRange}
 						<span class="field-error" role="alert">
@@ -566,7 +583,11 @@
 				</label>
 				{#if gender || dateOfBirth}
 					<label class="consent-row">
-						<input type="checkbox" bind:checked={healthDataConsent} />
+						<input
+							type="checkbox"
+							bind:checked={healthDataConsent}
+							aria-describedby="onboarding-dob-note"
+						/>
 						<span>{m('onboarding.healthConsent')}</span>
 					</label>
 				{/if}
@@ -575,8 +596,13 @@
 			<section aria-labelledby="step-privacy-title">
 				<span class="step-icon" aria-hidden="true"><span class="material-symbols">verified_user</span></span>
 				<h1 id="step-privacy-title" tabindex="-1">{m('onboarding.step5Title')}</h1>
-				<p class="hint">{m('onboarding.step5Hint')}</p>
-				<div class="privacy-list" role="radiogroup" aria-labelledby="step-privacy-title">
+				<p class="hint" id="onboarding-privacy-hint">{m('onboarding.step5Hint')}</p>
+				<div
+					class="privacy-list"
+					role="radiogroup"
+					aria-labelledby="step-privacy-title"
+					aria-describedby="onboarding-privacy-hint"
+				>
 					{#each [
 						{ value: 'private', name: m('onboarding.privacyPrivate'), desc: m('onboarding.privacyPrivateDesc') },
 						{ value: 'followers', name: m('onboarding.privacyFollowers'), desc: m('onboarding.privacyFollowersDesc') },

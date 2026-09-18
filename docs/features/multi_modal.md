@@ -217,7 +217,7 @@ becomes an **action button**, not a tab.
   `Nutrition` tab is 7 slots. Collapsing the three *capture* entry points
   into one action button keeps the nav at five and groups them by the
   verb the user actually has in mind ("I want to log something").
-- **Tap `Log` →** a modality picker (on mobile the centre nav FAB fans these as a **speed-dial of icon-only buttons in a shallow arc around the button** — one top-centre, one down-left, one down-right — `widgets/log_speed_dial.dart`; the History Log FAB keeps a bottom sheet):
+- **Tap `Log` →** a modality picker (on mobile the centre nav FAB fans these as a **speed-dial of icon-only buttons in a shallow arc around the button** — one top-centre, one down-left, one down-right — `widgets/log_speed_dial.dart`; the History Log FAB keeps a bottom sheet, and stands down entirely inside the Fitness hub where the centre button is already visible — [decisions § 1644](../architecture/decisions.md)):
 
 ```
         ┌─────────────────────────────────┐
@@ -240,9 +240,19 @@ becomes an **action button**, not a tab.
   workout, or the day's food log survives swiping to Home and back. (A run is
   *necessarily* a page — a foreground-service GPS session can't collapse into
   a modal — so Gym + Nutrition match it rather than the reverse.)
-- **Long-press `Log` = repeat last activity.** Preserves the one-tap
-  "start a run" muscle memory the current `Run` tab gives. A runner who
-  only ever runs effectively still has a one-gesture start.
+- **Tap `Log` = the primary capture action, derived from data presence**
+  (decisions § 1644). Until the user has logged a lift or a meal, the tap
+  starts a run outright — the fan has nothing to choose between, so it
+  would cost a pure runner a tap and an animation on every run. Once
+  either modality has data, the tap fans. `keep_run_primary` stays as the
+  explicit override for someone who logs other modalities and still wants
+  the one-tap start.
+- **Long-press `Log` = open the capture fan, always.** One gesture, one
+  meaning: it used to open the menu under `keep_run_primary` and navigate
+  silently to the last-logged modality without it, so a press half a beat
+  too long landed a runner on Nutrition.
+- **System back walks toward Home** and only leaves the app from Home; a
+  live recording raises a confirm first (decisions § 1644).
 - The sheet's **order adapts**: the most recently used capture type
   floats to the top, so a daily lifter sees "Log lift" first.
 - **Accessibility:** the `Log` button has an explicit `Semantics` label
@@ -879,9 +889,13 @@ one drag the launch. Corrected order, with explicit gates:
 
 **Protect the core runner.** Moving Run from a tab to a `Log` action is a
 downgrade for the 100%-runner (one tap → two; long-press mitigates but is
-discoverable-only). The protection that shipped is the **`keep_run_primary`
+discoverable-only). The protection that shipped was the **`keep_run_primary`
 Settings toggle** (mobile) that lets a pure runner keep Run as the primary
-one-tap action — *not* the `multi_modal_nav` flag. (The original plan here
+one-tap action — *not* the `multi_modal_nav` flag. **A default-off toggle was
+not enough** (decisions § 1644): a runner who never opened Settings still paid
+the extra tap on every run, so the one-tap start is now **derived from data
+presence** — on until a lift or a meal is logged — with the toggle kept as the
+explicit override. (The original plan here
 proposed keeping the flag default-off as the protection; that was superseded
 by the 2026-06-04 §63 amendment, which **retired the flag** and ungated web
 to match mobile. The cards/chips self-hide on data presence, so a runner who
@@ -1001,7 +1015,7 @@ tier where mobile leads). Byte-identical iOS twin per [decisions.md § 39](../ar
 | Body metrics | `body_metrics` table (migration `20261216_001`) + Settings height/weight entry (**mobile shipped (G5)** — `settings_body_metrics_screen.dart`, Art 9 consent-gated height/weight + activity/goal; api_client `grantHealthDataConsent`/`withdrawHealthDataConsent`/`setMyHeightCm`/`recordBodyWeightKg`/`clearBodyWeightHistory`) |
 | Lift load | `training_load.ts` / `.dart` gain `liftStress` + `source`-tagged daily contributions (**shipped** — `computeLiftStress` + `aggregateDailyLiftStress` + the `lifts` arg to `computeTrainingLoadSeries`). **Consumers wired on both platforms**: web `web/src/lib/gym/lift_load.ts` and mobile `mobile_android/lib/lift_load.dart` (`liftsFromSetHistory`, pure + tested parity pair) feed each dashboard's load curve; `TrainingLoadChart` (web + mobile) shows the "gym sessions included" hint when `liftStress > 0` |
 | Cross-modality | `coach/context.ts` (**web shipped** — bounded `recent_lifts` + 7-day `nutrition_7d` summary, pure `summarizeRecentLifts`/`summarizeNutrition` + tests); web Home gym cards (`/dashboard`); web History timeline (`/history` + `fetchActivities`). **Mobile Home card composition shipped (G5)** — `dashboard_screen.dart` + `widgets/gym_summary_card.dart` + `widgets/nutrition_rings_card.dart` + the recent-lifts trend card (`widgets/recent_lifts_card.dart`); the **unified mobile History timeline is now shipped** (`runs_screen.dart` + `widgets/activity_timeline_list.dart`, assembled from the LOCAL stores via `lib/local_activities.dart` — offline-first, all modalities, not `fetchActivities`) |
-| Runner protection | Settings toggle: keep Run as the one-tap primary action — **shipped (G5)** (`Preferences.keepRunPrimary` + the `settings_preferences_screen.dart` switch; tap = one-tap run start, long-press = full Log sheet) |
+| Runner protection | One-tap run start **derived from data presence** — on until a lift or a meal is logged (`runIsPrimaryLogAction` in `preferences.dart`, decisions § 1644); `Preferences.keepRunPrimary` + the `settings_preferences_screen.dart` switch remain as the explicit override. Long-press always opens the fan |
 | Local stores | `local_gym_store.dart`, `local_food_store.dart` (shipped — mirror `LocalGearStore`, §73 / §122; gym stores sets inline). **Now wired into nav/Home (G5):** the gym/nutrition screens + the dashboard hydrate + drain them; still outside the global `main.dart`/`sync_service` sweep |
 | Data access | `packages/api_client` typed gym + food + `fetchLatestBodyWeightKg` + the unified-timeline `fetchActivities` (→ `activities` view) + `fetchRunById` (timeline run-row open) methods (shipped); web gym queries in `core/data.ts` (**shipped** — `fetchGymWorkouts` / `fetchGymWorkoutWithSets` / `fetchGymSetHistory` / `createGymWorkout` / `updateGymWorkout` / `deleteGymWorkout`); **web food + body-metrics queries shipped** (`fetchFoodLog` / `createFoodEntry` / `updateFoodEntry` / `deleteFoodEntry` / `fetchLatestWeightKg` / `recordWeightKg` / `clearWeightHistory`) |
 
@@ -1047,7 +1061,7 @@ Bottom nav becomes `Home · Train · [+] Log · Social · You` (still five slots
   - **Runs** = the run-management surface (today's `RunsScreen` reached via History `View all`) under a labelled **peer strip** `Runs · Routes · Plans · Races` — the mobile mirror of web's `RunSurfaceTabs.svelte`. **Shipped 2026-08-04** ([decisions.md § 488](../architecture/decisions.md)) as `widgets/surface_peer_strip.dart`, fed by `RunsScreen.surfacePeers` from the hub. The first shipped shape parked Routes and Plans on tooltip-only AppBar glyphs instead; that is what § 488 replaced.
   - **Gym** = `GymScreen` under its own peer strip `Log · Gym routines · Session plans · Records` (mirroring web `/gym`'s destination links, which add a one-line description each; renamed from Routines / Sessions 2026-09-17, #902 § 7), also shipped 2026-08-04 by § 488 — Routines waits on the routine store's disk hydration, Sessions needs a signed-in client, Records is data-gated on a weighted set exactly as web is ([gym_programming.md](gym_programming.md), [session_planner.md](session_planner.md)).
   - **Nutrition** = `NutritionScreen` (day/week) + targets.
-- **`Log` (+)** is unchanged — the capture sheet (Log run / lift / food → keep-alive capture page), long-press = repeat last. Capture stays separate from the Train *review/plan* surfaces (the verb-vs-modality split §63 established).
+- **`Log` (+)** is unchanged — the capture sheet (Log run / lift / food → keep-alive capture page), long-press = open the fan. Capture stays separate from the Train *review/plan* surfaces (the verb-vs-modality split §63 established).
 - **`Social`** is unchanged (Feed / People / Clubs). **Routes leaves Social** — the mobile Social screen drops any routes entry.
 - **`You`** = profile + Settings + subscription + (future) payout account. `Settings` vacates its own slot; the `keepRunPrimary` toggle and all prefs live under `You → Settings`.
 - **`Coach` is made the face of Home, not a buried card.** The thesis of this doc is that *cross-modal intelligence is the product* — so the nav must not hide it. Rather than spend a scarce sixth slot (and rather than the demoted "scrollable card" the first draft proposed), **Home gains a persistent, pinned `Ask your coach…` entry at the top** (always visible above the card stack, one tap to the Coach) so the intelligence layer is the first thing on the default landing surface. Web keeps its dedicated `/coach` sidebar item (it has room). Coach stays cross-modal advisory, not a modality, so it is not a Train sub-tab. *Considered and rejected:* a dedicated `Coach` bottom-nav slot displacing `Social` — Social now also hosts paid club classes ([club_events.md](club_events.md)), so it earns its slot; the pinned-Home-entry reconciles the thesis without that trade. This is the one reversible call in the redesign — revisit if Coach engagement warrants a full slot.

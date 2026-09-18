@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:wakelock_plus_platform_interface/wakelock_plus_platform_interface.dart';
 
+import '../lib/backend_timeout.dart';
 import '../lib/gym_prs.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_gym_store.dart';
@@ -496,6 +497,38 @@ void main() {
     });
   });
 
+  group('GymScreen widget — the add control', () {
+    // The arrival refresh is three sequential round trips, and the one add
+    // control on the screen used to be disabled for the whole of it — an
+    // offline-first write gated behind a read that may never answer.
+    testWidgets('stays usable while the arrival refresh never answers',
+        (tester) async {
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      final dir = Directory.systemTemp.createTempSync('gym_screen_add_');
+      final store = LocalGymStore();
+      await store.init(overrideDirectory: dir);
+      try {
+        await tester.pumpWidget(MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: GymScreen(api: _HangingApi(), store: store),
+        ));
+        await tester.pump();
+        final add = find.byTooltip(l10n.gymLog);
+        expect(add, findsOneWidget);
+        await tester.tap(add);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(find.text(l10n.gymEditorNewTitle), findsOneWidget);
+        // And the read is bounded: its client timeout expires instead of
+        // leaving the screen waiting on a request that never answers.
+        await tester.pump(kBackendLoadTimeout + const Duration(seconds: 1));
+      } finally {
+        dir.deleteSync(recursive: true);
+      }
+    });
+  });
+
   group('GymScreen widget — offline / no api', () {
     testWidgets('renders empty state when the store is empty', (tester) async {
       final dir = Directory.systemTemp.createTempSync('gym_screen_empty_');
@@ -697,6 +730,9 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.byType(SurfacePeerStrip), findsOneWidget);
       expect(find.byType(PendingSyncBanner), findsOneWidget);
+      // The arrival read is bounded now, so let its client timeout expire
+      // rather than leaving the timer pending at teardown.
+      await tester.pump(kBackendLoadTimeout + const Duration(seconds: 1));
     });
   });
 

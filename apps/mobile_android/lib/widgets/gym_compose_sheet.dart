@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' show dedupeShadowedExercises;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart' show TextLane;
 
+import '../gym_compose_draft.dart';
 import '../gym_prs.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../local_gym_store.dart';
@@ -98,6 +101,7 @@ Future<bool?> showGymComposeSheet({
   ValueListenable<GymCatalogueState>? catalogueSource,
   String? prefillTitle,
   ApiClient? api,
+  GymComposeDraftStore? draftStore,
 }) {
   final l10n = AppLocalizations.of(context);
   final formKey = GlobalKey<_GymComposeSheetState>();
@@ -117,6 +121,7 @@ Future<bool?> showGymComposeSheet({
       catalogueSource: catalogueSource,
       prefillTitle: prefillTitle,
       api: api,
+      draftStore: draftStore,
     ),
   );
 }
@@ -164,6 +169,12 @@ class GymComposeSheet extends StatefulWidget {
   /// the catalogue browse/picker's create-custom path; the picker hides the
   /// create affordance when it's null.
   final ApiClient? api;
+
+  /// Where the crash-recoverable draft of this form is kept. Defaults to
+  /// [GymComposeDraftStore.shared]; a test passes its own so the draft lands
+  /// in a temp directory instead of app documents.
+  final GymComposeDraftStore? draftStore;
+
   const GymComposeSheet({
     super.key,
     required this.store,
@@ -176,6 +187,7 @@ class GymComposeSheet extends StatefulWidget {
     this.catalogueSource,
     this.prefillTitle,
     this.api,
+    this.draftStore,
   });
 
   @override
@@ -183,6 +195,11 @@ class GymComposeSheet extends StatefulWidget {
 }
 
 class _GymComposeSheetState extends State<GymComposeSheet> {
+  /// Same cadence the guided session runner durable-saves at
+  /// (`gym_session_screen._saveInterval`) — a half-built workout is worth
+  /// exactly as much as a half-run session.
+  static const _draftSaveInterval = Duration(seconds: 10);
+
   late final TextEditingController _titleCtl;
   late bool _isPublic;
   late List<_EditExercise> _exercises;
@@ -192,6 +209,21 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
   bool _needExercise = false;
   String? _error;
   bool _saving = false;
+
+  Timer? _draftTimer;
+
+  /// A draft left behind by a composer that was killed rather than closed —
+  /// what the recover card offers back. Null once resolved (restored,
+  /// discarded, or superseded by this session's own first durable save).
+  GymComposeDraft? _recoverable;
+
+  GymComposeDraftStore get _drafts =>
+      widget.draftStore ?? GymComposeDraftStore.shared;
+
+  /// Only the create path drafts. An edit already has a stored workout behind
+  /// it, so the unsaved state is a diff against a row that still exists —
+  /// losing it loses a revision, not the session.
+  bool get _draftable => widget.existing == null;
 
   /// Customs created from the picker this session, kept locally so they bind +
   /// autocomplete immediately without waiting for the host to reload.
@@ -293,6 +325,88 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
                   },
               ]));
     _initialSnapshot = _snapshot();
+    if (_draftable) {
+      _draftTimer = Timer.periodic(_draftSaveInterval, (_) => _saveDraft());
+      unawaited(_loadRecoverable());
+    }
+  }
+
+  /// Offer back whatever the last composer left on disk.
+  ///
+  /// L4 auxiliary: a failed read degrades to "no card", never to a composer
+  /// that won't open.
+  Future<void> _loadRecoverable() async {
+    final draft = await _drafts.read();
+    if (!mounted || draft == null || !draft.hasContent) return;
+    setState(() => _recoverable = draft);
+  }
+
+  GymComposeDraft _draftSnapshot() => GymComposeDraft(
+        title: _titleCtl.text,
+        isPublic: _isPublic,
+        savedAt: DateTime.now().toUtc(),
+        exercises: [
+          for (final ex in _exercises)
+            GymComposeDraftExercise(
+              name: ex.name.text,
+              sets: [
+                for (final s in ex.sets)
+                  GymComposeDraftSet(
+                    reps: s.reps.text,
+                    weight: s.weight.text,
+                    rpe: s.rpe.text,
+                    duration: s.duration.text,
+                    setType: s.setType,
+                  ),
+              ],
+            ),
+        ],
+      );
+
+  /// Crash-safe incremental persistence, mirroring
+  /// `gym_session_screen._durableSave`. Writes only once the form has actually
+  /// been touched, so a seeded-but-untouched composer can't replace a real
+  /// draft with its own prefill.
+  Future<void> _saveDraft() async {
+    if (!_draftable || _saving || !isDirty) return;
+    await _drafts.write(_draftSnapshot());
+    // The card would now be offering work this session has already replaced.
+    if (mounted && _recoverable != null) setState(() => _recoverable = null);
+  }
+
+  void _restoreRecoverable(GymComposeDraft draft) {
+    setState(() {
+      _titleCtl.text = draft.title;
+      _isPublic = draft.isPublic;
+      for (final ex in _exercises) {
+        ex.dispose();
+      }
+      _exercises = [
+        for (final e in draft.exercises)
+          _EditExercise(
+            name: e.name,
+            sets: [
+              for (final s in e.sets)
+                _EditSet(
+                  reps: s.reps,
+                  weight: s.weight,
+                  rpe: s.rpe,
+                  duration: s.duration,
+                  setType: s.setType,
+                ),
+            ],
+          ),
+      ];
+      if (_exercises.isEmpty) _exercises = [_EditExercise()];
+      _needExercise = false;
+      _error = null;
+      _recoverable = null;
+    });
+  }
+
+  void _discardRecoverable() {
+    unawaited(_drafts.clear());
+    setState(() => _recoverable = null);
   }
 
   late final String _initialSnapshot;
@@ -379,6 +493,13 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
 
   @override
   void dispose() {
+    _draftTimer?.cancel();
+    // Every way this route LEAVES resolves the draft: a save has written the
+    // workout, and a back-out has already been confirmed through the
+    // DiscardGuard. So the only thing that must survive is the one path that
+    // never reaches dispose at all — the process being killed while the
+    // composer is open, which is the case this whole mechanism exists for.
+    if (_draftable) unawaited(_drafts.clear());
     widget.catalogueSource?.removeListener(_onHostCatalogue);
     _pickerCatalogue.dispose();
     _titleCtl.dispose();
@@ -551,8 +672,14 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
 
+    final recoverable = _recoverable;
+
     return FullScreenFormBody(
       children: [
+        if (recoverable != null) ...[
+          _recoverCard(recoverable, theme, l10n),
+          const SizedBox(height: 16),
+        ],
         FormSectionLabel(l10n.gymEditorTitleLabel),
         const SizedBox(height: 8),
             TextField(
@@ -617,6 +744,61 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
             ),
           ],
         );
+  }
+
+  Widget _recoverCard(
+      GymComposeDraft draft, ThemeData theme, AppLocalizations l10n) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.history, color: theme.colorScheme.primary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l10n.gymComposeDraftTitle,
+                          style: theme.textTheme.titleSmall),
+                      Text(
+                        l10n.gymComposeDraftBody,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: Wrap(
+                spacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed: _discardRecoverable,
+                    style: TextButton.styleFrom(
+                        foregroundColor: theme.colorScheme.error),
+                    child: Text(l10n.gymSessionDiscardConfirm),
+                  ),
+                  FilledButton(
+                    onPressed: () => _restoreRecoverable(draft),
+                    child: Text(l10n.gymDraftResume),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _exerciseCard(

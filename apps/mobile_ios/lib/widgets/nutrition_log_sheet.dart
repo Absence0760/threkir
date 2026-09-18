@@ -6,6 +6,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../diary_day.dart';
+import '../food_composer.dart';
 import '../food_search.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -90,7 +91,14 @@ class NutritionLogSheet extends StatefulWidget {
 
 class _NutritionLogSheetState extends State<NutritionLogSheet> {
   final _queryCtl = TextEditingController();
-  String _mealSlot = 'breakfast';
+
+  /// Seeded from the clock in [initState], not from a literal: the composer
+  /// used to open on breakfast whatever the hour, so every dinner was one
+  /// unprompted dropdown away from being filed in the morning.
+  late String _mealSlot;
+
+  /// Distinct foods this runner has logged before, newest first. Read once —
+  /// the store cannot change under an open composer, and logging pops it.
   bool _searching = false;
   bool _searched = false;
   bool _searchFailed = false;
@@ -128,6 +136,13 @@ class _NutritionLogSheetState extends State<NutritionLogSheet> {
         _manualSatFat,
         _manualCholesterol,
       ].any((c) => c.text.trim().isNotEmpty);
+
+  @override
+  void initState() {
+    super.initState();
+    _mealSlot = mealSlotForTime(
+        entryTimestampFor(widget.diaryDate ?? '', DateTime.now()));
+  }
 
   @override
   void dispose() {
@@ -332,7 +347,7 @@ class _NutritionLogSheetState extends State<NutritionLogSheet> {
             for (final s in mealSlots)
               DropdownMenuItem(value: s, child: Text(_slotLabel(l10n, s))),
           ],
-          onChanged: (v) => setState(() => _mealSlot = v ?? 'breakfast'),
+          onChanged: (v) => setState(() => _mealSlot = v ?? _mealSlot),
         ),
         if (_error != null) ...[
           const SizedBox(height: 8),

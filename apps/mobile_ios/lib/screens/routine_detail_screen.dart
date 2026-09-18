@@ -4,7 +4,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../fab_clearance.dart';
 import '../gym_prs.dart';
-import '../gym_routine.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
@@ -13,18 +12,23 @@ import '../local_routine_store.dart';
 import '../preferences.dart';
 import '../routine_history.dart';
 import '../social_service.dart';
-import '../widgets/gym_compose_sheet.dart';
 import '../widgets/pending_sync_banner.dart';
 import '../widgets/top_banner.dart';
 import 'gym_detail_screen.dart';
-import 'gym_screen.dart' show gymExerciseSuggestions;
 import 'gym_session_screen.dart';
 
 /// Detail view for a single routine — mirrors web `/gym/routines/[id]`.
-/// Planned targets per exercise; primary `Start routine` (P1: prefill-only —
-/// opens the gym composer seeded with the routine's targets as a new log's
-/// actuals via `prefillFromRoutine`, no execution loop), plus Delete behind a
-/// confirm dialog. Reads from [LocalRoutineStore] (offline-first).
+/// Planned targets per exercise; ONE primary action, `Start session`, which
+/// opens the guided [GymSessionScreen] runner, plus Delete behind a confirm
+/// dialog. Reads from [LocalRoutineStore] (offline-first).
+///
+/// The P1 prefill-only path (seed the gym composer from the routine's targets
+/// and let the athlete edit them as a flat log) used to sit beside it as a
+/// second extended FAB labelled `Start routine`. Web retired that modal when
+/// the runner shipped and left one Start; mobile kept both, which put two
+/// unexplained primary actions on one screen with nothing saying which one a
+/// routine is for. Resolved web's way — the runner supersedes the prefill, and
+/// its leave-with-draft path covers logging a routine without being guided.
 class RoutineDetailScreen extends StatefulWidget {
   final ApiClient? api;
   final LocalRoutineStore store;
@@ -53,17 +57,6 @@ class RoutineDetailScreen extends StatefulWidget {
 
   @override
   State<RoutineDetailScreen> createState() => _RoutineDetailScreenState();
-}
-
-/// A typed decimal that is actually a number, or null.
-///
-/// `double.tryParse` answers NaN for "NaN" and Infinity for "1e400" — both
-/// non-null, so an emptiness or null check does not see them. Mirrors the
-/// `_numericOrNull` guard `gym_routine.dart` already applies on the way in.
-double? _finiteOrNull(String raw) {
-  if (raw.isEmpty) return null;
-  final v = double.tryParse(raw);
-  return (v != null && v.isFinite) ? v : null;
 }
 
 class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
@@ -256,66 +249,6 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
     if (mounted && widget.store.hasPending) setState(() {});
   }
 
-  /// "Start routine" (P1: prefill-only — no execution loop). Expand the saved
-  /// plan into editable composer blocks via [prefillFromRoutine], then open a
-  /// fresh gym log seeded with those targets as actuals. Mirrors web's
-  /// startRoutine → GymEditor seed.
-  Future<void> _start(StoredRoutine r) async {
-    final planned = PlannedRoutine(
-      title: r.title,
-      exercises: [
-        for (var p = 0; p < r.exercises.length; p++)
-          PlannedExercise(
-            exerciseName: r.exercises[p].exerciseName,
-            position: p,
-            sets: [
-              for (var i = 0; i < r.exercises[p].sets.length; i++)
-                PlannedSet(
-                  setIndex: i,
-                  targetRepsMin: r.exercises[p].sets[i].targetRepsMin,
-                  targetRepsMax: r.exercises[p].sets[i].targetRepsMax,
-                  targetWeightKg: r.exercises[p].sets[i].targetWeightKg,
-                  targetRpe: r.exercises[p].sets[i].targetRpe,
-                ),
-            ],
-          ),
-      ],
-    );
-    final blocks = prefillFromRoutine(planned);
-    final seed = <GymSetInput>[];
-    for (final b in blocks) {
-      if (!namesAnExercise(b.name)) continue;
-      for (final s in b.sets) {
-        seed.add((
-          exerciseName: b.name,
-          reps: s.reps.isEmpty ? null : int.tryParse(s.reps),
-          // prefillFromRoutine carries canonical kg in weightKg.
-          weightKg: s.weightKg?.toDouble(),
-          // A non-finite RPE is not a rating. `double.tryParse` returns NaN
-          // for the literal "NaN" and Infinity for "1e400", both non-null, so
-          // the emptiness check above does not see them — and the prefill this
-          // reads back renders whatever the routine carried.
-          rpe: _finiteOrNull(s.rpe),
-          setType: 'working',
-          durationS: null,
-          exerciseId: null,
-        ));
-      }
-    }
-    final saved = await showGymComposeSheet(
-      context: context,
-      store: widget.gymStore,
-      seedSets: seed,
-      seedTitle: r.title,
-      suggestions: gymExerciseSuggestions(widget.gymStore.workouts),
-    );
-    if (saved == true) {
-      final api = widget.api;
-      if (api != null) await widget.gymStore.syncWithServer(api);
-      if (mounted) Navigator.pop(context);
-    }
-  }
-
   Future<void> _delete(StoredRoutine r) async {
     final l10n = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
@@ -391,24 +324,11 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
       ),
       floatingActionButton: r == null
           ? null
-          : Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                FloatingActionButton.extended(
-                  heroTag: 'routine_start_session',
-                  onPressed: () => _startSession(r),
-                  icon: const Icon(Icons.fitness_center),
-                  label: Text(l10n.gymSessionStart),
-                ),
-                const SizedBox(height: 12),
-                FloatingActionButton.extended(
-                  heroTag: 'routine_prefill',
-                  onPressed: () => _start(r),
-                  icon: const Icon(Icons.play_arrow),
-                  label: Text(l10n.gymRoutineStart),
-                ),
-              ],
+          : FloatingActionButton.extended(
+              heroTag: 'routine_start_session',
+              onPressed: () => _startSession(r),
+              icon: const Icon(Icons.play_arrow),
+              label: Text(l10n.gymSessionStart),
             ),
     );
   }
@@ -430,7 +350,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
     final notes = r.notes?.trim();
     return ListView(
       padding: EdgeInsets.fromLTRB(
-          16, 16, 16, fabScrollClearance(context, fabCount: 2)),
+          16, 16, 16, fabScrollClearance(context)),
       children: [
         Text(
           l10n.gymRoutineExerciseCount(r.exerciseCount),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 
@@ -28,6 +29,7 @@ import '../shared_file_import.dart' show incomingRouteImport;
 import '../social_service.dart';
 import '../training_service.dart';
 import '../widgets/billing_issue_banner.dart';
+import '../widgets/confirm_destructive.dart';
 import '../widgets/log_sheet.dart';
 import '../widgets/log_speed_dial.dart';
 import '../widgets/top_banner.dart';
@@ -653,31 +655,83 @@ class _HomeScreenState extends State<HomeScreen>
     _currentIndex.value = index;
   }
 
+  /// Guards against a second confirm stacking on the first — on Android the
+  /// back gesture keeps firing while the dialog is up.
+  bool _confirmingExit = false;
+
+  /// System back. The shell is `MaterialApp.home`, so an unguarded back pops
+  /// the only route and closes the app from whichever destination the user
+  /// happened to be on. Back walks toward Home instead, and only Home leaves.
+  ///
+  /// A live recording never leaves silently: the Run page locks the swipe
+  /// mid-run (issue #490), which makes back the one gesture still available
+  /// there, and it would have taken the session with it.
+  Future<void> _onSystemBack(int index, bool recording) async {
+    if (index != _pageHome) {
+      _goToPage(_pageHome);
+      return;
+    }
+    if (!recording || _confirmingExit) return;
+    _confirmingExit = true;
+    final l10n = AppLocalizations.of(context);
+    final leave = await confirmDestructive(
+      context,
+      title: l10n.backExitRecordingTitle,
+      body: l10n.backExitRecordingBody,
+      confirmLabel: l10n.backExitRecordingLeave,
+      cancelLabel: l10n.backExitRecordingStay,
+    );
+    _confirmingExit = false;
+    if (leave && mounted) await SystemNavigator.pop();
+  }
+
+  /// Wraps the shell so the system back gesture navigates rather than exits.
+  /// Both notifiers feed only the `PopScope`'s `canPop`; the shell itself
+  /// rides through as the builders' `child`, so a page change still rebuilds
+  /// nothing but the nav bar.
+  Widget _backGuard(Widget shell) => ValueListenableBuilder<bool>(
+        valueListenable: runRecordingActive,
+        builder: (context, recording, child) => ValueListenableBuilder<int>(
+          valueListenable: _currentIndex,
+          builder: (context, index, inner) => PopScope(
+            canPop: index == _pageHome && !recording,
+            onPopInvokedWithResult: (didPop, _) {
+              if (didPop) return;
+              _onSystemBack(index, recording);
+            },
+            child: inner!,
+          ),
+          child: child,
+        ),
+        child: shell,
+      );
+
   // --- Centre Log button (multi_modal.md § Bottom nav) ---
 
-  /// Tap on the centre Log button. When the user has opted to keep Run as
-  /// the one-tap primary action, this starts a run directly; otherwise it
-  /// opens the Log capture sheet.
+  /// Whether a tap on the centre Log button starts a run outright. Read at
+  /// gesture time from the live stores rather than cached at build time, so
+  /// the day's first logged lift flips it without a rebuild.
+  bool get _runIsPrimary => runIsPrimaryLogAction(
+        keepRunPrimary: widget.preferences.keepRunPrimary,
+        hasGymData: widget.gymStore.workouts.isNotEmpty,
+        hasFoodData: widget.foodStore.rows.isNotEmpty,
+      );
+
+  /// Tap on the centre Log button: the primary capture action for this user.
   void _onLogTap({Offset? anchor}) {
-    if (widget.preferences.keepRunPrimary) {
+    if (_runIsPrimary) {
       _performLogAction(LogAction.run);
     } else {
       _openLogMenu(anchor: anchor);
     }
   }
 
-  /// Long-press on the centre Log button. In runner-primary mode this opens
-  /// the full menu (so gym / nutrition stay reachable); otherwise it
-  /// repeats the last logged modality — preserving the one-gesture "start a
-  /// run" muscle memory for a pure runner.
-  void _onLogLongPress({Offset? anchor}) {
-    if (widget.preferences.keepRunPrimary) {
-      _openLogMenu(anchor: anchor);
-    } else {
-      _performLogAction(
-          logActionFromWire(widget.preferences.lastLogType) ?? LogAction.run);
-    }
-  }
+  /// Long-press on the centre Log button always opens the full capture menu.
+  /// It used to mean one of two opposite things depending on a preference —
+  /// open the menu, or navigate straight to the last-logged modality with
+  /// nothing announced — so a press half a beat too long landed a runner on
+  /// Nutrition. One gesture, one meaning.
+  void _onLogLongPress({Offset? anchor}) => _openLogMenu(anchor: anchor);
 
   // The centre Log button fans the three capture actions up above itself
   // (speed-dial) rather than opening a bottom sheet; the History Log FAB keeps
@@ -699,15 +753,28 @@ class _HomeScreenState extends State<HomeScreen>
     // for as long as the session lasts (record the run, build the workout over
     // several sets, log the day's meals) rather than a one-shot modal that
     // closes after a single entry. Each page surfaces its composer one tap away.
-    switch (action) {
-      case LogAction.run:
-        _goToPage(_pageRun);
-      case LogAction.lift:
-        _goToPage(_pageGym);
-      case LogAction.food:
-        _goToPage(_pageFood);
+    final page = switch (action) {
+      LogAction.run => _pageRun,
+      LogAction.lift => _pageGym,
+      LogAction.food => _pageFood,
+    };
+    if (page == _currentIndex.value) {
+      // Picking the page you are already on is a no-op navigation, and the
+      // fan closing onto an unchanged screen reads as a dropped tap. Say
+      // where the tap went instead.
+      final l10n = AppLocalizations.of(context);
+      showTopBanner(context, l10n.logAlreadyOnPage(_logPageName(l10n, action)));
+      return;
     }
+    _goToPage(page);
   }
+
+  String _logPageName(AppLocalizations l10n, LogAction action) =>
+      switch (action) {
+        LogAction.run => l10n.navRun,
+        LogAction.lift => l10n.gymTitle,
+        LogAction.food => l10n.nutritionTitle,
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -748,7 +815,7 @@ class _HomeScreenState extends State<HomeScreen>
       ],
     );
     if (widthClassOf(context) == WidthClass.expanded) {
-      return Scaffold(
+      return _backGuard(Scaffold(
         body: Row(
           children: [
             ValueListenableBuilder<int>(
@@ -804,9 +871,9 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ],
         ),
-      );
+      ));
     }
-    return Scaffold(
+    return _backGuard(Scaffold(
       body: body,
       floatingActionButton: _logFab(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
@@ -853,7 +920,7 @@ class _HomeScreenState extends State<HomeScreen>
           );
         },
       ),
-    );
+    ));
   }
 
   static const _railPages = [_pageHome, _pageFitness, _pageSocial, _pageYou];
@@ -887,10 +954,20 @@ class _HomeScreenState extends State<HomeScreen>
           child: Semantics(
             button: true,
             label: l10n.logA11yLabel,
-            child: FloatingActionButton(
-              onPressed: () => _onLogTap(anchor: anchorOf()),
-              tooltip: l10n.navLog,
-              child: const Icon(Icons.add),
+            // The tooltip is OURS and manually triggered, never the
+            // FloatingActionButton's own: a `tooltip:` builds a Tooltip
+            // INSIDE the button, whose long-press recognizer enters the
+            // gesture arena ahead of this GestureDetector's and wins every
+            // time — which left the long-press affordance dead on the phone
+            // FAB. The visible caption under the button carries the label
+            // anyway (#256), so nothing is lost by not showing it on hold.
+            child: Tooltip(
+              message: l10n.navLog,
+              triggerMode: TooltipTriggerMode.manual,
+              child: FloatingActionButton(
+                onPressed: () => _onLogTap(anchor: anchorOf()),
+                child: const Icon(Icons.add),
+              ),
             ),
           ),
         );

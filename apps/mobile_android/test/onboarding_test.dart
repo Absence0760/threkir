@@ -38,6 +38,38 @@ void main() {
 
     test('onboardingTotalSteps matches web (7)', () {
       expect(onboardingTotalSteps, 7);
+      // The constant is written out (a list length is not a constant
+      // expression), so pin it against the list it describes.
+      expect(setupWizardSteps.length, onboardingTotalSteps);
+    });
+
+    test('setupWizardSteps are web\'s ONBOARDING_STEPS ids, in order', () {
+      expect(setupWizardSteps, [
+        'name',
+        'units',
+        'goal',
+        'about',
+        'run-privacy',
+        'notifications',
+        'done',
+      ]);
+    });
+
+    test('visibleSetupWizardSteps drops run-privacy once the launch flow '
+        'already asked, and nothing else', () {
+      final asked = visibleSetupWizardSteps(privacyAlreadyChosen: true);
+      expect(asked.contains('run-privacy'), isFalse);
+      expect(asked.length, onboardingTotalSteps - 1);
+      expect(asked, setupWizardSteps.where((s) => s != 'run-privacy'));
+      // Order is preserved — the wizard indexes this list.
+      expect(asked.first, 'name');
+      expect(asked.last, 'done');
+    });
+
+    test('visibleSetupWizardSteps walks every step when privacy is unanswered',
+        () {
+      expect(visibleSetupWizardSteps(privacyAlreadyChosen: false),
+          setupWizardSteps);
     });
 
     test('planPresetForGoal maps distance goals 1:1 and seeds beginners into '

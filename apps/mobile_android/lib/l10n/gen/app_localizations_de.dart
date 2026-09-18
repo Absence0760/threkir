@@ -779,7 +779,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get prefsKeepRunPrimarySubtitle =>
-      'Mittlere Taste startet einen Lauf; lange drücken für das vollständige Menü';
+      'Tippe auf die mittlere Schaltfläche, um einen Lauf zu starten. Bis zum ersten Kraft- oder Mahlzeiteintrag ist das ohnehin aktiv; langes Drücken öffnet immer das Log-Menü';
 
   @override
   String get bodyMetricsTitle => 'Körperdaten';
@@ -1284,8 +1284,25 @@ class AppLocalizationsDe extends AppLocalizations {
   String get onboardingLocationTitle => 'Standortzugriff';
 
   @override
-  String get onboardingLocationBody =>
-      'Threkir zeichnet deine Läufe auf, indem deine GPS-Position erfasst wird, während die App im Vordergrund UND im Hintergrund läuft (damit die Aufzeichnung weiterläuft, wenn dein Bildschirm aus ist oder du zum Fotografieren die App wechselst). Standortdaten werden auf deinem Gerät gespeichert und nur dann auf die Server von Threkir hochgeladen, wenn du einen Lauf teilst oder synchronisierst. Wenn du den Hintergrundstandort ablehnst, stoppt die Aufzeichnung, sobald du die App verlässt – du kannst das später unter Einstellungen → Apps → Threkir → Berechtigungen ändern.';
+  String get onboardingLocationBodyAndroid =>
+      'Threkir erfasst deinen GPS-Standort, um einen Lauf aufzuzeichnen – auch bei ausgeschaltetem Bildschirm; eine Benachrichtigung zeigt an, dass gerade aufgezeichnet wird. Dein Standort bleibt auf diesem Gerät, solange du einen Lauf nicht synchronisierst oder teilst. Die nächste Abfrage erteilt den Zugriff während der App-Nutzung – mehr kann Androids erste Abfrage nicht geben; vor deinem ersten Lauf bietet Threkir die Erweiterung auf „Immer zulassen“ an, mit der die Aufzeichnung auch zuverlässig bleibt, wenn du zu einer anderen App wechselst. Lehnst du ab, zeichnen Läufe weiterhin Zeit und Schritte auf – aber keine Karte, Distanz oder Pace.';
+
+  @override
+  String get onboardingLocationBodyIos =>
+      'Threkir erfasst deinen GPS-Standort, um einen Lauf aufzuzeichnen – auch bei ausgeschaltetem Bildschirm oder wenn du in einer anderen App bist. Dein Standort bleibt auf diesem Gerät, solange du einen Lauf nicht synchronisierst oder teilst. Du kannst das jederzeit unter Einstellungen › Datenschutz & Sicherheit › Ortungsdienste › Threkir ändern. Lehnst du ab, zeichnen Läufe weiterhin Zeit und Schritte auf – aber keine Karte, Distanz oder Pace.';
+
+  @override
+  String get onboardingLocationDeniedTitle => 'Kein Standortzugriff';
+
+  @override
+  String get onboardingLocationDeniedBody =>
+      'Threkir kann deine Läufe weiterhin stoppen und Schritte zählen, aber ohne Standort gibt es keine Karte, keine Distanz und keine Pace. Du kannst den Zugriff jederzeit erteilen.';
+
+  @override
+  String get onboardingLocationDeniedSettings => 'Einstellungen öffnen';
+
+  @override
+  String get onboardingLocationDeniedContinue => 'Ohne fortfahren';
 
   @override
   String get onboardingPrivacyTitle => 'Wer sieht deine Läufe?';
@@ -1293,6 +1310,23 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get onboardingPrivacyBody =>
       'Wähle eine Standardeinstellung für neue Läufe. Du kannst sie jederzeit in den Einstellungen ändern und für jeden einzelnen Lauf überschreiben.';
+
+  @override
+  String get onboardingAccountTitle =>
+      'Behalte deine Läufe über dieses Handy hinaus';
+
+  @override
+  String get onboardingAccountBody =>
+      'Ein Konto synchronisiert deine Läufe mit der Web-App und deinen anderen Geräten – und holt sie zurück, falls du dieses hier verlierst. Du kannst auch ohne Konto laufen: Hier funktioniert alles offline, und du kannst später unter „Du“ › Einstellungen eines anlegen.';
+
+  @override
+  String get onboardingAccountCreate => 'Kostenloses Konto erstellen';
+
+  @override
+  String get onboardingAccountSignIn => 'Ich habe bereits ein Konto';
+
+  @override
+  String get onboardingAccountLater => 'Jetzt nicht';
 
   @override
   String get onboardingGrantPermission => 'Berechtigung erteilen';
@@ -1308,6 +1342,19 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get setupSkipStep => 'Überspringen';
+
+  @override
+  String get setupLeaveTitle => 'Einrichtung verlassen?';
+
+  @override
+  String get setupLeaveBody =>
+      'Was du hier eingegeben hast, wird nicht gespeichert. Du kannst alles später in den Einstellungen festlegen.';
+
+  @override
+  String get setupLeaveStay => 'Weiter einrichten';
+
+  @override
+  String get setupLeaveConfirm => 'Verlassen';
 
   @override
   String get setupBack => 'Zurück';
@@ -2185,6 +2232,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get historyKindMeals => 'Mahlzeiten';
 
   @override
+  String get historyModalityLoadFailed =>
+      'Kraft und Mahlzeiten konnten nicht geladen werden';
+
+  @override
   String get historyViewAll => 'Alle ansehen';
 
   @override
@@ -2215,7 +2266,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get historyEmptyBody =>
-      'Tippe auf den Lauf-Tab, um deinen ersten Lauf zu starten';
+      'Tippe auf Erfassen, um einen Lauf aufzuzeichnen, oder füge einen bereits absolvierten hinzu';
 
   @override
   String get historyFilterAll => 'Alle';
@@ -10462,9 +10513,6 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get gymRoutineStart => 'Routine starten';
-
-  @override
   String get gymRoutinePublishLabel => 'In einem Club veröffentlichen';
 
   @override
@@ -11427,6 +11475,13 @@ class AppLocalizationsDe extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get gymComposeDraftTitle => 'Nicht beendetes Workout';
+
+  @override
+  String get gymComposeDraftBody =>
+      'Du hast dieses Workout begonnen, aber nie gespeichert.';
 
   @override
   String get gymDraftResume => 'Fortsetzen';
@@ -14121,4 +14176,22 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get guidedRunUseThisRun => 'Diesen Lauf verwenden';
+
+  @override
+  String get backExitRecordingTitle => 'Lauf wird noch aufgezeichnet';
+
+  @override
+  String get backExitRecordingBody =>
+      'Wenn du die App verlässt, kann die Aufzeichnung unterbrochen werden. Dein Lauf bleibt erhalten und du kannst ihn später fortsetzen.';
+
+  @override
+  String get backExitRecordingLeave => 'Trotzdem verlassen';
+
+  @override
+  String get backExitRecordingStay => 'Weiter aufzeichnen';
+
+  @override
+  String logAlreadyOnPage(String page) {
+    return 'Du bist bereits auf $page';
+  }
 }

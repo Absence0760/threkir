@@ -14,6 +14,7 @@ import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/dashboard_screen.dart';
+import 'pump_until.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/mileage_trend_card.dart';
 
@@ -759,9 +760,12 @@ void main() {
           ),
         );
         await tester.pump();
-        expect(find.text('Welcome!'), findsOneWidget);
-        expect(find.text('Ask your coach'), findsNothing);
       });
+      // Signed in, so the welcome claim waits on the server's answer about
+      // this account's history (issue #921); the fake's throw resolves it.
+      await pumpUntil(tester, () => find.text('Welcome!').evaluate().isNotEmpty,
+          describe: 'the history probe to answer and the welcome to render');
+      expect(find.text('Ask your coach'), findsNothing);
     });
 
     testWidgets('no coach entry when training service is absent',

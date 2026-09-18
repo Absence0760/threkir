@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/audio_cues.dart';
@@ -137,6 +138,15 @@ Future<void> _pump(WidgetTester tester, dynamic s, {ApiClient? api}) async {
   // refresh tasks (fetchNextRsvpedEvent, fetchActiveOverview) fail against
   // an uninitialised Supabase instance and reschedule timers.
   await tester.pump();
+}
+
+/// A logged lift is what puts the fan back on the Log button's tap: with no
+/// gym and no food data the shell derives a one-tap run start instead
+/// (decisions § 63 self-hiding).
+Future<void> _seedLoggedLift(WidgetTester tester, dynamic s) async {
+  await tester.runAsync(() async {
+    await s.gymStore.createLocal(title: 'Push day', startedAt: DateTime.now());
+  });
 }
 
 class _StampApi extends ApiClient {
@@ -273,6 +283,7 @@ void main() {
     testWidgets('tapping the Log FAB fans the capture speed-dial (default mode)',
         (tester) async {
       final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
       await _pump(tester, s);
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pump();
@@ -287,6 +298,7 @@ void main() {
     testWidgets('keepRunPrimary: tapping the Log FAB starts a run, no menu',
         (tester) async {
       final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
       await s.prefs.setKeepRunPrimary(true);
       await _pump(tester, s);
       await tester.tap(find.byType(FloatingActionButton));
@@ -298,6 +310,7 @@ void main() {
 
     testWidgets('picking Log lift lands on the Gym dwell-in page', (tester) async {
       final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
       await _pump(tester, s);
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pump();
@@ -315,6 +328,7 @@ void main() {
     testWidgets('picking Log food lands on the Nutrition dwell-in page',
         (tester) async {
       final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
       await _pump(tester, s);
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pump();
@@ -369,6 +383,7 @@ void main() {
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.reset);
       final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
       await _pump(tester, s);
       await tester.tap(find.text('Fitness'));
       await tester.pump();
@@ -468,6 +483,261 @@ void main() {
       expect(find.text('Runs'), findsWidgets,
           reason: 'the Fitness hub mounted, so the tap navigated the PageView '
               'despite the locked swipe physics');
+    });
+  });
+
+  group('system back walks toward Home and guards a live run', () {
+    /// Records the one platform call that closes the app, so a test can tell
+    /// "back navigated" from "back exited" — which is the whole distinction
+    /// the shell had no `PopScope` to make.
+    List<String> watchAppExit(WidgetTester tester) {
+      final calls = <String>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'SystemNavigator.pop') calls.add(call.method);
+          return null;
+        },
+      );
+      addTearDown(() => tester.binding.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null));
+      return calls;
+    }
+
+    double shellPage(WidgetTester tester) {
+      final controller =
+          tester.widget<PageView>(find.byType(PageView).first).controller!;
+      return controller.hasClients
+          ? controller.page!
+          : controller.initialPage.toDouble();
+    }
+
+    Future<void> goToFitness(WidgetTester tester) async {
+      await tester.tap(find.text('Fitness'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    testWidgets('back from another tab returns to Home instead of exiting',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final exits = watchAppExit(tester);
+      await goToFitness(tester);
+      expect(shellPage(tester), 1);
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+
+      expect(shellPage(tester), 0, reason: 'back moves toward Home');
+      expect(exits, isEmpty, reason: 'back from a tab must not close the app');
+    });
+
+    testWidgets('back from Home exits the app', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final exits = watchAppExit(tester);
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+
+      expect(exits, ['SystemNavigator.pop'],
+          reason: 'Home is the one destination back leaves from');
+    });
+
+    testWidgets('back from the Run page mid-recording lands on Home, not out',
+        (tester) async {
+      // The Run page locks the swipe mid-run (#490), so back is the only
+      // gesture left there — it has to be an exit from the PAGE, never from
+      // the app.
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final exits = watchAppExit(tester);
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(shellPage(tester), 2);
+      runRecordingActive.value = true;
+      await tester.pump();
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+
+      expect(shellPage(tester), 0);
+      expect(exits, isEmpty);
+      tester.takeException();
+    });
+
+    testWidgets('back from Home mid-recording confirms before leaving',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final exits = watchAppExit(tester);
+      runRecordingActive.value = true;
+      await tester.pump();
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.text('Run still recording'), findsOneWidget);
+      expect(exits, isEmpty,
+          reason: 'nothing leaves until the runner says so');
+    });
+
+    testWidgets('keeping the recording stays in the app', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final exits = watchAppExit(tester);
+      runRecordingActive.value = true;
+      await tester.pump();
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await tester.tap(find.text('Keep recording'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.text('Run still recording'), findsNothing);
+      expect(exits, isEmpty);
+    });
+
+    testWidgets('confirming the leave closes the app', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final exits = watchAppExit(tester);
+      runRecordingActive.value = true;
+      await tester.pump();
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await tester.tap(find.text('Leave anyway'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(exits, ['SystemNavigator.pop']);
+    });
+  });
+
+  group('the centre Log button — one tap for the runner, one meaning for the '
+      'long-press', () {
+    double shellPage(WidgetTester tester) {
+      final controller =
+          tester.widget<PageView>(find.byType(PageView).first).controller!;
+      return controller.hasClients
+          ? controller.page!
+          : controller.initialPage.toDouble();
+    }
+
+    testWidgets('a runner with no lift or meal logged starts a run in one tap',
+        (tester) async {
+      // Every run used to cost FAB -> fan -> "Log run" -> Start unless the
+      // runner found a Settings switch. The fan is derived from data now, so
+      // a pure runner never sees one they have nothing to pick from.
+      final s = await _makeStores();
+      await _pump(tester, s);
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log lift'), findsNothing);
+      expect(shellPage(tester), 2, reason: 'the tap landed on the recorder');
+      tester.takeException();
+    });
+
+    testWidgets('one logged lift brings the fan back on tap', (tester) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await _pump(tester, s);
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log lift'), findsOneWidget);
+      expect(shellPage(tester), 0, reason: 'the fan is a picker, not a jump');
+    });
+
+    testWidgets('the explicit preference still pins the run start',
+        (tester) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await s.prefs.setKeepRunPrimary(true);
+      await _pump(tester, s);
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log lift'), findsNothing);
+      expect(shellPage(tester), 2);
+      tester.takeException();
+    });
+
+    testWidgets('a Log action for the page already showing says so',
+        (tester) async {
+      // Log -> Lift while the Gym page is already up navigated nowhere and
+      // showed nothing, so the fan just closed and the tap read as dropped.
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await _pump(tester, s);
+      // Scoped to the shell's centre Log FAB by its tooltip: the Gym page
+      // carries its own add FAB, so byType matches two here.
+      await tester.tap(find.byTooltip('Log'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.byTooltip('Log lift'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(shellPage(tester), 3);
+
+      // Scoped to the shell's centre Log FAB by its tooltip: the Gym page
+      // carries its own add FAB, so byType matches two here.
+      await tester.tap(find.byTooltip('Log'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.byTooltip('Log lift'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.text("You're already on Gym"), findsOneWidget);
+      expect(shellPage(tester), 3);
+      // showTopBanner arms an auto-dismiss timer; let it run out.
+      await tester.pump(const Duration(seconds: 8));
+    });
+
+    testWidgets('long-press opens the menu for a pure runner', (tester) async {
+      // It used to navigate straight to the last-logged modality with nothing
+      // announced, so a press half a beat too long landed someone on
+      // Nutrition.
+      final s = await _makeStores();
+      await s.prefs.setLastLogType('food');
+      await _pump(tester, s);
+
+      await tester.longPress(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log food'), findsOneWidget);
+      expect(shellPage(tester), 0,
+          reason: 'a long press picks, it never navigates on its own');
+    });
+
+    testWidgets('long-press opens the menu with the preference on too',
+        (tester) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await s.prefs.setKeepRunPrimary(true);
+      await _pump(tester, s);
+
+      await tester.longPress(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log lift'), findsOneWidget);
     });
   });
 

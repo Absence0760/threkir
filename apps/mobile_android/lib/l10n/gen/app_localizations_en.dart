@@ -769,7 +769,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prefsKeepRunPrimarySubtitle =>
-      'Tap the centre button to start a run; long-press for the full log menu';
+      'Tap the centre button to start a run. Already on until you log a lift or a meal; long-press always opens the log menu';
 
   @override
   String get bodyMetricsTitle => 'Body metrics';
@@ -1267,8 +1267,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingLocationTitle => 'Location access';
 
   @override
-  String get onboardingLocationBody =>
-      'Threkir records your runs by sampling your GPS location while the app is in the foreground AND in the background (so it keeps tracking when your screen is off or you switch apps to take a photo). Location data is stored on your device and only uploaded to Threkir\'s servers when you choose to share or sync a run. If you decline background location, runs will stop recording the moment you switch away from the app — you can change this later in Settings → Apps → Threkir → Permissions.';
+  String get onboardingLocationBodyAndroid =>
+      'Threkir samples your GPS location to record a run, including while your screen is off — a notification shows whenever a run is recording. Your location stays on this device unless you sync or share a run. The next prompt grants access while the app is in use, which is all Android’s first prompt can give; before your first run Threkir offers the “Allow all the time” upgrade that keeps tracking reliable once you switch to another app. Decline, and runs still record time and steps — but no map, distance or pace.';
+
+  @override
+  String get onboardingLocationBodyIos =>
+      'Threkir samples your GPS location to record a run, including while your screen is off or you are in another app. Your location stays on this device unless you sync or share a run. You can change this any time in Settings › Privacy & Security › Location Services › Threkir. Decline, and runs still record time and steps — but no map, distance or pace.';
+
+  @override
+  String get onboardingLocationDeniedTitle => 'No location access';
+
+  @override
+  String get onboardingLocationDeniedBody =>
+      'Threkir can still time your runs and count steps, but without location there is no map, no distance and no pace. You can grant it whenever you like.';
+
+  @override
+  String get onboardingLocationDeniedSettings => 'Open settings';
+
+  @override
+  String get onboardingLocationDeniedContinue => 'Continue without it';
 
   @override
   String get onboardingPrivacyTitle => 'Who sees your runs?';
@@ -1276,6 +1293,22 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get onboardingPrivacyBody =>
       'Pick a default for new runs. You can change it any time in Settings, and override it on any single run.';
+
+  @override
+  String get onboardingAccountTitle => 'Keep your runs beyond this phone';
+
+  @override
+  String get onboardingAccountBody =>
+      'An account syncs your runs to the web app and your other devices, and gets them back if you lose this one. You can run without it — everything here works offline — and create one later from You › Settings.';
+
+  @override
+  String get onboardingAccountCreate => 'Create a free account';
+
+  @override
+  String get onboardingAccountSignIn => 'I already have an account';
+
+  @override
+  String get onboardingAccountLater => 'Not now';
 
   @override
   String get onboardingGrantPermission => 'Grant permission';
@@ -1291,6 +1324,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setupSkipStep => 'Skip';
+
+  @override
+  String get setupLeaveTitle => 'Leave setup?';
+
+  @override
+  String get setupLeaveBody =>
+      'Anything you\'ve entered here won\'t be saved. You can set all of it up later from Settings.';
+
+  @override
+  String get setupLeaveStay => 'Keep setting up';
+
+  @override
+  String get setupLeaveConfirm => 'Leave';
 
   @override
   String get setupBack => 'Back';
@@ -2160,6 +2206,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyKindMeals => 'Meals';
 
   @override
+  String get historyModalityLoadFailed => 'Couldn\'t load your lifts and meals';
+
+  @override
   String get historyViewAll => 'View all';
 
   @override
@@ -2188,7 +2237,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyEmptyTitle => 'No runs yet';
 
   @override
-  String get historyEmptyBody => 'Tap the Run tab to start your first run';
+  String get historyEmptyBody =>
+      'Tap Log to record a run, or add one you have already finished';
 
   @override
   String get historyFilterAll => 'All';
@@ -10340,9 +10390,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get gymRoutineStart => 'Start routine';
-
-  @override
   String get gymRoutinePublishLabel => 'Publish to a club';
 
   @override
@@ -11295,6 +11342,13 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get gymComposeDraftTitle => 'Unfinished workout';
+
+  @override
+  String get gymComposeDraftBody =>
+      'You started this workout but never saved it.';
 
   @override
   String get gymDraftResume => 'Resume';
@@ -13964,4 +14018,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get guidedRunUseThisRun => 'Use this run';
+
+  @override
+  String get backExitRecordingTitle => 'Run still recording';
+
+  @override
+  String get backExitRecordingBody =>
+      'Leaving the app can interrupt the recording. Your run is kept, so you can pick it up when you come back.';
+
+  @override
+  String get backExitRecordingLeave => 'Leave anyway';
+
+  @override
+  String get backExitRecordingStay => 'Keep recording';
+
+  @override
+  String logAlreadyOnPage(String page) {
+    return 'You\'re already on $page';
+  }
 }

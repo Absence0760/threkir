@@ -297,6 +297,18 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
+  Future<void> _openSignUp() async {
+    final signedUp = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SignUpScreen(apiClient: widget.apiClient),
+      ),
+    );
+    if (!mounted || signedUp != true) return;
+    widget.onSignedIn?.call();
+    Navigator.pop(context, true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -403,7 +415,17 @@ class _SignInScreenState extends State<SignInScreen> {
                   child: Text(l10n.signInForgotPassword),
                 ),
               ),
-              const SizedBox(height: 4),
+              // Above the OAuth block, not below it: this used to be the
+              // last widget on a screen that scrolls, which made "how do I
+              // make an account" invisible to the one person who needs it.
+              OutlinedButton(
+                onPressed: _loading ? null : _openSignUp,
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: Text(l10n.signInCreateAccountPrompt),
+              ),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   const Expanded(child: Divider()),
@@ -461,22 +483,6 @@ class _SignInScreenState extends State<SignInScreen> {
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: Text(l10n.signInContinueOffline),
-              ),
-              TextButton(
-                onPressed: () async {
-                  final signedUp = await Navigator.push<bool>(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          SignUpScreen(apiClient: widget.apiClient),
-                    ),
-                  );
-                  if (mounted && signedUp == true) {
-                    widget.onSignedIn?.call();
-                    Navigator.pop(context, true);
-                  }
-                },
-                child: Text(l10n.signInCreateAccountPrompt),
               ),
             ],
           ),

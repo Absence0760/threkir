@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:api_client/api_client.dart';
+import 'package:core_models/core_models.dart' show FoodLogRow;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -9,6 +11,7 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/diary_day.dart';
 import '../lib/local_food_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/nutrition_screen.dart';
@@ -107,6 +110,7 @@ Widget _app(LocalFoodStore store, {double textScale = 1.0}) => MaterialApp(
 void main() {
   group('macro ring rendering', _ringRenderingTests);
   group('diary day navigation', _diaryDayTests);
+  group('a keep-alive tab that tracks reality', _livenessTests);
 
   setUpAll(() => initializeDateFormatting());
   setUp(() => SharedPreferences.setMockInitialValues({}));
@@ -913,6 +917,147 @@ void _diaryDayTests() {
       await pumpUntilStoreWritesSettle(tester);
       f.dir.deleteSync(recursive: true);
       pp.deleteSync(recursive: true);
+    }
+  });
+}
+
+
+/// A signed-in client whose food-log pull is driven by the test: it never
+/// answers while [hold] is set, which is what "the arrival refresh is still in
+/// flight" looks like from the screen's side.
+class _SlowFoodApi extends ApiClient {
+  _SlowFoodApi({this.hold = false});
+
+  final bool hold;
+  final Completer<void> gate = Completer<void>();
+  int pulls = 0;
+
+  @override
+  String? get userId => 'u1';
+
+  @override
+  Future<List<FoodLogRow>> fetchFoodLog({
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    pulls++;
+    if (hold) await gate.future;
+    // Aborting the rest of the refresh chain here keeps the fake to one
+    // override: every later hop would need a stub of its own, and the screen
+    // already treats a mid-refresh failure as "offline, use the cache".
+    throw StateError('offline');
+  }
+}
+
+void _livenessTests() {
+  setUpAll(() => initializeDateFormatting());
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets('the viewed day survives a switch away from the tab',
+      (tester) async {
+    // NutritionScreen is a tab body of the fitness hub's TabBarView, which
+    // disposes the tabs either side of the visible one. Without
+    // AutomaticKeepAliveClientMixin the day the user stepped to — and the
+    // whole arrival refresh — was thrown away on every return (issue #921).
+    final f = await _store('keepalive_');
+    try {
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: DefaultTabController(
+          length: 2,
+          child: Scaffold(
+            body: Column(
+              children: [
+                const TabBar(tabs: [Tab(text: 'Food'), Tab(text: 'Other')]),
+                Expanded(
+                  child: TabBarView(children: [
+                    NutritionScreen(api: _OfflineFakeApi(), store: f.store),
+                    const Center(child: Text('other tab')),
+                  ]),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ));
+      await tester.pump();
+      await tester.tap(find.byTooltip('Previous day'));
+      await tester.pumpAndSettle();
+      expect(find.text('Yesterday'), findsOneWidget);
+
+      await tester.tap(find.text('Other'));
+      await tester.pumpAndSettle();
+      expect(find.text('other tab'), findsOneWidget);
+
+      await tester.tap(find.text('Food'));
+      await tester.pumpAndSettle();
+      expect(find.text('Yesterday'), findsOneWidget,
+          reason: 'the tab kept its state instead of re-mounting on today');
+    } finally {
+      await pumpUntilStoreWritesSettle(tester);
+      f.dir.deleteSync(recursive: true);
+    }
+  });
+
+  testWidgets('the day is re-derived at local midnight, not frozen at mount',
+      (tester) async {
+    // The screen is never torn down, so a day stored at mount held for the
+    // life of the process and a log filed the next morning landed in
+    // yesterday. The roll re-reads the clock and re-pulls the window.
+    final f = await _store('midnight_');
+    final api = _SlowFoodApi();
+    try {
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: NutritionScreen(api: api, store: f.store),
+      ));
+      await tester.pump();
+      expect(api.pulls, 1, reason: 'the arrival refresh');
+
+      final toMidnight =
+          Duration(milliseconds: msUntilNextLocalMidnight(DateTime.now()));
+      await tester.pump(toMidnight + const Duration(seconds: 1));
+      await tester.pump();
+      expect(api.pulls, 2,
+          reason: 'midnight re-pulls the day rather than keeping yesterday');
+    } finally {
+      await pumpUntilStoreWritesSettle(tester);
+      f.dir.deleteSync(recursive: true);
+    }
+  });
+
+  testWidgets('Log food stays live while the arrival refresh is in flight',
+      (tester) async {
+    // Every control in the toolbar writes through the offline-first store, so
+    // gating them on a server read made the surface's only way in unavailable
+    // for the length of a seven-hop refresh (issue #921).
+    final f = await _store('addlive_');
+    final api = _SlowFoodApi(hold: true);
+    try {
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: NutritionScreen(api: api, store: f.store),
+      ));
+      await tester.pump();
+      expect(api.pulls, 1, reason: 'the refresh is still hanging');
+
+      final add = tester.widget<IconButton>(find
+          .ancestor(
+              of: find.byIcon(Icons.add), matching: find.byType(IconButton))
+          .first);
+      expect(add.onPressed, isNotNull,
+          reason: 'the add control is not gated on a read');
+
+      await tester.tap(find.byTooltip('Log food'));
+      await tester.pumpAndSettle();
+      expect(find.byType(NutritionLogSheet), findsOneWidget);
+    } finally {
+      api.gate.complete();
+      await pumpUntilStoreWritesSettle(tester);
+      f.dir.deleteSync(recursive: true);
     }
   });
 }

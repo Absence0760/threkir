@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../lib/food_composer.dart';
 import '../lib/food_search.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_food_store.dart';
@@ -95,6 +96,8 @@ const _sample = {
 };
 
 void main() {
+
+
   testWidgets('manual entry logs a food item to the store', (tester) async {
     final f = await _store('manual_');
     try {
@@ -116,7 +119,8 @@ void main() {
       expect(f.store.rows, hasLength(1));
       final e = f.store.rows.first;
       expect(e['item_name'], 'Banana');
-      expect(e['meal_slot'], 'breakfast');
+      expect(e['meal_slot'], mealSlotForTime(DateTime.now()),
+          reason: 'the composer opens on the slot the clock is in');
       expect(e['calories'], 105.0);
     } finally {
       f.dir.deleteSync(recursive: true);

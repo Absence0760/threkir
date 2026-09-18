@@ -7,6 +7,7 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ui_kit/ui_kit.dart' show EmptyState;
 import '../lib/goals.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
@@ -189,15 +190,37 @@ void main() {
     testWidgets('shows empty state when store has no runs', (tester) async {
       final s = await _makeStores();
       await _pump(tester, runStore: s.runStore, routeStore: s.routeStore, prefs: s.prefs);
-      // The _EmptyRuns widget is rendered; no run tiles.
+      // The shared EmptyState is rendered; no run tiles.
+      expect(find.byType(EmptyState), findsOneWidget);
       expect(find.byType(ListView), findsNothing);
+    });
+
+    // Every new account lands here, so the one instruction it carries has to
+    // name a destination that exists: it used to say "Tap the Run tab", and
+    // decisions § 139 deleted that tab.
+    testWidgets('the empty state points at the real nav and offers a CTA',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, runStore: s.runStore, routeStore: s.routeStore, prefs: s.prefs);
+      final empty = tester.widget<EmptyState>(find.byType(EmptyState));
+      expect(empty.body, isNot(contains('Run tab')));
+      expect(empty.body, contains('Log'));
+      expect(empty.onCta, isNotNull);
+      await tester.tap(find.descendant(
+          of: find.byType(EmptyState), matching: find.text('Add run')));
+      await tester.pumpAndSettle();
+      expect(find.byType(AddRunScreen), findsOneWidget);
     });
 
     testWidgets('FAB is present with Add run label', (tester) async {
       final s = await _makeStores();
       await _pump(tester, runStore: s.runStore, routeStore: s.routeStore, prefs: s.prefs);
       expect(find.byType(FloatingActionButton), findsOneWidget);
-      expect(find.text('Add run'), findsOneWidget);
+      expect(
+        find.descendant(
+            of: find.byType(FloatingActionButton), matching: find.text('Add run')),
+        findsOneWidget,
+      );
     });
 
     testWidgets('FAB tap navigates to AddRunScreen', (tester) async {

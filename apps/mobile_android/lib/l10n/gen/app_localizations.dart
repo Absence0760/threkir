@@ -1328,7 +1328,7 @@ abstract class AppLocalizations {
   /// Subtitle for the run-as-primary-action settings toggle
   ///
   /// In en, this message translates to:
-  /// **'Tap the centre button to start a run; long-press for the full log menu'**
+  /// **'Tap the centre button to start a run. Already on until you log a lift or a meal; long-press always opens the log menu'**
   String get prefsKeepRunPrimarySubtitle;
 
   /// Title of the body-metrics settings screen
@@ -2189,11 +2189,41 @@ abstract class AppLocalizations {
   /// **'Location access'**
   String get onboardingLocationTitle;
 
-  /// Play-policy background-location disclosure body on the location onboarding slide
+  /// Android location disclosure on the onboarding Location page — describes the while-in-use grant the app actually requests and the later Allow-all-the-time upgrade (Play location policy)
   ///
   /// In en, this message translates to:
-  /// **'Threkir records your runs by sampling your GPS location while the app is in the foreground AND in the background (so it keeps tracking when your screen is off or you switch apps to take a photo). Location data is stored on your device and only uploaded to Threkir\'s servers when you choose to share or sync a run. If you decline background location, runs will stop recording the moment you switch away from the app — you can change this later in Settings → Apps → Threkir → Permissions.'**
-  String get onboardingLocationBody;
+  /// **'Threkir samples your GPS location to record a run, including while your screen is off — a notification shows whenever a run is recording. Your location stays on this device unless you sync or share a run. The next prompt grants access while the app is in use, which is all Android’s first prompt can give; before your first run Threkir offers the “Allow all the time” upgrade that keeps tracking reliable once you switch to another app. Decline, and runs still record time and steps — but no map, distance or pace.'**
+  String get onboardingLocationBodyAndroid;
+
+  /// iOS location disclosure on the onboarding Location page — names the iOS Settings path, not the Android one
+  ///
+  /// In en, this message translates to:
+  /// **'Threkir samples your GPS location to record a run, including while your screen is off or you are in another app. Your location stays on this device unless you sync or share a run. You can change this any time in Settings › Privacy & Security › Location Services › Threkir. Decline, and runs still record time and steps — but no map, distance or pace.'**
+  String get onboardingLocationBodyIos;
+
+  /// Title of the dialog shown when the onboarding location request came back denied
+  ///
+  /// In en, this message translates to:
+  /// **'No location access'**
+  String get onboardingLocationDeniedTitle;
+
+  /// Body of the onboarding location-denied dialog — names what a run records without location
+  ///
+  /// In en, this message translates to:
+  /// **'Threkir can still time your runs and count steps, but without location there is no map, no distance and no pace. You can grant it whenever you like.'**
+  String get onboardingLocationDeniedBody;
+
+  /// Action on the onboarding location-denied dialog that opens the OS app-settings page
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get onboardingLocationDeniedSettings;
+
+  /// Action on the onboarding location-denied dialog that finishes onboarding without location
+  ///
+  /// In en, this message translates to:
+  /// **'Continue without it'**
+  String get onboardingLocationDeniedContinue;
 
   /// Title of the privacy-default chooser onboarding page
   ///
@@ -2206,6 +2236,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pick a default for new runs. You can change it any time in Settings, and override it on any single run.'**
   String get onboardingPrivacyBody;
+
+  /// Title of the final onboarding page, which offers account creation before the dashboard
+  ///
+  /// In en, this message translates to:
+  /// **'Keep your runs beyond this phone'**
+  String get onboardingAccountTitle;
+
+  /// Body of the onboarding account page — what an account buys and that the app works without one
+  ///
+  /// In en, this message translates to:
+  /// **'An account syncs your runs to the web app and your other devices, and gets them back if you lose this one. You can run without it — everything here works offline — and create one later from You › Settings.'**
+  String get onboardingAccountBody;
+
+  /// Primary action on the onboarding account page — opens sign-up
+  ///
+  /// In en, this message translates to:
+  /// **'Create a free account'**
+  String get onboardingAccountCreate;
+
+  /// Secondary action on the onboarding account page — opens sign-in
+  ///
+  /// In en, this message translates to:
+  /// **'I already have an account'**
+  String get onboardingAccountSignIn;
+
+  /// Action that finishes onboarding without an account
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get onboardingAccountLater;
 
   /// Bottom button label on the final onboarding page
   ///
@@ -2236,6 +2296,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Skip'**
   String get setupSkipStep;
+
+  /// Title of the confirm dialog raised when the OS back gesture is used on the first setup-wizard step
+  ///
+  /// In en, this message translates to:
+  /// **'Leave setup?'**
+  String get setupLeaveTitle;
+
+  /// Body of the setup-wizard leave-confirmation dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Anything you\'ve entered here won\'t be saved. You can set all of it up later from Settings.'**
+  String get setupLeaveBody;
+
+  /// Dismiss action on the setup-wizard leave dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Keep setting up'**
+  String get setupLeaveStay;
+
+  /// Confirm action on the setup-wizard leave dialog — exits the wizard the same way the header Skip does
+  ///
+  /// In en, this message translates to:
+  /// **'Leave'**
+  String get setupLeaveConfirm;
 
   /// Button that goes to the previous setup-wizard step
   ///
@@ -3683,6 +3767,12 @@ abstract class AppLocalizations {
   /// **'Meals'**
   String get historyKindMeals;
 
+  /// Error shown when the History tab could not read the lift / meal modalities from the server
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your lifts and meals'**
+  String get historyModalityLoadFailed;
+
   /// Link from a single-modality History tab to that modality's full page (runs list / gym / nutrition)
   ///
   /// In en, this message translates to:
@@ -3734,7 +3824,7 @@ abstract class AppLocalizations {
   /// Empty-state body shown when the store has no runs at all
   ///
   /// In en, this message translates to:
-  /// **'Tap the Run tab to start your first run'**
+  /// **'Tap Log to record a run, or add one you have already finished'**
   String get historyEmptyBody;
 
   /// Activity filter chip that clears the activity filter (shows all activities)
@@ -17115,12 +17205,6 @@ abstract class AppLocalizations {
   /// **'{count, plural, one{{count} exercise} other{{count} exercises}}'**
   String gymRoutineExerciseCount(int count);
 
-  /// No description provided for @gymRoutineStart.
-  ///
-  /// In en, this message translates to:
-  /// **'Start routine'**
-  String get gymRoutineStart;
-
   /// Label above the publish-as-template control on the routine detail screen
   ///
   /// In en, this message translates to:
@@ -18734,6 +18818,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 set logged} other{{count} sets logged}}'**
   String gymDraftSetCount(int count);
+
+  /// Heading of the gym composer's recover card, offering back the half-built workout a killed composer left on disk
+  ///
+  /// In en, this message translates to:
+  /// **'Unfinished workout'**
+  String get gymComposeDraftTitle;
+
+  /// Body of the gym composer's recover card
+  ///
+  /// In en, this message translates to:
+  /// **'You started this workout but never saved it.'**
+  String get gymComposeDraftBody;
 
   /// Resume-card action restoring the guided session from its draft
   ///
@@ -23348,6 +23444,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Use this run'**
   String get guidedRunUseThisRun;
+
+  /// Title of the confirm shown when system back would close the app while a run is recording
+  ///
+  /// In en, this message translates to:
+  /// **'Run still recording'**
+  String get backExitRecordingTitle;
+
+  /// Body of the leave-while-recording confirm
+  ///
+  /// In en, this message translates to:
+  /// **'Leaving the app can interrupt the recording. Your run is kept, so you can pick it up when you come back.'**
+  String get backExitRecordingBody;
+
+  /// Confirm action: close the app although a run is recording
+  ///
+  /// In en, this message translates to:
+  /// **'Leave anyway'**
+  String get backExitRecordingLeave;
+
+  /// Cancel action: stay in the app and keep the recording running
+  ///
+  /// In en, this message translates to:
+  /// **'Keep recording'**
+  String get backExitRecordingStay;
+
+  /// Banner shown when a Log action names the capture page already on screen
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re already on {page}'**
+  String logAlreadyOnPage(String page);
 }
 
 class _AppLocalizationsDelegate

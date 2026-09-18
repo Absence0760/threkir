@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:api_client/api_client.dart';
@@ -7,10 +8,12 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ui_kit/ui_kit.dart' show TextLane;
 
+import '../lib/gym_compose_draft.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_gym_store.dart';
 import '../lib/widgets/gym_compose_sheet.dart';
 import 'pump_until.dart';
+import 'store_write_watch.dart';
 
 /// Flush the real event loop until [ready] holds, then settle the route pop.
 ///
@@ -1231,6 +1234,209 @@ void main() {
             reason: 'the action row striped instead of stacking');
       } finally {
         f.dir.deleteSync(recursive: true);
+      }
+    });
+  });
+
+  group('GymComposeSheet — the half-built workout survives a kill', () {
+    /// A draft store rooted in its own temp directory, plus that directory's
+    /// draft file.
+    Future<({GymComposeDraftStore store, Directory dir, File file})> drafts(
+        String tag) async {
+      final dir = Directory.systemTemp.createTempSync('gym_compose_dr_$tag');
+      final store = GymComposeDraftStore();
+      await store.init(overrideDirectory: dir);
+      return (store: store, dir: dir, file: File('${dir.path}/draft.json'));
+    }
+
+    Future<void> pumpComposer(
+      WidgetTester tester,
+      LocalGymStore store,
+      GymComposeDraftStore draftStore,
+    ) async {
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: GymComposeSheet(store: store, draftStore: draftStore),
+        ),
+      ));
+      await tester.pump();
+    }
+
+    testWidgets(
+        'a workout typed but never saved is on disk before the composer closes',
+        (tester) async {
+      final f = await _store('durable_');
+      final d = await drafts('durable_');
+      try {
+        await pumpComposer(tester, f.store, d.store);
+
+        // Title, exercise name, reps — a session someone is mid-way through.
+        await tester.enterText(find.byType(TextField).at(0), 'Leg day');
+        await tester.enterText(find.byType(TextField).at(1), 'Squat');
+        await tester.enterText(find.byType(TextField).at(2), '5');
+        await tester.pump();
+
+        expect(d.file.existsSync(), isFalse,
+            reason: 'nothing should be written before the first save tick');
+
+        // One periodic durable-save tick, then let the real loop land the
+        // atomic write (the fake clock never turns file IO).
+        await tester.pump(const Duration(seconds: 11));
+        await pumpUntil(tester, d.file.existsSync,
+            describe: "the composer's periodic draft save to land on disk");
+
+        final json =
+            jsonDecode(d.file.readAsStringSync()) as Map<String, dynamic>;
+        expect(json['title'], 'Leg day');
+        final ex = (json['exercises'] as List).first as Map<String, dynamic>;
+        expect(ex['name'], 'Squat');
+        expect(((ex['sets'] as List).first as Map)['reps'], '5');
+
+        // And nothing was logged as a workout — a draft is not a session.
+        expect(f.store.workouts, isEmpty);
+
+        // Closing the composer deliberately resolves the draft; only a kill,
+        // which never reaches dispose, leaves it behind.
+        await tester.pumpWidget(const SizedBox.shrink());
+        await pumpUntilStoreWritesSettle(tester);
+        expect(d.file.existsSync(), isFalse);
+      } finally {
+        f.dir.deleteSync(recursive: true);
+        d.dir.deleteSync(recursive: true);
+      }
+    });
+
+    testWidgets('the next composer offers the draft back and restores it',
+        (tester) async {
+      final f = await _store('recover_');
+      final d = await drafts('recover_');
+      try {
+        d.file.writeAsStringSync(jsonEncode({
+          '_v': 1,
+          'title': 'Leg day',
+          'is_public': false,
+          'saved_at': '2026-09-17T10:30:00.000Z',
+          'exercises': [
+            {
+              'name': 'Squat',
+              'sets': [
+                {
+                  'reps': '5',
+                  'weight': '140',
+                  'rpe': '',
+                  'duration': '',
+                  'set_type': 'working',
+                },
+              ],
+            },
+          ],
+        }));
+
+        await pumpComposer(tester, f.store, d.store);
+        await pumpUntil(tester, () => find.text('Resume').evaluate().isNotEmpty,
+            describe: 'the recover card to read the draft off disk');
+        expect(find.text('Unfinished workout'), findsOneWidget);
+
+        await tester.tap(find.text('Resume'));
+        await tester.pump();
+
+        expect(find.text('Unfinished workout'), findsNothing);
+        expect(tester.widget<TextField>(find.byType(TextField).at(0)).controller?.text,
+            'Leg day');
+        expect(tester.widget<TextField>(find.byType(TextField).at(1)).controller?.text,
+            'Squat');
+        expect(tester.widget<TextField>(find.byType(TextField).at(2)).controller?.text,
+            '5');
+        expect(tester.widget<TextField>(find.byType(TextField).at(3)).controller?.text,
+            '140');
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await pumpUntilStoreWritesSettle(tester);
+      } finally {
+        f.dir.deleteSync(recursive: true);
+        d.dir.deleteSync(recursive: true);
+      }
+    });
+
+    testWidgets('discarding the offer clears the draft off disk',
+        (tester) async {
+      final f = await _store('discard_');
+      final d = await drafts('discard_');
+      try {
+        d.file.writeAsStringSync(jsonEncode({
+          '_v': 1,
+          'title': 'Leg day',
+          'is_public': false,
+          'saved_at': '2026-09-17T10:30:00.000Z',
+          'exercises': const [],
+        }));
+
+        await pumpComposer(tester, f.store, d.store);
+        await pumpUntil(tester, () => find.text('Discard').evaluate().isNotEmpty,
+            describe: 'the recover card to read the draft off disk');
+
+        await tester.tap(find.text('Discard'));
+        await tester.pump();
+        expect(find.text('Unfinished workout'), findsNothing);
+        await pumpUntilStoreWritesSettle(tester);
+        expect(d.file.existsSync(), isFalse);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await pumpUntilStoreWritesSettle(tester);
+      } finally {
+        f.dir.deleteSync(recursive: true);
+        d.dir.deleteSync(recursive: true);
+      }
+    });
+
+    testWidgets('editing a stored workout never touches the create draft',
+        (tester) async {
+      final f = await _store('editpath_');
+      final d = await drafts('editpath_');
+      try {
+        late final StoredGymWorkout stored;
+        await tester.runAsync(() async {
+          stored = await f.store.createLocal(
+            title: 'Leg day',
+            startedAt: DateTime.utc(2026, 9, 17),
+            sets: [
+              (
+                exerciseName: 'Squat',
+                reps: 5,
+                weightKg: 140.0,
+                rpe: null,
+                setType: 'working',
+                durationS: null,
+                exerciseId: null,
+              ),
+            ],
+          );
+        });
+        await tester.pumpWidget(MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: GymComposeSheet(
+              store: f.store,
+              existing: f.store.byId(stored.id),
+              draftStore: d.store,
+            ),
+          ),
+        ));
+        await tester.pump();
+        await tester.enterText(find.byType(TextField).at(0), 'Leg day II');
+        await tester.pump(const Duration(seconds: 11));
+        await pumpUntilStoreWritesSettle(tester);
+        expect(d.file.existsSync(), isFalse);
+        expect(find.text('Unfinished workout'), findsNothing);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await pumpUntilStoreWritesSettle(tester);
+      } finally {
+        f.dir.deleteSync(recursive: true);
+        d.dir.deleteSync(recursive: true);
       }
     });
   });

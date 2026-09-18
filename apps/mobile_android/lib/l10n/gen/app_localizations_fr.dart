@@ -776,7 +776,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get prefsKeepRunPrimarySubtitle =>
-      'Appuyez sur le bouton central pour démarrer une course ; appui long pour le menu complet';
+      'Touchez le bouton central pour démarrer une course. Déjà actif tant que vous n’avez enregistré ni séance de muscu ni repas ; un appui long ouvre toujours le menu d’enregistrement';
 
   @override
   String get bodyMetricsTitle => 'Données corporelles';
@@ -1284,8 +1284,25 @@ class AppLocalizationsFr extends AppLocalizations {
   String get onboardingLocationTitle => 'Accès à la localisation';
 
   @override
-  String get onboardingLocationBody =>
-      'Threkir enregistre vos courses en échantillonnant votre position GPS lorsque l\'app est au premier plan ET en arrière-plan (afin de continuer le suivi lorsque votre écran est éteint ou que vous changez d\'app pour prendre une photo). Les données de localisation sont stockées sur votre appareil et ne sont transmises aux serveurs de Threkir que lorsque vous choisissez de partager ou de synchroniser une course. Si vous refusez la localisation en arrière-plan, l\'enregistrement s\'arrêtera dès que vous quitterez l\'app — vous pourrez modifier cela plus tard dans Réglages → Apps → Threkir → Autorisations.';
+  String get onboardingLocationBodyAndroid =>
+      'Threkir relève votre position GPS pour enregistrer une course, y compris écran éteint — une notification indique qu’un enregistrement est en cours. Votre position reste sur cet appareil tant que vous ne synchronisez ni ne partagez une course. La demande suivante accorde l’accès pendant l’utilisation de l’app, ce que la première demande d’Android ne peut pas dépasser ; avant votre première course, Threkir propose le passage à « Toujours autoriser », qui fiabilise le suivi lorsque vous passez à une autre app. Si vous refusez, les courses enregistrent toujours le temps et les pas — mais ni carte, ni distance, ni allure.';
+
+  @override
+  String get onboardingLocationBodyIos =>
+      'Threkir relève votre position GPS pour enregistrer une course, y compris écran éteint ou lorsque vous êtes dans une autre app. Votre position reste sur cet appareil tant que vous ne synchronisez ni ne partagez une course. Vous pouvez le modifier à tout moment dans Réglages › Confidentialité et sécurité › Service de localisation › Threkir. Si vous refusez, les courses enregistrent toujours le temps et les pas — mais ni carte, ni distance, ni allure.';
+
+  @override
+  String get onboardingLocationDeniedTitle => 'Pas d’accès à la position';
+
+  @override
+  String get onboardingLocationDeniedBody =>
+      'Threkir peut toujours chronométrer vos courses et compter vos pas, mais sans la position il n’y a ni carte, ni distance, ni allure. Vous pouvez l’autoriser quand vous voulez.';
+
+  @override
+  String get onboardingLocationDeniedSettings => 'Ouvrir les réglages';
+
+  @override
+  String get onboardingLocationDeniedContinue => 'Continuer sans';
 
   @override
   String get onboardingPrivacyTitle => 'Qui voit vos courses ?';
@@ -1293,6 +1310,23 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get onboardingPrivacyBody =>
       'Choisissez un réglage par défaut pour les nouvelles courses. Vous pouvez le modifier à tout moment dans les Réglages et le remplacer pour n\'importe quelle course.';
+
+  @override
+  String get onboardingAccountTitle =>
+      'Gardez vos courses au-delà de ce téléphone';
+
+  @override
+  String get onboardingAccountBody =>
+      'Un compte synchronise vos courses avec l’app web et vos autres appareils, et les récupère si vous perdez celui-ci. Vous pouvez courir sans : tout fonctionne hors ligne ici, et vous pourrez en créer un plus tard depuis Vous › Réglages.';
+
+  @override
+  String get onboardingAccountCreate => 'Créer un compte gratuit';
+
+  @override
+  String get onboardingAccountSignIn => 'J’ai déjà un compte';
+
+  @override
+  String get onboardingAccountLater => 'Pas maintenant';
 
   @override
   String get onboardingGrantPermission => 'Accorder l\'autorisation';
@@ -1308,6 +1342,19 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get setupSkipStep => 'Ignorer';
+
+  @override
+  String get setupLeaveTitle => 'Quitter la configuration ?';
+
+  @override
+  String get setupLeaveBody =>
+      'Ce que vous avez saisi ici ne sera pas enregistré. Vous pourrez tout configurer plus tard depuis les Réglages.';
+
+  @override
+  String get setupLeaveStay => 'Continuer la configuration';
+
+  @override
+  String get setupLeaveConfirm => 'Quitter';
 
   @override
   String get setupBack => 'Retour';
@@ -2189,6 +2236,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get historyKindMeals => 'Repas';
 
   @override
+  String get historyModalityLoadFailed =>
+      'Impossible de charger vos séances de muscu et vos repas';
+
+  @override
   String get historyViewAll => 'Tout voir';
 
   @override
@@ -2219,7 +2270,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get historyEmptyBody =>
-      'Touchez l\'onglet Course pour démarrer votre première course';
+      'Touchez Ajouter pour enregistrer une course, ou ajoutez-en une déjà terminée';
 
   @override
   String get historyFilterAll => 'Toutes';
@@ -10476,9 +10527,6 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get gymRoutineStart => 'Démarrer la routine';
-
-  @override
   String get gymRoutinePublishLabel => 'Publier dans un club';
 
   @override
@@ -11440,6 +11488,13 @@ class AppLocalizationsFr extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get gymComposeDraftTitle => 'Séance non terminée';
+
+  @override
+  String get gymComposeDraftBody =>
+      'Vous avez commencé cette séance sans jamais l\'enregistrer.';
 
   @override
   String get gymDraftResume => 'Reprendre';
@@ -14142,4 +14197,23 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get guidedRunUseThisRun => 'Utiliser cette course';
+
+  @override
+  String get backExitRecordingTitle =>
+      'Course toujours en cours d’enregistrement';
+
+  @override
+  String get backExitRecordingBody =>
+      'Quitter l’application peut interrompre l’enregistrement. Votre course est conservée, vous pourrez la reprendre à votre retour.';
+
+  @override
+  String get backExitRecordingLeave => 'Quitter quand même';
+
+  @override
+  String get backExitRecordingStay => 'Continuer l’enregistrement';
+
+  @override
+  String logAlreadyOnPage(String page) {
+    return 'Vous êtes déjà sur $page';
+  }
 }

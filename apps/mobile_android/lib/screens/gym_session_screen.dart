@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:run_recorder/run_recorder.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../entry_field_fit.dart';
 import '../gym_adherence.dart';
 import '../gym_progression.dart';
 import '../gym_routine.dart';
@@ -64,6 +65,12 @@ class GymSessionScreen extends StatefulWidget {
 /// `_ResumeChoice` shape: stay, exit keeping the recoverable state, or
 /// destroy it.
 enum _LeaveChoice { keep, leave, discard }
+
+/// The narrowest a per-set entry field may be before its localized label
+/// ("Distance", "Distância", "Time (s)") stops fitting. Read through the text
+/// scaler, never used raw.
+const double _kFieldMinWidth = 72;
+const double _kFieldGap = 12;
 
 class _GymSessionScreenState extends State<GymSessionScreen> {
   static const _saveInterval = Duration(seconds: 10);
@@ -775,19 +782,23 @@ class _GymSessionScreenState extends State<GymSessionScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            GymExecutionBand(
-              state: _band,
-              onComplete: _onComplete,
-              onSkip: _onSkip,
-              onRewind: _onRewind,
-              onAbandon: _onAbandon,
-            ),
             Expanded(
               child: _finished
                   ? _finishView(l10n)
                   : (_abandoned
                       ? const SizedBox.shrink()
                       : _entryView(l10n)),
+            ),
+            // The band ends with Log set, which commits the entry fields — so
+            // the whole band sits BELOW them. Above, the commit read as the
+            // heading of a section it actually closes, and the athlete had to
+            // reach back up past the fields to log a set they had just typed.
+            GymExecutionBand(
+              state: _band,
+              onComplete: _onComplete,
+              onSkip: _onSkip,
+              onRewind: _onRewind,
+              onAbandon: _onAbandon,
             ),
           ],
         ),
@@ -796,28 +807,50 @@ class _GymSessionScreenState extends State<GymSessionScreen> {
   }
 
   Widget _entryView(AppLocalizations l10n) {
+    final step = _runner.currentStep;
+    final fields = <Widget>[
+      _field(_reps, l10n.gymReps, false),
+      _field(_weight, WeightFormat.label(activeWeightUnit), true),
+      _field(_rpe, l10n.gymRpe, true),
+      if (step?.targetDurationS != null)
+        _field(_duration, l10n.gymDuration, false),
+      if (step?.targetDistanceM != null)
+        _field(_distance, l10n.gymDistance, true),
+    ];
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       children: [
-        Row(
-          children: [
-            Expanded(child: _field(_reps, l10n.gymReps, false)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _field(_weight, WeightFormat.label(activeWeightUnit), true),
-            ),
-            const SizedBox(width: 12),
-            Expanded(child: _field(_rpe, l10n.gymRpe, true)),
-            if (_runner.currentStep?.targetDurationS != null) ...[
-              const SizedBox(width: 12),
-              Expanded(child: _field(_duration, l10n.gymDuration, false)),
-            ],
-            if (_runner.currentStep?.targetDistanceM != null) ...[
-              const SizedBox(width: 12),
-              Expanded(child: _field(_distance, l10n.gymDistance, true)),
-            ],
-          ],
+        LayoutBuilder(
+          builder: (context, constraints) => _fieldGrid(
+            fields,
+            constraints.maxWidth,
+            MediaQuery.textScalerOf(context).scale(_kFieldMinWidth),
+          ),
         ),
+      ],
+    );
+  }
+
+  Widget _fieldGrid(List<Widget> fields, double maxWidth, double floor) {
+    final perRow = fieldsPerRow(
+      count: fields.length,
+      maxWidth: maxWidth,
+      minFieldWidth: floor,
+      gap: _kFieldGap,
+    );
+    return Column(
+      children: [
+        for (var i = 0; i < fields.length; i += perRow) ...[
+          if (i > 0) const SizedBox(height: _kFieldGap),
+          Row(
+            children: [
+              for (var j = i; j < i + perRow && j < fields.length; j++) ...[
+                if (j > i) const SizedBox(width: _kFieldGap),
+                Expanded(child: fields[j]),
+              ],
+            ],
+          ),
+        ],
       ],
     );
   }

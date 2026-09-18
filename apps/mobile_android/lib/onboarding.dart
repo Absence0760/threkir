@@ -31,9 +31,40 @@ const List<String> primaryGoalValues = [
   'marathon',
 ];
 
-/// Total wizard steps. Drives the progress-dot indicator + the per-step
-/// navigation math. Mirrors web's `ONBOARDING_TOTAL_STEPS`.
+/// The wizard's steps, in order. Ids match web's `ONBOARDING_STEPS` so the
+/// two wizards can be read side by side; the hyphen in `run-privacy` is
+/// web's icon-font constraint, kept here only so the ids stay identical.
+const List<String> setupWizardSteps = [
+  'name',
+  'units',
+  'goal',
+  'about',
+  'run-privacy',
+  'notifications',
+  'done',
+];
+
+/// Total wizard steps. Drives the per-step navigation math and is the
+/// figure web's `ONBOARDING_TOTAL_STEPS` mirrors — the FULL wizard, before
+/// [visibleSetupWizardSteps] drops anything. Written out rather than read
+/// off [setupWizardSteps] because a list's `length` is not a constant
+/// expression; `onboarding_test.dart` pins the two together.
 const int onboardingTotalSteps = 7;
+
+/// The steps this device actually walks, and the list the progress dots are
+/// generated from. Mobile's own, the counterpart of web's web-only
+/// `visibleOnboardingSteps` — both wizards drop a step, for different
+/// reasons.
+///
+/// `run-privacy` goes when the first-launch flow already asked. That flow
+/// (`OnboardingScreen`) writes `Preferences.privacyDefault` before an
+/// account exists, so a second ask is not a second opinion — whatever the
+/// wizard's step is left sitting on is written over the launch answer on
+/// Finish, silently.
+List<String> visibleSetupWizardSteps({required bool privacyAlreadyChosen}) =>
+    setupWizardSteps
+        .where((s) => s != 'run-privacy' || !privacyAlreadyChosen)
+        .toList();
 
 /// A create-plan preset derived from a primary-goal answer — twin of web's
 /// `PlanPreset`.

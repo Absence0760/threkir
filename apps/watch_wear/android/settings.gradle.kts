@@ -16,10 +16,12 @@ dependencyResolutionManagement {
 
 plugins {
     id("com.android.application") version "9.4.0" apply false
-    // Pinned to 2.3.21 (NOT the 2.4.0 Dependabot offers): CodeQL's Kotlin
-    // extractor can't analyse 2.4.0 yet ("kotlin-version-too-new" → the
-    // codeql-kotlin Security job fails). Bump only once CodeQL supports it.
-    // See apps/watch_wear/CLAUDE.md § Dependency versions.
+    // Pinned below CodeQL's Kotlin extractor ceiling: past it the
+    // codeql-kotlin Security job fails outright rather than scanning less.
+    // The ceiling is now 2.4.20 and this pin is 2.3.21, so it is tighter
+    // than it has to be — deliberately, since these move with the
+    // compose-compiler plugin against AGP 9. See decisions § 1656 and
+    // apps/watch_wear/CLAUDE.md § Dependency versions.
     id("org.jetbrains.kotlin.plugin.compose") version "2.3.21" apply false
     id("org.jetbrains.kotlin.plugin.serialization") version "2.3.21" apply false
 }

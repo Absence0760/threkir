@@ -46,12 +46,13 @@
 	import {
 		addDays,
 		fmtHms,
+		formatISO,
 		isWorkoutCompleted,
 		isWorkoutSkipped,
 		parseISO,
 		todayISO
 	} from '$lib/training/training';
-	import { weeklyDrift, missedWorkoutAdvice } from '$lib/training/plan_adherence';
+	import { weeklyDriftToDate, missedWorkoutAdvice } from '$lib/training/plan_adherence';
 	import { currentPlanWeekIndex } from '$lib/training/plan_week';
 	import {
 		orderedPlanPhases,
@@ -840,28 +841,31 @@
 		return planDistanceBanked(workouts, actualById);
 	});
 
-	/// Current-week mileage drift vs plan. Owner-only (needs the runs
-	/// list). Planned volume is the week's target, falling back to the
-	/// sum of its non-rest workouts' distances; actual is every run dated
-	/// inside the week window. Null unless the drift trips the flag.
+	/// Current-week mileage drift vs the plan TO DATE. Owner-only (needs
+	/// the runs list). Both sides are windowed to the week's days that have
+	/// already ended, so a part-elapsed week is not judged against its full
+	/// seven-day target. Null unless the drift trips the flag.
 	let currentWeekDrift = $derived.by(() => {
 		if (!plan || !isOwner || currentWeek == null || currentWeekIndex == null) return null;
-		const weekWorkouts = workoutsByWeek.get(currentWeek.id) ?? [];
-		let planned = currentWeek.target_volume_m ?? 0;
-		if (!(planned > 0)) {
-			planned = weekWorkouts.reduce(
-				(s, w) => s + (w.kind !== 'rest' ? (w.target_distance_m ?? 0) : 0),
-				0
-			);
-		}
 		const weekStartD = addDays(parseISO(plan.start_date), currentWeekIndex * 7);
 		const weekEndD = addDays(weekStartD, 7);
-		let actual = 0;
+		const runs = [];
 		for (const r of recentRuns) {
 			const t = new Date(r.started_at);
-			if (t >= weekStartD && t < weekEndD) actual += r.distance_m ?? 0;
+			if (t >= weekStartD && t < weekEndD) {
+				runs.push({ date: formatISO(t), distanceM: r.distance_m ?? 0 });
+			}
 		}
-		const d = weeklyDrift(planned, actual);
+		const d = weeklyDriftToDate({
+			workouts: (workoutsByWeek.get(currentWeek.id) ?? []).map((w) => ({
+				scheduledDate: w.scheduled_date,
+				kind: w.kind,
+				targetDistanceM: w.target_distance_m
+			})),
+			runs,
+			today,
+			weekTargetVolumeM: currentWeek.target_volume_m
+		});
 		return d.flagged ? d : null;
 	});
 

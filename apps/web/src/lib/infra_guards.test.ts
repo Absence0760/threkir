@@ -6,7 +6,7 @@
 
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 function read(...parts: string[]): string {
@@ -207,6 +207,60 @@ test('CloudFront CSP drops unsafe-eval and bounds XSS gadget surface', () => {
 		/\*\.ingest\.sentry\.io/,
 		'CSP connect-src must include https://*.ingest.sentry.io — Sentry browser SDK posts errors there.',
 	);
+});
+
+test('every Function-URL Lambda reports to Sentry, and its env carries the DSN', () => {
+	// Reason: these eight functions were the least observable tier in the
+	// stack. Each already caught its own errors and answered with a chosen
+	// status, so a failure produced a CloudWatch line and nothing else — no
+	// issue, no grouping across occurrences, no release correlation, no
+	// alert. The 16 Edge Functions have had `withSentry` the whole time;
+	// this is the same coverage for the Lambdas.
+	//
+	// Both halves are pinned, because either alone is silent. A handler that
+	// reports into an env with no SENTRY_DSN initialises nothing; a DSN
+	// wired to a handler that never calls out sends nothing. Neither state
+	// announces itself — that is the entire failure mode being guarded.
+	//
+	// The function list is read from disk, not written here, so a NEW Lambda
+	// added without instrumentation fails this test rather than joining a
+	// list nobody updates.
+	const fns = readdirSync(resolve('lambda'), { withFileTypes: true })
+		.filter((d) => d.isDirectory() && !d.name.startsWith('_'))
+		.map((d) => d.name)
+		.sort();
+	assert.ok(
+		fns.length >= 8,
+		`expected at least the 8 known Function-URL Lambdas, found ${fns.length}`,
+	);
+	for (const fn of fns) {
+		assert.match(
+			read(`lambda/${fn}/src/index.ts`),
+			/reportException\(/,
+			`lambda/${fn} must call reportException from its outermost catch — otherwise its failures reach CloudWatch and stop there.`,
+		);
+	}
+
+	// The terraform half. `base_lambda_env` is excluded deliberately: only
+	// the coach Lambda merges it, and all eight need the DSN, which is why
+	// sentry_env is its own local.
+	const tf = read('../../infra/modules/web-stack/main.tf');
+	const envLocals = [...tf.matchAll(/^\s+(\w*lambda_env) = merge\(/gm)]
+		.map((m) => m[1])
+		.filter((name) => name !== 'base_lambda_env');
+	assert.ok(
+		envLocals.length >= 8,
+		`expected at least 8 per-Lambda env locals, found ${envLocals.length}`,
+	);
+	for (const name of envLocals) {
+		const start = tf.indexOf(`  ${name} = merge(`);
+		const block = tf.slice(start, tf.indexOf('\n  )', start));
+		assert.match(
+			block,
+			/local\.sentry_env/,
+			`${name} must merge local.sentry_env — without it SENTRY_DSN never reaches that function and its reporting is a no-op.`,
+		);
+	}
 });
 
 test('both CSP layers allow MapLibre blob: workers (worker-src)', () => {

@@ -29,6 +29,7 @@ import {
 } from '../../../src/lib/routes/generate/handler';
 import { decodeLambdaBody } from '../../../src/lib/coach/body';
 import { methodRefusal } from '../../../src/lib/core/method_gate';
+import { reportException } from '../../_shared/sentry';
 
 const ALLOWED_METHODS = ['POST'] as const;
 
@@ -112,6 +113,7 @@ export const handler = async (
 			message: e instanceof Error ? e.message : String(e),
 			stack: e instanceof Error ? e.stack : undefined,
 		});
+		await reportException('generate-route', e);
 		return json(503, { error: 'route generation is temporarily unavailable' });
 	}
 };

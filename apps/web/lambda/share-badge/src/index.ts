@@ -19,6 +19,7 @@ import { renderBadgeOgPng } from '../../../src/lib/share/og_badge_png';
 import { siteOrigin } from '../../../src/lib/core/site_url';
 import { shareMethodRefusal } from '../../../src/lib/share/share_method_gate';
 import { notFoundShell } from '../../../src/lib/share/entity_spa_shell';
+import { reportException } from '../../_shared/sentry';
 
 declare const __SPA_SHELL_HTML__: string;
 
@@ -64,6 +65,7 @@ export const handler = async (
 			message: err instanceof Error ? err.message : String(err),
 			stack: err instanceof Error ? err.stack : undefined,
 		});
+		await reportException('share-badge', err, { path: event.rawPath });
 		return jsonResponse(503, { error: 'temporarily unavailable' }, NO_STORE);
 	}
 };

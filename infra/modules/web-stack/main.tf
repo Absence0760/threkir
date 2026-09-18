@@ -48,34 +48,63 @@ locals {
     var.extra_lambda_env,
   )
 
-  # The coach Lambda's half of the secrets file, by name. This env used to be
-  # the whole decrypted map: every key the file grows for any OTHER consumer —
-  # the routing engines' shared X-Engine-Key today, a payments or mail key
-  # tomorrow — landed in this function's environment whether the handler reads
-  # it or not, visible to anyone who can call GetFunctionConfiguration and to
-  # any code-execution bug in the handler. `generate_route_lambda_env` below
-  # already takes only the two keys it uses, and its comment names this env as
-  # the contrast ("not the whole secret bag the coach Lambda gets"); this is
-  # that same narrowing applied to the bag it was contrasting with.
+  # The coach Lambda's half of the secrets file, split by what the value IS.
   #
-  # The list is the set the coach handler and its cores read out of
-  # process.env, minus the two PUBLIC_ values that come from module vars. A key
-  # the coach needs and this list omits is an unset env, which the handler
-  # already answers as a tagged 503 rather than as a silent degrade — the
-  # fail-closed direction.
-  coach_secret_keys = [
+  # Narrowing the env to the keys one function reads (rather than merging the
+  # decrypted map whole) closed the over-sharing between functions. It did not
+  # close the one that matters most: a plaintext `environment { variables }` is
+  # returned by every API that returns a FunctionConfiguration, INCLUDING
+  # `lambda:UpdateFunctionCode` — which the release genuinely calls. Any
+  # principal that can deploy could therefore read ANTHROPIC_API_KEY and
+  # SUPABASE_SECRET_KEY by uploading the same zip and reading the response.
+  #
+  # So the CREDENTIALS never enter the environment in the clear at all. They
+  # are encrypted at apply time into one `aws_kms_ciphertext` blob per function
+  # and the handler decrypts it once per cold start under the EXECUTION role
+  # (apps/web/src/lib/core/lambda_secrets.ts, decisions § 1656). The blob is
+  # still handed out by GetFunctionConfiguration and is worth nothing without
+  # kms:Decrypt on this env's secrets CMK.
+  #
+  # `kms_key_arn` on the function is deliberately NOT the mechanism: it would
+  # have Lambda decrypt the environment for the caller, which returns the same
+  # plaintext to the same principals, and it would demand the DEPLOY role hold
+  # kms:Decrypt on the CMK — the grant decisions § 1021 removed.
+  coach_credential_keys = [
     "ANTHROPIC_API_KEY",
     "SUPABASE_SECRET_KEY",
-    "COACH_PROVIDER",
     "OPENAI_API_KEY",
+  ]
+
+  # The coach's non-credential config, which stays a plain environment
+  # variable. None of these authorises anything: two name an endpoint and a
+  # model, and COACH_PROVIDER selects between providers — and the handler's
+  # provider gate reads it before it has a bag to read.
+  coach_config_keys = [
+    "COACH_PROVIDER",
     "OPENAI_BASE_URL",
     "OPENAI_MODEL",
   ]
 
+  # The two X-Engine-Key credentials the generate-route handler sends. Same
+  # treatment, its own blob: the execution role is shared by all eight
+  # functions, so per-function encryption context is what stops one function's
+  # blob from being decryptable as another's.
+  generate_route_credential_keys = [
+    "GRAPHHOPPER_API_KEY",
+    "GRAPH_CYCLE_API_KEY",
+  ]
+
+  coach_secrets_context          = { function = "${local.resource_prefix}-coach" }
+  generate_route_secrets_context = { function = "${local.resource_prefix}-generate-route" }
+
   lambda_env = merge(
     local.base_lambda_env,
     local.sentry_env,
-    local.has_secrets ? { for k, v in data.sops_file.secrets[0].data : k => v if contains(local.coach_secret_keys, k) } : {},
+    local.has_secrets ? { for k, v in data.sops_file.secrets[0].data : k => v if contains(local.coach_config_keys, k) } : {},
+    local.has_secrets ? {
+      SECRETS_CIPHERTEXT = aws_kms_ciphertext.coach[0].ciphertext_blob
+      SECRETS_CONTEXT    = jsonencode(local.coach_secrets_context)
+    } : {},
   )
 
   # share-run Lambda env. Doesn't need any sops-decrypted secrets —
@@ -155,13 +184,16 @@ locals {
   # (GRAPH_CYCLE_URL unset → skip graph-cycle, fall to round_trip; both unset →
   # 501 and the client falls back to the OSRM heuristic). The matching API keys
   # (GRAPH_CYCLE_API_KEY + GRAPHHOPPER_API_KEY) are the shared secrets the handler
-  # sends as X-Engine-Key to clear each engine's guard — pulled from the sops file
-  # (ONLY those keys, not the whole secret bag the coach Lambda gets). Absent in
-  # sops → no header sent; if the engine's guard is active it 403s, the handler
-  # falls back, and (for round_trip) the engine-unreachable alarm fires. The
-  # Supabase pair backs the Pro gate's is_pro() check (decisions §204) — both
-  # are public client values, not secrets; if they're ever absent the handler
-  # fails the tier check closed (500) rather than skipping the gate.
+  # sends as X-Engine-Key to clear each engine's guard. They arrive as ONE KMS
+  # ciphertext blob, never as plaintext env vars — see local.coach_credential_keys
+  # above for why, and decisions § 1656. No blob at all (a first apply, before
+  # the env has a sops file) is now a 503 from the handler rather than the old
+  # "send no header and let the engine 403 us into the fallback": a credential
+  # this function cannot read is a misconfiguration, and degrading quietly is
+  # what hid it. The Supabase pair backs the Pro gate's is_pro() check
+  # (decisions §204) — both are public client values, not secrets; if they're
+  # ever absent the handler fails the tier check closed (500) rather than
+  # skipping the gate.
   generate_route_lambda_env = merge(
     {
       PUBLIC_SUPABASE_URL      = var.public_supabase_url
@@ -169,7 +201,10 @@ locals {
     },
     var.graph_cycle_url != "" ? { GRAPH_CYCLE_URL = var.graph_cycle_url } : {},
     var.graphhopper_url != "" ? { GRAPHHOPPER_URL = var.graphhopper_url } : {},
-    local.has_secrets ? { for k, v in data.sops_file.secrets[0].data : k => v if k == "GRAPHHOPPER_API_KEY" || k == "GRAPH_CYCLE_API_KEY" } : {},
+    local.has_secrets ? {
+      SECRETS_CIPHERTEXT = aws_kms_ciphertext.generate_route[0].ciphertext_blob
+      SECRETS_CONTEXT    = jsonencode(local.generate_route_secrets_context)
+    } : {},
     local.sentry_env,
   )
 
@@ -263,12 +298,20 @@ locals {
 #     handler reads process.env and calls no KMS API (measured: no
 #     `kms` reference anywhere under apps/web/lambda/). The env vars are
 #     encrypted at rest by the AWS-managed `aws/lambda` key, not by this
-#     CMK — no aws_lambda_function here sets `kms_key_arn`. The deploy
-#     role was removed from the statement in decisions § 1021; the
-#     execution role's grant is unexercised for the same reason and is
-#     filed in followups.md rather than removed, because emptying the
-#     statement is a structural change and one live-configuration read
-#     settles it. scripts/check_infra_iam.mjs holds both premises.
+#     CMK — no aws_lambda_function here sets `kms_key_arn`, and none may:
+#     that field would have Lambda decrypt the environment on the
+#     caller's behalf, returning the plaintext to every principal that
+#     can call GetFunctionConfiguration, and it would demand the DEPLOY
+#     role hold kms:Decrypt on this key (decisions § 1021).
+#
+#     What the execution role's grant below IS for, since § 1656: the
+#     coach and generate-route credentials reach those two functions as
+#     an `aws_kms_ciphertext` blob in an ordinary environment variable,
+#     and the handler calls kms:Decrypt on it once per cold start
+#     (apps/web/src/lib/core/lambda_secrets.ts). The grant was
+#     unexercised until then and is load-bearing now: delete it and
+#     every coach turn answers 503 on its first invocation in a fresh
+#     container. scripts/check_infra_iam.mjs holds both premises.
 data "aws_iam_policy_document" "kms_secrets" {
   statement {
     sid    = "AllowKeyAdministrationByAccountRoot"
@@ -361,6 +404,11 @@ data "aws_iam_policy_document" "kms_secrets" {
         # cycle. Audit pass 3 caught a name mismatch (was `-lambda`,
         # actual role is `-coach-lambda`); keep these in lockstep.
         "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.resource_prefix}-coach-lambda",
+        # Load-bearing since § 1656: this role is what decrypts
+        # SECRETS_CIPHERTEXT at cold start on the coach and generate-route
+        # functions. Removing it is not a least-privilege win, it is an
+        # outage on both.
+        #
         # An extra principal that genuinely needs apply-time decrypt.
         # BOTH env stacks now leave this "" and `compact()` drops it: the
         # only apply that reads data.sops_file is the operator's own, under
@@ -371,11 +419,13 @@ data "aws_iam_policy_document" "kms_secrets" {
       ])
     }
     # Decrypt path ONLY — kms:GenerateDataKey is deliberately omitted
-    # (audit/infra M1, least-privilege). Encryption (sops --encrypt / --set /
-    # updatekeys, in sops-init / secret-set / key-rotate) is a LOCAL operator
-    # action run under the operator's own admin/SSO principal, not this role.
-    # This comment used to say the Lambda "decrypts the sops env at cold-start";
-    # it does not — see the header above.
+    # (audit/infra M1, least-privilege). Encryption is never this role's: the
+    # sops flows (sops --encrypt / --set / updatekeys, in sops-init /
+    # secret-set / key-rotate) run under the operator's own admin/SSO
+    # principal, and the two aws_kms_ciphertext resources encrypt during the
+    # operator's own apply. Decrypt is exercised by the Lambda at cold start
+    # (decisions § 1656) — the comment that said so was wrong for the two
+    # years before that and is true now.
     actions = [
       "kms:Decrypt",
       "kms:DescribeKey",
@@ -400,6 +450,36 @@ resource "aws_kms_key" "secrets" {
   lifecycle {
     prevent_destroy = true
   }
+}
+
+# The two credential bags, encrypted at apply time under the env's own CMK.
+#
+# A RESOURCE rather than the `aws_kms_ciphertext` DATA SOURCE: the data source
+# re-encrypts on every plan, and KMS encryption is non-deterministic, so every
+# plan would show both functions' environments changing. The resource keeps the
+# blob in state and re-encrypts only when the plaintext, the key or the context
+# changes.
+#
+# The plaintext is in state — but it already was, via data.sops_file, so this
+# moves nothing. What it moves is the LAMBDA ENVIRONMENT, which is readable by
+# every principal that can call UpdateFunctionCode and is not a place a
+# credential belongs (decisions § 1656).
+#
+# The encryption context is per function and the handler passes it back on
+# Decrypt. All eight functions share one execution role, so without it a blob
+# lifted from one function's configuration would decrypt under any of them.
+resource "aws_kms_ciphertext" "coach" {
+  count     = local.has_secrets ? 1 : 0
+  key_id    = aws_kms_key.secrets.key_id
+  context   = local.coach_secrets_context
+  plaintext = jsonencode({ for k, v in data.sops_file.secrets[0].data : k => v if contains(local.coach_credential_keys, k) })
+}
+
+resource "aws_kms_ciphertext" "generate_route" {
+  count     = local.has_secrets ? 1 : 0
+  key_id    = aws_kms_key.secrets.key_id
+  context   = local.generate_route_secrets_context
+  plaintext = jsonencode({ for k, v in data.sops_file.secrets[0].data : k => v if contains(local.generate_route_credential_keys, k) })
 }
 
 resource "aws_kms_alias" "secrets" {
@@ -528,10 +608,12 @@ resource "aws_cloudwatch_log_group" "lambda" {
   name              = "/aws/lambda/${local.resource_prefix}-coach"
   retention_in_days = 30
   # Reuse the CMK that encrypts the sops file the env vars come OUT of.
-  # (It does not encrypt the env vars themselves — no aws_lambda_function
-  # in this module sets `kms_key_arn`, so Lambda holds them under the
-  # AWS-managed `aws/lambda` key. This comment claimed otherwise until
-  # decisions § 1021.) KMS rotation + access policy are managed in one
+  # (Lambda still holds the environment MAP under the AWS-managed
+  # `aws/lambda` key — no aws_lambda_function in this module sets
+  # `kms_key_arn`. What this CMK protects inside that map is the
+  # `SECRETS_CIPHERTEXT` blob, which is encrypted under it at apply time
+  # and decrypted by the handler at cold start — decisions § 1656.)
+  # KMS rotation + access policy are managed in one
   # place; the log group only contains coach request traces, which can
   # carry the same secrecy class as the env vars themselves.
   kms_key_id = aws_kms_key.secrets.arn

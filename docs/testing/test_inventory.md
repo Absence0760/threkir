@@ -1235,6 +1235,7 @@ tests-e2e/
     detail.spec.ts             — /plans/[id] (week grid, workout-day modal, PlanMetaEditor rename, publish-as-club-template)
     adjust-plan.spec.ts        — /plans/[id] Adjust plan (decisions § 1635): Shift dates / Re-plan remaining weeks / Adaptive re-plan / Pause plan are not loose on the page; the dialog lists all four, each with an accessible description saying what it does and when to use it, and each reaches its own flow (shift + pause confirm, both re-plans preview with the heading focused) with nothing written until confirmed
     publish-placement.spec.ts  — /plans/[id] both publish rows (club template, public library) sit in the labelled Share & publish section and follow the week-by-week plan in DOM order
+    reading-order.spec.ts      — /plans/[id] leads with today's session then this week, and every secondary block (Plan progress, Calendar, Week by week, Share & publish) follows them as a named `<details>` (decisions § 1658); second case shuts the Calendar expander, waits for the per-account blob `util/disclosure_state.ts` writes, reloads and finds it still shut with its siblings untouched. Asserted on the `<details>`'s own `open`, because Chromium hides a closed one through `::details-content`, which Playwright still reports as visible
     workout-detail.spec.ts     — /plans/[id]/workouts/[wid] (kind heading, back link)
   clubs/
     list.spec.ts               — /clubs (My + Browse tabs)

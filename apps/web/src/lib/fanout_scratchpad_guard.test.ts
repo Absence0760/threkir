@@ -16,16 +16,19 @@
 
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { readFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
-import { resolve } from 'node:path';
+import { readFileSync, readdirSync } from 'node:fs';
+import { resolve, join } from 'node:path';
 
 const repo = resolve(import.meta.dirname, '../../../..');
 
-function tracked(pathspec: string): string[] {
-	return execFileSync('git', ['ls-files', '--', pathspec], { cwd: repo, encoding: 'utf-8' })
-		.split('\n')
-		.filter(Boolean);
+// Walked off disk rather than asked of `git ls-files`: a brand-new fan-out
+// command is untracked until its author commits, and a guard that cannot see
+// it until then reports clean over exactly the moment the author could still
+// act on it cheaply.
+function markdownUnder(dir: string): string[] {
+	return readdirSync(resolve(repo, dir), { withFileTypes: true, recursive: true })
+		.filter((e) => e.isFile() && e.name.endsWith('.md'))
+		.map((e) => join(e.parentPath, e.name).slice(resolve(repo).length + 1));
 }
 
 function read(file: string): string {
@@ -48,7 +51,7 @@ function fansOutLanes(file: string): boolean {
 		.some((line) => SPAWN.test(line) && CONCURRENT.test(line));
 }
 
-const commands = tracked('.claude/commands').filter((f) => f.endsWith('.md'));
+const commands = markdownUnder('.claude/commands');
 const fanOut = commands.filter(fansOutLanes);
 
 test('the fan-out set is derived from the commands, and the derivation still finds them', () => {
@@ -96,7 +99,7 @@ test('no agent or command instruction writes to a fixed path in the shared /tmp'
 	// defect one scope wider. `/tmp` with no filename after it is prose (the
 	// prohibition itself), not a write target.
 	const offenders: string[] = [];
-	for (const file of tracked('.claude').filter((f) => f.endsWith('.md'))) {
+	for (const file of markdownUnder('.claude')) {
 		for (const m of read(file).matchAll(/\/tmp\/[A-Za-z0-9_.-]+/g)) {
 			offenders.push(`${file} -> ${m[0]}`);
 		}

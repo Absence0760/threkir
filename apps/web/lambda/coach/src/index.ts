@@ -54,7 +54,7 @@ import {
 	ROUTE_DESCRIBE_BODY_LIMIT_BYTES,
 	ROUTE_REQUEST_BODY_LIMIT_BYTES,
 } from '../../../src/lib/coach/body';
-import { reportException } from '../../_shared/sentry';
+import { reportException } from '../../../src/lib/core/lambda_sentry';
 
 // The production path table, anchored — `^…$`, never `rawPath.includes(…)`.
 // A substring test matches anywhere in the path, so `/api/coach/route-describe-v2`

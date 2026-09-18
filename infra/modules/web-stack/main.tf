@@ -22,7 +22,7 @@ locals {
   # Every Lambda in this module reports to the same Sentry project, so the
   # DSN + release pair is one local rather than the same two lines repeated
   # eight times. SENTRY_DSN comes from the sops file; absent -> the wrapper
-  # in apps/web/lambda/_shared/sentry.ts never initialises, which is the
+  # in apps/web/src/lib/core/lambda_sentry.ts never initialises, which is the
   # dev/CI default and the fail-closed direction. APP_RELEASE is read from
   # extra_lambda_env, which is where CI already puts it on tag deploys
   # (infra/envs/prod/terraform.tfvars.example) -- without it every event

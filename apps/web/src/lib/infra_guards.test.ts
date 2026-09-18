@@ -281,8 +281,11 @@ test('every Function-URL Lambda reports to Sentry, and its env carries the DSN',
 	// The function list is read from disk, not written here, so a NEW Lambda
 	// added without instrumentation fails this test rather than joining a
 	// list nobody updates.
+	// Every directory under lambda/ is a function — five other guards walk
+	// this same tree and read `<name>/src/index.ts`, so anything else there
+	// breaks them first. No filtering, deliberately.
 	const fns = readdirSync(resolve('lambda'), { withFileTypes: true })
-		.filter((d) => d.isDirectory() && !d.name.startsWith('_'))
+		.filter((d) => d.isDirectory())
 		.map((d) => d.name)
 		.sort();
 	assert.ok(

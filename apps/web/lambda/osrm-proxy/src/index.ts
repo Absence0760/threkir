@@ -22,7 +22,7 @@
 import type { LambdaFunctionURLEvent, LambdaFunctionURLResult } from 'aws-lambda';
 import { handleOsrmProxy } from '../../../src/lib/routes/osrm_proxy/handler';
 import { methodRefusal } from '../../../src/lib/core/method_gate';
-import { reportException } from '../../_shared/sentry';
+import { reportException } from '../../../src/lib/core/lambda_sentry';
 
 const PATH_PREFIX = '/api/routes/osrm';
 const ALLOWED_METHODS = ['GET'] as const;

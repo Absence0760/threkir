@@ -28,7 +28,7 @@ import { renderRecapOgPng } from '../../../src/lib/share/og_recap_png';
 import { siteOrigin } from '../../../src/lib/core/site_url';
 import { shareMethodRefusal } from '../../../src/lib/share/share_method_gate';
 import { notFoundShell } from '../../../src/lib/share/entity_spa_shell';
-import { reportException } from '../../_shared/sentry';
+import { reportException } from '../../../src/lib/core/lambda_sentry';
 
 declare const __SPA_SHELL_HTML__: string;
 

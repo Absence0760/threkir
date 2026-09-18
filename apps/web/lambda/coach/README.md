@@ -28,7 +28,7 @@ The CI workflow (`.github/workflows/release-web.yml`) runs the same script.
 - `COACH_PROVIDER`, `OPENAI_*` — optional.
 - `SENTRY_DSN`, `APP_RELEASE` — optional, and the pair is what makes a
   failure visible anywhere but CloudWatch. Terraform feeds both from
-  `local.sentry_env`; unset means the reporter in `lambda/_shared/sentry.ts`
+  `local.sentry_env`; unset means the reporter in `src/lib/core/lambda_sentry.ts`
   never initialises, which is the dev/CI default. `APP_RELEASE` unset while
   `SENTRY_DSN` is set still reports, but every event is tagged `dev` and
   cannot be tied to a build.

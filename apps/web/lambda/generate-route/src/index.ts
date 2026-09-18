@@ -29,7 +29,7 @@ import {
 } from '../../../src/lib/routes/generate/handler';
 import { decodeLambdaBody } from '../../../src/lib/coach/body';
 import { methodRefusal } from '../../../src/lib/core/method_gate';
-import { reportException } from '../../_shared/sentry';
+import { reportException } from '../../../src/lib/core/lambda_sentry';
 
 const ALLOWED_METHODS = ['POST'] as const;
 

@@ -2,11 +2,18 @@
 //
 // The Lambda twin of `apps/backend/supabase/functions/_shared/sentry.ts`,
 // and deliberately a different shape. That one wraps `serve` because an
-// Edge Function lets its errors reach the wrapper; every Lambda in this
-// directory already catches its own and answers with a chosen status, so
-// an outer wrapper here would sit above a `catch` that never rethrows and
-// fire almost never. This module is therefore called FROM the outermost
-// catch, beside the `console.error` that was previously the only record.
+// Edge Function lets its errors reach the wrapper; every Lambda under
+// `apps/web/lambda/` already catches its own and answers with a chosen
+// status, so an outer wrapper there would sit above a `catch` that never
+// rethrows and fire almost never. This module is therefore called FROM the
+// outermost catch, beside the `console.error` that was previously the only
+// record.
+//
+// Lives here rather than under `lambda/` because every directory in that
+// tree is a function: five separate guards walk it and read
+// `<name>/src/index.ts`, so a shared module there fails them all on a
+// `src/` that does not exist. Shared Lambda code belongs in `src/lib/`,
+// which is already where the handlers import their cores from.
 //
 // Report unexpected failures only. Several handlers catch deliberately —
 // generate-route falling back when an engine is unreachable, share-* when

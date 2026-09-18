@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
@@ -40,7 +40,8 @@ test.describe('comment report/delete icon buttons meet the 44px tap-target minim
 	});
 
 	test('report flag + delete close are each at least 44x44', async ({
-		browser
+		browser,
+		mockRoute
 	}) => {
 		const ctxAlex = await browser.newContext({
 			storageState: USER_B.storageStatePath
@@ -53,7 +54,7 @@ test.describe('comment report/delete icon buttons meet the 44px tap-target minim
 
 		try {
 			// Alex posts the comment on runner's public run.
-			await alex.route('**/functions/v1/clip-public-track', (route) =>
+			await mockRoute(alex, '**/functions/v1/clip-public-track', (route) =>
 				route.fulfill({
 					status: 200,
 					contentType: 'application/json',

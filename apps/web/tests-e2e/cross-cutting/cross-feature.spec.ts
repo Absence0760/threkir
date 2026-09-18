@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
@@ -223,7 +223,8 @@ test.describe('runs ↔ cross-user kudos', () => {
 
 	test('alex kudos on /share/run/[id] surfaces as count=1 on runner\'s /runs/[id]', async ({
 		page,
-		browser
+		browser,
+		mockRoute
 	}) => {
 		// Alex writes the kudos in a separate browser context. The
 		// share page is the canonical non-owner kudos surface; owner
@@ -233,7 +234,7 @@ test.describe('runs ↔ cross-user kudos', () => {
 		});
 		const alexPage = await alexCtx.newPage();
 		try {
-			await alexPage.route('**/functions/v1/clip-public-track', (route) =>
+			await mockRoute(alexPage, '**/functions/v1/clip-public-track', (route) =>
 				route.fulfill({
 					status: 200,
 					contentType: 'application/json',

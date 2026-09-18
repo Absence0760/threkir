@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { expandTrainingLoad } from '../fixtures/dashboard';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun } from '../fixtures/simulate';
 
@@ -26,6 +27,10 @@ const CTL_DEFINITION = /Fitness \(CTL\) — your rolling 42-day training load/;
 /// The snapshot card, not the training-load chart that shares its class.
 async function openDashboard(page: Page) {
 	await page.goto('/dashboard');
+	// This runner has three runs, so the page renders at `simple` and the
+	// snapshot is behind the named fold (§ 1656) — the definitions are what
+	// this spec is about, not their depth.
+	await expandTrainingLoad(page);
 	const card = page.locator('.fitness-card').filter({ has: page.getByTestId('metric-info-vo2max') });
 	await expect(card).toBeVisible({ timeout: 15_000 });
 	return card;

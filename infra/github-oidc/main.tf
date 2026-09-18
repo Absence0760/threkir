@@ -39,12 +39,18 @@
 #
 #   repo:Absence0760@21693150/threkir@1202414286:environment:production
 #
-# Those IDs survive a rename, which is the feature — and is precisely how
-# this broke. `web@1.5.0` deployed fine on 2026-09-10; the 2026-09-14 rename
-# to threkir moved the repo onto immutable subjects, and every deploy after
-# it failed AssumeRoleWithWebIdentity with `Not authorized`, twelve retries
-# deep, naming nothing. A name-shaped StringEquals can never match an
-# ID-shaped subject, so this is silent until something tries to deploy.
+# Those IDs survive a rename, which is the feature. `web@1.5.0` deployed fine
+# on 2026-09-10 and every deploy after failed AssumeRoleWithWebIdentity with
+# `Not authorized`, twelve retries deep, naming nothing.
+#
+# What turns immutable subjects on is NOT established. The 2026-09-14 rename
+# was the obvious suspect and is wrong on its own: of twenty repos in this
+# org, five carry immutable subjects and fifteen do not, and `feohledger` is
+# among the five without ever having been renamed. So do not reason about
+# which repos are affected — READ the prefix per repo, every time.
+#
+# A name-shaped StringEquals can never match an ID-shaped subject, and this is
+# silent until something tries to deploy.
 #
 # `github_subject_prefix` therefore holds the literal prefix, read from
 # `gh api repos/<owner>/<repo>/actions/oidc/customization/sub`. Do not

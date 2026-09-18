@@ -1703,6 +1703,15 @@ jobs:
     #                            their `noindex`), the 403 one still laundering
     #                            to 200, and every share handler still returning
     #                            the shell that makes the first claim safe.
+    #   probe_api_content_type.mjs
+    #                            `--derive` only, the offline half: the list of
+    #                            `/api/*` cache behaviours the operator probe
+    #                            asserts `application/json` on is DERIVED from
+    #                            the module, so a parse that stopped matching
+    #                            would leave `bin/preview-status.sh` reporting
+    #                            success having tested nothing. The network
+    #                            half needs a deployed env and does not run
+    #                            here (§ 1656).
     #   check_infra_coverage.mjs every Terraform directory validated and
     #                            dependency-tracked, no Terraform at all outside
     #                            infra/ (where the path filter, the stack matrix
@@ -1750,6 +1759,18 @@ jobs:
           fi
           if ! node --test scripts/check_infra_error_responses.test.mjs; then
             echo "::error::The error-response guard's own unit tests failed. The Terraform itself is fine — the check above just passed — so this is a defect in scripts/check_infra_error_responses.mjs, and a parser that stopped matching would have passed the check vacuously."
+            exit 1
+          fi
+      - name: The API behaviours the content-type probe covers
+        run: |
+          if ! node scripts/probe_api_content_type.mjs --derive; then
+            echo "::error::The operator probe can no longer derive the distribution's /api/* cache behaviours, so bin/preview-status.sh would report success having probed nothing. Nothing here is about IAM scope, error responses or alarm coverage; those are the other checks in this job."
+            echo "The failing line above says whether the distribution went unread or an API behaviour allows no probeable method. decisions § 1656 is why this probe asserts content-type rather than status."
+            exit 1
+          fi
+          if ! node --test scripts/probe_api_content_type.test.mjs; then
+            echo "::error::The content-type probe's own unit tests failed. The Terraform itself is fine — the derivation above just passed — so this is a defect in scripts/probe_api_content_type.mjs, and a classifier that stopped calling a 200 text/html a masked 403 is the exact blindness the probe exists to remove."
+            echo "Reproduce with: node --test scripts/probe_api_content_type.test.mjs (stdlib only, no install needed; the network half is driven with a stub fetch)."
             exit 1
           fi
       - name: Every stack validated, every Lambda alarmed

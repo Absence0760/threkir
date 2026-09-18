@@ -31,6 +31,31 @@
 # The web@1.0.3 release failed AssumeRoleWithWebIdentity when the
 # environments landed while these still matched the ref shape — the
 # two halves must move together.
+#
+# ── Immutable subject claims ──
+#
+# The subject is NOT `repo:<owner>/<repo>:…`. This repo issues IMMUTABLE
+# SUBJECT CLAIMS, so GitHub substitutes numeric IDs for both names:
+#
+#   repo:Absence0760@21693150/threkir@1202414286:environment:production
+#
+# Those IDs survive a rename, which is the feature. `web@1.5.0` deployed fine
+# on 2026-09-10 and every deploy after failed AssumeRoleWithWebIdentity with
+# `Not authorized`, twelve retries deep, naming nothing.
+#
+# What turns immutable subjects on is NOT established. The 2026-09-14 rename
+# was the obvious suspect and is wrong on its own: of twenty repos in this
+# org, five carry immutable subjects and fifteen do not, and `feohledger` is
+# among the five without ever having been renamed. So do not reason about
+# which repos are affected — READ the prefix per repo, every time.
+#
+# A name-shaped StringEquals can never match an ID-shaped subject, and this is
+# silent until something tries to deploy.
+#
+# `github_subject_prefix` therefore holds the literal prefix, read from
+# `gh api repos/<owner>/<repo>/actions/oidc/customization/sub`. Do not
+# reconstruct it from `github_repo` — that is the bug this comment exists
+# to stop someone reintroducing.
 
 # ── CloudFrontInvalidate scoping caveat ──
 #
@@ -97,7 +122,7 @@ resource "aws_iam_role" "deploy_prod" {
       Condition = {
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:environment:production"
+          "token.actions.githubusercontent.com:sub" = "${var.github_subject_prefix}:environment:production"
         }
       }
     }]
@@ -185,7 +210,7 @@ resource "aws_iam_role" "deploy_preview" {
         # can assume this role.
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:environment:preview"
+          "token.actions.githubusercontent.com:sub" = "${var.github_subject_prefix}:environment:preview"
         }
       }
     }]

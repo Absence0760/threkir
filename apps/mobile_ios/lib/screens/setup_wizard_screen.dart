@@ -108,9 +108,13 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
   late final RestorableString _privacyDefault;
   // Mobile's notification control is the universal `push_notifications`
   // bag key (no native OS permission prompt to request here — unlike web
-  // — so the wizard step sets the preference). Default 'important' matches
-  // the bag default registered in settings.md.
-  final RestorableString _pushNotifications = RestorableString('important');
+  // — so the wizard step sets the preference). Null until the runner taps a
+  // level: seeded with the registry's `important`, an untouched step wrote
+  // that default into the bag as a choice, and reported itself answered to
+  // [_currentStepAnswered] so the nav button said Continue over a question
+  // nobody had been asked. Left unwritten, reads fall back to the same
+  // `important` (settings.md).
+  final RestorableStringN _pushNotifications = RestorableStringN(null);
 
   bool _saving = false;
 
@@ -259,10 +263,11 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
       final bag = <String, dynamic>{
         SettingsKeys.preferredUnit: _preferredUnit.value,
         SettingsKeys.privacyDefault: _privacyDefault.value,
-        SettingsKeys.pushNotifications: _pushNotifications.value,
       };
       final goal = _primaryGoal.value;
       if (goal != null) bag[SettingsKeys.primaryGoal] = goal;
+      final push = _pushNotifications.value;
+      if (push != null) bag[SettingsKeys.pushNotifications] = push;
       final w = parseTypedDecimal(_weightCtl.value.text);
       if (w != null && w > 0) bag[SettingsKeys.bodyWeightKg] = w;
       // DOB mirrors into the bag only under health consent — the bag copy
@@ -663,6 +668,7 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
       _gender.value.isNotEmpty ||
           _dateOfBirth.value != null ||
           _weightCtl.value.text.trim().isNotEmpty,
+    'notifications' => _pushNotifications.value != null,
     _ => true,
   };
 

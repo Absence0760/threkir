@@ -6393,4 +6393,58 @@ void main() {
               'path; find where it moved and update the comment');
     });
   });
+
+  group('user-facing copy names a destination that exists', () {
+    // Reason: the Phase 4 nav reshape (decisions § 139) deleted the Run tab,
+    // and English strings went on telling people to tap it. The sweep that
+    // closed the first of those (#921 / #923) left the second behind, which is
+    // the argument for deriving the check instead of re-reading the copy by
+    // hand: a name nothing renders should fail a test, not wait for the next
+    // reader to notice it.
+    test('no English string points at a tab the app no longer has', () {
+      // The live set is DERIVED from the two files that render the app's tab
+      // strips — the shell's bottom nav / rail and the Fitness hub's tabs and
+      // surface peers. Only labels in a `label:` position (or a FitnessTab
+      // switch arm) count: home_screen.dart also resolves `l10n.navRun` for
+      // the "you are already on this page" banner, which names a PAGE, not a
+      // tab, and must not re-admit the very name this guard exists to catch.
+      final home = File('lib/screens/home_screen.dart').readAsStringSync();
+      final hub =
+          File('lib/screens/fitness_hub_screen.dart').readAsStringSync();
+      final labelled = RegExp(r'label:\s*(?:Text\(\s*)?l(?:10n)?\.(\w+)');
+      final tabArm = RegExp(r'FitnessTab\.\w+\s*=>\s*l(?:10n)?\.(\w+)');
+      final keys = <String>{
+        for (final src in [home, hub])
+          for (final m in labelled.allMatches(src)) m.group(1)!,
+        for (final m in tabArm.allMatches(hub)) m.group(1)!,
+      };
+      final arb = jsonDecode(File('lib/l10n/app_en.arb').readAsStringSync())
+          as Map<String, dynamic>;
+      final oneWord = RegExp(r'^[A-Z][a-z]+$');
+      final live = <String>{
+        for (final k in keys)
+          if (arb[k] is String && oneWord.hasMatch(arb[k] as String))
+            arb[k] as String,
+      };
+      expect(live, containsAll(<String>['Home', 'Fitness', 'Social', 'You']),
+          reason: 'the bottom-nav labels did not resolve — the shell changed '
+              'shape, so this guard is reading nothing');
+      expect(live.contains('Run'), isFalse,
+          reason: 'the recorder is reached from the Log action, not a tab — a '
+              '"Run" label back in a tab strip means this guard needs '
+              'rewriting, not that the old copy became true');
+      final named = RegExp(r'\b([A-Z][a-z]+) tab\b');
+      final stale = <String, String>{};
+      for (final e in arb.entries) {
+        if (e.key.startsWith('@') || e.value is! String) continue;
+        for (final m in named.allMatches(e.value as String)) {
+          if (!live.contains(m.group(1))) stale[e.key] = m.group(0)!;
+        }
+      }
+      expect(stale, isEmpty,
+          reason: 'user-facing copy names a tab the app no longer has — name a '
+              'surface that exists, and give the string a CTA if it is the '
+              'only instruction someone gets');
+    });
+  });
 }

@@ -19,6 +19,19 @@ test.describe('/dashboard — progressive disclosure', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test('simple folds the training load away, and remembers being opened', async ({ page }) => {
+		// The expander persists through `updateUniversal`, which upserts the
+		// prefs bag — so the state the next load reads is the SERVER's, and a
+		// `goto` fired on the DOM flip alone aborts the write in flight and
+		// reads back the old value. Waiting on the upsert response (armed
+		// before the click, or it can land first) is what makes the reload
+		// assert persistence rather than timing.
+		const settingsWritten = () =>
+			page.waitForResponse(
+				(r) =>
+					r.url().includes('/rest/v1/user_settings') &&
+					r.request().method() !== 'GET' &&
+					r.ok(),
+			);
 		try {
 			await setUserSetting(USER_A.id, 'disclosure_level', 'simple');
 			await setUserSetting(USER_A.id, 'dashboard_training_load_expanded', null);
@@ -33,9 +46,11 @@ test.describe('/dashboard — progressive disclosure', () => {
 			const chartHeading = page.getByRole('heading', { name: /Fitness, Fatigue & Form/i });
 			await expect(chartHeading).toBeHidden();
 
+			const opened = settingsWritten();
 			await disclosure.locator('summary').click();
 			await expect(disclosure).toHaveJSProperty('open', true);
 			await expect(chartHeading).toBeVisible();
+			await opened;
 
 			// Remembered against the account, not the tab: a fresh load of the
 			// page finds it open.
@@ -45,8 +60,10 @@ test.describe('/dashboard — progressive disclosure', () => {
 			});
 
 			// And closing it is remembered the same way round.
+			const closed = settingsWritten();
 			await page.getByTestId('training-load-disclosure').locator('summary').click();
 			await expect(page.getByTestId('training-load-disclosure')).toHaveJSProperty('open', false);
+			await closed;
 			await page.goto('/dashboard');
 			await expect(page.getByTestId('training-load-disclosure')).toHaveJSProperty('open', false, {
 				timeout: 10_000,

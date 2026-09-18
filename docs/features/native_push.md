@@ -63,6 +63,20 @@ A new file in the estate repo needs a `creation_rules` entry in its
    building, because a config exported for a different app fails obscurely on
    Android and, on iOS, mints tokens that are delivered to nobody and report no
    error. Download each app's config file.
+   **`FCM_PROJECT_ID` is the project *ID*, not the display name.** If `threkir`
+   is already taken globally, Firebase appends a suffix (`threkir-4f2c9`) and
+   that is permanent; read it off the project-settings page or the
+   `project_id` field of either JSON rather than typing the name you chose.
+   Stay on the free **Spark** plan — FCM is free at any volume, and Blaze buys
+   Cloud Functions we do not use. Leave **Google Analytics off**: FCM does not
+   need it and enabling it owes `docs/compliance/sub-processors.md` and the
+   privacy policy an entry.
+   **None of the Apple work gates this.** A Firebase iOS app needs only a
+   bundle id, so the plist can be downloaded before the Developer Program
+   enrollment clears; the single Apple-dependent step is uploading the `.p8`
+   under Cloud Messaging. Android and browser push can therefore be fully live
+   while iOS is still waiting, which is also what the worker's
+   `native_push: enabled fcm=true apns=false` boot line means.
 2. **FCM service account.** Project settings → Service accounts → generate a
    private key. `FCM_PROJECT_ID` is that JSON's `project_id`. This is what
    signs FCM HTTP v1 sends; the config files do not.

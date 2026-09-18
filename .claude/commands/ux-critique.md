@@ -52,6 +52,8 @@ Tell each agent, explicitly:
 
 Mobile note to pass on: read and cite `apps/mobile_android`, never `apps/mobile_ios` — they are byte-identical twins ([decisions § 39](../../docs/architecture/decisions.md)), and an iOS-only behaviour is a `Platform.isIOS` branch inside the shared file.
 
+**Per-lane scratchpad.** Every lane of this fan-out inherits ONE scratchpad path from the session, and `isolation: "worktree"` does not separate it — a bare filename written by one lane is read back by another. Name each lane's own `<scratchpad>/<lane-slug>/` in its prompt and tell it to keep every temporary file under there, never in the scratchpad root and never in `/tmp`. A lane that mutates a file to test something restores it with `git checkout HEAD -- <path>`, never a `.bak` copy ([CLAUDE.md § Working alongside other Claude sessions](../../CLAUDE.md)).
+
 ## Merging the two verdicts
 
 When both ran, do not just concatenate. Produce:

@@ -55,6 +55,8 @@ Spawn hunters in a single message so they run concurrently — `general-purpose`
 
 For each finding: `file:line`, the **input that makes it hurt** (the run length / row count / tick rate), the cost (allocation / wall-clock / query count / how it scales), and confidence. Read the code yourself in parallel.
 
+**Per-lane scratchpad.** Every lane of this fan-out inherits ONE scratchpad path from the session, and `isolation: "worktree"` does not separate it — a bare filename written by one lane is read back by another. Name each lane's own `<scratchpad>/<lane-slug>/` in its prompt and tell it to keep every temporary file under there, never in the scratchpad root and never in `/tmp`. A lane that mutates a file to test something restores it with `git checkout HEAD -- <path>`, never a `.bak` copy ([CLAUDE.md § Working alongside other Claude sessions](../../CLAUDE.md)).
+
 ### 3. Measure or estimate the cost before touching code
 
 Don't fix a perf finding you haven't sized:

@@ -116,6 +116,8 @@ Persist completed runs locally with distance, duration, average pace, and a map 
 - [x] Standalone workout session (no phone required)
 - [x] Heart rate via HealthKit sensor (live BPM in `RunningView`, `avg_bpm` forwarded in run metadata)
 - [x] Haptic pace alerts (above / below target)
+- [x] Lap markers — a Lap button on the running page, a split list on the post-run summary, and `run.metadata.laps` in the registered per-lap shape via `RunLaps.splits` (the twin of Wear's `buildFinishedLapsList`, trailing-partial gate included). The cumulative marks ride the 15 s crash checkpoint, so a recovered run lands the laps the runner took.
+- [x] Pedometer + `metadata.steps` — `Pedometer.swift` wraps Core Motion's `CMPedometer` behind a per-run baseline (`PedometerMath.stepsSinceBaseline`, Wear's twin); the count is checkpointed and written only when positive, so an unmeasured run omits the key rather than claiming zero. Needs `NSMotionUsageDescription` + the Motion & Fitness grant. **Simulator-unverifiable** — no watchOS simulator has a pedometer, so the sensor half is device-gated.
 - [x] Syncs run data via Watch Connectivity framework — `WatchConnectivityManager.swift` posts gzipped track + metadata via `WCSession.transferFile(_:metadata:)`; the iOS Flutter `WatchIngestBridge` decodes and persists. WatchIngestQueue on the phone side persists pre-auth payloads to disk so a restart between watch transfer and sign-in doesn't lose the run.
 
 ### Wear OS standalone GPS recording

@@ -7,10 +7,11 @@
 // `apps/web/src/lib/routes/generate/handler.ts` and is also wrapped (for dev
 // only) by the SvelteKit `+server.ts`. This file:
 //   1. Parses the Function-URL event body (string, maybe base64).
-//   2. Reads GRAPH_CYCLE_URL + GRAPH_CYCLE_API_KEY (graph-cycle sidecar, tried
-//      FIRST) and GRAPHHOPPER_URL + GRAPHHOPPER_API_KEY (round_trip fallback)
-//      from process.env (Terraform sets them), plus PUBLIC_SUPABASE_URL +
-//      PUBLIC_SUPABASE_ANON_KEY for the Pro gate's is_pro() check.
+//   2. Reads the two non-secret engine URLs (GRAPH_CYCLE_URL, tried FIRST, and
+//      GRAPHHOPPER_URL) plus PUBLIC_SUPABASE_URL + PUBLIC_SUPABASE_ANON_KEY for
+//      the Pro gate's is_pro() check from process.env, and the two X-Engine-Key
+//      credentials from the KMS ciphertext bag `loadSecrets()` decrypts once per
+//      container (decisions § 1659).
 //   3. Calls the shared core, which verifies the caller's tier (server-side
 //      generation is a Pro perk — decisions §204; `bypassPaywallEnabled` is
 //      hardcoded false here, exactly like the coach Lambda), then searches the
@@ -30,6 +31,7 @@ import {
 import { decodeLambdaBody } from '../../../src/lib/coach/body';
 import { methodRefusal } from '../../../src/lib/core/method_gate';
 import { reportException } from '../../../src/lib/core/lambda_sentry';
+import { loadSecrets } from '../../../src/lib/core/lambda_secrets';
 
 const ALLOWED_METHODS = ['POST'] as const;
 
@@ -80,6 +82,15 @@ export const handler = async (
 			return json(400, { error: 'invalid JSON' });
 		}
 
+		// The two engine keys live in the KMS ciphertext bag, not in this
+		// function's environment (decisions § 1659). A decrypt failure — or an
+		// env with no bag at all — throws into the outer envelope and answers
+		// 503. That is a deliberate change of direction from the old behaviour,
+		// where absent keys meant "send no X-Engine-Key and let the engine 403
+		// us into the fallback": a secret this function cannot read is a
+		// misconfiguration, and degrading quietly is what hid it.
+		const secrets = await loadSecrets();
+
 		const result = await handleGenerate(
 			event.headers?.['x-supabase-authorization'] ??
 				event.headers?.['X-Supabase-Authorization'] ??
@@ -89,9 +100,9 @@ export const handler = async (
 				// graph_cycle sidecar — the v3 graph-cycle generator, tried FIRST.
 				// Server-only env, parity with the SvelteKit wrapper.
 				graphCycleUrl: process.env.GRAPH_CYCLE_URL,
-				graphCycleApiKey: process.env.GRAPH_CYCLE_API_KEY,
+				graphCycleApiKey: secrets.GRAPH_CYCLE_API_KEY,
 				graphhopperUrl: process.env.GRAPHHOPPER_URL,
-				graphhopperApiKey: process.env.GRAPHHOPPER_API_KEY,
+				graphhopperApiKey: secrets.GRAPHHOPPER_API_KEY,
 				// Missing envs fail closed inside the handler (500 tier-check
 				// error), so a partial Terraform apply can't skip the gate.
 				publicSupabaseUrl: process.env.PUBLIC_SUPABASE_URL ?? '',

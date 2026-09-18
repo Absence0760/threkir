@@ -8,8 +8,10 @@
 // and is also wrapped (for dev only) by the SvelteKit `+server.ts`.
 // This file:
 //   1. Parses the API Gateway-shaped event from Function URL.
-//   2. Reads runtime config from process.env (Terraform sets it from the
-//      sops-encrypted file).
+//   2. Reads non-secret runtime config from process.env, and the credentials
+//      from the KMS ciphertext bag `loadSecrets()` decrypts once per container
+//      (Terraform encrypts it from the sops file at apply time — decisions
+//      § 1659; the plaintext never reaches this function's environment).
 //   3. Calls the shared core.
 //   4. Adapts the result to Lambda response streaming via
 //      `awslambda.streamifyResponse` + `awslambda.HttpResponseStream`.
@@ -55,6 +57,7 @@ import {
 	ROUTE_REQUEST_BODY_LIMIT_BYTES,
 } from '../../../src/lib/coach/body';
 import { reportException } from '../../../src/lib/core/lambda_sentry';
+import { loadSecrets } from '../../../src/lib/core/lambda_secrets';
 
 // The production path table, anchored — `^…$`, never `rawPath.includes(…)`.
 // A substring test matches anywhere in the path, so `/api/coach/route-describe-v2`
@@ -183,15 +186,23 @@ export const handler = awslambda.streamifyResponse<LambdaFunctionURLEvent>(
 			event.headers?.['X-Supabase-Authorization'] ??
 			null;
 
+		// The three credentials live in the KMS ciphertext bag, not in this
+		// function's environment: every API returning a FunctionConfiguration
+		// hands the environment to any principal that can deploy, which is how
+		// a release role could read ANTHROPIC_API_KEY (decisions § 1659). A
+		// decrypt failure throws into the outer envelope — the caller gets the
+		// generic 503 and no turn is served with a key this function guessed at.
+		const secrets = await loadSecrets();
+
 		// BYPASS_PAYWALL is a dev-only escape hatch, never honoured in
 		// the production Lambda. Hard-coding `false` here is the
 		// belt-and-braces defence even if BYPASS_PAYWALL leaked into
 		// the Lambda env.
 		const config: CoachConfig = {
 			provider,
-			anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+			anthropicApiKey: secrets.ANTHROPIC_API_KEY,
 			openaiBaseUrl: process.env.OPENAI_BASE_URL,
-			openaiApiKey: process.env.OPENAI_API_KEY,
+			openaiApiKey: secrets.OPENAI_API_KEY,
 			openaiModel: process.env.OPENAI_MODEL,
 			publicSupabaseUrl: requireEnv('PUBLIC_SUPABASE_URL'),
 			publicSupabaseAnonKey: requireEnv('PUBLIC_SUPABASE_ANON_KEY'),
@@ -200,7 +211,7 @@ export const handler = awslambda.streamifyResponse<LambdaFunctionURLEvent>(
 			// confines the user-JWT client to role='user' rows, so the
 			// assistant turn needs an RLS-bypassing writer. Provisioned via
 			// the env's sops secrets file (see infra/modules/web-stack).
-			supabaseSecretKey: process.env.SUPABASE_SECRET_KEY,
+			supabaseSecretKey: secrets.SUPABASE_SECRET_KEY,
 			bypassPaywallEnabled: false,
 		};
 
@@ -294,7 +305,7 @@ async function dispatchRouteDescribe(
 		event.headers?.['X-Supabase-Authorization'] ??
 		null;
 	const result = await handleRouteDescribe(authHeader, rawBody, {
-		anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+		anthropicApiKey: (await loadSecrets()).ANTHROPIC_API_KEY,
 		publicSupabaseUrl: requireEnv('PUBLIC_SUPABASE_URL'),
 		publicSupabaseAnonKey: requireEnv('PUBLIC_SUPABASE_ANON_KEY'),
 		bypassPaywallEnabled: false,
@@ -332,7 +343,7 @@ async function dispatchRouteRequest(
 		event.headers?.['X-Supabase-Authorization'] ??
 		null;
 	const result = await handleRouteRequest(authHeader, rawBody, {
-		anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+		anthropicApiKey: (await loadSecrets()).ANTHROPIC_API_KEY,
 		publicSupabaseUrl: requireEnv('PUBLIC_SUPABASE_URL'),
 		publicSupabaseAnonKey: requireEnv('PUBLIC_SUPABASE_ANON_KEY'),
 		bypassPaywallEnabled: false,

@@ -53,11 +53,30 @@
 //      function-name regex misses it is one whose auth type nothing reads, and
 //      a smaller loop looks identical to a smaller stack.
 //
-//   8. Secret scope. No Lambda environment merges the decrypted sops map whole.
-//      A key added to the file for one function otherwise reaches every
-//      function whose env takes the bag, which is the same over-grant as a
-//      wildcard Action and is invisible in exactly the same way — the
-//      Terraform reads as one tidy `merge(...)` line either way.
+//   8. Secret scope, in two halves.
+//
+//      (a) No Lambda environment merges the decrypted sops map whole. A key
+//      added to the file for one function otherwise reaches every function
+//      whose env takes the bag, which is the same over-grant as a wildcard
+//      Action and is invisible in exactly the same way — the Terraform reads
+//      as one tidy `merge(...)` line either way.
+//
+//      (b) NO CREDENTIAL REACHES A LAMBDA ENVIRONMENT IN PLAINTEXT. (a) was
+//      never the whole finding: `environment { variables }` is returned by
+//      every API that returns a FunctionConfiguration, INCLUDING
+//      `lambda:UpdateFunctionCode`, which the release genuinely calls — so any
+//      principal that can deploy could read ANTHROPIC_API_KEY and
+//      SUPABASE_SECRET_KEY by uploading the same zip and reading the response.
+//      The module's own comment said half of this out loud ("visible to anyone
+//      who can call GetFunctionConfiguration") without following it to the
+//      deploy role. Since decisions § 1659 the credentials are encrypted at
+//      apply time into an `aws_kms_ciphertext` blob per function and decrypted
+//      by the handler at cold start, so the claim is: every sops key that
+//      still arrives as a plain env var is named in NON_CREDENTIAL_SOPS_KEYS
+//      with a reason, no key is BOTH encrypted and plaintext, each blob is
+//      bound to one function by an encryption context (all eight share one
+//      execution role), and each blob is consumed by exactly one env. Every
+//      direction fails, including a stale exemption for a key no env carries.
 //
 //   9. Decrypt-grant justification. The env's secrets CMK is the one key in the
 //      account whose loss is unrecoverable, and its decrypt statement is where
@@ -72,6 +91,13 @@
 //      non-empty wire while both premises hold is standing privilege, and an
 //      empty wire once either premise breaks is a release that fails with
 //      AccessDenied against production, mid-deploy. decisions § 1021.
+//
+//      The EXECUTION role's identifier in the same statement is checked too,
+//      and for the opposite reason. It was unexercised until § 1659 and is
+//      load-bearing now: it is what decrypts the claim-8(b) blob at cold
+//      start, so deleting it reads as least-privilege hygiene and is an outage
+//      on both credential-carrying functions, on their first invocation in
+//      every fresh container.
 //
 //      The workflow scan reads `.github/workflows/*.yml` and nothing else,
 //      because a composite action's `runs.steps` is a different shape and
@@ -909,25 +935,312 @@ export function parseSecretMerges(src) {
     const open = src.indexOf('(', m.index + m[0].length - 1);
     const close = parenEnd(src, open);
     if (close < 0) continue;
-    const body = src.slice(open + 1, close);
-    for (const ref of body.matchAll(/data\.sops_file\.secrets\[0\]\.data/g)) {
-      const before = body.slice(0, ref.index);
-      const brace = before.lastIndexOf('{');
-      // `{ for k, v in ` is the only thing that may sit between the opening
-      // brace and the map. Anything else — including no brace at all — is the
-      // whole file arriving in the environment.
-      const comprehension =
-        brace >= 0 && /^\s*for\s+[A-Za-z0-9_]+\s*,\s*[A-Za-z0-9_]+\s+in\s*$/.test(before.slice(brace + 1));
-      if (!comprehension) {
-        out.push({ local: m[1], filter: null });
-        continue;
-      }
-      const after = body.slice(ref.index + ref[0].length);
-      const predicate = after.match(/^\s*:[^\n}]*?\bif\b([^\n}]*)/)?.[1] ?? null;
-      out.push({ local: m[1], filter: predicate === null ? null : predicate.trim() });
-    }
+    for (const filter of sopsFilters(src.slice(open + 1, close)))
+      out.push({ local: m[1], filter });
   }
   return out;
+}
+
+/// One filter per reference to the decrypted sops map inside an expression:
+/// the `if` predicate of the comprehension wrapping it, or `null` when the map
+/// arrives whole — which includes a comprehension carrying no predicate, a
+/// shape that looks filtered and is not.
+/**
+ * @param {string} body
+ * @returns {(string | null)[]}
+ */
+export function sopsFilters(body) {
+  /** @type {(string | null)[]} */
+  const out = [];
+  for (const ref of body.matchAll(/data\.sops_file\.secrets\[0\]\.data/g)) {
+    const before = body.slice(0, ref.index);
+    const brace = before.lastIndexOf('{');
+    // `{ for k, v in ` is the only thing that may sit between the opening
+    // brace and the map. Anything else — including no brace at all — is the
+    // whole file arriving in the environment.
+    const comprehension =
+      brace >= 0 && /^\s*for\s+[A-Za-z0-9_]+\s*,\s*[A-Za-z0-9_]+\s+in\s*$/.test(before.slice(brace + 1));
+    if (!comprehension) {
+      out.push(null);
+      continue;
+    }
+    const after = body.slice(ref.index + ref[0].length);
+    const predicate = after.match(/^\s*:[^\n}]*?\bif\b([^\n}]*)/)?.[1] ?? null;
+    out.push(predicate === null ? null : predicate.trim());
+  }
+  return out;
+}
+
+/// Sops keys that may still arrive as a PLAIN environment variable, and why
+/// each one is not a credential. An exemption nothing uses fails as loudly as
+/// a missing one — the same discipline RESOURCELESS_ACTIONS is held to.
+export const NON_CREDENTIAL_SOPS_KEYS = {
+  SENTRY_DSN:
+    'an ingest URL. It authorises WRITING an event to one Sentry project and ' +
+    'reads nothing back; every Sentry SDK that runs in a browser ships it in ' +
+    'the client bundle by design',
+  COACH_PROVIDER:
+    "selects between 'anthropic' and 'openai'. The coach handler reads it " +
+    'before it has a bag to read, and it authorises nothing',
+  OPENAI_BASE_URL: 'an endpoint, not a credential — the OpenAI-compatible base URL',
+  OPENAI_MODEL: 'a model name, not a credential',
+};
+
+/// `name = ["A", "B"]` entries in a `locals` block, which is what a
+/// `contains(local.x, k)` predicate has to be resolved against.
+/**
+ * @param {string} src comment-stripped module source
+ * @returns {Map<string, string[]>}
+ */
+export function parseLocalStringLists(src) {
+  /** @type {Map<string, string[]>} */
+  const out = new Map();
+  for (const m of src.matchAll(/^\s{2}([A-Za-z0-9_]+)\s*=\s*\[([^\]]*)\]/gm))
+    out.set(m[1], [...m[2].matchAll(/"([^"]*)"/g)].map((k) => k[1]));
+  return out;
+}
+
+/// The key names a `for … if <predicate>` admits out of the sops map. `null`
+/// when the predicate cannot be read as a set of names, which the callers treat
+/// the same way they treat no predicate at all: unreadable is not safe.
+/**
+ * @param {string | null} predicate
+ * @param {Map<string, string[]>} lists
+ * @returns {string[] | null}
+ */
+export function admittedKeys(predicate, lists) {
+  if (predicate === null) return null;
+  const contains = predicate.match(/^contains\(local\.([A-Za-z0-9_]+),\s*[A-Za-z0-9_]+\)$/);
+  if (contains) return lists.get(contains[1]) ?? null;
+  // `k == "A" || k == "B"` — every term must be one of these, or the whole
+  // predicate is unread.
+  const terms = predicate.split('||').map((t) => t.trim());
+  /** @type {string[]} */
+  const keys = [];
+  for (const term of terms) {
+    const eq = term.match(/^[A-Za-z0-9_]+\s*==\s*"([^"]*)"$/);
+    if (!eq) return null;
+    keys.push(eq[1]);
+  }
+  return keys.length > 0 ? keys : null;
+}
+
+/**
+ * @typedef {{ local: string, whole: boolean, keys: string[], body: string, refs: string[] }} SopsLocal
+ */
+
+/// Every `locals` entry defined as `merge(…)` that either reaches into the
+/// decrypted sops map or is one of the per-function `*_lambda_env` envs, plus
+/// the other locals it merges. `*_lambda_env` is not the only shape that
+/// matters — `sentry_env` is its own local merged into all eight envs, so a
+/// reader that looked only at `*_lambda_env` would never see the key it
+/// carries — and an env whose own body holds no sops reference still inherits
+/// whatever the locals it merges carry.
+/**
+ * @param {string} src comment-stripped module source
+ * @returns {SopsLocal[]}
+ */
+export function parseSopsLocals(src) {
+  const lists = parseLocalStringLists(src);
+  /** @type {SopsLocal[]} */
+  const out = [];
+  const localDef = /^\s{2}([A-Za-z0-9_]+)\s*=\s*merge\(/gm;
+  let m;
+  while ((m = localDef.exec(src)) !== null) {
+    const open = src.indexOf('(', m.index + m[0].length - 1);
+    const close = parenEnd(src, open);
+    if (close < 0) continue;
+    const body = src.slice(open + 1, close);
+    const name = m[1];
+    if (!body.includes('data.sops_file') && !/lambda_env$/.test(name)) continue;
+    /** @type {SopsLocal} */
+    const entry = {
+      local: name,
+      whole: false,
+      keys: [],
+      body,
+      refs: [...body.matchAll(/local\.([A-Za-z0-9_]+)/g)].map((r) => r[1]),
+    };
+    for (const filter of sopsFilters(body)) {
+      const keys = admittedKeys(filter, lists);
+      if (keys === null) entry.whole = true;
+      else entry.keys.push(...keys);
+    }
+    out.push(entry);
+  }
+  return out;
+}
+
+/// The plaintext sops keys each `*_lambda_env` local puts in a function's
+/// environment, following the intermediate locals it merges.
+/**
+ * @param {readonly SopsLocal[]} locals
+ * @returns {Map<string, string[]>}
+ */
+export function envPlaintextKeys(locals) {
+  const byName = new Map(locals.map((l) => [l.local, l]));
+  /** @type {Map<string, string[]>} */
+  const out = new Map();
+  for (const entry of locals) {
+    if (!/lambda_env$/.test(entry.local)) continue;
+    const keys = new Set(entry.keys);
+    for (const ref of entry.refs) for (const k of byName.get(ref)?.keys ?? []) keys.add(k);
+    out.set(entry.local, [...keys].sort());
+  }
+  return out;
+}
+
+/**
+ * @typedef {{ label: string, keys: string[] | null, context: boolean, consumers: string[] }} Ciphertext
+ */
+
+/// The `aws_kms_ciphertext` resources: which sops keys each one encrypts,
+/// whether it binds the blob to one function with an encryption context, and
+/// which `*_lambda_env` locals read its `ciphertext_blob`.
+/**
+ * @param {string} src comment-stripped module source
+ * @returns {Ciphertext[]}
+ */
+export function parseKmsCiphertexts(src) {
+  const lists = parseLocalStringLists(src);
+  /** @type {Ciphertext[]} */
+  const out = [];
+  for (const { label, body } of hclResources(src, 'aws_kms_ciphertext')) {
+    const predicate =
+      body.match(/data\.sops_file\.secrets\[0\]\.data\s*:[^\n}]*?\bif\b([^\n}]*)/)?.[1]?.trim() ??
+      null;
+    /** @type {string[]} */
+    const consumers = [];
+    const ref = new RegExp(`aws_kms_ciphertext\\.${label}\\[0\\]\\.ciphertext_blob`);
+    for (const l of parseSopsLocals(src))
+      if (/lambda_env$/.test(l.local) && ref.test(l.body)) consumers.push(l.local);
+    out.push({
+      label,
+      keys: body.includes('data.sops_file') ? admittedKeys(predicate, lists) : [],
+      context: /^\s*context\s*=/m.test(body),
+      consumers,
+    });
+  }
+  return out;
+}
+
+/// Claim 8(b). See the header.
+/**
+ * @param {readonly SopsLocal[]} sopsLocals
+ * @param {readonly Ciphertext[]} ciphertexts
+ * @param {Record<string, string>} exemptions
+ * @returns {{ errors: string[], ok: string[] }}
+ */
+export function checkPlaintextCredentials(
+  sopsLocals,
+  ciphertexts,
+  exemptions = NON_CREDENTIAL_SOPS_KEYS,
+) {
+  /** @type {string[]} */
+  const errors = [];
+  /** @type {string[]} */
+  const ok = [];
+
+  if (ciphertexts.length === 0) {
+    errors.push(
+      'no `aws_kms_ciphertext` resource in the web-stack module. The coach and generate-route ' +
+        'credentials reach their functions as one encrypted blob each (decisions § 1659); with ' +
+        'none, either they are back in the environment in plaintext — readable by every principal ' +
+        'that can call UpdateFunctionCode — or this reader stopped matching.',
+    );
+  }
+
+  /** @type {Map<string, string>} */
+  const encrypted = new Map();
+  for (const ct of ciphertexts) {
+    if (ct.keys === null || ct.keys.length === 0) {
+      errors.push(
+        `aws_kms_ciphertext.${ct.label} encrypts no sops key this reader can name. A blob whose ` +
+          'predicate cannot be read is one whose contents nothing here can compare against the ' +
+          'plaintext envs below.',
+      );
+      continue;
+    }
+    if (!ct.context)
+      errors.push(
+        `aws_kms_ciphertext.${ct.label} sets no encryption context. All eight Lambdas share one ` +
+          "execution role, so without a per-function context any function's blob decrypts under " +
+          'any other — the boundary between them would be which env var they happen to hold.',
+      );
+    if (ct.consumers.length !== 1)
+      errors.push(
+        `aws_kms_ciphertext.${ct.label}.ciphertext_blob is read by ${ct.consumers.length} ` +
+          `\`*_lambda_env\` local(s) (${ct.consumers.join(', ') || 'none'}), not exactly one. An ` +
+          'orphan blob is a credential nothing can read; a shared one hands two functions the ' +
+          "same bag and makes the encryption context a label rather than a boundary.",
+      );
+    for (const key of ct.keys) encrypted.set(key, ct.label);
+  }
+
+  const plaintext = envPlaintextKeys(sopsLocals);
+  if (plaintext.size === 0)
+    errors.push(
+      'no `*_lambda_env` local was read, so nothing was checked about what reaches a function ' +
+        'environment in plaintext.',
+    );
+
+  /** @type {Set<string>} */
+  const exemptionsUsed = new Set();
+  for (const [local, keys] of [...plaintext].sort()) {
+    for (const key of keys) {
+      if (encrypted.has(key)) {
+        errors.push(
+          `local.${local} puts ${key} in a function environment as PLAINTEXT while ` +
+            `aws_kms_ciphertext.${encrypted.get(key)} also encrypts it. The encrypted copy buys ` +
+            'nothing while the clear one is still there for every caller of ' +
+            'GetFunctionConfiguration and UpdateFunctionCode.',
+        );
+        continue;
+      }
+      if (key in exemptions) {
+        exemptionsUsed.add(key);
+        continue;
+      }
+      errors.push(
+        `local.${local} puts the sops key ${key} in a function environment as PLAINTEXT. Every ` +
+          'API that returns a FunctionConfiguration returns it, including ' +
+          'lambda:UpdateFunctionCode, which the release role holds — so a deploy can read it ' +
+          '(decisions § 1659). Encrypt it into that function\'s `aws_kms_ciphertext` blob, or, if ' +
+          `it is genuinely not a credential, add ${key} to NON_CREDENTIAL_SOPS_KEYS with the ` +
+          'reason.',
+      );
+    }
+    ok.push(`local.${local}: ${keys.length} plaintext sops key(s), all declared non-credential`);
+  }
+
+  // The sops file is the likely regression, not the only one: an env can name
+  // an encrypted key directly, from a module variable or a literal, and the
+  // comprehension reader above would never see it.
+  for (const entry of sopsLocals) {
+    if (!/lambda_env$/.test(entry.local)) continue;
+    for (const key of encrypted.keys())
+      if (new RegExp(`\\b${key}\\s*=[^=]`).test(entry.body))
+        errors.push(
+          `local.${entry.local} assigns ${key} directly, so the value reaches the function ` +
+            `environment in plaintext alongside the aws_kms_ciphertext.${encrypted.get(key)} blob ` +
+            'that exists to keep it out of there.',
+        );
+  }
+
+  for (const key of Object.keys(exemptions))
+    if (!exemptionsUsed.has(key))
+      errors.push(
+        `NON_CREDENTIAL_SOPS_KEYS exempts ${key}, but no \`*_lambda_env\` local carries it. A ` +
+          'stale exemption is the shape that lets the next key in under a reason written for a ' +
+          'different one.',
+      );
+
+  if (encrypted.size > 0)
+    ok.push(
+      `${encrypted.size} credential(s) reach a Lambda only as ciphertext: ${[...encrypted.keys()].sort().join(', ')}`,
+    );
+
+  return { errors, ok };
 }
 
 // ────────────────────────────── comparison ──────────────────────────────
@@ -1086,9 +1399,16 @@ export function credentialedActions(dir) {
  * @param {{ path: string, hasModuleCall: boolean, wire: string | null }[]} envs
  * @param {readonly WorkflowJob[]} jobs
  * @param {readonly string[]} credentialedCompositeActions
+ * @param {readonly string[]} ciphertextLabels
  * @returns {{ errors: string[], ok: string[] }}
  */
-export function checkDecryptGrant(grant, envs, jobs, credentialedCompositeActions = []) {
+export function checkDecryptGrant(
+  grant,
+  envs,
+  jobs,
+  credentialedCompositeActions = [],
+  ciphertextLabels = [],
+) {
   /** @type {string[]} */
   const errors = [];
   /** @type {string[]} */
@@ -1111,6 +1431,27 @@ export function checkDecryptGrant(grant, envs, jobs, credentialedCompositeAction
         'a wire against nothing.',
     );
   }
+
+  // The EXECUTION role's own identifier, which the module builds from
+  // local.resource_prefix rather than referencing the role (a key -> role -> key
+  // cycle). Unexercised until § 1659 and load-bearing since: it is what decrypts
+  // the claim-8(b) blob at cold start, so its removal is not hygiene, it is a
+  // 503 on the first invocation in every fresh container.
+  const execRole = grant.identifiers.find((i) => /:role\/\$\{local\.resource_prefix\}/.test(i));
+  if (ciphertextLabels.length > 0 && execRole === undefined)
+    errors.push(
+      "the module's kms:Decrypt statement no longer names the Lambda execution role " +
+        `(read: ${JSON.stringify(grant.identifiers)}), while aws_kms_ciphertext.` +
+        `${ciphertextLabels.join(', aws_kms_ciphertext.')} put(s) a ciphertext in a function ` +
+        'environment for the handler to decrypt at cold start. Without the grant both credential-' +
+        'carrying Lambdas answer 503 on every cold start (decisions § 1659).',
+    );
+  else if (execRole !== undefined && ciphertextLabels.length > 0)
+    ok.push(
+      `the Lambda execution role holds kms:Decrypt, which ${ciphertextLabels.length} cold-start ` +
+        'ciphertext blob(s) depend on',
+    );
+
   if (envs.length === 0) {
     errors.push('no env root was read, so nothing about the decrypt wire was checked.');
     return { errors, ok };
@@ -1721,6 +2062,8 @@ export function compareSources(oidc, release, web, oidcVars) {
 
 export function main() {
   const moduleSrc = readFileSync(MODULE_FILE, 'utf-8');
+  const strippedModule = stripComments(moduleSrc);
+  const ciphertexts = parseKmsCiphertexts(strippedModule);
   const { errors, ok } = compareSources(
     parseOidcStack(readFileSync(OIDC_FILE, 'utf-8')),
     parseReleaseWorkflow(readFileSync(RELEASE_FILE, 'utf-8')),
@@ -1736,9 +2079,14 @@ export function main() {
     })),
     parseWorkflowJobs(readWorkflowFiles(WORKFLOW_DIR)),
     credentialedActions(ACTION_DIR),
+    ciphertexts.map((c) => c.label),
   );
   errors.push(...grant.errors);
   ok.push(...grant.ok);
+
+  const plaintext = checkPlaintextCredentials(parseSopsLocals(strippedModule), ciphertexts);
+  errors.push(...plaintext.errors);
+  ok.push(...plaintext.ok);
 
   const workflowFiles = readWorkflowFiles(WORKFLOW_DIR);
   const scope = checkLambdaActionScope(

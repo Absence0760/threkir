@@ -24,8 +24,18 @@ The CI workflow (`.github/workflows/release-web.yml`) runs the same script.
 ## Runtime env (set by Terraform)
 
 - `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY` — non-secret, written by Terraform from variables.
-- `ANTHROPIC_API_KEY` — sops-encrypted in `infra/envs/<env>/secrets.enc.yaml`, decrypted by Terraform at apply time.
-- `COACH_PROVIDER`, `OPENAI_*` — optional.
+- `SECRETS_CIPHERTEXT` + `SECRETS_CONTEXT` — the credentials. `ANTHROPIC_API_KEY`,
+  `SUPABASE_SECRET_KEY` and `OPENAI_API_KEY` are **not** environment variables:
+  Terraform encrypts them from the sops file into one KMS blob at apply time
+  (`aws_kms_ciphertext.coach`) and `src/lib/core/lambda_secrets.ts` decrypts it
+  once per cold start under the execution role. A Lambda environment is returned
+  by every API that returns a `FunctionConfiguration`, including
+  `lambda:UpdateFunctionCode`, so a plaintext key there is readable by anything
+  that can deploy — decisions § 1659. No bag, or a bag that will not decrypt, is
+  a 503; there is deliberately no plaintext fallback.
+- `COACH_PROVIDER`, `OPENAI_BASE_URL`, `OPENAI_MODEL` — optional, and plain env
+  vars on purpose: a provider name, an endpoint and a model authorise nothing,
+  and the provider gate reads them before there is a bag to read.
 - `SENTRY_DSN` — optional, and it is what makes a failure visible anywhere
   but CloudWatch. Terraform feeds it from `local.sentry_env`; unset means the
   reporter in `src/lib/core/lambda_sentry.ts` never initialises, which is the

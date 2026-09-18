@@ -4,6 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { generateKeyPairSync } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -14,11 +15,29 @@ import {
 	vapidPublicKeyProblem,
 } from './check_production_env.mjs';
 
-// A throwaway P-256 public point, generated for this test and paired with no
-// private key anyone holds. 65 bytes, leading 0x04, base64url-raw — the exact
-// shape `web-push generate-vapid-keys` prints as `Public Key:`.
-const VALID_VAPID_PUBLIC =
-	'BJpD8Pjn3W-bc7BCbBCkdUj0SY3hdTr6pB8heXjzmHHm7YzhpivKxWb3hx0ZD7ym_ik5EtJo_G9mMPSzA-HcE4g';
+/**
+ * A valid VAPID application server key — 65 bytes, leading 0x04, base64url-raw,
+ * the exact shape `web-push generate-vapid-keys` prints as `Public Key:`.
+ *
+ * Generated per run rather than committed as a literal. A 65-byte uncompressed
+ * point beside the word VAPID is precisely what gitleaks' entropy gate flags,
+ * and allowlisting a constant nobody holds the private half of would suppress
+ * the scanner for a value the generator can produce honestly. It also makes the
+ * assertion stronger: every run checks a real point, not one known-good string.
+ *
+ * @returns {string}
+ */
+function freshVapidPublicKey() {
+	const { publicKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+	const jwk = publicKey.export({ format: 'jwk' });
+	return Buffer.concat([
+		Buffer.from([0x04]),
+		Buffer.from(String(jwk.x), 'base64url'),
+		Buffer.from(String(jwk.y), 'base64url'),
+	]).toString('base64url');
+}
+
+const VALID_VAPID_PUBLIC = freshVapidPublicKey();
 
 const SCRIPT_PATH = fileURLToPath(new URL('./check_production_env.mjs', import.meta.url));
 

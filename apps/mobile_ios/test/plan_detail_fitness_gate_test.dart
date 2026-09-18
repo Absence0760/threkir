@@ -189,6 +189,21 @@ void main() {
     await tester.pump();
   }
 
+  /// Both re-plans now sit behind the one Adjust plan dialog, so reaching
+  /// either is open-then-choose. Route transitions only — a shown top banner
+  /// leaves a pending timer, and `pumpAndSettle` would never settle on it.
+  Future<void> chooseAdjustment(WidgetTester tester, String label) async {
+    await tester.tap(find.text('Adjust plan'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    final option = find.descendant(
+        of: find.byType(AlertDialog), matching: find.text(label));
+    await tester.ensureVisible(option);
+    await tester.tap(option);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+  }
+
   testWidgets('gate ON + deeply fatigued runner deloads instead of adding volume',
       (tester) async {
     dotenv.loadFromString(envString: 'ADAPTIVE_FITNESS_GATE=true');
@@ -201,8 +216,7 @@ void main() {
       runStore: store,
     );
 
-    await tester.tap(find.text('Adaptive re-plan'));
-    await tester.pump();
+    await chooseAdjustment(tester, 'Adaptive re-plan');
 
     // Held banner shown, and the preview is the ease-off — never the make-up.
     expect(
@@ -227,8 +241,7 @@ void main() {
       runStore: store,
     );
 
-    await tester.tap(find.text('Adaptive re-plan'));
-    await tester.pump();
+    await chooseAdjustment(tester, 'Adaptive re-plan');
 
     expect(
       find.textContaining('carrying fatigue', findRichText: true),
@@ -250,8 +263,7 @@ void main() {
       runStore: store,
     );
 
-    await tester.tap(find.text('Adaptive re-plan'));
-    await tester.pump();
+    await chooseAdjustment(tester, 'Adaptive re-plan');
 
     // No held banner; the under-trend proposes the make-up, not a deload.
     expect(find.textContaining('carrying fatigue', findRichText: true),

@@ -196,7 +196,7 @@ void main() {
       await _pump(tester,
           training: training, social: social, viewerId: 'someone-else');
       expect(find.textContaining('So far this week you'), findsNothing);
-      expect(find.text('Re-plan remaining weeks'), findsNothing);
+      expect(find.text('Adjust plan'), findsNothing);
     });
   });
 
@@ -221,8 +221,15 @@ void main() {
       final social = _FakeSocial(const []);
       await _pump(tester, training: training, social: social);
 
-      await tester.tap(find.text('Re-plan remaining weeks'));
+      // Both re-plans sit behind the one Adjust plan dialog now.
+      await tester.tap(find.text('Adjust plan'));
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.text('Re-plan remaining weeks')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Proposed changes'), findsOneWidget);
 
       await tester.tap(find.text('Apply changes'));

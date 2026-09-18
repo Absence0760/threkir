@@ -23,6 +23,7 @@ import '../local_gym_store.dart';
 import '../lift_load.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
+import '../metrics.dart';
 import '../nutrition_targets.dart' show NutritionTargets;
 import '../nutrition_totals.dart' show sumMacros;
 import '../preferences.dart';
@@ -38,6 +39,7 @@ import '../widgets/fitness_card.dart';
 import '../widgets/load_ramp_card.dart';
 import '../widgets/race_predictor_card.dart';
 import '../widgets/gym_summary_card.dart';
+import '../widgets/metric_label.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/pending_sync_banner.dart';
 import '../run_intensity.dart';
@@ -1021,7 +1023,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                 child: Column(
                   children: [
                     ChartCardHeader(
-                        title: l10n.dashboardSectionPersonalBests),
+                      title: l10n.dashboardSectionPersonalBests,
+                      action: const MetricInfoButton(metric: Metric.ageGrade),
+                    ),
                     const SizedBox(height: 10),
                     if (longest != null)
                       _PbRow(
@@ -1039,7 +1043,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                         value: _formatDuration(e.value),
                         subValue: switch (_pbAgeGrade(e.key, e.value, now,
                             achievedAt: pbDates[e.key])) {
-                          final ag? => l10n.dashboardPbAgeGrade(ag),
+                          final ag? => metricText(l10n, Metric.ageGrade,
+                              variant: 'pb', args: {'percent': ag}),
                           _ => null,
                         },
                       ),
@@ -1946,7 +1951,9 @@ class _PeriodStatCard extends StatelessWidget {
                 const SizedBox(width: 3),
                 Flexible(
                   child: Text(
-                    l10n.dashboardVert(UnitFormat.elevation(vertMetres, unit)),
+                    metricText(l10n, Metric.vert, variant: 'total', args: {
+                      'value': UnitFormat.elevation(vertMetres, unit)
+                    }),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),

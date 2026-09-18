@@ -11,6 +11,7 @@ import '../l10n/locale_support.dart';
 import '../l10n/number_format.dart';
 import '../fab_clearance.dart';
 import '../local_run_store.dart';
+import '../metrics.dart';
 import '../training.dart';
 import '../training_service.dart';
 import '../backend_timeout.dart';
@@ -324,8 +325,12 @@ class _PlanTile extends StatelessWidget {
                 if (plan.goalTimeSeconds != null)
                   _meta(theme, Icons.timer, fmtHms(plan.goalTimeSeconds)),
                 if (plan.vdot != null)
-                  _meta(theme, Icons.trending_up,
-                      'VDOT ${formatFixed(plan.vdot!, 1, activeLocaleTag)}'),
+                  _meta(
+                      theme,
+                      Icons.trending_up,
+                      metricText(l10n, Metric.vdot, variant: 'value', args: {
+                        'value': formatFixed(plan.vdot!, 1, activeLocaleTag)
+                      })),
                 _meta(theme, Icons.calendar_today,
                     '${toIsoDate(plan.startDate)} → ${toIsoDate(plan.endDate)}'),
                 _meta(theme, Icons.event_repeat,

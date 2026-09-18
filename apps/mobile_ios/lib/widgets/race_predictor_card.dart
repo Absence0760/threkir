@@ -4,10 +4,12 @@ import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, ChartCardHeader, Sta
 
 import '../fitness.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../metrics.dart';
 import '../preferences.dart';
 import '../race_predictor.dart';
 import '../training.dart'
     show PredictionConfidence, PredictionQuality, PredictionReason;
+import 'metric_label.dart';
 
 /// Dashboard "Race-time predictor" card — the 5K / 10K / Half / Marathon
 /// ladder predicted from the runner's recent qualifying efforts, each rung
@@ -83,8 +85,9 @@ class RacePredictorCard extends StatelessWidget {
             for (final rung in prediction.rungs)
               _LadderRow(rung: rung, l10n: l10n),
             const SizedBox(height: 12),
-            Text(
-              l10n.racePredictorFootnote,
+            MetricSentence(
+              metric: Metric.riegel,
+              sentence: 'predictor',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),

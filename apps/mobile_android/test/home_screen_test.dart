@@ -22,7 +22,9 @@ import '../lib/race_controller.dart';
 import '../lib/settings_destination.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
+import '../lib/screens/gym_screen.dart';
 import '../lib/screens/home_screen.dart';
+import '../lib/screens/nutrition_screen.dart';
 import '../lib/screens/run_screen.dart';
 import '../lib/screens/settings_about_screen.dart';
 import '../lib/screens/settings_account_screen.dart';
@@ -319,9 +321,11 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       // Not a modal composer — the Log action navigates the PageView to the
-      // in-shell Gym page (same model as the run recorder), so the bottom nav
-      // stays visible alongside the page's own "Gym" AppBar title.
-      expect(find.text('Gym'), findsOneWidget);
+      // Fitness hub's Gym tab (same dwell-in model as the run recorder), so
+      // the bottom nav stays visible alongside the surface's own "Gym" AppBar
+      // title. Twice: the hub's tab label, and that title 48dp below it.
+      expect(find.text('Gym'), findsNWidgets(2));
+      expect(find.byType(GymScreen), findsOneWidget);
       expect(find.byType(BottomAppBar), findsOneWidget);
     });
 
@@ -336,7 +340,8 @@ void main() {
       await tester.tap(find.byTooltip('Log food'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
-      expect(find.text('Nutrition'), findsOneWidget);
+      expect(find.text('Nutrition'), findsNWidgets(2));
+      expect(find.byType(NutritionScreen), findsOneWidget);
       expect(find.byType(BottomAppBar), findsOneWidget);
     });
 
@@ -692,7 +697,9 @@ void main() {
       await tester.tap(find.byTooltip('Log lift'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
-      expect(shellPage(tester), 3);
+      // Gym is the Fitness hub's tab, not a page of its own — there is exactly
+      // one of it in the shell (decisions § 1654).
+      expect(shellPage(tester), 1);
 
       // Scoped to the shell's centre Log FAB by its tooltip: the Gym page
       // carries its own add FAB, so byType matches two here.
@@ -704,7 +711,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
 
       expect(find.text("You're already on Gym"), findsOneWidget);
-      expect(shellPage(tester), 3);
+      expect(shellPage(tester), 1);
       // showTopBanner arms an auto-dismiss timer; let it run out.
       await tester.pump(const Duration(seconds: 8));
     });

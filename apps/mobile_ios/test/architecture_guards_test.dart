@@ -5309,6 +5309,11 @@ void main() {
       // Rename / create / edit prompts and forms.
       'screens/devices_screen.dart::l10n.devicesRenameTitle': 1,
       'screens/gear_rotations_screen.dart::title': 1,
+      // A chooser, not a confirm: it lists the ways to adjust a plan and
+      // dismisses without touching anything. Each option that does destroy
+      // work raises its own `danger` confirm; pause is reversed by resume in
+      // this same dialog.
+      'screens/plan_detail_screen.dart::l10n.planDetailAdjustPlan': 1,
       'screens/races_screen.dart::l.racesEditorTitle': 1,
       'screens/races_screen.dart::widget.race.name': 1,
       'screens/roadbook_screen.dart::l10n.roadbookPlanTitle': 1,
@@ -5368,6 +5373,9 @@ void main() {
       // Explains what a feature is. Its only action is dismissal; nothing is
       // decided here and nothing can be lost by tapping it.
       'widgets/info_tip.dart::title': 1,
+      // Explains what a derived metric IS. Its only action is dismissal;
+      // nothing is decided here and nothing can be lost by tapping it.
+      'widgets/metric_label.dart::metricText(l10n, metric)': 1,
     };
 
     test('no AlertDialog outside the reviewed set omits error emphasis', () {

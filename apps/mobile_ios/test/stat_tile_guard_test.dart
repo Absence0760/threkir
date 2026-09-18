@@ -56,6 +56,10 @@ const _notTiles = <String, String>{
   // A rasterised share card on a fixed dark canvas with hardcoded type and
   // colour — deliberately theme-free per § 482.
   'lib/widgets/route_share_card.dart::_Stat': 'rasterised share-card stat',
+  // Composes StatTile.large and adds the derived-metric disclosure; the tile
+  // is the content, this is the gesture that opens the definition (#902 §1).
+  'lib/widgets/metric_label.dart::MetricStat':
+      'tile plus a definition disclosure',
 };
 
 /// Surfaces that must go on referencing the shared tile.
@@ -67,6 +71,7 @@ const _mustUseStatTile = <String>[
   'lib/screens/route_detail_screen.dart',
   'lib/screens/period_summary_screen.dart',
   'lib/widgets/fitness_card.dart',
+  'lib/widgets/metric_label.dart',
 ];
 
 /// `path::ClassName` -> why it is not a `SectionHeader`.

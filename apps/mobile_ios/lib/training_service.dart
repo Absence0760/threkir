@@ -42,6 +42,16 @@ class PublicPlanLibraryEntry {
   const PublicPlanLibraryEntry({required this.plan, required this.authorHandle});
 }
 
+/// Thrown by [TrainingService.resumePlan] when another plan already holds the
+/// viewer's one active slot. Web twin: `ActivePlanExistsError` in
+/// `apps/web/src/lib/core/data.ts`.
+class ActivePlanExistsError implements Exception {
+  const ActivePlanExistsError();
+
+  @override
+  String toString() => 'active_plan_exists';
+}
+
 class TrainingService extends ChangeNotifier {
   final SupabaseClient? _override;
 
@@ -733,6 +743,29 @@ class TrainingService extends ChangeNotifier {
   Future<void> updateStatus(String id, String status) async {
     await _c.from('training_plans').update({'status': status}).eq('id', id);
     notifyListeners();
+  }
+
+  /// Pause an active plan — reversible by [resumePlan], and distinct from
+  /// abandon/complete. Frees the one-active slot so another plan can run.
+  /// Web twin: `pausePlan` in `apps/web/src/lib/core/data.ts`.
+  Future<void> pausePlan(String id) => updateStatus(id, 'paused');
+
+  /// Resume a paused plan. Refuses up front when another plan already holds
+  /// the active slot: the `training_plans_one_active` partial unique index
+  /// would reject the write as a bare 23505, which reads to the runner as an
+  /// unexplained failure rather than "finish the other plan first".
+  /// Web twin: `resumePlan` + `ActivePlanExistsError`.
+  Future<void> resumePlan(String id) async {
+    final uid = _uid;
+    if (uid == null) throw StateError('resumePlan called with no signed-in user.');
+    final active = await _c
+        .from('training_plans')
+        .select('id')
+        .eq('user_id', uid)
+        .eq('status', 'active')
+        .limit(1);
+    if (active.isNotEmpty) throw const ActivePlanExistsError();
+    await updateStatus(id, 'active');
   }
 
   Future<void> deletePlan(String id) async {

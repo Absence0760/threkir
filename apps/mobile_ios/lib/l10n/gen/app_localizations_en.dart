@@ -5777,12 +5777,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String planDetailDriftOverFlag(int pct) {
-    return 'Running $pct% over plan this week — ease back on the easy days so you don\'t dig a fatigue hole.';
+    return 'Running $pct% over plan so far this week — ease back on the easy days so you don\'t dig a fatigue hole.';
   }
 
   @override
   String planDetailDriftUnderFlag(String done, String planned) {
-    return 'So far this week you\'ve run $done of the $planned planned.';
+    return 'So far this week you\'ve run $done of the $planned due by now.';
   }
 
   @override
@@ -5802,6 +5802,45 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planDetailAdaptiveReplan => 'Adaptive re-plan';
+
+  @override
+  String get planDetailAdjustPlan => 'Adjust plan';
+
+  @override
+  String get planDetailAdjustPlanIntro =>
+      'Pick the change that fits what happened. Each option says what it changes.';
+
+  @override
+  String get planDetailAdjustReplanDesc =>
+      'Makes up a missed long run, or eases the next week after you ran more than planned. Use it when one week didn\'t go to plan.';
+
+  @override
+  String get planDetailAdjustAdaptiveDesc =>
+      'Looks at your last three finished weeks and suggests changes when at least two were over or under plan, so one odd week doesn\'t move your plan. Use it when you\'ve been off plan for a while.';
+
+  @override
+  String get planDetailAdjustPauseDesc =>
+      'Puts the plan on hold without deleting anything, until you resume it. Use it for illness, injury or travel.';
+
+  @override
+  String get planDetailAdjustResumeDesc =>
+      'Makes this your active plan again. Use it when you\'re ready to pick the plan back up.';
+
+  @override
+  String get planDetailPausePlan => 'Pause plan';
+
+  @override
+  String get planDetailResumePlan => 'Resume plan';
+
+  @override
+  String get planDetailPauseDone => 'Plan paused.';
+
+  @override
+  String get planDetailResumeDone => 'Plan resumed.';
+
+  @override
+  String get planDetailResumeBlocked =>
+      'You already have an active plan. Pause or finish it first.';
 
   @override
   String get planDetailAdaptiveOnTrack =>
@@ -14036,4 +14075,50 @@ class AppLocalizationsEn extends AppLocalizations {
   String logAlreadyOnPage(String page) {
     return 'You\'re already on $page';
   }
+
+  @override
+  String metricAbout(String name) {
+    return 'About $name';
+  }
+
+  @override
+  String metricVdotValue(String value) {
+    return 'VDOT $value';
+  }
+
+  @override
+  String get metricAgeGradeDefinition =>
+      'Your time scored against the best on record for your age and sex. Around 60% is a strong local runner; 80% is national class.';
+
+  @override
+  String get metricVertLabel => 'Vert';
+
+  @override
+  String get metricVertDefinition =>
+      'The total height you climbed, added up across every uphill.';
+
+  @override
+  String get metricTrimpLabel => 'TRIMP';
+
+  @override
+  String get metricTrimpDefinition =>
+      'Training impulse — a score for how hard a run was, from how long it lasted and how high your heart rate went.';
+
+  @override
+  String get metricRiegelLabel => 'Riegel formula';
+
+  @override
+  String get metricRiegelDefinition =>
+      'A standard way to predict your time at one race distance from a time you ran at another.';
+
+  @override
+  String get metricE1rmLabel => 'Est. 1RM';
+
+  @override
+  String get metricE1rmDefinition =>
+      'One-rep max — the heaviest weight you could lift for a single rep. An estimated 1RM is worked out from the weight and reps of a set you did, so you never have to test it.';
+
+  @override
+  String get metricRpeDefinition =>
+      'Rate of perceived exertion — how hard a set felt, from 1 to 10. A 10 means you couldn\'t have done one more rep.';
 }

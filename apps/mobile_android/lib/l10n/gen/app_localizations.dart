@@ -9577,13 +9577,13 @@ abstract class AppLocalizations {
   /// Plan-detail adherence/replan/duplicate
   ///
   /// In en, this message translates to:
-  /// **'Running {pct}% over plan this week — ease back on the easy days so you don\'t dig a fatigue hole.'**
+  /// **'Running {pct}% over plan so far this week — ease back on the easy days so you don\'t dig a fatigue hole.'**
   String planDetailDriftOverFlag(int pct);
 
-  /// Plan-detail adherence: distance run so far this week against the week's planned distance, both already formatted with their unit
+  /// Plan-detail adherence: distance run so far this week against the distance the plan has asked for up to today, both already formatted with their unit
   ///
   /// In en, this message translates to:
-  /// **'So far this week you\'ve run {done} of the {planned} planned.'**
+  /// **'So far this week you\'ve run {done} of the {planned} due by now.'**
   String planDetailDriftUnderFlag(String done, String planned);
 
   /// Plan-detail adherence/replan/duplicate
@@ -9615,6 +9615,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Adaptive re-plan'**
   String get planDetailAdaptiveReplan;
+
+  /// Plan-detail adjust-plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust plan'**
+  String get planDetailAdjustPlan;
+
+  /// Plan-detail adjust-plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Pick the change that fits what happened. Each option says what it changes.'**
+  String get planDetailAdjustPlanIntro;
+
+  /// Plan-detail adjust-plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Makes up a missed long run, or eases the next week after you ran more than planned. Use it when one week didn\'t go to plan.'**
+  String get planDetailAdjustReplanDesc;
+
+  /// Plan-detail adjust-plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Looks at your last three finished weeks and suggests changes when at least two were over or under plan, so one odd week doesn\'t move your plan. Use it when you\'ve been off plan for a while.'**
+  String get planDetailAdjustAdaptiveDesc;
+
+  /// Plan-detail adjust-plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Puts the plan on hold without deleting anything, until you resume it. Use it for illness, injury or travel.'**
+  String get planDetailAdjustPauseDesc;
+
+  /// Plan-detail adjust-plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Makes this your active plan again. Use it when you\'re ready to pick the plan back up.'**
+  String get planDetailAdjustResumeDesc;
+
+  /// Plan-detail adjust-plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Pause plan'**
+  String get planDetailPausePlan;
+
+  /// Plan-detail adjust-plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Resume plan'**
+  String get planDetailResumePlan;
+
+  /// Plan-detail adjust-plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Plan paused.'**
+  String get planDetailPauseDone;
+
+  /// Plan-detail adjust-plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Plan resumed.'**
+  String get planDetailResumeDone;
+
+  /// Plan-detail adjust-plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'You already have an active plan. Pause or finish it first.'**
+  String get planDetailResumeBlocked;
 
   /// No description provided for @planDetailAdaptiveOnTrack.
   ///
@@ -23474,6 +23540,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You\'re already on {page}'**
   String logAlreadyOnPage(String page);
+
+  /// Accessible name for the button that opens a derived metric's definition; name is the metric's on-screen name
+  ///
+  /// In en, this message translates to:
+  /// **'About {name}'**
+  String metricAbout(String name);
+
+  /// VDOT chip on a plan card; value is the pre-formatted score
+  ///
+  /// In en, this message translates to:
+  /// **'VDOT {value}'**
+  String metricVdotValue(String value);
+
+  /// Plain-English definition of age grade, shown in its disclosure
+  ///
+  /// In en, this message translates to:
+  /// **'Your time scored against the best on record for your age and sex. Around 60% is a strong local runner; 80% is national class.'**
+  String get metricAgeGradeDefinition;
+
+  /// Name of the total-climb metric
+  ///
+  /// In en, this message translates to:
+  /// **'Vert'**
+  String get metricVertLabel;
+
+  /// Plain-English definition of vert, shown in its disclosure
+  ///
+  /// In en, this message translates to:
+  /// **'The total height you climbed, added up across every uphill.'**
+  String get metricVertDefinition;
+
+  /// Name of the training-impulse metric
+  ///
+  /// In en, this message translates to:
+  /// **'TRIMP'**
+  String get metricTrimpLabel;
+
+  /// Plain-English definition of TRIMP, shown in its disclosure
+  ///
+  /// In en, this message translates to:
+  /// **'Training impulse — a score for how hard a run was, from how long it lasted and how high your heart rate went.'**
+  String get metricTrimpDefinition;
+
+  /// Name of the race-time equivalence formula
+  ///
+  /// In en, this message translates to:
+  /// **'Riegel formula'**
+  String get metricRiegelLabel;
+
+  /// Plain-English definition of the Riegel formula, shown in its disclosure
+  ///
+  /// In en, this message translates to:
+  /// **'A standard way to predict your time at one race distance from a time you ran at another.'**
+  String get metricRiegelDefinition;
+
+  /// Name of the estimated one-rep-max metric
+  ///
+  /// In en, this message translates to:
+  /// **'Est. 1RM'**
+  String get metricE1rmLabel;
+
+  /// Plain-English definition of 1RM, shown in its disclosure
+  ///
+  /// In en, this message translates to:
+  /// **'One-rep max — the heaviest weight you could lift for a single rep. An estimated 1RM is worked out from the weight and reps of a set you did, so you never have to test it.'**
+  String get metricE1rmDefinition;
+
+  /// Plain-English definition of RPE, shown in its disclosure
+  ///
+  /// In en, this message translates to:
+  /// **'Rate of perceived exertion — how hard a set felt, from 1 to 10. A 10 means you couldn\'t have done one more rep.'**
+  String get metricRpeDefinition;
 }
 
 class _AppLocalizationsDelegate

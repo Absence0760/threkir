@@ -230,16 +230,27 @@ becomes an **action button**, not a tab.
               ↑ last-used floats to top
 ```
 
-- **Picking a modality navigates to its dwell-in capture page**, not a
+- **Picking a modality navigates to its dwell-in capture surface**, not a
   one-shot modal. All three behave the same way: `Log run` → the recorder
-  page, `Log lift` → the Gym page, `Log food` → the Nutrition page — each an
-  in-shell keep-alive `PageView` page (bottom nav stays visible) you operate
-  in for as long as the session lasts (record the run, build a workout over
-  several sets, log the day's meals), with that page's own composer one tap
-  away. The keep-alive guarantee means an in-progress recording, a half-built
-  workout, or the day's food log survives swiping to Home and back. (A run is
-  *necessarily* a page — a foreground-service GPS session can't collapse into
-  a modal — so Gym + Nutrition match it rather than the reverse.)
+  page, `Log lift` → the Fitness hub's **Gym** tab, `Log food` → its
+  **Nutrition** tab — each an in-shell keep-alive surface (bottom nav stays
+  visible) you operate in for as long as the session lasts (record the run,
+  build a workout over several sets, log the day's meals), with its own
+  composer one tap away. The keep-alive guarantee means an in-progress
+  recording, a half-built workout, or the day's food log survives swiping to
+  Home and back. (A run is *necessarily* a page of its own — a
+  foreground-service GPS session can't collapse into a modal, and `RunScreen`
+  the recorder is a different screen from `RunsScreen` the list.)
+
+  Gym and Nutrition are the hub's tabs rather than pages of their own because
+  they have no separate capture screen: the verb-vs-modality split that makes
+  the recorder distinct from the run list has nothing to divide there. They
+  shipped as pages anyway, which meant **two keep-alive copies of one surface
+  with independent state** — a runner who stepped the diary back to yesterday
+  in the hub and then tapped `Log → Food` landed on an identical-looking
+  screen showing today, and filed the backfill into the wrong day. One
+  instance each now, selected through a shared `ValueNotifier<FitnessTab>`
+  ([decisions § 1654](../architecture/decisions.md)).
 - **Tap `Log` = the primary capture action, derived from data presence**
   (decisions § 1644). Until the user has logged a lift or a meal, the tap
   starts a run outright — the fan has nothing to choose between, so it
@@ -1071,6 +1082,8 @@ Bottom nav becomes `Home · Train · [+] Log · Social · You` (still five slots
 The **self-hiding contract holds**: a pure runner opening `Train` sees the Runs sub-tab content and an `All` timeline of only runs; the Gym/Nutrition sub-tabs render their empty-onboarding state but are never forced on them (mirroring today's data-gated cards). The Train hub being always-present is the analogue of today's always-present `Log` sheet — it's the entry point, so it can't itself be data-gated (the §63-amendment chicken-and-egg rule).
 
 Keep-alive note: the in-shell `PageView` capture pages (Run/Gym/Nutrition recorders) stay exactly as the §63 2026-06-08 amendment built them — the Train hub is a *review/plan* destination, distinct from the keep-alive *capture* pages the `Log` action lands on. A live recording is unaffected by navigating to `Train`.
+
+> **Superseded for Gym + Nutrition, 2026-09-17** ([decisions § 1654](../architecture/decisions.md)). The capture/review split above is real for runs, where the recorder and the run list are different screens — but Gym and Nutrition never had a capture screen distinct from their review screen, so "distinct pages" meant the *same widget mounted twice*, each keeping its own diary day, filters, scroll and routine store. The hub's Gym and Nutrition tabs are now the app's only instances; the `Log` action selects one. The Run capture page is unchanged.
 
 ### Web — Routes nests under the Run surface; siblings stay
 

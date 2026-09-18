@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../gym_prs.dart' show namesAnExercise, normaliseExerciseName;
 import '../l10n/gen/app_localizations.dart';
+import '../metrics.dart';
 import '../local_routine_store.dart';
 import '../preferences.dart';
 import '../routine_editor_build.dart';
 import '../typed_decimal.dart';
 import 'full_screen_form.dart';
+import 'metric_label.dart';
 
 /// Open the routine builder as a fullscreen dialog. Pass [seedExercises] /
 /// [seedTitle] to prefill it (e.g. the output of `routineFromWorkout` for a
@@ -582,7 +584,7 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
           const SizedBox(width: 4),
           SizedBox(
             width: 56,
-            child: _numField(s.rpe, l10n.gymRpe, true),
+            child: _numField(s.rpe, metricText(l10n, Metric.rpe), true),
           ),
           IconButton(
             tooltip: l10n.gymEditorRemoveSet,
@@ -628,14 +630,35 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
         ],
         if (scheme == 'percent_cycle') ...[
           const SizedBox(height: 8),
-          _numField(ex.percent, l10n.gymRoutineProgressionPercentLabel, true),
+          _numField(
+              ex.percent,
+              metricText(l10n, Metric.e1rm, variant: 'percent'),
+              true),
           const SizedBox(height: 8),
-          _numField(ex.oneRm, l10n.gymRoutineProgressionOneRmLabel(unit), true),
+          Row(
+            children: [
+              Expanded(
+                child: _numField(
+                    ex.oneRm,
+                    metricText(l10n, Metric.e1rm,
+                        variant: 'oneRm', args: {'unit': unit}),
+                    true),
+              ),
+              const MetricInfoButton(metric: Metric.e1rm),
+            ],
+          ),
         ],
         if (scheme == 'rpe_autoreg') ...[
           const SizedBox(height: 8),
-          _numField(
-              ex.targetRpe, l10n.gymRoutineProgressionTargetRpeLabel, true),
+          Row(
+            children: [
+              Expanded(
+                child: _numField(ex.targetRpe,
+                    metricText(l10n, Metric.rpe, variant: 'target'), true),
+              ),
+              const MetricInfoButton(metric: Metric.rpe),
+            ],
+          ),
         ],
       ],
     );

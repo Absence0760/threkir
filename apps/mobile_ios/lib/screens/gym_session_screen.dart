@@ -13,6 +13,7 @@ import '../gym_routine.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../local_gym_store.dart';
 import '../local_routine_store.dart';
+import '../metrics.dart';
 import '../preferences.dart';
 import '../progression_prefill.dart';
 import '../typed_decimal.dart';
@@ -811,7 +812,7 @@ class _GymSessionScreenState extends State<GymSessionScreen> {
     final fields = <Widget>[
       _field(_reps, l10n.gymReps, false),
       _field(_weight, WeightFormat.label(activeWeightUnit), true),
-      _field(_rpe, l10n.gymRpe, true),
+      _field(_rpe, metricText(l10n, Metric.rpe), true),
       if (step?.targetDurationS != null)
         _field(_duration, l10n.gymDuration, false),
       if (step?.targetDistanceM != null)

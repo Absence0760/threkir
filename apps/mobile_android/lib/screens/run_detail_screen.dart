@@ -27,6 +27,7 @@ import '../hr_zones.dart';
 import '../run_intensity.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
+import '../metrics.dart';
 import '../pace_analysis.dart';
 import '../preferences.dart';
 import '../privacy.dart';
@@ -1427,7 +1428,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       if (ageGrade != null)
         StatTile.small(
           icon: Icons.emoji_events,
-          label: l10n.runDetailStatAgeGrade,
+          label: metricText(l10n, Metric.ageGrade),
           value: ageGrade,
         ),
     ];

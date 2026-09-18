@@ -7818,7 +7818,7 @@
       }
     }
   },
-  "planDetailDriftOverFlag": "Running {pct}% over plan this week — ease back on the easy days so you don't dig a fatigue hole.",
+  "planDetailDriftOverFlag": "Running {pct}% over plan so far this week — ease back on the easy days so you don't dig a fatigue hole.",
   "@planDetailDriftOverFlag": {
     "description": "Plan-detail adherence/replan/duplicate",
     "placeholders": {
@@ -7827,9 +7827,9 @@
       }
     }
   },
-  "planDetailDriftUnderFlag": "So far this week you've run {done} of the {planned} planned.",
+  "planDetailDriftUnderFlag": "So far this week you've run {done} of the {planned} due by now.",
   "@planDetailDriftUnderFlag": {
-    "description": "Plan-detail adherence: distance run so far this week against the week's planned distance, both already formatted with their unit",
+    "description": "Plan-detail adherence: distance run so far this week against the distance the plan has asked for up to today, both already formatted with their unit",
     "placeholders": {
       "done": {
         "type": "String"
@@ -7853,6 +7853,50 @@
   },
   "planDetailReplan": "Re-plan remaining weeks",
   "planDetailAdaptiveReplan": "Adaptive re-plan",
+  "planDetailAdjustPlan": "Adjust plan",
+  "@planDetailAdjustPlan": {
+    "description": "Plan-detail adjust-plan dialog"
+  },
+  "planDetailAdjustPlanIntro": "Pick the change that fits what happened. Each option says what it changes.",
+  "@planDetailAdjustPlanIntro": {
+    "description": "Plan-detail adjust-plan dialog"
+  },
+  "planDetailAdjustReplanDesc": "Makes up a missed long run, or eases the next week after you ran more than planned. Use it when one week didn't go to plan.",
+  "@planDetailAdjustReplanDesc": {
+    "description": "Plan-detail adjust-plan dialog"
+  },
+  "planDetailAdjustAdaptiveDesc": "Looks at your last three finished weeks and suggests changes when at least two were over or under plan, so one odd week doesn't move your plan. Use it when you've been off plan for a while.",
+  "@planDetailAdjustAdaptiveDesc": {
+    "description": "Plan-detail adjust-plan dialog"
+  },
+  "planDetailAdjustPauseDesc": "Puts the plan on hold without deleting anything, until you resume it. Use it for illness, injury or travel.",
+  "@planDetailAdjustPauseDesc": {
+    "description": "Plan-detail adjust-plan dialog"
+  },
+  "planDetailAdjustResumeDesc": "Makes this your active plan again. Use it when you're ready to pick the plan back up.",
+  "@planDetailAdjustResumeDesc": {
+    "description": "Plan-detail adjust-plan dialog"
+  },
+  "planDetailPausePlan": "Pause plan",
+  "@planDetailPausePlan": {
+    "description": "Plan-detail adjust-plan dialog"
+  },
+  "planDetailResumePlan": "Resume plan",
+  "@planDetailResumePlan": {
+    "description": "Plan-detail adjust-plan dialog"
+  },
+  "planDetailPauseDone": "Plan paused.",
+  "@planDetailPauseDone": {
+    "description": "Plan-detail adjust-plan dialog"
+  },
+  "planDetailResumeDone": "Plan resumed.",
+  "@planDetailResumeDone": {
+    "description": "Plan-detail adjust-plan dialog"
+  },
+  "planDetailResumeBlocked": "You already have an active plan. Pause or finish it first.",
+  "@planDetailResumeBlocked": {
+    "description": "Plan-detail adjust-plan dialog"
+  },
   "planDetailAdaptiveOnTrack": "Your recent weeks are on track — no adjustment needed.",
   "planDetailAdaptiveNoSafeChange": "You've drifted from plan recently, but there's no safe adjustment to make right now.",
   "planDetailAdaptiveFitnessHeld": "Held back — you're carrying fatigue right now, so adding volume isn't advised.",
@@ -18038,5 +18082,63 @@
         "type": "String"
       }
     }
+  },
+  "metricAbout": "About {name}",
+  "@metricAbout": {
+    "description": "Accessible name for the button that opens a derived metric's definition; name is the metric's on-screen name",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "metricVdotValue": "VDOT {value}",
+  "@metricVdotValue": {
+    "description": "VDOT chip on a plan card; value is the pre-formatted score",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "metricAgeGradeDefinition": "Your time scored against the best on record for your age and sex. Around 60% is a strong local runner; 80% is national class.",
+  "@metricAgeGradeDefinition": {
+    "description": "Plain-English definition of age grade, shown in its disclosure"
+  },
+  "metricVertLabel": "Vert",
+  "@metricVertLabel": {
+    "description": "Name of the total-climb metric"
+  },
+  "metricVertDefinition": "The total height you climbed, added up across every uphill.",
+  "@metricVertDefinition": {
+    "description": "Plain-English definition of vert, shown in its disclosure"
+  },
+  "metricTrimpLabel": "TRIMP",
+  "@metricTrimpLabel": {
+    "description": "Name of the training-impulse metric"
+  },
+  "metricTrimpDefinition": "Training impulse — a score for how hard a run was, from how long it lasted and how high your heart rate went.",
+  "@metricTrimpDefinition": {
+    "description": "Plain-English definition of TRIMP, shown in its disclosure"
+  },
+  "metricRiegelLabel": "Riegel formula",
+  "@metricRiegelLabel": {
+    "description": "Name of the race-time equivalence formula"
+  },
+  "metricRiegelDefinition": "A standard way to predict your time at one race distance from a time you ran at another.",
+  "@metricRiegelDefinition": {
+    "description": "Plain-English definition of the Riegel formula, shown in its disclosure"
+  },
+  "metricE1rmLabel": "Est. 1RM",
+  "@metricE1rmLabel": {
+    "description": "Name of the estimated one-rep-max metric"
+  },
+  "metricE1rmDefinition": "One-rep max — the heaviest weight you could lift for a single rep. An estimated 1RM is worked out from the weight and reps of a set you did, so you never have to test it.",
+  "@metricE1rmDefinition": {
+    "description": "Plain-English definition of 1RM, shown in its disclosure"
+  },
+  "metricRpeDefinition": "Rate of perceived exertion — how hard a set felt, from 1 to 10. A 10 means you couldn't have done one more rep.",
+  "@metricRpeDefinition": {
+    "description": "Plain-English definition of RPE, shown in its disclosure"
   }
 }

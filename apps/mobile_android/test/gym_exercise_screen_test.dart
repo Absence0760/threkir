@@ -169,7 +169,10 @@ void main() {
     await tester.pumpWidget(_screen(seeded.store, 'Bench'));
     await tester.pump();
 
-    await tester.tap(find.byType(InkWell).first);
+    // Scoped to the session Card: the headline est-1RM label carries a
+    // definition disclosure of its own, which is an earlier InkWell.
+    await tester.tap(find.descendant(
+        of: find.byType(Card), matching: find.byType(InkWell)).first);
     await tester.pumpAndSettle();
 
     // Navigated into the workout detail for the tapped session.

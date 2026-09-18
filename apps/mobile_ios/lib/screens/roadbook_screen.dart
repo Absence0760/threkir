@@ -12,10 +12,12 @@ import '../elevation.dart';
 import '../fuel_plan.dart';
 import '../goal_time.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../metrics.dart';
 import '../preferences.dart';
 import '../roadbook.dart';
 import '../share_sheet.dart';
 import '../route_markers.dart' show kindSpec;
+import '../widgets/metric_label.dart';
 import '../widgets/top_banner.dart';
 
 /// The goal pace a schedule opens at before the runner sets their own — 6:30/km.
@@ -529,15 +531,16 @@ class _RoadbookScreenState extends State<RoadbookScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    l10n.roadbookSummary(
-                      UnitFormat.distance(rb.totalDistM, unit),
-                      formatElevationForPref(rb.totalGainM),
-                      _elapsedLabel(rb.totalSeconds),
-                    ),
+                    metricText(l10n, Metric.vert, sentence: 'roadbook', args: {
+                      'distance': UnitFormat.distance(rb.totalDistM, unit),
+                      'vert': formatElevationForPref(rb.totalGainM),
+                      'time': _elapsedLabel(rb.totalSeconds),
+                    }),
                     style: theme.textTheme.bodyMedium
                         ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   ),
                 ),
+                const MetricInfoButton(metric: Metric.vert),
                 if (_model == PacingModel.effort && !rb.hasElevation)
                   TextButton(
                     onPressed: _fetchingEle ? null : _addElevation,

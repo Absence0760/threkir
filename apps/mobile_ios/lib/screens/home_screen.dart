@@ -40,8 +40,6 @@ import 'dashboard_screen.dart';
 import 'event_detail_screen.dart';
 import 'fitness_hub_screen.dart';
 import '../onboarding.dart';
-import 'gym_screen.dart';
-import 'nutrition_screen.dart';
 import 'plan_new_screen.dart';
 import 'plans_screen.dart';
 import 'profile_screen.dart';
@@ -146,20 +144,28 @@ class _HomeScreenState extends State<HomeScreen>
   // Settings folds into You.
   static const _pageHome = 0;
   static const _pageFitness = 1;
-  // Run / Gym / Nutrition have no bottom-nav destination — they're the
-  // dwell-in capture surfaces reached via the centre Log action, each a
-  // keep-alive page so an in-progress session (a live recording, a
-  // half-built workout, the day's food log) survives swiping to Home and
-  // back. Run can't be anything else (a foreground-service GPS session
-  // can't collapse into a modal); Gym + Nutrition match it so all three
-  // Log actions behave the same way. These are DISTINCT from the Fitness
-  // hub's review surfaces (which mount separate Gym/Nutrition instances).
+  // Run has no bottom-nav destination — it is the dwell-in capture surface the
+  // centre Log action reaches, a keep-alive page so a live recording survives
+  // swiping to Home and back. It can't be anything else: a foreground-service
+  // GPS session can't collapse into a modal, and it is a screen of its own
+  // (`RunScreen`, the recorder) rather than a second copy of the run list.
+  //
+  // Gym and Nutrition have no page here, because they have no screen of their
+  // own: `Log lift` and `Log food` open the Fitness hub's Gym and Nutrition
+  // tabs, which are the same dwell-in workspaces with the composer one tap
+  // away. They used to be mounted BOTH here and in the hub, which meant two
+  // keep-alive copies of one surface with independent state — and a runner who
+  // stepped the diary back to yesterday in the hub and then tapped Log → Food
+  // landed on an identical-looking screen showing today (decisions § 1654).
   static const _pageRun = 2;
-  static const _pageGym = 3;
-  static const _pageFood = 4;
-  static const _pageSocial = 5;
-  static const _pageYou = 6;
+  static const _pageSocial = 3;
+  static const _pageYou = 4;
   static const _initialIndex = _pageHome;
+
+  /// Which Fitness sub-tab the hub is showing. Owned here rather than inside
+  /// the hub because the centre Log action selects one, and the hub is a lazy
+  /// page that may not be built yet when it does.
+  final _fitnessTab = ValueNotifier<FitnessTab>(FitnessTab.history);
 
   /// Current page index. A `ValueNotifier` instead of a `setState` int so
   /// page changes during a swipe only rebuild the bottom bar — not the
@@ -541,6 +547,7 @@ class _HomeScreenState extends State<HomeScreen>
           preferences: widget.preferences,
           settingsSync: widget.settingsSync,
           training: widget.training,
+          selectedTab: _fitnessTab,
         ),
       ),
       _LazyKeepAliveTab(
@@ -567,22 +574,6 @@ class _HomeScreenState extends State<HomeScreen>
           treadmill: widget.treadmill,
           initialRoute: _preselectedRoute,
           initialResumablePartial: widget.resumablePartial,
-        ),
-      ),
-      _LazyKeepAliveTab(
-        builder: () => GymScreen(
-          key: const PageStorageKey('gym'),
-          api: widget.apiClient,
-          store: widget.gymStore,
-          social: widget.social,
-        ),
-      ),
-      _LazyKeepAliveTab(
-        builder: () => NutritionScreen(
-          key: const PageStorageKey('nutrition'),
-          api: widget.apiClient,
-          store: widget.foodStore,
-          settingsSync: widget.settingsSync,
         ),
       ),
       _LazyKeepAliveTab(
@@ -621,6 +612,7 @@ class _HomeScreenState extends State<HomeScreen>
         .removeListener(_onPendingSettingsDestination);
     _pageController.dispose();
     _currentIndex.dispose();
+    _fitnessTab.dispose();
     super.dispose();
   }
 
@@ -747,18 +739,25 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _performLogAction(LogAction action) {
     widget.preferences.setLastLogType(action.wire);
-    // Each Log action lands on that modality's dwell-in capture page (decisions
-    // §63) — the same in-shell keep-alive page model the live recorder uses, so
-    // all three behave identically: you arrive on a workspace you can operate in
-    // for as long as the session lasts (record the run, build the workout over
-    // several sets, log the day's meals) rather than a one-shot modal that
-    // closes after a single entry. Each page surfaces its composer one tap away.
-    final page = switch (action) {
-      LogAction.run => _pageRun,
-      LogAction.lift => _pageGym,
-      LogAction.food => _pageFood,
+    // Each Log action lands on that modality's dwell-in workspace (decisions
+    // §63) — the keep-alive Run page for a recording, the Fitness hub's own Gym
+    // and Nutrition tabs for the other two. All three behave identically: you
+    // arrive on a surface you can operate in for as long as the session lasts
+    // (record the run, build the workout over several sets, log the day's
+    // meals) rather than a one-shot modal that closes after a single entry, and
+    // each surfaces its composer one tap away.
+    //
+    // Gym and Nutrition are the hub's tabs rather than pages of their own so
+    // that this button and the Fitness tab strip reach the SAME screen, still
+    // showing the day, filters and half-typed entry it was left on (§ 1654).
+    final tab = switch (action) {
+      LogAction.run => null,
+      LogAction.lift => FitnessTab.gym,
+      LogAction.food => FitnessTab.nutrition,
     };
-    if (page == _currentIndex.value) {
+    final page = tab == null ? _pageRun : _pageFitness;
+    if (page == _currentIndex.value &&
+        (tab == null || tab == _fitnessTab.value)) {
       // Picking the page you are already on is a no-op navigation, and the
       // fan closing onto an unchanged screen reads as a dropped tap. Say
       // where the tap went instead.
@@ -766,6 +765,7 @@ class _HomeScreenState extends State<HomeScreen>
       showTopBanner(context, l10n.logAlreadyOnPage(_logPageName(l10n, action)));
       return;
     }
+    if (tab != null) _fitnessTab.value = tab;
     _goToPage(page);
   }
 

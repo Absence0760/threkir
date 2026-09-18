@@ -5830,12 +5830,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String planDetailDriftOverFlag(int pct) {
-    return 'Esta semana $pct% por encima del plan — afloja en los días suaves para no cavar un hoyo de fatiga.';
+    return 'Esta semana, de momento $pct% por encima del plan — afloja en los días suaves para no cavar un hoyo de fatiga.';
   }
 
   @override
   String planDetailDriftUnderFlag(String done, String planned) {
-    return 'Esta semana llevas $done de los $planned previstos.';
+    return 'Esta semana llevas $done de los $planned previstos hasta ahora.';
   }
 
   @override
@@ -5855,6 +5855,45 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planDetailAdaptiveReplan => 'Replanificación adaptativa';
+
+  @override
+  String get planDetailAdjustPlan => 'Ajustar plan';
+
+  @override
+  String get planDetailAdjustPlanIntro =>
+      'Elige el cambio que encaje con lo que pasó. Cada opción dice qué cambia.';
+
+  @override
+  String get planDetailAdjustReplanDesc =>
+      'Recupera una tirada larga perdida, o aligera la semana siguiente si corriste más de lo previsto. Úsalo cuando una semana no salió según el plan.';
+
+  @override
+  String get planDetailAdjustAdaptiveDesc =>
+      'Mira tus últimas tres semanas terminadas y propone cambios cuando al menos dos quedaron por encima o por debajo del plan, para que una semana rara no mueva tu plan. Úsalo cuando llevas un tiempo desviado del plan.';
+
+  @override
+  String get planDetailAdjustPauseDesc =>
+      'Deja el plan en espera sin borrar nada, hasta que lo reanudes. Úsalo por enfermedad, lesión o viaje.';
+
+  @override
+  String get planDetailAdjustResumeDesc =>
+      'Vuelve a convertirlo en tu plan activo. Úsalo cuando estés listo para retomarlo.';
+
+  @override
+  String get planDetailPausePlan => 'Pausar plan';
+
+  @override
+  String get planDetailResumePlan => 'Reanudar plan';
+
+  @override
+  String get planDetailPauseDone => 'Plan en pausa.';
+
+  @override
+  String get planDetailResumeDone => 'Plan reanudado.';
+
+  @override
+  String get planDetailResumeBlocked =>
+      'Ya tienes un plan activo. Pausa o termina ese primero.';
 
   @override
   String get planDetailAdaptiveOnTrack =>
@@ -14181,4 +14220,50 @@ class AppLocalizationsEs extends AppLocalizations {
   String logAlreadyOnPage(String page) {
     return 'Ya estás en $page';
   }
+
+  @override
+  String metricAbout(String name) {
+    return 'Acerca de $name';
+  }
+
+  @override
+  String metricVdotValue(String value) {
+    return 'VDOT $value';
+  }
+
+  @override
+  String get metricAgeGradeDefinition =>
+      'Tu tiempo comparado con el mejor registrado para tu edad y sexo. Alrededor del 60 % es un buen nivel local; el 80 %, nivel nacional.';
+
+  @override
+  String get metricVertLabel => 'Desnivel';
+
+  @override
+  String get metricVertDefinition =>
+      'La altura total que has subido, sumada en todas las cuestas.';
+
+  @override
+  String get metricTrimpLabel => 'TRIMP';
+
+  @override
+  String get metricTrimpDefinition =>
+      'Impulso de entrenamiento: una puntuación de lo duro que fue una carrera, según su duración y lo alta que llegó tu frecuencia cardíaca.';
+
+  @override
+  String get metricRiegelLabel => 'Fórmula de Riegel';
+
+  @override
+  String get metricRiegelDefinition =>
+      'Una forma estándar de predecir tu tiempo en una distancia a partir de un tiempo que corriste en otra.';
+
+  @override
+  String get metricE1rmLabel => '1RM est.';
+
+  @override
+  String get metricE1rmDefinition =>
+      'Máximo a una repetición: el peso más alto que podrías levantar una sola vez. El 1RM estimado se calcula a partir del peso y las repeticiones de una serie que hiciste, así que nunca tienes que probarlo.';
+
+  @override
+  String get metricRpeDefinition =>
+      'Esfuerzo percibido: lo dura que se sintió una serie, del 1 al 10. Un 10 significa que no habrías podido hacer ni una repetición más.';
 }

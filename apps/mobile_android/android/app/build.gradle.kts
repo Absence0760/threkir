@@ -9,6 +9,28 @@ import java.util.Properties
 import java.io.FileInputStream
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
+// FCM registration needs the google-services plugin: it reads
+// `google-services.json` and generates the `google_app_id` /
+// `gcm_defaultSenderId` / `project_id` string resources that firebase_core
+// loads for the default app. Without it the file is inert and
+// `Firebase.initializeApp()` throws, which `FirebasePushMessaging` catches —
+// so the whole push path no-ops in silence rather than failing at build time.
+//
+// The file is gitignored (see the repo-root .gitignore) and the release
+// workflow decodes it from GOOGLE_SERVICES_JSON_BASE64, so it is absent on a
+// fresh clone. Applying the plugin conditionally keeps `flutter run` working
+// there; the trade-off is that a release build missing the secret still
+// succeeds, and registers no token. `release-android.yml` warns in that case.
+val googleServicesJson = file("google-services.json")
+if (googleServicesJson.exists()) {
+    apply(plugin = "com.google.gms.google-services")
+} else {
+    logger.lifecycle(
+        "google-services.json absent — skipping the google-services plugin. " +
+            "This build will not receive push notifications.",
+    )
+}
+
 val keystoreProperties = Properties()
 val keystoreFile = rootProject.file("key.properties")
 if (keystoreFile.exists()) {

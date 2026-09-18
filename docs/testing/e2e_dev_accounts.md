@@ -166,10 +166,27 @@ undo it, and hands `docs/compliance/sub-processors.md` a transfer that needs SCC
 
 1. <https://sentry.io/signup/> — free **Developer** plan: 5k errors/month, 1 user,
    **unlimited projects**, 30-day retention. Two projects therefore cost nothing.
-2. Organization name `Threkir`, slug `threkir`.
-3. **Data region: Europe (Frankfurt).** Verify afterwards that the browser lands on
+2. One form carries all of it — Name, Organization, Email, Password, Data Storage
+   Location. Fill it as:
+   - **Name** — the account holder's real name; it shows on issue activity.
+   - **Organization** — `Threkir` (slug `threkir`).
+   - **Email** — a role alias on the domain, **`ops@threkir.com`**, forwarding to the
+     owner's real inbox. Create the alias in Migadu *before* signing up; Sentry sends a
+     verification mail straight away. Not a personal mailbox: the free plan is
+     single-seat, so this login *is* the org, with no second admin to recover through —
+     a lost personal mailbox would take production monitoring with it, and a vendor
+     account rooted in one doesn't transfer with the domain. `ops@` rather than
+     `sentry@` so the next vendor (Better Stack, Fly, Supabase) can share it. Same
+     pattern as the existing `dmarc@threkir.com`.
+   - **Password** — generated into the password manager.
+   - Leave the email-updates checkbox unticked; it is marketing, not alerting.
+3. **Use email + password, not the Google / GitHub / Azure buttons.** They bind the org's
+   login to a personal identity account and buy nothing here — the Sentry↔GitHub
+   integration that links issues to commits is a separate org-level install under
+   Settings → Integrations either way.
+4. **Data region: Europe (Frankfurt).** Verify afterwards that the browser lands on
    `de.sentry.io` — if it says `us.sentry.io`, delete the org and redo this step.
-4. A 14-day Business trial starts automatically. Let it lapse; it downgrades to
+5. A 14-day Business trial starts automatically. Let it lapse; it downgrades to
    Developer on its own. Do not add a card.
 
 An EU-region DSN reads `https://<key>@o<org>.ingest.de.sentry.io/<project>`. The

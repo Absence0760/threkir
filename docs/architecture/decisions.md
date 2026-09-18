@@ -29464,3 +29464,61 @@ Three rules differ from web's, each for a reason in the framework rather than a 
 The exemption field is `allowedIn`, not web's `expandedIn`, and the rename is the honest part: none of the four exemptions is an expansion. Three are picker or dropdown rows that cannot hold a disclosure — the watch-screen metric list, and the two progression schemes whose own fields carry one — and the fourth is `integrationsParkrunInfo`, which is already the body of an `InfoTipButton`. Web's name would have been a lie in a field the guard checks for staleness.
 
 The `pt-PT` register guard caught the first draft: `metricRiegelDefinition` reached for `padrão` in the sense Portugal spends on *standard*, which the sense-split test reserves. It is `habitual` now. That guard is doing exactly what it was built for on copy written by someone who does not speak the language.
+
+## 1656. The Apple Watch app is a target of the phone project now, referenced not copied, and one guard holds the two projects to each other
+
+§ 1256 named five things a Mac had to confirm, in order, and had no Mac. This
+round had one (Xcode 26.4, watchOS 26.4 simulator runtime), and steps 1–4 are
+done in that order.
+
+**Step 1 was already true and had never been read.** `plutil -p` on the built
+`WatchApp.app` shows `CFBundleDisplayName = Threkir` — the `GENERATE_INFOPLIST_FILE
+= NO` fix § 1256 made really did land; nobody had looked at a built product to
+say so. **Step 2 is the change.** `apps/mobile_ios/ios/Runner.xcodeproj` gains a
+`WatchApp` native target whose Sources and Resources phases point at the
+existing files under `apps/watch_ios/WatchApp/` — **referenced, never copied,
+one copy on disk** — plus an Embed Watch Content copy phase on `Runner`
+(`dstSubfolderSpec 16`, `$(CONTENTS_FOLDER_PATH)/Watch`) and a target dependency
+ordering the two. `WatchApp.xcodeproj` stays exactly as it was, because it is
+the test host `test-watch-ios` builds and there is no reason to make the one job
+that compiles this tier depend on a Flutter workspace. **Step 3 follows the
+build**: `WKWatchOnly` is out and `WKCompanionAppBundleIdentifier =
+com.threkir.app` is in, which claim (10) now demands rather than refuses.
+
+**Step 4 settled the question § 1256 could not.** Whether LaunchServices refuses
+a companion-declaring bundle on an unpaired watch simulator was the stated
+unknown, and it is the whole reason the flip could not be reasoned to. Measured
+on a watch simulator created for the purpose and confirmed to be in no pair:
+the app installs, launches as the test host, and all 225 `WatchAppTests` pass.
+Step 5 — one run syncing end to end on paired physical hardware — is untouched
+and stays device-gated.
+
+**The embedded bundle's version is Flutter's now.** The watch plist carried a
+literal `1.0` / `1` against the phone's `$(FLUTTER_BUILD_NAME)`, which is an
+upload rejection the moment the two ship in one `.ipa` (Apple requires the
+watch app's `CFBundleShortVersionString` and `CFBundleVersion` to equal its
+companion's). The plist reads `$(MARKETING_VERSION)` / `$(CURRENT_PROJECT_VERSION)`
+instead — values `WatchApp.xcodeproj` already sets, so the standalone build is
+unchanged — and `apps/mobile_ios/ios/Flutter/WatchApp.xcconfig` maps them onto
+Flutter's on the phone side. That xcconfig includes `Generated.xcconfig` and
+nothing else: `Debug.xcconfig` / `Release.xcconfig` pull in the Pods xcconfigs,
+which are iOS-only and would not link on watchOS.
+
+**Two projects describing one app is a drift hazard, so claim (15) holds them
+together.** It requires the same `Sources` and `Resources` membership for the
+`WatchApp` target in both, the same bundle-defining settings, both
+`INFOPLIST_FILE` / `CODE_SIGN_ENTITLEMENTS` resolving to the one committed file,
+and the Embed Watch Content phase still there with its dependency. Every one of
+those fails silently otherwise: a source in `WatchApp.xcodeproj` alone is
+exercised by `test-watch-ios` and absent from every `.ipa`; a source in
+`Runner.xcodeproj` alone ships to a wrist compiled by nothing that runs a test;
+and deleting the copy phase un-ships the entire watch tier while both projects
+build, both suites pass, and claim (10) then reads the companion key as the
+defect rather than the missing embed. It lives beside claim (13) rather than in
+a script of its own because it is the same question — what does Xcode actually
+compile — asked across two projects instead of one, and because that keeps the
+CI wiring at one step. Fifteen cases pinned, including the two vacuity shapes.
+
+Rung: **build-verified**, and for step 4 a simulator install and a green suite —
+not bench-verified and not device-verified. What a paired physical pair must
+still confirm is § 1256's step 5, and nothing in this entry claims it.

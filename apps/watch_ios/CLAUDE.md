@@ -178,7 +178,9 @@ The opposite direction of the run hand-off. On iOS, the route-detail share menu 
 - **Privacy**: the push reads `_displayWaypoints` — the privacy-zone-clipped polyline the map and the GPX exporter use — so a non-owner sending a public route to their own watch can't carry the owner's unclipped trace out over Watch Connectivity (decisions §33).
 - The armed route is written to `UserDefaults` on arrival (deliveries land while the app is backgrounded), read back at `WorkoutManager.start()`, and cleared either by the next push or by **Clear route** on `PreRunView` — the phone is the only writer, so without that button a route the runner no longer wants can only be replaced from the phone.
 
-**Companion status.** `WatchApp/Info.plist` declares `WKWatchOnly` — "no iOS companion" — which is true of the Xcode project (a standalone `WatchApp.xcodeproj` that `Runner.xcodeproj` does not reference) and false of the app (whose Release sync is `WCSession` to `com.threkir.app`, and whose bundle id `com.threkir.app.watchapp` is the companion naming rule). Do NOT flip the key on its own: it would declare a companion nothing bundles, and `test-watch-ios` installs on an unpaired watch simulator. The build integration comes first; [decisions § 1256](../../docs/architecture/decisions.md) lists the five steps a Mac must run in order. Also note the target sets `GENERATE_INFOPLIST_FILE = NO`, so **every `INFOPLIST_KEY_*` build setting here is inert** — put Info.plist keys in the Info.plist; claim (10) of the source guard enforces it.
+**Companion status — settled 2026-09-18.** `WatchApp/Info.plist` declares `WKCompanionAppBundleIdentifier` = `com.threkir.app` and no longer declares `WKWatchOnly` (Apple documents the two as mutually exclusive). That order was the whole point: the embed landed first, and the key followed it. See [decisions § 1656](../../docs/architecture/decisions.md) for steps 1–4 of § 1256's sequence and what is still owed. Also note the target sets `GENERATE_INFOPLIST_FILE = NO`, so **every `INFOPLIST_KEY_*` build setting here is inert** — put Info.plist keys in the Info.plist; claim (10) of the source guard enforces it, and it now requires the companion declaration to keep matching whether the phone project embeds.
+
+**Two Xcode projects build this app, and the sources exist once.** `apps/watch_ios/WatchApp.xcodeproj` is the **test host** — the project `test-watch-ios` builds, and the only one that runs `WatchAppTests`. `apps/mobile_ios/ios/Runner.xcodeproj` carries a second `WatchApp` target whose Sources / Resources phases **reference** the same files under `WatchApp/`, plus an Embed Watch Content phase that copies the product to `Runner.app/Watch/WatchApp.app`; that is how the watch app reaches a wrist, because nothing else builds it for release. **Adding or removing a Swift file or a resource therefore means editing both projects** — claim (15) of `scripts/check_watch_ios_source.mjs` fails the PR when the two memberships, the bundle-defining settings, or the embed itself diverge. The version keys are `$(MARKETING_VERSION)` / `$(CURRENT_PROJECT_VERSION)`: 1.0/1 from this project, Flutter's from the phone's (via `apps/mobile_ios/ios/Flutter/WatchApp.xcconfig`), because Apple rejects an `.ipa` whose watch app and companion disagree on either.
 
 `SupabaseService.swift` still exists but is wrapped in `#if DEBUG` — it gives watch-sim-alone developers a direct upload path via the "DEBUG: Sync Direct" button, signing in with seed creds against `http://127.0.0.1:54321`. Release builds compile that file out entirely: the watch binary ships without any Supabase client, anon key, or credential-handling code. Rationale: [decisions.md § 14](../../docs/architecture/decisions.md). **That rests on two facts, and claim (14) of `scripts/check_watch_ios_source.mjs` now holds both** ([decisions § 1596](../../docs/architecture/decisions.md)): every line passing a literal to a `password:` label or naming the password grant is inside a `#if DEBUG`, and no configuration other than `Debug` puts `DEBUG` in `SWIFT_ACTIVE_COMPILATION_CONDITIONS`. Either can be undone in one line without the compiler, the Swift suite or the `env-isolation` key scan noticing — that scan reads this file for LIVE key shapes, and a seed password is not one.
 
@@ -191,16 +193,18 @@ See [local_testing.md](local_testing.md). You need:
 - Xcode with watchOS simulators installed
 - A paired iOS simulator + Apple Watch simulator, or a physical paired pair
 
-From CI, the build is driven by `xcodebuild`:
+From CI, the build is driven by `xcodebuild`. Target the simulator **by UDID**, not by name — the concrete model names rotate with every Xcode release and `Apple Watch Series 9` no longer exists on a current image:
 
 ```bash
-xcodebuild -project apps/watch_ios/WatchApp.xcodeproj \
+xcodebuild test -project apps/watch_ios/WatchApp.xcodeproj \
   -scheme WatchApp \
-  -destination 'platform=watchOS Simulator,name=Apple Watch Series 9' \
-  build
+  -destination "platform=watchOS Simulator,id=$(xcrun simctl list devices available --json \
+    | jq -r '[.devices | to_entries[] | select(.key | test("watchOS"))
+              | .value[] | select(.isAvailable)] | .[0].udid')" \
+  CODE_SIGNING_ALLOWED=NO
 ```
 
-This is exactly what `.github/workflows/ci.yml`'s `build-watch-swift` job runs on a macOS runner.
+That is what `.github/workflows/ci.yml`'s `test-watch-ios` job runs on a macOS runner — it resolves the UDID at runtime and pre-boots the device with `simctl bootstatus -b` before the install.
 
 **Unit tests: `WatchAppTests` XCTest target.** `apps/watch_ios/WatchAppTests/`
 holds the first automated coverage for the watch app — a host-bundle unit-test
@@ -228,7 +232,7 @@ exercise the pure / serialisation surfaces (the Android-bound pieces —
 - `RunPayloadStorageTests.swift` — the durable payload directory (not under `Caches`, excluded from backup, and where `CheckpointStore.trackFile` resolves), the `Caches` migration (moves everything, never overwrites a durable payload with a cached one, never deletes a payload a failed move left behind, refuses a directory onto itself, idempotent), the export sweep's keep-set (a still-outstanding transfer and a fresh export both survive; an aged unreferenced one goes; an `.ndjson` track is never touched), and `payloadIsMissing`.
 - `WorkoutManagerDistanceTests.swift` — the per-fix distance accumulation: the pure `WorkoutManager.distanceDelta(from:to:)` `2..<100 m` filter band (in-band adds, jitter below 2 m and reacquisition jumps over 100 m contribute zero), normal consecutive-fix accumulation, and the pause -> wander -> resume regression (#371) — `resume()` clears `lastLocationForDistance` so the first post-resume fix establishes a fresh reference and an aid-station wander while paused is not banked as post-resume distance. Drives `didUpdateLocations` directly (safe: it touches no live `CLLocationManager` / HealthKit / timers).
 
-Run from a Mac: `xcodebuild test -project apps/watch_ios/WatchApp.xcodeproj -scheme WatchApp -destination 'platform=watchOS Simulator,name=Apple Watch Series 9'`. **These tests were authored on a Linux workstation with no Xcode — correct-by-construction against the source APIs but NOT yet compiled or run.** A Mac/Xcode `xcodebuild test` pass is the outstanding verification step (same situation as the localisation work above).
+Run from a Mac with the command above. **They compile and pass: 225 tests green on Xcode 26.4 / watchOS 26.4, measured 2026-09-18** — including on a watch simulator created for the purpose and confirmed to be in no pair, which is what settles whether the companion declaration keeps the app installable there ([decisions § 1656](../../docs/architecture/decisions.md)). Anything claiming this tier "has never been through a Swift compiler" is stale for this project. What remains outstanding is **device** verification, not compilation: one run syncing end to end from a paired physical watch and iPhone.
 
 Still uncovered (Android-bound, not unit-testable without a simulator/host harness): `WorkoutManager`'s `start()` (it spins timers + `CLLocationManager` + `HKWorkoutSession`; `pause()` / `resume()` ARE driven, see `WorkoutManagerPaceTests`), `HealthKitManager` HR averaging (driven by `HKLiveWorkoutBuilder` delegate callbacks — the failure path is covered via `handleSessionFailure()`, which is all `didFailWithError` does besides logging the error), `WatchConnectivityManager`'s real `WCSession.transferFile`, and `SupabaseService.swift`'s network path. Follow Wear's extract-then-test pattern if those grow non-trivial branches.
 

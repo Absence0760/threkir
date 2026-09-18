@@ -10,7 +10,7 @@ Operational counterpart of [`apps/mobile_ios/CLAUDE.md`](CLAUDE.md) and the byte
 
 ## What this doc covers
 
-The iOS app and the Apple Watch app are **one deployment**. The watchOS target is a Watch Extension bundled inside the iOS app's `.ipa`. There's no separate listing, no separate review, no separate upload. `apps/watch_ios/` exists as a sibling directory for organisational purposes only — the Xcode project lives at `apps/mobile_ios/ios/Runner.xcworkspace` and pulls in the watchOS target from there.
+The iOS app and the Apple Watch app are **one deployment**. The watch app is a target of `Runner.xcodeproj` and is copied into the iOS app's `.ipa` by an Embed Watch Content phase, so there's no separate listing, no separate review, no separate upload. The Swift sources live under `apps/watch_ios/` and are **referenced** from the phone project rather than copied — one copy on disk, two targets. `apps/watch_ios/WatchApp.xcodeproj` also stays, as the test host the `test-watch-ios` CI job builds; claim (15) of `scripts/check_watch_ios_source.mjs` fails a PR when the two projects stop describing the same app. See [decisions § 1656](../../docs/architecture/decisions.md).
 
 So: `mobile_ios@1.2.3` triggers one CI workflow that ships **both** apps.
 
@@ -138,9 +138,10 @@ Required keys:
 - `WKApplication` (in the watch target's Info.plist) — true. This is the
   single-target key; `WKWatchKitApp` is the legacy two-target spelling and
   this project does not use it.
-- `WKCompanionAppBundleIdentifier` — `com.threkir.app`. NOT declared today:
-  the target ships `WKWatchOnly`, and swapping the two is step 3 of the
-  five-step Mac-only sequence in decisions § 1256.
+- `WKCompanionAppBundleIdentifier` — `com.threkir.app`. Declared since
+  2026-09-18, after the embed it describes actually existed; `WKWatchOnly`
+  is gone, the two being mutually exclusive. That was step 3 of the
+  five-step sequence in decisions § 1256, and § 1656 records steps 1–4.
 
 ### Capabilities to enable in Signing & Capabilities
 

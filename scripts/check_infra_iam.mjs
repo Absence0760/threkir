@@ -138,6 +138,9 @@ export const OIDC_FILE =
 export const OIDC_VARS_FILE =
   process.env.INFRA_IAM_OIDC_VARS ??
   join(REPO_ROOT, 'infra/github-oidc/variables.tf');
+export const OIDC_TFVARS_FILE =
+  process.env.INFRA_IAM_OIDC_TFVARS ??
+  join(REPO_ROOT, 'infra/github-oidc/terraform.tfvars');
 export const MODULE_FILE =
   process.env.INFRA_IAM_MODULE ??
   join(REPO_ROOT, 'infra/modules/web-stack/main.tf');
@@ -1278,8 +1281,13 @@ export function compareSources(oidc, release, web, oidcVars) {
           'matches nothing; under StringLike it matches far too much.',
       );
     }
+    // `${var.github_subject_prefix}` is the immutable-subject form: GitHub
+    // substitutes numeric org and repo IDs for the names, so the prefix cannot
+    // be built from the slug and is carried whole. The value itself is shape-
+    // checked against the tfvars below — accepting the token here would
+    // otherwise let any string through under a variable's name.
     const shape = sub.match(
-      /^repo:(\$\{var\.github_repo\}|[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+):environment:([A-Za-z0-9_-]+)$/,
+      /^(?:\$\{var\.github_subject_prefix\}|repo:(?:\$\{var\.github_repo\}|[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)):environment:([A-Za-z0-9_-]+)$/,
     );
     if (!shape) {
       errors.push(
@@ -1303,9 +1311,9 @@ export function compareSources(oidc, release, web, oidcVars) {
           'cost and access reviews group by. They must agree.',
       );
     }
-    roleEnvToSub.set(role.envToken, shape[2]);
+    roleEnvToSub.set(role.envToken, shape[1]);
     ok.push(
-      `${where}: StringEquals sub = repo:<repo>:environment:${shape[2]}, aud pinned`,
+      `${where}: StringEquals sub = <repo prefix>:environment:${shape[1]}, aud pinned`,
     );
   }
 
@@ -1327,6 +1335,59 @@ export function compareSources(oidc, release, web, oidcVars) {
     );
   } else {
     ok.push('github_repo has no default — an unset apply fails rather than guesses');
+  }
+
+  // A variable is only as tight as the value behind it. The sub check accepts
+  // `${var.github_subject_prefix}` as a prefix; this is what stops that from
+  // being a hole. The immutable form carries numeric IDs
+  // (repo:<owner>@<id>/<repo>@<id>); the legacy form carries the slug. Anything
+  // else — a ref, a wildcard, an empty string — is refused here.
+  const usesSubjectPrefix = oidc.roles.some((r) =>
+    (r.claims.get('sub') ?? '').startsWith('${var.github_subject_prefix}'),
+  );
+  if (usesSubjectPrefix) {
+    const prefixVar = oidcVars.match(
+      /variable\s+"github_subject_prefix"\s*\{([\s\S]*?)\n\}/,
+    )?.[1];
+    if (prefixVar === undefined) {
+      errors.push(
+        'infra/github-oidc/variables.tf declares no `github_subject_prefix` variable — the sub ' +
+          'claim interpolates it, so the parser and the source disagree.',
+      );
+    } else if (/^\s*default\s*=/m.test(prefixVar)) {
+      errors.push(
+        'infra/github-oidc/variables.tf gives `github_subject_prefix` a default. It must have ' +
+          'none: an apply with the tfvars missing would mint deploy roles trusting whatever ' +
+          'subject the default names, silently.',
+      );
+    }
+    let tfvars = '';
+    try {
+      tfvars = readFileSync(OIDC_TFVARS_FILE, 'utf-8');
+    } catch {
+      errors.push(
+        `${OIDC_TFVARS_FILE} is unreadable, so the subject prefix the roles trust cannot be ` +
+          'checked. It is the one value standing between these roles and any repository.',
+      );
+    }
+    const value = tfvars.match(/^\s*github_subject_prefix\s*=\s*"([^"]*)"/m)?.[1];
+    if (tfvars !== '' && value === undefined) {
+      errors.push(
+        'infra/github-oidc/terraform.tfvars sets no `github_subject_prefix`. The apply would ' +
+          'prompt, or fail, rather than trust the subject GitHub actually issues.',
+      );
+    } else if (
+      value !== undefined &&
+      !/^repo:[A-Za-z0-9_.-]+(@\d+)?\/[A-Za-z0-9_.-]+(@\d+)?$/.test(value)
+    ) {
+      errors.push(
+        `infra/github-oidc/terraform.tfvars: github_subject_prefix ${JSON.stringify(value)} is ` +
+          'not `repo:<owner>[@<id>]/<repo>[@<id>]`. Read it, never guess it: ' +
+          '`gh api repos/<owner>/<repo>/actions/oidc/customization/sub --jq .sub_claim_prefix`.',
+      );
+    } else if (value !== undefined) {
+      ok.push(`github_subject_prefix is repo-shaped (${value})`);
+    }
   }
 
   // ── 3. environment lockstep with the release workflow ──

@@ -383,6 +383,103 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		expect(data?.gender).toBeNull();
 	});
 
+	test('per-step Skip discards the step answer instead of carrying it forward (#921)', async ({
+		page,
+	}) => {
+		// Regression: Skip and Continue were one handler, so Skip on a step
+		// the runner had already answered persisted that answer exactly as
+		// Continue did — two labels for one action. Skip now means "leave
+		// this one unanswered" and clears the step first.
+		test.setTimeout(45_000);
+		const admin = getAdminClient();
+		const profileBefore = await readMaybeRow(
+			'user_profiles by id',
+			admin
+				.from('user_profiles')
+				.select('date_of_birth')
+				.eq('id', USER_A.id)
+				.maybeSingle()
+		);
+		const settingsBefore = await readMaybeRow(
+			'user_settings by user_id',
+			admin.from('user_settings').select('prefs').eq('user_id', USER_A.id).maybeSingle()
+		);
+		const prefsBefore = (settingsBefore?.prefs ?? {}) as Record<string, unknown>;
+
+		await page.goto('/onboarding');
+
+		// Step 1 — display name.
+		await page.getByLabel('Display name').fill('E2E Skip Semantics');
+		await page.getByRole('button', { name: 'Continue' }).click();
+		// Step 2 — units (no Skip: km/mi has no unset state).
+		await expect(
+			page.getByRole('heading', { name: /Kilometres or miles/i })
+		).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Skip', exact: true })).toHaveCount(0);
+		await page.getByRole('button', { name: 'Continue' }).click();
+
+		// Step 3 — answer the goal, then skip it. `exact` disambiguates the
+		// per-step "Skip" from the header "Skip onboarding".
+		const goal = page.getByRole('radio', { name: 'Run a 10K', exact: true });
+		await goal.click();
+		await expect(goal).toHaveAttribute('aria-checked', 'true');
+		await page.getByRole('button', { name: 'Skip', exact: true }).click();
+
+		// Step 4 — answer the demographics, then skip them.
+		await expect(
+			page.getByRole('heading', { name: /A bit about you/i })
+		).toBeVisible();
+		await page.getByLabel(/Date of birth/i).fill('1994-03-02');
+		await page.getByLabel(/Body weight in kg/i).fill('72');
+		await page.getByRole('button', { name: 'Skip', exact: true }).click();
+
+		// Step 5 — privacy (answered, not skipped: it has no Skip).
+		await expect(page.getByRole('button', { name: 'Skip', exact: true })).toHaveCount(0);
+		await page.getByRole('radio', { name: /Private/i }).click();
+		await page.getByRole('button', { name: 'Continue' }).click();
+
+		// The skipped goal shows: no goal means no goal-keyed plan CTA.
+		await expect(page.getByRole('heading', { name: /All set/i })).toBeVisible();
+		await expect(
+			page.getByRole('button', { name: 'Create my training plan' })
+		).toHaveCount(0);
+
+		// And stepping back shows the about step emptied rather than still
+		// holding what Skip claimed to pass over.
+		await page.getByRole('button', { name: 'Back' }).click();
+		await page.getByRole('button', { name: 'Back' }).click();
+		await expect(
+			page.getByRole('heading', { name: /A bit about you/i })
+		).toBeVisible();
+		await expect(page.getByLabel(/Date of birth/i)).toHaveValue('');
+		await expect(page.getByLabel(/Body weight in kg/i)).toHaveValue('');
+		await page.getByRole('button', { name: 'Continue' }).click();
+		await page.getByRole('button', { name: 'Continue' }).click();
+
+		await page.getByRole('button', { name: 'Open dashboard' }).click();
+		await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
+
+		// Nothing the runner skipped reached the database.
+		const profile = await readMaybeRow(
+			'user_profiles by id',
+			admin
+				.from('user_profiles')
+				.select('date_of_birth')
+				.eq('id', USER_A.id)
+				.maybeSingle()
+		);
+		expect(profile?.date_of_birth ?? null).toEqual(profileBefore?.date_of_birth ?? null);
+		const settings = await readMaybeRow(
+			'user_settings by user_id',
+			admin.from('user_settings').select('prefs').eq('user_id', USER_A.id).maybeSingle()
+		);
+		const p = (settings?.prefs ?? {}) as Record<string, unknown>;
+		expect(p.primary_goal).toEqual(prefsBefore.primary_goal);
+		expect(p.body_weight_kg).toEqual(prefsBefore.body_weight_kg);
+		// …while the answers that were given did land.
+		expect(p.privacy_default).toBe('private');
+	});
+
 	test('step 4 body weight rejects an out-of-bounds value — Continue stays disabled until it is fixed (#677)', async ({
 		page,
 	}) => {
@@ -391,10 +488,12 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		// so the browser's constraint validation never ran — typing 9999 and
 		// clicking Continue was not blocked, and the uncapped value would
 		// flow into the Mifflin-St Jeor TDEE/hydration math that consumes
-		// body_weight_kg. This pins that Continue (and the per-step Skip) is
-		// disabled while the typed value is out of the plausible human
-		// range, an inline error explains why, and a corrected value
-		// re-enables both and saves the canonical kg correctly.
+		// body_weight_kg. This pins that Continue is disabled while the
+		// typed value is out of the plausible human range, an inline error
+		// explains why, and a corrected value re-enables it and saves the
+		// canonical kg correctly. Skip stays ENABLED throughout (#921): it
+		// discards the typed value rather than carrying it forward, so it
+		// is the way out of the state, not a second way to persist it.
 		test.setTimeout(45_000);
 		await page.goto('/onboarding');
 
@@ -415,7 +514,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		const continueBtn = page.getByRole('button', { name: 'Continue' });
 		const skipBtn = page.getByRole('button', { name: 'Skip', exact: true });
 		await expect(continueBtn).toBeDisabled();
-		await expect(skipBtn).toBeDisabled();
+		await expect(skipBtn).toBeEnabled();
 		await expect(page.getByRole('alert')).toContainText(/between 20 and 250 kg/i);
 
 		// Fix it to a plausible value — both buttons re-enable, the error

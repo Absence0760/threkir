@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { USER_A } from '../fixtures/users';
 
@@ -165,7 +165,8 @@ test.describe('/settings/account — data export', () => {
 
 	test('Cloud export (GPX zip) calls the server endpoint and opens the signed URL', async ({
 		page,
-		context
+		context,
+		mockRoute
 	}) => {
 		// PUBLIC_EXPORT_HUB_URL is unset in the dev `.env`, so the
 		// button takes the fallback path: `supabase.functions.invoke
@@ -179,7 +180,7 @@ test.describe('/settings/account — data export', () => {
 		// behaviour after success.
 		const fakeSignedUrl =
 			'https://signed.example/runs/exports/abc?token=fake';
-		await page.route('**/functions/v1/export-data', (route) =>
+		await mockRoute(page, '**/functions/v1/export-data', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -280,7 +281,8 @@ test.describe('/settings/account — data export', () => {
 
 	test('Full account archive posts {format:"backup"} and opens the signed URL', async ({
 		page,
-		context
+		context,
+		mockRoute
 	}) => {
 		// The comprehensive GDPR Art. 20 export. Unlike the runs-only
 		// CSV / JSON / GPX buttons, this is the server-built
@@ -292,7 +294,7 @@ test.describe('/settings/account — data export', () => {
 		const fakeSignedUrl =
 			'https://signed.example/runs/exports/full-archive?token=fake';
 		let requestedFormat: string | null = null;
-		await page.route('**/functions/v1/export-data', (route) => {
+		await mockRoute(page, '**/functions/v1/export-data', (route) => {
 			requestedFormat =
 				(route.request().postDataJSON() as { format?: string })?.format ??
 				null;
@@ -355,7 +357,8 @@ test.describe('/settings/account — data export', () => {
 
 	test('a truncated cloud export says so instead of "Export ready"', async ({
 		page,
-		context
+		context,
+		mockRoute
 	}) => {
 		// The endpoint pages the runs and reports `complete: false` when
 		// the archive is short of the account (the 5000-run ceiling, or a
@@ -364,7 +367,7 @@ test.describe('/settings/account — data export', () => {
 		// manifest.json — a runner had no way to know their Art. 20
 		// archive was missing half their history.
 		const fakeSignedUrl = 'https://signed.example/runs/exports/short?token=fake';
-		await page.route('**/functions/v1/export-data', (route) =>
+		await mockRoute(page, '**/functions/v1/export-data', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -408,11 +411,12 @@ test.describe('/settings/account — data export', () => {
 
 	test('a truncated full account archive surfaces the same notice', async ({
 		page,
-		context
+		context,
+		mockRoute
 	}) => {
 		const fakeSignedUrl =
 			'https://signed.example/runs/exports/short-archive?token=fake';
-		await page.route('**/functions/v1/export-data', (route) =>
+		await mockRoute(page, '**/functions/v1/export-data', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -449,12 +453,13 @@ test.describe('/settings/account — data export', () => {
 
 	test('a complete export leaves no shortfall notice on the page', async ({
 		page,
-		context
+		context,
+		mockRoute
 	}) => {
 		// The other half of the honesty contract: a whole archive must
 		// not be labelled partial, so `complete: true` renders nothing.
 		const fakeSignedUrl = 'https://signed.example/runs/exports/whole?token=fake';
-		await page.route('**/functions/v1/export-data', (route) =>
+		await mockRoute(page, '**/functions/v1/export-data', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',

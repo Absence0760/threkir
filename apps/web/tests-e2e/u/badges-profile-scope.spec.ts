@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { USER_A, USER_B } from '../fixtures/users';
 
@@ -19,9 +19,9 @@ import { USER_A, USER_B } from '../fixtures/users';
 test.describe('/u/[id]?tab=achievements — cache is per profile', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
-	test('opening another runner refetches instead of reusing your badges', async ({ page }) => {
+	test('opening another runner refetches instead of reusing your badges', async ({ page, mockRoute }) => {
 		const requested: string[] = [];
-		await page.route('**/rest/v1/achievements?*', async (route) => {
+		await mockRoute(page, '**/rest/v1/achievements?*', async (route) => {
 			const req = route.request();
 			if (req.method() !== 'GET') {
 				await route.continue();

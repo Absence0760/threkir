@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
 import { getAdminClient } from '../fixtures/local-supabase';
@@ -69,7 +69,8 @@ test.describe('database triggers via UI', () => {
 	});
 
 	test('notify_run_kudos fires when alex kudos via UI — runner gets a kudos notification', async ({
-		browser
+		browser,
+		mockRoute
 	}) => {
 		// Same path as cross-user/notifications.spec.ts but the
 		// assertion is at the DB layer, not the bell badge. This pins
@@ -86,7 +87,7 @@ test.describe('database triggers via UI', () => {
 		});
 		const alex = await ctxAlex.newPage();
 		try {
-			await alex.route('**/functions/v1/clip-public-track', (route) =>
+			await mockRoute(alex, '**/functions/v1/clip-public-track', (route) =>
 				route.fulfill({
 					status: 200,
 					contentType: 'application/json',

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 /**
  * /login — a sign-up that returns no session (email confirmation
@@ -74,13 +74,13 @@ async function expectConfirmationPendingState(
 test.describe('/login sign-up with confirmation pending', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
-	test('fresh sign-up: notice shown and the form drops back to sign-in', async ({ page }) => {
+	test('fresh sign-up: notice shown and the form drops back to sign-in', async ({ page, mockRoute }) => {
 		const email = 'e2e-pending@test.local';
 		await acceptCookies(page);
 
 		// GoTrue's confirmation-pending shape: the user row, flat, with
 		// no access_token — auth-js resolves that to session: null.
-		await page.route('**/auth/v1/signup*', async (route) => {
+		await mockRoute(page, '**/auth/v1/signup*', async (route) => {
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',

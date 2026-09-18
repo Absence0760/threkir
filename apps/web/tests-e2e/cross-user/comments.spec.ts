@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
 import { USER_B } from '../fixtures/users';
@@ -25,11 +25,12 @@ test.describe('cross-user comments', () => {
 	test.use({ storageState: USER_B.storageStatePath });
 
 	test('alex posts top-level comment, reload persists, delete', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		const body = uniqueText('e2e-comment');
 
-		await page.route('**/functions/v1/clip-public-track', (route) =>
+		await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -72,7 +73,8 @@ test.describe('cross-user comments', () => {
 	});
 
 	test('alex posts comment + replies to it (nested write); parent delete cascades', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		// `parent_comment_id` references run_comments(id) ON DELETE
 		// CASCADE (migration 20260522_001), so deleting the parent
@@ -83,7 +85,7 @@ test.describe('cross-user comments', () => {
 		const parentBody = uniqueText('e2e-parent');
 		const replyBody = uniqueText('e2e-reply');
 
-		await page.route('**/functions/v1/clip-public-track', (route) =>
+		await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',

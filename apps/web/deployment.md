@@ -267,9 +267,9 @@ Both run Node 24 / arm64 / 512 MB (the @resvg PNG rasteriser needs the headroom)
 `apps/web/static/sw.js` registers as the push-notification service worker (decisions §38). Two prerequisites for it to work in production:
 
 1. **HTTPS only.** CloudFront + ACM handle this — the distribution forces `redirect-to-https` and serves a valid cert.
-2. **VAPID keys.** Generated once with `npx web-push generate-vapid-keys`. The public key is checked into `apps/web/src/lib/push.ts`; the private key lives in Supabase EF env (`VAPID_PRIVATE_KEY`) so the EF can sign push messages. Update both halves together if rotated.
+2. **VAPID keys.** Generated once with `npx web-push generate-vapid-keys`. The public half is a build input, not a checked-in constant: `PUBLIC_VAPID_PUBLIC_KEY` (a repo secret, read by `src/lib/util/push.ts` through `$env/static/public`), and an unset one leaves `isPushConfigured()` false so no browser ever subscribes. The private half is a **Fly secret on the worker** (`VAPID_PRIVATE_KEY`, beside `VAPID_PUBLIC_KEY` + `VAPID_SUBJECT`) — no Edge Function signs push; the sender is `apps/job_worker/internal/webpush`. The worker refuses to boot on a mismatched pair, but it cannot see a web build carrying a third key, so rotate the two ends together. Runbook: [`docs/features/native_push.md` § Operator provisioning](../../docs/features/native_push.md#operator-provisioning-the-credential-gate).
 
-The `Notifications` row in the database carries the user's subscription endpoint (in `user_device_settings.prefs.push_subscription`); EF triggers (`notify_run_kudos` etc.) issue HTTP POSTs to those endpoints.
+A subscription is stored per device on `user_device_settings.prefs.push_subscription` (written by the `set_push_subscription` RPC). Delivery is a **sibling consumer of the `notifications` table**, not a trigger that POSTs: an insert enqueues a `web_push` job, the Go worker drains it, gates on the `push_notifications` pref, sends, and prunes a dead endpoint (404/410) via `clear_push_subscription`.
 
 ---
 

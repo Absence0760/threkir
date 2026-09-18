@@ -943,8 +943,8 @@ test('claim (10) refuses WKWatchOnly and a companion bundle id together', () => 
 	const { errors } = runMutated((dir) => {
 		edit(dir, PLIST, (s) =>
 			s.replace(
-				'\t<key>WKWatchOnly</key>',
-				'\t<key>WKCompanionAppBundleIdentifier</key>\n\t<string>com.threkir.app</string>\n\t<key>WKWatchOnly</key>',
+				'\t<key>WKCompanionAppBundleIdentifier</key>',
+				'\t<key>WKWatchOnly</key>\n\t<true/>\n\t<key>WKCompanionAppBundleIdentifier</key>',
 			),
 		);
 	});
@@ -1066,14 +1066,14 @@ test('the two numeric-constant readers take the literal and nothing around it', 
 // ───────── claim (10): the plist follows the build, in both directions ─────────
 
 test('claim (10) refuses WKWatchOnly once the phone project embeds the watch', () => {
-	// The day § 1256's build integration lands is the day the key becomes a
-	// live defect rather than an accurate description of a project that ships
-	// nothing. Planted as the Embed Watch Content destination Apple writes.
+	// § 1256's build integration has landed (decisions § 1660), so the phone
+	// project embeds for real and it is the plist that regresses here: going
+	// back to "this app has no iOS companion" while the .ipa ships one.
 	const { errors } = runMutated((dir) => {
-		edit(dir, STAGED_PHONE_PBX, (s) =>
+		edit(dir, PLIST, (s) =>
 			s.replace(
-				'objects = {',
-				'objects = {\n\t\tdstPath = "$(CONTENTS_FOLDER_PATH)/Watch";',
+				'\t<key>WKCompanionAppBundleIdentifier</key>\n\t<string>com.threkir.app</string>\n',
+				'\t<key>WKWatchOnly</key>\n\t<true/>\n',
 			),
 		);
 	});
@@ -1087,11 +1087,11 @@ test('claim (10) refuses a companion named while nothing embeds', () => {
 	// The other direction, and the one § 1256 called "moving the lie": flipping
 	// the key alone declares a companion relationship no build produces.
 	const { errors } = runMutated((dir) => {
-		edit(dir, PLIST, (s) =>
-			s.replace(
-				'\t<key>WKWatchOnly</key>\n\t<true/>',
-				'\t<key>WKCompanionAppBundleIdentifier</key>\n\t<string>com.threkir.app</string>',
-			),
+		edit(dir, STAGED_PHONE_PBX, (s) =>
+			s
+				.replaceAll('$(CONTENTS_FOLDER_PATH)/Watch', '$(CONTENTS_FOLDER_PATH)/Nothing')
+				.replaceAll('WatchApp.app', 'Nothing.app')
+				.replaceAll('com.threkir.app.watchapp', 'com.threkir.app.nothing'),
 		);
 	});
 	assert.ok(
@@ -1101,9 +1101,20 @@ test('claim (10) refuses a companion named while nothing embeds', () => {
 });
 
 test('claim (10) recognises the embed by the watch bundle id too', () => {
+	// Strip the two destination/product markers and leave only the watch's own
+	// bundle id: the embed is still seen, so a project whose copy phase Xcode
+	// has renamed does not read as no embed at all.
 	const { errors } = runMutated((dir) => {
 		edit(dir, STAGED_PHONE_PBX, (s) =>
-			s.replace('objects = {', 'objects = {\n\t\tPRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.watchapp;'),
+			s
+				.replaceAll('$(CONTENTS_FOLDER_PATH)/Watch', '$(CONTENTS_FOLDER_PATH)/Nothing')
+				.replaceAll('WatchApp.app', 'Nothing.app'),
+		);
+		edit(dir, PLIST, (s) =>
+			s.replace(
+				'\t<key>WKCompanionAppBundleIdentifier</key>\n\t<string>com.threkir.app</string>\n',
+				'\t<key>WKWatchOnly</key>\n\t<true/>\n',
+			),
 		);
 	});
 	assert.ok(
@@ -1286,14 +1297,7 @@ test('claim (10) refuses a companion id naming something other than the phone ap
 	// One field further along than the missing embed, and the same silence:
 	// it installs, it launches, and WCSession reaches no counterpart.
 	const { errors } = runMutated((dir) => {
-		// Drop WKWatchOnly at the same time, or the mutual-exclusivity rule
-		// fires first and this one is never reached.
-		edit(dir, PLIST, (s) =>
-			s.replace(
-				'\t<key>WKWatchOnly</key>\n\t<true/>\n',
-				'\t<key>WKCompanionAppBundleIdentifier</key>\n\t<string>com.threkir.other</string>\n',
-			),
-		);
+		edit(dir, PLIST, (s) => s.replace('<string>com.threkir.app</string>', '<string>com.threkir.other</string>'));
 	});
 	assert.equal(
 		matched(errors, /names `com\.threkir\.other` as its companion/).length,
@@ -1304,18 +1308,12 @@ test('claim (10) refuses a companion id naming something other than the phone ap
 
 test('claim (10) accepts a companion id that does name the phone app', () => {
 	// The direction that keeps the rule from being "never declare a companion".
-	// The embed rule still fires (nothing embeds), so what is asserted here is
-	// only that the NAMING rule stays quiet.
-	const { errors } = runMutated((dir) => {
-		edit(dir, PLIST, (s) =>
-			s.replace(
-				'\t<key>WKWatchOnly</key>\n\t<true/>\n',
-				'\t<key>WKCompanionAppBundleIdentifier</key>\n\t<string>com.threkir.app</string>\n',
-			),
-		);
-	});
+	// The shipped tree IS that direction now, so this reads it unmutated — and
+	// it fails if a future edit makes the naming rule fire on the real files.
+	const { errors } = runMutated(() => {});
 	assert.equal(matched(errors, /as its companion/).length, 0, errors.join('\n'));
 	assert.equal(matched(errors, /plus a suffix/).length, 0, errors.join('\n'));
+	assert.equal(matched(errors, /mutually exclusive/).length, 0, errors.join('\n'));
 });
 
 test('phoneAppBundleIdentifier takes the app, not its test bundle', () => {

@@ -1485,7 +1485,7 @@ Every create / edit editor (`ClubEditor`, `EventEditor`, `RunEditor`, `GymEditor
 
 ### A control on a swept surface carries a one-line explanation
 
-The Spoken-cues block's shape — a plain line under the control saying what it *does*, not what it is called — is house style on the surfaces listed in `SURFACES` in `apps/web/src/lib/control_hints_guard.test.ts`: the six `/settings/*` preference pages, `/plans/new`, `PlanEditor`, `PlanMetaEditor` and `RunEditor` (decisions § 1640, § 1649). Adding a control to one of those fails the guard until it is explained; adding a surface to the list is how the sweep grows.
+The Spoken-cues block's shape — a plain line under the control saying what it *does*, not what it is called — is house style on the surfaces listed in `SURFACES` in `apps/web/src/lib/control_hints_guard.test.ts`: the six `/settings/*` preference pages, `/plans/new`, `PlanEditor`, `PlanMetaEditor` and `RunEditor` (decisions § 1640, § 1651). Adding a control to one of those fails the guard until it is explained; adding a surface to the list is how the sweep grows.
 
 - A `<select>`, an `<input>` or a toggle group points at its explanation with `aria-describedby`, so the text is a **description** and not part of the accessible name. That means the paragraph sits outside the `<label>` — wrap the pair in `<div class="field">` when the label is the container.
 - A checkbox carries the explanation inside its own label, as a `.hint` / `.field-hint`, because a checkbox's label is short enough to absorb it.

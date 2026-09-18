@@ -29377,7 +29377,27 @@ The failure mode is what makes this worth an entry. It is silent at every point 
 
 `check_infra_iam.mjs` accepts the variable in the sub and shape-checks its **value** against the tfvars, because a variable's name says nothing about its contents; a prefix of `repo:*` would otherwise pass. Mutation-tested against a wildcard, a ref shape, an empty prefix, a truncated prefix, and a ref-shaped sub in the policy itself.
 
-## 1649. The Spoken-cues explanation spreads to the plan-and-run path, and the sweep's boundary is a list, not a claim about the app
+## 1649. The tab names in user-facing copy are derived from the shell, because the sweep that fixed one stale name left the other behind
+
+[§ 139](#139-routes-is-a-run-modality-surface-mobile-nav-is-a-fitness-hub) deleted the Run tab, and two English strings kept telling people to tap it. [§ 1645](#1645-the-mobile-first-run-flow-asks-for-run-privacy-once-offers-an-account-at-the-end-and-describes-the-location-grant-it-actually-requests)'s round fixed `historyEmptyBody`, the one a runner with no runs lands on, and did not fix `prefsCueGuidedRunInfo`, which named the same missing tab from the voice-cue settings sheet. That is the argument for this guard rather than another careful read: a destination name in shipped copy is a fact about the tree, and nothing was checking it.
+
+`architecture_guards_test.dart § user-facing copy names a destination that exists` reads every English ARB value for the phrase "<Name> tab" and fails on a name the app does not render. The live set is **derived**, not listed — a second hardcoded list would rot the way the copy did. It comes from the two files that render the app's tab strips: `home_screen.dart`'s bottom nav and rail, and `fitness_hub_screen.dart`'s tab strip and surface-peer row. Thirteen names resolve today (Home, Fitness, Log, Social, You, History, Runs, Gym, Nutrition, Routes, Segments, Plans, Races), and the two surviving "Routes tab" / "Gym tab" mentions are correctly among them.
+
+**Only a `label:` position counts, and that restriction is load-bearing.** `home_screen.dart` also resolves `l10n.navRun` — for the "you are already on this page" banner the Log fan shows, which names a PAGE. A derivation that swept every `l10n.*` reference in the file would therefore re-admit "Run" as a live tab name and pass the guard on the very string it exists to catch. So the scan reads `label: l10n.x` / `label: Text(l10n.x)` plus the `FitnessTab` switch arms, and a second assertion states outright that "Run" must not be in the live set: if a Run label ever reappears in a tab strip, that is a signal to rewrite this guard deliberately, not a licence for the old copy to become true again.
+
+## 1650. Skip on web's onboarding wizard means "leave this one unanswered", and the mobile notification level is written only when it is chosen
+
+[#921](https://github.com/Absence0760/threkir/issues/921) finding 12 was a matched web↔mobile pair: Skip and Continue sat side by side wired to the same thing. [§ 1647](#1647-the-clunk-round-what-a-half-built-workout-survives-now-means-and-the-one-feature-that-was-cut-from-it) answered the mobile half by collapsing the pair into one button whose label names which press this is — Continue on an answered step, Skip on an unanswered one. It never touched `apps/web`, where `skipStep()` was still `next()` with a comment saying the unset field "falls back to its default at save time". This is the web half, plus the one mobile key the collapse left behind.
+
+**Web keeps two buttons and gives Skip a different effect**, rather than adopting mobile's single-button label. The wizards are not the same shape: mobile is a modal route with a hardware back gesture and one full-width forward action, web is a card with a Back / Skip / Continue row where a step is also reachable by the rail and the browser's own back. There, a label that silently changes meaning under the pointer is the worse reading of the same problem. So Skip now discards the step's answer before advancing: the goal step's selection is unset, and the about step's gender, DOB, weight and Art 9 consent tick are all cleared. That is a discard, not a deletion — nothing has been written at that point in the wizard, and Back re-opens the emptied step — so it takes no confirm dialog under the destructive-action rule.
+
+Two web steps lost the button instead of gaining a meaning. The **name** step never offered one (mobile's, which kept the OAuth prefill, went with § 1647). The **notifications** step stores no answer at all on web: its one action is the browser permission prompt behind its own button, so there was nothing for a skip to unset and Continue is the only way on. Mobile's notifications step is a different question — a three-way level that applies wherever the account is signed in — which is the asymmetry `visibleOnboardingSteps` already records.
+
+One web consequence worth stating: on the about step, Skip stays enabled while a typed body weight is out of the plausible range, where Continue is disabled ([#677](https://github.com/Absence0760/threkir/issues/677)). Disabling both left the step with no way forward but editing the field, and the reason Continue is barred — that the value would reach the TDEE and hydration maths — is exactly why Skip is safe: it throws the value away.
+
+**The mobile half that survived § 1647 is the notification level.** The prefs bag assembled in `_finish` carried the fix and the defect two lines apart: `privacy_default` written from a `_privacyDefault` newly seeded with the launch flow's real answer, and directly below it `push_notifications` written from a `RestorableString('important')` nobody had touched. The field is now a `RestorableStringN(null)` and the key is written only when it holds a value; an absent key falls back to the same `important` the registry documents, so nothing changes for the runner while the record stops claiming a choice. It also brings the step inside § 1647's own mechanism — `_currentStepAnswered` fell through to `_ => true` for `notifications`, so the one forward button read Continue over a question nobody had been asked, and now reads Skip until a level is tapped.
+
+## 1651. The Spoken-cues explanation spreads to the plan-and-run path, and the sweep's boundary is a list, not a claim about the app
 
 [#905](https://github.com/Absence0760/threkir/issues/905)'s workstream 5 asks for a one-line plain explanation under every control "everywhere". #919 delivered the six split preference pages; "everywhere" is unbounded and the rest had not moved. Bounding it is the decision here.
 
@@ -29389,7 +29409,7 @@ The failure mode is what makes this worth an entry. It is silent at every point 
 
 `prefs_hints_guard.test.ts` moved from `src/routes/settings/` to `src/lib/control_hints_guard.test.ts` and grew the new surfaces rather than being copied — one scanner, one registry. Beside it, `tests-e2e/cross-cutting/control-hints.spec.ts` walks the rendered DOM and reads each description back, because the source scan can only see that an `aria-describedby` names an id that exists: a hint behind an `{#if}` that never opens, or a catalogue key resolving to empty, passes it and reaches the runner as a pointer to nothing. Both derive their control list from the markup, so a control added to a swept surface is covered the day it ships.
 
-## 1650. What the plan-drift percentage is a percentage OF: the days of the week that have already ended
+## 1652. What the plan-drift percentage is a percentage OF: the days of the week that have already ended
 
 The current-week adherence flag on `/plans/[id]` compared the runner's mileage so far against the week's **whole** seven-day target. So on the fourth day of the week, a runner who had run exactly what the plan asked for on days one to three was told they were far under plan — and would be told it again the next week, and the week after, right up until Sunday night. The wording was reworked in [#919](https://github.com/Absence0760/threkir/issues/919) because "100% under plan" reads as praise; this is the arithmetic behind the number rather than the sentence around it ([#902](https://github.com/Absence0760/threkir/issues/902) still-open 4).
 
@@ -29399,7 +29419,7 @@ The current-week adherence flag on `/plans/[id]` compared the runner's mileage s
 
 `weeklyDrift` itself is untouched and still takes two totals — `plan_replan` and `plan_adaptive_replan` grade **completed** weeks with it, where the whole-week baseline is the correct one. The windowing is a new `weeklyDriftToDate` above it, shipped on both halves of the `plan_adherence` parity pair ([parity_pairs.md](parity_pairs.md)) at 21 tests each. The watch's one-way Rust port gets nothing: `apps/custom_watch/core/src/plan_adherence.rs` exists only to feed the two replan modules, so a to-date function there would be a port with no caller.
 
-## 1651. Mobile's Adjust plan dialog carries pause, and pause applies without a confirm
+## 1653. Mobile's Adjust plan dialog carries pause, and pause applies without a confirm
 
 **Date:** 2026-09-17
 
@@ -29415,7 +29435,7 @@ The trigger stays where the buttons were rather than moving to the app bar. Web 
 
 `resumePlan` mirrors web's pre-check rather than letting the write fail. The `training_plans_one_active` partial unique index rejects a second active plan with a bare 23505, which reaches the runner as an unexplained failure; the service queries the slot first and throws `ActivePlanExistsError`, and the screen translates it into "You already have an active plan. Pause or finish it first." The pinning suite is `plan_detail_adjust_test.dart` — eight cases covering the single entry point, every choice being named *and* explained, the active/paused swap, the re-plan preview being the only guard on that path, pause reaching the service with no second dialog, and the blocked resume. Two existing suites tapped the old buttons by label and were updated in the same commit; both now open the dialog first, and neither may use `pumpAndSettle` for it, because `showTopBanner` leaves a pending timer that never settles.
 
-## 1652. Gym and Nutrition are one surface each, reached by two entry points — the Fitness hub owns them and the Log action selects a tab
+## 1654. Gym and Nutrition are one surface each, reached by two entry points — the Fitness hub owns them and the Log action selects a tab
 
 [#921](https://github.com/Absence0760/threkir/issues/921) was filed by four UX critics; three of them independently named this one, and it is the one [#923](https://github.com/Absence0760/threkir/pull/923) did not close. `home_screen.dart` mounted a `GymScreen` and a `NutritionScreen` as keep-alive shell pages for the centre Log action, and `fitness_hub_screen.dart` mounted a second pair as its Gym and Nutrition tabs. Two instances of each, with no relationship between them: separate diary day, separate filters, separate scroll, separate arrival refresh, and — because `GymScreen` builds its own when none is passed — separate `LocalRoutineStore` over the same directory on disk. Browse to yesterday in Fitness → Nutrition, tap Log → Food, and you land on an identical-looking screen showing today, where the backfill you went there to write files into the wrong day.
 
@@ -29429,7 +29449,7 @@ So the shell's `_pageGym` and `_pageFood` are gone and `Log lift` / `Log food` o
 
 One duplication is deliberately left: `dashboard_screen.dart` and `runs_screen.dart` still `push` a transient `GymScreen` / `NutritionScreen` from their "view all" affordances. Those are ephemeral routes disposed on pop, reached from a today-scoped card, and not the keep-alive pair the issue was about — but a "view all lifts" that pushes a second copy of the Gym surface on top of the hub already holding one is the same shape one layer out, and is owed a look.
 
-## 1653. The mobile derived-metric registry is eleven entries, and the guard derives both its terms and its notion of a disclosure
+## 1655. The mobile derived-metric registry is eleven entries, and the guard derives both its terms and its notion of a disclosure
 
 Web shipped `<MetricLabel>` + one registry + `metric_label_guard.test.ts` in § 1639. Mobile had the same defect in a different costume: the fitness card's VO₂ max / VDOT / CTL / ATL / TSB carried real sentences a tap already opened, and RPE, 1RM, age grade, vert, TRIMP and Riegel carried nothing — no registry, no scan, and two plan surfaces with `'VDOT ${...}'` typed straight into a Dart string. `lib/metrics.dart` now holds the eleven, `lib/widgets/metric_label.dart` renders them, and `test/metric_label_guard_test.dart` is the scan.
 

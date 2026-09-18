@@ -13359,7 +13359,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get prefsCueGuidedRunInfo =>
-      'Nur aktiv, wenn du vor dem Start im Lauf-Tab einen geführten Lauf auswählst. Sagt jede Coach-Ansage des Skripts an, sobald du ihre Marke erreichst. Beispiel: „Fünf Minuten. Finde einen Rhythmus, den du den ganzen Tag halten könntest.“';
+      'Nur aktiv, wenn du vor dem Start auf dem Aufzeichnungsbildschirm einen geführten Lauf auswählst. Sagt jede Coach-Ansage des Skripts an, sobald du ihre Marke erreichst. Beispiel: „Fünf Minuten. Finde einen Rhythmus, den du den ganzen Tag halten könntest.“';
 
   @override
   String get runGuidedRun => 'Geführter Lauf';

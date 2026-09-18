@@ -41,7 +41,7 @@ import 'runs_screen.dart';
 /// The Gym and Nutrition tabs are also where the shell's centre Log action
 /// lands, so these are the app's only instances of those two screens rather
 /// than review copies of capture pages held elsewhere ([`selectedTab`],
-/// decisions § 1652).
+/// decisions § 1654).
 ///
 /// The Runs sub-tab additionally carries the labelled peer strip
 /// `Runs · Routes · Segments · Plans · Races` (mirroring web's

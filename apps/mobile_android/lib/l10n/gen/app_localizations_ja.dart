@@ -12725,7 +12725,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get prefsCueGuidedRunInfo =>
-      'ランタブで開始前にガイド付きランを選んだときだけ有効です。各マークに達するとスクリプトのコーチの声を読み上げます。例：「5分経過。一日中維持できるリズムに落ち着いて。」';
+      '記録画面で開始前にガイド付きランを選んだときだけ有効です。各マークに達するとスクリプトのコーチの声を読み上げます。例：「5分経過。一日中維持できるリズムに落ち着いて。」';
 
   @override
   String get runGuidedRun => 'ガイド付きラン';

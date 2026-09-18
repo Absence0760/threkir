@@ -3861,7 +3861,7 @@
   "prefsCueCutoffCatchUpInfo": "Solo activo en una ruta con cortes de tiempo. Si uno está en peligro, lee la distancia hasta él y el ritmo que aún lo alcanza. Ejemplo: «2 kilómetros hasta el corte. 6 minutos por kilómetro.»",
   "prefsCueMarkerTargetsInfo": "Solo activo en una ruta cuyos marcadores llevan tiempos objetivo. Al pasar cada uno te dice si vas por delante o por detrás, y por cuánto. Ejemplo: «Avituallamiento 2: 45 segundos por delante del plan.»",
   "prefsCuePhaseTransitionsInfo": "Solo activo cuando eliges una estrategia de carrera. Anuncia cada fase y su intención al comenzar. Ejemplo: «Fase 2 de 3. Asiéntate en tu ritmo objetivo.»",
-  "prefsCueGuidedRunInfo": "Solo activo cuando preparas una carrera guiada en la pestaña Correr antes de empezar. Anuncia cada indicación del guion al llegar a su marca. Ejemplo: «Cinco minutos. Asíentate en un ritmo que podrías mantener todo el día.»",
+  "prefsCueGuidedRunInfo": "Solo activo cuando preparas una carrera guiada en la pantalla de grabación antes de empezar. Anuncia cada indicación del guion al llegar a su marca. Ejemplo: «Cinco minutos. Asíentate en un ritmo que podrías mantener todo el día.»",
   "runGuidedRun": "Carrera guiada",
   "runGuidedRunNone": "Sin carrera guiada",
   "runGuidedRunOption": "{minutes} min · {subtitle}",

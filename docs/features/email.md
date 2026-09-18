@@ -616,11 +616,15 @@ mark by design, so the two agree once BIMI is honoured.
   (96x96, 3x the 32px display size) by `assets/gen-email-logo.sh`. Served at
   `https://threkir.com/email-logo.png` off the apex CloudFront distribution.
   Email clients can't display an SVG, so only the PNG ships.
-- **Base URL** — the worker resolves it against `APP_BASE_URL`, `auth-email`
-  against the GoTrue **Site URL** (not `SUPABASE_URL`, which is the
-  Docker-internal origin under the local CLI). Unset → the wordmark renders
-  alone rather than a broken image, which is also what an image-blocking
-  client shows.
+- **Base URL** — BOTH resolve it against `APP_BASE_URL`, the WEB origin.
+  `auth-email` needs it as its own function secret (`supabase secrets set
+  APP_BASE_URL=https://threkir.com`). It must NOT come from the hook payload's
+  `site_url`: GoTrue sends the **API external URL** there
+  (`<ref>.supabase.co/auth/v1`), not the dashboard's Site URL, so a mark built
+  from it points at the API host and renders broken in every client — which is
+  exactly what shipped on 2026-09-18 before this was found. Unset → the
+  wordmark renders alone rather than a broken image, which is also what an
+  image-blocking client shows.
 - **`alt` is empty on purpose.** The wordmark beside it is real text; a
   populated alt makes a screen reader announce the brand twice.
 - **Don't add an anchor above the CTA.** `tests-e2e/fixtures/mailpit.ts`'s

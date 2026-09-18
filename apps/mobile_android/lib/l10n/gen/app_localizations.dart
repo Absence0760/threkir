@@ -22086,7 +22086,7 @@ abstract class AppLocalizations {
   /// Info popup body + example for the guided-run cue
   ///
   /// In en, this message translates to:
-  /// **'Only active when you arm a guided run on the Run tab before you start. Speaks each scripted coach cue as you reach its mark. Example: “Five minutes in. Settle into a rhythm you could hold all day.”'**
+  /// **'Only active when you arm a guided run on the recording screen before you start. Speaks each scripted coach cue as you reach its mark. Example: “Five minutes in. Settle into a rhythm you could hold all day.”'**
   String get prefsCueGuidedRunInfo;
 
   /// Run screen — the idle-state affordance that arms a guided run for the next recording

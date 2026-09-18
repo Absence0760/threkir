@@ -195,10 +195,22 @@
 
 	const PRIVACY_ICON = { private: 'lock', followers: 'group', public: 'public' } as const;
 
+	// Skip means "leave this one unanswered", so it discards the step's
+	// current value before advancing. Sharing `next()` made the two buttons
+	// one action wearing two labels: Skip committed whatever was selected,
+	// exactly as Continue did (issue #921). A step whose answer has no unset
+	// state — units, privacy — offers no Skip at all, and the notifications
+	// step stores no answer to unset (its one action is the browser
+	// permission prompt), so Continue is its only way on.
 	function skipStep() {
-		// Per-step skip — keeps the wizard moving without forcing the
-		// user to commit. The unset field falls back to its default
-		// at save time, and the Settings nudge surfaces it later.
+		if (current === 'goal') {
+			primaryGoal = null;
+		} else if (current === 'about') {
+			gender = '';
+			dateOfBirth = '';
+			bodyWeight = '';
+			healthDataConsent = false;
+		}
 		next();
 	}
 
@@ -649,13 +661,11 @@
 				<span></span>
 			{/if}
 			<div class="nav-right">
-				{#if current === 'goal' || current === 'about' || current === 'notifications'}
-					<button
-						type="button"
-						class="skip-step"
-						onclick={skipStep}
-						disabled={saving || (current === 'about' && weightOutOfRange)}
-					>
+				{#if current === 'goal' || current === 'about'}
+					<!-- Not disabled on an out-of-range weight the way Continue is:
+					     Skip discards the typed value, so it is the way out of that
+					     state rather than another way to carry it forward. -->
+					<button type="button" class="skip-step" onclick={skipStep} disabled={saving}>
 						{m('onboarding.skip')}
 					</button>
 				{/if}

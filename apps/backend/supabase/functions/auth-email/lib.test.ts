@@ -490,7 +490,7 @@ Deno.test('renderAuthEmail — recovery: CTA verify link is the anchor the fixtu
   const r = renderAuthEmail('en', send, {
     supabaseUrl: 'http://127.0.0.1:54321',
     redirectTo: 'http://localhost:7777/auth/reset',
-    siteUrl: 'https://threkir.com',
+    appBaseUrl: 'https://threkir.com',
   });
   assertEquals(r.subject, 'Reset your password');
   // The e2e mail fixture (apps/web/tests-e2e/fixtures/mailpit.ts
@@ -622,7 +622,7 @@ Deno.test('extractAddr — bare address out of a display-name From', () => {
 // A deployment with no Site URL configured must still send a coherent email
 // rather than one with a broken image at the top — the same shape every
 // client that blocks remote images renders.
-Deno.test('renderAuthEmail — no site URL falls back to the wordmark alone', () => {
+Deno.test('renderAuthEmail — no APP_BASE_URL falls back to the wordmark alone', () => {
   const [send] = planSends(
     { email: 'a@example.com' },
     { email_action_type: 'recovery', token: '123456', token_hash: 'thehash' },
@@ -630,7 +630,30 @@ Deno.test('renderAuthEmail — no site URL falls back to the wordmark alone', ()
   const r = renderAuthEmail('en', send, { supabaseUrl: 'http://127.0.0.1:54321' });
 
   if (r.html.includes('<img')) {
-    throw new Error('no site URL must not emit an image');
+    throw new Error('no APP_BASE_URL must not emit an image');
   }
   assertStringIncludes(r.html, 'Threkir');
+});
+
+// The hook payload's `site_url` is the API external URL
+// (<ref>.supabase.co/auth/v1), not the dashboard Site URL. Building the mark
+// from it shipped a broken image to every inbox, so pin that the renderer
+// takes the web origin and nothing else.
+Deno.test('renderAuthEmail — the mark resolves against APP_BASE_URL, never the API host', () => {
+  const [send] = planSends(
+    { email: 'a@example.com' },
+    { email_action_type: 'signup', token: '1', token_hash: 'h' },
+  );
+  const r = renderAuthEmail('en', send, {
+    supabaseUrl: 'https://mcbgrgvegqcmdmtraikl.supabase.co',
+    appBaseUrl: 'https://threkir.com',
+  });
+
+  assertStringIncludes(r.html, 'src="https://threkir.com/email-logo.png"');
+  if (r.html.includes('supabase.co/auth/v1/email-logo.png')) {
+    throw new Error('the mark resolved against the API host');
+  }
+  if (r.html.includes('supabase.co/email-logo.png')) {
+    throw new Error('the mark resolved against the Supabase project URL');
+  }
 });

@@ -358,6 +358,61 @@ void main() {
       });
     });
 
+    group('the notification level is a choice, not a default', () {
+      // The privacy key stopped writing an unchosen default when the launch
+      // flow's answer started seeding it; the notification key two lines
+      // below it in the same bag did not. Seeded 'important', an untouched
+      // step wrote that into the bag as though it had been picked AND
+      // reported itself answered, so the one forward button read Continue
+      // over a question nobody had been asked.
+      testWidgets('an untouched step offers Skip, and flips on a tap',
+          (tester) async {
+        final api = _FakeApi();
+        await _pump(tester, api, await _prefs());
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        for (var i = 0; i < 5; i++) {
+          await _forward(tester, l10n);
+        }
+        expect(find.text(l10n.setupNotificationsTitle), findsOneWidget);
+        expect(find.widgetWithText(FilledButton, l10n.setupSkipStep),
+            findsOneWidget);
+        expect(find.text(l10n.setupContinue), findsNothing);
+
+        await tester.ensureVisible(find.text(l10n.prefsPushNotifAll));
+        await tester.pump();
+        await tester.tap(find.text(l10n.prefsPushNotifAll));
+        await tester.pump();
+        expect(find.widgetWithText(FilledButton, l10n.setupContinue),
+            findsOneWidget);
+        expect(find.text(l10n.setupSkipStep), findsNothing);
+      });
+
+      testWidgets('walking past it leaves push_notifications unwritten',
+          (tester) async {
+        final api = _FakeApi();
+        final fake = _FakeSettingsService();
+        final prefs = await _prefs();
+        final sync = SettingsSyncService(
+          preferences: prefs,
+          serviceLoader: () async => fake,
+        );
+        await _pump(tester, api, prefs, settingsSync: sync);
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        for (var i = 0; i < _forwardTaps(prefs); i++) {
+          await _forward(tester, l10n);
+        }
+        await tester.tap(find.text(l10n.setupOpenDashboard));
+        await tester.pumpAndSettle(const Duration(seconds: 7));
+
+        expect(fake.universalWrites, hasLength(1));
+        final bag = fake.universalWrites.single;
+        // Unwritten, not written as 'important' — reads fall back to the
+        // registered default, but nothing claims the runner chose it.
+        expect(bag.containsKey(SettingsKeys.pushNotifications), isFalse);
+        expect(bag[SettingsKeys.privacyDefault], isNotNull);
+      });
+    });
+
     group('the OS back gesture', () {
       testWidgets('steps back through the wizard instead of doing nothing',
           (tester) async {
@@ -613,6 +668,14 @@ void main() {
         await tester.tap(find.text(l10n.setupGoal5k));
         await tester.pump();
         for (var i = 2; i < onboardingTotalSteps - 1; i++) {
+          // The notification level is written only when it is chosen, so
+          // answer that step on the way past it.
+          if (i == 5) {
+            await tester.ensureVisible(find.text(l10n.prefsPushNotifAll));
+            await tester.pump();
+            await tester.tap(find.text(l10n.prefsPushNotifAll));
+            await tester.pump();
+          }
           await _forward(tester, l10n);
         }
         await tester.tap(find.text(l10n.setupCreatePlanCta));
@@ -623,7 +686,7 @@ void main() {
         expect(bag[SettingsKeys.primaryGoal], '5k');
         expect(bag[SettingsKeys.preferredUnit], isNotNull);
         expect(bag[SettingsKeys.privacyDefault], isNotNull);
-        expect(bag[SettingsKeys.pushNotifications], isNotNull);
+        expect(bag[SettingsKeys.pushNotifications], 'all');
       });
 
       testWidgets('a dropped answer bag is disclosed, not toasted as welcome',

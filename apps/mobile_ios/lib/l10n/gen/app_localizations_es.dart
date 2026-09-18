@@ -13344,7 +13344,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get prefsCueGuidedRunInfo =>
-      'Solo activo cuando preparas una carrera guiada en la pestaña Correr antes de empezar. Anuncia cada indicación del guion al llegar a su marca. Ejemplo: «Cinco minutos. Asíentate en un ritmo que podrías mantener todo el día.»';
+      'Solo activo cuando preparas una carrera guiada en la pantalla de grabación antes de empezar. Anuncia cada indicación del guion al llegar a su marca. Ejemplo: «Cinco minutos. Asíentate en un ritmo que podrías mantener todo el día.»';
 
   @override
   String get runGuidedRun => 'Carrera guiada';

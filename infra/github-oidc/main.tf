@@ -31,6 +31,25 @@
 # The web@1.0.3 release failed AssumeRoleWithWebIdentity when the
 # environments landed while these still matched the ref shape — the
 # two halves must move together.
+#
+# ── Immutable subject claims ──
+#
+# The subject is NOT `repo:<owner>/<repo>:…`. This repo issues IMMUTABLE
+# SUBJECT CLAIMS, so GitHub substitutes numeric IDs for both names:
+#
+#   repo:Absence0760@21693150/threkir@1202414286:environment:production
+#
+# Those IDs survive a rename, which is the feature — and is precisely how
+# this broke. `web@1.5.0` deployed fine on 2026-09-10; the 2026-09-14 rename
+# to threkir moved the repo onto immutable subjects, and every deploy after
+# it failed AssumeRoleWithWebIdentity with `Not authorized`, twelve retries
+# deep, naming nothing. A name-shaped StringEquals can never match an
+# ID-shaped subject, so this is silent until something tries to deploy.
+#
+# `github_subject_prefix` therefore holds the literal prefix, read from
+# `gh api repos/<owner>/<repo>/actions/oidc/customization/sub`. Do not
+# reconstruct it from `github_repo` — that is the bug this comment exists
+# to stop someone reintroducing.
 
 # ── CloudFrontInvalidate scoping caveat ──
 #
@@ -97,7 +116,7 @@ resource "aws_iam_role" "deploy_prod" {
       Condition = {
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:environment:production"
+          "token.actions.githubusercontent.com:sub" = "${var.github_subject_prefix}:environment:production"
         }
       }
     }]
@@ -185,7 +204,7 @@ resource "aws_iam_role" "deploy_preview" {
         # can assume this role.
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:environment:preview"
+          "token.actions.githubusercontent.com:sub" = "${var.github_subject_prefix}:environment:preview"
         }
       }
     }]

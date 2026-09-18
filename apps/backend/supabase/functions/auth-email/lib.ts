@@ -23,12 +23,19 @@ const BRAND_LOGO_PATH = '/email-logo.png';
 
 /// The header bar's contents: the mark beside the wordmark, matching the Go
 /// worker's renderBrandLockup. alt is empty on purpose — the wordmark next to
-/// it already says the brand, so a populated alt announces it twice. With no
-/// site URL the wordmark stands alone rather than a broken image.
-function renderBrandLockup(siteUrl: string | undefined): string {
+/// it already says the brand, so a populated alt announces it twice.
+///
+/// Takes APP_BASE_URL, the WEB origin. It deliberately does NOT take the hook
+/// payload's `site_url`: GoTrue sends the API external URL there
+/// (`<ref>.supabase.co/auth/v1`), not the dashboard's Site URL, so building
+/// an asset URL from it points the mark at the API host and every client
+/// renders a broken image. Unset yields the wordmark alone, which is the same
+/// thing a client that blocks remote images shows — a broken image is the one
+/// outcome worth failing closed against.
+function renderBrandLockup(appBaseUrl: string | undefined): string {
   const wordmark =
     `<span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px;">${BRAND_NAME}</span>`;
-  const base = (siteUrl ?? '').replace(/\/+$/, '');
+  const base = (appBaseUrl ?? '').replace(/\/+$/, '');
   if (!base) return wordmark;
   return `<table role="presentation" cellpadding="0" cellspacing="0"><tr>` +
     `<td style="padding-right:12px;line-height:0;"><img src="${escapeHtml(base + BRAND_LOGO_PATH)}" width="32" height="32" alt="" style="display:block;border:0;"></td>` +
@@ -1147,7 +1154,7 @@ function escapeHtml(s: string): string {
 export function renderAuthEmail(
   locale: string,
   send: PlannedSend,
-  opts: { supabaseUrl: string; redirectTo?: string; siteUrl?: string },
+  opts: { supabaseUrl: string; redirectTo?: string; appBaseUrl?: string },
 ): RenderedAuthEmail {
   const loc = normalizeEmailLocale(locale);
   const strings = lookupAuthEmailStrings(loc, send.catalogueKey);
@@ -1189,7 +1196,7 @@ export function renderAuthEmail(
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(strings.preheader)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;"><tr><td align="center" style="padding:24px 12px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-<tr><td style="background:${BRAND_COLOR};padding:20px 32px;">${renderBrandLockup(opts.siteUrl)}</td></tr>
+<tr><td style="background:${BRAND_COLOR};padding:20px 32px;">${renderBrandLockup(opts.appBaseUrl)}</td></tr>
 <tr><td style="padding:32px;"><h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;color:#111827;">${escapeHtml(strings.heading)}</h1>${paras}${cta}</td></tr>
 <tr><td style="padding:20px 32px;border-top:1px solid #e5e7eb;"><p style="margin:0;font-size:12px;line-height:1.5;color:#9ca3af;">${escapeHtml(shared.footer)}</p></td></tr>
 </table></td></tr></table>

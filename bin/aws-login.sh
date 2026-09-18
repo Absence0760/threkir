@@ -5,7 +5,7 @@
 # tab to authenticate, and verifies the session afterwards.
 #
 # Usage:
-#   bin/aws-login.sh                   # uses $AWS_PROFILE, defaults to running
+#   bin/aws-login.sh                   # uses $AWS_PROFILE, defaults to threkir
 #   bin/aws-login.sh mgmt    # explicit profile
 
 set -euo pipefail

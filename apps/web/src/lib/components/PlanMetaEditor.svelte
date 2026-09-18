@@ -84,33 +84,44 @@
 			save();
 		}}
 	>
-		<label class="field">
-			<span class="field-label">{m('planMeta.name')}</span>
-			<input type="text" bind:value={name} maxlength={lengthLimit('training_plans.name')} required />
-		</label>
+		<div class="field">
+			<label>
+				<span class="field-label">{m('planMeta.name')}</span>
+				<input
+					type="text"
+					bind:value={name}
+					maxlength={lengthLimit('training_plans.name')}
+					required
+					aria-describedby="plan-meta-name-hint"
+				/>
+			</label>
+			<span class="field-hint" id="plan-meta-name-hint">{m('planMeta.nameHint')}</span>
+		</div>
 
-		<label class="field">
-			<span class="field-label">{m('planMeta.daysPerWeek')}</span>
-			<select bind:value={daysPerWeek}>
-				{#each [3, 4, 5, 6, 7] as n}
-					<option value={n}>{m('planMeta.daysCount', { n })}</option>
-				{/each}
-			</select>
-			<span class="field-hint">
+		<div class="field">
+			<label>
+				<span class="field-label">{m('planMeta.daysPerWeek')}</span>
+				<select bind:value={daysPerWeek} aria-describedby="plan-meta-days-hint">
+					{#each [3, 4, 5, 6, 7] as n}
+						<option value={n}>{m('planMeta.daysCount', { n })}</option>
+					{/each}
+				</select>
+			</label>
+			<span class="field-hint" id="plan-meta-days-hint">
 				{m('planMeta.daysPerWeekHint')}
 			</span>
-		</label>
+		</div>
 
 		<fieldset class="field">
 			<legend class="field-label">{m('planMeta.goalTime')} <span class="optional">{m('planMeta.optional')}</span></legend>
 			<div class="time-row">
-				<input type="number" min="0" max="9" bind:value={goalTimeHours} placeholder={m('planMeta.hoursAbbr')} />
+				<input type="number" min="0" max="9" bind:value={goalTimeHours} placeholder={m('planMeta.hoursAbbr')} aria-describedby="plan-meta-goal-time-hint" />
 				<span>:</span>
-				<input type="number" min="0" max="59" bind:value={goalTimeMin} placeholder={m('planMeta.minutesAbbr')} />
+				<input type="number" min="0" max="59" bind:value={goalTimeMin} placeholder={m('planMeta.minutesAbbr')} aria-describedby="plan-meta-goal-time-hint" />
 				<span>:</span>
-				<input type="number" min="0" max="59" bind:value={goalTimeSec} placeholder={m('planMeta.secondsAbbr')} />
+				<input type="number" min="0" max="59" bind:value={goalTimeSec} placeholder={m('planMeta.secondsAbbr')} aria-describedby="plan-meta-goal-time-hint" />
 			</div>
-			<span class="field-hint">
+			<span class="field-hint" id="plan-meta-goal-time-hint">
 				{m('planMeta.goalTimeHint')}
 			</span>
 		</fieldset>

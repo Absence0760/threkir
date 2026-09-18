@@ -124,14 +124,28 @@
 <UnsavedChangesGuard isDirty={dirty.isDirty} />
 
 <form class="editor-form run-editor" onsubmit={handleSubmit}>
-	<label class="field">
-		<span class="field-label">{m('runEditor.startedAt')}</span>
-		<input type="datetime-local" bind:value={startedAt} required class="input" />
-	</label>
+	<div class="field">
+		<label>
+			<span class="field-label">{m('runEditor.startedAt')}</span>
+			<input
+				type="datetime-local"
+				bind:value={startedAt}
+				required
+				class="input"
+				aria-describedby="run-started-at-hint"
+			/>
+		</label>
+		<span class="field-hint" id="run-started-at-hint">{m('runEditor.startedAtHint')}</span>
+	</div>
 
 	<fieldset class="field activity-field">
 		<legend class="field-label">{m('runEditor.activity')}</legend>
-		<div class="chip-row" role="radiogroup" aria-label={m('runEditor.activity')}>
+		<div
+			class="chip-row"
+			role="radiogroup"
+			aria-label={m('runEditor.activity')}
+			aria-describedby="run-activity-hint"
+		>
 			{#each ACTIVITY_TYPES as a}
 				<button
 					type="button"
@@ -145,45 +159,79 @@
 				</button>
 			{/each}
 		</div>
+		<span class="field-hint" id="run-activity-hint">{m('runEditor.activityHint')}</span>
 	</fieldset>
 
-	<div class="row">
-		<label class="field">
-			<span class="field-label">{distanceLabel}</span>
-			<input type="number" min="0" step="0.01" bind:value={distance} required class="input" />
-		</label>
-		<label class="field">
-			<span class="field-label">{m('runEditor.durationMin')}</span>
-			<input type="number" min="0" step="1" bind:value={durationMin} required class="input" />
-		</label>
-		<label class="field">
-			<span class="field-label">{m('runEditor.durationSec')}</span>
-			<input type="number" min="0" max="59" step="1" bind:value={durationSec} class="input" />
-		</label>
+	<div class="field">
+		<div class="row">
+			<label class="field">
+				<span class="field-label">{distanceLabel}</span>
+				<input
+					type="number"
+					min="0"
+					step="0.01"
+					bind:value={distance}
+					required
+					class="input"
+					aria-describedby="run-effort-hint"
+				/>
+			</label>
+			<label class="field">
+				<span class="field-label">{m('runEditor.durationMin')}</span>
+				<input
+					type="number"
+					min="0"
+					step="1"
+					bind:value={durationMin}
+					required
+					class="input"
+					aria-describedby="run-effort-hint"
+				/>
+			</label>
+			<label class="field">
+				<span class="field-label">{m('runEditor.durationSec')}</span>
+				<input
+					type="number"
+					min="0"
+					max="59"
+					step="1"
+					bind:value={durationSec}
+					class="input"
+					aria-describedby="run-effort-hint"
+				/>
+			</label>
+		</div>
+		<span class="field-hint" id="run-effort-hint">{m('runEditor.effortHint')}</span>
 	</div>
 
-	<label class="field">
-		<span class="field-label">{m('runEditor.routeOptional')}</span>
-		<select bind:value={routeId} class="input">
-			<option value="">{m('runEditor.noRoute')}</option>
-			{#each routes as r (r.id)}
-				<option value={r.id}>{r.name}</option>
-			{/each}
-		</select>
-		<span class="field-hint">
+	<div class="field">
+		<label>
+			<span class="field-label">{m('runEditor.routeOptional')}</span>
+			<select bind:value={routeId} class="input" aria-describedby="run-route-hint">
+				<option value="">{m('runEditor.noRoute')}</option>
+				{#each routes as r (r.id)}
+					<option value={r.id}>{r.name}</option>
+				{/each}
+			</select>
+		</label>
+		<span class="field-hint" id="run-route-hint">
 			{m('runEditor.routeHint')}
 		</span>
-	</label>
+	</div>
 
-	<label class="field">
-		<span class="field-label">{m('runEditor.notesOptional')}</span>
-		<textarea
-			bind:value={notes}
-			rows="3"
-			class="input"
-			placeholder={m('runEditor.notesPlaceholder')}
-		></textarea>
-	</label>
+	<div class="field">
+		<label>
+			<span class="field-label">{m('runEditor.notesOptional')}</span>
+			<textarea
+				bind:value={notes}
+				rows="3"
+				class="input"
+				placeholder={m('runEditor.notesPlaceholder')}
+				aria-describedby="run-notes-hint"
+			></textarea>
+		</label>
+		<span class="field-hint" id="run-notes-hint">{m('runEditor.notesHint')}</span>
+	</div>
 
 	<label class="field toggle-field">
 		<input

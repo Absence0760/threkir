@@ -293,7 +293,12 @@
 	<p class="kicker">{m('plansNew.kicker')}</p>
 
 	{#if showChooser}
-		<div class="kind-chooser" role="group" aria-label={m('plansNew.chooserLabel')}>
+		<div
+			class="kind-chooser"
+			role="group"
+			aria-label={m('plansNew.chooserLabel')}
+			aria-describedby="plan-kind-tagline"
+		>
 			<button
 				type="button"
 				class="kind-tab"
@@ -329,7 +334,7 @@
 
 	<header class="page-header">
 		<h1>{m(headingKey)}</h1>
-		<p class="tagline">
+		<p class="tagline" id="plan-kind-tagline">
 			{m(taglineKey)}
 		</p>
 	</header>
@@ -340,11 +345,11 @@
 	{/if}
 	<section class="starter-picker">
 		<h2>{m('plansNew.starterHeading')}</h2>
-		<p class="picker-hint">{m('plansNew.starterHint')}</p>
+		<p class="picker-hint" id="starter-hint">{m('plansNew.starterHint')}</p>
 		<div class="picker-row">
 			<label class="picker-field">
 				<span>{m('plansNew.starterLabel')}</span>
-				<select bind:value={selectedStarterId}>
+				<select bind:value={selectedStarterId} aria-describedby="starter-hint">
 					<option value="">{m('plansNew.selectPlaceholder')}</option>
 					{#each STARTER_PLANS as s (s.id)}
 						<option value={s.id}>{starterName(s.id)}</option>
@@ -353,7 +358,7 @@
 			</label>
 			<label class="picker-field">
 				<span>{m('plansNew.startDateLabel')}</span>
-				<input type="date" bind:value={startDate} />
+				<input type="date" bind:value={startDate} aria-describedby="starter-start-date-hint" />
 			</label>
 			<button
 				class="btn btn-primary"
@@ -369,18 +374,19 @@
 				{/if}
 			</button>
 		</div>
+		<p class="picker-hint field-hint" id="starter-start-date-hint">{m('plansNew.startDateHint')}</p>
 	</section>
 
 	{#if !loadingTemplates && templates.length > 0}
 		<section class="template-picker">
 			<h2>{m('plansNew.templateHeading')}</h2>
-			<p class="picker-hint">
+			<p class="picker-hint" id="template-hint">
 				{m('plansNew.templateHint')}
 			</p>
 			<div class="picker-row">
 				<label class="picker-field">
 					<span>{m('plansNew.templateLabel')}</span>
-					<select bind:value={selectedTemplateId}>
+					<select bind:value={selectedTemplateId} aria-describedby="template-hint">
 						<option value="">{m('plansNew.selectPlaceholder')}</option>
 						{#each templates as t (t.template.id)}
 							<option value={t.template.id}>
@@ -391,7 +397,7 @@
 				</label>
 				<label class="picker-field">
 					<span>{m('plansNew.startDateLabel')}</span>
-					<input type="date" bind:value={startDate} />
+					<input type="date" bind:value={startDate} aria-describedby="template-start-date-hint" />
 				</label>
 				<button
 					class="btn btn-primary"
@@ -407,6 +413,7 @@
 					{/if}
 				</button>
 			</div>
+			<p class="picker-hint field-hint" id="template-start-date-hint">{m('plansNew.startDateHint')}</p>
 		</section>
 	{/if}
 
@@ -562,6 +569,10 @@
 		color: var(--color-text-secondary);
 		font-size: 0.9rem;
 		margin: 0 0 var(--space-md) 0;
+	}
+	.field-hint {
+		margin: var(--space-sm) 0 0 0;
+		font-size: 0.85rem;
 	}
 	.picker-row {
 		display: flex;

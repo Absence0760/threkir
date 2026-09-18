@@ -41,6 +41,11 @@ const SURFACES: Array<{ name: string; file: string }> = [
 	{ name: 'RaceListingEditor', file: 'lib/components/RaceListingEditor.svelte' },
 	{ name: 'ChallengeEditor', file: 'lib/components/ChallengeEditor.svelte' },
 	{ name: 'FundraiserEditor', file: 'lib/components/FundraiserEditor.svelte' },
+	{ name: 'RoutineEditor', file: 'lib/components/RoutineEditor.svelte' },
+	{ name: 'SessionPlanEditor', file: 'lib/components/SessionPlanEditor.svelte' },
+	{ name: 'GymEditor', file: 'lib/components/GymEditor.svelte' },
+	{ name: 'FoodLogEditor', file: 'lib/components/FoodLogEditor.svelte' },
+	{ name: 'WorkoutEditor', file: 'lib/components/WorkoutEditor.svelte' },
 ];
 
 /// The opening tag starting at `start`, read up to the `>` that closes it

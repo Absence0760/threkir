@@ -183,3 +183,100 @@ test.describe('every swept creator control renders its explanation', () => {
 		}
 	});
 });
+
+const SYDNEY_HALF_PLAN_ID = 'a1a1eada-aaaa-0000-0000-000000000001';
+
+/** Walk the plan calendar back to its first month, then forward to one holding a workout. */
+async function walkToAWorkoutMonth(page: import('@playwright/test').Page): Promise<void> {
+	const prev = page.locator('.cal .nav[aria-label="Previous month"]');
+	const next = page.locator('.cal .nav[aria-label="Next month"]');
+	const cells = page.locator('.cal .cell.has-workout');
+	for (let i = 0; i < 24; i++) {
+		if ((await prev.getAttribute('disabled')) !== null) break;
+		await prev.click();
+	}
+	for (let i = 0; i < 24; i++) {
+		if ((await cells.count()) > 0) return;
+		if ((await next.getAttribute('disabled')) !== null) break;
+		await next.click();
+	}
+	await expect(cells.first()).toBeVisible();
+}
+
+test.describe('every swept gym and session control renders its explanation', () => {
+	test.use({ storageState: USER_A.storageStatePath });
+
+	test('/gym/routines/new — the routine editor', async ({ page }) => {
+		await page.goto('/gym/routines/new');
+		const form = page.locator('.routine-editor');
+		await expect(form).toBeVisible({ timeout: 15_000 });
+
+		// The advanced block is a <details>, and the three progression fields
+		// only mount under the scheme that uses them. Open it and pick the two
+		// schemes that carry their own fields.
+		await form.locator('details.advanced summary').first().click();
+		const scheme = form.getByTestId('routine-progression').first();
+		await scheme.selectOption('percent_cycle');
+		await expect(form.getByTestId('routine-progression-percent').first()).toBeVisible();
+		await assertEveryControlExplained(form, 'RoutineEditor (percent cycle)');
+
+		await scheme.selectOption('rpe_autoreg');
+		await expect(form.getByTestId('routine-progression-rpe').first()).toBeVisible();
+		await assertEveryControlExplained(form, 'RoutineEditor (auto-regulated)');
+	});
+
+	test('/gym — the log-a-workout editor', async ({ page }) => {
+		await page.goto('/gym');
+		await page.getByTestId('gym-log').click({ timeout: 15_000 });
+		const form = page.locator('.gym-editor');
+		await expect(form).toBeVisible({ timeout: 5_000 });
+		await assertEveryControlExplained(form, 'GymEditor');
+	});
+
+	test('/sessions — the session-plan editor', async ({ page }) => {
+		await page.goto('/sessions');
+		await page.getByRole('button', { name: 'New session' }).click({ timeout: 15_000 });
+		const form = page.locator('.session-editor');
+		await expect(form).toBeVisible({ timeout: 5_000 });
+
+		// A new plan starts with no blocks and one movement, so add a block to
+		// bring the block-name field on screen, and switch the movement to reps
+		// so the count field renders in place of the duration one.
+		await form.getByRole('button', { name: 'Add block' }).click();
+		await assertEveryControlExplained(form, 'SessionPlanEditor');
+		await form.locator('.item-grid select').first().selectOption('reps');
+		await assertEveryControlExplained(form, 'SessionPlanEditor (reps)');
+	});
+
+	test('/nutrition/log — the food-log editor', async ({ page }) => {
+		// The portion dialog is behind a live food-database search, so this
+		// covers the search card and the manual-entry panel; the portion field
+		// is left to the source guard.
+		await page.goto('/nutrition/log');
+		const editor = page.locator('.food-log-editor');
+		await expect(editor).toBeVisible({ timeout: 15_000 });
+		await editor.getByRole('button', { name: /Enter manually|Manual/ }).click();
+		await expect(editor.getByTestId('manual-entry')).toBeVisible({ timeout: 5_000 });
+		await assertEveryControlExplained(editor, 'FoodLogEditor');
+	});
+
+	test('/plans/[id] — the workout editor', async ({ page }) => {
+		await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}`);
+		await expect(page.locator('.cal')).toBeVisible({ timeout: 15_000 });
+		await walkToAWorkoutMonth(page);
+		await page.locator('.cal .cell.has-workout').first().click();
+		const form = page.locator('.modal .editor-form');
+		await expect(form).toBeVisible({ timeout: 5_000 });
+
+		// The structure block only mounts for a kind that has one, and its two
+		// shapes render different fields, so walk an interval workout through
+		// both rather than reading whichever kind the seed happened to put
+		// under the cursor.
+		await form.locator('select').first().selectOption('interval');
+		await expect(form.locator('fieldset.structure')).toBeVisible({ timeout: 5_000 });
+		await assertEveryControlExplained(form, 'WorkoutEditor (repeats)');
+
+		await form.getByRole('radio', { name: 'Steady' }).check();
+		await assertEveryControlExplained(form, 'WorkoutEditor (steady)');
+	});
+});

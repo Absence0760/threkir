@@ -199,11 +199,24 @@ cosmetic — the platform drives issue grouping and the setup docs Sentry shows.
 
 | Project name | Platform to pick | Feeds env var | SDKs reporting into it |
 |---|---|---|---|
-| `threkir-client` | **Browser JavaScript** | `PUBLIC_SENTRY_DSN` | `@sentry/sveltekit` (browser half), `sentry_flutter`, `io.sentry:sentry-android` (Wear OS), `sentry-cocoa` (watchOS, SwiftPM package not yet added — needs a Mac, #922 § 8) |
+| `threkir-client` | **SvelteKit** (under the JS frameworks list, not plain Browser JavaScript — the web SDK is `@sentry/sveltekit`) | `PUBLIC_SENTRY_DSN` | `@sentry/sveltekit` (browser half), `sentry_flutter`, `io.sentry:sentry-android` (Wear OS), `sentry-cocoa` (watchOS, SwiftPM package not yet added — needs a Mac, #922 § 8) |
 | `threkir-backend` | **Deno** | `SENTRY_DSN` | `deno.land/x/sentry` (Edge Functions), `@sentry/sveltekit` (SSR/prerender half), coach Lambda |
 
-Grab each DSN at **Settings → Projects → `<project>` → Client Keys (DSN)**
+Both projects are multi-SDK — `threkir-client` also takes Flutter and Wear OS events —
+so the platform field only sets the project's primary hint and which setup docs Sentry
+shows; each event carries its own platform tag. Unlike the region, it is changeable
+afterwards under Settings → Projects → `<project>` → General.
+
+Ignore the install walkthrough Sentry shows after creating each project. Every SDK is
+already wired; the DSN on that page is the only thing needed from it. Grab each at
+**Settings → Projects → `<project>` → Client Keys (DSN)**
 (`/organizations/threkir/settings/projects/<project>/keys/`).
+
+The DSN hostname is also the only trustworthy region check once an org exists: an EU org
+ingests at `o<id>.ingest.de.sentry.io`, a US one at `...ingest.us.sentry.io`. The org URL
+is `<slug>.sentry.io` in both regions, so it proves nothing, and Sentry offers **only**
+these two regions — a settings field reading anything else (a UK billing country, say) is
+not the data-storage location.
 
 **A DSN is not a secret** — Sentry: *"DSNs are safe to keep public because they only
 allow submission of new events and related event data; they do not allow read access."*

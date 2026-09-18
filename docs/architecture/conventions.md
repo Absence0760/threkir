@@ -1988,6 +1988,35 @@ Two related passes belong to the same moment, for the same reason:
   across 75" is worth less than the `find`/`grep` that says so, because only the
   second survives another lane also adding a test.
 
+## A lane's temporary files live in its own scratchpad subdirectory, and a restore is a `git checkout`
+
+The harness hands one scratchpad path per *session*, and a subagent inherits the
+spawning session's path unchanged — including one started with
+`isolation: "worktree"`, which separates the tree and the index and not this.
+So every lane of a fan-out resolves the same directory, and a lane that writes a
+bare filename there is writing somewhere a sibling will write too. Each lane
+gets `<scratchpad>/<lane-slug>/` and keeps everything under it; the command that
+fans the lanes out names each lane's subdirectory in that lane's own prompt,
+because a lane cannot pick a name that is unique against lanes it cannot see. A
+fixed path in `/tmp` is the same defect one scope wider — that directory is
+shared by every session on the machine, not merely every lane of one round.
+
+**A file mutated to test something is restored with `git checkout HEAD -- <path>`,
+never a `.bak` copy.** The save/restore pair is what actually did the damage:
+`cp x x.bak` collided with a sibling lane's file of that name, the interactive
+`cp -i` alias declined to overwrite it and said nothing, and the restore copied
+THAT lane's file into this worktree, where it would have been committed by
+anyone who did not diff first. git already holds every committed byte, so the
+save half buys nothing and the collision has nowhere left to happen — which is a
+stronger property than giving the `.bak` a private directory to sit in. When the
+change you need back is uncommitted, write the patch to your own subdirectory
+(`git diff -- <path> > <scratchpad>/<lane-slug>/x.patch`) and `git apply` it
+afterwards.
+
+`apps/web/src/lib/fanout_scratchpad_guard.test.ts` derives the fan-out commands
+from their own bodies rather than listing them, so a new one is covered the day
+it is written.
+
 ## A merge gate and an agent name each have exactly one definition
 
 Two invariants about this repo's own tooling, both guarded in `apps/web/src/lib/ci_workflow_guards.test.ts` because both fail *green*:

@@ -10,6 +10,7 @@ import '../gym_compose_draft.dart';
 import '../gym_prs.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../local_gym_store.dart';
+import '../metrics.dart';
 import '../preferences.dart';
 import '../typed_decimal.dart';
 import 'exercise_catalogue_picker.dart';
@@ -888,7 +889,7 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
                     Expanded(
                       child: _setNumberField(
                         ex.sets[si].rpe,
-                        l10n.gymRpe,
+                        metricText(l10n, Metric.rpe),
                         const TextInputType.numberWithOptions(decimal: true),
                       ),
                     ),

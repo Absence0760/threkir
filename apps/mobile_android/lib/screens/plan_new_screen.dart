@@ -8,6 +8,7 @@ import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../l10n/number_format.dart';
+import '../metrics.dart';
 import '../plan_ramp.dart';
 import '../plan_start.dart';
 import '../race_plan_preset.dart';
@@ -16,6 +17,7 @@ import '../starter_plans.dart';
 import '../training.dart';
 import '../training_labels.dart';
 import '../training_service.dart';
+import '../widgets/metric_label.dart';
 import '../widgets/top_banner.dart';
 import 'plan_detail_screen.dart';
 
@@ -609,8 +611,9 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
               ],
             ),
             const SizedBox(height: 4),
-            Text(
-              l10n.planNewRecent5kHelp,
+            MetricSentence(
+              metric: Metric.riegel,
+              sentence: 'plan',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -874,9 +877,19 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
             ],
             if (p.vdot != null) ...[
               const SizedBox(height: 8),
-              Text(l10n.planNewVdot(formatFixed(p.vdot!, 1, activeLocaleTag)),
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                        metricText(l10n, Metric.vdot, variant: 'daniels', args: {
+                          'value': formatFixed(p.vdot!, 1, activeLocaleTag)
+                        }),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant)),
+                  ),
+                  const MetricInfoButton(metric: Metric.vdot),
+                ],
+              ),
             ],
           ],
           if (rampMessage != null) ...[

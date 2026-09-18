@@ -5368,6 +5368,9 @@ void main() {
       // Explains what a feature is. Its only action is dismissal; nothing is
       // decided here and nothing can be lost by tapping it.
       'widgets/info_tip.dart::title': 1,
+      // Explains what a derived metric IS. Its only action is dismissal;
+      // nothing is decided here and nothing can be lost by tapping it.
+      'widgets/metric_label.dart::metricText(l10n, metric)': 1,
     };
 
     test('no AlertDialog outside the reviewed set omits error emphasis', () {

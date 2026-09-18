@@ -21,6 +21,7 @@ import '../plan_replan.dart';
 import '../plan_adaptive_replan.dart';
 import '../plan_week.dart';
 import '../social_service.dart' show ClubView, RecentRunRow, SocialService;
+import '../metrics.dart';
 import '../training.dart';
 import '../training_labels.dart';
 import '../training_load.dart';
@@ -1111,8 +1112,12 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
                     if (p.goalTimeSeconds != null)
                       _chip(theme, Icons.timer, fmtHms(p.goalTimeSeconds)),
                     if (p.vdot != null)
-                      _chip(theme, Icons.trending_up,
-                          'VDOT ${formatFixed(p.vdot!, 1, activeLocaleTag)}'),
+                      _chip(
+                          theme,
+                          Icons.trending_up,
+                          metricText(l10n, Metric.vdot, variant: 'value', args: {
+                            'value': formatFixed(p.vdot!, 1, activeLocaleTag)
+                          })),
                   ],
                 ),
                 const SizedBox(height: 6),

@@ -14,6 +14,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../local_gym_store.dart';
 import '../local_routine_store.dart';
+import '../metrics.dart';
 import '../preferences.dart';
 import '../progression_prefill.dart';
 import '../widgets/gym_compose_sheet.dart';
@@ -584,7 +585,7 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
       case PrKind.volume:
         return l10n.gymPrVolume;
       case PrKind.e1rm:
-        return l10n.gymPrE1rm;
+        return metricText(l10n, Metric.e1rm, variant: 'best');
     }
   }
 
@@ -887,7 +888,8 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
                     ],
                     if (ref.set['rpe'] != null)
                       Text(
-                        '${l10n.gymRpe} ${_numStr(ref.set['rpe'] as num)}',
+                        '${metricText(l10n, Metric.rpe)} '
+                        '${_numStr(ref.set['rpe'] as num)}',
                         style: theme.textTheme.bodySmall
                             ?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,

@@ -5,6 +5,7 @@ struct ContentView: View {
     @StateObject private var connectivity = WatchConnectivityManager.shared
     @State private var syncError: String?
     @State private var thisRunSynced = false
+    @State private var countingDown = false
 
     var body: some View {
         NavigationStack {
@@ -15,7 +16,8 @@ struct ContentView: View {
                         workoutManager: workoutManager,
                         queuedCount: connectivity.queuedCount,
                         armedRoute: connectivity.armedRoute,
-                        onClearRoute: connectivity.clearArmedRoute
+                        onClearRoute: connectivity.clearArmedRoute,
+                        onStart: { countingDown = true }
                     )
                 case .recovering:
                     RecoveryView(workoutManager: workoutManager, onRecover: recoverRun, onDiscard: discardRecovery)
@@ -36,6 +38,17 @@ struct ContentView: View {
                         onSync: syncRun,
                         onSyncDirect: syncRunDirect,
                         onDiscard: startNextRun
+                    )
+                }
+            }
+            .overlay {
+                if countingDown {
+                    CountdownOverlay(
+                        onComplete: {
+                            countingDown = false
+                            workoutManager.start()
+                        },
+                        onCancel: { countingDown = false }
                     )
                 }
             }
@@ -216,6 +229,7 @@ struct PreRunView: View {
     let queuedCount: Int
     let armedRoute: ArmedRoute?
     let onClearRoute: () -> Void
+    let onStart: () -> Void
     @State private var selectedPaceIndex: Int? = nil
 
     var body: some View {
@@ -282,7 +296,7 @@ struct PreRunView: View {
                 }
 
                 Button("Start") {
-                    workoutManager.start()
+                    onStart()
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(AppTheme.coralDeep)
@@ -291,6 +305,47 @@ struct PreRunView: View {
                 // the VoiceOver name from "Start"; the hint adds the
                 // usage cue that name alone doesn't carry.
                 .accessibilityHint("Begins a new run, starting GPS and heart-rate recording")
+            }
+        }
+    }
+}
+
+// MARK: - Start Countdown
+
+/// Full-screen 3-2-1 count between the Start tap and `WorkoutManager.start()`,
+/// mirroring Wear OS's `CountdownOverlay`.
+///
+/// A tap ANYWHERE cancels. The window exists so a mis-tapped Start costs three
+/// seconds instead of a junk run, which it only does if backing out needs no
+/// second target found on a moving wrist.
+struct CountdownOverlay: View {
+    let onComplete: () -> Void
+    let onCancel: () -> Void
+
+    @State private var countdown = StartCountdown()
+
+    var body: some View {
+        ZStack {
+            AppTheme.midnight.opacity(0.92)
+                .ignoresSafeArea()
+            Text(countdown.count.formatted())
+                .font(.system(size: 64, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundColor(AppTheme.parchment)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { onCancel() }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Cancel countdown")
+        .accessibilityAddTraits(.isButton)
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: NSEC_PER_SEC)
+                if Task.isCancelled { return }
+                if countdown.tick() {
+                    onComplete()
+                    return
+                }
             }
         }
     }

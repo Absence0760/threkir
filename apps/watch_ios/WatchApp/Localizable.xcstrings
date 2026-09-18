@@ -694,6 +694,17 @@
         "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Aguardando o GPS" } },
         "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "À espera de GPS" } }
       }
+    },
+    "Cancel countdown" : {
+      "comment" : "VoiceOver label for the full-screen start countdown; a tap anywhere cancels it.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Countdown abbrechen" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Cancelar la cuenta atrás" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler le compte à rebours" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "カウントダウンをキャンセル" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Cancelar a contagem regressiva" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Cancelar a contagem decrescente" } }
+      }
     }
   }
 }

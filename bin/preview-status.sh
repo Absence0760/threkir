@@ -6,9 +6,15 @@
 # Lambda function name, then probes:
 #
 #   1. HTTPS / on the public domain      → expect 200
-#   2. /api/coach with no auth          → expect 401
-#   3. CloudFront distribution status   → expect Deployed
-#   4. Lambda recent log lines           → just dump the last 10
+#   2. Every API behaviour the distribution declares → expect
+#      `content-type: application/json`, asserted by
+#      scripts/probe_api_content_type.mjs. NOT a status check: the
+#      distribution maps 403 → 200 /200.html for every origin, so a
+#      refused API request reaches this script as a healthy-looking
+#      200 and no status can tell the two apart (issue #939).
+#   3. /api/coach with no auth          → expect 401 (or 503 unconfigured)
+#   4. CloudFront distribution status   → expect Deployed
+#   5. Lambda recent log lines           → just dump the last 10
 #
 # Output is one block per check, with PASS / WARN / FAIL labels.
 # Exits 0 if all PASS, 1 if any FAIL.
@@ -87,7 +93,7 @@ else
 	warn "Couldn't read apex_domain from $ENV_DIR/terraform.tfvars — using cloudfront.net hostname"
 fi
 
-step "1/4 — HTTPS / responds 200"
+step "1/5 — HTTPS / responds 200"
 # 30s budget — CloudFront edge cache miss + S3 origin can take a while
 # on first hit after deploy.
 status="$(curl -sS -o /dev/null -w "%{http_code}" --max-time 30 "https://$PUBLIC_HOST/" || echo "000")"
@@ -97,11 +103,42 @@ case "$status" in
 	*)   err "FAIL — HTTP $status (expected 200)"; FAILS=$((FAILS + 1)) ;;
 esac
 
-step "2/4 — /api/coach gates anon access"
-# Should return 401 (anon) or 503 (unconfigured) — never 200, never 5xx
-# from the runtime. 30s budget — Lambda cold start can exceed 10s.
+step "2/5 — every API behaviour answers application/json"
+# The check that a status code cannot make. This one derives the `/api/*`
+# cache behaviours from infra/modules/web-stack/main.tf and asserts the
+# content type of each, because the distribution's 403 → 200 /200.html
+# mapping turns any origin refusal into a healthy-looking HTML 200 (decisions § 1656).
+need_cmd node
+# Captured rather than piped: `cmd | sed` reports sed's status, and this
+# script's verdict must be the probe's.
+probe_rc=0
+probe_out="$(node "$REPO_ROOT/scripts/probe_api_content_type.mjs" --host "$PUBLIC_HOST" 2>&1)" || probe_rc=$?
+printf '%s\n' "$probe_out" | sed 's/^/      /'
+if (( probe_rc == 0 )); then
+	ok "PASS — every API behaviour answered application/json"
+else
+	err "FAIL — an API behaviour did not answer application/json (see the lines above)"
+	FAILS=$((FAILS + 1))
+fi
+
+step "3/5 — /api/coach gates anon access"
+# A status read, and only meaningful because step 2 just established that
+# this path answers as its handler rather than as the SPA shell. Should
+# return 401 (anon) or 503 (unconfigured) — the core checks the provider key
+# before the access token, so an anon POST distinguishes the two.
+#
+# The payload hash is not optional: CloudFront signs the origin request with
+# sigv4 and Lambda refuses an unsigned payload, so a POST without
+# `x-amz-content-sha256` is refused above the function and served as the
+# shell. Omitting it is what made a malformed request read as an outage
+# (issue #939, PR #938, reverted by #941). 30s budget — Lambda cold start
+# can exceed 10s.
+need_cmd shasum
+COACH_BODY='{"message":"x"}'
+COACH_HASH="$(printf '%s' "$COACH_BODY" | shasum -a 256 | cut -d' ' -f1)"
 status="$(curl -sS -o /dev/null -w "%{http_code}" --max-time 30 \
-	-X POST -H "content-type: application/json" -d '{"message":"x"}' \
+	-X POST -H "content-type: application/json" \
+	-H "x-amz-content-sha256: $COACH_HASH" -d "$COACH_BODY" \
 	"https://$PUBLIC_HOST/api/coach" || echo "000")"
 case "$status" in
 	401) ok "PASS — HTTP $status (anon properly rejected)" ;;
@@ -110,7 +147,7 @@ case "$status" in
 	*)   err "FAIL — HTTP $status (expected 401 or 503)"; FAILS=$((FAILS + 1)) ;;
 esac
 
-step "3/4 — CloudFront distribution Deployed"
+step "4/5 — CloudFront distribution Deployed"
 if [[ -n "$DIST_ID" ]]; then
 	dist_status="$(aws cloudfront get-distribution --id "$DIST_ID" \
 		--query 'Distribution.Status' --output text 2>/dev/null || echo "unknown")"
@@ -125,7 +162,7 @@ else
 	WARNS=$((WARNS + 1))
 fi
 
-step "4/4 — Recent Lambda logs ($LAMBDA_NAME)"
+step "5/5 — Recent Lambda logs ($LAMBDA_NAME)"
 log_group="/aws/lambda/$LAMBDA_NAME"
 if aws logs describe-log-groups --log-group-name-prefix "$log_group" \
 		--query 'logGroups[0].logGroupName' --output text 2>/dev/null | grep -q "$log_group"; then

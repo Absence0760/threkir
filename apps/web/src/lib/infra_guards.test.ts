@@ -219,39 +219,23 @@ test('CloudFront CSP drops unsafe-eval and bounds XSS gadget surface', () => {
 	);
 });
 
-test('every POST Lambda origin forwards the sigv4 payload hash', () => {
+test('every POST to a Lambda origin sends the sigv4 payload hash', () => {
 	// Reason: CloudFront's Lambda OAC sigv4-signs each origin request, and
-	// sigv4 covers the payload hash. CloudFront does not compute that hash,
-	// and a Lambda Function URL rejects unsigned payloads — so the VIEWER
-	// sends `x-amz-content-sha256` and the origin request policy has to
-	// forward it. Drop it from the allowlist and the Function URL answers
-	// 403 to every POST while GET keeps working, which is exactly how this
-	// hid: /api/coach and /api/routes/generate were unreachable in prod
-	// while the CDN served a 200 (the 403 -> /200.html error mapping turns
-	// the failure into an HTML page), and no test, log line or health check
-	// disagreed.
+	// sigv4 covers the payload hash. CloudFront does not compute it — the
+	// VIEWER must send `x-amz-content-sha256` on any request with a body, or
+	// the Function URL answers 403. Lambda does not accept unsigned payloads.
 	//
-	// #590 landed the client half — `payloadSha256Hex` at each fetch site —
-	// but not this half, so the header was computed and then dropped one hop
-	// later. Both halves are pinned now: the fetch sites below, the policies
-	// here.
+	// Only the client half is assertable. The header cannot be added to an
+	// origin request policy: CloudFront owns it and rejects the attempt with
+	// `InvalidArgument: The parameter Headers contains x-amz-content-sha256
+	// that is not allowed` (tried, and refused, on 2026-09-18). It reads the
+	// header off the viewer request and folds it into the signature itself.
 	//
-	// osrm-proxy is deliberately absent: `/api/routes/osrm/[...path]`
-	// exports GET only, so it carries no body and needs no hash.
-	const tf = read('../../infra/modules/web-stack/main.tf');
-	const policies = tfResources(tf, 'aws_cloudfront_origin_request_policy');
-	for (const label of ['lambda', 'generate_route']) {
-		const policy = policies.find((r) => r.label === label);
-		assert.ok(policy, `origin request policy "${label}" not found in main.tf`);
-		assert.match(
-			policy.body,
-			/x-amz-content-sha256/,
-			`origin request policy "${label}" must forward x-amz-content-sha256 — without it OAC signs a POST without the payload hash and the Lambda Function URL 403s every request carrying a body.`,
-		);
-	}
-
-	// The client half. If a fetch site stops sending the hash, forwarding it
-	// is moot — the origin still 403s.
+	// Worth knowing when this fails: a POST missing the header gets a 403
+	// that the distribution's `403 -> /200.html` mapping serves as
+	// `200 text/html`. That reads as a broken origin rather than a malformed
+	// request, and a curl written without the header reproduces it exactly.
+	// Send the header and the same path answers 401.
 	for (const site of [
 		'src/lib/components/CoachChat.svelte',
 		'src/lib/routes/route_describe_client.ts',
@@ -260,7 +244,7 @@ test('every POST Lambda origin forwards the sigv4 payload hash', () => {
 		assert.match(
 			read(site),
 			/x-amz-content-sha256/,
-			`${site} POSTs to a Lambda-URL origin, so it must send x-amz-content-sha256.`,
+			`${site} POSTs to a Lambda-URL origin, so it must send x-amz-content-sha256 — without it CloudFront signs no payload hash and the Function URL 403s.`,
 		);
 	}
 });

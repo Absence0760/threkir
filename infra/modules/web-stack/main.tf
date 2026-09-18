@@ -1768,15 +1768,24 @@ resource "aws_cloudfront_origin_request_policy" "lambda" {
   # CreateOriginRequestPolicy API rejects it outright (InvalidArgument)
   # — CloudFront owns that header; the cacheable behaviors forward a
   # normalized form via the cache policies' enable_accept_encoding_*.
-  # `x-amz-content-sha256` is what makes a POST reach this origin at all.
-  # OAC sigv4-signs each origin request, and sigv4 covers the payload hash;
-  # CloudFront does not compute that hash, and a Lambda Function URL rejects
-  # unsigned payloads outright. So the VIEWER sends the hash (see
-  # `payloadSha256Hex` at the fetch sites) and it has to survive this
-  # allowlist -- a whitelist that drops it leaves the signature covering a
-  # body the origin can see, and the Function URL answers 403 to every POST
-  # while GET keeps working. #590 landed the client half; this is the other
-  # half. `infra_guards.test.ts` pins the pair.
+  # `x-amz-content-sha256` must NOT be added here, and CloudFront enforces
+  # that: UpdateOriginRequestPolicy answers `InvalidArgument: The parameter
+  # Headers contains x-amz-content-sha256 that is not allowed`. Same class as
+  # the `Accept-Encoding` exclusion above -- CloudFront owns the header.
+  #
+  # It owns it because it USES it. A POST to a Lambda Function URL behind OAC
+  # does require the viewer to send the sigv4 payload hash (the client does,
+  # via `payloadSha256Hex` at each fetch site, #590), but CloudFront reads it
+  # off the viewer request itself and folds it into the signature. Forwarding
+  # is neither needed nor permitted.
+  #
+  # The trap this comment exists for: a POST that omits the header gets a 403
+  # from the Function URL, which the distribution's `403 -> /200.html` mapping
+  # turns into `200 text/html`. That looks exactly like a broken origin, and a
+  # hand-rolled curl omitting the header reproduces it perfectly. It is a
+  # malformed request, not an outage -- send the header and the same path
+  # answers 401. Adding the header here was tried on 2026-09-18 and CloudFront
+  # refused it.
   headers_config {
     header_behavior = "whitelist"
     headers {
@@ -1784,7 +1793,6 @@ resource "aws_cloudfront_origin_request_policy" "lambda" {
         "content-type",
         "accept",
         "x-supabase-authorization",
-        "x-amz-content-sha256",
       ]
     }
   }
@@ -1997,14 +2005,10 @@ resource "aws_cloudfront_origin_request_policy" "generate_route" {
   name = "${local.resource_prefix}-generate-route-origin"
   cookies_config { cookie_behavior = "none" }
   query_strings_config { query_string_behavior = "none" }
-  # `x-amz-content-sha256`: /api/routes/generate is a POST, so the viewer's
-  # sigv4 payload hash has to reach the origin or OAC 403s it. Same reason as
-  # the `lambda` policy above. The osrm-proxy policy below is GET-only and so
-  # needs no such entry.
   headers_config {
     header_behavior = "whitelist"
     headers {
-      items = ["content-type", "accept", "x-supabase-authorization", "x-amz-content-sha256"]
+      items = ["content-type", "accept", "x-supabase-authorization"]
     }
   }
 }

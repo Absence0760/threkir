@@ -603,6 +603,32 @@ None of this sends in prod until an operator:
    the Threkir mark next to `noreply@threkir.com` instead of a generic letter
    avatar. See § Sender brand logo (BIMI) below for the two fail-closed gates.
 
+## Header mark (the logo inside the message)
+
+Both templates — the Go worker's `renderHTMLBody` and `auth-email`'s
+`renderAuthEmail` — open with the app mark beside the wordmark on the teal
+bar. This is separate from BIMI below: BIMI is the avatar the *inbox* draws
+next to the sender, this is the logo *inside* the message. They are the same
+mark by design, so the two agree once BIMI is honoured.
+
+- **Asset** — `assets/email-logo.svg` (source, gradient pinned by
+  `brand_icon_color_guard`) rendered to `apps/web/static/email-logo.png`
+  (96x96, 3x the 32px display size) by `assets/gen-email-logo.sh`. Served at
+  `https://threkir.com/email-logo.png` off the apex CloudFront distribution.
+  Email clients can't display an SVG, so only the PNG ships.
+- **Base URL** — the worker resolves it against `APP_BASE_URL`, `auth-email`
+  against the GoTrue **Site URL** (not `SUPABASE_URL`, which is the
+  Docker-internal origin under the local CLI). Unset → the wordmark renders
+  alone rather than a broken image, which is also what an image-blocking
+  client shows.
+- **`alt` is empty on purpose.** The wordmark beside it is real text; a
+  populated alt makes a screen reader announce the brand twice.
+- **Don't add an anchor above the CTA.** `tests-e2e/fixtures/mailpit.ts`'s
+  `extractLink` reads the first anchor href to find the action link — it used
+  to read the first URL, which the mark's `<img src>` broke. An image is not
+  an anchor, so the mark is safe; a second link would not be. See
+  [decisions.md § 1642](../architecture/decisions.md).
+
 ## Sender brand logo (BIMI)
 
 Mail from `noreply@threkir.com` (both the Go worker's product mail and the
@@ -652,8 +678,10 @@ The code side is built and committed:
 
 ## Where the code lives
 
+- Brand mark: `assets/email-logo.svg` + `assets/gen-email-logo.sh` →
+  `apps/web/static/email-logo.png` (§ Header mark above).
 - Worker: `apps/job_worker/internal/` — `mailer.go` (transport + HTML/text
-  render incl. `renderWeeklyDigest`; also `importantKinds` / `inAppOnlyKinds` /
+  render incl. `renderWeeklyDigest`, `renderBrandLockup` + `emailLogoURL`; also `importantKinds` / `inAppOnlyKinds` /
   `kindMutePrefKey` + `pathForKind`), `email_i18n.go` (catalogue),
   `handler_notification_email.go`, `handler_lifecycle_email.go`,
   `handler_safety_email.go`. Data-export-ready: the announcement hook is

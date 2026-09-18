@@ -650,11 +650,11 @@ The reachability contract for the `/settings/preferences` split (issue #905, dec
 
 ### `apps/web/src/lib/control_hints_guard.test.ts` — 3 tests
 
-Every control on a swept surface carries a one-line explanation (#905 workstream 5): one declared test run per surface that each `<select>`, `<input>` and toggle group has an `aria-describedby` naming an element that exists, or, for a checkbox, a `.hint` / `.field-hint` inside its label; every rendered hint key exists in `en`; and the hint copy spells out the abbreviations the labels print (HR, bpm, kg, lbs, km/h, mph, cm, AI, ml, g). `SURFACES` is the sweep's boundary — the six preference pages from #919 plus the plan-and-run path (`/plans/new`, `PlanEditor`, `PlanMetaEditor`, `RunEditor`, decisions § 1651). A `<textarea>` is deliberately not a control here. Was `src/routes/settings/prefs_hints_guard.test.ts`.
+Every control on a swept surface carries a one-line explanation (#905 workstream 5): one declared test run per surface that each `<select>`, `<input>` and toggle group has an `aria-describedby` naming an element that exists, or, for a checkbox, a `.hint` / `.field-hint` inside its label; every rendered hint key exists in `en`; and the hint copy spells out the abbreviations the labels print (HR, bpm, kg, lbs, km/h, mph, cm, AI, ml, g). `SURFACES` is the sweep's boundary, and since decisions § 1657 it names every surface the sweep set out to cover — the six preference pages from #919, the plan-and-run path from § 1651, the five creator editors, the five gym / session editors, `/nutrition/targets`, `/segments`, `/races`, `/routes/new` and `/onboarding`. A `<textarea>` is deliberately not a control here. Was `src/routes/settings/prefs_hints_guard.test.ts`.
 
-### `apps/web/tests-e2e/cross-cutting/control-hints.spec.ts` — 3 tests
+### `apps/web/tests-e2e/cross-cutting/control-hints.spec.ts` — 17 tests
 
-The browser half of the guard above: walks the rendered DOM of `/plans/new`, `/runs/new` and the Edit-plan dialog, resolves each control's `aria-describedby` (or a checkbox's in-label hint) and fails when it reads back as empty. The source scan can only see that the id exists — a hint behind an `{#if}` that never opens, or a catalogue key resolving to empty, passes it. The control list comes from the DOM, not a list in the spec.
+The browser half of the guard above: walks the rendered DOM of every swept surface it can reach signed in — the plan-and-run path, the five creator editors, the five gym / session editors, the race and segment filters, `/nutrition/targets` and each step of `/onboarding` — resolves each control's `aria-describedby` (or a checkbox's in-label hint) and fails when it reads back as empty. The source scan can only see that the id exists; a hint behind an `{#if}` that never opens, or a catalogue key resolving to empty, passes it. Several surfaces are read in more than one state, because neither state renders the other's fields: the event editor as a group run and as a class, the routine editor under both progression schemes that carry their own fields, the workout editor as repeats and as one steady effort. The control list comes from the DOM, not a list in the spec.
 
 ### `apps/web/src/lib/routes/privacy.test.ts` — 10 tests
 
@@ -1140,7 +1140,7 @@ Run the pure-helper slices with `cd apps/backend && deno test --no-check supabas
 
 The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets to drive and are exercised manually only — see [apps/backend/CLAUDE.md § Testing without real credentials](../../apps/backend/CLAUDE.md#testing-without-real-credentials).
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 1,895 declared tests across 503 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 1,909 declared tests across 503 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 

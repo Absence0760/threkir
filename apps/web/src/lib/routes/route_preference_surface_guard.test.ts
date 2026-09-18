@@ -76,8 +76,16 @@ test('each option states its hint in visible text, not in a tooltip', () => {
 	assert.doesNotMatch(group, /title=/, 'a preference hint must not live in a tooltip');
 	assert.equal(
 		(group.match(/class="pref-hint"/g) ?? []).length,
-		ROUTE_PREFERENCES.length,
-		'every preference (not the opt-out) carries a visible hint',
+		ROUTE_PREFERENCES.length + 1,
+		'every preference AND the opt-out carries a visible hint',
+	);
+	// The hint describes the option, so it sits outside the <label> and the
+	// radio points at it — inside, it would become part of the accessible
+	// name rather than a description (decisions § 1657).
+	assert.doesNotMatch(
+		group,
+		/<label\b[^>]*>(?:(?!<\/label>)[\s\S])*class="pref-hint"/,
+		'a preference hint must be a description, not part of the option name',
 	);
 });
 

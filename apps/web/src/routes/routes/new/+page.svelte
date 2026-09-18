@@ -774,11 +774,28 @@
 					<span class="time-value">{estimatedTime}</span>
 					<div class="pace-input">
 						<span class="pace-label">{m('routeNew.paceAt')}</span>
-						<input type="number" min="2" max="15" bind:value={paceMin} class="pace-num" aria-label={m('routeNew.paceMinutesLabel')} />
+						<input
+							type="number"
+							min="2"
+							max="15"
+							bind:value={paceMin}
+							class="pace-num"
+							aria-label={m('routeNew.paceMinutesLabel')}
+							aria-describedby="route-pace-hint"
+						/>
 						<span>:</span>
-						<input type="number" min="0" max="59" bind:value={paceSec} class="pace-num" aria-label={m('routeNew.paceSecondsLabel')} />
+						<input
+							type="number"
+							min="0"
+							max="59"
+							bind:value={paceSec}
+							class="pace-num"
+							aria-label={m('routeNew.paceSecondsLabel')}
+							aria-describedby="route-pace-hint"
+						/>
 						<span class="pace-label">/{unitLabel}</span>
 					</div>
+					<p class="builder-hint" id="route-pace-hint">{m('routeNew.paceEstimateHint')}</p>
 				</div>
 			{/if}
 
@@ -878,7 +895,7 @@
 				<div class="target-panel">
 					<div class="ai-request">
 						<span class="section-label">{m('routeNew.aiRequestLabel')}</span>
-						<p class="ai-request-hint">{m('routeNew.aiRequestHint')}</p>
+						<p class="ai-request-hint" id="route-ai-request-hint">{m('routeNew.aiRequestHint')}</p>
 						<form
 							class="ai-request-form"
 							onsubmit={(e) => { e.preventDefault(); handleNlRequest(); }}
@@ -890,6 +907,7 @@
 								placeholder={m('routeNew.aiRequestPlaceholder')}
 								aria-label={m('routeNew.aiRequestLabel')}
 								disabled={nlBusy}
+								aria-describedby="route-ai-request-hint"
 							/>
 							<button
 								type="submit"
@@ -954,10 +972,27 @@
 					</div>
 					<!-- Keyboard alternative to map-tap (WCAG 2.1.1). -->
 					<form class="coord-entry" onsubmit={(e) => { e.preventDefault(); applyCoords('start'); }}>
-						<input class="coord-input" type="text" inputmode="decimal" bind:value={startLatInput} aria-label={m('routeNew.startLatitude')} placeholder={m('routeNew.latPlaceholder')} />
-						<input class="coord-input" type="text" inputmode="decimal" bind:value={startLngInput} aria-label={m('routeNew.startLongitude')} placeholder={m('routeNew.lngPlaceholder')} />
+						<input
+							class="coord-input"
+							type="text"
+							inputmode="decimal"
+							bind:value={startLatInput}
+							aria-label={m('routeNew.startLatitude')}
+							placeholder={m('routeNew.latPlaceholder')}
+							aria-describedby="route-start-coord-hint"
+						/>
+						<input
+							class="coord-input"
+							type="text"
+							inputmode="decimal"
+							bind:value={startLngInput}
+							aria-label={m('routeNew.startLongitude')}
+							placeholder={m('routeNew.lngPlaceholder')}
+							aria-describedby="route-start-coord-hint"
+						/>
 						<button type="submit" class="btn btn-sm btn-secondary">{m('routeNew.setStart')}</button>
 					</form>
+					<p class="builder-hint" id="route-start-coord-hint">{m('routeNew.startCoordHint')}</p>
 					{#if startCoordError}
 						<p class="coord-error" role="alert">{startCoordError}</p>
 					{/if}
@@ -983,10 +1018,27 @@
 					</div>
 					<!-- Keyboard alternative to map-tap (WCAG 2.1.1). -->
 					<form class="coord-entry" onsubmit={(e) => { e.preventDefault(); applyCoords('end'); }}>
-						<input class="coord-input" type="text" inputmode="decimal" bind:value={endLatInput} aria-label={m('routeNew.endLatitude')} placeholder={m('routeNew.latPlaceholder')} />
-						<input class="coord-input" type="text" inputmode="decimal" bind:value={endLngInput} aria-label={m('routeNew.endLongitude')} placeholder={m('routeNew.lngPlaceholder')} />
+						<input
+							class="coord-input"
+							type="text"
+							inputmode="decimal"
+							bind:value={endLatInput}
+							aria-label={m('routeNew.endLatitude')}
+							placeholder={m('routeNew.latPlaceholder')}
+							aria-describedby="route-end-coord-hint"
+						/>
+						<input
+							class="coord-input"
+							type="text"
+							inputmode="decimal"
+							bind:value={endLngInput}
+							aria-label={m('routeNew.endLongitude')}
+							placeholder={m('routeNew.lngPlaceholder')}
+							aria-describedby="route-end-coord-hint"
+						/>
 						<button type="submit" class="btn btn-sm btn-secondary">{m('routeNew.setEnd')}</button>
 					</form>
+					<p class="builder-hint" id="route-end-coord-hint">{m('routeNew.endCoordHint')}</p>
 					{#if endCoordError}
 						<p class="coord-error" role="alert">{endCoordError}</p>
 					{/if}
@@ -1006,6 +1058,7 @@
 							class="target-slider"
 							aria-labelledby="route-target-distance-label"
 							aria-valuetext="{targetDisplayValue.toFixed(1)} {unitLabel}"
+							aria-describedby="route-target-distance-hint"
 						/>
 						<span class="target-value">{targetDisplayValue.toFixed(1)} {unitLabel}</span>
 					</div>
@@ -1019,8 +1072,12 @@
 						<button onclick={() => setTargetFromKm(21.1)}>Half</button>
 						<button onclick={() => setTargetFromKm(42.2)}>Full</button>
 					</div>
+					<p class="builder-hint" id="route-target-distance-hint">
+						{m('routeNew.targetDistanceHint')}
+					</p>
 					<span class="section-label" id="route-preference-label">{m('routeNew.preferenceLabel')}</span>
-					<div class="pref-group" role="radiogroup" aria-labelledby="route-preference-label">
+					<p class="builder-hint" id="route-preference-hint">{m('routeNew.preferenceHint')}</p>
+					<div class="pref-group" role="radiogroup" aria-labelledby="route-preference-label" aria-describedby="route-preference-hint">
 						<label class="pref-option">
 							<input
 								type="radio"
@@ -1028,9 +1085,11 @@
 								checked={preference === null}
 								onchange={() => (preference = null)}
 								data-testid="route-pref-none"
+								aria-describedby="route-pref-none-hint"
 							/>
 							<span>{m('routeNew.preferenceNone')}</span>
 						</label>
+						<span class="pref-hint" id="route-pref-none-hint">{m('routeNew.preferenceNoneHint')}</span>
 						<label class="pref-option">
 							<input
 								type="radio"
@@ -1038,10 +1097,11 @@
 								checked={preference === 'quiet'}
 								onchange={() => (preference = 'quiet')}
 								data-testid="route-pref-quiet"
+								aria-describedby="route-pref-quiet-hint"
 							/>
 							<span>{m('routeNew.quietRoads')}</span>
-							<span class="pref-hint">{m('routeNew.quietRoadsHint')}</span>
 						</label>
+						<span class="pref-hint" id="route-pref-quiet-hint">{m('routeNew.quietRoadsHint')}</span>
 						<label class="pref-option">
 							<input
 								type="radio"
@@ -1049,10 +1109,11 @@
 								checked={preference === 'scenic'}
 								onchange={() => (preference = 'scenic')}
 								data-testid="route-pref-scenic"
+								aria-describedby="route-pref-scenic-hint"
 							/>
 							<span>{m('routeNew.preferenceScenic')}</span>
-							<span class="pref-hint">{m('routeNew.preferenceScenicHint')}</span>
 						</label>
+						<span class="pref-hint" id="route-pref-scenic-hint">{m('routeNew.preferenceScenicHint')}</span>
 						<label class="pref-option">
 							<input
 								type="radio"
@@ -1060,10 +1121,11 @@
 								checked={preference === 'cul_de_sac'}
 								onchange={() => (preference = 'cul_de_sac')}
 								data-testid="route-pref-cul-de-sac"
+								aria-describedby="route-pref-cul-de-sac-hint"
 							/>
 							<span>{m('routeNew.preferenceCulDeSac')}</span>
-							<span class="pref-hint">{m('routeNew.preferenceCulDeSacHint')}</span>
 						</label>
+						<span class="pref-hint" id="route-pref-cul-de-sac-hint">{m('routeNew.preferenceCulDeSacHint')}</span>
 					</div>
 					{#if builderBusy}
 						<button class="btn btn-outline" onclick={() => builder?.cancelGeneration()}>
@@ -1219,15 +1281,19 @@
 		class="save-form"
 		onsubmit={(e) => { e.preventDefault(); handleSaveRoute(); }}
 	>
-		<label class="field">
-			<span class="section-label">{m('routeNew.nameLabel')}</span>
-			<input
-				type="text"
-				placeholder={m('routeNew.namePlaceholder')}
-				bind:value={routeName}
-				required
-			/>
-		</label>
+		<div class="field">
+			<label>
+				<span class="section-label">{m('routeNew.nameLabel')}</span>
+				<input
+					type="text"
+					placeholder={m('routeNew.namePlaceholder')}
+					bind:value={routeName}
+					required
+					aria-describedby="route-name-hint"
+				/>
+			</label>
+			<span class="save-hint" id="route-name-hint">{m('routeNew.nameHint')}</span>
+		</div>
 
 		<label class="field">
 			<span class="section-label">{m('routeNew.descriptionLabel')} <span class="label-hint">{m('routeNew.optionalHint')}</span></span>
@@ -1257,7 +1323,7 @@
 			<input type="checkbox" bind:checked={isPublic} />
 			<span>
 				<strong>{m('routeNew.public')}</strong>
-				<span class="visibility-hint">{m('routeNew.publicHint')}</span>
+				<span class="hint">{m('routeNew.publicHint')}</span>
 			</span>
 		</label>
 
@@ -1802,10 +1868,15 @@
 		width: auto;
 		accent-color: var(--color-primary);
 	}
+	/* The hint is a SIBLING of its option, not a cell inside it: an
+	   explanation inside the <label> would join the radio's accessible name
+	   instead of describing it (decisions § 1657). */
 	.pref-hint {
-		grid-column: 2;
 		font-size: 0.72rem;
+		line-height: 1.45;
 		color: var(--color-text-secondary);
+		padding-inline-start: 1.5rem;
+		margin-top: calc(var(--space-xs) * -1 + 0.1rem);
 	}
 
 	.pref-not-applied {
@@ -2179,6 +2250,21 @@
 		flex-direction: column;
 		gap: var(--space-md);
 	}
+	.field label {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xs);
+	}
+	.save-hint {
+		font-size: 0.78rem;
+		color: var(--color-text-secondary);
+	}
+	.builder-hint {
+		margin: var(--space-2xs) 0 0;
+		font-size: 0.72rem;
+		line-height: 1.45;
+		color: var(--color-text-secondary);
+	}
 	.field {
 		display: flex;
 		flex-direction: column;
@@ -2223,7 +2309,7 @@
 		display: block;
 		font-size: 0.9rem;
 	}
-	.visibility-hint {
+	.visibility .hint {
 		font-size: 0.78rem;
 		color: var(--color-text-secondary);
 	}

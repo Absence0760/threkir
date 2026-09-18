@@ -124,16 +124,20 @@
 <UnsavedChangesGuard isDirty={dirty.isDirty} />
 
 <form onsubmit={submit} class="editor-form">
-	<label>
-		<span>{m('clubEditor.name')}</span>
-		<input
-			type="text"
-			bind:value={name}
-			placeholder={m('clubEditor.namePlaceholder')}
-			required
-			maxlength={TEXT_LIMITS.clubName}
-		/>
-	</label>
+	<div class="field">
+		<label>
+			<span>{m('clubEditor.name')}</span>
+			<input
+				type="text"
+				bind:value={name}
+				placeholder={m('clubEditor.namePlaceholder')}
+				required
+				maxlength={TEXT_LIMITS.clubName}
+				aria-describedby="club-name-hint"
+			/>
+		</label>
+		<span class="field-hint" id="club-name-hint">{m('clubEditor.nameHint')}</span>
+	</div>
 
 	<label>
 		<span>{m('clubEditor.description')} <span class="optional">{m('clubEditor.optional')}</span></span>
@@ -145,95 +149,128 @@
 		></textarea>
 	</label>
 
-	<label>
-		<span>{m('clubEditor.location')} <span class="optional">{m('clubEditor.optional')}</span></span>
-		<input
-			type="text"
-			bind:value={location}
-			placeholder={m('clubEditor.locationPlaceholder')}
-			maxlength={TEXT_LIMITS.clubLocationLabel}
-		/>
-	</label>
+	<div class="field">
+		<label>
+			<span>{m('clubEditor.location')} <span class="optional">{m('clubEditor.optional')}</span></span>
+			<input
+				type="text"
+				bind:value={location}
+				placeholder={m('clubEditor.locationPlaceholder')}
+				maxlength={TEXT_LIMITS.clubLocationLabel}
+				aria-describedby="club-location-hint"
+			/>
+		</label>
+		<span class="field-hint" id="club-location-hint">{m('clubEditor.locationHint')}</span>
+	</div>
 
 	<fieldset>
 		<legend>{m('clubEditor.links')} <span class="optional">{m('clubEditor.optional')}</span></legend>
 		<label class="link-field">
 			<span>{m('clubEditor.website')}</span>
-			<input type="url" bind:value={websiteUrl} placeholder="https://example.com" maxlength="500" inputmode="url" />
+			<input
+				type="url"
+				bind:value={websiteUrl}
+				placeholder="https://example.com"
+				maxlength="500"
+				inputmode="url"
+				aria-describedby="club-links-hint"
+			/>
 		</label>
 		<label class="link-field">
 			<span>{m('clubEditor.instagram')}</span>
-			<input type="url" bind:value={instagramUrl} placeholder="https://instagram.com/yourclub" maxlength="500" inputmode="url" />
+			<input
+				type="url"
+				bind:value={instagramUrl}
+				placeholder="https://instagram.com/yourclub"
+				maxlength="500"
+				inputmode="url"
+				aria-describedby="club-links-hint"
+			/>
 		</label>
 		<label class="link-field">
 			<span>{m('clubEditor.strava')}</span>
-			<input type="url" bind:value={stravaUrl} placeholder="https://strava.com/clubs/yourclub" maxlength="500" inputmode="url" />
+			<input
+				type="url"
+				bind:value={stravaUrl}
+				placeholder="https://strava.com/clubs/yourclub"
+				maxlength="500"
+				inputmode="url"
+				aria-describedby="club-links-hint"
+			/>
 		</label>
 		<label class="link-field">
 			<span>{m('clubEditor.facebook')}</span>
-			<input type="url" bind:value={facebookUrl} placeholder="https://facebook.com/yourclub" maxlength="500" inputmode="url" />
+			<input
+				type="url"
+				bind:value={facebookUrl}
+				placeholder="https://facebook.com/yourclub"
+				maxlength="500"
+				inputmode="url"
+				aria-describedby="club-links-hint"
+			/>
 		</label>
+		<span class="hint" id="club-links-hint">{m('clubEditor.linksHint')}</span>
 	</fieldset>
 
 	<fieldset>
 		<legend>{m('clubEditor.visibility')}</legend>
-		<label class="radio">
-			<input
-				type="radio"
-				name="vis"
-				checked={visibility === 'public'}
-				onchange={() => (visibility = 'public')}
-			/>
-			<span>
-				<strong>{m('clubEditor.public')}</strong>
-				<span class="hint">{m('clubEditor.publicHint')}</span>
-			</span>
-		</label>
-		<label class="radio">
-			<input
-				type="radio"
-				name="vis"
-				checked={visibility === 'private'}
-				onchange={() => (visibility = 'private')}
-			/>
-			<span>
-				<strong>{m('clubEditor.private')}</strong>
-				<span class="hint">
-					{m('clubEditor.privateHint')}
-				</span>
-			</span>
-		</label>
+		<div class="radio-field">
+			<label class="radio">
+				<input
+					type="radio"
+					name="vis"
+					checked={visibility === 'public'}
+					onchange={() => (visibility = 'public')}
+					aria-describedby="club-vis-public-hint"
+				/>
+				<span><strong>{m('clubEditor.public')}</strong></span>
+			</label>
+			<span class="hint" id="club-vis-public-hint">{m('clubEditor.publicHint')}</span>
+		</div>
+		<div class="radio-field">
+			<label class="radio">
+				<input
+					type="radio"
+					name="vis"
+					checked={visibility === 'private'}
+					onchange={() => (visibility = 'private')}
+					aria-describedby="club-vis-private-hint"
+				/>
+				<span><strong>{m('clubEditor.private')}</strong></span>
+			</label>
+			<span class="hint" id="club-vis-private-hint">{m('clubEditor.privateHint')}</span>
+		</div>
 	</fieldset>
 
 	{#if visibility === 'public' && !existing}
 		<fieldset>
 			<legend>{m('clubEditor.whoCanJoin')}</legend>
-			<label class="radio">
-				<input
-					type="radio"
-					name="policy"
-					checked={joinPolicy === 'open'}
-					onchange={() => (joinPolicy = 'open')}
-				/>
-				<span>
-					<strong>{joinPolicyLabel('open')}</strong>
-					<span class="hint">{m('clubEditor.anyoneHint')}</span>
-				</span>
-			</label>
-			<label class="radio">
-				<input
-					type="radio"
-					name="policy"
-					checked={joinPolicy === 'request'}
-					onchange={() => (joinPolicy = 'request')}
-				/>
-				<span>
-					<strong>{joinPolicyLabel('request')}</strong>
-					<span class="hint">
-						{m('clubEditor.approvalRequiredHint')}
-					</span>
-				</span>
-			</label>
+			<div class="radio-field">
+				<label class="radio">
+					<input
+						type="radio"
+						name="policy"
+						checked={joinPolicy === 'open'}
+						onchange={() => (joinPolicy = 'open')}
+						aria-describedby="club-policy-open-hint"
+					/>
+					<span><strong>{joinPolicyLabel('open')}</strong></span>
+				</label>
+				<span class="hint" id="club-policy-open-hint">{m('clubEditor.anyoneHint')}</span>
+			</div>
+			<div class="radio-field">
+				<label class="radio">
+					<input
+						type="radio"
+						name="policy"
+						checked={joinPolicy === 'request'}
+						onchange={() => (joinPolicy = 'request')}
+						aria-describedby="club-policy-request-hint"
+					/>
+					<span><strong>{joinPolicyLabel('request')}</strong></span>
+				</label>
+				<span class="hint" id="club-policy-request-hint">{m('clubEditor.approvalRequiredHint')}</span>
+			</div>
 		</fieldset>
 	{/if}
 
@@ -241,7 +278,8 @@
 		<label class="toggle-row">
 			<input type="checkbox" bind:checked={requireWaiver} />
 			<span>
-				{m('clubEditor.waiverLabel')}
+				<strong>{m('clubEditor.waiverLabel')}</strong>
+				<span class="hint">{m('clubEditor.waiverHint')}</span>
 			</span>
 		</label>
 	{/if}

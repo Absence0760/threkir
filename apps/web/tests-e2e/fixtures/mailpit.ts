@@ -68,15 +68,28 @@ export async function waitForEmail(opts: {
 }
 
 /**
- * Pulls the first http(s) URL out of a Mailpit message. Supabase
- * recovery / magic-link / signup-confirmation emails embed the action
- * URL as the only link, so a naive first-match is reliable.
+ * Pulls the action URL out of a Mailpit message.
+ *
+ * This used to take the first http(s) URL in the message, on the premise
+ * that the action link was the only one. That stopped being true when the
+ * header gained a brand mark: an `<img src>` now precedes the CTA in the
+ * HTML part, and a first-match would hand back the logo. The CTA is the
+ * only anchor in an auth email, so the anchor is the unambiguous target;
+ * the plain-text part (which carries no image) is the fallback.
  */
 export function extractLink(msg: MailpitMessage): string {
-	const source = msg.HTML || msg.Text;
+	const html = msg.HTML;
+	const anchor = html.match(/<a\b[^>]*\bhref=["'](https?:\/\/[^"']+)["']/i);
+	if (anchor) return decode(anchor[1]);
+
 	// Match an absolute URL up to the first quote / whitespace / closing
 	// angle bracket. The URL may contain &amp; in HTML; decode it.
+	const source = msg.Text || html;
 	const match = source.match(/https?:\/\/[^\s"'<>]+/);
 	if (!match) throw new Error('mailpit extractLink: no URL found in message');
-	return match[0].replace(/&amp;/g, '&');
+	return decode(match[0]);
+}
+
+function decode(url: string): string {
+	return url.replace(/&amp;/g, '&');
 }

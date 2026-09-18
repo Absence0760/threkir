@@ -592,3 +592,73 @@ func TestExtractAddr(t *testing.T) {
 		}
 	}
 }
+
+// The header lockup is the one piece of every email a recipient sees before
+// reading a word of it, and it has three states worth pinning: the mark
+// resolved against the deployment's base URL, the wordmark alone when no base
+// is configured, and an alt that stays empty so the brand isn't announced
+// twice.
+func TestRenderBrandLockup_MarkResolvesAgainstBase(t *testing.T) {
+	got := renderBrandLockup(emailLogoURL("https://threkir.com"))
+
+	if !strings.Contains(got, `src="https://threkir.com/email-logo.png"`) {
+		t.Errorf("logo src missing or unresolved: %s", got)
+	}
+	if !strings.Contains(got, `alt=""`) {
+		t.Errorf("mark must carry an empty alt beside the wordmark: %s", got)
+	}
+	if !strings.Contains(got, brandName) {
+		t.Errorf("wordmark missing: %s", got)
+	}
+	if !strings.Contains(got, `width="32" height="32"`) {
+		t.Errorf("dimensions must be attributes, not CSS — Outlook ignores the CSS: %s", got)
+	}
+}
+
+func TestEmailLogoURL_TrailingSlashAndEmptyBase(t *testing.T) {
+	if got := emailLogoURL("https://threkir.com/"); got != "https://threkir.com/email-logo.png" {
+		t.Errorf("trailing slash not trimmed: %q", got)
+	}
+	if got := emailLogoURL(""); got != "" {
+		t.Errorf("empty base must yield no URL, got %q", got)
+	}
+}
+
+// A worker with no APP_BASE_URL must still send a coherent email rather than
+// one with a broken image at the top. This is the same shape every client
+// that blocks remote images renders.
+func TestRenderBrandLockup_NoBaseFallsBackToWordmark(t *testing.T) {
+	got := renderBrandLockup("")
+
+	if strings.Contains(got, "<img") {
+		t.Errorf("no base URL must not emit an image: %s", got)
+	}
+	if !strings.Contains(got, brandName) {
+		t.Errorf("wordmark must survive the fallback: %s", got)
+	}
+}
+
+// Every template shares one layout, so the mark reaching the rendered HTML is
+// a property of composeEmail, not of any one template.
+func TestRenderedEmails_CarryTheMark(t *testing.T) {
+	const base = "https://threkir.com"
+	want := `src="` + base + `/email-logo.png"`
+
+	notif := renderNotificationEmail(NotificationRow{Kind: "club_invite"}, base, "en")
+	if !strings.Contains(notif.HTML, want) {
+		t.Error("notification email is missing the header mark")
+	}
+
+	welcome, ok := renderLifecycleEmail("welcome", base, "en")
+	if !ok {
+		t.Fatal("welcome template did not render")
+	}
+	if !strings.Contains(welcome.HTML, want) {
+		t.Error("lifecycle email is missing the header mark")
+	}
+
+	// The text part must not grow a URL nobody can click.
+	if strings.Contains(welcome.Body, "email-logo.png") {
+		t.Error("the logo leaked into the plain-text part")
+	}
+}

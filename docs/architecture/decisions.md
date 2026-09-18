@@ -29283,7 +29283,17 @@ Issue #905 measured the page at 1,657 lines and 32 settings, the one junk drawer
 
 `scripts/check_conflict_markers.mjs` reads every tracked text file for a line starting with one of the four seven-character runs followed by a space or the end of the line, which is git's own `is_conflict_marker` rule. It reads the whole tree rather than the diff, so a marker already on `main` is found the first time it runs; `git diff --check` would have covered only new ones and also reports trailing whitespace, which this tree has plenty of. It lives in the ungated `parity-matrix` job, because a docs-only diff is the one most likely to carry a marker and every code-gated job skips it. The cost is that a setext heading underlined with exactly seven `=` is refused; the tree has none, and ATX headings are the house form.
 
-## 1642. The History Log FAB stands down inside the Fitness hub, because there the centre Log button is already on screen
+## 1642. The email header carries the app mark, and the e2e fixture stopped keying on "the first URL"
+
+Every transactional email — the Go worker's product mail and the `auth-email` GoTrue leg alike — led with the word "Threkir" as plain white text on the teal bar. Both templates now lead with the rounded-square app mark beside it, rendered from `assets/email-logo.svg` by `assets/gen-email-logo.sh` into `apps/web/static/email-logo.png` and served off the apex.
+
+The mark is the **full-colour ember-to-magenta square**, not a white monochrome glyph, even though it sits on a teal bar. That is deliberate: the inbox already shows a sender avatar beside the message, and once BIMI is honoured (§ 211's record, gated on DMARC enforcement) that avatar is this same square. A mono glyph in the header would have meant the logo inside the mail and the logo above it were different marks. The bar stays `#2C5F6E` because it tracks `--color-primary`, and the asset's corners stay transparent rather than filled with that teal — the bar colour is a template concern, and baking it into a PNG would have rotted silently the first time the colour moved.
+
+`alt` on the mark is **empty**, which looks like a missing-alt bug and is the opposite. The wordmark sits immediately beside it in real text; a populated alt makes a screen reader announce the brand twice. The same choice makes the image-blocked rendering correct for free — the wordmark is text, so a client that refuses remote images shows exactly what the no-`APP_BASE_URL` fallback shows.
+
+The part worth recording is what it broke. `tests-e2e/fixtures/mailpit.ts`'s `extractLink` pulled the **first http(s) URL** out of a message, and its docstring justified that as safe because "the action URL is the only link". Adding an `<img src>` above the CTA falsifies that premise, and the failure would not have looked like a template bug: every auth e2e would have navigated to a 96x96 PNG. `auth-email`'s own test hid it, because it passed no site URL and so rendered no image — it asserted the first-URL property while testing the one configuration where the property could not fail. The fixture now reads the first **anchor href** (the CTA is the only anchor, and an image is not one), and that test renders *with* a site URL and asserts the mark precedes the CTA, so it proves the ordering it claims rather than avoiding it.
+
+## 1643. The History Log FAB stands down inside the Fitness hub, because there the centre Log button is already on screen
 
 [§ 197](#197-the-mobile-centre-log-fab-fans-a-speed-dial-above-the-button-the-history-log-fab-keeps-the-bottom-sheet) settled which *presentation* each Log affordance uses — the centre nav FAB fans a speed-dial, the History FAB keeps `showLogSheet` — and closed with "two presentations of the same `LogAction` picker is intentional, not drift." That reasoning is about form, and it holds. What it did not consider is **co-visibility**: inside the Fitness hub, `RunsScreen`'s FAB and the shell's centre Log button are on screen at the same time, roughly one row apart, and they open the identical picker over the identical `orderedLogActions`. A person reading that screen has to work out whether the two buttons differ. They do not.
 
@@ -29294,7 +29304,7 @@ Two things fell out of the same round that are worth recording beside it, becaus
 **Keeping the hub's tabs alive made a constant `Hero` tag illegal.** `RunsScreen` and `GymScreen` now mix in `AutomaticKeepAliveClientMixin` so a tab switch stops destroying a screen and refetching it from scratch (the hub's `TabBarView` is a plain `PageView` with zero cache extent, so every switch was a full teardown — the single largest source of the "clunky" report in [#921](https://github.com/Absence0760/threkir/issues/921)). The moment both hub mounts of `RunsScreen` are alive at once, the constant `heroTag: 'history_add_fab'` puts two heroes with one tag in the same `Navigator` subtree, which is a framework assertion, not a cosmetic clash — four existing tests caught it. Hero tags on the affected FABs are now per-mount `ObjectKey(this)`. The shell's `_pageGym` and the hub's Gym tab are alive together for the same reason, so a constant tag there would have asserted too.
 
 **A failed modality read is now visible.** `_hydrateModalities` swallowed both hops, so a failed fetch silently rendered a *different surface* — timeline versus run list, different title, different actions — with nothing saying anything had gone wrong. Web had already solved this with `/history`'s `history-load-error` card. Mobile now mirrors it with one deliberate difference: with local rows on disk it keeps them and puts a retryable strip above, rather than replacing real on-device data with an error card. Substituting an error for data the device actually holds would be a worse lie than the one being corrected, and this is an offline-first surface.
-## 1643. The mobile first-run flow asks for run privacy once, offers an account at the end, and describes the location grant it actually requests
+## 1644. The mobile first-run flow asks for run privacy once, offers an account at the end, and describes the location grant it actually requests
 
 A read-only critique of the mobile first-run path (issue #921) measured ~22 interactions and one trip out of the app before a brand-new person reached the dashboard, and eleven questions asked before the app had given them anything. Four of the findings share one cause each, and the fixes are worth recording because each had an obvious cheap answer that was the wrong one.
 
@@ -29309,7 +29319,7 @@ A read-only critique of the mobile first-run path (issue #921) measured ~22 inte
 One more, smaller and in the same family: the sign-up screen's "check your email" state can now re-send, and deliberately reports nothing about the outcome. That state is also what an already-registered address sees (the #454 enumeration collapse) and GoTrue errors a signup resend for a confirmed account, so distinguishing success from failure would rebuild the oracle the collapse exists to close.
 ---
 
-## 1644. The mobile shell answers system back, and the centre Log button's tap is derived from data presence
+## 1645. The mobile shell answers system back, and the centre Log button's tap is derived from data presence
 
 **Decided (2026-09-17, mobile-only — this nav affordance has no web twin, so § 24 is untouched.)** Four defects in `home_screen.dart` + `widgets/log_speed_dial.dart`, all of them the same shape: a gesture that meant nothing, or meant two things.
 
@@ -29325,7 +29335,7 @@ One more, smaller and in the same family: the sign-up screen's "check your email
 
 **Don't re-litigate** by re-adding a `keepRunPrimary` default flip in place of the data derivation, by restoring the long-press repeat-last, or by putting a `tooltip:` back on the centre Log FAB.
 
-## 1645. The clunk round: what "a half-built workout survives" now means, and the one feature that was cut from it
+## 1646. The clunk round: what "a half-built workout survives" now means, and the one feature that was cut from it
 
 [#921](https://github.com/Absence0760/threkir/issues/921) critiqued the mobile main path across four surfaces and found the same three shapes everywhere: system back was unhandled, nothing survived being left and returned to, and "Log" named two different things. Five packages fixed them in parallel. Three things are worth recording beyond the individual diffs, because none of them is legible from one package's changes.
 

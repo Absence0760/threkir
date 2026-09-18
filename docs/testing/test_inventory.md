@@ -1136,7 +1136,7 @@ Run the pure-helper slices with `cd apps/backend && deno test --no-check supabas
 
 The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets to drive and are exercised manually only — see [apps/backend/CLAUDE.md § Testing without real credentials](../../apps/backend/CLAUDE.md#testing-without-real-credentials).
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 1,891 declared tests across 501 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 1,891 declared tests across 502 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 
@@ -1182,6 +1182,7 @@ tests-e2e/
   auth/shell.spec.ts           — AuthShell on /login, ?signup=1, /auth/reset, /auth/confirm-age, /auth/callback: one page-owned main landmark, a route home, decorative loaded art; panel copy never overlaps the art at 1440x900 or 1280x720; phone band + no sideways scroll + one-line OAuth labels under a wide-glyph stress (the page loads no text webfont, and CI's DejaVu Sans wrapped a label this host's Noto Sans fitted); reduced motion finished on first frame
   onboarding/design.spec.ts    — /onboarding on AuthShell (no writes): the named progressbar and the panel rail track the step, a build with no push key walks no notifications step (rail and count alike), a step change focuses the new question's heading (Continue and Back), each single-choice group is named by its question, reduced motion shows the new step whole on its first frame, the phone layout carries the step count with no sideways scroll
   dashboard.spec.ts            — /dashboard
+  dashboard/tap-targets.spec.ts — every icon button on /dashboard measured against the 44 px bar at 1280x720 and 375x667, through fixtures/tap-targets.ts (which comment-tap-targets.spec.ts reads too). Fails a control that misses its floor OR meets it exactly — the headroom half, see decisions § 1659 — and fails a sub-bar control that is not in the inline-disclosure registry
   feed.spec.ts                 — /feed
   coach.spec.ts                — /coach (mount, dropdowns, send → mocked SSE assistant bubble)
   live/

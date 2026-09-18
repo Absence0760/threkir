@@ -52,6 +52,12 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     /// The last accepted fix, or nil while this run has none.
     @Published var mapPosition: MiniMapPoint?
 
+    /// What the run screen says about GPS. Recomputed on the elapsed-time
+    /// tick rather than on arriving fixes, because the state it reports is
+    /// the absence of arriving fixes — a signal derived from the thing that
+    /// stopped can only report the stop by never updating again.
+    @Published private(set) var gpsBanner: GpsBannerState = .noFixYet
+
     /// The completed run data, available after stop() or recovery.
     var finishedRun: FinishedRun?
 
@@ -84,7 +90,11 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     // Wear OS's `lastLocation = null` on resume.
     var lastLocationForDistance: CLLocation?
 
-    /// `ProcessInfo.systemUptime` of the last `didUpdateLocations` of any kind.
+    /// `ProcessInfo.systemUptime` of the last fix that passed the accuracy
+    /// gate — the banner's clock. See `GpsHealth` for why it is not the same
+    /// clock the self-heal retry reads.
+    private var lastAcceptedFixUptime: TimeInterval?
+    /// Uptime of the last `didUpdateLocations` of any kind — the retry's clock.
     private var lastGpsDeliveryUptime: TimeInterval?
     /// Uptime of the last (re)start of location updates.
     private var lastGpsRetryUptime: TimeInterval?
@@ -250,7 +260,9 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             pending: WatchConnectivityManager.shared.pendingTransferURLs()
         )
 
+        lastAcceptedFixUptime = nil
         lastGpsDeliveryUptime = nil
+        gpsBanner = .noFixYet
         locationManager.requestWhenInUseAuthorization()
         locationManager.allowsBackgroundLocationUpdates = true
         startLocationUpdates()
@@ -262,6 +274,11 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             guard let self, let startDate = self.startDate else { return }
             guard self.state == .recording else { return }
             self.elapsedSeconds = Date().timeIntervalSince(startDate) - self.totalPausedInterval
+            // After the elapsed write, before anything else: the banner is an
+            // L4 disclosure about L1, and the L0 clock it rides on must be
+            // committed whatever it says. Pure value maths over a stamp the
+            // GPS delegate wrote — no framework call, nothing to fail.
+            self.refreshGpsBanner()
             // Heart-rate coverage advances on THIS clock, not on HealthKit's
             // deliveries: the gap it measures is a stream that has gone quiet,
             // and a quiet stream emits nothing to hang the measurement on.
@@ -388,7 +405,9 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         lastTooFastHaptic = nil
         lastTooSlowHaptic = nil
         lastLocationForDistance = nil
+        lastAcceptedFixUptime = nil
         lastGpsDeliveryUptime = nil
+        gpsBanner = .noFixYet
         routeNavigator = nil
         mapRoute = []
         mapTrail.reset()
@@ -483,6 +502,11 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         startLocationUpdates()
     }
 
+    func refreshGpsBanner() {
+        let age = lastAcceptedFixUptime.map { ProcessInfo.processInfo.systemUptime - $0 }
+        gpsBanner = GpsHealth.banner(lastAcceptedFixAge: age)
+    }
+
     // MARK: - CLLocationManagerDelegate
 
     /// CoreLocation reporting it cannot produce a fix. `.locationUnknown` is
@@ -554,7 +578,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         // Stamped before the accuracy gate: a delivery of 100 m fixes proves
         // the subsystem is alive, and restarting CoreLocation cannot clear a
-        // tree canopy.
+        // tree canopy. The banner reads the ACCEPTED stamp below instead,
+        // because the runner's distance is frozen either way.
         if !locations.isEmpty { lastGpsDeliveryUptime = ProcessInfo.processInfo.systemUptime }
         var newPoints: [TrackPointRecord] = []
         var lastAcceptedFix: CLLocation?
@@ -617,6 +642,10 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
                 ele: location.altitude > -999 ? location.altitude : nil,
                 ts: iso8601.string(from: location.timestamp)
             ))
+        }
+
+        if lastAcceptedFix != nil {
+            lastAcceptedFixUptime = ProcessInfo.processInfo.systemUptime
         }
 
         if !newPoints.isEmpty {

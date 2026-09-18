@@ -202,11 +202,67 @@ test('CloudFront CSP drops unsafe-eval and bounds XSS gadget surface', () => {
 	// Sentry browser SDK posts errors here — without this connect-src
 	// entry, every Sentry breadcrumb is silently CSP-blocked
 	// (regression caught by /audit/infra M2).
+	//
+	// The `de.` is the whole point of this assertion. The Sentry org is
+	// EU-region, so it ingests at `o<id>.ingest.de.sentry.io`, and a CSP
+	// host wildcard matches whole labels from the right: the narrower
+	// `*.ingest.sentry.io` this guard used to pin does NOT match that
+	// host. Pinning the US shape is what let the mismatch ship — the
+	// guard was green while the browser blocked every event, because a
+	// CSP-blocked beacon is invisible from the server. Region is
+	// immutable on a SaaS org, so if this ever needs to become the US
+	// host again, that means someone rebuilt the org.
 	assert.match(
 		csp,
-		/\*\.ingest\.sentry\.io/,
-		'CSP connect-src must include https://*.ingest.sentry.io — Sentry browser SDK posts errors there.',
+		/\*\.ingest\.de\.sentry\.io/,
+		'CSP connect-src must include https://*.ingest.de.sentry.io — the EU-region Sentry browser SDK posts errors there, and *.ingest.sentry.io does not match it.',
 	);
+});
+
+test('every POST Lambda origin forwards the sigv4 payload hash', () => {
+	// Reason: CloudFront's Lambda OAC sigv4-signs each origin request, and
+	// sigv4 covers the payload hash. CloudFront does not compute that hash,
+	// and a Lambda Function URL rejects unsigned payloads — so the VIEWER
+	// sends `x-amz-content-sha256` and the origin request policy has to
+	// forward it. Drop it from the allowlist and the Function URL answers
+	// 403 to every POST while GET keeps working, which is exactly how this
+	// hid: /api/coach and /api/routes/generate were unreachable in prod
+	// while the CDN served a 200 (the 403 -> /200.html error mapping turns
+	// the failure into an HTML page), and no test, log line or health check
+	// disagreed.
+	//
+	// #590 landed the client half — `payloadSha256Hex` at each fetch site —
+	// but not this half, so the header was computed and then dropped one hop
+	// later. Both halves are pinned now: the fetch sites below, the policies
+	// here.
+	//
+	// osrm-proxy is deliberately absent: `/api/routes/osrm/[...path]`
+	// exports GET only, so it carries no body and needs no hash.
+	const tf = read('../../infra/modules/web-stack/main.tf');
+	const policies = tfResources(tf, 'aws_cloudfront_origin_request_policy');
+	for (const label of ['lambda', 'generate_route']) {
+		const policy = policies.find((r) => r.label === label);
+		assert.ok(policy, `origin request policy "${label}" not found in main.tf`);
+		assert.match(
+			policy.body,
+			/x-amz-content-sha256/,
+			`origin request policy "${label}" must forward x-amz-content-sha256 — without it OAC signs a POST without the payload hash and the Lambda Function URL 403s every request carrying a body.`,
+		);
+	}
+
+	// The client half. If a fetch site stops sending the hash, forwarding it
+	// is moot — the origin still 403s.
+	for (const site of [
+		'src/lib/components/CoachChat.svelte',
+		'src/lib/routes/route_describe_client.ts',
+		'src/lib/routes/route_request_client.ts',
+	]) {
+		assert.match(
+			read(site),
+			/x-amz-content-sha256/,
+			`${site} POSTs to a Lambda-URL origin, so it must send x-amz-content-sha256.`,
+		);
+	}
 });
 
 test('every Function-URL Lambda reports to Sentry, and its env carries the DSN', () => {
@@ -262,7 +318,6 @@ test('every Function-URL Lambda reports to Sentry, and its env carries the DSN',
 		);
 	}
 });
-
 test('both CSP layers allow MapLibre blob: workers (worker-src)', () => {
 	// Reason: MapLibre GL spawns its tile-processing Web Worker from a
 	// blob: URL. A document must satisfy BOTH the CloudFront header CSP

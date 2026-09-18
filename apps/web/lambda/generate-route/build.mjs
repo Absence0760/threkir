@@ -31,6 +31,15 @@ await build({
 	format: 'esm',
 	outfile: resolve(distDir, 'index.mjs'),
 	external: [],
+	// The release identifies the ARTIFACT, so it is baked in here rather than
+	// read from the Lambda env at runtime. Terraform owns `environment`, so
+	// CI writing APP_RELEASE there would be reverted by the next apply, and
+	// tfvars cannot know the tag. release-web.yml passes APP_RELEASE on this
+	// bundle step; a local build leaves it unset and Sentry tags the events
+	// `dev`, which is the honest answer for a bundle built off a tag.
+	define: {
+		'process.env.APP_RELEASE': JSON.stringify(process.env.APP_RELEASE ?? 'dev'),
+	},
 	minify: true,
 	sourcemap: 'linked',
 	keepNames: true,

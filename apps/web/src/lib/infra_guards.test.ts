@@ -284,6 +284,20 @@ test('every Function-URL Lambda reports to Sentry, and its env carries the DSN',
 		);
 	}
 
+	// Every bundle bakes its own release. APP_RELEASE is compile-time, not a
+	// runtime env: esbuild substitutes `process.env.APP_RELEASE`, so a value
+	// set in the Lambda environment would be shadowed and never read. A build
+	// that forgets the define silently reports every event as `dev`, which
+	// reads as working reporting right up until someone tries to tie an issue
+	// to a deploy.
+	for (const fn of fns) {
+		assert.match(
+			read(`lambda/${fn}/build.mjs`),
+			/'process\.env\.APP_RELEASE':/,
+			`lambda/${fn}/build.mjs must define process.env.APP_RELEASE — without it every Sentry event from this function is tagged 'dev'.`,
+		);
+	}
+
 	// The terraform half. `base_lambda_env` is excluded deliberately: only
 	// the coach Lambda merges it, and all eight need the DSN, which is why
 	// sentry_env is its own local.

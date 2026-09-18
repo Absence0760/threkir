@@ -1483,6 +1483,15 @@ Every create / edit editor (`ClubEditor`, `EventEditor`, `RunEditor`, `GymEditor
 - Native checkbox / radio colour is the global `accent-color: var(--color-primary)` rule (also in `app.css`), not a per-editor declaration.
 - Dense builders (`RoutineEditor`, `SessionPlanEditor`) intentionally use the shared global `.section-label` (uppercase micro-label) for labels that double as set-grid column headers — that's a shared primitive, not duplication, and is left uppercase by design.
 
+### A control on a swept surface carries a one-line explanation
+
+The Spoken-cues block's shape — a plain line under the control saying what it *does*, not what it is called — is house style on the surfaces listed in `SURFACES` in `apps/web/src/lib/control_hints_guard.test.ts`: the six `/settings/*` preference pages, `/plans/new`, `PlanEditor`, `PlanMetaEditor` and `RunEditor` (decisions § 1640, § 1649). Adding a control to one of those fails the guard until it is explained; adding a surface to the list is how the sweep grows.
+
+- A `<select>`, an `<input>` or a toggle group points at its explanation with `aria-describedby`, so the text is a **description** and not part of the accessible name. That means the paragraph sits outside the `<label>` — wrap the pair in `<div class="field">` when the label is the container.
+- A checkbox carries the explanation inside its own label, as a `.hint` / `.field-hint`, because a checkbox's label is short enough to absorb it.
+- **Say what the control changes, or what happens on versus off.** A line that restates the label adds density, which is the problem the pattern exists to solve. Where the label plus the placeholder is already the whole story — a free-text `<textarea>` — add nothing; the guard does not scan textareas.
+- Several controls may share one paragraph when a line under each would repeat (the per-workout grid in `PlanEditor`'s week outline points every cell at the outline's own explanation).
+
 ## Web list pages — preserve scroll on back-navigation
 
 Any list page that links into a detail page (`/history`, `/routes`, `/plans`, `/clubs`, `/feed`, `/u/[id]`-style surfaces, …) must `export const snapshot` (SvelteKit's [snapshot API](https://svelte.dev/docs/kit/snapshots)) so clicking a row, then `back`, lands the user at the same scroll position they left at. Without this, the page remounts empty, SvelteKit's built-in scroll restoration runs against a 0-height body, and the user is bounced back to the top.

@@ -648,9 +648,13 @@ The pure coalescing auto-save queue every preference page shares (decisions § 1
 
 The reachability contract for the `/settings/preferences` split (issue #905, decisions § 1640). Reads `settings.md § Keys` and every settings `+page.svelte`: the registry and the declared homes name the same keys; the constants pages name keys through still spell them; every key is edited on exactly its declared page set (comments stripped); the nav and the landing page offer every split page; the landing page edits nothing; every legacy anchor lands on a page carrying that `id`; `legacyPreferencesTarget` resolves the three old anchors and nothing else (`#__proto__` included); and no link the app renders itself goes through that redirect — the dashboard, run detail and nutrition pages name the page a section now lives on, and the anchors stay for bookmarks and old emails.
 
-### `apps/web/src/routes/settings/prefs_hints_guard.test.ts` — 3 tests
+### `apps/web/src/lib/control_hints_guard.test.ts` — 3 tests
 
-Every control on the six preference pages carries a one-line explanation (#905 workstream 5): one declared test run per page that each `<select>`, `<input>` and toggle group has an `aria-describedby` naming an element that exists, or, for a checkbox, a `.hint` inside its label; every rendered hint key exists in `en`; and the hint copy spells out the abbreviations the labels print (HR, bpm, kg, lbs, km/h, mph, cm, AI, ml, g).
+Every control on a swept surface carries a one-line explanation (#905 workstream 5): one declared test run per surface that each `<select>`, `<input>` and toggle group has an `aria-describedby` naming an element that exists, or, for a checkbox, a `.hint` / `.field-hint` inside its label; every rendered hint key exists in `en`; and the hint copy spells out the abbreviations the labels print (HR, bpm, kg, lbs, km/h, mph, cm, AI, ml, g). `SURFACES` is the sweep's boundary — the six preference pages from #919 plus the plan-and-run path (`/plans/new`, `PlanEditor`, `PlanMetaEditor`, `RunEditor`, decisions § 1649). A `<textarea>` is deliberately not a control here. Was `src/routes/settings/prefs_hints_guard.test.ts`.
+
+### `apps/web/tests-e2e/cross-cutting/control-hints.spec.ts` — 3 tests
+
+The browser half of the guard above: walks the rendered DOM of `/plans/new`, `/runs/new` and the Edit-plan dialog, resolves each control's `aria-describedby` (or a checkbox's in-label hint) and fails when it reads back as empty. The source scan can only see that the id exists — a hint behind an `{#if}` that never opens, or a catalogue key resolving to empty, passes it. The control list comes from the DOM, not a list in the spec.
 
 ### `apps/web/src/lib/routes/privacy.test.ts` — 10 tests
 
@@ -1132,7 +1136,7 @@ Run the pure-helper slices with `cd apps/backend && deno test --no-check supabas
 
 The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets to drive and are exercised manually only — see [apps/backend/CLAUDE.md § Testing without real credentials](../../apps/backend/CLAUDE.md#testing-without-real-credentials).
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 1,886 declared tests across 500 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 1,889 declared tests across 501 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 

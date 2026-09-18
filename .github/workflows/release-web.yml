@@ -185,6 +185,8 @@ jobs:
 
       - name: Bundle coach Lambda
         working-directory: apps/web
+        env:
+          APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: node lambda/coach/build.mjs
 
       - name: Bundle share-run Lambda
@@ -197,6 +199,8 @@ jobs:
         # PAGE into every share handler, 200s and 404s alike. See
         # apps/web/lambda/share-run/README.md.
         working-directory: apps/web
+        env:
+          APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: node lambda/share-run/build.mjs
 
       - name: Bundle share-route Lambda
@@ -205,6 +209,8 @@ jobs:
         # constraint — it embeds apps/web/build/200.html. See
         # apps/web/lambda/share-route/README.md.
         working-directory: apps/web
+        env:
+          APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: node lambda/share-route/build.mjs
 
       - name: Bundle share-recap Lambda
@@ -213,6 +219,8 @@ jobs:
         # Same post-build ordering constraint — it embeds
         # apps/web/build/200.html. See apps/web/lambda/share-recap/README.md.
         working-directory: apps/web
+        env:
+          APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: node lambda/share-recap/build.mjs
 
       - name: Bundle share-badge Lambda
@@ -221,6 +229,8 @@ jobs:
         # Same post-build ordering constraint — it embeds
         # apps/web/build/200.html. See apps/web/lambda/share-badge/README.md.
         working-directory: apps/web
+        env:
+          APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: node lambda/share-badge/build.mjs
 
       - name: Bundle share-entity Lambda
@@ -228,6 +238,8 @@ jobs:
         # per-request SSR. Same post-build ordering constraint — it embeds
         # apps/web/build/200.html. See apps/web/lambda/share-entity/README.md.
         working-directory: apps/web
+        env:
+          APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: node lambda/share-entity/build.mjs
 
       - name: Bundle generate-route Lambda
@@ -235,6 +247,8 @@ jobs:
         # esbuild bundle, no SPA-shell dependency. See
         # apps/web/lambda/generate-route/README.md.
         working-directory: apps/web
+        env:
+          APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: node lambda/generate-route/build.mjs
 
       - name: Bundle osrm-proxy Lambda
@@ -242,6 +256,8 @@ jobs:
         # snapping/routing (GET /api/routes/osrm/*, issue #198). Pure esbuild
         # bundle. See apps/web/lambda/osrm-proxy/README.md.
         working-directory: apps/web
+        env:
+          APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: node lambda/osrm-proxy/build.mjs
 
       # ──────────────────── AWS auth via OIDC ────────────────────

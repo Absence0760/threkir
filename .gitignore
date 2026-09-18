@@ -90,6 +90,14 @@ key.properties
 google-services.json
 GoogleService-Info.plist
 
+# The FCM sender credential, which unlike the two config files above IS a
+# secret: the Firebase Admin SDK key downloads as
+# `<project>-firebase-adminsdk-<id>.json` and authorises sending as the
+# project. It belongs in the estate repo and as a Fly secret, never on disk
+# here — gitleaks would catch the private key, but not before it was written.
+*firebase-adminsdk*.json
+serviceAccountKey.json
+
 # Supabase
 .supabase/
 /supabase/

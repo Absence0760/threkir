@@ -209,6 +209,52 @@ test('CloudFront CSP drops unsafe-eval and bounds XSS gadget surface', () => {
 	);
 });
 
+test('every POST Lambda origin forwards the sigv4 payload hash', () => {
+	// Reason: CloudFront's Lambda OAC sigv4-signs each origin request, and
+	// sigv4 covers the payload hash. CloudFront does not compute that hash,
+	// and a Lambda Function URL rejects unsigned payloads — so the VIEWER
+	// sends `x-amz-content-sha256` and the origin request policy has to
+	// forward it. Drop it from the allowlist and the Function URL answers
+	// 403 to every POST while GET keeps working, which is exactly how this
+	// hid: /api/coach and /api/routes/generate were unreachable in prod
+	// while the CDN served a 200 (the 403 -> /200.html error mapping turns
+	// the failure into an HTML page), and no test, log line or health check
+	// disagreed.
+	//
+	// #590 landed the client half — `payloadSha256Hex` at each fetch site —
+	// but not this half, so the header was computed and then dropped one hop
+	// later. Both halves are pinned now: the fetch sites below, the policies
+	// here.
+	//
+	// osrm-proxy is deliberately absent: `/api/routes/osrm/[...path]`
+	// exports GET only, so it carries no body and needs no hash.
+	const tf = read('../../infra/modules/web-stack/main.tf');
+	const policies = tfResources(tf, 'aws_cloudfront_origin_request_policy');
+	for (const label of ['lambda', 'generate_route']) {
+		const policy = policies.find((r) => r.label === label);
+		assert.ok(policy, `origin request policy "${label}" not found in main.tf`);
+		assert.match(
+			policy.body,
+			/x-amz-content-sha256/,
+			`origin request policy "${label}" must forward x-amz-content-sha256 — without it OAC signs a POST without the payload hash and the Lambda Function URL 403s every request carrying a body.`,
+		);
+	}
+
+	// The client half. If a fetch site stops sending the hash, forwarding it
+	// is moot — the origin still 403s.
+	for (const site of [
+		'src/lib/components/CoachChat.svelte',
+		'src/lib/routes/route_describe_client.ts',
+		'src/lib/routes/route_request_client.ts',
+	]) {
+		assert.match(
+			read(site),
+			/x-amz-content-sha256/,
+			`${site} POSTs to a Lambda-URL origin, so it must send x-amz-content-sha256.`,
+		);
+	}
+});
+
 test('both CSP layers allow MapLibre blob: workers (worker-src)', () => {
 	// Reason: MapLibre GL spawns its tile-processing Web Worker from a
 	// blob: URL. A document must satisfy BOTH the CloudFront header CSP

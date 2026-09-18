@@ -1735,6 +1735,15 @@ resource "aws_cloudfront_origin_request_policy" "lambda" {
   # CreateOriginRequestPolicy API rejects it outright (InvalidArgument)
   # — CloudFront owns that header; the cacheable behaviors forward a
   # normalized form via the cache policies' enable_accept_encoding_*.
+  # `x-amz-content-sha256` is what makes a POST reach this origin at all.
+  # OAC sigv4-signs each origin request, and sigv4 covers the payload hash;
+  # CloudFront does not compute that hash, and a Lambda Function URL rejects
+  # unsigned payloads outright. So the VIEWER sends the hash (see
+  # `payloadSha256Hex` at the fetch sites) and it has to survive this
+  # allowlist -- a whitelist that drops it leaves the signature covering a
+  # body the origin can see, and the Function URL answers 403 to every POST
+  # while GET keeps working. #590 landed the client half; this is the other
+  # half. `infra_guards.test.ts` pins the pair.
   headers_config {
     header_behavior = "whitelist"
     headers {
@@ -1742,6 +1751,7 @@ resource "aws_cloudfront_origin_request_policy" "lambda" {
         "content-type",
         "accept",
         "x-supabase-authorization",
+        "x-amz-content-sha256",
       ]
     }
   }
@@ -1954,10 +1964,14 @@ resource "aws_cloudfront_origin_request_policy" "generate_route" {
   name = "${local.resource_prefix}-generate-route-origin"
   cookies_config { cookie_behavior = "none" }
   query_strings_config { query_string_behavior = "none" }
+  # `x-amz-content-sha256`: /api/routes/generate is a POST, so the viewer's
+  # sigv4 payload hash has to reach the origin or OAC 403s it. Same reason as
+  # the `lambda` policy above. The osrm-proxy policy below is GET-only and so
+  # needs no such entry.
   headers_config {
     header_behavior = "whitelist"
     headers {
-      items = ["content-type", "accept", "x-supabase-authorization"]
+      items = ["content-type", "accept", "x-supabase-authorization", "x-amz-content-sha256"]
     }
   }
 }

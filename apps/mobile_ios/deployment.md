@@ -58,14 +58,17 @@ com.threkir.app.watchapp.WidgetsExtension  ← (when the complication ships)
    to find out. Put a reminder ~3 weeks before expiry against the Apple Account
    address.
 
-3. **Create the App ID** at developer.apple.com → Identifiers:
+3. **Register the App Group first**, at developer.apple.com → Identifiers → **App Groups**: `group.com.threkir.app.activerun`. It is a separate identifier type, so it cannot be ticked on an App ID that does not yet have it registered. The id is **not** `group.com.threkir.app` — the canonical spelling is centralised in [`apps/watch_ios/WatchApp/ActiveRunBridge.swift`](../watch_ios/WatchApp/ActiveRunBridge.swift) and declared in `WatchApp.entitlements`; a mismatch silently shares nothing.
+4. **Create the App ID** at developer.apple.com → Identifiers → App IDs → App:
    - Bundle ID: `com.threkir.app` (Explicit)
-   - Capabilities: HealthKit, Sign in with Apple, Push Notifications, Background Modes (Location updates), Maps, Associated Domains (for universal links — optional)
-4. **Create the Watch App ID:**
+   - Capabilities: **HealthKit** (leave Clinical Health Records off — we read workouts, not records), **Sign in with Apple** (Configure → *Enable as a primary App ID*), **Push Notifications**, **App Groups** (select the group above), and **Associated Domains** only if universal links ship — nothing serves an `apple-app-site-association` today.
+   - **Not** Background Modes: it is not a portal capability at all. It lives in `Info.plist`'s `UIBackgroundModes`, already committed and guard-enforced by `scripts/check_ios_native_declarations.mjs` (decisions.md § 742).
+   - **Not** Maps: `com.apple.developer.maps` registers a *routing* app that publishes directions coverage. The watch mini-map draws our own polyline through MapKit, which needs no capability.
+5. **Create the Watch App ID:**
    - Bundle ID: `com.threkir.app.watchapp`
-   - Capabilities: HealthKit, Background Modes (Workout processing)
-5. **Provisioning profiles.** Create App Store distribution profiles for both bundle IDs. Set the team to your Developer Program team. Download the `.mobileprovision` files.
-6. **Create the App Store listing** at App Store Connect:
+   - Capabilities: **HealthKit**, **App Groups** (the same group — this is the side that actually declares it today; the phone's `Runner.entitlements` carries no app-group entitlement yet, so the bridge's phone half is still owed)
+6. **Provisioning profiles.** Create App Store distribution profiles for both bundle IDs. Set the team to your Developer Program team. Download the `.mobileprovision` files.
+7. **Create the App Store listing** at App Store Connect:
    - App information (name, primary category Health & Fitness, content rights)
    - App privacy (next section)
    - Pricing — Free, available worldwide minus the regions we're skipping
@@ -183,7 +186,7 @@ Required keys:
   does not, and claiming a mode the binary never exercises is an App Review
   rejection cause. `scripts/check_ios_native_declarations.mjs` holds the plist
   to that (decisions.md § 742).
-- App Groups → `group.com.threkir.app` (shared between iOS app, watch app, and the future complication target — see [`apps/watch_ios/Complications/README.md`](../watch_ios/Complications/README.md))
+- App Groups → `group.com.threkir.app.activerun` (declared today only by the watch app; shared with the iOS app and the future complication target when their halves land — see [`apps/watch_ios/Complications/README.md`](../watch_ios/Complications/README.md))
 
 ---
 
@@ -330,9 +333,9 @@ Apple's appeal process is faster than Google's but still painful. Mitigations:
 
 ## Production readiness checklist
 
-- [ ] Apple Developer Program $99 paid + organisation team approved
+- [ ] Apple Developer Program $99 paid + enrollment approved
 - [ ] Bundle IDs registered at developer.apple.com (iOS + Watch)
-- [ ] Capabilities enabled on both bundle IDs (HealthKit, Sign in with Apple, Push, Background Modes, App Groups)
+- [ ] Capabilities enabled on both bundle IDs (HealthKit, Sign in with Apple, Push, App Groups — Background Modes is `Info.plist`, not a portal capability)
 - [ ] App Store Connect listing created (description, keywords, support URL, screenshots — required at iPhone 6.7", iPhone 5.5", iPad 12.9", Apple Watch screen sizes)
 - [ ] Privacy policy live at `threkir.com/privacy`
 - [ ] App Privacy nutrition label completed, matches policy

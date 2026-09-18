@@ -81,8 +81,8 @@ A dedicated `e2e-test@gmail.com` test account. The actual id-token validation ha
 **What's needed:**
 - Apple Developer Program ($99/year).
 - Identifier → App ID with Sign In with Apple capability.
-- Services ID for the web (`com.yourdomain.web`).
-- Key with Sign In with Apple enabled; download the .p8.
+- Services ID for the web (`com.threkir.web`) — a separate identifier type from the App ID, with the App ID as its primary.
+- A **second** key with Sign In with Apple enabled; download the .p8. This is not the APNs key — one `.p8` per service, each downloadable once.
 - Supabase Dashboard → Authentication → Providers → Apple → Services ID + Team ID + Key ID + .p8 contents.
 
 **Status today:** Apple Sign-In button on the login page shows a "Soon" pill and the click handler surfaces a "coming soon" error message. Spec coverage of the soon-pill exists implicitly; the real flow is blocked here.

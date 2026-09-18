@@ -154,7 +154,7 @@ STRAVA_CLIENT_SECRET=<optional — Strava OAuth rotation>
 VAPID_PUBLIC_KEY=<must equal the web build's PUBLIC_VAPID_PUBLIC_KEY>
 VAPID_PRIVATE_KEY=<private half of the same pair>
 VAPID_SUBJECT=mailto:<contact>
-FCM_SERVICE_ACCOUNT_JSON=<the whole service-account JSON, one line>
+FCM_SERVICE_ACCOUNT_JSON=<the service-account JSON minified to ONE line: jq -c . key.json>
 FCM_PROJECT_ID=<the same JSON's project_id>
 APNS_KEY_P8=<the .p8, newlines and all>
 APNS_KEY_ID=<10 chars>
@@ -162,7 +162,7 @@ APNS_TEAM_ID=<10 chars>
 APNS_TOPIC=com.threkir.app
 ```
 
-A multi-line value like the `.p8` is why this is `secrets import` and not `secrets set`. An invalid credential in either group exits the worker 2 at boot rather than dropping sends silently; a mismatched VAPID pair is caught the same way, because `NewSender` derives the public point from the private scalar. `APNS_SANDBOX=1` switches the APNs host to the sandbox, and a token minted by a `development`-signed build is rejected by the production host and vice versa — the worker holds one setting, so it serves TestFlight/App Store builds or Xcode-installed ones, not both. Full provisioning order: [`docs/features/native_push.md` § Operator provisioning](../../docs/features/native_push.md#operator-provisioning-the-credential-gate).
+`secrets import` reads **`NAME=VALUE` pairs**, one per line, which decides the shape of the two file-shaped values. The service-account JSON is fine minified (`jq -c . key.json`): the `private_key` field's newlines are JSON `\n` escapes that `json.Unmarshal` restores before `pem.Decode` sees them. The **`.p8` is not** — `nativepush/apns.go` hands the env value straight to `pem.Decode`, so it needs real newlines, and whether `flyctl` accepts a multi-line value through `import` (or a `NAME=-` stdin value on `set`) is undocumented either way. Settle that before the APNs step rather than during it; the durable alternative is to teach `nativepush` to accept a base64 `.p8` and decode it, which makes the value single-line on any platform. What is **not** an option is `flyctl secrets set APNS_KEY_P8="$(cat …)"` — that puts the key in shell history and in `ps` output, which is the rule this section opens with. An invalid credential in either group exits the worker 2 at boot rather than dropping sends silently; a mismatched VAPID pair is caught the same way, because `NewSender` derives the public point from the private scalar. `APNS_SANDBOX=1` switches the APNs host to the sandbox, and a token minted by a `development`-signed build is rejected by the production host and vice versa — the worker holds one setting, so it serves TestFlight/App Store builds or Xcode-installed ones, not both. Full provisioning order: [`docs/features/native_push.md` § Operator provisioning](../../docs/features/native_push.md#operator-provisioning-the-credential-gate).
 
 `flyctl secrets list --app threkir-worker` confirms names and digests afterwards; values are never echoed back.
 

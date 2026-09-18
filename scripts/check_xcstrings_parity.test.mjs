@@ -6,7 +6,11 @@
 // compile error and not a runtime crash — an undeclared locale is simply
 // never loaded, so the watch shows English, nothing throws, and the Mac
 // job that builds and runs the Swift suite passes. Nor can this repo run
-// a Swift test at all outside the one macOS job.
+// a Swift test at all outside the one macOS job. The same is true one
+// level down of the consent prompts: a usage-description key with no
+// `InfoPlist.xcstrings` entry renders the English string from
+// `Info.plist` on every wrist, which is what the app did in all seven
+// locales until 2026-09-18.
 //
 // So the guard is measured the only way a guard can honestly be measured:
 // by mutating a copy of the real tree in each of the ways a locale ships
@@ -28,14 +32,15 @@ import { fileURLToPath } from 'node:url';
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const WATCH_IOS = join(REPO_ROOT, 'apps', 'watch_ios');
 const CATALOG = join('WatchApp', 'Localizable.xcstrings');
+const PLIST_CATALOG = join('WatchApp', 'InfoPlist.xcstrings');
 const PLIST = join('WatchApp', 'Info.plist');
 const PBXPROJ = join('WatchApp.xcodeproj', 'project.pbxproj');
 const SCRIPT = join('scripts', 'check_xcstrings_parity.sh');
 
-/** Copy the four files the guard reads into a throwaway tree. */
+/** Copy the five files the guard reads into a throwaway tree. */
 function stage() {
 	const dir = mkdtempSync(join(tmpdir(), 'xcstrings-'));
-	for (const rel of [CATALOG, PLIST, PBXPROJ, SCRIPT]) {
+	for (const rel of [CATALOG, PLIST_CATALOG, PLIST, PBXPROJ, SCRIPT]) {
 		mkdirSync(join(dir, dirname(rel)), { recursive: true });
 		cpSync(join(WATCH_IOS, rel), join(dir, rel));
 	}
@@ -68,10 +73,17 @@ const readCatalog = (dir) => JSON.parse(readFileSync(join(dir, CATALOG), 'utf8')
 const writeCatalog = (dir, cat) =>
 	writeFileSync(join(dir, CATALOG), JSON.stringify(cat, null, 2));
 
-test('the shipped watchOS catalog, Info.plist and knownRegions agree', () => {
+/** @param {string} dir */
+const readPlistCatalog = (dir) => JSON.parse(readFileSync(join(dir, PLIST_CATALOG), 'utf8'));
+/** @param {string} dir @param {unknown} cat */
+const writePlistCatalog = (dir, cat) =>
+	writeFileSync(join(dir, PLIST_CATALOG), JSON.stringify(cat, null, 2));
+
+test('the shipped watchOS catalogs, Info.plist and knownRegions agree', () => {
 	const { status, out } = runMutated(() => {});
 	assert.equal(status, 0, out);
-	assert.match(out, /^OK: \d+ string\(s\)/, out);
+	assert.match(out, /^OK: \d+ string\(s\) across 2 catalog\(s\)/, out);
+	assert.match(out, /4 NS\*UsageDescription key\(s\) localized/, out);
 });
 
 test('a locale translated but missing from CFBundleLocalizations is refused', () => {
@@ -204,4 +216,107 @@ test('an Info.plist with no CFBundleLocalizations array at all is refused', () =
 	});
 	assert.equal(status, 1, out);
 	assert.match(out, /declares no CFBundleLocalizations array/);
+});
+
+test('a consent prompt that never translated a shipped locale is refused', () => {
+	// The whole reason InfoPlist.xcstrings exists. A usage description that
+	// falls back to English is the FIRST thing the app says to a runner, and
+	// it is silent: watchOS raises the prompt, the runner reads English, and
+	// no build, test or crash report mentions it.
+	const { status, out } = runMutated((dir) => {
+		const cat = readPlistCatalog(dir);
+		delete cat.strings.NSHealthShareUsageDescription.localizations['pt-PT'];
+		writePlistCatalog(dir, cat);
+	});
+	assert.equal(status, 1, out);
+	assert.match(
+		out,
+		/InfoPlist\.xcstrings \[NSHealthShareUsageDescription\] pt-PT: missing translation/,
+	);
+});
+
+test('a consent prompt with no source-language localization is refused', () => {
+	// Localizable.xcstrings may leave `en` implicit because its key IS the
+	// English string. Here the key is `NSLocationWhenInUseUsageDescription`,
+	// so an implicit source would ship that identifier as the prompt text.
+	const { status, out } = runMutated((dir) => {
+		const cat = readPlistCatalog(dir);
+		delete cat.strings.NSLocationWhenInUseUsageDescription.localizations.en;
+		writePlistCatalog(dir, cat);
+	});
+	assert.equal(status, 1, out);
+	assert.match(out, /no source-language localization/);
+});
+
+test('a usage description added to Info.plist and not to the catalog is refused', () => {
+	// The shape this whole change closes: a new capability adds a purpose
+	// string, and nothing anywhere asks for its six translations.
+	const { status, out } = runMutated((dir) => {
+		const p = join(dir, PLIST);
+		writeFileSync(
+			p,
+			readFileSync(p, 'utf8').replace(
+				'<key>WKApplication</key>',
+				'<key>NSMotionUsageDescription</key>\n\t<string>Threkir counts your steps.</string>\n\t<key>WKApplication</key>',
+			),
+		);
+	});
+	assert.equal(status, 1, out);
+	assert.match(out, /Info\.plist declares NSMotionUsageDescription with no catalog entry/);
+});
+
+test('a catalog entry for a key Info.plist does not declare is refused', () => {
+	const { status, out } = runMutated((dir) => {
+		const cat = readPlistCatalog(dir);
+		cat.strings.NSCameraUsageDescription = {
+			localizations: Object.fromEntries(
+				['de', 'en', 'es', 'fr', 'ja', 'pt-BR', 'pt-PT'].map((l) => [
+					l,
+					{ stringUnit: { state: 'translated', value: 'x' } },
+				]),
+			),
+		};
+		writePlistCatalog(dir, cat);
+	});
+	assert.equal(status, 1, out);
+	assert.match(out, /\[NSCameraUsageDescription\]: no such NS\*UsageDescription key in Info\.plist/);
+});
+
+test('a source string that has drifted from the Info.plist fallback is refused', () => {
+	// The plist value is what watchOS shows when no localization matches, so
+	// the two disagreeing means an English runner and the catalog promise
+	// different things — and only one of them is reviewable.
+	const { status, out } = runMutated((dir) => {
+		const cat = readPlistCatalog(dir);
+		cat.strings.NSHealthUpdateUsageDescription.localizations.en.stringUnit.value =
+			'Threkir would like to write to Health.';
+		writePlistCatalog(dir, cat);
+	});
+	assert.equal(status, 1, out);
+	assert.match(out, /en value differs from the Info\.plist string it falls back to/);
+});
+
+test('a locale added to the plist catalog alone fails the UI catalog too', () => {
+	// The locale set is derived across BOTH catalogs, so one of them running
+	// ahead is caught rather than each being graded against its own set.
+	const { status, out } = runMutated((dir) => {
+		const cat = readPlistCatalog(dir);
+		cat.strings.NSHealthShareUsageDescription.localizations.it = {
+			stringUnit: { state: 'translated', value: 'Ciao' },
+		};
+		writePlistCatalog(dir, cat);
+	});
+	assert.equal(status, 1, out);
+	assert.match(out, /Localizable\.xcstrings \[[^\]]+\] it: missing translation/);
+	assert.match(out, /CFBundleLocalizations/);
+	assert.match(out, /knownRegions/);
+});
+
+test('an empty plist catalog fails loudly rather than passing vacuously', () => {
+	const { status, out } = runMutated((dir) => {
+		writePlistCatalog(dir, { sourceLanguage: 'en', strings: {} });
+	});
+	assert.equal(status, 1, out);
+	assert.match(out, /no string entries parsed/);
+	assert.match(out, /InfoPlist\.xcstrings/);
 });

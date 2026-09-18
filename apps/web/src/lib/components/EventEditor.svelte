@@ -396,7 +396,12 @@
 
 	<div class="cat-field">
 		<span class="cat-legend">{m('eventEditor.category')}</span>
-		<div class="cat-row" role="radiogroup" aria-label={m('eventEditor.category')}>
+		<div
+			class="cat-row"
+			role="radiogroup"
+			aria-label={m('eventEditor.category')}
+			aria-describedby="event-category-hint"
+		>
 			{#each EVENT_CATEGORIES as cat}
 				<button
 					type="button"
@@ -410,51 +415,75 @@
 				</button>
 			{/each}
 		</div>
-		<span class="hint">{m('eventEditor.categoryHint')}</span>
+		<span class="hint" id="event-category-hint">{m('eventEditor.categoryHint')}</span>
 	</div>
 
 	{#if category === 'class'}
-		<label>
-			<span>{m('eventEditor.discipline')}</span>
-			<input
-				type="text"
-				bind:value={discipline}
-				maxlength="60"
-				placeholder={m('eventEditor.disciplinePlaceholder')}
-			/>
-		</label>
-		<label>
-			<span>{m('eventEditor.gymTemplateDuration')} <span class="optional">{m('eventEditor.optional')}</span></span>
-			<input
-				type="number"
-				min="5"
-				max="600"
-				bind:value={gymTemplateDurationMin}
-				placeholder={m('eventEditor.gymTemplateDurationPlaceholder')}
-				data-testid="gym-template-duration"
-			/>
-			<span class="hint">{m('eventEditor.gymTemplateHint')}</span>
-		</label>
-		{#if !existing}
+		<div class="field">
 			<label>
-				<span>{m('session.event.planPicker')} <span class="optional">{m('eventEditor.optional')}</span></span>
-				<select bind:value={sessionPlanId} data-testid="session-plan-picker">
-					<option value="">{m('session.event.planNone')}</option>
-					{#each sessionPlans as sp (sp.id)}
-						<option value={sp.id}>{sp.title}</option>
-					{/each}
-				</select>
+				<span>{m('eventEditor.discipline')}</span>
+				<input
+					type="text"
+					bind:value={discipline}
+					maxlength="60"
+					placeholder={m('eventEditor.disciplinePlaceholder')}
+					aria-describedby="event-discipline-hint"
+				/>
+			</label>
+			<span class="hint" id="event-discipline-hint">{m('eventEditor.disciplineHint')}</span>
+		</div>
+		<div class="field">
+			<label>
+				<span>{m('eventEditor.gymTemplateDuration')} <span class="optional">{m('eventEditor.optional')}</span></span>
+				<input
+					type="number"
+					min="5"
+					max="600"
+					bind:value={gymTemplateDurationMin}
+					placeholder={m('eventEditor.gymTemplateDurationPlaceholder')}
+					data-testid="gym-template-duration"
+					aria-describedby="event-gym-template-hint"
+				/>
+			</label>
+			<span class="hint" id="event-gym-template-hint">{m('eventEditor.gymTemplateHint')}</span>
+		</div>
+		{#if !existing}
+			<div class="field">
+				<label>
+					<span>{m('session.event.planPicker')} <span class="optional">{m('eventEditor.optional')}</span></span>
+					<select
+						bind:value={sessionPlanId}
+						data-testid="session-plan-picker"
+						aria-describedby="event-session-plan-hint"
+					>
+						<option value="">{m('session.event.planNone')}</option>
+						{#each sessionPlans as sp (sp.id)}
+							<option value={sp.id}>{sp.title}</option>
+						{/each}
+					</select>
+				</label>
+				<span class="hint" id="event-session-plan-hint">{m('session.event.planPickerHint')}</span>
 				{#if sessionPlans.length === 0}
 					<span class="hint">{m('session.event.planEmptyHint')}</span>
 				{/if}
-			</label>
+			</div>
 		{/if}
 	{/if}
 
-	<label>
-		<span>{m('eventEditor.title')}</span>
-		<input type="text" bind:value={title} required maxlength="120" placeholder={m('eventEditor.titlePlaceholder')} />
-	</label>
+	<div class="field">
+		<label>
+			<span>{m('eventEditor.title')}</span>
+			<input
+				type="text"
+				bind:value={title}
+				required
+				maxlength="120"
+				placeholder={m('eventEditor.titlePlaceholder')}
+				aria-describedby="event-title-hint"
+			/>
+		</label>
+		<span class="hint" id="event-title-hint">{m('eventEditor.titleHint')}</span>
+	</div>
 
 	<label>
 		<span>{m('eventEditor.details')} <span class="optional">{m('eventEditor.optional')}</span></span>
@@ -466,47 +495,73 @@
 		></textarea>
 	</label>
 
-	<div class="row">
-		<label>
-			<span>{m('eventEditor.date')}</span>
-			<input type="date" bind:value={date} required />
-		</label>
-		<label>
-			<span>{m('eventEditor.startTime')}</span>
-			<input type="time" bind:value={time} required />
-		</label>
-		<label>
-			<span>{m('eventEditor.duration')} <span class="optional">{m('eventEditor.minLabel')}</span></span>
-			<input type="number" min="5" max="600" bind:value={durationMin} placeholder={m('eventEditor.durationPlaceholder')} />
-		</label>
+	<div class="field">
+		<div class="row">
+			<label>
+				<span>{m('eventEditor.date')}</span>
+				<input type="date" bind:value={date} required aria-describedby="event-when-hint" />
+			</label>
+			<label>
+				<span>{m('eventEditor.startTime')}</span>
+				<input type="time" bind:value={time} required aria-describedby="event-when-hint" />
+			</label>
+			<label>
+				<span>{m('eventEditor.duration')} <span class="optional">{m('eventEditor.minLabel')}</span></span>
+				<input
+					type="number"
+					min="5"
+					max="600"
+					bind:value={durationMin}
+					placeholder={m('eventEditor.durationPlaceholder')}
+					aria-describedby="event-when-hint"
+				/>
+			</label>
+		</div>
+		<span class="hint" id="event-when-hint">{m('eventEditor.whenHint')}</span>
 	</div>
 
-	<label>
-		<span>{m('eventEditor.meetingPoint')} <span class="optional">{m('eventEditor.optional')}</span></span>
-		<input type="text" bind:value={meetLabel} placeholder={m('eventEditor.meetingPointPlaceholder')} maxlength="120" />
-	</label>
+	<div class="field">
+		<label>
+			<span>{m('eventEditor.meetingPoint')} <span class="optional">{m('eventEditor.optional')}</span></span>
+			<input
+				type="text"
+				bind:value={meetLabel}
+				placeholder={m('eventEditor.meetingPointPlaceholder')}
+				maxlength="120"
+				aria-describedby="event-meeting-point-hint"
+			/>
+		</label>
+		<span class="hint" id="event-meeting-point-hint">{m('eventEditor.meetingPointHint')}</span>
+	</div>
 
 	{#if isAthleticCategory(category)}
-		<label>
-			<span>{m('eventEditor.route')} <span class="optional">{m('eventEditor.optional')}</span></span>
-			<select bind:value={routeId} data-testid="event-route-select">
-				<option value="">{m('eventEditor.noRoute')}</option>
-				{#if clubRoutes.length > 0}
-					<optgroup label={m('eventEditor.clubRoutes', { clubName })}>
-						{#each clubRoutes as r}
-							<option value={r.id}>{r.name} ({formatDistance(r.distance_m)})</option>
-						{/each}
-					</optgroup>
-				{/if}
-				{#if myRoutes.length > 0}
-					<optgroup label={m('eventEditor.myRoutes')}>
-						{#each myRoutes as r}
-							<option value={r.id}>{r.name} ({formatDistance(r.distance_m)})</option>
-						{/each}
-					</optgroup>
-				{/if}
-			</select>
-		</label>
+		<div class="field">
+			<label>
+				<span>{m('eventEditor.route')} <span class="optional">{m('eventEditor.optional')}</span></span>
+				<select
+					bind:value={routeId}
+					data-testid="event-route-select"
+					aria-describedby="event-route-hint"
+				>
+					<option value="">{m('eventEditor.noRoute')}</option>
+					{#if clubRoutes.length > 0}
+						<optgroup label={m('eventEditor.clubRoutes', { clubName })}>
+							{#each clubRoutes as r}
+								<option value={r.id}>{r.name} ({formatDistance(r.distance_m)})</option>
+							{/each}
+						</optgroup>
+					{/if}
+					{#if myRoutes.length > 0}
+						<optgroup label={m('eventEditor.myRoutes')}>
+							{#each myRoutes as r}
+								<option value={r.id}>{r.name} ({formatDistance(r.distance_m)})</option>
+							{/each}
+						</optgroup>
+					{/if}
+				</select>
+			</label>
+			<span class="hint" id="event-route-hint">{m('eventEditor.routeHint')}</span>
+		</div>
 	{/if}
 
 	{#if !existing}
@@ -525,11 +580,13 @@
 						name="freq"
 						checked={recurrence === opt.value}
 						onchange={() => (recurrence = opt.value as 'none' | RecurrenceFreq)}
+						aria-describedby="event-repeats-hint"
 					/>
 					<span>{opt.label}</span>
 				</label>
 			{/each}
 		</div>
+		<span class="hint" id="event-repeats-hint">{m('eventEditor.repeatsHint')}</span>
 
 		{#if recurrence === 'weekly' || recurrence === 'biweekly'}
 			<div class="byday-row">
@@ -550,7 +607,7 @@
 		{#if recurrence !== 'none'}
 			<label class="until">
 				<span>{m('eventEditor.endsOn')} <span class="optional">{m('eventEditor.optional')}</span></span>
-				<input type="date" bind:value={until} />
+				<input type="date" bind:value={until} aria-describedby="event-repeat-end-hint" />
 			</label>
 			<label class="until">
 				<span>{m('eventEditor.endAfter')} <span class="optional">{m('eventEditor.optional')}</span></span>
@@ -560,37 +617,69 @@
 					max="520"
 					bind:value={count}
 					placeholder={m('eventEditor.endAfterPlaceholder')}
+					aria-describedby="event-repeat-end-hint"
 				/>
 			</label>
+			<span class="hint" id="event-repeat-end-hint">{m('eventEditor.repeatEndHint')}</span>
 		{/if}
 	</fieldset>
 	{/if}
 
 	<div class="row">
 		{#if isAthleticCategory(category)}
+			<div class="field">
+				<label>
+					<span>{m('eventEditor.distance')} <span class="optional">{distanceUnitLabel}</span></span>
+					<input
+						type="number"
+						step="0.1"
+						min="0"
+						bind:value={distanceInUnit}
+						placeholder={m('eventEditor.distancePlaceholder')}
+						aria-describedby="event-distance-hint"
+					/>
+				</label>
+				<span class="hint" id="event-distance-hint">{m('eventEditor.distanceHint')}</span>
+			</div>
+			<div class="field">
+				<label>
+					<span>{m('eventEditor.targetPace')} <span class="optional">{paceUnitLabel}</span></span>
+					<div class="pace">
+						<input
+							type="number"
+							min="0"
+							max="59"
+							bind:value={paceMin}
+							placeholder={m('eventEditor.paceMin')}
+							aria-describedby="event-pace-hint"
+						/>
+						<span class="pace-sep">:</span>
+						<input
+							type="number"
+							min="0"
+							max="59"
+							bind:value={paceSec}
+							placeholder={m('eventEditor.paceSec')}
+							aria-describedby="event-pace-hint"
+						/>
+					</div>
+				</label>
+				<span class="hint" id="event-pace-hint">{m('eventEditor.targetPaceHint')}</span>
+			</div>
+		{/if}
+		<div class="field">
 			<label>
-				<span>{m('eventEditor.distance')} <span class="optional">{distanceUnitLabel}</span></span>
+				<span>{m('eventEditor.capacity')} <span class="optional">{m('eventEditor.optional')}</span></span>
 				<input
 					type="number"
-					step="0.1"
-					min="0"
-					bind:value={distanceInUnit}
-					placeholder={m('eventEditor.distancePlaceholder')}
+					min="1"
+					bind:value={capacity}
+					placeholder={m('eventEditor.capacityPlaceholder')}
+					aria-describedby="event-capacity-hint"
 				/>
 			</label>
-			<label>
-				<span>{m('eventEditor.targetPace')} <span class="optional">{paceUnitLabel}</span></span>
-				<div class="pace">
-					<input type="number" min="0" max="59" bind:value={paceMin} placeholder={m('eventEditor.paceMin')} />
-					<span class="pace-sep">:</span>
-					<input type="number" min="0" max="59" bind:value={paceSec} placeholder={m('eventEditor.paceSec')} />
-				</div>
-			</label>
-		{/if}
-		<label>
-			<span>{m('eventEditor.capacity')} <span class="optional">{m('eventEditor.optional')}</span></span>
-			<input type="number" min="1" bind:value={capacity} placeholder={m('eventEditor.capacityPlaceholder')} />
-		</label>
+			<span class="hint" id="event-capacity-hint">{m('eventEditor.capacityHint')}</span>
+		</div>
 	</div>
 
 	{#if showVisibilityToggle}
@@ -601,10 +690,13 @@
 					checked={!isPublic}
 					onchange={(e) => (isPublic = !(e.currentTarget as HTMLInputElement).checked)}
 					data-testid="members-only-toggle"
+					aria-describedby="event-members-only-hint"
 				/>
 				<span>{m('eventEditor.membersOnlyToggle')}</span>
 			</label>
-			<p class="visibility-explainer">{m('eventEditor.membersOnlyHint')}</p>
+			<p class="visibility-explainer" id="event-members-only-hint">
+				{m('eventEditor.membersOnlyHint')}
+			</p>
 		</fieldset>
 	{/if}
 
@@ -616,9 +708,11 @@
 				bind:checked={charge}
 				disabled={!chargesEnabled}
 				data-testid="charge-toggle"
+				aria-describedby="event-charge-hint"
 			/>
 			<span>{m('eventEditor.chargeToggle')}</span>
 		</label>
+		<p class="charge-explainer" id="event-charge-hint">{m('eventEditor.chargeHint')}</p>
 		{#if !chargesEnabled}
 			<p class="charge-explainer" data-testid="charge-needs-payout">
 				{m('eventEditor.chargeNeedsPayout')}
@@ -626,34 +720,53 @@
 			</p>
 		{:else if charge}
 			<p class="charge-explainer">{m('eventEditor.inPersonOnlyNote')}</p>
-			<div class="row">
-				<label>
-					<span>{m('eventEditor.price')}</span>
-					<input
-						type="number"
-						step="0.01"
-						min="0.5"
-						bind:value={priceMajor}
-						placeholder={m('eventEditor.pricePlaceholder')}
-					/>
-				</label>
-				<label>
-					<span>{m('eventEditor.currency')}</span>
-					<input type="text" bind:value={currency} maxlength="3" />
-				</label>
-				<label>
-					<span>{m('eventEditor.salesClose')}</span>
-					<input type="number" min="0" max="10080" bind:value={salesCloseOffset} />
-				</label>
+			<div class="field">
+				<div class="row">
+					<label>
+						<span>{m('eventEditor.price')}</span>
+						<input
+							type="number"
+							step="0.01"
+							min="0.5"
+							bind:value={priceMajor}
+							placeholder={m('eventEditor.pricePlaceholder')}
+							aria-describedby="event-price-hint"
+						/>
+					</label>
+					<label>
+						<span>{m('eventEditor.currency')}</span>
+						<input
+							type="text"
+							bind:value={currency}
+							maxlength="3"
+							aria-describedby="event-price-hint"
+						/>
+					</label>
+					<label>
+						<span>{m('eventEditor.salesClose')}</span>
+						<input
+							type="number"
+							min="0"
+							max="10080"
+							bind:value={salesCloseOffset}
+							aria-describedby="event-sales-close-hint"
+						/>
+					</label>
+				</div>
+				<span class="hint" id="event-price-hint">{m('eventEditor.priceHint')}</span>
+				<span class="hint" id="event-sales-close-hint">{m('eventEditor.salesCloseHint')}</span>
 			</div>
-			<label>
-				<span>{m('eventEditor.refundPolicy')}</span>
-				<select bind:value={refundPolicy}>
-					<option value="full_until_start">{m('eventEditor.refundFullUntilStart')}</option>
-					<option value="full_until_24h">{m('eventEditor.refundFullUntil24h')}</option>
-					<option value="no_refund">{m('eventEditor.refundNone')}</option>
-				</select>
-			</label>
+			<div class="field">
+				<label>
+					<span>{m('eventEditor.refundPolicy')}</span>
+					<select bind:value={refundPolicy} aria-describedby="event-refund-hint">
+						<option value="full_until_start">{m('eventEditor.refundFullUntilStart')}</option>
+						<option value="full_until_24h">{m('eventEditor.refundFullUntil24h')}</option>
+						<option value="no_refund">{m('eventEditor.refundNone')}</option>
+					</select>
+				</label>
+				<span class="hint" id="event-refund-hint">{m('eventEditor.refundPolicyHint')}</span>
+			</div>
 		{/if}
 	</fieldset>
 	{/if}

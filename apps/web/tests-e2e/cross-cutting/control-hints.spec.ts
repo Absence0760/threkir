@@ -1,5 +1,7 @@
 import { expect, test, type Locator } from '@playwright/test';
 
+import { getAdminClient } from '../fixtures/local-supabase';
+import { insertRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 
 /**
@@ -109,5 +111,75 @@ test.describe('every swept control renders its explanation', () => {
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
 
 		await assertEveryControlExplained(dialog.locator('form.editor-form'), 'PlanMetaEditor');
+	});
+});
+
+test.describe('every swept creator control renders its explanation', () => {
+	test.use({ storageState: USER_A.storageStatePath });
+
+	test('/clubs/new — the club editor', async ({ page }) => {
+		await page.goto('/clubs/new');
+		const form = page.locator('form.editor-form');
+		await expect(form).toBeVisible({ timeout: 10_000 });
+		await assertEveryControlExplained(form, '/clubs/new');
+
+		// Private hides the join-policy fieldset and is the only way to reach
+		// the private radio's own description, so read the page in both states.
+		await form.getByRole('radio', { name: 'Private' }).check();
+		await assertEveryControlExplained(form, '/clubs/new (private)');
+	});
+
+	test('/clubs/[slug]/events/new — the event editor', async ({ page }) => {
+		await page.goto('/clubs/richmond-run-club/events/new');
+		const form = page.locator('form.event-editor');
+		await expect(form).toBeVisible({ timeout: 15_000 });
+
+		// Recurrence hides its end fields until a cadence is picked, so the
+		// run-category pass opens them first.
+		await form.getByRole('radio', { name: 'Weekly' }).check();
+		await assertEveryControlExplained(form, 'EventEditor (group run)');
+
+		// A class swaps the athletic fields for the discipline / gym-template /
+		// session-plan trio, which no other state renders.
+		await form.getByRole('radio', { name: 'Class' }).click();
+		await expect(form.getByTestId('gym-template-duration')).toBeVisible({ timeout: 5_000 });
+		await assertEveryControlExplained(form, 'EventEditor (class)');
+	});
+
+	test('/races — the add-a-race editor', async ({ page }) => {
+		await page.goto('/races');
+		await page.getByTestId('race-submit').click({ timeout: 15_000 });
+		const form = page.locator('.modal form.editor-form');
+		await expect(form).toBeVisible({ timeout: 5_000 });
+		await assertEveryControlExplained(form, 'RaceListingEditor');
+	});
+
+	test('/challenges — the challenge editor', async ({ page }) => {
+		await page.goto('/challenges');
+		await page.getByRole('button', { name: /Create challenge/ }).first().click({ timeout: 15_000 });
+		const form = page.locator('.modal form.editor-form');
+		await expect(form).toBeVisible({ timeout: 5_000 });
+		await assertEveryControlExplained(form, 'ChallengeEditor');
+	});
+
+	test('/runs/[id] — the fundraiser editor', async ({ page }) => {
+		// The editor is reached from the owner's own run, and renders whether or
+		// not payouts are set up — only Save is gated on that.
+		await getAdminClient().from('instructor_payout_accounts').delete().eq('user_id', USER_A.id);
+		const runId = await insertRun({
+			user_id: USER_A.id,
+			distance_m: 5_000,
+			duration_s: 1_500,
+			is_public: true
+		});
+		try {
+			await page.goto(`/runs/${runId}`);
+			await page.getByTestId('fundraiser-create-cta').click({ timeout: 15_000 });
+			const form = page.locator('.modal form.editor-form');
+			await expect(form).toBeVisible({ timeout: 5_000 });
+			await assertEveryControlExplained(form, 'FundraiserEditor');
+		} finally {
+			await getAdminClient().from('runs').delete().eq('id', runId);
+		}
 	});
 });

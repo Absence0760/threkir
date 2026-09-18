@@ -48,6 +48,7 @@ case "$cmd" in
       echo 'supabase_edge_runtime_run Exited (1) 10 seconds ago'
     fi;;
   inspect) echo "STUB-INSPECT $*";;
+  system) echo "STUB-SYSTEM $*";;
   logs) echo "STUB-LOGS $*";;
 esac
 `;
@@ -158,6 +159,22 @@ test('giving up captures the container list, state and logs', () => {
 	assert.match(r.out, /--- docker logs --tail 5 supabase_edge_runtime \(cid_edge\) ---/);
 	assert.match(r.out, /--- docker logs --tail 5 supabase_kong \(cid_kong\) ---/);
 	assert.match(r.out, /STUB-LOGS --tail 5/);
+});
+
+// Issue #916: three runs died with the edge runtime exiting 135 (SIGBUS) on
+// its first request, and the forensics above could rule out an OOM kill and a
+// crash loop but could not choose between a full filesystem, an upstream bug
+// and a real fault. Each assertion below is one of those explanations' missing
+// evidence, so a fourth occurrence is a decision rather than a fourth dead end.
+test('giving up also captures host capacity, the runtime image and the kernel ring', () => {
+	const r = run({ edge: "printf '000'; exit 7", budget: 2, maxTime: 1, interval: 1 });
+	assert.equal(r.status, 1);
+	assert.match(r.out, /--- host capacity ---/);
+	assert.match(r.out, /STUB-SYSTEM df/);
+	assert.match(r.out, /--- runtime image and limits ---/);
+	assert.match(r.out, /STUB-INSPECT .*Config\.Image/);
+	assert.match(r.out, /STUB-INSPECT .*HostConfig\.ShmSize/);
+	assert.match(r.out, /--- kernel ring \(last 20\) ---/);
 });
 
 // The reason this script exists, applied to the probe that runs FIRST. kong

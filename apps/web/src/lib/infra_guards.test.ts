@@ -202,10 +202,20 @@ test('CloudFront CSP drops unsafe-eval and bounds XSS gadget surface', () => {
 	// Sentry browser SDK posts errors here — without this connect-src
 	// entry, every Sentry breadcrumb is silently CSP-blocked
 	// (regression caught by /audit/infra M2).
+	//
+	// The `de.` is the whole point of this assertion. The Sentry org is
+	// EU-region, so it ingests at `o<id>.ingest.de.sentry.io`, and a CSP
+	// host wildcard matches whole labels from the right: the narrower
+	// `*.ingest.sentry.io` this guard used to pin does NOT match that
+	// host. Pinning the US shape is what let the mismatch ship — the
+	// guard was green while the browser blocked every event, because a
+	// CSP-blocked beacon is invisible from the server. Region is
+	// immutable on a SaaS org, so if this ever needs to become the US
+	// host again, that means someone rebuilt the org.
 	assert.match(
 		csp,
-		/\*\.ingest\.sentry\.io/,
-		'CSP connect-src must include https://*.ingest.sentry.io — Sentry browser SDK posts errors there.',
+		/\*\.ingest\.de\.sentry\.io/,
+		'CSP connect-src must include https://*.ingest.de.sentry.io — the EU-region Sentry browser SDK posts errors there, and *.ingest.sentry.io does not match it.',
 	);
 });
 

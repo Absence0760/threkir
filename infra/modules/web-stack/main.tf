@@ -1644,15 +1644,24 @@ resource "aws_cloudfront_response_headers_policy" "security" {
         "style-src 'self' 'unsafe-inline'",
         "font-src 'self' data:",
         # `connect-src` covers fetch / XHR / EventSource / WebSocket —
-        # everything the browser sends OUT. `*.ingest.sentry.io` is
+        # everything the browser sends OUT. `*.ingest.de.sentry.io` is
         # where @sentry/sveltekit's browser SDK posts errors; without
-        # it errors are silently CSP-blocked. `*.supabase.co` covers
+        # it errors are silently CSP-blocked. The `de.` is load-bearing
+        # and is NOT a typo: the Sentry org is in the EU (Frankfurt)
+        # region, so it ingests at `o<id>.ingest.de.sentry.io`. A CSP
+        # host wildcard matches only whole labels from the right, so
+        # `*.ingest.sentry.io` does NOT cover that host — it requires
+        # the host to end in `.ingest.sentry.io`, and the EU host ends
+        # in `.ingest.de.sentry.io`. That mismatch blocks every event
+        # with no server-side symptom at all. A SaaS org's region
+        # cannot be changed after creation, so this will not drift
+        # back to the US host without a new org. `*.supabase.co` covers
         # REST + Realtime + Storage; `*.maptiler.com` covers tile
         # fetches. `wss://*.threkir.com` covers the Go live-hub WS
         # upgrade — the spectator page would otherwise be CSP-blocked
         # the moment PUBLIC_LIVE_HUB_URL lands in prod. /audit/owasp
         # May 2026 High #2a.
-        "connect-src 'self' https://*.supabase.co https://api.threkir.com https://*.maptiler.com https://*.ingest.sentry.io wss://*.threkir.com",
+        "connect-src 'self' https://*.supabase.co https://api.threkir.com https://*.maptiler.com https://*.ingest.de.sentry.io wss://*.threkir.com",
         "worker-src 'self' blob:",
         "manifest-src 'self'",
         "object-src 'none'",

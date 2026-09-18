@@ -156,7 +156,7 @@ class _HomeScreenState extends State<HomeScreen>
   // away. They used to be mounted BOTH here and in the hub, which meant two
   // keep-alive copies of one surface with independent state — and a runner who
   // stepped the diary back to yesterday in the hub and then tapped Log → Food
-  // landed on an identical-looking screen showing today (decisions § 1649).
+  // landed on an identical-looking screen showing today (decisions § 1652).
   static const _pageRun = 2;
   static const _pageSocial = 3;
   static const _pageYou = 4;
@@ -749,7 +749,7 @@ class _HomeScreenState extends State<HomeScreen>
     //
     // Gym and Nutrition are the hub's tabs rather than pages of their own so
     // that this button and the Fitness tab strip reach the SAME screen, still
-    // showing the day, filters and half-typed entry it was left on (§ 1649).
+    // showing the day, filters and half-typed entry it was left on (§ 1652).
     final tab = switch (action) {
       LogAction.run => null,
       LogAction.lift => FitnessTab.gym,

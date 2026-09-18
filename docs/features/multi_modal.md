@@ -250,7 +250,7 @@ becomes an **action button**, not a tab.
   in the hub and then tapped `Log → Food` landed on an identical-looking
   screen showing today, and filed the backfill into the wrong day. One
   instance each now, selected through a shared `ValueNotifier<FitnessTab>`
-  ([decisions § 1649](../architecture/decisions.md)).
+  ([decisions § 1652](../architecture/decisions.md)).
 - **Tap `Log` = the primary capture action, derived from data presence**
   (decisions § 1644). Until the user has logged a lift or a meal, the tap
   starts a run outright — the fan has nothing to choose between, so it
@@ -1083,7 +1083,7 @@ The **self-hiding contract holds**: a pure runner opening `Train` sees the Runs 
 
 Keep-alive note: the in-shell `PageView` capture pages (Run/Gym/Nutrition recorders) stay exactly as the §63 2026-06-08 amendment built them — the Train hub is a *review/plan* destination, distinct from the keep-alive *capture* pages the `Log` action lands on. A live recording is unaffected by navigating to `Train`.
 
-> **Superseded for Gym + Nutrition, 2026-09-17** ([decisions § 1649](../architecture/decisions.md)). The capture/review split above is real for runs, where the recorder and the run list are different screens — but Gym and Nutrition never had a capture screen distinct from their review screen, so "distinct pages" meant the *same widget mounted twice*, each keeping its own diary day, filters, scroll and routine store. The hub's Gym and Nutrition tabs are now the app's only instances; the `Log` action selects one. The Run capture page is unchanged.
+> **Superseded for Gym + Nutrition, 2026-09-17** ([decisions § 1652](../architecture/decisions.md)). The capture/review split above is real for runs, where the recorder and the run list are different screens — but Gym and Nutrition never had a capture screen distinct from their review screen, so "distinct pages" meant the *same widget mounted twice*, each keeping its own diary day, filters, scroll and routine store. The hub's Gym and Nutrition tabs are now the app's only instances; the `Log` action selects one. The Run capture page is unchanged.
 
 ### Web — Routes nests under the Run surface; siblings stay
 

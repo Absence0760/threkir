@@ -698,7 +698,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       // Gym is the Fitness hub's tab, not a page of its own — there is exactly
-      // one of it in the shell (decisions § 1649).
+      // one of it in the shell (decisions § 1652).
       expect(shellPage(tester), 1);
 
       // Scoped to the shell's centre Log FAB by its tooltip: the Gym page

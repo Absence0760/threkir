@@ -22,9 +22,8 @@ import 'races_screen.dart';
 import 'routes_screen.dart';
 import 'runs_screen.dart';
 
-/// The Fitness modality hub — a review/plan destination distinct from the
-/// keep-alive capture pages reached via the centre Log action. A top sub-tab
-/// strip switches between four surfaces:
+/// The Fitness modality hub — the shell's one home for each modality. A top
+/// sub-tab strip switches between four surfaces:
 ///   - History: the unified cross-modal activity timeline (the former
 ///     standalone History tab, absorbed here) — `RunsScreen` mounted WITH the
 ///     gym + food stores, with its own kind chips suppressed since the hub's
@@ -38,6 +37,11 @@ import 'runs_screen.dart';
 /// only the TabBar chrome (mirrors `social_screen.dart`'s host shape). The
 /// self-hiding contract holds — empty Gym/Nutrition tabs render their own
 /// onboarding empty state, never a forced card.
+///
+/// The Gym and Nutrition tabs are also where the shell's centre Log action
+/// lands, so these are the app's only instances of those two screens rather
+/// than review copies of capture pages held elsewhere ([`selectedTab`],
+/// decisions § 1649).
 ///
 /// The Runs sub-tab additionally carries the labelled peer strip
 /// `Runs · Routes · Segments · Plans · Races` (mirroring web's
@@ -77,8 +81,17 @@ class FitnessHubScreen extends StatefulWidget {
   final TrainingService training;
 
 
-  /// Sub-tab to open on first mount.
-  final FitnessTab initialTab;
+  /// Which sub-tab is showing — shared with the host rather than owned here.
+  ///
+  /// The shell reaches Gym and Nutrition through this hub as well as through
+  /// its own tab strip, so "which modality am I looking at" is state both
+  /// entry points read and write. Held by the host so a Log action can select
+  /// a tab before the hub has been built (it is a lazy page), and written back
+  /// on every tap and swipe so the host can tell that a Log action would land
+  /// on the tab already showing.
+  ///
+  /// Null in standalone mounts and tests, where the hub owns one of its own.
+  final ValueNotifier<FitnessTab>? selectedTab;
 
   const FitnessHubScreen({
     super.key,
@@ -91,7 +104,7 @@ class FitnessHubScreen extends StatefulWidget {
     required this.preferences,
     required this.training,
     this.settingsSync,
-    this.initialTab = FitnessTab.history,
+    this.selectedTab,
   });
 
   @override
@@ -103,19 +116,41 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
   late final TabController _controller;
   late final RaceService _raceService = RaceService();
 
+  late final ValueNotifier<FitnessTab> _tab =
+      widget.selectedTab ?? ValueNotifier(FitnessTab.history);
+  late final bool _ownsTab = widget.selectedTab == null;
+
   @override
   void initState() {
     super.initState();
     _controller = TabController(
       length: FitnessTab.values.length,
       vsync: this,
-      initialIndex: widget.initialTab.index,
+      initialIndex: _tab.value.index,
     );
+    _controller.addListener(_publishTab);
+    _tab.addListener(_adoptTab);
+  }
+
+  /// Mid-animation the index has not committed yet, and publishing then would
+  /// come straight back through [_adoptTab] and snap the transition.
+  void _publishTab() {
+    if (_controller.indexIsChanging) return;
+    _tab.value = FitnessTab.values[_controller.index];
+  }
+
+  void _adoptTab() {
+    if (_tab.value.index != _controller.index) {
+      _controller.index = _tab.value.index;
+    }
   }
 
   @override
   void dispose() {
+    _tab.removeListener(_adoptTab);
+    _controller.removeListener(_publishTab);
     _controller.dispose();
+    if (_ownsTab) _tab.dispose();
     super.dispose();
   }
 

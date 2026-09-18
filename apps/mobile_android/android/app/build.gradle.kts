@@ -21,6 +21,14 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 // fresh clone. Applying the plugin conditionally keeps `flutter run` working
 // there; the trade-off is that a release build missing the secret still
 // succeeds, and registers no token. `release-android.yml` warns in that case.
+//
+// The Firebase console's "Add Firebase SDK" step does not apply to this module
+// and following it breaks two things. Its `plugins { id(...) }` form cannot be
+// made conditional, so a fresh clone would fail to configure; and its Firebase
+// BoM + `implementation(...)` block would pull the Android artifacts a second
+// time, beside the ones firebase_core / firebase_messaging already contribute
+// through Flutter's plugin mechanism. The console cannot tell this is a Flutter
+// app. The version pin lives in settings.gradle.kts.
 val googleServicesJson = file("google-services.json")
 if (googleServicesJson.exists()) {
     apply(plugin = "com.google.gms.google-services")

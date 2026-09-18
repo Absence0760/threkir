@@ -120,7 +120,7 @@ make it `U`. A pref that only makes sense on one physical device is `D`.
 | `/settings/safety` | `safety_overdue_minutes`, `safety_off_route_alerts` |
 | `/settings/devices` | `haptic_feedback_enabled`, `keep_screen_on`, `push_subscription`; the per-device override of every `UD` key above |
 
-`apps/web/src/routes/settings/settings_ia_guard.test.ts` holds the same map and fails the PR when a registry key has no declared home, when a page stops naming a key it is declared to edit, or when a settings page starts editing a key somewhere undeclared. Adding a key to the table above means adding its home there too. Every control on the six preference pages also carries a one-line explanation (`aria-describedby`, or a `.hint` inside a checkbox's label), pinned by `apps/web/src/lib/control_hints_guard.test.ts` — which since decisions § 1651 covers the plan-and-run surfaces too.
+`apps/web/src/routes/settings/settings_ia_guard.test.ts` holds the same map and fails the PR when a registry key has no declared home, when a page stops naming a key it is declared to edit, or when a settings page starts editing a key somewhere undeclared. Adding a key to the table above means adding its home there too. Every control on the six preference pages also carries a one-line explanation (`aria-describedby`, or a `.hint` inside a checkbox's label), pinned by `apps/web/src/lib/control_hints_guard.test.ts` — whose `SURFACES` list has since grown well past them (decisions § 1651, § 1657); read the list rather than assuming this page's scope.
 
 ### privacy_default detail
 

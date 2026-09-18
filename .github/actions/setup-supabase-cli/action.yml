@@ -45,14 +45,26 @@ runs:
         ver="$SUPABASE_CLI_VERSION"
         dest="$RUNNER_TEMP/supabase-cli"
         base="https://github.com/supabase/cli/releases/download/v${ver}"
-        tarball="supabase_linux_amd64.tar.gz"
         mkdir -p "$dest"
 
+        # Upstream renamed both halves of this between 2.84.2 and 2.109.1: the
+        # checksums asset went `supabase_<ver>_checksums.txt` -> `checksums.txt`,
+        # and the tarball it lists went `supabase_linux_amd64.tar.gz` ->
+        # `supabase_<ver>_linux_amd64.tar.gz`. Both names still resolve as
+        # download URLs, so pinning either one keeps working until the day the
+        # checksum line stops matching and the verify fails instead. Fetch
+        # whichever checksums asset exists, then take the tarball's name FROM it
+        # — the file that states the digest is the file that names what it is
+        # for, so the two can never drift apart again.
         for attempt in 1 2 3 4 5; do
-          if curl -fsSL --connect-timeout 20 --max-time 300 \
+          if { curl -fsSL --connect-timeout 20 --max-time 60 \
+                -o "$dest/checksums.txt" "$base/checksums.txt" \
+            || curl -fsSL --connect-timeout 20 --max-time 60 \
+                -o "$dest/checksums.txt" "$base/supabase_${ver}_checksums.txt"; } \
+            && tarball="$(awk '$2 ~ /_linux_amd64\.tar\.gz$/ { print $2; exit }' "$dest/checksums.txt")" \
+            && [ -n "$tarball" ] \
+            && curl -fsSL --connect-timeout 20 --max-time 300 \
                 -o "$dest/$tarball" "$base/$tarball" \
-            && curl -fsSL --connect-timeout 20 --max-time 60 \
-                -o "$dest/checksums.txt" "$base/supabase_${ver}_checksums.txt" \
             && (cd "$dest" && grep " ${tarball}\$" checksums.txt | sha256sum -c - >/dev/null) \
             && tar -xzf "$dest/$tarball" -C "$dest" supabase; then
             echo "$dest" >> "$GITHUB_PATH"

@@ -21,7 +21,7 @@ The repo has at least four dependency trees:
 3. **Deno.** Grep `apps/backend/supabase/functions/` for `https://deno.land/x/`, `npm:`, `https://esm.sh/`. List the unpinned imports (no `@x.y.z`). Each unpinned import is a supply-chain risk — flag for SHA / version pinning.
 4. **GitHub Actions.** Grep `.github/workflows/` for `uses: <action>@<ref>`. Floating refs (`@main`, `@v1`) are supply-chain risks for actions that can be force-pushed by the action publisher; SHA pins (`@<sha>`) are the safer default for security-sensitive workflows (anything that can deploy or read secrets). Flag floating refs in workflows that touch `${{ secrets.* }}`.
 5. **Native.** Less frequent but worth a glance:
-   - `apps/watch_wear/build.gradle.kts` — Kotlin / Compose version
+   - `apps/watch_wear/android/build.gradle.kts` — Kotlin / Compose version
    - `apps/watch_ios/*/Package.resolved` — SwiftPM
    - `apps/job_worker/go.mod` + `go.sum` — `go list -m -u all` for outdated modules
 6. **`update-all` parity.** This workstation has an `update-all` function (per `~/CLAUDE.md`) that handles dnf / flatpak / rustup / cargo / pipx / npm globals / ollama. None of those are in the repo, but if the user runs them, the repo's local toolchains may drift relative to system tools. Flag if `npm` / `flutter` / `dart` / `deno` system versions are newer than the repo expects.

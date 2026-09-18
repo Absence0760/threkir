@@ -35,7 +35,7 @@ Sweep each server tier — the log surfaces differ per runtime:
 
 4. **Go job worker — `apps/job_worker/internal/`.** `log.`/`slog.`/`fmt.Print*` go to Fly.io logs. The handlers process exactly the sensitive jobs: `handler_notification_email.go`, `handler_safety_email.go` (safety-contact identity + location!), `handler_web_push.go`, `handler_token_refresh.go` (OAuth tokens), `supabase.go`. Flag any recipient email, safety-contact detail, token, or coordinate written to a log. Confirm errors are logged by *kind/id*, not by dumping the payload.
 
-5. **Error responses to the client.** A 500 that returns `err.message` or the stack to the browser/app can leak a SQL fragment, a row, or an internal path. Confirm the server tiers return a generic error to the caller and keep detail server-side (and that the server-side detail is itself scrubbed per the above). Check `_shared/handler_envelope.ts` and the web error handlers for the shape.
+5. **Error responses to the client.** A 500 that returns `err.message` or the stack to the browser/app can leak a SQL fragment, a row, or an internal path. Confirm the server tiers return a generic error to the caller and keep detail server-side (and that the server-side detail is itself scrubbed per the above). **There is no shared error-envelope module** — the shape is written out at each call site as `Response.json({ error: '<short code>' }, { status })` inside every function's own `index.ts` (~175 of them), so it has to be checked per call site rather than at one chokepoint, and a single handler that reaches for `err.message` is invisible to a spot check. The only shared helpers that emit a body of their own are `apps/backend/supabase/functions/_shared/body_limit.ts` (`{ error: 'request body too large', max_bytes }`, `{ error: 'invalid_json' }`). On web the equivalent is `handleError` in `apps/web/src/hooks.server.ts` and `apps/web/src/hooks.client.ts`. `apps/backend/supabase/functions/_shared/handler_envelope.test.ts` is a wire-level test of the five self-authenticating webhook handlers' auth-rejection statuses and has no module beside it by design — it is the closest thing to a written-down contract for the envelope, so read it for what the statuses are expected to be.
 
 6. **Mobile `debugPrint` (`apps/mobile_android/lib/`, ~54 files).** Lower stakes (on-device, stripped in release by Flutter's `debugPrint` no-op-in-release behaviour — *verify that holds*), but a `debugPrint` of a GPS point or token can still surface in `adb logcat` / device logs during a crash or a connected-debug session. Flag debug logging of coordinates, HR, or tokens; note severity is Low–Medium unless it survives a release build.
 
@@ -55,7 +55,9 @@ For each finding: the `file:line`, the exact log/return statement, *which* regul
 - `apps/backend/supabase/functions/{export-data,delete-account,revenuecat-webhook}/index.ts` — DSAR bundle, identity, billing
 - `apps/job_worker/internal/handler_safety_email.go`, `handler_notification_email.go`, `handler_token_refresh.go` — safety-contact PII, recipient email, tokens
 - `apps/web/src/routes/api/coach/+server.ts`, `apps/web/lambda/{coach,share-route,share-run}/src/index.ts` — user prompt + owner identity → CloudWatch
-- `apps/backend/supabase/functions/_shared/handler_envelope.ts` — the error-response shape
+- `apps/backend/supabase/functions/_shared/body_limit.ts` — the only shared error bodies; every other shape is inline per function
+- `apps/backend/supabase/functions/_shared/handler_envelope.test.ts` — the wire-level envelope expectations for the five self-authenticating webhook handlers (a test with no module beside it, on purpose)
+- `apps/web/src/hooks.server.ts`, `apps/web/src/hooks.client.ts` — web's `handleError`, and the consent gate that decides whether the error leaves for Sentry
 - `docs/features/integrations.md`, `docs/backend/api_database.md` — where the regulated columns live
 
 ## Delegate to

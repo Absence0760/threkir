@@ -16,9 +16,16 @@ import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
 
 import { handler } from '../../../lambda/generate-route/src/index.js';
+import { stubKms } from '../core/kms_stub';
 
 process.env.PUBLIC_SUPABASE_URL = 'http://supabase.invalid';
 process.env.PUBLIC_SUPABASE_ANON_KEY = 'anon';
+
+// The two X-Engine-Key credentials are decrypted from a KMS ciphertext bag once
+// per container (decisions § 1656), so the wrapper needs a KMS that answers
+// before it will hand anything to the core. Its refusal when one does not is
+// pinned in core/lambda_secret_refusal.test.ts, which needs its own process.
+stubKms({ GRAPHHOPPER_API_KEY: 'gh-test', GRAPH_CYCLE_API_KEY: 'gc-test' });
 
 const BODY_LIMIT_BYTES = 4 * 1024;
 const REQUEST = JSON.stringify({ start: { lat: 51.5, lng: -0.1 }, targetDistanceM: 5000 });

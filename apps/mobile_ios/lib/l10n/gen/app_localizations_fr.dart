@@ -5848,12 +5848,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String planDetailDriftOverFlag(int pct) {
-    return '$pct% au-dessus du plan cette semaine — lève le pied les jours faciles pour ne pas creuser un trou de fatigue.';
+    return '$pct% au-dessus du plan cette semaine pour l\'instant — lève le pied les jours faciles pour ne pas creuser un trou de fatigue.';
   }
 
   @override
   String planDetailDriftUnderFlag(String done, String planned) {
-    return 'Cette semaine, tu en es à $done sur les $planned prévus.';
+    return 'Cette semaine, tu en es à $done sur les $planned prévus à ce stade.';
   }
 
   @override
@@ -5873,6 +5873,45 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planDetailAdaptiveReplan => 'Re-planification adaptative';
+
+  @override
+  String get planDetailAdjustPlan => 'Ajuster le plan';
+
+  @override
+  String get planDetailAdjustPlanIntro =>
+      'Choisis le changement qui correspond à ce qui s\'est passé. Chaque option indique ce qu\'elle modifie.';
+
+  @override
+  String get planDetailAdjustReplanDesc =>
+      'Rattrape une sortie longue manquée, ou allège la semaine suivante si tu as couru plus que prévu. À utiliser quand une semaine ne s\'est pas passée comme prévu.';
+
+  @override
+  String get planDetailAdjustAdaptiveDesc =>
+      'Regarde tes trois dernières semaines terminées et propose des changements quand au moins deux étaient au-dessus ou en dessous du plan, pour qu\'une semaine atypique ne déplace pas ton plan. À utiliser quand tu dévies du plan depuis un moment.';
+
+  @override
+  String get planDetailAdjustPauseDesc =>
+      'Met le plan en attente sans rien supprimer, jusqu\'à ce que tu le reprennes. À utiliser en cas de maladie, de blessure ou de voyage.';
+
+  @override
+  String get planDetailAdjustResumeDesc =>
+      'Refait de ce plan ton plan actif. À utiliser quand tu es prêt à le reprendre.';
+
+  @override
+  String get planDetailPausePlan => 'Mettre le plan en pause';
+
+  @override
+  String get planDetailResumePlan => 'Reprendre le plan';
+
+  @override
+  String get planDetailPauseDone => 'Plan mis en pause.';
+
+  @override
+  String get planDetailResumeDone => 'Plan repris.';
+
+  @override
+  String get planDetailResumeBlocked =>
+      'Tu as déjà un plan actif. Mets-le en pause ou termine-le d\'abord.';
 
   @override
   String get planDetailAdaptiveOnTrack =>
@@ -14216,4 +14255,50 @@ class AppLocalizationsFr extends AppLocalizations {
   String logAlreadyOnPage(String page) {
     return 'Vous êtes déjà sur $page';
   }
+
+  @override
+  String metricAbout(String name) {
+    return 'À propos de $name';
+  }
+
+  @override
+  String metricVdotValue(String value) {
+    return 'VDOT $value';
+  }
+
+  @override
+  String get metricAgeGradeDefinition =>
+      'Ton temps comparé au meilleur enregistré pour ton âge et ton sexe. Autour de 60 %, tu es fort au niveau local ; à 80 %, c\'est le niveau national.';
+
+  @override
+  String get metricVertLabel => 'Dénivelé';
+
+  @override
+  String get metricVertDefinition =>
+      'La hauteur totale que tu as grimpée, additionnée sur toutes les montées.';
+
+  @override
+  String get metricTrimpLabel => 'TRIMP';
+
+  @override
+  String get metricTrimpDefinition =>
+      'Impulsion d\'entraînement — une note de la difficulté d\'une sortie, d\'après sa durée et le niveau de ta fréquence cardiaque.';
+
+  @override
+  String get metricRiegelLabel => 'Formule de Riegel';
+
+  @override
+  String get metricRiegelDefinition =>
+      'Une méthode standard pour prédire ton temps sur une distance à partir d\'un temps couru sur une autre.';
+
+  @override
+  String get metricE1rmLabel => '1RM est.';
+
+  @override
+  String get metricE1rmDefinition =>
+      'Maximum sur une répétition — la charge la plus lourde que tu pourrais soulever une seule fois. Un 1RM estimé se calcule à partir de la charge et des répétitions d\'une série que tu as faite, donc tu n\'as jamais à le tester.';
+
+  @override
+  String get metricRpeDefinition =>
+      'Effort perçu — à quel point une série a été dure, de 1 à 10. Un 10 signifie que tu n\'aurais pas pu faire une répétition de plus.';
 }

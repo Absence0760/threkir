@@ -6,7 +6,9 @@ import 'package:ui_kit/ui_kit.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
+import '../metrics.dart';
 import '../training_load.dart';
+import 'metric_label.dart';
 
 /// The three curves, in `ChartPalette.series` order: fitness, fatigue, form.
 /// The legend swatch and the painted line read the SAME list, so a key can
@@ -49,10 +51,10 @@ class TrainingLoadChart extends StatelessWidget {
           children: [
             ChartCardHeader(title: l10n.trainingLoadTitle),
             const SizedBox(height: 4),
-            Text(
-              hasHr
-                  ? l10n.trainingLoadSubtitleHr(points.length)
-                  : l10n.trainingLoadSubtitleVolume,
+            MetricSentence(
+              metric: Metric.trimp,
+              sentence: hasHr ? 'hr' : 'volume',
+              args: {'days': '${points.length}'},
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),

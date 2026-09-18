@@ -5848,12 +5848,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String planDetailDriftOverFlag(int pct) {
-    return 'Diese Woche $pct% über Plan — nimm an den lockeren Tagen zurück, damit du kein Müdigkeitsloch gräbst.';
+    return 'Diese Woche bisher $pct% über Plan — nimm an den lockeren Tagen zurück, damit du kein Müdigkeitsloch gräbst.';
   }
 
   @override
   String planDetailDriftUnderFlag(String done, String planned) {
-    return 'Diese Woche bisher gelaufen: $done von $planned geplant.';
+    return 'Diese Woche bisher gelaufen: $done von $planned, die bis jetzt geplant waren.';
   }
 
   @override
@@ -5873,6 +5873,45 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planDetailAdaptiveReplan => 'Adaptive Neuplanung';
+
+  @override
+  String get planDetailAdjustPlan => 'Plan anpassen';
+
+  @override
+  String get planDetailAdjustPlanIntro =>
+      'Wähle die Änderung, die zu dem passt, was passiert ist. Jede Option sagt, was sie ändert.';
+
+  @override
+  String get planDetailAdjustReplanDesc =>
+      'Holt einen verpassten Long Run nach oder nimmt die nächste Woche zurück, wenn du mehr gelaufen bist als geplant. Nutze das, wenn eine Woche nicht nach Plan lief.';
+
+  @override
+  String get planDetailAdjustAdaptiveDesc =>
+      'Schaut auf deine letzten drei abgeschlossenen Wochen und schlägt Änderungen vor, wenn mindestens zwei über oder unter Plan lagen — so verschiebt eine einzelne Ausreißerwoche deinen Plan nicht. Nutze das, wenn du länger vom Plan abweichst.';
+
+  @override
+  String get planDetailAdjustPauseDesc =>
+      'Legt den Plan still, ohne etwas zu löschen, bis du ihn fortsetzt. Nutze das bei Krankheit, Verletzung oder Reisen.';
+
+  @override
+  String get planDetailAdjustResumeDesc =>
+      'Macht das wieder zu deinem aktiven Plan. Nutze das, wenn du bereit bist, wieder einzusteigen.';
+
+  @override
+  String get planDetailPausePlan => 'Plan pausieren';
+
+  @override
+  String get planDetailResumePlan => 'Plan fortsetzen';
+
+  @override
+  String get planDetailPauseDone => 'Plan pausiert.';
+
+  @override
+  String get planDetailResumeDone => 'Plan fortgesetzt.';
+
+  @override
+  String get planDetailResumeBlocked =>
+      'Du hast bereits einen aktiven Plan. Pausiere oder beende ihn zuerst.';
 
   @override
   String get planDetailAdaptiveOnTrack =>
@@ -14194,4 +14233,50 @@ class AppLocalizationsDe extends AppLocalizations {
   String logAlreadyOnPage(String page) {
     return 'Du bist bereits auf $page';
   }
+
+  @override
+  String metricAbout(String name) {
+    return 'Über $name';
+  }
+
+  @override
+  String metricVdotValue(String value) {
+    return 'VDOT $value';
+  }
+
+  @override
+  String get metricAgeGradeDefinition =>
+      'Deine Zeit im Verhältnis zur Bestzeit für dein Alter und Geschlecht. Rund 60 % ist stark auf lokaler Ebene, 80 % nationales Niveau.';
+
+  @override
+  String get metricVertLabel => 'Höhenmeter';
+
+  @override
+  String get metricVertDefinition =>
+      'Die gesamte Höhe, die du bergauf zurückgelegt hast, über alle Anstiege addiert.';
+
+  @override
+  String get metricTrimpLabel => 'TRIMP';
+
+  @override
+  String get metricTrimpDefinition =>
+      'Trainingsimpuls — ein Wert dafür, wie hart ein Lauf war, aus seiner Dauer und der Höhe deiner Herzfrequenz.';
+
+  @override
+  String get metricRiegelLabel => 'Riegel-Formel';
+
+  @override
+  String get metricRiegelDefinition =>
+      'Ein gängiges Verfahren, um deine Zeit auf einer Renndistanz aus einer Zeit auf einer anderen zu schätzen.';
+
+  @override
+  String get metricE1rmLabel => 'Gesch. 1RM';
+
+  @override
+  String get metricE1rmDefinition =>
+      'Einwiederholungsmaximum — das schwerste Gewicht, das du für eine einzige Wiederholung heben könntest. Ein geschätztes 1RM wird aus Gewicht und Wiederholungen eines gemachten Satzes berechnet, sodass du es nie austesten musst.';
+
+  @override
+  String get metricRpeDefinition =>
+      'Subjektives Belastungsempfinden — wie hart sich ein Satz angefühlt hat, von 1 bis 10. Eine 10 heißt, du hättest keine weitere Wiederholung geschafft.';
 }

@@ -37,6 +37,12 @@ const _exempt = <String, int>{
   'lib/screens/club_detail_screen.dart': 2,
   'lib/screens/guided_runs_screen.dart': 2,
   'lib/screens/onboarding_screen.dart': 2,
+  // The second value is a DIALOG's content inset, not a page gutter: the
+  // Adjust plan dialog zeroes its horizontal `contentPadding` so the option
+  // ListTiles run full-width, which leaves its intro line to carry the 24 a
+  // ListTile insets its own content by. The guard reads it as the enclosing
+  // SingleChildScrollView's because it scans forward for the next `padding:`.
+  'lib/screens/plan_detail_screen.dart': 2,
   'lib/screens/run_screen.dart': 2,
 };
 

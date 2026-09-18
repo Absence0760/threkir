@@ -7,6 +7,7 @@ import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../local_gym_store.dart';
+import '../metrics.dart';
 import '../preferences.dart';
 import '../widgets/gym_compose_sheet.dart';
 import 'gym_exercise_screen.dart';
@@ -125,7 +126,7 @@ class _GymRecordsScreenState extends State<GymRecordsScreen> {
               const SizedBox(height: 8),
               if (r.bestEst1RmKg != null)
                 _metric(
-                  l10n.gymPrE1rm,
+                  metricText(l10n, Metric.e1rm, variant: 'best'),
                   WeightFormat.format(r.bestEst1RmKg, activeWeightUnit),
                   theme,
                   primary: true,

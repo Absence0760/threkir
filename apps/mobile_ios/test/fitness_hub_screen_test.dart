@@ -74,6 +74,7 @@ void main() {
         const [],
     List<Map<String, dynamic>> meals = const [],
     FitnessTab initialTab = FitnessTab.history,
+    ValueNotifier<FitnessTab>? selectedTab,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = Preferences();
@@ -108,7 +109,7 @@ void main() {
         foodStore: foodStore,
         preferences: prefs,
         training: TrainingService(),
-        initialTab: initialTab,
+        selectedTab: selectedTab ?? ValueNotifier(initialTab),
       ),
     ));
     await tester.pumpAndSettle();
@@ -301,12 +302,12 @@ void main() {
     );
   });
 
-  // `initialTab` was a raw int documented in a comment. No production caller
-  // passed a non-default value, so the § 490 bug was not live here — but the
-  // seam was the same shape that produced it, where a stale literal stays in
-  // range after the tab set changes and the wrong tab opens in silence. With an
-  // enum, out of range is unrepresentable; what is worth pinning instead is the
-  // property no clamp could give.
+  // The selected tab started life as a raw int documented in a comment. No
+  // production caller passed a non-default value, so the § 490 bug was not live
+  // here — but the seam was the same shape that produced it, where a stale
+  // literal stays in range after the tab set changes and the wrong tab opens in
+  // silence. With an enum, out of range is unrepresentable; what is worth
+  // pinning instead is the property no clamp could give.
   testWidgets('every FitnessTab opens its own tab, and the strip is exactly as '
       'long as the enum', (tester) async {
     for (final tab in FitnessTab.values) {
@@ -322,5 +323,28 @@ void main() {
     }
     // Assert the population: an empty enum would satisfy the loop above.
     expect(FitnessTab.values.length, greaterThan(1));
+  });
+
+  // The shell reaches Gym and Nutrition through this hub, so the selected tab
+  // has to travel both ways: the host selects one when the Log action fires,
+  // and the host has to know which one a tap or swipe moved to — otherwise
+  // Log → Food onto the Nutrition tab already showing reads as a dropped tap.
+  testWidgets('the selected tab travels both ways through the host notifier',
+      (tester) async {
+    final selected = ValueNotifier(FitnessTab.history);
+    addTearDown(selected.dispose);
+    await pump(tester, runs: [runRow('r1')], selectedTab: selected);
+    final controller = tester.widget<TabBar>(find.byType(TabBar)).controller!;
+
+    selected.value = FitnessTab.nutrition;
+    await tester.pumpAndSettle();
+    expect(controller.index, FitnessTab.nutrition.index,
+        reason: 'the host selecting a tab did not move the strip');
+    expect(find.byType(NutritionScreen), findsOneWidget);
+
+    await tester.tap(find.text('Gym').first);
+    await tester.pumpAndSettle();
+    expect(selected.value, FitnessTab.gym,
+        reason: 'a tap on the strip never reached the host');
   });
 }

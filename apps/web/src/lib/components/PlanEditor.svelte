@@ -496,12 +496,13 @@
 		<section class="form">
 			<details class="import-box" bind:open={showImport}>
 				<summary>{t('planEditor.importTitle')}</summary>
-				<p class="hint">{t('planEditor.importHint')}</p>
+				<p class="hint" id="plan-import-hint">{t('planEditor.importHint')}</p>
 				<textarea
 					class="import-text"
 					bind:value={importText}
 					rows="6"
 					placeholder={t('planEditor.importPlaceholder')}
+					aria-describedby="plan-import-hint"
 				></textarea>
 				{#if importError}
 					<p class="error">{importError}</p>
@@ -514,58 +515,72 @@
 				<p class="imported-note" role="status">{t('planEditor.importedNote')}</p>
 			{/if}
 
-			<label>
-				<span>{t('planEditor.planName')}</span>
-				<input
-					type="text"
-					bind:value={name}
-					placeholder={t('planEditor.planNamePlaceholder')}
-					required
-					maxlength={lengthLimit('training_plans.name')}
-				/>
-			</label>
+			<div class="field">
+				<label>
+					<span>{t('planEditor.planName')}</span>
+					<input
+						type="text"
+						bind:value={name}
+						placeholder={t('planEditor.planNamePlaceholder')}
+						required
+						maxlength={lengthLimit('training_plans.name')}
+						aria-describedby="plan-name-hint"
+					/>
+				</label>
+				<p class="hint" id="plan-name-hint">{t('planEditor.planNameHint')}</p>
+			</div>
 
-			<label>
-				<span>{t('planEditor.goalRace')}</span>
-				<select bind:value={goalEvent} onchange={exitImportMode}>
-					{#each eventOptions as opt}
-						<option value={opt.value}>{opt.label}</option>
-					{/each}
-				</select>
-			</label>
+			<div class="field">
+				<label>
+					<span>{t('planEditor.goalRace')}</span>
+					<select bind:value={goalEvent} onchange={exitImportMode} aria-describedby="goal-race-hint">
+						{#each eventOptions as opt}
+							<option value={opt.value}>{opt.label}</option>
+						{/each}
+					</select>
+				</label>
+				<p class="hint" id="goal-race-hint">{t('planEditor.goalRaceHint')}</p>
+			</div>
 
-			<label>
-				<span>{t('planEditor.startDate')} <span class="optional">{t('planEditor.firstWeekBeginsSunday')}</span></span>
-				<input
-					type="date"
-					bind:value={startDate}
-					min={todayIso()}
-					onchange={() => { exitImportMode(); alignStartToSunday(); }}
-					required
-				/>
-				{#if startSnapped}
-					<span class="field-note">{t('planEditor.movedToNextSunday')}</span>
-				{/if}
-			</label>
+			<div class="field">
+				<label>
+					<span>{t('planEditor.startDate')} <span class="optional">{t('planEditor.firstWeekBeginsSunday')}</span></span>
+					<input
+						type="date"
+						bind:value={startDate}
+						min={todayIso()}
+						onchange={() => { exitImportMode(); alignStartToSunday(); }}
+						required
+						aria-describedby="start-date-hint"
+					/>
+					{#if startSnapped}
+						<span class="field-note">{t('planEditor.movedToNextSunday')}</span>
+					{/if}
+				</label>
+				<p class="hint" id="start-date-hint">{t('planEditor.startDateHint')}</p>
+			</div>
 
-			<label>
-				<span>{t('planEditor.daysPerWeek')}</span>
-				<select bind:value={daysPerWeek} onchange={exitImportMode}>
-					{#each [3, 4, 5, 6, 7] as n}
-						<option value={n}>{t('planEditor.nDays', { n })}</option>
-					{/each}
-				</select>
-			</label>
+			<div class="field">
+				<label>
+					<span>{t('planEditor.daysPerWeek')}</span>
+					<select bind:value={daysPerWeek} onchange={exitImportMode} aria-describedby="days-per-week-hint">
+						{#each [3, 4, 5, 6, 7] as n}
+							<option value={n}>{t('planEditor.nDays', { n })}</option>
+						{/each}
+					</select>
+				</label>
+				<p class="hint" id="days-per-week-hint">{t('planEditor.daysPerWeekHint')}</p>
+			</div>
 
 			<fieldset>
 				<legend>{t('planEditor.goalTime')} <span class="optional">{t('planEditor.optional')}</span></legend>
-				<p class="hint">{t('planEditor.goalTimeHint')}</p>
+				<p class="hint" id="goal-time-hint">{t('planEditor.goalTimeHint')}</p>
 				<div class="time-row">
-					<input type="number" min="0" max="9" bind:value={targetHours} placeholder={t('planEditor.placeholderHours')} />
+					<input type="number" min="0" max="9" bind:value={targetHours} placeholder={t('planEditor.placeholderHours')} aria-describedby="goal-time-hint" />
 					<span>:</span>
-					<input type="number" min="0" max="59" bind:value={targetMin} placeholder={t('planEditor.placeholderMinutes')} />
+					<input type="number" min="0" max="59" bind:value={targetMin} placeholder={t('planEditor.placeholderMinutes')} aria-describedby="goal-time-hint" />
 					<span>:</span>
-					<input type="number" min="0" max="59" bind:value={targetSec} placeholder={t('planEditor.placeholderSeconds')} />
+					<input type="number" min="0" max="59" bind:value={targetSec} placeholder={t('planEditor.placeholderSeconds')} aria-describedby="goal-time-hint" />
 				</div>
 			</fieldset>
 
@@ -581,16 +596,19 @@
 
 			<fieldset>
 				<legend>{t('planEditor.recent5kTime')} <span class="optional">{t('planEditor.optional')}</span></legend>
-				<p class="hint"><MetricLabel metric="riegel" sentence="planEditor.recent5kHint" /></p>
+				<p class="hint" id="recent-5k-hint"><MetricLabel metric="riegel" sentence="planEditor.recent5kHint" /></p>
 				<div class="time-row">
-					<input type="number" min="0" max="59" bind:value={recent5kMin} placeholder={t('planEditor.placeholderMinutes')} />
+					<input type="number" min="0" max="59" bind:value={recent5kMin} placeholder={t('planEditor.placeholderMinutes')} aria-describedby="recent-5k-hint" />
 					<span>:</span>
-					<input type="number" min="0" max="59" bind:value={recent5kSec} placeholder={t('planEditor.placeholderSeconds')} />
+					<input type="number" min="0" max="59" bind:value={recent5kSec} placeholder={t('planEditor.placeholderSeconds')} aria-describedby="recent-5k-hint" />
 				</div>
 				{#if recent5kTotal != null}
 					<label class="confirm-recent">
 						<input type="checkbox" bind:checked={recent5kConfirmed} />
-						<span>{t('planEditor.recent5kConfirm')}</span>
+						<span>
+							{t('planEditor.recent5kConfirm')}
+							<span class="hint">{t('planEditor.recent5kConfirmHint')}</span>
+						</span>
 					</label>
 				{/if}
 				{#if recent5kNeedsConfirm}
@@ -600,16 +618,20 @@
 				{/if}
 			</fieldset>
 
-			<label>
-				<span>{t('planEditor.overrideTotalWeeks')} <span class="optional">{t('planEditor.optional')}</span></span>
-				<input
-					type="number"
-					min="4"
-					max="24"
-					bind:value={weekOverride}
-					placeholder={String(defaultPlanWeeks(goalEvent))}
-				/>
-			</label>
+			<div class="field">
+				<label>
+					<span>{t('planEditor.overrideTotalWeeks')} <span class="optional">{t('planEditor.optional')}</span></span>
+					<input
+						type="number"
+						min="4"
+						max="24"
+						bind:value={weekOverride}
+						placeholder={String(defaultPlanWeeks(goalEvent))}
+						aria-describedby="override-weeks-hint"
+					/>
+				</label>
+				<p class="hint" id="override-weeks-hint">{t('planEditor.overrideTotalWeeksHint')}</p>
+			</div>
 
 			{#if error}
 				<p class="error">{error}</p>
@@ -659,7 +681,7 @@
 					<h3>{t('planEditor.weekOutline')}</h3>
 					<MetricLabel metric="planPhases" />
 				</div>
-				<p class="outline-hint">
+				<p class="outline-hint" id="week-outline-hint">
 					{t('planEditor.outlineHint')}
 				</p>
 				<ul class="weeks">
@@ -695,7 +717,7 @@
 											</div>
 											<label class="wo-field">
 												<span>{t('planEditor.runType')}</span>
-												<select bind:value={w.workouts[woIdx].kind}>
+												<select bind:value={w.workouts[woIdx].kind} aria-describedby="week-outline-hint">
 													{#each KIND_OPTIONS as k}
 														<option value={k}>{workoutKindLabel(k)}</option>
 													{/each}
@@ -708,6 +730,7 @@
 													min="0"
 													step={distanceStep}
 													value={metresToDistanceInput(wo.target_distance_m)}
+													aria-describedby="week-outline-hint"
 													oninput={(e) => {
 														w.workouts[woIdx].target_distance_m = distanceInputToMetres(
 															(e.currentTarget as HTMLInputElement).value,
@@ -724,6 +747,7 @@
 													pattern={'[0-9]{1,2}:[0-9]{2}'}
 													placeholder="—"
 													value={paceToInput(wo.target_pace_sec_per_km)}
+													aria-describedby="week-outline-hint"
 													oninput={paceInputHandler(weekIdx, woIdx)}
 													disabled={wo.kind === 'rest'}
 												/>
@@ -735,6 +759,7 @@
 													bind:value={w.workouts[woIdx].notes}
 													placeholder="—"
 													maxlength="200"
+													aria-describedby="week-outline-hint"
 												/>
 											</label>
 										</div>
@@ -799,6 +824,15 @@
 		   is what stops this one shrinking into its grid track. */
 		min-width: 0;
 	}
+	.field {
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+		min-width: 0;
+	}
+	.field .hint {
+		margin-bottom: 0;
+	}
 	.optional {
 		font-weight: 400;
 		color: var(--color-text-tertiary);
@@ -861,6 +895,10 @@
 	.beginner-title { display: block; font-weight: 600; }
 	.confirm-recent input {
 		margin-top: 0.15rem;
+	}
+	.confirm-recent .hint {
+		display: block;
+		margin-bottom: 0;
 	}
 	.time-row {
 		display: flex;

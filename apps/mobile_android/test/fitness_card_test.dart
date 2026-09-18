@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/training_load.dart';
 import '../lib/widgets/fitness_card.dart';
+import '../lib/widgets/metric_label.dart';
 
 Run _r({
   required double distance,
@@ -168,7 +169,7 @@ void main() {
         'Form (TSB)': last.tsb,
       }.entries) {
         final stat = find.ancestor(
-            of: find.text(entry.key), matching: find.byType(FitnessStat));
+            of: find.text(entry.key), matching: find.byType(MetricStat));
         expect(
           find.descendant(
               of: stat, matching: find.text(entry.value.toStringAsFixed(0))),
@@ -220,7 +221,7 @@ void main() {
         'Form (TSB)': '17',
       }.entries) {
         final stat = find.ancestor(
-            of: find.text(entry.key), matching: find.byType(FitnessStat));
+            of: find.text(entry.key), matching: find.byType(MetricStat));
         expect(find.descendant(of: stat, matching: find.text(entry.value)),
             findsOneWidget,
             reason: '${entry.key} must come from the injected series '

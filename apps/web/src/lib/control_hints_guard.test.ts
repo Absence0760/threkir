@@ -1,21 +1,42 @@
-// Every control on the preference pages carries a one-line plain explanation
+// Every control on a swept surface carries a one-line plain explanation
 // (issue #905 workstream 5, the Spoken-cues pattern #902 names as house style).
 // A select, a number field or a toggle group points at its explanation with
 // `aria-describedby`, so a screen reader announces it and the text sits under
 // the control rather than inside its accessible name. A checkbox carries the
-// explanation inside its own label as a `.hint`, as the cue toggles always did.
-// A control added without one fails here, in every page the split produced.
+// explanation inside its own label as a `.hint` / `.field-hint`, as the cue
+// toggles always did. A control added without one fails here.
+//
+// SURFACES is the sweep's boundary, not the app's: the six preference pages
+// came from #919, the plan-and-run path from the workstream-5 sweep. A surface
+// not listed has not been swept — adding one to this list is how the sweep
+// grows, and the test then names every control on it that owes an explanation.
+//
+// A `<textarea>` is deliberately not a control here: its label plus its
+// placeholder is already the whole story on a free-text field, and demanding a
+// line under each one adds the density #905 exists to remove.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { en } from '../../lib/i18n/locales/en';
-import { stripSvelteComments } from '../../lib/core/strip_comments';
+import { en } from './i18n/locales/en';
+import { stripSvelteComments } from './core/strip_comments';
 
-const SETTINGS_DIR = dirname(fileURLToPath(import.meta.url));
-const PAGES = ['display', 'recording', 'training', 'body', 'privacy', 'notifications'];
+const SRC = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+const SETTINGS_PAGES = ['display', 'recording', 'training', 'body', 'privacy', 'notifications'];
+
+const SURFACES: Array<{ name: string; file: string }> = [
+	...SETTINGS_PAGES.map((page) => ({
+		name: `/settings/${page}`,
+		file: `routes/settings/${page}/+page.svelte`,
+	})),
+	{ name: '/plans/new', file: 'routes/plans/new/+page.svelte' },
+	{ name: 'PlanEditor', file: 'lib/components/PlanEditor.svelte' },
+	{ name: 'PlanMetaEditor', file: 'lib/components/PlanMetaEditor.svelte' },
+	{ name: 'RunEditor', file: 'lib/components/RunEditor.svelte' },
+];
 
 /// The opening tag starting at `start`, read up to the `>` that closes it
 /// rather than one inside an attribute expression (`onchange={() => …}`).
@@ -37,7 +58,7 @@ interface Control {
 
 function controls(source: string): Control[] {
 	const found: Control[] = [];
-	for (const m of source.matchAll(/<(input|select)\b|<div\b[^>]*role="group"/g)) {
+	for (const m of source.matchAll(/<(input|select)\b|<div\b[^>]*role="(?:radio)?group"/g)) {
 		found.push({ tag: openingTag(source, m.index!), at: m.index! });
 	}
 	return found;
@@ -53,30 +74,38 @@ function explained(source: string, control: Control): string | null {
 	}
 	if (/type="checkbox"/.test(control.tag)) {
 		const labelEnd = source.indexOf('</label>', control.at);
-		if (labelEnd >= 0 && source.slice(control.at, labelEnd).includes('class="hint"')) return null;
+		const inLabel = labelEnd >= 0 ? source.slice(control.at, labelEnd) : '';
+		if (inLabel.includes('class="hint"') || inLabel.includes('class="field-hint"')) return null;
 	}
 	return 'has neither aria-describedby nor a .hint inside its label';
 }
 
-for (const page of PAGES) {
-	test(`every control on /settings/${page} has a plain explanation`, () => {
-		const source = readFileSync(join(SETTINGS_DIR, page, '+page.svelte'), 'utf8');
+function read(file: string): string {
+	return readFileSync(join(SRC, file), 'utf8');
+}
+
+for (const surface of SURFACES) {
+	test(`every control on ${surface.name} has a plain explanation`, () => {
+		const source = read(surface.file);
 		const found = controls(stripSvelteComments(source));
-		assert.ok(found.length > 0, `found no controls on /settings/${page} — the scan stopped matching`);
+		assert.ok(found.length > 0, `found no controls on ${surface.name} — the scan stopped matching`);
 		const missing = found
 			.map((c) => ({ c, why: explained(source, c) }))
 			.filter((x) => x.why !== null)
 			.map((x) => `${x.c.tag.replace(/\s+/g, ' ').slice(0, 90)} — ${x.why}`);
-		assert.deepEqual(missing, [], `/settings/${page} has controls with no explanation`);
+		assert.deepEqual(missing, [], `${surface.name} has controls with no explanation`);
 	});
 }
 
-test('every hint a preference page renders is real, non-empty English copy', () => {
+test('every hint a swept surface renders is real, non-empty English copy', () => {
 	const enRecord = en as Record<string, string>;
-	for (const page of PAGES) {
-		const source = readFileSync(join(SETTINGS_DIR, page, '+page.svelte'), 'utf8');
-		for (const m of source.matchAll(/class="hint"[^>]*>\{m\('([\w.]+)'/g)) {
-			assert.ok(enRecord[m[1]]?.trim(), `/settings/${page} renders ${m[1]}, which en does not define`);
+	for (const surface of SURFACES) {
+		const source = read(surface.file);
+		for (const m of source.matchAll(/class="[^"]*hint[^"]*"[^>]*>\s*\{[mt]\('([\w.]+)'/g)) {
+			assert.ok(
+				enRecord[m[1]]?.trim(),
+				`${surface.name} renders ${m[1]}, which en does not define`
+			);
 		}
 	}
 });

@@ -5498,12 +5498,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String planDetailDriftOverFlag(int pct) {
-    return '今週は計画より$pct%多く走っています — 疲労を溜めないよう、楽な日は控えめに。';
+    return '今週はここまで、計画より$pct%多く走っています — 疲労を溜めないよう、楽な日は控えめに。';
   }
 
   @override
   String planDetailDriftUnderFlag(String done, String planned) {
-    return '今週はここまで、予定の$plannedのうち$doneを走りました。';
+    return '今週はここまでの予定$plannedのうち$doneを走りました。';
   }
 
   @override
@@ -5523,6 +5523,45 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get planDetailAdaptiveReplan => '適応リプラン';
+
+  @override
+  String get planDetailAdjustPlan => 'プランを調整';
+
+  @override
+  String get planDetailAdjustPlanIntro =>
+      '起きたことに合う変更を選んでください。それぞれの選択肢に、何が変わるかが書かれています。';
+
+  @override
+  String get planDetailAdjustReplanDesc =>
+      '逃したロング走を取り戻すか、予定より多く走った後の翌週を軽くします。1週間が計画どおりに行かなかったときに使います。';
+
+  @override
+  String get planDetailAdjustAdaptiveDesc =>
+      '直近で終了した3週間を見て、2週間以上が計画を上回るか下回っていた場合に変更を提案します。1週間だけの例外で計画が動かないようにするためです。しばらく計画から外れているときに使います。';
+
+  @override
+  String get planDetailAdjustPauseDesc =>
+      '何も削除せずに、再開するまでプランを保留します。体調不良、けが、旅行のときに使います。';
+
+  @override
+  String get planDetailAdjustResumeDesc =>
+      'このプランを再びアクティブなプランにします。再開する準備ができたときに使います。';
+
+  @override
+  String get planDetailPausePlan => 'プランを一時停止';
+
+  @override
+  String get planDetailResumePlan => 'プランを再開';
+
+  @override
+  String get planDetailPauseDone => 'プランを一時停止しました。';
+
+  @override
+  String get planDetailResumeDone => 'プランを再開しました。';
+
+  @override
+  String get planDetailResumeBlocked =>
+      'すでにアクティブなプランがあります。先にそれを一時停止するか終了してください。';
 
   @override
   String get planDetailAdaptiveOnTrack => '直近の週は計画どおりです。調整は不要です。';
@@ -13522,4 +13561,48 @@ class AppLocalizationsJa extends AppLocalizations {
   String logAlreadyOnPage(String page) {
     return 'すでに$pageを開いています';
   }
+
+  @override
+  String metricAbout(String name) {
+    return '$nameについて';
+  }
+
+  @override
+  String metricVdotValue(String value) {
+    return 'VDOT $value';
+  }
+
+  @override
+  String get metricAgeGradeDefinition =>
+      '年齢と性別ごとの最高記録に対するあなたのタイムの評価。60%前後で地域のトップクラス、81%以上で全国クラスです。';
+
+  @override
+  String get metricVertLabel => '獲得標高';
+
+  @override
+  String get metricVertDefinition => 'すべての上り区間を合計した、登った高さの総和です。';
+
+  @override
+  String get metricTrimpLabel => 'TRIMP';
+
+  @override
+  String get metricTrimpDefinition =>
+      'トレーニングインパルス — 走った時間の長さと心拍の高さから、そのランがどれだけきつかったかを表すスコアです。';
+
+  @override
+  String get metricRiegelLabel => 'リーゲルの式';
+
+  @override
+  String get metricRiegelDefinition => 'ある距離で出したタイムから、別の距離のタイムを予測する標準的な方法です。';
+
+  @override
+  String get metricE1rmLabel => '推定1RM';
+
+  @override
+  String get metricE1rmDefinition =>
+      '1回挙上最大重量 — 1レップだけ挙げられる最大の重量です。推定1RMは実際に行ったセットの重量とレップ数から算出されるので、測定する必要はありません。';
+
+  @override
+  String get metricRpeDefinition =>
+      '自覚的運動強度 — そのセットがどれだけきつかったかを1〜10で表します。10はもう1レップもできなかったという意味です。';
 }

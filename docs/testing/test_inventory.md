@@ -519,7 +519,7 @@ What a challenge value is CALLED and what UNIT it is printed in. `check_constrai
 
 The seven ARB catalogues against the checked-in `lib/l10n/gen/` ([decisions § 844](../architecture/decisions.md)). `l10n_parity_test.dart` measures the ARBs against each other and `architecture_guards_test.dart` measures the locale set; neither measures the hand-run `gen-l10n` step between them, so an ARB whose wording changed without a regeneration ships the previous sentence in every locale and a hand-edit to a `gen/` file is invisible from both directions. Reads the generated Dart back — there is no reflection to ask an `AppLocalizations` for a getter named at runtime — and asserts the member set in both directions plus, for every non-ICU message, the literal itself with `$name` rewritten to `{name}`: 3,761 of 3,826 messages per catalogue. Each group carries a floor on how many members it parsed, so a change in what `gen-l10n` emits fails the guard rather than emptying it.
 
-### `apps/mobile_ios/test/` — 564 files, byte-for-byte
+### `apps/mobile_ios/test/` — 568 files, byte-for-byte
 
 After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kept identical to `apps/mobile_android/test/` via `diff -rq`. Every test file documented above runs on the iOS target too **locally** — `melos run test` has no scope filter — but **not in CI**: the `test-packages` job scopes `melos exec` to `run_recorder`, `mobile_android`, `api_client`, `gpx_parser`, `ui_kit` and `core_models`, and `mobile_ios` is not among them. That is not a gap for byte-identical Dart, but it is why a test gated on an `ios/` file being present asserts nothing on any CI run — two such groups existed and were removed in favour of `scripts/check_ios_native_declarations.mjs` (decisions.md § 742). Per-target counts: `flutter test` compiles separately, so each test file is executed twice when you run both apps locally. Don't add iOS-specific test files — every test belongs in both apps. The architecture-guard tests under `apps/mobile_android/test/architecture_guards_test.dart` read `lib/screens/run_screen.dart` from the working directory, so they pin the same invariants on both targets.
 
@@ -648,9 +648,13 @@ The pure coalescing auto-save queue every preference page shares (decisions § 1
 
 The reachability contract for the `/settings/preferences` split (issue #905, decisions § 1640). Reads `settings.md § Keys` and every settings `+page.svelte`: the registry and the declared homes name the same keys; the constants pages name keys through still spell them; every key is edited on exactly its declared page set (comments stripped); the nav and the landing page offer every split page; the landing page edits nothing; every legacy anchor lands on a page carrying that `id`; `legacyPreferencesTarget` resolves the three old anchors and nothing else (`#__proto__` included); and no link the app renders itself goes through that redirect — the dashboard, run detail and nutrition pages name the page a section now lives on, and the anchors stay for bookmarks and old emails.
 
-### `apps/web/src/routes/settings/prefs_hints_guard.test.ts` — 3 tests
+### `apps/web/src/lib/control_hints_guard.test.ts` — 3 tests
 
-Every control on the six preference pages carries a one-line explanation (#905 workstream 5): one declared test run per page that each `<select>`, `<input>` and toggle group has an `aria-describedby` naming an element that exists, or, for a checkbox, a `.hint` inside its label; every rendered hint key exists in `en`; and the hint copy spells out the abbreviations the labels print (HR, bpm, kg, lbs, km/h, mph, cm, AI, ml, g).
+Every control on a swept surface carries a one-line explanation (#905 workstream 5): one declared test run per surface that each `<select>`, `<input>` and toggle group has an `aria-describedby` naming an element that exists, or, for a checkbox, a `.hint` / `.field-hint` inside its label; every rendered hint key exists in `en`; and the hint copy spells out the abbreviations the labels print (HR, bpm, kg, lbs, km/h, mph, cm, AI, ml, g). `SURFACES` is the sweep's boundary — the six preference pages from #919 plus the plan-and-run path (`/plans/new`, `PlanEditor`, `PlanMetaEditor`, `RunEditor`, decisions § 1651). A `<textarea>` is deliberately not a control here. Was `src/routes/settings/prefs_hints_guard.test.ts`.
+
+### `apps/web/tests-e2e/cross-cutting/control-hints.spec.ts` — 3 tests
+
+The browser half of the guard above: walks the rendered DOM of `/plans/new`, `/runs/new` and the Edit-plan dialog, resolves each control's `aria-describedby` (or a checkbox's in-label hint) and fails when it reads back as empty. The source scan can only see that the id exists — a hint behind an `{#if}` that never opens, or a catalogue key resolving to empty, passes it. The control list comes from the DOM, not a list in the spec.
 
 ### `apps/web/src/lib/routes/privacy.test.ts` — 10 tests
 
@@ -1132,7 +1136,7 @@ Run the pure-helper slices with `cd apps/backend && deno test --no-check supabas
 
 The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets to drive and are exercised manually only — see [apps/backend/CLAUDE.md § Testing without real credentials](../../apps/backend/CLAUDE.md#testing-without-real-credentials).
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 1,887 declared tests across 500 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 1,891 declared tests across 501 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 

@@ -62,6 +62,16 @@ regexes = [
   # Matched on the value so a real audit key in that test file is still a
   # finding.
   '''an-operator-secret-at-least-32-bytes-long''',
+  # check_production_env.test.mjs (history only): the VAPID public point an
+  # interim commit on the native-push branch carried as a literal before the
+  # test was changed to mint one per run with node:crypto. A 65-byte
+  # uncompressed P-256 point is a public value by definition and nobody holds
+  # its private half — but it is high-entropy base64url beside the word VAPID,
+  # so generic-api-key fires, and gitleaks scans the commits in a PR rather
+  # than only its tip. Matched on the value, so a real key in that file is
+  # still a finding. Removable once the branch is squash-merged: the merge
+  # commit's diff does not contain it.
+  '''BJpD8Pjn3W-bc7BCbBCkdUj0SY3hdTr6pB8heXjzmHHm7YzhpivKxWb3hx0ZD7ym_ik5EtJo_G9mMPSzA-HcE4g''',
   # apps/custom_watch/core/src/badges.rs: the watch_core badge catalogue's i18n
   # key strings (label_key/desc_key = "badges.<family>.<label|desc>"). The
   # generic-api-key rule's entropy gate trips on the higher-entropy ones, but

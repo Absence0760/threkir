@@ -477,7 +477,7 @@ Deno.test('buildActionUrl — token hash is percent-encoded into the query', () 
   );
 });
 
-Deno.test('renderAuthEmail — recovery: CTA verify link is the first URL in the HTML', () => {
+Deno.test('renderAuthEmail — recovery: CTA verify link is the anchor the fixture reads', () => {
   const [send] = planSends(
     { email: 'a@example.com' },
     {
@@ -490,15 +490,31 @@ Deno.test('renderAuthEmail — recovery: CTA verify link is the first URL in the
   const r = renderAuthEmail('en', send, {
     supabaseUrl: 'http://127.0.0.1:54321',
     redirectTo: 'http://localhost:7777/auth/reset',
+    siteUrl: 'https://threkir.com',
   });
   assertEquals(r.subject, 'Reset your password');
   // The e2e mail fixture (apps/web/tests-e2e/fixtures/mailpit.ts
-  // extractLink) grabs the FIRST http(s) URL in the message and decodes
-  // the attribute-escaped &amp; — mirror both steps; it must be the
-  // verify link.
-  const firstUrl = r.html.match(/https?:\/\/[^\s"'<>]+/)![0].replace(/&amp;/g, '&');
+  // extractLink) reads the first ANCHOR href and decodes the
+  // attribute-escaped &amp; — mirror both steps; it must be the action
+  // link. It deliberately does NOT read the first URL: with a site URL
+  // configured the header mark's <img src> comes first, which is the
+  // whole reason the fixture keys on the anchor.
+  const firstUrl = r.html.match(
+    /<a\b[^>]*\bhref=["'](https?:\/\/[^"']+)["']/i,
+  )![1].replace(/&amp;/g, '&');
   assertEquals(firstUrl, 'http://localhost:7777/auth/reset?token_hash=thehash&type=recovery');
   assertStringIncludes(r.text, '/auth/reset?token_hash=thehash&type=recovery');
+  // The mark precedes it, and carries no alt so the wordmark beside it
+  // isn't announced twice.
+  assertStringIncludes(r.html, 'src="https://threkir.com/email-logo.png"');
+  assertStringIncludes(r.html, 'alt=""');
+  if (r.html.indexOf('email-logo.png') > r.html.indexOf('<a ')) {
+    throw new Error('the mark must precede the CTA, or this test proves nothing');
+  }
+  // The plain-text part must not grow a URL nobody can click.
+  if (r.text.includes('email-logo.png')) {
+    throw new Error('the logo leaked into the plain-text part');
+  }
   // The OTP code rides along as the link alternative.
   assertStringIncludes(r.html, '123456');
   assertStringIncludes(r.text, '123456');
@@ -601,4 +617,20 @@ Deno.test('buildMime — multipart/alternative with CRLF and 8bit parts', () => 
 Deno.test('extractAddr — bare address out of a display-name From', () => {
   assertEquals(extractAddr('Threkir <noreply@threkir.com>'), 'noreply@threkir.com');
   assertEquals(extractAddr('noreply@threkir.com'), 'noreply@threkir.com');
+});
+
+// A deployment with no Site URL configured must still send a coherent email
+// rather than one with a broken image at the top — the same shape every
+// client that blocks remote images renders.
+Deno.test('renderAuthEmail — no site URL falls back to the wordmark alone', () => {
+  const [send] = planSends(
+    { email: 'a@example.com' },
+    { email_action_type: 'recovery', token: '123456', token_hash: 'thehash' },
+  );
+  const r = renderAuthEmail('en', send, { supabaseUrl: 'http://127.0.0.1:54321' });
+
+  if (r.html.includes('<img')) {
+    throw new Error('no site URL must not emit an image');
+  }
+  assertStringIncludes(r.html, 'Threkir');
 });

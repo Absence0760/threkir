@@ -72,6 +72,20 @@ test('the brand SVGs draw their words as outlines, never as live text', () => {
 	}
 });
 
+// The transactional-email mark is the one brand surface whose source does not
+// live in static/ — only its rendered PNG does, because email clients can't
+// display an SVG. The source still has to hold the gradient, or the mark in
+// every email drifts from the icon beside it in the inbox.
+test('email header mark source reuses the same gradient stops', () => {
+	const svg = readRepo('assets', 'email-logo.svg');
+	assert.match(svg, new RegExp(`stop-color="${EMBER}"`), 'email-logo.svg must start ember');
+	assert.match(svg, new RegExp(`stop-color="${MAGENTA}"`), 'email-logo.svg must end magenta');
+	// Same hazard as the outlined wordmarks above: gen-email-logo.sh rasterises
+	// this on whoever's machine runs it, so live <text> would bake in that
+	// machine's font.
+	assert.doesNotMatch(svg, /<text[\s>]/, 'email-logo.svg must not draw live <text>');
+});
+
 test('Android brand_ember colour resource matches the master ember stop', () => {
 	// Android colours are #AARRGGBB; the ember stop is fully opaque.
 	const colors = readRepo(

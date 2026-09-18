@@ -58,6 +58,21 @@ LIVEHUB_ALLOWED_ORIGINS = "https://threkir.com,https://www.threkir.com,https://p
 # /audit/livehub May 2026 H3 + H4.
 LIVEHUB_REQUIRE_AUTH = "1"
 
+# Outbound mail via Resend. SMTP_HOST is the gate: unset, main.go logs
+# "notification_email: DISABLED" and every mail job finishes done while
+# leaving its row unstamped, so enabling it later still sends the backlog.
+#
+# SMTP_USERNAME is the literal string "resend" for every Resend account —
+# it is NOT the API key. The key is SMTP_PASSWORD, which is a secret and
+# therefore lives in `fly secrets`, never here.
+#
+# SMTP_PORT, SMTP_FROM and APP_BASE_URL are deliberately absent: main.go
+# already defaults them to 587, "Threkir <noreply@threkir.com>" and
+# https://threkir.com. Setting them here would be a second copy of a value
+# that is already correct, and a second place to forget to change it.
+SMTP_HOST = "smtp.resend.com"
+SMTP_USERNAME = "resend"
+
 # SECURITY — live-hub WebSocket subscribers carry their Supabase JWT
 # in the `Sec-WebSocket-Protocol: livehub-bearer, <jwt>` offer (the
 # one header a browser WebSocket client can set); URLs are token-free

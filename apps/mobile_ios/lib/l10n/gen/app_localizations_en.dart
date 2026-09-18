@@ -13168,7 +13168,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prefsCueGuidedRunInfo =>
-      'Only active when you arm a guided run on the Run tab before you start. Speaks each scripted coach cue as you reach its mark. Example: “Five minutes in. Settle into a rhythm you could hold all day.”';
+      'Only active when you arm a guided run on the recording screen before you start. Speaks each scripted coach cue as you reach its mark. Example: “Five minutes in. Settle into a rhythm you could hold all day.”';
 
   @override
   String get runGuidedRun => 'Guided run';

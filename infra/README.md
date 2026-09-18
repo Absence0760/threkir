@@ -62,9 +62,25 @@ filter that used to sit on the triggers.
 - every Lambda Function URL is `AWS_IAM`-authed and carries **both** CloudFront
   grants (`lambda:InvokeFunctionUrl` and plain `lambda:InvokeFunction`);
 - no Lambda environment merges the decrypted sops map whole;
+- **no credential reaches a Lambda environment in plaintext.** `environment {
+  variables }` is returned by every API that returns a `FunctionConfiguration`,
+  including `lambda:UpdateFunctionCode`, which the release role holds — so a
+  plaintext key there is readable by anything that can deploy. The coach and
+  generate-route credentials are encrypted at apply time into one
+  `aws_kms_ciphertext` blob per function and decrypted by the handler at cold
+  start ([§ 1656](../docs/architecture/decisions.md)). The guard fails on a
+  plaintext sops key that is not declared non-credential with a reason, on a key
+  that is both encrypted and plaintext, on a blob with no per-function
+  encryption context, on a blob no env reads or two envs share, and on a stale
+  exemption;
 - **no env root makes a principal CI can assume a `kms:Decrypt` principal on the
   secrets CMK**, while no credentialed workflow job runs `terraform` and no
-  `aws_lambda_function` sets `kms_key_arn`. Both directions fail: a wire
+  `aws_lambda_function` sets `kms_key_arn` — which none may, because that field
+  makes Lambda hand the decrypted environment back to the same callers and
+  demands the DEPLOY role hold `kms:Decrypt`. The EXECUTION role's identifier in
+  the same statement is checked in the other direction: it was unexercised until
+  § 1656 and is load-bearing now, because it is what decrypts the cold-start
+  blob. Both directions fail: a wire
   restored while nothing exercises it is standing privilege on the one key whose
   loss is unrecoverable, and an empty wire once either premise breaks is a
   release that `AccessDenied`s mid-deploy ([§ 1021](../docs/architecture/decisions.md)).
@@ -280,6 +296,12 @@ Re-apply (back in `infra/envs/preview`) to wire the secrets into the Lambda:
 cd -    # back to infra/envs/preview
 terraform apply
 ```
+
+The apply encrypts the credential half of the file into
+`aws_kms_ciphertext.coach` / `aws_kms_ciphertext.generate_route` and puts those
+blobs — not the keys — in the two functions' environments. Re-run it after every
+`bin/secret-set.sh`: the blob is a resource, so a changed plaintext is a changed
+blob, and a function still holding the old one decrypts the old value.
 
 ### 5. Prod env
 

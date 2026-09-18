@@ -145,7 +145,7 @@ The static SvelteKit build inlines `PUBLIC_*` vars at build time. The CI workflo
 
 | Lambda env var | Source | Notes |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | sops-encrypted at `infra/envs/<env>/secrets.enc.yaml` (env-specific AWS KMS key) | server-only — `/api/coach` reads it |
+| `ANTHROPIC_API_KEY` | sops-encrypted in the private estate repo (env-specific AWS KMS key), then re-encrypted by Terraform into `aws_kms_ciphertext.coach` | server-only — never a plaintext Lambda env var; `/api/coach` decrypts the blob at cold start ([decisions § 1656](../../docs/architecture/decisions.md)) |
 | `SENTRY_DSN` | same sops file | optional — server-side capture |
 | `APP_RELEASE` | passed at deploy time as a Terraform variable, derived from the CI tag | tags Sentry events |
 | `COACH_PROVIDER` / `OPENAI_BASE_URL` | optional — set in `terraform.tfvars` per env | for self-hosted Ollama / OpenAI-compatible service |

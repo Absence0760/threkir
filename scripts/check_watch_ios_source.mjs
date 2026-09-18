@@ -163,7 +163,7 @@
 //       the gate is checked here rather than assumed: no `Button` action may
 //       call `workoutManager.stop()`, there must be one `HoldToStopButton`
 //       per stop call site, and the press duration must still be what fires
-//       it (decisions § 1655).
+//       it (decisions § 1657).
 //
 // WHAT THIS GUARD DOES NOT PROVE. It parses text. It does not compile Swift,
 // does not run it, and cannot see anything a type-checker would: claim (1)

@@ -396,6 +396,27 @@ were 16 and 20 of those. They were left for whoever owns them. Like branch
 protection, the setting is invisible from inside the tree, so this paragraph is
 the only record of it.
 
+### One red gate is not the pull request's fault, and it has no fix here
+
+The gate can go red on a change with nothing wrong with it. The known case is
+[issue #916](https://github.com/Absence0760/threkir/issues/916): the local
+Supabase stack's edge runtime exits **135 (SIGBUS)** while serving the first
+request it gets, which is the `start-supabase` action's own readiness probe, so
+a Playwright shard fails before a test runs and reports
+`edge runtime (clip-public-track) never became ready`. Three occurrences since
+2026-09-08, all on `ubuntu-latest`. The cause is upstream and unfixed: the
+runtime carries a copy of Deno's cache layer that deletes a cache database
+another connection still has mapped, and no released edge-runtime image has
+taken [denoland/deno#34873](https://github.com/denoland/deno/pull/34873), which
+fixed it. Nothing in this repo can close it — the CLI pin cannot move to an
+image with the same bug, and both levers that would turn the check green
+(a wider budget, an automatic restart on 135) would hide a live crash.
+
+**Operator action: re-run the failed job.** Do not treat it as the branch's
+failure and do not chase it as a flaky test.
+[decisions § 1656](../architecture/decisions.md) holds the evidence and the
+one-command check that says when the pin can move.
+
 ## Release vs deploy
 
 Two orthogonal axes. **Release** is "we cut a tagged version of the product"; **deploy** is "those bytes are now serving traffic". They overlap in different ways per service. Every `release-*.yml` deploy is **triggered by publishing a GitHub Release** for the tag below (a bare tag push no longer deploys — the published Release is the gate; see [releasing.md](releasing.md)):

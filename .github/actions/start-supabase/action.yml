@@ -78,6 +78,19 @@ description: >
      (c) forensics are captured immediately after each failed attempt
      (including `ss -tan` for process-less TIME_WAIT states), because
      by the end of the job the evidence is gone.
+
+  One failure mode is deliberately NOT handled. The edge runtime can
+  exit 135 (SIGBUS) while serving its FIRST request, which is this
+  action's own readiness probe, and the probe then times out at 000 for
+  the whole budget (issue #916, three occurrences since 2026-09-08).
+  Nothing here can fix it: the runtime vendors a copy of Deno's cache
+  layer that deletes a cache database another connection still has
+  mapped, and every released image — including the v1.74.3 that the
+  current stable CLI 2.117.0 pins — predates denoland/deno#34873, which
+  fixed it upstream. Widening the budget would not help (the container
+  is dead by attempt 2) and restarting on 135 would hide it, so the
+  pinned 2.84.2 stays and a hit is re-run. decisions.md § 1656 has the
+  evidence and the one-command check that says when the pin can move.
 runs:
   using: composite
   steps:

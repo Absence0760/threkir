@@ -5857,6 +5857,45 @@ class AppLocalizationsEs extends AppLocalizations {
   String get planDetailAdaptiveReplan => 'Replanificación adaptativa';
 
   @override
+  String get planDetailAdjustPlan => 'Ajustar plan';
+
+  @override
+  String get planDetailAdjustPlanIntro =>
+      'Elige el cambio que encaje con lo que pasó. Cada opción dice qué cambia.';
+
+  @override
+  String get planDetailAdjustReplanDesc =>
+      'Recupera una tirada larga perdida, o aligera la semana siguiente si corriste más de lo previsto. Úsalo cuando una semana no salió según el plan.';
+
+  @override
+  String get planDetailAdjustAdaptiveDesc =>
+      'Mira tus últimas tres semanas terminadas y propone cambios cuando al menos dos quedaron por encima o por debajo del plan, para que una semana rara no mueva tu plan. Úsalo cuando llevas un tiempo desviado del plan.';
+
+  @override
+  String get planDetailAdjustPauseDesc =>
+      'Deja el plan en espera sin borrar nada, hasta que lo reanudes. Úsalo por enfermedad, lesión o viaje.';
+
+  @override
+  String get planDetailAdjustResumeDesc =>
+      'Vuelve a convertirlo en tu plan activo. Úsalo cuando estés listo para retomarlo.';
+
+  @override
+  String get planDetailPausePlan => 'Pausar plan';
+
+  @override
+  String get planDetailResumePlan => 'Reanudar plan';
+
+  @override
+  String get planDetailPauseDone => 'Plan en pausa.';
+
+  @override
+  String get planDetailResumeDone => 'Plan reanudado.';
+
+  @override
+  String get planDetailResumeBlocked =>
+      'Ya tienes un plan activo. Pausa o termina ese primero.';
+
+  @override
   String get planDetailAdaptiveOnTrack =>
       'Tus últimas semanas van según el plan: no hace falta ajustar nada.';
 

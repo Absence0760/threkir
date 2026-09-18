@@ -5875,6 +5875,45 @@ class AppLocalizationsFr extends AppLocalizations {
   String get planDetailAdaptiveReplan => 'Re-planification adaptative';
 
   @override
+  String get planDetailAdjustPlan => 'Ajuster le plan';
+
+  @override
+  String get planDetailAdjustPlanIntro =>
+      'Choisis le changement qui correspond à ce qui s\'est passé. Chaque option indique ce qu\'elle modifie.';
+
+  @override
+  String get planDetailAdjustReplanDesc =>
+      'Rattrape une sortie longue manquée, ou allège la semaine suivante si tu as couru plus que prévu. À utiliser quand une semaine ne s\'est pas passée comme prévu.';
+
+  @override
+  String get planDetailAdjustAdaptiveDesc =>
+      'Regarde tes trois dernières semaines terminées et propose des changements quand au moins deux étaient au-dessus ou en dessous du plan, pour qu\'une semaine atypique ne déplace pas ton plan. À utiliser quand tu dévies du plan depuis un moment.';
+
+  @override
+  String get planDetailAdjustPauseDesc =>
+      'Met le plan en attente sans rien supprimer, jusqu\'à ce que tu le reprennes. À utiliser en cas de maladie, de blessure ou de voyage.';
+
+  @override
+  String get planDetailAdjustResumeDesc =>
+      'Refait de ce plan ton plan actif. À utiliser quand tu es prêt à le reprendre.';
+
+  @override
+  String get planDetailPausePlan => 'Mettre le plan en pause';
+
+  @override
+  String get planDetailResumePlan => 'Reprendre le plan';
+
+  @override
+  String get planDetailPauseDone => 'Plan mis en pause.';
+
+  @override
+  String get planDetailResumeDone => 'Plan repris.';
+
+  @override
+  String get planDetailResumeBlocked =>
+      'Tu as déjà un plan actif. Mets-le en pause ou termine-le d\'abord.';
+
+  @override
   String get planDetailAdaptiveOnTrack =>
       'Tes dernières semaines sont conformes au plan — aucun ajustement nécessaire.';
 

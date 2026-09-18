@@ -5859,6 +5859,45 @@ class AppLocalizationsPt extends AppLocalizations {
   String get planDetailAdaptiveReplan => 'Replaneamento adaptativo';
 
   @override
+  String get planDetailAdjustPlan => 'Ajustar plano';
+
+  @override
+  String get planDetailAdjustPlanIntro =>
+      'Escolha a alteração que corresponde ao que aconteceu. Cada opção diz o que altera.';
+
+  @override
+  String get planDetailAdjustReplanDesc =>
+      'Repõe um longão perdido, ou alivia a semana seguinte depois de correr mais do que o planeado. Use quando uma semana não correu como planeado.';
+
+  @override
+  String get planDetailAdjustAdaptiveDesc =>
+      'Olha para as suas últimas três semanas terminadas e sugere alterações quando pelo menos duas ficaram acima ou abaixo do plano, para que uma semana atípica não mexa no seu plano. Use quando anda desviado do plano há algum tempo.';
+
+  @override
+  String get planDetailAdjustPauseDesc =>
+      'Põe o plano em espera sem apagar nada, até o retomar. Use em caso de doença, lesão ou viagem.';
+
+  @override
+  String get planDetailAdjustResumeDesc =>
+      'Volta a tornar este o seu plano ativo. Use quando estiver pronto para o retomar.';
+
+  @override
+  String get planDetailPausePlan => 'Pausar plano';
+
+  @override
+  String get planDetailResumePlan => 'Retomar plano';
+
+  @override
+  String get planDetailPauseDone => 'Plano pausado.';
+
+  @override
+  String get planDetailResumeDone => 'Plano retomado.';
+
+  @override
+  String get planDetailResumeBlocked =>
+      'Já tem um plano ativo. Pause ou termine esse primeiro.';
+
+  @override
   String get planDetailAdaptiveOnTrack =>
       'As suas últimas semanas estão dentro do plano — nenhum ajuste necessário.';
 
@@ -20040,6 +20079,45 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planDetailAdaptiveReplan => 'Replanejamento adaptativo';
+
+  @override
+  String get planDetailAdjustPlan => 'Ajustar plano';
+
+  @override
+  String get planDetailAdjustPlanIntro =>
+      'Escolha a mudança que corresponde ao que aconteceu. Cada opção diz o que muda.';
+
+  @override
+  String get planDetailAdjustReplanDesc =>
+      'Repõe um longão perdido, ou alivia a semana seguinte depois de você correr mais do que o planejado. Use quando uma semana não saiu como planejado.';
+
+  @override
+  String get planDetailAdjustAdaptiveDesc =>
+      'Olha para as suas últimas três semanas concluídas e sugere mudanças quando pelo menos duas ficaram acima ou abaixo do plano, para que uma semana atípica não mexa no seu plano. Use quando você está desviado do plano há um tempo.';
+
+  @override
+  String get planDetailAdjustPauseDesc =>
+      'Coloca o plano em espera sem apagar nada, até você retomá-lo. Use em caso de doença, lesão ou viagem.';
+
+  @override
+  String get planDetailAdjustResumeDesc =>
+      'Volta a tornar este o seu plano ativo. Use quando você estiver pronto para retomá-lo.';
+
+  @override
+  String get planDetailPausePlan => 'Pausar plano';
+
+  @override
+  String get planDetailResumePlan => 'Retomar plano';
+
+  @override
+  String get planDetailPauseDone => 'Plano pausado.';
+
+  @override
+  String get planDetailResumeDone => 'Plano retomado.';
+
+  @override
+  String get planDetailResumeBlocked =>
+      'Você já tem um plano ativo. Pause ou termine esse primeiro.';
 
   @override
   String get planDetailAdaptiveOnTrack =>

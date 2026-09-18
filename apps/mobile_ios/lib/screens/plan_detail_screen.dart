@@ -37,6 +37,10 @@ import 'workout_detail_screen.dart';
 /// more room than a prose column.
 const double _kExpandedBodyMaxWidth = 900;
 
+/// The whole-plan changes the Adjust plan dialog offers. Web twin: the option
+/// list in `apps/web/src/routes/plans/[id]/+page.svelte` (decisions § 1635).
+enum _PlanAdjustment { replan, adaptiveReplan, pause, resume }
+
 /// Web `isWorkoutCompleted` twin — a planned workout is done when a tracked
 /// run is linked OR the runner manually marked it complete.
 bool _isWorkoutCompleted(PlanWorkoutRow wo) =>
@@ -413,6 +417,135 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
         ? l10n.planDetailAdaptiveConfidenceHigh
         : l10n.planDetailAdaptiveConfidenceMedium;
     return l10n.planDetailAdaptiveBadge(reason, confidence);
+  }
+
+  /// One entry point for every whole-plan change, each named with a sentence
+  /// on what it does and when to use it. Web twin: the Adjust plan Modal.
+  Future<void> _openAdjustPlan(TrainingPlanRow p) async {
+    if (!_isOwner(p) || p.isTemplate) return;
+    final l10n = AppLocalizations.of(context);
+    final choice = await showDialog<_PlanAdjustment>(
+      context: context,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        return AlertDialog(
+          title: Text(l10n.planDetailAdjustPlan),
+          contentPadding: const EdgeInsets.only(top: 12, bottom: 8),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                  child: Text(
+                    l10n.planDetailAdjustPlanIntro,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ),
+                _adjustOption(
+                  ctx,
+                  icon: Icons.auto_fix_high,
+                  title: l10n.planDetailReplan,
+                  description: l10n.planDetailAdjustReplanDesc,
+                  value: _PlanAdjustment.replan,
+                ),
+                _adjustOption(
+                  ctx,
+                  icon: Icons.trending_up,
+                  title: l10n.planDetailAdaptiveReplan,
+                  description: l10n.planDetailAdjustAdaptiveDesc,
+                  value: _PlanAdjustment.adaptiveReplan,
+                ),
+                if (p.status == 'paused')
+                  _adjustOption(
+                    ctx,
+                    icon: Icons.play_arrow,
+                    title: l10n.planDetailResumePlan,
+                    description: l10n.planDetailAdjustResumeDesc,
+                    value: _PlanAdjustment.resume,
+                  )
+                else if (p.status == 'active')
+                  _adjustOption(
+                    ctx,
+                    icon: Icons.pause,
+                    title: l10n.planDetailPausePlan,
+                    description: l10n.planDetailAdjustPauseDesc,
+                    value: _PlanAdjustment.pause,
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.commonCancel),
+            ),
+          ],
+        );
+      },
+    );
+    if (choice == null || !mounted) return;
+    switch (choice) {
+      case _PlanAdjustment.replan:
+        _proposeReplan(p);
+      case _PlanAdjustment.adaptiveReplan:
+        _proposeAdaptiveReplan(p);
+      case _PlanAdjustment.pause:
+        await _setPlanPaused(p, paused: true);
+      case _PlanAdjustment.resume:
+        await _setPlanPaused(p, paused: false);
+    }
+  }
+
+  Widget _adjustOption(
+    BuildContext ctx, {
+    required IconData icon,
+    required String title,
+    required String description,
+    required _PlanAdjustment value,
+  }) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      subtitle: Text(description),
+      isThreeLine: true,
+      enabled: !_bulkBusy,
+      onTap: () => Navigator.pop(ctx, value),
+    );
+  }
+
+  /// Pause and resume apply straight from the chooser. The plan is put back
+  /// with Resume in the same dialog, so a confirm here would guard a
+  /// reversible action — the shape `confirmDestructive` documents itself as
+  /// not being for.
+  Future<void> _setPlanPaused(TrainingPlanRow p,
+      {required bool paused}) async {
+    if (!_isOwner(p) || _bulkBusy) return;
+    final l10n = AppLocalizations.of(context);
+    setState(() => _bulkBusy = true);
+    try {
+      if (paused) {
+        await widget.training.pausePlan(p.id);
+      } else {
+        await widget.training.resumePlan(p.id);
+      }
+      if (!mounted) return;
+      setState(() => _bulkBusy = false);
+      showTopBanner(context,
+          paused ? l10n.planDetailPauseDone : l10n.planDetailResumeDone);
+      await _load();
+    } on ActivePlanExistsError {
+      if (!mounted) return;
+      setState(() => _bulkBusy = false);
+      showTopBanner(context, l10n.planDetailResumeBlocked);
+    } catch (e, s) {
+      debugPrint('pause/resume plan failed: $e\n$s');
+      if (!mounted) return;
+      setState(() => _bulkBusy = false);
+      showTopBanner(context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+    }
   }
 
   Future<void> _applyReplan() async {
@@ -872,21 +1005,10 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
       const SizedBox(height: 12),
       Align(
         alignment: Alignment.centerLeft,
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            OutlinedButton.icon(
-              onPressed: _bulkBusy ? null : () => _proposeReplan(p),
-              icon: const Icon(Icons.auto_fix_high, size: 18),
-              label: Text(l10n.planDetailReplan),
-            ),
-            OutlinedButton.icon(
-              onPressed: _bulkBusy ? null : () => _proposeAdaptiveReplan(p),
-              icon: const Icon(Icons.trending_up, size: 18),
-              label: Text(l10n.planDetailAdaptiveReplan),
-            ),
-          ],
+        child: OutlinedButton.icon(
+          onPressed: _bulkBusy ? null : () => _openAdjustPlan(p),
+          icon: const Icon(Icons.tune, size: 18),
+          label: Text(l10n.planDetailAdjustPlan),
         ),
       ),
       if (preview != null) ...[

@@ -9616,6 +9616,72 @@ abstract class AppLocalizations {
   /// **'Adaptive re-plan'**
   String get planDetailAdaptiveReplan;
 
+  /// Plan-detail adjust-plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust plan'**
+  String get planDetailAdjustPlan;
+
+  /// Plan-detail adjust-plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Pick the change that fits what happened. Each option says what it changes.'**
+  String get planDetailAdjustPlanIntro;
+
+  /// Plan-detail adjust-plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Makes up a missed long run, or eases the next week after you ran more than planned. Use it when one week didn\'t go to plan.'**
+  String get planDetailAdjustReplanDesc;
+
+  /// Plan-detail adjust-plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Looks at your last three finished weeks and suggests changes when at least two were over or under plan, so one odd week doesn\'t move your plan. Use it when you\'ve been off plan for a while.'**
+  String get planDetailAdjustAdaptiveDesc;
+
+  /// Plan-detail adjust-plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Puts the plan on hold without deleting anything, until you resume it. Use it for illness, injury or travel.'**
+  String get planDetailAdjustPauseDesc;
+
+  /// Plan-detail adjust-plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Makes this your active plan again. Use it when you\'re ready to pick the plan back up.'**
+  String get planDetailAdjustResumeDesc;
+
+  /// Plan-detail adjust-plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Pause plan'**
+  String get planDetailPausePlan;
+
+  /// Plan-detail adjust-plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Resume plan'**
+  String get planDetailResumePlan;
+
+  /// Plan-detail adjust-plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Plan paused.'**
+  String get planDetailPauseDone;
+
+  /// Plan-detail adjust-plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Plan resumed.'**
+  String get planDetailResumeDone;
+
+  /// Plan-detail adjust-plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'You already have an active plan. Pause or finish it first.'**
+  String get planDetailResumeBlocked;
+
   /// No description provided for @planDetailAdaptiveOnTrack.
   ///
   /// In en, this message translates to:

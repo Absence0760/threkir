@@ -202,6 +202,10 @@ jobs:
         with:
           tag_name: ${{ github.event.release.tag_name }}
           files: apps/mobile_android/build/app/outputs/bundle/release/app-release.aab
+          # An unmatched glob is not an empty release, it is a silent one: this input
+          # defaults to false, so a moved build-output path would attach nothing and
+          # still report success (decisions.md § 1662).
+          fail_on_unmatched_files: true
 
       - name: Upload to Play Internal
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1

@@ -14255,4 +14255,50 @@ class AppLocalizationsFr extends AppLocalizations {
   String logAlreadyOnPage(String page) {
     return 'Vous êtes déjà sur $page';
   }
+
+  @override
+  String metricAbout(String name) {
+    return 'À propos de $name';
+  }
+
+  @override
+  String metricVdotValue(String value) {
+    return 'VDOT $value';
+  }
+
+  @override
+  String get metricAgeGradeDefinition =>
+      'Ton temps comparé au meilleur enregistré pour ton âge et ton sexe. Autour de 60 %, tu es fort au niveau local ; à 80 %, c\'est le niveau national.';
+
+  @override
+  String get metricVertLabel => 'Dénivelé';
+
+  @override
+  String get metricVertDefinition =>
+      'La hauteur totale que tu as grimpée, additionnée sur toutes les montées.';
+
+  @override
+  String get metricTrimpLabel => 'TRIMP';
+
+  @override
+  String get metricTrimpDefinition =>
+      'Impulsion d\'entraînement — une note de la difficulté d\'une sortie, d\'après sa durée et le niveau de ta fréquence cardiaque.';
+
+  @override
+  String get metricRiegelLabel => 'Formule de Riegel';
+
+  @override
+  String get metricRiegelDefinition =>
+      'Une méthode standard pour prédire ton temps sur une distance à partir d\'un temps couru sur une autre.';
+
+  @override
+  String get metricE1rmLabel => '1RM est.';
+
+  @override
+  String get metricE1rmDefinition =>
+      'Maximum sur une répétition — la charge la plus lourde que tu pourrais soulever une seule fois. Un 1RM estimé se calcule à partir de la charge et des répétitions d\'une série que tu as faite, donc tu n\'as jamais à le tester.';
+
+  @override
+  String get metricRpeDefinition =>
+      'Effort perçu — à quel point une série a été dure, de 1 à 10. Un 10 signifie que tu n\'aurais pas pu faire une répétition de plus.';
 }

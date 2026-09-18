@@ -4111,5 +4111,17 @@
   "backExitRecordingBody": "Quitter l’application peut interrompre l’enregistrement. Votre course est conservée, vous pourrez la reprendre à votre retour.",
   "backExitRecordingLeave": "Quitter quand même",
   "backExitRecordingStay": "Continuer l’enregistrement",
-  "logAlreadyOnPage": "Vous êtes déjà sur {page}"
+  "logAlreadyOnPage": "Vous êtes déjà sur {page}",
+  "metricAbout": "À propos de {name}",
+  "metricVdotValue": "VDOT {value}",
+  "metricAgeGradeDefinition": "Ton temps comparé au meilleur enregistré pour ton âge et ton sexe. Autour de 60 %, tu es fort au niveau local ; à 80 %, c'est le niveau national.",
+  "metricVertLabel": "Dénivelé",
+  "metricVertDefinition": "La hauteur totale que tu as grimpée, additionnée sur toutes les montées.",
+  "metricTrimpLabel": "TRIMP",
+  "metricTrimpDefinition": "Impulsion d'entraînement — une note de la difficulté d'une sortie, d'après sa durée et le niveau de ta fréquence cardiaque.",
+  "metricRiegelLabel": "Formule de Riegel",
+  "metricRiegelDefinition": "Une méthode standard pour prédire ton temps sur une distance à partir d'un temps couru sur une autre.",
+  "metricE1rmLabel": "1RM est.",
+  "metricE1rmDefinition": "Maximum sur une répétition — la charge la plus lourde que tu pourrais soulever une seule fois. Un 1RM estimé se calcule à partir de la charge et des répétitions d'une série que tu as faite, donc tu n'as jamais à le tester.",
+  "metricRpeDefinition": "Effort perçu — à quel point une série a été dure, de 1 à 10. Un 10 signifie que tu n'aurais pas pu faire une répétition de plus."
 }

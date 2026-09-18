@@ -14233,4 +14233,50 @@ class AppLocalizationsDe extends AppLocalizations {
   String logAlreadyOnPage(String page) {
     return 'Du bist bereits auf $page';
   }
+
+  @override
+  String metricAbout(String name) {
+    return 'Über $name';
+  }
+
+  @override
+  String metricVdotValue(String value) {
+    return 'VDOT $value';
+  }
+
+  @override
+  String get metricAgeGradeDefinition =>
+      'Deine Zeit im Verhältnis zur Bestzeit für dein Alter und Geschlecht. Rund 60 % ist stark auf lokaler Ebene, 80 % nationales Niveau.';
+
+  @override
+  String get metricVertLabel => 'Höhenmeter';
+
+  @override
+  String get metricVertDefinition =>
+      'Die gesamte Höhe, die du bergauf zurückgelegt hast, über alle Anstiege addiert.';
+
+  @override
+  String get metricTrimpLabel => 'TRIMP';
+
+  @override
+  String get metricTrimpDefinition =>
+      'Trainingsimpuls — ein Wert dafür, wie hart ein Lauf war, aus seiner Dauer und der Höhe deiner Herzfrequenz.';
+
+  @override
+  String get metricRiegelLabel => 'Riegel-Formel';
+
+  @override
+  String get metricRiegelDefinition =>
+      'Ein gängiges Verfahren, um deine Zeit auf einer Renndistanz aus einer Zeit auf einer anderen zu schätzen.';
+
+  @override
+  String get metricE1rmLabel => 'Gesch. 1RM';
+
+  @override
+  String get metricE1rmDefinition =>
+      'Einwiederholungsmaximum — das schwerste Gewicht, das du für eine einzige Wiederholung heben könntest. Ein geschätztes 1RM wird aus Gewicht und Wiederholungen eines gemachten Satzes berechnet, sodass du es nie austesten musst.';
+
+  @override
+  String get metricRpeDefinition =>
+      'Subjektives Belastungsempfinden — wie hart sich ein Satz angefühlt hat, von 1 bis 10. Eine 10 heißt, du hättest keine weitere Wiederholung geschafft.';
 }

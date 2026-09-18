@@ -4111,5 +4111,17 @@
   "backExitRecordingBody": "Sair do app pode interromper a gravação. Sua corrida fica salva, então você pode retomá-la quando voltar.",
   "backExitRecordingLeave": "Sair mesmo assim",
   "backExitRecordingStay": "Continuar gravando",
-  "logAlreadyOnPage": "Você já está em {page}"
+  "logAlreadyOnPage": "Você já está em {page}",
+  "metricAbout": "Sobre {name}",
+  "metricVdotValue": "VDOT {value}",
+  "metricAgeGradeDefinition": "Seu tempo comparado com o melhor registrado para sua idade e sexo. Cerca de 60 % é um bom nível local; 80 % é nível nacional.",
+  "metricVertLabel": "Elevação",
+  "metricVertDefinition": "A altura total que você subiu, somada em todas as subidas.",
+  "metricTrimpLabel": "TRIMP",
+  "metricTrimpDefinition": "Impulso de treino — uma pontuação de quão puxado foi um treino, a partir da duração e de quão alta foi sua frequência cardíaca.",
+  "metricRiegelLabel": "Fórmula de Riegel",
+  "metricRiegelDefinition": "Uma forma padrão de prever seu tempo em uma distância a partir de um tempo que você correu em outra.",
+  "metricE1rmLabel": "1RM est.",
+  "metricE1rmDefinition": "Máximo de uma repetição — o peso mais alto que você conseguiria levantar em uma única repetição. O 1RM estimado é calculado a partir do peso e das repetições de uma série que você fez, então você nunca precisa testá-lo.",
+  "metricRpeDefinition": "Esforço percebido — quão puxada foi uma série, de 1 a 10. Um 10 significa que você não conseguiria fazer mais nenhuma repetição."
 }

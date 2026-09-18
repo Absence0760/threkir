@@ -4111,5 +4111,17 @@
   "backExitRecordingBody": "Wenn du die App verlässt, kann die Aufzeichnung unterbrochen werden. Dein Lauf bleibt erhalten und du kannst ihn später fortsetzen.",
   "backExitRecordingLeave": "Trotzdem verlassen",
   "backExitRecordingStay": "Weiter aufzeichnen",
-  "logAlreadyOnPage": "Du bist bereits auf {page}"
+  "logAlreadyOnPage": "Du bist bereits auf {page}",
+  "metricAbout": "Über {name}",
+  "metricVdotValue": "VDOT {value}",
+  "metricAgeGradeDefinition": "Deine Zeit im Verhältnis zur Bestzeit für dein Alter und Geschlecht. Rund 60 % ist stark auf lokaler Ebene, 80 % nationales Niveau.",
+  "metricVertLabel": "Höhenmeter",
+  "metricVertDefinition": "Die gesamte Höhe, die du bergauf zurückgelegt hast, über alle Anstiege addiert.",
+  "metricTrimpLabel": "TRIMP",
+  "metricTrimpDefinition": "Trainingsimpuls — ein Wert dafür, wie hart ein Lauf war, aus seiner Dauer und der Höhe deiner Herzfrequenz.",
+  "metricRiegelLabel": "Riegel-Formel",
+  "metricRiegelDefinition": "Ein gängiges Verfahren, um deine Zeit auf einer Renndistanz aus einer Zeit auf einer anderen zu schätzen.",
+  "metricE1rmLabel": "Gesch. 1RM",
+  "metricE1rmDefinition": "Einwiederholungsmaximum — das schwerste Gewicht, das du für eine einzige Wiederholung heben könntest. Ein geschätztes 1RM wird aus Gewicht und Wiederholungen eines gemachten Satzes berechnet, sodass du es nie austesten musst.",
+  "metricRpeDefinition": "Subjektives Belastungsempfinden — wie hart sich ein Satz angefühlt hat, von 1 bis 10. Eine 10 heißt, du hättest keine weitere Wiederholung geschafft."
 }

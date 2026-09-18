@@ -14075,4 +14075,50 @@ class AppLocalizationsEn extends AppLocalizations {
   String logAlreadyOnPage(String page) {
     return 'You\'re already on $page';
   }
+
+  @override
+  String metricAbout(String name) {
+    return 'About $name';
+  }
+
+  @override
+  String metricVdotValue(String value) {
+    return 'VDOT $value';
+  }
+
+  @override
+  String get metricAgeGradeDefinition =>
+      'Your time scored against the best on record for your age and sex. Around 60% is a strong local runner; 80% is national class.';
+
+  @override
+  String get metricVertLabel => 'Vert';
+
+  @override
+  String get metricVertDefinition =>
+      'The total height you climbed, added up across every uphill.';
+
+  @override
+  String get metricTrimpLabel => 'TRIMP';
+
+  @override
+  String get metricTrimpDefinition =>
+      'Training impulse — a score for how hard a run was, from how long it lasted and how high your heart rate went.';
+
+  @override
+  String get metricRiegelLabel => 'Riegel formula';
+
+  @override
+  String get metricRiegelDefinition =>
+      'A standard way to predict your time at one race distance from a time you ran at another.';
+
+  @override
+  String get metricE1rmLabel => 'Est. 1RM';
+
+  @override
+  String get metricE1rmDefinition =>
+      'One-rep max — the heaviest weight you could lift for a single rep. An estimated 1RM is worked out from the weight and reps of a set you did, so you never have to test it.';
+
+  @override
+  String get metricRpeDefinition =>
+      'Rate of perceived exertion — how hard a set felt, from 1 to 10. A 10 means you couldn\'t have done one more rep.';
 }

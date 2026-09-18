@@ -14220,4 +14220,50 @@ class AppLocalizationsEs extends AppLocalizations {
   String logAlreadyOnPage(String page) {
     return 'Ya estás en $page';
   }
+
+  @override
+  String metricAbout(String name) {
+    return 'Acerca de $name';
+  }
+
+  @override
+  String metricVdotValue(String value) {
+    return 'VDOT $value';
+  }
+
+  @override
+  String get metricAgeGradeDefinition =>
+      'Tu tiempo comparado con el mejor registrado para tu edad y sexo. Alrededor del 60 % es un buen nivel local; el 80 %, nivel nacional.';
+
+  @override
+  String get metricVertLabel => 'Desnivel';
+
+  @override
+  String get metricVertDefinition =>
+      'La altura total que has subido, sumada en todas las cuestas.';
+
+  @override
+  String get metricTrimpLabel => 'TRIMP';
+
+  @override
+  String get metricTrimpDefinition =>
+      'Impulso de entrenamiento: una puntuación de lo duro que fue una carrera, según su duración y lo alta que llegó tu frecuencia cardíaca.';
+
+  @override
+  String get metricRiegelLabel => 'Fórmula de Riegel';
+
+  @override
+  String get metricRiegelDefinition =>
+      'Una forma estándar de predecir tu tiempo en una distancia a partir de un tiempo que corriste en otra.';
+
+  @override
+  String get metricE1rmLabel => '1RM est.';
+
+  @override
+  String get metricE1rmDefinition =>
+      'Máximo a una repetición: el peso más alto que podrías levantar una sola vez. El 1RM estimado se calcula a partir del peso y las repeticiones de una serie que hiciste, así que nunca tienes que probarlo.';
+
+  @override
+  String get metricRpeDefinition =>
+      'Esfuerzo percibido: lo dura que se sintió una serie, del 1 al 10. Un 10 significa que no habrías podido hacer ni una repetición más.';
 }

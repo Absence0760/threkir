@@ -18082,5 +18082,63 @@
         "type": "String"
       }
     }
+  },
+  "metricAbout": "About {name}",
+  "@metricAbout": {
+    "description": "Accessible name for the button that opens a derived metric's definition; name is the metric's on-screen name",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "metricVdotValue": "VDOT {value}",
+  "@metricVdotValue": {
+    "description": "VDOT chip on a plan card; value is the pre-formatted score",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "metricAgeGradeDefinition": "Your time scored against the best on record for your age and sex. Around 60% is a strong local runner; 80% is national class.",
+  "@metricAgeGradeDefinition": {
+    "description": "Plain-English definition of age grade, shown in its disclosure"
+  },
+  "metricVertLabel": "Vert",
+  "@metricVertLabel": {
+    "description": "Name of the total-climb metric"
+  },
+  "metricVertDefinition": "The total height you climbed, added up across every uphill.",
+  "@metricVertDefinition": {
+    "description": "Plain-English definition of vert, shown in its disclosure"
+  },
+  "metricTrimpLabel": "TRIMP",
+  "@metricTrimpLabel": {
+    "description": "Name of the training-impulse metric"
+  },
+  "metricTrimpDefinition": "Training impulse — a score for how hard a run was, from how long it lasted and how high your heart rate went.",
+  "@metricTrimpDefinition": {
+    "description": "Plain-English definition of TRIMP, shown in its disclosure"
+  },
+  "metricRiegelLabel": "Riegel formula",
+  "@metricRiegelLabel": {
+    "description": "Name of the race-time equivalence formula"
+  },
+  "metricRiegelDefinition": "A standard way to predict your time at one race distance from a time you ran at another.",
+  "@metricRiegelDefinition": {
+    "description": "Plain-English definition of the Riegel formula, shown in its disclosure"
+  },
+  "metricE1rmLabel": "Est. 1RM",
+  "@metricE1rmLabel": {
+    "description": "Name of the estimated one-rep-max metric"
+  },
+  "metricE1rmDefinition": "One-rep max — the heaviest weight you could lift for a single rep. An estimated 1RM is worked out from the weight and reps of a set you did, so you never have to test it.",
+  "@metricE1rmDefinition": {
+    "description": "Plain-English definition of 1RM, shown in its disclosure"
+  },
+  "metricRpeDefinition": "Rate of perceived exertion — how hard a set felt, from 1 to 10. A 10 means you couldn't have done one more rep.",
+  "@metricRpeDefinition": {
+    "description": "Plain-English definition of RPE, shown in its disclosure"
   }
 }

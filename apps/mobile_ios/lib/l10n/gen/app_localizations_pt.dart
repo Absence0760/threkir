@@ -14222,6 +14222,52 @@ class AppLocalizationsPt extends AppLocalizations {
   String logAlreadyOnPage(String page) {
     return 'Já está em $page';
   }
+
+  @override
+  String metricAbout(String name) {
+    return 'Acerca de $name';
+  }
+
+  @override
+  String metricVdotValue(String value) {
+    return 'VDOT $value';
+  }
+
+  @override
+  String get metricAgeGradeDefinition =>
+      'O seu tempo comparado com o melhor registado para a sua idade e sexo. Cerca de 60 % é um bom nível local; 80 % é nível nacional.';
+
+  @override
+  String get metricVertLabel => 'Elevação';
+
+  @override
+  String get metricVertDefinition =>
+      'A altura total que subiu, somada em todas as subidas.';
+
+  @override
+  String get metricTrimpLabel => 'TRIMP';
+
+  @override
+  String get metricTrimpDefinition =>
+      'Impulso de treino — uma pontuação de quão duro foi um treino, a partir da sua duração e de quão alta foi a sua frequência cardíaca.';
+
+  @override
+  String get metricRiegelLabel => 'Fórmula de Riegel';
+
+  @override
+  String get metricRiegelDefinition =>
+      'Uma forma habitual de prever o seu tempo numa distância a partir de um tempo que correu noutra.';
+
+  @override
+  String get metricE1rmLabel => '1RM est.';
+
+  @override
+  String get metricE1rmDefinition =>
+      'Máximo de uma repetição — o peso mais alto que conseguiria levantar numa única repetição. O 1RM estimado é calculado a partir do peso e das repetições de uma série que fez, por isso nunca tem de o testar.';
+
+  @override
+  String get metricRpeDefinition =>
+      'Esforço percebido — quão dura foi uma série, de 1 a 10. Um 10 significa que não conseguiria fazer mais nenhuma repetição.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -28433,4 +28479,50 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String logAlreadyOnPage(String page) {
     return 'Você já está em $page';
   }
+
+  @override
+  String metricAbout(String name) {
+    return 'Sobre $name';
+  }
+
+  @override
+  String metricVdotValue(String value) {
+    return 'VDOT $value';
+  }
+
+  @override
+  String get metricAgeGradeDefinition =>
+      'Seu tempo comparado com o melhor registrado para sua idade e sexo. Cerca de 60 % é um bom nível local; 80 % é nível nacional.';
+
+  @override
+  String get metricVertLabel => 'Elevação';
+
+  @override
+  String get metricVertDefinition =>
+      'A altura total que você subiu, somada em todas as subidas.';
+
+  @override
+  String get metricTrimpLabel => 'TRIMP';
+
+  @override
+  String get metricTrimpDefinition =>
+      'Impulso de treino — uma pontuação de quão puxado foi um treino, a partir da duração e de quão alta foi sua frequência cardíaca.';
+
+  @override
+  String get metricRiegelLabel => 'Fórmula de Riegel';
+
+  @override
+  String get metricRiegelDefinition =>
+      'Uma forma padrão de prever seu tempo em uma distância a partir de um tempo que você correu em outra.';
+
+  @override
+  String get metricE1rmLabel => '1RM est.';
+
+  @override
+  String get metricE1rmDefinition =>
+      'Máximo de uma repetição — o peso mais alto que você conseguiria levantar em uma única repetição. O 1RM estimado é calculado a partir do peso e das repetições de uma série que você fez, então você nunca precisa testá-lo.';
+
+  @override
+  String get metricRpeDefinition =>
+      'Esforço percebido — quão puxada foi uma série, de 1 a 10. Um 10 significa que você não conseguiria fazer mais nenhuma repetição.';
 }

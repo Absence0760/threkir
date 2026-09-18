@@ -23540,6 +23540,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You\'re already on {page}'**
   String logAlreadyOnPage(String page);
+
+  /// Accessible name for the button that opens a derived metric's definition; name is the metric's on-screen name
+  ///
+  /// In en, this message translates to:
+  /// **'About {name}'**
+  String metricAbout(String name);
+
+  /// VDOT chip on a plan card; value is the pre-formatted score
+  ///
+  /// In en, this message translates to:
+  /// **'VDOT {value}'**
+  String metricVdotValue(String value);
+
+  /// Plain-English definition of age grade, shown in its disclosure
+  ///
+  /// In en, this message translates to:
+  /// **'Your time scored against the best on record for your age and sex. Around 60% is a strong local runner; 80% is national class.'**
+  String get metricAgeGradeDefinition;
+
+  /// Name of the total-climb metric
+  ///
+  /// In en, this message translates to:
+  /// **'Vert'**
+  String get metricVertLabel;
+
+  /// Plain-English definition of vert, shown in its disclosure
+  ///
+  /// In en, this message translates to:
+  /// **'The total height you climbed, added up across every uphill.'**
+  String get metricVertDefinition;
+
+  /// Name of the training-impulse metric
+  ///
+  /// In en, this message translates to:
+  /// **'TRIMP'**
+  String get metricTrimpLabel;
+
+  /// Plain-English definition of TRIMP, shown in its disclosure
+  ///
+  /// In en, this message translates to:
+  /// **'Training impulse — a score for how hard a run was, from how long it lasted and how high your heart rate went.'**
+  String get metricTrimpDefinition;
+
+  /// Name of the race-time equivalence formula
+  ///
+  /// In en, this message translates to:
+  /// **'Riegel formula'**
+  String get metricRiegelLabel;
+
+  /// Plain-English definition of the Riegel formula, shown in its disclosure
+  ///
+  /// In en, this message translates to:
+  /// **'A standard way to predict your time at one race distance from a time you ran at another.'**
+  String get metricRiegelDefinition;
+
+  /// Name of the estimated one-rep-max metric
+  ///
+  /// In en, this message translates to:
+  /// **'Est. 1RM'**
+  String get metricE1rmLabel;
+
+  /// Plain-English definition of 1RM, shown in its disclosure
+  ///
+  /// In en, this message translates to:
+  /// **'One-rep max — the heaviest weight you could lift for a single rep. An estimated 1RM is worked out from the weight and reps of a set you did, so you never have to test it.'**
+  String get metricE1rmDefinition;
+
+  /// Plain-English definition of RPE, shown in its disclosure
+  ///
+  /// In en, this message translates to:
+  /// **'Rate of perceived exertion — how hard a set felt, from 1 to 10. A 10 means you couldn\'t have done one more rep.'**
+  String get metricRpeDefinition;
 }
 
 class _AppLocalizationsDelegate

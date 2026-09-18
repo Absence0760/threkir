@@ -4111,5 +4111,17 @@
   "backExitRecordingBody": "アプリを終了すると記録が中断されることがあります。ランは保存されるので、戻ったときに続きから再開できます。",
   "backExitRecordingLeave": "終了する",
   "backExitRecordingStay": "記録を続ける",
-  "logAlreadyOnPage": "すでに{page}を開いています"
+  "logAlreadyOnPage": "すでに{page}を開いています",
+  "metricAbout": "{name}について",
+  "metricVdotValue": "VDOT {value}",
+  "metricAgeGradeDefinition": "年齢と性別ごとの最高記録に対するあなたのタイムの評価。60%前後で地域のトップクラス、81%以上で全国クラスです。",
+  "metricVertLabel": "獲得標高",
+  "metricVertDefinition": "すべての上り区間を合計した、登った高さの総和です。",
+  "metricTrimpLabel": "TRIMP",
+  "metricTrimpDefinition": "トレーニングインパルス — 走った時間の長さと心拍の高さから、そのランがどれだけきつかったかを表すスコアです。",
+  "metricRiegelLabel": "リーゲルの式",
+  "metricRiegelDefinition": "ある距離で出したタイムから、別の距離のタイムを予測する標準的な方法です。",
+  "metricE1rmLabel": "推定1RM",
+  "metricE1rmDefinition": "1回挙上最大重量 — 1レップだけ挙げられる最大の重量です。推定1RMは実際に行ったセットの重量とレップ数から算出されるので、測定する必要はありません。",
+  "metricRpeDefinition": "自覚的運動強度 — そのセットがどれだけきつかったかを1〜10で表します。10はもう1レップもできなかったという意味です。"
 }

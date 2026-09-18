@@ -145,6 +145,12 @@ export const MAX_OP_HOLDERS = 3;
 export const REGISTERED = [
 	{
 		kind: 'ops',
+		key: 'apps/web/src/lib/coach/body.ts:decodeLambdaBody|apps/web/src/lib/core/lambda_secrets.ts:kmsDecrypt',
+		reason:
+			'Not a shared helper. All they have in common is the two-call `Buffer.from(x, \'base64\').toString(\'utf8\')` idiom, which is how Node spells base64 rather than a contract either of them owns. `decodeLambdaBody` decodes a FUNCTION URL EVENT body: it takes the event\'s own `isBase64Encoded` flag, enforces `COACH_BODY_LIMIT_BYTES` and answers with an HTTP status (400 on bad encoding, 413 over the limit). `kmsDecrypt` is a signed KMS API call — SigV4 headers, `TrentService.Decrypt`, error-type extraction — whose last step happens to decode the `Plaintext` field, which KMS defines as base64 and which carries no size limit and no status. Extracting the shared two calls would leave both call sites longer than they are now and give the result a name that lies about one of them (decisions § 1659).',
+	},
+	{
+		kind: 'ops',
 		key: 'apps/web/src/lib/social/club_slug.ts:clubSlug|apps/web/src/lib/training/plan_slug.ts:planSlug',
 		reason:
 			'Not a copy, once the copied part was removed. `planSlug` derived its slug with `toLowerCase()` where `clubSlug` folds, which is § 1251\'s `İstanbul` -> `i-stanbul` reversal; it now folds through the same generated table (§ 1398), and § 1530 moved it out of `/plans/[id]/+page.svelte` so a unit suite could hold the pin. What is left shared is the kebab transform, because that is what a slug IS. They are not one contract: the club slug is a PERSISTED public identity with a length cap, its own fallback and a Dart twin under a registered parity pair, so its answer may never move; this is a download filename with two call sites and no persistence at all. A common `slugify` would put the filename inside the parity pair and make every future change to it a lockstep edit on the phone.',

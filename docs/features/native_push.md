@@ -485,6 +485,28 @@ this explicitly so the implementer doesn't manufacture a pair.
    `ios` → APNs) and either leaf may be nil. A platform with no configured
    transport returns `ErrPlatformNotConfigured`, which the handler treats as
    "leave that device pending", so the credential gate is per-platform.
+
+   **Re-opened 2026-09-18: as built, the two halves disagree about what an iOS
+   token is, so iOS delivery cannot work at any credential.** The client
+   registers `FirebaseMessaging.instance.getToken()` for both platforms
+   (`firebase_push_messaging.dart`), which is an **FCM registration token**;
+   `apns.go` then POSTs it to `https://api.push.apple.com/3/device/<token>`,
+   where the path wants the **APNs device token** — the thing
+   `getAPNSToken()` returns. APNs answers `400 BadDeviceToken`, the handler
+   stamps `native_push_sent_at` on that terminal 4xx, and the notification is
+   marked sent having gone nowhere. Nothing in the tree catches this: the
+   platform split is honest on both sides, the mismatch lives in the word
+   "token". Two ways out, and they provision differently:
+   **(a)** register `getAPNSToken()` on iOS and keep sending direct — but the
+   worker's payload carries no `gcm.message_id`, so whether FlutterFire's
+   iOS delegate still feeds `onMessageOpenedApp` (the whole § 1644 deep-link
+   path) has to be settled on a device before this can be called fixed;
+   **(b)** route iOS through FCM too, with the `.p8` uploaded to the Firebase
+   project rather than held by the worker — one token type, one payload
+   contract, and the tap path is the one already proven on Android. (b) is the
+   recommendation; it costs a Google dependency for Apple delivery, which is
+   the only thing (a) was chosen for. Tracked in
+   [`followups.md`](../product/followups.md).
 2. **Firebase Admin Go SDK vs. hand-rolled FCM HTTP v1 + `golang-jwt`?**
    *Hand-rolled*, matching `internal/webpush` — stdlib plus the already-present
    `golang-jwt`, no Firebase Admin SDK.

@@ -32,7 +32,7 @@
 // Unit tests: `node --test scripts/check_conflict_markers.test.mjs`
 
 import { execFileSync } from 'node:child_process';
-import { lstatSync, readFileSync } from 'node:fs';
+import { closeSync, constants, fstatSync, openSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -90,17 +90,27 @@ export function scan(root) {
 	let scanned = 0;
 	for (const file of trackedFiles(root)) {
 		const abs = join(root, file);
-		let stat;
+		// One descriptor for both the check and the read. Stat-then-read is two
+		// path lookups, so what gets read need not be what got checked; opening
+		// once and asking the descriptor closes that. O_NOFOLLOW does the work
+		// the lstat used to: a tracked symlink fails to open rather than being
+		// followed somewhere outside the tree. It is absent on Windows, where
+		// the `?? 0` leaves plain O_RDONLY.
+		let fd;
 		try {
-			stat = lstatSync(abs);
+			fd = openSync(abs, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
 		} catch {
 			continue;
 		}
-		if (!stat.isFile()) continue;
-		const bytes = readFileSync(abs);
-		if (looksBinary(bytes)) continue;
-		scanned++;
-		for (const hit of markersIn(bytes.toString('utf8'))) findings.push({ file, ...hit });
+		try {
+			if (!fstatSync(fd).isFile()) continue;
+			const bytes = readFileSync(fd);
+			if (looksBinary(bytes)) continue;
+			scanned++;
+			for (const hit of markersIn(bytes.toString('utf8'))) findings.push({ file, ...hit });
+		} finally {
+			closeSync(fd);
+		}
 	}
 	return { findings, scanned };
 }

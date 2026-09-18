@@ -12,9 +12,9 @@ This is a cross-platform command. The target path tells the agent which platform
 | Platform | Path prefix | Status |
 | --- | --- | --- |
 | **Web** (SvelteKit) | `apps/web/` | Full support — type-check + screenshot + e2e |
-| **Mobile** (Flutter, byte-identical twin) | `apps/mobile_android/` | Full support — `flutter analyze` + widget-test golden + `mobile-twin-mirror` agent after edit |
+| **Mobile** (Flutter, byte-identical twin) | `apps/mobile_android/` | Full support — `dart analyze` (never `flutter analyze` — it exits 1 on an `info`) + widget-test golden + `mobile-twin-mirror` agent after edit |
 | **Wear OS** (Compose-for-Wear, native Kotlin) | `apps/watch_wear/` | Full support — gradle compile + emulator screenshot or `@Preview` |
-| **watchOS** (SwiftUI) | `apps/watch_ios/` | **macOS-only.** Refuse on Linux (this workstation) and tell the user to switch to a Mac. |
+| **watchOS** (SwiftUI) | `apps/watch_ios/` | **macOS-only.** Available when `uname -s` reports `Darwin` and Xcode is installed; refuse otherwise. |
 
 Anything else (`apps/backend/`, `apps/job_worker/`, `packages/`, `infra/`, `docs/`) is out of scope — polish is for user-facing surfaces only.
 
@@ -66,7 +66,7 @@ Playwright auto-starts the dev server (`webServer` block in `apps/web/tests-e2e/
 command -v flutter && (cd apps/mobile_android && flutter --version)
 ```
 
-If Flutter isn't on PATH or `pub get` hasn't been run, stop and surface — the agent will need `flutter analyze` + `flutter test` for verification.
+If Flutter isn't on PATH or `pub get` hasn't been run, stop and surface — the agent will need `dart analyze` + `flutter test` for verification.
 
 ### Wear OS (`apps/watch_wear/`)
 
@@ -79,10 +79,11 @@ If Gradle / Android SDK isn't usable, stop and tell the user.
 ### watchOS (`apps/watch_ios/`)
 
 ```bash
-uname -s  # If "Linux", refuse before spawning the agent.
+uname -s        # must report Darwin
+xcodebuild -version
 ```
 
-On Linux (this workstation), respond to the user with: *"watchOS UI polish requires macOS and Xcode. This workstation is Fedora 43 — switch to a Mac, then re-run."* Do not spawn the agent.
+If `uname -s` is anything but `Darwin`, or `xcodebuild` is absent, respond with: *"watchOS UI polish requires macOS and Xcode — switch to a Mac with Xcode installed, then re-run."* Do not spawn the agent. Don't assume the answer either way: this repo is worked from more than one machine.
 
 ## Pick the test/screenshot user (web only)
 
@@ -106,7 +107,7 @@ Spawn the `ui-polisher` agent with a prompt like:
 
 > "Polish the UI/UX of `<resolved file path>`. Platform: `<web | mobile | wear | watchos>`. The user's stated intent was: `<the original argument string>`. (For web: log in as `<USER_A | USER_C_PRO | USER_B>`, import from `../fixtures/users`.) Follow your agent spec for this platform — audit, plan, edit, verify, report. Do not commit."
 
-For mobile (Flutter), also instruct: "After your edits, the `mobile-twin-mirror` agent must run to mirror `apps/mobile_android/lib/+test/` into `apps/mobile_ios/`. Surface that in your report."
+For mobile (Flutter), also instruct: "After your edits, the `mobile-twin-mirror` agent must run to mirror `apps/mobile_android/lib` and `apps/mobile_android/test` into `apps/mobile_ios`. Surface that in your report."
 
 The agent's spec covers the design language, screenshot capture, type-check, and affected test updates per platform. Trust it.
 

@@ -217,7 +217,7 @@ becomes an **action button**, not a tab.
   `Nutrition` tab is 7 slots. Collapsing the three *capture* entry points
   into one action button keeps the nav at five and groups them by the
   verb the user actually has in mind ("I want to log something").
-- **Tap `Log` →** a modality picker (on mobile the centre nav FAB fans these as a **speed-dial of icon-only buttons in a shallow arc around the button** — one top-centre, one down-left, one down-right — `widgets/log_speed_dial.dart`; the History Log FAB keeps a bottom sheet, and stands down entirely inside the Fitness hub where the centre button is already visible — [decisions § 1643](../architecture/decisions.md)):
+- **Tap `Log` →** a modality picker (on mobile the centre nav FAB fans these as a **speed-dial of icon-only buttons in a shallow arc around the button** — one top-centre, one down-left, one down-right — `widgets/log_speed_dial.dart`; the History Log FAB keeps a bottom sheet, and stands down entirely inside the Fitness hub where the centre button is already visible — [decisions § 1644](../architecture/decisions.md)):
 
 ```
         ┌─────────────────────────────────┐
@@ -241,7 +241,7 @@ becomes an **action button**, not a tab.
   *necessarily* a page — a foreground-service GPS session can't collapse into
   a modal — so Gym + Nutrition match it rather than the reverse.)
 - **Tap `Log` = the primary capture action, derived from data presence**
-  (decisions § 1643). Until the user has logged a lift or a meal, the tap
+  (decisions § 1644). Until the user has logged a lift or a meal, the tap
   starts a run outright — the fan has nothing to choose between, so it
   would cost a pure runner a tap and an animation on every run. Once
   either modality has data, the tap fans. `keep_run_primary` stays as the
@@ -252,7 +252,7 @@ becomes an **action button**, not a tab.
   silently to the last-logged modality without it, so a press half a beat
   too long landed a runner on Nutrition.
 - **System back walks toward Home** and only leaves the app from Home; a
-  live recording raises a confirm first (decisions § 1643).
+  live recording raises a confirm first (decisions § 1644).
 - The sheet's **order adapts**: the most recently used capture type
   floats to the top, so a daily lifter sees "Log lift" first.
 - **Accessibility:** the `Log` button has an explicit `Semantics` label
@@ -892,7 +892,7 @@ downgrade for the 100%-runner (one tap → two; long-press mitigates but is
 discoverable-only). The protection that shipped was the **`keep_run_primary`
 Settings toggle** (mobile) that lets a pure runner keep Run as the primary
 one-tap action — *not* the `multi_modal_nav` flag. **A default-off toggle was
-not enough** (decisions § 1643): a runner who never opened Settings still paid
+not enough** (decisions § 1644): a runner who never opened Settings still paid
 the extra tap on every run, so the one-tap start is now **derived from data
 presence** — on until a lift or a meal is logged — with the toggle kept as the
 explicit override. (The original plan here
@@ -1015,7 +1015,7 @@ tier where mobile leads). Byte-identical iOS twin per [decisions.md § 39](../ar
 | Body metrics | `body_metrics` table (migration `20261216_001`) + Settings height/weight entry (**mobile shipped (G5)** — `settings_body_metrics_screen.dart`, Art 9 consent-gated height/weight + activity/goal; api_client `grantHealthDataConsent`/`withdrawHealthDataConsent`/`setMyHeightCm`/`recordBodyWeightKg`/`clearBodyWeightHistory`) |
 | Lift load | `training_load.ts` / `.dart` gain `liftStress` + `source`-tagged daily contributions (**shipped** — `computeLiftStress` + `aggregateDailyLiftStress` + the `lifts` arg to `computeTrainingLoadSeries`). **Consumers wired on both platforms**: web `web/src/lib/gym/lift_load.ts` and mobile `mobile_android/lib/lift_load.dart` (`liftsFromSetHistory`, pure + tested parity pair) feed each dashboard's load curve; `TrainingLoadChart` (web + mobile) shows the "gym sessions included" hint when `liftStress > 0` |
 | Cross-modality | `coach/context.ts` (**web shipped** — bounded `recent_lifts` + 7-day `nutrition_7d` summary, pure `summarizeRecentLifts`/`summarizeNutrition` + tests); web Home gym cards (`/dashboard`); web History timeline (`/history` + `fetchActivities`). **Mobile Home card composition shipped (G5)** — `dashboard_screen.dart` + `widgets/gym_summary_card.dart` + `widgets/nutrition_rings_card.dart` + the recent-lifts trend card (`widgets/recent_lifts_card.dart`); the **unified mobile History timeline is now shipped** (`runs_screen.dart` + `widgets/activity_timeline_list.dart`, assembled from the LOCAL stores via `lib/local_activities.dart` — offline-first, all modalities, not `fetchActivities`) |
-| Runner protection | One-tap run start **derived from data presence** — on until a lift or a meal is logged (`runIsPrimaryLogAction` in `preferences.dart`, decisions § 1643); `Preferences.keepRunPrimary` + the `settings_preferences_screen.dart` switch remain as the explicit override. Long-press always opens the fan |
+| Runner protection | One-tap run start **derived from data presence** — on until a lift or a meal is logged (`runIsPrimaryLogAction` in `preferences.dart`, decisions § 1644); `Preferences.keepRunPrimary` + the `settings_preferences_screen.dart` switch remain as the explicit override. Long-press always opens the fan |
 | Local stores | `local_gym_store.dart`, `local_food_store.dart` (shipped — mirror `LocalGearStore`, §73 / §122; gym stores sets inline). **Now wired into nav/Home (G5):** the gym/nutrition screens + the dashboard hydrate + drain them; still outside the global `main.dart`/`sync_service` sweep |
 | Data access | `packages/api_client` typed gym + food + `fetchLatestBodyWeightKg` + the unified-timeline `fetchActivities` (→ `activities` view) + `fetchRunById` (timeline run-row open) methods (shipped); web gym queries in `core/data.ts` (**shipped** — `fetchGymWorkouts` / `fetchGymWorkoutWithSets` / `fetchGymSetHistory` / `createGymWorkout` / `updateGymWorkout` / `deleteGymWorkout`); **web food + body-metrics queries shipped** (`fetchFoodLog` / `createFoodEntry` / `updateFoodEntry` / `deleteFoodEntry` / `fetchLatestWeightKg` / `recordWeightKg` / `clearWeightHistory`) |
 

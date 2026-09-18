@@ -173,13 +173,12 @@
 		align-items: center;
 		justify-content: center;
 		vertical-align: middle;
-		/* A 24 px target is the WCAG 2.2 minimum (2.5.8). The negative block
-		   margin keeps a micro-label's line box the height it was, so adding the
-		   disclosure does not push a tile's value down. */
-		min-width: 24px;
-		min-height: 24px;
-		margin-block: -6px;
-		margin-inline: 1px -4px;
+		/* The negative block margin keeps a micro-label's line box the height it
+		   was, so adding the disclosure does not push a tile's value down. */
+		min-width: var(--tap-target-inline-min);
+		min-height: var(--tap-target-inline-min);
+		margin-block: -8px;
+		margin-inline: 1px -6px;
 		padding: 0;
 		border: none;
 		border-radius: 50%;

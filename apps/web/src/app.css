@@ -345,6 +345,18 @@
 	--space-xl: 2rem;
 	--space-2xl: 3rem;
 
+	/* Tap targets. The product bar is 44 CSS px, which is what the e2e
+	   sweeps assert; this floor sits deliberately above it so sub-pixel
+	   layout (a fractional device pixel ratio, an ancestor transform
+	   mid-animation, a compositor quad rounding down) cannot take a correct
+	   control under the bar. 48 is also the Flutter twin's IconButton floor
+	   (conventions.md), so both platforms size to one number. */
+	--tap-target-min: 48px;
+	/* An inline disclosure inside running text takes WCAG 2.5.8's own inline
+	   exception and its 24 px floor instead — the 48 px box would push a
+	   tile's value off its line. Same 4 px of headroom over the bar. */
+	--tap-target-inline-min: 28px;
+
 	/* Radii */
 	--radius-pill: 999px;
 	--radius-sm: 0.375rem;

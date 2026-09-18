@@ -3602,8 +3602,8 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		min-width: 44px;
-		min-height: 44px;
+		min-width: var(--tap-target-min);
+		min-height: var(--tap-target-min);
 		background: none;
 		border: none;
 		color: var(--color-text-tertiary);

@@ -280,3 +280,38 @@ test.describe('every swept gym and session control renders its explanation', () 
 		await assertEveryControlExplained(form, 'WorkoutEditor (steady)');
 	});
 });
+
+test.describe('every swept filter and preference control renders its explanation', () => {
+	test.use({ storageState: USER_A.storageStatePath });
+
+	test('/nutrition/targets — the two defaults', async ({ page }) => {
+		await page.goto('/nutrition/targets');
+		const card = page.locator('.defaults-card');
+		await expect(card).toBeVisible({ timeout: 15_000 });
+		await assertEveryControlExplained(card, '/nutrition/targets');
+	});
+
+	test('/segments — the catalogue filters', async ({ page }) => {
+		await page.goto('/segments');
+		const filters = page.locator('.filters');
+		await expect(filters).toBeVisible({ timeout: 15_000 });
+		await assertEveryControlExplained(filters, '/segments');
+	});
+
+	test('/races — the calendar filters and the paste-a-result form', async ({ page }) => {
+		await page.goto('/races');
+		const filters = page.locator('.filters');
+		await expect(filters).toBeVisible({ timeout: 15_000 });
+		await assertEveryControlExplained(filters, '/races (filters)');
+
+		// The paste form lives in the per-race import modal, which only opens
+		// from a listing, so the filter pass above cannot reach it.
+		const importBtn = page.getByTestId('race-import').first();
+		if ((await importBtn.count()) > 0) {
+			await importBtn.click();
+			const form = page.locator('.modal form.editor-form');
+			await expect(form).toBeVisible({ timeout: 5_000 });
+			await assertEveryControlExplained(form, '/races (paste a result)');
+		}
+	});
+});

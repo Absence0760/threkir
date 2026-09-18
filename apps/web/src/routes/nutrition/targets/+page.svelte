@@ -256,30 +256,42 @@
 				<span class="section-label">{m('nutrition.targets.defaultsHeading')}</span>
 			</div>
 			<div class="form-grid">
-				<label>
-					<span class="label-text">{m('prefs.activityLevel')}</span>
-					<select
-						bind:value={activityLevel}
-						onchange={() => void savePref({ nutrition_activity_level: activityLevel })}
-						data-testid="targets-activity-level"
-					>
-						{#each ACTIVITY_LEVELS as lvl (lvl.key)}
-							<option value={lvl.key}>{m(`prefs.activity_${lvl.key}`)}</option>
-						{/each}
-					</select>
-				</label>
-				<label>
-					<span class="label-text">{m('prefs.weightGoal')}</span>
-					<select
-						bind:value={goal}
-						onchange={() => void savePref({ nutrition_goal: goal })}
-						data-testid="targets-weight-goal"
-					>
-						<option value="lose">{m('prefs.goalLose')}</option>
-						<option value="maintain">{m('prefs.goalMaintain')}</option>
-						<option value="gain">{m('prefs.goalGain')}</option>
-					</select>
-				</label>
+				<div class="field">
+					<label>
+						<span class="label-text">{m('prefs.activityLevel')}</span>
+						<select
+							bind:value={activityLevel}
+							onchange={() => void savePref({ nutrition_activity_level: activityLevel })}
+							data-testid="targets-activity-level"
+							aria-describedby="targets-activity-level-hint"
+						>
+							{#each ACTIVITY_LEVELS as lvl (lvl.key)}
+								<option value={lvl.key}>{m(`prefs.activity_${lvl.key}`)}</option>
+							{/each}
+						</select>
+					</label>
+					<span class="field-hint" id="targets-activity-level-hint">
+						{m('nutrition.targets.activityLevelHint')}
+					</span>
+				</div>
+				<div class="field">
+					<label>
+						<span class="label-text">{m('prefs.weightGoal')}</span>
+						<select
+							bind:value={goal}
+							onchange={() => void savePref({ nutrition_goal: goal })}
+							data-testid="targets-weight-goal"
+							aria-describedby="targets-weight-goal-hint"
+						>
+							<option value="lose">{m('prefs.goalLose')}</option>
+							<option value="maintain">{m('prefs.goalMaintain')}</option>
+							<option value="gain">{m('prefs.goalGain')}</option>
+						</select>
+					</label>
+					<span class="field-hint" id="targets-weight-goal-hint">
+						{m('nutrition.targets.weightGoalHint')}
+					</span>
+				</div>
 			</div>
 			<p class="section-hint">{m('nutrition.targets.defaultsHint')}</p>
 			{#if saveError}
@@ -474,6 +486,17 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.3rem;
+	}
+
+	.form-grid .field {
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+	}
+	.form-grid .field-hint {
+		font-size: 0.8rem;
+		color: var(--color-text-secondary);
+		line-height: 1.4;
 	}
 
 	.label-text {

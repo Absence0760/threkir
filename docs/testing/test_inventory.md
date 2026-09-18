@@ -2517,3 +2517,13 @@ The iOS twin runs all three byte-for-byte.
 ### `apps/watch_wear/.../ui/SyncChipStateTest.kt` — 12 · `PreRunSyncFailureTest.kt` — 6 · `PostRunSignInTest.kt` — 5
 
 What the two sync surfaces may offer, and where a runner with no usable session goes. `SyncChipStateTest` evaluates the PreRun top arc's whole state space — 96 tuples since the blocking verdict became a fault rather than a flag ([§ 1544](../architecture/decisions.md)) — and sweeps the entire `SyncFault` vocabulary so a member added later lands in the retry class rather than silently sending a runner to a sign-in screen over a 5xx. The other two are source guards, the module's stated substitute for Compose UI tests: `PreRunSyncFailureTest` pins that the arc's sign-in slot routes to the sign-in and not to the drain, and `PostRunSignInTest` that the screen the `SignInRequired` banner renders on can act on it and that the sign-in returns to the stage it was opened from ([§ 1545](../architecture/decisions.md)).
+
+## #789 round 47 — the import-failure collation (2026-09-18)
+
+### `apps/web/src/lib/integrations/import_failures.test.ts` — 23 tests · `apps/mobile_android/test/import_failures_test.dart` — 23 tests
+
+One mirror test each for the ordering rail the pair now shares ([decisions § 1656](../architecture/decisions.md)). `compareImportFailureReasons` is UTF-16 code units over the wire identifier on both halves, so the fixtures are character-level rather than vocabulary-level: nothing drawn from the seven existing reasons can separate a collation from a code-unit order on an en-US host, which is what CI runs. `http_4xx` against `http4xx` does — CLDR files punctuation before digits, UTF-16 files it after them — and the web half also asserts that this host's `localeCompare` still answers the other way, so the fixture fails loudly rather than going quietly undiscriminating. Mutation-verified: restoring `localeCompare` fails the web test. The iOS twin runs the Dart suite byte-for-byte.
+
+### `apps/web/src/lib/segments/parity_collation_guard.test.ts` — 2 tests
+
+Down from three. The `import_failures` PENDING exemption and the staleness test that policed it are deleted, not reworded, so the guard now carries no carve-out mechanism at all and the sweep runs over every registered pair. Mutation-verified: putting `localeCompare` back into the pair half now fails the sweep, where before it was excused by name.

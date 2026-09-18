@@ -53,7 +53,22 @@ other identifier here already uses. The `.p8` is downloadable **once** — Apple
 keeps no copy, so the estate entry is the only backup that will ever exist.
 
 A new file in the estate repo needs a `creation_rules` entry in its
-`.sops.yaml` or `sops` refuses to encrypt it (fail-closed by design).
+`.sops.yaml` or `sops` refuses to encrypt it (fail-closed by design) — and
+**run it from inside the estate repo**, because config discovery is relative to
+the working directory, not to the file being written:
+
+```
+cd ../infra-secrets && AWS_PROFILE=threkir sops threkir/push-credentials.sops.yaml
+```
+
+From the project repo the same path fails with *"config file not found, or has
+no creation rules"* even though the rule is there, which reads like a missing
+rule rather than a missing `cd`. `sops --config ../infra-secrets/.sops.yaml <file>`
+is the explicit alternative. **Decrypting** an existing file has no such
+constraint — the key metadata travels inside the file, which is why the
+keystore's `--extract` example in
+[`apps/mobile_android/deployment.md`](../../apps/mobile_android/deployment.md)
+works from anywhere.
 
 ### Order of work
 

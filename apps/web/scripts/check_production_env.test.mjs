@@ -7,7 +7,18 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { checkProductionEnv, productionUrlProblem, redactCredentials } from './check_production_env.mjs';
+import {
+	checkProductionEnv,
+	productionUrlProblem,
+	redactCredentials,
+	vapidPublicKeyProblem,
+} from './check_production_env.mjs';
+
+// A throwaway P-256 public point, generated for this test and paired with no
+// private key anyone holds. 65 bytes, leading 0x04, base64url-raw — the exact
+// shape `web-push generate-vapid-keys` prints as `Public Key:`.
+const VALID_VAPID_PUBLIC =
+	'BJpD8Pjn3W-bc7BCbBCkdUj0SY3hdTr6pB8heXjzmHHm7YzhpivKxWb3hx0ZD7ym_ik5EtJo_G9mMPSzA-HcE4g';
 
 const SCRIPT_PATH = fileURLToPath(new URL('./check_production_env.mjs', import.meta.url));
 
@@ -188,6 +199,49 @@ test('does NOT enforce PUBLIC_REVENUECAT_WEB_PORTAL_URL (management portal is op
 		// PUBLIC_REVENUECAT_WEB_PORTAL_URL deliberately omitted
 	});
 	assert.equal(r.ok, true);
+});
+
+test('accepts a valid PUBLIC_VAPID_PUBLIC_KEY', () => {
+	const r = checkProductionEnv({
+		PUBLIC_SUPABASE_URL: 'https://prod-project.supabase.co',
+		PUBLIC_SUPABASE_ANON_KEY: 'sb_publishable_real_key_12345',
+		PUBLIC_MAPTILER_KEY: 'real_maptiler_key',
+		PUBLIC_VAPID_PUBLIC_KEY: VALID_VAPID_PUBLIC,
+	});
+	assert.equal(r.ok, true);
+});
+
+test('allows an unset PUBLIC_VAPID_PUBLIC_KEY (web push reports itself off)', () => {
+	const r = checkProductionEnv({
+		PUBLIC_SUPABASE_URL: 'https://prod-project.supabase.co',
+		PUBLIC_SUPABASE_ANON_KEY: 'sb_publishable_real_key_12345',
+		PUBLIC_MAPTILER_KEY: 'real_maptiler_key',
+		PUBLIC_VAPID_PUBLIC_KEY: '',
+	});
+	assert.equal(r.ok, true);
+});
+
+test('rejects the private half pasted into PUBLIC_VAPID_PUBLIC_KEY, without echoing it', () => {
+	const privateHalf = Buffer.alloc(32, 7).toString('base64url');
+	const r = checkProductionEnv({
+		PUBLIC_SUPABASE_URL: 'https://prod-project.supabase.co',
+		PUBLIC_SUPABASE_ANON_KEY: 'sb_publishable_real_key_12345',
+		PUBLIC_MAPTILER_KEY: 'real_maptiler_key',
+		PUBLIC_VAPID_PUBLIC_KEY: privateHalf,
+	});
+	assert.equal(r.ok, false);
+	const finding = r.findings.find((f) => f.envVar === 'PUBLIC_VAPID_PUBLIC_KEY');
+	assert.ok(finding);
+	assert.match(finding.reason, /PRIVATE half/);
+	assert.doesNotMatch(finding.value, /7777/);
+});
+
+test('vapidPublicKeyProblem names the shape it refuses', () => {
+	assert.equal(vapidPublicKeyProblem(VALID_VAPID_PUBLIC), null);
+	assert.match(String(vapidPublicKeyProblem('not base64!')), /base64url/);
+	// 65 bytes but a compressed-point prefix — right length, wrong key.
+	const wrongPrefix = Buffer.concat([Buffer.from([2]), Buffer.alloc(64, 1)]).toString('base64url');
+	assert.match(String(vapidPublicKeyProblem(wrongPrefix)), /uncompressed P-256 point/);
 });
 
 test('does NOT enforce PUBLIC_SENTRY_DSN (error reporting is optional)', () => {

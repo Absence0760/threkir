@@ -135,6 +135,19 @@ void main() {
     expect(find.byType(GymScreen, skipOffstage: false), findsOneWidget);
   });
 
+  // The opposite failure mode to the day freeze, and the one #923 closed: one
+  // instance is only an improvement if that instance is the one still there
+  // after you leave. Identity of the State object is what says it survived.
+  testWidgets('the surface survives leaving the shell page and coming back',
+      (tester) async {
+    await pumpShell(tester);
+    await openFitnessTab(tester, 'Gym');
+    final gym = tester.state(find.byType(GymScreen));
+    await logFromHome(tester, 'Log lift');
+    expect(identical(tester.state(find.byType(GymScreen)), gym), isTrue,
+        reason: 'Gym was rebuilt from scratch on the way back');
+  });
+
   testWidgets('Log food opens the day the diary was left on, not today',
       (tester) async {
     await pumpShell(tester);

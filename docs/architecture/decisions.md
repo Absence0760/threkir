@@ -29479,6 +29479,8 @@ Two smaller decisions inside that. The expander **remembers being opened, in the
 
 Mobile gets the helper and its ten-case mirror suite but no surface, per § 24 — web is where the level is chosen and read. The Dart half exists so the two cannot diverge on the day mobile grows one, which is the § 604 failure mode this repo has already paid for twice.
 
+A consequence worth naming, because it is the feature working rather than a test being awkward: a spec that creates an account and inserts three runs is building exactly the shape that derives `simple`, so the snapshot it reads is now behind the fold. `metric-label` and `dashboard-readiness-gym-journey` are both about what the snapshot SAYS, not where the page puts it, so they open it through one shared `expandTrainingLoad` fixture — which waits for either shape to attach before asking which one it is, since a `count()` taken straight after `goto` reads 0 on an unhydrated page and makes such a helper silently do nothing on the one account it exists for. `dashboard/disclosure.spec.ts` remains the place the fold itself is asserted.
+
 ## 1657. The control-hint sweep reaches every surface § 1651 owed, and the last one needed wiring rather than words
 
 [§ 1651](#1651-the-spoken-cues-explanation-spreads-to-the-plan-and-run-path-and-the-sweeps-boundary-is-a-list-not-a-claim-about-the-app) bounded [#905](https://github.com/Absence0760/threkir/issues/905)'s workstream 5 at the plan-and-run path and wrote down what it was leaving: five creator editors, five gym / session editors, four routes and `/onboarding`. All of them are in `SURFACES` now, so the owed list is empty and the registry — not this entry — remains the thing to read.

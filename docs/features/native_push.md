@@ -21,6 +21,103 @@
 >
 > Tracked in [roadmap.md § Planned features](../product/roadmap.md#planned-features--specced-2026-06-15).
 
+## Operator provisioning (the credential gate)
+
+Everything below is the human half of this feature. The code is on `main`; what
+follows is the only reason nothing is delivered. The build-side wiring each
+artifact needs is already in place — the Gradle plugin, the Xcode target
+membership, the two release-workflow decode steps, and the web build's
+`PUBLIC_VAPID_PUBLIC_KEY` — so provisioning is now paste-and-verify rather than
+paste-and-then-discover-nothing-reads-it.
+
+### Where each artifact lives
+
+Two homes per artifact, mirroring the Android upload keystore
+([`apps/mobile_android/deployment.md`](../../apps/mobile_android/deployment.md)):
+a **durable** copy in the private estate repo, which survives a lost
+workstation, and an **operational** copy in the system that consumes it, which
+is write-only and can never be read back.
+
+| Artifact | Durable (estate `threkir/push-credentials.sops.yaml`) | Operational | Read by |
+|---|---|---|---|
+| `google-services.json` | `google_services_json_base64` | GitHub secret `GOOGLE_SERVICES_JSON_BASE64` | the `google-services` Gradle plugin, at build time |
+| `GoogleService-Info.plist` | `google_service_info_plist_base64` | GitHub secret `GOOGLE_SERVICE_INFO_PLIST_BASE64` | the Runner target's Resources phase |
+| FCM service-account JSON | `fcm_service_account_json` | Fly secret `FCM_SERVICE_ACCOUNT_JSON` (+ `FCM_PROJECT_ID`) | `nativepush`'s FCM transport |
+| APNs `.p8` | `apns_key_p8` | Fly secrets `APNS_KEY_P8` / `APNS_KEY_ID` / `APNS_TEAM_ID` / `APNS_TOPIC` | `nativepush`'s APNs transport |
+| VAPID private key | `vapid_private_key` | Fly secret `VAPID_PRIVATE_KEY` (+ `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`) | `webpush`'s sender |
+| VAPID public key | `vapid_public_key` | GitHub secret `PUBLIC_VAPID_PUBLIC_KEY` | the web build, inlined into every browser bundle |
+
+Neither config file is a secret in Google's sense, and both are gitignored
+anyway: this repo is public, and the estate + GitHub-secret pair is what every
+other identifier here already uses. The `.p8` is downloadable **once** — Apple
+keeps no copy, so the estate entry is the only backup that will ever exist.
+
+A new file in the estate repo needs a `creation_rules` entry in its
+`.sops.yaml` or `sops` refuses to encrypt it (fail-closed by design).
+
+### Order of work
+
+1. **Firebase project.** One project serves both apps. Add an **Android** app
+   with package `com.threkir.app` and an **iOS** app with bundle id
+   `com.threkir.app` — the ids are what the release workflows check before
+   building, because a config exported for a different app fails obscurely on
+   Android and, on iOS, mints tokens that are delivered to nobody and report no
+   error. Download each app's config file.
+2. **FCM service account.** Project settings → Service accounts → generate a
+   private key. `FCM_PROJECT_ID` is that JSON's `project_id`. This is what
+   signs FCM HTTP v1 sends; the config files do not.
+3. **APNs auth key.** Needs the Apple Developer Program (still open in #922).
+   Keys → new key with the APNs service enabled; the download is one-time.
+   `APNS_TOPIC` is the bundle id, `com.threkir.app`.
+   **`APNS_SANDBOX` is not a preference.** A token minted by a build signed
+   `development` is rejected by the production host and vice versa — the
+   worker holds one setting, so it serves either TestFlight/App Store builds
+   (unset) or Xcode-installed builds (`=1`), not both.
+4. **VAPID pair** for browser push — `npx web-push generate-vapid-keys`, once,
+   ever. The public half goes in **two** places and must match: the worker's
+   `VAPID_PUBLIC_KEY` and the web build's `PUBLIC_VAPID_PUBLIC_KEY`. The worker
+   derives the public point from the private scalar and refuses to boot on a
+   mismatched pair, so the failure it cannot catch is a *web build* carrying a
+   third key: browsers then subscribe against a key nothing signs with, and the
+   push service answers 403 forever. `check_production_env.mjs` rejects a
+   malformed key at release time (the generator prints the private half first).
+5. **Set the secrets**, then redeploy each consumer. A GitHub secret reaches a
+   binary only through a release build; a Fly secret restarts the worker by
+   itself.
+
+### Verifying it, in the order the signal appears
+
+1. **Worker boot log** (`fly logs --app threkir-worker`) — `native_push:
+   enabled fcm=true apns=true` and `web_push: enabled`. Anything still reading
+   `DISABLED` means that group of secrets did not land; an invalid credential
+   exits 2 instead, naming itself.
+2. **A device registers.** Sign in on a build made *after* the config file
+   landed and a `device_tokens` row appears for that user with the right
+   `platform`. No row means the client leg, not the sending leg: on Android,
+   the likeliest cause is an AAB built before the secret existed, since the
+   Gradle apply is conditional and the release step only warns.
+3. **A notification delivers.** Trigger any notification (a kudos is easiest)
+   and watch `notifications.native_push_sent_at` / `web_push_sent_at` go from
+   null to stamped. **Rows pending from before go out on their own** — the
+   uncredentialed handlers deliberately finished their jobs without stamping,
+   so the backlog is still enqueued and the first credentialed poll drains it.
+   That is worth knowing before you flip it on: the first send is not one push,
+   it is every push the account has earned since the feature landed.
+
+### What a local dev needs
+
+Nothing, to build or run: the Gradle plugin is skipped when the file is absent
+and the bridge no-ops. To actually exercise push on a device, fetch the config
+out of the estate first — for example
+
+```
+AWS_PROFILE=threkir sops --decrypt --extract '["google_services_json_base64"]' ../infra-secrets/threkir/push-credentials.sops.yaml | base64 -d > apps/mobile_android/android/app/google-services.json
+```
+
+iOS is the one asymmetry: the plist is a member of the Runner target, so an
+iOS build **fails** until it is fetched, rather than quietly shipping without
+push.
+
 ## Goal & user value
 Deliver the last device-delivery leg: a push notification to a **locked phone**
 (not just the browser, not just email). Build the FCM/APNs sender as a **second

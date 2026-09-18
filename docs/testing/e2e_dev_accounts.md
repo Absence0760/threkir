@@ -304,9 +304,12 @@ work, not a credential blocker.
 ### 10. FCM (Android) + APNs (iOS) push notifications
 
 **What's needed:**
-- Firebase project for Android.
-- Apple Developer Program + APNs auth key for iOS.
-- Supabase Auth → Notifications config.
+- A Firebase project with a `com.threkir.app` app on each platform — the two config files become repo secrets, not committed files.
+- An FCM service account (Android sends) — the config files do not sign anything.
+- Apple Developer Program + an APNs auth key (iOS sends, direct to APNs; not uploaded to Firebase).
+- A VAPID pair for browser push, whose public half has to match in two systems.
+
+Nothing here is Supabase Auth configuration — push is a consumer of the `notifications` table drained by the Go worker. The ordered runbook is [`native_push.md` § Operator provisioning](../features/native_push.md#operator-provisioning-the-credential-gate).
 
 **Status today:** `device_tokens` table rows write correctly (covered by spec); actual delivery is gated on real upstream credentials. Today there's no automated push-delivery test.
 

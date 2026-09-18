@@ -539,13 +539,17 @@ None of this sends in prod until an operator:
 2c. (For **native push**) provisions a Firebase project + an APNs auth key, then:
    on the **worker**, sets `FCM_SERVICE_ACCOUNT_JSON` + `FCM_PROJECT_ID` (Android)
    and/or `APNS_KEY_P8` + `APNS_KEY_ID` + `APNS_TEAM_ID` + `APNS_TOPIC`
-   (+ `APNS_SANDBOX=1` for dev builds) (iOS); on the **mobile apps**, drops
-   `google-services.json` into `apps/mobile_android/android/` and
-   `GoogleService-Info.plist` into
-   `apps/mobile_ios/ios/`. Either credential group alone enables that platform;
-   neither set → `native_push` jobs finish done while leaving the rows pending,
-   and the mobile bridge no-ops (compiles + runs without the config files). A
-   configured-but-invalid credential fails the worker loudly at startup.
+   (+ `APNS_SANDBOX=1` for dev builds) (iOS); on the **mobile apps**, supplies
+   `google-services.json` and `GoogleService-Info.plist` as the
+   `GOOGLE_SERVICES_JSON_BASE64` / `GOOGLE_SERVICE_INFO_PLIST_BASE64` repo
+   secrets the release workflows decode into
+   `apps/mobile_android/android/app/` and `apps/mobile_ios/ios/Runner/` (both
+   files are gitignored — public repo). Either credential group alone enables
+   that platform; neither set → `native_push` jobs finish done while leaving
+   the rows pending, and the mobile bridge no-ops. A configured-but-invalid
+   credential fails the worker loudly at startup. **The ordered runbook, with
+   where each artifact lives and how to verify each leg, is
+   [`native_push.md` § Operator provisioning](native_push.md#operator-provisioning-the-credential-gate).**
 2d. (For **auth emails**) prod auth mail has three independent knobs — the
    **sender** (SMTP), the **templates** (the send-email hook), and the **URL
    config**. Provider is **Resend, already wired**: the DKIM/SPF/DMARC for

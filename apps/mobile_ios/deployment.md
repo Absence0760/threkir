@@ -84,7 +84,8 @@ This is what lets CI upload to TestFlight without a maintainer's Apple ID passwo
 | `KEYCHAIN_PASSWORD` | a throwaway, gates the ephemeral keychain on the runner |
 | `APP_STORE_CONNECT_API_KEY_ID` | the Key ID |
 | `APP_STORE_CONNECT_API_ISSUER_ID` | the Issuer ID |
-| `APP_STORE_CONNECT_API_KEY_BASE64` | base64 of the `.p8` |
+| `APP_STORE_CONNECT_API_KEY_BASE64` | base64 of the App Store Connect `.p8` |
+| `GOOGLE_SERVICE_INFO_PLIST_BASE64` | base64 of `GoogleService-Info.plist` from the Firebase project's `com.threkir.app` iOS app. **Not optional, signing or not**: the Runner target copies that plist into the bundle, and the file is gitignored, so the workflow fails without it — deliberately, and before Xcode does. Runbook in [`docs/features/native_push.md` § Operator provisioning](../../docs/features/native_push.md#operator-provisioning-the-credential-gate) |
 
 ---
 
@@ -152,7 +153,10 @@ Required keys:
   step adds is the profile that carries the capability; after the first signed
   archive, verify with `codesign -d --entitlements :- <exported>.app` that
   `aps-environment` resolved to `production` rather than to the literal
-  `$(APS_ENVIRONMENT)`.
+  `$(APS_ENVIRONMENT)`. The capability is one of three separate things push
+  needs on this platform — the other two are the bundled
+  `GoogleService-Info.plist` (above) and the worker's APNs `.p8`, and each is
+  silent in its own way when missing.
 - Background Modes → Location updates + Audio (for TTS) + Background processing.
   **Not** Background fetch: `background_sync.dart` submits a
   `BGProcessingTaskRequest` on iOS, which `processing` authorises and `fetch`

@@ -84,9 +84,11 @@ struct ContentView: View {
                 // Apr 2026 cross-client audit caught Apple-Watch runs
                 // arriving on the phone with no `activity_type` set,
                 // even though `WatchIngestBridge.swift` filters for it.
-                // Hardcode "run" to match Wear OS until the watch app
-                // grows an activity picker.
-                "activity_type": "run",
+                // Always present, now carrying the pre-run picker's choice
+                // rather than a hardcoded "run" — the raw token, because the
+                // `runs_activity_type_check` vocabulary is what the column
+                // admits.
+                "activity_type": run.activityType.rawValue,
                 // Mobile's delta-fetch (`runs_screen._fetchRemote`) filters
                 // rows on `metadata->>'last_modified_at' > since`. Without
                 // this stamp an Apple-Watch run is invisible to every
@@ -263,6 +265,28 @@ struct PreRunView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Activity")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+
+                    Button(workoutManager.activityType.label) {
+                        workoutManager.activityType = workoutManager.activityType.next
+                    }
+                    .font(.caption)
+                    .foregroundColor(AppTheme.lilac)
+                    .buttonStyle(.plain)
+                    // The label is one word and says nothing about being a
+                    // cycle control, exactly as on Wear OS's chip.
+                    .accessibilityLabel(
+                        String(
+                            localized:
+                                "Activity type, currently \(workoutManager.activityType.label), tap to change"
+                        )
+                    )
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Target pace")

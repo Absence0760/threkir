@@ -236,10 +236,13 @@ class HealthKitManager: NSObject, ObservableObject {
         try? await healthStore.requestAuthorization(toShare: toShare, read: toRead)
     }
 
-    func startWorkout() {
+    /// `activityType` is the runner's pre-run choice, not a constant: HealthKit
+    /// scores energy and heart rate by it, so a walk or a ride configured as a
+    /// run is filed in Health as something the runner did not do.
+    func startWorkout(activityType: HKWorkoutActivityType) {
         guard session == nil else { return }
         let config = HKWorkoutConfiguration()
-        config.activityType = .running
+        config.activityType = activityType
         config.locationType = .outdoor
 
         do {

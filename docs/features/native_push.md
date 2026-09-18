@@ -112,11 +112,18 @@ A new file in the estate repo needs a `creation_rules` entry in its
    Gradle apply is conditional and the release step only warns.
 3. **A notification delivers.** Trigger any notification (a kudos is easiest)
    and watch `notifications.native_push_sent_at` / `web_push_sent_at` go from
-   null to stamped. **Rows pending from before go out on their own** — the
-   uncredentialed handlers deliberately finished their jobs without stamping,
-   so the backlog is still enqueued and the first credentialed poll drains it.
-   That is worth knowing before you flip it on: the first send is not one push,
-   it is every push the account has earned since the feature landed.
+   null to stamped.
+   **There is no historical flood to brace for, and the reason is the enqueue
+   trigger rather than the handler.** `enqueue_notification_native_push_job()`
+   inserts a job only for a recipient who *already* has an enabled
+   `device_tokens` row, and the web sibling only for one whose
+   `user_device_settings.prefs` already carries a `push_subscription` — so
+   every notification raised before any device registered produced no push job
+   at all. What the handlers' don't-stamp-when-unconfigured behaviour protects
+   is the narrower window where a device HAS registered and the sender is not
+   yet credentialed: those jobs stay unstamped and the first credentialed poll
+   delivers them. Registering a device before the credentials land is therefore
+   safe in either order, and a fresh project has nothing queued.
 
 ### What a local dev needs
 

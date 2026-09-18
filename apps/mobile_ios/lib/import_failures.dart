@@ -239,6 +239,15 @@ class ImportFailureGroup {
   const ImportFailureGroup(this.reason, this.count);
 }
 
+/// Total order on two reason identifiers, in UTF-16 code units — the one
+/// ordering both runtimes hold. [String.compareTo] is all Dart has; web used
+/// to ask `localeCompare`, so the summary line's order was a property of the
+/// reader's browser rather than of the reasons (decisions § 1656).
+int compareImportFailureReasons(String a, String b) {
+  final c = a.compareTo(b);
+  return c == 0 ? 0 : (c < 0 ? -1 : 1);
+}
+
 /// Reason tallies for the summary line, commonest first, then by reason
 /// name so the order is stable across renders.
 List<ImportFailureGroup> groupImportFailures(ImportFailureLog log) {
@@ -250,7 +259,9 @@ List<ImportFailureGroup> groupImportFailures(ImportFailureLog log) {
       counts.entries.map((e) => ImportFailureGroup(e.key, e.value)).toList();
   out.sort((a, b) {
     final byCount = b.count.compareTo(a.count);
-    return byCount != 0 ? byCount : a.reason.wire.compareTo(b.reason.wire);
+    return byCount != 0
+        ? byCount
+        : compareImportFailureReasons(a.reason.wire, b.reason.wire);
   });
   return out;
 }

@@ -14,6 +14,15 @@
 	import { undoWindowSFromPref, DEFAULT_UNDO_WINDOW_S } from '$lib/core/undo_queue';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { createPrefsPage } from '$lib/settings/prefs_page.svelte';
+	import {
+		DISCLOSURE_LEVEL_KEY,
+		disclosureLevel,
+		isDisclosureLevel,
+		type DisclosureLevel,
+	} from '$lib/settings/disclosure';
+	import { PRIMARY_GOAL_KEY } from '$lib/settings/onboarding';
+	import { fetchRunAllTimeStats } from '$lib/core/data';
+	import type { MessageKey } from '$lib/i18n/messages';
 	import PrefsPage from '$lib/components/settings/PrefsPage.svelte';
 
 	let preferredUnit = $state<'km' | 'mi'>('km');
@@ -25,6 +34,19 @@
 	// limit entirely, so reaching Undo never means beating a countdown.
 	let undoWindowS = $state<number>(DEFAULT_UNDO_WINDOW_S);
 	let showCalories = $state(true);
+
+	/// `auto` is the absence of the key, not a fourth level: picking it writes
+	/// null, which deletes it and hands the level back to the derivation.
+	let disclosureChoice = $state<'auto' | DisclosureLevel>('auto');
+	let primaryGoal = $state<string | null>(null);
+	let runCount = $state(0);
+	let derivedDisclosure = $derived(disclosureLevel(primaryGoal, runCount));
+
+	const DISCLOSURE_LABELS: Record<DisclosureLevel, MessageKey> = {
+		simple: 'prefs.disclosureSimple',
+		standard: 'prefs.disclosureStandard',
+		full: 'prefs.disclosureFull',
+	};
 
 	// Theme is per-browser (localStorage), not the cross-device bag: a dark
 	// laptop beside a light tablet is a common setup a synced value would fight.
@@ -57,6 +79,13 @@
 		undoWindowS = undoWindowSFromPref(effective<number>(settings, 'undo_window_s'));
 		setUndoWindowS(undoWindowS);
 		showCalories = effective<boolean>(settings, 'show_calories', true) !== false;
+		const storedDisclosure = effective<string>(settings, DISCLOSURE_LEVEL_KEY);
+		disclosureChoice = isDisclosureLevel(storedDisclosure) ? storedDisclosure : 'auto';
+		primaryGoal = effective<string>(settings, PRIMARY_GOAL_KEY) ?? null;
+		// The count only refines what the hint says Automatic resolves to today,
+		// so it is fetched beside the page rather than inside its load: a settings
+		// page must not land in its failed state over one explanatory sentence.
+		void fetchRunAllTimeStats().then((stats) => (runCount = stats.totalRuns));
 	});
 
 	onMount(() => {
@@ -103,6 +132,11 @@
 			}
 		}
 		prefs.save({ preferred_unit: next, units_pace_format: paceFormat });
+	}
+
+	function pickDisclosure(next: 'auto' | DisclosureLevel) {
+		disclosureChoice = next;
+		prefs.save({ [DISCLOSURE_LEVEL_KEY]: next === 'auto' ? null : next });
 	}
 
 	// Weight unit is display + entry only; storage stays canonical kg.
@@ -192,6 +226,23 @@
 	<section class="card">
 		<h2>{m('prefs.mapsPagesHeading')}</h2>
 		<div class="form-grid">
+			<div class="field">
+				<label>
+					<span class="label-text">{m('prefs.disclosureLevel')}</span>
+					<select
+						value={disclosureChoice}
+						aria-describedby="disclosure-hint"
+						data-testid="disclosure-level-select"
+						onchange={(e) => pickDisclosure(e.currentTarget.value as 'auto' | DisclosureLevel)}
+					>
+						<option value="auto">{m('prefs.disclosureAuto')}</option>
+						<option value="simple">{m('prefs.disclosureSimple')}</option>
+						<option value="standard">{m('prefs.disclosureStandard')}</option>
+						<option value="full">{m('prefs.disclosureFull')}</option>
+					</select>
+				</label>
+				<p class="hint" id="disclosure-hint">{m('prefs.disclosureHint', { level: m(DISCLOSURE_LABELS[derivedDisclosure]) })}</p>
+			</div>
 			<div class="field">
 				<label>
 					<span class="label-text">{m('prefs.mapStyle')}</span>

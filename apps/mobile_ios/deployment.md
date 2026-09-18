@@ -37,6 +37,9 @@ com.threkir.app.watchapp.WidgetsExtension  ← (when the complication ships)
 ## One-time Apple Developer Program setup
 
 1. **Pay $99/year for the Apple Developer Program.** Use a long-lived team mailbox, not a personal Apple ID. Apple's account recovery is brutal — it's worth the extra ~5 minutes of setup to use a shared account.
+
+   **Creating that Apple Account — the parts that are irreversible or that fail enrollment.** The mailbox is the role identity; **the person is not.** First and last name must be the account holder's *legal* name, because Apple verifies it against the enrollment and a company name in those fields delays or fails it — and on an Individual enrollment that legal name becomes the public App Store seller name. Country/Region must match the billing address of the card paying the $99: it sets storefront, currency and tax treatment, and changing it later needs a zero balance and breaks anything subscribed. Birthday must be real and 18+ (the Program requires legal age of majority). The address has to be **receiving mail before you submit** — Apple verifies it with a code in the form itself.
+   **With no Apple hardware in the estate, the trusted phone number is the only 2FA channel there is** (codes otherwise go to a signed-in Apple device). So: a number that will still be yours in three years, not VoIP, recorded beside the credentials in Bitwarden, and add a **second** trusted number once the account exists — a lost phone is otherwise a lost developer team. Do **not** set a Recovery Key while there is one operator: it switches Apple's own account-recovery path off, so losing it is permanent, and there is no second admin to recover through.
 2. **Create an organisational team** (Apple Developer → Membership). Personal accounts work but limit to 1 admin; an organisation lets multiple maintainers manage signing.
 3. **Create the App ID** at developer.apple.com → Identifiers:
    - Bundle ID: `com.threkir.app` (Explicit)

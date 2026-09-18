@@ -22,6 +22,7 @@
 		A1B2C3D4E5F60001000A0013 /* RunPayloadStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0013 /* RunPayloadStorage.swift */; };
 		A1B2C3D4E5F60001000A0014 /* MiniMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0014 /* MiniMap.swift */; };
 		A1B2C3D4E5F60001000A0015 /* RunMiniMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0015 /* RunMiniMapView.swift */; };
+		A1B2C3D4E5F60001000A0030 /* GpsHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0030 /* GpsHealth.swift */; };
 		A1B2C3D4E5F60001000A0007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0007 /* Assets.xcassets */; };
 		A1B2C3D4E5F60001000A0010 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0010 /* Localizable.xcstrings */; };
 		A1B2C3D4E5F60001000A0008 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60003000A0001 /* HealthKit.framework */; };
@@ -46,6 +47,7 @@
 		B2C3D4E5F6A70001000B0016 /* WorkoutManagerPaceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0016 /* WorkoutManagerPaceTests.swift */; };
 		B2C3D4E5F6A70001000B0018 /* MiniMapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0018 /* MiniMapTests.swift */; };
 		B2C3D4E5F6A70001000B0019 /* WorkoutManagerMiniMapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0019 /* WorkoutManagerMiniMapTests.swift */; };
+		B2C3D4E5F6A70001000B0030 /* GpsHealthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0030 /* GpsHealthTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -86,11 +88,13 @@
 		A1B2C3D4E5F60002000A0013 /* RunPayloadStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunPayloadStorage.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000A0014 /* MiniMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniMap.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000A0015 /* RunMiniMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunMiniMapView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000A0030 /* GpsHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GpsHealth.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0015 /* RunPayloadStorageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunPayloadStorageTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0017 /* HealthKitFailureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitFailureTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0016 /* WorkoutManagerPaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutManagerPaceTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0018 /* MiniMapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniMapTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0019 /* WorkoutManagerMiniMapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutManagerMiniMapTests.swift; sourceTree = "<group>"; };
+		B2C3D4E5F6A70002000B0030 /* GpsHealthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GpsHealthTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70004000B0001 /* WatchAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WatchAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -147,6 +151,7 @@
 				B2C3D4E5F6A70002000B0016 /* WorkoutManagerPaceTests.swift */,
 				B2C3D4E5F6A70002000B0018 /* MiniMapTests.swift */,
 				B2C3D4E5F6A70002000B0019 /* WorkoutManagerMiniMapTests.swift */,
+				B2C3D4E5F6A70002000B0030 /* GpsHealthTests.swift */,
 			);
 			path = WatchAppTests;
 			sourceTree = "<group>";
@@ -162,6 +167,7 @@
 				A1B2C3D4E5F60002000A0005 /* RouteNavigator.swift */,
 				A1B2C3D4E5F60002000A0014 /* MiniMap.swift */,
 				A1B2C3D4E5F60002000A0015 /* RunMiniMapView.swift */,
+				A1B2C3D4E5F60002000A0030 /* GpsHealth.swift */,
 				A1B2C3D4E5F60002000A0012 /* ArmedRoute.swift */,
 				A1B2C3D4E5F60002000A0006 /* WatchConnectivityManager.swift */,
 				A1B2C3D4E5F60002000A0009 /* SupabaseService.swift */,
@@ -329,6 +335,7 @@
 				A1B2C3D4E5F60001000A0005 /* RouteNavigator.swift in Sources */,
 				A1B2C3D4E5F60001000A0014 /* MiniMap.swift in Sources */,
 				A1B2C3D4E5F60001000A0015 /* RunMiniMapView.swift in Sources */,
+				A1B2C3D4E5F60001000A0030 /* GpsHealth.swift in Sources */,
 				A1B2C3D4E5F60001000A0006 /* WatchConnectivityManager.swift in Sources */,
 				A1B2C3D4E5F60001000A000B /* SupabaseService.swift in Sources */,
 				A1B2C3D4E5F60001000A000C /* AppTheme.swift in Sources */,
@@ -362,6 +369,7 @@
 				B2C3D4E5F6A70001000B0016 /* WorkoutManagerPaceTests.swift in Sources */,
 				B2C3D4E5F6A70001000B0018 /* MiniMapTests.swift in Sources */,
 				B2C3D4E5F6A70001000B0019 /* WorkoutManagerMiniMapTests.swift in Sources */,
+				B2C3D4E5F6A70001000B0030 /* GpsHealthTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

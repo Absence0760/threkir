@@ -99,6 +99,25 @@ melos run analyze
 
 ---
 
+## Push notifications (the build needs the Firebase config)
+
+`GoogleService-Info.plist` is gitignored and is a member of the Runner target,
+so a fresh clone **fails to build** with a missing-input error rather than
+silently shipping without push — the opposite of the Android side, where the
+Gradle apply is conditional. Fetch it out of the private estate repo (from this
+directory):
+
+```
+AWS_PROFILE=threkir sops --decrypt --extract '["google_service_info_plist_base64"]' ../../../infra-secrets/threkir/push-credentials.sops.yaml | base64 -d > ios/Runner/GoogleService-Info.plist
+```
+
+A simulator cannot receive an APNs push at all — that needs a real device, the
+Push Notifications capability on the provisioning profile, and the worker's
+APNs `.p8`. Note that an Xcode-installed build is signed `development` and its
+token is only valid against the sandbox host, which the worker reaches only
+with `APNS_SANDBOX=1`; a TestFlight build is the production pair. See
+[`docs/features/native_push.md` § Operator provisioning](../../docs/features/native_push.md#operator-provisioning-the-credential-gate).
+
 ## Simulating GPS
 
 The iOS simulator doesn't have real GPS. To test run recording and route navigation:

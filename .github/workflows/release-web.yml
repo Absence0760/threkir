@@ -142,6 +142,12 @@ jobs:
           # Realtime live path; set to https://live.threkir.com once the
           # Fly live hub is deployed (apps/job_worker/deployment.md).
           PUBLIC_LIVE_HUB_URL: ${{ secrets.PUBLIC_LIVE_HUB_URL }}
+          # Optional — unset leaves the browser-push card reading "not
+          # configured" and nobody subscribes. Must be the PUBLIC half of the
+          # pair whose private half is the worker's VAPID_PRIVATE_KEY Fly
+          # secret; a mismatch means every send is signed with a key the
+          # subscription was not taken out against. docs/features/native_push.md.
+          PUBLIC_VAPID_PUBLIC_KEY: ${{ secrets.PUBLIC_VAPID_PUBLIC_KEY }}
           PUBLIC_APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: |
           cat <<EOF > apps/web/.env
@@ -154,6 +160,7 @@ jobs:
           PUBLIC_COACH_ENABLED=${PUBLIC_COACH_ENABLED}
           PUBLIC_ROUTE_GEN_ENABLED=${PUBLIC_ROUTE_GEN_ENABLED}
           PUBLIC_LIVE_HUB_URL=${PUBLIC_LIVE_HUB_URL}
+          PUBLIC_VAPID_PUBLIC_KEY=${PUBLIC_VAPID_PUBLIC_KEY}
           PUBLIC_APP_RELEASE=${PUBLIC_APP_RELEASE}
           EOF
 
@@ -174,6 +181,7 @@ jobs:
           PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: ${{ secrets.PUBLIC_REVENUECAT_WEB_CHECKOUT_URL }}
           PUBLIC_COACH_ENABLED: ${{ secrets.PUBLIC_COACH_ENABLED }}
           PUBLIC_ROUTE_GEN_ENABLED: ${{ secrets.PUBLIC_ROUTE_GEN_ENABLED }}
+          PUBLIC_VAPID_PUBLIC_KEY: ${{ secrets.PUBLIC_VAPID_PUBLIC_KEY }}
         run: node apps/web/scripts/check_production_env.mjs
 
       - run: npm run build --workspace=apps/web

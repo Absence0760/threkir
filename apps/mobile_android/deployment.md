@@ -113,6 +113,7 @@ The passwords live in the same file (`sops ../infra-secrets/threkir/android-uplo
 | `ANDROID_KEY_ALIAS` | `upload` (matches `-alias` above) |
 | `ANDROID_KEY_PASSWORD` | from `keytool -genkey` (often same as keystore password) |
 | `PLAY_SERVICE_ACCOUNT_JSON` | Play service account key JSON (next section) |
+| `GOOGLE_SERVICES_JSON_BASE64` | base64 of `google-services.json` from the Firebase project's `com.threkir.app` Android app. Optional, and its absence is quiet by construction: `android/app/build.gradle.kts` applies the `google-services` plugin only when the decoded file is there, so a release without this secret builds and ships an AAB that registers no FCM token (the workflow warns). Durable copy in the estate repo beside the keystore; runbook in [`docs/features/native_push.md` § Operator provisioning](../../docs/features/native_push.md#operator-provisioning-the-credential-gate) |
 
 ### Play service account (one-time)
 

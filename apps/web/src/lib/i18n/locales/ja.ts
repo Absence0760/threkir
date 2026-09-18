@@ -4011,6 +4011,8 @@ export const messages = {
 	"prefs.weightUnitHint": "体重とジムの重量をキログラム（kg）またはポンド（lbs）で表示します。",
 	"prefs.paceFormatHint": "1キロメートルあたりの分（min/km）、1マイルあたりの分（min/mi）、または時速キロメートル（km/h）・時速マイル（mph）です。",
 	"prefs.weekStartsOnHint": "週ごとの合計、目標、トレーニングプランで週の始まりとする曜日です。",
+	"dash.trainingLoadSection": "トレーニング負荷",
+	"dash.trainingLoadSectionHint": "フィットネス、疲労、コンディションの数値です。「基本だけ」を選んだためたたんでいます。いつでも開けますし、設定 → 表示 で「すべて」を選べます。",
 	"prefs.disclosureLevel": "表示する情報量",
 	"prefs.disclosureAuto": "自動",
 	"prefs.disclosureSimple": "基本だけ",

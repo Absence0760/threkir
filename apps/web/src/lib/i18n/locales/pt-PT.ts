@@ -4015,6 +4015,8 @@ export const messages = {
 	"prefs.weightUnitHint": "Mostra o peso corporal e as cargas do ginásio em quilogramas (kg) ou libras (lbs).",
 	"prefs.paceFormatHint": "Minutos por quilómetro (min/km) ou por milha (min/mi), ou velocidade em quilómetros (km/h) ou milhas por hora (mph).",
 	"prefs.weekStartsOnHint": "O primeiro dia de cada semana nos seus totais semanais, metas e planos de treino.",
+	"dash.trainingLoadSection": "Carga de treino",
+	"dash.trainingLoadSectionHint": "Os seus números de condição física, fadiga e forma. Está recolhido porque pediu só o essencial: abra quando quiser, ou peça Tudo em Definições → Visualização.",
 	"prefs.disclosureLevel": "Quanto detalhe",
 	"prefs.disclosureAuto": "Automático",
 	"prefs.disclosureSimple": "Só o essencial",

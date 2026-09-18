@@ -4016,6 +4016,8 @@ export const messages = {
 	"prefs.weightUnitHint": "Zeigt Körpergewicht und Trainingsgewichte in Kilogramm (kg) oder Pfund (lbs) an.",
 	"prefs.paceFormatHint": "Minuten pro Kilometer (min/km) oder Meile (min/mi) oder Geschwindigkeit in Kilometern (km/h) oder Meilen pro Stunde (mph).",
 	"prefs.weekStartsOnHint": "Der erste Tag jeder Woche in deinen Wochensummen, Zielen und Trainingsplänen.",
+	"dash.trainingLoadSection": "Trainingsbelastung",
+	"dash.trainingLoadSectionHint": "Deine Werte zu Fitness, Ermüdung und Form. Eingeklappt, weil du nur das Wichtigste wolltest — öffne es jederzeit, oder wähle unter Einstellungen → Anzeige „Alles“.",
 	"prefs.disclosureLevel": "Wie viele Details",
 	"prefs.disclosureAuto": "Automatisch",
 	"prefs.disclosureSimple": "Nur das Wichtigste",

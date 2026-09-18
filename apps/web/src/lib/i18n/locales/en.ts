@@ -4032,6 +4032,8 @@ export const en = {
 	"prefs.weightUnitHint": "Shows body weight and gym weights in kilograms (kg) or pounds (lbs).",
 	"prefs.paceFormatHint": "Minutes per kilometre (min/km) or mile (min/mi), or speed in kilometres (km/h) or miles per hour (mph).",
 	"prefs.weekStartsOnHint": "The first day of each week in your weekly totals, goals and training plans.",
+	"dash.trainingLoadSection": "Training load",
+	"dash.trainingLoadSectionHint": "Your fitness, fatigue and form numbers. Folded because you asked for the basics — open it whenever you want it, or ask for everything in Settings → Display.",
 	"prefs.disclosureLevel": "How much detail",
 	"prefs.disclosureAuto": "Automatic",
 	"prefs.disclosureSimple": "Just the basics",

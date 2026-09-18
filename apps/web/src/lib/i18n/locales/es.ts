@@ -4016,6 +4016,8 @@ export const messages = {
 	"prefs.weightUnitHint": "Muestra el peso corporal y los pesos del gimnasio en kilogramos (kg) o libras (lbs).",
 	"prefs.paceFormatHint": "Minutos por kilómetro (min/km) o por milla (min/mi), o velocidad en kilómetros (km/h) o millas por hora (mph).",
 	"prefs.weekStartsOnHint": "El primer día de cada semana en tus totales semanales, objetivos y planes de entrenamiento.",
+	"dash.trainingLoadSection": "Carga de entrenamiento",
+	"dash.trainingLoadSectionHint": "Tus números de forma física, fatiga y frescura. Está plegado porque pediste solo lo básico: ábrelo cuando quieras, o pide Todo en Ajustes → Pantalla.",
 	"prefs.disclosureLevel": "Cuánto detalle",
 	"prefs.disclosureAuto": "Automático",
 	"prefs.disclosureSimple": "Solo lo básico",

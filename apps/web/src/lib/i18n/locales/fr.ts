@@ -4016,6 +4016,8 @@ export const messages = {
 	"prefs.weightUnitHint": "Affiche le poids corporel et les charges de musculation en kilogrammes (kg) ou en livres (lbs).",
 	"prefs.paceFormatHint": "Minutes par kilomètre (min/km) ou par mile (min/mi), ou vitesse en kilomètres (km/h) ou miles par heure (mph).",
 	"prefs.weekStartsOnHint": "Le premier jour de chaque semaine dans tes totaux hebdomadaires, tes objectifs et tes plans d'entraînement.",
+	"dash.trainingLoadSection": "Charge d’entraînement",
+	"dash.trainingLoadSectionHint": "Tes chiffres de forme, de fatigue et de fraîcheur. Replié parce que tu as demandé l’essentiel : ouvre-le quand tu veux, ou choisis Tout dans Réglages → Affichage.",
 	"prefs.disclosureLevel": "Niveau de détail",
 	"prefs.disclosureAuto": "Automatique",
 	"prefs.disclosureSimple": "L'essentiel",

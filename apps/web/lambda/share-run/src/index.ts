@@ -32,6 +32,7 @@ import { renderRunOgPng } from '../../../src/lib/share/og_run_png';
 import { siteOrigin } from '../../../src/lib/core/site_url';
 import { shareMethodRefusal } from '../../../src/lib/share/share_method_gate';
 import { notFoundShell } from '../../../src/lib/share/entity_spa_shell';
+import { reportException } from '../../../src/lib/core/lambda_sentry';
 
 // SPA-shell HTML embedded at build time by lambda/share-run/build.mjs.
 // The bundler substitutes `__SPA_SHELL_HTML__` with the contents of
@@ -104,6 +105,7 @@ export const handler = async (
 			message: err instanceof Error ? err.message : String(err),
 			stack: err instanceof Error ? err.stack : undefined,
 		});
+		await reportException('share-run', err, { path: event.rawPath });
 		return jsonResponse(503, { error: 'temporarily unavailable' }, NO_STORE);
 	}
 };

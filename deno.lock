@@ -422,6 +422,7 @@
             "npm:@anthropic-ai/sdk@0.125",
             "npm:@playwright/test@^1.63.0",
             "npm:@resvg/resvg-js@^2.6.2",
+            "npm:@sentry/node@^10.74.0",
             "npm:@sentry/sveltekit@^10.74.0",
             "npm:@supabase/ssr@~0.12.7",
             "npm:@supabase/supabase-js@^2.116.0",

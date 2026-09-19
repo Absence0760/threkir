@@ -363,3 +363,31 @@ test('accessibility: login inputs carry programmatically associated labels', () 
 		);
 	}
 });
+
+test('accessibility: the tap-target tokens sit above the bars they clear', () => {
+	// Reason: a control sized at the bar it is asserted against has no
+	// headroom, and `.pr-hide` spent a year that way — `min-width: 44px`
+	// measuring 44.0 x 44.0, so a fractional device pixel ratio or a
+	// transform mid-animation could fail a correct control. The fix is the
+	// token being above the bar, which is only true while these two numbers
+	// disagree; the e2e sweep asserts the measured side.
+	const css = read('src/app.css');
+	const px = (name: string): number => {
+		const m = css.match(new RegExp(`--${name}:\\s*(\\d+)px`));
+		assert.ok(m, `app.css must declare --${name}`);
+		return Number(m![1]);
+	};
+	// Kept in lockstep with tests-e2e/fixtures/tap-targets.ts.
+	const BAR = 44;
+	const WCAG_BAR = 24;
+	assert.ok(
+		px('tap-target-min') > BAR,
+		`--tap-target-min must exceed the ${BAR}px bar the e2e sweep asserts, ` +
+			'so sub-pixel layout cannot take a correct control under it.',
+	);
+	assert.ok(
+		px('tap-target-inline-min') > WCAG_BAR,
+		`--tap-target-inline-min must exceed WCAG 2.5.8's ${WCAG_BAR}px floor ` +
+			'for the same reason.',
+	);
+});

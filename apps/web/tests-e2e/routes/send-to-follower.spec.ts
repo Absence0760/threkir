@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_ROUTE_ID } from '../fixtures/seeded-data';
@@ -159,12 +159,12 @@ test.describe('/routes/[id] — send to a follower', () => {
 		}
 	});
 
-	test('a failed recipient load surfaces a retry, not an empty picker', async ({ page }) => {
+	test('a failed recipient load surfaces a retry, not an empty picker', async ({ page, mockRoute }) => {
 		// "Nobody to send to" and "we could not find out" are different answers;
 		// only one of them is actionable, and the honest one must not be the
 		// one that disappears.
 		let failedOnce = false;
-		await page.route('**/rest/v1/user_follows*', async (route) => {
+		await mockRoute(page, '**/rest/v1/user_follows*', async (route) => {
 			if (!failedOnce) {
 				failedOnce = true;
 				await route.fulfill({

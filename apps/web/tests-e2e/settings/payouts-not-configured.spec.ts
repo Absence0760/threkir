@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
+import type { MockRoute } from '../fixtures/mock-route';
 
 import { USER_A } from '../fixtures/users';
 
@@ -28,11 +29,12 @@ test.describe('/settings/payouts — onboarding refusals', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	async function clickSetupWith(
+		mockRoute: MockRoute,
 		page: import('@playwright/test').Page,
 		status: number,
 		body: unknown,
 	): Promise<void> {
-		await page.route('**/functions/v1/events-connect-onboard', async (route) => {
+		await mockRoute(page, '**/functions/v1/events-connect-onboard', async (route) => {
 			await route.fulfill({
 				status,
 				contentType: 'application/json',
@@ -47,8 +49,9 @@ test.describe('/settings/payouts — onboarding refusals', () => {
 
 	test('a build with no Stripe keys says so calmly, and never leaks the invoke internals', async ({
 		page,
+		mockRoute
 	}) => {
-		await clickSetupWith(page, 503, { error: 'stripe_not_configured' });
+		await clickSetupWith(mockRoute, page, 503, { error: 'stripe_not_configured' });
 
 		const toast = page.locator('.toast').first();
 		await expect(toast).toBeVisible({ timeout: 10_000 });
@@ -60,8 +63,9 @@ test.describe('/settings/payouts — onboarding refusals', () => {
 
 	test('a genuine failure still reads as an error, with a code rather than the invoke internals', async ({
 		page,
+		mockRoute
 	}) => {
-		await clickSetupWith(page, 500, { error: 'stripe_account_create_failed' });
+		await clickSetupWith(mockRoute, page, 500, { error: 'stripe_account_create_failed' });
 
 		const toast = page.locator('.toast').first();
 		await expect(toast).toBeVisible({ timeout: 10_000 });
@@ -70,8 +74,8 @@ test.describe('/settings/payouts — onboarding refusals', () => {
 		await expect(page.locator('.toast')).not.toContainText(/non-2xx|Edge Function/);
 	});
 
-	test('the setup button is released so the host can retry or read the page', async ({ page }) => {
-		await clickSetupWith(page, 503, { error: 'stripe_not_configured' });
+	test('the setup button is released so the host can retry or read the page', async ({ page, mockRoute }) => {
+		await clickSetupWith(mockRoute, page, 503, { error: 'stripe_not_configured' });
 		await expect(page.getByRole('button', { name: /Set up payments/i })).toBeEnabled({
 			timeout: 10_000,
 		});

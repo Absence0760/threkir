@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { USER_A } from '../fixtures/users';
 
@@ -22,9 +22,10 @@ test.describe('/nutrition — secondary load failure surfaces', () => {
 
 	test('a failed week-trend load shows the error banner, not an empty page', async ({
 		page,
+		mockRoute
 	}) => {
 		let foodLogGets = 0;
-		await page.route('**/rest/v1/food_log**', async (route) => {
+		await mockRoute(page, '**/rest/v1/food_log**', async (route) => {
 			if (route.request().method() === 'GET') {
 				foodLogGets += 1;
 				// #1 = today (primary, must succeed); #2 = the 7-day trend window.

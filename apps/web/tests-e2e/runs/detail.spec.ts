@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
@@ -238,7 +238,8 @@ test.describe('/runs/[id]', () => {
 
 	test('Share link button on a private run flips is_public=true and opens /share/run for anon', async ({
 		page,
-		context
+		context,
+		mockRoute
 	}) => {
 		// Private runs return 404 from /share/run for anon. Clicking the
 		// "Share link" icon-btn now opens a consent dialog (decisions §33
@@ -301,7 +302,7 @@ test.describe('/runs/[id]', () => {
 			});
 			const anonPage = await anonContext.newPage();
 			try {
-				await anonPage.route('**/functions/v1/clip-public-track', (route) =>
+				await mockRoute(anonPage, '**/functions/v1/clip-public-track', (route) =>
 					route.fulfill({
 						status: 200,
 						contentType: 'application/json',
@@ -814,7 +815,8 @@ test.describe('/runs/[id]', () => {
 
 	test('share button is in-flight-guarded so a double-tap makes the run public only once', async ({
 		page,
-		context
+		context,
+		mockRoute
 	}) => {
 		// proceedShare had no busy guard: a fast second tap (or a second
 		// tap once the run is already public) fired makeRunPublic again.
@@ -828,7 +830,7 @@ test.describe('/runs/[id]', () => {
 		});
 
 		let patchCount = 0;
-		await page.route('**/rest/v1/runs?id=eq.*', async (route) => {
+		await mockRoute(page, '**/rest/v1/runs?id=eq.*', async (route) => {
 			if (route.request().method() === 'PATCH') {
 				patchCount += 1;
 				await new Promise((r) => setTimeout(r, 1200));
@@ -869,7 +871,8 @@ test.describe('/runs/[id]', () => {
 	});
 
 	test('inline edit Save is in-flight-guarded so a slow save cannot be double-fired', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		// saveEdit had no busy guard and its button no disabled state. The
 		// edit form is inline rather than modal, so nothing dismissed on the
@@ -884,7 +887,7 @@ test.describe('/runs/[id]', () => {
 		});
 
 		let patchCount = 0;
-		await page.route('**/rest/v1/runs?id=eq.*', async (route) => {
+		await mockRoute(page, '**/rest/v1/runs?id=eq.*', async (route) => {
 			if (route.request().method() === 'PATCH') {
 				patchCount += 1;
 				await new Promise((r) => setTimeout(r, 1200));

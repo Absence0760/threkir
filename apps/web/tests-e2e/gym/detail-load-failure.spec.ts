@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
@@ -109,7 +109,7 @@ test.describe('gym detail — a partial read failure is a failure', () => {
 		await expect(page.getByTestId('routine-start')).toHaveCount(0);
 	});
 
-	test('Retry re-enters loading rather than flashing "Routine not found"', async ({ page }) => {
+	test('Retry re-enters loading rather than flashing "Routine not found"', async ({ page, mockRoute }) => {
 		// `load()` cleared `loadError` without raising `loading`, so the
 		// in-flight re-read fell through to the `!detail` branch and the page
 		// told the author their routine was gone — for the whole round trip,
@@ -131,7 +131,7 @@ test.describe('gym detail — a partial read failure is a failure', () => {
 		});
 
 		let attempt = 0;
-		await page.route('**/rest/v1/gym_routine_exercises*', async (route) => {
+		await mockRoute(page, '**/rest/v1/gym_routine_exercises*', async (route) => {
 			if (route.request().method() !== 'GET') return route.fallback();
 			attempt += 1;
 			if (attempt === 1) {

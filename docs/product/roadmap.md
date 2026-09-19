@@ -87,6 +87,8 @@ Full technical details in `backend_scaling.md`.
 
 ✓ **Shipped.** Standalone (no-phone) workout sessions with HealthKit HR, haptic pace alerts, and Watch Connectivity sync (with a persisted pre-auth ingest queue). Full delivery checklist in [roadmap_shipped.md](roadmap_shipped.md).
 
+- [x] **Bundled inside the iOS `.ipa` (2026-09-18, issue #950).** Until this round the docs said the watch app shipped with the phone app and `Runner.xcodeproj` referenced nothing under `apps/watch_ios/`, so no release pipeline built it at all. `Runner.xcodeproj` now carries a `WatchApp` target referencing the existing sources plus an Embed Watch Content phase, `WKWatchOnly` is replaced by `WKCompanionAppBundleIdentifier`, and claim (15) of `scripts/check_watch_ios_source.mjs` keeps the two projects from drifting ([decisions § 1679](../architecture/decisions.md)). Verified by walking the built `Runner.app`; **still device-gated:** a signed `flutter build ipa` and one run syncing end to end from a paired physical watch.
+
 ### Wear OS standalone GPS recording
 
 ✓ **Shipped.** Compose-for-Wear standalone recording with HR, ultra-length (10h+) streaming, battery-saver nudges, live race mode, full Android UX parity, TTS cues, pedometer, GPS self-heal, indoor mode, and auto/manual sync. Full delivery checklist in [roadmap_shipped.md](roadmap_shipped.md).
@@ -427,7 +429,7 @@ Web already shipped seven locales (`en/de/fr/es/ja/pt-BR/pt-PT`) — see [decisi
 - [x] Mobile: `intl` `DateFormat`/`NumberFormat` replacing the hand-rolled English month-name + `.` -decimal formatters
 - [x] Mobile: TTS announcement locale + spoken phrases + guided-run scripts follow the active app locale (was hard-coded `en-US`)
 - [x] Wear OS (Kotlin): `values-<locale>/strings.xml` resources, `stringResource` migration, locale-aware number formatting + `TtsAnnouncer` locale (device-locale-follow)
-- [x] watchOS (SwiftUI): `Localizable.xcstrings` catalogue + project regions + `Measurement`/`NumberFormatter` locale formatting, plus `InfoPlist.xcstrings` for the four `NS*UsageDescription` consent prompts (2026-09-18, [decisions § 1675](../architecture/decisions.md)) — both catalogues parity-checked against one derived locale set, and the Mac `xcodebuild` is done: 225 tests green on Xcode 26.4 / watchOS 26.4, seven `.lproj` directories in the built app, and the simulator booted in `pt-PT` and `ja` renders the consent sheet in that locale. A per-locale spot-check across the rest of the UI still wants a human at the simulator (`simctl` has no touch or crown input)
+- [x] watchOS (SwiftUI): `Localizable.xcstrings` catalogue + project regions + `Measurement`/`NumberFormatter` locale formatting, plus `InfoPlist.xcstrings` for the four `NS*UsageDescription` consent prompts (2026-09-18, [decisions § 1675](../architecture/decisions.md)) — both catalogues parity-checked against one derived locale set, and the Mac `xcodebuild` is done: 225 tests green on Xcode 26.4 / watchOS 26.4, seven `.lproj` directories in the built app and in the copy embedded at `Runner.app/Watch/WatchApp.app`, and the simulator booted in `pt-PT` and `ja` renders the consent sheet in that locale. A per-locale spot-check across the rest of the UI still wants a human at the simulator (`simctl` has no touch or crown input)
 - [ ] RTL (`EdgeInsetsDirectional` sweep) — deferred until an RTL catalogue (Arabic/Hebrew) is added; infra (CSS logical props on web, dirForLocale on mobile) is ready
 
 ---

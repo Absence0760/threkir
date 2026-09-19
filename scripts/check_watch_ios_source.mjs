@@ -134,6 +134,22 @@
 //       green having never run the accumulator that decides whether a shipped
 //       run keeps its `avg_bpm` (decisions § 1350).
 //
+//  (15) The two Xcode projects that build this app describe the SAME app.
+//       § 1256's build integration made `Runner.xcodeproj` a second project
+//       compiling `apps/watch_ios/WatchApp` (decisions § 1679). The sources
+//       are referenced there, never copied — but the target MEMBERSHIP, the
+//       resource list and the settings that decide what the bundle is are
+//       transcribed a second time, and the two transcriptions drift in
+//       silence in both directions: a Swift file added to
+//       `WatchApp.xcodeproj` alone is exercised by `test-watch-ios` and
+//       absent from every shipped `.ipa`, and one added to `Runner.xcodeproj`
+//       alone ships to a wrist having been compiled by nothing that runs a
+//       test. Neither is a build error in either project. The same claim
+//       holds the EMBED, because deleting one copy phase turns the whole
+//       integration back off while both projects still build and both suites
+//       still pass — and claim (10) would then read the companion key as the
+//       defect, which is the wrong end of it.
+//
 //  (14) The password grant and the seed credential are compiled OUT of a
 //       Release build, and Release still means Release. `SupabaseService.swift`
 //       holds GoTrue's password grant and a caller handing it
@@ -160,7 +176,7 @@
 // CI:  the `watch-ios-locale-parity` job in .github/workflows/ci.yml.
 
 import { readFileSync, readdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -640,6 +656,149 @@ export const PHONE_PBXPROJ = join(
  * the claim.
  */
 export const WATCH_EMBED_MARKERS = ['$(CONTENTS_FOLDER_PATH)/Watch', 'WatchApp.app'];
+
+/** The watch app's target name, spelled the same in both projects. */
+export const WATCH_TARGET = 'WatchApp';
+
+/** The phone app's target, whose bundle the watch app is copied into. */
+export const PHONE_TARGET = 'Runner';
+
+/**
+ * Where Apple's Embed Watch Content phase puts the watch app, and the
+ * `dstSubfolderSpec` that goes with it. Claim (15) requires BOTH: a copy
+ * phase carrying the watch product to some other destination is not an
+ * embed, and watchOS looks for the app at exactly this path.
+ */
+export const WATCH_EMBED_DST = '$(CONTENTS_FOLDER_PATH)/Watch';
+export const WATCH_EMBED_SUBFOLDER = '16';
+
+/** The two project directories, repo-relative, for claim (15)'s path compare. */
+export const WATCH_PROJECT_DIR = join('apps', 'watch_ios');
+export const PHONE_PROJECT_DIR = dirname(dirname(PHONE_PBXPROJ));
+
+/**
+ * Settings that decide what the built bundle IS rather than how it is built.
+ * Two projects disagreeing on any of them ship one app and test another —
+ * the optimisation level may differ between a test host and a release
+ * bundle, the bundle identifier may not. The two path-valued ones are
+ * compared after resolving against each project's own directory, because the
+ * same file is spelled differently from each.
+ * @type {string[]}
+ */
+export const WATCH_BUNDLE_SETTINGS = [
+	'PRODUCT_BUNDLE_IDENTIFIER',
+	'GENERATE_INFOPLIST_FILE',
+	'SDKROOT',
+	'TARGETED_DEVICE_FAMILY',
+	'WATCHOS_DEPLOYMENT_TARGET',
+	'SWIFT_EMIT_LOC_STRINGS',
+];
+
+/** @type {string[]} */
+export const WATCH_BUNDLE_PATH_SETTINGS = ['INFOPLIST_FILE', 'CODE_SIGN_ENTITLEMENTS'];
+
+/**
+ * The text of the object `id` names, from its opening line to the `\t\t};`
+ * that closes it. Only ever called for the multi-line objects (targets,
+ * build phases, configuration lists, configurations) — a single-line
+ * `PBXBuildFile` would slice to the next multi-line object's end, which is
+ * why callers assert on the shape of what comes back rather than trusting it.
+ * @param {string} src
+ * @param {string} id
+ * @returns {string | null}
+ */
+export function pbxObject(src, id) {
+	const at = src.indexOf(`\n\t\t${id} `);
+	if (at === -1) return null;
+	const end = src.indexOf('\n\t\t};', at);
+	return end === -1 ? null : src.slice(at, end);
+}
+
+/**
+ * The `PBXNativeTarget` block whose own `name` is `name`.
+ *
+ * Read off `name = X;` inside the block rather than off the object's trailing
+ * comment, which Xcode does not rewrite on a rename and which is therefore
+ * the one part of the line that can be stale.
+ * @param {string} src
+ * @param {string} name
+ * @returns {string | null}
+ */
+export function nativeTarget(src, name) {
+	const from = src.indexOf('/* Begin PBXNativeTarget section */');
+	const to = src.indexOf('/* End PBXNativeTarget section */');
+	if (from === -1 || to === -1) return null;
+	for (const block of src.slice(from, to).split('\n\t\t};')) {
+		if (block.includes(`\n\t\t\tname = ${name};`)) return block;
+	}
+	return null;
+}
+
+/**
+ * The file names one target's `Sources` / `Resources` phase carries, which is
+ * what membership IS in this format — claim (13) reads the same comments for
+ * the same reason. Scoped to the phases the TARGET names, so the other
+ * target's phase in the same project cannot answer for it.
+ * @param {string} src
+ * @param {string} targetName
+ * @param {'Sources' | 'Resources'} phase
+ * @returns {string[]}
+ */
+export function targetPhaseMembers(src, targetName, phase) {
+	const target = nativeTarget(src, targetName);
+	if (target === null) return [];
+	/** @type {string[]} */ const names = [];
+	const ids = [...target.matchAll(/\t+([0-9A-Fa-f]{24}) \/\* ([^*]+?) \*\/,/g)]
+		.filter((m) => m[2].trim() === phase)
+		.map((m) => m[1]);
+	for (const id of ids) {
+		const block = pbxObject(src, id);
+		if (block === null) continue;
+		for (const m of block.matchAll(new RegExp(`\\/\\* ([^*]+?) in ${phase} \\*\\/,`, 'g'))) {
+			names.push(m[1].trim());
+		}
+	}
+	return [...new Set(names)].sort();
+}
+
+/**
+ * Every configuration of one target, as `{ name, settings }` — the per-target
+ * view [xcodeBuildConfigurations] deliberately does not take, walked through
+ * the target's own `XCConfigurationList` so a second target's Debug block
+ * cannot answer for it.
+ * @param {string} src
+ * @param {string} targetName
+ * @returns {{ name: string, settings: string }[]}
+ */
+export function targetConfigurations(src, targetName) {
+	const target = nativeTarget(src, targetName);
+	if (target === null) return [];
+	const listId = /buildConfigurationList = ([0-9A-Fa-f]{24})/.exec(target);
+	if (listId === null) return [];
+	const list = pbxObject(src, listId[1]);
+	if (list === null) return [];
+	/** @type {{ name: string, settings: string }[]} */ const out = [];
+	for (const m of list.matchAll(/\t+([0-9A-Fa-f]{24}) \/\* ([^*]+?) \*\/,/g)) {
+		const block = pbxObject(src, m[1]);
+		if (block === null || !block.includes('isa = XCBuildConfiguration;')) continue;
+		const settings = buildSettingsBlocks(block);
+		if (settings.length === 0) continue;
+		const name = /\bname = ([A-Za-z0-9_"'.-]+);/.exec(block.slice(block.lastIndexOf('}')));
+		out.push({ name: name === null ? m[2].trim() : name[1].replace(/["']/g, ''), settings: settings[0] });
+	}
+	return out;
+}
+
+/**
+ * One setting's value out of a `buildSettings { … }` body, unquoted.
+ * @param {string} settings
+ * @param {string} key
+ * @returns {string | null}
+ */
+export function settingValue(settings, key) {
+	const m = new RegExp(`\\n\\s*"?${key}"?\\s*=\\s*([^;]+);`).exec(settings);
+	return m === null ? null : m[1].trim().replace(/^"(.*)"$/, '$1');
+}
 
 /**
  * The watch app's own bundle identifier, read off its project rather than
@@ -1854,6 +2013,146 @@ export function check(
 				`all ${members.length - Object.keys(UNBUILT_SWIFT).length} Swift files are target ` +
 					`members (${Object.keys(UNBUILT_SWIFT).length} declared unbuilt)`,
 			);
+		}
+	}
+
+	// (15) Both Xcode projects describe the same watch app, and the phone's
+	//      still embeds it.
+	//
+	//      The sources live in one place on disk; the MEMBERSHIP lists do not,
+	//      and neither does the embed (decisions § 1679).
+	if (phonePbxprojPath !== null) {
+		const before = errors.length;
+		const watchPbx = read(PBXPROJ);
+		const phonePbx = readIfPresent(phonePbxprojPath);
+		if (phonePbx === null) {
+			errors.push(
+				`${PHONE_PBXPROJ} is not there — claim (15) would pass vacuously, and it is the ` +
+					'only thing holding the two transcriptions of the watch target together.',
+			);
+		} else if (nativeTarget(phonePbx, WATCH_TARGET) === null) {
+			errors.push(
+				`${PHONE_PBXPROJ} has no \`${WATCH_TARGET}\` target. § 1256's build integration is ` +
+					'how the watch app reaches a wrist at all — it ships inside the phone app, and ' +
+					'nothing else builds it for release. Removing the target un-ships the watch app ' +
+					'while both projects still build and both suites still pass. Restore it, or, if ' +
+					'the watch tier is genuinely being withdrawn, say so in decisions.md and take ' +
+					'the companion declaration out of ' + WATCH_PLIST + ' in the same change.',
+			);
+		} else {
+			for (const phase of /** @type {const} */ (['Sources', 'Resources'])) {
+				const mine = targetPhaseMembers(watchPbx, WATCH_TARGET, phase);
+				const theirs = targetPhaseMembers(phonePbx, WATCH_TARGET, phase);
+				if (mine.length === 0) {
+					errors.push(
+						`Parsed no ${phase} members out of ${PBXPROJ}'s \`${WATCH_TARGET}\` target — ` +
+							'claim (15) would pass vacuously.',
+					);
+					continue;
+				}
+				const onlyMine = mine.filter((n) => !theirs.includes(n));
+				const onlyTheirs = theirs.filter((n) => !mine.includes(n));
+				if (onlyMine.length > 0) {
+					errors.push(
+						`${onlyMine.join(', ')} ${onlyMine.length === 1 ? 'is' : 'are'} in ${PBXPROJ}'s ` +
+							`\`${WATCH_TARGET}\` ${phase} phase and not in ${PHONE_PBXPROJ}'s. The file is ` +
+							'exercised by `test-watch-ios` and absent from every shipped .ipa — the suite ' +
+							'is green about code no wrist runs. Add it to both, or to neither.',
+					);
+				}
+				if (onlyTheirs.length > 0) {
+					errors.push(
+						`${onlyTheirs.join(', ')} ${onlyTheirs.length === 1 ? 'is' : 'are'} in ` +
+							`${PHONE_PBXPROJ}'s \`${WATCH_TARGET}\` ${phase} phase and not in ${PBXPROJ}'s. ` +
+							'The file ships to a wrist and is compiled by nothing that runs a test. Add it ' +
+							'to both, or to neither.',
+					);
+				}
+			}
+
+			const mineCfg = targetConfigurations(watchPbx, WATCH_TARGET);
+			const theirsCfg = targetConfigurations(phonePbx, WATCH_TARGET);
+			if (mineCfg.length === 0 || theirsCfg.length === 0) {
+				errors.push(
+					`Parsed no build configurations for \`${WATCH_TARGET}\` in ` +
+						`${mineCfg.length === 0 ? PBXPROJ : PHONE_PBXPROJ} — the settings half of claim ` +
+						'(15) would pass vacuously.',
+				);
+			} else {
+				/** @param {{ settings: string }[]} cfgs @param {string} key */
+				const distinct = (cfgs, key) => [...new Set(cfgs.map((c) => settingValue(c.settings, key)))];
+				for (const key of WATCH_BUNDLE_SETTINGS) {
+					const mine = distinct(mineCfg, key);
+					const theirs = distinct(theirsCfg, key);
+					if (mine.length === 1 && theirs.length === 1 && mine[0] === theirs[0]) continue;
+					errors.push(
+						`\`${key}\` on the \`${WATCH_TARGET}\` target is ${mine.join(' / ')} in ${PBXPROJ} ` +
+							`and ${theirs.join(' / ')} in ${PHONE_PBXPROJ}. This setting decides what the ` +
+							'built bundle IS, so the app `test-watch-ios` runs and the app the .ipa ships ' +
+							'are two different apps — and nothing about either build says so.',
+					);
+				}
+				for (const key of WATCH_BUNDLE_PATH_SETTINGS) {
+					/** @param {{ settings: string }[]} cfgs @param {string} dir */
+					const resolved = (cfgs, dir) => [
+						...new Set(
+							cfgs.map((c) => {
+								const v = settingValue(c.settings, key);
+								return v === null ? null : normalize(join(dir, v));
+							}),
+						),
+					];
+					const mine = resolved(mineCfg, WATCH_PROJECT_DIR);
+					const theirs = resolved(theirsCfg, PHONE_PROJECT_DIR);
+					if (mine.length === 1 && theirs.length === 1 && mine[0] === theirs[0]) continue;
+					errors.push(
+						`\`${key}\` on the \`${WATCH_TARGET}\` target resolves to ${mine.join(' / ')} from ` +
+							`${PBXPROJ} and ${theirs.join(' / ')} from ${PHONE_PBXPROJ}. Both projects must ` +
+							'name the one committed file: a second copy is a second place to edit, and the ' +
+							'one nobody edits is the one that ships.',
+					);
+				}
+			}
+
+			const phoneApp = nativeTarget(phonePbx, PHONE_TARGET);
+			const embedIds = phoneApp === null
+				? []
+				: [...phoneApp.matchAll(/\t+([0-9A-Fa-f]{24}) \/\* ([^*]+?) \*\/,/g)]
+						.map((m) => pbxObject(phonePbx, m[1]))
+						.filter(
+							(b) =>
+								b !== null &&
+								b.includes('isa = PBXCopyFilesBuildPhase;') &&
+								b.includes(WATCH_EMBED_DST) &&
+								new RegExp(`dstSubfolderSpec = ${WATCH_EMBED_SUBFOLDER};`).test(b) &&
+								b.includes(`${WATCH_TARGET}.app`),
+						);
+			if (embedIds.length === 0) {
+				errors.push(
+					`${PHONE_PBXPROJ}'s \`${PHONE_TARGET}\` target has no Embed Watch Content phase ` +
+						`carrying \`${WATCH_TARGET}.app\` to \`${WATCH_EMBED_DST}\` ` +
+						`(dstSubfolderSpec ${WATCH_EMBED_SUBFOLDER}). The watch target can exist, compile ` +
+						'and be a dependency and still reach no wrist: without this phase the product is ' +
+						'built and then dropped, the .ipa ships without it, and neither build says a word. ' +
+						'This is the § 1256 integration itself — restore the phase.',
+				);
+			}
+			if (phoneApp !== null && !/dependencies = \(\s*\n[^)]*PBXTargetDependency/.test(phoneApp)) {
+				errors.push(
+					`${PHONE_PBXPROJ}'s \`${PHONE_TARGET}\` target declares no target dependency, so the ` +
+						`copy phase above can run before \`${WATCH_TARGET}\` has been built. Xcode orders ` +
+						'the two by the dependency, not by the phase list.',
+				);
+			}
+			if (errors.length === before) {
+				ok.push(
+					`both Xcode projects build the same \`${WATCH_TARGET}\` target ` +
+						`(${targetPhaseMembers(watchPbx, WATCH_TARGET, 'Sources').length} sources, ` +
+						`${targetPhaseMembers(watchPbx, WATCH_TARGET, 'Resources').length} resources, ` +
+						`${WATCH_BUNDLE_SETTINGS.length + WATCH_BUNDLE_PATH_SETTINGS.length} bundle ` +
+						`settings) and ${PHONE_TARGET} embeds it at \`${WATCH_EMBED_DST}\``,
+				);
+			}
 		}
 	}
 

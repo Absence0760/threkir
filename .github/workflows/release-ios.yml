@@ -14,6 +14,13 @@ name: Release iOS
 #   APP_STORE_CONNECT_API_KEY_ID
 #   APP_STORE_CONNECT_API_ISSUER_ID
 #   APP_STORE_CONNECT_API_KEY_BASE64   .p8 key from App Store Connect
+#
+# Already required, signing or not:
+#   GOOGLE_SERVICE_INFO_PLIST_BASE64   base64-encoded GoogleService-Info.plist
+#     from the Firebase project's iOS app. The Runner target copies that plist
+#     into the bundle (it is what FirebaseApp.configure() reads), and the file
+#     is gitignored, so the build below cannot run without this secret — see
+#     docs/features/native_push.md.
 
 # Release-triggered: publishing a GitHub Release whose tag is `mobile_ios@*`
 # runs this workflow — a bare `mobile_ios@*` tag push does NOT deploy. `on:
@@ -147,11 +154,31 @@ jobs:
       #     api-key-id: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
       #     api-private-key: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
 
+      - name: Decode the Firebase config
+        # Unlike the Android side, this one is fatal: the plist is a member of
+        # the Runner target's Resources phase, so Xcode fails on the missing
+        # input anyway — this step just fails first, and says which secret.
+        env:
+          GOOGLE_SERVICE_INFO_PLIST_BASE64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
+        run: |
+          if [ -z "$GOOGLE_SERVICE_INFO_PLIST_BASE64" ]; then
+            echo "::error::GOOGLE_SERVICE_INFO_PLIST_BASE64 unset. The Runner target copies GoogleService-Info.plist into the bundle and the file is not in git. See docs/features/native_push.md."
+            exit 1
+          fi
+          dest=apps/mobile_ios/ios/Runner/GoogleService-Info.plist
+          echo "$GOOGLE_SERVICE_INFO_PLIST_BASE64" | base64 -d > "$dest"
+          # An APNs token minted against the wrong project's plist is delivered
+          # to nobody and reports no error, so check the bundle id here.
+          if ! /usr/libexec/PlistBuddy -c 'Print :BUNDLE_ID' "$dest" 2>/dev/null | grep -qx 'com.threkir.app'; then
+            echo "::error::$dest has no BUNDLE_ID of com.threkir.app. Add an iOS app with that bundle id to the Firebase project and re-download."
+            exit 1
+          fi
+
       # Named for what it produces. `flutter build ipa --no-codesign` stops at
       # the .xcarchive and prints "Codesigning disabled with --no-codesign,
       # skipping IPA" -- so this step writes NO .ipa, and there is nothing to
       # attach until the signing block above is uncommented. Measured on
-      # Xcode 26.4 / Flutter 3.44.8, decisions.md § 1661.
+      # Xcode 26.4 / Flutter 3.44.8, decisions.md § 1673.
       - name: Build the unsigned archive (produces no .ipa)
         working-directory: apps/mobile_ios
         run: flutter build ipa --no-codesign
@@ -163,7 +190,7 @@ jobs:
         working-directory: apps/mobile_ios
         run: |
           if [ -n "$(find build/ios/ipa -name '*.ipa' 2>/dev/null)" ]; then
-            echo "::error::An .ipa exists after a --no-codesign build, so this workflow's premise has changed. Uncomment the signing + attach + TestFlight block in this file rather than leaving a signed artifact unpublished; see decisions.md § 1661."
+            echo "::error::An .ipa exists after a --no-codesign build, so this workflow's premise has changed. Uncomment the signing + attach + TestFlight block in this file rather than leaving a signed artifact unpublished; see decisions.md § 1673."
             exit 1
           fi
           echo "Unsigned archive built. No .ipa produced and none attached -- expected until the signing block is enabled."

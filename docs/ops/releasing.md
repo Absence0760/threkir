@@ -56,7 +56,7 @@ embedding does not exist today. `apps/mobile_ios/ios/Runner.xcodeproj`
 contains no reference to the watch target, `apps/watch_ios/WatchApp.xcodeproj`
 is a standalone project, and the `.xcarchive` a `mobile_ios@*` build
 produces contains no watch app. Measured 2026-09-18 on Xcode 26.4
-([decisions § 1661](../architecture/decisions.md)); the five build-integration
+([decisions § 1673](../architecture/decisions.md)); the five build-integration
 steps a Mac has to run are listed in [§ 1256](../architecture/decisions.md),
 and `apps/mobile_ios/deployment.md` keeps "Watch target builds clean from
 `mobile_ios` scheme" unticked for the same reason. **Until that lands, a

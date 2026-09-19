@@ -57,7 +57,7 @@ test('a table that matches its workflows passes', () => {
 	assert.deepEqual(problems, []);
 });
 
-test('the § 1661 bug: a row promising an artifact the workflow cannot produce fails', () => {
+test('the § 1673 bug: a row promising an artifact the workflow cannot produce fails', () => {
 	const { problems } = check({ ...GOOD, doc: docOf(TABLE('`.ipa`')) });
 	assert.equal(problems.length, 1);
 	assert.match(problems[0], /promises the Release carries `\.ipa`/);
@@ -65,7 +65,7 @@ test('the § 1661 bug: a row promising an artifact the workflow cannot produce f
 });
 
 test('a commented-out upload step is not read as a live one', () => {
-	// The whole point of the § 1661 shape: release-ios.yml's upload block exists,
+	// The whole point of the § 1673 shape: release-ios.yml's upload block exists,
 	// commented, awaiting signing. Counting it live would pass the broken row.
 	const wfInfo = inspectWorkflow(IOS_NO_ATTACH);
 	assert.equal(wfInfo.attaches, false);

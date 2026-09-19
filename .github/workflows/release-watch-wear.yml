@@ -139,5 +139,5 @@ jobs:
           files: apps/watch_wear/android/app/build/outputs/bundle/release/app-release.aab
           # An unmatched glob is not an empty release, it is a silent one: this input
           # defaults to false, so a moved build-output path would attach nothing and
-          # still report success (decisions.md § 1662).
+          # still report success (decisions.md § 1674).
           fail_on_unmatched_files: true

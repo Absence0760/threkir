@@ -3,7 +3,7 @@
 // workflows, and every column of it that is a mechanical fact is read out of the
 // workflow rather than trusted.
 //
-// Why this exists: decisions.md § 1661 + § 1662. The `mobile_ios@*` row claimed
+// Why this exists: decisions.md § 1673 + § 1674. The `mobile_ios@*` row claimed
 // the Release carries an `.ipa`, and the workflow's own `--no-codesign` build
 // cannot produce one — `flutter build ipa --no-codesign` stops at the
 // `.xcarchive`. The attach step then globbed a path that matched nothing and
@@ -24,7 +24,7 @@
 // trustworthy: an upload step carrying a `files:` glob must set
 // `fail_on_unmatched_files: true`. The input defaults to FALSE, so a glob that
 // matches nothing attaches nothing and still reports success — the exact shape
-// that hid § 1661. Three live workflows were missing it (§ 1662).
+// that hid § 1673. Three live workflows were missing it (§ 1674).
 //
 // **What this does NOT check, stated so the guard is not read as complete.** The
 // `Signs` and `Publishes to` columns are prose — "release keystore from secrets",
@@ -180,7 +180,7 @@ export function check({ doc, workflowOf }) {
 
 		const promised = promisesArtifact(row.attaches);
 		if (promised && !wf.attaches) {
-			problems.push(`the \`${app}@*\` row promises the Release carries ${row.attaches}, but ${file} has no live \`softprops/action-gh-release\` step — the Release would carry nothing. This is the § 1661 shape: an artifact claimed in the docs that the workflow cannot produce.`);
+			problems.push(`the \`${app}@*\` row promises the Release carries ${row.attaches}, but ${file} has no live \`softprops/action-gh-release\` step — the Release would carry nothing. This is the § 1673 shape: an artifact claimed in the docs that the workflow cannot produce.`);
 		} else if (!promised && wf.attaches) {
 			problems.push(`the \`${app}@*\` row says nothing is attached, but ${file} has a live upload step. The docs understate what a release publishes.`);
 		} else if (promised && wf.attaches) {
@@ -191,7 +191,7 @@ export function check({ doc, workflowOf }) {
 		} else ok.push(`${app}: attaches nothing, and the row says so`);
 
 		if (wf.attaches && wf.files && !wf.failsOnUnmatched) {
-			problems.push(`${file} uploads \`${wf.files}\` without \`fail_on_unmatched_files: true\`. The input defaults to false, so if that path ever moves the Release attaches nothing and the workflow still reports success — the silent half of § 1661.`);
+			problems.push(`${file} uploads \`${wf.files}\` without \`fail_on_unmatched_files: true\`. The input defaults to false, so if that path ever moves the Release attaches nothing and the workflow still reports success — the silent half of § 1673.`);
 		}
 	}
 

@@ -13,6 +13,10 @@ name: Release Android
 #   PLAY_SERVICE_ACCOUNT_JSON     Google Play service-account JSON key
 #                                 (grant the account "Release apps to testing
 #                                 tracks" on the Play Console)
+#   GOOGLE_SERVICES_JSON_BASE64   base64-encoded google-services.json from the
+#                                 Firebase project's Android app. Optional: an
+#                                 AAB built without it receives no push
+#                                 notifications (docs/features/native_push.md).
 #
 # Production runtime config, injected as `--dart-define`s at build time
 # (main.dart seeds each non-empty one into dotenv — decisions §137). Leave a
@@ -142,6 +146,41 @@ jobs:
           keytool -list -keystore apps/mobile_android/android/app/upload-keystore.jks \
             -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" > /dev/null
 
+      - name: Decode the Firebase config
+        # A missing secret is a warning, not a failure: android/app/build.gradle.kts
+        # applies the google-services plugin only when this file exists, so the
+        # build still produces a shippable AAB — one that registers no FCM token.
+        # The warning names that consequence because nothing downstream will.
+        env:
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+            echo "::warning::GOOGLE_SERVICES_JSON_BASE64 unset — this AAB will receive no push notifications. See docs/features/native_push.md."
+            exit 0
+          fi
+          dest=apps/mobile_android/android/app/google-services.json
+          echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 -d > "$dest"
+          # The google-services plugin fails mid-build, and obscurely, on a
+          # config whose client list has no entry for this applicationId — the
+          # usual cause being a file exported for a different app. Read it here
+          # instead, where the message can say so.
+          node -e '
+            const fs = require("node:fs");
+            const path = process.argv[1];
+            let cfg;
+            try {
+              cfg = JSON.parse(fs.readFileSync(path, "utf8"));
+            } catch (err) {
+              console.error(`::error::${path} is not JSON (${err.message}) — GOOGLE_SERVICES_JSON_BASE64 is probably not base64 of google-services.json.`);
+              process.exit(1);
+            }
+            const pkgs = (cfg.client ?? []).map((c) => c?.client_info?.android_client_info?.package_name).filter(Boolean);
+            if (!pkgs.includes("com.threkir.app")) {
+              console.error(`::error::${path} carries no com.threkir.app client (found: ${pkgs.join(", ") || "none"}). Add an Android app with that package name to the Firebase project and re-download.`);
+              process.exit(1);
+            }
+          ' "$dest"
+
       - name: Stub the bundled dotenv asset
         # pubspec ships `.env.development` as an asset, so the file must
         # exist for the build to resolve. Release builds NEVER read it at
@@ -204,7 +243,7 @@ jobs:
           files: apps/mobile_android/build/app/outputs/bundle/release/app-release.aab
           # An unmatched glob is not an empty release, it is a silent one: this input
           # defaults to false, so a moved build-output path would attach nothing and
-          # still report success (decisions.md § 1662).
+          # still report success (decisions.md § 1674).
           fail_on_unmatched_files: true
 
       - name: Upload to Play Internal

@@ -51,6 +51,7 @@ const GATES: readonly { web: string; dart: string }[] = [
 const WEB_ONLY = new Map<string, string>([
 	['src/lib/coach/coach_flag.ts', 'the AI coach is a web surface; mobile reaches it through the same API, not through a gate of its own'],
 	['src/lib/core/google_auth_flag.ts', 'mobile gates Google sign-in on the presence of GOOGLE_WEB_CLIENT_ID itself, not on a separate flag'],
+	['src/lib/core/apple_auth_flag.ts', 'mobile gates Apple sign-in the same way Google is gated — appleSignInAvailable() reads APPLE_SERVICE_CLIENT_ID + APPLE_REDIRECT_URI directly (apple_auth.dart), with no flag module to name'],
 	['src/lib/routes/route_gen_flag.ts', 'the graph-cycle sidecar is reached from the web route builder only'],
 	['src/lib/social/fundraising_flag.ts', 'the fundraising surface is web-canonical with no mobile twin (decisions § 24)'],
 	['src/lib/training/cycle_plan_flag.ts', 'cycle_plan has a Dart twin but no mobile SURFACE consumes it yet, so mobile has no gate to name'],

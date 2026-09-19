@@ -401,7 +401,7 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
-        "npm:@types/node@^26.5.1",
+        "npm:@types/node@^26.6.1",
         "npm:svelte@5.57.0"
       ],
       "overrides": {
@@ -419,7 +419,7 @@
       "apps/web": {
         "packageJson": {
           "dependencies": [
-            "npm:@anthropic-ai/sdk@0.125",
+            "npm:@anthropic-ai/sdk@0.126",
             "npm:@playwright/test@^1.63.0",
             "npm:@resvg/resvg-js@^2.6.2",
             "npm:@sentry/node@^10.74.0",
@@ -431,16 +431,16 @@
             "npm:@sveltejs/vite-plugin-svelte@7.3.0",
             "npm:@types/aws-lambda@8.10.163",
             "npm:@types/geojson@^7946.0.16",
-            "npm:@types/node@^26.5.1",
-            "npm:@zip.js/zip.js@^2.14.0",
+            "npm:@types/node@^26.6.1",
+            "npm:@zip.js/zip.js@^2.15.0",
             "npm:esbuild@0.28.2",
             "npm:fit-file-parser@^5.0.2",
             "npm:html-to-image@^1.11.13",
             "npm:isomorphic-dompurify@^4.2.0",
             "npm:jszip@^3.10.2",
-            "npm:maplibre-gl@^6.9.0",
-            "npm:marked@^18.0.12",
-            "npm:material-symbols@~0.47.2",
+            "npm:maplibre-gl@^6.10.0",
+            "npm:marked@^18.0.13",
+            "npm:material-symbols@~0.47.3",
             "npm:mdsvex@~0.12.8",
             "npm:oauth2-mock-server@9.2.0",
             "npm:svelte-check@4.7.6",

@@ -85,7 +85,7 @@ Full technical details in `backend_scaling.md`.
 
 ### Apple Watch standalone GPS recording
 
-✓ **Shipped.** Standalone (no-phone) workout sessions with HealthKit HR, haptic pace alerts, and Watch Connectivity sync (with a persisted pre-auth ingest queue). Full delivery checklist in [roadmap_shipped.md](roadmap_shipped.md).
+✓ **Shipped.** Standalone (no-phone) workout sessions with HealthKit HR, haptic pace alerts, GPS self-heal, indoor / no-GPS mode, and Watch Connectivity sync (with a persisted pre-auth ingest queue). Full delivery checklist in [roadmap_shipped.md](roadmap_shipped.md).
 
 ### Wear OS standalone GPS recording
 

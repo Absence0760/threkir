@@ -45,8 +45,9 @@ com.threkir.app.watchapp.WidgetsExtension  ← (when the complication ships)
    The **Enrollment ID** Apple hands back on submission is only a support
    reference for a *pending* enrollment — keep it in the Bitwarden item's notes
    until the membership is active, then it stops mattering. What is durable is
-   the **Team ID** (10 chars, Membership details — it is also `APNS_TEAM_ID`, so
-   it already has a home in `threkir/push-credentials.sops.yaml`), the Apple
+   the **Team ID** (10 chars, Membership details — it is what the APNs key is
+   uploaded to Firebase alongside, and what Supabase's Apple auth provider
+   wants), the Apple
    Account address, and the **expiry date**. None of it is secret; it is account
    metadata, so Bitwarden and the estate file, not a new sops entry.
    The reminder is the part that earns its keep: renewal can only be done by the

@@ -48,8 +48,23 @@ case "$cmd" in
       echo 'supabase_edge_runtime_run Exited (1) 10 seconds ago'
     fi;;
   inspect) echo "STUB-INSPECT $*";;
+  system) echo "STUB-SYSTEM $*";;
   logs) echo "STUB-LOGS $*";;
 esac
+`;
+
+// `df` and `dmesg` are the only commands the forensics dump does not route
+// through docker, so unstubbed the suite asserts against the host's own free
+// space and kernel ring: text it does not author, differing per machine, and
+// which no absence assertion can be written against. A runner's ring carries
+// `0xfc0000000-0xfc00fffff`, which is how the doubled-status check below read
+// a PCI BAR as a status of `000000`.
+const DF_STUB = `#!/usr/bin/env bash
+echo "STUB-DF $*"
+`;
+
+const DMESG_STUB = `#!/usr/bin/env bash
+echo "STUB-DMESG faulting address 0xdead0000"
 `;
 
 /**
@@ -62,7 +77,9 @@ function run({ edge, storage, auth, budget, maxTime, interval }) {
 	writeFileSync(curlLog, '');
 	for (const [name, body] of [
 		['curl', CURL_STUB({ edge, storage, auth })],
-		['docker', DOCKER_STUB]
+		['docker', DOCKER_STUB],
+		['df', DF_STUB],
+		['dmesg', DMESG_STUB]
 	]) {
 		const p = join(dir, name);
 		writeFileSync(p, body);
@@ -98,11 +115,22 @@ function run({ edge, storage, auth, budget, maxTime, interval }) {
  */
 const attemptsOn = (calls, part) => calls.filter((l) => l.includes(part));
 
+// The loop's own lines, without the forensics dump underneath them. Every
+// assertion that something is ABSENT has to read this rather than the whole
+// output: the dump relays `docker logs`, `df` and `dmesg`, so a substring
+// appearing there says nothing about what the loop reported.
+/** @param {string} out @returns {string} */
+const probeLines = (out) =>
+	out
+		.split('\n')
+		.filter((l) => /^(ready:|wait:|::error::)/.test(l))
+		.join('\n');
+
 test('every sidecar answering leaves no error and reports the attempt count', () => {
 	const r = run({ edge: "printf '405'; exit 0", budget: 8, maxTime: 2, interval: 1 });
 	assert.equal(r.status, 0);
 	assert.match(r.out, /ready: edge runtime \(clip-public-track\) -> 405 after \d+s \(1 attempt\(s\)\)/);
-	assert.doesNotMatch(r.out, /::error::/);
+	assert.doesNotMatch(probeLines(r.out), /::error::/);
 });
 
 test('a refused edge runtime reports the real elapsed time and attempt count', () => {
@@ -121,7 +149,7 @@ test('a refused edge runtime reports the real elapsed time and attempt count', (
 	assert.ok(Number(attempts) > 1, `expected repeated attempts, got ${attempts}`);
 	// curl reports 000 itself; the old `|| echo 000` fallback doubled it.
 	assert.equal(lastStatus, '000');
-	assert.doesNotMatch(r.out, /000000/);
+	assert.doesNotMatch(probeLines(r.out), /000000/);
 	// A failed probe short-circuits — the auth probe must not have run.
 	assert.equal(attemptsOn(r.calls, '/auth/').length, 0);
 });
@@ -160,6 +188,24 @@ test('giving up captures the container list, state and logs', () => {
 	assert.match(r.out, /STUB-LOGS --tail 5/);
 });
 
+// Issue #916: three runs died with the edge runtime exiting 135 (SIGBUS) on
+// its first request, and the forensics above could rule out an OOM kill and a
+// crash loop but could not choose between a full filesystem, an upstream bug
+// and a real fault. Each assertion below is one of those explanations' missing
+// evidence, so a fourth occurrence is a decision rather than a fourth dead end.
+test('giving up also captures host capacity, the runtime image and the kernel ring', () => {
+	const r = run({ edge: "printf '000'; exit 7", budget: 2, maxTime: 1, interval: 1 });
+	assert.equal(r.status, 1);
+	assert.match(r.out, /--- host capacity ---/);
+	assert.match(r.out, /STUB-DF -h \/ \/tmp/);
+	assert.match(r.out, /STUB-SYSTEM df/);
+	assert.match(r.out, /--- runtime image and limits ---/);
+	assert.match(r.out, /STUB-INSPECT .*Config\.Image/);
+	assert.match(r.out, /STUB-INSPECT .*HostConfig\.ShmSize/);
+	assert.match(r.out, /--- kernel ring \(last 20\) ---/);
+	assert.match(r.out, /STUB-DMESG faulting address/);
+});
+
 // The reason this script exists, applied to the probe that runs FIRST. kong
 // answers 503 on its own when it cannot reach an upstream — that is the answer
 // the loop this replaced read as ready, and nothing asked whether the storage
@@ -179,7 +225,7 @@ test('kong’s own 503 on the storage path is not storage answering', () => {
 	// line can appear underneath a failure.
 	assert.equal(attemptsOn(r.calls, '/functions/').length, 0);
 	assert.equal(attemptsOn(r.calls, '/auth/').length, 0);
-	assert.doesNotMatch(r.out, /ready:/);
+	assert.doesNotMatch(probeLines(r.out), /ready:/);
 });
 
 // The other half of the same pattern, stated so a later tightening does not

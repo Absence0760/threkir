@@ -42,6 +42,7 @@
 	"dependencies": {
 		"@anthropic-ai/sdk": "^0.125.0",
 		"@resvg/resvg-js": "^2.6.2",
+		"@sentry/node": "^10.74.0",
 		"@sentry/sveltekit": "^10.74.0",
 		"@supabase/ssr": "^0.12.7",
 		"@supabase/supabase-js": "^2.116.0",

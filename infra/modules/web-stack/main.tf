@@ -19,6 +19,27 @@ locals {
   # 503 because ANTHROPIC_API_KEY isn't set.
   has_secrets = var.secrets_file != null && fileexists(var.secrets_file)
 
+  # Every Lambda in this module reports to the same Sentry project, so the
+  # DSN is one local rather than the same line repeated eight times. It comes
+  # from the sops file; absent -> the reporter in
+  # apps/web/src/lib/core/lambda_sentry.ts never initialises, which is the
+  # dev/CI default and the fail-closed direction.
+  #
+  # APP_RELEASE is deliberately NOT here. It identifies the artifact, not the
+  # environment, so each build.mjs bakes it into the bundle from the tag that
+  # release-web.yml passes on the bundle step. Setting it here as well would
+  # be dead config that reads as though it works: esbuild substitutes
+  # `process.env.APP_RELEASE` at compile time, so the runtime env is never
+  # consulted. It also could not have worked from this side -- terraform owns
+  # `environment`, so a CI-written value would be reverted by the next apply,
+  # and tfvars cannot know the tag.
+  #
+  # This is deliberately NOT folded into base_lambda_env: only the coach
+  # Lambda merges that, and all eight need the DSN.
+  sentry_env = merge(
+    local.has_secrets ? { for k, v in data.sops_file.secrets[0].data : k => v if k == "SENTRY_DSN" } : {},
+  )
+
   base_lambda_env = merge(
     {
       PUBLIC_SUPABASE_URL      = var.public_supabase_url
@@ -53,6 +74,7 @@ locals {
 
   lambda_env = merge(
     local.base_lambda_env,
+    local.sentry_env,
     local.has_secrets ? { for k, v in data.sops_file.secrets[0].data : k => v if contains(local.coach_secret_keys, k) } : {},
   )
 
@@ -66,6 +88,7 @@ locals {
       PUBLIC_SUPABASE_ANON_KEY = var.public_supabase_anon_key
       PUBLIC_SITE_URL          = var.public_site_url
     },
+    local.sentry_env,
   )
 
   # share-route Lambda env. Same shape + posture as the share-run env
@@ -79,6 +102,7 @@ locals {
       PUBLIC_SUPABASE_ANON_KEY = var.public_supabase_anon_key
       PUBLIC_SITE_URL          = var.public_site_url
     },
+    local.sentry_env,
   )
 
   # share-recap Lambda env. Same shape + posture as the share-run /
@@ -93,6 +117,7 @@ locals {
       PUBLIC_SUPABASE_ANON_KEY = var.public_supabase_anon_key
       PUBLIC_SITE_URL          = var.public_site_url
     },
+    local.sentry_env,
   )
 
   # share-badge Lambda env. Same shape + posture as the share-run /
@@ -107,6 +132,7 @@ locals {
       PUBLIC_SUPABASE_ANON_KEY = var.public_supabase_anon_key
       PUBLIC_SITE_URL          = var.public_site_url
     },
+    local.sentry_env,
   )
 
   # share-entity Lambda env. One HTML-only Lambda serving the six public
@@ -120,6 +146,7 @@ locals {
       PUBLIC_SUPABASE_ANON_KEY = var.public_supabase_anon_key
       PUBLIC_SITE_URL          = var.public_site_url
     },
+    local.sentry_env,
   )
 
   # generate-route Lambda env. Engine URLs (GRAPH_CYCLE_URL + GRAPHHOPPER_URL)
@@ -143,6 +170,7 @@ locals {
     var.graph_cycle_url != "" ? { GRAPH_CYCLE_URL = var.graph_cycle_url } : {},
     var.graphhopper_url != "" ? { GRAPHHOPPER_URL = var.graphhopper_url } : {},
     local.has_secrets ? { for k, v in data.sops_file.secrets[0].data : k => v if k == "GRAPHHOPPER_API_KEY" || k == "GRAPH_CYCLE_API_KEY" } : {},
+    local.sentry_env,
   )
 
   # osrm-proxy Lambda env. OSRM_URL is a non-secret internal engine URL passed
@@ -158,6 +186,7 @@ locals {
       PUBLIC_SUPABASE_ANON_KEY = var.public_supabase_anon_key
     },
     var.osrm_url != "" ? { OSRM_URL = var.osrm_url } : {},
+    local.sentry_env,
   )
 }
 
@@ -1644,15 +1673,24 @@ resource "aws_cloudfront_response_headers_policy" "security" {
         "style-src 'self' 'unsafe-inline'",
         "font-src 'self' data:",
         # `connect-src` covers fetch / XHR / EventSource / WebSocket —
-        # everything the browser sends OUT. `*.ingest.sentry.io` is
+        # everything the browser sends OUT. `*.ingest.de.sentry.io` is
         # where @sentry/sveltekit's browser SDK posts errors; without
-        # it errors are silently CSP-blocked. `*.supabase.co` covers
+        # it errors are silently CSP-blocked. The `de.` is load-bearing
+        # and is NOT a typo: the Sentry org is in the EU (Frankfurt)
+        # region, so it ingests at `o<id>.ingest.de.sentry.io`. A CSP
+        # host wildcard matches only whole labels from the right, so
+        # `*.ingest.sentry.io` does NOT cover that host — it requires
+        # the host to end in `.ingest.sentry.io`, and the EU host ends
+        # in `.ingest.de.sentry.io`. That mismatch blocks every event
+        # with no server-side symptom at all. A SaaS org's region
+        # cannot be changed after creation, so this will not drift
+        # back to the US host without a new org. `*.supabase.co` covers
         # REST + Realtime + Storage; `*.maptiler.com` covers tile
         # fetches. `wss://*.threkir.com` covers the Go live-hub WS
         # upgrade — the spectator page would otherwise be CSP-blocked
         # the moment PUBLIC_LIVE_HUB_URL lands in prod. /audit/owasp
         # May 2026 High #2a.
-        "connect-src 'self' https://*.supabase.co https://api.threkir.com https://*.maptiler.com https://*.ingest.sentry.io wss://*.threkir.com",
+        "connect-src 'self' https://*.supabase.co https://api.threkir.com https://*.maptiler.com https://*.ingest.de.sentry.io wss://*.threkir.com",
         "worker-src 'self' blob:",
         "manifest-src 'self'",
         "object-src 'none'",
@@ -1735,6 +1773,24 @@ resource "aws_cloudfront_origin_request_policy" "lambda" {
   # CreateOriginRequestPolicy API rejects it outright (InvalidArgument)
   # — CloudFront owns that header; the cacheable behaviors forward a
   # normalized form via the cache policies' enable_accept_encoding_*.
+  # `x-amz-content-sha256` must NOT be added here, and CloudFront enforces
+  # that: UpdateOriginRequestPolicy answers `InvalidArgument: The parameter
+  # Headers contains x-amz-content-sha256 that is not allowed`. Same class as
+  # the `Accept-Encoding` exclusion above -- CloudFront owns the header.
+  #
+  # It owns it because it USES it. A POST to a Lambda Function URL behind OAC
+  # does require the viewer to send the sigv4 payload hash (the client does,
+  # via `payloadSha256Hex` at each fetch site, #590), but CloudFront reads it
+  # off the viewer request itself and folds it into the signature. Forwarding
+  # is neither needed nor permitted.
+  #
+  # The trap this comment exists for: a POST that omits the header gets a 403
+  # from the Function URL, which the distribution's `403 -> /200.html` mapping
+  # turns into `200 text/html`. That looks exactly like a broken origin, and a
+  # hand-rolled curl omitting the header reproduces it perfectly. It is a
+  # malformed request, not an outage -- send the header and the same path
+  # answers 401. Adding the header here was tried on 2026-09-18 and CloudFront
+  # refused it.
   headers_config {
     header_behavior = "whitelist"
     headers {

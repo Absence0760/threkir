@@ -81,8 +81,8 @@ A dedicated `e2e-test@gmail.com` test account. The actual id-token validation ha
 **What's needed:**
 - Apple Developer Program ($99/year).
 - Identifier → App ID with Sign In with Apple capability.
-- Services ID for the web (`com.yourdomain.web`).
-- Key with Sign In with Apple enabled; download the .p8.
+- Services ID for the web (`com.threkir.web`) — a separate identifier type from the App ID, with the App ID as its primary.
+- A **second** key with Sign In with Apple enabled; download the .p8. This is not the APNs key — one `.p8` per service, each downloadable once.
 - Supabase Dashboard → Authentication → Providers → Apple → Services ID + Team ID + Key ID + .p8 contents.
 
 **Status today:** Apple Sign-In button on the login page shows a "Soon" pill and the click handler surfaces a "coming soon" error message. Spec coverage of the soon-pill exists implicitly; the real flow is blocked here.
@@ -143,11 +143,156 @@ Two Strava accounts (one as the "user", one as a "buddy" to exercise the privacy
 
 ### 8. Sentry — for the error monitoring + replay
 
-**What's needed:**
-- <https://sentry.io> → create a project.
-- `PUBLIC_SENTRY_DSN` in `apps/web/.env.local`.
+**Status today:** every tier is wired and fail-closed; the DSN is the only missing
+piece, and it is a **prod-only** concern. Every gate carries `!dev`, so Sentry
+cannot fire in local dev or in CI no matter what is set — there is nothing to put
+in `apps/web/.env.local` and nothing to e2e. `check_production_env.mjs` deliberately
+does **not** require the DSN (an unset value disables reporting rather than
+breaking a build), so nothing fails while this is open. Tracking: #922 § 6.
 
-**Status today:** Sentry is gated on `dev=false && dsn && hasAcceptedConsent()`, so it doesn't fire in local dev. Nothing to e2e until prod traffic.
+#### 8a. Sign up — the region choice is irreversible
+
+Do this once, deliberately. Sentry's data region is picked in the **Create a New
+Organization** dropdown at signup and, for SaaS orgs, *"once selected, your data
+storage location can't be changed. The only way to switch it is by creating a new
+organization."*
+
+**Choose EU (Frankfurt, `de.sentry.io`), not the US default.** This project forwards
+error envelopes carrying EU end-user context to Sentry as a sub-processor; a May 2026
+`/audit/cookie-consent` finding (recorded in the `hooks.server.ts` header comment) was
+precisely that EU IPs reached a US sub-processor with no lawful basis. Picking US here
+re-creates that problem at the storage layer, where no amount of client-side gating can
+undo it, and hands `docs/compliance/sub-processors.md` a transfer that needs SCCs.
+
+1. <https://sentry.io/signup/> — free **Developer** plan: 5k errors/month, 1 user,
+   **unlimited projects**, 30-day retention. Two projects therefore cost nothing.
+2. One form carries all of it — Name, Organization, Email, Password, Data Storage
+   Location. Fill it as:
+   - **Name** — the account holder's real name; it shows on issue activity.
+   - **Organization** — `Threkir` (slug `threkir`).
+   - **Email** — a role alias on the domain, **`ops@threkir.com`**, forwarding to the
+     owner's real inbox. Create the alias in Migadu *before* signing up; Sentry sends a
+     verification mail straight away. Not a personal mailbox: the free plan is
+     single-seat, so this login *is* the org, with no second admin to recover through —
+     a lost personal mailbox would take production monitoring with it, and a vendor
+     account rooted in one doesn't transfer with the domain. `ops@` rather than
+     `sentry@` so the next vendor (Better Stack, Fly, Supabase) can share it. Same
+     pattern as the existing `dmarc@threkir.com`.
+   - **Password** — generated into the password manager.
+   - Leave the email-updates checkbox unticked; it is marketing, not alerting.
+3. **Use email + password, not the Google / GitHub / Azure buttons.** They bind the org's
+   login to a personal identity account and buy nothing here — the Sentry↔GitHub
+   integration that links issues to commits is a separate org-level install under
+   Settings → Integrations either way.
+4. **Data region: Europe (Frankfurt).** Verify afterwards that the browser lands on
+   `de.sentry.io` — if it says `us.sentry.io`, delete the org and redo this step.
+5. A 14-day Business trial starts automatically. Let it lapse; it downgrades to
+   Developer on its own. Do not add a card.
+
+An EU-region DSN reads `https://<key>@o<org>.ingest.de.sentry.io/<project>`. The
+`.de.` is correct, not a typo — a DSN with `.us.` means step 3 was missed.
+
+#### 8b. Create exactly two projects
+
+The repo has two DSN slots, so it gets two projects. Names and platforms are not
+cosmetic — the platform drives issue grouping and the setup docs Sentry shows.
+
+| Project name | Platform to pick | Feeds env var | SDKs reporting into it |
+|---|---|---|---|
+| `threkir-client` | **SvelteKit** (under the JS frameworks list, not plain Browser JavaScript — the web SDK is `@sentry/sveltekit`) | `PUBLIC_SENTRY_DSN` | `@sentry/sveltekit` (browser half), `sentry_flutter`, `io.sentry:sentry-android` (Wear OS), `sentry-cocoa` (watchOS, SwiftPM package not yet added — needs a Mac, #922 § 8) |
+| `threkir-backend` | **Deno** | `SENTRY_DSN` | `deno.land/x/sentry` (Edge Functions), `@sentry/sveltekit` (SSR/prerender half), coach Lambda |
+
+Both projects are multi-SDK — `threkir-client` also takes Flutter and Wear OS events —
+so the platform field only sets the project's primary hint and which setup docs Sentry
+shows; each event carries its own platform tag. Unlike the region, it is changeable
+afterwards under Settings → Projects → `<project>` → General.
+
+Ignore the install walkthrough Sentry shows after creating each project. Every SDK is
+already wired; the DSN on that page is the only thing needed from it. Grab each at
+**Settings → Projects → `<project>` → Client Keys (DSN)**
+(`/organizations/threkir/settings/projects/<project>/keys/`).
+
+The DSN hostname is also the only trustworthy region check once an org exists: an EU org
+ingests at `o<id>.ingest.de.sentry.io`, a US one at `...ingest.us.sentry.io`. The org URL
+is `<slug>.sentry.io` in both regions, so it proves nothing, and Sentry offers **only**
+these two regions — a settings field reading anything else (a UK billing country, say) is
+not the data-storage location.
+
+**A DSN is not a secret** — Sentry: *"DSNs are safe to keep public because they only
+allow submission of new events and related event data; they do not allow read access."*
+The client one already ships inside the browser bundle. They live in secret stores below
+only because that is where each build reads them from, not because they need protecting.
+Don't burn a rotation drill on one leaking.
+
+#### 8c. Put the DSNs where each tier reads them
+
+Four destinations. The client DSN goes to one, the backend DSN to two.
+
+- **Client DSN → GitHub repo secret.** Repo-level, matching its `PUBLIC_*` siblings
+  (`PUBLIC_MAPTILER_KEY`, `PUBLIC_SUPABASE_URL`) — *not* the `production` environment,
+  which holds the signing keys. `release-web.yml` bakes it into `.env.production` and
+  `release-android.yml` re-reads the same secret into `--dart-define=SENTRY_DSN`, so one
+  secret covers web and both mobile twins:
+  `gh secret set PUBLIC_SENTRY_DSN --repo Absence0760/threkir`
+- **Backend DSN → Supabase Edge Function secrets**, which every EF reads through
+  `withSentry()`:
+  `cd apps/backend && supabase secrets set SENTRY_DSN="<paste>" APP_RELEASE="backend@$(git describe --tags --abbrev=0)"`
+- **Backend DSN → sops**, for the coach Lambda and the SvelteKit server half. Every key
+  in the env's sops file is merged into the coach Lambda env:
+  `bin/secret-set.sh prod SENTRY_DSN --prompt`
+  then `(cd ../infra-secrets && git add threkir/prod.sops.yaml && git commit -m 'threkir: sentry dsn')`
+- **Apply, then repoint the alias.** An env-only apply publishes a new Lambda version but
+  leaves the CI-owned `live` alias on the old one (issue #590), so the rotation does not
+  actually serve until the second command runs:
+  `bin/deploy-prod.sh && bin/lambda-alias-sync.sh prod`
+
+Repeat the last two for `preview` if that env should report too. Wear OS takes
+`SENTRY_DSN` as a Gradle property; watchOS reads it from `Info.plist`.
+
+#### 8d. Settings to change before real traffic
+
+The free plan's 5k errors/month is shared across both projects, and a single hot loop in
+one EF can exhaust it in an afternoon — at which point *everything* stops reporting,
+silently, including the failure you needed to see.
+
+1. **Settings → Security & Privacy → Data Scrubbing** (org-level; the same section
+   exists per-project under Settings → Projects → `<project>` → Security & Privacy).
+   Scrubbing is on by default — leave it on, and additionally enable the control that
+   prevents IP addresses from being stored. The code already scrubs (`sentry_scrub.ts`,
+   `$lib/sentry/redact`, `sendDefaultPii: false`, and `beforeSend` dropping
+   `request`/`user`/`server_name`), but that is sender-side; a server-side rule is the one
+   an auditor can verify independently of our build.
+2. **Know which failure the plan gives you.** On Developer there is no bill to cap —
+   over-quota events are *dropped*, so the risk is silent blindness, not spend. Set a
+   spend cap only if this is ever upgraded to Team, where pay-as-you-go overage becomes
+   billable; that cap would be the Sentry twin of the Anthropic console ceiling in
+   #922 § 2, since no code can enforce a provider-side limit.
+3. **Per-project → Settings → Client Keys**: leave rate limits off initially, then set a
+   per-key cap once a normal-traffic baseline exists.
+4. Both projects → **Alerts**: the default "high volume" rule is noise for a 1-user org.
+   One rule per project — *a new issue is created* → email — is enough to start.
+
+#### 8e. How to know it worked
+
+`release` ties an event to a build (`web@1.6.0` from `PUBLIC_APP_RELEASE`,
+`backend@<tag>` from `APP_RELEASE`), so a first event with `release: dev` means the
+release wiring is wrong even though the DSN is right.
+
+- **Web:** load <https://threkir.com>, **accept the cookie banner** — the client gate is
+  `!dev && dsn && hasAcceptedConsent()`, so a declined banner correctly reports nothing —
+  then check `threkir-client` for the session.
+- **Backend:** call any deployed EF with a deliberately malformed body and confirm an
+  event lands in `threkir-backend` tagged with that EF's name.
+- **Still empty?** In order: the build predates the secret (re-run the release; each re-run
+  needs **Approve and deploy** clicked again, `docs/ops/releasing.md:85`); the `live` alias was never
+  repointed (`bin/lambda-alias-sync.sh prod`); or consent was declined.
+
+**Not covered by any of this:** `apps/job_worker` and `apps/graph_cycle` carry no Sentry
+SDK at all — no `sentry-go` in either `go.mod`. A worker panic is invisible to Sentry
+after every step above is done, and the worker is what drains the digest and lifecycle
+mail. `apps/job_worker/deployment.md` § Monitoring routes that signal through pg_cron
+summary functions and a log scraper instead. Wiring `sentry-go` into both is open code
+work, not a credential blocker.
 
 ### 9. MapTiler — for map tiles
 
@@ -159,9 +304,12 @@ Two Strava accounts (one as the "user", one as a "buddy" to exercise the privacy
 ### 10. FCM (Android) + APNs (iOS) push notifications
 
 **What's needed:**
-- Firebase project for Android.
-- Apple Developer Program + APNs auth key for iOS.
-- Supabase Auth → Notifications config.
+- A Firebase project with a `com.threkir.app` app on each platform — the two config files become repo secrets, not committed files.
+- An FCM service account (Android sends) — the config files do not sign anything.
+- Apple Developer Program + an APNs auth key (iOS sends, direct to APNs; not uploaded to Firebase).
+- A VAPID pair for browser push, whose public half has to match in two systems.
+
+Nothing here is Supabase Auth configuration — push is a consumer of the `notifications` table drained by the Go worker. The ordered runbook is [`native_push.md` § Operator provisioning](../features/native_push.md#operator-provisioning-the-credential-gate).
 
 **Status today:** `device_tokens` table rows write correctly (covered by spec); actual delivery is gated on real upstream credentials. Today there's no automated push-delivery test.
 

@@ -56,6 +56,9 @@
  *     is optional. An empty value degrades the "Manage subscription"
  *     button to a "manage where you started it" hint rather than
  *     breaking the page.
+ *   - PUBLIC_VAPID_PUBLIC_KEY may be unset (web push then reports itself
+ *     unconfigured and no browser subscribes), but a value that IS set must be
+ *     a 65-byte uncompressed P-256 point — see vapidPublicKeyProblem.
  *   - PUBLIC_SENTRY_DSN — error reporting is optional. An empty DSN
  *     disables Sentry rather than breaking anything; small projects
  *     ship without it deliberately.
@@ -139,6 +142,34 @@ export function redactCredentials(url) {
  */
 const OPTIONAL_ENDPOINT_VARS = ['PUBLIC_SITE_URL', 'PUBLIC_LIVE_HUB_URL', 'PUBLIC_EXPORT_HUB_URL'];
 
+/// Why a VAPID public key gets checked here at all: it is the one PUBLIC_* var
+/// whose two halves live in different systems. The browser subscribes with
+/// this key and the worker signs with `VAPID_PRIVATE_KEY`, whose
+/// `webpush.NewSender` derives the public point and refuses a mismatched pair
+/// at boot — so the worker can catch a swapped pair and this build cannot.
+/// What it CAN catch is the shape: `web-push generate-vapid-keys` prints the
+/// private half first, and a 32-byte scalar pasted here makes
+/// `applicationServerKey` throw inside `pushManager.subscribe` in every
+/// browser, where nothing reports it. Same 65-byte-uncompressed-point test the
+/// sender applies, so the two ends cannot disagree about what a key is.
+/**
+ * @param {string} value
+ * @returns {string | null}
+ */
+export function vapidPublicKeyProblem(value) {
+	if (!/^[A-Za-z0-9_-]+$/.test(value)) {
+		return 'Not base64url. Expected the `Public Key:` line from `npx web-push generate-vapid-keys` verbatim — no padding, no quotes, no `BEGIN PUBLIC KEY` armour.';
+	}
+	const bytes = Buffer.from(value, 'base64url');
+	if (bytes.length === 32) {
+		return 'Is a 32-byte scalar, which is the PRIVATE half of the keypair. That half belongs in the worker\'s VAPID_PRIVATE_KEY (a Fly secret), never in a PUBLIC_* var that Vite inlines into every browser bundle. Paste the public key here and rotate the pair.';
+	}
+	if (bytes.length !== 65 || bytes[0] !== 0x04) {
+		return `Is ${bytes.length} bytes, not the 65-byte uncompressed P-256 point (leading 0x04) a VAPID application server key is. \`pushManager.subscribe\` throws on it in the browser, silently, so no device ever registers.`;
+	}
+	return null;
+}
+
 /**
  * @typedef {{ envVar: string; value: string; reason: string }} Finding
  * @typedef {{ ok: boolean; findings: Finding[] }} GuardResult
@@ -200,6 +231,23 @@ export function checkProductionEnv(env) {
 		const problem = productionUrlProblem(value);
 		if (problem) {
 			findings.push({ envVar, value: redactCredentials(value), reason: problem });
+		}
+	}
+
+	// Optional, and the failure it guards is invisible: with no key the push
+	// card reads "not configured" and nobody subscribes, which is a legitimate
+	// build. With a malformed one the subscribe call throws in the browser.
+	const vapidPublicKey = String(env.PUBLIC_VAPID_PUBLIC_KEY ?? '').trim();
+	if (vapidPublicKey) {
+		const problem = vapidPublicKeyProblem(vapidPublicKey);
+		if (problem) {
+			findings.push({
+				envVar: 'PUBLIC_VAPID_PUBLIC_KEY',
+				// The private half is the one value this guard may be handed by
+				// mistake, so report its length rather than the value.
+				value: `<${vapidPublicKey.length} chars>`,
+				reason: problem,
+			});
 		}
 	}
 

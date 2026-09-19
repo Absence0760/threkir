@@ -6,7 +6,7 @@
 
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 function read(...parts: string[]): string {
@@ -202,13 +202,123 @@ test('CloudFront CSP drops unsafe-eval and bounds XSS gadget surface', () => {
 	// Sentry browser SDK posts errors here — without this connect-src
 	// entry, every Sentry breadcrumb is silently CSP-blocked
 	// (regression caught by /audit/infra M2).
+	//
+	// The `de.` is the whole point of this assertion. The Sentry org is
+	// EU-region, so it ingests at `o<id>.ingest.de.sentry.io`, and a CSP
+	// host wildcard matches whole labels from the right: the narrower
+	// `*.ingest.sentry.io` this guard used to pin does NOT match that
+	// host. Pinning the US shape is what let the mismatch ship — the
+	// guard was green while the browser blocked every event, because a
+	// CSP-blocked beacon is invisible from the server. Region is
+	// immutable on a SaaS org, so if this ever needs to become the US
+	// host again, that means someone rebuilt the org.
 	assert.match(
 		csp,
-		/\*\.ingest\.sentry\.io/,
-		'CSP connect-src must include https://*.ingest.sentry.io — Sentry browser SDK posts errors there.',
+		/\*\.ingest\.de\.sentry\.io/,
+		'CSP connect-src must include https://*.ingest.de.sentry.io — the EU-region Sentry browser SDK posts errors there, and *.ingest.sentry.io does not match it.',
 	);
 });
 
+test('every POST to a Lambda origin sends the sigv4 payload hash', () => {
+	// Reason: CloudFront's Lambda OAC sigv4-signs each origin request, and
+	// sigv4 covers the payload hash. CloudFront does not compute it — the
+	// VIEWER must send `x-amz-content-sha256` on any request with a body, or
+	// the Function URL answers 403. Lambda does not accept unsigned payloads.
+	//
+	// Only the client half is assertable. The header cannot be added to an
+	// origin request policy: CloudFront owns it and rejects the attempt with
+	// `InvalidArgument: The parameter Headers contains x-amz-content-sha256
+	// that is not allowed` (tried, and refused, on 2026-09-18). It reads the
+	// header off the viewer request and folds it into the signature itself.
+	//
+	// Worth knowing when this fails: a POST missing the header gets a 403
+	// that the distribution's `403 -> /200.html` mapping serves as
+	// `200 text/html`. That reads as a broken origin rather than a malformed
+	// request, and a curl written without the header reproduces it exactly.
+	// Send the header and the same path answers 401.
+	for (const site of [
+		'src/lib/components/CoachChat.svelte',
+		'src/lib/routes/route_describe_client.ts',
+		'src/lib/routes/route_request_client.ts',
+	]) {
+		assert.match(
+			read(site),
+			/x-amz-content-sha256/,
+			`${site} POSTs to a Lambda-URL origin, so it must send x-amz-content-sha256 — without it CloudFront signs no payload hash and the Function URL 403s.`,
+		);
+	}
+});
+
+test('every Function-URL Lambda reports to Sentry, and its env carries the DSN', () => {
+	// Reason: these eight functions were the least observable tier in the
+	// stack. Each already caught its own errors and answered with a chosen
+	// status, so a failure produced a CloudWatch line and nothing else — no
+	// issue, no grouping across occurrences, no release correlation, no
+	// alert. The 16 Edge Functions have had `withSentry` the whole time;
+	// this is the same coverage for the Lambdas.
+	//
+	// Both halves are pinned, because either alone is silent. A handler that
+	// reports into an env with no SENTRY_DSN initialises nothing; a DSN
+	// wired to a handler that never calls out sends nothing. Neither state
+	// announces itself — that is the entire failure mode being guarded.
+	//
+	// The function list is read from disk, not written here, so a NEW Lambda
+	// added without instrumentation fails this test rather than joining a
+	// list nobody updates.
+	// Every directory under lambda/ is a function — five other guards walk
+	// this same tree and read `<name>/src/index.ts`, so anything else there
+	// breaks them first. No filtering, deliberately.
+	const fns = readdirSync(resolve('lambda'), { withFileTypes: true })
+		.filter((d) => d.isDirectory())
+		.map((d) => d.name)
+		.sort();
+	assert.ok(
+		fns.length >= 8,
+		`expected at least the 8 known Function-URL Lambdas, found ${fns.length}`,
+	);
+	for (const fn of fns) {
+		assert.match(
+			read(`lambda/${fn}/src/index.ts`),
+			/reportException\(/,
+			`lambda/${fn} must call reportException from its outermost catch — otherwise its failures reach CloudWatch and stop there.`,
+		);
+	}
+
+	// Every bundle bakes its own release. APP_RELEASE is compile-time, not a
+	// runtime env: esbuild substitutes `process.env.APP_RELEASE`, so a value
+	// set in the Lambda environment would be shadowed and never read. A build
+	// that forgets the define silently reports every event as `dev`, which
+	// reads as working reporting right up until someone tries to tie an issue
+	// to a deploy.
+	for (const fn of fns) {
+		assert.match(
+			read(`lambda/${fn}/build.mjs`),
+			/'process\.env\.APP_RELEASE':/,
+			`lambda/${fn}/build.mjs must define process.env.APP_RELEASE — without it every Sentry event from this function is tagged 'dev'.`,
+		);
+	}
+
+	// The terraform half. `base_lambda_env` is excluded deliberately: only
+	// the coach Lambda merges it, and all eight need the DSN, which is why
+	// sentry_env is its own local.
+	const tf = read('../../infra/modules/web-stack/main.tf');
+	const envLocals = [...tf.matchAll(/^\s+(\w*lambda_env) = merge\(/gm)]
+		.map((m) => m[1])
+		.filter((name) => name !== 'base_lambda_env');
+	assert.ok(
+		envLocals.length >= 8,
+		`expected at least 8 per-Lambda env locals, found ${envLocals.length}`,
+	);
+	for (const name of envLocals) {
+		const start = tf.indexOf(`  ${name} = merge(`);
+		const block = tf.slice(start, tf.indexOf('\n  )', start));
+		assert.match(
+			block,
+			/local\.sentry_env/,
+			`${name} must merge local.sentry_env — without it SENTRY_DSN never reaches that function and its reporting is a no-op.`,
+		);
+	}
+});
 test('both CSP layers allow MapLibre blob: workers (worker-src)', () => {
 	// Reason: MapLibre GL spawns its tile-processing Web Worker from a
 	// blob: URL. A document must satisfy BOTH the CloudFront header CSP

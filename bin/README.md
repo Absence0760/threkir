@@ -63,5 +63,5 @@ Wrappers around `cargo` + `probe-rs` (and Renode, for the simulator) for the Rus
 
 - Read-only by default. Gated by a prompt (or `--auto-approve`): `deploy-preview`, `deploy-prod`, `onboard-operator`, `disaster-recovery`, `lambda-alias-sync`. Gated by an explicit flag: `cancel-stale-runs` (`--apply`). Ungated but local-file-only, idempotent, and verified with a decrypt round-trip: `secret-set`, `sops-init`, `key-rotate` (they rewrite the estate repo's `.sops.yaml` / encrypted file — the mutation is the point).
 - Idempotent. Re-running on an already-completed step prints "skipping" and exits 0.
-- Profile selection: scripts honour `$AWS_PROFILE` (set it once in `~/.bashrc.d/26-aliases-aws.sh`). If unset, `running` (this account's workstation SSO profile) is the default.
+- Profile selection: scripts honour `$AWS_PROFILE` (set it once in `~/.bashrc.d/26-aliases-aws.sh`). If unset, `threkir` (this account's workstation SSO profile) is the default.
 - Region: pinned to `us-east-1` everywhere (CloudFront + ACM constraint).

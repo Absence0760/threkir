@@ -3331,10 +3331,15 @@ void main() {
       // watchOS app's primary recording buttons (Start / Pause / Stop /
       // Resume / Recover / Discard / Sync Run) had no
       // .accessibilityHint, leaving VoiceOver users without usage
-      // cues on the main recording surface. watch_ios has no XCTest
-      // target today, so this is a source-grep guard run from the
-      // mobile_android twin's relative path. Auto-skips when the
-      // watch_ios sibling isn't present.
+      // cues on the main recording surface. A source-grep guard run
+      // from the mobile_android twin's relative path, which auto-skips
+      // when the watch_ios sibling isn't present: what it asserts is
+      // that a BUTTON carries a hint at all, which neither the watchOS
+      // String Catalog guards nor `WatchAppTests` can see — they read
+      // the literals a hint contains, not whether a control has one.
+      // The cues are transcriptions and therefore rot: Stop's changed
+      // when the control became a HELD press (decisions § 1678), and
+      // this guard is what said so.
       final file = File('../watch_ios/WatchApp/ContentView.swift');
       if (!file.existsSync()) return;
       final body = file.readAsStringSync();
@@ -3344,7 +3349,7 @@ void main() {
         // a future refactor that drops the modifier.
         'Begins a new run',
         'Pauses the recording without ending it',
-        'Ends the run and opens the summary',
+        'Hold to end the run and open the summary',
         'Resumes the paused recording',
         'Restores the unsaved run',
         'Sends the completed run to your iPhone',

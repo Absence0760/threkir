@@ -5,6 +5,7 @@ struct ContentView: View {
     @StateObject private var connectivity = WatchConnectivityManager.shared
     @State private var syncError: String?
     @State private var thisRunSynced = false
+    @State private var countingDown = false
 
     var body: some View {
         NavigationStack {
@@ -15,7 +16,8 @@ struct ContentView: View {
                         workoutManager: workoutManager,
                         queuedCount: connectivity.queuedCount,
                         armedRoute: connectivity.armedRoute,
-                        onClearRoute: connectivity.clearArmedRoute
+                        onClearRoute: connectivity.clearArmedRoute,
+                        onStart: { countingDown = true }
                     )
                 case .recovering:
                     RecoveryView(workoutManager: workoutManager, onRecover: recoverRun, onDiscard: discardRecovery)
@@ -36,6 +38,17 @@ struct ContentView: View {
                         onSync: syncRun,
                         onSyncDirect: syncRunDirect,
                         onDiscard: startNextRun
+                    )
+                }
+            }
+            .overlay {
+                if countingDown {
+                    CountdownOverlay(
+                        onComplete: {
+                            countingDown = false
+                            workoutManager.start()
+                        },
+                        onCancel: { countingDown = false }
                     )
                 }
             }
@@ -71,9 +84,11 @@ struct ContentView: View {
                 // Apr 2026 cross-client audit caught Apple-Watch runs
                 // arriving on the phone with no `activity_type` set,
                 // even though `WatchIngestBridge.swift` filters for it.
-                // Hardcode "run" to match Wear OS until the watch app
-                // grows an activity picker.
-                "activity_type": "run",
+                // Always present, now carrying the pre-run picker's choice
+                // rather than a hardcoded "run" — the raw token, because the
+                // `runs_activity_type_check` vocabulary is what the column
+                // admits.
+                "activity_type": run.activityType.rawValue,
                 // Mobile's delta-fetch (`runs_screen._fetchRemote`) filters
                 // rows on `metadata->>'last_modified_at' > since`. Without
                 // this stamp an Apple-Watch run is invisible to every
@@ -216,6 +231,7 @@ struct PreRunView: View {
     let queuedCount: Int
     let armedRoute: ArmedRoute?
     let onClearRoute: () -> Void
+    let onStart: () -> Void
     @State private var selectedPaceIndex: Int? = nil
 
     var body: some View {
@@ -251,6 +267,28 @@ struct PreRunView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
+                    Text("Activity")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+
+                    Button(workoutManager.activityType.label) {
+                        workoutManager.activityType = workoutManager.activityType.next
+                    }
+                    .font(.caption)
+                    .foregroundColor(AppTheme.lilac)
+                    .buttonStyle(.plain)
+                    // The label is one word and says nothing about being a
+                    // cycle control, exactly as on Wear OS's chip.
+                    .accessibilityLabel(
+                        String(
+                            localized:
+                                "Activity type, currently \(workoutManager.activityType.label), tap to change"
+                        )
+                    )
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                VStack(alignment: .leading, spacing: 6) {
                     Text("Target pace")
                         .font(.caption2)
                         .foregroundColor(.secondary)
@@ -282,7 +320,7 @@ struct PreRunView: View {
                 }
 
                 Button("Start") {
-                    workoutManager.start()
+                    onStart()
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(AppTheme.coralDeep)
@@ -291,6 +329,47 @@ struct PreRunView: View {
                 // the VoiceOver name from "Start"; the hint adds the
                 // usage cue that name alone doesn't carry.
                 .accessibilityHint("Begins a new run, starting GPS and heart-rate recording")
+            }
+        }
+    }
+}
+
+// MARK: - Start Countdown
+
+/// Full-screen 3-2-1 count between the Start tap and `WorkoutManager.start()`,
+/// mirroring Wear OS's `CountdownOverlay`.
+///
+/// A tap ANYWHERE cancels. The window exists so a mis-tapped Start costs three
+/// seconds instead of a junk run, which it only does if backing out needs no
+/// second target found on a moving wrist.
+struct CountdownOverlay: View {
+    let onComplete: () -> Void
+    let onCancel: () -> Void
+
+    @State private var countdown = StartCountdown()
+
+    var body: some View {
+        ZStack {
+            AppTheme.midnight.opacity(0.92)
+                .ignoresSafeArea()
+            Text(countdown.count.formatted())
+                .font(.system(size: 64, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundColor(AppTheme.parchment)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { onCancel() }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Cancel countdown")
+        .accessibilityAddTraits(.isButton)
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: NSEC_PER_SEC)
+                if Task.isCancelled { return }
+                if countdown.tick() {
+                    onComplete()
+                    return
+                }
             }
         }
     }
@@ -375,14 +454,84 @@ struct RunStatsView: View {
                 .tint(AppTheme.duskDeep)
                 .accessibilityHint("Pauses the recording without ending it")
 
-                Button("Stop") {
-                    workoutManager.stop()
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(AppTheme.error)
-                .accessibilityHint("Ends the run and opens the summary")
+                HoldToStopButton { workoutManager.stop() }
             }
         }
+    }
+}
+
+// MARK: - Hold to Stop
+
+/// Stop, gated on an 800 ms press with a ring that fills as it is held —
+/// Wear OS's `HoldToStopButton`. Releasing early cancels and the ring falls
+/// back to empty, so an accidental brush costs nothing and a deliberate press
+/// costs less than a second.
+///
+/// See `HoldToStop` for why this control is held rather than confirmed.
+struct HoldToStopButton: View {
+    let onStop: () -> Void
+
+    @State private var progress: Double = 0
+    @State private var holdTask: Task<Void, Never>?
+
+    private let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+
+    var body: some View {
+        Text("Stop")
+            .font(.body)
+            .foregroundColor(AppTheme.parchment)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 6)
+            .background(shape.fill(AppTheme.error))
+            .overlay(
+                shape
+                    .trim(from: 0, to: progress)
+                    .stroke(
+                        AppTheme.parchment,
+                        style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                    )
+            )
+            .contentShape(shape)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in beginHold() }
+                    .onEnded { _ in cancelHold() }
+            )
+            .onDisappear { cancelHold() }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Stop")
+            .accessibilityHint("Hold to end the run and open the summary")
+            .accessibilityAddTraits(.isButton)
+            // VoiceOver activates by double-tap, which is already the
+            // deliberate press the hold exists to require — and a hold is not
+            // something the rotor can perform at all. Holding the assistive
+            // path to the same gesture would make Stop unreachable rather
+            // than safer.
+            .accessibilityAction { onStop() }
+    }
+
+    private func beginHold() {
+        guard holdTask == nil else { return }
+        holdTask = Task { @MainActor in
+            let started = Date()
+            while !Task.isCancelled {
+                let elapsed = Date().timeIntervalSince(started)
+                progress = HoldToStop.progress(elapsed: elapsed)
+                if HoldToStop.isComplete(elapsed: elapsed) {
+                    holdTask = nil
+                    progress = 0
+                    onStop()
+                    return
+                }
+                try? await Task.sleep(nanoseconds: NSEC_PER_SEC / 60)
+            }
+        }
+    }
+
+    private func cancelHold() {
+        holdTask?.cancel()
+        holdTask = nil
+        progress = 0
     }
 }
 
@@ -458,11 +607,7 @@ struct PausedView: View {
             .tint(AppTheme.coralDeep)
             .accessibilityHint("Resumes the paused recording")
 
-            Button("Stop", role: .destructive) {
-                workoutManager.stop()
-            }
-            .font(.caption)
-            .accessibilityHint("Ends the run and opens the summary")
+            HoldToStopButton { workoutManager.stop() }
         }
     }
 }

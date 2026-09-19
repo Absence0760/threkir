@@ -31,6 +31,14 @@ struct RunCheckpoint: Codable {
     // what nil means here and everywhere else this figure travels. It must
     // never decode as 0: that would claim the sensor delivered nothing.
     let hrCoverage: Double?
+    // Added alongside the pre-run activity picker: what the runner chose, so a
+    // crash-recovered run is stamped with the activity it was recorded as
+    // rather than silently reverting to a run. Stored as the raw token because
+    // the checkpoint is a wire format and the column's vocabulary — not this
+    // build's enum — is what it has to survive. A checkpoint from a build
+    // predating the field decodes as "run", the value the column defaults to.
+    // Mirrors Wear OS's `Checkpoint.activityType`.
+    let activityType: String
 
     init(
         id: String,
@@ -42,6 +50,7 @@ struct RunCheckpoint: Codable {
         cacheFileURL: URL,
         averageBPM: Double?,
         hrCoverage: Double?,
+        activityType: String = RunActivityType.run.rawValue,
         version: Int = RunCheckpoint.currentVersion
     ) {
         self.version = version
@@ -54,6 +63,7 @@ struct RunCheckpoint: Codable {
         self.cacheFileURL = cacheFileURL
         self.averageBPM = averageBPM
         self.hrCoverage = hrCoverage
+        self.activityType = activityType
     }
 
     /// Every field is decoded with a fallback default rather than the
@@ -77,6 +87,8 @@ struct RunCheckpoint: Codable {
             ?? URL(fileURLWithPath: NSTemporaryDirectory())
         averageBPM = try c.decodeIfPresent(Double.self, forKey: .averageBPM)
         hrCoverage = try c.decodeIfPresent(Double.self, forKey: .hrCoverage)
+        activityType = try c.decodeIfPresent(String.self, forKey: .activityType)
+            ?? RunActivityType.run.rawValue
     }
 }
 

@@ -122,17 +122,6 @@
         "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Distância" } }
       }
     },
-    "Ends the run and opens the summary" : {
-      "comment" : "VoiceOver hint on the Stop button.",
-      "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Beendet den Lauf und öffnet die Zusammenfassung" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Finaliza la carrera y abre el resumen" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Termine la course et ouvre le récapitulatif" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ランを終了してサマリーを開きます" } },
-        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Encerra a corrida e abre o resumo" } },
-        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Termina a corrida e abre o resumo" } }
-      }
-    },
     "HR" : {
       "comment" : "Heart-rate stat column header; short abbreviation.",
       "localizations" : {
@@ -693,6 +682,98 @@
         "ja" : { "stringUnit" : { "state" : "translated", "value" : "GPSを待っています" } },
         "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Aguardando o GPS" } },
         "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "À espera de GPS" } }
+      }
+    },
+    "Cancel countdown" : {
+      "comment" : "VoiceOver label for the full-screen start countdown; a tap anywhere cancels it.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Countdown abbrechen" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Cancelar la cuenta atrás" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler le compte à rebours" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "カウントダウンをキャンセル" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Cancelar a contagem regressiva" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Cancelar a contagem decrescente" } }
+      }
+    },
+    "Hold to end the run and open the summary" : {
+      "comment" : "VoiceOver hint on the in-run Stop control, which fires only after an 800 ms press.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gedrückt halten, um den Lauf zu beenden und die Zusammenfassung zu öffnen" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Mantén pulsado para terminar la carrera y abrir el resumen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Maintenez pour terminer la course et ouvrir le récapitulatif" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "長押しでランを終了し、サマリーを開きます" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Mantenha pressionado para encerrar a corrida e abrir o resumo" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Mantenha premido para terminar a corrida e abrir o resumo" } }
+      }
+    },
+    "Activity" : {
+      "comment" : "Pre-run section header above the activity-type picker.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aktivität" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Actividad" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Activité" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "アクティビティ" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Atividade" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Atividade" } }
+      }
+    },
+    "Activity type, currently %@, tap to change" : {
+      "comment" : "VoiceOver label for the pre-run activity picker; the placeholder is the current activity's word.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Aktivitätstyp, aktuell %@, zum Ändern tippen" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Tipo de actividad, actualmente %@, toca para cambiar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Type d'activité, actuellement %@, touchez pour changer" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "アクティビティの種類、現在 %@、タップして変更" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Tipo de atividade, atualmente %@, toque para alterar" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Tipo de atividade, atualmente %@, toque para alterar" } }
+      }
+    },
+    "activityType.cycle" : {
+      "comment" : "Activity vocabulary: runs.activity_type 'cycle'.",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cycle" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Radfahren" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ciclismo" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Vélo" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "サイクリング" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Ciclismo" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Ciclismo" } }
+      }
+    },
+    "activityType.hike" : {
+      "comment" : "Activity vocabulary: runs.activity_type 'hike', shown as 'Trail run' everywhere in the product.",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Trail run" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Traillauf" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Trail" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Trail" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "トレイルラン" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Trilha" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Trail" } }
+      }
+    },
+    "activityType.run" : {
+      "comment" : "Activity vocabulary: runs.activity_type 'run'. One product, one word — taken verbatim from the phone's activityTypeRun and the web's activityType.run (decisions 1155). NOT the complication's 'Run' label, which is a different sentence.",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Run" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Laufen" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Carrera" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Course" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ランニング" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Corrida" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Corrida" } }
+      }
+    },
+    "activityType.walk" : {
+      "comment" : "Activity vocabulary: runs.activity_type 'walk'.",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Walk" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gehen" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Caminata" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Marche" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ウォーキング" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Caminhada" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Caminhada" } }
       }
     }
   }

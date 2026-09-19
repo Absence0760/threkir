@@ -25,7 +25,7 @@ For the orthogonal "how a tag triggers a build" mechanics, see [releasing.md](re
 | Apple Watch | `apps/watch_ios/` | Bundled inside the iOS app — no separate listing | Plan |
 | RevenueCat | (third party) | RevenueCat dashboard — webhook to `apps/backend/supabase/functions/revenuecat-webhook` | Plan |
 | MapTiler | (third party) | MapTiler Cloud — `PUBLIC_MAPTILER_KEY` shared by web + Wear OS | Plan |
-| Anthropic API | (third party) | api.anthropic.com — `ANTHROPIC_API_KEY` injected into the coach Lambda via env var (Terraform reads it from a sops-encrypted file under `infra/envs/<env>/secrets.enc.yaml`, encrypted with the env's AWS KMS key) | Plan |
+| Anthropic API | (third party) | api.anthropic.com — `ANTHROPIC_API_KEY` reaches the coach Lambda as part of a KMS ciphertext the handler decrypts at cold start, never as a plaintext env var (Terraform reads it from the sops file in the private estate repo and encrypts it under the env's own CMK — [decisions § 1671](../architecture/decisions.md)) | Plan |
 
 Per-service deep dives:
 
@@ -249,7 +249,7 @@ The matrix of "what lives where":
 | `STRAVA_CLIENT_SECRET` | Strava developer dashboard | Supabase Vault |
 | `STRAVA_VERIFY_TOKEN`, `STRAVA_WEBHOOK_SECRET` | We invent | Supabase EF env |
 | `REVENUECAT_WEBHOOK_SECRET` | RevenueCat dashboard | Supabase EF env |
-| `ANTHROPIC_API_KEY` | Anthropic console | sops-encrypted in `infra/envs/<env>/secrets.enc.yaml` (AWS KMS key per env) — Terraform decrypts at apply time and writes to the coach Lambda's `environment` block |
+| `ANTHROPIC_API_KEY` | Anthropic console | sops-encrypted in the private estate repo (AWS KMS key per env) — Terraform decrypts at apply time, RE-encrypts it into `aws_kms_ciphertext.coach`, and writes only that blob to the coach Lambda's `environment` block; the handler decrypts it once per cold start ([decisions § 1671](../architecture/decisions.md)) |
 | `PUBLIC_MAPTILER_KEY` | MapTiler dashboard | GitHub Secrets (injected at CI build-time as `PUBLIC_*`); Mobile build configs |
 | Android upload keystore | We generate once | GitHub Secrets (`ANDROID_KEYSTORE_BASE64`) |
 | iOS distribution `.p12` + provisioning profile | Apple Developer | GitHub Secrets (`IOS_BUILD_CERTIFICATE_BASE64` etc.) |
@@ -576,6 +576,37 @@ Before flipping any service from "Plan" to live in the table at the top:
 6. Update the row at the top of this file from "Plan" to "Live (region)".
 7. Tick the corresponding box in [roadmap.md](../product/roadmap.md).
 8. If this enables a feature, flip the cell in [parity.md](../product/parity.md).
+
+### Lambda secrets — one apply, before the next web deploy
+
+[decisions § 1671](../architecture/decisions.md) moved the coach and
+generate-route credentials out of their Lambda environments and into a KMS
+ciphertext the handler decrypts at cold start. The code is on `main` and the
+guard enforces it; the change is **unapplied and unplanned** — no lane in this
+repo holds AWS credentials, so `terraform plan` has never run against real
+state. Do this under the operator's own SSO profile, preview first:
+
+1. `terraform plan` in `infra/envs/preview`. Expect two new
+   `aws_kms_ciphertext` resources and, on `threkir-web-preview-coach` and
+   `-generate-route`, `ANTHROPIC_API_KEY` / `SUPABASE_SECRET_KEY` /
+   `OPENAI_API_KEY` / `GRAPHHOPPER_API_KEY` / `GRAPH_CYCLE_API_KEY` **leaving**
+   the environment and `SECRETS_CIPHERTEXT` + `SECRETS_CONTEXT` arriving.
+   `kms_key_arn` must NOT appear on any function — that is a different design
+   and it hands the plaintext back (§ 1021 and claim 9 in
+   `scripts/check_infra_iam.mjs`).
+2. Apply, then deploy the matching web bundle. **Order matters in one
+   direction only**: the new code refuses to serve without a bag, so applying
+   before the code lands is safe (the old code ignores the blob) and shipping
+   the code before the apply is a 503 on `/api/coach` and
+   `/api/routes/generate` until the apply completes.
+3. Verify the environment no longer carries a key:
+   `aws lambda get-function-configuration --function-name threkir-web-preview-coach --query 'Environment.Variables' | grep -c API_KEY` must be `0`.
+4. Verify the decrypt works end to end — one `/api/coach` turn on a cold
+   container. An `AccessDeniedException` in the function's log means the
+   execution role lost its `kms:Decrypt` on the env's secrets CMK.
+5. Repeat for `prod`. Rotating a secret afterwards is `bin/secret-set.sh` **plus
+   a re-apply** — the blob is a resource, so a function holding the old one
+   decrypts the old value.
 
 ### Legal pages — before public launch
 

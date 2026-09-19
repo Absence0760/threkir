@@ -648,6 +648,10 @@ The pure coalescing auto-save queue every preference page shares (decisions § 1
 
 The reachability contract for the `/settings/preferences` split (issue #905, decisions § 1640). Reads `settings.md § Keys` and every settings `+page.svelte`: the registry and the declared homes name the same keys; the constants pages name keys through still spell them; every key is edited on exactly its declared page set (comments stripped); the nav and the landing page offer every split page; the landing page edits nothing; every legacy anchor lands on a page carrying that `id`; `legacyPreferencesTarget` resolves the three old anchors and nothing else (`#__proto__` included); and no link the app renders itself goes through that redirect — the dashboard, run detail and nutrition pages name the page a section now lives on, and the anchors stay for bookmarks and old emails.
 
+### `apps/web/src/lib/browser_baseline_guard.test.ts` — 5 tests
+
+The stated minimum-browser floor and its exceptions (decisions § 1670). Reads `browserslist` from `apps/web/package.json` through `scripts/browser_baseline.mjs` — the same reader `vite.config.ts` derives `build.target` from — and holds four things to it: the prose table in `conventions.md § Web browser baseline` declares the same rows and versions; the two CSS features the floor is derived from (`:has()`, `container-type`) are still used in the tree, so the floor is still derived from something; every feature detect under `apps/web/src` is one of the eleven declared `EXCEPTIONS`, with a matching count, and every entry still matches a detect; each entry names one of the three allowed reasons with a why; and no `above-floor` entry outlives its `until` — the floor reaching Firefox 125 fails the suite and sends the lane to delete `clipText`'s `Intl.Segmenter` fallback. The scan parses rather than pattern-matches: TypeScript's parser for `.ts`, Svelte's for `.svelte` with the script offsets going through TypeScript's, each refusing a file it cannot read. A test of a BARE global (`typeof window === 'undefined'`) is deliberately outside the census — that asks whether there is a browser at all, not whether this one is new enough.
+
 ### `apps/web/src/lib/control_hints_guard.test.ts` — 3 tests
 
 Every control on a swept surface carries a one-line explanation (#905 workstream 5): one declared test run per surface that each `<select>`, `<input>` and toggle group has an `aria-describedby` naming an element that exists, or, for a checkbox, a `.hint` / `.field-hint` inside its label; every rendered hint key exists in `en`; and the hint copy spells out the abbreviations the labels print (HR, bpm, kg, lbs, km/h, mph, cm, AI, ml, g). `SURFACES` is the sweep's boundary, and since decisions § 1659 it names every surface the sweep set out to cover — the six preference pages from #919, the plan-and-run path from § 1651, the five creator editors, the five gym / session editors, `/nutrition/targets`, `/segments`, `/races`, `/routes/new` and `/onboarding`. A `<textarea>` is deliberately not a control here. Was `src/routes/settings/prefs_hints_guard.test.ts`.
@@ -1423,7 +1427,7 @@ The accent-fold drift guard, and the generator under it. Pins that the two cause
 
 The gym catalogue picker's search / hidden-exact / ordering decision, pinned on both platforms but by deliberately different instruments ([decisions § 1333](../architecture/decisions.md), [§ 1382](../architecture/decisions.md)). Web has no harness that can compile a `.svelte` component, so the decision was moved OUT of the markup into a pure module and `cataloguePickerView` is tested directly: a blank query lists everything and offers no create, the search folds both sides through the canonical key, an exact name the CATEGORY filter is hiding is reported rather than dropped into “No exercises match.”, a shadowed name reports the same entry whichever order the fetch returned, and five ordering cases pin the folded comparator — an accented name not filed after `z`, the phone's order rather than the host collation's, § 1334's measured eight-name list, the id tiebreak for names the fold calls equal, and that the input array is not reordered in place. `flutter_test` renders widgets natively, so the Dart side pins the WIDGET instead and therefore reaches strictly more than the web module can — the rendered sentence and the rendered order, which § 1333 says only a browser can prove on web: the same search / hidden-exact / ordering cases plus the create path end to end (no affordance without an API client, a create under a category filed there and under “all” filed under other, a refused create reported while staying on the picker, tapping a row popping with that entry) and the shadowing badge. The counts are NOT a mirror pair and are not expected to match — the two suites test different objects. The iOS twin runs the Dart file byte-for-byte.
 
-### `scripts/check_infra_iam.test.mjs` — 77 tests
+### `scripts/check_infra_iam.test.mjs` — 91 tests
 
 The IAM rails under `infra/`, which no test had reached. `infra/github-oidc/`
 mints the only two identities anything outside the AWS account can assume, and
@@ -1445,6 +1449,18 @@ the plain `lambda:InvokeFunction` grant dropped (issue #590), a grant open to an
 distribution. Two closing cases run the whole comparison against the COMMITTED
 tree and assert the parsers reached it — a passing run that checked almost
 nothing is not a pass.
+
+Claim 8 gained its second half in [decisions § 1671](../architecture/decisions.md),
+and with it its own faithful fixture: a credential left in an environment in
+plaintext, a key that is BOTH encrypted and plaintext, an encrypted key assigned
+straight into an env from somewhere the comprehension reader cannot see, a blob
+with no encryption context, a blob nothing reads and a blob two envs read, no
+`aws_kms_ciphertext` resource at all, and an exemption no env uses. The readers
+underneath it are mutated separately — `admittedKeys` on both predicate shapes
+and on two it must refuse rather than guess at, `sopsFilters` on the
+comprehension that carries no predicate, and `envPlaintextKeys` on the
+intermediate local (`sentry_env`) that a reader looking only at `*_lambda_env`
+would miss.
 
 ### `scripts/check_infra_coverage.test.mjs` — 81 tests
 

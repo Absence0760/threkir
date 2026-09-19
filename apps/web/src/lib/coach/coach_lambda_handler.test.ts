@@ -25,6 +25,7 @@ import { resolve } from 'node:path';
 
 import { COACH_BODY_LIMIT_BYTES } from './body.js';
 import { stripComments } from '../core/strip_comments';
+import { stubKms } from '../core/kms_stub';
 
 interface Written {
 	status: number | undefined;
@@ -62,10 +63,15 @@ const responseStream = {
 // on exactly the machines the stub doc tells people to set up.
 process.env.PUBLIC_SUPABASE_URL = 'http://supabase.invalid';
 process.env.PUBLIC_SUPABASE_ANON_KEY = 'anon';
-process.env.ANTHROPIC_API_KEY = 'sk-test-not-used';
 delete process.env.COACH_PROVIDER;
 delete process.env.OPENAI_BASE_URL;
 delete process.env.OPENAI_API_KEY;
+
+// The credentials no longer come from the environment at all — the wrapper
+// decrypts a KMS ciphertext bag once per container (decisions § 1671), so a
+// suite that drives it needs a KMS that answers. Every case here still stops
+// before a provider call; the key is only ever handed to the core.
+stubKms({ ANTHROPIC_API_KEY: 'sk-test-not-used' });
 
 const { handler } = (await import('../../../lambda/coach/src/index.js')) as {
 	handler: (event: unknown, stream: unknown, context: unknown) => Promise<void>;

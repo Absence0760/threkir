@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
 import { USER_B } from '../fixtures/users';
@@ -19,13 +19,14 @@ test.describe('cross-user kudos', () => {
 	test.use({ storageState: USER_B.storageStatePath });
 
 	test('alex kudos runner public run via /share/run/ → reload persists → rescind', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		// /share/run/[id] is the path real (often logged-out) visitors
 		// take — public_runs view + RunSocial mounts when auth.loggedIn.
 		// The signed-in /runs/[id] equivalent is pinned separately in
 		// cross-user/run-detail-non-owner.spec.ts.
-		await page.route('**/functions/v1/clip-public-track', (route) =>
+		await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -60,19 +61,28 @@ test.describe('cross-user kudos', () => {
 	});
 
 	test('alex sees kudos disabled on a non-public run page (RLS hides the row)', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		// /share/run/<bogus> for any non-public run ID returns the
 		// "Run not found" state via the public_runs view's RLS-equivalent
 		// filter. Pin the negative path so a regression that exposed
 		// private runs to /share would surface here.
 		const bogusId = '00000000-0000-0000-0000-000000000bad';
-		await page.route('**/functions/v1/clip-public-track', (route) =>
-			route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify({ points: [] })
-			})
+		await mockRoute(
+			page,
+			'**/functions/v1/clip-public-track',
+			(route) =>
+				route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify({ points: [] })
+				}),
+			{
+				neverFires:
+					'the id resolves to no row, so the track branch is never reached — an ' +
+					'invocation means the not-found path stopped being taken'
+			}
 		);
 		await page.goto(`/share/run/${bogusId}`);
 

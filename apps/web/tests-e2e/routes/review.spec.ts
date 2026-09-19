@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_ROUTE_ID } from '../fixtures/seeded-data';
@@ -177,7 +177,7 @@ test.describe('/routes/[id] reviews — submit, edit, delete', () => {
 		expect((after as { id: string }).id).toBe((before.data as { id: string }).id);
 	});
 
-	test('Submit disables while the upsert is in flight (no double-submit)', async ({ page }) => {
+	test('Submit disables while the upsert is in flight (no double-submit)', async ({ page, mockRoute }) => {
 		const comment = `e2e double-submit ${Date.now()}`;
 
 		// Hold the upsert response open so the in-flight window stays
@@ -185,7 +185,7 @@ test.describe('/routes/[id] reviews — submit, edit, delete', () => {
 		let postCount = 0;
 		let release: () => void = () => {};
 		const gate = new Promise<void>((r) => (release = r));
-		await page.route('**/rest/v1/route_reviews*', async (route) => {
+		await mockRoute(page, '**/rest/v1/route_reviews*', async (route) => {
 			if (route.request().method() === 'POST') {
 				postCount += 1;
 				await gate;

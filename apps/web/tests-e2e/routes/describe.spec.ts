@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_ROUTE_ID } from '../fixtures/seeded-data';
@@ -32,9 +32,9 @@ test.describe('/routes/[id] — Describe (free user)', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 	test.beforeEach(clearDescription);
 
-	test('Describe renders the templated baseline + a Pro upgrade hint', async ({ page }) => {
+	test('Describe renders the templated baseline + a Pro upgrade hint', async ({ page, mockRoute }) => {
 		let called = false;
-		await page.route('**/api/coach/route-describe', async (route) => {
+		await mockRoute(page, '**/api/coach/route-describe', async (route) => {
 			called = true;
 			await route.fulfill({
 				status: 200,
@@ -94,8 +94,8 @@ test.describe('/routes/[id] — Describe (Pro user)', () => {
 	test.use({ storageState: USER_C_PRO.storageStatePath });
 	test.beforeEach(clearDescription);
 
-	test('Describe replaces the baseline with AI text + attribution', async ({ page }) => {
-		await page.route('**/api/coach/route-describe', async (route) => {
+	test('Describe replaces the baseline with AI text + attribution', async ({ page, mockRoute }) => {
+		await mockRoute(page, '**/api/coach/route-describe', async (route) => {
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',

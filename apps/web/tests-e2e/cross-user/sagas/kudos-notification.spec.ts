@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../../fixtures/mock-route';
 
 import { RUNNER_PUBLIC_RUN_ID } from '../../fixtures/seeded-data';
 import {
@@ -54,7 +54,8 @@ test.describe('saga: alex kudos runner → runner inbox row + bell + click-throu
 	});
 
 	test('inbox shows the row, badge flips to 1, row click navigates to the run + auto-marks read (clears badge)', async ({
-		browser
+		browser,
+		mockRoute
 	}) => {
 		const ctxAlex = await browser.newContext({
 			storageState: USER_B.storageStatePath
@@ -71,7 +72,7 @@ test.describe('saga: alex kudos runner → runner inbox row + bell + click-throu
 		const runner = await ctxRunner.newPage();
 
 		try {
-			await alex.route('**/functions/v1/clip-public-track', (route) =>
+			await mockRoute(alex, '**/functions/v1/clip-public-track', (route) =>
 				route.fulfill({
 					status: 200,
 					contentType: 'application/json',

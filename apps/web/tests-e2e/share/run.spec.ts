@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
 import { deleteRun, insertRun } from '../fixtures/simulate';
@@ -20,7 +20,8 @@ test.describe('/share/run/[id] — anon', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test('anon viewer: RunSocial does not mount; sign-up CTA shown instead', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		// RunShareView gates the entire RunSocial card on auth.loggedIn:
 		// authed visitors get kudos + comments, anon visitors get a
@@ -29,7 +30,7 @@ test.describe('/share/run/[id] — anon', () => {
 		// is visible. A regression that exposed RunSocial to anon
 		// could leak kudos / comment writes past the RLS write policy
 		// and surface a confusing 401 toast.
-		await page.route('**/functions/v1/clip-public-track', (route) =>
+		await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -53,7 +54,7 @@ test.describe('/share/run/[id] — anon', () => {
 		).toBeVisible({ timeout: 5_000 });
 	});
 
-	test('anon visitor gets per-run SEO unfurl tags on the share page', async ({ page }) => {
+	test('anon visitor gets per-run SEO unfurl tags on the share page', async ({ page, mockRoute }) => {
 		// Crawlers + chat-app unfurls read these from <head>. The
 		// run share page lifts its meta fetch into +page.ts so the
 		// per-run title + description bake into the prerendered HTML
@@ -61,7 +62,7 @@ test.describe('/share/run/[id] — anon', () => {
 		// Display name is still deferred until `public_profiles`
 		// view ships (`user_profiles` is owner-only by RLS), so the
 		// title carries distance + date, not the runner's name.
-		await page.route('**/functions/v1/clip-public-track', (route) =>
+		await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -69,6 +70,11 @@ test.describe('/share/run/[id] — anon', () => {
 			})
 		);
 		await page.goto(`/share/run/${RUNNER_PUBLIC_RUN_ID}`);
+		// Wait for the client `load()` to resolve before asserting: the stub above
+		// is what it calls, and every assertion in this case is reachable from the
+		// server-rendered shell — so without this the case could finish with the
+		// page half-mounted and the stub never invoked.
+		await expect(page.locator('.run-meta')).toBeVisible({ timeout: 10_000 });
 
 		// Per-run reactive title — pulls runner name from
 		// public_profiles (migration 20260824_001) so the unfurl
@@ -122,13 +128,13 @@ test.describe('/share/run/[id] — anon', () => {
 		);
 	});
 
-	test('anon visitor gets a canonical link + JSON-LD structured data', async ({ page }) => {
+	test('anon visitor gets a canonical link + JSON-LD structured data', async ({ page, mockRoute }) => {
 		// SEO parity with /share/route: the public run share page is the
 		// single canonical, crawlable surface for a run (the in-app
 		// /runs/[id] page canonicals here), and it carries schema.org
 		// JSON-LD so search engines get a WebPage + breadcrumb trail. Pin
 		// both so a refactor can't silently drop the indexing signals.
-		await page.route('**/functions/v1/clip-public-track', (route) =>
+		await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -136,6 +142,11 @@ test.describe('/share/run/[id] — anon', () => {
 			})
 		);
 		await page.goto(`/share/run/${RUNNER_PUBLIC_RUN_ID}`);
+		// Wait for the client `load()` to resolve before asserting: the stub above
+		// is what it calls, and every assertion in this case is reachable from the
+		// server-rendered shell — so without this the case could finish with the
+		// page half-mounted and the stub never invoked.
+		await expect(page.locator('.run-meta')).toBeVisible({ timeout: 10_000 });
 
 		// Canonical + og:url are baked at load() time — assert the path
 		// tail so the test is independent of PUBLIC_SITE_URL.
@@ -182,14 +193,15 @@ test.describe('/share/run/[id] — anon', () => {
 	});
 
 	test('Sign up CTA on the anon share page lands on /login?signup=1', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		// The CTA is the only call-to-action available to an anon
 		// visitor on a public-share page. Pin the click target — a
 		// regression that wired it to a wrong route would surface
 		// here as a 404 or as the page bouncing back to the share
 		// view in a loop.
-		await page.route('**/functions/v1/clip-public-track', (route) =>
+		await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -197,13 +209,19 @@ test.describe('/share/run/[id] — anon', () => {
 			})
 		);
 		await page.goto(`/share/run/${RUNNER_PUBLIC_RUN_ID}`);
+		// Wait for the client `load()` to resolve before asserting: the stub above
+		// is what it calls, and every assertion in this case is reachable from the
+		// server-rendered shell — so without this the case could finish with the
+		// page half-mounted and the stub never invoked.
+		await expect(page.locator('.run-meta')).toBeVisible({ timeout: 10_000 });
 
 		await page.locator('a[href="/login?signup=1"]', { hasText: 'Sign up' }).click();
 		await page.waitForURL(/\/login\?signup=1/, { timeout: 10_000 });
 	});
 
 	test('anon visit to /share/run/[id] of a private run renders not-found', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		// `public_runs` view filters on is_public=true, so a private run
 		// id returns no row to anon. Pin the negative path so a
@@ -223,12 +241,21 @@ test.describe('/share/run/[id] — anon', () => {
 		});
 
 		try {
-			await page.route('**/functions/v1/clip-public-track', (route) =>
-				route.fulfill({
-					status: 200,
-					contentType: 'application/json',
-					body: JSON.stringify({ points: [] })
-				})
+			await mockRoute(
+				page,
+				'**/functions/v1/clip-public-track',
+				(route) =>
+					route.fulfill({
+						status: 200,
+						contentType: 'application/json',
+						body: JSON.stringify({ points: [] })
+					}),
+				{
+					neverFires:
+						'a private run resolves to not-found, so RunShareView never reaches the ' +
+						'track branch — an invocation means the row leaked far enough to fetch ' +
+						'its trace'
+				}
 			);
 			await page.goto(`/share/run/${plantedId}`);
 			await expect(
@@ -239,14 +266,14 @@ test.describe('/share/run/[id] — anon', () => {
 		}
 	});
 
-	test('public run loads without auth', async ({ page }) => {
+	test('public run loads without auth', async ({ page, mockRoute }) => {
 		// Stub the clip-public-track Edge Function — we don't run
 		// `supabase functions serve` alongside tests, and RunShareView
 		// calls this for non-owner viewers (decisions §33). Without
 		// the stub the await hangs and `loading` never flips off.
 		// Returning [] here is the same shape the EF returns for a
 		// run with no track in Storage (the seed shape).
-		await page.route('**/functions/v1/clip-public-track', (route) =>
+		await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -266,12 +293,12 @@ test.describe('/share/run/[id] — anon', () => {
 		await expect(page.locator('.run-meta')).toBeVisible({ timeout: 10_000 });
 	});
 
-	test('headline shows the runner caption, not the date', async ({ page }) => {
+	test('headline shows the runner caption, not the date', async ({ page, mockRoute }) => {
 		// The seeded RUNNER_PUBLIC_RUN_ID carries metadata.title
 		// "E2E demo public run". The share-page <h1> should render that
 		// caption (what the runner screenshots for social), with the run
 		// date demoted into the run-meta row — persona round-5 very-social.
-		await page.route('**/functions/v1/clip-public-track', (route) =>
+		await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -280,19 +307,24 @@ test.describe('/share/run/[id] — anon', () => {
 		);
 
 		await page.goto(`/share/run/${RUNNER_PUBLIC_RUN_ID}`);
+		// Wait for the client `load()` to resolve before asserting: the stub above
+		// is what it calls, and every assertion in this case is reachable from the
+		// server-rendered shell — so without this the case could finish with the
+		// page half-mounted and the stub never invoked.
+		await expect(page.locator('.run-meta')).toBeVisible({ timeout: 10_000 });
 
 		await expect(
 			page.getByRole('heading', { level: 1, name: 'E2E demo public run' })
 		).toBeVisible({ timeout: 10_000 });
 	});
 
-	test('zero-photo run shows no empty Photos card to an anon viewer', async ({ page }) => {
+	test('zero-photo run shows no empty Photos card to an anon viewer', async ({ page, mockRoute }) => {
 		// RunPhotos renders nothing for a non-owner when the run has no
 		// photos (persona round-5, runner-casual): an empty "Photos" card
 		// reading "No photos on this run." was noise on a public share.
 		// The seeded RUNNER_PUBLIC_RUN_ID has no run_photos rows, so the
 		// non-owner photos surface should be absent entirely.
-		await page.route('**/functions/v1/clip-public-track', (route) =>
+		await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -312,14 +344,15 @@ test.describe('/share/run/[id] — authed non-owner', () => {
 	test.use({ storageState: USER_B.storageStatePath });
 
 	test('alex sees the run + RunSocial mounts (kudos + composer)', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		// `auth.loggedIn` gates RunSocial — anon viewers see the run
 		// metadata only, authed visitors get the kudos button +
 		// comment composer too. The kudos round-trip is in
 		// cross-user/kudos.spec.ts; this test just pins that the
 		// social affordances render for an authed non-owner.
-		await page.route('**/functions/v1/clip-public-track', (route) =>
+		await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -336,13 +369,14 @@ test.describe('/share/run/[id] — authed non-owner', () => {
 	});
 
 	test('authed non-owner sees no empty Photos card on a zero-photo run', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		// Same as the anon case: an authed-but-non-owner viewer is not
 		// canManage, so RunPhotos renders nothing when the run has no
 		// photos (persona round-5, runner-casual). The seeded run has no
 		// run_photos rows.
-		await page.route('**/functions/v1/clip-public-track', (route) =>
+		await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -381,8 +415,8 @@ test.describe('/share/run/[id] — a still-running broadcast (issue #666 A2)', (
 		if (liveRunId) await deleteRun(liveRunId);
 	});
 
-	test('offers a Watch live CTA pointing at the live tracker', async ({ page }) => {
-		await page.route('**/functions/v1/clip-public-track', (route) =>
+	test('offers a Watch live CTA pointing at the live tracker', async ({ page, mockRoute }) => {
+		await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -390,14 +424,19 @@ test.describe('/share/run/[id] — a still-running broadcast (issue #666 A2)', (
 			})
 		);
 		await page.goto(`/share/run/${liveRunId}`);
+		// Wait for the client `load()` to resolve before asserting: the stub above
+		// is what it calls, and every assertion in this case is reachable from the
+		// server-rendered shell — so without this the case could finish with the
+		// page half-mounted and the stub never invoked.
+		await expect(page.locator('.run-meta')).toBeVisible({ timeout: 10_000 });
 
 		const cta = page.getByTestId('share-run-live-cta');
 		await expect(cta).toBeVisible({ timeout: 10_000 });
 		await expect(cta.locator('a')).toHaveAttribute('href', `/live/${liveRunId}`);
 	});
 
-	test('a finished run shows no live CTA', async ({ page }) => {
-		await page.route('**/functions/v1/clip-public-track', (route) =>
+	test('a finished run shows no live CTA', async ({ page, mockRoute }) => {
+		await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',

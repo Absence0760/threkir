@@ -81,8 +81,8 @@ A dedicated `e2e-test@gmail.com` test account. The actual id-token validation ha
 **What's needed:**
 - Apple Developer Program ($99/year).
 - Identifier → App ID with Sign In with Apple capability.
-- Services ID for the web (`com.yourdomain.web`).
-- Key with Sign In with Apple enabled; download the .p8.
+- Services ID for the web (`com.threkir.web`) — a separate identifier type from the App ID, with the App ID as its primary.
+- A **second** key with Sign In with Apple enabled; download the .p8. This is not the APNs key — one `.p8` per service, each downloadable once.
 - Supabase Dashboard → Authentication → Providers → Apple → Services ID + Team ID + Key ID + .p8 contents.
 
 **Status today:** Apple Sign-In button on the login page shows a "Soon" pill and the click handler surfaces a "coming soon" error message. Spec coverage of the soon-pill exists implicitly; the real flow is blocked here.
@@ -304,9 +304,12 @@ work, not a credential blocker.
 ### 10. FCM (Android) + APNs (iOS) push notifications
 
 **What's needed:**
-- Firebase project for Android.
-- Apple Developer Program + APNs auth key for iOS.
-- Supabase Auth → Notifications config.
+- A Firebase project with a `com.threkir.app` app on each platform — the two config files become repo secrets, not committed files.
+- An FCM service account (Android sends) — the config files do not sign anything.
+- Apple Developer Program + an APNs auth key (iOS sends, direct to APNs; not uploaded to Firebase).
+- A VAPID pair for browser push, whose public half has to match in two systems.
+
+Nothing here is Supabase Auth configuration — push is a consumer of the `notifications` table drained by the Go worker. The ordered runbook is [`native_push.md` § Operator provisioning](../features/native_push.md#operator-provisioning-the-credential-gate).
 
 **Status today:** `device_tokens` table rows write correctly (covered by spec); actual delivery is gated on real upstream credentials. Today there's no automated push-delivery test.
 

@@ -142,6 +142,12 @@ jobs:
           # Realtime live path; set to https://live.threkir.com once the
           # Fly live hub is deployed (apps/job_worker/deployment.md).
           PUBLIC_LIVE_HUB_URL: ${{ secrets.PUBLIC_LIVE_HUB_URL }}
+          # Optional — unset leaves the browser-push card reading "not
+          # configured" and nobody subscribes. Must be the PUBLIC half of the
+          # pair whose private half is the worker's VAPID_PRIVATE_KEY Fly
+          # secret; a mismatch means every send is signed with a key the
+          # subscription was not taken out against. docs/features/native_push.md.
+          PUBLIC_VAPID_PUBLIC_KEY: ${{ secrets.PUBLIC_VAPID_PUBLIC_KEY }}
           PUBLIC_APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: |
           cat <<EOF > apps/web/.env
@@ -154,6 +160,7 @@ jobs:
           PUBLIC_COACH_ENABLED=${PUBLIC_COACH_ENABLED}
           PUBLIC_ROUTE_GEN_ENABLED=${PUBLIC_ROUTE_GEN_ENABLED}
           PUBLIC_LIVE_HUB_URL=${PUBLIC_LIVE_HUB_URL}
+          PUBLIC_VAPID_PUBLIC_KEY=${PUBLIC_VAPID_PUBLIC_KEY}
           PUBLIC_APP_RELEASE=${PUBLIC_APP_RELEASE}
           EOF
 
@@ -174,6 +181,7 @@ jobs:
           PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: ${{ secrets.PUBLIC_REVENUECAT_WEB_CHECKOUT_URL }}
           PUBLIC_COACH_ENABLED: ${{ secrets.PUBLIC_COACH_ENABLED }}
           PUBLIC_ROUTE_GEN_ENABLED: ${{ secrets.PUBLIC_ROUTE_GEN_ENABLED }}
+          PUBLIC_VAPID_PUBLIC_KEY: ${{ secrets.PUBLIC_VAPID_PUBLIC_KEY }}
         run: node apps/web/scripts/check_production_env.mjs
 
       - run: npm run build --workspace=apps/web
@@ -185,6 +193,8 @@ jobs:
 
       - name: Bundle coach Lambda
         working-directory: apps/web
+        env:
+          APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: node lambda/coach/build.mjs
 
       - name: Bundle share-run Lambda
@@ -197,6 +207,8 @@ jobs:
         # PAGE into every share handler, 200s and 404s alike. See
         # apps/web/lambda/share-run/README.md.
         working-directory: apps/web
+        env:
+          APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: node lambda/share-run/build.mjs
 
       - name: Bundle share-route Lambda
@@ -205,6 +217,8 @@ jobs:
         # constraint — it embeds apps/web/build/200.html. See
         # apps/web/lambda/share-route/README.md.
         working-directory: apps/web
+        env:
+          APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: node lambda/share-route/build.mjs
 
       - name: Bundle share-recap Lambda
@@ -213,6 +227,8 @@ jobs:
         # Same post-build ordering constraint — it embeds
         # apps/web/build/200.html. See apps/web/lambda/share-recap/README.md.
         working-directory: apps/web
+        env:
+          APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: node lambda/share-recap/build.mjs
 
       - name: Bundle share-badge Lambda
@@ -221,6 +237,8 @@ jobs:
         # Same post-build ordering constraint — it embeds
         # apps/web/build/200.html. See apps/web/lambda/share-badge/README.md.
         working-directory: apps/web
+        env:
+          APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: node lambda/share-badge/build.mjs
 
       - name: Bundle share-entity Lambda
@@ -228,6 +246,8 @@ jobs:
         # per-request SSR. Same post-build ordering constraint — it embeds
         # apps/web/build/200.html. See apps/web/lambda/share-entity/README.md.
         working-directory: apps/web
+        env:
+          APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: node lambda/share-entity/build.mjs
 
       - name: Bundle generate-route Lambda
@@ -235,6 +255,8 @@ jobs:
         # esbuild bundle, no SPA-shell dependency. See
         # apps/web/lambda/generate-route/README.md.
         working-directory: apps/web
+        env:
+          APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: node lambda/generate-route/build.mjs
 
       - name: Bundle osrm-proxy Lambda
@@ -242,6 +264,8 @@ jobs:
         # snapping/routing (GET /api/routes/osrm/*, issue #198). Pure esbuild
         # bundle. See apps/web/lambda/osrm-proxy/README.md.
         working-directory: apps/web
+        env:
+          APP_RELEASE: web@${{ steps.env.outputs.version }}
         run: node lambda/osrm-proxy/build.mjs
 
       # ──────────────────── AWS auth via OIDC ────────────────────

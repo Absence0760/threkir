@@ -54,6 +54,7 @@ import {
 	ROUTE_DESCRIBE_BODY_LIMIT_BYTES,
 	ROUTE_REQUEST_BODY_LIMIT_BYTES,
 } from '../../../src/lib/coach/body';
+import { reportException } from '../../../src/lib/core/lambda_sentry';
 
 // The production path table, anchored — `^…$`, never `rawPath.includes(…)`.
 // A substring test matches anywhere in the path, so `/api/coach/route-describe-v2`
@@ -255,6 +256,11 @@ export const handler = awslambda.streamifyResponse<LambdaFunctionURLEvent>(
 				stack: writeErr instanceof Error ? writeErr.stack : undefined,
 			});
 		}
+		// After the envelope, not before: this is the streaming handler, so
+		// the caller is holding an open response and the flush would sit
+		// between them and their 503. The other seven return their body, so
+		// nothing can be sent ahead of the report there.
+		await reportException('coach', e);
 	}
 	},
 );

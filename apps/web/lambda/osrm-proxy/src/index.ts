@@ -22,6 +22,7 @@
 import type { LambdaFunctionURLEvent, LambdaFunctionURLResult } from 'aws-lambda';
 import { handleOsrmProxy } from '../../../src/lib/routes/osrm_proxy/handler';
 import { methodRefusal } from '../../../src/lib/core/method_gate';
+import { reportException } from '../../../src/lib/core/lambda_sentry';
 
 const PATH_PREFIX = '/api/routes/osrm';
 const ALLOWED_METHODS = ['GET'] as const;
@@ -80,6 +81,7 @@ export const handler = async (
 			message: e instanceof Error ? e.message : String(e),
 			stack: e instanceof Error ? e.stack : undefined,
 		});
+		await reportException('osrm-proxy', e);
 		return json(503, { error: 'waypoint routing is temporarily unavailable' });
 	}
 };

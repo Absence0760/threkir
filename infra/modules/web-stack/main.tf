@@ -19,6 +19,27 @@ locals {
   # 503 because ANTHROPIC_API_KEY isn't set.
   has_secrets = var.secrets_file != null && fileexists(var.secrets_file)
 
+  # Every Lambda in this module reports to the same Sentry project, so the
+  # DSN is one local rather than the same line repeated eight times. It comes
+  # from the sops file; absent -> the reporter in
+  # apps/web/src/lib/core/lambda_sentry.ts never initialises, which is the
+  # dev/CI default and the fail-closed direction.
+  #
+  # APP_RELEASE is deliberately NOT here. It identifies the artifact, not the
+  # environment, so each build.mjs bakes it into the bundle from the tag that
+  # release-web.yml passes on the bundle step. Setting it here as well would
+  # be dead config that reads as though it works: esbuild substitutes
+  # `process.env.APP_RELEASE` at compile time, so the runtime env is never
+  # consulted. It also could not have worked from this side -- terraform owns
+  # `environment`, so a CI-written value would be reverted by the next apply,
+  # and tfvars cannot know the tag.
+  #
+  # This is deliberately NOT folded into base_lambda_env: only the coach
+  # Lambda merges that, and all eight need the DSN.
+  sentry_env = merge(
+    local.has_secrets ? { for k, v in data.sops_file.secrets[0].data : k => v if k == "SENTRY_DSN" } : {},
+  )
+
   base_lambda_env = merge(
     {
       PUBLIC_SUPABASE_URL      = var.public_supabase_url
@@ -53,6 +74,7 @@ locals {
 
   lambda_env = merge(
     local.base_lambda_env,
+    local.sentry_env,
     local.has_secrets ? { for k, v in data.sops_file.secrets[0].data : k => v if contains(local.coach_secret_keys, k) } : {},
   )
 
@@ -66,6 +88,7 @@ locals {
       PUBLIC_SUPABASE_ANON_KEY = var.public_supabase_anon_key
       PUBLIC_SITE_URL          = var.public_site_url
     },
+    local.sentry_env,
   )
 
   # share-route Lambda env. Same shape + posture as the share-run env
@@ -79,6 +102,7 @@ locals {
       PUBLIC_SUPABASE_ANON_KEY = var.public_supabase_anon_key
       PUBLIC_SITE_URL          = var.public_site_url
     },
+    local.sentry_env,
   )
 
   # share-recap Lambda env. Same shape + posture as the share-run /
@@ -93,6 +117,7 @@ locals {
       PUBLIC_SUPABASE_ANON_KEY = var.public_supabase_anon_key
       PUBLIC_SITE_URL          = var.public_site_url
     },
+    local.sentry_env,
   )
 
   # share-badge Lambda env. Same shape + posture as the share-run /
@@ -107,6 +132,7 @@ locals {
       PUBLIC_SUPABASE_ANON_KEY = var.public_supabase_anon_key
       PUBLIC_SITE_URL          = var.public_site_url
     },
+    local.sentry_env,
   )
 
   # share-entity Lambda env. One HTML-only Lambda serving the six public
@@ -120,6 +146,7 @@ locals {
       PUBLIC_SUPABASE_ANON_KEY = var.public_supabase_anon_key
       PUBLIC_SITE_URL          = var.public_site_url
     },
+    local.sentry_env,
   )
 
   # generate-route Lambda env. Engine URLs (GRAPH_CYCLE_URL + GRAPHHOPPER_URL)
@@ -143,6 +170,7 @@ locals {
     var.graph_cycle_url != "" ? { GRAPH_CYCLE_URL = var.graph_cycle_url } : {},
     var.graphhopper_url != "" ? { GRAPHHOPPER_URL = var.graphhopper_url } : {},
     local.has_secrets ? { for k, v in data.sops_file.secrets[0].data : k => v if k == "GRAPHHOPPER_API_KEY" || k == "GRAPH_CYCLE_API_KEY" } : {},
+    local.sentry_env,
   )
 
   # osrm-proxy Lambda env. OSRM_URL is a non-secret internal engine URL passed
@@ -158,6 +186,7 @@ locals {
       PUBLIC_SUPABASE_ANON_KEY = var.public_supabase_anon_key
     },
     var.osrm_url != "" ? { OSRM_URL = var.osrm_url } : {},
+    local.sentry_env,
   )
 }
 

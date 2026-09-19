@@ -139,7 +139,7 @@ Each spend vector carries at least two independent caps — one in IaC, one (whe
 - **CloudWatch log retention** — every log group sets `retention_in_days` ≤ 90 (default "Never expire" is $0.50/GB/month forever).
 - **S3 lifecycle** — non-current versions expire at 30 d, incomplete multipart uploads abort at 7 d (prevents version-history cost ramp).
 - **Coach per-user cap** — `TIER_LIMITS.free.dailyLimit` in [`apps/web/src/lib/coach/types.ts`](../../apps/web/src/lib/coach/types.ts) caps free at 2 messages/UTC-day, server-enforced before any Anthropic call. Pro is daily-uncapped but each turn is capped at `maxTokens = 2048`.
-- **Anthropic console spend limit** — **MUST be set manually** at https://console.anthropic.com/settings/limits — code cannot enforce a provider-side ceiling on a key that's leaked from a sops file. The recommended floor is ~2× the projected monthly Anthropic spend (~$30/mo at launch baseline, so $60–$100 cap).
+- **Anthropic console spend limit** — **MUST be set manually** at https://console.anthropic.com/settings/limits — code cannot enforce a provider-side ceiling on a key that's leaked from a sops file. The recommended floor is ~2× the projected monthly Anthropic spend (~$30/mo at launch baseline, so $60–$100 cap). **Set by hand 2026-09-18.** Nothing in this repo can confirm that — re-verifying it means opening the console, so treat the date as the record.
 - **Supabase egress alert** — **MUST be set manually** in Supabase project settings. Code cannot enforce a daily-egress ceiling at the provider level.
 
 The full audit + arch-guard tests covering each ceiling live in [`apps/web/src/lib/infra_guards.test.ts`](../../apps/web/src/lib/infra_guards.test.ts) under the "audit:cost-controls" section.
@@ -183,7 +183,7 @@ missing S3 key, i.e. a 403 — and its cost is that **a refusal from any origin
 reaches the caller as `200 text/html`**. No status-code check can tell that from
 a working endpoint, which is how a malformed request read as a production outage
 in September 2026 and produced a merged fix for a bug that did not exist (#938,
-reverted by #941; [decisions § 1657](../architecture/decisions.md)).
+reverted by #941; [decisions § 1664](../architecture/decisions.md)).
 
 `bin/preview-status.sh <env>` step 2 runs
 [`scripts/probe_api_content_type.mjs`](../../scripts/probe_api_content_type.mjs),
@@ -455,7 +455,7 @@ image with the same bug, and both levers that would turn the check green
 
 **Operator action: re-run the failed job.** Do not treat it as the branch's
 failure and do not chase it as a flaky test.
-[decisions § 1656](../architecture/decisions.md) holds the evidence and the
+[decisions § 1663](../architecture/decisions.md) holds the evidence and the
 one-command check that says when the pin can move.
 
 ## Release vs deploy

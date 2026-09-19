@@ -242,7 +242,7 @@ class ImportFailureGroup {
 /// Total order on two reason identifiers, in UTF-16 code units — the one
 /// ordering both runtimes hold. [String.compareTo] is all Dart has; web used
 /// to ask `localeCompare`, so the summary line's order was a property of the
-/// reader's browser rather than of the reasons (decisions § 1658).
+/// reader's browser rather than of the reasons (decisions § 1665).
 int compareImportFailureReasons(String a, String b) {
   final c = a.compareTo(b);
   return c == 0 ? 0 : (c < 0 ? -1 : 1);

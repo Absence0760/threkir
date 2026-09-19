@@ -154,7 +154,7 @@ export function recordImportFailure(
 /// ICU data instead, so the summary line's order was a property of the
 /// reader's browser rather than of the reasons: a Hawaiian collation files the
 /// vowel-initial `unknown` and `unparseable` ahead of every consonant-initial
-/// reason, over the seven that already exist (decisions § 1658).
+/// reason, over the seven that already exist (decisions § 1665).
 export function compareImportFailureReasons(a: string, b: string): number {
 	if (a === b) return 0;
 	return a < b ? -1 : 1;

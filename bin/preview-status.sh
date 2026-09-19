@@ -107,7 +107,7 @@ step "2/5 — every API behaviour answers application/json"
 # The check that a status code cannot make. This one derives the `/api/*`
 # cache behaviours from infra/modules/web-stack/main.tf and asserts the
 # content type of each, because the distribution's 403 → 200 /200.html
-# mapping turns any origin refusal into a healthy-looking HTML 200 (decisions § 1657).
+# mapping turns any origin refusal into a healthy-looking HTML 200 (decisions § 1664).
 need_cmd node
 # Captured rather than piped: `cmd | sed` reports sed's status, and this
 # script's verdict must be the probe's.

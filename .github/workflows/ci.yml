@@ -1711,7 +1711,7 @@ jobs:
     #                            would leave `bin/preview-status.sh` reporting
     #                            success having tested nothing. The network
     #                            half needs a deployed env and does not run
-    #                            here (§ 1657).
+    #                            here (§ 1664).
     #   check_infra_coverage.mjs every Terraform directory validated and
     #                            dependency-tracked, no Terraform at all outside
     #                            infra/ (where the path filter, the stack matrix
@@ -1765,7 +1765,7 @@ jobs:
         run: |
           if ! node scripts/probe_api_content_type.mjs --derive; then
             echo "::error::The operator probe can no longer derive the distribution's /api/* cache behaviours, so bin/preview-status.sh would report success having probed nothing. Nothing here is about IAM scope, error responses or alarm coverage; those are the other checks in this job."
-            echo "The failing line above says whether the distribution went unread or an API behaviour allows no probeable method. decisions § 1657 is why this probe asserts content-type rather than status."
+            echo "The failing line above says whether the distribution went unread or an API behaviour allows no probeable method. decisions § 1664 is why this probe asserts content-type rather than status."
             exit 1
           fi
           if ! node --test scripts/probe_api_content_type.test.mjs; then

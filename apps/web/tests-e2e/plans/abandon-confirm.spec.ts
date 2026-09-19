@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { USER_A } from '../fixtures/users';
 
@@ -56,9 +56,9 @@ test.describe('/plans abandon confirm', () => {
 		await expect(dialog).toBeVisible();
 	});
 
-	test('double-clicking confirm fires the mutation only once', async ({ page }) => {
+	test('double-clicking confirm fires the mutation only once', async ({ page, mockRoute }) => {
 		let patchCount = 0;
-		await page.route(PATCH, async (route) => {
+		await mockRoute(page, PATCH, async (route) => {
 			if (route.request().method() === 'PATCH') {
 				patchCount += 1;
 				// Hold the response so the button stays in-flight across

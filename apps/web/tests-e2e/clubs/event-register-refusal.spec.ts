@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
+import type { MockRoute } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteEvent, insertEvent } from '../fixtures/simulate';
@@ -88,6 +89,7 @@ test.describe('paid registration — what a refusal tells the buyer', () => {
 
 	/// Plant a priced event and stub the checkout function's answer.
 	async function pricedEventRefusing(
+		mockRoute: MockRoute,
 		page: import('@playwright/test').Page,
 		status: number,
 		code: string,
@@ -105,7 +107,7 @@ test.describe('paid registration — what a refusal tells the buyer', () => {
 		created.push(id);
 		cleanups.push(await priceEvent(USER_A.id, id));
 
-		await page.route('**/functions/v1/events-checkout', async (route) => {
+		await mockRoute(page, '**/functions/v1/events-checkout', async (route) => {
 			await route.fulfill({
 				status,
 				contentType: 'application/json',
@@ -121,24 +123,25 @@ test.describe('paid registration — what a refusal tells the buyer', () => {
 	const toast = (page: import('@playwright/test').Page) =>
 		page.locator('[role="alert"], [role="status"]').filter({ hasText: /./ });
 
-	test('a seat taken between render and click reads as sold out', async ({ page }) => {
-		await pricedEventRefusing(page, 409, 'event_full');
+	test('a seat taken between render and click reads as sold out', async ({ page, mockRoute }) => {
+		await pricedEventRefusing(mockRoute, page, 409, 'event_full');
 		await expect(page.getByText('Sold out')).toBeVisible({ timeout: 10_000 });
 		await expect(toast(page).filter({ hasText: /non-2xx|Edge Function/ })).toHaveCount(0);
 	});
 
 	test('a sales window that closed during the click reads as registration closed', async ({
 		page,
+		mockRoute
 	}) => {
-		await pricedEventRefusing(page, 409, 'sales_closed');
+		await pricedEventRefusing(mockRoute, page, 409, 'sales_closed');
 		await expect(page.getByText('Registration closed')).toBeVisible({ timeout: 10_000 });
 		await expect(toast(page).filter({ hasText: /non-2xx|Edge Function/ })).toHaveCount(0);
 	});
 
-	test('a host who cannot take payment is named as such, not as "try again"', async ({ page }) => {
+	test('a host who cannot take payment is named as such, not as "try again"', async ({ page, mockRoute }) => {
 		// Retrying cannot fix this one, so the generic "please try again" is
 		// the wrong sentence as surely as the internal one is.
-		await pricedEventRefusing(page, 409, 'host_cannot_take_payment');
+		await pricedEventRefusing(mockRoute, page, 409, 'host_cannot_take_payment');
 		await expect(page.getByText(/host can't take payments/i)).toBeVisible({ timeout: 10_000 });
 		await expect(toast(page).filter({ hasText: /non-2xx|Edge Function|try again/ })).toHaveCount(
 			0,
@@ -147,8 +150,9 @@ test.describe('paid registration — what a refusal tells the buyer', () => {
 
 	test('an unrecognised failure falls back to the generic retry copy, never the internal string', async ({
 		page,
+		mockRoute
 	}) => {
-		await pricedEventRefusing(page, 500, 'checkout_failed');
+		await pricedEventRefusing(mockRoute, page, 500, 'checkout_failed');
 		await expect(page.getByText('Could not start checkout. Please try again.')).toBeVisible({
 			timeout: 10_000,
 		});
@@ -157,8 +161,9 @@ test.describe('paid registration — what a refusal tells the buyer', () => {
 
 	test('the register button is released so the buyer can act on what they were told', async ({
 		page,
+		mockRoute
 	}) => {
-		await pricedEventRefusing(page, 500, 'checkout_failed');
+		await pricedEventRefusing(mockRoute, page, 500, 'checkout_failed');
 		await expect(page.getByTestId('register-cta')).toBeEnabled({ timeout: 10_000 });
 	});
 });

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { USER_A } from '../fixtures/users';
 
@@ -26,10 +26,11 @@ test.describe('/routes/new — AI route request', () => {
 	}
 
 	test('a successful extraction fills the generator form + shows what was applied', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		let called = false;
-		await page.route('**/api/coach/route-request', async (route) => {
+		await mockRoute(page, '**/api/coach/route-request', async (route) => {
 			called = true;
 			await route.fulfill({
 				status: 200,
@@ -72,12 +73,13 @@ test.describe('/routes/new — AI route request', () => {
 	});
 
 	test('an extracted preference drives the control, and outranks avoidHighways', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		// The current server derives `preference` itself, so this is the live
 		// path; a body carrying both must follow the narrower field, or a
 		// request for a scenic route silently becomes a request for a quiet one.
-		await page.route('**/api/coach/route-request', async (route) => {
+		await mockRoute(page, '**/api/coach/route-request', async (route) => {
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',

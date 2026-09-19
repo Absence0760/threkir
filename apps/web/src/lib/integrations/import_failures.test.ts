@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import {
 	classifyImportFailure,
+	compareImportFailureReasons,
 	groupImportFailures,
 	importFailureReportCsv,
 	MAX_RECORDED_IMPORT_FAILURES,
@@ -175,6 +176,21 @@ test('grouping orders by count then reason', () => {
 		{ reason: 'auth', count: 1 },
 		{ reason: 'unparseable', count: 1 },
 	]);
+});
+
+test('reasons order by code unit, the only ordering the phone can reproduce', () => {
+	assert.equal(compareImportFailureReasons('auth', 'network'), -1);
+	assert.equal(compareImportFailureReasons('unknown', 'unknown'), 0);
+	// An eighth reason is where the vocabulary starts depending on the
+	// instrument. `no_track` against `notrack` is the underscore deciding, and
+	// `http_4xx` against `http4xx` is where the two instruments actually part:
+	// CLDR files punctuation before digits, UTF-16 files it after them.
+	assert.equal(compareImportFailureReasons('no_track', 'notrack'), -1);
+	assert.equal(compareImportFailureReasons('http_4xx', 'http4xx'), 1);
+	assert.ok(
+		'http_4xx'.localeCompare('http4xx') < 0,
+		'fixture no longer separates a collation from a code-unit order on this host',
+	);
 });
 
 test('grouping an empty log yields no rows', () => {

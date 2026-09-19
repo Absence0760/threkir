@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A, USER_B } from '../fixtures/users';
@@ -43,7 +43,8 @@ test.describe('/messages — direct messages', () => {
 	});
 
 	test('a failed thread-list load surfaces a retry instead of "no conversations"', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		// Pin the unswallowed-failure contract: a transient dm_threads RPC
 		// failure must render the error + Retry state, NOT the empty-inbox
@@ -51,7 +52,7 @@ test.describe('/messages — direct messages', () => {
 		// when fetchDmThreads returned [] on error). First call 500s, the
 		// retry goes through.
 		let failedOnce = false;
-		await page.route('**/rest/v1/rpc/dm_threads*', async (route) => {
+		await mockRoute(page, '**/rest/v1/rpc/dm_threads*', async (route) => {
 			if (!failedOnce) {
 				failedOnce = true;
 				await route.fulfill({
@@ -75,14 +76,14 @@ test.describe('/messages — direct messages', () => {
 		await expect(errorNote).toHaveCount(0, { timeout: 10_000 });
 	});
 
-	test('a failed thread load surfaces a retry instead of a stale/empty pane', async ({ page }) => {
+	test('a failed thread load surfaces a retry instead of a stale/empty pane', async ({ page, mockRoute }) => {
 		// Pin the openThread unswallowed-failure contract: a transient
 		// direct_messages select failure must render the error + Retry
 		// state, NOT leave the user on the previous conversation (or the
 		// "no messages yet" copy) with no sign anything broke. First call
 		// 500s, the retry goes through.
 		let failedOnce = false;
-		await page.route('**/rest/v1/direct_messages*', async (route) => {
+		await mockRoute(page, '**/rest/v1/direct_messages*', async (route) => {
 			if (route.request().method() === 'GET' && !failedOnce) {
 				failedOnce = true;
 				await route.fulfill({

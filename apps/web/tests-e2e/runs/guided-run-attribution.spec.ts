@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteRun, insertRun } from '../fixtures/simulate';
@@ -130,11 +130,11 @@ test.describe('/runs/[id] — guided-run attribution', () => {
 	test.describe('non-owner', () => {
 		test.use({ storageState: USER_B.storageStatePath });
 
-		test('a public run carrying the key shows no chip to another runner', async ({ page }) => {
+		test('a public run carrying the key shows no chip to another runner', async ({ page, mockRoute }) => {
 			// The non-owner branch mounts RunShareView, whose track comes
 			// through the clip-public-track Edge Function; stub it so the spec
 			// doesn't depend on a planted Storage blob.
-			await page.route('**/functions/v1/clip-public-track', (route) =>
+			await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
 				route.fulfill({
 					status: 200,
 					contentType: 'application/json',

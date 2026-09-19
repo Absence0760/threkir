@@ -125,13 +125,11 @@
 		margin-inline-start: auto;
 	}
 	.undo-action {
-		/* 44 px floor — the same tap-target minimum comment-tap-targets.spec
-		   polices on the row buttons that open this bar. */
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		min-inline-size: 44px;
-		min-block-size: 44px;
+		min-inline-size: var(--tap-target-min);
+		min-block-size: var(--tap-target-min);
 		padding: var(--space-xs) var(--space-sm);
 		border: none;
 		border-radius: var(--radius-sm);
@@ -149,8 +147,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		min-inline-size: 44px;
-		min-block-size: 44px;
+		min-inline-size: var(--tap-target-min);
+		min-block-size: var(--tap-target-min);
 		border: none;
 		border-radius: var(--radius-sm);
 		background: transparent;

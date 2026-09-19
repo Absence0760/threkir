@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { switchRunsToAllTime } from '../fixtures/helpers';
 import {
@@ -135,15 +135,24 @@ test.describe('anonymous walls', () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test('anon /share/run/<private-id> shows not-found, not the run', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		// Stub the EF — same reason as the other share/run tests.
-		await page.route('**/functions/v1/clip-public-track', (route) =>
-			route.fulfill({
-				status: 200,
-				contentType: 'application/json',
-				body: JSON.stringify({ points: [] })
-			})
+		await mockRoute(
+			page,
+			'**/functions/v1/clip-public-track',
+			(route) =>
+				route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify({ points: [] })
+				}),
+			{
+				neverFires:
+					'a private run resolves to not-found before RunShareView reaches the track ' +
+					'branch, so an invocation means the row leaked far enough to fetch its trace'
+			}
 		);
 
 		await page.goto(`/share/run/${ALEX_PRIVATE_RUN_ID}`);

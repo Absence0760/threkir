@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
+import type { MockRoute } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_B } from '../fixtures/users';
@@ -45,11 +46,12 @@ test.describe('/settings/integrations — Strava sync refusals', () => {
 	});
 
 	async function syncWith(
+		mockRoute: MockRoute,
 		page: import('@playwright/test').Page,
 		status: number,
 		body: unknown,
 	): Promise<void> {
-		await page.route('**/functions/v1/strava-import', async (route) => {
+		await mockRoute(page, '**/functions/v1/strava-import', async (route) => {
 			await route.fulfill({
 				status,
 				contentType: 'application/json',
@@ -62,8 +64,8 @@ test.describe('/settings/integrations — Strava sync refusals', () => {
 		await card.getByRole('button', { name: /Sync/i }).click();
 	}
 
-	test('a build with no Strava keys names that, not the invoke internals', async ({ page }) => {
-		await syncWith(page, 503, { error: 'strava_not_configured' });
+	test('a build with no Strava keys names that, not the invoke internals', async ({ page, mockRoute }) => {
+		await syncWith(mockRoute, page, 503, { error: 'strava_not_configured' });
 
 		const toast = page.locator('.toast').first();
 		await expect(toast).toBeVisible({ timeout: 10_000 });
@@ -73,11 +75,12 @@ test.describe('/settings/integrations — Strava sync refusals', () => {
 
 	test('a revoked connection reports the refusal code, not the invoke internals', async ({
 		page,
+		mockRoute
 	}) => {
 		// `refresh_failed` is what the function returns when Strava rejects
 		// the stored refresh token — the runner has to reconnect, and a
 		// sentence that cannot distinguish that from an outage cannot say so.
-		await syncWith(page, 502, { error: 'refresh_failed' });
+		await syncWith(mockRoute, page, 502, { error: 'refresh_failed' });
 
 		const toast = page.locator('.toast').first();
 		await expect(toast).toBeVisible({ timeout: 10_000 });
@@ -87,10 +90,11 @@ test.describe('/settings/integrations — Strava sync refusals', () => {
 
 	test('a refusal with an unreadable body still avoids the invoke internals in the slot', async ({
 		page,
+		mockRoute
 	}) => {
 		// Fail-closed on the unwrap: no envelope to read must not put the
 		// internal sentence back in front of the runner.
-		await syncWith(page, 500, 'not json at all');
+		await syncWith(mockRoute, page, 500, 'not json at all');
 
 		const toast = page.locator('.toast').first();
 		await expect(toast).toBeVisible({ timeout: 10_000 });
@@ -125,8 +129,8 @@ test.describe('/settings/integrations — Strava sync refusals', () => {
 		await expect(card).toHaveClass(/connected/);
 	});
 
-	test('the Sync button is released after a refusal', async ({ page }) => {
-		await syncWith(page, 503, { error: 'strava_not_configured' });
+	test('the Sync button is released after a refusal', async ({ page, mockRoute }) => {
+		await syncWith(mockRoute, page, 503, { error: 'strava_not_configured' });
 		const card = page.locator('.integration-card', { hasText: 'Strava' });
 		await expect(card.getByRole('button', { name: /Sync/i })).toBeEnabled({ timeout: 10_000 });
 	});

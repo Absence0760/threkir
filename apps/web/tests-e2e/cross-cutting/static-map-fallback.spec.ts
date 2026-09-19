@@ -1,4 +1,6 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
+import type { MockRoute } from '../fixtures/mock-route';
+import type { Page } from '@playwright/test';
 
 import { deleteRun, insertRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
@@ -29,7 +31,7 @@ import { USER_A } from '../fixtures/users';
 
 const MAPTILER_HOST = 'api.maptiler.com';
 
-async function simulateStaticMapOutage(page: Page): Promise<{ aborted: () => number }> {
+async function simulateStaticMapOutage(mockRoute: MockRoute, page: Page): Promise<{ aborted: () => number }> {
 	let aborted = 0;
 	await page.addInitScript(() => {
 		localStorage.setItem(
@@ -48,7 +50,7 @@ async function simulateStaticMapOutage(page: Page): Promise<{ aborted: () => num
 			}
 		});
 	});
-	await page.route(
+	await mockRoute(page, 
 		(url) => url.hostname === MAPTILER_HOST,
 		async (route) => {
 			aborted++;
@@ -82,8 +84,8 @@ function straightTrack() {
 test.describe('static map outage falls back to the SVG track preview', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
-	test('/routes cards draw the track when the map image fails', async ({ page }) => {
-		const outage = await simulateStaticMapOutage(page);
+	test('/routes cards draw the track when the map image fails', async ({ page, mockRoute }) => {
+		const outage = await simulateStaticMapOutage(mockRoute, page);
 		await page.goto('/routes');
 		const cards = page.locator('.route-card');
 		await expect(cards.first()).toBeVisible();
@@ -95,7 +97,8 @@ test.describe('static map outage falls back to the SVG track preview', () => {
 	});
 
 	test('/runs cards and the run share card fall back when the map image fails', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		const runId = await insertRun({
 			user_id: USER_A.id,
@@ -104,7 +107,7 @@ test.describe('static map outage falls back to the SVG track preview', () => {
 			track: straightTrack()
 		});
 		try {
-			const outage = await simulateStaticMapOutage(page);
+			const outage = await simulateStaticMapOutage(mockRoute, page);
 			await page.goto('/runs');
 			const card = page.locator(`a.run-card[href="/runs/${runId}"]`);
 			await expect(card).toBeVisible();

@@ -144,37 +144,70 @@ None of this is secret — it is account metadata, so Bitwarden, not a sops entr
 wanted at step 6 (the Firebase upload). If Membership details is being awkward,
 carry on to step 2 and come back.
 
+## Where steps 2–7 happen
+
+All five live in one place: **developer.apple.com/account** → **Certificates,
+Identifiers & Profiles** (under *Program resources* on the landing page, or
+straight to <https://developer.apple.com/account/resources>).
+
+Every one starts the same way — **Identifiers** (or **Keys**) in the **sidebar**,
+then the **add button (+)** on the **top left**. On an Individual membership
+you are the Account Holder, which is the role these pages require.
+
+Two navigation notes that save a hunt:
+
+- The Identifiers list shows **App IDs** by default. To see Services IDs or App
+  Groups you already made, use the **pop-up menu on the top right** of the list.
+- Capabilities may be split across **Capabilities** and **App Services** tabs.
+  Everything this runbook asks for is under **Capabilities**.
+
 ## 2. App Group
 
-**Identifiers** → **(+)** → **App Groups** → Continue.
+**Identifiers** → **(+)** → select **App Groups** → **Continue**.
 
 | Field | Value |
 |---|---|
 | Description | `Threkir active run` |
 | Identifier | `group.com.threkir.app.activerun` |
 
-First, because an App Group is a separate identifier type and cannot be ticked
-on an App ID that does not already have it registered. The id is **not**
-`group.com.threkir.app` — the canonical spelling lives in
+**Continue** → **Register**.
+
+The `group.` prefix is required by Apple and is part of the identifier, not a
+label. This is first because an App Group is its own identifier type and
+**cannot be created from inside the App ID screen** — step 3's App Groups
+checkbox can only select a group that already exists.
+
+The id is **not** `group.com.threkir.app`. The canonical spelling lives in
 [`ActiveRunBridge.swift`](../../apps/watch_ios/WatchApp/ActiveRunBridge.swift)
-and a mismatch silently shares nothing.
+and is declared in `WatchApp.entitlements`; a mismatch compiles, installs, and
+silently shares nothing between the phone and the watch.
 
 ## 3. App ID `com.threkir.app`
 
-**Identifiers** → **(+)** → **App IDs** → **App** → Continue.
+**Identifiers** → **(+)** → select **App IDs** → **Continue** → the type screen
+has **App** preselected → **Continue**.
 
 | Field | Value |
 |---|---|
 | Description | `Threkir` |
-| Bundle ID | **Explicit** — `com.threkir.app` |
+| Bundle ID | select **Explicit App ID**, then enter `com.threkir.app` |
 
-Capabilities to tick:
+**Explicit**, not Wildcard: Push Notifications, Sign in with Apple and App
+Groups all require an explicit App ID, and their checkboxes are **disabled**
+under a wildcard — which reads as "not available to my membership" rather than
+"wrong radio button".
 
-- **HealthKit** — leave *Clinical Health Records* off; we read workouts, not records.
+Tick, under **Capabilities**:
+
+- **HealthKit** — leave *Clinical Health Records* off. We read workouts, not records.
 - **Push Notifications**
-- **Sign in with Apple** → **Configure** → *Enable as a primary App ID* → Save.
-  This is what step 5's Services ID and step 7's key both attach to.
-- **App Groups** → **Configure** → select the group from step 2.
+- **Sign in with Apple** → the row grows a **Configure** button → choose
+  **Enable as a primary App ID** → **Save**. Step 5's Services ID and step 7's
+  key both attach to this App ID as their primary; if it is not primary, neither
+  will list it.
+- **App Groups** → **Configure** → select `group.com.threkir.app.activerun` →
+  **Continue**. **Ticking the box alone assigns nothing** — the group has to be
+  chosen in that modal.
 
 Do **not** tick:
 
@@ -182,74 +215,104 @@ Do **not** tick:
   `Info.plist`'s `UIBackgroundModes`, already committed and guard-enforced by
   `scripts/check_ios_native_declarations.mjs`
   ([decisions § 742](../architecture/decisions.md)).
-- **Maps** — `com.apple.developer.maps` registers a *routing* app that
-  publishes directions coverage. The watch mini-map draws our own polyline
-  through MapKit and needs no capability.
+- **Maps** — `com.apple.developer.maps` registers a *routing* app that publishes
+  directions coverage. The watch mini-map draws our own polyline through MapKit
+  and needs no capability.
+
+**Continue** → review → **Register**.
 
 ## 4. Watch App ID
 
-Same flow. Bundle ID `com.threkir.app.watchapp`, Explicit. Capabilities:
-**HealthKit** and **App Groups** (the same group). This is the side that
-actually declares the group today.
+Same flow as step 3.
+
+| Field | Value |
+|---|---|
+| Description | `Threkir Watch App` |
+| Bundle ID | **Explicit App ID** — `com.threkir.app.watchapp` |
+
+Capabilities: **HealthKit** and **App Groups** (Configure → the same group).
+Nothing else — the watch does not sign in or receive its own pushes. This is
+the side that actually declares the group today; the phone's
+`Runner.entitlements` carries no app-group entitlement yet.
 
 ## 5. Services ID `com.threkir.web`
 
-The web half of Sign in with Apple, and a **different identifier type** from
-the App ID — which is why it cannot be a checkbox on one.
+The web half of Sign in with Apple, and a **separate identifier type** from the
+App ID — which is why it is not a checkbox on one.
 
-**Identifiers** → the type dropdown at the top right → **Services IDs** →
-**(+)** → Continue.
+**Identifiers** → **(+)** → select **Services IDs** → **Continue**.
 
 | Field | Value |
 |---|---|
 | Description | `Threkir web` |
 | Identifier | `com.threkir.web` |
 
-Register it, then **click it again** — the configuration only appears on an
-existing Services ID. Tick **Sign in with Apple** → **Configure**:
+**Continue** → **Register**.
+
+**Now click it again in the list** (Services IDs are hidden behind the pop-up
+menu at the top right). The configuration only exists on an already-registered
+Services ID — this is the step people miss, because registering it looks
+finished.
+
+Tick **Sign in with Apple** → **Configure**. In the modal:
 
 | Field | Value |
 |---|---|
 | Primary App ID | `com.threkir.app` (step 3) |
-| Domains and Subdomains | `<project-ref>.supabase.co` |
-| Return URLs | `https://<project-ref>.supabase.co/auth/v1/callback` |
+| Website URLs → Domains and Subdomains | `<project-ref>.supabase.co` |
+| Website URLs → Return URLs | `https://<project-ref>.supabase.co/auth/v1/callback` |
 
-`<project-ref>` is the subdomain in your Supabase dashboard URL.
+Both are comma-delimited lists; one entry each is right here. `<project-ref>`
+is the subdomain in your Supabase dashboard URL.
 
-**The return URL is Supabase's, not ours.** The browser is redirected to Apple
-and back to GoTrue, which mints the session; our own origin never receives the
-Apple callback. Two consequences worth knowing before they surprise you:
+**Done** → **Continue** → **Save**.
 
-- **Apple refuses `http://` outright**, so there is no localhost entry and the
-  local stack cannot exercise this flow. That is why
-  `PUBLIC_APPLE_AUTH_ENABLED` stays unset in `.env.development` while the
-  Google flag is on — see [`web_app_auth.md`](../features/web_app_auth.md).
+**The return URL is Supabase's, not ours.** The browser goes to Apple and back
+to GoTrue, which mints the session; our own origin never receives the Apple
+callback. Two consequences:
+
+- **Apple refuses `http://`**, so there is no localhost entry and no local stack
+  can exercise this flow. That is why `PUBLIC_APPLE_AUTH_ENABLED` stays unset in
+  `.env.development` while the Google flag is on —
+  see [`web_app_auth.md`](../features/web_app_auth.md).
 - **You should not be asked to verify a domain here.** Apple's
   `apple-developer-domain-association.txt` check applies to domains *you*
-  control, and this one is Supabase's. If Apple demands verification, you have
-  entered `threkir.com` instead — which would additionally fail, because our
-  www→apex 301 and the CloudFront behaviours mean a `.well-known` path is not
-  guaranteed to answer 200 `text/plain` with no redirect, and Apple rejects all
-  three. Step 10 is the one place `threkir.com` legitimately appears.
-
-Save → Continue → Save.
+  control, and this one is Supabase's. If Apple demands verification you have
+  entered `threkir.com` — which would also fail, because our www→apex 301 and
+  the CloudFront behaviours do not guarantee a `.well-known` path answering 200
+  `text/plain` with no redirect, and Apple rejects all three. Step 10 is the one
+  place `threkir.com` legitimately appears.
 
 ## 6. APNs key → Firebase
 
-**Keys** → **(+)**.
+**Keys** in the sidebar → **(+)**.
 
 | Field | Value |
 |---|---|
 | Key Name | `Threkir APNs` |
-| Services | tick **Apple Push Notifications service (APNs)** only |
+| Services | tick **Apple Push Notification service (APNs)** — and nothing else |
 
-Register, then **Download** — once. Record the **Key ID** (10 chars) shown on
-the same page; you need it in a moment. Apple caps an account at two APNs keys,
-so do not create spares.
+Then click **Configure** next to APNs. Two choices, and both matter:
+
+- **Key Type: Team Scoped.** Topic Specific binds the key to named bundle ids,
+  which buys nothing here and breaks the day a second app is added. Firebase
+  expects a team-scoped key.
+- **Environment: the option covering both Sandbox and Production.** If forced to
+  pick one, pick the one that includes Production. A `development`-signed build
+  mints a token only the sandbox host accepts, and a TestFlight build only the
+  production host — and FCM routes each token to the right host on its own, so
+  the key must be able to serve both.
+
+**Continue** → review → **Confirm** → **Download**.
+
+Record the **Key ID** (10 characters) from the key's page. **The Download
+button works once** — the key is not stored in your account, and a disabled
+Download button means it was already downloaded. If you lose it, revoke and
+make a new one.
 
 Then, in the **Firebase** console — *not* Fly, and not the worker:
 
-**Project settings** → **Cloud Messaging** → the **iOS app** card → **APNs
+**Project settings** → **Cloud Messaging** tab → the **iOS app** card → **APNs
 authentication key** → **Upload**. Supply the `.p8`, the **Key ID**, and the
 **Team ID** from step 1.
 
@@ -257,24 +320,23 @@ authentication key** → **Upload**. Supply the `.p8`, the **Key ID**, and the
 register an FCM registration token, and a direct APNs POST addresses a
 different kind of token entirely — the mismatch that made every iOS push report
 success while arriving nowhere
-([decisions § 1677](../architecture/decisions.md)). One upload also removes the
-sandbox/production problem: a `development`-signed build mints a token the
-production APNs host rejects and vice versa, and the worker could only ever
-hold one setting for the whole fleet. FCM reads each token's own environment.
-What still has to match the build is the `aps-environment` entitlement, which
-the pbxproj pins per configuration ([decisions § 742](../architecture/decisions.md)).
+([decisions § 1677](../architecture/decisions.md)). What still has to match the
+build is the `aps-environment` entitlement, which the pbxproj pins per
+configuration ([decisions § 742](../architecture/decisions.md)).
 
 ## 7. Sign-in-with-Apple key
 
-**Keys** → **(+)** again — a **second, separate key**.
+**Keys** → **(+)** again — a **second, separate key**. Do not add Sign in with
+Apple to the key from step 6: Firebase and Supabase hold these separately, and
+one file cannot be downloaded twice.
 
 | Field | Value |
 |---|---|
 | Key Name | `Threkir Sign in with Apple` |
-| Services | tick **Sign in with Apple** → **Configure** → Primary App ID `com.threkir.app` → Save |
+| Services | tick **Sign in with Apple** → **Configure** → Primary App ID `com.threkir.app` → **Save** |
 
-Register, Download, record its **Key ID**. This one goes to Supabase (step 9),
-never to Firebase.
+**Continue** → **Confirm** → **Download**. Record this **Key ID** too — it is a
+different 10 characters from the APNs one, and step 9 wants this one.
 
 ## 8. Back both `.p8` files up
 

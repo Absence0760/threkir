@@ -25,6 +25,7 @@
 		A1B2C3D4E5F60001000A0030 /* GpsHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0030 /* GpsHealth.swift */; };
 		A1B2C3D4E5F60001000A0007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0007 /* Assets.xcassets */; };
 		A1B2C3D4E5F60001000A0010 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0010 /* Localizable.xcstrings */; };
+		A1B2C3D4E5F60001000A0016 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0016 /* InfoPlist.xcstrings */; };
 		A1B2C3D4E5F60001000A0008 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60003000A0001 /* HealthKit.framework */; };
 		A1B2C3D4E5F60001000A0009 /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60003000A0002 /* CoreLocation.framework */; };
 		A1B2C3D4E5F60001000A000A /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60003000A0003 /* WatchConnectivity.framework */; };
@@ -62,6 +63,7 @@
 		A1B2C3D4E5F60002000A000B /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000A000F /* ActiveRunBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveRunBridge.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000A0010 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000A0016 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000A0011 /* RunFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunFormat.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000A0012 /* ArmedRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArmedRoute.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000A000C /* WatchApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WatchApp.entitlements; sourceTree = "<group>"; };
@@ -176,6 +178,7 @@
 				A1B2C3D4E5F60002000A000F /* ActiveRunBridge.swift */,
 				A1B2C3D4E5F60002000A0011 /* RunFormat.swift */,
 				A1B2C3D4E5F60002000A0010 /* Localizable.xcstrings */,
+				A1B2C3D4E5F60002000A0016 /* InfoPlist.xcstrings */,
 				A1B2C3D4E5F60002000A0007 /* Assets.xcassets */,
 				A1B2C3D4E5F60002000A0008 /* Info.plist */,
 				A1B2C3D4E5F60002000A000C /* WatchApp.entitlements */,
@@ -310,6 +313,7 @@
 			files = (
 				A1B2C3D4E5F60001000A0007 /* Assets.xcassets in Resources */,
 				A1B2C3D4E5F60001000A0010 /* Localizable.xcstrings in Resources */,
+				A1B2C3D4E5F60001000A0016 /* InfoPlist.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

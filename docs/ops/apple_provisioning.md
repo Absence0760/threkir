@@ -345,10 +345,16 @@ Then click **Configure** next to APNs. Two choices, and both matter:
 
 **Continue** → review → **Confirm** → **Download**.
 
-Record the **Key ID** (10 characters) from the key's page. **The Download
-button works once** — the key is not stored in your account, and a disabled
-Download button means it was already downloaded. If you lose it, revoke and
-make a new one.
+**The Download button works once.** The key is not stored in your account, and
+a disabled Download button means it was already downloaded. If you lose the
+file, the only repair is to revoke the key and make a new one — which for APNs
+means re-uploading to Firebase.
+
+You do not have to transcribe the **Key ID**: Apple names the file
+`AuthKey_<KEYID>.p8`, so the 10 characters between the underscore and the
+extension are it. It is also on the key's page. Note which of your two keys is
+which *now* — both files land in `~/Downloads` with the same shape of name, and
+an hour later they are indistinguishable without opening the portal again.
 
 Then, in the **Firebase** console — *not* Fly, and not the worker:
 
@@ -375,8 +381,10 @@ one file cannot be downloaded twice.
 | Key Name | `Threkir Sign in with Apple` |
 | Services | tick **Sign in with Apple** → **Configure** → Primary App ID `com.threkir.app` → **Save** |
 
-**Continue** → **Confirm** → **Download**. Record this **Key ID** too — it is a
-different 10 characters from the APNs one, and step 9 wants this one.
+**Continue** → **Confirm** → **Download**. This Key ID is a different 10
+characters from the APNs one, and step 9 wants **this** one — pasting the APNs
+Key ID into Supabase yields `invalid_client`, which reads as a bad secret
+rather than a crossed pair.
 
 ## 8. Back both `.p8` files up
 
@@ -388,8 +396,11 @@ rather than from the file path:
 cd ~/github/infra-secrets && AWS_PROFILE=threkir sops threkir/push-credentials.sops.yaml
 ```
 
-Add `apns_key_p8` and `siwa_key_p8`, plus their two Key IDs and the Team ID as
-plain metadata. A new file needs a `creation_rules` entry in the estate
+Add `apns_key_p8` and `siwa_key_p8`, plus their two Key IDs and the Team ID
+(`33Z28QB3CF`) as plain metadata. Do this while the files are still in
+`~/Downloads` and you still know which is which — then delete them from
+`~/Downloads`, because a private key sitting in a sync-happy folder is the
+thing the estate repo exists to avoid. A new file needs a `creation_rules` entry in the estate
 `.sops.yaml` first or `sops` refuses to encrypt it (fail-closed by design);
 from the project repo the same path fails with *"config file not found, or has
 no creation rules"*, which reads like a missing rule rather than a missing `cd`.

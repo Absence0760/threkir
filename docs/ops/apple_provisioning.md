@@ -49,11 +49,12 @@ two follow-ups. That file tracks whether the *thread* is open; this table
 tracks which *step* you are on. Tick here as you go; close the followups
 entries only when a whole thread lands.
 
-**App Store Connect is not where any of steps 1–11 happen.** Its "Add Apps"
+**App Store Connect is not where any of steps 1–13 happen.** Its "Add Apps"
 button creates the distribution listing, and its Bundle ID dropdown is
 populated from step 3 — so it cannot be done first, and it unblocks neither
-push nor sign-in. Everything below is at
-<https://developer.apple.com/account>.
+push nor sign-in. Everything Apple-side below is at
+<https://developer.apple.com/account>, a different site; step 1 opens with the
+distinction because it is the one that costs people an afternoon.
 
 ## The two things that are unrecoverable
 
@@ -68,12 +69,69 @@ push nor sign-in. Everything below is at
 
 ## 1. Team ID and the renewal reminder
 
-**Membership details** (Account → Membership details). Record:
+### Two different websites, one Apple ID
 
-- **Team ID** — 10 alphanumeric characters. Steps 6, 7 and 9 all want it. The
-  long number beside your name in App Store Connect's header is *not* it.
-- **Expiry date**, into Bitwarden with a reminder ~3 weeks out.
+This trips everyone once. The membership spans two separate sites that share a
+login and share almost no navigation:
 
+| Site | What lives there |
+|---|---|
+| **developer.apple.com/account** | Membership details, Identifiers, Keys, Certificates, Profiles, Services — **everything in steps 1–7 and 10** |
+| **appstoreconnect.apple.com** | App records, TestFlight, pricing, Users and Access — **step 14 only** |
+
+If the page you are on has a top bar reading *Apps / Xcode Cloud / Trends /
+Reports / Business / Users and Access*, you are in App Store Connect and
+nothing in this runbook is reachable from it. There is no "Membership details"
+there, under any menu.
+
+### Getting to it
+
+Go to **<https://developer.apple.com/account>** directly. Bookmark that exact
+URL — `developer.apple.com` without `/account` is the marketing site, and its
+"Account" link bounces through a sign-in that sometimes lands you back on the
+marketing page.
+
+The landing page is a list of named sections. Apple's own ordering is:
+
+1. Program resources
+2. Developer profile
+3. Email preferences
+4. **Membership details** ← this one
+5. Device reset date
+6. Code-level support
+7. Automatic signing controls
+8. Agreements
+
+Open **Membership details**. It carries the **Team ID**, your role, the
+**renewal date**, and the contact address.
+
+### What you are copying
+
+The Team ID is **10 characters, uppercase letters and digits**, e.g.
+`A1B2C3D4E5`. Copy it verbatim — it is case-sensitive and steps 6, 7 and 9 all
+reject a near-miss with an error that names something else.
+
+It is **not** the long numeric string beside your name in App Store Connect's
+header (that is a provider/content-provider id), and **not** the App Store
+Connect API "Issuer ID" (a UUID with dashes).
+
+### If Membership details is not there
+
+- **The landing page offers "Enroll" or "Join the Apple Developer Program"** —
+  that Apple ID has no active membership. Check you are signed in as the
+  account that paid; enrollment and App Store Connect access can sit on
+  different Apple IDs if the purchase was made from one and the invite accepted
+  on another.
+- **You have more than one team** — the selector is at the top right. An
+  Individual membership shows your own name as the team.
+- **Still nothing** — `https://developer.apple.com/account/resources/certificates/list`
+  goes straight to Certificates, Identifiers & Profiles and shows the team name
+  and id in its header. If that page loads, the membership is active and only
+  the landing page is being odd.
+
+### Then set the reminder
+
+Put the **renewal date** in Bitwarden with a reminder **~3 weeks before**.
 Renewal is Account-Holder-only and auto-renew is widely reported to fail
 quietly. An expired membership pulls every app from the App Store **and** locks
 Certificates, Identifiers & Profiles — nothing ships and no key can be rotated
@@ -81,6 +139,10 @@ until it is paid. Whether an existing APNs key keeps authenticating through a
 lapse is undocumented; do not plan to find out.
 
 None of this is secret — it is account metadata, so Bitwarden, not a sops entry.
+
+**You are not blocked without it.** Steps 2–5 need no Team ID; it is first
+wanted at step 6 (the Firebase upload). If Membership details is being awkward,
+carry on to step 2 and come back.
 
 ## 2. App Group
 

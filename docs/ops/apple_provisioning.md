@@ -252,10 +252,22 @@ Same flow as step 3.
 | Bundle ID | **Explicit App ID** — `com.threkir.app.watchapp` |
 
 Capabilities: **HealthKit** and **App Groups** — same two-pass shape as step 3,
-so register first and assign the group by editing it afterwards.
-Nothing else — the watch does not sign in or receive its own pushes. This is
-the side that actually declares the group today; the phone's
-`Runner.entitlements` carries no app-group entitlement yet.
+so register first, then reopen the App ID and **Edit** the App Groups row to
+select `group.com.threkir.app.activerun`. Nothing else: the watch does not sign
+in and does not receive its own pushes.
+
+**The group matters more here than on the phone.**
+`apps/watch_ios/WatchApp/WatchApp.entitlements` declares
+`com.apple.security.application-groups` and `ActiveRunBridge.swift` binds that
+exact string, so a provisioning profile for `com.threkir.app.watchapp` without
+the App Group fails to sign the watch app. `Runner.entitlements` requests no
+app group at all yet — the phone half of the bridge is owed code, tracked in
+[`followups.md`](../product/followups.md), not a portal step. Assign it on both
+App IDs regardless: it costs nothing on the phone and saves a round-trip when
+that entitlement lands.
+
+An App Group shares data only when **both** sides declare it, so until the
+phone half ships the bridge stays non-functional whatever the portal says.
 
 ## 5. Services ID `com.threkir.web`
 

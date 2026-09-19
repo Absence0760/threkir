@@ -85,7 +85,9 @@ Full technical details in `backend_scaling.md`.
 
 ### Apple Watch standalone GPS recording
 
-✓ **Shipped.** Standalone (no-phone) workout sessions with HealthKit HR, haptic pace alerts, and Watch Connectivity sync (with a persisted pre-auth ingest queue). Full delivery checklist in [roadmap_shipped.md](roadmap_shipped.md).
+✓ **Shipped.** Standalone (no-phone) workout sessions with HealthKit HR, haptic pace alerts, lap markers + splits, a Core Motion pedometer, and Watch Connectivity sync (with a persisted pre-auth ingest queue). Full delivery checklist in [roadmap_shipped.md](roadmap_shipped.md).
+
+**Lap markers + step count (2026-09-18, issue #950):** two of the eleven rows Wear OS was ahead on. Both land in `run.metadata` in the shape the registry declares, both ride the `WCSession` envelope with the phone bridge lifting them back out, and both sit in the 15 s crash checkpoint so a recovered run does not upload short. The pedometer's sensor half is **device-gated** — no watchOS simulator has one, so what has run is the baseline arithmetic and the plumbing, not `CMPedometer` itself. The `NSMotionUsageDescription` prompt ships English-only until the watch's `InfoPlist.xcstrings` lands.
 
 ### Wear OS standalone GPS recording
 

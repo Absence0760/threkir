@@ -47,6 +47,10 @@
 		B2C3D4E5F6A70001000B0016 /* WorkoutManagerPaceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0016 /* WorkoutManagerPaceTests.swift */; };
 		B2C3D4E5F6A70001000B0018 /* MiniMapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0018 /* MiniMapTests.swift */; };
 		B2C3D4E5F6A70001000B0019 /* WorkoutManagerMiniMapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0019 /* WorkoutManagerMiniMapTests.swift */; };
+		A1B2C3D4E5F60001000A0016 /* RunLaps.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0016 /* RunLaps.swift */; };
+		A1B2C3D4E5F60001000A0017 /* Pedometer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0017 /* Pedometer.swift */; };
+		B2C3D4E5F6A70001000B0020 /* RunLapsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0020 /* RunLapsTests.swift */; };
+		B2C3D4E5F6A70001000B0021 /* PedometerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0021 /* PedometerTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -93,6 +97,10 @@
 		B2C3D4E5F6A70002000B0016 /* WorkoutManagerPaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutManagerPaceTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0018 /* MiniMapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniMapTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0019 /* WorkoutManagerMiniMapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutManagerMiniMapTests.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000A0016 /* RunLaps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunLaps.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000A0017 /* Pedometer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pedometer.swift; sourceTree = "<group>"; };
+		B2C3D4E5F6A70002000B0020 /* RunLapsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunLapsTests.swift; sourceTree = "<group>"; };
+		B2C3D4E5F6A70002000B0021 /* PedometerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PedometerTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70004000B0001 /* WatchAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WatchAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -149,6 +157,8 @@
 				B2C3D4E5F6A70002000B0016 /* WorkoutManagerPaceTests.swift */,
 				B2C3D4E5F6A70002000B0018 /* MiniMapTests.swift */,
 				B2C3D4E5F6A70002000B0019 /* WorkoutManagerMiniMapTests.swift */,
+				B2C3D4E5F6A70002000B0020 /* RunLapsTests.swift */,
+				B2C3D4E5F6A70002000B0021 /* PedometerTests.swift */,
 			);
 			path = WatchAppTests;
 			sourceTree = "<group>";
@@ -171,6 +181,8 @@
 				A1B2C3D4E5F60002000A000B /* HealthKitManager.swift */,
 				A1B2C3D4E5F60002000A000F /* ActiveRunBridge.swift */,
 				A1B2C3D4E5F60002000A0011 /* RunFormat.swift */,
+				A1B2C3D4E5F60002000A0016 /* RunLaps.swift */,
+				A1B2C3D4E5F60002000A0017 /* Pedometer.swift */,
 				A1B2C3D4E5F60002000A0010 /* Localizable.xcstrings */,
 				A1B2C3D4E5F60002000A0016 /* InfoPlist.xcstrings */,
 				A1B2C3D4E5F60002000A0007 /* Assets.xcassets */,
@@ -339,6 +351,8 @@
 				A1B2C3D4E5F60001000A000D /* HealthKitManager.swift in Sources */,
 				A1B2C3D4E5F60001000A000F /* ActiveRunBridge.swift in Sources */,
 				A1B2C3D4E5F60001000A0011 /* RunFormat.swift in Sources */,
+				A1B2C3D4E5F60001000A0016 /* RunLaps.swift in Sources */,
+				A1B2C3D4E5F60001000A0017 /* Pedometer.swift in Sources */,
 				A1B2C3D4E5F60001000A0012 /* ArmedRoute.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -366,6 +380,8 @@
 				B2C3D4E5F6A70001000B0016 /* WorkoutManagerPaceTests.swift in Sources */,
 				B2C3D4E5F6A70001000B0018 /* MiniMapTests.swift in Sources */,
 				B2C3D4E5F6A70001000B0019 /* WorkoutManagerMiniMapTests.swift in Sources */,
+				B2C3D4E5F6A70001000B0020 /* RunLapsTests.swift in Sources */,
+				B2C3D4E5F6A70001000B0021 /* PedometerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

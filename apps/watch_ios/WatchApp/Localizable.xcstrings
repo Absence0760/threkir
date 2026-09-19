@@ -694,6 +694,111 @@
         "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Aguardando o GPS" } },
         "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "À espera de GPS" } }
       }
+    },
+    "Lap" : {
+      "comment" : "Button that marks a lap split during a run.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Runde" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Vuelta" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tour" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ラップ" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Volta" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Volta" } }
+      }
+    },
+    "Lap %lld" : {
+      "comment" : "Lap number, shown as the live lap counter during a run and as each split's label on the summary.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Runde %lld" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Vuelta %lld" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tour %lld" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ラップ %lld" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Volta %lld" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Volta %lld" } }
+      }
+    },
+    "Marks a split at the current time and distance" : {
+      "comment" : "VoiceOver hint for the Lap button.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Setzt eine Zwischenzeit bei der aktuellen Zeit und Distanz" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Marca un parcial en el tiempo y la distancia actuales" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Marque un temps intermédiaire au temps et à la distance actuels" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "現在のタイムと距離でラップを記録します" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Marca um parcial no tempo e na distância atuais" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Marca um parcial no tempo e na distância atuais" } }
+      }
+    },
+    "Splits" : {
+      "comment" : "Header above the lap-split list on the post-run summary.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Zwischenzeiten" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Parciales" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Temps intermédiaires" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ラップタイム" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Parciais" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Parciais" } }
+      }
+    },
+    "%lld steps" : {
+      "comment" : "Pedometer step count on the post-run summary. Plural-aware.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld step" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld steps" } }
+            }
+          }
+        },
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld Schritt" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld Schritte" } }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld paso" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld pasos" } }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld pas" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld pas" } }
+            }
+          }
+        },
+        "ja" : {
+          "variations" : {
+            "plural" : {
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld歩" } }
+            }
+          }
+        },
+        "pt-BR" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld passo" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld passos" } }
+            }
+          }
+        },
+        "pt-PT" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld passo" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld passos" } }
+            }
+          }
+        }
+      }
     }
   }
 }

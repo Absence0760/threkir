@@ -52,10 +52,19 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     /// The last accepted fix, or nil while this run has none.
     @Published var mapPosition: MiniMapPoint?
 
+    /// Lap marks the runner has taken this run, cumulative — see `LapMark`.
+    @Published var lapMarks: [LapMark] = []
+
+    /// Steps taken this run, or nil while nothing has measured any. Advanced
+    /// only while `.recording`, matching Wear OS, which drops a pedometer
+    /// emission that arrives paused.
+    @Published var steps: Int?
+
     /// The completed run data, available after stop() or recovery.
     var finishedRun: FinishedRun?
 
     let healthKit = HealthKitManager()
+    private let pedometer = Pedometer()
 
     var targetPaceSecondsPerKm: Double? = nil
     let paceToleranceSeconds: Double = 15
@@ -102,6 +111,11 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         /// about one run, and grading twice could publish a coverage that
         /// contradicts the average it suppressed.
         let hrCoverage: Double?
+        /// Steps this run, or nil when nothing measured any — see `Pedometer`.
+        let steps: Int?
+        /// The run's splits, already in the registered per-lap shape. Empty
+        /// when the runner marked none.
+        let laps: [RunLap]
     }
 
     /// A track point in the wire shape the phone, web and mobile clients
@@ -234,6 +248,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         } ?? []
         mapTrail.reset()
         mapPosition = nil
+        lapMarks = []
+        steps = nil
         healthKit.reset()
 
         let store = CheckpointStore(runId: runId)
@@ -250,6 +266,14 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 
         let start = Date()
         startDate = start
+        // Dropped while paused rather than suspended, mirroring Wear OS: the
+        // counter is cumulative on both platforms, so stopping it would not
+        // exclude the steps taken during the pause anyway — it would only make
+        // the figure disagree between the two wrists.
+        pedometer.start(from: start) { [weak self] steps in
+            guard let self, self.state == .recording else { return }
+            self.steps = steps
+        }
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             guard let self, let startDate = self.startDate else { return }
             guard self.state == .recording else { return }
@@ -268,6 +292,21 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 
         state = .recording
         publishComplicationSnapshot()
+    }
+
+    /// Record a lap at the current position. Ignored unless the run is
+    /// actually recording — a mark taken while paused would open a split the
+    /// clock is not advancing through, which Wear OS refuses for the same
+    /// reason. Checkpointed immediately: the 15 s tick is a long time to hold
+    /// an act the runner has already performed and can see on screen.
+    func markLap() {
+        guard state == .recording else { return }
+        lapMarks.append(LapMark(
+            index: lapMarks.count + 1,
+            atSeconds: elapsedSeconds,
+            distanceMetres: distanceMetres
+        ))
+        writeCheckpoint()
     }
 
     func pause() {
@@ -306,6 +345,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         timer = nil
         locationManager.stopUpdatingLocation()
         healthKit.stopWorkout()
+        pedometer.stop()
 
         // The in-memory `track` is a bounded rolling window and the full run
         // stays on disk — nothing here materialises it. Close the append
@@ -342,7 +382,13 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             trackFileURL: store?.trackFileURL ?? CheckpointStore.trackFile(runId: runId),
             trackPointCount: trackPointCount,
             averageBPM: claim.averageBPM,
-            hrCoverage: claim.coverage
+            hrCoverage: claim.coverage,
+            steps: steps,
+            laps: RunLaps.splits(
+                marks: lapMarks,
+                totalDistanceMetres: distanceMetres,
+                totalDurationSeconds: duration
+            )
         )
 
         state = .finished
@@ -352,6 +398,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     func reset() {
         checkpointTimer?.invalidate()
         checkpointTimer = nil
+        pedometer.stop()
         checkpointStore?.closeAppendHandle()
         // The finished run's NDJSON is its payload and outlived stop(); back
         // at idle nothing can still want it.
@@ -373,6 +420,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         mapRoute = []
         mapTrail.reset()
         mapPosition = nil
+        lapMarks = []
+        steps = nil
         checkpointStore = nil
         currentRunId = nil
         state = .idle
@@ -584,7 +633,9 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             trackPointCount: trackPointCount,
             cacheFileURL: store.trackFileURL,
             averageBPM: claim.averageBPM,
-            hrCoverage: claim.coverage
+            hrCoverage: claim.coverage,
+            steps: steps,
+            laps: lapMarks
         )
         store.write(checkpoint: cp)
         // Match the track's crash-durability window to the checkpoint's.
@@ -599,6 +650,9 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         // in the checkpoint's own figure.
         let count = store.countTrackPoints()
         trackPointCount = count
+        let marks = cp.laps ?? []
+        lapMarks = marks
+        steps = cp.steps
         return FinishedRun(
             id: cp.id,
             startedAt: cp.startedAt,
@@ -612,7 +666,18 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             // A checkpoint from a build that never carried the field decodes
             // as nil, and nil rides through to the row as an OMITTED key —
             // never as a zero, which would claim the sensor delivered nothing.
-            hrCoverage: cp.hrCoverage
+            hrCoverage: cp.hrCoverage,
+            // Same shape of claim for the pedometer: an absent count is a run
+            // nothing counted steps for, not a run of no steps (#389).
+            steps: cp.steps,
+            // The recovered run is being finished HERE, so its trailing split
+            // is measured against the checkpoint's own totals — the same
+            // arithmetic `stop()` does, against the figures the crash froze.
+            laps: RunLaps.splits(
+                marks: marks,
+                totalDistanceMetres: cp.distanceMetres,
+                totalDurationSeconds: Int(cp.activeDurationSeconds)
+            )
         )
     }
 

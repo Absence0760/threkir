@@ -4,7 +4,7 @@
 # missing or empty translation before a Mac ever builds the app.
 #
 # Two catalogs are held to one bar: `Localizable.xcstrings` (the UI) and
-# `InfoPlist.xcstrings` (the four consent prompts). The second one is the
+# `InfoPlist.xcstrings` (the consent prompts). The second one is the
 # first thing the app ever says to a runner, and until 2026-09-18 it did not
 # exist — `Info.plist` carried the four `NS*UsageDescription` strings in
 # English and nothing else, so a Lisbon or Tokyo wrist was asked for HealthKit

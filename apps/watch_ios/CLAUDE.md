@@ -101,9 +101,11 @@ back to Brazilian.
   fails. `SWIFT_EMIT_LOC_STRINGS = YES` is already set so Xcode keeps the catalog
   populated from source on build.
 - **Parity check (no Xcode needed)**: `scripts/check_xcstrings_parity.sh` **derives**
-  the shipped locale set from the catalog — it does not restate it — then fails if
-  any string lacks a non-empty translation for one of them (ja is exempt from the
-  plural `one` category by design), or if either declaration site above disagrees
+  the shipped locale set from the two catalogs — it does not restate it, and it
+  derives across both so one running ahead of the other fails rather than each
+  being graded against its own smaller set — then fails if any string lacks a
+  non-empty translation for one of them (ja is exempt from the plural `one`
+  category by design), or if either declaration site above disagrees
   with that set. Pure `python3` — runs on Linux / CI without a Mac. It is wired into
   the `watch-ios-locale-parity` job in `.github/workflows/ci.yml`; before 2026-08-27
   it ran nowhere but a developer's own shell. Run it after editing the catalog.
@@ -132,17 +134,30 @@ back to Brazilian.
   'platform=watchOS Simulator,id=<sim>'` runs the whole `WatchAppTests` suite green on
   a Mac (Xcode 26.4, watchOS 26.4). Target the simulator by **id**: the `Apple Watch
   Series 9` this file used to name no longer exists, and `Series 11 (46mm)` is
-  ambiguous when two are paired. What is still outstanding is the visual spot-check
-  of each locale in the simulator, and — since 2026-09-02 — the Swift and
-  entitlement edits of [decisions § 884 – § 888](../../docs/architecture/decisions.md),
-  which no compiler, signer or simulator has seen. Both are filed in
-  `docs/product/followups.md`.
-- **The permission prompts are not localized.** `Info.plist`'s five
-  `NS*UsageDescription` strings are English-only — there is no `InfoPlist.xcstrings`
-  in this app or the phone's — so the HealthKit, location and Motion & Fitness
-  consent dialogs read English on a wrist whose other 64 strings do not.
-  `NSMotionUsageDescription` joined them on 2026-09-18 with the pedometer. Filed, with what closing it
-  costs, in `docs/product/followups.md`.
+  ambiguous when two are paired. **The first non-English wrist was rendered
+  2026-09-18**: the simulator booted with `AppleLanguages` set to `pt-PT`, then to
+  `ja`, shows the app's HealthKit consent sheet in that locale, and the built
+  `WatchApp.app` carries an `InfoPlist.strings` in each of the seven `.lproj`
+  directories. That is a spot-check of two locales on one screen, not of each
+  locale across the UI — `simctl` offers no touch or crown input, so nothing past
+  the first sheet can be driven from a script, and the remaining locales and
+  screens still want a human at the simulator. Also outstanding: the Swift and
+  entitlement edits of [decisions § 884 – § 888](../../docs/architecture/decisions.md).
+  Both are filed in `docs/product/followups.md`.
+- **The permission prompts are localized too, in a SECOND String Catalog.**
+  `WatchApp/InfoPlist.xcstrings` carries the five `NS*UsageDescription` strings
+  across the same seven locales and is a `WatchApp` target resource exactly the
+  way `Localizable.xcstrings` is (2026-09-18, decisions § 1675). Two rules differ
+  from the UI catalog and the parity script enforces both: the **source language
+  cannot be implicit**, because an entry's key here is a plist key name
+  (`NSHealthShareUsageDescription`) rather than the English text; and each entry's
+  `en` value must be byte-identical to the string in `Info.plist`, which is the
+  fallback watchOS shows when no localization matches. The script also holds the
+  two key sets against each other in both directions — a purpose string added to
+  the plist with no catalog entry renders English on every wrist and throws
+  nothing, which is exactly how the original four shipped, and what caught `NSMotionUsageDescription` when the pedometer added it on 2026-09-18. The phone
+  (`apps/mobile_ios/ios/Runner/Info.plist`, ten usage descriptions) still has no
+  `InfoPlist.xcstrings`; that half stays filed in `docs/product/followups.md`.
 
 ## What's real vs stubbed
 

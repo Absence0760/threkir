@@ -323,7 +323,24 @@ callback. Two consequences:
   `text/plain` with no redirect, and Apple rejects all three. Step 10 is the one
   place `threkir.com` legitimately appears.
 
-## 6. APNs key → Firebase
+## Steps 6 and 7 are TWO keys, and that is the whole count
+
+Not one key with two services, and not three. Apple's Keys page makes one file
+per key, each downloadable exactly once, and these two go to different systems:
+
+| | Key Name | Service ticked | Ends up at |
+|---|---|---|---|
+| **Key 1** (step 6) | `Threkir APNs` | Apple Push Notification service (APNs) | Firebase console |
+| **Key 2** (step 7) | `Threkir Sign in with Apple` | Sign in with Apple | Supabase dashboard |
+
+**One service per key.** Ticking both on a single key produces one file that
+cannot be in two places — you would upload the same `.p8` to Firebase and
+Supabase, and the day you rotate either one you break the other.
+
+The **Configure** button inside step 6 is not a second key. It sets options *on*
+key 1.
+
+## 6a. Create the APNs key (at Apple)
 
 **Keys** in the sidebar → **(+)**.
 
@@ -332,23 +349,26 @@ callback. Two consequences:
 | Key Name | `Threkir APNs` |
 | Services | tick **Apple Push Notification service (APNs)** — and nothing else |
 
-Then click **Configure** next to APNs. Two choices, and both matter:
+Click **Configure** on the APNs row. Two options, both on this one key:
 
-- **Key Type: Team Scoped.** Topic Specific binds the key to named bundle ids,
+- **Key Type → Team Scoped.** Topic Specific binds the key to named bundle ids,
   which buys nothing here and breaks the day a second app is added. Firebase
-  expects a team-scoped key.
-- **Environment: the option covering both Sandbox and Production.** If forced to
-  pick one, pick the one that includes Production. A `development`-signed build
-  mints a token only the sandbox host accepts, and a TestFlight build only the
-  production host — and FCM routes each token to the right host on its own, so
-  the key must be able to serve both.
+  expects team-scoped.
+- **Environment → the option covering both Sandbox and Production.** If forced
+  to one, pick the one including Production. A `development`-signed build mints
+  a token only the sandbox host accepts and a TestFlight build only the
+  production host, and FCM routes each token to the right host on its own — so
+  the key has to serve both.
+
+If there is no Configure button, the account has the older flow and there is
+nothing to set. Carry on.
 
 **Continue** → review → **Confirm** → **Download**.
 
-**The Download button works once.** The key is not stored in your account, and
-a disabled Download button means it was already downloaded. If you lose the
-file, the only repair is to revoke the key and make a new one — which for APNs
-means re-uploading to Firebase.
+**The Download button works once.** The key is not stored in your account, and a
+disabled Download button means it was already downloaded. If you lose the file,
+the only repair is to revoke the key and make a new one — which for APNs means
+re-uploading to Firebase.
 
 You do not have to transcribe the **Key ID**: Apple names the file
 `AuthKey_<KEYID>.p8`, so the 10 characters between the underscore and the
@@ -356,11 +376,15 @@ extension are it. It is also on the key's page. Note which of your two keys is
 which *now* — both files land in `~/Downloads` with the same shape of name, and
 an hour later they are indistinguishable without opening the portal again.
 
-Then, in the **Firebase** console — *not* Fly, and not the worker:
+## 6b. Upload it to Firebase
 
-**Project settings** → **Cloud Messaging** tab → the **iOS app** card → **APNs
-authentication key** → **Upload**. Supply the `.p8`, the **Key ID**, and the
-**Team ID** from step 1.
+Not Fly, and not the worker.
+
+**Firebase console** → **Project settings** → **Cloud Messaging** tab → the
+**iOS app** card → **APNs authentication key** → **Upload**.
+
+Three inputs: the `.p8` from 6a, its **Key ID**, and the **Team ID**
+(`33Z28QB3CF`).
 
 **Why Firebase and not the worker.** iOS is delivered *by* FCM: the clients
 register an FCM registration token, and a direct APNs POST addresses a
@@ -370,21 +394,24 @@ success while arriving nowhere
 build is the `aps-environment` entitlement, which the pbxproj pins per
 configuration ([decisions § 742](../architecture/decisions.md)).
 
-## 7. Sign-in-with-Apple key
+That is the push thread finished on the Apple side. Nothing in step 7 affects
+it.
 
-**Keys** → **(+)** again — a **second, separate key**. Do not add Sign in with
-Apple to the key from step 6: Firebase and Supabase hold these separately, and
-one file cannot be downloaded twice.
+## 7. The Sign-in-with-Apple key (at Apple, for Supabase)
+
+**Keys** → **(+)** again. A **second, separate key** — do not go back and add
+Sign in with Apple to key 1.
 
 | Field | Value |
 |---|---|
 | Key Name | `Threkir Sign in with Apple` |
 | Services | tick **Sign in with Apple** → **Configure** → Primary App ID `com.threkir.app` → **Save** |
 
-**Continue** → **Confirm** → **Download**. This Key ID is a different 10
-characters from the APNs one, and step 9 wants **this** one — pasting the APNs
-Key ID into Supabase yields `invalid_client`, which reads as a bad secret
-rather than a crossed pair.
+**Continue** → **Confirm** → **Download**.
+
+This Key ID is a different 10 characters from the APNs one, and step 9 wants
+**this** one — pasting the APNs Key ID into Supabase yields `invalid_client`,
+which reads as a bad secret rather than a crossed pair.
 
 ## 8. Back both `.p8` files up
 

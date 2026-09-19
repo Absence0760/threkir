@@ -31,6 +31,11 @@
 
 ## Operator provisioning (the credential gate)
 
+> **The step-by-step, with a live status ledger, is
+> [`docs/ops/apple_provisioning.md`](../ops/apple_provisioning.md).** This
+> section is the design record — what each artifact is for and why it lives
+> where it does. Do the work from the runbook; it is the one that gets ticked.
+
 Everything below is the human half of this feature. The code is on `main`; what
 follows is the only reason nothing is delivered. The build-side wiring each
 artifact needs is already in place — the Gradle plugin, the Xcode target
@@ -103,12 +108,13 @@ works from anywhere.
 2. **FCM service account.** Project settings → Service accounts → generate a
    private key. `FCM_PROJECT_ID` is that JSON's `project_id`. This is what
    signs FCM HTTP v1 sends; the config files do not.
-3. **APNs auth key.** Needs the Apple Developer Program (still open in #922).
-   Keys → new key with the APNs service enabled; the download is one-time.
-   Upload it in the **Firebase** console (Project settings → Cloud Messaging →
-   the iOS app → APNs authentication key), with its Key ID and your Team ID.
-   It does **not** go to the worker: the worker only ever talks to FCM, and
-   FCM forwards to Apple.
+3. **APNs auth key.** Needs the Apple Developer Program. Keys → a key with
+   the APNs service enabled; the download is one-time. Upload it in the
+   **Firebase** console (Project settings → Cloud Messaging → the iOS app →
+   APNs authentication key), with its Key ID and your Team ID. It does **not**
+   go to the worker: the worker only ever talks to FCM, and FCM forwards to
+   Apple. Note this is a *different* key from the Sign-in-with-Apple one —
+   one `.p8` per service, each downloadable once.
    That is also why there is no sandbox/production setting to get wrong. FCM
    reads each token's own APNs environment, so one key serves TestFlight,
    App Store and Xcode-installed builds at once — as long as the app's

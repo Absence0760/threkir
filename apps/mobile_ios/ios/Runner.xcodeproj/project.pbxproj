@@ -38,6 +38,7 @@
 		7884EA001E2EC3CC00C636F4 /* WorkoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000F2EC3CC00C636F4 /* WorkoutManager.swift */; };
 		7884EA00202EC3CC00C636F4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7884EA001F2EC3CC00C636F4 /* Assets.xcassets */; };
 		7884EA00222EC3CC00C636F4 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 7884EA00212EC3CC00C636F4 /* Localizable.xcstrings */; };
+		7884EA00352EC3CC00C636F4 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 7884EA00342EC3CC00C636F4 /* InfoPlist.xcstrings */; };
 		7884EA00262EC3CC00C636F4 /* WatchApp.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 7884EA00252EC3CC00C636F4 /* WatchApp.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -134,6 +135,7 @@
 		7884EA000F2EC3CC00C636F4 /* WorkoutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutManager.swift; sourceTree = "<group>"; };
 		7884EA001F2EC3CC00C636F4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		7884EA00212EC3CC00C636F4 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		7884EA00342EC3CC00C636F4 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		7884EA00232EC3CC00C636F4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7884EA00242EC3CC00C636F4 /* WatchApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WatchApp.entitlements; sourceTree = "<group>"; };
 		7884EA00252EC3CC00C636F4 /* WatchApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WatchApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -274,6 +276,7 @@
 				7884EA000F2EC3CC00C636F4 /* WorkoutManager.swift */,
 				7884EA001F2EC3CC00C636F4 /* Assets.xcassets */,
 				7884EA00212EC3CC00C636F4 /* Localizable.xcstrings */,
+				7884EA00342EC3CC00C636F4 /* InfoPlist.xcstrings */,
 				7884EA00232EC3CC00C636F4 /* Info.plist */,
 				7884EA00242EC3CC00C636F4 /* WatchApp.entitlements */,
 			);
@@ -425,6 +428,7 @@
 			files = (
 				7884EA00202EC3CC00C636F4 /* Assets.xcassets in Resources */,
 				7884EA00222EC3CC00C636F4 /* Localizable.xcstrings in Resources */,
+				7884EA00352EC3CC00C636F4 /* InfoPlist.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -1,0 +1,54 @@
+{
+  "sourceLanguage" : "en",
+  "version" : "1.0",
+  "strings" : {
+    "NSHealthShareUsageDescription" : {
+      "comment" : "Purpose string for the HealthKit read prompt raised by HealthKitManager.requestAuthorization(). Shown on the wrist before the first workout session.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Threkir benötigt Zugriff auf deine Gesundheitsdaten, um Workout-Werte wie Herzfrequenz und verbrannte Kalorien während deiner Läufe aufzuzeichnen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Threkir needs access to your health data to record workout metrics like heart rate and calories burned during your runs." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Threkir necesita acceder a tus datos de salud para registrar métricas del entrenamiento, como la frecuencia cardíaca y las calorías quemadas, durante tus carreras." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Threkir a besoin d’accéder à vos données de santé pour enregistrer les mesures de séance comme la fréquence cardiaque et les calories brûlées pendant vos courses." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Threkir は、ラン中の心拍数や消費カロリーなどのワークアウト指標を記録するために健康データへのアクセスが必要です。" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir precisa de acesso aos seus dados de saúde para registrar métricas do treino, como frequência cardíaca e calorias queimadas, durante suas corridas." } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir precisa de aceder aos seus dados de saúde para registar métricas do treino, como a frequência cardíaca e as calorias queimadas, durante as suas corridas." } }
+      }
+    },
+    "NSHealthUpdateUsageDescription" : {
+      "comment" : "Purpose string for the HealthKit write prompt raised by HealthKitManager.requestAuthorization() so a finished workout is saved to Health.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Threkir speichert Workout-Daten in Apple Health, damit deine Läufe zusammen mit deinen übrigen Fitness-Aktivitäten erfasst werden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Threkir needs to save workout data to Health so your runs are tracked alongside your other fitness activities." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Threkir guarda los entrenamientos en Apple Salud para que tus carreras queden junto al resto de tus actividades deportivas." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Threkir enregistre vos séances dans Apple Santé pour que vos courses figurent aux côtés de vos autres activités sportives." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Threkir はワークアウトデータを Apple Health に保存し、ランを他のフィットネスアクティビティと一緒に記録します。" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir salva os dados de treino no Apple Saúde para que suas corridas fiquem junto das suas outras atividades físicas." } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir guarda os dados de treino no Apple Saúde para que as suas corridas fiquem junto das outras atividades físicas." } }
+      }
+    },
+    "NSLocationWhenInUseUsageDescription" : {
+      "comment" : "Purpose string for the foreground location prompt raised by WorkoutManager's embedded CLLocationManager at the start of a run.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Threkir benötigt deinen Standort, um deine Route aufzuzeichnen, die Distanz zu berechnen und die Pace anzuzeigen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Threkir needs your location to track your running route, calculate distance, and provide pace information." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Threkir necesita tu ubicación para seguir la ruta de tus carreras, calcular la distancia y mostrar el ritmo." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Threkir a besoin de votre position pour suivre le tracé de votre course, calculer la distance et indiquer votre allure." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Threkir はランのルートを記録し、距離を計算してペースを表示するために位置情報を使用します。" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir precisa da sua localização para rastrear a rota da corrida, calcular a distância e mostrar o ritmo." } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir precisa da sua localização para registar o percurso da corrida, calcular a distância e mostrar o ritmo." } }
+      }
+    },
+    "NSLocationAlwaysAndWhenInUseUsageDescription" : {
+      "comment" : "Purpose string for the always-on location prompt behind allowsBackgroundLocationUpdates, so a run keeps recording once the wrist drops.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Threkir zeichnet deinen Lauf weiter auf, wenn sich das Display der Uhr während eines Workouts ausschaltet." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Threkir continues tracking your run when your watch display turns off during a workout." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Threkir sigue registrando tu carrera cuando la pantalla del reloj se apaga durante un entrenamiento." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Threkir continue de suivre votre course lorsque l’écran de la montre s’éteint pendant une séance." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Threkir はワークアウト中にウォッチの画面が消えても、ランの記録を続けます。" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir continua registrando sua corrida quando a tela do relógio desliga durante um treino." } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir continua a registar a sua corrida quando o ecrã do relógio se desliga durante um treino." } }
+      }
+    }
+  }
+}

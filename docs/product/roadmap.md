@@ -429,7 +429,7 @@ Web already shipped seven locales (`en/de/fr/es/ja/pt-BR/pt-PT`) — see [decisi
 - [x] Mobile: `intl` `DateFormat`/`NumberFormat` replacing the hand-rolled English month-name + `.` -decimal formatters
 - [x] Mobile: TTS announcement locale + spoken phrases + guided-run scripts follow the active app locale (was hard-coded `en-US`)
 - [x] Wear OS (Kotlin): `values-<locale>/strings.xml` resources, `stringResource` migration, locale-aware number formatting + `TtsAnnouncer` locale (device-locale-follow)
-- [x] watchOS (SwiftUI): `Localizable.xcstrings` catalogue + project regions + `Measurement`/`NumberFormatter` locale formatting (catalog parity-checked; `xcodebuild` now runs green on a Mac and all seven `.lproj` reach the embedded bundle — the per-locale simulator spot-check is the one remaining verification)
+- [x] watchOS (SwiftUI): `Localizable.xcstrings` catalogue + project regions + `Measurement`/`NumberFormatter` locale formatting, plus `InfoPlist.xcstrings` for the four `NS*UsageDescription` consent prompts (2026-09-18, [decisions § 1675](../architecture/decisions.md)) — both catalogues parity-checked against one derived locale set, and the Mac `xcodebuild` is done: 225 tests green on Xcode 26.4 / watchOS 26.4, seven `.lproj` directories in the built app and in the copy embedded at `Runner.app/Watch/WatchApp.app`, and the simulator booted in `pt-PT` and `ja` renders the consent sheet in that locale. A per-locale spot-check across the rest of the UI still wants a human at the simulator (`simctl` has no touch or crown input)
 - [ ] RTL (`EdgeInsetsDirectional` sweep) — deferred until an RTL catalogue (Arabic/Hebrew) is added; infra (CSS logical props on web, dirForLocale on mobile) is ready
 
 ---

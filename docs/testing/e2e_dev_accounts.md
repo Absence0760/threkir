@@ -78,14 +78,21 @@ A dedicated `e2e-test@gmail.com` test account. The actual id-token validation ha
 
 ### 2. Apple Sign-In — Apple Developer account
 
-**What's needed:**
-- Apple Developer Program ($99/year).
-- Identifier → App ID with Sign In with Apple capability.
-- Services ID for the web (`com.threkir.web`) — a separate identifier type from the App ID, with the App ID as its primary.
-- A **second** key with Sign In with Apple enabled; download the .p8. This is not the APNs key — one `.p8` per service, each downloadable once.
-- Supabase Dashboard → Authentication → Providers → Apple → Services ID + Team ID + Key ID + .p8 contents.
+**Status today:** the Apple Developer Program was paid for on 2026-09-18 and enrollment is pending Apple's review. The web code is done and fail-closed: `/login`'s Apple button runs `startOAuthSignIn('apple')` — Google's handler, so the 16+/ToS gates and the `/auth/callback` consent stash apply identically — behind `PUBLIC_APPLE_AUTH_ENABLED` (`apps/web/src/lib/core/apple_auth_flag.ts`). Unset, which is the default everywhere including `.env.development`, the button keeps its label behind a "Soon" pill and the click shows `login.appleSoon`. Nothing here needs editing when the credentials land; it is a flag flip and a release.
 
-**Status today:** Apple Sign-In button on the login page shows a "Soon" pill and the click handler surfaces a "coming soon" error message. Spec coverage of the soon-pill exists implicitly; the real flow is blocked here.
+**The order of work, once enrollment clears.** These are four different artifacts at Apple and it is easy to conflate the first two and the last two.
+
+1. **App ID** — Identifiers → App IDs → `com.threkir.app`, with **Sign in with Apple** ticked and *Configure → Enable as a primary App ID*. Already listed in [`apps/mobile_ios/deployment.md`](../../apps/mobile_ios/deployment.md) as part of the iOS setup; it is the prerequisite for the Services ID, not a separate job.
+2. **Services ID** — Identifiers → **Services IDs** → `com.threkir.web`. A *different identifier type* from the App ID, which is why it cannot be ticked on one. Set the App ID above as its primary, then Configure:
+   - Domains: `threkir.com`
+   - Return URL: `https://<project-ref>.supabase.co/auth/v1/callback` — **Apple's**, not the app's. Apple rejects `http://` outright, so there is no localhost entry; the local stack cannot exercise this and is not meant to.
+3. **Sign-in-with-Apple key** — Keys → new key with **Sign in with Apple** enabled, bound to the primary App ID. Download the `.p8`: Apple keeps no copy and the download is one-time, so it goes into the estate repo the same day. **This is not the APNs key** — one `.p8` per service, each downloadable once, and mixing them up gives two services one key and one service none.
+4. **Supabase** — Dashboard → Authentication → Providers → Apple: Services ID (`com.threkir.web`), Team ID, Key ID, and the `.p8` contents. Enable.
+5. **Flip the flag and ship.** Set the `PUBLIC_APPLE_AUTH_ENABLED` repo secret truthy and cut a `web@<version>` tag — `release-web.yml` writes `apps/web/.env` from its own `env:` block, so a flag that is not both mapped and written there never reaches the bundle ([decisions § 1678](../architecture/decisions.md)). Then confirm the pill is gone and a real Apple account lands on `/auth/confirm-age`.
+
+**What you can test once configured:** the real Apple identity step. **Already covered by the mock-OIDC lane** (`e2e-web-sso`, see § 1 above): everything downstream of the provider redirect — `signInWithOAuth` → GoTrue authorize → callback `?code` → `exchangeCodeForSession` → session → the age/terms gate. GoTrue special-cases `apple` exactly as it does `google`, so the mock stands in as `keycloak` and the only un-exercised piece is the Apple account picker itself. A real Apple ID is a manual, non-CI check.
+
+**Two Apple-specific things to expect on that check.** Apple returns the user's name **only on the very first authorization** for a given Apple ID — a second sign-in carries the identity token and nothing else, so a name that is dropped the first time cannot be re-fetched, only re-asked. And a user who chooses *Hide My Email* arrives with a `@privaterelay.appleid.com` address that forwards; it is a real deliverable address, but anything that assumes an email identifies a person across providers will see two accounts for one human.
 
 ### 3. Strava — Strava API application + test account
 

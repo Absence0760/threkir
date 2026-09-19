@@ -242,16 +242,20 @@
 <UnsavedChangesGuard isDirty={dirty.isDirty} />
 
 <div class="editor-form routine-editor">
-	<label class="field">
-		<span class="section-label">{t('gym.routine.editor.titleLabel')}</span>
-		<input
-			class="text-input"
-			type="text"
-			bind:value={title}
-			placeholder={t('gym.routine.editor.titlePlaceholder')}
-			data-testid="routine-title"
-		/>
-	</label>
+	<div class="field">
+		<label>
+			<span class="section-label">{t('gym.routine.editor.titleLabel')}</span>
+			<input
+				class="text-input"
+				type="text"
+				bind:value={title}
+				placeholder={t('gym.routine.editor.titlePlaceholder')}
+				data-testid="routine-title"
+				aria-describedby="{uid}-title-hint"
+			/>
+		</label>
+		<span class="field-hint" id="{uid}-title-hint">{t('gym.routine.editor.titleHint')}</span>
+	</div>
 
 	{#each exercises as ex, ei (ei)}
 		<div class="exercise-block item-card">
@@ -264,6 +268,7 @@
 					placeholder={t('gym.editor.exercisePlaceholder')}
 					aria-label={t('gym.editor.exercisePlaceholder')}
 					data-testid="routine-exercise-name"
+					aria-describedby="{uid}-exercise-hint"
 				/>
 				<button
 					class="icon-btn"
@@ -274,19 +279,28 @@
 					<span class="material-symbols" aria-hidden="true">close</span>
 				</button>
 			</div>
+			{#if ei === 0}
+				<span class="field-hint" id="{uid}-exercise-hint">{t('gym.routine.exerciseNameHint')}</span>
+			{/if}
 
-			<label class="field inline-field">
-				<span class="section-label">{t('gym.routine.modality')}</span>
-				<select
-					class="text-input"
-					bind:value={exercises[ei].modality}
-					data-testid="routine-modality"
-				>
-					{#each MODALITIES as md (md)}
-						<option value={md}>{modalityLabel(md)}</option>
-					{/each}
-				</select>
-			</label>
+			<div class="field inline-field">
+				<label>
+					<span class="section-label">{t('gym.routine.modality')}</span>
+					<select
+						class="text-input"
+						bind:value={exercises[ei].modality}
+						data-testid="routine-modality"
+						aria-describedby="{uid}-modality-hint"
+					>
+						{#each MODALITIES as md (md)}
+							<option value={md}>{modalityLabel(md)}</option>
+						{/each}
+					</select>
+				</label>
+				{#if ei === 0}
+					<span class="field-hint" id="{uid}-modality-hint">{t('gym.routine.modalityHint')}</span>
+				{/if}
+			</div>
 
 			<div class="set-scroll">
 				<div class="set-head" class:wr={ex.modality === 'weight_reps'}>
@@ -315,6 +329,7 @@
 							bind:value={exercises[ei].sets[si].setType}
 							aria-label={t('gym.routine.setType')}
 							data-testid="routine-set-type"
+							aria-describedby="{uid}-set-hint"
 						>
 							{#each SET_TYPES as st (st)}
 								<option value={st}>{setTypeLabel(st)}</option>
@@ -331,6 +346,7 @@
 									bind:value={exercises[ei].sets[si].reps}
 									aria-label={t('gym.routine.targetReps')}
 									data-testid="routine-set-reps"
+									aria-describedby="{uid}-set-hint"
 								/>
 								<span class="range-sep">{t('gym.routine.targetRepsMax')}</span>
 								<input
@@ -341,6 +357,7 @@
 									bind:value={exercises[ei].sets[si].repsMax}
 									aria-label={t('gym.routine.targetRepsMax')}
 									data-testid="routine-set-reps-max"
+									aria-describedby="{uid}-set-hint"
 								/>
 							</span>
 						{:else if ex.modality === 'time'}
@@ -352,6 +369,7 @@
 								bind:value={exercises[ei].sets[si].duration}
 								aria-label={t('gym.routine.targetDuration')}
 								data-testid="routine-set-duration"
+								aria-describedby="{uid}-set-hint"
 							/>
 						{:else}
 							<input
@@ -362,6 +380,7 @@
 								bind:value={exercises[ei].sets[si].distance}
 								aria-label={t('gym.routine.targetDistance')}
 								data-testid="routine-set-distance"
+								aria-describedby="{uid}-set-hint"
 							/>
 						{/if}
 
@@ -375,6 +394,7 @@
 								bind:value={exercises[ei].sets[si].weight}
 								aria-label={t('gym.routine.targetWeight', { unit: weightUnitLabel() })}
 								data-testid="routine-set-weight"
+								aria-describedby="{uid}-set-hint"
 							/>
 						{/if}
 
@@ -387,6 +407,7 @@
 							bind:value={exercises[ei].sets[si].rest}
 							aria-label={t('gym.routine.restLabel')}
 							data-testid="routine-set-rest"
+							aria-describedby="{uid}-set-hint"
 						/>
 
 						<input
@@ -399,6 +420,7 @@
 							bind:value={exercises[ei].sets[si].rpe}
 							aria-label={metricName('rpe')}
 							data-testid="routine-set-rpe"
+							aria-describedby="{uid}-set-hint"
 						/>
 
 						<button
@@ -413,6 +435,10 @@
 				{/each}
 			</div>
 
+			{#if ei === 0}
+				<span class="field-hint" id="{uid}-set-hint">{t('gym.routine.setHint')}</span>
+			{/if}
+
 			<button class="btn btn-sm btn-outline" type="button" onclick={() => addSet(ei)}>
 				<span class="material-symbols" aria-hidden="true">add</span>
 				{t('gym.editor.addSet')}
@@ -425,40 +451,55 @@
 					disabled={ei === exercises.length - 1}
 					data-testid="routine-superset-toggle"
 				/>
-				<span class="checkbox-text">{t('gym.routine.supersetToggle')}</span>
+				<span class="checkbox-text">
+					<strong>{t('gym.routine.supersetToggle')}</strong>
+					<span class="hint">{t('gym.routine.supersetHint')}</span>
+				</span>
 			</label>
 
 			<details bind:open={exercises[ei].advancedOpen} class="advanced">
 				<summary>{t('gym.routine.advanced')}</summary>
 				<div class="advanced-body">
-					<label class="field">
-						<span class="section-label">{t('gym.routine.progression')}</span>
-						<select
-							class="text-input"
-							bind:value={exercises[ei].progression}
-							data-testid="routine-progression"
-						>
-							{#each SCHEMES as sc (sc)}
-								<option value={sc}>{schemeLabel(sc)}</option>
-							{/each}
-						</select>
-					</label>
+					<div class="field">
+						<label>
+							<span class="section-label">{t('gym.routine.progression')}</span>
+							<select
+								class="text-input"
+								bind:value={exercises[ei].progression}
+								data-testid="routine-progression"
+								aria-describedby="{uid}-progression-hint-{ei}"
+							>
+								{#each SCHEMES as sc (sc)}
+									<option value={sc}>{schemeLabel(sc)}</option>
+								{/each}
+							</select>
+						</label>
+						<span class="field-hint" id="{uid}-progression-hint-{ei}">
+							{t('gym.routine.progressionHint')}
+						</span>
+					</div>
 
 					{#if ex.progression === 'linear' || ex.progression === 'double_progression' || ex.progression === 'five_by_five' || ex.progression === 'rpe_autoreg'}
-						<label class="field">
-							<span class="section-label"
-								>{t('gym.routine.progression.incrementLabel', { unit: weightUnitLabel() })}</span
-							>
-							<input
-								class="text-input"
-								type="number"
-								inputmode="decimal"
-								min="0"
-								step="0.5"
-								bind:value={exercises[ei].incrementKg}
-								data-testid="routine-progression-increment"
-							/>
-						</label>
+						<div class="field">
+							<label>
+								<span class="section-label"
+									>{t('gym.routine.progression.incrementLabel', { unit: weightUnitLabel() })}</span
+								>
+								<input
+									class="text-input"
+									type="number"
+									inputmode="decimal"
+									min="0"
+									step="0.5"
+									bind:value={exercises[ei].incrementKg}
+									data-testid="routine-progression-increment"
+									aria-describedby="{uid}-increment-hint-{ei}"
+								/>
+							</label>
+							<span class="field-hint" id="{uid}-increment-hint-{ei}">
+								{t('gym.routine.incrementHint')}
+							</span>
+						</div>
 					{/if}
 
 					{#if ex.progression === 'percent_cycle'}
@@ -475,6 +516,7 @@
 								max="200"
 								bind:value={exercises[ei].percent}
 								data-testid="routine-progression-percent"
+								aria-describedby="{uid}-percent-cycle-hint-{ei}"
 							/>
 						</div>
 						<div class="field">
@@ -495,8 +537,12 @@
 								min="0"
 								bind:value={exercises[ei].oneRm}
 								data-testid="routine-progression-onerm"
+								aria-describedby="{uid}-percent-cycle-hint-{ei}"
 							/>
 						</div>
+						<span class="field-hint" id="{uid}-percent-cycle-hint-{ei}">
+							{t('gym.routine.percentCycleHint')}
+						</span>
 					{/if}
 
 					{#if ex.progression === 'rpe_autoreg'}
@@ -514,8 +560,12 @@
 								step="0.5"
 								bind:value={exercises[ei].targetRpe}
 								data-testid="routine-progression-rpe"
+								aria-describedby="{uid}-target-rpe-hint-{ei}"
 							/>
 						</div>
+						<span class="field-hint" id="{uid}-target-rpe-hint-{ei}">
+							{t('gym.routine.targetRpeHint')}
+						</span>
 					{/if}
 				</div>
 			</details>
@@ -647,7 +697,7 @@
 
 	.editor-form .checkbox-card {
 		flex-direction: row;
-		align-items: center;
+		align-items: flex-start;
 		gap: var(--space-sm);
 		padding: var(--space-sm) var(--space-md);
 		border: 1px solid var(--color-border);
@@ -666,6 +716,14 @@
 	.checkbox-text {
 		font-size: 0.9rem;
 		color: var(--color-text);
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2xs);
+	}
+	.checkbox-text .hint {
+		font-size: 0.85rem;
+		font-weight: 400;
+		color: var(--color-text-secondary);
 	}
 
 	.advanced {

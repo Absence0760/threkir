@@ -10,7 +10,7 @@ Operational counterpart of [`apps/mobile_ios/CLAUDE.md`](CLAUDE.md) and the byte
 
 ## What this doc covers
 
-The iOS app and the Apple Watch app are **one deployment**. The watch app is a target of `Runner.xcodeproj` and is copied into the iOS app's `.ipa` by an Embed Watch Content phase, so there's no separate listing, no separate review, no separate upload. The Swift sources live under `apps/watch_ios/` and are **referenced** from the phone project rather than copied — one copy on disk, two targets. `apps/watch_ios/WatchApp.xcodeproj` also stays, as the test host the `test-watch-ios` CI job builds; claim (15) of `scripts/check_watch_ios_source.mjs` fails a PR when the two projects stop describing the same app. See [decisions § 1657](../../docs/architecture/decisions.md).
+The iOS app and the Apple Watch app are **one deployment**. The watch app is a target of `Runner.xcodeproj` and is copied into the iOS app's `.ipa` by an Embed Watch Content phase, so there's no separate listing, no separate review, no separate upload. The Swift sources live under `apps/watch_ios/` and are **referenced** from the phone project rather than copied — one copy on disk, two targets. `apps/watch_ios/WatchApp.xcodeproj` also stays, as the test host the `test-watch-ios` CI job builds; claim (15) of `scripts/check_watch_ios_source.mjs` fails a PR when the two projects stop describing the same app. See [decisions § 1679](../../docs/architecture/decisions.md).
 
 So: `mobile_ios@1.2.3` triggers one CI workflow that ships **both** apps.
 
@@ -165,7 +165,7 @@ Required keys:
 - `WKCompanionAppBundleIdentifier` — `com.threkir.app`. Declared since
   2026-09-18, after the embed it describes actually existed; `WKWatchOnly`
   is gone, the two being mutually exclusive. That was step 3 of the
-  five-step sequence in decisions § 1256, and § 1657 records steps 1–4.
+  five-step sequence in decisions § 1256, and § 1679 records steps 1–4.
 
 ### Capabilities to enable in Signing & Capabilities
 

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { readRow } from '../fixtures/db-read';
 import { getAdminClient } from '../fixtures/local-supabase';
@@ -109,6 +109,7 @@ test.describe('AI-processing consent — gate, record, withdraw, re-engage', () 
 
 	test('the chat is render-gated until consent, and the accept records the current version', async ({
 		browser,
+		mockRoute
 	}) => {
 		await setConsent(null);
 		const ctx = await browser.newContext({ storageState: user.storageStatePath });
@@ -118,14 +119,23 @@ test.describe('AI-processing consent — gate, record, withdraw, re-engage', () 
 			// at the network layer is the only way to prove the render gate
 			// actually gates rather than merely hides.
 			let coachCalls = 0;
-			await page.route('**/api/coach**', async (route) => {
-				coachCalls++;
-				await route.fulfill({
-					status: 200,
-					contentType: 'application/json',
-					body: JSON.stringify({ error: 'e2e: should not be reached' }),
-				});
-			});
+			await mockRoute(
+				page,
+				'**/api/coach**',
+				async (route) => {
+					coachCalls++;
+					await route.fulfill({
+						status: 200,
+						contentType: 'application/json',
+						body: JSON.stringify({ error: 'e2e: should not be reached' }),
+					});
+				},
+				{
+					neverFires:
+						'the gate is the subject: this case accepts consent and never sends a ' +
+						'prompt, so a single invocation is the regression',
+				},
+			);
 
 			await page.goto('/coach');
 

@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
+import type { MockRoute } from '../fixtures/mock-route';
 
 import { USER_A } from '../fixtures/users';
 
@@ -182,9 +183,12 @@ test.describe('/settings/account', () => {
 		// (issue #381, OWASP ASVS V2.1.14). Belt-and-braces for the shared
 		// fixture: PUT /auth/v1/user is aborted, so even a regression that
 		// skipped the current-password proof can't change USER_A's password.
-		const guardUpdateUser = async (page: import('@playwright/test').Page) => {
+		const guardUpdateUser = async (
+			mockRoute: MockRoute,
+			page: import('@playwright/test').Page
+		) => {
 			const seen = { put: 0 };
-			await page.route(AUTH_USER_ENDPOINT, async (route) => {
+			await mockRoute(page, AUTH_USER_ENDPOINT, async (route) => {
 				if (route.request().method() !== 'PUT') {
 					await route.continue();
 					return;
@@ -196,13 +200,14 @@ test.describe('/settings/account', () => {
 		};
 
 		test('a wrong current password is rejected and never reaches updateUser', async ({
-			page
+			page,
+			mockRoute
 		}) => {
-			const seen = await guardUpdateUser(page);
+			const seen = await guardUpdateUser(mockRoute, page);
 			// Only the password grant is stubbed — the refresh_token grant
 			// on the same endpoint has to keep working or the session dies
 			// mid-test.
-			await page.route('**/auth/v1/token**', async (route) => {
+			await mockRoute(page, '**/auth/v1/token**', async (route) => {
 				if (!route.request().url().includes('grant_type=password')) {
 					await route.continue();
 					return;
@@ -243,14 +248,25 @@ test.describe('/settings/account', () => {
 		});
 
 		test('mismatched entries are rejected before the current password is sent', async ({
-			page
+			page,
+			mockRoute
 		}) => {
-			const seen = await guardUpdateUser(page);
+			const seen = await guardUpdateUser(mockRoute, page);
 			let sawGrant = false;
-			await page.route('**/auth/v1/token**', async (route) => {
-				if (route.request().url().includes('grant_type=password')) sawGrant = true;
-				await route.continue();
-			});
+			await mockRoute(
+				page,
+				'**/auth/v1/token**',
+				async (route) => {
+					if (route.request().url().includes('grant_type=password')) sawGrant = true;
+					await route.continue();
+				},
+				{
+					neverFires:
+						'the local mismatch check returns before any grant is attempted, and the ' +
+						'session minted in globalSetup is nowhere near needing a refresh inside ' +
+						'this case'
+				}
+			);
 
 			await page.goto('/settings/account');
 			await page.getByLabel('Current Password').fill('irrelevant');
@@ -290,14 +306,15 @@ test.describe('/settings/account', () => {
 	// spec that signs in as them.
 	test.describe('change email — request path', () => {
 		test('an invalid or unchanged address is rejected before any request', async ({
-			page
+			page,
+			mockRoute
 		}) => {
 			let sawRequest = false;
 			// Aborted, not continued: this case exists because the guard can
 			// regress, and a regression that lets the request through would
 			// otherwise start a real GoTrue address change on the shared
 			// fixture user before the assertion below reported it.
-			await page.route(AUTH_USER_ENDPOINT, async (route) => {
+			await mockRoute(page, AUTH_USER_ENDPOINT, async (route) => {
 				if (route.request().method() !== 'PUT') {
 					await route.continue();
 					return;
@@ -319,10 +336,11 @@ test.describe('/settings/account', () => {
 		});
 
 		test('a valid new address requests the change and shows the pending state', async ({
-			page
+			page,
+			mockRoute
 		}) => {
 			let stubbed = 0;
-			await page.route(AUTH_USER_ENDPOINT, async (route) => {
+			await mockRoute(page, AUTH_USER_ENDPOINT, async (route) => {
 				if (route.request().method() !== 'PUT') {
 					await route.continue();
 					return;

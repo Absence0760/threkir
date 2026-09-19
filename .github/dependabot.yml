@@ -223,12 +223,18 @@ updates:
           - "minor"
           - "patch"
     ignore:
-      # Hold the Kotlin Gradle plugins at 2.3.x. CodeQL's Kotlin extractor
-      # can't analyse 2.4.0 yet ("kotlin-version-too-new"), so a 2.4.x bump
-      # turns the codeql-kotlin Security job red (this bit us when the
-      # minor-and-patch group shipped #68 → Kotlin 2.4.0). 2.3.x patches
-      # still flow. Drop these two entries once CodeQL supports 2.4.0; keep
-      # in lockstep with the pin + comment in
+      # Hold the Kotlin Gradle plugins below CodeQL's extractor ceiling: a
+      # bump past it does not degrade the scan, it fails the codeql-kotlin
+      # Security job from inside a compile task and loses the whole
+      # java-kotlin analysis (this bit us when the minor-and-patch group
+      # shipped #68 → Kotlin 2.4.0). The ceiling has MOVED since: bundle
+      # 2.27.0, which the pinned github/codeql-action SHA ships, refuses
+      # only >= 2.4.20 (measured against the CLI in decisions § 1672), so
+      # these two entries are now tighter than the fact. Left that way
+      # deliberately — this app's Kotlin moves together with its
+      # compose-compiler plugin against AGP 9.4.0, which is its own
+      # decision; followups.md carries it. Relax to >= 2.4.20 when taking
+      # it, in lockstep with the pin + comment in
       # apps/watch_wear/android/settings.gradle.kts and the CLAUDE.md note.
       - dependency-name: "org.jetbrains.kotlin.plugin.compose"
         versions: [">=2.4.0"]
@@ -306,6 +312,18 @@ updates:
       # take the newest version whose metadata the new toolchain satisfies.
       - dependency-name: "androidx.health.connect:connect-client"
         versions: ["> 1.2.0-alpha02"]
+      # The Kotlin Gradle plugin is held below CodeQL 2.27.0's extractor
+      # ceiling, which is what lets `security.yml`'s `codeql-kotlin` job
+      # scan this host at all. 2.4.20 is refused outright — "Kotlin version
+      # 2.4.20 is too recent. CodeQL currently supports versions below
+      # 2.4.20" — from inside a plugin subproject's compile task, so the
+      # bump does not degrade the scan, it fails the job and takes the
+      # whole java-kotlin analysis with it. `apps/watch_wear/android` is
+      # held the same way for the same reason. Raise this only when the
+      # bundle the pinned `github/codeql-action` SHA ships raises the
+      # ceiling; keep settings.gradle.kts in lockstep.
+      - dependency-name: "org.jetbrains.kotlin.android"
+        versions: [">= 2.4.20"]
 
   # ---------------------------------------------------------------------------
   # terraform — infra stacks

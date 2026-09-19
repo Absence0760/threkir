@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
@@ -32,7 +32,8 @@ test.describe('cross-user notifications', () => {
 	});
 
 	test('alex kudos runner → runner sees bell badge increment + popover entry', async ({
-		browser
+		browser,
+		mockRoute
 	}) => {
 		// Two browser contexts in one test — one as USER_B (alex),
 		// one as USER_A (runner). The kudos write fires the
@@ -70,7 +71,7 @@ test.describe('cross-user notifications', () => {
 			const before = parseInt(beforeText, 10);
 
 			// ── Alex kudos runner via /share/run/ ──
-			await alex.route('**/functions/v1/clip-public-track', (route) =>
+			await mockRoute(alex, '**/functions/v1/clip-public-track', (route) =>
 				route.fulfill({
 					status: 200,
 					contentType: 'application/json',

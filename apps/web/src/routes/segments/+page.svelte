@@ -105,12 +105,17 @@
 					bind:value={query}
 					placeholder={m('segments.browseSearchPlaceholder')}
 					data-testid="segment-catalogue-search"
+					aria-describedby="segment-filters-hint"
 				/>
 			</label>
 			{#if regions.length > 1}
 				<label class="field">
 					<span>{m('segments.browseRegion')}</span>
-					<select bind:value={region} data-testid="segment-catalogue-region">
+					<select
+						bind:value={region}
+						data-testid="segment-catalogue-region"
+						aria-describedby="segment-filters-hint"
+					>
 						<option value={null}>{m('segments.browseAllRegions')}</option>
 						{#each regions as r (r)}
 							<option value={r}>{r}</option>
@@ -121,7 +126,11 @@
 			{#if surfaces.length > 1}
 				<label class="field">
 					<span>{m('segments.browseSurface')}</span>
-					<select bind:value={surface} data-testid="segment-catalogue-surface">
+					<select
+						bind:value={surface}
+						data-testid="segment-catalogue-surface"
+						aria-describedby="segment-filters-hint"
+					>
 						<option value={null}>{m('segments.browseAllSurfaces')}</option>
 						{#each surfaces as s (s)}
 							<option value={s}>{routeSurfaceLabel(s)}</option>
@@ -131,7 +140,11 @@
 			{/if}
 			<label class="field">
 				<span>{m('segments.browseSort')}</span>
-				<select bind:value={sort} data-testid="segment-catalogue-sort">
+				<select
+					bind:value={sort}
+					data-testid="segment-catalogue-sort"
+					aria-describedby="segment-filters-hint"
+				>
 					{#each SORTS as option (option.value)}
 						<option value={option.value}>{m(option.key)}</option>
 					{/each}
@@ -149,6 +162,7 @@
 				</button>
 			{/if}
 		</div>
+		<p class="filter-hint" id="segment-filters-hint">{m('segments.browseFiltersHint')}</p>
 
 		<!-- One persistent live region rather than one per branch: a role="status"
 		     that is REMOVED when the result set empties announces nothing on the
@@ -240,6 +254,12 @@
 	.error-banner .material-symbols {
 		color: var(--color-danger-text);
 		font-size: 1.3rem;
+	}
+	.filter-hint {
+		color: var(--color-text-secondary);
+		font-size: 0.85rem;
+		line-height: 1.45;
+		margin: calc(var(--space-md) * -1) 0 var(--space-md);
 	}
 	.filters {
 		display: flex;

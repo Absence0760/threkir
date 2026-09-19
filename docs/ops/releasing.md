@@ -49,14 +49,23 @@ The glob is `<app>@*`, so any suffix works — `1.2.3`, `1.2.3-rc.1`,
 `2.0.0-beta.4`. The workflow parses the suffix as the `versionName` and
 derives a monotonic `versionCode` from `git rev-list --count HEAD`.
 
-**Apple Watch ships inside the iOS app.** Publishing a `watch_ios@*`
-Release runs a build smoke-check only (no artifact, nothing written back
-to the Release); the canonical user-facing release is `mobile_ios@*`,
-which bundles the watchOS target.
+**Apple Watch does NOT ship inside the iOS app yet.** That is the
+intended end state and the reason `watch_ios@*` runs a build smoke-check
+only (no artifact, nothing written back to the Release) -- but the
+embedding does not exist today. `apps/mobile_ios/ios/Runner.xcodeproj`
+contains no reference to the watch target, `apps/watch_ios/WatchApp.xcodeproj`
+is a standalone project, and the `.xcarchive` a `mobile_ios@*` build
+produces contains no watch app. Measured 2026-09-18 on Xcode 26.4
+([decisions § 1673](../architecture/decisions.md)); the five build-integration
+steps a Mac has to run are listed in [§ 1256](../architecture/decisions.md),
+and `apps/mobile_ios/deployment.md` keeps "Watch target builds clean from
+`mobile_ios` scheme" unticked for the same reason. **Until that lands, a
+`mobile_ios@*` release ships the phone app alone** -- do not submit one to
+App Review believing the watch app goes with it.
 
 That bundling is real as of 2026-09-18 and was not before —
 `Runner.xcodeproj` referenced nothing under `apps/watch_ios/` until
-[decisions § 1657](../architecture/decisions.md) added a `WatchApp`
+[decisions § 1679](../architecture/decisions.md) added a `WatchApp`
 target and an Embed Watch Content phase. **Verified on this Mac** (Xcode
 26.4): `flutter build ios --release --no-codesign` puts
 `Runner.app/Watch/WatchApp.app` in place with `CFBundleDisplayName =
@@ -113,7 +122,7 @@ create` / UI / `/release`). The last column is what the workflow attaches
 |---|---|---|---|---|
 | `mobile_android@*` | ubuntu-latest | release keystore from secrets | Play Internal track | `.aab` |
 | `watch_wear@*` | ubuntu-latest | Wear release keystore | Play Internal track (`com.threkir.watchwear`) | `.aab` |
-| `mobile_ios@*` | macos-latest | *unsigned today* (skeleton until app ships) | — | `.ipa` |
+| `mobile_ios@*` | macos-latest | *unsigned today* (skeleton until app ships) | — | — (build smoke-check only; `--no-codesign` writes no `.ipa`) |
 | `watch_ios@*` | macos-latest | — | — (build smoke-check only) | — |
 | `web@*` | ubuntu-latest | — | AWS S3 + CloudFront + Lambda (`prod` env at `threkir.com` / `www.threkir.com`) | build zip |
 | `backend@*` | ubuntu-latest | — | Supabase (migrations + functions on linked project) | — |
@@ -214,7 +223,7 @@ The web workflow assumes an IAM role via GitHub OIDC — there is **no** `AWS_AC
 | `PUBLIC_SENTRY_DSN` | Frontend Sentry DSN. Optional — empty disables client-side capture. |
 | `APP_RELEASE` | `web@<version>` tag — passed as `PUBLIC_APP_RELEASE` for Sentry release tagging. Defaults to `dev`. |
 
-Server-only secrets (`ANTHROPIC_API_KEY`, server-side `SENTRY_DSN`) live **sops-encrypted in the PRIVATE estate repo** at `../infra-secrets/threkir/<env>.sops.yaml` (never in this public repo — see the secrets row in the root CLAUDE.md), with one AWS KMS key per env decrypting them. Terraform reads them at apply time (via the `carlpett/sops` provider) and writes them into the Lambda's `environment.variables` block. The Lambda gets them as plain env vars at runtime — no AWS SDK calls, no cold-start secret-fetch latency. Rotation is `sops <file>` → save → `terraform apply` (or `bin/secret-set.sh <env> <KEY> < value-file` for non-interactive single-key rotation, then `terraform apply`). No secret values touch GitHub Secrets.
+Server-only secrets (`ANTHROPIC_API_KEY`, server-side `SENTRY_DSN`) live **sops-encrypted in the PRIVATE estate repo** at `../infra-secrets/threkir/<env>.sops.yaml` (never in this public repo — see the secrets row in the root CLAUDE.md), with one AWS KMS key per env decrypting them. Terraform reads them at apply time (via the `carlpett/sops` provider). Non-credential values (`SENTRY_DSN`, the coach's provider/endpoint/model config) go into the Lambda's `environment.variables` block as plain env vars; **the credentials do not** — `lambda:UpdateFunctionCode` returns a function's environment to anything that can deploy, so they are re-encrypted into an `aws_kms_ciphertext` blob per function and decrypted by the handler at cold start ([decisions § 1671](../architecture/decisions.md)). One `kms:Decrypt` per cold container, none per request. Rotation is `sops <file>` → save → `terraform apply` (or `bin/secret-set.sh <env> <KEY> < value-file` for non-interactive single-key rotation, then `terraform apply`) — **the apply is not optional for a credential**, because the blob is a resource and a function holding the old one decrypts the old value. No secret values touch GitHub Secrets.
 
 For the AWS-side deploy + rotation flows (preflight, orchestrated apply, sops bootstrap, post-deploy health check, interactive disaster recovery) see [`bin/README.md`](../../bin/README.md).
 

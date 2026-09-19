@@ -162,7 +162,6 @@
 	function animateShot(node: HTMLElement) {
 		if (!browser) return;
 		if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
-		if (typeof node.animate !== 'function') return;
 
 		const EASE = 'cubic-bezier(0.33, 0, 0.2, 1)';
 		const plays: Animation[] = [];
@@ -194,7 +193,7 @@
 			// background tab — an rAF loop would run forever at full rate.
 			const route = paths[paths.length - 1];
 			const d = route.getAttribute('d');
-			if (d && CSS.supports?.('offset-path', 'path("M0 0")')) {
+			if (d) {
 				const NS = 'http://www.w3.org/2000/svg';
 				const pacer = document.createElementNS(NS, 'g');
 				pacer.setAttribute('class', 'pacer');

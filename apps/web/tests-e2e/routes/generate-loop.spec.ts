@@ -1,4 +1,6 @@
-import { expect, test, type Page, type Route } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
+import type { MockRoute } from '../fixtures/mock-route';
+import type { Page, Route } from '@playwright/test';
 
 import { USER_A } from '../fixtures/users';
 
@@ -42,6 +44,10 @@ const FIELD_START = { lat: 37.6519, lng: -77.3611 };
 // request in-browser before it ever reaches the dev server.
 const OSRM_ROUTE = /\/route\/v1\/foot\//;
 
+/** Three cases replace the beforeEach generator stub with a deliberately slow one. */
+const REPLACED_BY_SLOW_STUB =
+	"the beforeEach stub is unrouted and replaced by this case's own slow 503";
+
 const TARGETS = [
 	{ label: '3.1 mi (5 km)', m: 5000, toleranceM: 1500 },
 	{ label: '5 km', m: 5000, toleranceM: 1500 },
@@ -54,8 +60,8 @@ const TARGETS = [
  * polyline between the requested coords. Returns `code: 'Ok'` so the
  * route builder treats every segment as a successful snap.
  */
-async function mockOsrmStraightLines(page: Page) {
-	await page.route(OSRM_ROUTE, async (route: Route) => {
+async function mockOsrmStraightLines(mockRoute: MockRoute, page: Page) {
+	await mockRoute(page, OSRM_ROUTE, async (route: Route) => {
 		const url = route.request().url();
 		const match = url.match(/\/foot\/([^?]+)/);
 		if (!match) {
@@ -179,8 +185,8 @@ function graphCycleLoopPolyline(
  * (the dense/medium-start happy path). The traced loop has non-trivial enclosed
  * area, unlike the round_trip out-and-back.
  */
-async function mockGenerateGraphCycleLoop(page: Page) {
-	await page.route('**/api/routes/generate', async (route: Route) => {
+async function mockGenerateGraphCycleLoop(mockRoute: MockRoute, page: Page) {
+	await mockRoute(page, '**/api/routes/generate', async (route: Route) => {
 		const body = route.request().postDataJSON() as {
 			start: { lat: number; lng: number };
 			targetDistanceM: number;
@@ -228,8 +234,8 @@ function enclosedAreaM2(coords: [number, number][]): number {
  * the requested target. Intercepts the POST before it reaches the dev server,
  * so the test is independent of whether GraphHopper is configured.
  */
-async function mockGenerateLoop(page: Page) {
-	await page.route('**/api/routes/generate', async (route: Route) => {
+async function mockGenerateLoop(mockRoute: MockRoute, page: Page) {
+	await mockRoute(page, '**/api/routes/generate', async (route: Route) => {
 		const body = route.request().postDataJSON() as {
 			start: { lat: number; lng: number };
 			targetDistanceM: number;
@@ -355,9 +361,12 @@ async function generateLoopViaHook(
 test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
-	test.beforeEach(async ({ page }) => {
-		await mockGenerateLoop(page);
-		await mockOsrmStraightLines(page);
+	test.beforeEach(async ({ page, mockRoute }) => {
+		await mockGenerateLoop(mockRoute, page);
+		// The OSRM stub is NOT installed here: `/api/routes/generate` answers the
+		// whole route, so only the two cases that drive the client's OSRM
+		// fallback ever reach it, and a stub the other 28 never invoke says
+		// nothing about whether its pattern still matches.
 		await mockOpenMeteoElevation(page);
 		await page.goto('/routes/new');
 		await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 10_000 });
@@ -412,11 +421,17 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 
 	test('falls back to the OSRM heuristic when the generate endpoint is unavailable', async ({
 		page,
+		mockRoute,
 	}) => {
 		// 501 = GraphHopper unconfigured (local dev / a degraded prod). The
 		// builder must still produce a loop via the in-browser OSRM heuristic
 		// rather than erroring — generate-by-distance survives an engine
-		// outage. The OSRM straight-line mock from beforeEach is the fallback.
+		// outage. The OSRM straight-line mock is what the fallback lands on.
+		await mockOsrmStraightLines(mockRoute, page);
+		mockRoute.neverFires(
+			'**/api/routes/generate',
+			"the beforeEach stub is unrouted and replaced by this case's own 501",
+		);
 		await page.unroute('**/api/routes/generate');
 		await page.route('**/api/routes/generate', (route) =>
 			route.fulfill({
@@ -445,6 +460,7 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 
 	test('graph-cycle path: clean foot-graph loop renders as a real loop near target', async ({
 		page,
+		mockRoute
 	}) => {
 		// When the graph_cycle sidecar is configured the server tries it FIRST and
 		// returns the clean cycle it traced on the real foot graph. The builder must
@@ -452,7 +468,7 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 		// anchor shape as the round_trip path — and it must be a REAL loop
 		// (non-trivial enclosed area), not an out-and-back.
 		await page.unroute('**/api/routes/generate');
-		await mockGenerateGraphCycleLoop(page);
+		await mockGenerateGraphCycleLoop(mockRoute, page);
 
 		const result = await generateLoopViaHook(page, {
 			targetDistanceM: 5000,
@@ -492,6 +508,7 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 
 	test('loop-poor: graph-cycle falls through to the round_trip loop', async ({
 		page,
+		mockRoute
 	}) => {
 		// Server-side, a loop-poor start makes the graph_cycle sidecar return
 		// found:false (no clean cycle on the foot graph), and the handler falls
@@ -502,7 +519,7 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 		// decision itself is unit-pinned in graph_cycle.test.ts ("falls back to
 		// round_trip when graph-cycle is loop-poor").
 		await page.unroute('**/api/routes/generate');
-		await mockGenerateLoop(page);
+		await mockGenerateLoop(mockRoute, page);
 
 		const result = await generateLoopViaHook(page, {
 			targetDistanceM: 5000,
@@ -527,13 +544,14 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 
 	test('loop-poor shortfall: offers the achievable distance and applies it on click', async ({
 		page,
+		mockRoute
 	}) => {
 		// Simulate a road network that can't form a loop at the target: return a
 		// loop ~22% short, below the ±15% accept band. The warning must carry an
 		// actionable "use the achievable distance" button (not a dead-end), and
 		// clicking it aligns the target to the drawn route + clears the warning.
 		await page.unroute('**/api/routes/generate');
-		await page.route('**/api/routes/generate', async (route: Route) => {
+		await mockRoute(page, '**/api/routes/generate', async (route: Route) => {
 			const body = route.request().postDataJSON() as {
 				start: { lat: number; lng: number };
 				targetDistanceM: number;
@@ -579,6 +597,7 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 
 	test('loop-poor 3-way choice: surfaces the best-loop-near-you option + generates it on click', async ({
 		page,
+		mockRoute
 	}) => {
 		// The durable loop-poor UX: when the server can only manage an out-and-back
 		// at the target but the graph search found a larger genuinely clean loop
@@ -588,7 +607,7 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 		// at the largest-loop distance.
 		const LARGEST_M = 8000;
 		await page.unroute('**/api/routes/generate');
-		await page.route('**/api/routes/generate', async (route: Route) => {
+		await mockRoute(page, '**/api/routes/generate', async (route: Route) => {
 			const body = route.request().postDataJSON() as {
 				start: { lat: number; lng: number };
 				targetDistanceM: number;
@@ -643,6 +662,7 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 
 	test('over-target shortfall: warns "longer than" + the action retargets upward', async ({
 		page,
+		mockRoute
 	}) => {
 		// Mirror of the "shorter than" shortfall, for the opposite branch:
 		// a road network that overshoots. Return a loop 40% LONGER than the
@@ -650,7 +670,7 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 		// "longer than" and the actionable button must retarget UP to the
 		// achievable distance.
 		await page.unroute('**/api/routes/generate');
-		await page.route('**/api/routes/generate', async (route: Route) => {
+		await mockRoute(page, '**/api/routes/generate', async (route: Route) => {
 			const body = route.request().postDataJSON() as {
 				start: { lat: number; lng: number };
 				targetDistanceM: number;
@@ -689,6 +709,7 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 
 	test('shortfall action retargets to the ACHIEVED distance (numeric, not just "changed")', async ({
 		page,
+		mockRoute
 	}) => {
 		// The existing shortfall test only asserts the Generate label
 		// changed. Pin the math: after "use X instead", the new target must
@@ -696,7 +717,7 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 		// entire point of the affordance. A unit/rounding bug (km vs metres,
 		// mi vs km) would surface as a large mismatch here.
 		await page.unroute('**/api/routes/generate');
-		await page.route('**/api/routes/generate', async (route: Route) => {
+		await mockRoute(page, '**/api/routes/generate', async (route: Route) => {
 			const body = route.request().postDataJSON() as {
 				start: { lat: number; lng: number };
 				targetDistanceM: number;
@@ -741,12 +762,13 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 
 	test('dismissing the shortfall banner clears it WITHOUT changing the target', async ({
 		page,
+		mockRoute
 	}) => {
 		// The banner's X (dismiss) must drop both the warning and the
 		// shortfall action, but — unlike "use X instead" — leave the
 		// target untouched so the user can re-Generate at the same distance.
 		await page.unroute('**/api/routes/generate');
-		await page.route('**/api/routes/generate', async (route: Route) => {
+		await mockRoute(page, '**/api/routes/generate', async (route: Route) => {
 			const body = route.request().postDataJSON() as {
 				start: { lat: number; lng: number };
 				targetDistanceM: number;
@@ -784,7 +806,9 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 
 	test('Generate button label switches from "loop" to "route" once an end point is set', async ({
 		page,
+		mockRoute,
 	}) => {
+		mockRoute.neverFires('**/api/routes/generate', 'the case reads the button copy and never presses it');
 		// handleGenerateLoop passes the page's endPoint through to the
 		// builder; the button copy must follow — "Generate X loop" with no
 		// end (round-trip), "Generate X route" once a distinct end is set
@@ -889,7 +913,15 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 
 	test('point-to-point: distant endAt keeps the polyline ending at endAt, not start', async ({
 		page,
+		mockRoute,
 	}) => {
+		// A point-to-point request is routed in-browser through OSRM, never
+		// through the loop generator.
+		await mockOsrmStraightLines(mockRoute, page);
+		mockRoute.neverFires(
+			'**/api/routes/generate',
+			'a point-to-point request never reaches the loop generator',
+		);
 		// 5km north of start — well outside NEAR_POINT_M.
 		const distantEnd = { lat: FIELD_START.lat + 0.045, lng: FIELD_START.lng };
 		const result = await generateLoopViaHook(page, {
@@ -964,7 +996,8 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 		expect(wp[wp.length - 1].lng).toBeCloseTo(wp[0].lng, 9);
 	});
 
-	test('rejects invalid targetDistanceM (NaN, 0, negative, absurd)', async ({ page }) => {
+	test('rejects invalid targetDistanceM (NaN, 0, negative, absurd)', async ({ page, mockRoute }) => {
+		mockRoute.neverFires('**/api/routes/generate', 'every input is refused before the request is built');
 		// Drive the public API with each invalid input and assert
 		// generateLoop returns false without mutating the route.
 		const cases = [Number.NaN, 0, -1000, Number.POSITIVE_INFINITY, 1_000_001];
@@ -991,7 +1024,8 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 		}
 	});
 
-	test('rejects pre-zoom call when no start is provided', async ({ page }) => {
+	test('rejects pre-zoom call when no start is provided', async ({ page, mockRoute }) => {
+		mockRoute.neverFires('**/api/routes/generate', 'the pan-first refusal happens before the request is built');
 		// generateLoop called with NO start AND zoom < 6 must refuse
 		// with the pan-first message. Default map zoom on /routes/new
 		// is 2 (geolocation denied in test) — well below 6.
@@ -1009,7 +1043,8 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 		await expect(banner).toContainText(/Pan to your area|pick a start/i);
 	});
 
-	test('Cancel mid-generation aborts the in-flight batch', async ({ page }) => {
+	test('Cancel mid-generation aborts the in-flight batch', async ({ page, mockRoute }) => {
+		mockRoute.neverFires('**/api/routes/generate', REPLACED_BY_SLOW_STUB);
 		// Loop generation goes to the server endpoint first; make it slow so
 		// the request is in flight long enough to cancel. The post-fetch
 		// routeVersion guard in generateLoopFromServer bails the moment the
@@ -1053,7 +1088,9 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 
 	test('Cancel restores pre-generate waypoints (no scaffolding left behind)', async ({
 		page,
+		mockRoute,
 	}) => {
+		mockRoute.neverFires('**/api/routes/generate', REPLACED_BY_SLOW_STUB);
 		// Pre-state for this test: drop two manual waypoints first via
 		// the test hook (calling addWaypoint), then generate. Cancel
 		// mid-iteration. The restore in generateLoop's finally should
@@ -1132,7 +1169,9 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 
 	test('Action buttons stay disabled mid-generation (Save / GPX / KML)', async ({
 		page,
+		mockRoute,
 	}) => {
+		mockRoute.neverFires('**/api/routes/generate', REPLACED_BY_SLOW_STUB);
 		// While the server generate call is in flight (builderBusy=true), the
 		// parent must keep Save / GPX / KML disabled so the user can't save a
 		// route whose generation hasn't landed yet.
@@ -1181,13 +1220,17 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 
 	test('hard failure: server + OSRM 503 → "Couldn\'t generate" error, no route, save disabled', async ({
 		page,
+		mockRoute,
 	}) => {
+		mockRoute.neverFires(
+			'**/api/routes/generate',
+			"the beforeEach stub is unrouted and replaced by this case's own 503",
+		);
 		// Server generation down AND the OSRM fallback also failing — the
 		// builder must surface its generation-specific error, not silently
 		// ship an empty route.
 		await page.unroute('**/api/routes/generate');
 		await page.route('**/api/routes/generate', (route) => route.fulfill({ status: 503, body: '{}' }));
-		await page.unroute(OSRM_ROUTE);
 		await page.route(OSRM_ROUTE, (route) =>
 			route.fulfill({ status: 503, body: '{}' }),
 		);
@@ -1209,6 +1252,7 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 
 	test('the route-preference control is single-choice and sends the chosen preference', async ({
 		page,
+		mockRoute
 	}) => {
 		// The four choices are mutually exclusive on the wire, so the control is
 		// a radio group rather than three checkboxes: "No preference" sends no
@@ -1216,7 +1260,7 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 		// token. Capture every POST body off the mock to assert the wiring.
 		const requests: Array<{ preference?: string }> = [];
 		await page.unroute('**/api/routes/generate');
-		await page.route('**/api/routes/generate', async (route: Route) => {
+		await mockRoute(page, '**/api/routes/generate', async (route: Route) => {
 			const body = route.request().postDataJSON() as {
 				start: { lat: number; lng: number };
 				targetDistanceM: number;
@@ -1294,13 +1338,14 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 
 	test('a preference the server did not apply is reported, and an absent field counts as not applied', async ({
 		page,
+		mockRoute
 	}) => {
 		// `preferenceApplied` is additive on the 200 body: a deployment that
 		// predates it sends nothing at all, which must read as "not applied"
 		// rather than as a silently honoured ask.
 		let echoPreference = true;
 		await page.unroute('**/api/routes/generate');
-		await page.route('**/api/routes/generate', async (route: Route) => {
+		await mockRoute(page, '**/api/routes/generate', async (route: Route) => {
 			const body = route.request().postDataJSON() as {
 				start: { lat: number; lng: number };
 				targetDistanceM: number;
@@ -1357,13 +1402,14 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 
 	test('a preference the server answers with a DIFFERENT token counts as not applied', async ({
 		page,
+		mockRoute
 	}) => {
 		// The engines deploy separately from this bundle, so the body can name a
 		// preference this request never carried. Agreement with the ask is what
 		// the page reports — a bare echo would let a wrong answer read as a
 		// honoured one.
 		await page.unroute('**/api/routes/generate');
-		await page.route('**/api/routes/generate', async (route: Route) => {
+		await mockRoute(page, '**/api/routes/generate', async (route: Route) => {
 			const body = route.request().postDataJSON() as {
 				start: { lat: number; lng: number };
 				targetDistanceM: number;
@@ -1394,8 +1440,10 @@ test.describe('/routes/new — generate-loop (mocked OSRM)', () => {
 	});
 
 	test('keyboard coordinate entry sets the start point without a map tap (WCAG 2.1.1)', async ({
-		page
+		page,
+		mockRoute
 	}) => {
+		mockRoute.neverFires('**/api/routes/generate', 'setting a start point asks the generator for nothing');
 		// audit-findings 2026-05-30 High [accessibility]: picking a start
 		// was pointer-only. A keyboard user types lat/lng + Set start.
 		await page.getByRole('button', { name: /Generate a route by distance/ }).click();

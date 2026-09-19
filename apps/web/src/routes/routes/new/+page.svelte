@@ -1870,7 +1870,7 @@
 	}
 	/* The hint is a SIBLING of its option, not a cell inside it: an
 	   explanation inside the <label> would join the radio's accessible name
-	   instead of describing it (decisions § 1657). */
+	   instead of describing it (decisions § 1659). */
 	.pref-hint {
 		font-size: 0.72rem;
 		line-height: 1.45;

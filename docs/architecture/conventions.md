@@ -1485,7 +1485,7 @@ Every create / edit editor (`ClubEditor`, `EventEditor`, `RunEditor`, `GymEditor
 
 ### A control on a swept surface carries a one-line explanation
 
-The Spoken-cues block's shape — a plain line under the control saying what it *does*, not what it is called — is house style on the surfaces listed in `SURFACES` in `apps/web/src/lib/control_hints_guard.test.ts` (decisions § 1640, § 1651, § 1657). Adding a control to one of those fails the guard until it is explained; adding a surface to the list is how the sweep grows. **Read the list rather than repeating it here** — a second copy of it rotted before it was a month old.
+The Spoken-cues block's shape — a plain line under the control saying what it *does*, not what it is called — is house style on the surfaces listed in `SURFACES` in `apps/web/src/lib/control_hints_guard.test.ts` (decisions § 1640, § 1651, § 1659). Adding a control to one of those fails the guard until it is explained; adding a surface to the list is how the sweep grows. **Read the list rather than repeating it here** — a second copy of it rotted before it was a month old.
 
 - A `<select>`, an `<input>`, a radio or a toggle group points at its explanation with `aria-describedby`, so the text is a **description** and not part of the accessible name. That means the paragraph sits outside the `<label>` — wrap the pair in `<div class="field">` when the label is the container, or in `<div class="radio-field">` for a radio option, which indents the line under the option's title.
 - A checkbox carries the explanation inside its own label, as a `.hint` / `.field-hint`, because a checkbox's label is short enough to absorb it.

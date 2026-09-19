@@ -172,7 +172,7 @@ aws configure sso
 # SSO Region: us-east-1
 # default region: us-east-1
 # default output: json
-# profile name: running     (or whatever you want)
+# profile name: threkir     (the commands below assume this name)
 
 aws sso login --profile threkir
 aws sts get-caller-identity --profile threkir   # proves it works

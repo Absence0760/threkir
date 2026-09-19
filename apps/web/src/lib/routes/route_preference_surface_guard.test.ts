@@ -81,7 +81,7 @@ test('each option states its hint in visible text, not in a tooltip', () => {
 	);
 	// The hint describes the option, so it sits outside the <label> and the
 	// radio points at it — inside, it would become part of the accessible
-	// name rather than a description (decisions § 1657).
+	// name rather than a description (decisions § 1659).
 	assert.doesNotMatch(
 		group,
 		/<label\b[^>]*>(?:(?!<\/label>)[\s\S])*class="pref-hint"/,

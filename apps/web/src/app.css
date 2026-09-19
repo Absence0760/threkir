@@ -1262,7 +1262,7 @@ img {
 /* A radio option whose explanation is a DESCRIPTION rather than part of its
    name: the line sits outside the <label> and the control points at it with
    `aria-describedby`, so a reader hears the option's name and then its
-   explanation instead of one run-on accessible name (decisions § 1657). The
+   explanation instead of one run-on accessible name (decisions § 1659). The
    indent lands the line under the option's title, not under its control. */
 .editor-form .radio-field {
 	display: flex;

@@ -5,7 +5,7 @@ import { USER_A } from '../fixtures/users';
 /**
  * /plans/[id] — the page leads with today's session and this week, and
  * everything else sits behind a named expander that remembers its state
- * (#905 workstream 3, decisions § 1658).
+ * (#905 workstream 3, decisions § 1660).
  *
  * Before this, a runner opening their plan read the phase pills, the plan
  * progress bar, the adherence banners, the rules card and the race-day panel

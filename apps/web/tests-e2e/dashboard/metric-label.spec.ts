@@ -28,7 +28,7 @@ const CTL_DEFINITION = /Fitness \(CTL\) — your rolling 42-day training load/;
 async function openDashboard(page: Page) {
 	await page.goto('/dashboard');
 	// This runner has three runs, so the page renders at `simple` and the
-	// snapshot is behind the named fold (§ 1656) — the definitions are what
+	// snapshot is behind the named fold (§ 1658) — the definitions are what
 	// this spec is about, not their depth.
 	await expandTrainingLoad(page);
 	const card = page.locator('.fitness-card').filter({ has: page.getByTestId('metric-info-vo2max') });

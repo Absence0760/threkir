@@ -89,7 +89,10 @@ embedded SPA shell stays in sync with the deployed bundle.
   written by Terraform from variables. The Lambda uses the anon key
   to read `public_runs` + `public_profiles` (both anon-readable
   views), mirroring the dev-server's RLS posture.
-- `APP_RELEASE`, `SENTRY_DSN` — optional, for telemetry.
+- `SENTRY_DSN` — optional. Errors are reported from the outermost catch via
+  `src/lib/core/lambda_sentry.ts`; unset means the reporter never initialises
+  and failures reach CloudWatch only. `APP_RELEASE` is baked into the bundle by
+  `build.mjs`, not read from the env.
 
 The Lambda holds no secrets — every read is via the public anon key
 against anon-readable views.

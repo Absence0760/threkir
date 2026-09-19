@@ -87,6 +87,22 @@ DerivedData/
 local.properties
 key.properties
 
+# Firebase per-app config (FCM). Google does not treat either file as a secret,
+# but both carry the project + app ids and a per-app API key and this repo is
+# public, so they follow the upload keystore's pattern instead: durable copies
+# sops-encrypted in the private estate repo, and the release workflows decode
+# them from GOOGLE_SERVICES_JSON_BASE64 / GOOGLE_SERVICE_INFO_PLIST_BASE64.
+google-services.json
+GoogleService-Info.plist
+
+# The FCM sender credential, which unlike the two config files above IS a
+# secret: the Firebase Admin SDK key downloads as
+# `<project>-firebase-adminsdk-<id>.json` and authorises sending as the
+# project. It belongs in the estate repo and as a Fly secret, never on disk
+# here — gitleaks would catch the private key, but not before it was written.
+*firebase-adminsdk*.json
+serviceAccountKey.json
+
 # Supabase
 .supabase/
 /supabase/

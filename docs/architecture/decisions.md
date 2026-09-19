@@ -29465,7 +29465,17 @@ The exemption field is `allowedIn`, not web's `expandedIn`, and the rename is th
 
 The `pt-PT` register guard caught the first draft: `metricRiegelDefinition` reached for `padrão` in the sense Portugal spends on *standard*, which the sense-split test reserves. It is `habitual` now. That guard is doing exactly what it was built for on copy written by someone who does not speak the language.
 
-## 1656. The disclosure level is derived from the goal onboarding already stored, and its default is an absence rather than a value
+## 1656. The Firebase per-app config files are build inputs from a secret, not committed files — and each platform's absent-config failure is shaped deliberately
+
+`google-services.json` and `GoogleService-Info.plist` are not secrets in Google's sense; both are gitignored here anyway. The repo is public, and every other identifier this product ships — the Supabase publishable key, the MapTiler key, the Sentry DSN — already reaches a binary as a GitHub secret rather than as a committed value, so a checked-in project id + per-app API key would be the one exception rather than the convention. The durable copies sit in the private estate repo beside the Android upload keystore, which is the pattern for anything irreplaceable: a write-only GitHub secret signs builds forever but can never be read back, so it is a consumer, not a backup.
+
+Neither file did anything until this round, and that was the whole defect the provisioning work was walking into. On Android the `google-services` plugin was never applied, so the JSON generated no string resources and `Firebase.initializeApp()` threw into the bridge's catch — a silent no-op. On iOS the plist was a member of no target, so it never entered the bundle. Either way an operator could have created the project, pasted every credential, seen `native_push: enabled` in the worker log, and still had no device ever register.
+
+The two platforms now fail differently, on purpose. Android applies the plugin **only when the file is present**, because an unconditional apply breaks `flutter run` on a fresh clone; the cost is that a release built without the secret still ships, so `release-android.yml` warns and names the consequence. iOS makes the plist a Resources member, so a build without it **fails** — there is no equivalent local cost, because an iOS build needs a Mac and a fetched config either way. Both workflows read the id the file carries before building, since a config exported for the wrong app fails the Gradle plugin obscurely and, on Apple, mints tokens that are delivered to nobody and report no error.
+
+The web half had the same shape of gap one layer out: `PUBLIC_VAPID_PUBLIC_KEY` was in `.env.example` and read by `push.ts`, and no workflow passed it. The worker validates its own VAPID pair at boot by deriving the public point from the private scalar, so the one mismatch it cannot see is a web build carrying a third key — browsers subscribe against a key nothing signs with and the push service answers 403 forever. `check_production_env.mjs` now rejects a key of the wrong shape at release time, which catches the likely paste: `web-push generate-vapid-keys` prints the private half first, and a 32-byte scalar in that variable throws inside `pushManager.subscribe` in every browser.
+
+## 1658. The disclosure level is derived from the goal onboarding already stored, and its default is an absence rather than a value
 
 Issue #905's first workstream names a defect that is easy to mis-read as a missing feature: `/onboarding` has written `user_settings.prefs.primary_goal` since § 78, and nothing ever read it back. Its one apparent consumer, `planPresetForGoal`, is handed the goal as a `?goal=` URL parameter by the finish-step CTA — so the wizard asked a question, stored the answer, and then answered the only question it had by passing the value along in a link. The stored copy was write-only on both platforms.
 
@@ -29481,7 +29491,7 @@ Mobile gets the helper and its ten-case mirror suite but no surface, per § 24 �
 
 A consequence worth naming, because it is the feature working rather than a test being awkward: a spec that creates an account and inserts three runs is building exactly the shape that derives `simple`, so the snapshot it reads is now behind the fold. `metric-label` and `dashboard-readiness-gym-journey` are both about what the snapshot SAYS, not where the page puts it, so they open it through one shared `expandTrainingLoad` fixture — which waits for either shape to attach before asking which one it is, since a `count()` taken straight after `goto` reads 0 on an unhydrated page and makes such a helper silently do nothing on the one account it exists for. `dashboard/disclosure.spec.ts` remains the place the fold itself is asserted.
 
-## 1657. The control-hint sweep reaches every surface § 1651 owed, and the last one needed wiring rather than words
+## 1659. The control-hint sweep reaches every surface § 1651 owed, and the last one needed wiring rather than words
 
 [§ 1651](#1651-the-spoken-cues-explanation-spreads-to-the-plan-and-run-path-and-the-sweeps-boundary-is-a-list-not-a-claim-about-the-app) bounded [#905](https://github.com/Absence0760/threkir/issues/905)'s workstream 5 at the plan-and-run path and wrote down what it was leaving: five creator editors, five gym / session editors, four routes and `/onboarding`. All of them are in `SURFACES` now, so the owed list is empty and the registry — not this entry — remains the thing to read.
 
@@ -29495,7 +29505,7 @@ A consequence worth naming, because it is the feature working rather than a test
 
 The Playwright spec grew from three tests to seventeen and reads several surfaces in more than one state, because neither state renders the other's fields: the event editor as a group run with a cadence picked and as a class, the routine editor under both progression schemes that carry their own fields, the workout editor as repeats and as one steady effort. `FoodLogEditor`'s portion field is the one control left to the source scan alone — reaching it needs a live food-database search.
 
-## 1658. `/plans/[id]` leads with today and this week, and every other block is a named expander that defaults OPEN
+## 1660. `/plans/[id]` leads with today and this week, and every other block is a named expander that defaults OPEN
 
 Issue #905 workstream 3 asked for one job per page. On the plan detail page the job is "what am I running today, and how does this week look" — and today's card was the **eighth** block on it. Above it sat the hero, the plan-timeline bar, the phase pills and stat chips, the adherence banners, the re-plan preview, the rules card and the race-day panel. #919 had already moved the four re-plan controls into one **Adjust plan** dialog and pushed publishing below the plan; this is the sequencing half.
 
@@ -29509,7 +29519,7 @@ One test-shape note worth keeping. The persisted write lands on the `toggle` eve
 
 Mobile's `plan_detail_screen.dart` is untouched and now differs: the phone still leads with the hero and progress ring. Recorded as a gap in `parity.md` rather than built here, per the web-is-canonical rule ([§ 24](decisions.md#24-web-is-the-canonical-feature-surface-mobile-and-watches-are-platform-additive)).
 
-## 1659. The agent-citation guard covers the whole `.claude` fleet, derived from git — and the per-app lockfile it was told to find is one pub never writes
+## 1661. The agent-citation guard covers the whole `.claude` fleet, derived from git — and the per-app lockfile it was told to find is one pub never writes
 
 [§ 1643](#1643-the-uiux-agents-carry-judgment-not-inventory--the-facts-are-read-from-the-tree-on-every-invocation) built `apps/web/src/lib/ux_agent_guards.test.ts` to assert that every repo path the UI/UX toolchain cites is still tracked, and scoped it to five files on the grounds that in the persona and audit agents a citation is sometimes a hypothesis rather than a directive. The eleven dead fleet-wide citations found while sizing that work were filed instead of fixed. Resolving them settles the scope question: **ten of the eleven were ordinary rot with a live path to point at, and exactly one was the conditional the narrow scope was protecting.** A whole fleet left unchecked to spare one honest hedge is the wrong trade, so the guard now reads every tracked `.md` under `.claude/` — 122 files and 1,002 citations, measured 2026-09-18 — and the one hedge is exempted by name. The guard asserts a floor of 600 rather than that figure: a census would fail on every unrelated agent edit, while a floor still catches the citation matcher silently ceasing to match, which would turn the whole guard green against any tree.
 
@@ -29523,7 +29533,7 @@ The exemption follows the `allowMissing`-with-a-reason shape `apps/web/scripts/c
 
 Two of the filed swaps would have made things worse and were not applied as written. `runner-older`'s HR-max finding cited `apps/web/src/lib/hr_zones.dart` **/** `apps/mobile_android/lib/hr_zones.dart`; the filed fix was to point the dead half at the mobile file, which would have collapsed the pair into a duplicate of itself and deleted the web side of the audit — and the web side is where `tanakaMaxHr` actually lives, which is the whole finding. It goes to `apps/web/src/lib/training/hr_zones.ts`. And `compliance-auditor`'s dead `sentry.ts` sat in the **cookie-consent** row, about SDKs firing before consent; the filed fix was `sentry/redact.ts`, a pure signed-URL scrubber with nothing to do with consent gating. It goes to `hooks.client.ts` + `hooks.server.ts`, where `Sentry.init` runs and the three-layer consent gate sits. The general lesson is the one the guard cannot enforce: a dead pointer is mechanically detectable, but *where it should now point* is a judgement about what the sentence around it was claiming, and a swap chosen from the path alone can satisfy the guard while auditing the wrong file.
 
-## 1660. The repeated-exercise-key negative is guarded by deriving what an index FORBIDS, because the index that would break it need not be the one the prose names
+## 1662. The repeated-exercise-key negative is guarded by deriving what an index FORBIDS, because the index that would break it need not be the one the prose names
 
 **Decided 2026-09-18.** § 1286 filed a negative — no unique index on `gym_routine_exercises (routine_id, exercise_key)` — and § 1489 re-verified it. Both are prose, in three documents, and a migration adding the index would have merged: the refusal arrives at `db push` against the populated table as a 23505, from the first lifter who programmed a heavy top set and a back-off block. `gym_repeated_exercise_key_test.sql` now fails the PR instead.
 

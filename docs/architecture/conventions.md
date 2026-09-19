@@ -1485,12 +1485,14 @@ Every create / edit editor (`ClubEditor`, `EventEditor`, `RunEditor`, `GymEditor
 
 ### A control on a swept surface carries a one-line explanation
 
-The Spoken-cues block's shape — a plain line under the control saying what it *does*, not what it is called — is house style on the surfaces listed in `SURFACES` in `apps/web/src/lib/control_hints_guard.test.ts`: the six `/settings/*` preference pages, `/plans/new`, `PlanEditor`, `PlanMetaEditor` and `RunEditor` (decisions § 1640, § 1651). Adding a control to one of those fails the guard until it is explained; adding a surface to the list is how the sweep grows.
+The Spoken-cues block's shape — a plain line under the control saying what it *does*, not what it is called — is house style on the surfaces listed in `SURFACES` in `apps/web/src/lib/control_hints_guard.test.ts` (decisions § 1640, § 1651, § 1659). Adding a control to one of those fails the guard until it is explained; adding a surface to the list is how the sweep grows. **Read the list rather than repeating it here** — a second copy of it rotted before it was a month old.
 
-- A `<select>`, an `<input>` or a toggle group points at its explanation with `aria-describedby`, so the text is a **description** and not part of the accessible name. That means the paragraph sits outside the `<label>` — wrap the pair in `<div class="field">` when the label is the container.
+- A `<select>`, an `<input>`, a radio or a toggle group points at its explanation with `aria-describedby`, so the text is a **description** and not part of the accessible name. That means the paragraph sits outside the `<label>` — wrap the pair in `<div class="field">` when the label is the container, or in `<div class="radio-field">` for a radio option, which indents the line under the option's title.
 - A checkbox carries the explanation inside its own label, as a `.hint` / `.field-hint`, because a checkbox's label is short enough to absorb it.
 - **Say what the control changes, or what happens on versus off.** A line that restates the label adds density, which is the problem the pattern exists to solve. Where the label plus the placeholder is already the whole story — a free-text `<textarea>` — add nothing; the guard does not scan textareas.
 - Several controls may share one paragraph when a line under each would repeat (the per-workout grid in `PlanEditor`'s week outline points every cell at the outline's own explanation).
+- **A repeated block renders its explanation once.** An exercise, a set row or a session item inside an `{#each}` renders its line on the first iteration only, and every later iteration's controls point at that same id — a sentence under each of eight cells, repeated per exercise, is the density this exists to remove.
+- **Wiring an existing explanation counts; inventing one to satisfy the scan does not.** `/onboarding` was registered without a single new string: its per-step hints were already the right copy and only needed an id and an `aria-describedby`.
 
 ## Web list pages — preserve scroll on back-navigation
 

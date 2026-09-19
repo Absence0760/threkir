@@ -49,10 +49,19 @@ The glob is `<app>@*`, so any suffix works — `1.2.3`, `1.2.3-rc.1`,
 `2.0.0-beta.4`. The workflow parses the suffix as the `versionName` and
 derives a monotonic `versionCode` from `git rev-list --count HEAD`.
 
-**Apple Watch ships inside the iOS app.** Publishing a `watch_ios@*`
-Release runs a build smoke-check only (no artifact, nothing written back
-to the Release); the canonical user-facing release is `mobile_ios@*`,
-which bundles the watchOS target.
+**Apple Watch does NOT ship inside the iOS app yet.** That is the
+intended end state and the reason `watch_ios@*` runs a build smoke-check
+only (no artifact, nothing written back to the Release) -- but the
+embedding does not exist today. `apps/mobile_ios/ios/Runner.xcodeproj`
+contains no reference to the watch target, `apps/watch_ios/WatchApp.xcodeproj`
+is a standalone project, and the `.xcarchive` a `mobile_ios@*` build
+produces contains no watch app. Measured 2026-09-18 on Xcode 26.4
+([decisions § 1673](../architecture/decisions.md)); the five build-integration
+steps a Mac has to run are listed in [§ 1256](../architecture/decisions.md),
+and `apps/mobile_ios/deployment.md` keeps "Watch target builds clean from
+`mobile_ios` scheme" unticked for the same reason. **Until that lands, a
+`mobile_ios@*` release ships the phone app alone** -- do not submit one to
+App Review believing the watch app goes with it.
 
 ## Cutting a release
 
@@ -99,7 +108,7 @@ create` / UI / `/release`). The last column is what the workflow attaches
 |---|---|---|---|---|
 | `mobile_android@*` | ubuntu-latest | release keystore from secrets | Play Internal track | `.aab` |
 | `watch_wear@*` | ubuntu-latest | Wear release keystore | Play Internal track (`com.threkir.watchwear`) | `.aab` |
-| `mobile_ios@*` | macos-latest | *unsigned today* (skeleton until app ships) | — | `.ipa` |
+| `mobile_ios@*` | macos-latest | *unsigned today* (skeleton until app ships) | — | — (build smoke-check only; `--no-codesign` writes no `.ipa`) |
 | `watch_ios@*` | macos-latest | — | — (build smoke-check only) | — |
 | `web@*` | ubuntu-latest | — | AWS S3 + CloudFront + Lambda (`prod` env at `threkir.com` / `www.threkir.com`) | build zip |
 | `backend@*` | ubuntu-latest | — | Supabase (migrations + functions on linked project) | — |

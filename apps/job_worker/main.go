@@ -451,36 +451,30 @@ func main() {
 		logger.Warn("web_push: DISABLED — VAPID_PUBLIC_KEY unset; web_push jobs finish without sending")
 	}
 
-	// Native-push sender for kind='native_push' jobs (FCM HTTP v1 for Android,
-	// APNs HTTP/2 for iOS). Optional + fail-closed — when neither transport is
-	// credentialed the worker still drains every other kind, and native_push
-	// jobs finish done while leaving the rows pending (so a later credentialed
-	// deploy delivers the backlog). FCM needs FCM_SERVICE_ACCOUNT_JSON +
-	// FCM_PROJECT_ID; APNs needs APNS_KEY_P8 + APNS_KEY_ID + APNS_TEAM_ID +
-	// APNS_TOPIC (+ optional APNS_SANDBOX=1). Either group alone enables that
-	// platform; an invalid credential fails the worker at startup (exit 2).
+	// Native-push sender for kind='native_push' jobs — one FCM HTTP v1 POST per
+	// device, Android and iOS alike. Optional + fail-closed: with the
+	// credentials unset the worker still drains every other kind, and
+	// native_push jobs finish done while leaving the rows pending (so a later
+	// credentialed deploy delivers the backlog). Needs FCM_SERVICE_ACCOUNT_JSON
+	// + FCM_PROJECT_ID; an invalid credential fails the worker at startup
+	// (exit 2). There is no APNs group: iOS is delivered by FCM, and the APNs
+	// .p8 is uploaded to the Firebase project rather than held here — see the
+	// internal/nativepush package doc.
 	var nativePushSender internal.NativePushSender
 	nativeCfg := nativepush.Config{
 		FCMServiceAccountJSON: []byte(os.Getenv("FCM_SERVICE_ACCOUNT_JSON")),
 		FCMProjectID:          os.Getenv("FCM_PROJECT_ID"),
-		APNSKeyP8:             []byte(os.Getenv("APNS_KEY_P8")),
-		APNSKeyID:             os.Getenv("APNS_KEY_ID"),
-		APNSTeamID:            os.Getenv("APNS_TEAM_ID"),
-		APNSTopic:             os.Getenv("APNS_TOPIC"),
-		APNSSandbox:           os.Getenv("APNS_SANDBOX") == "1",
 	}
 	if sender, err := nativepush.NewSender(nativeCfg, client.HTTP); err != nil {
 		// A configured-but-invalid credential is a deploy misconfiguration —
 		// fail loudly rather than silently dropping every native push.
-		logger.Error("native_push: invalid FCM/APNs configuration — refusing to start", "err", err)
+		logger.Error("native_push: invalid FCM configuration — refusing to start", "err", err)
 		os.Exit(2)
 	} else if sender != nil {
 		nativePushSender = sender
-		logger.Info("native_push: enabled",
-			"fcm", nativeCfg.FCMProjectID != "",
-			"apns", len(nativeCfg.APNSKeyP8) > 0)
+		logger.Info("native_push: enabled", "project", nativeCfg.FCMProjectID)
 	} else {
-		logger.Warn("native_push: DISABLED — no FCM/APNs credentials set; native_push jobs finish without sending")
+		logger.Warn("native_push: DISABLED — no FCM credentials set; native_push jobs finish without sending")
 	}
 
 	// SMS sender for kind='safety_sms' jobs (the overdue-runner SMS escalation

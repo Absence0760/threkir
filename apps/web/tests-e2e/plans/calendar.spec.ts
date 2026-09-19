@@ -131,10 +131,12 @@ test.describe('/plans/[id] — PlanCalendar (month view)', () => {
 	});
 
 	test('Calendar section mounts under the plan-detail hero', async ({ page }) => {
-		// `<section class="calendar-section">` + `<h2 class="section-title">Calendar</h2>`
-		// + `.cal` from PlanCalendar. A regression that dropped the
-		// component from the page (e.g. inadvertent {#if} guard) would
-		// surface here. The .cal class is unique to PlanCalendar.
+		// `<section class="calendar-section">` — a named expander since #905
+		// workstream 3, so the `<h2 class="section-title">Calendar</h2>` now sits
+		// in its `<summary>` and `.cal` from PlanCalendar in its body. Open by
+		// default. A regression that dropped the component from the page (e.g.
+		// inadvertent {#if} guard) would surface here. The .cal class is unique
+		// to PlanCalendar.
 		await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}`);
 		await expect(page.locator('section.calendar-section')).toBeVisible({
 			timeout: 10_000

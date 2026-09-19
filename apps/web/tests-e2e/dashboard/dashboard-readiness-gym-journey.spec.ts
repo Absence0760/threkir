@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { noonOnBrowserDay } from '../fixtures/dates';
 import { getAdminClient } from '../fixtures/local-supabase';
+import { expandTrainingLoad } from '../fixtures/dashboard';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { insertRun, setUserSetting } from '../fixtures/simulate';
 
@@ -146,6 +147,7 @@ test.describe('dashboard readiness — gym sessions fold into CTL/ATL/TSB', () =
 				// ── Phase 1: gym IS in the readiness curve ──────────────────
 				await test.step('readiness includes gym — note says "factored in", capture ATL/TSB', async () => {
 					await page.goto('/dashboard');
+					await expandTrainingLoad(page);
 
 					// The transparency note confirms a recent lift is moving the
 					// curve (hasRecentLift && !excludeGymFromReadiness).
@@ -166,6 +168,7 @@ test.describe('dashboard readiness — gym sessions fold into CTL/ATL/TSB', () =
 				await test.step('toggle exclude_gym_from_readiness → note flips to "excluded"', async () => {
 					await setUserSetting(subject.id, 'exclude_gym_from_readiness', true);
 					await page.goto('/dashboard');
+					await expandTrainingLoad(page);
 					const note = page.getByTestId('gym-readiness-note');
 					await expect(note).toBeVisible({ timeout: 10_000 });
 					await expect(note).toContainText(/excluded/i);
@@ -196,6 +199,7 @@ test.describe('dashboard readiness — gym sessions fold into CTL/ATL/TSB', () =
 				await test.step('revert pref → gym is folded back into the readiness curve', async () => {
 					await setUserSetting(subject.id, 'exclude_gym_from_readiness', false);
 					await page.goto('/dashboard');
+					await expandTrainingLoad(page);
 					const note = page.getByTestId('gym-readiness-note');
 					await expect(note).toBeVisible({ timeout: 10_000 });
 					await expect(note).toContainText(/factored into your fatigue/i);

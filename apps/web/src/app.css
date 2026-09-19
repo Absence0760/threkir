@@ -1271,6 +1271,24 @@ img {
 	display: flex;
 	flex-direction: column;
 }
+/* A radio option whose explanation is a DESCRIPTION rather than part of its
+   name: the line sits outside the <label> and the control points at it with
+   `aria-describedby`, so a reader hears the option's name and then its
+   explanation instead of one run-on accessible name (decisions § 1659). The
+   indent lands the line under the option's title, not under its control. */
+.editor-form .radio-field {
+	display: flex;
+	flex-direction: column;
+}
+.editor-form .radio-field > .hint {
+	padding-inline-start: 1.6rem;
+}
+/* An option-card whose label carries a title and an explanation stacks them;
+   a card whose label is one sentence is unaffected. */
+.editor-form .toggle-row > span > strong,
+.editor-form .toggle-row > span > .hint {
+	display: block;
+}
 /* The checkbox option-card (activity waiver, charge toggle, share-to-feed,
    make-public): an inline checkbox + descriptive label inside a bordered
    card. Replaces the per-editor .waiver-toggle / .charge-toggle / .share-row

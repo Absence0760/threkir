@@ -22,6 +22,7 @@ import {
 import { stripSvelteComments } from '../../lib/core/strip_comments';
 import { WEEKLY_GOAL_KEY } from '../../lib/settings/weekly_goal';
 import { PRIVACY_ZONES_KEY } from '../../lib/routes/privacy';
+import { DISCLOSURE_LEVEL_KEY } from '../../lib/settings/disclosure';
 
 const SETTINGS_DIR = dirname(fileURLToPath(import.meta.url));
 const SRC_DIR = resolve(SETTINGS_DIR, '../..');
@@ -63,6 +64,10 @@ const HOMES: Record<string, Home> = {
 	discoverable_nearby: { page: 'privacy' },
 	trusted_contacts: { none: 'dormant: no surface reads or writes it (safety.md)' },
 	primary_goal: { none: 'written by /onboarding, which is not a settings page' },
+	disclosure_level: { page: 'display', via: 'DISCLOSURE_LEVEL_KEY' },
+	dashboard_training_load_expanded: {
+		none: "the /dashboard expander's own remembered state, not a control",
+	},
 	coach_personality: { page: 'training' },
 	multi_modal_nav: { none: 'dormant: read by nothing since the § 63 amendment' },
 	voice_feedback_enabled: { page: 'recording', also: { devices: PER_DEVICE_OVERRIDE } },
@@ -147,6 +152,7 @@ test('the registry and the homes declared here name the same keys', () => {
 test('the key constants a page names a setting through still spell that key', () => {
 	assert.equal(WEEKLY_GOAL_KEY, 'weekly_mileage_goal_m');
 	assert.equal(PRIVACY_ZONES_KEY, 'privacy_zones');
+	assert.equal(DISCLOSURE_LEVEL_KEY, 'disclosure_level');
 });
 
 test('every setting is edited on exactly the settings pages declared for it', () => {

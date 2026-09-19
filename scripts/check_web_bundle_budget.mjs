@@ -73,14 +73,42 @@
 //   code 1934 KB across 403 files, largest code chunk 245 KB
 //   catalogues 522 KB across 6 — de 88, es 85, fr 88, ja 91, pt-BR 85, pt-PT 85
 //   total 2456 KB (the retired single ceiling was 2700)
+// Re-measured 2026-09-18 (gzip via node:zlib, production build of apps/web):
+//   code 2103 KB across 431 files, largest code chunk 274 KB
+//   catalogues 597 KB across 6 — de 101, es 98, fr 101, ja 103, pt-BR 97, pt-PT 97
+// Note for whoever reads this next: MAX_CODE_KB is unchanged at 2120 and the
+// code population now measures 2103, so that ceiling carries 17 KB of cover
+// rather than the 186 KB it was set with. It is not moved here because this
+// change does not trip it and a ceiling raised pre-emptively protects nothing,
+// but the next dep of any size will fire it, and the route-scoped-catalogue
+// work below is what would give it room back (the English catalogue is inside
+// this population, by design, and grew with the rest).
 // MAX_CODE_KB is 2120: ~9.6% headroom over 1934, the same convention the four
 // bumps this file replaces used (2026-06-10, 06-20, 07-11, 07-27), now applied
 // to a base that no longer carries 522 KB no browser fetches together. Against
 // the old rule that is 238 KB of cover for a rogue dep cut to 186 KB, and —
 // the point — it stays 186 KB however many languages ship.
-// MAX_CATALOGUE_KB is 100: ~9.9% over the largest catalogue (ja). It moves when
-// the KEY COUNT grows, which is payload growth for every reader, and never when
-// the locale count grows, which is payload growth for none.
+// MAX_CATALOGUE_KB is 115, re-measured 2026-09-18: ~10% over the largest
+// catalogue (ja, 104 KB in CI / 103 locally). It moves when the KEY COUNT
+// grows, which is payload growth for every reader, and never when the locale
+// count grows, which is payload growth for none — and this is the first time
+// the first clause has been exercised, so it is worth recording what moved it
+// rather than only that it moved. Issue #905 workstream 5 put a one-line plain
+// explanation under every control on fifteen more surfaces, which is +98 keys
+// in every locale: de 96 -> 101, fr 95 -> 101, ja 98 -> 104, es/pt-BR/pt-PT
+// 92 -> 97/98. The guard asked the right question in its failure message —
+// key count, or something that is not translated text? — and the answer is
+// measurably the former, 98 translated sentences.
+//
+// Raising it is the honest outcome for growth that is deliberate, and it is
+// NOT the durable answer to what the measurement exposes: the catalogue is one
+// chunk per locale, so sentences that only ever render on the club / event /
+// race / challenge / fundraiser / gym / session editors are downloaded by
+// every reader of that language, and the English copies ride the code bundle
+// for every reader on earth. Route-scoped catalogues are the fix; they are
+// blocked on `store.svelte.ts`'s synchronous `dict[key] ?? en[key] ?? key`
+// contract, so they are a piece of work rather than a line, and they are filed
+// in `followups.md` rather than smuggled into the PR that tripped this.
 // MAX_LARGEST_CHUNK_KB stays 350, unchanged: 245 KB * the 33% headroom that
 // number was always justified by is 326, so the existing figure still states
 // the rule. What changed is the population it measures, not the ceiling.
@@ -116,7 +144,7 @@ export const CLIENT_MANIFEST = join(
 export const LOCALES_DIR = join(WEB_DIR, 'src', 'lib', 'i18n', 'locales');
 
 export const MAX_CODE_KB = 2120;
-export const MAX_CATALOGUE_KB = 100;
+export const MAX_CATALOGUE_KB = 115;
 export const MAX_LARGEST_CHUNK_KB = 350;
 export const MAX_ASSET_KB = 100;
 

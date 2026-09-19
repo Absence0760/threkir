@@ -338,27 +338,53 @@
 	onclose={onClose}
 >
 	<div class="editor-form">
-		<label>
-			<span>{t('workoutEditor.kind')}</span>
-			<select bind:value={kind}>
-				{#each kindOptions as k}
-					<option value={k}>{workoutKindLabel(k)}</option>
-				{/each}
-			</select>
-		</label>
+		<div class="field">
+			<label>
+				<span>{t('workoutEditor.kind')}</span>
+				<select bind:value={kind} aria-describedby="wo-kind-hint">
+					{#each kindOptions as k}
+						<option value={k}>{workoutKindLabel(k)}</option>
+					{/each}
+				</select>
+			</label>
+			<span class="hint" id="wo-kind-hint">{t('workoutEditor.kindHint')}</span>
+		</div>
 
 		{#if kind !== 'rest'}
-			<label>
-				<span>{t('workoutEditor.distance')} <span class="hint">{unit}</span></span>
-				<input type="number" min="0" step="0.1" bind:value={distance} />
-			</label>
+			<div class="field">
+				<label>
+					<span>{t('workoutEditor.distance')} <span class="hint">{unit}</span></span>
+					<input
+						type="number"
+						min="0"
+						step="0.1"
+						bind:value={distance}
+						aria-describedby="wo-distance-hint"
+					/>
+				</label>
+				<span class="hint" id="wo-distance-hint">{t('workoutEditor.distanceHint')}</span>
+			</div>
 
 			<fieldset>
 				<legend>{t('workoutEditor.targetPace')} <span class="hint">{t('workoutEditor.perUnit', { unit })}</span></legend>
 				<div class="pace-row">
-					<input type="number" min="0" max="59" bind:value={paceMin} placeholder={t('workoutEditor.min')} />
+					<input
+						type="number"
+						min="0"
+						max="59"
+						bind:value={paceMin}
+						placeholder={t('workoutEditor.min')}
+						aria-describedby="wo-pace-hint wo-pace-end-hint"
+					/>
 					<span>:</span>
-					<input type="number" min="0" max="59" bind:value={paceSec} placeholder={t('workoutEditor.sec')} />
+					<input
+						type="number"
+						min="0"
+						max="59"
+						bind:value={paceSec}
+						placeholder={t('workoutEditor.sec')}
+						aria-describedby="wo-pace-hint wo-pace-end-hint"
+					/>
 					<span class="arrow">→</span>
 					<input
 						type="number"
@@ -366,6 +392,7 @@
 						max="59"
 						bind:value={paceEndMin}
 						placeholder={t('workoutEditor.min')}
+						aria-describedby="wo-pace-hint wo-pace-end-hint"
 					/>
 					<span>:</span>
 					<input
@@ -374,27 +401,48 @@
 						max="59"
 						bind:value={paceEndSec}
 						placeholder={t('workoutEditor.sec')}
+						aria-describedby="wo-pace-hint wo-pace-end-hint"
 					/>
 				</div>
-				<p class="hint">
+				<p class="hint" id="wo-pace-hint">{t('workoutEditor.targetPaceHint')}</p>
+				<p class="hint" id="wo-pace-end-hint">
 					{t('workoutEditor.paceEndHint')}
 				</p>
 			</fieldset>
 
-			<label>
-				<span>{t('workoutEditor.paceTolerance')} <span class="hint">{t('workoutEditor.plusMinusSeconds')}</span></span>
-				<input type="number" min="0" max="60" bind:value={toleranceSec} />
-			</label>
+			<div class="field">
+				<label>
+					<span
+						>{t('workoutEditor.paceTolerance')}
+						<span class="hint">{t('workoutEditor.plusMinusSeconds')}</span></span
+					>
+					<input
+						type="number"
+						min="0"
+						max="60"
+						bind:value={toleranceSec}
+						aria-describedby="wo-tolerance-hint"
+					/>
+				</label>
+				<span class="hint" id="wo-tolerance-hint">{t('workoutEditor.paceToleranceHint')}</span>
+			</div>
 
-			<label>
-				<span>{t('workoutEditor.zoneLabel')} <span class="hint">{t('workoutEditor.zoneHint')}</span></span>
-				<input type="text" bind:value={zone} maxlength="16" />
-			</label>
+			<div class="field">
+				<label>
+					<span
+						>{t('workoutEditor.zoneLabel')}
+						<span class="hint">{t('workoutEditor.zoneHint')}</span></span
+					>
+					<input type="text" bind:value={zone} maxlength="16" aria-describedby="wo-zone-hint" />
+				</label>
+				<span class="hint" id="wo-zone-hint">{t('workoutEditor.zoneMeaningHint')}</span>
+			</div>
 		{/if}
 
 		{#if showStructure}
 			<fieldset class="structure">
 				<legend>{t('workoutEditor.structure')}</legend>
+				<p class="hint" id="wo-structure-hint">{t('workoutEditor.structureHint')}</p>
 
 				<label class="warmup">
 					<span>{t('workoutEditor.warmup')} <span class="hint">{unit}</span></span>
@@ -403,10 +451,16 @@
 						min="0"
 						step="0.1"
 						bind:value={warmupDistance}
+						aria-describedby="wo-structure-hint"
 					/>
 				</label>
 
-				<div class="mode-toggle" role="radiogroup" aria-label={t('workoutEditor.bodyOfWorkout')}>
+				<div
+					class="mode-toggle"
+					role="radiogroup"
+					aria-label={t('workoutEditor.bodyOfWorkout')}
+					aria-describedby="wo-mode-hint"
+				>
 					<label class="mode-opt">
 						<input
 							type="radio"
@@ -414,6 +468,7 @@
 							value="repeats"
 							checked={mode === 'repeats'}
 							onchange={() => (mode = 'repeats')}
+							aria-describedby="wo-mode-hint"
 						/>
 						<span>{t('workoutEditor.repeats')}</span>
 					</label>
@@ -424,10 +479,12 @@
 							value="steady"
 							checked={mode === 'steady'}
 							onchange={() => (mode = 'steady')}
+							aria-describedby="wo-mode-hint"
 						/>
 						<span>{t('workoutEditor.steady')}</span>
 					</label>
 				</div>
+				<p class="hint" id="wo-mode-hint">{t('workoutEditor.modeHint')}</p>
 
 				{#if mode === 'repeats'}
 					<fieldset class="repeats">
@@ -440,6 +497,7 @@
 								max="40"
 								step="1"
 								bind:value={repeatsCount}
+								aria-describedby="wo-repeats-hint"
 							/>
 						</label>
 						<label>
@@ -449,6 +507,7 @@
 								min="0"
 								step="0.1"
 								bind:value={repeatsDistance}
+								aria-describedby="wo-repeats-hint"
 							/>
 						</label>
 						<fieldset>
@@ -460,6 +519,7 @@
 									max="59"
 									bind:value={repeatsPaceMin}
 									placeholder={t('workoutEditor.min')}
+									aria-describedby="wo-repeats-hint"
 								/>
 								<span>:</span>
 								<input
@@ -468,9 +528,11 @@
 									max="59"
 									bind:value={repeatsPaceSec}
 									placeholder={t('workoutEditor.sec')}
+									aria-describedby="wo-repeats-hint"
 								/>
 							</div>
 						</fieldset>
+						<p class="hint" id="wo-repeats-hint">{t('workoutEditor.repeatsHint')}</p>
 						<label class="recovery">
 							<span>{t('workoutEditor.recovery')} <span class="hint">{unit}</span></span>
 							<input
@@ -478,15 +540,17 @@
 								min="0"
 								step="0.05"
 								bind:value={recoveryDistance}
+								aria-describedby="wo-recovery-hint"
 							/>
 						</label>
 						<label>
 							<span>{t('workoutEditor.recoveryPace')}</span>
-							<select bind:value={recoveryPace}>
+							<select bind:value={recoveryPace} aria-describedby="wo-recovery-hint">
 								<option value="jog">{t('workoutEditor.jog')}</option>
 								<option value="easy">{t('workoutEditor.easy')}</option>
 							</select>
 						</label>
+						<p class="hint" id="wo-recovery-hint">{t('workoutEditor.recoveryHint')}</p>
 					</fieldset>
 				{:else}
 					<fieldset class="steady">
@@ -498,6 +562,7 @@
 								min="0"
 								step="0.1"
 								bind:value={steadyDistance}
+								aria-describedby="wo-steady-hint"
 							/>
 						</label>
 						<fieldset>
@@ -509,6 +574,7 @@
 									max="59"
 									bind:value={steadyPaceMin}
 									placeholder={t('workoutEditor.min')}
+									aria-describedby="wo-steady-hint"
 								/>
 								<span>:</span>
 								<input
@@ -517,9 +583,11 @@
 									max="59"
 									bind:value={steadyPaceSec}
 									placeholder={t('workoutEditor.sec')}
+									aria-describedby="wo-steady-hint"
 								/>
 							</div>
 						</fieldset>
+						<p class="hint" id="wo-steady-hint">{t('workoutEditor.steadyHint')}</p>
 					</fieldset>
 				{/if}
 
@@ -530,6 +598,7 @@
 						min="0"
 						step="0.1"
 						bind:value={cooldownDistance}
+						aria-describedby="wo-structure-hint"
 					/>
 				</label>
 			</fieldset>

@@ -36,6 +36,11 @@
 	const coachOn = coachEnabled();
 	import { computeReadiness, type ReadinessContributorKind } from '$lib/training/readiness';
 	import { computeTrainingLoadSeries, hasTrimpSignal } from '$lib/training/training_load';
+	import {
+		DISCLOSURE_LEVEL_KEY,
+		resolveDisclosureLevel,
+	} from '$lib/settings/disclosure';
+	import { PRIMARY_GOAL_KEY } from '$lib/settings/onboarding';
 	import { fetchGymSetHistory, fetchGymWorkouts } from '$lib/core/data';
 	import { fetchFoodLog, fetchLatestWeightKg, type FoodEntry } from '$lib/core/data';
 	import { supabase } from '$lib/core/supabase';
@@ -274,6 +279,25 @@
 		return gymWorkouts.filter((w) => new Date(w.started_at) >= start);
 	});
 	let latestTodayLift = $derived(todaysLifts[0] ?? null);
+	/// Universal-prefs key the "Training load" expander remembers itself in.
+	/// Not a control, so it has no settings page — see settings.md.
+	const TRAINING_LOAD_EXPANDED_KEY = 'dashboard_training_load_expanded';
+
+	let storedDisclosure = $state<string | undefined>(undefined);
+	let primaryGoal = $state<string | null>(null);
+	let trainingLoadExpanded = $state(false);
+	/// How much this page opens up before the runner asks for more (#905).
+	/// `allTimeStats` degrades to zeros on a failed count read, which would
+	/// read as a brand-new account and fold a veteran's numbers away; the
+	/// loaded window is a lower bound on the history, so take the larger.
+	let disclosure = $derived(
+		resolveDisclosureLevel(
+			storedDisclosure,
+			primaryGoal,
+			Math.max(allTimeStats.totalRuns, runs.length),
+		),
+	);
+
 	let trainingLoadHasHr = $derived(hasTrimpSignal(runs, trimpPrefs));
 	// Single source of truth for CTL/ATL/TSB on this page. The fitness
 	// card's numbers, the recovery advice, and the readiness ring used to
@@ -697,6 +721,9 @@
 			max_hr_bpm: effective<number>(settings, 'max_hr_bpm') ?? null,
 		};
 		excludeGymFromReadiness = effective<boolean>(settings, 'exclude_gym_from_readiness') === true;
+		storedDisclosure = effective<string>(settings, DISCLOSURE_LEVEL_KEY);
+		primaryGoal = effective<string>(settings, PRIMARY_GOAL_KEY) ?? null;
+		trainingLoadExpanded = effective<boolean>(settings, TRAINING_LOAD_EXPANDED_KEY) === true;
 		try {
 			// Layered resilience: a bad shape in the jsonb bag must
 			// not crash the dashboard. If the read or the validation
@@ -726,6 +753,21 @@
 			showToast(m('dash.hidePrFailed', { error: (e as Error).message }), 'error');
 		}
 	}
+	/// Remembering the expander is auxiliary (L4): the section is open for this
+	/// visit either way, so a refused write is not worth a toast — it would be
+	/// one on every toggle of a signed-out or offline visit.
+	async function setTrainingLoadExpanded(next: boolean) {
+		if (trainingLoadExpanded === next) return;
+		trainingLoadExpanded = next;
+		const uid = auth.user?.id;
+		if (!uid) return;
+		try {
+			await updateUniversal(uid, { [TRAINING_LOAD_EXPANDED_KEY]: next });
+		} catch (e) {
+			console.warn('Training-load expander state not saved', e);
+		}
+	}
+
 	const hidePr = (key: string) => setHiddenPrs([...new Set([...hiddenPrs, key])]);
 	const unhidePr = (key: string) => setHiddenPrs(hiddenPrs.filter((k) => k !== key));
 
@@ -1499,36 +1541,7 @@
 			     snapshot it is derived from. Both cards self-hide and the band
 			     is auto-fit, so one alone takes the full width rather than
 			     leaving a hole where the other would have been. -->
-			<div class="metric-band">
-			<!-- Readiness-to-run — single 0-100 number with band-aware
-			     accent. Inputs today are TSB-only; sleep + resting-HR pipe
-			     through the `readiness.ts` helper unchanged once Health
-			     Connect / HealthKit reads land. Hide entirely when there's
-			     nothing to score (no TSB, no qualifying runs). -->
-			{#if loadNow != null}
-				<section class="readiness-card readiness-{readiness.band}">
-					<div class="readiness-head">
-						<span class="readiness-label">{m('dash.readinessLabel')}</span>
-						<span class="readiness-band">{readiness.band}</span>
-					</div>
-					<div class="readiness-score">{readiness.score}</div>
-					<p class="readiness-advice">{readiness.advice}</p>
-					{#if readiness.contributors.length > 0}
-						<ul class="readiness-contribs">
-							{#each readiness.contributors as c (c.kind)}
-								<li>
-									<span class="contrib-name">{m(CONTRIBUTOR_NAMES[c.kind])}</span>
-									<span class="contrib-delta" class:positive={c.delta > 0} class:negative={c.delta < 0}>
-										{c.delta > 0 ? '+' : ''}{c.delta}
-									</span>
-								</li>
-							{/each}
-						</ul>
-					{/if}
-				</section>
-			{/if}
-
-			{#if liveSnap.vo2Max != null || loadNow != null}
+			{#snippet fitnessSnapshot()}
 				<section class="fitness-card">
 					<div class="fitness-row">
 						<div class="fitness-metric">
@@ -1592,6 +1605,45 @@
 						</svg>
 					{/if}
 				</section>
+			{/snippet}
+
+			{#snippet trainingLoadChart()}
+				<section class="fitness-card">
+					<TrainingLoadChart points={trainingLoadSeries} hasHr={trainingLoadHasHr} />
+				</section>
+			{/snippet}
+
+			<div class="metric-band">
+			<!-- Readiness-to-run — single 0-100 number with band-aware
+			     accent. Inputs today are TSB-only; sleep + resting-HR pipe
+			     through the `readiness.ts` helper unchanged once Health
+			     Connect / HealthKit reads land. Hide entirely when there's
+			     nothing to score (no TSB, no qualifying runs). -->
+			{#if loadNow != null}
+				<section class="readiness-card readiness-{readiness.band}">
+					<div class="readiness-head">
+						<span class="readiness-label">{m('dash.readinessLabel')}</span>
+						<span class="readiness-band">{readiness.band}</span>
+					</div>
+					<div class="readiness-score">{readiness.score}</div>
+					<p class="readiness-advice">{readiness.advice}</p>
+					{#if readiness.contributors.length > 0}
+						<ul class="readiness-contribs">
+							{#each readiness.contributors as c (c.kind)}
+								<li>
+									<span class="contrib-name">{m(CONTRIBUTOR_NAMES[c.kind])}</span>
+									<span class="contrib-delta" class:positive={c.delta > 0} class:negative={c.delta < 0}>
+										{c.delta > 0 ? '+' : ''}{c.delta}
+									</span>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				</section>
+			{/if}
+
+			{#if disclosure !== 'simple' && (liveSnap.vo2Max != null || loadNow != null)}
+				{@render fitnessSnapshot()}
 			{/if}
 
 			</div>
@@ -1612,10 +1664,36 @@
 			<!-- Training-load curves over the last 90 days (decisions §34).
 			     Uses TRIMP when avg_bpm + HR prefs are available, distance
 			     fallback otherwise. Hides when there's nothing to plot. -->
-			{#if runs.length > 0}
-				<section class="fitness-card">
-					<TrainingLoadChart points={trainingLoadSeries} hasHr={trainingLoadHasHr} />
-				</section>
+			{#if disclosure === 'simple'}
+				<!-- Progressive disclosure (#905): at `simple` the fitness snapshot
+				     and the load curve are FOLDED, never dropped — one expander, named
+				     for what is inside it, remembering per account whether it was
+				     opened. At `standard` / `full` the page is exactly as it was.
+				     The override on /settings/display is what makes folding safe. -->
+				{#if liveSnap.vo2Max != null || loadNow != null || runs.length > 0}
+					<details
+						class="load-disclosure"
+						open={trainingLoadExpanded}
+						ontoggle={(e) => setTrainingLoadExpanded(e.currentTarget.open)}
+						data-testid="training-load-disclosure"
+					>
+						<summary>
+							<span class="material-symbols" aria-hidden="true">expand_more</span>
+							<span class="load-disclosure-text">
+								<span class="load-disclosure-title">{m('dash.trainingLoadSection')}</span>
+								<span class="load-disclosure-sub">{m('dash.trainingLoadSectionHint')}</span>
+							</span>
+						</summary>
+						{#if liveSnap.vo2Max != null || loadNow != null}
+							{@render fitnessSnapshot()}
+						{/if}
+						{#if runs.length > 0}
+							{@render trainingLoadChart()}
+						{/if}
+					</details>
+				{/if}
+			{:else if runs.length > 0}
+				{@render trainingLoadChart()}
 			{/if}
 
 			<!-- Multi-distance race-time predictor — projects the 5K / 10K / Half /
@@ -2853,6 +2931,66 @@
 		color: var(--color-text-secondary);
 	}
 	.coach-arrow { color: var(--color-text-tertiary); }
+
+	/* Progressive disclosure (#905). Spans the whole band rather than taking one
+	   auto-fit column, so the two cards folded inside it open at the width they
+	   had when they were band children in their own right. */
+	.load-disclosure {
+		grid-column: 1 / -1;
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		box-shadow: var(--shadow-sm);
+	}
+	.load-disclosure > summary {
+		display: flex;
+		align-items: center;
+		gap: var(--space-sm);
+		padding: var(--space-md) var(--space-lg);
+		cursor: pointer;
+		list-style: none;
+	}
+	.load-disclosure > summary::-webkit-details-marker {
+		display: none;
+	}
+	.load-disclosure > summary:focus-visible {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
+	}
+	.load-disclosure > summary .material-symbols {
+		color: var(--color-text-tertiary);
+		transition: transform var(--transition-fast);
+	}
+	.load-disclosure[open] > summary .material-symbols {
+		transform: rotate(180deg);
+	}
+	.load-disclosure-text {
+		display: flex;
+		flex-direction: column;
+		gap: 0.1rem;
+	}
+	.load-disclosure-title {
+		font-weight: 600;
+		font-size: 0.95rem;
+	}
+	.load-disclosure-sub {
+		font-size: 0.78rem;
+		color: var(--color-text-secondary);
+		line-height: 1.4;
+	}
+	/* The cards keep their own padding but drop the chrome they had as
+	   free-standing band children — inside the expander they are its rows. */
+	.load-disclosure .fitness-card {
+		border: 0;
+		border-top: 1px solid var(--color-border);
+		border-radius: 0;
+		box-shadow: none;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.load-disclosure > summary .material-symbols {
+			transition: none;
+		}
+	}
 
 	.fitness-card {
 		background: var(--color-surface);

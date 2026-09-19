@@ -290,7 +290,9 @@
 			placeholder={m('races.searchPlaceholder')}
 			aria-label={m('races.searchPlaceholder')}
 			data-testid="races-search"
+			aria-describedby="races-search-hint"
 		/>
+		<p class="filter-hint" id="races-search-hint">{m('races.searchHint')}</p>
 
 		<div class="near-row">
 			<input
@@ -301,11 +303,13 @@
 				placeholder={m('races.nearPlace')}
 				aria-label={m('races.nearPlace')}
 				data-testid="races-near"
+				aria-describedby="races-near-hint"
 			/>
 			<button type="button" class="chip near-locate" onclick={useMyLocation} data-testid="races-use-location">
 				{m('discover.useMyLocation')}
 			</button>
 		</div>
+		<p class="filter-hint" id="races-near-hint">{m('races.nearPlaceHint')}</p>
 
 		{#if nearLabel}
 			<button type="button" class="near-active" onclick={clearNear} data-testid="races-near-clear">
@@ -317,7 +321,12 @@
 			<p class="near-error" role="status">{geoError}</p>
 		{/if}
 
-		<div class="chip-row" role="group" aria-label={m('races.distanceAny')}>
+		<div
+			class="chip-row"
+			role="group"
+			aria-label={m('races.distanceAny')}
+			aria-describedby="races-distance-hint"
+		>
 			{#each DISTANCES as d (d.v)}
 				<button
 					type="button"
@@ -331,6 +340,7 @@
 				</button>
 			{/each}
 		</div>
+		<p class="filter-hint" id="races-distance-hint">{m('races.distanceFilterHint')}</p>
 	</div>
 
 	{#if loading}
@@ -371,9 +381,14 @@
 			{#if importLeg && importSpec && legAvailable[importLeg] === true}
 				<label>
 					<span>{m(importSpec.labelKey)}</span>
-					<input type="text" bind:value={scopeValue} data-testid={importSpec.inputTestId} />
+					<input
+						type="text"
+						bind:value={scopeValue}
+						data-testid={importSpec.inputTestId}
+						aria-describedby="races-import-scope-hint"
+					/>
 				</label>
-				<p class="paste-hint">{m(importSpec.hintKey)}</p>
+				<p class="paste-hint" id="races-import-scope-hint">{m(importSpec.hintKey)}</p>
 				<button
 					type="button"
 					class="btn btn-primary"
@@ -396,22 +411,48 @@
 					doPasteImport();
 				}}
 			>
-				<p class="paste-hint">{m('races.pasteResultHint')}</p>
+				<p class="paste-hint" id="races-paste-hint">{m('races.pasteResultHint')}</p>
 				<label>
 					<span>{m('races.bib')}</span>
-					<input type="text" bind:value={pasteBib} data-testid="paste-bib" />
+					<input
+						type="text"
+						bind:value={pasteBib}
+						data-testid="paste-bib"
+						aria-describedby="races-paste-hint"
+					/>
 				</label>
 				<label>
 					<span>{m('races.chipTime')}</span>
-					<input type="text" inputmode="numeric" placeholder="1:47:23" bind:value={pasteChip} data-testid="paste-chip" />
+					<input
+						type="text"
+						inputmode="numeric"
+						placeholder="1:47:23"
+						bind:value={pasteChip}
+						data-testid="paste-chip"
+						aria-describedby="races-paste-hint"
+					/>
 				</label>
 				<label>
 					<span>{m('races.gunTime')}</span>
-					<input type="text" inputmode="numeric" placeholder="1:48:01" bind:value={pasteGun} data-testid="paste-gun" />
+					<input
+						type="text"
+						inputmode="numeric"
+						placeholder="1:48:01"
+						bind:value={pasteGun}
+						data-testid="paste-gun"
+						aria-describedby="races-paste-hint"
+					/>
 				</label>
 				<label>
 					<span>{m('races.overallPlace')}</span>
-					<input type="number" inputmode="numeric" min="0" bind:value={pastePlace} data-testid="paste-place" />
+					<input
+						type="number"
+						inputmode="numeric"
+						min="0"
+						bind:value={pastePlace}
+						data-testid="paste-place"
+						aria-describedby="races-paste-hint"
+					/>
 				</label>
 				<div class="form-actions">
 					<button type="button" class="btn btn-outline" onclick={() => (importing = null)}>
@@ -537,6 +578,12 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-md);
+	}
+	.filter-hint {
+		color: var(--color-text-secondary);
+		font-size: 0.85rem;
+		line-height: 1.45;
+		margin: calc(var(--space-md) * -1 + 0.25rem) 0 0;
 	}
 	.paste-hint,
 	.unavailable {

@@ -36,6 +36,21 @@ const SURFACES: Array<{ name: string; file: string }> = [
 	{ name: 'PlanEditor', file: 'lib/components/PlanEditor.svelte' },
 	{ name: 'PlanMetaEditor', file: 'lib/components/PlanMetaEditor.svelte' },
 	{ name: 'RunEditor', file: 'lib/components/RunEditor.svelte' },
+	{ name: 'ClubEditor', file: 'lib/components/ClubEditor.svelte' },
+	{ name: 'EventEditor', file: 'lib/components/EventEditor.svelte' },
+	{ name: 'RaceListingEditor', file: 'lib/components/RaceListingEditor.svelte' },
+	{ name: 'ChallengeEditor', file: 'lib/components/ChallengeEditor.svelte' },
+	{ name: 'FundraiserEditor', file: 'lib/components/FundraiserEditor.svelte' },
+	{ name: 'RoutineEditor', file: 'lib/components/RoutineEditor.svelte' },
+	{ name: 'SessionPlanEditor', file: 'lib/components/SessionPlanEditor.svelte' },
+	{ name: 'GymEditor', file: 'lib/components/GymEditor.svelte' },
+	{ name: 'FoodLogEditor', file: 'lib/components/FoodLogEditor.svelte' },
+	{ name: 'WorkoutEditor', file: 'lib/components/WorkoutEditor.svelte' },
+	{ name: '/nutrition/targets', file: 'routes/nutrition/targets/+page.svelte' },
+	{ name: '/segments', file: 'routes/segments/+page.svelte' },
+	{ name: '/races', file: 'routes/races/+page.svelte' },
+	{ name: '/routes/new', file: 'routes/routes/new/+page.svelte' },
+	{ name: '/onboarding', file: 'routes/onboarding/+page.svelte' },
 ];
 
 /// The opening tag starting at `start`, read up to the `>` that closes it

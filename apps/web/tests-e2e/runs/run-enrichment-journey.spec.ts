@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import {
@@ -83,6 +83,7 @@ function setConsentAccepted(): void {
 test.describe('single-run enrichment journey', () => {
 	test('track + HR run lights up /runs/[id] detail surfaces, then renders enriched + clipped on /share/run/[id]', async ({
 		browser,
+		mockRoute
 	}) => {
 		const admin = getAdminClient();
 
@@ -411,7 +412,7 @@ test.describe('single-run enrichment journey', () => {
 						ele: p.ele,
 						ts: p.ts,
 					}));
-					await anonPage.route(
+					await mockRoute(anonPage, 
 						'**/functions/v1/clip-public-track',
 						(route) =>
 							route.fulfill({

@@ -148,6 +148,18 @@ export function recordImportFailure(
 	});
 }
 
+/// Total order on two reason identifiers, in UTF-16 code units — the one
+/// ordering both runtimes hold, because Dart ships no collator and
+/// `String.compareTo` is all the phone has. `localeCompare` asked the host's
+/// ICU data instead, so the summary line's order was a property of the
+/// reader's browser rather than of the reasons: a Hawaiian collation files the
+/// vowel-initial `unknown` and `unparseable` ahead of every consonant-initial
+/// reason, over the seven that already exist (decisions § 1665).
+export function compareImportFailureReasons(a: string, b: string): number {
+	if (a === b) return 0;
+	return a < b ? -1 : 1;
+}
+
 /// Reason tallies for the summary line, commonest first, then by reason
 /// name so the order is stable across renders.
 export function groupImportFailures(
@@ -157,7 +169,7 @@ export function groupImportFailures(
 	for (const f of log.items) counts.set(f.reason, (counts.get(f.reason) ?? 0) + 1);
 	return [...counts.entries()]
 		.map(([reason, count]) => ({ reason, count }))
-		.sort((a, b) => b.count - a.count || a.reason.localeCompare(b.reason));
+		.sort((a, b) => b.count - a.count || compareImportFailureReasons(a.reason, b.reason));
 }
 
 function csvField(value: string): string {

@@ -88,6 +88,27 @@ dump_sidecar_forensics() {
       docker logs --tail "$LOG_TAIL" "$cid" 2>&1 || true
     done
   done
+  # SIGBUS is the failure this half exists for. Three runs since 2026-09-08
+  # died with the edge runtime exiting 135 on the FIRST request it served,
+  # and all three left exactly the evidence above: enough to rule out an OOM
+  # kill (oom=false) and a crash loop (restarts=0), and not enough to choose
+  # between the three explanations that leaves. A bus error on a written
+  # mapping is what a filesystem with no room left looks like from inside the
+  # faulting process, so the host's free space is the missing fact and
+  # nothing here was recording it. The image digest makes the runtime version
+  # a record rather than an inference from a log line, which is what a bug
+  # report upstream would have to name. The kernel ring names the faulting
+  # address, which is what separates a truncated mapping from a real
+  # hardware fault. None of it changes what the probe decides.
+  echo "--- host capacity ---"
+  df -h / /tmp 2>&1 || true
+  docker system df 2>&1 || true
+  echo "--- runtime image and limits ---"
+  for cid in $(docker ps -aq --filter "name=supabase_${hint}" 2>/dev/null); do
+    docker inspect -f '{{.Name}} image={{.Config.Image}} digest={{.Image}} shm={{.HostConfig.ShmSize}} memlimit={{.HostConfig.Memory}}' "$cid" 2>&1 || true
+  done
+  echo "--- kernel ring (last 20) ---"
+  { dmesg 2>/dev/null || sudo -n dmesg 2>/dev/null || echo '(dmesg unavailable to this runner)'; } | tail -20 || true
 }
 
 # <label> <ready-status-regex> <container-name-substring> <curl args...>

@@ -19,19 +19,24 @@ name: Security
 #     The build step below enumerates them from the tree rather than
 #     naming them, because CodeQL analyses only what the build compiles
 #     and a module nobody builds is a module nobody scans (§ 1304).
-#   - java-kotlin covers apps/watch_wear (native Kotlin + Compose) ONLY.
-#     It claimed apps/mobile_android/android (the Flutter Gradle host) too
-#     and does not reach it, for the same reason § 1304 found on the Go
-#     leg: CodeQL analyses what the build steps compile, the only build
-#     step below was watch_wear's, and the Go-specific autobuild fallback
-#     has no Java/Kotlin analogue. That leaves 11 platform-channel bridges
-#     unscanned, RunActionReceiver.kt among them. Covering them means
-#     building the Flutter host, which needs the pinned SDK set up in this
-#     job — a trade still to be taken. What HAS changed (§ 1352) is that the
-#     build step now enumerates the Gradle projects from the tree, so a
-#     third one is scanned the day it lands, and the one exclusion is a
-#     declared value that `scripts/check_codeql_coverage.mjs` re-measures
-#     against the tree on every PR rather than a sentence in this header.
+#   - java-kotlin covers BOTH Gradle projects — apps/watch_wear (native
+#     Kotlin + Compose) and apps/mobile_android/android (the Flutter
+#     Gradle host, and its platform-channel bridges: MainActivity.kt,
+#     RunActionReceiver.kt (a BroadcastReceiver), and the bridges
+#     mediating health permissions, calendar access and foreground-service
+#     actions). The host went unscanned until § 1672, for the same reason
+#     § 1304 found on the Go leg: CodeQL analyses what the build steps
+#     compile, the only build step was watch_wear's, and the Go-specific
+#     autobuild fallback has no Java/Kotlin analogue. The build step now
+#     enumerates the Gradle projects from the tree and builds every one,
+#     so a third is scanned the day it lands, and
+#     `scripts/check_codeql_coverage.mjs` re-measures that walk against
+#     the tree on every PR rather than trusting this header.
+#     Two things the Flutter host needs and watch_wear does not: the
+#     pinned Flutter SDK (the `FLUTTER_VERSION` below, which
+#     `check_toolchain_pins.mjs` holds equal to ci.yml's), and a Kotlin
+#     Gradle plugin below the CodeQL bundle's extractor ceiling — both
+#     settings.gradle.kts files are pinned there and carry the reason.
 #   - actions covers every workflow under .github/workflows/
 #   - Trivy scans both Go service images — apps/job_worker and
 #     apps/graph_cycle (multi-stage, final image distroless). They
@@ -79,6 +84,15 @@ concurrency:
 # Token-Permissions guidance: prefer per-job permission blocks over a
 # single elevated top-level set.
 permissions: read-all
+
+# Must equal ci.yml's FLUTTER_VERSION: the `codeql-kotlin` job below drives the
+# Flutter tool over the same Gradle host that ci.yml's `build-mobile-android`
+# builds, and a scan run against an SDK CI never validated is a scan of
+# something that does not ship. A workflow-level `env` is per-file, so it
+# cannot be shared; `scripts/check_toolchain_pins.mjs` in `workflow-lint` fails
+# CI when the declarations disagree (decisions § 595).
+env:
+  FLUTTER_VERSION: "3.47.0"
 
 jobs:
   codeql-javascript:
@@ -187,7 +201,12 @@ jobs:
   codeql-kotlin:
     name: CodeQL (Kotlin/Java)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Two Gradle projects, both compiled cold: this job deliberately restores no
+    # `~/.gradle` cache, so nothing a pull request can write decides what the
+    # security scan reads. Derived cost of the Flutter host's half is ~9 min
+    # (decisions § 1672); the ceiling is sized for a cold dependency graph on a
+    # bad network day, not for the measured run.
+    timeout-minutes: 30
     permissions:
       contents: read
       security-events: write
@@ -197,7 +216,15 @@ jobs:
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
-          java-version: '17'
+          # 21 rather than 17 since the Flutter host joined this job: ci.yml's
+          # `build-mobile-android` and release-watch-wear.yml both build these
+          # trees on 21, so it is the one JDK both projects are shipped on.
+          java-version: '21'
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
       - uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
         with:
           languages: java-kotlin
@@ -213,11 +240,14 @@ jobs:
       # analogue, and `build-mode: none` cannot stand in because CodeQL's
       # buildless Java extractor does not process Kotlin at all.
       #
-      # A project this job cannot build yet is DECLARED below rather than
-      # omitted, so the gap is a value a guard can read instead of a sentence
-      # a reader has to notice. A third Gradle project is built the day it
-      # lands; if it cannot be built here, CI goes red and somebody decides,
-      # which is the outcome the silent version never produced.
+      # Both projects are built now (§ 1672). A project this job cannot build
+      # would still be DECLARED below rather than omitted, so a gap is a value
+      # a guard can read instead of a sentence a reader has to notice; the
+      # declaration is empty because nothing is excluded, and the mechanism
+      # stays because the next unbuildable project should arrive as somebody's
+      # edit. A third Gradle project is built the day it lands; if it cannot be
+      # built here, CI goes red and somebody decides, which is the outcome the
+      # silent version never produced.
       - name: Build every Gradle project for the CodeQL extractor
         env:
           # `<path>=<hidden-source-count>=<reason>`, one per line. Every entry
@@ -231,8 +261,7 @@ jobs:
           # fails the PR on a stale entry, on a walk that has stopped matching
           # the tree, on a reason left blank, and on a count that no longer
           # matches the .kt/.java files under the path.
-          CODEQL_KOTLIN_UNBUILT: |
-            apps/mobile_android/android=11=the Flutter Gradle host, and what stands in the way is toolchain minutes rather than a missing file. settings.gradle.kts reads flutter.sdk out of a local.properties that only the Flutter tool writes, and :app compiles against every plugin subproject melos bootstraps, so building it here makes this job a second copy of ci.yml's build-mobile-android - the pinned Flutter SDK (a fourth site check_toolchain_pins.mjs then holds in lockstep), a melos bootstrap, the pub cache and a full Gradle configuration - paid on every PR and every weekly cron. The wrapper is no longer the blocker: decisions § 1439 committed apps/mobile_android/android/gradlew, so the loop below has an executable to run here. The cheaper close is to drive the extractor from build-mobile-android, which already pays for every one of those, and that is deliberately not taken blind: that job is in the CI gate's needs: list, so a tracer that misbehaves blocks every merge rather than one workflow, and its Kotlin task is UP-TO-DATE by the time it could run - which extracts no source and reports exactly as clean as a full scan, the state § 1304 and § 1352 exist to prevent. Unread meanwhile: MainActivity.kt, RunActionReceiver.kt (a BroadcastReceiver) and the platform-channel bridges mediating health permissions, calendar access and foreground-service actions (decisions § 1352, § 1500).
+          CODEQL_KOTLIN_UNBUILT: ''
         shell: bash
         run: |
           set -euo pipefail
@@ -263,9 +292,27 @@ jobs:
               echo "::warning::$rel is NOT scanned by the java-kotlin analysis; $hidden source file(s) go unread: $reason"
               continue
             fi
+            # A Flutter app's `android/` host cannot be CONFIGURED until the
+            # Flutter tool has written local.properties — settings.gradle.kts
+            # `require()`s `flutter.sdk` out of a file no checkout carries.
+            # `flutter pub get` writes it, along with the generated plugin
+            # registrant and the plugin-subproject list, which is why this is
+            # not the second copy of `build-mobile-android` it was assumed to
+            # need: the AOT compile in `flutter build` (325 s there) buys this
+            # job nothing, and the workspace resolve makes a separate melos
+            # bootstrap redundant.
+            if grep -qs 'flutter\.sdk' "$p/settings.gradle" "$p/settings.gradle.kts" && [ ! -f "$p/local.properties" ]; then
+              host=$(dirname "$p")
+              echo "::group::flutter pub get ($host)"
+              if ! (cd "$host" && flutter pub get); then
+                echo "::error::flutter pub get failed in $host, so Gradle cannot configure $rel and CodeQL would extract none of its Kotlin. This is a toolchain break, not a CodeQL finding; reproduce with: cd $host && flutter pub get"
+                exit 1
+              fi
+              echo "::endgroup::"
+            fi
             echo "::group::gradlew compileDebugKotlin ($rel)"
             if ! (cd "$p" && ./gradlew --no-daemon compileDebugKotlin); then
-              echo "::error::./gradlew --no-daemon compileDebugKotlin failed in $rel, so CodeQL extracted none of its Kotlin. This is a build break, not a CodeQL finding; reproduce with: cd $rel && ./gradlew compileDebugKotlin"
+              echo "::error::./gradlew --no-daemon compileDebugKotlin failed in $rel, so CodeQL extracted none of its Kotlin. This is a build break, not a CodeQL finding; reproduce with: cd $rel && ./gradlew compileDebugKotlin. If it names a Kotlin version the extractor calls too recent, the Kotlin Gradle plugin pin in $rel/settings.gradle.kts has moved past the bundle's ceiling."
               exit 1
             fi
             echo "::endgroup::"

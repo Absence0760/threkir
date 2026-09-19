@@ -1776,8 +1776,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 44px;
-		height: 44px;
+		width: var(--tap-target-min);
+		height: var(--tap-target-min);
 		border: 1px solid var(--color-border);
 		border-radius: 50%;
 		background: var(--color-surface);

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_B } from '../fixtures/users';
@@ -177,6 +177,7 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 
 	test('a truncated Strava sync is reported as partial, not as complete', async ({
 		page,
+		mockRoute
 	}) => {
 		// The backfill has four exits that leave activities in the lookback
 		// window unfetched, and only the throttle case ever carried a field —
@@ -185,7 +186,7 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 		// what stops the runner coming back before the rest ages out of it.
 		await plantIntegration({ provider: 'strava', lastSyncAt: '2026-05-10T08:00:00Z' });
 
-		await page.route('**/functions/v1/strava-import**', async (route) => {
+		await mockRoute(page, '**/functions/v1/strava-import**', async (route) => {
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -211,14 +212,14 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 		await expect(page.locator('.toast-success')).toHaveCount(0);
 	});
 
-	test('a widened lookback is what the sync asks the function for', async ({ page }) => {
+	test('a widened lookback is what the sync asks the function for', async ({ page, mockRoute }) => {
 		// Neither client could ask for more than 90 days, so a truncation left
 		// long enough for the missed activities to age out of that window had no
 		// in-app recovery at all — the only remaining path was the bulk export.
 		await plantIntegration({ provider: 'strava', lastSyncAt: '2026-05-10T08:00:00Z' });
 
 		const requested: unknown[] = [];
-		await page.route('**/functions/v1/strava-import**', async (route) => {
+		await mockRoute(page, '**/functions/v1/strava-import**', async (route) => {
 			requested.push(route.request().postDataJSON());
 			await route.fulfill({
 				status: 200,
@@ -248,6 +249,7 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 
 	test('a truncated sync leaves a note on the card, and a finished one clears it', async ({
 		page,
+		mockRoute
 	}) => {
 		// The toast says it once and the runner dismisses it. The window is
 		// measured from now, so the record of "there is more to fetch" has to
@@ -255,7 +257,7 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 		await plantIntegration({ provider: 'strava', lastSyncAt: '2026-05-10T08:00:00Z' });
 
 		let complete = false;
-		await page.route('**/functions/v1/strava-import**', async (route) => {
+		await mockRoute(page, '**/functions/v1/strava-import**', async (route) => {
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -286,12 +288,12 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 		await expect(stravaCard.getByTestId('strava-partial-note')).toHaveCount(0);
 	});
 
-	test('a truncation that recorded no restart point says so', async ({ page }) => {
+	test('a truncation that recorded no restart point says so', async ({ page, mockRoute }) => {
 		// A throttle on the first page advances nothing, so "carry on from where
 		// we stopped" would be a claim about a point that does not exist.
 		await plantIntegration({ provider: 'strava', lastSyncAt: '2026-05-10T08:00:00Z' });
 
-		await page.route('**/functions/v1/strava-import**', async (route) => {
+		await mockRoute(page, '**/functions/v1/strava-import**', async (route) => {
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -316,12 +318,12 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 		await expect(note).toContainText(/no restart point/i);
 	});
 
-	test('a Strava sync that completes keeps the success toast', async ({ page }) => {
+	test('a Strava sync that completes keeps the success toast', async ({ page, mockRoute }) => {
 		// The other half of the pair: a finished walk must not be downgraded
 		// to "sync again", or the honesty fix becomes its own false alarm.
 		await plantIntegration({ provider: 'strava', lastSyncAt: '2026-05-10T08:00:00Z' });
 
-		await page.route('**/functions/v1/strava-import**', async (route) => {
+		await mockRoute(page, '**/functions/v1/strava-import**', async (route) => {
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -496,7 +498,7 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 		expect(data).toHaveLength(0);
 	});
 
-	test('a truncated FIRST-CONNECT backfill leaves the card saying so', async ({ page }) => {
+	test('a truncated FIRST-CONNECT backfill leaves the card saying so', async ({ page, mockRoute }) => {
 		// The connect callback is a different code path from "Sync now",
 		// and it used to grade its result and then drop everything but the
 		// toast (§ 846). It is also the sync MOST likely to come up short —
@@ -516,7 +518,7 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 		});
 
 		let sawConnect = false;
-		await page.route('**/functions/v1/strava-import**', async (route) => {
+		await mockRoute(page, '**/functions/v1/strava-import**', async (route) => {
 			const body = route.request().postDataJSON() as { action?: string } | null;
 			if (body?.action === 'connect') sawConnect = true;
 			await route.fulfill({

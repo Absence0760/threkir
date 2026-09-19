@@ -39,6 +39,12 @@
 	import PlanCalendar from '$lib/components/PlanCalendar.svelte';
 	import CurrentWeekStrip from '$lib/components/CurrentWeekStrip.svelte';
 	import RaceDayPanel from '$lib/components/RaceDayPanel.svelte';
+	import DisclosureSection from '$lib/components/DisclosureSection.svelte';
+	import {
+		readDisclosureState,
+		writeDisclosureState,
+		type DisclosureState
+	} from '$lib/util/disclosure_state';
 	import { daysUntilRace } from '$lib/runs/race_day';
 	import type { Run } from '$lib/types';
 	import { showToast } from '$lib/stores/toast.svelte';
@@ -84,6 +90,28 @@
 	let weekStart = $state<WeekStart>('monday');
 
 	let isOwner = $derived(plan != null && plan.user_id === auth.user?.id);
+
+	// ─── Named disclosures (#905 workstream 3) ───
+	// Today's session and this week lead the page; everything else sits behind
+	// a named expander whose open/closed state is remembered per account. Every
+	// default is open: a runner who uses one of these sections today must not
+	// find it gone on the first visit after this shipped. The memory is what
+	// makes a collapse stick, not the default.
+	const DISCLOSURE_SCOPE = 'plan_detail';
+	const DISCLOSURE_DEFAULTS: DisclosureState = {
+		progress: true,
+		rules: true,
+		calendar: true,
+		weeks: true,
+		share: true
+	};
+	let disclosure = $state<DisclosureState>({ ...DISCLOSURE_DEFAULTS });
+
+	function setDisclosure(key: string, open: boolean): void {
+		if (disclosure[key] === open) return;
+		disclosure = { ...disclosure, [key]: open };
+		writeDisclosureState(DISCLOSURE_SCOPE, auth.user?.id, disclosure);
+	}
 
 	let showRaceDay = $derived.by(() => {
 		if (!plan) return false;
@@ -646,6 +674,10 @@
 		// to actually be set or the admin-clubs fetch silently no-ops
 		// for the plan owner.
 		await auth.ready();
+		// Hydrated before the first render of the plan body (the page is on its
+		// loading skeleton until `load()` resolves), so a remembered collapse
+		// never shows as a section opening and then shutting.
+		disclosure = readDisclosureState(DISCLOSURE_SCOPE, auth.user?.id, DISCLOSURE_DEFAULTS);
 		await load();
 		// Calendar week-start follows the user's preference (W-5/W-14).
 		if (auth.user?.id) {
@@ -1096,81 +1128,6 @@
 			</div>
 		</header>
 
-		{#if planPosition}
-			<div class="calendar-bar" aria-hidden="true">
-				<span
-					class="calendar-fill"
-					style="width: {planPosition.calendarPct}%"
-				></span>
-			</div>
-		{/if}
-
-		{#if orderedPhases.length > 1 || longestLongRunMetres != null || distanceBanked.plannedMetres > 0}
-			<section class="plan-progress">
-				{#if orderedPhases.length > 1}
-					<div class="phase-marker-row">
-						<span class="phase-marker-label"><MetricLabel metric="planPhases" /></span>
-						<ol class="phase-marker" aria-label={m('planDetail.phaseMarkerAria')}>
-							{#each orderedPhases as ph (ph)}
-								<li class="phase-step" class:active={ph === currentPhase}>
-									{planPhaseLabel(ph)}
-								</li>
-							{/each}
-						</ol>
-					</div>
-				{/if}
-				<div class="plan-progress-stats">
-					{#if distanceBanked.plannedMetres > 0}
-						<div class="stat-chip">
-							<span class="material-symbols">route</span>
-							<span class="stat-label"><MetricLabel metric="distanceBanked" /></span>
-							<span class="stat-value">
-								{m('planDetail.distanceBankedValue', {
-									done: fmtKm(distanceBanked.completedMetres, 0),
-									total: fmtKm(distanceBanked.plannedMetres, 0)
-								})}
-							</span>
-						</div>
-					{/if}
-					{#if longestLongRunMetres != null}
-						<div class="stat-chip" title={m('planDetail.longestLongRun')}>
-							<span class="material-symbols">trending_up</span>
-							<span class="stat-label">{m('planDetail.longestLongRun')}</span>
-							<span class="stat-value">{fmtKm(longestLongRunMetres)}</span>
-						</div>
-					{/if}
-				</div>
-			</section>
-		{/if}
-
-		{#if currentWeekDrift || missedLongRun}
-			<section class="adherence" aria-label={m('planDetail.adherenceAria')}>
-				{#if currentWeekDrift}
-					<p class="adherence-flag drift-{currentWeekDrift.direction}">
-						<span class="material-symbols">monitoring</span>
-						{currentWeekDrift.direction === 'over'
-							? m('planDetail.driftOverFlag', {
-									pct: Math.round(currentWeekDrift.driftFraction * 100)
-								})
-							: m('planDetail.driftUnderFlag', {
-									done: fmtKm(currentWeekDrift.actualMetres, 1),
-									planned: fmtKm(currentWeekDrift.plannedMetres, 1)
-								})}
-					</p>
-				{/if}
-				{#if missedLongRun}
-					<p class="adherence-flag missed-{missedLongRun.recommendation}">
-						<span class="material-symbols">event_busy</span>
-						{missedLongRun.reason === 'taper'
-							? m('planDetail.missedLongTaper')
-							: missedLongRun.reason === 'recovery_soon'
-								? m('planDetail.missedLongRecovery')
-								: m('planDetail.missedLongMakeUp')}
-					</p>
-				{/if}
-			</section>
-		{/if}
-
 		{#if isOwner && !plan.is_template && replanPreview}
 			<section class="replan-preview" aria-label={m('planDetail.replanPreviewAria')}>
 				<h3 tabindex="-1" bind:this={replanPreviewHeading}>{m('planDetail.replanPreviewTitle')}</h3>
@@ -1194,26 +1151,6 @@
 					</button>
 				</div>
 			</section>
-		{/if}
-
-		{#if Array.isArray(plan.rules) && plan.rules.length > 0}
-			<aside class="rules-card">
-				<h3>{m('planDetail.rulesTitle')}</h3>
-				<ul>
-					{#each plan.rules as r}
-						<li>{r}</li>
-					{/each}
-				</ul>
-			</aside>
-		{/if}
-
-		{#if showRaceDay && plan != null}
-			<RaceDayPanel
-				raceDate={plan.end_date}
-				distanceM={plan.goal_distance_m}
-				goalTimeSec={plan.goal_time_seconds}
-				{recentRuns}
-			/>
 		{/if}
 
 		{#if todayWorkout}
@@ -1323,8 +1260,125 @@
 			onSelect={(wo) => (editing = wo)}
 		/>
 
-		<section class="calendar-section">
-			<h2 class="section-title">{m('planDetail.calendar')}</h2>
+		{#if currentWeekDrift || missedLongRun}
+			<section class="adherence" aria-label={m('planDetail.adherenceAria')}>
+				{#if currentWeekDrift}
+					<p class="adherence-flag drift-{currentWeekDrift.direction}">
+						<span class="material-symbols">monitoring</span>
+						{currentWeekDrift.direction === 'over'
+							? m('planDetail.driftOverFlag', {
+									pct: Math.round(currentWeekDrift.driftFraction * 100)
+								})
+							: m('planDetail.driftUnderFlag', {
+									done: fmtKm(currentWeekDrift.actualMetres, 1),
+									planned: fmtKm(currentWeekDrift.plannedMetres, 1)
+								})}
+					</p>
+				{/if}
+				{#if missedLongRun}
+					<p class="adherence-flag missed-{missedLongRun.recommendation}">
+						<span class="material-symbols">event_busy</span>
+						{missedLongRun.reason === 'taper'
+							? m('planDetail.missedLongTaper')
+							: missedLongRun.reason === 'recovery_soon'
+								? m('planDetail.missedLongRecovery')
+								: m('planDetail.missedLongMakeUp')}
+					</p>
+				{/if}
+			</section>
+		{/if}
+
+		{#if showRaceDay && plan != null}
+			<RaceDayPanel
+				raceDate={plan.end_date}
+				distanceM={plan.goal_distance_m}
+				goalTimeSec={plan.goal_time_seconds}
+				{recentRuns}
+			/>
+		{/if}
+
+		<DisclosureSection
+			id="plan-progress"
+			title={m('planDetail.sectionProgressTitle')}
+			hint={m('planDetail.sectionProgressHint')}
+			open={disclosure.progress}
+			ontoggle={(o) => setDisclosure('progress', o)}
+			sectionClass="progress-section"
+		>
+			{#if planPosition}
+				<div class="calendar-bar" aria-hidden="true">
+					<span
+						class="calendar-fill"
+						style="width: {planPosition.calendarPct}%"
+					></span>
+				</div>
+			{/if}
+			{#if orderedPhases.length > 1 || longestLongRunMetres != null || distanceBanked.plannedMetres > 0}
+				<section class="plan-progress">
+					{#if orderedPhases.length > 1}
+						<div class="phase-marker-row">
+							<span class="phase-marker-label"><MetricLabel metric="planPhases" /></span>
+							<ol class="phase-marker" aria-label={m('planDetail.phaseMarkerAria')}>
+								{#each orderedPhases as ph (ph)}
+									<li class="phase-step" class:active={ph === currentPhase}>
+										{planPhaseLabel(ph)}
+									</li>
+								{/each}
+							</ol>
+						</div>
+					{/if}
+					<div class="plan-progress-stats">
+						{#if distanceBanked.plannedMetres > 0}
+							<div class="stat-chip">
+								<span class="material-symbols">route</span>
+								<span class="stat-label"><MetricLabel metric="distanceBanked" /></span>
+								<span class="stat-value">
+									{m('planDetail.distanceBankedValue', {
+										done: fmtKm(distanceBanked.completedMetres, 0),
+										total: fmtKm(distanceBanked.plannedMetres, 0)
+									})}
+								</span>
+							</div>
+						{/if}
+						{#if longestLongRunMetres != null}
+							<div class="stat-chip" title={m('planDetail.longestLongRun')}>
+								<span class="material-symbols">trending_up</span>
+								<span class="stat-label">{m('planDetail.longestLongRun')}</span>
+								<span class="stat-value">{fmtKm(longestLongRunMetres)}</span>
+							</div>
+						{/if}
+					</div>
+				</section>
+			{/if}
+		</DisclosureSection>
+
+		{#if Array.isArray(plan.rules) && plan.rules.length > 0}
+			<DisclosureSection
+				id="plan-rules"
+				title={m('planDetail.rulesTitle')}
+				hint={m('planDetail.sectionRulesHint')}
+				open={disclosure.rules}
+				ontoggle={(o) => setDisclosure('rules', o)}
+				sectionClass="rules-section"
+			>
+				<div class="rules-card">
+					<ul>
+						{#each plan.rules as r}
+							<li>{r}</li>
+						{/each}
+					</ul>
+				</div>
+			</DisclosureSection>
+		{/if}
+
+		<DisclosureSection
+			id="plan-calendar"
+			title={m('planDetail.calendar')}
+			hint={m('planDetail.sectionCalendarHint')}
+			open={disclosure.calendar}
+			ontoggle={(o) => setDisclosure('calendar', o)}
+			sectionClass="calendar-section"
+		>
 			<PlanCalendar
 				startDate={plan.start_date}
 				endDate={plan.end_date}
@@ -1333,10 +1387,16 @@
 				{weekStart}
 				onSelect={(wo) => (editing = wo)}
 			/>
-		</section>
+		</DisclosureSection>
 
-		<section class="weeks">
-			<h2 class="section-title">{m('planDetail.weekByWeek')}</h2>
+		<DisclosureSection
+			id="plan-weeks"
+			title={m('planDetail.weekByWeek')}
+			hint={m('planDetail.sectionWeeksHint', { n: weeks.length })}
+			open={disclosure.weeks}
+			ontoggle={(o) => setDisclosure('weeks', o)}
+			sectionClass="weeks"
+		>
 			{#each weeks as w (w.id)}
 				{@const weekWorkouts = workoutsByWeek.get(w.id) ?? []}
 				{@const weekProgress = planWorkoutProgress(weekWorkouts)}
@@ -1426,7 +1486,7 @@
 					</div>
 				</article>
 			{/each}
-		</section>
+		</DisclosureSection>
 
 		<a class="coach-link" href="/coach?plan={plan.id}">
 			<span class="material-symbols">sports</span>
@@ -1438,8 +1498,14 @@
 		</a>
 
 		{#if !plan.is_template && plan.user_id === auth.user?.id}
-			<section class="publish-section" aria-labelledby="publish-section-title">
-				<h2 class="section-title" id="publish-section-title">{m('planDetail.shareSectionTitle')}</h2>
+			<DisclosureSection
+				id="plan-share"
+				title={m('planDetail.shareSectionTitle')}
+				hint={m('planDetail.sectionShareHint')}
+				open={disclosure.share}
+				ontoggle={(o) => setDisclosure('share', o)}
+				sectionClass="publish-section"
+			>
 				{#if adminClubs.length > 0}
 					<div class="publish-row">
 						<span class="publish-label">{m('planDetail.publishLabel')}</span>
@@ -1483,7 +1549,7 @@
 						</button>
 					{/if}
 				</div>
-			</section>
+			</DisclosureSection>
 		{/if}
 	</div>
 {/if}
@@ -2005,9 +2071,6 @@
 		color: var(--color-text-secondary);
 	}
 
-	.publish-section {
-		margin-top: var(--space-xl);
-	}
 	.publish-row {
 		display: flex;
 		align-items: center;
@@ -2440,32 +2503,11 @@
 	.coach-link .arrow {
 		color: var(--color-text-tertiary);
 	}
-	.calendar-section {
-		margin: var(--space-md) 0;
-	}
-	.section-title {
-		font-size: 0.85rem;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-text-secondary);
-		margin: 0 0 var(--space-sm) 0;
-	}
-	.weeks .section-title {
-		margin-top: var(--space-lg);
-	}
 	.rules-card {
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-lg);
 		padding: var(--space-md);
-		margin-bottom: var(--space-md);
-	}
-	.rules-card h3 {
-		font-size: 0.78rem;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: var(--color-text-tertiary);
-		margin-bottom: 0.4rem;
 	}
 	.rules-card ul {
 		margin: 0;

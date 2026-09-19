@@ -17,7 +17,6 @@ function canAnimate(): boolean {
 	return (
 		typeof window !== 'undefined' &&
 		typeof IntersectionObserver !== 'undefined' &&
-		typeof Element.prototype.animate === 'function' &&
 		!motion.still
 	);
 }

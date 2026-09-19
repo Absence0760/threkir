@@ -340,6 +340,7 @@ See [testing.md](../testing/testing.md) for the full reference — patterns, fix
 - **`@visibleForTesting` is the escape hatch.** If a test needs to poke at a private, mark the member `@visibleForTesting` and use it in tests. Don't make things public just to test them.
 - **No mocks for things we own.** Build a fake that implements the interface you need. Mock libraries (`mocktail`, `mockito`) are acceptable for third-party boundaries only.
 - **A fixture date that is compared against `now` must be derived from `now`.** Any timestamp a retention window, a staleness gate, or a date-range filter will measure against the clock (`recorded_at`, `last_modified_at`, `started_at`) is an *age*, not a constant — write it as `DateTime.now().toUtc().subtract(...)`, never as a literal. A literal one is a countdown: `local_crossings_store_test.dart` went red on every open PR at once the day its rows aged past `kSyncedRetention` ([decisions.md § 1611](decisions.md)), and the sibling case asserting `isEmpty` over the same fixture had been passing vacuously since that same day. Corollary: **a negative assertion needs a positive one in front of it** — assert the fixture is actually resident before asserting the lookup finds nothing, or an empty input is indistinguishable from an empty result. An occurrence key or an id-like instant is not an age and stays fixed. Web's analogue is `tests-e2e/fixtures/dates.ts` ([decisions.md § 728](decisions.md)).
+- **A Playwright route mock goes through `mockRoute`, and a mock that never fires is a failure.** A glob is anchored at both ends, so `**/auth/v1/user` cannot match the `?redirect_to=…` the SDK sends — and nothing reports the miss: the request reaches the real endpoint and every assertion beside the stub is scored against a handler that never ran. Take `test` from `tests-e2e/fixtures/mock-route.ts` and register through `mockRoute(page, pattern, handler)`; where a mock is meant to stay silent, say why with `{ neverFires: 'reason' }`, which asserts the count at zero and fails when one starts firing, or — for a `beforeEach` stub one case does not exercise — `mockRoute.neverFires(pattern, 'reason')` from inside that case, which fails if it names a pattern nothing registered. `fixtures/mock-route.test.ts` fails the PR on a bare `.route()` whose handler counts its own hits or answers a GoTrue / Edge Function / `/api/` endpoint with a success — the two shapes whose absence is invisible ([decisions.md § 1667](decisions.md)). A `/rest/v1/` read shaped with a 4xx/5xx is exempt by construction: if it stops firing, the error state never renders and the case fails on its own assertion.
 - **No database mocks.** Integration tests that touch Supabase should hit a real local instance (`supabase start`), not a mock client. Drift between a mock and the real schema is the bug we're trying to catch.
 - **SECURITY DEFINER + `vault.*` paths get inline DO-block assertions in `seed.sql`.** Edge Function CI doesn't deploy and exercise functions end-to-end, so contract tests for `check_rate_limit`, `get_integration_tokens` etc. live in `apps/backend/supabase/seed.sql` as `do $$ ... raise exception ... end $$` blocks. They run on every `supabase db reset` (locally) but not on production migrations — exactly the semantics we want for tests. Use `set_config('request.jwt.claim.role', ...)` / `request.jwt.claim.sub` to simulate auth contexts; clean up any test rows at the end of the block so the seed leaves no residue. See the trailing "Regression tests" section of `seed.sql` for the canonical shape.
 
@@ -1086,6 +1087,12 @@ Two habits these three carry, both general:
 
 On the Flutter apps, every `IconButton` keeps a ≥48dp tap target (WCAG 2.5.8 / the Material touch-target floor). **Never set `visualDensity: VisualDensity.compact` on an IconButton** — compact density subtracts 8dp per axis *after* constraint resolution, so it shrinks the hit area to ~40dp even when the button carries an explicit `BoxConstraints(minWidth: 48, minHeight: 48)` (measured by hit-testing; the earlier "keep compact, add the constraint" idiom from issue #255 was a placebo — see [decisions.md § 435](decisions.md)). For visual tightness shrink the *icon* (`size:` / `iconSize:`) and keep the 48dp box; don't declare sub-48 `constraints:` and don't cap the button with a sub-48 `SizedBox`. `apps/mobile_android/test/tap_target_guard_test.dart` (mirrored on iOS) scans all of `lib/` and fails any of the three patterns. Labeled buttons (Text/Filled/Outlined/Segmented) may keep compact density: they retain a ≥40dp padded target plus a wide label surface, which clears WCAG 2.5.8's 24px floor — the 48dp floor is the icon-button spec, where the glyph is the whole target.
 
+## Web tap targets — size from `--tap-target-min`, never from the bar
+
+On the web app the product bar for an **icon button** — a control whose glyph is the whole target — is 44 CSS px, and the e2e sweeps assert exactly that. **Never write the bar itself into a rule.** `.pr-hide` carried `min-width/min-height: 44px` and therefore measured 44.0 x 44.0 on all 480 samples of a 12-load run, sitting precisely on the threshold its own assertion tested: a fractional device pixel ratio, an ancestor transform mid-animation, or a compositor quad rounding to 43.999 turns a correct control into a red build, and the tempting repair is to lower the assertion, which is the one repair the [Never adjust the test to hide an app bug](#never-adjust-the-test-to-hide-an-app-bug) rule forbids. Size from `--tap-target-min` (48px, `app.css`) instead — the same number the Flutter twin's IconButtons use, four px clear of the bar. `a11y_guards.test.ts` fails the unit job if the token stops exceeding the bar; `tests-e2e/dashboard/tap-targets.spec.ts` sweeps every icon button on /dashboard through `tests-e2e/fixtures/tap-targets.ts` and fails one that misses its floor **or meets it exactly**.
+
+Labelled controls are out of scope for the 44 px bar, the same line the Flutter rule above draws: a wide text surface takes WCAG 2.5.8's own spacing exception. The one icon button held lower is an **inline disclosure** — `MetricLabel`'s definition toggletip, whose size is constrained by the line-height of the text around it (2.5.8's Inline exception). It sizes from `--tap-target-inline-min` (28px), four px clear of the WCAG 24 px floor, and is named with its reason in `INLINE_DISCLOSURE` in the fixture. An exemption is a claim about one control: the sweep fails on anything under the bar that is not on that list.
+
 ## Mobile fixed boxes and OS text scale — four mechanisms, chosen by what the box is for
 
 On the Flutter apps a literal dimension around localized or numeric text is a bug waiting on a device setting. Android and iOS both let a user take text to 2x, and unlike a narrow viewport that failure is **silent**: a `Text` too wide for its `SizedBox` is cropped with no overflow stripe and no exception, so the user reads a wrong number rather than a broken layout. **Locale is the same axis** — French "DÉMARRER" and Portuguese "Carboidratos" break boxes English never does, at 1.0x.
@@ -1157,6 +1164,30 @@ On web the same decision is already in force and needs no mirror: `app.css` carr
 ## Local-tz date strings
 
 Don't use `new Date().toISOString().slice(0, 10)` to derive a "yyyy-mm-dd today" or "yyyy-mm-dd of week start" string. `toISOString()` formats in UTC, so in any positive-offset timezone it rolls the date back a day before midnight local — week boundaries snap to the wrong Monday and prev/next navigation jumps two periods at once. Use `formatISO(d)` (or `todayISO()`) from `apps/web/src/lib/training/training.ts` — both build the string from `getFullYear` / `getMonth` / `getDate`, which stay in local time. The same rule applies to Dart on the mobile side: call `DateTime.local()` and format the components yourself, don't go via UTC.
+
+## Web browser baseline
+
+`apps/web` supports the browsers below, and nothing older. The floor is declared once, as `browserslist` in `apps/web/package.json`; `scripts/browser_baseline.mjs` reads it, `vite.config.ts` compiles to it, and `src/lib/browser_baseline_guard.test.ts` holds this table and every feature detect in the tree to it.
+
+| browserslist key | floor | why this number |
+| --- | --- | --- |
+| `chrome` | 111 | Vite's own `baseline-widely-available` target, which the build inherited before the floor was stated. |
+| `edge` | 111 | same. |
+| `firefox` | 121 | `:has()` landed here, and the tree ships it in four stylesheets with no fallback. |
+| `safari` | 16.4 | Vite's target; container queries, which the tree also ships unguarded, arrived at 16.0. |
+| `ios_saf` | 16.4 | same. |
+| `and_chr` | 111 | Chromium fork; the engine row above is the real constraint. |
+| `and_ff` | 121 | Gecko fork of the Firefox row. |
+| `android` | 111 | Chromium fork. |
+| `opera` | 97 | Chromium 111. |
+| `op_mob` | 80 | Chromium fork. |
+| `samsung` | 20 | the first release with container queries. |
+
+Measured against caniuse-lite 1.0.30001810, that floor reaches **92.51%** of globally tracked page views. The 7.5% below it is Internet Explorer, Opera Mini, KaiOS, Android Browser ≤ 4.4 and pre-2023 releases of the engines above — none of which can render a WebGL2 MapLibre map, so the floor excludes nobody the app could serve anyway.
+
+**Above the floor, an API is used directly: no detect, no fallback.** Below it the app is unsupported. A runtime feature detect is therefore an exception, and it says exactly one of three things — `above-floor` (the API needs a newer release than the floor names), `optional-capability` (it is absent for a reason that is not a version: a permission, a secure context, an install state, a device) or `value-shape` (the probe is about a value, not the platform). `EXCEPTIONS` in `browser_baseline_guard.test.ts` carries every one with its reason, and a detect for an API the floor already guarantees has no reason available to it and fails the suite until it is deleted. An `above-floor` entry also names the release that retires it, so the exception cannot outlive its reason — the floor reaching that release fails the suite too.
+
+Two things are deliberately outside all of this. A test of a bare global — `typeof window === 'undefined'`, `typeof localStorage` — asks whether there is a browser at all, which every module that also runs on a share Lambda or under prerender has to ask; that is not a question about a browser's age. And `apps/web/lambda` is Node 24 with full ICU, so the floor does not apply to it at all — which is exactly how the crawler-facing `<head>` and the tab's can differ. See [decisions.md § 1670](decisions.md).
 
 ## Web buttons
 
@@ -1485,12 +1516,14 @@ Every create / edit editor (`ClubEditor`, `EventEditor`, `RunEditor`, `GymEditor
 
 ### A control on a swept surface carries a one-line explanation
 
-The Spoken-cues block's shape — a plain line under the control saying what it *does*, not what it is called — is house style on the surfaces listed in `SURFACES` in `apps/web/src/lib/control_hints_guard.test.ts`: the six `/settings/*` preference pages, `/plans/new`, `PlanEditor`, `PlanMetaEditor` and `RunEditor` (decisions § 1640, § 1651). Adding a control to one of those fails the guard until it is explained; adding a surface to the list is how the sweep grows.
+The Spoken-cues block's shape — a plain line under the control saying what it *does*, not what it is called — is house style on the surfaces listed in `SURFACES` in `apps/web/src/lib/control_hints_guard.test.ts` (decisions § 1640, § 1651, § 1659). Adding a control to one of those fails the guard until it is explained; adding a surface to the list is how the sweep grows. **Read the list rather than repeating it here** — a second copy of it rotted before it was a month old.
 
-- A `<select>`, an `<input>` or a toggle group points at its explanation with `aria-describedby`, so the text is a **description** and not part of the accessible name. That means the paragraph sits outside the `<label>` — wrap the pair in `<div class="field">` when the label is the container.
+- A `<select>`, an `<input>`, a radio or a toggle group points at its explanation with `aria-describedby`, so the text is a **description** and not part of the accessible name. That means the paragraph sits outside the `<label>` — wrap the pair in `<div class="field">` when the label is the container, or in `<div class="radio-field">` for a radio option, which indents the line under the option's title.
 - A checkbox carries the explanation inside its own label, as a `.hint` / `.field-hint`, because a checkbox's label is short enough to absorb it.
 - **Say what the control changes, or what happens on versus off.** A line that restates the label adds density, which is the problem the pattern exists to solve. Where the label plus the placeholder is already the whole story — a free-text `<textarea>` — add nothing; the guard does not scan textareas.
 - Several controls may share one paragraph when a line under each would repeat (the per-workout grid in `PlanEditor`'s week outline points every cell at the outline's own explanation).
+- **A repeated block renders its explanation once.** An exercise, a set row or a session item inside an `{#each}` renders its line on the first iteration only, and every later iteration's controls point at that same id — a sentence under each of eight cells, repeated per exercise, is the density this exists to remove.
+- **Wiring an existing explanation counts; inventing one to satisfy the scan does not.** `/onboarding` was registered without a single new string: its per-step hints were already the right copy and only needed an id and an `aria-describedby`.
 
 ## Web list pages — preserve scroll on back-navigation
 
@@ -1987,6 +2020,35 @@ Two related passes belong to the same moment, for the same reason:
   reconciliation is arithmetic rather than archaeology. "Wear OS is now 774
   across 75" is worth less than the `find`/`grep` that says so, because only the
   second survives another lane also adding a test.
+
+## A lane's temporary files live in its own scratchpad subdirectory, and a restore is a `git checkout`
+
+The harness hands one scratchpad path per *session*, and a subagent inherits the
+spawning session's path unchanged — including one started with
+`isolation: "worktree"`, which separates the tree and the index and not this.
+So every lane of a fan-out resolves the same directory, and a lane that writes a
+bare filename there is writing somewhere a sibling will write too. Each lane
+gets `<scratchpad>/<lane-slug>/` and keeps everything under it; the command that
+fans the lanes out names each lane's subdirectory in that lane's own prompt,
+because a lane cannot pick a name that is unique against lanes it cannot see. A
+fixed path in `/tmp` is the same defect one scope wider — that directory is
+shared by every session on the machine, not merely every lane of one round.
+
+**A file mutated to test something is restored with `git checkout HEAD -- <path>`,
+never a `.bak` copy.** The save/restore pair is what actually did the damage:
+`cp x x.bak` collided with a sibling lane's file of that name, the interactive
+`cp -i` alias declined to overwrite it and said nothing, and the restore copied
+THAT lane's file into this worktree, where it would have been committed by
+anyone who did not diff first. git already holds every committed byte, so the
+save half buys nothing and the collision has nowhere left to happen — which is a
+stronger property than giving the `.bak` a private directory to sit in. When the
+change you need back is uncommitted, write the patch to your own subdirectory
+(`git diff -- <path> > <scratchpad>/<lane-slug>/x.patch`) and `git apply` it
+afterwards.
+
+`apps/web/src/lib/fanout_scratchpad_guard.test.ts` derives the fan-out commands
+from their own bodies rather than listing them, so a new one is covered the day
+it is written.
 
 ## A merge gate and an agent name each have exactly one definition
 

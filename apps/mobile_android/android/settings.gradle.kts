@@ -28,7 +28,16 @@ plugins {
     // Flutter's own AGP 9 tracking issue (flutter/flutter#181557) is still open.
     // Bump only with the matching Dependabot ignore in .github/dependabot.yml.
     id("com.android.application") version "8.13.2" apply false
-    id("org.jetbrains.kotlin.android") version "2.4.20" apply false
+    // Held below CodeQL 2.27.0's Kotlin ceiling. Its extractor refuses a
+    // newer compiler outright — "Kotlin version 2.4.20 is too recent. CodeQL
+    // currently supports versions below 2.4.20" — and it refuses from inside
+    // a plugin subproject's `compileDebugKotlin`, so the whole
+    // `codeql-kotlin` build fails and this host goes unscanned rather than
+    // partially scanned. `apps/watch_wear/android` carries the same pin for
+    // the same reason. Bump only when the bundle the pinned
+    // `github/codeql-action` SHA ships raises the ceiling, together with the
+    // matching Dependabot ignore in .github/dependabot.yml.
+    id("org.jetbrains.kotlin.android") version "2.4.10" apply false
     // Turns `app/google-services.json` into the string resources firebase_core
     // reads when `Firebase.initializeApp()` runs with no explicit options. The
     // app module applies it only when that file is present (see

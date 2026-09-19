@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
 import { USER_A } from '../fixtures/users';
@@ -167,9 +167,9 @@ test.describe('surface smoke — anon', () => {
 			.toBeVisible({ timeout: 10_000 });
 	});
 
-	test('/share/run/<public> renders for anon visitors', async ({ page }) => {
+	test('/share/run/<public> renders for anon visitors', async ({ page, mockRoute }) => {
 		// Stub the EF; same shape as the existing share-run test.
-		await page.route('**/functions/v1/clip-public-track', (route) =>
+		await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -177,6 +177,11 @@ test.describe('surface smoke — anon', () => {
 			})
 		);
 		await page.goto('/share/run/11112222-3333-4444-5555-666677778888');
+		// `.run-meta` rather than the heading alone: RunShareView renders it
+		// only once `load()` has resolved, and the stub above is what `load()`
+		// calls — the heading on its own let this case finish in 148 ms with
+		// the stub never invoked.
+		await expect(page.locator('.run-meta')).toBeVisible({ timeout: 10_000 });
 		await expect(page.getByRole('heading', { level: 1 }))
 			.toBeVisible({ timeout: 10_000 });
 	});

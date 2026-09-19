@@ -169,10 +169,11 @@ function advanceEm(cp: number): number {
 }
 
 /// The grapheme clusters of `s`, or its code points where the runtime has no
-/// segmenter. A code-point split can put two halves of one emoji cluster in
-/// different buckets, which costs at most the difference between one
-/// pictographic width and two — an over-estimate, so the one-sided claim above
-/// survives the fallback.
+/// segmenter — Firefox 121-124, the only part of the stated floor without one
+/// (conventions.md § Web browser baseline). A code-point split can put two
+/// halves of one emoji cluster in different buckets, which costs at most the
+/// difference between one pictographic width and two — an over-estimate, so
+/// the one-sided claim above survives the fallback.
 function clusters(s: string): string[] {
 	const ctor = (Intl as { Segmenter?: typeof Intl.Segmenter }).Segmenter;
 	if (typeof ctor !== 'function') return Array.from(s);

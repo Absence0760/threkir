@@ -218,6 +218,19 @@ void main() {
     expect(groups.map((g) => g.count).toList(), [2, 1, 1]);
   });
 
+  test('reasons order by code unit, the only ordering the phone can reproduce',
+      () {
+    expect(compareImportFailureReasons('auth', 'network'), -1);
+    expect(compareImportFailureReasons('unknown', 'unknown'), 0);
+    // An eighth reason is where the vocabulary starts depending on the
+    // instrument. `no_track` against `notrack` is the underscore deciding, and
+    // `http_4xx` against `http4xx` is where web's old `localeCompare` and this
+    // code-unit order actually part: CLDR files punctuation before digits,
+    // UTF-16 files it after them.
+    expect(compareImportFailureReasons('no_track', 'notrack'), -1);
+    expect(compareImportFailureReasons('http_4xx', 'http4xx'), 1);
+  });
+
   test('grouping an empty log yields no rows', () {
     expect(groupImportFailures(newImportFailureLog()), isEmpty);
   });

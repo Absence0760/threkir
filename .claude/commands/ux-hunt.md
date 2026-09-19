@@ -40,6 +40,8 @@ Spawn two `general-purpose` agents **in one message** — one for `apps/web/`, o
 
 For a re-run, also have them note what they verified as *already clean* so you don't re-investigate.
 
+**Per-lane scratchpad.** Every lane of this fan-out inherits ONE scratchpad path from the session, and `isolation: "worktree"` does not separate it — a bare filename written by one lane is read back by another. Name each lane's own `<scratchpad>/<lane-slug>/` in its prompt and tell it to keep every temporary file under there, never in the scratchpad root and never in `/tmp`. A lane that mutates a file to test something restores it with `git checkout HEAD -- <path>`, never a `.bak` copy ([CLAUDE.md § Working alongside other Claude sessions](../../CLAUDE.md)).
+
 ### 2. Triage — pull out the cross-platform pairs
 
 The biggest lever: when the same anti-pattern exists on both web and mobile, fix it as a **matched pair** (same UX contract, platform-idiomatic implementation). Before assuming a finding is one-sided, grep the other platform for the sibling (e.g. web flags a delete-without-confirm → check the mobile screen's delete handler too). Order the work by severity × ease; lead with the cross-platform high-severity ones.

@@ -227,7 +227,6 @@ const VARIANT_SENSE_EXEMPT = new Set([
 	"clubEditor.descriptionPlaceholder",
 	"settingsAccount.newEmailPlaceholder",
 	"nutrition.targets.exerciseHint",
-	"nutrition.targets.defaultsHint",
 ]);
 
 test("a Portuguese catalogue does not read as the variant it is not", async () => {

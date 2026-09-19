@@ -89,6 +89,8 @@ Spawn all fixer agents in one message so they run concurrently. Each is a `gener
 
 Keep each agent's scope to its one issue so it reads deeply and doesn't wander.
 
+**Per-lane scratchpad.** Every lane of this fan-out inherits ONE scratchpad path from the session, and `isolation: "worktree"` does not separate it — a bare filename written by one lane is read back by another. Name each lane's own `<scratchpad>/<lane-slug>/` in its prompt and tell it to keep every temporary file under there, never in the scratchpad root and never in `/tmp`. A lane that mutates a file to test something restores it with `git checkout HEAD -- <path>`, never a `.bak` copy ([CLAUDE.md § Working alongside other Claude sessions](../../CLAUDE.md)).
+
 ### 4. Verify each agent's work before it becomes a PR
 
 Don't trust a "done" — for each returned fix, sanity-check: the cited root cause is real, the test genuinely fails-before/passes-after, the twin + i18n + docs obligations were met, and no unrelated files were swept in. Bounce anything that swallowed a failure or papered over the bug back to the agent (via `SendMessage` to keep its worktree context) rather than shipping it.

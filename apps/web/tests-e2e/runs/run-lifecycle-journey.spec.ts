@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { switchRunsToAllTime } from '../fixtures/helpers';
@@ -52,7 +52,8 @@ test.describe('run lifecycle journey', () => {
 
 	test('create public → list → detail → edit → cross-user kudos+comment → owner sees it → delete', async ({
 		page,
-		browser
+		browser,
+		mockRoute
 	}) => {
 		const admin = getAdminClient();
 		// RunEditor's only textarea is the run NOTES field, not a title —
@@ -180,7 +181,7 @@ test.describe('run lifecycle journey', () => {
 				try {
 					// The pinned public run has no real track in Storage;
 					// stub the clip function so the share page mounts fast.
-					await guestPage.route(
+					await mockRoute(guestPage, 
 						'**/functions/v1/clip-public-track',
 						(route) =>
 							route.fulfill({

@@ -293,11 +293,17 @@ Tick **Sign in with Apple** → **Configure**. In the modal:
 | Field | Value |
 |---|---|
 | Primary App ID | `com.threkir.app` (step 3) |
-| Website URLs → Domains and Subdomains | `<project-ref>.supabase.co` |
-| Website URLs → Return URLs | `https://<project-ref>.supabase.co/auth/v1/callback` |
+| Website URLs → Domains and Subdomains | `mcbgrgvegqcmdmtraikl.supabase.co` |
+| Website URLs → Return URLs | `https://mcbgrgvegqcmdmtraikl.supabase.co/auth/v1/callback` |
 
-Both are comma-delimited lists; one entry each is right here. `<project-ref>`
-is the subdomain in your Supabase dashboard URL.
+Both are comma-delimited lists; one entry each is right here.
+
+The project ref is written out rather than left as a placeholder because it is
+**not a secret** — `PUBLIC_SUPABASE_URL` is inlined into every browser bundle,
+so it is served to anyone who loads the site. Re-derive it any time with
+`curl -s https://threkir.com | grep -o 'https://[a-z0-9]*\.supabase\.co'`
+rather than by decrypting anything. If the prod project is ever moved, that
+command is the authority and this table is the transcription.
 
 **Done** → **Continue** → **Save**.
 
@@ -461,7 +467,9 @@ Android button on two dart-defines, the way Google's is gated on
 `GOOGLE_WEB_CLIENT_ID`:
 
 - `APPLE_SERVICE_CLIENT_ID` — the **same Services ID** from step 5, `com.threkir.web`
-- `APPLE_REDIRECT_URI`
+- `APPLE_REDIRECT_URI` — the **same return URL** from step 5,
+  `https://mcbgrgvegqcmdmtraikl.supabase.co/auth/v1/callback`. It has to be one
+  of the Return URLs registered there or Apple rejects the authorization.
 
 iOS needs neither: it takes the native flow off the App ID capability from
 step 3.

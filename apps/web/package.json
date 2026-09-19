@@ -3,6 +3,19 @@
 	"name": "run-app-web",
 	"version": "0.0.1",
 	"private": true,
+	"browserslist": [
+		"chrome >= 111",
+		"edge >= 111",
+		"firefox >= 121",
+		"safari >= 16.4",
+		"ios_saf >= 16.4",
+		"and_chr >= 111",
+		"and_ff >= 121",
+		"android >= 111",
+		"opera >= 97",
+		"op_mob >= 80",
+		"samsung >= 20"
+	],
 	"scripts": {
 		"dev": "vite dev --port 7777",
 		"build": "vite build",

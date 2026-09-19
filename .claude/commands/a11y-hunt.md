@@ -50,6 +50,8 @@ Choose one bounded surface (a route + its components, a screen and its twin, a c
 
 Spawn hunters in a single message — `general-purpose` agents pointed at the surface's files (web `.svelte` + `app.css` tokens; the mobile twin `.dart` widgets; the watch Kotlin/Swift), each instructed to find **WCAG 2.2 AA violations** with the criterion named. Have them report, per finding: `file:line`, the criterion (e.g. "1.4.3"), the **measured value** (the two colours / the px size / the scale at which it clips), the threshold it misses, and which platforms share the defect. The `compliance-auditor` (via `audit:accessibility`) is the specialist if you want a deeper single-pass sweep first.
 
+**Per-lane scratchpad.** Every lane of this fan-out inherits ONE scratchpad path from the session, and `isolation: "worktree"` does not separate it — a bare filename written by one lane is read back by another. Name each lane's own `<scratchpad>/<lane-slug>/` in its prompt and tell it to keep every temporary file under there, never in the scratchpad root and never in `/tmp`. A lane that mutates a file to test something restores it with `git checkout HEAD -- <path>`, never a `.bak` copy ([CLAUDE.md § Working alongside other Claude sessions](../../CLAUDE.md)).
+
 ### 3. Compute every numeric claim before touching code
 
 This is the step that stops one violation becoming another:

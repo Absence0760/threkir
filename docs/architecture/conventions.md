@@ -1165,6 +1165,30 @@ On web the same decision is already in force and needs no mirror: `app.css` carr
 
 Don't use `new Date().toISOString().slice(0, 10)` to derive a "yyyy-mm-dd today" or "yyyy-mm-dd of week start" string. `toISOString()` formats in UTC, so in any positive-offset timezone it rolls the date back a day before midnight local — week boundaries snap to the wrong Monday and prev/next navigation jumps two periods at once. Use `formatISO(d)` (or `todayISO()`) from `apps/web/src/lib/training/training.ts` — both build the string from `getFullYear` / `getMonth` / `getDate`, which stay in local time. The same rule applies to Dart on the mobile side: call `DateTime.local()` and format the components yourself, don't go via UTC.
 
+## Web browser baseline
+
+`apps/web` supports the browsers below, and nothing older. The floor is declared once, as `browserslist` in `apps/web/package.json`; `scripts/browser_baseline.mjs` reads it, `vite.config.ts` compiles to it, and `src/lib/browser_baseline_guard.test.ts` holds this table and every feature detect in the tree to it.
+
+| browserslist key | floor | why this number |
+| --- | --- | --- |
+| `chrome` | 111 | Vite's own `baseline-widely-available` target, which the build inherited before the floor was stated. |
+| `edge` | 111 | same. |
+| `firefox` | 121 | `:has()` landed here, and the tree ships it in four stylesheets with no fallback. |
+| `safari` | 16.4 | Vite's target; container queries, which the tree also ships unguarded, arrived at 16.0. |
+| `ios_saf` | 16.4 | same. |
+| `and_chr` | 111 | Chromium fork; the engine row above is the real constraint. |
+| `and_ff` | 121 | Gecko fork of the Firefox row. |
+| `android` | 111 | Chromium fork. |
+| `opera` | 97 | Chromium 111. |
+| `op_mob` | 80 | Chromium fork. |
+| `samsung` | 20 | the first release with container queries. |
+
+Measured against caniuse-lite 1.0.30001810, that floor reaches **92.51%** of globally tracked page views. The 7.5% below it is Internet Explorer, Opera Mini, KaiOS, Android Browser ≤ 4.4 and pre-2023 releases of the engines above — none of which can render a WebGL2 MapLibre map, so the floor excludes nobody the app could serve anyway.
+
+**Above the floor, an API is used directly: no detect, no fallback.** Below it the app is unsupported. A runtime feature detect is therefore an exception, and it says exactly one of three things — `above-floor` (the API needs a newer release than the floor names), `optional-capability` (it is absent for a reason that is not a version: a permission, a secure context, an install state, a device) or `value-shape` (the probe is about a value, not the platform). `EXCEPTIONS` in `browser_baseline_guard.test.ts` carries every one with its reason, and a detect for an API the floor already guarantees has no reason available to it and fails the suite until it is deleted. An `above-floor` entry also names the release that retires it, so the exception cannot outlive its reason — the floor reaching that release fails the suite too.
+
+Two things are deliberately outside all of this. A test of a bare global — `typeof window === 'undefined'`, `typeof localStorage` — asks whether there is a browser at all, which every module that also runs on a share Lambda or under prerender has to ask; that is not a question about a browser's age. And `apps/web/lambda` is Node 24 with full ICU, so the floor does not apply to it at all — which is exactly how the crawler-facing `<head>` and the tab's can differ. See [decisions.md § 1670](decisions.md).
+
 ## Web buttons
 
 Canonical button styles live in `apps/web/src/app.css` under the comma-separated `.btn, .btn-primary, .btn-secondary, .btn-outline, .btn-danger` selector, plus the `.btn-sm` size modifier. Every variant works standalone (e.g. `class="btn-primary"`) or with an explicit base (`class="btn btn-primary"`) — they pick up the same padding, font size, radius, and transition.
@@ -1996,6 +2020,35 @@ Two related passes belong to the same moment, for the same reason:
   reconciliation is arithmetic rather than archaeology. "Wear OS is now 774
   across 75" is worth less than the `find`/`grep` that says so, because only the
   second survives another lane also adding a test.
+
+## A lane's temporary files live in its own scratchpad subdirectory, and a restore is a `git checkout`
+
+The harness hands one scratchpad path per *session*, and a subagent inherits the
+spawning session's path unchanged — including one started with
+`isolation: "worktree"`, which separates the tree and the index and not this.
+So every lane of a fan-out resolves the same directory, and a lane that writes a
+bare filename there is writing somewhere a sibling will write too. Each lane
+gets `<scratchpad>/<lane-slug>/` and keeps everything under it; the command that
+fans the lanes out names each lane's subdirectory in that lane's own prompt,
+because a lane cannot pick a name that is unique against lanes it cannot see. A
+fixed path in `/tmp` is the same defect one scope wider — that directory is
+shared by every session on the machine, not merely every lane of one round.
+
+**A file mutated to test something is restored with `git checkout HEAD -- <path>`,
+never a `.bak` copy.** The save/restore pair is what actually did the damage:
+`cp x x.bak` collided with a sibling lane's file of that name, the interactive
+`cp -i` alias declined to overwrite it and said nothing, and the restore copied
+THAT lane's file into this worktree, where it would have been committed by
+anyone who did not diff first. git already holds every committed byte, so the
+save half buys nothing and the collision has nowhere left to happen — which is a
+stronger property than giving the `.bak` a private directory to sit in. When the
+change you need back is uncommitted, write the patch to your own subdirectory
+(`git diff -- <path> > <scratchpad>/<lane-slug>/x.patch`) and `git apply` it
+afterwards.
+
+`apps/web/src/lib/fanout_scratchpad_guard.test.ts` derives the fan-out commands
+from their own bodies rather than listing them, so a new one is covered the day
+it is written.
 
 ## A merge gate and an agent name each have exactly one definition
 

@@ -22,7 +22,7 @@ process.env.PUBLIC_SUPABASE_URL = 'http://supabase.invalid';
 process.env.PUBLIC_SUPABASE_ANON_KEY = 'anon';
 
 // The two X-Engine-Key credentials are decrypted from a KMS ciphertext bag once
-// per container (decisions § 1659), so the wrapper needs a KMS that answers
+// per container (decisions § 1671), so the wrapper needs a KMS that answers
 // before it will hand anything to the core. Its refusal when one does not is
 // pinned in core/lambda_secret_refusal.test.ts, which needs its own process.
 stubKms({ GRAPHHOPPER_API_KEY: 'gh-test', GRAPH_CYCLE_API_KEY: 'gc-test' });

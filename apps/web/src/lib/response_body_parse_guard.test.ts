@@ -57,7 +57,7 @@ const REGISTER: Record<string, [number, string]> = {
 		'kmsDecrypt throws on every failure by contract — a truncated or ' +
 			'non-JSON KMS response is a bag the handler cannot read, and the two ' +
 			'Lambdas that call it must answer 503 rather than fall back to a ' +
-			'plaintext environment variable (decisions § 1659)',
+			'plaintext environment variable (decisions § 1671)',
 	],
 	'src/lib/routes/route_describe_client.ts': [
 		1,

@@ -519,7 +519,7 @@ title can differ between what the crawler was served and what the reader's tab
 shows. That is a kept, dated exception rather than an open question:
 `browser_baseline_guard.test.ts` carries it with the release that retires it,
 and fails the moment the floor reaches Firefox 125
-([§ 1658](../architecture/decisions.md), and
+([§ 1670](../architecture/decisions.md), and
 [conventions.md § Web browser baseline](../architecture/conventions.md)).
 
 `share/share_head_clipping.test.ts` is the census half, and the sibling of

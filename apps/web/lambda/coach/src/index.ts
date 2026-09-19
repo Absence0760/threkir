@@ -11,7 +11,7 @@
 //   2. Reads non-secret runtime config from process.env, and the credentials
 //      from the KMS ciphertext bag `loadSecrets()` decrypts once per container
 //      (Terraform encrypts it from the sops file at apply time — decisions
-//      § 1659; the plaintext never reaches this function's environment).
+//      § 1671; the plaintext never reaches this function's environment).
 //   3. Calls the shared core.
 //   4. Adapts the result to Lambda response streaming via
 //      `awslambda.streamifyResponse` + `awslambda.HttpResponseStream`.
@@ -189,7 +189,7 @@ export const handler = awslambda.streamifyResponse<LambdaFunctionURLEvent>(
 		// The three credentials live in the KMS ciphertext bag, not in this
 		// function's environment: every API returning a FunctionConfiguration
 		// hands the environment to any principal that can deploy, which is how
-		// a release role could read ANTHROPIC_API_KEY (decisions § 1659). A
+		// a release role could read ANTHROPIC_API_KEY (decisions § 1671). A
 		// decrypt failure throws into the outer envelope — the caller gets the
 		// generic 503 and no turn is served with a key this function guessed at.
 		const secrets = await loadSecrets();

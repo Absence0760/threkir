@@ -66,7 +66,7 @@ function graphemeSegmenter(): Intl.Segmenter | null {
  * to make that safe costs 0.35% of globally tracked page views for a
  * cosmetic guarantee. So it stays until the floor reaches Firefox 125, which
  * `browser_baseline_guard.test.ts` fails on (conventions.md § Web browser
- * baseline, decisions § 1658).
+ * baseline, decisions § 1670).
  */
 export function clipText(s: string, max: number): string {
 	if (s.length <= max) return s;

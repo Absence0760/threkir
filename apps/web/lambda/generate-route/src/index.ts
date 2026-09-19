@@ -11,7 +11,7 @@
 //      GRAPHHOPPER_URL) plus PUBLIC_SUPABASE_URL + PUBLIC_SUPABASE_ANON_KEY for
 //      the Pro gate's is_pro() check from process.env, and the two X-Engine-Key
 //      credentials from the KMS ciphertext bag `loadSecrets()` decrypts once per
-//      container (decisions § 1659).
+//      container (decisions § 1671).
 //   3. Calls the shared core, which verifies the caller's tier (server-side
 //      generation is a Pro perk — decisions §204; `bypassPaywallEnabled` is
 //      hardcoded false here, exactly like the coach Lambda), then searches the
@@ -83,7 +83,7 @@ export const handler = async (
 		}
 
 		// The two engine keys live in the KMS ciphertext bag, not in this
-		// function's environment (decisions § 1659). A decrypt failure — or an
+		// function's environment (decisions § 1671). A decrypt failure — or an
 		// env with no bag at all — throws into the outer envelope and answers
 		// 503. That is a deliberate change of direction from the old behaviour,
 		// where absent keys meant "send no X-Engine-Key and let the engine 403

@@ -9,7 +9,7 @@
 // reading the response. Terraform now puts a KMS ciphertext blob there
 // instead: `GetFunctionConfiguration` still hands it out, and it is useless
 // without `kms:Decrypt` on the env's secrets CMK, which only the execution
-// role holds. See infra/modules/web-stack/main.tf and decisions § 1659.
+// role holds. See infra/modules/web-stack/main.tf and decisions § 1671.
 //
 // `kms_key_arn` on the function is deliberately NOT the mechanism. That field
 // would make Lambda itself decrypt the environment, which hands the same

@@ -68,7 +68,7 @@ filter that used to sit on the triggers.
   plaintext key there is readable by anything that can deploy. The coach and
   generate-route credentials are encrypted at apply time into one
   `aws_kms_ciphertext` blob per function and decrypted by the handler at cold
-  start ([§ 1659](../docs/architecture/decisions.md)). The guard fails on a
+  start ([§ 1671](../docs/architecture/decisions.md)). The guard fails on a
   plaintext sops key that is not declared non-credential with a reason, on a key
   that is both encrypted and plaintext, on a blob with no per-function
   encryption context, on a blob no env reads or two envs share, and on a stale
@@ -79,7 +79,7 @@ filter that used to sit on the triggers.
   makes Lambda hand the decrypted environment back to the same callers and
   demands the DEPLOY role hold `kms:Decrypt`. The EXECUTION role's identifier in
   the same statement is checked in the other direction: it was unexercised until
-  § 1659 and is load-bearing now, because it is what decrypts the cold-start
+  § 1671 and is load-bearing now, because it is what decrypts the cold-start
   blob. Both directions fail: a wire
   restored while nothing exercises it is standing privilege on the one key whose
   loss is unrecoverable, and an empty wire once either premise breaks is a

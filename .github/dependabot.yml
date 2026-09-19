@@ -229,7 +229,7 @@ updates:
       # java-kotlin analysis (this bit us when the minor-and-patch group
       # shipped #68 → Kotlin 2.4.0). The ceiling has MOVED since: bundle
       # 2.27.0, which the pinned github/codeql-action SHA ships, refuses
-      # only >= 2.4.20 (measured against the CLI in decisions § 1660), so
+      # only >= 2.4.20 (measured against the CLI in decisions § 1672), so
       # these two entries are now tighter than the fact. Left that way
       # deliberately — this app's Kotlin moves together with its
       # compose-compiler plugin against AGP 9.4.0, which is its own

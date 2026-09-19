@@ -31,7 +31,7 @@ The CI workflow (`.github/workflows/release-web.yml`) runs the same script.
   once per cold start under the execution role. A Lambda environment is returned
   by every API that returns a `FunctionConfiguration`, including
   `lambda:UpdateFunctionCode`, so a plaintext key there is readable by anything
-  that can deploy — decisions § 1659. No bag, or a bag that will not decrypt, is
+  that can deploy — decisions § 1671. No bag, or a bag that will not decrypt, is
   a 503; there is deliberately no plaintext fallback.
 - `COACH_PROVIDER`, `OPENAI_BASE_URL`, `OPENAI_MODEL` — optional, and plain env
   vars on purpose: a provider name, an endpoint and a model authorise nothing,

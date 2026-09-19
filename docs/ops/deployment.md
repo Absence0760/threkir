@@ -25,7 +25,7 @@ For the orthogonal "how a tag triggers a build" mechanics, see [releasing.md](re
 | Apple Watch | `apps/watch_ios/` | Bundled inside the iOS app — no separate listing | Plan |
 | RevenueCat | (third party) | RevenueCat dashboard — webhook to `apps/backend/supabase/functions/revenuecat-webhook` | Plan |
 | MapTiler | (third party) | MapTiler Cloud — `PUBLIC_MAPTILER_KEY` shared by web + Wear OS | Plan |
-| Anthropic API | (third party) | api.anthropic.com — `ANTHROPIC_API_KEY` reaches the coach Lambda as part of a KMS ciphertext the handler decrypts at cold start, never as a plaintext env var (Terraform reads it from the sops file in the private estate repo and encrypts it under the env's own CMK — [decisions § 1659](../architecture/decisions.md)) | Plan |
+| Anthropic API | (third party) | api.anthropic.com — `ANTHROPIC_API_KEY` reaches the coach Lambda as part of a KMS ciphertext the handler decrypts at cold start, never as a plaintext env var (Terraform reads it from the sops file in the private estate repo and encrypts it under the env's own CMK — [decisions § 1671](../architecture/decisions.md)) | Plan |
 
 Per-service deep dives:
 
@@ -139,7 +139,7 @@ Each spend vector carries at least two independent caps — one in IaC, one (whe
 - **CloudWatch log retention** — every log group sets `retention_in_days` ≤ 90 (default "Never expire" is $0.50/GB/month forever).
 - **S3 lifecycle** — non-current versions expire at 30 d, incomplete multipart uploads abort at 7 d (prevents version-history cost ramp).
 - **Coach per-user cap** — `TIER_LIMITS.free.dailyLimit` in [`apps/web/src/lib/coach/types.ts`](../../apps/web/src/lib/coach/types.ts) caps free at 2 messages/UTC-day, server-enforced before any Anthropic call. Pro is daily-uncapped but each turn is capped at `maxTokens = 2048`.
-- **Anthropic console spend limit** — **MUST be set manually** at https://console.anthropic.com/settings/limits — code cannot enforce a provider-side ceiling on a key that's leaked from a sops file. The recommended floor is ~2× the projected monthly Anthropic spend (~$30/mo at launch baseline, so $60–$100 cap).
+- **Anthropic console spend limit** — **MUST be set manually** at https://console.anthropic.com/settings/limits — code cannot enforce a provider-side ceiling on a key that's leaked from a sops file. The recommended floor is ~2× the projected monthly Anthropic spend (~$30/mo at launch baseline, so $60–$100 cap). **Set by hand 2026-09-18.** Nothing in this repo can confirm that — re-verifying it means opening the console, so treat the date as the record.
 - **Supabase egress alert** — **MUST be set manually** in Supabase project settings. Code cannot enforce a daily-egress ceiling at the provider level.
 
 The full audit + arch-guard tests covering each ceiling live in [`apps/web/src/lib/infra_guards.test.ts`](../../apps/web/src/lib/infra_guards.test.ts) under the "audit:cost-controls" section.
@@ -208,7 +208,7 @@ The matrix of "what lives where":
 | `STRAVA_CLIENT_SECRET` | Strava developer dashboard | Supabase Vault |
 | `STRAVA_VERIFY_TOKEN`, `STRAVA_WEBHOOK_SECRET` | We invent | Supabase EF env |
 | `REVENUECAT_WEBHOOK_SECRET` | RevenueCat dashboard | Supabase EF env |
-| `ANTHROPIC_API_KEY` | Anthropic console | sops-encrypted in the private estate repo (AWS KMS key per env) — Terraform decrypts at apply time, RE-encrypts it into `aws_kms_ciphertext.coach`, and writes only that blob to the coach Lambda's `environment` block; the handler decrypts it once per cold start ([decisions § 1659](../architecture/decisions.md)) |
+| `ANTHROPIC_API_KEY` | Anthropic console | sops-encrypted in the private estate repo (AWS KMS key per env) — Terraform decrypts at apply time, RE-encrypts it into `aws_kms_ciphertext.coach`, and writes only that blob to the coach Lambda's `environment` block; the handler decrypts it once per cold start ([decisions § 1671](../architecture/decisions.md)) |
 | `PUBLIC_MAPTILER_KEY` | MapTiler dashboard | GitHub Secrets (injected at CI build-time as `PUBLIC_*`); Mobile build configs |
 | Android upload keystore | We generate once | GitHub Secrets (`ANDROID_KEYSTORE_BASE64`) |
 | iOS distribution `.p12` + provisioning profile | Apple Developer | GitHub Secrets (`IOS_BUILD_CERTIFICATE_BASE64` etc.) |
@@ -517,7 +517,7 @@ Before flipping any service from "Plan" to live in the table at the top:
 
 ### Lambda secrets — one apply, before the next web deploy
 
-[decisions § 1659](../architecture/decisions.md) moved the coach and
+[decisions § 1671](../architecture/decisions.md) moved the coach and
 generate-route credentials out of their Lambda environments and into a KMS
 ciphertext the handler decrypts at cold start. The code is on `main` and the
 guard enforces it; the change is **unapplied and unplanned** — no lane in this

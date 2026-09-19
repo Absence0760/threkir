@@ -650,7 +650,7 @@ The reachability contract for the `/settings/preferences` split (issue #905, dec
 
 ### `apps/web/src/lib/browser_baseline_guard.test.ts` — 5 tests
 
-The stated minimum-browser floor and its exceptions (decisions § 1658). Reads `browserslist` from `apps/web/package.json` through `scripts/browser_baseline.mjs` — the same reader `vite.config.ts` derives `build.target` from — and holds four things to it: the prose table in `conventions.md § Web browser baseline` declares the same rows and versions; the two CSS features the floor is derived from (`:has()`, `container-type`) are still used in the tree, so the floor is still derived from something; every feature detect under `apps/web/src` is one of the eleven declared `EXCEPTIONS`, with a matching count, and every entry still matches a detect; each entry names one of the three allowed reasons with a why; and no `above-floor` entry outlives its `until` — the floor reaching Firefox 125 fails the suite and sends the lane to delete `clipText`'s `Intl.Segmenter` fallback. The scan parses rather than pattern-matches: TypeScript's parser for `.ts`, Svelte's for `.svelte` with the script offsets going through TypeScript's, each refusing a file it cannot read. A test of a BARE global (`typeof window === 'undefined'`) is deliberately outside the census — that asks whether there is a browser at all, not whether this one is new enough.
+The stated minimum-browser floor and its exceptions (decisions § 1670). Reads `browserslist` from `apps/web/package.json` through `scripts/browser_baseline.mjs` — the same reader `vite.config.ts` derives `build.target` from — and holds four things to it: the prose table in `conventions.md § Web browser baseline` declares the same rows and versions; the two CSS features the floor is derived from (`:has()`, `container-type`) are still used in the tree, so the floor is still derived from something; every feature detect under `apps/web/src` is one of the eleven declared `EXCEPTIONS`, with a matching count, and every entry still matches a detect; each entry names one of the three allowed reasons with a why; and no `above-floor` entry outlives its `until` — the floor reaching Firefox 125 fails the suite and sends the lane to delete `clipText`'s `Intl.Segmenter` fallback. The scan parses rather than pattern-matches: TypeScript's parser for `.ts`, Svelte's for `.svelte` with the script offsets going through TypeScript's, each refusing a file it cannot read. A test of a BARE global (`typeof window === 'undefined'`) is deliberately outside the census — that asks whether there is a browser at all, not whether this one is new enough.
 
 ### `apps/web/src/lib/control_hints_guard.test.ts` — 3 tests
 
@@ -1438,7 +1438,7 @@ distribution. Two closing cases run the whole comparison against the COMMITTED
 tree and assert the parsers reached it — a passing run that checked almost
 nothing is not a pass.
 
-Claim 8 gained its second half in [decisions § 1659](../architecture/decisions.md),
+Claim 8 gained its second half in [decisions § 1671](../architecture/decisions.md),
 and with it its own faithful fixture: a credential left in an environment in
 plaintext, a key that is BOTH encrypted and plaintext, an encrypted key assigned
 straight into an env from somewhere the comprehension reader cannot see, a blob

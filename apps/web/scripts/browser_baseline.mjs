@@ -10,7 +10,7 @@
  * no fallback at all, which is a floor of Firefox 121, four releases above the
  * one the build was compiling for. Nothing reconciled them, and an API with a
  * hand-written fallback (`Intl.Segmenter`) had no floor to be measured against
- * either way (decisions § 1658).
+ * either way (decisions § 1670).
  *
  * So the floor is declared, and everything that needs one derives from it:
  * `vite.config.ts` compiles to it, `src/lib/browser_baseline_guard.test.ts`

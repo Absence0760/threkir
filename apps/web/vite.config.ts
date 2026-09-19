@@ -36,7 +36,7 @@ export default defineConfig({
 		// on every major — so the syntax floor moved on a dependency bump and
 		// sat four Firefox releases below the one the source's own `:has()`
 		// already required. The floor is declared in `package.json` now and
-		// this reads it (decisions § 1658).
+		// this reads it (decisions § 1670).
 		target: esbuildTarget(),
 	},
 });

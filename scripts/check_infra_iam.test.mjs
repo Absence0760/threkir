@@ -620,7 +620,7 @@ test('parseSecretMerges refuses a comprehension carrying no predicate', () => {
 
 test('the committed module takes only named keys into every Lambda env', () => {
   const web = parseWebStack(readFileSync(MODULE_FILE, 'utf-8'));
-  // One direct reference left since § 1659 — the coach env's non-credential
+  // One direct reference left since § 1671 — the coach env's non-credential
   // config. The credentials reach their functions as a ciphertext blob, and
   // what each env carries in the clear is 8(b)'s question, below.
   assert.ok(web.secretMerges.length >= 1, JSON.stringify(web.secretMerges));
@@ -634,7 +634,7 @@ test('the committed module takes only named keys into every Lambda env', () => {
 // Narrowing each env to the keys one function reads (8a) left the values
 // themselves in `environment { variables }`, which UpdateFunctionCode returns
 // to every principal that can deploy. The fixture below is the shape the
-// module has since decisions § 1659: one ciphertext blob per credential-
+// module has since decisions § 1671: one ciphertext blob per credential-
 // carrying function, bound to it by an encryption context, and only
 // non-credential config left in the clear.
 

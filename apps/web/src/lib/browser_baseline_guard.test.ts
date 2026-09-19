@@ -15,7 +15,7 @@
 // hand-written `Intl.Segmenter` fallback whose whole justification was
 // "Firefox gained the constructor only in 125", against a repo that had never
 // said which Firefox it supports. The fallback was neither right nor wrong —
-// it was unmeasurable (decisions § 1658). It is now the first entry below,
+// it was unmeasurable (decisions § 1670). It is now the first entry below,
 // with the release that retires it, and the floor reaching Firefox 125 fails
 // this suite rather than leaving the fallback to outlive its reason.
 //
@@ -77,7 +77,7 @@ const EXCEPTIONS: Exception[] = [
 		count: 1,
 		reason: 'above-floor',
 		until: { firefox: 125 },
-		why: "the grapheme cut is the crawler's on every runtime the floor names except Firefox 121-124, which degrade to the code-unit cut. Every share `<head>` is built through this in the tab as well as on the Lambda, so a throw here is a blank page, not a clipped title (decisions § 1529, § 1658).",
+		why: "the grapheme cut is the crawler's on every runtime the floor names except Firefox 121-124, which degrade to the code-unit cut. Every share `<head>` is built through this in the tab as well as on the Lambda, so a throw here is a blank page, not a clipped title (decisions § 1529, § 1670).",
 	},
 	{
 		file: 'src/lib/share/svg_text_width.ts',

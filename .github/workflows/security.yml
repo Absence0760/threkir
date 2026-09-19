@@ -24,7 +24,7 @@ name: Security
 #     Gradle host, and its platform-channel bridges: MainActivity.kt,
 #     RunActionReceiver.kt (a BroadcastReceiver), and the bridges
 #     mediating health permissions, calendar access and foreground-service
-#     actions). The host went unscanned until § 1660, for the same reason
+#     actions). The host went unscanned until § 1672, for the same reason
 #     § 1304 found on the Go leg: CodeQL analyses what the build steps
 #     compile, the only build step was watch_wear's, and the Go-specific
 #     autobuild fallback has no Java/Kotlin analogue. The build step now
@@ -204,7 +204,7 @@ jobs:
     # Two Gradle projects, both compiled cold: this job deliberately restores no
     # `~/.gradle` cache, so nothing a pull request can write decides what the
     # security scan reads. Derived cost of the Flutter host's half is ~9 min
-    # (decisions § 1660); the ceiling is sized for a cold dependency graph on a
+    # (decisions § 1672); the ceiling is sized for a cold dependency graph on a
     # bad network day, not for the measured run.
     timeout-minutes: 30
     permissions:
@@ -240,7 +240,7 @@ jobs:
       # analogue, and `build-mode: none` cannot stand in because CodeQL's
       # buildless Java extractor does not process Kotlin at all.
       #
-      # Both projects are built now (§ 1660). A project this job cannot build
+      # Both projects are built now (§ 1672). A project this job cannot build
       # would still be DECLARED below rather than omitted, so a gap is a value
       # a guard can read instead of a sentence a reader has to notice; the
       # declaration is empty because nothing is excluded, and the mechanism

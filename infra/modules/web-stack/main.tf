@@ -61,7 +61,7 @@ locals {
   # So the CREDENTIALS never enter the environment in the clear at all. They
   # are encrypted at apply time into one `aws_kms_ciphertext` blob per function
   # and the handler decrypts it once per cold start under the EXECUTION role
-  # (apps/web/src/lib/core/lambda_secrets.ts, decisions § 1659). The blob is
+  # (apps/web/src/lib/core/lambda_secrets.ts, decisions § 1671). The blob is
   # still handed out by GetFunctionConfiguration and is worth nothing without
   # kms:Decrypt on this env's secrets CMK.
   #
@@ -186,7 +186,7 @@ locals {
   # (GRAPH_CYCLE_API_KEY + GRAPHHOPPER_API_KEY) are the shared secrets the handler
   # sends as X-Engine-Key to clear each engine's guard. They arrive as ONE KMS
   # ciphertext blob, never as plaintext env vars — see local.coach_credential_keys
-  # above for why, and decisions § 1659. No blob at all (a first apply, before
+  # above for why, and decisions § 1671. No blob at all (a first apply, before
   # the env has a sops file) is now a 503 from the handler rather than the old
   # "send no header and let the engine 403 us into the fallback": a credential
   # this function cannot read is a misconfiguration, and degrading quietly is
@@ -304,7 +304,7 @@ locals {
 #     can call GetFunctionConfiguration, and it would demand the DEPLOY
 #     role hold kms:Decrypt on this key (decisions § 1021).
 #
-#     What the execution role's grant below IS for, since § 1659: the
+#     What the execution role's grant below IS for, since § 1671: the
 #     coach and generate-route credentials reach those two functions as
 #     an `aws_kms_ciphertext` blob in an ordinary environment variable,
 #     and the handler calls kms:Decrypt on it once per cold start
@@ -404,7 +404,7 @@ data "aws_iam_policy_document" "kms_secrets" {
         # cycle. Audit pass 3 caught a name mismatch (was `-lambda`,
         # actual role is `-coach-lambda`); keep these in lockstep.
         "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.resource_prefix}-coach-lambda",
-        # Load-bearing since § 1659: this role is what decrypts
+        # Load-bearing since § 1671: this role is what decrypts
         # SECRETS_CIPHERTEXT at cold start on the coach and generate-route
         # functions. Removing it is not a least-privilege win, it is an
         # outage on both.
@@ -424,7 +424,7 @@ data "aws_iam_policy_document" "kms_secrets" {
     # secret-set / key-rotate) run under the operator's own admin/SSO
     # principal, and the two aws_kms_ciphertext resources encrypt during the
     # operator's own apply. Decrypt is exercised by the Lambda at cold start
-    # (decisions § 1659) — the comment that said so was wrong for the two
+    # (decisions § 1671) — the comment that said so was wrong for the two
     # years before that and is true now.
     actions = [
       "kms:Decrypt",
@@ -463,7 +463,7 @@ resource "aws_kms_key" "secrets" {
 # The plaintext is in state — but it already was, via data.sops_file, so this
 # moves nothing. What it moves is the LAMBDA ENVIRONMENT, which is readable by
 # every principal that can call UpdateFunctionCode and is not a place a
-# credential belongs (decisions § 1659).
+# credential belongs (decisions § 1671).
 #
 # The encryption context is per function and the handler passes it back on
 # Decrypt. All eight functions share one execution role, so without it a blob
@@ -612,7 +612,7 @@ resource "aws_cloudwatch_log_group" "lambda" {
   # `aws/lambda` key — no aws_lambda_function in this module sets
   # `kms_key_arn`. What this CMK protects inside that map is the
   # `SECRETS_CIPHERTEXT` blob, which is encrypted under it at apply time
-  # and decrypted by the handler at cold start — decisions § 1659.)
+  # and decrypted by the handler at cold start — decisions § 1671.)
   # KMS rotation + access policy are managed in one
   # place; the log group only contains coach request traces, which can
   # carry the same secrecy class as the env vars themselves.

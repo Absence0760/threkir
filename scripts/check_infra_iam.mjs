@@ -69,7 +69,7 @@
 //      SUPABASE_SECRET_KEY by uploading the same zip and reading the response.
 //      The module's own comment said half of this out loud ("visible to anyone
 //      who can call GetFunctionConfiguration") without following it to the
-//      deploy role. Since decisions § 1659 the credentials are encrypted at
+//      deploy role. Since decisions § 1671 the credentials are encrypted at
 //      apply time into an `aws_kms_ciphertext` blob per function and decrypted
 //      by the handler at cold start, so the claim is: every sops key that
 //      still arrives as a plain env var is named in NON_CREDENTIAL_SOPS_KEYS
@@ -93,7 +93,7 @@
 //      AccessDenied against production, mid-deploy. decisions § 1021.
 //
 //      The EXECUTION role's identifier in the same statement is checked too,
-//      and for the opposite reason. It was unexercised until § 1659 and is
+//      and for the opposite reason. It was unexercised until § 1671 and is
 //      load-bearing now: it is what decrypts the claim-8(b) blob at cold
 //      start, so deleting it reads as least-privilege hygiene and is an outage
 //      on both credential-carrying functions, on their first invocation in
@@ -1144,7 +1144,7 @@ export function checkPlaintextCredentials(
   if (ciphertexts.length === 0) {
     errors.push(
       'no `aws_kms_ciphertext` resource in the web-stack module. The coach and generate-route ' +
-        'credentials reach their functions as one encrypted blob each (decisions § 1659); with ' +
+        'credentials reach their functions as one encrypted blob each (decisions § 1671); with ' +
         'none, either they are back in the environment in plaintext — readable by every principal ' +
         'that can call UpdateFunctionCode — or this reader stopped matching.',
     );
@@ -1205,7 +1205,7 @@ export function checkPlaintextCredentials(
         `local.${local} puts the sops key ${key} in a function environment as PLAINTEXT. Every ` +
           'API that returns a FunctionConfiguration returns it, including ' +
           'lambda:UpdateFunctionCode, which the release role holds — so a deploy can read it ' +
-          '(decisions § 1659). Encrypt it into that function\'s `aws_kms_ciphertext` blob, or, if ' +
+          '(decisions § 1671). Encrypt it into that function\'s `aws_kms_ciphertext` blob, or, if ' +
           `it is genuinely not a credential, add ${key} to NON_CREDENTIAL_SOPS_KEYS with the ` +
           'reason.',
       );
@@ -1434,7 +1434,7 @@ export function checkDecryptGrant(
 
   // The EXECUTION role's own identifier, which the module builds from
   // local.resource_prefix rather than referencing the role (a key -> role -> key
-  // cycle). Unexercised until § 1659 and load-bearing since: it is what decrypts
+  // cycle). Unexercised until § 1671 and load-bearing since: it is what decrypts
   // the claim-8(b) blob at cold start, so its removal is not hygiene, it is a
   // 503 on the first invocation in every fresh container.
   const execRole = grant.identifiers.find((i) => /:role\/\$\{local\.resource_prefix\}/.test(i));
@@ -1444,7 +1444,7 @@ export function checkDecryptGrant(
         `(read: ${JSON.stringify(grant.identifiers)}), while aws_kms_ciphertext.` +
         `${ciphertextLabels.join(', aws_kms_ciphertext.')} put(s) a ciphertext in a function ` +
         'environment for the handler to decrypt at cold start. Without the grant both credential-' +
-        'carrying Lambdas answer 503 on every cold start (decisions § 1659).',
+        'carrying Lambdas answer 503 on every cold start (decisions § 1671).',
     );
   else if (execRole !== undefined && ciphertextLabels.length > 0)
     ok.push(

@@ -20,7 +20,7 @@ plugins {
     // codeql-kotlin Security job fails outright rather than scanning less.
     // The ceiling is now 2.4.20 and this pin is 2.3.21, so it is tighter
     // than it has to be — deliberately, since these move with the
-    // compose-compiler plugin against AGP 9. See decisions § 1660 and
+    // compose-compiler plugin against AGP 9. See decisions § 1672 and
     // apps/watch_wear/CLAUDE.md § Dependency versions.
     id("org.jetbrains.kotlin.plugin.compose") version "2.3.21" apply false
     id("org.jetbrains.kotlin.plugin.serialization") version "2.3.21" apply false

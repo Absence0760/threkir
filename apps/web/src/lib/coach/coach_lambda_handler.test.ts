@@ -68,7 +68,7 @@ delete process.env.OPENAI_BASE_URL;
 delete process.env.OPENAI_API_KEY;
 
 // The credentials no longer come from the environment at all — the wrapper
-// decrypts a KMS ciphertext bag once per container (decisions § 1659), so a
+// decrypts a KMS ciphertext bag once per container (decisions § 1671), so a
 // suite that drives it needs a KMS that answers. Every case here still stops
 // before a provider call; the key is only ever handed to the core.
 stubKms({ ANTHROPIC_API_KEY: 'sk-test-not-used' });

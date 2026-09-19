@@ -15,7 +15,7 @@ dependencyResolutionManagement {
 }
 
 plugins {
-    id("com.android.application") version "9.4.0" apply false
+    id("com.android.application") version "9.4.1" apply false
     // Pinned below CodeQL's Kotlin extractor ceiling: past it the
     // codeql-kotlin Security job fails outright rather than scanning less.
     // The ceiling is now 2.4.20 and this pin is 2.3.21, so it is tighter

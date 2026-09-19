@@ -57,7 +57,7 @@ Two supported paths, plus a third that's scaffolded but not wired:
 
 1. **Email/password** — `supabase_flutter`'s `signInWithPassword`. The seed user `runner@test.com` / `testtest` works for local testing.
 2. **Google Sign-In** — native `google_sign_in` package driving the Google picker, then we hand the ID token to Supabase via `signInWithIdToken`.
-3. **Apple Sign-In** — scaffolded, not wired up. Needs iOS-side entitlements; see the deferred list in `roadmap.md`.
+3. **Apple Sign-In** — built against the native `sign_in_with_apple` SDK, held behind `_kAppleSignInEnabled` until the Apple Developer Program enrollment yields the Services ID + Sign-in-with-Apple `.p8` that Supabase's Apple provider needs. Same gate as web's `PUBLIC_APPLE_AUTH_ENABLED` — see [`e2e_dev_accounts.md § 2`](../testing/e2e_dev_accounts.md).
 
 ### Runtime sequence (Google)
 

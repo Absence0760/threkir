@@ -11,10 +11,11 @@ The web app uses **Supabase Auth** end-to-end. There is no demo / mock login —
 Supported sign-in methods:
 
 - **Email + password** (sign-up via `/login`'s "Sign up" toggle, sign-in via the same form). Sign-up asks for the password twice — see [Password confirmation](#password-confirmation) below.
-- **Google OAuth** (`signInWithOAuth({ provider: 'google' })`) — gated behind the fail-closed `PUBLIC_GOOGLE_AUTH_ENABLED` flag (`apps/web/src/lib/core/google_auth_flag.ts`). When the flag is off (the default until the Supabase `google` provider is configured) the button renders behind a "Soon" pill and clicking it surfaces the `login.googleSoon` notice instead of starting a redirect — same treatment as the Apple button. Flip the flag (set truthy) the same day you enable the provider; local dev + e2e turn it on in `.env.development`. On mobile the equivalent gate is the presence of `GOOGLE_WEB_CLIENT_ID` — an unconfigured build shows `googleSignInSoon` on tap.
-- **Apple OAuth** — *not yet shipped on web.* The button is rendered behind a "Soon" pill and clicking it surfaces a "coming soon" toast (`apps/web/src/routes/login/+page.svelte` `handleAppleSignIn`). Apple Services-ID configuration for the web OAuth flow is the unblocking step. Apple Sign-In *is* wired on mobile via the native `sign_in_with_apple` SDK — see `apps/mobile_android/lib/screens/sign_in_screen.dart`.
+- **Google OAuth** (`signInWithOAuth({ provider: 'google' })`) — gated behind the fail-closed `PUBLIC_GOOGLE_AUTH_ENABLED` flag (`apps/web/src/lib/core/google_auth_flag.ts`). When the flag is off (the default until the Supabase `google` provider is configured) the button renders behind a "Soon" pill and clicking it surfaces the `login.googleSoon` notice instead of starting a redirect. Flip the flag (set truthy) the same day you enable the provider; local dev + e2e turn it on in `.env.development`. On mobile the equivalent gate is the presence of `GOOGLE_WEB_CLIENT_ID` — an unconfigured build shows `googleSignInSoon` on tap.
+- **Apple OAuth** (`signInWithOAuth({ provider: 'apple' })`) — the same shape behind `PUBLIC_APPLE_AUTH_ENABLED` (`apps/web/src/lib/core/apple_auth_flag.ts`), with one deliberate difference: it stays **unset in `.env.development` too**, because GoTrue validates `apple` against the real provider and the local stack's `[auth.external.apple]` is disabled, so an enabled dev button would produce exactly the opaque error the flag prevents. The enabled path therefore has no e2e — `src/lib/core/oauth_provider_gates.test.ts` reads the page source instead, and pins that both providers run `checkSignUpGates` before any redirect. Provisioning — the Services ID, the Sign-in-with-Apple key, and the six-month client secret Supabase actually wants (not the `.p8` itself) — is in [`apple_provisioning.md`](../ops/apple_provisioning.md).
+- **Both flags must be listed in `release-web.yml`** — it writes `apps/web/.env` from its own `env:` block and the build reads nothing else, so a flag missing there is permanently off however the repo secret is set ([decisions § 1678](../architecture/decisions.md)). `ci_workflow_guards.test.ts` derives the set from the `*_flag.ts` modules and fails the PR on a gap.
 
-Any one user can have **multiple identities linked**. A user who signed up with email can attach Google from `/settings/account` so the same account is reachable from either method. Apple identity linking will follow once the web Apple OAuth flow ships.
+Any one user can have **multiple identities linked**. A user who signed up with email can attach Google from `/settings/account` so the same account is reachable from either method. Apple identity linking will follow once the Apple provider is configured on the Supabase side and `PUBLIC_APPLE_AUTH_ENABLED` is flipped; on mobile Apple Sign-In runs through the native `sign_in_with_apple` SDK (`apps/mobile_android/lib/screens/sign_in_screen.dart`), which needs the same Apple-side artifacts.
 
 ---
 
@@ -124,8 +125,8 @@ Identity linking is **opt-in** in Supabase. If `linkIdentity()` returns `manual_
 
 Three sign-in methods, all hitting Supabase Auth:
 
-1. **Continue with Google** — `auth.signInWithGoogle()` when `PUBLIC_GOOGLE_AUTH_ENABLED` is truthy; otherwise `handleGoogleSoon` (the fail-closed "coming soon" notice)
-2. **Continue with Apple** — `auth.signInWithApple()`
+1. **Continue with Google** — `startOAuthSignIn('google')` when `PUBLIC_GOOGLE_AUTH_ENABLED` is truthy; otherwise `showProviderSoon('login.googleSoon')` (the fail-closed "coming soon" notice)
+2. **Continue with Apple** — `startOAuthSignIn('apple')` when `PUBLIC_APPLE_AUTH_ENABLED` is truthy; otherwise `showProviderSoon('login.appleSoon')`. Both providers share one handler because both CREATE an account on first sign-in, so both owe the sign-up gates and the consent stash
 3. **Email + password** — toggles between sign-in and sign-up; both call `supabase.auth.*` directly
 
 OAuth flows redirect to `/auth/callback`, which calls `auth.refreshSession()` and routes to `/dashboard`.

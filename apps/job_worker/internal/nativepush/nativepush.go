@@ -1,40 +1,38 @@
-// Package nativepush is a dependency-light native-push sender: FCM HTTP v1 for
-// Android tokens and APNs HTTP/2 for iOS tokens, behind one Sender that routes
-// on the device platform. It is the server leg of the native-push channel — the
-// mobile clients register a device token on user_settings' device_tokens via
-// the api_client, and the worker's handler_native_push.go sends through this
-// package. Sibling of internal/webpush (the browser leg).
+// Package nativepush is a dependency-light native-push sender: one FCM HTTP v1
+// POST per registered device, for Android and iOS alike. It is the server leg
+// of the native-push channel — the mobile clients register a token on
+// device_tokens via the api_client, and the worker's handler_native_push.go
+// sends through this package. Sibling of internal/webpush (the browser leg).
 //
-// Built on the standard library (crypto/ecdh-free: ES256 via crypto/ecdsa for
-// APNs, RSA service-account signing reused from golang-jwt for FCM's OAuth2)
-// plus golang-jwt — already a worker dependency. No Firebase Admin SDK: FCM
-// HTTP v1 is a single OAuth2-bearer POST and APNs is a single JWT-authed
-// HTTP/2 POST; vendoring the Admin SDK (a large transitive surface) for ~200
-// lines of stdlib + one JWT is not worth the supply-chain cost — the same call
-// the webpush package made for Web Push.
+// iOS is delivered BY FCM rather than by a direct APNs HTTP/2 POST, which
+// reverses the original design. Both clients register
+// FirebaseMessaging.getToken(), an FCM registration token; a direct APNs POST
+// addresses an APNs device token, so the two halves disagreed about what the
+// word "token" meant and every iOS send answered 400 BadDeviceToken — which the
+// handler read as terminal and stamped as delivered. Routing iOS through FCM
+// leaves one token type, one payload contract and the tap path already proven
+// on Android, and moves the APNs .p8 from the worker's environment into the
+// Firebase project. That also retires APNS_SANDBOX: a development-signed build
+// mints a token the production APNs host rejects, and the worker held one
+// setting for every device, so it could serve TestFlight builds or Xcode builds
+// but never both. FCM reads each token's own environment.
 //
-// Fail-closed: NewSender returns (nil, nil) when neither transport is
-// configured, so main.go can leave Worker.NativePush nil and the handler
-// drains native_push jobs to done without sending (rows stay pending for a
-// later credentialed deploy). A partially-configured Sender (only FCM, or only
-// APNs) sends what it can and reports an unconfigured platform via
-// ErrPlatformNotConfigured so the handler treats it as "leave pending", never
-// a hard failure.
+// Built on the standard library plus golang-jwt — already a worker dependency —
+// for the service-account JWT-bearer grant. No Firebase Admin SDK: FCM HTTP v1
+// is a single OAuth2-bearer POST, and vendoring the Admin SDK (a large
+// transitive surface) for ~200 lines of stdlib is not worth the supply-chain
+// cost — the same call internal/webpush made for Web Push.
+//
+// Fail-closed: NewSender returns (nil, nil) when the credentials are unset, so
+// main.go leaves Worker.NativePush nil and the handler finishes each
+// native_push job WITHOUT stamping native_push_sent_at — the rows stay pending
+// for a later credentialed deploy.
 package nativepush
 
 import (
 	"context"
-	"errors"
 	"net/http"
 )
-
-// DeviceToken is one registered device, projected from the device_tokens row.
-// Platform routes the send: "android" → FCM, "ios" → APNs. Token is the
-// platform-minted registration token.
-type DeviceToken struct {
-	Platform string
-	Token    string
-}
 
 // Message is the localized notification to deliver. Title/Body surface as the
 // system notification; URL is the deep link the tap handler opens; Tag (== the
@@ -48,104 +46,57 @@ type Message struct {
 	Tag   string
 }
 
-// transport is the per-platform leaf both FCM and APNs implement. Returns the
-// provider HTTP status (so the handler can prune a dead token on 404/410/
-// UNREGISTERED, retry a 429/5xx) and a non-nil error only on a transport
-// failure before the request completes.
-type transport interface {
-	send(ctx context.Context, token string, msg Message) (int, error)
-}
-
-// ErrPlatformNotConfigured is returned by Send when a device's platform has no
-// configured transport (e.g. APNs keys unset but an iOS token shows up). The
-// handler treats it as "leave this device pending", not a delivery failure —
-// the credential gate is per-platform.
-var ErrPlatformNotConfigured = errors.New("nativepush: platform transport not configured")
-
-// Sender routes a Send to the FCM or APNs transport by platform. Either leaf
-// may be nil (that platform isn't configured); a Sender with both nil is never
-// constructed — NewSender returns (nil, nil) in that case so the worker stays
-// fully inert.
+// Sender delivers one Message to one device token over FCM HTTP v1. Constructed
+// only when credentialed — a Sender is never a no-op, because the nil Sender IS
+// the disabled state.
 type Sender struct {
-	fcm  transport
-	apns transport
+	fcm *fcmTransport
 }
 
-// Config carries the operator credentials. An empty group leaves that
-// transport unconfigured. Both empty → NewSender returns (nil, nil).
+// Config carries the operator credentials: the Firebase service-account JSON
+// that signs the sends and the project id it belongs to. Either missing →
+// NewSender returns (nil, nil).
+//
+// The APNs .p8 is deliberately absent. It belongs to the Firebase project
+// (Cloud Messaging → APNs authentication key), not to the worker — see the
+// package doc.
 type Config struct {
-	// FCM HTTP v1 — the service-account JSON + project id.
 	FCMServiceAccountJSON []byte
 	FCMProjectID          string
-
-	// APNs HTTP/2 — the .p8 signing key (PEM), its key id, the team id, and
-	// the app's bundle id (the apns-topic). UseSandbox routes at the
-	// api.sandbox.push.apple.com host for development builds.
-	APNSKeyP8   []byte
-	APNSKeyID   string
-	APNSTeamID  string
-	APNSTopic   string
-	APNSSandbox bool
 }
 
-// NewSender builds a Sender from whatever credentials are present. Returns
-// (nil, nil) when neither transport is configured — the fail-closed default
-// the worker relies on. A configured-but-invalid credential (bad .p8, bad
-// service-account JSON) returns a non-nil error so a deploy misconfiguration
-// fails loudly at startup rather than silently dropping every push.
+// NewSender builds a Sender from the operator credentials. Returns (nil, nil)
+// when they are unset — the fail-closed default the worker relies on. A
+// configured-but-invalid credential (bad service-account JSON) returns a
+// non-nil error so a deploy misconfiguration fails loudly at startup rather
+// than silently dropping every push.
 func NewSender(cfg Config, httpClient *http.Client) (*Sender, error) {
+	if len(cfg.FCMServiceAccountJSON) == 0 || cfg.FCMProjectID == "" {
+		return nil, nil
+	}
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
-	s := &Sender{}
-	if len(cfg.FCMServiceAccountJSON) > 0 && cfg.FCMProjectID != "" {
-		fcm, err := newFCMTransport(cfg.FCMServiceAccountJSON, cfg.FCMProjectID, httpClient)
-		if err != nil {
-			return nil, err
-		}
-		s.fcm = fcm
+	fcm, err := newFCMTransport(cfg.FCMServiceAccountJSON, cfg.FCMProjectID, httpClient)
+	if err != nil {
+		return nil, err
 	}
-	if len(cfg.APNSKeyP8) > 0 && cfg.APNSKeyID != "" && cfg.APNSTeamID != "" && cfg.APNSTopic != "" {
-		apns, err := newAPNSTransport(cfg.APNSKeyP8, cfg.APNSKeyID, cfg.APNSTeamID, cfg.APNSTopic, cfg.APNSSandbox, httpClient)
-		if err != nil {
-			return nil, err
-		}
-		s.apns = apns
-	}
-	if s.fcm == nil && s.apns == nil {
-		return nil, nil
-	}
-	return s, nil
+	return &Sender{fcm: fcm}, nil
 }
 
-// Send delivers msg to one device, routed by platform. Returns the provider
-// HTTP status + nil on a completed request (whatever the status), or
-// ErrPlatformNotConfigured when that platform has no transport (the per-
-// platform credential gate). Android and any unknown platform route to FCM
-// (FCM is the canonical transport); "ios" routes to APNs when configured.
-func (s *Sender) Send(ctx context.Context, token DeviceToken, msg Message) (int, error) {
-	switch token.Platform {
-	case "ios":
-		if s.apns != nil {
-			return s.apns.send(ctx, token.Token, msg)
-		}
-		// No direct APNs configured — fall back to FCM if it's wired (FCM
-		// proxies APNs for iOS), else report unconfigured.
-		if s.fcm != nil {
-			return s.fcm.send(ctx, token.Token, msg)
-		}
-		return 0, ErrPlatformNotConfigured
-	default: // "android" and anything else
-		if s.fcm != nil {
-			return s.fcm.send(ctx, token.Token, msg)
-		}
-		return 0, ErrPlatformNotConfigured
-	}
+// Send delivers msg to one device. Returns the provider HTTP status on a
+// completed request (whatever the status), or a non-nil error only on a
+// transport failure before the request completed. The device's platform does
+// not route anything — the one message body carries both an android and an
+// apns block, and FCM applies whichever matches the token.
+func (s *Sender) Send(ctx context.Context, token string, msg Message) (int, error) {
+	return s.fcm.send(ctx, token, msg)
 }
 
 // IsDeadToken reports whether a provider status means the token is gone and
-// should be pruned. FCM HTTP v1 returns 404 (UNREGISTERED) for a stale token;
-// APNs returns 410 (Unregistered). Both are terminal for that registration.
+// should be pruned. FCM HTTP v1 answers 404 (UNREGISTERED) for a stale
+// registration; 410 is honoured alongside it as the same terminal verdict the
+// web-push leg prunes a dead subscription on (handler_web_push.go).
 func IsDeadToken(status int) bool {
 	return status == http.StatusNotFound || status == http.StatusGone
 }

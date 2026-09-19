@@ -21,15 +21,18 @@
 	import { verifyConsentStamped } from '$lib/core/auth_confirmation';
 	import { safeReturnTo as resolveReturnTo } from '$lib/core/safe_redirect';
 	import { googleAuthEnabled } from '$lib/core/google_auth_flag';
+	import { appleAuthEnabled } from '$lib/core/apple_auth_flag';
 	import { m } from '$lib/i18n/store.svelte';
 	import PasswordInput from '$lib/components/PasswordInput.svelte';
 	import AuthShell from '$lib/components/auth/AuthShell.svelte';
 
-	// Fail-closed: off until the Supabase `google` provider is wired
-	// (PUBLIC_GOOGLE_AUTH_ENABLED). When off the button shows a "coming
-	// soon" pill and the click short-circuits to a notice — same
-	// treatment as the not-yet-wired Apple button below.
+	// Fail-closed: each provider is off until it is wired on the Supabase
+	// side (PUBLIC_GOOGLE_AUTH_ENABLED / PUBLIC_APPLE_AUTH_ENABLED). When off
+	// the button keeps its label but shows a "coming soon" pill and the click
+	// short-circuits to a notice, because a live click would only surface an
+	// opaque provider error.
 	const googleEnabled = googleAuthEnabled();
+	const appleEnabled = appleAuthEnabled();
 
 	function gateMessage(reason: SignUpGateReason): string {
 		return reason === 'adult' ? m('login.gateAdult') : m('login.gateTerms');
@@ -78,15 +81,17 @@
 		}
 	});
 
-	async function handleGoogleSignIn() {
+	// Both providers take the same path because both CREATE an account on
+	// first sign-in: the sign-up gates (16+ + ToS / Privacy acceptance) and
+	// the consent stash have to apply to each of them exactly as they do to
+	// the email/password sign-up. Apple diverging from Google here is how one
+	// of them ends up minting accounts with no recorded consent.
+	async function startOAuthSignIn(provider: 'google' | 'apple') {
 		error = '';
-		// Google OAuth creates an account on first sign-in, so the
-		// sign-up gates (16+ + ToS / Privacy acceptance) have to apply
-		// the same way as the email/password sign-up path. Mobile's
-		// `sign_up_screen._signInWithGoogle` mirrors this via
-		// `_checkGates()`. Sign-in to an existing account skips the
-		// gates — `checkSignUpGates` returns ok when `isSignUp` is
-		// false.
+		// Mobile's `sign_up_screen._signInWithGoogle` / `_signInWithApple`
+		// mirror this via `_checkGates()`. Sign-in to an existing account
+		// skips the gates — `checkSignUpGates` returns ok when `isSignUp`
+		// is false.
 		const gate = checkSignUpGates(isSignUp, confirmAdult, acceptTerms);
 		if (!gate.ok) {
 			error = gateMessage(gate.reason);
@@ -110,7 +115,7 @@
 		}
 		loading = true;
 		try {
-			await auth.signInWithGoogle();
+			await (provider === 'google' ? auth.signInWithGoogle() : auth.signInWithApple());
 		} catch (err) {
 			// Classified into a localized, user-facing message — the raw
 			// supabase err.message is unlocalized developer jargon. Same
@@ -120,21 +125,11 @@
 		}
 	}
 
-	function handleGoogleSoon() {
-		// Google OAuth isn't wired up on the Supabase side yet
-		// (PUBLIC_GOOGLE_AUTH_ENABLED is off) — calling signInWithGoogle
-		// would just surface an opaque provider error. When the provider
-		// ships, flip the flag and the button reverts to handleGoogleSignIn.
-		error = m('login.googleSoon');
-	}
-
-	function handleAppleSignIn() {
-		// Apple OAuth isn't wired up on the Supabase side yet — calling
-		// signInWithApple just surfaces an opaque provider error. Tell
-		// the user clearly and point them at the working options. When
-		// Apple OAuth ships, copy the `handleGoogleSignIn` gate
-		// pattern so the sign-up checkboxes apply to Apple too.
-		error = m('login.appleSoon');
+	// The provider isn't wired on the Supabase side yet, so a real click would
+	// only surface an opaque provider error. Flipping the flag the day the
+	// provider is configured reverts the button to startOAuthSignIn.
+	function showProviderSoon(key: 'login.googleSoon' | 'login.appleSoon') {
+		error = m(key);
 	}
 
 	// Both callers — a fresh sign-up and the emailExists collapse —
@@ -363,7 +358,9 @@
 			<div class="login-buttons">
 				<button
 					class="btn btn-google"
-					onclick={googleEnabled ? handleGoogleSignIn : handleGoogleSoon}
+					onclick={googleEnabled
+						? () => startOAuthSignIn('google')
+						: () => showProviderSoon('login.googleSoon')}
 					disabled={loading}
 				>
 					<svg class="oauth-icon" viewBox="0 0 24 24" width="20" height="20">
@@ -378,12 +375,20 @@
 					{/if}
 				</button>
 
-				<button class="btn btn-apple" onclick={handleAppleSignIn} disabled={loading}>
+				<button
+					class="btn btn-apple"
+					onclick={appleEnabled
+						? () => startOAuthSignIn('apple')
+						: () => showProviderSoon('login.appleSoon')}
+					disabled={loading}
+				>
 					<svg class="oauth-icon" viewBox="0 0 24 24" width="20" height="20" fill="white">
 						<path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
 					</svg>
 					{m('login.continueApple')}
-					<span class="soon-pill">{m('login.soon')}</span>
+					{#if !appleEnabled}
+						<span class="soon-pill">{m('login.soon')}</span>
+					{/if}
 				</button>
 			</div>
 

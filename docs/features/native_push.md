@@ -11,17 +11,30 @@
 > `firebase_push_messaging.dart` (byte-identical iOS twin).
 >
 > **The credential gate is real and still open.** Going live needs the worker
-> env (`FCM_SERVICE_ACCOUNT_JSON` + `FCM_PROJECT_ID` for Android,
-> `APNS_KEY_P8` + `APNS_KEY_ID` + `APNS_TEAM_ID` + `APNS_TOPIC` for iOS) plus the
-> per-app config files (`google-services.json` / `GoogleService-Info.plist`).
-> Unset → `nativepush.NewSender` returns `(nil, nil)`, `Worker.NativePush` stays
-> nil, and `handleNativePush` finishes each job **without** stamping
+> env (`FCM_SERVICE_ACCOUNT_JSON` + `FCM_PROJECT_ID`, which serve Android AND
+> iOS) plus the per-app config files (`google-services.json` /
+> `GoogleService-Info.plist`), and — for Apple delivery only — the APNs `.p8`
+> uploaded **into the Firebase project**, not into the worker. Unset →
+> `nativepush.NewSender` returns `(nil, nil)`, `Worker.NativePush` stays nil,
+> and `handleNativePush` finishes each job **without** stamping
 > `native_push_sent_at`, so the rows stay pending for a later credentialed
 > deploy. Provisioning those credentials is the only remaining step.
+>
+> **iOS is delivered by FCM, not by a direct APNs POST** (2026-09-19). The
+> original design routed `ios` tokens straight at `api.push.apple.com`, which
+> could never have worked: both clients register an FCM registration token and
+> that endpoint addresses an APNs device token, so Apple answered
+> `400 BadDeviceToken` and the handler stamped the row as sent. See
+> [decisions.md § 1677](../architecture/decisions.md).
 >
 > Tracked in [roadmap.md § Planned features](../product/roadmap.md#planned-features--specced-2026-06-15).
 
 ## Operator provisioning (the credential gate)
+
+> **The step-by-step, with a live status ledger, is
+> [`docs/ops/apple_provisioning.md`](../ops/apple_provisioning.md).** This
+> section is the design record — what each artifact is for and why it lives
+> where it does. Do the work from the runbook; it is the one that gets ticked.
 
 Everything below is the human half of this feature. The code is on `main`; what
 follows is the only reason nothing is delivered. The build-side wiring each
@@ -43,7 +56,7 @@ is write-only and can never be read back.
 | `google-services.json` | `google_services_json_base64` | GitHub secret `GOOGLE_SERVICES_JSON_BASE64` | the `google-services` Gradle plugin, at build time |
 | `GoogleService-Info.plist` | `google_service_info_plist_base64` | GitHub secret `GOOGLE_SERVICE_INFO_PLIST_BASE64` | the Runner target's Resources phase |
 | FCM service-account JSON | `fcm_service_account_json` | Fly secret `FCM_SERVICE_ACCOUNT_JSON` (+ `FCM_PROJECT_ID`) | `nativepush`'s FCM transport |
-| APNs `.p8` | `apns_key_p8` | Fly secrets `APNS_KEY_P8` / `APNS_KEY_ID` / `APNS_TEAM_ID` / `APNS_TOPIC` | `nativepush`'s APNs transport |
+| APNs `.p8` | `apns_key_p8` | Firebase console → Cloud Messaging → APNs authentication key | Firebase, when it forwards an iOS send to Apple |
 | VAPID private key | `vapid_private_key` | Fly secret `VAPID_PRIVATE_KEY` (+ `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`) | `webpush`'s sender |
 | VAPID public key | `vapid_public_key` | GitHub secret `PUBLIC_VAPID_PUBLIC_KEY` | the web build, inlined into every browser bundle |
 
@@ -95,13 +108,18 @@ works from anywhere.
 2. **FCM service account.** Project settings → Service accounts → generate a
    private key. `FCM_PROJECT_ID` is that JSON's `project_id`. This is what
    signs FCM HTTP v1 sends; the config files do not.
-3. **APNs auth key.** Needs the Apple Developer Program (still open in #922).
-   Keys → new key with the APNs service enabled; the download is one-time.
-   `APNS_TOPIC` is the bundle id, `com.threkir.app`.
-   **`APNS_SANDBOX` is not a preference.** A token minted by a build signed
-   `development` is rejected by the production host and vice versa — the
-   worker holds one setting, so it serves either TestFlight/App Store builds
-   (unset) or Xcode-installed builds (`=1`), not both.
+3. **APNs auth key.** Needs the Apple Developer Program. Keys → a key with
+   the APNs service enabled; the download is one-time. Upload it in the
+   **Firebase** console (Project settings → Cloud Messaging → the iOS app →
+   APNs authentication key), with its Key ID and your Team ID. It does **not**
+   go to the worker: the worker only ever talks to FCM, and FCM forwards to
+   Apple. Note this is a *different* key from the Sign-in-with-Apple one —
+   one `.p8` per service, each downloadable once.
+   That is also why there is no sandbox/production setting to get wrong. FCM
+   reads each token's own APNs environment, so one key serves TestFlight,
+   App Store and Xcode-installed builds at once — as long as the app's
+   `aps-environment` entitlement matches the build, which the pbxproj pins per
+   configuration ([decisions.md § 742](../architecture/decisions.md)).
 4. **VAPID pair** for browser push — `npx web-push generate-vapid-keys`, once,
    ever. The public half goes in **two** places and must match: the worker's
    `VAPID_PUBLIC_KEY` and the web build's `PUBLIC_VAPID_PUBLIC_KEY`. The worker
@@ -323,29 +341,29 @@ Copy the `web_push` trio:
   gate on `push_notifications` pref (reuse the same pref-resolution helper the
   web_push handler uses), load `device_tokens` for the user where
   `is_notifications_enabled = true`, send to each, prune dead tokens via
-  `clear_device_token` (FCM `UNREGISTERED` / APNs 410), defer (return err) on
+  `clear_device_token` (FCM `UNREGISTERED` 404), defer (return err) on
   transient 429/5xx, stamp `native_push_sent_at` on every terminal path except
   the nil-sender branch. Title/body come from the shared notification catalogue
   (same source `web_push`'s `push_render.go` uses — reuse it).
-- **`apps/job_worker/internal/nativepush/`** — the sender package. Two
-  transports behind one `NativePushSender` interface:
-  - FCM HTTP v1 (`POST https://fcm.googleapis.com/v1/projects/<id>/messages:send`,
-    OAuth2 bearer from the service-account JSON — reuse the existing
-    `golang-jwt` like `webpush/` does, no heavy third-party Firebase Admin SDK
-    unless the team prefers it; note the trade-off).
-  - APNs HTTP/2 (`POST https://api.push.apple.com/3/device/<token>`, JWT `:path`
-    auth with the `.p8` key). Android tokens → FCM; iOS tokens → APNs (route on
-    `device_tokens.platform`). Decide: route iOS through FCM too (simpler, one
-    transport) vs. direct APNs (no Google dependency for Apple) — open question.
+- **`apps/job_worker/internal/nativepush/`** — the sender package. One
+  transport behind the `NativePushSender` interface: FCM HTTP v1
+  (`POST https://fcm.googleapis.com/v1/projects/<id>/messages:send`, OAuth2
+  bearer from the service-account JSON — the existing `golang-jwt`, as
+  `webpush/` does, no Firebase Admin SDK). Every device goes through it; the
+  one body carries an `android` block and an `apns` block and FCM applies
+  whichever matches the token, so the `{title, body, url, tag}` contract —
+  including the collapse key that keeps a retry from stacking — renders the
+  same on both. A direct-APNs transport was built first and removed; see
+  [decisions.md § 1677](../architecture/decisions.md).
 - **`apps/job_worker/internal/worker.go`** — add a `NativePush NativePushSender`
   field (nil disables, mirroring `WebPush`), add `case "native_push":
   return w.handleNativePush(ctx, job)` to `dispatch()`.
 - **`apps/job_worker/internal/types.go`** — `NativePushPayload {NotificationID}`
   + `NativePushSentAt` on the notification type.
 - **Config gating (fail-closed):** the sender is constructed only when the
-  operator sets the credentials (e.g. `FCM_SERVICE_ACCOUNT_JSON` / `FCM_PROJECT_ID`
-  and/or `APNS_KEY_P8` / `APNS_KEY_ID` / `APNS_TEAM_ID` / `APNS_TOPIC`). Unset →
-  `w.NativePush == nil` → jobs finish done, notification rows stay pending.
+  operator sets both of `FCM_SERVICE_ACCOUNT_JSON` / `FCM_PROJECT_ID`. Either
+  missing → `w.NativePush == nil` → jobs finish done, notification rows stay
+  pending.
   Same posture as `web_push` (VAPID unset) and the email handler (SMTP unset).
 
 ## Mobile implementation (Android + iOS twin)
@@ -523,42 +541,44 @@ this explicitly so the implementer doesn't manufacture a pair.
 5. Docs sweep:
    `git commit -- docs/features/email.md docs/product/roadmap.md docs/product/parity.md docs/backend/settings.md docs/architecture/decisions.md apps/mobile_android/CLAUDE.md apps/mobile_ios/CLAUDE.md`
 
-## Open questions — resolved as built (2026-06-19)
-1. **Route iOS through FCM or direct APNs HTTP/2?** *Both, as the plan proposed*
-   — `nativepush.Sender` routes on `DeviceToken.Platform` (`android` → FCM,
-   `ios` → APNs) and either leaf may be nil. A platform with no configured
-   transport returns `ErrPlatformNotConfigured`, which the handler treats as
-   "leave that device pending", so the credential gate is per-platform.
+## Open questions — resolved as built (2026-06-19; § 1 re-settled 2026-09-19)
+1. **Route iOS through FCM or direct APNs HTTP/2?** *Through FCM* — settled
+   2026-09-19, after shipping the other answer first and finding it could
+   never deliver.
 
-   **Re-opened 2026-09-18: as built, the two halves disagree about what an iOS
-   token is, so iOS delivery cannot work at any credential.** The client
-   registers `FirebaseMessaging.instance.getToken()` for both platforms
-   (`firebase_push_messaging.dart`), which is an **FCM registration token**;
-   `apns.go` then POSTs it to `https://api.push.apple.com/3/device/<token>`,
-   where the path wants the **APNs device token** — the thing
-   `getAPNSToken()` returns. APNs answers `400 BadDeviceToken`, the handler
-   stamps `native_push_sent_at` on that terminal 4xx, and the notification is
-   marked sent having gone nowhere. Nothing in the tree catches this: the
-   platform split is honest on both sides, the mismatch lives in the word
-   "token". Two ways out, and they provision differently:
-   **(a)** register `getAPNSToken()` on iOS and keep sending direct — but the
-   worker's payload carries no `gcm.message_id`, so whether FlutterFire's
-   iOS delegate still feeds `onMessageOpenedApp` (the whole § 1644 deep-link
-   path) has to be settled on a device before this can be called fixed;
-   **(b)** route iOS through FCM too, with the `.p8` uploaded to the Firebase
-   project rather than held by the worker — one token type, one payload
-   contract, and the tap path is the one already proven on Android. (b) is the
-   recommendation; it costs a Google dependency for Apple delivery, which is
-   the only thing (a) was chosen for. Tracked in
-   [`followups.md`](../product/followups.md).
+   As built (2026-06-19) `nativepush.Sender` routed on the device platform,
+   `android` → FCM and `ios` → APNs. Both clients register
+   `FirebaseMessaging.instance.getToken()`, an **FCM registration token**,
+   while `https://api.push.apple.com/3/device/<token>` addresses an **APNs
+   device token** — the thing `getAPNSToken()` returns. Apple answered
+   `400 BadDeviceToken`, the handler read that terminal 4xx as handled and
+   stamped `native_push_sent_at`, and every iOS notification was recorded
+   delivered having gone nowhere. Nothing in the tree caught it: the platform
+   split was honest on both sides, and the mismatch lived in the word "token".
+
+   The alternative — registering `getAPNSToken()` and keeping the direct POST
+   — was rejected: it buys independence from Google for Apple delivery, and
+   costs a second token kind, a second payload contract, an unresolved
+   question about whether FlutterFire's iOS delegate still feeds
+   `onMessageOpenedApp` for a payload carrying no `gcm.message_id` (the whole
+   § 1644 deep-link path), and the `APNS_SANDBOX` split, which one worker-wide
+   setting can never get right for both TestFlight and Xcode builds. The `.p8`
+   now goes to the Firebase project instead of the worker. Full reasoning in
+   [decisions.md § 1677](../architecture/decisions.md).
+
 2. **Firebase Admin Go SDK vs. hand-rolled FCM HTTP v1 + `golang-jwt`?**
    *Hand-rolled*, matching `internal/webpush` — stdlib plus the already-present
    `golang-jwt`, no Firebase Admin SDK.
 3. **One "Push" channel for browser + native, or a separate pref?** *One* —
    `handler_native_push.go` reuses the existing `push_notifications` pref gate,
    with the per-device `is_notifications_enabled` flag filtering the fan-out.
-4. **Credentials** — **still open.** Who provisions the Firebase project + APNs
-   key, and on what timeline? This is the only thing blocking go-live.
+4. **Credentials** — **mostly closed (2026-09-18).** The Firebase project
+   (`threkir`), both config files, the FCM service account and the VAPID pair
+   are provisioned; the worker boots `web_push: enabled` +
+   `native_push: enabled`. What is left is the APNs auth key — blocked on the
+   Apple Developer Program enrollment — and an Android release built after the
+   config secret landed, since the Gradle apply is conditional and an AAB cut
+   before it registers no token at all.
 
 ## Sequencing for the implementer (executed as written)
 1. Write the migration mirroring `20261219_001` (verify the live `jobs_kind_chk`

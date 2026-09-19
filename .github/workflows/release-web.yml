@@ -136,8 +136,21 @@ jobs:
           PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: ${{ secrets.PUBLIC_REVENUECAT_WEB_CHECKOUT_URL }}
           PUBLIC_REVENUECAT_WEB_PORTAL_URL: ${{ secrets.PUBLIC_REVENUECAT_WEB_PORTAL_URL }}
           PUBLIC_SENTRY_DSN: ${{ secrets.PUBLIC_SENTRY_DSN }}
+          # Every fail-closed PUBLIC_*_ENABLED gate in apps/web/src/lib has to
+          # be listed here AND in the heredoc below, or the repo secret reaches
+          # no build and the flag can only ever be off — which reads exactly
+          # like a flag nobody set. ci_workflow_guards.test.ts derives the set
+          # from the *_flag.ts modules and fails the PR on a missing one.
           PUBLIC_COACH_ENABLED: ${{ secrets.PUBLIC_COACH_ENABLED }}
           PUBLIC_ROUTE_GEN_ENABLED: ${{ secrets.PUBLIC_ROUTE_GEN_ENABLED }}
+          PUBLIC_GOOGLE_AUTH_ENABLED: ${{ secrets.PUBLIC_GOOGLE_AUTH_ENABLED }}
+          PUBLIC_APPLE_AUTH_ENABLED: ${{ secrets.PUBLIC_APPLE_AUTH_ENABLED }}
+          PUBLIC_FUNDRAISING_ENABLED: ${{ secrets.PUBLIC_FUNDRAISING_ENABLED }}
+          PUBLIC_CYCLE_PLANS_ENABLED: ${{ secrets.PUBLIC_CYCLE_PLANS_ENABLED }}
+          PUBLIC_WEIGH_IN_ENABLED: ${{ secrets.PUBLIC_WEIGH_IN_ENABLED }}
+          PUBLIC_OFF_ROUTE_ESCALATION_ENABLED: ${{ secrets.PUBLIC_OFF_ROUTE_ESCALATION_ENABLED }}
+          PUBLIC_ENABLE_NEARBY_RUNNERS: ${{ secrets.PUBLIC_ENABLE_NEARBY_RUNNERS }}
+          PUBLIC_ADAPTIVE_FITNESS_GATE: ${{ secrets.PUBLIC_ADAPTIVE_FITNESS_GATE }}
           # Optional — unset keeps the web client on the Supabase
           # Realtime live path; set to https://live.threkir.com once the
           # Fly live hub is deployed (apps/job_worker/deployment.md).
@@ -159,6 +172,14 @@ jobs:
           PUBLIC_SENTRY_DSN=${PUBLIC_SENTRY_DSN}
           PUBLIC_COACH_ENABLED=${PUBLIC_COACH_ENABLED}
           PUBLIC_ROUTE_GEN_ENABLED=${PUBLIC_ROUTE_GEN_ENABLED}
+          PUBLIC_GOOGLE_AUTH_ENABLED=${PUBLIC_GOOGLE_AUTH_ENABLED}
+          PUBLIC_APPLE_AUTH_ENABLED=${PUBLIC_APPLE_AUTH_ENABLED}
+          PUBLIC_FUNDRAISING_ENABLED=${PUBLIC_FUNDRAISING_ENABLED}
+          PUBLIC_CYCLE_PLANS_ENABLED=${PUBLIC_CYCLE_PLANS_ENABLED}
+          PUBLIC_WEIGH_IN_ENABLED=${PUBLIC_WEIGH_IN_ENABLED}
+          PUBLIC_OFF_ROUTE_ESCALATION_ENABLED=${PUBLIC_OFF_ROUTE_ESCALATION_ENABLED}
+          PUBLIC_ENABLE_NEARBY_RUNNERS=${PUBLIC_ENABLE_NEARBY_RUNNERS}
+          PUBLIC_ADAPTIVE_FITNESS_GATE=${PUBLIC_ADAPTIVE_FITNESS_GATE}
           PUBLIC_LIVE_HUB_URL=${PUBLIC_LIVE_HUB_URL}
           PUBLIC_VAPID_PUBLIC_KEY=${PUBLIC_VAPID_PUBLIC_KEY}
           PUBLIC_APP_RELEASE=${PUBLIC_APP_RELEASE}

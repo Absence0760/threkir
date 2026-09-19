@@ -162,8 +162,10 @@ Function moves per
   message encryption) + RFC 8292 (VAPID JWT) sender on stdlib crypto + the
   existing `golang-jwt`. A dead endpoint (404/410) is pruned via the
   `clear_push_subscription` RPC; a 429/5xx defers; gated on `VAPID_PUBLIC_KEY` +
-  `VAPID_PRIVATE_KEY` (unset → rows stay pending). When an FCM/APNs leg lands,
-  copy this shape (its own enqueue gate + `*_sent_at` column + handler).
+  `VAPID_PRIVATE_KEY` (unset → rows stay pending). `native_push`
+  (`internal/nativepush/` + `handler_native_push.go`) is that same shape over
+  the same rows — its own enqueue gate, `native_push_sent_at` column and
+  handler — sending one FCM message per registered device, iOS included.
   `strava_event` (per-activity ingest enqueued by the HTTP webhook
   endpoint at `/v1/strava/webhook`) is the worked example for
   "port a webhook Edge Function into HTTP-front + queue-back" — see

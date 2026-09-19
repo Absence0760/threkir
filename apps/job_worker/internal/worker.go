@@ -175,13 +175,12 @@ type WebPushSender interface {
 }
 
 // NativePushSender is the transport for kind='native_push' jobs. Production
-// wires *nativepush.Sender (FCM HTTP v1 + APNs HTTP/2 behind one router); tests
-// substitute a fake recorder. Returns the push-service HTTP status (so the
-// handler can prune a 404/410, retry a 429/5xx) and a non-nil error only on a
-// transport failure, or nativepush.ErrPlatformNotConfigured when that
-// platform's credentials are unset.
+// wires *nativepush.Sender (one FCM HTTP v1 POST per device, Android and iOS
+// alike); tests substitute a fake recorder. Returns the push-service HTTP
+// status (so the handler can prune a 404/410, retry a 429/5xx) and a non-nil
+// error only on a transport failure before the request completed.
 type NativePushSender interface {
-	Send(ctx context.Context, token nativepush.DeviceToken, msg nativepush.Message) (int, error)
+	Send(ctx context.Context, token string, msg nativepush.Message) (int, error)
 }
 
 // StravaRefresher is the upstream OAuth call used by handleTokenRefresh.
@@ -249,9 +248,8 @@ type Worker struct {
 	WebPush WebPushSender
 	// NativePush is the transport for kind='native_push' jobs. Nil disables the
 	// send path — the handler finishes those jobs done but leaves the
-	// notification rows pending so a later credentialed deploy (FCM/APNs keys
-	// set) can still send. Wired in main.go when FCM and/or APNs credentials
-	// are present.
+	// notification rows pending so a later credentialed deploy can still send.
+	// Wired in main.go when the FCM credentials are present.
 	NativePush NativePushSender
 	// Sms is the transport for kind='safety_sms' jobs (the overdue-runner
 	// SMS escalation leg). Nil disables the send path — the handler finishes

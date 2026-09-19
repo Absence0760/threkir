@@ -145,7 +145,7 @@ back to Brazilian.
 - **The permission prompts are localized too, in a SECOND String Catalog.**
   `WatchApp/InfoPlist.xcstrings` carries the four `NS*UsageDescription` strings
   across the same seven locales and is a `WatchApp` target resource exactly the
-  way `Localizable.xcstrings` is (2026-09-18, decisions § 1657). Two rules differ
+  way `Localizable.xcstrings` is (2026-09-18, decisions § 1675). Two rules differ
   from the UI catalog and the parity script enforces both: the **source language
   cannot be implicit**, because an entry's key here is a plist key name
   (`NSHealthShareUsageDescription`) rather than the English text; and each entry's

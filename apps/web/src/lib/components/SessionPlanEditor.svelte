@@ -29,6 +29,7 @@
 	}
 
 	let { existing = null, clubId = null, oncreated, onupdated, oncancel }: Props = $props();
+	const uid = $props.id();
 
 	type EditBlock = { name: string };
 	type EditItem = {
@@ -217,25 +218,52 @@
 		{/each}
 	</datalist>
 
-	<label class="field">
-		<span class="section-label">{t('session.titleLabel')}</span>
-		<input type="text" bind:value={title} maxlength="120" />
-	</label>
+	<div class="field">
+		<label>
+			<span class="section-label">{t('session.titleLabel')}</span>
+			<input
+				type="text"
+				bind:value={title}
+				maxlength="120"
+				aria-describedby="{uid}-title-hint"
+			/>
+		</label>
+		<span class="field-hint" id="{uid}-title-hint">{t('session.titleHint')}</span>
+	</div>
 
 	<div class="row">
-		<label class="field">
-			<span class="section-label">{t('session.discipline')}</span>
-			<input type="text" bind:value={discipline} placeholder={t('session.disciplinePlaceholder')} />
-		</label>
-		<label class="field">
-			<span class="section-label">{t('session.equipment')}</span>
-			<input type="text" bind:value={equipment} placeholder={t('session.equipmentPlaceholder')} />
-		</label>
+		<div class="field">
+			<label>
+				<span class="section-label">{t('session.discipline')}</span>
+				<input
+					type="text"
+					bind:value={discipline}
+					placeholder={t('session.disciplinePlaceholder')}
+					aria-describedby="{uid}-discipline-hint"
+				/>
+			</label>
+			<span class="field-hint" id="{uid}-discipline-hint">{t('session.disciplineHint')}</span>
+		</div>
+		<div class="field">
+			<label>
+				<span class="section-label">{t('session.equipment')}</span>
+				<input
+					type="text"
+					bind:value={equipment}
+					placeholder={t('session.equipmentPlaceholder')}
+					aria-describedby="{uid}-equipment-hint"
+				/>
+			</label>
+			<span class="field-hint" id="{uid}-equipment-hint">{t('session.equipmentHint')}</span>
+		</div>
 	</div>
 
 	<label class="toggle-row">
 		<input type="checkbox" bind:checked={isPublic} />
-		<span>{t('session.makePublic')}</span>
+		<span>
+			<strong>{t('session.makePublic')}</strong>
+			<span class="hint">{t('session.makePublicHint')}</span>
+		</span>
 	</label>
 
 	<section>
@@ -245,6 +273,7 @@
 				{t('session.addBlock')}
 			</button>
 		</header>
+		<span class="field-hint" id="{uid}-block-hint">{t('session.blockNameHint')}</span>
 		{#each blocks as block, bi (bi)}
 			<div class="block-row">
 				<input
@@ -252,6 +281,7 @@
 					bind:value={block.name}
 					placeholder={t('session.blockNamePlaceholder')}
 					aria-label={t('session.blockName')}
+					aria-describedby="{uid}-block-hint"
 				/>
 				<button
 					class="icon-btn"
@@ -282,6 +312,7 @@
 						bind:value={item.movement_name}
 						placeholder={t('session.movementPlaceholder')}
 						aria-label={t('session.movementName')}
+						aria-describedby="{uid}-movement-hint"
 					/>
 					<button
 						class="icon-btn"
@@ -292,10 +323,13 @@
 						<span class="material-symbols" aria-hidden="true">close</span>
 					</button>
 				</div>
+				{#if ii === 0}
+					<span class="field-hint" id="{uid}-movement-hint">{t('session.movementHint')}</span>
+				{/if}
 				<div class="item-grid">
 					<label class="field">
 						<span class="section-label">{t('session.kind')}</span>
-						<select bind:value={item.kind}>
+						<select bind:value={item.kind} aria-describedby="{uid}-item-grid-hint">
 							<option value="hold">{t('session.kindHold')}</option>
 							<option value="reps">{t('session.kindReps')}</option>
 							<option value="flow">{t('session.kindFlow')}</option>
@@ -304,17 +338,27 @@
 					{#if item.kind === 'reps'}
 						<label class="field">
 							<span class="section-label">{t('session.reps')}</span>
-							<input type="number" min="0" bind:value={item.reps} />
+							<input
+								type="number"
+								min="0"
+								bind:value={item.reps}
+								aria-describedby="{uid}-item-grid-hint"
+							/>
 						</label>
 					{:else}
 						<label class="field">
 							<span class="section-label">{t('session.durationSec')}</span>
-							<input type="number" min="0" bind:value={item.duration_s} />
+							<input
+								type="number"
+								min="0"
+								bind:value={item.duration_s}
+								aria-describedby="{uid}-item-grid-hint"
+							/>
 						</label>
 					{/if}
 					<label class="field">
 						<span class="section-label">{t('session.inBlock')}</span>
-						<select bind:value={item.block_index}>
+						<select bind:value={item.block_index} aria-describedby="{uid}-item-grid-hint">
 							<option value={null}>{t('session.noBlock')}</option>
 							{#each blocks as block, bi (bi)}
 								<option value={bi}>{block.name.trim() || `#${bi + 1}`}</option>
@@ -322,9 +366,16 @@
 						</select>
 					</label>
 				</div>
+				{#if ii === 0}
+					<span class="field-hint" id="{uid}-item-grid-hint">{t('session.itemGridHint')}</span>
+				{/if}
 				<div class="item-row">
 					<label class="checkbox">
-						<input type="checkbox" bind:checked={item.per_side} />
+						<input
+							type="checkbox"
+							bind:checked={item.per_side}
+							aria-describedby="{uid}-item-row-hint"
+						/>
 						<span>{t('session.perSide')}</span>
 					</label>
 					<input
@@ -333,6 +384,7 @@
 						bind:value={item.tempo}
 						placeholder={t('session.tempoPlaceholder')}
 						aria-label={t('session.tempo')}
+						aria-describedby="{uid}-item-row-hint"
 					/>
 				</div>
 				<input
@@ -340,7 +392,11 @@
 					bind:value={item.cue}
 					placeholder={t('session.cuePlaceholder')}
 					aria-label={t('session.cue')}
+					aria-describedby="{uid}-item-row-hint"
 				/>
+				{#if ii === 0}
+					<span class="field-hint" id="{uid}-item-row-hint">{t('session.itemRowHint')}</span>
+				{/if}
 			</div>
 		{/each}
 	</section>

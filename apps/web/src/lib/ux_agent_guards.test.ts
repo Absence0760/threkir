@@ -12,17 +12,24 @@
 // the tree instead of transcribing it — and this guard holds that line by
 // asserting the two properties the rewrite depends on.
 //
-// Scope is deliberate. It covers the files where a cited path is a
-// DIRECTIVE ("read this before you edit"), not the persona and audit agents
-// where a citation is often a HYPOTHESIS ("`apps/web/src/lib/sentry.ts` if
-// present", "`apps/osrm/` if it exists"). A guard that failed on a
-// conditional citation would be asserting something the author never
-// claimed. Fleet-wide dead citations are tracked in
-// docs/product/followups.md instead.
+// Scope is the whole `.claude` fleet, and it is DERIVED rather than listed:
+// every tracked markdown file under `.claude/` is checked, so a new agent or
+// command is covered by existing the moment it lands. A list would have to be
+// remembered, and the thing this guard exists to catch is precisely what
+// nobody remembers.
+//
+// It started narrower — the five UI/UX toolchain files, where a cited path is
+// a DIRECTIVE ("read this before you edit") — and deliberately excluded the
+// persona and audit agents, where a citation is sometimes a HYPOTHESIS
+// ("`apps/osrm/` if it exists"). Eleven dead fleet-wide citations were filed
+// rather than fixed at the time. Ten of them turned out to be ordinary rot
+// with a live path to point at; the eleventh is a genuine conditional, and it
+// is exempted by name with a reason below rather than by leaving the whole
+// fleet unchecked. The exemption is staleness-checked in both directions.
 
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { resolve, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,6 +37,9 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(__dirname, '../../../..');
 
+// The five files whose SECOND premise this suite also holds (Step 1 survives,
+// no colour literal comes back). The fleet check below does not need a list;
+// this one does, because it is about these files specifically.
 const UX_TOOLCHAIN = [
 	'.claude/agents/ui-polisher.md',
 	'.claude/agents/ux-critic.md',
@@ -37,6 +47,19 @@ const UX_TOOLCHAIN = [
 	'.claude/commands/ux-critique.md',
 	'.claude/commands/ux-hunt.md',
 	'.claude/commands/a11y-hunt.md',
+];
+
+// A citation the author explicitly hedged. The path is absent from the tree,
+// the sentence says so, and failing it would assert something never claimed.
+// Each entry names the file that may cite it and why the hedge is honest;
+// both halves are checked for staleness below, so an exemption cannot outlive
+// its reason in either direction.
+const CONDITIONAL: { path: string; file: string; why: string }[] = [
+	{
+		path: 'apps/osrm/',
+		file: '.claude/commands/release-readiness.md',
+		why: 'release-readiness accepts `osrm` as a release target and scopes it to "`apps/osrm/` if it exists". The sibling OSRM service is planned, not built — docs/backend/backend_scaling.md records `OSRM_URL` unset in fly.toml and map_match completing as a no-op "until the sibling osrm app deploys" — so the hedge is the honest sentence, not rot. Drop this entry when apps/osrm/ lands, or when the command stops offering the target.',
+	},
 ];
 
 // A citation is a repo path when it is rooted at a real top-level directory.
@@ -89,26 +112,63 @@ function isLive(p: string): boolean {
 	}
 }
 
-test('every repo path the UX toolchain cites is still tracked (or deliberately ignored)', () => {
+// Derived, not listed: the fleet is whatever `.claude` markdown git carries.
+const fleet = [...tracked].filter((f) => f.startsWith('.claude/') && f.endsWith('.md')).sort();
+
+test('every repo path the .claude agent and command fleet cites is still tracked (or deliberately ignored)', () => {
 	const dead: string[] = [];
 	let checked = 0;
+	const exempted = new Set<string>();
 
-	for (const file of UX_TOOLCHAIN) {
-		assert.ok(existsSync(resolve(repo, file)), `${file} is listed in UX_TOOLCHAIN but missing.`);
+	for (const file of fleet) {
 		for (const p of citations(file)) {
 			checked++;
-			if (!isLive(p)) dead.push(`${file} -> ${p}`);
+			if (isLive(p)) continue;
+			const waived = CONDITIONAL.find((c) => c.path === p && c.file === file);
+			if (waived) {
+				exempted.add(`${waived.file} -> ${waived.path}`);
+				continue;
+			}
+			dead.push(`${file} -> ${p}`);
 		}
 	}
 
-	assert.ok(checked >= 40, `expected the toolchain to cite the tree, found only ${checked} paths`);
+	// A floor, not a census. It catches the citation matcher silently ceasing
+	// to match — which would turn this whole guard green against any tree.
+	assert.ok(
+		checked >= 600,
+		`expected the fleet to cite the tree heavily, found only ${checked} paths across ` +
+			`${fleet.length} files — the citation matcher has probably stopped matching`,
+	);
 	assert.deepEqual(
 		dead,
 		[],
 		`these agent/command files point at paths git no longer tracks, so the agent ` +
 			`will read nothing and proceed on memory: ${dead.join('; ')}. Update the ` +
-			`citation to where the thing lives now — do not delete the pointer.`,
+			`citation to where the thing lives now — do not delete the pointer. If the ` +
+			`citation is genuinely conditional ("if it exists"), add it to CONDITIONAL ` +
+			`with the reason.`,
 	);
+
+	// An exemption that no longer applies is an assertion nobody is making.
+	const stale = CONDITIONAL.filter((c) => !exempted.has(`${c.file} -> ${c.path}`)).map(
+		(c) =>
+			`${c.file} -> ${c.path}: ` +
+			(isLive(c.path)
+				? 'the path is live now, so the hedge is obsolete — drop the exemption and let the guard hold it'
+				: `${c.file} no longer cites it (or no longer exists) — drop the exemption`),
+	);
+	assert.deepEqual(stale, [], `stale CONDITIONAL entries: ${stale.join('; ')}`);
+});
+
+test('the UI/UX toolchain files the second guard depends on are all still present', () => {
+	for (const file of UX_TOOLCHAIN) {
+		assert.ok(
+			fleet.includes(file),
+			`${file} is listed in UX_TOOLCHAIN but git does not track it — the toolchain ` +
+				`was renamed or removed, so the citation and premise guards below are checking nothing.`,
+		);
+	}
 });
 
 // The rewrite's whole premise: ui-polisher carries judgment and looks the

@@ -1,4 +1,6 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
+import type { MockRoute } from '../fixtures/mock-route';
+import type { Page } from '@playwright/test';
 
 import { browserDate } from '../fixtures/dates';
 import { deleteRaceListing, insertRaceListing } from '../fixtures/simulate';
@@ -50,8 +52,8 @@ const LEGS = [
 const raceNameFor = (provider: string) => `E2E ${provider} Configured ${stamp}`;
 
 /// Report every leg as provisioned, and record the import the modal builds.
-async function stubProviders(page: Page, imports: Record<string, unknown>[]) {
-	await page.route('**/functions/v1/race-results-import', (route) => {
+async function stubProviders(mockRoute: MockRoute, page: Page, imports: Record<string, unknown>[]) {
+	await mockRoute(page, '**/functions/v1/race-results-import', (route) => {
 		const body = (route.request().postDataJSON() ?? {}) as Record<string, unknown>;
 		if (body.probe === true) {
 			return route.fulfill({
@@ -92,9 +94,9 @@ test.describe('/races import modal — every configured leg is reachable', () =>
 	});
 
 	for (const leg of LEGS) {
-		test(`${leg.label} offers its own scoped import`, async ({ page }) => {
+		test(`${leg.label} offers its own scoped import`, async ({ page, mockRoute }) => {
 			const imports: Record<string, unknown>[] = [];
-			await stubProviders(page, imports);
+			await stubProviders(mockRoute, page, imports);
 
 			const raceName = raceNameFor(leg.provider);
 			await page.goto('/races');
@@ -122,12 +124,12 @@ test.describe('/races import modal — every configured leg is reachable', () =>
 		});
 	}
 
-	test('a bib-scoped leg will not submit unscoped', async ({ page }) => {
+	test('a bib-scoped leg will not submit unscoped', async ({ page, mockRoute }) => {
 		// `runSignUpScopeGate` / `chronoTrackScopeGate` reject an unscoped call
 		// before any upstream fetch, so the modal must not offer to make it —
 		// an unscoped pull imports the whole finisher field (issue #360).
 		const imports: Record<string, unknown>[] = [];
-		await stubProviders(page, imports);
+		await stubProviders(mockRoute, page, imports);
 
 		const raceName = raceNameFor('chronotrack');
 		await page.goto('/races');

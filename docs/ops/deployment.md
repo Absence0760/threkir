@@ -25,7 +25,7 @@ For the orthogonal "how a tag triggers a build" mechanics, see [releasing.md](re
 | Apple Watch | `apps/watch_ios/` | Bundled inside the iOS app — no separate listing | Plan |
 | RevenueCat | (third party) | RevenueCat dashboard — webhook to `apps/backend/supabase/functions/revenuecat-webhook` | Plan |
 | MapTiler | (third party) | MapTiler Cloud — `PUBLIC_MAPTILER_KEY` shared by web + Wear OS | Plan |
-| Anthropic API | (third party) | api.anthropic.com — `ANTHROPIC_API_KEY` injected into the coach Lambda via env var (Terraform reads it from a sops-encrypted file under `infra/envs/<env>/secrets.enc.yaml`, encrypted with the env's AWS KMS key) | Plan |
+| Anthropic API | (third party) | api.anthropic.com — `ANTHROPIC_API_KEY` reaches the coach Lambda as part of a KMS ciphertext the handler decrypts at cold start, never as a plaintext env var (Terraform reads it from the sops file in the private estate repo and encrypts it under the env's own CMK — [decisions § 1671](../architecture/decisions.md)) | Plan |
 
 Per-service deep dives:
 
@@ -172,6 +172,47 @@ Not paging on:
 - Single client-side JS error (Sentry rolls up; investigate on a schedule)
 - Worker `defer_job` calls (those are the *correct* response to a transient)
 
+### Synthetic checks on an API path assert `content-type`, not status
+
+The distribution maps `403 -> 200 /200.html` for **every** origin at once —
+`CustomErrorResponses` is a member of `DistributionConfig` and `CacheBehavior`
+has no error-response member at all, so the API behaviours cannot opt out of it
+([CloudFront API reference](https://docs.aws.amazon.com/cloudfront/latest/APIReference/API_CacheBehavior.html),
+confirmed 2026-09-18). The mapping is load-bearing — every SPA deep link is a
+missing S3 key, i.e. a 403 — and its cost is that **a refusal from any origin
+reaches the caller as `200 text/html`**. No status-code check can tell that from
+a working endpoint, which is how a malformed request read as a production outage
+in September 2026 and produced a merged fix for a bug that did not exist (#938,
+reverted by #941; [decisions § 1664](../architecture/decisions.md)).
+
+`bin/preview-status.sh <env>` step 2 runs
+[`scripts/probe_api_content_type.mjs`](../../scripts/probe_api_content_type.mjs),
+which derives every `/api/*` cache behaviour from
+`infra/modules/web-stack/main.tf` and asserts that each answers
+`application/json` on both GET and POST. Every API Lambda in this tree answers
+`application/json` for its refusals too, so an unauthenticated request is a
+complete test. Run it against any deployed host on its own:
+
+```bash
+node scripts/probe_api_content_type.mjs --host threkir.com
+node scripts/probe_api_content_type.mjs --derive   # offline; what CI runs
+```
+
+Two things follow for anyone adding an external monitor or debugging by hand:
+
+- **An HTML body on an `/api/*` path is a masked 403, not a broken handler.**
+  Check both CloudFront invoke grants on the function (`lambda:InvokeFunctionUrl`
+  **and** `lambda:InvokeFunction`, issue #590) before looking at the code — a
+  Function-URL refusal happens above the function, so there is no invocation,
+  no `Errors` metric and no log line to find.
+- **A POST through CloudFront must carry `x-amz-content-sha256`.** CloudFront
+  signs the origin request with sigv4 and "Lambda doesn't support unsigned
+  payloads"
+  ([OAC for Lambda function URLs](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html)),
+  so a POST without the viewer-supplied payload hash is refused at the origin
+  and served as the shell. It is the caller's header, not something an origin
+  request policy can add — #938 tried that and CloudFront refuses it.
+
 ---
 
 ## Backups and disaster recovery
@@ -208,7 +249,7 @@ The matrix of "what lives where":
 | `STRAVA_CLIENT_SECRET` | Strava developer dashboard | Supabase Vault |
 | `STRAVA_VERIFY_TOKEN`, `STRAVA_WEBHOOK_SECRET` | We invent | Supabase EF env |
 | `REVENUECAT_WEBHOOK_SECRET` | RevenueCat dashboard | Supabase EF env |
-| `ANTHROPIC_API_KEY` | Anthropic console | sops-encrypted in `infra/envs/<env>/secrets.enc.yaml` (AWS KMS key per env) — Terraform decrypts at apply time and writes to the coach Lambda's `environment` block |
+| `ANTHROPIC_API_KEY` | Anthropic console | sops-encrypted in the private estate repo (AWS KMS key per env) — Terraform decrypts at apply time, RE-encrypts it into `aws_kms_ciphertext.coach`, and writes only that blob to the coach Lambda's `environment` block; the handler decrypts it once per cold start ([decisions § 1671](../architecture/decisions.md)) |
 | `PUBLIC_MAPTILER_KEY` | MapTiler dashboard | GitHub Secrets (injected at CI build-time as `PUBLIC_*`); Mobile build configs |
 | Android upload keystore | We generate once | GitHub Secrets (`ANDROID_KEYSTORE_BASE64`) |
 | iOS distribution `.p12` + provisioning profile | Apple Developer | GitHub Secrets (`IOS_BUILD_CERTIFICATE_BASE64` etc.) |
@@ -396,6 +437,27 @@ were 16 and 20 of those. They were left for whoever owns them. Like branch
 protection, the setting is invisible from inside the tree, so this paragraph is
 the only record of it.
 
+### One red gate is not the pull request's fault, and it has no fix here
+
+The gate can go red on a change with nothing wrong with it. The known case is
+[issue #916](https://github.com/Absence0760/threkir/issues/916): the local
+Supabase stack's edge runtime exits **135 (SIGBUS)** while serving the first
+request it gets, which is the `start-supabase` action's own readiness probe, so
+a Playwright shard fails before a test runs and reports
+`edge runtime (clip-public-track) never became ready`. Three occurrences since
+2026-09-08, all on `ubuntu-latest`. The cause is upstream and unfixed: the
+runtime carries a copy of Deno's cache layer that deletes a cache database
+another connection still has mapped, and no released edge-runtime image has
+taken [denoland/deno#34873](https://github.com/denoland/deno/pull/34873), which
+fixed it. Nothing in this repo can close it — the CLI pin cannot move to an
+image with the same bug, and both levers that would turn the check green
+(a wider budget, an automatic restart on 135) would hide a live crash.
+
+**Operator action: re-run the failed job.** Do not treat it as the branch's
+failure and do not chase it as a flaky test.
+[decisions § 1663](../architecture/decisions.md) holds the evidence and the
+one-command check that says when the pin can move.
+
 ## Release vs deploy
 
 Two orthogonal axes. **Release** is "we cut a tagged version of the product"; **deploy** is "those bytes are now serving traffic". They overlap in different ways per service. Every `release-*.yml` deploy is **triggered by publishing a GitHub Release** for the tag below (a bare tag push no longer deploys — the published Release is the gate; see [releasing.md](releasing.md)):
@@ -514,6 +576,37 @@ Before flipping any service from "Plan" to live in the table at the top:
 6. Update the row at the top of this file from "Plan" to "Live (region)".
 7. Tick the corresponding box in [roadmap.md](../product/roadmap.md).
 8. If this enables a feature, flip the cell in [parity.md](../product/parity.md).
+
+### Lambda secrets — one apply, before the next web deploy
+
+[decisions § 1671](../architecture/decisions.md) moved the coach and
+generate-route credentials out of their Lambda environments and into a KMS
+ciphertext the handler decrypts at cold start. The code is on `main` and the
+guard enforces it; the change is **unapplied and unplanned** — no lane in this
+repo holds AWS credentials, so `terraform plan` has never run against real
+state. Do this under the operator's own SSO profile, preview first:
+
+1. `terraform plan` in `infra/envs/preview`. Expect two new
+   `aws_kms_ciphertext` resources and, on `threkir-web-preview-coach` and
+   `-generate-route`, `ANTHROPIC_API_KEY` / `SUPABASE_SECRET_KEY` /
+   `OPENAI_API_KEY` / `GRAPHHOPPER_API_KEY` / `GRAPH_CYCLE_API_KEY` **leaving**
+   the environment and `SECRETS_CIPHERTEXT` + `SECRETS_CONTEXT` arriving.
+   `kms_key_arn` must NOT appear on any function — that is a different design
+   and it hands the plaintext back (§ 1021 and claim 9 in
+   `scripts/check_infra_iam.mjs`).
+2. Apply, then deploy the matching web bundle. **Order matters in one
+   direction only**: the new code refuses to serve without a bag, so applying
+   before the code lands is safe (the old code ignores the blob) and shipping
+   the code before the apply is a 503 on `/api/coach` and
+   `/api/routes/generate` until the apply completes.
+3. Verify the environment no longer carries a key:
+   `aws lambda get-function-configuration --function-name threkir-web-preview-coach --query 'Environment.Variables' | grep -c API_KEY` must be `0`.
+4. Verify the decrypt works end to end — one `/api/coach` turn on a cold
+   container. An `AccessDeniedException` in the function's log means the
+   execution role lost its `kms:Decrypt` on the env's secrets CMK.
+5. Repeat for `prod`. Rotating a secret afterwards is `bin/secret-set.sh` **plus
+   a re-apply** — the blob is a resource, so a function holding the old one
+   decrypts the old value.
 
 ### Legal pages — before public launch
 

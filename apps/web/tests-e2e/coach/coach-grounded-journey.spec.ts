@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
@@ -93,6 +93,7 @@ test.describe('AI coach grounded-context journey', () => {
 
 	test('runner opens Coach → sees the grounded plan + runs window → asks → switches the window/plan and the grounding follows', async ({
 		page,
+		mockRoute
 	}) => {
 		const admin = getAdminClient();
 
@@ -160,7 +161,7 @@ test.describe('AI coach grounded-context journey', () => {
 
 			// Install the SSE stub for the whole journey; record each body.
 			let nextReply = 'Run easy today — target 5:30/km for 6 km.';
-			await page.route('**/api/coach', async (route) => {
+			await mockRoute(page, '**/api/coach', async (route) => {
 				const post = route.request().postDataJSON() as Record<string, unknown>;
 				coachPosts.push(post);
 				await route.fulfill({

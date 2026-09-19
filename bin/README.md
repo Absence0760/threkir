@@ -29,6 +29,8 @@ the stack is re-applied so the Lambda gets them. Run the rows top-to-bottom:
 | When | Run |
 |---|---|
 | AWS session expired | `bin/aws-login.sh` |
+| Checking a deployed env is serving (5 checks: `/` 200, **every API behaviour answers `application/json`**, coach anon gate, distribution Deployed, recent Lambda logs) | `bin/preview-status.sh preview` |
+| Asking only "is this host's API answering as its handler, or as the SPA shell?" — derives the `/api/*` behaviours from the Terraform and asserts the content type of each, because the distribution's `403 -> 200 /200.html` mapping makes a refusal from any origin look like a healthy 200 ([decisions § 1664](../docs/architecture/decisions.md)) | `node scripts/probe_api_content_type.mjs --host threkir.com` |
 | Debugging a Lambda response | `bin/lambda-logs.sh preview --tail` |
 | After an env-only `terraform apply` (secret / env rotation) — repoint every web Lambda's CI-owned `live` alias to the freshly published version, so the rotation actually serves (issue #590) | `bin/lambda-alias-sync.sh preview` (`--dry-run` to just report drift) |
 | Dependabot left ghost CI runs | `bin/cancel-stale-runs.sh --apply` |

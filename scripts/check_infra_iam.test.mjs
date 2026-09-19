@@ -3,6 +3,8 @@ import { join } from 'node:path';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { stripComments } from './hcl_lex.mjs';
+
 import {
   MODULE_FILE,
   OIDC_FILE,
@@ -16,6 +18,14 @@ import {
   parseStatements,
   parseSecretMerges,
   parseWebStack,
+  NON_CREDENTIAL_SOPS_KEYS,
+  admittedKeys,
+  checkPlaintextCredentials,
+  envPlaintextKeys,
+  parseKmsCiphertexts,
+  parseLocalStringLists,
+  parseSopsLocals,
+  sopsFilters,
   stringsFor,
   CLAIM_PREFIX,
   CLAIM_PREFIX_PATTERN,
@@ -610,10 +620,182 @@ test('parseSecretMerges refuses a comprehension carrying no predicate', () => {
 
 test('the committed module takes only named keys into every Lambda env', () => {
   const web = parseWebStack(readFileSync(MODULE_FILE, 'utf-8'));
-  assert.ok(web.secretMerges.length >= 2, JSON.stringify(web.secretMerges));
+  // One direct reference left since § 1671 — the coach env's non-credential
+  // config. The credentials reach their functions as a ciphertext blob, and
+  // what each env carries in the clear is 8(b)'s question, below.
+  assert.ok(web.secretMerges.length >= 1, JSON.stringify(web.secretMerges));
   for (const merge of web.secretMerges) {
     assert.ok(merge.filter, `local.${merge.local} takes the sops file whole`);
   }
+});
+
+// ───────── 8(b). no credential reaches an environment in plaintext ─────────
+//
+// Narrowing each env to the keys one function reads (8a) left the values
+// themselves in `environment { variables }`, which UpdateFunctionCode returns
+// to every principal that can deploy. The fixture below is the shape the
+// module has since decisions § 1671: one ciphertext blob per credential-
+// carrying function, bound to it by an encryption context, and only
+// non-credential config left in the clear.
+
+const SECRET_MODULE =
+  'locals {\n' +
+  '  coach_credential_keys = ["ANTHROPIC_API_KEY", "SUPABASE_SECRET_KEY"]\n' +
+  '  coach_config_keys     = ["COACH_PROVIDER"]\n' +
+  '  sentry_env = merge(\n' +
+  '    local.has_secrets ? { for k, v in data.sops_file.secrets[0].data : k => v if k == "SENTRY_DSN" } : {},\n' +
+  '  )\n' +
+  '  lambda_env = merge(\n' +
+  '    local.sentry_env,\n' +
+  '    local.has_secrets ? { for k, v in data.sops_file.secrets[0].data : k => v if contains(local.coach_config_keys, k) } : {},\n' +
+  '    local.has_secrets ? {\n' +
+  '      SECRETS_CIPHERTEXT = aws_kms_ciphertext.coach[0].ciphertext_blob\n' +
+  '      SECRETS_CONTEXT    = jsonencode(local.coach_secrets_context)\n' +
+  '    } : {},\n' +
+  '  )\n}\n\n' +
+  'resource "aws_kms_ciphertext" "coach" {\n' +
+  '  count     = local.has_secrets ? 1 : 0\n' +
+  '  key_id    = aws_kms_key.secrets.key_id\n' +
+  '  context   = local.coach_secrets_context\n' +
+  '  plaintext = jsonencode({ for k, v in data.sops_file.secrets[0].data : k => v if contains(local.coach_credential_keys, k) })\n' +
+  '}\n';
+
+// The fixture carries two of the four exemptions, so the stale-exemption rule
+// is exercised against a set the fixture can satisfy rather than against the
+// committed module's.
+const FIXTURE_EXEMPTIONS = {
+  SENTRY_DSN: NON_CREDENTIAL_SOPS_KEYS.SENTRY_DSN,
+  COACH_PROVIDER: NON_CREDENTIAL_SOPS_KEYS.COACH_PROVIDER,
+};
+
+/** @param {string} [src] */
+function secretRun(src = SECRET_MODULE) {
+  return checkPlaintextCredentials(
+    parseSopsLocals(src),
+    parseKmsCiphertexts(src),
+    FIXTURE_EXEMPTIONS,
+  );
+}
+
+test('the faithful secret fixture passes, so every mutation below is the change', () => {
+  const { errors, ok } = secretRun();
+  assert.deepEqual(errors, []);
+  assert.ok(ok.some((l) => /reach a Lambda only as ciphertext/.test(l)), ok.join('\n'));
+});
+
+test('a credential left in the environment in plaintext fails and names it', () => {
+  const { errors } = secretRun(
+    SECRET_MODULE.replace('coach_config_keys     = ["COACH_PROVIDER"]', 'coach_config_keys     = ["COACH_PROVIDER", "STRIPE_SECRET_KEY"]'),
+  );
+  assert.ok(has(errors, /puts the sops key STRIPE_SECRET_KEY in a function environment as PLAINTEXT/), errors.join('\n'));
+});
+
+test('a key that is BOTH encrypted and plaintext fails — the blob buys nothing', () => {
+  const { errors } = secretRun(
+    SECRET_MODULE.replace('coach_config_keys     = ["COACH_PROVIDER"]', 'coach_config_keys     = ["COACH_PROVIDER", "ANTHROPIC_API_KEY"]'),
+  );
+  assert.ok(has(errors, /puts ANTHROPIC_API_KEY in a function environment as PLAINTEXT while/), errors.join('\n'));
+});
+
+// The comprehension reader cannot see a key assigned straight into the map,
+// which is the obvious way back to the old posture from a different source.
+test('an encrypted key assigned directly into an env fails too', () => {
+  const { errors } = secretRun(
+    SECRET_MODULE.replace(
+      '    local.sentry_env,\n',
+      '    local.sentry_env,\n    { ANTHROPIC_API_KEY = var.anthropic_key },\n',
+    ),
+  );
+  assert.ok(has(errors, /assigns ANTHROPIC_API_KEY directly/), errors.join('\n'));
+});
+
+test('a blob with no encryption context fails — all eight share one role', () => {
+  const { errors } = secretRun(SECRET_MODULE.replace('  context   = local.coach_secrets_context\n', ''));
+  assert.ok(has(errors, /sets no encryption context/), errors.join('\n'));
+});
+
+test('a blob nothing reads, and a blob two envs read, both fail', () => {
+  const orphan = secretRun(
+    SECRET_MODULE.replace('      SECRETS_CIPHERTEXT = aws_kms_ciphertext.coach[0].ciphertext_blob\n', ''),
+  );
+  assert.ok(has(orphan.errors, /is read by 0 `\*_lambda_env` local\(s\)/), orphan.errors.join('\n'));
+
+  const shared = secretRun(
+    SECRET_MODULE.replace(
+      '  lambda_env = merge(\n',
+      '  other_lambda_env = merge(\n' +
+        '    { SECRETS_CIPHERTEXT = aws_kms_ciphertext.coach[0].ciphertext_blob },\n  )\n' +
+        '  lambda_env = merge(\n',
+    ),
+  );
+  assert.ok(has(shared.errors, /is read by 2 `\*_lambda_env` local\(s\)/), shared.errors.join('\n'));
+});
+
+test('no ciphertext resource at all fails rather than reading as nothing to check', () => {
+  const { errors } = secretRun(SECRET_MODULE.slice(0, SECRET_MODULE.indexOf('resource "aws_kms_ciphertext"')));
+  assert.ok(has(errors, /no `aws_kms_ciphertext` resource/), errors.join('\n'));
+});
+
+test('an exemption no env uses fails as loudly as a missing one', () => {
+  // SENTRY_DSN arrives through local.sentry_env, which no `*_lambda_env`
+  // names directly — dropping the merge is what a reader that stopped
+  // following intermediate locals would look like.
+  const { errors } = secretRun(SECRET_MODULE.replace('    local.sentry_env,\n', ''));
+  assert.ok(has(errors, /NON_CREDENTIAL_SOPS_KEYS exempts SENTRY_DSN/), errors.join('\n'));
+});
+
+test('every exemption carries a reason, not just a name', () => {
+  for (const [key, why] of Object.entries(NON_CREDENTIAL_SOPS_KEYS)) {
+    assert.equal(typeof why, 'string', key);
+    assert.ok(why.length > 20, `${key}: "${why}" is not a reason`);
+  }
+});
+
+test('the committed module puts no credential in a Lambda environment', () => {
+  const src = stripComments(readFileSync(MODULE_FILE, 'utf-8'));
+  const { errors, ok } = checkPlaintextCredentials(parseSopsLocals(src), parseKmsCiphertexts(src));
+  assert.deepEqual(errors, []);
+  // Nine envs in the module today; the count is asserted as a floor so a new
+  // Lambda is covered by this the day it lands rather than the day someone
+  // remembers.
+  assert.ok(ok.length >= 9, ok.join('\n'));
+});
+
+// ───────────────── the readers claim 8(b) is built on ─────────────────
+
+test('admittedKeys resolves both predicate shapes and refuses anything else', () => {
+  const lists = parseLocalStringLists('locals {\n  ks = ["A", "B"]\n}\n');
+  assert.deepEqual(admittedKeys('contains(local.ks, k)', lists), ['A', 'B']);
+  assert.deepEqual(admittedKeys('k == "X" || k == "Y"', lists), ['X', 'Y']);
+  // An unreadable predicate is not a safe one: it reads as the whole map.
+  assert.equal(admittedKeys('contains(local.missing, k)', lists), null);
+  assert.equal(admittedKeys('startswith(k, "PUBLIC_")', lists), null);
+  assert.equal(admittedKeys(null, lists), null);
+});
+
+test('sopsFilters is the one reader both claim 8 halves share', () => {
+  assert.deepEqual(
+    sopsFilters('{ for k, v in data.sops_file.secrets[0].data : k => v if k == "A" }'),
+    ['k == "A"'],
+  );
+  assert.deepEqual(sopsFilters('data.sops_file.secrets[0].data'), [null]);
+  assert.deepEqual(sopsFilters('{ for k, v in data.sops_file.secrets[0].data : k => v }'), [null]);
+});
+
+test('envPlaintextKeys follows the locals an env merges, not just its own body', () => {
+  const keys = envPlaintextKeys(parseSopsLocals(SECRET_MODULE));
+  assert.deepEqual(keys.get('lambda_env'), ['COACH_PROVIDER', 'SENTRY_DSN']);
+});
+
+test('parseKmsCiphertexts reads the keys, the context and the consumer', () => {
+  assert.deepEqual(parseKmsCiphertexts(SECRET_MODULE), [
+    {
+      label: 'coach',
+      keys: ['ANTHROPIC_API_KEY', 'SUPABASE_SECRET_KEY'],
+      context: true,
+      consumers: ['lambda_env'],
+    },
+  ]);
 });
 
 // ───────────────────── claim 9: the decrypt grant ─────────────────────

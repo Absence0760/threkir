@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
@@ -70,8 +70,8 @@ test.describe('/share/run/[id] — gear chip (anon)', () => {
 		}
 	});
 
-	test('anon viewer sees the gear chip but no edit affordance', async ({ page }) => {
-		await page.route('**/functions/v1/clip-public-track', (route) =>
+	test('anon viewer sees the gear chip but no edit affordance', async ({ page, mockRoute }) => {
+		await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',

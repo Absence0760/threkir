@@ -205,9 +205,10 @@ Tick, under **Capabilities**:
   **Enable as a primary App ID** → **Save**. Step 5's Services ID and step 7's
   key both attach to this App ID as their primary; if it is not primary, neither
   will list it.
-- **App Groups** → **Configure** → select `group.com.threkir.app.activerun` →
-  **Continue**. **Ticking the box alone assigns nothing** — the group has to be
-  chosen in that modal.
+- **App Groups** — tick it and move on. **There is usually no Configure button
+  during registration**, and that is expected: the assignment UI needs an App ID
+  that exists, so it appears when you *edit* the App ID, not when you create it.
+  Assigning the group is the follow-up below.
 
 Do **not** tick:
 
@@ -221,6 +222,26 @@ Do **not** tick:
 
 **Continue** → review → **Register**.
 
+### Then assign the App Group — a second pass over the same App ID
+
+Ticking **App Groups** enabled the capability. It did not choose *which* group,
+and the App ID is not finished until it has.
+
+**Identifiers** → click **`com.threkir.app`** in the list → scroll to
+**Capabilities** → the **App Groups** row now carries an **Edit** (on some
+accounts **Configure**) button → click it → tick
+`group.com.threkir.app.activerun` → **Continue** → **Save**.
+
+Reopen the App ID once more and confirm the group is named on the row. An App
+Groups capability with no group selected is the state that compiles, installs,
+signs, and shares nothing between the phone and the watch — there is no error
+anywhere in that chain.
+
+**If the Edit button is missing on the second pass too**, the group from step 2
+does not exist. Go to **Identifiers**, switch the **pop-up menu at the top
+right** to **App Groups**, and check `group.com.threkir.app.activerun` is
+listed. Apple offers nothing to select when the list is empty.
+
 ## 4. Watch App ID
 
 Same flow as step 3.
@@ -230,7 +251,8 @@ Same flow as step 3.
 | Description | `Threkir Watch App` |
 | Bundle ID | **Explicit App ID** — `com.threkir.app.watchapp` |
 
-Capabilities: **HealthKit** and **App Groups** (Configure → the same group).
+Capabilities: **HealthKit** and **App Groups** — same two-pass shape as step 3,
+so register first and assign the group by editing it afterwards.
 Nothing else — the watch does not sign in or receive its own pushes. This is
 the side that actually declares the group today; the phone's
 `Runner.entitlements` carries no app-group entitlement yet.

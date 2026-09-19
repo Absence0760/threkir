@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A, USER_B } from '../fixtures/users';
@@ -136,12 +136,12 @@ test.describe('/settings/safety', () => {
 		}
 	});
 
-	test('an invalid phone is rejected client-side before any insert', async ({ browser }) => {
+	test('an invalid phone is rejected client-side before any insert', async ({ browser, mockRoute }) => {
 		const ctx = await browser.newContext({ storageState: USER_A.storageStatePath });
 		const page = await ctx.newPage();
 		try {
 			let inserts = 0;
-			await page.route('**/rest/v1/safety_contacts**', async (route) => {
+			await mockRoute(page, '**/rest/v1/safety_contacts**', async (route) => {
 				if (route.request().method() === 'POST') inserts++;
 				await route.continue();
 			});
@@ -162,6 +162,7 @@ test.describe('/settings/safety', () => {
 
 	test('double-clicking Confirm on an incoming request fires the RPC once', async ({
 		browser,
+		mockRoute
 	}) => {
 		// Plant a pending request from USER_A to USER_B (matched by email).
 		const admin = getAdminClient();
@@ -174,7 +175,7 @@ test.describe('/settings/safety', () => {
 		const page = await ctx.newPage();
 		try {
 			let calls = 0;
-			await page.route('**/rest/v1/rpc/confirm_safety_contact**', async (route) => {
+			await mockRoute(page, '**/rest/v1/rpc/confirm_safety_contact**', async (route) => {
 				calls++;
 				// Hold the response so the busy guard stays engaged across the
 				// second synchronous click.
@@ -401,6 +402,7 @@ test.describe('/settings/safety — you are a safety contact for', () => {
 
 	test('withdrawing goes through decline_safety_contact, never an owner-scoped delete', async ({
 		browser,
+		mockRoute
 	}) => {
 		// `removeSafetyContact` is scoped to `owner_id` since §720, so wiring
 		// the withdraw button to it would match no row here and report success
@@ -412,11 +414,11 @@ test.describe('/settings/safety — you are a safety contact for', () => {
 		try {
 			let declineCalls = 0;
 			let tableDeletes = 0;
-			await page.route('**/rest/v1/rpc/decline_safety_contact**', async (route) => {
+			await mockRoute(page, '**/rest/v1/rpc/decline_safety_contact**', async (route) => {
 				declineCalls++;
 				await route.continue();
 			});
-			await page.route('**/rest/v1/safety_contacts**', async (route) => {
+			await mockRoute(page, '**/rest/v1/safety_contacts**', async (route) => {
 				if (route.request().method() === 'DELETE') tableDeletes++;
 				await route.continue();
 			});

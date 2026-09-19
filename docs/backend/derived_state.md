@@ -282,7 +282,9 @@ retention cron referenced in a comment that was never created.
   `(routine_id, exercise_key)`. Two blocks of one lift in one routine is the
   heavy-top-set-then-back-off pattern, and `computeRoutineAdherence` matches on
   `(exerciseKey, stepIndex)` rather than on the key alone precisely so it works
-  (decisions § 1286).
+  (decisions § 1286). `gym_repeated_exercise_key_test.sql` now refuses any
+  uniqueness covering a SUBSET of that pair, on this table and on `gym_sets`
+  (decisions § 1662).
 - **Pinned by:** `exercise_key_server_stamped_test.sql` (11 tests — the stamp on
   a stale-client key, on an omitted key, on a key-only UPDATE and on a rename,
   for both tables, plus a mutation that disables the trigger and requires the

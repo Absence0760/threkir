@@ -3338,7 +3338,7 @@ void main() {
       // String Catalog guards nor `WatchAppTests` can see — they read
       // the literals a hint contains, not whether a control has one.
       // The cues are transcriptions and therefore rot: Stop's changed
-      // when the control became a HELD press (decisions § 1657), and
+      // when the control became a HELD press (decisions § 1678), and
       // this guard is what said so.
       final file = File('../watch_ios/WatchApp/ContentView.swift');
       if (!file.existsSync()) return;

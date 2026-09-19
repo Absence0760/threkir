@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
@@ -217,7 +217,8 @@ test.describe('/coach', () => {
 	});
 
 	test('send → mocked SSE response streams into an assistant bubble', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		// The headline AI feature: type a question → Send → POST
 		// /api/coach → SSE stream → assistant bubble fills with the
@@ -230,7 +231,7 @@ test.describe('/coach', () => {
 		// the meta-id stitching.
 		const ASSISTANT_REPLY = 'Run easy today, target 5:30/km for 6 km.';
 
-		await page.route('**/api/coach', async (route) => {
+		await mockRoute(page, '**/api/coach', async (route) => {
 			const body = [
 				'event: meta',
 				`data: ${JSON.stringify({
@@ -280,7 +281,8 @@ test.describe('/coach', () => {
 	});
 
 	test('SSE: multi-token stream appends in order into the assistant bubble', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		// The existing happy-path test fires a single token event.
 		// Real LLM responses arrive as N small chunks — the bubble must
@@ -291,7 +293,7 @@ test.describe('/coach', () => {
 		// form a recognisable sentence so the assertion proves order.
 		const CHUNKS = ['Run easy today', ', target 5:30/km', ' for 6 km.'];
 		const EXPECTED = CHUNKS.join('');
-		await page.route('**/api/coach', async (route) => {
+		await mockRoute(page, '**/api/coach', async (route) => {
 			const blocks = [
 				`event: meta\ndata: ${JSON.stringify({
 					user_message_id: 'multi-user',
@@ -328,7 +330,8 @@ test.describe('/coach', () => {
 	});
 
 	test('SSE: special characters in streamed tokens render verbatim', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		// Markdown backticks, em-dashes, curly quotes, an emoji, and an
 		// accented character all live in real LLM responses. A
@@ -338,7 +341,7 @@ test.describe('/coach', () => {
 		// would corrupt at least one. Pin the full set so a
 		// "works for ASCII, drops on multibyte" regression fails loud.
 		const STR = 'Pace: `5:30/km` — try “easy effort” 😅 (café tempo)';
-		await page.route('**/api/coach', async (route) => {
+		await mockRoute(page, '**/api/coach', async (route) => {
 			const body = [
 				'event: meta',
 				`data: ${JSON.stringify({
@@ -380,7 +383,8 @@ test.describe('/coach', () => {
 	});
 
 	test('SSE: mid-stream error event surfaces banner + retains partial text', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		// Real failure mode — provider streams a few tokens then their
 		// upstream rate-limit / context-window-overflow / safety-filter
@@ -391,7 +395,7 @@ test.describe('/coach', () => {
 		// what the runner already saw scroll past.
 		const PARTIAL = 'Run easy today,';
 		const ERR_MSG = 'Provider returned 429';
-		await page.route('**/api/coach', async (route) => {
+		await mockRoute(page, '**/api/coach', async (route) => {
 			// SSE event blocks must end with `\n\n` for CoachChat's
 			// parser (readSse looks for `\n\n` to flush each block).
 			// Joining `['...','']` only produces `...\n`, which leaves
@@ -438,7 +442,8 @@ test.describe('/coach', () => {
 	});
 
 	test('SSE: empty stream (meta + done, no tokens) does not stall the bubble', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		// Real LLM responses are non-empty in happy-path cases, but
 		// content-filter + safety-block + provider-soft-fail can all
@@ -447,7 +452,7 @@ test.describe('/coach', () => {
 		// rather than parking in "Thinking…" forever. Pin the
 		// composer-renabled signal — a regression that locked the
 		// composer would block the user's recovery message.
-		await page.route('**/api/coach', async (route) => {
+		await mockRoute(page, '**/api/coach', async (route) => {
 			const body = [
 				'event: meta',
 				`data: ${JSON.stringify({
@@ -752,7 +757,8 @@ test.describe('/coach', () => {
 	});
 
 	test('a zero-token stream failure does not lock the composer for the session', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		// The client bumps usedToday optimistically the instant a 200 stream
 		// begins. When the provider then fails before emitting any token, the
@@ -778,7 +784,7 @@ test.describe('/coach', () => {
 				body: 'false'
 			});
 		});
-		await page.route('**/api/coach', async (route) => {
+		await mockRoute(page, '**/api/coach', async (route) => {
 			const body = [
 				'event: meta',
 				`data: ${JSON.stringify({

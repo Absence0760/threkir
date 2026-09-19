@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
+import type { Page } from '@playwright/test';
 
 import { resetRateLimit } from '../fixtures/local-supabase';
 import { deleteRoute } from '../fixtures/simulate';
@@ -442,6 +443,7 @@ test.describe('/routes/new — Route Builder control surface', () => {
 
 	test('auto-routing fetches only the new segment per added waypoint (cache)', async ({
 		page,
+		mockRoute
 	}) => {
 		// The headline behaviour ported from mobile: dropping the Nth pin
 		// re-routes only the one new segment, reusing the N-2 already
@@ -453,7 +455,7 @@ test.describe('/routes/new — Route Builder control surface', () => {
 		let routeCalls = 0;
 		// Host-agnostic so the per-segment counter works against both CI's
 		// demo host and the local localhost:5000 OSRM override.
-		await page.route('**/route/v1/**', (route) => {
+		await mockRoute(page, '**/route/v1/**', (route) => {
 			routeCalls++;
 			route.fulfill({
 				status: 200,

@@ -87,7 +87,7 @@ Full technical details in `backend_scaling.md`.
 
 ✓ **Shipped.** Standalone (no-phone) workout sessions with HealthKit HR, haptic pace alerts, and Watch Connectivity sync (with a persisted pre-auth ingest queue). Full delivery checklist in [roadmap_shipped.md](roadmap_shipped.md).
 
-**Wear-OS parity, 2026-09-18 (issue #950):** three of the eleven rows Wear OS was ahead on closed — the 3-second start countdown, the 800 ms hold-to-stop on both stop controls, and the run / walk / trail run / cycle activity picker. The picker drives the `HKWorkoutConfiguration` as well as the row's `activity_type`, so Health scores a walk or a ride correctly, and its words are the phone's and the web's verbatim in all seven watch locales under a fourth `activity_type_vocabulary` guard ([decisions § 1657](../architecture/decisions.md)). Build- and host-verified on a Mac (Xcode 26.4, watchOS 26.4 simulator, 247/247); the remaining eight rows and the on-device confirmation stay open on #950.
+**Wear-OS parity, 2026-09-18 (issue #950):** three of the eleven rows Wear OS was ahead on closed — the 3-second start countdown, the 800 ms hold-to-stop on both stop controls, and the run / walk / trail run / cycle activity picker. The picker drives the `HKWorkoutConfiguration` as well as the row's `activity_type`, so Health scores a walk or a ride correctly, and its words are the phone's and the web's verbatim in all seven watch locales under a fourth `activity_type_vocabulary` guard ([decisions § 1678](../architecture/decisions.md)). Build- and host-verified on a Mac (Xcode 26.4, watchOS 26.4 simulator, 247/247); the remaining eight rows and the on-device confirmation stay open on #950.
 
 ### Wear OS standalone GPS recording
 

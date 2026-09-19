@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { clearNotifications, deleteRun, insertRun } from '../fixtures/simulate';
@@ -117,7 +117,8 @@ test.describe('notifications journey — engagement → bell → inbox → read'
 	});
 
 	test('morgan kudos + comments + follows → runner bell badge, popover, inbox, then mark-all-read clears it', async ({
-		browser
+		browser,
+		mockRoute
 	}) => {
 		const ctxMorgan = await browser.newContext({
 			storageState: USER_C_PRO.storageStatePath
@@ -156,7 +157,7 @@ test.describe('notifications journey — engagement → bell → inbox → read'
 				// The share page asks the clip-public-track Edge Function to
 				// redact the (absent) track for a non-owner viewer; stub it so
 				// the page renders without the function running locally.
-				await morgan.route('**/functions/v1/clip-public-track', (route) =>
+				await mockRoute(morgan, '**/functions/v1/clip-public-track', (route) =>
 					route.fulfill({
 						status: 200,
 						contentType: 'application/json',

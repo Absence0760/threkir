@@ -35,7 +35,7 @@ You don't: chase Strava-style segment leaderboards (you can't compete with 20-ye
 
 Read code through the older-runner lens:
 
-1. **HR-max formula default.** Audit `apps/web/src/lib/hr_zones.dart` / `apps/mobile_android/lib/hr_zones.dart` + the fitness module. Does the app use Tanaka (208 - 0.7×age), Daniels' (220 - age), or both? An older runner using the simple 220-age formula has zones shifted ~5-10 bpm too low. Document.
+1. **HR-max formula default.** Audit `apps/web/src/lib/training/hr_zones.ts` / `apps/mobile_android/lib/hr_zones.dart` + the fitness module. Does the app use Tanaka (208 - 0.7×age), Daniels' (220 - age), or both? An older runner using the simple 220-age formula has zones shifted ~5-10 bpm too low. Document.
 2. **HR-zone config UX.** Audit `apps/web/src/routes/settings/preferences/+page.svelte` + the mobile equivalent. Persona wants to override the formula with measured values (max from a treadmill test, threshold from a 30-min time-trial). Is there a clear path? Can they enter zones as bpm absolutes (not just % of max)?
 3. **Medication-aware HR awareness.** Audit any documentation / disclaimer on HR-based training. Persona is on a beta-blocker; their max HR is artificially capped + their HR response is muted. Does the app surface a "HR-based training may need adjustment for medications" hint anywhere? Almost certainly no — flag.
 4. **Age-graded performance / age-grading on race times.** Audit personal records + race surface. Persona's 5k PB is 24:00 at age 62 — age-grade equivalent to a young runner's 19:00. Does the app surface age-grade alongside the raw time? On segment leaderboards? On the dashboard? `segments_leaderboard_tiered` already has age-band filtering — does it surface the persona's age-graded equivalent?

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
@@ -15,12 +15,13 @@ test.describe('engagement uniqueness via UI toggle', () => {
 	test.use({ storageState: USER_B.storageStatePath });
 
 	test('alex kudos+rescind on the pinned public run leaves zero rows', async ({
-		page
+		page,
+		mockRoute
 	}) => {
 		// The kudos toggle is implemented as click→insert,
 		// click-again→delete. After a kudos+rescind round-trip the
 		// run_kudos table must hold zero rows for that (user, run) pair.
-		await page.route('**/functions/v1/clip-public-track', (route) =>
+		await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
 			route.fulfill({
 				status: 200,
 				contentType: 'application/json',

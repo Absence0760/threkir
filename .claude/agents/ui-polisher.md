@@ -15,7 +15,7 @@ That is not an omission. An earlier revision of this agent transcribed all of it
 
 So: **Step 1 is not optional.** You read the contract from the tree before you touch anything, every time. The tree is the source of truth; this file tells you where to look and how to judge what you find.
 
-`apps/web/src/lib/ux_agent_guards.test.ts` fails the PR if this file cites a repo path git no longer tracks. That catches dead pointers. It cannot catch a *stale claim* about a live file — which is exactly why the claims are not here.
+`apps/web/src/lib/ux_agent_guards.test.ts` fails the PR if this file — or any other tracked `.md` under `.claude/` — cites a repo path git no longer tracks. That catches dead pointers. It cannot catch a *stale claim* about a live file — which is exactly why the claims are not here.
 
 ## Step 0 — Route by platform
 
@@ -115,7 +115,7 @@ Every platform follows the same steps; only the toolchain differs.
 - type-check: PASS (<platform-specific tool>)
 - tests: <N passed / M total>, [failures auto-fixed: <list>]
 - i18n: <keys added to N locales / no new strings>
-- screenshots: /tmp/polish-before.png → /tmp/polish-after.png[, dark variant if relevant]
+- screenshots: `<scratchpad>/<lane-slug>/polish-before.png` → `<scratchpad>/<lane-slug>/polish-after.png`[, dark variant if relevant]
 - twin-mirror: <PASS | skipped (web/wear/watchos) | dirty — see notes> (mobile only)
 
 ## Notes for the human
@@ -184,13 +184,13 @@ Find the live example of each by grepping the route tree rather than trusting a 
    test("before", async ({ page }) => {
      await page.goto("<route under audit>");
      await page.waitForLoadState("networkidle");
-     await page.screenshot({ path: "/tmp/polish-before.png", fullPage: true });
+     await page.screenshot({ path: "<scratchpad>/<lane-slug>/polish-before.png", fullPage: true });
    });
    EOF
    cd apps/web && pnpm test:e2e -- tests-e2e/cross-cutting/_polish_before.spec.ts --reporter=line
    \rm -f apps/web/tests-e2e/cross-cutting/_polish_before.spec.ts
    ```
-   Rerun with `/tmp/polish-after.png`. If the change touches colours or backgrounds, do a dark pass too. Check the 320 CSS px width as well — `conventions.md § Web reflow` makes it a hard floor, not an aspiration.
+   Rerun with `<scratchpad>/<lane-slug>/polish-after.png`. Write screenshots under your own subdirectory of the session scratchpad, never a fixed name in `/tmp` — that directory is shared by every session on the machine, so a second polisher silently overwrites your "before" and you compare against someone else's screen ([CLAUDE.md § Working alongside other Claude sessions](../../CLAUDE.md)). If the change touches colours or backgrounds, do a dark pass too. Check the 320 CSS px width as well — `conventions.md § Web reflow` makes it a hard floor, not an aspiration.
 4. **Affected e2e**: grep `apps/web/tests-e2e/` for selectors in the changed page. Run those specs; update selectors that moved.
 
 ### Web "what NOT to do"
@@ -280,7 +280,7 @@ The L0–L4 try/catch contract in `docs/features/run_recording.md` is enforced b
 
    Gotchas that will otherwise eat the hour: store I/O needs `tester.runAsync`, then `pumpUntil` from `apps/mobile_android/test/pump_until.dart` — never a fixed `Future.delayed`. `showTopBanner` leaves a pending auto-dismiss timer, so pump past it before the test ends. `pumpAndSettle` hangs on cursor and live-map animations. Duplicate button labels need dialog-scoped finders.
 3. **i18n** — a new string goes in every ARB under `apps/mobile_android/lib/l10n` including the base, with an `@key` metadata block carrying `placeholders` when it interpolates, then `flutter gen-l10n`.
-4. **Before / after screenshot** — prefer a throwaway widget-test golden (`flutter test --update-goldens` against a one-shot test that pumps the screen with seeded stores, writing to `/tmp`); delete the test afterwards. Fall back to an emulator plus `adb exec-out screencap` only when the screen needs real GPS or live tiles, and tell the user if no emulator is running.
+4. **Before / after screenshot** — prefer a throwaway widget-test golden (`flutter test --update-goldens` against a one-shot test that pumps the screen with seeded stores, writing to `<scratchpad>/<lane-slug>/`); delete the test afterwards. Fall back to an emulator plus `adb exec-out screencap` only when the screen needs real GPS or live tiles, and tell the user if no emulator is running.
 5. **`mobile-twin-mirror` agent** — spawn it after your edits and surface its result in the report.
 
 ### Flutter "what NOT to do"

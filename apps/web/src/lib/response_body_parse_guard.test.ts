@@ -52,6 +52,13 @@ const REGISTER: Record<string, [number, string]> = {
 			'every parse failure — and ImportRoute.svelte catches and renders the ' +
 			'message; these four are File reads, which reject only on a read error',
 	],
+	'src/lib/core/lambda_secrets.ts': [
+		1,
+		'kmsDecrypt throws on every failure by contract — a truncated or ' +
+			'non-JSON KMS response is a bag the handler cannot read, and the two ' +
+			'Lambdas that call it must answer 503 rather than fall back to a ' +
+			'plaintext environment variable (decisions § 1671)',
+	],
 	'src/lib/routes/route_describe_client.ts': [
 		1,
 		'requestAiDescription throws on every non-200 and on a malformed 200; ' +

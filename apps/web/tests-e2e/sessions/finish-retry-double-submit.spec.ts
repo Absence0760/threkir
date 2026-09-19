@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
@@ -63,11 +63,11 @@ test.describe('/sessions/[id] — save-retry double submit', () => {
 		return { id, title };
 	}
 
-	test('pressing Retry twice logs the session once', async ({ page }) => {
+	test('pressing Retry twice logs the session once', async ({ page, mockRoute }) => {
 		const plan = await seedOneStepPlan();
 
 		let workoutPosts = 0;
-		await page.route('**/rest/v1/gym_workouts*', async (route) => {
+		await mockRoute(page, '**/rest/v1/gym_workouts*', async (route) => {
 			if (route.request().method() !== 'POST') {
 				await route.continue();
 				return;

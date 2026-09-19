@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -107,6 +107,7 @@ test.describe('run visibility (public/private) propagation across surfaces', () 
 
 	test('default-visibility → private-hidden → flip-public-visible → flip-private-hidden', async ({
 		browser,
+		mockRoute
 	}) => {
 		const { url, anonKey } = loadSupabaseEnv();
 		const admin = getAdminClient();
@@ -327,7 +328,7 @@ test.describe('run visibility (public/private) propagation across surfaces', () 
 			await ctx.addInitScript(setConsentAccepted);
 			const page = await ctx.newPage();
 			try {
-				await page.route('**/functions/v1/clip-public-track', (route) =>
+				await mockRoute(page, '**/functions/v1/clip-public-track', (route) =>
 					route.fulfill({
 						status: 200,
 						contentType: 'application/json',

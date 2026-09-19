@@ -291,11 +291,33 @@ The club side has had (2) since the cap tests were written — all four specs th
 
 `clubs/new.spec.ts` still undoes its plant in an in-body `finally`, which is harmless only because every club-creating spec already resets in `beforeEach`; it is filed rather than changed here.
 
-### 8. A `page.route` glob is anchored at both ends, and a mock that never matches is silent
+### 8. A route mock goes through `mockRoute`, and one that never fires is a failure
 
 Playwright compiles `**/auth/v1/user` to `^(.*/)auth/v1/user$`. It does not match `/auth/v1/user?redirect_to=…`, which is what `supabase.auth.updateUser(…, { emailRedirectTo })` actually sends. Nothing reports the miss: the request goes to the real server, the stub's body is never used, and any `expect(sawRequest).toBe(false)` beside it is scored against a handler nothing invoked.
 
-Prefer a `RegExp` (or a trailing `*`) whenever the endpoint can carry a query string, and — where the mock is what stands between the spec and a real mutation on a shared fixture user — **assert that it fired**. `settings/account.spec.ts` counts its `PUT` stub and asserts the count, so a pattern that silently stops matching fails the case instead of quietly widening its blast radius.
+`tests-e2e/fixtures/mock-route.ts` is the instrument. Take `test` from it, take `mockRoute` off the fixture object, and pass the routing target first:
+
+```ts
+import { expect, test } from '../fixtures/mock-route';
+
+test('…', async ({ page, mockRoute }) => {
+	await mockRoute(page, '**/api/coach', (route) => route.fulfill({ … }));
+});
+```
+
+It counts the handler's invocations and fails the case from fixture teardown when the count is zero, naming the pattern and the line that registered it. The check is skipped when the test has already failed, so a dead mock never masks the real cause.
+
+There is no blanket opt-out. Where a mock is *meant* never to fire — a private run never reaches the clipped-track branch; a render-gated chat never posts to `/api/coach` — say so in words with `{ neverFires: 'why' }`, which asserts the count at **zero** instead and fails if the mock starts firing. Where the mock is a `beforeEach` stub installed for the whole file and this one case does not exercise it, say so from inside the case with `mockRoute.neverFires(pattern, 'why')`; that declaration is itself checked, and naming a pattern no mock in the test registered fails, so a moved or renamed stub cannot leave the sentence behind.
+
+**What it does not prove.** The count is per registration, not per branch. A handler that `continue()`s a `GET` and stubs a `PUT` on the same path fires on the `GET` alone, so the check says the pattern is reachable — not that the branch the case cares about ran. `settings/account.spec.ts` keeps its own `seen.put` counter beside the stub for exactly that reason, and a spec whose subject is one method should do the same.
+
+**Adoption is enforced, and the rule is derived rather than listed.** `fixtures/mock-route.test.ts` (web unit suite) scans the tree and fails on a bare `.route()` call that either (a) records that its handler ran — `+= 1`, `++`, `= true`, `.push(` — or (b) answers a GoTrue / Edge Function / `/api/` endpoint with a success (a 2xx `fulfill`, a `fulfill` with no status, a `continue`, a `fallback`). Those are the two shapes whose absence is invisible: a counted mock makes its own count vacuous, and a success stub on a side-effecting endpoint is indistinguishable from the real endpoint answering. A `/rest/v1/` read shaped with a 4xx/5xx is deliberately **not** covered — if it stops firing the error state never renders and the case fails on its own assertion.
+
+Two things the instrument found the moment it was switched on, both of which are worth knowing before writing a share-page spec:
+
+- **Fourteen mocks in the tree were already dead.** Six were a race: five `**/functions/v1/clip-public-track` stubs in `share/run.spec.ts` and one in `cross-cutting/smoke.spec.ts`, whose cases finished in 140–450 ms — before the client `load()` that calls the Edge Function had resolved. Every one of those cases was asserting against a half-mounted page reached from the server-rendered shell. The fix is to wait for `.run-meta`, which `RunShareView` renders only after `load()` returns; the mock then fires deterministically and the assertion is about the page the visitor actually gets. **A mock whose firing is a race is a case whose subject is a race.**
+- **A `beforeEach` stub only some cases exercise belongs to those cases.** `routes/generate-loop.spec.ts` installed an OSRM straight-line mock for all 30 of its cases; `/api/routes/generate` answers the whole route, so 28 of them never reached it. It now lives in the two that drive the client's OSRM fallback. Where moving it is not the answer — that file's generator stub is used by twenty cases and replaced or unneeded by ten — the ten say so with `mockRoute.neverFires`.
+- **A mock the spec replaces is not dead.** A later `mockRoute` on the same target and pattern supersedes an earlier one, because Playwright runs the most recent handler first. A replacement installed with a bare `page.route` is invisible to the fixture, so that case declares the silence instead.
 
 ### 9. An optimistic class flip is not evidence the write left the browser
 
@@ -495,34 +517,33 @@ which fail under 2.109.1 for exactly this reason), or trust CI. Those two pgtap
 failures are recorded in [test_inventory.md](test_inventory.md) as the same
 split.
 
-**`tests-e2e/settings/account.spec.ts` § "change email — request path".** The
-second case fails as `element(s) not found` on `email-change-pending`, which
-reads exactly like a product bug and is two problems stacked:
+**`tests-e2e/settings/account.spec.ts` § "change email — request path" — fixed,
+and kept here for the second half.** The case used to fail as `element(s) not
+found` on `email-change-pending`, which read exactly like a product bug and was
+two problems stacked:
 
-1. *The mock is dead.* The case intends to fulfil `PUT /auth/v1/user` itself, but
-   `page.route('**/auth/v1/user', …)` never matches the request. `handleChangeEmail`
-   passes `emailRedirectTo`, and `@supabase/auth-js` appends it as a
-   `?redirect_to=…` query string; Playwright anchors a glob at **both** ends
-   (`**/auth/v1/user` compiles to `^(.*/)auth/v1/user$` — checked against
+1. *The mock was dead.* The case intends to fulfil `PUT /auth/v1/user` itself,
+   but `page.route('**/auth/v1/user', …)` never matched the request.
+   `handleChangeEmail` passes `emailRedirectTo`, and `@supabase/auth-js` appends
+   it as a `?redirect_to=…` query string; Playwright anchors a glob at **both**
+   ends (`**/auth/v1/user` compiles to `^(.*/)auth/v1/user$` — checked against
    playwright-core 1.62.1's own `globToRegexPattern`), so a URL carrying a query
-   string is not matched. The request therefore reaches live GoTrue. The sibling
-   case's `expect(sawRequest).toBe(false)` runs through the same never-matching
-   pattern, so that half of it cannot fail.
+   string was not matched. The pattern is a `RegExp` now, and the stub goes
+   through `mockRoute` (§ 8), so a pattern that stops matching fails the case.
 2. *The hook has nothing to call.* GoTrue then invokes `[auth.hook.send_email]`
-   at `http://host.docker.internal:54321/functions/v1/auth-email`. There is no
-   `supabase_edge_runtime_project-running` container on this workstation at all —
-   not even an exited one — so the hook times out, `updateUser` returns an error,
-   and `pendingEmail` is never set. `docker ps -a | grep edge_runtime` is the
-   one-line check; `supabase start` will not recreate a container the CLI thinks
-   is already up, and a stale one boots into `failed to determine entrypoint`
-   because it is bound to whichever worktree first created it. Only
-   `supabase stop && supabase start` **from the worktree you want mounted** fixes
-   it, which is a shared-resource action across every worktree — never do it
-   while another lane is running.
+   at `http://host.docker.internal:54321/functions/v1/auth-email`. There may be
+   no `supabase_edge_runtime_project-running` container on this workstation at
+   all — not even an exited one — so the hook times out, `updateUser` returns an
+   error, and `pendingEmail` is never set. `docker ps -a | grep edge_runtime` is
+   the one-line check; `supabase start` will not recreate a container the CLI
+   thinks is already up, and a stale one boots into `failed to determine
+   entrypoint` because it is bound to whichever worktree first created it. Only
+   `supabase stop && supabase start` **from the worktree you want mounted**
+   fixes it, which is a shared-resource action across every worktree — never do
+   it while another lane is running.
 
-Fixing (1) makes the case hermetic and removes its dependency on (2) entirely.
-Until then it is red here and green in CI, where the edge runtime is booted
-fresh per job.
+Fixing (1) made the case hermetic: the stub answers the `PUT` itself, so (2) is
+no longer on its path.
 
 ---
 

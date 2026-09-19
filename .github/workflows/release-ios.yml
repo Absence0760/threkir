@@ -129,6 +129,23 @@ jobs:
       #   working-directory: apps/mobile_ios
       #   run: flutter build ipa --release
       #
+      # - name: Attach the signed IPA to the Release
+      #   # The Release already exists -- it triggered this run. Upload the
+      #   # IPA onto it (no name/notes -> the human-authored release title +
+      #   # notes aren't clobbered).
+      #   #
+      #   # `fail_on_unmatched_files` is the whole reason this step is worth
+      #   # reading twice. It defaults to false, and the live version of this
+      #   # step globbed an .ipa that the unsigned build above never writes:
+      #   # the path matched nothing, the action reported success, and the
+      #   # Release carried no artifact while the docs said it carried an
+      #   # `.ipa`. Publishing nothing must fail here, not read as a publish.
+      #   uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+      #   with:
+      #     tag_name: ${{ github.event.release.tag_name }}
+      #     files: apps/mobile_ios/build/ios/ipa/*.ipa
+      #     fail_on_unmatched_files: true
+      #
       # - name: Upload to TestFlight
       #   uses: apple-actions/upload-testflight-build@5e75ff58276689011512ba87a381d93dc67dbcf8 # v5.3.0
       #   with:
@@ -157,15 +174,23 @@ jobs:
             exit 1
           fi
 
-      - name: Build IPA (unsigned)
+      # Named for what it produces. `flutter build ipa --no-codesign` stops at
+      # the .xcarchive and prints "Codesigning disabled with --no-codesign,
+      # skipping IPA" -- so this step writes NO .ipa, and there is nothing to
+      # attach until the signing block above is uncommented. Measured on
+      # Xcode 26.4 / Flutter 3.44.8, decisions.md § 1673.
+      - name: Build the unsigned archive (produces no .ipa)
         working-directory: apps/mobile_ios
         run: flutter build ipa --no-codesign
 
-      - name: Attach IPA to the Release
-        # The Release already exists — it triggered this run. Upload the
-        # IPA onto it (no name/notes → the human-authored release title +
-        # notes aren't clobbered).
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
-        with:
-          tag_name: ${{ github.event.release.tag_name }}
-          files: apps/mobile_ios/build/ios/ipa/*.ipa
+      # Holds the premise the step above states. If an .ipa ever appears from an
+      # unsigned build, the attach step is still commented out and this release
+      # would be publishing an unsigned, unuploaded build while reading green.
+      - name: Assert the unsigned build produced nothing to publish
+        working-directory: apps/mobile_ios
+        run: |
+          if [ -n "$(find build/ios/ipa -name '*.ipa' 2>/dev/null)" ]; then
+            echo "::error::An .ipa exists after a --no-codesign build, so this workflow's premise has changed. Uncomment the signing + attach + TestFlight block in this file rather than leaving a signed artifact unpublished; see decisions.md § 1673."
+            exit 1
+          fi
+          echo "Unsigned archive built. No .ipa produced and none attached -- expected until the signing block is enabled."

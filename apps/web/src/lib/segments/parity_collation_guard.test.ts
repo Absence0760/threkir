@@ -37,22 +37,6 @@ const REPO_ROOT = resolve('../..');
 /// is written as.
 const COLLATION = /\.localeCompare\s*\(|new\s+Intl\.Collator\s*\(/;
 
-/// Pair halves that still collate, with why the fix is not in this change.
-/// Each entry is a real instance, in a tree the change that added this guard
-/// does not own; the staleness test below fails when one stops matching, so an
-/// exemption cannot outlive the site it excuses.
-const PENDING: { pair: string; why: string }[] = [
-	{
-		pair: 'import_failures',
-		why:
-			'groupImportFailures orders equal-count buckets by `reason.localeCompare`, ' +
-			'where the Dart half orders by `reason.wire.compareTo`. Not a live divergence: ' +
-			'no pair in the seven-value reason vocabulary is decided by the underscore, ' +
-			'which is the only character the two instruments rank differently here. ' +
-			'Owner tree: apps/web/src/lib/integrations/.',
-	},
-];
-
 function pairHalves(): Map<string, string> {
 	const { rows, errors } = parseSyncerRows(readFileSync(SYNCER_DOC, 'utf-8'));
 	assert.deepEqual(errors, [], 'the syncer registry did not parse');
@@ -72,10 +56,8 @@ test('the guard reads a registry that is actually there', () => {
 });
 
 test('no registered parity-pair half orders with a collation', () => {
-	const pending = new Set(PENDING.map((p) => p.pair));
 	const offenders: string[] = [];
 	for (const [name, web] of pairHalves()) {
-		if (pending.has(name)) continue;
 		if (COLLATION.test(stripComments(readFileSync(join(REPO_ROOT, web), 'utf-8')))) {
 			offenders.push(`  ${web}  (pair ${name})`);
 		}
@@ -89,16 +71,4 @@ test('no registered parity-pair half orders with a collation', () => {
 			'(decisions 1337, 1383, 1400):\n' +
 			offenders.join('\n'),
 	);
-});
-
-test('every pending exemption still names a real collation', () => {
-	const halves = pairHalves();
-	for (const p of PENDING) {
-		const web = halves.get(p.pair);
-		assert.ok(web, `${p.pair} is no longer a registered pair — delete its PENDING entry`);
-		assert.ok(
-			COLLATION.test(stripComments(readFileSync(join(REPO_ROOT, web), 'utf-8'))),
-			`${web} no longer collates — delete its PENDING entry so the next one cannot hide behind it.`,
-		);
-	}
 });

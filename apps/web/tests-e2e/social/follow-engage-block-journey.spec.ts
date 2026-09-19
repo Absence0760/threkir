@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { getAdminClient, getUserClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
@@ -111,6 +111,7 @@ test.describe('social journey — follow → engage → block severs the loop ac
 
 	test('A follows B, kudos + comments, B is notified, then A blocks B and the relationship + content visibility sever', async ({
 		browser,
+		mockRoute
 	}) => {
 		const admin = getAdminClient();
 
@@ -127,7 +128,7 @@ test.describe('social journey — follow → engage → block severs the loop ac
 		// The share/run track clip fetch isn't relevant to this journey —
 		// short-circuit it so the page never blocks on the edge function.
 		const stubClip = (p: typeof aPage) =>
-			p.route('**/functions/v1/clip-public-track', (route) =>
+			mockRoute(p, '**/functions/v1/clip-public-track', (route) =>
 				route.fulfill({
 					status: 200,
 					contentType: 'application/json',

@@ -146,7 +146,7 @@ test('an oversized catalogue names its own locale and its own budget', () => {
 	assert.equal(errors.length, 1);
 	assert.equal(errors[0].budget, 'catalogue');
 	assert.match(errors[0].message, /the ja catalogue is 140 KB/);
-	assert.match(errors[0].message, /over the 100 KB per-catalogue ceiling by 40 KB/);
+	assert.match(errors[0].message, /over the 115 KB per-catalogue ceiling by 25 KB/);
 	assert.match(errors[0].message, /adding a language cannot trip it/);
 });
 
@@ -265,7 +265,7 @@ test('gzipKb rounds a part-kilobyte up', () => {
 test('the summary states the catalogue total without gating on it', () => {
 	const text = renderSummary(checkBudgets(fixture()).summary);
 	assert.match(text, /Code \(every reader, any language\) \| 1934 KB across 9 files \| 2120 KB/);
-	assert.match(text, /Largest message catalogue \(ja\) \| 91 KB \| 100 KB, per catalogue/);
+	assert.match(text, /Largest message catalogue \(ja\) \| 91 KB \| 115 KB, per catalogue/);
 	assert.match(text, /ungated in total \(522 KB across 6, one fetched per reader\)/);
 	assert.match(text, /Largest single asset[^|]*\| 74 KB \| 100 KB, per asset/);
 	assert.match(text, /ungated in total too \(199 KB across 9/);
@@ -273,7 +273,7 @@ test('the summary states the catalogue total without gating on it', () => {
 
 test('the shipped ceilings are the ones this suite reasons about', () => {
 	assert.equal(MAX_CODE_KB, 2120);
-	assert.equal(MAX_CATALOGUE_KB, 100);
+	assert.equal(MAX_CATALOGUE_KB, 115);
 	assert.equal(MAX_LARGEST_CHUNK_KB, 350);
 	assert.equal(MAX_ASSET_KB, 100);
 	assert.equal(

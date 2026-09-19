@@ -97,25 +97,65 @@
 		</p>
 	{/if}
 
-	<label>
-		<span>{m('fundraiser.title')}</span>
-		<input type="text" bind:value={title} required maxlength="120" data-testid="fundraiser-title" />
-	</label>
+	<div class="field">
+		<label>
+			<span>{m('fundraiser.title')}</span>
+			<input
+				type="text"
+				bind:value={title}
+				required
+				maxlength="120"
+				data-testid="fundraiser-title"
+				aria-describedby="fundraiser-title-hint"
+			/>
+		</label>
+		<span class="field-hint" id="fundraiser-title-hint">{m('fundraiser.titleHint')}</span>
+	</div>
 
-	<label>
-		<span>{m('fundraiser.charityName')}</span>
-		<input type="text" bind:value={charityName} required maxlength="120" data-testid="fundraiser-charity" />
-	</label>
+	<div class="field">
+		<label>
+			<span>{m('fundraiser.charityName')}</span>
+			<input
+				type="text"
+				bind:value={charityName}
+				required
+				maxlength="120"
+				data-testid="fundraiser-charity"
+				aria-describedby="fundraiser-charity-hint"
+			/>
+		</label>
+		<span class="field-hint" id="fundraiser-charity-hint">{m('fundraiser.charityNameHint')}</span>
+	</div>
 
-	<label>
-		<span>{m('fundraiser.charityUrl')}</span>
-		<input type="url" bind:value={charityUrl} placeholder="https://" inputmode="url" />
-	</label>
+	<div class="field">
+		<label>
+			<span>{m('fundraiser.charityUrl')}</span>
+			<input
+				type="url"
+				bind:value={charityUrl}
+				placeholder="https://"
+				inputmode="url"
+				aria-describedby="fundraiser-charity-url-hint"
+			/>
+		</label>
+		<span class="field-hint" id="fundraiser-charity-url-hint">{m('fundraiser.charityUrlHint')}</span>
+	</div>
 
-	<label>
-		<span>{m('fundraiser.goal')}</span>
-		<input type="number" bind:value={goalMajor} min="1" step="1" required data-testid="fundraiser-goal" />
-	</label>
+	<div class="field">
+		<label>
+			<span>{m('fundraiser.goal')}</span>
+			<input
+				type="number"
+				bind:value={goalMajor}
+				min="1"
+				step="1"
+				required
+				data-testid="fundraiser-goal"
+				aria-describedby="fundraiser-goal-hint"
+			/>
+		</label>
+		<span class="field-hint" id="fundraiser-goal-hint">{m('fundraiser.goalHint')}</span>
+	</div>
 
 	<label>
 		<span>{m('fundraiser.story')}</span>

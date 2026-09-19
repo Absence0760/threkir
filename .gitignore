@@ -12,6 +12,11 @@ build/
 # lockfile is what makes CI, a fresh worktree and this checkout resolve the
 # same code. Ignoring it meant a third-party publish could turn main red with
 # no commit of ours -- which is exactly what happened on 2026-08-05.
+# There is exactly ONE of them, at the repo root: the Flutter side is a pub
+# workspace (root pubspec.yaml's `workspace:` over both apps and the five
+# packages, each member declaring `resolution: workspace`), and pub resolves
+# a workspace once into a single root lockfile. A per-app pubspec.lock is
+# absent because pub never writes one, not because the policy lapsed.
 
 # Node.js
 node_modules/

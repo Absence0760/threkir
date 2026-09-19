@@ -587,6 +587,12 @@ const GUARD_DIRS = ['scripts', 'apps/web/scripts', 'apps/backend/scripts'];
 /// named rather than pattern-matched, so a new guard cannot join the list by
 /// being spelled a certain way.
 const NOT_A_GUARD = new Map([
+	[
+		'apps/web/scripts/browser_baseline.mjs',
+		'the browserslist floor reader, consumed by vite.config.ts and by '
+			+ 'browser_baseline_guard.test.ts — it resolves the declaration, it does not '
+			+ 'enforce anything, and the guard that does is the suite (decisions § 1670)',
+	],
 	['scripts/comment_strip.mjs', 'a lexer, consumed by four guards'],
 	['scripts/hcl_lex.mjs', 'a lexer, consumed by three guards'],
 	['scripts/markdown_lines.mjs', 'a lexer, consumed by three guards'],

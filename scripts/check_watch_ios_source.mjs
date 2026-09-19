@@ -136,7 +136,7 @@
 //
 //  (15) The two Xcode projects that build this app describe the SAME app.
 //       § 1256's build integration made `Runner.xcodeproj` a second project
-//       compiling `apps/watch_ios/WatchApp` (decisions § 1656). The sources
+//       compiling `apps/watch_ios/WatchApp` (decisions § 1657). The sources
 //       are referenced there, never copied — but the target MEMBERSHIP, the
 //       resource list and the settings that decide what the bundle is are
 //       transcribed a second time, and the two transcriptions drift in
@@ -2020,7 +2020,7 @@ export function check(
 	//      still embeds it.
 	//
 	//      The sources live in one place on disk; the MEMBERSHIP lists do not,
-	//      and neither does the embed (decisions § 1656).
+	//      and neither does the embed (decisions § 1657).
 	if (phonePbxprojPath !== null) {
 		const before = errors.length;
 		const watchPbx = read(PBXPROJ);

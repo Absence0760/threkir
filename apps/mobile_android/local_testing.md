@@ -415,6 +415,25 @@ Both importers save locally first and push to the cloud asynchronously, so they 
 
 If `.env.local` is missing, empty, or the backend is unreachable, the app starts in **offline mode**. All features work locally — you can record runs, view history, and import routes without ever signing in. Runs stay on the device until you sign in and the auto-sync picks them up.
 
+### Push notifications (needs the Firebase config)
+
+`google-services.json` is gitignored, so a fresh clone has none and the whole
+push path no-ops: Gradle skips the `google-services` plugin — it says so in the
+build log — and `FirebasePushMessaging` catches the `Firebase.initializeApp`
+throw. Nothing else is affected, so this is a perfectly good dev setup.
+
+To receive a real push on a device, fetch the config out of the private estate
+repo first (from this directory):
+
+```
+AWS_PROFILE=threkir sops --decrypt --extract '["google_services_json_base64"]' ../../../infra-secrets/threkir/push-credentials.sops.yaml | base64 -d > android/app/google-services.json
+```
+
+Then **reinstall** rather than hot-restart — the plugin runs at Gradle
+configure time — and sign in: a `device_tokens` row should appear for your
+user. Receiving is only half; the send side is the Go worker's FCM credentials.
+See [`docs/features/native_push.md` § Operator provisioning](../../docs/features/native_push.md#operator-provisioning-the-credential-gate).
+
 ### Not yet implemented
 
 A few items remain out of scope for now:

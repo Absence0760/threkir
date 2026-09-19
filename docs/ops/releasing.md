@@ -56,7 +56,7 @@ which bundles the watchOS target.
 
 That bundling is real as of 2026-09-18 and was not before —
 `Runner.xcodeproj` referenced nothing under `apps/watch_ios/` until
-[decisions § 1656](../architecture/decisions.md) added a `WatchApp`
+[decisions § 1657](../architecture/decisions.md) added a `WatchApp`
 target and an Embed Watch Content phase. **Verified on this Mac** (Xcode
 26.4): `flutter build ios --release --no-codesign` puts
 `Runner.app/Watch/WatchApp.app` in place with `CFBundleDisplayName =

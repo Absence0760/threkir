@@ -30,7 +30,7 @@ target that **references the same source files** and embeds the product in the
 phone app's bundle — that is the one a release goes through. Open the standalone
 project for everything below; open the Runner workspace when you need the watch
 app installed **beside** the phone app, e.g. to exercise WatchConnectivity end to
-end. See [decisions § 1656](../../docs/architecture/decisions.md).
+end. See [decisions § 1657](../../docs/architecture/decisions.md).
 
 ---
 

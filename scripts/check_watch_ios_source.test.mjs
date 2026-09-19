@@ -1072,7 +1072,7 @@ test('the two numeric-constant readers take the literal and nothing around it', 
 // ───────── claim (10): the plist follows the build, in both directions ─────────
 
 test('claim (10) refuses WKWatchOnly once the phone project embeds the watch', () => {
-	// § 1256's build integration has landed (decisions § 1656), so the phone
+	// § 1256's build integration has landed (decisions § 1657), so the phone
 	// project embeds for real and it is the plist that regresses here: going
 	// back to "this app has no iOS companion" while the .ipa ships one.
 	const { errors } = runMutated((dir) => {

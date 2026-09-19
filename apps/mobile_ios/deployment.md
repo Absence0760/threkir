@@ -10,7 +10,7 @@ Operational counterpart of [`apps/mobile_ios/CLAUDE.md`](CLAUDE.md) and the byte
 
 ## What this doc covers
 
-The iOS app and the Apple Watch app are **one deployment**. The watch app is a target of `Runner.xcodeproj` and is copied into the iOS app's `.ipa` by an Embed Watch Content phase, so there's no separate listing, no separate review, no separate upload. The Swift sources live under `apps/watch_ios/` and are **referenced** from the phone project rather than copied — one copy on disk, two targets. `apps/watch_ios/WatchApp.xcodeproj` also stays, as the test host the `test-watch-ios` CI job builds; claim (15) of `scripts/check_watch_ios_source.mjs` fails a PR when the two projects stop describing the same app. See [decisions § 1656](../../docs/architecture/decisions.md).
+The iOS app and the Apple Watch app are **one deployment**. The watch app is a target of `Runner.xcodeproj` and is copied into the iOS app's `.ipa` by an Embed Watch Content phase, so there's no separate listing, no separate review, no separate upload. The Swift sources live under `apps/watch_ios/` and are **referenced** from the phone project rather than copied — one copy on disk, two targets. `apps/watch_ios/WatchApp.xcodeproj` also stays, as the test host the `test-watch-ios` CI job builds; claim (15) of `scripts/check_watch_ios_source.mjs` fails a PR when the two projects stop describing the same app. See [decisions § 1657](../../docs/architecture/decisions.md).
 
 So: `mobile_ios@1.2.3` triggers one CI workflow that ships **both** apps.
 
@@ -37,15 +37,38 @@ com.threkir.app.watchapp.WidgetsExtension  ← (when the complication ships)
 ## One-time Apple Developer Program setup
 
 1. **Pay $99/year for the Apple Developer Program.** Use a long-lived team mailbox, not a personal Apple ID. Apple's account recovery is brutal — it's worth the extra ~5 minutes of setup to use a shared account.
-2. **Create an organisational team** (Apple Developer → Membership). Personal accounts work but limit to 1 admin; an organisation lets multiple maintainers manage signing.
-3. **Create the App ID** at developer.apple.com → Identifiers:
+
+   **Creating that Apple Account — the parts that are irreversible or that fail enrollment.** The mailbox is the role identity; **the person is not.** First and last name must be the account holder's *legal* name, because Apple verifies it against the enrollment and a company name in those fields delays or fails it — and on an Individual enrollment that legal name becomes the public App Store seller name. Country/Region must match the billing address of the card paying the $99: it sets storefront, currency and tax treatment, and changing it later needs a zero balance and breaks anything subscribed. Birthday must be real and 18+ (the Program requires legal age of majority). The address has to be **receiving mail before you submit** — Apple verifies it with a code in the form itself.
+   **With no Apple hardware in the estate, the trusted phone number is the only 2FA channel there is** (codes otherwise go to a signed-in Apple device). So: a number that will still be yours in three years, not VoIP, recorded beside the credentials in Bitwarden, and add a **second** trusted number once the account exists — a lost phone is otherwise a lost developer team. Do **not** set a Recovery Key while there is one operator: it switches Apple's own account-recovery path off, so losing it is permanent, and there is no second admin to recover through.
+2. **Individual or Organization — enroll Individual first.** An Organization needs a D-U-N-S number for a **real legal entity** (a DBA or trade name is refused), and its legal name becomes the seller name; an Individual enrollment shows the account holder's legal name there instead — Apple offers individuals **no** alternate-developer-name option at all, and renaming the Apple Account does not change it. The asymmetry is worth knowing before anyone asks why the listing says a person: Apple refuses to *enroll* a DBA or trade name, but an enrolled **organization** may set its displayed developer name to a registered trade name — so a seller line reading `Threkir` needs an entity with a D-U-N-S first, and a registered trade name after it if the entity is not itself called Threkir. None of this touches the app name, which is `Threkir` on either membership. The reason to start Individual anyway is that the upgrade is an **in-place conversion of the same membership** — submit a request as founder/cofounder with the D-U-N-S and any business documents, allow days to weeks for Apple's legal review — so no app is ever transferred between teams. That matters more than it sounds: an app *transfer* requires generating a Sign-in-with-Apple transfer identifier **for every user in the database**, tearing down TestFlight, and passing an app-specific shared secret for the auto-renewable subscriptions. The conversion skips all of it. The direction that is **not** supported is Organization → Individual, which is what makes Individual-first the reversible order. (A later organisation *name* change resets `identifierForVendor`; nothing here reads it — device ids are self-generated UUIDs in `preferences.dart`.) The one real cost of Individual is that the developer portal's certificates, identifiers and keys are Account-Holder-only, so signing cannot be delegated.
+2b. **Record these the day enrollment completes, and set the renewal reminder.**
+   The **Enrollment ID** Apple hands back on submission is only a support
+   reference for a *pending* enrollment — keep it in the Bitwarden item's notes
+   until the membership is active, then it stops mattering. What is durable is
+   the **Team ID** (10 chars, Membership details — it is also `APNS_TEAM_ID`, so
+   it already has a home in `threkir/push-credentials.sops.yaml`), the Apple
+   Account address, and the **expiry date**. None of it is secret; it is account
+   metadata, so Bitwarden and the estate file, not a new sops entry.
+   The reminder is the part that earns its keep: renewal can only be done by the
+   Account Holder, auto-renew is widely reported to fail quietly, and an expired
+   membership **pulls every app from the App Store and locks Certificates,
+   Identifiers & Profiles** — already-installed copies keep running, but nothing
+   ships and no key can be rotated until it is paid. Whether an *existing* APNs
+   auth key keeps authenticating through a lapse is undocumented, so do not plan
+   to find out. Put a reminder ~3 weeks before expiry against the Apple Account
+   address.
+
+3. **Register the App Group first**, at developer.apple.com → Identifiers → **App Groups**: `group.com.threkir.app.activerun`. It is a separate identifier type, so it cannot be ticked on an App ID that does not yet have it registered. The id is **not** `group.com.threkir.app` — the canonical spelling is centralised in [`apps/watch_ios/WatchApp/ActiveRunBridge.swift`](../watch_ios/WatchApp/ActiveRunBridge.swift) and declared in `WatchApp.entitlements`; a mismatch silently shares nothing.
+4. **Create the App ID** at developer.apple.com → Identifiers → App IDs → App:
    - Bundle ID: `com.threkir.app` (Explicit)
-   - Capabilities: HealthKit, Sign in with Apple, Push Notifications, Background Modes (Location updates), Maps, Associated Domains (for universal links — optional)
-4. **Create the Watch App ID:**
+   - Capabilities: **HealthKit** (leave Clinical Health Records off — we read workouts, not records), **Sign in with Apple** (Configure → *Enable as a primary App ID*), **Push Notifications**, **App Groups** (select the group above), and **Associated Domains** only if universal links ship — nothing serves an `apple-app-site-association` today.
+   - **Not** Background Modes: it is not a portal capability at all. It lives in `Info.plist`'s `UIBackgroundModes`, already committed and guard-enforced by `scripts/check_ios_native_declarations.mjs` (decisions.md § 742).
+   - **Not** Maps: `com.apple.developer.maps` registers a *routing* app that publishes directions coverage. The watch mini-map draws our own polyline through MapKit, which needs no capability.
+5. **Create the Watch App ID:**
    - Bundle ID: `com.threkir.app.watchapp`
-   - Capabilities: HealthKit, Background Modes (Workout processing)
-5. **Provisioning profiles.** Create App Store distribution profiles for both bundle IDs. Set the team to your Developer Program team. Download the `.mobileprovision` files.
-6. **Create the App Store listing** at App Store Connect:
+   - Capabilities: **HealthKit**, **App Groups** (the same group — this is the side that actually declares it today; the phone's `Runner.entitlements` carries no app-group entitlement yet, so the bridge's phone half is still owed)
+6. **Provisioning profiles.** Create App Store distribution profiles for both bundle IDs. Set the team to your Developer Program team. Download the `.mobileprovision` files.
+7. **Create the App Store listing** at App Store Connect:
    - App information (name, primary category Health & Fitness, content rights)
    - App privacy (next section)
    - Pricing — Free, available worldwide minus the regions we're skipping
@@ -84,7 +107,8 @@ This is what lets CI upload to TestFlight without a maintainer's Apple ID passwo
 | `KEYCHAIN_PASSWORD` | a throwaway, gates the ephemeral keychain on the runner |
 | `APP_STORE_CONNECT_API_KEY_ID` | the Key ID |
 | `APP_STORE_CONNECT_API_ISSUER_ID` | the Issuer ID |
-| `APP_STORE_CONNECT_API_KEY_BASE64` | base64 of the `.p8` |
+| `APP_STORE_CONNECT_API_KEY_BASE64` | base64 of the App Store Connect `.p8` |
+| `GOOGLE_SERVICE_INFO_PLIST_BASE64` | base64 of `GoogleService-Info.plist` from the Firebase project's `com.threkir.app` iOS app. **Not optional, signing or not**: the Runner target copies that plist into the bundle, and the file is gitignored, so the workflow fails without it — deliberately, and before Xcode does. Runbook in [`docs/features/native_push.md` § Operator provisioning](../../docs/features/native_push.md#operator-provisioning-the-credential-gate) |
 
 ---
 
@@ -141,7 +165,7 @@ Required keys:
 - `WKCompanionAppBundleIdentifier` — `com.threkir.app`. Declared since
   2026-09-18, after the embed it describes actually existed; `WKWatchOnly`
   is gone, the two being mutually exclusive. That was step 3 of the
-  five-step sequence in decisions § 1256, and § 1656 records steps 1–4.
+  five-step sequence in decisions § 1256, and § 1657 records steps 1–4.
 
 ### Capabilities to enable in Signing & Capabilities
 
@@ -153,14 +177,17 @@ Required keys:
   step adds is the profile that carries the capability; after the first signed
   archive, verify with `codesign -d --entitlements :- <exported>.app` that
   `aps-environment` resolved to `production` rather than to the literal
-  `$(APS_ENVIRONMENT)`.
+  `$(APS_ENVIRONMENT)`. The capability is one of three separate things push
+  needs on this platform — the other two are the bundled
+  `GoogleService-Info.plist` (above) and the worker's APNs `.p8`, and each is
+  silent in its own way when missing.
 - Background Modes → Location updates + Audio (for TTS) + Background processing.
   **Not** Background fetch: `background_sync.dart` submits a
   `BGProcessingTaskRequest` on iOS, which `processing` authorises and `fetch`
   does not, and claiming a mode the binary never exercises is an App Review
   rejection cause. `scripts/check_ios_native_declarations.mjs` holds the plist
   to that (decisions.md § 742).
-- App Groups → `group.com.threkir.app` (shared between iOS app, watch app, and the future complication target — see [`apps/watch_ios/Complications/README.md`](../watch_ios/Complications/README.md))
+- App Groups → `group.com.threkir.app.activerun` (declared today only by the watch app; shared with the iOS app and the future complication target when their halves land — see [`apps/watch_ios/Complications/README.md`](../watch_ios/Complications/README.md))
 
 ---
 
@@ -307,9 +334,9 @@ Apple's appeal process is faster than Google's but still painful. Mitigations:
 
 ## Production readiness checklist
 
-- [ ] Apple Developer Program $99 paid + organisation team approved
+- [ ] Apple Developer Program $99 paid + enrollment approved
 - [ ] Bundle IDs registered at developer.apple.com (iOS + Watch)
-- [ ] Capabilities enabled on both bundle IDs (HealthKit, Sign in with Apple, Push, Background Modes, App Groups)
+- [ ] Capabilities enabled on both bundle IDs (HealthKit, Sign in with Apple, Push, App Groups — Background Modes is `Info.plist`, not a portal capability)
 - [ ] App Store Connect listing created (description, keywords, support URL, screenshots — required at iPhone 6.7", iPhone 5.5", iPad 12.9", Apple Watch screen sizes)
 - [ ] Privacy policy live at `threkir.com/privacy`
 - [ ] App Privacy nutrition label completed, matches policy

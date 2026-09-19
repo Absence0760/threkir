@@ -125,9 +125,17 @@ works from anywhere.
    `platform`. No row means the client leg, not the sending leg: on Android,
    the likeliest cause is an AAB built before the secret existed, since the
    Gradle apply is conditional and the release step only warns.
-3. **A notification delivers.** Trigger any notification (a kudos is easiest)
-   and watch `notifications.native_push_sent_at` / `web_push_sent_at` go from
-   null to stamped.
+3. **A notification delivers — and the kind you pick decides whether it can.**
+   `push_notifications` defaults to `important`, and `importantKinds`
+   (`mailer.go`) is exactly `event_reminder`, `event_cancel`, `plan_update`,
+   `message`, `data_export_ready`, `refund_failed`. A kudos is **not** in that
+   set, so testing with one on a default account produces no push and looks
+   identical to a bad credential. Either flip the pref to `all` on
+   `/settings/notifications` first, or pick a kind that passes on the default:
+   requesting a **data export** is the one a single account can trigger
+   unaided, and its `data_export_ready` notification is important. Then watch
+   `notifications.native_push_sent_at` / `web_push_sent_at` go from null to
+   stamped.
    **There is no historical flood to brace for, and the reason is the enqueue
    trigger rather than the handler.** `enqueue_notification_native_push_job()`
    inserts a job only for a recipient who *already* has an enabled

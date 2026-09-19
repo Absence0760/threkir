@@ -296,10 +296,18 @@
 <UnsavedChangesGuard isDirty={dirty.isDirty} />
 
 <div class="editor-form gym-editor">
-	<label class="field">
-		<span class="section-label">{t('gym.editor.titleLabel')}</span>
-		<input type="text" bind:value={title} placeholder={t('gym.editor.titlePlaceholder')} />
-	</label>
+	<div class="field">
+		<label>
+			<span class="section-label">{t('gym.editor.titleLabel')}</span>
+			<input
+				type="text"
+				bind:value={title}
+				placeholder={t('gym.editor.titlePlaceholder')}
+				aria-describedby="{uid}-title-hint"
+			/>
+		</label>
+		<span class="field-hint" id="{uid}-title-hint">{t('gym.editor.titleHint')}</span>
+	</div>
 
 	<datalist id="gym-exercise-suggestions">
 		{#each datalistNames as s (s)}
@@ -316,6 +324,7 @@
 					list="gym-exercise-suggestions"
 					bind:value={exercises[ei].name}
 					placeholder={t('gym.editor.exercisePlaceholder')}
+					aria-describedby="{uid}-exercise-hint"
 				/>
 				{#if entries.length > 0 || catalogueUnavailable}
 					<button
@@ -339,6 +348,9 @@
 					<span class="material-symbols">delete</span>
 				</button>
 			</div>
+			{#if ei === 0}
+				<span class="field-hint" id="{uid}-exercise-hint">{t('gym.editor.exerciseHint')}</span>
+			{/if}
 			<div class="set-grid">
 				<!-- Every caption but RPE's is hidden from assistive tech, because each
 				     input carries its own name; RPE's stays exposed so its definition
@@ -362,6 +374,7 @@
 								aria-label={t('gym.routine.setType')}
 								data-testid="gym-set-type"
 								bind:value={exercises[ei].sets[si].setType}
+								aria-describedby="{uid}-set-hint"
 							>
 								{#each SET_TYPES as st (st)}
 									<option value={st}>{setTypeLabel(st)}</option>
@@ -376,6 +389,7 @@
 								min="0"
 								aria-label={t('gym.reps')}
 								bind:value={exercises[ei].sets[si].reps}
+								aria-describedby="{uid}-set-hint"
 							/>
 						</label>
 						<label class="set-field">
@@ -387,6 +401,7 @@
 								step="0.5"
 								aria-label={t('gym.weightUnit', { unit: weightUnitLabel() })}
 								bind:value={exercises[ei].sets[si].weight}
+								aria-describedby="{uid}-set-hint"
 							/>
 						</label>
 						<!-- A div, not a label: the caption carries a disclosure button,
@@ -405,6 +420,7 @@
 								step="0.5"
 								aria-label={metricName('rpe')}
 								bind:value={exercises[ei].sets[si].rpe}
+								aria-describedby="{uid}-set-hint"
 							/>
 						</div>
 						<label class="set-field">
@@ -416,6 +432,7 @@
 								step="1"
 								aria-label={t('gym.duration')}
 								bind:value={exercises[ei].sets[si].duration}
+								aria-describedby="{uid}-set-hint"
 							/>
 						</label>
 						<button
@@ -430,6 +447,9 @@
 					</div>
 				{/each}
 			</div>
+			{#if ei === 0}
+				<span class="field-hint" id="{uid}-set-hint">{t('gym.editor.setHint')}</span>
+			{/if}
 			<button type="button" class="btn btn-sm btn-outline add-set" onclick={() => addSet(ei)}>
 				<span class="material-symbols">add</span>
 				{t('gym.editor.addSet')}
@@ -446,7 +466,7 @@
 		<input type="checkbox" bind:checked={isPublic} />
 		<span class="share-text">
 			<span class="share-title">{t('gym.editor.share')}</span>
-			<span class="share-hint">{t('gym.editor.shareHint')}</span>
+			<span class="hint">{t('gym.editor.shareHint')}</span>
 		</span>
 	</label>
 
@@ -605,7 +625,7 @@
 		font-weight: 500;
 		color: var(--color-text);
 	}
-	.share-hint {
+	.share-text .hint {
 		font-size: 0.85rem;
 		color: var(--color-text-secondary);
 	}

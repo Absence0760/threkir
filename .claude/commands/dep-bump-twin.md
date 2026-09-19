@@ -3,7 +3,9 @@ description: Mirror a Dependabot mobile-deps PR's pubspec changes from apps/mobi
 argument-hint: <PR-number-or-branch>
 ---
 
-Mirror a Dependabot `chore(mobile/deps)` PR's `apps/mobile_android/pubspec.yaml` (and `pubspec.lock`) changes into `apps/mobile_ios/pubspec.yaml` (and `pubspec.lock`), commit on top, and re-verify the twin invariant.
+Mirror a Dependabot `chore(mobile/deps)` PR's `apps/mobile_android/pubspec.yaml` change into `apps/mobile_ios/pubspec.yaml`, re-resolve the workspace, commit on top, and re-verify the twin invariant.
+
+**There is exactly one Dart lockfile in this repo, and it is at the root.** The Flutter side is a pub workspace — root `pubspec.yaml` declares `workspace:` over `apps/mobile_android`, `apps/mobile_ios` and the five `packages/`, and each member declares `resolution: workspace`. Pub resolves the whole workspace once and writes one `pubspec.lock` at the repo root; a per-app lockfile under `apps/mobile_android` or `apps/mobile_ios` does not exist and is not supposed to. The `.gitignore` comment saying the lockfile is committed is correct and honoured — by the root file.
 
 ## Why this exists
 
@@ -15,7 +17,7 @@ This command does the mirror in one step so the user doesn't context-switch betw
 
 **Right fit:**
 - A Dependabot PR exists on the branch (e.g. `dependabot/pub/apps/mobile_android/...`) or just merged.
-- The diff is limited to `apps/mobile_android/pubspec.yaml` and `apps/mobile_android/pubspec.lock`.
+- The diff is limited to `apps/mobile_android/pubspec.yaml` and the root `pubspec.lock`.
 
 **Wrong fit — refuse:**
 - The PR touches more than the two files above. Tell the user to invoke `/safe-edit` or apply manually — non-trivial review needed.
@@ -36,7 +38,7 @@ If `$ARGUMENTS` is empty:
 
 ### 2. Confirm the diff scope
 
-Run `git diff main...HEAD --name-only` (or `gh pr diff <num> --name-only`). Required: the only changed paths are `apps/mobile_android/pubspec.yaml` and (optionally) `apps/mobile_android/pubspec.lock`. Anything else and you abort — the PR isn't a pure dep bump.
+Run `git diff main...HEAD --name-only` (or `gh pr diff <num> --name-only`). Required: the only changed paths are `apps/mobile_android/pubspec.yaml` and (optionally) the root `pubspec.lock`. Anything else and you abort — the PR isn't a pure dep bump.
 
 ### 3. Mirror the pubspec.yaml
 
@@ -51,13 +53,13 @@ diff <(grep -vE '^(name|description):' apps/mobile_android/pubspec.yaml) \
 
 Must be empty. If it isn't, the YAML structure has drifted — stop and ask the user.
 
-### 4. Regenerate the iOS lockfile
+### 4. Re-resolve the workspace
 
 ```
-cd apps/mobile_ios && flutter pub get
+melos bootstrap
 ```
 
-This rewrites `apps/mobile_ios/pubspec.lock` against the same constraints. **Don't** copy `pubspec.lock` byte-for-byte from android — the lockfile encodes platform-specific dep resolutions and is allowed to differ. The constraint file (`pubspec.yaml`) is what must match; the lockfile must be a fresh resolve.
+Run it from the repo root, which is what CI does. One resolve covers every workspace member and rewrites the single root `pubspec.lock`. Do not `cd apps/mobile_ios && flutter pub get` expecting a lockfile there — a workspace member has no lockfile of its own, so the only thing to review after this step is the root `pubspec.lock` diff.
 
 ### 5. Re-run the twin invariant
 
@@ -74,13 +76,13 @@ If the user wants extra confidence, suggest they `flutter build ios --no-codesig
 
 ### 7. Commit on top of the Dependabot branch
 
-Stage `apps/mobile_ios/pubspec.yaml` and `apps/mobile_ios/pubspec.lock`. Commit message format:
+Stage `apps/mobile_ios/pubspec.yaml` and, if the re-resolve moved it, the root `pubspec.lock`. Commit message format:
 
 ```
 chore(mobile/deps): mirror <package> bump into mobile_ios
 
 Dependabot's pub ecosystem only tracks apps/mobile_android. Mirror
-the same constraint (and regenerate the iOS lockfile) so the
+the same constraint (and re-resolve the workspace) so the
 byte-identical-twin invariant (decisions.md §39) survives the merge.
 ```
 
@@ -90,6 +92,6 @@ Use the package + version range from the Dependabot PR title (e.g. `flutter_reac
 
 ## Notes
 
-- This command is read-write. It edits `apps/mobile_ios/pubspec.yaml` and runs `flutter pub get`.
+- This command is read-write. It edits `apps/mobile_ios/pubspec.yaml` and runs `melos bootstrap`.
 - If the bump is for an Android-only plugin (e.g. anything that exists only on the JVM side), the iOS mirror still needs the version line in lockstep — the dep just won't compile in for iOS. That's by design; don't try to be clever and skip the mirror.
-- If `flutter pub get` in step 4 fails (e.g. the new constraint is incompatible with iOS), report the error and stop. Do not loosen the constraint to make iOS compile — push back on the upstream Dependabot PR instead.
+- If the re-resolve in step 4 fails (e.g. the new constraint is unsatisfiable across the workspace), report the error and stop. Do not loosen the constraint to make iOS compile — push back on the upstream Dependabot PR instead.

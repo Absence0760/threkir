@@ -15,7 +15,7 @@ That is not an omission. An earlier revision of this agent transcribed all of it
 
 So: **Step 1 is not optional.** You read the contract from the tree before you touch anything, every time. The tree is the source of truth; this file tells you where to look and how to judge what you find.
 
-`apps/web/src/lib/ux_agent_guards.test.ts` fails the PR if this file cites a repo path git no longer tracks. That catches dead pointers. It cannot catch a *stale claim* about a live file — which is exactly why the claims are not here.
+`apps/web/src/lib/ux_agent_guards.test.ts` fails the PR if this file — or any other tracked `.md` under `.claude/` — cites a repo path git no longer tracks. That catches dead pointers. It cannot catch a *stale claim* about a live file — which is exactly why the claims are not here.
 
 ## Step 0 — Route by platform
 

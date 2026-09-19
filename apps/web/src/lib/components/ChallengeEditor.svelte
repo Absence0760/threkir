@@ -237,10 +237,19 @@
 <UnsavedChangesGuard isDirty={dirty.isDirty} />
 
 <form class="editor-form" onsubmit={submit}>
-	<label>
-		{m('challenges.titleLabel')}
-		<input type="text" bind:value={title} maxlength="120" required />
-	</label>
+	<div class="field">
+		<label>
+			{m('challenges.titleLabel')}
+			<input
+				type="text"
+				bind:value={title}
+				maxlength="120"
+				required
+				aria-describedby="challenge-title-hint"
+			/>
+		</label>
+		<span class="field-hint" id="challenge-title-hint">{m('challenges.titleHint')}</span>
+	</div>
 
 	<label>
 		{m('challenges.descriptionLabel')}
@@ -248,38 +257,53 @@
 	</label>
 
 	<div class="row-2">
-		<label>
-			{m('challenges.metricLabel')}
-			<select bind:value={metric} disabled={!!existing} onchange={onMetricChange}>
-				{#each METRICS as opt}
-					<option value={opt.id}>{m(opt.labelKey)}</option>
-				{/each}
-			</select>
-		</label>
-		<label>
-			{m('challenges.scopeLabel')}
-			<select bind:value={scope} disabled={!!existing}>
-				{#each SCOPES as opt}
-					<option value={opt.id}>{m(opt.labelKey)}</option>
-				{/each}
-			</select>
-		</label>
+		<div class="field">
+			<label>
+				{m('challenges.metricLabel')}
+				<select
+					bind:value={metric}
+					disabled={!!existing}
+					onchange={onMetricChange}
+					aria-describedby="challenge-metric-hint"
+				>
+					{#each METRICS as opt}
+						<option value={opt.id}>{m(opt.labelKey)}</option>
+					{/each}
+				</select>
+			</label>
+			<span class="field-hint" id="challenge-metric-hint">{m('challenges.metricHint')}</span>
+		</div>
+		<div class="field">
+			<label>
+				{m('challenges.scopeLabel')}
+				<select bind:value={scope} disabled={!!existing} aria-describedby="challenge-scope-hint">
+					{#each SCOPES as opt}
+						<option value={opt.id}>{m(opt.labelKey)}</option>
+					{/each}
+				</select>
+			</label>
+			<span class="field-hint" id="challenge-scope-hint">{m('challenges.scopeHint')}</span>
+		</div>
 	</div>
 
 	<div class="row-2">
-		<label>
-			{m('challenges.goalOptional')}
-			<span class="goal-row">
-				<input
-					type="number"
-					inputmode="decimal"
-					step="any"
-					bind:value={goalValue}
-					oninput={() => (goalError = null)}
-					aria-invalid={goalError !== null}
-				/>
-				<span class="goal-unit">{goalUnitSuffix}</span>
-			</span>
+		<div class="field">
+			<label>
+				{m('challenges.goalOptional')}
+				<span class="goal-row">
+					<input
+						type="number"
+						inputmode="decimal"
+						step="any"
+						bind:value={goalValue}
+						oninput={() => (goalError = null)}
+						aria-invalid={goalError !== null}
+						aria-describedby="challenge-goal-hint"
+					/>
+					<span class="goal-unit">{goalUnitSuffix}</span>
+				</span>
+			</label>
+			<span class="field-hint" id="challenge-goal-hint">{m('challenges.goalHint')}</span>
 			{#if goalPreview}
 				<span class="field-hint">{m('challenges.goalPreview', { value: goalPreview })}</span>
 			{/if}
@@ -291,48 +315,65 @@
 			{#if goalError}
 				<span class="error" role="alert">{goalError}</span>
 			{/if}
-		</label>
-		<label>
-			{m('challenges.activityTypeLabel')}
-			<select bind:value={activityType}>
-				<option value="">{m('challenges.activityAny')}</option>
-				{#each ACTIVITY_TYPES as t}
-					<option value={t}>{activityTypeLabel(t)}</option>
-				{/each}
-			</select>
-		</label>
+		</div>
+		<div class="field">
+			<label>
+				{m('challenges.activityTypeLabel')}
+				<select bind:value={activityType} aria-describedby="challenge-activity-hint">
+					<option value="">{m('challenges.activityAny')}</option>
+					{#each ACTIVITY_TYPES as t}
+						<option value={t}>{activityTypeLabel(t)}</option>
+					{/each}
+				</select>
+			</label>
+			<span class="field-hint" id="challenge-activity-hint">{m('challenges.activityTypeHint')}</span>
+		</div>
 	</div>
 
 	{#if scope !== 'club_vs_club' && !existing}
-		<label>
-			{m('challenges.clubLabel')}
-			<select bind:value={clubId}>
-				<option value="">{m('challenges.clubNone')}</option>
-				{#each adminClubs as c}
-					<option value={c.id}>{c.name}</option>
-				{/each}
-			</select>
-		</label>
+		<div class="field">
+			<label>
+				{m('challenges.clubLabel')}
+				<select bind:value={clubId} aria-describedby="challenge-club-hint">
+					<option value="">{m('challenges.clubNone')}</option>
+					{#each adminClubs as c}
+						<option value={c.id}>{c.name}</option>
+					{/each}
+				</select>
+			</label>
+			<span class="field-hint" id="challenge-club-hint">{m('challenges.clubHint')}</span>
+		</div>
 	{/if}
 
 	<div class="row-2">
-		<label>
-			{m('challenges.startLabel')}
-			<input type="datetime-local" bind:value={startsAt} disabled={!!existing} />
-		</label>
-		<label>
-			{m('challenges.endLabel')}
-			<input
-				type="datetime-local"
-				bind:value={endsAt}
-				oninput={() => (windowError = null)}
-				aria-invalid={windowError !== null}
-			/>
+		<div class="field">
+			<label>
+				{m('challenges.startLabel')}
+				<input
+					type="datetime-local"
+					bind:value={startsAt}
+					disabled={!!existing}
+					aria-describedby="challenge-window-hint"
+				/>
+			</label>
+		</div>
+		<div class="field">
+			<label>
+				{m('challenges.endLabel')}
+				<input
+					type="datetime-local"
+					bind:value={endsAt}
+					oninput={() => (windowError = null)}
+					aria-invalid={windowError !== null}
+					aria-describedby="challenge-window-hint"
+				/>
+			</label>
 			{#if windowError}
 				<span class="error" role="alert">{windowError}</span>
 			{/if}
-		</label>
+		</div>
 	</div>
+	<span class="field-hint" id="challenge-window-hint">{m('challenges.windowHint')}</span>
 
 	<div class="actions">
 		<button type="button" class="btn btn-secondary" onclick={() => oncancel?.()}>

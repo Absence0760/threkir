@@ -29519,6 +29519,21 @@ a script of its own because it is the same question — what does Xcode actually
 compile — asked across two projects instead of one, and because that keeps the
 CI wiring at one step. Fifteen cases pinned, including the two vacuity shapes.
 
+**`knownRegions` on the phone project is NOT a third locale-declaration site,
+and claim (15) deliberately does not pretend it is.** The watch target's
+`knownRegions` was extended to the catalogue's seven on the phone side too,
+because that is what Xcode writes and because the two projects reading the same
+way is the point. But it does nothing: stripped back to `(en, Base)` and the
+watch target genuinely rebuilt, all seven `.lproj` still land in the embedded
+bundle — `xcstringstool` compiles every language the catalogue holds, and
+`knownRegions` governs `.lproj` variant groups, which a String Catalog is not.
+Measured, not assumed, because `check_xcstrings_parity.sh` holds the WATCH
+project's `knownRegions` against the catalogue and the obvious next move was to
+add the phone's as a second rail. That rail would assert a dependency that does
+not exist, and a guard on a non-fact is worse than no guard: it teaches a future
+reader that the setting matters. `CFBundleLocalizations` is the declaration that
+does matter, and it lives in the one Info.plist both projects point at.
+
 Rung: **build-verified**, and for step 4 a simulator install and a green suite —
 not bench-verified and not device-verified. What a paired physical pair must
 still confirm is § 1256's step 5, and nothing in this entry claims it.

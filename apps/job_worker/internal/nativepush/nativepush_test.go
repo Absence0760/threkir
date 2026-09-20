@@ -2,8 +2,6 @@ package nativepush
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -36,15 +34,21 @@ func TestNewSender_BadFCMServiceAccountFailsLoud(t *testing.T) {
 	}
 }
 
-func TestNewSender_BadAPNSKeyFailsLoud(t *testing.T) {
-	_, err := NewSender(Config{
-		APNSKeyP8:  []byte("-----BEGIN PRIVATE KEY-----\nnotbase64\n-----END PRIVATE KEY-----"),
-		APNSKeyID:  "k",
-		APNSTeamID: "t",
-		APNSTopic:  "com.x.app",
-	}, nil)
-	if err == nil {
-		t.Fatalf("a malformed .p8 key must fail at construction")
+// Half a credential is no credential: a service-account JSON without the
+// project id (or the reverse) addresses no send URL, so it must stay inert
+// rather than construct a Sender that 404s every push.
+func TestNewSender_PartialCredentialsAreInert(t *testing.T) {
+	for _, cfg := range []Config{
+		{FCMServiceAccountJSON: []byte(`{"client_email":"a","private_key":"b"}`)},
+		{FCMProjectID: "test-project"},
+	} {
+		s, err := NewSender(cfg, nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if s != nil {
+			t.Fatalf("a half-configured Sender must be nil (fail-closed), got %#v", s)
+		}
 	}
 }
 
@@ -125,7 +129,7 @@ func TestSender_FCMRoundTrip(t *testing.T) {
 		}
 	})
 
-	status, err := s.Send(context.Background(), DeviceToken{Platform: "android", Token: "dev-tok"},
+	status, err := s.Send(context.Background(), "dev-tok",
 		Message{Title: "Hi", Body: "there", URL: "https://x/events/1", Tag: "notif-1"})
 	if err != nil {
 		t.Fatalf("send: %v", err)
@@ -152,7 +156,7 @@ func TestSender_FCMSurfaces404(t *testing.T) {
 		}
 		w.WriteHeader(http.StatusNotFound) // UNREGISTERED
 	})
-	status, err := s.Send(context.Background(), DeviceToken{Platform: "android", Token: "dead"}, Message{Title: "x"})
+	status, err := s.Send(context.Background(), "dead", Message{Title: "x"})
 	if err != nil {
 		t.Fatalf("send: %v", err)
 	}
@@ -161,39 +165,76 @@ func TestSender_FCMSurfaces404(t *testing.T) {
 	}
 }
 
-// An iOS token with no APNs transport configured but FCM present routes through
-// FCM (FCM proxies APNs for Apple).
-func TestSender_IOSFallsBackToFCM(t *testing.T) {
-	var sawSend bool
+// One body serves both platforms. The apns block is what carries the
+// notification to an Apple device once the .p8 is uploaded to the Firebase
+// project, and the two collapse keys must agree so an at-least-once retry
+// replaces the notification on either OS instead of stacking a second copy.
+func TestSender_PayloadCarriesBothPlatformLegs(t *testing.T) {
+	var gotBody []byte
 	s := newTestFCMSender(t, func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, "/token") {
 			_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "t", "expires_in": 3600})
 			return
 		}
-		sawSend = true
+		gotBody, _ = io.ReadAll(r.Body)
 		w.WriteHeader(http.StatusOK)
 	})
-	status, err := s.Send(context.Background(), DeviceToken{Platform: "ios", Token: "ios-tok"}, Message{Title: "x"})
+	status, err := s.Send(context.Background(), "ios-tok",
+		Message{Title: "Hi", Body: "there", URL: "https://x/events/1", Tag: "notif-n1"})
 	if err != nil {
 		t.Fatalf("send: %v", err)
 	}
-	if status != http.StatusOK || !sawSend {
-		t.Errorf("iOS token with FCM-only config should route through FCM")
+	if status != http.StatusOK {
+		t.Fatalf("want 200, got %d", status)
+	}
+
+	var body struct {
+		Message struct {
+			Android struct {
+				Notification struct {
+					Tag string `json:"tag"`
+				} `json:"notification"`
+			} `json:"android"`
+			APNS struct {
+				Headers map[string]string `json:"headers"`
+				Payload struct {
+					APS struct {
+						Sound string `json:"sound"`
+					} `json:"aps"`
+				} `json:"payload"`
+			} `json:"apns"`
+		} `json:"message"`
+	}
+	if err := json.Unmarshal(gotBody, &body); err != nil {
+		t.Fatalf("send body is not the FCM v1 shape: %v (%s)", err, gotBody)
+	}
+	if got := body.Message.APNS.Payload.APS.Sound; got != "default" {
+		t.Errorf("iOS plays no sound unless one is named, got %q", got)
+	}
+	androidTag := body.Message.Android.Notification.Tag
+	apnsCollapse := body.Message.APNS.Headers["apns-collapse-id"]
+	if androidTag != "notif-n1" || apnsCollapse != "notif-n1" {
+		t.Errorf("both collapse keys must carry the tag, got android=%q apns=%q", androidTag, apnsCollapse)
 	}
 }
 
-// A platform with no transport at all reports ErrPlatformNotConfigured.
-func TestSender_UnconfiguredPlatform(t *testing.T) {
-	// APNs-only sender, an Android token has nowhere to go.
-	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	der, _ := x509.MarshalPKCS8PrivateKey(key)
-	p8 := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})
-	apns, err := newAPNSTransport(p8, "kid", "team", "com.x.app", true, http.DefaultClient)
-	if err != nil {
-		t.Fatal(err)
+// An untagged message must not assert an empty collapse key — APNs rejects an
+// empty apns-collapse-id header rather than ignoring it.
+func TestSender_UntaggedMessageOmitsCollapseKeys(t *testing.T) {
+	var gotBody string
+	s := newTestFCMSender(t, func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/token") {
+			_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "t", "expires_in": 3600})
+			return
+		}
+		b, _ := io.ReadAll(r.Body)
+		gotBody = string(b)
+		w.WriteHeader(http.StatusOK)
+	})
+	if _, err := s.Send(context.Background(), "tok", Message{Title: "x"}); err != nil {
+		t.Fatalf("send: %v", err)
 	}
-	s := &Sender{apns: apns}
-	if _, err := s.Send(context.Background(), DeviceToken{Platform: "android", Token: "a"}, Message{}); err == nil {
-		t.Fatalf("an android token with APNs-only config should report not-configured")
+	if strings.Contains(gotBody, "apns-collapse-id") || strings.Contains(gotBody, `"android"`) {
+		t.Errorf("an untagged message should carry no collapse keys: %s", gotBody)
 	}
 }

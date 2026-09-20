@@ -78,14 +78,13 @@ A dedicated `e2e-test@gmail.com` test account. The actual id-token validation ha
 
 ### 2. Apple Sign-In — Apple Developer account
 
-**What's needed:**
-- Apple Developer Program ($99/year).
-- Identifier → App ID with Sign In with Apple capability.
-- Services ID for the web (`com.threkir.web`) — a separate identifier type from the App ID, with the App ID as its primary.
-- A **second** key with Sign In with Apple enabled; download the .p8. This is not the APNs key — one `.p8` per service, each downloadable once.
-- Supabase Dashboard → Authentication → Providers → Apple → Services ID + Team ID + Key ID + .p8 contents.
+**Provisioning lives in [`docs/ops/apple_provisioning.md`](../ops/apple_provisioning.md)** — the living runbook, with a status ledger, for every artifact the Apple membership feeds (APNs, Sign in with Apple, distribution). It is not restated here, because the two copies drifted the moment one was edited: this section used to say the `.p8` contents go into Supabase's Apple provider, and they do not — Apple's client secret is a JWT signed *with* the key, capped at six months, which is a recurring obligation a "what's needed" list has nowhere to put.
 
-**Status today:** Apple Sign-In button on the login page shows a "Soon" pill and the click handler surfaces a "coming soon" error message. Spec coverage of the soon-pill exists implicitly; the real flow is blocked here.
+**Status today:** the Developer Program is active (2026-09-19); the Apple-side identifiers are outstanding. The web code is done and fail-closed — `/login`'s Apple button runs `startOAuthSignIn('apple')` behind `PUBLIC_APPLE_AUTH_ENABLED`, sharing Google's handler so the 16+/ToS gates and the `/auth/callback` consent stash apply identically. Unset, which is the default everywhere including `.env.development`, the button keeps its label behind a "Soon" pill.
+
+**What a dev account buys you here: the Apple identity step, and nothing else.** Everything downstream of the provider redirect — `signInWithOAuth` → GoTrue authorize → callback `?code` → `exchangeCodeForSession` → session → the age/terms gate — is already exercised by the mock-OIDC lane (`e2e-web-sso`, see § 1). GoTrue special-cases `apple` exactly as it does `google`, so the mock stands in as `keycloak`. The un-exercised piece is the Apple account picker itself.
+
+**So this stays a manual, non-CI check**, and it cannot become anything else: Apple refuses an `http://` return URL, so no local stack can hold a Services ID that points at it. `apps/web/src/lib/core/oauth_provider_gates.test.ts` is the compensating guard — it reads the login page's source and fails if either provider stops picking its handler off its own flag, or if the consent gate stops preceding the redirect.
 
 ### 3. Strava — Strava API application + test account
 

@@ -111,11 +111,15 @@ directory):
 AWS_PROFILE=threkir sops --decrypt --extract '["google_service_info_plist_base64"]' ../../../infra-secrets/threkir/push-credentials.sops.yaml | base64 -d > ios/Runner/GoogleService-Info.plist
 ```
 
-A simulator cannot receive an APNs push at all — that needs a real device, the
-Push Notifications capability on the provisioning profile, and the worker's
-APNs `.p8`. Note that an Xcode-installed build is signed `development` and its
-token is only valid against the sandbox host, which the worker reaches only
-with `APNS_SANDBOX=1`; a TestFlight build is the production pair. See
+A simulator cannot receive a push at all — that needs a real device, the Push
+Notifications capability on the provisioning profile, and the APNs `.p8`
+uploaded to the Firebase project (the worker never holds it: iOS is delivered
+by FCM). An Xcode-installed build is signed `development` and a TestFlight one
+`production`, and the two APNs hosts reject each other's tokens — but FCM reads
+each token's own environment, so one key serves both and there is no
+worker-side setting to match. What must still match the build is the
+`aps-environment` entitlement, which the pbxproj pins per configuration
+(`decisions.md § 742`). See
 [`docs/features/native_push.md` § Operator provisioning](../../docs/features/native_push.md#operator-provisioning-the-credential-gate).
 
 ## Simulating GPS

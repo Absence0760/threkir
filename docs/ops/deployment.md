@@ -36,6 +36,10 @@ Per-service deep dives:
 - [`apps/mobile_ios/deployment.md`](../../apps/mobile_ios/deployment.md) (covers Apple Watch bundling)
 - [`apps/watch_wear/deployment.md`](../../apps/watch_wear/deployment.md)
 
+Cross-service operator runbooks:
+
+- [`apple_provisioning.md`](apple_provisioning.md) — every artifact the Apple Developer membership feeds (APNs, Sign in with Apple, distribution), in the only order that works, with a status ledger that is ticked as each step lands.
+
 ---
 
 ## Topology

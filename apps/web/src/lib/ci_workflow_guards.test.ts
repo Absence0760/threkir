@@ -61,6 +61,55 @@ test('release-web.yml runs the production-env guard before npm run build', () =>
 	}
 });
 
+test('release-web.yml threads every feature-flag env var into the build', () => {
+	// Reason: a fail-closed PUBLIC_*_ENABLED gate is only half a gate if the
+	// release build cannot see the variable. The workflow writes apps/web/.env
+	// from its own env block and the build step reads nothing else, so a flag
+	// missing from either the env mapping or the heredoc is permanently off —
+	// and an operator who sets the repo secret gets no change and no error.
+	// Eight of the ten flags were in exactly that state until 2026-09-19
+	// (decisions § 1683), including the Google one whose ADR called re-enabling
+	// "a one-variable flip".
+	//
+	// The set is DERIVED from the *_flag.ts modules rather than listed, so a
+	// new flag fails this test until it is wired, and a deleted one needs no
+	// edit here.
+	const flagDir = resolve(__dirname);
+	const vars = new Set<string>();
+	const walk = (dir: string) => {
+		for (const e of readdirSync(dir, { withFileTypes: true })) {
+			const p = resolve(dir, e.name);
+			if (e.isDirectory()) {
+				if (e.name !== 'node_modules') walk(p);
+			} else if (/_flag\.ts$/.test(e.name) && e.name !== 'env_flag.ts') {
+				for (const m of readFileSync(p, 'utf-8').matchAll(/env\.(PUBLIC_[A-Z0-9_]+)/g)) {
+					vars.add(m[1]);
+				}
+			}
+		}
+	};
+	walk(flagDir);
+	assert.ok(
+		vars.size >= 8,
+		`expected the *_flag.ts gate modules to name their PUBLIC_* vars, found ${vars.size}`,
+	);
+
+	const wf = read('../../.github/workflows/release-web.yml');
+	const missing: string[] = [];
+	for (const key of [...vars].sort()) {
+		const mapped = new RegExp(`${key}:\\s*\\$\\{\\{\\s*secrets\\.${key}\\s*\\}\\}`).test(wf);
+		const written = new RegExp(`${key}=\\$\\{${key}\\}`).test(wf);
+		if (!mapped) missing.push(`${key} (no env: mapping from the repo secret)`);
+		if (!written) missing.push(`${key} (not written into apps/web/.env)`);
+	}
+	assert.deepEqual(
+		missing,
+		[],
+		`release-web.yml cannot deliver these flags to a production build: ${missing.join(', ')}. ` +
+			`Add the secret to the .env-writing step's env block AND to its heredoc.`,
+	);
+});
+
 test('no PR-triggered workflow is scoped to a base branch, so a stacked PR is still gated', () => {
 	const dir = resolve(__dirname, '../../../..', '.github/workflows');
 	const exempt = new Set(['dependabot-auto-merge.yml']);

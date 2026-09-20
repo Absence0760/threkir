@@ -89,10 +89,11 @@ different transport:
   `device_tokens` row), the SAME `push_notifications` preference web-push gates on
   (one "push" channel covers browser + native — no separate pref), and a SEPARATE
   `native_push_sent_at` send-state guard. The handler (`handler_native_push.go`)
-  fans out over the user's enabled device tokens, routing on
-  `device_tokens.platform`: `android` → FCM HTTP v1, `ios` → APNs HTTP/2 (sender
-  package `internal/nativepush/`, stdlib + `golang-jwt`, no Firebase Admin SDK).
-  A dead token (FCM `UNREGISTERED` 404 / APNs 410) is pruned via
+  fans out over the user's enabled device tokens, sending one FCM HTTP v1
+  message per device — iOS included, since FCM forwards to Apple (sender
+  package `internal/nativepush/`, stdlib + `golang-jwt`, no Firebase Admin SDK;
+  `decisions.md § 1682`).
+  A dead token (FCM `UNREGISTERED` 404) is pruned via
   `clear_device_token`; a 429/5xx defers. Gated on operator-supplied
   Firebase/APNs credentials (below) — unset → jobs finish done, rows stay
   pending. `decisions.md § 161`.
@@ -452,12 +453,13 @@ Dashboard → Auth → Hooks in prod):
 - [~] **Native push (FCM / APNs)** — code complete, send gated; the open half is **Native push delivery** in [`followups.md`](../product/followups.md). Backend + client BUILT 2026-06-19 (migration
   `20270212_001`, `native_push` kind), **send gated on operator credentials**. Same
   `notifications` source of truth + sibling-consumer pattern the `web_push` kind
-  demonstrates; the FCM/APNs sender (`internal/nativepush/`) + handler
+  demonstrates; the FCM sender (`internal/nativepush/`) + handler
   (`handler_native_push.go`) + the mobile `firebase_messaging` device-token
   registration (`push_messaging_bridge.dart`, both twins) all ship. Going live is
-  blocked only on operator-supplied Firebase/APNs credentials on the worker
-  (`FCM_*` / `APNS_*`) + the per-app config files (`google-services.json` /
-  `GoogleService-Info.plist`); unset → jobs finish done, rows stay pending. roadmap
+  blocked only on operator-supplied Firebase credentials on the worker
+  (`FCM_*`) + the per-app config files (`google-services.json` /
+  `GoogleService-Info.plist`), plus — for Apple delivery — the APNs auth key
+  uploaded to the Firebase project; unset → jobs finish done, rows stay pending. roadmap
   Phase 4b. See the architecture sibling note above + `decisions.md § 161`.
 
 - [x] **Data-export-ready notification** — SHIPPED 2026-08-25 (migration
@@ -536,16 +538,16 @@ None of this sends in prod until an operator:
    subscribed with — apps/web's `PUBLIC_VAPID_PUBLIC_KEY`), `VAPID_PRIVATE_KEY`,
    and `VAPID_SUBJECT` (`mailto:` contact) on the worker. Until then `web_push`
    jobs finish done while leaving the notification rows pending.
-2c. (For **native push**) provisions a Firebase project + an APNs auth key, then:
-   on the **worker**, sets `FCM_SERVICE_ACCOUNT_JSON` + `FCM_PROJECT_ID` (Android)
-   and/or `APNS_KEY_P8` + `APNS_KEY_ID` + `APNS_TEAM_ID` + `APNS_TOPIC`
-   (+ `APNS_SANDBOX=1` for dev builds) (iOS); on the **mobile apps**, supplies
+2c. (For **native push**) provisions a Firebase project, then: on the
+   **worker**, sets `FCM_SERVICE_ACCOUNT_JSON` + `FCM_PROJECT_ID`, which serve
+   Android and iOS alike; on the **mobile apps**, supplies
    `google-services.json` and `GoogleService-Info.plist` as the
    `GOOGLE_SERVICES_JSON_BASE64` / `GOOGLE_SERVICE_INFO_PLIST_BASE64` repo
    secrets the release workflows decode into
    `apps/mobile_android/android/app/` and `apps/mobile_ios/ios/Runner/` (both
-   files are gitignored — public repo). Either credential group alone enables
-   that platform; neither set → `native_push` jobs finish done while leaving
+   files are gitignored — public repo); and, for **Apple delivery only**,
+   uploads the APNs auth key `.p8` into the Firebase project rather than to
+   the worker. Unset → `native_push` jobs finish done while leaving
    the rows pending, and the mobile bridge no-ops. A configured-but-invalid
    credential fails the worker loudly at startup. **The ordered runbook, with
    where each artifact lives and how to verify each leg, is
@@ -700,7 +702,7 @@ The code side is built and committed:
   (pref gate + payload), and the `internal/webpush/` RFC 8291/8292 sender.
   Native push: `handler_native_push.go` (reuses `push_render.go`'s `pushMode` /
   `shouldPush` pref gate + the shared title/body catalogue), and the
-  `internal/nativepush/` FCM HTTP v1 + APNs HTTP/2 sender (stdlib + `golang-jwt`).
+  `internal/nativepush/` FCM HTTP v1 sender (stdlib + `golang-jwt`).
   Weekly digest (behind the gate): `handler_weekly_digest.go` (gate + render),
   `digest_builder.go` (`EnqueueAllWeeklyDigests` — UNSCHEDULED),
   `internal/digesttoken/` (the stateless RFC 8058 HMAC token, now **stream-aware**:

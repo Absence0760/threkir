@@ -39,6 +39,7 @@ Per-service deep dives:
 Cross-service operator runbooks:
 
 - [`apple_provisioning.md`](apple_provisioning.md) — every artifact the Apple Developer membership feeds (APNs, Sign in with Apple, distribution), in the only order that works, with a status ledger that is ticked as each step lands.
+- [`google_provisioning.md`](google_provisioning.md) — the same shape for Google Sign-In: the consent screen, the two OAuth clients, the Supabase provider, and the repo secret plus tag that turn the button on. Independent of the Apple runbook in both directions.
 
 ---
 

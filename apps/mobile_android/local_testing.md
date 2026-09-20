@@ -116,14 +116,14 @@ Two ways to point a physical device at the local stack:
 
 Email/password sign-in works out of the box against any Supabase instance with no extra setup. Google Sign-In requires a one-time Google Cloud Console + Supabase dashboard configuration because Supabase validates the Google ID token against a specific OAuth client.
 
-Skip this section if you're only using email/password.
+Skip this section if you're only using email/password. This section is the **local** setup; the production ledger — which project, which SHA-1 under Play App Signing, which secret goes where — is [`docs/ops/google_provisioning.md`](../../docs/ops/google_provisioning.md).
 
 ### 1. Create Google Cloud OAuth credentials
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → your project (create one if needed) → **Credentials** → **Create credentials** → **OAuth client ID**.
 2. Create a **Web application** client. Name it "Run app — Supabase". No redirect URI is required for the native-ID-token flow, but Supabase needs this client's ID for token validation. Copy the **Client ID** — this is your `GOOGLE_WEB_CLIENT_ID`.
 3. Create a second OAuth client, this time **Android**. You need:
-   - **Package name**: `com.example.mobile_android` (see `apps/mobile_android/android/app/build.gradle.kts`)
+   - **Package name**: `com.threkir.app` (the `applicationId` in `apps/mobile_android/android/app/build.gradle.kts`)
    - **SHA-1 certificate fingerprint**: for debug builds, run:
      ```bash
      keytool -keystore ~/.android/debug.keystore -list -v \

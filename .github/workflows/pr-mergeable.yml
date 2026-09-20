@@ -34,6 +34,14 @@ name: pr-mergeable
 # check and is simply absent, which already blocks. The cost this addresses is
 # to the human and the agent reading the page.
 
+# NOTE: every `gh` call here passes `--repo "$GITHUB_REPOSITORY"`. Neither job
+# runs `actions/checkout` -- they need no working tree -- and `gh pr list` /
+# `gh pr view` resolve the repository from git remotes when not told, so
+# without it both die with `fatal: not a git repository`. That is what the
+# first real run of the push job did (2026-09-20). Adding a checkout would
+# also fix it and is the wrong trade: a clone per push to main, to run two
+# API calls.
+
 on:
   pull_request_target:
     types: [opened, reopened, synchronize]
@@ -65,7 +73,16 @@ jobs:
           # it is most likely to matter, which is the bug it exists for.
           state=UNKNOWN
           for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            state=$(gh pr view "$PR" --json mergeable --jq .mergeable 2>/dev/null || echo UNKNOWN)
+            # `gh` FAILING and GitHub answering UNKNOWN are different facts and
+            # must not collapse into one. Discarding stderr and defaulting to
+            # UNKNOWN made a dead `gh` report as "still being computed" for the
+            # full 60s and then blame GitHub -- which is what the first real run
+            # of this job did, on a base-branch copy that could not resolve the
+            # repository at all.
+            if ! state=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json mergeable --jq .mergeable 2>&1); then
+              echo "::error::Could not read PR #${PR} from the API, so whether ci.yml ran is unknown and this check cannot speak. This is NOT a conflict and NOT a slow mergeability computation -- gh itself failed: ${state}"
+              exit 1
+            fi
             if [ "$state" != "UNKNOWN" ]; then break; fi
             echo "mergeable is still being computed (attempt ${attempt}); waiting"
             sleep 6
@@ -97,17 +114,25 @@ jobs:
           # A base that moves makes a PR conflict without any PR event firing,
           # which is how four PRs sat untested for days. One sweep per push to
           # main; the open-PR count here is single digits, so this is cheap.
-          open=$(gh pr list --state open --json number,headRefOid --jq '.[] | "\(.number) \(.headRefOid)"')
+          if ! open=$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --json number,headRefOid --jq '.[] | "\(.number) \(.headRefOid)"' 2>&1); then
+            echo "::error::Could not list open PRs, so this sweep posted nothing and no PR learned whether ci.yml ran on it: ${open}"
+            exit 1
+          fi
           if [ -z "$open" ]; then
             echo "No open PRs."
             exit 0
           fi
           failed=0
+          posted=0
           while read -r number sha; do
             [ -n "$number" ] || continue
             state=UNKNOWN
             for _ in 1 2 3 4 5; do
-              state=$(gh pr view "$number" --json mergeable --jq .mergeable 2>/dev/null || echo UNKNOWN)
+              # Same rule as the other job: a dead `gh` is not an UNKNOWN.
+              if ! state=$(gh pr view "$number" --repo "$GITHUB_REPOSITORY" --json mergeable --jq .mergeable 2>&1); then
+                echo "::error::Could not read PR #${number} from the API: ${state}. This is not a slow mergeability computation; the sweep cannot speak for any PR if it cannot read them."
+                exit 1
+              fi
               if [ "$state" != "UNKNOWN" ]; then break; fi
               sleep 6
             done
@@ -133,11 +158,21 @@ jobs:
               echo "::warning::PR #${number}: could not post the check-run to ${sha}."
               failed=$((failed + 1))
             else
+              posted=$((posted + 1))
               echo "PR #${number}: ${state} -> ${conclusion}"
             fi
           done <<< "$open"
-          # One PR's API hiccup must not fail this sweep for the others, but a
-          # sweep where every post failed is a broken workflow, not bad luck.
+          # One PR's API hiccup must not fail the sweep for the others. A sweep
+          # where EVERY post failed is a broken workflow, not bad luck -- a
+          # revoked `checks: write`, a changed API shape, a token that is not a
+          # GitHub App installation token (the Checks API refuses anything
+          # else with a 403). Warning on that would leave this job green while
+          # it posted nothing, forever: a guard that fails open, inside the
+          # workflow written because an absent signal reads as a healthy one.
+          if [ "$posted" -eq 0 ] && [ "$failed" -gt 0 ]; then
+            echo "::error::Every check-run post in this sweep failed (${failed} of ${failed}). This is not one PR's bad luck -- the job can read the PRs and cannot write a check for any of them. Check that the checks:write permission is still granted and that the Checks API still accepts this body; until it does, nothing tells a reader when ci.yml has not run."
+            exit 1
+          fi
           if [ "$failed" -gt 0 ]; then
-            echo "::warning::${failed} check-run post(s) failed; the PRs above keep whatever check they already had."
+            echo "::warning::${failed} of $((failed + posted)) check-run post(s) failed; those PRs keep whatever check they already had."
           fi

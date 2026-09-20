@@ -29844,7 +29844,7 @@ The collision itself is fixed by moving `RunLaps.swift` to `...001B` rather than
 
 **The flag stays unset in `.env.development`, which is where it differs from Google's.** Google is on in dev so the smoke and age-gate specs can click it. Apple cannot be: GoTrue special-cases `google` and `apple` and validates them against the real providers, which is why `tests-e2e/sso` stands in as the generic `keycloak`, and the local stack's `[auth.external.apple]` is `enabled = false`. An enabled dev button would surface precisely the opaque provider error the flag exists to prevent. So the enabled path has no e2e at all, and `oauth_provider_gates.test.ts` reads the page source instead — that each button picks its handler off its own flag, that the pill is conditional on that flag, and that the gate and the consent stash both run *before* the redirect, since after it the account already exists. A source-level guard is worth less than an e2e; it is worth considerably more than nothing, which is what the only-testable-in-production path otherwise has.
 
-## 1680. Google sign-in gets its own runbook, and its flag is a repo secret while Android's client id is an environment one
+## 1685. Google sign-in gets its own runbook, and its flag is a repo secret while Android's client id is an environment one
 
 Google was the only credential thread in the estate with no runbook, no
 `followups.md` entry and no ledger, which is why it sat invisible while the
@@ -29869,8 +29869,9 @@ button greyed out, a divergence between the two sites that presents as a broken
 preview rather than as a scoping mistake. It is a **repository** secret for that
 reason. `release-android.yml` declares `environment: production` flatly and has
 no second leg, so `MOBILE_GOOGLE_WEB_CLIENT_ID` belongs there, beside the
-keystore secrets it is useless without. Both are still inert until
-[§ 1678](#1678-eight-of-the-ten-public-feature-flags-could-not-be-turned-on-in-production-and-the-adr-for-one-of-them-called-it-a-one-variable-flip)'s threading reaches `main`.
+keystore secrets it is useless without. Both reach a build now —
+[§ 1683](#1683-eight-of-the-ten-public-feature-flags-could-not-be-turned-on-in-production-and-the-adr-for-one-of-them-called-it-a-one-variable-flip)'s threading landed on `main` in #966 — so for the
+first time setting either secret does something.
 
 **Two facts the runbook states because getting either wrong is silent.** A
 Firebase project *is* a Google Cloud project — one id, one number, two consoles

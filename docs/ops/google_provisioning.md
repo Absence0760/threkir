@@ -27,7 +27,7 @@ Last moved: **2026-09-20**.
 | 2 | **Web** OAuth client | Supabase provider + `MOBILE_GOOGLE_WEB_CLIENT_ID` | ☐ |
 | 3 | Supabase Google provider enabled | Supabase dashboard | ☐ |
 | 4 | `PUBLIC_GOOGLE_AUTH_ENABLED` truthy | GitHub repo secret | ☐ |
-| 5 | PR #966 merged (threads the flag into the build) | `main` | ☐ |
+| 5 | Flag threaded into `release-web.yml` | `main` | **Done 2026-09-20** — #966 |
 | 6 | `web@<version>` tag | Release | ☐ — **web sign-in is live here** |
 | 7 | **Android** OAuth client (package + SHA-1) | GCP console | ☐ |
 | 8 | `google-services.json` refreshed | `GOOGLE_SERVICES_JSON_BASE64` (env `production`) | ☐ |
@@ -142,17 +142,20 @@ The flag itself is
 is fail-closed: unset, empty, `false` and `0` all mean off, and the button keeps
 its label behind a "Soon" pill.
 
-## 5. Merge the flag threading
+## 5. The flag threading — done
 
-**`origin/main`'s `release-web.yml` contains zero occurrences of
-`PUBLIC_GOOGLE_AUTH_ENABLED`.** The workflow writes `apps/web/.env` from its own
-`env:` block and the build reads nothing else, so until
-[PR #966](https://github.com/Absence0760/threkir/pull/966) lands the secret from
-step 4 is inert however it is set — the § 1678 failure, which is what
+**Done 2026-09-20**, in [#966](https://github.com/Absence0760/threkir/pull/966).
+Recorded because it was a prerequisite nobody could see: `release-web.yml`
+writes `apps/web/.env` from its own `env:` block and the build reads nothing
+else, so while `main` carried zero occurrences of `PUBLIC_GOOGLE_AUTH_ENABLED`
+the step-4 secret was inert however it was set — the
+[§ 1683](../architecture/decisions.md) failure, which
 `ci_workflow_guards.test.ts` now derives from the `*_flag.ts` modules to stop
 happening silently.
 
-Nothing else in this runbook is blocked on that PR.
+Verify before blaming step 4 if the button stays grey:
+`git show origin/main:.github/workflows/release-web.yml | grep -c PUBLIC_GOOGLE_AUTH_ENABLED`
+must print **2** — the mapping and the heredoc both.
 
 ## 6. Tag the web release
 

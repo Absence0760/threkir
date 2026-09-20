@@ -37,7 +37,9 @@ final class WorkoutManagerRecoveryTests: XCTestCase {
             trackPointCount: 2,
             cacheFileURL: store.trackFileURL,
             averageBPM: 148.0,
-            hrCoverage: 0.75
+            hrCoverage: 0.75,
+            steps: nil,
+            laps: nil
         ))
         defer { store.clear() }
 
@@ -73,7 +75,9 @@ final class WorkoutManagerRecoveryTests: XCTestCase {
         store.write(checkpoint: RunCheckpoint(
             id: id, startedAt: Date(), distanceMetres: 100, activeDurationSeconds: 60,
             pausedIntervalSeconds: 0, trackPointCount: 1, cacheFileURL: store.trackFileURL, averageBPM: nil,
-            hrCoverage: nil
+            hrCoverage: nil,
+            steps: nil,
+            laps: nil
         ))
         defer { store.clear() }
 

@@ -26,6 +26,18 @@
         "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir guarda os dados de treino no Apple Saúde para que as suas corridas fiquem junto das outras atividades físicas." } }
       }
     },
+    "NSMotionUsageDescription" : {
+      "comment" : "Purpose string for the Motion & Fitness prompt raised by Pedometer when a run starts. Shown on the wrist the first time a run is recorded.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Threkir zählt deine Schritte während eines Laufs, damit Schrittfrequenz und Gesamtschritte mit dem Lauf gespeichert werden." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Threkir counts the steps you take during a run so your cadence and step total are saved with it." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Threkir cuenta los pasos que das durante una carrera para guardar la cadencia y el total de pasos junto con ella." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Threkir compte vos pas pendant une course afin d'enregistrer votre cadence et votre nombre total de pas avec celle-ci." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Threkir はラン中の歩数を計測し、ケイデンスと総歩数をランと一緒に保存します。" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir conta os passos que você dá durante a corrida para salvar a cadência e o total de passos junto com ela." } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir conta os passos que dá durante a corrida para guardar a cadência e o total de passos com ela." } }
+      }
+    },
     "NSLocationWhenInUseUsageDescription" : {
       "comment" : "Purpose string for the foreground location prompt raised by WorkoutManager's embedded CLLocationManager at the start of a run.",
       "localizations" : {

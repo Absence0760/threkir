@@ -34,6 +34,14 @@ name: pr-mergeable
 # check and is simply absent, which already blocks. The cost this addresses is
 # to the human and the agent reading the page.
 
+# NOTE: every `gh` call here passes `--repo "$GITHUB_REPOSITORY"`. Neither job
+# runs `actions/checkout` -- they need no working tree -- and `gh pr list` /
+# `gh pr view` resolve the repository from git remotes when not told, so
+# without it both die with `fatal: not a git repository`. That is what the
+# first real run of the push job did (2026-09-20). Adding a checkout would
+# also fix it and is the wrong trade: a clone per push to main, to run two
+# API calls.
+
 on:
   pull_request_target:
     types: [opened, reopened, synchronize]
@@ -65,7 +73,7 @@ jobs:
           # it is most likely to matter, which is the bug it exists for.
           state=UNKNOWN
           for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            state=$(gh pr view "$PR" --json mergeable --jq .mergeable 2>/dev/null || echo UNKNOWN)
+            state=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json mergeable --jq .mergeable 2>/dev/null || echo UNKNOWN)
             if [ "$state" != "UNKNOWN" ]; then break; fi
             echo "mergeable is still being computed (attempt ${attempt}); waiting"
             sleep 6
@@ -97,7 +105,7 @@ jobs:
           # A base that moves makes a PR conflict without any PR event firing,
           # which is how four PRs sat untested for days. One sweep per push to
           # main; the open-PR count here is single digits, so this is cheap.
-          open=$(gh pr list --state open --json number,headRefOid --jq '.[] | "\(.number) \(.headRefOid)"')
+          open=$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --json number,headRefOid --jq '.[] | "\(.number) \(.headRefOid)"')
           if [ -z "$open" ]; then
             echo "No open PRs."
             exit 0
@@ -107,7 +115,7 @@ jobs:
             [ -n "$number" ] || continue
             state=UNKNOWN
             for _ in 1 2 3 4 5; do
-              state=$(gh pr view "$number" --json mergeable --jq .mergeable 2>/dev/null || echo UNKNOWN)
+              state=$(gh pr view "$number" --repo "$GITHUB_REPOSITORY" --json mergeable --jq .mergeable 2>/dev/null || echo UNKNOWN)
               if [ "$state" != "UNKNOWN" ]; then break; fi
               sleep 6
             done

@@ -62,4 +62,42 @@ test.describe('/settings — side-nav structure', () => {
 			/active/
 		);
 	});
+
+	test('side-nav stays pinned to the viewport as the page scrolls', async ({
+		page
+	}) => {
+		// The rail was a plain flex item next to the content column, so it
+		// took the column's height and scrolled away with it: on a long page
+		// you lost the section switcher and had to scroll back up to change
+		// section, while the app's own rail — `position: fixed` — stayed put
+		// a few hundred pixels to its left.
+		await page.goto('/settings/account');
+
+		const nav = page.locator('.settings-nav');
+		await expect(nav).toBeVisible({ timeout: 10_000 });
+
+		const viewportHeight = page.viewportSize()?.height ?? 0;
+		expect(viewportHeight).toBeGreaterThan(0);
+
+		// /settings/account is the longest settings surface, which is what
+		// made the unpinned rail obvious. If it ever stops overflowing, this
+		// test proves nothing and should be pointed at whichever page does.
+		const scrollable = await page.evaluate(
+			() => document.documentElement.scrollHeight - window.innerHeight
+		);
+		expect(scrollable).toBeGreaterThan(200);
+
+		// The load-bearing assertion. Stretched to the content column the
+		// rail was as tall as the document; bounded to the viewport it can
+		// pin, and `.legal-links`' `margin-top: auto` resolves against a box
+		// the reader can actually see the foot of.
+		const box = await nav.boundingBox();
+		expect(box).not.toBeNull();
+		expect(box!.height).toBeLessThanOrEqual(viewportHeight + 1);
+
+		await page.evaluate(() =>
+			window.scrollTo(0, document.documentElement.scrollHeight)
+		);
+		await expect(nav.locator('a[href="/settings/account"]')).toBeInViewport();
+	});
 });

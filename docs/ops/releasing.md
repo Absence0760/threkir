@@ -63,6 +63,20 @@ and `apps/mobile_ios/deployment.md` keeps "Watch target builds clean from
 `mobile_ios@*` release ships the phone app alone** -- do not submit one to
 App Review believing the watch app goes with it.
 
+That bundling is real as of 2026-09-18 and was not before —
+`Runner.xcodeproj` referenced nothing under `apps/watch_ios/` until
+[decisions § 1679](../architecture/decisions.md) added a `WatchApp`
+target and an Embed Watch Content phase. **Verified on this Mac** (Xcode
+26.4): `flutter build ios --release --no-codesign` puts
+`Runner.app/Watch/WatchApp.app` in place with `CFBundleDisplayName =
+Threkir`, `WKCompanionAppBundleIdentifier = com.threkir.app`, all seven
+`.lproj` compiled, and the same `0.1.0` version on both bundles — that
+last one matters, because Apple rejects an upload whose watch app and
+companion disagree. **Not verified, and device-gated:** a signed
+`flutter build ipa` (no distribution certificate on this workstation) and
+one run syncing end to end from a paired physical watch, which is § 1256
+step 5 and the one checkbox nobody has been able to tick.
+
 ## Cutting a release
 
 ```bash

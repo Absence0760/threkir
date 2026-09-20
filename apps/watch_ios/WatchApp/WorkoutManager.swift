@@ -18,6 +18,12 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var distanceMetres: Double = 0
     @Published var currentPace: Double? = nil
 
+    /// What the runner picked before starting. Drives both the
+    /// `HKWorkoutConfiguration` the session is opened with and the
+    /// `activity_type` the finished run is stamped with — see
+    /// `RunActivityType`.
+    @Published var activityType: RunActivityType = .run
+
     /// Rolling window of the most recent GPS fixes, kept only to compute
     /// live pace and the per-fix distance delta. The full track is
     /// streamed to disk by `CheckpointStore`; holding the whole thing in
@@ -121,6 +127,9 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         let trackFileURL: URL
         let trackPointCount: Int
         let averageBPM: Double?
+        /// What the runner picked before starting, or what a recovered
+        /// checkpoint recorded. Rides to the row as `activity_type`.
+        let activityType: RunActivityType
         /// The share of the run's active time the heart-rate sensor was
         /// delivering, or nil when nothing measured it. Taken from the SAME
         /// `heartRateClaim` call as `averageBPM` — the two are one statement
@@ -281,7 +290,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         locationManager.requestWhenInUseAuthorization()
         locationManager.allowsBackgroundLocationUpdates = true
         startLocationUpdates()
-        healthKit.startWorkout()
+        healthKit.startWorkout(activityType: activityType.healthKitActivityType)
 
         let start = Date()
         startDate = start
@@ -415,6 +424,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             trackFileURL: store?.trackFileURL ?? CheckpointStore.trackFile(runId: runId),
             trackPointCount: trackPointCount,
             averageBPM: claim.averageBPM,
+            activityType: activityType,
             hrCoverage: claim.coverage,
             steps: steps,
             laps: RunLaps.splits(
@@ -756,7 +766,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             averageBPM: claim.averageBPM,
             hrCoverage: claim.coverage,
             steps: steps,
-            laps: lapMarks
+            laps: lapMarks,
+            activityType: activityType.rawValue
         )
         store.write(checkpoint: cp)
         // Match the track's crash-durability window to the checkpoint's.
@@ -784,6 +795,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             // Restored from the checkpoint so a recovered run keeps its
             // heart-rate summary instead of dropping to "— bpm".
             averageBPM: cp.averageBPM,
+            activityType: RunActivityType.parse(cp.activityType),
             // A checkpoint from a build that never carried the field decodes
             // as nil, and nil rides through to the row as an OMITTED key —
             // never as a zero, which would claim the sensor delivered nothing.

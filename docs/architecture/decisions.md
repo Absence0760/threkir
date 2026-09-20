@@ -29723,6 +29723,103 @@ The envelope is the part that was not optional. `docs/backend/metadata.md` recor
 
 What is verified and what is not, precisely. `xcodebuild test` on the watchOS 26.4 simulator covers the split arithmetic, the envelope's plist-validity and key names, both checkpoint round-trips and both recovery paths (243 cases, up from 225). **No pedometer has delivered a sample to this code**: a watchOS simulator has none, so `CMPedometer` itself sits at the rung below build-verified and the parity cell is `Partial`, not `✓`. `NSMotionUsageDescription` is a new `Info.plist` key with no `InfoPlist.xcstrings` beside it yet, so the Motion & Fitness prompt is English on all seven locales until that catalogue lands — the same gap the four existing purpose strings carry, widened by one rather than introduced.
 
+## 1679. The Apple Watch app is a target of the phone project now, referenced not copied, and one guard holds the two projects to each other
+
+§ 1256 named five things a Mac had to confirm, in order, and had no Mac. This
+round had one (Xcode 26.4, watchOS 26.4 simulator runtime), and steps 1–4 are
+done in that order.
+
+**Step 1 was already true and had never been read.** `plutil -p` on the built
+`WatchApp.app` shows `CFBundleDisplayName = Threkir` — the `GENERATE_INFOPLIST_FILE
+= NO` fix § 1256 made really did land; nobody had looked at a built product to
+say so. **Step 2 is the change.** `apps/mobile_ios/ios/Runner.xcodeproj` gains a
+`WatchApp` native target whose Sources and Resources phases point at the
+existing files under `apps/watch_ios/WatchApp/` — **referenced, never copied,
+one copy on disk** — plus an Embed Watch Content copy phase on `Runner`
+(`dstSubfolderSpec 16`, `$(CONTENTS_FOLDER_PATH)/Watch`) and a target dependency
+ordering the two. `WatchApp.xcodeproj` stays exactly as it was, because it is
+the test host `test-watch-ios` builds and there is no reason to make the one job
+that compiles this tier depend on a Flutter workspace. **Step 3 follows the
+build**: `WKWatchOnly` is out and `WKCompanionAppBundleIdentifier =
+com.threkir.app` is in, which claim (10) now demands rather than refuses.
+
+**Step 4 settled the question § 1256 could not.** Whether LaunchServices refuses
+a companion-declaring bundle on an unpaired watch simulator was the stated
+unknown, and it is the whole reason the flip could not be reasoned to. Measured
+on a watch simulator created for the purpose and confirmed to be in no pair:
+the app installs, launches as the test host, and all 225 `WatchAppTests` pass.
+Step 5 — one run syncing end to end on paired physical hardware — is untouched
+and stays device-gated.
+
+**The embedded bundle's version is Flutter's now.** The watch plist carried a
+literal `1.0` / `1` against the phone's `$(FLUTTER_BUILD_NAME)`, which is an
+upload rejection the moment the two ship in one `.ipa` (Apple requires the
+watch app's `CFBundleShortVersionString` and `CFBundleVersion` to equal its
+companion's). The plist reads `$(MARKETING_VERSION)` / `$(CURRENT_PROJECT_VERSION)`
+instead — values `WatchApp.xcodeproj` already sets, so the standalone build is
+unchanged — and `apps/mobile_ios/ios/Flutter/WatchApp.xcconfig` maps them onto
+Flutter's on the phone side. That xcconfig includes `Generated.xcconfig` and
+nothing else: `Debug.xcconfig` / `Release.xcconfig` pull in the Pods xcconfigs,
+which are iOS-only and would not link on watchOS.
+
+**Two projects describing one app is a drift hazard, so claim (15) holds them
+together.** It requires the same `Sources` and `Resources` membership for the
+`WatchApp` target in both, the same bundle-defining settings, both
+`INFOPLIST_FILE` / `CODE_SIGN_ENTITLEMENTS` resolving to the one committed file,
+and the Embed Watch Content phase still there with its dependency. Every one of
+those fails silently otherwise: a source in `WatchApp.xcodeproj` alone is
+exercised by `test-watch-ios` and absent from every `.ipa`; a source in
+`Runner.xcodeproj` alone ships to a wrist compiled by nothing that runs a test;
+and deleting the copy phase un-ships the entire watch tier while both projects
+build, both suites pass, and claim (10) then reads the companion key as the
+defect rather than the missing embed. It lives beside claim (13) rather than in
+a script of its own because it is the same question — what does Xcode actually
+compile — asked across two projects instead of one, and because that keeps the
+CI wiring at one step. Fifteen cases pinned, including the two vacuity shapes.
+
+**`knownRegions` on the phone project is NOT a third locale-declaration site,
+and claim (15) deliberately does not pretend it is.** The watch target's
+`knownRegions` was extended to the catalogue's seven on the phone side too,
+because that is what Xcode writes and because the two projects reading the same
+way is the point. But it does nothing: stripped back to `(en, Base)` and the
+watch target genuinely rebuilt, all seven `.lproj` still land in the embedded
+bundle — `xcstringstool` compiles every language the catalogue holds, and
+`knownRegions` governs `.lproj` variant groups, which a String Catalog is not.
+Measured, not assumed, because `check_xcstrings_parity.sh` holds the WATCH
+project's `knownRegions` against the catalogue and the obvious next move was to
+add the phone's as a second rail. That rail would assert a dependency that does
+not exist, and a guard on a non-fact is worse than no guard: it teaches a future
+reader that the setting matters. `CFBundleLocalizations` is the declaration that
+does matter, and it lives in the one Info.plist both projects point at.
+
+Rung: **build-verified**, and for step 4 a simulator install and a green suite —
+not bench-verified and not device-verified. What a paired physical pair must
+still confirm is § 1256's step 5, and nothing in this entry claims it.
+
+## 1680. The Apple Watch's stop is held rather than confirmed, and its activity picker configures HealthKit as well as the row
+
+Three of the eleven rows Wear OS was ahead on closed together, and each turned on a judgement worth recording rather than on the port itself.
+
+**Stop is gated on a hold, not a dialog.** Claim (8) of `scripts/check_watch_ios_source.mjs` has always exempted the Stop button, correctly: it destroys nothing — `PostRunView` still holds the finished run, its on-disk track and a Sync Run button — so under `conventions.md` § Destructive actions it earns one guard, and a confirmation is the wrong one. What it ends is the *recording*, on a wrist, where a sleeve brushing the screen is the likeliest way for that to happen, which is why Wear OS has required an 800 ms press since it shipped. Both stop controls take the hold — the running screen's and the paused screen's, which are one screen on Wear and two here. Nothing in Swift can tell a `Button` wired to `stop()` from one wired to a hold, so claim (15) now reads that directly (no `Button` action may call `workoutManager.stop()`, one `HoldToStopButton` per call site, `HoldToStop.isComplete` still the thing that fires), and claim (8)'s `UNGUARDED_DESTRUCTIVE` register retired with it — its only entry named the button that no longer exists, and a register whose last entry is stale is a hole nobody can see. VoiceOver activates the control directly: a hold is not a gesture the rotor can perform, so holding the assistive path to it would make Stop unreachable rather than safer.
+
+**The activity picker configures the `HKWorkoutConfiguration`, not just `metadata.activity_type`.** A stamp alone would leave Health scoring a bike ride as a run, which is the number the runner's own rings and their doctor read. `hike` maps to `HKWorkoutActivityType.running` rather than `.hiking`, because the product's word for that value is "Trail run" everywhere it is shown (§ 1155) — someone who picks it is running, and filing it as a hike reports a runner's energy expenditure as a walker's. The finer classification lives on our row, which is the only place it exists. The choice also rides the crash checkpoint, mirroring Wear's `Checkpoint.activityType`, so a recovered run keeps the activity it was recorded as instead of reverting to a run; an unknown token parses to `run` rather than dropping the recovery, because a recovered run is worth more than its classification.
+
+**The activity words take namespaced catalog keys, against this catalog's own convention.** Every other watchOS String Catalog key is its English source string, and `"Run"` is already one of them — the complication's idle label, translated `Lauf` / `Correr` / `ラン`, which are exactly the abbreviated wrist forms § 713 removed from the activity vocabulary. One English word, two meanings, two translations, so `activityType.<value>` carries an explicit `en` localization rather than colliding. `ActivityTypeVocabularyTests.swift` is the fourth platform guard on this vocabulary (after Dart, TypeScript and Kotlin): it reads the value set out of the migration, asserts each of the seven locales carries a word, and asserts that word EQUALS the ARB's and the web catalogue's. It is a Swift test rather than a claim in the node guard because it compares four catalogues in three formats and `MetadataRegistryTests` had already established that a watchOS test can read the repo through `#filePath`. Neither wrist offers `stroller`, the fifth CHECK value — on Wear it is reachable only because `default_activity_type` primes the chip from the phone's settings bag, and no such push reaches this watch — and the omission is declared with its reason so a widened CHECK fails rather than passing silently.
+
+The countdown needed no such call, but note one difference from Wear that the row now states: Wear puts its three seconds *after* the permission grant, while this app asks for location inside `start()`, so the window sits before the prompt. It is still the thing the window is for — a mis-tapped Start costs three seconds instead of a junk run — and the counting is a value type so that a duplicated timer fire cannot start a second run, which is the only part a simulator would otherwise have to show.
+
+## 1681. Two Xcode objects shared an id on `main`, and nothing could have said so
+
+`InfoPlist.xcstrings` (#951) and `RunLaps.swift` (#954) both took `A1B2C3D4E5F6...000A0016` in `apps/watch_ios/WatchApp.xcodeproj/project.pbxproj`. Neither branch was wrong when it was written: each allocated the next free id from the shared base, against a `main` that did not yet hold the other. They landed in non-adjacent parts of the file — a `PBXBuildFile` line, a `PBXFileReference` line and a group-children line each, forty lines apart — so git merged both sides with no conflict, and the collision reached `main` in the #954 squash.
+
+**Nothing failed.** The watchOS suite was green at 262 cases across the merge, `xcodebuild` built the app, and `check_watch_ios_source.mjs`'s then-25 claims all held. That is the property worth writing down: an id collision is not a parse error. Xcode keeps one object per id and silently drops the rest, so a file listed in a Sources phase is simply not compiled — which surfaces later as `cannot find X in scope` in a file nobody touched, or, when the dropped object is a resource, as nothing at all until a runner sees an English string on a localized wrist.
+
+The ids in these two projects are **hand-assigned**, not Xcode-generated. That is what makes the collision reachable: Xcode mints a 96-bit random id per object and would never produce this, but a session editing the `.pbxproj` as text reads the highest used suffix and adds one. The convention is worth keeping — a hand-assigned id is reviewable, and `A1B2C3D4E5F60002000A0016` says *watch project, file reference, sixteenth* where a real Xcode id says nothing — so the answer is a guard rather than a change of scheme.
+
+Claim (17) reads every `PBXFileReference` and `PBXBuildFile` declaration in **both** projects and fails when one id names two objects, reporting both names because the id alone does not say which file stopped building. It fails vacuously-loud as the rest of the file does: a project whose declarations stop parsing is the state where a collision is most likely to be sitting unread, so reading nothing is an error rather than a pass. Three cases pin it, the first mutating the real tree back into the exact `0016` collision that shipped. It is (17) rather than (16) because § 1679's two-projects claim took (15) and (16) went to the hold-to-stop gate when the two landed in the same round — a second collision, in the claim numbers this time, and the one place in this file where the numbers are hand-assigned too.
+
+The collision itself is fixed by moving `RunLaps.swift` to `...001B` rather than moving `InfoPlist.xcstrings`, because the catalogue landed first and its id is referenced from a Resources phase as well as a Sources one.
+
 ## 1682. iOS push goes through FCM, because the direct-APNs leg addressed a token nobody ever minted
 
 [§ 166](#166-native-push-fcm--apns-is-a-third-consumer-of-the-notifications-rows-fail-closed-on-operator-credentials-with-a-per-device-enabled-flag-fan-out)'s native-push design routed on `device_tokens.platform` — `android` to FCM HTTP v1, `ios` to a direct APNs HTTP/2 POST — and shipped that way on 2026-06-19. It could never have delivered a single Apple notification. `firebase_push_messaging.dart` registers `FirebaseMessaging.instance.getToken()` on **both** platforms, which is an FCM registration token; `https://api.push.apple.com/3/device/<token>` addresses an **APNs device token**, the thing `getAPNSToken()` returns. Apple answers `400 BadDeviceToken`, and `handleNativePush` classifies a non-404/410 4xx as permanent-for-this-token — correct for a bad payload, and here it meant the row reached `native_push_sent_at` having gone nowhere. Nothing in the tree could catch it: the platform split was honest on both sides of the seam, the client's token was the right token for the client's SDK, and the mismatch lived entirely in the word "token". The credential gate hid it too — with `apns=false` the sender fell back to FCM, so the defect was latent until the exact moment the `.p8` was provisioned, which is the worst possible time to discover it.

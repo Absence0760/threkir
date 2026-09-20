@@ -44,6 +44,14 @@ struct RunCheckpoint: Codable {
     // input: a mid-run act the runner performed, held nowhere else until the
     // run syncs. Absent in an older checkpoint, which decodes as no marks.
     let laps: [LapMark]?
+    // Added alongside the pre-run activity picker: what the runner chose, so a
+    // crash-recovered run is stamped with the activity it was recorded as
+    // rather than silently reverting to a run. Stored as the raw token because
+    // the checkpoint is a wire format and the column's vocabulary — not this
+    // build's enum — is what it has to survive. A checkpoint from a build
+    // predating the field decodes as "run", the value the column defaults to.
+    // Mirrors Wear OS's `Checkpoint.activityType`.
+    let activityType: String
 
     init(
         id: String,
@@ -57,6 +65,7 @@ struct RunCheckpoint: Codable {
         hrCoverage: Double?,
         steps: Int?,
         laps: [LapMark]?,
+        activityType: String = RunActivityType.run.rawValue,
         version: Int = RunCheckpoint.currentVersion
     ) {
         self.version = version
@@ -71,6 +80,7 @@ struct RunCheckpoint: Codable {
         self.hrCoverage = hrCoverage
         self.steps = steps
         self.laps = laps
+        self.activityType = activityType
     }
 
     /// Every field is decoded with a fallback default rather than the
@@ -96,6 +106,8 @@ struct RunCheckpoint: Codable {
         hrCoverage = try c.decodeIfPresent(Double.self, forKey: .hrCoverage)
         steps = try c.decodeIfPresent(Int.self, forKey: .steps)
         laps = try c.decodeIfPresent([LapMark].self, forKey: .laps)
+        activityType = try c.decodeIfPresent(String.self, forKey: .activityType)
+            ?? RunActivityType.run.rawValue
     }
 }
 

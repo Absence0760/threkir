@@ -23,6 +23,9 @@
 		A1B2C3D4E5F60001000A0014 /* MiniMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0014 /* MiniMap.swift */; };
 		A1B2C3D4E5F60001000A0015 /* RunMiniMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0015 /* RunMiniMapView.swift */; };
 		A1B2C3D4E5F60001000A0030 /* GpsHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0030 /* GpsHealth.swift */; };
+		A1B2C3D4E5F60001000A0019 /* StartCountdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0019 /* StartCountdown.swift */; };
+		A1B2C3D4E5F60001000A001A /* HoldToStop.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A001A /* HoldToStop.swift */; };
+		A1B2C3D4E5F60001000A0018 /* RunActivityType.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0018 /* RunActivityType.swift */; };
 		A1B2C3D4E5F60001000A0007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0007 /* Assets.xcassets */; };
 		A1B2C3D4E5F60001000A0010 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0010 /* Localizable.xcstrings */; };
 		A1B2C3D4E5F60001000A0016 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0016 /* InfoPlist.xcstrings */; };
@@ -49,10 +52,14 @@
 		B2C3D4E5F6A70001000B0018 /* MiniMapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0018 /* MiniMapTests.swift */; };
 		B2C3D4E5F6A70001000B0019 /* WorkoutManagerMiniMapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0019 /* WorkoutManagerMiniMapTests.swift */; };
 		B2C3D4E5F6A70001000B0030 /* GpsHealthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0030 /* GpsHealthTests.swift */; };
-		A1B2C3D4E5F60001000A0016 /* RunLaps.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0016 /* RunLaps.swift */; };
+		A1B2C3D4E5F60001000A001B /* RunLaps.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A001B /* RunLaps.swift */; };
 		A1B2C3D4E5F60001000A0017 /* Pedometer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0017 /* Pedometer.swift */; };
 		B2C3D4E5F6A70001000B0020 /* RunLapsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0020 /* RunLapsTests.swift */; };
 		B2C3D4E5F6A70001000B0021 /* PedometerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0021 /* PedometerTests.swift */; };
+		B2C3D4E5F6A70001000B0024 /* StartCountdownTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0024 /* StartCountdownTests.swift */; };
+		B2C3D4E5F6A70001000B0025 /* HoldToStopTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0025 /* HoldToStopTests.swift */; };
+		B2C3D4E5F6A70001000B0022 /* RunActivityTypeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0022 /* RunActivityTypeTests.swift */; };
+		B2C3D4E5F6A70001000B0023 /* ActivityTypeVocabularyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0023 /* ActivityTypeVocabularyTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -95,16 +102,23 @@
 		A1B2C3D4E5F60002000A0014 /* MiniMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniMap.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000A0015 /* RunMiniMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunMiniMapView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000A0030 /* GpsHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GpsHealth.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000A0019 /* StartCountdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartCountdown.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000A001A /* HoldToStop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoldToStop.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000A0018 /* RunActivityType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunActivityType.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0015 /* RunPayloadStorageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunPayloadStorageTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0017 /* HealthKitFailureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitFailureTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0016 /* WorkoutManagerPaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutManagerPaceTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0018 /* MiniMapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniMapTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0019 /* WorkoutManagerMiniMapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutManagerMiniMapTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0030 /* GpsHealthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GpsHealthTests.swift; sourceTree = "<group>"; };
-		A1B2C3D4E5F60002000A0016 /* RunLaps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunLaps.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000A001B /* RunLaps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunLaps.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000A0017 /* Pedometer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pedometer.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0020 /* RunLapsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunLapsTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0021 /* PedometerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PedometerTests.swift; sourceTree = "<group>"; };
+		B2C3D4E5F6A70002000B0024 /* StartCountdownTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartCountdownTests.swift; sourceTree = "<group>"; };
+		B2C3D4E5F6A70002000B0025 /* HoldToStopTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoldToStopTests.swift; sourceTree = "<group>"; };
+		B2C3D4E5F6A70002000B0022 /* RunActivityTypeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunActivityTypeTests.swift; sourceTree = "<group>"; };
+		B2C3D4E5F6A70002000B0023 /* ActivityTypeVocabularyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityTypeVocabularyTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70004000B0001 /* WatchAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WatchAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -164,6 +178,10 @@
 				B2C3D4E5F6A70002000B0030 /* GpsHealthTests.swift */,
 				B2C3D4E5F6A70002000B0020 /* RunLapsTests.swift */,
 				B2C3D4E5F6A70002000B0021 /* PedometerTests.swift */,
+				B2C3D4E5F6A70002000B0024 /* StartCountdownTests.swift */,
+				B2C3D4E5F6A70002000B0025 /* HoldToStopTests.swift */,
+				B2C3D4E5F6A70002000B0022 /* RunActivityTypeTests.swift */,
+				B2C3D4E5F6A70002000B0023 /* ActivityTypeVocabularyTests.swift */,
 			);
 			path = WatchAppTests;
 			sourceTree = "<group>";
@@ -180,6 +198,9 @@
 				A1B2C3D4E5F60002000A0014 /* MiniMap.swift */,
 				A1B2C3D4E5F60002000A0015 /* RunMiniMapView.swift */,
 				A1B2C3D4E5F60002000A0030 /* GpsHealth.swift */,
+				A1B2C3D4E5F60002000A0019 /* StartCountdown.swift */,
+				A1B2C3D4E5F60002000A001A /* HoldToStop.swift */,
+				A1B2C3D4E5F60002000A0018 /* RunActivityType.swift */,
 				A1B2C3D4E5F60002000A0012 /* ArmedRoute.swift */,
 				A1B2C3D4E5F60002000A0006 /* WatchConnectivityManager.swift */,
 				A1B2C3D4E5F60002000A0009 /* SupabaseService.swift */,
@@ -187,7 +208,7 @@
 				A1B2C3D4E5F60002000A000B /* HealthKitManager.swift */,
 				A1B2C3D4E5F60002000A000F /* ActiveRunBridge.swift */,
 				A1B2C3D4E5F60002000A0011 /* RunFormat.swift */,
-				A1B2C3D4E5F60002000A0016 /* RunLaps.swift */,
+				A1B2C3D4E5F60002000A001B /* RunLaps.swift */,
 				A1B2C3D4E5F60002000A0017 /* Pedometer.swift */,
 				A1B2C3D4E5F60002000A0010 /* Localizable.xcstrings */,
 				A1B2C3D4E5F60002000A0016 /* InfoPlist.xcstrings */,
@@ -352,13 +373,16 @@
 				A1B2C3D4E5F60001000A0014 /* MiniMap.swift in Sources */,
 				A1B2C3D4E5F60001000A0015 /* RunMiniMapView.swift in Sources */,
 				A1B2C3D4E5F60001000A0030 /* GpsHealth.swift in Sources */,
+				A1B2C3D4E5F60001000A0019 /* StartCountdown.swift in Sources */,
+				A1B2C3D4E5F60001000A001A /* HoldToStop.swift in Sources */,
+				A1B2C3D4E5F60001000A0018 /* RunActivityType.swift in Sources */,
 				A1B2C3D4E5F60001000A0006 /* WatchConnectivityManager.swift in Sources */,
 				A1B2C3D4E5F60001000A000B /* SupabaseService.swift in Sources */,
 				A1B2C3D4E5F60001000A000C /* AppTheme.swift in Sources */,
 				A1B2C3D4E5F60001000A000D /* HealthKitManager.swift in Sources */,
 				A1B2C3D4E5F60001000A000F /* ActiveRunBridge.swift in Sources */,
 				A1B2C3D4E5F60001000A0011 /* RunFormat.swift in Sources */,
-				A1B2C3D4E5F60001000A0016 /* RunLaps.swift in Sources */,
+				A1B2C3D4E5F60001000A001B /* RunLaps.swift in Sources */,
 				A1B2C3D4E5F60001000A0017 /* Pedometer.swift in Sources */,
 				A1B2C3D4E5F60001000A0012 /* ArmedRoute.swift in Sources */,
 			);
@@ -390,6 +414,10 @@
 				B2C3D4E5F6A70001000B0030 /* GpsHealthTests.swift in Sources */,
 				B2C3D4E5F6A70001000B0020 /* RunLapsTests.swift in Sources */,
 				B2C3D4E5F6A70001000B0021 /* PedometerTests.swift in Sources */,
+				B2C3D4E5F6A70001000B0024 /* StartCountdownTests.swift in Sources */,
+				B2C3D4E5F6A70001000B0025 /* HoldToStopTests.swift in Sources */,
+				B2C3D4E5F6A70001000B0022 /* RunActivityTypeTests.swift in Sources */,
+				B2C3D4E5F6A70001000B0023 /* ActivityTypeVocabularyTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

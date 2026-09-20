@@ -58,6 +58,8 @@ export const ADR_DOC = join('docs', 'architecture', 'decisions.md');
  *
  * The guard fails when one of these becomes resolvable, so an entry cannot sit
  * here after the number it names comes into existence.
+ *
+ * @type {Record<number, string>}
  */
 export const UNRESOLVED = {
 	1810: 'cited twice in the exercise_catalogue_picker Dart twins beside a live § 1574; above the maximum, so it is either a typo or a reference to an entry that never landed',
@@ -77,7 +79,10 @@ const REF_EXTENSIONS = /\.(md|mjs|ts|dart|swift|kt|yml|yaml|sh|rs|go|py)$/;
  */
 const REF = /§§?\s?(\d+)(?:\s*[-–]\s*(\d+))?/g;
 
-/** Every `## N.` heading in the ADR log, in document order. */
+/**
+ * Every `## N.` heading in the ADR log, in document order.
+ * @param {string} doc
+ */
 export function sectionNumbers(doc) {
 	return [...doc.matchAll(/^## (\d+)\./gm)].map((m) => ({
 		number: Number(m[1]),
@@ -85,7 +90,10 @@ export function sectionNumbers(doc) {
 	}));
 }
 
-/** Every `§ N` reference in one file's text, with its line. */
+/**
+ * Every `§ N` reference in one file's text, with its line.
+ * @param {string} text
+ */
 export function references(text) {
 	const out = [];
 	for (const m of text.matchAll(REF)) {
@@ -98,8 +106,8 @@ export function references(text) {
 }
 
 /**
- * @param root repo root to read.
- * @param unresolved the dangle register. Injectable so a synthetic fixture can
+ * @param {string} [root] repo root to read.
+ * @param {Record<number, string>} [unresolved] the dangle register. Injectable so a synthetic fixture can
  *   pass `{}` — the staleness rules below are claims about THIS repo's tree,
  *   and firing them against a three-file temp dir tests nothing.
  */

@@ -32,6 +32,12 @@ import {
 	check,
 	credentialSites,
 	phoneAppBundleIdentifier,
+	nativeTarget,
+	pbxObject,
+	settingValue,
+	targetConfigurations,
+	targetPhaseMembers,
+	WATCH_TARGET,
 	debugFencedLines,
 	xcodeBuildConfigurations,
 	watchBundleIdentifiers,
@@ -809,9 +815,9 @@ test('claim (8) fails when every confirmationDialog is deleted', () => {
 	);
 });
 
-// --- claim 15: the stop control is held, not tapped -------------------------
+// --- claim 16: the stop control is held, not tapped -------------------------
 
-test('claim (15) fails when a Button ends the recording on a tap', () => {
+test('claim (16) fails when a Button ends the recording on a tap', () => {
 	const { errors } = runMutated((dir) => {
 		edit(dir, SYNC, (s) =>
 			s.replace(
@@ -826,7 +832,7 @@ test('claim (15) fails when a Button ends the recording on a tap', () => {
 	);
 });
 
-test('claim (15) fails when one of the two stop sites loses its hold', () => {
+test('claim (16) fails when one of the two stop sites loses its hold', () => {
 	// The paused screen's Stop is the one a reader forgets: Wear OS renders
 	// both from one composable, this app has two call sites.
 	const { errors } = runMutated((dir) => {
@@ -840,7 +846,7 @@ test('claim (15) fails when one of the two stop sites loses its hold', () => {
 	);
 });
 
-test('claim (15) fails when the press duration no longer decides the stop', () => {
+test('claim (16) fails when the press duration no longer decides the stop', () => {
 	// A ring that fills while something else decides when to fire reads as a
 	// guard and is not one — and nothing about the gesture would say so.
 	const { errors } = runMutated((dir) => {
@@ -852,17 +858,17 @@ test('claim (15) fails when the press duration no longer decides the stop', () =
 	);
 });
 
-test('claim (15) fails vacuity rather than passing when no stop call is left to read', () => {
+test('claim (16) fails vacuity rather than passing when no stop call is left to read', () => {
 	const { errors } = runMutated((dir) => {
 		edit(dir, SYNC, (s) => s.replaceAll('workoutManager.stop()', 'workoutManager.halt()'));
 	});
 	assert.ok(
-		errors.some((e) => e.includes('claim (15) would pass vacuously')),
+		errors.some((e) => e.includes('claim (16) would pass vacuously')),
 		errors.join('\n'),
 	);
 });
 
-test('claim (15) fails when the duration constant is unreadable', () => {
+test('claim (16) fails when the duration constant is unreadable', () => {
 	const { errors } = runMutated((dir) => {
 		edit(dir, join('WatchApp', 'HoldToStop.swift'), (s) =>
 			s.replace('static let duration: TimeInterval = 0.8', 'static let duration = holdMs()'),
@@ -989,8 +995,8 @@ test('claim (10) refuses WKWatchOnly and a companion bundle id together', () => 
 	const { errors } = runMutated((dir) => {
 		edit(dir, PLIST, (s) =>
 			s.replace(
-				'\t<key>WKWatchOnly</key>',
-				'\t<key>WKCompanionAppBundleIdentifier</key>\n\t<string>com.threkir.app</string>\n\t<key>WKWatchOnly</key>',
+				'\t<key>WKCompanionAppBundleIdentifier</key>',
+				'\t<key>WKWatchOnly</key>\n\t<true/>\n\t<key>WKCompanionAppBundleIdentifier</key>',
 			),
 		);
 	});
@@ -1112,14 +1118,14 @@ test('the two numeric-constant readers take the literal and nothing around it', 
 // ───────── claim (10): the plist follows the build, in both directions ─────────
 
 test('claim (10) refuses WKWatchOnly once the phone project embeds the watch', () => {
-	// The day § 1256's build integration lands is the day the key becomes a
-	// live defect rather than an accurate description of a project that ships
-	// nothing. Planted as the Embed Watch Content destination Apple writes.
+	// § 1256's build integration has landed (decisions § 1679), so the phone
+	// project embeds for real and it is the plist that regresses here: going
+	// back to "this app has no iOS companion" while the .ipa ships one.
 	const { errors } = runMutated((dir) => {
-		edit(dir, STAGED_PHONE_PBX, (s) =>
+		edit(dir, PLIST, (s) =>
 			s.replace(
-				'objects = {',
-				'objects = {\n\t\tdstPath = "$(CONTENTS_FOLDER_PATH)/Watch";',
+				'\t<key>WKCompanionAppBundleIdentifier</key>\n\t<string>com.threkir.app</string>\n',
+				'\t<key>WKWatchOnly</key>\n\t<true/>\n',
 			),
 		);
 	});
@@ -1133,11 +1139,11 @@ test('claim (10) refuses a companion named while nothing embeds', () => {
 	// The other direction, and the one § 1256 called "moving the lie": flipping
 	// the key alone declares a companion relationship no build produces.
 	const { errors } = runMutated((dir) => {
-		edit(dir, PLIST, (s) =>
-			s.replace(
-				'\t<key>WKWatchOnly</key>\n\t<true/>',
-				'\t<key>WKCompanionAppBundleIdentifier</key>\n\t<string>com.threkir.app</string>',
-			),
+		edit(dir, STAGED_PHONE_PBX, (s) =>
+			s
+				.replaceAll('$(CONTENTS_FOLDER_PATH)/Watch', '$(CONTENTS_FOLDER_PATH)/Nothing')
+				.replaceAll('WatchApp.app', 'Nothing.app')
+				.replaceAll('com.threkir.app.watchapp', 'com.threkir.app.nothing'),
 		);
 	});
 	assert.ok(
@@ -1147,9 +1153,20 @@ test('claim (10) refuses a companion named while nothing embeds', () => {
 });
 
 test('claim (10) recognises the embed by the watch bundle id too', () => {
+	// Strip the two destination/product markers and leave only the watch's own
+	// bundle id: the embed is still seen, so a project whose copy phase Xcode
+	// has renamed does not read as no embed at all.
 	const { errors } = runMutated((dir) => {
 		edit(dir, STAGED_PHONE_PBX, (s) =>
-			s.replace('objects = {', 'objects = {\n\t\tPRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.watchapp;'),
+			s
+				.replaceAll('$(CONTENTS_FOLDER_PATH)/Watch', '$(CONTENTS_FOLDER_PATH)/Nothing')
+				.replaceAll('WatchApp.app', 'Nothing.app'),
+		);
+		edit(dir, PLIST, (s) =>
+			s.replace(
+				'\t<key>WKCompanionAppBundleIdentifier</key>\n\t<string>com.threkir.app</string>\n',
+				'\t<key>WKWatchOnly</key>\n\t<true/>\n',
+			),
 		);
 	});
 	assert.ok(
@@ -1332,14 +1349,7 @@ test('claim (10) refuses a companion id naming something other than the phone ap
 	// One field further along than the missing embed, and the same silence:
 	// it installs, it launches, and WCSession reaches no counterpart.
 	const { errors } = runMutated((dir) => {
-		// Drop WKWatchOnly at the same time, or the mutual-exclusivity rule
-		// fires first and this one is never reached.
-		edit(dir, PLIST, (s) =>
-			s.replace(
-				'\t<key>WKWatchOnly</key>\n\t<true/>\n',
-				'\t<key>WKCompanionAppBundleIdentifier</key>\n\t<string>com.threkir.other</string>\n',
-			),
-		);
+		edit(dir, PLIST, (s) => s.replace('<string>com.threkir.app</string>', '<string>com.threkir.other</string>'));
 	});
 	assert.equal(
 		matched(errors, /names `com\.threkir\.other` as its companion/).length,
@@ -1350,18 +1360,12 @@ test('claim (10) refuses a companion id naming something other than the phone ap
 
 test('claim (10) accepts a companion id that does name the phone app', () => {
 	// The direction that keeps the rule from being "never declare a companion".
-	// The embed rule still fires (nothing embeds), so what is asserted here is
-	// only that the NAMING rule stays quiet.
-	const { errors } = runMutated((dir) => {
-		edit(dir, PLIST, (s) =>
-			s.replace(
-				'\t<key>WKWatchOnly</key>\n\t<true/>\n',
-				'\t<key>WKCompanionAppBundleIdentifier</key>\n\t<string>com.threkir.app</string>\n',
-			),
-		);
-	});
+	// The shipped tree IS that direction now, so this reads it unmutated — and
+	// it fails if a future edit makes the naming rule fire on the real files.
+	const { errors } = runMutated(() => {});
 	assert.equal(matched(errors, /as its companion/).length, 0, errors.join('\n'));
 	assert.equal(matched(errors, /plus a suffix/).length, 0, errors.join('\n'));
+	assert.equal(matched(errors, /mutually exclusive/).length, 0, errors.join('\n'));
 });
 
 test('phoneAppBundleIdentifier takes the app, not its test bundle', () => {
@@ -1370,9 +1374,36 @@ test('phoneAppBundleIdentifier takes the app, not its test bundle', () => {
 	assert.equal(phoneAppBundleIdentifier('nothing here'), null);
 });
 
-// --- claim 16: no Xcode object id is claimed twice --------------------------
+// ───────── claim (15): two projects, one watch app ─────────
 
-test('claim (16) fails when two objects in the watch project share an id', () => {
+test('claim (15) refuses a source the watch project builds and the phone project does not', () => {
+	// The half that leaves `test-watch-ios` green about code no wrist runs.
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_PHONE_PBX, (s) =>
+			s.replace(/\t+[0-9A-Fa-f]{24} \/\* MiniMap\.swift in Sources \*\/,\n/, ''),
+		);
+	});
+	assert.ok(
+		errors.some((e) => e.includes('MiniMap.swift') && e.includes('absent from every shipped .ipa')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (15) refuses a source the phone project builds and the watch project does not', () => {
+	// The other half: a file that ships to a wrist having been compiled by
+	// nothing that runs a test.
+	const { errors } = runMutated((dir) => {
+		edit(dir, PBX, (s) => s.replace(/\t+[0-9A-Fa-f]{24} \/\* MiniMap\.swift in Sources \*\/,\n/, ''));
+	});
+	assert.ok(
+		errors.some((e) => e.includes('MiniMap.swift') && e.includes('compiled by nothing that runs a test')),
+		errors.join('\n'),
+	);
+});
+
+// --- claim 17: no Xcode object id is claimed twice --------------------------
+
+test('claim (17) fails when two objects in the watch project share an id', () => {
 	// The exact collision that reached `main`: #951's InfoPlist.xcstrings and
 	// #954's RunLaps.swift both took `...000A0016`, in non-adjacent parts of
 	// the file, so git merged both sides cleanly and no build failed.
@@ -1399,7 +1430,191 @@ test('claim (16) fails when two objects in the watch project share an id', () =>
 	);
 });
 
-test('claim (16) names both objects, because the id alone does not say what was dropped', () => {
+test('claim (15) refuses a resource only one project bundles', () => {
+	// The String Catalog is a RESOURCE, so source membership alone would miss
+	// the case where the shipped bundle loses its translations entirely.
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_PHONE_PBX, (s) =>
+			s.replace(/\t+[0-9A-Fa-f]{24} \/\* Localizable\.xcstrings in Resources \*\/,\n/, ''),
+		);
+	});
+	assert.ok(
+		errors.some((e) => e.includes('Localizable.xcstrings') && e.includes('Resources phase')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (15) refuses a bundle identifier that differs between the projects', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_PHONE_PBX, (s) =>
+			s.replaceAll('PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.watchapp;', 'PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.wrist;'),
+		);
+	});
+	assert.ok(
+		errors.some((e) => e.includes('PRODUCT_BUNDLE_IDENTIFIER') && e.includes('two different apps')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (15) refuses an Info.plist the two projects resolve differently', () => {
+	// Spelled differently from each project by necessity, so the compare is on
+	// the resolved path — a second committed copy is what this refuses.
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_PHONE_PBX, (s) =>
+			s.replaceAll('"../../watch_ios/WatchApp/Info.plist"', '"Runner/WatchApp-Info.plist"'),
+		);
+	});
+	assert.ok(
+		errors.some((e) => e.includes('INFOPLIST_FILE') && e.includes('one committed file')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (15) refuses the phone project once the Embed Watch Content phase is gone', () => {
+	// The target still exists, still compiles and is still a dependency — and
+	// the product is built and then dropped. Nothing else in the repo sees it.
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_PHONE_PBX, (s) =>
+			s.replace(/\t+[0-9A-Fa-f]{24} \/\* Embed Watch Content \*\/,\n/, ''),
+		);
+	});
+	assert.ok(
+		errors.some((e) => e.includes('no Embed Watch Content phase')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (15) refuses a copy phase that carries the watch app somewhere else', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_PHONE_PBX, (s) =>
+			s.replace('dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";', 'dstPath = "$(CONTENTS_FOLDER_PATH)/Extras";'),
+		);
+	});
+	assert.ok(
+		errors.some((e) => e.includes('no Embed Watch Content phase')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (15) refuses the phone project once the watch target is gone', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_PHONE_PBX, (s) =>
+			s.replace('\n\t\t\tname = WatchApp;\n\t\t\tproductName = WatchApp;', '\n\t\t\tname = Wrist;\n\t\t\tproductName = Wrist;'),
+		);
+	});
+	assert.ok(
+		errors.some((e) => e.includes('has no `WatchApp` target')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (15) refuses a copy phase with no target dependency ordering it', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_PHONE_PBX, (s) =>
+			s.replace(/dependencies = \(\n[^)]*\);\n\t\t\tname = Runner;/, 'dependencies = (\n\t\t\t);\n\t\t\tname = Runner;'),
+		);
+	});
+	assert.ok(
+		errors.some((e) => e.includes('declares no target dependency')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (15) reports rather than passes when it can read no membership', () => {
+	// The vacuity guard, on the side that would go quiet rather than red:
+	// claim (13) reads the PBXBuildFile rows and stays green when a phase's
+	// file list is what emptied, so nothing else here would notice.
+	const { errors } = runMutated((dir) => {
+		edit(dir, PBX, (s) =>
+			s.replace('\n\t\t\tname = WatchApp;\n\t\t\tproductName = WatchApp;', '\n\t\t\tname = Wrist;\n\t\t\tproductName = Wrist;'),
+		);
+	});
+	assert.ok(
+		errors.some((e) => e.includes('Parsed no Sources members') && e.includes('vacuously')),
+		errors.join('\n'),
+	);
+});
+
+test('nativeTarget reads the block name, not the trailing comment', () => {
+	const src = [
+		'/* Begin PBXNativeTarget section */',
+		'\t\tAAAAAAAAAAAAAAAAAAAAAAAA /* Stale */ = {',
+		'\t\t\tisa = PBXNativeTarget;',
+		'\t\t\tname = WatchApp;',
+		'\t\t};',
+		'\t\tBBBBBBBBBBBBBBBBBBBBBBBB /* WatchApp */ = {',
+		'\t\t\tisa = PBXNativeTarget;',
+		'\t\t\tname = Runner;',
+		'\t\t};',
+		'/* End PBXNativeTarget section */',
+	].join('\n');
+	assert.ok(nativeTarget(src, 'WatchApp')?.includes('AAAAAAAAAAAAAAAAAAAAAAAA'));
+	assert.ok(nativeTarget(src, 'Runner')?.includes('BBBBBBBBBBBBBBBBBBBBBBBB'));
+	assert.equal(nativeTarget(src, 'Missing'), null);
+	assert.equal(nativeTarget('no sections here', 'WatchApp'), null);
+});
+
+test('targetPhaseMembers reads only the phases the target names', () => {
+	const src = [
+		'/* Begin PBXNativeTarget section */',
+		'\t\tAAAAAAAAAAAAAAAAAAAAAAAA /* WatchApp */ = {',
+		'\t\t\tisa = PBXNativeTarget;',
+		'\t\t\tbuildPhases = (',
+		'\t\t\t\tCCCCCCCCCCCCCCCCCCCCCCCC /* Sources */,',
+		'\t\t\t);',
+		'\t\t\tname = WatchApp;',
+		'\t\t};',
+		'/* End PBXNativeTarget section */',
+		'\t\tCCCCCCCCCCCCCCCCCCCCCCCC /* Sources */ = {',
+		'\t\t\tisa = PBXSourcesBuildPhase;',
+		'\t\t\tfiles = (',
+		'\t\t\t\tDDDDDDDDDDDDDDDDDDDDDDDD /* B.swift in Sources */,',
+		'\t\t\t\tEEEEEEEEEEEEEEEEEEEEEEEE /* A.swift in Sources */,',
+		'\t\t\t);',
+		'\t\t};',
+		'\t\tFFFFFFFFFFFFFFFFFFFFFFFF /* Sources */ = {',
+		'\t\t\tisa = PBXSourcesBuildPhase;',
+		'\t\t\tfiles = (',
+		'\t\t\t\t111111111111111111111111 /* Other.swift in Sources */,',
+		'\t\t\t);',
+		'\t\t};',
+	].join('\n');
+	assert.deepEqual(targetPhaseMembers(src, 'WatchApp', 'Sources'), ['A.swift', 'B.swift']);
+	assert.deepEqual(targetPhaseMembers(src, 'WatchApp', 'Resources'), []);
+	assert.deepEqual(targetPhaseMembers(src, 'Missing', 'Sources'), []);
+});
+
+test('targetConfigurations walks the target own configuration list', () => {
+	const watch = readFileSync(join(WATCH_IOS, PBX), 'utf8');
+	const cfgs = targetConfigurations(watch, WATCH_TARGET);
+	assert.deepEqual(
+		cfgs.map((c) => c.name).sort(),
+		['Debug', 'Release'],
+		'the watch target has exactly the two configurations its project declares',
+	);
+	// The test target's own configurations must not answer for the app's.
+	for (const c of cfgs) {
+		assert.equal(settingValue(c.settings, 'PRODUCT_BUNDLE_IDENTIFIER'), 'com.threkir.app.watchapp');
+	}
+	assert.deepEqual(targetConfigurations(watch, 'Missing'), []);
+});
+
+test('settingValue unquotes and returns null for an absent key', () => {
+	const settings = '{\n\t\tA = plain;\n\t\tB = "quoted value";\n\t}';
+	assert.equal(settingValue(settings, 'A'), 'plain');
+	assert.equal(settingValue(settings, 'B'), 'quoted value');
+	assert.equal(settingValue(settings, 'C'), null);
+});
+
+test('pbxObject stops at the object own closing brace', () => {
+	const src = ['{', '\t\tAAAAAAAAAAAAAAAAAAAAAAAA /* One */ = {', '\t\t\tx = 1;', '\t\t};', '\t\tBBBBBBBBBBBBBBBBBBBBBBBB /* Two */ = {', '\t\t\ty = 2;', '\t\t};'].join('\n');
+	const one = pbxObject(src, 'AAAAAAAAAAAAAAAAAAAAAAAA');
+	assert.ok(one?.includes('x = 1;'));
+	assert.ok(!one?.includes('y = 2;'));
+	assert.equal(pbxObject(src, 'CCCCCCCCCCCCCCCCCCCCCCCC'), null);
+});
+
+test('claim (17) names both objects, because the id alone does not say what was dropped', () => {
 	const { errors } = runMutated((dir) => {
 		edit(dir, PBX, (s) =>
 			s.replace(
@@ -1414,7 +1629,7 @@ test('claim (16) names both objects, because the id alone does not say what was 
 	assert.ok(hit.includes('RunLaps.swift'), hit);
 });
 
-test('claim (16) fails vacuity rather than passing on a project it cannot parse', () => {
+test('claim (17) fails vacuity rather than passing on a project it cannot parse', () => {
 	// A project file whose shape changed is the state where a collision is
 	// most likely to be sitting unread, so reading nothing must be an error
 	// rather than a silent pass.
@@ -1422,7 +1637,7 @@ test('claim (16) fails vacuity rather than passing on a project it cannot parse'
 		edit(dir, PBX, (s) => s.replace(/^\t\t[0-9A-F]{24} \/\*/gm, '\t\tXX /*'));
 	});
 	assert.ok(
-		errors.some((e) => e.includes('claim (16) would')),
+		errors.some((e) => e.includes('claim (17) would')),
 		errors.join('\n'),
 	);
 });

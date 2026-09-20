@@ -27,9 +27,9 @@
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Threkir needs access to your health data to record workout metrics like heart rate and calories burned during your runs.</string>
 	<key>NSHealthUpdateUsageDescription</key>
@@ -42,8 +42,8 @@
 	<string>Threkir continues tracking your run when your watch display turns off during a workout.</string>
 	<key>WKApplication</key>
 	<true/>
-	<key>WKWatchOnly</key>
-	<true/>
+	<key>WKCompanionAppBundleIdentifier</key>
+	<string>com.threkir.app</string>
 	<key>WKBackgroundModes</key>
 	<array>
 		<string>location</string>

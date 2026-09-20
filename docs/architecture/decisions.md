@@ -29843,3 +29843,44 @@ The collision itself is fixed by moving `RunLaps.swift` to `...001B` rather than
 **One handler, because the duplication here is not the ordinary kind.** The house rule prefers three similar lines to a premature helper, and `startOAuthSignIn(provider)` is the exception it does not cover: both providers **create an account on first sign-in**, so both owe `checkSignUpGates` (GDPR Art 8's 16+ self-declaration plus ToS acceptance) and both owe the `sessionStorage` consent stamps that `/auth/callback` reads, since an OAuth first-sign-in cannot pass `options.data` into `raw_user_meta_data`. Two copies of that is two places for one of them to drift into minting accounts with no recorded consent — the exact finding audit/gdpr raised on 2026-05-25. It is one function for the same reason the gate is one function.
 
 **The flag stays unset in `.env.development`, which is where it differs from Google's.** Google is on in dev so the smoke and age-gate specs can click it. Apple cannot be: GoTrue special-cases `google` and `apple` and validates them against the real providers, which is why `tests-e2e/sso` stands in as the generic `keycloak`, and the local stack's `[auth.external.apple]` is `enabled = false`. An enabled dev button would surface precisely the opaque provider error the flag exists to prevent. So the enabled path has no e2e at all, and `oauth_provider_gates.test.ts` reads the page source instead — that each button picks its handler off its own flag, that the pill is conditional on that flag, and that the gate and the consent stash both run *before* the redirect, since after it the account already exists. A source-level guard is worth less than an e2e; it is worth considerably more than nothing, which is what the only-testable-in-production path otherwise has.
+
+## 1680. Google sign-in gets its own runbook, and its flag is a repo secret while Android's client id is an environment one
+
+Google was the only credential thread in the estate with no runbook, no
+`followups.md` entry and no ledger, which is why it sat invisible while the
+Apple thread was ticked daily — the two are equally unprovisioned, and only one
+of them was legible as unfinished. The list that did exist,
+`e2e_dev_accounts.md § 1`, had drifted twice in the way § 2 predicted a
+beside-the-tests copy would: it named a placeholder Google Cloud project rather
+than `threkir`, and it described the web OAuth client alone, where Android
+additionally needs a second client keyed to a signing fingerprint. So
+[`google_provisioning.md`](../ops/google_provisioning.md) is a **sibling** of the
+Apple runbook rather than a section inside it. They share nothing but the
+Supabase callback URL, the Apple file's own frontmatter scopes it to artifacts
+of the Apple Developer Program, and a short thread folded into a long one is the
+thread nobody finds.
+
+**The two flags are not scoped the same way, and the asymmetry is in the
+workflows rather than in the flags.** `release-web.yml` has a single job whose
+`environment` is computed — `production` for a `web@` tag, `preview` for
+everything else — so `PUBLIC_GOOGLE_AUTH_ENABLED` set on the `production`
+environment would reach the tagged build and leave every preview deploy with the
+button greyed out, a divergence between the two sites that presents as a broken
+preview rather than as a scoping mistake. It is a **repository** secret for that
+reason. `release-android.yml` declares `environment: production` flatly and has
+no second leg, so `MOBILE_GOOGLE_WEB_CLIENT_ID` belongs there, beside the
+keystore secrets it is useless without. Both are still inert until
+[§ 1678](#1678-eight-of-the-ten-public-feature-flags-could-not-be-turned-on-in-production-and-the-adr-for-one-of-them-called-it-a-one-variable-flip)'s threading reaches `main`.
+
+**Two facts the runbook states because getting either wrong is silent.** A
+Firebase project *is* a Google Cloud project — one id, one number, two consoles
+— so `threkir` already exists on the Cloud side and creating a second one there
+is how the two OAuth clients end up in different projects, which Google reports
+only as `DEVELOPER_ERROR`. And with Play App Signing on, the fingerprint the
+Android client must carry is Play's app-signing certificate, not the upload
+keystore's; registering the upload key gives a release build that fails while
+debug works, which reads as a release-config problem rather than a console one.
+The shipped `google-services.json` was measured for this entry: project
+`threkir`, number `79605811581`, package `com.threkir.app`, and **zero**
+`oauth_client` entries — nothing has been created in the project yet, so no step
+below is a re-do.

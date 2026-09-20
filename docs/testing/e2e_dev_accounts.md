@@ -61,11 +61,9 @@ If you want to wire any of the below up, here's exactly what to create. Until th
 
 ### 1. Google Sign-In — Google Cloud OAuth credentials
 
-**What's needed:**
-- Google Cloud project → Credentials → OAuth client → **Web application**.
-- Authorized JavaScript origin: `https://your-domain.com` (+ `http://localhost:7777` for local).
-- Authorized redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback` (prod), `http://localhost:54321/auth/v1/callback` (local).
-- Paste the Web client id into Supabase Dashboard → Authentication → Providers → Google → Authorized Client IDs.
+**Provisioning lives in [`docs/ops/google_provisioning.md`](../ops/google_provisioning.md)** — the living runbook, with a status ledger, for the consent screen, the two OAuth clients, the Supabase provider and the flags. Not restated here, for the reason § 2 gives: the copy that lives beside the tests is the one that goes stale, and this one had already drifted twice — it named a placeholder project rather than `threkir` (which exists as the Firebase project, since a Firebase project *is* a Google Cloud project), and it listed the web client alone, where Android additionally needs a second client keyed to the release **Play App Signing** SHA-1.
+
+**Status today:** nothing is provisioned. `PUBLIC_GOOGLE_AUTH_ENABLED` exists as neither a repo nor an environment secret, the shipped `google-services.json` carries zero `oauth_client` entries, and `origin/main`'s `release-web.yml` does not yet thread the flag — so the button is behind a "Soon" pill on every platform.
 
 **What you can test once configured:**
 - E2E: button click → real Google account picker → return to /dashboard.

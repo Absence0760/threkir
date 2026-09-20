@@ -29722,3 +29722,76 @@ Both go in `RunCheckpoint`. Wear learned that one the hard way in #389 — a cra
 The envelope is the part that was not optional. `docs/backend/metadata.md` recorded both keys as lost on the WCSession leg — the phone bridge's hand-written key list omitted them, so the Dart queue decoder's existing `laps` support could never see WCSession input — and claim (6) of `check_watch_ios_source.mjs` reads both ends, so a key the watch packs and the phone never lifts fails the PR. `WatchIngestBridge.swift` lifts `steps` and `laps`; `runFromWatchPayload` learned `steps`. Both are written only when POSITIVE / non-empty: absent means UNMEASURED, and a zero forwarded onto the row is indistinguishable from a run of no steps, which is the `hr_coverage` rule of § 1207 applied to a second figure.
 
 What is verified and what is not, precisely. `xcodebuild test` on the watchOS 26.4 simulator covers the split arithmetic, the envelope's plist-validity and key names, both checkpoint round-trips and both recovery paths (243 cases, up from 225). **No pedometer has delivered a sample to this code**: a watchOS simulator has none, so `CMPedometer` itself sits at the rung below build-verified and the parity cell is `Partial`, not `✓`. `NSMotionUsageDescription` is a new `Info.plist` key with no `InfoPlist.xcstrings` beside it yet, so the Motion & Fitness prompt is English on all seven locales until that catalogue lands — the same gap the four existing purpose strings carry, widened by one rather than introduced.
+
+## 1679. The Apple Watch app is a target of the phone project now, referenced not copied, and one guard holds the two projects to each other
+
+§ 1256 named five things a Mac had to confirm, in order, and had no Mac. This
+round had one (Xcode 26.4, watchOS 26.4 simulator runtime), and steps 1–4 are
+done in that order.
+
+**Step 1 was already true and had never been read.** `plutil -p` on the built
+`WatchApp.app` shows `CFBundleDisplayName = Threkir` — the `GENERATE_INFOPLIST_FILE
+= NO` fix § 1256 made really did land; nobody had looked at a built product to
+say so. **Step 2 is the change.** `apps/mobile_ios/ios/Runner.xcodeproj` gains a
+`WatchApp` native target whose Sources and Resources phases point at the
+existing files under `apps/watch_ios/WatchApp/` — **referenced, never copied,
+one copy on disk** — plus an Embed Watch Content copy phase on `Runner`
+(`dstSubfolderSpec 16`, `$(CONTENTS_FOLDER_PATH)/Watch`) and a target dependency
+ordering the two. `WatchApp.xcodeproj` stays exactly as it was, because it is
+the test host `test-watch-ios` builds and there is no reason to make the one job
+that compiles this tier depend on a Flutter workspace. **Step 3 follows the
+build**: `WKWatchOnly` is out and `WKCompanionAppBundleIdentifier =
+com.threkir.app` is in, which claim (10) now demands rather than refuses.
+
+**Step 4 settled the question § 1256 could not.** Whether LaunchServices refuses
+a companion-declaring bundle on an unpaired watch simulator was the stated
+unknown, and it is the whole reason the flip could not be reasoned to. Measured
+on a watch simulator created for the purpose and confirmed to be in no pair:
+the app installs, launches as the test host, and all 225 `WatchAppTests` pass.
+Step 5 — one run syncing end to end on paired physical hardware — is untouched
+and stays device-gated.
+
+**The embedded bundle's version is Flutter's now.** The watch plist carried a
+literal `1.0` / `1` against the phone's `$(FLUTTER_BUILD_NAME)`, which is an
+upload rejection the moment the two ship in one `.ipa` (Apple requires the
+watch app's `CFBundleShortVersionString` and `CFBundleVersion` to equal its
+companion's). The plist reads `$(MARKETING_VERSION)` / `$(CURRENT_PROJECT_VERSION)`
+instead — values `WatchApp.xcodeproj` already sets, so the standalone build is
+unchanged — and `apps/mobile_ios/ios/Flutter/WatchApp.xcconfig` maps them onto
+Flutter's on the phone side. That xcconfig includes `Generated.xcconfig` and
+nothing else: `Debug.xcconfig` / `Release.xcconfig` pull in the Pods xcconfigs,
+which are iOS-only and would not link on watchOS.
+
+**Two projects describing one app is a drift hazard, so claim (15) holds them
+together.** It requires the same `Sources` and `Resources` membership for the
+`WatchApp` target in both, the same bundle-defining settings, both
+`INFOPLIST_FILE` / `CODE_SIGN_ENTITLEMENTS` resolving to the one committed file,
+and the Embed Watch Content phase still there with its dependency. Every one of
+those fails silently otherwise: a source in `WatchApp.xcodeproj` alone is
+exercised by `test-watch-ios` and absent from every `.ipa`; a source in
+`Runner.xcodeproj` alone ships to a wrist compiled by nothing that runs a test;
+and deleting the copy phase un-ships the entire watch tier while both projects
+build, both suites pass, and claim (10) then reads the companion key as the
+defect rather than the missing embed. It lives beside claim (13) rather than in
+a script of its own because it is the same question — what does Xcode actually
+compile — asked across two projects instead of one, and because that keeps the
+CI wiring at one step. Fifteen cases pinned, including the two vacuity shapes.
+
+**`knownRegions` on the phone project is NOT a third locale-declaration site,
+and claim (15) deliberately does not pretend it is.** The watch target's
+`knownRegions` was extended to the catalogue's seven on the phone side too,
+because that is what Xcode writes and because the two projects reading the same
+way is the point. But it does nothing: stripped back to `(en, Base)` and the
+watch target genuinely rebuilt, all seven `.lproj` still land in the embedded
+bundle — `xcstringstool` compiles every language the catalogue holds, and
+`knownRegions` governs `.lproj` variant groups, which a String Catalog is not.
+Measured, not assumed, because `check_xcstrings_parity.sh` holds the WATCH
+project's `knownRegions` against the catalogue and the obvious next move was to
+add the phone's as a second rail. That rail would assert a dependency that does
+not exist, and a guard on a non-fact is worse than no guard: it teaches a future
+reader that the setting matters. `CFBundleLocalizations` is the declaration that
+does matter, and it lives in the one Info.plist both projects point at.
+
+Rung: **build-verified**, and for step 4 a simulator install and a green suite —
+not bench-verified and not device-verified. What a paired physical pair must
+still confirm is § 1256's step 5, and nothing in this entry claims it.

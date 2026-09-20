@@ -19,7 +19,18 @@ No Supabase connection is needed directly from the watch — it syncs through th
 
 ## Setup
 
-No package manager needed — the watch app is a standalone Xcode project with no external dependencies.
+No package manager needed — the watch app has no external dependencies.
+
+**Two Xcode projects build it, and which one you open matters.**
+`apps/watch_ios/WatchApp.xcodeproj` is the **development + test** project: it is
+what the `test-watch-ios` CI job builds, the only one that runs `WatchAppTests`,
+and the fastest thing to iterate in because it does not drag the Flutter phone
+app along. `apps/mobile_ios/ios/Runner.xcodeproj` carries a second `WatchApp`
+target that **references the same source files** and embeds the product in the
+phone app's bundle — that is the one a release goes through. Open the standalone
+project for everything below; open the Runner workspace when you need the watch
+app installed **beside** the phone app, e.g. to exercise WatchConnectivity end to
+end. See [decisions § 1679](../../docs/architecture/decisions.md).
 
 ---
 
@@ -32,7 +43,7 @@ open apps/watch_ios/WatchApp.xcodeproj
 In Xcode:
 
 1. Select scheme: **WatchApp**
-2. Select destination: **Apple Watch Series 9 (or later) simulator** paired with your iOS simulator
+2. Select destination: any watchOS simulator paired with your iOS simulator. **Don't go looking for a specific model name** — the concrete device types rotate with every Xcode release, and `Apple Watch Series 9` no longer exists on a current one. Pick whatever the destination menu offers.
 3. **Cmd+R** to build and run
 
 The watch simulator opens alongside the iOS simulator. Both must be running for WatchConnectivity to work.
@@ -43,7 +54,7 @@ The watch simulator opens alongside the iOS simulator. Both must be running for 
 
 The watch simulator must be paired with an iOS simulator:
 
-1. In Simulator: **File → Open Simulator → watchOS → Apple Watch Series 9 - 45mm**
+1. In Simulator: **File → Open Simulator → watchOS →** whichever watch the menu lists
 2. This automatically opens the paired iPhone simulator as well
 3. If no pairing exists: **Window → Devices and Simulators → Simulators → +** to create a paired set
 
@@ -161,3 +172,39 @@ Make sure the deployment target in the Xcode project matches your watchOS simula
 ---
 
 *Last updated: April 2026*
+
+---
+
+## Running the test suite
+
+From a shell, resolving the simulator by UDID rather than by name:
+
+```bash
+xcodebuild test -project apps/watch_ios/WatchApp.xcodeproj \
+  -scheme WatchApp \
+  -destination "platform=watchOS Simulator,id=$(xcrun simctl list devices available --json \
+    | jq -r '[.devices | to_entries[] | select(.key | test("watchOS"))
+              | .value[] | select(.isAvailable)] | .[0].udid')" \
+  CODE_SIGNING_ALLOWED=NO
+```
+
+That is what CI runs. **225 tests, green on Xcode 26.4 / watchOS 26.4 as of
+2026-09-18** — including on an unpaired watch simulator, which is where the
+companion declaration in `Info.plist` would have bitten if it were going to.
+
+## Verifying the embed
+
+The watch app reaches a wrist inside the phone app's bundle, so the thing to
+check after touching either project is the built product, not the source:
+
+```bash
+cd apps/mobile_ios && flutter build ios --simulator --debug
+ls build/ios/iphonesimulator/Runner.app/Watch/WatchApp.app/
+plutil -p build/ios/iphonesimulator/Runner.app/Watch/WatchApp.app/Info.plist
+```
+
+You want `Watch/WatchApp.app` to exist, `CFBundleDisplayName = Threkir`,
+`WKCompanionAppBundleIdentifier = com.threkir.app`, the same
+`CFBundleShortVersionString` / `CFBundleVersion` as the phone bundle beside it,
+and one `.lproj` per shipped locale. `node scripts/check_watch_ios_source.mjs`
+(claim 15) catches the source-level half of this without a Mac.

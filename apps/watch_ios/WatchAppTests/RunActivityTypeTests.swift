@@ -85,6 +85,8 @@ final class RunActivityTypeTests: XCTestCase {
             cacheFileURL: URL(fileURLWithPath: "/tmp/abc.ndjson"),
             averageBPM: nil,
             hrCoverage: nil,
+            steps: nil,
+            laps: nil,
             activityType: RunActivityType.cycle.rawValue
         )
         let encoder = JSONEncoder()

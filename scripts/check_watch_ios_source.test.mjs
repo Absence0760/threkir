@@ -596,10 +596,10 @@ test('a metadata key the watch sends and the phone never lifts is refused', () =
 test('a metadata key the phone reads and the watch never sends is refused', () => {
 	const { errors } = runMutated((dir) => {
 		edit(dir, STAGED_INGEST, (s) =>
-			s.replace('if let v = metadata["avg_bpm"]', 'if let v = metadata["laps"] { payload["laps"] = v }\n        if let v = metadata["avg_bpm"]'),
+			s.replace('if let v = metadata["avg_bpm"]', 'if let v = metadata["cadence_spm"] { payload["cadence_spm"] = v }\n        if let v = metadata["avg_bpm"]'),
 		);
 	});
-	assert.equal(matched(errors, /reads `laps`.*never puts it there/s).length, 1, errors.join('\n'));
+	assert.equal(matched(errors, /reads `cadence_spm`.*never puts it there/s).length, 1, errors.join('\n'));
 });
 
 test('an unparseable envelope on either end fails loudly rather than vacuously', () => {
@@ -1368,4 +1368,61 @@ test('phoneAppBundleIdentifier takes the app, not its test bundle', () => {
 	const phone = readFileSync(PHONE_PBXPROJ_ABS, 'utf8');
 	assert.equal(phoneAppBundleIdentifier(phone), 'com.threkir.app');
 	assert.equal(phoneAppBundleIdentifier('nothing here'), null);
+});
+
+// --- claim 16: no Xcode object id is claimed twice --------------------------
+
+test('claim (16) fails when two objects in the watch project share an id', () => {
+	// The exact collision that reached `main`: #951's InfoPlist.xcstrings and
+	// #954's RunLaps.swift both took `...000A0016`, in non-adjacent parts of
+	// the file, so git merged both sides cleanly and no build failed.
+	const { errors } = runMutated((dir) => {
+		edit(dir, PBX, (s) =>
+			s
+				.replace(
+					/A1B2C3D4E5F60002000A001B (\/\* RunLaps\.swift \*\/)/g,
+					'A1B2C3D4E5F60002000A0016 $1',
+				)
+				.replace(
+					/A1B2C3D4E5F60001000A001B (\/\* RunLaps\.swift in Sources \*\/)/g,
+					'A1B2C3D4E5F60001000A0016 $1',
+				),
+		);
+	});
+	assert.ok(
+		errors.some((e) => /PBXFileReference id .* is claimed by 2 different objects/.test(e)),
+		errors.join('\n'),
+	);
+	assert.ok(
+		errors.some((e) => /PBXBuildFile id .* is claimed by 2 different objects/.test(e)),
+		errors.join('\n'),
+	);
+});
+
+test('claim (16) names both objects, because the id alone does not say what was dropped', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, PBX, (s) =>
+			s.replace(
+				/A1B2C3D4E5F60002000A001B (\/\* RunLaps\.swift \*\/)/g,
+				'A1B2C3D4E5F60002000A0016 $1',
+			),
+		);
+	});
+	const hit = errors.find((e) => e.includes('is claimed by 2 different objects'));
+	assert.ok(hit, errors.join('\n'));
+	assert.ok(hit.includes('InfoPlist.xcstrings'), hit);
+	assert.ok(hit.includes('RunLaps.swift'), hit);
+});
+
+test('claim (16) fails vacuity rather than passing on a project it cannot parse', () => {
+	// A project file whose shape changed is the state where a collision is
+	// most likely to be sitting unread, so reading nothing must be an error
+	// rather than a silent pass.
+	const { errors } = runMutated((dir) => {
+		edit(dir, PBX, (s) => s.replace(/^\t\t[0-9A-F]{24} \/\*/gm, '\t\tXX /*'));
+	});
+	assert.ok(
+		errors.some((e) => e.includes('claim (16) would')),
+		errors.join('\n'),
+	);
 });

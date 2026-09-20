@@ -283,3 +283,22 @@ test('the exclusion is what keeps a quoted vocabulary word out of the subset', (
 	assert.deepEqual(selectIcons(fixture, vocabulary).icons, ['stack']);
 	assert.ok(vocabulary.has('padding') && vocabulary.has('privacy'));
 });
+
+test("the root CLAUDE.md's vocabulary figure is the vocabulary's own size", () => {
+	// The orientation file tells a session to name a CSS class something
+	// outside the vocabulary, and cites its size to say how wide that net is.
+	// That is a count restated away from the thing it counts, so it drifts on
+	// an upstream bump like any other -- it read 4,275 against 4,284 until
+	// this case was written. Same shape the guard in check_ci_diagnostics
+	// holds ci.yml's job figures to.
+	const claude = readFileSync(join(REPO_ROOT, 'CLAUDE.md'), 'utf8');
+	const cited = [...claude.matchAll(/([\d,]+)-ligature vocabulary/g)].map((m) =>
+		Number(m[1].replace(/,/g, '')),
+	);
+	assert.equal(cited.length, 1, 'CLAUDE.md should cite the vocabulary size exactly once');
+	assert.equal(
+		cited[0],
+		vocabulary.size,
+		`CLAUDE.md says ${cited[0]} ligatures, ${VOCABULARY_FILE} holds ${vocabulary.size}`,
+	);
+});

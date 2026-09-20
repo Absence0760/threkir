@@ -163,7 +163,7 @@
 //       the gate is checked here rather than assumed: no `Button` action may
 //       call `workoutManager.stop()`, there must be one `HoldToStopButton`
 //       per stop call site, and the press duration must still be what fires
-//       it (decisions § 1678).
+//       it (decisions § 1680).
 //
 // WHAT THIS GUARD DOES NOT PROVE. It parses text. It does not compile Swift,
 // does not run it, and cannot see anything a type-checker would: claim (1)
@@ -293,6 +293,14 @@ export const PURPOSE_STRINGS = [
 		key: 'NSLocationAlwaysAndWhenInUseUsageDescription',
 		pattern: /allowsBackgroundLocationUpdates\s*=\s*true/,
 		needed_by: 'the recorder keeps GPS running with the display asleep',
+	},
+	{
+		// Derived from the type rather than from `startUpdates`: a `CMPedometer`
+		// exists to be queried, and watchOS puts the Motion & Fitness prompt in
+		// front of the first query whichever one it is.
+		key: 'NSMotionUsageDescription',
+		pattern: /CMPedometer\s*\(/,
+		needed_by: 'Pedometer counts the run\'s steps through Core Motion',
 	},
 	{
 		key: 'NSHealthShareUsageDescription',
@@ -2105,6 +2113,58 @@ export function check(
 				);
 			}
 		}
+	}
+
+	// (16) No two Xcode objects share an id, in either project.
+	//
+	// An id collision does not fail a build and does not fail this suite. Xcode
+	// keeps one of the two objects and silently drops the other, so a file that
+	// is listed in the Sources phase is simply not compiled — which reads as
+	// "cannot find X in scope" in a file nobody touched, or as nothing at all
+	// when the dropped object is a resource. It happens without a merge
+	// conflict: two branches allocate the next free id from the same base, land
+	// in non-adjacent parts of the file, and git merges both cleanly. That is
+	// exactly how `InfoPlist.xcstrings` (#951) and `RunLaps.swift` (#954) came
+	// to share `A1B2C3D4E5F6...000A0016` on `main` (decisions § 1681). The ids here are
+	// hand-assigned rather than Xcode-generated, which is what makes the
+	// collision reachable and this claim worth making.
+	{
+		const before = errors.length;
+		for (const [label, abs] of [
+			[PBXPROJ, join(watchRoot, PBXPROJ)],
+			['the phone project', phonePbxprojPath],
+		]) {
+			if (abs === null) continue;
+			const src = readIfPresent(abs);
+			if (src === null) continue;
+			/** @type {Map<string, string[]>} */ const seen = new Map();
+			const decl = /^\t\t([0-9A-F]{24}) \/\* (.+?) \*\/ = \{isa = (PBXFileReference|PBXBuildFile)/gm;
+			for (const m of src.matchAll(decl)) {
+				const key = `${m[3]} ${m[1]}`;
+				const names = seen.get(key) ?? [];
+				if (!names.includes(m[2])) names.push(m[2]);
+				seen.set(key, names);
+			}
+			if (seen.size === 0) {
+				errors.push(
+					`Parsed no PBXFileReference or PBXBuildFile out of ${label} — claim (16) would ` +
+						'pass vacuously on a project file whose shape changed, which is the one ' +
+						'state where a collision is most likely to have been introduced.',
+				);
+				continue;
+			}
+			for (const [key, names] of seen) {
+				if (names.length > 1) {
+					const [isa, id] = key.split(' ');
+					errors.push(
+						`${label}: ${isa} id ${id} is claimed by ${names.length} different objects — ` +
+							`${names.join(', ')}. Xcode keeps one and drops the rest, so at least one ` +
+							'of those is not built despite being listed. Give each its own id.',
+					);
+				}
+			}
+		}
+		if (errors.length === before) ok.push('no Xcode object id is claimed twice, in either project');
 	}
 
 	return { errors, ok };

@@ -40,7 +40,9 @@ final class WorkoutManagerTrackJSONTests: XCTestCase {
             trackPointCount: points.count,
             averageBPM: 152,
             activityType: .run,
-            hrCoverage: 0.5
+            hrCoverage: 0.5,
+            steps: nil,
+            laps: []
         )
     }
 

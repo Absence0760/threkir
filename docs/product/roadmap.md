@@ -85,9 +85,11 @@ Full technical details in `backend_scaling.md`.
 
 ### Apple Watch standalone GPS recording
 
-✓ **Shipped.** Standalone (no-phone) workout sessions with HealthKit HR, haptic pace alerts, and Watch Connectivity sync (with a persisted pre-auth ingest queue). Full delivery checklist in [roadmap_shipped.md](roadmap_shipped.md).
+✓ **Shipped.** Standalone (no-phone) workout sessions with HealthKit HR, haptic pace alerts, lap markers + splits, a Core Motion pedometer, GPS self-heal, indoor / no-GPS mode, and Watch Connectivity sync (with a persisted pre-auth ingest queue). Full delivery checklist in [roadmap_shipped.md](roadmap_shipped.md).
 
-**Wear-OS parity, 2026-09-18 (issue #950):** three of the eleven rows Wear OS was ahead on closed — the 3-second start countdown, the 800 ms hold-to-stop on both stop controls, and the run / walk / trail run / cycle activity picker. The picker drives the `HKWorkoutConfiguration` as well as the row's `activity_type`, so Health scores a walk or a ride correctly, and its words are the phone's and the web's verbatim in all seven watch locales under a fourth `activity_type_vocabulary` guard ([decisions § 1678](../architecture/decisions.md)). Build- and host-verified on a Mac (Xcode 26.4, watchOS 26.4 simulator, 247/247); the remaining eight rows and the on-device confirmation stay open on #950.
+**Lap markers + step count (2026-09-18, issue #950):** two of the eleven rows Wear OS was ahead on. Both land in `run.metadata` in the shape the registry declares, both ride the `WCSession` envelope with the phone bridge lifting them back out, and both sit in the 15 s crash checkpoint so a recovered run does not upload short. The pedometer's sensor half is **device-gated** — no watchOS simulator has one, so what has run is the baseline arithmetic and the plumbing, not `CMPedometer` itself. The `NSMotionUsageDescription` prompt ships English-only until the watch's `InfoPlist.xcstrings` lands.
+
+**Wear-OS parity, 2026-09-18 (issue #950):** three of the eleven rows Wear OS was ahead on closed — the 3-second start countdown, the 800 ms hold-to-stop on both stop controls, and the run / walk / trail run / cycle activity picker. The picker drives the `HKWorkoutConfiguration` as well as the row's `activity_type`, so Health scores a walk or a ride correctly, and its words are the phone's and the web's verbatim in all seven watch locales under a fourth `activity_type_vocabulary` guard ([decisions § 1680](../architecture/decisions.md)). Build- and host-verified on a Mac (Xcode 26.4, watchOS 26.4 simulator, 247/247); the remaining eight rows and the on-device confirmation stay open on #950.
 
 ### Wear OS standalone GPS recording
 

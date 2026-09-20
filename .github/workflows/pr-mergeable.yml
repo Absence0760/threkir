@@ -73,7 +73,16 @@ jobs:
           # it is most likely to matter, which is the bug it exists for.
           state=UNKNOWN
           for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            state=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json mergeable --jq .mergeable 2>/dev/null || echo UNKNOWN)
+            # `gh` FAILING and GitHub answering UNKNOWN are different facts and
+            # must not collapse into one. Discarding stderr and defaulting to
+            # UNKNOWN made a dead `gh` report as "still being computed" for the
+            # full 60s and then blame GitHub -- which is what the first real run
+            # of this job did, on a base-branch copy that could not resolve the
+            # repository at all.
+            if ! state=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json mergeable --jq .mergeable 2>&1); then
+              echo "::error::Could not read PR #${PR} from the API, so whether ci.yml ran is unknown and this check cannot speak. This is NOT a conflict and NOT a slow mergeability computation -- gh itself failed: ${state}"
+              exit 1
+            fi
             if [ "$state" != "UNKNOWN" ]; then break; fi
             echo "mergeable is still being computed (attempt ${attempt}); waiting"
             sleep 6
@@ -105,7 +114,10 @@ jobs:
           # A base that moves makes a PR conflict without any PR event firing,
           # which is how four PRs sat untested for days. One sweep per push to
           # main; the open-PR count here is single digits, so this is cheap.
-          open=$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --json number,headRefOid --jq '.[] | "\(.number) \(.headRefOid)"')
+          if ! open=$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --json number,headRefOid --jq '.[] | "\(.number) \(.headRefOid)"' 2>&1); then
+            echo "::error::Could not list open PRs, so this sweep posted nothing and no PR learned whether ci.yml ran on it: ${open}"
+            exit 1
+          fi
           if [ -z "$open" ]; then
             echo "No open PRs."
             exit 0
@@ -116,7 +128,11 @@ jobs:
             [ -n "$number" ] || continue
             state=UNKNOWN
             for _ in 1 2 3 4 5; do
-              state=$(gh pr view "$number" --repo "$GITHUB_REPOSITORY" --json mergeable --jq .mergeable 2>/dev/null || echo UNKNOWN)
+              # Same rule as the other job: a dead `gh` is not an UNKNOWN.
+              if ! state=$(gh pr view "$number" --repo "$GITHUB_REPOSITORY" --json mergeable --jq .mergeable 2>&1); then
+                echo "::error::Could not read PR #${number} from the API: ${state}. This is not a slow mergeability computation; the sweep cannot speak for any PR if it cannot read them."
+                exit 1
+              fi
               if [ "$state" != "UNKNOWN" ]; then break; fi
               sleep 6
             done

@@ -35,7 +35,7 @@ Last moved: **2026-09-19**.
 | 5 | Services ID `com.threkir.web` | Apple portal | ☐ |
 | 6 | **APNs key** `.p8` | Firebase → Cloud Messaging | **Done 2026-09-19** |
 | 7 | **Sign-in-with-Apple key** `.p8` | Supabase (via a generated client secret) | **Done 2026-09-19** |
-| 8 | Both `.p8` files backed up | estate `threkir/push-credentials.sops.yaml` | ☐ — five values set 2026-09-19, estate repo not yet committed or pushed |
+| 8 | Both `.p8` files backed up | estate `threkir/push-credentials.sops.yaml` | **Done 2026-09-19** — five values in estate commit `b82fefc`, pushed; the downloaded `.p8` files deleted |
 | 9 | Supabase Apple provider enabled | Supabase dashboard | ☐ |
 | 10 | Email-relay source registered | Apple portal → Services | ☐ |
 | 11 | `PUBLIC_APPLE_AUTH_ENABLED` truthy + `web@` tag | GitHub secret + release | ☐ |
@@ -77,7 +77,7 @@ login and share almost no navigation:
 | Site | What lives there |
 |---|---|
 | **developer.apple.com/account** | Membership details, Identifiers, Keys, Certificates, Profiles, Services — **everything in steps 1–7 and 10** |
-| **appstoreconnect.apple.com** | App records, TestFlight, pricing, Users and Access — **step 14 only** |
+| **appstoreconnect.apple.com** | App records, TestFlight, pricing, Users and Access — **the unnumbered last row only** |
 
 If the page you are on has a top bar reading *Apps / Xcode Cloud / Trends /
 Reports / Business / Users and Access*, you are in App Store Connect and

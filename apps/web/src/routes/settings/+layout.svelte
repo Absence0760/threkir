@@ -124,10 +124,17 @@
 	   `margin-top: auto` against the whole page — the four legal links
 	   rendered at the very bottom of a multi-thousand-pixel document rather
 	   than at the foot of the rail. Once it no longer stretches it has no
-	   height for `auto` to resolve against either, which is what `height`
-	   restores. And a fixed-height rail clips, so `overflow-y` carries the
-	   case where the viewport is shorter than the rail's own content — a
-	   large OS text scale, or a short laptop window. */
+	   height for `auto` to resolve against either, which is what
+	   `height: 100vh` restores. And a fixed-height rail clips, so
+	   `overflow-y` carries the case where the viewport is shorter than the
+	   rail's own content — a large OS text scale, or a short laptop window.
+
+	   The property name is written with its value rather than alone above
+	   because every backticked bare word under apps/web/src that the icon
+	   font can render is harvested into the subset by
+	   scripts/gen_web_icon_font.mjs — and that property name happens to be a
+	   real Material Symbols ligature. Quoting it alone bought a glyph
+	   nothing renders, and failed build-web on subset drift. */
 	.settings-nav {
 		width: 14rem;
 		flex-shrink: 0;

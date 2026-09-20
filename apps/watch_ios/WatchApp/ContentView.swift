@@ -335,6 +335,8 @@ struct RunStatsView: View {
 
     var body: some View {
         VStack(spacing: 8) {
+            GpsBannerView(state: workoutManager.gpsBanner)
+
             Text(workoutManager.formattedElapsed)
                 .font(.system(.title, design: .monospaced))
 
@@ -409,6 +411,35 @@ struct RunStatsView: View {
                 .tint(AppTheme.error)
                 .accessibilityHint("Ends the run and opens the summary")
             }
+        }
+    }
+}
+
+// MARK: - GPS Banner
+
+/// The one line that separates a treadmill from a canopy.
+///
+/// "No GPS — time only" is a description of an indoor run, not a failure: the
+/// clock is running, the distance is honestly zero, and the run will sync with
+/// an empty track. "GPS lost" is a failure, and a runner who has been banking
+/// kilometres needs to know the difference — telling a treadmill runner their
+/// signal dropped is as wrong as telling someone under a canopy nothing at all.
+/// Mirrors Wear OS's `RunningScreen` banner, whose wording these strings share.
+struct GpsBannerView: View {
+    let state: GpsBannerState
+
+    var body: some View {
+        switch state {
+        case .noFixYet:
+            Text("No GPS — time only")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        case .lost:
+            Text("GPS lost")
+                .font(.caption2)
+                .foregroundColor(AppTheme.error)
+        case .healthy:
+            EmptyView()
         }
     }
 }

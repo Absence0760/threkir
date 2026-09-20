@@ -264,6 +264,28 @@
         "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Trajeto GPS indisponível — sincronizado sem ele" } }
       }
     },
+    "No GPS — time only" : {
+      "comment" : "In-run banner while no GPS fix has landed yet — an indoor / treadmill run, not a failure.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Kein GPS — nur Zeit" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Sin GPS — solo tiempo" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Pas de GPS — durée seulement" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "GPS なし — 時間のみ" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Sem GPS — somente tempo" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Sem GPS — apenas tempo" } }
+      }
+    },
+    "GPS lost" : {
+      "comment" : "In-run banner after a fix landed and the signal then dropped.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "GPS verloren" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "GPS perdido" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "GPS perdu" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "GPS を喪失" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "GPS perdido" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "GPS perdido" } }
+      }
+    },
     "Heart rate unavailable" : {
       "comment" : "Shown during a run when the HealthKit workout session failed, so no further heart rate can be read.",
       "localizations" : {

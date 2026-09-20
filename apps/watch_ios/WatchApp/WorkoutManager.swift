@@ -52,6 +52,11 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     /// The last accepted fix, or nil while this run has none.
     @Published var mapPosition: MiniMapPoint?
 
+    /// What the run screen says about GPS. Recomputed on the elapsed-time
+    /// tick rather than on arriving fixes, because the state it reports is
+    /// the absence of arriving fixes — a signal derived from the thing that
+    /// stopped can only report the stop by never updating again.
+    @Published private(set) var gpsBanner: GpsBannerState = .noFixYet
     /// Lap marks the runner has taken this run, cumulative — see `LapMark`.
     @Published var lapMarks: [LapMark] = []
 
@@ -92,6 +97,17 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     // ago) and that stale gap misattributed as post-resume distance. Mirrors
     // Wear OS's `lastLocation = null` on resume.
     var lastLocationForDistance: CLLocation?
+
+    /// `ProcessInfo.systemUptime` of the last fix that passed the accuracy
+    /// gate — the banner's clock. See `GpsHealth` for why it is not the same
+    /// clock the self-heal retry reads.
+    private var lastAcceptedFixUptime: TimeInterval?
+    /// Uptime of the last `didUpdateLocations` of any kind — the retry's clock.
+    private var lastGpsDeliveryUptime: TimeInterval?
+    /// Uptime of the last (re)start of location updates.
+    private var lastGpsRetryUptime: TimeInterval?
+    private var locationUpdatesRunning = false
+    private var gpsRetryTimer: Timer?
 
     struct FinishedRun {
         let id: String
@@ -259,9 +275,12 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             pending: WatchConnectivityManager.shared.pendingTransferURLs()
         )
 
+        lastAcceptedFixUptime = nil
+        lastGpsDeliveryUptime = nil
+        gpsBanner = .noFixYet
         locationManager.requestWhenInUseAuthorization()
         locationManager.allowsBackgroundLocationUpdates = true
-        locationManager.startUpdatingLocation()
+        startLocationUpdates()
         healthKit.startWorkout()
 
         let start = Date()
@@ -278,6 +297,11 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             guard let self, let startDate = self.startDate else { return }
             guard self.state == .recording else { return }
             self.elapsedSeconds = Date().timeIntervalSince(startDate) - self.totalPausedInterval
+            // After the elapsed write, before anything else: the banner is an
+            // L4 disclosure about L1, and the L0 clock it rides on must be
+            // committed whatever it says. Pure value maths over a stamp the
+            // GPS delegate wrote — no framework call, nothing to fail.
+            self.refreshGpsBanner()
             // Heart-rate coverage advances on THIS clock, not on HealthKit's
             // deliveries: the gap it measures is a stream that has gone quiet,
             // and a quiet stream emits nothing to hang the measurement on.
@@ -288,6 +312,13 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 
         checkpointTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
             self?.writeCheckpoint()
+        }
+
+        gpsRetryTimer = Timer.scheduledTimer(
+            withTimeInterval: GpsHealth.retryIntervalSeconds,
+            repeats: true
+        ) { [weak self] _ in
+            self?.selfHealGps()
         }
 
         state = .recording
@@ -316,7 +347,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         // periodic timer then skips writes until resume (see writeCheckpoint).
         writeCheckpoint()
         pausedAt = Date()
-        locationManager.stopUpdatingLocation()
+        stopLocationUpdates()
         healthKit.pauseSession()
         state = .paused
         publishComplicationSnapshot()
@@ -328,7 +359,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         self.pausedAt = nil
         lastLocationForDistance = nil
         sealPaceWindow()
-        locationManager.startUpdatingLocation()
+        startLocationUpdates()
         healthKit.resumeSession()
         state = .recording
         publishComplicationSnapshot()
@@ -343,7 +374,9 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         checkpointTimer = nil
         timer?.invalidate()
         timer = nil
-        locationManager.stopUpdatingLocation()
+        gpsRetryTimer?.invalidate()
+        gpsRetryTimer = nil
+        stopLocationUpdates()
         healthKit.stopWorkout()
         pedometer.stop()
 
@@ -398,6 +431,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     func reset() {
         checkpointTimer?.invalidate()
         checkpointTimer = nil
+        gpsRetryTimer?.invalidate()
+        gpsRetryTimer = nil
         pedometer.stop()
         checkpointStore?.closeAppendHandle()
         // The finished run's NDJSON is its payload and outlived stop(); back
@@ -416,6 +451,9 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         lastTooFastHaptic = nil
         lastTooSlowHaptic = nil
         lastLocationForDistance = nil
+        lastAcceptedFixUptime = nil
+        lastGpsDeliveryUptime = nil
+        gpsBanner = .noFixYet
         routeNavigator = nil
         mapRoute = []
         mapTrail.reset()
@@ -471,7 +509,81 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         RunFormat.pace(secondsPerKm: currentPace)
     }
 
+    // MARK: - GPS self-heal
+
+    private var locationAuthorized: Bool {
+        switch locationManager.authorizationStatus {
+        case .authorizedWhenInUse, .authorizedAlways: return true
+        default: return false
+        }
+    }
+
+    private func startLocationUpdates() {
+        locationManager.startUpdatingLocation()
+        locationUpdatesRunning = true
+        lastGpsRetryUptime = ProcessInfo.processInfo.systemUptime
+    }
+
+    private func stopLocationUpdates() {
+        locationManager.stopUpdatingLocation()
+        locationUpdatesRunning = false
+    }
+
+    /// Restart location updates when `GpsHealth` says the stream is not going
+    /// to recover on its own. An auxiliary (L4) watchdog over an L1 source:
+    /// it can only ever re-issue a CoreLocation call, and the clock, the
+    /// elapsed readout and the on-disk track are untouched whether it fires
+    /// or not.
+    private func selfHealGps() {
+        guard state == .recording else { return }
+        guard let trigger = GpsHealth.retryTrigger(
+            authorized: locationAuthorized,
+            updatesRunning: locationUpdatesRunning,
+            lastDeliveryUptime: lastGpsDeliveryUptime,
+            lastRetryUptime: lastGpsRetryUptime,
+            nowUptime: ProcessInfo.processInfo.systemUptime
+        ) else { return }
+        // A subscription that has gone quiet is still registered, so asking a
+        // live manager to start again is a no-op — the quiet one has to be
+        // torn down first for the restart to mean anything.
+        if trigger == .stalled { locationManager.stopUpdatingLocation() }
+        startLocationUpdates()
+    }
+
+    func refreshGpsBanner() {
+        let age = lastAcceptedFixUptime.map { ProcessInfo.processInfo.systemUptime - $0 }
+        gpsBanner = GpsHealth.banner(lastAcceptedFixAge: age)
+    }
+
     // MARK: - CLLocationManagerDelegate
+
+    /// CoreLocation reporting it cannot produce a fix. `.locationUnknown` is
+    /// transient — Apple's contract is that the manager keeps trying — so
+    /// stopping updates on it would turn a minute under a canopy into a dead
+    /// run. Every other code (a revoked authorization, most often) means this
+    /// subscription will not deliver again, and `selfHealGps` must not spend
+    /// the rest of the run restarting one that cannot produce a fix.
+    ///
+    /// The recording is untouched either way: the clock, the banked distance
+    /// and the track file are all downstream of fixes that already arrived.
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        guard (error as? CLError)?.code != .locationUnknown else { return }
+        stopLocationUpdates()
+    }
+
+    /// The runner denies the prompt at start and relents from Settings mid-run.
+    /// That grant arrives here and nowhere else — `GpsHealth.retryTrigger`
+    /// deliberately refuses to poll for it, because a restart under a denial
+    /// delivers nothing.
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        guard state == .recording else { return }
+        if locationAuthorized {
+            guard !locationUpdatesRunning else { return }
+            startLocationUpdates()
+        } else {
+            stopLocationUpdates()
+        }
+    }
 
     /// Metres to add to the running distance for one consecutive pair of fixes.
     /// The `2..<100 m` band rejects stationary GPS jitter (<2 m) and physically
@@ -512,6 +624,11 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        // Stamped before the accuracy gate: a delivery of 100 m fixes proves
+        // the subsystem is alive, and restarting CoreLocation cannot clear a
+        // tree canopy. The banner reads the ACCEPTED stamp below instead,
+        // because the runner's distance is frozen either way.
+        if !locations.isEmpty { lastGpsDeliveryUptime = ProcessInfo.processInfo.systemUptime }
         var newPoints: [TrackPointRecord] = []
         var lastAcceptedFix: CLLocation?
         for location in locations {
@@ -573,6 +690,10 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
                 ele: location.altitude > -999 ? location.altitude : nil,
                 ts: iso8601.string(from: location.timestamp)
             ))
+        }
+
+        if lastAcceptedFix != nil {
+            lastAcceptedFixUptime = ProcessInfo.processInfo.systemUptime
         }
 
         if !newPoints.isEmpty {

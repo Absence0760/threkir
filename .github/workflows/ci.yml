@@ -1207,12 +1207,20 @@ jobs:
     #     Reads the whole tree, not only markdown, but lives here because the
     #     docs-only diff is the one most likely to carry one and the one every
     #     code-gated job skips.
+   
+    #   check_adr_numbers.mjs          — every decisions.md section number is
+    #     unique and every `§ N` in the tree resolves. The numbers are
+    #     hand-assigned in an append-only file, so two branches cut from one
+    #     base both take the next one; neither branch holds a duplicate, so
+    #     this can only be caught against the MERGE REF, which is what
+    #     `pull_request` gives it (decisions § 1685). Gaps and out-of-order
+    #     numbers are deliberately NOT failed — see the script's header.
     #
-    # Nine unrelated guards under one job name, so the name cannot say
+    # Ten unrelated guards under one job name, so the name cannot say
     # which drifted and every step says it for itself — the rule
     # scripts/check_ci_diagnostics.mjs derives for any job running more than
     # one guard (decisions § 764). Bundled rather than split into nine
-    # jobs deliberately: nine runners and nine checkout+setup pairs to save
+    # jobs deliberately: ten runners and ten checkout+setup pairs to save
     # nothing a per-step diagnosis does not already say, and each split job
     # would need its own line in the CI gate's `needs:` list, where an
     # omission makes a failure invisible rather than merely unlabelled.
@@ -1371,6 +1379,18 @@ jobs:
           if ! node --test scripts/check_conflict_markers.test.mjs; then
             echo "::error::The conflict-marker guard's own unit tests failed. The tree itself is clean — the check above just passed — so this is a defect in scripts/check_conflict_markers.mjs, not a leftover marker."
             echo "Reproduce with: node --test scripts/check_conflict_markers.test.mjs (stdlib only, no install needed)."
+            exit 1
+          fi
+      - name: decisions.md section numbers are unique and every reference resolves
+        run: |
+          if ! node scripts/check_adr_numbers.mjs; then
+            echo "::error::docs/architecture/decisions.md has a section number claimed twice, or a \`§ N\` reference that names no section. Nothing here is about conflict markers, the parity registries, the doc checkboxes, the watch counts, the doc links, the test-inventory counts or the retention register — those are the other guards in this job."
+            echo "The failing lines above name the sections and the references. A duplicate means two branches took the same next number and the merge kept both: renumber the LATER entry to the next free number and move its references with it. A dangling reference usually means an earlier renumber moved an entry and missed a citation. Reproduce with: node scripts/check_adr_numbers.mjs."
+            exit 1
+          fi
+          if ! node --test scripts/check_adr_numbers.test.mjs; then
+            echo "::error::The ADR-numbering guard's own unit tests failed. The log itself is consistent — the check above just passed — so this is a defect in scripts/check_adr_numbers.mjs, not a duplicate or a dangling reference."
+            echo "Reproduce with: node --test scripts/check_adr_numbers.test.mjs (stdlib only, no install needed)."
             exit 1
           fi
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.21.0

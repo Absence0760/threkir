@@ -82,11 +82,21 @@ struct ContentView: View {
                 // Wear's `WatchRunMetadata.buildRunMetadata`. UTC + `Z`
                 // suffix (ISO8601DateFormatter's default zone) so the
                 // lexicographic `>` compare against the cursor is sound.
-                // (steps + laps stay omitted — this watch records neither,
-                // and Wear likewise omits them when absent.)
                 "last_modified_at": formatter.string(from: Date())
             ]
             if let bpm = run.averageBPM { metadata["avg_bpm"] = bpm }
+            // Omitted rather than sent as 0 for the same reason `hr_coverage`
+            // is: nothing measured this run's steps (no pedometer hardware, a
+            // declined Motion & Fitness grant) is a different statement from
+            // the runner having taken none. Wear's `buildRunMetadata` drops a
+            // zero for the same reason.
+            if let count = run.steps, count > 0 { metadata["steps"] = count }
+            // Only when the runner marked laps — an unmarked run carries no
+            // key, matching Wear and what every reader of `metadata.laps`
+            // already expects.
+            if !run.laps.isEmpty {
+                metadata["laps"] = RunLaps.envelopeValue(run.laps)
+            }
             // Written only when the run actually measured it. Nil is
             // UNMEASURED — an HKWorkoutSession that never started, or a
             // checkpoint from a build predating the field — and an assumed
@@ -325,6 +335,8 @@ struct RunStatsView: View {
 
     var body: some View {
         VStack(spacing: 8) {
+            GpsBannerView(state: workoutManager.gpsBanner)
+
             Text(workoutManager.formattedElapsed)
                 .font(.system(.title, design: .monospaced))
 
@@ -363,9 +375,26 @@ struct RunStatsView: View {
                 RouteGuidanceView(navigator: navigator)
             }
 
-            Text("\(workoutManager.trackPointCount) GPS pts")
-                .font(.caption2)
-                .foregroundColor(.secondary)
+            HStack(spacing: 8) {
+                Text("\(workoutManager.trackPointCount) GPS pts")
+                if !workoutManager.lapMarks.isEmpty {
+                    Text("Lap \(workoutManager.lapMarks.count)")
+                        .foregroundColor(AppTheme.lilac)
+                }
+            }
+            .font(.caption2)
+            .foregroundColor(.secondary)
+
+            // Its own row rather than a third control beside Pause and Stop:
+            // three borderedProminent buttons do not fit a 40 mm wrist, and
+            // the two that end or suspend the run are the ones that must not
+            // move (decisions § 702's reasoning about the stats page).
+            Button("Lap") {
+                workoutManager.markLap()
+            }
+            .buttonStyle(.bordered)
+            .font(.caption)
+            .accessibilityHint("Marks a split at the current time and distance")
 
             HStack(spacing: 12) {
                 Button("Pause") {
@@ -382,6 +411,35 @@ struct RunStatsView: View {
                 .tint(AppTheme.error)
                 .accessibilityHint("Ends the run and opens the summary")
             }
+        }
+    }
+}
+
+// MARK: - GPS Banner
+
+/// The one line that separates a treadmill from a canopy.
+///
+/// "No GPS — time only" is a description of an indoor run, not a failure: the
+/// clock is running, the distance is honestly zero, and the run will sync with
+/// an empty track. "GPS lost" is a failure, and a runner who has been banking
+/// kilometres needs to know the difference — telling a treadmill runner their
+/// signal dropped is as wrong as telling someone under a canopy nothing at all.
+/// Mirrors Wear OS's `RunningScreen` banner, whose wording these strings share.
+struct GpsBannerView: View {
+    let state: GpsBannerState
+
+    var body: some View {
+        switch state {
+        case .noFixYet:
+            Text("No GPS — time only")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        case .lost:
+            Text("GPS lost")
+                .font(.caption2)
+                .foregroundColor(AppTheme.error)
+        case .healthy:
+            EmptyView()
         }
     }
 }
@@ -577,8 +635,18 @@ struct PostRunView: View {
                     }
                     .font(.caption)
                     .foregroundColor(.secondary)
+
+                    if let count = workoutManager.finishedRun?.steps, count > 0 {
+                        Label("\(count) steps", systemImage: "shoeprints.fill")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
                 .padding(.vertical, 4)
+
+                if let laps = workoutManager.finishedRun?.laps, !laps.isEmpty {
+                    SplitsView(laps: laps)
+                }
 
                 if healthKit.heartRateUnavailable {
                     Text("Heart rate unavailable — run saved without it")
@@ -664,5 +732,38 @@ struct PostRunView: View {
     private var syncedStatusIcon: String {
         if case .completed = transferState { return "checkmark.circle.fill" }
         return "clock.arrow.circlepath"
+    }
+}
+
+// MARK: - Splits
+
+/// The runner's lap splits, in the same per-lap shape the run syncs with.
+///
+/// Rendered here and not on Wear OS, whose post-run screen is an edge-anchored
+/// overlay on a full-bleed route preview a table would obscure. This screen is
+/// a plain `ScrollView` with room below the summary, so the splits the runner
+/// just took are readable on the wrist that took them rather than only after a
+/// sync.
+struct SplitsView: View {
+    let laps: [RunLap]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Splits")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+            ForEach(laps, id: \.index) { lap in
+                HStack {
+                    Text("Lap \(lap.index)")
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text(RunFormat.distance(metres: lap.distanceMetres, fractionDigits: 2))
+                    Text(formatElapsed(lap.durationSeconds))
+                        .monospacedDigit()
+                }
+                .font(.caption2)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

@@ -603,10 +603,10 @@ test('a metadata key the watch sends and the phone never lifts is refused', () =
 test('a metadata key the phone reads and the watch never sends is refused', () => {
 	const { errors } = runMutated((dir) => {
 		edit(dir, STAGED_INGEST, (s) =>
-			s.replace('if let v = metadata["avg_bpm"]', 'if let v = metadata["laps"] { payload["laps"] = v }\n        if let v = metadata["avg_bpm"]'),
+			s.replace('if let v = metadata["avg_bpm"]', 'if let v = metadata["cadence_spm"] { payload["cadence_spm"] = v }\n        if let v = metadata["avg_bpm"]'),
 		);
 	});
-	assert.equal(matched(errors, /reads `laps`.*never puts it there/s).length, 1, errors.join('\n'));
+	assert.equal(matched(errors, /reads `cadence_spm`.*never puts it there/s).length, 1, errors.join('\n'));
 });
 
 test('an unparseable envelope on either end fails loudly rather than vacuously', () => {

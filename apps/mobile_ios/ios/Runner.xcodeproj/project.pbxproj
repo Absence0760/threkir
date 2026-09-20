@@ -26,11 +26,14 @@
 		7884EA00122EC3CC00C636F4 /* ArmedRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00032EC3CC00C636F4 /* ArmedRoute.swift */; };
 		7884EA00132EC3CC00C636F4 /* CheckpointStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00042EC3CC00C636F4 /* CheckpointStore.swift */; };
 		7884EA00142EC3CC00C636F4 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00052EC3CC00C636F4 /* ContentView.swift */; };
+		7884EA00392EC3CC00C636F4 /* GpsHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00362EC3CC00C636F4 /* GpsHealth.swift */; };
 		7884EA00152EC3CC00C636F4 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00062EC3CC00C636F4 /* HealthKitManager.swift */; };
 		7884EA00162EC3CC00C636F4 /* MiniMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00072EC3CC00C636F4 /* MiniMap.swift */; };
+		7884EA003A2EC3CC00C636F4 /* Pedometer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00372EC3CC00C636F4 /* Pedometer.swift */; };
 		7884EA00172EC3CC00C636F4 /* RouteNavigator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00082EC3CC00C636F4 /* RouteNavigator.swift */; };
 		7884EA00182EC3CC00C636F4 /* RunApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00092EC3CC00C636F4 /* RunApp.swift */; };
 		7884EA00192EC3CC00C636F4 /* RunFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000A2EC3CC00C636F4 /* RunFormat.swift */; };
+		7884EA003B2EC3CC00C636F4 /* RunLaps.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00382EC3CC00C636F4 /* RunLaps.swift */; };
 		7884EA001A2EC3CC00C636F4 /* RunMiniMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000B2EC3CC00C636F4 /* RunMiniMapView.swift */; };
 		7884EA001B2EC3CC00C636F4 /* RunPayloadStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000C2EC3CC00C636F4 /* RunPayloadStorage.swift */; };
 		7884EA001C2EC3CC00C636F4 /* SupabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000D2EC3CC00C636F4 /* SupabaseService.swift */; };
@@ -123,11 +126,14 @@
 		7884EA00032EC3CC00C636F4 /* ArmedRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArmedRoute.swift; sourceTree = "<group>"; };
 		7884EA00042EC3CC00C636F4 /* CheckpointStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckpointStore.swift; sourceTree = "<group>"; };
 		7884EA00052EC3CC00C636F4 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		7884EA00362EC3CC00C636F4 /* GpsHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GpsHealth.swift; sourceTree = "<group>"; };
 		7884EA00062EC3CC00C636F4 /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 		7884EA00072EC3CC00C636F4 /* MiniMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniMap.swift; sourceTree = "<group>"; };
+		7884EA00372EC3CC00C636F4 /* Pedometer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pedometer.swift; sourceTree = "<group>"; };
 		7884EA00082EC3CC00C636F4 /* RouteNavigator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteNavigator.swift; sourceTree = "<group>"; };
 		7884EA00092EC3CC00C636F4 /* RunApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunApp.swift; sourceTree = "<group>"; };
 		7884EA000A2EC3CC00C636F4 /* RunFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunFormat.swift; sourceTree = "<group>"; };
+		7884EA00382EC3CC00C636F4 /* RunLaps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunLaps.swift; sourceTree = "<group>"; };
 		7884EA000B2EC3CC00C636F4 /* RunMiniMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunMiniMapView.swift; sourceTree = "<group>"; };
 		7884EA000C2EC3CC00C636F4 /* RunPayloadStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunPayloadStorage.swift; sourceTree = "<group>"; };
 		7884EA000D2EC3CC00C636F4 /* SupabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseService.swift; sourceTree = "<group>"; };
@@ -264,11 +270,14 @@
 				7884EA00032EC3CC00C636F4 /* ArmedRoute.swift */,
 				7884EA00042EC3CC00C636F4 /* CheckpointStore.swift */,
 				7884EA00052EC3CC00C636F4 /* ContentView.swift */,
+				7884EA00362EC3CC00C636F4 /* GpsHealth.swift */,
 				7884EA00062EC3CC00C636F4 /* HealthKitManager.swift */,
 				7884EA00072EC3CC00C636F4 /* MiniMap.swift */,
+				7884EA00372EC3CC00C636F4 /* Pedometer.swift */,
 				7884EA00082EC3CC00C636F4 /* RouteNavigator.swift */,
 				7884EA00092EC3CC00C636F4 /* RunApp.swift */,
 				7884EA000A2EC3CC00C636F4 /* RunFormat.swift */,
+				7884EA00382EC3CC00C636F4 /* RunLaps.swift */,
 				7884EA000B2EC3CC00C636F4 /* RunMiniMapView.swift */,
 				7884EA000C2EC3CC00C636F4 /* RunPayloadStorage.swift */,
 				7884EA000D2EC3CC00C636F4 /* SupabaseService.swift */,
@@ -559,11 +568,14 @@
 				7884EA00122EC3CC00C636F4 /* ArmedRoute.swift in Sources */,
 				7884EA00132EC3CC00C636F4 /* CheckpointStore.swift in Sources */,
 				7884EA00142EC3CC00C636F4 /* ContentView.swift in Sources */,
+				7884EA00392EC3CC00C636F4 /* GpsHealth.swift in Sources */,
 				7884EA00152EC3CC00C636F4 /* HealthKitManager.swift in Sources */,
 				7884EA00162EC3CC00C636F4 /* MiniMap.swift in Sources */,
+				7884EA003A2EC3CC00C636F4 /* Pedometer.swift in Sources */,
 				7884EA00172EC3CC00C636F4 /* RouteNavigator.swift in Sources */,
 				7884EA00182EC3CC00C636F4 /* RunApp.swift in Sources */,
 				7884EA00192EC3CC00C636F4 /* RunFormat.swift in Sources */,
+				7884EA003B2EC3CC00C636F4 /* RunLaps.swift in Sources */,
 				7884EA001A2EC3CC00C636F4 /* RunMiniMapView.swift in Sources */,
 				7884EA001B2EC3CC00C636F4 /* RunPayloadStorage.swift in Sources */,
 				7884EA001C2EC3CC00C636F4 /* SupabaseService.swift in Sources */,

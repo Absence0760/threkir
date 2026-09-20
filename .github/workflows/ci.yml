@@ -2036,7 +2036,14 @@ jobs:
         run: |
           set -euo pipefail
           url="https://github.com/renode/renode/releases/download/v${RENODE_VERSION}/renode-${RENODE_VERSION}.linux-portable-dotnet.tar.gz"
-          curl -fsSL --retry 3 -o /tmp/renode.tar.gz "$url"
+          # --retry-all-errors is not redundant beside --retry: curl retries
+          # only what it calls transient -- a timeout or an HTTP 408/429/5xx --
+          # and a connection reset mid-handshake is neither, so plain --retry 3
+          # took main red on one `curl: (35) Recv failure` (2026-09-19). The
+          # sha256 check below is what makes retrying safe to widen this far: a
+          # truncated or substituted download still fails the job loudly.
+          curl -fsSL --retry 3 --retry-all-errors --retry-delay 5 \
+            -o /tmp/renode.tar.gz "$url"
           echo "${RENODE_SHA256}  /tmp/renode.tar.gz" | sha256sum -c -
           mkdir -p "$HOME/renode" "$HOME/.local/bin"
           tar -xzf /tmp/renode.tar.gz -C "$HOME/renode" --strip-components=1
@@ -2198,7 +2205,14 @@ jobs:
         run: |
           set -euo pipefail
           url="https://github.com/renode/renode/releases/download/v${RENODE_VERSION}/renode-${RENODE_VERSION}.linux-portable-dotnet.tar.gz"
-          curl -fsSL --retry 3 -o /tmp/renode.tar.gz "$url"
+          # --retry-all-errors is not redundant beside --retry: curl retries
+          # only what it calls transient -- a timeout or an HTTP 408/429/5xx --
+          # and a connection reset mid-handshake is neither, so plain --retry 3
+          # took main red on one `curl: (35) Recv failure` (2026-09-19). The
+          # sha256 check below is what makes retrying safe to widen this far: a
+          # truncated or substituted download still fails the job loudly.
+          curl -fsSL --retry 3 --retry-all-errors --retry-delay 5 \
+            -o /tmp/renode.tar.gz "$url"
           echo "${RENODE_SHA256}  /tmp/renode.tar.gz" | sha256sum -c -
           mkdir -p "$HOME/renode" "$HOME/.local/bin"
           tar -xzf /tmp/renode.tar.gz -C "$HOME/renode" --strip-components=1

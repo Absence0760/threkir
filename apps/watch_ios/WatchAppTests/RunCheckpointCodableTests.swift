@@ -34,7 +34,9 @@ final class RunCheckpointCodableTests: XCTestCase {
             trackPointCount: 312,
             cacheFileURL: URL(fileURLWithPath: "/tmp/run.ndjson"),
             averageBPM: 152.0,
-            hrCoverage: 0.75
+            hrCoverage: 0.75,
+            steps: nil,
+            laps: nil
         )
         let data = try encoder().encode(cp)
         let back = try decoder().decode(RunCheckpoint.self, from: data)
@@ -57,7 +59,7 @@ final class RunCheckpointCodableTests: XCTestCase {
         let cp = RunCheckpoint(
             id: "x", startedAt: Date(), distanceMetres: 0, activeDurationSeconds: 0,
             pausedIntervalSeconds: 0, trackPointCount: 0,
-            cacheFileURL: URL(fileURLWithPath: "/tmp/x"), averageBPM: nil, hrCoverage: nil
+            cacheFileURL: URL(fileURLWithPath: "/tmp/x"), averageBPM: nil, hrCoverage: nil, steps: nil, laps: nil
         )
         XCTAssertEqual(cp.version, RunCheckpoint.currentVersion)
     }

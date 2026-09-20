@@ -127,7 +127,9 @@ actor SupabaseService {
                 activity_type: "run",
                 last_modified_at: formatter.string(from: Date()),
                 avg_bpm: run.averageBPM,
-                hr_coverage: run.hrCoverage
+                hr_coverage: run.hrCoverage,
+                steps: run.steps.flatMap { $0 > 0 ? $0 : nil },
+                laps: run.laps.isEmpty ? nil : run.laps.map(LapPayload.init)
             )
         )
 
@@ -203,6 +205,25 @@ actor SupabaseService {
         let last_modified_at: String
         let avg_bpm: Double?
         let hr_coverage: Double?
+        let steps: Int?
+        let laps: [LapPayload]?
+    }
+
+    /// The registered `metadata.laps` element. Declared here rather than
+    /// encoding `RunLap` directly because the field names on the wire are the
+    /// registry's, not Swift's.
+    private struct LapPayload: Encodable {
+        let index: Int
+        let start_offset_s: Int
+        let distance_m: Double
+        let duration_s: Int
+
+        init(_ lap: RunLap) {
+            index = lap.index
+            start_offset_s = lap.startOffsetSeconds
+            distance_m = lap.distanceMetres
+            duration_s = lap.durationSeconds
+        }
     }
 
     enum SupabaseError: LocalizedError {

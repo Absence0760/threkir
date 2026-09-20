@@ -295,6 +295,14 @@ export const PURPOSE_STRINGS = [
 		needed_by: 'the recorder keeps GPS running with the display asleep',
 	},
 	{
+		// Derived from the type rather than from `startUpdates`: a `CMPedometer`
+		// exists to be queried, and watchOS puts the Motion & Fitness prompt in
+		// front of the first query whichever one it is.
+		key: 'NSMotionUsageDescription',
+		pattern: /CMPedometer\s*\(/,
+		needed_by: 'Pedometer counts the run\'s steps through Core Motion',
+	},
+	{
 		key: 'NSHealthShareUsageDescription',
 		pattern: /requestAuthorization\s*\(\s*toShare:[^)]*read:/,
 		needed_by: 'HealthKitManager reads heart rate',

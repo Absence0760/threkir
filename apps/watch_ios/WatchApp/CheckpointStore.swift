@@ -31,6 +31,19 @@ struct RunCheckpoint: Codable {
     // what nil means here and everywhere else this figure travels. It must
     // never decode as 0: that would claim the sensor delivered nothing.
     let hrCoverage: Double?
+    // Added alongside the heart-rate pair, and for the reason Wear OS learned
+    // in issue #389: a crash-recovered run that kept its distance and lost its
+    // step count uploads silently short, and nothing on the row says a
+    // pedometer was ever running. Nil is UNMEASURED — no step-counting
+    // hardware, a declined Motion & Fitness grant, or a checkpoint from a
+    // build predating the field — and must never decode as 0, which would
+    // claim the runner stood still.
+    let steps: Int?
+    // The runner's lap marks so far, in the cumulative shape `markLap` records
+    // them. Laps have the same exposure as steps and are the same kind of
+    // input: a mid-run act the runner performed, held nowhere else until the
+    // run syncs. Absent in an older checkpoint, which decodes as no marks.
+    let laps: [LapMark]?
 
     init(
         id: String,
@@ -42,6 +55,8 @@ struct RunCheckpoint: Codable {
         cacheFileURL: URL,
         averageBPM: Double?,
         hrCoverage: Double?,
+        steps: Int?,
+        laps: [LapMark]?,
         version: Int = RunCheckpoint.currentVersion
     ) {
         self.version = version
@@ -54,6 +69,8 @@ struct RunCheckpoint: Codable {
         self.cacheFileURL = cacheFileURL
         self.averageBPM = averageBPM
         self.hrCoverage = hrCoverage
+        self.steps = steps
+        self.laps = laps
     }
 
     /// Every field is decoded with a fallback default rather than the
@@ -77,6 +94,8 @@ struct RunCheckpoint: Codable {
             ?? URL(fileURLWithPath: NSTemporaryDirectory())
         averageBPM = try c.decodeIfPresent(Double.self, forKey: .averageBPM)
         hrCoverage = try c.decodeIfPresent(Double.self, forKey: .hrCoverage)
+        steps = try c.decodeIfPresent(Int.self, forKey: .steps)
+        laps = try c.decodeIfPresent([LapMark].self, forKey: .laps)
     }
 }
 

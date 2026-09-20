@@ -28,7 +28,6 @@ import {
 	INGEST,
 	ROUTE_BRIDGE,
 	PHONE_PBXPROJ,
-	UNGUARDED_DESTRUCTIVE,
 	WEAR_COVERAGE,
 	check,
 	credentialSites,
@@ -816,20 +815,67 @@ test('claim (8) fails when every confirmationDialog is deleted', () => {
 	);
 });
 
-test('claim (8) fails on an exemption for a button that no longer exists', () => {
-	assert.ok(
-		Object.keys(UNGUARDED_DESTRUCTIVE).length > 0,
-		'the register is empty, so the staleness test below proves nothing',
-	);
+// --- claim 16: the stop control is held, not tapped -------------------------
+
+test('claim (16) fails when a Button ends the recording on a tap', () => {
 	const { errors } = runMutated((dir) => {
-		const f = join(dir, SYNC);
-		writeFileSync(
-			f,
-			readFileSync(f, 'utf8').replace('Button("Stop", role: .destructive)', 'Button("Halt", role: .destructive)'),
+		edit(dir, SYNC, (s) =>
+			s.replace(
+				'HoldToStopButton { workoutManager.stop() }',
+				'Button("Stop") { workoutManager.stop() }',
+			),
 		);
 	});
 	assert.ok(
-		errors.some((e) => e.includes('UNGUARDED_DESTRUCTIVE exempts a destructive Button')),
+		errors.some((e) => e.includes('ends the recording on a single tap')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (16) fails when one of the two stop sites loses its hold', () => {
+	// The paused screen's Stop is the one a reader forgets: Wear OS renders
+	// both from one composable, this app has two call sites.
+	const { errors } = runMutated((dir) => {
+		edit(dir, SYNC, (s) =>
+			s.replace('HoldToStopButton { workoutManager.stop() }', 'tapped { workoutManager.stop() }'),
+		);
+	});
+	assert.ok(
+		errors.some((e) => e.includes('HoldToStopButton')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (16) fails when the press duration no longer decides the stop', () => {
+	// A ring that fills while something else decides when to fire reads as a
+	// guard and is not one — and nothing about the gesture would say so.
+	const { errors } = runMutated((dir) => {
+		edit(dir, SYNC, (s) => s.replaceAll('HoldToStop.isComplete(', 'alwaysTrue('));
+	});
+	assert.ok(
+		errors.some((e) => e.includes('no longer calls `HoldToStop.isComplete`')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (16) fails vacuity rather than passing when no stop call is left to read', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, SYNC, (s) => s.replaceAll('workoutManager.stop()', 'workoutManager.halt()'));
+	});
+	assert.ok(
+		errors.some((e) => e.includes('claim (16) would pass vacuously')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (16) fails when the duration constant is unreadable', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, join('WatchApp', 'HoldToStop.swift'), (s) =>
+			s.replace('static let duration: TimeInterval = 0.8', 'static let duration = holdMs()'),
+		);
+	});
+	assert.ok(
+		errors.some((e) => e.includes('`HoldToStop.duration` is unreadable')),
 		errors.join('\n'),
 	);
 });
@@ -1355,6 +1401,35 @@ test('claim (15) refuses a source the phone project builds and the watch project
 	);
 });
 
+// --- claim 17: no Xcode object id is claimed twice --------------------------
+
+test('claim (17) fails when two objects in the watch project share an id', () => {
+	// The exact collision that reached `main`: #951's InfoPlist.xcstrings and
+	// #954's RunLaps.swift both took `...000A0016`, in non-adjacent parts of
+	// the file, so git merged both sides cleanly and no build failed.
+	const { errors } = runMutated((dir) => {
+		edit(dir, PBX, (s) =>
+			s
+				.replace(
+					/A1B2C3D4E5F60002000A001B (\/\* RunLaps\.swift \*\/)/g,
+					'A1B2C3D4E5F60002000A0016 $1',
+				)
+				.replace(
+					/A1B2C3D4E5F60001000A001B (\/\* RunLaps\.swift in Sources \*\/)/g,
+					'A1B2C3D4E5F60001000A0016 $1',
+				),
+		);
+	});
+	assert.ok(
+		errors.some((e) => /PBXFileReference id .* is claimed by 2 different objects/.test(e)),
+		errors.join('\n'),
+	);
+	assert.ok(
+		errors.some((e) => /PBXBuildFile id .* is claimed by 2 different objects/.test(e)),
+		errors.join('\n'),
+	);
+});
+
 test('claim (15) refuses a resource only one project bundles', () => {
 	// The String Catalog is a RESOURCE, so source membership alone would miss
 	// the case where the shipped bundle loses its translations entirely.
@@ -1537,4 +1612,32 @@ test('pbxObject stops at the object own closing brace', () => {
 	assert.ok(one?.includes('x = 1;'));
 	assert.ok(!one?.includes('y = 2;'));
 	assert.equal(pbxObject(src, 'CCCCCCCCCCCCCCCCCCCCCCCC'), null);
+});
+
+test('claim (17) names both objects, because the id alone does not say what was dropped', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, PBX, (s) =>
+			s.replace(
+				/A1B2C3D4E5F60002000A001B (\/\* RunLaps\.swift \*\/)/g,
+				'A1B2C3D4E5F60002000A0016 $1',
+			),
+		);
+	});
+	const hit = errors.find((e) => e.includes('is claimed by 2 different objects'));
+	assert.ok(hit, errors.join('\n'));
+	assert.ok(hit.includes('InfoPlist.xcstrings'), hit);
+	assert.ok(hit.includes('RunLaps.swift'), hit);
+});
+
+test('claim (17) fails vacuity rather than passing on a project it cannot parse', () => {
+	// A project file whose shape changed is the state where a collision is
+	// most likely to be sitting unread, so reading nothing must be an error
+	// rather than a silent pass.
+	const { errors } = runMutated((dir) => {
+		edit(dir, PBX, (s) => s.replace(/^\t\t[0-9A-F]{24} \/\*/gm, '\t\tXX /*'));
+	});
+	assert.ok(
+		errors.some((e) => e.includes('claim (17) would')),
+		errors.join('\n'),
+	);
 });

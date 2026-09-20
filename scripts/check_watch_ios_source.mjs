@@ -70,7 +70,9 @@
 //       closure directly is the same program as one that arms a dialog first.
 //       Each destructive `Button` must therefore either ARM a confirmation
 //       (`<flag> = true`, bound to some `confirmationDialog(isPresented:)`) or
-//       BE the confirming action inside one.
+//       BE the confirming action inside one. Stop is not among them and never
+//       was — it ends a run into a screen that still holds it — which is what
+//       claim (16) is for.
 //
 //   (9) The DEBUG direct-to-Supabase path sends every field the WCSession
 //       envelope sends. Two transports, one run, two hand-written field lists
@@ -164,6 +166,20 @@
 //       a credential (a literal handed to a `password:` label, or the grant
 //       itself), so one appearing tomorrow in a different file is covered
 //       without a list to extend (decisions § 1596).
+//
+//  (15) Every stop control is gated on a HELD press. Stopping destroys
+//       nothing — `PostRunView` still holds the finished run, its on-disk
+//       track and a Sync Run button — so by
+//       `docs/architecture/conventions.md` § Destructive actions it earns no
+//       confirmation dialog, and claim (8) rightly does not ask for one. What
+//       it does end is the RECORDING, on a wrist, where a sleeve brushing the
+//       screen is the likeliest way for that to happen; Wear OS has required
+//       an 800 ms press since it shipped. Nothing about a `Button` whose
+//       closure calls `stop()` distinguishes it from one wired to a hold, so
+//       the gate is checked here rather than assumed: no `Button` action may
+//       call `workoutManager.stop()`, there must be one `HoldToStopButton`
+//       per stop call site, and the press duration must still be what fires
+//       it (decisions § 1680).
 //
 // WHAT THIS GUARD DOES NOT PROVE. It parses text. It does not compile Swift,
 // does not run it, and cannot see anything a type-checker would: claim (1)
@@ -1320,13 +1336,13 @@ export function confirmationDialogSpans(src) {
 }
 
 /**
- * Every `Button(…, role: .destructive) { … }` with its label and the body of
- * its action closure (null when it has none to read).
+ * Every `Button(…) { … }` with its label and the body of its action closure
+ * (null when it has none to read).
  * @param {string} src comment-stripped Swift
- * @returns {{ index: number, label: string, body: string | null }[]}
+ * @returns {{ index: number, label: string, args: string, body: string | null }[]}
  */
-export function destructiveButtons(src) {
-	/** @type {{ index: number, label: string, body: string | null }[]} */
+export function swiftButtons(src) {
+	/** @type {{ index: number, label: string, args: string, body: string | null }[]} */
 	const out = [];
 	const re = /\bButton\s*\(/g;
 	let m;
@@ -1335,11 +1351,10 @@ export function destructiveButtons(src) {
 		const close = matchDelimiter(src, open, '(', ')');
 		if (close === -1) continue;
 		const args = src.slice(open, close + 1);
-		if (!/role\s*:\s*\.destructive/.test(args)) continue;
 		const label = /"([^"\\\n]*)"/.exec(args)?.[1] ?? '(unlabelled)';
 		const t = /^\s*\{/.exec(src.slice(close + 1));
 		if (t === null) {
-			out.push({ index: m.index, label, body: null });
+			out.push({ index: m.index, label, args, body: null });
 			continue;
 		}
 		const braceOpen = close + 1 + t[0].length - 1;
@@ -1347,6 +1362,7 @@ export function destructiveButtons(src) {
 		out.push({
 			index: m.index,
 			label,
+			args,
 			body: braceEnd === -1 ? null : src.slice(braceOpen + 1, braceEnd),
 		});
 	}
@@ -1354,18 +1370,12 @@ export function destructiveButtons(src) {
 }
 
 /**
- * Destructive-styled buttons that destroy nothing, by label, each with the
- * reason. `role: .destructive` is a COLOUR as well as a claim, and a control
- * that ends a run into a screen still holding it is not the thing claim (8) is
- * about. An entry matching no button in the file is an error, so the register
- * cannot outlive what it exempts.
- * @type {Record<string, string>}
+ * Every `Button(…, role: .destructive) { … }`, the subset claim (8) reads.
+ * @param {string} src comment-stripped Swift
  */
-export const UNGUARDED_DESTRUCTIVE = {
-	Stop: 'ends the recording into PostRunView, which still holds the finished run, its ' +
-		'on-disk track and a Sync Run button — nothing is deleted, and a runner who stops ' +
-		'by accident loses the recording state, not the run',
-};
+export function destructiveButtons(src) {
+	return swiftButtons(src).filter((b) => /role\s*:\s*\.destructive/.test(b.args));
+}
 
 // --- the checks -------------------------------------------------------------
 
@@ -1712,7 +1722,6 @@ export function check(
 			const armedFlags = [];
 			for (const b of buttons) {
 				if (spans.some(([a, z]) => b.index > a && b.index < z)) continue;
-				if (b.label in UNGUARDED_DESTRUCTIVE) continue;
 				const armed = /^\s*(\w+)\s*=\s*true\s*$/.exec(b.body ?? '');
 				if (armed === null) {
 					errors.push(
@@ -1734,20 +1743,11 @@ export function check(
 						'appears and the control is inert.',
 				);
 			}
-			for (const label of Object.keys(UNGUARDED_DESTRUCTIVE)) {
-				if (buttons.some((b) => b.label === label)) continue;
-				errors.push(
-					`UNGUARDED_DESTRUCTIVE exempts a destructive Button labelled \`${label}\`, and ` +
-						`${SYNC_SITE} has none. A stale exemption is a hole nobody can see: the next ` +
-						'button to take that label inherits it. Delete the entry.',
-				);
-			}
 			if (armedFlags.length > 0 && errors.length === before) {
-				const exempt = buttons.filter((b) => b.label in UNGUARDED_DESTRUCTIVE).length;
 				ok.push(
 					`every run-ending control in ${SYNC_SITE} is confirmed: ${armedFlags.length} ` +
-						`arm a confirmationDialog, ${buttons.length - armedFlags.length - exempt} are ` +
-						`a dialog's own action, ${exempt} exempt`,
+						`arm a confirmationDialog, ${buttons.length - armedFlags.length} are ` +
+						"a dialog's own action",
 				);
 			}
 		}
@@ -2356,6 +2356,114 @@ export function check(
 					`defined on the Debug configuration alone (${configs.length} configurations read)`,
 			);
 		}
+	}
+
+	// (16) The Stop control cannot end a recording on one press.
+	{
+		const before = errors.length;
+		const src = stripSwiftComments(read(SYNC_SITE));
+		const holdSource = readIfPresent(join(watchRoot, 'WatchApp', 'HoldToStop.swift'));
+		const stopCalls = [...src.matchAll(/\bworkoutManager\.stop\(\)/g)];
+		if (stopCalls.length === 0) {
+			errors.push(
+				`Parsed no \`workoutManager.stop()\` call out of ${SYNC_SITE} — claim (16) would ` +
+					'pass vacuously. The run and paused screens each carry one; if the shape ' +
+					'changed, this reads nothing rather than reading a gated tree.',
+			);
+		} else {
+			for (const b of swiftButtons(src)) {
+				if (!/\bworkoutManager\.stop\(\)/.test(b.body ?? '')) continue;
+				errors.push(
+					`\`Button("${b.label}")\` in ${SYNC_SITE} ends the recording on a single tap. ` +
+						'Stop destroys nothing — PostRunView still holds the run, its track and a ' +
+						'Sync Run button — so it earns no confirmation dialog, and a wrist brushed ' +
+						'against a sleeve is exactly how a run gets ended by accident. Route it ' +
+						'through `HoldToStopButton`.',
+				);
+			}
+			const holds = [...src.matchAll(/\bHoldToStopButton\s*\(?\s*\{/g)];
+			if (holds.length < stopCalls.length) {
+				errors.push(
+					`${SYNC_SITE} calls \`workoutManager.stop()\` ${stopCalls.length} time(s) but ` +
+						`renders ${holds.length} \`HoldToStopButton\`. A stop reachable from ` +
+						'anything else is one the hold does not gate.',
+				);
+			}
+			if (holdSource === null) {
+				errors.push('WatchApp/HoldToStop.swift is gone — nothing defines the press duration.');
+			} else if (!/HoldToStop\.isComplete\s*\(/.test(src)) {
+				errors.push(
+					`${SYNC_SITE} no longer calls \`HoldToStop.isComplete\`, so whatever fires the ` +
+						'stop is not the press duration. A ring that fills while something else ' +
+						'decides when to stop is worse than no ring.',
+				);
+			}
+			const ms = /static let duration:\s*TimeInterval\s*=\s*([0-9.]+)/.exec(holdSource ?? '');
+			if (holdSource !== null && ms === null) {
+				errors.push(
+					'`HoldToStop.duration` is unreadable, so the one number that decides whether a ' +
+						'brush against a sleeve ends a run cannot be checked or reported.',
+				);
+			}
+			if (errors.length === before) {
+				ok.push(
+					`all ${stopCalls.length} stop control(s) in ${SYNC_SITE} are gated on a ` +
+						`${Math.round(Number(ms?.[1]) * 1000)} ms press`,
+				);
+			}
+		}
+	}
+
+	// (17) No two Xcode objects share an id, in either project.
+	//
+	// An id collision does not fail a build and does not fail this suite. Xcode
+	// keeps one of the two objects and silently drops the other, so a file that
+	// is listed in the Sources phase is simply not compiled — which reads as
+	// "cannot find X in scope" in a file nobody touched, or as nothing at all
+	// when the dropped object is a resource. It happens without a merge
+	// conflict: two branches allocate the next free id from the same base, land
+	// in non-adjacent parts of the file, and git merges both cleanly. That is
+	// exactly how `InfoPlist.xcstrings` (#951) and `RunLaps.swift` (#954) came
+	// to share `A1B2C3D4E5F6...000A0016` on `main` (decisions § 1681). The ids here are
+	// hand-assigned rather than Xcode-generated, which is what makes the
+	// collision reachable and this claim worth making.
+	{
+		const before = errors.length;
+		for (const [label, abs] of [
+			[PBXPROJ, join(watchRoot, PBXPROJ)],
+			['the phone project', phonePbxprojPath],
+		]) {
+			if (abs === null) continue;
+			const src = readIfPresent(abs);
+			if (src === null) continue;
+			/** @type {Map<string, string[]>} */ const seen = new Map();
+			const decl = /^\t\t([0-9A-F]{24}) \/\* (.+?) \*\/ = \{isa = (PBXFileReference|PBXBuildFile)/gm;
+			for (const m of src.matchAll(decl)) {
+				const key = `${m[3]} ${m[1]}`;
+				const names = seen.get(key) ?? [];
+				if (!names.includes(m[2])) names.push(m[2]);
+				seen.set(key, names);
+			}
+			if (seen.size === 0) {
+				errors.push(
+					`Parsed no PBXFileReference or PBXBuildFile out of ${label} — claim (17) would ` +
+						'pass vacuously on a project file whose shape changed, which is the one ' +
+						'state where a collision is most likely to have been introduced.',
+				);
+				continue;
+			}
+			for (const [key, names] of seen) {
+				if (names.length > 1) {
+					const [isa, id] = key.split(' ');
+					errors.push(
+						`${label}: ${isa} id ${id} is claimed by ${names.length} different objects — ` +
+							`${names.join(', ')}. Xcode keeps one and drops the rest, so at least one ` +
+							'of those is not built despite being listed. Give each its own id.',
+					);
+				}
+			}
+		}
+		if (errors.length === before) ok.push('no Xcode object id is claimed twice, in either project');
 	}
 
 	return { errors, ok };

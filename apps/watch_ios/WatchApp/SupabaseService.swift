@@ -99,10 +99,10 @@ actor SupabaseService {
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
         // `runs_metadata_activity_type_check` (migration 20260507_001) requires
-        // every row to carry `metadata.activity_type`. The phone-proxy path
-        // sets it from `WCSession.transferFile` metadata; this DEBUG-only
-        // direct path has no phone in the loop, so default to "run" — the
-        // Apple Watch app only records runs today.
+        // every row to carry `metadata.activity_type`. Both write paths take
+        // it from the same place — the pre-run picker's choice, carried on the
+        // finished run — so a walk recorded on a watch alone is not filed as a
+        // run just because no phone was in the loop.
         //
         // `last_modified_at` mirrors the WCSession payload in `ContentView`:
         // mobile's delta-fetch filters on `metadata->>'last_modified_at'`, so
@@ -124,7 +124,7 @@ actor SupabaseService {
             track_url: objectPath,
             source: "watch",
             metadata: RunMetadata(
-                activity_type: "run",
+                activity_type: run.activityType.rawValue,
                 last_modified_at: formatter.string(from: Date()),
                 avg_bpm: run.averageBPM,
                 hr_coverage: run.hrCoverage,

@@ -79,11 +79,45 @@ const readPlistCatalog = (dir) => JSON.parse(readFileSync(join(dir, PLIST_CATALO
 const writePlistCatalog = (dir, cat) =>
 	writeFileSync(join(dir, PLIST_CATALOG), JSON.stringify(cat, null, 2));
 
+// The consent prompts are DERIVED from Info.plist, never restated here. A
+// count written into this file is a second place a new capability has to be
+// added, which is the very shape claim (1) of the guard exists to refuse —
+// and it bit: the fifth prompt (NSMotionUsageDescription, for the pedometer)
+// failed this test on a tree the guard itself was perfectly happy with. The
+// regex is the test's own, not the guard's, so agreeing is still evidence.
+const PLIST_USAGE_KEYS = [
+	...readFileSync(join(WATCH_IOS, PLIST), 'utf8').matchAll(/<key>(NS\w*UsageDescription)<\/key>/g),
+].map((m) => m[1]);
+
+// The absence tests below need a key that is not declared anywhere and will
+// stay that way. A real Apple key cannot promise that — NSMotionUsageDescription
+// was this constant until the watch grew a pedometer, at which point both
+// tests silently started asserting a different branch of the guard.
+const ABSENT_USAGE_KEY = 'NSThrekirNeverDeclaredUsageDescription';
+
 test('the shipped watchOS catalogs, Info.plist and knownRegions agree', () => {
 	const { status, out } = runMutated(() => {});
 	assert.equal(status, 0, out);
 	assert.match(out, /^OK: \d+ string\(s\) across 2 catalog\(s\)/, out);
-	assert.match(out, /4 NS\*UsageDescription key\(s\) localized/, out);
+	assert.ok(PLIST_USAGE_KEYS.length > 0, 'no NS*UsageDescription keys parsed out of Info.plist');
+	assert.match(
+		out,
+		new RegExp(`\\b${PLIST_USAGE_KEYS.length} NS\\*UsageDescription key\\(s\\) localized`),
+		out,
+	);
+});
+
+test('the key the absence tests mutate with is declared nowhere', () => {
+	// Without this, a day when Apple ships the key turns both tests below
+	// into assertions about a branch they were never written to cover.
+	assert.ok(
+		!readFileSync(join(WATCH_IOS, PLIST), 'utf8').includes(ABSENT_USAGE_KEY),
+		`${ABSENT_USAGE_KEY} is declared in Info.plist — pick another`,
+	);
+	assert.ok(
+		!(ABSENT_USAGE_KEY in JSON.parse(readFileSync(join(WATCH_IOS, PLIST_CATALOG), 'utf8')).strings),
+		`${ABSENT_USAGE_KEY} has an InfoPlist.xcstrings entry — pick another`,
+	);
 });
 
 test('a locale translated but missing from CFBundleLocalizations is refused', () => {
@@ -253,22 +287,25 @@ test('a usage description added to Info.plist and not to the catalog is refused'
 	// string, and nothing anywhere asks for its six translations.
 	const { status, out } = runMutated((dir) => {
 		const p = join(dir, PLIST);
-		writeFileSync(
-			p,
-			readFileSync(p, 'utf8').replace(
-				'<key>WKApplication</key>',
-				'<key>NSMotionUsageDescription</key>\n\t<string>Threkir counts your steps.</string>\n\t<key>WKApplication</key>',
-			),
+		const src = readFileSync(p, 'utf8');
+		const cut = src.replace(
+			'<key>WKApplication</key>',
+			`<key>${ABSENT_USAGE_KEY}</key>\n\t<string>Threkir counts your steps.</string>\n\t<key>WKApplication</key>`,
 		);
+		assert.notEqual(cut, src, 'the Info.plist mutation matched nothing');
+		writeFileSync(p, cut);
 	});
 	assert.equal(status, 1, out);
-	assert.match(out, /Info\.plist declares NSMotionUsageDescription with no catalog entry/);
+	assert.match(
+		out,
+		new RegExp(`Info\\.plist declares ${ABSENT_USAGE_KEY} with no catalog entry`),
+	);
 });
 
 test('a catalog entry for a key Info.plist does not declare is refused', () => {
 	const { status, out } = runMutated((dir) => {
 		const cat = readPlistCatalog(dir);
-		cat.strings.NSCameraUsageDescription = {
+		cat.strings[ABSENT_USAGE_KEY] = {
 			localizations: Object.fromEntries(
 				['de', 'en', 'es', 'fr', 'ja', 'pt-BR', 'pt-PT'].map((l) => [
 					l,
@@ -279,7 +316,10 @@ test('a catalog entry for a key Info.plist does not declare is refused', () => {
 		writePlistCatalog(dir, cat);
 	});
 	assert.equal(status, 1, out);
-	assert.match(out, /\[NSCameraUsageDescription\]: no such NS\*UsageDescription key in Info\.plist/);
+	assert.match(
+		out,
+		new RegExp(`\\[${ABSENT_USAGE_KEY}\\]: no such NS\\*UsageDescription key in Info\\.plist`),
+	);
 });
 
 test('a source string that has drifted from the Info.plist fallback is refused', () => {

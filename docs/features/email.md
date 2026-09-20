@@ -92,7 +92,7 @@ different transport:
   fans out over the user's enabled device tokens, sending one FCM HTTP v1
   message per device — iOS included, since FCM forwards to Apple (sender
   package `internal/nativepush/`, stdlib + `golang-jwt`, no Firebase Admin SDK;
-  `decisions.md § 1677`).
+  `decisions.md § 1682`).
   A dead token (FCM `UNREGISTERED` 404) is pruned via
   `clear_device_token`; a 429/5xx defers. Gated on operator-supplied
   Firebase/APNs credentials (below) — unset → jobs finish done, rows stay

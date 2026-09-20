@@ -390,7 +390,7 @@ Three inputs: the `.p8` from 6a, its **Key ID**, and the **Team ID**
 register an FCM registration token, and a direct APNs POST addresses a
 different kind of token entirely — the mismatch that made every iOS push report
 success while arriving nowhere
-([decisions § 1677](../architecture/decisions.md)). What still has to match the
+([decisions § 1682](../architecture/decisions.md)). What still has to match the
 build is the `aps-environment` entitlement, which the pbxproj pins per
 configuration ([decisions § 742](../architecture/decisions.md)).
 
@@ -497,7 +497,7 @@ envelope sender is the failure this paragraph exists to prevent.
 ## 11. Turn the Apple button on
 
 The web code is done and fail-closed; there is no diff to write
-([decisions § 1679](../architecture/decisions.md)).
+([decisions § 1684](../architecture/decisions.md)).
 
 1. Set the repo secret **`PUBLIC_APPLE_AUTH_ENABLED`** to `true`.
 2. Cut a **`web@<version>`** tag.
@@ -505,7 +505,7 @@ The web code is done and fail-closed; there is no diff to write
 Both are needed. `release-web.yml` writes `apps/web/.env` from its own `env:`
 block and the build reads nothing else, so the secret alone changes nothing —
 which is exactly how eight flags sat permanently off until
-[§ 1678](../architecture/decisions.md).
+[§ 1683](../architecture/decisions.md).
 
 ## 12. Android release for push
 
@@ -574,5 +574,5 @@ Two Apple-specific behaviours to expect on that check, neither of them a bug:
 | Apple asks to verify a domain at step 5 | You entered `threkir.com` instead of the Supabase project domain. |
 | No `device_tokens` row on iOS | Expected until step 6 lands — `getToken()` needs an APNs registration first. After it, check the build's `aps-environment`. |
 | No `device_tokens` row on Android | An AAB built before the config secret (step 12). |
-| `native_push_sent_at` stamped but nothing arrives | Was the pre-§ 1677 defect. If it recurs, read the FCM response body — a 404 prunes the token, a 4xx is logged and dropped. |
+| `native_push_sent_at` stamped but nothing arrives | Was the pre-§ 1682 defect. If it recurs, read the FCM response body — a 404 prunes the token, a 4xx is logged and dropped. |
 | Mail never reaches a `privaterelay` address | Step 10, or the wrong domain registered for it. |

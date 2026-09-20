@@ -175,6 +175,20 @@ class RunNotificationBridge(
         nm.createNotificationChannel(channel)
     }
 
+    // Both factories below name their target component in the Intent
+    // constructor and pass FLAG_IMMUTABLE, so neither PendingIntent can be
+    // redirected or have its extras filled in by whoever holds it, and the
+    // only holder is the system notification shade. CodeQL's
+    // java/android/implicit-pendingintents flags them anyway
+    // (alerts #242/#243, dismissed as false positives): its mutability test
+    // walks a `BitwiseExpr`, and Kotlin has no bitwise operator — `a or b` is
+    // a call to `Int.or`, which that walk cannot follow, so every Kotlin
+    // PendingIntent combining flags reads as possibly-mutable. The query's own
+    // library says it "errs on the side of false positives" here. Do not
+    // resolve the alert by dropping FLAG_UPDATE_CURRENT; it is what keeps a
+    // re-posted action from carrying the previous run's extras, and the flag
+    // is not what the query is objecting to.
+
     /// PendingIntent that broadcasts a `run_action` to `RunActionReceiver`,
     /// which forwards it to Dart via `dispatchAction`. It is a broadcast, not
     /// an activity launch, so the button fires on a locked phone WITHOUT the

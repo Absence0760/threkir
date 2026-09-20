@@ -68,7 +68,7 @@ test('release-web.yml threads every feature-flag env var into the build', () => 
 	// missing from either the env mapping or the heredoc is permanently off —
 	// and an operator who sets the repo secret gets no change and no error.
 	// Eight of the ten flags were in exactly that state until 2026-09-19
-	// (decisions § 1678), including the Google one whose ADR called re-enabling
+	// (decisions § 1683), including the Google one whose ADR called re-enabling
 	// "a one-variable flip".
 	//
 	// The set is DERIVED from the *_flag.ts modules rather than listed, so a

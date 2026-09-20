@@ -330,6 +330,13 @@ cm.Run runFromWatchPayload(Map<String, dynamic> raw) {
   if (hrCoverage is num && hrCoverage.toDouble().isFinite) {
     metadata[cm.MetadataKeys.hrCoverage] = hrCoverage.toDouble();
   }
+  // Steps taken during the run. Only a positive count is recorded: a sender
+  // that measured nothing omits the key, and a zero forwarded onto the row
+  // would claim the runner stood still rather than that no pedometer ran.
+  final steps = raw['steps'];
+  if (steps is num && steps.toInt() > 0) {
+    metadata[cm.MetadataKeys.steps] = steps.toInt();
+  }
   final activity = raw['activity_type'];
   if (activity is String) metadata[cm.MetadataKeys.activityType] = activity;
   final lastModified = raw['last_modified_at'];

@@ -203,6 +203,29 @@ void main() {
       expect(run.metadata!['avg_bpm'], 145.0);
     });
 
+    test('steps forwards when positive', () {
+      final raw = baseline();
+      raw['steps'] = 5123;
+      final run = runFromWatchPayload(raw);
+      expect(run.metadata!['steps'], 5123);
+    });
+
+    test('a zero or missing step count omits the key', () {
+      // Absent means UNMEASURED — no pedometer hardware, a declined Motion &
+      // Fitness grant — which is a different claim from a run of no steps. A
+      // zero forwarded onto the row makes the two indistinguishable.
+      final zero = baseline();
+      zero['steps'] = 0;
+      expect(runFromWatchPayload(zero).metadata, isNull);
+      expect(runFromWatchPayload(baseline()).metadata, isNull);
+    });
+
+    test('non-numeric steps is dropped from metadata', () {
+      final raw = baseline();
+      raw['steps'] = 'lots';
+      expect(runFromWatchPayload(raw).metadata, isNull);
+    });
+
     test('laps array forwards verbatim per docs/backend/metadata.md § laps', () {
       // The canonical lap shape is per-lap deltas: `[{ index,
       // start_offset_s, distance_m, duration_s }]`. The decoder

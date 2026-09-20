@@ -25,7 +25,7 @@
 > could never have worked: both clients register an FCM registration token and
 > that endpoint addresses an APNs device token, so Apple answered
 > `400 BadDeviceToken` and the handler stamped the row as sent. See
-> [decisions.md § 1677](../architecture/decisions.md).
+> [decisions.md § 1682](../architecture/decisions.md).
 >
 > Tracked in [roadmap.md § Planned features](../product/roadmap.md#planned-features--specced-2026-06-15).
 
@@ -354,7 +354,7 @@ Copy the `web_push` trio:
   whichever matches the token, so the `{title, body, url, tag}` contract —
   including the collapse key that keeps a retry from stacking — renders the
   same on both. A direct-APNs transport was built first and removed; see
-  [decisions.md § 1677](../architecture/decisions.md).
+  [decisions.md § 1682](../architecture/decisions.md).
 - **`apps/job_worker/internal/worker.go`** — add a `NativePush NativePushSender`
   field (nil disables, mirroring `WebPush`), add `case "native_push":
   return w.handleNativePush(ctx, job)` to `dispatch()`.
@@ -564,7 +564,7 @@ this explicitly so the implementer doesn't manufacture a pair.
    § 1644 deep-link path), and the `APNS_SANDBOX` split, which one worker-wide
    setting can never get right for both TestFlight and Xcode builds. The `.p8`
    now goes to the Firebase project instead of the worker. Full reasoning in
-   [decisions.md § 1677](../architecture/decisions.md).
+   [decisions.md § 1682](../architecture/decisions.md).
 
 2. **Firebase Admin Go SDK vs. hand-rolled FCM HTTP v1 + `golang-jwt`?**
    *Hand-rolled*, matching `internal/webpush` — stdlib plus the already-present

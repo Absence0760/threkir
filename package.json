@@ -111,7 +111,6 @@
     "check:doc-links": "node scripts/check_doc_links.mjs",
     "check:test-inventory": "node scripts/check_test_inventory_counts.mjs",
     "check:conflict-markers": "node scripts/check_conflict_markers.mjs",
-    "check:adr-numbers": "node scripts/check_adr_numbers.mjs",
 
     "//-- test --": "Test suites per surface; test:scripts validates this file's script targets.",
     "test:web:unit": "pnpm -C apps/web test:unit",

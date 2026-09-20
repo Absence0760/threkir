@@ -2242,7 +2242,7 @@ packages, each confirmed to turn the intended test red and each restored to
 green (the scripts are the round's `reviews/mutate*.sh`, gitignored).
 `flutter analyze` reports zero `warning` and zero `error` in all five packages;
 the remaining issues are `info`. `npx tsx --test
-src/lib/decisions_numbering_guard.test.ts` from `apps/web` passes 3/3 over the
+src/lib/decisions_numbering_guard.test.ts` from `apps/web` passes 4/4 over the
 appended ADRs.
 
 NOT run by this lane, and not claimed: the full Flutter workspace suite, the
@@ -2281,7 +2281,7 @@ The added one is the **register** that moved here from `lambda_site_origin.test.
 
 Its Lambda-only register is superseded by the wider one above; the two behavioural cases over the share head builders stay. **Renamed `share_head_origin.test.ts` in round 34** ([decisions § 1002](../architecture/decisions.md)) — with the register gone the file reads no Lambda source, and the `lambda_` prefix named a scope it no longer had.
 
-Run by this lane and passing: the full `apps/web` unit suite via `npm run test:unit` (4684/4684), `svelte-check --tsconfig ./tsconfig.json` (0 errors), `npm run check:tsconfig-coverage`, `npm run check:script-types`, and `decisions_numbering_guard` 3/3 over the appended ADRs.
+Run by this lane and passing: the full `apps/web` unit suite via `npm run test:unit` (4684/4684), `svelte-check --tsconfig ./tsconfig.json` (0 errors), `npm run check:tsconfig-coverage`, `npm run check:script-types`, and `decisions_numbering_guard` 4/4 over the appended ADRs.
 
 NOT run by this lane, and not claimed: Playwright, any Flutter suite, and anything needing the local Supabase stack.
 

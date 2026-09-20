@@ -1207,7 +1207,7 @@ jobs:
     #     Reads the whole tree, not only markdown, but lives here because the
     #     docs-only diff is the one most likely to carry one and the one every
     #     code-gated job skips.
-    #
+   
     # Nine unrelated guards under one job name, so the name cannot say
     # which drifted and every step says it for itself — the rule
     # scripts/check_ci_diagnostics.mjs derives for any job running more than

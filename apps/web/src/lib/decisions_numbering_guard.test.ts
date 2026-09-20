@@ -35,13 +35,40 @@ import { resolve } from 'node:path';
 const repoRoot = resolve(import.meta.dirname, '..', '..', '..', '..');
 const decisionsPath = resolve(repoRoot, 'docs/architecture/decisions.md');
 
-/// References that named a non-existent entry before this guard was written.
+/// References that named a non-existent entry before this guard reached them.
 /// Each is a pre-existing defect, not a licence to add more. Remove an entry the
 /// moment its reference is corrected — the pinning assertion below fails if a
 /// listed number stops dangling, so this map cannot silently rot.
+///
+/// Three entries joined on 2026-09-20 when the reference check was widened from
+/// decisions.md alone to the whole tree (§ 1685). They are not new debt: they
+/// were dangling all along, in files the guard had never read. The
+/// may-only-shrink rule stands for everything after that widening.
 const KNOWN_DANGLING_REFS = new Map<number, string>([
-	[4704, '"§ 4704\'s `+` packing" — no entry 4704, and § 470 is unrelated to the glyph table']
+	[4704, '"§ 4704\'s `+` packing" — no entry 4704, and § 470 is unrelated to the glyph table'],
+	[
+		1810,
+		'cited twice in the exercise_catalogue_picker Dart twins beside a live § 1574, as though it had an opinion about shadowed exercises; above the maximum, so it is a typo or an entry that never landed'
+	],
+	[
+		1958,
+		'cited twice in exercise_catalogue_picker.test.ts as having "asked for a Playwright" test and "raised an objection"; above the maximum'
+	],
+	[
+		8703,
+		'cited in followups.md as a "§ 8703 region" for the Trivy exit-code posture; four digits, the same shape as 4704'
+	]
 ]);
+
+/// Files a `§N` reference can appear in. The tree's binaries and lockfiles are
+/// not prose and would only add parse cost.
+const REF_EXTENSIONS = /\.(md|mjs|ts|dart|swift|kt|yml|yaml|sh|rs|go|py)$/;
+
+/// A reference is `§` or `§§`, an optional space, and a number — plus, for a
+/// `§§ A-B` range, its second endpoint. A comma tail is deliberately NOT
+/// followed: `§ 1254, 2026-09-18` is a section and a date, and reading the tail
+/// as a reference reports the YEAR as a missing entry.
+const REF_PATTERN = /§§?\s?(\d+)(?:\s*[-\u2013]\s*(\d+))?/g;
 
 function decisionsDoc(): string {
 	return readFileSync(decisionsPath, 'utf-8');
@@ -88,12 +115,65 @@ test('every §N reference inside decisions.md resolves to an entry', () => {
 			`Point the reference at the entry it means; do not add it to KNOWN_DANGLING_REFS.`
 	);
 
-	const repaired = [...KNOWN_DANGLING_REFS.keys()].filter((n) => !dangling.includes(n));
+	// The allowlist's shrink check is NOT here: this test sees only
+	// decisions.md, and three of the register's entries are cited elsewhere in
+	// the tree. Asking a narrow reader to decide whether an entry is still
+	// needed reports every one it cannot see as repaired. It lives in the
+	// whole-tree test below, which has the full picture.
+});
+
+test('every §N reference anywhere in the tree resolves to an entry', () => {
+	// The companion of the test above, at the scope a renumber actually reaches.
+	// Widened 2026-09-20 (§ 1685): clearing a four-PR merge queue renumbered ADR
+	// entries five times, and every one of those is a chance to strand a citation
+	// in a file this guard was not reading — which is silent, because `§ 1678` is
+	// valid prose that points at nothing. The three references it found on the
+	// first run had been dangling for months.
+	const existing = new Set(headingNumbers(decisionsDoc()));
+	const files = execFileSync('git', ['ls-files'], { cwd: repoRoot, encoding: 'utf-8' })
+		.split('\n')
+		.filter((f) => f && REF_EXTENSIONS.test(f));
+
+	const dangling = new Map<number, string>();
+	for (const file of files) {
+		const text = readFileSync(resolve(repoRoot, file), 'utf-8');
+		for (const m of text.matchAll(REF_PATTERN)) {
+			for (const raw of [m[1], m[2]]) {
+				if (raw === undefined) continue;
+				const n = Number(raw);
+				if (existing.has(n) || KNOWN_DANGLING_REFS.has(n)) continue;
+				const line = text.slice(0, m.index).split('\n').length;
+				if (!dangling.has(n)) dangling.set(n, `${file}:${line}`);
+			}
+		}
+	}
+
+	assert.ok(files.length > 100, `expected the tracked tree, read only ${files.length} file(s)`);
+
+	const stillDangling = new Set<number>();
+	for (const file of files) {
+		const text = readFileSync(resolve(repoRoot, file), 'utf-8');
+		for (const m of text.matchAll(REF_PATTERN)) {
+			for (const raw of [m[1], m[2]]) {
+				if (raw !== undefined && !existing.has(Number(raw))) stillDangling.add(Number(raw));
+			}
+		}
+	}
+	const repaired = [...KNOWN_DANGLING_REFS.keys()].filter((n) => !stillDangling.has(n));
 	assert.deepEqual(
 		repaired,
 		[],
-		`KNOWN_DANGLING_REFS lists ${repaired.join(', ')}, which no longer dangle. Delete those entries — ` +
-			`the allowlist may only shrink.`
+		`KNOWN_DANGLING_REFS lists ${repaired.join(', ')}, which no longer dangle anywhere in the tree. ` +
+			`Delete those entries — the allowlist may only shrink.`
+	);
+
+	assert.deepEqual(
+		[...dangling.keys()].sort((a, b) => a - b),
+		[],
+		`§N references name entries that do not exist:\n  ` +
+			`${[...dangling].map(([n, where]) => `§ ${n} at ${where}`).join('\n  ')}\n` +
+			`A renumber that misses a citation leaves prose pointing at nothing. Point it at the ` +
+			`entry it means; do not add it to KNOWN_DANGLING_REFS.`
 	);
 });
 

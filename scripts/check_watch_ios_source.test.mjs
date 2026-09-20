@@ -23,6 +23,7 @@ import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 
 import {
+	HINTLESS_CONTROLS,
 	DIRECT_ONLY_FIELDS,
 	buildSettingsBlocks,
 	INGEST,
@@ -1640,4 +1641,96 @@ test('claim (17) fails vacuity rather than passing on a project it cannot parse'
 		errors.some((e) => e.includes('claim (17) would')),
 		errors.join('\n'),
 	);
+});
+
+// --- claim 18: every run control carries an accessibility hint -------------
+
+test('claim (18) fails when a run control loses its hint', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, SYNC, (s) =>
+			s.replace(/\n\s*\.accessibilityHint\("Begins a new run[^"]*"\)/, ''),
+		);
+	});
+	assert.ok(
+		errors.some((e) => e.includes('`Start` control carries no `.accessibilityHint`')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (18) is silent when a hint is REWORDED, which is the whole point', () => {
+	// The guard this replaced transcribed six hint sentences from three tiers
+	// away, so renaming Stop's hint for hold-to-stop failed `Test Flutter
+	// packages` on a copy edit (issue #965). The literals are held against the
+	// String Catalog by claims (1) and (2); this claim is about presence.
+	const { errors } = runMutated((dir) => {
+		edit(dir, SYNC, (s) =>
+			s.replace('Hold to end the run and open the summary', 'Press and hold to finish the run'),
+		);
+	});
+	assert.equal(
+		errors.filter((e) => e.includes('carries no `.accessibilityHint`')).length,
+		0,
+		errors.join('\n'),
+	);
+});
+
+test('claim (18) exempts a confirmationDialog action structurally, not by list', () => {
+	// The dialog's own title and message are what VoiceOver reads. Listing
+	// each action would mean an entry per future dialog.
+	const clean = runMutated(() => {});
+	assert.equal(
+		clean.errors.filter((e) => e.includes('carries no `.accessibilityHint`')).length,
+		0,
+		clean.errors.join('\n'),
+	);
+	assert.ok(
+		clean.ok.some((o) => /all \d+ run control\(s\).*carry an accessibility hint/.test(o)),
+		clean.ok.join('\n'),
+	);
+});
+
+test('claim (18) stops exempting a dialog action once it is outside the dialog', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, SYNC, (s) =>
+			s.replace(
+				'Button("Discard", role: .destructive) { onDiscard() }',
+				'}\n            Button("Discard", role: .destructive) { onDiscard() }\n            .x {',
+			),
+		);
+	});
+	assert.ok(
+		errors.some((e) => e.includes('carries no `.accessibilityHint`')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (18) fails when a HINTLESS_CONTROLS entry gains a hint', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, SYNC, (s) =>
+			s.replace(
+				'Button(workoutManager.activityType.label) {',
+				'Button(workoutManager.activityType.label) {\n                        // x\n                    }\n                    .accessibilityHint("cycles the activity type")\n                    .z {',
+			),
+		);
+	});
+	assert.ok(
+		errors.some((e) => e.includes('HINTLESS_CONTROLS lists')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (18) fails vacuity rather than passing when no Button is left to read', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, SYNC, (s) => s.replaceAll('Button(', 'Butt0n('));
+	});
+	assert.ok(
+		errors.some((e) => e.includes('claim (18) would pass vacuously')),
+		errors.join('\n'),
+	);
+});
+
+test('every HINTLESS_CONTROLS entry says where the cue lives instead', () => {
+	for (const [key, why] of Object.entries(HINTLESS_CONTROLS)) {
+		assert.ok(why.length > 40, `${key}: reason is too short to be a reason`);
+	}
 });

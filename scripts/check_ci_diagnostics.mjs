@@ -385,6 +385,16 @@ export const PR_ADVISORY = new Map([
 			'verdict on the title it no longer has.',
 	],
 	[
+		'pr-mergeable.yml',
+		'folding it into `ci.yml` would give it `ci.yml`\'s fate, which is the exact thing it ' +
+			'reports: a conflicting PR has no merge ref, so `ci.yml` does not run, and a check ' +
+			'living inside it would be absent precisely when a PR is untested. It has to be a ' +
+			'`pull_request_target` workflow building the head ref to be able to speak at all. ' +
+			'Not gating on it is also right on its own terms — `CI gate` is already absent on ' +
+			'such a PR and branch protection already blocks the merge, so this adds a SIGNAL to ' +
+			'a reader, not a second lock (issue #962, decisions § 1686).',
+	],
+	[
 		'labeler.yml',
 		'it labels a pull request and asserts nothing about it, so there is no verdict for a ' +
 			'gate to wait on.',

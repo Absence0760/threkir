@@ -696,6 +696,26 @@ export const PHONE_TARGET = 'Runner';
 export const WATCH_EMBED_DST = '$(CONTENTS_FOLDER_PATH)/Watch';
 export const WATCH_EMBED_SUBFOLDER = '16';
 
+/**
+ * Controls in `WatchApp/ContentView.swift` that carry no `.accessibilityHint`,
+ * keyed by a substring of the control's own `Button(...)` argument and valued
+ * with where its usage cue lives instead. Keyed on the argument rather than on
+ * the label because both of these render an interpolated label and would
+ * otherwise share the key `(unlabelled)`. Claim (18) fails when one of these
+ * grows a hint, when its argument changes shape, or when a control not listed
+ * here loses one.
+ *
+ * A `Button` inside a `confirmationDialog` is NOT listed: that case is decided
+ * structurally, because the dialog's own title and message are what VoiceOver
+ * reads and every future dialog action would otherwise need an entry here.
+ */
+export const HINTLESS_CONTROLS = {
+	'workoutManager.activityType.label':
+		'the activity picker: its cue is in the `.accessibilityLabel`, which reads "Activity type, currently <x>, tap to change" — a hint would repeat the half already there',
+	'presets[i].label':
+		'a pace-preset chip in a ForEach whose visible label IS the value ("5:30/km"); there is no usage cue to give that the label does not already carry',
+};
+
 /** The two project directories, repo-relative, for claim (15)'s path compare. */
 export const WATCH_PROJECT_DIR = join('apps', 'watch_ios');
 export const PHONE_PROJECT_DIR = dirname(dirname(PHONE_PBXPROJ));
@@ -2464,6 +2484,92 @@ export function check(
 			}
 		}
 		if (errors.length === before) ok.push('no Xcode object id is claimed twice, in either project');
+	}
+
+	// (18) Every run control carries an accessibility hint.
+	//
+	// This asserts a PROPERTY — the control has a hint — rather than the
+	// sentence the hint contains. The claim used to live three tiers away, as
+	// a source-grep inside `apps/mobile_android/test/architecture_guards_test
+	// .dart`, transcribing six hint sentences it did not own. Renaming Stop's
+	// hint for hold-to-stop rotted the transcription and failed `Test Flutter
+	// packages` on 1 of 7,435 tests, taking `CI gate` with it, on a PR whose
+	// author had run every watch guard and the whole watchOS suite green
+	// (issue #965, decisions § 1687). It also failed OPEN: it began
+	// `if (!file.existsSync()) return;`, so any change to the relative path
+	// between the two apps would have made it pass silently forever.
+	//
+	// The literals themselves are not unchecked — claims (1) and (2) hold
+	// every hint string against the String Catalog. What neither of those can
+	// see is a control with no hint at all, which is this.
+	{
+		const before = errors.length;
+		const src = stripSwiftComments(read(SYNC_SITE));
+		const buttons = swiftButtons(src);
+		if (buttons.length === 0) {
+			errors.push(
+				`Parsed no \`Button\` out of ${SYNC_SITE} — claim (18) would pass vacuously, which is ` +
+					'how the guard this replaced could have reported a hintless recording screen as clean.',
+			);
+		} else {
+			/**
+			 * `#if DEBUG` regions. A control compiled out of Release ships to
+			 * nobody, so it cannot fail an accessibility promise — and claim
+			 * (14) already holds DEBUG to the Debug configuration alone, so
+			 * this exemption cannot be widened by moving the fence.
+			 */
+			const debugFences = [];
+			for (const m of src.matchAll(/^\s*#if DEBUG\b/gm)) {
+				const end = src.indexOf('#endif', m.index);
+				if (end !== -1) debugFences.push([m.index, end]);
+			}
+			/** Every `confirmationDialog(...) { ... }` action block, as index ranges. */
+			const dialogs = [];
+			for (const m of src.matchAll(/\bconfirmationDialog\s*\(/g)) {
+				const close = matchDelimiter(src, m.index + m[0].length - 1, '(', ')');
+				if (close === -1) continue;
+				const brace = src.indexOf('{', close);
+				if (brace === -1) continue;
+				const end = matchDelimiter(src, brace, '{', '}');
+				if (end !== -1) dialogs.push([brace, end]);
+			}
+			const seen = new Set();
+			for (const [i, b] of buttons.entries()) {
+				if (dialogs.some(([from, to]) => b.index > from && b.index < to)) continue;
+				if (debugFences.some(([from, to]) => b.index > from && b.index < to)) continue;
+				// Bounded by the NEXT control, not by a fixed window: a pace
+				// preset sits ~700 characters above Start, so a fixed window
+				// read Start's hint as the preset's and the exemption for the
+				// preset then reported itself as unused.
+				const chain = src.slice(b.index, buttons[i + 1]?.index ?? src.length);
+				if (/\.accessibilityHint\s*\(/.test(chain)) continue;
+				const key = Object.keys(HINTLESS_CONTROLS).find((k) => b.args.includes(k));
+				if (key !== undefined) {
+					seen.add(key);
+					continue;
+				}
+				const line = src.slice(0, b.index).split('\n').length;
+				errors.push(
+					`${SYNC_SITE}:${line}: the \`${b.label}\` control carries no \`.accessibilityHint\`. ` +
+						'VoiceOver then announces what it is and not what it does, on the surface a ' +
+						'runner drives a recording from. Add one, or — if the cue genuinely lives in ' +
+						'its `.accessibilityLabel` instead — add it to HINTLESS_CONTROLS with where.',
+				);
+			}
+			for (const key of Object.keys(HINTLESS_CONTROLS)) {
+				if (!seen.has(key)) {
+					errors.push(
+						`HINTLESS_CONTROLS lists \`${key}\`, but no hintless control in ${SYNC_SITE} ` +
+							'answers to it any more — it gained a hint, or it is gone. Delete the entry ' +
+							'rather than leaving an exemption for a control that does not need one.',
+					);
+				}
+			}
+			const hinted = buttons.length - seen.size;
+			if (errors.length === before) {
+				ok.push(`all ${hinted} run control(s) in ${SYNC_SITE} carry an accessibility hint`);
+			}
+		}
 	}
 
 	return { errors, ok };

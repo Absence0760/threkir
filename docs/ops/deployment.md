@@ -305,7 +305,7 @@ one they gain later.
 
 ### What runs on a pull request and does not block it
 
-Five workflows trigger on a pull request and reach nothing the gate waits for.
+Six workflows trigger on a pull request and reach nothing the gate waits for.
 Each is a decision rather than a backlog item, and the decisions live in code:
 `PR_ADVISORY` in
 [`scripts/check_ci_diagnostics.mjs`](../../scripts/check_ci_diagnostics.mjs)
@@ -331,9 +331,17 @@ dropped, or an entry there this list never mentions, fails `workflow-lint`.
 - `dependabot-auto-merge.yml` -- it ACTS on a pull request (approve + enable
   auto-merge) rather than checking one, and a required check that merges the PR
   it is required by is a cycle.
+- `pr-mergeable.yml` -- it reports when `ci.yml` has **not run at all**, which
+  is the state a PR with conflicts is in: no merge ref exists, so no run is
+  created, and the two `pull_request_target` checks that do survive read as
+  health. Folding it into `ci.yml` would give it `ci.yml`'s fate and silence it
+  exactly when it has something to say. Not gating on it is right on its own
+  terms too -- `CI gate` is already absent on such a PR, so branch protection
+  already blocks the merge; this adds a signal to a reader, not a second lock
+  ([§ 1686](../architecture/decisions.md)).
 
 The register carries each reason in full; the list above is the operator's
-index into it. All five go red on a finding and the PR merges anyway, so a red
+index into it. All six go red on a finding and the PR merges anyway, so a red
 row from any of them is read rather than waited for. The root `CLAUDE.md` says
 the same about `pr-title-lint.yml`'s `lint title` in the words a contributor
 meets it in, and rule 8 pins that sentence too.

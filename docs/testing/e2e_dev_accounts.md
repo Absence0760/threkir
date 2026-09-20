@@ -61,8 +61,8 @@ If you want to wire any of the below up, here's exactly what to create. Until th
 
 ### 1. Google Sign-In — Google Cloud OAuth credentials
 
-**What's needed:**
-- Google Cloud project → Credentials → OAuth client → **Web application**.
+**What's needed** (ordered walkthrough: [`web_app_auth.md` § Operator provisioning](../features/web_app_auth.md#operator-provisioning-the-google-credential-gate)):
+- Google Cloud project → Google Auth Platform → **Clients** → **Web application**.
 - Authorized JavaScript origin: `https://your-domain.com` (+ `http://localhost:7777` for local).
 - Authorized redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback` (prod), `http://localhost:54321/auth/v1/callback` (local).
 - Paste the Web client id into Supabase Dashboard → Authentication → Providers → Google → Authorized Client IDs.

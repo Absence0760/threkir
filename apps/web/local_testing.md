@@ -89,7 +89,7 @@ Each integration below is independent — you can skip the ones you're not touch
 The web app supports Google as a sign-in provider on `/login` and as a *link* on `/settings/account` (attaches Google to an existing account).
 
 **Setup**
-1. Google Cloud → APIs & Services → Credentials → create an **OAuth client ID** (type: Web application). Authorized redirect URIs: `http://localhost:7777/auth/callback` *and* the Supabase callback URL printed by `supabase status` (looks like `http://localhost:54321/auth/v1/callback`).
+1. [Google Auth Platform](https://console.cloud.google.com/auth/overview) → **Clients** → **Create client** (type: Web application). Authorized redirect URIs: the Supabase callback URL printed by `supabase status` (looks like `http://localhost:54321/auth/v1/callback`) — that is the only URI Google itself redirects to; `http://localhost:7777/auth/callback` is Supabase's hop afterwards and belongs in its Redirect URLs, though listing it here too is harmless. Prod walkthrough, including the Android + iOS clients: [`docs/features/web_app_auth.md` § Operator provisioning](../../docs/features/web_app_auth.md#operator-provisioning-the-google-credential-gate).
 2. Local Supabase: edit `apps/backend/supabase/config.toml`, find `[auth.external.google]`, set `enabled = true` and paste `client_id` + `secret`. Restart the local stack (`supabase stop && supabase start` from `apps/backend/`).
 3. For the **link-on-existing-account** flow, also flip on **Manual linking** in `[auth]` (`enable_manual_linking = true` in `config.toml`). Without this, `linkIdentity()` returns `manual_linking_disabled`.
 

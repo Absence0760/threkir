@@ -314,6 +314,124 @@ For step-by-step OAuth setup + identity-link test paths, see [`apps/web/local_te
 
 ---
 
+## Operator provisioning (the Google credential gate)
+
+Every code path for Google sign-in is on `main`: web (`signInWithOAuth`), and
+the native id-token flow on both mobile twins. What is missing is one
+credential, and all three surfaces fail closed without it — web renders the
+"Soon" pill behind `PUBLIC_GOOGLE_AUTH_ENABLED`, mobile shows
+`googleSignInSoon` whenever `GOOGLE_WEB_CLIENT_ID` is empty. Nothing below
+changes code; it is the human half.
+
+### The console moved, and the old path is half-right
+
+Google's **OAuth consent screen** is now **Google Auth Platform**
+(`console.cloud.google.com/auth/overview?project=<id>`). There is exactly one
+consent configuration per project: **Branding**, **Audience**, **Clients** and
+**Data access** are views onto that single object, not things you create
+separately — a project that has never configured it shows a **Get started**
+wizard (app name, support email, audience, developer contact) and nothing else.
+The authorized domain and the test users are added *after* it, under Branding
+and Audience respectively, and `Clients → Create client` stays unavailable
+until the wizard has run.
+
+Walkthroughs that route you through *APIs & Services → Credentials → Create
+credentials → OAuth client ID* — including this repo's own, before 2026-09-20 —
+describe the client half correctly and the consent half not at all, which reads
+as a broken console rather than a moved one.
+
+Leave the app in **Testing** with your own address under Audience → Test users.
+Only the default `email` + `profile` scopes are requested; both are
+non-sensitive, which is what keeps this out of Google's verification review.
+
+### The three clients
+
+| Client type | Used by | What it is matched on | Where its id goes |
+|---|---|---|---|
+| **Web application** | web `/login` + `/settings/account`, and Supabase's token validation | redirect URI `https://<project-ref>.supabase.co/auth/v1/callback` (add `http://localhost:54321/auth/v1/callback` for local) | Supabase provider Client ID + secret; `GOOGLE_WEB_CLIENT_ID` / `MOBILE_GOOGLE_WEB_CLIENT_ID` for mobile |
+| **Android** | the `google_sign_in` native flow | package name + SHA-1 certificate fingerprint | nowhere — it carries no id you paste |
+| **iOS** | the `google_sign_in` native flow | bundle id | its reversed client id, as a URL scheme in `Info.plist` |
+
+Four things that cost time if taken on trust:
+
+- **The package name is `com.threkir.app` on both platforms** (`applicationId`
+  in `android/app/build.gradle.kts`, `PRODUCT_BUNDLE_IDENTIFIER` in the Xcode
+  project). `apps/mobile_android/local_testing.md` said
+  `com.example.mobile_android` until 2026-09-20; a client created against that
+  name matches no build that has ever shipped.
+- **SHA-1 is not one value.** The debug keystore for local, the upload keystore
+  for anything you sign yourself, and — once Play App Signing is on — the SHA-1
+  Play shows under *App signing*, because Play re-signs the artifact and Google
+  matches the signature that reaches the device. Register all of them on the one
+  Android client.
+- **Google only ever redirects to the Supabase callback.** The app's own
+  `/auth/callback` belongs in Supabase's Redirect URLs allow-list, not in
+  Google's authorized-redirect list. Listing it in both is harmless, which is
+  why the local-testing docs say to.
+- **Firebase creates OAuth clients of its own** in the same GCP project (a
+  Firebase project *is* a GCP project, and push provisioning came first — see
+  [native_push.md](native_push.md)). Read the Clients list before creating a
+  duplicate.
+
+### Order of work
+
+1. **Consent screen.** Get started → app name `Threkir`, support email,
+   **External**, developer contact → Create. Then Branding → Authorized domains
+   → `threkir.com`, and Audience → Test users → your address.
+2. **Web client.** Clients → Create client → Web application. Authorized
+   JavaScript origins `https://threkir.com` (+ `http://localhost:7777`),
+   authorized redirect URIs as in the table above. Copy the client id; the
+   secret is yours to handle and belongs in the estate repo alongside the push
+   credentials, never here.
+3. **Android client.** Package name + every SHA-1 from the note above.
+4. **iOS client.** Bundle id `com.threkir.app` — see *What iOS still owes*.
+5. **Supabase → Authentication → Providers → Google → Enable.** Client ID +
+   secret from the web client. Add the web client id to **Authorized Client
+   IDs**: `initialize(serverClientId:)` is what makes Android mint the id token
+   for that audience, and the token Supabase validates is the one the client
+   presents. Add the iOS client id beside it — the field takes a
+   comma-separated list, and whether iOS mints for the iOS client or the server
+   one is the single thing here that cannot be settled from Linux.
+6. **Supabase → Authentication → URL Configuration.** Site URL + Redirect URLs
+   per *Production setup* below, including `com.threkir.app://login-callback`.
+7. **Flip the gates.** Repo secret `PUBLIC_GOOGLE_AUTH_ENABLED=true` (web — it
+   reaches the build only because [decisions § 1683](../architecture/decisions.md)
+   wired it there; before that the ADR for this feature called re-enabling it a
+   one-variable flip and no variable reached a release), repo secret
+   `MOBILE_GOOGLE_WEB_CLIENT_ID` (Android release), and locally
+   `GOOGLE_WEB_CLIENT_ID` in `apps/mobile_android/.env.local` +
+   `[auth.external.google]` in `apps/backend/supabase/config.toml`.
+
+### Verifying it, in the order the signal appears
+
+1. Web `/login` shows **Continue with Google** without the "Soon" pill. If the
+   pill is still there the flag did not reach the build — that is a release
+   secret, not a Supabase setting.
+2. The button reaches Google's account chooser. `redirect_uri_mismatch` here
+   names the URI Google was asked for; it is the Supabase callback, and it is
+   missing from the web client.
+3. Return lands on `/dashboard` (or `/auth/confirm-age` on a first sign-in) with
+   a row in `auth.identities`. Returning to `/login` with no session means
+   Supabase's Redirect URLs, not Google's.
+4. Android: the system chooser opens and sign-in completes. "did not return an
+   ID token" is the Android client's package/SHA-1 not matching the installed
+   build; an emulator without Play services cannot do this at all.
+5. `/settings/account` → **Link Google** on an email account, which additionally
+   needs manual linking enabled (see *Production setup*).
+
+### What iOS still owes
+
+`apps/mobile_ios/ios/Runner/Info.plist` declares one URL scheme —
+`com.threkir.app`, the Supabase auth deep link — and no `GIDClientID`.
+`google_sign_in` 7.x on iOS needs an iOS client id (from `GIDClientID`, or from
+the bundled `GoogleService-Info.plist` that push provisioning already puts in
+the Runner target) *and* that client's reversed id registered as a URL scheme
+for the redirect back into the app. Until the scheme is added, iOS Google
+sign-in fails at `initialize()` however correct `GOOGLE_WEB_CLIENT_ID` is.
+Android and web are unaffected, and no Linux session can verify the fix.
+
+---
+
 ## Production setup
 
 For the deployed web app, the same code points at a hosted Supabase project. Set in the deploy environment:
@@ -327,7 +445,7 @@ Supabase Auth dashboard:
 
 - **Pre-deploy consent gate:** set **Authentication → URL Configuration → Site URL** to the prod origin (`https://threkir.com`). A fresh project defaults this to `http://localhost:3000`; leaving it there sends every fallback redirect (notably signup confirmation — see "Email confirmation redirect" above) to localhost.
 - **Pre-deploy consent gate:** add **every** redirect target to **Redirect URLs**: `https://threkir.com/auth/callback`, `https://threkir.com/auth/reset`, and the mobile deep link `com.threkir.app://login-callback` (+ the preview origin). The allow-list is enforced — a redirect not on it falls back to the Site URL. Getting either of these two wrong used to hand out a live session with an unstamped GDPR Art 8 consent record; the app now fails closed in code (issue #363, "A stray confirmation landing fails closed" above), but that guard is the safety net, **not** a licence to skip the config — verify both at every release.
-- Enable Google and Apple providers under **Authentication → Providers**
+- Enable Google and Apple providers under **Authentication → Providers** (Google's console + client half is *Operator provisioning* above)
 - Enable **Allow manual linking** under **Authentication → Settings** so `linkIdentity()` works
 - Mirror the same redirect URI in each external provider's app config
 - **Pre-deploy security gate:** confirm **Authentication → Providers → Email → Confirm email** is **ON** (`enable_confirmations = true`). This closes the sign-up user-enumeration oracle (issue #399, see "Sign-up must not be an account-existence oracle" above). The code neutralises the distinct account-exists message regardless, but the durable fix is confirmations enabled in prod — verify it as part of the release checklist, not just at first setup.

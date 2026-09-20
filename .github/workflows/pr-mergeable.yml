@@ -1,0 +1,143 @@
+name: pr-mergeable
+
+# Says out loud when `ci.yml` has not run on a PR.
+#
+# Why this exists: `ci.yml` triggers on `pull_request`, which runs against the
+# MERGE REF (`refs/pull/N/merge`). GitHub cannot compute a merge ref for a PR
+# with conflicts, so no run is created — not a queued job, not a skipped one,
+# not a failed one. Nothing. What the reader sees is the three checks that
+# survive, because they are `pull_request_target` and build the head ref
+# instead: this workflow, `labeler` and `dependabot-auto-merge`. Two of them
+# go green and nothing says CI was absent.
+#
+# Measured on 2026-09-20: four open PRs each showed 3 green checks while
+# `ci.yml` had run on none of them. The same PRs showed 57 checks once the
+# conflict was resolved. A session that resolves its conflict last, having
+# "verified" against a green-looking PR, has verified nothing (issue #962,
+# decisions § 1686).
+#
+# The append-heavy docs in this repo (`decisions.md`, `followups.md`,
+# `parity.md`, `test_inventory.md`) conflict routinely, so this is the common
+# state, not an edge case.
+#
+# TWO triggers, because there are two ways in:
+#
+#   - `pull_request_target` — the PR itself changed. Runs on the head ref, so
+#     it is unaffected by the missing merge ref. Fails the check directly.
+#   - `push` to `main` — the far more common cause: the PR did not change, the
+#     BASE moved out from under it. No PR event fires for that, so this half
+#     sweeps every open PR and posts a check-run to its head SHA. It posts a
+#     PASSING one for mergeable PRs too, so the check is always current rather
+#     than a failure nothing ever clears.
+#
+# This cannot merge anything unreviewed either way — `CI gate` is the required
+# check and is simply absent, which already blocks. The cost this addresses is
+# to the human and the agent reading the page.
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+  push:
+    branches: [main]
+
+permissions: read-all
+
+concurrency:
+  group: pr-mergeable-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  pr:
+    name: CI ran on this PR
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PR: ${{ github.event.pull_request.number }}
+    steps:
+      - name: Resolve mergeability, then say whether ci.yml can have run
+        run: |
+          # `mergeable` is computed asynchronously and reads UNKNOWN until
+          # GitHub finishes. Polling is the documented way to wait for it;
+          # treating UNKNOWN as mergeable would make this quiet exactly when
+          # it is most likely to matter, which is the bug it exists for.
+          state=UNKNOWN
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            state=$(gh pr view "$PR" --json mergeable --jq .mergeable 2>/dev/null || echo UNKNOWN)
+            if [ "$state" != "UNKNOWN" ]; then break; fi
+            echo "mergeable is still being computed (attempt ${attempt}); waiting"
+            sleep 6
+          done
+          echo "mergeable=${state}"
+          if [ "$state" = "CONFLICTING" ]; then
+            echo "::error::This PR conflicts with its base, so GitHub cannot build a merge ref and ci.yml HAS NOT RUN on it. Any green check you can see is from a pull_request_target workflow building the head ref — it is not CI, and this PR has been tested by nothing."
+            echo "Resolve the conflict and push. Per CLAUDE.md: merge origin/main INTO the branch and keep both sides of the append-heavy docs (decisions.md, followups.md, parity.md, test_inventory.md); do not force-push a rebase. Then confirm ci.yml actually started rather than reading two green checks as CI."
+            exit 1
+          fi
+          if [ "$state" = "UNKNOWN" ]; then
+            echo "::error::GitHub did not finish computing this PR's mergeability within 60s, so whether ci.yml can have run is unknown. Re-run this check; if it stays unknown, treat the PR as untested until ci.yml is seen to have started."
+            exit 1
+          fi
+          echo "Mergeable, so a merge ref exists and ci.yml runs against it."
+
+  base-moved:
+    name: Re-check open PRs after main moved
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Post a current mergeability check-run to every open PR
+        run: |
+          # A base that moves makes a PR conflict without any PR event firing,
+          # which is how four PRs sat untested for days. One sweep per push to
+          # main; the open-PR count here is single digits, so this is cheap.
+          open=$(gh pr list --state open --json number,headRefOid --jq '.[] | "\(.number) \(.headRefOid)"')
+          if [ -z "$open" ]; then
+            echo "No open PRs."
+            exit 0
+          fi
+          failed=0
+          while read -r number sha; do
+            [ -n "$number" ] || continue
+            state=UNKNOWN
+            for _ in 1 2 3 4 5; do
+              state=$(gh pr view "$number" --json mergeable --jq .mergeable 2>/dev/null || echo UNKNOWN)
+              if [ "$state" != "UNKNOWN" ]; then break; fi
+              sleep 6
+            done
+            if [ "$state" = "CONFLICTING" ]; then
+              conclusion=failure
+              title="ci.yml has not run on this PR"
+              summary="This PR conflicts with \`main\`, so GitHub cannot build a merge ref and \`ci.yml\` has not run. Green checks on this PR are \`pull_request_target\` workflows building the head ref, not CI. Merge \`origin/main\` into the branch, keeping both sides of the append-heavy docs, and push."
+            elif [ "$state" = "MERGEABLE" ]; then
+              conclusion=success
+              title="Mergeable, so ci.yml runs"
+              summary="A merge ref exists for this PR, so \`ci.yml\` runs against it. This check is re-posted on every push to \`main\` so it never reports a conflict the PR no longer has."
+            else
+              echo "::warning::PR #${number}: mergeability still UNKNOWN after 30s; leaving its check-run untouched rather than posting a guess."
+              continue
+            fi
+            if ! gh api "repos/${GITHUB_REPOSITORY}/check-runs" \
+              -f "name=CI ran on this PR" \
+              -f "head_sha=${sha}" \
+              -f status=completed \
+              -f "conclusion=${conclusion}" \
+              -f "output[title]=${title}" \
+              -f "output[summary]=${summary}" >/dev/null; then
+              echo "::warning::PR #${number}: could not post the check-run to ${sha}."
+              failed=$((failed + 1))
+            else
+              echo "PR #${number}: ${state} -> ${conclusion}"
+            fi
+          done <<< "$open"
+          # One PR's API hiccup must not fail this sweep for the others, but a
+          # sweep where every post failed is a broken workflow, not bad luck.
+          if [ "$failed" -gt 0 ]; then
+            echo "::warning::${failed} check-run post(s) failed; the PRs above keep whatever check they already had."
+          fi

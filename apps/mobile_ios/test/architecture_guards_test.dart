@@ -3325,47 +3325,6 @@ void main() {
     });
   });
 
-  group('accessibility: watchOS ContentView accessibility hints', () {
-    test('watchOS recording-flow buttons carry .accessibilityHint', () {
-      // Reason: audit/accessibility (May 2026) High — EU EAA. The
-      // watchOS app's primary recording buttons (Start / Pause / Stop /
-      // Resume / Recover / Discard / Sync Run) had no
-      // .accessibilityHint, leaving VoiceOver users without usage
-      // cues on the main recording surface. A source-grep guard run
-      // from the mobile_android twin's relative path, which auto-skips
-      // when the watch_ios sibling isn't present: what it asserts is
-      // that a BUTTON carries a hint at all, which neither the watchOS
-      // String Catalog guards nor `WatchAppTests` can see — they read
-      // the literals a hint contains, not whether a control has one.
-      // The cues are transcriptions and therefore rot: Stop's changed
-      // when the control became a HELD press (decisions § 1678), and
-      // this guard is what said so.
-      final file = File('../watch_ios/WatchApp/ContentView.swift');
-      if (!file.existsSync()) return;
-      final body = file.readAsStringSync();
-      for (final cue in const [
-        // Each cue is a substring from a hint we wrote — checking
-        // for the start of each unique sentence is enough to detect
-        // a future refactor that drops the modifier.
-        'Begins a new run',
-        'Pauses the recording without ending it',
-        'Hold to end the run and open the summary',
-        'Resumes the paused recording',
-        'Restores the unsaved run',
-        'Sends the completed run to your iPhone',
-      ]) {
-        expect(
-          body,
-          contains(cue),
-          reason:
-              'ContentView.swift must carry .accessibilityHint("$cue...") '
-              'on the matching button so VoiceOver announces a usage cue. '
-              'audit/accessibility Critical.',
-        );
-      }
-    });
-  });
-
   group('accessibility: recording-screen controls have Semantics', () {
     // Reason: audit/accessibility (May 2026) Critical — the
     // Pause / Discard / Lap controls on the recording screen were

@@ -33,9 +33,9 @@ Last moved: **2026-09-19**.
 | 3 | App ID `com.threkir.app` | Apple portal | ☐ |
 | 4 | Watch App ID `com.threkir.app.watchapp` | Apple portal | ☐ |
 | 5 | Services ID `com.threkir.web` | Apple portal | ☐ |
-| 6 | **APNs key** `.p8` | Firebase → Cloud Messaging | ☐ |
-| 7 | **Sign-in-with-Apple key** `.p8` | Supabase (via a generated client secret) | ☐ |
-| 8 | Both `.p8` files backed up | estate `threkir/push-credentials.sops.yaml` | ☐ |
+| 6 | **APNs key** `.p8` | Firebase → Cloud Messaging | **Done 2026-09-19** |
+| 7 | **Sign-in-with-Apple key** `.p8` | Supabase (via a generated client secret) | **Done 2026-09-19** |
+| 8 | Both `.p8` files backed up | estate `threkir/push-credentials.sops.yaml` | ☐ — five values set 2026-09-19, estate repo not yet committed or pushed |
 | 9 | Supabase Apple provider enabled | Supabase dashboard | ☐ |
 | 10 | Email-relay source registered | Apple portal → Services | ☐ |
 | 11 | `PUBLIC_APPLE_AUTH_ENABLED` truthy + `web@` tag | GitHub secret + release | ☐ |
@@ -415,22 +415,39 @@ which reads as a bad secret rather than a crossed pair.
 
 ## 8. Back both `.p8` files up
 
-Claude does not handle key material — run this yourself, from **inside** the
+Claude does not handle key material — run these yourself, from **inside** the
 estate repo, because `sops` discovers its config from the working directory
-rather than from the file path:
+rather than from the file path. `sops set` reads the file straight in, so no
+PEM is hand-pasted and none is retyped:
 
 ```
-cd ~/github/infra-secrets && AWS_PROFILE=threkir sops threkir/push-credentials.sops.yaml
+cd ~/github/infra-secrets && AWS_PROFILE=threkir sops set threkir/push-credentials.sops.yaml '["apns_key_p8"]' "$(jq -Rs . < ~/Downloads/AuthKey_<apns key id>.p8)"
 ```
 
-Add `apns_key_p8` and `siwa_key_p8`, plus their two Key IDs and the Team ID
-(`33Z28QB3CF`) as plain metadata. Do this while the files are still in
-`~/Downloads` and you still know which is which — then delete them from
-`~/Downloads`, because a private key sitting in a sync-happy folder is the
-thing the estate repo exists to avoid. A new file needs a `creation_rules` entry in the estate
-`.sops.yaml` first or `sops` refuses to encrypt it (fail-closed by design);
-from the project repo the same path fails with *"config file not found, or has
-no creation rules"*, which reads like a missing rule rather than a missing `cd`.
+```
+cd ~/github/infra-secrets && AWS_PROFILE=threkir sops set threkir/push-credentials.sops.yaml '["siwa_key_p8"]' "$(jq -Rs . < ~/Downloads/AuthKey_<siwa key id>.p8)"
+```
+
+Then `apple_team_id` (`33Z28QB3CF`), `apns_key_id` and `siwa_key_id` the same
+way, as plain `'"..."'` JSON strings. They are not secret, but a `.p8` without
+its Key ID is unusable and nothing else in the estate records which is which.
+A value set this way passes through the shell, so the PEM lands in
+`~/.bash_history` and is briefly visible in `ps`; on a machine where that
+matters, open the file with a bare `sops <file>` and paste instead.
+
+**A backup nobody pushed is not a backup.** `sops set` leaves the estate repo
+dirty and the only durable copy of a once-downloadable key sitting on the
+workstation this step exists to survive the loss of — so commit and push
+before deleting anything. Confirm what landed without decrypting: the YAML
+keys are plaintext, so `grep -oE '^[a-z0-9_]+:' threkir/push-credentials.sops.yaml`
+lists them and prints no value.
+
+Only then delete the `.p8` files, because a private key in a sync-happy folder
+is the thing the estate repo exists to avoid. A *new* file in the estate needs
+a `creation_rules` entry in its `.sops.yaml` first or `sops` refuses to
+encrypt it (fail-closed by design); this one already has its rule. From the
+project repo the same path fails with *"config file not found, or has no
+creation rules"*, which reads like a missing rule rather than a missing `cd`.
 
 ## 9. Supabase Apple provider
 

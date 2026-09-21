@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/apple_watch_route_bridge.dart';
+import '../lib/local_route_store.dart';
 
 /// Records what the bridge sends over the `run_app/watch_route` channel and
 /// can play the native side's failures back at it.
@@ -16,6 +17,7 @@ class _MockChannel {
   bool available = true;
   Object? throwOnPush;
   Object? throwOnAvailable;
+  Object? throwOnPushSaved;
 
   void install() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -36,10 +38,29 @@ class _MockChannel {
       case 'push':
         if (throwOnPush != null) throw throwOnPush!;
         return null;
+      case 'push_saved':
+        if (throwOnPushSaved != null) throw throwOnPushSaved!;
+        return null;
     }
     return null;
   }
 }
+
+Route _route({
+  required String id,
+  String name = 'Route',
+  double distance = 5000,
+  bool starred = false,
+  List<Waypoint>? waypoints,
+}) =>
+    Route(
+      id: id,
+      userId: 'uid',
+      name: name,
+      waypoints: waypoints ?? _line(4),
+      distanceMetres: distance,
+      isStarred: starred,
+    );
 
 List<Waypoint> _line(int count) => [
       for (var i = 0; i < count; i++)
@@ -181,6 +202,261 @@ void main() {
     });
   });
 
+  group('encodeSavedRoutesForWatch', () {
+    test('offers only the starred routes', () {
+      final encoded = AppleWatchRouteBridge.encodeSavedRoutesForWatch([
+        _route(id: 'starred', starred: true),
+        _route(id: 'plain'),
+        _route(id: 'also-starred', starred: true),
+      ]);
+      expect([for (final e in encoded) e['route_id']],
+          ['starred', 'also-starred']);
+    });
+
+    test('carries the same five keys a single armed push carries', () {
+      final encoded = AppleWatchRouteBridge.encodeSavedRoutesForWatch(
+        [_route(id: 'r', name: 'Riverside loop', distance: 5120.5, starred: true)],
+      );
+      expect(encoded.single.keys.toSet(), {
+        'route_id',
+        'route_name',
+        'route_distance_m',
+        'route_lat',
+        'route_lng',
+      });
+      expect(encoded.single['route_name'], 'Riverside loop');
+      expect(encoded.single['route_distance_m'], 5120.5);
+    });
+
+    test('stops at the route cap, keeping the store order', () {
+      final encoded = AppleWatchRouteBridge.encodeSavedRoutesForWatch([
+        for (var i = 0; i < kMaxAppleWatchSavedRoutes * 2; i++)
+          _route(id: 'r$i', starred: true),
+      ]);
+      expect(encoded, hasLength(kMaxAppleWatchSavedRoutes));
+      expect(encoded.first['route_id'], 'r0');
+      expect(encoded.last['route_id'], 'r${kMaxAppleWatchSavedRoutes - 1}');
+    });
+
+    test('thins a dense route to the per-route budget, keeping both ends', () {
+      final points = _line(kMaxAppleWatchSavedRoutePoints * 4);
+      final encoded = AppleWatchRouteBridge.encodeSavedRoutesForWatch(
+        [_route(id: 'r', starred: true, waypoints: points)],
+      );
+      final lat = encoded.single['route_lat'] as List;
+      final lng = encoded.single['route_lng'] as List;
+      expect(lat, hasLength(kMaxAppleWatchSavedRoutePoints));
+      expect(lng, hasLength(kMaxAppleWatchSavedRoutePoints));
+      expect(lat.first, points.first.lat);
+      expect(lat.last, points.last.lat);
+    });
+
+    test('drops a route the watch could not follow rather than offering it',
+        () {
+      // Each of these fails `ArmedRoute.decode` on the wrist, so arming it
+      // would fail at the start of the run — after the runner chose it.
+      final encoded = AppleWatchRouteBridge.encodeSavedRoutesForWatch([
+        _route(id: '', starred: true),
+        _route(id: 'one-point', starred: true, waypoints: _line(1)),
+        _route(id: 'no-points', starred: true, waypoints: const []),
+        _route(id: 'nan-distance', starred: true, distance: double.nan),
+        _route(id: 'negative-distance', starred: true, distance: -1),
+        _route(
+          id: 'off-globe',
+          starred: true,
+          waypoints: const [
+            Waypoint(lat: 91, lng: 0),
+            Waypoint(lat: 51.5, lng: -0.12),
+          ],
+        ),
+        _route(
+          id: 'nan-point',
+          starred: true,
+          waypoints: const [
+            Waypoint(lat: double.nan, lng: 0),
+            Waypoint(lat: 51.5, lng: -0.12),
+          ],
+        ),
+        _route(id: 'good', starred: true),
+      ]);
+      expect([for (final e in encoded) e['route_id']], ['good']);
+    });
+  });
+
+  group('pushSavedRoutes', () {
+    test('never reaches the channel off iOS', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      expect(await AppleWatchRouteBridge.pushSavedRoutes([]), isFalse);
+      expect(channel.calls, isEmpty);
+    });
+
+    test('sends the list under the saved_routes key', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      final list = AppleWatchRouteBridge.encodeSavedRoutesForWatch(
+        [_route(id: 'r', starred: true)],
+      );
+      expect(await AppleWatchRouteBridge.pushSavedRoutes(list), isTrue);
+
+      final call = channel.calls.single;
+      expect(call.method, 'push_saved');
+      final args = Map<String, dynamic>.from(call.arguments as Map);
+      expect(args.keys.toSet(), {'saved_routes'});
+      expect((args['saved_routes'] as List).single, list.single);
+    });
+
+    test('sends an empty list, which is how the picker is emptied', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      expect(await AppleWatchRouteBridge.pushSavedRoutes([]), isTrue);
+      final args =
+          Map<String, dynamic>.from(channel.calls.single.arguments as Map);
+      expect(args['saved_routes'], isEmpty);
+    });
+
+    test('reports a failure instead of throwing into whatever edited a route',
+        () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      for (final failure in <Object>[
+        PlatformException(code: 'watch_unavailable', message: 'no watch'),
+        MissingPluginException('test: no plugin'),
+      ]) {
+        channel.throwOnPushSaved = failure;
+        expect(await AppleWatchRouteBridge.pushSavedRoutes([]), isFalse);
+      }
+    });
+  });
+
+  group('attach', () {
+    late Directory tempDir;
+    late LocalRouteStore store;
+    late AppleWatchRouteBridge bridge;
+
+    setUp(() async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      AppleWatchRouteBridge.kPushDebounceWindow = Duration.zero;
+      tempDir = Directory.systemTemp.createTempSync('apple_watch_routes_');
+      store = LocalRouteStore();
+      await store.init(overrideDirectory: tempDir);
+      bridge = AppleWatchRouteBridge();
+    });
+
+    tearDown(() {
+      bridge.detach();
+      AppleWatchRouteBridge.kPushDebounceWindow =
+          const Duration(milliseconds: 250);
+      if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+    });
+
+    List<Map<String, dynamic>> saved() => [
+          for (final c in channel.calls)
+            if (c.method == 'push_saved')
+              Map<String, dynamic>.from(c.arguments as Map),
+        ];
+
+    test('states the current list immediately', () async {
+      await store.save(_route(id: 'starred', starred: true));
+      await store.save(_route(id: 'plain'));
+
+      bridge.attach(store);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(saved(), hasLength(1));
+      final routes = saved().single['saved_routes'] as List;
+      expect(routes, hasLength(1));
+      expect((routes.single as Map)['route_id'], 'starred');
+    });
+
+    test('pushes again when a route is starred', () async {
+      bridge.attach(store);
+      await Future<void>.delayed(Duration.zero);
+      await store.save(_route(id: 'r', starred: true));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(saved(), hasLength(2));
+      expect((saved().last['saved_routes'] as List), hasLength(1));
+    });
+
+    test('skips an edit the wrist cannot see', () async {
+      await store.save(_route(id: 'starred', starred: true));
+      bridge.attach(store);
+      await Future<void>.delayed(Duration.zero);
+      // A mutation that leaves the starred subset byte-identical. Without the
+      // diff gate this burns a slot in a DURABLE transfer queue.
+      await store.save(_route(id: 'unstarred'));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(saved(), hasLength(1));
+    });
+
+    test('retries after a failed push rather than caching it as sent',
+        () async {
+      // The second change produces the SAME payload as the failed first one,
+      // so only a diff cache that refused to remember the failure sends it.
+      channel.throwOnPushSaved =
+          PlatformException(code: 'watch_unavailable', message: 'no watch');
+      await store.save(_route(id: 'starred', starred: true));
+      bridge.attach(store);
+      await Future<void>.delayed(Duration.zero);
+      expect(saved(), hasLength(1));
+
+      channel.throwOnPushSaved = null;
+      await store.save(_route(id: 'unstarred'));
+      await Future<void>.delayed(Duration.zero);
+      expect(saved(), hasLength(2));
+      expect(saved().last, saved().first);
+    });
+
+    test('stops pushing once detached', () async {
+      bridge.attach(store);
+      await Future<void>.delayed(Duration.zero);
+      final before = saved().length;
+      bridge.detach();
+      await store.save(_route(id: 'r', starred: true));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(saved(), hasLength(before));
+    });
+
+    test('coalesces a burst of stars into one push', () async {
+      AppleWatchRouteBridge.kPushDebounceWindow =
+          const Duration(milliseconds: 20);
+      bridge.attach(store);
+      await Future<void>.delayed(Duration.zero);
+      final initial = saved().length;
+      for (var i = 0; i < 5; i++) {
+        await store.save(_route(id: 'r$i', starred: true));
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+
+      expect(saved(), hasLength(initial + 1));
+      expect((saved().last['saved_routes'] as List), hasLength(5));
+    });
+
+    test('a second attach replaces the subscription rather than doubling it',
+        () async {
+      // Both `main.dart` sites reach this, and the second one runs on every
+      // sign-out. Two listeners on one store is a duplicate durable transfer
+      // per route edit, forever.
+      bridge.attach(store);
+      AppleWatchRouteBridge().attach(store);
+      await Future<void>.delayed(Duration.zero);
+      final before = saved().length;
+      await store.save(_route(id: 'r', starred: true));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(saved(), hasLength(before + 1));
+    });
+
+    test('subscribes to nothing off iOS', () async {
+      bridge.detach();
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      bridge.attach(store);
+      await store.save(_route(id: 'r', starred: true));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(saved(), isEmpty);
+    });
+  });
+
   // ---- Cross-language wiring guards -----------------------------------
   //
   // The route push crosses three languages and nothing else compiles the
@@ -258,6 +534,58 @@ void main() {
       expect(screen, contains('routeDetailAppleWatchRouteTooShort'),
           reason: 'A refused route must tell the runner why, not fail '
               'silently.');
+    });
+
+    test('the saved-routes list rides the same three rails', () {
+      final phone = read('../mobile_ios/ios/Runner/WatchIngestBridge.swift');
+      final watch = read('../watch_ios/WatchApp/ArmedRoute.swift');
+      if (phone == null || watch == null) return;
+      expect(phone, contains('case "push_saved":'),
+          reason: 'WatchIngestBridge.swift must serve the method '
+              'AppleWatchRouteBridge.pushSavedRoutes invokes.');
+      expect(phone, contains('savedRoutesUserInfo'),
+          reason: 'The list must be re-validated on the phone: a payload the '
+              'watch refuses is retried by the system forever against a '
+              'runner who was told it was sent.');
+      expect(phone, contains('routeUserInfo(from: element)'),
+          reason: 'Each element must go through the SINGLE-route validator, '
+              'so the picker can never offer a route ArmedRoute.decode '
+              'would refuse.');
+      for (final src in [phone, watch]) {
+        expect(src, contains('"saved_routes"'),
+            reason: 'Both Swift ends must hang the list off the same key.');
+      }
+      expect(watch, contains('ArmedRoute.decode(element)'),
+          reason: 'SavedRoutes.decodeList must validate with the same '
+              'decoder a single armed push takes.');
+    });
+
+    test('the saved-routes budgets are the same numbers in all three languages',
+        () {
+      final phone = read('../mobile_ios/ios/Runner/WatchIngestBridge.swift');
+      final watch = read('../watch_ios/WatchApp/ArmedRoute.swift');
+      if (phone == null || watch == null) return;
+      expect(phone, contains('maxSavedRoutes = $kMaxAppleWatchSavedRoutes'));
+      expect(phone,
+          contains('maxSavedRoutePoints = $kMaxAppleWatchSavedRoutePoints'));
+      expect(watch, contains('maxRoutes = $kMaxAppleWatchSavedRoutes'),
+          reason: 'A phone cap above SavedRoutes.maxRoutes pushes routes the '
+              'watch silently drops on arrival.');
+      expect(
+          watch,
+          contains(
+              'maxPointsPerRoute = $kMaxAppleWatchSavedRoutePoints'),
+          reason: 'A route over the watch cap is dropped from the picker '
+              'with nothing reported.');
+    });
+
+    test('startup subscribes the bridge to the route store', () {
+      final main = read('lib/main.dart')!;
+      expect(main, contains('AppleWatchRouteBridge().attach(routeStore);'),
+          reason: 'The list only stays fresh because the bridge follows '
+              'LocalRouteStore — the same trigger WearRoutesBridge uses. '
+              'Without the attach the wrist picker renders its empty state '
+              'forever.');
     });
 
     test('the watch consumes the navigator during a run', () {

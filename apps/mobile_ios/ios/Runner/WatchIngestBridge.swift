@@ -27,6 +27,19 @@ import WatchConnectivity
     /// would burn a durable transfer on a route that can never land.
     static let maxRoutePoints = 512
 
+    /// Routes one picker-list push may offer, and positions one of them may
+    /// carry. Must match `SavedRoutes.maxRoutes` / `SavedRoutes.maxPointsPerRoute`
+    /// in `apps/watch_ios/WatchApp/ArmedRoute.swift` and
+    /// `kMaxAppleWatchSavedRoutes` / `kMaxAppleWatchSavedRoutePoints` in
+    /// `apple_watch_route_bridge.dart`. `scripts/check_shared_constants.mjs`
+    /// reads all three rails, so these are not a transcription of the watch's
+    /// numbers — they are held against them.
+    ///
+    /// A quarter of `maxRoutePoints` per route because twelve ride in one
+    /// 65,536-byte user-info payload where an armed route rides alone.
+    static let maxSavedRoutes = 12
+    static let maxSavedRoutePoints = 128
+
     /// A run Dart keeps refusing is re-dispatched on every watch contact, so
     /// without a ceiling a permanently-failing payload would spend a dispatch
     /// per activation and per received file for the life of the process. Past
@@ -116,6 +129,26 @@ import WatchConnectivity
             }
             WCSession.default.transferUserInfo(payload)
             result(nil)
+        case "push_saved":
+            guard let args = call.arguments as? [String: Any],
+                  let payload = Self.savedRoutesUserInfo(from: args) else {
+                result(FlutterError(
+                    code: "bad_saved_routes",
+                    message: "Saved-route list rejected",
+                    details: nil
+                ))
+                return
+            }
+            guard Self.canPushRoute() else {
+                result(FlutterError(
+                    code: "watch_unavailable",
+                    message: "No paired Apple Watch running the app",
+                    details: nil
+                ))
+                return
+            }
+            WCSession.default.transferUserInfo(payload)
+            result(nil)
         default:
             result(FlutterMethodNotImplemented)
         }
@@ -150,6 +183,41 @@ import WatchConnectivity
             "route_lat": latitudes,
             "route_lng": longitudes,
         ]
+    }
+
+    /// Repack the wrist picker's starred list for `transferUserInfo`.
+    ///
+    /// Every element goes through `routeUserInfo(from:)` — the SAME validator
+    /// a single armed push takes — so the list can never carry a dictionary
+    /// `ArmedRoute.decode` would refuse, and picking one on the wrist is a
+    /// store write rather than a second decode with a second set of rules.
+    /// It is also why there is no second key list here to drift from that one.
+    ///
+    /// An element that fails, or that overruns `maxSavedRoutePoints`, is
+    /// dropped and the rest of the list stands. Deliberately weaker than the
+    /// single push's drop-the-whole-thing rule, whose reason does not reach
+    /// here: there a rejection would leave a PARTLY decoded polyline and
+    /// measure the runner against a line their route does not have, where each
+    /// element of a list is whole or absent on its own. What is preserved is
+    /// that nothing reaches the picker the watch could not follow — arming it
+    /// would fail at the start of the run instead.
+    ///
+    /// An EMPTY array is a value rather than an absence: it is what lands when
+    /// the runner unstars their last route, and it must empty the picker. So
+    /// the only rejection of the whole payload is a missing `saved_routes`.
+    static func savedRoutesUserInfo(from args: [String: Any]) -> [String: Any]? {
+        guard let raw = args["saved_routes"] as? [[String: Any]] else { return nil }
+        var routes: [[String: Any]] = []
+        routes.reserveCapacity(min(raw.count, maxSavedRoutes))
+        for element in raw {
+            guard let route = routeUserInfo(from: element) else { continue }
+            guard let latitudes = route["route_lat"] as? [Double],
+                  latitudes.count <= maxSavedRoutePoints
+            else { continue }
+            routes.append(route)
+            if routes.count == maxSavedRoutes { break }
+        }
+        return ["saved_routes": routes]
     }
 
     // MARK: - WCSessionDelegate

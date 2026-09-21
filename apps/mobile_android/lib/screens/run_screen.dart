@@ -1822,7 +1822,18 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // ongoing-notification equivalent to override. A refusal (Live Activities
     // turned off, iOS older than 16.2) leaves the lock screen empty and the
     // recording entirely untouched; the bridge no-ops on Android.
-    _liveActivity.start(_lockScreenFrame());
+    //
+    // The bridge swallows its own platform failures, but _lockScreenFrame()
+    // runs HERE, synchronously, on the run-start path: it reads the unit
+    // preference and formats a pace that is still zero this early. An
+    // exception out of a formatter would take the GPS stream, the crash-save
+    // timer and the live-share attach below it with it, so the frame build
+    // gets the same own-catch every other auxiliary effect on this path has.
+    try {
+      _liveActivity.start(_lockScreenFrame());
+    } catch (e) {
+      debugPrint('live activity start failed: $e');
+    }
 
     // Auto-live-share (docs/features/safety.md): the device pref starts
     // the broadcast on every run start, so the overdue escalation has a

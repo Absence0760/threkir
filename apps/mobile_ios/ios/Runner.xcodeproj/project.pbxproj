@@ -46,6 +46,12 @@
 		7884EA00222EC3CC00C636F4 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 7884EA00212EC3CC00C636F4 /* Localizable.xcstrings */; };
 		7884EA00352EC3CC00C636F4 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 7884EA00342EC3CC00C636F4 /* InfoPlist.xcstrings */; };
 		7884EA00262EC3CC00C636F4 /* WatchApp.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 7884EA00252EC3CC00C636F4 /* WatchApp.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A5CD1E000000000000000001 /* RunActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000010 /* RunActivityAttributes.swift */; };
+		A5CD1E000000000000000002 /* RunActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000011 /* RunActivityWidget.swift */; };
+		A5CD1E000000000000000003 /* RunActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000010 /* RunActivityAttributes.swift */; };
+		A5CD1E000000000000000004 /* LiveActivityBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000014 /* LiveActivityBridge.swift */; };
+		A5CD1E000000000000000006 /* LiveActivityBridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000016 /* LiveActivityBridgeTests.swift */; };
+		A5CD1E000000000000000005 /* RunActivityExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000013 /* RunActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -61,6 +67,30 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		A5CD1E000000000000000034 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				A5CD1E000000000000000005 /* RunActivityExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXContainerItemProxy section */
+		A5CD1E000000000000000035 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A5CD1E000000000000000030;
+			remoteInfo = RunActivityExtension;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXContainerItemProxy section */
 		331C8085294A63A400263BE5 /* PBXContainerItemProxy */ = {
@@ -153,6 +183,13 @@
 		7884EA00242EC3CC00C636F4 /* WatchApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WatchApp.entitlements; sourceTree = "<group>"; };
 		7884EA00252EC3CC00C636F4 /* WatchApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WatchApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7884EA00332EC3CC00C636F4 /* WatchApp.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = WatchApp.xcconfig; path = Flutter/WatchApp.xcconfig; sourceTree = "<group>"; };
+		A5CD1E000000000000000010 /* RunActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunActivityAttributes.swift; sourceTree = "<group>"; };
+		A5CD1E000000000000000011 /* RunActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunActivityWidget.swift; sourceTree = "<group>"; };
+		A5CD1E000000000000000012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A5CD1E000000000000000013 /* RunActivityExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RunActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		A5CD1E000000000000000014 /* LiveActivityBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityBridge.swift; sourceTree = "<group>"; };
+		A5CD1E000000000000000016 /* LiveActivityBridgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityBridgeTests.swift; sourceTree = "<group>"; };
+		A5CD1E000000000000000015 /* RunActivity.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = RunActivity.xcconfig; path = Flutter/RunActivity.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -180,6 +217,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A5CD1E000000000000000032 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -197,6 +241,7 @@
 			children = (
 				A1C0DE0000000000000C0001 /* CalendarBridgeRruleTests.swift */,
 				A1C0DE0000000000000C0003 /* WatchIngestBridgeTests.swift */,
+				A5CD1E000000000000000016 /* LiveActivityBridgeTests.swift */,
 			);
 			path = RunnerTests;
 			sourceTree = "<group>";
@@ -224,6 +269,7 @@
 				7AFA3C8E1D35360C0083082E /* Release.xcconfig */,
 				9740EEB31CF90195004384FC /* Generated.xcconfig */,
 				7884EA00332EC3CC00C636F4 /* WatchApp.xcconfig */,
+				A5CD1E000000000000000015 /* RunActivity.xcconfig */,
 			);
 			name = Flutter;
 			sourceTree = "<group>";
@@ -236,6 +282,7 @@
 				97C146EF1CF9000F007C117D /* Products */,
 				331C8082294A63A400263BE5 /* RunnerTests */,
 				7884EA00272EC3CC00C636F4 /* WatchApp */,
+				A5CD1E000000000000000020 /* RunActivity */,
 				817F36B4C422B0F918E58AFA /* Pods */,
 				2AC58A8B0223326464C20D9A /* Frameworks */,
 			);
@@ -247,6 +294,7 @@
 				97C146EE1CF9000F007C117D /* Runner.app */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
 				7884EA00252EC3CC00C636F4 /* WatchApp.app */,
+				A5CD1E000000000000000013 /* RunActivityExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -265,6 +313,7 @@
 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
 				7884E9682EC3CC0A00C636F2 /* WatchIngestBridge.swift */,
 				7884E9712EC3CC0A00C636F3 /* CalendarBridge.swift */,
+				A5CD1E000000000000000014 /* LiveActivityBridge.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
 			path = Runner;
@@ -304,6 +353,16 @@
 			path = "../../watch_ios/WatchApp";
 			sourceTree = "<group>";
 		};
+		A5CD1E000000000000000020 /* RunActivity */ = {
+			isa = PBXGroup;
+			children = (
+				A5CD1E000000000000000010 /* RunActivityAttributes.swift */,
+				A5CD1E000000000000000011 /* RunActivityWidget.swift */,
+				A5CD1E000000000000000012 /* Info.plist */,
+			);
+			path = RunActivity;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -338,6 +397,7 @@
 				7884EA032EC3CC0A00C636F5 /* Copy Firebase config if present */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
 				7884EA002B2EC3CC00C636F4 /* Embed Watch Content */,
+				A5CD1E000000000000000034 /* Embed Foundation Extensions */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				35962F30FA7EE92CA151D686 /* [CP] Embed Pods Frameworks */,
 			);
@@ -345,6 +405,7 @@
 			);
 			dependencies = (
 				7884EA002E2EC3CC00C636F4 /* PBXTargetDependency */,
+				A5CD1E000000000000000036 /* PBXTargetDependency */,
 			);
 			name = Runner;
 			packageProductDependencies = (
@@ -370,6 +431,23 @@
 			productName = WatchApp;
 			productReference = 7884EA00252EC3CC00C636F4 /* WatchApp.app */;
 			productType = "com.apple.product-type.application";
+		};
+		A5CD1E000000000000000030 /* RunActivityExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A5CD1E000000000000000043 /* Build configuration list for PBXNativeTarget "RunActivityExtension" */;
+			buildPhases = (
+				A5CD1E000000000000000031 /* Sources */,
+				A5CD1E000000000000000032 /* Frameworks */,
+				A5CD1E000000000000000033 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RunActivityExtension;
+			productName = RunActivityExtension;
+			productReference = A5CD1E000000000000000013 /* RunActivityExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -419,6 +497,7 @@
 				97C146ED1CF9000F007C117D /* Runner */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
 				7884EA002C2EC3CC00C636F4 /* WatchApp */,
+				A5CD1E000000000000000030 /* RunActivityExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -449,6 +528,13 @@
 				7884EA00202EC3CC00C636F4 /* Assets.xcassets in Resources */,
 				7884EA00222EC3CC00C636F4 /* Localizable.xcstrings in Resources */,
 				7884EA00352EC3CC00C636F4 /* InfoPlist.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A5CD1E000000000000000033 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -572,6 +658,7 @@
 			files = (
 				A1C0DE0000000000000C0002 /* CalendarBridgeRruleTests.swift in Sources */,
 				A1C0DE0000000000000C0004 /* WatchIngestBridgeTests.swift in Sources */,
+				A5CD1E000000000000000006 /* LiveActivityBridgeTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -584,6 +671,8 @@
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
 				7884E9692EC3CC0A00C636F2 /* WatchIngestBridge.swift in Sources */,
 				7884E9702EC3CC0A00C636F3 /* CalendarBridge.swift in Sources */,
+				A5CD1E000000000000000004 /* LiveActivityBridge.swift in Sources */,
+				A5CD1E000000000000000003 /* RunActivityAttributes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -612,6 +701,15 @@
 				7884EA001C2EC3CC00C636F4 /* SupabaseService.swift in Sources */,
 				7884EA001D2EC3CC00C636F4 /* WatchConnectivityManager.swift in Sources */,
 				7884EA001E2EC3CC00C636F4 /* WorkoutManager.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A5CD1E000000000000000031 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A5CD1E000000000000000001 /* RunActivityAttributes.swift in Sources */,
+				A5CD1E000000000000000002 /* RunActivityWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -649,6 +747,11 @@
 			isa = PBXTargetDependency;
 			target = 7884EA002C2EC3CC00C636F4 /* WatchApp */;
 			targetProxy = 7884EA002D2EC3CC00C636F4 /* PBXContainerItemProxy */;
+		};
+		A5CD1E000000000000000036 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A5CD1E000000000000000030 /* RunActivityExtension */;
+			targetProxy = A5CD1E000000000000000035 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1021,6 +1124,73 @@
 			};
 			name = Profile;
 		};
+		A5CD1E000000000000000040 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A5CD1E000000000000000015 /* RunActivity.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RunActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.RunActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A5CD1E000000000000000041 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A5CD1E000000000000000015 /* RunActivity.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RunActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.RunActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		A5CD1E000000000000000042 /* Profile */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A5CD1E000000000000000015 /* RunActivity.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RunActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.RunActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Profile;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1060,6 +1230,16 @@
 				7884EA002F2EC3CC00C636F4 /* Debug */,
 				7884EA00302EC3CC00C636F4 /* Release */,
 				7884EA00312EC3CC00C636F4 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A5CD1E000000000000000043 /* Build configuration list for PBXNativeTarget "RunActivityExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A5CD1E000000000000000040 /* Debug */,
+				A5CD1E000000000000000041 /* Release */,
+				A5CD1E000000000000000042 /* Profile */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

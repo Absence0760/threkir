@@ -6,6 +6,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../pro_sellable.dart';
 import '../revenuecat.dart';
 import '../share_sheet.dart';
+import '../store_links.dart';
 import '../widgets/top_banner.dart';
 
 class SettingsProScreen extends StatefulWidget {
@@ -95,7 +96,9 @@ class _SettingsProScreenState extends State<SettingsProScreen> {
       final supabase = Supabase.instance.client;
       final userId = supabase.auth.currentUser?.id;
       if (!isRevenueCatConfigured() || userId == null) {
-        await _openExternal(context, 'https://threkir.com/settings/upgrade');
+        if (webPaymentLinksAllowed()) {
+          await _openExternal(context, webUpgradeUrl);
+        }
         return;
       }
       final r = await startProCheckout(userId);
@@ -111,7 +114,9 @@ class _SettingsProScreenState extends State<SettingsProScreen> {
           showTopBanner(context, l10n.proPurchaseFailed);
           break;
         case PurchaseResult.notConfigured:
-          await _openExternal(context, 'https://threkir.com/settings/upgrade');
+          if (webPaymentLinksAllowed()) {
+            await _openExternal(context, webUpgradeUrl);
+          }
           break;
       }
     } finally {
@@ -157,13 +162,9 @@ class _SettingsProScreenState extends State<SettingsProScreen> {
     if (_proBusy) return;
     setState(() => _proBusy = true);
     try {
-      final supabase = Supabase.instance.client;
-      final userId = supabase.auth.currentUser?.id;
-      String? url;
-      if (isRevenueCatConfigured() && userId != null) {
-        url = await managementUrl(userId);
-      }
-      final target = url ?? 'https://threkir.com/settings/upgrade';
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      final target = await resolveManageSubscriptionUrl(userId);
+      if (!context.mounted) return;
       await _openExternal(context, target);
     } finally {
       if (mounted) setState(() => _proBusy = false);
@@ -181,9 +182,12 @@ class _SettingsProScreenState extends State<SettingsProScreen> {
     final priceLabel = _storePrice ?? _usdListPrice;
     final showRegionalNote = _storePrice == null;
     // Mirrors web's proSellable branch: a purchase CTA only where a perk
-    // is live, else the coming-soon teaser with donations as the way to
-    // help. Unknown counts as not sellable.
-    final sellable = _perks?.sellable ?? false;
+    // is live, else the coming-soon teaser. Unknown counts as not sellable.
+    // Where the store SDK is unconfigured the purchase would be a web
+    // checkout, which iOS may not offer (decisions § 1700), so there it is
+    // not sellable either.
+    final sellable = (_perks?.sellable ?? false) &&
+        (rcConfigured || webPaymentLinksAllowed());
     return Scaffold(
       appBar: AppBar(title: Text(l10n.proTitle)),
       body: SafeArea(
@@ -242,14 +246,14 @@ class _SettingsProScreenState extends State<SettingsProScreen> {
               enabled: !_proBusy,
               onTap: () => _openManageSubscription(context),
             ),
-            ListTile(
-              leading: const Icon(Icons.volunteer_activism_outlined),
-              title: Text(l10n.proSupport),
-              subtitle: Text(l10n.proSupportSubtitle),
-              trailing: const Icon(Icons.open_in_new, size: 18),
-              onTap: () =>
-                  _openExternal(context, 'https://threkir.com/settings/upgrade'),
-            ),
+            if (webPaymentLinksAllowed())
+              ListTile(
+                leading: const Icon(Icons.volunteer_activism_outlined),
+                title: Text(l10n.proSupport),
+                subtitle: Text(l10n.proSupportSubtitle),
+                trailing: const Icon(Icons.open_in_new, size: 18),
+                onTap: () => _openExternal(context, webUpgradeUrl),
+              ),
           ],
         ),
       ),

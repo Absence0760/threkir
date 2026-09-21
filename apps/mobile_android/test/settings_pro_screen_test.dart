@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +10,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/pro_sellable.dart';
 import '../lib/screens/settings_pro_screen.dart';
+import '../lib/store_links.dart';
 
 /// Pins two things about the mobile Pro storefront:
 ///
@@ -89,6 +91,57 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(find.textContaining('Subscribe to Pro'), findsOneWidget);
+  });
+
+  // decisions § 1700: iOS may not route a digital purchase or a donation to
+  // Threkir through the web. RevenueCat is unconfigured here, so a live perk
+  // would otherwise be sold through exactly that web checkout.
+  testWidgets('iOS offers no web checkout and no Support link',
+      (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      await pumpPro(tester, const ProPerks(coach: true, routeGen: false));
+
+      expect(find.textContaining('Subscribe to Pro'), findsNothing);
+      expect(find.text('Pro — coming soon'), findsOneWidget);
+      expect(find.byIcon(Icons.volunteer_activism_outlined), findsNothing);
+      expect(find.text('Restore purchases'), findsOneWidget);
+      expect(find.text('Manage subscription'), findsOneWidget);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('Android keeps the Support link', (tester) async {
+    await pumpPro(tester, ProPerks.none);
+
+    expect(find.byIcon(Icons.volunteer_activism_outlined), findsOneWidget);
+  });
+
+  testWidgets('iOS Manage subscription opens Apple, not the page that sells Pro',
+      (tester) async {
+    final launched = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(launcher,
+        (call) async {
+      if (call.method == 'launch' || call.method == 'launchUrl') {
+        launched.add((call.arguments as Map)['url'] as String);
+      }
+      return true;
+    });
+    addTearDown(() => tester.binding.defaultBinaryMessenger
+        .setMockMethodCallHandler(launcher, null));
+
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      await pumpPro(tester, ProPerks.none);
+      await tester.tap(find.text('Manage subscription'));
+      await tester.pump();
+      await tester.pump();
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+
+    expect(launched, [appleSubscriptionsUrl]);
   });
 
   testWidgets('Subscribe tile disables while a checkout is in flight (no double-submit)',

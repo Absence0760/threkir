@@ -20,6 +20,7 @@ struct ContentView: View {
                         armedRoute: connectivity.armedRoute,
                         savedRoutes: connectivity.savedRoutes,
                         onPickRoute: connectivity.armRoute,
+                        liveRace: connectivity.liveRace,
                         onClearRoute: connectivity.clearArmedRoute,
                         onStart: { countingDown = true }
                     )
@@ -58,6 +59,7 @@ struct ContentView: View {
             }
         }
         .task {
+            workoutManager.liveRaceRelay = connectivity.liveRaceRelay()
             await workoutManager.healthKit.requestAuthorization()
             workoutManager.checkForPendingRecovery()
         }
@@ -247,6 +249,7 @@ struct PreRunView: View {
     let armedRoute: ArmedRoute?
     let savedRoutes: [ArmedRoute]
     let onPickRoute: (ArmedRoute) -> Void
+    let liveRace: LiveRace?
     let onClearRoute: () -> Void
     let onStart: () -> Void
     @State private var selectedPaceIndex: Int? = nil
@@ -264,6 +267,8 @@ struct PreRunView: View {
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
+
+                RaceBannerView(race: liveRace)
 
                 // The picker entry stands whether or not a route is armed, and
                 // whether or not the phone has pushed a list yet: an

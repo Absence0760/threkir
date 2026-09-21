@@ -72,6 +72,9 @@
 		C3D4E5F6A7B80001000C0005 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C3D4E5F6A7B80003000C0002 /* SwiftUI.framework */; };
 		C3D4E5F6A7B80001000C0006 /* WatchAppComplication.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C3D4E5F6A7B80004000C0001 /* WatchAppComplication.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		5164A17E0001000000000103 /* WatchAuthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5164A17E0002000000000103 /* WatchAuthTests.swift */; };
+		4A6E1C0B5D2F000100C10001 /* LiveRace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6E1C0B5D2F000200C10001 /* LiveRace.swift */; };
+		4A6E1C0B5D2F000100C10002 /* RaceBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6E1C0B5D2F000200C10002 /* RaceBannerView.swift */; };
+		4A6E1C0B5D2F000100C20001 /* LiveRaceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6E1C0B5D2F000200C20001 /* LiveRaceTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -144,6 +147,9 @@
 		C3D4E5F6A7B80003000C0001 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		C3D4E5F6A7B80003000C0002 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		C3D4E5F6A7B80004000C0001 /* WatchAppComplication.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WatchAppComplication.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		4A6E1C0B5D2F000200C10001 /* LiveRace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRace.swift; sourceTree = "<group>"; };
+		4A6E1C0B5D2F000200C10002 /* RaceBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceBannerView.swift; sourceTree = "<group>"; };
+		4A6E1C0B5D2F000200C20001 /* LiveRaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRaceTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -233,6 +239,7 @@
 				B2C3D4E5F6A70002000B0022 /* RunActivityTypeTests.swift */,
 				B2C3D4E5F6A70002000B0023 /* ActivityTypeVocabularyTests.swift */,
 				5164A17E0002000000000103 /* WatchAuthTests.swift */,
+				4A6E1C0B5D2F000200C20001 /* LiveRaceTests.swift */,
 			);
 			path = WatchAppTests;
 			sourceTree = "<group>";
@@ -256,6 +263,8 @@
 				5164A17E0002000000000101 /* WatchAuth.swift */,
 				5164A17E0002000000000102 /* SignInView.swift */,
 				A1B2C3D4E5F60002000A0012 /* ArmedRoute.swift */,
+				4A6E1C0B5D2F000200C10001 /* LiveRace.swift */,
+				4A6E1C0B5D2F000200C10002 /* RaceBannerView.swift */,
 				A1B2C3D4E5F60002000A0006 /* WatchConnectivityManager.swift */,
 				A1B2C3D4E5F60002000A0009 /* SupabaseService.swift */,
 				A1B2C3D4E5F60002000A000A /* AppTheme.swift */,
@@ -498,6 +507,8 @@
 				A1B2C3D4E5F60001000A0012 /* ArmedRoute.swift in Sources */,
 				5164A17E0001000000000101 /* WatchAuth.swift in Sources */,
 				5164A17E0001000000000102 /* SignInView.swift in Sources */,
+				4A6E1C0B5D2F000100C10001 /* LiveRace.swift in Sources */,
+				4A6E1C0B5D2F000100C10002 /* RaceBannerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -534,6 +545,7 @@
 				B2C3D4E5F6A70001000B0022 /* RunActivityTypeTests.swift in Sources */,
 				B2C3D4E5F6A70001000B0023 /* ActivityTypeVocabularyTests.swift in Sources */,
 				5164A17E0001000000000103 /* WatchAuthTests.swift in Sources */,
+				4A6E1C0B5D2F000100C20001 /* LiveRaceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

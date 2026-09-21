@@ -1448,6 +1448,47 @@
         }
       }
     },
+    "Event": {
+      "comment": "Stands in for the race's name on the pre-run banner when the phone's push carried no title. Matches Wear OS's event.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Event"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evento"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Événement"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "イベント"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evento"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evento"
+          }
+        }
+      }
+    },
     "Follows this route on your next run": {
       "comment": "VoiceOver hint on a route row in the starred-route picker.",
       "localizations": {
@@ -2796,6 +2837,88 @@
           "stringUnit": {
             "state": "translated",
             "value": "Na fila — vai tentar novamente"
+          }
+        }
+      }
+    },
+    "RACE ARMED": {
+      "comment": "Pre-run banner headline while the organiser has armed the race but not started it. Upper case and wording match Wear OS's race_armed.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RENNEN BEREIT"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CARRERA LISTA"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "COURSE PRÊTE"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "レース準備完了"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PROVA PRONTA"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PROVA PRONTA"
+          }
+        }
+      }
+    },
+    "RACE LIVE": {
+      "comment": "Pre-run banner headline once the organiser has started the race. Upper case and wording match Wear OS's race_live.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RENNEN LÄUFT"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CARRERA EN VIVO"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "COURSE EN DIRECT"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "レース実施中"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PROVA AO VIVO"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PROVA EM DIRETO"
           }
         }
       }
@@ -4231,6 +4354,47 @@
         }
       }
     },
+    "Tap Start": {
+      "comment": "Pre-run banner line under a running race: the runner still starts their own recording. Wording matches the tail of Wear OS's race_tap_start, and the verb matches this app's Start button.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start tippen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toca Empezar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Touchez Démarrer"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開始をタップ"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toque em Iniciar"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toque em Iniciar"
+          }
+        }
+      }
+    },
     "Tap to start": {
       "comment": "Complication inline / rectangular label when idle.",
       "localizations": {
@@ -4432,6 +4596,47 @@
           "stringUnit": {
             "state": "translated",
             "value": "Corrida não guardada"
+          }
+        }
+      }
+    },
+    "Wait for GO": {
+      "comment": "Pre-run banner line under an armed race: nothing to do until the organiser starts it. Wording matches the tail of Wear OS's race_wait_for_go.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf GO warten"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Espera la salida"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attendez le GO"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GO を待つ"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aguarde o GO"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aguarde o GO"
           }
         }
       }

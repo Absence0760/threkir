@@ -46,6 +46,12 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     /// auxiliary (L4) effect — see `didUpdateLocations`.
     @Published var routeNavigator: RouteNavigator?
 
+    /// Live race mode's auxiliary (L4) seam, handed over by `ContentView`.
+    /// Both halves default to no-ops, so the recorder runs with no transport
+    /// wired and nothing a failed race effect does can reach the run — see
+    /// `LiveRaceRelay`.
+    var liveRaceRelay = LiveRaceRelay()
+
     /// The armed route as the mini-map draws it, empty for an unguided run.
     /// Held apart from `routeNavigator`, which consumes the line and publishes
     /// only its projection of the current fix.
@@ -444,6 +450,19 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         state = .finished
         publishComplicationSnapshot()
         announcer.announceFinish(distanceMetres: distanceMetres, durationSeconds: duration)
+
+        // Auxiliary (L4), and last: the run is banked in `finishedRun`, its
+        // track is closed on disk and the summary screen already has it
+        // before the race hears about it. `LiveRaceState.finish` returns
+        // nothing to send unless a race was actually running, and reports
+        // once.
+        if let run = finishedRun {
+            liveRaceRelay.finish(RaceFinish(
+                runId: run.id,
+                durationSeconds: run.durationSeconds,
+                distanceMetres: run.distanceMetres
+            ))
+        }
     }
 
     func reset() {
@@ -754,6 +773,24 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         announcer.announceSplitIfDue(
             distanceMetres: distanceMetres, paceSecondsPerKm: currentPace
         )
+        // The live-race ping is the OUTERMOST auxiliary effect (L4) — a
+        // network hop over Watch Connectivity, reached only once the
+        // distance, the on-disk track, the pace, the route guidance and the
+        // map are all committed. The seam is handed a value and returns
+        // nothing, and the transport behind it swallows its own failure with
+        // a log, so a race the phone cannot be told about costs the
+        // recording nothing. The cadence gate lives in `LiveRaceState`, not
+        // here: a fix is offered, not sent.
+        if state == .recording, let fix = lastAcceptedFix {
+            liveRaceRelay.ping(RacePingSample(
+                latitude: fix.coordinate.latitude,
+                longitude: fix.coordinate.longitude,
+                distanceMetres: distanceMetres,
+                elapsedSeconds: Int(elapsedSeconds),
+                bpm: healthKit.currentBPM,
+                uptime: ProcessInfo.processInfo.systemUptime
+            ))
+        }
     }
 
     private func writeCheckpoint() {

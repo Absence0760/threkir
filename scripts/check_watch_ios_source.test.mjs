@@ -611,6 +611,28 @@ test('a metadata key the phone reads and the watch never sends is refused', () =
 	assert.equal(matched(errors, /reads `cadence_spm`.*never puts it there/s).length, 1, errors.join('\n'));
 });
 
+test('the race link is held on both of the phone rails it crosses', () => {
+	// `event_id` is the only key on the envelope that is a COLUMN on the other
+	// side rather than a bag key, so it crosses two claims — the phone's lift
+	// (6) and the DEBUG direct writer (9). Losing it on either is silent: the
+	// run still syncs, and nothing on the row says which race it was.
+	const lift = runMutated((dir) => {
+		edit(dir, STAGED_INGEST, (s) =>
+			s.replace('if let v = metadata["event_id"] { payload["event_id"] = v }\n', ''),
+		);
+	});
+	assert.equal(matched(lift.errors, /`event_id`.*never\s+lifts it out/s).length, 1, lift.errors.join('\n'));
+
+	const direct = runMutated((dir) => {
+		edit(dir, DIRECT, (s) => s.replace('        let event_id: String?\n', ''));
+	});
+	assert.equal(
+		matched(direct.errors, /`event_id`.*neither the row nor the metadata bag/s).length,
+		1,
+		direct.errors.join('\n'),
+	);
+});
+
 test('an unparseable envelope on either end fails loudly rather than vacuously', () => {
 	// Both extractors read a hand-written literal. If either shape changes,
 	// the honest answer is "this claim can no longer be made", not silence.

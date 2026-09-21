@@ -341,9 +341,11 @@ void main() {
                 ? 'walk'
                 : k == MetadataKeys.isDnf
                     ? true
-                    : k.endsWith('_url')
-                        ? 'owner/run-1.gz'
-                        : 900,
+                    : k == MetadataKeys.eventId
+                        ? 'event-1'
+                        : k.endsWith('_url')
+                            ? 'owner/run-1.gz'
+                            : 900,
           MetadataKeys.elevationM: 312.5,
         }),
         userId: 'owner-1',

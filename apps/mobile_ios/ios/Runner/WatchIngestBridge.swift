@@ -402,6 +402,7 @@ import WatchConnectivity
         for key in ["id", "started_at", "source", "activity_type", "last_modified_at"] {
             if let v = metadata[key] { payload[key] = v }
         }
+        if let v = metadata["event_id"] { payload["event_id"] = v }
         if let v = metadata["duration_s"] { payload["duration_s"] = v }
         if let v = metadata["distance_m"] { payload["distance_m"] = v }
         if let v = metadata["avg_bpm"] { payload["avg_bpm"] = v }

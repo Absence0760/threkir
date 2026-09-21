@@ -192,7 +192,7 @@
 //       per stop call site, and the press duration must still be what fires
 //       it (decisions § 1680).
 //
-//  (19) The SETTINGS envelope going to the wrist — the runner's distance
+//  (20) The SETTINGS envelope going to the wrist — the runner's distance
 //       unit and their audio-cue switch — read from all three of its ends.
 //       Three hand-written key lists in three languages, the same shape as
 //       claim (7): `apple_watch_prefs_bridge.dart` names them as
@@ -1501,7 +1501,7 @@ export function destructiveButtons(src) {
  * @param {string | null} [phonePbxprojPath] absolute path to the phone's
  *   `Runner.xcodeproj/project.pbxproj`; null skips claim (10)'s embed half.
  * @param {string | null} [prefsBridgePath] absolute path to the phone's
- *   `apple_watch_prefs_bridge.dart`; null skips claim (19) alone.
+ *   `apple_watch_prefs_bridge.dart`; null skips claim (20) alone.
  * @returns {{ errors: string[], ok: string[] }}
  */
 export function check(
@@ -1811,7 +1811,7 @@ export function check(
 		}
 	}
 
-	// (19) The settings envelope, read from all three of its ends.
+	// (20) The settings envelope, read from all three of its ends.
 	if (ingestPath !== null && prefsBridgePath !== null) {
 		const ingestSrc = stripSwiftComments(readFileSync(ingestPath, 'utf8'));
 		const watchSrc = stripSwiftComments(read(WATCH_CONNECTIVITY));
@@ -1831,7 +1831,7 @@ export function check(
 		if (unread.length > 0) {
 			errors.push(
 				`Parsed no settings-envelope keys out of ${unread.map((r) => r.label).join(' and ')} — ` +
-					'claim (19) would pass vacuously, or report that the other rails agree on keys ' +
+					'claim (20) would pass vacuously, or report that the other rails agree on keys ' +
 					'nobody sends. One of the three call sites changed shape.',
 			);
 		} else {

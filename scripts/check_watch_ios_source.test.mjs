@@ -698,7 +698,7 @@ test('a decode that stops subscripting the payload fails vacuity rather than pas
 	assert.equal(matched(errors, /Parsed no route-push keys/).length, 1, errors.join('\n'));
 });
 
-// --- claim 19: the settings envelope, three rails ---------------------------
+// --- claim 20: the settings envelope, three rails ---------------------------
 
 test('the three settings-push rails agree on the shipped tree', () => {
 	const { errors, ok } = check(WATCH_IOS, INGEST_ABS, null, null, null, PREFS_BRIDGE_ABS);
@@ -709,7 +709,7 @@ test('the three settings-push rails agree on the shipped tree', () => {
 	);
 });
 
-test('claim 19 is skipped when the Dart rail is unavailable', () => {
+test('claim 20 is skipped when the Dart rail is unavailable', () => {
 	// Two Swift ends agreeing is not the claim, for the same reason claim 7
 	// refuses to report on two of its three.
 	const { errors, ok } = check(WATCH_IOS, INGEST_ABS);

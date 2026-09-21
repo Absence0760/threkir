@@ -3,20 +3,19 @@ import XCTest
 
 /// Pins the behaviour of `formatElapsed` / `formatDistanceKm` /
 /// `formatPaceSecPerKm` — a deliberate second copy of the recording-screen
-/// formatting, because the complication builds in a separate Widget
-/// Extension target that can't link `RunFormat.swift`. Mirrors the Wear OS
-/// twin's `ActiveRunTileFormattersTest.kt`.
+/// formatting, duplicated into `Complications/ActiveRunComplication.swift`.
+/// Mirrors the Wear OS twin's `ActiveRunTileFormattersTest.kt`.
 ///
 /// **Which copy this links, and what that means.** `@testable import
-/// WatchApp` reaches the copy in `WatchApp/RunFormat.swift`, not the one in
-/// `Complications/ActiveRunComplication.swift`: that file is in no target
-/// until the Widget Extension is added in Xcode (see
-/// `Complications/README.md`), so nothing here compiles it and a green run
-/// says nothing about the code the watch face will actually execute. The
-/// two copies are held byte-identical by
-/// `scripts/check_watch_ios_source.mjs`, on Linux, which is what makes this
-/// suite's verdict transfer to the widget at all. Do not delete that guard
-/// on the grounds that these tests cover the duplication — they cannot.
+/// WatchApp` reaches the copy in `WatchApp/RunFormat.swift`. The other copy
+/// compiles into the `WatchAppComplication` extension — a different module,
+/// with no test host of its own — so it is built on every `xcodebuild test`
+/// and exercised by none of it, and a green run here says nothing about the
+/// code the watch face will actually execute. The two copies are held
+/// byte-identical by `scripts/check_watch_ios_source.mjs`, on Linux, which is
+/// what makes this suite's verdict transfer to the widget at all. Do not
+/// delete that guard on the grounds that these tests cover the duplication —
+/// they cannot.
 final class ComplicationFormatterTests: XCTestCase {
     private var savedUnit: String?
 

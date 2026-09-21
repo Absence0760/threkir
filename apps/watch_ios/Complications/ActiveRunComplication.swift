@@ -1,12 +1,12 @@
 // Active-run complication for watchOS 10+. Renders the live workout
 // stats (elapsed time, distance, current pace) on the runner's watch
-// face. Reads from `WorkoutManager.shared` — the same singleton that
-// owns the HKWorkoutSession — so the complication and the in-app run
-// screen always agree on what to show.
+// face.
 //
-// Belongs to its own Widget Extension target. See README.md in this
-// directory for the one-time Xcode wiring step that adds the target,
-// links HealthKit, and shares WorkoutManager via an App Group.
+// This runs in the `WatchAppComplication` extension, a separate PROCESS
+// from the app that owns the HKWorkoutSession — it cannot reach
+// `WorkoutManager` and never tries. Everything it draws comes from the
+// snapshot the host writes to the App Group through `ActiveRunBridge`.
+// README.md in this directory describes the target.
 //
 // The `accessoryCircular`, `accessoryCorner`, `accessoryRectangular`,
 // and `accessoryInline` families cover Modular, Infograph, X-Large,
@@ -267,12 +267,14 @@ struct ActiveRunComplication: Widget {
 
 // MARK: - Pure formatters
 // Mirrors apps/watch_wear/.../tiles/ActiveRunTileService.kt so the two
-// platforms render identical strings. This Widget Extension target can't
-// link RunFormat.swift, so it carries this copy; WatchApp/RunFormat.swift
-// holds a byte-identical copy that ComplicationFormatterTests pins. The
-// two are held identical by scripts/check_watch_ios_source.mjs, which runs
-// on Linux — no Swift test can compare them, because this file is in no
-// target and the suite therefore links only the other copy (§ 885).
+// platforms render identical strings. WatchApp/RunFormat.swift holds a
+// byte-identical copy that ComplicationFormatterTests pins, and the two are
+// held identical by scripts/check_watch_ios_source.mjs, which runs on Linux.
+// No Swift test can compare them: this file compiles into a different module
+// from the one WatchAppTests links, so the suite only ever sees the other
+// copy (§ 885). The duplication itself is not forced — a file can belong to
+// both targets, as ActiveRunBridge.swift does — and collapsing it is the
+// durable fix, in a change that also retires that guard.
 
 func formatElapsed(_ seconds: Int) -> String {
     let s = max(seconds, 0)

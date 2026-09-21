@@ -2961,6 +2961,7 @@ export const messages = {
 	"routeMarker.heading": "Streckenmarker",
 	"routeMarker.add": "Marker hinzufügen",
 	"routeMarker.empty": "Noch keine Streckenmarker. Füge Verpflegungsstationen, Cut-offs und mehr entlang der Strecke hinzu.",
+	"routeMarker.loadFailed": "Die Streckenmarker dieser Route konnten nicht geladen werden. Sie wurden nicht gelöscht — prüfe deine Verbindung und versuche es erneut.",
 	"routeMarker.edit": "Marker bearbeiten",
 	"routeMarker.delete": "Löschen",
 	"routeMarker.cancel": "Abbrechen",

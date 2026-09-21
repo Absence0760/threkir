@@ -543,21 +543,22 @@ conditional and `release-android.yml` only **warns** when the config secret is
 absent, so any AAB built before 2026-09-18 registers no device token at all —
 and a client that never registers is indistinguishable from a broken sender.
 
-## 13. Android's Apple dart-defines — **the workflow does not pass them yet**
+## 13. Android's Apple dart-defines
 
-**Setting two secrets will not do it.** `release-android.yml` builds with an
-explicit `--dart-define` list and neither name is on it — `grep -rn 'APPLE_' .github/workflows/`
-returns only `PUBLIC_APPLE_AUTH_ENABLED`, which is the web flag. So the values
-resolve to empty in every AAB however the secrets are set, `appleSignInAvailable()`
-returns false, and the Android button keeps its coming-soon notice: the same
-shape as [§ 1683](../architecture/decisions.md), where eight web flags could
-not be turned on because the workflow never spelled them out, unfixed here
-because that guard derives its set from `apps/web/src/lib/*_flag.ts` and knows
-nothing about dart-defines.
+Set two `production` environment secrets, then cut the step-12 Release; they
+ride the same build:
 
-**So this step is a code change first**: two `env:` entries and two
-`--dart-define` lines beside `GOOGLE_WEB_CLIENT_ID`, which is the one that is
-wired. Then the secrets, then the Release.
+- **`MOBILE_APPLE_SERVICE_CLIENT_ID`** → the dart-define `APPLE_SERVICE_CLIENT_ID`
+- **`MOBILE_APPLE_REDIRECT_URI`** → the dart-define `APPLE_REDIRECT_URI`
+
+**Both or neither** — `appleSignInAvailable()` requires the pair, so one alone
+leaves the button exactly as it was.
+
+Until [§ 1696](../architecture/decisions.md) this step was not a secret at all.
+Neither name reached a release build by any route: `main.dart`'s bridge did not
+carry them, so they were debug-only in the [§ 709](../architecture/decisions.md)
+sense, and `release-android.yml` did not pass them either. Both halves are
+wired now, which is why this reads as two secrets rather than as a code change.
 
 `appleSignInAvailable()` in
 [`apple_auth.dart`](../../apps/mobile_android/lib/apple_auth.dart) gates the

@@ -49,19 +49,12 @@ The glob is `<app>@*`, so any suffix works — `1.2.3`, `1.2.3-rc.1`,
 `2.0.0-beta.4`. The workflow parses the suffix as the `versionName` and
 derives a monotonic `versionCode` from `git rev-list --count HEAD`.
 
-**Apple Watch does NOT ship inside the iOS app yet.** That is the
-intended end state and the reason `watch_ios@*` runs a build smoke-check
-only (no artifact, nothing written back to the Release) -- but the
-embedding does not exist today. `apps/mobile_ios/ios/Runner.xcodeproj`
-contains no reference to the watch target, `apps/watch_ios/WatchApp.xcodeproj`
-is a standalone project, and the `.xcarchive` a `mobile_ios@*` build
-produces contains no watch app. Measured 2026-09-18 on Xcode 26.4
-([decisions § 1673](../architecture/decisions.md)); the five build-integration
-steps a Mac has to run are listed in [§ 1256](../architecture/decisions.md),
-and `apps/mobile_ios/deployment.md` keeps "Watch target builds clean from
-`mobile_ios` scheme" unticked for the same reason. **Until that lands, a
-`mobile_ios@*` release ships the phone app alone** -- do not submit one to
-App Review believing the watch app goes with it.
+**Apple Watch ships inside the iOS app.** A `mobile_ios@*` release archives
+the phone app with the watch app embedded ([decisions § 1679](../architecture/decisions.md)),
+signs each with its own App Store profile, and uploads the one `.ipa` to
+TestFlight ([§ 1701](../architecture/decisions.md)). That is why `watch_ios@*`
+runs a build smoke-check only -- no artifact, nothing written back to the
+Release.
 
 That bundling is real as of 2026-09-18 and was not before —
 `Runner.xcodeproj` referenced nothing under `apps/watch_ios/` until
@@ -72,10 +65,11 @@ target and an Embed Watch Content phase. **Verified on this Mac** (Xcode
 Threkir`, `WKCompanionAppBundleIdentifier = com.threkir.app`, all seven
 `.lproj` compiled, and the same `0.1.0` version on both bundles — that
 last one matters, because Apple rejects an upload whose watch app and
-companion disagree. **Not verified, and device-gated:** a signed
-`flutter build ipa` (no distribution certificate on this workstation) and
-one run syncing end to end from a paired physical watch, which is § 1256
-step 5 and the one checkbox nobody has been able to tick.
+companion disagree. **Not verified yet:** the signed archive,
+which `release-ios.yml` builds for the first time on the first `mobile_ios@*`
+release (§ 1701), and -- device-gated -- one run syncing end to end from a
+paired physical watch, which is § 1256 step 5 and the one checkbox nobody has
+been able to tick. Test that one on TestFlight before submitting for review.
 
 ## Cutting a release
 
@@ -122,7 +116,7 @@ create` / UI / `/release`). The last column is what the workflow attaches
 |---|---|---|---|---|
 | `mobile_android@*` | ubuntu-latest | release keystore from secrets | Play Internal track | `.aab` |
 | `watch_wear@*` | ubuntu-latest | Wear release keystore | Play Internal track (`com.threkir.watchwear`) | `.aab` |
-| `mobile_ios@*` | macos-latest | *unsigned today* (skeleton until app ships) | — | — (build smoke-check only; `--no-codesign` writes no `.ipa`) |
+| `mobile_ios@*` | macos-latest | Apple Distribution certificate + one App Store profile each for the phone and watch apps, from secrets | TestFlight (promotion to the App Store is manual, in App Store Connect) | `.ipa` |
 | `watch_ios@*` | macos-latest | — | — (build smoke-check only) | — |
 | `web@*` | ubuntu-latest | — | AWS S3 + CloudFront + Lambda (`prod` env at `threkir.com` / `www.threkir.com`) | build zip |
 | `backend@*` | ubuntu-latest | — | Supabase (migrations + functions on linked project) | — |
@@ -185,22 +179,31 @@ identity):
 `PLAY_SERVICE_ACCOUNT_JSON` can be shared with the Android release if
 the service account has Release-manager on both apps.
 
-### iOS (when ready to flip on signing)
+### iOS
+
+The first step of `release-ios.yml` fails in seconds, naming every required
+secret that is unset. [`apps/mobile_ios/deployment.md`](../../apps/mobile_ios/deployment.md)
+is the runbook for making each one.
 
 | Secret | What |
 |---|---|
-| `IOS_BUILD_CERTIFICATE_BASE64` | Apple distribution `.p12` |
-| `IOS_P12_PASSWORD` | `.p12` password |
-| `IOS_PROVISIONING_PROFILE_BASE64` | App Store provisioning profile |
-| `KEYCHAIN_PASSWORD` | throwaway — gate for the ephemeral keychain on the runner |
-| `APP_STORE_CONNECT_API_KEY_ID` | |
-| `APP_STORE_CONNECT_API_ISSUER_ID` | |
-| `APP_STORE_CONNECT_API_KEY_BASE64` | `.p8` from App Store Connect |
-| `SENTRY_DSN` | Sentry mobile project DSN — same DSN as Android (Sentry tags by platform automatically). Passed as `--dart-define=SENTRY_DSN=...`. |
-| `APP_RELEASE` | `mobile_ios@<version>` tag for Sentry release tagging. Defaults to `dev`. |
+| `IOS_BUILD_CERTIFICATE_BASE64` | base64 of the Apple Distribution certificate + private key, exported as a `.p12` |
+| `IOS_P12_PASSWORD` | the `.p12` export password |
+| `IOS_PROVISIONING_PROFILE_BASE64` | base64 of the App Store profile for `com.threkir.app` |
+| `IOS_WATCH_PROVISIONING_PROFILE_BASE64` | base64 of the App Store profile for `com.threkir.app.watchapp` |
+| `APP_STORE_CONNECT_API_KEY_ID` | App Store Connect API key id (App Manager role) |
+| `APP_STORE_CONNECT_API_ISSUER_ID` | that key's issuer id |
+| `APP_STORE_CONNECT_API_PRIVATE_KEY` | the key's `.p8` file contents as they are -- **not** base64; the upload action reads PKCS#8 text |
+| `GOOGLE_SERVICE_INFO_PLIST_BASE64` | base64 of `GoogleService-Info.plist` from the Firebase project's `com.threkir.app` iOS app |
+| `MOBILE_REVENUECAT_API_KEY_IOS` | RevenueCat's Apple app key (`appl_…`). Optional: unset, Pro is not for sale on iOS, because iOS may not fall back to the web checkout ([decisions § 1700](../architecture/decisions.md)) |
 
-These blocks are commented out in `release-ios.yml` today — uncomment
-when the Flutter iOS app is feature-complete (see `apps/mobile_ios/CLAUDE.md`).
+The runtime config otherwise reuses the Android release's secrets:
+`PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`, `PUBLIC_MAPTILER_KEY` and
+`MOBILE_OSRM_URL` (required), `PUBLIC_SENTRY_DSN`, `MOBILE_LIVE_HUB_URL` and
+`MOBILE_STRAVA_CLIENT_ID` (optional). `APP_RELEASE` is the tag's version.
+There is no keychain-password secret: the runner generates one per run. The
+team id is not a secret either -- it is read out of the two profiles.
+
 The watch_ios target reads `SENTRY_DSN` + `APP_RELEASE` from the
 build's Info.plist (set via Xcode build settings or a `xcrun
 agvtool`-style script step in CI); the Sentry SwiftPM package needs

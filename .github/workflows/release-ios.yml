@@ -1,26 +1,33 @@
 name: Release iOS
 
-# Tag: `mobile_ios@1.2.3`. Skeleton workflow — the iOS Flutter app is
-# still scaffolded (see `apps/mobile_ios/CLAUDE.md`), so this workflow
-# builds an unsigned IPA today and is ready to flip on code-signing +
-# TestFlight upload when the app is shippable.
+# Tag: `mobile_ios@1.2.3`. Builds the iPhone app with the Apple Watch app it
+# embeds, signs both for the App Store, attaches the .ipa to the Release and
+# uploads it to TestFlight. Promotion from TestFlight to the App Store is a
+# manual step in App Store Connect. apps/mobile_ios/deployment.md is the
+# operator runbook for every secret below; decisions.md § 1701 is the design.
 #
-# To activate TestFlight upload, uncomment the signing + upload steps
-# and add these secrets:
-#   IOS_BUILD_CERTIFICATE_BASE64   Apple distribution certificate (.p12)
-#   IOS_P12_PASSWORD               password for the .p12
-#   IOS_PROVISIONING_PROFILE_BASE64
-#   KEYCHAIN_PASSWORD              anything — used to create an ephemeral keychain
-#   APP_STORE_CONNECT_API_KEY_ID
-#   APP_STORE_CONNECT_API_ISSUER_ID
-#   APP_STORE_CONNECT_API_KEY_BASE64   .p8 key from App Store Connect
+# Signing (the first step fails, naming every one that is unset):
+#   IOS_BUILD_CERTIFICATE_BASE64          Apple Distribution certificate + key, as a .p12
+#   IOS_P12_PASSWORD                      password the .p12 was exported with
+#   IOS_PROVISIONING_PROFILE_BASE64       App Store profile for com.threkir.app
+#   IOS_WATCH_PROVISIONING_PROFILE_BASE64 App Store profile for com.threkir.app.watchapp
+#   APP_STORE_CONNECT_API_KEY_ID          App Store Connect API key id
+#   APP_STORE_CONNECT_API_ISSUER_ID       App Store Connect API issuer id
+#   APP_STORE_CONNECT_API_PRIVATE_KEY     the key's .p8 file contents, as is (not base64)
+#   GOOGLE_SERVICE_INFO_PLIST_BASE64      GoogleService-Info.plist from the Firebase
+#                                         project's com.threkir.app iOS app; the Runner
+#                                         target bundles it (docs/features/native_push.md)
 #
-# Already required, signing or not:
-#   GOOGLE_SERVICE_INFO_PLIST_BASE64   base64-encoded GoogleService-Info.plist
-#     from the Firebase project's iOS app. The Runner target copies that plist
-#     into the bundle (it is what FirebaseApp.configure() reads), and the file
-#     is gitignored, so the build below cannot run without this secret — see
-#     docs/features/native_push.md.
+# Production runtime config, written to dart_defines.json (decisions § 13: an
+# `sb_publishable_` key does not survive an inline --dart-define on iOS) and
+# seeded into dotenv by main.dart. The shared ones are the same secrets the web,
+# Android and Wear OS releases read:
+#   PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, PUBLIC_MAPTILER_KEY   (required)
+#   MOBILE_OSRM_URL                       (required; the route builder throws without it)
+#   PUBLIC_SENTRY_DSN, MOBILE_LIVE_HUB_URL, MOBILE_STRAVA_CLIENT_ID      (optional)
+#   MOBILE_REVENUECAT_API_KEY_IOS         (optional; unset, Pro is not for sale on
+#                                         iOS, because iOS may not fall back to the
+#                                         web checkout — decisions § 1700)
 
 # Release-triggered: publishing a GitHub Release whose tag is `mobile_ios@*`
 # runs this workflow — a bare `mobile_ios@*` tag push does NOT deploy. `on:
@@ -48,7 +55,7 @@ env:
 
 jobs:
   release:
-    name: Build iOS (unsigned until app ships)
+    name: Build, sign and upload iOS to TestFlight
     runs-on: macos-latest
     # Guard: `on: release` fires for every published release in the repo,
     # so only act on mobile_ios@* releases.
@@ -59,6 +66,29 @@ jobs:
     permissions:
       contents: write
     steps:
+      # Checked before a fifteen-minute build rather than inside it. Each value
+      # is reduced to true/false here, so no secret reaches this step's shell.
+      - name: Every secret this release needs is set
+        env:
+          HAS_IOS_BUILD_CERTIFICATE_BASE64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 != '' }}
+          HAS_IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD != '' }}
+          HAS_IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 != '' }}
+          HAS_IOS_WATCH_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_WATCH_PROVISIONING_PROFILE_BASE64 != '' }}
+          HAS_APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID != '' }}
+          HAS_APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID != '' }}
+          HAS_APP_STORE_CONNECT_API_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_API_PRIVATE_KEY != '' }}
+          HAS_GOOGLE_SERVICE_INFO_PLIST_BASE64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 != '' }}
+          HAS_PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL != '' }}
+          HAS_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PUBLIC_SUPABASE_ANON_KEY != '' }}
+          HAS_PUBLIC_MAPTILER_KEY: ${{ secrets.PUBLIC_MAPTILER_KEY != '' }}
+          HAS_MOBILE_OSRM_URL: ${{ secrets.MOBILE_OSRM_URL != '' }}
+        run: |
+          missing=$(env | sed -n 's/^HAS_\([A-Z0-9_]*\)=false$/\1/p' | sort | tr '\n' ' ')
+          if [ -n "$missing" ]; then
+            echo "::error::These release secrets are unset: $missing-- the header of release-ios.yml says what each one is, and apps/mobile_ios/deployment.md how to make it."
+            exit 1
+          fi
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -68,6 +98,12 @@ jobs:
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
           VERSION_NAME="${TAG#mobile_ios@}"
+          # CFBundleShortVersionString is at most three dot-separated integers;
+          # App Store Connect rejects anything else after the whole build.
+          if ! printf '%s' "$VERSION_NAME" | grep -Eq '^[0-9]+(\.[0-9]+){0,2}$'; then
+            echo "::error::Tag $TAG carries version $VERSION_NAME, which is not one to three dot-separated integers. The App Store accepts nothing else."
+            exit 1
+          fi
           VERSION_CODE=$(git rev-list --count HEAD)
           echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
@@ -86,74 +122,6 @@ jobs:
           sed -i '' "s/^version: .*/version: ${{ steps.version.outputs.name }}+${{ steps.version.outputs.code }}/" pubspec.yaml
           grep '^version:' pubspec.yaml
 
-      # TestFlight-ready signing + upload. Uncomment when the iOS app
-      # is ready to ship.
-      #
-      # Commented out is not exempt from the SHA-pin rule
-      # (conventions.md § GitHub Actions), and being exempt in practice is
-      # how the upload step below stayed on a mutable `@v1` tag while every
-      # live reference in the repo moved to a SHA: nothing read it, and the
-      # audit that swept the rest wrote it off as dead code. It is not dead
-      # — it is code someone uncomments on the day they are trying to ship,
-      # which is the worst day to discover the pin. check_toolchain_pins.mjs
-      # now reads commented `uses:` lines too.
-      #
-      # Pinned to v5, not to v1. `@v1` resolves to a 2020 commit declaring
-      # `runs.using: node12`, a runtime GitHub removed, so SHA-pinning the
-      # tag verbatim would have frozen a reference that cannot execute at
-      # all. v5 takes the same five inputs this step passes (`app-type`
-      # still defaults to `ios`) and adds only optional ones.
-      #
-      # - name: Install signing assets
-      #   env:
-      #     IOS_BUILD_CERTIFICATE_BASE64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
-      #     IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
-      #     IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
-      #     KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-      #   run: |
-      #     CERT_PATH=$RUNNER_TEMP/build_certificate.p12
-      #     PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
-      #     KEYCHAIN=$RUNNER_TEMP/build.keychain-db
-      #     echo "$IOS_BUILD_CERTIFICATE_BASE64" | base64 -d > "$CERT_PATH"
-      #     echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 -d > "$PP_PATH"
-      #     security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-      #     security set-keychain-settings -lut 21600 "$KEYCHAIN"
-      #     security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-      #     security import "$CERT_PATH" -P "$IOS_P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
-      #     security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-      #     security list-keychain -d user -s "$KEYCHAIN"
-      #     mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-      #     cp "$PP_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/
-      #
-      # - name: Build signed IPA
-      #   working-directory: apps/mobile_ios
-      #   run: flutter build ipa --release
-      #
-      # - name: Attach the signed IPA to the Release
-      #   # The Release already exists -- it triggered this run. Upload the
-      #   # IPA onto it (no name/notes -> the human-authored release title +
-      #   # notes aren't clobbered).
-      #   #
-      #   # `fail_on_unmatched_files` is the whole reason this step is worth
-      #   # reading twice. It defaults to false, and the live version of this
-      #   # step globbed an .ipa that the unsigned build above never writes:
-      #   # the path matched nothing, the action reported success, and the
-      #   # Release carried no artifact while the docs said it carried an
-      #   # `.ipa`. Publishing nothing must fail here, not read as a publish.
-      #   uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
-      #   with:
-      #     tag_name: ${{ github.event.release.tag_name }}
-      #     files: apps/mobile_ios/build/ios/ipa/*.ipa
-      #     fail_on_unmatched_files: true
-      #
-      # - name: Upload to TestFlight
-      #   uses: apple-actions/upload-testflight-build@5e75ff58276689011512ba87a381d93dc67dbcf8 # v5.3.0
-      #   with:
-      #     app-path: apps/mobile_ios/build/ios/ipa/mobile_ios.ipa
-      #     issuer-id: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
-      #     api-key-id: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
-      #     api-private-key: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
-
       - name: Decode the Firebase config
         # Unlike the Android side, this one is fatal: the plist is a member of
         # the Runner target's Resources phase, so Xcode fails on the missing
@@ -161,10 +129,6 @@ jobs:
         env:
           GOOGLE_SERVICE_INFO_PLIST_BASE64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
         run: |
-          if [ -z "$GOOGLE_SERVICE_INFO_PLIST_BASE64" ]; then
-            echo "::error::GOOGLE_SERVICE_INFO_PLIST_BASE64 unset. The Runner target copies GoogleService-Info.plist into the bundle and the file is not in git. See docs/features/native_push.md."
-            exit 1
-          fi
           dest=apps/mobile_ios/ios/Runner/GoogleService-Info.plist
           echo "$GOOGLE_SERVICE_INFO_PLIST_BASE64" | base64 -d > "$dest"
           # An APNs token minted against the wrong project's plist is delivered
@@ -174,23 +138,116 @@ jobs:
             exit 1
           fi
 
-      # Named for what it produces. `flutter build ipa --no-codesign` stops at
-      # the .xcarchive and prints "Codesigning disabled with --no-codesign,
-      # skipping IPA" -- so this step writes NO .ipa, and there is nothing to
-      # attach until the signing block above is uncommented. Measured on
-      # Xcode 26.4 / Flutter 3.44.8, decisions.md § 1673.
-      - name: Build the unsigned archive (produces no .ipa)
-        working-directory: apps/mobile_ios
-        run: flutter build ipa --no-codesign
+      - name: Stub the bundled dotenv asset
+        # Same as release-android.yml: pubspec ships `.env.development` as an
+        # asset, and release builds never read it (main.dart loads it only in
+        # debug), so the shipped bundle gets an empty file rather than the
+        # committed local-stack URLs.
+        run: 'echo > apps/mobile_ios/.env.development'
 
-      # Holds the premise the step above states. If an .ipa ever appears from an
-      # unsigned build, the attach step is still commented out and this release
-      # would be publishing an unsigned, unuploaded build while reading green.
-      - name: Assert the unsigned build produced nothing to publish
-        working-directory: apps/mobile_ios
+      # The keychain password only has to outlive this job, so it is made here
+      # rather than held as a secret.
+      - name: Install the distribution certificate
+        env:
+          IOS_BUILD_CERTIFICATE_BASE64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
+          IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
         run: |
-          if [ -n "$(find build/ios/ipa -name '*.ipa' 2>/dev/null)" ]; then
-            echo "::error::An .ipa exists after a --no-codesign build, so this workflow's premise has changed. Uncomment the signing + attach + TestFlight block in this file rather than leaving a signed artifact unpublished; see decisions.md § 1673."
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
+          echo "::add-mask::$KEYCHAIN_PASSWORD"
+          echo "$IOS_BUILD_CERTIFICATE_BASE64" | base64 -d > "$RUNNER_TEMP/distribution.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/distribution.p12" -P "$IOS_P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          rm -f "$RUNNER_TEMP/distribution.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
+          security list-keychains -d user -s "$KEYCHAIN"
+          echo "KEYCHAIN_PATH=$KEYCHAIN" >> "$GITHUB_ENV"
+          if ! security find-identity -v -p codesigning "$KEYCHAIN" | grep -q '"Apple Distribution: '; then
+            echo "::error::IOS_BUILD_CERTIFICATE_BASE64 holds no Apple Distribution identity with its private key. Create an Apple Distribution certificate and export it together with its key as the .p12."
             exit 1
           fi
-          echo "Unsigned archive built. No .ipa produced and none attached -- expected until the signing block is enabled."
+
+      # Switches the Release configuration of the phone app and the embedded
+      # watch app to manual signing against these two profiles, derives the
+      # team from them, and writes the ExportOptions.plist. A profile for the
+      # wrong bundle, a development profile or a missing one fails here by name.
+      - name: Point the archive at the App Store profiles
+        env:
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          IOS_WATCH_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_WATCH_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 -d > "$RUNNER_TEMP/phone.mobileprovision"
+          echo "$IOS_WATCH_PROVISIONING_PROFILE_BASE64" | base64 -d > "$RUNNER_TEMP/watch.mobileprovision"
+          node scripts/ios_release_signing.mjs apps/mobile_ios/ios/Runner.xcodeproj/project.pbxproj "$RUNNER_TEMP/ExportOptions.plist" "$RUNNER_TEMP/phone.mobileprovision" "$RUNNER_TEMP/watch.mobileprovision"
+
+      - name: Write the production runtime config
+        working-directory: apps/mobile_ios
+        # Dev-only keys (DEV_USER_*, BYPASS_PAYWALL, *_GATE) and the
+        # sign-off-gated feature flags are deliberately absent, as on Android:
+        # an absent key stays fail-closed.
+        env:
+          SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.PUBLIC_SUPABASE_ANON_KEY }}
+          MAPTILER_KEY: ${{ secrets.PUBLIC_MAPTILER_KEY }}
+          SENTRY_DSN: ${{ secrets.PUBLIC_SENTRY_DSN }}
+          OSRM_URL: ${{ secrets.MOBILE_OSRM_URL }}
+          LIVE_HUB_URL: ${{ secrets.MOBILE_LIVE_HUB_URL }}
+          STRAVA_CLIENT_ID: ${{ secrets.MOBILE_STRAVA_CLIENT_ID }}
+          REVENUECAT_API_KEY_IOS: ${{ secrets.MOBILE_REVENUECAT_API_KEY_IOS }}
+          APP_RELEASE: ${{ steps.version.outputs.name }}
+        run: |
+          jq -n '{
+            SUPABASE_URL: env.SUPABASE_URL,
+            SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY,
+            MAPTILER_KEY: env.MAPTILER_KEY,
+            WEB_BASE_URL: "https://threkir.com",
+            OSRM_URL: env.OSRM_URL,
+            LIVE_HUB_URL: env.LIVE_HUB_URL,
+            SENTRY_DSN: env.SENTRY_DSN,
+            STRAVA_CLIENT_ID: env.STRAVA_CLIENT_ID,
+            REVENUECAT_API_KEY_IOS: env.REVENUECAT_API_KEY_IOS,
+            APP_RELEASE: env.APP_RELEASE
+          }' > dart_defines.json
+
+      - name: Build the signed IPA
+        working-directory: apps/mobile_ios
+        run: flutter build ipa --release --export-options-plist="$RUNNER_TEMP/ExportOptions.plist" --dart-define-from-file=dart_defines.json
+
+      - name: Find the IPA
+        id: ipa
+        working-directory: apps/mobile_ios
+        run: |
+          found=$(find build/ios/ipa -maxdepth 1 -name '*.ipa')
+          count=$(printf '%s' "$found" | grep -c . || true)
+          if [ "$count" != 1 ]; then
+            echo "::error::Expected exactly one .ipa in apps/mobile_ios/build/ios/ipa after the signed build and found $count."
+            exit 1
+          fi
+          echo "path=apps/mobile_ios/$found" >> "$GITHUB_OUTPUT"
+
+      # Before the upload, as on Android: if TestFlight refuses the build, the
+      # signed IPA still lands somewhere durable to upload by hand.
+      # `fail_on_unmatched_files` stays on — an attach that matched nothing
+      # once reported success here (decisions § 1673).
+      - name: Attach the signed IPA to the Release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: apps/mobile_ios/build/ios/ipa/*.ipa
+          fail_on_unmatched_files: true
+
+      - name: Upload to TestFlight
+        uses: apple-actions/upload-testflight-build@5e75ff58276689011512ba87a381d93dc67dbcf8 # v5.3.0
+        with:
+          app-path: ${{ steps.ipa.outputs.path }}
+          issuer-id: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          api-key-id: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          api-private-key: ${{ secrets.APP_STORE_CONNECT_API_PRIVATE_KEY }}
+
+      - name: Remove the signing keychain and the runtime config
+        if: always()
+        run: |
+          if [ -n "${KEYCHAIN_PATH:-}" ]; then security delete-keychain "$KEYCHAIN_PATH" || true; fi
+          rm -f apps/mobile_ios/dart_defines.json "$RUNNER_TEMP"/*.mobileprovision

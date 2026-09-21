@@ -30,6 +30,11 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
     /// runner opening the app to start.
     @Published var armedRoute: ArmedRoute? = ArmedRouteStore.load()
 
+    /// The starred routes the phone last pushed, for the pre-run picker.
+    /// Restored from disk for the same reason `armedRoute` is: the push lands
+    /// long before the app is on screen.
+    @Published var savedRoutes: [ArmedRoute] = SavedRoutesStore.load()
+
     override init() {
         super.init()
         if WCSession.isSupported() {
@@ -162,6 +167,23 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
             ArmedRouteStore.save(route)
             DispatchQueue.main.async { self.armedRoute = route }
         }
+        // The picker's list of starred routes. Independent of the armed
+        // route above — a push may carry either, both or neither — and an
+        // empty array is the runner having unstarred their last one, so it
+        // empties the picker rather than being read as "nothing sent".
+        if let routes = SavedRoutes.decodeList(payload) {
+            SavedRoutesStore.save(routes)
+            DispatchQueue.main.async { self.savedRoutes = routes }
+        }
+    }
+
+    /// Arm a route the runner picked on the wrist. Writes through
+    /// `ArmedRouteStore` rather than only publishing, because
+    /// `WorkoutManager.start()` reads the route off disk and not off this
+    /// object.
+    func armRoute(_ route: ArmedRoute) {
+        ArmedRouteStore.save(route)
+        armedRoute = route
     }
 
     /// Drop the armed route from the wrist. The phone is the only writer, so

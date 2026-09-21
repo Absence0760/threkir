@@ -220,6 +220,17 @@ block and the build reads nothing else, so the secret alone changes nothing —
 which is how eight flags sat permanently off until
 [§ 1683](../architecture/decisions.md).
 
+**It is a GitHub Actions secret, not a sops entry, and it is not secret.** The
+two stores do different jobs: the estate `*.sops.yaml` files are the durable
+backup plus the runtime values Terraform writes into the Lambda's environment,
+while GitHub Actions secrets are the only way a value reaches a *build*. Put
+this one in sops and nothing would read it. And `PUBLIC_*` is inlined by Vite
+into the client bundle, so its value ships to every browser that loads the site
+— after the deploy anyone can read `true` out of the JS. It sits in a store
+called "secrets" because that is GitHub's mechanism for workflow inputs, not
+because the value is sensitive. Step 5's client secret is the opposite case in
+every respect.
+
 ## 9. Turn the Android button on
 
 1. Set the repo secret **`MOBILE_GOOGLE_WEB_CLIENT_ID`** to the **web** client

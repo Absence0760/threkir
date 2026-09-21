@@ -25,10 +25,10 @@ Last moved: **2026-09-20**.
 |---|---|---|---|
 | — | Google Cloud project `threkir` | — | **Done 2026-09-18** — created for push, reused here |
 | 1 | Consent screen (Google Auth Platform) | — | **Done 2026-09-20** — Testing, External, `threkir.com` authorized |
-| 2 | **Web** OAuth client | Supabase provider + GitHub `MOBILE_GOOGLE_WEB_CLIENT_ID` | ☐ |
+| 2 | **Web** OAuth client | Supabase provider + GitHub `MOBILE_GOOGLE_WEB_CLIENT_ID` | **Done 2026-09-20** |
 | 3 | **Android** OAuth client, one per SHA-1 | Google console only — no id to copy | ☐ |
 | 4 | **iOS** OAuth client | `Runner/Info.plist` (step 10) | ☐ — defer to step 10, same hands |
-| 5 | Web client id + secret backed up | estate `threkir/push-credentials.sops.yaml` | ☐ |
+| 5 | Web client id + secret backed up | estate `threkir/push-credentials.sops.yaml` | **Done 2026-09-20** — `google_oauth_web_client_id` + `_secret` |
 | 6 | Supabase Google provider enabled | Supabase dashboard | ☐ |
 | 7 | Site URL, Redirect URLs, manual linking | Supabase dashboard | ☐ |
 | 8 | `PUBLIC_GOOGLE_AUTH_ENABLED` truthy + `web@` tag | GitHub secret + release | ☐ |

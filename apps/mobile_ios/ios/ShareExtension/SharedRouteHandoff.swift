@@ -36,6 +36,28 @@ enum SharedRouteHandoff {
     /// `kUserDefaultsKey` in the plugin. Value is a JSON array of `MediaFile`.
     static let userDefaultsKey = "ShareKey"
 
+    /// Shared route files are copied into this subdirectory of the group
+    /// container, never into its root. The root also holds
+    /// `Library/Preferences/<group>.plist` — the very `UserDefaults` suite the
+    /// payload is written to — so a sweeper that cleared the root would delete
+    /// the handoff's own backing store out from under `cfprefsd`. A directory
+    /// the extension owns outright can be emptied without that question.
+    static let payloadDirectoryName = "SharedRoutes"
+
+    /// The route file types the host app declares in `CFBundleDocumentTypes` /
+    /// `UTImportedTypeDeclarations`, and the set the share sheet's
+    /// `NSExtensionActivationRule` admits. The share sheet and the "Open with"
+    /// chooser accept the same types on purpose — the parsers behind them are
+    /// the same Dart. Neither `kmz`, `geojson` nor `tcx` appears, because iOS
+    /// declares no UTI for any of them and the host app imports none: that gap
+    /// belongs to `CFBundleDocumentTypes`, and closing it there closes it here.
+    /// `ShareExtensionHandoffTests` compares this list to the activation rule
+    /// and to `CFBundleDocumentTypes`, so the three cannot drift apart.
+    static let acceptedTypeIdentifiers = [
+        "com.topografix.gpx",
+        "com.google.earth.kml",
+    ]
+
     /// `kSchemePrefix` in the plugin. The host app registers
     /// `ShareMedia-<host bundle id>` in `CFBundleURLTypes`, and the plugin
     /// ignores any URL that does not carry that exact prefix — which is how

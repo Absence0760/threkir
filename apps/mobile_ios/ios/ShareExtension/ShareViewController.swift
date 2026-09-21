@@ -14,15 +14,6 @@ import UniformTypeIdentifiers
 /// reported by the host app's own localized banner once it foregrounds
 /// (`HomeScreen._onIncomingRouteImport`).
 final class ShareViewController: UIViewController {
-    /// The route file types the host app declares in `CFBundleDocumentTypes`
-    /// / `UTImportedTypeDeclarations`. The share sheet and the "Open with"
-    /// chooser deliberately accept the same set; the parsers behind them are
-    /// the same code.
-    private static let acceptedTypeIdentifiers = [
-        "com.topografix.gpx",
-        "com.google.earth.kml",
-    ]
-
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .clear
@@ -34,28 +25,20 @@ final class ShareViewController: UIViewController {
     }
 
     private func importAttachments() {
-        guard let container = FileManager.default
-            .containerURL(forSecurityApplicationGroupIdentifier: SharedRouteHandoff.appGroup)
-        else {
-            // The App Group is not provisioned on this build, so there is
-            // nowhere to put the file. Handing the host app an unreachable
-            // path is deliberate: it routes a broken build into the one
-            // failure message the user can act on instead of opening the app
-            // onto nothing.
+        guard let destinationDirectory = preparedPayloadDirectory() else {
+            // Either the App Group is not provisioned on this build or the
+            // directory could not be made, so there is nowhere to put the
+            // file. Handing the host app an unreachable path is deliberate:
+            // it routes a broken build into the one failure message the user
+            // can act on instead of opening the app onto nothing.
             finish(with: [unreachablePlaceholder()])
             return
         }
 
-        // The container holds nothing but in-flight share payloads, and the
-        // host app copies what it imports into its own route store. Clearing
-        // it first is what stops every file a user ever shared accumulating
-        // in the group container forever — there is no other sweeper.
-        purge(container)
-
         let providers = (extensionContext?.inputItems as? [NSExtensionItem] ?? [])
             .flatMap { $0.attachments ?? [] }
             .compactMap { provider -> (NSItemProvider, String)? in
-                guard let uti = Self.acceptedTypeIdentifiers
+                guard let uti = SharedRouteHandoff.acceptedTypeIdentifiers
                     .first(where: provider.hasItemConformingToTypeIdentifier)
                 else { return nil }
                 return (provider, uti)
@@ -86,7 +69,7 @@ final class ShareViewController: UIViewController {
             // this block, which is why the copy happens here.
             provider.loadFileRepresentation(forTypeIdentifier: uti) { url, error in
                 defer { group.leave() }
-                let destination = container.appendingPathComponent(
+                let destination = destinationDirectory.appendingPathComponent(
                     Self.fileName(for: url, conformingTo: uti)
                 )
                 if let url, error == nil {
@@ -178,14 +161,40 @@ final class ShareViewController: UIViewController {
         )
     }
 
-    private func purge(_ container: URL) {
+    /// The directory shared route files are copied into, emptied of whatever
+    /// the last share left there and created if it does not exist. Returns nil
+    /// when the App Group is not reachable, which is the only case the caller
+    /// has to treat as a broken build.
+    ///
+    /// Emptying it is what stops every file a user ever shared accumulating in
+    /// the group container forever — the host app copies what it imports into
+    /// its own route store, and nothing else sweeps. It is scoped to this one
+    /// directory rather than the container root because the root also holds
+    /// the `UserDefaults` suite the payload itself is written to.
+    private func preparedPayloadDirectory() -> URL? {
+        guard let container = FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: SharedRouteHandoff.appGroup)
+        else { return nil }
+
+        let directory = container.appendingPathComponent(
+            SharedRouteHandoff.payloadDirectoryName,
+            isDirectory: true
+        )
         let contents = (try? FileManager.default.contentsOfDirectory(
-            at: container,
+            at: directory,
             includingPropertiesForKeys: nil
         )) ?? []
         for file in contents {
             try? FileManager.default.removeItem(at: file)
         }
+        do {
+            try FileManager.default.createDirectory(
+                at: directory, withIntermediateDirectories: true
+            )
+        } catch {
+            return nil
+        }
+        return directory
     }
 
     /// The shared file's own name, so the host app's format dispatch still

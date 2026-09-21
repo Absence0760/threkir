@@ -75,6 +75,23 @@ final class ShareExtensionHandoffTests: XCTestCase {
 
     // MARK: - The activation rule vs. the "Open with" declaration
 
+    /// Every UTI the activation rule names, read back out of the quoted
+    /// literals in its predicate string.
+    private func activationRuleTypes() throws -> Set<String> {
+        let extensionSection = try XCTUnwrap(
+            plist("ShareExtension/Info.plist")["NSExtension"] as? [String: Any]
+        )
+        let attributes = try XCTUnwrap(
+            extensionSection["NSExtensionAttributes"] as? [String: Any]
+        )
+        let rule = try XCTUnwrap(attributes["NSExtensionActivationRule"] as? String)
+        return Set(
+            rule.split(separator: "\"").enumerated()
+                .filter { $0.offset % 2 == 1 }
+                .map { String($0.element) }
+        )
+    }
+
     func testTheShareSheetAcceptsExactlyTheTypesOpenWithDeclares() throws {
         // Two entry points, one parser. A type the share sheet accepts but
         // `CFBundleDocumentTypes` does not (or the reverse) is a file the
@@ -84,28 +101,20 @@ final class ShareExtensionHandoffTests: XCTestCase {
             plist("Runner/Info.plist")["CFBundleDocumentTypes"] as? [[String: Any]]
         )
         let declared = Set(documentTypes.flatMap { $0["LSItemContentTypes"] as? [String] ?? [] })
+        XCTAssertEqual(try activationRuleTypes(), declared)
+    }
 
-        let extensionSection = try XCTUnwrap(
-            plist("ShareExtension/Info.plist")["NSExtension"] as? [String: Any]
+    func testTheExtensionLoadsExactlyTheTypesItIsActivatedFor() throws {
+        // A third declaration of the same set, and the one with no OS
+        // enforcement behind it: the rule decides whether Threkir appears in
+        // the sheet, `acceptedTypeIdentifiers` decides whether the attachment
+        // is then loaded. A type in the rule and not in the list activates the
+        // extension and then finds no provider to load, which lands the user
+        // on "couldn't import" for a file the app can read perfectly well.
+        XCTAssertEqual(
+            Set(SharedRouteHandoff.acceptedTypeIdentifiers),
+            try activationRuleTypes()
         )
-        let attributes = try XCTUnwrap(
-            extensionSection["NSExtensionAttributes"] as? [String: Any]
-        )
-        let rule = try XCTUnwrap(attributes["NSExtensionActivationRule"] as? String)
-
-        for type in declared {
-            XCTAssertTrue(
-                rule.contains("\"\(type)\""),
-                "the share extension's activation rule does not accept \(type), which \"Open with\" does"
-            )
-        }
-        // The reverse direction: no UTI in the rule that is not declared.
-        for match in rule.split(separator: "\"").enumerated() where match.offset % 2 == 1 {
-            XCTAssertTrue(
-                declared.contains(String(match.element)),
-                "the activation rule accepts \(match.element), which CFBundleDocumentTypes does not declare"
-            )
-        }
     }
 
     // MARK: - The wire format
@@ -114,8 +123,10 @@ final class ShareExtensionHandoffTests: XCTestCase {
         // receive_sharing_intent's host side decodes this into
         // `SharedMediaFile: Codable` — `path` and `type` required, `type` a
         // `SharedMediaType` whose raw values are image/video/text/file/url.
-        // An unknown key is ignored; a missing or misspelled one throws away
-        // the whole payload, silently, because the decode is a `try?`.
+        // An unknown key is ignored; a missing or misspelled one FORCE-
+        // UNWRAPS a nil in the plugin's `decode`, taking the host app down on
+        // launch rather than failing the import. That is why this encoder is
+        // a fixed struct and why its output is pinned here.
         let payload = try SharedRouteHandoff.encodedPayload(for: [
             SharedRouteHandoff.MediaFile(
                 path: "file:///tmp/Canal loop.gpx",

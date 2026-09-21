@@ -5,6 +5,8 @@ import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
+import 'store_links.dart';
+
 /// RevenueCat native-SDK wrapper for the in-app Pro purchase sheet. Its web
 /// counterpart under `billing/` drives a different SDK against a different
 /// store, so the two are NOT a lockstep parity pair and neither registry
@@ -58,7 +60,7 @@ String? _configuredUserId;
 /// Idempotently configure the native SDK for [userId]. Re-configures
 /// when the user changes so tokens don't leak across sign-outs.
 /// Returns `false` when no API key is available — caller falls
-/// through to the web URL.
+/// through to the web URL where [webPaymentLinksAllowed] permits one.
 Future<bool> configureRevenueCat(
   String userId, {
   String? keyOverride,
@@ -80,7 +82,8 @@ Future<bool> configureRevenueCat(
 
 /// Outcome of [startProCheckout]. Distinguishes "purchase went
 /// through" from "user cancelled" (benign) from "RC isn't configured
-/// on this build" (caller should fall through to the web URL).
+/// on this build" (caller falls through to the web URL where
+/// [webPaymentLinksAllowed] permits one).
 enum PurchaseResult { purchased, cancelled, notConfigured, failed }
 
 /// Present the native Pro checkout sheet for [userId]. Prefers a
@@ -177,6 +180,21 @@ Future<String?> managementUrl(
     debugPrint('RevenueCat managementUrl failed: $e');
     return null;
   }
+}
+
+/// Where "manage subscription" should open for [userId]: the page of the
+/// store the subscription was actually bought through when the SDK knows it,
+/// else the platform fallback — which on iOS is Apple's page, never the web
+/// page that sells Pro.
+Future<String> resolveManageSubscriptionUrl(
+  String? userId, {
+  String? keyOverride,
+}) async {
+  if (userId != null && isRevenueCatConfigured(keyOverride: keyOverride)) {
+    final url = await managementUrl(userId, keyOverride: keyOverride);
+    if (url != null) return url;
+  }
+  return manageSubscriptionFallbackUrl();
 }
 
 /// The store-localised monthly Pro price string (e.g. `$9.99`, `9,99 €`,

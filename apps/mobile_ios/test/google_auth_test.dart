@@ -43,4 +43,22 @@ void main() {
       expect(googleSignInAvailable(), isFalse);
     });
   });
+
+  // decisions § 1700: rendering is a separate question from the tap gate.
+  group('googleSignInOffered', () {
+    test('Android shows the button unconfigured; the tap says coming soon', () {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      dotenv.loadFromString(envString: '', isOptional: true);
+      expect(googleSignInOffered(), isTrue);
+    });
+
+    test('iOS renders no button while the flow cannot work', () {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      dotenv.loadFromString(
+          envString: 'GOOGLE_WEB_CLIENT_ID=web.apps.googleusercontent.com',
+          isOptional: true);
+      expect(googleSignInAvailable(), isFalse);
+      expect(googleSignInOffered(), isFalse);
+    });
+  });
 }

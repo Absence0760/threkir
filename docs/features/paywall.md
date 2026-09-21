@@ -431,7 +431,7 @@ watch inherits the phone's subscription via the paired Supabase session
 **Caveats:**
 
 - **The web Stripe path is a separate story.** When RevenueCat is unconfigured the app routes to `/settings/upgrade` (Stripe), which has its own international constraints — notably India's RBI e-mandate rules for recurring charges and Stripe-India entity requirements. That is *not* solved by the IAP path above.
-- **iOS effectively requires IAP for the Pro subscription** (Guideline 3.1.1 forbids routing users to an external processor for digital goods), so on iOS the RevenueCat → StoreKit path is mandatory, not optional. Play has similar rules with narrower external-link exceptions.
+- **iOS effectively requires IAP for the Pro subscription** (Guideline 3.1.1 forbids routing users to an external processor for digital goods), so on iOS the RevenueCat → StoreKit path is mandatory, not optional. The app enforces it: `lib/store_links.dart`'s `webPaymentLinksAllowed()` is false on iOS, so an iOS build with no `REVENUECAT_API_KEY_IOS` shows the Pro teaser instead of a web checkout, the Support (donate) tile is not rendered, and "Manage subscription" falls back to Apple's subscription page rather than `/settings/upgrade` ([decisions § 1700](../architecture/decisions.md)). Play has similar rules with narrower external-link exceptions.
 - **Auto-renewal in India** broke ecosystem-wide under the 2021–22 RBI mandate rules; Apple and Google now implement compliant recurring billing *inside* IAP — another reason to go through them rather than a self-hosted recurring charge in those markets.
 
 ## One-off donation flow (user perspective)

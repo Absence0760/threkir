@@ -259,7 +259,7 @@ The matrix of "what lives where":
 | iOS distribution `.p12` + provisioning profile | Apple Developer | GitHub Secrets (`IOS_BUILD_CERTIFICATE_BASE64` etc.) |
 | Wear OS upload keystore | We generate once | GitHub Secrets (`WATCH_WEAR_KEYSTORE_BASE64`) |
 | Play `service-account.json` | Google Cloud | GitHub Secrets (`PLAY_SERVICE_ACCOUNT_JSON`) |
-| App Store Connect `.p8` API key | Apple Developer | GitHub Secrets (`APP_STORE_CONNECT_API_KEY_BASE64`) |
+| App Store Connect `.p8` API key | Apple Developer | GitHub `production` environment secret `APP_STORE_CONNECT_API_PRIVATE_KEY` (the raw `.p8` text); backed up in the estate |
 
 **Rotation rule**: if a secret is suspected leaked, the rotation is in three steps: (1) issue a new key in the provider, (2) update everywhere it's stored, (3) revoke the old key. Step 3 is what "the old one is dead" really means — without it the leaked key still works.
 

@@ -31,7 +31,7 @@ Last moved: **2026-09-21**.
 | 5 | Web client id + secret backed up | estate `threkir/push-credentials.sops.yaml` | **Done 2026-09-20** — `google_oauth_web_client_id` + `_secret` |
 | 6 | Supabase Google provider enabled | Supabase dashboard | **Done 2026-09-21** — `/auth/v1/authorize?provider=google` 302s to accounts.google.com with `scope=email profile` |
 | 7 | Site URL, Redirect URLs, manual linking | Supabase dashboard | **Done 2026-09-21** |
-| 8 | `PUBLIC_GOOGLE_AUTH_ENABLED` truthy + `web@` tag | GitHub secret + release | **Half** — secret set and `web@1.8.0` published 2026-09-21; the deploy is parked on the `production` environment's reviewer gate |
+| 8 | `PUBLIC_GOOGLE_AUTH_ENABLED` truthy + `web@` tag | GitHub secret + release | **Done 2026-09-21** — `web@1.8.0` deployed; `https://threkir.com/_app/env.js` serves `PUBLIC_GOOGLE_AUTH_ENABLED:"true"` and the other nine gates empty |
 | 9 | `MOBILE_GOOGLE_WEB_CLIENT_ID` + `mobile_android@` tag | GitHub secret + release | ☐ |
 | 10 | iOS `GIDClientID` + reversed-id URL scheme | `Runner/Info.plist` | ☐ — **code, and Mac-only** |
 
@@ -288,7 +288,11 @@ Test paths for the sign-up, link and unlink flows are in
 
 1. `/login` shows **Continue with Google** with no "Soon" pill. Still pilled →
    step 8's secret did not reach a build. That is a release, not a Supabase
-   setting.
+   setting, and it is checkable without a browser: the static build writes
+   every public variable to `/_app/env.js`, so
+   `curl -sS https://threkir.com/_app/env.js | grep -o 'PUBLIC_[A-Z_]*:"[^"]*"'`
+   prints the gate set the deploy actually shipped. It is also the fastest way
+   to confirm a release turned on *only* what you meant it to.
 2. The button reaches Google's account chooser. A `redirect_uri_mismatch` here
    names the URI Google was asked for — it will be the Supabase callback, and
    it is missing from step 2.

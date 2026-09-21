@@ -191,6 +191,7 @@ is the runbook for making each one.
 | `IOS_P12_PASSWORD` | the `.p12` export password |
 | `IOS_PROVISIONING_PROFILE_BASE64` | base64 of the App Store profile for `com.threkir.app` |
 | `IOS_WATCH_PROVISIONING_PROFILE_BASE64` | base64 of the App Store profile for `com.threkir.app.watchapp` |
+| `IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64` | base64 of the App Store profile for `com.threkir.app.watchapp.complication`, the WidgetKit complication the watch app embeds |
 | `APP_STORE_CONNECT_API_KEY_ID` | App Store Connect API key id (App Manager role) |
 | `APP_STORE_CONNECT_API_ISSUER_ID` | that key's issuer id |
 | `APP_STORE_CONNECT_API_PRIVATE_KEY` | the key's `.p8` file contents as they are -- **not** base64; the upload action reads PKCS#8 text |

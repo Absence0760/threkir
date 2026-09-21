@@ -7,8 +7,8 @@
 // account to sign in with, only the distribution certificate and profiles held
 // as secrets. `release-ios.yml` runs this after decoding them. It rewrites the
 // Release configuration of every signed target in `Runner.xcodeproj` — the
-// phone app and the Apple Watch app it embeds — to manual signing against the
-// profile whose bundle id matches, and leaves every other configuration alone.
+// phone app, the Apple Watch app it embeds and the watch's complication
+// extension — to manual signing against the profile whose bundle id matches, and leaves every other configuration alone.
 //
 // The mapping is derived, not configured. A profile names its own bundle id and
 // team, so the profiles are the whole input: a signed target with no profile, a
@@ -103,7 +103,8 @@ function capture(block, re) {
 
 /**
  * Every signed target in a pbxproj, with its Release configuration's object id
- * and bundle id.
+ * and bundle id. An object id is any unquoted token: Xcode writes 24 hex
+ * characters, but a hand-added target is often shorter, and Xcode reads both.
  * @param {string} src
  * @returns {SignedTarget[]}
  */
@@ -117,12 +118,12 @@ export function signedTargets(src) {
 		const productType = capture(block, /\n\t\t\tproductType = ([^;]+);/);
 		if (productType === null || !SIGNED_PRODUCT_TYPES.includes(productType)) continue;
 		const name = capture(block, /\n\t\t\tname = ([^;]+);/) ?? '(unnamed)';
-		const listId = capture(block, /\n\t\t\tbuildConfigurationList = ([0-9A-Fa-f]{24})/);
+		const listId = capture(block, /\n\t\t\tbuildConfigurationList = ([A-Za-z0-9_]+)/);
 		const list = listId === null ? null : pbxObject(src, listId);
 		if (list === null) throw new Error(`Target ${name} has no build configuration list.`);
 		/** @type {string | null} */
 		let releaseConfigId = null;
-		for (const m of list.matchAll(/\n\t{4}([0-9A-Fa-f]{24}) \/\* [^*]+ \*\/,/g)) {
+		for (const m of list.matchAll(/\n\t{4}([A-Za-z0-9_]+) \/\* [^*]+ \*\/,/g)) {
 			const config = pbxObject(src, m[1]);
 			if (config !== null && capture(config, /\n\t\t\tname = ([^;]+);/) === 'Release') releaseConfigId = m[1];
 		}
@@ -210,7 +211,11 @@ export function planSigning(src, profiles) {
 	for (const target of targets) {
 		const matches = profiles.filter((p) => p.bundleId === target.bundleId);
 		if (matches.length === 0) {
-			throw new Error(`No App Store provisioning profile for ${target.bundleId} (target ${target.name}). Every target the archive embeds is signed with its own profile.`);
+			throw new Error(
+				`No App Store provisioning profile for ${target.bundleId} (target ${target.name}). Every target the archive embeds is signed ` +
+					'with its own profile: register its App ID and make the profile (docs/ops/apple_provisioning.md steps 4 and 15), pass it to ' +
+					'this script from release-ios.yml under a secret of its own, and give ios_release_signing.test.mjs a profile for it.',
+			);
 		}
 		if (matches.length > 1) throw new Error(`${matches.length} profiles are for ${target.bundleId}; pass one.`);
 		assignments.push({ target, profile: matches[0] });

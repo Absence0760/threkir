@@ -7,8 +7,8 @@
 // account to sign in with, only the distribution certificate and profiles held
 // as secrets. `release-ios.yml` runs this after decoding them. It rewrites the
 // Release configuration of every signed target in `Runner.xcodeproj` — the
-// phone app and the Apple Watch app it embeds — to manual signing against the
-// profile whose bundle id matches, and leaves every other configuration alone.
+// phone app, the Apple Watch app it embeds and the watch's complication
+// extension — to manual signing against the profile whose bundle id matches, and leaves every other configuration alone.
 //
 // The mapping is derived, not configured. A profile names its own bundle id and
 // team, so the profiles are the whole input: a signed target with no profile, a

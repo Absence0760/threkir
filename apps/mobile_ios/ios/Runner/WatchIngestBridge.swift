@@ -140,7 +140,7 @@ import WatchConnectivity
     /// route push uses it and with one more at stake: the Arm lands while the
     /// watch is on a charger in another room, and nothing on the watch times a
     /// live race out, so an End that is merely *sent* leaves `RACE LIVE` on the
-    /// wrist forever (decisions § 1697).
+    /// wrist forever (decisions § 1706).
     private func handleRaceCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         switch call.method {
         case "push":

@@ -309,7 +309,7 @@ class RaceController extends ChangeNotifier {
         next?.startedAt != _active?.startedAt;
     // The paired Apple Watch is TOLD Arm / Go / End; it cannot poll
     // `race_sessions` itself, because the Supabase surface does not grow on
-    // that wrist (decisions § 1697). Computed before `_active` moves, and off
+    // that wrist (decisions § 1706). Computed before `_active` moves, and off
     // `_active` rather than off `_hostingEventId` — that field is null on the
     // participant path, and a relay keyed on it would never fire at all.
     final pushes = appleWatchRacePushes(

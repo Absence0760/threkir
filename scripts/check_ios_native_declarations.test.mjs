@@ -173,9 +173,15 @@ function fakeManifest({ apis = ['3EC4.1', 'E174.1'], data = null, tracking = fal
 	const dataEntry = (type) =>
 		`\t\t<dict>\n\t\t\t<key>NSPrivacyCollectedDataType</key>\n` +
 		`\t\t\t<string>${type}</string>\n\t\t</dict>`;
+	// DeviceID is here rather than in the fixed pair because the baseline's
+	// Dart imports firebase_messaging, which is what derives it.
 	const types =
 		data ??
-		['NSPrivacyCollectedDataTypeName', 'NSPrivacyCollectedDataTypeOtherUserContent'];
+		[
+			'NSPrivacyCollectedDataTypeName',
+			'NSPrivacyCollectedDataTypeOtherUserContent',
+			'NSPrivacyCollectedDataTypeDeviceID',
+		];
 	return (
 		`<plist version="1.0">\n<dict>\n` +
 		`\t<key>NSPrivacyTracking</key>\n\t<${tracking}/>\n` +
@@ -389,6 +395,76 @@ test('a collected data type the code implies but the manifest omits fails', () =
 	assert.equal(
 		errors.filter((e) => e.includes('NSPrivacyCollectedDataTypeHealth')).length,
 		1,
+	);
+});
+
+// The two PrivacyInfo arrays were read in one direction only: an entry no
+// rule claimed stood unchallenged, which is how NSPrivacyCollectedDataTypeDeviceID
+// lived here for months backed by a hand-written comment rather than by the
+// import that obliges it. The nutrition label is answered from this array, so
+// an over-declaration is a public claim about what the app takes.
+test('a collected data type no rule claims is an error', () => {
+	const { errors } = evaluate(
+		baseline({
+			privacyManifest: fakeManifest({
+				data: [
+					'NSPrivacyCollectedDataTypeName',
+					'NSPrivacyCollectedDataTypeOtherUserContent',
+					'NSPrivacyCollectedDataTypeDeviceID',
+					'NSPrivacyCollectedDataTypeContacts',
+				],
+			}),
+		}),
+	);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /NSPrivacyCollectedDataTypeContacts/);
+	assert.match(errors[0], /no rule in this script claims it/);
+});
+
+test('deleting the push import obliges deleting the DeviceID claim with it', () => {
+	const withoutPush = { dartSources: dart('IosTextToSpeechAudioCategory.playback') };
+	// The entitlement the same import obliges goes too, so only the manifest
+	// entry is left over — which is the half this direction exists to catch.
+	const stillClaimed = evaluate(
+		baseline({ ...withoutPush, entitlements: new Map() }),
+	);
+	assert.equal(stillClaimed.errors.length, 1);
+	assert.match(stillClaimed.errors[0], /NSPrivacyCollectedDataTypeDeviceID/);
+	const dropped = evaluate(
+		baseline({
+			...withoutPush,
+			entitlements: new Map(),
+			privacyManifest: fakeManifest({
+				data: [
+					'NSPrivacyCollectedDataTypeName',
+					'NSPrivacyCollectedDataTypeOtherUserContent',
+				],
+			}),
+		}),
+	);
+	assert.deepEqual(dropped.errors, []);
+});
+
+test('a required-reason category no rule claims is an error', () => {
+	const { errors } = evaluate(
+		baseline({
+			privacyManifest: fakeManifest().replace(
+				'NSPrivacyAccessedAPICategoryDiskSpace',
+				'NSPrivacyAccessedAPICategoryFileTimestamp',
+			),
+		}),
+	);
+	// DiskSpace is now absent (the fixed rule reports it) and FileTimestamp is
+	// present with nothing deriving it, since the baseline imports no
+	// path_provider. Both halves of the same swap.
+	assert.equal(errors.length, 2);
+	assert.ok(errors.some((e) => /NSPrivacyAccessedAPICategoryDiskSpace/.test(e)));
+	assert.ok(
+		errors.some(
+			(e) =>
+				/NSPrivacyAccessedAPICategoryFileTimestamp/.test(e) &&
+				/no rule in this\s+script claims it/.test(e),
+		),
 	);
 });
 

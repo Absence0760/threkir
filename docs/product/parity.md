@@ -5,7 +5,7 @@ description: Single table listing every user-visible feature with a per-platform
 
 # Cross-platform feature parity matrix
 
-> **iOS + Apple Watch are deferred.** The landing page's platform strip marks both "In testing" — built, not in the stores (decisions § 1623) — and the team is not actively pushing them forward right now. Nothing in either column has been observed running on a Mac build, simulator or device. The Apple columns will be re-energised when the deferral is lifted; until then, prioritise Android / Wear OS / Web work first. How to read the **iOS** column is stated once, under [What an iOS cell means](#what-an-ios-cell-means); the Apple Watch column is a separate native Swift codebase and is not covered by that rule.
+> **iOS + Apple Watch are deferred.** The landing page's platform strip marks both "In testing" — built, not in the stores (decisions § 1623) — and the team is not actively pushing them forward right now. The iOS target now builds and launches: on 2026-09-20 `apps/mobile_ios` compiled for the simulator and booted to its first screens on an iPhone 17 Pro running iOS 26.4 (Xcode 26.4, Flutter 3.44.8). No feature row below was exercised in that run, so it moves no cell. Nothing in the Apple Watch column has been observed on a Mac build, simulator or device. The Apple columns will be re-energised when the deferral is lifted; until then, prioritise Android / Wear OS / Web work first. How to read the **iOS** column is stated once, under [What an iOS cell means](#what-an-ios-cell-means); the Apple Watch column is a separate native Swift codebase and is not covered by that rule.
 
 The app ships on five surfaces — **Android**, **iOS** *(deferred)*, **Web**, **Wear OS**, **Apple Watch** *(deferred)* — and features drift between them. This doc is the single place where that drift is visible. Every user-facing feature has a row, every platform has a column, and every cell uses one of the four symbols the Legend below defines.
 
@@ -26,7 +26,7 @@ See [roadmap § Cross-platform parity enforcement](roadmap.md#future--cross-plat
 <!-- parity-ios-rule -->
 ### What an iOS cell means
 
-`apps/mobile_ios/lib/` and `test/` are byte-identical to `mobile_android` ([decisions.md § 39](../architecture/decisions.md#39-mobile_android-and-mobile_ios-share-a-byte-for-byte-dart-codebase)), and no row in this matrix has been run on a Mac build, simulator or device. An iOS cell is therefore not an observation. It is **derived from the Android cell**, and the only thing a row can add for itself is an obstruction on the iOS side of the shared Dart: a `Platform` gate, a method channel with no iOS handler, a plugin that does not declare iOS, or a missing `Info.plist` key or entitlement.
+`apps/mobile_ios/lib/` and `test/` are byte-identical to `mobile_android` ([decisions.md § 39](../architecture/decisions.md#39-mobile_android-and-mobile_ios-share-a-byte-for-byte-dart-codebase)), and although the target itself now builds and boots on a simulator (2026-09-20), no row in this matrix has been exercised there. An iOS cell is therefore not an observation. It is **derived from the Android cell**, and the only thing a row can add for itself is an obstruction on the iOS side of the shared Dart: a `Platform` gate, a method channel with no iOS handler, a plugin that does not declare iOS, or a missing `Info.plist` key or entitlement.
 
 | Android cell | iOS cell |
 |---|---|

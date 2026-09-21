@@ -291,8 +291,25 @@ Until step 4 lands, treat the secret as compromised-if-logs-are: the channel is 
 Every deploy starts with a merge, so the merge gate is the first production
 control. Branch protection on `main` requires **exactly one status context**:
 `CI gate`, the aggregator job in `.github/workflows/ci.yml`. It waits on the
-other 34 jobs in that file and fails if any of them reports anything but
+other 35 jobs in that file and fails if any of them reports anything but
 success or skipped.
+
+`build-mobile-ios` joined the required set on 2026-09-20. It compiles
+`apps/mobile_ios` for the iOS simulator (`flutter build ios --simulator
+--no-codesign`, so no signing credential and no Apple Developer account are
+needed) and runs the `RunnerTests` XCTest bundle. It is the only lane that
+compiles the Flutter iOS target at all, and its XCTest step is the only place
+in CI that launches the iOS binary -- `RunnerTests` is hosted by `Runner.app`,
+so `AppDelegate` and `GeneratedPluginRegistrant` run for real and a plugin
+whose iOS registration crashes at launch is caught. It is also the one
+required job that does NOT take the broad `code` path filter. The cost is not
+money -- this repo is public, so standard GitHub-hosted runners are free,
+macOS included -- but ~15-20 min of wall clock against one of a small number
+of concurrent hosted macOS runners, so it is gated on the `changes` job's `mobile_ios`
+output and skips on a web-only, backend-only, firmware-only or docs-only PR.
+A skip is a pass at the gate, so a green `CI gate` on such a PR means the iOS
+target was not compiled -- which is correct, because nothing in that diff can
+reach it.
 
 A `needs:` entry is scoped to its own workflow, so a job in a sibling workflow
 file can never be waited on directly. Two workflows reach the gate anyway by

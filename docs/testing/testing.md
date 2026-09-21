@@ -106,6 +106,42 @@ so compiling the same files a second time buys a second Flutter build and no
 coverage. Measured 2026-09-08: `dart test` passes 204 cases in `core_models`
 and 60 in `gpx_parser`, and crashes as above in the other three packages.
 
+### The native suites are not Dart and take neither runner
+
+Each mobile twin also carries a suite in its own platform language, testing the
+method-channel bridges that `flutter test` cannot reach because their other half
+is Kotlin or Swift. Neither is a Dart package and neither belongs in the table
+above.
+
+| Suite | Language | Command | Run in CI by |
+|---|---|---|---|
+| `apps/mobile_android/android/app/src/test/kotlin/` | Kotlin / JUnit | `./gradlew test` | `build-mobile-android` |
+| `apps/mobile_ios/ios/RunnerTests/` | Swift / XCTest | see below | `build-mobile-ios` |
+
+The iOS suite landed 2026-09-20 and covers both live native bridges — 48 cases
+across `CalendarBridgeRruleTests` (the RRULE subset `buildRrule` emits, and the
+negative half that must yield no rule rather than a different one,
+[decisions § 692](../architecture/decisions.md)) and `WatchIngestBridgeTests`
+(the 512-point route cap, argument decoding, the ingest payload allowlist, and
+the pending-buffer concurrency). It replaced the stock Xcode `testExample` stub,
+which had been the whole of the iOS native coverage.
+
+```
+cd apps/mobile_ios/ios && xcodebuild test \
+  -workspace Runner.xcworkspace -scheme Runner \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -only-testing:RunnerTests
+```
+
+Two things to know before running it. **A duplicate simulator name fails before
+anything runs** — a machine with both an "iPhone 17 Pro" and an "iPhone 17 Pro
+(18.0)" makes `name=` ambiguous and `xcodebuild` exits on "multiple devices
+matched"; pass `id=<UDID>` when in doubt, which is what CI does. And the suite's
+`TEST_HOST` is `Runner.app`, so the full Flutter app builds first and the
+workspace cannot even configure until `flutter build` has written
+`ios/Flutter/Generated.xcconfig` — which is why the CI step runs after the build
+step, and why no clean checkout can run this suite on its own.
+
 ---
 
 ## What's covered today

@@ -103,6 +103,12 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
         sendRaceResult(payload)
     }
 
+    /// The event a finished run was run in, for the run hand-off's
+    /// `event_id` stamp. Nil for every run that was not a race.
+    func raceEventId(forRunId runId: String) -> String? {
+        raceState.eventId(forRunId: runId)
+    }
+
     private func applyRace(_ race: LiveRace) {
         guard raceState.apply(race) else { return }
         if let active = raceState.race {

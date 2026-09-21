@@ -5711,6 +5711,10 @@ class ApiClient {
     // the old absent-key bag semantics.
     metadata['activity_type'] = r.activityType;
     metadata['is_dnf'] = r.isDnf;
+    // The event a race run belongs to. Stashed back for the same reason the
+    // rest are: a `Run` carries no column, so without this a run read off the
+    // server and re-saved would write the link back as null.
+    if (r.eventId != null) metadata[MetadataKeys.eventId] = r.eventId;
     if (r.fastest5kS != null) metadata['fastest_5k_s'] = r.fastest5kS;
     if (r.fastest10kS != null) metadata['fastest_10k_s'] = r.fastest10kS;
     if (r.fastestHalfMarathonS != null) {

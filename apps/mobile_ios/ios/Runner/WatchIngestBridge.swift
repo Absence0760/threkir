@@ -47,6 +47,13 @@ import WatchConnectivity
     /// — and retrying resumes when a fresh engine attaches.
     static let maxRefusedRetries = 8
 
+    /// Finisher times held here while no Flutter engine can take them. Matches
+    /// `PendingRaceResultStore.maxEntries` on the watch and
+    /// `kPendingRaceResultsMax` in `race_controller.dart`: one row per race, so
+    /// the cap only exists so a permanently-failing hand-off cannot grow the
+    /// buffer without limit. Oldest drop first.
+    static let maxPendingRaceResults = 20
+
     /// `pending` and the ingest channel are touched from three queues: the
     /// WCSession delegate queue, the main queue, and the method channel's reply
     /// callback. Unsynchronised access to an `Array` across queues corrupts it.
@@ -56,6 +63,13 @@ import WatchConnectivity
     private var _refusedRetries = 0
 
     private var routeChannel: FlutterMethodChannel?
+    private var _raceChannel: FlutterMethodChannel?
+    private var _pendingRaceResults: [[String: Any]] = []
+    private var _raceResultRetries = 0
+
+    private var raceChannel: FlutterMethodChannel? {
+        state.sync { _raceChannel }
+    }
 
     private var methodChannel: FlutterMethodChannel? {
         state.sync { _methodChannel }
@@ -88,14 +102,185 @@ import WatchConnectivity
             self.handleRouteCall(call, result: result)
         }
         routeChannel = routes
+        // One channel, both directions: Dart invokes `push` on it and this
+        // class invokes `racePing` / `raceResult` back down it.
+        let race = FlutterMethodChannel(
+            name: "run_app/watch_race",
+            binaryMessenger: binaryMessenger
+        )
+        race.setMethodCallHandler { call, result in
+            self.handleRaceCall(call, result: result)
+        }
         state.sync {
             _methodChannel = ingest
+            _raceChannel = race
             // A fresh engine is a genuinely new chance at the write, so a run
             // stranded by the retry ceiling gets tried again rather than
             // sitting in the buffer until the process dies.
             _refusedRetries = 0
+            _raceResultRetries = 0
         }
         flushPending()
+        flushPendingRaceResults()
+    }
+
+    // MARK: - Live race relay (phone <-> watch)
+
+    /// Arm / Go / End, phone to wrist. `transferUserInfo` for the reason the
+    /// route push uses it and with one more at stake: the Arm lands while the
+    /// watch is on a charger in another room, and nothing on the watch times a
+    /// live race out, so an End that is merely *sent* leaves `RACE LIVE` on the
+    /// wrist forever (decisions § 1697).
+    private func handleRaceCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        switch call.method {
+        case "push":
+            guard let args = call.arguments as? [String: Any],
+                  let payload = Self.raceUserInfo(from: args) else {
+                result(FlutterError(
+                    code: "bad_race",
+                    message: "Race payload rejected",
+                    details: nil
+                ))
+                return
+            }
+            guard Self.canPushRoute() else {
+                result(FlutterError(
+                    code: "watch_unavailable",
+                    message: "No paired Apple Watch running the app",
+                    details: nil
+                ))
+                return
+            }
+            WCSession.default.transferUserInfo(payload)
+            result(nil)
+        default:
+            result(FlutterMethodNotImplemented)
+        }
+    }
+
+    /// Re-check the shape here as well as in Dart, for the reason
+    /// `routeUserInfo` does: a payload that reaches `transferUserInfo` is
+    /// queued durably and retried against a watch that will refuse it every
+    /// time. `LiveRace.decode` is the other end of this list.
+    static func raceUserInfo(from args: [String: Any]) -> [String: Any]? {
+        guard let eventId = args["race_event_id"] as? String, !eventId.isEmpty,
+              let instanceStart = args["race_instance_start"] as? String,
+              !instanceStart.isEmpty,
+              let status = args["race_status"] as? String,
+              ["armed", "running", "finished", "cancelled"].contains(status)
+        else { return nil }
+        var payload: [String: Any] = [
+            "race_event_id": eventId,
+            "race_instance_start": instanceStart,
+            "race_status": status,
+        ]
+        if let title = args["race_event_title"] as? String, !title.isEmpty {
+            payload["race_event_title"] = title
+        }
+        return payload
+    }
+
+    /// One relayed fix, or nil when the message carries none this build will
+    /// act on. Fail-closed like `routeUserInfo`: a half-read ping would put
+    /// the runner somewhere they have not been on a map other people read.
+    static func racePingPayload(from message: [String: Any]) -> [String: Any]? {
+        guard let eventId = message["race_ping_event_id"] as? String, !eventId.isEmpty,
+              let instanceStart = message["race_ping_instance_start"] as? String,
+              !instanceStart.isEmpty,
+              let latitude = message["race_ping_lat"] as? Double, latitude.isFinite,
+              let longitude = message["race_ping_lng"] as? Double, longitude.isFinite
+        else { return nil }
+        var payload: [String: Any] = [
+            "race_ping_event_id": eventId,
+            "race_ping_instance_start": instanceStart,
+            "race_ping_lat": latitude,
+            "race_ping_lng": longitude,
+        ]
+        if let distance = message["race_ping_distance_m"] as? Double,
+           distance.isFinite, distance >= 0 {
+            payload["race_ping_distance_m"] = distance
+        }
+        if let elapsed = message["race_ping_elapsed_s"] as? Int, elapsed >= 0 {
+            payload["race_ping_elapsed_s"] = elapsed
+        }
+        if let bpm = message["race_ping_bpm"] as? Int, bpm > 0 {
+            payload["race_ping_bpm"] = bpm
+        }
+        return payload
+    }
+
+    /// One relayed finisher time, or nil when the transfer carries none.
+    static func raceResultPayload(from userInfo: [String: Any]) -> [String: Any]? {
+        guard let eventId = userInfo["race_result_event_id"] as? String, !eventId.isEmpty,
+              let instanceStart = userInfo["race_result_instance_start"] as? String,
+              !instanceStart.isEmpty,
+              let runId = userInfo["race_result_run_id"] as? String, !runId.isEmpty,
+              let duration = userInfo["race_result_duration_s"] as? Int, duration >= 0,
+              let distance = userInfo["race_result_distance_m"] as? Double,
+              distance.isFinite, distance >= 0
+        else { return nil }
+        return [
+            "race_result_event_id": eventId,
+            "race_result_instance_start": instanceStart,
+            "race_result_run_id": runId,
+            "race_result_duration_s": duration,
+            "race_result_distance_m": distance,
+        ]
+    }
+
+    /// A ping the engine cannot take right now is DROPPED, never buffered.
+    /// That is the whole trade the watch made when it sent this over
+    /// `sendMessage` instead of the durable outbox: a position delivered an
+    /// hour late is a lie about where the runner is, and buffering here would
+    /// re-introduce exactly the stale dot the watch refused to queue.
+    func dispatchRacePing(_ payload: [String: Any]) {
+        DispatchQueue.main.async { [weak self] in
+            self?.raceChannel?.invokeMethod("racePing", arguments: payload)
+        }
+    }
+
+    /// The opposite trade: a finisher's official time is the one value in the
+    /// feature nobody can re-derive, so it waits for an engine rather than
+    /// being dropped, and a Dart `false` puts it back.
+    func dispatchRaceResult(_ payload: [String: Any]) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            guard let channel = self.raceChannel else {
+                self.bufferRaceResult(payload)
+                return
+            }
+            channel.invokeMethod("raceResult", arguments: payload) { [weak self] result in
+                if let ok = result as? Bool, !ok {
+                    self?.requeueRefusedRaceResult(payload)
+                }
+            }
+        }
+    }
+
+    func flushPendingRaceResults() {
+        let snapshot = state.sync { () -> [[String: Any]] in
+            guard _raceResultRetries < Self.maxPendingRaceResults else { return [] }
+            let snapshot = _pendingRaceResults
+            _pendingRaceResults.removeAll()
+            return snapshot
+        }
+        for payload in snapshot { dispatchRaceResult(payload) }
+    }
+
+    private func bufferRaceResult(_ payload: [String: Any]) {
+        state.sync {
+            _pendingRaceResults.append(payload)
+            if _pendingRaceResults.count > Self.maxPendingRaceResults {
+                _pendingRaceResults.removeFirst(
+                    _pendingRaceResults.count - Self.maxPendingRaceResults
+                )
+            }
+        }
+    }
+
+    func requeueRefusedRaceResult(_ payload: [String: Any]) {
+        state.sync { _raceResultRetries += 1 }
+        bufferRaceResult(payload)
     }
 
     // MARK: - Route push (phone -> watch)
@@ -229,6 +414,17 @@ import WatchConnectivity
     ) {
         guard activationState == .activated else { return }
         flushPending()
+        flushPendingRaceResults()
+    }
+
+    func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        guard let payload = Self.racePingPayload(from: message) else { return }
+        dispatchRacePing(payload)
+    }
+
+    func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
+        guard let payload = Self.raceResultPayload(from: userInfo) else { return }
+        dispatchRaceResult(payload)
     }
 
     func sessionDidBecomeInactive(_ session: WCSession) {}
@@ -274,6 +470,7 @@ import WatchConnectivity
         for key in ["id", "started_at", "source", "activity_type", "last_modified_at"] {
             if let v = metadata[key] { payload[key] = v }
         }
+        if let v = metadata["event_id"] { payload["event_id"] = v }
         if let v = metadata["duration_s"] { payload["duration_s"] = v }
         if let v = metadata["distance_m"] { payload["distance_m"] = v }
         if let v = metadata["avg_bpm"] { payload["avg_bpm"] = v }

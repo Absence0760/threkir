@@ -24,6 +24,7 @@ void main() {
         createdAt: DateTime.utc(2026, 4, 10, 9),
         metadata: const {
           cm.MetadataKeys.activityType: 'trail_run',
+          cm.MetadataKeys.eventId: 'event-1',
           cm.MetadataKeys.isDnf: true,
           cm.MetadataKeys.elevationM: 480.0,
           cm.MetadataKeys.fastest5kS: 1200,

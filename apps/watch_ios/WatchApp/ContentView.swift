@@ -105,6 +105,15 @@ struct ContentView: View {
                 // lexicographic `>` compare against the cursor is sound.
                 "last_modified_at": formatter.string(from: Date())
             ]
+            // The race this run was run in, when there was one. A column on
+            // `runs` since `20260424_001`, added for exactly this hand-off, so
+            // the phone lifts it out of the envelope and `runRowFromRun`
+            // promotes it back off the bag. Only written when the wrist
+            // actually reported a finisher time for THIS run — an unrelated
+            // run must not inherit the link.
+            if let eventId = connectivity.raceEventId(forRunId: run.id) {
+                metadata["event_id"] = eventId
+            }
             if let bpm = run.averageBPM { metadata["avg_bpm"] = bpm }
             // Omitted rather than sent as 0 for the same reason `hr_coverage`
             // is: nothing measured this run's steps (no pedometer hardware, a
@@ -156,7 +165,11 @@ struct ContentView: View {
         }
         Task {
             do {
-                try await syncRunDirectDebug(run, trackJSONURL: fileURL)
+                try await syncRunDirectDebug(
+                    run,
+                    trackJSONURL: fileURL,
+                    raceEventId: connectivity.raceEventId(forRunId: run.id)
+                )
                 await MainActor.run {
                     thisRunSynced = true
                     connectivity.transferState = .completed

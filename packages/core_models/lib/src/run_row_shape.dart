@@ -8,11 +8,15 @@ import 'run.dart';
 /// read-modify-write.
 ///
 /// `activity_type` / `is_dnf` were promoted by migration `20261207_001`, the
-/// four embedded bests by `20270325_001`. `track_url` / `hr_series_url` are
-/// the read-side stashes `ApiClient._runFromRow` synthesises back out of their
-/// columns for lazy-loading callers; they are never authored into the bag.
+/// four embedded bests by `20270325_001`, and `event_id` has been a column
+/// since `20260424_001` — which added it for exactly this, "so the watch /
+/// phone record-for-this-event flow has a first-class column to stamp at save
+/// time". `track_url` / `hr_series_url` are the read-side stashes
+/// `ApiClient._runFromRow` synthesises back out of their columns for
+/// lazy-loading callers; they are never authored into the bag.
 const Map<String, String> kRunPromotedMetadataColumns = <String, String>{
   MetadataKeys.activityType: RunRow.colActivityType,
+  MetadataKeys.eventId: RunRow.colEventId,
   MetadataKeys.isDnf: RunRow.colIsDnf,
   MetadataKeys.fastest5kS: RunRow.colFastest5kS,
   MetadataKeys.fastest10kS: RunRow.colFastest10kS,
@@ -82,6 +86,14 @@ int? runEmbeddedBestSeconds(Map<String, dynamic>? metadata, String key) {
   return secs;
 }
 
+/// Bag → column lift for a promoted uuid key. Blank is absent: the column is
+/// a uuid FK and Postgres refuses `''` as one, which would fail the whole run
+/// upsert rather than just the link.
+String? runPromotedId(Map<String, dynamic>? metadata, String key) {
+  final v = metadata?[key];
+  return v is String && v.isNotEmpty ? v : null;
+}
+
 /// Bag → column lift for a promoted numeric key that stays in the bag too.
 double? runPromotedDouble(Map<String, dynamic>? metadata, String key) {
   final v = metadata?[key];
@@ -121,6 +133,7 @@ RunRow runRowFromRun(
     trackUrl: trackUrl,
     isPublic: isPublic,
     activityType: (meta?[MetadataKeys.activityType] as String?) ?? 'run',
+    eventId: runPromotedId(meta, MetadataKeys.eventId),
     isDnf: meta?[MetadataKeys.isDnf] == true,
     elevationGainM: runPromotedDouble(meta, MetadataKeys.elevationM),
     fastest5kS: runEmbeddedBestSeconds(meta, MetadataKeys.fastest5kS),

@@ -161,6 +161,8 @@ final class WatchIngestBridgeTests: XCTestCase {
             "distance_m": NSNumber(value: 12_040.5),
             "avg_bpm": NSNumber(value: 148),
             "hr_coverage": NSNumber(value: 0.93),
+            "steps": NSNumber(value: 7_412),
+            "laps": "[{\"n\":1}]",
         ]
     }
 
@@ -170,6 +172,7 @@ final class WatchIngestBridgeTests: XCTestCase {
         XCTAssertEqual(payload["id"] as? String, "run-7")
         XCTAssertEqual(payload["source"] as? String, "apple_watch")
         XCTAssertEqual(payload["avg_bpm"] as? Int, 148)
+        XCTAssertEqual(payload["steps"] as? Int, 7_412)
     }
 
     func testIngestPayloadDropsMetadataTheDartSideDoesNotRead() {

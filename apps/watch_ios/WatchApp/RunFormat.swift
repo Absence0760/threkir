@@ -3,7 +3,7 @@ import Foundation
 /// Locale-aware formatting for the on-watch run stats.
 ///
 /// Two jobs the old `String(format:)` calls couldn't do:
-///   1. The decimal separator follows `Locale.current` (a German watch
+///   1. The decimal separator follows the locale (a German watch
 ///      shows `5,12 km`, not `5.12 km`).
 ///   2. The distance unit word is localised by `MeasurementFormatter`,
 ///      and honours the user's km/mi preference — the same
@@ -23,14 +23,22 @@ enum RunFormat {
         ActiveRunBridge.prefersMiles()
     }
 
-    /// `5.12 km` / `5,12 km` / `3.18 mi`, decimal separator + unit word
-    /// localised, value in the user's preferred unit.
-    static func distance(metres: Double, fractionDigits: Int) -> String {
+    /// `5.12 km` / `5,12 km` / `3.18 miles`, decimal separator + unit word
+    /// localised, value in the user's preferred unit. The unit word is
+    /// `MeasurementFormatter`'s default `.medium` style, which spells miles
+    /// out in en / de / pt and abbreviates in fr / es.
+    ///
+    /// `locale` is a parameter rather than a read of `Locale.current` so a
+    /// test can assert an exact rendering. Inherited, it made the suite
+    /// assert against whatever locale the simulator was left in — green on
+    /// an English one, red on a Japanese one (`1.00 マイル`), and never
+    /// exercised either way on CI, which pins its destination.
+    static func distance(metres: Double, fractionDigits: Int, locale: Locale = .current) -> String {
         let miles = prefersMiles
         let value = miles ? metres / metresPerMile : metres / 1000.0
 
         let number = NumberFormatter()
-        number.locale = Locale.current
+        number.locale = locale
         number.numberStyle = .decimal
         number.minimumFractionDigits = fractionDigits
         number.maximumFractionDigits = fractionDigits
@@ -38,7 +46,7 @@ enum RunFormat {
         let numberStr = number.string(from: NSNumber(value: value)) ?? "\(value)"
 
         let measurement = MeasurementFormatter()
-        measurement.locale = Locale.current
+        measurement.locale = locale
         measurement.unitOptions = .providedUnit
         let unitStr = measurement.string(from: miles ? UnitLength.miles : UnitLength.kilometers)
 

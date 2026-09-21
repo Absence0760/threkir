@@ -9,8 +9,12 @@ import XCTest
 ///
 /// `RunFormat` reads the km/mi choice from `UserDefaults preferred_unit`, so
 /// each test sets (and restores) that key explicitly rather than depending on
-/// the device default.
+/// the device default. The LOCALE is pinned the same way and for the same
+/// reason: `distance` renders a decimal separator and a unit word, both of
+/// which move with the language, so every rendering below names the locale it
+/// expects instead of inheriting whatever the simulator was left in.
 final class RunFormatTests: XCTestCase {
+    private let enUS = Locale(identifier: "en_US")
     private var savedUnit: String?
 
     override func setUp() {
@@ -49,40 +53,53 @@ final class RunFormatTests: XCTestCase {
 
     func testDistanceKmTwoDecimals() {
         useKm()
-        let s = RunFormat.distance(metres: 5120, fractionDigits: 2)
-        XCTAssertTrue(s.contains("5.12") || s.contains("5,12"), "Got: \(s)")
-        XCTAssertTrue(s.lowercased().contains("km"), "Got: \(s)")
+        XCTAssertEqual(RunFormat.distance(metres: 5120, fractionDigits: 2, locale: enUS), "5.12 km")
     }
 
     func testDistanceKmZeroIsValid() {
         useKm()
-        let s = RunFormat.distance(metres: 0, fractionDigits: 2)
-        XCTAssertTrue(s.hasPrefix("0"), "Got: \(s)")
-        XCTAssertTrue(s.lowercased().contains("km"), "Got: \(s)")
+        XCTAssertEqual(RunFormat.distance(metres: 0, fractionDigits: 2, locale: enUS), "0.00 km")
     }
 
     func testDistanceKmRespectsFractionDigits() {
         useKm()
-        let oneDigit = RunFormat.distance(metres: 5120, fractionDigits: 1)
-        // 5.12 km truncates/rounds to one decimal: "5.1 km".
-        XCTAssertTrue(oneDigit.contains("5.1") || oneDigit.contains("5,1"), "Got: \(oneDigit)")
-        XCTAssertFalse(oneDigit.contains("5.12"), "One-digit format must not show two decimals: \(oneDigit)")
+        XCTAssertEqual(RunFormat.distance(metres: 5120, fractionDigits: 1, locale: enUS), "5.1 km")
     }
 
     // MARK: - distance, miles mode
 
+    /// `miles`, not `mi`: `MeasurementFormatter`'s default `.medium` unit
+    /// style spells the word out in en / de / pt and abbreviates it in fr /
+    /// es, and the assertion this replaced was `contains("mi")`, which
+    /// "1.00 miles" satisfies. What the watch renders in English was
+    /// therefore never pinned by anything.
     func testDistanceMilesConvertsFromMetres() {
         useMiles()
         // 1609.344 m == exactly 1 mile.
-        let s = RunFormat.distance(metres: 1609.344, fractionDigits: 2)
-        XCTAssertTrue(s.contains("1.00") || s.contains("1,00"), "Got: \(s)")
-        XCTAssertTrue(s.lowercased().contains("mi"), "Got: \(s)")
+        XCTAssertEqual(RunFormat.distance(metres: 1609.344, fractionDigits: 2, locale: enUS), "1.00 miles")
     }
 
     func testDistanceMilesHalfMile() {
         useMiles()
-        let s = RunFormat.distance(metres: 804.672, fractionDigits: 2)
-        XCTAssertTrue(s.contains("0.50") || s.contains("0,50"), "Got: \(s)")
+        XCTAssertEqual(RunFormat.distance(metres: 804.672, fractionDigits: 2, locale: enUS), "0.50 miles")
+    }
+
+    // MARK: - distance, the locale's own contribution
+
+    /// The two halves of the rendering that move with the language, asserted
+    /// rather than inherited: the decimal separator, and the unit word. Both
+    /// were invisible while every expectation was an English one read off
+    /// whatever locale the simulator happened to be in.
+    func testDistanceTakesItsSeparatorAndUnitWordFromTheLocale() {
+        useKm()
+        XCTAssertEqual(
+            RunFormat.distance(metres: 5120, fractionDigits: 2, locale: Locale(identifier: "de_DE")),
+            "5,12 km")
+
+        useMiles()
+        XCTAssertEqual(
+            RunFormat.distance(metres: 1609.344, fractionDigits: 2, locale: Locale(identifier: "ja_JP")),
+            "1.00 マイル")
     }
 
     // MARK: - pace

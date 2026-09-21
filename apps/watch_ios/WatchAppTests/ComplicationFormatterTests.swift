@@ -84,36 +84,41 @@ final class ComplicationFormatterTests: XCTestCase {
 
     // MARK: - formatDistanceKm
 
+    // `formatDistanceKm` takes no locale — its two copies are held
+    // byte-identical by claim (4) of `scripts/check_watch_ios_source.mjs`, so
+    // widening its signature here would have to be done in a file no test
+    // links. The expectations are therefore `RunFormat.distance` at the digit
+    // count the complication should have chosen, which is exact in every
+    // language and pins the thing actually in question — the conversion and
+    // the >=10 km digit rule. The English wording those render is pinned
+    // under a named locale in `RunFormatTests`; asserting it again here, off
+    // `Locale.current`, is what went red on a Japanese watch (`1.00 マイル`).
+
     func testDistanceTwoDecimalsUnderTen() {
-        let s = formatDistanceKm(5120)
-        XCTAssertTrue(s.contains("5.12") || s.contains("5,12"), "Got: \(s)")
-        XCTAssertTrue(s.lowercased().contains("km"), "Got: \(s)")
+        XCTAssertEqual(formatDistanceKm(5120), RunFormat.distance(metres: 5120, fractionDigits: 2))
     }
 
     func testDistanceOneDecimalAtOrBeyondTen() {
         // The complication uses 2 decimals under 10 km, 1 at/over — the
         // second decimal is noise on a tiny face at marathon distances.
-        let s = formatDistanceKm(21_100)
-        XCTAssertTrue(s.contains("21.1") || s.contains("21,1"), "Got: \(s)")
-        XCTAssertFalse(s.contains("21.10"), "At >=10 km must drop the second decimal: \(s)")
+        XCTAssertEqual(formatDistanceKm(21_100), RunFormat.distance(metres: 21_100, fractionDigits: 1))
+        XCTAssertNotEqual(formatDistanceKm(21_100), RunFormat.distance(metres: 21_100, fractionDigits: 2))
     }
 
     func testDistanceTenKmBoundaryUsesOneDecimal() {
         // Exactly 10.0 km is the cutoff — `value >= 10.0` selects 1 digit.
-        let s = formatDistanceKm(10_000)
-        XCTAssertTrue(s.contains("10.0") || s.contains("10,0"), "Got: \(s)")
-        XCTAssertFalse(s.contains("10.00"), "Got: \(s)")
+        XCTAssertEqual(formatDistanceKm(10_000), RunFormat.distance(metres: 10_000, fractionDigits: 1))
+        XCTAssertNotEqual(formatDistanceKm(10_000), RunFormat.distance(metres: 10_000, fractionDigits: 2))
     }
 
     func testDistanceZero() {
-        let s = formatDistanceKm(0)
-        XCTAssertTrue(s.hasPrefix("0"), "Got: \(s)")
+        XCTAssertEqual(formatDistanceKm(0), RunFormat.distance(metres: 0, fractionDigits: 2))
     }
 
     func testDistanceMilesConverts() {
         UserDefaults.standard.set("mi", forKey: "preferred_unit")
-        let s = formatDistanceKm(1609.344)
-        XCTAssertTrue(s.contains("1.00") || s.contains("1,00"), "Got: \(s)")
-        XCTAssertTrue(s.lowercased().contains("mi"), "Got: \(s)")
+        // 1609.344 m == exactly 1 mile.
+        XCTAssertEqual(formatDistanceKm(1609.344), RunFormat.distance(metres: 1609.344, fractionDigits: 2))
+        XCTAssertNotEqual(formatDistanceKm(1609.344), RunFormat.distance(metres: 1609.344, fractionDigits: 1))
     }
 }

@@ -1613,11 +1613,12 @@ export function suiteLanguages(block) {
  *   `apple_watch_route_bridge.dart`; null skips claim (7) alone.
  * @param {string | null} [wearCoveragePath] absolute path to Wear OS's
  *   `HeartRateCoverage.kt`; null skips claim (12) alone.
- *   `apple_watch_prefs_bridge.dart`; null skips claim (20) alone.
  * @param {string | null} [phonePbxprojPath] absolute path to the phone's
  *   `Runner.xcodeproj/project.pbxproj`; null skips claim (10)'s embed half.
  * @param {string | null} [ciWorkflowPath] absolute path to
  *   `.github/workflows/ci.yml`; null skips claim (19) alone.
+ * @param {string | null} [prefsBridgePath] absolute path to the phone's
+ *   `apple_watch_prefs_bridge.dart`; null skips claim (20) alone.
  * @returns {{ errors: string[], ok: string[] }}
  */
 export function check(

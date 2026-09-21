@@ -6,17 +6,22 @@ import 'package:ui_kit/ui_kit.dart' show FullBodyLoader, TextLane;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/plan_detail_screen.dart';
 import '../lib/social_service.dart';
-import '../lib/training.dart' show toIsoDate;
 import '../lib/training_service.dart';
 import 'pump_until.dart';
 
 const _uid = 'owner-uuid';
 
-DateTime _mondayThisWeek() {
-  final now = DateTime.now();
-  final d = DateTime(now.year, now.month, now.day);
-  return d.subtract(Duration(days: d.weekday - DateTime.monday));
-}
+/// A fixed Wednesday. Every fixture below is built relative to it and the
+/// screen is given it as its clock, because the adherence window is the days
+/// of the current week that have ALREADY ENDED: on a Monday none have, so
+/// `weeklyDriftToDate` has no baseline and the banner does not render at all.
+/// Against the real clock the under-running test therefore passed six days in
+/// seven and failed every Monday, and the missed-long test's guard skipped
+/// its only assertion on the seventh.
+final DateTime _today = DateTime(2026, 3, 11);
+
+DateTime _mondayThisWeek() =>
+    _today.subtract(Duration(days: _today.weekday - DateTime.monday));
 
 class _FakeTraining extends TrainingService {
   final TrainingPlanRow plan;
@@ -99,6 +104,7 @@ Future<void> _pump(
   required _FakeSocial social,
   String? viewerId = _uid,
   double textScale = 1.0,
+  DateTime? today,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -114,6 +120,7 @@ Future<void> _pump(
         planId: 'plan-1',
         social: social,
         viewerIdOverride: viewerId,
+        now: () => today ?? _today,
       ),
     ),
   );
@@ -153,7 +160,7 @@ void main() {
     testWidgets('surfaces make-up advice for a missed long run', (tester) async {
       final start = _mondayThisWeek();
       // A long run earlier today/this week, uncompleted + in the past.
-      final pastLong = start; // Monday — at or before today this week.
+      final pastLong = start; // Monday, two days before the pinned today.
       final training = _FakeTraining(
         _plan(start),
         [_week('w0', 0, 'build', 40000)],
@@ -170,11 +177,33 @@ void main() {
         ),
       ]);
       await _pump(tester, training: training, social: social);
-      // Only assert the missed-long flag when the long run actually sits in
-      // the past (Monday < today). On a Monday run the day, it won't — skip.
-      if (toIsoDate(pastLong).compareTo(toIsoDate(DateTime.now())) < 0) {
-        expect(find.textContaining('missed'), findsWidgets);
-      }
+      expect(find.textContaining('missed'), findsWidgets);
+    });
+
+    testWidgets('absent on a Monday, when no day of the week has ended yet',
+        (tester) async {
+      // The banner is windowed on days that have ALREADY ENDED, so on the
+      // first day of the week it has nothing to compare and must stay silent
+      // rather than report a runner who has not yet trained as 100% under
+      // plan. Same fixture as the under-running case above; only the day
+      // moves. This is what made the real-clock fixture a Monday time bomb.
+      final start = _mondayThisWeek();
+      final training = _FakeTraining(
+        _plan(start),
+        [_week('w0', 0, 'build', 40000)],
+        [_wo('wo0', 'w0', start.add(const Duration(days: 1)), 'easy', 8000)],
+      );
+      final social = _FakeSocial([
+        RecentRunRow(
+          id: 'r1',
+          startedAt: start.add(const Duration(days: 1)),
+          durationS: 3000,
+          distanceM: 10000,
+          activityType: 'run',
+        ),
+      ]);
+      await _pump(tester, training: training, social: social, today: start);
+      expect(find.textContaining('So far this week you'), findsNothing);
     });
 
     testWidgets('hidden for a non-owner viewer', (tester) async {

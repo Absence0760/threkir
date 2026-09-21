@@ -607,6 +607,12 @@ const NOT_A_GUARD = new Map([
 			+ 'three rails',
 	],
 	['scripts/sync_deno_lock.mjs', 'a syncer; ci.yml runs it with --check'],
+	[
+		'scripts/ios_release_signing.mjs',
+		'a release step, run by release-ios.yml when a mobile_ios tag is published; the '
+			+ 'guard is its suite, which workflow-lint runs against the committed project '
+			+ '(decisions § 1701)',
+	],
 	['scripts/dev_run_graphhopper.mjs', 'a local dev tool'],
 	['scripts/dev_run_osrm.mjs', 'a local dev tool'],
 	['scripts/seed-run-tracks.mjs', 'a local dev seeding tool'],

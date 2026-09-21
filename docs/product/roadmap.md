@@ -75,6 +75,8 @@ Full technical details in `backend_scaling.md`.
 
 ### Milestone: internal TestFlight / Play Store internal track release
 
+- [ ] **iOS in TestFlight.** `release-ios.yml` signs the iPhone app and the Apple Watch app it embeds and uploads them (2026-09-21, [decisions § 1701](../architecture/decisions.md)). What is left is the operator steps in [`apple_provisioning.md`](../ops/apple_provisioning.md) (2–4 and 14–18) and the first `mobile_ios@` release.
+
 ---
 
 ## Phase 2 — watch parity: wrist-first experience

@@ -453,25 +453,29 @@ class _SignInScreenState extends State<SignInScreen> {
                   icon: const Icon(Icons.apple, size: 18),
                   label: Text(l10n.signInWithApple),
                 ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: _loading ? null : _signInWithGoogle,
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                if (googleSignInOffered()) ...[
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: _loading ? null : _signInWithGoogle,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    icon: const Icon(Icons.login, size: 18),
+                    label: Text(l10n.signInWithGoogle),
                   ),
-                  icon: const Icon(Icons.login, size: 18),
-                  label: Text(l10n.signInWithGoogle),
-                ),
+                ],
               ] else ...[
-                OutlinedButton.icon(
-                  onPressed: _loading ? null : _signInWithGoogle,
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                if (googleSignInOffered()) ...[
+                  OutlinedButton.icon(
+                    onPressed: _loading ? null : _signInWithGoogle,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    icon: const Icon(Icons.login, size: 18),
+                    label: Text(l10n.signInWithGoogle),
                   ),
-                  icon: const Icon(Icons.login, size: 18),
-                  label: Text(l10n.signInWithGoogle),
-                ),
-                const SizedBox(height: 8),
+                  const SizedBox(height: 8),
+                ],
                 OutlinedButton.icon(
                   onPressed: _loading ? null : _signInWithApple,
                   style: OutlinedButton.styleFrom(

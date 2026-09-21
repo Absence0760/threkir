@@ -44,6 +44,17 @@ const WATCH = profileFromFields({
 	provisionsAllDevices: false,
 	getTaskAllow: false,
 });
+const RUN_ACTIVITY = profileFromFields({
+	path: 'run-activity.mobileprovision',
+	uuid: 'AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE',
+	name: 'Threkir Run Activity App Store',
+	teamId: TEAM,
+	applicationIdentifier: `${TEAM}.com.threkir.app.RunActivity`,
+	listsDevices: false,
+	provisionsAllDevices: false,
+	getTaskAllow: false,
+});
+const ALL = [PHONE, WATCH, RUN_ACTIVITY];
 
 /**
  * Where one configuration's buildSettings body sits: from the line after its
@@ -72,13 +83,17 @@ const withoutBody = (src, configId) => {
 	return src.slice(0, open) + src.slice(close);
 };
 
-test('the committed project signs exactly the phone app and the watch app it embeds', () => {
+test('the committed project signs exactly the phone app and the two extensions it embeds', () => {
 	const targets = signedTargets(PBXPROJ).map((t) => `${t.name} ${t.bundleId}`);
-	assert.deepEqual(targets.sort(), ['Runner com.threkir.app', 'WatchApp com.threkir.app.watchapp']);
+	assert.deepEqual(targets.sort(), [
+		'RunActivityExtension com.threkir.app.RunActivity',
+		'Runner com.threkir.app',
+		'WatchApp com.threkir.app.watchapp',
+	]);
 });
 
 test('each Release configuration is switched to manual App Store signing with its own profile', () => {
-	const plan = planSigning(PBXPROJ, [PHONE, WATCH]);
+	const plan = planSigning(PBXPROJ, ALL);
 	const out = applySigning(PBXPROJ, plan);
 	for (const { target, profile } of plan.assignments) {
 		const body = settingsOf(out, target.releaseConfigId);
@@ -93,8 +108,8 @@ test('each Release configuration is switched to manual App Store signing with it
 	}
 });
 
-test('nothing outside the two Release bodies changes, so Debug and Profile still sign automatically', () => {
-	const plan = planSigning(PBXPROJ, [PHONE, WATCH]);
+test('nothing outside the assigned Release bodies changes, so Debug and Profile still sign automatically', () => {
+	const plan = planSigning(PBXPROJ, ALL);
 	const out = applySigning(PBXPROJ, plan);
 	let strippedIn = PBXPROJ;
 	let strippedOut = out;
@@ -103,26 +118,34 @@ test('nothing outside the two Release bodies changes, so Debug and Profile still
 		strippedOut = withoutBody(strippedOut, target.releaseConfigId);
 	}
 	assert.equal(strippedOut, strippedIn);
-	assert.equal((out.match(/CODE_SIGN_STYLE = Automatic;/g) ?? []).length, (PBXPROJ.match(/CODE_SIGN_STYLE = Automatic;/g) ?? []).length - 1);
+	assert.equal(
+		(out.match(/CODE_SIGN_STYLE = Automatic;/g) ?? []).length,
+		(PBXPROJ.match(/CODE_SIGN_STYLE = Automatic;/g) ?? []).length - 2,
+		'the watch app and the Live Activity extension each lose their automatic Release line; the phone app never had one',
+	);
 });
 
 test('applying twice is the same as applying once', () => {
-	const plan = planSigning(PBXPROJ, [PHONE, WATCH]);
+	const plan = planSigning(PBXPROJ, ALL);
 	const once = applySigning(PBXPROJ, plan);
-	assert.equal(applySigning(once, planSigning(once, [PHONE, WATCH])), once);
+	assert.equal(applySigning(once, planSigning(once, ALL)), once);
 });
 
 test('a missing watch profile fails naming the watch bundle id, not inside xcodebuild', () => {
-	assert.throws(() => planSigning(PBXPROJ, [PHONE]), /com\.threkir\.app\.watchapp \(target WatchApp\)/);
+	assert.throws(() => planSigning(PBXPROJ, [PHONE, RUN_ACTIVITY]), /com\.threkir\.app\.watchapp \(target WatchApp\)/);
+});
+
+test('a missing Live Activity profile fails naming its bundle id, not inside xcodebuild', () => {
+	assert.throws(() => planSigning(PBXPROJ, [PHONE, WATCH]), /com\.threkir\.app\.RunActivity \(target RunActivityExtension\)/);
 });
 
 test('a profile for a bundle no target builds fails', () => {
 	const stray = { ...WATCH, bundleId: 'com.threkir.app.widgets', name: 'Stray' };
-	assert.throws(() => planSigning(PBXPROJ, [PHONE, WATCH, stray]), /"Stray" is for com\.threkir\.app\.widgets/);
+	assert.throws(() => planSigning(PBXPROJ, [...ALL, stray]), /"Stray" is for com\.threkir\.app\.widgets/);
 });
 
 test('profiles from two teams fail', () => {
-	assert.throws(() => planSigning(PBXPROJ, [PHONE, { ...WATCH, teamId: 'ZZZZZ99999' }]), /2 teams/);
+	assert.throws(() => planSigning(PBXPROJ, [PHONE, { ...WATCH, teamId: 'ZZZZZ99999' }, RUN_ACTIVITY]), /2 teams/);
 });
 
 test('only an explicit App Store profile is accepted', () => {
@@ -146,12 +169,13 @@ test('only an explicit App Store profile is accepted', () => {
 });
 
 test('the export options name every signed bundle with its profile', () => {
-	const xml = exportOptionsPlist(planSigning(PBXPROJ, [PHONE, WATCH]));
+	const xml = exportOptionsPlist(planSigning(PBXPROJ, ALL));
 	assert.match(xml, /<key>method<\/key>\n\t<string>app-store-connect<\/string>/);
 	assert.match(xml, /<key>signingStyle<\/key>\n\t<string>manual<\/string>/);
 	assert.match(xml, new RegExp(`<key>teamID</key>\\n\\t<string>${TEAM}</string>`));
 	assert.match(xml, new RegExp(`<key>com\\.threkir\\.app</key>\\n\\t\\t<string>${PHONE.uuid}</string>`));
 	assert.match(xml, new RegExp(`<key>com\\.threkir\\.app\\.watchapp</key>\\n\\t\\t<string>${WATCH.uuid}</string>`));
+	assert.match(xml, new RegExp(`<key>com\\.threkir\\.app\\.RunActivity</key>\\n\\t\\t<string>${RUN_ACTIVITY.uuid}</string>`));
 	assert.equal((xml.match(/<dict>/g) ?? []).length, (xml.match(/<\/dict>/g) ?? []).length);
 });
 

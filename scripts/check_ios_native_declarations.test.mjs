@@ -236,6 +236,7 @@ function baseline(overrides = {}) {
 				['BGTaskSchedulerPermittedIdentifiers', ['com.threkir.backgroundSync']],
 				['ITSAppUsesNonExemptEncryption', false],
 				['NSPhotoLibraryAddUsageDescription', 'Threkir saves cards.'],
+				['NSSupportsLiveActivities', true],
 			]),
 		),
 		entitlements: new Map([['com.apple.developer.aps-environment', APS_SUBSTITUTION]]),

@@ -259,6 +259,21 @@ export const FIXED_PLIST_KEYS = [
 			'there is nothing to derive it from — and an extra purpose string ' +
 			'costs nothing, unlike an extra background mode.',
 	},
+	{
+		key: 'NSSupportsLiveActivities',
+		why:
+			'The RunActivityExtension target ships the in-progress run to the lock ' +
+			'screen and the Dynamic Island, iOS\'s counterpart to the Android ' +
+			'ongoing notification. Without this key ' +
+			'ActivityAuthorizationInfo().areActivitiesEnabled is false forever and ' +
+			'Activity.request throws, so the run records perfectly and the lock ' +
+			'screen simply stays empty — the silent shape this script exists for. ' +
+			'It is a Bool rather than a usage string, so the UsageDescription ' +
+			'reverse sweep above cannot see it; a derived rule keyed on ' +
+			'`import ActivityKit` in Runner/LiveActivityBridge.swift would be the ' +
+			'stronger form and needs a boolean-valued rule list this script has ' +
+			'no shape for yet.',
+	},
 ];
 
 /// `PrivacyInfo.xcprivacy`'s required-reason API declarations, derived from

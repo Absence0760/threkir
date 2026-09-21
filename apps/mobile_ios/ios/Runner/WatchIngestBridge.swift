@@ -29,7 +29,7 @@ import WatchConnectivity
 
     private var methodChannel: FlutterMethodChannel?
     private var routeChannel: FlutterMethodChannel?
-    private var pending: [[String: Any]] = []
+    var pending: [[String: Any]] = []
 
     func activate() {
         guard WCSession.isSupported() else { return }
@@ -104,7 +104,7 @@ import WatchConnectivity
     /// that reaches `transferUserInfo` is queued durably and retried by the
     /// system forever against a watch that will reject it every time; the
     /// runner sees a success they never got.
-    private static func routeUserInfo(from args: [String: Any]) -> [String: Any]? {
+    static func routeUserInfo(from args: [String: Any]) -> [String: Any]? {
         guard let id = args["route_id"] as? String, !id.isEmpty,
               let name = args["route_name"] as? String,
               let distance = args["route_distance_m"] as? Double,
@@ -141,6 +141,26 @@ import WatchConnectivity
 
     func session(_ session: WCSession, didReceive file: WCSessionFile) {
         guard let metadata = file.metadata else { return }
+
+        // The file itself is the raw JSON array of track points the
+        // watch wrote. Forward it as a string and let the Dart side
+        // decode. `FileManager`-based read because the file URL is a
+        // temporary inbox location we may lose access to momentarily.
+        var track = "[]"
+        if let data = try? Data(contentsOf: file.fileURL),
+           let str = String(data: data, encoding: .utf8) {
+            track = str
+        }
+
+        let payload = Self.ingestPayload(metadata: metadata, track: track)
+        if methodChannel != nil {
+            dispatch(payload)
+        } else {
+            pending.append(payload)
+        }
+    }
+
+    static func ingestPayload(metadata: [String: Any], track: String) -> [String: Any] {
         var payload: [String: Any] = [:]
         // Required metadata fields — match what watch_ios writes in
         // `ContentView.syncRun()`.
@@ -153,33 +173,18 @@ import WatchConnectivity
         if let v = metadata["hr_coverage"] { payload["hr_coverage"] = v }
         if let v = metadata["steps"] { payload["steps"] = v }
         if let v = metadata["laps"] { payload["laps"] = v }
-
-        // The file itself is the raw JSON array of track points the
-        // watch wrote. Forward it as a string and let the Dart side
-        // decode. `FileManager`-based read because the file URL is a
-        // temporary inbox location we may lose access to momentarily.
-        if let data = try? Data(contentsOf: file.fileURL),
-           let str = String(data: data, encoding: .utf8) {
-            payload["track"] = str
-        } else {
-            payload["track"] = "[]"
-        }
-
-        if methodChannel != nil {
-            dispatch(payload)
-        } else {
-            pending.append(payload)
-        }
+        payload["track"] = track
+        return payload
     }
 
-    private func flushPending() {
+    func flushPending() {
         guard !pending.isEmpty else { return }
         let snapshot = pending
         pending.removeAll()
         for p in snapshot { dispatch(p) }
     }
 
-    private func dispatch(_ payload: [String: Any]) {
+    func dispatch(_ payload: [String: Any]) {
         DispatchQueue.main.async { [weak self] in
             self?.methodChannel?.invokeMethod("run", arguments: payload) { result in
                 // If Dart returned false, Supabase write failed — re-queue

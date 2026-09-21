@@ -73,6 +73,7 @@ All under `WatchApp/` inside `WatchApp.xcodeproj`:
 - `LiveRace.swift` — live race mode's pure half: `RaceStatus` (the `race_sessions.status` vocabulary), the `LiveRace` model and its fail-closed `decode(_:)` of the phone's Arm / Go / End push, `LiveRaceState` (the state machine as a value — adopt on armed/running, clear on finished/cancelled, the 10 s ping cadence with GO resetting it, and a once-only finisher report), `RaceEnvelope` (the two outbound payloads), `LiveRaceStore`, `PendingRaceResultStore` (the 20-entry on-disk queue for a finisher time `WCSession` could not take), `LiveRaceRelay` (the recorder's L4 seam) and `RaceBanner`
 - `RaceBannerView.swift` — the pre-run race banner. Pre-run only, mirroring Wear OS: "wait for GO" and "tap Start" are both instructions for a runner who has not started yet
 - `RunAnnouncer.swift` — spoken split / pace-alert cues. `RunCueMath` + `SplitTracker` + `RunCueVoice` + `RunCuePhrase` are pure and carry the tests; `RunAnnouncer` decides and emits through a `(String) -> Void` seam; `RunSpeech` is the only AVFoundation in the app (shared session, `.playback` / `.voicePrompt` / `[.mixWithOthers, .duckOthers]`, per-utterance activate and ref-counted release). L4 throughout — see [decisions § 1705](../../docs/architecture/decisions.md)
+- `LiveRace.swift` / `RaceBannerView.swift` — see above; the phone end is `apple_watch_race_bridge.dart` on the `run_app/watch_race` channel
 - `AppTheme.swift` — `Color` palette + reusable text styles for the watch UI (single source of truth so the SwiftUI subviews — `PreRunView`, `RunningView`, `PausedView`, `RecoveryView`, `PostRunView` — share dimensions and colours rather than each redefining their own)
 
 ## Localization
@@ -138,11 +139,12 @@ back to Brazilian.
   compiles on every PR and the `.appex` embeds in `WatchApp.app/PlugIns/`.
   `Localizable.xcstrings` is a Resources member of that target too — that is what makes its
   `.xcstrings` localisation take effect, and the built `.appex` renders `Aktiver Lauf` on a
-  German wrist. The formatters are still duplicated between `RunFormat.swift` and
-  `ActiveRunComplication.swift` and claim (4) holds them byte-identical, but note this is now
-  a **choice, not a linking constraint**: a file can belong to both targets exactly as
-  `ActiveRunBridge.swift` does. Collapsing the duplication would retire claim (4) and
-  `ComplicationFormatterTests` with it. Both copies read the km/mi preference through
+  German wrist. The formatters are no longer duplicated: `RunFormat.swift` is a Sources member of the
+  extension in both projects, which retired claim (4) and `ComplicationFormatterTests`
+  together ([decisions § 1711](../../docs/architecture/decisions.md)). The extension's own
+  pure layer lives in `Complications/ActiveRunTimeline.swift`, a member of both the extension
+  and `WatchApp` — an app extension cannot host a test target on watchOS, so the suite reaches
+  the same source file the extension compiles, exactly as `ActiveRunBridge.swift` already did. Both copies read the km/mi preference through
   `ActiveRunBridge.prefersMiles()`, which reads the shared App Group —
   `UserDefaults.standard` in an extension is the *extension's* container, and reading it
   there showed kilometres to a runner who chose miles ([decisions § 1707](../../docs/architecture/decisions.md)).

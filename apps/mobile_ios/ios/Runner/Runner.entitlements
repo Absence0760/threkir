@@ -22,5 +22,16 @@
 	     decisions.md § 742. -->
 	<key>com.apple.developer.aps-environment</key>
 	<string>$(APS_ENVIRONMENT)</string>
+	<!-- Shared container the Share Extension writes a shared route file into
+	     and this app reads it back out of. Deliberately a second group rather
+	     than the watch complication's `group.com.threkir.app.activerun`: the
+	     extension clears this container's root on every activation, which
+	     would be destructive to a group holding anything else. Both this
+	     file and ShareExtension.entitlements must carry it, and the id must
+	     match Info.plist's AppGroupId and SharedRouteHandoff.appGroup. -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.threkir.app.share</string>
+	</array>
 </dict>
 </plist>

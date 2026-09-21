@@ -109,7 +109,7 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+      - uses: github/codeql-action/init@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4
         with:
           languages: javascript-typescript
           # Interpreted language — no compile step. Skips the autobuild
@@ -120,7 +120,7 @@ jobs:
           # small codebase the extra noise is manageable and the
           # maintainability/correctness queries are useful.
           queries: security-and-quality
-      - uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+      - uses: github/codeql-action/analyze@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4
         with:
           category: '/language:javascript-typescript'
 
@@ -143,7 +143,7 @@ jobs:
           cache-dependency-path: |
             apps/job_worker/go.sum
             apps/graph_cycle/go.sum
-      - uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+      - uses: github/codeql-action/init@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4
         with:
           languages: go
       - name: Build every Go module for CodeQL
@@ -194,7 +194,7 @@ jobs:
             fi
             echo "::endgroup::"
           done
-      - uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+      - uses: github/codeql-action/analyze@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4
         with:
           category: '/language:go'
 
@@ -225,7 +225,7 @@ jobs:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
-      - uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+      - uses: github/codeql-action/init@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4
         with:
           languages: java-kotlin
       # Every Gradle project in the tree, enumerated rather than named. This
@@ -322,7 +322,7 @@ jobs:
             echo "::error::every Gradle project in the tree is listed in CODEQL_KOTLIN_UNBUILT, so this job extracted no Kotlin and the java-kotlin analysis will report clean over nothing. Build at least one, or delete the language from the init step rather than leaving an empty analysis in place."
             exit 1
           fi
-      - uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+      - uses: github/codeql-action/analyze@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4
         with:
           category: '/language:java-kotlin'
 
@@ -336,7 +336,7 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+      - uses: github/codeql-action/init@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4
         with:
           languages: actions
           build-mode: none
@@ -370,7 +370,7 @@ jobs:
               # alerts by hand every time an init step moves.
               - exclude:
                   id: actions/unnecessary-use-of-advanced-config
-      - uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+      - uses: github/codeql-action/analyze@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4
         with:
           category: '/language:actions'
           # Kept on disk as well as uploaded, so the step below can read what
@@ -465,7 +465,7 @@ jobs:
           exit-code: '0'
 
       - name: Upload Trivy SARIF
-        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+        uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4
         if: always()
         with:
           sarif_file: trivy-job-worker.sarif
@@ -496,7 +496,7 @@ jobs:
           exit-code: '0'
 
       - name: Upload Trivy SARIF
-        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+        uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4
         if: always()
         with:
           sarif_file: trivy-graph-cycle.sarif

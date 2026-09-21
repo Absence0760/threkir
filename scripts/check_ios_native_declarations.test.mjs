@@ -8,6 +8,9 @@ import {
 	APS_SUBSTITUTION,
 	BACKGROUND_MODES,
 	ENTITLEMENTS,
+	FIREBASE_CORE_IMPORT,
+	FIREBASE_VALIDATED_FIELDS,
+	FIREBASE_VALIDATION_DIAGNOSTIC,
 	GOOGLE_REDIRECT_PHASE,
 	GOOGLE_REVERSED_SCHEME,
 	GOOGLE_SIGN_IN_IMPORT,
@@ -703,6 +706,82 @@ test('the Google patterns read the committed tree the way the guard claims', () 
 	// keeps it from being the one pattern nothing ever exercises.
 	assert.ok(GOOGLE_REVERSED_SCHEME.test('com.googleusercontent.apps.111-aaa'));
 	assert.ok(!GOOGLE_REVERSED_SCHEME.test('com.threkir.app'));
+});
+
+// --- the Firebase config, validated at build time ---------------------------
+// The one credential here whose correctness the APP cannot check: firebase_core
+// configures during plugin registration, before Dart exists, so a malformed
+// field aborts at launch. These pin that the check lives in the build instead.
+
+const FIREBASE_DART =
+	'IosTextToSpeechAudioCategory.playback\n' +
+	"import 'package:firebase_messaging/x.dart';\n" +
+	"import 'package:firebase_core/firebase_core.dart';";
+
+const PBX_WITH_FIREBASE_VALIDATION =
+	PBX +
+	'\t\t\tshellScript = "APP_ID=$(key GOOGLE_APP_ID)\\nAPI_KEY=$(key API_KEY)' +
+	'\\nPROJECT_ID=$(key PROJECT_ID)\\necho \\"error: GoogleService-Info.plist: $1\\"";\n';
+
+test('importing firebase_core with no validating build phase fails', () => {
+	const { errors } = evaluate(baseline({ dartSources: dart(FIREBASE_DART), pbxproj: PBX }));
+	assert.equal(
+		errors.filter((e) => e.includes('validates the')).length,
+		1,
+	);
+});
+
+test('the validating build phase satisfies the rule the import obliges', () => {
+	const { errors } = evaluate(
+		baseline({ dartSources: dart(FIREBASE_DART), pbxproj: PBX_WITH_FIREBASE_VALIDATION }),
+	);
+	assert.deepEqual(errors, []);
+});
+
+test('deleting the firebase_core import deletes the validation requirement', () => {
+	const { errors, ok } = evaluate(baseline({ pbxproj: PBX }));
+	assert.deepEqual(errors, []);
+	assert.equal(ok.filter((o) => o.includes('before bundling')).length, 0);
+});
+
+test('a phase that checks only some of the raising fields names the rest', () => {
+	for (const dropped of FIREBASE_VALIDATED_FIELDS) {
+		const { errors } = evaluate(
+			baseline({
+				dartSources: dart(FIREBASE_DART),
+				pbxproj: PBX_WITH_FIREBASE_VALIDATION.split(dropped).join('SOMETHING_ELSE'),
+			}),
+		);
+		assert.equal(
+			errors.filter((e) => e.includes(`unchecked: ${dropped}`)).length,
+			1,
+			`dropping ${dropped} was not reported`,
+		);
+	}
+});
+
+test('naming the fields without failing the build is not validation', () => {
+	// The three reads alone are what an unchecked copy phase already does; the
+	// diagnostic is the only evidence that a bad value stops the build.
+	const { errors } = evaluate(
+		baseline({
+			dartSources: dart(FIREBASE_DART),
+			pbxproj: PBX_WITH_FIREBASE_VALIDATION.replace('error: GoogleService-Info.plist:', 'note:'),
+		}),
+	);
+	assert.equal(errors.filter((e) => e.includes('validates the')).length, 1);
+});
+
+test('the Firebase patterns read the committed tree the way the guard claims', () => {
+	assert.ok(
+		collectDartSources().some((s) => FIREBASE_CORE_IMPORT.test(s.text)),
+		'no committed Dart imports firebase_core — the rule is inert',
+	);
+	const pbx = readFileSync(join(IOS_ROOT, 'Runner.xcodeproj/project.pbxproj'), 'utf-8');
+	assert.ok(FIREBASE_VALIDATION_DIAGNOSTIC.test(pbx), 'no build phase reports a bad config');
+	for (const field of FIREBASE_VALIDATED_FIELDS) {
+		assert.ok(pbx.includes(field), `${field} is not read by any build phase`);
+	}
 });
 
 // --- the committed tree -----------------------------------------------------

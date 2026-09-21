@@ -138,6 +138,25 @@ export const GOOGLE_REVERSED_SCHEME = /^com\.googleusercontent\.apps\./;
 /// prose and renames freely.
 export const GOOGLE_REDIRECT_PHASE = /REVERSED_CLIENT_ID[\s\S]*?CFBundleURLTypes/;
 
+/// The import that obliges the operator's Firebase config to be validated at
+/// BUILD time rather than trusted at launch.
+export const FIREBASE_CORE_IMPORT = /package:firebase_core\//;
+
+/// The `GoogleService-Info.plist` fields that RAISE when malformed, and so
+/// cannot be left to the app to survive. `+[FLTFirebaseCorePlugin
+/// sharedInstance]` calls `+[FIRApp configureWithOptions:]` during plugin
+/// registration, before any Dart runs, so `initFirebaseForPush`'s try/catch is
+/// downstream of the failure: a bad field is an uncaught NSException and the
+/// process takes SIGABRT at launch. GOOGLE_APP_ID raises via `+[FIRApp
+/// validateAppID:]`; API_KEY and PROJECT_ID via `+[FIRInstallations
+/// validateAppOptions:appName:]`. An ABSENT file is a supported state and is
+/// deliberately not in this list.
+export const FIREBASE_VALIDATED_FIELDS = ['GOOGLE_APP_ID', 'API_KEY', 'PROJECT_ID'];
+
+/// The diagnostic the validating build phase emits. Matched instead of the
+/// phase's name, which is prose and renames freely.
+export const FIREBASE_VALIDATION_DIAGNOSTIC = /error: GoogleService-Info\.plist:/;
+
 /// A background mode allowed to stand with no rule claiming it. Empty today
 /// and expected to stay that way; the escape hatch exists so a genuinely
 /// undetectable capability can be admitted in writing rather than by widening
@@ -994,6 +1013,32 @@ export function evaluate(input) {
 			);
 		} else if (Array.isArray(permitted) && permitted.includes(identifier)) {
 			ok.push(`background-sync identifier "${identifier}" agrees across Dart, plist and Swift`);
+		}
+	}
+
+	// --- The Firebase config, which cannot be checked at runtime -----------
+	// Every other rule here asks whether a capability is DECLARED. This one asks
+	// whether an operator-supplied credential is VALIDATED, because the window in
+	// which it could be validated is not the app's. See FIREBASE_VALIDATED_FIELDS.
+	if (firstMatch(dartSources, FIREBASE_CORE_IMPORT, root)) {
+		const pbx = pbxproj ?? '';
+		const unchecked = FIREBASE_VALIDATED_FIELDS.filter((f) => !pbx.includes(f));
+		if (!FIREBASE_VALIDATION_DIAGNOSTIC.test(pbx) || unchecked.length > 0) {
+			errors.push(
+				'`firebase_core` is imported, but no Runner build phase validates the ' +
+					`operator's GoogleService-Info.plist${
+						unchecked.length > 0 ? ` (unchecked: ${unchecked.join(', ')})` : ''
+					}.\n  Firebase configures during plugin registration, before any Dart ` +
+					'runs, so a malformed field aborts the process at launch and no Dart ' +
+					'try/catch can degrade it. Check the file in the phase that bundles ' +
+					'it, and fail the build there instead.',
+			);
+		} else {
+			ok.push(
+				`a Runner build phase validates ${FIREBASE_VALIDATED_FIELDS.join(', ')} ` +
+					'before bundling GoogleService-Info.plist ' +
+					'(apps/mobile_ios/lib/firebase_push_messaging.dart: `firebase_core` is imported)',
+			);
 		}
 	}
 

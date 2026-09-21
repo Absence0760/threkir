@@ -5,12 +5,23 @@ import workmanager_apple
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   // No `FirebaseApp.configure()` here, and the Firebase console's "Add
-  // initialisation code" step is what asks for one. `firebase_core` owns
-  // initialisation from Dart — `initFirebaseForPush()` calls
-  // `Firebase.initializeApp()` inside a try/catch so an absent
-  // GoogleService-Info.plist disables push instead of taking the app down.
-  // Configuring here instead moves that to launch, in Swift, where the catch
-  // is not. The console's SDK step is equally inapplicable: the Firebase pods
+  // initialisation code" step is what asks for one. Adding it would be
+  // redundant rather than helpful: `+[FLTFirebaseCorePlugin sharedInstance]`
+  // already calls `+[FIRApp configureWithOptions:]` whenever a
+  // GoogleService-Info.plist is bundled, and GeneratedPluginRegistrant below
+  // is what reaches it.
+  //
+  // Which means the configure runs during plugin registration, BEFORE any
+  // Dart does, so `initFirebaseForPush()`'s try/catch sits downstream of it
+  // and cannot catch it — it only ever guarded the Dart-side call. An ABSENT
+  // plist is still safe (`FIROptions.defaultOptions` is nil, nothing is
+  // configured, and the Dart side disables push off `Firebase.apps.isEmpty`).
+  // A MALFORMED one raises an uncaught NSException here and the process takes
+  // SIGABRT at launch, which no Dart code can degrade. That is why the
+  // Runner's "Copy Firebase config if present" build phase validates the file
+  // rather than leaving it to the app.
+  //
+  // The console's SDK step is equally inapplicable: the Firebase pods
   // arrive through the FlutterFire plugins' generated Podfile, so adding Swift
   // Package Manager packages by hand would resolve the SDK a second time.
   override func application(

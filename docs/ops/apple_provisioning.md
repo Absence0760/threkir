@@ -12,7 +12,10 @@ below is the only one that works — each identifier is a prerequisite for the
 next, and two of the artifacts download exactly once.
 
 **This file is the progress ledger.** Update the status table in the same pass
-that does the step; every other doc points here rather than restating. The
+that does the step; every other doc points here rather than restating. Google
+sign-in has a ledger of its own —
+[`google_provisioning.md`](google_provisioning.md) — sharing only the Supabase
+pages at steps 9 and 11. The
 design records are [`native_push.md`](../features/native_push.md),
 [`web_app_auth.md`](../features/web_app_auth.md) and
 [`apps/mobile_ios/deployment.md`](../../apps/mobile_ios/deployment.md).

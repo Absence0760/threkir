@@ -4,7 +4,7 @@ How `apps/mobile_ios/` ships to the Apple App Store, including the bundled `apps
 
 Operational counterpart of [`apps/mobile_ios/CLAUDE.md`](CLAUDE.md) and the byte-identical-twin convention with `apps/mobile_android/` ([decisions.md § 39](../../docs/architecture/decisions.md#39-mobile_android-and-mobile_ios-share-a-byte-for-byte-dart-codebase)). For the cross-service overview see [`docs/ops/deployment.md`](../../docs/ops/deployment.md). For tag-driven release mechanics see [`docs/ops/releasing.md`](../../docs/ops/releasing.md).
 
-**Status: plan.** The Dart code is at parity with Android (same `lib/`, same `test/`); native iOS work + entitlements + a Mac runtime smoke run are the remaining gates.
+**Status: release path built, not yet run** (2026-09-21, [decisions § 1701](../../docs/architecture/decisions.md)). Publishing a `mobile_ios@*` Release signs the phone app and the watch app it embeds and uploads them to TestFlight. What remains is operator provisioning — [`docs/ops/apple_provisioning.md`](../../docs/ops/apple_provisioning.md) steps 2–4 and 14–18 — and the first device run on TestFlight.
 
 ---
 
@@ -69,78 +69,47 @@ com.threkir.app.watchapp.WidgetsExtension  ← (when the complication ships)
 5. **Create the Watch App ID:**
    - Bundle ID: `com.threkir.app.watchapp`
    - Capabilities: **HealthKit**, **App Groups** (the same group — this is the side that actually declares it today; the phone's `Runner.entitlements` carries no app-group entitlement yet, so the bridge's phone half is still owed)
-6. **Provisioning profiles.** Create App Store distribution profiles for both bundle IDs. Set the team to your Developer Program team. Download the `.mobileprovision` files.
+6. **Provisioning profiles.** One App Store Connect distribution profile per bundle ID, made after the App IDs are complete — [`apple_provisioning.md` step 15](../../docs/ops/apple_provisioning.md#15-app-store-provisioning-profiles--one-per-bundle).
 7. **Create the App Store listing** at App Store Connect:
    - App information (name, primary category Health & Fitness, content rights)
    - App privacy (next section)
    - Pricing — Free, available worldwide minus the regions we're skipping
-   - In-App Purchases — RevenueCat will populate this once SDK is wired
+   - In-App Purchases — the Pro subscription, connected in RevenueCat ([`apple_provisioning.md` step 17](../../docs/ops/apple_provisioning.md#17-app-store-connect-app-record))
 
 ---
 
 ## Signing setup
 
-### Generate the distribution certificate (one-time)
+The committed Xcode project signs **automatically**, so a Mac builds and runs on
+a device with no setup. The release runner cannot — it has no Apple Account to
+sign in with — so `release-ios.yml` hands `scripts/ios_release_signing.mjs` the
+two App Store profiles, and the script switches the `Release` configuration of
+`Runner` and the embedded `WatchApp` to manual signing against the profile
+whose bundle id matches, reading the team id out of the profiles. Debug and
+Profile are untouched, and nothing is committed back
+([decisions § 1701](../../docs/architecture/decisions.md)).
 
-In Keychain Access on a Mac:
-
-1. Certificate Assistant → Request a Certificate from a Certificate Authority. Email = the developer team mailbox. Choose "Saved to disk".
-2. developer.apple.com → Certificates → "+" → iOS Distribution → upload the `.certSigningRequest` from step 1.
-3. Download the issued `.cer`. Double-click to install in Keychain Access.
-4. In Keychain Access, find the certificate. Expand to see the private key. Right-click → Export → save as `threkir-distribution.p12` with a password.
-5. `base64 -i threkir-distribution.p12 | pbcopy` → paste into GitHub Secret `IOS_BUILD_CERTIFICATE_BASE64`.
-
-### App Store Connect API key (one-time)
-
-This is what lets CI upload to TestFlight without a maintainer's Apple ID password.
-
-1. App Store Connect → Users and Access → Keys → "+" → name "GitHub Actions", access "App Manager".
-2. Download the `.p8` file. **You can only download it once** — save it sops-encrypted into the estate secrets repo (`../infra-secrets`, same pattern as the Android upload keystore).
-3. Note the **Key ID** and **Issuer ID** shown on the same page.
-
-### GitHub Secrets required
-
-| Secret | Source |
-|---|---|
-| `IOS_BUILD_CERTIFICATE_BASE64` | base64 of `threkir-distribution.p12` |
-| `IOS_P12_PASSWORD` | the password from the export step |
-| `IOS_PROVISIONING_PROFILE_BASE64` | base64 of the iOS app's `.mobileprovision` |
-| `IOS_WATCH_PROVISIONING_PROFILE_BASE64` | base64 of the Watch app's `.mobileprovision` |
-| `KEYCHAIN_PASSWORD` | a throwaway, gates the ephemeral keychain on the runner |
-| `APP_STORE_CONNECT_API_KEY_ID` | the Key ID |
-| `APP_STORE_CONNECT_API_ISSUER_ID` | the Issuer ID |
-| `APP_STORE_CONNECT_API_KEY_BASE64` | base64 of the App Store Connect `.p8` |
-| `GOOGLE_SERVICE_INFO_PLIST_BASE64` | base64 of `GoogleService-Info.plist` from the Firebase project's `com.threkir.app` iOS app. **Not optional, signing or not**: the Runner target copies that plist into the bundle, and the file is gitignored, so the workflow fails without it — deliberately, and before Xcode does. Runbook in [`docs/features/native_push.md` § Operator provisioning](../../docs/features/native_push.md#operator-provisioning-the-credential-gate) |
+Making the certificate, the two profiles and the App Store Connect API key, and
+setting them as secrets, is [`apple_provisioning.md` steps 14–16](../../docs/ops/apple_provisioning.md#14-apple-distribution-certificate).
+The secret list itself is [`docs/ops/releasing.md` § iOS](../../docs/ops/releasing.md#ios);
+the workflow's first step fails in seconds, naming every one that is unset.
 
 ---
 
 ## Build configuration
 
-### Build flavours
+### Configurations
 
-Same shape as Android: `dev` and `production` build configurations, gated on `xcconfig` files.
-
-| Configuration | Bundle ID | Backend |
-|---|---|---|
-| `Debug-Dev` | `com.threkir.app.dev` | Local Supabase |
-| `Release-Dev` | `com.threkir.app.dev` | Staging Supabase |
-| `Release-Production` | `com.threkir.app` | Production Supabase |
+One bundle id, `com.threkir.app`, across Xcode's `Debug` / `Profile` /
+`Release`; which backend a build talks to comes from its defines, not its
+configuration. The app targets **iPhone only** (`TARGETED_DEVICE_FAMILY = 1`):
+iPads run it in iPhone compatibility mode, and iPad support can be added in a
+later update but never removed once shipped
+([decisions § 1701](../../docs/architecture/decisions.md)).
 
 ### Production secrets via `dart_defines.json`
 
-The iOS toolchain doesn't accept Supabase's `sb_publishable_...` keys via inline `--dart-define=` — the underscores break Xcode's argument parsing ([decisions.md § 13](../../docs/architecture/decisions.md)). Instead the workflow writes a temporary `dart_defines.json`:
-
-```json
-{
-  "SUPABASE_URL": "https://<project-ref>.supabase.co",
-  "SUPABASE_ANON_KEY": "sb_publishable_...",
-  "MAPTILER_KEY": "...",
-  "REVENUECAT_API_KEY": "appl_...",
-  "SENTRY_DSN": "https://...@sentry.io/..."
-}
-```
-
-Then `flutter build ipa --release --dart-define-from-file=dart_defines.json`. The file is gitignored; the workflow generates it from secrets, builds, then deletes.
+The iOS toolchain doesn't accept Supabase's `sb_publishable_...` keys via inline `--dart-define=` — the underscores break Xcode's argument parsing ([decisions.md § 13](../../docs/architecture/decisions.md)). Instead `release-ios.yml` writes a temporary, gitignored `dart_defines.json` from the same secrets the Android release reads — `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `MAPTILER_KEY`, `WEB_BASE_URL`, `OSRM_URL`, `LIVE_HUB_URL`, `SENTRY_DSN`, `STRAVA_CLIENT_ID`, `APP_RELEASE` — plus `REVENUECAT_API_KEY_IOS`, then builds with `flutter build ipa --release --dart-define-from-file=dart_defines.json` and deletes it. An unset `REVENUECAT_API_KEY_IOS` means Pro is not for sale on iOS: the store SDK is the only way an iOS build may sell it ([decisions § 1700](../../docs/architecture/decisions.md)). `GOOGLE_WEB_CLIENT_ID` is not passed, because iOS offers no Google sign-in (same decision).
 
 The sign-off-gated feature flags (`OFF_ROUTE_ESCALATION_ENABLED`, `ADAPTIVE_FITNESS_GATE`, `WEIGH_IN_GATE`, `ENABLE_NEARBY_RUNNERS`) go in the same file, one key each, once their sign-off lands — `main.dart`'s `String.fromEnvironment` bridge reads them the same way it reads the Supabase keys, and an absent key stays fail-closed. See the table in [`apps/mobile_android/deployment.md`](../mobile_android/deployment.md) for what each one unlocks; the bridge is shared code, so the two platforms accept the same names and the same values ([decisions.md § 709](../../docs/architecture/decisions.md)).
 
@@ -230,21 +199,19 @@ The base content rating stays low for a running app; these capability flags are 
 
 ## Release workflow — `mobile_ios@*`
 
-Triggered by tagging `mobile_ios@1.2.3`. The workflow at `.github/workflows/release-ios.yml`:
+Triggered by publishing a GitHub Release tagged `mobile_ios@1.2.3` (a bare tag push does nothing). `.github/workflows/release-ios.yml`, on `macos-latest`, after the `production` environment's approval:
 
-1. Checks out the tag on a `macos-latest` runner.
-2. Sets up Flutter SDK + CocoaPods.
-3. Decodes the `.p12` cert into an ephemeral keychain (gated by `KEYCHAIN_PASSWORD`).
-4. Decodes both `.mobileprovision` files into `~/Library/MobileDevice/Provisioning Profiles/`.
-5. Reads version from tag, derives build number from `git rev-list --count HEAD`.
-6. Writes the production `dart_defines.json`.
-7. `flutter build ipa --release --export-options-plist=export-options.plist`.
-8. Uploads to App Store Connect via `xcrun altool` using the API key.
-9. Creates a GitHub Release with the IPA attached.
+1. Fails in seconds if any required secret is unset, naming each one.
+2. Checks out the tag, parses the version (one to three dot-separated integers — the App Store accepts nothing else) and derives the build number from `git rev-list --count HEAD`.
+3. Sets up the pinned Flutter SDK, bootstraps the workspace, pins `pubspec.yaml`'s version.
+4. Decodes `GoogleService-Info.plist` and checks its bundle id; stubs the bundled `.env.development` asset empty, as Android does.
+5. Imports the `.p12` into a keychain whose password is generated for the run, and fails unless it holds an `Apple Distribution` identity.
+6. Runs `scripts/ios_release_signing.mjs` against the two profiles (see [Signing setup](#signing-setup)), which also writes `ExportOptions.plist` (`app-store-connect`, manual signing, dSYMs uploaded to Apple).
+7. Writes `dart_defines.json`, then `flutter build ipa --release`.
+8. Attaches the `.ipa` to the Release **before** uploading, so a refused upload still leaves a signed build to upload by hand.
+9. Uploads to TestFlight with the App Store Connect API key, then deletes the keychain and the runtime config.
 
-Lands the build in **TestFlight** (the equivalent of Play's Internal track). Promotion to App Store is manual through App Store Connect after a smoke test.
-
-The `release-ios.yml` workflow is currently a skeleton ([releasing.md](../../docs/ops/releasing.md) notes the secrets are commented out). Uncomment once the Apple Developer team is set up + the certs exist.
+Lands the build in **TestFlight** (the equivalent of Play's Internal track). Promotion to the App Store is manual in App Store Connect, after a smoke test on an iPhone and a paired Apple Watch.
 
 ---
 
@@ -252,9 +219,9 @@ The `release-ios.yml` workflow is currently a skeleton ([releasing.md](../../doc
 
 ### What ships in the IPA
 
-The Apple Watch target is a separate scheme in the same Xcode project. `flutter build ipa` compiles it as a Watch Extension and embeds it in the IPA. Users who install the iOS app see the Watch app appear in the iOS Watch app's "Available apps" list, where they can install it on their paired watch.
+The `WatchApp` target in `Runner.xcodeproj` is built as a dependency of `Runner` and copied to `Runner.app/Watch/WatchApp.app` by the Embed Watch Content phase ([decisions § 1679](../../docs/architecture/decisions.md)); it carries the phone's version and build number through `Flutter/WatchApp.xcconfig`, which App Store Connect requires. It is signed with its own App Store profile. Users who install the iOS app see the Watch app appear in the iOS Watch app's "Available apps" list, where they can install it on their paired watch.
 
-There's no separate review for the Watch app. App Store review covers both targets in one pass; the reviewers test on a paired watch + phone simulator.
+There's no separate review for the Watch app. App Store review covers both targets in one pass, and the listing needs **Apple Watch screenshots** as well as iPhone ones.
 
 ### HealthKit entitlements (Watch)
 
@@ -281,7 +248,7 @@ Same Sentry mobile project as Android — different DSN platform tag, same dashb
 | Adoption rate | App Store Connect → Analytics |
 | User reviews | App Store Connect → Ratings and Reviews |
 
-**Sentry on iOS gotcha.** `sentry_flutter` requires a build-phase script in the Runner target (`scripts/sentry-upload.sh`) that uploads dSYMs after every release build. Without it, crashes appear as raw memory addresses instead of symbolicated stacks. Adding this is part of the "uncomment the iOS release workflow" milestone.
+**Symbols.** The export uploads dSYMs to Apple (`uploadSymbols`), so Xcode Organizer's crash reports are symbolicated. Sentry is not sent dSYMs: Dart exceptions arrive readable anyway (the build is not obfuscated), but a native Swift / Objective-C crash reaches Sentry as raw addresses until a dSYM upload step is added to `release-ios.yml` — the same state as Android's native symbols.
 
 ---
 
@@ -336,19 +303,19 @@ Apple's appeal process is faster than Google's but still painful. Mitigations:
 
 ## Production readiness checklist
 
-- [ ] Apple Developer Program $99 paid + enrollment approved
-- [ ] Bundle IDs registered at developer.apple.com (iOS + Watch)
-- [ ] Capabilities enabled on both bundle IDs (HealthKit, Sign in with Apple, Push, App Groups — Background Modes is `Info.plist`, not a portal capability)
-- [ ] App Store Connect listing created (description, keywords, support URL, screenshots — required at iPhone 6.7", iPhone 5.5", iPad 12.9", Apple Watch screen sizes)
+- [x] Apple Developer Program $99 paid + enrollment approved
+- [ ] App IDs, App Group and capabilities — [`apple_provisioning.md`](../../docs/ops/apple_provisioning.md) steps 2–4 (Background Modes is `Info.plist`, not a portal capability)
+- [ ] Distribution certificate, both App Store profiles and the App Store Connect API key in the `production` environment's secrets, the `.p12` and `.p8` backed up in the estate — steps 14–16
+- [ ] App Store Connect app record — step 17
+- [ ] Listing: description, keywords, support URL, and screenshots at **6.9-inch iPhone** and **Apple Watch** sizes. No iPad set: the app is iPhone-only
 - [ ] Privacy policy live at `threkir.com/privacy`
 - [ ] App Privacy nutrition label completed, matches policy
-- [ ] Distribution certificate generated, sops-backed-up in the estate secrets repo, and set as GitHub Secrets
-- [ ] Provisioning profiles for both bundle IDs in GitHub Secrets
-- [ ] App Store Connect API key created, in GitHub Secrets
-- [ ] Production `dart_defines.json` values verified
-- [ ] Info.plist usage descriptions all written
-- [ ] Watch target builds clean from `mobile_ios` scheme
-- [ ] First TestFlight build smoke-tested on a real device + a real Apple Watch
-- [ ] Sentry receiving symbolicated crash reports (dSYM upload script live)
+- [ ] App Review notes: a working demo account with runs in it; why background location (recording a run with the screen off) and HealthKit are used
+- [x] Info.plist usage descriptions all written — guarded by `scripts/check_ios_native_declarations.mjs`
+- [x] No web payment link and no Google sign-in button on iOS ([decisions § 1700](../../docs/architecture/decisions.md))
+- [x] Watch target builds clean from the `Runner` scheme and is embedded — unsigned, on Xcode 26.4 ([decisions § 1679](../../docs/architecture/decisions.md))
+- [ ] First `mobile_ios@` release reaches TestFlight — step 18
+- [ ] That build smoke-tested on a real iPhone and a paired Apple Watch: Sign in with Apple, a run recorded with the screen locked, HealthKit import, push, a sandbox purchase, account deletion, one watch run synced
+- [ ] Sentry receiving symbolicated native crash reports (dSYM upload step in `release-ios.yml`)
 - [ ] [`docs/product/parity.md`](../../docs/product/parity.md) iOS column flips from Partial to ✓ once Mac-runtime parity is verified
 - [ ] [`docs/product/parity.md`](../../docs/product/parity.md) Apple Watch column updated as features pass review

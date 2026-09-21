@@ -31,8 +31,9 @@ name: Release Android
 # (WEB_BASE_URL is a literal https://threkir.com in the build step — no secret.)
 #
 # MOBILE-SPECIFIC (create these):
-#   MOBILE_OSRM_URL               https://osrm.threkir.com — REQUIRED or the
-#                                 release route builder throws on first use
+#   MOBILE_OSRM_URL               https://osrm.threkir.com (optional; empty →
+#                                 the route builder places straight lines and
+#                                 says so, instead of snapping to roads)
 #   MOBILE_LIVE_HUB_URL           Go live-hub base URL (optional; empty →
 #                                 falls back to Supabase live pings)
 #   MOBILE_GOOGLE_WEB_CLIENT_ID   Google Sign-In web client id (optional)

@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/revenuecat.dart';
+import '../lib/store_links.dart';
 
 void main() {
   setUpAll(() {
@@ -65,6 +67,34 @@ void main() {
     test('returns null when SDK has no API key', () async {
       final url = await managementUrl('user-1');
       expect(url, isNull);
+    });
+  });
+
+  group('resolveManageSubscriptionUrl', () {
+    tearDown(() => debugDefaultTargetPlatformOverride = null);
+
+    test('falls back to the web page on Android when the SDK has no key',
+        () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      expect(await resolveManageSubscriptionUrl('user-1'), webUpgradeUrl);
+    });
+
+    test('falls back to Apple, not the page that sells Pro, on iOS',
+        () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      expect(
+        await resolveManageSubscriptionUrl('user-1'),
+        appleSubscriptionsUrl,
+      );
+    });
+
+    test('a signed-out caller gets the fallback without reaching the SDK',
+        () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      expect(
+        await resolveManageSubscriptionUrl(null, keyOverride: 'rc_test_key'),
+        appleSubscriptionsUrl,
+      );
     });
   });
 

@@ -48,7 +48,11 @@ Last moved: **2026-09-21**.
 | 11 | `PUBLIC_APPLE_AUTH_ENABLED` truthy + `web@` Release | GitHub secret + release | ☐ |
 | 12 | `mobile_android@` release (picks up the push config) | Play | ☐ |
 | 13 | Android Apple dart-defines | `APPLE_SERVICE_CLIENT_ID` + `APPLE_REDIRECT_URI` | ☐ |
-| — | App Store Connect app record | App Store Connect | ☐ — **last**, and gates nothing above |
+| 14 | Apple Distribution certificate `.p12` | GitHub `production` env `IOS_BUILD_CERTIFICATE_BASE64` + `IOS_P12_PASSWORD`; estate | ☐ |
+| 15 | App Store profiles, phone + watch | GitHub `production` env `IOS_PROVISIONING_PROFILE_BASE64` + `IOS_WATCH_PROVISIONING_PROFILE_BASE64` | ☐ — after steps 3–4, App Group included |
+| 16 | App Store Connect API key `.p8` | GitHub `production` env `APP_STORE_CONNECT_API_*`; estate | ☐ |
+| 17 | App Store Connect app record | App Store Connect | ☐ — gates nothing above; must exist before step 18 uploads |
+| 18 | First `mobile_ios@` release → TestFlight | GitHub Release | ☐ |
 
 The open rows are `☐` rather than `- [ ]` on purpose: the survey docs grep
 `- [ ]`, and [`followups.md`](../product/followups.md) already carries these as
@@ -576,6 +580,115 @@ opens with `if (defaultTargetPlatform == TargetPlatform.iOS) return true`, and
 only Apple-side thing the native flow waits on is step 3's capability. (Docs
 elsewhere refer to an `apps/mobile_ios` constant `_kAppleSignInEnabled` as the
 iOS gate; no such symbol exists anywhere in the tree.)
+
+## 14. Apple Distribution certificate
+
+On the Mac. **Keychain Access** → menu **Keychain Access** → **Certificate
+Assistant** → **Request a Certificate From a Certificate Authority** → your
+Apple Account email, common name `Threkir Distribution`, **Saved to disk**.
+
+developer.apple.com → **Certificates** → **(+)** → **Apple Distribution** →
+upload that `.certSigningRequest` → **Download** → double-click the `.cer` to
+install it. Pick **Apple Distribution**, not the older *iOS Distribution*:
+`release-ios.yml` looks for an identity named `Apple Distribution: …` and fails
+naming the certificate if it finds none.
+
+Back in Keychain Access → **My Certificates** → expand the new certificate and
+confirm a private key sits under it (no key means the CSR was made on another
+Mac, and the certificate cannot sign anything) → select the certificate →
+**File** → **Export Items…** → `threkir-distribution.p12`, with a strong
+password. Then, from the `threkir` checkout:
+
+```
+base64 -i ~/Desktop/threkir-distribution.p12 | gh secret set IOS_BUILD_CERTIFICATE_BASE64 --env production
+```
+
+```
+gh secret set IOS_P12_PASSWORD --env production
+```
+
+The second prompts for the value, so it never reaches shell history. Back the
+`.p12` and its password up the way step 8 does (`ios_distribution_p12_base64`,
+`ios_p12_password`), then delete the file. It expires after a year; a lost or
+expired one is replaced by making a new one — Apple allows two at once — and
+re-running this step.
+
+## 15. App Store provisioning profiles — one per bundle
+
+**Profiles** → **(+)** → under Distribution, **App Store Connect** → App ID
+`com.threkir.app` → the certificate from step 14 → name `Threkir App Store` →
+**Generate** → **Download**. Again for `com.threkir.app.watchapp`, named
+`Threkir Watch App Store`.
+
+**Make these after steps 3 and 4 are finished, App Group assignment
+included.** A profile records the App ID's capabilities when it is generated,
+so a capability enabled afterwards is missing from it until it is regenerated —
+and the build fails on the entitlement the profile lacks.
+
+```
+base64 -i ~/Downloads/Threkir_App_Store.mobileprovision | gh secret set IOS_PROVISIONING_PROFILE_BASE64 --env production
+```
+
+```
+base64 -i ~/Downloads/Threkir_Watch_App_Store.mobileprovision | gh secret set IOS_WATCH_PROVISIONING_PROFILE_BASE64 --env production
+```
+
+Profiles are not secret and can be regenerated at any time, so they need no
+backup. Nothing else is configured: the workflow reads each profile's bundle id
+and the team id out of the profile itself (decisions § 1701), and fails naming
+the bundle if either profile is missing, is a development or ad hoc one, or is
+for the wrong App ID.
+
+## 16. App Store Connect API key
+
+This is what uploads to TestFlight without an Apple Account password.
+**appstoreconnect.apple.com** → **Users and Access** → **Integrations** →
+**App Store Connect API** → **Team Keys** (the first time, the Account Holder
+has to **Request Access** and accept) → **(+)** → name `GitHub Actions`, access
+**App Manager** → **Generate** → **Download API Key**. It downloads **once**.
+Note the **Key ID** on the row and the **Issuer ID** above the table.
+
+```
+gh secret set APP_STORE_CONNECT_API_PRIVATE_KEY --env production < ~/Downloads/AuthKey_<key id>.p8
+```
+
+```
+gh secret set APP_STORE_CONNECT_API_KEY_ID --env production --body <key id>
+```
+
+```
+gh secret set APP_STORE_CONNECT_API_ISSUER_ID --env production --body <issuer id>
+```
+
+The `.p8` goes in **as it is, not base64**: the upload action reads PKCS#8
+text. Back it up as `asc_api_key_p8` with its Key ID the way step 8 does, then
+delete the download.
+
+## 17. App Store Connect app record
+
+**Apps** → **(+)** → **New App** → platform **iOS**, name `Threkir`, primary
+language, bundle ID `com.threkir.app` (the dropdown lists step 3), SKU
+`threkir-ios`, **Full Access**. The Apple Watch app needs no record of its own;
+it ships inside this one. The listing itself — screenshots, privacy label, age
+rating, review notes — is the checklist in
+[`apps/mobile_ios/deployment.md`](../../apps/mobile_ios/deployment.md#production-readiness-checklist).
+
+To sell Pro on iOS: sign the Paid Apps agreement (**Business**), create the
+subscription product, connect the app in RevenueCat, and set RevenueCat's Apple
+key as `MOBILE_REVENUECAT_API_KEY_IOS`. Without that key the build shows Pro as
+coming soon, because iOS may not fall back to the web checkout
+([decisions § 1700](../architecture/decisions.md)).
+
+## 18. First release to TestFlight
+
+```
+gh release create mobile_ios@1.0.0 --title "iOS 1.0.0" --generate-notes
+```
+
+Approve the `production` environment when the run asks. Its first step names
+every secret still unset, so a missing one costs seconds, not a build. The
+build lands in TestFlight after Apple's processing (tens of minutes). Install
+it on an iPhone paired with an Apple Watch before submitting anything.
 
 ## Verifying each thread
 

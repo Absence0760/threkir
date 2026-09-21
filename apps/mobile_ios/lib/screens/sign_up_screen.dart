@@ -4,7 +4,6 @@ import 'package:api_client/api_client.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
@@ -13,6 +12,7 @@ import '../google_auth.dart';
 import '../auth_error.dart';
 import '../auth_gates.dart';
 import '../auth_validation.dart';
+import '../google_auth.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../legal_links.dart';
 import '../widgets/password_field.dart';
@@ -212,8 +212,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   Future<void> _signInWithGoogle() async {
-    final webClientId = dotenv.env['GOOGLE_WEB_CLIENT_ID'];
-    if (webClientId == null || webClientId.isEmpty) {
+    final webClientId = googleWebClientId();
+    if (webClientId == null || !googleSignInAvailable()) {
       // Google OAuth provider isn't wired up on this build yet — show a
       // friendly coming-soon notice instead of a raw configuration error
       // (and before the gate nag, since the button isn't functional yet).

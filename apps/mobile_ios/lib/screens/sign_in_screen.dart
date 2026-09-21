@@ -10,6 +10,7 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../apple_auth.dart';
 import '../google_auth.dart';
 import '../auth_error.dart';
+import '../google_auth.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../widgets/password_field.dart';
 import '../widgets/top_banner.dart';
@@ -175,10 +176,11 @@ class _SignInScreenState extends State<SignInScreen> {
   /// Google Sign-In via the native flow. On Android, requires
   /// `GOOGLE_WEB_CLIENT_ID` in `.env.local` and an Android OAuth 2.0
   /// client configured with the app's SHA-1 fingerprint. See
-  /// `apps/mobile_android/local_testing.md`.
+  /// `apps/mobile_android/local_testing.md`; `google_auth.dart` carries the
+  /// per-platform gate.
   Future<void> _signInWithGoogle() async {
-    final webClientId = dotenv.env['GOOGLE_WEB_CLIENT_ID'];
-    if (webClientId == null || webClientId.isEmpty) {
+    final webClientId = googleWebClientId();
+    if (webClientId == null || !googleSignInAvailable()) {
       // Google OAuth provider isn't wired up on this build yet — show a
       // friendly coming-soon notice instead of a raw configuration error.
       // Mirrors web's PUBLIC_GOOGLE_AUTH_ENABLED fail-closed gate.

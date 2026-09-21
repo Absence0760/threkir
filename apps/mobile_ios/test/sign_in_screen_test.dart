@@ -1,4 +1,5 @@
 import 'package:api_client/api_client.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -143,6 +144,32 @@ void main() {
       } finally {
         debugDefaultTargetPlatformOverride = null;
       }
+    });
+
+    testWidgets(
+        'Google button shows the coming-soon notice on iOS when no '
+        'GoogleService-Info.plist is bundled', (tester) async {
+      // google_sign_in_ios takes the iOS OAuth client id from a bundled
+      // GoogleService-Info.plist and this app passes none to initialize(), so
+      // a web client id alone leaves GIDSignIn unconfigured and authenticate()
+      // raises. The button has to fail closed with the same notice Android
+      // gives, not a raw PlatformException.
+      dotenv.loadFromString(
+          envString: 'GOOGLE_WEB_CLIENT_ID=web.apps.googleusercontent.com',
+          isOptional: true);
+      await tester.binding.setSurfaceSize(const Size(400, 900));
+      await _pump(tester, _FakeApiClient());
+      final googleBtn =
+          find.widgetWithText(OutlinedButton, 'Sign in with Google');
+      await tester.ensureVisible(googleBtn);
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        await tester.tap(googleBtn);
+        await tester.pump();
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+      expect(find.textContaining('coming soon'), findsOneWidget);
     });
 
     testWidgets('"Create one" link navigates to SignUpScreen', (tester) async {

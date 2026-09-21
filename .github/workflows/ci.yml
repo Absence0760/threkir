@@ -84,6 +84,7 @@ jobs:
       code: ${{ steps.filter.outputs.code }}
       web_e2e: ${{ steps.filter.outputs.web_e2e }}
       infra: ${{ steps.filter.outputs.infra }}
+      mobile_ios: ${{ steps.filter.outputs.mobile_ios }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -112,6 +113,7 @@ jobs:
             echo "code=true" >> "$GITHUB_OUTPUT"
             echo "web_e2e=true" >> "$GITHUB_OUTPUT"
             echo "infra=true" >> "$GITHUB_OUTPUT"
+            echo "mobile_ios=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           echo "$files"
@@ -176,6 +178,40 @@ jobs:
           else
             echo "::notice::nothing under infra/ changed — the Terraform checks skip"
             echo "infra=false" >> "$GITHUB_OUTPUT"
+          fi
+          # The one lane in this file whose cost is not a rounding error —
+          # though the cost is not money. This repo is PUBLIC, so standard
+          # GitHub-hosted runners are free, macOS included; the 10x macOS
+          # minute multiplier quoted everywhere is a private-repo / paid-plan
+          # figure and does not apply here. What it spends is wall clock and
+          # a scarce runner: a cold `flutter build ios` — pod install, every
+          # plugin's iOS unit, the Runner Swift, the Dart kernel — plus an
+          # XCTest run measures ~15-20 min, and hosted macOS concurrency is
+          # far tighter than Linux, so an unfiltered iOS lane queues behind
+          # itself. Gating it on the broad `code` output every other job
+          # takes would put that latency on a web-only or firmware-only PR
+          # that cannot reach the iOS toolchain at all.
+          #
+          # The other option was to run it only on pushes to main, and it is
+          # worse: main is protected and linear, so a break found after the
+          # merge costs a revert PR — and a break found on a release tag is
+          # exactly the state this lane exists to end. Spend the time before
+          # the merge, on the PRs that can actually cause it.
+          #
+          # An EXCLUSION list for the same reason `web_e2e` above is one: the
+          # gate counts `skipped` as a pass, so a too-NARROW inclusion list
+          # deletes coverage silently and reads green having compiled nothing.
+          # An unrecognised path runs the lane.
+          #
+          # apps/mobile_android/ is excluded safely and only because of
+          # decisions § 39: lib/ and test/ are byte-identical to
+          # apps/mobile_ios/, so a mirrored change touches this tree too, and
+          # an unmirrored one is `twin-parity`'s red rather than this lane's.
+          if echo "$files" | grep -qvE '^(docs/|\.claude/|infra/|bin/|apps/(web|backend|job_worker|graph_cycle|custom_watch|watch_wear|watch_ios|watch_garmin|mobile_android)/)|\.md$'; then
+            echo "mobile_ios=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::nothing the iOS toolchain can reach changed — the macOS iOS build skips"
+            echo "mobile_ios=false" >> "$GITHUB_OUTPUT"
           fi
 
   # A workflow file GitHub's parser rejects never fails a PR job — it produces
@@ -2534,6 +2570,133 @@ jobs:
       - working-directory: apps/mobile_android/android
         run: ./gradlew :app:testDebugUnitTest --no-daemon
 
+  build-mobile-ios:
+    needs: changes
+    if: needs.changes.outputs.mobile_ios == 'true'
+    name: Build mobile_ios (simulator, unsigned)
+    runs-on: macos-latest
+    # The Flutter iOS target was the one shipped app surface nothing in CI
+    # ever compiled. `build-mobile-android` covers the Gradle toolchain,
+    # `test-packages` covers the Dart, `ios-native-declarations` is a static
+    # Node guard that never invokes a compiler, and `test-watch-ios` builds
+    # the SEPARATE native watchOS app — so a break in the Swift under
+    # apps/mobile_ios/ios/Runner, in the Podfile, in the pbxproj, or in a
+    # plugin's iOS podspec reached main unseen and was first met on a
+    # `mobile_ios@*` release tag, which is the worst day to meet it.
+    #
+    # `--simulator --no-codesign` is the whole point: it compiles the Dart,
+    # every plugin's iOS unit and the Runner Swift against the simulator SDK,
+    # which needs no signing certificate, no provisioning profile and no
+    # Apple Developer account. release-ios.yml builds the device IPA.
+    #
+    # THE COST, recorded here so the next session does not re-litigate it:
+    # it is not money. This repo is PUBLIC, so standard GitHub-hosted runners
+    # are free, macOS included — the 10x macOS minute multiplier quoted
+    # everywhere is a private-repo / paid-plan figure and does not apply. The
+    # cost is ~15-20 min of wall clock and one of a small number of
+    # concurrent hosted macOS runners. That is why it takes the `mobile_ios`
+    # path filter rather than the broad `code` output every other job takes:
+    # a web-only, backend-only or firmware-only PR cannot reach the iOS
+    # toolchain and should not wait on a macOS queue to find that out. The filter is an exclusion list, so an unrecognised path still
+    # runs the lane — see the `changes` job for the full reasoning, and for
+    # why "only on pushes to main" was rejected.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          # decisions § 595 — pinned, not floated. A Flutter release that
+          # promotes a diagnostic to `warning` must arrive as a deliberate
+          # bump, not at random on an unrelated PR.
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - run: dart pub global activate melos 7.8.2
+      # Keyed apart from the ubuntu jobs' pub-cache on purpose: an
+      # actions/cache key is not scoped by runner OS, and ~/.pub-cache holds
+      # the host-compiled snapshots `pub global activate` writes.
+      - name: Cache pub-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.pub-cache
+          key: pub-cache-macos-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: pub-cache-macos-
+      - run: melos bootstrap
+      # `flutter build ios` runs `pod install` itself, so there is no pod
+      # step to cache around — this caches the spec repo and the downloaded
+      # pods that install pulls, which is the slow half of it.
+      - name: Cache CocoaPods
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cocoapods
+            ~/Library/Caches/CocoaPods
+          key: cocoapods-${{ hashFiles('apps/mobile_ios/ios/Podfile.lock') }}
+          restore-keys: cocoapods-
+      - name: Build the simulator app (Dart + plugins + Runner Swift)
+        working-directory: apps/mobile_ios
+        run: |
+          if ! flutter build ios --simulator --no-codesign; then
+            echo "::error::apps/mobile_ios does not compile for the iOS simulator. This is the Dart, the plugins' iOS units, the CocoaPods resolution and the Swift under ios/Runner — nothing here is about signing, which this build does not do, and nothing here is about the watchOS app, which is test-watch-ios."
+            echo "Reproduce with: cd apps/mobile_ios && flutter build ios --simulator --no-codesign (needs Xcode; no Apple Developer account, certificate or provisioning profile is involved)."
+            exit 1
+          fi
+      # Resolve the simulator by UDID rather than by name, for the reason
+      # test-watch-ios records: `xcodebuild test` needs a concrete bootable
+      # device, and the model names rotate with every Xcode release, so a
+      # hardcoded "iPhone 15" exit-70s the day the image bumps.
+      - name: Resolve an iOS simulator
+        id: ios-sim
+        run: |
+          set -euo pipefail
+          udid="$(xcrun simctl list devices available --json \
+            | jq -r '[.devices | to_entries[] | select(.key | test("iOS"))
+                      | .value[] | select(.isAvailable)] | .[0].udid // empty')"
+          if [ -z "$udid" ]; then
+            echo "::error::This macOS runner image ships no available iOS simulator, so the RunnerTests step below has nowhere to run. Nothing here is about apps/mobile_ios itself — the build step above already passed."
+            echo "--- runtimes ---";    xcrun simctl list runtimes
+            echo "--- devicetypes ---"; xcrun simctl list devicetypes | grep -i iphone || true
+            exit 1
+          fi
+          echo "Using iOS simulator $udid"
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+      # Pre-boot and block until the boot settles, for the reason
+      # test-watch-ios records: left to itself, `xcodebuild test` races its
+      # own install against SpringBoard coming up and dies with
+      # FBSOpenApplicationErrorDomain on a cold device.
+      - name: Boot the simulator and wait for it to settle
+        run: xcrun simctl bootstatus "${{ steps.ios-sim.outputs.udid }}" -b
+      # The host app's own XCTest bundle. It must stay AFTER the build for
+      # the same reason the Gradle suite above does: the Runner workspace
+      # cannot configure until Flutter has written ios/Flutter/Generated.xcconfig,
+      # which no checkout carries and only the Flutter tool produces.
+      #
+      # This is also the ONLY step in the whole of CI that LAUNCHES the iOS
+      # binary — RunnerTests is hosted by Runner.app, so AppDelegate and
+      # GeneratedPluginRegistrant run for real. A plugin whose iOS
+      # registration crashes at launch is invisible to a build that only
+      # compiles. The Runner scheme is shared (xcshareddata/xcschemes) and
+      # already names RunnerTests as its testable, so the target is wired
+      # deterministically rather than by an auto-generated scheme.
+      - name: Run RunnerTests
+        run: |
+          if ! xcodebuild test \
+            -workspace apps/mobile_ios/ios/Runner.xcworkspace \
+            -scheme Runner \
+            -destination "platform=iOS Simulator,id=${{ steps.ios-sim.outputs.udid }}" \
+            -resultBundlePath RunnerTests.xcresult \
+            CODE_SIGNING_ALLOWED=NO; then
+            echo "::error::apps/mobile_ios/ios/RunnerTests failed, or Runner.app could not launch in the simulator. The Dart and the Swift already compiled — the build step above passed — so this is a test assertion or a crash on launch (AppDelegate, GeneratedPluginRegistrant, a plugin's iOS registration), not a compile error."
+            echo "The uploaded RunnerTests.xcresult bundle holds the failure. Reproduce with: xcodebuild test -workspace apps/mobile_ios/ios/Runner.xcworkspace -scheme Runner -destination 'platform=iOS Simulator,name=iPhone 16' CODE_SIGNING_ALLOWED=NO (run the build step first — it writes ios/Flutter/Generated.xcconfig)."
+            exit 1
+          fi
+      - name: Upload test result bundle on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mobile-ios-xcresult
+          path: RunnerTests.xcresult
+          retention-days: 7
+
   twin-parity:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -3827,6 +3990,7 @@ jobs:
       - sim-firmware
       - sim-scenarios
       - build-mobile-android
+      - build-mobile-ios
       - twin-parity
       - schema-codegen-drift
       - api-client-integration

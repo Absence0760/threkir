@@ -50,12 +50,12 @@ class UniversalSettingsTest {
     fun `prefs object with missing default_activity_type returns null`() {
         // Other prefs present but no default_activity_type. Same
         // outcome as no key at all — and same for privacy_default
-        // when only the other field is set. (Pick a key the wrist
-        // doesn't consume — `voice_feedback_enabled` is a phone/web
-        // pref with no wrist reader, so it never lands on
-        // `UniversalSettings`.)
+        // when only the other field is set. (The key picked here used
+        // to be `voice_feedback_enabled`, on the grounds that the
+        // wrist had no reader for it; it has one now, so this uses a
+        // key that genuinely lands nowhere on `UniversalSettings`.)
         val out = parseUniversalSettings(
-            """[{"prefs":{"voice_feedback_enabled":true}}]""",
+            """[{"prefs":{"units_pace_format":"min_per_km"}}]""",
         )
         assertEquals(null, out?.defaultActivityType)
         assertEquals(null, out?.privacyDefault)
@@ -103,6 +103,46 @@ class UniversalSettingsTest {
         assertEquals(true, parseUniversalSettings("""[{"prefs":{}}]""")?.showCalories)
         // No settings row at all → default on.
         assertEquals(true, parseUniversalSettings("""[]""")?.showCalories)
+    }
+
+    @Test
+    fun `voice_feedback_enabled silences the wrist only on an explicit false`() {
+        // Until 2026-09 the watch's only gate on spoken cues was
+        // `BuildConfig.ENABLE_TTS`, a BUILD flag — so a shipped watch had
+        // no off switch on any surface the runner owns, and the switch they
+        // DO own (mobile Settings, and the web Recording & voice page, both
+        // writing this key) reached the phone and stopped there.
+        assertEquals(
+            false,
+            parseUniversalSettings("""[{"prefs":{"voice_feedback_enabled":false}}]""")
+                ?.voiceFeedbackEnabled,
+        )
+        // Negative controls: the registry default is ON, so nothing but an
+        // explicit false may mute a runner who never asked for silence —
+        // including a bag written by a build that predates the key, and a
+        // value of the wrong type (which must not be coerced).
+        for (body in listOf(
+            """[{"prefs":{"voice_feedback_enabled":true}}]""",
+            """[{"prefs":{"voice_feedback_enabled":"false"}}]""",
+            """[{"prefs":{"voice_feedback_enabled":0}}]""",
+            """[{"prefs":{"default_activity_type":"run"}}]""",
+            """[{"prefs":{}}]""",
+            """[]""",
+        )) {
+            assertEquals(body, true, parseUniversalSettings(body)?.voiceFeedbackEnabled)
+        }
+    }
+
+    @Test
+    fun `the cue switch and the unit ride the same bag read`() {
+        // One fetch feeds both, and the Apple Watch carries the same pair
+        // over WCSession. A parse that dropped one would leave that wrist
+        // and this one disagreeing about the same account.
+        val s = parseUniversalSettings(
+            """[{"prefs":{"preferred_unit":"mi","voice_feedback_enabled":false}}]""",
+        )
+        assertEquals("mi", s?.preferredUnit)
+        assertEquals(false, s?.voiceFeedbackEnabled)
     }
 
     @Test

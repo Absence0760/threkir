@@ -118,6 +118,19 @@ class RunRecordingService : Service() {
     /// the active-run tile renders in the runner's chosen unit.
     private var preferredUnit: DistanceUnit = DistanceUnit.KM
 
+    /// The runner's universal `voice_feedback_enabled`, passed once from the
+    /// ACTION_START intent. Absent means ON, which is the registry default.
+    private var voiceFeedbackEnabled: Boolean = true
+
+    /// The announcer, or null when the runner has the cues switched off.
+    /// Every announce site goes through this rather than through [tts], so a
+    /// cue added later is silenced by default rather than by remembering to
+    /// add the condition. [tts] itself stays reachable for lifecycle — the
+    /// engine is built at `onCreate`, before any run has told us the
+    /// preference, and must still be shut down.
+    private val cues: TtsAnnouncer?
+        get() = if (voiceFeedbackEnabled) tts else null
+
     /// Monotonic stamp of the last accepted/rebased anchor. See the re-anchor
     /// escape in onGps.
     private var lastAnchorRealtimeMs: Long = 0L
@@ -179,6 +192,7 @@ class RunRecordingService : Service() {
                     DistanceUnit.valueOf(intent.getStringExtra(EXTRA_PREFERRED_UNIT) ?: "KM")
                 }.getOrDefault(DistanceUnit.KM),
                 privacyDefault = intent.getStringExtra(EXTRA_PRIVACY_DEFAULT),
+                voiceFeedbackEnabled = intent.getBooleanExtra(EXTRA_AUDIO_CUES, true),
             )
             ACTION_PAUSE -> pauseRecording()
             ACTION_RESUME -> resumeRecording()
@@ -208,6 +222,7 @@ class RunRecordingService : Service() {
         targetPaceSecPerKm: Int?,
         unit: DistanceUnit,
         privacyDefault: String?,
+        voiceFeedbackEnabled: Boolean,
     ) {
         if (RecordingRepository.metrics.value.isActive) return
 
@@ -216,6 +231,7 @@ class RunRecordingService : Service() {
         this.targetPaceSecPerKm = targetPaceSecPerKm
         this.preferredUnit = unit
         this.privacyDefault = privacyDefault
+        this.voiceFeedbackEnabled = voiceFeedbackEnabled
         startedAtMs = System.currentTimeMillis()
         pausedAccumulatedMs = 0
         pausedSinceMs = 0
@@ -232,7 +248,7 @@ class RunRecordingService : Service() {
         lastAnnouncedSplit = 0
         lastPaceAlertAtMs = 0L
         routeWaypoints = parseRouteWaypoints(routeWaypointsJson)
-        tts?.announceStart()
+        cues?.announceStart()
 
         val file = TrackWriter.fileFor(applicationContext, runId)
         trackWriter = TrackWriter(file).also { it.open() }
@@ -422,7 +438,7 @@ class RunRecordingService : Service() {
 
         val distanceAtFinish = RecordingRepository.metrics.value.distanceM
         val durationAtFinish = (activeElapsedMs() / 1000).toInt()
-        tts?.announceFinish(distanceAtFinish, durationAtFinish, preferredUnit)
+        cues?.announceFinish(distanceAtFinish, durationAtFinish, preferredUnit)
 
         if (pausedSinceMs > 0) {
             pausedAccumulatedMs += System.currentTimeMillis() - pausedSinceMs
@@ -615,7 +631,7 @@ class RunRecordingService : Service() {
         val currentSplit = completedSplits(newDistance, preferredUnit)
         if (currentSplit > lastAnnouncedSplit) {
             lastAnnouncedSplit = currentSplit
-            tts?.announceSplit(currentSplit, pace, preferredUnit)
+            cues?.announceSplit(currentSplit, pace, preferredUnit)
         }
 
         // Pace-drift alert. Only fires when:
@@ -716,7 +732,7 @@ class RunRecordingService : Service() {
             // silently does not exist must leave a trace.
             android.util.Log.w(TAG, "pace-alert haptic refused", e)
         }
-        tts?.announcePaceAlert(tooSlow)
+        cues?.announcePaceAlert(tooSlow)
     }
 
     private fun haversineM(aLat: Double, aLng: Double, bLat: Double, bLng: Double): Double {
@@ -903,6 +919,10 @@ class RunRecordingService : Service() {
         /// run honours the same visibility as a normal stop. Absent when the
         /// prefs bag hadn't loaded at run start.
         const val EXTRA_PRIVACY_DEFAULT = "privacy_default"
+        /// Whether the spoken cues are audible — the runner's universal
+        /// `voice_feedback_enabled`. Absent means ON, the registry default;
+        /// only an explicit `false` silences the wrist.
+        const val EXTRA_AUDIO_CUES = "audio_cues"
 
         private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "run_recording"
@@ -959,12 +979,14 @@ class RunRecordingService : Service() {
             targetPaceSecPerKm: Int? = null,
             preferredUnit: DistanceUnit = DistanceUnit.KM,
             privacyDefault: String? = null,
+            voiceFeedbackEnabled: Boolean = true,
         ) {
             val intent = Intent(context, RunRecordingService::class.java).apply {
                 action = ACTION_START
                 putExtra(EXTRA_RUN_ID, runId)
                 putExtra(EXTRA_ACTIVITY_TYPE, activityType)
                 putExtra(EXTRA_PREFERRED_UNIT, preferredUnit.name)
+                putExtra(EXTRA_AUDIO_CUES, voiceFeedbackEnabled)
                 if (!privacyDefault.isNullOrEmpty()) {
                     putExtra(EXTRA_PRIVACY_DEFAULT, privacyDefault)
                 }

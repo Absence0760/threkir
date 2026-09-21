@@ -12,6 +12,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -140,6 +141,16 @@ data class UniversalSettings(
     /// hides it, mirroring web's `effective(..., 'show_calories', true)
     /// !== false`; an absent or unparseable value leaves it on.
     val showCalories: Boolean = true,
+    /// Universal `voice_feedback_enabled` — the master gate on the spoken
+    /// split / pace cues, default ON (docs/backend/settings.md). The watch
+    /// spoke unconditionally until 2026-09: `BuildConfig.ENABLE_TTS` is a
+    /// BUILD flag, so a shipped watch had no off switch on any surface the
+    /// runner owns, and the phone's own switch — the one the web settings
+    /// page writes — reached the phone and stopped there. Only an explicit
+    /// `false` silences the wrist, mirroring `showCalories`: a bag written
+    /// by an older build, or a value of the wrong type, must not mute cues
+    /// nobody turned off.
+    val voiceFeedbackEnabled: Boolean = true,
 )
 
 /// Allowed values for `default_activity_type`. Mirrors the CHECK
@@ -204,10 +215,26 @@ internal fun parseUniversalSettings(body: String?): UniversalSettings? {
             preferredUnit = prefs["preferred_unit"]?.jsonPrimitive?.contentOrNull
                 ?.takeIf { it in UNIVERSAL_PREFERRED_UNITS },
             showCalories = prefs["show_calories"]?.jsonPrimitive?.booleanOrNull != false,
+            voiceFeedbackEnabled = strictBoolean(prefs, "voice_feedback_enabled") != false,
         )
     } catch (_: Throwable) {
         null
     }
+}
+
+/// A JSON boolean, and only a JSON boolean.
+///
+/// `jsonPrimitive.booleanOrNull` parses the CONTENT and never asks whether
+/// the value was quoted, so it reads the string `"false"` as false. For a
+/// key whose registry row says it is dropped and never coerced
+/// (`voice_feedback_enabled`, docs/backend/settings.md) that is the wrong
+/// direction to be wrong in: a bag written by some other client with a
+/// stringified boolean would silence a runner who never asked for silence,
+/// on a device with no settings screen to undo it from.
+internal fun strictBoolean(obj: JsonObject, key: String): Boolean? {
+    val primitive = obj[key] as? JsonPrimitive ?: return null
+    if (primitive.isString) return null
+    return primitive.booleanOrNull
 }
 
 /// Parse an `hr_zones` object (`{z1, z2, z3, z4, z5}`) into an

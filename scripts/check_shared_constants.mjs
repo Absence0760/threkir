@@ -366,6 +366,24 @@ export function parseKotlinIntRange(src, declName) {
 	return decl ? [decl[1], decl[2]] : [];
 }
 
+/**
+ * A Swift `static let NAME = <int>` initialiser. Anchored on the declaration
+ * keywords rather than on the name alone, because `parseNamedInt`'s
+ * `name … = digits` shape also matches a doc comment sentence and a
+ * `count <= NAME` guard is one character away from matching too. A constant
+ * initialised from an expression is deliberately not read: it cannot be
+ * compared to another language's by reading, and reporting the rail as blind
+ * is the honest answer.
+ * @param {string} src @param {string} declName @returns {string[]}
+ */
+export function parseSwiftStaticInt(src, declName) {
+	const decl = new RegExp(
+		`static\\s+let\\s+${declName}\\s*(?::\\s*[A-Za-z0-9_.]+\\s*)?=\\s*(-?\\d+)\\s*$`,
+		'm',
+	).exec(src);
+	return decl ? [decl[1]] : [];
+}
+
 // ── Entry: the rate-limit bucket vocabulary ─────────────────────────────────
 
 const RATE_LIMIT_CALL =
@@ -1485,6 +1503,72 @@ export const REGISTRY = [
 						values: parseNamedInt(ctx.read('apps/mobile_android/lib/wear_routes_bridge.dart'), 'kMaxRoutesPerPush'),
 					},
 				],
+			},
+		],
+	},
+	{
+		name: 'Apple Watch route-push budgets',
+		why:
+			'Three languages bound the same three payloads, and every rejection ' +
+			'is silent on the wire. A phone cap above the watch cap queues a ' +
+			'DURABLE `transferUserInfo` the watch refuses on every retry, so the ' +
+			'runner is told the route was sent and the wrist never arms it; a ' +
+			'per-route point cap above the watch\'s drops that route out of the ' +
+			'picker with nothing reported. All three numbers are computed rather ' +
+			'than measured (decisions 1695), which is exactly the kind that drifts ' +
+			'when one end is re-derived and the others are doc comments claiming ' +
+			'each other.',
+		match: 'key',
+		compare: 'ordered',
+		rails: [
+			{
+				label: 'watch (apps/watch_ios/WatchApp/ArmedRoute.swift)',
+				sites: (ctx) => {
+					const src = ctx.read('apps/watch_ios/WatchApp/ArmedRoute.swift');
+					return [
+						{ key: 'armed route points', where: 'ArmedRoute.maxPoints', values: parseSwiftStaticInt(src, 'maxPoints') },
+						{ key: 'list routes', where: 'SavedRoutes.maxRoutes', values: parseSwiftStaticInt(src, 'maxRoutes') },
+						{
+							key: 'list points per route',
+							where: 'SavedRoutes.maxPointsPerRoute',
+							values: parseSwiftStaticInt(src, 'maxPointsPerRoute'),
+						},
+					];
+				},
+			},
+			{
+				label: 'phone native (apps/mobile_ios/ios/Runner/WatchIngestBridge.swift)',
+				sites: (ctx) => {
+					const src = ctx.read('apps/mobile_ios/ios/Runner/WatchIngestBridge.swift');
+					return [
+						{
+							key: 'armed route points',
+							where: 'WatchIngestBridge.maxRoutePoints',
+							values: parseSwiftStaticInt(src, 'maxRoutePoints'),
+						},
+						{ key: 'list routes', where: 'WatchIngestBridge.maxSavedRoutes', values: parseSwiftStaticInt(src, 'maxSavedRoutes') },
+						{
+							key: 'list points per route',
+							where: 'WatchIngestBridge.maxSavedRoutePoints',
+							values: parseSwiftStaticInt(src, 'maxSavedRoutePoints'),
+						},
+					];
+				},
+			},
+			{
+				label: 'phone dart (apps/mobile_android/lib/apple_watch_route_bridge.dart)',
+				sites: (ctx) => {
+					const src = ctx.read('apps/mobile_android/lib/apple_watch_route_bridge.dart');
+					return [
+						{ key: 'armed route points', where: 'kMaxAppleWatchRoutePoints', values: parseNamedInt(src, 'kMaxAppleWatchRoutePoints') },
+						{ key: 'list routes', where: 'kMaxAppleWatchSavedRoutes', values: parseNamedInt(src, 'kMaxAppleWatchSavedRoutes') },
+						{
+							key: 'list points per route',
+							where: 'kMaxAppleWatchSavedRoutePoints',
+							values: parseNamedInt(src, 'kMaxAppleWatchSavedRoutePoints'),
+						},
+					];
+				},
 			},
 		],
 	},

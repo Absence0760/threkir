@@ -71,6 +71,16 @@
 //       the phone that silently never reaches the wrist — with a success
 //       reported at the point they armed it.
 //
+//  (7b) The LIST that rides the same envelope — `saved_routes`, the starred
+//       set the wrist's route picker offers. It is a third key list on each of
+//       claim (7)'s three rails, so it can drift from them and from each
+//       other. What holds it is not a fourth transcription: both Swift ends
+//       DELEGATE each element to their single-route validator, so claim (7)
+//       already owns the five element keys, and this claim's job is to check
+//       that they still delegate and that the one envelope key they hang the
+//       list from agrees. A key renamed here is a picker that renders its
+//       empty state with a phone that reports every push as sent.
+//
 //   (8) No destructive control in `ContentView.swift` destroys a run on one
 //       tap. Both "Discard" buttons end a run that exists nowhere else — the
 //       crash-recovery checkpoint, and a finished run WCSession has not been
@@ -439,6 +449,29 @@ export const ROUTE_BRIDGE = join(
 	'lib',
 	'apple_watch_route_bridge.dart',
 );
+
+/**
+ * Claim (7b)'s four reading sites: the Dart method that ships the list, the
+ * Dart function that shapes one element of it, and the two Swift functions
+ * that read it back.
+ */
+export const SAVED_ROUTES_DART_METHOD = 'push_saved';
+export const SAVED_ROUTES_DART_ENCODER = 'encodeSavedRoutesForWatch';
+export const SAVED_ROUTES_PHONE_FN = 'savedRoutesUserInfo';
+export const SAVED_ROUTES_WATCH_FN = 'decodeList';
+
+/**
+ * The single-route validator each end of the list MUST route its elements
+ * through, and the function that must do it. This is what keeps the element
+ * shape a claim-(7) question instead of a fourth hand-written key list: a
+ * `savedRoutesUserInfo` that stops calling `routeUserInfo` has quietly become
+ * a second set of rules, and nothing about the payload looks different.
+ * @type {[string, string, string][]}
+ */
+export const SAVED_ROUTES_DELEGATIONS = [
+	[SAVED_ROUTES_PHONE_FN, 'routeUserInfo(from:', 'the phone repack'],
+	[SAVED_ROUTES_WATCH_FN, 'ArmedRoute.decode(', 'the watch decode'],
+];
 
 // --- text utilities ---------------------------------------------------------
 
@@ -1238,7 +1271,7 @@ export function swiftStructFields(src, name) {
 
 /**
  * The brace-matched body of `func <name>(`, wherever it sits — a method inside
- * a type, with any access modifiers in front. `functionBody` below anchors at
+ * a type, with any access modifiers in front. A top-level reader anchors at
  * column zero, which the three route-envelope functions are not.
  * @param {string} src @param {string} name @returns {string | null}
  */
@@ -1340,6 +1373,33 @@ export function dartInvokeKeys(src, method) {
 			}
 		}
 	}
+	if (end === -1) return null;
+	/** @type {Set<string>} */
+	const keys = new Set();
+	for (const m of src.slice(open, end).matchAll(/'([^'\\\n]+)'\s*:/g)) keys.add(m[1]);
+	return keys.size === 0 ? null : keys;
+}
+
+/**
+ * The `'…':` keys of the map literals inside the body of a Dart function
+ * DECLARED `static … <name>(`. Anchored on the declaration rather than on the
+ * bare name because the body's own callers spell the name the same way, and a
+ * guard that silently read a call site's argument list instead of the function
+ * would certify the wrong text. The parameter list is paren-matched first, so
+ * a named-parameter `{…}` group cannot be mistaken for the body.
+ * @param {string} src Dart @param {string} name
+ * @returns {Set<string> | null} null when no such declaration is readable,
+ *   which is a shape change rather than an empty payload
+ */
+export function dartFunctionMapKeys(src, name) {
+	const at = src.search(new RegExp(`\\bstatic\\s+[^\\n(]*\\b${name}\\s*\\(`));
+	if (at === -1) return null;
+	const paren = src.indexOf('(', at);
+	const afterParams = matchDelimiter(src, paren, '(', ')');
+	if (afterParams === -1) return null;
+	const open = src.indexOf('{', afterParams);
+	if (open === -1) return null;
+	const end = matchDelimiter(src, open, '{', '}');
 	if (end === -1) return null;
 	/** @type {Set<string>} */
 	const keys = new Set();
@@ -1790,6 +1850,120 @@ export function check(
 					`all ${(/** @type {Set<string>} */ (dart)).size} route-push keys agree across the ` +
 						'Dart channel, the phone repack and the watch decode',
 				);
+			}
+		}
+	}
+
+	// (7b) The saved-routes LIST that rides the same envelope.
+	if (ingestPath !== null && routeBridgePath !== null) {
+		const ingestSrc = stripSwiftComments(readFileSync(ingestPath, 'utf8'));
+		const armedSrc = stripSwiftComments(read(ARMED_ROUTE));
+		const dartSrc = readFileSync(routeBridgePath, 'utf8');
+		const phoneBody = methodBody(ingestSrc, SAVED_ROUTES_PHONE_FN);
+		const watchBody = methodBody(armedSrc, SAVED_ROUTES_WATCH_FN);
+		/** @type {{ label: string, keys: Set<string> | null }[]} */
+		const rails = [
+			{
+				label: `${ROUTE_BRIDGE} (invokeMethod '${SAVED_ROUTES_DART_METHOD}')`,
+				keys: dartInvokeKeys(dartSrc, SAVED_ROUTES_DART_METHOD),
+			},
+			{
+				label: `${INGEST} (${SAVED_ROUTES_PHONE_FN})`,
+				keys: phoneBody === null ? null : swiftPayloadKeys(phoneBody, 'args'),
+			},
+			{
+				label: `${ARMED_ROUTE} (SavedRoutes.${SAVED_ROUTES_WATCH_FN})`,
+				keys: watchBody === null ? null : swiftPayloadKeys(watchBody, 'payload'),
+			},
+		];
+		const unread = rails.filter((r) => r.keys === null);
+		if (unread.length > 0) {
+			errors.push(
+				`Parsed no saved-routes envelope key out of ${unread.map((r) => r.label).join(' and ')} — ` +
+					'claim (7b) would pass vacuously. The list the wrist picker offers hangs off one ' +
+					'key on this envelope; a rail that cannot be read is a rail that agrees with ' +
+					'everything.',
+			);
+		} else {
+			/** @type {string[]} */
+			const mismatches = [];
+			for (const rail of rails) {
+				for (const other of rails) {
+					if (rail === other) continue;
+					for (const key of /** @type {Set<string>} */ (rail.keys)) {
+						if (!(/** @type {Set<string>} */ (other.keys)).has(key)) {
+							mismatches.push(
+								`\`${key}\` is on ${rail.label} and not on ${other.label}. The starred list ` +
+									'hangs off that one key, so the phone reports every push as sent and ' +
+									'the wrist renders its empty state.',
+							);
+						}
+					}
+				}
+			}
+			for (const m of [...new Set(mismatches)].sort()) errors.push(m);
+			if (mismatches.length === 0) {
+				ok.push(
+					`the \`${[...(/** @type {Set<string>} */ (rails[0].keys))].join('`, `')}\` envelope ` +
+						'key agrees across the Dart channel, the phone repack and the watch decode',
+				);
+			}
+		}
+
+		// Each end must hand its elements to the SINGLE-route validator claim
+		// (7) already holds. That is what makes the five element keys one key
+		// list rather than three, so it is checked rather than assumed.
+		const bodies = new Map([
+			[SAVED_ROUTES_PHONE_FN, phoneBody],
+			[SAVED_ROUTES_WATCH_FN, watchBody],
+		]);
+		let delegated = 0;
+		for (const [fn, call, what] of SAVED_ROUTES_DELEGATIONS) {
+			const body = bodies.get(fn);
+			if (body === null || body === undefined) continue;
+			if (body.includes(call)) {
+				delegated += 1;
+				continue;
+			}
+			errors.push(
+				`${what} (\`${fn}\`) no longer calls \`${call}…)\`, so the list's elements are ` +
+					'validated by a second set of rules that claim (7) does not read. Either route ' +
+					'them back through the single-route validator, or add the list\'s own element ' +
+					'keys to claim (7)\'s rails — an unread key list is how a route the runner ' +
+					'starred silently stops reaching the wrist.',
+			);
+		}
+		if (delegated === SAVED_ROUTES_DELEGATIONS.length) {
+			ok.push(
+				`both ends of the saved-routes list validate each element through their ` +
+					'single-route decoder, so claim (7) holds its five keys too',
+			);
+		}
+
+		// …and the Dart end, which has no such decoder to delegate to, writes
+		// the same five keys the single push writes.
+		const element = dartFunctionMapKeys(dartSrc, SAVED_ROUTES_DART_ENCODER);
+		const single = dartInvokeKeys(dartSrc, 'push');
+		if (element === null || single === null) {
+			errors.push(
+				`Parsed no element keys out of ${ROUTE_BRIDGE} (${SAVED_ROUTES_DART_ENCODER}) or out ` +
+					"of its single `push` — claim (7b) cannot compare the list's element shape " +
+					'against the armed push it is supposed to be a copy of.',
+			);
+		} else {
+			const diff = [
+				...[...element].filter((k) => !single.has(k)).map((k) => `\`${k}\` only in the list`),
+				...[...single].filter((k) => !element.has(k)).map((k) => `\`${k}\` only in the armed push`),
+			].sort();
+			if (diff.length > 0) {
+				errors.push(
+					`${ROUTE_BRIDGE} builds a list element that is not the five-key dictionary a ` +
+						`single push carries: ${diff.join(', ')}. The watch decodes both with ` +
+						'`ArmedRoute.decode`, so the odd one out is dropped from the picker with ' +
+						'nothing reported.',
+				);
+			} else {
+				ok.push(`the Dart list element is the same ${element.size} keys as the armed push`);
 			}
 		}
 	}

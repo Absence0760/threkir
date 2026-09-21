@@ -545,6 +545,21 @@ and a client that never registers is indistinguishable from a broken sender.
 
 ## 13. Android's Apple dart-defines
 
+Set two `production` environment secrets, then cut the step-12 Release; they
+ride the same build:
+
+- **`MOBILE_APPLE_SERVICE_CLIENT_ID`** → the dart-define `APPLE_SERVICE_CLIENT_ID`
+- **`MOBILE_APPLE_REDIRECT_URI`** → the dart-define `APPLE_REDIRECT_URI`
+
+**Both or neither** — `appleSignInAvailable()` requires the pair, so one alone
+leaves the button exactly as it was.
+
+Until [§ 1696](../architecture/decisions.md) this step was not a secret at all.
+Neither name reached a release build by any route: `main.dart`'s bridge did not
+carry them, so they were debug-only in the [§ 709](../architecture/decisions.md)
+sense, and `release-android.yml` did not pass them either. Both halves are
+wired now, which is why this reads as two secrets rather than as a code change.
+
 `appleSignInAvailable()` in
 [`apple_auth.dart`](../../apps/mobile_android/lib/apple_auth.dart) gates the
 Android button on two dart-defines, the way Google's is gated on
@@ -555,8 +570,12 @@ Android button on two dart-defines, the way Google's is gated on
   `https://mcbgrgvegqcmdmtraikl.supabase.co/auth/v1/callback`. It has to be one
   of the Return URLs registered there or Apple rejects the authorization.
 
-iOS needs neither: it takes the native flow off the App ID capability from
-step 3.
+iOS needs neither, and **iOS is not gated at all** — `appleSignInAvailable()`
+opens with `if (defaultTargetPlatform == TargetPlatform.iOS) return true`, and
+`Runner.entitlements` already declares `com.apple.developer.applesignin`. The
+only Apple-side thing the native flow waits on is step 3's capability. (Docs
+elsewhere refer to an `apps/mobile_ios` constant `_kAppleSignInEnabled` as the
+iOS gate; no such symbol exists anywhere in the tree.)
 
 ## Verifying each thread
 

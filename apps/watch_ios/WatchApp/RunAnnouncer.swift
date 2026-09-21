@@ -68,6 +68,59 @@ enum RunCueMath {
     }
 }
 
+/// When the watch says something about a runner drifting off their target
+/// pace, and how often.
+///
+/// One-way port of Wear OS's `shouldFirePaceAlert`
+/// (`apps/watch_wear/.../recording/PaceAlert.kt`), held to it by
+/// `scripts/check_shared_constants.mjs`. The two wrists used to gate this on
+/// thresholds nobody had compared — 15 s/km here against Wear's 30 — and
+/// while the only effect was a haptic the divergence was invisible. It
+/// stopped being invisible the moment the same gate started SPEAKING.
+///
+/// 30 s/km is the figure on both wrists and on the phone
+/// (`run_screen.dart`'s `diff.abs() > 30`), because 15 s/km sits inside the
+/// noise floor of the reading it gates: `updatePace` divides a ~200 m
+/// look-back by that segment's own time span, so a few metres of position
+/// error at either end moves the answer by the better part of ten seconds
+/// per kilometre with the runner holding a perfectly even effort. A false
+/// haptic costs a wrist tap; a false cue costs a sentence spoken over the
+/// runner's music.
+enum PaceAlertGate {
+    /// Seconds per kilometre of drift, either direction, before the gate
+    /// fires. Strictly greater than, matching Wear's `> threshold`.
+    static let driftThresholdSecondsPerKm: Double = 30
+
+    /// Minimum seconds between two consecutive alerts, in EITHER direction —
+    /// one clock for both, not one each. Two clocks let a pace oscillating
+    /// across the band speak "slow down" and "pick up the pace" back to back,
+    /// each inside the window the other direction's clock had left open.
+    static let rateLimitSeconds: TimeInterval = 30
+
+    struct Decision: Equatable {
+        let fire: Bool
+        /// Meaningful only when `fire`. True when the runner is SLOWER than
+        /// target — the same polarity as `RunCue.paceAlert`.
+        let tooSlow: Bool
+
+        static let noFire = Decision(fire: false, tooSlow: false)
+    }
+
+    /// `secondsSinceLastAlert` is nil when nothing has fired yet this run,
+    /// which clears the rate limit.
+    static func decide(
+        targetSecondsPerKm: Double,
+        currentSecondsPerKm: Double,
+        secondsSinceLastAlert: TimeInterval?
+    ) -> Decision {
+        guard targetSecondsPerKm > 0, currentSecondsPerKm.isFinite else { return .noFire }
+        let drift = currentSecondsPerKm - targetSecondsPerKm
+        guard abs(drift) > driftThresholdSecondsPerKm else { return .noFire }
+        if let elapsed = secondsSinceLastAlert, elapsed <= rateLimitSeconds { return .noFire }
+        return Decision(fire: true, tooSlow: drift > 0)
+    }
+}
+
 /// Highest split already spoken this run. Kept as a value type so the
 /// fire-once-per-unit contract is testable without a recorder.
 struct SplitTracker {

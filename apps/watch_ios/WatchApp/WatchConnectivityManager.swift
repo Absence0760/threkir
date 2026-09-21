@@ -12,6 +12,44 @@ import WatchConnectivity
 ///
 /// The same session carries the inbound direction: the phone's unit
 /// preference and the route it armed for this watch to follow (`ArmedRoute`).
+/// The phone's settings envelope, decoded.
+///
+/// Split out of `WatchConnectivityManager.receive` so the fail-closed half is
+/// testable at all: the manager's `init` activates a real `WCSession`, which
+/// no unit-test host can construct, and this is the only decode on the
+/// inbound wire that is not already a value type of its own
+/// (`ArmedRoute.decode`, `LiveRace.decode`).
+///
+/// Every reader answers nil for "the phone did not say", never a default. A
+/// push may carry any subset — a route arrives with no preferences at all —
+/// so a default here would quietly overwrite an explicit choice every time
+/// the runner armed a route.
+enum PhonePreferences {
+    /// The UserDefaults key the unit is stored under. Spelled the same as the
+    /// wire key below by design — `RunFormat` and `ActiveRunBridge` read this
+    /// one, `preferredUnit(in:)` reads the wire — and pinned equal by
+    /// `PhonePreferencesTests`.
+    static let unitKey = "preferred_unit"
+
+    /// `km` or `mi`, and nothing else. A rogue or future value leaves the
+    /// unit the wrist already holds standing rather than falling back to
+    /// kilometres: the settings envelope rides `updateApplicationContext`,
+    /// which the system RETAINS and re-offers on every contact, so a coerced
+    /// wrong answer would be a wrong answer on every contact.
+    static func preferredUnit(in payload: [String: Any]) -> String? {
+        guard let unit = payload["preferred_unit"] as? String,
+              unit == "km" || unit == "mi" else { return nil }
+        return unit
+    }
+
+    /// Whether the spoken cues are audible. A non-Bool is dropped rather than
+    /// coerced — a corrupt push must neither silence cues nobody turned off
+    /// nor un-mute an explicit off.
+    static func audioCues(in payload: [String: Any]) -> Bool? {
+        payload["audio_cues"] as? Bool
+    }
+}
+
 class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
     static let shared = WatchConnectivityManager()
 
@@ -178,6 +216,13 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
             self.queuedCount = outstanding
             self.transferState = Self.stateOnActivation(outstanding: outstanding)
         }
+        // The settings the phone last wrote, which the platform retains for
+        // us. Nothing calls `didReceiveApplicationContext` for a value that
+        // arrived before this process existed, so without this a cold launch
+        // reads whatever UserDefaults held — which on a watch that spent the
+        // change on a charger is the value the runner replaced.
+        let context = session.receivedApplicationContext
+        if !context.isEmpty { receive(context) }
         // A finisher time that ended up on disk because the session was not
         // activated yet. Auxiliary, and kept out of the run outbox's own
         // re-seed above: a race result that will not send must not cost the
@@ -228,6 +273,20 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
         receive(userInfo)
     }
 
+    /// The phone's settings envelope. `updateApplicationContext` is a single
+    /// latest-value slot rather than a queue, which is the right shape for a
+    /// preference and the wrong one for a run: the phone overwrites it on
+    /// every change, so a week of toggling costs one delivery and the wrist
+    /// gets the CURRENT answer on its next contact instead of replaying every
+    /// intermediate one. A `sendMessage` would have dropped them all while
+    /// the watch was out of range, which is exactly the hole this closes.
+    func session(
+        _ session: WCSession,
+        didReceiveApplicationContext applicationContext: [String: Any]
+    ) {
+        receive(applicationContext)
+    }
+
     /// Apply whatever the phone put in a payload. Every key is independent:
     /// a payload carrying only one of them leaves the rest untouched.
     private func receive(_ payload: [String: Any]) {
@@ -236,20 +295,22 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
         // pre-run pace presets (see `pacePresets()` in
         // ContentView.swift) and any other unit-sensitive surface can
         // read it synchronously without a `@Published` observation.
-        // Phone-side push isn't wired yet — when it lands, this
-        // handler is what makes the watch's UI flip to imperial
-        // labels in mi-mode users.
-        if let unit = payload["preferred_unit"] as? String,
-           unit == "km" || unit == "mi" {
-            UserDefaults.standard.set(unit, forKey: "preferred_unit")
+        // Pushed by `AppleWatchPrefsBridge` on the phone whenever the
+        // runner changes it — including when the change came from the
+        // web settings page and roamed in over `SettingsSyncService`.
+        if let unit = PhonePreferences.preferredUnit(in: payload) {
+            UserDefaults.standard.set(unit, forKey: PhonePreferences.unitKey)
             ActiveRunBridge.mirrorPreferredUnit(unit)
         }
         // `audio_cues` — whether the spoken split / pace cues are audible
-        // (`RunAnnouncer.preferenceKey`). Same phone preference, same
-        // unwired-push caveat as the unit above; absent still means ON, which
-        // is the phone's default, so the key only ever arrives to turn cues
-        // OFF or back on.
-        if let cues = payload[RunAnnouncer.preferenceKey] as? Bool {
+        // (`RunAnnouncer.preferenceKey`). Rides the same envelope as the unit
+        // above, and is the ONLY way a runner can silence the wrist: the
+        // watch app has no settings screen. Absent still means ON, which is
+        // the phone's default, so the key only ever arrives to turn cues OFF
+        // or back on — and a non-Bool is dropped rather than coerced, because
+        // a corrupt push must neither silence cues nobody turned off nor
+        // un-mute an explicit off.
+        if let cues = PhonePreferences.audioCues(in: payload) {
             UserDefaults.standard.set(cues, forKey: RunAnnouncer.preferenceKey)
         }
         // A malformed or over-budget route is dropped whole rather than

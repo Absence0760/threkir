@@ -230,6 +230,19 @@
 //       what keeps the second pass there and in a DIFFERENT language from the
 //       first — deleting it, or setting both to `en`, restores the blind spot
 //       without failing anything else.
+//  (20) The SETTINGS envelope going to the wrist — the runner's distance
+//       unit and their audio-cue switch — read from all three of its ends.
+//       Three hand-written key lists in three languages, the same shape as
+//       claim (7): `apple_watch_prefs_bridge.dart` names them as
+//       method-channel arguments, `WatchIngestBridge.prefsContext` lifts
+//       those out and repacks them for `updateApplicationContext`, and
+//       `PhonePreferences` reads them back on the watch. Unlike the route
+//       chain a rename here does not drop the push — the watch applies each
+//       key INDEPENDENTLY, so it drops one preference out of it with nothing
+//       failing anywhere — and `audio_cues` is the only switch that can
+//       silence a wrist with no settings screen of its own. The envelope
+//       also rides a RETAINED application context, so a key the watch cannot
+//       read is unreadable on every contact rather than once.
 //
 // WHAT THIS GUARD DOES NOT PROVE. It parses text. It does not compile Swift,
 // does not run it, and cannot see anything a type-checker would: claim (1)
@@ -1530,6 +1543,18 @@ export function destructiveButtons(src) {
 
 /// The one workflow that compiles this tier, and the only place the language
 /// the suite runs in is decided.
+/// The Dart end of the settings envelope, under the same canonical tree.
+export const PREFS_BRIDGE = join(
+	'apps',
+	'mobile_android',
+	'lib',
+	'apple_watch_prefs_bridge.dart',
+);
+
+/// The watch end of it — `PhonePreferences`, which lives beside its only
+/// caller rather than in a file of its own.
+export const WATCH_CONNECTIVITY = join('WatchApp', 'WatchConnectivityManager.swift');
+
 export const CI_WORKFLOW = join('.github', 'workflows', 'ci.yml');
 
 /// The job inside it that runs the Swift suite.
@@ -1588,6 +1613,7 @@ export function suiteLanguages(block) {
  *   `apple_watch_route_bridge.dart`; null skips claim (7) alone.
  * @param {string | null} [wearCoveragePath] absolute path to Wear OS's
  *   `HeartRateCoverage.kt`; null skips claim (12) alone.
+ *   `apple_watch_prefs_bridge.dart`; null skips claim (20) alone.
  * @param {string | null} [phonePbxprojPath] absolute path to the phone's
  *   `Runner.xcodeproj/project.pbxproj`; null skips claim (10)'s embed half.
  * @param {string | null} [ciWorkflowPath] absolute path to
@@ -1601,6 +1627,7 @@ export function check(
 	wearCoveragePath = null,
 	phonePbxprojPath = null,
 	ciWorkflowPath = null,
+	prefsBridgePath = null,
 ) {
 	/** @type {string[]} */ const errors = [];
 	/** @type {string[]} */ const ok = [];
@@ -1964,6 +1991,57 @@ export function check(
 				);
 			} else {
 				ok.push(`the Dart list element is the same ${element.size} keys as the armed push`);
+			}
+		}
+	}
+
+	// (20) The settings envelope, read from all three of its ends.
+	if (ingestPath !== null && prefsBridgePath !== null) {
+		const ingestSrc = stripSwiftComments(readFileSync(ingestPath, 'utf8'));
+		const watchSrc = stripSwiftComments(read(WATCH_CONNECTIVITY));
+		const phone = swiftPayloadKeys(methodBody(ingestSrc, 'prefsContext') ?? '', 'args');
+		const watch = swiftPayloadKeys(
+			(methodBody(watchSrc, 'preferredUnit') ?? '') + (methodBody(watchSrc, 'audioCues') ?? ''),
+			'payload',
+		);
+		const dart = dartInvokeKeys(readFileSync(prefsBridgePath, 'utf8'), 'push');
+		/** @type {{ label: string, keys: Set<string> | null }[]} */
+		const rails = [
+			{ label: `${PREFS_BRIDGE} (invokeMethod 'push')`, keys: dart },
+			{ label: `${INGEST} (prefsContext)`, keys: phone },
+			{ label: `${WATCH_CONNECTIVITY} (PhonePreferences)`, keys: watch },
+		];
+		const unread = rails.filter((r) => r.keys === null);
+		if (unread.length > 0) {
+			errors.push(
+				`Parsed no settings-envelope keys out of ${unread.map((r) => r.label).join(' and ')} — ` +
+					'claim (20) would pass vacuously, or report that the other rails agree on keys ' +
+					'nobody sends. One of the three call sites changed shape.',
+			);
+		} else {
+			/** @type {string[]} */
+			const mismatches = [];
+			for (const rail of rails) {
+				for (const other of rails) {
+					if (rail === other) continue;
+					for (const key of /** @type {Set<string>} */ (rail.keys)) {
+						if (!(/** @type {Set<string>} */ (other.keys)).has(key)) {
+							mismatches.push(
+								`\`${key}\` is on ${rail.label} and not on ${other.label}. The watch ` +
+									'applies each settings key independently, so this does not drop the ' +
+									'push — it drops that one preference out of it with nothing failing ' +
+									'anywhere, and `audio_cues` is the only switch that silences the wrist.',
+							);
+						}
+					}
+				}
+			}
+			for (const m of [...new Set(mismatches)].sort()) errors.push(m);
+			if (mismatches.length === 0) {
+				ok.push(
+					`all ${(/** @type {Set<string>} */ (dart)).size} settings-push keys agree across the ` +
+						'Dart channel, the phone repack and the watch decode',
+				);
 			}
 		}
 	}
@@ -2910,6 +2988,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 		process.argv[5] ?? join(REPO_ROOT, WEAR_COVERAGE),
 		process.argv[6] ?? join(REPO_ROOT, PHONE_PBXPROJ),
 		process.argv[7] ?? join(REPO_ROOT, CI_WORKFLOW),
+		process.argv[8] ?? join(REPO_ROOT, PREFS_BRIDGE),
 	);
 	for (const line of ok) console.log(`  ok: ${line}`);
 	if (errors.length > 0) {

@@ -29,6 +29,7 @@ import {
 	buildSettingsBlocks,
 	INGEST,
 	ROUTE_BRIDGE,
+	PREFS_BRIDGE,
 	PHONE_PBXPROJ,
 	WEAR_COVERAGE,
 	CI_WORKFLOW,
@@ -81,6 +82,9 @@ const ROUTE_BRIDGE_ABS = join(REPO_ROOT, ROUTE_BRIDGE);
 const STAGED_INGEST = 'WatchIngestBridge.swift';
 /** …and of the Dart end of the route-push envelope. */
 const STAGED_ROUTE_BRIDGE = 'apple_watch_route_bridge.dart';
+/** …and of the Dart end of the settings envelope. */
+const STAGED_PREFS_BRIDGE = 'apple_watch_prefs_bridge.dart';
+const PREFS_BRIDGE_ABS = join(REPO_ROOT, PREFS_BRIDGE);
 /** …and of Wear OS's half of the heart-rate coverage contract. */
 const STAGED_WEAR_COVERAGE = 'HeartRateCoverage.kt';
 const WEAR_COVERAGE_ABS = join(REPO_ROOT, WEAR_COVERAGE);
@@ -95,6 +99,7 @@ const DIRECT = join('WatchApp', 'SupabaseService.swift');
 const AUTH = join('WatchApp', 'WatchAuth.swift');
 const PBX = join('WatchApp.xcodeproj', 'project.pbxproj');
 const HK = join('WatchApp', 'HealthKitManager.swift');
+const CONNECTIVITY = join('WatchApp', 'WatchConnectivityManager.swift');
 
 /** Copy only the files the guard reads into a throwaway tree. */
 function stage() {
@@ -111,6 +116,7 @@ function stage() {
 	}
 	cpSync(INGEST_ABS, join(dir, STAGED_INGEST));
 	cpSync(ROUTE_BRIDGE_ABS, join(dir, STAGED_ROUTE_BRIDGE));
+	cpSync(PREFS_BRIDGE_ABS, join(dir, STAGED_PREFS_BRIDGE));
 	cpSync(WEAR_COVERAGE_ABS, join(dir, STAGED_WEAR_COVERAGE));
 	cpSync(PHONE_PBXPROJ_ABS, join(dir, STAGED_PHONE_PBX));
 	cpSync(CI_WORKFLOW_ABS, join(dir, STAGED_CI));
@@ -132,6 +138,7 @@ function runMutated(mutate) {
 			join(dir, STAGED_WEAR_COVERAGE),
 			join(dir, STAGED_PHONE_PBX),
 			join(dir, STAGED_CI),
+			join(dir, STAGED_PREFS_BRIDGE),
 		);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
@@ -694,6 +701,85 @@ test('a decode that stops subscripting the payload fails vacuity rather than pas
 		edit(dir, ARMED, (s) => s.replace(/payload\[/g, 'input['));
 	});
 	assert.equal(matched(errors, /Parsed no route-push keys/).length, 1, errors.join('\n'));
+});
+
+// --- claim 20: the settings envelope, three rails ---------------------------
+
+test('the three settings-push rails agree on the shipped tree', () => {
+	const { errors, ok } = check(WATCH_IOS, INGEST_ABS, null, null, null, null, PREFS_BRIDGE_ABS);
+	assert.deepEqual(matched(errors, /settings-(push|envelope)/), []);
+	assert.ok(
+		ok.some((o) => /^all 2 settings-push keys agree/.test(o)),
+		ok.join('\n'),
+	);
+});
+
+test('claim 20 is skipped when the Dart rail is unavailable', () => {
+	// Two Swift ends agreeing is not the claim, for the same reason claim 7
+	// refuses to report on two of its three.
+	const { errors, ok } = check(WATCH_IOS, INGEST_ABS);
+	assert.deepEqual(errors, []);
+	assert.deepEqual(ok.filter((o) => /settings-push keys/.test(o)), []);
+});
+
+test('a settings key renamed on the Dart rail alone is refused', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_PREFS_BRIDGE, (s) => s.replace("'audio_cues': audioCues", "'audioCues': audioCues"));
+	});
+	assert.ok(
+		matched(errors, /`audioCues` is on .*apple_watch_prefs_bridge\.dart/).length >= 1,
+		errors.join('\n'),
+	);
+	assert.ok(
+		matched(errors, /`audio_cues` is on .*WatchIngestBridge\.swift/).length >= 1,
+		errors.join('\n'),
+	);
+});
+
+test('a settings key renamed on the phone repack alone is refused', () => {
+	// The failure this claim exists for, and it is quieter than claim 7's: the
+	// watch applies each key on its own, so a renamed `audio_cues` does not
+	// drop the push — the unit still lands and the cues keep speaking at a
+	// runner who switched them off.
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_INGEST, (s) => s.replace('"audio_cues": audioCues', '"audioCues": audioCues'));
+	});
+	assert.ok(
+		matched(errors, /`audioCues` is on .*WatchIngestBridge\.swift/).length >= 1,
+		errors.join('\n'),
+	);
+});
+
+test('a settings key renamed on the watch decode alone is refused', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, CONNECTIVITY, (s) =>
+			s.replace('payload["preferred_unit"]', 'payload["preferredUnit"]'),
+		);
+	});
+	assert.ok(
+		matched(errors, /`preferredUnit` is on .*WatchConnectivityManager\.swift/).length >= 1,
+		errors.join('\n'),
+	);
+});
+
+test('a settings push whose Dart call site changed shape fails vacuity rather than passing', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_PREFS_BRIDGE, (s) =>
+			s.replace("invokeMethod<void>('push'", "invokeMethod<void>('pushPrefs'"),
+		);
+	});
+	assert.equal(matched(errors, /Parsed no settings-envelope keys/).length, 1, errors.join('\n'));
+});
+
+test('a watch decode that stops subscripting the payload fails vacuity rather than passing', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, CONNECTIVITY, (s) =>
+			s
+				.replace('payload["preferred_unit"]', 'bag["preferred_unit"]')
+				.replace('payload["audio_cues"]', 'bag["audio_cues"]'),
+		);
+	});
+	assert.equal(matched(errors, /Parsed no settings-envelope keys/).length, 1, errors.join('\n'));
 });
 
 test('swiftPayloadKeys reads both the subscripts and the repacked literal', () => {

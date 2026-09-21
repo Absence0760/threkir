@@ -6,7 +6,8 @@ import WatchConnectivity
 /// `WCSession.transferFile(_:metadata:)` and forwards them to Dart via
 /// the `run_app/watch_ingest` method channel, and carries the opposite
 /// direction — a route the runner picked on the phone, pushed to the watch
-/// over `run_app/watch_route`.
+/// over `run_app/watch_route`, and the runner's unit + audio-cue preferences
+/// over `run_app/watch_prefs`.
 ///
 /// Both directions live here because `WCSession.delegate` is a single slot:
 /// a second class claiming its own session would take this one's delegate
@@ -70,6 +71,7 @@ import WatchConnectivity
     private var raceChannel: FlutterMethodChannel? {
         state.sync { _raceChannel }
     }
+    private var prefsChannel: FlutterMethodChannel?
 
     private var methodChannel: FlutterMethodChannel? {
         state.sync { _methodChannel }
@@ -111,6 +113,14 @@ import WatchConnectivity
         race.setMethodCallHandler { call, result in
             self.handleRaceCall(call, result: result)
         }
+        let prefs = FlutterMethodChannel(
+            name: "run_app/watch_prefs",
+            binaryMessenger: binaryMessenger
+        )
+        prefs.setMethodCallHandler { call, result in
+            self.handlePrefsCall(call, result: result)
+        }
+        prefsChannel = prefs
         state.sync {
             _methodChannel = ingest
             _raceChannel = race
@@ -337,6 +347,68 @@ import WatchConnectivity
         default:
             result(FlutterMethodNotImplemented)
         }
+    }
+
+    // MARK: - Preference push (phone -> watch)
+
+    /// `updateApplicationContext`, not `transferUserInfo`: the distance unit
+    /// and the audio-cue switch are latest-value STATE, not events. The
+    /// context is a single slot the phone overwrites, so a runner flipping a
+    /// switch six times costs one delivery, and WCSession hands the watch
+    /// whatever was last written the moment the two are next in contact —
+    /// including on the watch's own cold launch, via
+    /// `receivedApplicationContext`. A queue would replay every intermediate
+    /// value and a `sendMessage` would have dropped them all, which is how a
+    /// runner ended up unable to silence the wrist from anywhere.
+    private func handlePrefsCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        switch call.method {
+        case "available":
+            result(Self.canPushRoute())
+        case "push":
+            guard let args = call.arguments as? [String: Any],
+                  let context = Self.prefsContext(from: args) else {
+                result(FlutterError(
+                    code: "bad_prefs",
+                    message: "Preference payload rejected",
+                    details: nil
+                ))
+                return
+            }
+            guard Self.canPushRoute() else {
+                result(FlutterError(
+                    code: "watch_unavailable",
+                    message: "No paired Apple Watch running the app",
+                    details: nil
+                ))
+                return
+            }
+            do {
+                try WCSession.default.updateApplicationContext(context)
+                result(nil)
+            } catch {
+                result(FlutterError(
+                    code: "push_failed",
+                    message: error.localizedDescription,
+                    details: nil
+                ))
+            }
+        default:
+            result(FlutterMethodNotImplemented)
+        }
+    }
+
+    /// Re-check the shape here as well as on the watch, for the same reason
+    /// `routeUserInfo` does — and one stronger. The application context is
+    /// RETAINED by the system and re-offered on every contact, so a value the
+    /// watch's fail-closed decode refuses is refused on every contact for as
+    /// long as it stands, against a runner who was told their preference
+    /// applied.
+    static func prefsContext(from args: [String: Any]) -> [String: Any]? {
+        guard let unit = args["preferred_unit"] as? String,
+              unit == "km" || unit == "mi",
+              let audioCues = args["audio_cues"] as? Bool
+        else { return nil }
+        return ["preferred_unit": unit, "audio_cues": audioCues]
     }
 
     private static func canPushRoute() -> Bool {

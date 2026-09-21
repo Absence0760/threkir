@@ -395,3 +395,116 @@ final class RunAnnouncerTests: XCTestCase {
         XCTAssertEqual(announcer.announcedSplits, 2)
     }
 }
+
+/// The pace-drift gate, held to Wear OS's `shouldFirePaceAlert` case for
+/// case. Both wrists now speak through this decision, so every boundary
+/// asserted in `PaceAlertTest.kt` is asserted here too — a divergence that
+/// survives both suites is one `scripts/check_shared_constants.mjs` is left
+/// to catch alone.
+final class PaceAlertGateTests: XCTestCase {
+
+    private func decide(
+        target: Double = 300,
+        current: Double,
+        since: TimeInterval? = nil
+    ) -> PaceAlertGate.Decision {
+        PaceAlertGate.decide(
+            targetSecondsPerKm: target,
+            currentSecondsPerKm: current,
+            secondsSinceLastAlert: since
+        )
+    }
+
+    // MARK: - the threshold
+
+    func testTheThresholdIsWearsThirtySecondsPerKilometre() {
+        // Not an arbitrary pin: this is the whole point of the change. 15 s/km
+        // was the watchOS figure while Wear and the phone both used 30, and
+        // the three only ever buzzed, so nothing read the disagreement out.
+        XCTAssertEqual(PaceAlertGate.driftThresholdSecondsPerKm, 30)
+        XCTAssertEqual(PaceAlertGate.rateLimitSeconds, 30)
+    }
+
+    func testOnPaceDoesNotFire() {
+        XCTAssertFalse(decide(current: 300).fire)
+    }
+
+    func testTheOldFifteenSecondDriftIsNowSilent() {
+        // The regression this change is FOR: a runner holding 5:00/km whose
+        // 200 m window reads 5:16 is inside GPS noise, and used to be told so
+        // out loud.
+        XCTAssertFalse(decide(current: 316).fire)
+        XCTAssertFalse(decide(current: 284).fire)
+    }
+
+    func testExactlyThirtySecondsDoesNotFire() {
+        // Strictly greater than, matching Wear's `> threshold`.
+        XCTAssertFalse(decide(current: 330).fire)
+        XCTAssertFalse(decide(current: 270).fire)
+    }
+
+    func testThirtyOneSecondsSlowerFires() {
+        let d = decide(current: 331)
+        XCTAssertTrue(d.fire)
+        XCTAssertTrue(d.tooSlow, "positive drift is the runner being slower than target")
+    }
+
+    func testThirtyOneSecondsFasterFires() {
+        let d = decide(current: 269)
+        XCTAssertTrue(d.fire)
+        XCTAssertFalse(d.tooSlow)
+    }
+
+    func testDirectionFollowsTheSignOfTheDrift() {
+        for current in [331.0, 350.0, 400.0, 600.0] {
+            XCTAssertTrue(decide(current: current).tooSlow, "\(current) is slower than 300")
+        }
+        for current in [269.0, 250.0, 200.0, 100.0] {
+            XCTAssertFalse(decide(current: current).tooSlow, "\(current) is faster than 300")
+        }
+    }
+
+    // MARK: - the rate limit
+
+    func testTheFirstAlertOfARunIsNotRateLimited() {
+        XCTAssertTrue(decide(current: 400, since: nil).fire)
+    }
+
+    func testAnAlertInsideTheWindowIsSuppressed() {
+        XCTAssertFalse(decide(current: 400, since: 5).fire)
+    }
+
+    func testExactlyThirtySecondsSinceTheLastAlertStillSuppresses() {
+        XCTAssertFalse(decide(current: 400, since: 30).fire)
+    }
+
+    func testJustPastTheWindowFires() {
+        XCTAssertTrue(decide(current: 400, since: 30.001).fire)
+    }
+
+    func testOneClockCoversBothDirections() {
+        // The watchOS-only half of the change. Two clocks — one per direction
+        // — let a pace crossing the band speak twice in consecutive fixes,
+        // which is two SENTENCES back to back now that the gate talks.
+        XCTAssertTrue(decide(current: 400, since: nil).fire)
+        XCTAssertFalse(
+            decide(current: 200, since: 1).fire,
+            "the opposite direction must ride the same rate limit"
+        )
+    }
+
+    // MARK: - refusals
+
+    func testNoTargetPaceNeverFires() {
+        XCTAssertFalse(decide(target: 0, current: 400).fire)
+        XCTAssertFalse(decide(target: -1, current: 400).fire)
+    }
+
+    func testANonFinitePaceNeverFires() {
+        // `updatePace` divides by a measured segment; a degenerate window can
+        // hand this a non-number, and `abs(nan) > 30` is false anyway — pinned
+        // so a later rewrite of the comparison cannot start speaking at it.
+        XCTAssertFalse(decide(current: .nan).fire)
+        XCTAssertFalse(decide(current: .infinity).fire)
+    }
+}

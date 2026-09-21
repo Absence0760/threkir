@@ -384,6 +384,20 @@ export function parseSwiftStaticInt(src, declName) {
 	return decl ? [decl[1]] : [];
 }
 
+/**
+ * A Kotlin millisecond constant, read as whole seconds. `30_000L` is not
+ * `parseNamedInt`-readable (the digit separator stops the match at `30`) and
+ * would not compare against a Swift rail spelled in seconds even if it were —
+ * 30000 and 30 are the same duration and must fingerprint the same.
+ * @param {string} src @param {string} declName @returns {string[]}
+ */
+export function parseKotlinMillisAsSeconds(src, declName) {
+	const decl = new RegExp(`\\b${declName}\\b[^=\\n]*=\\s*(-?[\\d_]+)`).exec(src);
+	if (!decl) return [];
+	const ms = Number(decl[1].replace(/_/g, ''));
+	return Number.isFinite(ms) ? [String(ms / 1000)] : [];
+}
+
 // ── Entry: the rate-limit bucket vocabulary ─────────────────────────────────
 
 const RATE_LIMIT_CALL =
@@ -1469,6 +1483,60 @@ export const REGISTRY = [
 				],
 			},
 			{ label: 'sql (storage.buckets)', sites: (ctx) => bucketMimeSites(ctx.sql) },
+		],
+	},
+	{
+		name: 'watch pace-drift alert gate',
+		why:
+			'Both wrists run the same gate over the same target pace and speak ' +
+			'the same two cues through it, and until 2026-09 they gated on ' +
+			'different numbers: watchOS at 15 s/km, Wear OS (and the phone) at ' +
+			'30. While the only effect was a haptic nobody could hear the ' +
+			'disagreement; the cue engine made it audible, as one wrist nagging ' +
+			'inside GPS noise and the other staying quiet on the same run. ' +
+			'30 s/km is the figure, because a ~200 m pace look-back moves by ' +
+			'most of ten seconds per kilometre on position error alone.',
+		match: 'key',
+		compare: 'ordered',
+		rails: [
+			{
+				label: 'watch_ios (apps/watch_ios/WatchApp/RunAnnouncer.swift)',
+				sites: (ctx) => {
+					const src = ctx.read('apps/watch_ios/WatchApp/RunAnnouncer.swift');
+					return [
+						{
+							key: 'drift_s_per_km',
+							where: 'PaceAlertGate.driftThresholdSecondsPerKm',
+							values: parseNamedNumber(src, 'driftThresholdSecondsPerKm'),
+						},
+						{
+							key: 'rate_limit_s',
+							where: 'PaceAlertGate.rateLimitSeconds',
+							values: parseNamedNumber(src, 'rateLimitSeconds'),
+						},
+					];
+				},
+			},
+			{
+				label: 'watch_wear (apps/watch_wear .../recording/PaceAlert.kt)',
+				sites: (ctx) => {
+					const src = ctx.read(
+						'apps/watch_wear/android/app/src/main/kotlin/com/runapp/watchwear/recording/PaceAlert.kt',
+					);
+					return [
+						{
+							key: 'drift_s_per_km',
+							where: 'PACE_DRIFT_THRESHOLD_S_PER_KM',
+							values: parseNamedInt(src, 'PACE_DRIFT_THRESHOLD_S_PER_KM'),
+						},
+						{
+							key: 'rate_limit_s',
+							where: 'PACE_ALERT_RATE_LIMIT_MS (milliseconds, read as seconds)',
+							values: parseKotlinMillisAsSeconds(src, 'PACE_ALERT_RATE_LIMIT_MS'),
+						},
+					];
+				},
+			},
 		],
 	},
 	{

@@ -27,8 +27,8 @@ Last moved: **2026-09-20**.
 | 1 | Consent screen (Google Auth Platform) | — | **Done 2026-09-20** — Testing, External, `threkir.com` authorized |
 | 2 | **Web** OAuth client | Supabase provider + GitHub `MOBILE_GOOGLE_WEB_CLIENT_ID` | ☐ |
 | 3 | **Android** OAuth client, one per SHA-1 | Google console only — no id to copy | ☐ |
-| 4 | **iOS** OAuth client | `Runner/Info.plist` (step 10) | ☐ |
-| 5 | Client id + secret backed up | estate `threkir/push-credentials.sops.yaml` | ☐ |
+| 4 | **iOS** OAuth client | `Runner/Info.plist` (step 10) | ☐ — defer to step 10, same hands |
+| 5 | Web client id + secret backed up | estate `threkir/push-credentials.sops.yaml` | ☐ |
 | 6 | Supabase Google provider enabled | Supabase dashboard | ☐ |
 | 7 | Site URL, Redirect URLs, manual linking | Supabase dashboard | ☐ |
 | 8 | `PUBLIC_GOOGLE_AUTH_ENABLED` truthy + `web@` tag | GitHub secret + release | ☐ |
@@ -116,11 +116,19 @@ Google takes one fingerprint per client, so this is one client per key:
 
 ## 4. iOS client
 
-**Create client** → **iOS**, bundle id **`com.threkir.app`**. Copy the client
-id for steps 5 and 6.
+**Create client** → **iOS**, bundle id **`com.threkir.app`**. The id appears in
+the Clients list immediately; there is no secret.
 
-It buys nothing until step 10 — but creating it now means the credential half
-is finished for whoever has the Mac.
+**This is the one step worth deferring to step 10**, and the ordering is not
+arbitrary: the value the plist needs is the *reversed* form of this client's
+id, so creating the client and registering its URL scheme is one unit of work
+for whoever has the Mac. Created months early, the id just sits in the estate
+file unused and they have to go and read it anyway. Nothing between here and
+step 9 depends on it — an iOS build cannot sign in with Google at any point
+before step 10 regardless.
+
+Each client's id is its own: the JSON that downloads when you create the **web**
+client describes that client alone and will never contain this one.
 
 ## 5. Back the credential up
 
@@ -139,13 +147,19 @@ the Lambda environment source, read by exact key name (`ANTHROPIC_API_KEY`,
 cd ~/github/infra-secrets && AWS_PROFILE=threkir sops threkir/push-credentials.sops.yaml
 ```
 
-Three keys, matching the file's existing snake_case:
+Two keys, matching the file's existing snake_case:
 
 ```
 google_oauth_web_client_id: <step 2>.apps.googleusercontent.com
 google_oauth_web_client_secret: GOCSPX-...
-google_oauth_ios_client_id: <step 4>.apps.googleusercontent.com
 ```
+
+A third, `google_oauth_ios_client_id`, joins them whenever step 4 happens.
+
+Delete the downloaded `client_secret_*.json` once both values are in here and
+in Supabase. `.gitignore` refuses that filename, so it cannot be committed from
+this tree, but the copy in `~/Downloads` is a plaintext secret with no reason
+to outlive the paste.
 
 The Android SHA-1 is deliberately **not** stored: it is one `keytool` command
 away from a keystore that is already backed up, and a written copy goes stale
@@ -167,8 +181,8 @@ not a rotation.
 <https://supabase.com/dashboard/project/mcbgrgvegqcmdmtraikl/auth/providers> →
 **Google** → enable.
 
-- **Client IDs**: the **web** client id, then a comma, then the **iOS** client
-  id — no space
+- **Client IDs**: the **web** client id. If step 4 has happened, a comma and the
+  **iOS** client id after it, no space — otherwise add that when it does
 - **Client Secret (for OAuth)**: the step-2 secret
 
 Both ids because the audiences differ by platform. Web and Android both present

@@ -682,6 +682,19 @@ jobs:
       # guard needs the same toolchain the edge-functions job uses — but no
       # network and no node_modules: it stages the package.json files in a temp
       # dir and runs `deno check --no-remote` there.
+      # `setup-deno` fetches the binary from the same release CDN that returned
+      # 504 on 2026-09-21 until all five of setup-supabase-cli's retries were
+      # spent, and it has no binary cache of its own -- its `cache:` input is
+      # the MODULE cache, which is a separate step. It resolves from the runner
+      # tool cache when the version is already there, so priming that path
+      # turns the fetch into a no-op. A miss, or an upstream layout that has
+      # moved, just downloads as before: this can only remove a network round
+      # trip, never add a failure.
+      - name: Cache the Deno binary
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.tool_cache }}/deno
+          key: deno-bin-${{ runner.os }}-x64-2.9.6
       - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
         with:
           deno-version: v2.9.6
@@ -2783,6 +2796,19 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # `setup-deno` fetches the binary from the same release CDN that returned
+      # 504 on 2026-09-21 until all five of setup-supabase-cli's retries were
+      # spent, and it has no binary cache of its own -- its `cache:` input is
+      # the MODULE cache, which is a separate step. It resolves from the runner
+      # tool cache when the version is already there, so priming that path
+      # turns the fetch into a no-op. A miss, or an upstream layout that has
+      # moved, just downloads as before: this can only remove a network round
+      # trip, never add a failure.
+      - name: Cache the Deno binary
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.tool_cache }}/deno
+          key: deno-bin-${{ runner.os }}-x64-2.9.6
       - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
         with:
           deno-version: v2.9.6

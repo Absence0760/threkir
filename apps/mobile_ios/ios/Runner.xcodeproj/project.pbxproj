@@ -393,6 +393,7 @@
 				5AE0C0DE0000000000000034 /* Embed Foundation Extensions */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				35962F30FA7EE92CA151D686 /* [CP] Embed Pods Frameworks */,
+				7884EA042EC3CC0A00C636F6 /* Register the Google Sign-In redirect scheme */,
 			);
 			buildRules = (
 			);
@@ -537,6 +538,23 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		7884EA042EC3CC0A00C636F6 /* Register the Google Sign-In redirect scheme */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)",
+			);
+			name = "Register the Google Sign-In redirect scheme";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# GoogleSignIn hands the browser back through a custom URL scheme that IS the iOS\n# OAuth client id reversed, and routes it via handleURL:. That scheme cannot live in\n# the committed Info.plist for the same reason GoogleService-Info.plist itself cannot\n# -- it is the credential, and this repo is public. So it is appended to the BUILT\n# Info.plist from the operator's file; -append leaves the Supabase auth entry at index\n# 0 alone. No file, or a Firebase app with Google Sign-In switched off (which ships no\n# REVERSED_CLIENT_ID), registers nothing, and google_auth.dart hides the button off\n# that same absence, so the button and the redirect it needs arrive together.\n#\n# It is a phase of its own, last, because ProcessInfoPlistFile regenerates\n# Runner.app/Info.plist from the source file and would overwrite an earlier edit --\n# measured, having first written this into the Firebase phase above. Xcode runs shell\n# phases in list order, so \"last\" is positional and this must stay at the end;\n# alwaysOutOfDate keeps it running on an incremental build, where the plist is\n# regenerated but the target is otherwise up to date. decisions.md.\nSRC=\"${SRCROOT}/Runner/GoogleService-Info.plist\"\nINFO=\"${BUILT_PRODUCTS_DIR}/${INFOPLIST_PATH}\"\nREVERSED=$(/usr/libexec/PlistBuddy -c \"Print :REVERSED_CLIENT_ID\" \"$SRC\" 2>/dev/null) || REVERSED=\"\"\nif [ -z \"$REVERSED\" ]; then\n  echo \"note: no REVERSED_CLIENT_ID; building without the Google Sign-In redirect scheme\"\nelif [ ! -f \"$INFO\" ]; then\n  echo \"error: $INFO does not exist; the Google Sign-In redirect scheme cannot be registered\"\n  exit 1\nelif plutil -extract CFBundleURLTypes json -o - \"$INFO\" 2>/dev/null | grep -q \"$REVERSED\"; then\n  echo \"note: Google Sign-In redirect scheme already registered\"\nelse\n  JSON=$(printf '{\"CFBundleTypeRole\":\"Editor\",\"CFBundleURLName\":\"com.threkir.app.google\",\"CFBundleURLSchemes\":[\"%s\"]}' \"$REVERSED\")\n  plutil -insert CFBundleURLTypes -json \"$JSON\" -append \"$INFO\"\n  echo \"note: registered the Google Sign-In redirect scheme from GoogleService-Info.plist\"\nfi\n";
+			showEnvVarsInLog = 0;
+		};
 		7884EA032EC3CC0A00C636F5 /* Copy Firebase config if present */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -550,7 +568,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# The Firebase config is operator-supplied and untracked: this repo is public, so it\n# cannot be committed. Bundle it when an operator has dropped one in, and build\n# without it otherwise -- the Dart side already gates on Firebase.apps.isNotEmpty and\n# disables push when it is absent. Declaring it as a hard Resources build input made a\n# credential-free checkout unbuildable. decisions.md.\nSRC=\"${SRCROOT}/Runner/GoogleService-Info.plist\"\nif [ -f \"$SRC\" ]; then\n  cp \"$SRC\" \"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleService-Info.plist\"\nelse\n  echo \"note: no GoogleService-Info.plist in Runner/; building without Firebase push\"\nfi\n";
+			shellScript = "# The Firebase config is operator-supplied and untracked: this repo is public, so it\n# cannot be committed. Bundle it when an operator has dropped one in, and build\n# without it otherwise -- the Dart side already gates on Firebase.apps.isNotEmpty and\n# disables push when it is absent. Declaring it as a hard Resources build input made a\n# credential-free checkout unbuildable. decisions.md.\n#\n# ABSENT and MALFORMED are different failures and get different answers here, because\n# only one of them can be left to the app. firebase_core configures FIRApp from\n# +[FLTFirebaseCorePlugin sharedInstance], which GeneratedPluginRegistrant reaches\n# during plugin registration -- before any Dart runs -- so initFirebaseForPush's\n# try/catch is downstream of the failure and never sees it. A bad field there is an\n# uncaught NSException and the process takes SIGABRT at launch. Measured on a\n# simulator build: +[FIRInstallations validateAPIKey:] raised through\n# +[FIRApp configureWithOptions:] under +[FLTFirebaseCorePlugin sharedInstance].\n# There is no runtime rescue for that, so the check belongs here, where a wrong\n# credential is still a build error rather than a binary that aborts on every launch.\n#\n# The fields checked are exactly the ones that RAISE, mirrored from the SDK:\n# GOOGLE_APP_ID per +[FIRApp validateAppID:] (which deliberately permits an unknown\n# future version), API_KEY and PROJECT_ID per +[FIRInstallations\n# validateAppOptions:appName:]. BUNDLE_ID only logs I-COR000008, so it only warns.\nSRC=\"${SRCROOT}/Runner/GoogleService-Info.plist\"\nif [ ! -f \"$SRC\" ]; then\n  # Drop any copy a previous build left behind. Without this an operator who\n  # REMOVES the file keeps a configured Firebase on every incremental build --\n  # measured -- so \"unconfigured\" would not actually be reachable without a clean.\n  rm -f \"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleService-Info.plist\"\n  echo \"note: no GoogleService-Info.plist in Runner/; building without Firebase push\"\n  exit 0\nfi\n\nkey() { /usr/libexec/PlistBuddy -c \"Print :$1\" \"$SRC\" 2>/dev/null || true; }\nbad() {\n  echo \"error: GoogleService-Info.plist: $1\"\n  echo \"error: download a fresh file for $PRODUCT_BUNDLE_IDENTIFIER from the Firebase console rather than hand-editing one; a wrong value here aborts the app at launch, where nothing can catch it.\"\n  exit 1\n}\n\nAPP_ID=$(key GOOGLE_APP_ID)\nAPI_KEY=$(key API_KEY)\nPROJECT_ID=$(key PROJECT_ID)\n\ncase \"$APP_ID\" in\n  '') bad \"GOOGLE_APP_ID is missing\" ;;\n  1:*) printf '%s' \"$APP_ID\" | grep -qE '^1:[0-9]+:ios:[0-9a-fA-F]+$' || bad \"GOOGLE_APP_ID \\\"$APP_ID\\\" is not <1>:<project number>:ios:<hex bundle hash>\" ;;\n  *) printf '%s' \"$APP_ID\" | grep -qE '^[0-9]+:' || bad \"GOOGLE_APP_ID \\\"$APP_ID\\\" does not begin with a version number\" ;;\nesac\n\n[ \"${#API_KEY}\" -eq 39 ] || bad \"API_KEY must be exactly 39 characters, got ${#API_KEY}\"\ncase \"$API_KEY\" in A*) ;; *) bad \"API_KEY must start with 'A'\" ;; esac\nprintf '%s' \"$API_KEY\" | grep -qE '^[A-Za-z0-9_-]+$' || bad \"API_KEY must be base64url characters only\"\n[ -n \"$PROJECT_ID\" ] || bad \"PROJECT_ID is missing\"\n\nBUNDLE_ID=$(key BUNDLE_ID)\nif [ -n \"$BUNDLE_ID\" ] && [ \"$BUNDLE_ID\" != \"$PRODUCT_BUNDLE_IDENTIFIER\" ]; then\n  echo \"warning: GoogleService-Info.plist BUNDLE_ID is $BUNDLE_ID, not $PRODUCT_BUNDLE_IDENTIFIER; Firebase logs I-COR000008 and push will not deliver\"\nfi\n\ncp \"$SRC\" \"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleService-Info.plist\"\n";
 			showEnvVarsInLog = 0;
 		};
 		1608DAAAF6190A8882C69548 /* [CP] Check Pods Manifest.lock */ = {

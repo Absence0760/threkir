@@ -128,6 +128,40 @@ export const BACKGROUND_MODES = [
 	},
 ];
 
+/// The import that obliges the Google Sign-In redirect scheme, and the two
+/// shapes that scheme is checked for. Exported so the unit tests drive the
+/// same expressions the guard does rather than a second copy of them.
+export const GOOGLE_SIGN_IN_IMPORT = /package:google_sign_in\//;
+
+/// A reversed iOS OAuth client id, the only URL-scheme shape that is itself a
+/// credential.
+export const GOOGLE_REVERSED_SCHEME = /^com\.googleusercontent\.apps\./;
+
+/// The Runner build phase that appends that scheme to the built Info.plist.
+/// Matched on the two things the phase cannot do its job without — the key it
+/// reads and the array it appends to — rather than on its name, which is
+/// prose and renames freely.
+export const GOOGLE_REDIRECT_PHASE = /REVERSED_CLIENT_ID[\s\S]*?CFBundleURLTypes/;
+
+/// The import that obliges the operator's Firebase config to be validated at
+/// BUILD time rather than trusted at launch.
+export const FIREBASE_CORE_IMPORT = /package:firebase_core\//;
+
+/// The `GoogleService-Info.plist` fields that RAISE when malformed, and so
+/// cannot be left to the app to survive. `+[FLTFirebaseCorePlugin
+/// sharedInstance]` calls `+[FIRApp configureWithOptions:]` during plugin
+/// registration, before any Dart runs, so `initFirebaseForPush`'s try/catch is
+/// downstream of the failure: a bad field is an uncaught NSException and the
+/// process takes SIGABRT at launch. GOOGLE_APP_ID raises via `+[FIRApp
+/// validateAppID:]`; API_KEY and PROJECT_ID via `+[FIRInstallations
+/// validateAppOptions:appName:]`. An ABSENT file is a supported state and is
+/// deliberately not in this list.
+export const FIREBASE_VALIDATED_FIELDS = ['GOOGLE_APP_ID', 'API_KEY', 'PROJECT_ID'];
+
+/// The diagnostic the validating build phase emits. Matched instead of the
+/// phase's name, which is prose and renames freely.
+export const FIREBASE_VALIDATION_DIAGNOSTIC = /error: GoogleService-Info\.plist:/;
+
 /// A background mode allowed to stand with no rule claiming it. Empty today
 /// and expected to stay that way; the escape hatch exists so a genuinely
 /// undetectable capability can be admitted in writing rather than by widening
@@ -1009,6 +1043,92 @@ export function evaluate(input) {
 			);
 		} else if (Array.isArray(permitted) && permitted.includes(identifier)) {
 			ok.push(`background-sync identifier "${identifier}" agrees across Dart, plist and Swift`);
+		}
+	}
+
+	// --- The Firebase config, which cannot be checked at runtime -----------
+	// Every other rule here asks whether a capability is DECLARED. This one asks
+	// whether an operator-supplied credential is VALIDATED, because the window in
+	// which it could be validated is not the app's. See FIREBASE_VALIDATED_FIELDS.
+	if (firstMatch(dartSources, FIREBASE_CORE_IMPORT, root)) {
+		const pbx = pbxproj ?? '';
+		const unchecked = FIREBASE_VALIDATED_FIELDS.filter((f) => !pbx.includes(f));
+		if (!FIREBASE_VALIDATION_DIAGNOSTIC.test(pbx) || unchecked.length > 0) {
+			errors.push(
+				'`firebase_core` is imported, but no Runner build phase validates the ' +
+					`operator's GoogleService-Info.plist${
+						unchecked.length > 0 ? ` (unchecked: ${unchecked.join(', ')})` : ''
+					}.\n  Firebase configures during plugin registration, before any Dart ` +
+					'runs, so a malformed field aborts the process at launch and no Dart ' +
+					'try/catch can degrade it. Check the file in the phase that bundles ' +
+					'it, and fail the build there instead.',
+			);
+		} else {
+			ok.push(
+				`a Runner build phase validates ${FIREBASE_VALIDATED_FIELDS.join(', ')} ` +
+					'before bundling GoogleService-Info.plist ' +
+					'(apps/mobile_ios/lib/firebase_push_messaging.dart: `firebase_core` is imported)',
+			);
+		}
+	}
+
+	// --- The Google Sign-In redirect, which cannot be committed ------------
+	// GoogleSignIn hands the browser back through a custom URL scheme that IS
+	// the iOS OAuth client id reversed, and routes it via `handleURL:`. Every
+	// other declaration in this file is a claim ABOUT a credential; this one
+	// would BE one, and this repository is public. So the scheme is appended
+	// to the BUILT Info.plist by a Runner build phase reading the operator's
+	// untracked GoogleService-Info.plist, and both halves of that arrangement
+	// are checked: importing the plugin obliges the phase, and the credential
+	// must not have been written down here after all.
+	if (firstMatch(dartSources, GOOGLE_SIGN_IN_IMPORT, root)) {
+		const injects = GOOGLE_REDIRECT_PHASE.test(pbxproj ?? '');
+		if (!injects) {
+			errors.push(
+				'`google_sign_in` is imported, but no Runner build phase registers ' +
+					'the reversed-client-id URL scheme.\n  Expected a shell-script ' +
+					'phase reading `REVERSED_CLIENT_ID` out of GoogleService-Info.plist ' +
+					'and appending it to CFBundleURLTypes in the built Info.plist. ' +
+					'Without it GIDSignIn opens the browser and the redirect has ' +
+					'nowhere to land, so the flow hangs rather than failing.',
+			);
+		} else {
+			ok.push(
+				'a Runner build phase injects the Google Sign-In redirect scheme ' +
+					'(apps/mobile_ios/lib/google_auth.dart: `google_sign_in` is imported)',
+			);
+		}
+
+		const urlTypes = dictArray(infoPlist.get('CFBundleURLTypes'));
+		if (urlTypes === null) {
+			errors.push(
+				'Info.plist `CFBundleURLTypes` is present but is not an array of ' +
+					'dictionaries.\n  The Supabase auth deep link is declared through ' +
+					'it and nothing below can be read.',
+			);
+		} else {
+			const schemes = urlTypes.flatMap((entry) => {
+				const list = entry.get('CFBundleURLSchemes');
+				return Array.isArray(list) ? list.filter((v) => typeof v === 'string') : [];
+			});
+			const leaked = schemes.filter((v) => GOOGLE_REVERSED_SCHEME.test(v));
+			if (leaked.length > 0) {
+				errors.push(
+					`Info.plist commits the URL scheme(s) ${leaked.join(', ')}.\n` +
+						'  A reversed client id IS the iOS OAuth client id, and this ' +
+						'repository is public. The build phase injects it from the ' +
+						"operator's GoogleService-Info.plist; remove it from here.",
+				);
+			} else if (infoPlist.has('GIDClientID')) {
+				errors.push(
+					'Info.plist commits a `GIDClientID`.\n  That is the iOS OAuth ' +
+						'client id, and this repository is public. `google_sign_in_ios` ' +
+						"reads it from the operator's bundled GoogleService-Info.plist " +
+						'instead, which is why nothing has to be written down here.',
+				);
+			} else {
+				ok.push('Info.plist commits no Google OAuth client id');
+			}
 		}
 	}
 

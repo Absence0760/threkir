@@ -18140,5 +18140,33 @@
   "metricRpeDefinition": "Rate of perceived exertion — how hard a set felt, from 1 to 10. A 10 means you couldn't have done one more rep.",
   "@metricRpeDefinition": {
     "description": "Plain-English definition of RPE, shown in its disclosure"
+  },
+  "bleUnavailableOff": "Bluetooth is off — turn it on to use your heart-rate strap.",
+  "@bleUnavailableOff": {
+    "description": "Shown when the Bluetooth radio is switched off, on the strap pairing sheet and the run-screen banner"
+  },
+  "bleUnavailableDenied": "Threkir isn't allowed to use Bluetooth. Allow it in Settings to use a heart-rate strap.",
+  "@bleUnavailableDenied": {
+    "description": "Shown when the app has been denied the Bluetooth permission; on iOS only the Settings app can reverse this"
+  },
+  "bleUnavailableUnsupported": "This phone doesn't support Bluetooth LE, so a heart-rate strap can't be used.",
+  "@bleUnavailableUnsupported": {
+    "description": "Shown when the device has no Bluetooth LE hardware"
+  },
+  "bleUnavailableLocationOff": "Turn on Location services so Android can scan for your heart-rate strap.",
+  "@bleUnavailableLocationOff": {
+    "description": "Shown on Android when Location services are off, which blocks a BLE scan"
+  },
+  "bleUnavailableUnknown": "Bluetooth didn't respond. Try again in a moment.",
+  "@bleUnavailableUnknown": {
+    "description": "Shown when the Bluetooth adapter never reported its state in time"
+  },
+  "bleOpenSettings": "Open settings",
+  "@bleOpenSettings": {
+    "description": "Button that opens the OS settings page for the app so the Bluetooth permission can be granted"
+  },
+  "bleScanRetry": "Scan again",
+  "@bleScanRetry": {
+    "description": "Button on the strap pairing sheet that restarts the scan after a refusal that could clear on its own"
   }
 }

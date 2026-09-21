@@ -3917,6 +3917,16 @@ jobs:
       # settled device.
       - name: Boot the simulator and wait for it to settle
         run: xcrun simctl bootstatus "${{ steps.watch-sim.outputs.udid }}" -b
+      # `CODE_SIGNING_ALLOWED=NO` leaves the app with no entitlements at all,
+      # and an app with no `application-identifier` cannot reach the Keychain
+      # even on a simulator: `SecItemAdd` answers errSecMissingEntitlement and
+      # every WatchSessionStore assertion fails. Ad-hoc signing (`-`) needs no
+      # certificate, no team and no provisioning profile for a simulator
+      # destination, and it applies the entitlements file — so the Keychain
+      # round trip is exercised here rather than skipped. Skipping it would
+      # leave the one path claim (14) of check_watch_ios_source.mjs exists to
+      # protect — a shipped password grant keeping its session out of
+      # `UserDefaults` — permanently untested on the only job that compiles it.
       - name: Run WatchAppTests
         run: |
           xcodebuild test \
@@ -3924,7 +3934,7 @@ jobs:
             -scheme WatchApp \
             -destination "platform=watchOS Simulator,id=${{ steps.watch-sim.outputs.udid }}" \
             -resultBundlePath WatchAppTests.xcresult \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
       - name: Upload test result bundle on failure
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

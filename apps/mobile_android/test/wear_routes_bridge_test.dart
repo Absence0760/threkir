@@ -174,6 +174,38 @@ void main() {
       expect(ids, {'starred-1', 'starred-2'});
     });
 
+    test('never pushes a starred route owned by somebody else', () async {
+      // The same privacy-zone leak the Apple bridge had, and older: the
+      // Wear push has always sent `Route.waypoints` raw. `is_starred` is
+      // per-owner curation the public view drops (20260703_001), so this
+      // row's star belongs to its owner, not to the runner holding this
+      // phone. Asserted on the CHANNEL payload, because the helper being
+      // correct says nothing about whether `_push` calls it.
+      store.currentUserIdProvider = () => 'uid';
+      await store.save(_makeRoute(id: 'mine', isStarred: true));
+      await store.save(
+        Route(
+          id: 'theirs',
+          userId: 'someone-else',
+          name: 'theirs',
+          distanceMetres: 5000,
+          isStarred: true,
+          waypoints: const [
+            Waypoint(lat: 47.37, lng: 8.54),
+            Waypoint(lat: 47.371, lng: 8.541),
+          ],
+        ),
+      );
+
+      WearRoutesBridge().attach(store);
+      await Future<void>.delayed(Duration.zero);
+
+      final payload = jsonDecode(
+        channel.pushCalls.last['routes_json'] as String,
+      ) as List;
+      expect(payload.map((r) => (r as Map)['id']).toList(), ['mine']);
+    });
+
     test('empty starred list still pushes — lets the watch clear its cache',
         () async {
       // No starred routes; only a plain one.

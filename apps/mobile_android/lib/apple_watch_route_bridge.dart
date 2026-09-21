@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter/services.dart';
 
 import 'local_route_store.dart';
+import 'watch_route_visibility.dart';
 import 'route_simplify.dart' show simplifyToBudget;
 
 /// Positions one Apple Watch route push may carry. Must match
@@ -323,7 +324,9 @@ class AppleWatchRouteBridge {
   }
 
   Future<void> _pushStore(LocalRouteStore store) async {
-    final payload = encodeSavedRoutesForWatch(store.routes);
+    final payload = encodeSavedRoutesForWatch(
+      routesVisibleToWatch(store.routes, store.currentUserIdProvider),
+    );
     final encoded = jsonEncode(payload);
     if (encoded == _lastPushedSavedRoutes) return;
     if (await pushSavedRoutes(payload)) _lastPushedSavedRoutes = encoded;

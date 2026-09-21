@@ -365,6 +365,36 @@ void main() {
       expect((routes.single as Map)['route_id'], 'starred');
     });
 
+    test('never pushes a starred route owned by somebody else', () async {
+      // The privacy-zone leak: `is_starred` is per-owner curation the public
+      // view drops (20260703_001), so another owner's star is not this
+      // runner's, and the bridge sent `Route.waypoints` raw where the
+      // single-route push clips for a non-owner. Asserted at the CHANNEL,
+      // not on the helper, because the helper being right proves nothing
+      // about whether `_pushStore` calls it.
+      store.currentUserIdProvider = () => 'uid';
+      await store.save(_route(id: 'mine', starred: true));
+      await store.save(
+        Route(
+          id: 'theirs',
+          userId: 'someone-else',
+          name: 'theirs',
+          waypoints: _line(4),
+          distanceMetres: 1000,
+          isStarred: true,
+        ),
+      );
+
+      bridge.attach(store);
+      await Future<void>.delayed(Duration.zero);
+
+      final routes = saved().last['saved_routes'] as List;
+      expect(
+        [for (final r in routes) (r as Map)['route_id']],
+        ['mine'],
+      );
+    });
+
     test('pushes again when a route is starred', () async {
       bridge.attach(store);
       await Future<void>.delayed(Duration.zero);

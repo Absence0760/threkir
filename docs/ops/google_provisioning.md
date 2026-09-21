@@ -19,7 +19,7 @@ nothing with this one but the Supabase pages at the end.
 
 ## Status
 
-Last moved: **2026-09-20**.
+Last moved: **2026-09-21**.
 
 | # | Artifact | Where it ends up | State |
 |---|---|---|---|
@@ -29,9 +29,9 @@ Last moved: **2026-09-20**.
 | 3 | **Android** OAuth client, one per SHA-1 | Google console only — no id to copy | ☐ |
 | 4 | **iOS** OAuth client | `Runner/Info.plist` (step 10) | ☐ — defer to step 10, same hands |
 | 5 | Web client id + secret backed up | estate `threkir/push-credentials.sops.yaml` | **Done 2026-09-20** — `google_oauth_web_client_id` + `_secret` |
-| 6 | Supabase Google provider enabled | Supabase dashboard | ☐ |
-| 7 | Site URL, Redirect URLs, manual linking | Supabase dashboard | ☐ |
-| 8 | `PUBLIC_GOOGLE_AUTH_ENABLED` truthy + `web@` tag | GitHub secret + release | ☐ |
+| 6 | Supabase Google provider enabled | Supabase dashboard | **Done 2026-09-21** — `/auth/v1/authorize?provider=google` 302s to accounts.google.com with `scope=email profile` |
+| 7 | Site URL, Redirect URLs, manual linking | Supabase dashboard | **Done 2026-09-21** |
+| 8 | `PUBLIC_GOOGLE_AUTH_ENABLED` truthy + `web@` tag | GitHub secret + release | **Half** — secret set and `web@1.8.0` published 2026-09-21; the deploy is parked on the `production` environment's reviewer gate |
 | 9 | `MOBILE_GOOGLE_WEB_CLIENT_ID` + `mobile_android@` tag | GitHub secret + release | ☐ |
 | 10 | iOS `GIDClientID` + reversed-id URL scheme | `Runner/Info.plist` | ☐ — **code, and Mac-only** |
 
@@ -213,7 +213,12 @@ doing them for one provider does most of the work for the other.
 The web code is done and fail-closed; there is no diff to write.
 
 1. Set the repo secret **`PUBLIC_GOOGLE_AUTH_ENABLED`** to `true`.
-2. Cut a **`web@<version>`** tag.
+2. Publish a **`web@<version>`** GitHub *Release* — a bare tag push deploys
+   nothing ([`releasing.md`](releasing.md)).
+3. **Approve the deployment.** The job declares `environment: production`,
+   which carries a required-reviewer rule, so the run parks at `waiting` until
+   a human clicks *Review deployments → Approve and deploy*. A re-run resets
+   the gate and needs approving again.
 
 Both are needed. `release-web.yml` writes `apps/web/.env` from its own `env:`
 block and the build reads nothing else, so the secret alone changes nothing —
@@ -233,9 +238,20 @@ every respect.
 
 ## 9. Turn the Android button on
 
-1. Set the repo secret **`MOBILE_GOOGLE_WEB_CLIENT_ID`** to the **web** client
-   id from step 2 — not the Android one, which has no id at all.
-2. Tag **`mobile_android@<version>`**.
+1. Set **`MOBILE_GOOGLE_WEB_CLIENT_ID`** to the **web** client id from step 2 —
+   not the Android one, which has no id at all. Put it on the **`production`
+   environment**, where `MOBILE_SUPABASE_URL` and the four `ANDROID_KEYSTORE_*`
+   values already live, not at repo level.
+2. Publish a **`mobile_android@<version>`** Release, and approve it at the same
+   gate as step 8.
+
+**Repository secrets and environment secrets are two different lists**, and
+`gh secret list` shows only the first unless you pass `--env production`. A
+session reading the short list concluded the Android release was unsignable for
+want of `ANDROID_KEYSTORE_BASE64`, which has been set since July — on the
+environment. A job with an `environment:` sees both lists, so a repo-level
+value still resolves; the reason to match the neighbours is that the next
+person to audit the list will read the same short one.
 
 `sign_in_screen.dart` reads the value through `dotenv` and shows the
 `googleSignInSoon` notice while it is empty, so a build made before the secret

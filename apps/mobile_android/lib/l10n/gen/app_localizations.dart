@@ -23648,6 +23648,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open settings'**
   String get bleOpenSettings;
+
+  /// Button on the strap pairing sheet that restarts the scan after a refusal that could clear on its own
+  ///
+  /// In en, this message translates to:
+  /// **'Scan again'**
+  String get bleScanRetry;
 }
 
 class _AppLocalizationsDelegate

@@ -13627,4 +13627,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get bleOpenSettings => '設定を開く';
+
+  @override
+  String get bleScanRetry => 'もう一度検索';
 }

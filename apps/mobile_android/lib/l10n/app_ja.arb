@@ -4129,5 +4129,6 @@
   "bleUnavailableUnsupported": "この端末は Bluetooth LE に対応していないため、心拍ストラップは使用できません。",
   "bleUnavailableLocationOff": "Android が心拍ストラップを検索できるように、位置情報サービスをオンにしてください。",
   "bleUnavailableUnknown": "Bluetooth が応答しませんでした。少し経ってからもう一度お試しください。",
-  "bleOpenSettings": "設定を開く"
+  "bleOpenSettings": "設定を開く",
+  "bleScanRetry": "もう一度検索"
 }

@@ -14324,4 +14324,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get bleOpenSettings => 'Ouvrir les réglages';
+
+  @override
+  String get bleScanRetry => 'Relancer la recherche';
 }

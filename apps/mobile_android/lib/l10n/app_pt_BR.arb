@@ -4129,5 +4129,6 @@
   "bleUnavailableUnsupported": "Este celular não suporta Bluetooth LE, então não é possível usar uma cinta cardíaca.",
   "bleUnavailableLocationOff": "Ative a localização para que o Android possa procurar sua cinta cardíaca.",
   "bleUnavailableUnknown": "O Bluetooth não respondeu. Tente novamente daqui a pouco.",
-  "bleOpenSettings": "Abrir configurações"
+  "bleOpenSettings": "Abrir configurações",
+  "bleScanRetry": "Procurar novamente"
 }

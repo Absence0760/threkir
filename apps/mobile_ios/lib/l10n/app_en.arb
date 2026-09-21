@@ -18164,5 +18164,9 @@
   "bleOpenSettings": "Open settings",
   "@bleOpenSettings": {
     "description": "Button that opens the OS settings page for the app so the Bluetooth permission can be granted"
+  },
+  "bleScanRetry": "Scan again",
+  "@bleScanRetry": {
+    "description": "Button on the strap pairing sheet that restarts the scan after a refusal that could clear on its own"
   }
 }

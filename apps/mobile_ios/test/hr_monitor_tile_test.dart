@@ -17,12 +17,14 @@ class _FakeHeartRate extends BleHeartRate {
   /// When set, [scan] refuses with this reason instead of producing
   /// candidates — the shape a real adapter takes when the radio is off or
   /// the grant was denied, neither of which a test machine can reproduce.
-  final BleReadiness? scanRefusal;
+  BleReadiness? scanRefusal;
+  int scanCalls = 0;
 
   @override
   Stream<List<BleDeviceCandidate>> scan({
     Duration timeout = const Duration(seconds: 8),
   }) {
+    scanCalls++;
     final reason = scanRefusal;
     if (reason == null) return const Stream.empty();
     return Stream<List<BleDeviceCandidate>>.error(BleUnavailable(reason));
@@ -138,6 +140,47 @@ void main() {
     // Only a denied grant is fixable on the app's settings page; the radio
     // toggle is not somewhere the app can deep-link to.
     expect(find.widgetWithText(FilledButton, 'Open settings'), findsNothing);
+    // But the runner can flip it in Control Centre and come back, so the
+    // named reason comes with the control that acts on it.
+    expect(find.widgetWithText(FilledButton, 'Scan again'), findsOneWidget);
+  });
+
+  testWidgets('scanning again after the radio comes back re-runs the scan',
+      (tester) async {
+    final hr = _FakeHeartRate(scanRefusal: BleReadiness.poweredOff);
+    await tester.pumpWidget(_host(hr));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('No strap paired — tap to scan'));
+    await tester.pumpAndSettle();
+    expect(hr.scanCalls, 1);
+
+    // The runner turns the radio on in Control Centre and comes back.
+    hr.scanRefusal = null;
+    await tester.tap(find.widgetWithText(FilledButton, 'Scan again'));
+    await tester.pumpAndSettle();
+
+    expect(hr.scanCalls, 2);
+    // The refusal is cleared, not layered under the new result.
+    expect(
+      find.text('Bluetooth is off — turn it on to use your heart-rate strap.'),
+      findsNothing,
+    );
+    expect(find.widgetWithText(FilledButton, 'Scan again'), findsNothing);
+    expect(find.text("No straps found. Make sure it's nearby and awake."),
+        findsOneWidget);
+  });
+
+  testWidgets('a denied grant is never offered a rescan that cannot help',
+      (tester) async {
+    final hr = _FakeHeartRate(scanRefusal: BleReadiness.unauthorized);
+    await tester.pumpWidget(_host(hr));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('No strap paired — tap to scan'));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(FilledButton, 'Scan again'), findsNothing);
   });
 
   testWidgets('a served scan that finds nothing still says "no straps found"',

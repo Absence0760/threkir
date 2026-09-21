@@ -4129,5 +4129,6 @@
   "bleUnavailableUnsupported": "Ce téléphone ne prend pas en charge le Bluetooth LE, une ceinture cardio ne peut donc pas être utilisée.",
   "bleUnavailableLocationOff": "Active la localisation pour qu'Android puisse rechercher ta ceinture cardio.",
   "bleUnavailableUnknown": "Le Bluetooth n'a pas répondu. Réessaie dans un instant.",
-  "bleOpenSettings": "Ouvrir les réglages"
+  "bleOpenSettings": "Ouvrir les réglages",
+  "bleScanRetry": "Relancer la recherche"
 }

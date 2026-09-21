@@ -14291,6 +14291,9 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get bleOpenSettings => 'Abrir definições';
+
+  @override
+  String get bleScanRetry => 'Procurar novamente';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -28571,4 +28574,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get bleOpenSettings => 'Abrir configurações';
+
+  @override
+  String get bleScanRetry => 'Procurar novamente';
 }

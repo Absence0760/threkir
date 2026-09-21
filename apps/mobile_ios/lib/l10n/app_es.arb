@@ -4129,5 +4129,6 @@
   "bleUnavailableUnsupported": "Este teléfono no admite Bluetooth LE, así que no se puede usar una banda de FC.",
   "bleUnavailableLocationOff": "Activa la ubicación para que Android pueda buscar tu banda de FC.",
   "bleUnavailableUnknown": "El Bluetooth no respondió. Inténtalo de nuevo en un momento.",
-  "bleOpenSettings": "Abrir ajustes"
+  "bleOpenSettings": "Abrir ajustes",
+  "bleScanRetry": "Buscar de nuevo"
 }

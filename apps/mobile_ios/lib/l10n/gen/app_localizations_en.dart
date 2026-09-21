@@ -14144,4 +14144,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bleOpenSettings => 'Open settings';
+
+  @override
+  String get bleScanRetry => 'Scan again';
 }

@@ -4129,5 +4129,6 @@
   "bleUnavailableUnsupported": "Dieses Telefon unterstützt kein Bluetooth LE, ein Herzfrequenzgurt ist daher nicht möglich.",
   "bleUnavailableLocationOff": "Aktiviere die Standortdienste, damit Android nach deinem Herzfrequenzgurt suchen kann.",
   "bleUnavailableUnknown": "Bluetooth hat nicht geantwortet. Versuche es gleich noch einmal.",
-  "bleOpenSettings": "Einstellungen öffnen"
+  "bleOpenSettings": "Einstellungen öffnen",
+  "bleScanRetry": "Erneut suchen"
 }

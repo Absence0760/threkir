@@ -815,6 +815,18 @@ class _HeartRateScanSheetState extends State<_HeartRateScanSheet> {
   @override
   void initState() {
     super.initState();
+    _startScan();
+  }
+
+  /// Start (or restart) the scan. Re-entrant: the previous subscription is
+  /// cancelled first, which is what stops the old scan in the transport.
+  void _startScan() {
+    _sub?.cancel();
+    setState(() {
+      _results = const [];
+      _scanning = true;
+      _unavailable = null;
+    });
     _sub = widget.heartRate.scan().listen(
       (list) {
         if (mounted) setState(() => _results = list);
@@ -895,12 +907,25 @@ class _HeartRateScanSheetState extends State<_HeartRateScanSheet> {
                       l10n.bleUnavailableUnknown,
                 ),
               ),
+              // A named reason the runner cannot act on is only half the
+              // fix, so each one carries the control that matches it: the
+              // Settings app for a denied grant, another scan for a reason
+              // that could clear on its own, and nothing at all for a phone
+              // with no BLE radio.
               if (bleReadinessNeedsAppSettings(_unavailable!))
                 Align(
                   alignment: Alignment.centerLeft,
                   child: FilledButton.tonal(
                     onPressed: _openAppSettings,
                     child: Text(l10n.bleOpenSettings),
+                  ),
+                )
+              else if (bleReadinessIsRetryable(_unavailable!))
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: FilledButton.tonal(
+                    onPressed: _startScan,
+                    child: Text(l10n.bleScanRetry),
                   ),
                 ),
             ] else if (_results.isEmpty && !_scanning)

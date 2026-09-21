@@ -15,7 +15,8 @@ duplicate.
 that does the step; every other doc points here rather than restating. The
 design record is [`web_app_auth.md`](../features/web_app_auth.md). Its Apple
 sibling is [`apple_provisioning.md`](apple_provisioning.md), which shares
-nothing with this one but the Supabase pages at the end.
+nothing with this one but the Supabase pages and the release mechanic at the
+end.
 
 ## Status
 
@@ -205,8 +206,11 @@ Same dashboard, **URL Configuration**:
 And on the Providers page, **Allow manual linking** — without it **Link
 Google** on `/settings/account` fails with `manual_linking_disabled`.
 
-Steps 6 and 7 are shared with [`apple_provisioning.md`](apple_provisioning.md);
-doing them for one provider does most of the work for the other.
+Step 7 is **project-wide, not per-provider**, so doing it here finished it for
+Apple as well — [`apple_provisioning.md`](apple_provisioning.md) ticks it on
+this date and does not repeat it. Step 6 is the per-provider half, and its
+Apple twin differs in the one way that matters: Apple's client secret is a JWT
+signed with a `.p8`, capped at six months, not a static string.
 
 ## 8. Turn the web button on
 

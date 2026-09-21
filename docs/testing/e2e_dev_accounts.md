@@ -67,9 +67,22 @@ If you want to wire any of the below up, here's exactly what to create. Until th
 - Authorized redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback` (prod), `http://localhost:54321/auth/v1/callback` (local).
 - Paste the Web client id into Supabase Dashboard → Authentication → Providers → Google → Authorized Client IDs.
 
+**Status today: the web half is provisioned and live.** Consent screen, the web
+OAuth client, the Supabase `google` provider and the URL configuration all
+landed 2026-09-20/21, and `web@1.8.0` shipped `PUBLIC_GOOGLE_AUTH_ENABLED`
+truthy on 2026-09-21 — `curl -sS https://threkir.com/_app/env.js` serves it as
+`"true"`, and `/auth/v1/authorize?provider=google` 302s to Google. What is
+still outstanding is the **Android** OAuth client (one per signing SHA-1) plus
+`MOBILE_GOOGLE_WEB_CLIENT_ID` and a `mobile_android@` Release, and on **iOS** a
+`GIDClientID` + reversed-client-id URL scheme in `Runner/Info.plist` — that
+last one is code and Mac-only, so no credential reaches it. The ledger that
+tracks all of it is [`google_provisioning.md`](../ops/google_provisioning.md);
+the account this section is about is now only wanted for the manual identity
+check below.
+
 **What you can test once configured:**
 - E2E: button click → real Google account picker → return to /dashboard.
-- Stub mode (today): we can test the button renders + click handler is wired, but not the post-Google return.
+- Local / CI: the button renders and the click handler is wired, and the mock-OIDC lane below covers everything downstream of the redirect. The real account picker stays a manual check.
 
 **Already covered by the mock-OIDC lane (`e2e-web-sso`, 2026-06-10):** the entire OAuth path *downstream of the provider redirect* — `signInWithOAuth` → GoTrue authorize → callback `?code` → `exchangeCodeForSession` → real Supabase session → the `/auth/confirm-age` age/terms gate → the app — is exercised end-to-end against a local `oauth2-mock-server`. GoTrue special-cases `google`/`apple` (validates them against the real providers), so the mock stands in as the generic `keycloak` provider; the **only** un-exercised piece is the provider *identity* (a literal Google account picker). See `apps/web/tests-e2e/sso/README.md`. A real Google dev account is therefore needed **only** for that final identity check, not for the callback/session/age-gate code.
 
@@ -335,7 +348,7 @@ Nothing here is Supabase Auth configuration — push is a consumer of the `notif
 If your goal is "get the e2e suite to cover everything", the **best ROI** is:
 
 1. **Stripe + RevenueCat sandbox** — frees up the entire paywall flow (about a day of e2e wiring).
-2. **Google Cloud OAuth credentials** — Google Sign-In, ~15 min to configure.
+2. ~~**Google Cloud OAuth credentials**~~ — **done for web 2026-09-21** (§ 1). The Android and iOS legs are still open; [`google_provisioning.md`](../ops/google_provisioning.md) is the ledger.
 3. **Anthropic API key** — Coach real-mode if you ever want to verify the model response shape against fresh Anthropic releases.
 
 If your goal is "ship to international" without further e2e investment, the **existing coverage is already strong** — the gaps are:

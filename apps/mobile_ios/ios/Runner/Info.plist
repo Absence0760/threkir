@@ -123,7 +123,17 @@
 	     supabase_flutter's app_links listener catches it and completes
 	     the PKCE session in-app. Scheme must match
 	     ApiClient.kAuthDeepLinkRedirect, the Android manifest
-	     intent-filter, AND the Auth -> Redirect URLs allow-list. -->
+	     intent-filter, AND the Auth -> Redirect URLs allow-list.
+
+	     This is the only scheme committed here. Google Sign-In needs a second
+	     one -- the iOS OAuth client id reversed, which GIDSignIn hands the
+	     browser back through -- and that string IS the credential, so in a
+	     public repo it cannot be written down. The Runner target's "Copy
+	     Firebase config and register the Google redirect scheme" build phase
+	     appends it to the BUILT Info.plist from the operator's untracked
+	     GoogleService-Info.plist, after this entry. A build without that file
+	     registers nothing and google_auth.dart renders no Google button, so
+	     the claim and the capability arrive together. decisions.md. -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

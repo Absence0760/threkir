@@ -8,6 +8,9 @@ import {
 	APS_SUBSTITUTION,
 	BACKGROUND_MODES,
 	ENTITLEMENTS,
+	GOOGLE_REDIRECT_PHASE,
+	GOOGLE_REVERSED_SCHEME,
+	GOOGLE_SIGN_IN_IMPORT,
 	IOS_ROOT,
 	PRIVACY_API_TYPES,
 	PRIVACY_DATA_TYPES,
@@ -582,6 +585,124 @@ test('a usage string named in FIXED_PLIST_KEYS is claimed by that admission', ()
 
 test('the committed ios/Runner tree is not empty, so the Swift rules have a subject', () => {
 	assert.ok(collectSwiftSources().length > 0);
+});
+
+// --- the Google Sign-In redirect --------------------------------------------
+// The scheme is a credential, so unlike every other declaration here it is
+// injected into the BUILT plist rather than committed. Both directions matter:
+// the phase has to exist while the plugin does, and the credential must not
+// turn up in the source tree after all.
+
+// The baseline's own Dart plus the import, not instead of it: replacing the
+// source set would delete the TTS and push derivations the baseline's plist
+// and privacy manifest are checked against, and every assertion below would
+// then be reading those failures.
+const GOOGLE_DART =
+	'IosTextToSpeechAudioCategory.playback\n' +
+	"import 'package:firebase_messaging/x.dart';\n" +
+	"import 'package:google_sign_in/google_sign_in.dart';";
+
+const PBX_WITH_GOOGLE_PHASE =
+	PBX +
+	'\t\t\tshellScript = "REVERSED=$(PlistBuddy -c \\"Print :REVERSED_CLIENT_ID\\" ...)' +
+	'\\nplutil -insert CFBundleURLTypes -json ... -append $INFO";\n';
+
+/** @param {string[]} schemes */
+const urlTypes = (schemes) => [
+	new Map(/** @type {[string, unknown][]} */ ([
+		['CFBundleURLName', 'com.threkir.app.auth'],
+		['CFBundleURLSchemes', schemes],
+	])),
+];
+
+test('importing google_sign_in with no redirect-injecting build phase fails', () => {
+	const { errors } = evaluate(
+		baseline({ dartSources: dart(GOOGLE_DART), pbxproj: PBX }),
+	);
+	assert.equal(
+		errors.filter((e) => e.includes('reversed-client-id URL scheme')).length,
+		1,
+	);
+});
+
+test('the build phase satisfies the rule the import obliges', () => {
+	const { errors } = evaluate(
+		baseline({ dartSources: dart(GOOGLE_DART), pbxproj: PBX_WITH_GOOGLE_PHASE }),
+	);
+	assert.deepEqual(errors, []);
+});
+
+test('deleting the google_sign_in import deletes the phase requirement with it', () => {
+	const { errors, ok } = evaluate(baseline({ pbxproj: PBX }));
+	assert.deepEqual(errors, []);
+	assert.equal(ok.filter((o) => o.includes('redirect scheme')).length, 0);
+});
+
+test('a reversed client id committed to Info.plist is an error, not a convenience', () => {
+	const { errors } = evaluate(
+		baseline({
+			dartSources: dart(GOOGLE_DART),
+			pbxproj: PBX_WITH_GOOGLE_PHASE,
+			infoPlist: plistWith(
+				'CFBundleURLTypes',
+				urlTypes(['com.threkir.app', 'com.googleusercontent.apps.111-aaa']),
+			),
+		}),
+	);
+	assert.equal(
+		errors.filter((e) => e.includes('com.googleusercontent.apps.111-aaa')).length,
+		1,
+	);
+});
+
+test('the Supabase scheme alone is not mistaken for a credential', () => {
+	const { errors } = evaluate(
+		baseline({
+			dartSources: dart(GOOGLE_DART),
+			pbxproj: PBX_WITH_GOOGLE_PHASE,
+			infoPlist: plistWith('CFBundleURLTypes', urlTypes(['com.threkir.app'])),
+		}),
+	);
+	assert.deepEqual(errors, []);
+});
+
+test('a committed GIDClientID is an error', () => {
+	const { errors } = evaluate(
+		baseline({
+			dartSources: dart(GOOGLE_DART),
+			pbxproj: PBX_WITH_GOOGLE_PHASE,
+			infoPlist: plistWith('GIDClientID', '111-aaa.apps.googleusercontent.com'),
+		}),
+	);
+	assert.equal(errors.filter((e) => e.includes('GIDClientID')).length, 1);
+});
+
+test('a CFBundleURLTypes that is not an array of dicts reports rather than throwing', () => {
+	const { errors } = evaluate(
+		baseline({
+			dartSources: dart(GOOGLE_DART),
+			pbxproj: PBX_WITH_GOOGLE_PHASE,
+			infoPlist: plistWith('CFBundleURLTypes', 'com.threkir.app'),
+		}),
+	);
+	assert.equal(errors.filter((e) => e.includes('array of')).length, 1);
+});
+
+test('the Google patterns read the committed tree the way the guard claims', () => {
+	assert.ok(
+		collectDartSources().some((s) => GOOGLE_SIGN_IN_IMPORT.test(s.text)),
+		'no committed Dart imports google_sign_in — the rule is inert',
+	);
+	assert.ok(
+		GOOGLE_REDIRECT_PHASE.test(
+			readFileSync(join(IOS_ROOT, 'Runner.xcodeproj/project.pbxproj'), 'utf-8'),
+		),
+		'no build phase reads REVERSED_CLIENT_ID into CFBundleURLTypes',
+	);
+	// The leak detector's subject is meant to be absent. Asserting that here
+	// keeps it from being the one pattern nothing ever exercises.
+	assert.ok(GOOGLE_REVERSED_SCHEME.test('com.googleusercontent.apps.111-aaa'));
+	assert.ok(!GOOGLE_REVERSED_SCHEME.test('com.threkir.app'));
 });
 
 // --- the committed tree -----------------------------------------------------

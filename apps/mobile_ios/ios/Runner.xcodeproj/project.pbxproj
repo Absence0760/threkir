@@ -340,6 +340,7 @@
 				7884EA002B2EC3CC00C636F4 /* Embed Watch Content */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				35962F30FA7EE92CA151D686 /* [CP] Embed Pods Frameworks */,
+				7884EA042EC3CC0A00C636F6 /* Register the Google Sign-In redirect scheme */,
 			);
 			buildRules = (
 			);
@@ -455,6 +456,23 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		7884EA042EC3CC0A00C636F6 /* Register the Google Sign-In redirect scheme */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)",
+			);
+			name = "Register the Google Sign-In redirect scheme";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# GoogleSignIn hands the browser back through a custom URL scheme that IS the iOS\n# OAuth client id reversed, and routes it via handleURL:. That scheme cannot live in\n# the committed Info.plist for the same reason GoogleService-Info.plist itself cannot\n# -- it is the credential, and this repo is public. So it is appended to the BUILT\n# Info.plist from the operator's file; -append leaves the Supabase auth entry at index\n# 0 alone. No file, or a Firebase app with Google Sign-In switched off (which ships no\n# REVERSED_CLIENT_ID), registers nothing, and google_auth.dart hides the button off\n# that same absence, so the button and the redirect it needs arrive together.\n#\n# It is a phase of its own, last, because ProcessInfoPlistFile regenerates\n# Runner.app/Info.plist from the source file and would overwrite an earlier edit --\n# measured, having first written this into the Firebase phase above. The built plist\n# is declared as an input so the ordering is a dependency rather than a position.\n# decisions.md.\nSRC=\"${SRCROOT}/Runner/GoogleService-Info.plist\"\nINFO=\"${BUILT_PRODUCTS_DIR}/${INFOPLIST_PATH}\"\nREVERSED=$(/usr/libexec/PlistBuddy -c \"Print :REVERSED_CLIENT_ID\" \"$SRC\" 2>/dev/null) || REVERSED=\"\"\nif [ -z \"$REVERSED\" ]; then\n  echo \"note: no REVERSED_CLIENT_ID; building without the Google Sign-In redirect scheme\"\nelif [ ! -f \"$INFO\" ]; then\n  echo \"error: $INFO does not exist; the Google Sign-In redirect scheme cannot be registered\"\n  exit 1\nelif plutil -extract CFBundleURLTypes json -o - \"$INFO\" 2>/dev/null | grep -q \"$REVERSED\"; then\n  echo \"note: Google Sign-In redirect scheme already registered\"\nelse\n  JSON=$(printf '{\"CFBundleTypeRole\":\"Editor\",\"CFBundleURLName\":\"com.threkir.app.google\",\"CFBundleURLSchemes\":[\"%s\"]}' \"$REVERSED\")\n  plutil -insert CFBundleURLTypes -json \"$JSON\" -append \"$INFO\"\n  echo \"note: registered the Google Sign-In redirect scheme from GoogleService-Info.plist\"\nfi\n";
+			showEnvVarsInLog = 0;
+		};
 		7884EA032EC3CC0A00C636F5 /* Copy Firebase config if present */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;

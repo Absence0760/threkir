@@ -18,6 +18,8 @@ struct ContentView: View {
                         auth: auth,
                         queuedCount: connectivity.queuedCount,
                         armedRoute: connectivity.armedRoute,
+                        savedRoutes: connectivity.savedRoutes,
+                        onPickRoute: connectivity.armRoute,
                         onClearRoute: connectivity.clearArmedRoute,
                         onStart: { countingDown = true }
                     )
@@ -243,10 +245,13 @@ struct PreRunView: View {
     @ObservedObject var auth: WatchAuth
     let queuedCount: Int
     let armedRoute: ArmedRoute?
+    let savedRoutes: [ArmedRoute]
+    let onPickRoute: (ArmedRoute) -> Void
     let onClearRoute: () -> Void
     let onStart: () -> Void
     @State private var selectedPaceIndex: Int? = nil
     @State private var showingAccount = false
+    @State private var pickingRoute = false
 
     var body: some View {
         ScrollView {
@@ -260,11 +265,16 @@ struct PreRunView: View {
                         .foregroundColor(.secondary)
                 }
 
-                if let route = armedRoute {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Route")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                // The picker entry stands whether or not a route is armed, and
+                // whether or not the phone has pushed a list yet: an
+                // affordance that appears only once routes exist is one a
+                // runner never learns is there, and the reason an empty list
+                // is empty belongs on the picker, where it can be read.
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Route")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    if let route = armedRoute {
                         Text(route.name)
                             .font(.caption)
                             .foregroundColor(AppTheme.lilac)
@@ -277,8 +287,15 @@ struct PreRunView: View {
                             .buttonStyle(.plain)
                             .accessibilityHint("Removes the route your iPhone sent, so the next run is unguided")
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Button(armedRoute == nil ? "Choose route" : "Change route") {
+                        pickingRoute = true
+                    }
+                    .font(.caption2)
+                    .buttonStyle(.plain)
+                    .foregroundColor(AppTheme.lilac)
+                    .accessibilityHint("Opens the routes you starred, to follow one on this run")
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Activity")
@@ -365,6 +382,75 @@ struct PreRunView: View {
         }
         .sheet(isPresented: $showingAccount) {
             SignInView(auth: auth, onDone: { showingAccount = false })
+        }
+        .sheet(isPresented: $pickingRoute) {
+            RoutePickerView(
+                routes: savedRoutes,
+                selectedId: armedRoute?.id,
+                onPick: onPickRoute,
+                onClear: onClearRoute
+            )
+        }
+    }
+}
+
+/// The starred routes the phone pushed, as a list the runner arms one from on
+/// the wrist. Mirrors Wear OS's `RoutePickerScreen`: tap a route to follow it,
+/// "None" to run unguided.
+///
+/// Neither choice destroys anything — the list is the phone's and both are one
+/// tap from being undone here — so by `conventions.md` § Destructive actions
+/// neither earns a confirmation.
+struct RoutePickerView: View {
+    let routes: [ArmedRoute]
+    let selectedId: String?
+    let onPick: (ArmedRoute) -> Void
+    let onClear: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        List {
+            Text("Route")
+                .font(.headline)
+
+            Button("No route") {
+                onClear()
+                dismiss()
+            }
+            .font(.caption)
+            .foregroundColor(selectedId == nil ? AppTheme.coral : .primary)
+            .accessibilityHint("Runs without a route, so no guidance is given")
+
+            ForEach(routes, id: \.id) { route in
+                Button {
+                    onPick(route)
+                    dismiss()
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(route.name)
+                            .font(.caption)
+                            .lineLimit(1)
+                        Text(RunFormat.distance(
+                            metres: route.distanceMetres, fractionDigits: 2))
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .foregroundColor(route.id == selectedId ? AppTheme.coral : .primary)
+                .accessibilityHint("Follows this route on your next run")
+            }
+
+            if routes.isEmpty {
+                // One cause, so one sentence: nothing has been starred (or
+                // the phone has not pushed since). Unlike Wear OS, this list
+                // never comes from a Supabase query the watch could fail, so
+                // there is no second, unactionable "couldn't load" case to
+                // tell apart.
+                Text("No starred routes yet. Star a route on your iPhone or the web.")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
         }
     }
 }

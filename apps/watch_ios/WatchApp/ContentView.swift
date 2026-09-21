@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var workoutManager = WorkoutManager()
     @StateObject private var connectivity = WatchConnectivityManager.shared
+    @StateObject private var auth = WatchAuth.shared
     @State private var syncError: String?
     @State private var thisRunSynced = false
     @State private var countingDown = false
@@ -14,6 +15,7 @@ struct ContentView: View {
                 case .idle:
                     PreRunView(
                         workoutManager: workoutManager,
+                        auth: auth,
                         queuedCount: connectivity.queuedCount,
                         armedRoute: connectivity.armedRoute,
                         onClearRoute: connectivity.clearArmedRoute,
@@ -238,11 +240,13 @@ private func pacePresets() -> [(label: String, secondsPerKm: Double)] {
 
 struct PreRunView: View {
     @ObservedObject var workoutManager: WorkoutManager
+    @ObservedObject var auth: WatchAuth
     let queuedCount: Int
     let armedRoute: ArmedRoute?
     let onClearRoute: () -> Void
     let onStart: () -> Void
     @State private var selectedPaceIndex: Int? = nil
+    @State private var showingAccount = false
 
     var body: some View {
         ScrollView {
@@ -339,7 +343,28 @@ struct PreRunView: View {
                 // the VoiceOver name from "Start"; the hint adds the
                 // usage cue that name alone doesn't carry.
                 .accessibilityHint("Begins a new run, starting GPS and heart-rate recording")
+
+                // Below Start on purpose: the wrist is a recording surface
+                // and the account is the least urgent thing on it. The
+                // ordinary path to a session is still the paired iPhone —
+                // this is the way in for a watch that is away from one.
+                Button {
+                    showingAccount = true
+                } label: {
+                    if let email = auth.session?.email {
+                        Text(verbatim: email)
+                    } else {
+                        Text("Sign in")
+                    }
+                }
+                .font(.caption2)
+                .buttonStyle(.plain)
+                .foregroundColor(.secondary)
+                .accessibilityHint("Opens this watch's account screen, where you can sign in or sign out")
             }
+        }
+        .sheet(isPresented: $showingAccount) {
+            SignInView(auth: auth, onDone: { showingAccount = false })
         }
     }
 }

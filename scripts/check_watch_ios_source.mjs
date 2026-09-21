@@ -152,20 +152,30 @@
 //       still pass — and claim (10) would then read the companion key as the
 //       defect, which is the wrong end of it.
 //
-//  (14) The password grant and the seed credential are compiled OUT of a
-//       Release build, and Release still means Release. `SupabaseService.swift`
-//       holds GoTrue's password grant and a caller handing it
+//  (14) No credential ships in the binary, Release still means Release, and
+//       a session the wrist mints for itself lives in the Keychain.
+//       `SupabaseService.swift` holds a caller handing GoTrue
 //       `runner@test.com` / `testtest`, which is fine for exactly one reason:
-//       the whole file is `#if DEBUG`-fenced and this project defines DEBUG on
-//       the Debug configuration alone. Nothing held either half. Deleting the
-//       one `#if DEBUG` line, or adding DEBUG to the Release configuration,
-//       each ship a hardcoded credential and a second unguarded route to a
-//       session — and the compiler is happy, the Swift suite is green, and
-//       `env-isolation`'s scan of this same file looks for LIVE key shapes,
-//       which a seed password is not. The sites are DERIVED from the shape of
-//       a credential (a literal handed to a `password:` label, or the grant
-//       itself), so one appearing tomorrow in a different file is covered
-//       without a list to extend (decisions § 1596).
+//       that file is `#if DEBUG`-fenced and this project defines DEBUG on the
+//       Debug configuration alone. Nothing held either half. Deleting the one
+//       `#if DEBUG` line, or adding DEBUG to the Release configuration, each
+//       ship a hardcoded credential — and the compiler is happy, the Swift
+//       suite is green, and `env-isolation`'s scan of this same file looks for
+//       LIVE key shapes, which a seed password is not. The sites are DERIVED
+//       from the shape of a credential, so one appearing tomorrow in a
+//       different file is covered without a list to extend (decisions § 1596).
+//
+//       The GRANT is a separate question and reads the opposite way now that
+//       the watch has a sign-in of its own. `WatchAuth.swift` ships GoTrue's
+//       password grant into Release deliberately — it is how a watch away
+//       from its phone authenticates at all, which Wear OS's `SignInScreen`
+//       has done since it shipped. What the fence used to be standing in for
+//       is the thing now held directly: the session it mints is a bearer
+//       credential, so it must go to the Keychain and never to
+//       `UserDefaults`, which on watchOS is a plist in the app container that
+//       travels in the watch's backup. A grant that ships with no Keychain
+//       store in the tree, or a token written to `UserDefaults` anywhere,
+//       fails here.
 //
 //  (15) Every stop control is gated on a HELD press. Stopping destroys
 //       nothing — `PostRunView` still holds the finished run, its on-disk
@@ -240,6 +250,7 @@ export const LOCALIZING_APIS = [
 	'Label',
 	'Toggle',
 	'TextField',
+	'SecureField',
 	'Picker',
 	'Section',
 	'LabeledContent',
@@ -1083,23 +1094,56 @@ export function debugFencedLines(src) {
  * is about the class. `password: String` in a signature has no literal after
  * the colon and is not a site; `"password": password` in a body dictionary has
  * no literal either.
+ *
+ * The two kinds are answered differently by claim (14) and always were,
+ * though for a while the tree gave no reason to say so: a `literal` is a
+ * credential in the binary and may never ship, and a `grant` is the endpoint
+ * that turns a credential the RUNNER typed into a session — which is the whole
+ * of `WatchAuth.swift` and Wear OS's `SupabaseClient.signIn` before it.
  * @param {string} src
- * @returns {{ line: number, what: string }[]}
+ * @returns {{ line: number, kind: 'literal' | 'grant', what: string }[]}
  */
 export function credentialSites(src) {
-	/** @type {{ line: number, what: string }[]} */
+	/** @type {{ line: number, kind: 'literal' | 'grant', what: string }[]} */
 	const out = [];
 	const lines = src.split('\n');
 	for (let i = 0; i < lines.length; i += 1) {
 		if (/\bpassword\s*:\s*"/.test(lines[i])) {
-			out.push({ line: i + 1, what: 'a hardcoded password literal' });
+			out.push({ line: i + 1, kind: 'literal', what: 'a hardcoded password literal' });
 		}
 		if (/grant_type=password/.test(lines[i])) {
-			out.push({ line: i + 1, what: "GoTrue's password grant" });
+			out.push({ line: i + 1, kind: 'grant', what: "GoTrue's password grant" });
 		}
 	}
 	return out;
 }
+
+/**
+ * Where the session GoTrue mints is written to `UserDefaults`, which on
+ * watchOS is a plist in the app container and travels in the watch's backup
+ * to its paired phone.
+ *
+ * Derived from the shape of the value rather than from a list of key names:
+ * a refresh token mints access tokens indefinitely, so anything named like one
+ * belongs in the Keychain. `UserDefaults` itself is fine and used — the
+ * complication snapshot and the unit preference both live there.
+ * @param {string} src
+ * @returns {{ line: number }[]}
+ */
+export function tokenDefaultsSites(src) {
+	/** @type {{ line: number }[]} */
+	const out = [];
+	const lines = src.split('\n');
+	for (let i = 0; i < lines.length; i += 1) {
+		if (!/\bUserDefaults\b/.test(lines[i])) continue;
+		if (!/access_?[Tt]oken|refresh_?[Tt]oken|\bcredential|\bpassword/i.test(lines[i])) continue;
+		out.push({ line: i + 1 });
+	}
+	return out;
+}
+
+/** The Keychain item class the wrist's session store must use. */
+export const SESSION_KEYCHAIN_CLASS = 'kSecClassGenericPassword';
 
 /** The DEBUG-only direct-to-Supabase writer, claim (9)'s other rail. */
 export const DIRECT_SITE = join('WatchApp', 'SupabaseService.swift');
@@ -2292,54 +2336,87 @@ export function check(
 		}
 	}
 
-	// (14) The password grant and the seed credential are compiled out of
-	//      Release, and Release still means Release.
+	// (14) No credential ships, Release still means Release, and a session
+	//      the wrist mints for itself lives in the Keychain.
 	//
-	//      `SupabaseService.swift` holds a GoTrue password grant and a caller
-	//      that hands it `runner@test.com` / `testtest`. That is fine, and it
-	//      is fine for exactly one reason: the whole file is inside `#if DEBUG`
-	//      and this project defines `DEBUG` on the Debug configuration alone,
-	//      so a Release build compiles none of it. Nothing held either half.
-	//      Deleting one line — the `#if DEBUG` — ships a hardcoded credential
-	//      and a second, wholly unguarded route to a session, and the compiler
-	//      is happy, the Swift suite is green, and `env-isolation`'s scan of
-	//      this same file looks for LIVE key shapes and would not see a seed
-	//      password. Adding `DEBUG` to the Release configuration does the same
-	//      thing from the other end and leaves the fence in place to read as
-	//      protection.
+	//      `SupabaseService.swift` holds a caller that hands GoTrue
+	//      `runner@test.com` / `testtest`. That is fine, and it is fine for
+	//      exactly one reason: the file is inside `#if DEBUG` and this project
+	//      defines `DEBUG` on the Debug configuration alone, so a Release
+	//      build compiles none of it. Nothing held either half. Deleting one
+	//      line — the `#if DEBUG` — ships a hardcoded credential, and the
+	//      compiler is happy, the Swift suite is green, and `env-isolation`'s
+	//      scan of this same file looks for LIVE key shapes and would not see
+	//      a seed password. Adding `DEBUG` to the Release configuration does
+	//      the same thing from the other end and leaves the fence in place to
+	//      read as protection.
 	//
-	//      So both halves, and the sites are DERIVED: any Swift line in the
-	//      tree passing a literal to a `password:` label, or naming the
-	//      password grant, must be DEBUG-fenced — a new one tomorrow in a
-	//      different file is covered without anyone extending a list.
+	//      The GRANT is not fenced any more and must not be: `WatchAuth.swift`
+	//      is the wrist's own sign-in, and a watch away from its phone has no
+	//      other way to authenticate. What the fence was standing in for is
+	//      held directly instead — the refresh token it mints is a bearer
+	//      credential, so the tree must carry a Keychain store for it and must
+	//      not put a token in `UserDefaults`, which on watchOS is a plist in
+	//      the app container that travels in the watch's backup.
+	//
+	//      Every site is DERIVED: a literal passed to a `password:` label, the
+	//      grant itself, a token handed to `UserDefaults`. A new one tomorrow
+	//      in a different file is covered without anyone extending a list.
 	{
 		const before = errors.length;
-		let sites = 0;
+		let literals = 0;
+		let grants = 0;
+		let shippedGrants = 0;
+		let keychainStore = false;
 		for (const dir of SWIFT_DIRS) {
 			for (const name of readdirSync(join(watchRoot, dir)).sort()) {
 				if (!name.endsWith('.swift')) continue;
 				const rel = join(dir, name);
 				const raw = read(rel);
 				const fenced = debugFencedLines(raw);
-				for (const site of credentialSites(raw)) {
-					sites += 1;
-					if (fenced[site.line - 1]) continue;
+				if (raw.includes(SESSION_KEYCHAIN_CLASS)) keychainStore = true;
+				for (const site of tokenDefaultsSites(raw)) {
 					errors.push(
-						`${rel}:${site.line} carries ${site.what} outside \`#if DEBUG\`, so it ` +
-							'compiles into the shipped watch app. A watch that can mint its own ' +
-							'session from a credential in its own binary is a second, unguarded ' +
-							'path to an account, and the account this one names is the seed user. ' +
-							'Fence it, or take it out.',
+						`${rel}:${site.line} puts a token or a credential into \`UserDefaults\`. On ` +
+							'watchOS that is a plist in the app container, and it travels in the ' +
+							"watch's backup to the paired phone. A refresh token mints access tokens " +
+							`indefinitely, so the wrist's session belongs in the Keychain — see ` +
+							'`WatchSessionStore`.',
 					);
+				}
+				for (const site of credentialSites(raw)) {
+					if (site.kind === 'literal') {
+						literals += 1;
+						if (fenced[site.line - 1]) continue;
+						errors.push(
+							`${rel}:${site.line} carries ${site.what} outside \`#if DEBUG\`, so it ` +
+								'compiles into the shipped watch app. A watch that can mint a session ' +
+								'from a credential in its own binary is an unguarded path to an ' +
+								'account, and the account this one names is the seed user. Fence it, ' +
+								'or take it out.',
+						);
+						continue;
+					}
+					grants += 1;
+					if (!fenced[site.line - 1]) shippedGrants += 1;
 				}
 			}
 		}
-		if (sites === 0) {
+		if (literals === 0 || grants === 0) {
 			errors.push(
 				'No password-grant or password-literal site found anywhere in the watch tree, ' +
 					"so claim (14)'s first half read nothing. Either the DEBUG direct-to-Supabase " +
-					'path is gone — in which case delete this half — or `credentialSites` has ' +
-					'stopped recognising it.',
+					"path or the wrist's own sign-in is gone — in which case say so here — or " +
+					'`credentialSites` has stopped recognising it.',
+			);
+		}
+		if (shippedGrants > 0 && !keychainStore) {
+			errors.push(
+				`The password grant ships (${shippedGrants} unfenced site(s)) and no file in the ` +
+					`watch tree names \`${SESSION_KEYCHAIN_CLASS}\`. A session minted on the wrist ` +
+					'has to be kept somewhere, and every other place on watchOS is a plist in the ' +
+					"app container. Either the Keychain store is gone, or the grant's result is now " +
+					'thrown away — and one of those is a credential on disk in the clear.',
 			);
 		}
 
@@ -2372,7 +2449,8 @@ export function check(
 		}
 		if (errors.length === before) {
 			ok.push(
-				`all ${sites} password-grant / credential site(s) are DEBUG-fenced, and DEBUG is ` +
+				`all ${literals} hardcoded-credential site(s) are DEBUG-fenced, the ${grants} ` +
+					`password-grant site(s) keep their session in the Keychain, and DEBUG is ` +
 					`defined on the Debug configuration alone (${configs.length} configurations read)`,
 			);
 		}

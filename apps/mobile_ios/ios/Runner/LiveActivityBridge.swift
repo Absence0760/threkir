@@ -23,15 +23,17 @@ import Foundation
     /// to exist on iOS 15 for `AppDelegate` to attach it.
     private var current: Any?
 
+    private var channel: FlutterMethodChannel?
+
     @objc func attach(binaryMessenger: FlutterBinaryMessenger) {
-        let channel = FlutterMethodChannel(
+        let liveActivity = FlutterMethodChannel(
             name: "run_app/live_activity",
             binaryMessenger: binaryMessenger
         )
         // Strong capture: `shared` is a permanent singleton, so there is no
         // cycle to break — and a weak self going nil would leave the Dart
         // future unanswered forever instead of failing.
-        channel.setMethodCallHandler { call, result in
+        liveActivity.setMethodCallHandler { call, result in
             let args = call.arguments as? [String: Any] ?? [:]
             switch call.method {
             case "start": result(self.start(args))
@@ -42,6 +44,7 @@ import Foundation
             default: result(FlutterMethodNotImplemented)
             }
         }
+        channel = liveActivity
     }
 
     private func start(_ args: [String: Any]) -> Bool {

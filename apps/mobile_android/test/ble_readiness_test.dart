@@ -38,6 +38,61 @@ void main() {
     });
   });
 
+  group('bleAdapterSettleTimeoutFor', () {
+    test('iOS gets a budget a person can answer a modal alert inside', () {
+      // The wait on iOS is not a system callback: CoreBluetooth withholds
+      // `centralManagerDidUpdateState` until the authorization alert is
+      // answered, so a budget sized for a radio expires while the runner is
+      // still reading it and the sheet claims Bluetooth "didn't respond".
+      final ios = bleAdapterSettleTimeoutFor(isIOS: true);
+      expect(ios.inSeconds, greaterThanOrEqualTo(15));
+      expect(bleAdapterSettleTimeoutFor(isIOS: false).inSeconds,
+          lessThan(ios.inSeconds));
+    });
+
+    test('neither budget is unbounded', () {
+      for (final isIOS in [true, false]) {
+        final d = bleAdapterSettleTimeoutFor(isIOS: isIOS);
+        expect(d, greaterThan(Duration.zero), reason: 'isIOS=$isIOS');
+        expect(d, lessThanOrEqualTo(const Duration(minutes: 1)),
+            reason: 'isIOS=$isIOS');
+      }
+    });
+  });
+
+  group('bleReadinessIsRetryable', () {
+    test('a rescan is offered only where a rescan could work', () {
+      expect(bleReadinessIsRetryable(BleReadiness.unauthorized), isFalse);
+      expect(bleReadinessIsRetryable(BleReadiness.unsupported), isFalse);
+      expect(bleReadinessIsRetryable(BleReadiness.poweredOff), isTrue);
+      expect(bleReadinessIsRetryable(BleReadiness.initialising), isTrue);
+      expect(
+          bleReadinessIsRetryable(BleReadiness.locationServicesDisabled), isTrue);
+    });
+
+    test('no reason is both retryable and a Settings trip', () {
+      // Two controls for one problem is a worse answer than one, and the
+      // sheet renders them as an either/or.
+      for (final r in BleReadiness.values) {
+        expect(bleReadinessIsRetryable(r) && bleReadinessNeedsAppSettings(r),
+            isFalse,
+            reason: '$r');
+      }
+    });
+
+    test('every non-ready reason offers exactly one control, or names why not',
+        () {
+      for (final r in BleReadiness.values) {
+        if (r == BleReadiness.ready) continue;
+        final controls = [
+          bleReadinessIsRetryable(r),
+          bleReadinessNeedsAppSettings(r),
+        ].where((x) => x).length;
+        expect(controls, r == BleReadiness.unsupported ? 0 : 1, reason: '$r');
+      }
+    });
+  });
+
   group('bleReadinessNeedsAppSettings', () {
     test('only a denied grant sends the runner to the Settings app', () {
       for (final r in BleReadiness.values) {

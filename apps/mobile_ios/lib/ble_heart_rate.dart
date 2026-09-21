@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
@@ -80,21 +81,52 @@ BleReadiness bleReadinessFrom(BleStatus status) => switch (status) {
 bool bleReadinessNeedsAppSettings(BleReadiness r) =>
     r == BleReadiness.unauthorized;
 
+/// Whether scanning again could plausibly succeed without the runner leaving
+/// the app. False for [BleReadiness.unauthorized] — no rescan clears a grant,
+/// and on iOS nothing in-process can even re-ask for one — and false for
+/// [BleReadiness.unsupported], where the hardware is simply absent. True for
+/// the rest, including [BleReadiness.poweredOff]: the radio toggle lives in
+/// Control Centre, which the runner can reach and come back from without the
+/// sheet being torn down.
+bool bleReadinessIsRetryable(BleReadiness r) =>
+    r != BleReadiness.unauthorized && r != BleReadiness.unsupported;
+
+/// How long to wait for the adapter to settle out of `unknown`, by platform.
+///
+/// On iOS that wait can have a person in it. CoreBluetooth raises its
+/// authorization alert when the central manager is first constructed, which
+/// is what subscribing to the status stream does, and
+/// `centralManagerDidUpdateState` does not fire until the alert is answered.
+/// A budget sized for a system callback therefore expires while the runner is
+/// still reading the alert, and the sheet behind it reports that Bluetooth
+/// "didn't respond" — about a prompt that is on screen and working. Android's
+/// adapter answers from the system with nobody in the loop, so a short budget
+/// is right there and a long one would only delay an honest refusal.
+///
+/// Pure in [isIOS] so both budgets are provable on one host.
+Duration bleAdapterSettleTimeoutFor({required bool isIOS}) =>
+    isIOS ? const Duration(seconds: 30) : const Duration(seconds: 4);
+
+Duration get bleAdapterSettleTimeout =>
+    bleAdapterSettleTimeoutFor(isIOS: Platform.isIOS);
+
 /// Settle [statuses] into a verdict, waiting out the transient `unknown`
 /// the adapter reports before its first callback. Yields
 /// [BleReadiness.initialising] when nothing but `unknown` arrives within
-/// [timeout], or when the stream ends without ever reporting.
+/// [timeout] (defaulting to [bleAdapterSettleTimeout]), or when the stream
+/// ends without ever reporting.
 ///
 /// Takes the stream rather than reading the plugin so the decision is
 /// exercisable without a radio — neither a simulator nor a CI runner has
 /// one, which is why the pure half has to carry the tests.
 Future<BleReadiness> resolveBleReadiness(
   Stream<BleStatus> statuses, {
-  Duration timeout = const Duration(seconds: 4),
+  Duration? timeout,
 }) async {
   try {
-    final settled =
-        await statuses.firstWhere((s) => s != BleStatus.unknown).timeout(timeout);
+    final settled = await statuses
+        .firstWhere((s) => s != BleStatus.unknown)
+        .timeout(timeout ?? bleAdapterSettleTimeout);
     return bleReadinessFrom(settled);
   } catch (e) {
     // TimeoutException, or a StateError from a stream that closed carrying

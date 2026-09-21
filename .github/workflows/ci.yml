@@ -298,6 +298,22 @@ jobs:
             echo "Reproduce with: node --test scripts/check_ci_diagnostics.test.mjs (stdlib only, no install needed)."
             exit 1
           fi
+      # An actions/cache entry is not scoped by runner OS, so a restore key is
+      # a prefix match across every OS that caches the same path. Run
+      # 35642229273 restored build-mobile-ios' macOS ~/.pub-cache onto the
+      # Linux APK build through a bare `pub-cache-` restore key.
+      - name: Cache keys cannot restore across runner OSes
+        run: |
+          if ! node scripts/check_cache_keys.mjs; then
+            echo "::error::A cache path is saved on more than one runner OS, or by a composite action, and one of its keys or restore keys does not name runner.os, so one OS can restore the other's entry. Nothing here is about workflow syntax, the toolchain pins or the CI diagnoses."
+            echo "The failing line above names the file, the job, the path and the key. Reproduce with: node scripts/check_cache_keys.mjs (stdlib only)."
+            exit 1
+          fi
+          if ! node --test scripts/check_cache_keys.test.mjs; then
+            echo "::error::The cache-key guard's own unit tests failed. The workflows themselves are fine — the check above just passed — so this is a defect in scripts/check_cache_keys.mjs, not a cache collision."
+            echo "Reproduce with: node --test scripts/check_cache_keys.test.mjs (stdlib only, no install needed)."
+            exit 1
+          fi
       # The Edge Functions are a Deno program, so no tsconfig root covers them
       # and `scripts/tsconfig_coverage.test.mjs` exempts the tree. What covers
       # it is the `deno check` step in `edge-functions`; this asserts that step
@@ -2486,16 +2502,26 @@ jobs:
           # the ~700MB download + setup. The action keys on channel +
           # version, so a Flutter bump invalidates cleanly.
           cache: true
-      - run: dart pub global activate melos 7.8.2
       # Cache the per-package pub downloads so `melos bootstrap`'s
       # ~30 nested `pub get` calls hit warm. Key on every pubspec.lock
       # in the workspace — any dep bump invalidates, otherwise hits.
+      #
+      # The runner OS is in the key AND the restore key. An actions/cache
+      # entry is not scoped by OS, and build-mobile-ios saves the same
+      # ~/.pub-cache path from macOS; while this restore key was a bare
+      # `pub-cache-`, it prefix-matched that job's `pub-cache-macos-…` entry
+      # and extracted a macOS cache here (run 35642229273). Restored before
+      # melos is activated, because ~/.pub-cache/global_packages records
+      # absolute host paths: the macOS activation pointed at /Users/runner
+      # and `melos bootstrap` died with "Could not find bin/melos.dart".
+      # check_cache_keys.mjs fails a PR that reintroduces either shape.
       - name: Cache pub-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.pub-cache
-          key: pub-cache-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: pub-cache-
+          key: pub-cache-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: pub-cache-${{ runner.os }}-
+      - run: dart pub global activate melos 7.8.2
       - run: melos bootstrap
       - name: Cache Gradle
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -2598,16 +2624,17 @@ jobs:
           # bump, not at random on an unrelated PR.
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
-      - run: dart pub global activate melos 7.8.2
-      # Keyed apart from the ubuntu jobs' pub-cache on purpose: an
-      # actions/cache key is not scoped by runner OS, and ~/.pub-cache holds
-      # the host-compiled snapshots `pub global activate` writes.
+      # Same key scheme as build-mobile-android's, runner OS in both halves:
+      # keying only this side apart left that job's bare `pub-cache-` restore
+      # key matching this one's entries. Restored before melos is activated,
+      # for the reason given there.
       - name: Cache pub-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.pub-cache
-          key: pub-cache-macos-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: pub-cache-macos-
+          key: pub-cache-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: pub-cache-${{ runner.os }}-
+      - run: dart pub global activate melos 7.8.2
       - run: melos bootstrap
       # `flutter build ios` runs `pod install` itself, so there is no pod
       # step to cache around — this caches the spec repo and the downloaded

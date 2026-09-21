@@ -3962,12 +3962,34 @@ jobs:
             -destination "platform=watchOS Simulator,id=${{ steps.watch-sim.outputs.udid }}" \
             -resultBundlePath WatchAppTests.xcresult \
             CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
+      # The same suite again, in a second language. Every assertion about a
+      # formatted string reaches `Locale.current` somewhere, and pinning one
+      # destination pinned one language: four tests asserted English output
+      # and passed here while failing on any simulator left in Japanese
+      # (`1.00 マイル`, `ランニング`). `-testLanguage` forces the app's
+      # language for the run, so the second pass needs no second simulator —
+      # and it is what stops the next English-only assertion from landing.
+      # `ja` because it moves the script as well as the words. Claim (19) of
+      # scripts/check_watch_ios_source.mjs fails the PR if this pass is
+      # deleted or made to run the same language as the one above.
+      - name: Run WatchAppTests in a second language
+        run: |
+          xcodebuild test \
+            -project apps/watch_ios/WatchApp.xcodeproj \
+            -scheme WatchApp \
+            -destination "platform=watchOS Simulator,id=${{ steps.watch-sim.outputs.udid }}" \
+            -testLanguage ja \
+            -testRegion JP \
+            -resultBundlePath WatchAppTests-ja.xcresult \
+            CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
       - name: Upload test result bundle on failure
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: watch-ios-xcresult
-          path: WatchAppTests.xcresult
+          path: |
+            WatchAppTests.xcresult
+            WatchAppTests-ja.xcresult
           retention-days: 7
 
   # Single required status check for branch protection. `main` requires

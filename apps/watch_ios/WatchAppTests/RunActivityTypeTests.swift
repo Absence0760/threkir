@@ -42,14 +42,42 @@ final class RunActivityTypeTests: XCTestCase {
         XCTAssertEqual(RunActivityType.hike.healthKitActivityType, .running)
     }
 
-    /// The catalog wiring end to end: the namespaced key resolves through the
-    /// String Catalog's explicit `en` entry rather than falling back to the
-    /// key itself, which is what a missing `en` localization would render.
+    /// The catalog wiring end to end, in the two halves that are separable on
+    /// a device whose language nobody chose.
+    ///
+    /// This half is the wiring: a key with no localization for the running
+    /// language renders as the key itself, so a label that is anything else
+    /// resolved. It says nothing about the words, and must not — asserting
+    /// `"Run"` here is what went red on a Japanese watch (`ランニング`) while
+    /// staying green on CI, which pins its destination to one simulator.
     func testLabelsResolveThroughTheStringCatalog() {
-        XCTAssertEqual(RunActivityType.run.label, "Run")
-        XCTAssertEqual(RunActivityType.walk.label, "Walk")
-        XCTAssertEqual(RunActivityType.hike.label, "Trail run")
-        XCTAssertEqual(RunActivityType.cycle.label, "Cycle")
+        for type in RunActivityType.allCases {
+            XCTAssertFalse(type.label.isEmpty, "\(type) has no label at all")
+            XCTAssertNotEqual(
+                type.label, "activityType.\(type.rawValue)",
+                "\(type)'s key rendered as itself — it has no localization for this language")
+        }
+    }
+
+    /// And this half is the words, read out of the `en` localization by name
+    /// rather than out of whichever one the device is running.
+    func testTheEnglishCatalogCarriesTheProductsWords() throws {
+        XCTAssertEqual(try englishCatalogValue("activityType.run"), "Run")
+        XCTAssertEqual(try englishCatalogValue("activityType.walk"), "Walk")
+        XCTAssertEqual(try englishCatalogValue("activityType.hike"), "Trail run")
+        XCTAssertEqual(try englishCatalogValue("activityType.cycle"), "Cycle")
+    }
+
+    private func englishCatalogValue(_ key: String) throws -> String {
+        let sentinel = "\u{0}absent"
+        let english = Bundle.allBundles.compactMap { bundle -> Bundle? in
+            guard let path = bundle.path(forResource: "en", ofType: "lproj") else { return nil }
+            return Bundle(path: path)
+        }
+        return try XCTUnwrap(
+            english.map { $0.localizedString(forKey: key, value: sentinel, table: nil) }
+                .first { $0 != sentinel },
+            "no en.lproj in any loaded bundle carries \(key)")
     }
 
     /// An unknown token means this build is older than whatever wrote it. A

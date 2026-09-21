@@ -288,10 +288,20 @@ final class ActiveRunViewModelTests: XCTestCase {
         XCTAssertTrue(s.hasPrefix("0"), "Got: \(s)")
     }
 
+    /// Asserts the CONVERSION, not the rendering. `contains("mi")` read as a
+    /// unit abbreviation and passed on `1.00 miles`; it fails outright on a
+    /// Japanese wrist, where the same value renders `1.00 マイル`. Holding the
+    /// complication's output to `RunFormat`'s is exact in every language, and
+    /// it is the thing that actually matters now that one file serves both.
     func testDistanceMilesConverts() {
         preferUnit("mi")
-        let s = formatDistanceKm(1609.344)
-        XCTAssertTrue(s.contains("1.00") || s.contains("1,00"), "Got: \(s)")
-        XCTAssertTrue(s.lowercased().contains("mi"), "Got: \(s)")
+        XCTAssertEqual(
+            formatDistanceKm(1609.344),
+            RunFormat.distance(metres: 1609.344, fractionDigits: 2)
+        )
+        XCTAssertNotEqual(
+            formatDistanceKm(1609.344),
+            RunFormat.distance(metres: 1609.344, fractionDigits: 1)
+        )
     }
 }

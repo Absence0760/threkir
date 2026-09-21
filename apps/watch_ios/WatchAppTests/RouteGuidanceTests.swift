@@ -53,17 +53,16 @@ final class RouteGuidanceTests: XCTestCase {
 
     // MARK: - Remaining
 
+    /// The locale is named, not inherited: the rendering carries a decimal
+    /// separator and a unit word, and asserting an English one against
+    /// whatever language the simulator was left in is what made this test
+    /// red on a Japanese watch (`1.00 マイル`) and green everywhere CI looked.
     func testRemainingTextUsesThePreferredUnit() {
-        let km = RouteGuidance.remainingText(metres: 4210)
-        XCTAssertNotNil(km)
-        XCTAssertTrue(km!.contains("4.21") || km!.contains("4,21"), "Got: \(km!)")
-        XCTAssertTrue(km!.lowercased().contains("km"), "Got: \(km!)")
+        let enUS = Locale(identifier: "en_US")
+        XCTAssertEqual(RouteGuidance.remainingText(metres: 4210, locale: enUS), "4.21 km")
 
         UserDefaults.standard.set("mi", forKey: "preferred_unit")
-        let mi = RouteGuidance.remainingText(metres: 1609.344)
-        XCTAssertNotNil(mi)
-        XCTAssertTrue(mi!.contains("1.00") || mi!.contains("1,00"), "Got: \(mi!)")
-        XCTAssertTrue(mi!.lowercased().contains("mi"), "Got: \(mi!)")
+        XCTAssertEqual(RouteGuidance.remainingText(metres: 1609.344, locale: enUS), "1.00 miles")
     }
 
     func testRemainingTextIsNilWithoutAProjection() {

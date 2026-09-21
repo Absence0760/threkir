@@ -177,9 +177,9 @@ enum RouteGuidance {
 
     /// Distance still to run, in the user's preferred unit. Nil when the
     /// navigator has no projection to report.
-    static func remainingText(metres: Double?) -> String? {
+    static func remainingText(metres: Double?, locale: Locale = .current) -> String? {
         guard let metres, metres.isFinite, metres >= 0 else { return nil }
-        return RunFormat.distance(metres: metres, fractionDigits: 2)
+        return RunFormat.distance(metres: metres, fractionDigits: 2, locale: locale)
     }
 
     /// How far off the line the runner is, always in metres — a deviation

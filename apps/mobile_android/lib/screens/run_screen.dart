@@ -25,6 +25,7 @@ import '../auth_error.dart';
 import '../audio_cues.dart';
 import '../backend_timeout.dart';
 import '../ble_heart_rate.dart';
+import '../ble_readiness_labels.dart';
 import '../ble_treadmill.dart';
 import '../dev_auto_login.dart' show isLocalSupabaseUrl;
 import '../embedded_bests.dart';
@@ -1911,16 +1912,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
           }
           setState(() => _currentBpm = null);
         case BleHrStatus.connectFailed:
-          // Strap was off / out of range at launch — auto-reconnect doesn't
-          // retry this case, so offer a manual one-tap reconnect instead of
-          // leaving the runner with a silently-dead HR readout.
+          // Strap was off / out of range at launch, OR the adapter refused
+          // the connect outright. Auto-reconnect doesn't retry either, so
+          // disclose which it was and offer the remedy that matches.
           setState(() => _currentBpm = null);
-          _showTopBanner(
-            _l10n.runHrStrapNotFound,
-            duration: const Duration(seconds: 6),
-            actionLabel: _l10n.runReconnect,
-            onAction: _reconnectHeartRate,
-          );
+          _discloseHrConnectFailure();
         case BleHrStatus.connecting:
           break;
       }
@@ -2235,6 +2231,36 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       saved ? _l10n.runResumeSavedBanner : _l10n.runSaveFailedRelaunch,
       duration: const Duration(seconds: 4),
     );
+  }
+
+  /// Say why live HR isn't coming, and offer the remedy that can actually
+  /// fix it — the choice itself is pure, in [bleConnectFailureDisclosure].
+  /// L4 auxiliary: banner only, the run is untouched either way.
+  void _discloseHrConnectFailure() {
+    final disclosure = bleConnectFailureDisclosure(
+      _l10n,
+      widget.heartRate.lastUnavailable,
+    );
+    _showTopBanner(
+      disclosure.message,
+      duration: const Duration(seconds: 6),
+      actionLabel: disclosure.actionLabel,
+      onAction: disclosure.actionLabel == null
+          ? null
+          : disclosure.opensAppSettings
+              ? _openBleAppSettings
+              : _reconnectHeartRate,
+    );
+  }
+
+  /// Deep-link to the app's OS settings page so a denied Bluetooth grant can
+  /// be restored. Never throws — this runs mid-recording.
+  Future<void> _openBleAppSettings() async {
+    try {
+      await openAppSettings();
+    } catch (e) {
+      debugPrint('openAppSettings (BLE grant) failed: $e');
+    }
   }
 
   /// Manual heart-rate reconnect, driven by the "Reconnect" affordance on

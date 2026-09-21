@@ -103,6 +103,16 @@ jobs:
     name: Re-check open PRs after main moved
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    # Scorecard's Token-Permissions check flags `checks: write` at job level
+    # and the remediation it implies is to drop it, which deletes the job.
+    # Posting to a PR's CHECKS LIST is the whole point -- that list is what
+    # misleads when ci.yml is absent -- and the Checks API takes no lesser
+    # scope. The two alternatives are worse, not smaller: a commit status
+    # needs `statuses: write`, which the same check calls MORE dangerous, and
+    # a label or comment needs `pull-requests: write` and lands somewhere
+    # other than the list this exists to correct. Nothing untrusted runs under
+    # this token either -- the job is `push`-to-main only, checks nothing out,
+    # and runs an inline script from main. Alert 244, decisions § 1688.
     permissions:
       checks: write
       pull-requests: read

@@ -192,6 +192,20 @@
 //       per stop call site, and the press duration must still be what fires
 //       it (decisions § 1680).
 //
+//  (19) The Swift suite is run in more than one language. Every assertion
+//       about a formatted string reaches `Locale.current` somewhere — a
+//       decimal separator, a `MeasurementFormatter` unit word, a String
+//       Catalog lookup — and `test-watch-ios` pins its destination to one
+//       simulator, so ONE language is the only one anything is ever measured
+//       in. Four tests asserted English output and were green everywhere
+//       anyone had run them while failing outright on a simulator left in
+//       Japanese (`1.00 マイル`, `ランニング`). That is not a suite that is
+//       locale-independent; it is a suite nobody has run twice. So the job
+//       runs the same tests again under `-testLanguage`, and this claim is
+//       what keeps the second pass there and in a DIFFERENT language from the
+//       first — deleting it, or setting both to `en`, restores the blind spot
+//       without failing anything else.
+//
 // WHAT THIS GUARD DOES NOT PROVE. It parses text. It does not compile Swift,
 // does not run it, and cannot see anything a type-checker would: claim (1)
 // matches a catalog key on the SHAPE of its interpolation, not on the type of
@@ -1463,6 +1477,57 @@ export function destructiveButtons(src) {
 
 // --- the checks -------------------------------------------------------------
 
+/// The one workflow that compiles this tier, and the only place the language
+/// the suite runs in is decided.
+export const CI_WORKFLOW = join('.github', 'workflows', 'ci.yml');
+
+/// The job inside it that runs the Swift suite.
+export const WATCH_TEST_JOB = 'test-watch-ios';
+
+/**
+ * One job's body out of a workflow, or null when the job is not there.
+ *
+ * Bounded by the next line at the JOB indent rather than by a step count: a
+ * step added to the end of the job would otherwise fall outside the block and
+ * read as absent.
+ * @param {string} workflow
+ * @param {string} job
+ */
+export function jobBlock(workflow, job) {
+	const start = workflow.search(new RegExp(`^  ${job}:\\s*$`, 'm'));
+	if (start === -1) return null;
+	const rest = workflow.slice(workflow.indexOf('\n', start) + 1);
+	const end = rest.search(/^ {2}\S/m);
+	return end === -1 ? rest : rest.slice(0, end);
+}
+
+/**
+ * Every `xcodebuild test` command in a job block, each as the language it
+ * forces — null for one that forces none and so inherits the simulator's.
+ *
+ * A command is followed across its backslash continuations, so the flag is
+ * read off the invocation it belongs to rather than off whatever text happens
+ * to sit near it. YAML comments are skipped: two of the four lines in this
+ * job that name `xcodebuild test` are prose explaining why the simulator is
+ * resolved and pre-booted, and counting those doubled the invocation count.
+ * @param {string} block
+ * @returns {(string | null)[]}
+ */
+export function suiteLanguages(block) {
+	/** @type {(string | null)[]} */ const langs = [];
+	const lines = block.split('\n').filter((l) => !/^\s*#/.test(l));
+	for (let i = 0; i < lines.length; i += 1) {
+		if (!/\bxcodebuild\s+test\b/.test(lines[i])) continue;
+		let cmd = lines[i];
+		while (/\\\s*$/.test(lines[i]) && i + 1 < lines.length) {
+			i += 1;
+			cmd += `\n${lines[i]}`;
+		}
+		langs.push(/-testLanguage\s+(\S+)/.exec(cmd)?.[1] ?? null);
+	}
+	return langs;
+}
+
 /**
  * @param {string} watchRoot absolute path to an `apps/watch_ios` tree
  * @param {string | null} [ingestPath] absolute path to the phone's
@@ -1474,6 +1539,8 @@ export function destructiveButtons(src) {
  *   `HeartRateCoverage.kt`; null skips claim (12) alone.
  * @param {string | null} [phonePbxprojPath] absolute path to the phone's
  *   `Runner.xcodeproj/project.pbxproj`; null skips claim (10)'s embed half.
+ * @param {string | null} [ciWorkflowPath] absolute path to
+ *   `.github/workflows/ci.yml`; null skips claim (19) alone.
  * @returns {{ errors: string[], ok: string[] }}
  */
 export function check(
@@ -1482,6 +1549,7 @@ export function check(
 	routeBridgePath = null,
 	wearCoveragePath = null,
 	phonePbxprojPath = null,
+	ciWorkflowPath = null,
 ) {
 	/** @type {string[]} */ const errors = [];
 	/** @type {string[]} */ const ok = [];
@@ -2670,6 +2738,45 @@ export function check(
 		}
 	}
 
+	// (19) The suite is run in more than one language.
+	if (ciWorkflowPath !== null) {
+		const before = errors.length;
+		const workflow = readIfPresent(ciWorkflowPath);
+		const block = workflow === null ? null : jobBlock(workflow, WATCH_TEST_JOB);
+		if (workflow === null) {
+			errors.push(`${CI_WORKFLOW} is not there — claim (19) would pass vacuously.`);
+		} else if (block === null) {
+			errors.push(
+				`${CI_WORKFLOW} has no \`${WATCH_TEST_JOB}\` job, which is the only job that ` +
+					'compiles this tier at all — claim (19) would pass vacuously, and so would ' +
+					'every Swift test in the repo.',
+			);
+		} else {
+			const langs = suiteLanguages(block);
+			const distinct = new Set(langs.map((l) => l ?? '(the simulator default)'));
+			if (langs.length === 0) {
+				errors.push(
+					`\`${WATCH_TEST_JOB}\` runs no \`xcodebuild test\` — claim (19) would pass ` +
+						'vacuously, and nothing compiles the watchOS app.',
+				);
+			} else if (distinct.size < 2) {
+				errors.push(
+					`\`${WATCH_TEST_JOB}\` runs the Swift suite ${langs.length} time(s), all in ` +
+						`${[...distinct][0]}. Every assertion about a formatted string reads a ` +
+						'locale somewhere, so one language is one measurement: four tests asserted ' +
+						'English output and were green here while failing outright on a simulator ' +
+						'left in Japanese. Restore the second `xcodebuild test` pass with a ' +
+						'`-testLanguage` the first one does not use.',
+				);
+			}
+			if (errors.length === before) {
+				ok.push(
+					`the watchOS suite runs in ${distinct.size} languages (${[...distinct].join(', ')})`,
+				);
+			}
+		}
+	}
+
 	return { errors, ok };
 }
 
@@ -2681,6 +2788,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 		process.argv[4] ?? join(REPO_ROOT, ROUTE_BRIDGE),
 		process.argv[5] ?? join(REPO_ROOT, WEAR_COVERAGE),
 		process.argv[6] ?? join(REPO_ROOT, PHONE_PBXPROJ),
+		process.argv[7] ?? join(REPO_ROOT, CI_WORKFLOW),
 	);
 	for (const line of ok) console.log(`  ok: ${line}`);
 	if (errors.length > 0) {

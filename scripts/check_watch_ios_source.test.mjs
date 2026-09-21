@@ -31,7 +31,11 @@ import {
 	ROUTE_BRIDGE,
 	PHONE_PBXPROJ,
 	WEAR_COVERAGE,
+	CI_WORKFLOW,
+	WATCH_TEST_JOB,
 	check,
+	jobBlock,
+	suiteLanguages,
 	credentialSites,
 	phoneAppBundleIdentifier,
 	nativeTarget,
@@ -84,6 +88,9 @@ const WEAR_COVERAGE_ABS = join(REPO_ROOT, WEAR_COVERAGE);
 /** …and of the phone project claim (10) holds the plist against. */
 const STAGED_PHONE_PBX = 'Runner.project.pbxproj';
 const PHONE_PBXPROJ_ABS = join(REPO_ROOT, PHONE_PBXPROJ);
+/** …and of the workflow claim (19) reads the suite's languages out of. */
+const STAGED_CI = 'ci.yml';
+const CI_WORKFLOW_ABS = join(REPO_ROOT, CI_WORKFLOW);
 const ARMED = join('WatchApp', 'ArmedRoute.swift');
 const DIRECT = join('WatchApp', 'SupabaseService.swift');
 const AUTH = join('WatchApp', 'WatchAuth.swift');
@@ -107,6 +114,7 @@ function stage() {
 	cpSync(ROUTE_BRIDGE_ABS, join(dir, STAGED_ROUTE_BRIDGE));
 	cpSync(WEAR_COVERAGE_ABS, join(dir, STAGED_WEAR_COVERAGE));
 	cpSync(PHONE_PBXPROJ_ABS, join(dir, STAGED_PHONE_PBX));
+	cpSync(CI_WORKFLOW_ABS, join(dir, STAGED_CI));
 	return dir;
 }
 
@@ -124,6 +132,7 @@ function runMutated(mutate) {
 			join(dir, STAGED_ROUTE_BRIDGE),
 			join(dir, STAGED_WEAR_COVERAGE),
 			join(dir, STAGED_PHONE_PBX),
+			join(dir, STAGED_CI),
 		);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
@@ -1761,4 +1770,89 @@ test('every HINTLESS_CONTROLS entry says where the cue lives instead', () => {
 	for (const [key, why] of Object.entries(HINTLESS_CONTROLS)) {
 		assert.ok(why.length > 40, `${key}: reason is too short to be a reason`);
 	}
+});
+
+// ───────── claim (19): the suite runs in more than one language ─────────
+
+test('the shipped workflow runs the watchOS suite in two languages', () => {
+	const block = jobBlock(readFileSync(CI_WORKFLOW_ABS, 'utf8'), WATCH_TEST_JOB);
+	assert.ok(block !== null, `${CI_WORKFLOW} has no ${WATCH_TEST_JOB} job`);
+	const langs = suiteLanguages(/** @type {string} */ (block));
+	assert.equal(langs.length, 2, `languages read: ${JSON.stringify(langs)}`);
+	assert.deepEqual(new Set(langs).size, 2, `languages read: ${JSON.stringify(langs)}`);
+});
+
+test('claim (19) fails when the second-language pass is deleted', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_CI, (s) => s.replace(/\n\s+-testLanguage ja \\\n\s+-testRegion JP \\/, ''));
+	});
+	assert.ok(
+		errors.some((e) => e.includes('all in (the simulator default)')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (19) fails when both passes force the same language', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_CI, (s) =>
+			s.replace(
+				'            -resultBundlePath WatchAppTests.xcresult \\',
+				'            -testLanguage ja \\\n            -resultBundlePath WatchAppTests.xcresult \\',
+			),
+		);
+	});
+	assert.ok(
+		errors.some((e) => e.includes('all in ja')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (19) fails vacuity rather than passing when the job runs no suite', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_CI, (s) => s.replaceAll('xcodebuild test', 'xcodebuild buil6'));
+	});
+	assert.ok(
+		errors.some((e) => e.includes('claim (19) would pass vacuously')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (19) fails vacuity rather than passing when the job is gone', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_CI, (s) => s.replace(`\n  ${WATCH_TEST_JOB}:\n`, '\n  test-watch-i0s:\n'));
+	});
+	assert.ok(
+		errors.some((e) => e.includes(`has no \`${WATCH_TEST_JOB}\` job`)),
+		errors.join('\n'),
+	);
+});
+
+test('a job block stops at the next job rather than running to the end of the file', () => {
+	const workflow = [
+		'jobs:',
+		'  alpha:',
+		'    steps:',
+		'      - run: xcodebuild test -testLanguage de',
+		'  beta:',
+		'    steps:',
+		'      - run: xcodebuild test -testLanguage fr',
+		'',
+	].join('\n');
+	assert.deepEqual(suiteLanguages(/** @type {string} */ (jobBlock(workflow, 'alpha'))), ['de']);
+	assert.equal(jobBlock(workflow, 'gamma'), null);
+});
+
+test('a language is read off the invocation it continues onto, not off a neighbour', () => {
+	const block = [
+		'    steps:',
+		'      - run: |',
+		'          xcodebuild test \\',
+		'            -scheme WatchApp',
+		'      - run: |',
+		'          xcodebuild test \\',
+		'            -testLanguage ja \\',
+		'            -testRegion JP',
+		'',
+	].join('\n');
+	assert.deepEqual(suiteLanguages(block), [null, 'ja']);
 });

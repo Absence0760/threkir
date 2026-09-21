@@ -16,6 +16,7 @@ struct ContentView: View {
                         workoutManager: workoutManager,
                         queuedCount: connectivity.queuedCount,
                         armedRoute: connectivity.armedRoute,
+                        liveRace: connectivity.liveRace,
                         onClearRoute: connectivity.clearArmedRoute,
                         onStart: { countingDown = true }
                     )
@@ -54,6 +55,7 @@ struct ContentView: View {
             }
         }
         .task {
+            workoutManager.liveRaceRelay = connectivity.liveRaceRelay()
             await workoutManager.healthKit.requestAuthorization()
             workoutManager.checkForPendingRecovery()
         }
@@ -240,6 +242,7 @@ struct PreRunView: View {
     @ObservedObject var workoutManager: WorkoutManager
     let queuedCount: Int
     let armedRoute: ArmedRoute?
+    let liveRace: LiveRace?
     let onClearRoute: () -> Void
     let onStart: () -> Void
     @State private var selectedPaceIndex: Int? = nil
@@ -255,6 +258,8 @@ struct PreRunView: View {
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
+
+                RaceBannerView(race: liveRace)
 
                 if let route = armedRoute {
                     VStack(alignment: .leading, spacing: 2) {

@@ -30,12 +30,84 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
     /// runner opening the app to start.
     @Published var armedRoute: ArmedRoute? = ArmedRouteStore.load()
 
+    /// The race the phone last armed on this wrist, restored from disk for
+    /// the same reason `armedRoute` is: the Arm push lands while the app is
+    /// backgrounded and the runner opens it minutes later.
+    @Published private(set) var liveRace: LiveRace?
+
+    /// Arm / Go / End lives here rather than in `WorkoutManager` because the
+    /// phone is what advances it and this is the end of that wire. The
+    /// machine itself is pure and tested on its own — see `LiveRace.swift`.
+    private var raceState = LiveRaceState()
+
+    /// A ping is worthless late: a dot an hour old on a spectator map is a
+    /// lie about where the runner is. So it rides `sendMessage`, which needs
+    /// a reachable phone and is DROPPED when there is not one, rather than
+    /// the durable queue the run hand-off uses. Injectable because `WCSession`
+    /// cannot be constructed in the unit-test host.
+    var sendRacePing: ([String: Any]) -> Void = { payload in
+        let session = WCSession.default
+        guard session.activationState == .activated, session.isReachable else { return }
+        session.sendMessage(payload, replyHandler: nil) { error in
+            debugPrint("[race] ping not delivered: \(error.localizedDescription)")
+        }
+    }
+
+    /// The opposite trade to the ping: a finisher's official time must
+    /// survive a dead spot, a closed app and a watch reboot, so it rides the
+    /// durable `transferUserInfo` outbox — and goes to disk when even that
+    /// cannot take it yet (see `PendingRaceResultStore`).
+    var sendRaceResult: ([String: Any]) -> Void = { payload in
+        let session = WCSession.default
+        guard session.activationState == .activated else {
+            PendingRaceResultStore.append(payload)
+            return
+        }
+        session.transferUserInfo(payload)
+    }
+
     override init() {
         super.init()
+        raceState = LiveRaceState(race: LiveRaceStore.load())
+        liveRace = raceState.race
         if WCSession.isSupported() {
             WCSession.default.delegate = self
             WCSession.default.activate()
         }
+    }
+
+    /// The seam `WorkoutManager` records through. Handed over once, at
+    /// `ContentView`'s `.task`, so the recorder holds no reference to this
+    /// class and a race effect can only ever be given a value.
+    func liveRaceRelay() -> LiveRaceRelay {
+        LiveRaceRelay(
+            ping: { [weak self] sample in self?.pushRacePing(sample) },
+            finish: { [weak self] finish in self?.reportRaceFinish(finish) }
+        )
+    }
+
+    private func pushRacePing(_ sample: RacePingSample) {
+        guard let payload = raceState.ping(sample) else { return }
+        sendRacePing(payload)
+    }
+
+    private func reportRaceFinish(_ finish: RaceFinish) {
+        guard let payload = raceState.finish(finish) else { return }
+        LiveRaceStore.clear()
+        let published = raceState.race
+        DispatchQueue.main.async { self.liveRace = published }
+        sendRaceResult(payload)
+    }
+
+    private func applyRace(_ race: LiveRace) {
+        guard raceState.apply(race) else { return }
+        if let active = raceState.race {
+            LiveRaceStore.save(active)
+        } else {
+            LiveRaceStore.clear()
+        }
+        let published = raceState.race
+        DispatchQueue.main.async { self.liveRace = published }
     }
 
     /// A run may only be handed off once WCSession has finished activating.
@@ -95,6 +167,13 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
         DispatchQueue.main.async {
             self.queuedCount = outstanding
             self.transferState = Self.stateOnActivation(outstanding: outstanding)
+        }
+        // A finisher time that ended up on disk because the session was not
+        // activated yet. Auxiliary, and kept out of the run outbox's own
+        // re-seed above: a race result that will not send must not cost the
+        // count of runs that are still waiting.
+        for payload in PendingRaceResultStore.drain() {
+            session.transferUserInfo(payload)
         }
     }
 
@@ -161,6 +240,12 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
         if let route = ArmedRoute.decode(payload) {
             ArmedRouteStore.save(route)
             DispatchQueue.main.async { self.armedRoute = route }
+        }
+        // Arm / Go / End. Fail-closed the same way: a status word this build
+        // does not know leaves the wrist where it was, rather than clearing a
+        // race that is still running.
+        if let race = LiveRace.decode(payload) {
+            applyRace(race)
         }
     }
 

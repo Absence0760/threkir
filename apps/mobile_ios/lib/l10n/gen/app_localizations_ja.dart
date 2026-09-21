@@ -13605,4 +13605,26 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get metricRpeDefinition =>
       '自覚的運動強度 — そのセットがどれだけきつかったかを1〜10で表します。10はもう1レップもできなかったという意味です。';
+
+  @override
+  String get bleUnavailableOff => 'Bluetooth がオフです — 心拍ストラップを使うにはオンにしてください。';
+
+  @override
+  String get bleUnavailableDenied =>
+      'Threkir は Bluetooth の使用を許可されていません。心拍ストラップを使うには設定で許可してください。';
+
+  @override
+  String get bleUnavailableUnsupported =>
+      'この端末は Bluetooth LE に対応していないため、心拍ストラップは使用できません。';
+
+  @override
+  String get bleUnavailableLocationOff =>
+      'Android が心拍ストラップを検索できるように、位置情報サービスをオンにしてください。';
+
+  @override
+  String get bleUnavailableUnknown =>
+      'Bluetooth が応答しませんでした。少し経ってからもう一度お試しください。';
+
+  @override
+  String get bleOpenSettings => '設定を開く';
 }

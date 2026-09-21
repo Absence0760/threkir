@@ -23612,6 +23612,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Rate of perceived exertion — how hard a set felt, from 1 to 10. A 10 means you couldn\'t have done one more rep.'**
   String get metricRpeDefinition;
+
+  /// Shown when the Bluetooth radio is switched off, on the strap pairing sheet and the run-screen banner
+  ///
+  /// In en, this message translates to:
+  /// **'Bluetooth is off — turn it on to use your heart-rate strap.'**
+  String get bleUnavailableOff;
+
+  /// Shown when the app has been denied the Bluetooth permission; on iOS only the Settings app can reverse this
+  ///
+  /// In en, this message translates to:
+  /// **'Threkir isn\'t allowed to use Bluetooth. Allow it in Settings to use a heart-rate strap.'**
+  String get bleUnavailableDenied;
+
+  /// Shown when the device has no Bluetooth LE hardware
+  ///
+  /// In en, this message translates to:
+  /// **'This phone doesn\'t support Bluetooth LE, so a heart-rate strap can\'t be used.'**
+  String get bleUnavailableUnsupported;
+
+  /// Shown on Android when Location services are off, which blocks a BLE scan
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on Location services so Android can scan for your heart-rate strap.'**
+  String get bleUnavailableLocationOff;
+
+  /// Shown when the Bluetooth adapter never reported its state in time
+  ///
+  /// In en, this message translates to:
+  /// **'Bluetooth didn\'t respond. Try again in a moment.'**
+  String get bleUnavailableUnknown;
+
+  /// Button that opens the OS settings page for the app so the Bluetooth permission can be granted
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get bleOpenSettings;
 }
 
 class _AppLocalizationsDelegate

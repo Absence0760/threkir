@@ -14301,4 +14301,27 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get metricRpeDefinition =>
       'Effort perçu — à quel point une série a été dure, de 1 à 10. Un 10 signifie que tu n\'aurais pas pu faire une répétition de plus.';
+
+  @override
+  String get bleUnavailableOff =>
+      'Le Bluetooth est désactivé — active-le pour utiliser ta ceinture cardio.';
+
+  @override
+  String get bleUnavailableDenied =>
+      'Threkir n\'est pas autorisé à utiliser le Bluetooth. Autorise-le dans les réglages pour utiliser une ceinture cardio.';
+
+  @override
+  String get bleUnavailableUnsupported =>
+      'Ce téléphone ne prend pas en charge le Bluetooth LE, une ceinture cardio ne peut donc pas être utilisée.';
+
+  @override
+  String get bleUnavailableLocationOff =>
+      'Active la localisation pour qu\'Android puisse rechercher ta ceinture cardio.';
+
+  @override
+  String get bleUnavailableUnknown =>
+      'Le Bluetooth n\'a pas répondu. Réessaie dans un instant.';
+
+  @override
+  String get bleOpenSettings => 'Ouvrir les réglages';
 }

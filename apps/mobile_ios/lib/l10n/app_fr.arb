@@ -4123,5 +4123,11 @@
   "metricRiegelDefinition": "Une méthode standard pour prédire ton temps sur une distance à partir d'un temps couru sur une autre.",
   "metricE1rmLabel": "1RM est.",
   "metricE1rmDefinition": "Maximum sur une répétition — la charge la plus lourde que tu pourrais soulever une seule fois. Un 1RM estimé se calcule à partir de la charge et des répétitions d'une série que tu as faite, donc tu n'as jamais à le tester.",
-  "metricRpeDefinition": "Effort perçu — à quel point une série a été dure, de 1 à 10. Un 10 signifie que tu n'aurais pas pu faire une répétition de plus."
+  "metricRpeDefinition": "Effort perçu — à quel point une série a été dure, de 1 à 10. Un 10 signifie que tu n'aurais pas pu faire une répétition de plus.",
+  "bleUnavailableOff": "Le Bluetooth est désactivé — active-le pour utiliser ta ceinture cardio.",
+  "bleUnavailableDenied": "Threkir n'est pas autorisé à utiliser le Bluetooth. Autorise-le dans les réglages pour utiliser une ceinture cardio.",
+  "bleUnavailableUnsupported": "Ce téléphone ne prend pas en charge le Bluetooth LE, une ceinture cardio ne peut donc pas être utilisée.",
+  "bleUnavailableLocationOff": "Active la localisation pour qu'Android puisse rechercher ta ceinture cardio.",
+  "bleUnavailableUnknown": "Le Bluetooth n'a pas répondu. Réessaie dans un instant.",
+  "bleOpenSettings": "Ouvrir les réglages"
 }

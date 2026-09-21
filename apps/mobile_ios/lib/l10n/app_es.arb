@@ -4123,5 +4123,11 @@
   "metricRiegelDefinition": "Una forma estándar de predecir tu tiempo en una distancia a partir de un tiempo que corriste en otra.",
   "metricE1rmLabel": "1RM est.",
   "metricE1rmDefinition": "Máximo a una repetición: el peso más alto que podrías levantar una sola vez. El 1RM estimado se calcula a partir del peso y las repeticiones de una serie que hiciste, así que nunca tienes que probarlo.",
-  "metricRpeDefinition": "Esfuerzo percibido: lo dura que se sintió una serie, del 1 al 10. Un 10 significa que no habrías podido hacer ni una repetición más."
+  "metricRpeDefinition": "Esfuerzo percibido: lo dura que se sintió una serie, del 1 al 10. Un 10 significa que no habrías podido hacer ni una repetición más.",
+  "bleUnavailableOff": "El Bluetooth está desactivado — actívalo para usar tu banda de FC.",
+  "bleUnavailableDenied": "Threkir no tiene permiso para usar Bluetooth. Concédelo en Ajustes para usar una banda de FC.",
+  "bleUnavailableUnsupported": "Este teléfono no admite Bluetooth LE, así que no se puede usar una banda de FC.",
+  "bleUnavailableLocationOff": "Activa la ubicación para que Android pueda buscar tu banda de FC.",
+  "bleUnavailableUnknown": "El Bluetooth no respondió. Inténtalo de nuevo en un momento.",
+  "bleOpenSettings": "Abrir ajustes"
 }

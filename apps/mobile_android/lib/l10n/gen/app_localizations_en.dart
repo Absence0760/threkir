@@ -14121,4 +14121,27 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get metricRpeDefinition =>
       'Rate of perceived exertion — how hard a set felt, from 1 to 10. A 10 means you couldn\'t have done one more rep.';
+
+  @override
+  String get bleUnavailableOff =>
+      'Bluetooth is off — turn it on to use your heart-rate strap.';
+
+  @override
+  String get bleUnavailableDenied =>
+      'Threkir isn\'t allowed to use Bluetooth. Allow it in Settings to use a heart-rate strap.';
+
+  @override
+  String get bleUnavailableUnsupported =>
+      'This phone doesn\'t support Bluetooth LE, so a heart-rate strap can\'t be used.';
+
+  @override
+  String get bleUnavailableLocationOff =>
+      'Turn on Location services so Android can scan for your heart-rate strap.';
+
+  @override
+  String get bleUnavailableUnknown =>
+      'Bluetooth didn\'t respond. Try again in a moment.';
+
+  @override
+  String get bleOpenSettings => 'Open settings';
 }

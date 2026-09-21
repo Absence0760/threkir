@@ -14266,4 +14266,27 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get metricRpeDefinition =>
       'Esfuerzo percibido: lo dura que se sintió una serie, del 1 al 10. Un 10 significa que no habrías podido hacer ni una repetición más.';
+
+  @override
+  String get bleUnavailableOff =>
+      'El Bluetooth está desactivado — actívalo para usar tu banda de FC.';
+
+  @override
+  String get bleUnavailableDenied =>
+      'Threkir no tiene permiso para usar Bluetooth. Concédelo en Ajustes para usar una banda de FC.';
+
+  @override
+  String get bleUnavailableUnsupported =>
+      'Este teléfono no admite Bluetooth LE, así que no se puede usar una banda de FC.';
+
+  @override
+  String get bleUnavailableLocationOff =>
+      'Activa la ubicación para que Android pueda buscar tu banda de FC.';
+
+  @override
+  String get bleUnavailableUnknown =>
+      'El Bluetooth no respondió. Inténtalo de nuevo en un momento.';
+
+  @override
+  String get bleOpenSettings => 'Abrir ajustes';
 }

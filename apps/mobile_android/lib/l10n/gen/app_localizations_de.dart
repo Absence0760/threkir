@@ -14279,4 +14279,27 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get metricRpeDefinition =>
       'Subjektives Belastungsempfinden — wie hart sich ein Satz angefühlt hat, von 1 bis 10. Eine 10 heißt, du hättest keine weitere Wiederholung geschafft.';
+
+  @override
+  String get bleUnavailableOff =>
+      'Bluetooth ist aus — schalte es ein, um deinen Herzfrequenzgurt zu nutzen.';
+
+  @override
+  String get bleUnavailableDenied =>
+      'Threkir darf Bluetooth nicht verwenden. Erlaube es in den Einstellungen, um einen Herzfrequenzgurt zu nutzen.';
+
+  @override
+  String get bleUnavailableUnsupported =>
+      'Dieses Telefon unterstützt kein Bluetooth LE, ein Herzfrequenzgurt ist daher nicht möglich.';
+
+  @override
+  String get bleUnavailableLocationOff =>
+      'Aktiviere die Standortdienste, damit Android nach deinem Herzfrequenzgurt suchen kann.';
+
+  @override
+  String get bleUnavailableUnknown =>
+      'Bluetooth hat nicht geantwortet. Versuche es gleich noch einmal.';
+
+  @override
+  String get bleOpenSettings => 'Einstellungen öffnen';
 }

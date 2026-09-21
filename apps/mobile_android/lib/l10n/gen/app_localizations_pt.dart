@@ -14268,6 +14268,29 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get metricRpeDefinition =>
       'Esforço percebido — quão dura foi uma série, de 1 a 10. Um 10 significa que não conseguiria fazer mais nenhuma repetição.';
+
+  @override
+  String get bleUnavailableOff =>
+      'O Bluetooth está desligado — ligue-o para usar a sua cinta cardíaca.';
+
+  @override
+  String get bleUnavailableDenied =>
+      'O Threkir não tem permissão para usar Bluetooth. Conceda-a nas definições para usar uma cinta cardíaca.';
+
+  @override
+  String get bleUnavailableUnsupported =>
+      'Este telemóvel não suporta Bluetooth LE, por isso não é possível usar uma cinta cardíaca.';
+
+  @override
+  String get bleUnavailableLocationOff =>
+      'Ative a localização para que o Android possa procurar a sua cinta cardíaca.';
+
+  @override
+  String get bleUnavailableUnknown =>
+      'O Bluetooth não respondeu. Tente novamente daqui a pouco.';
+
+  @override
+  String get bleOpenSettings => 'Abrir definições';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -28525,4 +28548,27 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get metricRpeDefinition =>
       'Esforço percebido — quão puxada foi uma série, de 1 a 10. Um 10 significa que você não conseguiria fazer mais nenhuma repetição.';
+
+  @override
+  String get bleUnavailableOff =>
+      'O Bluetooth está desligado — ligue-o para usar sua cinta cardíaca.';
+
+  @override
+  String get bleUnavailableDenied =>
+      'O Threkir não tem permissão para usar Bluetooth. Conceda-a nas configurações para usar uma cinta cardíaca.';
+
+  @override
+  String get bleUnavailableUnsupported =>
+      'Este celular não suporta Bluetooth LE, então não é possível usar uma cinta cardíaca.';
+
+  @override
+  String get bleUnavailableLocationOff =>
+      'Ative a localização para que o Android possa procurar sua cinta cardíaca.';
+
+  @override
+  String get bleUnavailableUnknown =>
+      'O Bluetooth não respondeu. Tente novamente daqui a pouco.';
+
+  @override
+  String get bleOpenSettings => 'Abrir configurações';
 }

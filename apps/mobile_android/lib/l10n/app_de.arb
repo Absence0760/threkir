@@ -4123,5 +4123,11 @@
   "metricRiegelDefinition": "Ein gängiges Verfahren, um deine Zeit auf einer Renndistanz aus einer Zeit auf einer anderen zu schätzen.",
   "metricE1rmLabel": "Gesch. 1RM",
   "metricE1rmDefinition": "Einwiederholungsmaximum — das schwerste Gewicht, das du für eine einzige Wiederholung heben könntest. Ein geschätztes 1RM wird aus Gewicht und Wiederholungen eines gemachten Satzes berechnet, sodass du es nie austesten musst.",
-  "metricRpeDefinition": "Subjektives Belastungsempfinden — wie hart sich ein Satz angefühlt hat, von 1 bis 10. Eine 10 heißt, du hättest keine weitere Wiederholung geschafft."
+  "metricRpeDefinition": "Subjektives Belastungsempfinden — wie hart sich ein Satz angefühlt hat, von 1 bis 10. Eine 10 heißt, du hättest keine weitere Wiederholung geschafft.",
+  "bleUnavailableOff": "Bluetooth ist aus — schalte es ein, um deinen Herzfrequenzgurt zu nutzen.",
+  "bleUnavailableDenied": "Threkir darf Bluetooth nicht verwenden. Erlaube es in den Einstellungen, um einen Herzfrequenzgurt zu nutzen.",
+  "bleUnavailableUnsupported": "Dieses Telefon unterstützt kein Bluetooth LE, ein Herzfrequenzgurt ist daher nicht möglich.",
+  "bleUnavailableLocationOff": "Aktiviere die Standortdienste, damit Android nach deinem Herzfrequenzgurt suchen kann.",
+  "bleUnavailableUnknown": "Bluetooth hat nicht geantwortet. Versuche es gleich noch einmal.",
+  "bleOpenSettings": "Einstellungen öffnen"
 }

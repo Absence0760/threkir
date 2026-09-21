@@ -4123,5 +4123,11 @@
   "metricRiegelDefinition": "ある距離で出したタイムから、別の距離のタイムを予測する標準的な方法です。",
   "metricE1rmLabel": "推定1RM",
   "metricE1rmDefinition": "1回挙上最大重量 — 1レップだけ挙げられる最大の重量です。推定1RMは実際に行ったセットの重量とレップ数から算出されるので、測定する必要はありません。",
-  "metricRpeDefinition": "自覚的運動強度 — そのセットがどれだけきつかったかを1〜10で表します。10はもう1レップもできなかったという意味です。"
+  "metricRpeDefinition": "自覚的運動強度 — そのセットがどれだけきつかったかを1〜10で表します。10はもう1レップもできなかったという意味です。",
+  "bleUnavailableOff": "Bluetooth がオフです — 心拍ストラップを使うにはオンにしてください。",
+  "bleUnavailableDenied": "Threkir は Bluetooth の使用を許可されていません。心拍ストラップを使うには設定で許可してください。",
+  "bleUnavailableUnsupported": "この端末は Bluetooth LE に対応していないため、心拍ストラップは使用できません。",
+  "bleUnavailableLocationOff": "Android が心拍ストラップを検索できるように、位置情報サービスをオンにしてください。",
+  "bleUnavailableUnknown": "Bluetooth が応答しませんでした。少し経ってからもう一度お試しください。",
+  "bleOpenSettings": "設定を開く"
 }

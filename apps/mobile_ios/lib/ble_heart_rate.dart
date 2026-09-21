@@ -38,6 +38,85 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// (no strap paired, or a clean teardown) shows nothing.
 enum BleHrStatus { disconnected, connecting, connected, reconnecting, connectFailed }
 
+/// Why the BLE adapter cannot serve a scan or a connect right now, decided
+/// from the platform's reported [BleStatus].
+///
+/// The distinction this exists for is iOS's. CoreBluetooth raises its
+/// authorization prompt exactly once, and a runner who taps "Don't Allow"
+/// leaves the app in [unauthorized] permanently — no API re-prompts, so the
+/// only remedy is the Settings app. Collapsing that into the scan sheet's
+/// "No straps found. Make sure it's nearby and awake." tells the runner to
+/// fix the one thing that isn't broken, and an offered "Reconnect" is a
+/// control that can never work. [locationServicesDisabled] is Android-only;
+/// CoreBluetooth never gates a scan on Location Services.
+enum BleReadiness {
+  ready,
+
+  /// The adapter hasn't reported yet. Transient on iOS specifically:
+  /// CBCentralManager is constructed in `.unknown` and settles only when
+  /// its delegate first fires, so this means "wait longer" — until the wait
+  /// runs out, at which point it means the adapter never answered.
+  initialising,
+  poweredOff,
+  unauthorized,
+  unsupported,
+  locationServicesDisabled,
+}
+
+BleReadiness bleReadinessFrom(BleStatus status) => switch (status) {
+      BleStatus.ready => BleReadiness.ready,
+      BleStatus.unknown => BleReadiness.initialising,
+      BleStatus.poweredOff => BleReadiness.poweredOff,
+      BleStatus.unauthorized => BleReadiness.unauthorized,
+      BleStatus.unsupported => BleReadiness.unsupported,
+      BleStatus.locationServicesDisabled =>
+        BleReadiness.locationServicesDisabled,
+    };
+
+/// Whether [r] is a state only the OS Settings app can clear. True for
+/// [BleReadiness.unauthorized] alone: every other reason either resolves
+/// itself or is fixed somewhere the app cannot deep-link to (the radio
+/// toggle in Control Centre).
+bool bleReadinessNeedsAppSettings(BleReadiness r) =>
+    r == BleReadiness.unauthorized;
+
+/// Settle [statuses] into a verdict, waiting out the transient `unknown`
+/// the adapter reports before its first callback. Yields
+/// [BleReadiness.initialising] when nothing but `unknown` arrives within
+/// [timeout], or when the stream ends without ever reporting.
+///
+/// Takes the stream rather than reading the plugin so the decision is
+/// exercisable without a radio — neither a simulator nor a CI runner has
+/// one, which is why the pure half has to carry the tests.
+Future<BleReadiness> resolveBleReadiness(
+  Stream<BleStatus> statuses, {
+  Duration timeout = const Duration(seconds: 4),
+}) async {
+  try {
+    final settled =
+        await statuses.firstWhere((s) => s != BleStatus.unknown).timeout(timeout);
+    return bleReadinessFrom(settled);
+  } catch (e) {
+    // TimeoutException, or a StateError from a stream that closed carrying
+    // only `unknown`. Either way the adapter never spoke for itself.
+    debugPrint('BLE readiness unresolved: $e');
+    return BleReadiness.initialising;
+  }
+}
+
+/// Pushed onto [BleHeartRate.scan]'s stream when the adapter refuses the
+/// scan, carrying the reason so the pairing sheet can name it. Without it
+/// every refusal degrades into an empty candidate list — the same thing the
+/// sheet shows for a strap that is merely asleep.
+@immutable
+class BleUnavailable implements Exception {
+  final BleReadiness reason;
+  const BleUnavailable(this.reason);
+
+  @override
+  String toString() => 'BleUnavailable(${reason.name})';
+}
+
 class BleHeartRate {
   static const String _prefsDeviceId = 'ble_hr_device_id';
   static const String _prefsDeviceName = 'ble_hr_device_name';
@@ -58,6 +137,23 @@ class BleHeartRate {
   // call, which production hits and the widget-test surface (which
   // only builds BleHeartRate, never calls into it) does not.
   late final FlutterReactiveBle _ble = FlutterReactiveBle();
+
+  /// Transport seam for the adapter's status stream — the
+  /// `RouteNavigator.playOffRouteHaptic` idiom. Null in production, where it
+  /// resolves to the plugin's own stream; a test sets it to drive the
+  /// readiness decision on a machine that has no Bluetooth radio.
+  @visibleForTesting
+  Stream<BleStatus> Function()? adapterStatusOverride;
+
+  Stream<BleStatus> get _adapterStatus =>
+      (adapterStatusOverride ?? () => _ble.statusStream)();
+
+  /// Why the last [scan] or [connectCached] was refused by the adapter, or
+  /// null when it was ready. The run screen reads this so a strap that could
+  /// not be reached because the grant was denied isn't disclosed as "strap
+  /// not found — put it on", which is advice for a different problem.
+  BleReadiness? get lastUnavailable => _lastUnavailable;
+  BleReadiness? _lastUnavailable;
 
   StreamSubscription<ConnectionStateUpdate>? _connectionSub;
   StreamSubscription<List<int>>? _notifySub;
@@ -103,41 +199,82 @@ class BleHeartRate {
     StreamSubscription<DiscoveredDevice>? sub;
     Timer? timer;
 
-    sub = _ble.scanForDevices(
-      withServices: [_heartRateService],
-      scanMode: ScanMode.lowLatency,
-    ).listen((d) {
-      // The platform layer already filters by service UUID. Some
-      // straps advertise a missing-name beacon between bonded packets;
-      // include them keyed by id so the user can still see the rssi
-      // and pick (we'll use the id as the display name fallback).
-      found[d.id] = BleDeviceCandidate(
-        id: d.id,
-        name: d.name.isNotEmpty ? d.name : d.id,
-        rssi: d.rssi,
-      );
-      if (!controller.isClosed) {
-        controller.add(found.values.toList()
-          ..sort((a, b) => b.rssi.compareTo(a.rssi)));
-      }
-    }, onError: (Object e) {
-      // The scan stream emits errors when the user toggles BT off
-      // mid-scan or revokes the runtime BT permission. Without an
-      // onError handler, the rejection becomes an unhandled async
-      // error. Forward to the broadcast controller so the caller's
-      // bottom-sheet can dismiss cleanly.
-      debugPrint('BLE scanForDevices error: $e');
-      if (!controller.isClosed) controller.addError(e);
-    });
-
-    timer = Timer(timeout, () async {
-      await sub?.cancel();
-      if (!controller.isClosed) await controller.close();
-    });
+    var cancelled = false;
     controller.onCancel = () async {
+      cancelled = true;
       timer?.cancel();
       await sub?.cancel();
     };
+
+    void beginScan() {
+      sub = _ble.scanForDevices(
+        withServices: [_heartRateService],
+        scanMode: ScanMode.lowLatency,
+      ).listen((d) {
+        // The platform layer already filters by service UUID. Some
+        // straps advertise a missing-name beacon between bonded packets;
+        // include them keyed by id so the user can still see the rssi
+        // and pick (we'll use the id as the display name fallback).
+        found[d.id] = BleDeviceCandidate(
+          id: d.id,
+          name: d.name.isNotEmpty ? d.name : d.id,
+          rssi: d.rssi,
+        );
+        if (!controller.isClosed) {
+          controller.add(found.values.toList()
+            ..sort((a, b) => b.rssi.compareTo(a.rssi)));
+        }
+      }, onError: (Object e) {
+        // The scan stream emits errors when the user toggles BT off
+        // mid-scan or revokes the runtime BT permission. Without an
+        // onError handler, the rejection becomes an unhandled async
+        // error. Forward to the broadcast controller so the caller's
+        // bottom-sheet can dismiss cleanly.
+        debugPrint('BLE scanForDevices error: $e');
+        if (!controller.isClosed) controller.addError(e);
+      });
+
+      timer = Timer(timeout, () async {
+        await sub?.cancel();
+        if (!controller.isClosed) await controller.close();
+      });
+    }
+
+    // iOS won't serve a scan until CoreBluetooth has settled, and when the
+    // grant was denied or the radio is off it reports nothing at all rather
+    // than failing — `scanForDevices` simply stays quiet until the timeout,
+    // which the sheet renders as "no straps found". Resolve the adapter
+    // first so a refusal arrives as a reason the sheet can name, and so the
+    // authorization prompt that the first CoreBluetooth use raises has
+    // happened before the scan window starts counting down.
+    () async {
+      BleReadiness readiness;
+      try {
+        readiness = await resolveBleReadiness(_adapterStatus);
+      } catch (e) {
+        // Constructing the plugin opens a MethodChannel, which throws where
+        // no platform implementation is bound. An adapter that can't be
+        // reached is treated the same as one that never answered.
+        debugPrint('BLE adapter unreachable: $e');
+        readiness = BleReadiness.initialising;
+      }
+      _lastUnavailable = readiness == BleReadiness.ready ? null : readiness;
+      if (cancelled || controller.isClosed) return;
+      if (readiness != BleReadiness.ready) {
+        controller.addError(BleUnavailable(readiness));
+        await controller.close();
+        return;
+      }
+      try {
+        beginScan();
+      } catch (e) {
+        debugPrint('BLE scan start failed: $e');
+        if (!controller.isClosed) {
+          controller.addError(e);
+          await controller.close();
+        }
+      }
+    }();
     return controller.stream;
   }
 
@@ -165,6 +302,22 @@ class BleHeartRate {
     final prefs = await SharedPreferences.getInstance();
     final id = prefs.getString(_prefsDeviceId);
     if (id == null) return false;
+    // Same gate as [scan]: a connect issued while CoreBluetooth is
+    // unauthorized or powered off fails indistinguishably from a strap out
+    // of range, and the run screen would then tell the runner to put on a
+    // strap they are already wearing.
+    BleReadiness readiness;
+    try {
+      readiness = await resolveBleReadiness(_adapterStatus);
+    } catch (e) {
+      debugPrint('BLE adapter unreachable: $e');
+      readiness = BleReadiness.initialising;
+    }
+    _lastUnavailable = readiness == BleReadiness.ready ? null : readiness;
+    if (readiness != BleReadiness.ready) {
+      _setStatus(BleHrStatus.connectFailed);
+      return false;
+    }
     try {
       await _connect(id);
       return true;

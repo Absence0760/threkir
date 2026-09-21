@@ -198,9 +198,10 @@ is the runbook for making each one.
 | `MOBILE_REVENUECAT_API_KEY_IOS` | RevenueCat's Apple app key (`appl_…`). Optional: unset, Pro is not for sale on iOS, because iOS may not fall back to the web checkout ([decisions § 1700](../architecture/decisions.md)) |
 
 The runtime config otherwise reuses the Android release's secrets:
-`PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`, `PUBLIC_MAPTILER_KEY` and
-`MOBILE_OSRM_URL` (required), `PUBLIC_SENTRY_DSN`, `MOBILE_LIVE_HUB_URL` and
-`MOBILE_STRAVA_CLIENT_ID` (optional). `APP_RELEASE` is the tag's version.
+`PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY` and `PUBLIC_MAPTILER_KEY`
+(required), `MOBILE_OSRM_URL`, `PUBLIC_SENTRY_DSN`, `MOBILE_LIVE_HUB_URL` and
+`MOBILE_STRAVA_CLIENT_ID` (optional). The signing secrets go in the
+`production` environment, beside Android's keystore. `APP_RELEASE` is the tag's version.
 There is no keychain-password secret: the runner generates one per run. The
 team id is not a secret either -- it is read out of the two profiles.
 

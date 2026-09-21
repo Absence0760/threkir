@@ -23,8 +23,13 @@ name: Release iOS
 # seeded into dotenv by main.dart. The shared ones are the same secrets the web,
 # Android and Wear OS releases read:
 #   PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, PUBLIC_MAPTILER_KEY   (required)
-#   MOBILE_OSRM_URL                       (required; the route builder throws without it)
+#   MOBILE_OSRM_URL                       (optional; unset, the route builder places
+#                                         straight lines and says so, as on Android)
 #   PUBLIC_SENTRY_DSN, MOBILE_LIVE_HUB_URL, MOBILE_STRAVA_CLIENT_ID      (optional)
+#
+# The signing secrets and GOOGLE_SERVICE_INFO_PLIST_BASE64 live in the
+# `production` environment beside Android's keystore; the PUBLIC_* ones are
+# repository secrets shared with the web release.
 #   MOBILE_REVENUECAT_API_KEY_IOS         (optional; unset, Pro is not for sale on
 #                                         iOS, because iOS may not fall back to the
 #                                         web checkout — decisions § 1700)
@@ -81,7 +86,6 @@ jobs:
           HAS_PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL != '' }}
           HAS_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PUBLIC_SUPABASE_ANON_KEY != '' }}
           HAS_PUBLIC_MAPTILER_KEY: ${{ secrets.PUBLIC_MAPTILER_KEY != '' }}
-          HAS_MOBILE_OSRM_URL: ${{ secrets.MOBILE_OSRM_URL != '' }}
         run: |
           missing=$(env | sed -n 's/^HAS_\([A-Z0-9_]*\)=false$/\1/p' | sort | tr '\n' ' ')
           if [ -n "$missing" ]; then

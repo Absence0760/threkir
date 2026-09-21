@@ -902,6 +902,216 @@
           }
         }
       }
+    },
+    "Run started" : {
+      "comment" : "Spoken cue when a run starts. Wording matches the phone's ttsRunStarted.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Lauf gestartet" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Carrera iniciada" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Course démarrée" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ランを開始しました" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Corrida iniciada" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Corrida iniciada" } }
+      }
+    },
+    "%lld kilometres" : {
+      "comment" : "Spoken split distance in km mode. Plural-aware; matches the phone's ttsSplitUnitKilometre(s).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld kilometre" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld kilometres" } }
+            }
+          }
+        },
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld Kilometer" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld Kilometer" } }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld kilómetro" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld kilómetros" } }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld kilomètre" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld kilomètres" } }
+            }
+          }
+        },
+        "ja" : {
+          "variations" : {
+            "plural" : {
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lldキロメートル" } }
+            }
+          }
+        },
+        "pt-BR" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld quilômetro" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld quilômetros" } }
+            }
+          }
+        },
+        "pt-PT" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld quilómetro" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld quilómetros" } }
+            }
+          }
+        }
+      }
+    },
+    "%lld miles" : {
+      "comment" : "Spoken split distance in mi mode. Plural-aware; matches the phone's ttsSplitUnitMile(s).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld mile" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld miles" } }
+            }
+          }
+        },
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld Meile" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld Meilen" } }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld milla" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld millas" } }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld mile" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld miles" } }
+            }
+          }
+        },
+        "ja" : {
+          "variations" : {
+            "plural" : {
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lldマイル" } }
+            }
+          }
+        },
+        "pt-BR" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld milha" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld milhas" } }
+            }
+          }
+        },
+        "pt-PT" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld milha" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld milhas" } }
+            }
+          }
+        }
+      }
+    },
+    "Pace, %lld minutes %lld seconds per kilometre" : {
+      "comment" : "Spoken pace tail of a split cue, km mode. Matches the phone's ttsPaceKm.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Pace, %1$lld Minuten %2$lld Sekunden pro Kilometer" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ritmo, %1$lld minutos %2$lld segundos por kilómetro" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Allure, %1$lld minutes %2$lld secondes au kilomètre" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ペース、1キロメートルあたり%1$lld分%2$lld秒" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Ritmo, %1$lld minutos %2$lld segundos por quilômetro" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Ritmo, %1$lld minutos %2$lld segundos por quilómetro" } }
+      }
+    },
+    "Pace, %lld minutes %lld seconds per mile" : {
+      "comment" : "Spoken pace tail of a split cue, mi mode. Matches the phone's ttsPaceMi.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Pace, %1$lld Minuten %2$lld Sekunden pro Meile" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ritmo, %1$lld minutos %2$lld segundos por milla" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Allure, %1$lld minutes %2$lld secondes au mile" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ペース、1マイルあたり%1$lld分%2$lld秒" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Ritmo, %1$lld minutos %2$lld segundos por milha" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Ritmo, %1$lld minutos %2$lld segundos por milha" } }
+      }
+    },
+    "%@. %@" : {
+      "comment" : "Sentence break between a split's distance and its pace tail. Localised because the break itself differs — ja joins with a full-width stop and no space. Mirrors the phone's ttsSplit and Wear's tts_split_phrase.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%1$@. %2$@" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "%1$@. %2$@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "%1$@. %2$@" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "%1$@。%2$@" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "%1$@. %2$@" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "%1$@. %2$@" } }
+      }
+    },
+    "Pick up the pace" : {
+      "comment" : "Spoken pace-drift cue when the runner is slower than target. Matches the phone's ttsPaceAlertFast.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Tempo erhöhen" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Acelera el ritmo" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Accélérez" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ペースを上げましょう" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Acelere o ritmo" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Acelere o ritmo" } }
+      }
+    },
+    "Slow down" : {
+      "comment" : "Spoken pace-drift cue when the runner is faster than target. Matches the phone's ttsPaceAlertSlow.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Langsamer" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Reduce la velocidad" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ralentissez" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ペースを落としましょう" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Diminua o ritmo" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Abrande o ritmo" } }
+      }
+    },
+    "Run complete. %@ kilometres in %lld minutes." : {
+      "comment" : "Spoken finish summary, km mode. Matches the phone's ttsRunComplete.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Lauf beendet. %1$@ Kilometer in %2$lld Minuten." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Carrera completada. %1$@ kilómetros en %2$lld minutos." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Course terminée. %1$@ kilomètres en %2$lld minutes." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ラン完了。%2$lld分で%1$@キロメートル。" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Corrida concluída. %1$@ quilômetros em %2$lld minutos." } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Corrida concluída. %1$@ quilómetros em %2$lld minutos." } }
+      }
+    },
+    "Run complete. %@ miles in %lld minutes." : {
+      "comment" : "Spoken finish summary, mi mode. Matches the phone's ttsRunComplete.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Lauf beendet. %1$@ Meilen in %2$lld Minuten." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Carrera completada. %1$@ millas en %2$lld minutos." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Course terminée. %1$@ miles en %2$lld minutes." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ラン完了。%2$lld分で%1$@マイル。" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Corrida concluída. %1$@ milhas em %2$lld minutos." } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Corrida concluída. %1$@ milhas em %2$lld minutos." } }
+      }
     }
   }
 }

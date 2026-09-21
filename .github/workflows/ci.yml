@@ -327,6 +327,18 @@ jobs:
             echo "The failing assertion names the files the lane's own file-list expression now misses. Reproduce with: node --test scripts/edge_functions_typecheck_coverage.test.mjs."
             exit 1
           fi
+      # The signing step in release-ios.yml runs only when a mobile_ios tag is
+      # published, on a Mac runner, against the Xcode project as it is that
+      # day. This runs the same planning and editing on Linux against the
+      # committed project, so a restructured project fails a PR instead of a
+      # release (decisions.md § 1701).
+      - name: The iOS release signing step still edits the committed Xcode project
+        run: |
+          if ! node --test scripts/ios_release_signing.test.mjs; then
+            echo "::error::scripts/ios_release_signing.mjs no longer signs apps/mobile_ios/ios/Runner.xcodeproj the way a release needs: a signed target it cannot find or match to a profile, or an edit that reaches outside the Release configurations. That script runs only at release time, so this is the check that runs before a tag does."
+            echo "Reproduce with: node --test scripts/ios_release_signing.test.mjs (stdlib only, no Xcode needed)."
+            exit 1
+          fi
       # The stack-start wait loop is shell inside a composite action, so it
       # runs in no job's test suite. Its accounting (a wall-clock deadline the
       # error string can be trusted to report) and its failure forensics are

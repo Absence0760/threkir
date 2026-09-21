@@ -1,4 +1,5 @@
 import 'package:api_client/api_client.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -344,6 +345,21 @@ void main() {
       expect(client.capturedEmail, isNull);
     });
 
+
+    // decisions § 1700: see the SignInScreen case — no Google on iOS.
+    testWidgets('iOS offers Continue with Apple and no Google button',
+        (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        await _pump(tester, _FakeApiClient());
+        expect(find.widgetWithText(OutlinedButton, 'Continue with Google'),
+            findsNothing);
+        expect(find.widgetWithText(OutlinedButton, 'Continue with Apple'),
+            findsOneWidget);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
 
     // ─────────── Pre-submit validation (#243) ───────────
 

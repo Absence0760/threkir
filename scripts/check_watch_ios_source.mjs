@@ -32,13 +32,21 @@
 //       permission silently; an over-declared capability is an App Review
 //       rejection and a privacy over-claim.
 //
-//   (4) The three pure formatters the complication duplicates are byte-for-byte
-//       the copies in `RunFormat.swift`. Both files say "keep the two in
-//       lockstep" in a comment and nothing enforced it. `ComplicationFormatterTests`
-//       cannot: `Complications/ActiveRunComplication.swift` compiles into the
-//       `WatchAppComplication` extension, a different module with no test host,
-//       so the suite links the `RunFormat.swift` copy and passing proves nothing
-//       about the copy the widget will actually run.
+//   (4) RETIRED, and the number is left vacant so every claim below still
+//       answers to the number it has always had. It held the complication's
+//       byte-identical second copy of `formatElapsed` / `formatDistanceKm` /
+//       `formatPaceSecPerKm` against `RunFormat.swift`'s, because a text
+//       compare was the only thing that could: the copies compiled into two
+//       different modules and no Swift test could link both. There is one
+//       copy now. `RunFormat.swift` and `Complications/ActiveRunTimeline.swift`
+//       are members of the `WatchAppComplication` extension AND of `WatchApp`,
+//       the way `ActiveRunBridge.swift` already was, so the watch face and
+//       `WatchAppTests` run the same source. Nothing replaces the claim
+//       because the drift it watched for no longer has two places to happen
+//       in: dropping a shared file from one target's membership is a missing
+//       symbol, which is a compile error in whichever project dropped it, not
+//       a silent divergence — and claim (15) holds the two projects' `WatchApp`
+//       membership lists against each other besides.
 //
 //   (5) The App Group identifier in `ActiveRunBridge.swift` matches the one
 //       `Complications/README.md` instructs an operator to type into Xcode. A
@@ -129,10 +137,11 @@
 //       Xcode never compiles is not a build error and not a red test — it is
 //       simply absent, and a TEST file that is absent takes its coverage with
 //       it while still reading as coverage in the repo. That has already
-//       happened once here: `Complications/ActiveRunComplication.swift` is in
-//       no target, which is why claim (4) exists at all — `ComplicationFormatterTests`
-//       links the OTHER copy of the formatters and passing proves nothing
-//       about the one the widget runs. The same slip on
+//       happened once here: `Complications/ActiveRunComplication.swift` was in
+//       no target for as long as it existed, which is why the now-retired
+//       claim (4) existed at all — the Swift suite linked a second copy of the
+//       formatters and passing proved nothing about the one the widget ran.
+//       The same slip on
 //       `HealthKitFailureTests.swift` would leave the `test-watch-ios` job
 //       green having never run the accumulator that decides whether a shipped
 //       run keeps its `avg_bpm` (decisions § 1350).
@@ -147,7 +156,13 @@
 //       `WatchApp.xcodeproj` alone is exercised by `test-watch-ios` and
 //       absent from every shipped `.ipa`, and one added to `Runner.xcodeproj`
 //       alone ships to a wrist having been compiled by nothing that runs a
-//       test. Neither is a build error in either project. The same claim
+//       test. Neither is a build error in either project. The membership
+//       compare covers the `WatchAppComplication` extension as well as the
+//       app: since the formatter duplication collapsed, files shared between
+//       the app and the extension are the normal case rather than the
+//       exception, and each one is a third membership list to keep. The
+//       settings half stays on the app target, whose bundle identity is what
+//       decides whether the two builds are the same app. The same claim
 //       holds the EMBED, because deleting one copy phase turns the whole
 //       integration back off while both projects still build and both suites
 //       still pass — and claim (10) would then read the companion key as the
@@ -384,16 +399,6 @@ export const ENTITLEMENTS = [
 /** @type {string[]} */
 export const UNCLAIMED_ENTITLEMENTS = [];
 
-/**
- * Functions the complication carries a second copy of, because its Widget
- * Extension target cannot link `RunFormat.swift`. Both copies must be
- * byte-identical or the watch face and the run screen round the same run
- * differently.
- */
-export const DUPLICATED_FORMATTERS = ['formatElapsed', 'formatDistanceKm', 'formatPaceSecPerKm'];
-
-export const FORMATTER_ORIGIN = join('WatchApp', 'RunFormat.swift');
-export const FORMATTER_COPY = join('Complications', 'ActiveRunComplication.swift');
 export const BRIDGE = join('WatchApp', 'ActiveRunBridge.swift');
 export const COMPLICATION_README = join('Complications', 'README.md');
 export const SYNC_SITE = join('WatchApp', 'ContentView.swift');
@@ -689,6 +694,15 @@ export const WATCH_EMBED_MARKERS = ['$(CONTENTS_FOLDER_PATH)/Watch', 'WatchApp.a
 
 /** The watch app's target name, spelled the same in both projects. */
 export const WATCH_TARGET = 'WatchApp';
+
+/**
+ * The widget extension embedded in the watch app. Its membership is compared
+ * across the two projects the same way `WATCH_TARGET`'s is: the shared files
+ * that used to be duplicated (`RunFormat.swift`, `ActiveRunTimeline.swift`)
+ * are members of it in both, and a file added to one project's extension
+ * alone is a `.appex` that compiles in one build and not the other.
+ */
+export const COMPLICATION_TARGET = 'WatchAppComplication';
 
 /** The phone app's target, whose bundle the watch app is copied into. */
 export const PHONE_TARGET = 'Runner';
@@ -1320,29 +1334,6 @@ export function dartInvokeKeys(src, method) {
 }
 
 /**
- * The text of a top-level `func <name>(` through its matching close brace,
- * signature line included. Returns null when the function is not in this
- * source.
- * @param {string} src
- * @param {string} name
- */
-export function functionBody(src, name) {
-	const start = src.search(new RegExp(`^func\\s+${name}\\s*\\(`, 'm'));
-	if (start === -1) return null;
-	const open = src.indexOf('{', start);
-	if (open === -1) return null;
-	let depth = 0;
-	for (let i = open; i < src.length; i += 1) {
-		if (src[i] === '{') depth += 1;
-		else if (src[i] === '}') {
-			depth -= 1;
-			if (depth === 0) return src.slice(start, i + 1);
-		}
-	}
-	return null;
-}
-
-/**
  * Index of the delimiter closing the one at `open`, or -1. Skips string
  * literals, so a brace or paren inside `"…"` cannot unbalance the walk.
  * @param {string} src @param {number} open @param {string} o @param {string} c
@@ -1634,53 +1625,6 @@ export function check(
 				'a rejection and, for a health capability, an over-claim about what the watch collects. ' +
 				'Either delete it, or add a rule to ENTITLEMENTS naming the call that needs it.',
 		);
-	}
-
-	// (4) The duplicated complication formatters.
-	//
-	//     Read defensively: a deleted copy is a real state (the Widget
-	//     Extension finally landing would move these) and a guard that throws
-	//     an ENOENT stack instead of naming the file is one a reader cannot
-	//     act on — which is the whole complaint this file exists to make about
-	//     silent watchOS failures.
-	const originSrc = readIfPresent(join(watchRoot, FORMATTER_ORIGIN));
-	const copySrc = readIfPresent(join(watchRoot, FORMATTER_COPY));
-	let diverged = 0;
-	for (const [rel, src] of [[FORMATTER_ORIGIN, originSrc], [FORMATTER_COPY, copySrc]]) {
-		if (src !== null) continue;
-		diverged += 1;
-		errors.push(
-			`${rel} is gone. Claim (4) holds the complication's copy of the pure formatters ` +
-				'against the app\'s, and it cannot read one of them.',
-		);
-	}
-	if (originSrc === null || copySrc === null) {
-		// Fall through to the remaining claims rather than comparing null.
-	} else {
-	for (const name of DUPLICATED_FORMATTERS) {
-		const a = functionBody(originSrc, name);
-		const b = functionBody(copySrc, name);
-		if (a === null || b === null) {
-			diverged += 1;
-			errors.push(
-				`\`${name}\` is missing from ${a === null ? FORMATTER_ORIGIN : FORMATTER_COPY}. Both ` +
-					'copies must exist while the duplication stands: the complication compiles into ' +
-					`the WatchAppComplication extension and ComplicationFormatterTests links ${FORMATTER_ORIGIN}.`,
-			);
-			continue;
-		}
-		if (a === b) continue;
-		diverged += 1;
-		errors.push(
-			`\`${name}\` differs between ${FORMATTER_ORIGIN} and ${FORMATTER_COPY}. The two are a ` +
-				'hand-maintained duplicate — the widget runs the second copy and the Swift suite tests ' +
-				'the first, so a divergence means the watch face and the run screen round the same run ' +
-				'differently and every test still passes.',
-		);
-	}
-	}
-	if (diverged === 0) {
-		ok.push(`${DUPLICATED_FORMATTERS.length} duplicated complication formatters are byte-identical`);
 	}
 
 	// (5) The App Group identifier, stated twice.
@@ -2074,9 +2018,7 @@ export function check(
 				if (rel in UNBUILT_SWIFT) {
 					errors.push(
 						`${rel} is exempted from claim (13) but IS now a target member. ` +
-							`The exemption said: ${UNBUILT_SWIFT[rel]} Delete the entry — and if ` +
-							'this is the complication finally getting its Widget Extension, claim (4)' +
-							"'s duplicated formatters may be able to go with it.",
+							`The exemption said: ${UNBUILT_SWIFT[rel]} Delete the entry.`,
 					);
 				}
 				continue;
@@ -2132,12 +2074,13 @@ export function check(
 					'the companion declaration out of ' + WATCH_PLIST + ' in the same change.',
 			);
 		} else {
+			for (const target of [WATCH_TARGET, COMPLICATION_TARGET]) {
 			for (const phase of /** @type {const} */ (['Sources', 'Resources'])) {
-				const mine = targetPhaseMembers(watchPbx, WATCH_TARGET, phase);
-				const theirs = targetPhaseMembers(phonePbx, WATCH_TARGET, phase);
+				const mine = targetPhaseMembers(watchPbx, target, phase);
+				const theirs = targetPhaseMembers(phonePbx, target, phase);
 				if (mine.length === 0) {
 					errors.push(
-						`Parsed no ${phase} members out of ${PBXPROJ}'s \`${WATCH_TARGET}\` target — ` +
+						`Parsed no ${phase} members out of ${PBXPROJ}'s \`${target}\` target — ` +
 							'claim (15) would pass vacuously.',
 					);
 					continue;
@@ -2147,7 +2090,7 @@ export function check(
 				if (onlyMine.length > 0) {
 					errors.push(
 						`${onlyMine.join(', ')} ${onlyMine.length === 1 ? 'is' : 'are'} in ${PBXPROJ}'s ` +
-							`\`${WATCH_TARGET}\` ${phase} phase and not in ${PHONE_PBXPROJ}'s. The file is ` +
+							`\`${target}\` ${phase} phase and not in ${PHONE_PBXPROJ}'s. The file is ` +
 							'exercised by `test-watch-ios` and absent from every shipped .ipa — the suite ' +
 							'is green about code no wrist runs. Add it to both, or to neither.',
 					);
@@ -2155,11 +2098,12 @@ export function check(
 				if (onlyTheirs.length > 0) {
 					errors.push(
 						`${onlyTheirs.join(', ')} ${onlyTheirs.length === 1 ? 'is' : 'are'} in ` +
-							`${PHONE_PBXPROJ}'s \`${WATCH_TARGET}\` ${phase} phase and not in ${PBXPROJ}'s. ` +
+							`${PHONE_PBXPROJ}'s \`${target}\` ${phase} phase and not in ${PBXPROJ}'s. ` +
 							'The file ships to a wrist and is compiled by nothing that runs a test. Add it ' +
 							'to both, or to neither.',
 					);
 				}
+			}
 			}
 
 			const mineCfg = targetConfigurations(watchPbx, WATCH_TARGET);
@@ -2242,7 +2186,10 @@ export function check(
 						`(${targetPhaseMembers(watchPbx, WATCH_TARGET, 'Sources').length} sources, ` +
 						`${targetPhaseMembers(watchPbx, WATCH_TARGET, 'Resources').length} resources, ` +
 						`${WATCH_BUNDLE_SETTINGS.length + WATCH_BUNDLE_PATH_SETTINGS.length} bundle ` +
-						`settings) and ${PHONE_TARGET} embeds it at \`${WATCH_EMBED_DST}\``,
+						`settings) and the same \`${COMPLICATION_TARGET}\` extension ` +
+						`(${targetPhaseMembers(watchPbx, COMPLICATION_TARGET, 'Sources').length} sources, ` +
+						`${targetPhaseMembers(watchPbx, COMPLICATION_TARGET, 'Resources').length} resources), ` +
+						`and ${PHONE_TARGET} embeds it at \`${WATCH_EMBED_DST}\``,
 				);
 			}
 		}

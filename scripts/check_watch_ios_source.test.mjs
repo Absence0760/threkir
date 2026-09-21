@@ -4,8 +4,8 @@
 // exactly one job, on a runner nobody here has. Every failure it exists to catch is silent
 // on the platform: a localization key with no catalog entry renders English and
 // throws nothing, an entitlement nothing claims builds and links fine and is
-// refused months later by App Review, and two copies of one formatter drifting
-// apart leaves the Swift suite green because it links only one of them. So the
+// refused months later by App Review, and a Swift file in no Xcode target is
+// simply absent from the build with nothing red to show for it. So the
 // guard cannot be measured by "does the app work" — it is measured the same way
 // `check_xcstrings_parity.test.mjs` measures its sibling: by mutating a copy of
 // the real tree into each shape the guard exists to refuse, with the unmutated
@@ -49,7 +49,6 @@ import {
 	dartInvokeKeys,
 	destructiveButtons,
 	methodBody,
-	functionBody,
 	bodyOfSignatureContaining,
 	depthOf,
 	normalizeKey,
@@ -69,7 +68,6 @@ const PLIST = join('WatchApp', 'Info.plist');
 const ENTS = join('WatchApp', 'WatchApp.entitlements');
 const BRIDGE = join('WatchApp', 'ActiveRunBridge.swift');
 const COPY = join('Complications', 'ActiveRunComplication.swift');
-const ORIGIN = join('WatchApp', 'RunFormat.swift');
 const README = join('Complications', 'README.md');
 const SYNC = join('WatchApp', 'ContentView.swift');
 const INGEST_ABS = join(REPO_ROOT, INGEST);
@@ -465,25 +463,6 @@ test('an App Group entitlement present but empty is refused as unusable', () => 
 	assert.equal(matched(errors, /application-groups` with an unusable value/).length, 1, errors.join('\n'));
 });
 
-// --- claim 4: the duplicated complication formatters ------------------------
-
-test('a complication formatter that drifts from its RunFormat copy is refused', () => {
-	// The failure no Swift test can see: ActiveRunComplication.swift is in no
-	// target, so ComplicationFormatterTests links the RunFormat copy and stays
-	// green while the widget rounds differently.
-	const { errors } = runMutated((dir) => {
-		edit(dir, COPY, (s) => s.replace('func formatElapsed(_ seconds: Int) -> String {\n    let s = max(seconds, 0)', 'func formatElapsed(_ seconds: Int) -> String {\n    let s = seconds'));
-	});
-	assert.equal(matched(errors, /`formatElapsed` differs between/).length, 1, errors.join('\n'));
-});
-
-test('a complication formatter deleted outright is refused, not silently skipped', () => {
-	const { errors } = runMutated((dir) => {
-		edit(dir, ORIGIN, (s) => s.replace('func formatDistanceKm(', 'func formatDistanceKmOld('));
-	});
-	assert.equal(matched(errors, /`formatDistanceKm` is missing from/).length, 1, errors.join('\n'));
-});
-
 // --- claim 5: the App Group identifier, stated twice ------------------------
 
 test('renaming the App Group in Swift without following it in the README is refused', () => {
@@ -581,14 +560,6 @@ test('parseFlatPlist agrees with the real files it is pointed at', () => {
 	assert.equal(ents.get('com.apple.developer.healthkit'), true);
 	assert.deepEqual(ents.get('com.apple.developer.healthkit.access'), []);
 	assert.deepEqual(ents.get('com.apple.security.application-groups'), ['group.com.threkir.app.activerun']);
-});
-
-test('functionBody balances braces rather than stopping at the first close', () => {
-	const src = 'func f() -> Int {\n    if true {\n        return 1\n    }\n    return 0\n}\nfunc g() {}\n';
-	const body = functionBody(src, 'f');
-	assert.ok(body?.endsWith('return 0\n}'), body ?? 'null');
-	assert.doesNotMatch(body ?? '', /func g/);
-	assert.equal(functionBody(src, 'missing'), null);
 });
 
 // --- claim 6: the run hand-off envelope, read from both ends ----------------
@@ -1224,16 +1195,6 @@ test('claim (13) fails when the complication loses its target membership', () =>
 	);
 });
 
-test('claim (4) names the complication file when it is gone rather than throwing', () => {
-	const { errors } = runMutated((dir) => {
-		rmSync(join(dir, 'Complications', 'ActiveRunComplication.swift'));
-	});
-	assert.ok(
-		errors.some((e) => e.includes('ActiveRunComplication.swift is gone')),
-		errors.join('\n'),
-	);
-});
-
 // --- claim (14): the DEBUG fence, and what it rests on -----------------------
 
 test('claim (14) refuses the password grant once the DEBUG fence is removed', () => {
@@ -1430,6 +1391,44 @@ test('claim (15) refuses a source the phone project builds and the watch project
 	);
 });
 
+test('claim (15) refuses a source only one project builds into the extension', () => {
+	// Collapsing the duplicated formatters made `RunFormat.swift` and
+	// `ActiveRunTimeline.swift` members of the extension as well as the app,
+	// so the extension now has a membership list worth keeping too. The
+	// widget's own file is the one name that appears in no other phase.
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_PHONE_PBX, (s) =>
+			s.replace(/\t+[0-9A-Fa-f]{24} \/\* ActiveRunComplication\.swift in Sources \*\/,\n/, ''),
+		);
+	});
+	assert.ok(
+		errors.some(
+			(e) =>
+				e.includes('ActiveRunComplication.swift') &&
+				e.includes('`WatchAppComplication` Sources phase') &&
+				e.includes('absent from every shipped .ipa'),
+		),
+		errors.join('\n'),
+	);
+});
+
+test('claim (15) refuses an extension source the phone project alone builds', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, PBX, (s) =>
+			s.replace(/\t+[0-9A-Fa-f]{24} \/\* ActiveRunComplication\.swift in Sources \*\/,\n/, ''),
+		);
+	});
+	assert.ok(
+		errors.some(
+			(e) =>
+				e.includes('ActiveRunComplication.swift') &&
+				e.includes('`WatchAppComplication` Sources phase') &&
+				e.includes('compiled by nothing that runs a test'),
+		),
+		errors.join('\n'),
+	);
+});
+
 // --- claim 17: no Xcode object id is claimed twice --------------------------
 
 test('claim (17) fails when two objects in the watch project share an id', () => {
@@ -1459,18 +1458,22 @@ test('claim (17) fails when two objects in the watch project share an id', () =>
 	);
 });
 
-test('claim (15) refuses a resource only one project bundles', () => {
+test('claim (15) refuses a resource only one project bundles, in either target', () => {
 	// The String Catalog is a RESOURCE, so source membership alone would miss
-	// the case where the shipped bundle loses its translations entirely.
+	// the case where the shipped bundle loses its translations entirely — and
+	// it is a member of the extension as well as the app, because a widget
+	// localises against its own bundle.
 	const { errors } = runMutated((dir) => {
 		edit(dir, STAGED_PHONE_PBX, (s) =>
-			s.replace(/\t+[0-9A-Fa-f]{24} \/\* Localizable\.xcstrings in Resources \*\/,\n/, ''),
+			s.replaceAll(/\t+[0-9A-Fa-f]{24} \/\* Localizable\.xcstrings in Resources \*\/,\n/g, ''),
 		);
 	});
-	assert.ok(
-		errors.some((e) => e.includes('Localizable.xcstrings') && e.includes('Resources phase')),
-		errors.join('\n'),
-	);
+	for (const target of ['`WatchApp` Resources phase', '`WatchAppComplication` Resources phase']) {
+		assert.ok(
+			errors.some((e) => e.includes('Localizable.xcstrings') && e.includes(target)),
+			`${target}: ${errors.join('\n')}`,
+		);
+	}
 });
 
 test('claim (15) refuses a bundle identifier that differs between the projects', () => {

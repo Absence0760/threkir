@@ -8,7 +8,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../apple_auth.dart';
-import '../google_auth.dart';
 import '../auth_error.dart';
 import '../google_auth.dart';
 import '../l10n/gen/app_localizations.dart';

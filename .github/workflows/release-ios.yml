@@ -127,9 +127,10 @@ jobs:
           grep '^version:' pubspec.yaml
 
       - name: Decode the Firebase config
-        # Unlike the Android side, this one is fatal: the plist is a member of
-        # the Runner target's Resources phase, so Xcode fails on the missing
-        # input anyway — this step just fails first, and says which secret.
+        # Required here although the build tolerates its absence: the Runner's
+        # copy phase bundles the plist when it is present and skips it when it
+        # is not (decisions § 1693), so without this a release would build
+        # green and ship with push silently off.
         env:
           GOOGLE_SERVICE_INFO_PLIST_BASE64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
         run: |

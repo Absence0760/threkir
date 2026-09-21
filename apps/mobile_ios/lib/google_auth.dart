@@ -37,6 +37,16 @@ bool googleSignInAvailable() {
   return _googleServiceInfoBundled;
 }
 
+/// Whether the Google button is shown at all.
+///
+/// Android always shows it: an unconfigured build answers a tap with the
+/// coming-soon notice. iOS shows it only when [googleSignInAvailable], because
+/// a sign-in button that cannot work is an App Review rejection (Guideline
+/// 2.1), so there it is absent rather than "coming soon" (decisions § 1700).
+/// Sign in with Apple and email cover sign-in on iOS either way.
+bool googleSignInOffered() =>
+    defaultTargetPlatform != TargetPlatform.iOS || googleSignInAvailable();
+
 /// Whether the iOS bundle carries a `GoogleService-Info.plist`, the only place
 /// `google_sign_in_ios` can find an iOS OAuth client id given this app passes
 /// none. Read through `Firebase.apps`, which is non-empty exactly when

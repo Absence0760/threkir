@@ -76,6 +76,11 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 
     let healthKit = HealthKitManager()
     private let pedometer = Pedometer()
+    /// Spoken split / pace cues. An L4 auxiliary effect: every call below
+    /// is made AFTER the core values are committed and none is awaited, so a
+    /// speech failure cannot reach the clock, the distance or the track.
+    /// `var` so a test can swap the speech seam — see `RunAnnouncer.speak`.
+    var announcer = RunAnnouncer()
 
     var targetPaceSecondsPerKm: Double? = nil
     let paceToleranceSeconds: Double = 15
@@ -266,6 +271,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         lastTooFastHaptic = nil
         lastTooSlowHaptic = nil
         lastLocationForDistance = nil
+        announcer.reset()
         let armedRoute = ArmedRouteStore.load()
         routeNavigator = armedRoute.map { RouteNavigator(routePoints: $0.locations) }
         mapRoute = armedRoute?.coordinates.map {
@@ -332,6 +338,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 
         state = .recording
         publishComplicationSnapshot()
+        announcer.announceStart()
     }
 
     /// Record a lap at the current position. Ignored unless the run is
@@ -436,6 +443,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 
         state = .finished
         publishComplicationSnapshot()
+        announcer.announceFinish(distanceMetres: distanceMetres, durationSeconds: duration)
     }
 
     func reset() {
@@ -461,6 +469,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         lastTooFastHaptic = nil
         lastTooSlowHaptic = nil
         lastLocationForDistance = nil
+        announcer.reset()
         lastAcceptedFixUptime = nil
         lastGpsDeliveryUptime = nil
         gpsBanner = .noFixYet
@@ -738,6 +747,13 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
                 longitude: fix.coordinate.longitude
             )
         }
+
+        // Spoken split, last of all: by here the distance this cue describes
+        // is already banked, already on disk and already on screen, so the
+        // runner's record does not depend on anything the speech engine does.
+        announcer.announceSplitIfDue(
+            distanceMetres: distanceMetres, paceSecondsPerKm: currentPace
+        )
     }
 
     private func writeCheckpoint() {
@@ -850,11 +866,13 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             if lastTooFastHaptic.map({ now.timeIntervalSince($0) > debounce }) ?? true {
                 WKInterfaceDevice.current().play(.notification)
                 lastTooFastHaptic = now
+                announcer.announcePaceAlert(tooSlow: false)
             }
         } else if pace > target + paceToleranceSeconds {
             if lastTooSlowHaptic.map({ now.timeIntervalSince($0) > debounce }) ?? true {
                 WKInterfaceDevice.current().play(.notification)
                 lastTooSlowHaptic = now
+                announcer.announcePaceAlert(tooSlow: true)
             }
         }
     }

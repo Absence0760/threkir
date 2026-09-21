@@ -30,6 +30,10 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>SupabaseURL</key>
+	<string>$(SUPABASE_URL)</string>
+	<key>SupabaseAnonKey</key>
+	<string>$(SUPABASE_ANON_KEY)</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Threkir needs access to your health data to record workout metrics like heart rate and calories burned during your runs.</string>
 	<key>NSHealthUpdateUsageDescription</key>

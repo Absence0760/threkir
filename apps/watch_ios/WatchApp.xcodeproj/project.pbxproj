@@ -26,6 +26,8 @@
 		A1B2C3D4E5F60001000A0019 /* StartCountdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0019 /* StartCountdown.swift */; };
 		A1B2C3D4E5F60001000A001A /* HoldToStop.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A001A /* HoldToStop.swift */; };
 		A1B2C3D4E5F60001000A0018 /* RunActivityType.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0018 /* RunActivityType.swift */; };
+		5164A17E0001000000000101 /* WatchAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5164A17E0002000000000101 /* WatchAuth.swift */; };
+		5164A17E0001000000000102 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5164A17E0002000000000102 /* SignInView.swift */; };
 		A1B2C3D4E5F60001000A0007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0007 /* Assets.xcassets */; };
 		A1B2C3D4E5F60001000A0010 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0010 /* Localizable.xcstrings */; };
 		A1B2C3D4E5F60001000A0016 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0016 /* InfoPlist.xcstrings */; };
@@ -60,6 +62,7 @@
 		B2C3D4E5F6A70001000B0025 /* HoldToStopTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0025 /* HoldToStopTests.swift */; };
 		B2C3D4E5F6A70001000B0022 /* RunActivityTypeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0022 /* RunActivityTypeTests.swift */; };
 		B2C3D4E5F6A70001000B0023 /* ActivityTypeVocabularyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0023 /* ActivityTypeVocabularyTests.swift */; };
+		5164A17E0001000000000103 /* WatchAuthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5164A17E0002000000000103 /* WatchAuthTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -105,6 +108,8 @@
 		A1B2C3D4E5F60002000A0019 /* StartCountdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartCountdown.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000A001A /* HoldToStop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoldToStop.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000A0018 /* RunActivityType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunActivityType.swift; sourceTree = "<group>"; };
+		5164A17E0002000000000101 /* WatchAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchAuth.swift; sourceTree = "<group>"; };
+		5164A17E0002000000000102 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0015 /* RunPayloadStorageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunPayloadStorageTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0017 /* HealthKitFailureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitFailureTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0016 /* WorkoutManagerPaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutManagerPaceTests.swift; sourceTree = "<group>"; };
@@ -119,6 +124,7 @@
 		B2C3D4E5F6A70002000B0025 /* HoldToStopTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoldToStopTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0022 /* RunActivityTypeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunActivityTypeTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0023 /* ActivityTypeVocabularyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityTypeVocabularyTests.swift; sourceTree = "<group>"; };
+		5164A17E0002000000000103 /* WatchAuthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchAuthTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70004000B0001 /* WatchAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WatchAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -182,6 +188,7 @@
 				B2C3D4E5F6A70002000B0025 /* HoldToStopTests.swift */,
 				B2C3D4E5F6A70002000B0022 /* RunActivityTypeTests.swift */,
 				B2C3D4E5F6A70002000B0023 /* ActivityTypeVocabularyTests.swift */,
+				5164A17E0002000000000103 /* WatchAuthTests.swift */,
 			);
 			path = WatchAppTests;
 			sourceTree = "<group>";
@@ -201,6 +208,8 @@
 				A1B2C3D4E5F60002000A0019 /* StartCountdown.swift */,
 				A1B2C3D4E5F60002000A001A /* HoldToStop.swift */,
 				A1B2C3D4E5F60002000A0018 /* RunActivityType.swift */,
+				5164A17E0002000000000101 /* WatchAuth.swift */,
+				5164A17E0002000000000102 /* SignInView.swift */,
 				A1B2C3D4E5F60002000A0012 /* ArmedRoute.swift */,
 				A1B2C3D4E5F60002000A0006 /* WatchConnectivityManager.swift */,
 				A1B2C3D4E5F60002000A0009 /* SupabaseService.swift */,
@@ -385,6 +394,8 @@
 				A1B2C3D4E5F60001000A001B /* RunLaps.swift in Sources */,
 				A1B2C3D4E5F60001000A0017 /* Pedometer.swift in Sources */,
 				A1B2C3D4E5F60001000A0012 /* ArmedRoute.swift in Sources */,
+				5164A17E0001000000000101 /* WatchAuth.swift in Sources */,
+				5164A17E0001000000000102 /* SignInView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -418,6 +429,7 @@
 				B2C3D4E5F6A70001000B0025 /* HoldToStopTests.swift in Sources */,
 				B2C3D4E5F6A70001000B0022 /* RunActivityTypeTests.swift in Sources */,
 				B2C3D4E5F6A70001000B0023 /* ActivityTypeVocabularyTests.swift in Sources */,
+				5164A17E0001000000000103 /* WatchAuthTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

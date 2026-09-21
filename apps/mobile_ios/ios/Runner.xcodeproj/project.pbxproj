@@ -39,6 +39,8 @@
 		7884EA001A2EC3CC00C636F4 /* RunMiniMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000B2EC3CC00C636F4 /* RunMiniMapView.swift */; };
 		7884EA001B2EC3CC00C636F4 /* RunPayloadStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000C2EC3CC00C636F4 /* RunPayloadStorage.swift */; };
 		7884EA00412EC3CC00C636F4 /* StartCountdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA003E2EC3CC00C636F4 /* StartCountdown.swift */; };
+		5164A17E0003000000000101 /* WatchAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5164A17E0004000000000101 /* WatchAuth.swift */; };
+		5164A17E0003000000000102 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5164A17E0004000000000102 /* SignInView.swift */; };
 		7884EA001C2EC3CC00C636F4 /* SupabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000D2EC3CC00C636F4 /* SupabaseService.swift */; };
 		7884EA001D2EC3CC00C636F4 /* WatchConnectivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000E2EC3CC00C636F4 /* WatchConnectivityManager.swift */; };
 		7884EA001E2EC3CC00C636F4 /* WorkoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000F2EC3CC00C636F4 /* WorkoutManager.swift */; };
@@ -143,6 +145,8 @@
 		7884EA000B2EC3CC00C636F4 /* RunMiniMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunMiniMapView.swift; sourceTree = "<group>"; };
 		7884EA000C2EC3CC00C636F4 /* RunPayloadStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunPayloadStorage.swift; sourceTree = "<group>"; };
 		7884EA003E2EC3CC00C636F4 /* StartCountdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartCountdown.swift; sourceTree = "<group>"; };
+		5164A17E0004000000000101 /* WatchAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchAuth.swift; sourceTree = "<group>"; };
+		5164A17E0004000000000102 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
 		7884EA000D2EC3CC00C636F4 /* SupabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseService.swift; sourceTree = "<group>"; };
 		7884EA000E2EC3CC00C636F4 /* WatchConnectivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityManager.swift; sourceTree = "<group>"; };
 		7884EA000F2EC3CC00C636F4 /* WorkoutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutManager.swift; sourceTree = "<group>"; };
@@ -291,6 +295,8 @@
 				7884EA000B2EC3CC00C636F4 /* RunMiniMapView.swift */,
 				7884EA000C2EC3CC00C636F4 /* RunPayloadStorage.swift */,
 				7884EA003E2EC3CC00C636F4 /* StartCountdown.swift */,
+				5164A17E0004000000000102 /* SignInView.swift */,
+				5164A17E0004000000000101 /* WatchAuth.swift */,
 				7884EA000D2EC3CC00C636F4 /* SupabaseService.swift */,
 				7884EA000E2EC3CC00C636F4 /* WatchConnectivityManager.swift */,
 				7884EA000F2EC3CC00C636F4 /* WorkoutManager.swift */,
@@ -609,6 +615,8 @@
 				7884EA001A2EC3CC00C636F4 /* RunMiniMapView.swift in Sources */,
 				7884EA001B2EC3CC00C636F4 /* RunPayloadStorage.swift in Sources */,
 				7884EA00412EC3CC00C636F4 /* StartCountdown.swift in Sources */,
+				5164A17E0003000000000102 /* SignInView.swift in Sources */,
+				5164A17E0003000000000101 /* WatchAuth.swift in Sources */,
 				7884EA001C2EC3CC00C636F4 /* SupabaseService.swift in Sources */,
 				7884EA001D2EC3CC00C636F4 /* WatchConnectivityManager.swift in Sources */,
 				7884EA001E2EC3CC00C636F4 /* WorkoutManager.swift in Sources */,

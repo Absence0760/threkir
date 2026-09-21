@@ -902,6 +902,171 @@
           }
         }
       }
+    },
+    "Deletes this watch's saved session and signs it out" : {
+      "comment" : "VoiceOver hint on the sign-in sheet's sign-out button.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Löscht die gespeicherte Sitzung dieser Uhr und meldet sie ab" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Elimina la sesión guardada de este reloj y cierra la sesión" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Supprime la session enregistrée de cette montre et la déconnecte" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "この時計に保存されたセッションを削除してサインアウトします" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Exclui a sessão salva neste relógio e sai da conta" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Elimina a sessão guardada deste relógio e termina a sessão" } }
+      }
+    },
+    "Email" : {
+      "comment" : "Sign-in sheet field label.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "E-Mail" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Correo electrónico" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "E-mail" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "メール" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "E-mail" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "E-mail" } }
+      }
+    },
+    "Email or password is wrong" : {
+      "comment" : "Sign-in failure: the credentials were refused.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "E-Mail oder Passwort ist falsch" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El correo o la contraseña no son correctos" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "E-mail ou mot de passe incorrect" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "メールアドレスまたはパスワードが違います" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "E-mail ou senha incorretos" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "E-mail ou palavra-passe incorretos" } }
+      }
+    },
+    "No connection" : {
+      "comment" : "Sign-in failure: the request never reached the auth server.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Keine Verbindung" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Sin conexión" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Pas de connexion" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "接続なし" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Sem conexão" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Sem ligação" } }
+      }
+    },
+    "Opens this watch's account screen, where you can sign in or sign out" : {
+      "comment" : "VoiceOver hint on the pre-run account row.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Öffnet den Kontobildschirm dieser Uhr zum An- oder Abmelden" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Abre la pantalla de cuenta de este reloj, donde puedes iniciar o cerrar sesión" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ouvre l'écran de compte de cette montre, pour se connecter ou se déconnecter" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "この時計のアカウント画面を開きます。サインインやサインアウトができます" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Abre a tela de conta deste relógio, onde você pode entrar ou sair" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Abre o ecrã de conta deste relógio, onde pode iniciar ou terminar sessão" } }
+      }
+    },
+    "Password" : {
+      "comment" : "Sign-in sheet field label.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Passwort" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Contraseña" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Mot de passe" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "パスワード" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Senha" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Palavra-passe" } }
+      }
+    },
+    "Server busy — try again" : {
+      "comment" : "Sign-in failure: the auth server answered 5xx.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Server ausgelastet – erneut versuchen" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Servidor ocupado: inténtalo de nuevo" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Serveur occupé – réessayez" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "サーバー混雑 — もう一度お試しください" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Servidor ocupado — tente de novo" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Servidor ocupado — tente novamente" } }
+      }
+    },
+    "Session expired — sign in again" : {
+      "comment" : "Sign-in failure: the saved session could not be renewed.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Sitzung abgelaufen – erneut anmelden" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Sesión caducada: inicia sesión de nuevo" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Session expirée – reconnectez-vous" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "セッションの期限切れ — 再度サインイン" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Sessão expirada — entre novamente" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Sessão expirada — inicie sessão novamente" } }
+      }
+    },
+    "Sign in" : {
+      "comment" : "Pre-run account row, and the sign-in sheet's title and submit button.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Anmelden" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Iniciar sesión" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Se connecter" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "サインイン" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Entrar" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Entrar" } }
+      }
+    },
+    "Sign out" : {
+      "comment" : "Sign-in sheet button that drops this watch's saved session.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Abmelden" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Cerrar sesión" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Se déconnecter" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "サインアウト" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Sair" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Sair" } }
+      }
+    },
+    "Sign-in failed" : {
+      "comment" : "Sign-in failure with no more specific cause.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Anmeldung fehlgeschlagen" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Error al iniciar sesión" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de la connexion" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "サインインに失敗しました" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Falha ao entrar" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Falha ao iniciar sessão" } }
+      }
+    },
+    "Sign-in isn't set up on this watch — sign in on your iPhone" : {
+      "comment" : "Shown when the build carries no Supabase environment, so no sign-in request is made.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Anmeldung auf dieser Uhr nicht eingerichtet – melde dich auf dem iPhone an" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El inicio de sesión no está configurado en este reloj: inicia sesión en tu iPhone" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Connexion non configurée sur cette montre – connectez-vous sur votre iPhone" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "この時計ではサインインが設定されていません — iPhoneでサインインしてください" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "O login não está configurado neste relógio — entre pelo iPhone" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O início de sessão não está configurado neste relógio — inicie sessão no iPhone" } }
+      }
+    },
+    "Signed in" : {
+      "comment" : "Caption above the signed-in account's email on the sign-in sheet.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Angemeldet" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Sesión iniciada" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Connecté" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "サインイン済み" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Conectado" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Com sessão iniciada" } }
+      }
+    },
+    "Signs this watch in with the email and password above" : {
+      "comment" : "VoiceOver hint on the sign-in sheet's submit button.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Meldet diese Uhr mit der E-Mail und dem Passwort oben an" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Inicia sesión en este reloj con el correo y la contraseña de arriba" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Connecte cette montre avec l'e-mail et le mot de passe ci-dessus" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "上のメールアドレスとパスワードでこの時計をサインインします" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Entra neste relógio com o e-mail e a senha acima" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Inicia sessão neste relógio com o e-mail e a palavra-passe acima" } }
+      }
+    },
+    "Too many tries — wait a minute" : {
+      "comment" : "Sign-in failure: the auth server is rate-limiting this watch.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Zu viele Versuche – kurz warten" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Demasiados intentos: espera un minuto" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Trop de tentatives – patientez une minute" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "試行回数が多すぎます — 少し待ってください" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Muitas tentativas — espere um minuto" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Demasiadas tentativas — aguarde um minuto" } }
+      }
     }
   }
 }

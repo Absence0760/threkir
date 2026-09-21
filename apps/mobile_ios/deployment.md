@@ -25,9 +25,9 @@ So: `mobile_ios@1.2.3` triggers one CI workflow that ships **both** apps.
 **Bundle IDs:**
 
 ```
-com.threkir.app            ← iOS phone app
-com.threkir.app.watchapp ← Apple Watch app target
-com.threkir.app.watchapp.WidgetsExtension  ← (when the complication ships)
+com.threkir.app                       ← iOS phone app
+com.threkir.app.watchapp              ← Apple Watch app target
+com.threkir.app.watchapp.complication ← watch complication (WidgetKit extension the watch app embeds)
 ```
 
 **Country / region rollout:** Same shape as Android — start with UK + Australia + US, expand once stable.
@@ -69,6 +69,9 @@ com.threkir.app.watchapp.WidgetsExtension  ← (when the complication ships)
 5. **Create the Watch App ID:**
    - Bundle ID: `com.threkir.app.watchapp`
    - Capabilities: **HealthKit**, **App Groups** (the same group — this is the side that actually declares it today; the phone's `Runner.entitlements` carries no app-group entitlement yet, so the bridge's phone half is still owed)
+5b. **Create the complication App ID:**
+   - Bundle ID: `com.threkir.app.watchapp.complication`
+   - Capabilities: **App Groups** only (the same group). The complication is a separate process that draws the snapshot the watch app writes there, so it needs no HealthKit ([`apple_provisioning.md` step 4](../../docs/ops/apple_provisioning.md#then-the-complications-app-id)).
 6. **Provisioning profiles.** One App Store Connect distribution profile per bundle ID, made after the App IDs are complete — [`apple_provisioning.md` step 15](../../docs/ops/apple_provisioning.md#15-app-store-provisioning-profiles--one-per-bundle).
 7. **Create the App Store listing** at App Store Connect:
    - App information (name, primary category Health & Fitness, content rights)
@@ -83,13 +86,13 @@ com.threkir.app.watchapp.WidgetsExtension  ← (when the complication ships)
 The committed Xcode project signs **automatically**, so a Mac builds and runs on
 a device with no setup. The release runner cannot — it has no Apple Account to
 sign in with — so `release-ios.yml` hands `scripts/ios_release_signing.mjs` the
-two App Store profiles, and the script switches the `Release` configuration of
-`Runner` and the embedded `WatchApp` to manual signing against the profile
+three App Store profiles, and the script switches the `Release` configuration of
+`Runner`, the embedded `WatchApp` and its `WatchAppComplication` to manual signing against the profile
 whose bundle id matches, reading the team id out of the profiles. Debug and
 Profile are untouched, and nothing is committed back
 ([decisions § 1701](../../docs/architecture/decisions.md)).
 
-Making the certificate, the two profiles and the App Store Connect API key, and
+Making the certificate, the three profiles and the App Store Connect API key, and
 setting them as secrets, is [`apple_provisioning.md` steps 14–16](../../docs/ops/apple_provisioning.md#14-apple-distribution-certificate).
 The secret list itself is [`docs/ops/releasing.md` § iOS](../../docs/ops/releasing.md#ios);
 the workflow's first step fails in seconds, naming every one that is unset.
@@ -206,7 +209,7 @@ Triggered by publishing a GitHub Release tagged `mobile_ios@1.2.3` (a bare tag p
 3. Sets up the pinned Flutter SDK, bootstraps the workspace, pins `pubspec.yaml`'s version.
 4. Decodes `GoogleService-Info.plist` and checks its bundle id; stubs the bundled `.env.development` asset empty, as Android does.
 5. Imports the `.p12` into a keychain whose password is generated for the run, and fails unless it holds an `Apple Distribution` identity.
-6. Runs `scripts/ios_release_signing.mjs` against the two profiles (see [Signing setup](#signing-setup)), which also writes `ExportOptions.plist` (`app-store-connect`, manual signing, dSYMs uploaded to Apple).
+6. Runs `scripts/ios_release_signing.mjs` against the three profiles (see [Signing setup](#signing-setup)), which also writes `ExportOptions.plist` (`app-store-connect`, manual signing, dSYMs uploaded to Apple).
 7. Writes `dart_defines.json`, then `flutter build ipa --release`.
 8. Attaches the `.ipa` to the Release **before** uploading, so a refused upload still leaves a signed build to upload by hand.
 9. Uploads to TestFlight with the App Store Connect API key, then deletes the keychain and the runtime config.

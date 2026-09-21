@@ -909,6 +909,31 @@ export function checkDeno(files) {
 		}
 	}
 
+	// The binary cache that primes the runner tool cache for those steps names
+	// the version a SECOND time, and a key that keeps naming the old one after a
+	// bump silently caches nothing for the version actually installed -- the
+	// failure is a slow job, never a red one, so nothing else would say so.
+	for (const { name, text } of files) {
+		const lines = text.split('\n');
+		for (let i = 0; i < lines.length; i++) {
+			const m = /key:\s*deno-bin-[^\n]*?-(\d+\.\d+\.\d+)\s*$/.exec(lines[i]);
+			if (m === null) continue;
+			const where = `${name}:${i + 1}`;
+			if (!versions.has(m[1])) {
+				const pinned = [...versions.keys()].sort().join(', ') || '(none)';
+				errors.push(
+					`${where} — this Deno binary-cache key names ${m[1]}, which no ` +
+						`\`denoland/setup-deno\` step in this repo installs (pinned: ${pinned}). ` +
+						`The key would restore a tool cache the action then ignores, and the ` +
+						`version it does install would never be cached — the 504 this cache ` +
+						`exists to survive would come back silently. Move both together.`,
+				);
+			} else {
+				ok.push(`${where} -> deno binary cache ${m[1]}`);
+			}
+		}
+	}
+
 	if (ok.length === 0 && errors.length === 0) {
 		errors.push(
 			`no \`denoland/setup-deno\` steps found in any workflow. Either every Deno job ` +

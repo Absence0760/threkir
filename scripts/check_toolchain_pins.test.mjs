@@ -801,6 +801,27 @@ test('a setup-deno step naming no deno-version is refused', () => {
 	assert.match(errors[0], /no `deno-version` at all/);
 });
 
+test('a Deno binary-cache key naming a version nothing installs is refused', () => {
+	// The drift this rail exists for is silent: the key restores a tool cache
+	// the action ignores, the version it does install is never saved, and the
+	// only symptom is the 504 the cache was added to survive coming back.
+	const drifted =
+		denoWf('v2.9.6') +
+		'      - uses: actions/cache@abc\n        with:\n          key: deno-bin-Linux-x64-2.9.5\n';
+	const { errors } = checkDeno([{ name: 'ci.yml', text: drifted }]);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /binary-cache key names 2\.9\.5/);
+});
+
+test('a Deno binary-cache key matching the pinned version passes', () => {
+	const aligned =
+		denoWf('v2.9.6') +
+		'      - uses: actions/cache@abc\n        with:\n          key: deno-bin-Linux-x64-2.9.6\n';
+	const { errors, ok } = checkDeno([{ name: 'ci.yml', text: aligned }]);
+	assert.deepEqual(errors, []);
+	assert.ok(ok.some((l) => /deno binary cache 2\.9\.6/.test(l)));
+});
+
 test('two workflows on different Deno versions is the reported bug', () => {
 	const { errors } = checkDeno([
 		{ name: 'ci.yml', text: denoWf('v2.9.6') },

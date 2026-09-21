@@ -345,6 +345,21 @@ void main() {
     });
 
 
+    // decisions § 1700: see the SignInScreen case — no Google on iOS.
+    testWidgets('iOS offers Continue with Apple and no Google button',
+        (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        await _pump(tester, _FakeApiClient());
+        expect(find.widgetWithText(OutlinedButton, 'Continue with Google'),
+            findsNothing);
+        expect(find.widgetWithText(OutlinedButton, 'Continue with Apple'),
+            findsOneWidget);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
     // ─────────── Pre-submit validation (#243) ───────────
 
     testWidgets('malformed email shows an inline field error and no API call',

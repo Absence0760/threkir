@@ -128,6 +128,23 @@ void main() {
       expect(find.textContaining('coming soon'), findsOneWidget);
     });
 
+    // decisions § 1700: iOS carries no Google OAuth client, so the button
+    // could only fail on tap — an App Review rejection. Apple stays.
+    testWidgets('iOS offers Sign in with Apple and no Google button',
+        (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        await tester.binding.setSurfaceSize(const Size(400, 900));
+        await _pump(tester, _FakeApiClient());
+        expect(find.widgetWithText(OutlinedButton, 'Sign in with Google'),
+            findsNothing);
+        expect(find.widgetWithText(OutlinedButton, 'Sign in with Apple'),
+            findsOneWidget);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
     testWidgets('"Create one" link navigates to SignUpScreen', (tester) async {
       await tester.binding.setSurfaceSize(const Size(400, 900));
       await _pump(tester, _FakeApiClient());

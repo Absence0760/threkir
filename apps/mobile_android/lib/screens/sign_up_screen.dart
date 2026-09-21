@@ -9,6 +9,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../apple_auth.dart';
+import '../google_auth.dart';
 import '../auth_error.dart';
 import '../auth_gates.dart';
 import '../auth_validation.dart';
@@ -552,25 +553,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   icon: const Icon(Icons.apple, size: 18),
                   label: Text(l10n.signUpContinueWithApple),
                 ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: _loading ? null : _signInWithGoogle,
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                if (googleSignInOffered()) ...[
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: _loading ? null : _signInWithGoogle,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    icon: const Icon(Icons.login, size: 18),
+                    label: Text(l10n.signUpContinueWithGoogle),
                   ),
-                  icon: const Icon(Icons.login, size: 18),
-                  label: Text(l10n.signUpContinueWithGoogle),
-                ),
+                ],
               ] else ...[
-                OutlinedButton.icon(
-                  onPressed: _loading ? null : _signInWithGoogle,
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                if (googleSignInOffered()) ...[
+                  OutlinedButton.icon(
+                    onPressed: _loading ? null : _signInWithGoogle,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    icon: const Icon(Icons.login, size: 18),
+                    label: Text(l10n.signUpContinueWithGoogle),
                   ),
-                  icon: const Icon(Icons.login, size: 18),
-                  label: Text(l10n.signUpContinueWithGoogle),
-                ),
-                const SizedBox(height: 8),
+                  const SizedBox(height: 8),
+                ],
                 OutlinedButton.icon(
                   onPressed: _loading ? null : _signInWithApple,
                   style: OutlinedButton.styleFrom(

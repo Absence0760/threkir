@@ -8,6 +8,11 @@
 // snapshot the host writes to the App Group through `ActiveRunBridge`.
 // README.md in this directory describes the target.
 //
+// The entry shaping and the formatting live in `ActiveRunTimeline.swift`
+// and `WatchApp/RunFormat.swift`, both members of this target AND of
+// `WatchApp`, which is what lets `WatchAppTests` cover them. This file
+// holds what cannot be shared: the `@main` bundle and the views.
+//
 // The `accessoryCircular`, `accessoryCorner`, `accessoryRectangular`,
 // and `accessoryInline` families cover Modular, Infograph, X-Large,
 // and most other watch faces. Each family gets its own variant so a
@@ -19,13 +24,10 @@ import WidgetKit
 
 // MARK: - Provider
 
-/// Hands the system fresh entries on a coarse cadence. We can't
-/// `requestUpdate` on every GPS tick from a workout session — the
-/// platform throttles complication refreshes to ~50/day per app.
-/// Strategy: emit one entry per 30 seconds while a run is active,
-/// and a single static entry when idle. The Run app explicitly
-/// reloads the timeline on workout state transitions (start, pause,
-/// resume, stop) via `WidgetCenter.shared.reloadTimelines(...)`.
+/// Hands the system fresh entries on a coarse cadence; the schedule itself
+/// is `ActiveRunTimeline`'s. The Run app explicitly reloads the timeline on
+/// workout state transitions (start, pause, resume, stop) via
+/// `WidgetCenter.shared.reloadTimelines(...)`.
 struct ActiveRunProvider: TimelineProvider {
     typealias Entry = ActiveRunEntry
 
@@ -40,67 +42,17 @@ struct ActiveRunProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (Entry) -> Void) {
-        completion(snapshotEntry())
+        completion(ActiveRunTimeline.entry(from: ActiveRunBridge.read(), now: .now))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> Void) {
-        let snap = snapshotEntry()
-        // Inactive — single static entry; the app calls reloadTimelines
-        // on the next state change so we don't have to budget refreshes.
-        guard snap.isActive else {
-            completion(Timeline(entries: [snap], policy: .never))
-            return
-        }
-        // Active — 10 entries 30 s apart, then ask the system to come
-        // back. Each entry advances the elapsed-time *display* without
-        // the complication consuming a real refresh per tick. The app
-        // reloads the timeline on stage transitions to overwrite this
-        // schedule with fresher data.
-        let now = Date()
-        let entries = (0..<10).map { i -> ActiveRunEntry in
-            let dt = TimeInterval(i * 30)
-            return ActiveRunEntry(
-                date: now.addingTimeInterval(dt),
-                isActive: true,
-                elapsedSeconds: snap.elapsedSeconds + Int(dt),
-                distanceMeters: snap.distanceMeters,
-                paceSecPerKm: snap.paceSecPerKm,
-            )
-        }
-        completion(Timeline(entries: entries, policy: .atEnd))
+        let entries = ActiveRunTimeline.entries(from: ActiveRunBridge.read(), now: .now)
+        // Idle — one static entry and no schedule; the app calls
+        // reloadTimelines on the next state change so we don't have to
+        // budget refreshes for a watch face that isn't going to change.
+        let policy: TimelineReloadPolicy = entries.first?.isActive == true ? .atEnd : .never
+        completion(Timeline(entries: entries, policy: policy))
     }
-
-    private func snapshotEntry() -> Entry {
-        let snap = ActiveRunBridge.read()
-        // The writer stamps `lastUpdatedEpoch` on every state transition so
-        // the reader can tell a live run from a stale snapshot — but it was
-        // never consumed. If the host app is killed mid-run without a clean
-        // stop/reset, `isActive` stays true and the watch face would show a
-        // phantom run until the next launch clears it. Treat a snapshot
-        // older than this ceiling as inactive. The ceiling sits far beyond
-        // any realistic Apple-Watch run (battery dies long before a day), so
-        // a genuine long run is never wrongly hidden.
-        let staleAfter: TimeInterval = 24 * 60 * 60
-        let age = Date().timeIntervalSince1970 - snap.lastUpdatedEpoch
-        let isActive = snap.isActive && snap.lastUpdatedEpoch > 0 && age < staleAfter
-        return ActiveRunEntry(
-            date: .now,
-            isActive: isActive,
-            elapsedSeconds: snap.elapsedSeconds,
-            distanceMeters: snap.distanceMeters,
-            paceSecPerKm: snap.paceSecPerKm,
-        )
-    }
-}
-
-// MARK: - Entry
-
-struct ActiveRunEntry: TimelineEntry {
-    let date: Date
-    let isActive: Bool
-    let elapsedSeconds: Int
-    let distanceMeters: Double
-    let paceSecPerKm: Double?
 }
 
 // MARK: - Views
@@ -172,23 +124,12 @@ private struct CornerView: View {
     }
 }
 
-/// Distance and pace on one line, assembled OUTSIDE any `Text` / `Label`
-/// literal. Both halves are already formatted and already localized, so a
-/// literal carrying the interpolations would be a `LocalizedStringKey`
-/// lookup for a key with nothing in it to translate — and Xcode's next
-/// string extraction would add that key to `Localizable.xcstrings`, where
-/// the locale-parity guard would then demand six translations of a middle
-/// dot. Passing a `String` selects the non-localizing overload instead.
-private func statLine(_ entry: ActiveRunEntry) -> String {
-    "\(formatDistanceKm(entry.distanceMeters)) · \(formatPaceSecPerKm(entry.paceSecPerKm))"
-}
-
 private struct InlineView: View {
     let entry: ActiveRunEntry
 
     var body: some View {
         if entry.isActive {
-            Label(statLine(entry), systemImage: "figure.run")
+            Label(ActiveRunTimeline.statLine(entry), systemImage: "figure.run")
         } else {
             Label("Tap to start", systemImage: "figure.run")
         }
@@ -211,7 +152,7 @@ private struct RectangularView: View {
                     .font(.title2.weight(.semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                Text(statLine(entry))
+                Text(ActiveRunTimeline.statLine(entry))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -263,60 +204,4 @@ struct ActiveRunComplication: Widget {
             .accessoryRectangular,
         ])
     }
-}
-
-// MARK: - Pure formatters
-// Mirrors apps/watch_wear/.../tiles/ActiveRunTileService.kt so the two
-// platforms render identical strings. WatchApp/RunFormat.swift holds a
-// byte-identical copy that ComplicationFormatterTests pins, and the two are
-// held identical by scripts/check_watch_ios_source.mjs, which runs on Linux.
-// No Swift test can compare them: this file compiles into a different module
-// from the one WatchAppTests links, so the suite only ever sees the other
-// copy (§ 885). The duplication itself is not forced — a file can belong to
-// both targets, as ActiveRunBridge.swift does — and collapsing it is the
-// durable fix, in a change that also retires that guard.
-
-func formatElapsed(_ seconds: Int) -> String {
-    let s = max(seconds, 0)
-    let h = s / 3600
-    let m = (s % 3600) / 60
-    let sec = s % 60
-    if h > 0 {
-        return String(format: "%d:%02d:%02d", h, m, sec)
-    }
-    return String(format: "%02d:%02d", m, sec)
-}
-
-func formatDistanceKm(_ meters: Double) -> String {
-    let miles = ActiveRunBridge.prefersMiles()
-    let metresPerMile = 1609.344
-    let value = miles ? meters / metresPerMile : meters / 1000.0
-    let digits = value >= 10.0 ? 1 : 2
-
-    let number = NumberFormatter()
-    number.locale = Locale.current
-    number.numberStyle = .decimal
-    number.minimumFractionDigits = digits
-    number.maximumFractionDigits = digits
-    number.usesGroupingSeparator = false
-    let numberStr = number.string(from: NSNumber(value: value)) ?? "\(value)"
-
-    let measurement = MeasurementFormatter()
-    measurement.locale = Locale.current
-    measurement.unitOptions = .providedUnit
-    let unitStr = measurement.string(from: miles ? UnitLength.miles : UnitLength.kilometers)
-    return "\(numberStr) \(unitStr)"
-}
-
-func formatPaceSecPerKm(_ secPerKm: Double?) -> String {
-    let miles = ActiveRunBridge.prefersMiles()
-    guard let p = secPerKm, p.isFinite, p > 0 else {
-        return miles ? "—:—/mi" : "—:—/km"
-    }
-    let metresPerMile = 1609.344
-    let perUnit = miles ? p * (metresPerMile / 1000.0) : p
-    let total = Int(perUnit.rounded())
-    let m = total / 60
-    let s = total % 60
-    return String(format: "%d:%02d%@", m, s, miles ? "/mi" : "/km")
 }

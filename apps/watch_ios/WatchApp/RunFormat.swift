@@ -61,15 +61,13 @@ enum RunFormat {
 }
 
 // MARK: - Complication formatters
-// The active-run complication (`Complications/ActiveRunComplication.swift`)
-// carries a byte-identical copy of these three pure functions because it
-// builds in a separate Widget Extension target that can't link this file.
-// That copy is the source of truth for the widget; this copy lives in the
-// WatchApp target so `ComplicationFormatterTests` can pin the contract
-// without booting WidgetKit — which means the Swift suite tests THIS copy
-// and the watch face runs the OTHER one. `scripts/check_watch_ios_source.mjs`
-// is what keeps the two byte-identical; "keep them in lockstep" was a comment
-// nothing enforced until decisions § 885.
+// Free functions rather than members of `RunFormat` because the watch face
+// draws them at a different precision than the run screen does: two decimals
+// under 10 km, one at or beyond it. This file is a member of BOTH the
+// `WatchApp` target and the `WatchAppComplication` extension, so the watch
+// face and `WatchAppTests` run the same code. The extension used to carry a
+// byte-identical second copy of these three, which no Swift test could reach
+// and only a text guard held in lockstep.
 
 func formatElapsed(_ seconds: Int) -> String {
     let s = max(seconds, 0)

@@ -543,7 +543,21 @@ conditional and `release-android.yml` only **warns** when the config secret is
 absent, so any AAB built before 2026-09-18 registers no device token at all —
 and a client that never registers is indistinguishable from a broken sender.
 
-## 13. Android's Apple dart-defines
+## 13. Android's Apple dart-defines — **the workflow does not pass them yet**
+
+**Setting two secrets will not do it.** `release-android.yml` builds with an
+explicit `--dart-define` list and neither name is on it — `grep -rn 'APPLE_' .github/workflows/`
+returns only `PUBLIC_APPLE_AUTH_ENABLED`, which is the web flag. So the values
+resolve to empty in every AAB however the secrets are set, `appleSignInAvailable()`
+returns false, and the Android button keeps its coming-soon notice: the same
+shape as [§ 1683](../architecture/decisions.md), where eight web flags could
+not be turned on because the workflow never spelled them out, unfixed here
+because that guard derives its set from `apps/web/src/lib/*_flag.ts` and knows
+nothing about dart-defines.
+
+**So this step is a code change first**: two `env:` entries and two
+`--dart-define` lines beside `GOOGLE_WEB_CLIENT_ID`, which is the one that is
+wired. Then the secrets, then the Release.
 
 `appleSignInAvailable()` in
 [`apple_auth.dart`](../../apps/mobile_android/lib/apple_auth.dart) gates the
@@ -555,8 +569,12 @@ Android button on two dart-defines, the way Google's is gated on
   `https://mcbgrgvegqcmdmtraikl.supabase.co/auth/v1/callback`. It has to be one
   of the Return URLs registered there or Apple rejects the authorization.
 
-iOS needs neither: it takes the native flow off the App ID capability from
-step 3.
+iOS needs neither, and **iOS is not gated at all** — `appleSignInAvailable()`
+opens with `if (defaultTargetPlatform == TargetPlatform.iOS) return true`, and
+`Runner.entitlements` already declares `com.apple.developer.applesignin`. The
+only Apple-side thing the native flow waits on is step 3's capability. (Docs
+elsewhere refer to an `apps/mobile_ios` constant `_kAppleSignInEnabled` as the
+iOS gate; no such symbol exists anywhere in the tree.)
 
 ## Verifying each thread
 

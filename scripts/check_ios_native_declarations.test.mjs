@@ -287,6 +287,52 @@ test('deleting the playback call deletes the requirement with it', () => {
 	);
 });
 
+// The extension's container lookup is the only code that obliges the App
+// Group, and it lives outside `ios/Runner/` — which is why SWIFT_ROOTS is a
+// list. Both directions, because an entitlement no code claims is exactly the
+// shape § 742 is about.
+test('the App Group container lookup obliges the application-groups entitlement', () => {
+	const lookingUpTheContainer = baseline({
+		swiftSources: swift('FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: id)'),
+	});
+	const { errors } = evaluate(lookingUpTheContainer);
+	assert.equal(errors.filter((e) => e.includes('application-groups')).length, 1);
+
+	const declared = evaluate({
+		...lookingUpTheContainer,
+		entitlements: new Map(baseline().entitlements).set('com.apple.security.application-groups', [
+			'group.com.threkir.app.share',
+		]),
+	});
+	assert.deepEqual(declared.errors, []);
+	assert.deepEqual(declared.warnings, []);
+});
+
+test('an application-groups value that is not a group. array fails', () => {
+	const { errors } = evaluate(
+		baseline({
+			swiftSources: swift('containerURL(forSecurityApplicationGroupIdentifier: id)'),
+			entitlements: new Map(baseline().entitlements).set(
+				'com.apple.security.application-groups',
+				['com.threkir.app.share'],
+			),
+		}),
+	);
+	assert.equal(errors.filter((e) => e.includes('unusable')).length, 1);
+});
+
+test('deleting the share extension leaves the entitlement claimed by nothing', () => {
+	const { errors, warnings } = evaluate(
+		baseline({
+			entitlements: new Map(baseline().entitlements).set('com.apple.security.application-groups', [
+				'group.com.threkir.app.share',
+			]),
+		}),
+	);
+	assert.deepEqual(errors, []);
+	assert.equal(warnings.filter((w) => w.includes('application-groups')).length, 1);
+});
+
 test('firebase_messaging with no aps-environment entitlement fails', () => {
 	const { errors } = evaluate(baseline({ entitlements: new Map() }));
 	assert.equal(errors.filter((e) => e.includes('aps-environment')).length, 1);
@@ -541,6 +587,7 @@ test('an empty Swift source set fails rather than passing vacuously', () => {
 
 test('the Swift rules the blindness check names are derived, not counted', () => {
 	assert.deepEqual(swiftRuleKeys(), [
+		...ENTITLEMENTS.filter((r) => r.source === 'swift').map((r) => r.key),
 		...PURPOSE_STRINGS.filter((r) => r.source === 'swift').map((r) => r.key),
 	]);
 	assert.ok(swiftRuleKeys().length > 0, 'a rule reads Swift, so the check has a subject');
@@ -589,9 +636,11 @@ test('the committed ios/Runner tree is not empty, so the Swift rules have a subj
 
 test('every derivation pattern still matches something in the committed tree', () => {
 	const dartSources = collectDartSources();
-	const swiftSources = [
-		{ path: 'x', text: readFileSync(join(IOS_ROOT, 'Runner/CalendarBridge.swift'), 'utf-8') },
-	];
+	// The whole Swift tree the guard itself reads, not a hand-listed file:
+	// naming one file here made this assertion answer for that file rather
+	// than for the tree, so a rule deriving from a bundle outside `Runner/`
+	// reported inert while the guard was enforcing it.
+	const swiftSources = collectSwiftSources();
 	// A rule whose pattern matches nothing is not necessarily wrong — the
 	// feature may be gone — but every rule in the table today has a live
 	// consumer, and a pattern that silently stops matching is how a derived

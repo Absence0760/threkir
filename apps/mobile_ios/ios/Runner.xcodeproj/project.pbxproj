@@ -46,6 +46,11 @@
 		7884EA00222EC3CC00C636F4 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 7884EA00212EC3CC00C636F4 /* Localizable.xcstrings */; };
 		7884EA00352EC3CC00C636F4 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 7884EA00342EC3CC00C636F4 /* InfoPlist.xcstrings */; };
 		7884EA00262EC3CC00C636F4 /* WatchApp.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 7884EA00252EC3CC00C636F4 /* WatchApp.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		5AE0C0DE0000000000000001 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AE0C0DE0000000000000010 /* ShareViewController.swift */; };
+		5AE0C0DE0000000000000002 /* SharedRouteHandoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AE0C0DE0000000000000011 /* SharedRouteHandoff.swift */; };
+		5AE0C0DE0000000000000003 /* SharedRouteHandoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AE0C0DE0000000000000011 /* SharedRouteHandoff.swift */; };
+		5AE0C0DE0000000000000004 /* ShareExtensionHandoffTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AE0C0DE0000000000000015 /* ShareExtensionHandoffTests.swift */; };
+		5AE0C0DE0000000000000005 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5AE0C0DE0000000000000014 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -60,6 +65,17 @@
 			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5AE0C0DE0000000000000034 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				5AE0C0DE0000000000000005 /* ShareExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXContainerItemProxy section */
@@ -69,6 +85,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 97C146ED1CF9000F007C117D;
 			remoteInfo = Runner;
+		};
+		5AE0C0DE0000000000000040 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5AE0C0DE0000000000000030;
+			remoteInfo = ShareExtension;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -153,6 +176,13 @@
 		7884EA00242EC3CC00C636F4 /* WatchApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WatchApp.entitlements; sourceTree = "<group>"; };
 		7884EA00252EC3CC00C636F4 /* WatchApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WatchApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7884EA00332EC3CC00C636F4 /* WatchApp.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = WatchApp.xcconfig; path = Flutter/WatchApp.xcconfig; sourceTree = "<group>"; };
+		5AE0C0DE0000000000000010 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		5AE0C0DE0000000000000011 /* SharedRouteHandoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedRouteHandoff.swift; sourceTree = "<group>"; };
+		5AE0C0DE0000000000000012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		5AE0C0DE0000000000000013 /* ShareExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ShareExtension.entitlements; sourceTree = "<group>"; };
+		5AE0C0DE0000000000000014 /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		5AE0C0DE0000000000000015 /* ShareExtensionHandoffTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareExtensionHandoffTests.swift; sourceTree = "<group>"; };
+		5AE0C0DE0000000000000016 /* ShareExtension.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = ShareExtension.xcconfig; path = Flutter/ShareExtension.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -180,6 +210,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5AE0C0DE0000000000000032 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -197,6 +234,7 @@
 			children = (
 				A1C0DE0000000000000C0001 /* CalendarBridgeRruleTests.swift */,
 				A1C0DE0000000000000C0003 /* WatchIngestBridgeTests.swift */,
+				5AE0C0DE0000000000000015 /* ShareExtensionHandoffTests.swift */,
 			);
 			path = RunnerTests;
 			sourceTree = "<group>";
@@ -224,6 +262,7 @@
 				7AFA3C8E1D35360C0083082E /* Release.xcconfig */,
 				9740EEB31CF90195004384FC /* Generated.xcconfig */,
 				7884EA00332EC3CC00C636F4 /* WatchApp.xcconfig */,
+				5AE0C0DE0000000000000016 /* ShareExtension.xcconfig */,
 			);
 			name = Flutter;
 			sourceTree = "<group>";
@@ -235,6 +274,7 @@
 				97C146F01CF9000F007C117D /* Runner */,
 				97C146EF1CF9000F007C117D /* Products */,
 				331C8082294A63A400263BE5 /* RunnerTests */,
+				5AE0C0DE0000000000000020 /* ShareExtension */,
 				7884EA00272EC3CC00C636F4 /* WatchApp */,
 				817F36B4C422B0F918E58AFA /* Pods */,
 				2AC58A8B0223326464C20D9A /* Frameworks */,
@@ -246,6 +286,7 @@
 			children = (
 				97C146EE1CF9000F007C117D /* Runner.app */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
+				5AE0C0DE0000000000000014 /* ShareExtension.appex */,
 				7884EA00252EC3CC00C636F4 /* WatchApp.app */,
 			);
 			name = Products;
@@ -304,6 +345,17 @@
 			path = "../../watch_ios/WatchApp";
 			sourceTree = "<group>";
 		};
+		5AE0C0DE0000000000000020 /* ShareExtension */ = {
+			isa = PBXGroup;
+			children = (
+				5AE0C0DE0000000000000010 /* ShareViewController.swift */,
+				5AE0C0DE0000000000000011 /* SharedRouteHandoff.swift */,
+				5AE0C0DE0000000000000012 /* Info.plist */,
+				5AE0C0DE0000000000000013 /* ShareExtension.entitlements */,
+			);
+			path = ShareExtension;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -338,6 +390,7 @@
 				7884EA032EC3CC0A00C636F5 /* Copy Firebase config if present */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
 				7884EA002B2EC3CC00C636F4 /* Embed Watch Content */,
+				5AE0C0DE0000000000000034 /* Embed Foundation Extensions */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				35962F30FA7EE92CA151D686 /* [CP] Embed Pods Frameworks */,
 			);
@@ -345,6 +398,7 @@
 			);
 			dependencies = (
 				7884EA002E2EC3CC00C636F4 /* PBXTargetDependency */,
+				5AE0C0DE0000000000000041 /* PBXTargetDependency */,
 			);
 			name = Runner;
 			packageProductDependencies = (
@@ -371,6 +425,23 @@
 			productReference = 7884EA00252EC3CC00C636F4 /* WatchApp.app */;
 			productType = "com.apple.product-type.application";
 		};
+		5AE0C0DE0000000000000030 /* ShareExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5AE0C0DE0000000000000053 /* Build configuration list for PBXNativeTarget "ShareExtension" */;
+			buildPhases = (
+				5AE0C0DE0000000000000031 /* Sources */,
+				5AE0C0DE0000000000000032 /* Frameworks */,
+				5AE0C0DE0000000000000033 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ShareExtension;
+			productName = ShareExtension;
+			productReference = 5AE0C0DE0000000000000014 /* ShareExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -391,6 +462,9 @@
 					};
 					7884EA002C2EC3CC00C636F4 = {
 						CreatedOnToolsVersion = 15.0;
+					};
+					5AE0C0DE0000000000000030 = {
+						CreatedOnToolsVersion = 26.4;
 					};
 				};
 			};
@@ -418,6 +492,7 @@
 			targets = (
 				97C146ED1CF9000F007C117D /* Runner */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
+				5AE0C0DE0000000000000030 /* ShareExtension */,
 				7884EA002C2EC3CC00C636F4 /* WatchApp */,
 			);
 		};
@@ -449,6 +524,13 @@
 				7884EA00202EC3CC00C636F4 /* Assets.xcassets in Resources */,
 				7884EA00222EC3CC00C636F4 /* Localizable.xcstrings in Resources */,
 				7884EA00352EC3CC00C636F4 /* InfoPlist.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5AE0C0DE0000000000000033 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -572,6 +654,8 @@
 			files = (
 				A1C0DE0000000000000C0002 /* CalendarBridgeRruleTests.swift in Sources */,
 				A1C0DE0000000000000C0004 /* WatchIngestBridgeTests.swift in Sources */,
+				5AE0C0DE0000000000000004 /* ShareExtensionHandoffTests.swift in Sources */,
+				5AE0C0DE0000000000000003 /* SharedRouteHandoff.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -615,6 +699,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5AE0C0DE0000000000000031 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5AE0C0DE0000000000000001 /* ShareViewController.swift in Sources */,
+				5AE0C0DE0000000000000002 /* SharedRouteHandoff.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -622,6 +715,11 @@
 			isa = PBXTargetDependency;
 			target = 97C146ED1CF9000F007C117D /* Runner */;
 			targetProxy = 331C8085294A63A400263BE5 /* PBXContainerItemProxy */;
+		};
+		5AE0C0DE0000000000000041 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5AE0C0DE0000000000000030 /* ShareExtension */;
+			targetProxy = 5AE0C0DE0000000000000040 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1021,6 +1119,79 @@
 			};
 			name = Profile;
 		};
+		5AE0C0DE0000000000000050 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5AE0C0DE0000000000000016 /* ShareExtension.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.ShareExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		5AE0C0DE0000000000000051 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5AE0C0DE0000000000000016 /* ShareExtension.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.ShareExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		5AE0C0DE0000000000000052 /* Profile */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5AE0C0DE0000000000000016 /* ShareExtension.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.ShareExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Profile;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1060,6 +1231,16 @@
 				7884EA002F2EC3CC00C636F4 /* Debug */,
 				7884EA00302EC3CC00C636F4 /* Release */,
 				7884EA00312EC3CC00C636F4 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5AE0C0DE0000000000000053 /* Build configuration list for PBXNativeTarget "ShareExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5AE0C0DE0000000000000050 /* Debug */,
+				5AE0C0DE0000000000000051 /* Release */,
+				5AE0C0DE0000000000000052 /* Profile */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

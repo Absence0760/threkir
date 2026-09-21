@@ -72,9 +72,14 @@ export const IOS_ROOT =
 /// `run_recorder` is what asks CoreLocation to keep running in the background.
 export const DART_ROOTS = ['apps/mobile_ios/lib', 'packages'];
 
-/// Swift under `ios/Runner/` — the native half that can oblige a declaration
-/// no Dart import implies (EventKit reaches the calendar with no plugin).
-export const SWIFT_ROOT = 'Runner';
+/// Swift the app's own bundles compile — the native half that can oblige a
+/// declaration no Dart import implies (EventKit reaches the calendar with no
+/// plugin; the share extension reaches the App Group container with none
+/// either). `ShareExtension/` is here because the entitlement its container
+/// lookup obliges is declared on the HOST app too: the two halves share one
+/// group, so the host's `Runner.entitlements` is answerable for code that
+/// lives outside `Runner/`.
+export const SWIFT_ROOTS = ['Runner', 'ShareExtension'];
 
 const APS_KEY = 'com.apple.developer.aps-environment';
 export const APS_SUBSTITUTION = '$(APS_ENVIRONMENT)';
@@ -169,6 +174,28 @@ export const ENTITLEMENTS = [
 			'`getToken()` returns null forever and the device silently registers ' +
 			'nothing. It is a checked-in capability declaration, not a credential ' +
 			'— the Firebase plist and the APNs key are the operator-supplied half.',
+	},
+	{
+		key: 'com.apple.security.application-groups',
+		source: 'swift',
+		pattern: /containerURL\(forSecurityApplicationGroupIdentifier:/,
+		needed_by:
+			'the share extension hands a shared route file to the app through an ' +
+			'App Group container',
+		accepts: (v) =>
+			Array.isArray(v) && v.length > 0 && v.every((g) => typeof g === 'string' && g.startsWith('group.')),
+		shape: '<array><string>group.…</string></array>',
+		why:
+			'`containerURL(forSecurityApplicationGroupIdentifier:)` returns nil ' +
+			'rather than throwing when the group is not entitled, so a share would ' +
+			'write nowhere and the app would foreground onto no import. WHICH ' +
+			'group is not asserted here: the identifier has to agree across four ' +
+			'files (both entitlements, the host Info.plist `AppGroupId`, and ' +
+			'`SharedRouteHandoff.appGroup`), which `ShareExtensionHandoffTests` ' +
+			'reads off disk and compares in the `build-mobile-ios` job. This rule ' +
+			'is the half that check cannot make: that the capability is claimed by ' +
+			'code at all, so deleting the extension obliges deleting the ' +
+			'entitlement with it.',
 	},
 ];
 
@@ -589,7 +616,10 @@ export function collectDartSources(root = REPO_ROOT, roots = DART_ROOTS) {
 }
 
 export function collectSwiftSources(iosRoot = IOS_ROOT) {
-	return walk(join(iosRoot, SWIFT_ROOT), '.swift', [], null);
+	/** @type {SourceFile[]} */
+	const out = [];
+	for (const rel of SWIFT_ROOTS) walk(join(iosRoot, rel), '.swift', out, null);
+	return out;
 }
 
 /// Every rule whose requirement is derived from Swift, named by whatever
@@ -755,7 +785,7 @@ export function evaluate(input) {
 		errors.push(
 			`Found no Swift sources to derive requirements from, but ${swiftRules.length} ` +
 				`rule(s) read them: ${swiftRules.join(', ')}.\n` +
-				`  Looked under ${join(IOS_ROOT, SWIFT_ROOT)}. Those rules would pass ` +
+				`  Looked under ${SWIFT_ROOTS.map((r) => join(IOS_ROOT, r)).join(', ')}. Those rules would pass ` +
 				'vacuously — the declaration they oblige would stand with nothing ' +
 				'claiming it.',
 		);

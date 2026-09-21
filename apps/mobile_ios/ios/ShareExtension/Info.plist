@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<!-- What the share sheet labels the row. A proper noun, so it is the same
+	     in every locale and the extension needs no string catalogue of its
+	     own — it shows no other text. Every word the user reads about the
+	     outcome comes from the host app's localized banner. -->
+	<key>CFBundleDisplayName</key>
+	<string>Threkir</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>XPC!</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>NSExtension</key>
+	<dict>
+		<key>NSExtensionAttributes</key>
+		<dict>
+			<!-- Threkir appears in the share sheet only for the two route
+			     types the host app declares in CFBundleDocumentTypes /
+			     UTImportedTypeDeclarations. A permissive rule (public.data,
+			     or the NSExtensionActivationSupportsFileWithMaxCount
+			     shorthand) would put Threkir in the sheet for every photo
+			     and PDF, and every one of those shares would land on the
+			     host app's "couldn't import" banner. UTI-CONFORMS-TO rather
+			     than equality so a subtype of either still activates. -->
+			<key>NSExtensionActivationRule</key>
+			<string>SUBQUERY (
+	extensionItems,
+	$item,
+	SUBQUERY (
+		$item.attachments,
+		$attachment,
+		ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.topografix.gpx"
+		|| ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.google.earth.kml"
+	).@count &gt;= 1
+).@count == 1</string>
+		</dict>
+		<key>NSExtensionPointIdentifier</key>
+		<string>com.apple.share-services</string>
+		<!-- A principal class rather than NSExtensionMainStoryboard: the
+		     extension presents nothing, so a storyboard would only be a
+		     blank sheet the user has to watch appear and disappear. -->
+		<key>NSExtensionPrincipalClass</key>
+		<string>$(PRODUCT_MODULE_NAME).ShareViewController</string>
+	</dict>
+</dict>
+</plist>

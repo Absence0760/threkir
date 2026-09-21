@@ -25,6 +25,7 @@ import { fileURLToPath } from 'node:url';
 import {
 	HINTLESS_CONTROLS,
 	DIRECT_ONLY_FIELDS,
+	SESSION_KEYCHAIN_CLASS,
 	buildSettingsBlocks,
 	INGEST,
 	ROUTE_BRIDGE,
@@ -85,6 +86,7 @@ const STAGED_PHONE_PBX = 'Runner.project.pbxproj';
 const PHONE_PBXPROJ_ABS = join(REPO_ROOT, PHONE_PBXPROJ);
 const ARMED = join('WatchApp', 'ArmedRoute.swift');
 const DIRECT = join('WatchApp', 'SupabaseService.swift');
+const AUTH = join('WatchApp', 'WatchAuth.swift');
 const PBX = join('WatchApp.xcodeproj', 'project.pbxproj');
 const HK = join('WatchApp', 'HealthKitManager.swift');
 
@@ -1205,31 +1207,27 @@ test('claim (13) refuses a test file that is in no target', () => {
 	);
 });
 
-test('claim (13) fails when an unbuilt exemption goes stale', () => {
+test('claim (13) fails when the complication loses its target membership', () => {
+	// The state the tree was in until the Widget Extension landed, and the one
+	// a careless pbxproj merge would restore: the file is present, reads as
+	// shipped, and Xcode compiles none of it.
 	const { errors } = runMutated((dir) => {
 		edit(dir, PBX, (s) =>
-			s.replace(
-				'\tobjects = {',
-				'\tobjects = {\n\t\tAAAA /* ActiveRunComplication.swift in Sources */ = {isa = PBXBuildFile; };',
-			),
+			s.replaceAll('ActiveRunComplication.swift in Sources */', 'Orphaned.swift in Sources */'),
 		);
 	});
 	assert.ok(
-		errors.some((e) => e.includes('exempted from claim (13) but IS now a target member')),
+		errors.some(
+			(e) => e.includes('ActiveRunComplication.swift') && e.includes('is in no target'),
+		),
 		errors.join('\n'),
 	);
 });
 
-test('claim (13) fails when an unbuilt exemption names a file that is gone', () => {
+test('claim (4) names the complication file when it is gone rather than throwing', () => {
 	const { errors } = runMutated((dir) => {
 		rmSync(join(dir, 'Complications', 'ActiveRunComplication.swift'));
 	});
-	assert.ok(
-		errors.some((e) => e.includes('which this tree no longer has')),
-		errors.join('\n'),
-	);
-	// …and claim (4), which reads the same file, must NAME it rather than
-	// throwing an ENOENT stack a reader cannot act on.
 	assert.ok(
 		errors.some((e) => e.includes('ActiveRunComplication.swift is gone')),
 		errors.join('\n'),
@@ -1240,15 +1238,45 @@ test('claim (13) fails when an unbuilt exemption names a file that is gone', () 
 
 test('claim (14) refuses the password grant once the DEBUG fence is removed', () => {
 	// One line. The compiler is happy, the Swift suite is green, and the
-	// shipped watch app gains a hardcoded credential and a second route to a
-	// session.
+	// shipped watch app gains a hardcoded credential.
+	//
+	// ONE error, not two. A shipped password grant stopped being a defect in
+	// itself once the wrist grew its own sign-in, which ships one on purpose;
+	// what the claim holds now is that a grant keeps its session in the
+	// Keychain, covered by the two tests below. The seed CREDENTIAL is still
+	// unconditionally a defect outside the fence, and that is this test.
 	const { errors } = runMutated((dir) => {
 		edit(dir, DIRECT, (s) => s.replace('#if DEBUG\n', ''));
 	});
-	assert.equal(matched(errors, /outside `#if DEBUG`/).length, 2, errors.join('\n'));
+	assert.equal(matched(errors, /outside `#if DEBUG`/).length, 1, errors.join('\n'));
 	assert.ok(
 		matched(errors, /hardcoded password literal/).length === 1,
-		'the seed credential must be named separately from the grant',
+		'the seed credential must be named, and named as a credential',
+	);
+});
+
+test('claim (14) refuses a shipped grant whose session store is gone', () => {
+	// The compensating control for allowing a grant to ship at all. Rename the
+	// Keychain class and the sign-in still compiles, still works, and the
+	// session it mints has nowhere to go but a plist.
+	const { errors } = runMutated((dir) => {
+		edit(dir, AUTH, (s) => s.replaceAll(SESSION_KEYCHAIN_CLASS, 'kSecClassInternetPassword'));
+	});
+	assert.ok(
+		errors.some((e) => e.includes('no file in the watch tree names')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (14) refuses a refresh token written to UserDefaults', () => {
+	// The other direction: the Keychain store stays, and the token goes
+	// somewhere else anyway. On watchOS that plist travels in the backup.
+	const { errors } = runMutated((dir) => {
+		edit(dir, AUTH, (s) => `${s}\nfunc stash(_ t: String) { UserDefaults.standard.set(t, forKey: "refresh_token") }\n`);
+	});
+	assert.ok(
+		errors.some((e) => e.includes('puts a token or a credential into `UserDefaults`')),
+		errors.join('\n'),
 	);
 });
 
@@ -1721,7 +1749,7 @@ test('claim (18) fails when a HINTLESS_CONTROLS entry gains a hint', () => {
 
 test('claim (18) fails vacuity rather than passing when no Button is left to read', () => {
 	const { errors } = runMutated((dir) => {
-		edit(dir, SYNC, (s) => s.replaceAll('Button(', 'Butt0n('));
+		edit(dir, SYNC, (s) => s.replace(/\bButton(?=\s*[({])/g, 'Butt0n'));
 	});
 	assert.ok(
 		errors.some((e) => e.includes('claim (18) would pass vacuously')),

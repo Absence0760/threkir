@@ -35,8 +35,9 @@
 //   (4) The three pure formatters the complication duplicates are byte-for-byte
 //       the copies in `RunFormat.swift`. Both files say "keep the two in
 //       lockstep" in a comment and nothing enforced it. `ComplicationFormatterTests`
-//       cannot: `Complications/ActiveRunComplication.swift` is in no target, so
-//       the suite links the `RunFormat.swift` copy and passing proves nothing
+//       cannot: `Complications/ActiveRunComplication.swift` compiles into the
+//       `WatchAppComplication` extension, a different module with no test host,
+//       so the suite links the `RunFormat.swift` copy and passing proves nothing
 //       about the copy the widget will actually run.
 //
 //   (5) The App Group identifier in `ActiveRunBridge.swift` matches the one
@@ -670,13 +671,7 @@ export const DELEGATE_IDENTITY_GATES = [
  * exemption cannot outlive what it excuses.
  * @type {Record<string, string>}
  */
-export const UNBUILT_SWIFT = {
-	'Complications/ActiveRunComplication.swift':
-		'the Widget Extension target it belongs in does not exist in this project yet — ' +
-		'Complications/README.md is the instruction for adding it in Xcode. This is the ' +
-		'exemption claim (4) exists because of: the formatters are duplicated precisely ' +
-		'so the suite can link a copy it CAN build.',
-};
+export const UNBUILT_SWIFT = {};
 
 export const PHONE_PBXPROJ = join(
 	'apps', 'mobile_ios', 'ios', 'Runner.xcodeproj', 'project.pbxproj',
@@ -1408,9 +1403,34 @@ export function confirmationDialogSpans(src) {
 export function swiftButtons(src) {
 	/** @type {{ index: number, label: string, args: string, body: string | null }[]} */
 	const out = [];
-	const re = /\bButton\s*\(/g;
+	// Both spellings. `Button { } label: { }` carries no argument list at all,
+	// and a detector that reads only `Button(` is blind to it twice over: the
+	// control itself is never asked for a hint, and it stops bounding the
+	// hint chain of the control above it, which silently exempts that one too.
+	const re = /\bButton\s*[({]/g;
 	let m;
 	while ((m = re.exec(src)) !== null) {
+		if (src[m.index + m[0].length - 1] === '{') {
+			const actionOpen = m.index + m[0].length - 1;
+			const actionEnd = matchDelimiter(src, actionOpen, '{', '}');
+			if (actionEnd === -1) continue;
+			const tail = /^\s*label\s*:\s*\{/.exec(src.slice(actionEnd + 1));
+			if (tail === null) {
+				out.push({ index: m.index, label: '(unlabelled)', args: '', body: null });
+				continue;
+			}
+			const labelOpen = actionEnd + tail[0].length;
+			const labelEnd = matchDelimiter(src, labelOpen, '{', '}');
+			if (labelEnd === -1) continue;
+			const labelArgs = src.slice(labelOpen, labelEnd + 1);
+			out.push({
+				index: m.index,
+				label: /"([^"\\\n]*)"/.exec(labelArgs)?.[1] ?? '(unlabelled)',
+				args: labelArgs,
+				body: src.slice(actionOpen + 1, actionEnd),
+			});
+			continue;
+		}
 		const open = m.index + m[0].length - 1;
 		const close = matchDelimiter(src, open, '(', ')');
 		if (close === -1) continue;
@@ -1644,8 +1664,8 @@ export function check(
 			diverged += 1;
 			errors.push(
 				`\`${name}\` is missing from ${a === null ? FORMATTER_ORIGIN : FORMATTER_COPY}. Both ` +
-					'copies must exist: the complication builds in a Widget Extension target that cannot ' +
-					`link ${FORMATTER_ORIGIN}, and ComplicationFormatterTests links the other one.`,
+					'copies must exist while the duplication stands: the complication compiles into ' +
+					`the WatchAppComplication extension and ComplicationFormatterTests links ${FORMATTER_ORIGIN}.`,
 			);
 			continue;
 		}

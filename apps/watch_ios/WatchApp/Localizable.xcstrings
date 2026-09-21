@@ -57,6 +57,83 @@
         "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Remover rota" } }
       }
     },
+    "Change route" : {
+      "comment" : "Pre-run button that opens the starred-route picker when a route is already armed.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Route ändern" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Cambiar ruta" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Changer d'itinéraire" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ルートを変更" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Alterar rota" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Alterar rota" } }
+      }
+    },
+    "Choose route" : {
+      "comment" : "Pre-run button that opens the starred-route picker when no route is armed.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Route wählen" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Elegir ruta" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Choisir un itinéraire" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ルートを選択" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Escolher rota" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Escolher rota" } }
+      }
+    },
+    "Follows this route on your next run" : {
+      "comment" : "VoiceOver hint on a route row in the starred-route picker.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Folgt dieser Route bei deinem nächsten Lauf" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Sigue esta ruta en tu próxima carrera" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Suit cet itinéraire lors de votre prochaine course" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "次のランでこのルートに従います" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Segue esta rota na sua próxima corrida" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Segue esta rota na sua próxima corrida" } }
+      }
+    },
+    "No route" : {
+      "comment" : "Row in the starred-route picker that clears the armed route.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Keine Route" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Sin ruta" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucun itinéraire" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ルートなし" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Sem rota" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Sem rota" } }
+      }
+    },
+    "No starred routes yet. Star a route on your iPhone or the web." : {
+      "comment" : "Empty state in the starred-route picker; the list only ever arrives from the paired iPhone.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Noch keine markierten Routen. Markiere eine Route auf dem iPhone oder im Web." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Aún no hay rutas con estrella. Marca una ruta con estrella en el iPhone o en la web." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucun itinéraire en favori. Ajoutez un itinéraire à vos favoris sur l'iPhone ou sur le web." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "スター付きのルートはまだありません。iPhone またはウェブでルートにスターを付けてください。" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Nenhuma rota com estrela ainda. Marque uma rota com estrela no iPhone ou na web." } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Ainda não há rotas com estrela. Marque uma rota com estrela no iPhone ou na web." } }
+      }
+    },
+    "Opens the routes you starred, to follow one on this run" : {
+      "comment" : "VoiceOver hint on the pre-run button that opens the starred-route picker.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Öffnet deine markierten Routen, um einer davon bei diesem Lauf zu folgen" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Abre las rutas que marcaste con estrella para seguir una en esta carrera" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ouvre vos itinéraires favoris pour en suivre un pendant cette course" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "スター付きのルートを開き、このランで従うルートを選びます" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Abre as rotas que você marcou com estrela, para seguir uma nesta corrida" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Abre as rotas que marcou com estrela, para seguir uma nesta corrida" } }
+      }
+    },
+    "Runs without a route, so no guidance is given" : {
+      "comment" : "VoiceOver hint on the No-route row in the starred-route picker.",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Startet den Lauf ohne Route, also ohne Führung" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Corre sin ruta, por lo que no habrá guía" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Court sans itinéraire : aucun guidage ne sera donné" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ルートなしで走るため、ガイドは表示されません" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Corre sem rota, portanto sem orientação" } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "Corre sem rota, portanto sem orientação" } }
+      }
+    },
     "Clears this synced run from the watch and returns to the start screen" : {
       "comment" : "VoiceOver hint on the Start-next-run button.",
       "localizations" : {

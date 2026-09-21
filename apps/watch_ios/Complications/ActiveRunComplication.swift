@@ -288,7 +288,7 @@ func formatElapsed(_ seconds: Int) -> String {
 }
 
 func formatDistanceKm(_ meters: Double) -> String {
-    let miles = UserDefaults.standard.string(forKey: "preferred_unit") == "mi"
+    let miles = ActiveRunBridge.prefersMiles()
     let metresPerMile = 1609.344
     let value = miles ? meters / metresPerMile : meters / 1000.0
     let digits = value >= 10.0 ? 1 : 2
@@ -309,7 +309,7 @@ func formatDistanceKm(_ meters: Double) -> String {
 }
 
 func formatPaceSecPerKm(_ secPerKm: Double?) -> String {
-    let miles = UserDefaults.standard.string(forKey: "preferred_unit") == "mi"
+    let miles = ActiveRunBridge.prefersMiles()
     guard let p = secPerKm, p.isFinite, p > 0 else {
         return miles ? "—:—/mi" : "—:—/km"
     }

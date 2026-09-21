@@ -71,6 +71,28 @@ public enum ActiveRunBridge {
 
     private static let key = "active_run_snapshot_v1"
 
+    /// The km/mi preference key, read by the run screen and the watch face.
+    public static let preferredUnitKey = "preferred_unit"
+
+    /// `UserDefaults.standard` means a DIFFERENT container in the widget
+    /// extension than in the host app, so the complication read a suite the
+    /// phone never writes and a runner who chose miles saw kilometres on the
+    /// watch face while the run screen beside it read miles. The App Group is
+    /// the only defaults both targets share; `.standard` stays as the
+    /// fallback so the host is still correct before the first mirror write.
+    public static func prefersMiles() -> Bool {
+        if let shared = defaults?.string(forKey: preferredUnitKey) {
+            return shared == "mi"
+        }
+        return UserDefaults.standard.string(forKey: preferredUnitKey) == "mi"
+    }
+
+    /// Mirrors the preference into the App Group so the extension can read
+    /// it. Called wherever `preferred_unit` is written.
+    public static func mirrorPreferredUnit(_ unit: String) {
+        defaults?.set(unit, forKey: preferredUnitKey)
+    }
+
     private static var defaults: UserDefaults? {
         UserDefaults(suiteName: appGroup)
     }

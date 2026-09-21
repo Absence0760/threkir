@@ -236,6 +236,7 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
         if let unit = payload["preferred_unit"] as? String,
            unit == "km" || unit == "mi" {
             UserDefaults.standard.set(unit, forKey: "preferred_unit")
+            ActiveRunBridge.mirrorPreferredUnit(unit)
         }
         // `audio_cues` — whether the spoken split / pace cues are audible
         // (`RunAnnouncer.preferenceKey`). Same phone preference, same

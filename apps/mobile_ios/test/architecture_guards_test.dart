@@ -3246,11 +3246,22 @@ void main() {
       );
       expect(
         source,
+        contains('await resolveManageSubscriptionUrl('),
+        reason: '_openManageSubscription must resolve its target through '
+            'resolveManageSubscriptionUrl(...), which asks RC for the '
+            'store-specific manage page. A hard-coded URL would bypass the '
+            'cancel paths Apple + Play require, and on iOS would point at '
+            'the web page that sells Pro (decisions § 1700).',
+      );
+      final rc = File('lib/revenuecat.dart').readAsStringSync();
+      final resolver = rc.substring(
+          rc.indexOf('Future<String> resolveManageSubscriptionUrl('));
+      expect(
+        resolver,
         contains('await managementUrl('),
-        reason: '_openManageSubscription must call managementUrl(...) '
-            'to route to RC\'s hosted manage page. A hard-coded URL '
-            'would bypass the store-specific cancel paths Apple + Play '
-            'require.',
+        reason: 'resolveManageSubscriptionUrl must try managementUrl(...) '
+            'before falling back, or a store subscriber is sent to a page '
+            'that cannot cancel their subscription.',
       );
     });
 

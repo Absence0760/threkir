@@ -46,6 +46,7 @@ import {
 	kotlinNumericConstant,
 	swiftNumericConstant,
 	confirmationDialogSpans,
+	dartFunctionMapKeys,
 	dartInvokeKeys,
 	destructiveButtons,
 	methodBody,
@@ -631,6 +632,7 @@ test('claims 6 and 7 are skipped, not faked, when no phone half is available', (
 	assert.deepEqual(errors, []);
 	assert.deepEqual(ok.filter((o) => /run hand-off metadata keys/.test(o)), []);
 	assert.deepEqual(ok.filter((o) => /route-push keys/.test(o)), []);
+	assert.deepEqual(ok.filter((o) => /saved-routes|envelope key agrees/.test(o)), []);
 });
 
 test('claim 7 is skipped when the Dart rail alone is unavailable', () => {
@@ -641,6 +643,7 @@ test('claim 7 is skipped when the Dart rail alone is unavailable', () => {
 	assert.deepEqual(errors, []);
 	assert.ok(ok.some((o) => /run hand-off metadata keys/.test(o)));
 	assert.deepEqual(ok.filter((o) => /route-push keys/.test(o)), []);
+	assert.deepEqual(ok.filter((o) => /saved-routes|envelope key agrees/.test(o)), []);
 });
 
 // --- claim 7: the route-push envelope, three rails --------------------------
@@ -705,6 +708,103 @@ test('dartInvokeKeys spans the nested collection literals in the map it reads', 
 	const src = "await _c.invokeMethod<void>('push', {\n  'a': 1,\n  'b': [for (final p in ps) p.x],\n  'c': 2,\n});";
 	assert.deepEqual([...(dartInvokeKeys(src, 'push') ?? [])].sort(), ['a', 'b', 'c']);
 	assert.equal(dartInvokeKeys(src, 'nope'), null);
+});
+
+// --- claim 7b: the saved-routes list on the same envelope -------------------
+
+test('the saved-routes rails agree on the shipped tree', () => {
+	const { errors, ok } = check(WATCH_IOS, INGEST_ABS, ROUTE_BRIDGE_ABS);
+	assert.deepEqual(matched(errors, /saved.route/i), []);
+	assert.ok(ok.some((o) => /^the `saved_routes` envelope key agrees/.test(o)));
+	assert.ok(ok.some((o) => /both ends of the saved-routes list validate/.test(o)));
+	assert.ok(ok.some((o) => /^the Dart list element is the same 5 keys/.test(o)));
+});
+
+test('the envelope key renamed on the Dart rail alone is refused', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_ROUTE_BRIDGE, (s) => s.replace("'saved_routes': savedRoutes,", "'savedRoutes': savedRoutes,"));
+	});
+	assert.ok(matched(errors, /`savedRoutes` is on .*apple_watch_route_bridge\.dart/).length >= 1, errors.join('\n'));
+	assert.ok(matched(errors, /`saved_routes` is on .*ArmedRoute\.swift/).length >= 1, errors.join('\n'));
+});
+
+test('the envelope key renamed on the phone repack alone is refused', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_INGEST, (s) => s.replace('return ["saved_routes": routes]', 'return ["savedRoutes": routes]'));
+	});
+	assert.ok(matched(errors, /`savedRoutes` is on .*WatchIngestBridge\.swift/).length >= 1, errors.join('\n'));
+});
+
+test('the envelope key renamed on the watch decode alone is refused', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, ARMED, (s) => s.replace('payload["saved_routes"]', 'payload["starred_routes"]'));
+	});
+	assert.ok(matched(errors, /`starred_routes` is on .*ArmedRoute\.swift/).length >= 1, errors.join('\n'));
+});
+
+test('a saved-routes push whose Dart method was renamed fails vacuity rather than passing', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_ROUTE_BRIDGE, (s) => s.replace("invokeMethod<void>('push_saved'", "invokeMethod<void>('pushSaved'"));
+	});
+	assert.equal(matched(errors, /Parsed no saved-routes envelope key/).length, 1, errors.join('\n'));
+});
+
+test('a phone repack that stops delegating to the single-route validator is refused', () => {
+	// The whole reason claim (7b) does not carry a fourth copy of the five
+	// element keys: both ends hand each element to the validator claim (7)
+	// already reads. An end that stops doing that has grown a second set of
+	// rules, and the payload looks identical.
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_INGEST, (s) =>
+			s.replace('guard let route = routeUserInfo(from: element) else { continue }', 'let route = element'),
+		);
+	});
+	assert.equal(matched(errors, /`savedRoutesUserInfo`\) no longer calls/).length, 1, errors.join('\n'));
+});
+
+test('a watch decode that stops delegating to ArmedRoute.decode is refused', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, ARMED, (s) => s.replace('ArmedRoute.decode(element)', 'decodeElement(element)'));
+	});
+	assert.equal(matched(errors, /`decodeList`\) no longer calls/).length, 1, errors.join('\n'));
+});
+
+test('a list element that is not the armed push five-key dictionary is refused', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_ROUTE_BRIDGE, (s) => s.replace("'route_name': r.name,", "'route_title': r.name,"));
+	});
+	assert.equal(matched(errors, /builds a list element that is not the five-key dictionary/).length, 1, errors.join('\n'));
+	assert.match(errors.join('\n'), /`route_title` only in the list/);
+	assert.match(errors.join('\n'), /`route_name` only in the armed push/);
+});
+
+test('an encoder that changed shape fails vacuity rather than passing', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_ROUTE_BRIDGE, (s) =>
+			s.replace('static List<Map<String, Object>> encodeSavedRoutesForWatch(', 'static Iterable<Map<String, Object>> encodeSaved('),
+		);
+	});
+	assert.equal(matched(errors, /Parsed no element keys out of/).length, 1, errors.join('\n'));
+});
+
+test('dartFunctionMapKeys reads the declaration, never a call site', () => {
+	// A call site spells the name the same way. Reading one would take the
+	// CALLER's map literal as the function's, which is a guard certifying a
+	// text nobody ships.
+	const src = [
+		"  void _push() {",
+		"    send(encode(store), {'wrong': 1});",
+		"  }",
+		"",
+		"  static List<Map<String, Object>> encode(",
+		"    List<Route> routes, {",
+		"    int cap = 3,",
+		"  }) {",
+		"    return [for (final r in routes) {'right': r.id, 'also': r.name}];",
+		"  }",
+	].join('\n');
+	assert.deepEqual([...(dartFunctionMapKeys(src, 'encode') ?? [])].sort(), ['also', 'right']);
+	assert.equal(dartFunctionMapKeys(src, 'missing'), null);
 });
 
 test('methodBody finds an indented method with modifiers in front of func', () => {

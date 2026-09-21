@@ -179,21 +179,24 @@ jobs:
             echo "::notice::nothing under infra/ changed — the Terraform checks skip"
             echo "infra=false" >> "$GITHUB_OUTPUT"
           fi
-          # The one lane in this file that is NOT cheap to run. GitHub bills a
-          # hosted macOS minute at 10x a Linux one, and a cold
-          # `flutter build ios` — pod install, every plugin's iOS unit, the
-          # Runner Swift, the Dart kernel — plus an XCTest run measures
-          # ~15-20 min: roughly 180 Linux-equivalent minutes, MORE than the
-          # ~139 a whole run of everything else costs. Gating it on the broad
-          # `code` output every other job takes would therefore more than
-          # double the bill of a web-only or firmware-only PR that cannot
-          # reach the iOS toolchain at all.
+          # The one lane in this file whose cost is not a rounding error —
+          # though the cost is not money. This repo is PUBLIC, so standard
+          # GitHub-hosted runners are free, macOS included; the 10x macOS
+          # minute multiplier quoted everywhere is a private-repo / paid-plan
+          # figure and does not apply here. What it spends is wall clock and
+          # a scarce runner: a cold `flutter build ios` — pod install, every
+          # plugin's iOS unit, the Runner Swift, the Dart kernel — plus an
+          # XCTest run measures ~15-20 min, and hosted macOS concurrency is
+          # far tighter than Linux, so an unfiltered iOS lane queues behind
+          # itself. Gating it on the broad `code` output every other job
+          # takes would put that latency on a web-only or firmware-only PR
+          # that cannot reach the iOS toolchain at all.
           #
           # The other option was to run it only on pushes to main, and it is
           # worse: main is protected and linear, so a break found after the
           # merge costs a revert PR — and a break found on a release tag is
-          # exactly the state this lane exists to end. Pay for it before the
-          # merge, on the PRs that can actually cause it.
+          # exactly the state this lane exists to end. Spend the time before
+          # the merge, on the PRs that can actually cause it.
           #
           # An EXCLUSION list for the same reason `web_e2e` above is one: the
           # gate counts `skipped` as a pass, so a too-NARROW inclusion list
@@ -2540,13 +2543,14 @@ jobs:
     # Apple Developer account. release-ios.yml builds the device IPA.
     #
     # THE COST, recorded here so the next session does not re-litigate it:
-    # GitHub bills a hosted macOS minute at 10x a Linux one, and this lane
-    # measures ~15-20 min cold — around 180 Linux-equivalent minutes, against
-    # the ~139 a full run of everything else costs. That is why it takes the
-    # `mobile_ios` path filter rather than the broad `code` output every
-    # other job takes: a web-only, backend-only or firmware-only PR cannot
-    # reach the iOS toolchain and should not pay ten-for-one to find that
-    # out. The filter is an exclusion list, so an unrecognised path still
+    # it is not money. This repo is PUBLIC, so standard GitHub-hosted runners
+    # are free, macOS included — the 10x macOS minute multiplier quoted
+    # everywhere is a private-repo / paid-plan figure and does not apply. The
+    # cost is ~15-20 min of wall clock and one of a small number of
+    # concurrent hosted macOS runners. That is why it takes the `mobile_ios`
+    # path filter rather than the broad `code` output every other job takes:
+    # a web-only, backend-only or firmware-only PR cannot reach the iOS
+    # toolchain and should not wait on a macOS queue to find that out. The filter is an exclusion list, so an unrecognised path still
     # runs the lane — see the `changes` job for the full reasoning, and for
     # why "only on pushes to main" was rejected.
     steps:

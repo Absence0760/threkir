@@ -301,9 +301,10 @@ compiles the Flutter iOS target at all, and its XCTest step is the only place
 in CI that launches the iOS binary -- `RunnerTests` is hosted by `Runner.app`,
 so `AppDelegate` and `GeneratedPluginRegistrant` run for real and a plugin
 whose iOS registration crashes at launch is caught. It is also the one
-required job that does NOT take the broad `code` path filter: a hosted macOS
-minute bills at 10x a Linux one and this lane costs roughly 180
-Linux-equivalent minutes, so it is gated on the `changes` job's `mobile_ios`
+required job that does NOT take the broad `code` path filter. The cost is not
+money -- this repo is public, so standard GitHub-hosted runners are free,
+macOS included -- but ~15-20 min of wall clock against one of a small number
+of concurrent hosted macOS runners, so it is gated on the `changes` job's `mobile_ios`
 output and skips on a web-only, backend-only, firmware-only or docs-only PR.
 A skip is a pass at the gate, so a green `CI gate` on such a PR means the iOS
 target was not compiled -- which is correct, because nothing in that diff can

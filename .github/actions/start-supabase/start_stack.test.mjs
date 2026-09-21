@@ -14,7 +14,7 @@ const SCRIPT = fileURLToPath(new URL('./start_stack.sh', import.meta.url));
 // attempts of CI run 35626531071, and a stub that only ever emits LISTEN rows
 // would never ask the question. Each line is one `ss -tanH` row: state,
 // recv-q, send-q, local address, peer address.
-const SS_STUB = (rows) => `#!/usr/bin/env bash
+const SS_STUB = (/** @type {string[]} */ rows) => `#!/usr/bin/env bash
 # A faithful-enough ss: it honours -l (listening only), -a (every state) and
 # -K (destroy the matching sockets). The flag handling is the point — a stub
 # that emitted every row whatever was asked would let the ESTABLISHED case
@@ -77,14 +77,14 @@ esac
 exit 0
 `;
 
-const SUPABASE_STUB = (startExit) => `#!/usr/bin/env bash
+const SUPABASE_STUB = (/** @type {number} */ startExit) => `#!/usr/bin/env bash
 case "$1" in
   start) printf 'start\\n' >> "$START_LOG"; exit ${startExit};;
 esac
 exit 0
 `;
 
-const PASSTHRU = (name) => `#!/usr/bin/env bash
+const PASSTHRU = (/** @type {string} */ name) => `#!/usr/bin/env bash
 printf '%s %s\\n' "${name}" "$*" >> "$CALL_LOG"
 exit 0
 `;
@@ -134,7 +134,7 @@ function run({ rows, startExit = 0, reserved = '54321-54327' }) {
 			STACK_SETTLE_GRACE_S: '0',
 		},
 	});
-	const read = (f) => {
+	const read = (/** @type {string} */ f) => {
 		try {
 			return readFileSync(join(dir, f), 'utf8').trim().split('\n').filter(Boolean);
 		} catch {

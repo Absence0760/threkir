@@ -89,7 +89,6 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     var announcer = RunAnnouncer()
 
     var targetPaceSecondsPerKm: Double? = nil
-    let paceToleranceSeconds: Double = 15
 
     private let locationManager = CLLocationManager()
     // Reused across every GPS fix — ISO8601DateFormatter is expensive to
@@ -103,8 +102,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private var startDate: Date?
     private var pausedAt: Date?
     private var totalPausedInterval: TimeInterval = 0
-    private var lastTooFastHaptic: Date? = nil
-    private var lastTooSlowHaptic: Date? = nil
+    /// One clock for both directions — see `PaceAlertGate.rateLimitSeconds`.
+    private var lastPaceAlertAt: Date? = nil
     private var currentRunId: String?
     private var checkpointStore: CheckpointStore?
     // Reference fix for the per-update distance delta, kept SEPARATE from the
@@ -274,8 +273,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         finishedRun = nil
         pausedAt = nil
         totalPausedInterval = 0
-        lastTooFastHaptic = nil
-        lastTooSlowHaptic = nil
+        lastPaceAlertAt = nil
         lastLocationForDistance = nil
         announcer.reset()
         let armedRoute = ArmedRouteStore.load()
@@ -485,8 +483,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         finishedRun = nil
         pausedAt = nil
         totalPausedInterval = 0
-        lastTooFastHaptic = nil
-        lastTooSlowHaptic = nil
+        lastPaceAlertAt = nil
         lastLocationForDistance = nil
         announcer.reset()
         lastAcceptedFixUptime = nil
@@ -895,22 +892,19 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         checkPaceAlert(pace: pace)
     }
 
+    /// The drift threshold and the rate limit both live in `PaceAlertGate`,
+    /// which Wear OS's `PaceAlert.kt` is held to value-for-value.
     private func checkPaceAlert(pace: Double) {
         guard let target = targetPaceSecondsPerKm, distanceMetres > 200 else { return }
         let now = Date()
-        let debounce: TimeInterval = 30
-        if pace < target - paceToleranceSeconds {
-            if lastTooFastHaptic.map({ now.timeIntervalSince($0) > debounce }) ?? true {
-                WKInterfaceDevice.current().play(.notification)
-                lastTooFastHaptic = now
-                announcer.announcePaceAlert(tooSlow: false)
-            }
-        } else if pace > target + paceToleranceSeconds {
-            if lastTooSlowHaptic.map({ now.timeIntervalSince($0) > debounce }) ?? true {
-                WKInterfaceDevice.current().play(.notification)
-                lastTooSlowHaptic = now
-                announcer.announcePaceAlert(tooSlow: true)
-            }
-        }
+        let decision = PaceAlertGate.decide(
+            targetSecondsPerKm: target,
+            currentSecondsPerKm: pace,
+            secondsSinceLastAlert: lastPaceAlertAt.map { now.timeIntervalSince($0) }
+        )
+        guard decision.fire else { return }
+        lastPaceAlertAt = now
+        WKInterfaceDevice.current().play(.notification)
+        announcer.announcePaceAlert(tooSlow: decision.tooSlow)
     }
 }

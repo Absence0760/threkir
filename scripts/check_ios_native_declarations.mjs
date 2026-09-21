@@ -269,8 +269,8 @@ export const PRIVACY_API_TYPES = [
 	{
 		type: 'NSPrivacyAccessedAPICategoryUserDefaults',
 		source: 'dart',
-		pattern: /package:(?:shared_preferences|flutter_secure_storage)\//,
-		needed_by: 'shared_preferences / flutter_secure_storage read UserDefaults',
+		pattern: /package:shared_preferences\//,
+		needed_by: 'shared_preferences reads UserDefaults',
 	},
 	{
 		type: 'NSPrivacyAccessedAPICategoryFileTimestamp',
@@ -347,6 +347,12 @@ export const PRIVACY_DATA_TYPES = [
 		source: 'dart',
 		pattern: /package:purchases_flutter\//,
 		needed_by: 'RevenueCat records subscription events',
+	},
+	{
+		type: 'NSPrivacyCollectedDataTypeDeviceID',
+		source: 'dart',
+		pattern: /package:firebase_messaging\//,
+		needed_by: 'the push bridge registers an APNs/FCM token onto device_tokens',
 	},
 	{
 		type: 'NSPrivacyCollectedDataTypeCrashData',
@@ -1096,11 +1102,29 @@ export function evaluate(input) {
 					e.get('NSPrivacyAccessedAPITypeReasons') ?? [],
 				]),
 			);
-			const dataTypes = new Set(dataEntries.map((e) => e.get('NSPrivacyCollectedDataType')));
+			const dataTypes = new Set(
+				dataEntries.map((e) => String(e.get('NSPrivacyCollectedDataType'))),
+			);
+
+			// The two arrays were the last derived declarations read in one
+			// direction only. Everything else in this script is read both ways,
+			// and for the same reason: an entry no rule claims is either an
+			// over-declaration — which the App Store Connect nutrition label is
+			// answered from, so it becomes a public claim about what the app
+			// takes — or a rule that quietly stopped matching, which from this
+			// side looks identical. `NSPrivacyCollectedDataTypeDeviceID` stood
+			// here from 2026-07-03 with a hand-written comment as its only
+			// backing; the firebase_messaging import that obliges it is now a
+			// rule, so deleting push deletes the claim with it.
+			/** @type {Set<string>} */
+			const claimedApiTypes = new Set(PRIVACY_API_TYPES_FIXED.map((f) => f.type));
+			/** @type {Set<string>} */
+			const claimedDataTypes = new Set(PRIVACY_DATA_TYPES_FIXED.map((f) => f.type));
 
 			for (const rule of PRIVACY_API_TYPES) {
 				const where = firstMatch(sourcesFor(rule.source), rule.pattern, root);
 				if (!where) continue;
+				claimedApiTypes.add(rule.type);
 				if (apiTypes.has(rule.type)) {
 					ok.push(`PrivacyInfo declares \`${rule.type}\` (${where}: ${rule.needed_by})`);
 					continue;
@@ -1135,9 +1159,24 @@ export function evaluate(input) {
 				ok.push(`PrivacyInfo declares \`${type}\` (${reason})`);
 			}
 
+			for (const type of apiTypes.keys()) {
+				if (claimedApiTypes.has(type)) continue;
+				errors.push(
+					`PrivacyInfo.xcprivacy declares \`${type}\` and no rule in this ` +
+						'script claims it.\n' +
+						'  A required-reason category the binary never touches is a ' +
+						'reason code submitted for an API that is not called. Either ' +
+						'the code that needed it was deleted (drop the entry), or a new ' +
+						'one arrived without a derivation rule (add it to ' +
+						'PRIVACY_API_TYPES, or to PRIVACY_API_TYPES_FIXED with the ' +
+						'reason).',
+				);
+			}
+
 			for (const rule of PRIVACY_DATA_TYPES) {
 				const where = firstMatch(sourcesFor(rule.source), rule.pattern, root);
 				if (!where) continue;
+				claimedDataTypes.add(rule.type);
 				if (dataTypes.has(rule.type)) {
 					ok.push(`PrivacyInfo collects \`${rule.type}\` (${where}: ${rule.needed_by})`);
 					continue;
@@ -1155,6 +1194,21 @@ export function evaluate(input) {
 					continue;
 				}
 				errors.push(`PrivacyInfo.xcprivacy does not list \`${type}\`.\n  ${why}`);
+			}
+
+			for (const type of dataTypes) {
+				if (claimedDataTypes.has(type)) continue;
+				errors.push(
+					`PrivacyInfo.xcprivacy collects \`${type}\` and no rule in this ` +
+						'script claims it.\n' +
+						'  The App Store Connect nutrition label is answered from this ' +
+						'array, so an entry nothing collects is a public claim the app ' +
+						'does not earn — and it is what a rule that stopped matching ' +
+						'looks like from this side. Either the code that collected it ' +
+						'was deleted (drop the entry), or a new collector arrived ' +
+						'without a derivation rule (add it to PRIVACY_DATA_TYPES, or to ' +
+						'PRIVACY_DATA_TYPES_FIXED with the reason).',
+				);
 			}
 
 			if (manifest.get('NSPrivacyTracking') !== false) {

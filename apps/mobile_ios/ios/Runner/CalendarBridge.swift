@@ -126,8 +126,7 @@ import UIKit
         default: return nil
         }
 
-        let interval = Int(fields["INTERVAL"] ?? "1") ?? 1
-        guard interval >= 1 else { return nil }
+        guard let interval = Int(fields["INTERVAL"] ?? "1"), interval >= 1 else { return nil }
 
         var end: EKRecurrenceEnd?
         if let count = fields["COUNT"] {

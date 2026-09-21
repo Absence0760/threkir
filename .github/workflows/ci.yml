@@ -1922,7 +1922,18 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
+          # `~/.gradle/wrapper` holds the Gradle DISTRIBUTION, and the wrapper
+          # that fetches it retries exactly once -- `Attempt 1/1 failed` is
+          # what services.gradle.org's 504 printed on 2026-09-21 before this
+          # job died. Without a fallback key, editing any build file misses
+          # outright and re-downloads it, so the narrowest possible change
+          # (a version bump in one `*.gradle*`) reopened the whole exposure.
+          # A fallback restores the previous entry, which already holds the
+          # distribution whenever the Gradle version itself has not moved --
+          # the common case by a wide margin.
           key: gradle-watch-wear-${{ hashFiles('apps/watch_wear/android/**/*.gradle*', 'apps/watch_wear/android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-watch-wear-
       - working-directory: apps/watch_wear/android
         run: ./gradlew assembleDebug testDebugUnitTest --no-daemon
 
@@ -2456,7 +2467,18 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
+          # `~/.gradle/wrapper` holds the Gradle DISTRIBUTION, and the wrapper
+          # that fetches it retries exactly once -- `Attempt 1/1 failed` is
+          # what services.gradle.org's 504 printed on 2026-09-21 before this
+          # job died. Without a fallback key, editing any build file misses
+          # outright and re-downloads it, so the narrowest possible change
+          # (a version bump in one `*.gradle*`) reopened the whole exposure.
+          # A fallback restores the previous entry, which already holds the
+          # distribution whenever the Gradle version itself has not moved --
+          # the common case by a wide margin.
           key: gradle-mobile-android-${{ hashFiles('apps/mobile_android/android/**/*.gradle*', 'apps/mobile_android/android/gradle/wrapper/gradle-wrapper.properties', 'apps/mobile_android/pubspec.lock') }}
+          restore-keys: |
+            gradle-mobile-android-
       - run: cp apps/mobile_android/.env.example apps/mobile_android/.env.development
       # `flutter build apk --release` exercises the full Gradle
       # toolchain (AGP, Kotlin compiler, plugin compileSdk overrides)

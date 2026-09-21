@@ -112,7 +112,7 @@ jobs:
     # a label or comment needs `pull-requests: write` and lands somewhere
     # other than the list this exists to correct. Nothing untrusted runs under
     # this token either -- the job is `push`-to-main only, checks nothing out,
-    # and runs an inline script from main. Alert 244, decisions § 1688.
+    # and runs an inline script from main. Alert 244, decisions § 1694.
     permissions:
       checks: write
       pull-requests: read

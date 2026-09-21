@@ -81,6 +81,13 @@ class PlanDetailScreen extends StatefulWidget {
   /// Threaded from the Fitness hub via PlansScreen; other call sites pass null.
   final LocalRunStore? runStore;
 
+  /// Clock for every "today" this screen derives. The adherence surfaces are
+  /// windowed on the days of the current week that have already ended, so on
+  /// a Monday nothing has and the banner correctly does not render -- which
+  /// made a fixture built from `_mondayThisWeek()` a test that passed six days
+  /// in seven. Production leaves the default.
+  final DateTime Function() now;
+
   const PlanDetailScreen({
     super.key,
     required this.training,
@@ -88,6 +95,7 @@ class PlanDetailScreen extends StatefulWidget {
     this.social,
     this.viewerIdOverride,
     this.runStore,
+    this.now = DateTime.now,
   });
 
   @override
@@ -190,7 +198,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     if (_weeks.isEmpty) return 0;
     return currentPlanWeekIndex(
       toIsoDate(plan.startDate),
-      toIsoDate(DateTime.now()),
+      toIsoDate(widget.now()),
       _weeks.length,
     );
   }
@@ -246,7 +254,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
               ))
           .toList(),
       runs: _runsForWeek(plan, idx),
-      today: toIsoDate(DateTime.now()),
+      today: toIsoDate(widget.now()),
       weekTargetVolumeM: week.targetVolumeM,
     );
     return d.flagged ? d : null;
@@ -259,7 +267,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     final idx = _currentWeekIndex(plan);
     if (idx >= _weeks.length) return null;
     final week = _weeks[idx];
-    final today = toIsoDate(DateTime.now());
+    final today = toIsoDate(widget.now());
     final missed = (_byWeek[week.id] ?? const <PlanWorkoutRow>[]).where((w) =>
         w.kind == 'long' &&
         toIsoDate(w.scheduledDate).compareTo(today) < 0 &&
@@ -299,8 +307,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
   }
 
   List<ReplanWeek> _buildReplanInput(TrainingPlanRow plan) {
-    final today = toIsoDate(DateTime.now());
-    final todayD = DateTime.now();
+    final today = toIsoDate(widget.now());
+    final todayD = widget.now();
     return _weeks.map((w) {
       final weekStart = addDays(plan.startDate, w.weekIndex * 7);
       final weekEnd = addDays(weekStart, 7);
@@ -329,7 +337,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     if (!_isOwner(plan) || _bulkBusy) return;
     final l10n = AppLocalizations.of(context);
     final res = replanRemaining(
-        weeks: _buildReplanInput(plan), today: toIsoDate(DateTime.now()));
+        weeks: _buildReplanInput(plan), today: toIsoDate(widget.now()));
     if (res.onTrack || res.changes.isEmpty) {
       setState(() => _replanPreview = null);
       showTopBanner(context, l10n.planDetailReplanOnTrack);
@@ -350,7 +358,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     if (!adaptiveFitnessGate) return null;
     final runs = widget.runStore?.runs;
     if (runs == null || runs.isEmpty) return null;
-    final series = computeTrainingLoadSeries(runs, endDate: DateTime.now());
+    final series = computeTrainingLoadSeries(runs, endDate: widget.now());
     if (series.isEmpty) return null;
     final last = series.last;
     return AdaptiveFitness(tsb: last.tsb, atl: last.atl, ctl: last.ctl);
@@ -363,7 +371,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     final l10n = AppLocalizations.of(context);
     final res = adaptiveReplanRemaining(
       weeks: _buildReplanInput(plan),
-      today: toIsoDate(DateTime.now()),
+      today: toIsoDate(widget.now()),
       fitness: _adaptiveFitnessInput(),
     );
     if (res.reason == AdaptiveReason.deloadFatigue) {
@@ -773,7 +781,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
       );
     }
     final theme = Theme.of(context);
-    final today = toIsoDate(DateTime.now());
+    final today = toIsoDate(widget.now());
     final currentWeek = _currentWeekIndex(p);
     final todayWorkout = _byWeek.values
         .expand((x) => x)
@@ -1259,7 +1267,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
   Widget _weekCard(ThemeData theme, AppLocalizations l10n, TrainingPlanRow p,
       PlanWeekRow w, int currentWeek) {
     final phase = planPhaseFromDb(w.phase);
-    final today = toIsoDate(DateTime.now());
+    final today = toIsoDate(widget.now());
     final workouts = _byWeek[w.id] ?? const [];
     final isCurrent = w.weekIndex == currentWeek;
     return Container(

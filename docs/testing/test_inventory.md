@@ -2056,6 +2056,20 @@ the storage path is not storage answering (and short-circuits, so no ready line
 can print under a failure); storage's own 4xx IS; a password grant GoTrue refuses
 is not auth being ready, which is why that probe is a grant rather than
 `/health`; and each probe addresses its own sidecar's path.
+
+### `.github/actions/start-supabase/tune_kong_keepalive.test.mjs` — 7 tests
+
+Drives `tune_kong_keepalive.sh` with a stub docker on PATH. The script hot-reloads
+kong with a 2 s upstream idle timeout, so kong, not an upstream, closes every
+idle connection it pools. Before this, a POST that kong wrote onto a connection
+PostgREST was closing came back 502, which is how CI run 35655765654 lost a
+roadbook's markers ([decisions § 2432](../architecture/decisions.md)). Pinned:
+the reload goes to the one kong container, with the CLI's nginx template, and is
+confirmed from kong's own `.kong_env`. The idle timeout sits below every
+upstream's measured idle-close, with Realtime's 5 s as the floor. No kong, two
+kongs or a missing template fail before any reload. A failed reload relays
+kong's output, and a reload that leaves 60 s in place fails naming what kong
+carries.
 ---
 
 ## Added by the #789 coverage round 31 — web unit lane (2026-09-02)

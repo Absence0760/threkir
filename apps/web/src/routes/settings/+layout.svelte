@@ -114,6 +114,27 @@
 		display: flex;
 		min-height: 100%;
 	}
+	/* Pinned to the viewport like the app's own rail (`+layout.svelte`'s
+	   `.sidebar` is `position: fixed`), so switching section never costs a
+	   scroll back up a long page such as /settings/account.
+
+	   The three extra declarations are interdependent, not three tweaks.
+	   `align-self` stops the default `stretch`, which had been sizing this
+	   rail to the content column and so resolving `.legal-links`'
+	   `margin-top: auto` against the whole page — the four legal links
+	   rendered at the very bottom of a multi-thousand-pixel document rather
+	   than at the foot of the rail. Once it no longer stretches it has no
+	   height for `auto` to resolve against either, which is what
+	   `height: 100vh` restores. And a fixed-height rail clips, so
+	   `overflow-y` carries the case where the viewport is shorter than the
+	   rail's own content — a large OS text scale, or a short laptop window.
+
+	   The property name is written with its value rather than alone above
+	   because every backticked bare word under apps/web/src that the icon
+	   font can render is harvested into the subset by
+	   scripts/gen_web_icon_font.mjs — and that property name happens to be a
+	   real Material Symbols ligature. Quoting it alone bought a glyph
+	   nothing renders, and failed build-web on subset drift. */
 	.settings-nav {
 		width: 14rem;
 		flex-shrink: 0;
@@ -122,6 +143,11 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.25rem;
+		position: sticky;
+		top: 0;
+		align-self: flex-start;
+		height: 100vh;
+		overflow-y: auto;
 	}
 	.settings-nav h2 {
 		font-size: 0.75rem;
@@ -232,6 +258,12 @@
 			padding: var(--space-md) var(--page-padding-x);
 			border-inline-end: none;
 			border-block-end: 1px solid var(--color-border);
+			/* Stacked, the rail is a wrapping row of rows above the content,
+			   so pinning it would eat the top of a small screen. */
+			position: static;
+			align-self: auto;
+			height: auto;
+			overflow-y: visible;
 		}
 		.settings-nav h2,
 		.nav-section-label,

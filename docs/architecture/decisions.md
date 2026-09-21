@@ -29916,7 +29916,7 @@ Scorecard alert 244 (Token-Permissions, high) fires on `.github/workflows/pr-mer
 
 Dismissed won't-fix with that reasoning on the alert, which is [§ 1609](#1609-scorecards-two-irreducible-findings-are-verified-and-dismissed-not-worked-around)'s disposition for a finding whose remediation is "stop doing the thing correctly". The argument also goes into the workflow at the `permissions:` block rather than only onto the alert, because the alert is where a future session will not be looking: a dismissal on github.com is invisible to anyone reading the YAML and deciding the write scope looks unnecessary.
 
-## 1697. The CI toolchain downloads are cached, because retrying five times against one origin is still one origin
+## 1698. The CI toolchain downloads are cached, because retrying five times against one origin is still one origin
 
 `setup-supabase-cli` was written after a bad Supabase CLI download took out a job on seven of eleven open PRs at once (2026-09-14), and its header says plainly that "re-running each PR until it happens to land a clean download is not a fix". It fixed the half it could: `curl` retries at the transport layer, the release's own sha256 is verified before the tarball is trusted, and a corrupt body stops being indistinguishable from a valid one. That is **integrity**, and it held.
 

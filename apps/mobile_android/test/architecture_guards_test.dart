@@ -5665,8 +5665,9 @@ void main() {
   // iPadOS presents `UIActivityViewController` as a popover and will not
   // present one without a non-empty anchor inside the host view. share_plus's
   // iOS plugin turns a missing or empty anchor into a `PlatformException`, so
-  // the sheet never appears at all — and the app ships to iPad
-  // (`TARGETED_DEVICE_FAMILY = "1,2"`). Every share call site in the tree once
+  // the sheet never appears at all. The first release is iPhone-only
+  // (`TARGETED_DEVICE_FAMILY = 1`, decisions § 1701), but iPad is one setting
+  // away, so the anchor stays mandatory. Every share call site in the tree once
   // omitted it. `share_sheet.dart` is the single place that derives and passes
   // one, so nothing else may reach the plugin.
   group('every share goes through share_sheet.dart', () {

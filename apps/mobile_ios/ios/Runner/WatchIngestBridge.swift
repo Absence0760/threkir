@@ -27,9 +27,31 @@ import WatchConnectivity
     /// would burn a durable transfer on a route that can never land.
     static let maxRoutePoints = 512
 
-    private var methodChannel: FlutterMethodChannel?
+    /// A run Dart keeps refusing is re-dispatched on every watch contact, so
+    /// without a ceiling a permanently-failing payload would spend a dispatch
+    /// per activation and per received file for the life of the process. Past
+    /// the ceiling the runs stay buffered — dropping them is the worse failure
+    /// — and retrying resumes when a fresh engine attaches.
+    static let maxRefusedRetries = 8
+
+    /// `pending` and the ingest channel are touched from three queues: the
+    /// WCSession delegate queue, the main queue, and the method channel's reply
+    /// callback. Unsynchronised access to an `Array` across queues corrupts it.
+    private let state = DispatchQueue(label: "com.threkir.watch-ingest.state")
+    private var _methodChannel: FlutterMethodChannel?
+    private var _pending: [[String: Any]] = []
+    private var _refusedRetries = 0
+
     private var routeChannel: FlutterMethodChannel?
-    var pending: [[String: Any]] = []
+
+    private var methodChannel: FlutterMethodChannel? {
+        state.sync { _methodChannel }
+    }
+
+    var pending: [[String: Any]] {
+        get { state.sync { _pending } }
+        set { state.sync { _pending = newValue } }
+    }
 
     func activate() {
         guard WCSession.isSupported() else { return }
@@ -38,7 +60,7 @@ import WatchConnectivity
     }
 
     @objc func attach(binaryMessenger: FlutterBinaryMessenger) {
-        methodChannel = FlutterMethodChannel(
+        let ingest = FlutterMethodChannel(
             name: "run_app/watch_ingest",
             binaryMessenger: binaryMessenger
         )
@@ -53,6 +75,13 @@ import WatchConnectivity
             self.handleRouteCall(call, result: result)
         }
         routeChannel = routes
+        state.sync {
+            _methodChannel = ingest
+            // A fresh engine is a genuinely new chance at the write, so a run
+            // stranded by the retry ceiling gets tried again rather than
+            // sitting in the buffer until the process dies.
+            _refusedRetries = 0
+        }
         flushPending()
     }
 
@@ -129,7 +158,10 @@ import WatchConnectivity
         _ session: WCSession,
         activationDidCompleteWith activationState: WCSessionActivationState,
         error: Error?
-    ) {}
+    ) {
+        guard activationState == .activated else { return }
+        flushPending()
+    }
 
     func sessionDidBecomeInactive(_ session: WCSession) {}
 
@@ -140,6 +172,10 @@ import WatchConnectivity
     }
 
     func session(_ session: WCSession, didReceive file: WCSessionFile) {
+        // Watch contact is the retry trigger: a run Dart refused earlier gets
+        // another go here, ahead of the one just handed over, so the buffer
+        // drains in arrival order instead of waiting for an engine re-attach.
+        flushPending()
         guard let metadata = file.metadata else { return }
 
         // The file itself is the raw JSON array of track points the
@@ -153,11 +189,14 @@ import WatchConnectivity
         }
 
         let payload = Self.ingestPayload(metadata: metadata, track: track)
-        if methodChannel != nil {
-            dispatch(payload)
-        } else {
-            pending.append(payload)
+        let engineIsUp = state.sync { () -> Bool in
+            guard _methodChannel != nil else {
+                _pending.append(payload)
+                return false
+            }
+            return true
         }
+        if engineIsUp { dispatch(payload) }
     }
 
     static func ingestPayload(metadata: [String: Any], track: String) -> [String: Any] {
@@ -178,21 +217,45 @@ import WatchConnectivity
     }
 
     func flushPending() {
-        guard !pending.isEmpty else { return }
-        let snapshot = pending
-        pending.removeAll()
-        for p in snapshot { dispatch(p) }
+        // Snapshot and clear under the lock, then dispatch outside it: the
+        // dispatch re-enters this queue to re-buffer a run, and a `sync` from
+        // inside a held block would deadlock.
+        let snapshot = state.sync { () -> [[String: Any]] in
+            guard _refusedRetries < Self.maxRefusedRetries else { return [] }
+            let snapshot = _pending
+            _pending.removeAll()
+            return snapshot
+        }
+        for payload in snapshot { dispatch(payload) }
     }
 
     func dispatch(_ payload: [String: Any]) {
         DispatchQueue.main.async { [weak self] in
-            self?.methodChannel?.invokeMethod("run", arguments: payload) { result in
-                // If Dart returned false, Supabase write failed — re-queue
-                // for the next activation so we don't drop the run.
+            guard let self else { return }
+            guard let channel = self.methodChannel else {
+                // The engine is not up yet. That is not a refusal, so it must
+                // not spend the retry budget a real refusal is bounded by.
+                self.buffer(payload)
+                return
+            }
+            channel.invokeMethod("run", arguments: payload) { [weak self] result in
+                // If Dart returned false, the Supabase write failed — re-queue
+                // for the next watch contact so we don't drop the run.
                 if let ok = result as? Bool, !ok {
-                    self?.pending.append(payload)
+                    self?.requeueRefused(payload)
                 }
             }
+        }
+    }
+
+    private func buffer(_ payload: [String: Any]) {
+        state.sync { _pending.append(payload) }
+    }
+
+    func requeueRefused(_ payload: [String: Any]) {
+        state.sync {
+            _refusedRetries += 1
+            _pending.append(payload)
         }
     }
 }

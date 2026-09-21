@@ -1,11 +1,13 @@
+import Flutter
+import WatchConnectivity
 import XCTest
 
 @testable import Runner
 
-/// Pure-host tests for the two seams of `WatchIngestBridge` that can run
-/// without a live `WCSession`: the phone -> watch route payload check, the
-/// watch -> phone ingest payload builder, and the in-memory buffer that holds
-/// runs arriving before the Flutter engine exists. `WCSession` itself, and
+/// Pure-host tests for the seams of `WatchIngestBridge` that can run without a
+/// live `WCSession`: the phone -> watch route payload check, the watch -> phone
+/// ingest payload builder, and the serialised in-memory buffer that holds runs
+/// arriving before the Flutter engine exists or refused once it is up. `WCSession` itself, and
 /// `WCSessionFile`, cannot be constructed in a test, so these are the testable
 /// seams — same convention as the Kotlin bridge tests on the Android twin.
 final class WatchIngestBridgeTests: XCTestCase {
@@ -197,16 +199,36 @@ final class WatchIngestBridgeTests: XCTestCase {
 
     // MARK: - Pending buffer
 
+    /// Stands in for the real dispatch, which needs a live method channel.
+    /// The refusal path calls `requeueRefused` exactly as production does, so
+    /// the retry ceiling is exercised rather than modelled.
     private final class RecordingBridge: WatchIngestBridge {
         var dispatched: [[String: Any]] = []
-        var requeue: [String] = []
+        var refuse: [String] = []
 
         override func dispatch(_ payload: [String: Any]) {
             dispatched.append(payload)
-            if let id = payload["id"] as? String, requeue.contains(id) {
-                pending.append(payload)
+            if let id = payload["id"] as? String, refuse.contains(id) {
+                requeueRefused(payload)
             }
         }
+    }
+
+    /// A `FlutterBinaryMessenger` that answers nothing, so `attach` can build
+    /// its channels without an engine.
+    private final class SilentMessenger: NSObject, FlutterBinaryMessenger {
+        func send(onChannel channel: String, message: Data?) {}
+
+        func send(onChannel channel: String, message: Data?, binaryReply: FlutterBinaryReply?) {}
+
+        func setMessageHandlerOnChannel(
+            _ channel: String,
+            binaryMessageHandler handler: FlutterBinaryMessageHandler?
+        ) -> FlutterBinaryMessengerConnection {
+            0
+        }
+
+        func cleanUpConnection(_ connection: FlutterBinaryMessengerConnection) {}
     }
 
     private func payload(_ id: String) -> [String: Any] {
@@ -225,7 +247,7 @@ final class WatchIngestBridgeTests: XCTestCase {
         // `dispatch` re-queues a run Dart could not write. Clearing the buffer
         // after the loop instead of before it would throw that run away.
         let bridge = RecordingBridge()
-        bridge.requeue = ["b"]
+        bridge.refuse = ["b"]
         bridge.pending = [payload("a"), payload("b")]
         bridge.flushPending()
         XCTAssertEqual(bridge.pending.compactMap { $0["id"] as? String }, ["b"])
@@ -235,5 +257,87 @@ final class WatchIngestBridgeTests: XCTestCase {
         let bridge = RecordingBridge()
         bridge.flushPending()
         XCTAssertTrue(bridge.dispatched.isEmpty)
+    }
+
+    // MARK: - Retrying a refused run
+
+    func testActivationCompletingRetriesTheBuffer() {
+        // The whole point of the re-queue: watch contact, not an engine
+        // re-attach, is what gives a refused run its next go.
+        let bridge = RecordingBridge()
+        bridge.pending = [payload("a")]
+        bridge.session(WCSession.default, activationDidCompleteWith: .activated, error: nil)
+        XCTAssertEqual(bridge.dispatched.compactMap { $0["id"] as? String }, ["a"])
+    }
+
+    func testAFailedActivationDoesNotRetry() {
+        let bridge = RecordingBridge()
+        bridge.pending = [payload("a")]
+        bridge.session(WCSession.default, activationDidCompleteWith: .notActivated, error: nil)
+        XCTAssertTrue(bridge.dispatched.isEmpty)
+        XCTAssertEqual(bridge.pending.count, 1)
+    }
+
+    func testRetriesStopOnceTheRefusalCeilingIsReached() {
+        let bridge = RecordingBridge()
+        bridge.refuse = ["a"]
+        bridge.pending = [payload("a")]
+        for _ in 0..<(WatchIngestBridge.maxRefusedRetries + 10) {
+            bridge.flushPending()
+        }
+        XCTAssertEqual(bridge.dispatched.count, WatchIngestBridge.maxRefusedRetries)
+    }
+
+    func testARunAtTheRefusalCeilingStaysBufferedRatherThanBeingDropped() {
+        let bridge = RecordingBridge()
+        bridge.refuse = ["a"]
+        bridge.pending = [payload("a")]
+        for _ in 0..<(WatchIngestBridge.maxRefusedRetries + 10) {
+            bridge.flushPending()
+        }
+        XCTAssertEqual(bridge.pending.compactMap { $0["id"] as? String }, ["a"])
+    }
+
+    func testAttachResetsTheRefusalCeilingAndRetries() {
+        let bridge = RecordingBridge()
+        bridge.refuse = ["a"]
+        bridge.pending = [payload("a")]
+        for _ in 0..<(WatchIngestBridge.maxRefusedRetries + 10) {
+            bridge.flushPending()
+        }
+        bridge.attach(binaryMessenger: SilentMessenger())
+        XCTAssertEqual(bridge.dispatched.count, WatchIngestBridge.maxRefusedRetries + 1)
+    }
+
+    func testAFlushBeforeTheEngineIsUpReBuffersRatherThanDropping() {
+        // `flushPending` now runs on watch contact, which can precede `attach`.
+        // Without the channel check in `dispatch` the snapshot would be cleared
+        // and the runs would go nowhere.
+        let bridge = WatchIngestBridge()
+        bridge.pending = [payload("a"), payload("b")]
+        bridge.flushPending()
+        XCTAssertTrue(bridge.pending.isEmpty)
+
+        // FIFO on the main queue: the dispatches were enqueued first, so by the
+        // time this one runs they have all re-buffered.
+        let drained = expectation(description: "main queue drained")
+        DispatchQueue.main.async { drained.fulfill() }
+        wait(for: [drained], timeout: 5)
+
+        XCTAssertEqual(bridge.pending.compactMap { $0["id"] as? String }, ["a", "b"])
+    }
+
+    // MARK: - Buffer serialisation
+
+    func testConcurrentRequeuesDoNotLoseARun() {
+        // The buffer is written from the WCSession delegate queue, the main
+        // queue and the channel reply callback. Unserialised this corrupts.
+        let bridge = WatchIngestBridge()
+        let runs = 400
+        DispatchQueue.concurrentPerform(iterations: runs) { i in
+            bridge.requeueRefused(self.payload("run-\(i)"))
+        }
+        XCTAssertEqual(bridge.pending.count, runs)
+        XCTAssertEqual(Set(bridge.pending.compactMap { $0["id"] as? String }).count, runs)
     }
 }

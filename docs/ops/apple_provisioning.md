@@ -15,14 +15,17 @@ next, and two of the artifacts download exactly once.
 that does the step; every other doc points here rather than restating. Google
 sign-in has a ledger of its own —
 [`google_provisioning.md`](google_provisioning.md) — sharing only the Supabase
-pages at steps 9 and 11. The
+pages and the release mechanic: its **step 7** is the URL Configuration both
+providers read, and it landed 2026-09-21, so the row below is already ticked
+for you. Its steps 8 and 9 are the same Release-plus-approval as steps 11 and
+12 here. The
 design records are [`native_push.md`](../features/native_push.md),
 [`web_app_auth.md`](../features/web_app_auth.md) and
 [`apps/mobile_ios/deployment.md`](../../apps/mobile_ios/deployment.md).
 
 ## Status
 
-Last moved: **2026-09-19**.
+Last moved: **2026-09-21**.
 
 | # | Artifact | Where it ends up | State |
 |---|---|---|---|
@@ -39,9 +42,10 @@ Last moved: **2026-09-19**.
 | 6 | **APNs key** `.p8` | Firebase → Cloud Messaging | **Done 2026-09-19** |
 | 7 | **Sign-in-with-Apple key** `.p8` | Supabase (via a generated client secret) | **Done 2026-09-19** |
 | 8 | Both `.p8` files backed up | estate `threkir/push-credentials.sops.yaml` | **Done 2026-09-19** — five values in estate commit `b82fefc`, pushed; the downloaded `.p8` files deleted |
+| — | Supabase URL Configuration (Site URL, Redirect URLs, manual linking) | Supabase dashboard | **Done 2026-09-21** — shared; landed with the Google thread |
 | 9 | Supabase Apple provider enabled | Supabase dashboard | ☐ |
 | 10 | Email-relay source registered | Apple portal → Services | ☐ |
-| 11 | `PUBLIC_APPLE_AUTH_ENABLED` truthy + `web@` tag | GitHub secret + release | ☐ |
+| 11 | `PUBLIC_APPLE_AUTH_ENABLED` truthy + `web@` Release | GitHub secret + release | ☐ |
 | 12 | `mobile_android@` release (picks up the push config) | Play | ☐ |
 | 13 | Android Apple dart-defines | `APPLE_SERVICE_CLIENT_ID` + `APPLE_REDIRECT_URI` | ☐ |
 | — | App Store Connect app record | App Store Connect | ☐ — **last**, and gates nothing above |
@@ -465,6 +469,14 @@ enable.
 Order matters in that list: the Services ID must be first, or the web flow and
 the native flow route to the wrong client.
 
+**URL Configuration is already done** — Site URL, the four Redirect URLs and
+**Allow manual linking** are project-wide, not per-provider, and the Google
+thread set them on 2026-09-21
+([`google_provisioning.md` § 7](google_provisioning.md)). Manual linking is the
+one to know about: without it **Link Apple** on `/settings/account` fails with
+`manual_linking_disabled`, exactly as Link Google would. Nothing to do here
+beyond confirming they are still set.
+
 **The secret is NOT the `.p8`.** Apple's client secret is an ES256 **JWT**
 signed *with* the `.p8` — `iss` = Team ID, `sub` = Services ID, `aud` =
 `https://appleid.apple.com`, `kid` = the step-7 Key ID. Supabase's dashboard
@@ -503,16 +515,30 @@ The web code is done and fail-closed; there is no diff to write
 ([decisions § 1684](../architecture/decisions.md)).
 
 1. Set the repo secret **`PUBLIC_APPLE_AUTH_ENABLED`** to `true`.
-2. Cut a **`web@<version>`** tag.
+2. Publish a **`web@<version>`** GitHub *Release* — `release-web.yml` is
+   `on: release`, so a bare tag push deploys nothing ([`releasing.md`](releasing.md)).
+3. **Approve the deployment.** The job declares `environment: production`,
+   which carries a required-reviewer rule, so the run parks at `waiting` until
+   a human clicks *Review deployments → Approve and deploy*. A re-run resets
+   the gate and needs approving again.
 
-Both are needed. `release-web.yml` writes `apps/web/.env` from its own `env:`
-block and the build reads nothing else, so the secret alone changes nothing —
-which is exactly how eight flags sat permanently off until
-[§ 1683](../architecture/decisions.md).
+The secret and the release are both needed. `release-web.yml` writes
+`apps/web/.env` from its own `env:` block and the build reads nothing else, so
+the secret alone changes nothing — which is exactly how eight flags sat
+permanently off until [§ 1683](../architecture/decisions.md).
+
+This is the same three steps Google's
+[step 8](google_provisioning.md) takes, and `web@1.8.0` walked them on
+2026-09-21: afterwards
+`curl -sS https://threkir.com/_app/env.js | grep -o 'PUBLIC_[A-Z_]*:"[^"]*"'`
+prints the gate set that deploy actually shipped, which beats reading the
+button.
 
 ## 12. Android release for push
 
-Tag **`mobile_android@<version>`**. The `google-services` Gradle apply is
+Publish a **`mobile_android@<version>`** Release — `release-android.yml` is
+`on: release` and declares `environment: production` too, so this is a Release
+plus an approval, not a tag. The `google-services` Gradle apply is
 conditional and `release-android.yml` only **warns** when the config secret is
 absent, so any AAB built before 2026-09-18 registers no device token at all —
 and a client that never registers is indistinguishable from a broken sender.

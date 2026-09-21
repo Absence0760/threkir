@@ -29916,7 +29916,7 @@ Scorecard alert 244 (Token-Permissions, high) fires on `.github/workflows/pr-mer
 
 Dismissed won't-fix with that reasoning on the alert, which is [§ 1609](#1609-scorecards-two-irreducible-findings-are-verified-and-dismissed-not-worked-around)'s disposition for a finding whose remediation is "stop doing the thing correctly". The argument also goes into the workflow at the `permissions:` block rather than only onto the alert, because the alert is where a future session will not be looking: a dismissal on github.com is invisible to anyone reading the YAML and deciding the write scope looks unnecessary.
 
-## 1696. The weekly secret sweep had never passed, and its 26 findings were an allowlist written for one spelling of a key that exists in three
+## 1697. The weekly secret sweep had never passed, and its 26 findings were an allowlist written for one spelling of a key that exists in three
 
 `gitleaks.yml`'s scheduled full-history sweep failed on **every run from 2026-05-18 to 2026-09-21** — nineteen consecutive weeks, beginning the week after the workflow landed. It had never once been green. Nobody saw it, and the reason is structural rather than anyone's inattention: a scheduled run appears on no PR, and branch protection requires exactly one context, the `CI gate` aggregator, whose `needs:` cannot name a job in a sibling workflow. That is the same limitation [§ 1264](#1264-gitleaks-now-gates-a-merge-folding-codeql-in-would-not-have-and-the-measurement-says-why) closed for the push/PR half by calling `gitleaks.yml` from `ci.yml`; the scheduled half was left where it was, and the fold that fixed the visible case is what made the invisible one permanent.
 

@@ -307,7 +307,7 @@ one they gain later.
 scan that reads the whole of `main`'s history, and it reaches the gate by no
 route at all -- it runs on no PR. It failed every week from 2026-05-18 to
 2026-09-21 without that being visible anywhere ([decisions
-§ 1696](../architecture/decisions.md)). `gitleaks-sweep.yml` now holds that cron, calls the same
+§ 1697](../architecture/decisions.md)). `gitleaks-sweep.yml` now holds that cron, calls the same
 scan, and opens a `secret-scan`-labelled issue on a failed sweep, closing it on
 the next clean one -- the shape `audit.yml` already uses. It is a separate file
 because a callee may not request a permission its caller lacks, and putting the

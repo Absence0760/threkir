@@ -18,7 +18,7 @@ name: gitleaks weekly sweep
 # PR, and a `needs:` entry cannot name a job in a sibling workflow. That is the
 # same limitation decisions § 1264 closed for the push / PR half and left open
 # here, and the result was that EVERY scheduled run from 2026-05-18 to
-# 2026-09-21 failed while nothing surfaced it (decisions § 1696). A control
+# 2026-09-21 failed while nothing surfaced it (decisions § 1697). A control
 # whose failure signal reaches nobody is failing open.
 
 on:

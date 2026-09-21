@@ -261,6 +261,7 @@ class BleHeartRate {
       _lastUnavailable = readiness == BleReadiness.ready ? null : readiness;
       if (cancelled || controller.isClosed) return;
       if (readiness != BleReadiness.ready) {
+        debugPrint('BLE scan refused: ${readiness.name}');
         controller.addError(BleUnavailable(readiness));
         await controller.close();
         return;
@@ -315,6 +316,7 @@ class BleHeartRate {
     }
     _lastUnavailable = readiness == BleReadiness.ready ? null : readiness;
     if (readiness != BleReadiness.ready) {
+      debugPrint('BLE cached connect refused: ${readiness.name}');
       _setStatus(BleHrStatus.connectFailed);
       return false;
     }

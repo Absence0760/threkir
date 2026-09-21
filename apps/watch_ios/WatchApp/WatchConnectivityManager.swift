@@ -25,6 +25,10 @@ import WatchConnectivity
 /// so a default here would quietly overwrite an explicit choice every time
 /// the runner armed a route.
 enum PhonePreferences {
+    /// The UserDefaults key the unit is stored under. Spelled the same as the
+    /// wire key below by design — `RunFormat` and `ActiveRunBridge` read this
+    /// one, `preferredUnit(in:)` reads the wire — and pinned equal by
+    /// `PhonePreferencesTests`.
     static let unitKey = "preferred_unit"
 
     /// `km` or `mi`, and nothing else. A rogue or future value leaves the
@@ -33,7 +37,7 @@ enum PhonePreferences {
     /// which the system RETAINS and re-offers on every contact, so a coerced
     /// wrong answer would be a wrong answer on every contact.
     static func preferredUnit(in payload: [String: Any]) -> String? {
-        guard let unit = payload[unitKey] as? String,
+        guard let unit = payload["preferred_unit"] as? String,
               unit == "km" || unit == "mi" else { return nil }
         return unit
     }
@@ -42,7 +46,7 @@ enum PhonePreferences {
     /// coerced — a corrupt push must neither silence cues nobody turned off
     /// nor un-mute an explicit off.
     static func audioCues(in payload: [String: Any]) -> Bool? {
-        payload[RunAnnouncer.preferenceKey] as? Bool
+        payload["audio_cues"] as? Bool
     }
 }
 

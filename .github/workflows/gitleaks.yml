@@ -36,6 +36,7 @@ name: gitleaks
 
 on:
   workflow_call:
+  workflow_dispatch:
   schedule:
     # Weekly full-history sweep. The push / PR triggers above only
     # diff against the base, so a secret that landed on a forgotten
@@ -84,3 +85,82 @@ jobs:
           # every run about something it is not permitted to do; the job
           # summary and the exit status carry the finding.
           GITLEAKS_ENABLE_COMMENTS: 'false'
+
+  # The scheduled sweep is the ONLY scan that reads git history -- the
+  # workflow_call path diffs against the base ref. It also reports to nobody:
+  # it runs on no PR, and `CI gate` cannot `needs:` a job in a sibling
+  # workflow, which is the same limitation § 1264 closed for the push/PR half
+  # and left open here. The result was that every scheduled run from
+  # 2026-05-18 onward failed and no one saw it, so the one control that would
+  # catch a secret merged via fast-forward was failing open for its whole life.
+  # This job gives that failure somewhere to land.
+  #
+  # The issue body carries the RUN LINK and nothing else. This repository is
+  # public, so an issue that quoted the findings would publish the very
+  # secrets the scan exists to find -- the count and the location are already
+  # as much as can be said in the open.
+  report:
+    name: Surface a failed weekly sweep
+    needs: scan
+    if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Open or update the tracking issue
+        if: needs.scan.result != 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh label create secret-scan --repo "$REPO" \
+            --color B60205 \
+            --description "Findings from the weekly full-history gitleaks sweep" \
+            2>/dev/null || true
+
+          {
+            echo "The weekly full-history \`gitleaks\` sweep did not pass."
+            echo ""
+            echo "- Run: $RUN_URL"
+            echo "- Scope: the whole of \`main\`'s history, which no other scan reads."
+            echo ""
+            echo "**Findings are deliberately not quoted here — this repository is public.**"
+            echo "Open the run above to see them."
+            echo ""
+            echo "If a finding is real: rotate the credential FIRST, then purge it from history."
+            echo "If it is a false positive: add it to \`.gitleaks.toml\`, scoped to the"
+            echo "matched value rather than the file, so a genuine key in the same source"
+            echo "still fails."
+            echo ""
+            echo "This issue closes itself on the next clean sweep."
+          } > body.md
+
+          existing=$(gh issue list --repo "$REPO" --state open \
+            --label secret-scan --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue edit "$existing" --repo "$REPO" --body-file body.md
+            gh issue comment "$existing" --repo "$REPO" \
+              --body "Still failing as of $(date -u +%Y-%m-%d). Run: $RUN_URL"
+          else
+            gh issue create --repo "$REPO" \
+              --title "Weekly secret scan is failing" \
+              --body-file body.md \
+              --label secret-scan
+          fi
+
+      - name: Close the tracking issue on a clean sweep
+        if: needs.scan.result == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          existing=$(gh issue list --repo "$REPO" --state open \
+            --label secret-scan --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue close "$existing" --repo "$REPO" \
+              --comment "Sweep clean as of $(date -u +%Y-%m-%d) — closing automatically."
+          fi

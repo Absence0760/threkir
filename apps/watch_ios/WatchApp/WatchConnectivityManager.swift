@@ -159,6 +159,14 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
            unit == "km" || unit == "mi" {
             UserDefaults.standard.set(unit, forKey: "preferred_unit")
         }
+        // `audio_cues` — whether the spoken split / pace cues are audible
+        // (`RunAnnouncer.preferenceKey`). Same phone preference, same
+        // unwired-push caveat as the unit above; absent still means ON, which
+        // is the phone's default, so the key only ever arrives to turn cues
+        // OFF or back on.
+        if let cues = payload[RunAnnouncer.preferenceKey] as? Bool {
+            UserDefaults.standard.set(cues, forKey: RunAnnouncer.preferenceKey)
+        }
         // A malformed or over-budget route is dropped whole rather than
         // trimmed — see `ArmedRoute.decode`. Persist before publishing so a
         // route that arrives while the app is backgrounded is still there

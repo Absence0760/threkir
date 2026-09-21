@@ -12,6 +12,7 @@
 		A1B2C3D4E5F60001000A0002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0002 /* ContentView.swift */; };
 		A1B2C3D4E5F60001000A0003 /* WorkoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0003 /* WorkoutManager.swift */; };
 		A1B2C3D4E5F60001000A0005 /* RouteNavigator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0005 /* RouteNavigator.swift */; };
+		D7A5C0E1B4920001000C0001 /* RunAnnouncer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7A5C0E1B4920002000C0001 /* RunAnnouncer.swift */; };
 		A1B2C3D4E5F60001000A0006 /* WatchConnectivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0006 /* WatchConnectivityManager.swift */; };
 		A1B2C3D4E5F60001000A000B /* SupabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0009 /* SupabaseService.swift */; };
 		A1B2C3D4E5F60001000A000C /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A000A /* AppTheme.swift */; };
@@ -45,6 +46,7 @@
 		B2C3D4E5F6A70001000B0009 /* TransferStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0009 /* TransferStateTests.swift */; };
 		B2C3D4E5F6A70001000B0010 /* WorkoutManagerDistanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0010 /* WorkoutManagerDistanceTests.swift */; };
 		B2C3D4E5F6A70001000B0011 /* RouteNavigatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0011 /* RouteNavigatorTests.swift */; };
+		D7A5C0E1B4920001000C0002 /* RunAnnouncerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7A5C0E1B4920002000C0002 /* RunAnnouncerTests.swift */; };
 		B2C3D4E5F6A70001000B0012 /* ArmedRouteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0012 /* ArmedRouteTests.swift */; };
 		5A7E12D4C0B3410FA0510001 /* SavedRoutesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A7E12D4C0B3410FA0510002 /* SavedRoutesTests.swift */; };
 		B2C3D4E5F6A70001000B0013 /* RouteGuidanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0013 /* RouteGuidanceTests.swift */; };
@@ -78,6 +80,7 @@
 		A1B2C3D4E5F60002000A0002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000A0003 /* WorkoutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutManager.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000A0005 /* RouteNavigator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteNavigator.swift; sourceTree = "<group>"; };
+		D7A5C0E1B4920002000C0001 /* RunAnnouncer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunAnnouncer.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000A0006 /* WatchConnectivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityManager.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000A0009 /* SupabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseService.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000A000A /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
@@ -105,6 +108,7 @@
 		B2C3D4E5F6A70002000B0009 /* TransferStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferStateTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0010 /* WorkoutManagerDistanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutManagerDistanceTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0011 /* RouteNavigatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteNavigatorTests.swift; sourceTree = "<group>"; };
+		D7A5C0E1B4920002000C0002 /* RunAnnouncerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunAnnouncerTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0012 /* ArmedRouteTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArmedRouteTests.swift; sourceTree = "<group>"; };
 		5A7E12D4C0B3410FA0510002 /* SavedRoutesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedRoutesTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0013 /* RouteGuidanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteGuidanceTests.swift; sourceTree = "<group>"; };
@@ -211,6 +215,7 @@
 				B2C3D4E5F6A70002000B0009 /* TransferStateTests.swift */,
 				B2C3D4E5F6A70002000B0010 /* WorkoutManagerDistanceTests.swift */,
 				B2C3D4E5F6A70002000B0011 /* RouteNavigatorTests.swift */,
+				D7A5C0E1B4920002000C0002 /* RunAnnouncerTests.swift */,
 				B2C3D4E5F6A70002000B0012 /* ArmedRouteTests.swift */,
 				5A7E12D4C0B3410FA0510002 /* SavedRoutesTests.swift */,
 				B2C3D4E5F6A70002000B0013 /* RouteGuidanceTests.swift */,
@@ -241,6 +246,7 @@
 				A1B2C3D4E5F60002000A0002 /* ContentView.swift */,
 				A1B2C3D4E5F60002000A0003 /* WorkoutManager.swift */,
 				A1B2C3D4E5F60002000A0005 /* RouteNavigator.swift */,
+				D7A5C0E1B4920002000C0001 /* RunAnnouncer.swift */,
 				A1B2C3D4E5F60002000A0014 /* MiniMap.swift */,
 				A1B2C3D4E5F60002000A0015 /* RunMiniMapView.swift */,
 				A1B2C3D4E5F60002000A0030 /* GpsHealth.swift */,
@@ -474,6 +480,7 @@
 				A1B2C3D4E5F60001000A0002 /* ContentView.swift in Sources */,
 				A1B2C3D4E5F60001000A0003 /* WorkoutManager.swift in Sources */,
 				A1B2C3D4E5F60001000A0005 /* RouteNavigator.swift in Sources */,
+				D7A5C0E1B4920001000C0001 /* RunAnnouncer.swift in Sources */,
 				A1B2C3D4E5F60001000A0014 /* MiniMap.swift in Sources */,
 				A1B2C3D4E5F60001000A0015 /* RunMiniMapView.swift in Sources */,
 				A1B2C3D4E5F60001000A0030 /* GpsHealth.swift in Sources */,
@@ -509,6 +516,7 @@
 				B2C3D4E5F6A70001000B0009 /* TransferStateTests.swift in Sources */,
 				B2C3D4E5F6A70001000B0010 /* WorkoutManagerDistanceTests.swift in Sources */,
 				B2C3D4E5F6A70001000B0011 /* RouteNavigatorTests.swift in Sources */,
+				D7A5C0E1B4920001000C0002 /* RunAnnouncerTests.swift in Sources */,
 				B2C3D4E5F6A70001000B0012 /* ArmedRouteTests.swift in Sources */,
 				5A7E12D4C0B3410FA0510001 /* SavedRoutesTests.swift in Sources */,
 				B2C3D4E5F6A70001000B0013 /* RouteGuidanceTests.swift in Sources */,

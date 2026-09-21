@@ -49,6 +49,31 @@ Flutter iOS app. **`lib/` and `test/` are now byte-for-byte identical to `apps/m
 - `CalendarBridge.swift` — **live**: presents `EKEventEditViewController` pre-filled from a club event, handed over the `run_app/calendar` method channel by `lib/calendar_intent.dart`. Asks for write-only calendar access on iOS 17+ (`requestWriteOnlyAccessToEvents`, falling back to `requestAccess` below it) and never reads the calendar. Parses the RRULE value the Dart side sends into an `EKRecurrenceRule` — only the subset `buildRrule` emits, anything else yields no rule rather than a different one (decisions § 692). Registered in `AppDelegate.didInitializeImplicitFlutterEngine`.
 - `WatchIngestBridge.swift` — **live**: `WCSessionDelegate` that receives `WCSessionFile` transfers from the watch, reads the gzipped-JSON track contents, and forwards to Dart via the `run_app/watch_ingest` method channel. Payloads arriving before Flutter is ready are buffered in-process and flushed on attach.
 
+## Native tests
+
+`ios/RunnerTests/` carries 48 XCTest cases over the two live bridges. It
+replaced the stock `RunnerTests.swift` template stub (`testExample`, empty
+body), which had been the entirety of iOS native coverage while the Android
+twin shipped three Kotlin bridge suites.
+
+The command, its duplicate-simulator-name trap and the `TEST_HOST` ordering
+constraint are in [docs/testing/testing.md § The native suites](../../docs/testing/testing.md).
+
+**The tested seams are a contract.** `WCSession`, `WCSessionFile` and
+`EKEventStore` cannot be constructed in a test, so the pure logic is lifted out
+of the delegate methods: `CalendarBridge.recurrenceRule(from:)`,
+`WatchIngestBridge.routeUserInfo(from:)` and
+`WatchIngestBridge.ingestPayload(metadata:track:)`. Keep them internal (not
+`private`) and keep them pure, or the coverage goes with them.
+
+`WatchIngestBridge`'s mutable state — the pending buffer, the ingest channel and
+the refused-retry budget — lives behind one private serial queue. Two rules
+follow and both are pinned by tests: `flushPending` snapshots and clears **under**
+the lock but dispatches **outside** it (`dispatch` re-enters the queue, so a
+`sync` from inside a held block deadlocks), and internal writes go through
+`buffer(_:)` / `requeueRefused(_:)` rather than appending through the computed
+`pending` property, which would be a non-atomic read-modify-write.
+
 ## Internationalization (i18n)
 
 Shares the Flutter gen-l10n setup with the Android twin ([decisions.md § 113](../../docs/architecture/decisions.md#113-mobile-i18n-uses-flutter-gen-l10n--arb-with-committed-non-synthetic-output-and-a-per-device-locale); full notes in [apps/mobile_android/CLAUDE.md § Internationalization](../mobile_android/CLAUDE.md#internationalization-i18n)). The `lib/l10n/` ARB catalogues + committed `lib/l10n/gen/` output are part of the byte-identical `lib/` surface — they ride the same mirror. iOS-specific: the **seven** locales are advertised in `ios/Runner/Info.plist` via `CFBundleLocalizations` — `pt-PT` was added there alongside `pt-BR` when the European-Portuguese catalogue became reachable (decisions § 547); a locale absent from that array is one the OS will not offer the app in, however complete its ARB. That array is now held to `apps/mobile_android/lib/l10n/` by `test/architecture_guards_test.dart § locale reach`, which reads it through `../mobile_ios/…` so the byte-identical test resolves the same file from either twin's directory (decisions § 740). Apple names a locale by region, and since decisions § 760 so does every other declaration on both twins — `pt-PT` is the canonical tag, the guard's `plistTagOverride` is gone, and the remaining spelling difference is the ARB FILENAME (`app_pt.arb`, which gen-l10n requires as the bare Portuguese base), recorded in the guard as `arbTagOverride`. After regenerating l10n on Android, copy `lib/l10n/gen/` here in the same commit.

@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ui_kit/ui_kit.dart';
 
+import 'apple_watch_route_bridge.dart';
 import 'audio_cues.dart';
 import 'background_sync.dart';
 import 'dev_auto_login.dart';
@@ -542,6 +543,7 @@ void main() async {
         // future edit happens to fire the listener. attach() re-pushes and
         // drops the diff cache, so it is the right idempotent nudge.
         WearRoutesBridge().attach(routeStore);
+        AppleWatchRouteBridge().attach(routeStore);
         wipeScreenOwnedOfflineStores().catchError((Object e) {
           debugPrint('Screen-owned store wipe on signedOut failed: $e');
         });
@@ -553,6 +555,9 @@ void main() async {
     });
     WearAuthBridge().attach(url: supabaseUrl, anonKey: anonKey);
     WearRoutesBridge().attach(routeStore);
+    // The same list on the other wrist. `AppleWatchRouteBridge` no-ops off
+    // iOS, so this costs an Android build one early return.
+    AppleWatchRouteBridge().attach(routeStore);
     // Native-push device-token registration. No-ops when Firebase isn't
     // configured on the device (FirebasePushMessaging.isAvailable == false).
     // L4 auxiliary effect — attach() never throws into the startup path.

@@ -4,8 +4,8 @@
 // exactly one job, on a runner nobody here has. Every failure it exists to catch is silent
 // on the platform: a localization key with no catalog entry renders English and
 // throws nothing, an entitlement nothing claims builds and links fine and is
-// refused months later by App Review, and two copies of one formatter drifting
-// apart leaves the Swift suite green because it links only one of them. So the
+// refused months later by App Review, and a Swift file in no Xcode target is
+// simply absent from the build with nothing red to show for it. So the
 // guard cannot be measured by "does the app work" — it is measured the same way
 // `check_xcstrings_parity.test.mjs` measures its sibling: by mutating a copy of
 // the real tree into each shape the guard exists to refuse, with the unmutated
@@ -25,12 +25,18 @@ import { fileURLToPath } from 'node:url';
 import {
 	HINTLESS_CONTROLS,
 	DIRECT_ONLY_FIELDS,
+	SESSION_KEYCHAIN_CLASS,
 	buildSettingsBlocks,
 	INGEST,
 	ROUTE_BRIDGE,
+	PREFS_BRIDGE,
 	PHONE_PBXPROJ,
 	WEAR_COVERAGE,
+	CI_WORKFLOW,
+	WATCH_TEST_JOB,
 	check,
+	jobBlock,
+	suiteLanguages,
 	credentialSites,
 	phoneAppBundleIdentifier,
 	nativeTarget,
@@ -45,10 +51,10 @@ import {
 	kotlinNumericConstant,
 	swiftNumericConstant,
 	confirmationDialogSpans,
+	dartFunctionMapKeys,
 	dartInvokeKeys,
 	destructiveButtons,
 	methodBody,
-	functionBody,
 	bodyOfSignatureContaining,
 	depthOf,
 	normalizeKey,
@@ -68,7 +74,6 @@ const PLIST = join('WatchApp', 'Info.plist');
 const ENTS = join('WatchApp', 'WatchApp.entitlements');
 const BRIDGE = join('WatchApp', 'ActiveRunBridge.swift');
 const COPY = join('Complications', 'ActiveRunComplication.swift');
-const ORIGIN = join('WatchApp', 'RunFormat.swift');
 const README = join('Complications', 'README.md');
 const SYNC = join('WatchApp', 'ContentView.swift');
 const INGEST_ABS = join(REPO_ROOT, INGEST);
@@ -77,16 +82,24 @@ const ROUTE_BRIDGE_ABS = join(REPO_ROOT, ROUTE_BRIDGE);
 const STAGED_INGEST = 'WatchIngestBridge.swift';
 /** …and of the Dart end of the route-push envelope. */
 const STAGED_ROUTE_BRIDGE = 'apple_watch_route_bridge.dart';
+/** …and of the Dart end of the settings envelope. */
+const STAGED_PREFS_BRIDGE = 'apple_watch_prefs_bridge.dart';
+const PREFS_BRIDGE_ABS = join(REPO_ROOT, PREFS_BRIDGE);
 /** …and of Wear OS's half of the heart-rate coverage contract. */
 const STAGED_WEAR_COVERAGE = 'HeartRateCoverage.kt';
 const WEAR_COVERAGE_ABS = join(REPO_ROOT, WEAR_COVERAGE);
 /** …and of the phone project claim (10) holds the plist against. */
 const STAGED_PHONE_PBX = 'Runner.project.pbxproj';
 const PHONE_PBXPROJ_ABS = join(REPO_ROOT, PHONE_PBXPROJ);
+/** …and of the workflow claim (19) reads the suite's languages out of. */
+const STAGED_CI = 'ci.yml';
+const CI_WORKFLOW_ABS = join(REPO_ROOT, CI_WORKFLOW);
 const ARMED = join('WatchApp', 'ArmedRoute.swift');
 const DIRECT = join('WatchApp', 'SupabaseService.swift');
+const AUTH = join('WatchApp', 'WatchAuth.swift');
 const PBX = join('WatchApp.xcodeproj', 'project.pbxproj');
 const HK = join('WatchApp', 'HealthKitManager.swift');
+const CONNECTIVITY = join('WatchApp', 'WatchConnectivityManager.swift');
 
 /** Copy only the files the guard reads into a throwaway tree. */
 function stage() {
@@ -103,8 +116,10 @@ function stage() {
 	}
 	cpSync(INGEST_ABS, join(dir, STAGED_INGEST));
 	cpSync(ROUTE_BRIDGE_ABS, join(dir, STAGED_ROUTE_BRIDGE));
+	cpSync(PREFS_BRIDGE_ABS, join(dir, STAGED_PREFS_BRIDGE));
 	cpSync(WEAR_COVERAGE_ABS, join(dir, STAGED_WEAR_COVERAGE));
 	cpSync(PHONE_PBXPROJ_ABS, join(dir, STAGED_PHONE_PBX));
+	cpSync(CI_WORKFLOW_ABS, join(dir, STAGED_CI));
 	return dir;
 }
 
@@ -122,6 +137,8 @@ function runMutated(mutate) {
 			join(dir, STAGED_ROUTE_BRIDGE),
 			join(dir, STAGED_WEAR_COVERAGE),
 			join(dir, STAGED_PHONE_PBX),
+			join(dir, STAGED_CI),
+			join(dir, STAGED_PREFS_BRIDGE),
 		);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
@@ -463,25 +480,6 @@ test('an App Group entitlement present but empty is refused as unusable', () => 
 	assert.equal(matched(errors, /application-groups` with an unusable value/).length, 1, errors.join('\n'));
 });
 
-// --- claim 4: the duplicated complication formatters ------------------------
-
-test('a complication formatter that drifts from its RunFormat copy is refused', () => {
-	// The failure no Swift test can see: ActiveRunComplication.swift is in no
-	// target, so ComplicationFormatterTests links the RunFormat copy and stays
-	// green while the widget rounds differently.
-	const { errors } = runMutated((dir) => {
-		edit(dir, COPY, (s) => s.replace('func formatElapsed(_ seconds: Int) -> String {\n    let s = max(seconds, 0)', 'func formatElapsed(_ seconds: Int) -> String {\n    let s = seconds'));
-	});
-	assert.equal(matched(errors, /`formatElapsed` differs between/).length, 1, errors.join('\n'));
-});
-
-test('a complication formatter deleted outright is refused, not silently skipped', () => {
-	const { errors } = runMutated((dir) => {
-		edit(dir, ORIGIN, (s) => s.replace('func formatDistanceKm(', 'func formatDistanceKmOld('));
-	});
-	assert.equal(matched(errors, /`formatDistanceKm` is missing from/).length, 1, errors.join('\n'));
-});
-
 // --- claim 5: the App Group identifier, stated twice ------------------------
 
 test('renaming the App Group in Swift without following it in the README is refused', () => {
@@ -581,14 +579,6 @@ test('parseFlatPlist agrees with the real files it is pointed at', () => {
 	assert.deepEqual(ents.get('com.apple.security.application-groups'), ['group.com.threkir.app.activerun']);
 });
 
-test('functionBody balances braces rather than stopping at the first close', () => {
-	const src = 'func f() -> Int {\n    if true {\n        return 1\n    }\n    return 0\n}\nfunc g() {}\n';
-	const body = functionBody(src, 'f');
-	assert.ok(body?.endsWith('return 0\n}'), body ?? 'null');
-	assert.doesNotMatch(body ?? '', /func g/);
-	assert.equal(functionBody(src, 'missing'), null);
-});
-
 // --- claim 6: the run hand-off envelope, read from both ends ----------------
 
 test('a metadata key the watch sends and the phone never lifts is refused', () => {
@@ -607,6 +597,28 @@ test('a metadata key the phone reads and the watch never sends is refused', () =
 		);
 	});
 	assert.equal(matched(errors, /reads `cadence_spm`.*never puts it there/s).length, 1, errors.join('\n'));
+});
+
+test('the race link is held on both of the phone rails it crosses', () => {
+	// `event_id` is the only key on the envelope that is a COLUMN on the other
+	// side rather than a bag key, so it crosses two claims — the phone's lift
+	// (6) and the DEBUG direct writer (9). Losing it on either is silent: the
+	// run still syncs, and nothing on the row says which race it was.
+	const lift = runMutated((dir) => {
+		edit(dir, STAGED_INGEST, (s) =>
+			s.replace('if let v = metadata["event_id"] { payload["event_id"] = v }\n', ''),
+		);
+	});
+	assert.equal(matched(lift.errors, /`event_id`.*never\s+lifts it out/s).length, 1, lift.errors.join('\n'));
+
+	const direct = runMutated((dir) => {
+		edit(dir, DIRECT, (s) => s.replace('        let event_id: String?\n', ''));
+	});
+	assert.equal(
+		matched(direct.errors, /`event_id`.*neither the row nor the metadata bag/s).length,
+		1,
+		direct.errors.join('\n'),
+	);
 });
 
 test('an unparseable envelope on either end fails loudly rather than vacuously', () => {
@@ -629,6 +641,7 @@ test('claims 6 and 7 are skipped, not faked, when no phone half is available', (
 	assert.deepEqual(errors, []);
 	assert.deepEqual(ok.filter((o) => /run hand-off metadata keys/.test(o)), []);
 	assert.deepEqual(ok.filter((o) => /route-push keys/.test(o)), []);
+	assert.deepEqual(ok.filter((o) => /saved-routes|envelope key agrees/.test(o)), []);
 });
 
 test('claim 7 is skipped when the Dart rail alone is unavailable', () => {
@@ -639,6 +652,7 @@ test('claim 7 is skipped when the Dart rail alone is unavailable', () => {
 	assert.deepEqual(errors, []);
 	assert.ok(ok.some((o) => /run hand-off metadata keys/.test(o)));
 	assert.deepEqual(ok.filter((o) => /route-push keys/.test(o)), []);
+	assert.deepEqual(ok.filter((o) => /saved-routes|envelope key agrees/.test(o)), []);
 });
 
 // --- claim 7: the route-push envelope, three rails --------------------------
@@ -689,6 +703,85 @@ test('a decode that stops subscripting the payload fails vacuity rather than pas
 	assert.equal(matched(errors, /Parsed no route-push keys/).length, 1, errors.join('\n'));
 });
 
+// --- claim 20: the settings envelope, three rails ---------------------------
+
+test('the three settings-push rails agree on the shipped tree', () => {
+	const { errors, ok } = check(WATCH_IOS, INGEST_ABS, null, null, null, null, PREFS_BRIDGE_ABS);
+	assert.deepEqual(matched(errors, /settings-(push|envelope)/), []);
+	assert.ok(
+		ok.some((o) => /^all 2 settings-push keys agree/.test(o)),
+		ok.join('\n'),
+	);
+});
+
+test('claim 20 is skipped when the Dart rail is unavailable', () => {
+	// Two Swift ends agreeing is not the claim, for the same reason claim 7
+	// refuses to report on two of its three.
+	const { errors, ok } = check(WATCH_IOS, INGEST_ABS);
+	assert.deepEqual(errors, []);
+	assert.deepEqual(ok.filter((o) => /settings-push keys/.test(o)), []);
+});
+
+test('a settings key renamed on the Dart rail alone is refused', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_PREFS_BRIDGE, (s) => s.replace("'audio_cues': audioCues", "'audioCues': audioCues"));
+	});
+	assert.ok(
+		matched(errors, /`audioCues` is on .*apple_watch_prefs_bridge\.dart/).length >= 1,
+		errors.join('\n'),
+	);
+	assert.ok(
+		matched(errors, /`audio_cues` is on .*WatchIngestBridge\.swift/).length >= 1,
+		errors.join('\n'),
+	);
+});
+
+test('a settings key renamed on the phone repack alone is refused', () => {
+	// The failure this claim exists for, and it is quieter than claim 7's: the
+	// watch applies each key on its own, so a renamed `audio_cues` does not
+	// drop the push — the unit still lands and the cues keep speaking at a
+	// runner who switched them off.
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_INGEST, (s) => s.replace('"audio_cues": audioCues', '"audioCues": audioCues'));
+	});
+	assert.ok(
+		matched(errors, /`audioCues` is on .*WatchIngestBridge\.swift/).length >= 1,
+		errors.join('\n'),
+	);
+});
+
+test('a settings key renamed on the watch decode alone is refused', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, CONNECTIVITY, (s) =>
+			s.replace('payload["preferred_unit"]', 'payload["preferredUnit"]'),
+		);
+	});
+	assert.ok(
+		matched(errors, /`preferredUnit` is on .*WatchConnectivityManager\.swift/).length >= 1,
+		errors.join('\n'),
+	);
+});
+
+test('a settings push whose Dart call site changed shape fails vacuity rather than passing', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_PREFS_BRIDGE, (s) =>
+			s.replace("invokeMethod<void>('push'", "invokeMethod<void>('pushPrefs'"),
+		);
+	});
+	assert.equal(matched(errors, /Parsed no settings-envelope keys/).length, 1, errors.join('\n'));
+});
+
+test('a watch decode that stops subscripting the payload fails vacuity rather than passing', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, CONNECTIVITY, (s) =>
+			s
+				.replace('payload["preferred_unit"]', 'bag["preferred_unit"]')
+				.replace('payload["audio_cues"]', 'bag["audio_cues"]'),
+		);
+	});
+	assert.equal(matched(errors, /Parsed no settings-envelope keys/).length, 1, errors.join('\n'));
+});
+
 test('swiftPayloadKeys reads both the subscripts and the repacked literal', () => {
 	// The phone rail does both in one function, and a key it reads but does not
 	// forward is a field dropped between two lines of it.
@@ -703,6 +796,103 @@ test('dartInvokeKeys spans the nested collection literals in the map it reads', 
 	const src = "await _c.invokeMethod<void>('push', {\n  'a': 1,\n  'b': [for (final p in ps) p.x],\n  'c': 2,\n});";
 	assert.deepEqual([...(dartInvokeKeys(src, 'push') ?? [])].sort(), ['a', 'b', 'c']);
 	assert.equal(dartInvokeKeys(src, 'nope'), null);
+});
+
+// --- claim 7b: the saved-routes list on the same envelope -------------------
+
+test('the saved-routes rails agree on the shipped tree', () => {
+	const { errors, ok } = check(WATCH_IOS, INGEST_ABS, ROUTE_BRIDGE_ABS);
+	assert.deepEqual(matched(errors, /saved.route/i), []);
+	assert.ok(ok.some((o) => /^the `saved_routes` envelope key agrees/.test(o)));
+	assert.ok(ok.some((o) => /both ends of the saved-routes list validate/.test(o)));
+	assert.ok(ok.some((o) => /^the Dart list element is the same 5 keys/.test(o)));
+});
+
+test('the envelope key renamed on the Dart rail alone is refused', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_ROUTE_BRIDGE, (s) => s.replace("'saved_routes': savedRoutes,", "'savedRoutes': savedRoutes,"));
+	});
+	assert.ok(matched(errors, /`savedRoutes` is on .*apple_watch_route_bridge\.dart/).length >= 1, errors.join('\n'));
+	assert.ok(matched(errors, /`saved_routes` is on .*ArmedRoute\.swift/).length >= 1, errors.join('\n'));
+});
+
+test('the envelope key renamed on the phone repack alone is refused', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_INGEST, (s) => s.replace('return ["saved_routes": routes]', 'return ["savedRoutes": routes]'));
+	});
+	assert.ok(matched(errors, /`savedRoutes` is on .*WatchIngestBridge\.swift/).length >= 1, errors.join('\n'));
+});
+
+test('the envelope key renamed on the watch decode alone is refused', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, ARMED, (s) => s.replace('payload["saved_routes"]', 'payload["starred_routes"]'));
+	});
+	assert.ok(matched(errors, /`starred_routes` is on .*ArmedRoute\.swift/).length >= 1, errors.join('\n'));
+});
+
+test('a saved-routes push whose Dart method was renamed fails vacuity rather than passing', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_ROUTE_BRIDGE, (s) => s.replace("invokeMethod<void>('push_saved'", "invokeMethod<void>('pushSaved'"));
+	});
+	assert.equal(matched(errors, /Parsed no saved-routes envelope key/).length, 1, errors.join('\n'));
+});
+
+test('a phone repack that stops delegating to the single-route validator is refused', () => {
+	// The whole reason claim (7b) does not carry a fourth copy of the five
+	// element keys: both ends hand each element to the validator claim (7)
+	// already reads. An end that stops doing that has grown a second set of
+	// rules, and the payload looks identical.
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_INGEST, (s) =>
+			s.replace('guard let route = routeUserInfo(from: element) else { continue }', 'let route = element'),
+		);
+	});
+	assert.equal(matched(errors, /`savedRoutesUserInfo`\) no longer calls/).length, 1, errors.join('\n'));
+});
+
+test('a watch decode that stops delegating to ArmedRoute.decode is refused', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, ARMED, (s) => s.replace('ArmedRoute.decode(element)', 'decodeElement(element)'));
+	});
+	assert.equal(matched(errors, /`decodeList`\) no longer calls/).length, 1, errors.join('\n'));
+});
+
+test('a list element that is not the armed push five-key dictionary is refused', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_ROUTE_BRIDGE, (s) => s.replace("'route_name': r.name,", "'route_title': r.name,"));
+	});
+	assert.equal(matched(errors, /builds a list element that is not the five-key dictionary/).length, 1, errors.join('\n'));
+	assert.match(errors.join('\n'), /`route_title` only in the list/);
+	assert.match(errors.join('\n'), /`route_name` only in the armed push/);
+});
+
+test('an encoder that changed shape fails vacuity rather than passing', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_ROUTE_BRIDGE, (s) =>
+			s.replace('static List<Map<String, Object>> encodeSavedRoutesForWatch(', 'static Iterable<Map<String, Object>> encodeSaved('),
+		);
+	});
+	assert.equal(matched(errors, /Parsed no element keys out of/).length, 1, errors.join('\n'));
+});
+
+test('dartFunctionMapKeys reads the declaration, never a call site', () => {
+	// A call site spells the name the same way. Reading one would take the
+	// CALLER's map literal as the function's, which is a guard certifying a
+	// text nobody ships.
+	const src = [
+		"  void _push() {",
+		"    send(encode(store), {'wrong': 1});",
+		"  }",
+		"",
+		"  static List<Map<String, Object>> encode(",
+		"    List<Route> routes, {",
+		"    int cap = 3,",
+		"  }) {",
+		"    return [for (final r in routes) {'right': r.id, 'also': r.name}];",
+		"  }",
+	].join('\n');
+	assert.deepEqual([...(dartFunctionMapKeys(src, 'encode') ?? [])].sort(), ['also', 'right']);
+	assert.equal(dartFunctionMapKeys(src, 'missing'), null);
 });
 
 test('methodBody finds an indented method with modifiers in front of func', () => {
@@ -1205,33 +1395,19 @@ test('claim (13) refuses a test file that is in no target', () => {
 	);
 });
 
-test('claim (13) fails when an unbuilt exemption goes stale', () => {
+test('claim (13) fails when the complication loses its target membership', () => {
+	// The state the tree was in until the Widget Extension landed, and the one
+	// a careless pbxproj merge would restore: the file is present, reads as
+	// shipped, and Xcode compiles none of it.
 	const { errors } = runMutated((dir) => {
 		edit(dir, PBX, (s) =>
-			s.replace(
-				'\tobjects = {',
-				'\tobjects = {\n\t\tAAAA /* ActiveRunComplication.swift in Sources */ = {isa = PBXBuildFile; };',
-			),
+			s.replaceAll('ActiveRunComplication.swift in Sources */', 'Orphaned.swift in Sources */'),
 		);
 	});
 	assert.ok(
-		errors.some((e) => e.includes('exempted from claim (13) but IS now a target member')),
-		errors.join('\n'),
-	);
-});
-
-test('claim (13) fails when an unbuilt exemption names a file that is gone', () => {
-	const { errors } = runMutated((dir) => {
-		rmSync(join(dir, 'Complications', 'ActiveRunComplication.swift'));
-	});
-	assert.ok(
-		errors.some((e) => e.includes('which this tree no longer has')),
-		errors.join('\n'),
-	);
-	// …and claim (4), which reads the same file, must NAME it rather than
-	// throwing an ENOENT stack a reader cannot act on.
-	assert.ok(
-		errors.some((e) => e.includes('ActiveRunComplication.swift is gone')),
+		errors.some(
+			(e) => e.includes('ActiveRunComplication.swift') && e.includes('is in no target'),
+		),
 		errors.join('\n'),
 	);
 });
@@ -1240,15 +1416,45 @@ test('claim (13) fails when an unbuilt exemption names a file that is gone', () 
 
 test('claim (14) refuses the password grant once the DEBUG fence is removed', () => {
 	// One line. The compiler is happy, the Swift suite is green, and the
-	// shipped watch app gains a hardcoded credential and a second route to a
-	// session.
+	// shipped watch app gains a hardcoded credential.
+	//
+	// ONE error, not two. A shipped password grant stopped being a defect in
+	// itself once the wrist grew its own sign-in, which ships one on purpose;
+	// what the claim holds now is that a grant keeps its session in the
+	// Keychain, covered by the two tests below. The seed CREDENTIAL is still
+	// unconditionally a defect outside the fence, and that is this test.
 	const { errors } = runMutated((dir) => {
 		edit(dir, DIRECT, (s) => s.replace('#if DEBUG\n', ''));
 	});
-	assert.equal(matched(errors, /outside `#if DEBUG`/).length, 2, errors.join('\n'));
+	assert.equal(matched(errors, /outside `#if DEBUG`/).length, 1, errors.join('\n'));
 	assert.ok(
 		matched(errors, /hardcoded password literal/).length === 1,
-		'the seed credential must be named separately from the grant',
+		'the seed credential must be named, and named as a credential',
+	);
+});
+
+test('claim (14) refuses a shipped grant whose session store is gone', () => {
+	// The compensating control for allowing a grant to ship at all. Rename the
+	// Keychain class and the sign-in still compiles, still works, and the
+	// session it mints has nowhere to go but a plist.
+	const { errors } = runMutated((dir) => {
+		edit(dir, AUTH, (s) => s.replaceAll(SESSION_KEYCHAIN_CLASS, 'kSecClassInternetPassword'));
+	});
+	assert.ok(
+		errors.some((e) => e.includes('no file in the watch tree names')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (14) refuses a refresh token written to UserDefaults', () => {
+	// The other direction: the Keychain store stays, and the token goes
+	// somewhere else anyway. On watchOS that plist travels in the backup.
+	const { errors } = runMutated((dir) => {
+		edit(dir, AUTH, (s) => `${s}\nfunc stash(_ t: String) { UserDefaults.standard.set(t, forKey: "refresh_token") }\n`);
+	});
+	assert.ok(
+		errors.some((e) => e.includes('puts a token or a credential into `UserDefaults`')),
+		errors.join('\n'),
 	);
 });
 
@@ -1402,6 +1608,44 @@ test('claim (15) refuses a source the phone project builds and the watch project
 	);
 });
 
+test('claim (15) refuses a source only one project builds into the extension', () => {
+	// Collapsing the duplicated formatters made `RunFormat.swift` and
+	// `ActiveRunTimeline.swift` members of the extension as well as the app,
+	// so the extension now has a membership list worth keeping too. The
+	// widget's own file is the one name that appears in no other phase.
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_PHONE_PBX, (s) =>
+			s.replace(/\t+[0-9A-Fa-f]{24} \/\* ActiveRunComplication\.swift in Sources \*\/,\n/, ''),
+		);
+	});
+	assert.ok(
+		errors.some(
+			(e) =>
+				e.includes('ActiveRunComplication.swift') &&
+				e.includes('`WatchAppComplication` Sources phase') &&
+				e.includes('absent from every shipped .ipa'),
+		),
+		errors.join('\n'),
+	);
+});
+
+test('claim (15) refuses an extension source the phone project alone builds', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, PBX, (s) =>
+			s.replace(/\t+[0-9A-Fa-f]{24} \/\* ActiveRunComplication\.swift in Sources \*\/,\n/, ''),
+		);
+	});
+	assert.ok(
+		errors.some(
+			(e) =>
+				e.includes('ActiveRunComplication.swift') &&
+				e.includes('`WatchAppComplication` Sources phase') &&
+				e.includes('compiled by nothing that runs a test'),
+		),
+		errors.join('\n'),
+	);
+});
+
 // --- claim 17: no Xcode object id is claimed twice --------------------------
 
 test('claim (17) fails when two objects in the watch project share an id', () => {
@@ -1431,18 +1675,22 @@ test('claim (17) fails when two objects in the watch project share an id', () =>
 	);
 });
 
-test('claim (15) refuses a resource only one project bundles', () => {
+test('claim (15) refuses a resource only one project bundles, in either target', () => {
 	// The String Catalog is a RESOURCE, so source membership alone would miss
-	// the case where the shipped bundle loses its translations entirely.
+	// the case where the shipped bundle loses its translations entirely — and
+	// it is a member of the extension as well as the app, because a widget
+	// localises against its own bundle.
 	const { errors } = runMutated((dir) => {
 		edit(dir, STAGED_PHONE_PBX, (s) =>
-			s.replace(/\t+[0-9A-Fa-f]{24} \/\* Localizable\.xcstrings in Resources \*\/,\n/, ''),
+			s.replaceAll(/\t+[0-9A-Fa-f]{24} \/\* Localizable\.xcstrings in Resources \*\/,\n/g, ''),
 		);
 	});
-	assert.ok(
-		errors.some((e) => e.includes('Localizable.xcstrings') && e.includes('Resources phase')),
-		errors.join('\n'),
-	);
+	for (const target of ['`WatchApp` Resources phase', '`WatchAppComplication` Resources phase']) {
+		assert.ok(
+			errors.some((e) => e.includes('Localizable.xcstrings') && e.includes(target)),
+			`${target}: ${errors.join('\n')}`,
+		);
+	}
 });
 
 test('claim (15) refuses a bundle identifier that differs between the projects', () => {
@@ -1721,7 +1969,7 @@ test('claim (18) fails when a HINTLESS_CONTROLS entry gains a hint', () => {
 
 test('claim (18) fails vacuity rather than passing when no Button is left to read', () => {
 	const { errors } = runMutated((dir) => {
-		edit(dir, SYNC, (s) => s.replaceAll('Button(', 'Butt0n('));
+		edit(dir, SYNC, (s) => s.replace(/\bButton(?=\s*[({])/g, 'Butt0n'));
 	});
 	assert.ok(
 		errors.some((e) => e.includes('claim (18) would pass vacuously')),
@@ -1733,4 +1981,89 @@ test('every HINTLESS_CONTROLS entry says where the cue lives instead', () => {
 	for (const [key, why] of Object.entries(HINTLESS_CONTROLS)) {
 		assert.ok(why.length > 40, `${key}: reason is too short to be a reason`);
 	}
+});
+
+// ───────── claim (19): the suite runs in more than one language ─────────
+
+test('the shipped workflow runs the watchOS suite in two languages', () => {
+	const block = jobBlock(readFileSync(CI_WORKFLOW_ABS, 'utf8'), WATCH_TEST_JOB);
+	assert.ok(block !== null, `${CI_WORKFLOW} has no ${WATCH_TEST_JOB} job`);
+	const langs = suiteLanguages(/** @type {string} */ (block));
+	assert.equal(langs.length, 2, `languages read: ${JSON.stringify(langs)}`);
+	assert.deepEqual(new Set(langs).size, 2, `languages read: ${JSON.stringify(langs)}`);
+});
+
+test('claim (19) fails when the second-language pass is deleted', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_CI, (s) => s.replace(/\n\s+-testLanguage ja \\\n\s+-testRegion JP \\/, ''));
+	});
+	assert.ok(
+		errors.some((e) => e.includes('all in (the simulator default)')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (19) fails when both passes force the same language', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_CI, (s) =>
+			s.replace(
+				'            -resultBundlePath WatchAppTests.xcresult \\',
+				'            -testLanguage ja \\\n            -resultBundlePath WatchAppTests.xcresult \\',
+			),
+		);
+	});
+	assert.ok(
+		errors.some((e) => e.includes('all in ja')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (19) fails vacuity rather than passing when the job runs no suite', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_CI, (s) => s.replaceAll('xcodebuild test', 'xcodebuild buil6'));
+	});
+	assert.ok(
+		errors.some((e) => e.includes('claim (19) would pass vacuously')),
+		errors.join('\n'),
+	);
+});
+
+test('claim (19) fails vacuity rather than passing when the job is gone', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, STAGED_CI, (s) => s.replace(`\n  ${WATCH_TEST_JOB}:\n`, '\n  test-watch-i0s:\n'));
+	});
+	assert.ok(
+		errors.some((e) => e.includes(`has no \`${WATCH_TEST_JOB}\` job`)),
+		errors.join('\n'),
+	);
+});
+
+test('a job block stops at the next job rather than running to the end of the file', () => {
+	const workflow = [
+		'jobs:',
+		'  alpha:',
+		'    steps:',
+		'      - run: xcodebuild test -testLanguage de',
+		'  beta:',
+		'    steps:',
+		'      - run: xcodebuild test -testLanguage fr',
+		'',
+	].join('\n');
+	assert.deepEqual(suiteLanguages(/** @type {string} */ (jobBlock(workflow, 'alpha'))), ['de']);
+	assert.equal(jobBlock(workflow, 'gamma'), null);
+});
+
+test('a language is read off the invocation it continues onto, not off a neighbour', () => {
+	const block = [
+		'    steps:',
+		'      - run: |',
+		'          xcodebuild test \\',
+		'            -scheme WatchApp',
+		'      - run: |',
+		'          xcodebuild test \\',
+		'            -testLanguage ja \\',
+		'            -testRegion JP',
+		'',
+	].join('\n');
+	assert.deepEqual(suiteLanguages(block), [null, 'ja']);
 });

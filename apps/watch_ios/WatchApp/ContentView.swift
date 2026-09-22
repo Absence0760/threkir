@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var workoutManager = WorkoutManager()
     @StateObject private var connectivity = WatchConnectivityManager.shared
+    @StateObject private var auth = WatchAuth.shared
     @State private var syncError: String?
     @State private var thisRunSynced = false
     @State private var countingDown = false
@@ -14,8 +15,12 @@ struct ContentView: View {
                 case .idle:
                     PreRunView(
                         workoutManager: workoutManager,
+                        auth: auth,
                         queuedCount: connectivity.queuedCount,
                         armedRoute: connectivity.armedRoute,
+                        savedRoutes: connectivity.savedRoutes,
+                        onPickRoute: connectivity.armRoute,
+                        liveRace: connectivity.liveRace,
                         onClearRoute: connectivity.clearArmedRoute,
                         onStart: { countingDown = true }
                     )
@@ -54,6 +59,7 @@ struct ContentView: View {
             }
         }
         .task {
+            workoutManager.liveRaceRelay = connectivity.liveRaceRelay()
             await workoutManager.healthKit.requestAuthorization()
             workoutManager.checkForPendingRecovery()
         }
@@ -99,6 +105,15 @@ struct ContentView: View {
                 // lexicographic `>` compare against the cursor is sound.
                 "last_modified_at": formatter.string(from: Date())
             ]
+            // The race this run was run in, when there was one. A column on
+            // `runs` since `20260424_001`, added for exactly this hand-off, so
+            // the phone lifts it out of the envelope and `runRowFromRun`
+            // promotes it back off the bag. Only written when the wrist
+            // actually reported a finisher time for THIS run — an unrelated
+            // run must not inherit the link.
+            if let eventId = connectivity.raceEventId(forRunId: run.id) {
+                metadata["event_id"] = eventId
+            }
             if let bpm = run.averageBPM { metadata["avg_bpm"] = bpm }
             // Omitted rather than sent as 0 for the same reason `hr_coverage`
             // is: nothing measured this run's steps (no pedometer hardware, a
@@ -150,7 +165,11 @@ struct ContentView: View {
         }
         Task {
             do {
-                try await syncRunDirectDebug(run, trackJSONURL: fileURL)
+                try await syncRunDirectDebug(
+                    run,
+                    trackJSONURL: fileURL,
+                    raceEventId: connectivity.raceEventId(forRunId: run.id)
+                )
                 await MainActor.run {
                     thisRunSynced = true
                     connectivity.transferState = .completed
@@ -238,11 +257,17 @@ private func pacePresets() -> [(label: String, secondsPerKm: Double)] {
 
 struct PreRunView: View {
     @ObservedObject var workoutManager: WorkoutManager
+    @ObservedObject var auth: WatchAuth
     let queuedCount: Int
     let armedRoute: ArmedRoute?
+    let savedRoutes: [ArmedRoute]
+    let onPickRoute: (ArmedRoute) -> Void
+    let liveRace: LiveRace?
     let onClearRoute: () -> Void
     let onStart: () -> Void
     @State private var selectedPaceIndex: Int? = nil
+    @State private var showingAccount = false
+    @State private var pickingRoute = false
 
     var body: some View {
         ScrollView {
@@ -256,11 +281,18 @@ struct PreRunView: View {
                         .foregroundColor(.secondary)
                 }
 
-                if let route = armedRoute {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Route")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                RaceBannerView(race: liveRace)
+
+                // The picker entry stands whether or not a route is armed, and
+                // whether or not the phone has pushed a list yet: an
+                // affordance that appears only once routes exist is one a
+                // runner never learns is there, and the reason an empty list
+                // is empty belongs on the picker, where it can be read.
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Route")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    if let route = armedRoute {
                         Text(route.name)
                             .font(.caption)
                             .foregroundColor(AppTheme.lilac)
@@ -273,8 +305,15 @@ struct PreRunView: View {
                             .buttonStyle(.plain)
                             .accessibilityHint("Removes the route your iPhone sent, so the next run is unguided")
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Button(armedRoute == nil ? "Choose route" : "Change route") {
+                        pickingRoute = true
+                    }
+                    .font(.caption2)
+                    .buttonStyle(.plain)
+                    .foregroundColor(AppTheme.lilac)
+                    .accessibilityHint("Opens the routes you starred, to follow one on this run")
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Activity")
@@ -339,6 +378,96 @@ struct PreRunView: View {
                 // the VoiceOver name from "Start"; the hint adds the
                 // usage cue that name alone doesn't carry.
                 .accessibilityHint("Begins a new run, starting GPS and heart-rate recording")
+
+                // Below Start on purpose: the wrist is a recording surface
+                // and the account is the least urgent thing on it. The
+                // ordinary path to a session is still the paired iPhone —
+                // this is the way in for a watch that is away from one.
+                Button {
+                    showingAccount = true
+                } label: {
+                    if let email = auth.session?.email {
+                        Text(verbatim: email)
+                    } else {
+                        Text("Sign in")
+                    }
+                }
+                .font(.caption2)
+                .buttonStyle(.plain)
+                .foregroundColor(.secondary)
+                .accessibilityHint("Opens this watch's account screen, where you can sign in or sign out")
+            }
+        }
+        .sheet(isPresented: $showingAccount) {
+            SignInView(auth: auth, onDone: { showingAccount = false })
+        }
+        .sheet(isPresented: $pickingRoute) {
+            RoutePickerView(
+                routes: savedRoutes,
+                selectedId: armedRoute?.id,
+                onPick: onPickRoute,
+                onClear: onClearRoute
+            )
+        }
+    }
+}
+
+/// The starred routes the phone pushed, as a list the runner arms one from on
+/// the wrist. Mirrors Wear OS's `RoutePickerScreen`: tap a route to follow it,
+/// "None" to run unguided.
+///
+/// Neither choice destroys anything — the list is the phone's and both are one
+/// tap from being undone here — so by `conventions.md` § Destructive actions
+/// neither earns a confirmation.
+struct RoutePickerView: View {
+    let routes: [ArmedRoute]
+    let selectedId: String?
+    let onPick: (ArmedRoute) -> Void
+    let onClear: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        List {
+            Text("Route")
+                .font(.headline)
+
+            Button("No route") {
+                onClear()
+                dismiss()
+            }
+            .font(.caption)
+            .foregroundColor(selectedId == nil ? AppTheme.coral : .primary)
+            .accessibilityHint("Runs without a route, so no guidance is given")
+
+            ForEach(routes, id: \.id) { route in
+                Button {
+                    onPick(route)
+                    dismiss()
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(route.name)
+                            .font(.caption)
+                            .lineLimit(1)
+                        Text(RunFormat.distance(
+                            metres: route.distanceMetres, fractionDigits: 2))
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .foregroundColor(route.id == selectedId ? AppTheme.coral : .primary)
+                .accessibilityHint("Follows this route on your next run")
+            }
+
+            if routes.isEmpty {
+                // One cause, so one sentence: nothing has been starred (or
+                // the phone has not pushed since). Unlike Wear OS, this list
+                // never comes from a Supabase query the watch could fail, so
+                // there is no second, unactionable "couldn't load" case to
+                // tell apart.
+                Text("No starred routes yet. Star a route on your iPhone or the web.")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
             }
         }
     }

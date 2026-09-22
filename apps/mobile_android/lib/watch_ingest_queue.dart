@@ -337,6 +337,14 @@ cm.Run runFromWatchPayload(Map<String, dynamic> raw) {
   if (steps is num && steps.toInt() > 0) {
     metadata[cm.MetadataKeys.steps] = steps.toInt();
   }
+  // The race this run was run in. Promoted to `runs.event_id` by
+  // `runRowFromRun`, so it is a link on the row rather than a bag key by the
+  // time it reaches Postgres — the run detail can then get back to the event
+  // without joining through `event_results`, which only carries a finisher.
+  final eventId = raw['event_id'];
+  if (eventId is String && eventId.isNotEmpty) {
+    metadata[cm.MetadataKeys.eventId] = eventId;
+  }
   final activity = raw['activity_type'];
   if (activity is String) metadata[cm.MetadataKeys.activityType] = activity;
   final lastModified = raw['last_modified_at'];

@@ -46,6 +46,12 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     /// auxiliary (L4) effect — see `didUpdateLocations`.
     @Published var routeNavigator: RouteNavigator?
 
+    /// Live race mode's auxiliary (L4) seam, handed over by `ContentView`.
+    /// Both halves default to no-ops, so the recorder runs with no transport
+    /// wired and nothing a failed race effect does can reach the run — see
+    /// `LiveRaceRelay`.
+    var liveRaceRelay = LiveRaceRelay()
+
     /// The armed route as the mini-map draws it, empty for an unguided run.
     /// Held apart from `routeNavigator`, which consumes the line and publishes
     /// only its projection of the current fix.
@@ -76,9 +82,13 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 
     let healthKit = HealthKitManager()
     private let pedometer = Pedometer()
+    /// Spoken split / pace cues. An L4 auxiliary effect: every call below
+    /// is made AFTER the core values are committed and none is awaited, so a
+    /// speech failure cannot reach the clock, the distance or the track.
+    /// `var` so a test can swap the speech seam — see `RunAnnouncer.speak`.
+    var announcer = RunAnnouncer()
 
     var targetPaceSecondsPerKm: Double? = nil
-    let paceToleranceSeconds: Double = 15
 
     private let locationManager = CLLocationManager()
     // Reused across every GPS fix — ISO8601DateFormatter is expensive to
@@ -92,8 +102,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private var startDate: Date?
     private var pausedAt: Date?
     private var totalPausedInterval: TimeInterval = 0
-    private var lastTooFastHaptic: Date? = nil
-    private var lastTooSlowHaptic: Date? = nil
+    /// One clock for both directions — see `PaceAlertGate.rateLimitSeconds`.
+    private var lastPaceAlertAt: Date? = nil
     private var currentRunId: String?
     private var checkpointStore: CheckpointStore?
     // Reference fix for the per-update distance delta, kept SEPARATE from the
@@ -263,9 +273,9 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         finishedRun = nil
         pausedAt = nil
         totalPausedInterval = 0
-        lastTooFastHaptic = nil
-        lastTooSlowHaptic = nil
+        lastPaceAlertAt = nil
         lastLocationForDistance = nil
+        announcer.reset()
         let armedRoute = ArmedRouteStore.load()
         routeNavigator = armedRoute.map { RouteNavigator(routePoints: $0.locations) }
         mapRoute = armedRoute?.coordinates.map {
@@ -332,6 +342,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 
         state = .recording
         publishComplicationSnapshot()
+        announcer.announceStart()
     }
 
     /// Record a lap at the current position. Ignored unless the run is
@@ -436,6 +447,20 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 
         state = .finished
         publishComplicationSnapshot()
+        announcer.announceFinish(distanceMetres: distanceMetres, durationSeconds: duration)
+
+        // Auxiliary (L4), and last: the run is banked in `finishedRun`, its
+        // track is closed on disk and the summary screen already has it
+        // before the race hears about it. `LiveRaceState.finish` returns
+        // nothing to send unless a race was actually running, and reports
+        // once.
+        if let run = finishedRun {
+            liveRaceRelay.finish(RaceFinish(
+                runId: run.id,
+                durationSeconds: run.durationSeconds,
+                distanceMetres: run.distanceMetres
+            ))
+        }
     }
 
     func reset() {
@@ -458,9 +483,9 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         finishedRun = nil
         pausedAt = nil
         totalPausedInterval = 0
-        lastTooFastHaptic = nil
-        lastTooSlowHaptic = nil
+        lastPaceAlertAt = nil
         lastLocationForDistance = nil
+        announcer.reset()
         lastAcceptedFixUptime = nil
         lastGpsDeliveryUptime = nil
         gpsBanner = .noFixYet
@@ -738,6 +763,31 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
                 longitude: fix.coordinate.longitude
             )
         }
+
+        // Spoken split, last of all: by here the distance this cue describes
+        // is already banked, already on disk and already on screen, so the
+        // runner's record does not depend on anything the speech engine does.
+        announcer.announceSplitIfDue(
+            distanceMetres: distanceMetres, paceSecondsPerKm: currentPace
+        )
+        // The live-race ping is the OUTERMOST auxiliary effect (L4) — a
+        // network hop over Watch Connectivity, reached only once the
+        // distance, the on-disk track, the pace, the route guidance and the
+        // map are all committed. The seam is handed a value and returns
+        // nothing, and the transport behind it swallows its own failure with
+        // a log, so a race the phone cannot be told about costs the
+        // recording nothing. The cadence gate lives in `LiveRaceState`, not
+        // here: a fix is offered, not sent.
+        if state == .recording, let fix = lastAcceptedFix {
+            liveRaceRelay.ping(RacePingSample(
+                latitude: fix.coordinate.latitude,
+                longitude: fix.coordinate.longitude,
+                distanceMetres: distanceMetres,
+                elapsedSeconds: Int(elapsedSeconds),
+                bpm: healthKit.currentBPM,
+                uptime: ProcessInfo.processInfo.systemUptime
+            ))
+        }
     }
 
     private func writeCheckpoint() {
@@ -842,20 +892,19 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         checkPaceAlert(pace: pace)
     }
 
+    /// The drift threshold and the rate limit both live in `PaceAlertGate`,
+    /// which Wear OS's `PaceAlert.kt` is held to value-for-value.
     private func checkPaceAlert(pace: Double) {
         guard let target = targetPaceSecondsPerKm, distanceMetres > 200 else { return }
         let now = Date()
-        let debounce: TimeInterval = 30
-        if pace < target - paceToleranceSeconds {
-            if lastTooFastHaptic.map({ now.timeIntervalSince($0) > debounce }) ?? true {
-                WKInterfaceDevice.current().play(.notification)
-                lastTooFastHaptic = now
-            }
-        } else if pace > target + paceToleranceSeconds {
-            if lastTooSlowHaptic.map({ now.timeIntervalSince($0) > debounce }) ?? true {
-                WKInterfaceDevice.current().play(.notification)
-                lastTooSlowHaptic = now
-            }
-        }
+        let decision = PaceAlertGate.decide(
+            targetSecondsPerKm: target,
+            currentSecondsPerKm: pace,
+            secondsSinceLastAlert: lastPaceAlertAt.map { now.timeIntervalSince($0) }
+        )
+        guard decision.fire else { return }
+        lastPaceAlertAt = now
+        WKInterfaceDevice.current().play(.notification)
+        announcer.announcePaceAlert(tooSlow: decision.tooSlow)
     }
 }

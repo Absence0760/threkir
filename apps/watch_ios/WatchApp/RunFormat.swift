@@ -3,7 +3,7 @@ import Foundation
 /// Locale-aware formatting for the on-watch run stats.
 ///
 /// Two jobs the old `String(format:)` calls couldn't do:
-///   1. The decimal separator follows `Locale.current` (a German watch
+///   1. The decimal separator follows the locale (a German watch
 ///      shows `5,12 km`, not `5.12 km`).
 ///   2. The distance unit word is localised by `MeasurementFormatter`,
 ///      and honours the user's km/mi preference — the same
@@ -20,17 +20,25 @@ enum RunFormat {
     static let metresPerMile = 1609.344
 
     static var prefersMiles: Bool {
-        UserDefaults.standard.string(forKey: "preferred_unit") == "mi"
+        ActiveRunBridge.prefersMiles()
     }
 
-    /// `5.12 km` / `5,12 km` / `3.18 mi`, decimal separator + unit word
-    /// localised, value in the user's preferred unit.
-    static func distance(metres: Double, fractionDigits: Int) -> String {
+    /// `5.12 km` / `5,12 km` / `3.18 miles`, decimal separator + unit word
+    /// localised, value in the user's preferred unit. The unit word is
+    /// `MeasurementFormatter`'s default `.medium` style, which spells miles
+    /// out in en / de / pt and abbreviates in fr / es.
+    ///
+    /// `locale` is a parameter rather than a read of `Locale.current` so a
+    /// test can assert an exact rendering. Inherited, it made the suite
+    /// assert against whatever locale the simulator was left in — green on
+    /// an English one, red on a Japanese one (`1.00 マイル`), and never
+    /// exercised either way on CI, which pins its destination.
+    static func distance(metres: Double, fractionDigits: Int, locale: Locale = .current) -> String {
         let miles = prefersMiles
         let value = miles ? metres / metresPerMile : metres / 1000.0
 
         let number = NumberFormatter()
-        number.locale = Locale.current
+        number.locale = locale
         number.numberStyle = .decimal
         number.minimumFractionDigits = fractionDigits
         number.maximumFractionDigits = fractionDigits
@@ -38,7 +46,7 @@ enum RunFormat {
         let numberStr = number.string(from: NSNumber(value: value)) ?? "\(value)"
 
         let measurement = MeasurementFormatter()
-        measurement.locale = Locale.current
+        measurement.locale = locale
         measurement.unitOptions = .providedUnit
         let unitStr = measurement.string(from: miles ? UnitLength.miles : UnitLength.kilometers)
 
@@ -61,15 +69,13 @@ enum RunFormat {
 }
 
 // MARK: - Complication formatters
-// The active-run complication (`Complications/ActiveRunComplication.swift`)
-// carries a byte-identical copy of these three pure functions because it
-// builds in a separate Widget Extension target that can't link this file.
-// That copy is the source of truth for the widget; this copy lives in the
-// WatchApp target so `ComplicationFormatterTests` can pin the contract
-// without booting WidgetKit — which means the Swift suite tests THIS copy
-// and the watch face runs the OTHER one. `scripts/check_watch_ios_source.mjs`
-// is what keeps the two byte-identical; "keep them in lockstep" was a comment
-// nothing enforced until decisions § 885.
+// Free functions rather than members of `RunFormat` because the watch face
+// draws them at a different precision than the run screen does: two decimals
+// under 10 km, one at or beyond it. This file is a member of BOTH the
+// `WatchApp` target and the `WatchAppComplication` extension, so the watch
+// face and `WatchAppTests` run the same code. The extension used to carry a
+// byte-identical second copy of these three, which no Swift test could reach
+// and only a text guard held in lockstep.
 
 func formatElapsed(_ seconds: Int) -> String {
     let s = max(seconds, 0)
@@ -83,7 +89,7 @@ func formatElapsed(_ seconds: Int) -> String {
 }
 
 func formatDistanceKm(_ meters: Double) -> String {
-    let miles = UserDefaults.standard.string(forKey: "preferred_unit") == "mi"
+    let miles = ActiveRunBridge.prefersMiles()
     let metresPerMile = 1609.344
     let value = miles ? meters / metresPerMile : meters / 1000.0
     let digits = value >= 10.0 ? 1 : 2
@@ -104,7 +110,7 @@ func formatDistanceKm(_ meters: Double) -> String {
 }
 
 func formatPaceSecPerKm(_ secPerKm: Double?) -> String {
-    let miles = UserDefaults.standard.string(forKey: "preferred_unit") == "mi"
+    let miles = ActiveRunBridge.prefersMiles()
     guard let p = secPerKm, p.isFinite, p > 0 else {
         return miles ? "—:—/mi" : "—:—/km"
     }

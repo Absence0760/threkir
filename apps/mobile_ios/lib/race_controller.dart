@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'apple_watch_race_bridge.dart';
 import 'social_service.dart';
 
 /// SharedPreferences key holding the finisher times that haven't reached
@@ -102,6 +103,33 @@ class ActiveRace {
   bool get isRunning => status == 'running';
 }
 
+/// One `race_pings` row, built in one place.
+///
+/// Both senders reach it — the phone's own recorder through [
+/// RaceController.pushPing], and the Apple Watch's relay through
+/// [RaceController.ingestWatchPing] — so the spectator map cannot be handed
+/// two differently-shaped dots depending on which device the runner wore.
+Map<String, dynamic> racePingRow({
+  required String eventId,
+  required DateTime instance,
+  required String? userId,
+  required double lat,
+  required double lng,
+  double? distanceM,
+  int? elapsedS,
+  int? bpm,
+}) =>
+    <String, dynamic>{
+      'event_id': eventId,
+      'instance_start': instanceStartKey(instance),
+      'user_id': userId,
+      'lat': lat,
+      'lng': lng,
+      if (distanceM != null) 'distance_m': distanceM,
+      if (elapsedS != null) 'elapsed_s': elapsedS,
+      if (bpm != null) 'bpm': bpm,
+    };
+
 class RaceController extends ChangeNotifier {
   RaceController(this._social);
 
@@ -132,6 +160,7 @@ class RaceController extends ChangeNotifier {
   /// sessions on events the user has RSVP'd to. Idempotent.
   Future<void> start() async {
     if (_pollTimer != null) return;
+    _attachWatchRelays();
     await _refresh();
     // Realtime on race_sessions handles the live case (any change fires
     // a refresh). The 60 s timer is a watchdog for when the channel
@@ -156,6 +185,10 @@ class RaceController extends ChangeNotifier {
 
   @override
   void dispose() {
+    if (_watchRelaysAttached) {
+      AppleWatchRaceBridge.detach();
+      _watchRelaysAttached = false;
+    }
     _pollTimer?.cancel();
     _pingTimer?.cancel();
     final ch = _channel;
@@ -274,8 +307,98 @@ class RaceController extends ChangeNotifier {
         next?.instanceStart != _active?.instanceStart ||
         next?.status != _active?.status ||
         next?.startedAt != _active?.startedAt;
+    // The paired Apple Watch is TOLD Arm / Go / End; it cannot poll
+    // `race_sessions` itself, because the Supabase surface does not grow on
+    // that wrist (decisions § 1712). Computed before `_active` moves, and off
+    // `_active` rather than off `_hostingEventId` — that field is null on the
+    // participant path, and a relay keyed on it would never fire at all.
+    final pushes = appleWatchRacePushes(
+      previous: _watchRace(_active),
+      next: _watchRace(next),
+    );
     _active = next;
     if (changed) notifyListeners();
+    // L4, and last: a watch on a charger in another room must not be able to
+    // hold up the poll that found this transition, let alone fail it.
+    for (final push in pushes) {
+      unawaited(AppleWatchRaceBridge.relay(push));
+    }
+  }
+
+  WatchRace? _watchRace(ActiveRace? race) => race == null
+      ? null
+      : WatchRace(
+          eventId: race.eventId,
+          instanceStart: instanceStartKey(race.instanceStart),
+          status: race.status,
+          eventTitle: race.eventTitle,
+        );
+
+  bool _watchRelaysAttached = false;
+
+  void _attachWatchRelays() {
+    AppleWatchRaceBridge.attach(
+      onPing: (ping) => unawaited(ingestWatchPing(ping)),
+      onResult: ingestWatchResult,
+    );
+    _watchRelaysAttached = true;
+  }
+
+  /// Write a fix the Apple Watch relayed off the wrist.
+  ///
+  /// Keyed on the payload's own `(event_id, instance_start)`, never on
+  /// `_hostingEventId` — the phone is not the recorder here, so that field is
+  /// null and a relay that read it would silently never write a row.
+  ///
+  /// DROPPED on failure, deliberately: the watch already declined to queue
+  /// this durably for the same reason (a position an hour stale is a lie
+  /// about where the runner is), and a phone-side retry would deliver exactly
+  /// the stale dot the watch refused to send.
+  Future<void> ingestWatchPing(WatchRacePing ping) async {
+    try {
+      await _insertPing(racePingRow(
+        eventId: ping.eventId,
+        instance: ping.instanceStart,
+        userId: _currentUserId,
+        lat: ping.lat,
+        lng: ping.lng,
+        distanceM: ping.distanceM,
+        elapsedS: ping.elapsedS,
+        bpm: ping.bpm,
+      ));
+    } catch (e) {
+      debugPrint('[RaceController.ingestWatchPing] $e');
+    }
+  }
+
+  /// Write a finisher time the Apple Watch relayed off the wrist.
+  ///
+  /// The opposite trade to a ping, mirroring the watch's own: this is the one
+  /// value in the feature nobody can re-derive, so a failed write goes to the
+  /// same on-disk queue [submitResult] uses and is replayed by
+  /// [drainPendingResults]. Returns whether the time is accounted for — the
+  /// native side re-delivers anything this says it is not.
+  Future<bool> ingestWatchResult(WatchRaceResult result) async {
+    try {
+      await _social.submitEventResult(
+        eventId: result.eventId,
+        instance: result.instanceStart,
+        durationS: result.durationS,
+        distanceM: result.distanceM,
+        runId: result.runId,
+        finisherStatus: 'finished',
+      );
+      return true;
+    } catch (e) {
+      debugPrint('[RaceController.ingestWatchResult] $e');
+    }
+    return _queuePendingResult(PendingRaceResult(
+      eventId: result.eventId,
+      instanceStart: result.instanceStart,
+      runId: result.runId,
+      durationS: result.durationS,
+      distanceM: result.distanceM,
+    ));
   }
 
   /// Called by the run screen when it starts a recorder while a race is
@@ -313,20 +436,36 @@ class RaceController extends ChangeNotifier {
     if (now.difference(_lastPingAt) < const Duration(seconds: 10)) return;
     _lastPingAt = now;
     try {
-      await _c.from('race_pings').insert({
-        'event_id': eid,
-        'instance_start': instanceStartKey(inst),
-        'user_id': _c.auth.currentUser?.id,
-        'lat': lat,
-        'lng': lng,
-        if (distanceM != null) 'distance_m': distanceM,
-        if (elapsedS != null) 'elapsed_s': elapsedS,
-        if (bpm != null) 'bpm': bpm,
-      });
+      await _insertPing(racePingRow(
+        eventId: eid,
+        instance: inst,
+        userId: _currentUserId,
+        lat: lat,
+        lng: lng,
+        distanceM: distanceM,
+        elapsedS: elapsedS,
+        bpm: bpm,
+      ));
     } catch (e) {
       debugPrint('[RaceController.pushPing] $e');
     }
   }
+
+  /// The `race_pings` insert, as a seam. `_c` reaches a Supabase client no
+  /// host test can initialize, and what these tests need to pin is not the
+  /// insert but WHICH race each of the two callers keys its row to.
+  @visibleForTesting
+  Future<void> Function(Map<String, dynamic> row)? pingWriter;
+
+  Future<void> _insertPing(Map<String, dynamic> row) async {
+    final writer = pingWriter;
+    if (writer != null) return writer(row);
+    await _c.from('race_pings').insert(row);
+  }
+
+  String? get _currentUserId => ApiClient.isInitialized
+      ? Supabase.instance.client.auth.currentUser?.id
+      : null;
 
   /// Submit an event result tied to the currently hosted race, then
   /// detach. Called by the run screen once the recorder finishes.
@@ -400,7 +539,10 @@ class RaceController extends ChangeNotifier {
     }
   }
 
-  Future<void> _queuePendingResult(PendingRaceResult result) async {
+  /// Returns whether the result is now on disk. A `false` means the finisher
+  /// time is lost unless its sender still holds it, which is why the watch
+  /// relay reports it back rather than swallowing it.
+  Future<bool> _queuePendingResult(PendingRaceResult result) async {
     try {
       final queued = await _readPendingResults();
       queued.removeWhere((r) =>
@@ -410,8 +552,10 @@ class RaceController extends ChangeNotifier {
       await _writePendingResults(queued.length > kPendingRaceResultsMax
           ? queued.sublist(queued.length - kPendingRaceResultsMax)
           : queued);
+      return true;
     } catch (e) {
       debugPrint('[RaceController._queuePendingResult] $e');
+      return false;
     }
   }
 

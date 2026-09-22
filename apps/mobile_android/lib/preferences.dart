@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
+import 'apple_watch_prefs_bridge.dart';
 import 'column_limits.dart';
 import 'goals.dart';
 import 'l10n/locale_support.dart';
@@ -266,6 +267,12 @@ class Preferences extends ChangeNotifier {
   bool _showRawTrack = false;
   bool _sentryOptOut = false;
   bool _setupWizardDismissed = false;
+
+  /// The Apple Watch mirror seam. Injectable so a test can observe the push
+  /// without a platform channel; see [_pushAppleWatchPrefs].
+  @visibleForTesting
+  Future<bool> Function({required String preferredUnit, required bool audioCues})
+      appleWatchPrefsPush = AppleWatchPrefsBridge.push;
 
   DistanceUnit get unit => _useMiles ? DistanceUnit.mi : DistanceUnit.km;
   bool get useMiles => _useMiles;
@@ -648,18 +655,48 @@ class Preferences extends ChangeNotifier {
     if (_prefs.containsKey(_kLegacyWeeklyGoalKm)) {
       await _prefs.remove(_kLegacyWeeklyGoalKm);
     }
+    // Seed the wrist at launch. The application context the push writes is
+    // retained by WCSession and re-offered on every contact, so a change made
+    // while the watch was away lands without this — but a watch paired or
+    // reinstalled since the last change has never been offered anything at
+    // all, and would record under its own defaults forever.
+    await _pushAppleWatchPrefs();
   }
 
   Future<void> setUseMiles(bool v) async {
     _useMiles = v;
     await _prefs.setBool(_kUseMiles, v);
     notifyListeners();
+    await _pushAppleWatchPrefs();
   }
 
   Future<void> setAudioCues(bool v) async {
     _audioCues = v;
     await _prefs.setBool(_kAudioCues, v);
     notifyListeners();
+    await _pushAppleWatchPrefs();
+  }
+
+  /// Mirror the two preferences the paired Apple Watch reads and cannot set.
+  ///
+  /// Here rather than at the settings screen because every writer of either
+  /// value passes through the setters above — the preferences page, the setup
+  /// wizard, the sign-out reset, and `SettingsSyncService` applying a value
+  /// the runner set on the WEB. A push wired at any one call site is a wrist
+  /// left stale by the others, and a stale `audio_cues` is a watch that keeps
+  /// talking after the runner switched it off.
+  ///
+  /// L4: its own try/catch and a log. Nothing above it can observe a failure,
+  /// and the bridge itself already falls closed off iOS.
+  Future<void> _pushAppleWatchPrefs() async {
+    try {
+      await appleWatchPrefsPush(
+        preferredUnit: _useMiles ? 'mi' : 'km',
+        audioCues: _audioCues,
+      );
+    } catch (e) {
+      debugPrint('Apple Watch preference push failed: $e');
+    }
   }
 
   Future<void> setTurnByTurnCues(bool v) async {

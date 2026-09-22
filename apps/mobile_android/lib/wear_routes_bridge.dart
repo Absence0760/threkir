@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'local_route_store.dart';
+import 'watch_route_visibility.dart';
 
 /// Pushes the user's starred routes to the paired Wear OS watch whenever
 /// the local route store changes. Mirrors `WearAuthBridge` — same pattern,
@@ -137,8 +138,10 @@ class WearRoutesBridge {
   }
 
   Future<void> _push(LocalRouteStore store) async {
-    final selected =
-        pickRoutesForWatchPush(store.routes, maxRoutes: kMaxRoutesPerPush);
+    final selected = pickRoutesForWatchPush(
+      routesVisibleToWatch(store.routes, store.currentUserIdProvider),
+      maxRoutes: kMaxRoutesPerPush,
+    );
     final payload = encodeRoutesForWatch(selected);
     final routesJson = jsonEncode(payload);
 

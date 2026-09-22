@@ -37,7 +37,7 @@ Last moved: **2026-09-21**.
 | 1 | Team ID + renewal reminder | Bitwarden | ☐ |
 | 2 | App Group `group.com.threkir.app.activerun` | Apple portal | ☐ |
 | 3 | App ID `com.threkir.app` | Apple portal | ☐ |
-| 4 | Watch App ID `com.threkir.app.watchapp` | Apple portal | ☐ |
+| 4 | Watch App IDs `com.threkir.app.watchapp` + `com.threkir.app.watchapp.complication` | Apple portal | ☐ |
 | 5 | Services ID `com.threkir.web` | Apple portal | ☐ |
 | 6 | **APNs key** `.p8` | Firebase → Cloud Messaging | **Done 2026-09-19** |
 | 7 | **Sign-in-with-Apple key** `.p8` | Supabase (via a generated client secret) | **Done 2026-09-19** |
@@ -49,7 +49,7 @@ Last moved: **2026-09-21**.
 | 12 | `mobile_android@` release (picks up the push config) | Play | ☐ |
 | 13 | Android Apple dart-defines | `APPLE_SERVICE_CLIENT_ID` + `APPLE_REDIRECT_URI` | ☐ |
 | 14 | Apple Distribution certificate `.p12` | GitHub `production` env `IOS_BUILD_CERTIFICATE_BASE64` + `IOS_P12_PASSWORD`; estate | ☐ |
-| 15 | App Store profiles, phone + watch | GitHub `production` env `IOS_PROVISIONING_PROFILE_BASE64` + `IOS_WATCH_PROVISIONING_PROFILE_BASE64` | ☐ — after steps 3–4, App Group included |
+| 15 | App Store profiles, phone + watch + complication | GitHub `production` env `IOS_PROVISIONING_PROFILE_BASE64` + `IOS_WATCH_PROVISIONING_PROFILE_BASE64` + `IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64` | ☐ — after steps 3–4, App Group included |
 | 16 | App Store Connect API key `.p8` | GitHub `production` env `APP_STORE_CONNECT_API_*`; estate | ☐ |
 | 17 | App Store Connect app record | App Store Connect | ☐ — gates nothing above; must exist before step 18 uploads |
 | 18 | First `mobile_ios@` release → TestFlight | GitHub Release | ☐ |
@@ -279,6 +279,24 @@ that entitlement lands.
 
 An App Group shares data only when **both** sides declare it, so until the
 phone half ships the bridge stays non-functional whatever the portal says.
+
+### Then the complication's App ID
+
+The watch app embeds a WidgetKit extension, the active-run complication, and
+every bundle an archive embeds is signed with a profile of its own, so it needs
+an App ID of its own too. Same flow again:
+
+| Field | Value |
+|---|---|
+| Description | `Threkir Watch Complication` |
+| Bundle ID | **Explicit App ID** — `com.threkir.app.watchapp.complication` |
+
+Capability: **App Groups** only, assigned to `group.com.threkir.app.activerun`
+in the same second pass. The complication runs in its own process and draws
+nothing but the snapshot the watch app writes to that group, so
+`apps/watch_ios/Complications/WatchAppComplication.entitlements` declares the
+group and nothing else. Without the group in its profile, the complication
+fails to sign and takes the whole archive with it.
 
 ## 5. Services ID `com.threkir.web`
 
@@ -618,7 +636,8 @@ re-running this step.
 **Profiles** → **(+)** → under Distribution, **App Store Connect** → App ID
 `com.threkir.app` → the certificate from step 14 → name `Threkir App Store` →
 **Generate** → **Download**. Again for `com.threkir.app.watchapp`, named
-`Threkir Watch App Store`.
+`Threkir Watch App Store`, and for `com.threkir.app.watchapp.complication`,
+named `Threkir Watch Complication App Store`.
 
 **Make these after steps 3 and 4 are finished, App Group assignment
 included.** A profile records the App ID's capabilities when it is generated,
@@ -633,10 +652,14 @@ base64 -i ~/Downloads/Threkir_App_Store.mobileprovision | gh secret set IOS_PROV
 base64 -i ~/Downloads/Threkir_Watch_App_Store.mobileprovision | gh secret set IOS_WATCH_PROVISIONING_PROFILE_BASE64 --env production
 ```
 
+```
+base64 -i ~/Downloads/Threkir_Watch_Complication_App_Store.mobileprovision | gh secret set IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64 --env production
+```
+
 Profiles are not secret and can be regenerated at any time, so they need no
 backup. Nothing else is configured: the workflow reads each profile's bundle id
 and the team id out of the profile itself (decisions § 1701), and fails naming
-the bundle if either profile is missing, is a development or ad hoc one, or is
+the bundle if any profile is missing, is a development or ad hoc one, or is
 for the wrong App ID.
 
 ## 16. App Store Connect API key

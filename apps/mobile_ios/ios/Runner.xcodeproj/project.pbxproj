@@ -13,6 +13,15 @@
 		A5CD1E000000000000000005 /* RunActivityExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000013 /* RunActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		A5CD1E000000000000000002 /* RunActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000011 /* RunActivityWidget.swift */; };
 		A5CD1E000000000000000006 /* LiveActivityBridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000016 /* LiveActivityBridgeTests.swift */; };
+		7884EB0101012EC3CC00C636 /* ActiveRunComplication.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EB0102012EC3CC00C636 /* ActiveRunComplication.swift */; };
+		7884EB0101022EC3CC00C636 /* ActiveRunBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00012EC3CC00C636F4 /* ActiveRunBridge.swift */; };
+		7884EB0101072EC3CC00C636 /* RunFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000A2EC3CC00C636F4 /* RunFormat.swift */; };
+		7884EB0101082EC3CC00C636 /* ActiveRunTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EB0102042EC3CC00C636 /* ActiveRunTimeline.swift */; };
+		7884EB0101092EC3CC00C636 /* ActiveRunTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EB0102042EC3CC00C636 /* ActiveRunTimeline.swift */; };
+		7884EB0101032EC3CC00C636 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 7884EA00212EC3CC00C636F4 /* Localizable.xcstrings */; };
+		7884EB0101042EC3CC00C636 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7884EB0103012EC3CC00C636 /* WidgetKit.framework */; };
+		7884EB0101052EC3CC00C636 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7884EB0103022EC3CC00C636 /* SwiftUI.framework */; };
+		7884EB0101062EC3CC00C636 /* WatchAppComplication.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7884EB0104012EC3CC00C636 /* WatchAppComplication.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		054B8C1C1E3BDB65A10FA040 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 665513E9B09D3B4079C81663 /* Pods_Runner.framework */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		A1C0DE0000000000000C0002 /* CalendarBridgeRruleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0DE0000000000000C0001 /* CalendarBridgeRruleTests.swift */; };
@@ -30,6 +39,8 @@
 		7884EA00102EC3CC00C636F4 /* ActiveRunBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00012EC3CC00C636F4 /* ActiveRunBridge.swift */; };
 		7884EA00112EC3CC00C636F4 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00022EC3CC00C636F4 /* AppTheme.swift */; };
 		7884EA00122EC3CC00C636F4 /* ArmedRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00032EC3CC00C636F4 /* ArmedRoute.swift */; };
+		4A6E1C0B5D2F000300C10001 /* LiveRace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6E1C0B5D2F000400C10001 /* LiveRace.swift */; };
+		4A6E1C0B5D2F000300C10002 /* RaceBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6E1C0B5D2F000400C10002 /* RaceBannerView.swift */; };
 		7884EA00132EC3CC00C636F4 /* CheckpointStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00042EC3CC00C636F4 /* CheckpointStore.swift */; };
 		7884EA00142EC3CC00C636F4 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00052EC3CC00C636F4 /* ContentView.swift */; };
 		7884EA00392EC3CC00C636F4 /* GpsHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00362EC3CC00C636F4 /* GpsHealth.swift */; };
@@ -38,6 +49,7 @@
 		7884EA00162EC3CC00C636F4 /* MiniMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00072EC3CC00C636F4 /* MiniMap.swift */; };
 		7884EA003A2EC3CC00C636F4 /* Pedometer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00372EC3CC00C636F4 /* Pedometer.swift */; };
 		7884EA00172EC3CC00C636F4 /* RouteNavigator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00082EC3CC00C636F4 /* RouteNavigator.swift */; };
+		7A11C0E5B4920001000C0001 /* RunAnnouncer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A11C0E5B4920002000C0001 /* RunAnnouncer.swift */; };
 		7884EA00402EC3CC00C636F4 /* RunActivityType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA003D2EC3CC00C636F4 /* RunActivityType.swift */; };
 		7884EA00182EC3CC00C636F4 /* RunApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00092EC3CC00C636F4 /* RunApp.swift */; };
 		7884EA00192EC3CC00C636F4 /* RunFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000A2EC3CC00C636F4 /* RunFormat.swift */; };
@@ -45,6 +57,8 @@
 		7884EA001A2EC3CC00C636F4 /* RunMiniMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000B2EC3CC00C636F4 /* RunMiniMapView.swift */; };
 		7884EA001B2EC3CC00C636F4 /* RunPayloadStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000C2EC3CC00C636F4 /* RunPayloadStorage.swift */; };
 		7884EA00412EC3CC00C636F4 /* StartCountdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA003E2EC3CC00C636F4 /* StartCountdown.swift */; };
+		5164A17E0003000000000101 /* WatchAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5164A17E0004000000000101 /* WatchAuth.swift */; };
+		5164A17E0003000000000102 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5164A17E0004000000000102 /* SignInView.swift */; };
 		7884EA001C2EC3CC00C636F4 /* SupabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000D2EC3CC00C636F4 /* SupabaseService.swift */; };
 		7884EA001D2EC3CC00C636F4 /* WatchConnectivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000E2EC3CC00C636F4 /* WatchConnectivityManager.swift */; };
 		7884EA001E2EC3CC00C636F4 /* WorkoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000F2EC3CC00C636F4 /* WorkoutManager.swift */; };
@@ -60,6 +74,17 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		7884EB0106042EC3CC00C636 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				7884EB0101062EC3CC00C636 /* WatchAppComplication.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		7884EA002B2EC3CC00C636F4 /* Embed Watch Content */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -123,6 +148,13 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXContainerItemProxy section */
+		7884EB0108022EC3CC00C636 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7884EB0107012EC3CC00C636;
+			remoteInfo = WatchAppComplication;
+		};
 		7884EA002D2EC3CC00C636F4 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
@@ -140,6 +172,13 @@
 		A5CD1E000000000000000012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A5CD1E000000000000000016 /* LiveActivityBridgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityBridgeTests.swift; sourceTree = "<group>"; };
 		A5CD1E000000000000000013 /* RunActivityExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RunActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		7884EB0102012EC3CC00C636 /* ActiveRunComplication.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveRunComplication.swift; sourceTree = "<group>"; };
+		7884EB0102042EC3CC00C636 /* ActiveRunTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveRunTimeline.swift; sourceTree = "<group>"; };
+		7884EB0102022EC3CC00C636 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		7884EB0102032EC3CC00C636 /* WatchAppComplication.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WatchAppComplication.entitlements; sourceTree = "<group>"; };
+		7884EB0103012EC3CC00C636 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		7884EB0103022EC3CC00C636 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		7884EB0104012EC3CC00C636 /* WatchAppComplication.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WatchAppComplication.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		004299668207F1A19BC9D2C0 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		01181151CA7C4988DB014122 /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
 		0D67D7F0B0B7F43602FB9788 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
@@ -172,6 +211,8 @@
 		7884EA00012EC3CC00C636F4 /* ActiveRunBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveRunBridge.swift; sourceTree = "<group>"; };
 		7884EA00022EC3CC00C636F4 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		7884EA00032EC3CC00C636F4 /* ArmedRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArmedRoute.swift; sourceTree = "<group>"; };
+		4A6E1C0B5D2F000400C10001 /* LiveRace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRace.swift; sourceTree = "<group>"; };
+		4A6E1C0B5D2F000400C10002 /* RaceBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceBannerView.swift; sourceTree = "<group>"; };
 		7884EA00042EC3CC00C636F4 /* CheckpointStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckpointStore.swift; sourceTree = "<group>"; };
 		7884EA00052EC3CC00C636F4 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		7884EA00362EC3CC00C636F4 /* GpsHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GpsHealth.swift; sourceTree = "<group>"; };
@@ -180,6 +221,7 @@
 		7884EA00072EC3CC00C636F4 /* MiniMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniMap.swift; sourceTree = "<group>"; };
 		7884EA00372EC3CC00C636F4 /* Pedometer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pedometer.swift; sourceTree = "<group>"; };
 		7884EA00082EC3CC00C636F4 /* RouteNavigator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteNavigator.swift; sourceTree = "<group>"; };
+		7A11C0E5B4920002000C0001 /* RunAnnouncer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunAnnouncer.swift; sourceTree = "<group>"; };
 		7884EA003D2EC3CC00C636F4 /* RunActivityType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunActivityType.swift; sourceTree = "<group>"; };
 		7884EA00092EC3CC00C636F4 /* RunApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunApp.swift; sourceTree = "<group>"; };
 		7884EA000A2EC3CC00C636F4 /* RunFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunFormat.swift; sourceTree = "<group>"; };
@@ -187,6 +229,8 @@
 		7884EA000B2EC3CC00C636F4 /* RunMiniMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunMiniMapView.swift; sourceTree = "<group>"; };
 		7884EA000C2EC3CC00C636F4 /* RunPayloadStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunPayloadStorage.swift; sourceTree = "<group>"; };
 		7884EA003E2EC3CC00C636F4 /* StartCountdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartCountdown.swift; sourceTree = "<group>"; };
+		5164A17E0004000000000101 /* WatchAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchAuth.swift; sourceTree = "<group>"; };
+		5164A17E0004000000000102 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
 		7884EA000D2EC3CC00C636F4 /* SupabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseService.swift; sourceTree = "<group>"; };
 		7884EA000E2EC3CC00C636F4 /* WatchConnectivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityManager.swift; sourceTree = "<group>"; };
 		7884EA000F2EC3CC00C636F4 /* WorkoutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutManager.swift; sourceTree = "<group>"; };
@@ -211,6 +255,15 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7884EB0106022EC3CC00C636 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7884EB0101042EC3CC00C636 /* WidgetKit.framework in Frameworks */,
+				7884EB0101052EC3CC00C636 /* SwiftUI.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -256,6 +309,18 @@
 				A5CD1E000000000000000012 /* Info.plist */,
 			);
 			path = RunActivity;
+			sourceTree = "<group>";
+		};
+		7884EB0105012EC3CC00C636 /* Complications */ = {
+			isa = PBXGroup;
+			children = (
+				7884EB0102012EC3CC00C636 /* ActiveRunComplication.swift */,
+				7884EB0102042EC3CC00C636 /* ActiveRunTimeline.swift */,
+				7884EB0102022EC3CC00C636 /* Info.plist */,
+				7884EB0102032EC3CC00C636 /* WatchAppComplication.entitlements */,
+			);
+			name = Complications;
+			path = "../../watch_ios/Complications";
 			sourceTree = "<group>";
 		};
 		2AC58A8B0223326464C20D9A /* Frameworks */ = {
@@ -316,6 +381,7 @@
 				331C8082294A63A400263BE5 /* RunnerTests */,
 				5AE0C0DE0000000000000020 /* ShareExtension */,
 				7884EA00272EC3CC00C636F4 /* WatchApp */,
+				7884EB0105012EC3CC00C636 /* Complications */,
 				817F36B4C422B0F918E58AFA /* Pods */,
 				2AC58A8B0223326464C20D9A /* Frameworks */,
 				A5CD1E000000000000000020 /* RunActivity */,
@@ -330,6 +396,7 @@
 				5AE0C0DE0000000000000014 /* ShareExtension.appex */,
 				7884EA00252EC3CC00C636F4 /* WatchApp.app */,
 				A5CD1E000000000000000013 /* RunActivityExtension.appex */,
+				7884EB0104012EC3CC00C636 /* WatchAppComplication.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -360,6 +427,8 @@
 				7884EA00012EC3CC00C636F4 /* ActiveRunBridge.swift */,
 				7884EA00022EC3CC00C636F4 /* AppTheme.swift */,
 				7884EA00032EC3CC00C636F4 /* ArmedRoute.swift */,
+				4A6E1C0B5D2F000400C10001 /* LiveRace.swift */,
+				4A6E1C0B5D2F000400C10002 /* RaceBannerView.swift */,
 				7884EA00042EC3CC00C636F4 /* CheckpointStore.swift */,
 				7884EA00052EC3CC00C636F4 /* ContentView.swift */,
 				7884EA00362EC3CC00C636F4 /* GpsHealth.swift */,
@@ -368,6 +437,7 @@
 				7884EA00072EC3CC00C636F4 /* MiniMap.swift */,
 				7884EA00372EC3CC00C636F4 /* Pedometer.swift */,
 				7884EA00082EC3CC00C636F4 /* RouteNavigator.swift */,
+				7A11C0E5B4920002000C0001 /* RunAnnouncer.swift */,
 				7884EA003D2EC3CC00C636F4 /* RunActivityType.swift */,
 				7884EA00092EC3CC00C636F4 /* RunApp.swift */,
 				7884EA000A2EC3CC00C636F4 /* RunFormat.swift */,
@@ -375,6 +445,8 @@
 				7884EA000B2EC3CC00C636F4 /* RunMiniMapView.swift */,
 				7884EA000C2EC3CC00C636F4 /* RunPayloadStorage.swift */,
 				7884EA003E2EC3CC00C636F4 /* StartCountdown.swift */,
+				5164A17E0004000000000102 /* SignInView.swift */,
+				5164A17E0004000000000101 /* WatchAuth.swift */,
 				7884EA000D2EC3CC00C636F4 /* SupabaseService.swift */,
 				7884EA000E2EC3CC00C636F4 /* WatchConnectivityManager.swift */,
 				7884EA000F2EC3CC00C636F4 /* WorkoutManager.swift */,
@@ -417,6 +489,23 @@
 			name = RunActivityExtension;
 			productName = RunActivityExtension;
 			productReference = A5CD1E000000000000000013 /* RunActivityExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		7884EB0107012EC3CC00C636 /* WatchAppComplication */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7884EB0109012EC3CC00C636 /* Build configuration list for PBXNativeTarget "WatchAppComplication" */;
+			buildPhases = (
+				7884EB0106012EC3CC00C636 /* Sources */,
+				7884EB0106022EC3CC00C636 /* Frameworks */,
+				7884EB0106032EC3CC00C636 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = WatchAppComplication;
+			productName = WatchAppComplication;
+			productReference = 7884EB0104012EC3CC00C636 /* WatchAppComplication.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 		331C8080294A63A400263BE5 /* RunnerTests */ = {
@@ -477,10 +566,12 @@
 				7884EA00282EC3CC00C636F4 /* Sources */,
 				7884EA002A2EC3CC00C636F4 /* Frameworks */,
 				7884EA00292EC3CC00C636F4 /* Resources */,
+				7884EB0106042EC3CC00C636 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				7884EB0108012EC3CC00C636 /* PBXTargetDependency */,
 			);
 			name = WatchApp;
 			productName = WatchApp;
@@ -557,6 +648,7 @@
 				5AE0C0DE0000000000000030 /* ShareExtension */,
 				7884EA002C2EC3CC00C636F4 /* WatchApp */,
 				A5CD1E000000000000000030 /* RunActivityExtension */,
+				7884EB0107012EC3CC00C636 /* WatchAppComplication */,
 			);
 		};
 /* End PBXProject section */
@@ -566,6 +658,14 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7884EB0106032EC3CC00C636 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7884EB0101032EC3CC00C636 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -744,6 +844,17 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		7884EB0106012EC3CC00C636 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7884EB0101012EC3CC00C636 /* ActiveRunComplication.swift in Sources */,
+				7884EB0101082EC3CC00C636 /* ActiveRunTimeline.swift in Sources */,
+				7884EB0101022EC3CC00C636 /* ActiveRunBridge.swift in Sources */,
+				7884EB0101072EC3CC00C636 /* RunFormat.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		331C807D294A63A400263BE5 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -775,8 +886,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				7884EA00102EC3CC00C636F4 /* ActiveRunBridge.swift in Sources */,
+				7884EB0101092EC3CC00C636 /* ActiveRunTimeline.swift in Sources */,
 				7884EA00112EC3CC00C636F4 /* AppTheme.swift in Sources */,
 				7884EA00122EC3CC00C636F4 /* ArmedRoute.swift in Sources */,
+				4A6E1C0B5D2F000300C10001 /* LiveRace.swift in Sources */,
+				4A6E1C0B5D2F000300C10002 /* RaceBannerView.swift in Sources */,
 				7884EA00132EC3CC00C636F4 /* CheckpointStore.swift in Sources */,
 				7884EA00142EC3CC00C636F4 /* ContentView.swift in Sources */,
 				7884EA00392EC3CC00C636F4 /* GpsHealth.swift in Sources */,
@@ -785,6 +899,7 @@
 				7884EA00162EC3CC00C636F4 /* MiniMap.swift in Sources */,
 				7884EA003A2EC3CC00C636F4 /* Pedometer.swift in Sources */,
 				7884EA00172EC3CC00C636F4 /* RouteNavigator.swift in Sources */,
+				7A11C0E5B4920001000C0001 /* RunAnnouncer.swift in Sources */,
 				7884EA00402EC3CC00C636F4 /* RunActivityType.swift in Sources */,
 				7884EA00182EC3CC00C636F4 /* RunApp.swift in Sources */,
 				7884EA00192EC3CC00C636F4 /* RunFormat.swift in Sources */,
@@ -792,6 +907,8 @@
 				7884EA001A2EC3CC00C636F4 /* RunMiniMapView.swift in Sources */,
 				7884EA001B2EC3CC00C636F4 /* RunPayloadStorage.swift in Sources */,
 				7884EA00412EC3CC00C636F4 /* StartCountdown.swift in Sources */,
+				5164A17E0003000000000102 /* SignInView.swift in Sources */,
+				5164A17E0003000000000101 /* WatchAuth.swift in Sources */,
 				7884EA001C2EC3CC00C636F4 /* SupabaseService.swift in Sources */,
 				7884EA001D2EC3CC00C636F4 /* WatchConnectivityManager.swift in Sources */,
 				7884EA001E2EC3CC00C636F4 /* WorkoutManager.swift in Sources */,
@@ -847,6 +964,11 @@
 /* End PBXVariantGroup section */
 
 /* Begin PBXTargetDependency section */
+		7884EB0108012EC3CC00C636 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7884EB0107012EC3CC00C636 /* WatchAppComplication */;
+			targetProxy = 7884EB0108022EC3CC00C636 /* PBXContainerItemProxy */;
+		};
 		7884EA002E2EC3CC00C636F4 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 7884EA002C2EC3CC00C636F4 /* WatchApp */;
@@ -921,6 +1043,60 @@
 				SWIFT_COMPILATION_MODE = wholemodule;
 			};
 			name = Profile;
+		};
+		7884EB0109022EC3CC00C636 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7884EA00332EC3CC00C636F4 /* WatchApp.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "../../watch_ios/Complications/WatchAppComplication.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "../../watch_ios/Complications/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.watchapp.complication;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		7884EB0109032EC3CC00C636 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7884EA00332EC3CC00C636F4 /* WatchApp.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "../../watch_ios/Complications/WatchAppComplication.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "../../watch_ios/Complications/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.watchapp.complication;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
 		};
 		249021D3217E4FDB00AE95B9 /* Profile */ = {
 			isa = XCBuildConfiguration;
@@ -1372,6 +1548,15 @@
 				A5CD1E000000000000000040 /* Debug */,
 				A5CD1E000000000000000041 /* Release */,
 				A5CD1E000000000000000042 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7884EB0109012EC3CC00C636 /* Build configuration list for PBXNativeTarget "WatchAppComplication" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7884EB0109022EC3CC00C636 /* Debug */,
+				7884EB0109032EC3CC00C636 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

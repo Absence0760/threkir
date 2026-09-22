@@ -154,6 +154,39 @@ void main() {
   });
 
   group('BleHeartRate.scan through the adapter seam', () {
+    test('a refused Android runtime grant is the named reason, not an empty list',
+        () async {
+      // BLUETOOTH_SCAN / BLUETOOTH_CONNECT were declared in the manifest and
+      // never requested, so a fresh Android install scanned, got nothing, and
+      // was told to go to Settings for a prompt it had never been shown.
+      final ble = BleHeartRate();
+      ble.blePermissionOverride = () async => false;
+      ble.adapterStatusOverride = () => Stream.value(BleStatus.ready);
+      await expectLater(
+        ble.scan(),
+        emitsError(isA<BleUnavailable>().having(
+            (e) => e.reason, 'reason', BleReadiness.unauthorized)),
+      );
+      expect(ble.lastUnavailable, BleReadiness.unauthorized);
+      await ble.dispose();
+    });
+
+    test('a granted request falls through to the adapter, not around it',
+        () async {
+      // The grant is a gate in front of the adapter, never a substitute for
+      // reading it: a granted permission on a powered-off radio is still
+      // poweredOff, not ready.
+      final ble = BleHeartRate();
+      ble.blePermissionOverride = () async => true;
+      ble.adapterStatusOverride = () => Stream.value(BleStatus.poweredOff);
+      await expectLater(
+        ble.scan(),
+        emitsError(isA<BleUnavailable>().having(
+            (e) => e.reason, 'reason', BleReadiness.poweredOff)),
+      );
+      await ble.dispose();
+    });
+
     test('a denied grant reaches the caller as a named reason', () async {
       final ble = BleHeartRate();
       ble.adapterStatusOverride = () => Stream.value(BleStatus.unauthorized);

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// BLE chest-strap heart-rate reader.
@@ -174,6 +175,36 @@ class BleHeartRate {
   /// `RouteNavigator.playOffRouteHaptic` idiom. Null in production, where it
   /// resolves to the plugin's own stream; a test sets it to drive the
   /// readiness decision on a machine that has no Bluetooth radio.
+  /// The Android 12+ runtime grants, asked for before the adapter is read.
+  ///
+  /// `BLUETOOTH_SCAN` / `BLUETOOTH_CONNECT` have been declared in the manifest
+  /// since the split landed, and nothing ever requested them — so a scan on a
+  /// fresh Android install resolved to `unauthorized`, and the only control
+  /// offered was a trip to Settings for a prompt the app had never shown. iOS
+  /// needs no equivalent: CoreBluetooth raises its own one-shot alert when the
+  /// central manager is constructed, which is what the 30 s settle budget is
+  /// sized for.
+  @visibleForTesting
+  Future<bool> Function()? blePermissionOverride;
+
+  Future<bool> _ensureBlePermissions() async {
+    final override = blePermissionOverride;
+    if (override != null) return override();
+    if (!Platform.isAndroid) return true;
+    try {
+      final results = await [
+        Permission.bluetoothScan,
+        Permission.bluetoothConnect,
+      ].request();
+      return results.values.every((s) => s.isGranted);
+    } catch (e) {
+      // The plugin opens a MethodChannel; where none is bound, fall through to
+      // the adapter, which reports its own refusal with a reason.
+      debugPrint('BLE permission request unavailable: $e');
+      return true;
+    }
+  }
+
   @visibleForTesting
   Stream<BleStatus> Function()? adapterStatusOverride;
 
@@ -282,7 +313,9 @@ class BleHeartRate {
     () async {
       BleReadiness readiness;
       try {
-        readiness = await resolveBleReadiness(_adapterStatus);
+        readiness = await _ensureBlePermissions()
+            ? await resolveBleReadiness(_adapterStatus)
+            : BleReadiness.unauthorized;
       } catch (e) {
         // Constructing the plugin opens a MethodChannel, which throws where
         // no platform implementation is bound. An adapter that can't be

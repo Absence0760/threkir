@@ -37,6 +37,7 @@ import {
 	parseAwarderLadders,
 	parseBadgeCatalogue,
 	parseKotlinIntRange,
+	parseSwiftStaticInt,
 	parseNamedInt,
 	parseNamedNumber,
 	parseNearbyCase,
@@ -288,6 +289,48 @@ test('both ends of a Kotlin int range are read', () => {
 	assert.deepEqual(parseKotlinIntRange('val OTHER = 80..240', 'R'), []);
 	// A plain scalar is not a range, and must not read as one end of one.
 	assert.deepEqual(parseKotlinIntRange('val R = 240', 'R'), []);
+});
+
+// A Swift `static let` is the shape the two Apple-Watch rails are written in,
+// and it sits in a file whose doc comments discuss the same constants by name.
+// parseNamedInt's `name … = digits` shape reaches a prose line and a
+// `count <= NAME` guard is one character from matching too, so this reads the
+// declaration keywords or nothing.
+test('a Swift static let int is read from its declaration and nowhere else', () => {
+	assert.deepEqual(parseSwiftStaticInt('    static let maxRoutes = 12\n', 'maxRoutes'), ['12']);
+	assert.deepEqual(parseSwiftStaticInt('static let maxRoutes: Int = 12\n', 'maxRoutes'), ['12']);
+	// A prose mention and a comparison are not declarations.
+	assert.deepEqual(parseSwiftStaticInt('/// maxRoutes = 30 in an older draft\n', 'maxRoutes'), []);
+	assert.deepEqual(parseSwiftStaticInt('guard n <= maxRoutes else { return }\n', 'maxRoutes'), []);
+	// A computed constant cannot be compared across languages by reading, so
+	// the rail reports blind rather than passing on the first integer in it.
+	assert.deepEqual(parseSwiftStaticInt('static let maxRoutes = maxPoints / 4\n', 'maxRoutes'), []);
+	assert.deepEqual(parseSwiftStaticInt('static let other = 12\n', 'maxRoutes'), []);
+});
+
+// The regression the Apple-Watch entry exists for: the phone queues a
+// `transferUserInfo` the watch refuses on every retry, and the runner was
+// already told the route was sent.
+test('an Apple Watch cap raised on the phone alone is caught in the real entry shape', () => {
+	const sources = {
+		'apps/watch_ios/WatchApp/ArmedRoute.swift':
+			'    static let maxPoints = 512\n    static let maxRoutes = 12\n    static let maxPointsPerRoute = 128\n',
+		'apps/mobile_ios/ios/Runner/WatchIngestBridge.swift':
+			'    static let maxRoutePoints = 512\n    static let maxSavedRoutes = 30\n    static let maxSavedRoutePoints = 128\n',
+		'apps/mobile_android/lib/apple_watch_route_bridge.dart':
+			'const int kMaxAppleWatchRoutePoints = 512;\n' +
+			'const int kMaxAppleWatchSavedRoutes = 30;\n' +
+			'const int kMaxAppleWatchSavedRoutePoints = 128;\n',
+	};
+	const entry = /** @type {any} */ (REGISTRY.find((e) => e.name === 'Apple Watch route-push budgets'));
+	const { errors } = checkEntry(entry, {
+		read: (/** @type {string} */ rel) => /** @type {any} */ (sources)[rel],
+		sql: /** @type {any} */ ({}),
+	});
+	assert.equal(errors.length, 1, errors.join('\n'));
+	assert.match(errors[0], /"list routes" disagrees across rails/);
+	assert.match(errors[0], /SavedRoutes\.maxRoutes: \[12\]/);
+	assert.match(errors[0], /WatchIngestBridge\.maxSavedRoutes: \[30\]/);
 });
 
 // A bucket's allowlist is created by an insert and narrowed by a later update,

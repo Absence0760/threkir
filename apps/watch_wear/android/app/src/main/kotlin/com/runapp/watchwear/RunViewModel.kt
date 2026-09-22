@@ -237,6 +237,11 @@ data class UiState(
     /// Universal `show_calories` opt-out (default on). When false the
     /// PostRun summary renders no calorie line at all.
     val showCalories: Boolean = true,
+    /// Universal `voice_feedback_enabled` (default on) — whether the watch
+    /// speaks split / pace cues at all. Flows through `ACTION_START` to the
+    /// recording service, which owns the TTS engine; nothing on the watch
+    /// itself can set it, because the watch has no settings screen.
+    val voiceFeedbackEnabled: Boolean = true,
     /// Distance-display unit resolved from `user_settings.prefs
     /// .preferred_unit`. Drives the distance / pace read-outs on the
     /// running + post-run screens and the route "to go" badge. Defaults
@@ -1046,6 +1051,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                 hrZoneCutoffs = resolved,
                 bodyWeightKg = settings.bodyWeightKg,
                 showCalories = settings.showCalories,
+                voiceFeedbackEnabled = settings.voiceFeedbackEnabled,
                 preferredUnit = com.runapp.watchwear.recording.DistanceUnit
                     .fromPref(settings.preferredUnit),
             )
@@ -1116,6 +1122,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             targetPaceSecPerKm = _state.value.targetPaceSecPerKm,
             preferredUnit = _state.value.preferredUnit,
             privacyDefault = universalPrivacyDefault,
+            voiceFeedbackEnabled = _state.value.voiceFeedbackEnabled,
         )
     }
 

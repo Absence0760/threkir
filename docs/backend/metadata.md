@@ -38,6 +38,7 @@ no longer metadata keys — read/write `runs.activity_type` / `runs.is_dnf`.
 | `fastest_10k_s` | `runs.fastest_10k_s integer` — same contract, rolling-10km window. | `20270325_001` |
 | `fastest_half_marathon_s` | `runs.fastest_half_marathon_s integer` — same contract, rolling-21.0975km window. | `20270325_001` |
 | `fastest_marathon_s` | `runs.fastest_marathon_s integer` — same contract, rolling-42.195km window. | `20270325_001` |
+| `event_id` | `runs.event_id uuid references events(id) on delete set null`, added by `20260424_001` for exactly this: "so the watch / phone record-for-this-event flow has a first-class column to stamp at save time". Nulled on `public_runs` unless the joined event's club is public (`20260626_001`). The Apple Watch run hand-off is the first writer — `apps/watch_ios/WatchApp/ContentView.swift` `syncRun` puts it in the WCSession envelope (and `SupabaseService.RunPayload.event_id` mirrors it on the DEBUG direct path), `WatchIngestBridge.ingestPayload` lifts it, `runFromWatchPayload` puts it in the bag and `runRowFromRun` promotes it onto the column and strips it, so the bag copy never shadows the column. `ApiClient._runFromRow` stashes it back for read-modify-write callers. | `20260424_001` |
 
 **Server-side writers/readers already migrated (Round 3, this change):**
 `_shared/strava.ts`, `parkrun-import`, `export-data` (CSV + backup),

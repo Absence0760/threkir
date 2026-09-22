@@ -34,12 +34,25 @@ data class PaceAlertDecision(
 /// Drift threshold in seconds-per-km. Tuned to ignore single-sample
 /// GPS jitter while still catching meaningful pace drift on a
 /// stabilised reading.
+///
+/// Both figures below are shared with the Apple Watch's `PaceAlertGate`
+/// (`apps/watch_ios/WatchApp/RunAnnouncer.swift`) and with the phone's
+/// `diff.abs() > 30` in `run_screen.dart`. The wrists disagreed until
+/// 2026-09 — watchOS gated on 15 s/km — and while both only BUZZED the
+/// divergence was invisible; it stopped being invisible when both started
+/// speaking the alert. `scripts/check_shared_constants.mjs` now reads this
+/// file and the Swift one, so changing one figure fails the PR until the
+/// other moves with it (decisions § 787).
 internal const val PACE_DRIFT_THRESHOLD_S_PER_KM = 30
 
 /// Minimum interval between consecutive pace alerts. The user has 30
 /// seconds to react to one alert before another fires — long enough
 /// that a wobbly pace doesn't trigger a haptic strobe, short enough
 /// that a runner who's stayed off-pace for a minute knows it.
+///
+/// Milliseconds here, seconds in the Swift rail; the guard reads this one
+/// as seconds so the two compare as the same duration rather than as 30
+/// against 30000.
 internal const val PACE_ALERT_RATE_LIMIT_MS = 30_000L
 
 /// Decide whether a pace-drift alert should fire and which direction.

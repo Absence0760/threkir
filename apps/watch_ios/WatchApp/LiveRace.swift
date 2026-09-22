@@ -113,6 +113,18 @@ enum RaceEnvelope {
     }
 }
 
+/// Which race a just-finished run belonged to.
+///
+/// The finisher report clears the race — deliberately, so it can only be sent
+/// once — but the run hand-off happens later, when the runner taps Sync, and
+/// it needs the event to stamp `event_id` on the row. Keyed on the run id
+/// rather than simply remembered, so a second run started before the first
+/// one syncs cannot inherit the stamp.
+struct RaceRunStamp: Equatable {
+    let runId: String
+    let eventId: String
+}
+
 /// The Arm / Go / End state machine, as a value.
 ///
 /// Wear OS derives the same three states by polling `race_sessions` itself
@@ -129,6 +141,11 @@ struct LiveRaceState: Equatable {
 
     private(set) var race: LiveRace?
     private(set) var lastPingUptime: TimeInterval?
+    /// In memory only. A watch killed between the finisher report and the
+    /// sync loses the row's `event_id` link, not the finisher time —
+    /// `PendingRaceResultStore` is what makes the time itself durable, and
+    /// the link is re-derivable from `event_results` by anyone who needs it.
+    private(set) var finishedRun: RaceRunStamp?
 
     init(race: LiveRace? = nil) {
         self.race = race?.isArmed == true || race?.isRunning == true ? race : nil
@@ -183,7 +200,15 @@ struct LiveRaceState: Equatable {
         guard let race, race.isRunning else { return nil }
         self.race = nil
         lastPingUptime = nil
+        finishedRun = RaceRunStamp(runId: finish.runId, eventId: race.eventId)
         return RaceEnvelope.result(race: race, finish: finish)
+    }
+
+    /// The event [runId] was run in, or nil when this watch never reported a
+    /// finisher time for that run.
+    func eventId(forRunId runId: String) -> String? {
+        guard let finishedRun, finishedRun.runId == runId else { return nil }
+        return finishedRun.eventId
     }
 }
 

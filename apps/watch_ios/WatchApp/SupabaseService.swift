@@ -84,7 +84,11 @@ actor SupabaseService {
     /// the same artefact the phone path hands to `WCSession.transferFile` —
     /// mapped rather than read resident so this path doesn't reintroduce a
     /// whole-track allocation.
-    func syncRun(_ run: WorkoutManager.FinishedRun, trackJSONURL: URL) async throws {
+    func syncRun(
+        _ run: WorkoutManager.FinishedRun,
+        trackJSONURL: URL,
+        raceEventId: String? = nil
+    ) async throws {
         guard let token = accessToken, let userId = userId else {
             throw SupabaseError.notAuthenticated
         }
@@ -123,6 +127,11 @@ actor SupabaseService {
             distance_m: run.distanceMetres,
             track_url: objectPath,
             source: "watch",
+            // A column, not a bag key, on both paths: the phone lifts
+            // `event_id` out of the WCSession envelope and promotes it onto
+            // the row, so a direct upload that dropped it would land a race
+            // run this developer cannot get back to its event from.
+            event_id: raceEventId,
             metadata: RunMetadata(
                 activity_type: run.activityType.rawValue,
                 last_modified_at: formatter.string(from: Date()),
@@ -189,6 +198,7 @@ actor SupabaseService {
         let distance_m: Double
         let track_url: String
         let source: String
+        let event_id: String?
         let metadata: RunMetadata
     }
 
@@ -289,10 +299,18 @@ private func crc32(_ data: Data) -> UInt32 {
 /// Convenience for the DEBUG fallback: sign in with the seed user and sync
 /// the finished run directly to the local Supabase instance, bypassing the
 /// phone. Used when the watch simulator is running alone.
-func syncRunDirectDebug(_ run: WorkoutManager.FinishedRun, trackJSONURL: URL) async throws {
+func syncRunDirectDebug(
+    _ run: WorkoutManager.FinishedRun,
+    trackJSONURL: URL,
+    raceEventId: String? = nil
+) async throws {
     if await !SupabaseService.shared.isAuthenticated {
         _ = try await SupabaseService.shared.signIn(email: "runner@test.com", password: "testtest")
     }
-    try await SupabaseService.shared.syncRun(run, trackJSONURL: trackJSONURL)
+    try await SupabaseService.shared.syncRun(
+        run,
+        trackJSONURL: trackJSONURL,
+        raceEventId: raceEventId
+    )
 }
 #endif

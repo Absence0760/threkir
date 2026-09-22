@@ -32,13 +32,21 @@
 //       permission silently; an over-declared capability is an App Review
 //       rejection and a privacy over-claim.
 //
-//   (4) The three pure formatters the complication duplicates are byte-for-byte
-//       the copies in `RunFormat.swift`. Both files say "keep the two in
-//       lockstep" in a comment and nothing enforced it. `ComplicationFormatterTests`
-//       cannot: `Complications/ActiveRunComplication.swift` compiles into the
-//       `WatchAppComplication` extension, a different module with no test host,
-//       so the suite links the `RunFormat.swift` copy and passing proves nothing
-//       about the copy the widget will actually run.
+//   (4) RETIRED, and the number is left vacant so every claim below still
+//       answers to the number it has always had. It held the complication's
+//       byte-identical second copy of `formatElapsed` / `formatDistanceKm` /
+//       `formatPaceSecPerKm` against `RunFormat.swift`'s, because a text
+//       compare was the only thing that could: the copies compiled into two
+//       different modules and no Swift test could link both. There is one
+//       copy now. `RunFormat.swift` and `Complications/ActiveRunTimeline.swift`
+//       are members of the `WatchAppComplication` extension AND of `WatchApp`,
+//       the way `ActiveRunBridge.swift` already was, so the watch face and
+//       `WatchAppTests` run the same source. Nothing replaces the claim
+//       because the drift it watched for no longer has two places to happen
+//       in: dropping a shared file from one target's membership is a missing
+//       symbol, which is a compile error in whichever project dropped it, not
+//       a silent divergence — and claim (15) holds the two projects' `WatchApp`
+//       membership lists against each other besides.
 //
 //   (5) The App Group identifier in `ActiveRunBridge.swift` matches the one
 //       `Complications/README.md` instructs an operator to type into Xcode. A
@@ -62,6 +70,16 @@
 //       than none), so a key renamed on one rail is a route the runner arms on
 //       the phone that silently never reaches the wrist — with a success
 //       reported at the point they armed it.
+//
+//  (7b) The LIST that rides the same envelope — `saved_routes`, the starred
+//       set the wrist's route picker offers. It is a third key list on each of
+//       claim (7)'s three rails, so it can drift from them and from each
+//       other. What holds it is not a fourth transcription: both Swift ends
+//       DELEGATE each element to their single-route validator, so claim (7)
+//       already owns the five element keys, and this claim's job is to check
+//       that they still delegate and that the one envelope key they hang the
+//       list from agrees. A key renamed here is a picker that renders its
+//       empty state with a phone that reports every push as sent.
 //
 //   (8) No destructive control in `ContentView.swift` destroys a run on one
 //       tap. Both "Discard" buttons end a run that exists nowhere else — the
@@ -129,10 +147,11 @@
 //       Xcode never compiles is not a build error and not a red test — it is
 //       simply absent, and a TEST file that is absent takes its coverage with
 //       it while still reading as coverage in the repo. That has already
-//       happened once here: `Complications/ActiveRunComplication.swift` is in
-//       no target, which is why claim (4) exists at all — `ComplicationFormatterTests`
-//       links the OTHER copy of the formatters and passing proves nothing
-//       about the one the widget runs. The same slip on
+//       happened once here: `Complications/ActiveRunComplication.swift` was in
+//       no target for as long as it existed, which is why the now-retired
+//       claim (4) existed at all — the Swift suite linked a second copy of the
+//       formatters and passing proved nothing about the one the widget ran.
+//       The same slip on
 //       `HealthKitFailureTests.swift` would leave the `test-watch-ios` job
 //       green having never run the accumulator that decides whether a shipped
 //       run keeps its `avg_bpm` (decisions § 1350).
@@ -147,7 +166,13 @@
 //       `WatchApp.xcodeproj` alone is exercised by `test-watch-ios` and
 //       absent from every shipped `.ipa`, and one added to `Runner.xcodeproj`
 //       alone ships to a wrist having been compiled by nothing that runs a
-//       test. Neither is a build error in either project. The same claim
+//       test. Neither is a build error in either project. The membership
+//       compare covers the `WatchAppComplication` extension as well as the
+//       app: since the formatter duplication collapsed, files shared between
+//       the app and the extension are the normal case rather than the
+//       exception, and each one is a third membership list to keep. The
+//       settings half stays on the app target, whose bundle identity is what
+//       decides whether the two builds are the same app. The same claim
 //       holds the EMBED, because deleting one copy phase turns the whole
 //       integration back off while both projects still build and both suites
 //       still pass — and claim (10) would then read the companion key as the
@@ -191,6 +216,33 @@
 //       call `workoutManager.stop()`, there must be one `HoldToStopButton`
 //       per stop call site, and the press duration must still be what fires
 //       it (decisions § 1680).
+//
+//  (19) The Swift suite is run in more than one language. Every assertion
+//       about a formatted string reaches `Locale.current` somewhere — a
+//       decimal separator, a `MeasurementFormatter` unit word, a String
+//       Catalog lookup — and `test-watch-ios` pins its destination to one
+//       simulator, so ONE language is the only one anything is ever measured
+//       in. Four tests asserted English output and were green everywhere
+//       anyone had run them while failing outright on a simulator left in
+//       Japanese (`1.00 マイル`, `ランニング`). That is not a suite that is
+//       locale-independent; it is a suite nobody has run twice. So the job
+//       runs the same tests again under `-testLanguage`, and this claim is
+//       what keeps the second pass there and in a DIFFERENT language from the
+//       first — deleting it, or setting both to `en`, restores the blind spot
+//       without failing anything else.
+//  (20) The SETTINGS envelope going to the wrist — the runner's distance
+//       unit and their audio-cue switch — read from all three of its ends.
+//       Three hand-written key lists in three languages, the same shape as
+//       claim (7): `apple_watch_prefs_bridge.dart` names them as
+//       method-channel arguments, `WatchIngestBridge.prefsContext` lifts
+//       those out and repacks them for `updateApplicationContext`, and
+//       `PhonePreferences` reads them back on the watch. Unlike the route
+//       chain a rename here does not drop the push — the watch applies each
+//       key INDEPENDENTLY, so it drops one preference out of it with nothing
+//       failing anywhere — and `audio_cues` is the only switch that can
+//       silence a wrist with no settings screen of its own. The envelope
+//       also rides a RETAINED application context, so a key the watch cannot
+//       read is unreadable on every contact rather than once.
 //
 // WHAT THIS GUARD DOES NOT PROVE. It parses text. It does not compile Swift,
 // does not run it, and cannot see anything a type-checker would: claim (1)
@@ -384,16 +436,6 @@ export const ENTITLEMENTS = [
 /** @type {string[]} */
 export const UNCLAIMED_ENTITLEMENTS = [];
 
-/**
- * Functions the complication carries a second copy of, because its Widget
- * Extension target cannot link `RunFormat.swift`. Both copies must be
- * byte-identical or the watch face and the run screen round the same run
- * differently.
- */
-export const DUPLICATED_FORMATTERS = ['formatElapsed', 'formatDistanceKm', 'formatPaceSecPerKm'];
-
-export const FORMATTER_ORIGIN = join('WatchApp', 'RunFormat.swift');
-export const FORMATTER_COPY = join('Complications', 'ActiveRunComplication.swift');
 export const BRIDGE = join('WatchApp', 'ActiveRunBridge.swift');
 export const COMPLICATION_README = join('Complications', 'README.md');
 export const SYNC_SITE = join('WatchApp', 'ContentView.swift');
@@ -420,6 +462,29 @@ export const ROUTE_BRIDGE = join(
 	'lib',
 	'apple_watch_route_bridge.dart',
 );
+
+/**
+ * Claim (7b)'s four reading sites: the Dart method that ships the list, the
+ * Dart function that shapes one element of it, and the two Swift functions
+ * that read it back.
+ */
+export const SAVED_ROUTES_DART_METHOD = 'push_saved';
+export const SAVED_ROUTES_DART_ENCODER = 'encodeSavedRoutesForWatch';
+export const SAVED_ROUTES_PHONE_FN = 'savedRoutesUserInfo';
+export const SAVED_ROUTES_WATCH_FN = 'decodeList';
+
+/**
+ * The single-route validator each end of the list MUST route its elements
+ * through, and the function that must do it. This is what keeps the element
+ * shape a claim-(7) question instead of a fourth hand-written key list: a
+ * `savedRoutesUserInfo` that stops calling `routeUserInfo` has quietly become
+ * a second set of rules, and nothing about the payload looks different.
+ * @type {[string, string, string][]}
+ */
+export const SAVED_ROUTES_DELEGATIONS = [
+	[SAVED_ROUTES_PHONE_FN, 'routeUserInfo(from:', 'the phone repack'],
+	[SAVED_ROUTES_WATCH_FN, 'ArmedRoute.decode(', 'the watch decode'],
+];
 
 // --- text utilities ---------------------------------------------------------
 
@@ -689,6 +754,15 @@ export const WATCH_EMBED_MARKERS = ['$(CONTENTS_FOLDER_PATH)/Watch', 'WatchApp.a
 
 /** The watch app's target name, spelled the same in both projects. */
 export const WATCH_TARGET = 'WatchApp';
+
+/**
+ * The widget extension embedded in the watch app. Its membership is compared
+ * across the two projects the same way `WATCH_TARGET`'s is: the shared files
+ * that used to be duplicated (`RunFormat.swift`, `ActiveRunTimeline.swift`)
+ * are members of it in both, and a file added to one project's extension
+ * alone is a `.appex` that compiles in one build and not the other.
+ */
+export const COMPLICATION_TARGET = 'WatchAppComplication';
 
 /** The phone app's target, whose bundle the watch app is copied into. */
 export const PHONE_TARGET = 'Runner';
@@ -1210,7 +1284,7 @@ export function swiftStructFields(src, name) {
 
 /**
  * The brace-matched body of `func <name>(`, wherever it sits — a method inside
- * a type, with any access modifiers in front. `functionBody` below anchors at
+ * a type, with any access modifiers in front. A top-level reader anchors at
  * column zero, which the three route-envelope functions are not.
  * @param {string} src @param {string} name @returns {string | null}
  */
@@ -1320,26 +1394,30 @@ export function dartInvokeKeys(src, method) {
 }
 
 /**
- * The text of a top-level `func <name>(` through its matching close brace,
- * signature line included. Returns null when the function is not in this
- * source.
- * @param {string} src
- * @param {string} name
+ * The `'…':` keys of the map literals inside the body of a Dart function
+ * DECLARED `static … <name>(`. Anchored on the declaration rather than on the
+ * bare name because the body's own callers spell the name the same way, and a
+ * guard that silently read a call site's argument list instead of the function
+ * would certify the wrong text. The parameter list is paren-matched first, so
+ * a named-parameter `{…}` group cannot be mistaken for the body.
+ * @param {string} src Dart @param {string} name
+ * @returns {Set<string> | null} null when no such declaration is readable,
+ *   which is a shape change rather than an empty payload
  */
-export function functionBody(src, name) {
-	const start = src.search(new RegExp(`^func\\s+${name}\\s*\\(`, 'm'));
-	if (start === -1) return null;
-	const open = src.indexOf('{', start);
+export function dartFunctionMapKeys(src, name) {
+	const at = src.search(new RegExp(`\\bstatic\\s+[^\\n(]*\\b${name}\\s*\\(`));
+	if (at === -1) return null;
+	const paren = src.indexOf('(', at);
+	const afterParams = matchDelimiter(src, paren, '(', ')');
+	if (afterParams === -1) return null;
+	const open = src.indexOf('{', afterParams);
 	if (open === -1) return null;
-	let depth = 0;
-	for (let i = open; i < src.length; i += 1) {
-		if (src[i] === '{') depth += 1;
-		else if (src[i] === '}') {
-			depth -= 1;
-			if (depth === 0) return src.slice(start, i + 1);
-		}
-	}
-	return null;
+	const end = matchDelimiter(src, open, '{', '}');
+	if (end === -1) return null;
+	/** @type {Set<string>} */
+	const keys = new Set();
+	for (const m of src.slice(open, end).matchAll(/'([^'\\\n]+)'\s*:/g)) keys.add(m[1]);
+	return keys.size === 0 ? null : keys;
 }
 
 /**
@@ -1463,6 +1541,69 @@ export function destructiveButtons(src) {
 
 // --- the checks -------------------------------------------------------------
 
+/// The one workflow that compiles this tier, and the only place the language
+/// the suite runs in is decided.
+/// The Dart end of the settings envelope, under the same canonical tree.
+export const PREFS_BRIDGE = join(
+	'apps',
+	'mobile_android',
+	'lib',
+	'apple_watch_prefs_bridge.dart',
+);
+
+/// The watch end of it — `PhonePreferences`, which lives beside its only
+/// caller rather than in a file of its own.
+export const WATCH_CONNECTIVITY = join('WatchApp', 'WatchConnectivityManager.swift');
+
+export const CI_WORKFLOW = join('.github', 'workflows', 'ci.yml');
+
+/// The job inside it that runs the Swift suite.
+export const WATCH_TEST_JOB = 'test-watch-ios';
+
+/**
+ * One job's body out of a workflow, or null when the job is not there.
+ *
+ * Bounded by the next line at the JOB indent rather than by a step count: a
+ * step added to the end of the job would otherwise fall outside the block and
+ * read as absent.
+ * @param {string} workflow
+ * @param {string} job
+ */
+export function jobBlock(workflow, job) {
+	const start = workflow.search(new RegExp(`^  ${job}:\\s*$`, 'm'));
+	if (start === -1) return null;
+	const rest = workflow.slice(workflow.indexOf('\n', start) + 1);
+	const end = rest.search(/^ {2}\S/m);
+	return end === -1 ? rest : rest.slice(0, end);
+}
+
+/**
+ * Every `xcodebuild test` command in a job block, each as the language it
+ * forces — null for one that forces none and so inherits the simulator's.
+ *
+ * A command is followed across its backslash continuations, so the flag is
+ * read off the invocation it belongs to rather than off whatever text happens
+ * to sit near it. YAML comments are skipped: two of the four lines in this
+ * job that name `xcodebuild test` are prose explaining why the simulator is
+ * resolved and pre-booted, and counting those doubled the invocation count.
+ * @param {string} block
+ * @returns {(string | null)[]}
+ */
+export function suiteLanguages(block) {
+	/** @type {(string | null)[]} */ const langs = [];
+	const lines = block.split('\n').filter((l) => !/^\s*#/.test(l));
+	for (let i = 0; i < lines.length; i += 1) {
+		if (!/\bxcodebuild\s+test\b/.test(lines[i])) continue;
+		let cmd = lines[i];
+		while (/\\\s*$/.test(lines[i]) && i + 1 < lines.length) {
+			i += 1;
+			cmd += `\n${lines[i]}`;
+		}
+		langs.push(/-testLanguage\s+(\S+)/.exec(cmd)?.[1] ?? null);
+	}
+	return langs;
+}
+
 /**
  * @param {string} watchRoot absolute path to an `apps/watch_ios` tree
  * @param {string | null} [ingestPath] absolute path to the phone's
@@ -1474,6 +1615,10 @@ export function destructiveButtons(src) {
  *   `HeartRateCoverage.kt`; null skips claim (12) alone.
  * @param {string | null} [phonePbxprojPath] absolute path to the phone's
  *   `Runner.xcodeproj/project.pbxproj`; null skips claim (10)'s embed half.
+ * @param {string | null} [ciWorkflowPath] absolute path to
+ *   `.github/workflows/ci.yml`; null skips claim (19) alone.
+ * @param {string | null} [prefsBridgePath] absolute path to the phone's
+ *   `apple_watch_prefs_bridge.dart`; null skips claim (20) alone.
  * @returns {{ errors: string[], ok: string[] }}
  */
 export function check(
@@ -1482,6 +1627,8 @@ export function check(
 	routeBridgePath = null,
 	wearCoveragePath = null,
 	phonePbxprojPath = null,
+	ciWorkflowPath = null,
+	prefsBridgePath = null,
 ) {
 	/** @type {string[]} */ const errors = [];
 	/** @type {string[]} */ const ok = [];
@@ -1636,53 +1783,6 @@ export function check(
 		);
 	}
 
-	// (4) The duplicated complication formatters.
-	//
-	//     Read defensively: a deleted copy is a real state (the Widget
-	//     Extension finally landing would move these) and a guard that throws
-	//     an ENOENT stack instead of naming the file is one a reader cannot
-	//     act on — which is the whole complaint this file exists to make about
-	//     silent watchOS failures.
-	const originSrc = readIfPresent(join(watchRoot, FORMATTER_ORIGIN));
-	const copySrc = readIfPresent(join(watchRoot, FORMATTER_COPY));
-	let diverged = 0;
-	for (const [rel, src] of [[FORMATTER_ORIGIN, originSrc], [FORMATTER_COPY, copySrc]]) {
-		if (src !== null) continue;
-		diverged += 1;
-		errors.push(
-			`${rel} is gone. Claim (4) holds the complication's copy of the pure formatters ` +
-				'against the app\'s, and it cannot read one of them.',
-		);
-	}
-	if (originSrc === null || copySrc === null) {
-		// Fall through to the remaining claims rather than comparing null.
-	} else {
-	for (const name of DUPLICATED_FORMATTERS) {
-		const a = functionBody(originSrc, name);
-		const b = functionBody(copySrc, name);
-		if (a === null || b === null) {
-			diverged += 1;
-			errors.push(
-				`\`${name}\` is missing from ${a === null ? FORMATTER_ORIGIN : FORMATTER_COPY}. Both ` +
-					'copies must exist while the duplication stands: the complication compiles into ' +
-					`the WatchAppComplication extension and ComplicationFormatterTests links ${FORMATTER_ORIGIN}.`,
-			);
-			continue;
-		}
-		if (a === b) continue;
-		diverged += 1;
-		errors.push(
-			`\`${name}\` differs between ${FORMATTER_ORIGIN} and ${FORMATTER_COPY}. The two are a ` +
-				'hand-maintained duplicate — the widget runs the second copy and the Swift suite tests ' +
-				'the first, so a divergence means the watch face and the run screen round the same run ' +
-				'differently and every test still passes.',
-		);
-	}
-	}
-	if (diverged === 0) {
-		ok.push(`${DUPLICATED_FORMATTERS.length} duplicated complication formatters are byte-identical`);
-	}
-
 	// (5) The App Group identifier, stated twice.
 	const declared = /appGroup\s*=\s*"([^"]+)"/.exec(read(BRIDGE));
 	if (declared === null) {
@@ -1776,6 +1876,171 @@ export function check(
 			if (mismatches.length === 0) {
 				ok.push(
 					`all ${(/** @type {Set<string>} */ (dart)).size} route-push keys agree across the ` +
+						'Dart channel, the phone repack and the watch decode',
+				);
+			}
+		}
+	}
+
+	// (7b) The saved-routes LIST that rides the same envelope.
+	if (ingestPath !== null && routeBridgePath !== null) {
+		const ingestSrc = stripSwiftComments(readFileSync(ingestPath, 'utf8'));
+		const armedSrc = stripSwiftComments(read(ARMED_ROUTE));
+		const dartSrc = readFileSync(routeBridgePath, 'utf8');
+		const phoneBody = methodBody(ingestSrc, SAVED_ROUTES_PHONE_FN);
+		const watchBody = methodBody(armedSrc, SAVED_ROUTES_WATCH_FN);
+		/** @type {{ label: string, keys: Set<string> | null }[]} */
+		const rails = [
+			{
+				label: `${ROUTE_BRIDGE} (invokeMethod '${SAVED_ROUTES_DART_METHOD}')`,
+				keys: dartInvokeKeys(dartSrc, SAVED_ROUTES_DART_METHOD),
+			},
+			{
+				label: `${INGEST} (${SAVED_ROUTES_PHONE_FN})`,
+				keys: phoneBody === null ? null : swiftPayloadKeys(phoneBody, 'args'),
+			},
+			{
+				label: `${ARMED_ROUTE} (SavedRoutes.${SAVED_ROUTES_WATCH_FN})`,
+				keys: watchBody === null ? null : swiftPayloadKeys(watchBody, 'payload'),
+			},
+		];
+		const unread = rails.filter((r) => r.keys === null);
+		if (unread.length > 0) {
+			errors.push(
+				`Parsed no saved-routes envelope key out of ${unread.map((r) => r.label).join(' and ')} — ` +
+					'claim (7b) would pass vacuously. The list the wrist picker offers hangs off one ' +
+					'key on this envelope; a rail that cannot be read is a rail that agrees with ' +
+					'everything.',
+			);
+		} else {
+			/** @type {string[]} */
+			const mismatches = [];
+			for (const rail of rails) {
+				for (const other of rails) {
+					if (rail === other) continue;
+					for (const key of /** @type {Set<string>} */ (rail.keys)) {
+						if (!(/** @type {Set<string>} */ (other.keys)).has(key)) {
+							mismatches.push(
+								`\`${key}\` is on ${rail.label} and not on ${other.label}. The starred list ` +
+									'hangs off that one key, so the phone reports every push as sent and ' +
+									'the wrist renders its empty state.',
+							);
+						}
+					}
+				}
+			}
+			for (const m of [...new Set(mismatches)].sort()) errors.push(m);
+			if (mismatches.length === 0) {
+				ok.push(
+					`the \`${[...(/** @type {Set<string>} */ (rails[0].keys))].join('`, `')}\` envelope ` +
+						'key agrees across the Dart channel, the phone repack and the watch decode',
+				);
+			}
+		}
+
+		// Each end must hand its elements to the SINGLE-route validator claim
+		// (7) already holds. That is what makes the five element keys one key
+		// list rather than three, so it is checked rather than assumed.
+		const bodies = new Map([
+			[SAVED_ROUTES_PHONE_FN, phoneBody],
+			[SAVED_ROUTES_WATCH_FN, watchBody],
+		]);
+		let delegated = 0;
+		for (const [fn, call, what] of SAVED_ROUTES_DELEGATIONS) {
+			const body = bodies.get(fn);
+			if (body === null || body === undefined) continue;
+			if (body.includes(call)) {
+				delegated += 1;
+				continue;
+			}
+			errors.push(
+				`${what} (\`${fn}\`) no longer calls \`${call}…)\`, so the list's elements are ` +
+					'validated by a second set of rules that claim (7) does not read. Either route ' +
+					'them back through the single-route validator, or add the list\'s own element ' +
+					'keys to claim (7)\'s rails — an unread key list is how a route the runner ' +
+					'starred silently stops reaching the wrist.',
+			);
+		}
+		if (delegated === SAVED_ROUTES_DELEGATIONS.length) {
+			ok.push(
+				`both ends of the saved-routes list validate each element through their ` +
+					'single-route decoder, so claim (7) holds its five keys too',
+			);
+		}
+
+		// …and the Dart end, which has no such decoder to delegate to, writes
+		// the same five keys the single push writes.
+		const element = dartFunctionMapKeys(dartSrc, SAVED_ROUTES_DART_ENCODER);
+		const single = dartInvokeKeys(dartSrc, 'push');
+		if (element === null || single === null) {
+			errors.push(
+				`Parsed no element keys out of ${ROUTE_BRIDGE} (${SAVED_ROUTES_DART_ENCODER}) or out ` +
+					"of its single `push` — claim (7b) cannot compare the list's element shape " +
+					'against the armed push it is supposed to be a copy of.',
+			);
+		} else {
+			const diff = [
+				...[...element].filter((k) => !single.has(k)).map((k) => `\`${k}\` only in the list`),
+				...[...single].filter((k) => !element.has(k)).map((k) => `\`${k}\` only in the armed push`),
+			].sort();
+			if (diff.length > 0) {
+				errors.push(
+					`${ROUTE_BRIDGE} builds a list element that is not the five-key dictionary a ` +
+						`single push carries: ${diff.join(', ')}. The watch decodes both with ` +
+						'`ArmedRoute.decode`, so the odd one out is dropped from the picker with ' +
+						'nothing reported.',
+				);
+			} else {
+				ok.push(`the Dart list element is the same ${element.size} keys as the armed push`);
+			}
+		}
+	}
+
+	// (20) The settings envelope, read from all three of its ends.
+	if (ingestPath !== null && prefsBridgePath !== null) {
+		const ingestSrc = stripSwiftComments(readFileSync(ingestPath, 'utf8'));
+		const watchSrc = stripSwiftComments(read(WATCH_CONNECTIVITY));
+		const phone = swiftPayloadKeys(methodBody(ingestSrc, 'prefsContext') ?? '', 'args');
+		const watch = swiftPayloadKeys(
+			(methodBody(watchSrc, 'preferredUnit') ?? '') + (methodBody(watchSrc, 'audioCues') ?? ''),
+			'payload',
+		);
+		const dart = dartInvokeKeys(readFileSync(prefsBridgePath, 'utf8'), 'push');
+		/** @type {{ label: string, keys: Set<string> | null }[]} */
+		const rails = [
+			{ label: `${PREFS_BRIDGE} (invokeMethod 'push')`, keys: dart },
+			{ label: `${INGEST} (prefsContext)`, keys: phone },
+			{ label: `${WATCH_CONNECTIVITY} (PhonePreferences)`, keys: watch },
+		];
+		const unread = rails.filter((r) => r.keys === null);
+		if (unread.length > 0) {
+			errors.push(
+				`Parsed no settings-envelope keys out of ${unread.map((r) => r.label).join(' and ')} — ` +
+					'claim (20) would pass vacuously, or report that the other rails agree on keys ' +
+					'nobody sends. One of the three call sites changed shape.',
+			);
+		} else {
+			/** @type {string[]} */
+			const mismatches = [];
+			for (const rail of rails) {
+				for (const other of rails) {
+					if (rail === other) continue;
+					for (const key of /** @type {Set<string>} */ (rail.keys)) {
+						if (!(/** @type {Set<string>} */ (other.keys)).has(key)) {
+							mismatches.push(
+								`\`${key}\` is on ${rail.label} and not on ${other.label}. The watch ` +
+									'applies each settings key independently, so this does not drop the ' +
+									'push — it drops that one preference out of it with nothing failing ' +
+									'anywhere, and `audio_cues` is the only switch that silences the wrist.',
+							);
+						}
+					}
+				}
+			}
+			for (const m of [...new Set(mismatches)].sort()) errors.push(m);
+			if (mismatches.length === 0) {
+				ok.push(
+					`all ${(/** @type {Set<string>} */ (dart)).size} settings-push keys agree across the ` +
 						'Dart channel, the phone repack and the watch decode',
 				);
 			}
@@ -2074,9 +2339,7 @@ export function check(
 				if (rel in UNBUILT_SWIFT) {
 					errors.push(
 						`${rel} is exempted from claim (13) but IS now a target member. ` +
-							`The exemption said: ${UNBUILT_SWIFT[rel]} Delete the entry — and if ` +
-							'this is the complication finally getting its Widget Extension, claim (4)' +
-							"'s duplicated formatters may be able to go with it.",
+							`The exemption said: ${UNBUILT_SWIFT[rel]} Delete the entry.`,
 					);
 				}
 				continue;
@@ -2132,12 +2395,13 @@ export function check(
 					'the companion declaration out of ' + WATCH_PLIST + ' in the same change.',
 			);
 		} else {
+			for (const target of [WATCH_TARGET, COMPLICATION_TARGET]) {
 			for (const phase of /** @type {const} */ (['Sources', 'Resources'])) {
-				const mine = targetPhaseMembers(watchPbx, WATCH_TARGET, phase);
-				const theirs = targetPhaseMembers(phonePbx, WATCH_TARGET, phase);
+				const mine = targetPhaseMembers(watchPbx, target, phase);
+				const theirs = targetPhaseMembers(phonePbx, target, phase);
 				if (mine.length === 0) {
 					errors.push(
-						`Parsed no ${phase} members out of ${PBXPROJ}'s \`${WATCH_TARGET}\` target — ` +
+						`Parsed no ${phase} members out of ${PBXPROJ}'s \`${target}\` target — ` +
 							'claim (15) would pass vacuously.',
 					);
 					continue;
@@ -2147,7 +2411,7 @@ export function check(
 				if (onlyMine.length > 0) {
 					errors.push(
 						`${onlyMine.join(', ')} ${onlyMine.length === 1 ? 'is' : 'are'} in ${PBXPROJ}'s ` +
-							`\`${WATCH_TARGET}\` ${phase} phase and not in ${PHONE_PBXPROJ}'s. The file is ` +
+							`\`${target}\` ${phase} phase and not in ${PHONE_PBXPROJ}'s. The file is ` +
 							'exercised by `test-watch-ios` and absent from every shipped .ipa — the suite ' +
 							'is green about code no wrist runs. Add it to both, or to neither.',
 					);
@@ -2155,11 +2419,12 @@ export function check(
 				if (onlyTheirs.length > 0) {
 					errors.push(
 						`${onlyTheirs.join(', ')} ${onlyTheirs.length === 1 ? 'is' : 'are'} in ` +
-							`${PHONE_PBXPROJ}'s \`${WATCH_TARGET}\` ${phase} phase and not in ${PBXPROJ}'s. ` +
+							`${PHONE_PBXPROJ}'s \`${target}\` ${phase} phase and not in ${PBXPROJ}'s. ` +
 							'The file ships to a wrist and is compiled by nothing that runs a test. Add it ' +
 							'to both, or to neither.',
 					);
 				}
+			}
 			}
 
 			const mineCfg = targetConfigurations(watchPbx, WATCH_TARGET);
@@ -2242,7 +2507,10 @@ export function check(
 						`(${targetPhaseMembers(watchPbx, WATCH_TARGET, 'Sources').length} sources, ` +
 						`${targetPhaseMembers(watchPbx, WATCH_TARGET, 'Resources').length} resources, ` +
 						`${WATCH_BUNDLE_SETTINGS.length + WATCH_BUNDLE_PATH_SETTINGS.length} bundle ` +
-						`settings) and ${PHONE_TARGET} embeds it at \`${WATCH_EMBED_DST}\``,
+						`settings) and the same \`${COMPLICATION_TARGET}\` extension ` +
+						`(${targetPhaseMembers(watchPbx, COMPLICATION_TARGET, 'Sources').length} sources, ` +
+						`${targetPhaseMembers(watchPbx, COMPLICATION_TARGET, 'Resources').length} resources), ` +
+						`and ${PHONE_TARGET} embeds it at \`${WATCH_EMBED_DST}\``,
 				);
 			}
 		}
@@ -2670,6 +2938,45 @@ export function check(
 		}
 	}
 
+	// (19) The suite is run in more than one language.
+	if (ciWorkflowPath !== null) {
+		const before = errors.length;
+		const workflow = readIfPresent(ciWorkflowPath);
+		const block = workflow === null ? null : jobBlock(workflow, WATCH_TEST_JOB);
+		if (workflow === null) {
+			errors.push(`${CI_WORKFLOW} is not there — claim (19) would pass vacuously.`);
+		} else if (block === null) {
+			errors.push(
+				`${CI_WORKFLOW} has no \`${WATCH_TEST_JOB}\` job, which is the only job that ` +
+					'compiles this tier at all — claim (19) would pass vacuously, and so would ' +
+					'every Swift test in the repo.',
+			);
+		} else {
+			const langs = suiteLanguages(block);
+			const distinct = new Set(langs.map((l) => l ?? '(the simulator default)'));
+			if (langs.length === 0) {
+				errors.push(
+					`\`${WATCH_TEST_JOB}\` runs no \`xcodebuild test\` — claim (19) would pass ` +
+						'vacuously, and nothing compiles the watchOS app.',
+				);
+			} else if (distinct.size < 2) {
+				errors.push(
+					`\`${WATCH_TEST_JOB}\` runs the Swift suite ${langs.length} time(s), all in ` +
+						`${[...distinct][0]}. Every assertion about a formatted string reads a ` +
+						'locale somewhere, so one language is one measurement: four tests asserted ' +
+						'English output and were green here while failing outright on a simulator ' +
+						'left in Japanese. Restore the second `xcodebuild test` pass with a ' +
+						'`-testLanguage` the first one does not use.',
+				);
+			}
+			if (errors.length === before) {
+				ok.push(
+					`the watchOS suite runs in ${distinct.size} languages (${[...distinct].join(', ')})`,
+				);
+			}
+		}
+	}
+
 	return { errors, ok };
 }
 
@@ -2681,6 +2988,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 		process.argv[4] ?? join(REPO_ROOT, ROUTE_BRIDGE),
 		process.argv[5] ?? join(REPO_ROOT, WEAR_COVERAGE),
 		process.argv[6] ?? join(REPO_ROOT, PHONE_PBXPROJ),
+		process.argv[7] ?? join(REPO_ROOT, CI_WORKFLOW),
+		process.argv[8] ?? join(REPO_ROOT, PREFS_BRIDGE),
 	);
 	for (const line of ok) console.log(`  ok: ${line}`);
 	if (errors.length > 0) {

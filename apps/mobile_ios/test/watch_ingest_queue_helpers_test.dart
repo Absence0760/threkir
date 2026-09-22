@@ -27,6 +27,33 @@ void main() {
           'source': 'watch',
         };
 
+    test('a race run carries its event through to the promoted column', () {
+      // `runs.event_id` exists so a run detail can get back to the event it
+      // was part of. The key rides the bag between the watch bridge and
+      // `runRowFromRun`, which promotes it and strips it — so the column is
+      // the only stored copy and no bag copy can shadow a later edit.
+      final run = runFromWatchPayload(
+        _basePayload()..['event_id'] = 'event-1',
+      );
+      expect(run.metadata?[MetadataKeys.eventId], 'event-1');
+      final row = runRowFromRun(run, userId: 'owner-1');
+      expect(row.eventId, 'event-1');
+      expect(row.toJson()[RunRow.colMetadata], isNull);
+    });
+
+    test('a blank or non-string event is dropped rather than sent as one', () {
+      // The column is a uuid FK: Postgres refuses `''` and takes the whole
+      // run upsert with it, so an empty stamp would lose the RUN, not the
+      // link — an auxiliary field breaking the core write.
+      for (final bad in <Object?>['', 42, null]) {
+        final raw = _basePayload();
+        if (bad != null) raw['event_id'] = bad;
+        final run = runFromWatchPayload(raw);
+        expect(run.metadata?[MetadataKeys.eventId], isNull, reason: '$bad');
+        expect(runRowFromRun(run, userId: 'owner-1').eventId, isNull);
+      }
+    });
+
     test('decodes the required fields', () {
       final run = runFromWatchPayload(_basePayload());
       expect(run.id, 'r-1');

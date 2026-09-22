@@ -226,6 +226,7 @@ void main() {
       // promoted one fails the coverage check below rather than being skipped.
       const sample = <String, Object>{
         RunRow.colActivityType: 'walk',
+        RunRow.colEventId: 'event-1',
         RunRow.colIsDnf: true,
         RunRow.colFastest5kS: 1200,
         RunRow.colFastest10kS: 2500,

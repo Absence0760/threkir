@@ -316,6 +316,33 @@ final class LiveRaceTests: XCTestCase {
             RaceFinish(runId: "run-9", durationSeconds: 600, distanceMetres: 1_000)))
     }
 
+    func testTheFinishedRunKeepsItsEventForTheHandOff() {
+        // The report CLEARS the race, so that it can only be sent once — but
+        // the run hand-off happens later, when the runner taps Sync, and it
+        // needs the event to stamp `event_id` on the row.
+        var state = LiveRaceState()
+        state.apply(race(.running))
+        _ = state.finish(
+            RaceFinish(runId: "run-9", durationSeconds: 600, distanceMetres: 1_000))
+        XCTAssertNil(state.race)
+        XCTAssertEqual(state.eventId(forRunId: "run-9"), "event-1")
+    }
+
+    func testAnotherRunDoesNotInheritTheRaceLink() {
+        // Start-next-run, then sync: the second run is not the race, and a
+        // stamp that was merely "the last race" would file it as one.
+        var state = LiveRaceState()
+        state.apply(race(.running))
+        _ = state.finish(
+            RaceFinish(runId: "run-9", durationSeconds: 600, distanceMetres: 1_000))
+        XCTAssertNil(state.eventId(forRunId: "run-10"))
+    }
+
+    func testARunThatWasNeverInARaceHasNoEvent() {
+        let state = LiveRaceState()
+        XCTAssertNil(state.eventId(forRunId: "run-9"))
+    }
+
     func testPingsStopOnceTheRunnerHasFinished() {
         var state = LiveRaceState()
         state.apply(race(.running))

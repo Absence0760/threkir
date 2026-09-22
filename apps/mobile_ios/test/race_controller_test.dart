@@ -31,9 +31,12 @@
 
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../lib/apple_watch_race_bridge.dart';
 import '../lib/race_controller.dart';
 import '../lib/social_service.dart';
 
@@ -84,6 +87,8 @@ ActiveRace race({
     );
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('ActiveRace.isArmed / isRunning', () {
     test('isArmed is true only for status == "armed"', () {
       // The banner gates on this getter. A regression to a string-
@@ -383,6 +388,186 @@ void main() {
 
       expect(social.submitted, hasLength(1));
       expect(social.submitted.single.runId, 'run-2');
+    });
+  });
+
+  group('the Apple Watch is told Arm / Go / End', () {
+    final pushed = <Map<Object?, Object?>>[];
+
+    setUp(() {
+      pushed.clear();
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+              const MethodChannel(kAppleWatchRaceChannel), (call) async {
+        if (call.method == 'push') {
+          pushed.add(call.arguments as Map<Object?, Object?>);
+        }
+        return null;
+      });
+    });
+
+    tearDown(() {
+      debugDefaultTargetPlatformOverride = null;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+              const MethodChannel(kAppleWatchRaceChannel), null);
+    });
+
+    test('arming, then GO, each reach the wrist once', () async {
+      final c = RaceController(SocialService());
+      c.setActiveForTest(race(status: 'armed'));
+      c.setActiveForTest(race(status: 'running'));
+      await pumpEventQueue();
+      expect(pushed.map((p) => p['race_status']), ['armed', 'running']);
+      expect(pushed.first['race_event_id'], 'event-1');
+      expect(pushed.first['race_instance_start'], '2026-05-22T18:00:00.000Z');
+      expect(pushed.first['race_event_title'], 'Thursday 10K');
+    });
+
+    test('a re-poll of the same state pushes nothing', () async {
+      final c = RaceController(SocialService());
+      c.setActiveForTest(race(status: 'running'));
+      await pumpEventQueue();
+      pushed.clear();
+      c.setActiveForTest(race(status: 'running'));
+      await pumpEventQueue();
+      expect(pushed, isEmpty);
+    });
+
+    // ── The trap, pinned at the controller ─────────────────────────────
+    test('a race that vanishes from the poll is ENDED explicitly', () async {
+      // Nothing on the watch times a live race out — by design — so without
+      // this push the wrist shows `RACE LIVE` until the app is reinstalled
+      // (decisions § 1706).
+      final c = RaceController(SocialService());
+      c.setActiveForTest(race(status: 'running'));
+      await pumpEventQueue();
+      pushed.clear();
+      c.setActiveForTest(null);
+      await pumpEventQueue();
+      expect(pushed, hasLength(1));
+      expect(pushed.single['race_status'], 'finished');
+      expect(pushed.single['race_event_id'], 'event-1');
+    });
+
+    test('the push does not depend on a recorder being attached', () async {
+      // `_hostingEventId` is null on the participant path — the phone is not
+      // the recorder when the runner is wearing the watch — so a relay keyed
+      // on it would never fire at all.
+      final c = RaceController(SocialService());
+      c.setActiveForTest(race(status: 'running'));
+      await pumpEventQueue();
+      expect(pushed, hasLength(1));
+    });
+  });
+
+  group('the watch relays a ping', () {
+    test('the row is keyed to the PAYLOAD, with no recorder attached',
+        () async {
+      final c = RaceController(SocialService());
+      final rows = <Map<String, dynamic>>[];
+      c.pingWriter = (row) async => rows.add(row);
+
+      await c.ingestWatchPing(WatchRacePing(
+        eventId: 'event-from-wrist',
+        instanceStart: DateTime.utc(2026, 5, 22, 18),
+        lat: 51.5,
+        lng: -0.12,
+        distanceM: 4321.5,
+        elapsedS: 1234,
+        bpm: 152,
+      ));
+
+      expect(rows, hasLength(1));
+      expect(rows.single['event_id'], 'event-from-wrist');
+      expect(rows.single['instance_start'], '2026-05-22T18:00:00.000Z');
+      expect(rows.single['lat'], 51.5);
+      expect(rows.single['distance_m'], 4321.5);
+      expect(rows.single['elapsed_s'], 1234);
+      expect(rows.single['bpm'], 152);
+    });
+
+    test('an absent bpm or distance is omitted, not zeroed', () async {
+      final c = RaceController(SocialService());
+      final rows = <Map<String, dynamic>>[];
+      c.pingWriter = (row) async => rows.add(row);
+
+      await c.ingestWatchPing(WatchRacePing(
+        eventId: 'event-1',
+        instanceStart: DateTime.utc(2026, 5, 22, 18),
+        lat: 51.5,
+        lng: -0.12,
+      ));
+
+      expect(rows.single.containsKey('bpm'), isFalse);
+      expect(rows.single.containsKey('distance_m'), isFalse);
+      expect(rows.single.containsKey('elapsed_s'), isFalse);
+    });
+
+    test('a failed write is DROPPED, never queued', () async {
+      // The opposite trade to a finisher time, and the same one the watch
+      // takes: a position an hour stale is a lie about where the runner is,
+      // and a durable queue would deliver exactly that.
+      SharedPreferences.setMockInitialValues({});
+      final c = RaceController(SocialService());
+      c.pingWriter = (row) async => throw Exception('offline');
+
+      await expectLater(
+        c.ingestWatchPing(WatchRacePing(
+          eventId: 'event-1',
+          instanceStart: DateTime.utc(2026, 5, 22, 18),
+          lat: 51.5,
+          lng: -0.12,
+        )),
+        completes,
+      );
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString(kPendingRaceResultsKey), isNull);
+    });
+  });
+
+  group('the watch relays a finisher time', () {
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    test('it is submitted against the payload\'s own race', () async {
+      final social = _FakeSocial();
+      final c = RaceController(social);
+
+      final accounted = await c.ingestWatchResult(WatchRaceResult(
+        eventId: 'event-from-wrist',
+        instanceStart: DateTime.utc(2026, 5, 22, 18),
+        runId: 'watch-run-1',
+        durationS: 3600,
+        distanceM: 10000,
+      ));
+
+      expect(accounted, isTrue);
+      expect(social.submitted.single.eventId, 'event-from-wrist');
+      expect(social.submitted.single.runId, 'watch-run-1');
+      expect(social.submitted.single.durationS, 3600);
+    });
+
+    test('a failed submit is queued to disk and replayed', () async {
+      final social = _FakeSocial(failing: true);
+      final c = RaceController(social);
+
+      final accounted = await c.ingestWatchResult(WatchRaceResult(
+        eventId: 'event-1',
+        instanceStart: DateTime.utc(2026, 5, 22, 18),
+        runId: 'watch-run-1',
+        durationS: 3600,
+        distanceM: 10000,
+      ));
+
+      // Accounted for, so the native side stops re-delivering it — the phone
+      // now owns the one value in the feature nobody can re-derive.
+      expect(accounted, isTrue);
+      expect(social.submitted, isEmpty);
+
+      social.failing = false;
+      await c.drainPendingResults();
+      expect(social.submitted.single.runId, 'watch-run-1');
     });
   });
 }

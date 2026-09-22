@@ -84,6 +84,7 @@ import workmanager_apple
     if let messenger = engineBridge.pluginRegistry as? FlutterBinaryMessenger {
       WatchIngestBridge.shared.attach(binaryMessenger: messenger)
       CalendarBridge.shared.attach(binaryMessenger: messenger)
+      LiveActivityBridge.shared.attach(binaryMessenger: messenger)
     }
   }
 }

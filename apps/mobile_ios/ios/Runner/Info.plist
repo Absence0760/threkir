@@ -60,6 +60,15 @@
 	<string>Threkir adds a club event you choose to your calendar. It never reads what else is in there.</string>
 	<key>NSCalendarsUsageDescription</key>
 	<string>Threkir adds a club event you choose to your calendar. It never reads what else is in there.</string>
+	<!-- Licenses the RunActivityExtension Live Activity: the in-progress run
+	     on the lock screen and the Dynamic Island, iOS's counterpart to the
+	     Android ongoing notification. Without this key
+	     ActivityAuthorizationInfo().areActivitiesEnabled is false and
+	     Activity.request throws, so the run records normally and the lock
+	     screen simply stays empty — a silent failure, which is why
+	     LiveActivityBridge.swift treats it as an ordinary outcome. -->
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

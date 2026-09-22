@@ -57,7 +57,7 @@ Two supported paths, plus a third that's scaffolded but not wired:
 
 1. **Email/password** — `supabase_flutter`'s `signInWithPassword`. The seed user `runner@test.com` / `testtest` works for local testing.
 2. **Google Sign-In** — native `google_sign_in` package driving the Google picker, then we hand the ID token to Supabase via `signInWithIdToken`.
-3. **Apple Sign-In** — built against the native `sign_in_with_apple` SDK, held behind `_kAppleSignInEnabled` until the Apple Developer Program enrollment yields the Services ID + Sign-in-with-Apple `.p8` that Supabase's Apple provider needs. Same gate as web's `PUBLIC_APPLE_AUTH_ENABLED` — see [`e2e_dev_accounts.md § 2`](../testing/e2e_dev_accounts.md).
+3. **Apple Sign-In** — built against the native `sign_in_with_apple` SDK, gated by `appleSignInAvailable()` in `apple_auth.dart`. There is no `_kAppleSignInEnabled` constant; the gate is asymmetric by platform. **iOS returns true unconditionally** (native flow, and `Runner.entitlements` declares `com.apple.developer.applesignin`), so it waits only on the portal App ID capability. **Android** needs the `APPLE_SERVICE_CLIENT_ID` + `APPLE_REDIRECT_URI` dart-defines, which `release-android.yml` does not yet pass — a code change, not a secret. Web is its own flag, `PUBLIC_APPLE_AUTH_ENABLED`. Ledger: [`apple_provisioning.md`](../ops/apple_provisioning.md).
 
 ### Runtime sequence (Google)
 

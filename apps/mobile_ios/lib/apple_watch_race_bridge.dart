@@ -13,7 +13,7 @@ import 'package:flutter/services.dart';
 /// `apps/watch_ios/CLAUDE.md` keeps the Supabase surface off that wrist — but
 /// the states, the 10 s ping cadence and the once-only finisher report are
 /// Wear's, because a spectator watching one live link must see the same runner
-/// whichever wrist was worn (decisions § 1706).
+/// whichever wrist was worn (decisions § 1712).
 ///
 /// The two inbound payloads take deliberately opposite durability trades, and
 /// this side mirrors them: a ping that cannot be written is DROPPED (a dot an
@@ -86,7 +86,7 @@ class WatchRace {
 /// The load-bearing case is the empty one: **End must be pushed explicitly.**
 /// The watch has no timeout on a live race by design, so a race that simply
 /// stops appearing in the phone's query leaves `RACE LIVE` on the wrist
-/// forever unless this emits a terminal push for it (decisions § 1706). That
+/// forever unless this emits a terminal push for it (decisions § 1712). That
 /// is also why a swap between two different races emits two pushes — the End
 /// for the one that is over, then the Arm for the one that is not.
 List<WatchRace> appleWatchRacePushes({WatchRace? previous, WatchRace? next}) {

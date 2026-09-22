@@ -1583,7 +1583,7 @@ export const REGISTRY = [
 			'runner is told the route was sent and the wrist never arms it; a ' +
 			'per-route point cap above the watch\'s drops that route out of the ' +
 			'picker with nothing reported. All three numbers are computed rather ' +
-			'than measured (decisions § 1704), which is exactly the kind that drifts ' +
+			'than measured (decisions § 1710), which is exactly the kind that drifts ' +
 			'when one end is re-derived and the others are doc comments claiming ' +
 			'each other.',
 		match: 'key',

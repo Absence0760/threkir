@@ -34,13 +34,15 @@ name: gitleaks
 # fake test fixtures and documented dev placeholders, scoped to the exact
 # secret (not the file) so a real key in the same source still fails.
 
+# TRIGGERED BY NOBODY. `ci.yml` calls this for the push / PR half, and
+# `gitleaks-sweep.yml` calls it for the weekly full-history sweep. The cron
+# used to live here and moved when the sweep gained a reporting job: a called
+# workflow's job may not request a permission its CALLER lacks, and reporting
+# needs `issues: write` that `ci.yml`'s one-line caller has no reason to hold.
+# Declaring it here failed `ci.yml` at STARTUP -- the whole workflow, not the
+# one job, and whether or not that job would have run.
 on:
   workflow_call:
-  schedule:
-    # Weekly full-history sweep. The push / PR triggers above only
-    # diff against the base, so a secret that landed on a forgotten
-    # branch and got merged via fast-forward could slip through.
-    - cron: '0 6 * * 1'
 
 # A called workflow cannot escalate past what the calling job grants,
 # so these are declared in BOTH places and the caller's are the ceiling.
@@ -84,3 +86,4 @@ jobs:
           # every run about something it is not permitted to do; the job
           # summary and the exit status carry the finding.
           GITLEAKS_ENABLE_COMMENTS: 'false'
+

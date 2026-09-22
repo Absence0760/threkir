@@ -1156,7 +1156,7 @@ Run the pure-helper slices with `cd apps/backend && deno test --no-check supabas
 
 The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets to drive and are exercised manually only — see [apps/backend/CLAUDE.md § Testing without real credentials](../../apps/backend/CLAUDE.md#testing-without-real-credentials).
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 1,916 declared tests across 505 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 1,918 declared tests across 505 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 
@@ -1554,6 +1554,21 @@ through the estate config and names `sops-init.sh` when the file is missing.
 `aws-preflight.sh` passes on the pinned account, only warns on a placeholder, and
 hard-fails a wrong account, a missing slot and a missing rule. Not covered: sops's
 own matching and KMS, `deploy-env.sh`, `disaster-recovery.sh`.
+
+### `.github/actions/start-supabase/start_stack.test.mjs` — 9 tests (9 added)
+
+The port-clean retry ladder, extracted from `action.yml` so something other than
+CI reads it. The property under test is which SOCKET STATES the holder probe
+counts, because the LISTEN-only `ss -ltn` it replaced could not see the outbound
+ESTABLISHED socket that held 54324 through all three attempts of run
+35626531071 — so the gate never fired, the settle wait fell straight through,
+and each retry re-ran into a live holder it never named. The `ss` stub honours
+`-l` and `-a` for that reason: one that emitted every row whatever was asked
+would pass the ESTABLISHED case against the very probe that caused the incident,
+and both of those assertions were verified to fail against it. The other edges
+are the ones a widened probe could get wrong in the opposite direction —
+TIME-WAIT is not a holder (docker-proxy binds over it with SO_REUSEADDR), a
+stack port in the PEER column is not a holder, and `154322` is not `54322`.
 
 ---
 

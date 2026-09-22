@@ -92,7 +92,7 @@ void main() {
 
     // ── The trap, pinned ────────────────────────────────────────────────
     test('a race that disappears is ENDED explicitly', () {
-      // The watch has no timeout on a live race by design (decisions § 1706),
+      // The watch has no timeout on a live race by design (decisions § 1712),
       // so a race that simply stops matching the phone's query leaves
       // `RACE LIVE` on the wrist forever unless an End is pushed for it.
       final pushes = appleWatchRacePushes(previous: _race(status: 'running'));

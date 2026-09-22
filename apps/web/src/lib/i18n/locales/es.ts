@@ -2961,6 +2961,7 @@ export const messages = {
 	"routeMarker.heading": "Marcadores de ruta",
 	"routeMarker.add": "Añadir marcador",
 	"routeMarker.empty": "Aún no hay marcadores. Añade avituallamientos, cortes de tiempo y más a lo largo de la ruta.",
+	"routeMarker.loadFailed": "No se pudieron cargar los marcadores de esta ruta. No se han eliminado: comprueba tu conexión e inténtalo de nuevo.",
 	"routeMarker.edit": "Editar marcador",
 	"routeMarker.delete": "Eliminar",
 	"routeMarker.cancel": "Cancelar",

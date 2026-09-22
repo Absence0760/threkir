@@ -9,7 +9,7 @@
 
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { SUPPORTED_LOCALES } from './i18n/locale';
 import { stripComments } from './core/strip_comments';
@@ -380,6 +380,89 @@ test('a club list survives a membership blip instead of becoming an error page',
 		assert.ok(
 			read(`src/lib/i18n/locales/${locale}.ts`).includes('"socialClubs.membershipUnknown":'),
 			`socialClubs.membershipUnknown missing from ${locale}.ts`,
+		);
+	}
+});
+
+test('fetchRouteMarkers throws on a failed read, and asks for the markers with a GET', () => {
+	// Reason: it answered any error with `[]`, so a failed read rendered the
+	// roadbook's "Add course markers to build a roadbook" and the editor's
+	// "No course markers yet" to an owner who has markers. The GET is what
+	// kept failing that way: supabase-js sends `.rpc()` as a POST, and Kong
+	// replays an idempotent request whose pooled PostgREST connection closed
+	// under it but hands a POST back as a 502 (decisions § 1703).
+	const source = read('src/lib/core/data.ts');
+	const fn = source.match(/export async function fetchRouteMarkers[\s\S]*?\n}/);
+	assert.ok(fn, 'fetchRouteMarkers body missing — rename?');
+	assert.match(fn![0], /if \(error\) throw error;/, 'a failed read must throw');
+	assert.doesNotMatch(fn![0], /return \[\];/, 'a failure must not be reported as no markers');
+	assert.match(
+		fn![0],
+		/'route_markers_for_viewer',\s*\{ p_route_id: routeId \},\s*\{ get: true \},/,
+		'the read must go out as a GET so the gateway may retry it',
+	);
+});
+
+test('every fetchRouteMarkers caller decides what a failed read means', () => {
+	// Reason: the read used to swallow its own error, so no caller had to.
+	// Each one now says what a failure is on its surface — a retryable error
+	// where markers ARE the surface, silence where they are auxiliary — and a
+	// new caller has to be added here with its answer.
+	const roadbook = read('src/routes/routes/[id]/roadbook/+page.svelte');
+	const editor = read('src/lib/components/RouteMarkerEditor.svelte');
+	const detail = read('src/routes/routes/[id]/+page.svelte');
+	const live = read('src/routes/live/[id]/+page.svelte');
+
+	const load = roadbook.match(/async function load\(\)[\s\S]*?\n\t\}/);
+	assert.ok(load, 'roadbook load body missing — rename?');
+	assert.match(load![0], /try \{[\s\S]*?await fetchRouteMarkers\(data\.id\)[\s\S]*?\} catch[\s\S]*?loadFailed = true;/);
+	assert.match(
+		roadbook,
+		/\{:else if loadFailed\}[\s\S]*?onclick=\{\(\) => void load\(\)\}[\s\S]*?\{:else if !route\}/,
+		'the roadbook must offer a retry before it can claim anything about the route',
+	);
+	const save = roadbook.match(/async function saveTargets\(\)[\s\S]*?\n\t\}/);
+	assert.ok(save, 'saveTargets body missing — rename?');
+	assert.match(save![0], /await fetchRouteMarkers\(data\.id\);[\s\S]*?\} catch \(e\) \{\s*showToast\(m\('roadbook\.saveTargetsFailed'/);
+
+	const reload = editor.match(/async function reload\(\)[\s\S]*?\n\t\}/);
+	assert.ok(reload, 'RouteMarkerEditor reload body missing — rename?');
+	assert.match(reload![0], /try \{\s*markers = await fetchRouteMarkers\(routeId\);[\s\S]*?\} catch[\s\S]*?loadFailed = true;/);
+	assert.match(
+		editor,
+		/\{#if loadFailed\}[\s\S]*?onclick=\{\(\) => void reload\(\)\}[\s\S]*?\{:else if loaded && sorted\.length === 0/,
+		'the editor must say the read failed before it can say there are no markers',
+	);
+
+	assert.match(detail, /try \{\s*routeMarkers = await fetchRouteMarkers\(route\.id\);\s*\} catch/);
+	assert.match(
+		live,
+		/try \{\s*const \[route, markers\] = await Promise\.all\(\[\s*fetchRouteById\(run\.route_id\),\s*fetchRouteMarkers\(run\.route_id\),/,
+	);
+
+	const callers: Record<string, number> = {};
+	for (const rel of readdirSync(resolve('src'), { recursive: true }) as string[]) {
+		if (!/\.(ts|svelte)$/.test(rel) || rel.endsWith('.test.ts') || rel === 'lib/core/data.ts') continue;
+		const n = (stripComments(read('src', rel)).match(/\bfetchRouteMarkers\(/g) ?? []).length;
+		if (n > 0) callers[rel] = n;
+	}
+	assert.deepEqual(
+		callers,
+		{
+			'lib/components/RouteMarkerEditor.svelte': 1,
+			'routes/live/[id]/+page.svelte': 1,
+			'routes/routes/[id]/+page.svelte': 1,
+			'routes/routes/[id]/roadbook/+page.svelte': 2,
+		},
+		'a call site was added or removed — pin its failure handling above',
+	);
+});
+
+test('the marker read-failure copy is localized in every catalogue', () => {
+	for (const locale of SUPPORTED_LOCALES) {
+		assert.ok(
+			read(`src/lib/i18n/locales/${locale}.ts`).includes('"routeMarker.loadFailed":'),
+			`routeMarker.loadFailed missing from ${locale}.ts`,
 		);
 	}
 });

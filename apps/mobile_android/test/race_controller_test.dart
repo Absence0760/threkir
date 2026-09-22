@@ -439,7 +439,7 @@ void main() {
     test('a race that vanishes from the poll is ENDED explicitly', () async {
       // Nothing on the watch times a live race out — by design — so without
       // this push the wrist shows `RACE LIVE` until the app is reinstalled
-      // (decisions § 1706).
+      // (decisions § 1712).
       final c = RaceController(SocialService());
       c.setActiveForTest(race(status: 'running'));
       await pumpEventQueue();

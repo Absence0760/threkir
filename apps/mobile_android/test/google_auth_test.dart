@@ -42,6 +42,55 @@ void main() {
       expect(googleWebClientId(), 'web.apps.googleusercontent.com');
       expect(googleSignInAvailable(), isFalse);
     });
+
+    test('no Firebase platform on the host reads as no iOS client id', () {
+      expect(iosOauthClientId(), isNull);
+    });
+  });
+
+  // The decision over values. `googleSignInAvailable` can only ever be
+  // observed false on a host runner — no bundle, so no GoogleService-Info.plist
+  // and no iOS client id — which left the branch that turns the button ON
+  // untested. These drive it directly.
+  group('googleSignInAvailableFor', () {
+    test('Android ignores the iOS client id entirely', () {
+      expect(
+          googleSignInAvailableFor(
+              webClientId: 'web.apps.googleusercontent.com',
+              isIos: false,
+              iosClientId: null),
+          isTrue);
+    });
+
+    test('no web client id fails closed on either platform', () {
+      for (final isIos in [true, false]) {
+        expect(
+            googleSignInAvailableFor(
+                webClientId: null,
+                isIos: isIos,
+                iosClientId: 'ios.apps.googleusercontent.com'),
+            isFalse,
+            reason: 'isIos=$isIos');
+      }
+    });
+
+    test('iOS needs the iOS client id as well as the web one', () {
+      expect(
+          googleSignInAvailableFor(
+              webClientId: 'web.apps.googleusercontent.com',
+              isIos: true,
+              iosClientId: null),
+          isFalse);
+    });
+
+    test('iOS is available once both client ids are present', () {
+      expect(
+          googleSignInAvailableFor(
+              webClientId: 'web.apps.googleusercontent.com',
+              isIos: true,
+              iosClientId: 'ios.apps.googleusercontent.com'),
+          isTrue);
+    });
   });
 
   // decisions § 1700: rendering is a separate question from the tap gate.

@@ -7,6 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A5CD1E000000000000000003 /* RunActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000010 /* RunActivityAttributes.swift */; };
+		A5CD1E000000000000000004 /* LiveActivityBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000014 /* LiveActivityBridge.swift */; };
+		A5CD1E000000000000000001 /* RunActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000010 /* RunActivityAttributes.swift */; };
+		A5CD1E000000000000000005 /* RunActivityExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000013 /* RunActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A5CD1E000000000000000002 /* RunActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000011 /* RunActivityWidget.swift */; };
+		A5CD1E000000000000000006 /* LiveActivityBridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000016 /* LiveActivityBridgeTests.swift */; };
 		054B8C1C1E3BDB65A10FA040 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 665513E9B09D3B4079C81663 /* Pods_Runner.framework */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		A1C0DE0000000000000C0002 /* CalendarBridgeRruleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0DE0000000000000C0001 /* CalendarBridgeRruleTests.swift */; };
@@ -46,6 +52,11 @@
 		7884EA00222EC3CC00C636F4 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 7884EA00212EC3CC00C636F4 /* Localizable.xcstrings */; };
 		7884EA00352EC3CC00C636F4 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 7884EA00342EC3CC00C636F4 /* InfoPlist.xcstrings */; };
 		7884EA00262EC3CC00C636F4 /* WatchApp.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 7884EA00252EC3CC00C636F4 /* WatchApp.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		5AE0C0DE0000000000000001 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AE0C0DE0000000000000010 /* ShareViewController.swift */; };
+		5AE0C0DE0000000000000002 /* SharedRouteHandoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AE0C0DE0000000000000011 /* SharedRouteHandoff.swift */; };
+		5AE0C0DE0000000000000003 /* SharedRouteHandoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AE0C0DE0000000000000011 /* SharedRouteHandoff.swift */; };
+		5AE0C0DE0000000000000004 /* ShareExtensionHandoffTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AE0C0DE0000000000000015 /* ShareExtensionHandoffTests.swift */; };
+		5AE0C0DE0000000000000005 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5AE0C0DE0000000000000014 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -60,15 +71,41 @@
 			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5AE0C0DE0000000000000034 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				5AE0C0DE0000000000000005 /* ShareExtension.appex in Embed Foundation Extensions */,
+				A5CD1E000000000000000005 /* RunActivityExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXContainerItemProxy section */
+		A5CD1E000000000000000035 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A5CD1E000000000000000030;
+			remoteInfo = RunActivityExtension;
+		};
 		331C8085294A63A400263BE5 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 97C146ED1CF9000F007C117D;
 			remoteInfo = Runner;
+		};
+		5AE0C0DE0000000000000040 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5AE0C0DE0000000000000030;
+			remoteInfo = ShareExtension;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -96,6 +133,13 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A5CD1E000000000000000010 /* RunActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunActivityAttributes.swift; sourceTree = "<group>"; };
+		A5CD1E000000000000000014 /* LiveActivityBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityBridge.swift; sourceTree = "<group>"; };
+		A5CD1E000000000000000011 /* RunActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunActivityWidget.swift; sourceTree = "<group>"; };
+		A5CD1E000000000000000015 /* RunActivity.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = RunActivity.xcconfig; path = Flutter/RunActivity.xcconfig; sourceTree = "<group>"; };
+		A5CD1E000000000000000012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A5CD1E000000000000000016 /* LiveActivityBridgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityBridgeTests.swift; sourceTree = "<group>"; };
+		A5CD1E000000000000000013 /* RunActivityExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RunActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		004299668207F1A19BC9D2C0 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		01181151CA7C4988DB014122 /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
 		0D67D7F0B0B7F43602FB9788 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
@@ -153,9 +197,23 @@
 		7884EA00242EC3CC00C636F4 /* WatchApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WatchApp.entitlements; sourceTree = "<group>"; };
 		7884EA00252EC3CC00C636F4 /* WatchApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WatchApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7884EA00332EC3CC00C636F4 /* WatchApp.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = WatchApp.xcconfig; path = Flutter/WatchApp.xcconfig; sourceTree = "<group>"; };
+		5AE0C0DE0000000000000010 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		5AE0C0DE0000000000000011 /* SharedRouteHandoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedRouteHandoff.swift; sourceTree = "<group>"; };
+		5AE0C0DE0000000000000012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		5AE0C0DE0000000000000013 /* ShareExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ShareExtension.entitlements; sourceTree = "<group>"; };
+		5AE0C0DE0000000000000014 /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		5AE0C0DE0000000000000015 /* ShareExtensionHandoffTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareExtensionHandoffTests.swift; sourceTree = "<group>"; };
+		5AE0C0DE0000000000000016 /* ShareExtension.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = ShareExtension.xcconfig; path = Flutter/ShareExtension.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		A5CD1E000000000000000032 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		1DB25A7F209C78D39DF8B181 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -180,9 +238,26 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5AE0C0DE0000000000000032 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		A5CD1E000000000000000020 /* RunActivity */ = {
+			isa = PBXGroup;
+			children = (
+				A5CD1E000000000000000010 /* RunActivityAttributes.swift */,
+				A5CD1E000000000000000011 /* RunActivityWidget.swift */,
+				A5CD1E000000000000000012 /* Info.plist */,
+			);
+			path = RunActivity;
+			sourceTree = "<group>";
+		};
 		2AC58A8B0223326464C20D9A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -197,6 +272,8 @@
 			children = (
 				A1C0DE0000000000000C0001 /* CalendarBridgeRruleTests.swift */,
 				A1C0DE0000000000000C0003 /* WatchIngestBridgeTests.swift */,
+				5AE0C0DE0000000000000015 /* ShareExtensionHandoffTests.swift */,
+				A5CD1E000000000000000016 /* LiveActivityBridgeTests.swift */,
 			);
 			path = RunnerTests;
 			sourceTree = "<group>";
@@ -224,6 +301,8 @@
 				7AFA3C8E1D35360C0083082E /* Release.xcconfig */,
 				9740EEB31CF90195004384FC /* Generated.xcconfig */,
 				7884EA00332EC3CC00C636F4 /* WatchApp.xcconfig */,
+				5AE0C0DE0000000000000016 /* ShareExtension.xcconfig */,
+				A5CD1E000000000000000015 /* RunActivity.xcconfig */,
 			);
 			name = Flutter;
 			sourceTree = "<group>";
@@ -235,9 +314,11 @@
 				97C146F01CF9000F007C117D /* Runner */,
 				97C146EF1CF9000F007C117D /* Products */,
 				331C8082294A63A400263BE5 /* RunnerTests */,
+				5AE0C0DE0000000000000020 /* ShareExtension */,
 				7884EA00272EC3CC00C636F4 /* WatchApp */,
 				817F36B4C422B0F918E58AFA /* Pods */,
 				2AC58A8B0223326464C20D9A /* Frameworks */,
+				A5CD1E000000000000000020 /* RunActivity */,
 			);
 			sourceTree = "<group>";
 		};
@@ -246,7 +327,9 @@
 			children = (
 				97C146EE1CF9000F007C117D /* Runner.app */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
+				5AE0C0DE0000000000000014 /* ShareExtension.appex */,
 				7884EA00252EC3CC00C636F4 /* WatchApp.app */,
+				A5CD1E000000000000000013 /* RunActivityExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -266,6 +349,7 @@
 				7884E9682EC3CC0A00C636F2 /* WatchIngestBridge.swift */,
 				7884E9712EC3CC0A00C636F3 /* CalendarBridge.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
+				A5CD1E000000000000000014 /* LiveActivityBridge.swift */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -304,9 +388,37 @@
 			path = "../../watch_ios/WatchApp";
 			sourceTree = "<group>";
 		};
+		5AE0C0DE0000000000000020 /* ShareExtension */ = {
+			isa = PBXGroup;
+			children = (
+				5AE0C0DE0000000000000010 /* ShareViewController.swift */,
+				5AE0C0DE0000000000000011 /* SharedRouteHandoff.swift */,
+				5AE0C0DE0000000000000012 /* Info.plist */,
+				5AE0C0DE0000000000000013 /* ShareExtension.entitlements */,
+			);
+			path = ShareExtension;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		A5CD1E000000000000000030 /* RunActivityExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A5CD1E000000000000000043 /* Build configuration list for PBXNativeTarget "RunActivityExtension" */;
+			buildPhases = (
+				A5CD1E000000000000000031 /* Sources */,
+				A5CD1E000000000000000032 /* Frameworks */,
+				A5CD1E000000000000000033 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RunActivityExtension;
+			productName = RunActivityExtension;
+			productReference = A5CD1E000000000000000013 /* RunActivityExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		331C8080294A63A400263BE5 /* RunnerTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 331C8087294A63A400263BE5 /* Build configuration list for PBXNativeTarget "RunnerTests" */;
@@ -338,13 +450,17 @@
 				7884EA032EC3CC0A00C636F5 /* Copy Firebase config if present */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
 				7884EA002B2EC3CC00C636F4 /* Embed Watch Content */,
+				5AE0C0DE0000000000000034 /* Embed Foundation Extensions */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				35962F30FA7EE92CA151D686 /* [CP] Embed Pods Frameworks */,
+				7884EA042EC3CC0A00C636F6 /* Register the Google Sign-In redirect scheme */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				7884EA002E2EC3CC00C636F4 /* PBXTargetDependency */,
+				5AE0C0DE0000000000000041 /* PBXTargetDependency */,
+				A5CD1E000000000000000036 /* PBXTargetDependency */,
 			);
 			name = Runner;
 			packageProductDependencies = (
@@ -371,6 +487,23 @@
 			productReference = 7884EA00252EC3CC00C636F4 /* WatchApp.app */;
 			productType = "com.apple.product-type.application";
 		};
+		5AE0C0DE0000000000000030 /* ShareExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5AE0C0DE0000000000000053 /* Build configuration list for PBXNativeTarget "ShareExtension" */;
+			buildPhases = (
+				5AE0C0DE0000000000000031 /* Sources */,
+				5AE0C0DE0000000000000032 /* Frameworks */,
+				5AE0C0DE0000000000000033 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ShareExtension;
+			productName = ShareExtension;
+			productReference = 5AE0C0DE0000000000000014 /* ShareExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -391,6 +524,9 @@
 					};
 					7884EA002C2EC3CC00C636F4 = {
 						CreatedOnToolsVersion = 15.0;
+					};
+					5AE0C0DE0000000000000030 = {
+						CreatedOnToolsVersion = 26.4;
 					};
 				};
 			};
@@ -418,12 +554,21 @@
 			targets = (
 				97C146ED1CF9000F007C117D /* Runner */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
+				5AE0C0DE0000000000000030 /* ShareExtension */,
 				7884EA002C2EC3CC00C636F4 /* WatchApp */,
+				A5CD1E000000000000000030 /* RunActivityExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		A5CD1E000000000000000033 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		331C807F294A63A400263BE5 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -452,9 +597,33 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5AE0C0DE0000000000000033 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		7884EA042EC3CC0A00C636F6 /* Register the Google Sign-In redirect scheme */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)",
+			);
+			name = "Register the Google Sign-In redirect scheme";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# GoogleSignIn hands the browser back through a custom URL scheme that IS the iOS\n# OAuth client id reversed, and routes it via handleURL:. That scheme cannot live in\n# the committed Info.plist for the same reason GoogleService-Info.plist itself cannot\n# -- it is the credential, and this repo is public. So it is appended to the BUILT\n# Info.plist from the operator's file; -append leaves the Supabase auth entry at index\n# 0 alone. No file, or a Firebase app with Google Sign-In switched off (which ships no\n# REVERSED_CLIENT_ID), registers nothing, and google_auth.dart hides the button off\n# that same absence, so the button and the redirect it needs arrive together.\n#\n# It is a phase of its own, last, because ProcessInfoPlistFile regenerates\n# Runner.app/Info.plist from the source file and would overwrite an earlier edit --\n# measured, having first written this into the Firebase phase above. Xcode runs shell\n# phases in list order, so \"last\" is positional and this must stay at the end;\n# alwaysOutOfDate keeps it running on an incremental build, where the plist is\n# regenerated but the target is otherwise up to date. decisions.md.\nSRC=\"${SRCROOT}/Runner/GoogleService-Info.plist\"\nINFO=\"${BUILT_PRODUCTS_DIR}/${INFOPLIST_PATH}\"\nREVERSED=$(/usr/libexec/PlistBuddy -c \"Print :REVERSED_CLIENT_ID\" \"$SRC\" 2>/dev/null) || REVERSED=\"\"\nif [ -z \"$REVERSED\" ]; then\n  echo \"note: no REVERSED_CLIENT_ID; building without the Google Sign-In redirect scheme\"\nelif [ ! -f \"$INFO\" ]; then\n  echo \"error: $INFO does not exist; the Google Sign-In redirect scheme cannot be registered\"\n  exit 1\nelif plutil -extract CFBundleURLTypes json -o - \"$INFO\" 2>/dev/null | grep -q \"$REVERSED\"; then\n  echo \"note: Google Sign-In redirect scheme already registered\"\nelse\n  JSON=$(printf '{\"CFBundleTypeRole\":\"Editor\",\"CFBundleURLName\":\"com.threkir.app.google\",\"CFBundleURLSchemes\":[\"%s\"]}' \"$REVERSED\")\n  plutil -insert CFBundleURLTypes -json \"$JSON\" -append \"$INFO\"\n  echo \"note: registered the Google Sign-In redirect scheme from GoogleService-Info.plist\"\nfi\n";
+			showEnvVarsInLog = 0;
+		};
 		7884EA032EC3CC0A00C636F5 /* Copy Firebase config if present */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -468,7 +637,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# The Firebase config is operator-supplied and untracked: this repo is public, so it\n# cannot be committed. Bundle it when an operator has dropped one in, and build\n# without it otherwise -- the Dart side already gates on Firebase.apps.isNotEmpty and\n# disables push when it is absent. Declaring it as a hard Resources build input made a\n# credential-free checkout unbuildable. decisions.md.\nSRC=\"${SRCROOT}/Runner/GoogleService-Info.plist\"\nif [ -f \"$SRC\" ]; then\n  cp \"$SRC\" \"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleService-Info.plist\"\nelse\n  echo \"note: no GoogleService-Info.plist in Runner/; building without Firebase push\"\nfi\n";
+			shellScript = "# The Firebase config is operator-supplied and untracked: this repo is public, so it\n# cannot be committed. Bundle it when an operator has dropped one in, and build\n# without it otherwise -- the Dart side already gates on Firebase.apps.isNotEmpty and\n# disables push when it is absent. Declaring it as a hard Resources build input made a\n# credential-free checkout unbuildable. decisions.md.\n#\n# ABSENT and MALFORMED are different failures and get different answers here, because\n# only one of them can be left to the app. firebase_core configures FIRApp from\n# +[FLTFirebaseCorePlugin sharedInstance], which GeneratedPluginRegistrant reaches\n# during plugin registration -- before any Dart runs -- so initFirebaseForPush's\n# try/catch is downstream of the failure and never sees it. A bad field there is an\n# uncaught NSException and the process takes SIGABRT at launch. Measured on a\n# simulator build: +[FIRInstallations validateAPIKey:] raised through\n# +[FIRApp configureWithOptions:] under +[FLTFirebaseCorePlugin sharedInstance].\n# There is no runtime rescue for that, so the check belongs here, where a wrong\n# credential is still a build error rather than a binary that aborts on every launch.\n#\n# The fields checked are exactly the ones that RAISE, mirrored from the SDK:\n# GOOGLE_APP_ID per +[FIRApp validateAppID:] (which deliberately permits an unknown\n# future version), API_KEY and PROJECT_ID per +[FIRInstallations\n# validateAppOptions:appName:]. BUNDLE_ID only logs I-COR000008, so it only warns.\nSRC=\"${SRCROOT}/Runner/GoogleService-Info.plist\"\nif [ ! -f \"$SRC\" ]; then\n  # Drop any copy a previous build left behind. Without this an operator who\n  # REMOVES the file keeps a configured Firebase on every incremental build --\n  # measured -- so \"unconfigured\" would not actually be reachable without a clean.\n  rm -f \"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleService-Info.plist\"\n  echo \"note: no GoogleService-Info.plist in Runner/; building without Firebase push\"\n  exit 0\nfi\n\nkey() { /usr/libexec/PlistBuddy -c \"Print :$1\" \"$SRC\" 2>/dev/null || true; }\nbad() {\n  echo \"error: GoogleService-Info.plist: $1\"\n  echo \"error: download a fresh file for $PRODUCT_BUNDLE_IDENTIFIER from the Firebase console rather than hand-editing one; a wrong value here aborts the app at launch, where nothing can catch it.\"\n  exit 1\n}\n\nAPP_ID=$(key GOOGLE_APP_ID)\nAPI_KEY=$(key API_KEY)\nPROJECT_ID=$(key PROJECT_ID)\n\ncase \"$APP_ID\" in\n  '') bad \"GOOGLE_APP_ID is missing\" ;;\n  1:*) printf '%s' \"$APP_ID\" | grep -qE '^1:[0-9]+:ios:[0-9a-fA-F]+$' || bad \"GOOGLE_APP_ID \\\"$APP_ID\\\" is not <1>:<project number>:ios:<hex bundle hash>\" ;;\n  *) printf '%s' \"$APP_ID\" | grep -qE '^[0-9]+:' || bad \"GOOGLE_APP_ID \\\"$APP_ID\\\" does not begin with a version number\" ;;\nesac\n\n[ \"${#API_KEY}\" -eq 39 ] || bad \"API_KEY must be exactly 39 characters, got ${#API_KEY}\"\ncase \"$API_KEY\" in A*) ;; *) bad \"API_KEY must start with 'A'\" ;; esac\nprintf '%s' \"$API_KEY\" | grep -qE '^[A-Za-z0-9_-]+$' || bad \"API_KEY must be base64url characters only\"\n[ -n \"$PROJECT_ID\" ] || bad \"PROJECT_ID is missing\"\n\nBUNDLE_ID=$(key BUNDLE_ID)\nif [ -n \"$BUNDLE_ID\" ] && [ \"$BUNDLE_ID\" != \"$PRODUCT_BUNDLE_IDENTIFIER\" ]; then\n  echo \"warning: GoogleService-Info.plist BUNDLE_ID is $BUNDLE_ID, not $PRODUCT_BUNDLE_IDENTIFIER; Firebase logs I-COR000008 and push will not deliver\"\nfi\n\ncp \"$SRC\" \"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleService-Info.plist\"\n";
 			showEnvVarsInLog = 0;
 		};
 		1608DAAAF6190A8882C69548 /* [CP] Check Pods Manifest.lock */ = {
@@ -566,12 +735,24 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		A5CD1E000000000000000031 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A5CD1E000000000000000001 /* RunActivityAttributes.swift in Sources */,
+				A5CD1E000000000000000002 /* RunActivityWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		331C807D294A63A400263BE5 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				A1C0DE0000000000000C0002 /* CalendarBridgeRruleTests.swift in Sources */,
 				A1C0DE0000000000000C0004 /* WatchIngestBridgeTests.swift in Sources */,
+				5AE0C0DE0000000000000004 /* ShareExtensionHandoffTests.swift in Sources */,
+				5AE0C0DE0000000000000003 /* SharedRouteHandoff.swift in Sources */,
+				A5CD1E000000000000000006 /* LiveActivityBridgeTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -584,6 +765,8 @@
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
 				7884E9692EC3CC0A00C636F2 /* WatchIngestBridge.swift in Sources */,
 				7884E9702EC3CC0A00C636F3 /* CalendarBridge.swift in Sources */,
+				A5CD1E000000000000000004 /* LiveActivityBridge.swift in Sources */,
+				A5CD1E000000000000000003 /* RunActivityAttributes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -615,13 +798,32 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5AE0C0DE0000000000000031 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5AE0C0DE0000000000000001 /* ShareViewController.swift in Sources */,
+				5AE0C0DE0000000000000002 /* SharedRouteHandoff.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		A5CD1E000000000000000036 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A5CD1E000000000000000030 /* RunActivityExtension */;
+			targetProxy = A5CD1E000000000000000035 /* PBXContainerItemProxy */;
+		};
 		331C8086294A63A400263BE5 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 97C146ED1CF9000F007C117D /* Runner */;
 			targetProxy = 331C8085294A63A400263BE5 /* PBXContainerItemProxy */;
+		};
+		5AE0C0DE0000000000000041 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5AE0C0DE0000000000000030 /* ShareExtension */;
+			targetProxy = 5AE0C0DE0000000000000040 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -653,6 +855,73 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		A5CD1E000000000000000040 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A5CD1E000000000000000015 /* RunActivity.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RunActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.RunActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A5CD1E000000000000000041 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A5CD1E000000000000000015 /* RunActivity.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RunActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.RunActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		A5CD1E000000000000000042 /* Profile */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A5CD1E000000000000000015 /* RunActivity.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RunActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.RunActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Profile;
+		};
 		249021D3217E4FDB00AE95B9 /* Profile */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1021,9 +1290,92 @@
 			};
 			name = Profile;
 		};
+		5AE0C0DE0000000000000050 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5AE0C0DE0000000000000016 /* ShareExtension.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.ShareExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		5AE0C0DE0000000000000051 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5AE0C0DE0000000000000016 /* ShareExtension.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.ShareExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		5AE0C0DE0000000000000052 /* Profile */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5AE0C0DE0000000000000016 /* ShareExtension.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.threkir.app.ShareExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Profile;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		A5CD1E000000000000000043 /* Build configuration list for PBXNativeTarget "RunActivityExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A5CD1E000000000000000040 /* Debug */,
+				A5CD1E000000000000000041 /* Release */,
+				A5CD1E000000000000000042 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		331C8087294A63A400263BE5 /* Build configuration list for PBXNativeTarget "RunnerTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -1060,6 +1412,16 @@
 				7884EA002F2EC3CC00C636F4 /* Debug */,
 				7884EA00302EC3CC00C636F4 /* Release */,
 				7884EA00312EC3CC00C636F4 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5AE0C0DE0000000000000053 /* Build configuration list for PBXNativeTarget "ShareExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5AE0C0DE0000000000000050 /* Debug */,
+				5AE0C0DE0000000000000051 /* Release */,
+				5AE0C0DE0000000000000052 /* Profile */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

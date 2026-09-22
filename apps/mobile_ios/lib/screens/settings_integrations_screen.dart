@@ -6,11 +6,13 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../column_limits.dart';
 import '../integration_visibility.dart';
 import '../ble_heart_rate.dart';
+import '../ble_readiness_labels.dart';
 import '../ble_treadmill.dart';
 import '../health_connect_exporter.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -803,15 +805,42 @@ class _HeartRateScanSheetState extends State<_HeartRateScanSheet> {
   bool _scanning = true;
   StreamSubscription<List<BleDeviceCandidate>>? _sub;
 
+  /// Why the adapter refused the scan, or null when it served one. Without
+  /// it the sheet's only outcome is an empty list, which reads as "no strap
+  /// nearby" whether the strap is asleep, the radio is off, or the Bluetooth
+  /// grant was denied — and on iOS the last of those is the one state the
+  /// sheet can never scan its way out of.
+  BleReadiness? _unavailable;
+
   @override
   void initState() {
     super.initState();
+    _startScan();
+  }
+
+  /// Start (or restart) the scan. Re-entrant: the previous subscription is
+  /// cancelled first, which is what stops the old scan in the transport.
+  void _startScan() {
+    _sub?.cancel();
+    setState(() {
+      _results = const [];
+      _scanning = true;
+      _unavailable = null;
+    });
     _sub = widget.heartRate.scan().listen(
       (list) {
         if (mounted) setState(() => _results = list);
       },
       onDone: () {
         if (mounted) setState(() => _scanning = false);
+      },
+      onError: (Object e) {
+        if (!mounted) return;
+        setState(() {
+          _scanning = false;
+          _unavailable =
+              e is BleUnavailable ? e.reason : BleReadiness.initialising;
+        });
       },
     );
   }
@@ -820,6 +849,17 @@ class _HeartRateScanSheetState extends State<_HeartRateScanSheet> {
   void dispose() {
     _sub?.cancel();
     super.dispose();
+  }
+
+  /// Deep-link to the app's own OS settings page, the only place a denied
+  /// Bluetooth grant can be restored on iOS. Never throws — a sheet that
+  /// crashes on the remedy is worse than one that merely sits there.
+  Future<void> _openAppSettings() async {
+    try {
+      await openAppSettings();
+    } catch (e) {
+      debugPrint('openAppSettings (BLE grant) failed: $e');
+    }
   }
 
   @override
@@ -859,7 +899,36 @@ class _HeartRateScanSheetState extends State<_HeartRateScanSheet> {
                   ),
             ),
             const SizedBox(height: 12),
-            if (_results.isEmpty && !_scanning)
+            if (_unavailable != null) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Text(
+                  bleReadinessMessage(l10n, _unavailable!) ??
+                      l10n.bleUnavailableUnknown,
+                ),
+              ),
+              // A named reason the runner cannot act on is only half the
+              // fix, so each one carries the control that matches it: the
+              // Settings app for a denied grant, another scan for a reason
+              // that could clear on its own, and nothing at all for a phone
+              // with no BLE radio.
+              if (bleReadinessNeedsAppSettings(_unavailable!))
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: FilledButton.tonal(
+                    onPressed: _openAppSettings,
+                    child: Text(l10n.bleOpenSettings),
+                  ),
+                )
+              else if (bleReadinessIsRetryable(_unavailable!))
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: FilledButton.tonal(
+                    onPressed: _startScan,
+                    child: Text(l10n.bleScanRetry),
+                  ),
+                ),
+            ] else if (_results.isEmpty && !_scanning)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Text(l10n.integrationsHrScanEmpty),

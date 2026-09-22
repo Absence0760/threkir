@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- The extension and the host app run in separate containers, so this is
+	     the only ground they share: the extension copies the shared route
+	     file in here and the host app reads it back out. The identifier is
+	     centralised in SharedRouteHandoff.swift and must match this file,
+	     Runner.entitlements, and the host app's Info.plist AppGroupId —
+	     ShareExtensionHandoffTests compares all four. -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.threkir.app.share</string>
+	</array>
+</dict>
+</plist>

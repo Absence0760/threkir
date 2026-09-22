@@ -12,14 +12,20 @@ below is the only one that works — each identifier is a prerequisite for the
 next, and two of the artifacts download exactly once.
 
 **This file is the progress ledger.** Update the status table in the same pass
-that does the step; every other doc points here rather than restating. The
+that does the step; every other doc points here rather than restating. Google
+sign-in has a ledger of its own —
+[`google_provisioning.md`](google_provisioning.md) — sharing only the Supabase
+pages and the release mechanic: its **step 7** is the URL Configuration both
+providers read, and it landed 2026-09-21, so the row below is already ticked
+for you. Its steps 8 and 9 are the same Release-plus-approval as steps 11 and
+12 here. The
 design records are [`native_push.md`](../features/native_push.md),
 [`web_app_auth.md`](../features/web_app_auth.md) and
 [`apps/mobile_ios/deployment.md`](../../apps/mobile_ios/deployment.md).
 
 ## Status
 
-Last moved: **2026-09-19**.
+Last moved: **2026-09-21**.
 
 | # | Artifact | Where it ends up | State |
 |---|---|---|---|
@@ -36,9 +42,10 @@ Last moved: **2026-09-19**.
 | 6 | **APNs key** `.p8` | Firebase → Cloud Messaging | **Done 2026-09-19** |
 | 7 | **Sign-in-with-Apple key** `.p8` | Supabase (via a generated client secret) | **Done 2026-09-19** |
 | 8 | Both `.p8` files backed up | estate `threkir/push-credentials.sops.yaml` | **Done 2026-09-19** — five values in estate commit `b82fefc`, pushed; the downloaded `.p8` files deleted |
+| — | Supabase URL Configuration (Site URL, Redirect URLs, manual linking) | Supabase dashboard | **Done 2026-09-21** — shared; landed with the Google thread |
 | 9 | Supabase Apple provider enabled | Supabase dashboard | ☐ |
 | 10 | Email-relay source registered | Apple portal → Services | ☐ |
-| 11 | `PUBLIC_APPLE_AUTH_ENABLED` truthy + `web@` tag | GitHub secret + release | ☐ |
+| 11 | `PUBLIC_APPLE_AUTH_ENABLED` truthy + `web@` Release | GitHub secret + release | ☐ |
 | 12 | `mobile_android@` release (picks up the push config) | Play | ☐ |
 | 13 | Android Apple dart-defines | `APPLE_SERVICE_CLIENT_ID` + `APPLE_REDIRECT_URI` | ☐ |
 | 14 | Apple Distribution certificate `.p12` | GitHub `production` env `IOS_BUILD_CERTIFICATE_BASE64` + `IOS_P12_PASSWORD`; estate | ☐ |
@@ -466,6 +473,14 @@ enable.
 Order matters in that list: the Services ID must be first, or the web flow and
 the native flow route to the wrong client.
 
+**URL Configuration is already done** — Site URL, the four Redirect URLs and
+**Allow manual linking** are project-wide, not per-provider, and the Google
+thread set them on 2026-09-21
+([`google_provisioning.md` § 7](google_provisioning.md)). Manual linking is the
+one to know about: without it **Link Apple** on `/settings/account` fails with
+`manual_linking_disabled`, exactly as Link Google would. Nothing to do here
+beyond confirming they are still set.
+
 **The secret is NOT the `.p8`.** Apple's client secret is an ES256 **JWT**
 signed *with* the `.p8` — `iss` = Team ID, `sub` = Services ID, `aud` =
 `https://appleid.apple.com`, `kid` = the step-7 Key ID. Supabase's dashboard
@@ -504,21 +519,50 @@ The web code is done and fail-closed; there is no diff to write
 ([decisions § 1684](../architecture/decisions.md)).
 
 1. Set the repo secret **`PUBLIC_APPLE_AUTH_ENABLED`** to `true`.
-2. Cut a **`web@<version>`** tag.
+2. Publish a **`web@<version>`** GitHub *Release* — `release-web.yml` is
+   `on: release`, so a bare tag push deploys nothing ([`releasing.md`](releasing.md)).
+3. **Approve the deployment.** The job declares `environment: production`,
+   which carries a required-reviewer rule, so the run parks at `waiting` until
+   a human clicks *Review deployments → Approve and deploy*. A re-run resets
+   the gate and needs approving again.
 
-Both are needed. `release-web.yml` writes `apps/web/.env` from its own `env:`
-block and the build reads nothing else, so the secret alone changes nothing —
-which is exactly how eight flags sat permanently off until
-[§ 1683](../architecture/decisions.md).
+The secret and the release are both needed. `release-web.yml` writes
+`apps/web/.env` from its own `env:` block and the build reads nothing else, so
+the secret alone changes nothing — which is exactly how eight flags sat
+permanently off until [§ 1683](../architecture/decisions.md).
+
+This is the same three steps Google's
+[step 8](google_provisioning.md) takes, and `web@1.8.0` walked them on
+2026-09-21: afterwards
+`curl -sS https://threkir.com/_app/env.js | grep -o 'PUBLIC_[A-Z_]*:"[^"]*"'`
+prints the gate set that deploy actually shipped, which beats reading the
+button.
 
 ## 12. Android release for push
 
-Tag **`mobile_android@<version>`**. The `google-services` Gradle apply is
+Publish a **`mobile_android@<version>`** Release — `release-android.yml` is
+`on: release` and declares `environment: production` too, so this is a Release
+plus an approval, not a tag. The `google-services` Gradle apply is
 conditional and `release-android.yml` only **warns** when the config secret is
 absent, so any AAB built before 2026-09-18 registers no device token at all —
 and a client that never registers is indistinguishable from a broken sender.
 
 ## 13. Android's Apple dart-defines
+
+Set two `production` environment secrets, then cut the step-12 Release; they
+ride the same build:
+
+- **`MOBILE_APPLE_SERVICE_CLIENT_ID`** → the dart-define `APPLE_SERVICE_CLIENT_ID`
+- **`MOBILE_APPLE_REDIRECT_URI`** → the dart-define `APPLE_REDIRECT_URI`
+
+**Both or neither** — `appleSignInAvailable()` requires the pair, so one alone
+leaves the button exactly as it was.
+
+Until [§ 1696](../architecture/decisions.md) this step was not a secret at all.
+Neither name reached a release build by any route: `main.dart`'s bridge did not
+carry them, so they were debug-only in the [§ 709](../architecture/decisions.md)
+sense, and `release-android.yml` did not pass them either. Both halves are
+wired now, which is why this reads as two secrets rather than as a code change.
 
 `appleSignInAvailable()` in
 [`apple_auth.dart`](../../apps/mobile_android/lib/apple_auth.dart) gates the
@@ -530,8 +574,12 @@ Android button on two dart-defines, the way Google's is gated on
   `https://mcbgrgvegqcmdmtraikl.supabase.co/auth/v1/callback`. It has to be one
   of the Return URLs registered there or Apple rejects the authorization.
 
-iOS needs neither: it takes the native flow off the App ID capability from
-step 3.
+iOS needs neither, and **iOS is not gated at all** — `appleSignInAvailable()`
+opens with `if (defaultTargetPlatform == TargetPlatform.iOS) return true`, and
+`Runner.entitlements` already declares `com.apple.developer.applesignin`. The
+only Apple-side thing the native flow waits on is step 3's capability. (Docs
+elsewhere refer to an `apps/mobile_ios` constant `_kAppleSignInEnabled` as the
+iOS gate; no such symbol exists anywhere in the tree.)
 
 ## 14. Apple Distribution certificate
 

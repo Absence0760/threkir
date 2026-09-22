@@ -37,6 +37,12 @@ name: Release Android
 #   MOBILE_LIVE_HUB_URL           Go live-hub base URL (optional; empty →
 #                                 falls back to Supabase live pings)
 #   MOBILE_GOOGLE_WEB_CLIENT_ID   Google Sign-In web client id (optional)
+#   MOBILE_APPLE_SERVICE_CLIENT_ID  Apple Services ID, com.threkir.web
+#                                 (optional; Android-only — iOS uses the
+#                                 native flow. Both Apple values or
+#                                 neither: the button gates on the pair)
+#   MOBILE_APPLE_REDIRECT_URI     The Services ID's registered return
+#                                 URL, which is Supabase's callback
 #   MOBILE_STRAVA_CLIENT_ID       Strava OAuth client id (optional)
 #   MOBILE_REVENUECAT_API_KEY_ANDROID  RevenueCat Android key (optional; empty
 #                                 → Subscribe falls back to the web page)
@@ -214,6 +220,14 @@ jobs:
           OSRM_URL: ${{ secrets.MOBILE_OSRM_URL }}
           LIVE_HUB_URL: ${{ secrets.MOBILE_LIVE_HUB_URL }}
           GOOGLE_WEB_CLIENT_ID: ${{ secrets.MOBILE_GOOGLE_WEB_CLIENT_ID }}
+          # Apple sign-in on ANDROID only. `sign_in_with_apple` 8.x
+          # hard-requires webAuthenticationOptions off-iOS, so the
+          # button fails closed until both land; iOS takes the native
+          # flow and needs neither. The Services ID and its return URL
+          # are Apple-portal values, not secrets, but they travel the
+          # same way as the rest.
+          APPLE_SERVICE_CLIENT_ID: ${{ secrets.MOBILE_APPLE_SERVICE_CLIENT_ID }}
+          APPLE_REDIRECT_URI: ${{ secrets.MOBILE_APPLE_REDIRECT_URI }}
           STRAVA_CLIENT_ID: ${{ secrets.MOBILE_STRAVA_CLIENT_ID }}
           REVENUECAT_API_KEY_ANDROID: ${{ secrets.MOBILE_REVENUECAT_API_KEY_ANDROID }}
         run: |
@@ -226,6 +240,8 @@ jobs:
             --dart-define=LIVE_HUB_URL="$LIVE_HUB_URL" \
             --dart-define=SENTRY_DSN="$SENTRY_DSN" \
             --dart-define=GOOGLE_WEB_CLIENT_ID="$GOOGLE_WEB_CLIENT_ID" \
+            --dart-define=APPLE_SERVICE_CLIENT_ID="$APPLE_SERVICE_CLIENT_ID" \
+            --dart-define=APPLE_REDIRECT_URI="$APPLE_REDIRECT_URI" \
             --dart-define=STRAVA_CLIENT_ID="$STRAVA_CLIENT_ID" \
             --dart-define=REVENUECAT_API_KEY_ANDROID="$REVENUECAT_API_KEY_ANDROID" \
             --dart-define=APP_RELEASE="${{ steps.version.outputs.name }}"

@@ -2960,6 +2960,7 @@ export const messages = {
 	"routeMarker.heading": "Marcadores do percurso",
 	"routeMarker.add": "Adicionar marcador",
 	"routeMarker.empty": "Nenhum marcador ainda. Adicione postos de apoio, cortes de tempo e mais ao longo do percurso.",
+	"routeMarker.loadFailed": "Não foi possível carregar os marcadores deste percurso. Eles não foram excluídos — verifique sua conexão e tente novamente.",
 	"routeMarker.edit": "Editar marcador",
 	"routeMarker.delete": "Excluir",
 	"routeMarker.cancel": "Cancelar",

@@ -2972,6 +2972,7 @@ export const en = {
 	"routeMarker.heading": "Course markers",
 	"routeMarker.add": "Add marker",
 	"routeMarker.empty": "No course markers yet. Add aid stations, cutoffs, and more along the route.",
+	"routeMarker.loadFailed": "Couldn't load this route's course markers. They have not been deleted — check your connection and try again.",
 	"routeMarker.edit": "Edit marker",
 	"routeMarker.delete": "Delete",
 	"routeMarker.cancel": "Cancel",

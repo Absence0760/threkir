@@ -142,6 +142,24 @@ test('applying twice is the same as applying once', () => {
 	assert.equal(applySigning(once, planSigning(once, ALL)), once);
 });
 
+test('a target whose object ids are not 24 hex characters is still read', () => {
+	// The watch complication target was added by hand with 12-character ids,
+	// and a reader that assumed Xcode's generated 24 failed with "has no build
+	// configuration list". The ids below must not already name an object, or
+	// the rename would merge two objects into one.
+	const [shortList, shortRelease] = ['5407E0000001', '5407E0000002'];
+	for (const id of [shortList, shortRelease]) assert.equal(PBXPROJ.includes(id), false, `${id} is unused in the project`);
+	const watch = signedTargets(PBXPROJ).find((t) => t.name === 'WatchApp');
+	assert.ok(watch);
+	const listId = /buildConfigurationList = (\w+) \/\* Build configuration list for PBXNativeTarget "WatchApp"/.exec(PBXPROJ);
+	assert.ok(listId);
+	const shortened = PBXPROJ.split(listId[1]).join(shortList).split(watch.releaseConfigId).join(shortRelease);
+	const again = signedTargets(shortened).find((t) => t.name === 'WatchApp');
+	assert.deepEqual(again, { name: 'WatchApp', bundleId: 'com.threkir.app.watchapp', releaseConfigId: shortRelease });
+	const out = applySigning(shortened, { teamId: TEAM, assignments: [{ target: again, profile: WATCH }] });
+	assert.equal(readSetting(settingsOf(out, shortRelease), 'PROVISIONING_PROFILE_SPECIFIER'), WATCH.uuid);
+});
+
 test('a missing watch profile fails naming the watch bundle id, not inside xcodebuild', () => {
 	assert.throws(() => planSigning(PBXPROJ, [PHONE, RUN_ACTIVITY]), /com\.threkir\.app\.watchapp \(target WatchApp\)/);
 });

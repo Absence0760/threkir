@@ -41,9 +41,23 @@ Iterable<RegExpMatch> codeMatches(String src, RegExp pattern) {
 bool matchesInCode(String src, RegExp pattern) =>
     codeMatches(src, pattern).isNotEmpty;
 
+/// The dotenv read shapes the tree uses, as (opening pattern, closing token).
+/// A third accessor added to flutter_dotenv and used here without an entry is
+/// a key this guard stops seeing, which is the failure it is meant to prevent.
+const _readShapes = <(String, String)>[
+  (r'dotenv\.env\[', ']'),
+  (r'dotenv\.maybeGet\(', ')'),
+];
+
 /// Every dotenv key read anywhere under `lib/`, with the two indirections the
 /// tree actually uses resolved: a file-local `const K = 'KEY'`, and a
 /// same-file `String _env(String key)` accessor called with literals.
+///
+/// **Both read shapes, not just the index.** `dotenv.maybeGet('K')` reaches
+/// the same map as `dotenv.env['K']`, and scanning only the latter is how the
+/// Apple Services ID pair went unbridged: `apple_auth.dart` reads them through
+/// a nullable `String? _env(String)` accessor built on `maybeGet`, so the
+/// guard that exists to catch exactly § 709's defect could not see them.
 Set<String> dotenvKeysRead() {
   final consts = <String, String>{};
   final constDecl = RegExp(r"const\s+(?:String\s+)?(\w+)\s*=\s*'([A-Z0-9_]+)'\s*;");
@@ -58,37 +72,42 @@ Set<String> dotenvKeysRead() {
   for (final f in files) {
     final src = f.readAsStringSync();
     final blanked = blankNonCode(src);
-    for (final m in RegExp(r'dotenv\.env\[').allMatches(blanked)) {
-      final close = src.indexOf(']', m.end);
-      expect(close, greaterThan(m.end),
-          reason: 'unterminated dotenv.env[ in ${f.path}');
-      final index = src.substring(m.end, close).trim();
-      final literal = RegExp(r"^'([A-Z0-9_]+)'$").firstMatch(index);
-      if (literal != null) {
-        keys.add(literal.group(1)!);
-        continue;
-      }
-      if (consts.containsKey(index)) {
-        keys.add(consts[index]!);
-        continue;
-      }
-      // A parameter: the enclosing accessor's own literal call sites are the
-      // keys. Anything this cannot resolve is a read the guard would silently
-      // miss, so it fails rather than passing over it.
-      final accessor =
-          RegExp(r'String\s+(\w+)\(String\s+\w+\)\s*\{').allMatches(src)
-              .where((a) => a.start < m.start)
-              .toList();
-      expect(accessor, isNotEmpty,
-          reason: 'dotenv.env[$index] in ${f.path} is indexed by neither a '
-              'literal, a const, nor an accessor parameter — name the key so '
-              'the release-reachability guard can see it.');
-      final name = accessor.last.group(1)!;
-      final calls = RegExp("$name\\('([A-Z0-9_]+)'\\)").allMatches(src);
-      expect(calls, isNotEmpty,
-          reason: '$name(...) in ${f.path} is never called with a literal key');
-      for (final c in calls) {
-        keys.add(c.group(1)!);
+    for (final (open, closer) in _readShapes) {
+      for (final m in RegExp(open).allMatches(blanked)) {
+        final close = src.indexOf(closer, m.end);
+        expect(close, greaterThan(m.end),
+            reason: 'unterminated dotenv read in ${f.path}');
+        final index = src.substring(m.end, close).trim();
+        final literal = RegExp(r"^'([A-Z0-9_]+)'$").firstMatch(index);
+        if (literal != null) {
+          keys.add(literal.group(1)!);
+          continue;
+        }
+        if (consts.containsKey(index)) {
+          keys.add(consts[index]!);
+          continue;
+        }
+        // A parameter: the enclosing accessor's own literal call sites are the
+        // keys. Anything this cannot resolve is a read the guard would silently
+        // miss, so it fails rather than passing over it. The return type is
+        // matched as optionally nullable — `String? _env(String)` is the shape
+        // a `maybeGet` wrapper takes, and requiring the non-null spelling
+        // failed the resolution rather than the scan.
+        final accessor =
+            RegExp(r'String\??\s+(\w+)\(String\s+\w+\)\s*\{').allMatches(src)
+                .where((a) => a.start < m.start)
+                .toList();
+        expect(accessor, isNotEmpty,
+            reason: 'the dotenv read keyed by `$index` in ${f.path} resolves to '
+                'neither a literal, a const, nor an accessor parameter — name '
+                'the key so the release-reachability guard can see it.');
+        final name = accessor.last.group(1)!;
+        final calls = RegExp("$name\\('([A-Z0-9_]+)'\\)").allMatches(src);
+        expect(calls, isNotEmpty,
+            reason: '$name(...) in ${f.path} is never called with a literal key');
+        for (final c in calls) {
+          keys.add(c.group(1)!);
+        }
       }
     }
   }

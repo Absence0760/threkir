@@ -120,16 +120,20 @@ Skip this section if you're only using email/password.
 
 ### 1. Create Google Cloud OAuth credentials
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → your project (create one if needed) → **Credentials** → **Create credentials** → **OAuth client ID**.
-2. Create a **Web application** client. Name it "Run app — Supabase". No redirect URI is required for the native-ID-token flow, but Supabase needs this client's ID for token validation. Copy the **Client ID** — this is your `GOOGLE_WEB_CLIENT_ID`.
+The prod walkthrough — the moved console, all three clients, and the order they
+go in — is [`docs/ops/google_provisioning.md`](../../docs/ops/google_provisioning.md),
+which carries the status ledger. What follows is the local-dev subset.
+
+1. [Google Auth Platform](https://console.cloud.google.com/auth/overview) → your project → **Clients** → **Create client**. (This lives under *Google Auth Platform* now, not *APIs & Services → Credentials*, and it is unavailable until the project's consent screen exists.)
+2. Create a **Web application** client. Name it "Threkir — Supabase". No redirect URI is required for the native-ID-token flow, but Supabase needs this client's ID for token validation. Copy the **Client ID** — this is your `GOOGLE_WEB_CLIENT_ID`.
 3. Create a second OAuth client, this time **Android**. You need:
-   - **Package name**: `com.example.mobile_android` (see `apps/mobile_android/android/app/build.gradle.kts`)
+   - **Package name**: `com.threkir.app` (the `applicationId` in `apps/mobile_android/android/app/build.gradle.kts` — *not* the `com.example.` default, which matches no build that has ever shipped)
    - **SHA-1 certificate fingerprint**: for debug builds, run:
      ```bash
      keytool -keystore ~/.android/debug.keystore -list -v \
        -alias androiddebugkey -storepass android -keypass android
      ```
-     and copy the SHA1 line. For release builds, use your release keystore.
+     and copy the SHA1 line. For release builds, use your release keystore — and once Play App Signing is on, the SHA-1 Play shows under *App signing* too, because Play re-signs the artifact.
    No Client ID is stored for this one — it's matched by package + SHA alone.
 
 ### 2. Configure Supabase

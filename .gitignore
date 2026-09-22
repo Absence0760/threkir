@@ -103,6 +103,13 @@ GoogleService-Info.plist
 *firebase-adminsdk*.json
 serviceAccountKey.json
 
+# The Google OAuth client credential, which downloads from Google Auth
+# Platform -> Clients as `client_secret_<id>.apps.googleusercontent.com.json`
+# the moment a Web client is created. It carries the web client's secret;
+# Supabase holds the operational copy and the estate repo the backup
+# (docs/ops/google_provisioning.md), so it has no home in this tree at all.
+client_secret_*.json
+
 # Supabase
 .supabase/
 /supabase/

@@ -139,7 +139,29 @@ The static SvelteKit build inlines `PUBLIC_*` vars at build time. The CI workflo
 | `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` | `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` | hosted Web Paywall Link; required for prod (build guard) |
 | `PUBLIC_REVENUECAT_WEB_PORTAL_URL` | `PUBLIC_REVENUECAT_WEB_PORTAL_URL` | optional customer-portal link |
 | `PUBLIC_SENTRY_DSN` | `PUBLIC_SENTRY_DSN` | optional — empty disables client-side capture |
+| `PUBLIC_LIVE_HUB_URL` | `PUBLIC_LIVE_HUB_URL` | optional — unset keeps the live path on Supabase Realtime |
+| `PUBLIC_VAPID_PUBLIC_KEY` | `PUBLIC_VAPID_PUBLIC_KEY` | optional — unset leaves the browser-push card reading "not configured" ([native_push.md](../../docs/features/native_push.md)) |
 | `PUBLIC_APP_RELEASE` | derived from CI tag (e.g. `web@1.2.3`) | tags Sentry events |
+
+**Fail-closed feature gates.** Each reads one `PUBLIC_*` key, treats
+unset / empty / `false` / `0` as off, and is written by the same step. Most of
+them reached no release step at all until 2026-09-19, so the surface behind each
+was off in production permanently and no secret could change it
+([decisions § 1683](../../docs/architecture/decisions.md)); a PR that adds an
+unwired gate now fails in `src/lib/ci_workflow_guards.test.ts`. Setting one to
+`true` **is** the deploy-time action a compliance sign-off authorises.
+
+| Variable | Gates | Flipping it needs |
+|---|---|---|
+| `PUBLIC_COACH_ENABLED` | the AI coach (a Pro perk) | an Anthropic key on the coach Lambda |
+| `PUBLIC_ROUTE_GEN_ENABLED` | route generation (a Pro perk) | the graph-cycle sidecar deployed |
+| `PUBLIC_GOOGLE_AUTH_ENABLED` | Google sign-in on `/login` | the Supabase `google` provider configured ([google_provisioning.md](../../docs/ops/google_provisioning.md)) |
+| `PUBLIC_OFF_ROUTE_ESCALATION_ENABLED` | off-route → auto-notify-contact | owner + CISO + counsel |
+| `PUBLIC_WEIGH_IN_ENABLED` | the Art 9 weigh-in / medical UI | owner + CISO + counsel |
+| `PUBLIC_ENABLE_NEARBY_RUNNERS` | the nearby-runners discovery surface | owner + CISO + counsel |
+| `PUBLIC_ADAPTIVE_FITNESS_GATE` | fitness-directed plan generation (P2) | CISO / Security Analyst |
+| `PUBLIC_FUNDRAISING_ENABLED` | donations / fundraiser pages | Stripe Connect + owner + CISO + counsel |
+| `PUBLIC_CYCLE_PLANS_ENABLED` | the Art 9 cycle / pregnancy plan-adjust UI | owner + CISO + counsel |
 
 **Anything that should stay server-side does NOT have the `PUBLIC_` prefix and lives in the Lambda's env**, set by Terraform from the sops-encrypted file — not in the SvelteKit build, not in GitHub Secrets. The coach Lambda reads:
 

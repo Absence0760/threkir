@@ -150,6 +150,9 @@ void main() async {
   const liveHubUrlDef = String.fromEnvironment('LIVE_HUB_URL');
   const sentryDsnDef = String.fromEnvironment('SENTRY_DSN');
   const googleWebClientIdDef = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
+  const appleServiceClientIdDef =
+      String.fromEnvironment('APPLE_SERVICE_CLIENT_ID');
+  const appleRedirectUriDef = String.fromEnvironment('APPLE_REDIRECT_URI');
   const revenueCatAndroidDef = String.fromEnvironment('REVENUECAT_API_KEY_ANDROID');
   const revenueCatIosDef = String.fromEnvironment('REVENUECAT_API_KEY_IOS');
   const enableNearbyRunnersDef = String.fromEnvironment('ENABLE_NEARBY_RUNNERS');
@@ -172,6 +175,10 @@ void main() async {
       if (liveHubUrlDef.isNotEmpty) 'LIVE_HUB_URL=$liveHubUrlDef',
       if (sentryDsnDef.isNotEmpty) 'SENTRY_DSN=$sentryDsnDef',
       if (googleWebClientIdDef.isNotEmpty) 'GOOGLE_WEB_CLIENT_ID=$googleWebClientIdDef',
+      if (appleServiceClientIdDef.isNotEmpty)
+        'APPLE_SERVICE_CLIENT_ID=$appleServiceClientIdDef',
+      if (appleRedirectUriDef.isNotEmpty)
+        'APPLE_REDIRECT_URI=$appleRedirectUriDef',
       if (revenueCatAndroidDef.isNotEmpty) 'REVENUECAT_API_KEY_ANDROID=$revenueCatAndroidDef',
       if (revenueCatIosDef.isNotEmpty) 'REVENUECAT_API_KEY_IOS=$revenueCatIosDef',
       if (enableNearbyRunnersDef.isNotEmpty)

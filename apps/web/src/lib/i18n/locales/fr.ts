@@ -2961,6 +2961,7 @@ export const messages = {
 	"routeMarker.heading": "Repères de parcours",
 	"routeMarker.add": "Ajouter un repère",
 	"routeMarker.empty": "Aucun repère de parcours. Ajoutez des ravitaillements, des barrières horaires et plus le long du parcours.",
+	"routeMarker.loadFailed": "Impossible de charger les repères de ce parcours. Ils n'ont pas été supprimés — vérifiez votre connexion et réessayez.",
 	"routeMarker.edit": "Modifier le repère",
 	"routeMarker.delete": "Supprimer",
 	"routeMarker.cancel": "Annuler",

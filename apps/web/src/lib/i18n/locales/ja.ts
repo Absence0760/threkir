@@ -2956,6 +2956,7 @@ export const messages = {
 	"routeMarker.heading": "コースマーカー",
 	"routeMarker.add": "マーカーを追加",
 	"routeMarker.empty": "コースマーカーはまだありません。エイドステーションや関門などをルート上に追加しましょう。",
+	"routeMarker.loadFailed": "このルートのコースマーカーを読み込めませんでした。削除されてはいません。接続を確認してもう一度お試しください。",
 	"routeMarker.edit": "マーカーを編集",
 	"routeMarker.delete": "削除",
 	"routeMarker.cancel": "キャンセル",

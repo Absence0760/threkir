@@ -85,4 +85,23 @@ regexes = [
   # catalogues carry, not secrets. Matched on the key shape so a real token in
   # badges.rs is still a finding.
   '''badges\.[A-Za-z0-9]+\.(label|desc)''',
+  # The SAME badge catalogue i18n keys in the Dart/TS spelling the entry above
+  # cannot match: web (badges.ts) and mobile (badges.dart) write them camelCase
+  # as `labelKey: 'badgesStreak7Label'`, not dotted. The rule fires on the
+  # `...Key: '<value>'` shape, so the key NAME is what it reads as a secret.
+  # That gap is why the weekly full-history sweep had 22 of its 26 findings
+  # here. Matched on the key shape, so a real token in badges.dart still fails.
+  '''badges[A-Z][A-Za-z0-9]*(Label|Desc)''',
+  # ci.yml: the deliberately-fake fixture values the e2e stack's webhook and
+  # cron paths sign with. Each literal says what it is, and none opens
+  # anything outside a CI runner's own Supabase container.
+  '''ci-cron-secret-at-least-32-chars-ok''',
+  '''ci-stripe-events-secret''',
+  '''v1,Y2ktYXV0aC1lbWFpbC1ob29rLXNlY3JldC0zMmNoYXJz''',
+  # gym_exercise_set_history_batch_test.sql: prose, not a value. The rule read
+  # the phrase "(grouping key, duplicate/blank inputs, owner scope)" in a
+  # header comment as `key` followed by a secret, and took the two English
+  # words after it. Matched on that literal rather than the file, so a real
+  # key in the same suite is still a finding.
+  '''duplicate/blank''',
 ]

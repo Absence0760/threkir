@@ -87,3 +87,37 @@ jobs:
           # summary and the exit status carry the finding.
           GITLEAKS_ENABLE_COMMENTS: 'false'
 
+      # The scan above cannot see content that reached the branch through a
+      # merge. `gitleaks-action` builds its own range and builds it as
+      # `--log-opts=--no-merges --first-parent <base>^..<head>` (src/gitleaks.js
+      # at the pinned SHA, both the `push` and `pull_request` arms), so a commit
+      # sitting on a merge's SECOND parent is never walked. That is not an edge
+      # case here: splitting a large change into `wip/*` branches and merging
+      # them into the PR branch is an ordinary way to work, and it takes that
+      # content out of the secret gate entirely. Measured on #994 -- eleven
+      # commits scanned, the file carrying the finding not among them, the PR
+      # green, and `main` red on the squash commit the moment it landed, which
+      # is after branch protection can act (decisions § 1719 + § 1721).
+      #
+      # A tree scan closes it by asking a question the commit graph cannot
+      # route around: is a secret present in the code as it will exist on
+      # `main`. It is not a replacement for either neighbour -- the range scan
+      # still catches a secret that was committed and then deleted within the
+      # branch, and the weekly sweep still reads the whole of history -- so all
+      # three stay. `gitleaks` is on PATH because the action `core.addPath`s it,
+      # so this needs no second download and no second version pin. ~2 s.
+      #
+      # `--redact` is not optional: this repo is public, so an unredacted
+      # finding would publish the secret it found into the run log.
+      - name: Scan the working tree, not just the commit range
+        if: ${{ !cancelled() }}
+        run: |
+          if ! command -v gitleaks >/dev/null; then
+            echo "::error::gitleaks is not on PATH, so the working-tree scan ran over nothing. The action step above is what installs it -- this is a defect in this job, not a finding about the repo."
+            exit 1
+          fi
+          if ! gitleaks dir . -c .gitleaks.toml --no-banner --redact -v --exit-code 1; then
+            echo "::error::gitleaks found a secret in the working tree. If it is a false positive, add a value-matched entry to .gitleaks.toml (see the entries there for the shape); do not path-allowlist the file. Note this scan sees content the range scan above cannot -- anything that arrived via a merge parent."
+            exit 1
+          fi
+

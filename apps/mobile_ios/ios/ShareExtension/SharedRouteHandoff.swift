@@ -56,6 +56,9 @@ enum SharedRouteHandoff {
     static let acceptedTypeIdentifiers = [
         "com.topografix.gpx",
         "com.google.earth.kml",
+        "com.google.earth.kmz",
+        "public.geojson",
+        "com.garmin.tcx",
     ]
 
     /// `kSchemePrefix` in the plugin. The host app registers

@@ -45,6 +45,9 @@
 		$attachment,
 		ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.topografix.gpx"
 		|| ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.google.earth.kml"
+		|| ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.google.earth.kmz"
+		|| ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.geojson"
+		|| ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.garmin.tcx"
 	).@count &gt;= 1
 ).@count == 1</string>
 		</dict>

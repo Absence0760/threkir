@@ -73,6 +73,7 @@
 
 	let markers = $state<RouteMarker[]>([]);
 	let loaded = $state(false);
+	let loadFailed = $state(false);
 
 	// Draft form state for the marker currently being added or edited.
 	let editingId = $state<string | null>(null); // null while adding a new one
@@ -130,8 +131,15 @@
 	}
 
 	async function reload() {
-		markers = await fetchRouteMarkers(routeId);
-		loaded = true;
+		try {
+			markers = await fetchRouteMarkers(routeId);
+			loadFailed = false;
+		} catch (e) {
+			console.error('route markers load failed', e);
+			loadFailed = true;
+		} finally {
+			loaded = true;
+		}
 	}
 	$effect(() => {
 		void routeId;
@@ -554,7 +562,14 @@
 		</p>
 	{/if}
 
-	{#if loaded && sorted.length === 0 && !formOpen}
+	{#if loadFailed}
+		<p class="markers-load-error" role="alert" data-testid="markers-load-error">
+			{m('routeMarker.loadFailed')}
+			<button type="button" class="btn btn-outline btn-sm" onclick={() => void reload()}>
+				{m('routeDetail.retry')}
+			</button>
+		</p>
+	{:else if loaded && sorted.length === 0 && !formOpen}
 		<p class="markers-empty">{m('routeMarker.empty')}</p>
 	{/if}
 
@@ -829,6 +844,15 @@
 		margin: 0;
 		color: var(--color-text-secondary);
 		font-size: 0.9rem;
+	}
+	.markers-load-error {
+		margin: 0;
+		color: var(--color-text-secondary);
+		font-size: 0.9rem;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-sm);
 	}
 	.markers-list {
 		list-style: none;

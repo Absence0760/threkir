@@ -7223,15 +7223,19 @@ function asRouteMarker(row: Record<string, unknown>): RouteMarker {
 /// through `route_markers_for_viewer`, which gates visibility (owner /
 /// public / club member) AND redacts any marker inside the owner's privacy
 /// zones for a non-owner — the marker analogue of `clip_route_for_viewer`.
-/// Fails closed (empty list) on error so a redaction failure never leaks.
+/// A failed read throws rather than answering "no markers": nothing leaks
+/// either way, but an empty list tells an owner to re-add markers they have.
+///
+/// Issued as a GET, not supabase-js's default POST. The function is
+/// `stable`, and Kong replays an idempotent request whose pooled PostgREST
+/// connection closed under it, where a POST comes back 502 (decisions § 1703).
 export async function fetchRouteMarkers(routeId: string): Promise<RouteMarker[]> {
-	const { data, error } = await supabase.rpc('route_markers_for_viewer', {
-		p_route_id: routeId
-	});
-	if (error) {
-		console.warn('route_markers_for_viewer failed; failing closed (no markers)', error);
-		return [];
-	}
+	const { data, error } = await supabase.rpc(
+		'route_markers_for_viewer',
+		{ p_route_id: routeId },
+		{ get: true },
+	);
+	if (error) throw error;
 	return ((data ?? []) as Record<string, unknown>[]).map(asRouteMarker);
 }
 

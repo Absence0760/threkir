@@ -8,254 +8,26 @@ description: >
   is duplicated across every stack-using job (parity-types, schema
   drift, api-client, edge-functions, pgtap, e2e-web). It was drifting as
   byte-identical copies; one source of truth keeps the retry logic — and
-  the incident comments below — from diverging.
+  the incident history — from diverging.
 
-  Two failure modes are handled:
+  Both halves are shell files rather than inline `run:` blocks, so a job
+  can drive them with stubs: start_stack.sh (the port-clean retry, five
+  incidents deep) and wait_for_sidecars.sh (the readiness probes). Each
+  file's header carries the incidents that shaped it, and each has a
+  node:test suite the ci-diagnostics job runs.
 
-  1. Slow ghcr.io image pulls. A single 353MB image once trickled at
-     ~50KB/s and hung edge-functions for the full 20-min budget (CI run
-     26490131303). Normal cold boot is ~2 min, so the 480s per-attempt
-     timeout is ~4x headroom; the second attempt resumes from layer
-     cache.
-
-  2. Port not freed on a partial start. When `supabase start` partly
-     comes up and rolls back ("Starting database... / Stopping
-     containers..."), it can orphan the db container or its docker-proxy
-     still holding host port 54322 — and `supabase stop` does NOT free
-     it (supabase/cli#3265). The previous retry ran only `supabase stop`
-     between attempts, so attempt 2 re-hit the IDENTICAL
-     "failed to bind host port for 0.0.0.0:54322: address already in
-     use" and the job died (CI run 26860851075, e2e shard 7). The fix:
-     the retry force-removes any container still publishing our host
-     ports, then GATES on the ports actually being free before
-     re-running. If cleanup can't free them, it fails loudly with the
-     holder dumped instead of letting `supabase start` emit its cryptic
-     bind error a second time.
-
-     2b. The container force-remove is not enough on its own: a partial
-     start can also strand the stack's docker NETWORK with a dangling
-     endpoint that still reserves host port 54322 at the docker layer
-     even though NO container publishes it and NO socket is in LISTEN —
-     so the `ss`-based port probe reports every port free yet docker's
-     bind fails anyway. That is exactly what recurred in CI run
-     27567813578 (e2e shard 10): both attempts hit the identical 54322
-     bind error with the preflight gate reporting all ports free, so the
-     container-only cleanup had nothing to remove. The fix: cleanup also
-     removes any leftover `supabase_network_*` docker network (releasing
-     the reservation), and the gate treats a stranded stack network as a
-     holder the `ss` probe can't see, so it is cleaned + verified rather
-     than silently carried into the next attempt.
-
-  3. An outbound connection's ephemeral source port. CI run 28864778110
-     (e2e shard 7) hit the identical 54322 bind error on BOTH attempts
-     of a FRESH runner: no stack container existed (the post-failure
-     `docker ps -a` printed zero rows), no stack network, nothing in
-     LISTEN. The stack's host ports sit inside Linux's default ephemeral
-     range (net.ipv4.ip_local_port_range = 32768-60999), and
-     `supabase start` runs exactly when the job is busiest with outbound
-     sockets (the ghcr.io image pulls), so a pull connection can land on
-     source port 54322 and docker-proxy's bind fails. LISTEN-only
-     probes are blind to it, and no container/network cleanup can free a
-     live outbound socket — which is why the existing retry + cleanup
-     machinery couldn't help. The fix is preventive: reserve the stack
-     ports via net.ipv4.ip_local_reserved_ports before the first start,
-     so the kernel never hands them out as ephemeral source ports
-     (explicit binds are unaffected; the sysctl also covers IPv6).
-
-  4. An evanescent holder no probe can see. CI run 29523121481 (e2e
-     shard 2) hit the 54322 bind error on both attempts WITH the
-     port reservation active, and the post-failure dump — taken ~100ms
-     after the second bind failure — showed no container, no stack
-     network, and nothing on any 5432x socket in any state. Whatever
-     held the port (most plausibly a docker-daemon-internal port
-     allocation leaked by attempt 1's own rollback) had already
-     evaporated; the retry just ran too soon (~200ms after cleanup) to
-     benefit. Three changes: (a) each retry now WAITS for holders to
-     clear and then settles a few seconds instead of re-running
-     immediately, (b) a third attempt is preceded by a docker-daemon
-     restart, which drops any daemon-level port allocation that
-     `docker ps` / `docker network ls` / `ss` are all blind to, and
-     (c) forensics are captured immediately after each failed attempt
-     (including `ss -tan` for process-less TIME_WAIT states), because
-     by the end of the job the evidence is gone.
-
-  One failure mode is deliberately NOT handled. The edge runtime can
-  exit 135 (SIGBUS) while serving its FIRST request, which is this
-  action's own readiness probe, and the probe then times out at 000 for
-  the whole budget (issue #916, three occurrences since 2026-09-08).
-  Nothing here can fix it: the runtime vendors a copy of Deno's cache
-  layer that deletes a cache database another connection still has
-  mapped, and every released image — including the v1.74.3 that the
-  current stable CLI 2.117.0 pins — predates denoland/deno#34873, which
-  fixed it upstream. Widening the budget would not help (the container
-  is dead by attempt 2) and restarting on 135 would hide it, so the
-  pinned 2.84.2 stays and a hit is re-run. decisions.md § 1663 has the
-  evidence and the one-command check that says when the pin can move.
 runs:
   using: composite
   steps:
-    - shell: bash
+    # The reservation + retry ladder lives in start_stack.sh rather than
+    # inline here so it can be unit-tested (start_stack.test.mjs drives it
+    # with stub ss/docker/supabase/sudo on PATH); the incident history that
+    # shaped it is in that file's header. Inline, the LISTEN-only port probe
+    # that cost CI run 35626531071 three attempts was readable by nothing.
+    - name: Start the stack with a port-clean retry
+      shell: bash
       working-directory: apps/backend
-      run: |
-        set -uo pipefail
-
-        # Host ports config.toml publishes: api 54321, db 54322,
-        # studio 54323, inbucket web 54324 / SMTP 54325 / POP3 54326;
-        # the CLI also publishes analytics on 54327. 54322 is the one
-        # that collides most often, but a partial start can strand any
-        # of them, so clear them all. This list MUST cover every port
-        # the sysctl below reserves: when 54325/54326 were missing here,
-        # an inbucket bind failure on 54326 was invisible to every probe
-        # (the pre-attempt gate reported "clear", free_ports had no
-        # publish filter for it, and settle_ports fell straight through
-        # its wait loop), so all three attempts re-hit the identical
-        # bind error — CI run 29711236891, schema-codegen-drift.
-        PORTS="54321 54322 54323 54324 54325 54326 54327"
-
-        # Keep the kernel from handing any stack port out as an outbound
-        # connection's ephemeral source port (incident 3 above) — they
-        # all sit inside the default 32768-60999 ephemeral range. Gate
-        # on the reservation actually taking so a runner-image change
-        # (no sudo, read-only /proc) fails here with a pointed message,
-        # not later as the cryptic bind error.
-        sudo sysctl -qw net.ipv4.ip_local_reserved_ports=54321-54327 || true
-        if ! grep -q '54321-54327' /proc/sys/net/ipv4/ip_local_reserved_ports; then
-          echo "::error::could not reserve stack ports 54321-54327 from the ephemeral range (net.ipv4.ip_local_reserved_ports=$(cat /proc/sys/net/ipv4/ip_local_reserved_ports 2>/dev/null)) — an outbound socket may steal 54322 and fail the db bind"
-          exit 1
-        fi
-
-        busy_ports() {
-          # Column 4 of `ss -ltn` is the local address (e.g. 0.0.0.0:54322,
-          # [::]:54322, *:54322). Anchor on a leading : or . so 54322
-          # never matches a substring of some unrelated high port.
-          local listening busy=""
-          listening=$(ss -ltnH 2>/dev/null | awk '{print $4}')
-          for p in $PORTS; do
-            if printf '%s\n' "$listening" | grep -qE "[:.]${p}\$"; then
-              busy="$busy $p"
-            fi
-          done
-          printf '%s' "$busy"
-        }
-
-        stack_networks() {
-          # A stranded `supabase_network_*` network keeps a dangling
-          # endpoint that reserves host port 54322 at the docker layer
-          # even with no container + nothing in LISTEN, so busy_ports
-          # (ss) can't see it. Its presence before a start means a prior
-          # attempt left the stack half-torn-down. See incident 2b above.
-          docker network ls --filter "name=supabase_network_" -q 2>/dev/null || true
-        }
-
-        # All holders busy_ports can't see on its own, as a single token
-        # the gate can test + print: ss-visible ports plus "stack-network"
-        # when a leftover supabase network is reserving a port.
-        stack_holders() {
-          local b n
-          b=$(busy_ports)
-          n=$(stack_networks)
-          printf '%s' "$b${n:+ stack-network}"
-        }
-
-        free_ports() {
-          # supabase stop is project-aware but does not reliably release
-          # the host port a partial start orphaned (supabase/cli#3265),
-          # so follow it with a force-remove of any supabase container or
-          # anything still publishing one of our ports.
-          supabase stop --no-backup >/dev/null 2>&1 || true
-          local cids
-          cids=$(docker ps -aq --filter "name=supabase_" 2>/dev/null || true)
-          for p in $PORTS; do
-            cids="$cids $(docker ps -aq --filter "publish=$p" 2>/dev/null || true)"
-          done
-          cids=$(printf '%s' "$cids" | tr ' ' '\n' | grep -v '^$' | sort -u || true)
-          if [ -n "$cids" ]; then
-            echo "force-removing leftover container(s) holding stack ports:"
-            docker rm -f $cids >/dev/null 2>&1 || true
-          fi
-          # Then drop any leftover stack network. With the containers gone
-          # it has no active endpoints, so `network rm` succeeds and frees
-          # the docker-layer port reservation that the ss probe is blind
-          # to (incident 2b). No-op when supabase stop already removed it.
-          local nets
-          nets=$(stack_networks)
-          if [ -n "$nets" ]; then
-            echo "removing leftover supabase network(s) reserving stack ports:"
-            docker network rm $nets >/dev/null 2>&1 || true
-          fi
-        }
-
-        dump_forensics() {
-          # Captured IMMEDIATELY after a failure — incident 4 showed the
-          # holder can be gone ~100ms later, so an end-of-job dump reads
-          # as "nothing was wrong". -tan (no -p) includes process-less
-          # states like TIME_WAIT that -tnp hides.
-          docker ps -a --format '{{.Names}} {{.Status}} {{.Ports}}' || true
-          ss -tan 2>/dev/null | grep -E '5432[0-9]' || true
-          docker network ls --filter "name=supabase_network_" || true
-        }
-
-        settle_ports() {
-          # Wait for any holder to clear rather than re-running start
-          # immediately (incident 4: the retry fired ~200ms after
-          # cleanup and re-hit a holder that was gone seconds later).
-          # Then give docker's port allocator a moment to settle — the
-          # holder that bit us was invisible to every probe we have.
-          for i in $(seq 1 15); do
-            [ -z "$(stack_holders)" ] && break
-            sleep 2
-          done
-          sleep 5
-        }
-
-        for attempt in 1 2 3; do
-          # Gate on the real precondition — no leftover holder — before
-          # each attempt. On attempt 1 of a fresh runner this is a no-op;
-          # on later attempts it proves the post-failure cleanup actually
-          # worked (ports AND the docker network it reserves through).
-          busy=$(stack_holders)
-          if [ -n "$busy" ]; then
-            echo "::warning::stack ports/network in use before attempt $attempt:$busy"
-            docker ps --format '{{.Names}} {{.Ports}}' || true
-            free_ports
-            settle_ports
-            busy=$(stack_holders)
-            if [ -n "$busy" ]; then
-              echo "::error::stack ports/network still in use after cleanup:$busy"
-              # All socket states, not just LISTEN — an outbound socket
-              # holding a stack port as its source port shows up here.
-              ss -tnp 2>/dev/null | grep -E '5432[0-9]' || true
-              docker network ls --filter "name=supabase_network_" || true
-              exit 1
-            fi
-          fi
-
-          if timeout 480 supabase start; then
-            exit 0
-          fi
-
-          echo "::warning::supabase start attempt $attempt failed/timed out; forensics then cleanup"
-          dump_forensics
-          free_ports
-
-          if [ "$attempt" = "3" ]; then
-            echo "::error::supabase start failed three times"
-            exit 1
-          fi
-
-          settle_ports
-          if [ "$attempt" = "2" ]; then
-            # Last resort before the final attempt: a daemon restart
-            # drops any leaked daemon-internal port allocation that no
-            # container / network / socket probe can see (incident 4).
-            echo "restarting docker before the final attempt"
-            sudo systemctl restart docker 2>/dev/null || true
-            # The restart tears down supabase's compose state mid-flight;
-            # clear the debris so attempt 3 starts from a clean slate.
-            free_ports
-            settle_ports
-          fi
-        done
+      run: bash "$GITHUB_ACTION_PATH/start_stack.sh"
 
     # The probe loop + its forensics live in wait_for_sidecars.sh rather
     # than inline here so they can be unit-tested (wait_for_sidecars.test.mjs

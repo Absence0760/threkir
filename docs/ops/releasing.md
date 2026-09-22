@@ -116,7 +116,7 @@ create` / UI / `/release`). The last column is what the workflow attaches
 |---|---|---|---|---|
 | `mobile_android@*` | ubuntu-latest | release keystore from secrets | Play Internal track | `.aab` |
 | `watch_wear@*` | ubuntu-latest | Wear release keystore | Play Internal track (`com.threkir.watchwear`) | `.aab` |
-| `mobile_ios@*` | macos-latest | Apple Distribution certificate + one App Store profile each for the phone and watch apps, from secrets | TestFlight (promotion to the App Store is manual, in App Store Connect) | `.ipa` |
+| `mobile_ios@*` | macos-latest | Apple Distribution certificate + one App Store profile each for the phone and watch apps, from secrets | TestFlight (promotion to the App Store is manual, in App Store Connect) | — |
 | `watch_ios@*` | macos-latest | — | — (build smoke-check only) | — |
 | `web@*` | ubuntu-latest | — | AWS S3 + CloudFront + Lambda (`prod` env at `threkir.com` / `www.threkir.com`) | build zip |
 | `backend@*` | ubuntu-latest | — | Supabase (migrations + functions on linked project) | — |
@@ -124,6 +124,16 @@ create` / UI / `/release`). The last column is what the workflow attaches
 | `osrm@*` | ubuntu-latest | — | Fly.io `osrm` app (image only — graph on the volume rides along) | — |
 | `graph-cycle@*` | ubuntu-latest | — | Fly.io `graph-cycle` app (image only — OSM PBF stays on the `graph_cycle_data` volume; reparsed on boot) | — |
 | `graphhopper@*` | ubuntu-latest | — | Fly.io `graphhopper` app (image only — the PBF + built `graph-cache/` stay on the `graphhopper_data` volume) | — |
+
+**Where the signed IPA is if TestFlight refuses it.** `mobile_ios@*` attaches
+nothing back to the Release; the signed `.ipa` is kept as a workflow **artifact**
+named `mobile_ios@<version>-ipa` on the release run, for 90 days. Open the run
+under Actions and download it from the Summary page. It moved off the Release so
+the job needs no `contents: write` at all ([decisions § 1720](../architecture/decisions.md)) --
+which also means it is no longer a signed production binary anyone on the
+internet can download from a public repo. `mobile_android@*` and `watch_wear@*`
+still attach their `.aab`, so the table above is the authority per tag, not this
+paragraph generalised.
 
 Promoting Android + Wear from the Internal track to Beta or Production
 is done manually in the Play Console after you've smoke-tested the

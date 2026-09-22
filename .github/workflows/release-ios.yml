@@ -46,8 +46,10 @@ on:
   release:
     types: [published]
 
-# Least-privilege default; the release job opts up to `contents: write`
-# for the GitHub Release step.
+# Least-privilege, and the release job does NOT opt up: the signed IPA is kept
+# as a workflow ARTIFACT rather than attached to the Release, so nothing here
+# writes to the repository and `contents: read` (which checkout needs) is the
+# whole token. decisions.md § 1720 is why that swap, and not a dismissal.
 permissions:
   contents: read
 
@@ -72,8 +74,6 @@ jobs:
     # Pause on the `production` environment's required-reviewer rule
     # before any prod credentials/steps run (repo Settings → Environments).
     environment: production
-    permissions:
-      contents: write
     steps:
       # Checked before a fifteen-minute build rather than inside it. Each value
       # is reduced to true/false here, so no secret reaches this step's shell.
@@ -246,15 +246,23 @@ jobs:
           echo "path=apps/mobile_ios/$found" >> "$GITHUB_OUTPUT"
 
       # Before the upload, as on Android: if TestFlight refuses the build, the
-      # signed IPA still lands somewhere durable to upload by hand.
-      # `fail_on_unmatched_files` stays on — an attach that matched nothing
-      # once reported success here (decisions § 1673).
-      - name: Attach the signed IPA to the Release
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+      # signed IPA still lands somewhere durable to upload by hand. An artifact
+      # rather than a Release asset, because attaching one is the only thing in
+      # this workflow that wanted `contents: write` and the artifact service
+      # takes no `contents` scope at all (decisions § 1720). Two consequences
+      # worth knowing before you need it: retention is finite, and the download
+      # needs repo access — which on a PUBLIC repo is the point, a signed
+      # production binary was world-readable on the Release.
+      # `if-no-files-found: error` is `fail_on_unmatched_files` under another
+      # name and stays on — an attach that matched nothing once reported
+      # success here (decisions § 1673).
+      - name: Keep the signed IPA as an artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          tag_name: ${{ github.event.release.tag_name }}
-          files: apps/mobile_ios/build/ios/ipa/*.ipa
-          fail_on_unmatched_files: true
+          name: ${{ github.event.release.tag_name }}-ipa
+          path: apps/mobile_ios/build/ios/ipa/*.ipa
+          if-no-files-found: error
+          retention-days: 90
 
       - name: Upload to TestFlight
         uses: apple-actions/upload-testflight-build@5e75ff58276689011512ba87a381d93dc67dbcf8 # v5.3.0

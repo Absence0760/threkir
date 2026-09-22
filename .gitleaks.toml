@@ -104,4 +104,15 @@ regexes = [
   # words after it. Matched on that literal rather than the file, so a real
   # key in the same suite is still a finding.
   '''duplicate/blank''',
+  # apps/watch_ios/WatchApp/*.swift: the watch's UserDefaults key NAMES. Every
+  # on-wrist store spells its key the same way -- `private static let key =
+  # "<what_it_holds>_v<schema>"` -- and the rule reads the identifier `key`
+  # beside a quoted literal as an assignment of one. Five of them exist today
+  # and only `pending_race_results_v1` crossed the entropy gate, so a shape
+  # match is what keeps the SIXTH from reddening main the day it is written
+  # (this one did: it was written on a side branch, and § 1719 is why the PR
+  # did not say so). Anchored, and lowercase snake_case ending in `_v<N>` is a
+  # defaults-key shape rather than a token shape -- a real key in the same file
+  # is still a finding.
+  '''^[a-z][a-z0-9_]*_v[0-9]+$''',
 ]

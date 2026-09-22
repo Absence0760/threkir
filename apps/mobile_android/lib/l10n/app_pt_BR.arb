@@ -4123,5 +4123,12 @@
   "metricRiegelDefinition": "Uma forma padrão de prever seu tempo em uma distância a partir de um tempo que você correu em outra.",
   "metricE1rmLabel": "1RM est.",
   "metricE1rmDefinition": "Máximo de uma repetição — o peso mais alto que você conseguiria levantar em uma única repetição. O 1RM estimado é calculado a partir do peso e das repetições de uma série que você fez, então você nunca precisa testá-lo.",
-  "metricRpeDefinition": "Esforço percebido — quão puxada foi uma série, de 1 a 10. Um 10 significa que você não conseguiria fazer mais nenhuma repetição."
+  "metricRpeDefinition": "Esforço percebido — quão puxada foi uma série, de 1 a 10. Um 10 significa que você não conseguiria fazer mais nenhuma repetição.",
+  "bleUnavailableOff": "O Bluetooth está desligado — ligue-o para usar sua cinta cardíaca.",
+  "bleUnavailableDenied": "O Threkir não tem permissão para usar Bluetooth. Conceda-a nas configurações para usar uma cinta cardíaca.",
+  "bleUnavailableUnsupported": "Este celular não suporta Bluetooth LE, então não é possível usar uma cinta cardíaca.",
+  "bleUnavailableLocationOff": "Ative a localização para que o Android possa procurar sua cinta cardíaca.",
+  "bleUnavailableUnknown": "O Bluetooth não respondeu. Tente novamente daqui a pouco.",
+  "bleOpenSettings": "Abrir configurações",
+  "bleScanRetry": "Procurar novamente"
 }

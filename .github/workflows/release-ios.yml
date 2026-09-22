@@ -11,6 +11,7 @@ name: Release iOS
 #   IOS_P12_PASSWORD                      password the .p12 was exported with
 #   IOS_PROVISIONING_PROFILE_BASE64       App Store profile for com.threkir.app
 #   IOS_WATCH_PROVISIONING_PROFILE_BASE64 App Store profile for com.threkir.app.watchapp
+#   IOS_SHARE_PROVISIONING_PROFILE_BASE64 App Store profile for com.threkir.app.ShareExtension
 #   IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64
 #                                         App Store profile for com.threkir.app.watchapp.complication,
 #                                         the WidgetKit extension the watch app embeds
@@ -82,6 +83,7 @@ jobs:
           HAS_IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD != '' }}
           HAS_IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 != '' }}
           HAS_IOS_WATCH_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_WATCH_PROVISIONING_PROFILE_BASE64 != '' }}
+          HAS_IOS_SHARE_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_SHARE_PROVISIONING_PROFILE_BASE64 != '' }}
           HAS_IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64 != '' }}
           HAS_APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID != '' }}
           HAS_APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID != '' }}
@@ -179,19 +181,24 @@ jobs:
           fi
 
       # Switches the Release configuration of every signed target — the phone
-      # app, the watch app and the watch complication — to manual signing
-      # against one profile each, derives the team from them, and writes the ExportOptions.plist. A profile for the
-      # wrong bundle, a development profile or a missing one fails here by name.
+      # app, the watch app, the share extension and the watch complication — to
+      # manual signing against one profile each, derives the team from them, and
+      # writes the ExportOptions.plist. A profile for the wrong bundle, a
+      # development profile or a missing one fails here by name. The share
+      # extension's profile must carry the App Group capability, or the
+      # extension signs but its container lookup returns nil on device.
       - name: Point the archive at the App Store profiles
         env:
           IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
           IOS_WATCH_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_WATCH_PROVISIONING_PROFILE_BASE64 }}
+          IOS_SHARE_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_SHARE_PROVISIONING_PROFILE_BASE64 }}
           IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64 }}
         run: |
           echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 -d > "$RUNNER_TEMP/phone.mobileprovision"
           echo "$IOS_WATCH_PROVISIONING_PROFILE_BASE64" | base64 -d > "$RUNNER_TEMP/watch.mobileprovision"
+          echo "$IOS_SHARE_PROVISIONING_PROFILE_BASE64" | base64 -d > "$RUNNER_TEMP/share.mobileprovision"
           echo "$IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64" | base64 -d > "$RUNNER_TEMP/complication.mobileprovision"
-          node scripts/ios_release_signing.mjs apps/mobile_ios/ios/Runner.xcodeproj/project.pbxproj "$RUNNER_TEMP/ExportOptions.plist" "$RUNNER_TEMP/phone.mobileprovision" "$RUNNER_TEMP/watch.mobileprovision" "$RUNNER_TEMP/complication.mobileprovision"
+          node scripts/ios_release_signing.mjs apps/mobile_ios/ios/Runner.xcodeproj/project.pbxproj "$RUNNER_TEMP/ExportOptions.plist" "$RUNNER_TEMP/phone.mobileprovision" "$RUNNER_TEMP/watch.mobileprovision" "$RUNNER_TEMP/share.mobileprovision" "$RUNNER_TEMP/complication.mobileprovision"
 
       - name: Write the production runtime config
         working-directory: apps/mobile_ios

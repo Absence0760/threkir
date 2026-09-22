@@ -10,6 +10,7 @@ For the unit / widget test suites that run automatically, see [testing.md](testi
 
 - [Setup once, before anything else](#setup-once-before-anything-else)
 - [Platform-by-platform launch checklist](#platform-by-platform-launch-checklist)
+- [iOS runtime verification](#ios-runtime-verification)
 - [Auth and onboarding](#auth-and-onboarding)
 - [Recording a run](#recording-a-run)
 - [Run detail and history](#run-detail-and-history)
@@ -117,6 +118,14 @@ cd apps/watch_ios && open WatchApp.xcodeproj
 - App launches in simulator.
 - Pre-run screen renders.
 - Start → countdown → recording. The Watch Connectivity bridge to the paired-phone Flutter app receives the run on stop (verify in `mobile_ios` logs: `WatchIngestBridge: received WCSessionFile`).
+
+---
+
+## iOS runtime verification
+
+The launch check above is the whole of what this guide asks of iOS, and that is deliberate. [parity.md](../product/parity.md)'s iOS column is **derived from the Android column rather than observed**, so walking a recipe below on an iOS simulator does not convert a cell — and the matrix's own guard refuses a per-row iOS tick outright. Converting that column is a separate exercise with its own evidence rules: which verification rung a result may claim, what a simulator can and cannot reach, the traps that make a green simulator run weaker than it looks, and a log of what every attempt so far actually reached.
+
+It lives in **[ios_verification.md](ios_verification.md)**. Read it before claiming any iOS result, and append to its results log rather than editing cells in the matrix.
 
 ---
 

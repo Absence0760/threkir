@@ -72,9 +72,14 @@ export const IOS_ROOT =
 /// `run_recorder` is what asks CoreLocation to keep running in the background.
 export const DART_ROOTS = ['apps/mobile_ios/lib', 'packages'];
 
-/// Swift under `ios/Runner/` — the native half that can oblige a declaration
-/// no Dart import implies (EventKit reaches the calendar with no plugin).
-export const SWIFT_ROOT = 'Runner';
+/// Swift the app's own bundles compile — the native half that can oblige a
+/// declaration no Dart import implies (EventKit reaches the calendar with no
+/// plugin; the share extension reaches the App Group container with none
+/// either). `ShareExtension/` is here because the entitlement its container
+/// lookup obliges is declared on the HOST app too: the two halves share one
+/// group, so the host's `Runner.entitlements` is answerable for code that
+/// lives outside `Runner/`.
+export const SWIFT_ROOTS = ['Runner', 'ShareExtension'];
 
 const APS_KEY = 'com.apple.developer.aps-environment';
 export const APS_SUBSTITUTION = '$(APS_ENVIRONMENT)';
@@ -123,6 +128,40 @@ export const BACKGROUND_MODES = [
 	},
 ];
 
+/// The import that obliges the Google Sign-In redirect scheme, and the two
+/// shapes that scheme is checked for. Exported so the unit tests drive the
+/// same expressions the guard does rather than a second copy of them.
+export const GOOGLE_SIGN_IN_IMPORT = /package:google_sign_in\//;
+
+/// A reversed iOS OAuth client id, the only URL-scheme shape that is itself a
+/// credential.
+export const GOOGLE_REVERSED_SCHEME = /^com\.googleusercontent\.apps\./;
+
+/// The Runner build phase that appends that scheme to the built Info.plist.
+/// Matched on the two things the phase cannot do its job without — the key it
+/// reads and the array it appends to — rather than on its name, which is
+/// prose and renames freely.
+export const GOOGLE_REDIRECT_PHASE = /REVERSED_CLIENT_ID[\s\S]*?CFBundleURLTypes/;
+
+/// The import that obliges the operator's Firebase config to be validated at
+/// BUILD time rather than trusted at launch.
+export const FIREBASE_CORE_IMPORT = /package:firebase_core\//;
+
+/// The `GoogleService-Info.plist` fields that RAISE when malformed, and so
+/// cannot be left to the app to survive. `+[FLTFirebaseCorePlugin
+/// sharedInstance]` calls `+[FIRApp configureWithOptions:]` during plugin
+/// registration, before any Dart runs, so `initFirebaseForPush`'s try/catch is
+/// downstream of the failure: a bad field is an uncaught NSException and the
+/// process takes SIGABRT at launch. GOOGLE_APP_ID raises via `+[FIRApp
+/// validateAppID:]`; API_KEY and PROJECT_ID via `+[FIRInstallations
+/// validateAppOptions:appName:]`. An ABSENT file is a supported state and is
+/// deliberately not in this list.
+export const FIREBASE_VALIDATED_FIELDS = ['GOOGLE_APP_ID', 'API_KEY', 'PROJECT_ID'];
+
+/// The diagnostic the validating build phase emits. Matched instead of the
+/// phase's name, which is prose and renames freely.
+export const FIREBASE_VALIDATION_DIAGNOSTIC = /error: GoogleService-Info\.plist:/;
+
 /// A background mode allowed to stand with no rule claiming it. Empty today
 /// and expected to stay that way; the escape hatch exists so a genuinely
 /// undetectable capability can be admitted in writing rather than by widening
@@ -169,6 +208,28 @@ export const ENTITLEMENTS = [
 			'`getToken()` returns null forever and the device silently registers ' +
 			'nothing. It is a checked-in capability declaration, not a credential ' +
 			'— the Firebase plist and the APNs key are the operator-supplied half.',
+	},
+	{
+		key: 'com.apple.security.application-groups',
+		source: 'swift',
+		pattern: /containerURL\(forSecurityApplicationGroupIdentifier:/,
+		needed_by:
+			'the share extension hands a shared route file to the app through an ' +
+			'App Group container',
+		accepts: (v) =>
+			Array.isArray(v) && v.length > 0 && v.every((g) => typeof g === 'string' && g.startsWith('group.')),
+		shape: '<array><string>group.…</string></array>',
+		why:
+			'`containerURL(forSecurityApplicationGroupIdentifier:)` returns nil ' +
+			'rather than throwing when the group is not entitled, so a share would ' +
+			'write nowhere and the app would foreground onto no import. WHICH ' +
+			'group is not asserted here: the identifier has to agree across four ' +
+			'files (both entitlements, the host Info.plist `AppGroupId`, and ' +
+			'`SharedRouteHandoff.appGroup`), which `ShareExtensionHandoffTests` ' +
+			'reads off disk and compares in the `build-mobile-ios` job. This rule ' +
+			'is the half that check cannot make: that the capability is claimed by ' +
+			'code at all, so deleting the extension obliges deleting the ' +
+			'entitlement with it.',
 	},
 ];
 
@@ -258,6 +319,21 @@ export const FIXED_PLIST_KEYS = [
 			'save-to-photos write-back. No Dart writes to the library today, so ' +
 			'there is nothing to derive it from — and an extra purpose string ' +
 			'costs nothing, unlike an extra background mode.',
+	},
+	{
+		key: 'NSSupportsLiveActivities',
+		why:
+			'The RunActivityExtension target ships the in-progress run to the lock ' +
+			'screen and the Dynamic Island, iOS\'s counterpart to the Android ' +
+			'ongoing notification. Without this key ' +
+			'ActivityAuthorizationInfo().areActivitiesEnabled is false forever and ' +
+			'Activity.request throws, so the run records perfectly and the lock ' +
+			'screen simply stays empty — the silent shape this script exists for. ' +
+			'It is a Bool rather than a usage string, so the UsageDescription ' +
+			'reverse sweep above cannot see it; a derived rule keyed on ' +
+			'`import ActivityKit` in Runner/LiveActivityBridge.swift would be the ' +
+			'stronger form and needs a boolean-valued rule list this script has ' +
+			'no shape for yet.',
 	},
 ];
 
@@ -589,7 +665,10 @@ export function collectDartSources(root = REPO_ROOT, roots = DART_ROOTS) {
 }
 
 export function collectSwiftSources(iosRoot = IOS_ROOT) {
-	return walk(join(iosRoot, SWIFT_ROOT), '.swift', [], null);
+	/** @type {SourceFile[]} */
+	const out = [];
+	for (const rel of SWIFT_ROOTS) walk(join(iosRoot, rel), '.swift', out, null);
+	return out;
 }
 
 /// Every rule whose requirement is derived from Swift, named by whatever
@@ -755,7 +834,7 @@ export function evaluate(input) {
 		errors.push(
 			`Found no Swift sources to derive requirements from, but ${swiftRules.length} ` +
 				`rule(s) read them: ${swiftRules.join(', ')}.\n` +
-				`  Looked under ${join(IOS_ROOT, SWIFT_ROOT)}. Those rules would pass ` +
+				`  Looked under ${SWIFT_ROOTS.map((r) => join(IOS_ROOT, r)).join(', ')}. Those rules would pass ` +
 				'vacuously — the declaration they oblige would stand with nothing ' +
 				'claiming it.',
 		);
@@ -979,6 +1058,92 @@ export function evaluate(input) {
 			);
 		} else if (Array.isArray(permitted) && permitted.includes(identifier)) {
 			ok.push(`background-sync identifier "${identifier}" agrees across Dart, plist and Swift`);
+		}
+	}
+
+	// --- The Firebase config, which cannot be checked at runtime -----------
+	// Every other rule here asks whether a capability is DECLARED. This one asks
+	// whether an operator-supplied credential is VALIDATED, because the window in
+	// which it could be validated is not the app's. See FIREBASE_VALIDATED_FIELDS.
+	if (firstMatch(dartSources, FIREBASE_CORE_IMPORT, root)) {
+		const pbx = pbxproj ?? '';
+		const unchecked = FIREBASE_VALIDATED_FIELDS.filter((f) => !pbx.includes(f));
+		if (!FIREBASE_VALIDATION_DIAGNOSTIC.test(pbx) || unchecked.length > 0) {
+			errors.push(
+				'`firebase_core` is imported, but no Runner build phase validates the ' +
+					`operator's GoogleService-Info.plist${
+						unchecked.length > 0 ? ` (unchecked: ${unchecked.join(', ')})` : ''
+					}.\n  Firebase configures during plugin registration, before any Dart ` +
+					'runs, so a malformed field aborts the process at launch and no Dart ' +
+					'try/catch can degrade it. Check the file in the phase that bundles ' +
+					'it, and fail the build there instead.',
+			);
+		} else {
+			ok.push(
+				`a Runner build phase validates ${FIREBASE_VALIDATED_FIELDS.join(', ')} ` +
+					'before bundling GoogleService-Info.plist ' +
+					'(apps/mobile_ios/lib/firebase_push_messaging.dart: `firebase_core` is imported)',
+			);
+		}
+	}
+
+	// --- The Google Sign-In redirect, which cannot be committed ------------
+	// GoogleSignIn hands the browser back through a custom URL scheme that IS
+	// the iOS OAuth client id reversed, and routes it via `handleURL:`. Every
+	// other declaration in this file is a claim ABOUT a credential; this one
+	// would BE one, and this repository is public. So the scheme is appended
+	// to the BUILT Info.plist by a Runner build phase reading the operator's
+	// untracked GoogleService-Info.plist, and both halves of that arrangement
+	// are checked: importing the plugin obliges the phase, and the credential
+	// must not have been written down here after all.
+	if (firstMatch(dartSources, GOOGLE_SIGN_IN_IMPORT, root)) {
+		const injects = GOOGLE_REDIRECT_PHASE.test(pbxproj ?? '');
+		if (!injects) {
+			errors.push(
+				'`google_sign_in` is imported, but no Runner build phase registers ' +
+					'the reversed-client-id URL scheme.\n  Expected a shell-script ' +
+					'phase reading `REVERSED_CLIENT_ID` out of GoogleService-Info.plist ' +
+					'and appending it to CFBundleURLTypes in the built Info.plist. ' +
+					'Without it GIDSignIn opens the browser and the redirect has ' +
+					'nowhere to land, so the flow hangs rather than failing.',
+			);
+		} else {
+			ok.push(
+				'a Runner build phase injects the Google Sign-In redirect scheme ' +
+					'(apps/mobile_ios/lib/google_auth.dart: `google_sign_in` is imported)',
+			);
+		}
+
+		const urlTypes = dictArray(infoPlist.get('CFBundleURLTypes'));
+		if (urlTypes === null) {
+			errors.push(
+				'Info.plist `CFBundleURLTypes` is present but is not an array of ' +
+					'dictionaries.\n  The Supabase auth deep link is declared through ' +
+					'it and nothing below can be read.',
+			);
+		} else {
+			const schemes = urlTypes.flatMap((entry) => {
+				const list = entry.get('CFBundleURLSchemes');
+				return Array.isArray(list) ? list.filter((v) => typeof v === 'string') : [];
+			});
+			const leaked = schemes.filter((v) => GOOGLE_REVERSED_SCHEME.test(v));
+			if (leaked.length > 0) {
+				errors.push(
+					`Info.plist commits the URL scheme(s) ${leaked.join(', ')}.\n` +
+						'  A reversed client id IS the iOS OAuth client id, and this ' +
+						'repository is public. The build phase injects it from the ' +
+						"operator's GoogleService-Info.plist; remove it from here.",
+				);
+			} else if (infoPlist.has('GIDClientID')) {
+				errors.push(
+					'Info.plist commits a `GIDClientID`.\n  That is the iOS OAuth ' +
+						'client id, and this repository is public. `google_sign_in_ios` ' +
+						"reads it from the operator's bundled GoogleService-Info.plist " +
+						'instead, which is why nothing has to be written down here.',
+				);
+			} else {
+				ok.push('Info.plist commits no Google OAuth client id');
+			}
 		}
 	}
 

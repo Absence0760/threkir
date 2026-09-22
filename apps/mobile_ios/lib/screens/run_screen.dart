@@ -25,6 +25,7 @@ import '../auth_error.dart';
 import '../audio_cues.dart';
 import '../backend_timeout.dart';
 import '../ble_heart_rate.dart';
+import '../ble_readiness_labels.dart';
 import '../ble_treadmill.dart';
 import '../dev_auto_login.dart' show isLocalSupabaseUrl;
 import '../embedded_bests.dart';
@@ -65,6 +66,7 @@ import '../widgets/cutoff_card.dart';
 import 'route_picker_screen.dart';
 import '../background_location_nudge.dart';
 import '../battery_optimisation_hint.dart';
+import '../live_activity_bridge.dart';
 import '../run_notification_bridge.dart';
 import '../run_stats.dart';
 import '../share_sheet.dart';
@@ -680,6 +682,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   // with live time / distance / pace so the lock screen is useful mid-run.
   final RunNotificationBridge _lockScreen = RunNotificationBridge();
   DateTime? _lastNotificationAt;
+
+  // The same live run on iOS's lock screen and Dynamic Island, which has no
+  // ongoing-notification equivalent. Fed the identical localized strings the
+  // notification carries, so neither platform's lock screen can drift from
+  // the other's; no-op on Android, and its own 10s cadence gate means the
+  // per-second offers below cost nothing on either.
+  final LiveActivityBridge _liveActivity = LiveActivityBridge();
 
   // Ephemeral top-anchored notices ("split done", "lap marked",
   // "no GPS") render via the shared `showTopBanner` Overlay helper
@@ -1810,6 +1819,23 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // with a clean shade (#303). Bridge swallows its own failures (L4).
     _lockScreen.clearSplit();
 
+    // L4 — the iOS lock screen / Dynamic Island live run, which has no
+    // ongoing-notification equivalent to override. A refusal (Live Activities
+    // turned off, iOS older than 16.2) leaves the lock screen empty and the
+    // recording entirely untouched; the bridge no-ops on Android.
+    //
+    // The bridge swallows its own platform failures, but _lockScreenFrame()
+    // runs HERE, synchronously, on the run-start path: it reads the unit
+    // preference and formats a pace that is still zero this early. An
+    // exception out of a formatter would take the GPS stream, the crash-save
+    // timer and the live-share attach below it with it, so the frame build
+    // gets the same own-catch every other auxiliary effect on this path has.
+    try {
+      _liveActivity.start(_lockScreenFrame());
+    } catch (e) {
+      debugPrint('live activity start failed: $e');
+    }
+
     // Auto-live-share (docs/features/safety.md): the device pref starts
     // the broadcast on every run start, so the overdue escalation has a
     // telemetry stream to watch and a partner has a link to follow. L4 —
@@ -1911,16 +1937,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
           }
           setState(() => _currentBpm = null);
         case BleHrStatus.connectFailed:
-          // Strap was off / out of range at launch — auto-reconnect doesn't
-          // retry this case, so offer a manual one-tap reconnect instead of
-          // leaving the runner with a silently-dead HR readout.
+          // Strap was off / out of range at launch, OR the adapter refused
+          // the connect outright. Auto-reconnect doesn't retry either, so
+          // disclose which it was and offer the remedy that matches.
           setState(() => _currentBpm = null);
-          _showTopBanner(
-            _l10n.runHrStrapNotFound,
-            duration: const Duration(seconds: 6),
-            actionLabel: _l10n.runReconnect,
-            onAction: _reconnectHeartRate,
-          );
+          _discloseHrConnectFailure();
         case BleHrStatus.connecting:
           break;
       }
@@ -2235,6 +2256,36 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       saved ? _l10n.runResumeSavedBanner : _l10n.runSaveFailedRelaunch,
       duration: const Duration(seconds: 4),
     );
+  }
+
+  /// Say why live HR isn't coming, and offer the remedy that can actually
+  /// fix it — the choice itself is pure, in [bleConnectFailureDisclosure].
+  /// L4 auxiliary: banner only, the run is untouched either way.
+  void _discloseHrConnectFailure() {
+    final disclosure = bleConnectFailureDisclosure(
+      _l10n,
+      widget.heartRate.lastUnavailable,
+    );
+    _showTopBanner(
+      disclosure.message,
+      duration: const Duration(seconds: 6),
+      actionLabel: disclosure.actionLabel,
+      onAction: disclosure.actionLabel == null
+          ? null
+          : disclosure.opensAppSettings
+              ? _openBleAppSettings
+              : _reconnectHeartRate,
+    );
+  }
+
+  /// Deep-link to the app's OS settings page so a denied Bluetooth grant can
+  /// be restored. Never throws — this runs mid-recording.
+  Future<void> _openBleAppSettings() async {
+    try {
+      await openAppSettings();
+    } catch (e) {
+      debugPrint('openAppSettings (BLE grant) failed: $e');
+    }
   }
 
   /// Manual heart-rate reconnect, driven by the "Reconnect" affordance on
@@ -2870,6 +2921,34 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     );
   }
 
+  /// The current stats as both lock screens render them: Android's ongoing
+  /// notification and iOS's Live Activity. One builder because the two must
+  /// never disagree — the labels used to be English literals on the notification
+  /// while the title beside them was localized, so the one surface a runner
+  /// reads mid-run through a pocket read half in their language. Reuses the run
+  /// screen's own stat labels rather than minting more keys in seven catalogues.
+  LiveActivityFrame _lockScreenFrame() {
+    final unit = widget.preferences.unit;
+    // Mirror the on-screen distance (GPS or pedometer-estimated with a
+    // tilde prefix) so the lock-screen matches what the user sees.
+    final rawDistance = UnitFormat.distance(_displayDistanceMetres, unit);
+    return LiveActivityFrame(
+      title: _manualPaused
+          ? _l10n.runNotificationPausedTitle(activityTypeLabel(_l10n, _activityType))
+          : activityTypeLabel(_l10n, _activityType),
+      paused: _manualPaused,
+      elapsed: _elapsed,
+      elapsedText: _formatDuration(_elapsed),
+      timeLabel: _l10n.runStatTime,
+      distanceLabel: _l10n.runStatDistance,
+      distanceText: _distanceIsEstimated ? '~$rawDistance' : rawDistance,
+      paceLabel: _activityType.usesSpeed ? _l10n.runStatSpeed : _l10n.runStatPace,
+      paceText: _activityType.usesSpeed
+          ? '${UnitFormat.speed(_pace, unit)} ${UnitFormat.speedLabel(unit)}'
+          : '${UnitFormat.pace(_pace, unit)} ${UnitFormat.paceLabel(unit)}',
+    );
+  }
+
   /// Push the current stats to the native lock-screen notification,
   /// throttled to ~1 Hz so a burst of GPS fixes doesn't spam the
   /// NotificationManager. The native side reposts on geolocator's
@@ -2882,31 +2961,20 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     if (last != null && now.difference(last).inMilliseconds < 900) return;
     _lastNotificationAt = now;
 
-    final unit = widget.preferences.unit;
-    final timeStr = _formatDuration(_elapsed);
-    // Mirror the on-screen distance (GPS or pedometer-estimated with a
-    // tilde prefix) so the lock-screen matches what the user sees.
-    final rawDistance = UnitFormat.distance(_displayDistanceMetres, unit);
-    final distanceStr =
-        _distanceIsEstimated ? '~$rawDistance' : rawDistance;
-    final paceStr = _activityType.usesSpeed
-        ? '${UnitFormat.speed(_pace, unit)} ${UnitFormat.speedLabel(unit)}'
-        : '${UnitFormat.pace(_pace, unit)} ${UnitFormat.paceLabel(unit)}';
-
+    final frame = _lockScreenFrame();
     _lockScreen.update(
-      title: _manualPaused
-          ? _l10n.runNotificationPausedTitle(activityTypeLabel(_l10n, _activityType))
-          : activityTypeLabel(_l10n, _activityType),
-      text: '$timeStr  •  $distanceStr  •  $paceStr',
-      // The expanded lock-screen body. Its labels used to be English literals
-      // while the title and collapsed text beside them were localized, so the
-      // one surface a runner reads mid-run through a pocket read half in their
-      // language. Reuses the run screen's own stat labels rather than minting
-      // four more keys in seven catalogues.
-      bigText:
-          '${_l10n.runStatTime}: $timeStr\n${_l10n.runStatDistance}: $distanceStr\n${_activityType.usesSpeed ? _l10n.runStatSpeed : _l10n.runStatPace}: $paceStr',
+      title: frame.title,
+      text: '${frame.elapsedText}  •  ${frame.distanceText}  •  ${frame.paceText}',
+      bigText: '${frame.timeLabel}: ${frame.elapsedText}\n'
+          '${frame.distanceLabel}: ${frame.distanceText}\n'
+          '${frame.paceLabel}: ${frame.paceText}',
       paused: _manualPaused,
     );
+    // iOS's half of the same surface. Offered at this 1 Hz rate and dropped
+    // by the bridge's own cadence gate down to ~0.1 Hz, because ActivityKit
+    // throttles frequent updates and each one costs battery over a run that
+    // can last a day. The bridge swallows its own failures (L4).
+    _liveActivity.update(frame);
   }
 
   /// Serialise the in-progress run to disk. Runs every 10s via
@@ -3166,6 +3234,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // ongoing notification on stream cancel, but clear explicitly so a
     // slow service teardown doesn't leave a stale row on the lock screen.
     _lockScreen.clear();
+    _liveActivity.stop();
     WakelockPlus.disable();
 
     // Tag the run with the chosen activity type + step count so the web
@@ -3594,6 +3663,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // Fire-and-forget — if we discarded mid-run, drop the in-progress file.
     widget.runStore.clearInProgress();
     _lockScreen.clear();
+    _liveActivity.stop();
     _lastNotificationAt = null;
     WakelockPlus.disable();
     setState(() {

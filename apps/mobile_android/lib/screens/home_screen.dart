@@ -881,8 +881,10 @@ class _HomeScreenState extends State<HomeScreen>
         valueListenable: _currentIndex,
         builder: (context, index, _) {
           final l10n = AppLocalizations.of(context);
+          final metrics =
+              bottomNavMetrics(MediaQuery.textScalerOf(context).scale(1));
           return BottomAppBar(
-            height: 64,
+            height: metrics.height,
             padding: EdgeInsets.zero,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -979,6 +981,27 @@ class _HomeScreenState extends State<HomeScreen>
 /// One destination in the [BottomAppBar] — icon over label, tinted when
 /// selected. A real button for accessibility (role + selected state), with
 /// a >=48 dp tap target.
+/// How tall the bottom nav is, and whether its labels still fit, for a given
+/// text scale.
+///
+/// The bar was a hard 64 dp holding a 24 dp icon, a 2 dp gap and a label, which
+/// overflows by 12 px at `accessibility-extra-extra-extra-large` and clips the
+/// labels to "Ho / Fit / L / So / You" on the way there. Both are failures of
+/// the same assumption: that a fixed box can hold text whose size the runner
+/// chooses.
+///
+/// So the bar grows with the scale, and past the point where a label can no
+/// longer be read in the width a fifth of the screen affords, it drops the
+/// label rather than showing two of its letters. The icon and the `Semantics`
+/// label both stay, so the destination is still announced in full to a screen
+/// reader and still recognisable to everyone else — which an ellipsised "Ho"
+/// is not.
+({double height, bool showLabels}) bottomNavMetrics(double textScale) {
+  final scale = textScale.isFinite && textScale > 0 ? textScale : 1.0;
+  if (scale > 1.6) return (height: 56.0, showLabels: false);
+  return (height: (64.0 * scale).clamp(64.0, 96.0), showLabels: true);
+}
+
 class _BottomNavItem extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -996,6 +1019,7 @@ class _BottomNavItem extends StatelessWidget {
     final theme = Theme.of(context);
     final color =
         selected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant;
+    final metrics = bottomNavMetrics(MediaQuery.textScalerOf(context).scale(1));
     return Expanded(
       child: Semantics(
         button: true,
@@ -1004,18 +1028,23 @@ class _BottomNavItem extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: SizedBox(
-            height: 64,
+            height: metrics.height,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(icon, color: color, size: 24),
-                const SizedBox(height: 2),
-                Text(
-                  label,
-                  style: theme.textTheme.labelSmall?.copyWith(color: color),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                if (metrics.showLabels) ...[
+                  const SizedBox(height: 2),
+                  Flexible(
+                    child: Text(
+                      label,
+                      style:
+                          theme.textTheme.labelSmall?.copyWith(color: color),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

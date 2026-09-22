@@ -2087,6 +2087,14 @@ A CI guard's whole value is that its verdict is true, so a guard that reads its 
 
 And where a rule genuinely has a blind spot, the guard **reports the blind spot** — `check_ci_diagnostics.mjs` lists the steps it does not ask to diagnose themselves — rather than leaving its boundary in a paragraph someone has to re-derive.
 
+## A secret-scan allowlist names the value, never the file — and the difference has to be tested
+
+`.gitleaks.toml`'s entries are matched on the matched **secret**, not on a path, so the scanner stays live on the source a false positive sits in. That is the file's stated convention and it is load-bearing: an entry keyed on a path is indistinguishable from switching the scanner off over that file, and the file where a fixture lives is exactly the file a real key is most likely to be pasted into next.
+
+**Assert it, don't state it.** The convention had been written down and never checked. The way to check it is to plant a token of a shape gitleaks actually detects — a `ghp_`-shaped one does — in the allowlisted file itself and confirm it still fails while the allowlisted literal beside it does not. Do that when adding an entry; a canary built from a credential the scanner does not recognise in the first place tests nothing and reads as a pass ([decisions.md § 1697](decisions.md)).
+
+**A literal that exists in several languages needs the entry to cover every spelling.** The badge catalogue's i18n keys are dotted in Rust and camelCase in Dart and TypeScript. One regex covered the Rust form, its comment claimed the other two, and 22 findings a week went unread for nineteen weeks on the strength of that claim. When the value is generated or transliterated per language, write the entry against each spelling or against a shape that spans them.
+
 ## Exceptions
 
 Every rule here has escape hatches for the cases where it genuinely doesn't fit. If you're about to violate one of these rules:

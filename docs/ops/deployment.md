@@ -320,6 +320,21 @@ a one-line job for each. A called workflow's job results fan into the calling
 job, so one `needs:` entry covers every job those files hold today and every
 one they gain later.
 
+**`gitleaks.yml` is called AND scheduled, and only the called half gates.** The
+`workflow_call` path diffs against the base ref; the weekly `cron` is the only
+scan that reads the whole of `main`'s history, and it reaches the gate by no
+route at all -- it runs on no PR. It failed every week from 2026-05-18 to
+2026-09-21 without that being visible anywhere ([decisions
+§ 1697](../architecture/decisions.md)). `gitleaks-sweep.yml` now holds that cron, calls the same
+scan, and opens a `secret-scan`-labelled issue on a failed sweep, closing it on
+the next clean one -- the shape `audit.yml` already uses. It is a separate file
+because a callee may not request a permission its caller lacks, and putting the
+`issues: write` in `gitleaks.yml` failed `ci.yml` at startup. The issue carries the run link and never the
+findings, because this repository is public. A red weekly sweep is therefore an
+open issue rather than a merge block -- deliberately, since the history it
+reads is already merged and blocking the next unrelated PR would not unmerge
+it.
+
 ### What runs on a pull request and does not block it
 
 Six workflows trigger on a pull request and reach nothing the gate waits for.

@@ -327,6 +327,18 @@ jobs:
             echo "The failing assertion names the files the lane's own file-list expression now misses. Reproduce with: node --test scripts/edge_functions_typecheck_coverage.test.mjs."
             exit 1
           fi
+      # The stack-start retry ladder is shell inside a composite action, so it
+      # runs in no job's test suite. Which SOCKET STATES its port probe counts
+      # is the property pinned here: the LISTEN-only probe it replaced was
+      # blind to an outbound ESTABLISHED socket squatting a stack port, which
+      # is what spent all three attempts of run 35626531071.
+      - name: Supabase stack port-clean retry
+        run: |
+          if ! node --test .github/actions/start-supabase/start_stack.test.mjs; then
+            echo "::error::The start-supabase composite action's port-clean retry regressed — which socket states its holder probe counts, which ports it covers, or its reservation gate. That shell runs inside a composite action, so it is in no job's test suite and this is the only thing that reads it. Nothing here is about workflow syntax, the toolchain pins or the CI diagnoses."
+            echo "Reproduce with: node --test .github/actions/start-supabase/start_stack.test.mjs (drives the ladder with stub ss/docker/supabase/sudo on PATH)."
+            exit 1
+          fi
       # The signing step in release-ios.yml runs only when a mobile_ios tag is
       # published, on a Mac runner, against the Xcode project as it is that
       # day. This runs the same planning and editing on Linux against the

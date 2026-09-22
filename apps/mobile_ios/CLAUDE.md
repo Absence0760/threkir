@@ -31,7 +31,7 @@ Flutter iOS app. **`lib/` and `test/` are now byte-for-byte identical to `apps/m
 
 | Concern | Android path | iOS path |
 |---|---|---|
-| Auth (third-party) | Google Sign-In (`google_sign_in`) | Sign in with Apple (`sign_in_with_apple`) — ungated; `appleSignInAvailable()` returns true on iOS unconditionally |
+| Auth (third-party) | Google Sign-In (`google_sign_in`) — needs `GIDClientID` + the reversed-client-id URL scheme in `Info.plist`, neither of which the file carries ([`google_provisioning.md`](../../docs/ops/google_provisioning.md) step 10) | Sign in with Apple (`sign_in_with_apple`) — **ungated on iOS**: `appleSignInAvailable()` returns true for `TargetPlatform.iOS` and `Runner.entitlements` declares `com.apple.developer.applesignin`. It waits on the portal App ID capability, not on a constant |
 | Secrets | `.env.local` asset (read by `flutter_dotenv`) | `--dart-define-from-file=dart_defines.json`, mirrored into `dotenv.env` at startup |
 | Apple Watch ingest | `WatchIngest.attach` is a no-op (channel never registered) | `Runner/WatchIngestBridge.swift` posts payloads through `run_app/watch_ingest` |
 | Wear OS auth bridge | `WearAuthBridge.attach` posts via `run_app/wear_auth` | No-op (`MissingPluginException` caught) |

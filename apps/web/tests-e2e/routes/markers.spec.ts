@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteRoute } from '../fixtures/simulate';
@@ -106,6 +106,38 @@ test.describe('/routes/[id] — course markers', () => {
 		await expect(rows.nth(1).locator('.marker-kind')).toHaveText('Aid station');
 		await expect(rows.nth(1).locator('.marker-detail')).toContainText('Water');
 		await expect(rows.nth(1).locator('.marker-detail')).toContainText('Food');
+	});
+
+	test('a failed marker read says so and retries, instead of "no markers yet"', async ({
+		page,
+		mockRoute
+	}) => {
+		routeId = await insertOwnedRoute();
+		await insertMarker(routeId, 'aid_station', 'Aid 2', 51.5098, -0.1298, { services: ['water'] });
+
+		// Kong's 502 for a request it will not replay (decisions § 1703). The
+		// editor used to answer it with "No course markers yet", inviting an
+		// owner to re-add a marker they already have.
+		let failing = true;
+		await mockRoute(page, '**/rest/v1/rpc/route_markers_for_viewer*', (route) =>
+			failing
+				? route.fulfill({
+						status: 502,
+						contentType: 'application/json; charset=utf-8',
+						body: JSON.stringify({ message: 'An invalid response was received from the upstream server' })
+					})
+				: route.continue()
+		);
+
+		await page.goto(`/routes/${routeId}`);
+		const loadError = page.locator('[data-testid="markers-load-error"]');
+		await expect(loadError).toBeVisible();
+		await expect(page.getByText('No course markers yet')).toHaveCount(0);
+
+		failing = false;
+		await loadError.getByRole('button', { name: 'Retry' }).click();
+		await expect(page.locator('.markers-list .marker-row')).toHaveCount(1);
+		await expect(loadError).toHaveCount(0);
 	});
 
 	test('a long marker label is clipped to one line, not overflowed', async ({ page }) => {

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/mock-route';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteRoute } from '../fixtures/simulate';
@@ -147,6 +147,41 @@ test.describe('/routes/[id]/roadbook', () => {
 		const flat = await paceSeconds(1);
 		const climb = await paceSeconds(3);
 		expect(climb).toBeGreaterThan(flat * 2);
+	});
+
+	test('a failed marker read offers a retry instead of claiming the course has none', async ({
+		page,
+		mockRoute
+	}) => {
+		routeId = await seedRoute();
+
+		let failing = true;
+		const methods: string[] = [];
+		await mockRoute(page, '**/rest/v1/rpc/route_markers_for_viewer*', (route, request) => {
+			methods.push(request.method());
+			if (!failing) return route.continue();
+			// Kong's 502 when the pooled PostgREST connection closes under a
+			// request it will not replay (decisions § 1703). This page rendered
+			// it as "Add course markers" over a course that has two.
+			return route.fulfill({
+				status: 502,
+				contentType: 'application/json; charset=utf-8',
+				body: JSON.stringify({ message: 'An invalid response was received from the upstream server' })
+			});
+		});
+
+		await page.goto(`/routes/${routeId}/roadbook?goal=7200&model=even`);
+		const loadError = page.locator('[data-testid="roadbook-load-error"]');
+		await expect(loadError).toBeVisible();
+		await expect(page.getByText('Add course markers to build a roadbook')).toHaveCount(0);
+
+		failing = false;
+		await loadError.getByRole('button', { name: 'Retry' }).click();
+		await expect(page.locator('.rb-table tbody tr')).toHaveCount(4);
+
+		// A GET is what the gateway and postgrest-js may replay; a POST gets
+		// neither, which is how a pooled-connection race became a 502 here.
+		expect([...new Set(methods)]).toEqual(['GET']);
 	});
 
 	test('fueling overlay shows per-leg carbs + a carry hint, and ?carbs= re-scales', async ({ page }) => {

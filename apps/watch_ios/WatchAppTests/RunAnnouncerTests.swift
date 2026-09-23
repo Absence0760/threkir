@@ -13,7 +13,9 @@ import XCTest
 ///
 /// Phrase assertions are composed from the catalogue's own parts rather than
 /// spelled in English, so the suite passes in whatever locale the host runs
-/// in — the one genuinely English-only assertion is skipped when it is not.
+/// in. The one assertion about the English WORDS names `en_US` instead, and
+/// runs in every language CI tests in rather than skipping itself out of all
+/// but one.
 final class RunAnnouncerTests: XCTestCase {
     private var savedUnit: String?
     private var savedCues: Any?
@@ -257,31 +259,38 @@ final class RunAnnouncerTests: XCTestCase {
         }
     }
 
-    func testEnglishWordingMatchesThePhone() throws {
-        try XCTSkipUnless(
-            Bundle.main.preferredLocalizations.first == "en",
-            "Host is not running the English catalogue"
-        )
-        XCTAssertEqual(RunCuePhrase.text(for: .started, prefersMiles: false), "Run started")
+    func testEnglishWordingMatchesThePhone() {
+        let en = Locale(identifier: "en_US")
         XCTAssertEqual(
-            RunCuePhrase.text(for: .paceAlert(tooSlow: true), prefersMiles: false),
+            RunCuePhrase.text(for: .started, prefersMiles: false, locale: en), "Run started"
+        )
+        XCTAssertEqual(
+            RunCuePhrase.text(for: .paceAlert(tooSlow: true), prefersMiles: false, locale: en),
             "Pick up the pace"
         )
         XCTAssertEqual(
-            RunCuePhrase.text(for: .paceAlert(tooSlow: false), prefersMiles: false),
+            RunCuePhrase.text(for: .paceAlert(tooSlow: false), prefersMiles: false, locale: en),
             "Slow down"
         )
-        XCTAssertEqual(RunCuePhrase.unitLabel(splits: 1, prefersMiles: false), "1 kilometre")
-        XCTAssertEqual(RunCuePhrase.unitLabel(splits: 2, prefersMiles: false), "2 kilometres")
-        XCTAssertEqual(RunCuePhrase.unitLabel(splits: 1, prefersMiles: true), "1 mile")
-        XCTAssertEqual(RunCuePhrase.unitLabel(splits: 5, prefersMiles: true), "5 miles")
         XCTAssertEqual(
-            RunCuePhrase.text(for: .split(index: 1, paceSecondsPerKm: 330), prefersMiles: false),
+            RunCuePhrase.unitLabel(splits: 1, prefersMiles: false, locale: en), "1 kilometre"
+        )
+        XCTAssertEqual(
+            RunCuePhrase.unitLabel(splits: 2, prefersMiles: false, locale: en), "2 kilometres"
+        )
+        XCTAssertEqual(RunCuePhrase.unitLabel(splits: 1, prefersMiles: true, locale: en), "1 mile")
+        XCTAssertEqual(RunCuePhrase.unitLabel(splits: 5, prefersMiles: true, locale: en), "5 miles")
+        XCTAssertEqual(
+            RunCuePhrase.text(
+                for: .split(index: 1, paceSecondsPerKm: 330), prefersMiles: false, locale: en
+            ),
             "1 kilometre. Pace, 5 minutes 30 seconds per kilometre"
         )
         XCTAssertEqual(
             RunCuePhrase.text(
-                for: .finished(distanceMetres: 5123, durationSeconds: 1659), prefersMiles: false
+                for: .finished(distanceMetres: 5123, durationSeconds: 1659),
+                prefersMiles: false,
+                locale: en
             ),
             "Run complete. 5.12 kilometres in 27 minutes."
         )

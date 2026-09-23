@@ -137,9 +137,10 @@ data class UniversalSettings(
     /// PostRun summary omits the calorie line entirely — the pref exists
     /// so a weight-conscious runner can stop the app surfacing calorie
     /// figures at all, so every surface that renders one must honour it,
-    /// not just run-detail on web + phone. Only an explicit `false`
+    /// not just run-detail on web + phone. Only an explicit JSON `false`
     /// hides it, mirroring web's `effective(..., 'show_calories', true)
-    /// !== false`; an absent or unparseable value leaves it on.
+    /// !== false` — under which the string `"false"` is not `false`; an
+    /// absent, stringified or otherwise unparseable value leaves it on.
     val showCalories: Boolean = true,
     /// Universal `voice_feedback_enabled` — the master gate on the spoken
     /// split / pace cues, default ON (docs/backend/settings.md). The watch
@@ -214,7 +215,7 @@ internal fun parseUniversalSettings(body: String?): UniversalSettings? {
                 ?.takeIf { it in 20.0..400.0 },
             preferredUnit = prefs["preferred_unit"]?.jsonPrimitive?.contentOrNull
                 ?.takeIf { it in UNIVERSAL_PREFERRED_UNITS },
-            showCalories = prefs["show_calories"]?.jsonPrimitive?.booleanOrNull != false,
+            showCalories = strictBoolean(prefs, "show_calories") != false,
             voiceFeedbackEnabled = strictBoolean(prefs, "voice_feedback_enabled") != false,
         )
     } catch (_: Throwable) {
@@ -230,7 +231,9 @@ internal fun parseUniversalSettings(body: String?): UniversalSettings? {
 /// (`voice_feedback_enabled`, docs/backend/settings.md) that is the wrong
 /// direction to be wrong in: a bag written by some other client with a
 /// stringified boolean would silence a runner who never asked for silence,
-/// on a device with no settings screen to undo it from.
+/// on a device with no settings screen to undo it from. `show_calories`
+/// reads through it for the same reason, and because web's `!== false`
+/// already treats the string as not-false.
 internal fun strictBoolean(obj: JsonObject, key: String): Boolean? {
     val primitive = obj[key] as? JsonPrimitive ?: return null
     if (primitive.isString) return null

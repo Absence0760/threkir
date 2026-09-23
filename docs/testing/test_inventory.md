@@ -391,7 +391,7 @@ The `CRS1` course wire format in `lib/watch_course.dart` — the phone's encode 
 - `chunkCourse` offsets reassemble the frame, including a full-capacity elevation frame across many chunks
 - `courseFromWaypoints` shaping: a short route passes through, a dense one is thinned to the cap with its real endpoints intact (never cut), elevation rides along only when every carried point has one (a single missing or non-finite sample drops the whole profile), and fewer than two positions is refused with a reason
 
-### `apps/mobile_android/test/route_detail_watch_course_test.dart` — 18 tests
+### `apps/mobile_android/test/route_detail_watch_course_test.dart` — 19 tests
 
 Widget tests for the Send-to-watch entry in `lib/screens/route_detail_screen.dart`'s share menu, over a fake `WatchBleTransport` and a `devBackendUrl` driving both sides of the dev gate:
 
@@ -401,6 +401,7 @@ Widget tests for the Send-to-watch entry in `lib/screens/route_detail_screen.dar
 - A one-position route is refused with nothing written and no scan
 - A failed write surfaces the failure (never a success banner) and still disconnects
 - A non-owner's push carries the privacy-CLIPPED trace, not the stored polyline (decisions §33)
+- A course-marker read that fails still sends the course but says the markers could not be loaded; a failed read under "Share as GPX + markers" is reported instead of sharing a markers-less file (decisions §1703)
 
 ### `apps/mobile_android/test/ble_heart_rate_test.dart` — 14 tests
 

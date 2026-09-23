@@ -58,6 +58,9 @@ struct ContentView: View {
                 }
             }
         }
+        .onChange(of: connectivity.defaultActivityType) { _, preferred in
+            if let preferred { workoutManager.applyDefaultActivityType(preferred) }
+        }
         .task {
             workoutManager.liveRaceRelay = connectivity.liveRaceRelay()
             await workoutManager.healthKit.requestAuthorization()
@@ -134,6 +137,9 @@ struct ContentView: View {
             // sent as 0, which would claim the sensor delivered nothing
             // (decisions § 1207).
             if let coverage = run.hrCoverage { metadata["hr_coverage"] = coverage }
+            // The runner's privacy default, snapshotted at stop. Omitted when
+            // the phone never said, so the row keeps its private default.
+            if let isPublic = run.isPublic { metadata["is_public"] = isPublic }
             // Only mark the run synced when WCSession actually queued it.
             // A false means nothing was handed off (session not yet
             // activated) — leave `thisRunSynced` false so `PostRunView`
@@ -321,7 +327,7 @@ struct PreRunView: View {
                         .foregroundColor(.secondary)
 
                     Button(workoutManager.activityType.label) {
-                        workoutManager.activityType = workoutManager.activityType.next
+                        workoutManager.pickActivityType(workoutManager.activityType.next)
                     }
                     .font(.caption)
                     .foregroundColor(AppTheme.lilac)
@@ -570,6 +576,13 @@ struct RunStatsView: View {
                     Text(healthKit.currentBPM.map { "\($0)" } ?? "—")
                         .font(.headline)
                         .foregroundColor(AppTheme.coral)
+                    if let bpm = healthKit.currentBPM,
+                       let zone = HeartRateZones.zone(bpm: bpm, cutoffs: HeartRateZones.stored()) {
+                        Text("Z\(zone)")
+                            .font(.caption2)
+                            .foregroundColor(AppTheme.coral)
+                            .accessibilityLabel(String(localized: "Heart rate zone \(zone)"))
+                    }
                 }
             }
 

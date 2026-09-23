@@ -44,6 +44,10 @@ void main() {
     expect(RegExp(r'\bcm\.Waypoint\(').hasMatch(body), false,
         reason: 'decoding track points here is the divergence that lost an '
             'Apple Watch run its whole track on the queued path');
+    expect(body.contains('isPublicFromWatchPayload('), true,
+        reason: 'the visibility the wrist stamped must be read by the same '
+            'helper the queued branch uses, or a run that arrives while signed '
+            'in and one replayed later are saved with different visibility');
     expect(body.contains('MetadataKeys.'), false,
         reason: 'a metadata allowlist here is the second allowlist that '
             'dropped hr_coverage');

@@ -22,7 +22,26 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     /// `HKWorkoutConfiguration` the session is opened with and the
     /// `activity_type` the finished run is stamped with — see
     /// `RunActivityType`.
-    @Published var activityType: RunActivityType = .run
+    @Published private(set) var activityType: RunActivityType = DefaultActivityType.stored() ?? .run
+
+    /// Set once the runner picks on the wrist, after which a default the phone
+    /// pushes no longer moves the picker.
+    private(set) var activityTypePickedOnWrist = false
+
+    func pickActivityType(_ type: RunActivityType) {
+        activityType = type
+        activityTypePickedOnWrist = true
+    }
+
+    /// Prime the picker with the phone's `default_activity_type`.
+    func applyDefaultActivityType(_ preferred: RunActivityType) {
+        activityType = DefaultActivityType.primed(
+            current: activityType,
+            default: preferred,
+            isIdle: state == .idle,
+            pickedOnWrist: activityTypePickedOnWrist
+        )
+    }
 
     /// Rolling window of the most recent GPS fixes, kept only to compute
     /// live pace and the per-fix distance delta. The full track is
@@ -151,6 +170,11 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         /// The run's splits, already in the registered per-lap shape. Empty
         /// when the runner marked none.
         let laps: [RunLap]
+        /// The runner's `privacy_default` as a `runs.is_public` snapshot,
+        /// taken when the run stopped so a later change on the phone cannot
+        /// re-classify a run already recorded. Nil when the phone never said,
+        /// which omits the key and leaves the row private.
+        var isPublic: Bool? = nil
     }
 
     /// A track point in the wire shape the phone, web and mobile clients
@@ -442,7 +466,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
                 marks: lapMarks,
                 totalDistanceMetres: distanceMetres,
                 totalDurationSeconds: duration
-            )
+            ),
+            isPublic: PrivacyDefault.isPublic(PrivacyDefault.stored())
         )
 
         state = .finished
@@ -817,7 +842,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             hrCoverage: claim.coverage,
             steps: steps,
             laps: lapMarks,
-            activityType: activityType.rawValue
+            activityType: activityType.rawValue,
+            isPublic: PrivacyDefault.isPublic(PrivacyDefault.stored())
         )
         store.write(checkpoint: cp)
         // Match the track's crash-durability window to the checkpoint's.
@@ -860,7 +886,11 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
                 marks: marks,
                 totalDistanceMetres: cp.distanceMetres,
                 totalDurationSeconds: Int(cp.activeDurationSeconds)
-            )
+            ),
+            // The visibility in force while the run was recorded, not
+            // whatever the phone says now — the stop path's rule, which Wear
+            // OS's recovery keeps for the same reason (#389).
+            isPublic: cp.isPublic
         )
     }
 

@@ -12,13 +12,38 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/preferences.dart';
 
+typedef _Push = ({
+  String unit,
+  bool cues,
+  String? activity,
+  String? privacy,
+  List<int>? zones,
+});
+
 class _Recorder {
-  final List<({String unit, bool cues})> pushes = [];
+  final List<_Push> full = [];
   Object? throwOnPush;
 
-  Future<bool> push({required String preferredUnit, required bool audioCues}) async {
+  /// The two original keys only, so the cases written against them read the
+  /// way they always did.
+  List<({String unit, bool cues})> get pushes =>
+      [for (final p in full) (unit: p.unit, cues: p.cues)];
+
+  Future<bool> push({
+    required String preferredUnit,
+    required bool audioCues,
+    String? defaultActivityType,
+    String? privacyDefault,
+    List<int>? hrZoneCutoffs,
+  }) async {
     if (throwOnPush != null) throw throwOnPush!;
-    pushes.add((unit: preferredUnit, cues: audioCues));
+    full.add((
+      unit: preferredUnit,
+      cues: audioCues,
+      activity: defaultActivityType,
+      privacy: privacyDefault,
+      zones: hrZoneCutoffs,
+    ));
     return true;
   }
 }
@@ -45,7 +70,7 @@ void main() {
   test('turning the cues off pushes the OFF, carrying the unit with it',
       () async {
     final (prefs, recorder) = await _prefs();
-    recorder.pushes.clear();
+    recorder.full.clear();
     await prefs.setAudioCues(false);
     expect(recorder.pushes, [(unit: 'km', cues: false)]);
     await prefs.setAudioCues(true);
@@ -54,7 +79,7 @@ void main() {
 
   test('flipping the unit pushes it, carrying the cue state with it', () async {
     final (prefs, recorder) = await _prefs({'audio_cues': false});
-    recorder.pushes.clear();
+    recorder.full.clear();
     await prefs.setUseMiles(true);
     // Both keys ride one envelope, so the push must never report a default
     // for the value that did not change.
@@ -78,11 +103,72 @@ void main() {
     // must not see the pre-change value.
     final (prefs, _) = await _prefs();
     String? seen;
-    prefs.appleWatchPrefsPush = ({required preferredUnit, required audioCues}) async {
+    prefs.appleWatchPrefsPush = ({
+      required preferredUnit,
+      required audioCues,
+      defaultActivityType,
+      privacyDefault,
+      hrZoneCutoffs,
+    }) async {
       seen = prefs.audioCues ? 'on' : 'off';
       return true;
     };
     await prefs.setAudioCues(false);
     expect(seen, 'off');
+  });
+
+  test('the default activity rides every push, and changing it pushes it',
+      () async {
+    final (prefs, recorder) = await _prefs({'default_activity_type': 'walk'});
+    expect(recorder.full.single.activity, 'walk');
+    recorder.full.clear();
+    await prefs.setDefaultActivityType('cycle');
+    expect(recorder.full, hasLength(1));
+    expect(recorder.full.single.activity, 'cycle');
+  });
+
+  test('the privacy default rides every push, and changing it pushes it',
+      () async {
+    final (prefs, recorder) = await _prefs();
+    // Unset locally is the wizard's private, never a guess at public.
+    expect(recorder.full.single.privacy, 'private');
+    recorder.full.clear();
+    await prefs.setPrivacyDefault('public');
+    expect(recorder.full.single.privacy, 'public');
+    // A corrupt value normalises to private on the phone first, so the wrist
+    // is told private rather than handed the typo.
+    await prefs.setPrivacyDefault('everyone');
+    expect(recorder.full.last.privacy, 'private');
+  });
+
+  test('zones are withheld until the bag has been read, then pushed once',
+      () async {
+    final (prefs, recorder) = await _prefs();
+    // A launch-time push before the settings bag loads must not tell the
+    // wrist "no zones" — that would clear a ladder it legitimately holds.
+    expect(recorder.full.single.zones, isNull);
+    recorder.full.clear();
+    await prefs.setAppleWatchHrZoneCutoffs(const [114, 133, 152, 171, 190]);
+    expect(recorder.full.single.zones, [114, 133, 152, 171, 190]);
+    // Re-deriving the same ladder (every bag write does) costs no push.
+    await prefs.setAppleWatchHrZoneCutoffs(const [114, 133, 152, 171, 190]);
+    expect(recorder.full, hasLength(1));
+    // And every later push carries it, whichever setter made it.
+    await prefs.setAudioCues(false);
+    expect(recorder.full.last.zones, [114, 133, 152, 171, 190]);
+  });
+
+  test('sign-out clears the wrist\'s zones rather than leaving the last account\'s',
+      () async {
+    final (prefs, recorder) = await _prefs();
+    await prefs.setAppleWatchHrZoneCutoffs(const [120, 140, 155, 170, 185]);
+    await prefs.setDefaultActivityType('hike');
+    await prefs.setPrivacyDefault('public');
+    recorder.full.clear();
+    await prefs.resetAccountScopedPrefs();
+    final last = recorder.full.last;
+    expect(last.zones, isEmpty);
+    expect(last.activity, 'run');
+    expect(last.privacy, 'private');
   });
 }

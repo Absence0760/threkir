@@ -222,11 +222,23 @@ Some per-device prefs are **never** synced to `user_settings` / `user_device_set
 - **`profiles.preferred_unit`** is dual-read during the transition — newer
   clients prefer the bag and fall back to the column. A follow-up migration
   drops the column once every client has cut over.
-- **Not yet wired**: `watch_ios` (Swift), `watch_wear` (Kotlin), and the
-  per-device settings editor UI on any client (the DB holds the device
-  rows, but no phone-side UI lets the user override a universal value on
-  a specific device yet). The DB + registry are ready; adding surfaces on
-  those is ~30 min each.
+- **Wear OS** (`watch_wear`, Kotlin) reads the universal bag itself:
+  `SupabaseClient.fetchUniversalSettings()` + `parseUniversalSettings` after
+  every session restore. Read-only; no editor on the wrist.
+- **Apple Watch** (`watch_ios`, Swift) never reads the bag — it has no
+  Supabase surface for settings. The phone pushes what the wrist consumes
+  over the `WCSession` application context (`AppleWatchPrefsBridge.push` →
+  `WatchIngestBridge.prefsContext` → `PhonePreferences` on the watch):
+  `preferred_unit`, `audio_cues` (the phone's `voice_feedback_enabled`),
+  `default_activity_type`, `privacy_default`, and `hr_zone_cutoffs` — a
+  ladder the PHONE resolves from `hr_zones` > `max_hr_bpm` > Tanaka off
+  `date_of_birth` (`zoneCutoffsForWatch`), so the wrist gets five bounds and
+  never the date of birth. `hr_zone_cutoffs` is a wire key, not a bag key.
+  Read-only; no editor on the wrist. Claim (20) of
+  `scripts/check_watch_ios_source.mjs` holds the three key lists together.
+- **Not yet wired**: the per-device settings editor UI on any client (the
+  DB holds the device rows, but no phone-side UI lets the user override a
+  universal value on a specific device yet).
 
 ## Adding a new key
 

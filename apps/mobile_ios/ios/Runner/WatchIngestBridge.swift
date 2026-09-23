@@ -403,12 +403,38 @@ import WatchConnectivity
     /// watch's fail-closed decode refuses is refused on every contact for as
     /// long as it stands, against a runner who was told their preference
     /// applied.
+    ///
+    /// The unit and the cue switch are required and refuse the whole push.
+    /// The other three are optional and refused ONE AT A TIME: the watch
+    /// applies each key independently and reads an absent one as "keep what
+    /// you have", so a rogue activity must not cost the runner their cue
+    /// switch.
     static func prefsContext(from args: [String: Any]) -> [String: Any]? {
         guard let unit = args["preferred_unit"] as? String,
               unit == "km" || unit == "mi",
               let audioCues = args["audio_cues"] as? Bool
         else { return nil }
-        return ["preferred_unit": unit, "audio_cues": audioCues]
+        var context: [String: Any] = ["preferred_unit": unit, "audio_cues": audioCues]
+        if let activity = args["default_activity_type"] as? String,
+           ["run", "walk", "hike", "cycle"].contains(activity) {
+            context["default_activity_type"] = activity
+        }
+        if let privacy = args["privacy_default"] as? String,
+           ["public", "followers", "private"].contains(privacy) {
+            context["privacy_default"] = privacy
+        }
+        if let zones = args["hr_zone_cutoffs"] as? [Int], isZoneLadder(zones) {
+            context["hr_zone_cutoffs"] = zones
+        }
+        return context
+    }
+
+    /// Empty (the runner has no zones), or five strictly-ascending bounds in
+    /// 40...240 — the watch's `HeartRateZones.decode` gate.
+    static func isZoneLadder(_ zones: [Int]) -> Bool {
+        if zones.isEmpty { return true }
+        guard zones.count == 5, zones.allSatisfy({ (40...240).contains($0) }) else { return false }
+        return zip(zones, zones.dropFirst()).allSatisfy { $0 < $1 }
     }
 
     private static func canPushRoute() -> Bool {
@@ -549,6 +575,7 @@ import WatchConnectivity
         if let v = metadata["hr_coverage"] { payload["hr_coverage"] = v }
         if let v = metadata["steps"] { payload["steps"] = v }
         if let v = metadata["laps"] { payload["laps"] = v }
+        if let v = metadata["is_public"] { payload["is_public"] = v }
         payload["track"] = track
         return payload
     }

@@ -40,6 +40,7 @@ class _FailingUploadApi extends _FakeApiClient {
 class _FakeApiClient extends ApiClient {
   String? fakeUserId;
   final List<Run> saved = [];
+  final List<bool?> savedIsPublic = [];
 
   @override
   String? get userId => fakeUserId;
@@ -47,6 +48,7 @@ class _FakeApiClient extends ApiClient {
   @override
   Future<void> saveRun(Run run, {bool? isPublic}) async {
     saved.add(run);
+    savedIsPublic.add(isPublic);
   }
 }
 
@@ -148,6 +150,27 @@ void main() {
       expect(api.saved.single.id, 'a-run-1');
       expect(queue.pendingCount, 0,
           reason: 'drained file must be deleted on success');
+    });
+
+    test('a queued run keeps the visibility the wrist stamped on it',
+        () async {
+      // The runner's `privacy_default` is snapshotted on the watch when the
+      // run stops; a run that waited out a signed-out window must still land
+      // public when the runner had chosen public, and must not be forced
+      // public when they had not.
+      await queue.setLastKnownOwner('user-a');
+      await queue.enqueue({..._payload(id: 'public-run'), 'is_public': true});
+      await queue.enqueue({..._payload(id: 'private-run'), 'is_public': false});
+      await queue.enqueue(_payload(id: 'unstamped-run'));
+
+      final api = _FakeApiClient()..fakeUserId = 'user-a';
+      await queue.drain(api);
+
+      final byId = {
+        for (var i = 0; i < api.saved.length; i++)
+          api.saved[i].id: api.savedIsPublic[i],
+      };
+      expect(byId, {'public-run': true, 'private-run': null, 'unstamped-run': null});
     });
 
     test('mixed queue (a + b) drains only a\'s under a\'s session', () async {

@@ -82,7 +82,10 @@ roadbook, GPX export, live cut-off ETA).
   the owner's privacy zones — the marker analogue of `clip_route_for_viewer` for
   waypoints (decisions §33). A public course therefore can't leak a pin dropped at
   the owner's home. The web + mobile read paths (`fetchRouteMarkers`) call this RPC
-  and fail closed (empty list) on error.
+  as a GET and throw on error rather than answering an empty list (decisions
+  §1703): each caller decides what a failure means — a retryable error where
+  markers are the surface (roadbook, marker editor/panel), a disclosed or silent
+  degradation where they are auxiliary (export, watch push, cut-off cards).
 - **Placement by distance.** Besides map-tap and typed lat/lng, the editor accepts
   a "distance along route" (mi/km) that resolves to a point on the polyline via
   `markerPointAtDistance` (`route_geometry.ts ↔ .dart`); the server still derives

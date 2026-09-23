@@ -3221,6 +3221,11 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String routeDetailWatchCourseSentMarkersFailed(int points) {
+    return 'コースをウォッチに送信しました（$points地点）。ただしコースマーカーを読み込めなかったため、スケジュールは送信されていません。';
+  }
+
+  @override
   String routeDetailWatchCourseSimplified(int source, int points) {
     return 'コースをウォッチに送信しました — 収まるように$source地点から$points地点に間引きました';
   }
@@ -7749,6 +7754,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get dashboardImportRuns => 'ランをインポート';
 
   @override
+  String get dashboardFirstRunBodyWithPlan =>
+      'プランは上に用意できています。最初のランを記録すると、距離・ペース・プランに対する進み具合がこのページに表示されます。';
+
+  @override
+  String get dashboardFirstRunGymHint => '筋トレをしますか？';
+
+  @override
+  String get dashboardFirstRunGymAction => 'ジムのセッションを記録';
+
+  @override
   String get dashboardPeriodWeek => '週';
 
   @override
@@ -11326,6 +11341,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get routeMarkerEmpty => 'コースマーカーはまだありません。エイドステーションや関門などをルート上に追加しましょう。';
+
+  @override
+  String get routeMarkerLoadFailed =>
+      'このルートのコースマーカーを読み込めませんでした。削除されてはいません。接続を確認してもう一度お試しください。';
 
   @override
   String get routeMarkerEdit => 'マーカーを編集';

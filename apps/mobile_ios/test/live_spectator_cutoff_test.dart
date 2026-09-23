@@ -22,11 +22,13 @@ class _FakeApi extends ApiClient {
   final List<Map<String, dynamic>> pings;
   final cm.Route? route;
   final List<RouteMarkerRow> markers;
+  final bool failMarkers;
   _FakeApi({
     this.run,
     this.pings = const [],
     this.route,
     this.markers = const [],
+    this.failMarkers = false,
   });
 
   @override
@@ -42,8 +44,10 @@ class _FakeApi extends ApiClient {
   ) async => (route: route, ownerId: route?.userId);
 
   @override
-  Future<List<RouteMarkerRow>> fetchRouteMarkers(String routeId) async =>
-      markers;
+  Future<List<RouteMarkerRow>> fetchRouteMarkers(String routeId) async {
+    if (failMarkers) throw Exception('502 upstream');
+    return markers;
+  }
 }
 
 /// A live, never-finished run linked to [routeId] (started 5 min ago, no
@@ -220,6 +224,37 @@ void main() {
         await tester.pumpWidget(const SizedBox());
       });
     });
+
+    realtimeWidgetTest(
+      'a failed marker read hides the card and leaves the live view standing',
+      (tester) async {
+        final now = DateTime.now();
+        final api = _FakeApi(
+          run: _liveRun('route-1'),
+          route: _route('route-1'),
+          markers: [_cutoff(limitS: 3 * 3600)],
+          failMarkers: true,
+          pings: [
+            _ping(
+              at: now.subtract(const Duration(minutes: 2)),
+              distanceM: 1500,
+              elapsedS: 480,
+            ),
+            _ping(at: now, distanceM: 2000, elapsedS: 600),
+          ],
+        );
+        await tester.runAsync(() async {
+          await _pump(tester, api);
+          await tester.pump();
+          await tester.pump();
+          expect(tester.takeException(), isNull);
+          expect(find.byType(LiveSpectatorScreen), findsOneWidget);
+          expect(find.text('Aid 1'), findsNothing);
+          expect(find.textContaining('to spare'), findsNothing);
+          await tester.pumpWidget(const SizedBox());
+        });
+      },
+    );
 
     realtimeWidgetTest(
       'a stale fixture suppresses the verdict with the signal-lost line',

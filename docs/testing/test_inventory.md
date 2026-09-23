@@ -160,7 +160,7 @@ Cross-platform contract test for the phone→watch routes payload. Reads the can
 The `wear_routes_bridge_test.dart` adds three further groups beyond the basic attach/detach/payload coverage:
 
 - **payload-diff cache (10 tests):** the bridge caches the last shipped `routes_json` and skips channel invocations when the next encoded payload matches byte-for-byte. Pins: re-saving the same row does NOT fire a second push; saving an unstarred route when no starred change happened does NOT push; mutation that doesn't affect the wire fields is a no-op; starring a new route invalidates the cache; unstarring fires; star→unstar→re-star fires three times (not deduped — the cache is last-sent only); a swallowed PlatformException or MissingPluginException does NOT update the cache so the next attempt re-fires; detach resets the cache so a fresh attach always pushes once; re-attach within the same bridge also resets.
-- **burst + lifecycle characterization (8 tests):** 5 starred saves of different routes → 5 pushes (no throttling today); 100 identical re-saves → ZERO additional pushes (diff cache catches all); 100 alternating star/unstar → 100 pushes; mixed starred + plain interleaved fires once per actual starred-set change; saveBatch with 50/50 starred+plain fires ONE push (notify-once contract); detach mid-burst stops all subsequent pushes; detach during in-flight push doesn't crash and stops further pushes after; hot-restart pattern (attach→detach→new bridge attach) works; two bridge instances on the same store push independently.
+- **burst + lifecycle characterization (7 tests):** 5 starred saves of different routes → 5 pushes (no throttling today); 100 identical re-saves → ZERO additional pushes (diff cache catches all); 100 alternating star/unstar → 100 pushes; mixed starred + plain interleaved fires once per actual starred-set change; saveBatch with 50/50 starred+plain fires ONE push (notify-once contract); detach mid-burst stops all subsequent pushes; detach during in-flight push doesn't crash and stops further pushes after; hot-restart pattern (attach→detach→new bridge attach) works.
 - **end-to-end wire round-trip (4 tests):** the captured `routes_json` from the channel is structurally identical to `encodeRoutesForWatch` direct output; XML/JSON-special characters round-trip via jsonEncode's built-in escaping; `updated_at_ms` is monotonic non-decreasing across consecutive pushes (the watch's stale-push gate depends on this); every captured payload satisfies the wire-format contract — JSON array of objects with exactly `{id, name, distance_m, waypoints}` keys, and every waypoint with exactly `{lat, lng}`.
 
 ### `apps/mobile_android/test/wear_routes_bridge_test.dart` — 67 tests
@@ -171,7 +171,7 @@ Pin the listener-attach / push-on-change / starred-only filter contract on the p
 
 **detach (3 tests):** removes the listener so subsequent store changes don't push; detach-without-attach is a no-op; double-detach is a no-op.
 
-**re-attach (2 tests):** second `attach` replaces the first listener — no leak (verifies a single save fires ONE push, not two); attach-after-detach is also clean.
+**re-attach (3 tests):** second `attach` replaces the first listener — no leak (verifies a single save fires ONE push, not two); every `WearRoutesBridge()` is the same instance, so `main.dart`'s sign-out nudge replaces the startup subscription instead of adding a second listener; attach-after-detach is also clean.
 
 **platform error handling (3 tests):** `MissingPluginException` is silently swallowed (iOS / unregistered plugin); `PlatformException` is silently swallowed (Data Layer unavailable); a swallowed exception does NOT detach the listener (subsequent saves still push).
 
@@ -391,7 +391,7 @@ The `CRS1` course wire format in `lib/watch_course.dart` — the phone's encode 
 - `chunkCourse` offsets reassemble the frame, including a full-capacity elevation frame across many chunks
 - `courseFromWaypoints` shaping: a short route passes through, a dense one is thinned to the cap with its real endpoints intact (never cut), elevation rides along only when every carried point has one (a single missing or non-finite sample drops the whole profile), and fewer than two positions is refused with a reason
 
-### `apps/mobile_android/test/route_detail_watch_course_test.dart` — 18 tests
+### `apps/mobile_android/test/route_detail_watch_course_test.dart` — 19 tests
 
 Widget tests for the Send-to-watch entry in `lib/screens/route_detail_screen.dart`'s share menu, over a fake `WatchBleTransport` and a `devBackendUrl` driving both sides of the dev gate:
 
@@ -401,6 +401,7 @@ Widget tests for the Send-to-watch entry in `lib/screens/route_detail_screen.dar
 - A one-position route is refused with nothing written and no scan
 - A failed write surfaces the failure (never a success banner) and still disconnects
 - A non-owner's push carries the privacy-CLIPPED trace, not the stored polyline (decisions §33)
+- A course-marker read that fails still sends the course but says the markers could not be loaded; a failed read under "Share as GPX + markers" is reported instead of sharing a markers-less file (decisions §1703)
 
 ### `apps/mobile_android/test/ble_heart_rate_test.dart` — 14 tests
 
@@ -1166,7 +1167,7 @@ Run the pure-helper slices with `cd apps/backend && deno test --no-check supabas
 
 The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets to drive and are exercised manually only — see [apps/backend/CLAUDE.md § Testing without real credentials](../../apps/backend/CLAUDE.md#testing-without-real-credentials).
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 1,918 declared tests across 505 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 1,920 declared tests across 506 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 

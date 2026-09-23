@@ -112,6 +112,15 @@ bool shouldDimRecordingMap({
 /// (fail-open — the lock is a safety nicety, never a core guarantee).
 final ValueNotifier<bool> runRecordingActive = ValueNotifier<bool>(false);
 
+/// How far the live pace may sit from the target before the pace cue speaks.
+/// Held against both watches by `scripts/check_shared_constants.mjs`
+/// (decisions § 1716): a ~200 m look-back moves by ~15 s/km on GNSS noise
+/// alone, so a tighter gate speaks on jitter rather than on the runner.
+const int kPaceAlertDriftSecPerKm = 30;
+
+/// The quiet interval after a pace cue before another may speak.
+const int kPaceAlertRateLimitSeconds = 30;
+
 /// Main run recording screen with GPS tracking, live stats, sync, audio cues,
 /// auto-pause, countdown, and optional route following.
 class RunScreen extends StatefulWidget {
@@ -2669,8 +2678,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
           final diff = _pace! - target;
           final lastAlert = _lastPaceAlertAt;
           final canAlert = lastAlert == null ||
-              DateTime.now().difference(lastAlert).inSeconds > 30;
-          if (canAlert && diff.abs() > 30) {
+              DateTime.now().difference(lastAlert).inSeconds >
+                  kPaceAlertRateLimitSeconds;
+          if (canAlert && diff.abs() > kPaceAlertDriftSecPerKm) {
             _lastPaceAlertAt = DateTime.now();
             // Round the spoken correction to 5 s so the cue stays terse;
             // sub-5 s residue isn't actionable mid-run.

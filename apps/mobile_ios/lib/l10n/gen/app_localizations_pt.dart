@@ -8191,6 +8191,16 @@ class AppLocalizationsPt extends AppLocalizations {
   String get dashboardImportRuns => 'Importar corridas';
 
   @override
+  String get dashboardFirstRunBodyWithPlan =>
+      'O seu plano já está pronto acima. Registe a sua primeira corrida e esta página preenche-se: a sua distância, o seu ritmo e como está em relação ao plano.';
+
+  @override
+  String get dashboardFirstRunGymHint => 'Prefere ginásio?';
+
+  @override
+  String get dashboardFirstRunGymAction => 'Registe uma sessão de ginásio';
+
+  @override
   String get dashboardPeriodWeek => 'Semana';
 
   @override
@@ -22510,6 +22520,16 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get dashboardImportRuns => 'Importar corridas';
+
+  @override
+  String get dashboardFirstRunBodyWithPlan =>
+      'Seu plano já está pronto acima. Registre sua primeira corrida e esta página se preenche: sua distância, seu ritmo e como você está em relação ao plano.';
+
+  @override
+  String get dashboardFirstRunGymHint => 'Prefere musculação?';
+
+  @override
+  String get dashboardFirstRunGymAction => 'Registre uma sessão de academia';
 
   @override
   String get dashboardPeriodWeek => 'Semana';

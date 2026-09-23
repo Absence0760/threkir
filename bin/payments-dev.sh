@@ -48,7 +48,7 @@ set -euo pipefail
 BACKEND_DIR="$REPO_ROOT/apps/backend"
 ENV_FILE="$BACKEND_DIR/.env.local"
 EXAMPLE_ENV="$BACKEND_DIR/.env.example"
-API_BASE="${SUPABASE_API_URL:-http://127.0.0.1:54321}"
+API_BASE="${SUPABASE_API_URL:-http://127.0.0.1:24321}"
 WEBHOOK_URL="$API_BASE/functions/v1/revenuecat-webhook"
 # The seed user (runner@test.com) from apps/backend/supabase/seed.sql.
 # Starts on the free tier, so an INITIAL_PURCHASE replay flips it to pro.

@@ -5,10 +5,10 @@ import '../lib/dev_auto_login.dart';
 void main() {
   group('isLocalSupabaseUrl', () {
     test('true for the accepted loopback hosts', () {
-      expect(isLocalSupabaseUrl('http://10.0.2.2:54321'), isTrue);
-      expect(isLocalSupabaseUrl('http://localhost:54321'), isTrue);
-      expect(isLocalSupabaseUrl('http://127.0.0.1:54321'), isTrue);
-      expect(isLocalSupabaseUrl('http://host.docker.internal:54321'), isTrue);
+      expect(isLocalSupabaseUrl('http://10.0.2.2:24321'), isTrue);
+      expect(isLocalSupabaseUrl('http://localhost:24321'), isTrue);
+      expect(isLocalSupabaseUrl('http://127.0.0.1:24321'), isTrue);
+      expect(isLocalSupabaseUrl('http://host.docker.internal:24321'), isTrue);
     });
 
     test('false for production / remote hosts', () {
@@ -27,7 +27,7 @@ void main() {
     test('true only with credentials AND a local backend', () {
       expect(
         shouldAutoLogin(
-          url: 'http://10.0.2.2:54321',
+          url: 'http://10.0.2.2:24321',
           email: 'runner@test.com',
           password: 'testtest',
         ),
@@ -48,7 +48,7 @@ void main() {
     });
 
     test('false when either credential is missing or empty', () {
-      const url = 'http://10.0.2.2:54321';
+      const url = 'http://10.0.2.2:24321';
       expect(shouldAutoLogin(url: url, email: '', password: 'testtest'), isFalse);
       expect(shouldAutoLogin(url: url, email: 'runner@test.com', password: null),
           isFalse);

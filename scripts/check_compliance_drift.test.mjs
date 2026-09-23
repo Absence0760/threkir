@@ -114,7 +114,7 @@ test('newOutboundHostsInDiff skips known sub-processors and local addresses', ()
 		'@@ -0,0 +1,4 @@',
 		"+await fetch('https://api.example-tracker.com/v1/ping');",
 		"+await fetch('https://api.stripe.com/v1/charges');",
-		"+await fetch('http://localhost:54321/rest');",
+		"+await fetch('http://localhost:24321/rest');",
 		"-await fetch('https://removed.example.org/x');",
 	].join('\n');
 	assert.deepEqual(newOutboundHostsInDiff(diff), ['api.example-tracker.com']);

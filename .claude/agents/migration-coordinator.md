@@ -89,4 +89,4 @@ If everything is clean, end with one line saying so.
 
 - Don't generate or alter the migration file's SQL — that's the human's job.
 - Don't `git add` or commit. Leave staging to the parent.
-- Don't run destructive ops outside the supabase local stack (`supabase db reset` is fine — it only touches the local containerized DB on port 54322).
+- Don't run destructive ops outside the supabase local stack (`supabase db reset` is fine — it only touches the local containerized DB on port 24322).

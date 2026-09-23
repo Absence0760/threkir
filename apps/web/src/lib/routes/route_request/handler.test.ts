@@ -24,7 +24,7 @@ import { validateConstraints } from './constraints';
 function baseConfig(): RouteRequestConfig {
 	return {
 		anthropicApiKey: 'sk-ant-test-FAKE-KEY-NEVER-USED',
-		publicSupabaseUrl: 'http://127.0.0.1:54321',
+		publicSupabaseUrl: 'http://127.0.0.1:24321',
 		publicSupabaseAnonKey: 'sb_publishable_fake_local_anon_key',
 		bypassPaywallEnabled: false,
 	};

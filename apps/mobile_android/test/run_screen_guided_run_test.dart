@@ -44,7 +44,7 @@ import 'pump_until.dart';
 /// invariant that its stopwatch stops while paused
 /// (`packages/run_recorder/test/run_recorder_test.dart`).
 
-const _localBackend = 'http://127.0.0.1:54321';
+const _localBackend = 'http://127.0.0.1:24321';
 const _prodBackend = 'https://abcdefgh.supabase.co';
 
 class _FakeGeolocatorPlatform extends GeolocatorPlatform {
@@ -208,7 +208,7 @@ void main() {
     );
     if (!supabaseReady) {
       await Supabase.initialize(
-        url: 'http://127.0.0.1:54321',
+        url: 'http://127.0.0.1:24321',
         anonKey: 'eyJ.local.test',
       );
       supabaseReady = true;

@@ -313,7 +313,7 @@ test('parseGenerateRequest accepts a well-formed body', () => {
 
 const OK_CFG = {
 	graphhopperUrl: BASE,
-	publicSupabaseUrl: 'http://127.0.0.1:54321',
+	publicSupabaseUrl: 'http://127.0.0.1:24321',
 	publicSupabaseAnonKey: 'sb_publishable_fake_local_anon_key',
 	bypassPaywallEnabled: false,
 };

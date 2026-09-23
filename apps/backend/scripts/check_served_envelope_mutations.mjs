@@ -961,7 +961,7 @@ async function main() {
     console.error(
       '::error::SUPABASE_TEST_URL is unset, so the handler-envelope suite would skip every case ' +
         'and this guard would measure nothing. Boot the stack and an env-loaded `supabase ' +
-        'functions serve` first, then set SUPABASE_TEST_URL=http://127.0.0.1:54321.',
+        'functions serve` first, then set SUPABASE_TEST_URL=http://127.0.0.1:24321.',
     );
     process.exit(1);
   }

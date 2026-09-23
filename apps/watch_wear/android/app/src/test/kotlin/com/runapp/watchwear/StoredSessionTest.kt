@@ -24,7 +24,7 @@ class StoredSessionTest {
         accessToken = "access-tok",
         refreshToken = "refresh-tok",
         userId = "user-1",
-        baseUrl = "http://127.0.0.1:54321",
+        baseUrl = "http://127.0.0.1:24321",
         anonKey = "anon-key",
         expiresAtMs = 1_000_000L, // arbitrary
     )

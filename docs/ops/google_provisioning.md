@@ -82,7 +82,7 @@ client** → **Web application**, named `Threkir — Supabase`.
 
 - **Authorized JavaScript origins**: `https://threkir.com` and `http://localhost:7777`
 - **Authorized redirect URIs**: `https://mcbgrgvegqcmdmtraikl.supabase.co/auth/v1/callback`
-  and `http://localhost:54321/auth/v1/callback`
+  and `http://localhost:24321/auth/v1/callback`
 
 Copy the **Client ID** and **Client secret**; steps 5 and 6 both want them.
 
@@ -91,7 +91,7 @@ Copy the **Client ID** and **Client secret**; steps 5 and 6 both want them.
 `threkir.com/auth/callback` is Supabase's own hop and belongs in step 7's
 allow-list, not here. Listing it here too is harmless, which is why
 [`apps/web/local_testing.md`](../../apps/web/local_testing.md) says to. The
-`localhost:54321` line is the local Supabase stack, so one client covers prod
+`localhost:24321` line is the local Supabase stack, so one client covers prod
 and local dev.
 
 ## 3. Android client — once per signing key, not once per app

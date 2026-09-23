@@ -331,7 +331,7 @@ Deno.test('tens of thousands of tiny writes stay linear and byte-exact', async (
 });
 
 // A gateway that reports its own internal origin in `Location` is not a
-// hypothetical: the local stack answers `http://kong:54321/...`, which the
+// hypothetical: the local stack answers `http://kong:24321/...`, which the
 // function container cannot connect to, so following it verbatim turned a
 // 201 create into ECONNREFUSED on the first PATCH — the whole export 500ing
 // after the archive was already built.
@@ -347,7 +347,7 @@ Deno.test('the assigned Location keeps its path but our reachable origin', async
 				// Same path, foreign origin — exactly what a proxied
 				// Storage reports.
 				headers: {
-					Location: 'http://kong:54321/storage/v1/upload/resumable/abc123',
+					Location: 'http://kong:24321/storage/v1/upload/resumable/abc123',
 				},
 			});
 		}
@@ -383,7 +383,7 @@ Deno.test('abort follows the same reachable origin as the PATCHes', async () => 
 		if (method === 'POST') {
 			return new Response(null, {
 				status: 201,
-				headers: { Location: 'http://kong:54321/storage/v1/upload/resumable/zz' },
+				headers: { Location: 'http://kong:24321/storage/v1/upload/resumable/zz' },
 			});
 		}
 		if (method === 'PATCH') return new Response(null, { status: 500 });

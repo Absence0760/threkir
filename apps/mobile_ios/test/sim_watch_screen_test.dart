@@ -259,7 +259,7 @@ void main() {
 
     testWidgets('sim watch tile shows only for a loopback backend',
         (tester) async {
-      await pumpSettings(tester, 'http://127.0.0.1:54321');
+      await pumpSettings(tester, 'http://127.0.0.1:24321');
       await tester.dragUntilVisible(
         find.text('Sim watch link'),
         find.byType(ListView),

@@ -64,7 +64,7 @@ If you want to wire any of the below up, here's exactly what to create. Until th
 **What's needed** (ordered walkthrough: [`google_provisioning.md`](../ops/google_provisioning.md)):
 - Google Cloud project → Google Auth Platform → **Clients** → **Web application**.
 - Authorized JavaScript origin: `https://your-domain.com` (+ `http://localhost:7777` for local).
-- Authorized redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback` (prod), `http://localhost:54321/auth/v1/callback` (local).
+- Authorized redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback` (prod), `http://localhost:24321/auth/v1/callback` (local).
 - Paste the Web client id into Supabase Dashboard → Authentication → Providers → Google → Authorized Client IDs.
 
 **Status today: the web half is provisioned and live.** Consent screen, the web
@@ -128,7 +128,7 @@ Two Strava accounts (one as the "user", one as a "buddy" to exercise the privacy
 - RevenueCat → new sandbox project; paste Stripe `sk_test_…` into Integrations → Stripe. Create the `pro_monthly` product mapped to a Stripe test-mode price.
 - `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` (RC sandbox Web Paywall Link `https://pay.rev.cat/<token>`) in `apps/web/.env.local`; optional `PUBLIC_REVENUECAT_WEB_PORTAL_URL` for the manage-subscription link.
 - `REVENUECAT_WEBHOOK_SECRET` (RC webhook signing secret) in `apps/backend/.env.local`.
-- Optional but recommended: install `stripe` CLI for `stripe listen --forward-to http://127.0.0.1:54321/functions/v1/revenuecat-webhook`.
+- Optional but recommended: install `stripe` CLI for `stripe listen --forward-to http://127.0.0.1:24321/functions/v1/revenuecat-webhook`.
 
 **What you can test once configured:**
 - E2E: /settings/upgrade → "Get Pro" → Stripe test card 4242 4242 4242 4242 → returns to app → webhook flips tier → `auth.isPro` becomes true.

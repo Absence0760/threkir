@@ -81,7 +81,7 @@ class ManifestGuardsTest {
     fun `networkSecurityConfig is still wired`() {
         // Why: the previous test removes the broad cleartext-traffic
         // toggle, but the dev-loopback NSC must stay attached
-        // otherwise local Supabase (http://10.0.2.2:54321) becomes
+        // otherwise local Supabase (http://10.0.2.2:24321) becomes
         // unreachable in debug builds.
         val applicationOpenTag = Regex(
             """<application\b[^>]*>""",

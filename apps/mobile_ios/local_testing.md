@@ -51,7 +51,7 @@ Put your secrets in `apps/mobile_ios/dart_defines.json` (gitignored):
 
 ```json
 {
-  "SUPABASE_URL": "http://localhost:54321",
+  "SUPABASE_URL": "http://localhost:24321",
   "SUPABASE_ANON_KEY": "<publishable key from `supabase status`>",
   "MAPTILER_KEY": "<your MapTiler key>"
 }

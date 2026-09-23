@@ -32,9 +32,9 @@ Key values for client apps:
 
 | Field | Example |
 |---|---|
-| Project URL | `http://127.0.0.1:54321` |
+| Project URL | `http://127.0.0.1:24321` |
 | Publishable key | `sb_publishable_...` |
-| Database URL | `postgresql://postgres:postgres@127.0.0.1:54322/postgres` |
+| Database URL | `postgresql://postgres:postgres@127.0.0.1:24322/postgres` |
 
 These are local defaults and are regenerated on each `supabase start` — no need to save them.
 
@@ -78,13 +78,13 @@ cp .env.example .env.local
 supabase functions serve --env-file .env.local
 ```
 
-Functions are now available at `http://localhost:54321/functions/v1/{function-name}`.
+Functions are now available at `http://localhost:24321/functions/v1/{function-name}`.
 
 You can test them with curl:
 
 ```bash
 # Example: test parkrun import
-curl -X POST http://localhost:54321/functions/v1/parkrun-import \
+curl -X POST http://localhost:24321/functions/v1/parkrun-import \
   -H "Authorization: Bearer <user-jwt>" \
   -H "Content-Type: application/json" \
   -d '{"athleteNumber": "A123456"}'
@@ -94,7 +94,7 @@ curl -X POST http://localhost:54321/functions/v1/parkrun-import \
 
 ## Supabase Studio
 
-Open `http://localhost:54323` in your browser to:
+Open `http://localhost:24323` in your browser to:
 
 - Browse and edit table data
 - Run SQL queries
@@ -130,7 +130,7 @@ supabase stop --no-backup
 
 ## Troubleshooting
 
-### "Port 54321 already in use"
+### "Port 24321 already in use"
 
 A previous Supabase instance is still running:
 
@@ -138,6 +138,10 @@ A previous Supabase instance is still running:
 supabase stop
 supabase start
 ```
+
+### Something still dials 54321 / 54322 / 54324
+
+The stack used to publish the CLI's default 5432x ports. It now pins every host port below 32768 (API 24321, DB 24322, Studio 24323, Mailpit 24324 / SMTP 24325 / POP3 24326, analytics 24327), outside Linux's ephemeral source-port range, so an outbound connection can never take one before docker binds it (issue #963). A checkout from before the move needs two things: restart the stack (`supabase stop && supabase start`) so it republishes on the new ports, and regenerate any **uncommitted** env file copied from the old values — `apps/web/.env`, `apps/backend/.env.local`, a mobile `.env` — plus any `adb reverse tcp:54321` set by hand (`npm run dev:core` re-runs it on 24321 / 24322). The committed `.env.development` / `.env.example` files already carry the new ports.
 
 ### Docker not running
 

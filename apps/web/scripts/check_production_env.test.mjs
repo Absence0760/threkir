@@ -108,9 +108,9 @@ test('rejects the CI bundle-budget placeholder URL', () => {
 
 test('rejects a loopback URL', () => {
 	const cases = [
-		'http://127.0.0.1:54321',
-		'http://localhost:54321',
-		'http://10.0.2.2:54321/',
+		'http://127.0.0.1:24321',
+		'http://localhost:24321',
+		'http://10.0.2.2:24321/',
 	];
 	for (const url of cases) {
 		const r = checkProductionEnv({
@@ -383,12 +383,12 @@ test('refuses a Postgres connection string, and does not echo its password', () 
 
 test('refuses a host that resolves only on a private network or inside a container', () => {
 	for (const url of [
-		'http://192.168.1.10:54321',
+		'http://192.168.1.10:24321',
 		'https://172.16.4.4',
 		'http://169.254.1.1',
 		'https://supabase.internal',
 		'https://db.local',
-		'http://[::1]:54321',
+		'http://[::1]:24321',
 	]) {
 		assert.match(productionUrlProblem(url) ?? '', /loopback \/ private \/ emulator/, url);
 	}

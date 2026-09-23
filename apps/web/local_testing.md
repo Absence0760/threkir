@@ -30,7 +30,7 @@ cp .env.example .env.local
 Edit `.env.local` with your local backend values:
 
 ```bash
-PUBLIC_SUPABASE_URL=http://localhost:54321
+PUBLIC_SUPABASE_URL=http://localhost:24321
 PUBLIC_SUPABASE_ANON_KEY=<publishable-key-from-supabase-status>
 PUBLIC_MAPTILER_KEY=<your-maptiler-key>
 ```
@@ -89,12 +89,12 @@ Each integration below is independent — you can skip the ones you're not touch
 The web app supports Google as a sign-in provider on `/login` and as a *link* on `/settings/account` (attaches Google to an existing account).
 
 **Setup**
-1. [Google Auth Platform](https://console.cloud.google.com/auth/overview) → **Clients** → **Create client** (type: Web application). Authorized redirect URIs: the Supabase callback URL printed by `supabase status` (looks like `http://localhost:54321/auth/v1/callback`) — that is the only URI Google itself redirects to; `http://localhost:7777/auth/callback` is Supabase's hop afterwards and belongs in its Redirect URLs, though listing it here too is harmless. Prod walkthrough, including the Android + iOS clients: [`docs/ops/google_provisioning.md`](../../docs/ops/google_provisioning.md).
+1. [Google Auth Platform](https://console.cloud.google.com/auth/overview) → **Clients** → **Create client** (type: Web application). Authorized redirect URIs: the Supabase callback URL printed by `supabase status` (looks like `http://localhost:24321/auth/v1/callback`) — that is the only URI Google itself redirects to; `http://localhost:7777/auth/callback` is Supabase's hop afterwards and belongs in its Redirect URLs, though listing it here too is harmless. Prod walkthrough, including the Android + iOS clients: [`docs/ops/google_provisioning.md`](../../docs/ops/google_provisioning.md).
 2. Local Supabase: edit `apps/backend/supabase/config.toml`, find `[auth.external.google]`, set `enabled = true` and paste `client_id` + `secret`. Restart the local stack (`supabase stop && supabase start` from `apps/backend/`).
 3. For the **link-on-existing-account** flow, also flip on **Manual linking** in `[auth]` (`enable_manual_linking = true` in `config.toml`). Without this, `linkIdentity()` returns `manual_linking_disabled`.
 
 **Test path**
-1. Sign-up flow: `/login` → "Continue with Google" → consent screen → land back on `/dashboard` as a brand-new user. Verify a row in `auth.identities` (Studio at `:54323` → schema `auth` → table `identities`).
+1. Sign-up flow: `/login` → "Continue with Google" → consent screen → land back on `/dashboard` as a brand-new user. Verify a row in `auth.identities` (Studio at `:24323` → schema `auth` → table `identities`).
 2. Linking flow: sign in with email → `/settings/account` → **Link Google** → consent for the *same* Google account → return to settings. The "Sign-in Methods" card should now list two rows (email + Google) with the same `user_id`.
 3. Unlink flow: click **Unlink** on Google → confirm. Row disappears; the **Unlink** button on the remaining email identity is disabled with the "you need at least one" tooltip.
 
@@ -153,15 +153,15 @@ The coach endpoint at `/api/coach/+server.ts` supports two providers, picked by 
 There's no separate sync service — every client writes to the same Supabase project and RLS scopes data by `user_id`. Linking Google or Apple just means multiple sign-in methods point at the same `user_id`, so any device signed in with any of them sees the same runs.
 
 **Test path — emulator on the same machine**
-1. Run web on `:7777` and the local Supabase stack on `:54321`.
-2. Run `apps/mobile_android` in an Android emulator (see `apps/mobile_android/local_testing.md`). Point its Supabase URL at **`http://10.0.2.2:54321`** — Android's emulator alias for the host's loopback. `localhost` from inside the emulator is the emulator itself.
+1. Run web on `:7777` and the local Supabase stack on `:24321`.
+2. Run `apps/mobile_android` in an Android emulator (see `apps/mobile_android/local_testing.md`). Point its Supabase URL at **`http://10.0.2.2:24321`** — Android's emulator alias for the host's loopback. `localhost` from inside the emulator is the emulator itself.
 3. Sign in on both clients as `runner@test.com`. Record a run on Android (or use the manual-add modal on web).
-4. Refresh `/runs` on web (or pull-to-refresh on Android) — the row should appear on the other side. Watch the `runs` table in Studio (`:54323`) for the live insert.
+4. Refresh `/runs` on web (or pull-to-refresh on Android) — the row should appear on the other side. Watch the `runs` table in Studio (`:24323`) for the live insert.
 
 **Test path — real phone over LAN**
 1. Web + Supabase running on your laptop. Note your LAN IP (`ipconfig getifaddr en0` on macOS).
-2. Phone on the same Wi-Fi. Configure the mobile app's Supabase URL as `http://<lan-ip>:54321`.
-3. Add `http://<lan-ip>:54321` to `[auth] additional_redirect_urls` in `config.toml` if you're testing OAuth from the phone.
+2. Phone on the same Wi-Fi. Configure the mobile app's Supabase URL as `http://<lan-ip>:24321`.
+3. Add `http://<lan-ip>:24321` to `[auth] additional_redirect_urls` in `config.toml` if you're testing OAuth from the phone.
 
 **Test path — hosted Supabase project**
 Easiest for cross-network testing: web `.env.local` and the mobile app both point at the same hosted project URL + anon key. No emulator gymnastics.

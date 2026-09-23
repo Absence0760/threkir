@@ -243,7 +243,7 @@ test.describe('privacy + data-rights journey', () => {
 					// network, so it mints the signed URL against the INTERNAL
 					// gateway host (http://kong:8000), which doesn't resolve
 					// from the test process. Rewrite the origin to the external
-					// API URL the fixtures use (http://127.0.0.1:54321); the
+					// API URL the fixtures use (http://127.0.0.1:24321); the
 					// path + signature token are unchanged so the signature
 					// still verifies. In production SUPABASE_URL is the public
 					// host, so the URL is already externally fetchable.

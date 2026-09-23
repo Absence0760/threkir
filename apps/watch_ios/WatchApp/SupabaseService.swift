@@ -22,7 +22,7 @@ actor SupabaseService {
     // `apikey` with 401, so a build with no key fails loudly instead of
     // silently pointing at a baked-in default. In production the paired iPhone
     // overrides both via `applyCredentials(...)` from the WCSession handover.
-    private var baseURL = "http://127.0.0.1:54321"
+    private var baseURL = "http://127.0.0.1:24321"
     private var anonKey = ""
 
     init() {

@@ -55,7 +55,7 @@ Future<void> _ensureSupabase() async {
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
   await Supabase.initialize(
-    url: 'http://127.0.0.1:54321',
+    url: 'http://127.0.0.1:24321',
     anonKey: 'eyJ.local.test',
   );
   _supabaseReady = true;

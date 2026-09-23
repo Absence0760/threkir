@@ -18,7 +18,7 @@ const BASE_ENV: Record<string, string> = {
   SEND_EMAIL_HOOK_SECRET: SECRET,
   SMTP_HOST: 'mail.local',
   SMTP_FROM: 'Threkir <noreply@threkir.com>',
-  SUPABASE_URL: 'http://127.0.0.1:54321',
+  SUPABASE_URL: 'http://127.0.0.1:24321',
 };
 
 interface Recorded {
@@ -155,7 +155,7 @@ Deno.test('handler — a mobile deep link keeps the GoTrue verify hop', async ()
   assertEquals(sent.length, 1);
   assertStringIncludes(
     sent[0].mime,
-    'http://127.0.0.1:54321/auth/v1/verify?token=pkce_hash&type=signup',
+    'http://127.0.0.1:24321/auth/v1/verify?token=pkce_hash&type=signup',
   );
   assertStringIncludes(sent[0].mime, 'com.threkir.app://login-callback');
 });
@@ -170,7 +170,7 @@ Deno.test('handler — API_EXTERNAL_URL beats the Docker-internal SUPABASE_URL i
   const { deps, sent } = makeDeps({
     env: {
       SUPABASE_URL: 'http://kong:8000',
-      API_EXTERNAL_URL: 'http://127.0.0.1:54321',
+      API_EXTERNAL_URL: 'http://127.0.0.1:24321',
     },
   });
   const res = await makeAuthEmailHandler(deps)(
@@ -186,7 +186,7 @@ Deno.test('handler — API_EXTERNAL_URL beats the Docker-internal SUPABASE_URL i
   assertEquals(sent.length, 1);
   assertStringIncludes(
     sent[0].mime,
-    'http://127.0.0.1:54321/auth/v1/verify?token=pkce_hash&type=signup',
+    'http://127.0.0.1:24321/auth/v1/verify?token=pkce_hash&type=signup',
   );
   assert(!sent[0].mime.includes('kong:8000'));
 });

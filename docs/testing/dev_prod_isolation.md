@@ -90,7 +90,7 @@ Found:
 
   - PUBLIC_SUPABASE_URL = https://abcdefghijk.supabase.co
       rule: remote-host-in-dev
-      fix:  Set PUBLIC_SUPABASE_URL to a loopback URL (e.g. http://127.0.0.1:54321) or unset it.
+      fix:  Set PUBLIC_SUPABASE_URL to a loopback URL (e.g. http://127.0.0.1:24321) or unset it.
 
 Power-user override (NOT for daily use):
   ALLOW_PROD_URL_IN_DEV=true

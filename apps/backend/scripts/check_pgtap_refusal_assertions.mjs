@@ -85,7 +85,7 @@ export const MIGRATIONS_DIR = join(
 );
 
 export const DB_URL =
-  process.env.SUPABASE_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
+  process.env.SUPABASE_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:24322/postgres';
 
 const DOLLAR_TAG = /^\$[A-Za-z0-9_]*\$/;
 

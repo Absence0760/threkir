@@ -134,7 +134,7 @@ function scannedRelPaths(): string[] {
 
 /**
  * A loopback origin on a port some lane's dev server binds. Deliberately NOT
- * every loopback origin: Supabase (:54321), Mailpit (:54324) and the
+ * every loopback origin: Supabase (:24321), Mailpit (:24324) and the
  * dev-server guard's deliberately-unbound :1 are real, correct literals, and
  * exempting them by name is how an allowlist rots into a list of defects
  * wearing a reason (decisions.md § 738). Scoping the pattern to the ports the
@@ -153,8 +153,8 @@ function devServerOriginPattern(): RegExp {
 test('the origin scan reaches every loopback spelling, and only lane ports', () => {
 	// Probed rather than read: the pattern is built from the lane ports at
 	// scan time, so a spelling it misses is a spelling that returns, and a
-	// port it over-reaches on would accuse Supabase (:54321) or Mailpit
-	// (:54324) — literals that are correct and deliberately outside the rule
+	// port it over-reaches on would accuse Supabase (:24321) or Mailpit
+	// (:24324) — literals that are correct and deliberately outside the rule
 	// rather than exempted from it.
 	const pattern = devServerOriginPattern();
 	const port = DEFAULT_E2E_PORT;
@@ -168,8 +168,8 @@ test('the origin scan reaches every loopback spelling, and only lane ports', () 
 		assert.ok(pattern.test(`const base = '${origin}';`), `the scan misses: ${origin}`);
 	}
 	for (const origin of [
-		'http://localhost:54321',
-		'http://localhost:54324',
+		'http://localhost:24321',
+		'http://localhost:24324',
 		'http://127.0.0.1:1',
 		'https://example.com',
 		`http://localhost:${port}0`

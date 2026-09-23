@@ -307,11 +307,11 @@ func TestResumableUpload_CreateFailureIsReportedAndLeavesNothing(t *testing.T) {
 }
 
 // Storage sits behind a gateway that reports its OWN origin in the
-// create response's Location (`http://kong:54321/...` on the local
+// create response's Location (`http://kong:24321/...` on the local
 // stack), which is not routable from this container. The path is the
 // server's to assign; the origin is ours to keep.
 func TestResumableUpload_LocationKeepsOurOriginAndTheServerPath(t *testing.T) {
-	srv := &tusServer{locationOrigin: "http://kong:54321"}
+	srv := &tusServer{locationOrigin: "http://kong:24321"}
 	u := newTusUpload(t, srv, 1024)
 
 	if _, err := u.Write([]byte("body")); err != nil {

@@ -15,10 +15,10 @@ final class WatchAuthTests: XCTestCase {
 
     func testEnvironmentPrefersTheProcessEnvironment() {
         let resolved = SupabaseEnvironment.resolve(
-            processEnvironment: ["SUPABASE_URL": "http://127.0.0.1:54321", "SUPABASE_ANON_KEY": "local"],
+            processEnvironment: ["SUPABASE_URL": "http://127.0.0.1:24321", "SUPABASE_ANON_KEY": "local"],
             infoDictionary: ["SupabaseURL": "https://prod.example", "SupabaseAnonKey": "prod"]
         )
-        XCTAssertEqual(resolved?.baseURL, "http://127.0.0.1:54321")
+        XCTAssertEqual(resolved?.baseURL, "http://127.0.0.1:24321")
         XCTAssertEqual(resolved?.anonKey, "local")
     }
 

@@ -13630,4 +13630,36 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get bleScanRetry => 'もう一度検索';
+
+  @override
+  String get planDetailSectionProgressTitle => 'プランの進捗';
+
+  @override
+  String get planDetailSectionProgressHint => 'フェーズ、プランの合計、最長のロング走';
+
+  @override
+  String get planDetailSectionRulesTitle => 'プランのルール';
+
+  @override
+  String get planDetailSectionRulesHint => 'このプランが守るルール';
+
+  @override
+  String get planDetailSectionCalendarTitle => 'カレンダー';
+
+  @override
+  String get planDetailSectionCalendarHint => '各ワークアウトを実際の日付に表示';
+
+  @override
+  String get planDetailSectionWeeksTitle => '週ごと';
+
+  @override
+  String planDetailSectionWeeksHint(int n) {
+    return '全$n週を1日ずつ';
+  }
+
+  @override
+  String get planDetailSectionShareTitle => '共有と公開';
+
+  @override
+  String get planDetailSectionShareHint => 'クラブのテンプレートと公開プランライブラリ';
 }

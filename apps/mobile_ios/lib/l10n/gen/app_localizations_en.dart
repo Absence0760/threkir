@@ -14147,4 +14147,38 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bleScanRetry => 'Scan again';
+
+  @override
+  String get planDetailSectionProgressTitle => 'Plan progress';
+
+  @override
+  String get planDetailSectionProgressHint =>
+      'Phases, plan totals, longest long run';
+
+  @override
+  String get planDetailSectionRulesTitle => 'Plan rules';
+
+  @override
+  String get planDetailSectionRulesHint => 'What this plan sticks to';
+
+  @override
+  String get planDetailSectionCalendarTitle => 'Calendar';
+
+  @override
+  String get planDetailSectionCalendarHint => 'Every workout on its real date';
+
+  @override
+  String get planDetailSectionWeeksTitle => 'Week by week';
+
+  @override
+  String planDetailSectionWeeksHint(int n) {
+    return 'All $n weeks, day by day';
+  }
+
+  @override
+  String get planDetailSectionShareTitle => 'Share & publish';
+
+  @override
+  String get planDetailSectionShareHint =>
+      'Club template and public plan library';
 }

@@ -4130,5 +4130,15 @@
   "bleUnavailableLocationOff": "Aktiviere die Standortdienste, damit Android nach deinem Herzfrequenzgurt suchen kann.",
   "bleUnavailableUnknown": "Bluetooth hat nicht geantwortet. Versuche es gleich noch einmal.",
   "bleOpenSettings": "Einstellungen öffnen",
-  "bleScanRetry": "Erneut suchen"
+  "bleScanRetry": "Erneut suchen",
+  "planDetailSectionProgressTitle": "Planfortschritt",
+  "planDetailSectionProgressHint": "Phasen, Plansummen, längster langer Lauf",
+  "planDetailSectionRulesTitle": "Planregeln",
+  "planDetailSectionRulesHint": "Woran sich dieser Plan hält",
+  "planDetailSectionCalendarTitle": "Kalender",
+  "planDetailSectionCalendarHint": "Jede Einheit an ihrem echten Datum",
+  "planDetailSectionWeeksTitle": "Woche für Woche",
+  "planDetailSectionWeeksHint": "Alle {n} Wochen, Tag für Tag",
+  "planDetailSectionShareTitle": "Teilen & veröffentlichen",
+  "planDetailSectionShareHint": "Vereinsvorlage und öffentliche Planbibliothek"
 }

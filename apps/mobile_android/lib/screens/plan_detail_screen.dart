@@ -27,8 +27,10 @@ import '../training_labels.dart';
 import '../training_load.dart';
 import '../training_service.dart';
 import '../backend_timeout.dart';
+import '../disclosure_state.dart';
 import '../widgets/error_state.dart';
 import '../widgets/current_week_strip.dart';
+import '../widgets/disclosure_section.dart';
 import '../widgets/plan_calendar.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/workout_edit_sheet.dart';
@@ -41,6 +43,20 @@ const double _kExpandedBodyMaxWidth = 900;
 /// The whole-plan changes the Adjust plan dialog offers. Web twin: the option
 /// list in `apps/web/src/routes/plans/[id]/+page.svelte` (decisions § 1635).
 enum _PlanAdjustment { replan, adaptiveReplan, pause, resume }
+
+/// Today's session and this week lead the screen; everything else sits behind
+/// a named expander whose open/closed state is remembered per account. Every
+/// default is open: a runner who uses one of these sections today must not
+/// find it gone on the first visit after this shipped. Web twin: the
+/// `DISCLOSURE_*` constants on `/plans/[id]` (decisions § 1660).
+const String _kDisclosureScope = 'plan_detail';
+const DisclosureState _kDisclosureDefaults = {
+  'progress': true,
+  'rules': true,
+  'calendar': true,
+  'weeks': true,
+  'share': true,
+};
 
 /// Web `isWorkoutCompleted` twin — a planned workout is done when a tracked
 /// run is linked OR the runner manually marked it complete.
@@ -117,6 +133,9 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
   // Set only when the current preview came from the adaptive (trend-based)
   // path, so its header can explain the multi-week reason + confidence.
   ({AdaptiveReason reason, AdaptiveConfidence confidence})? _adaptiveInfo;
+  DisclosureState _disclosure = Map.of(_kDisclosureDefaults);
+  // A toggle made before the stored state arrives wins over it.
+  bool _disclosureTouched = false;
 
   // Lazily construct a SocialService against the global Supabase client
   // when none was injected. Tests pass a fake via the constructor.
@@ -126,6 +145,22 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
   void initState() {
     super.initState();
     _load();
+    _loadDisclosure();
+  }
+
+  Future<void> _loadDisclosure() async {
+    final stored = await readDisclosureState(
+        _kDisclosureScope, _viewerId(), _kDisclosureDefaults);
+    if (!mounted || _disclosureTouched) return;
+    setState(() => _disclosure = stored);
+  }
+
+  void _setDisclosure(String key, bool open) {
+    if (_disclosure[key] == open) return;
+    _disclosureTouched = true;
+    setState(() => _disclosure = {..._disclosure, key: open});
+    unawaited(
+        writeDisclosureState(_kDisclosureScope, _viewerId(), _disclosure));
   }
 
   Future<void> _load() async {
@@ -185,9 +220,19 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     }
   }
 
+  String? _viewerId() {
+    final override = widget.viewerIdOverride;
+    if (override != null) return override;
+    try {
+      return Supabase.instance.client.auth.currentUser?.id;
+    } catch (e) {
+      debugPrint('PlanDetailScreen: no auth session to read: $e');
+      return null;
+    }
+  }
+
   bool _isOwner(TrainingPlanRow plan) {
-    final uid = widget.viewerIdOverride ??
-        Supabase.instance.client.auth.currentUser?.id;
+    final uid = _viewerId();
     return uid != null && plan.userId == uid;
   }
 
@@ -799,40 +844,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
         theme, l10n, p, pct, done, allActive.length, currentWeek, todayWorkout);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(p.name),
-        actions: [
-          IconButton(
-            icon: _publishing
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.publish),
-            tooltip: l10n.planDetailPublishTooltip,
-            onPressed: _publishing ? null : () => _publishToClub(p),
-          ),
-          if (_isOwner(p) && !p.isTemplate)
-            IconButton(
-              icon: _libraryBusy
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Icon(_publishedTemplateId != null ? Icons.public_off : Icons.public),
-              tooltip: _publishedTemplateId != null
-                  ? l10n.planDetailUnpublishLibrary
-                  : l10n.planDetailPublishLibrary,
-              onPressed: _libraryBusy
-                  ? null
-                  : (_publishedTemplateId != null
-                      ? _unpublishFromLibrary
-                      : () => _publishToLibrary(p)),
-            ),
-        ],
-      ),
+      appBar: AppBar(title: Text(p.name)),
       body: RefreshIndicator(
         onRefresh: _load,
         child: contentColumn(context, body, maxWidth: _kExpandedBodyMaxWidth),
@@ -851,10 +863,6 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
           const SizedBox(height: 12),
           _todayCard(theme, l10n, p, todayWorkout),
         ],
-        ..._progressSection(theme, l10n,
-            _weeks.isNotEmpty ? _weeks[currentWeek].phase : null),
-        ..._adherenceSection(theme, l10n, p),
-        ..._replanSection(theme, l10n, p),
         if (_weeks.isNotEmpty) ...[
           const SizedBox(height: 16),
           CurrentWeekStrip(
@@ -864,17 +872,162 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
             onSelect: _openWorkout,
           ),
         ],
+        // Adherence flags and the re-plan preview stay uncollapsed: a warning
+        // that only renders when something is wrong is signal, and the
+        // preview exists only after an explicit tap.
+        ..._adherenceSection(theme, l10n, p),
+        ..._replanSection(theme, l10n, p),
+        ..._disclosures(theme, l10n, p, currentWeek),
+      ],
+    );
+  }
+
+  List<Widget> _disclosures(ThemeData theme, AppLocalizations l10n,
+      TrainingPlanRow p, int currentWeek) {
+    final progress = _progressCard(
+        theme, l10n, _weeks.isNotEmpty ? _weeks[currentWeek].phase : null);
+    final rules = _planRules(p);
+    DisclosureSection section(String key, String title, String hint,
+            Widget child) =>
+        DisclosureSection(
+          key: ValueKey('plan-disclosure-$key'),
+          title: title,
+          hint: hint,
+          open: _disclosure[key] ?? true,
+          onToggle: (open) => _setDisclosure(key, open),
+          child: child,
+        );
+    return [
+      if (progress != null) ...[
         const SizedBox(height: 16),
+        section('progress', l10n.planDetailSectionProgressTitle,
+            l10n.planDetailSectionProgressHint, progress),
+      ],
+      if (rules.isNotEmpty) ...[
+        const SizedBox(height: 16),
+        section('rules', l10n.planDetailSectionRulesTitle,
+            l10n.planDetailSectionRulesHint, _rulesCard(theme, rules)),
+      ],
+      const SizedBox(height: 16),
+      section(
+        'calendar',
+        l10n.planDetailSectionCalendarTitle,
+        l10n.planDetailSectionCalendarHint,
         PlanCalendar(
           startDate: p.startDate,
           endDate: p.endDate,
           workouts: _byWeek.values.expand((x) => x).toList(),
           onSelect: _openWorkout,
         ),
+      ),
+      const SizedBox(height: 16),
+      section(
+        'weeks',
+        l10n.planDetailSectionWeeksTitle,
+        l10n.planDetailSectionWeeksHint(_weeks.length),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final w in _weeks) _weekCard(theme, l10n, p, w, currentWeek),
+          ],
+        ),
+      ),
+      if (_isOwner(p) && !p.isTemplate) ...[
         const SizedBox(height: 16),
-        for (final w in _weeks)
-          _weekCard(theme, l10n, p, w, currentWeek),
+        section('share', l10n.planDetailSectionShareTitle,
+            l10n.planDetailSectionShareHint, _shareCard(theme, l10n, p)),
       ],
+    ];
+  }
+
+  /// `training_plans.rules` is an untyped jsonb column; web renders it as a
+  /// list of strings, so anything else is treated as no rules.
+  List<String> _planRules(TrainingPlanRow p) {
+    final raw = p.rules;
+    if (raw is! List) return const [];
+    return [
+      for (final r in raw)
+        if (r is String && r.trim().isNotEmpty) r,
+    ];
+  }
+
+  Widget _rulesCard(ThemeData theme, List<String> rules) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        border: Border.all(color: theme.dividerColor),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < rules.length; i++) ...[
+            if (i > 0) const SizedBox(height: 6),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.check, size: 16, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: Text(rules[i], style: theme.textTheme.bodySmall)),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _shareCard(
+      ThemeData theme, AppLocalizations l10n, TrainingPlanRow p) {
+    final published = _publishedTemplateId != null;
+    Widget spinner() => const SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        );
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        border: Border.all(color: theme.dividerColor),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          OutlinedButton.icon(
+            onPressed: _publishing ? null : () => _publishToClub(p),
+            icon: _publishing ? spinner() : const Icon(Icons.publish, size: 18),
+            label: Text(l10n.planDetailPublishTooltip),
+          ),
+          const SizedBox(height: 12),
+          Text(l10n.planDetailPublishLibraryLabel,
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 2),
+          Text(
+            published
+                ? l10n.planDetailAlreadyPublished
+                : l10n.planDetailPublishLibraryHint,
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _libraryBusy
+                ? null
+                : (published ? _unpublishFromLibrary : () => _publishToLibrary(p)),
+            icon: _libraryBusy
+                ? spinner()
+                : Icon(published ? Icons.public_off : Icons.public, size: 18),
+            label: Text(published
+                ? l10n.planDetailUnpublishLibrary
+                : l10n.planDetailPublishLibrary),
+          ),
+        ],
+      ),
     );
   }
 
@@ -925,14 +1078,12 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     ];
   }
 
-  List<Widget> _progressSection(
+  Widget? _progressCard(
       ThemeData theme, AppLocalizations l10n, String? currentPhase) {
     final phases = _orderedPhases();
     final longest = _longestLongRunMetres();
-    if (phases.length <= 1 && longest == null) return const [];
-    return [
-      const SizedBox(height: 12),
-      Container(
+    if (phases.length <= 1 && longest == null) return null;
+    return Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: theme.colorScheme.surfaceContainerHighest,
@@ -989,8 +1140,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
             ],
           ],
         ),
-      ),
-    ];
+    );
   }
 
   Widget _adherenceFlag(ThemeData theme, IconData icon, String text) {

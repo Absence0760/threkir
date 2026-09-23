@@ -14327,4 +14327,38 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get bleScanRetry => 'Relancer la recherche';
+
+  @override
+  String get planDetailSectionProgressTitle => 'Progression du plan';
+
+  @override
+  String get planDetailSectionProgressHint =>
+      'Phases, totaux du plan, sortie longue la plus longue';
+
+  @override
+  String get planDetailSectionRulesTitle => 'Règles du plan';
+
+  @override
+  String get planDetailSectionRulesHint => 'Ce que ce plan respecte';
+
+  @override
+  String get planDetailSectionCalendarTitle => 'Calendrier';
+
+  @override
+  String get planDetailSectionCalendarHint => 'Chaque séance à sa date réelle';
+
+  @override
+  String get planDetailSectionWeeksTitle => 'Semaine par semaine';
+
+  @override
+  String planDetailSectionWeeksHint(int n) {
+    return 'Les $n semaines, jour par jour';
+  }
+
+  @override
+  String get planDetailSectionShareTitle => 'Partager et publier';
+
+  @override
+  String get planDetailSectionShareHint =>
+      'Modèle de club et bibliothèque publique de plans';
 }

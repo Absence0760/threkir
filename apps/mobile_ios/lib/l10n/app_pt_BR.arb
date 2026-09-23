@@ -4130,5 +4130,15 @@
   "bleUnavailableLocationOff": "Ative a localização para que o Android possa procurar sua cinta cardíaca.",
   "bleUnavailableUnknown": "O Bluetooth não respondeu. Tente novamente daqui a pouco.",
   "bleOpenSettings": "Abrir configurações",
-  "bleScanRetry": "Procurar novamente"
+  "bleScanRetry": "Procurar novamente",
+  "planDetailSectionProgressTitle": "Progresso do plano",
+  "planDetailSectionProgressHint": "Fases, totais do plano, longão mais longo",
+  "planDetailSectionRulesTitle": "Regras do plano",
+  "planDetailSectionRulesHint": "O que este plano segue",
+  "planDetailSectionCalendarTitle": "Calendário",
+  "planDetailSectionCalendarHint": "Cada treino na sua data real",
+  "planDetailSectionWeeksTitle": "Semana a semana",
+  "planDetailSectionWeeksHint": "Todas as {n} semanas, dia a dia",
+  "planDetailSectionShareTitle": "Compartilhar e publicar",
+  "planDetailSectionShareHint": "Modelo do clube e biblioteca pública de planos"
 }

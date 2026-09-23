@@ -163,6 +163,7 @@ final class WatchIngestBridgeTests: XCTestCase {
             "hr_coverage": NSNumber(value: 0.93),
             "steps": NSNumber(value: 7_412),
             "laps": "[{\"n\":1}]",
+            "is_public": true,
         ]
     }
 
@@ -192,6 +193,51 @@ final class WatchIngestBridgeTests: XCTestCase {
             track: "[]"
         )
         XCTAssertEqual(Set(payload.keys), ["id", "started_at", "track"])
+    }
+
+    func testIngestPayloadCarriesTheVisibilityTheWristStamped() {
+        let payload = WatchIngestBridge.ingestPayload(metadata: fullMetadata, track: "[]")
+        XCTAssertEqual(payload["is_public"] as? Bool, true)
+    }
+
+    // MARK: - Preference push
+
+    private let requiredPrefs: [String: Any] = ["preferred_unit": "km", "audio_cues": true]
+
+    func testPrefsContextCarriesTheThreeSettingsTheWatchApplies() throws {
+        var args = requiredPrefs
+        args["default_activity_type"] = "hike"
+        args["privacy_default"] = "public"
+        args["hr_zone_cutoffs"] = [114, 133, 152, 171, 190]
+        let context = try XCTUnwrap(WatchIngestBridge.prefsContext(from: args))
+        XCTAssertEqual(context["default_activity_type"] as? String, "hike")
+        XCTAssertEqual(context["privacy_default"] as? String, "public")
+        XCTAssertEqual(context["hr_zone_cutoffs"] as? [Int], [114, 133, 152, 171, 190])
+    }
+
+    func testPrefsContextKeepsAnEmptyLadderBecauseThatIsHowZonesAreCleared() throws {
+        var args = requiredPrefs
+        args["hr_zone_cutoffs"] = [Int]()
+        let context = try XCTUnwrap(WatchIngestBridge.prefsContext(from: args))
+        XCTAssertEqual(context["hr_zone_cutoffs"] as? [Int], [])
+    }
+
+    func testARogueOptionalIsDroppedAloneAndTheRequiredPairStillShips() throws {
+        var args = requiredPrefs
+        args["default_activity_type"] = "stroller"
+        args["privacy_default"] = "everyone"
+        args["hr_zone_cutoffs"] = [150, 140, 130, 120, 110]
+        let context = try XCTUnwrap(WatchIngestBridge.prefsContext(from: args))
+        XCTAssertEqual(Set(context.keys), ["preferred_unit", "audio_cues"])
+    }
+
+    func testTheZoneLadderGateMatchesTheWatchDecoder() {
+        XCTAssertTrue(WatchIngestBridge.isZoneLadder([]))
+        XCTAssertTrue(WatchIngestBridge.isZoneLadder([40, 100, 150, 200, 240]))
+        XCTAssertFalse(WatchIngestBridge.isZoneLadder([39, 100, 150, 200, 240]))
+        XCTAssertFalse(WatchIngestBridge.isZoneLadder([40, 100, 150, 200, 241]))
+        XCTAssertFalse(WatchIngestBridge.isZoneLadder([100, 100, 150, 200, 240]))
+        XCTAssertFalse(WatchIngestBridge.isZoneLadder([100, 150, 200, 240]))
     }
 
     func testIngestPayloadKeepsTheTrackVerbatim() {

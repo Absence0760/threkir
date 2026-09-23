@@ -231,7 +231,9 @@
 //       first — deleting it, or setting both to `en`, restores the blind spot
 //       without failing anything else.
 //  (20) The SETTINGS envelope going to the wrist — the runner's distance
-//       unit and their audio-cue switch — read from all three of its ends.
+//       unit, their audio-cue switch, their default activity, their privacy
+//       default and the resolved heart-rate zone ladder — read from all three
+//       of its ends.
 //       Three hand-written key lists in three languages, the same shape as
 //       claim (7): `apple_watch_prefs_bridge.dart` names them as
 //       method-channel arguments, `WatchIngestBridge.prefsContext` lifts
@@ -2001,8 +2003,11 @@ export function check(
 		const ingestSrc = stripSwiftComments(readFileSync(ingestPath, 'utf8'));
 		const watchSrc = stripSwiftComments(read(WATCH_CONNECTIVITY));
 		const phone = swiftPayloadKeys(methodBody(ingestSrc, 'prefsContext') ?? '', 'args');
+		// The whole decoder type, not a list of its methods: a reader added
+		// beside the others is on this rail the moment it is written, where a
+		// named list would have to learn it and would silently not.
 		const watch = swiftPayloadKeys(
-			(methodBody(watchSrc, 'preferredUnit') ?? '') + (methodBody(watchSrc, 'audioCues') ?? ''),
+			bodyOfSignatureContaining(watchSrc, 'enum PhonePreferences') ?? '',
 			'payload',
 		);
 		const dart = dartInvokeKeys(readFileSync(prefsBridgePath, 'utf8'), 'push');

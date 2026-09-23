@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:api_client/api_client.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'apple_watch_prefs_bridge.dart';
 import 'goals.dart';
 import 'preferences.dart';
 import 'undo_queue.dart';
@@ -91,6 +93,7 @@ class SettingsSyncService extends ChangeNotifier {
       _settings = loaded;
       _applyUniversal(loaded.universal);
       _applyDevice(loaded.device);
+      _mirrorAppleWatchHrZones(loaded);
       _synced = true;
       _lastError = loaded.isServerHydrated ? null : _offlineNotice;
     } catch (e) {
@@ -203,6 +206,7 @@ class SettingsSyncService extends ChangeNotifier {
   Future<void> updateUniversal(Map<String, dynamic> changes) async {
     final s = await _ensureService();
     await s.updateUniversal(changes);
+    _mirrorAppleWatchHrZones(s);
     notifyListeners();
   }
 
@@ -210,7 +214,31 @@ class SettingsSyncService extends ChangeNotifier {
   Future<void> updateDevice(Map<String, dynamic> changes) async {
     final s = await _ensureService();
     await s.updateDevice(changes);
+    _mirrorAppleWatchHrZones(s);
     notifyListeners();
+  }
+
+  /// Re-derive the Apple Watch's zone ladder from the bag and hand it over.
+  ///
+  /// Here because this class is where every write to the three inputs lands —
+  /// the settings page edits `hr_zones` / `max_hr_bpm` / `date_of_birth`
+  /// through [updateUniversal] with no [Preferences] mirror, and a runner who
+  /// changes their max HR must not wait for the next launch to see it on the
+  /// wrist. L4: nothing here may fail the bag write it follows.
+  void _mirrorAppleWatchHrZones(SettingsService s) {
+    try {
+      final cutoffs = AppleWatchPrefsBridge.zoneCutoffsForWatch(
+        hrZones: s.effective<Object>(SettingsKeys.hrZones),
+        maxHrBpm: s.effective<Object>(SettingsKeys.maxHrBpm),
+        dateOfBirth: s.effective<Object>(SettingsKeys.dateOfBirth),
+        now: DateTime.now(),
+      );
+      unawaited(preferences.setAppleWatchHrZoneCutoffs(cutoffs).catchError(
+        (Object e) => debugPrint('Apple Watch zone mirror failed: $e'),
+      ));
+    } catch (e) {
+      debugPrint('Apple Watch zone mirror failed: $e');
+    }
   }
 
   /// Test-only: drives the universal-bag overlay logic against a

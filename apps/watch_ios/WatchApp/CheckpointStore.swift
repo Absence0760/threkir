@@ -52,6 +52,11 @@ struct RunCheckpoint: Codable {
     // predating the field decodes as "run", the value the column defaults to.
     // Mirrors Wear OS's `Checkpoint.activityType`.
     let activityType: String
+    // The `privacy_default` snapshot as `runs.is_public`, so a recovered run
+    // is saved with the visibility it was recorded under rather than
+    // defaulting private — Wear OS's `Checkpoint.privacyDefault`, #389. Nil is
+    // "the phone never said", the same statement the stop path makes.
+    let isPublic: Bool?
 
     init(
         id: String,
@@ -66,6 +71,7 @@ struct RunCheckpoint: Codable {
         steps: Int?,
         laps: [LapMark]?,
         activityType: String = RunActivityType.run.rawValue,
+        isPublic: Bool? = nil,
         version: Int = RunCheckpoint.currentVersion
     ) {
         self.version = version
@@ -81,6 +87,7 @@ struct RunCheckpoint: Codable {
         self.steps = steps
         self.laps = laps
         self.activityType = activityType
+        self.isPublic = isPublic
     }
 
     /// Every field is decoded with a fallback default rather than the
@@ -108,6 +115,7 @@ struct RunCheckpoint: Codable {
         laps = try c.decodeIfPresent([LapMark].self, forKey: .laps)
         activityType = try c.decodeIfPresent(String.self, forKey: .activityType)
             ?? RunActivityType.run.rawValue
+        isPublic = try c.decodeIfPresent(Bool.self, forKey: .isPublic)
     }
 }
 

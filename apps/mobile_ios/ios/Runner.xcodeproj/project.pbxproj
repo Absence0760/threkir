@@ -48,6 +48,7 @@
 		7884EA003F2EC3CC00C636F4 /* HoldToStop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA003C2EC3CC00C636F4 /* HoldToStop.swift */; };
 		7884EA00162EC3CC00C636F4 /* MiniMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00072EC3CC00C636F4 /* MiniMap.swift */; };
 		7884EA003A2EC3CC00C636F4 /* Pedometer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00372EC3CC00C636F4 /* Pedometer.swift */; };
+		7884EA0F3A2EC3CC00C636F4 /* PhoneSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA0F372EC3CC00C636F4 /* PhoneSettings.swift */; };
 		7884EA00172EC3CC00C636F4 /* RouteNavigator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00082EC3CC00C636F4 /* RouteNavigator.swift */; };
 		7A11C0E5B4920001000C0001 /* RunAnnouncer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A11C0E5B4920002000C0001 /* RunAnnouncer.swift */; };
 		7884EA00402EC3CC00C636F4 /* RunActivityType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA003D2EC3CC00C636F4 /* RunActivityType.swift */; };
@@ -220,6 +221,7 @@
 		7884EA003C2EC3CC00C636F4 /* HoldToStop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoldToStop.swift; sourceTree = "<group>"; };
 		7884EA00072EC3CC00C636F4 /* MiniMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniMap.swift; sourceTree = "<group>"; };
 		7884EA00372EC3CC00C636F4 /* Pedometer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pedometer.swift; sourceTree = "<group>"; };
+		7884EA0F372EC3CC00C636F4 /* PhoneSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneSettings.swift; sourceTree = "<group>"; };
 		7884EA00082EC3CC00C636F4 /* RouteNavigator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteNavigator.swift; sourceTree = "<group>"; };
 		7A11C0E5B4920002000C0001 /* RunAnnouncer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunAnnouncer.swift; sourceTree = "<group>"; };
 		7884EA003D2EC3CC00C636F4 /* RunActivityType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunActivityType.swift; sourceTree = "<group>"; };
@@ -436,6 +438,7 @@
 				7884EA003C2EC3CC00C636F4 /* HoldToStop.swift */,
 				7884EA00072EC3CC00C636F4 /* MiniMap.swift */,
 				7884EA00372EC3CC00C636F4 /* Pedometer.swift */,
+				7884EA0F372EC3CC00C636F4 /* PhoneSettings.swift */,
 				7884EA00082EC3CC00C636F4 /* RouteNavigator.swift */,
 				7A11C0E5B4920002000C0001 /* RunAnnouncer.swift */,
 				7884EA003D2EC3CC00C636F4 /* RunActivityType.swift */,
@@ -898,6 +901,7 @@
 				7884EA003F2EC3CC00C636F4 /* HoldToStop.swift in Sources */,
 				7884EA00162EC3CC00C636F4 /* MiniMap.swift in Sources */,
 				7884EA003A2EC3CC00C636F4 /* Pedometer.swift in Sources */,
+				7884EA0F3A2EC3CC00C636F4 /* PhoneSettings.swift in Sources */,
 				7884EA00172EC3CC00C636F4 /* RouteNavigator.swift in Sources */,
 				7A11C0E5B4920001000C0001 /* RunAnnouncer.swift in Sources */,
 				7884EA00402EC3CC00C636F4 /* RunActivityType.swift in Sources */,

@@ -132,6 +132,9 @@ actor SupabaseService {
             // the row, so a direct upload that dropped it would land a race
             // run this developer cannot get back to its event from.
             event_id: raceEventId,
+            // A column, like `event_id`. Nil is omitted by the synthesized
+            // encoder, so the row keeps its private default.
+            is_public: run.isPublic,
             metadata: RunMetadata(
                 activity_type: run.activityType.rawValue,
                 last_modified_at: formatter.string(from: Date()),
@@ -199,6 +202,7 @@ actor SupabaseService {
         let track_url: String
         let source: String
         let event_id: String?
+        let is_public: Bool?
         let metadata: RunMetadata
     }
 

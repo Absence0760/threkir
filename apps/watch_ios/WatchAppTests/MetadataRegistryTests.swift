@@ -15,13 +15,15 @@ final class MetadataRegistryTests: XCTestCase {
     ///
     /// `WCSession.transferFile(_:metadata:)` takes a transport envelope, not a
     /// jsonb bag: `ContentView.syncRun` packs the run's own COLUMNS into it
-    /// (`id`, `started_at`, `duration_s`, `distance_m`, `source`) alongside the
+    /// (`id`, `started_at`, `duration_s`, `distance_m`, `source`, and
+    /// `is_public` — the privacy-default snapshot the phone passes to
+    /// `saveRun(isPublic:)`, never into the bag) alongside the
     /// real metadata keys the phone lifts out of it — see the matching key
     /// list in `apps/mobile_ios/ios/Runner/WatchIngestBridge.swift`. Column
     /// names have no registry row by definition, so they are exempt; the
     /// metadata keys in that same dict stay guarded.
     private let exemptReferences: Set<String> = [
-        "id", "started_at", "duration_s", "distance_m", "source",
+        "id", "started_at", "duration_s", "distance_m", "source", "is_public",
     ]
 
     func testEveryRunsMetadataKeyInSwiftSourceIsRegistered() throws {

@@ -905,7 +905,10 @@ class WatchIngest {
       }
 
       try {
-        await api.saveRun(runFromWatchPayload(payload));
+        await api.saveRun(
+          runFromWatchPayload(payload),
+          isPublic: isPublicFromWatchPayload(payload),
+        );
         return true;
       } catch (e) {
         debugPrint('Watch ingest failed: $e');

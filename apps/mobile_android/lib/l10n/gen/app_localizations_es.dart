@@ -3422,6 +3422,11 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String routeDetailWatchCourseSentMarkersFailed(int points) {
+    return 'Recorrido enviado al reloj ($points puntos), pero no se pudieron cargar sus marcadores, así que no se envió ningún horario.';
+  }
+
+  @override
   String routeDetailWatchCourseSimplified(int source, int points) {
     return 'Recorrido enviado al reloj: reducido de $source a $points puntos para que quepa';
   }
@@ -11899,6 +11904,10 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get routeMarkerEmpty =>
       'Aún no hay marcadores. Añade avituallamientos, cortes de tiempo y más a lo largo de la ruta.';
+
+  @override
+  String get routeMarkerLoadFailed =>
+      'No se pudieron cargar los marcadores de esta ruta. No se han eliminado: comprueba tu conexión e inténtalo de nuevo.';
 
   @override
   String get routeMarkerEdit => 'Editar marcador';

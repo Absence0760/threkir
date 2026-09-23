@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart' hide Route;
 import 'package:flutter_test/flutter_test.dart';
@@ -85,8 +86,49 @@ List<double?> _paceSeconds(WidgetTester tester) => _paceTexts(tester).map((s) {
       return parts[0] * 60 + parts[1];
     }).toList();
 
+/// Fails the first marker read, then answers with [markers].
+class _FlakyMarkersApi extends ApiClient {
+  final List<RouteMarkerRow> markers;
+  int calls = 0;
+  _FlakyMarkersApi(this.markers);
+
+  @override
+  Future<List<RouteMarkerRow>> fetchRouteMarkers(String routeId) async {
+    calls++;
+    if (calls == 1) throw Exception('502 upstream');
+    return markers;
+  }
+}
+
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets(
+      'a failed marker read offers a retry instead of the no-markers hint',
+      (tester) async {
+    final r = _route();
+    final api = _FlakyMarkersApi([
+      _marker('aid_station', 'Aid 1', 445, const {}),
+    ]);
+    await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: RoadbookScreen(route: r, waypoints: r.waypoints, api: api),
+    ));
+    await tester.pump();
+
+    expect(find.byKey(const Key('roadbook-load-error')), findsOneWidget);
+    expect(find.textContaining("Couldn't load this route's course markers"),
+        findsOneWidget);
+    expect(find.textContaining('Add course markers'), findsNothing);
+
+    await tester.tap(find.text('Retry'));
+    await tester.pump();
+
+    expect(api.calls, 2);
+    expect(find.byKey(const Key('roadbook-load-error')), findsNothing);
+    expect(find.text('Aid 1'), findsOneWidget);
+  });
 
   testWidgets('renders the schedule with checkpoints, services and a cutoff',
       (tester) async {

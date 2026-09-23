@@ -3421,6 +3421,11 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String routeDetailWatchCourseSentMarkersFailed(int points) {
+    return 'Percurso enviado para o relógio ($points pontos), mas não foi possível carregar os marcadores, por isso nenhum horário foi enviado.';
+  }
+
+  @override
   String routeDetailWatchCourseSimplified(int source, int points) {
     return 'Percurso enviado para o relógio — reduzido de $source para $points pontos para caber';
   }
@@ -11902,6 +11907,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Nenhum marcador ainda. Adicione postos de apoio, cortes de tempo e mais ao longo do percurso.';
 
   @override
+  String get routeMarkerLoadFailed =>
+      'Não foi possível carregar os marcadores deste percurso. Não foram eliminados — verifique a sua ligação e tente novamente.';
+
+  @override
   String get routeMarkerEdit => 'Editar marcador';
 
   @override
@@ -17744,6 +17753,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String routeDetailWatchCourseSent(int points) {
     return 'Percurso enviado para o relógio ($points pontos)';
+  }
+
+  @override
+  String routeDetailWatchCourseSentMarkersFailed(int points) {
+    return 'Percurso enviado para o relógio ($points pontos), mas não foi possível carregar os marcadores, então nenhum horário foi enviado.';
   }
 
   @override
@@ -26220,6 +26234,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get routeMarkerEmpty =>
       'Nenhum marcador ainda. Adicione postos de apoio, cortes de tempo e mais ao longo do percurso.';
+
+  @override
+  String get routeMarkerLoadFailed =>
+      'Não foi possível carregar os marcadores deste percurso. Eles não foram excluídos — verifique sua conexão e tente novamente.';
 
   @override
   String get routeMarkerEdit => 'Editar marcador';

@@ -278,6 +278,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   // Course markers on the followed route that carry a target time
   // (meta.target_elapsed_s), sorted by position — the marker-cue set.
   List<_TargetMarker> _targetMarkers = const [];
+  // The route [_cutoffLegs] and [_targetMarkers] were built from, so a failed
+  // reload keeps them for that route and drops them for any other.
+  String? _cutoffLegsRouteId;
   // Distance-along-route at the previous fix; a marker between this and the
   // current along-value has just been crossed.
   double? _lastAlongM;
@@ -345,6 +348,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         setState(() {
           _cutoffLegs = const [];
           _targetMarkers = const [];
+          _cutoffLegsRouteId = null;
         });
       }
       return;
@@ -394,10 +398,20 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         setState(() {
           _cutoffLegs = next;
           _targetMarkers = targets;
+          _cutoffLegsRouteId = routeId;
         });
       }
     } catch (e) {
       debugPrint('cutoff-leg load failed: $e');
+      if (_cutoffLegsRouteId != routeId &&
+          (_cutoffLegs.isNotEmpty || _targetMarkers.isNotEmpty) &&
+          mounted) {
+        setState(() {
+          _cutoffLegs = const [];
+          _targetMarkers = const [];
+          _cutoffLegsRouteId = null;
+        });
+      }
     }
   }
 

@@ -3391,6 +3391,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String routeDetailWatchCourseSentMarkersFailed(int points) {
+    return 'Course sent to the watch ($points points), but its course markers couldn\'t be loaded, so no schedule went with it.';
+  }
+
+  @override
   String routeDetailWatchCourseSimplified(int source, int points) {
     return 'Course sent to the watch — thinned from $source points to $points to fit';
   }
@@ -11779,6 +11784,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get routeMarkerEmpty =>
       'No course markers yet. Add aid stations, cutoffs, and more along the route.';
+
+  @override
+  String get routeMarkerLoadFailed =>
+      'Couldn\'t load this route\'s course markers. They have not been deleted — check your connection and try again.';
 
   @override
   String get routeMarkerEdit => 'Edit marker';

@@ -327,6 +327,13 @@ becomes an **action button**, not a tab.
 > session" hint, which lands on the Fitness hub's Gym tab through the shell's
 > Log → Lift action. Web's record-on-your-phone hint has no counterpart, since
 > this is the phone. `test/dashboard_first_run_test.dart`.
+>
+> **Status (web, #905 workstream 3):** an account **with** runs opens on
+> `DashboardWeekLead.svelte` above the plan hero — this week's distance against
+> the plan's distance for the calendar week (or the runner's recent weekly
+> average), the plan's next open session, and **Add a run** above the fold.
+> Nothing below it moved or went away; this is ordering, not removal. Mobile
+> still owes the same lead.
 
 Home is a vertical scroll of cards. The order is **driven by what the
 user logs**, not a fixed grid. The ordering algorithm:

@@ -67,6 +67,7 @@
 	import LoadRampCard from '$lib/components/LoadRampCard.svelte';
 	import ComebackCard from '$lib/components/ComebackCard.svelte';
 	import DashboardFirstRun from '$lib/components/DashboardFirstRun.svelte';
+	import DashboardWeekLead from '$lib/components/DashboardWeekLead.svelte';
 	import MetricLabel from '$lib/components/MetricLabel.svelte';
 	import { workoutKindLabel } from '$lib/training/workout_labels';
 	import WorkoutEditor from '$lib/components/WorkoutEditor.svelte';
@@ -219,6 +220,9 @@
 	// current calendar day, so it cannot answer "has this account done
 	// anything yet".
 	let isNewAccount = $derived(allTimeStats.totalRuns === 0 && gymWorkouts.length === 0);
+	// Floored on the window for the reason § 1658 gives: the all-time count
+	// degrades to zero on a failed read.
+	let hasRuns = $derived(Math.max(allTimeStats.totalRuns, runs.length) > 0);
 	let lifts = $derived(liftsFromSetHistory(gymHistory));
 	// Today's nutrition — the "today's modality" rings card (multi_modal.md §
 	// Home), mirroring the mobile NutritionRingsCard + the today's-lift card
@@ -1112,6 +1116,15 @@
 					<p>{m('dash.welcomeBackBody')}</p>
 				</div>
 			</section>
+		{/if}
+		{#if hasRuns}
+			<DashboardWeekLead
+				activities={runs}
+				planWorkouts={planOverview?.workouts ?? null}
+				weekStart={weekStartDay}
+				{now}
+				onopensession={(w) => (editingWorkout = w)}
+			/>
 		{/if}
 		{#if planOverview && planPosition}
 			{@const t = planOverview.todayWorkout}

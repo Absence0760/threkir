@@ -1,6 +1,6 @@
 /**
  * Local Supabase ships an embedded Mailpit instance on
- * http://localhost:54324 (config.toml inbucket section). Auth flows
+ * http://localhost:24324 (config.toml inbucket section). Auth flows
  * that send email — sign-up confirmations, password recovery, magic
  * links — deliver into Mailpit instead of a real SMTP relay. These
  * helpers give Playwright specs a way to read those mails without
@@ -13,7 +13,7 @@
  * other test runs doesn't shadow it.
  */
 
-const BASE = 'http://localhost:54324';
+const BASE = 'http://localhost:24324';
 
 interface MailpitListItem {
 	ID: string;

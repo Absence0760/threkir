@@ -76,7 +76,7 @@ void main() {
   setUp(() async {
     fakeHttp = _FakeSupabaseHttpClient();
     client = SupabaseClient(
-      'http://127.0.0.1:54321',
+      'http://127.0.0.1:24321',
       'test-anon-key',
       httpClient: fakeHttp,
     );

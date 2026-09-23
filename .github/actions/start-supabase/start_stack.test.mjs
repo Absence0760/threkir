@@ -7,6 +7,59 @@ import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 
 const SCRIPT = fileURLToPath(new URL('./start_stack.sh', import.meta.url));
+const CONFIG = fileURLToPath(new URL('../../../apps/backend/supabase/config.toml', import.meta.url));
+
+// Linux's default net.ipv4.ip_local_port_range is 32768-60999. A host port
+// the stack publishes inside it can be taken as an outbound socket's source
+// port before the reservation runs, which is incidents 3 and 5.
+const EPHEMERAL_FLOOR = 32768;
+
+// Every section whose port the CLI publishes on the host, and the CLI
+// default each one falls back to when config.toml leaves it out. Every
+// default sits inside the ephemeral range, so an unpinned key is the bug.
+const PUBLISHED = [
+	['api', 'port'],
+	['db', 'port'],
+	['db', 'shadow_port'],
+	['db.pooler', 'port'],
+	['studio', 'port'],
+	['inbucket', 'port'],
+	['inbucket', 'smtp_port'],
+	['inbucket', 'pop3_port'],
+	['analytics', 'port'],
+];
+
+function configPorts(text = readFileSync(CONFIG, 'utf8')) {
+	/** @type {Map<string, number>} */
+	const found = new Map();
+	let section = '';
+	for (const line of text.split('\n')) {
+		const header = line.match(/^\[([^\]]+)\]/);
+		if (header) {
+			section = header[1];
+			continue;
+		}
+		const kv = line.match(/^(\w*port)\s*=\s*(\d+)/);
+		if (kv) found.set(`${section}.${kv[1]}`, Number(kv[2]));
+	}
+	return found;
+}
+
+function scriptVar(/** @type {string} */ name) {
+	const m = readFileSync(SCRIPT, 'utf8').match(new RegExp(`^${name}="?([^"\\n]+)"?$`, 'm'));
+	assert.ok(m, `${name} not found in start_stack.sh`);
+	return m[1];
+}
+
+const PORTS = scriptVar('PORTS').split(' ').map(Number);
+const RESERVED_RANGE = scriptVar('RESERVED_RANGE');
+
+function expandRange(/** @type {string} */ spec) {
+	return spec.split(',').flatMap((part) => {
+		const [lo, hi = lo] = part.split('-').map(Number);
+		return Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
+	});
+}
 
 // `ss` is the knob every case turns, because WHICH SOCKET STATES the probe
 // counts is the property this script exists for: the LISTEN-only probe it
@@ -92,7 +145,7 @@ exit 0
 /**
  * @param {{ rows: string[], startExit?: number, reserved?: string }} knobs
  */
-function run({ rows, startExit = 0, reserved = '54321-54327' }) {
+function run({ rows, startExit = 0, reserved = RESERVED_RANGE }) {
 	const dir = mkdtempSync(join(tmpdir(), 'start-stack-'));
 	const bin = join(dir, 'bin');
 	spawnSync('mkdir', ['-p', bin]);
@@ -158,23 +211,24 @@ test('a clean runner starts the stack on the first attempt', () => {
 });
 
 // The regression. CI run 35626531071 (e2e shard 7) spent all three attempts
-// on "failed to bind host port for 0.0.0.0:54324" while the only thing on a
-// stack port was this row — an outbound HTTPS connection to github.com that
-// took 54324 as its ephemeral source port. Under the LISTEN-only probe the
-// gate saw nothing, so it never warned, never waited and never killed.
+// on "failed to bind host port for 0.0.0.0:54324" (the inbucket web port
+// before the move to 2432x) while the only thing on a stack port was an
+// outbound HTTPS connection to github.com that took it as its ephemeral
+// source port. Under the LISTEN-only probe the gate saw nothing, so it never
+// warned, never waited and never killed.
 test('an ESTABLISHED outbound socket on a stack port is seen as a holder', () => {
-	const r = run({ rows: ['ESTAB 0 0 10.1.0.221:54324 140.82.114.21:443'] });
-	assert.match(r.out, /stack ports\/network in use before attempt 1: 54324/);
-	assert.deepEqual(r.kills, ['sport = :54324']);
+	const r = run({ rows: ['ESTAB 0 0 10.1.0.221:24324 140.82.114.21:443'] });
+	assert.match(r.out, /stack ports\/network in use before attempt 1: 24324/);
+	assert.deepEqual(r.kills, ['sport = :24324']);
 	// Destroyed, so the attempt runs rather than burning three bind failures.
 	assert.equal(r.status, 0);
 	assert.equal(r.starts, 1);
 });
 
 test('a LISTEN socket on a stack port is still seen as a holder', () => {
-	const r = run({ rows: ['LISTEN 0 4096 0.0.0.0:54322 0.0.0.0:*'] });
-	assert.match(r.out, /stack ports\/network in use before attempt 1: 54322/);
-	assert.deepEqual(r.kills, ['sport = :54322']);
+	const r = run({ rows: ['LISTEN 0 4096 0.0.0.0:24322 0.0.0.0:*'] });
+	assert.match(r.out, /stack ports\/network in use before attempt 1: 24322/);
+	assert.deepEqual(r.kills, ['sport = :24322']);
 	assert.equal(r.status, 0);
 });
 
@@ -182,7 +236,7 @@ test('a LISTEN socket on a stack port is still seen as a holder', () => {
 // counting one would fail the gate on a harmless remnant of our own previous
 // attempt — and `ss -K` it, which is worse than useless.
 test('a TIME-WAIT remnant on a stack port is not a holder', () => {
-	const r = run({ rows: ['TIME-WAIT 0 0 127.0.0.1:54322 127.0.0.1:45976'] });
+	const r = run({ rows: ['TIME-WAIT 0 0 127.0.0.1:24322 127.0.0.1:45976'] });
 	assert.equal(r.status, 0);
 	assert.equal(r.starts, 1);
 	assert.doesNotMatch(r.out, /in use before attempt/);
@@ -192,19 +246,19 @@ test('a TIME-WAIT remnant on a stack port is not a holder', () => {
 // A connection TO the db leaves the stack port in the PEER column; only the
 // local column can hold a port we are about to bind.
 test('a client connected to a stack port is not a holder', () => {
-	const r = run({ rows: ['ESTAB 0 0 127.0.0.1:45976 127.0.0.1:54322'] });
+	const r = run({ rows: ['ESTAB 0 0 127.0.0.1:45976 127.0.0.1:24322'] });
 	assert.equal(r.status, 0);
 	assert.doesNotMatch(r.out, /in use before attempt/);
 });
 
 test('an unrelated port that merely contains a stack port is not a holder', () => {
-	const r = run({ rows: ['ESTAB 0 0 10.1.0.221:154322 140.82.114.21:443'] });
+	const r = run({ rows: ['ESTAB 0 0 10.1.0.221:124322 140.82.114.21:443'] });
 	assert.equal(r.status, 0);
 	assert.doesNotMatch(r.out, /in use before attempt/);
 });
 
 test('every reserved port is probed, not just the one that collides most', () => {
-	for (const port of [54321, 54322, 54323, 54324, 54325, 54326, 54327]) {
+	for (const port of PORTS) {
 		const r = run({ rows: [`ESTAB 0 0 10.1.0.221:${port} 140.82.114.21:443`] });
 		assert.deepEqual(r.kills, [`sport = :${port}`], `port ${port}`);
 	}
@@ -217,7 +271,7 @@ test('a reservation that does not take fails before any start attempt', () => {
 	const r = run({ rows: [], reserved: '' });
 	assert.equal(r.status, 1);
 	assert.equal(r.starts, 0);
-	assert.match(r.out, /could not reserve stack ports 54321-54327/);
+	assert.match(r.out, new RegExp(`could not reserve stack ports ${RESERVED_RANGE}`));
 });
 
 test('a start that keeps failing gives up after the attempt budget', () => {
@@ -226,4 +280,46 @@ test('a start that keeps failing gives up after the attempt budget', () => {
 	assert.equal(r.starts, 3);
 	assert.match(r.out, /supabase start failed 3 times/);
 	assert.match(r.out, /restarting docker before the final attempt/);
+});
+
+// The durable half of incidents 3 and 5 (issue #963): a port outside the
+// ephemeral range cannot be handed out as a source port at all, so the race
+// the reservation and `ss -K` fight is never started.
+function portViolations(/** @type {Map<string, number>} */ found) {
+	return PUBLISHED.flatMap(([section, key]) => {
+		const port = found.get(`${section}.${key}`);
+		if (port === undefined) return [`[${section}] ${key} is unpinned, so the CLI publishes its default inside the ephemeral range`];
+		if (port >= EPHEMERAL_FLOOR) return [`[${section}] ${key} = ${port} is inside the ephemeral range (>= ${EPHEMERAL_FLOOR})`];
+		return [];
+	});
+}
+
+test('config.toml pins every published port, below the ephemeral range', () => {
+	assert.deepEqual(portViolations(configPorts()), []);
+});
+
+test('PORTS is exactly the set of ports config.toml publishes', () => {
+	const published = PUBLISHED.map(([section, key]) => configPorts().get(`${section}.${key}`));
+	assert.deepEqual([...PORTS].sort(), [...published].sort());
+});
+
+test('RESERVED_RANGE reserves exactly PORTS', () => {
+	assert.deepEqual(expandRange(RESERVED_RANGE).sort(), [...PORTS].sort());
+});
+
+test('the guard reports a port inside the ephemeral range and an unpinned one', () => {
+	const text = readFileSync(CONFIG, 'utf8')
+		.replace(/^(\[db\]\nport = )\d+/m, (_, head) => `${head}54322`)
+		.replace(/^\[studio\]\nport = \d+\n/m, '[studio]\n');
+	assert.deepEqual(portViolations(configPorts(text)), [
+		`[db] port = 54322 is inside the ephemeral range (>= ${EPHEMERAL_FLOOR})`,
+		'[studio] port is unpinned, so the CLI publishes its default inside the ephemeral range',
+	]);
+});
+
+test('the sidecar probe defaults to the api port config.toml publishes', () => {
+	const probe = readFileSync(fileURLToPath(new URL('./wait_for_sidecars.sh', import.meta.url)), 'utf8');
+	const m = probe.match(/^API=\$\{PROBE_API_URL:-http:\/\/127\.0\.0\.1:(\d+)\}$/m);
+	assert.ok(m, 'API default not found in wait_for_sidecars.sh');
+	assert.equal(Number(m[1]), configPorts().get('api.port'));
 });

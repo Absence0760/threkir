@@ -22,7 +22,7 @@
 import { execSync } from 'node:child_process';
 import { gzipSync } from 'node:zlib';
 
-const SUPABASE_URL = process.env.SUPABASE_URL ?? 'http://127.0.0.1:54321';
+const SUPABASE_URL = process.env.SUPABASE_URL ?? 'http://127.0.0.1:24321';
 const SEED_USER_ID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
 
 /** @typedef {{ lat: number, lng: number, ele?: number }} Waypoint */

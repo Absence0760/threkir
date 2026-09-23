@@ -7,7 +7,7 @@
 /// TLS posture mirrors the Go worker's net/smtp behaviour: port 465 →
 /// implicit TLS; otherwise plaintext connect, then opportunistic
 /// STARTTLS when the server advertises it. The local Mailpit catcher
-/// (host.docker.internal:54325) advertises neither and takes mail
+/// (host.docker.internal:24325) advertises neither and takes mail
 /// unauthenticated; a production relay (Resend / SES on 465/587)
 /// negotiates TLS and AUTH PLAIN.
 

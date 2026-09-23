@@ -14,8 +14,8 @@ import {
 
 test('passes when only loopback URLs are set', () => {
 	const r = checkEnvIsolation({
-		PUBLIC_SUPABASE_URL: 'http://127.0.0.1:54321',
-		SUPABASE_URL: 'http://localhost:54321',
+		PUBLIC_SUPABASE_URL: 'http://127.0.0.1:24321',
+		SUPABASE_URL: 'http://localhost:24321',
 		PUBLIC_OSRM_URL: 'http://127.0.0.1:5000',
 		OSRM_URL: 'http://127.0.0.1:5000',
 	});
@@ -53,18 +53,18 @@ test('fails when SUPABASE_URL points at a custom domain', () => {
 });
 
 test('accepts the Android emulator alias 10.0.2.2', () => {
-	const r = checkEnvIsolation({ PUBLIC_SUPABASE_URL: 'http://10.0.2.2:54321' });
+	const r = checkEnvIsolation({ PUBLIC_SUPABASE_URL: 'http://10.0.2.2:24321' });
 	assert.equal(r.ok, true);
 });
 
 test('accepts host.docker.internal for Docker-on-Mac/Windows', () => {
-	const r = checkEnvIsolation({ PUBLIC_SUPABASE_URL: 'http://host.docker.internal:54321' });
+	const r = checkEnvIsolation({ PUBLIC_SUPABASE_URL: 'http://host.docker.internal:24321' });
 	assert.equal(r.ok, true);
 });
 
 test('fails on a live Stripe secret key', () => {
 	const r = checkEnvIsolation({
-		PUBLIC_SUPABASE_URL: 'http://127.0.0.1:54321',
+		PUBLIC_SUPABASE_URL: 'http://127.0.0.1:24321',
 		STRIPE_SECRET_KEY: 'sk_live_abcdef0123456789',
 	});
 	assert.equal(r.ok, false);
@@ -75,7 +75,7 @@ test('fails on a live Stripe secret key', () => {
 
 test('accepts a test Stripe secret key', () => {
 	const r = checkEnvIsolation({
-		PUBLIC_SUPABASE_URL: 'http://127.0.0.1:54321',
+		PUBLIC_SUPABASE_URL: 'http://127.0.0.1:24321',
 		STRIPE_SECRET_KEY: 'sk_test_abcdef0123456789',
 	});
 	assert.equal(r.ok, true);
@@ -83,7 +83,7 @@ test('accepts a test Stripe secret key', () => {
 
 test('fails on a live publishable Stripe key', () => {
 	const r = checkEnvIsolation({
-		PUBLIC_SUPABASE_URL: 'http://127.0.0.1:54321',
+		PUBLIC_SUPABASE_URL: 'http://127.0.0.1:24321',
 		PUBLIC_STRIPE_KEY: 'pk_live_abcdef0123456789',
 	});
 	assert.equal(r.ok, false);

@@ -157,7 +157,7 @@ export function createResumableUpload(init: ResumableUploadInit): ResumableUploa
 		if (!loc) throw new Error('resumable create returned no Location');
 		// Keep the PATH the server assigned, but the ORIGIN we already
 		// reached it on. Storage sits behind a gateway and reports its
-		// own internal origin here (`http://kong:54321/...` on the local
+		// own internal origin here (`http://kong:24321/...` on the local
 		// stack), which is not routable from the function container — so
 		// following the Location verbatim fails every PATCH with
 		// ECONNREFUSED after a create that returned 201.

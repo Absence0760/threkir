@@ -72,10 +72,10 @@ class SupabaseUrlBuildersTest {
         // Supabase stack. Make sure the URL composer doesn't
         // mangle the IPv4 numeric form.
         val out = buildFetchRoutesUrl(
-            baseUrl = "http://10.0.2.2:54321",
+            baseUrl = "http://10.0.2.2:24321",
             query = "anything",
         )
-        assertEquals("http://10.0.2.2:54321/rest/v1/routes?anything", out)
+        assertEquals("http://10.0.2.2:24321/rest/v1/routes?anything", out)
     }
 
     // ───────────── refreshAccessToken wire shape ─────────────
@@ -109,9 +109,9 @@ class SupabaseUrlBuildersTest {
     }
 
     @Test fun `refresh URL with local-emulator base composes cleanly`() {
-        val out = buildRefreshTokenUrl("http://10.0.2.2:54321")
+        val out = buildRefreshTokenUrl("http://10.0.2.2:24321")
         assertEquals(
-            "http://10.0.2.2:54321/auth/v1/token?grant_type=refresh_token",
+            "http://10.0.2.2:24321/auth/v1/token?grant_type=refresh_token",
             out,
         )
     }

@@ -19,7 +19,7 @@
 //
 // **Skipped unless SUPABASE_TEST_URL is set.** Run locally with:
 //   cd apps/backend && supabase status -o env
-//   export SUPABASE_TEST_URL=http://127.0.0.1:54321
+//   export SUPABASE_TEST_URL=http://127.0.0.1:24321
 //   deno test --no-check --allow-net --allow-env \
 //     supabase/functions/_shared/handler_envelope.test.ts
 
@@ -1377,8 +1377,8 @@ Deno.test({
 const SEND_EMAIL_SECRET = Deno.env.get('SEND_EMAIL_HOOK_SECRET') ??
   'v1,Y2ktYXV0aC1lbWFpbC1ob29rLXNlY3JldC0zMmNoYXJz';
 // Read from the RUNNER, which is why this is a published host port and
-// not the `host.docker.internal:54325` the function host dials.
-const MAILPIT_URL = Deno.env.get('MAILPIT_URL') ?? 'http://127.0.0.1:54324';
+// not the `host.docker.internal:24325` the function host dials.
+const MAILPIT_URL = Deno.env.get('MAILPIT_URL') ?? 'http://127.0.0.1:24324';
 
 // Standard Webhooks signs `${id}.${timestamp}.${body}` and carries the
 // result base64, not hex — so this is not `hmacHex`. Mirrors

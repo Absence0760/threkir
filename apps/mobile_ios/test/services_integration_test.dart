@@ -36,7 +36,7 @@ const _seededFirstWeekId = 'a0aa0001-0000-0000-0000-000000000001';
 /// **Skipped unless `SUPABASE_TEST_URL` is set.** Run locally with:
 /// ```
 /// cd apps/backend && supabase status -o env
-/// export SUPABASE_TEST_URL=http://127.0.0.1:54321
+/// export SUPABASE_TEST_URL=http://127.0.0.1:24321
 /// export SUPABASE_TEST_ANON_KEY=<ANON_KEY>
 /// cd ../mobile_android
 /// flutter test test/services_integration_test.dart

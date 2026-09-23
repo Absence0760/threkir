@@ -234,7 +234,7 @@ func (u *ResumableUpload) create(declaredLength int) error {
 	}
 	// Keep the PATH the server assigned, but the ORIGIN we already
 	// reached it on. Storage sits behind a gateway that reports its own
-	// internal origin here (`http://kong:54321/...` on the local stack),
+	// internal origin here (`http://kong:24321/...` on the local stack),
 	// which is not routable from this container — so following the
 	// Location verbatim fails every PATCH with ECONNREFUSED after a
 	// create that returned 201.

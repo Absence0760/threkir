@@ -513,11 +513,11 @@ test('an empty String Catalog fails loudly rather than passing vacuously', () =>
 // --- the pure helpers -------------------------------------------------------
 
 test('comment stripping does not eat the scheme separator inside a URL literal', () => {
-	// SupabaseService.swift holds `http://127.0.0.1:54321`. A `//`-to-EOL strip
+	// SupabaseService.swift holds `http://127.0.0.1:24321`. A `//`-to-EOL strip
 	// that ignores string literals deletes the rest of that line, and with it
 	// any localizing call sharing it.
-	const out = stripSwiftComments('let url = "http://127.0.0.1:54321" // trailing\nlet x = 1\n');
-	assert.match(out, /"http:\/\/127\.0\.0\.1:54321"/);
+	const out = stripSwiftComments('let url = "http://127.0.0.1:24321" // trailing\nlet x = 1\n');
+	assert.match(out, /"http:\/\/127\.0\.0\.1:24321"/);
 	assert.doesNotMatch(out, /trailing/);
 });
 

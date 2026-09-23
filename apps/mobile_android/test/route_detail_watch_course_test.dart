@@ -24,7 +24,7 @@ import '../lib/watch_roadbook.dart'
         kRoadbookCutoffLen,
         kRoadbookHeaderLen;
 
-const _localBackend = 'http://127.0.0.1:54321';
+const _localBackend = 'http://127.0.0.1:24321';
 const _prodBackend = 'https://abcdefgh.supabase.co';
 
 /// A four-hour goal off an 08:00 gun — a plan the runner already set on the

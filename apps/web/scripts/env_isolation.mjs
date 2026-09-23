@@ -120,7 +120,7 @@ export function checkEnvIsolation(env, _opts = {}) {
 			envVar: varName,
 			value: trimmed,
 			rule: 'remote-host-in-dev',
-			fix: `Set ${varName} to a loopback URL (e.g. http://127.0.0.1:54321) or unset it.`,
+			fix: `Set ${varName} to a loopback URL (e.g. http://127.0.0.1:24321) or unset it.`,
 		});
 	}
 

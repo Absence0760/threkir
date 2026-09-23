@@ -232,7 +232,7 @@ cd apps/watch_wear/android
 
 That works on a fresh clone with **no `-P` flags**: the committed
 `apps/watch_wear/android/.env.local` is applied by the `debug` build type
-(local-stack Supabase on `127.0.0.1:54321`, seed-user auto-login, local
+(local-stack Supabase on `127.0.0.1:24321`, seed-user auto-login, local
 Protomaps tiles). A **release** build reads `SUPABASE_URL` / `SUPABASE_ANON_KEY`
 from `-P` flags instead (the release workflow injects production values) and
 ignores `.env.local` entirely:

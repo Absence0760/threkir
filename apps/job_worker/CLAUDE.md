@@ -438,7 +438,7 @@ go vet ./...
 go build .                      # produce a binary in cwd
 
 # Against a running supabase stack at apps/backend:
-SUPABASE_URL=http://127.0.0.1:54321 \
+SUPABASE_URL=http://127.0.0.1:24321 \
   SUPABASE_SECRET_KEY=$(cd ../backend && supabase status -o env | \
     awk -F= '/^SERVICE_ROLE_KEY=/ {gsub(/"/,"",$2); print $2}') \
   WORKER_ID=dev \
@@ -461,14 +461,14 @@ the channel against the local Supabase Mailpit catcher, add to the
 `go run .` invocation above:
 
 ```bash
-SMTP_HOST=127.0.0.1 SMTP_PORT=54325 \
+SMTP_HOST=127.0.0.1 SMTP_PORT=24325 \
   SMTP_FROM='Threkir <noreply@threkir.com>' \
   APP_BASE_URL=http://localhost:7777
 ```
 
 Then insert a notification (e.g. `psql … -c "insert into notifications
 (user_id, kind) values ('<uid>', 'message')"`) and watch it arrive at
-`http://127.0.0.1:54324`. Production also sets `SMTP_USERNAME` +
+`http://127.0.0.1:24324`. Production also sets `SMTP_USERNAME` +
 `SMTP_PASSWORD` (Resend / SES SMTP); `SMTP_PORT` defaults to 587 and
 `APP_BASE_URL` to `https://threkir.com` when unset. With `SMTP_HOST`
 unset the worker drains `notification_email` jobs to done but leaves the

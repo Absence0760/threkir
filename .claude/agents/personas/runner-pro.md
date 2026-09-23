@@ -48,7 +48,7 @@ Cross-reference `apps/web/tests-e2e/` — **don't re-report what's already cover
 
 Only proceed if Phase 1 surfaced 1-3 findings needing live confirmation AND the dev stack is already up.
 
-- Check `curl -sS -o /dev/null -w "%{http_code}" http://127.0.0.1:7777` + `http://127.0.0.1:54321/storage/v1/bucket`.
+- Check `curl -sS -o /dev/null -w "%{http_code}" http://127.0.0.1:7777` + `http://127.0.0.1:24321/storage/v1/bucket`.
 - If down, skip Phase 2 — don't boot the stack yourself.
 - If up, write a temp spec at `apps/web/tests-e2e/_persona-pro-explore.spec.ts` using existing `_helpers/*`. Pro-tier tests may need fixture seeding (high run-count, HR zones configured, segments + efforts). Use `BYPASS_PAYWALL=true` (it's already set in the dev env) so Pro features unlock. Run with `cd apps/web && pnpm exec playwright test tests-e2e/_persona-pro-explore.spec.ts --reporter=line`. **Delete the spec when done.**
 

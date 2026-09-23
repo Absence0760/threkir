@@ -46,7 +46,7 @@ cd apps/backend && supabase start
 supabase status -o env
 ```
 
-The local stack ports: API `54321`, DB `54322`, Studio `54323`, Mailpit `54324`. The web dev server runs on `7777`, preview on `8888`. The seed user is **`runner@test.com` / `testtest`**, with 12 seeded runs and 5 routes (Melbourne-area; matches the OSRM dev region).
+The local stack ports: API `24321`, DB `24322`, Studio `24323`, Mailpit `24324`. The web dev server runs on `7777`, preview on `8888`. The seed user is **`runner@test.com` / `testtest`**, with 12 seeded runs and 5 routes (Melbourne-area; matches the OSRM dev region).
 
 For each app the canonical environment-setup guide is its own `local_testing.md`:
 
@@ -133,7 +133,7 @@ It lives in **[ios_verification.md](ios_verification.md)**. Read it before claim
 
 | Surface | What to test | How |
 |---|---|---|
-| Web — email/password | New account + existing account, password reset email lands in Mailpit | `/login`, then check `http://localhost:54324`. |
+| Web — email/password | New account + existing account, password reset email lands in Mailpit | `/login`, then check `http://localhost:24324`. |
 | Web — Google OAuth | One-tap sign-in returns to the dashboard | `/login` → Continue with Google. Needs a real Google client id (won't work on stock seed). |
 | Web — Apple OAuth | Same as Google | `/login` → Continue with Apple. Needs the Apple Services ID. |
 | Mobile — Google Sign-In | One-tap exchanges ID token through `ApiClient.signInWithGoogleIdToken` | `sign_in_screen.dart`. Needs the Google client id baked into `dart_defines.json`. |
@@ -399,7 +399,7 @@ The single `/settings/preferences` page was split by topic (issue #905, [decisio
 | Nav | Web: open `/settings/account` | The side nav shows four sections — Profile (Account, Body metrics, Safety), Preferences (Units & display, Recording & voice, Training, Privacy & sharing, Notifications), Apps & data, Account & legal. There is no "Preferences" tab linking to `/settings/preferences`. |
 | Landing page | Open `/settings/preferences` with no hash | A list of the six groups, each with a one-line summary; clicking one opens that page. Nothing on it is editable. |
 | Old section links | Open `/settings/preferences#heart-rate-zones`, then `#weekly-mileage-goal`, then `#body-metrics` | Each replaces the URL with `/settings/training#heart-rate-zones`, `/settings/training#weekly-distance-goal` and `/settings/body#body-metrics`, and scrolls to that section once it has loaded. Browser Back does not return to the landing page. |
-| Email footer | Trigger any notification email to Mailpit (`:54324`) | "Manage preferences" and the `List-Unsubscribe` header both point at `/settings/notifications`. An older email's `/settings/preferences` link still lands on the landing page. |
+| Email footer | Trigger any notification email to Mailpit (`:24324`) | "Manage preferences" and the `List-Unsubscribe` header both point at `/settings/notifications`. An older email's `/settings/preferences` link still lands on the landing page. |
 | Save + load failure | On any preference page change a select; then block `get_my_profile` in devtools and open Body metrics from the nav | The header shows Saving… then Saved. With the read blocked, an alert with Retry replaces the form (no defaults are shown), and Retry restores it once unblocked. |
 | Every control explained | Walk the six pages | Every select, field and toggle group has one plain line under it, and a screen reader announces it as the control's description. Hints spell out HR, bpm, kg, lbs, km/h, mph, cm and AI. |
 | How much detail (web) | `/settings/display` → "How much detail" reads Automatic on an account that never touched it; note what the hint says it picks today. Set it to Just the basics, open `/dashboard`; then set it to Everything and reload the dashboard | The hint names one of Just the basics / The usual / Everything, derived from the onboarding goal and the run count — not a fixed word. At Just the basics the dashboard shows a collapsed "Training load" section where the VO₂ max / CTL / ATL / TSB card and the Fitness, Fatigue & Form chart were; opening it and reloading finds it still open, closing it and reloading finds it closed. At Everything there is no collapsed section and the page looks exactly as it did before. Choosing Automatic again removes `disclosure_level` from `user_settings.prefs` rather than storing a fourth value. |

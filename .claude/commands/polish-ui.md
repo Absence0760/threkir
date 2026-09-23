@@ -55,7 +55,7 @@ Decide the platform from the target path, then run only the matching check:
 ### Web (`apps/web/`)
 
 ```bash
-curl -s -o /dev/null -w '%{http_code}' http://localhost:54321/  # Supabase API health
+curl -s -o /dev/null -w '%{http_code}' http://localhost:24321/  # Supabase API health
 ```
 
 Playwright auto-starts the dev server (`webServer` block in `apps/web/tests-e2e/playwright.config.ts`) and `fixtures/auth.ts` globalSetup re-signs all three users on every invocation, so no other checks needed. If Supabase isn't up, tell the user `cd apps/backend && supabase start` and stop.

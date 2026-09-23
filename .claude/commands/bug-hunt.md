@@ -49,7 +49,7 @@ Keep each hunter's scope tight (a handful of files) so it reads deeply rather th
 This is the step that separates a real fix from a regression:
 - **Read the cited code yourself.** Confirm the wrong behaviour is reachable and the tests genuinely miss it. Hunters are confidently wrong sometimes (a suggested fix may not even work — e.g. a proposed `onConflict` target that still fails against a *partial* unique index).
 - **Compute any numeric claim** (a threshold, a ratio, an off-by-one) rather than trusting it.
-- **For SQL/DB findings, prove it against the running stack** (`psql` on `127.0.0.1:54322`): reproduce the wrong result, and confirm your fix produces the right one. (e.g. demonstrate `ON CONFLICT (...) → 42P10` before rewriting the upsert.)
+- **For SQL/DB findings, prove it against the running stack** (`psql` on `127.0.0.1:24322`): reproduce the wrong result, and confirm your fix produces the right one. (e.g. demonstrate `ON CONFLICT (...) → 42P10` before rewriting the upsert.)
 - Check whether the same defect is **copied elsewhere** — fix all instances, don't leave the pattern to be recopied.
 
 ### 4. Escalate the intricate ones — don't rush them

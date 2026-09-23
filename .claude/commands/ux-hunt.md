@@ -71,7 +71,7 @@ Per piece (one anti-pattern = one or two commits — web commit, mobile commit):
 ### 4. Verify each piece before moving on
 
 - Web i18n: `npx tsx --test apps/web/src/lib/i18n/messages_parity.test.ts`.
-- Web e2e: `npx playwright test <spec> --config tests-e2e/playwright.config.ts` from `apps/web` (needs local Supabase up — `curl -s 127.0.0.1:54321/rest/v1/` should 200; the seed user is `runner@test.com` / `testtest`).
+- Web e2e: `npx playwright test <spec> --config tests-e2e/playwright.config.ts` from `apps/web` (needs local Supabase up — `curl -s 127.0.0.1:24321/rest/v1/` should 200; the seed user is `runner@test.com` / `testtest`).
 - Mobile: `flutter test test/<file>` + `flutter test test/l10n_parity_test.dart`, and `dart analyze <file>` (treat only **new** `warning`/`error` as yours — `info` is acknowledged noise).
 - Don't declare a piece done on an unrun test.
 

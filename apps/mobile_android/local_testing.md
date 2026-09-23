@@ -92,8 +92,8 @@ Two ways to point a physical device at the local stack:
 - **`adb reverse` (recommended).** Forwards the device's own loopback to your host, so `127.0.0.1` works on the phone exactly as on the host:
 
   ```bash
-  adb reverse tcp:54321 tcp:54321   # Supabase REST/Auth/Storage/Functions
-  adb reverse tcp:54322 tcp:54322   # Postgres, only if you hit the DB directly
+  adb reverse tcp:24321 tcp:24321   # Supabase REST/Auth/Storage/Functions
+  adb reverse tcp:24322 tcp:24322   # Postgres, only if you hit the DB directly
   adb reverse tcp:7777  tcp:7777    # web dev server — AI Coach (WEB_BASE_URL → /api/coach)
   adb reverse tcp:8080  tcp:8080    # local Protomaps tile server (TILE_URL_TEMPLATE)
   ```
@@ -101,7 +101,7 @@ Two ways to point a physical device at the local stack:
   Then point every URL in `.env.local` at `127.0.0.1` (not `10.0.2.2`):
 
   ```
-  SUPABASE_URL=http://127.0.0.1:54321
+  SUPABASE_URL=http://127.0.0.1:24321
   WEB_BASE_URL=http://127.0.0.1:7777
   TILE_URL_TEMPLATE=http://127.0.0.1:8080/styles/basic/{z}/{x}/{y}.png
   ```
@@ -299,7 +299,7 @@ The Android app supports the following. For a side-by-side view against Strava, 
 ### First launch
 
 - **Onboarding flow** — 3-page welcome tour with location permission request (local `Preferences.onboarded` flag, runs before sign-in)
-- **Post-signup setup wizard** — a 7-step account-setup wizard (display name → units → goal → demographics + GDPR Art 9 consent → privacy default → notifications → done), the mobile twin of web's `/onboarding`. Gated on `user_profiles.onboarded_at`: `home_screen.dart` fetches the profile after the first frame and pushes `setup_wizard_screen.dart` exactly once when the column is null, then `Finish` (or the header `Skip setup`) stamps it via `ApiClient.completeOnboarding` / `markOnboarded` so it never re-fires. **To test:** sign in as a *fresh* account (the seed runner already has `onboarded_at` backfilled, so it won't show — null the column in Studio at `localhost:54323` → `user_profiles` to re-trigger). The Art 9 consent checkbox only appears once a gender or DOB is chosen; gender + the consent stamp are written only under consent, but DOB is always written (it backs the under-18 people-search exclusion). The notifications step sets the `push_notifications` bag pref (`important`/`all`/`off`) — there's no native OS prompt here, unlike web's push step.
+- **Post-signup setup wizard** — a 7-step account-setup wizard (display name → units → goal → demographics + GDPR Art 9 consent → privacy default → notifications → done), the mobile twin of web's `/onboarding`. Gated on `user_profiles.onboarded_at`: `home_screen.dart` fetches the profile after the first frame and pushes `setup_wizard_screen.dart` exactly once when the column is null, then `Finish` (or the header `Skip setup`) stamps it via `ApiClient.completeOnboarding` / `markOnboarded` so it never re-fires. **To test:** sign in as a *fresh* account (the seed runner already has `onboarded_at` backfilled, so it won't show — null the column in Studio at `localhost:24323` → `user_profiles` to re-trigger). The Art 9 consent checkbox only appears once a gender or DOB is chosen; gender + the consent stamp are written only under consent, but DOB is always written (it backs the under-18 people-search exclusion). The notifications step sets the `push_notifications` bag pref (`important`/`all`/`off`) — there's no native OS prompt here, unlike web's push step.
 - **Offline ready** — no sign-in required to record and store runs locally
 
 ### Dashboard
@@ -494,7 +494,7 @@ The two local stores ([`LocalRunStore`](lib/local_run_store.dart) and [`LocalRou
 ### "Connection refused" or network errors
 
 - Make sure the backend is running (`supabase start`)
-- Make sure you're using `http://10.0.2.2:54321`, not `http://localhost:54321`
+- Make sure you're using `http://10.0.2.2:24321`, not `http://localhost:24321`
 - Check that the emulator has internet access (try opening a URL in the emulator's browser)
 
 ### Map showing blank/grey

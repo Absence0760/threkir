@@ -267,9 +267,9 @@ pnpm dev:db:up              # wraps `cd apps/backend && supabase start` —
                             # brings up Postgres + Auth + Storage + Studio
 pnpm dev:run:fns            # wraps `supabase functions serve --env-file .env.local`
 
-# Functions available at http://localhost:54321/functions/v1/{function-name}
-# Studio UI: pnpm dev:db:studio   (http://127.0.0.1:54323)
-# Mail catcher: pnpm dev:db:mailpit (http://127.0.0.1:54324)
+# Functions available at http://localhost:24321/functions/v1/{function-name}
+# Studio UI: pnpm dev:db:studio   (http://127.0.0.1:24323)
+# Mail catcher: pnpm dev:db:mailpit (http://127.0.0.1:24324)
 # psql shell: pnpm dev:db:psql
 # Reset to a clean seed: pnpm dev:db:reset
 ```

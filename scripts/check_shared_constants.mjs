@@ -398,6 +398,22 @@ export function parseKotlinMillisAsSeconds(src, declName) {
 	return Number.isFinite(ms) ? [String(ms / 1000)] : [];
 }
 
+/**
+ * A Dart top-level or `static` `const` integer, read from its declaration.
+ * Anchored on `const` for the reason `parseSwiftStaticInt` is anchored on
+ * `static let`: the constant sits in a file that also compares against it and
+ * describes it in doc comments, and `parseNamedInt`'s `name … = digits` shape
+ * would take whichever of those came first.
+ * @param {string} src @param {string} declName @returns {string[]}
+ */
+export function parseDartConstInt(src, declName) {
+	const decl = new RegExp(
+		`^\\s*(?:static\\s+)?const\\s+(?:int\\s+)?${declName}\\s*=\\s*(-?\\d+)\\s*;`,
+		'm',
+	).exec(src);
+	return decl ? [decl[1]] : [];
+}
+
 // ── Entry: the rate-limit bucket vocabulary ─────────────────────────────────
 
 const RATE_LIMIT_CALL =
@@ -1486,14 +1502,14 @@ export const REGISTRY = [
 		],
 	},
 	{
-		name: 'watch pace-drift alert gate',
+		name: 'pace-drift alert gate',
 		why:
-			'Both wrists run the same gate over the same target pace and speak ' +
-			'the same two cues through it, and until 2026-09 they gated on ' +
-			'different numbers: watchOS at 15 s/km, Wear OS (and the phone) at ' +
-			'30. While the only effect was a haptic nobody could hear the ' +
-			'disagreement; the cue engine made it audible, as one wrist nagging ' +
-			'inside GPS noise and the other staying quiet on the same run. ' +
+			'The phone and both wrists run the same gate over the same target ' +
+			'pace and speak the same two cues through it, and until 2026-09 they ' +
+			'gated on different numbers: watchOS at 15 s/km, Wear OS and the ' +
+			'phone at 30. While the only effect was a haptic nobody could hear ' +
+			'the disagreement; the cue engine made it audible, as one device ' +
+			'nagging inside GPS noise and another staying quiet on the same run. ' +
 			'30 s/km is the figure, because a ~200 m pace look-back moves by ' +
 			'most of ten seconds per kilometre on position error alone.',
 		match: 'key',
@@ -1533,6 +1549,24 @@ export const REGISTRY = [
 							key: 'rate_limit_s',
 							where: 'PACE_ALERT_RATE_LIMIT_MS (milliseconds, read as seconds)',
 							values: parseKotlinMillisAsSeconds(src, 'PACE_ALERT_RATE_LIMIT_MS'),
+						},
+					];
+				},
+			},
+			{
+				label: 'phone (apps/mobile_android/lib/screens/run_screen.dart)',
+				sites: (ctx) => {
+					const src = ctx.read('apps/mobile_android/lib/screens/run_screen.dart');
+					return [
+						{
+							key: 'drift_s_per_km',
+							where: 'kPaceAlertDriftSecPerKm',
+							values: parseDartConstInt(src, 'kPaceAlertDriftSecPerKm'),
+						},
+						{
+							key: 'rate_limit_s',
+							where: 'kPaceAlertRateLimitSeconds',
+							values: parseDartConstInt(src, 'kPaceAlertRateLimitSeconds'),
 						},
 					];
 				},

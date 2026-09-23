@@ -38,6 +38,7 @@ import {
 	parseBadgeCatalogue,
 	parseKotlinIntRange,
 	parseSwiftStaticInt,
+	parseDartConstInt,
 	parseNamedInt,
 	parseNamedNumber,
 	parseNearbyCase,
@@ -1397,4 +1398,46 @@ test('the shipped fold table agrees across all three rails', () => {
 	assert.deepEqual(errors, []);
 	assert.equal(ok.length, 1);
 	assert.match(ok[0], /folds agree across 3 rails/);
+});
+
+// The phone is the pace gate's third home, and its constants sit in a file that
+// also compares against them — `diff.abs() > kPaceAlertDriftSecPerKm` — so the
+// reader is anchored on the declaration, not on the name.
+test('a Dart const int is read from its declaration and nowhere else', () => {
+	assert.deepEqual(parseDartConstInt('const int kPaceAlertDriftSecPerKm = 30;\n', 'kPaceAlertDriftSecPerKm'), ['30']);
+	assert.deepEqual(parseDartConstInt('  static const kCap = 12;', 'kCap'), ['12']);
+	assert.deepEqual(parseDartConstInt('if (diff.abs() > kCap) { x = 5;', 'kCap'), []);
+	assert.deepEqual(parseDartConstInt('/// kCap = 99 is the old figure.', 'kCap'), []);
+	assert.deepEqual(parseDartConstInt('final kCap = 12;', 'kCap'), []);
+});
+
+test('the phone rail of the pace-drift gate reports a drifted threshold', () => {
+	const entry = /** @type {any} */ (REGISTRY.find((e) => e.name === 'pace-drift alert gate'));
+	assert.ok(entry, 'the pace-drift gate entry is registered');
+	assert.ok(entry.rails.some((/** @type {any} */ r) => r.label.includes('run_screen.dart')));
+	const real = defaultContext();
+	const { errors } = checkEntry(entry, {
+		read: (/** @type {string} */ rel) =>
+			rel.endsWith('run_screen.dart')
+				? real.read(rel).replace('kPaceAlertDriftSecPerKm = 30;', 'kPaceAlertDriftSecPerKm = 15;')
+				: real.read(rel),
+		sql: real.sql,
+	});
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /"drift_s_per_km" disagrees/);
+	assert.match(errors[0], /kPaceAlertDriftSecPerKm: \[15\]/);
+});
+
+test('the pace-drift gate goes blind, not green, when the phone constant is inlined again', () => {
+	const entry = /** @type {any} */ (REGISTRY.find((e) => e.name === 'pace-drift alert gate'));
+	const real = defaultContext();
+	const { errors } = checkEntry(entry, {
+		read: (/** @type {string} */ rel) =>
+			rel.endsWith('run_screen.dart')
+				? real.read(rel).replace(/const int kPaceAlertRateLimitSeconds = 30;/, '')
+				: real.read(rel),
+		sql: real.sql,
+	});
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /read no values at kPaceAlertRateLimitSeconds/);
 });

@@ -1,0 +1,523 @@
+{
+  "sourceLanguage" : "en",
+  "version" : "1.0",
+  "strings" : {
+    "NSLocationWhenInUseUsageDescription" : {
+      "comment" : "Purpose string for the foreground location prompt raised by the geolocator plugin when a run starts recording.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir verwendet deinen Standort, um deine Läufe aufzuzeichnen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir uses your location to track runs."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir usa tu ubicación para registrar tus carreras."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir utilise votre position pour suivre vos courses."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir はランを記録するために位置情報を使用します。"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir usa sua localização para registrar suas corridas."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir utiliza a sua localização para registar as suas corridas."
+          }
+        }
+      }
+    },
+    "NSLocationAlwaysAndWhenInUseUsageDescription" : {
+      "comment" : "Purpose string for the always-on location upgrade, so a run keeps recording while the phone is locked or on a call.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir zeichnet Läufe im Hintergrund weiter auf, damit keine Daten verloren gehen, wenn du einen Anruf annimmst oder dein Handy sperrst."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir continues tracking runs in the background so you don't lose data if you take a call or lock your phone."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir sigue registrando tus carreras en segundo plano para que no pierdas datos si atiendes una llamada o bloqueas el teléfono."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir continue d’enregistrer vos courses en arrière-plan pour que vous ne perdiez aucune donnée si vous prenez un appel ou verrouillez votre téléphone."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir はバックグラウンドでもランの記録を続けるため、通話に出たりスマートフォンをロックしたりしてもデータが失われません。"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir continua registrando suas corridas em segundo plano para que você não perca dados se atender uma ligação ou bloquear o celular."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir continua a registar as suas corridas em segundo plano para que não perca dados se atender uma chamada ou bloquear o telemóvel."
+          }
+        }
+      }
+    },
+    "NSHealthShareUsageDescription" : {
+      "comment" : "Purpose string for the HealthKit read prompt raised by the Apple Health import.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir liest Workout-Zusammenfassungen aus Apple Health, damit Läufe, die du auf der Apple Watch, in Nike Run Club, Strava und anderen Apps aufgezeichnet hast, in deinen Verlauf importiert werden können."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir reads workout summaries from Apple Health so runs you've recorded on Apple Watch, Nike Run Club, Strava, and other apps can be imported into your history."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir lee los resúmenes de entrenamiento de Apple Salud para que las carreras que has registrado en Apple Watch, Nike Run Club, Strava y otras apps puedan importarse a tu historial."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir lit les résumés de séances dans Apple Santé pour que les courses enregistrées sur Apple Watch, Nike Run Club, Strava et d’autres apps puissent être importées dans votre historique."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir は Apple Health からワークアウトの概要を読み込み、Apple Watch、Nike Run Club、Strava などのアプリで記録したランを履歴に取り込めるようにします。"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir lê resumos de treino do Apple Saúde para que as corridas gravadas no Apple Watch, Nike Run Club, Strava e outros apps possam ser importadas para o seu histórico."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir lê resumos de treino do Apple Saúde para que as corridas registadas no Apple Watch, Nike Run Club, Strava e noutras apps possam ser importadas para o seu histórico."
+          }
+        }
+      }
+    },
+    "NSHealthUpdateUsageDescription" : {
+      "comment" : "Purpose string for the HealthKit write prompt, so a run recorded on the phone is saved back to Apple Health.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir schreibt aufgezeichnete Läufe zurück in Apple Health, damit deine übrigen Gesundheitsdaten in iOS mit dem übereinstimmen, was du hier erfasst hast."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir writes recorded runs back to Apple Health so the rest of your iOS health record stays in sync with what you've logged here."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir guarda las carreras registradas en Apple Salud para que el resto de tus datos de salud en iOS se mantenga sincronizado con lo que has registrado aquí."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir enregistre vos courses dans Apple Santé pour que le reste de vos données de santé sur iOS reste synchronisé avec ce que vous avez saisi ici."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir は記録したランを Apple Health に書き戻し、iOS のほかの健康データがここで記録した内容と同期された状態を保ちます。"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir grava as corridas registradas no Apple Saúde para que o restante dos seus dados de saúde no iOS fique sincronizado com o que você registrou aqui."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir grava as corridas registadas no Apple Saúde para que o resto dos seus dados de saúde no iOS fique sincronizado com o que registou aqui."
+          }
+        }
+      }
+    },
+    "NSBluetoothAlwaysUsageDescription" : {
+      "comment" : "Purpose string for the Bluetooth prompt raised when pairing a heart-rate strap.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir verbindet sich mit deinem Bluetooth-Herzfrequenzgurt, um deine Herzfrequenz live in deinen Lauf zu übertragen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir connects to your Bluetooth heart-rate strap so it can stream live BPM into your run."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir se conecta a tu banda de frecuencia cardíaca Bluetooth para transmitir tus pulsaciones en directo durante la carrera."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir se connecte à votre ceinture cardio Bluetooth pour transmettre votre fréquence cardiaque en direct pendant votre course."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir は Bluetooth 心拍ストラップに接続し、ラン中の心拍数（BPM）をリアルタイムで取り込みます。"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir se conecta à sua cinta cardíaca Bluetooth para transmitir seus batimentos (BPM) ao vivo durante a corrida."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir liga-se à sua cinta cardíaca Bluetooth para transmitir os seus batimentos (BPM) em direto durante a corrida."
+          }
+        }
+      }
+    },
+    "NSMotionUsageDescription" : {
+      "comment" : "Purpose string for the Motion & Fitness prompt raised by the pedometer, which counts steps and cadence when a run has no GPS.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir nutzt Bewegungsdaten, um bei Laufband-Läufen ohne GPS Schritte zu zählen und die Schrittfrequenz zu schätzen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir uses motion data to count steps and estimate cadence on treadmill runs without GPS."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir usa los datos de movimiento para contar los pasos y estimar la cadencia en las carreras en cinta de correr sin GPS."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir utilise les données de mouvement pour compter vos pas et estimer votre cadence lors des courses sur tapis de course, sans GPS."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir はモーションデータを使用して、GPS を使わないトレッドミルでのランで歩数を数え、ケイデンスを推定します。"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir usa dados de movimento para contar passos e estimar a cadência em corridas na esteira sem GPS."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir utiliza dados de movimento para contar passos e estimar a cadência em corridas na passadeira sem GPS."
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryUsageDescription" : {
+      "comment" : "Purpose string for the photo library read prompt raised when attaching a photo to a run.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit Threkir kannst du Fotos aus deiner Mediathek an deine Läufe anhängen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir lets you attach photos from your library to your runs."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir te permite adjuntar fotos de tu fototeca a tus carreras."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir vous permet d’ajouter à vos courses des photos de votre photothèque."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir では、ライブラリの写真をランに添付できます。"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir permite anexar fotos da sua fototeca às suas corridas."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir permite anexar fotografias da sua fototeca às suas corridas."
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryAddUsageDescription" : {
+      "comment" : "Purpose string for the add-only photo library prompt raised when a shared run card is saved to Photos.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir speichert geteilte Laufkarten in deiner Fotos-Mediathek, wenn du auf „In Fotos sichern“ tippst."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir saves shared run cards back to your Photos library when you tap \"Save to Photos.\""
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir guarda las tarjetas de carrera compartidas en tu fototeca cuando tocas «Guardar en Fotos»."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir enregistre les cartes de course partagées dans votre photothèque lorsque vous touchez « Enregistrer dans Photos »."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「写真に保存」をタップすると、Threkir は共有したランカードを写真ライブラリに保存します。"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir salva os cartões de corrida compartilhados na sua fototeca quando você toca em “Salvar em Fotos”."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir guarda os cartões de corrida partilhados na sua fototeca quando toca em “Guardar em Fotografias”."
+          }
+        }
+      }
+    },
+    "NSCameraUsageDescription" : {
+      "comment" : "Purpose string for the camera prompt raised by the nutrition barcode scanner.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir verwendet die Kamera, um den Barcode eines Lebensmittels zu scannen, damit es die Nährwerte nachschlagen und für dich erfassen kann."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir uses the camera to scan a food product's barcode so it can look up its nutrition and log it for you."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir usa la cámara para escanear el código de barras de un producto alimenticio, buscar su información nutricional y registrarlo por ti."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir utilise l’appareil photo pour scanner le code-barres d’un produit alimentaire afin d’en trouver les valeurs nutritionnelles et de l’enregistrer pour vous."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir はカメラで食品のバーコードをスキャンし、栄養成分を調べて記録します。"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir usa a câmera para escanear o código de barras de um alimento, consultar suas informações nutricionais e registrá-lo para você."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir utiliza a câmara para digitalizar o código de barras de um alimento, consultar a sua informação nutricional e registá-lo por si."
+          }
+        }
+      }
+    },
+    "NSCalendarsWriteOnlyAccessUsageDescription" : {
+      "comment" : "Purpose string for the iOS 17+ write-only calendar prompt raised by CalendarBridge when a club event is added to the calendar.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir trägt ein von dir ausgewähltes Club-Event in deinen Kalender ein. Was sonst darin steht, liest es nie."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir adds a club event you choose to your calendar. It never reads what else is in there."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir añade a tu calendario el evento del club que elijas. Nunca lee nada más de lo que contiene."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir ajoute à votre calendrier l’événement de club que vous choisissez. Il ne lit jamais le reste de son contenu."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir は選択したクラブイベントをカレンダーに追加します。カレンダーのほかの内容を読み取ることはありません。"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir adiciona ao seu calendário o evento do clube que você escolher. Ele nunca lê o restante do conteúdo."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir adiciona ao seu calendário o evento do clube que escolher. Nunca lê o resto do conteúdo."
+          }
+        }
+      }
+    },
+    "NSCalendarsUsageDescription" : {
+      "comment" : "Purpose string for the pre-iOS 17 calendar prompt raised by CalendarBridge. Same text as the write-only key.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir trägt ein von dir ausgewähltes Club-Event in deinen Kalender ein. Was sonst darin steht, liest es nie."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir adds a club event you choose to your calendar. It never reads what else is in there."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir añade a tu calendario el evento del club que elijas. Nunca lee nada más de lo que contiene."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir ajoute à votre calendrier l’événement de club que vous choisissez. Il ne lit jamais le reste de son contenu."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Threkir は選択したクラブイベントをカレンダーに追加します。カレンダーのほかの内容を読み取ることはありません。"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir adiciona ao seu calendário o evento do clube que você escolher. Ele nunca lê o restante do conteúdo."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Threkir adiciona ao seu calendário o evento do clube que escolher. Nunca lê o resto do conteúdo."
+          }
+        }
+      }
+    }
+  }
+}

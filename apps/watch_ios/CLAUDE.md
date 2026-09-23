@@ -119,6 +119,12 @@ back to Brazilian.
   with that set. Pure `python3` — runs on Linux / CI without a Mac. It is wired into
   the `watch-ios-locale-parity` job in `.github/workflows/ci.yml`; before 2026-08-27
   it ran nowhere but a developer's own shell. Run it after editing the catalog.
+  Since 2026-09-23 it is a thin wrapper: the claims live in
+  `scripts/xcstrings_parity.py`, shared with the iPhone's
+  `apps/mobile_ios/scripts/check_xcstrings_parity.sh` (#964), and they now also
+  require each catalog to be a member of the `WatchApp` target's Resources phase —
+  a catalog on disk the target never copies passes every other claim while the
+  wrist reads English. Add a claim there, not here, so both tiers get it.
 - **Source-vs-catalog check (also no Xcode)**: `node scripts/check_watch_ios_source.mjs`
   reads the other direction — every literal handed to a localizing API must have a
   catalog entry, and every catalog entry must still be referenced. **A `Text("…")`

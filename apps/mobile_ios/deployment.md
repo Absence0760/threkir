@@ -127,8 +127,11 @@ Required strings (Apple rejects without a meaningful description):
 - `NSHealthUpdateUsageDescription` — HealthKit writes
 - `NSBluetoothAlwaysUsageDescription` — BLE chest-strap HR
 - `NSPhotoLibraryUsageDescription` — run photos
+- `NSPhotoLibraryAddUsageDescription` — saving a shared run card to Photos
 - `NSCameraUsageDescription` — taking a photo on the run
 - `NSCalendarsWriteOnlyAccessUsageDescription` (iOS 17+) + `NSCalendarsUsageDescription` (the pre-17 fallback) — adding a club event to the calendar. Write-only is the whole ask: the app hands `EKEventEditViewController` a pre-filled event and never reads the calendar (decisions § 692)
+
+Every one of these is translated in `ios/Runner/InfoPlist.xcstrings` (all seven locales, English identical to the plist). A new usage-description key needs its catalog entry before release, or its prompt is English on every non-English phone — `bash apps/mobile_ios/scripts/check_xcstrings_parity.sh` fails until it has one.
 
 Required keys:
 

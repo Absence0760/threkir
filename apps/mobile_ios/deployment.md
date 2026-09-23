@@ -26,6 +26,8 @@ So: `mobile_ios@1.2.3` triggers one CI workflow that ships **both** apps.
 
 ```
 com.threkir.app                       ← iOS phone app
+com.threkir.app.ShareExtension        ← share extension the phone app embeds (route files from the share sheet)
+com.threkir.app.RunActivity           ← Live Activity widget extension the phone app embeds
 com.threkir.app.watchapp              ← Apple Watch app target
 com.threkir.app.watchapp.complication ← watch complication (WidgetKit extension the watch app embeds)
 ```
@@ -59,19 +61,25 @@ com.threkir.app.watchapp.complication ← watch complication (WidgetKit extensio
    to find out. Put a reminder ~3 weeks before expiry against the Apple Account
    address.
 
-3. **Register the App Group first**, at developer.apple.com → Identifiers → **App Groups**: `group.com.threkir.app.activerun`. It is a separate identifier type, so it cannot be ticked on an App ID that does not yet have it registered. The id is **not** `group.com.threkir.app` — the canonical spelling is centralised in [`apps/watch_ios/WatchApp/ActiveRunBridge.swift`](../watch_ios/WatchApp/ActiveRunBridge.swift) and declared in `WatchApp.entitlements`; a mismatch silently shares nothing.
+3. **Register the App Group first**, at developer.apple.com → Identifiers → **App Groups**: `group.com.threkir.app.activerun`. It is a separate identifier type, so it cannot be ticked on an App ID that does not yet have it registered. The id is **not** `group.com.threkir.app` — the canonical spelling is centralised in [`apps/watch_ios/WatchApp/ActiveRunBridge.swift`](../watch_ios/WatchApp/ActiveRunBridge.swift) and declared in `WatchApp.entitlements`; a mismatch silently shares nothing. Register a **second** group beside it, `group.com.threkir.app.share`, for the share extension's handoff to the phone app — deliberately separate, because the extension clears its container's root on every activation ([`apple_provisioning.md` step 2](../../docs/ops/apple_provisioning.md#then-the-share-extensions-app-group)).
 4. **Create the App ID** at developer.apple.com → Identifiers → App IDs → App:
    - Bundle ID: `com.threkir.app` (Explicit)
-   - Capabilities: **HealthKit** (leave Clinical Health Records off — we read workouts, not records), **Sign in with Apple** (Configure → *Enable as a primary App ID*), **Push Notifications**, **App Groups** (select the group above), and **Associated Domains** only if universal links ship — nothing serves an `apple-app-site-association` today.
+   - Capabilities: **HealthKit** (leave Clinical Health Records off — we read workouts, not records), **Sign in with Apple** (Configure → *Enable as a primary App ID*), **Push Notifications**, **App Groups** (select **both** groups above — `Runner.entitlements` declares the share group today), and **Associated Domains** only if universal links ship — nothing serves an `apple-app-site-association` today.
    - **Not** Background Modes: it is not a portal capability at all. It lives in `Info.plist`'s `UIBackgroundModes`, already committed and guard-enforced by `scripts/check_ios_native_declarations.mjs` (decisions.md § 742).
    - **Not** Maps: `com.apple.developer.maps` registers a *routing* app that publishes directions coverage. The watch mini-map draws our own polyline through MapKit, which needs no capability.
 4b. **Create the Services ID — the web half of Sign in with Apple.** (Field-by-field, with the Supabase and email-relay steps that follow it: [`docs/ops/apple_provisioning.md`](../../docs/ops/apple_provisioning.md).) Identifiers → **Services IDs** → `com.threkir.web`, with the App ID above as its primary. Configure it with the domain `threkir.com` and the return URL `https://<project-ref>.supabase.co/auth/v1/callback` — **Supabase's** callback, not ours, and Apple refuses `http://`, so there is no localhost entry to add. Then Keys → a **second** key with Sign in with Apple enabled, bound to the same primary App ID; its `.p8` is downloadable once and is **not** the APNs key. Those four values (Services ID, Team ID, Key ID, `.p8`) go into Supabase → Authentication → Providers → Apple. This is what unblocks the web Apple button; iOS itself is ungated (`appleSignInAvailable()` returns true there and `Runner.entitlements` already declares `com.apple.developer.applesignin`, so it waits only on step 4a's App ID capability — there is no `_kAppleSignInEnabled` constant in the tree); the ordered version with what to verify afterwards is [`docs/testing/e2e_dev_accounts.md § 2`](../../docs/testing/e2e_dev_accounts.md).
 5. **Create the Watch App ID:**
    - Bundle ID: `com.threkir.app.watchapp`
-   - Capabilities: **HealthKit**, **App Groups** (the same group — this is the side that actually declares it today; the phone's `Runner.entitlements` carries no app-group entitlement yet, so the bridge's phone half is still owed)
+   - Capabilities: **HealthKit**, **App Groups** (the same group — this is the side that actually declares it today; the phone's `Runner.entitlements` does not declare it yet, only the share group, so the bridge's phone half is still owed)
 5b. **Create the complication App ID:**
    - Bundle ID: `com.threkir.app.watchapp.complication`
    - Capabilities: **App Groups** only (the same group). The complication is a separate process that draws the snapshot the watch app writes there, so it needs no HealthKit ([`apple_provisioning.md` step 4](../../docs/ops/apple_provisioning.md#then-the-complications-app-id)).
+5c. **Create the share extension's App ID:**
+   - Bundle ID: `com.threkir.app.ShareExtension`
+   - Capabilities: **App Groups** only, assigned to `group.com.threkir.app.share`. A profile without it still signs, and the extension's container lookup then returns nil on device ([`apple_provisioning.md` step 3](../../docs/ops/apple_provisioning.md#then-the-share-extensions-app-id)).
+5d. **Create the Live Activity extension's App ID:**
+   - Bundle ID: `com.threkir.app.RunActivity`
+   - Capabilities: **none**. The extension carries no entitlements; a Live Activity is licensed by `NSSupportsLiveActivities` in the phone app's `Info.plist`, and the card is updated locally, not by push ([`apple_provisioning.md` step 3](../../docs/ops/apple_provisioning.md#then-the-live-activity-extensions-app-id)).
 6. **Provisioning profiles.** One App Store Connect distribution profile per bundle ID, made after the App IDs are complete — [`apple_provisioning.md` step 15](../../docs/ops/apple_provisioning.md#15-app-store-provisioning-profiles--one-per-bundle).
 7. **Create the App Store listing** at App Store Connect:
    - App information (name, primary category Health & Fitness, content rights)
@@ -86,13 +94,13 @@ com.threkir.app.watchapp.complication ← watch complication (WidgetKit extensio
 The committed Xcode project signs **automatically**, so a Mac builds and runs on
 a device with no setup. The release runner cannot — it has no Apple Account to
 sign in with — so `release-ios.yml` hands `scripts/ios_release_signing.mjs` the
-three App Store profiles, and the script switches the `Release` configuration of
-`Runner`, the embedded `WatchApp` and its `WatchAppComplication` to manual signing against the profile
+App Store profiles, one per signed target, and the script switches the `Release` configuration of
+`Runner`, its embedded `ShareExtension` and `RunActivityExtension`, the embedded `WatchApp` and its `WatchAppComplication` to manual signing against the profile
 whose bundle id matches, reading the team id out of the profiles. Debug and
 Profile are untouched, and nothing is committed back
 ([decisions § 1701](../../docs/architecture/decisions.md)).
 
-Making the certificate, the three profiles and the App Store Connect API key, and
+Making the certificate, the profiles and the App Store Connect API key, and
 setting them as secrets, is [`apple_provisioning.md` steps 14–16](../../docs/ops/apple_provisioning.md#14-apple-distribution-certificate).
 The secret list itself is [`docs/ops/releasing.md` § iOS](../../docs/ops/releasing.md#ios);
 the workflow's first step fails in seconds, naming every one that is unset.
@@ -164,7 +172,7 @@ Required keys:
   does not, and claiming a mode the binary never exercises is an App Review
   rejection cause. `scripts/check_ios_native_declarations.mjs` holds the plist
   to that (decisions.md § 742).
-- App Groups → `group.com.threkir.app.activerun` (declared today only by the watch app; shared with the iOS app and the future complication target when their halves land — see [`apps/watch_ios/Complications/README.md`](../watch_ios/Complications/README.md))
+- App Groups → `group.com.threkir.app.activerun` (declared by the watch app and its complication; the phone's half of the bridge is still owed) and `group.com.threkir.app.share` (declared by `Runner.entitlements` and `ShareExtension.entitlements` for the share-sheet handoff)
 
 ---
 
@@ -239,7 +247,7 @@ The phone-watch transport is `WCSession.transferFile(_:metadata:)` (decisions.md
 
 ### Active-run complication
 
-The Complications target ([`apps/watch_ios/Complications/README.md`](../watch_ios/Complications/README.md)) requires its own bundle ID + provisioning profile if/when it ships. Currently scaffolded but not built — `parity.md` shows it as `Partial`. When the complication target lands, add a `IOS_COMPLICATION_PROVISIONING_PROFILE_BASE64` secret and update the workflow.
+The `WatchAppComplication` target ([`apps/watch_ios/Complications/README.md`](../watch_ios/Complications/README.md)) is embedded in the watch app and signed with its own profile, `IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64`, like every other signed target. A target added to the project needs an App ID, a profile and a secret of its own before the next release; `scripts/ios_release_signing.test.mjs` fails the PR when `release-ios.yml` does not wire one for every signed target, or when [`docs/ops/releasing.md`](../../docs/ops/releasing.md#ios) or [`apple_provisioning.md`](../../docs/ops/apple_provisioning.md) does not name it.
 
 ---
 

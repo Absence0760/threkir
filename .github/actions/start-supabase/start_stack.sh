@@ -10,7 +10,9 @@
 # deep and every rung of it was written after a red job, so it is worth
 # being able to drive with stubs.
 #
-# Five failure modes are handled:
+# Five failure modes are handled, and a sixth entry records the move that
+# removed the cause of two of them. The port numbers in incidents 1-5 are the
+# block the stack published at the time (54321-54327); see 6.
 #
 #   1. Slow ghcr.io image pulls. A single 353MB image once trickled at
 #      ~50KB/s and hung edge-functions for the full 20-min budget (CI run
@@ -78,16 +80,30 @@
 #      54326 were missing from PORTS. So the probe now reads every socket
 #      state except TIME-WAIT, and a holder that outlives the settle wait is
 #      destroyed with `ss -K` rather than merely reported.
+#
+#   6. The cause of 3 and 5, removed rather than raced. Both were one bug: the
+#      stack published the CLI's default 5432x ports, inside the ephemeral
+#      range, so any outbound socket could take one, and the reservation only
+#      protects allocations made after it runs. config.toml now pins every
+#      port the stack publishes to the 2432x block, below 32768, so the kernel
+#      never picks one as a source port in the first place (issue #963). The
+#      reservation and the `ss -K` rung stay as defence in depth: the
+#      reservation still holds if a runner image ever widens
+#      ip_local_port_range down over the block, and `ss -K` still reaches a
+#      holder that bound a stack port explicitly.
 set -uo pipefail
 
-# Host ports config.toml publishes: api 54321, db 54322, studio 54323,
-# inbucket web 54324 / SMTP 54325 / POP3 54326; the CLI also publishes
-# analytics on 54327. 54322 is the one that collides most often, but a
-# partial start can strand any of them, so clear them all. This list MUST
-# cover every port the sysctl below reserves — when 54325/54326 were missing
-# from it, an inbucket bind failure on 54326 was invisible to every probe.
-PORTS="54321 54322 54323 54324 54325 54326 54327"
-RESERVED_RANGE=54321-54327
+# Host ports config.toml pins: shadow db 24320 (db diff only), api 24321, db
+# 24322, studio 24323, inbucket web 24324 / SMTP 24325 / POP3 24326,
+# analytics 24327, pooler 24329 (disabled, pinned so enabling it cannot fall
+# back to the CLI default inside the ephemeral range). A partial start can
+# strand any of them, so clear them all. This list MUST be exactly the ports
+# config.toml publishes and the ports the sysctl below reserves — when two of
+# them were missing from it, an inbucket bind failure was invisible to every
+# probe. start_stack.test.mjs reads config.toml and fails on any drift.
+PORTS="24320 24321 24322 24323 24324 24325 24326 24327 24329"
+RESERVED_RANGE=24320-24327,24329
+PORT_PATTERN="[:.]($(printf '%s' "$PORTS" | tr ' ' '|'))([^0-9]|\$)"
 
 ATTEMPTS=${STACK_START_ATTEMPTS:-3}
 START_TIMEOUT_S=${STACK_START_TIMEOUT_S:-480}
@@ -97,22 +113,23 @@ SETTLE_GRACE_S=${STACK_SETTLE_GRACE_S:-5}
 RESERVED_PORTS_FILE=${STACK_RESERVED_PORTS_FILE:-/proc/sys/net/ipv4/ip_local_reserved_ports}
 
 # Keep the kernel from handing any stack port out as an outbound connection's
-# ephemeral source port (incident 3) — they all sit inside the default
-# 32768-60999 ephemeral range. Gate on the reservation actually taking so a
+# ephemeral source port (incident 3). The block sits below the default
+# 32768-60999 ephemeral range, so this matters only if a runner image widens
+# that range (incident 6). Gate on the reservation actually taking so a
 # runner-image change (no sudo, read-only /proc) fails here with a pointed
 # message, not later as the cryptic bind error. It is preventive only: a
 # socket that already holds a stack port keeps it, which is incident 5 and is
 # what the probe below has to be able to see.
 sudo sysctl -qw "net.ipv4.ip_local_reserved_ports=$RESERVED_RANGE" || true
 if ! grep -q "$RESERVED_RANGE" "$RESERVED_PORTS_FILE" 2>/dev/null; then
-  echo "::error::could not reserve stack ports $RESERVED_RANGE from the ephemeral range (net.ipv4.ip_local_reserved_ports=$(cat "$RESERVED_PORTS_FILE" 2>/dev/null)) — an outbound socket may steal 54322 and fail the db bind"
+  echo "::error::could not reserve stack ports $RESERVED_RANGE from the ephemeral range (net.ipv4.ip_local_reserved_ports=$(cat "$RESERVED_PORTS_FILE" 2>/dev/null)) — an outbound socket may steal a stack port and fail its bind"
   exit 1
 fi
 
 busy_ports() {
   # Column 1 of `ss -tanH` is the state and column 4 the LOCAL address
-  # (0.0.0.0:54322, [::]:54322, 10.1.0.221:54324). Anchor on a leading : or
-  # . so 54322 never matches a substring of some unrelated high port.
+  # (0.0.0.0:24322, [::]:24322, 10.1.0.221:24324). Anchor on a leading : or
+  # . so 24322 never matches a substring of some unrelated high port.
   #
   # LISTEN is NOT the only state that blocks a bind, and probing for it alone
   # is what made incident 5 unrecoverable: an ESTABLISHED outbound connection
@@ -133,7 +150,7 @@ busy_ports() {
 
 stack_networks() {
   # A stranded `supabase_network_*` network keeps a dangling endpoint that
-  # reserves host port 54322 at the docker layer even with no container +
+  # reserves a host port at the docker layer even with no container +
   # nothing on a socket, so busy_ports can't see it. See incident 2b.
   docker network ls --filter "name=supabase_network_" -q 2>/dev/null || true
 }
@@ -196,7 +213,7 @@ dump_forensics() {
   # be gone ~100ms later, so an end-of-job dump reads as "nothing was wrong".
   # -tan (no -p) includes process-less states like TIME-WAIT that -tnp hides.
   docker ps -a --format '{{.Names}} {{.Status}} {{.Ports}}' || true
-  ss -tan 2>/dev/null | grep -E '5432[0-9]' || true
+  ss -tan 2>/dev/null | grep -E "$PORT_PATTERN" || true
   docker network ls --filter "name=supabase_network_" || true
 }
 
@@ -238,7 +255,7 @@ for attempt in $(seq 1 "$ATTEMPTS"); do
       echo "::error::stack ports/network still in use after cleanup:$busy"
       # All socket states, not just LISTEN — an outbound socket holding a
       # stack port as its source port shows up here.
-      ss -tanp 2>/dev/null | grep -E '5432[0-9]' || true
+      ss -tanp 2>/dev/null | grep -E "$PORT_PATTERN" || true
       docker network ls --filter "name=supabase_network_" || true
       exit 1
     fi

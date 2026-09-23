@@ -78,7 +78,7 @@ void main() {
       // This is the seam that every withClient-based test relies on.
       // If this regresses, the bulk of the api_client + service tests
       // start failing en masse — the regression would be loud.
-      final fake = SupabaseClient('http://127.0.0.1:54321', 'eyJ.local.test');
+      final fake = SupabaseClient('http://127.0.0.1:24321', 'eyJ.local.test');
       try {
         expect(ApiClient.isInitialized, isFalse);
         final api = ApiClient.withClient(fake);

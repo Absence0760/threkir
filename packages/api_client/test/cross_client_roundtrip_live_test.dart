@@ -50,7 +50,7 @@ import 'package:test/test.dart';
 /// route round-trips). Run locally with:
 /// ```
 /// cd apps/backend && supabase status -o env   # copy ANON_KEY
-/// export SUPABASE_TEST_URL=http://127.0.0.1:54321
+/// export SUPABASE_TEST_URL=http://127.0.0.1:24321
 /// export SUPABASE_TEST_ANON_KEY=<ANON_KEY>
 /// export CROSS_CLIENT_LIVE_FIXTURE_OUT=/abs/path/to/live_fixture.json
 /// cd packages/api_client

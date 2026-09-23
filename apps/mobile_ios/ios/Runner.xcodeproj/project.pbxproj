@@ -35,6 +35,7 @@
 		7E09AC1728B0AA1AC2007F34 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E0DED39074C17F5E4A6C3C15 /* Pods_RunnerTests.framework */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
+		9C64A1B20000000000000001 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 9C64A1B20000000000000002 /* InfoPlist.xcstrings */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		7884EA00102EC3CC00C636F4 /* ActiveRunBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00012EC3CC00C636F4 /* ActiveRunBridge.swift */; };
 		7884EA00112EC3CC00C636F4 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00022EC3CC00C636F4 /* AppTheme.swift */; };
@@ -48,6 +49,7 @@
 		7884EA003F2EC3CC00C636F4 /* HoldToStop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA003C2EC3CC00C636F4 /* HoldToStop.swift */; };
 		7884EA00162EC3CC00C636F4 /* MiniMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00072EC3CC00C636F4 /* MiniMap.swift */; };
 		7884EA003A2EC3CC00C636F4 /* Pedometer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00372EC3CC00C636F4 /* Pedometer.swift */; };
+		7884EA0F3A2EC3CC00C636F4 /* PhoneSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA0F372EC3CC00C636F4 /* PhoneSettings.swift */; };
 		7884EA00172EC3CC00C636F4 /* RouteNavigator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00082EC3CC00C636F4 /* RouteNavigator.swift */; };
 		7A11C0E5B4920001000C0001 /* RunAnnouncer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A11C0E5B4920002000C0001 /* RunAnnouncer.swift */; };
 		7884EA00402EC3CC00C636F4 /* RunActivityType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA003D2EC3CC00C636F4 /* RunActivityType.swift */; };
@@ -206,6 +208,7 @@
 		97C146FD1CF9000F007C117D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		9C64A1B20000000000000002 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		7884EA012EC3CC0A00C636F4 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		E0DED39074C17F5E4A6C3C15 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		7884EA00012EC3CC00C636F4 /* ActiveRunBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveRunBridge.swift; sourceTree = "<group>"; };
@@ -220,6 +223,7 @@
 		7884EA003C2EC3CC00C636F4 /* HoldToStop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoldToStop.swift; sourceTree = "<group>"; };
 		7884EA00072EC3CC00C636F4 /* MiniMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniMap.swift; sourceTree = "<group>"; };
 		7884EA00372EC3CC00C636F4 /* Pedometer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pedometer.swift; sourceTree = "<group>"; };
+		7884EA0F372EC3CC00C636F4 /* PhoneSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneSettings.swift; sourceTree = "<group>"; };
 		7884EA00082EC3CC00C636F4 /* RouteNavigator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteNavigator.swift; sourceTree = "<group>"; };
 		7A11C0E5B4920002000C0001 /* RunAnnouncer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunAnnouncer.swift; sourceTree = "<group>"; };
 		7884EA003D2EC3CC00C636F4 /* RunActivityType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunActivityType.swift; sourceTree = "<group>"; };
@@ -409,6 +413,7 @@
 				97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */,
 				97C147021CF9000F007C117D /* Info.plist */,
 				7884EA012EC3CC0A00C636F4 /* GoogleService-Info.plist */,
+				9C64A1B20000000000000002 /* InfoPlist.xcstrings */,
 				1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */,
 				1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */,
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
@@ -436,6 +441,7 @@
 				7884EA003C2EC3CC00C636F4 /* HoldToStop.swift */,
 				7884EA00072EC3CC00C636F4 /* MiniMap.swift */,
 				7884EA00372EC3CC00C636F4 /* Pedometer.swift */,
+				7884EA0F372EC3CC00C636F4 /* PhoneSettings.swift */,
 				7884EA00082EC3CC00C636F4 /* RouteNavigator.swift */,
 				7A11C0E5B4920002000C0001 /* RunAnnouncer.swift */,
 				7884EA003D2EC3CC00C636F4 /* RunActivityType.swift */,
@@ -684,6 +690,7 @@
 				3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */,
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
+				9C64A1B20000000000000001 /* InfoPlist.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -898,6 +905,7 @@
 				7884EA003F2EC3CC00C636F4 /* HoldToStop.swift in Sources */,
 				7884EA00162EC3CC00C636F4 /* MiniMap.swift in Sources */,
 				7884EA003A2EC3CC00C636F4 /* Pedometer.swift in Sources */,
+				7884EA0F3A2EC3CC00C636F4 /* PhoneSettings.swift in Sources */,
 				7884EA00172EC3CC00C636F4 /* RouteNavigator.swift in Sources */,
 				7A11C0E5B4920001000C0001 /* RunAnnouncer.swift in Sources */,
 				7884EA00402EC3CC00C636F4 /* RunActivityType.swift in Sources */,

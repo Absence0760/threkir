@@ -513,11 +513,11 @@ test('an empty String Catalog fails loudly rather than passing vacuously', () =>
 // --- the pure helpers -------------------------------------------------------
 
 test('comment stripping does not eat the scheme separator inside a URL literal', () => {
-	// SupabaseService.swift holds `http://127.0.0.1:54321`. A `//`-to-EOL strip
+	// SupabaseService.swift holds `http://127.0.0.1:24321`. A `//`-to-EOL strip
 	// that ignores string literals deletes the rest of that line, and with it
 	// any localizing call sharing it.
-	const out = stripSwiftComments('let url = "http://127.0.0.1:54321" // trailing\nlet x = 1\n');
-	assert.match(out, /"http:\/\/127\.0\.0\.1:54321"/);
+	const out = stripSwiftComments('let url = "http://127.0.0.1:24321" // trailing\nlet x = 1\n');
+	assert.match(out, /"http:\/\/127\.0\.0\.1:24321"/);
 	assert.doesNotMatch(out, /trailing/);
 });
 
@@ -709,7 +709,7 @@ test('the three settings-push rails agree on the shipped tree', () => {
 	const { errors, ok } = check(WATCH_IOS, INGEST_ABS, null, null, null, null, PREFS_BRIDGE_ABS);
 	assert.deepEqual(matched(errors, /settings-(push|envelope)/), []);
 	assert.ok(
-		ok.some((o) => /^all 2 settings-push keys agree/.test(o)),
+		ok.some((o) => /^all 5 settings-push keys agree/.test(o)),
 		ok.join('\n'),
 	);
 });
@@ -773,13 +773,24 @@ test('a settings push whose Dart call site changed shape fails vacuity rather th
 
 test('a watch decode that stops subscripting the payload fails vacuity rather than passing', () => {
 	const { errors } = runMutated((dir) => {
-		edit(dir, CONNECTIVITY, (s) =>
-			s
-				.replace('payload["preferred_unit"]', 'bag["preferred_unit"]')
-				.replace('payload["audio_cues"]', 'bag["audio_cues"]'),
-		);
+		edit(dir, CONNECTIVITY, (s) => s.replace(/payload\["/g, 'bag["'));
 	});
 	assert.equal(matched(errors, /Parsed no settings-envelope keys/).length, 1, errors.join('\n'));
+});
+
+test('a settings reader added to the decoder is on the watch rail without being named', () => {
+	// The rail reads the whole `PhonePreferences` type, so a key renamed in any
+	// reader is caught, including one nobody remembered to list.
+	const { errors } = runMutated((dir) => {
+		edit(dir, CONNECTIVITY, (s) =>
+			s.replace('payload["hr_zone_cutoffs"]', 'payload["hr_zones"]'),
+		);
+	});
+	assert.ok(
+		matched(errors, /`hr_zone_cutoffs` is on .*apple_watch_prefs_bridge\.dart/).length >= 1,
+		errors.join('\n'),
+	);
+	assert.ok(matched(errors, /`hr_zones` is on .*WatchConnectivityManager\.swift/).length >= 1);
 });
 
 test('swiftPayloadKeys reads both the subscripts and the repacked literal', () => {

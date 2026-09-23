@@ -22,7 +22,7 @@ const GC = 'http://gc.local';
 const GH = 'http://gh.local';
 const AUTH = 'Bearer test-token';
 const GATE_CFG: GenerateConfig = {
-	publicSupabaseUrl: 'http://127.0.0.1:54321',
+	publicSupabaseUrl: 'http://127.0.0.1:24321',
 	publicSupabaseAnonKey: 'sb_publishable_fake_local_anon_key',
 	bypassPaywallEnabled: false,
 	graphhopperUrl: undefined,

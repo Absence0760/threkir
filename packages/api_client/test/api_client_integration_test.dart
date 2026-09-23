@@ -24,7 +24,7 @@ import 'package:test/test.dart';
 /// ```
 /// cd apps/backend && supabase status -o env
 /// # …
-/// export SUPABASE_TEST_URL=http://127.0.0.1:54321
+/// export SUPABASE_TEST_URL=http://127.0.0.1:24321
 /// export SUPABASE_TEST_ANON_KEY=<ANON_KEY from `supabase status`>
 /// cd ../../packages/api_client
 /// flutter test test/api_client_integration_test.dart

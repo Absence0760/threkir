@@ -271,8 +271,18 @@ class Preferences extends ChangeNotifier {
   /// The Apple Watch mirror seam. Injectable so a test can observe the push
   /// without a platform channel; see [_pushAppleWatchPrefs].
   @visibleForTesting
-  Future<bool> Function({required String preferredUnit, required bool audioCues})
-      appleWatchPrefsPush = AppleWatchPrefsBridge.push;
+  Future<bool> Function({
+    required String preferredUnit,
+    required bool audioCues,
+    String? defaultActivityType,
+    String? privacyDefault,
+    List<int>? hrZoneCutoffs,
+  }) appleWatchPrefsPush = AppleWatchPrefsBridge.push;
+
+  /// The zone ladder the wrist badges live heart rate against, resolved by
+  /// [SettingsSyncService] from the bag. Null until the bag has been read this
+  /// launch, which the push reads as "say nothing" rather than "no zones".
+  List<int>? _appleWatchHrZoneCutoffs;
 
   DistanceUnit get unit => _useMiles ? DistanceUnit.mi : DistanceUnit.km;
   bool get useMiles => _useMiles;
@@ -513,6 +523,7 @@ class Preferences extends ChangeNotifier {
     await setCarbsPerHourG(null);
     await setFluidPerHourMl(null);
     await setPrivacyDefault('private');
+    await setAppleWatchHrZoneCutoffs(const []);
     await setMapStyle(kDefaultMapStyle);
     await setWeightUnit(WeightUnit.kg);
     await clearGoals();
@@ -677,7 +688,7 @@ class Preferences extends ChangeNotifier {
     await _pushAppleWatchPrefs();
   }
 
-  /// Mirror the two preferences the paired Apple Watch reads and cannot set.
+  /// Mirror the preferences the paired Apple Watch reads and cannot set.
   ///
   /// Here rather than at the settings screen because every writer of either
   /// value passes through the setters above — the preferences page, the setup
@@ -693,6 +704,9 @@ class Preferences extends ChangeNotifier {
       await appleWatchPrefsPush(
         preferredUnit: _useMiles ? 'mi' : 'km',
         audioCues: _audioCues,
+        defaultActivityType: _defaultActivityType,
+        privacyDefault: _privacyDefault,
+        hrZoneCutoffs: _appleWatchHrZoneCutoffs,
       );
     } catch (e) {
       debugPrint('Apple Watch preference push failed: $e');
@@ -778,6 +792,7 @@ class Preferences extends ChangeNotifier {
     _defaultActivityType = v;
     await _prefs.setString(_kDefaultActivityType, v);
     notifyListeners();
+    await _pushAppleWatchPrefs();
   }
 
   Future<void> setVoiceFeedbackVerbosity(String v) async {
@@ -823,6 +838,21 @@ class Preferences extends ChangeNotifier {
     _privacyDefault = next;
     await _prefs.setString(_kPrivacyDefault, next);
     notifyListeners();
+    await _pushAppleWatchPrefs();
+  }
+
+  /// Hand the paired Apple Watch a new zone ladder. Not persisted and not
+  /// observed: nothing on the phone reads it, and the bag it is derived from
+  /// is re-read on every launch.
+  Future<void> setAppleWatchHrZoneCutoffs(List<int> cutoffs) async {
+    final current = _appleWatchHrZoneCutoffs;
+    if (current != null &&
+        current.length == cutoffs.length &&
+        Iterable<int>.generate(current.length).every((i) => current[i] == cutoffs[i])) {
+      return;
+    }
+    _appleWatchHrZoneCutoffs = List.unmodifiable(cutoffs);
+    await _pushAppleWatchPrefs();
   }
 
   /// Update the cached map_style. Unknown values resolve to `streets`,

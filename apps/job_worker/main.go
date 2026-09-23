@@ -390,8 +390,8 @@ func main() {
 	// SMTP_HOST is unset the worker still drains every other kind, and
 	// notification_email jobs finish done while leaving the rows pending
 	// (so a later email-enabled deploy can send them). Local dev points
-	// at the Supabase Mailpit catcher: SMTP_HOST=127.0.0.1 SMTP_PORT=54325,
-	// no auth, inspect at http://127.0.0.1:54324. Production sets a real
+	// at the Supabase Mailpit catcher: SMTP_HOST=127.0.0.1 SMTP_PORT=24325,
+	// no auth, inspect at http://127.0.0.1:24324. Production sets a real
 	// provider (Resend / SES SMTP) with SMTP_USERNAME + SMTP_PASSWORD.
 	var emailSender internal.EmailSender
 	if smtpHost := os.Getenv("SMTP_HOST"); smtpHost != "" {

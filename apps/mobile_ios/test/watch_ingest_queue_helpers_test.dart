@@ -355,4 +355,25 @@ void main() {
       expect(run.metadata, isNull);
     });
   });
+
+  group('isPublicFromWatchPayload', () {
+    test('only an explicit true publishes', () {
+      expect(isPublicFromWatchPayload({'is_public': true}), isTrue);
+    });
+
+    test('false, absent and junk all leave the column to its private default',
+        () {
+      // Null rather than false: `saveRun` upserts and strips nulls, so a
+      // `false` on a re-delivered run would un-publish one the runner has
+      // since shared.
+      for (final raw in <Map<String, dynamic>>[
+        {'is_public': false},
+        {},
+        {'is_public': 'true'},
+        {'is_public': 1},
+      ]) {
+        expect(isPublicFromWatchPayload(raw), isNull, reason: '$raw');
+      }
+    });
+  });
 }

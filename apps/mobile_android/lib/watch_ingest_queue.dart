@@ -166,6 +166,7 @@ class WatchIngestQueue {
       // every sign-in is a forever-loop that also reports a phantom queued run
       // — while an upload failure is TRANSIENT and must keep retrying.
       final cm.Run run;
+      final bool? isPublic;
       try {
         final raw = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
         // Envelope-or-bare format detection. New format has a `payload`
@@ -190,12 +191,13 @@ class WatchIngestQueue {
           continue;
         }
         run = runFromWatchPayload(payload);
+        isPublic = isPublicFromWatchPayload(payload);
       } catch (e) {
         _reject(file, e);
         continue;
       }
       try {
-        await api.saveRun(run);
+        await api.saveRun(run, isPublic: isPublic);
       } catch (e) {
         debugPrint('WatchIngestQueue.drain upload failed for ${file.path}: $e');
         continue; // transient — left on disk for the next sign-in
@@ -394,6 +396,16 @@ cm.Run runFromWatchPayload(Map<String, dynamic> raw) {
     metadata: metadata.isEmpty ? null : metadata,
   );
 }
+
+/// The visibility a watch run is saved with: `true` only when the wrist
+/// stamped `is_public: true` — the runner's `privacy_default` of `public`,
+/// snapshotted when the run stopped. Everything else is null, which leaves the
+/// column to its default (private), and never `false`: `saveRun` upserts and
+/// strips nulls, so a `false` on a re-delivered run would un-publish one the
+/// runner has since shared, where a null cannot change it. The same idiom
+/// `run_screen` saves the phone's own runs with.
+bool? isPublicFromWatchPayload(Map<String, dynamic> raw) =>
+    raw['is_public'] == true ? true : null;
 
 /// Parse a run-source enum by name with [cm.RunSource.watch] as the
 /// default. Used for the watch-payload `source` field.

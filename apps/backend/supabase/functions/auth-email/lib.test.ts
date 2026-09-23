@@ -406,14 +406,14 @@ Deno.test('planSends — no recipient means no sends', () => {
 
 Deno.test('buildVerifyUrl — mirrors GoTrue: plain redirect_to stays literal', () => {
   const url = buildVerifyUrl(
-    'http://127.0.0.1:54321',
+    'http://127.0.0.1:24321',
     'abc123',
     'recovery',
     'http://localhost:7777/auth/reset',
   );
   assertEquals(
     url,
-    'http://127.0.0.1:54321/auth/v1/verify?token=abc123&type=recovery&redirect_to=http://localhost:7777/auth/reset',
+    'http://127.0.0.1:24321/auth/v1/verify?token=abc123&type=recovery&redirect_to=http://localhost:7777/auth/reset',
   );
   assertStringIncludes(url, '/auth/reset');
 });
@@ -430,7 +430,7 @@ Deno.test('buildVerifyUrl — redirect_to with &/=/# gets encoded', () => {
 Deno.test('buildActionUrl — an http landing gets the token_hash directly', () => {
   assertEquals(
     buildActionUrl(
-      'http://127.0.0.1:54321',
+      'http://127.0.0.1:24321',
       'abc123',
       'recovery',
       'http://localhost:7777/auth/reset',
@@ -457,16 +457,16 @@ Deno.test('buildActionUrl — a custom-scheme (mobile) target keeps the verify h
   // supabase_flutter completes the deep link from the `?code=` the hop
   // produces, and the app holds its own verifier, so nothing is stranded.
   assertEquals(
-    buildActionUrl('http://127.0.0.1:54321', 'h', 'signup', 'com.threkir.app://login-callback'),
-    'http://127.0.0.1:54321/auth/v1/verify?token=h&type=signup' +
+    buildActionUrl('http://127.0.0.1:24321', 'h', 'signup', 'com.threkir.app://login-callback'),
+    'http://127.0.0.1:24321/auth/v1/verify?token=h&type=signup' +
       '&redirect_to=com.threkir.app://login-callback',
   );
 });
 
 Deno.test('buildActionUrl — no redirect target falls back to the verify hop', () => {
   assertEquals(
-    buildActionUrl('http://127.0.0.1:54321', 'h', 'signup', undefined),
-    'http://127.0.0.1:54321/auth/v1/verify?token=h&type=signup',
+    buildActionUrl('http://127.0.0.1:24321', 'h', 'signup', undefined),
+    'http://127.0.0.1:24321/auth/v1/verify?token=h&type=signup',
   );
 });
 
@@ -488,7 +488,7 @@ Deno.test('renderAuthEmail — recovery: CTA verify link is the anchor the fixtu
     },
   );
   const r = renderAuthEmail('en', send, {
-    supabaseUrl: 'http://127.0.0.1:54321',
+    supabaseUrl: 'http://127.0.0.1:24321',
     redirectTo: 'http://localhost:7777/auth/reset',
     appBaseUrl: 'https://threkir.com',
   });
@@ -554,7 +554,7 @@ Deno.test('renderAuthEmail — signup: confirm link + welcome copy render in eve
       },
     );
     const r = renderAuthEmail(locale, send, {
-      supabaseUrl: 'http://127.0.0.1:54321',
+      supabaseUrl: 'http://127.0.0.1:24321',
       redirectTo: 'http://localhost:7777/auth/callback',
     });
     const strings = authEmailCatalogue[locale].signup;
@@ -627,7 +627,7 @@ Deno.test('renderAuthEmail — no APP_BASE_URL falls back to the wordmark alone'
     { email: 'a@example.com' },
     { email_action_type: 'recovery', token: '123456', token_hash: 'thehash' },
   );
-  const r = renderAuthEmail('en', send, { supabaseUrl: 'http://127.0.0.1:54321' });
+  const r = renderAuthEmail('en', send, { supabaseUrl: 'http://127.0.0.1:24321' });
 
   if (r.html.includes('<img')) {
     throw new Error('no APP_BASE_URL must not emit an image');

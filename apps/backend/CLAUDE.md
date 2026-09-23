@@ -53,11 +53,11 @@ Start every session with `supabase start` in this directory. Ports are fixed via
 
 | Service | URL |
 |---|---|
-| REST API | `http://127.0.0.1:54321/rest/v1` |
-| Edge Functions | `http://127.0.0.1:54321/functions/v1/{name}` |
-| Database | `postgresql://postgres:postgres@127.0.0.1:54322/postgres` |
-| Studio | `http://127.0.0.1:54323` |
-| Mailpit (sent-email inspector) | `http://127.0.0.1:54324` |
+| REST API | `http://127.0.0.1:24321/rest/v1` |
+| Edge Functions | `http://127.0.0.1:24321/functions/v1/{name}` |
+| Database | `postgresql://postgres:postgres@127.0.0.1:24322/postgres` |
+| Studio | `http://127.0.0.1:24323` |
+| Mailpit (sent-email inspector) | `http://127.0.0.1:24324` |
 
 Confirm it's running with `supabase status`. The gotcha I keep hitting: `supabase status` returns an error if you run it from the repo root (it looks for `config.toml` in the cwd). `cd` here first.
 
@@ -549,7 +549,7 @@ supabase start
 supabase functions serve --env-file .env.development   # or .env.local for your real keys
 
 # Hit one
-curl -X POST http://127.0.0.1:54321/functions/v1/parkrun-import \
+curl -X POST http://127.0.0.1:24321/functions/v1/parkrun-import \
   -H "Authorization: Bearer ${USER_JWT}" \
   -H "Content-Type: application/json" \
   -d '{"athleteNumber": "A123456"}'
@@ -558,7 +558,7 @@ curl -X POST http://127.0.0.1:54321/functions/v1/parkrun-import \
 Getting a JWT for the seed user:
 
 ```bash
-curl -X POST "http://127.0.0.1:54321/auth/v1/token?grant_type=password" \
+curl -X POST "http://127.0.0.1:24321/auth/v1/token?grant_type=password" \
   -H "apikey: $(supabase status -o json | jq -r .ANON_KEY)" \
   -H "Content-Type: application/json" \
   -d '{"email":"runner@test.com","password":"testtest"}' \
@@ -620,8 +620,8 @@ Variables currently used:
 - `DELETION_AUDIT_KEY` — HMAC key for the `deletion_audit_log` pseudonymous user-id hash. Optional but recommended; unset → legacy salted SHA-256. **Read by the Go worker too**, under the same name, to key the `account_deletion_receipts` send-once digest — that one hashes an EMAIL ADDRESS, a guessable input, so the keyed form is what stops a membership test rather than merely time-bounding it (`decisions § 1551`, `§ 1600`). Set it on both processes; setting it on one is a safe half-state (each falls back to its own legacy digest independently), and a keyed worker reads both digests so the changeover re-sends no receipt.
 - `VAPID_PRIVATE_KEY` — web-push private signing key (public half is `PUBLIC_VAPID_PUBLIC_KEY` in `apps/web/.env.example`). **Consumed by the Go worker, not an Edge Function:** the `web_push` job handler (migration `20261219_001`) signs encrypted Web Push messages with it. Set on the **worker** as `VAPID_PRIVATE_KEY` + `VAPID_PUBLIC_KEY` + `VAPID_SUBJECT` (see `apps/job_worker/CLAUDE.md`); unset → `web_push` jobs finish done while leaving the notification rows pending.
 - `SEND_EMAIL_HOOK_SECRET` — the Standard Webhooks signing secret GoTrue's send-email hook is configured with (`v1,whsec_<base64>`; `|`-separated for rotation). `auth-email` verifies every hook POST against it. Required: the function fails closed (503) without it. Locally it's the committed dev value in `config.toml [auth.hook.send_email].secrets`, mirrored in the committed `supabase/functions/.env`.
-- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM` — the SMTP transport for `auth-email`, same variable names the Go worker's mailer uses. Local dev: `host.docker.internal:54325` (Mailpit as seen from inside the edge runtime container), no AUTH. Production: the real relay (465 = implicit TLS, 587 = STARTTLS) with username/password. `auth-email` 503s (fail-closed) when `SMTP_HOST` or `SMTP_FROM` is unset.
-- `API_EXTERNAL_URL` — host-reachable API origin `auth-email` builds its verify links from, mirroring GoTrue's `api_external_url`. REQUIRED locally (`http://127.0.0.1:54321`, committed in `supabase/functions/.env`): the local runtime's injected `SUPABASE_URL` is the Docker-internal `http://kong:8000`, and a link built from it is unreachable from any browser (broke the reset-password e2es in CI run 28707481878). Unset in prod, where the injected `SUPABASE_URL` is already the public project URL. The name can't be `SUPABASE_`-prefixed — the CLI reserves that prefix and silently drops such vars from env files (`supabase secrets set` rejects them too).
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM` — the SMTP transport for `auth-email`, same variable names the Go worker's mailer uses. Local dev: `host.docker.internal:24325` (Mailpit as seen from inside the edge runtime container), no AUTH. Production: the real relay (465 = implicit TLS, 587 = STARTTLS) with username/password. `auth-email` 503s (fail-closed) when `SMTP_HOST` or `SMTP_FROM` is unset.
+- `API_EXTERNAL_URL` — host-reachable API origin `auth-email` builds its verify links from, mirroring GoTrue's `api_external_url`. REQUIRED locally (`http://127.0.0.1:24321`, committed in `supabase/functions/.env`): the local runtime's injected `SUPABASE_URL` is the Docker-internal `http://kong:8000`, and a link built from it is unreachable from any browser (broke the reset-password e2es in CI run 28707481878). Unset in prod, where the injected `SUPABASE_URL` is already the public project URL. The name can't be `SUPABASE_`-prefixed — the CLI reserves that prefix and silently drops such vars from env files (`supabase secrets set` rejects them too).
 - `SENTRY_DSN`, `APP_RELEASE` — Sentry error reporting (every EF via `_shared/sentry.ts`). Optional in local dev.
 
 ## CLI gotchas I've hit

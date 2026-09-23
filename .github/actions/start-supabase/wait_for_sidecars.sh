@@ -66,7 +66,7 @@ BUDGET_S=${PROBE_BUDGET_S:-90}
 MAX_TIME_S=${PROBE_MAX_TIME_S:-10}
 INTERVAL_S=${PROBE_INTERVAL_S:-2}
 LOG_TAIL=${PROBE_LOG_TAIL:-200}
-API=${PROBE_API_URL:-http://127.0.0.1:54321}
+API=${PROBE_API_URL:-http://127.0.0.1:24321}
 
 # A probe that gives up has to answer "why did this container never serve",
 # and the wait loop's own output cannot: it only ever saw kong's side of the

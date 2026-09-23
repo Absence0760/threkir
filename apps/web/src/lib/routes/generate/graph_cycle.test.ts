@@ -19,7 +19,7 @@ const GH = 'http://gh.local';
 // the engine chain, so they run as a Pro caller via the proChecker seam.
 const AUTH = 'Bearer test-token';
 const GATE_CFG = {
-	publicSupabaseUrl: 'http://127.0.0.1:54321',
+	publicSupabaseUrl: 'http://127.0.0.1:24321',
 	publicSupabaseAnonKey: 'sb_publishable_fake_local_anon_key',
 	bypassPaywallEnabled: false,
 };

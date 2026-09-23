@@ -1735,6 +1735,47 @@
         }
       }
     },
+    "Heart rate zone %lld": {
+      "comment": "VoiceOver label for the Z badge under the live BPM reading. Wording follows the phone's runDetailSectionHeartRateZones.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Herzfrequenzzone %lld"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zona de frecuencia cardíaca %lld"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zone de fréquence cardiaque %lld"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "心拍ゾーン %lld"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zona de frequência cardíaca %lld"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zona de frequência cardíaca %lld"
+          }
+        }
+      }
+    },
     "Hold to end the run and open the summary": {
       "comment": "VoiceOver hint on the in-run Stop control, which fires only after an 800 ms press.",
       "localizations": {
@@ -4678,6 +4719,47 @@
           "stringUnit": {
             "state": "translated",
             "value": "À espera de GPS"
+          }
+        }
+      }
+    },
+    "Z%lld": {
+      "comment": "Heart-rate zone badge under the live BPM reading; Z plus the zone number 1-5. Matches Wear OS's bpm_zone, which keeps Z in every locale.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Z%lld"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Z%lld"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Z%lld"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Z%lld"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Z%lld"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Z%lld"
           }
         }
       }

@@ -789,6 +789,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     );
     if (picked != null) {
       await _putUniversal(SettingsKeys.privacyDefault, picked);
+      await widget.preferences.setPrivacyDefault(picked);
     }
   }
 

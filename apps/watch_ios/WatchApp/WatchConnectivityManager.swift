@@ -48,6 +48,20 @@ enum PhonePreferences {
     static func audioCues(in payload: [String: Any]) -> Bool? {
         payload["audio_cues"] as? Bool
     }
+
+    static func defaultActivityType(in payload: [String: Any]) -> RunActivityType? {
+        DefaultActivityType.decode(payload["default_activity_type"])
+    }
+
+    static func privacyDefault(in payload: [String: Any]) -> String? {
+        PrivacyDefault.decode(payload["privacy_default"])
+    }
+
+    /// An empty array is an instruction — clear the badge — and is returned
+    /// as one; only a value that is not a ladder at all is nil.
+    static func hrZoneCutoffs(in payload: [String: Any]) -> [Int]? {
+        HeartRateZones.decode(payload["hr_zone_cutoffs"])
+    }
 }
 
 class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
@@ -72,6 +86,10 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
     /// Restored from disk for the same reason `armedRoute` is: the push lands
     /// long before the app is on screen.
     @Published var savedRoutes: [ArmedRoute] = SavedRoutesStore.load()
+
+    /// The phone's default activity, published so the idle picker can be
+    /// primed with it the moment it lands rather than on the next launch.
+    @Published private(set) var defaultActivityType: RunActivityType? = DefaultActivityType.stored()
     /// The race the phone last armed on this wrist, restored from disk for
     /// the same reason `armedRoute` is: the Arm push lands while the app is
     /// backgrounded and the runner opens it minutes later.
@@ -312,6 +330,21 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
         // un-mute an explicit off.
         if let cues = PhonePreferences.audioCues(in: payload) {
             UserDefaults.standard.set(cues, forKey: RunAnnouncer.preferenceKey)
+        }
+        // The three the recorder reads off disk rather than off this object —
+        // the zone ladder on every render of the running page, the privacy
+        // default at each checkpoint and at stop — so storing them is the
+        // whole of applying them. The activity is also published, to prime a
+        // picker that is already on screen.
+        if let activity = PhonePreferences.defaultActivityType(in: payload) {
+            DefaultActivityType.save(activity)
+            DispatchQueue.main.async { self.defaultActivityType = activity }
+        }
+        if let privacy = PhonePreferences.privacyDefault(in: payload) {
+            PrivacyDefault.save(privacy)
+        }
+        if let zones = PhonePreferences.hrZoneCutoffs(in: payload) {
+            HeartRateZones.save(zones)
         }
         // A malformed or over-budget route is dropped whole rather than
         // trimmed — see `ArmedRoute.decode`. Persist before publishing so a

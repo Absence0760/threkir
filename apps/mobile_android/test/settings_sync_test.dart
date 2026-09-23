@@ -625,4 +625,109 @@ void main() {
       expect(prefs.privacyDefault, 'private');
     });
   });
+
+  group('Apple Watch zone mirror', () {
+    test('sign-in derives the ladder from the bag and pushes it', () async {
+      final prefs = await freshPrefs();
+      final zones = <List<int>?>[];
+      prefs.appleWatchPrefsPush = _recordZones(zones);
+      final bag = _BagSettingsService({SettingsKeys.maxHrBpm: 200});
+      final svc = SettingsSyncService(
+        preferences: prefs,
+        serviceLoader: () async => bag,
+      );
+
+      await svc.onSignedIn();
+      await pumpEventQueue();
+
+      expect(zones.last, [120, 140, 160, 180, 200]);
+    });
+
+    test('an edit through updateUniversal reaches the wrist without a relaunch',
+        () async {
+      final prefs = await freshPrefs();
+      final zones = <List<int>?>[];
+      prefs.appleWatchPrefsPush = _recordZones(zones);
+      final bag = _BagSettingsService({});
+      final svc = SettingsSyncService(
+        preferences: prefs,
+        serviceLoader: () async => bag,
+      );
+      await svc.onSignedIn();
+      await pumpEventQueue();
+      expect(zones.last, isEmpty,
+          reason: 'no signal is an explicit clear, never the legacy 190 ladder');
+
+      await svc.updateUniversal({
+        SettingsKeys.hrZones: {'z1': 110, 'z2': 130, 'z3': 150, 'z4': 165, 'z5': 185},
+      });
+      await pumpEventQueue();
+      expect(zones.last, [110, 130, 150, 165, 185]);
+
+      await svc.updateUniversal({SettingsKeys.hrZones: null});
+      await pumpEventQueue();
+      expect(zones.last, isEmpty);
+    });
+
+    test('a service that cannot answer does not fail the write', () async {
+      // `_FakeSettingsService` has no `effective`; the mirror is L4.
+      final prefs = await freshPrefs();
+      final fake = _FakeSettingsService();
+      final svc = SettingsSyncService(
+        preferences: prefs,
+        serviceLoader: () async => fake,
+      );
+      await svc.updateUniversal({SettingsKeys.maxHrBpm: 190});
+      expect(fake.universalWrites, [
+        {SettingsKeys.maxHrBpm: 190},
+      ]);
+    });
+  });
+}
+
+Future<bool> Function({
+  required String preferredUnit,
+  required bool audioCues,
+  String? defaultActivityType,
+  String? privacyDefault,
+  List<int>? hrZoneCutoffs,
+}) _recordZones(List<List<int>?> into) => ({
+      required preferredUnit,
+      required audioCues,
+      defaultActivityType,
+      privacyDefault,
+      hrZoneCutoffs,
+    }) async {
+      into.add(hrZoneCutoffs);
+      return true;
+    };
+
+/// A bag that answers `effective` the way the real service does for a
+/// universal-only key, and applies writes (null removes).
+class _BagSettingsService implements SettingsService {
+  _BagSettingsService(Map<String, dynamic> seed) : _bag = {...seed};
+  final Map<String, dynamic> _bag;
+
+  @override
+  Map<String, dynamic> get universal => Map.unmodifiable(_bag);
+  @override
+  Map<String, dynamic> get device => const <String, dynamic>{};
+  @override
+  bool get isServerHydrated => true;
+  @override
+  T? effective<T>(String key, {T? fallback}) =>
+      _bag[key] == null ? fallback : _bag[key] as T?;
+  @override
+  Future<void> updateUniversal(Map<String, dynamic> changes) async {
+    for (final e in changes.entries) {
+      if (e.value == null) {
+        _bag.remove(e.key);
+      } else {
+        _bag[e.key] = e.value;
+      }
+    }
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

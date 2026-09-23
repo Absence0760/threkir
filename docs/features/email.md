@@ -101,7 +101,7 @@ different transport:
 Shared pieces:
 
 - **Transport** — `internal/mailer.go` `SMTPSender` (Mailpit in local dev on
-  `127.0.0.1:54325`; a provider's SMTP — Resend / SES — in prod). Sent as
+  `127.0.0.1:24325`; a provider's SMTP — Resend / SES — in prod). Sent as
   **multipart/alternative**: a branded, email-client-safe HTML part (table
   layout, inline styles, ≤600 px card, teal header matching app.css
   `--color-primary`, H1, CTA button, footer, inbox preheader) + a plain-text
@@ -236,7 +236,7 @@ Shared pieces:
 | Branded HTML + inbox preview text | — | all email of the above | ✓ | — |
 
 All shipped emails are end-to-end tested against the local Docker Mailpit
-(`http://127.0.0.1:54324`); none required Firebase/APNs credentials.
+(`http://127.0.0.1:24324`); none required Firebase/APNs credentials.
 
 ## GoTrue auth emails (`auth-email` Edge Function)
 
@@ -268,7 +268,7 @@ Dashboard → Auth → Hooks in prod):
   the positive path: a correctly signed signup hook delivered into the local
   Mailpit, asserted on the localized subject and on this run's own
   `token_hash`. The CI boot step writes `SMTP_HOST=host.docker.internal` /
-  `SMTP_PORT=54325` / `SMTP_FROM` for it; `127.0.0.1` there would be the
+  `SMTP_PORT=24325` / `SMTP_FROM` for it; `127.0.0.1` there would be the
   functions container's own loopback.
 - **Locale** — `user_settings.prefs.locale` (service-role read, the same
   §120 pref the worker uses) → signup-time `user_metadata.locale` → `en`. The
@@ -309,7 +309,7 @@ Dashboard → Auth → Hooks in prod):
   the Docker-internal `http://kong:8000` as `SUPABASE_URL`, which no browser
   resolves (CI run 28707481878 broke every reset-password e2e this way), so
   the committed `supabase/functions/.env` pins `API_EXTERNAL_URL` to
-  `http://127.0.0.1:54321`. Prod leaves it unset — the hosted runtime's
+  `http://127.0.0.1:24321`. Prod leaves it unset — the hosted runtime's
   `SUPABASE_URL` is already the public project URL. (The name mirrors
   GoTrue's `api_external_url`; a `SUPABASE_`-prefixed name can't be used —
   the CLI reserves the prefix and drops such vars from env files.)
@@ -338,7 +338,7 @@ Dashboard → Auth → Hooks in prod):
   the local stack (`cd apps/backend && supabase stop && supabase start`),
   trigger a mail-sending auth flow from the web app (e.g. `/login?reset=1` →
   send reset link for `runner@test.com`), and check Mailpit at
-  `http://127.0.0.1:54324` for the branded, localized message whose verify
+  `http://127.0.0.1:24324` for the branded, localized message whose verify
   link round-trips.
 
 ## Planned / not built

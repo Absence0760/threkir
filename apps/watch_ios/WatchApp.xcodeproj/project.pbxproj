@@ -59,8 +59,10 @@
 		B2C3D4E5F6A70001000B0030 /* GpsHealthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0030 /* GpsHealthTests.swift */; };
 		A1B2C3D4E5F60001000A001B /* RunLaps.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A001B /* RunLaps.swift */; };
 		A1B2C3D4E5F60001000A0017 /* Pedometer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0017 /* Pedometer.swift */; };
+		A1B2C3D4E5F60001000A0040 /* PhoneSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0040 /* PhoneSettings.swift */; };
 		B2C3D4E5F6A70001000B0020 /* RunLapsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0020 /* RunLapsTests.swift */; };
 		B2C3D4E5F6A70001000B0021 /* PedometerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0021 /* PedometerTests.swift */; };
+		B2C3D4E5F6A70001000B0040 /* PhoneSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0040 /* PhoneSettingsTests.swift */; };
 		B2C3D4E5F6A70001000B0024 /* StartCountdownTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0024 /* StartCountdownTests.swift */; };
 		B2C3D4E5F6A70001000B0025 /* HoldToStopTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0025 /* HoldToStopTests.swift */; };
 		B2C3D4E5F6A70001000B0022 /* RunActivityTypeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70002000B0022 /* RunActivityTypeTests.swift */; };
@@ -136,8 +138,10 @@
 		B2C3D4E5F6A70002000B0030 /* GpsHealthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GpsHealthTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000A001B /* RunLaps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunLaps.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000A0017 /* Pedometer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pedometer.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002000A0040 /* PhoneSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneSettings.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0020 /* RunLapsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunLapsTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0021 /* PedometerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PedometerTests.swift; sourceTree = "<group>"; };
+		B2C3D4E5F6A70002000B0040 /* PhoneSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneSettingsTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0024 /* StartCountdownTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartCountdownTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0025 /* HoldToStopTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoldToStopTests.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6A70002000B0022 /* RunActivityTypeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunActivityTypeTests.swift; sourceTree = "<group>"; };
@@ -238,6 +242,7 @@
 				B2C3D4E5F6A70002000B0030 /* GpsHealthTests.swift */,
 				B2C3D4E5F6A70002000B0020 /* RunLapsTests.swift */,
 				B2C3D4E5F6A70002000B0021 /* PedometerTests.swift */,
+				B2C3D4E5F6A70002000B0040 /* PhoneSettingsTests.swift */,
 				B2C3D4E5F6A70002000B0024 /* StartCountdownTests.swift */,
 				B2C3D4E5F6A70002000B0025 /* HoldToStopTests.swift */,
 				B2C3D4E5F6A70002000B0022 /* RunActivityTypeTests.swift */,
@@ -277,6 +282,7 @@
 				A1B2C3D4E5F60002000A0011 /* RunFormat.swift */,
 				A1B2C3D4E5F60002000A001B /* RunLaps.swift */,
 				A1B2C3D4E5F60002000A0017 /* Pedometer.swift */,
+				A1B2C3D4E5F60002000A0040 /* PhoneSettings.swift */,
 				A1B2C3D4E5F60002000A0010 /* Localizable.xcstrings */,
 				A1B2C3D4E5F60002000A0016 /* InfoPlist.xcstrings */,
 				A1B2C3D4E5F60002000A0007 /* Assets.xcassets */,
@@ -510,6 +516,7 @@
 				C3D4E5F6A7B80001000C0009 /* ActiveRunTimeline.swift in Sources */,
 				A1B2C3D4E5F60001000A001B /* RunLaps.swift in Sources */,
 				A1B2C3D4E5F60001000A0017 /* Pedometer.swift in Sources */,
+				A1B2C3D4E5F60001000A0040 /* PhoneSettings.swift in Sources */,
 				A1B2C3D4E5F60001000A0012 /* ArmedRoute.swift in Sources */,
 				5164A17E0001000000000101 /* WatchAuth.swift in Sources */,
 				5164A17E0001000000000102 /* SignInView.swift in Sources */,
@@ -546,6 +553,7 @@
 				B2C3D4E5F6A70001000B0030 /* GpsHealthTests.swift in Sources */,
 				B2C3D4E5F6A70001000B0020 /* RunLapsTests.swift in Sources */,
 				B2C3D4E5F6A70001000B0021 /* PedometerTests.swift in Sources */,
+				B2C3D4E5F6A70001000B0040 /* PhoneSettingsTests.swift in Sources */,
 				B2C3D4E5F6A70001000B0024 /* StartCountdownTests.swift in Sources */,
 				B2C3D4E5F6A70001000B0025 /* HoldToStopTests.swift in Sources */,
 				B2C3D4E5F6A70001000B0022 /* RunActivityTypeTests.swift in Sources */,

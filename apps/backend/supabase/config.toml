@@ -1,10 +1,28 @@
 project_id = "project-running"
 
+# Every host port the stack publishes is pinned here, and all of them sit
+# below 32768 — outside Linux's default ephemeral range (32768-60999) — so
+# the kernel can never hand one out as an outbound connection's source port
+# and fail docker-proxy's bind. The CLI defaults (5432x) sit inside it, which
+# cost CI a run of "address already in use" incidents. Keep the list in
+# lockstep with PORTS in .github/actions/start-supabase/start_stack.sh;
+# start_stack.test.mjs fails when a port is unpinned, drifts, or lands inside
+# the range.
 [api]
-port = 54321
+port = 24321
 
 [db]
-port = 54322
+port = 24322
+shadow_port = 24320
+
+[db.pooler]
+port = 24329
+
+[studio]
+port = 24323
+
+[analytics]
+port = 24327
 
 [auth]
 site_url = "http://localhost:7777"
@@ -41,18 +59,16 @@ enable_confirmations = false
 # this file's value there.
 [auth.hook.send_email]
 enabled = true
-uri = "http://host.docker.internal:54321/functions/v1/auth-email"
+uri = "http://host.docker.internal:24321/functions/v1/auth-email"
 secrets = "v1,whsec_bG9jYWwtZGV2LW9ubHktc2VuZC1lbWFpbC1ob29rLXNlY3JldA=="
 
-# Pin the local mail-catcher ports rather than relying on the CLI default
-# (web 54324 / SMTP 54325 / POP3 54326). The Go worker's notification-email
-# sender targets SMTP 54325 in local dev (SMTP_HOST=127.0.0.1
-# SMTP_PORT=54325); inspect sent mail at http://127.0.0.1:54324. Auth
-# emails (GoTrue) land here too.
+# The Go worker's notification-email sender targets SMTP 24325 in local
+# dev (SMTP_HOST=127.0.0.1 SMTP_PORT=24325); inspect sent mail at
+# http://127.0.0.1:24324. Auth emails (GoTrue) land here too.
 [inbucket]
-port = 54324
-smtp_port = 54325
-pop3_port = 54326
+port = 24324
+smtp_port = 24325
+pop3_port = 24326
 
 [auth.external.google]
 enabled = false

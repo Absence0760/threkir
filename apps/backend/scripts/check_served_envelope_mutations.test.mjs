@@ -116,7 +116,7 @@ test('no mutation can be satisfied by a restarting runtime', () => {
     '503 upstream connect error',
     '502 Bad Gateway',
     '504 Gateway Timeout',
-    'ERR error sending request for url (http://127.0.0.1:54321/functions/v1/x)',
+    'ERR error sending request for url (http://127.0.0.1:24321/functions/v1/x)',
     'ERR connection closed before message completed',
   ];
   for (const m of MUTATIONS) {

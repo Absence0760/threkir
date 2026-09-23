@@ -308,7 +308,7 @@ pnpm dev   # → http://localhost:7777
 
 ### OAuth providers
 
-Local OAuth requires the provider's client ID + secret to be set in `apps/backend/supabase/config.toml` (`[auth.external.google]` / `[auth.external.apple]`). The provider's allowed redirect URIs need to include both `http://localhost:7777/auth/callback` and Supabase's own callback (`http://localhost:54321/auth/v1/callback`).
+Local OAuth requires the provider's client ID + secret to be set in `apps/backend/supabase/config.toml` (`[auth.external.google]` / `[auth.external.apple]`). The provider's allowed redirect URIs need to include both `http://localhost:7777/auth/callback` and Supabase's own callback (`http://localhost:24321/auth/v1/callback`).
 
 For step-by-step OAuth setup + identity-link test paths, see [`apps/web/local_testing.md` § Testing external integrations](../../apps/web/local_testing.md#testing-external-integrations).
 

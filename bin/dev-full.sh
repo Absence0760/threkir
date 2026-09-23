@@ -2,7 +2,7 @@
 # Full local BACKEND bringup — everything the apps talk to, in one shot.
 #
 # Starts (and returns; nothing blocks your terminal):
-#   • the core stack via bin/dev-core.sh — Supabase (:54321) + seed,
+#   • the core stack via bin/dev-core.sh — Supabase (:24321) + seed,
 #     Protomaps tiles (:8080), Ollama check, adb reverse
 #   • the Go job worker (queue drain + live-spectator hub), backgrounded
 #   • OSRM (:5000) + GraphHopper (:8989) routing engines, detached —

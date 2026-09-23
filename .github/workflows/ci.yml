@@ -331,11 +331,13 @@ jobs:
       # runs in no job's test suite. Which SOCKET STATES its port probe counts
       # is the property pinned here: the LISTEN-only probe it replaced was
       # blind to an outbound ESTABLISHED socket squatting a stack port, which
-      # is what spent all three attempts of run 35626531071.
+      # is what spent all three attempts of run 35626531071. It also pins that
+      # every host port config.toml publishes sits below the ephemeral range
+      # and matches the ladder's PORTS (issue #963).
       - name: Supabase stack port-clean retry
         run: |
           if ! node --test .github/actions/start-supabase/start_stack.test.mjs; then
-            echo "::error::The start-supabase composite action's port-clean retry regressed — which socket states its holder probe counts, which ports it covers, or its reservation gate. That shell runs inside a composite action, so it is in no job's test suite and this is the only thing that reads it. Nothing here is about workflow syntax, the toolchain pins or the CI diagnoses."
+            echo "::error::The start-supabase composite action's port-clean retry regressed — which socket states its holder probe counts, which ports it covers, or its reservation gate — or config.toml publishes a host port that is unpinned, inside the 32768-60999 ephemeral range, or missing from the ladder's PORTS / RESERVED_RANGE. That shell runs inside a composite action, so it is in no job's test suite and this is the only thing that reads it. Nothing here is about workflow syntax, the toolchain pins or the CI diagnoses."
             echo "Reproduce with: node --test .github/actions/start-supabase/start_stack.test.mjs (drives the ladder with stub ss/docker/supabase/sudo on PATH)."
             exit 1
           fi
@@ -1216,7 +1218,7 @@ jobs:
             # Supabase project ref pattern is 20 lower-case letters.
             # Match only when it's wrapped in .supabase.co (live URL).
             if grep -E '[a-z]{20,}\.supabase\.co' "$f"; then
-              echo "::error file=$f::Live-shaped Supabase URL in committed .env.example. Replace with http://127.0.0.1:54321."
+              echo "::error file=$f::Live-shaped Supabase URL in committed .env.example. Replace with http://127.0.0.1:24321."
               errors=$((errors+1))
             fi
             # Real Anthropic key prefix sk-ant-api03- followed by enough chars.
@@ -1581,7 +1583,7 @@ jobs:
   ios-native-declarations:
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    name: iOS capability declarations vs the code that needs them
+    name: iOS capability declarations vs the code that needs them, and their localized consent prompts
     # decisions.md § 742 — an iOS capability the Dart exercises but the
     # Info.plist / Runner.entitlements does not declare fails SILENTLY: iOS
     # denies the permission or refuses the session, the feature returns
@@ -1620,6 +1622,27 @@ jobs:
           if ! node --test scripts/check_ios_native_declarations.test.mjs; then
             echo "::error::The iOS-declaration guard's own unit tests failed. The committed tree is fine — the check above just passed — so this is a defect in scripts/check_ios_native_declarations.mjs, not a missing declaration."
             echo "Reproduce with: node --test scripts/check_ios_native_declarations.test.mjs (stdlib only, no install needed)."
+            exit 1
+          fi
+      # #964 — the check above proves each usage-description string EXISTS;
+      # this one proves it is readable. The eleven NS*UsageDescription prompts
+      # are the one text iOS reads out of the bundle rather than the ARBs, and
+      # until InfoPlist.xcstrings existed every one of them rendered English in
+      # all seven locales — HealthKit and location consent included. The
+      # failure is silent on the platform, so no Flutter or Swift test can see
+      # it. Same engine as `watch-ios-locale-parity` (scripts/xcstrings_parity.py),
+      # run here rather than there because a phone defect under a job named for
+      # the watch is a name that is wrong about the tier.
+      - name: iPhone consent-prompt catalog vs Info.plist, knownRegions and the Runner target
+        run: |
+          if ! bash apps/mobile_ios/scripts/check_xcstrings_parity.sh; then
+            echo "::error::apps/mobile_ios ships a permission prompt that is not localized — an NS*UsageDescription key in Info.plist with no entry in ios/Runner/InfoPlist.xcstrings (or an entry for a key the plist no longer has), a locale that entry never translated, an English value that has drifted from the Info.plist fallback, a locale the catalog translates that CFBundleLocalizations or knownRegions omits, or a catalog the Runner target does not bundle. Every one of these shows the English prompt on a non-English iPhone and throws nothing."
+            echo "The failing line above names the key and the locale, or the declaration site that disagrees. Reproduce with: bash apps/mobile_ios/scripts/check_xcstrings_parity.sh (python3 only, no Xcode needed)."
+            exit 1
+          fi
+          if ! node --test scripts/check_mobile_ios_xcstrings_parity.test.mjs; then
+            echo "::error::The iPhone consent-catalog guard's own unit tests failed. The catalog itself is fine — the check above just passed — so this is a defect in apps/mobile_ios/scripts/check_xcstrings_parity.sh or scripts/xcstrings_parity.py, not an unlocalized prompt."
+            echo "Reproduce with: node --test scripts/check_mobile_ios_xcstrings_parity.test.mjs (stdlib only, needs python3 + bash, no install needed)."
             exit 1
           fi
 
@@ -1661,7 +1684,7 @@ jobs:
       - name: String Catalog coverage vs CFBundleLocalizations + knownRegions
         run: |
           if ! bash apps/watch_ios/scripts/check_xcstrings_parity.sh; then
-            echo "::error::apps/watch_ios ships a locale it has not fully declared — a String Catalog entry missing a translation, or a locale the catalog translates that Info.plist's CFBundleLocalizations or the project's knownRegions does not list. An undeclared locale is never loaded at runtime: the watch shows English and nothing throws."
+            echo "::error::apps/watch_ios ships a locale it has not fully declared — a String Catalog entry missing a translation, or a locale the catalog translates that Info.plist's CFBundleLocalizations or the project's knownRegions does not list, or a catalog the WatchApp target does not bundle. An undeclared locale is never loaded at runtime: the watch shows English and nothing throws."
             echo "The failing line above names the string and the locale, or the declaration site that disagrees. Reproduce with: bash apps/watch_ios/scripts/check_xcstrings_parity.sh (python3 only, no Xcode needed). decisions.md § 761."
             exit 1
           fi
@@ -1675,7 +1698,7 @@ jobs:
       - name: The String Catalog guard's own unit tests
         run: |
           if ! node --test scripts/check_xcstrings_parity.test.mjs; then
-            echo "::error::The watchOS String Catalog guard's own unit tests failed. The catalog itself is fine — the check above just passed — so this is a defect in apps/watch_ios/scripts/check_xcstrings_parity.sh, not a half-declared locale."
+            echo "::error::The watchOS String Catalog guard's own unit tests failed. The catalog itself is fine — the check above just passed — so this is a defect in apps/watch_ios/scripts/check_xcstrings_parity.sh or the engine it shares with the iPhone, scripts/xcstrings_parity.py, not a half-declared locale."
             echo "Reproduce with: node --test scripts/check_xcstrings_parity.test.mjs (stdlib only, needs python3 + bash, no install needed)."
             exit 1
           fi
@@ -3211,10 +3234,10 @@ jobs:
           # CONTAINER's own loopback and reach nothing; the CLI starts that
           # container with `--add-host host.docker.internal:host-gateway`,
           # so this is the same pair the committed
-          # supabase/functions/.env uses for local dev, and 54325 is the
+          # supabase/functions/.env uses for local dev, and 24325 is the
           # host-published smtp_port from config.toml's [inbucket].
           SMTP_HOST=host.docker.internal
-          SMTP_PORT=54325
+          SMTP_PORT=24325
           SMTP_FROM="Threkir <noreply@threkir.com>"
           SENTRY_DSN=
           APP_RELEASE=ci
@@ -3242,7 +3265,7 @@ jobs:
           # unconfigured one returned 503.
           for i in $(seq 1 30); do
             code=$(curl -sS -o /dev/null -w "%{http_code}" -X POST \
-              http://127.0.0.1:54321/functions/v1/refresh-tokens)
+              http://127.0.0.1:24321/functions/v1/refresh-tokens)
             if [ "$code" = "403" ]; then
               echo "function host ready (403 = env loaded)"
               break
@@ -3267,7 +3290,7 @@ jobs:
       - name: Run handler-envelope integration tests
         working-directory: apps/backend
         env:
-          SUPABASE_TEST_URL: http://127.0.0.1:54321
+          SUPABASE_TEST_URL: http://127.0.0.1:24321
           # Positive-path tests need the same secret values the EF
           # host loaded so HMACs / ?secret= / verify_token match.
           # These mirror the .env.local block written above.
@@ -3280,10 +3303,10 @@ jobs:
           # Same value the .env.local block wrote, so the auth-email
           # positive path signs with the key the function host verifies
           # against. Mailpit is read from the RUNNER, so this is the
-          # host-published web port (54324), not the SMTP one the
+          # host-published web port (24324), not the SMTP one the
           # function host dials.
           SEND_EMAIL_HOOK_SECRET: v1,Y2ktYXV0aC1lbWFpbC1ob29rLXNlY3JldC0zMmNoYXJz
-          MAILPIT_URL: http://127.0.0.1:54324
+          MAILPIT_URL: http://127.0.0.1:24324
           # Service-role key (exported to $GITHUB_ENV in the boot step)
           # unlocks the revenuecat-webhook + stripe-events-webhook
           # side-effect tests (plant a fixture, read the written row).
@@ -3292,7 +3315,7 @@ jobs:
           if ! deno test --no-check --allow-net --allow-env \
             supabase/functions/_shared/handler_envelope.test.ts; then
             echo "::error::The handler-envelope integration tests failed. These drive the LIVE function host booted in the step above (wrong bearers / HMACs / ?secret= must be rejected), so a failure is the envelope's auth gates or the host's env, not the typecheck and not the pure-helper suite below."
-            echo "Reproduce locally with: cd apps/backend && supabase start && supabase functions serve --env-file .env.local, then SUPABASE_TEST_URL=http://127.0.0.1:54321 deno test --no-check --allow-net --allow-env supabase/functions/_shared/handler_envelope.test.ts"
+            echo "Reproduce locally with: cd apps/backend && supabase start && supabase functions serve --env-file .env.local, then SUPABASE_TEST_URL=http://127.0.0.1:24321 deno test --no-check --allow-net --allow-env supabase/functions/_shared/handler_envelope.test.ts"
             exit 1
           fi
       # A green integration run says the 23 cases passed against the live
@@ -3316,7 +3339,7 @@ jobs:
           fi
       - name: Mutation-check the handler-envelope suite against the served tree
         env:
-          SUPABASE_TEST_URL: http://127.0.0.1:54321
+          SUPABASE_TEST_URL: http://127.0.0.1:24321
           REVENUECAT_WEBHOOK_SECRET: ci-revenuecat-secret
           STRAVA_WEBHOOK_SECRET: ci-strava-webhook-secret-32chars-ok
           STRAVA_VERIFY_TOKEN: ci-strava-verify-token-32-chars-ok
@@ -3330,7 +3353,7 @@ jobs:
         run: |
           if ! node apps/backend/scripts/check_served_envelope_mutations.mjs; then
             echo "::error::A handler-envelope case still passes with the gate it names opened in the SERVED Edge Function tree, or a case ran that no mutation measures. The failure above names which. This is not the pure-helper suite and not the typecheck: it is the integration file's own assertions being asked whether they would notice a wrong bearer, HMAC or ?secret= being accepted."
-            echo "Reproduce locally with: cd apps/backend && supabase start && supabase functions serve --env-file .env.local, then from the repo root, with SUPABASE_TEST_URL=http://127.0.0.1:54321 and SUPABASE_SERVICE_ROLE_KEY taken from supabase status -o env: node apps/backend/scripts/check_served_envelope_mutations.mjs --report"
+            echo "Reproduce locally with: cd apps/backend && supabase start && supabase functions serve --env-file .env.local, then from the repo root, with SUPABASE_TEST_URL=http://127.0.0.1:24321 and SUPABASE_SERVICE_ROLE_KEY taken from supabase status -o env: node apps/backend/scripts/check_served_envelope_mutations.mjs --report"
             exit 1
           fi
       - name: Run pure-helper unit tests

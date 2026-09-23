@@ -4130,5 +4130,15 @@
   "bleUnavailableLocationOff": "Activa la ubicación para que Android pueda buscar tu banda de FC.",
   "bleUnavailableUnknown": "El Bluetooth no respondió. Inténtalo de nuevo en un momento.",
   "bleOpenSettings": "Abrir ajustes",
-  "bleScanRetry": "Buscar de nuevo"
+  "bleScanRetry": "Buscar de nuevo",
+  "planDetailSectionProgressTitle": "Progreso del plan",
+  "planDetailSectionProgressHint": "Fases, totales del plan, tirada larga más larga",
+  "planDetailSectionRulesTitle": "Reglas del plan",
+  "planDetailSectionRulesHint": "A qué se atiene este plan",
+  "planDetailSectionCalendarTitle": "Calendario",
+  "planDetailSectionCalendarHint": "Cada sesión en su fecha real",
+  "planDetailSectionWeeksTitle": "Semana a semana",
+  "planDetailSectionWeeksHint": "Las {n} semanas, día a día",
+  "planDetailSectionShareTitle": "Compartir y publicar",
+  "planDetailSectionShareHint": "Plantilla del club y biblioteca pública de planes"
 }

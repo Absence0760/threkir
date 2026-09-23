@@ -16,7 +16,7 @@ Seed user: `runner@test.com` / `testtest`. See [apps/backend/local_testing.md](.
 
 | Feature | Local mode | What you can verify |
 |---|---|---|
-| **Auth (email / password)** | Real, against local Supabase | Sign in, sign up, password reset (delivery into Mailpit at <http://127.0.0.1:54324>), 16+ age gate, ToS acceptance |
+| **Auth (email / password)** | Real, against local Supabase | Sign in, sign up, password reset (delivery into Mailpit at <http://127.0.0.1:24324>), 16+ age gate, ToS acceptance |
 | **Auth (Google)** | Manual setup (see [apps/mobile_android/local_testing.md](../../apps/mobile_android/local_testing.md#google-sign-in-optional)) | OAuth-only — needs real Google Cloud client |
 | **Auth (Apple)** | Not testable locally | Apple Sign-In needs a real Apple Developer account + paired domain |
 | **GPS recording** | Real, on real device | Phone in foreground, screen off, lap markers, hold-to-stop |
@@ -107,7 +107,7 @@ A `200` means the handler validated the HMAC, deduped via `webhook_events`, and 
 **(b) Raw `stripe listen` (manual).** The same forwarder the wrapper runs, by hand:
 
 ```bash
-stripe listen --forward-to http://127.0.0.1:54321/functions/v1/revenuecat-webhook
+stripe listen --forward-to http://127.0.0.1:24321/functions/v1/revenuecat-webhook
 stripe trigger checkout.session.completed     # in a second terminal
 ```
 
@@ -118,7 +118,7 @@ Caveat: this forwards **raw Stripe** events straight to our handler, which requi
 ### 6. Verify
 
 ```bash
-psql 'postgresql://postgres:postgres@127.0.0.1:54322/postgres' -c \
+psql 'postgresql://postgres:postgres@127.0.0.1:24322/postgres' -c \
   "SELECT id, subscription_tier FROM user_profiles WHERE id='<runner-uuid>';"
 ```
 
@@ -155,7 +155,7 @@ supabase functions serve --env-file .env.local
 Point the Stripe CLI at **this** endpoint (not the RevenueCat one). It prints a `whsec_...` — paste it into `STRIPE_EVENTS_WEBHOOK_SECRET` and restart `functions serve`:
 
 ```bash
-stripe listen --forward-to http://127.0.0.1:54321/functions/v1/stripe-events-webhook
+stripe listen --forward-to http://127.0.0.1:24321/functions/v1/stripe-events-webhook
 ```
 
 Then trigger the handled event types:

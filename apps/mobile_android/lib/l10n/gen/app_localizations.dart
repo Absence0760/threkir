@@ -23654,6 +23654,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Scan again'**
   String get bleScanRetry;
+
+  /// Plan detail: a named expander (title or its one-line hint)
+  ///
+  /// In en, this message translates to:
+  /// **'Plan progress'**
+  String get planDetailSectionProgressTitle;
+
+  /// Plan detail: a named expander (title or its one-line hint)
+  ///
+  /// In en, this message translates to:
+  /// **'Phases, plan totals, longest long run'**
+  String get planDetailSectionProgressHint;
+
+  /// Plan detail: a named expander (title or its one-line hint)
+  ///
+  /// In en, this message translates to:
+  /// **'Plan rules'**
+  String get planDetailSectionRulesTitle;
+
+  /// Plan detail: a named expander (title or its one-line hint)
+  ///
+  /// In en, this message translates to:
+  /// **'What this plan sticks to'**
+  String get planDetailSectionRulesHint;
+
+  /// Plan detail: a named expander (title or its one-line hint)
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar'**
+  String get planDetailSectionCalendarTitle;
+
+  /// Plan detail: a named expander (title or its one-line hint)
+  ///
+  /// In en, this message translates to:
+  /// **'Every workout on its real date'**
+  String get planDetailSectionCalendarHint;
+
+  /// Plan detail: a named expander (title or its one-line hint)
+  ///
+  /// In en, this message translates to:
+  /// **'Week by week'**
+  String get planDetailSectionWeeksTitle;
+
+  /// Plan detail: the Week by week expander hint; n is the plan length in weeks
+  ///
+  /// In en, this message translates to:
+  /// **'All {n} weeks, day by day'**
+  String planDetailSectionWeeksHint(int n);
+
+  /// Plan detail: a named expander (title or its one-line hint)
+  ///
+  /// In en, this message translates to:
+  /// **'Share & publish'**
+  String get planDetailSectionShareTitle;
+
+  /// Plan detail: a named expander (title or its one-line hint)
+  ///
+  /// In en, this message translates to:
+  /// **'Club template and public plan library'**
+  String get planDetailSectionShareHint;
 }
 
 class _AppLocalizationsDelegate

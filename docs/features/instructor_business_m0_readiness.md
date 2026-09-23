@@ -64,7 +64,7 @@ STRIPE_EVENTS_ALLOWED_REDIRECTS=http://localhost:7777
 cd apps/backend && supabase functions serve --env-file .env.local
 
 # forward Stripe events to the webhook (prints the whsec_ to paste above, then restart)
-stripe listen --forward-to http://127.0.0.1:54321/functions/v1/stripe-events-webhook
+stripe listen --forward-to http://127.0.0.1:24321/functions/v1/stripe-events-webhook
 
 # the handled event types (the dashboard endpoint must subscribe to all of
 # these — a delayed-notification payment's real outcome arrives on the two

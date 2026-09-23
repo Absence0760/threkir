@@ -21,7 +21,7 @@
 // shape — matching `fetchRouteById`, which projects it away.
 //
 // Env contract (all required):
-//   SUPABASE_TEST_URL              local stack API url (http://127.0.0.1:54321)
+//   SUPABASE_TEST_URL              local stack API url (http://127.0.0.1:24321)
 //   SUPABASE_TEST_ANON_KEY         local stack anon key
 //   CROSS_CLIENT_ROUTE_FIXTURE_IN  path to the fixture JSON the Dart half wrote
 //

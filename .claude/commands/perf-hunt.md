@@ -61,7 +61,7 @@ For each finding: `file:line`, the **input that makes it hurt** (the run length 
 
 Don't fix a perf finding you haven't sized:
 - **Name the input** that triggers it and estimate the cost at realistic scale (a 6-hour ultra ≈ 21,600 GPS fixes; a heavy user ≈ thousands of runs; a populated club).
-- **For DB findings, prove it against the running stack**: `EXPLAIN (ANALYZE, BUFFERS)` on `127.0.0.1:54322` to confirm a seq scan / bad plan, and re-run after the fix to confirm the plan improved. Seed enough rows that the planner doesn't just pick a seq scan because the table is tiny.
+- **For DB findings, prove it against the running stack**: `EXPLAIN (ANALYZE, BUFFERS)` on `127.0.0.1:24322` to confirm a seq scan / bad plan, and re-run after the fix to confirm the plan improved. Seed enough rows that the planner doesn't just pick a seq scan because the table is tiny.
 - **For client findings**, confirm the path's frequency (per-tick vs per-navigation) — a per-navigation cost rarely justifies a fix; a per-GPS-fix one almost always does.
 - If the measured cost is negligible at realistic scale, **drop the finding with a one-line note** rather than ship a clarity-for-nanoseconds change.
 

@@ -200,6 +200,8 @@ is the runbook for making each one.
 | `IOS_BUILD_CERTIFICATE_BASE64` | base64 of the Apple Distribution certificate + private key, exported as a `.p12` |
 | `IOS_P12_PASSWORD` | the `.p12` export password |
 | `IOS_PROVISIONING_PROFILE_BASE64` | base64 of the App Store profile for `com.threkir.app` |
+| `IOS_SHARE_PROVISIONING_PROFILE_BASE64` | base64 of the App Store profile for `com.threkir.app.ShareExtension`, the share extension the phone app embeds; its App ID must carry the `group.com.threkir.app.share` App Group |
+| `IOS_RUN_ACTIVITY_PROVISIONING_PROFILE_BASE64` | base64 of the App Store profile for `com.threkir.app.RunActivity`, the Live Activity widget extension the phone app embeds |
 | `IOS_WATCH_PROVISIONING_PROFILE_BASE64` | base64 of the App Store profile for `com.threkir.app.watchapp` |
 | `IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64` | base64 of the App Store profile for `com.threkir.app.watchapp.complication`, the WidgetKit complication the watch app embeds |
 | `APP_STORE_CONNECT_API_KEY_ID` | App Store Connect API key id (App Manager role) |

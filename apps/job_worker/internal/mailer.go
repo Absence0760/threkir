@@ -10,7 +10,7 @@ import (
 )
 
 // EmailSender is the transport the email handlers send through. Production
-// wires *SMTPSender (Mailpit in local dev on 127.0.0.1:54325; Resend / SES
+// wires *SMTPSender (Mailpit in local dev on 127.0.0.1:24325; Resend / SES
 // SMTP in prod). Tests substitute a fake recorder so the handler logic is
 // exercised without a live SMTP server.
 type EmailSender interface {

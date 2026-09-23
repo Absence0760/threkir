@@ -38,7 +38,7 @@ Future<void> _ensureSupabase() async {
   // Local fake — never reached by network; FeedScreen's _loadInitial
   // catches the resulting connection failure asynchronously.
   await Supabase.initialize(
-    url: 'http://127.0.0.1:54321',
+    url: 'http://127.0.0.1:24321',
     anonKey: 'eyJ.local.test',
   );
   _supabaseReady = true;

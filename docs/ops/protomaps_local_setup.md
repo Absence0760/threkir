@@ -164,7 +164,7 @@ The web + mobile + Wear OS code in production calls the same URL builders — th
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `docker daemon is not running` | Docker service stopped | `sudo systemctl start docker` |
-| Container won't bind 8080 | Port collision (Supabase Studio uses 54323, the local Supabase API is 54321 — neither conflicts; check `lsof -i :8080`) | Set `PROTOMAPS_PORT=8081` and re-run `start` |
+| Container won't bind 8080 | Port collision (Supabase Studio uses 24323, the local Supabase API is 24321 — neither conflicts; check `lsof -i :8080`) | Set `PROTOMAPS_PORT=8081` and re-run `start` |
 | Web map renders but mobile is blank | Forgot the `10.0.2.2` alias inside the emulator | Update `TILE_URL_TEMPLATE` in mobile `.env.local` |
 | Wear OS doesn't pick up the override after editing `.env.local` | BuildConfig values are baked at compile time | `./gradlew installDebug -PPUBLIC_TILE_URL_TEMPLATE=…` rebuilds with the new value |
 | `PMTiles download failed` | `DEFAULT_SAMPLE_URL` unreachable, or build.protomaps.com is down | Override `DEFAULT_SAMPLE_URL` (used by `fetch`) to a known-good extract, or build your own extract and point `PMTILES_FILE` at it |

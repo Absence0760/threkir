@@ -1,4 +1,5 @@
-// Unit tests for apps/watch_ios/scripts/check_xcstrings_parity.sh.
+// Unit tests for apps/watch_ios/scripts/check_xcstrings_parity.sh and the
+// shared engine it execs, scripts/xcstrings_parity.py.
 //
 // That guard is the ONLY thing between a half-declared watchOS locale and
 // the App Store, and until now it had no test of its own. It cannot be
@@ -37,15 +38,26 @@ const PLIST = join('WatchApp', 'Info.plist');
 const PBXPROJ = join('WatchApp.xcodeproj', 'project.pbxproj');
 const SCRIPT = join('scripts', 'check_xcstrings_parity.sh');
 
-/** Copy the five files the guard reads into a throwaway tree. */
+const ENGINE = join('scripts', 'xcstrings_parity.py');
+
+/**
+ * Copy the files the guard reads, plus the shared engine it execs, into a
+ * throwaway tree laid out like the repo. Returns the staged `apps/watch_ios`.
+ */
 function stage() {
-	const dir = mkdtempSync(join(tmpdir(), 'xcstrings-'));
+	const root = mkdtempSync(join(tmpdir(), 'xcstrings-'));
+	const dir = join(root, 'apps', 'watch_ios');
 	for (const rel of [CATALOG, PLIST_CATALOG, PLIST, PBXPROJ, SCRIPT]) {
 		mkdirSync(join(dir, dirname(rel)), { recursive: true });
 		cpSync(join(WATCH_IOS, rel), join(dir, rel));
 	}
+	mkdirSync(join(root, 'scripts'), { recursive: true });
+	cpSync(join(REPO_ROOT, ENGINE), join(root, ENGINE));
 	return dir;
 }
+
+/** @param {string} dir the staged app directory */
+const unstage = (dir) => rmSync(join(dir, '..', '..'), { recursive: true, force: true });
 
 /** @param {string} dir */
 function run(dir) {
@@ -63,7 +75,7 @@ function runMutated(mutate) {
 		mutate(dir);
 		return run(dir);
 	} finally {
-		rmSync(dir, { recursive: true, force: true });
+		unstage(dir);
 	}
 }
 
@@ -209,7 +221,7 @@ test('ja keeps its exemption from the singular category', () => {
 		}
 		assert.equal(run(dir).status, 0);
 	} finally {
-		rmSync(dir, { recursive: true, force: true });
+		unstage(dir);
 	}
 });
 
@@ -359,4 +371,18 @@ test('an empty plist catalog fails loudly rather than passing vacuously', () => 
 	assert.equal(status, 1, out);
 	assert.match(out, /no string entries parsed/);
 	assert.match(out, /InfoPlist\.xcstrings/);
+});
+
+test('a catalog the WatchApp target does not bundle is refused', () => {
+	// Every claim above would pass over a catalog that is on disk and never
+	// copied into the app: the wrist then reads the Info.plist English.
+	const { status, out } = runMutated((dir) => {
+		const p = join(dir, PBXPROJ);
+		const src = readFileSync(p, 'utf8');
+		const cut = src.replace(/^\t\t\t\t\w{24} \/\* InfoPlist\.xcstrings in Resources \*\/,\n/m, '');
+		assert.notEqual(cut, src, 'the pbxproj mutation matched nothing');
+		writeFileSync(p, cut);
+	});
+	assert.equal(status, 1, out);
+	assert.match(out, /InfoPlist\.xcstrings: not in the WatchApp target's Resources phase/);
 });

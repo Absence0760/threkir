@@ -40,12 +40,13 @@ final class ActivityTypeVocabularyTests: XCTestCase {
     /// Values the column admits that the wrist's picker deliberately does not
     /// offer, each with the reason. Wear OS's chip cycles the same four; its
     /// fifth label exists only because `default_activity_type` primes the chip
-    /// off the phone's settings bag, and no such push reaches this watch.
+    /// off the phone's settings bag. This watch is primed from the same bag
+    /// now, but through a push that carries only the four the picker cycles.
     /// An entry the CHECK no longer holds fails below, so the register cannot
     /// outlive what it excuses.
     private let notOffered = [
-        "stroller": "nothing primes this watch's picker from the phone's settings bag, "
-            + "so a value the runner cannot cycle to is a label nothing would ever render",
+        "stroller": "the phone leaves it off the settings push and `DefaultActivityType.decode` "
+            + "refuses it, so a value the runner cannot cycle to is a label nothing would ever render",
     ]
 
     func testThePickerOffersEveryValueTheColumnAdmitsOrSaysWhyNot() throws {

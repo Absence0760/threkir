@@ -57,7 +57,7 @@ For each hunt area, cross-reference `apps/web/tests-e2e/` — don't re-report bu
 
 Only proceed to Phase 2 if Phase 1 surfaced 1-3 findings that need live confirmation AND the dev stack is already up.
 
-- Check whether the local stack is running: `curl -sS -o /dev/null -w "%{http_code}" http://127.0.0.1:7777` and `http://127.0.0.1:54321/storage/v1/bucket` (both should return any HTTP code other than 000).
+- Check whether the local stack is running: `curl -sS -o /dev/null -w "%{http_code}" http://127.0.0.1:7777` and `http://127.0.0.1:24321/storage/v1/bucket` (both should return any HTTP code other than 000).
 - If they're NOT up, **do not boot them yourself** — that's 5+ minutes of setup. Just note "Phase 2 skipped — dev stack not running" and proceed to reporting.
 - If they ARE up, write a temporary exploration spec to `apps/web/tests-e2e/_persona-very-social-explore.spec.ts`. Use the existing test helpers (`tests-e2e/fixtures/`) for sign-in / sign-out.
 - Run the spec with `cd apps/web && npx playwright test tests-e2e/_persona-very-social-explore.spec.ts --reporter=line`.

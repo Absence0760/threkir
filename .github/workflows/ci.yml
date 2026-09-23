@@ -1581,7 +1581,7 @@ jobs:
   ios-native-declarations:
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    name: iOS capability declarations vs the code that needs them
+    name: iOS capability declarations vs the code that needs them, and their localized consent prompts
     # decisions.md § 742 — an iOS capability the Dart exercises but the
     # Info.plist / Runner.entitlements does not declare fails SILENTLY: iOS
     # denies the permission or refuses the session, the feature returns
@@ -1620,6 +1620,27 @@ jobs:
           if ! node --test scripts/check_ios_native_declarations.test.mjs; then
             echo "::error::The iOS-declaration guard's own unit tests failed. The committed tree is fine — the check above just passed — so this is a defect in scripts/check_ios_native_declarations.mjs, not a missing declaration."
             echo "Reproduce with: node --test scripts/check_ios_native_declarations.test.mjs (stdlib only, no install needed)."
+            exit 1
+          fi
+      # #964 — the check above proves each usage-description string EXISTS;
+      # this one proves it is readable. The eleven NS*UsageDescription prompts
+      # are the one text iOS reads out of the bundle rather than the ARBs, and
+      # until InfoPlist.xcstrings existed every one of them rendered English in
+      # all seven locales — HealthKit and location consent included. The
+      # failure is silent on the platform, so no Flutter or Swift test can see
+      # it. Same engine as `watch-ios-locale-parity` (scripts/xcstrings_parity.py),
+      # run here rather than there because a phone defect under a job named for
+      # the watch is a name that is wrong about the tier.
+      - name: iPhone consent-prompt catalog vs Info.plist, knownRegions and the Runner target
+        run: |
+          if ! bash apps/mobile_ios/scripts/check_xcstrings_parity.sh; then
+            echo "::error::apps/mobile_ios ships a permission prompt that is not localized — an NS*UsageDescription key in Info.plist with no entry in ios/Runner/InfoPlist.xcstrings (or an entry for a key the plist no longer has), a locale that entry never translated, an English value that has drifted from the Info.plist fallback, a locale the catalog translates that CFBundleLocalizations or knownRegions omits, or a catalog the Runner target does not bundle. Every one of these shows the English prompt on a non-English iPhone and throws nothing."
+            echo "The failing line above names the key and the locale, or the declaration site that disagrees. Reproduce with: bash apps/mobile_ios/scripts/check_xcstrings_parity.sh (python3 only, no Xcode needed)."
+            exit 1
+          fi
+          if ! node --test scripts/check_mobile_ios_xcstrings_parity.test.mjs; then
+            echo "::error::The iPhone consent-catalog guard's own unit tests failed. The catalog itself is fine — the check above just passed — so this is a defect in apps/mobile_ios/scripts/check_xcstrings_parity.sh or scripts/xcstrings_parity.py, not an unlocalized prompt."
+            echo "Reproduce with: node --test scripts/check_mobile_ios_xcstrings_parity.test.mjs (stdlib only, needs python3 + bash, no install needed)."
             exit 1
           fi
 
@@ -1661,7 +1682,7 @@ jobs:
       - name: String Catalog coverage vs CFBundleLocalizations + knownRegions
         run: |
           if ! bash apps/watch_ios/scripts/check_xcstrings_parity.sh; then
-            echo "::error::apps/watch_ios ships a locale it has not fully declared — a String Catalog entry missing a translation, or a locale the catalog translates that Info.plist's CFBundleLocalizations or the project's knownRegions does not list. An undeclared locale is never loaded at runtime: the watch shows English and nothing throws."
+            echo "::error::apps/watch_ios ships a locale it has not fully declared — a String Catalog entry missing a translation, or a locale the catalog translates that Info.plist's CFBundleLocalizations or the project's knownRegions does not list, or a catalog the WatchApp target does not bundle. An undeclared locale is never loaded at runtime: the watch shows English and nothing throws."
             echo "The failing line above names the string and the locale, or the declaration site that disagrees. Reproduce with: bash apps/watch_ios/scripts/check_xcstrings_parity.sh (python3 only, no Xcode needed). decisions.md § 761."
             exit 1
           fi
@@ -1675,7 +1696,7 @@ jobs:
       - name: The String Catalog guard's own unit tests
         run: |
           if ! node --test scripts/check_xcstrings_parity.test.mjs; then
-            echo "::error::The watchOS String Catalog guard's own unit tests failed. The catalog itself is fine — the check above just passed — so this is a defect in apps/watch_ios/scripts/check_xcstrings_parity.sh, not a half-declared locale."
+            echo "::error::The watchOS String Catalog guard's own unit tests failed. The catalog itself is fine — the check above just passed — so this is a defect in apps/watch_ios/scripts/check_xcstrings_parity.sh or the engine it shares with the iPhone, scripts/xcstrings_parity.py, not a half-declared locale."
             echo "Reproduce with: node --test scripts/check_xcstrings_parity.test.mjs (stdlib only, needs python3 + bash, no install needed)."
             exit 1
           fi

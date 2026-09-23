@@ -13354,6 +13354,24 @@ abstract class AppLocalizations {
   /// **'Import runs'**
   String get dashboardImportRuns;
 
+  /// Dashboard empty-state body shown instead of the welcome body when today's plan workout card sits above it
+  ///
+  /// In en, this message translates to:
+  /// **'Your plan is ready above. Log your first run and this page fills in — your distance, your pace, and how you\'re tracking against the plan.'**
+  String get dashboardFirstRunBodyWithPlan;
+
+  /// Dashboard empty-state lead-in before the button that opens the Gym log, for a new account that lifts rather than runs
+  ///
+  /// In en, this message translates to:
+  /// **'Lifting instead?'**
+  String get dashboardFirstRunGymHint;
+
+  /// Dashboard empty-state button that opens the Gym log
+  ///
+  /// In en, this message translates to:
+  /// **'Log a gym session'**
+  String get dashboardFirstRunGymAction;
+
   /// Label for the weekly period stat card on the dashboard
   ///
   /// In en, this message translates to:

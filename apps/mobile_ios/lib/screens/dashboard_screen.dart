@@ -103,6 +103,11 @@ class DashboardScreen extends StatefulWidget {
   /// which case the "Start a run" affordance is hidden rather than dead.
   final VoidCallback? onStartRun;
 
+  /// Lands on the Fitness hub's Gym tab from the same welcome state — the
+  /// shell's Log → Lift action. Null hides the hint rather than leaving it
+  /// dead, as with [onStartRun].
+  final VoidCallback? onLogLift;
+
   const DashboardScreen({
     super.key,
     this.apiClient,
@@ -114,6 +119,7 @@ class DashboardScreen extends StatefulWidget {
     required this.preferences,
     this.settingsSync,
     this.onStartRun,
+    this.onLogLift,
   });
 
   @override
@@ -892,7 +898,9 @@ class _DashboardScreenState extends State<DashboardScreen>
             hasScrollBody: false,
             child: _WelcomeEmpty(
               theme: theme,
+              planAbove: heroWorkoutCard != null,
               onStartRun: widget.onStartRun,
+              onLogLift: widget.onLogLift,
               onAddGoal: _newGoal,
               onImport: _openImport,
             ),
@@ -1442,12 +1450,16 @@ class _SectionHeader extends StatelessWidget {
 
 class _WelcomeEmpty extends StatelessWidget {
   final ThemeData theme;
+  final bool planAbove;
   final VoidCallback? onStartRun;
+  final VoidCallback? onLogLift;
   final VoidCallback onAddGoal;
   final VoidCallback onImport;
   const _WelcomeEmpty({
     required this.theme,
+    required this.planAbove,
     required this.onStartRun,
+    required this.onLogLift,
     required this.onAddGoal,
     required this.onImport,
   });
@@ -1467,8 +1479,12 @@ class _WelcomeEmpty extends StatelessWidget {
             Text(l10n.dashboardWelcomeTitle,
                 style: theme.textTheme.headlineSmall),
             const SizedBox(height: 8),
+            // Onboarding can create a plan before the first run exists, and
+            // its workout card then renders directly above this block.
             Text(
-              l10n.dashboardWelcomeBody,
+              planAbove
+                  ? l10n.dashboardFirstRunBodyWithPlan
+                  : l10n.dashboardWelcomeBody,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -1510,6 +1526,28 @@ class _WelcomeEmpty extends StatelessWidget {
                 ),
               ],
             ),
+            // A new account that lifts rather than runs was only ever offered
+            // a run; web's first-run card carries the same way out (#905).
+            if (onLogLift != null) ...[
+              const SizedBox(height: 16),
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    l10n.dashboardFirstRunGymHint,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: onLogLift,
+                    icon: const Icon(Icons.fitness_center),
+                    label: Text(l10n.dashboardFirstRunGymAction),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

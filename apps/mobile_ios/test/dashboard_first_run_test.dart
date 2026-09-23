@@ -15,6 +15,7 @@ import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/dashboard_screen.dart';
+import '../lib/training_service.dart';
 import '../lib/widgets/pending_sync_banner.dart';
 import 'pump_until.dart';
 import 'store_write_watch.dart';
@@ -72,6 +73,50 @@ class _HistoryApi extends ApiClient {
   Future<UserProfileRow?> fetchMyProfile() async => null;
 }
 
+class _PlanTraining extends TrainingService {
+  @override
+  Future<ActivePlanOverview?> fetchActiveOverview() async {
+    final today = DateTime.now();
+    final workout = PlanWorkoutRow(
+      id: 'wo-1',
+      weekId: 'wk-1',
+      scheduledDate: today,
+      kind: 'easy',
+      targetDistanceM: 5000,
+      manuallyCompleted: false,
+    );
+    return ActivePlanOverview(
+      plan: TrainingPlanRow(
+        id: 'plan-1',
+        userId: 'u1',
+        name: 'First 5k',
+        goalEvent: '5k',
+        goalDistanceM: 5000,
+        startDate: today,
+        endDate: today.add(const Duration(days: 56)),
+        daysPerWeek: 3,
+        status: 'active',
+        source: 'app',
+        isTemplate: false,
+        isPublicTemplate: false,
+      ),
+      weeks: [
+        PlanWeekRow(
+          id: 'wk-1',
+          planId: 'plan-1',
+          weekIndex: 0,
+          phase: 'base',
+          targetVolumeM: 10000,
+        ),
+      ],
+      workouts: [workout],
+      todayWorkout: workout,
+      completionPct: 0,
+      currentWeekIndex: 0,
+    );
+  }
+}
+
 final _dirs = <Directory>[];
 
 Future<Directory> _tmp(String tag) async {
@@ -106,18 +151,26 @@ Future<
   );
 }
 
-Future<void> _pump(WidgetTester tester, dynamic s, {ApiClient? api}) async {
+Future<void> _pump(
+  WidgetTester tester,
+  dynamic s, {
+  ApiClient? api,
+  TrainingService? training,
+  VoidCallback? onLogLift,
+}) async {
   await tester.pumpWidget(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: DashboardScreen(
         apiClient: api,
+        training: training,
         runStore: s.runStore,
         routeStore: s.routeStore,
         gymStore: s.gymStore,
         foodStore: s.foodStore,
         preferences: s.prefs,
+        onLogLift: onLogLift,
       ),
     ),
   );
@@ -164,6 +217,47 @@ void main() {
       expect(find.text('Welcome!'), findsOneWidget);
       // And the goal it just set is still on screen.
       expect(find.textContaining('Goals'), findsWidgets);
+    });
+
+    testWidgets('offers a lifter the gym, as web does', (tester) async {
+      final s = await _stores();
+      var lifts = 0;
+      await _pump(tester, s, onLogLift: () => lifts++);
+
+      expect(find.text('Welcome!'), findsOneWidget);
+      expect(find.text('Lifting instead?'), findsOneWidget);
+      await tester.ensureVisible(find.text('Log a gym session'));
+      await tester.tap(find.text('Log a gym session'));
+      expect(lifts, 1);
+    });
+
+    testWidgets('hides the gym way out when the host cannot reach it',
+        (tester) async {
+      final s = await _stores();
+      await _pump(tester, s);
+
+      expect(find.text('Welcome!'), findsOneWidget);
+      expect(find.text('Log a gym session'), findsNothing,
+          reason: 'a hint with no working action is a dead button');
+    });
+
+    testWidgets('points at the plan card when onboarding already made one',
+        (tester) async {
+      final s = await _stores();
+      await _pump(tester, s, training: _PlanTraining());
+      await pumpUntil(
+          tester,
+          () => find
+              .textContaining('Your plan is ready above')
+              .evaluate()
+              .isNotEmpty,
+          describe: 'the plan overview to resolve');
+
+      expect(find.text('Welcome!'), findsOneWidget);
+      expect(
+          find.text('Your dashboard fills in once you record a run, set a '
+              'goal, or import your history.'),
+          findsNothing);
     });
 
     testWidgets('is not shown to a lifter with no runs', (tester) async {

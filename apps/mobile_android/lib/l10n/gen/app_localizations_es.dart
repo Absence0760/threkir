@@ -8197,6 +8197,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get dashboardImportRuns => 'Importar carreras';
 
   @override
+  String get dashboardFirstRunBodyWithPlan =>
+      'Tu plan ya está listo arriba. Registra tu primera carrera y esta página se llenará: tu distancia, tu ritmo y cómo vas respecto al plan.';
+
+  @override
+  String get dashboardFirstRunGymHint => '¿Prefieres las pesas?';
+
+  @override
+  String get dashboardFirstRunGymAction => 'Registra una sesión de gimnasio';
+
+  @override
   String get dashboardPeriodWeek => 'Semana';
 
   @override

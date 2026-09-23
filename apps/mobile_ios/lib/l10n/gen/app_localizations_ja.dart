@@ -7754,6 +7754,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get dashboardImportRuns => 'ランをインポート';
 
   @override
+  String get dashboardFirstRunBodyWithPlan =>
+      'プランは上に用意できています。最初のランを記録すると、距離・ペース・プランに対する進み具合がこのページに表示されます。';
+
+  @override
+  String get dashboardFirstRunGymHint => '筋トレをしますか？';
+
+  @override
+  String get dashboardFirstRunGymAction => 'ジムのセッションを記録';
+
+  @override
   String get dashboardPeriodWeek => '週';
 
   @override

@@ -8110,6 +8110,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dashboardImportRuns => 'Import runs';
 
   @override
+  String get dashboardFirstRunBodyWithPlan =>
+      'Your plan is ready above. Log your first run and this page fills in — your distance, your pace, and how you\'re tracking against the plan.';
+
+  @override
+  String get dashboardFirstRunGymHint => 'Lifting instead?';
+
+  @override
+  String get dashboardFirstRunGymAction => 'Log a gym session';
+
+  @override
   String get dashboardPeriodWeek => 'Week';
 
   @override

@@ -26,6 +26,7 @@ So: `mobile_ios@1.2.3` triggers one CI workflow that ships **both** apps.
 
 ```
 com.threkir.app                       ← iOS phone app
+com.threkir.app.RunActivity           ← Live Activity widget extension the phone app embeds
 com.threkir.app.watchapp              ← Apple Watch app target
 com.threkir.app.watchapp.complication ← watch complication (WidgetKit extension the watch app embeds)
 ```
@@ -72,6 +73,9 @@ com.threkir.app.watchapp.complication ← watch complication (WidgetKit extensio
 5b. **Create the complication App ID:**
    - Bundle ID: `com.threkir.app.watchapp.complication`
    - Capabilities: **App Groups** only (the same group). The complication is a separate process that draws the snapshot the watch app writes there, so it needs no HealthKit ([`apple_provisioning.md` step 4](../../docs/ops/apple_provisioning.md#then-the-complications-app-id)).
+5c. **Create the Live Activity extension's App ID:**
+   - Bundle ID: `com.threkir.app.RunActivity`
+   - Capabilities: **none**. The extension carries no entitlements; a Live Activity is licensed by `NSSupportsLiveActivities` in the phone app's `Info.plist`, and the card is updated locally, not by push ([`apple_provisioning.md` step 3](../../docs/ops/apple_provisioning.md#then-the-live-activity-extensions-app-id)).
 6. **Provisioning profiles.** One App Store Connect distribution profile per bundle ID, made after the App IDs are complete — [`apple_provisioning.md` step 15](../../docs/ops/apple_provisioning.md#15-app-store-provisioning-profiles--one-per-bundle).
 7. **Create the App Store listing** at App Store Connect:
    - App information (name, primary category Health & Fitness, content rights)
@@ -86,13 +90,13 @@ com.threkir.app.watchapp.complication ← watch complication (WidgetKit extensio
 The committed Xcode project signs **automatically**, so a Mac builds and runs on
 a device with no setup. The release runner cannot — it has no Apple Account to
 sign in with — so `release-ios.yml` hands `scripts/ios_release_signing.mjs` the
-three App Store profiles, and the script switches the `Release` configuration of
-`Runner`, the embedded `WatchApp` and its `WatchAppComplication` to manual signing against the profile
+App Store profiles, one per signed target, and the script switches the `Release` configuration of
+`Runner`, its embedded `RunActivityExtension`, the embedded `WatchApp` and its `WatchAppComplication` to manual signing against the profile
 whose bundle id matches, reading the team id out of the profiles. Debug and
 Profile are untouched, and nothing is committed back
 ([decisions § 1701](../../docs/architecture/decisions.md)).
 
-Making the certificate, the three profiles and the App Store Connect API key, and
+Making the certificate, the profiles and the App Store Connect API key, and
 setting them as secrets, is [`apple_provisioning.md` steps 14–16](../../docs/ops/apple_provisioning.md#14-apple-distribution-certificate).
 The secret list itself is [`docs/ops/releasing.md` § iOS](../../docs/ops/releasing.md#ios);
 the workflow's first step fails in seconds, naming every one that is unset.

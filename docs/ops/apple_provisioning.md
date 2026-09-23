@@ -36,7 +36,7 @@ Last moved: **2026-09-21**.
 | — | Developer Program enrollment | — | **Active** — App Store Connect reachable 2026-09-19 |
 | 1 | Team ID + renewal reminder | Bitwarden | ☐ |
 | 2 | App Group `group.com.threkir.app.activerun` | Apple portal | ☐ |
-| 3 | App ID `com.threkir.app` | Apple portal | ☐ |
+| 3 | App IDs `com.threkir.app` + `com.threkir.app.RunActivity` | Apple portal | ☐ |
 | 4 | Watch App IDs `com.threkir.app.watchapp` + `com.threkir.app.watchapp.complication` | Apple portal | ☐ |
 | 5 | Services ID `com.threkir.web` | Apple portal | ☐ |
 | 6 | **APNs key** `.p8` | Firebase → Cloud Messaging | **Done 2026-09-19** |
@@ -49,7 +49,7 @@ Last moved: **2026-09-21**.
 | 12 | `mobile_android@` release (picks up the push config) | Play | ☐ |
 | 13 | Android Apple dart-defines | `APPLE_SERVICE_CLIENT_ID` + `APPLE_REDIRECT_URI` | ☐ |
 | 14 | Apple Distribution certificate `.p12` | GitHub `production` env `IOS_BUILD_CERTIFICATE_BASE64` + `IOS_P12_PASSWORD`; estate | ☐ |
-| 15 | App Store profiles, phone + watch + complication | GitHub `production` env `IOS_PROVISIONING_PROFILE_BASE64` + `IOS_WATCH_PROVISIONING_PROFILE_BASE64` + `IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64` | ☐ — after steps 3–4, App Group included |
+| 15 | App Store profiles, phone + Live Activity + watch + complication | GitHub `production` env `IOS_PROVISIONING_PROFILE_BASE64` + `IOS_RUN_ACTIVITY_PROVISIONING_PROFILE_BASE64` + `IOS_WATCH_PROVISIONING_PROFILE_BASE64` + `IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64` | ☐ — after steps 3–4, App Group included |
 | 16 | App Store Connect API key `.p8` | GitHub `production` env `APP_STORE_CONNECT_API_*`; estate | ☐ |
 | 17 | App Store Connect app record | App Store Connect | ☐ — gates nothing above; must exist before step 18 uploads |
 | 18 | First `mobile_ios@` release → TestFlight | GitHub Release | ☐ |
@@ -252,6 +252,28 @@ anywhere in that chain.
 does not exist. Go to **Identifiers**, switch the **pop-up menu at the top
 right** to **App Groups**, and check `group.com.threkir.app.activerun` is
 listed. Apple offers nothing to select when the list is empty.
+
+### Then the Live Activity extension's App ID
+
+The phone app embeds `RunActivityExtension`, the Live Activity widget that
+puts the in-progress run on the lock screen and the Dynamic Island, and every
+bundle an archive embeds is signed with a profile of its own, so it needs an
+App ID of its own too. Same flow again:
+
+| Field | Value |
+|---|---|
+| Description | `Threkir Run Activity` |
+| Bundle ID | **Explicit App ID** — `com.threkir.app.RunActivity` |
+
+Capabilities: **none** — tick nothing, **Continue** → **Register**, and there
+is no second pass. The extension has no entitlements file, and a Live Activity
+is not a portal capability: it is licensed by `NSSupportsLiveActivities` in the
+*host* app's `Info.plist`, which is committed. The card is updated locally by
+`LiveActivityBridge.swift` (no ActivityKit push token is requested), so the
+extension needs no Push Notifications either. It still needs this App ID,
+because step 15's profile is made against it, and a release without that
+profile stops at its first step naming
+`IOS_RUN_ACTIVITY_PROVISIONING_PROFILE_BASE64`.
 
 ## 4. Watch App ID
 
@@ -636,11 +658,12 @@ re-running this step.
 **Profiles** → **(+)** → under Distribution, **App Store Connect** → App ID
 `com.threkir.app` → the certificate from step 14 → name `Threkir App Store` →
 **Generate** → **Download**. Again for `com.threkir.app.watchapp`, named
-`Threkir Watch App Store`, and for `com.threkir.app.watchapp.complication`,
-named `Threkir Watch Complication App Store`.
+`Threkir Watch App Store`, for `com.threkir.app.watchapp.complication`,
+named `Threkir Watch Complication App Store`, and for
+`com.threkir.app.RunActivity`, named `Threkir Run Activity App Store`.
 
-**Make these after steps 3 and 4 are finished, App Group assignment
-included.** A profile records the App ID's capabilities when it is generated,
+**Make these after steps 3 and 4 are finished — every App ID in both,
+App Group assignment included.** A profile records the App ID's capabilities when it is generated,
 so a capability enabled afterwards is missing from it until it is regenerated —
 and the build fails on the entitlement the profile lacks.
 
@@ -654,6 +677,10 @@ base64 -i ~/Downloads/Threkir_Watch_App_Store.mobileprovision | gh secret set IO
 
 ```
 base64 -i ~/Downloads/Threkir_Watch_Complication_App_Store.mobileprovision | gh secret set IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64 --env production
+```
+
+```
+base64 -i ~/Downloads/Threkir_Run_Activity_App_Store.mobileprovision | gh secret set IOS_RUN_ACTIVITY_PROVISIONING_PROFILE_BASE64 --env production
 ```
 
 Profiles are not secret and can be regenerated at any time, so they need no

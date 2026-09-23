@@ -5669,6 +5669,12 @@ abstract class AppLocalizations {
   /// **'Course sent to the watch ({points} points)'**
   String routeDetailWatchCourseSent(int points);
 
+  /// Banner after the course reached the watch but the course-markers read failed, so no roadbook schedule was sent
+  ///
+  /// In en, this message translates to:
+  /// **'Course sent to the watch ({points} points), but its course markers couldn\'t be loaded, so no schedule went with it.'**
+  String routeDetailWatchCourseSentMarkersFailed(int points);
+
   /// Banner after a route too long for the watch was simplified before being pushed
   ///
   /// In en, this message translates to:
@@ -19574,6 +19580,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No course markers yet. Add aid stations, cutoffs, and more along the route.'**
   String get routeMarkerEmpty;
+
+  /// Shown in place of the course-markers list, or the roadbook, when the markers read failed — distinct from having no markers
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this route\'s course markers. They have not been deleted — check your connection and try again.'**
+  String get routeMarkerLoadFailed;
 
   /// Edit a course marker
   ///

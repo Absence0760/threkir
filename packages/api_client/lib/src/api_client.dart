@@ -1231,22 +1231,27 @@ class ApiClient {
   /// Course markers for a route, ordered by distance along the line. Reads
   /// through the `route_markers_for_viewer` RPC, which gates visibility and
   /// redacts any marker inside the owner's privacy zones for a non-owner.
-  /// Fails closed (empty list) on error so a redaction failure never leaks.
+  /// A failed read throws rather than answering "no markers": nothing leaks
+  /// either way, but an empty list tells an owner to re-add markers they have.
+  ///
+  /// Issued as a GET, not the client's default POST. The function is
+  /// `stable`, and Kong replays an idempotent request whose pooled PostgREST
+  /// connection closed under it, where a POST comes back 502 (decisions § 1703).
   Future<List<RouteMarkerRow>> fetchRouteMarkers(String routeId) async {
     if (routeId.isEmpty) return const [];
-    try {
-      final data = await _client.rpc('route_markers_for_viewer', params: {
-        'p_route_id': routeId,
-      });
-      if (data is! List) return const [];
-      return data
-          .whereType<Map>()
-          .map((m) => RouteMarkerRow.fromJson(m.cast<String, dynamic>()))
-          .toList();
-    } catch (e) {
-      debugPrint('fetchRouteMarkers failed: ${safeErrorLabel(e)}');
-      return const [];
+    final data = await _client.rpc(
+      'route_markers_for_viewer',
+      params: {'p_route_id': routeId},
+      get: true,
+    );
+    if (data == null) return const [];
+    if (data is! List) {
+      throw const FormatException('route_markers_for_viewer returned a non-list');
     }
+    return data
+        .whereType<Map>()
+        .map((m) => RouteMarkerRow.fromJson(m.cast<String, dynamic>()))
+        .toList();
   }
 
   /// Add a course marker (owner-only at the RLS layer). Returns the inserted

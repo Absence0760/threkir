@@ -3434,6 +3434,11 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String routeDetailWatchCourseSentMarkersFailed(int points) {
+    return 'Strecke an die Uhr gesendet ($points Punkte), aber die Streckenmarker konnten nicht geladen werden – daher wurde kein Zeitplan mitgesendet.';
+  }
+
+  @override
   String routeDetailWatchCourseSimplified(int source, int points) {
     return 'Strecke an die Uhr gesendet — von $source auf $points Punkte ausgedünnt';
   }
@@ -11914,6 +11919,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get routeMarkerEmpty =>
       'Noch keine Streckenmarker. Füge Verpflegungsstationen, Cut-offs und mehr entlang der Strecke hinzu.';
+
+  @override
+  String get routeMarkerLoadFailed =>
+      'Die Streckenmarker dieser Route konnten nicht geladen werden. Sie wurden nicht gelöscht — prüfe deine Verbindung und versuche es erneut.';
 
   @override
   String get routeMarkerEdit => 'Marker bearbeiten';

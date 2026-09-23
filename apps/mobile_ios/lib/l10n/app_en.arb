@@ -4466,6 +4466,15 @@
     },
     "description": "Banner after the route was pushed to the watch unchanged"
   },
+  "routeDetailWatchCourseSentMarkersFailed": "Course sent to the watch ({points} points), but its course markers couldn't be loaded, so no schedule went with it.",
+  "@routeDetailWatchCourseSentMarkersFailed": {
+    "placeholders": {
+      "points": {
+        "type": "int"
+      }
+    },
+    "description": "Banner after the course reached the watch but the course-markers read failed, so no roadbook schedule was sent"
+  },
   "routeDetailWatchCourseSimplified": "Course sent to the watch — thinned from {source} points to {points} to fit",
   "@routeDetailWatchCourseSimplified": {
     "placeholders": {
@@ -15410,6 +15419,10 @@
   "routeMarkerEmpty": "No course markers yet. Add aid stations, cutoffs, and more along the route.",
   "@routeMarkerEmpty": {
     "description": "Empty state for the course-markers panel"
+  },
+  "routeMarkerLoadFailed": "Couldn't load this route's course markers. They have not been deleted — check your connection and try again.",
+  "@routeMarkerLoadFailed": {
+    "description": "Shown in place of the course-markers list, or the roadbook, when the markers read failed — distinct from having no markers"
   },
   "routeMarkerEdit": "Edit marker",
   "@routeMarkerEdit": {

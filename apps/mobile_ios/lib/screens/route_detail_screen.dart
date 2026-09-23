@@ -1663,7 +1663,8 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
       // Shaped before the radio opens: the schedule half may have to ask the
       // runner for a goal time and a start clock, and a modal answered at
       // leisure would otherwise hold a live BLE connection open behind it.
-      final schedule = await _watchRoadbook();
+      final roadbook = await _watchRoadbook();
+      final schedule = roadbook.schedule;
       if (!mounted) return;
       final client = WatchSyncClient(
         transport: (widget.watchTransportFactory ??
@@ -1683,7 +1684,9 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
       }
       if (!mounted) return;
       showTopBanner(
-          context, _watchPushMessage(l10n, course, points.length, schedule));
+          context,
+          _watchPushMessage(l10n, course, points.length, schedule,
+              markersFailed: roadbook.markersFailed));
     } catch (e) {
       if (!mounted) return;
       // A refusal is not a generic failure: the watch answered, and what it
@@ -1757,21 +1760,24 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   /// race whose barriers are all wall-clock is the entire schedule.
   ///
   /// Fetching markers is an auxiliary step: a failure degrades to a course-only
-  /// push (the course still goes) instead of sinking the whole action.
-  Future<WatchRoadbookResult?> _watchRoadbook() async {
+  /// push (the course still goes) instead of sinking the whole action, and is
+  /// reported so the banner does not read as a route with no checkpoints.
+  Future<({WatchRoadbookResult? schedule, bool markersFailed})>
+      _watchRoadbook() async {
+    const none = (schedule: null, markersFailed: false);
     final api = widget.apiClient;
-    if (api == null) return null;
+    if (api == null) return none;
     List<cm.RouteMarkerRow> markers;
     try {
       markers = await api.fetchRouteMarkers(widget.route.id);
     } catch (e) {
       debugPrint('sendToWatch: fetchRouteMarkers failed: $e');
-      return null;
+      return (schedule: null, markersFailed: true);
     }
-    if (markers.isEmpty || !mounted) return null;
+    if (markers.isEmpty || !mounted) return none;
     final plan = await _roadbookPlan();
-    if (plan == null || !mounted) return null;
-    return watchRoadbookFromRoadbook(buildRoadbook(
+    if (plan == null || !mounted) return none;
+    final schedule = watchRoadbookFromRoadbook(buildRoadbook(
       [
         for (final w in _displayWaypoints)
           RoadbookWaypoint(lat: w.lat, lng: w.lng, ele: w.elevationMetres),
@@ -1785,6 +1791,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
       startClockMin: plan.startClockMin?.toDouble(),
       model: plan.model,
     ));
+    return (schedule: schedule, markersFailed: false);
   }
 
   /// This route's stored race plan, asking for one when there is none. A
@@ -1810,8 +1817,12 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     AppLocalizations l10n,
     WatchCourseResult course,
     int pointCount,
-    WatchRoadbookResult? schedule,
-  ) {
+    WatchRoadbookResult? schedule, {
+    bool markersFailed = false,
+  }) {
+    if (markersFailed) {
+      return l10n.routeDetailWatchCourseSentMarkersFailed(pointCount);
+    }
     final checkpoints = schedule?.checkpoints;
     if (schedule != null && checkpoints == null) {
       // noSchedule is not worth a warning — it just means the markers carry no
@@ -1866,6 +1877,27 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
       );
       return;
     }
+    final withMarkers = format == 'gpx_markers';
+    // Fetch the raw course markers on demand so the waypoints land in
+    // the export. A failed read is reported rather than shared as a
+    // markers-less file named "with markers"; the plain GPX export stays
+    // one tap away.
+    var markers = <cm.RouteMarkerRow>[];
+    if (withMarkers) {
+      try {
+        markers =
+            await widget.apiClient?.fetchRouteMarkers(widget.route.id) ??
+                <cm.RouteMarkerRow>[];
+      } catch (e) {
+        debugPrint('shareAs gpx_markers: fetchRouteMarkers failed: $e');
+        if (context.mounted) {
+          showTopBanner(
+              context, AppLocalizations.of(context).routeMarkerLoadFailed);
+        }
+        return;
+      }
+    }
+
     try {
       final tmp = await getTemporaryDirectory();
       final safe = route.name
@@ -1873,21 +1905,6 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
               .replaceAll(RegExp(r'\s+'), '_');
       final base = safe.isEmpty ? 'route' : safe;
       final isKml = format == 'kml';
-      final withMarkers = format == 'gpx_markers';
-
-      // Fetch the raw course markers on demand so the waypoints land in
-      // the export. A failure (offline / RLS) must never sink the share —
-      // fall back to a line-only GPX.
-      var markers = <cm.RouteMarkerRow>[];
-      if (withMarkers) {
-        try {
-          markers =
-              await widget.apiClient?.fetchRouteMarkers(widget.route.id) ??
-                  <cm.RouteMarkerRow>[];
-        } catch (e) {
-          debugPrint('shareAs gpx_markers: fetchRouteMarkers failed: $e');
-        }
-      }
 
       final fileName = withMarkers
           ? '${base}_with_markers.gpx'

@@ -881,12 +881,12 @@ class ApiClient {
       isPublic: isPublic,
     );
     final json = _runUpsertBody(row.toJson());
-    if (run.externalId != null && run.externalId!.isNotEmpty) {
-      await _client.from(RunRow.table).upsert(json,
-          onConflict: '${RunRow.colUserId},${RunRow.colExternalId}');
-    } else {
-      await _client.from(RunRow.table).upsert(json);
-    }
+    await _upsertRunRows(
+      [json],
+      onConflict: run.externalId != null && run.externalId!.isNotEmpty
+          ? '${RunRow.colUserId},${RunRow.colExternalId}'
+          : null,
+    );
     // L4 — best-effort plan-workout link. Mirrors `apps/web/src/lib/core/data.ts`
     // `saveRun` / `createManualRun`. A match failure must not break the core
     // upsert above (layered-resilience contract).
@@ -1058,11 +1058,11 @@ class ApiClient {
           })
           .toList();
       if (withExtId.isNotEmpty) {
-        await _client.from(RunRow.table).upsert(withExtId,
+        await _upsertRunRows(withExtId,
             onConflict: '${RunRow.colUserId},${RunRow.colExternalId}');
       }
       if (withoutExtId.isNotEmpty) {
-        await _client.from(RunRow.table).upsert(withoutExtId);
+        await _upsertRunRows(withoutExtId);
       }
       saved += chunk.length;
       onProgress?.call(saved);
@@ -1096,6 +1096,73 @@ class ApiClient {
     }
     return _outcome(trackFailures, blocked);
   }
+
+  /// Upsert `runs` rows, landing a run without its `event_id` when that link
+  /// is the only thing Postgres refused.
+  ///
+  /// `event_id` is an L4 link on an L1 write: a watch stamps it at Arm, and an
+  /// event deleted before the run syncs makes `runs_event_id_fkey` refuse the
+  /// whole row with 23503 — which every caller retries forever, so the run
+  /// never lands. Only a violation of that one foreign key drops the stamp,
+  /// and only from rows that carry one; any other failure propagates
+  /// unchanged. A multi-row statement is atomic and its error does not say
+  /// which row's event is gone, so the unstamped rows are sent together and
+  /// each stamped row is tried on its own before its stamp is given up.
+  Future<void> _upsertRunRows(
+    List<Map<String, dynamic>> rows, {
+    String? onConflict,
+  }) async {
+    try {
+      await _sendRunUpsert(rows, onConflict);
+    } on PostgrestException catch (e) {
+      final stamped =
+          rows.where((r) => r.containsKey(RunRow.colEventId)).toList();
+      if (!_isDeadRunEventStamp(e) || stamped.isEmpty) rethrow;
+      final unstamped =
+          rows.where((r) => !r.containsKey(RunRow.colEventId)).toList();
+      if (unstamped.isNotEmpty) await _sendRunUpsert(unstamped, onConflict);
+      if (stamped.length == 1) {
+        await _sendRunUpsertWithoutEventStamp(stamped.single, onConflict);
+        return;
+      }
+      for (final row in stamped) {
+        try {
+          await _sendRunUpsert([row], onConflict);
+        } on PostgrestException catch (e) {
+          if (!_isDeadRunEventStamp(e)) rethrow;
+          await _sendRunUpsertWithoutEventStamp(row, onConflict);
+        }
+      }
+    }
+  }
+
+  Future<void> _sendRunUpsertWithoutEventStamp(
+    Map<String, dynamic> row,
+    String? onConflict,
+  ) async {
+    debugPrint('run ${row[RunRow.colId]}: its event no longer exists — '
+        'saving the run without the event link');
+    await _sendRunUpsert(
+        [Map<String, dynamic>.from(row)..remove(RunRow.colEventId)],
+        onConflict);
+  }
+
+  Future<void> _sendRunUpsert(
+    List<Map<String, dynamic>> rows,
+    String? onConflict,
+  ) async {
+    final Object body = rows.length == 1 ? rows.single : rows;
+    if (onConflict == null) {
+      await _client.from(RunRow.table).upsert(body);
+    } else {
+      await _client.from(RunRow.table).upsert(body, onConflict: onConflict);
+    }
+  }
+
+  static bool _isDeadRunEventStamp(PostgrestException e) =>
+      e.code == '23503' &&
+      (e.message.contains('runs_event_id_fkey') ||
+          '${e.details}'.contains('(${RunRow.colEventId})'));
 
   static RunPushOutcome _outcome(
     Map<String, Object> trackFailures,

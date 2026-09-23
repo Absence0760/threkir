@@ -14305,4 +14305,39 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get bleScanRetry => 'Erneut suchen';
+
+  @override
+  String get planDetailSectionProgressTitle => 'Planfortschritt';
+
+  @override
+  String get planDetailSectionProgressHint =>
+      'Phasen, Plansummen, längster langer Lauf';
+
+  @override
+  String get planDetailSectionRulesTitle => 'Planregeln';
+
+  @override
+  String get planDetailSectionRulesHint => 'Woran sich dieser Plan hält';
+
+  @override
+  String get planDetailSectionCalendarTitle => 'Kalender';
+
+  @override
+  String get planDetailSectionCalendarHint =>
+      'Jede Einheit an ihrem echten Datum';
+
+  @override
+  String get planDetailSectionWeeksTitle => 'Woche für Woche';
+
+  @override
+  String planDetailSectionWeeksHint(int n) {
+    return 'Alle $n Wochen, Tag für Tag';
+  }
+
+  @override
+  String get planDetailSectionShareTitle => 'Teilen & veröffentlichen';
+
+  @override
+  String get planDetailSectionShareHint =>
+      'Vereinsvorlage und öffentliche Planbibliothek';
 }

@@ -14294,6 +14294,40 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get bleScanRetry => 'Procurar novamente';
+
+  @override
+  String get planDetailSectionProgressTitle => 'Progresso do plano';
+
+  @override
+  String get planDetailSectionProgressHint =>
+      'Fases, totais do plano, corrida longa mais longa';
+
+  @override
+  String get planDetailSectionRulesTitle => 'Regras do plano';
+
+  @override
+  String get planDetailSectionRulesHint => 'O que este plano segue';
+
+  @override
+  String get planDetailSectionCalendarTitle => 'Calendário';
+
+  @override
+  String get planDetailSectionCalendarHint => 'Cada treino na sua data real';
+
+  @override
+  String get planDetailSectionWeeksTitle => 'Semana a semana';
+
+  @override
+  String planDetailSectionWeeksHint(int n) {
+    return 'Todas as $n semanas, dia a dia';
+  }
+
+  @override
+  String get planDetailSectionShareTitle => 'Partilhar e publicar';
+
+  @override
+  String get planDetailSectionShareHint =>
+      'Modelo do clube e biblioteca pública de planos';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -28577,4 +28611,38 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get bleScanRetry => 'Procurar novamente';
+
+  @override
+  String get planDetailSectionProgressTitle => 'Progresso do plano';
+
+  @override
+  String get planDetailSectionProgressHint =>
+      'Fases, totais do plano, longão mais longo';
+
+  @override
+  String get planDetailSectionRulesTitle => 'Regras do plano';
+
+  @override
+  String get planDetailSectionRulesHint => 'O que este plano segue';
+
+  @override
+  String get planDetailSectionCalendarTitle => 'Calendário';
+
+  @override
+  String get planDetailSectionCalendarHint => 'Cada treino na sua data real';
+
+  @override
+  String get planDetailSectionWeeksTitle => 'Semana a semana';
+
+  @override
+  String planDetailSectionWeeksHint(int n) {
+    return 'Todas as $n semanas, dia a dia';
+  }
+
+  @override
+  String get planDetailSectionShareTitle => 'Compartilhar e publicar';
+
+  @override
+  String get planDetailSectionShareHint =>
+      'Modelo do clube e biblioteca pública de planos';
 }

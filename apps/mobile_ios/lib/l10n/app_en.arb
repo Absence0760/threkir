@@ -18168,5 +18168,50 @@
   "bleScanRetry": "Scan again",
   "@bleScanRetry": {
     "description": "Button on the strap pairing sheet that restarts the scan after a refusal that could clear on its own"
+  },
+  "planDetailSectionProgressTitle": "Plan progress",
+  "@planDetailSectionProgressTitle": {
+    "description": "Plan detail: a named expander (title or its one-line hint)"
+  },
+  "planDetailSectionProgressHint": "Phases, plan totals, longest long run",
+  "@planDetailSectionProgressHint": {
+    "description": "Plan detail: a named expander (title or its one-line hint)"
+  },
+  "planDetailSectionRulesTitle": "Plan rules",
+  "@planDetailSectionRulesTitle": {
+    "description": "Plan detail: a named expander (title or its one-line hint)"
+  },
+  "planDetailSectionRulesHint": "What this plan sticks to",
+  "@planDetailSectionRulesHint": {
+    "description": "Plan detail: a named expander (title or its one-line hint)"
+  },
+  "planDetailSectionCalendarTitle": "Calendar",
+  "@planDetailSectionCalendarTitle": {
+    "description": "Plan detail: a named expander (title or its one-line hint)"
+  },
+  "planDetailSectionCalendarHint": "Every workout on its real date",
+  "@planDetailSectionCalendarHint": {
+    "description": "Plan detail: a named expander (title or its one-line hint)"
+  },
+  "planDetailSectionWeeksTitle": "Week by week",
+  "@planDetailSectionWeeksTitle": {
+    "description": "Plan detail: a named expander (title or its one-line hint)"
+  },
+  "planDetailSectionWeeksHint": "All {n} weeks, day by day",
+  "@planDetailSectionWeeksHint": {
+    "description": "Plan detail: the Week by week expander hint; n is the plan length in weeks",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "planDetailSectionShareTitle": "Share & publish",
+  "@planDetailSectionShareTitle": {
+    "description": "Plan detail: a named expander (title or its one-line hint)"
+  },
+  "planDetailSectionShareHint": "Club template and public plan library",
+  "@planDetailSectionShareHint": {
+    "description": "Plan detail: a named expander (title or its one-line hint)"
   }
 }

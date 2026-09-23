@@ -4130,5 +4130,15 @@
   "bleUnavailableLocationOff": "Active la localisation pour qu'Android puisse rechercher ta ceinture cardio.",
   "bleUnavailableUnknown": "Le Bluetooth n'a pas répondu. Réessaie dans un instant.",
   "bleOpenSettings": "Ouvrir les réglages",
-  "bleScanRetry": "Relancer la recherche"
+  "bleScanRetry": "Relancer la recherche",
+  "planDetailSectionProgressTitle": "Progression du plan",
+  "planDetailSectionProgressHint": "Phases, totaux du plan, sortie longue la plus longue",
+  "planDetailSectionRulesTitle": "Règles du plan",
+  "planDetailSectionRulesHint": "Ce que ce plan respecte",
+  "planDetailSectionCalendarTitle": "Calendrier",
+  "planDetailSectionCalendarHint": "Chaque séance à sa date réelle",
+  "planDetailSectionWeeksTitle": "Semaine par semaine",
+  "planDetailSectionWeeksHint": "Les {n} semaines, jour par jour",
+  "planDetailSectionShareTitle": "Partager et publier",
+  "planDetailSectionShareHint": "Modèle de club et bibliothèque publique de plans"
 }

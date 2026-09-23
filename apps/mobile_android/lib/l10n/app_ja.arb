@@ -4130,5 +4130,15 @@
   "bleUnavailableLocationOff": "Android が心拍ストラップを検索できるように、位置情報サービスをオンにしてください。",
   "bleUnavailableUnknown": "Bluetooth が応答しませんでした。少し経ってからもう一度お試しください。",
   "bleOpenSettings": "設定を開く",
-  "bleScanRetry": "もう一度検索"
+  "bleScanRetry": "もう一度検索",
+  "planDetailSectionProgressTitle": "プランの進捗",
+  "planDetailSectionProgressHint": "フェーズ、プランの合計、最長のロング走",
+  "planDetailSectionRulesTitle": "プランのルール",
+  "planDetailSectionRulesHint": "このプランが守るルール",
+  "planDetailSectionCalendarTitle": "カレンダー",
+  "planDetailSectionCalendarHint": "各ワークアウトを実際の日付に表示",
+  "planDetailSectionWeeksTitle": "週ごと",
+  "planDetailSectionWeeksHint": "全{n}週を1日ずつ",
+  "planDetailSectionShareTitle": "共有と公開",
+  "planDetailSectionShareHint": "クラブのテンプレートと公開プランライブラリ"
 }

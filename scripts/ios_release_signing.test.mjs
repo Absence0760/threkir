@@ -22,6 +22,8 @@ import {
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PBXPROJ = readFileSync(resolve(root, 'apps/mobile_ios/ios/Runner.xcodeproj/project.pbxproj'), 'utf8');
+const WORKFLOW_PATH = '.github/workflows/release-ios.yml';
+const WORKFLOW = readFileSync(resolve(root, WORKFLOW_PATH), 'utf8');
 
 const TEAM = 'ABCDE12345';
 const PHONE = profileFromFields({
@@ -231,4 +233,79 @@ test('readSetting reads a quoted per-SDK key literally', () => {
 	const body = '\t\t\t\t"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";\n\t\t\t\tCODE_SIGN_IDENTITY = X;\n';
 	assert.equal(readSetting(body, 'CODE_SIGN_IDENTITY[sdk=iphoneos*]'), 'iPhone Developer');
 	assert.equal(readSetting(body, 'CODE_SIGN_IDENTITY'), 'X');
+});
+
+/**
+ * The profile secrets release-ios.yml's header declares, each with the bundle
+ * id it says the profile is for.
+ * @param {string} workflow
+ * @returns {Map<string, string>}
+ */
+function headerProfileSecrets(workflow) {
+	/** @type {Map<string, string>} */
+	const out = new Map();
+	const header = workflow.slice(0, workflow.indexOf('\non:'));
+	for (const m of header.matchAll(/^# {3}(IOS_\w*PROVISIONING_PROFILE_BASE64)\b([\s\S]*?)(?=^# {3}[A-Z]|^#\s*$)/gm)) {
+		const bundle = /App Store profile for (com\.[A-Za-z0-9.]*[A-Za-z0-9])/.exec(m[2]);
+		assert.ok(bundle, `${WORKFLOW_PATH}'s header says which bundle ${m[1]} is the profile for`);
+		out.set(m[1], bundle[1]);
+	}
+	return out;
+}
+
+/** @param {string} workflow @param {string} name */
+function stepBody(workflow, name) {
+	const at = workflow.indexOf(`- name: ${name}\n`);
+	assert.notEqual(at, -1, `${WORKFLOW_PATH} has a step named "${name}"`);
+	const next = workflow.indexOf('\n      - ', at + 1);
+	return workflow.slice(at, next === -1 ? undefined : next);
+}
+
+/**
+ * Every place a profile secret has to reach for the archive to sign: the
+ * preflight that names it when unset, the signing step's env, a decode to a
+ * file, and that file on the signing script's command line.
+ * @param {string} workflow
+ */
+function profileWiring(workflow) {
+	const secrets = headerProfileSecrets(workflow);
+	const preflight = stepBody(workflow, 'Every secret this release needs is set');
+	const signing = stepBody(workflow, 'Point the archive at the App Store profiles');
+	const command = signing.split('\n').find((line) => line.includes('node scripts/ios_release_signing.mjs')) ?? '';
+	const passed = [...command.matchAll(/"\$RUNNER_TEMP\/([^"]+\.mobileprovision)"/g)].map((m) => m[1]);
+	/** @type {string[]} */
+	const problems = [];
+	for (const [secret, bundleId] of secrets) {
+		if (!preflight.includes(`HAS_${secret}: \${{ secrets.${secret} != '' }}`)) {
+			problems.push(`${secret} (${bundleId}) is not in the preflight, so an unset one fails inside the build instead of naming itself`);
+		}
+		if (!signing.includes(`${secret}: \${{ secrets.${secret} }}`)) problems.push(`${secret} (${bundleId}) is not in the signing step's env`);
+		const decode = new RegExp(`echo "\\$${secret}" \\| base64 -d > "\\$RUNNER_TEMP/([^"]+\\.mobileprovision)"`).exec(signing);
+		if (decode === null) problems.push(`${secret} (${bundleId}) is never decoded to a profile file`);
+		else if (!passed.includes(decode[1])) problems.push(`${secret} (${bundleId}) decodes to ${decode[1]}, which the signing script is never handed`);
+	}
+	return { secrets, passed, problems };
+}
+
+test('release-ios.yml hands the signing script one profile secret per signed target, and names each in its preflight', () => {
+	const { secrets, passed, problems } = profileWiring(WORKFLOW);
+	assert.deepEqual(problems, []);
+	assert.deepEqual(
+		[...secrets.values()].sort(),
+		signedTargets(PBXPROJ).map((t) => t.bundleId).sort(),
+		`every signed target in the project has a profile secret in ${WORKFLOW_PATH}'s header, and no secret is for a bundle the project does not build`,
+	);
+	assert.equal(new Set(passed).size, passed.length, 'no profile file is passed twice');
+	assert.equal(passed.length, secrets.size, 'the signing script is handed exactly the declared profiles');
+});
+
+test('a profile secret missing from the preflight or the command line is reported by name', () => {
+	const secret = 'IOS_RUN_ACTIVITY_PROVISIONING_PROFILE_BASE64';
+	assert.ok(WORKFLOW.includes(secret));
+	const withoutPreflight = WORKFLOW.replace(new RegExp(`\\n *HAS_${secret}: [^\\n]*`), '');
+	assert.match(profileWiring(withoutPreflight).problems.join('\n'), /IOS_RUN_ACTIVITY_PROVISIONING_PROFILE_BASE64 \(com\.threkir\.app\.RunActivity\) is not in the preflight/);
+	const onCommandLine = '"$RUNNER_TEMP/share.mobileprovision" "$RUNNER_TEMP/run-activity.mobileprovision"';
+	assert.ok(WORKFLOW.includes(onCommandLine));
+	const unpassed = WORKFLOW.replace(onCommandLine, '"$RUNNER_TEMP/share.mobileprovision"');
+	assert.match(profileWiring(unpassed).problems.join('\n'), /decodes to run-activity\.mobileprovision, which the signing script is never handed/);
 });

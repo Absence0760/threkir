@@ -35,8 +35,8 @@ Last moved: **2026-09-21**.
 | — | VAPID pair (browser push) | Fly `VAPID_*` + GitHub `PUBLIC_VAPID_PUBLIC_KEY` | **Done 2026-09-18** — shipped in `web@1.7.1` |
 | — | Developer Program enrollment | — | **Active** — App Store Connect reachable 2026-09-19 |
 | 1 | Team ID + renewal reminder | Bitwarden | ☐ |
-| 2 | App Group `group.com.threkir.app.activerun` | Apple portal | ☐ |
-| 3 | App IDs `com.threkir.app` + `com.threkir.app.RunActivity` | Apple portal | ☐ |
+| 2 | App Groups `group.com.threkir.app.activerun` + `group.com.threkir.app.share` | Apple portal | ☐ |
+| 3 | App IDs `com.threkir.app` + `com.threkir.app.ShareExtension` + `com.threkir.app.RunActivity` | Apple portal | ☐ |
 | 4 | Watch App IDs `com.threkir.app.watchapp` + `com.threkir.app.watchapp.complication` | Apple portal | ☐ |
 | 5 | Services ID `com.threkir.web` | Apple portal | ☐ |
 | 6 | **APNs key** `.p8` | Firebase → Cloud Messaging | **Done 2026-09-19** |
@@ -49,7 +49,7 @@ Last moved: **2026-09-21**.
 | 12 | `mobile_android@` release (picks up the push config) | Play | ☐ |
 | 13 | Android Apple dart-defines | `APPLE_SERVICE_CLIENT_ID` + `APPLE_REDIRECT_URI` | ☐ |
 | 14 | Apple Distribution certificate `.p12` | GitHub `production` env `IOS_BUILD_CERTIFICATE_BASE64` + `IOS_P12_PASSWORD`; estate | ☐ |
-| 15 | App Store profiles, phone + Live Activity + watch + complication | GitHub `production` env `IOS_PROVISIONING_PROFILE_BASE64` + `IOS_RUN_ACTIVITY_PROVISIONING_PROFILE_BASE64` + `IOS_WATCH_PROVISIONING_PROFILE_BASE64` + `IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64` | ☐ — after steps 3–4, App Group included |
+| 15 | App Store profiles, phone + share extension + Live Activity + watch + complication | GitHub `production` env `IOS_PROVISIONING_PROFILE_BASE64` + `IOS_SHARE_PROVISIONING_PROFILE_BASE64` + `IOS_RUN_ACTIVITY_PROVISIONING_PROFILE_BASE64` + `IOS_WATCH_PROVISIONING_PROFILE_BASE64` + `IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64` | ☐ — after steps 3–4, App Group included |
 | 16 | App Store Connect API key `.p8` | GitHub `production` env `APP_STORE_CONNECT_API_*`; estate | ☐ |
 | 17 | App Store Connect app record | App Store Connect | ☐ — gates nothing above; must exist before step 18 uploads |
 | 18 | First `mobile_ios@` release → TestFlight | GitHub Release | ☐ |
@@ -193,6 +193,24 @@ The id is **not** `group.com.threkir.app`. The canonical spelling lives in
 and is declared in `WatchApp.entitlements`; a mismatch compiles, installs, and
 silently shares nothing between the phone and the watch.
 
+### Then the share extension's App Group
+
+Same flow, a second group:
+
+| Field | Value |
+|---|---|
+| Description | `Threkir shared route` |
+| Identifier | `group.com.threkir.app.share` |
+
+This is the only ground the share extension and the phone app have in common:
+the extension copies a shared route file into the group's container and the
+app reads it back out. It is deliberately **not** the active-run group, because
+the extension clears its container's root on every activation. The spelling is
+centralised in
+[`SharedRouteHandoff.swift`](../../apps/mobile_ios/ios/ShareExtension/SharedRouteHandoff.swift)
+and declared by both `Runner.entitlements` and `ShareExtension.entitlements`;
+`ShareExtensionHandoffTests` holds the four copies together.
+
 ## 3. App ID `com.threkir.app`
 
 **Identifiers** → **(+)** → select **App IDs** → **Continue** → the type screen
@@ -240,8 +258,10 @@ and the App ID is not finished until it has.
 
 **Identifiers** → click **`com.threkir.app`** in the list → scroll to
 **Capabilities** → the **App Groups** row now carries an **Edit** (on some
-accounts **Configure**) button → click it → tick
-`group.com.threkir.app.activerun` → **Continue** → **Save**.
+accounts **Configure**) button → click it → tick **both**
+`group.com.threkir.app.activerun` and `group.com.threkir.app.share` →
+**Continue** → **Save**. `Runner.entitlements` declares the share group
+today, so a phone profile without it fails to sign the app.
 
 Reopen the App ID once more and confirm the group is named on the row. An App
 Groups capability with no group selected is the state that compiles, installs,
@@ -252,6 +272,23 @@ anywhere in that chain.
 does not exist. Go to **Identifiers**, switch the **pop-up menu at the top
 right** to **App Groups**, and check `group.com.threkir.app.activerun` is
 listed. Apple offers nothing to select when the list is empty.
+
+### Then the share extension's App ID
+
+The phone app embeds `ShareExtension`, which puts Threkir in the system share
+sheet for route files, and it is signed with a profile of its own. Same flow:
+
+| Field | Value |
+|---|---|
+| Description | `Threkir Share Extension` |
+| Bundle ID | **Explicit App ID** — `com.threkir.app.ShareExtension` |
+
+Capability: **App Groups** only, assigned to `group.com.threkir.app.share` in
+the same second pass — not the active-run group.
+`ShareExtension/ShareExtension.entitlements` declares that group and nothing
+else. A profile without it still signs, which is what makes it expensive: the
+extension installs and its container lookup returns nil on the device, so a
+shared file goes nowhere.
 
 ### Then the Live Activity extension's App ID
 
@@ -293,8 +330,8 @@ in and does not receive its own pushes.
 `apps/watch_ios/WatchApp/WatchApp.entitlements` declares
 `com.apple.security.application-groups` and `ActiveRunBridge.swift` binds that
 exact string, so a provisioning profile for `com.threkir.app.watchapp` without
-the App Group fails to sign the watch app. `Runner.entitlements` requests no
-app group at all yet — the phone half of the bridge is owed code, tracked in
+the App Group fails to sign the watch app. `Runner.entitlements` does not
+request this group yet (only the share group) — the phone half of the bridge is owed code, tracked in
 [`followups.md`](../product/followups.md), not a portal step. Assign it on both
 App IDs regardless: it costs nothing on the phone and saves a round-trip when
 that entitlement lands.
@@ -659,8 +696,9 @@ re-running this step.
 `com.threkir.app` → the certificate from step 14 → name `Threkir App Store` →
 **Generate** → **Download**. Again for `com.threkir.app.watchapp`, named
 `Threkir Watch App Store`, for `com.threkir.app.watchapp.complication`,
-named `Threkir Watch Complication App Store`, and for
-`com.threkir.app.RunActivity`, named `Threkir Run Activity App Store`.
+named `Threkir Watch Complication App Store`, for
+`com.threkir.app.ShareExtension`, named `Threkir Share Extension App Store`,
+and for `com.threkir.app.RunActivity`, named `Threkir Run Activity App Store`.
 
 **Make these after steps 3 and 4 are finished — every App ID in both,
 App Group assignment included.** A profile records the App ID's capabilities when it is generated,
@@ -677,6 +715,10 @@ base64 -i ~/Downloads/Threkir_Watch_App_Store.mobileprovision | gh secret set IO
 
 ```
 base64 -i ~/Downloads/Threkir_Watch_Complication_App_Store.mobileprovision | gh secret set IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64 --env production
+```
+
+```
+base64 -i ~/Downloads/Threkir_Share_Extension_App_Store.mobileprovision | gh secret set IOS_SHARE_PROVISIONING_PROFILE_BASE64 --env production
 ```
 
 ```

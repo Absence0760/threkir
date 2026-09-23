@@ -24,6 +24,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PBXPROJ = readFileSync(resolve(root, 'apps/mobile_ios/ios/Runner.xcodeproj/project.pbxproj'), 'utf8');
 const WORKFLOW_PATH = '.github/workflows/release-ios.yml';
 const WORKFLOW = readFileSync(resolve(root, WORKFLOW_PATH), 'utf8');
+const PROFILE_DOCS = ['docs/ops/releasing.md', 'docs/ops/apple_provisioning.md'];
 
 const TEAM = 'ABCDE12345';
 const PHONE = profileFromFields({
@@ -308,4 +309,14 @@ test('a profile secret missing from the preflight or the command line is reporte
 	assert.ok(WORKFLOW.includes(onCommandLine));
 	const unpassed = WORKFLOW.replace(onCommandLine, '"$RUNNER_TEMP/share.mobileprovision"');
 	assert.match(profileWiring(unpassed).problems.join('\n'), /decodes to run-activity\.mobileprovision, which the signing script is never handed/);
+});
+
+test('every profile secret is documented beside its bundle id where the operator makes it', () => {
+	for (const doc of PROFILE_DOCS) {
+		const text = readFileSync(resolve(root, doc), 'utf8');
+		for (const [secret, bundleId] of headerProfileSecrets(WORKFLOW)) {
+			assert.ok(text.includes(secret), `${doc} names ${secret}`);
+			assert.ok(text.includes(`\`${bundleId}\``), `${doc} names \`${bundleId}\``);
+		}
+	}
 });

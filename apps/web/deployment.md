@@ -408,23 +408,30 @@ RTO: ~2 hours from a cold-start of a new account if the domain is at a registrar
 
 ## Production readiness checklist
 
-- [ ] AWS account created (or sub-account in an org), root MFA enabled
-- [ ] `infra/envs/prod/terraform.tfvars` sets `monthly_budget_limit_usd` + `budget_alert_emails` (Terraformed in `infra/envs/prod/budgets.tf`; fires at 50 % / 100 % ACTUAL + 100 % FORECASTED)
-- [ ] `infra/bootstrap` applied (S3 state bucket created; locking is S3-native)
-- [ ] AWS provider configured for `us-east-1` (the cert provider alias resolves to the same region; harmless)
-- [ ] Domain `threkir.com` registered (Route 53 or external + delegated)
-- [ ] Route 53 hosted zone live, NS records propagated
-- [ ] ACM cert issued in `us-east-1`, DNS-validated
-- [ ] Terraform applied (in order): `infra/dns`, `infra/github-oidc`, `infra/envs/preview`, `infra/envs/prod`
-- [ ] GitHub OIDC role trust policy verified (only the repo + ref scopes intended can assume it)
-- [ ] sops file populated: `infra/envs/prod/secrets.enc.yaml` (with `ANTHROPIC_API_KEY`, `SENTRY_DSN`); same for `preview/`
-- [ ] GitHub Secrets populated: `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`, `PUBLIC_MAPTILER_KEY`, `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL`, `PUBLIC_REVENUECAT_WEB_PORTAL_URL`, `PUBLIC_SENTRY_DSN`, `AWS_DEPLOY_ROLE_ARN_PROD`, `AWS_DEPLOY_ROLE_ARN_PREVIEW`
-- [ ] First preview deploy green; smoke test sign-in + dashboard + run detail at `preview.threkir.com`
-- [ ] First prod deploy green via tag `web@0.1.0`
-- [ ] Coach endpoint responds (try a free user → expect 2 successful streamed replies, then a 3rd request → expect 429; free tier cap is `TIER_LIMITS.free.dailyLimit = 2` per `apps/web/src/lib/coach/types.ts`)
-- [ ] Push notification flow verified end-to-end (subscribe in Settings, trigger via a kudos on another account)
-- [ ] CloudWatch alarms wired to SNS → email (or PagerDuty)
-- [ ] Sentry frontend + server projects receiving events
+Reconciled 2026-09-28 against what the prod deploys actually did (`web@1.6.0` run 35290005290, 2026-09-18, through `web@1.8.0` run 35556025161, 2026-09-21), public DNS / TLS / HTTP, and GitHub secret *names*. A box is ticked only where that evidence exists; `preview` has never been built (the account holds one distribution and `preview.threkir.com` resolves to nothing, see [`docs/ops/deployment.md`](../../docs/ops/deployment.md)), so every preview leg stays open.
+
+- [x] AWS account created (or sub-account in an org) — the `Threkir` member account of the personal AWS Organization; every `release-web.yml` prod run since `web@1.0.3` assumes its deploy role
+- [ ] AWS account root MFA enabled — not verifiable from the repo or GitHub; confirm in the org's IAM console
+- [x] Prod tfvars sets `monthly_budget_limit_usd` + `budget_alert_emails` (Terraformed in `infra/envs/prod/budgets.tf`; fires at 50 % / 100 % ACTUAL + 100 % FORECASTED) — both keys present in the estate's `infra-secrets/threkir/prod.tfvars` (the canonical copy `infra/envs/prod/terraform.tfvars` symlinks to; key names checked 2026-09-28, values not read)
+- [x] `infra/bootstrap` applied (S3 state bucket created; locking is S3-native) — every later stack's `backend.tf` initialises against it; `infra/dns` planned clean and `infra/github-oidc` applied through it on 2026-09-18 (#922, #928)
+- [x] AWS provider configured for `us-east-1` (the cert provider alias resolves to the same region; harmless) — CloudFront serves the ACM cert below, which it only accepts from `us-east-1`
+- [x] Domain `threkir.com` registered (Route 53 or external + delegated) — registered 2026-05-24 through Amazon Registrar (`whois`, checked 2026-09-28)
+- [x] Route 53 hosted zone live, NS records propagated — `dig NS threkir.com` returns the four `awsdns` servers the registrar lists (2026-09-28)
+- [x] ACM cert issued in `us-east-1`, DNS-validated — Amazon RSA 2048 M04, SANs `threkir.com` / `www.threkir.com` / `preview.threkir.com`, valid 2026-07-11 to 2027-01-24 (served on `:443`, checked 2026-09-28)
+- [x] Terraform applied: `infra/dns`, `infra/github-oidc`, `infra/envs/prod` — `dns` plans clean (#922, 2026-09-18); `github-oidc` applied 2026-09-18 for the immutable-subject fix (#928); `envs/prod` is what the deploy runs resolve (`threkir-web-prod-site`, the eight `threkir-web-prod-*` Lambdas, the distribution aliased `threkir.com`)
+- [ ] Terraform applied: `infra/envs/preview` — never applied; no `preview.tfvars` in the estate, and no preview distribution exists
+- [x] GitHub OIDC role trust policy verified (only the repo + ref scopes intended can assume it) — the prod role trusts only `…:environment:production` under the repo's immutable subject (#928, 2026-09-18), and `scripts/check_infra_iam.mjs` pins that shape on every PR
+- [x] sops file populated for prod: `infra-secrets/threkir/prod.sops.yaml` (with `ANTHROPIC_API_KEY`, `SENTRY_DSN`) — key names read off the encrypted file 2026-09-21 (#922); in-repo `secrets.enc.yaml` is ruled out (decisions § 53)
+- [ ] sops file populated for preview: `infra-secrets/threkir/preview.sops.yaml` — only `preview.sops.yaml.example` exists
+- [ ] The sops values reach the serving Lambdas — needs the `infra/envs/prod` apply in [`docs/ops/deployment.md` § Lambda secrets](../../docs/ops/deployment.md) plus `bin/lambda-alias-sync.sh prod`; `POST https://threkir.com/api/coach` still answers 503 (2026-09-28)
+- [x] GitHub Secrets populated: `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`, `PUBLIC_MAPTILER_KEY`, `PUBLIC_SENTRY_DSN`, `PUBLIC_VAPID_PUBLIC_KEY`, `AWS_DEPLOY_ROLE_ARN_PROD`, `AWS_DEPLOY_ROLE_ARN_PREVIEW` — all on `gh secret list` (2026-09-28); the release's `check_production_env.mjs` guard passed on every run above
+- [ ] GitHub Secrets `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` + `PUBLIC_REVENUECAT_WEB_PORTAL_URL` — unset, and the live bundle ships both empty; not required until Pro is sellable (`PUBLIC_COACH_ENABLED` or `PUBLIC_ROUTE_GEN_ENABLED` truthy), at which point the guard fails the release without the checkout URL
+- [ ] First preview deploy green; smoke test sign-in + dashboard + run detail at `preview.threkir.com` — blocked on the preview stack above; `release-web.yml` also has no preview trigger yet
+- [x] First prod deploy green — `web@1.0.3`, run 29143725709, 2026-07-11 (a tag push, before the published Release became the deploy gate; a bare `web@*` tag deploys nothing now). Latest: `web@1.8.0`, run 35556025161, 2026-09-21
+- [ ] Coach endpoint responds (try a free user → expect 2 successful streamed replies, then a 3rd request → expect 429; free tier cap is `TIER_LIMITS.free.dailyLimit = 2` per `apps/web/src/lib/coach/types.ts`) — 503 today and `PUBLIC_COACH_ENABLED` is empty on the live bundle
+- [ ] Push notification flow verified end-to-end (enable in Settings → Notifications, then request a data export — `data_export_ready` is an important kind; a kudos is not, and is filtered by the default `push_notifications` pref, #952) — the key reached the bundle with `web@1.7.1`, but nobody has received a browser push yet (#922)
+- [ ] CloudWatch alarms wired to SNS → email (or PagerDuty) — alarms + topic are Terraformed in the applied prod stack and `alert_emails` is set in the estate tfvars; the email subscription's confirmation has not been checked
+- [ ] Sentry frontend + server projects receiving events — `PUBLIC_SENTRY_DSN` has been in the build since `web@1.7.0`; no event has been confirmed
 - [ ] Better Stack probe configured
 - [ ] Anthropic cost alert set
 - [ ] Rollback drill: deploy a known-bad commit, run the rollback procedure, confirm the site recovers within 60 s

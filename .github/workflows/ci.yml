@@ -2054,7 +2054,7 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
             apps/custom_watch/target
-          key: cargo-firmware-${{ hashFiles('apps/custom_watch/**/Cargo.toml', 'apps/custom_watch/rust-toolchain.toml') }}
+          key: cargo-firmware-${{ hashFiles('apps/custom_watch/Cargo.lock', 'apps/custom_watch/**/Cargo.toml', 'apps/custom_watch/rust-toolchain.toml') }}
           restore-keys: cargo-firmware-
       - name: Install Rust toolchain (driven by rust-toolchain.toml)
         working-directory: apps/custom_watch
@@ -2151,7 +2151,7 @@ jobs:
             apps/custom_watch/target
           # Separate key from build-firmware's (this job's ELF is a different
           # feature set and log level) but falls back to its cache when cold.
-          key: cargo-firmware-sim-${{ hashFiles('apps/custom_watch/**/Cargo.toml', 'apps/custom_watch/rust-toolchain.toml') }}
+          key: cargo-firmware-sim-${{ hashFiles('apps/custom_watch/Cargo.lock', 'apps/custom_watch/**/Cargo.toml', 'apps/custom_watch/rust-toolchain.toml') }}
           restore-keys: |
             cargo-firmware-sim-
             cargo-firmware-
@@ -2320,7 +2320,7 @@ jobs:
             apps/custom_watch/target
           # Separate key from build-firmware's (this job's ELF is a different
           # feature set and log level) but falls back to its cache when cold.
-          key: cargo-firmware-simsc-${{ hashFiles('apps/custom_watch/**/Cargo.toml', 'apps/custom_watch/rust-toolchain.toml') }}
+          key: cargo-firmware-simsc-${{ hashFiles('apps/custom_watch/Cargo.lock', 'apps/custom_watch/**/Cargo.toml', 'apps/custom_watch/rust-toolchain.toml') }}
           restore-keys: |
             cargo-firmware-sim-
             cargo-firmware-

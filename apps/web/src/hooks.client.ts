@@ -5,8 +5,10 @@ import type { HandleClientError } from "@sveltejs/kit";
 import {
 	redactBreadcrumb,
 	redactEventSignedUrls,
+	redactStreamedSpan,
 	type SentryEventWithSpans,
 } from "$lib/sentry/redact";
+import { SENTRY_DATA_COLLECTION } from "$lib/sentry/data_collection";
 import { hasAcceptedConsent } from "$lib/settings/consent.svelte";
 
 const dsn = env.PUBLIC_SENTRY_DSN ?? "";
@@ -17,6 +19,7 @@ if (!dev && dsn && hasAcceptedConsent()) {
 		dsn,
 		release,
 		environment: release !== "dev" ? "production" : "development",
+		dataCollection: SENTRY_DATA_COLLECTION,
 		tracesSampleRate: 0.1,
 		replaysSessionSampleRate: 0,
 		replaysOnErrorSampleRate: 0,
@@ -31,7 +34,7 @@ if (!dev && dsn && hasAcceptedConsent()) {
 			return breadcrumb;
 		},
 		beforeSend: (event) => redactEventSignedUrls(event as SentryEventWithSpans) as typeof event,
-		beforeSendTransaction: (event) => redactEventSignedUrls(event as SentryEventWithSpans) as typeof event,
+		beforeSendSpan: (span) => redactStreamedSpan(span),
 	});
 }
 

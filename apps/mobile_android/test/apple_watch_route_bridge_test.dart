@@ -447,13 +447,25 @@ void main() {
     });
 
     test('coalesces a burst of stars into one push', () async {
-      AppleWatchRouteBridge.kPushDebounceWindow =
-          const Duration(milliseconds: 20);
+      // Each save is several real disk writes, so a burst's wall-clock span
+      // is the runner's, not the test's: a 20 ms window once split this one
+      // on a loaded CI machine. Hold the window open for the whole burst,
+      // prove nothing left, then let one quiet edit close it.
+      AppleWatchRouteBridge.kPushDebounceWindow = const Duration(hours: 1);
       bridge.attach(store);
       await Future<void>.delayed(Duration.zero);
       final initial = saved().length;
       for (var i = 0; i < 5; i++) {
         await store.save(_route(id: 'r$i', starred: true));
+      }
+      expect(saved(), hasLength(initial));
+
+      AppleWatchRouteBridge.kPushDebounceWindow =
+          const Duration(milliseconds: 20);
+      await store.save(_route(id: 'unstarred'));
+      final deadline = DateTime.now().add(const Duration(seconds: 10));
+      while (saved().length == initial && DateTime.now().isBefore(deadline)) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
       }
       await Future<void>.delayed(const Duration(milliseconds: 60));
 

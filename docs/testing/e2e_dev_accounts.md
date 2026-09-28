@@ -271,7 +271,8 @@ silently, including the failure you needed to see.
    exists per-project under Settings → Projects → `<project>` → Security & Privacy).
    Scrubbing is on by default — leave it on, and additionally enable the control that
    prevents IP addresses from being stored. The code already scrubs (`sentry_scrub.ts`,
-   `$lib/sentry/redact`, `sendDefaultPii: false`, and `beforeSend` dropping
+   `$lib/sentry/redact`, `sendDefaultPii: false` in the Edge Function SDK and
+   `$lib/sentry/data_collection` on web (Sentry 11 turned every category on by default), and `beforeSend` dropping
    `request`/`user`/`server_name`), but that is sender-side; a server-side rule is the one
    an auditor can verify independently of our build.
 2. **Know which failure the plan gives you.** On Developer there is no bill to cap —

@@ -12,7 +12,7 @@
 
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -166,6 +166,69 @@ test('an enumeration that hides a tree the repo holds fails, and names the tree'
 	// The verdict has to say the expression was RUN, or a reader will look for
 	// the wrong kind of defect.
 	assert.match(errors[0], /run, not read/);
+});
+
+// --- the host the enumeration runs on ---------------------------------------
+//
+// The guard RUNS the step's `find`, so a host whose `find` cannot run it used to
+// read as a workflow that enumerates nothing: on macOS `/usr/bin/find` is BSD,
+// rejects `-printf`, and — with no pipefail — `find | sort` exited 0 with an
+// empty answer, reported as every tree going unscanned. These pin the three
+// answers apart: the host cannot run it, the expression is broken, the
+// expression runs and misses trees.
+
+/**
+ * An env whose PATH puts a stand-in `find` ahead of the real one.
+ *
+ * @param {string} body the stand-in's shell script, after the shebang
+ */
+function hostWithFind(body) {
+	const bin = mkdtempSync(join(tmpdir(), 'codeql-coverage-bin-'));
+	writeFileSync(join(bin, 'find'), `#!/bin/sh\n${body}\n`);
+	chmodSync(join(bin, 'find'), 0o755);
+	return { ...process.env, PATH: `${bin}:${process.env.PATH}` };
+}
+
+/// What BSD find answers to a GNU-only primary, verbatim.
+const BSD_FIND = hostWithFind(
+	'for a in "$@"; do case "$a" in -printf) echo "find: -printf: unknown primary or operator" >&2; exit 1;; esac; done',
+);
+
+test('a host whose find rejects -printf is reported as unsupported, not as drift', () => {
+	const root = fixtureRoot(TREES);
+	const { errors } = check({ root, workflowText: workflow(), env: BSD_FIND });
+	assert.equal(errors.length, 2);
+	for (const e of errors) {
+		assert.match(e, /^UNSUPPORTED HOST, not coverage drift/);
+		assert.match(e, /unknown primary or operator/);
+		assert.match(e, /gnubin/);
+		assert.doesNotMatch(e, /disagrees with the tree|does not name/);
+	}
+});
+
+test('a host whose find answers nothing, and exits 0, is unsupported rather than drift', () => {
+	const root = fixtureRoot(TREES);
+	const { errors } = check({ root, workflowText: workflow(), env: hostWithFind('exit 0') });
+	assert.equal(errors.length, 2);
+	assert.ok(errors.every((e) => /^UNSUPPORTED HOST/.test(e)));
+});
+
+test('an expression that fails on a capable host is a broken step, not an unsupported host', () => {
+	const root = fixtureRoot(TREES);
+	const broken = workflow().replace("-printf '%h\\n' | sort)", "-printf '%h\\n' | sort --no-such-flag)");
+	const { errors } = check({ root, workflowText: broken });
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /Go module enumeration does not run: exit [1-9]/);
+	assert.doesNotMatch(errors[0], /UNSUPPORTED HOST/);
+});
+
+test('an expression that runs cleanly and names nothing is still drift on a capable host', () => {
+	const root = fixtureRoot(TREES);
+	const blind = workflow().replace('-name go.mod', '-name go.nothing');
+	const { errors } = check({ root, workflowText: blind });
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /disagrees with the tree/);
+	assert.match(errors[0], /does not name apps\/graph_cycle, apps\/job_worker/);
 });
 
 test('an exclusion naming a directory that is not a tree fails as stale', () => {

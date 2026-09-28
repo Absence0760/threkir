@@ -1812,7 +1812,7 @@ jobs:
     # The Terraform under infra/ provisions the production web stack, the KMS
     # keys behind sops, the GitHub OIDC deploy roles and DNS, and most of what
     # is load-bearing about it was stated in prose and enforced by nothing.
-    # Four guards, all offline — no AWS credentials, no `terraform init`, so
+    # Six guards, all offline — no AWS credentials, no `terraform init`, so
     # this job needs neither the Terraform CLI nor a network round trip:
     #
     #   check_infra_iam.mjs      the OIDC trust contract (StringEquals on a
@@ -1856,6 +1856,14 @@ jobs:
     #                            lookup and for the scripts that read the
     #                            estate through it, driven against a fixture
     #                            estate with aws/terraform/sops stubbed (§ 1615).
+    #   check_terraform_lock_platforms.mjs
+    #                            every committed .terraform.lock.hcl carrying an
+    #                            h1: hash per provider for linux_amd64,
+    #                            darwin_arm64 and darwin_amd64, so `validate`
+    #                            runs on a macOS workstation without `init`
+    #                            rewriting a committed lock — and a Dependabot
+    #                            bump or a one-flag re-lock that strips the
+    #                            extra platforms fails here instead of silently.
     #
     # Each guard's own `node --test` suite runs beside it: a parser that
     # silently stops matching passes vacuously, which is the failure mode a
@@ -1930,6 +1938,18 @@ jobs:
           if ! node --test scripts/bin_estate_scripts.test.mjs; then
             echo "::error::A bin/ script that reads the private estate secrets repo no longer behaves as pinned against the fixture estate: sops-init.sh wiring or seeding, key-rotate.sh or secret-set.sh resolving the slot file, or aws-preflight.sh's account pin and estate hard failures. The failing test names the script and the case."
             echo "Reproduce with: node --test scripts/bin_estate_scripts.test.mjs (needs bash, awk, jq and git; aws, terraform, sops and gh are stubbed)."
+            exit 1
+          fi
+      - name: Provider locks hashed for every operator platform
+        run: |
+          if ! node scripts/check_terraform_lock_platforms.mjs; then
+            echo "::error::A committed .terraform.lock.hcl under infra/ is missing a platform's h1: hash, two stacks lock the same provider version for different platforms, or a validated stack has no lock. Nothing here is about IAM scope, error responses, alarm coverage or the estate slot; those are the other checks in this job."
+            echo "Repair from the stack's directory (an env root needs 'terraform get' first): terraform providers lock -platform=linux_amd64 -platform=darwin_arm64 -platform=darwin_amd64 — it reads the public registry only. On a Dependabot PR this means the bump stripped platforms; re-lock on the PR branch. infra/README.md has the rationale."
+            exit 1
+          fi
+          if ! node --test scripts/check_terraform_lock_platforms.test.mjs; then
+            echo "::error::The lock-platform guard's own unit tests failed. The locks themselves are fine — the check above just passed — so this is a defect in scripts/check_terraform_lock_platforms.mjs, and a parser that stopped matching would have passed the check vacuously."
+            echo "Reproduce with: node --test scripts/check_terraform_lock_platforms.test.mjs (stdlib only, no install needed)."
             exit 1
           fi
 

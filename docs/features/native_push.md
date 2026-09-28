@@ -54,7 +54,7 @@ is write-only and can never be read back.
 | Artifact | Durable (estate `threkir/push-credentials.sops.yaml`) | Operational | Read by |
 |---|---|---|---|
 | `google-services.json` | `google_services_json_base64` | GitHub secret `GOOGLE_SERVICES_JSON_BASE64` | the `google-services` Gradle plugin, at build time |
-| `GoogleService-Info.plist` | `google_service_info_plist_base64` | GitHub secret `GOOGLE_SERVICE_INFO_PLIST_BASE64` | the Runner target's Resources phase |
+| `GoogleService-Info.plist` | `google_service_info_plist_base64` | GitHub secret `GOOGLE_SERVICE_INFO_PLIST_BASE64` | the Runner target's *Copy Firebase config if present* build phase, which bundles it only when present (and the *Register the Google Sign-In redirect scheme* phase, for `REVERSED_CLIENT_ID`) |
 | FCM service-account JSON | `fcm_service_account_json` | Fly secret `FCM_SERVICE_ACCOUNT_JSON` (+ `FCM_PROJECT_ID`) | `nativepush`'s FCM transport |
 | APNs `.p8` | `apns_key_p8` | Firebase console → Cloud Messaging → APNs authentication key | Firebase, when it forwards an iOS send to Apple |
 | VAPID private key | `vapid_private_key` | Fly secret `VAPID_PRIVATE_KEY` (+ `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`) | `webpush`'s sender |
@@ -176,9 +176,12 @@ out of the estate first — for example
 AWS_PROFILE=threkir sops --decrypt --extract '["google_services_json_base64"]' ../infra-secrets/threkir/push-credentials.sops.yaml | base64 -d > apps/mobile_android/android/app/google-services.json
 ```
 
-iOS is the one asymmetry: the plist is a member of the Runner target, so an
-iOS build **fails** until it is fetched, rather than quietly shipping without
-push.
+iOS behaves the same way since `decisions.md § 1693`: the Runner target's *Copy
+Firebase config if present* build phase bundles `GoogleService-Info.plist` only
+when it exists, so a credential-free checkout builds with push disabled. The
+one iOS difference is that a plist which is present but malformed **fails** the
+build, since a bad `GOOGLE_APP_ID` / `API_KEY` / `PROJECT_ID` aborts the app at
+launch where nothing can catch it.
 
 ## Goal & user value
 Deliver the last device-delivery leg: a push notification to a **locked phone**

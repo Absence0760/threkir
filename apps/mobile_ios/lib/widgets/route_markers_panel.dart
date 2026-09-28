@@ -76,6 +76,7 @@ class RouteMarkersPanel extends StatefulWidget {
 class RouteMarkersPanelState extends State<RouteMarkersPanel> {
   List<RouteMarkerRow> _markers = const [];
   bool _loaded = false;
+  bool _loadFailed = false;
   bool _placing = false;
   // True while an add/update round-trip is in flight, so the panel shows a
   // progress bar instead of no feedback until the list refreshes.
@@ -98,21 +99,29 @@ class RouteMarkersPanelState extends State<RouteMarkersPanel> {
 
   Future<void> _reload() async {
     final api = widget.api;
-    List<RouteMarkerRow> fetched;
+    List<RouteMarkerRow>? fetched;
     try {
       fetched =
           api == null ? const [] : await api.fetchRouteMarkers(widget.routeId);
     } catch (e) {
-      // L4 auxiliary effect: a course-markers load failure must never break
-      // route detail (name / stats / map are the core). Log and show none.
+      // L3 overlay: a failed read must never break route detail (name /
+      // stats / map are the core), and must not be reported as "no markers"
+      // either — that invites an owner to re-add markers they have.
       debugPrint('route markers load failed for ${widget.routeId}: $e');
-      fetched = const [];
+    }
+    if (!mounted) return;
+    if (fetched == null) {
+      setState(() {
+        _loadFailed = true;
+        _loaded = true;
+      });
+      return;
     }
     final markers = sortMarkerRows(fetched);
-    if (!mounted) return;
     setState(() {
       _markers = markers;
       _loaded = true;
+      _loadFailed = false;
     });
     // Defer to after the frame: with a null api this whole method runs
     // synchronously inside initState (no await is reached), so publishing
@@ -430,7 +439,25 @@ class RouteMarkersPanelState extends State<RouteMarkersPanel> {
             ],
           ),
         ],
-        if (_loaded && _markers.isEmpty && !_placing)
+        if (_loadFailed)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              key: const Key('route-markers-load-error'),
+              children: [
+                Expanded(
+                  child: Text(l10n.routeMarkerLoadFailed,
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: theme.colorScheme.error)),
+                ),
+                TextButton(
+                  onPressed: _reload,
+                  child: Text(l10n.errorStateRetry),
+                ),
+              ],
+            ),
+          )
+        else if (_loaded && _markers.isEmpty && !_placing)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(l10n.routeMarkerEmpty,

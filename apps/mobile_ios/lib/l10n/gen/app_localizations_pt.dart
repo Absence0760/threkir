@@ -3421,6 +3421,11 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String routeDetailWatchCourseSentMarkersFailed(int points) {
+    return 'Percurso enviado para o relógio ($points pontos), mas não foi possível carregar os marcadores, por isso nenhum horário foi enviado.';
+  }
+
+  @override
   String routeDetailWatchCourseSimplified(int source, int points) {
     return 'Percurso enviado para o relógio — reduzido de $source para $points pontos para caber';
   }
@@ -8191,6 +8196,16 @@ class AppLocalizationsPt extends AppLocalizations {
   String get dashboardImportRuns => 'Importar corridas';
 
   @override
+  String get dashboardFirstRunBodyWithPlan =>
+      'O seu plano já está pronto acima. Registe a sua primeira corrida e esta página preenche-se: a sua distância, o seu ritmo e como está em relação ao plano.';
+
+  @override
+  String get dashboardFirstRunGymHint => 'Prefere ginásio?';
+
+  @override
+  String get dashboardFirstRunGymAction => 'Registe uma sessão de ginásio';
+
+  @override
   String get dashboardPeriodWeek => 'Semana';
 
   @override
@@ -11900,6 +11915,10 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get routeMarkerEmpty =>
       'Nenhum marcador ainda. Adicione postos de apoio, cortes de tempo e mais ao longo do percurso.';
+
+  @override
+  String get routeMarkerLoadFailed =>
+      'Não foi possível carregar os marcadores deste percurso. Não foram eliminados — verifique a sua ligação e tente novamente.';
 
   @override
   String get routeMarkerEdit => 'Editar marcador';
@@ -17747,6 +17766,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
+  String routeDetailWatchCourseSentMarkersFailed(int points) {
+    return 'Percurso enviado para o relógio ($points pontos), mas não foi possível carregar os marcadores, então nenhum horário foi enviado.';
+  }
+
+  @override
   String routeDetailWatchCourseSimplified(int source, int points) {
     return 'Percurso enviado para o relógio — reduzido de $source para $points pontos para caber';
   }
@@ -22512,6 +22536,16 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get dashboardImportRuns => 'Importar corridas';
 
   @override
+  String get dashboardFirstRunBodyWithPlan =>
+      'Seu plano já está pronto acima. Registre sua primeira corrida e esta página se preenche: sua distância, seu ritmo e como você está em relação ao plano.';
+
+  @override
+  String get dashboardFirstRunGymHint => 'Prefere musculação?';
+
+  @override
+  String get dashboardFirstRunGymAction => 'Registre uma sessão de academia';
+
+  @override
   String get dashboardPeriodWeek => 'Semana';
 
   @override
@@ -26220,6 +26254,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get routeMarkerEmpty =>
       'Nenhum marcador ainda. Adicione postos de apoio, cortes de tempo e mais ao longo do percurso.';
+
+  @override
+  String get routeMarkerLoadFailed =>
+      'Não foi possível carregar os marcadores deste percurso. Eles não foram excluídos — verifique sua conexão e tente novamente.';
 
   @override
   String get routeMarkerEdit => 'Editar marcador';

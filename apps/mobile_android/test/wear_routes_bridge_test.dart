@@ -87,6 +87,7 @@ void main() {
   });
 
   tearDown(() {
+    WearRoutesBridge().detach();
     channel.uninstall();
     // Restore the production default so a test that intentionally
     // sets a non-zero window can rely on it for its lifetime.
@@ -283,6 +284,26 @@ void main() {
       expect(channel.pushCalls, hasLength(1),
           reason: 're-attach must remove the prior listener — '
               'otherwise every save triggers two pushes');
+    });
+
+    test('every construction is the same bridge, so the sign-out nudge '
+        'replaces the startup subscription rather than adding a second',
+        () async {
+      // `main.dart` writes `WearRoutesBridge().attach(routeStore)` at
+      // startup and again on sign-out. While each call built a fresh
+      // instance, the second one's `detach()` had nothing to remove and the
+      // startup listener stayed on the store, so every edit after a
+      // sign-out pushed twice.
+      expect(identical(WearRoutesBridge(), WearRoutesBridge()), isTrue);
+
+      WearRoutesBridge().attach(store);
+      WearRoutesBridge().attach(store);
+      await Future<void>.delayed(Duration.zero);
+
+      channel.pushCalls.clear();
+      await store.save(_makeRoute(id: 'r-1', isStarred: true));
+      await Future<void>.delayed(Duration.zero);
+      expect(channel.pushCalls, hasLength(1));
     });
 
     test('attach after detach also fires fresh — both detach + re-attach safe',
@@ -1002,29 +1023,6 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(channel.pushCalls, hasLength(1),
           reason: 'a new bridge instance pushes once on attach');
-    });
-
-    test('two bridge instances pointed at the same store push '
-        'independently', () async {
-      // This shouldn't happen in production (main.dart attaches a
-      // single bridge) but pin the behavior — each bridge has its
-      // own diff cache + lifecycle.
-      await store.save(_makeRoute(id: 'r-1', isStarred: true));
-      final b1 = WearRoutesBridge();
-      final b2 = WearRoutesBridge();
-      b1.attach(store);
-      b2.attach(store);
-      await Future<void>.delayed(Duration.zero);
-      // Both bridges share the same channel mock, so two attaches
-      // = two pushes.
-      expect(channel.pushCalls.length, greaterThanOrEqualTo(2),
-          reason: 'separate bridge instances both push on attach');
-
-      channel.pushCalls.clear();
-      await store.save(_makeRoute(id: 'r-2', isStarred: true));
-      await Future<void>.delayed(Duration.zero);
-      expect(channel.pushCalls.length, greaterThanOrEqualTo(2),
-          reason: 'separate bridges each fire on each save');
     });
   });
 

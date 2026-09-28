@@ -3433,6 +3433,11 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String routeDetailWatchCourseSentMarkersFailed(int points) {
+    return 'Parcours envoyé à la montre ($points points), mais ses repères n\'ont pas pu être chargés : aucun horaire n\'a été envoyé avec.';
+  }
+
+  @override
   String routeDetailWatchCourseSimplified(int source, int points) {
     return 'Parcours envoyé à la montre — réduit de $source à $points points pour tenir';
   }
@@ -8216,6 +8221,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String get dashboardImportRuns => 'Importer des courses';
 
   @override
+  String get dashboardFirstRunBodyWithPlan =>
+      'Ton plan est prêt ci-dessus. Enregistre ta première course et cette page se remplit : ta distance, ton allure et ton avancement dans le plan.';
+
+  @override
+  String get dashboardFirstRunGymHint => 'Plutôt musculation ?';
+
+  @override
+  String get dashboardFirstRunGymAction => 'Note une séance de musculation';
+
+  @override
   String get dashboardPeriodWeek => 'Semaine';
 
   @override
@@ -11929,6 +11944,10 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get routeMarkerEmpty =>
       'Aucun repère de parcours. Ajoutez des ravitaillements, des barrières horaires et plus le long du parcours.';
+
+  @override
+  String get routeMarkerLoadFailed =>
+      'Impossible de charger les repères de ce parcours. Ils n\'ont pas été supprimés — vérifiez votre connexion et réessayez.';
 
   @override
   String get routeMarkerEdit => 'Modifier le repère';

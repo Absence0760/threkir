@@ -246,6 +246,7 @@ class _RoadbookScreenState extends State<RoadbookScreen> {
   static const _defaultSecPerKm = kRoadbookDefaultSecPerKm;
 
   List<cm.RouteMarkerRow> _markers = const [];
+  bool _markersFailed = false;
   List<double>? _fetchedEle;
   bool _fetchingEle = false;
   late int _goalSeconds;
@@ -302,10 +303,21 @@ class _RoadbookScreenState extends State<RoadbookScreen> {
 
   Future<void> _load() async {
     final api = widget.api;
-    final markers =
-        api == null ? <cm.RouteMarkerRow>[] : await api.fetchRouteMarkers(widget.route.id);
+    List<cm.RouteMarkerRow> markers;
+    try {
+      markers = api == null
+          ? <cm.RouteMarkerRow>[]
+          : await api.fetchRouteMarkers(widget.route.id);
+    } catch (e) {
+      debugPrint('roadbook: fetchRouteMarkers failed: $e');
+      if (mounted) setState(() => _markersFailed = true);
+      return;
+    }
     if (!mounted) return;
-    setState(() => _markers = markers);
+    setState(() {
+      _markers = markers;
+      _markersFailed = false;
+    });
   }
 
   List<RoadbookWaypoint> get _rbWaypoints {
@@ -524,7 +536,22 @@ class _RoadbookScreenState extends State<RoadbookScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          if (_markers.isEmpty)
+          if (_markersFailed)
+            Row(
+              key: const Key('roadbook-load-error'),
+              children: [
+                Expanded(
+                  child: Text(l10n.routeMarkerLoadFailed,
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(color: theme.colorScheme.error)),
+                ),
+                TextButton(
+                  onPressed: _load,
+                  child: Text(l10n.errorStateRetry),
+                ),
+              ],
+            )
+          else if (_markers.isEmpty)
             Text(l10n.roadbookNoMarkers, style: theme.textTheme.bodyMedium)
           else ...[
             Row(

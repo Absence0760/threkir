@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { foldSoftWraps, foldedLines, markdownTables, splitRow, tableLines } from './markdown_lines.mjs';
+import { foldSoftWraps, foldedLines, listItemContaining, markdownTables, splitRow, tableLines } from './markdown_lines.mjs';
 
 test('a wrapped sentence folds back into one line', () => {
 	assert.equal(foldSoftWraps('On iOS a cell reading\n`Partial` means\nnobody ran it.'), 'On iOS a cell reading `Partial` means nobody ran it.');
@@ -12,9 +12,44 @@ test('blank lines keep paragraphs apart', () => {
 });
 
 test('a line that opens a block starts a new one', () => {
-	for (const opener of ['- item', '* item', '+ item', '1. item', '## heading', '> quote', '| a | b |', '```js', '~~~', '<!-- marker -->']) {
+	for (const opener of ['- item', '* item', '+ item', '1. item', '## heading', '> quote', '```js', '~~~', '<!-- marker -->']) {
 		assert.equal(foldSoftWraps(`prose\n${opener}`), `prose\n${opener}`, opener);
 	}
+});
+
+test('a pipe opens a block only as a table row, as GFM says', () => {
+	// Prose such as `a` | `b` wrapped at the pipe is one paragraph to every
+	// renderer; the fold used to cut it there.
+	assert.equal(foldSoftWraps('reads as `a`\n| `b` in Dart'), 'reads as `a` | `b` in Dart');
+	assert.equal(foldSoftWraps('- reads as `a`\n  | `b` in Dart'), '- reads as `a` | `b` in Dart');
+
+	const table = 'prose\n| a | b |\n|---|---|\n| 1 | 2 |';
+	assert.equal(foldSoftWraps(table), table);
+});
+
+test('listItemContaining keeps the nested blocks a wrap can open inside an item', () => {
+	const doc = '# T\n\n- first `x`\n  + nested `y`\n  more `z`\n\n  > quoted `w`\n- sibling\n';
+	assert.deepEqual(
+		listItemContaining(doc, '`x`')?.map((l) => [l.line, l.text]),
+		[
+			[3, '- first `x`'],
+			[4, '  + nested `y` more `z`'],
+			[6, ''],
+			[7, '  > quoted `w`'],
+		],
+	);
+});
+
+test('listItemContaining stops at the first line indented less than the content', () => {
+	assert.deepEqual(listItemContaining('- a\n+ b\n', 'a')?.map((l) => l.text), ['- a']);
+	assert.deepEqual(listItemContaining('- a\n\nafter\n', 'a')?.map((l) => l.text), ['- a']);
+	assert.deepEqual(listItemContaining('10. a\n    b\n   c\n', 'a')?.map((l) => l.text), ['10. a b c']);
+	assert.deepEqual(listItemContaining('10. a\n\n   c\n', 'a')?.map((l) => l.text), ['10. a']);
+});
+
+test('listItemContaining reads a non-item line alone and an absent needle as null', () => {
+	assert.deepEqual(listItemContaining('para `x`\n  + y\n', '`x`')?.map((l) => l.text), ['para `x`']);
+	assert.equal(listItemContaining('- a\n', 'missing'), null);
 });
 
 test('an ordered item interrupts a paragraph only at 1, as CommonMark says', () => {

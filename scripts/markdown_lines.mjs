@@ -56,6 +56,10 @@ const ORDERED_ITEM = /^\s*(\d+)[.)] /;
 function interruptsParagraph(line) {
 	const ordered = ORDERED_ITEM.exec(line);
 	if (ordered !== null) return ordered[1] === '1';
+	// GFM: a pipe opens a block only as a table row, and `foldedLines` keeps
+	// every table line apart already. Any other pipe-leading line is paragraph
+	// text — prose such as `a` | `b` wrapped at the pipe.
+	if (line.trimStart().startsWith('|')) return false;
 	return BLOCK_START.test(line);
 }
 
@@ -259,4 +263,65 @@ export function foldSoftWraps(text) {
 	return foldedLines(text)
 		.map((l) => l.text)
 		.join('\n');
+}
+
+/// A list item's marker and the spaces after it, from which CommonMark derives
+/// the item's content column.
+const LIST_MARKER = /^([ \t]*)([-*+]|\d{1,9}[.)])( +)/;
+
+/**
+ * @param {string} line
+ * @returns {number}
+ */
+function indentOf(line) {
+	return (line.match(/^[ \t]*/)?.[0] ?? '').replaceAll('\t', '    ').length;
+}
+
+/**
+ * The folded lines of the list item whose text contains `needle`: its own line
+ * plus every line indented to its content column — continuation paragraphs,
+ * nested lists, quotes — up to the first non-blank line indented less. Blank
+ * lines inside the item are kept. A `needle` on a line that is not a list item
+ * yields that line alone; an absent one yields null.
+ *
+ * A reader that stops at the item's first block boundary loses whatever a
+ * nested block holds, and a soft wrap is enough to open one: a continuation
+ * line that happens to start with `+ `, `* `, `1) ` or `>` renders as a nested
+ * list or quote INSIDE the same item, not as the end of it. Measured on the
+ * committed parity-pair bullet, reflowing it at each width from 20 to 400
+ * columns lost pairs at 277 of the 381. The fold cannot absorb those lines
+ * instead — they genuinely are blocks, and a fold that glued them on would
+ * disagree with the renderer the other way.
+ *
+ * @param {string} text
+ * @param {string} needle
+ * @returns {FoldedLine[] | null}
+ */
+export function listItemContaining(text, needle) {
+	const lines = foldedLines(text);
+	const at = lines.findIndex((l) => l.text.includes(needle));
+	if (at === -1) return null;
+	const own = lines[at];
+	const marker = LIST_MARKER.exec(own.text);
+	if (marker === null) return [own];
+
+	// Five or more spaces after the marker open an indented code block, and the
+	// content column falls back to one space past the marker.
+	const [, lead, glyph, gap] = marker;
+	const content = indentOf(lead) + glyph.length + (gap.length > 4 ? 1 : gap.length);
+
+	/** @type {FoldedLine[]} */
+	const item = [own];
+	/** @type {FoldedLine[]} */
+	let blanks = [];
+	for (const next of lines.slice(at + 1)) {
+		if (next.text.trim() === '') {
+			blanks.push(next);
+			continue;
+		}
+		if (indentOf(next.text) < content) break;
+		item.push(...blanks, next);
+		blanks = [];
+	}
+	return item;
 }

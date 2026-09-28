@@ -345,16 +345,66 @@ test('losing the blank line before the watch-port paragraph fails loudly', () =>
 	assert.equal(pairs.has('storm'), false);
 });
 
-test('the committed bullet survives being reflowed at 100 columns', () => {
-	const claude = readFileSync(REGISTRY_DOC, 'utf-8');
-	const flat = parseRegistryPairs(claude).pairs;
-	const wrapped = parseRegistryPairs(reflow(claude, 100)).pairs;
+test('indenting the watch-port paragraph into the bullet fails loudly despite the blank line', () => {
+	// Indented to the bullet's content column, the paragraph renders as part of
+	// the list item, blank line or not.
+	const claude = fakeClaude().replace(/\n\nMany of these/, '\n\n  Many of these');
+	const { errors } = parseRegistryPairs(claude);
 
-	assert.deepEqual([...wrapped.keys()].sort(), [...flat.keys()].sort());
-	assert.deepEqual(
-		checkRegistries(reflow(claude, 100), readFileSync(SYNCER_DOC, 'utf-8')).errors,
-		[],
-	);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /runs into the watch-port paragraph/);
+});
+
+test('the committed bullet survives being reflowed at every width from 40 to 200 columns', () => {
+	// One width proved nothing: the bullet carries over a hundred ` + ` tokens
+	// and a handful of `*`, `1)` and `>` ones, any of which a wrap can put at a
+	// line start, where CommonMark reads it as a nested list or quote. 100
+	// columns happened to hit none of them.
+	const claude = readFileSync(REGISTRY_DOC, 'utf-8');
+	const syncer = readFileSync(SYNCER_DOC, 'utf-8');
+	const flat = [...parseRegistryPairs(claude).pairs.keys()].sort();
+	assert.ok(flat.length > 100);
+
+	for (let width = 40; width <= 200; width++) {
+		const wrapped = reflow(claude, width);
+		assert.deepEqual([...parseRegistryPairs(wrapped).pairs.keys()].sort(), flat, `width ${width}`);
+		assert.deepEqual(checkRegistries(wrapped, syncer).errors, [], `width ${width}`);
+	}
+});
+
+test('a wrap that opens a nested block inside the bullet keeps every pair after it', () => {
+	// Each of these renders as a nested list or quote INSIDE the bullet, so the
+	// pairs after it are still the bullet's pairs.
+	for (const hazard of ['+ ', '* ', '- ', '1) ', '> ', '>= ']) {
+		const claude = fakeClaude({
+			annotated: [
+				['roadbook', 'routes/roadbook.ts', 'roadbook.dart'],
+				['route_snap', 'routes/route_snap.ts', 'route_snap.dart'],
+			],
+		}).replace('`route_snap` (web', `\n  ${hazard}\`route_snap\` (web`);
+		const { pairs, errors } = parseRegistryPairs(claude);
+
+		assert.deepEqual(errors, [], hazard);
+		assert.ok(pairs.has('route_snap'), hazard);
+		assert.ok(pairs.has('track_projection'), hazard);
+	}
+});
+
+test('a list marker at column 0 ends the bullet, as a renderer reads it', () => {
+	// `+ ` flush left under a `- ` item opens a SIBLING list, so the pairs after
+	// it are no longer in the lockstep bullet. The guard must say so rather than
+	// read them in anyway.
+	const claude = fakeClaude({
+		annotated: [
+			['roadbook', 'routes/roadbook.ts', 'roadbook.dart'],
+			['route_snap', 'routes/route_snap.ts', 'route_snap.dart'],
+		],
+	}).replace('`route_snap` (web', '\n+ `route_snap` (web');
+	const { pairs } = parseRegistryPairs(claude);
+
+	assert.ok(pairs.has('roadbook'));
+	assert.equal(pairs.has('route_snap'), false);
+	assert.equal(pairs.has('track_projection'), false);
 });
 
 // --- Optional wrapping pipes. decisions § 779.

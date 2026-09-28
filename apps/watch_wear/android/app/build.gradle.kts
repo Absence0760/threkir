@@ -270,9 +270,9 @@ dependencies {
     implementation("androidx.compose.material:material-icons-core")
 
     // Compose-for-Wear
-    implementation("androidx.wear.compose:compose-material:1.6.2")
-    implementation("androidx.wear.compose:compose-foundation:1.6.2")
-    implementation("androidx.wear.compose:compose-navigation:1.6.2")
+    implementation("androidx.wear.compose:compose-material:1.7.0")
+    implementation("androidx.wear.compose:compose-foundation:1.7.0")
+    implementation("androidx.wear.compose:compose-navigation:1.7.0")
     implementation("androidx.wear:wear-ongoing:1.1.0")
     // AmbientLifecycleObserver + AmbientAware lives here.
     implementation("androidx.wear:wear:1.4.0")
@@ -323,5 +323,5 @@ dependencies {
     // no-ops. The Android SDK auto-captures unhandled JVM exceptions;
     // we additionally wire breadcrumbs in long-running paths via
     // Sentry.captureException calls from coroutine catch blocks.
-    implementation("io.sentry:sentry-android:8.57.0")
+    implementation("io.sentry:sentry-android:8.58.0")
 }

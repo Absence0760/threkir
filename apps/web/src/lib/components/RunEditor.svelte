@@ -59,8 +59,14 @@
 
 	let distanceLabel = $derived(m('runEditor.distanceLabel', { unit }));
 
+	// The unit + privacy-default seeds land after the form is built — the
+	// privacy one after two network round trips, by which time the user may
+	// already be typing — so each goes through `dirty.seed`, which keeps them
+	// from reading as edits without absorbing the edits that got there first.
 	onMount(async () => {
-		unit = getUnit();
+		dirty.seed(() => {
+			unit = getUnit();
+		});
 		try {
 			// getUser() (awaited) is reliable on first paint; the reactive
 			// auth store may not be hydrated yet when onMount fires.
@@ -71,20 +77,20 @@
 				const seeded = privacyDefaultToIsPublic(
 					effective<string>(settings, 'privacy_default', 'followers')
 				);
-				if (!touched) isPublic = seeded;
+				dirty.seed(() => {
+					if (!touched) isPublic = seeded;
+				});
 			}
 		} catch (_) {
-			isPublic = false;
+			dirty.seed(() => {
+				if (!touched) isPublic = false;
+			});
 		}
 		try {
 			routes = await fetchRoutes();
 		} catch (_) {
 			routes = [];
 		}
-		// The unit + privacy-default seeds land after the form is built, so they
-		// would otherwise read as user edits and prompt on every exit. `touched`
-		// is the same flag that stops the seed clobbering a real choice.
-		if (!touched) dirty.rebaseline();
 	});
 
 	async function handleSubmit(e: Event) {

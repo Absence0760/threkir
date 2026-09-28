@@ -486,6 +486,19 @@ test.describe('/runs/new', () => {
 			.select('id', { count: 'exact', head: true })
 			.eq('user_id', USER_A.id);
 
+		// The editor seeds the privacy toggle from this after two round trips.
+		// Holding that read until the form has been typed into puts the seed
+		// where a real runner on a slow link meets it: after their edits. A seed
+		// that re-took the whole baseline absorbed those edits as "clean", and
+		// the back link then discarded them with no prompt.
+		await setUserSetting(USER_A.id, 'privacy_default', 'public');
+		let releaseSettings!: () => void;
+		const settingsHeld = new Promise<void>((resolve) => (releaseSettings = resolve));
+		await page.route(/\/rest\/v1\/user_settings\b/, async (route) => {
+			await settingsHeld;
+			await route.continue();
+		});
+
 		await page.goto('/runs/new');
 		await expect(
 			page.getByRole('heading', { level: 1, name: 'Add a run' })
@@ -495,6 +508,13 @@ test.describe('/runs/new', () => {
 		await numberInputs.nth(0).fill('7.7');
 		await numberInputs.nth(1).fill('45');
 		await page.locator('textarea').fill('Should never persist');
+
+		const routesLoaded = page.waitForResponse(/\/rest\/v1\/routes\b/);
+		releaseSettings();
+		await expect(
+			page.getByRole('checkbox', { name: /Make this run public/ })
+		).toBeChecked();
+		await routesLoaded;
 
 		await page.getByRole('link', { name: /Back to runs/ }).click();
 		// The unsaved-changes guard intercepts the back link on a dirty form;

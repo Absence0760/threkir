@@ -1727,8 +1727,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     }
   }
 
-  /// Base URL of the spectator web app. Reads `WEB_BASE_URL` from
-  /// `.env.local` when set; otherwise falls back to the production host
+  /// Base URL of the spectator web app. Reads `WEB_BASE_URL` from dotenv
+  /// (a `--dart-define`, or `.env.development` in debug) when set;
+  /// otherwise falls back to the production host
   /// so a freshly-installed app still produces a working link.
   String _liveLinkBase() {
     final fromEnv = dotenv.env['WEB_BASE_URL'] ?? '';

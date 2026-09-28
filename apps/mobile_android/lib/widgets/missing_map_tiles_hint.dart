@@ -7,7 +7,8 @@ import '../l10n/gen/app_localizations.dart';
 /// `dotenv.env['MAPTILER_KEY']` NOR `dotenv.env['TILE_URL_TEMPLATE']`
 /// is configured. The user reported "I'm still not seeing the map"
 /// multiple times across rounds — root cause is almost always that
-/// the dev build's `.env.local` doesn't actually carry one of these.
+/// the build carries neither, as a `--dart-define` or in the debug-only
+/// `.env.development` asset (mobile reads no `.env.local`, decisions §137).
 /// Rendering a small banner instead of a silently-blank map makes
 /// the failure mode diagnosable from the device without scrolling
 /// logs.
@@ -75,11 +76,11 @@ class MissingMapTilesHint extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Neither MAPTILER_KEY nor TILE_URL_TEMPLATE is set '
-                  'in apps/mobile_android/.env.local, so the basemap '
-                  'is falling back to OSM (rate-limited, not for '
-                  'production). Set one of those env vars and rebuild '
-                  'for a real basemap. Physical devices on the same '
+                  'Neither MAPTILER_KEY nor TILE_URL_TEMPLATE is set, '
+                  'so the basemap is falling back to OSM (rate-limited, '
+                  'not for production). Pass one with --dart-define '
+                  '(e.g. flutter run --dart-define=<NAME>=<value>) and '
+                  'rebuild for a real basemap. Physical devices on the same '
                   'WiFi as a Protomaps tileserver-gl need the LAN IP '
                   '(e.g. 192.168.1.x) — the emulator alias 10.0.2.2 '
                   'only works inside an emulator.',

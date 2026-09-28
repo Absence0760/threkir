@@ -155,8 +155,8 @@ void main() {
     });
 
     test('override wins even when MAPTILER_KEY is also set', () {
-      // Dev path keeps the key in .env.local for production builds
-      // — the override flips the URL only when present.
+      // A dev build can carry the production key alongside the
+      // override — the override flips the URL only when present.
       final url = _url(const {
         'MAPTILER_KEY': 'production-key',
         'TILE_URL_TEMPLATE':
@@ -210,7 +210,7 @@ void main() {
 
     test('whitespace-only override falls back to MapTiler (no silent breakage)',
         () {
-      // A stray space after `TILE_URL_TEMPLATE=` in .env.local is
+      // A stray space after `TILE_URL_TEMPLATE=` in an env file is
       // a really common copy/paste mistake. Treating it as a valid
       // override would silently disable MapTiler + send tile
       // requests to ` ` (literal space) which flutter_map fails

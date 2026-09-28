@@ -1140,8 +1140,8 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                 ),
               ),
               // Diagnostic for the "I'm still not seeing the map"
-              // user report — when `MAPTILER_KEY` isn't set in
-              // `.env.local`, the LiveRunMap above renders the
+              // user report — when neither `MAPTILER_KEY` nor
+              // `TILE_URL_TEMPLATE` is set, the LiveRunMap above renders the
               // polyline on a blank grey backdrop (the tile fetch
               // returns 401 with an empty key). The hint widget
               // surfaces the exact fix-instruction instead of the

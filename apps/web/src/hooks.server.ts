@@ -3,6 +3,7 @@ import type { Handle, HandleServerError } from "@sveltejs/kit";
 import { dev } from "$app/environment";
 import { env } from "$env/dynamic/private";
 import { isConsentGiven } from "$lib/settings/consent_cookie";
+import { SENTRY_DATA_COLLECTION } from "$lib/sentry/data_collection";
 
 // audit/cookie-consent + audit/third-party-data-flows (May 2026)
 // flagged that server-side Sentry initialised + intercepted every
@@ -39,6 +40,7 @@ if (!dev && env.SENTRY_DSN) {
 		dsn: env.SENTRY_DSN,
 		release: env.APP_RELEASE || "dev",
 		environment: env.APP_RELEASE && env.APP_RELEASE !== "dev" ? "production" : "development",
+		dataCollection: SENTRY_DATA_COLLECTION,
 		tracesSampleRate: 0.1,
 	});
 }

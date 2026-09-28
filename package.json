@@ -121,8 +121,8 @@
     "test:scripts": "node scripts/check_root_scripts.mjs"
   },
   "devDependencies": {
-    "@types/node": "^26.6.1",
-    "svelte": "5.57.0"
+    "@types/node": "^26.6.2",
+    "svelte": "5.57.1"
   },
   "overrides": {
     "cookie": "^1.0.2",

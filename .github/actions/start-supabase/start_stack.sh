@@ -10,8 +10,9 @@
 # deep and every rung of it was written after a red job, so it is worth
 # being able to drive with stubs.
 #
-# Five failure modes are handled, and a sixth entry records the move that
-# removed the cause of two of them. The port numbers in incidents 1-5 are the
+# Five failure modes are handled, a sixth entry records the move that
+# removed the cause of two of them, and a seventh records one that is fixed
+# outside this file, in ci.yml's env. The port numbers in incidents 1-5 are the
 # block the stack published at the time (54321-54327); see 6.
 #
 #   1. Slow ghcr.io image pulls. A single 353MB image once trickled at
@@ -91,6 +92,16 @@
 #      reservation still holds if a runner image ever widens
 #      ip_local_port_range down over the block, and `ss -K` still reaches a
 #      holder that bound a stack port explicitly.
+#
+#   7. A registry quota no retry can outlast. On 2026-09-28 every attempt on
+#      every stack-starting job failed with `toomanyrequests: Data limit
+#      exceeded` from public.ecr.aws, the CLI's default registry: ECR Public
+#      caps anonymous pulls by data volume per source IP, and hosted runners
+#      share their egress IPs, so the cap was spent before this repo pulled
+#      a byte. ci.yml now sets SUPABASE_INTERNAL_IMAGE_REGISTRY=ghcr.io
+#      workflow-wide, where Supabase mirrors the same tags. That is the
+#      registry incident 1's slow pull came from, which is why the 480s
+#      per-attempt budget above stays.
 set -uo pipefail
 
 # Host ports config.toml pins: shadow db 24320 (db diff only), api 24321, db

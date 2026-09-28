@@ -64,6 +64,18 @@ env:
   # shared across the three). `scripts/check_toolchain_pins.mjs`,
   # run by the `workflow-lint` job, fails CI when they disagree.
   FLUTTER_VERSION: "3.47.0"
+  # Pull the local Supabase stack's images from GHCR, not the CLI's default
+  # public.ecr.aws. ECR Public caps ANONYMOUS pulls by data volume per source
+  # IP, and hosted runners share their egress IPs with every other tenant, so
+  # the cap is spent by traffic this repo never sees: on 2026-09-28 every
+  # stack-starting job across fifteen open PRs failed all three start
+  # attempts on `toomanyrequests: Data limit exceeded`, and was still failing
+  # seven hours later. Supabase mirrors each image at the same tag under
+  # ghcr.io/supabase, which a runner reaches with no such cap. Workflow-level
+  # rather than on the start-supabase action because `supabase test db` and
+  # `supabase gen types` pull images of their own. Incident 7 in
+  # .github/actions/start-supabase/start_stack.sh.
+  SUPABASE_INTERNAL_IMAGE_REGISTRY: ghcr.io
 
 jobs:
   # ci.yml used to skip itself on docs-only diffs via `paths-ignore`, which

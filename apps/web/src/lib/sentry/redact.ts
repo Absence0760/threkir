@@ -76,3 +76,33 @@ export function redactEventSignedUrls(event: SentryEventWithSpans): SentryEventW
 	}
 	return event;
 }
+
+/// Sentry 11 streams spans by default and runs them through
+/// `beforeSendSpan`; `beforeSendTransaction` never fires in that mode, so
+/// `redactEventSignedUrls` no longer sees a span. A streamed span carries its
+/// URL in `name` ("GET https://…") and in attributes (`url.full`,
+/// `http.url`, …), each either a bare value or `{ value, unit }`. Every
+/// string is run through `redactUrl` rather than a list of known keys:
+/// each redactor gates on its own URL shape, so an unrelated string is
+/// returned untouched, and a key the SDK renames next major is still covered.
+export interface StreamedSpanLike {
+	name: string;
+	attributes: Record<string, unknown>;
+}
+
+export function redactStreamedSpan<T extends StreamedSpanLike>(span: T): T {
+	span.name = redactUrl(span.name);
+	for (const [key, value] of Object.entries(span.attributes)) {
+		if (typeof value === 'string') {
+			span.attributes[key] = redactUrl(value);
+		} else if (
+			value !== null &&
+			typeof value === 'object' &&
+			typeof (value as { value?: unknown }).value === 'string'
+		) {
+			const attr = value as { value: string };
+			attr.value = redactUrl(attr.value);
+		}
+	}
+	return span;
+}

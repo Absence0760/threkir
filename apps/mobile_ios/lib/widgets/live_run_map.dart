@@ -100,7 +100,8 @@ List<LatLng> smoothTrackIncremental(
 /// tile-usage policy — appropriate for the no-config dev path but
 /// NOT for production. The fallback exists so the map renders
 /// SOMETHING when neither MAPTILER_KEY nor TILE_URL_TEMPLATE is
-/// set in `.env.local`; MissingMapTilesHint surfaces the diagnostic
+/// set (via `--dart-define` or `.env.development`); MissingMapTilesHint
+/// surfaces the diagnostic
 /// alongside.
 const _kOsmTileUrl =
     'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -137,7 +138,7 @@ String _maptilerSlug(String mapStyle, bool prefersDark) {
 /// `Map<String, String>` rather than poking dotenv.
 ///
 /// Whitespace-only overrides are treated as absent — a stray space
-/// after `TILE_URL_TEMPLATE=` in `.env.local` shouldn't silently
+/// after `TILE_URL_TEMPLATE=` in `.env.development` shouldn't silently
 /// disable MapTiler. Matches the Kotlin `buildTileUrl` `isNotBlank`
 /// semantics on the Wear OS side; see `decisions.md § 68`.
 ///

@@ -173,7 +173,7 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   /// Google Sign-In via the native flow. On Android, requires
-  /// `GOOGLE_WEB_CLIENT_ID` in `.env.local` and an Android OAuth 2.0
+  /// `GOOGLE_WEB_CLIENT_ID` (a `--dart-define`) and an Android OAuth 2.0
   /// client configured with the app's SHA-1 fingerprint. See
   /// `apps/mobile_android/local_testing.md`; `google_auth.dart` carries the
   /// per-platform gate.

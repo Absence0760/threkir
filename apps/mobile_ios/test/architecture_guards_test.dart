@@ -4145,7 +4145,7 @@ void main() {
       // builder (`buildMapStyleUrl`, `resolveTileUrl`, `buildTileUrl`)
       // for choosing between the local-dev override and the
       // MapTiler fallback. The contract MUST be identical across
-      // the three so a stray space in one platform's .env.local
+      // the three so a stray space in one platform's env file
       // doesn't behave differently from another. See
       // `decisions.md § 68`.
 

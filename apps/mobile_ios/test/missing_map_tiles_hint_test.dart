@@ -83,7 +83,10 @@ void main() {
         // config") fails this test.
         expect(find.textContaining('MAPTILER_KEY'), findsOneWidget);
         expect(find.textContaining('TILE_URL_TEMPLATE'), findsOneWidget);
-        expect(find.textContaining('.env.local'), findsOneWidget);
+        expect(find.textContaining('--dart-define'), findsOneWidget);
+        // Mobile never reads a .env.local (decisions §137), so the hint
+        // must not send anyone to one.
+        expect(find.textContaining('.env.local'), findsNothing);
         expect(find.textContaining('10.0.2.2'), findsOneWidget);
       },
     );

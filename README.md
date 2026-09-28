@@ -51,8 +51,22 @@ same `dev:run:*` command for whichever platform you're testing. Manage it with
 
 The committed defaults are deliberately key-free (Protomaps instead of
 MapTiler, Ollama instead of Anthropic). To use a real key (MapTiler, Anthropic,
-Strava, RevenueCat), put it in a **gitignored `.env.local`** next to the
-committed file — it overrides the defaults. Never commit real secrets.
+Strava, RevenueCat), override the committed `.env.development` per machine.
+Where the override goes depends on the toolchain
+([dev_prod_isolation.md](docs/testing/dev_prod_isolation.md)):
+
+- **web (Vite):** the shell or a gitignored `.env.development.local`, **not**
+  `.env.local`. Vite's precedence is shell env > `.env.development.local` >
+  `.env.development` > `.env.local` > `.env`, so a `.env.local` value loses to
+  the committed default.
+- **mobile (Flutter):** `--dart-define=NAME=value` on `flutter run` /
+  `flutter build`. The app reads only the bundled `.env.development`, and only
+  in debug; there is no `.env.local` on mobile.
+- **backend, Wear OS, job worker:** a gitignored `.env.local` (pass
+  `--env-file .env.local` to `supabase functions serve`; Gradle and the Go
+  worker pick it up themselves).
+
+Never commit real secrets.
 
 ### Handy tasks
 

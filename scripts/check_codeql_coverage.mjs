@@ -79,7 +79,7 @@
 //      `CI gate` aggregator's `needs:` list.
 // Unit tests: `node --test scripts/check_codeql_coverage.test.mjs`
 
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -430,22 +430,58 @@ export function blockScalar(block, key) {
 /**
  * Run the workflow's own enumeration and report what it names, repo-relative.
  *
+ * Under the same `bash` + `set -euo pipefail` the steps declare. Without
+ * pipefail, `find … -printf … | sort` on a host whose `find` rejects the
+ * expression exits 0 with an empty answer — `sort` of nothing succeeds — and
+ * that empty answer used to be compared against the tree as if the workflow had
+ * produced it. The status and stderr are returned rather than thrown so the
+ * caller can tell a broken expression from a host that cannot run it.
+ *
  * @param {{ variable: string, script: string }} expr
  * @param {string} root
- * @returns {string[]}
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {{ names: string[], status: number | null, stderr: string }}
  */
-export function runEnumeration(expr, root) {
-	const out = execFileSync(
-		'/bin/sh',
-		['-c', `${expr.script}\nprintf '%s\\n' "$${expr.variable}"`],
-		{ cwd: root, encoding: 'utf-8' },
+export function runEnumeration(expr, root, env = process.env) {
+	const res = spawnSync(
+		'bash',
+		['-c', `set -euo pipefail\n${expr.script}\nprintf '%s\\n' "$${expr.variable}"`],
+		{ cwd: root, encoding: 'utf-8', env },
 	);
-	return out
+	const names = (res.stdout ?? '')
 		.split('\n')
 		.map((l) => l.trim())
 		.filter((l) => l !== '')
 		.map((l) => (l.startsWith('./') ? l.slice(2) : l))
 		.sort();
+	const stderr = (res.stderr ?? '').trim() || (res.error ? res.error.message : '');
+	return { names, status: res.status, stderr };
+}
+
+/**
+ * Whether the `find` a non-interactive shell resolves on this host is one the
+ * workflow's expressions can run on: GNU `-printf`, which BSD find lacks.
+ *
+ * The shell is the point. An interactive `find` can be an alias or a shell
+ * function — Claude Code's own Bash tool defines `find` as a function over an
+ * embedded `bfs` — and neither reaches the `bash -c` this guard spawns, which
+ * looks `find` up on PATH. On macOS that is `/usr/bin/find`, so the
+ * interactive probe passes and the guard's does not.
+ *
+ * @param {string} root
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {{ ok: boolean, find: string, detail: string }}
+ */
+export function probeHostFind(root, env = process.env) {
+	const res = spawnSync(
+		'bash',
+		['-c', `command -v find || echo '(no find on PATH)'; find . -maxdepth 0 -printf '%h\\n'`],
+		{ cwd: root, encoding: 'utf-8', env },
+	);
+	const [find = '', ...rest] = (res.stdout ?? '').split('\n');
+	const printed = rest.join('\n').trim();
+	const detail = (res.stderr ?? '').trim() || (res.error ? res.error.message : '');
+	return { ok: res.status === 0 && printed === '.', find: find.trim(), detail };
 }
 
 /**
@@ -650,11 +686,17 @@ export function globNamesSomething(glob, paths) {
 }
 
 /**
- * @param {{ root?: string, workflowText?: string }} [opts]
+ * `env` is what the workflow's enumeration is spawned with, so a case can hand
+ * it a PATH whose `find` behaves like another host's.
+ *
+ * @param {{ root?: string, workflowText?: string, env?: NodeJS.ProcessEnv }} [opts]
  * @returns {{ errors: string[], ok: string[] }}
  */
 export function check(opts = {}) {
 	const root = opts.root ?? ROOT;
+	const env = opts.env ?? process.env;
+	/** @type {{ ok: boolean, find: string, detail: string } | undefined} */
+	let host;
 	const workflowPath = join(root, WORKFLOW);
 	/** @type {string[]} */
 	const errors = [];
@@ -702,18 +744,36 @@ export function check(opts = {}) {
 			continue;
 		}
 
-		/** @type {string[]} */
-		let enumerated;
-		try {
-			enumerated = runEnumeration(expr, root);
-		} catch (e) {
+		const run = runEnumeration(expr, root, env);
+		const failed = run.status !== 0 || run.stderr !== '';
+		if (failed || run.names.length === 0) {
+			host ??= probeHostFind(root, env);
+			if (!host.ok) {
+				errors.push(
+					`UNSUPPORTED HOST, not coverage drift: this machine cannot run the \`${jobs[0]}\` ` +
+						`job's ${surface.label} enumeration, so nothing here says whether it covers the ` +
+						`tree. The \`find\` a non-interactive \`bash -c\` resolves is ` +
+						`${host.find || 'unknown'}, and it does not support GNU \`-printf\`` +
+						`${host.detail ? ` (${host.detail.split('\n')[0]})` : ''}. The step runs on ` +
+						`ubuntu-latest's GNU findutils, where it works. To run this guard locally, put ` +
+						`GNU find first on PATH under the name \`find\` — on macOS \`brew install ` +
+						`findutils\` then \`PATH="$(brew --prefix)/opt/findutils/libexec/gnubin:$PATH"\`. ` +
+						`An alias or shell function named \`find\` does not reach the shell this guard ` +
+						`spawns. Otherwise the \`workflow-lint\` CI job is the verdict.`,
+				);
+				continue;
+			}
+		}
+		if (failed) {
 			errors.push(
-				`the \`${jobs[0]}\` job's ${surface.label} enumeration does not run: ` +
-					`${e instanceof Error ? e.message : String(e)}. Lifted verbatim from the step, so ` +
-					`what fails here fails in CI.`,
+				`the \`${jobs[0]}\` job's ${surface.label} enumeration does not run: exit ` +
+					`${run.status}${run.stderr ? `, ${run.stderr.split('\n')[0]}` : ''}. Lifted ` +
+					`verbatim from the step and run under its own \`set -euo pipefail\`, on a host ` +
+					`whose \`find\` supports it, so what fails here fails in CI.`,
 			);
 			continue;
 		}
+		const enumerated = run.names;
 
 		const missed = walked.filter((p) => !enumerated.includes(p));
 		const extra = enumerated.filter((p) => !walked.includes(p));
@@ -944,7 +1004,14 @@ function main() {
 	for (const line of ok) console.log(`[OK] ${line}`);
 	for (const line of errors) console.error(`[FAIL] ${line}`);
 	if (errors.length > 0) {
-		console.error(`\n${errors.length} CodeQL build-coverage problem(s).`);
+		const unsupported = errors.filter((e) => e.startsWith('UNSUPPORTED HOST')).length;
+		console.error(
+			`\n${errors.length} CodeQL build-coverage problem(s)` +
+				(unsupported > 0
+					? `, ${unsupported} of them this host being unable to run the workflow's own ` +
+						`enumeration rather than anything wrong with the workflow.`
+					: '.'),
+		);
 		return 1;
 	}
 	console.log(

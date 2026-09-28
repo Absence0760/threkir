@@ -71,15 +71,15 @@ Provisioned via Terraform — matches the workstation toolchain (`/home/jhoward/
 ```
 infra/
 ├── modules/
-│   └── web-stack/         # Reusable: S3 + CloudFront + 4 Lambdas (coach + generate-route +
-│                          # share-run + share-route) + Function URLs + IAM + per-env KMS key
-│                          # + sops integration
+│   └── web-stack/         # Reusable: S3 + CloudFront + 8 Lambdas (coach, generate-route,
+│                          # osrm-proxy, share-run/-route/-recap/-badge/-entity) + Function
+│                          # URLs + IAM + per-env KMS key + sops integration
 ├── envs/
 │   ├── prod/              # Root module — calls web-stack module
 │   │   ├── main.tf
 │   │   ├── backend.tf     # Remote state in S3 with native lockfile
-│   │   ├── terraform.tfvars
-│   │   └── secrets.enc.yaml   # sops-encrypted (KMS key from this env's stack)
+│   │   ├── variables.tf   # `secrets_file` — defaults to the estate's threkir/prod.sops.yaml
+│   │   └── terraform.tfvars   # symlink into the estate repo (infra-secrets/threkir/prod.tfvars)
 │   └── preview/           # Same shape, separate state, separate resources
 ├── dns/                   # Route 53 hosted zone, ACM cert in us-east-1
 │   └── ...                # One stack — both envs share the zone
@@ -92,8 +92,17 @@ infra/
 │   │                      # required. Run once with local state, then
 │   │                      # ignored.
 │   └── ...
-└── .sops.yaml             # Routes each env's secrets.enc.yaml to that env's KMS key
+└── .sops.yaml             # DELIBERATELY rule-less: `sops --encrypt` under infra/ fails
+                           # closed. The creation rules live in the estate's own .sops.yaml
+
+../infra-secrets/          # PRIVATE estate repo (Absence0760/infra-secrets), cloned as a sibling
+├── .sops.yaml             # Routes threkir/<env>.sops.yaml to that env's KMS key
+└── threkir/
+    ├── prod.sops.yaml     # sops-encrypted runtime secrets (KMS key from this env's stack)
+    └── prod.tfvars        # plaintext, non-secret tfvars (publishable keys, emails)
 ```
+
+No ciphertext is ever committed to this public repo: `infra/.gitignore` blocks any `secrets.enc.yaml` as a second fail-safe behind the rule-less `.sops.yaml` ([decisions § 53](../../docs/architecture/decisions.md#53-web-app--domain-on-aws-s3--cloudfront--lambda--route-53-not-vercel-or-cloudflare-pages)). The slot name `threkir` is defined once, in `bin/lib/estate.sh`, and every operator script resolves the estate through it.
 
 **Bootstrap** (one-time, before any other Terraform runs):
 
@@ -123,7 +132,7 @@ The `dns` stack outputs the hosted zone ID and cert ARN; per-env stacks read tho
 
 **Region.** Everything sits in `us-east-1`. The ACM cert for CloudFront *has* to live there regardless of where the rest of the stack runs, so `dns/main.tf` declares an explicit `us_east_1` provider alias — that's a no-op while the primary region is also `us-east-1`, but it's load-bearing if the stack ever moves.
 
-**Runtime secrets via sops + AWS KMS.** `infra/envs/<env>/secrets.enc.yaml` is sops-encrypted with that env's KMS key (created by `web-stack`). Terraform reads it via the [`carlpett/sops`](https://registry.terraform.io/providers/carlpett/sops/latest) provider at apply time and writes the values into the Lambda's `environment.variables` block. Rotation is `sops infra/envs/prod/secrets.enc.yaml` → save → `terraform apply` → `bin/lambda-alias-sync.sh prod`. The apply publishes a new Lambda version in seconds, but the CI-owned `live` aliases (which the Function URLs target) stay on the old version's frozen env until the sync script repoints them — an apply alone does not put the rotated value on the serving path (issue #590 defect 2). For non-interactive rotation use [`bin/secret-set.sh <env> <KEY> < value-file`](../../bin/README.md) (value comes via stdin/file, never argv, so it doesn't land in shell history).
+**Runtime secrets via sops + AWS KMS.** The secrets live in the PRIVATE estate repo at `../infra-secrets/threkir/<env>.sops.yaml`, sops-encrypted under that env's KMS key (created by `web-stack`). Each env root's `secrets_file` var points at it (empty = that default path; set `TF_VAR_secrets_file` if your estate clone lives elsewhere), and Terraform reads it via the [`carlpett/sops`](https://registry.terraform.io/providers/carlpett/sops/latest) provider at apply time. The credentials do **not** go into the Lambda environment in the clear: the apply encrypts the coach's and generate-route's credential set into `aws_kms_ciphertext` resources, the blob rides in an ordinary env var, and `apps/web/src/lib/core/lambda_secrets.ts` decrypts it once per cold start, failing closed to 503 ([decisions § 1671](../../docs/architecture/decisions.md)). `SENTRY_DSN` is the one sops value still merged into every function's environment. First-time setup is `bin/sops-init.sh <env>`, which wires the env's KMS ARN into the estate `.sops.yaml` and seeds the encrypted file. Rotation is `bin/secret-set.sh <env> <KEY>` (value via stdin / `--from-file`, never argv, so it stays out of shell history) or `sops ../infra-secrets/threkir/<env>.sops.yaml` in place, then commit in the estate repo, then `terraform apply` in `infra/envs/<env>`, then `bin/lambda-alias-sync.sh <env>`. **Both steps after the edit are required.** The re-apply is needed because the ciphertext is a resource, so a function still holding the old blob decrypts the old value. The alias sync is needed because the apply publishes a new Lambda version while the CI-owned `live` aliases (which the Function URLs target) stay on the old one (issue #590 defect 2). The scripted steps are in [`bin/README.md`](../../bin/README.md) and the manual equivalent in [`infra/README.md`](../../infra/README.md).
 
 ---
 
@@ -396,7 +405,7 @@ If the AWS account itself is lost, recovery is roughly:
 2. `cd infra/bootstrap && terraform init && terraform apply` — recreates the state bucket.
 3. `cd ../dns && terraform init && terraform apply` — recreates the hosted zone + ACM cert.
 4. `cd ../github-oidc && terraform init && terraform apply -var "github_repo=<owner>/<repo>"` — recreates the OIDC trust + deploy roles.
-5. `cd ../envs/prod && terraform init && terraform apply` — recreates the prod web stack. **The KMS key for runtime secrets is recreated; the existing `secrets.enc.yaml` files are encrypted with the OLD KMS key and unrecoverable.** Re-issue the secrets fresh (Anthropic key, Sentry DSN), `sops` them against the new KMS key ARN, then re-apply.
+5. `cd ../envs/prod && terraform init && terraform apply` — recreates the prod web stack. **The KMS key for runtime secrets is recreated. The estate's existing `../infra-secrets/threkir/*.sops.yaml` ciphertext is encrypted under the OLD key and cannot be recovered**, because KMS keys don't survive the account. The estate repo backs up the encrypted blobs, not the key. Re-issue the secrets fresh (Anthropic key, Supabase secret key, Sentry DSN). Run `bin/sops-init.sh prod` to wire the new KMS ARN into the estate `.sops.yaml` and seed a new encrypted file, and `bin/secret-set.sh prod <KEY>` for each value. Then re-apply, so the `aws_kms_ciphertext` blobs are rebuilt under the new key.
 6. Update the domain registrar's NS records to point at the new Route 53 hosted zone.
 7. Push the desired tag to trigger a deploy.
 

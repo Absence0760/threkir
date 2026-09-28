@@ -288,6 +288,34 @@ additive, like a suggestion chip or an attached-plan panel, degrades to absent
 rather than failing the page — but say so in a comment, because from the
 outside a degraded auxiliary read and a swallowed primary one look identical.
 
+### A read-only RPC goes out as a GET
+
+supabase-js sends every `.rpc()` as a POST unless the call passes
+`{ get: true }`, and a POST is the one method nothing on the path will replay:
+Kong's upstream retry and postgrest-js's own backoff are both GET/HEAD-only,
+so a keep-alive race that nginx silently retries for a GET surfaces as a 502
+for a POST (decisions § 1703). **On web, a function that is declared `stable`
+or `immutable` and whose every input is a scalar is called with `{ get: true }`**
+— a no-argument one as `.rpc('fn', undefined, { get: true })`.
+
+The shape limits are real, not stylistic. PostgREST runs a GET in a
+read-only transaction, so a `volatile` function that writes answers 405 there,
+and one that happens not to write is one edit away from doing so — declare it
+`stable` in a migration rather than GET-ing it undeclared. postgrest-js
+stringifies each GET argument: a `jsonb` / composite becomes `[object Object]`,
+an array becomes an unquoted `{a,b}` that a comma inside an element corrupts,
+and **`null` becomes the string `"null"`** (a `uuid` parameter then answers
+400, a `text` one searches for the word). So a GET omits an optional argument
+— `?? undefined`, which falls to the SQL default — and never sends `null`.
+An argument named `select`, `order`, `limit` or `offset` would be read as a
+PostgREST directive and cannot travel as a query parameter at all.
+
+`apps/web/src/lib/rpc_transport_guard.test.ts` derives each function's final
+volatility and argument types from the migrations and fails a PR that POSTs a
+GET-able function, GETs one that is not, sends a `null` in a GET, or omits an
+argument that has no default. A function that must stay a POST despite
+qualifying goes in its `POST_EXEMPT` table with the reason.
+
 ### What not to catch
 
 - `StateError` / `TypeError` / precondition failures — these are bugs. Let them crash in debug, let crash reporting catch them in release.

@@ -117,7 +117,7 @@ export async function lookupSharedSession(
 		let displayName: string | null = null;
 		if (plan.author_id) {
 			const { data: profile } = await supabase
-				.rpc('public_profile_by_id', { p_id: plan.author_id })
+				.rpc('public_profile_by_id', { p_id: plan.author_id }, { get: true })
 				.maybeSingle();
 			displayName =
 				(profile as { display_name?: string | null } | null)?.display_name ?? null;

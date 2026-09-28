@@ -311,8 +311,8 @@
 		await loadThread(session.user.id);
 		await loadArchives();
 		const [usageRes, proRes] = await Promise.all([
-			supabase.rpc('get_coach_usage', { p_user_id: session.user.id }),
-			supabase.rpc('is_pro'),
+			supabase.rpc('get_coach_usage', { p_user_id: session.user.id }, { get: true }),
+			supabase.rpc('is_pro', undefined, { get: true }),
 		]);
 		if (typeof usageRes.data === 'number') usedToday = usageRes.data;
 		if (proRes.error) {

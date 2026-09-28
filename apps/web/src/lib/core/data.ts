@@ -476,7 +476,7 @@ export async function fetchRunStreaks(
 	const { data, error } = await supabase.rpc('run_streaks_for_user', {
 		p_tz: tz,
 		...(source ? { p_source: source } : {}),
-	});
+	}, { get: true });
 	const row = data?.[0];
 	if (error || !row) return null;
 	return { current: row.current_streak ?? 0, best: row.best_streak ?? 0 };
@@ -636,7 +636,7 @@ export async function fetchPublicRecap(
 	id: string,
 ): Promise<{ periodKind: RecapPeriodKind; periodKey: string; snapshot: YearInRunningRecap } | null> {
 	const { data, error } = await supabase
-		.rpc('public_recap_by_id', { p_id: id })
+		.rpc('public_recap_by_id', { p_id: id }, { get: true })
 		.maybeSingle();
 	const row = data as {
 		period_kind?: string | null;
@@ -1612,7 +1612,7 @@ export async function nearbyPublicRoutes(options: {
 		lng,
 		radius_m: radiusM,
 		max_results: limit,
-	});
+	}, { get: true });
 	if (error || !data) return [];
 	return data as PublicRouteSummary[];
 }
@@ -1680,7 +1680,7 @@ export async function searchPublicRoutes(options?: {
 export async function fetchPopularRouteTags(limit = 20): Promise<string[]> {
 	const { data } = await supabase.rpc('popular_route_tags', {
 		tag_limit: limit,
-	});
+	}, { get: true });
 	if (!Array.isArray(data)) return [];
 	return (data as Array<{ tag: string }>).map((r) => r.tag);
 }
@@ -2288,7 +2288,7 @@ export async function searchClubsWithError(
 		p_center_lat: place?.center.lat ?? undefined,
 		p_radius_m: place?.radiusM ?? undefined,
 		p_limit: 60,
-	});
+	}, { get: true });
 	if (error) {
 		console.warn('search_clubs RPC failed, falling back to ILIKE-only', error);
 		return browseClubsWithError(term);
@@ -2387,7 +2387,7 @@ export async function searchPublicEvents(
 		p_center_lat: f.center?.lat ?? undefined,
 		p_radius_m: f.radiusM ?? undefined,
 		p_limit: f.limit ?? 60,
-	});
+	}, { get: true });
 	if (error) {
 		throw error;
 	}
@@ -2438,7 +2438,7 @@ export async function searchRaceListings(
 		p_center_lat: f.center?.lat ?? undefined,
 		p_radius_m: f.radiusM ?? undefined,
 		p_limit: f.limit ?? 60
-	});
+	}, { get: true });
 	if (error) throw error;
 	return (data ?? []) as RaceListingResult[];
 }
@@ -2790,7 +2790,7 @@ export async function fetchClubBySlug(
 	if (enriched.viewer_role === 'owner' || enriched.viewer_role === 'admin') {
 		const { data: token } = await supabase.rpc('get_club_invite_token', {
 			target_club: enriched.id
-		});
+		}, { get: true });
 		return { club: { ...enriched, invite_token: (token as string | null) ?? null }, error: null };
 	}
 	return { club: enriched, error: null };
@@ -4529,7 +4529,7 @@ export async function fetchLatestRacePings(
 	const { data } = await supabase.rpc('latest_race_pings', {
 		p_event_id: eventId,
 		p_instance_start: instanceStart
-	});
+	}, { get: true });
 	const rows = (data as RacePingRow[]) ?? [];
 	return rows.sort(compareLeaderboard);
 }
@@ -5700,7 +5700,7 @@ export async function searchPeople(q: string, limit = 20): Promise<PeopleSuggest
 	const { data: profiles, error } = await supabase.rpc('search_user_profiles', {
 		p_query: term,
 		p_limit: candidateLimit,
-	});
+	}, { get: true });
 	if (error || !profiles) return [];
 	const ids = (profiles as Array<{ id: string }>)
 		.map((p) => p.id)
@@ -5840,7 +5840,7 @@ export async function fetchNearbyRunners(radiusM = 25000): Promise<NearbyRunner[
 
 	const { data, error } = await supabase.rpc('discoverable_runners_near', {
 		p_radius_m: radiusM,
-	});
+	}, { get: true });
 	if (error || !data) return [];
 	const rows = data as Array<{
 		id: string;
@@ -5894,7 +5894,7 @@ export async function clearDiscoverableArea(): Promise<void> {
 /// The caller's own stored area label (never the coordinate), for the settings
 /// UI. Null when no area is set.
 export async function fetchMyDiscoverableArea(): Promise<string | null> {
-	const { data, error } = await supabase.rpc('my_discoverable_area');
+	const { data, error } = await supabase.rpc('my_discoverable_area', undefined, { get: true });
 	if (error) return null;
 	return (data as string | null) ?? null;
 }
@@ -7316,7 +7316,7 @@ export async function fetchRouteConditionsWithError(
 ): Promise<{ conditions: RouteCondition[]; error: string | null }> {
 	const { data, error } = await supabase.rpc('route_conditions_for_viewer', {
 		p_route_id: routeId
-	});
+	}, { get: true });
 	if (error) {
 		console.warn('route_conditions_for_viewer failed', error);
 		return { conditions: [], error: `${error.message}${error.code ? ` (${error.code})` : ''}` };
@@ -7388,7 +7388,7 @@ export async function fetchHeatmapPoints(bbox: {
 		p_max_lng: bbox.maxLng,
 		p_max_lat: bbox.maxLat,
 		p_max_points: bbox.maxPoints ?? 5000,
-	});
+	}, { get: true });
 	if (error || !data) {
 		console.warn('fetchHeatmapPoints failed', error);
 		return [];
@@ -7429,7 +7429,7 @@ export async function fetchClubsInBbox(bbox: {
 		p_max_lng: bbox.maxLng,
 		p_max_lat: bbox.maxLat,
 		p_limit: bbox.limit ?? 100,
-	});
+	}, { get: true });
 	if (error || !data) {
 		console.warn('fetchClubsInBbox failed', error);
 		return [];
@@ -7685,7 +7685,7 @@ export async function addGearToRuns(gearId: string, runIds: string[]): Promise<n
 /// retired_at / target_distance_m) is never selected, so exposing gear on a
 /// public run stays leak-free.
 export async function fetchRunGear(runId: string): Promise<Gear[]> {
-	const { data, error } = await supabase.rpc('public_run_gear', { p_run_id: runId });
+	const { data, error } = await supabase.rpc('public_run_gear', { p_run_id: runId }, { get: true });
 	if (error || !data) {
 		console.error('fetchRunGear failed', error);
 		return [];
@@ -8183,11 +8183,11 @@ export async function fetchSegmentLeaderboardTieredWithError(
 ): Promise<{ entries: SegmentLeaderboardEntry[]; error: string | null }> {
 	const { data, error } = await supabase.rpc('segment_leaderboard_tiered', {
 		p_segment_id: segmentId,
-		p_gender: filter.gender ?? null,
-		p_age_band: filter.ageBand ?? null,
+		p_gender: filter.gender ?? undefined,
+		p_age_band: filter.ageBand ?? undefined,
 		p_limit: limit,
-		p_club_id: filter.clubId ?? null,
-	});
+		p_club_id: filter.clubId ?? undefined,
+	}, { get: true });
 	if (error) {
 		console.warn('fetchSegmentLeaderboardTiered failed', error);
 		return { entries: [], error: `${error.message}${error.code ? ` (${error.code})` : ''}` };
@@ -8280,7 +8280,7 @@ export async function fetchEffortsForRunWithError(
 	// It must not say `#1` — see decisions §746.
 	const { data: rankRows, error: rankErr } = await supabase.rpc('segment_effort_ranks', {
 		p_run_id: runId,
-	});
+	}, { get: true });
 	if (rankErr) console.error('segment_effort_ranks failed', rankErr);
 	const rankByEffort = readRankRows(rankRows);
 
@@ -8460,11 +8460,11 @@ export async function fetchGlobalSegmentLeaderboard(
 ): Promise<GlobalSegmentLeaderboardEntry[]> {
 	const { data, error } = await supabase.rpc('global_segment_leaderboard', {
 		p_segment_id: segmentId,
-		p_gender: filter.gender ?? null,
-		p_age_band: filter.ageBand ?? null,
+		p_gender: filter.gender ?? undefined,
+		p_age_band: filter.ageBand ?? undefined,
 		p_limit: limit,
-		p_club_id: filter.clubId ?? null,
-	});
+		p_club_id: filter.clubId ?? undefined,
+	}, { get: true });
 	if (error || !data) {
 		console.warn('fetchGlobalSegmentLeaderboard failed', error);
 		return [];
@@ -8628,7 +8628,7 @@ export async function fetchGlobalEffortsForRun(
 	// arrive and the ranks 42501. Unranked is the honest answer either way.
 	const { data: rankRows, error: rankErr } = await supabase.rpc('global_segment_effort_ranks', {
 		p_run_id: runId,
-	});
+	}, { get: true });
 	if (rankErr) console.error('global_segment_effort_ranks failed', rankErr);
 	const rankByEffort = readRankRows(rankRows);
 
@@ -8914,7 +8914,7 @@ export interface DmThread {
 export async function fetchDmThreads(): Promise<DmThread[]> {
 	const me = auth.user?.id;
 	if (!me) return [];
-	const { data, error } = await supabase.rpc('dm_threads');
+	const { data, error } = await supabase.rpc('dm_threads', undefined, { get: true });
 	// Throw rather than returning [] — the caller can't tell a transient
 	// RPC failure from a genuinely empty inbox, and rendering "no
 	// conversations" on a blip strands the user until a manual reload.
@@ -9141,7 +9141,7 @@ export async function fetchCoachRosterSummaryWithError(): Promise<{
 	error: string | null;
 }> {
 	if (!auth.user?.id) return { rows: [], error: null };
-	const { data, error } = await supabase.rpc('coach_roster_summary');
+	const { data, error } = await supabase.rpc('coach_roster_summary', undefined, { get: true });
 	if (error) return { rows: [], error: error.message };
 	const rows: CoachRosterRow[] = ((data as Array<Record<string, unknown>>) ?? []).map((r) => ({
 		athlete_id: r.athlete_id as string,
@@ -9491,7 +9491,7 @@ export async function fetchGymWorkoutSummariesWithError(
 	limit = 100,
 ): Promise<{ summaries: GymWorkoutSummary[]; error: string | null }> {
 	if (!auth.user?.id) return { summaries: [], error: null };
-	const { data, error } = await supabase.rpc('gym_workout_summaries', { p_limit: limit });
+	const { data, error } = await supabase.rpc('gym_workout_summaries', { p_limit: limit }, { get: true });
 	if (error) return { summaries: [], error: error.message };
 	const rows = (data ?? []) as Array<{
 		workout_id: string;
@@ -9514,7 +9514,7 @@ export async function fetchGymWorkoutSummariesWithError(
 /// link. Degrades to false (link hidden) on a failed read.
 export async function fetchGymHasWeightedSets(): Promise<boolean> {
 	if (!auth.user?.id) return false;
-	const { data, error } = await supabase.rpc('gym_has_weighted_sets');
+	const { data, error } = await supabase.rpc('gym_has_weighted_sets', undefined, { get: true });
 	if (error) {
 		console.error('fetchGymHasWeightedSets failed', error);
 		return false;
@@ -9666,7 +9666,7 @@ export async function fetchExerciseRecordsWithError(): Promise<{
 	error: string | null;
 }> {
 	if (!auth.user?.id) return { records: [], error: null };
-	const { data, error } = await supabase.rpc('gym_exercise_records');
+	const { data, error } = await supabase.rpc('gym_exercise_records', undefined, { get: true });
 	if (error) return { records: [], error: error.message };
 	type Row = {
 		exercise_name: string;
@@ -9714,7 +9714,7 @@ export async function fetchExerciseSetHistoryWithError(
 	// U+0085 survives JS `trim()` and folds to the empty key no row can hold
 	// (§ 1367).
 	if (!auth.user?.id || !namesAnExercise(name)) return { sets: [], error: null };
-	const { data, error } = await supabase.rpc('gym_exercise_set_history', { p_name: name });
+	const { data, error } = await supabase.rpc('gym_exercise_set_history', { p_name: name }, { get: true });
 	if (error) return { sets: [], error: error.message };
 	return {
 		sets: ((data ?? []) as Array<{
@@ -9791,7 +9791,7 @@ export async function fetchExerciseSetHistoryBatch(names: string[]): Promise<Gym
 /// perf-hunt follow-up 2026-06-10.
 export async function fetchGymExerciseNames(): Promise<string[]> {
 	if (!auth.user?.id) return [];
-	const { data, error } = await supabase.rpc('gym_exercise_names');
+	const { data, error } = await supabase.rpc('gym_exercise_names', undefined, { get: true });
 	if (error) {
 		console.error('fetchGymExerciseNames failed', error);
 		return [];
@@ -10236,7 +10236,7 @@ export async function fetchGymRoutineHistory(
 	const { data, error } = await supabase.rpc('gym_routine_history', {
 		p_routine_id: routineId,
 		p_recent_limit: recentLimit,
-	});
+	}, { get: true });
 	// A failed read is not "you have never run this" — the caller shows a retry
 	// rather than an empty history.
 	if (error) throw error;
@@ -11906,10 +11906,10 @@ export async function browsePublicChallenges(
 	opts: { search?: string | null; limit?: number; offset?: number } = {}
 ): Promise<ChallengeWithMeta[]> {
 	const { data, error } = await supabase.rpc('browse_public_challenges', {
-		p_search: opts.search?.trim() || null,
+		p_search: opts.search?.trim() || undefined,
 		p_limit: opts.limit ?? 24,
 		p_offset: opts.offset ?? 0
-	});
+	}, { get: true });
 	if (error) throw error;
 	type BrowseRow = {
 		metric: string;
@@ -12152,7 +12152,7 @@ export async function fetchChallengeLeaderboard(
 	const { data, error } = await supabase.rpc('challenge_leaderboard', {
 		p_challenge_id: id,
 		p_by_team: byTeam
-	});
+	}, { get: true });
 	if (error) throw error;
 	return (data ?? []).map((r: Record<string, unknown>) => ({
 		user_id: (r.user_id as string | null) ?? null,
@@ -12164,7 +12164,7 @@ export async function fetchChallengeLeaderboard(
 }
 
 export async function myActiveChallenges(): Promise<ChallengeWithMeta[]> {
-	const { data, error } = await supabase.rpc('my_active_challenges');
+	const { data, error } = await supabase.rpc('my_active_challenges', undefined, { get: true });
 	if (error) throw error;
 	return (data ?? []).map((r: Record<string, unknown>) => ({
 		...challengeFromRow(r as Parameters<typeof challengeFromRow>[0]),
@@ -12253,7 +12253,7 @@ export async function closeFundraiser(id: string): Promise<void> {
 /// campaign we have no basis for. `null` stays the genuine miss: the RPC
 /// answered with no rows because nothing has been donated yet.
 export async function fetchFundraiserTotals(id: string): Promise<FundraiserTotals | null> {
-	const { data, error } = await supabase.rpc('fundraiser_totals', { p_fundraiser_id: id });
+	const { data, error } = await supabase.rpc('fundraiser_totals', { p_fundraiser_id: id }, { get: true });
 	if (error) throw error;
 	if (!data || (data as unknown[]).length === 0) return null;
 	const row = (data as FundraiserTotals[])[0];
@@ -12274,7 +12274,7 @@ export async function fetchFundraiserFeed(
 	const { data, error } = await supabase.rpc('fundraiser_feed', {
 		p_fundraiser_id: id,
 		p_limit: limit
-	});
+	}, { get: true });
 	if (error) throw error;
 	return (data ?? []) as FundraiserFeedEntry[];
 }

@@ -98,7 +98,7 @@ function createAuthStore() {
 		// because `subscription_tier`, `subscription_at`, and
 		// `parkrun_number` are column-level revoked from authenticated
 		// callers on `user_profiles` (migration 20260707_001).
-		const { data: profile, error: readErr } = await supabase.rpc('get_my_profile');
+		const { data: profile, error: readErr } = await supabase.rpc('get_my_profile', undefined, { get: true });
 
 		// A failed self-read must NOT fall through to the create branch: that
 		// path treats the user as brand-new and, if its write also fails,

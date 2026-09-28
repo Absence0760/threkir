@@ -87,7 +87,7 @@
 			// through the SECURITY DEFINER `get_my_profile()` RPC
 			// instead — same pattern as the other self-row reads.
 			const { data: prof } = await supabase
-				.rpc('get_my_profile')
+				.rpc('get_my_profile', undefined, { get: true })
 				.maybeSingle();
 			aiDisclosure = aiDisclosureFromProfileRow(prof);
 		} catch (_) {

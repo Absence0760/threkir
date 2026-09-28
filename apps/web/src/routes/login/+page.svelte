@@ -236,7 +236,7 @@
 				// failed RPC would otherwise leave a live session with no
 				// recorded consent. Fail closed to the Art 8 gate instead.
 				const consent = await verifyConsentStamped(() =>
-					supabase.rpc('get_my_profile').maybeSingle(),
+					supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle(),
 				);
 				goto(consent === 'ok' ? safeReturnTo() : '/auth/confirm-age');
 			} else {

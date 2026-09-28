@@ -481,7 +481,7 @@
 			// the uuid for (which we do, from the public_runs row
 			// above). See migration 20260530_002.
 			const { data: profile } = await supabase
-				.rpc('public_profile_by_id', { p_id: row.user_id })
+				.rpc('public_profile_by_id', { p_id: row.user_id }, { get: true })
 				.maybeSingle();
 			const dn =
 				(profile as { display_name?: string | null } | null)?.display_name ??

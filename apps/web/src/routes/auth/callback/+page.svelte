@@ -74,7 +74,7 @@
 		// post-callback, force the confirm-age page before any feature
 		// surface renders. /audit/owasp May 2026 Medium #5.
 		const consent = await verifyConsentStamped(() =>
-			supabase.rpc('get_my_profile').maybeSingle(),
+			supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle(),
 		);
 		if (consent === 'needs-consent') {
 			goto('/auth/confirm-age');

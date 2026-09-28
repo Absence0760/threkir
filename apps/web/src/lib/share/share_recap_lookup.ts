@@ -57,7 +57,7 @@ export async function lookupSharedRecap(
 			auth: { persistSession: false },
 		});
 		const { data, error } = await supabase
-			.rpc('public_recap_by_id', { p_id: id })
+			.rpc('public_recap_by_id', { p_id: id }, { get: true })
 			.maybeSingle();
 		// Non-null error (vs a clean data:null not-found) = Supabase unreachable
 		// / 5xx; the recap card degrades to the branded fallback with no Lambda
@@ -78,7 +78,7 @@ export async function lookupSharedRecap(
 		let displayName: string | null = null;
 		if (row.user_id) {
 			const { data: profile } = await supabase
-				.rpc('public_profile_by_id', { p_id: row.user_id })
+				.rpc('public_profile_by_id', { p_id: row.user_id }, { get: true })
 				.maybeSingle();
 			displayName =
 				(profile as { display_name?: string | null } | null)?.display_name ?? null;

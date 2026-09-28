@@ -1,7 +1,16 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 
-import { ANY_OS, cacheSteps, checkCacheKeys, osOf, withInput } from './check_cache_keys.mjs';
+import {
+	ANY_OS,
+	cacheSteps,
+	checkCacheKeys,
+	checkHashFilesPatterns,
+	globToRegExp,
+	hashFilesPatterns,
+	osOf,
+	withInput,
+} from './check_cache_keys.mjs';
 import { ACTION_DIR, WORKFLOW_DIR, readActions, readWorkflows } from './check_ci_diagnostics.mjs';
 
 /**
@@ -141,4 +150,81 @@ test('the committed workflows and actions pass, and the reader sees their caches
 	const { errors, shared } = checkCacheKeys(steps);
 	assert.deepEqual(errors, []);
 	assert.ok(shared >= 1);
+});
+
+const TRACKED = [
+	'pubspec.lock',
+	'apps/mobile_android/pubspec.yaml',
+	'apps/mobile_android/android/app/build.gradle.kts',
+	'apps/mobile_android/android/gradle/wrapper/gradle-wrapper.properties',
+	'apps/custom_watch/core/Cargo.toml',
+	'.github/actions/x/action.yml',
+];
+
+/** @param {string} key */
+const deadIn = (key) => checkHashFilesPatterns(hashFilesPatterns([{ name: 'ci.yml', text: `          key: ${key}\n` }]), TRACKED);
+
+test('the build-mobile-android shape fails: a per-app pubspec.lock in a pub workspace matches nothing', () => {
+	const errors = deadIn(
+		"gradle-${{ hashFiles('apps/mobile_android/android/**/*.gradle*', 'apps/mobile_android/android/gradle/wrapper/gradle-wrapper.properties', 'apps/mobile_android/pubspec.lock') }}",
+	);
+	assert.equal(errors.length, 1, errors.join('\n'));
+	assert.match(errors[0], /^ci\.yml:1: the hashFiles\(\) pattern `apps\/mobile_android\/pubspec\.lock` matches no tracked file/);
+});
+
+test('the root lockfile, recursive globs, dotted paths and a directory pattern all match', () => {
+	assert.deepEqual(deadIn("k-${{ hashFiles('pubspec.lock', '**/pubspec.lock', 'apps/custom_watch/**/Cargo.toml') }}"), []);
+	assert.deepEqual(deadIn("k-${{ hashFiles('apps/mobile_android/android') }}"), []);
+	assert.deepEqual(deadIn("k-${{ hashFiles('.github/**/action.yml') }}"), []);
+});
+
+test('a negated pattern that excludes nothing is dead too', () => {
+	assert.equal(deadIn("k-${{ hashFiles('**/*.gradle*', '!apps/gone/**') }}").length, 1);
+});
+
+test('a non-literal argument is reported rather than skipped', () => {
+	const errors = deadIn('k-${{ hashFiles(env.LOCK) }}');
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /`env\.LOCK`, which is not a string literal/);
+});
+
+test('comment lines are not read, and every call on a line is', () => {
+	const patterns = hashFilesPatterns([
+		{
+			name: 'ci.yml',
+			text: [
+				"      # was: hashFiles('apps/gone/pubspec.lock')",
+				"          key: a-${{ hashFiles('x', 'it''s') }}-${{ hashFiles('y') }}",
+			].join('\n'),
+		},
+	]);
+	assert.deepEqual(
+		patterns.map((p) => [p.line, p.pattern]),
+		[
+			[2, 'x'],
+			[2, "it's"],
+			[2, 'y'],
+		],
+	);
+});
+
+test('glob segments follow @actions/glob: * stays in one segment, ** spans zero or more', () => {
+	assert.ok(globToRegExp('apps/*/pubspec.yaml').test('apps/mobile_android/pubspec.yaml'));
+	assert.ok(!globToRegExp('apps/*/pubspec.yaml').test('apps/a/b/pubspec.yaml'));
+	assert.ok(globToRegExp('**/pubspec.lock').test('pubspec.lock'));
+	assert.ok(globToRegExp('a/**/*.gradle*').test('a/b/c/build.gradle.kts'));
+	assert.ok(globToRegExp('./deno.lock').test('deno.lock'));
+	assert.ok(!globToRegExp('deno.lock').test('denoXlock'));
+	assert.ok(globToRegExp('file[0-9].txt').test('file3.txt'));
+	assert.ok(globToRegExp('file[!0-9].txt').test('fileA.txt'));
+});
+
+test('the reader sees the committed hashFiles() patterns, the workspace lockfile among them', () => {
+	const patterns = hashFilesPatterns([...readWorkflows(WORKFLOW_DIR), ...readActions(ACTION_DIR)]);
+	assert.ok(patterns.length >= 10, `read only ${patterns.length} hashFiles() patterns; the reader has probably broken`);
+	assert.ok(patterns.every((p) => p.pattern !== null));
+	assert.ok(
+		patterns.some((p) => p.pattern === 'pubspec.lock'),
+		'the mobile_android Gradle key no longer hashes the workspace lockfile',
+	);
 });

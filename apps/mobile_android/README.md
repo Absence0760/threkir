@@ -8,9 +8,8 @@ Flutter Android app — the most mature Flutter target in the monorepo. Mirrors 
 
 ```bash
 cd apps/mobile_android
-cp .env.example .env.local                 # if you haven't already
 flutter pub get
-flutter run                                # picks a running emulator / connected device
+flutter run                                # picks a running emulator / connected device; debug loads the committed .env.development
 ```
 
 The local Supabase stack must be up first (`cd apps/backend && supabase start`). Seed user is `runner@test.com` / `testtest`.

@@ -44,8 +44,7 @@ test.describe('/challenges — Browse search', () => {
 
 	test('a search typed over an in-flight one still lands', async ({ page }) => {
 		await page.route(RPC, async (route) => {
-			const body = JSON.parse(route.request().postData() ?? '{}');
-			const term: string | null = body.p_search ?? null;
+			const term = new URL(route.request().url()).searchParams.get('p_search');
 			// The first term's response is held open; the second must not be
 			// refused by it, and must not be overwritten when it lands.
 			if (term === 'alpha') {

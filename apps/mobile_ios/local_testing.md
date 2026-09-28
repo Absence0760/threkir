@@ -99,12 +99,23 @@ melos run analyze
 
 ---
 
-## Push notifications (the build needs the Firebase config)
+## Push notifications (needs the Firebase config)
 
-`GoogleService-Info.plist` is gitignored and is a member of the Runner target,
-so a fresh clone **fails to build** with a missing-input error rather than
-silently shipping without push — the opposite of the Android side, where the
-Gradle apply is conditional. Fetch it out of the private estate repo (from this
+`GoogleService-Info.plist` is gitignored, so a fresh clone has none — and it
+still builds. The Runner target's *Copy Firebase config if present* build phase
+bundles the file only when it exists and otherwise logs `note: no
+GoogleService-Info.plist in Runner/; building without Firebase push`; the Dart
+side gates on `Firebase.apps.isNotEmpty` and disables push, the same shape as
+the Android side's conditional Gradle apply (`decisions.md § 1693`). The same
+absence also hides the Google sign-in button, because the *Register the Google
+Sign-In redirect scheme* phase reads its `REVERSED_CLIENT_ID` from this file.
+
+A file that is present but **malformed** is a build error, not a warning: that
+phase checks `GOOGLE_APP_ID`, `API_KEY` and `PROJECT_ID` the way the Firebase
+SDK does, because a bad value there aborts the app at launch before any Dart
+runs. Download a fresh file rather than hand-editing one.
+
+To receive a real push, fetch it out of the private estate repo (from this
 directory):
 
 ```

@@ -111,7 +111,7 @@ export type AiDisclosureGate =
 /**
  * Load the caller's consent record and grade it. Takes the loader rather
  * than the Supabase client so a handler can pass
- * `() => supabase.rpc('get_my_profile').maybeSingle()` and a test can pass
+ * `() => supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle()` and a test can pass
  * a stub without standing up a client.
  */
 export async function gateAiDisclosure(

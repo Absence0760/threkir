@@ -137,7 +137,7 @@ function supabaseProChecker(config: GenerateConfig) {
 			});
 			return 'unauthenticated';
 		}
-		const proRes = await supabase.rpc('is_pro');
+		const proRes = await supabase.rpc('is_pro', undefined, { get: true });
 		if (proRes.error) {
 			console.error('[generate] is_pro lookup failed', supabaseErrorFields(proRes.error));
 			return 'error';

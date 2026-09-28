@@ -367,7 +367,7 @@ test('Coach handler gates the Anthropic fan-out behind the versioned AI disclosu
 	const source = read('src/lib/coach/handler.ts');
 	assert.match(
 		source,
-		/\.rpc\('get_my_profile'\)/,
+		/\.rpc\('get_my_profile', undefined, \{ get: true \}\)/,
 		'handler.ts must call get_my_profile() to load the self row including the consent record.',
 	);
 	assert.match(
@@ -384,7 +384,7 @@ test('Coach handler gates the Anthropic fan-out behind the versioned AI disclosu
 	// assert ordering by checking that the consent lookup appears
 	// before the first `tier ===` reference (which is the start of
 	// the rate-limit / provider-dispatch block).
-	const consentIdx = source.indexOf("rpc('get_my_profile')");
+	const consentIdx = source.indexOf("rpc('get_my_profile', undefined, { get: true })");
 	const tierIdx = source.indexOf('tier === ');
 	assert.ok(
 		consentIdx > 0 && consentIdx < tierIdx,

@@ -489,8 +489,8 @@ class ApiClient {
 
   /// The current user ID, or null if not signed in.
   /// Current user id, or null when signed-out. Also null when
-  /// Supabase wasn't initialised (offline-mode boot, dev without
-  /// `.env.local` SUPABASE_URL/ANON_KEY) — `_client` resolves
+  /// Supabase wasn't initialised (offline-mode boot, e.g. a release
+  /// build without SUPABASE_URL/ANON_KEY dart-defines) — `_client` resolves
   /// `Supabase.instance` lazily and that getter asserts when init
   /// hasn't happened. Callers (RoutesScreen, FeedScreen, every
   /// "are we signed in?" guard) expect a tristate of "signed in" /

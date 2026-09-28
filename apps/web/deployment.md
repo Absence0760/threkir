@@ -71,15 +71,15 @@ Provisioned via Terraform — matches the workstation toolchain (`/home/jhoward/
 ```
 infra/
 ├── modules/
-│   └── web-stack/         # Reusable: S3 + CloudFront + 4 Lambdas (coach + generate-route +
-│                          # share-run + share-route) + Function URLs + IAM + per-env KMS key
-│                          # + sops integration
+│   └── web-stack/         # Reusable: S3 + CloudFront + 8 Lambdas (coach, generate-route,
+│                          # osrm-proxy, share-run/-route/-recap/-badge/-entity) + Function
+│                          # URLs + IAM + per-env KMS key + sops integration
 ├── envs/
 │   ├── prod/              # Root module — calls web-stack module
 │   │   ├── main.tf
 │   │   ├── backend.tf     # Remote state in S3 with native lockfile
-│   │   ├── terraform.tfvars
-│   │   └── secrets.enc.yaml   # sops-encrypted (KMS key from this env's stack)
+│   │   ├── variables.tf   # `secrets_file` — defaults to the estate's threkir/prod.sops.yaml
+│   │   └── terraform.tfvars   # symlink into the estate repo (infra-secrets/threkir/prod.tfvars)
 │   └── preview/           # Same shape, separate state, separate resources
 ├── dns/                   # Route 53 hosted zone, ACM cert in us-east-1
 │   └── ...                # One stack — both envs share the zone
@@ -92,8 +92,17 @@ infra/
 │   │                      # required. Run once with local state, then
 │   │                      # ignored.
 │   └── ...
-└── .sops.yaml             # Routes each env's secrets.enc.yaml to that env's KMS key
+└── .sops.yaml             # DELIBERATELY rule-less: `sops --encrypt` under infra/ fails
+                           # closed. The creation rules live in the estate's own .sops.yaml
+
+../infra-secrets/          # PRIVATE estate repo (Absence0760/infra-secrets), cloned as a sibling
+├── .sops.yaml             # Routes threkir/<env>.sops.yaml to that env's KMS key
+└── threkir/
+    ├── prod.sops.yaml     # sops-encrypted runtime secrets (KMS key from this env's stack)
+    └── prod.tfvars        # plaintext, non-secret tfvars (publishable keys, emails)
 ```
+
+No ciphertext is ever committed to this public repo: `infra/.gitignore` blocks any `secrets.enc.yaml` as a second fail-safe behind the rule-less `.sops.yaml` ([decisions § 53](../../docs/architecture/decisions.md#53-web-app--domain-on-aws-s3--cloudfront--lambda--route-53-not-vercel-or-cloudflare-pages)). The slot name `threkir` is defined once, in `bin/lib/estate.sh`, and every operator script resolves the estate through it.
 
 **Bootstrap** (one-time, before any other Terraform runs):
 
@@ -123,7 +132,7 @@ The `dns` stack outputs the hosted zone ID and cert ARN; per-env stacks read tho
 
 **Region.** Everything sits in `us-east-1`. The ACM cert for CloudFront *has* to live there regardless of where the rest of the stack runs, so `dns/main.tf` declares an explicit `us_east_1` provider alias — that's a no-op while the primary region is also `us-east-1`, but it's load-bearing if the stack ever moves.
 
-**Runtime secrets via sops + AWS KMS.** `infra/envs/<env>/secrets.enc.yaml` is sops-encrypted with that env's KMS key (created by `web-stack`). Terraform reads it via the [`carlpett/sops`](https://registry.terraform.io/providers/carlpett/sops/latest) provider at apply time and writes the values into the Lambda's `environment.variables` block. Rotation is `sops infra/envs/prod/secrets.enc.yaml` → save → `terraform apply` → `bin/lambda-alias-sync.sh prod`. The apply publishes a new Lambda version in seconds, but the CI-owned `live` aliases (which the Function URLs target) stay on the old version's frozen env until the sync script repoints them — an apply alone does not put the rotated value on the serving path (issue #590 defect 2). For non-interactive rotation use [`bin/secret-set.sh <env> <KEY> < value-file`](../../bin/README.md) (value comes via stdin/file, never argv, so it doesn't land in shell history).
+**Runtime secrets via sops + AWS KMS.** The secrets live in the PRIVATE estate repo at `../infra-secrets/threkir/<env>.sops.yaml`, sops-encrypted under that env's KMS key (created by `web-stack`). Each env root's `secrets_file` var points at it (empty = that default path; set `TF_VAR_secrets_file` if your estate clone lives elsewhere), and Terraform reads it via the [`carlpett/sops`](https://registry.terraform.io/providers/carlpett/sops/latest) provider at apply time. The credentials do **not** go into the Lambda environment in the clear: the apply encrypts the coach's and generate-route's credential set into `aws_kms_ciphertext` resources, the blob rides in an ordinary env var, and `apps/web/src/lib/core/lambda_secrets.ts` decrypts it once per cold start, failing closed to 503 ([decisions § 1671](../../docs/architecture/decisions.md)). `SENTRY_DSN` is the one sops value still merged into every function's environment. First-time setup is `bin/sops-init.sh <env>`, which wires the env's KMS ARN into the estate `.sops.yaml` and seeds the encrypted file. Rotation is `bin/secret-set.sh <env> <KEY>` (value via stdin / `--from-file`, never argv, so it stays out of shell history) or `sops ../infra-secrets/threkir/<env>.sops.yaml` in place, then commit in the estate repo, then `terraform apply` in `infra/envs/<env>`, then `bin/lambda-alias-sync.sh <env>`. **Both steps after the edit are required.** The re-apply is needed because the ciphertext is a resource, so a function still holding the old blob decrypts the old value. The alias sync is needed because the apply publishes a new Lambda version while the CI-owned `live` aliases (which the Function URLs target) stay on the old one (issue #590 defect 2). The scripted steps are in [`bin/README.md`](../../bin/README.md) and the manual equivalent in [`infra/README.md`](../../infra/README.md).
 
 ---
 
@@ -396,7 +405,7 @@ If the AWS account itself is lost, recovery is roughly:
 2. `cd infra/bootstrap && terraform init && terraform apply` — recreates the state bucket.
 3. `cd ../dns && terraform init && terraform apply` — recreates the hosted zone + ACM cert.
 4. `cd ../github-oidc && terraform init && terraform apply -var "github_repo=<owner>/<repo>"` — recreates the OIDC trust + deploy roles.
-5. `cd ../envs/prod && terraform init && terraform apply` — recreates the prod web stack. **The KMS key for runtime secrets is recreated; the existing `secrets.enc.yaml` files are encrypted with the OLD KMS key and unrecoverable.** Re-issue the secrets fresh (Anthropic key, Sentry DSN), `sops` them against the new KMS key ARN, then re-apply.
+5. `cd ../envs/prod && terraform init && terraform apply` — recreates the prod web stack. **The KMS key for runtime secrets is recreated. The estate's existing `../infra-secrets/threkir/*.sops.yaml` ciphertext is encrypted under the OLD key and cannot be recovered**, because KMS keys don't survive the account. The estate repo backs up the encrypted blobs, not the key. Re-issue the secrets fresh (Anthropic key, Supabase secret key, Sentry DSN). Run `bin/sops-init.sh prod` to wire the new KMS ARN into the estate `.sops.yaml` and seed a new encrypted file, and `bin/secret-set.sh prod <KEY>` for each value. Then re-apply, so the `aws_kms_ciphertext` blobs are rebuilt under the new key.
 6. Update the domain registrar's NS records to point at the new Route 53 hosted zone.
 7. Push the desired tag to trigger a deploy.
 
@@ -408,23 +417,30 @@ RTO: ~2 hours from a cold-start of a new account if the domain is at a registrar
 
 ## Production readiness checklist
 
-- [ ] AWS account created (or sub-account in an org), root MFA enabled
-- [ ] `infra/envs/prod/terraform.tfvars` sets `monthly_budget_limit_usd` + `budget_alert_emails` (Terraformed in `infra/envs/prod/budgets.tf`; fires at 50 % / 100 % ACTUAL + 100 % FORECASTED)
-- [ ] `infra/bootstrap` applied (S3 state bucket created; locking is S3-native)
-- [ ] AWS provider configured for `us-east-1` (the cert provider alias resolves to the same region; harmless)
-- [ ] Domain `threkir.com` registered (Route 53 or external + delegated)
-- [ ] Route 53 hosted zone live, NS records propagated
-- [ ] ACM cert issued in `us-east-1`, DNS-validated
-- [ ] Terraform applied (in order): `infra/dns`, `infra/github-oidc`, `infra/envs/preview`, `infra/envs/prod`
-- [ ] GitHub OIDC role trust policy verified (only the repo + ref scopes intended can assume it)
-- [ ] sops file populated: `infra/envs/prod/secrets.enc.yaml` (with `ANTHROPIC_API_KEY`, `SENTRY_DSN`); same for `preview/`
-- [ ] GitHub Secrets populated: `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`, `PUBLIC_MAPTILER_KEY`, `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL`, `PUBLIC_REVENUECAT_WEB_PORTAL_URL`, `PUBLIC_SENTRY_DSN`, `AWS_DEPLOY_ROLE_ARN_PROD`, `AWS_DEPLOY_ROLE_ARN_PREVIEW`
-- [ ] First preview deploy green; smoke test sign-in + dashboard + run detail at `preview.threkir.com`
-- [ ] First prod deploy green via tag `web@0.1.0`
-- [ ] Coach endpoint responds (try a free user → expect 2 successful streamed replies, then a 3rd request → expect 429; free tier cap is `TIER_LIMITS.free.dailyLimit = 2` per `apps/web/src/lib/coach/types.ts`)
-- [ ] Push notification flow verified end-to-end (subscribe in Settings, trigger via a kudos on another account)
-- [ ] CloudWatch alarms wired to SNS → email (or PagerDuty)
-- [ ] Sentry frontend + server projects receiving events
+Reconciled 2026-09-28 against what the prod deploys actually did (`web@1.6.0` run 35290005290, 2026-09-18, through `web@1.8.0` run 35556025161, 2026-09-21), public DNS / TLS / HTTP, and GitHub secret *names*. A box is ticked only where that evidence exists; `preview` has never been built (the account holds one distribution and `preview.threkir.com` resolves to nothing, see [`docs/ops/deployment.md`](../../docs/ops/deployment.md)), so every preview leg stays open.
+
+- [x] AWS account created (or sub-account in an org) — the `Threkir` member account of the personal AWS Organization; every `release-web.yml` prod run since `web@1.0.3` assumes its deploy role
+- [ ] AWS account root MFA enabled — not verifiable from the repo or GitHub; confirm in the org's IAM console
+- [x] Prod tfvars sets `monthly_budget_limit_usd` + `budget_alert_emails` (Terraformed in `infra/envs/prod/budgets.tf`; fires at 50 % / 100 % ACTUAL + 100 % FORECASTED) — both keys present in the estate's `infra-secrets/threkir/prod.tfvars` (the canonical copy `infra/envs/prod/terraform.tfvars` symlinks to; key names checked 2026-09-28, values not read)
+- [x] `infra/bootstrap` applied (S3 state bucket created; locking is S3-native) — every later stack's `backend.tf` initialises against it; `infra/dns` planned clean and `infra/github-oidc` applied through it on 2026-09-18 (#922, #928)
+- [x] AWS provider configured for `us-east-1` (the cert provider alias resolves to the same region; harmless) — CloudFront serves the ACM cert below, which it only accepts from `us-east-1`
+- [x] Domain `threkir.com` registered (Route 53 or external + delegated) — registered 2026-05-24 through Amazon Registrar (`whois`, checked 2026-09-28)
+- [x] Route 53 hosted zone live, NS records propagated — `dig NS threkir.com` returns the four `awsdns` servers the registrar lists (2026-09-28)
+- [x] ACM cert issued in `us-east-1`, DNS-validated — Amazon RSA 2048 M04, SANs `threkir.com` / `www.threkir.com` / `preview.threkir.com`, valid 2026-07-11 to 2027-01-24 (served on `:443`, checked 2026-09-28)
+- [x] Terraform applied: `infra/dns`, `infra/github-oidc`, `infra/envs/prod` — `dns` plans clean (#922, 2026-09-18); `github-oidc` applied 2026-09-18 for the immutable-subject fix (#928); `envs/prod` is what the deploy runs resolve (`threkir-web-prod-site`, the eight `threkir-web-prod-*` Lambdas, the distribution aliased `threkir.com`)
+- [ ] Terraform applied: `infra/envs/preview` — never applied; no `preview.tfvars` in the estate, and no preview distribution exists
+- [x] GitHub OIDC role trust policy verified (only the repo + ref scopes intended can assume it) — the prod role trusts only `…:environment:production` under the repo's immutable subject (#928, 2026-09-18), and `scripts/check_infra_iam.mjs` pins that shape on every PR
+- [x] sops file populated for prod: `infra-secrets/threkir/prod.sops.yaml` (with `ANTHROPIC_API_KEY`, `SENTRY_DSN`) — key names read off the encrypted file 2026-09-21 (#922); in-repo `secrets.enc.yaml` is ruled out (decisions § 53)
+- [ ] sops file populated for preview: `infra-secrets/threkir/preview.sops.yaml` — only `preview.sops.yaml.example` exists
+- [ ] The sops values reach the serving Lambdas — needs the `infra/envs/prod` apply in [`docs/ops/deployment.md` § Lambda secrets](../../docs/ops/deployment.md) plus `bin/lambda-alias-sync.sh prod`; `POST https://threkir.com/api/coach` still answers 503 (2026-09-28)
+- [x] GitHub Secrets populated: `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`, `PUBLIC_MAPTILER_KEY`, `PUBLIC_SENTRY_DSN`, `PUBLIC_VAPID_PUBLIC_KEY`, `AWS_DEPLOY_ROLE_ARN_PROD`, `AWS_DEPLOY_ROLE_ARN_PREVIEW` — all on `gh secret list` (2026-09-28); the release's `check_production_env.mjs` guard passed on every run above
+- [ ] GitHub Secrets `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` + `PUBLIC_REVENUECAT_WEB_PORTAL_URL` — unset, and the live bundle ships both empty; not required until Pro is sellable (`PUBLIC_COACH_ENABLED` or `PUBLIC_ROUTE_GEN_ENABLED` truthy), at which point the guard fails the release without the checkout URL
+- [ ] First preview deploy green; smoke test sign-in + dashboard + run detail at `preview.threkir.com` — blocked on the preview stack above; `release-web.yml` also has no preview trigger yet
+- [x] First prod deploy green — `web@1.0.3`, run 29143725709, 2026-07-11 (a tag push, before the published Release became the deploy gate; a bare `web@*` tag deploys nothing now). Latest: `web@1.8.0`, run 35556025161, 2026-09-21
+- [ ] Coach endpoint responds (try a free user → expect 2 successful streamed replies, then a 3rd request → expect 429; free tier cap is `TIER_LIMITS.free.dailyLimit = 2` per `apps/web/src/lib/coach/types.ts`) — 503 today and `PUBLIC_COACH_ENABLED` is empty on the live bundle
+- [ ] Push notification flow verified end-to-end (enable in Settings → Notifications, then request a data export — `data_export_ready` is an important kind; a kudos is not, and is filtered by the default `push_notifications` pref, #952) — the key reached the bundle with `web@1.7.1`, but nobody has received a browser push yet (#922)
+- [ ] CloudWatch alarms wired to SNS → email (or PagerDuty) — alarms + topic are Terraformed in the applied prod stack and `alert_emails` is set in the estate tfvars; the email subscription's confirmation has not been checked
+- [ ] Sentry frontend + server projects receiving events — `PUBLIC_SENTRY_DSN` has been in the build since `web@1.7.0`; no event has been confirmed
 - [ ] Better Stack probe configured
 - [ ] Anthropic cost alert set
 - [ ] Rollback drill: deploy a known-bad commit, run the rollback procedure, confirm the site recovers within 60 s

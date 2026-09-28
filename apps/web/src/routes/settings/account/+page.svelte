@@ -337,7 +337,7 @@
 			// Self-read goes through the get_my_profile() SECURITY DEFINER RPC:
 			// health_data_consent_at is deny-by-default for direct authenticated
 			// SELECTs (column lockdown, 20260707_001) — a direct select 403s.
-			const { data: prof, error: profileError } = await supabase.rpc('get_my_profile');
+			const { data: prof, error: profileError } = await supabase.rpc('get_my_profile', undefined, { get: true });
 			if (profileError) throw new Error(profileError.message);
 			// Sync the avatar from the freshly-read profile — the $state was seeded
 			// from auth.user at component init, which may not have hydrated yet.

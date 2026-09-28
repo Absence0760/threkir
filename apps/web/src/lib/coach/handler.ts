@@ -140,7 +140,7 @@ export async function handleCoach(
 	// (migration 20260707_001), so a direct `.select()` returns null for
 	// the caller's role. Go through the SECURITY DEFINER
 	// `get_my_profile()` RPC instead.
-	const consentLookup = await supabase.rpc('get_my_profile').maybeSingle();
+	const consentLookup = await supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle();
 	if (consentLookup.error) {
 		console.error('[coach] consent lookup failed', supabaseErrorFields(consentLookup.error));
 		return jsonError(500, 'consent check failed');
@@ -176,7 +176,7 @@ export async function handleCoach(
 	let tier: Tier = 'free';
 	let usedToday = 0;
 	if (!config.bypassPaywallEnabled) {
-		const { data: isPro } = await supabase.rpc('is_pro');
+		const { data: isPro } = await supabase.rpc('is_pro', undefined, { get: true });
 		tier = isPro === true ? 'pro' : 'free';
 		const dailyLimit = TIER_LIMITS[tier].dailyLimit;
 		const { data: newCount, error: incrErr } = await supabase.rpc('increment_coach_usage', {

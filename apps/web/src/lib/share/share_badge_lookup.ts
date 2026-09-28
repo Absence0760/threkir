@@ -72,7 +72,7 @@ export async function lookupSharedBadge(
 		let displayName: string | null = null;
 		if (badge.user_id) {
 			const { data: profile } = await supabase
-				.rpc('public_profile_by_id', { p_id: badge.user_id })
+				.rpc('public_profile_by_id', { p_id: badge.user_id }, { get: true })
 				.maybeSingle();
 			displayName = (profile as { display_name?: string | null } | null)?.display_name ?? null;
 		}

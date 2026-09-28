@@ -92,7 +92,7 @@ export async function lookupSharedRun(
 			// the public_runs row above), so there's no enumeration
 			// surface.
 			const { data: profile } = await supabase
-				.rpc('public_profile_by_id', { p_id: run.user_id })
+				.rpc('public_profile_by_id', { p_id: run.user_id }, { get: true })
 				.maybeSingle();
 			displayName = (profile as { display_name?: string | null } | null)
 				?.display_name ?? null;

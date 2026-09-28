@@ -224,7 +224,7 @@ export async function handleRouteRequest(
 	// honoured: it exists to skip the paywall in dev, not the lawful basis
 	// for sending a real person's data to a real sub-processor.
 	const disclosure = await gateAiDisclosure(
-		() => supabase.rpc('get_my_profile').maybeSingle(),
+		() => supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle(),
 		AI_DISCLOSURE_VERSION_ROUTE_AI,
 		'route-request',
 	);
@@ -245,7 +245,7 @@ export async function handleRouteRequest(
 	if (config.bypassPaywallEnabled) {
 		isPro = true;
 	} else {
-		const proRes = await supabase.rpc('is_pro');
+		const proRes = await supabase.rpc('is_pro', undefined, { get: true });
 		if (proRes.error) {
 			console.error('[route-request] is_pro lookup failed', supabaseErrorFields(proRes.error));
 			return json(503, { error: 'route assistant unavailable' });

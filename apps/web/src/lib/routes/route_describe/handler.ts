@@ -193,7 +193,7 @@ export async function handleRouteDescribe(
 	// templated description still rides along on the 403, so the L1
 	// baseline survives a refusal (layered resilience).
 	const disclosure = await gateAiDisclosure(
-		() => supabase.rpc('get_my_profile').maybeSingle(),
+		() => supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle(),
 		AI_DISCLOSURE_VERSION_ROUTE_AI,
 		'route-describe',
 	);
@@ -216,7 +216,7 @@ export async function handleRouteDescribe(
 	if (config.bypassPaywallEnabled) {
 		isPro = true;
 	} else {
-		const proRes = await supabase.rpc('is_pro');
+		const proRes = await supabase.rpc('is_pro', undefined, { get: true });
 		if (proRes.error) {
 			console.error('[route-describe] is_pro lookup failed', supabaseErrorFields(proRes.error));
 			return json(500, { error: 'tier check failed', description: templated, source: 'template' });

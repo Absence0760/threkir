@@ -95,7 +95,7 @@ export async function lookupSharedWorkout(
 		let displayName: string | null = null;
 		if (workout.user_id) {
 			const { data: profile } = await supabase
-				.rpc('public_profile_by_id', { p_id: workout.user_id })
+				.rpc('public_profile_by_id', { p_id: workout.user_id }, { get: true })
 				.maybeSingle();
 			displayName =
 				(profile as { display_name?: string | null } | null)?.display_name ?? null;

@@ -41,7 +41,7 @@ export async function lookupSharedProfile(
 			auth: { persistSession: false },
 		});
 		const { data, error } = await supabase
-			.rpc('public_profile_by_id', { p_id: id })
+			.rpc('public_profile_by_id', { p_id: id }, { get: true })
 			.maybeSingle();
 		if (error) {
 			console.error('[share-profile] upstream_unreachable');

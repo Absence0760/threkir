@@ -65,7 +65,7 @@
 		// stamp are all deny-by-default for direct authenticated SELECTs
 		// (column lockdown, 20260707_001), and the RPC returns the whole row so
 		// the stamp arrives with the date.
-		const { data } = await supabase.rpc('get_my_profile');
+		const { data } = await supabase.rpc('get_my_profile', undefined, { get: true });
 		const g = (data as { gender?: string | null } | null)?.gender;
 		if (g === 'male' || g === 'female' || g === 'prefer_not_to_say') viewerGender = g;
 		// Parse by calendar components — new Date('YYYY-MM-DD') is UTC midnight,

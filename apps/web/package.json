@@ -60,7 +60,7 @@
 		"@supabase/ssr": "^0.12.7",
 		"@supabase/supabase-js": "^2.116.0",
 		"@zip.js/zip.js": "^2.15.0",
-		"fit-file-parser": "^5.2.1",
+		"fit-file-parser": "^6.1.2",
 		"html-to-image": "^1.11.13",
 		"isomorphic-dompurify": "^4.2.0",
 		"jszip": "^3.10.2",

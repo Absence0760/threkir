@@ -17,7 +17,12 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/job_worker .
 
-FROM gcr.io/distroless/static-debian12:nonroot@sha256:d093aa3e30dbadd3efe1310db061a14da60299baff8450a17fe0ccc514a16639
+# Debian 13, not 12: bookworm is in LTS, and its data packages trail
+# trixie's — on 2026-09-28 the newest static-debian12 still shipped tzdata
+# 2026b (Trivy DLA-4792-1) while static-debian13 carried 2026c. The binary
+# is static, so the base supplies only ca-certificates, tzdata and the
+# nonroot user.
+FROM gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3
 COPY --from=build /out/job_worker /job_worker
 
 # slog JSON logs go to stdout. No HTTP listener — the worker is

@@ -42,7 +42,7 @@ filter that used to sit on the triggers.
 | `fmt (whole tree)` (`terraform.yml`, called by `ci.yml`) | `terraform fmt -check -recursive infra`. One pass over every directory, including ones outside the validate matrix — a per-stack `working-directory` reads that stack's own `.tf` files and nothing below them, which left `modules/web-stack` unformatted-checked (decisions § 1111). |
 | `validate` (`terraform.yml`, called by `ci.yml`, one per stack) | `terraform validate` with `-backend=false`. Syntax, provider constraints, reference shapes. **Not** anything about applied state. `modules/web-stack` is not in the matrix — a module taking an aliased provider from its caller cannot be validated standalone — and is validated transitively by both env roots instead (measured: an undeclared-variable reference in the module fails `validate` in `envs/prod`). |
 | `Trivy IaC scan` (`terraform.yml`, called by `ci.yml`) | Known-bad IaC patterns across the whole tree. Suppressions with rationale live in `.trivyignore` at the repo root. |
-| `infra-guards` (`ci.yml`) | `scripts/check_infra_iam.mjs` + `scripts/check_infra_error_responses.mjs` + `scripts/check_infra_coverage.mjs` — see below. |
+| `infra-guards` (`ci.yml`) | `scripts/check_infra_iam.mjs` + `scripts/check_infra_error_responses.mjs` + `scripts/check_infra_coverage.mjs` + `scripts/check_terraform_lock_platforms.mjs` — see below. |
 
 **`check_infra_iam.mjs`** reads `github-oidc/main.tf` + its `variables.tf`,
 `modules/web-stack/main.tf`, both `envs/<env>/main.tf`, every workflow under
@@ -139,8 +139,30 @@ for what each rule is about, [§§ 1021-1024](../docs/architecture/decisions.md)
 the four added in round 34, and § 893 for where the guards stop — nothing here
 compares the Terraform against applied state, which needs credentials and a plan.
 
+**`check_terraform_lock_platforms.mjs`** reads every committed
+`.terraform.lock.hcl`. Each provider block must carry an `h1:` hash for each of
+`linux_amd64` (CI, Dependabot), `darwin_arm64` and `darwin_amd64` (operator
+workstations). `init` checks the package it installs against the `h1:` set, so a
+lock carrying only the CI runner's hash made `terraform validate` exit 1 on a Mac
+("the cached package ... does not match any of the checksums recorded in the
+dependency lock file") until `init` rewrote a committed file. An `h1:` does not
+name its platform, so the guard counts distinct ones per block and also requires
+the same provider version to carry the same `h1:` set in every stack that locks
+it; every validated stack must have a lock at all. Dependabot's terraform updater
+re-locks for whichever platforms the existing `h1:` hashes match (it tries
+`linux_amd64`, `darwin_amd64`, `windows_amd64`, `darwin_arm64`, `linux_arm64`),
+so a bump keeps all three — replayed against these locks, not assumed. If a bump
+or a hand re-lock ever strips one, this is the check that goes red. Repair, from
+the stack's directory (an env root needs `terraform get` first, for its local
+module; neither touches credentials or the backend):
+
+```bash
+terraform providers lock -platform=linux_amd64 -platform=darwin_arm64 -platform=darwin_amd64
+```
+
 Adding a stack means: the directory, an entry in the `stack:` matrix, an entry in
-`dependabot.yml`. Both guards will tell you which one you forgot.
+`dependabot.yml`, and a lock produced by the command above. The guards will tell
+you which one you forgot.
 
 ## First-time deploy
 
@@ -196,6 +218,14 @@ aws sts get-caller-identity --profile threkir   # proves it works
 # Persist the profile choice for future shells:
 echo 'export AWS_PROFILE=threkir' > ~/.bashrc.d/26-aliases-aws.sh
 ```
+
+The committed `.terraform.lock.hcl` in each stack already carries provider
+hashes for Linux and both macOS architectures, so the `terraform init` calls
+below install against it without rewriting it. If `init` or `validate` reports
+a checksum mismatch, or a lock file shows as modified after `init`, your
+platform is missing from the lock: re-lock with the command under
+[What CI enforces](#what-ci-enforces-about-this-tree) and commit that, not the
+`init` rewrite.
 
 ### 1. Bootstrap (one-time — S3 state bucket)
 

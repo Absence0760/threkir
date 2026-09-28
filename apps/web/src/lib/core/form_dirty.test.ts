@@ -81,3 +81,62 @@ test('a key present on one side only is an edit', () => {
 	fields = { a: 1, b: undefined };
 	assert.equal(t.isDirty(), true);
 });
+
+test('a seed that lands on an untouched form does not read as an edit', () => {
+	const fields = { unit: 'km', isPublic: false, notes: '' };
+	const t = trackDirty(() => ({ ...fields }));
+	t.seed(() => {
+		fields.isPublic = true;
+	});
+	assert.equal(t.isDirty(), false);
+});
+
+test('a seed that lands after the user typed keeps the form dirty', () => {
+	const fields = { distance: 5, notes: '', isPublic: false };
+	const t = trackDirty(() => ({ ...fields }));
+	fields.distance = 7.7;
+	fields.notes = 'Should never persist';
+	t.seed(() => {
+		fields.isPublic = true;
+	});
+	assert.equal(t.isDirty(), true);
+	fields.distance = 5;
+	fields.notes = '';
+	assert.equal(t.isDirty(), false, 'the seeded value is the clean state for its own field');
+});
+
+test('a seed that writes nothing leaves an edit dirty', () => {
+	const fields = { distance: 5, isPublic: false };
+	const t = trackDirty(() => ({ ...fields }));
+	fields.distance = 10;
+	t.seed(() => {});
+	assert.equal(t.isDirty(), true);
+});
+
+test('a seed the user already overrode is not absorbed', () => {
+	const fields = { isPublic: false };
+	const t = trackDirty(() => ({ ...fields }));
+	fields.isPublic = true;
+	const touched = true;
+	t.seed(() => {
+		if (!touched) fields.isPublic = false;
+	});
+	assert.equal(t.isDirty(), true);
+});
+
+test('a seed on a non-record snapshot is absorbed only while clean', () => {
+	let value = 'km';
+	const clean = trackDirty(() => value);
+	clean.seed(() => {
+		value = 'mi';
+	});
+	assert.equal(clean.isDirty(), false);
+
+	let rows = ['a'];
+	const edited = trackDirty(() => [...rows]);
+	rows = ['a', 'b'];
+	edited.seed(() => {
+		rows = [...rows, 'seeded'];
+	});
+	assert.equal(edited.isDirty(), true);
+});

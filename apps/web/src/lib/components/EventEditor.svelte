@@ -234,12 +234,10 @@
 			const acct = await fetchPayoutAccount();
 			chargesEnabled = acct?.charges_enabled ?? false;
 			if (acct?.default_currency) {
-				// The account's currency lands after the form is built, so it would
-				// otherwise read as a user edit. Only re-take the baseline when
-				// nothing has been typed yet, so a fast typist keeps the guard.
-				const clean = !dirty.isDirty();
-				currency = acct.default_currency;
-				if (clean) dirty.rebaseline();
+				const seeded = acct.default_currency;
+				dirty.seed(() => {
+					currency = seeded;
+				});
 			}
 			try {
 				sessionPlans = await fetchSessionPlans();

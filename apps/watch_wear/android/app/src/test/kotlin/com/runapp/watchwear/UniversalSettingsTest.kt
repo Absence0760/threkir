@@ -100,6 +100,12 @@ class UniversalSettingsTest {
         assertEquals(true, parseUniversalSettings("""[{"prefs":{"show_calories":true}}]""")?.showCalories)
         assertEquals(true, parseUniversalSettings("""[{"prefs":{"default_activity_type":"run"}}]""")?.showCalories)
         assertEquals(true, parseUniversalSettings("""[{"prefs":{"show_calories":"nonsense"}}]""")?.showCalories)
+        // A stringified boolean is not a boolean. `booleanOrNull` reads the
+        // content without asking whether it was quoted, so `"false"` used to
+        // hide the figure here while web's `!== false` kept showing it — the
+        // same account disagreeing with itself across two surfaces.
+        assertEquals(true, parseUniversalSettings("""[{"prefs":{"show_calories":"false"}}]""")?.showCalories)
+        assertEquals(true, parseUniversalSettings("""[{"prefs":{"show_calories":0}}]""")?.showCalories)
         assertEquals(true, parseUniversalSettings("""[{"prefs":{}}]""")?.showCalories)
         // No settings row at all → default on.
         assertEquals(true, parseUniversalSettings("""[]""")?.showCalories)

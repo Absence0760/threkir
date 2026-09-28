@@ -96,6 +96,23 @@ class _MarkersApi extends ApiClient {
   Future<void> deleteRouteMarker(String id) async => deletedIds.add(id);
 }
 
+/// Fails the first marker read, then answers with [markers].
+class _FlakyMarkersApi extends ApiClient {
+  final List<RouteMarkerRow> markers;
+  int calls = 0;
+  _FlakyMarkersApi(this.markers);
+
+  @override
+  String? get userId => 'owner-1';
+
+  @override
+  Future<List<RouteMarkerRow>> fetchRouteMarkers(String routeId) async {
+    calls++;
+    if (calls == 1) throw Exception('502 upstream');
+    return markers;
+  }
+}
+
 /// Marker add blocks on a gate the test controls, to observe the save spinner.
 class _BlockingMarkersApi extends ApiClient {
   final Completer<void> gate = Completer<void>();
@@ -339,6 +356,44 @@ void main() {
     expect(find.text('Add marker'), findsNothing);
     expect(find.byIcon(Icons.edit_outlined), findsNothing);
     expect(find.byIcon(Icons.delete_outline), findsNothing);
+  });
+
+  testWidgets(
+      'a failed marker read says so and retries, instead of claiming none',
+      (tester) async {
+    final api = _FlakyMarkersApi([
+      _marker(id: 'm1', kind: 'aid_station', label: 'Water', positionM: 500),
+    ]);
+    await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: RouteMarkersPanel(
+            api: api,
+            routeId: 'route-1',
+            isOwner: true,
+            viewerId: 'owner-1',
+            routeOwnerId: 'owner-1',
+            routeLine: const [],
+            onPinsChanged: (_) {},
+            onPlacingChanged: (_) {},
+          ),
+        ),
+      ),
+    ));
+    await tester.pump();
+
+    expect(find.byKey(const Key('route-markers-load-error')), findsOneWidget);
+    expect(find.textContaining('No course markers yet'), findsNothing);
+
+    await tester.tap(find.text('Retry'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(api.calls, 2);
+    expect(find.byKey(const Key('route-markers-load-error')), findsNothing);
+    expect(find.text('Water'), findsOneWidget);
   });
 
   testWidgets('empty state renders when there are no markers', (tester) async {

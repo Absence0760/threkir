@@ -23,6 +23,17 @@ import 'watch_route_visibility.dart';
 /// aren't starred stay phone-only; pin gates "kept on this phone", star
 /// gates "shown on the watch".
 class WearRoutesBridge {
+  /// One instance per process, for the reason `AppleWatchRouteBridge` is
+  /// one: `main.dart` reaches `attach` from startup and from the sign-out
+  /// nudge, and a second instance would add a second `LocalRouteStore`
+  /// listener rather than replace the first, pushing every route edit to
+  /// the watch twice for the life of the app.
+  factory WearRoutesBridge() => _instance;
+
+  WearRoutesBridge._();
+
+  static final WearRoutesBridge _instance = WearRoutesBridge._();
+
   static const _channel = MethodChannel('run_app/wear_routes');
 
   /// The watch's own cap, not a second one. `LocalRouteStore.MAX_ROUTES`

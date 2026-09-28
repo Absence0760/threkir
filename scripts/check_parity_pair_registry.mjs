@@ -68,7 +68,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { foldSoftWraps, markdownTables } from './markdown_lines.mjs';
+import { listItemContaining, markdownTables } from './markdown_lines.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const REGISTRY_DOC = join(REPO_ROOT, 'docs', 'architecture', 'parity_pairs.md');
@@ -85,8 +85,8 @@ const REGISTRY_LIST = 'The pairs are:';
 const SYNCER_HEADING = '## The pairs (canonical list)';
 
 /// The paragraph directly below the lockstep bullet, listing the watch's
-/// one-way `no_std` ports. It is separated from the bullet by a blank line and
-/// must stay that way — see `parseRegistryPairs`.
+/// one-way `no_std` ports. It sits flush left after a blank line, outside the
+/// bullet's list item, and must stay that way — see `parseRegistryPairs`.
 const WATCH_PARAGRAPH = /third parity rail/;
 
 const WEB_LIB = 'apps/web/src/lib/';
@@ -133,43 +133,29 @@ export function parseRegistryPairs(text) {
 	/** @type {string[]} */
 	const errors = [];
 
-	// Reading one PHYSICAL line meant a pair written past a soft wrap was
-	// invisible while every anti-vacuity check stayed satisfied by the text
-	// before it — § 604's exact defect, undetected. Measured on the committed
-	// bullet: one wrap mid-list hid 86 of its 99 pairs (loud, but blaming the
-	// syncer table for pairs nobody removed), and a new pair appended on a
-	// continuation line was invisible with zero errors reported.
-	// decisions § 774.
-	text = foldSoftWraps(text);
-
-	const bulletAt = text.indexOf(REGISTRY_BULLET);
-	if (bulletAt === -1) {
+	// The bullet is the whole list item, not one physical line and not one
+	// folded line. Reading a physical line meant a pair written past a soft wrap
+	// was invisible while every anti-vacuity check stayed satisfied by the text
+	// before it — § 604's exact defect (decisions § 774). Reading one folded
+	// line still stopped at the first nested block a wrap opened: the bullet
+	// carries over a hundred ` + ` tokens, and one landing at a line start
+	// renders as a sublist inside the bullet, which the fold rightly keeps apart
+	// and the old slice then dropped with everything after it.
+	//
+	// The watch-port paragraph below is flush left after a blank line, so it is
+	// outside the item; its entries are one-way ports and explicitly NOT part of
+	// the enforced web↔mobile lockstep, and the check below asserts the item
+	// still ends before it rather than trusting that.
+	const item = listItemContaining(text, REGISTRY_BULLET);
+	if (item === null) {
 		errors.push(
 			`${REGISTRY_REL} has no "${REGISTRY_BULLET}" bullet. Either the parity-pair ` +
 				`registry was removed, or it was reworded and this guard now checks nothing.`,
 		);
 		return { pairs, errors };
 	}
-
-	// The bullet ends at the first BLANK line, not the first newline. Markdown
-	// soft-wraps a list item freely and the wrap changes nothing about what the
-	// document says, so reading one physical line meant a pair written past the
-	// break was invisible while every anti-vacuity check stayed satisfied by the
-	// text before it — § 604's exact defect, undetected. Measured on the
-	// committed bullet: one wrap mid-list hid 86 of 99 pairs (loud, but blaming
-	// the syncer table for pairs nobody removed), and a new pair appended on a
-	// continuation line was invisible with zero errors reported.
-	//
-	// The blank line is what separates this bullet from the watch-port
-	// paragraph below it, whose entries are one-way ports and explicitly NOT
-	// part of the enforced web↔mobile lockstep; `WATCH_PARAGRAPH` below asserts
-	// the separator is still doing that job rather than trusting it.
-	// One folded line. The blank line below it is what separates this bullet
-	// from the watch-port paragraph, whose entries are one-way ports and
-	// explicitly NOT part of the enforced web↔mobile lockstep; the check below
-	// asserts that separator is still doing the job rather than trusting it.
-	const lineEnd = text.indexOf('\n', bulletAt);
-	const bullet = text.slice(bulletAt, lineEnd === -1 ? text.length : lineEnd);
+	const joined = item.map((l) => l.text.trim()).join(' ');
+	const bullet = joined.slice(joined.indexOf(REGISTRY_BULLET));
 
 	if (WATCH_PARAGRAPH.test(bullet)) {
 		errors.push(

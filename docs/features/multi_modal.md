@@ -317,9 +317,23 @@ becomes an **action button**, not a tab.
 > anything. e2e `tests-e2e/dashboard/dashboard-first-run.spec.ts` pins both
 > directions of the branch.
 >
-> **Mobile: not yet.** `dashboard_screen.dart` still composes its stack for a
-> runless account. Web-first per [decisions § 24](../architecture/decisions.md);
-> tracked as part of #905.
+> **Status (mobile):** `dashboard_screen.dart` swaps its stats stack for
+> `_WelcomeEmpty` on the same signal — no runs all-time (a one-row server
+> probe, so a fresh install of a synced account shows a loader rather than the
+> welcome) and no gym sessions, nutrition ignored — with today's plan-workout
+> card and any goals above it (#923). Its actions are Start a run (the
+> device-side analogue of web's Add a run), Set a goal and Import runs; #905
+> added the plan-aware body variant and web's "Lifting instead? Log a gym
+> session" hint, which lands on the Fitness hub's Gym tab through the shell's
+> Log → Lift action. Web's record-on-your-phone hint has no counterpart, since
+> this is the phone. `test/dashboard_first_run_test.dart`.
+>
+> **Status (web, #905 workstream 3):** an account **with** runs opens on
+> `DashboardWeekLead.svelte` above the plan hero — this week's distance against
+> the plan's distance for the calendar week (or the runner's recent weekly
+> average), the plan's next open session, and **Add a run** above the fold.
+> Nothing below it moved or went away; this is ordering, not removal. Mobile
+> still owes the same lead.
 
 Home is a vertical scroll of cards. The order is **driven by what the
 user logs**, not a fixed grid. The ordering algorithm:

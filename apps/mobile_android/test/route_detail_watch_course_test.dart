@@ -614,7 +614,34 @@ void main() {
           reason: 'the course already landed; an auxiliary failure must not '
               'retroactively report it as failed');
       expect(transport.roadbookWrites, isEmpty);
-      expect(find.textContaining('Course sent to the watch'), findsOneWidget);
+      expect(
+          find.textContaining("its course markers couldn't be loaded"),
+          findsOneWidget,
+          reason: 'a failed read must not read as a route with no checkpoints');
+    });
+  });
+
+  group('RouteDetailScreen — GPX + markers share', () {
+    testWidgets('a failed marker read is reported, not shared as a bare GPX',
+        (tester) async {
+      final transport = _FakeCourseTransport();
+      final api = _MarkersApi(const [], failMarkers: true);
+      await _pump(
+        tester,
+        _route(waypoints: _longLine(3)),
+        transport: transport,
+        api: api,
+        isOwner: true,
+      );
+      await _openShareMenu(tester);
+      await tester.tap(find.text('Share as GPX + markers'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(api.fetchCount, 1);
+      expect(find.textContaining("Couldn't load this route's course markers"),
+          findsOneWidget);
+      expect(find.textContaining('Could not share'), findsNothing);
     });
   });
 

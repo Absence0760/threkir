@@ -533,6 +533,7 @@ class _HomeScreenState extends State<HomeScreen>
           preferences: widget.preferences,
           settingsSync: widget.settingsSync,
           onStartRun: () => _performLogAction(LogAction.run),
+          onLogLift: () => _performLogAction(LogAction.lift),
         ),
       ),
       _LazyKeepAliveTab(

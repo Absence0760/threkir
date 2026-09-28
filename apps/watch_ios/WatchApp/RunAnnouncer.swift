@@ -179,55 +179,105 @@ enum RunCueVoice {
 /// The words, assembled from the String Catalog. Split out from `RunAnnouncer`
 /// so a test can compose the expected phrase from the same parts in whatever
 /// locale the host happens to run in.
+///
+/// `locale` is the seam `RunFormat.distance` and `RouteGuidance.remainingText`
+/// carry, widened to the words: production passes nothing and speaks the
+/// language the bundle resolved, and a test that asserts particular words
+/// names the locale they belong to instead of inheriting whichever one the
+/// simulator was left in.
 enum RunCuePhrase {
-    static func text(for cue: RunCue, prefersMiles: Bool) -> String {
+    static func text(for cue: RunCue, prefersMiles: Bool, locale: Locale? = nil) -> String {
+        let c = Catalogue(locale)
         switch cue {
         case .started:
-            return String(localized: "Run started")
+            return String(localized: "Run started", bundle: c.bundle, locale: c.locale)
         case let .split(index, paceSecondsPerKm):
-            let label = unitLabel(splits: index, prefersMiles: prefersMiles)
+            let label = unitLabel(splits: index, prefersMiles: prefersMiles, locale: locale)
             guard let ms = RunCueMath.paceMinutesSeconds(
                 secondsPerKm: paceSecondsPerKm, prefersMiles: prefersMiles
             ) else {
                 return label
             }
             let tail = paceTail(
-                minutes: ms.minutes, seconds: ms.seconds, prefersMiles: prefersMiles
+                minutes: ms.minutes, seconds: ms.seconds, prefersMiles: prefersMiles,
+                locale: locale
             )
-            return join(label, tail)
+            return join(label, tail, locale: locale)
         case let .paceAlert(tooSlow):
             return tooSlow
-                ? String(localized: "Pick up the pace")
-                : String(localized: "Slow down")
+                ? String(localized: "Pick up the pace", bundle: c.bundle, locale: c.locale)
+                : String(localized: "Slow down", bundle: c.bundle, locale: c.locale)
         case let .finished(distanceMetres, durationSeconds):
             let distance = RunCueMath.spokenDistance(
                 metres: distanceMetres, prefersMiles: prefersMiles
             )
             let minutes = RunCueMath.finishedMinutes(durationSeconds: durationSeconds)
             return prefersMiles
-                ? String(localized: "Run complete. \(distance) miles in \(minutes) minutes.")
-                : String(localized: "Run complete. \(distance) kilometres in \(minutes) minutes.")
+                ? String(
+                    localized: "Run complete. \(distance) miles in \(minutes) minutes.",
+                    bundle: c.bundle, locale: c.locale)
+                : String(
+                    localized: "Run complete. \(distance) kilometres in \(minutes) minutes.",
+                    bundle: c.bundle, locale: c.locale)
         }
     }
 
-    static func unitLabel(splits: Int, prefersMiles: Bool) -> String {
-        prefersMiles
-            ? String(localized: "\(splits) miles")
-            : String(localized: "\(splits) kilometres")
+    static func unitLabel(splits: Int, prefersMiles: Bool, locale: Locale? = nil) -> String {
+        let c = Catalogue(locale)
+        return prefersMiles
+            ? String(localized: "\(splits) miles", bundle: c.bundle, locale: c.locale)
+            : String(localized: "\(splits) kilometres", bundle: c.bundle, locale: c.locale)
     }
 
-    static func paceTail(minutes: Int, seconds: Int, prefersMiles: Bool) -> String {
-        prefersMiles
-            ? String(localized: "Pace, \(minutes) minutes \(seconds) seconds per mile")
-            : String(localized: "Pace, \(minutes) minutes \(seconds) seconds per kilometre")
+    static func paceTail(
+        minutes: Int, seconds: Int, prefersMiles: Bool, locale: Locale? = nil
+    ) -> String {
+        let c = Catalogue(locale)
+        return prefersMiles
+            ? String(
+                localized: "Pace, \(minutes) minutes \(seconds) seconds per mile",
+                bundle: c.bundle, locale: c.locale)
+            : String(
+                localized: "Pace, \(minutes) minutes \(seconds) seconds per kilometre",
+                bundle: c.bundle, locale: c.locale)
     }
 
     /// Sentence break between the split's distance and its pace. Localised
     /// rather than hard-coded because the break itself differs — ja joins with
     /// `。` and no space — which is why Wear carries the same `tts_split_phrase`
     /// resource instead of concatenating.
-    static func join(_ head: String, _ tail: String) -> String {
-        String(localized: "\(head). \(tail)")
+    static func join(_ head: String, _ tail: String, locale: Locale? = nil) -> String {
+        let c = Catalogue(locale)
+        return String(localized: "\(head). \(tail)", bundle: c.bundle, locale: c.locale)
+    }
+
+    /// Where a phrase is looked up. `String(localized:locale:)` formats the
+    /// interpolated values in `locale` but still picks the LANGUAGE from the
+    /// bundle's own resolution — measured: a `ja` host handed `en_US` answers
+    /// in Japanese — so naming a language means naming its `.lproj`. A locale
+    /// the app ships no catalogue for falls back to the bundle's resolution
+    /// rather than to the development language's keys.
+    private struct Catalogue {
+        let bundle: Bundle
+        let locale: Locale
+
+        init(_ requested: Locale?) {
+            guard let requested else {
+                bundle = .main
+                locale = .current
+                return
+            }
+            locale = requested
+            let candidates: [String?] = [
+                requested.language.minimalIdentifier,
+                requested.language.languageCode?.identifier,
+            ]
+            bundle = candidates.lazy
+                .compactMap { $0 }
+                .compactMap { Bundle.main.path(forResource: $0, ofType: "lproj") }
+                .compactMap { Bundle(path: $0) }
+                .first ?? .main
+        }
     }
 }
 

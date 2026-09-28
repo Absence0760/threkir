@@ -5669,6 +5669,12 @@ abstract class AppLocalizations {
   /// **'Course sent to the watch ({points} points)'**
   String routeDetailWatchCourseSent(int points);
 
+  /// Banner after the course reached the watch but the course-markers read failed, so no roadbook schedule was sent
+  ///
+  /// In en, this message translates to:
+  /// **'Course sent to the watch ({points} points), but its course markers couldn\'t be loaded, so no schedule went with it.'**
+  String routeDetailWatchCourseSentMarkersFailed(int points);
+
   /// Banner after a route too long for the watch was simplified before being pushed
   ///
   /// In en, this message translates to:
@@ -13348,6 +13354,24 @@ abstract class AppLocalizations {
   /// **'Import runs'**
   String get dashboardImportRuns;
 
+  /// Dashboard empty-state body shown instead of the welcome body when today's plan workout card sits above it
+  ///
+  /// In en, this message translates to:
+  /// **'Your plan is ready above. Log your first run and this page fills in — your distance, your pace, and how you\'re tracking against the plan.'**
+  String get dashboardFirstRunBodyWithPlan;
+
+  /// Dashboard empty-state lead-in before the button that opens the Gym log, for a new account that lifts rather than runs
+  ///
+  /// In en, this message translates to:
+  /// **'Lifting instead?'**
+  String get dashboardFirstRunGymHint;
+
+  /// Dashboard empty-state button that opens the Gym log
+  ///
+  /// In en, this message translates to:
+  /// **'Log a gym session'**
+  String get dashboardFirstRunGymAction;
+
   /// Label for the weekly period stat card on the dashboard
   ///
   /// In en, this message translates to:
@@ -19574,6 +19598,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No course markers yet. Add aid stations, cutoffs, and more along the route.'**
   String get routeMarkerEmpty;
+
+  /// Shown in place of the course-markers list, or the roadbook, when the markers read failed — distinct from having no markers
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this route\'s course markers. They have not been deleted — check your connection and try again.'**
+  String get routeMarkerLoadFailed;
 
   /// Edit a course marker
   ///

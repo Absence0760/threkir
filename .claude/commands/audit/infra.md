@@ -60,7 +60,7 @@ The web app's blast radius runs through these stacks: a permissive OIDC trust po
 9. **Provider + Terraform pinning.**
    - Every stack has a `versions.tf` with `required_version = ">= 1.13"` (or current) and pinned `required_providers`.
    - Provider versions use `~> X.Y` or exact pins.
-   - `.terraform.lock.hcl` should be committed once `terraform init` has been run for each stack — flag if missing in stacks that have been initialized.
+   - `.terraform.lock.hcl` should be committed once `terraform init` has been run for each stack — flag if missing in stacks that have been initialized. Each must be multi-platform (an `h1:` per provider for `linux_amd64`, `darwin_arm64`, `darwin_amd64`) — `scripts/check_terraform_lock_platforms.mjs` enforces that in CI, so only flag what it cannot see.
 
 10. **Cross-region wiring.** `modules/web-stack` declares `configuration_aliases = [aws.us_east_1]`. The ACM cert (in `dns/main.tf`) uses `provider = aws.us_east_1`. Per-env stacks correctly pass `aws.us_east_1` in their `module "web" { providers = { ... } }` block. Wrong wiring here surfaces as cert validation hangs.
 

@@ -19,8 +19,22 @@
 // single OS is left alone: CocoaPods only ever runs on macOS, and a key there
 // needs no OS in it. decisions.md § 1702.
 //
+// A second rule, about what a key is computed FROM: every pattern handed to
+// `hashFiles()` matches at least one tracked file. `hashFiles` hashes whatever
+// its patterns do match and says nothing about the ones that match nothing, so
+// a dead pattern leaves the key stable and the miss silent. `build-mobile-
+// android`'s Gradle key hashed `apps/mobile_android/pubspec.lock`, which has
+// never existed — the Flutter side is one pub workspace whose lockfile is at
+// the root (decisions § 1661) — so a plugin bump never invalidated that cache.
+// Matching follows `@actions/glob` as the runner uses it: dotfiles match, no
+// brace or extglob expansion, and a pattern naming a directory covers the
+// files under it. It reads `git ls-files`, so an untracked build output on a
+// workstation cannot make a pattern look alive.
+//
 // Reads: `.github/workflows/*.yml` and `.github/actions/*/action.yml`.
 // CI:  the `workflow-lint` job in .github/workflows/ci.yml.
+import { execFileSync } from 'node:child_process';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -173,17 +187,129 @@ export function checkCacheKeys(steps) {
 	return { errors, shared };
 }
 
+/**
+ * A `hashFiles()` glob as an anchored regex over a repo-relative path.
+ * @param {string} glob
+ */
+export function globToRegExp(glob) {
+	const segments = glob.replace(/^\.\//, '').split('/');
+	let out = '';
+	segments.forEach((seg, i) => {
+		const last = i === segments.length - 1;
+		if (seg === '**') {
+			out += last ? '.*' : '(?:[^/]+/)*';
+			return;
+		}
+		for (let j = 0; j < seg.length; j++) {
+			const c = seg[j];
+			const close = c === '[' ? seg.indexOf(']', j + 2) : -1;
+			if (c === '*') out += '[^/]*';
+			else if (c === '?') out += '[^/]';
+			else if (close !== -1) {
+				out += `[${seg.slice(j + 1, close).replace(/^!/, '^').replace(/\\/g, '\\\\')}]`;
+				j = close;
+			} else out += c.replace(/[.+^${}()|\\\]\[]/g, '\\$&');
+		}
+		if (!last) out += '/';
+	});
+	return new RegExp(`^${out}$`);
+}
+
+/**
+ * @typedef {{ file: string, line: number, pattern: string | null, raw: string }} HashFilesPattern
+ */
+
+/**
+ * Every `hashFiles()` argument in the workflows and composite actions, with
+ * the line it is on. An argument that is not a string literal cannot be
+ * checked and comes back as `pattern: null`.
+ * @param {WorkflowFile[]} files
+ * @returns {HashFilesPattern[]}
+ */
+export function hashFilesPatterns(files) {
+	/** @type {HashFilesPattern[]} */
+	const out = [];
+	for (const { name, text } of files) {
+		text.split('\n').forEach((line, i) => {
+			if (line.trimStart().startsWith('#')) return;
+			for (const call of line.matchAll(/hashFiles\(/g)) {
+				let at = (call.index ?? 0) + call[0].length;
+				for (;;) {
+					while (line[at] === ' ' || line[at] === ',') at++;
+					if (at >= line.length || line[at] === ')') break;
+					const lit = /^'((?:[^']|'')*)'/.exec(line.slice(at));
+					if (lit === null) {
+						const raw = /^[^,)]*/.exec(line.slice(at))?.[0] ?? '';
+						out.push({ file: name, line: i + 1, pattern: null, raw });
+						at += Math.max(raw.length, 1);
+						continue;
+					}
+					out.push({ file: name, line: i + 1, pattern: lit[1].replace(/''/g, "'"), raw: lit[0] });
+					at += lit[0].length;
+				}
+			}
+		});
+	}
+	return out;
+}
+
+/**
+ * @param {HashFilesPattern[]} patterns
+ * @param {string[]} tracked repo-relative, `/`-separated
+ * @returns {string[]}
+ */
+export function checkHashFilesPatterns(patterns, tracked) {
+	const candidates = new Set(tracked);
+	for (const f of tracked) {
+		for (let d = f.lastIndexOf('/'); d > 0; d = f.lastIndexOf('/', d - 1)) candidates.add(f.slice(0, d));
+	}
+	/** @type {string[]} */
+	const errors = [];
+	for (const p of patterns) {
+		const at = `${p.file}:${p.line}`;
+		if (p.pattern === null) {
+			errors.push(`${at}: hashFiles() is given \`${p.raw}\`, which is not a string literal, so what it matches cannot be checked. Name the files literally.`);
+			continue;
+		}
+		const re = globToRegExp(p.pattern.replace(/^!/, ''));
+		if ([...candidates].some((c) => re.test(c))) continue;
+		errors.push(
+			`${at}: the hashFiles() pattern \`${p.pattern}\` matches no tracked file. hashFiles hashes the patterns that do match and ` +
+				'says nothing about this one, so a change the key was meant to follow never invalidates the cache. ' +
+				'Point it at the file that exists (the pub workspace has ONE pubspec.lock, at the repo root).',
+		);
+	}
+	return errors;
+}
+
+/** @returns {string[]} */
+function trackedFiles() {
+	const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+	return execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf-8', maxBuffer: 256 * 1024 * 1024 })
+		.split('\0')
+		.filter(Boolean);
+}
+
 function main() {
-	const steps = cacheSteps(readWorkflows(WORKFLOW_DIR), readActions(ACTION_DIR));
+	const workflows = readWorkflows(WORKFLOW_DIR);
+	const actions = readActions(ACTION_DIR);
+	const steps = cacheSteps(workflows, actions);
 	if (steps.length === 0) {
 		console.log('::error::check_cache_keys read no actions/cache step at all, which means its reader broke, not that the tree is clean.');
 		return 1;
 	}
+	const patterns = hashFilesPatterns([...workflows, ...actions]);
+	if (patterns.length === 0) {
+		console.log('::error::check_cache_keys read no hashFiles() pattern at all, which means its reader broke, not that the tree is clean.');
+		return 1;
+	}
 	const { errors, shared } = checkCacheKeys(steps);
+	errors.push(...checkHashFilesPatterns(patterns, trackedFiles()));
 	for (const e of errors) console.log(`::error::${e}`);
 	if (errors.length > 0) return 1;
 	console.log(
-		`${steps.length} actions/cache step(s) read; ${shared} path(s) are cached on more than one runner OS, and every key and restore key for them names the OS.`,
+		`${steps.length} actions/cache step(s) read; ${shared} path(s) are cached on more than one runner OS, and every key and restore key for them names the OS. ` +
+			`${patterns.length} hashFiles() pattern(s) read, each matching a tracked file.`,
 	);
 	return 0;
 }

@@ -302,11 +302,14 @@ jobs:
       # a prefix match across every OS that caches the same path. Run
       # 35642229273 restored build-mobile-ios' macOS ~/.pub-cache onto the
       # Linux APK build through a bare `pub-cache-` restore key.
-      - name: Cache keys cannot restore across runner OSes
+      # A hashFiles() pattern matching nothing is dropped from the hash
+      # silently, so the Gradle key for mobile_android hashed a pubspec.lock
+      # that has never existed and a plugin bump never invalidated it.
+      - name: Cache keys cannot restore across runner OSes, and hash files that exist
         run: |
           if ! node scripts/check_cache_keys.mjs; then
-            echo "::error::A cache path is saved on more than one runner OS, or by a composite action, and one of its keys or restore keys does not name runner.os, so one OS can restore the other's entry. Nothing here is about workflow syntax, the toolchain pins or the CI diagnoses."
-            echo "The failing line above names the file, the job, the path and the key. Reproduce with: node scripts/check_cache_keys.mjs (stdlib only)."
+            echo "::error::A cache key is unsound: either a cache path is saved on more than one runner OS, or by a composite action, and one of its keys or restore keys does not name runner.os, so one OS can restore the other's entry; or a hashFiles() pattern matches no tracked file, so the change it was meant to follow never invalidates the cache. Nothing here is about workflow syntax, the toolchain pins or the CI diagnoses."
+            echo "The failing line above names the file, the line and the key or pattern. Reproduce with: node scripts/check_cache_keys.mjs (stdlib + git ls-files)."
             exit 1
           fi
           if ! node --test scripts/check_cache_keys.test.mjs; then
@@ -2585,7 +2588,7 @@ jobs:
           # A fallback restores the previous entry, which already holds the
           # distribution whenever the Gradle version itself has not moved --
           # the common case by a wide margin.
-          key: gradle-mobile-android-${{ hashFiles('apps/mobile_android/android/**/*.gradle*', 'apps/mobile_android/android/gradle/wrapper/gradle-wrapper.properties', 'apps/mobile_android/pubspec.lock') }}
+          key: gradle-mobile-android-${{ hashFiles('apps/mobile_android/android/**/*.gradle*', 'apps/mobile_android/android/gradle/wrapper/gradle-wrapper.properties', 'pubspec.lock') }}
           restore-keys: |
             gradle-mobile-android-
       - run: cp apps/mobile_android/.env.example apps/mobile_android/.env.development

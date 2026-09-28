@@ -98,7 +98,7 @@ Two ways to point a physical device at the local stack:
   adb reverse tcp:8080  tcp:8080    # local Protomaps tile server (TILE_URL_TEMPLATE)
   ```
 
-  Then point every URL in `.env.local` at `127.0.0.1` (not `10.0.2.2`):
+  Then make sure every URL in `.env.development` points at `127.0.0.1` (not `10.0.2.2`) — the committed defaults already do:
 
   ```
   SUPABASE_URL=http://127.0.0.1:24321
@@ -142,11 +142,17 @@ which carries the status ledger. What follows is the local-dev subset.
 2. Paste the **Web** Client ID from step 1.2 into the **Authorized Client IDs** field.
 3. Save.
 
-### 3. Add the client ID to `.env.local`
+### 3. Pass the client ID to the build
+
+Mobile reads no `.env.local`: `flutter_dotenv` loads only the bundled
+`.env.development` asset, and per-machine values go through `--dart-define`,
+which `main.dart` merges on top (decisions § 137):
 
 ```
-GOOGLE_WEB_CLIENT_ID=<your-web-client-id>.apps.googleusercontent.com
+flutter run --dart-define=GOOGLE_WEB_CLIENT_ID=<your-web-client-id>.apps.googleusercontent.com
 ```
+
+Release builds take the same define; they never read `.env.development`.
 
 ### 4. Test
 
@@ -154,7 +160,7 @@ Run the app, open the Sign In screen, tap **Sign in with Google**. The system Go
 
 If the sign-in fails with "Google sign-in did not return an ID token" or similar, the most common causes are:
 
-- The Web Client ID in `.env.local` doesn't match what's configured in Supabase → triple-check both values.
+- The Web Client ID passed as `GOOGLE_WEB_CLIENT_ID` doesn't match what's configured in Supabase → triple-check both values.
 - The Android OAuth client's package name or SHA-1 doesn't match the APK that's installed → rerun `keytool` and compare to what's in Google Cloud Console.
 - You're testing on an emulator without Google Play services → use a Google Play system image, not the stock AOSP one.
 
@@ -166,11 +172,10 @@ Skip this section if you're only using email/password.
 
 1. Apple Developer portal → **Certificates, Identifiers & Profiles → Identifiers** → create a **Services ID** (e.g. `com.threkir.signin`). Enable "Sign in with Apple" on it and register your Supabase auth callback as a **Return URL**: `https://<project-ref>.supabase.co/auth/v1/callback`.
 2. Supabase dashboard → **Authentication → Providers → Apple** → **Enable**, and add the Services ID to the authorized client IDs.
-3. Add both values to `.env.local`:
+3. Pass both values to the build as `--dart-define`s (mobile reads no `.env.local`, see the Google section above):
 
 ```
-APPLE_SERVICE_CLIENT_ID=com.threkir.signin
-APPLE_REDIRECT_URI=https://<project-ref>.supabase.co/auth/v1/callback
+flutter run --dart-define=APPLE_SERVICE_CLIENT_ID=com.threkir.signin --dart-define=APPLE_REDIRECT_URI=https://<project-ref>.supabase.co/auth/v1/callback
 ```
 
 The Apple Developer Services ID is an operator-provisioned credential — a deploy gate, not a code gate (see `docs/architecture/decisions.md`). Until it exists the Android button shows the coming-soon notice.
@@ -198,8 +203,10 @@ pnpm dev:run:android:seed
 ```
 
 This passes `DEV_USER_EMAIL` / `DEV_USER_PASSWORD` via `--dart-define`; the app
-signs in after the first frame. Alternatively, set those two keys in
-`apps/mobile_android/.env.local` and any plain `flutter run` will auto-login.
+signs in after the first frame. A plain debug `flutter run` auto-logs in too,
+because the committed `.env.development` already carries the same two keys; the
+`--dart-define` form is what a release build (which never reads that file) or a
+different account needs.
 
 The auto-login only fires when `SUPABASE_URL` is a loopback address (the
 gate lives in `lib/dev_auto_login.dart`), so seed credentials can never sign
@@ -263,7 +270,7 @@ The app will appear in your app drawer. When prompted on the phone, allow **Inst
 
 ### Offline mode
 
-Without `.env.local` credentials (or if the backend is unreachable), the app runs in **offline mode**: runs are recorded and stored locally on the phone. To sync runs across devices, fill in `DEV_USER_EMAIL` and `DEV_USER_PASSWORD` in `.env.local` before building the APK.
+A release APK never reads `.env.development`, so one built without a Supabase `--dart-define` (or one whose backend is unreachable) runs in **offline mode**: runs are recorded and stored locally on the phone. To sync runs across devices, build it with `flutter build apk --dart-define=SUPABASE_URL=… --dart-define=SUPABASE_ANON_KEY=…` and sign in.
 
 ---
 
@@ -417,7 +424,7 @@ Both importers save locally first and push to the cloud asynchronously, so they 
 
 ### Offline mode
 
-If `.env.local` is missing, empty, or the backend is unreachable, the app starts in **offline mode**. All features work locally — you can record runs, view history, and import routes without ever signing in. Runs stay on the device until you sign in and the auto-sync picks them up.
+If `SUPABASE_URL` / `SUPABASE_ANON_KEY` resolve to nothing (a release build with no `--dart-define` for them) or the backend is unreachable, the app starts in **offline mode**. All features work locally — you can record runs, view history, and import routes without ever signing in. Runs stay on the device until you sign in and the auto-sync picks them up.
 
 ### Push notifications (needs the Firebase config)
 
@@ -481,7 +488,7 @@ What's actually wired up in [apps/mobile_android/](.):
 | Auto-sync triggers | `connectivity_plus` + `WidgetsBindingObserver` | Push runs on wifi/foreground |
 | Run sharing | `share_plus` | System share sheet for GPX export |
 | UUIDs for run IDs | `uuid` | Avoid sync collisions |
-| Env config | `flutter_dotenv` | Loads `.env.local` |
+| Env config | `flutter_dotenv` | Loads the bundled `.env.development` (debug only) under `--dart-define` overrides |
 | Local persistence | JSON files via `path_provider` | One file per run / per route — no sqlite or hive. Plus a single `in_progress.json` rewritten every 10s during a recording for crash-safe recovery. |
 | Backend client | `supabase_flutter` (via shared `api_client` package) | Same backend as the web app |
 

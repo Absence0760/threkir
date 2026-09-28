@@ -401,8 +401,8 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
-        "npm:@types/node@^26.6.1",
-        "npm:svelte@5.57.0"
+        "npm:@types/node@^26.6.2",
+        "npm:svelte@5.57.1"
       ],
       "overrides": {
         "cookie": "^1.0.2",
@@ -419,35 +419,35 @@
       "apps/web": {
         "packageJson": {
           "dependencies": [
-            "npm:@anthropic-ai/sdk@0.126",
+            "npm:@anthropic-ai/sdk@0.128",
             "npm:@playwright/test@^1.63.0",
             "npm:@resvg/resvg-js@^2.6.2",
-            "npm:@sentry/node@^10.75.0",
-            "npm:@sentry/sveltekit@^10.75.0",
+            "npm:@sentry/node@11",
+            "npm:@sentry/sveltekit@11",
             "npm:@supabase/ssr@~0.12.7",
-            "npm:@supabase/supabase-js@^2.116.0",
+            "npm:@supabase/supabase-js@^2.117.1",
             "npm:@sveltejs/adapter-static@3.0.10",
             "npm:@sveltejs/kit@2.70.3",
-            "npm:@sveltejs/vite-plugin-svelte@7.3.0",
+            "npm:@sveltejs/vite-plugin-svelte@7.3.1",
             "npm:@types/aws-lambda@8.10.163",
             "npm:@types/geojson@^7946.0.16",
-            "npm:@types/node@^26.6.1",
-            "npm:@zip.js/zip.js@^2.15.0",
+            "npm:@types/node@^26.6.2",
+            "npm:@zip.js/zip.js@^2.18.2",
             "npm:esbuild@0.28.2",
-            "npm:fit-file-parser@^5.2.1",
+            "npm:fit-file-parser@^6.1.2",
             "npm:html-to-image@^1.11.13",
-            "npm:isomorphic-dompurify@^4.2.0",
+            "npm:isomorphic-dompurify@^4.3.0",
             "npm:jszip@^3.10.2",
-            "npm:maplibre-gl@^6.10.0",
-            "npm:marked@^18.0.13",
-            "npm:material-symbols@~0.47.3",
+            "npm:maplibre-gl@^6.11.2",
+            "npm:marked@^18.0.14",
+            "npm:material-symbols@~0.47.5",
             "npm:mdsvex@~0.12.8",
             "npm:oauth2-mock-server@9.2.0",
             "npm:svelte-check@4.7.6",
-            "npm:svelte@5.57.0",
-            "npm:tsx@^4.23.13",
+            "npm:svelte@5.57.1",
+            "npm:tsx@^4.23.15",
             "npm:typescript@6.0.3",
-            "npm:vite@8.3.0"
+            "npm:vite@8.3.1"
           ]
         }
       }

@@ -26,6 +26,7 @@
 // via `local.sentry_env` (infra/modules/web-stack/main.tf).
 
 import * as Sentry from '@sentry/node';
+import { SENTRY_DATA_COLLECTION } from '../sentry/data_collection';
 
 let initialized = false;
 
@@ -42,10 +43,11 @@ function ensureInit(): boolean {
 		// Same data-minimisation posture as the Edge Function wrapper: the
 		// lawful basis for sending anything to Sentry is legitimate interest
 		// in service reliability, which does not extend to the caller's IP,
-		// headers, cookies or JWT. `sendDefaultPii: false` covers the first
-		// two; `beforeSend` drops the rest of the envelope explicitly rather
-		// than trusting that default to keep its meaning across an SDK bump.
-		sendDefaultPii: false,
+		// headers, cookies or JWT. `SENTRY_DATA_COLLECTION` turns every
+		// collection category off; `beforeSend` drops the rest of the envelope
+		// explicitly rather than trusting those options to keep their meaning
+		// across an SDK bump — `sendDefaultPii` itself did not survive v11.
+		dataCollection: SENTRY_DATA_COLLECTION,
 		// Errors only. These functions are on the request path -- coach
 		// streams a response and the share Lambdas render social unfurls for
 		// crawlers -- so tracing would add per-request latency and spans

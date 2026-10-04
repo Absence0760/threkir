@@ -2,7 +2,7 @@
 
 This is one of the **two** registries `scripts/check_parity_pair_registry.mjs`
 cross-checks on every PR. The other is the `## The pairs (canonical list)` table
-in [`.claude/agents/shared-library-syncer.md`](../../.claude/agents/shared-library-syncer.md),
+in [`.claude/agents/engineering/shared-library-syncer.md`](../../.claude/agents/engineering/shared-library-syncer.md),
 which is the list the `shared-library-syncer` agent actually works from.
 
 **Adding a pair means editing both, in the same change.** A pair added here with

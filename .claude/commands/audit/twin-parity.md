@@ -30,7 +30,7 @@ Read-only by default. The `mobile-twin-mirror` agent is the canonical fixer; thi
 ## Useful starting points
 
 - `docs/architecture/decisions.md §39` — the invariant
-- `.claude/agents/mobile-twin-mirror.md` — the fixer agent
+- `.claude/agents/engineering/mobile-twin-mirror.md` — the fixer agent
 - `apps/mobile_ios/CLAUDE.md` — twin-specific notes
 
 ## Output → `reviews/`

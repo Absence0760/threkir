@@ -595,7 +595,7 @@ The criterion, which four rounds each re-derived from scratch
   strings, and `Array.prototype.sort`'s stability then leaks the query's order.
 
 `apps/web/src/lib/segments/parity_collation_guard.test.ts` reads the pair list
-out of `.claude/agents/shared-library-syncer.md` and fails the PR when a
+out of `.claude/agents/engineering/shared-library-syncer.md` and fails the PR when a
 registered half collates, so registering a pair puts it under the rule the same
 day. The second half is a permission, not an obligation, and needs no guard.
 

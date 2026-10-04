@@ -48,6 +48,7 @@ import '../widgets/mileage_trend_card.dart';
 import '../widgets/nutrition_rings_card.dart';
 import '../widgets/readiness_card.dart';
 import '../widgets/recent_lifts_card.dart';
+import '../widgets/run_list_tile.dart';
 import '../widgets/this_week_strip.dart';
 import '../widgets/goal_editor_sheet.dart';
 import '../widgets/todays_workout_card.dart';
@@ -62,6 +63,7 @@ import 'period_summary_screen.dart';
 import 'plan_detail_screen.dart';
 import 'profile_screen.dart';
 import 'recap_screen.dart';
+import 'run_detail_screen.dart';
 
 const _kCardPadding = EdgeInsets.all(16);
 const _kSectionGap = SizedBox(height: 24);
@@ -438,6 +440,56 @@ class _DashboardScreenState extends State<DashboardScreen>
       builder: (_) =>
           GymScreen(api: widget.apiClient, store: widget.gymStore),
     ));
+  }
+
+  /// The newest run on this device, or null when there is none.
+  static Run? _latestRun(List<Run> runs) {
+    Run? latest;
+    for (final r in runs) {
+      if (latest == null || r.startedAt.isAfter(latest.startedAt)) latest = r;
+    }
+    return latest;
+  }
+
+  /// "How did that go, and did it save?" is the first question after a run,
+  /// and answering it took Fitness, then Runs, then the row. The row here is
+  /// the Runs list's own, unsynced and parked markers included.
+  Widget _latestRunSection(Run run, DistanceUnit unit) {
+    final l10n = AppLocalizations.of(context);
+    return Column(
+      key: const Key('dashboardLatestRun'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeader(l10n.runLastRun),
+        RunListTile.owned(
+          run: run,
+          unit: unit,
+          api: widget.apiClient,
+          isUnsynced: widget.runStore.unsyncedRuns.any((r) => r.id == run.id),
+          isBlocked: widget.runStore.blockedRuns.containsKey(run.id),
+          onTap: () => _openRun(run),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _openRun(Run run) async {
+    // The dashboard reads track-less summaries; detail needs the full run.
+    final full = await widget.runStore.runById(run.id) ?? run;
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => RunDetailScreen(
+          run: full,
+          runStore: widget.runStore,
+          routeStore: widget.routeStore,
+          preferences: widget.preferences,
+          apiClient: widget.apiClient,
+          settingsSync: widget.settingsSync,
+        ),
+      ),
+    );
   }
 
   void _openGymWorkout(String workoutId) {
@@ -939,6 +991,9 @@ class _DashboardScreenState extends State<DashboardScreen>
       // goals so a plan-runner sees what's next before scrolling. Hidden
       // when no active plan or no workout today.
       final workoutCard = heroWorkoutCard;
+      final latestRun = _latestRun(runs);
+      final latestRunSection =
+          latestRun == null ? null : _latestRunSection(latestRun, unit);
       final goalsSection = _goalsSection(theme, unit, runs, goals, now);
       // Compact 3-column stat strip — replaced the previous stacked
       // "This Week" / "This Month" / "All Time" cards (~480 px each +
@@ -1157,7 +1212,9 @@ class _DashboardScreenState extends State<DashboardScreen>
               actionToolbar,
               pendingBanner,
               if (coach != null) ...[coach, _kSectionGap],
-              if (workoutCard != null || modalityBody != null)
+              if (workoutCard != null ||
+                  latestRunSection != null ||
+                  modalityBody != null)
                 Row(
                   key: const Key('dashboardExpandedLeadRow'),
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1166,10 +1223,14 @@ class _DashboardScreenState extends State<DashboardScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          if (workoutCard != null) workoutCard,
-                          if (workoutCard != null && modalityBody != null)
-                            _kSectionGap,
-                          if (modalityBody != null) modalityBody,
+                          for (final (i, block) in [
+                            ?workoutCard,
+                            ?latestRunSection,
+                            ?modalityBody,
+                          ].indexed) ...[
+                            if (i > 0) _kSectionGap,
+                            block,
+                          ],
                         ],
                       ),
                     ),
@@ -1215,6 +1276,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             pendingBanner,
             if (coach != null) ...[coach, _kSectionGap],
             if (workoutCard != null) ...[workoutCard, _kSectionGap],
+            if (latestRunSection != null) ...[latestRunSection, _kSectionGap],
             // Today's logged non-run modalities (gym + nutrition).
             // Self-hiding: each card only renders when that modality was
             // logged today, so a pure runner sees nothing new here

@@ -14,9 +14,11 @@ import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/run_detail_screen.dart';
 import 'pump_until.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/mileage_trend_card.dart';
+import '../lib/widgets/run_list_tile.dart';
 
 /// Signed-in fake so the gated coach entry renders.
 class _FakeApi extends ApiClient {
@@ -468,6 +470,105 @@ void main() {
         } finally {
           dir.deleteSync(recursive: true);
         }
+      });
+    });
+
+    group('latest run', () {
+      Run dated(String id, DateTime at, double metres) => Run(
+            id: id,
+            startedAt: at,
+            duration: const Duration(minutes: 30),
+            distanceMetres: metres,
+            source: RunSource.app,
+          );
+
+      Future<({LocalRunStore runStore, Preferences prefs, Directory dir})>
+          seeded(WidgetTester tester, List<Run> runs) async {
+        late ({LocalRunStore runStore, Preferences prefs, Directory dir}) out;
+        await tester.runAsync(() async {
+          SharedPreferences.setMockInitialValues({});
+          final prefs = Preferences();
+          await prefs.init();
+          final dir = Directory.systemTemp.createTempSync('dashboard_latest_');
+          final seed = LocalRunStore();
+          await seed.init(overrideDirectory: dir);
+          for (final r in runs) {
+            await seed.save(r);
+          }
+          final runStore = LocalRunStore();
+          await runStore.init(overrideDirectory: dir);
+          out = (runStore: runStore, prefs: prefs, dir: dir);
+        });
+        addTearDown(() {
+          if (out.dir.existsSync()) out.dir.deleteSync(recursive: true);
+        });
+        return out;
+      }
+
+      Future<void> pumpHome(WidgetTester tester, LocalRunStore runStore,
+          Preferences prefs) async {
+        await tester.pumpWidget(MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: DashboardScreen(
+            runStore: runStore,
+            routeStore: LocalRouteStore(),
+            gymStore: LocalGymStore(),
+            foodStore: LocalFoodStore(),
+            preferences: prefs,
+          ),
+        ));
+        await tester.pump();
+        await tester.pump();
+      }
+
+      testWidgets('Home leads with the newest run, marked when it has not '
+          'uploaded, and a tap opens it', (tester) async {
+        // After a run the first question is how it went and whether it saved;
+        // answering it took Fitness, then Runs, then the row.
+        final now = DateTime.now().toUtc();
+        final s = await seeded(tester, [
+          dated('older', now.subtract(const Duration(days: 3)), 5000),
+          dated('newest', now.subtract(const Duration(hours: 2)), 8000),
+        ]);
+        await pumpHome(tester, s.runStore, s.prefs);
+
+        final section = find.byKey(const Key('dashboardLatestRun'));
+        expect(section, findsOneWidget);
+        expect(find.descendant(of: section, matching: find.text('Last run')),
+            findsOneWidget);
+        expect(find.descendant(of: section, matching: find.byType(RunListTile)),
+            findsOneWidget);
+        expect(
+            find.descendant(
+                of: section,
+                matching: find.text(
+                    UnitFormat.distance(8000, s.prefs.unit))),
+            findsOneWidget,
+            reason: 'the newest run, not the older one');
+        expect(
+            find.descendant(
+                of: section, matching: find.byIcon(Icons.cloud_upload_outlined)),
+            findsOneWidget,
+            reason: 'a run that has not uploaded says so on Home too');
+
+        await tester.ensureVisible(
+            find.descendant(of: section, matching: find.byType(RunListTile)));
+        await tester.tap(
+            find.descendant(of: section, matching: find.byType(RunListTile)));
+        await pumpUntil(
+          tester,
+          () => find.byType(RunDetailScreen).evaluate().isNotEmpty,
+          describe: 'the run detail screen to open',
+        );
+        tester.takeException();
+      });
+
+      testWidgets('hides itself on the welcome screen, which has no run',
+          (tester) async {
+        final s = await seeded(tester, const []);
+        await pumpHome(tester, s.runStore, s.prefs);
+        expect(find.byKey(const Key('dashboardLatestRun')), findsNothing);
       });
     });
 

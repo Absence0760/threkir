@@ -42,6 +42,11 @@ import 'runs_screen.dart';
 /// on for anyone who already logs them, and whatever the runner chose once
 /// they have chosen. The strip is rebuilt when that answer changes.
 ///
+/// With neither shown, History goes too: a timeline of nothing but runs is
+/// the Runs tab a second time. That leaves one surface, so the hub renders
+/// Runs directly rather than a strip with a single tab in it
+/// ([fitnessHubTabs]).
+///
 /// The Gym and Nutrition tabs are also where the shell's centre Log action
 /// lands, so these are the app's only instances of those two screens rather
 /// than review copies of capture pages held elsewhere ([`selectedTab`],
@@ -72,6 +77,19 @@ enum FitnessTab {
         FitnessTab.nutrition => l10n.fitnessTabNutrition,
       };
 }
+
+/// The hub's tabs for a given modality visibility, in strip order. The first
+/// is where a hidden selection falls back to and where the shell starts.
+List<FitnessTab> fitnessHubTabs({
+  required bool gymShown,
+  required bool nutritionShown,
+}) =>
+    [
+      if (gymShown || nutritionShown) FitnessTab.history,
+      FitnessTab.runs,
+      if (gymShown) FitnessTab.gym,
+      if (nutritionShown) FitnessTab.nutrition,
+    ];
 
 class FitnessHubScreen extends StatefulWidget {
   final ApiClient? apiClient;
@@ -136,16 +154,12 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
     widget.foodStore.addListener(_onVisibilityInputs);
   }
 
-  List<FitnessTab> _visibleTabs() => [
-        FitnessTab.history,
-        FitnessTab.runs,
-        if (widget.preferences
-            .gymShown(hasData: widget.gymStore.workouts.isNotEmpty))
-          FitnessTab.gym,
-        if (widget.preferences
-            .nutritionShown(hasData: widget.foodStore.rows.isNotEmpty))
-          FitnessTab.nutrition,
-      ];
+  List<FitnessTab> _visibleTabs() => fitnessHubTabs(
+        gymShown: widget.preferences
+            .gymShown(hasData: widget.gymStore.workouts.isNotEmpty),
+        nutritionShown: widget.preferences
+            .nutritionShown(hasData: widget.foodStore.rows.isNotEmpty),
+      );
 
   TabController _buildController() {
     final index = _tabs.indexOf(_tab.value);
@@ -249,6 +263,9 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    // The controller is kept at length 1 so a modality switched back on only
+    // has to grow it, the same rebuild every other visibility change takes.
+    if (_tabs.length == 1) return _body(_tabs.single, l10n);
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 0,

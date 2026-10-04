@@ -164,8 +164,13 @@ class _HomeScreenState extends State<HomeScreen>
 
   /// Which Fitness sub-tab the hub is showing. Owned here rather than inside
   /// the hub because the centre Log action selects one, and the hub is a lazy
-  /// page that may not be built yet when it does.
-  final _fitnessTab = ValueNotifier<FitnessTab>(FitnessTab.history);
+  /// page that may not be built yet when it does. Starts on the hub's first
+  /// tab, which is Runs rather than History when neither Gym nor Nutrition is
+  /// shown, because History is not in the hub then.
+  late final _fitnessTab = ValueNotifier<FitnessTab>(fitnessHubTabs(
+    gymShown: _gymShown,
+    nutritionShown: _nutritionShown,
+  ).first);
 
   /// Current page index. A `ValueNotifier` instead of a `setState` int so
   /// page changes during a swipe only rebuild the bottom bar — not the

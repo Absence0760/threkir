@@ -934,11 +934,17 @@ clutter a pure runner paid for. On mobile they now appear only when
 `modalityShown` says so: the runner's explicit choice from Settings →
 Preferences → "Gym & nutrition" (`show_gym` / `show_nutrition`, see
 [settings.md](../backend/settings.md)) if they have made one, otherwise
-whether that modality already has data. A new runner gets History and Runs
-only; someone already logging lifts keeps the Gym tab without having to find
-a toggle. The same answer gates the Home lift/meal cards and decides the
-Log button's one-tap run start. Web is unchanged: its sidebar items stay
-always-present.
+whether that modality already has data. A new runner gets the Runs surface
+alone: with neither modality shown, History would list the same runs as Runs,
+so the hub drops it and renders Runs directly, with no one-tab strip. History
+comes back the moment either modality is shown. Someone already logging lifts
+keeps the Gym tab without having to find a toggle. The post-signup setup
+wizard also asks "What do you want to track?" in a mobile-only step before
+its last one: Running is shown as always on, Gym and Nutrition start off,
+and only a touched step writes an explicit choice. A skipped step leaves the
+data-presence default in force. The same answer gates the Home lift/meal
+cards and decides the Log button's one-tap run start. Web is unchanged: its
+sidebar items stay always-present and its wizard has no such step.
 
 ## Body metrics & sensitive data (compliance — do before any real user data)
 

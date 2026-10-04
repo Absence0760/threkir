@@ -31,11 +31,30 @@ LogAction? logActionFromWire(String? wire) => switch (wire) {
 /// recently used capture type floats to the top, so a daily lifter sees
 /// 'Log lift' first"). Stable for the remaining items. Pure so it can be
 /// unit-tested without pumping the sheet.
-List<LogAction> orderedLogActions(LogAction? recent) {
-  const base = [LogAction.run, LogAction.lift, LogAction.food];
-  if (recent == null) return base;
+///
+/// [hidden] drops the modalities the runner has switched off
+/// ([modalityShown]); Run is never hidden.
+List<LogAction> orderedLogActions(
+  LogAction? recent, {
+  Set<LogAction> hidden = const {},
+}) {
+  final base = [
+    for (final a in LogAction.values)
+      if (a == LogAction.run || !hidden.contains(a)) a,
+  ];
+  if (recent == null || !base.contains(recent)) return base;
   return [recent, ...base.where((a) => a != recent)];
 }
+
+/// The Log actions to leave out for the modalities that are not shown.
+Set<LogAction> hiddenLogActions({
+  required bool gymShown,
+  required bool nutritionShown,
+}) =>
+    {
+      if (!gymShown) LogAction.lift,
+      if (!nutritionShown) LogAction.food,
+    };
 
 /// The Log bottom sheet — Log run / Log lift / Log food.
 /// Resolves to the picked [LogAction], or null on dismiss. The caller
@@ -44,22 +63,24 @@ List<LogAction> orderedLogActions(LogAction? recent) {
 Future<LogAction?> showLogSheet({
   required BuildContext context,
   LogAction? recent,
+  Set<LogAction> hidden = const {},
 }) {
   return showModalBottomSheet<LogAction>(
     context: context,
-    builder: (ctx) => _LogSheet(recent: recent),
+    builder: (ctx) => _LogSheet(recent: recent, hidden: hidden),
   );
 }
 
 class _LogSheet extends StatelessWidget {
   final LogAction? recent;
-  const _LogSheet({required this.recent});
+  final Set<LogAction> hidden;
+  const _LogSheet({required this.recent, required this.hidden});
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final actions = orderedLogActions(recent);
+    final actions = orderedLogActions(recent, hidden: hidden);
     return SafeArea(
       top: false,
       // A single focus group so a screen reader presents the four capture

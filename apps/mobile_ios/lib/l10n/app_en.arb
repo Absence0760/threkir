@@ -1016,9 +1016,29 @@
   "@prefsKeepRunPrimary": {
     "description": "Settings toggle: make the centre Log button start a run on a single tap"
   },
-  "prefsKeepRunPrimarySubtitle": "Tap the centre button to start a run. Already on until you log a lift or a meal; long-press always opens the log menu",
+  "prefsKeepRunPrimarySubtitle": "Tap the centre button to start a run. Already on while Gym and Nutrition are hidden; long-press always opens the log menu",
   "@prefsKeepRunPrimarySubtitle": {
     "description": "Subtitle for the run-as-primary-action settings toggle"
+  },
+  "prefsSectionModalities": "Gym & nutrition",
+  "@prefsSectionModalities": {
+    "description": "Settings section heading for the Gym and Nutrition visibility toggles"
+  },
+  "prefsShowGym": "Show Gym",
+  "@prefsShowGym": {
+    "description": "Settings toggle: show the Gym tab, Log lift action and Home lift cards"
+  },
+  "prefsShowGymSubtitle": "Adds the Gym tab, Log lift and your lifts on Home",
+  "@prefsShowGymSubtitle": {
+    "description": "Subtitle for the show-Gym settings toggle"
+  },
+  "prefsShowNutrition": "Show Nutrition",
+  "@prefsShowNutrition": {
+    "description": "Settings toggle: show the Nutrition tab, Log food action and Home meal cards"
+  },
+  "prefsShowNutritionSubtitle": "Adds the Nutrition tab, Log food and today's meals on Home",
+  "@prefsShowNutritionSubtitle": {
+    "description": "Subtitle for the show-Nutrition settings toggle"
   },
   "bodyMetricsTitle": "Body metrics",
   "@bodyMetricsTitle": {

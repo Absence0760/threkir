@@ -45,6 +45,24 @@ void main() {
       expect(find.byTooltip('Log lift'), findsNothing);
     });
 
+    testWidgets('a switched-off modality is left out, and the remaining pair '
+        'sits level either side of the button', (tester) async {
+      await tester.pumpWidget(_harness((context) async {
+        await showLogSpeedDial(context: context, hidden: {LogAction.lift});
+      }));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      expect(find.byTooltip('Log lift'), findsNothing);
+      final run = tester.getCenter(find.byTooltip('Log run'));
+      final food = tester.getCenter(find.byTooltip('Log food'));
+      expect(run.dy, moreOrLessEquals(food.dy),
+          reason: 'two items on the top-and-side slots read as lopsided');
+      final mid = tester.view.physicalSize.width / tester.view.devicePixelRatio / 2;
+      expect(run.dx, lessThan(mid));
+      expect(food.dx, greaterThan(mid));
+    });
+
     testWidgets('each fan item renders its label as visible text',
         (tester) async {
       await tester.pumpWidget(_harness((context) {

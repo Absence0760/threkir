@@ -29,6 +29,10 @@ const List<Offset> _kSlotUnits = [
   Offset(0.74, 0.67), // right, a bit lower
 ];
 
+// With only two actions (one modality switched off) the top slot would leave
+// the pair lopsided, so they take the two flanking slots instead.
+const List<int> _kPairSlots = [1, 2];
+
 // Slot units when fanning from an [anchor] (the NavigationRail Log button on
 // expanded layouts): a shallow arc opening to the right of the anchor.
 const List<Offset> _kAnchoredSlotUnits = [
@@ -37,7 +41,7 @@ const List<Offset> _kAnchoredSlotUnits = [
   Offset(0.67, -0.74), // right, below
 ];
 
-/// Fan the three capture actions (Run / Lift / Food) out as labelled buttons
+/// Fan the capture actions (Run / Lift / Food, less any switched off) out as labelled buttons
 /// in a shallow arc around the centre Log FAB, over a dismiss scrim. Resolves
 /// to the picked [LogAction], or null on scrim tap / back — same contract as
 /// [showLogSheet] so the caller (HomeScreen) still owns the navigation.
@@ -51,6 +55,7 @@ const List<Offset> _kAnchoredSlotUnits = [
 Future<LogAction?> showLogSpeedDial({
   required BuildContext context,
   LogAction? recent,
+  Set<LogAction> hidden = const {},
   Offset? anchor,
 }) {
   final fabCentreFromBottom = MediaQuery.paddingOf(context).bottom + _kBarHeight;
@@ -62,6 +67,7 @@ Future<LogAction?> showLogSpeedDial({
       reverseTransitionDuration: Duration.zero,
       pageBuilder: (_, _, _) => _LogSpeedDial(
         recent: recent,
+        hidden: hidden,
         fabCentreFromBottom: fabCentreFromBottom,
         anchor: anchor,
       ),
@@ -71,6 +77,7 @@ Future<LogAction?> showLogSpeedDial({
 
 class _LogSpeedDial extends StatefulWidget {
   final LogAction? recent;
+  final Set<LogAction> hidden;
   final double fabCentreFromBottom;
 
   /// Global centre of the launching button. Null means the default
@@ -80,6 +87,7 @@ class _LogSpeedDial extends StatefulWidget {
 
   const _LogSpeedDial({
     required this.recent,
+    required this.hidden,
     required this.fabCentreFromBottom,
     required this.anchor,
   });
@@ -123,7 +131,7 @@ class _LogSpeedDialState extends State<_LogSpeedDial>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final actions = orderedLogActions(widget.recent);
+    final actions = orderedLogActions(widget.recent, hidden: widget.hidden);
     final screen = MediaQuery.sizeOf(context);
     return Stack(
       children: [
@@ -172,8 +180,9 @@ class _LogSpeedDialState extends State<_LogSpeedDial>
       LogAction.lift => (Icons.fitness_center, l10n.logLift),
       LogAction.food => (Icons.restaurant, l10n.logFood),
     };
+    final slot = count == 2 ? _kPairSlots[index] : index;
     final unit =
-        widget.anchor == null ? _kSlotUnits[index] : _kAnchoredSlotUnits[index];
+        widget.anchor == null ? _kSlotUnits[slot] : _kAnchoredSlotUnits[slot];
     // Stagger the entrance so the icons pop out of the button in turn.
     final start = (index / count) * 0.4;
     final anim = CurvedAnimation(

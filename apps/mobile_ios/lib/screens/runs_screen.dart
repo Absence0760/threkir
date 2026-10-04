@@ -1061,6 +1061,10 @@ class _RunsScreenState extends State<RunsScreen>
     final action = await showLogSheet(
       context: context,
       recent: logActionFromWire(widget.preferences.lastLogType),
+      hidden: hiddenLogActions(
+        gymShown: widget.preferences.gymShown(hasData: _hasLift),
+        nutritionShown: widget.preferences.nutritionShown(hasData: _hasMeal),
+      ),
     );
     if (action == null || !mounted) return;
     await widget.preferences.setLastLogType(action.wire);

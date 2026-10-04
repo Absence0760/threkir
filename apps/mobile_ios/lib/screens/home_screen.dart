@@ -444,6 +444,8 @@ class _HomeScreenState extends State<HomeScreen>
             apiClient: widget.apiClient,
             preferences: widget.preferences,
             settingsSync: widget.settingsSync,
+            gymStore: widget.gymStore,
+            foodStore: widget.foodStore,
           ),
         SettingsDestination.account => SettingsAccountScreen(
             apiClient: widget.apiClient,
@@ -593,6 +595,8 @@ class _HomeScreenState extends State<HomeScreen>
           preferences: widget.preferences,
           runStore: widget.runStore,
           routeStore: widget.routeStore,
+          gymStore: widget.gymStore,
+          foodStore: widget.foodStore,
           gearStore: widget.gearStore,
           heartRate: widget.heartRate,
           treadmill: widget.treadmill,
@@ -701,13 +705,19 @@ class _HomeScreenState extends State<HomeScreen>
 
   // --- Centre Log button (multi_modal.md § Bottom nav) ---
 
+  bool get _gymShown => widget.preferences
+      .gymShown(hasData: widget.gymStore.workouts.isNotEmpty);
+
+  bool get _nutritionShown => widget.preferences
+      .nutritionShown(hasData: widget.foodStore.rows.isNotEmpty);
+
   /// Whether a tap on the centre Log button starts a run outright. Read at
   /// gesture time from the live stores rather than cached at build time, so
   /// the day's first logged lift flips it without a rebuild.
   bool get _runIsPrimary => runIsPrimaryLogAction(
         keepRunPrimary: widget.preferences.keepRunPrimary,
-        hasGymData: widget.gymStore.workouts.isNotEmpty,
-        hasFoodData: widget.foodStore.rows.isNotEmpty,
+        gymShown: _gymShown,
+        nutritionShown: _nutritionShown,
       );
 
   /// Tap on the centre Log button: the primary capture action for this user.
@@ -733,6 +743,10 @@ class _HomeScreenState extends State<HomeScreen>
     final picked = await showLogSpeedDial(
       context: context,
       recent: logActionFromWire(widget.preferences.lastLogType),
+      hidden: hiddenLogActions(
+        gymShown: _gymShown,
+        nutritionShown: _nutritionShown,
+      ),
       anchor: anchor,
     );
     if (picked != null) _performLogAction(picked);

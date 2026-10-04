@@ -12,6 +12,8 @@ import '../hr_zones.dart'
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../l10n/number_format.dart';
+import '../local_food_store.dart';
+import '../local_gym_store.dart';
 import '../locale_defaults.dart';
 import '../main.dart' show themeModeNotifier, localeNotifier;
 import '../nearby_flag.dart';
@@ -77,12 +79,16 @@ class SettingsPreferencesScreen extends StatefulWidget {
   final ApiClient? apiClient;
   final Preferences preferences;
   final SettingsSyncService? settingsSync;
+  final LocalGymStore? gymStore;
+  final LocalFoodStore? foodStore;
 
   const SettingsPreferencesScreen({
     super.key,
     this.apiClient,
     required this.preferences,
     required this.settingsSync,
+    this.gymStore,
+    this.foodStore,
   });
 
   @override
@@ -1594,6 +1600,39 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                     ),
                   ],
                 ),
+                // Showing the resolved state takes the stores (unset means
+                // "shown once there is data"), so a mount without them — the
+                // run-detail HR shortcut — leaves the section out rather than
+                // render a switch that may be wrong.
+                if (widget.gymStore case final gym?)
+                  if (widget.foodStore case final food?)
+                    (
+                      l10n.prefsSectionModalities,
+                      [
+                        SwitchListTile(
+                          title: Text(l10n.prefsShowGym),
+                          subtitle: Text(l10n.prefsShowGymSubtitle),
+                          value: prefs.gymShown(
+                              hasData: gym.workouts.isNotEmpty),
+                          onChanged: (v) async {
+                            await prefs.setShowGym(v);
+                            await _roamPush(
+                                widget.settingsSync?.pushModalityVisibility);
+                          },
+                        ),
+                        SwitchListTile(
+                          title: Text(l10n.prefsShowNutrition),
+                          subtitle: Text(l10n.prefsShowNutritionSubtitle),
+                          value: prefs.nutritionShown(
+                              hasData: food.rows.isNotEmpty),
+                          onChanged: (v) async {
+                            await prefs.setShowNutrition(v);
+                            await _roamPush(
+                                widget.settingsSync?.pushModalityVisibility);
+                          },
+                        ),
+                      ],
+                    ),
                 if (prefs.audioCues)
                   (
                     l10n.prefsVoiceCueTypesLabel,

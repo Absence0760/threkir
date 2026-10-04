@@ -775,7 +775,24 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get prefsKeepRunPrimarySubtitle =>
-      'Toca el botón central para empezar una carrera. Ya está activo hasta que registres una sesión de fuerza o una comida; mantén pulsado para abrir siempre el menú de registro';
+      'Toca el botón central para empezar una carrera. Ya está activo mientras Gimnasio y Nutrición estén ocultos; mantén pulsado para abrir siempre el menú de registro';
+
+  @override
+  String get prefsSectionModalities => 'Gimnasio y nutrición';
+
+  @override
+  String get prefsShowGym => 'Mostrar Gimnasio';
+
+  @override
+  String get prefsShowGymSubtitle =>
+      'Añade la pestaña Gimnasio, «Registrar pesas» y tus sesiones en Inicio';
+
+  @override
+  String get prefsShowNutrition => 'Mostrar Nutrición';
+
+  @override
+  String get prefsShowNutritionSubtitle =>
+      'Añade la pestaña Nutrición, «Registrar comida» y las comidas de hoy en Inicio';
 
   @override
   String get bodyMetricsTitle => 'Datos corporales';

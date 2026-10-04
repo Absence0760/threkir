@@ -776,7 +776,24 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get prefsKeepRunPrimarySubtitle =>
-      'Touchez le bouton central pour démarrer une course. Déjà actif tant que vous n’avez enregistré ni séance de muscu ni repas ; un appui long ouvre toujours le menu d’enregistrement';
+      'Touchez le bouton central pour démarrer une course. Déjà actif tant que Muscu et Nutrition sont masqués ; un appui long ouvre toujours le menu d’enregistrement';
+
+  @override
+  String get prefsSectionModalities => 'Muscu et nutrition';
+
+  @override
+  String get prefsShowGym => 'Afficher la muscu';
+
+  @override
+  String get prefsShowGymSubtitle =>
+      'Ajoute l’onglet Muscu, « Enregistrer la muscu » et vos séances sur l’accueil';
+
+  @override
+  String get prefsShowNutrition => 'Afficher la nutrition';
+
+  @override
+  String get prefsShowNutritionSubtitle =>
+      'Ajoute l’onglet Nutrition, « Enregistrer un aliment » et les repas du jour sur l’accueil';
 
   @override
   String get bodyMetricsTitle => 'Données corporelles';

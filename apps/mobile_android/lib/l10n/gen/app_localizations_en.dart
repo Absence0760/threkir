@@ -769,7 +769,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prefsKeepRunPrimarySubtitle =>
-      'Tap the centre button to start a run. Already on until you log a lift or a meal; long-press always opens the log menu';
+      'Tap the centre button to start a run. Already on while Gym and Nutrition are hidden; long-press always opens the log menu';
+
+  @override
+  String get prefsSectionModalities => 'Gym & nutrition';
+
+  @override
+  String get prefsShowGym => 'Show Gym';
+
+  @override
+  String get prefsShowGymSubtitle =>
+      'Adds the Gym tab, Log lift and your lifts on Home';
+
+  @override
+  String get prefsShowNutrition => 'Show Nutrition';
+
+  @override
+  String get prefsShowNutritionSubtitle =>
+      'Adds the Nutrition tab, Log food and today\'s meals on Home';
 
   @override
   String get bodyMetricsTitle => 'Body metrics';

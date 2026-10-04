@@ -45,7 +45,9 @@ void main() {
   }
 
   Future<Widget> shell(WidgetTester tester) async {
-    SharedPreferences.setMockInitialValues({});
+    // Nutrition has no data here, so it is only reachable switched on.
+    SharedPreferences.setMockInitialValues(
+        {'show_gym': true, 'show_nutrition': true});
     final prefs = Preferences();
     await prefs.init();
     final runStore = LocalRunStore();

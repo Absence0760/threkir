@@ -286,6 +286,7 @@ void main() {
         (tester) async {
       final s = await _makeStores();
       await _seedLoggedLift(tester, s);
+      await s.prefs.setShowNutrition(true);
       await _pump(tester, s);
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pump();
@@ -333,6 +334,7 @@ void main() {
         (tester) async {
       final s = await _makeStores();
       await _seedLoggedLift(tester, s);
+      await s.prefs.setShowNutrition(true);
       await _pump(tester, s);
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pump();
@@ -389,6 +391,7 @@ void main() {
       addTearDown(tester.view.reset);
       final s = await _makeStores();
       await _seedLoggedLift(tester, s);
+      await s.prefs.setShowNutrition(true);
       await _pump(tester, s);
       await tester.tap(find.text('Fitness'));
       await tester.pump();
@@ -728,9 +731,43 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      expect(find.byTooltip('Log food'), findsOneWidget);
+      expect(find.byTooltip('Log run'), findsOneWidget);
+      // Nutrition is off until switched on, so the last-logged type does not
+      // bring it back into the menu either.
+      expect(find.byTooltip('Log food'), findsNothing);
       expect(shellPage(tester), 0,
           reason: 'a long press picks, it never navigates on its own');
+    });
+
+    testWidgets('switching Nutrition on with nothing logged brings the fan '
+        'back, with Log food and without Log lift', (tester) async {
+      final s = await _makeStores();
+      await s.prefs.setShowNutrition(true);
+      await _pump(tester, s);
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log food'), findsOneWidget);
+      expect(find.byTooltip('Log lift'), findsNothing);
+      expect(shellPage(tester), 0);
+    });
+
+    testWidgets('switching Gym off restores the one-tap run start despite a '
+        'logged lift', (tester) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await s.prefs.setShowGym(false);
+      await _pump(tester, s);
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log lift'), findsNothing);
+      expect(shellPage(tester), 2, reason: 'the tap landed on the recorder');
+      tester.takeException();
     });
 
     testWidgets('long-press opens the menu with the preference on too',

@@ -841,6 +841,7 @@ class _RunAppState extends State<RunApp> {
                   heartRate: widget.heartRate,
                   treadmill: widget.treadmill,
                   settingsSync: widget.settingsSync,
+                  syncService: widget.syncService,
                   recoveredRun: widget.recoveredRun,
                   recoveryBannerMessage: widget.recoveryBannerMessage,
                   resumablePartial: widget.resumablePartial,

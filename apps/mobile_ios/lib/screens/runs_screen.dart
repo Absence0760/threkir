@@ -78,9 +78,10 @@ class RunsScreen extends StatefulWidget {
   final List<SurfacePeer>? surfacePeers;
 
   /// When false the cloud slot (sync-unsynced badge / refresh / offline) is
-  /// suppressed. The Fitness hub's Runs sub-tab passes false so the sync
-  /// affordance lives only on the All tab — the two tabs sit side by side and
-  /// duplicating the cloud slot both clutters and overflows the Runs AppBar.
+  /// suppressed. The Fitness hub passes true only to whichever run list leads
+  /// its strip — History when it is there, Runs when it stands alone — since
+  /// the two tabs sit side by side and duplicating the cloud slot both
+  /// clutters and overflows the Runs AppBar.
   final bool showSyncActions;
 
   /// Static AppBar title. The Fitness hub's Runs sub-tab passes "Runs" so its

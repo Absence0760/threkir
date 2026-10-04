@@ -25,6 +25,7 @@ import '../push_target.dart';
 import '../race_controller.dart';
 import '../settings_destination.dart';
 import '../settings_sync.dart';
+import '../sync_service.dart';
 import '../shared_file_import.dart' show incomingRouteImport;
 import '../social_service.dart';
 import '../training_service.dart';
@@ -93,6 +94,10 @@ class HomeScreen extends StatefulWidget {
   final BleHeartRate heartRate;
   final BleTreadmill treadmill;
   final SettingsSyncService? settingsSync;
+
+  /// The run drain, so Home's pending-sync banner can retry runs. Null in
+  /// tests and leaves runs counted there but not retried.
+  final SyncService? syncService;
   final cm.Run? recoveredRun;
 
   /// Banner copy emitted by the in-progress recovery helper at app
@@ -124,6 +129,7 @@ class HomeScreen extends StatefulWidget {
     required this.heartRate,
     required this.treadmill,
     this.settingsSync,
+    this.syncService,
     this.recoveredRun,
     this.recoveryBannerMessage,
     this.resumablePartial,
@@ -541,6 +547,9 @@ class _HomeScreenState extends State<HomeScreen>
           settingsSync: widget.settingsSync,
           onStartRun: () => _performLogAction(LogAction.run),
           onLogLift: () => _performLogAction(LogAction.lift),
+          onSyncRuns: widget.syncService == null
+              ? null
+              : () => widget.syncService!.triggerSync('manual'),
         ),
       ),
       _LazyKeepAliveTab(

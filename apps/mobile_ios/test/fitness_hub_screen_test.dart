@@ -75,6 +75,7 @@ void main() {
   Future<Preferences> pump(
     WidgetTester tester, {
     List<Run> runs = const [],
+    List<Run> unsyncedRuns = const [],
     List<({Map<String, dynamic> workout, List<Map<String, dynamic>> sets})> lifts =
         const [],
     List<Map<String, dynamic>> meals = const [],
@@ -101,6 +102,9 @@ void main() {
     // zone — seed inside runAsync (CLAUDE.md gotcha).
     await tester.runAsync(() async {
       if (runs.isNotEmpty) await runStore.saveManyFromRemote(runs);
+      for (final r in unsyncedRuns) {
+        await runStore.save(r);
+      }
       if (lifts.isNotEmpty) await gymStore.replaceFromServer(lifts);
       if (meals.isNotEmpty) {
         await foodStore.replaceFromServer(meals);
@@ -386,6 +390,27 @@ void main() {
       expect(selected.value, FitnessTab.runs,
           reason: 'a selection on the missing History tab must fall back to '
               'a tab that exists');
+    });
+
+    testWidgets('Runs standing alone carries the cloud slot History had, so '
+        'an unsynced run still shows its badge and Sync all', (tester) async {
+      await pump(tester,
+          unsyncedRuns: [runRow('r1')], storedPrefs: const {});
+      expect(find.byType(TabBar), findsNothing);
+      expect(find.byIcon(Icons.cloud_upload), findsOneWidget);
+      expect(find.byTooltip('Sync 1 run'), findsOneWidget);
+    });
+
+    testWidgets('with History back, the cloud slot moves to it and leaves Runs',
+        (tester) async {
+      await pump(tester,
+          unsyncedRuns: [runRow('r1')],
+          storedPrefs: const {'show_gym': true});
+      expect(stripLabels(tester), ['History', 'Runs', 'Gym']);
+      expect(find.byIcon(Icons.cloud_upload), findsOneWidget);
+      await tester.tap(find.text('Runs').first);
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.cloud_upload), findsNothing);
     });
 
     testWidgets('a logged lift keeps Gym, and History with it, without anyone '

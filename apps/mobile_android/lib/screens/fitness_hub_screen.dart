@@ -283,6 +283,13 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
     );
   }
 
+  /// The cloud slot (unsynced badge, Sync all, parked-run badge) lives on one
+  /// run list only, so two side-by-side tabs don't duplicate it. Pinning it to
+  /// History by name left a runner with no History tab — neither modality
+  /// shown — without any sign that a run hadn't uploaded, so it goes to
+  /// whichever run list leads the strip.
+  bool _ownsSyncActions(FitnessTab tab) => tab == _tabs.first;
+
   Widget _body(FitnessTab tab, AppLocalizations l10n) => switch (tab) {
         FitnessTab.history => RunsScreen(
             key: const PageStorageKey('fitness-all'),
@@ -294,6 +301,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
             gymStore: widget.gymStore,
             foodStore: widget.foodStore,
             showKindChips: false,
+            showSyncActions: _ownsSyncActions(tab),
             // The shell's centre Log button, one row below this tab, already
             // opens the cross-modal run / lift / meal picker this tab's own
             // FAB opened. The modality tabs keep theirs — those add into one
@@ -315,7 +323,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
               SurfacePeer(label: l10n.runSurfaceTabPlans, onTap: _openPlans),
               SurfacePeer(label: l10n.runSurfaceTabRaces, onTap: _openRaces),
             ],
-            showSyncActions: false,
+            showSyncActions: _ownsSyncActions(tab),
             titleText: l10n.fitnessTabRuns,
           ),
         FitnessTab.gym => GymScreen(

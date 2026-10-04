@@ -61,10 +61,21 @@ const int onboardingTotalSteps = 7;
 /// account exists, so a second ask is not a second opinion — whatever the
 /// wizard's step is left sitting on is written over the launch answer on
 /// Finish, silently.
-List<String> visibleSetupWizardSteps({required bool privacyAlreadyChosen}) =>
-    setupWizardSteps
-        .where((s) => s != 'run-privacy' || !privacyAlreadyChosen)
-        .toList();
+///
+/// [setupWizardTrackStep] is added here rather than to [setupWizardSteps]
+/// because it has no web counterpart: web always shows Gym and Nutrition
+/// (decisions § 1739), so there is nothing for it to ask.
+List<String> visibleSetupWizardSteps({required bool privacyAlreadyChosen}) => [
+      for (final s in setupWizardSteps)
+        if (s != 'run-privacy' || !privacyAlreadyChosen) ...[
+          if (s == 'done') setupWizardTrackStep,
+          s,
+        ],
+    ];
+
+/// Mobile-only wizard step asking whether to show Gym and Nutrition. Sits
+/// just before `done`.
+const String setupWizardTrackStep = 'track';
 
 /// A create-plan preset derived from a primary-goal answer — twin of web's
 /// `PlanPreset`.

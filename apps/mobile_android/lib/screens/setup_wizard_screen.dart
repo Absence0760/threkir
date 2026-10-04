@@ -12,7 +12,7 @@ import '../typed_decimal.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/top_banner.dart';
 
-/// Post-signup setup wizard — mobile twin of web's 7-step `/onboarding`
+/// Post-signup setup wizard — mobile twin of web's `/onboarding`
 /// page. Shown once when a signed-in user's `user_profiles.onboarded_at`
 /// is still null; stamps it on Finish or Skip so a returning user never
 /// re-sees it. The home-screen gate ([SetupWizardScreen] is pushed by
@@ -22,7 +22,8 @@ import '../widgets/top_banner.dart';
 /// privacy flow keyed on the local `Preferences.onboarded` flag. This
 /// wizard collects account-level setup data and writes the SAME fields
 /// web collects (display name, units, goal, demographics + Art 9 consent,
-/// privacy default, notifications).
+/// privacy default, notifications), plus one mobile-only step asking
+/// whether to show Gym and Nutrition (decisions § 1739).
 class SetupWizardScreen extends StatelessWidget {
   final ApiClient apiClient;
   final Preferences preferences;
@@ -115,6 +116,13 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
   // nobody had been asked. Left unwritten, reads fall back to the same
   // `important` (settings.md).
   final RestorableStringN _pushNotifications = RestorableStringN(null);
+  // The track step records a choice only once a switch is touched, for the
+  // same reason as the notification level: an untouched step that wrote
+  // false/false would pin both modalities hidden for a runner who later logs
+  // a lift, where leaving them unset lets data presence decide (§ 1739).
+  final RestorableBool _modalitiesChosen = RestorableBool(false);
+  late final RestorableBool _trackGym;
+  late final RestorableBool _trackNutrition;
 
   bool _saving = false;
 
@@ -132,6 +140,8 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
     // wizard seeds from it rather than from a hard-coded 'private' it would
     // then write back over the top on Finish.
     _privacyDefault = RestorableString(widget.preferences.privacyDefault);
+    _trackGym = RestorableBool(widget.preferences.showGym ?? false);
+    _trackNutrition = RestorableBool(widget.preferences.showNutrition ?? false);
     _steps = visibleSetupWizardSteps(
       privacyAlreadyChosen: widget.preferences.onboarded,
     );
@@ -169,6 +179,9 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
     registerForRestoration(_healthDataConsent, 'health_consent');
     registerForRestoration(_privacyDefault, 'privacy_default');
     registerForRestoration(_pushNotifications, 'push_notifications');
+    registerForRestoration(_modalitiesChosen, 'modalities_chosen');
+    registerForRestoration(_trackGym, 'track_gym');
+    registerForRestoration(_trackNutrition, 'track_nutrition');
   }
 
   @override
@@ -183,6 +196,9 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
     _healthDataConsent.dispose();
     _privacyDefault.dispose();
     _pushNotifications.dispose();
+    _modalitiesChosen.dispose();
+    _trackGym.dispose();
+    _trackNutrition.dispose();
     super.dispose();
   }
 
@@ -259,6 +275,15 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
           ? widget.preferences.setUseMiles(true)
           : widget.preferences.setUseMiles(false);
       await widget.preferences.setPrivacyDefault(_privacyDefault.value);
+      if (_modalitiesChosen.value) {
+        await widget.preferences.setShowGym(_trackGym.value);
+        await widget.preferences.setShowNutrition(_trackNutrition.value);
+        try {
+          await widget.settingsSync?.pushModalityVisibility();
+        } catch (e) {
+          debugPrint('onboarding modality push failed (kept local): $e');
+        }
+      }
 
       final bag = <String, dynamic>{
         SettingsKeys.preferredUnit: _preferredUnit.value,
@@ -493,6 +518,8 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
             ],
           ),
         );
+      case setupWizardTrackStep:
+        return _buildTrack(theme, l10n);
       default:
         return _stepShell(
           theme,
@@ -518,6 +545,54 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
                 ),
         );
     }
+  }
+
+  Widget _buildTrack(ThemeData theme, AppLocalizations l10n) {
+    return _stepShell(
+      theme,
+      title: l10n.setupTrackTitle,
+      hint: l10n.setupTrackHint,
+      child: Column(
+        children: [
+          Card(
+            margin: const EdgeInsets.symmetric(vertical: 6),
+            child: ListTile(
+              leading: const Icon(Icons.directions_run),
+              title: Text(l10n.setupTrackRunning),
+              subtitle: Text(l10n.setupTrackRunningAlwaysOn),
+              trailing:
+                  Icon(Icons.check_circle, color: theme.colorScheme.primary),
+            ),
+          ),
+          Card(
+            margin: const EdgeInsets.symmetric(vertical: 6),
+            child: SwitchListTile(
+              secondary: const Icon(Icons.fitness_center),
+              title: Text(l10n.fitnessTabGym),
+              subtitle: Text(l10n.prefsShowGymSubtitle),
+              value: _trackGym.value,
+              onChanged: (v) => setState(() {
+                _trackGym.value = v;
+                _modalitiesChosen.value = true;
+              }),
+            ),
+          ),
+          Card(
+            margin: const EdgeInsets.symmetric(vertical: 6),
+            child: SwitchListTile(
+              secondary: const Icon(Icons.restaurant),
+              title: Text(l10n.fitnessTabNutrition),
+              subtitle: Text(l10n.prefsShowNutritionSubtitle),
+              value: _trackNutrition.value,
+              onChanged: (v) => setState(() {
+                _trackNutrition.value = v;
+                _modalitiesChosen.value = true;
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildAboutYou(ThemeData theme, AppLocalizations l10n) {
@@ -669,6 +744,7 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
           _dateOfBirth.value != null ||
           _weightCtl.value.text.trim().isNotEmpty,
     'notifications' => _pushNotifications.value != null,
+    setupWizardTrackStep => _modalitiesChosen.value,
     _ => true,
   };
 

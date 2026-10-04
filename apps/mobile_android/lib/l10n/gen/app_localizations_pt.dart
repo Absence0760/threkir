@@ -1516,6 +1516,19 @@ class AppLocalizationsPt extends AppLocalizations {
       'Escolha quantas notificações push deseja. Pode ajustar isto depois em Definições.';
 
   @override
+  String get setupTrackTitle => 'O que pretende registar?';
+
+  @override
+  String get setupTrackHint =>
+      'A corrida está sempre ativa. Ative Ginásio ou Nutrição para adicionar o respetivo separador e a ação de registo. Pode alterar isto depois em Definições.';
+
+  @override
+  String get setupTrackRunning => 'Corrida';
+
+  @override
+  String get setupTrackRunningAlwaysOn => 'Sempre ativa';
+
+  @override
   String get setupDoneTitle => 'Tudo pronto';
 
   @override
@@ -15876,6 +15889,19 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get setupNotificationsHint =>
       'Escolha quantas notificações push deseja. Você pode ajustar isso depois em Configurações.';
+
+  @override
+  String get setupTrackTitle => 'O que você quer registrar?';
+
+  @override
+  String get setupTrackHint =>
+      'A corrida está sempre ativa. Ative Academia ou Nutrição para adicionar a aba e a ação de registro correspondentes. Você pode mudar isso depois em Configurações.';
+
+  @override
+  String get setupTrackRunning => 'Corrida';
+
+  @override
+  String get setupTrackRunningAlwaysOn => 'Sempre ativa';
 
   @override
   String get setupDoneTitle => 'Tudo pronto';

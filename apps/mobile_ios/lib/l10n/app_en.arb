@@ -1947,6 +1947,22 @@
   "@setupNotificationsHint": {
     "description": "Setup wizard notifications step hint"
   },
+  "setupTrackTitle": "What do you want to track?",
+  "@setupTrackTitle": {
+    "description": "Setup wizard what-to-track step title (mobile-only step)"
+  },
+  "setupTrackHint": "Running is always on. Switch on Gym or Nutrition to add its tab and Log action. You can change this later in Settings.",
+  "@setupTrackHint": {
+    "description": "Setup wizard what-to-track step hint"
+  },
+  "setupTrackRunning": "Running",
+  "@setupTrackRunning": {
+    "description": "Setup wizard what-to-track step: the always-on running row"
+  },
+  "setupTrackRunningAlwaysOn": "Always on",
+  "@setupTrackRunningAlwaysOn": {
+    "description": "Setup wizard what-to-track step: subtitle saying running cannot be switched off"
+  },
   "setupDoneTitle": "You're all set",
   "@setupDoneTitle": {
     "description": "Setup wizard final step title"

@@ -113,6 +113,11 @@ Future<void> _forward(WidgetTester tester, AppLocalizations l10n) async {
 int _forwardTaps(Preferences prefs) =>
     visibleSetupWizardSteps(privacyAlreadyChosen: prefs.onboarded).length - 1;
 
+/// The same, for the fresh fixture most tests pump: the launch flow never
+/// ran, so every step is walked, the mobile-only track step included.
+final int _tapsToDone =
+    visibleSetupWizardSteps(privacyAlreadyChosen: false).length - 1;
+
 void main() {
   group('SetupWizardScreen', () {
     testWidgets('renders the first step + a Skip header action', (tester) async {
@@ -140,7 +145,7 @@ void main() {
       await _pump(tester, api, await _prefs());
       final l10n = await AppLocalizations.delegate.load(const Locale('en'));
       // Walk all steps via Continue; the final step shows Open dashboard.
-      for (var i = 0; i < onboardingTotalSteps - 1; i++) {
+      for (var i = 0; i < _tapsToDone; i++) {
         await _forward(tester, l10n);
       }
       expect(find.text(l10n.setupOpenDashboard), findsOneWidget);
@@ -165,7 +170,7 @@ void main() {
       await tester.tap(find.text(l10n.setupGoal5k));
       await tester.pump();
       // Advance to the final step.
-      for (var i = 2; i < onboardingTotalSteps - 1; i++) {
+      for (var i = 2; i < _tapsToDone; i++) {
         await _forward(tester, l10n);
       }
       expect(find.widgetWithText(FilledButton, l10n.setupCreatePlanCta),
@@ -191,7 +196,7 @@ void main() {
       await tester.pump();
       await _forward(tester, l10n);
       // Remaining steps: just advance.
-      for (var i = 2; i < onboardingTotalSteps - 1; i++) {
+      for (var i = 2; i < _tapsToDone; i++) {
         await _forward(tester, l10n);
       }
       // Final step: Open dashboard. Settle the success toast's timer +
@@ -262,7 +267,7 @@ void main() {
 
         // One dot fewer than the full wizard, and the privacy step is never
         // reached on the way to the end.
-        expect(_forwardTaps(prefs), onboardingTotalSteps - 2);
+        expect(_forwardTaps(prefs), _tapsToDone - 1);
         for (var i = 0; i < _forwardTaps(prefs); i++) {
           expect(find.text(l10n.setupPrivacyTitle), findsNothing);
           await _forward(tester, l10n);
@@ -556,7 +561,7 @@ void main() {
         await _pump(tester, api, prefs);
         final l10n = await AppLocalizations.delegate.load(const Locale('en'));
 
-        for (var i = 0; i < onboardingTotalSteps - 1; i++) {
+        for (var i = 0; i < _tapsToDone; i++) {
           await _forward(tester, l10n);
         }
         await tester.tap(find.text(l10n.setupOpenDashboard));
@@ -573,7 +578,7 @@ void main() {
 
     group('locale-derived unit default', () {
       Future<void> finish(WidgetTester tester, AppLocalizations l10n) async {
-        for (var i = 0; i < onboardingTotalSteps - 1; i++) {
+        for (var i = 0; i < _tapsToDone; i++) {
           await _forward(tester, l10n);
         }
         await tester.tap(find.text(l10n.setupOpenDashboard));
@@ -643,6 +648,145 @@ void main() {
       });
     });
 
+    group('what to track (mobile-only step, decisions § 1739)', () {
+      Future<(Preferences, _FakeSettingsService)> pumpWithSync(
+          WidgetTester tester, _FakeApi api) async {
+        final fake = _FakeSettingsService();
+        final prefs = await _prefs();
+        final sync = SettingsSyncService(
+          preferences: prefs,
+          serviceLoader: () async => fake,
+        );
+        await _pump(tester, api, prefs, settingsSync: sync);
+        return (prefs, fake);
+      }
+
+      Future<void> walkToTrack(
+          WidgetTester tester, AppLocalizations l10n) async {
+        for (var i = 0; i < _tapsToDone - 1; i++) {
+          await _forward(tester, l10n);
+        }
+        expect(find.text(l10n.setupTrackTitle), findsOneWidget);
+      }
+
+      Future<void> toggle(WidgetTester tester, String label) async {
+        final tile = find.widgetWithText(SwitchListTile, label);
+        await tester.ensureVisible(tile);
+        await tester.pump();
+        await tester.tap(tile);
+        await tester.pump();
+      }
+
+      testWidgets('is the step before done, with Running always on and both '
+          'modalities off', (tester) async {
+        final api = _FakeApi();
+        await _pump(tester, api, await _prefs());
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        await walkToTrack(tester, l10n);
+
+        expect(find.text(l10n.setupTrackRunning), findsOneWidget);
+        expect(find.text(l10n.setupTrackRunningAlwaysOn), findsOneWidget);
+        final switches = tester
+            .widgetList<SwitchListTile>(find.byType(SwitchListTile))
+            .toList();
+        expect(switches, hasLength(2));
+        expect(switches.every((s) => !s.value), isTrue);
+        // Untouched, so the forward button is Skip, not Continue.
+        expect(find.widgetWithText(FilledButton, l10n.setupSkipStep),
+            findsOneWidget);
+
+        await _forward(tester, l10n);
+        expect(find.text(l10n.setupOpenDashboard), findsOneWidget);
+      });
+
+      testWidgets('the progress dots count the track step', (tester) async {
+        final api = _FakeApi();
+        await _pump(tester, api, await _prefs());
+        final dots = find.descendant(
+          of: find.byWidgetPredicate(
+              (w) => w.runtimeType.toString() == '_ProgressDots'),
+          matching: find.byType(Container),
+        );
+        expect(dots, findsNWidgets(_tapsToDone + 1));
+        expect(_tapsToDone + 1, onboardingTotalSteps + 1);
+      });
+
+      testWidgets('a choice writes explicit values locally and roams them',
+          (tester) async {
+        final api = _FakeApi();
+        final (prefs, fake) = await pumpWithSync(tester, api);
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        await walkToTrack(tester, l10n);
+
+        await toggle(tester, l10n.fitnessTabGym);
+        expect(find.widgetWithText(FilledButton, l10n.setupContinue),
+            findsOneWidget);
+        await _forward(tester, l10n);
+        await tester.tap(find.text(l10n.setupOpenDashboard));
+        await tester.pumpAndSettle(const Duration(seconds: 4));
+
+        // Nutrition was left off on a step that was answered, so it is an
+        // explicit false, not an unset key.
+        expect(prefs.showGym, isTrue);
+        expect(prefs.showNutrition, isFalse);
+        final pushed = fake.universalWrites
+            .firstWhere((w) => w.containsKey(SettingsKeys.showGym));
+        expect(pushed[SettingsKeys.showGym], isTrue);
+        expect(pushed[SettingsKeys.showNutrition], isFalse);
+      });
+
+      testWidgets('switching one on and off again is still a choice',
+          (tester) async {
+        final api = _FakeApi();
+        final (prefs, _) = await pumpWithSync(tester, api);
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        await walkToTrack(tester, l10n);
+
+        await toggle(tester, l10n.fitnessTabNutrition);
+        await toggle(tester, l10n.fitnessTabNutrition);
+        await _forward(tester, l10n);
+        await tester.tap(find.text(l10n.setupOpenDashboard));
+        await tester.pumpAndSettle(const Duration(seconds: 4));
+
+        expect(prefs.showGym, isFalse);
+        expect(prefs.showNutrition, isFalse);
+      });
+
+      testWidgets('skipping it writes nothing, so data presence still decides',
+          (tester) async {
+        final api = _FakeApi();
+        final (prefs, fake) = await pumpWithSync(tester, api);
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        for (var i = 0; i < _tapsToDone; i++) {
+          await _forward(tester, l10n);
+        }
+        await tester.tap(find.text(l10n.setupOpenDashboard));
+        await tester.pumpAndSettle(const Duration(seconds: 4));
+
+        expect(prefs.showGym, isNull);
+        expect(prefs.showNutrition, isNull);
+        expect(fake.universalWrites, hasLength(1));
+        final bag = fake.universalWrites.single;
+        expect(bag.containsKey(SettingsKeys.showGym), isFalse);
+        expect(bag.containsKey(SettingsKeys.showNutrition), isFalse);
+      });
+
+      testWidgets('the header Skip writes nothing either', (tester) async {
+        final api = _FakeApi();
+        final (prefs, fake) = await pumpWithSync(tester, api);
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        await walkToTrack(tester, l10n);
+        await toggle(tester, l10n.fitnessTabGym);
+
+        await tester.tap(find.text(l10n.setupSkip));
+        await tester.pumpAndSettle();
+
+        expect(api.markOnboardedCalled, isTrue);
+        expect(prefs.showGym, isNull);
+        expect(fake.universalWrites, isEmpty);
+      });
+    });
+
     group('preferences bag (the answers with no local mirror)', () {
       testWidgets('Finish writes the answer bag even when onSignedIn never ran',
           (tester) async {
@@ -667,7 +811,7 @@ void main() {
         await tester.pump();
         await tester.tap(find.text(l10n.setupGoal5k));
         await tester.pump();
-        for (var i = 2; i < onboardingTotalSteps - 1; i++) {
+        for (var i = 2; i < _tapsToDone; i++) {
           // The notification level is written only when it is chosen, so
           // answer that step on the way past it.
           if (i == 5) {
@@ -699,7 +843,7 @@ void main() {
         await _pump(tester, api, await _prefs(), settingsSync: sync);
         final l10n = await AppLocalizations.delegate.load(const Locale('en'));
 
-        for (var i = 0; i < onboardingTotalSteps - 1; i++) {
+        for (var i = 0; i < _tapsToDone; i++) {
           await _forward(tester, l10n);
         }
         await tester.tap(find.text(l10n.setupOpenDashboard));

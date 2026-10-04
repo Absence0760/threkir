@@ -1449,6 +1449,19 @@ class AppLocalizationsJa extends AppLocalizations {
   String get setupNotificationsHint => 'プッシュ通知の量を選びます。あとで設定で細かく調整できます。';
 
   @override
+  String get setupTrackTitle => '何を記録しますか？';
+
+  @override
+  String get setupTrackHint =>
+      'ランニングは常にオンです。ジムや栄養をオンにすると、そのタブと記録アクションが追加されます。あとで設定から変更できます。';
+
+  @override
+  String get setupTrackRunning => 'ランニング';
+
+  @override
+  String get setupTrackRunningAlwaysOn => '常にオン';
+
+  @override
   String get setupDoneTitle => '準備完了';
 
   @override

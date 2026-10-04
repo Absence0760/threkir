@@ -1501,6 +1501,19 @@ class AppLocalizationsEn extends AppLocalizations {
       'Choose how many push notifications you\'d like. You can fine-tune this later in Settings.';
 
   @override
+  String get setupTrackTitle => 'What do you want to track?';
+
+  @override
+  String get setupTrackHint =>
+      'Running is always on. Switch on Gym or Nutrition to add its tab and Log action. You can change this later in Settings.';
+
+  @override
+  String get setupTrackRunning => 'Running';
+
+  @override
+  String get setupTrackRunningAlwaysOn => 'Always on';
+
+  @override
   String get setupDoneTitle => 'You\'re all set';
 
   @override

@@ -1513,6 +1513,19 @@ class AppLocalizationsEs extends AppLocalizations {
       'Elige cuántas notificaciones push quieres. Puedes ajustarlo más tarde en Ajustes.';
 
   @override
+  String get setupTrackTitle => '¿Qué quieres registrar?';
+
+  @override
+  String get setupTrackHint =>
+      'La carrera siempre está activada. Activa Gimnasio o Nutrición para añadir su pestaña y su acción de registro. Puedes cambiarlo más tarde en Ajustes.';
+
+  @override
+  String get setupTrackRunning => 'Carrera';
+
+  @override
+  String get setupTrackRunningAlwaysOn => 'Siempre activada';
+
+  @override
   String get setupDoneTitle => 'Todo listo';
 
   @override

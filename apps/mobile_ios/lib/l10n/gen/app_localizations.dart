@@ -2615,6 +2615,30 @@ abstract class AppLocalizations {
   /// **'Choose how many push notifications you\'d like. You can fine-tune this later in Settings.'**
   String get setupNotificationsHint;
 
+  /// Setup wizard what-to-track step title (mobile-only step)
+  ///
+  /// In en, this message translates to:
+  /// **'What do you want to track?'**
+  String get setupTrackTitle;
+
+  /// Setup wizard what-to-track step hint
+  ///
+  /// In en, this message translates to:
+  /// **'Running is always on. Switch on Gym or Nutrition to add its tab and Log action. You can change this later in Settings.'**
+  String get setupTrackHint;
+
+  /// Setup wizard what-to-track step: the always-on running row
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get setupTrackRunning;
+
+  /// Setup wizard what-to-track step: subtitle saying running cannot be switched off
+  ///
+  /// In en, this message translates to:
+  /// **'Always on'**
+  String get setupTrackRunningAlwaysOn;
+
   /// Setup wizard final step title
   ///
   /// In en, this message translates to:

@@ -1519,6 +1519,19 @@ class AppLocalizationsFr extends AppLocalizations {
       'Choisissez le nombre de notifications push souhaitées. Réglage affiné plus tard dans les Réglages.';
 
   @override
+  String get setupTrackTitle => 'Que voulez-vous suivre ?';
+
+  @override
+  String get setupTrackHint =>
+      'La course est toujours activée. Activez la muscu ou la nutrition pour ajouter son onglet et son action d’enregistrement. Vous pourrez changer cela plus tard dans les Réglages.';
+
+  @override
+  String get setupTrackRunning => 'Course';
+
+  @override
+  String get setupTrackRunningAlwaysOn => 'Toujours activée';
+
+  @override
   String get setupDoneTitle => 'Tout est prêt';
 
   @override

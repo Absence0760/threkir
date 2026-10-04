@@ -40,11 +40,11 @@ directory — never read it as a second opinion and never write to it.
 The prompt gives you a batch file (JSON array) and an output path:
 
 ```json
-[{ "key": "runPauseA11yLabel", "english": "Pause run", "context": "Semantics label on the pause button of the live recording screen", "surface": "mobile" },
- { "key": "rateLimit.generic", "english": "You're doing that too quickly — please wait {wait} and try again.", "context": "…group comment from en.ts…", "surface": "web" }]
+[{ "id": "runPauseA11yLabel", "english": "Pause run", "context": "Semantics label on the pause button of the live recording screen", "surface": "mobile" },
+ { "id": "rateLimit.generic", "english": "You're doing that too quickly — please wait {wait} and try again.", "context": "…group comment from en.ts…", "surface": "web" }]
 ```
 
-`context` is the ARB `@key.description` (mobile) or the comment block and
+`id` is the ARB key (mobile) or the dotted catalogue key (web). `context` is the ARB `@key.description` (mobile) or the comment block and
 neighbouring keys in `en.ts` (web). A key can appear for both surfaces in
 one batch — they are different keys in different files even when the
 English matches.

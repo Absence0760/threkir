@@ -23,7 +23,7 @@ identical tabs side by side. Be strict.
 
 The prompt gives you:
 
-- the source batch(es): JSON arrays of `{ key, english, context, surface }`;
+- the source batch(es): JSON arrays of `{ id, english, context, surface }`;
 - the translation(s): JSON objects keyed `"<surface>:<key>"`;
 - an output path (default under `reviews/`, which is gitignored).
 

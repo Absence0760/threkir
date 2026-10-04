@@ -190,7 +190,7 @@ Find the live example of each by grepping the route tree rather than trusting a 
    cd apps/web && pnpm test:e2e -- tests-e2e/cross-cutting/_polish_before.spec.ts --reporter=line
    \rm -f apps/web/tests-e2e/cross-cutting/_polish_before.spec.ts
    ```
-   Rerun with `<scratchpad>/<lane-slug>/polish-after.png`. Write screenshots under your own subdirectory of the session scratchpad, never a fixed name in `/tmp` — that directory is shared by every session on the machine, so a second polisher silently overwrites your "before" and you compare against someone else's screen ([CLAUDE.md § Working alongside other Claude sessions](../../CLAUDE.md)). If the change touches colours or backgrounds, do a dark pass too. Check the 320 CSS px width as well — `conventions.md § Web reflow` makes it a hard floor, not an aspiration.
+   Rerun with `<scratchpad>/<lane-slug>/polish-after.png`. Write screenshots under your own subdirectory of the session scratchpad, never a fixed name in `/tmp` — that directory is shared by every session on the machine, so a second polisher silently overwrites your "before" and you compare against someone else's screen ([CLAUDE.md § Working alongside other Claude sessions](../../../CLAUDE.md)). If the change touches colours or backgrounds, do a dark pass too. Check the 320 CSS px width as well — `conventions.md § Web reflow` makes it a hard floor, not an aspiration.
 4. **Affected e2e**: grep `apps/web/tests-e2e/` for selectors in the changed page. Run those specs; update selectors that moved.
 
 ### Web "what NOT to do"

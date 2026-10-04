@@ -94,6 +94,8 @@ const HOMES: Record<string, Home> = {
 	carbs_per_hour: { page: 'training' },
 	fluid_per_hour: { page: 'training' },
 	show_calories: { page: 'display' },
+	show_gym: { page: 'display' },
+	show_nutrition: { page: 'display' },
 	exclude_gym_from_readiness: { page: 'training' },
 	week_start_day: { page: 'display' },
 	privacy_zones: { page: 'privacy', via: 'PRIVACY_ZONES_KEY' },

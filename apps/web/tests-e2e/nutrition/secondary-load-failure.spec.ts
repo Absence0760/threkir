@@ -26,7 +26,13 @@ test.describe('/nutrition — secondary load failure surfaces', () => {
 	}) => {
 		let foodLogGets = 0;
 		await mockRoute(page, '**/rest/v1/food_log**', async (route) => {
-			if (route.request().method() === 'GET') {
+			// The layout's once-per-session Nutrition visibility probe
+			// (`select=id … limit=1`, decisions § 1739 amendment) reads food_log
+			// too, at a time of its own. It is not one of the page's loads, so it
+			// must not shift the ordinal that picks out the week window.
+			const url = route.request().url();
+			const isVisibilityProbe = url.includes('select=id&') && url.includes('limit=1');
+			if (route.request().method() === 'GET' && !isVisibilityProbe) {
 				foodLogGets += 1;
 				// #1 = today (primary, must succeed); #2 = the 7-day trend window.
 				if (foodLogGets === 2) {

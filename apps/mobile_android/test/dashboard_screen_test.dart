@@ -1150,7 +1150,7 @@ void main() {
       });
 
       testWidgets(
-          'expanded with no lead cards renders goals full-width (no empty cell)',
+          'expanded with no plan or modality card leads with the latest run',
           (tester) async {
         tester.view.physicalSize = const Size(2560, 1440);
         tester.view.devicePixelRatio = 2.0;
@@ -1160,12 +1160,16 @@ void main() {
           final dir =
               Directory.systemTemp.createTempSync('dashboard_expanded_lead_');
           try {
-            // No training service + empty gym/food stores → no workout
-            // card and no modality cards, so the lead row must not
-            // mount at all (a grid cell can't reserve space for a
-            // hidden card).
+            // No training service + empty gym/food stores → no workout card
+            // and no modality cards. The seeded run is still a lead card.
             await pumpSeeded(tester, dir);
-            expect(find.byKey(leadRowKey), findsNothing);
+            expect(find.byKey(leadRowKey), findsOneWidget);
+            expect(
+              find.descendant(
+                  of: find.byKey(leadRowKey),
+                  matching: find.byKey(const Key('dashboardLatestRun'))),
+              findsOneWidget,
+            );
             expect(find.text('Goals'), findsOneWidget);
             expect(contentCap(), findsOneWidget);
           } finally {

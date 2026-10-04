@@ -927,8 +927,8 @@ to match mobile. The cards/chips self-hide on data presence, so a runner who
 never opts into gym/nutrition is never worse off either way.) The runner who
 never logs a lift/meal must never be worse off.
 
-**Mobile goes one step further: Gym and Nutrition are off until switched on**
-([decisions § 1739](../architecture/decisions.md)). The always-present Gym and
+**Gym and Nutrition are off until switched on, on mobile and web alike**
+([decisions § 1739](../architecture/decisions.md)), the mobile half first. The always-present Gym and
 Nutrition hub tabs, and the Log fan's Lift/Food actions, were the remaining
 clutter a pure runner paid for. On mobile they now appear only when
 `modalityShown` says so: the runner's explicit choice from Settings →
@@ -937,8 +937,17 @@ Preferences → "Gym & nutrition" (`show_gym` / `show_nutrition`, see
 whether that modality already has data. A new runner gets History and Runs
 only; someone already logging lifts keeps the Gym tab without having to find
 a toggle. The same answer gates the Home lift/meal cards and decides the
-Log button's one-tap run start. Web is unchanged: its sidebar items stay
-always-present.
+Log button's one-tap run start. Web now honours the same two keys through
+the same resolution (`modalityShown` in
+`apps/web/src/lib/settings/modality_visibility.ts`): the Gym and Nutrition
+sidebar items, the History Log menu's Log workout / Log food, and the
+Dashboard lift and nutrition cards follow it, and Settings → Units & display
+→ "Gym & nutrition" holds the two switches. The data half on web is one
+`select id … limit 1` per table, read once per session and skipped for a
+modality with an explicit choice. Hiding removes the entry points, not the
+pages: `/gym` and `/nutrition` still load by URL. A first-run "log a lift"
+link for a hidden Gym switches it on before navigating, and the onboarding
+wizard's track step asks the question up front on both platforms.
 
 ## Body metrics & sensitive data (compliance — do before any real user data)
 

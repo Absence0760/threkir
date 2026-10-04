@@ -499,7 +499,11 @@
 			</div>
 
 			<ul class="nav-list">
-				{#each navItems as item}
+				<!-- Keyed: Gym and Nutrition join the list once their visibility
+				     resolves, and an unkeyed list would hand an existing row the
+				     next item's href and accent, animating its glyph from one
+				     section's colour to another. -->
+				{#each navItems as item (item.href)}
 					<li>
 						<a
 							href={item.href}

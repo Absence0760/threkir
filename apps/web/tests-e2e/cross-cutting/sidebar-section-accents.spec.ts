@@ -45,6 +45,20 @@ async function tokens(page: Page, names: string[]): Promise<string[]> {
 	}, names);
 }
 
+/**
+ * Gym and Nutrition join the sidebar once the session's visibility read lands
+ * (decisions § 1739 amendment). USER_A's seed logs both, so both resolve shown
+ * and must be in the list before anything is measured; reading earlier would
+ * check five or six sections and call it seven.
+ */
+async function navSettled(page: Page): Promise<void> {
+	for (const href of ['/gym', '/nutrition']) {
+		await expect(page.locator(`nav.sidebar .nav-link[href="${href}"]`)).toBeVisible({
+			timeout: 15_000,
+		});
+	}
+}
+
 function glyphColours(page: Page): Promise<string[]> {
 	return page
 		.locator('nav.sidebar .nav-link .nav-icon')
@@ -62,6 +76,7 @@ test.describe('sidebar section accents', () => {
 			);
 			await page.goto('/dashboard');
 			await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+			await navSettled(page);
 
 			const links = page.locator('nav.sidebar .nav-link');
 			// The AI Coach row hides when the Coach is off, so the set is the
@@ -107,6 +122,7 @@ test.describe('sidebar section accents', () => {
 	test('the ink half flips with the theme while the accents stay put', async ({ page }) => {
 		await page.addInitScript(() => window.localStorage.setItem('run_app.theme', 'light'));
 		await page.goto('/dashboard');
+		await navSettled(page);
 		const light = await glyphColours(page);
 
 		await page.evaluate(() => {

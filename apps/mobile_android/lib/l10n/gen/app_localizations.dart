@@ -1325,6 +1325,12 @@ abstract class AppLocalizations {
   /// **'Advice across your runs, lifts, and nutrition'**
   String get homeAskCoachSubtitle;
 
+  /// Subtitle of the pinned Ask your coach card on Home while Gym and Nutrition are both hidden, so it names only what this runner records
+  ///
+  /// In en, this message translates to:
+  /// **'Advice on your runs, training and recovery'**
+  String get homeAskCoachSubtitleRunOnly;
+
   /// Title of the profile entry at the top of the You tab
   ///
   /// In en, this message translates to:

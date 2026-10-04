@@ -747,6 +747,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get homeAskCoachSubtitle => 'ラン・筋トレ・栄養のアドバイス';
 
   @override
+  String get homeAskCoachSubtitleRunOnly => 'ラン・トレーニング・回復のアドバイス';
+
+  @override
   String get youProfileTitle => 'あなたのプロフィール';
 
   @override

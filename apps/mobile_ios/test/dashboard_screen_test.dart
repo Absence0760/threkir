@@ -880,6 +880,54 @@ void main() {
       });
     });
 
+    for (final (prefsSeed, subtitle) in [
+      (<String, Object>{}, 'Advice on your runs, training and recovery'),
+      (
+        <String, Object>{'show_nutrition': true},
+        'Advice across your runs, lifts, and nutrition',
+      ),
+    ]) {
+      testWidgets('the coach card promises only what is shown ($prefsSeed)',
+          (tester) async {
+        // A runner with Gym and Nutrition hidden was promised advice on runs,
+        // lifts and nutrition by the first card on their Home.
+        await tester.runAsync(() async {
+          SharedPreferences.setMockInitialValues(prefsSeed);
+          final prefs = Preferences();
+          await prefs.init();
+          final dir = Directory.systemTemp.createTempSync('dashboard_coach_s_');
+          try {
+            final seedStore = LocalRunStore();
+            await seedStore.init(overrideDirectory: dir);
+            await seedStore.save(_run(id: 'r1'));
+            final runStore = LocalRunStore();
+            await runStore.init(overrideDirectory: dir);
+            await tester.pumpWidget(
+              MaterialApp(
+                localizationsDelegates:
+                    AppLocalizations.localizationsDelegates,
+                supportedLocales: AppLocalizations.supportedLocales,
+                home: DashboardScreen(
+                  apiClient: _FakeApi(),
+                  training: _FakeTraining(null),
+                  runStore: runStore,
+                  routeStore: LocalRouteStore(),
+                  gymStore: LocalGymStore(),
+                  foodStore: LocalFoodStore(),
+                  preferences: prefs,
+                ),
+              ),
+            );
+            await tester.pump();
+            await tester.pump();
+            expect(find.text(subtitle), findsOneWidget);
+          } finally {
+            dir.deleteSync(recursive: true);
+          }
+        });
+      });
+    }
+
     testWidgets(
         'no coach entry on the zero-runs welcome screen even with api + training',
         (tester) async {

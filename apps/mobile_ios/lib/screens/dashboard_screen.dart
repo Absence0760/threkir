@@ -556,7 +556,14 @@ class _DashboardScreenState extends State<DashboardScreen>
     final api = widget.apiClient;
     final training = widget.training;
     if (api == null || api.userId == null || training == null) return null;
+    final l10n = AppLocalizations.of(context);
     return _CoachEntryCard(
+      // Its placement is the Coach-prominence decision; its copy is not. A
+      // runner with Gym and Nutrition hidden was promised advice on two
+      // things they had just been told are hidden.
+      subtitle: _gymShown || _nutritionShown
+          ? l10n.homeAskCoachSubtitle
+          : l10n.homeAskCoachSubtitleRunOnly,
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute<void>(
@@ -1454,8 +1461,9 @@ class _DashboardScreenState extends State<DashboardScreen>
 /// banner that opens the AI coach in one tap (the coach has no bottom-nav
 /// slot under the Fitness-hub redesign).
 class _CoachEntryCard extends StatelessWidget {
+  final String subtitle;
   final VoidCallback onTap;
-  const _CoachEntryCard({required this.onTap});
+  const _CoachEntryCard({required this.subtitle, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1489,7 +1497,7 @@ class _CoachEntryCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        l10n.homeAskCoachSubtitle,
+                        subtitle,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onPrimaryContainer,
                         ),

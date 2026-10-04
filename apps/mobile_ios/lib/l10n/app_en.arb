@@ -1016,6 +1016,10 @@
   "@homeAskCoachSubtitle": {
     "description": "Subtitle of the pinned coach entry at the top of the Home dashboard"
   },
+  "homeAskCoachSubtitleRunOnly": "Advice on your runs, training and recovery",
+  "@homeAskCoachSubtitleRunOnly": {
+    "description": "Subtitle of the pinned Ask your coach card on Home while Gym and Nutrition are both hidden, so it names only what this runner records"
+  },
   "youProfileTitle": "Your profile",
   "@youProfileTitle": {
     "description": "Title of the profile entry at the top of the You tab"

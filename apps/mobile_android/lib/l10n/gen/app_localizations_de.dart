@@ -778,6 +778,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Tipps zu Läufen, Krafttraining und Ernährung';
 
   @override
+  String get homeAskCoachSubtitleRunOnly =>
+      'Tipps zu Läufen, Training und Erholung';
+
+  @override
   String get youProfileTitle => 'Dein Profil';
 
   @override

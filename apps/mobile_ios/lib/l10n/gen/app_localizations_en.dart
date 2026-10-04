@@ -768,6 +768,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Advice across your runs, lifts, and nutrition';
 
   @override
+  String get homeAskCoachSubtitleRunOnly =>
+      'Advice on your runs, training and recovery';
+
+  @override
   String get youProfileTitle => 'Your profile';
 
   @override

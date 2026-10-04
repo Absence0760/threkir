@@ -776,6 +776,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Des conseils sur vos courses, votre muscu et votre nutrition';
 
   @override
+  String get homeAskCoachSubtitleRunOnly =>
+      'Des conseils sur vos courses, votre entraînement et votre récupération';
+
+  @override
   String get youProfileTitle => 'Votre profil';
 
   @override

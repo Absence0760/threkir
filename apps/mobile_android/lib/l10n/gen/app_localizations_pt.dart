@@ -777,6 +777,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Dicas sobre as suas corridas, ginásio e nutrição';
 
   @override
+  String get homeAskCoachSubtitleRunOnly =>
+      'Dicas sobre as suas corridas, treino e recuperação';
+
+  @override
   String get youProfileTitle => 'O seu perfil';
 
   @override
@@ -15175,6 +15179,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get homeAskCoachSubtitle =>
       'Dicas sobre suas corridas, academia e nutrição';
+
+  @override
+  String get homeAskCoachSubtitleRunOnly =>
+      'Dicas sobre suas corridas, treino e recuperação';
 
   @override
   String get youProfileTitle => 'Seu perfil';

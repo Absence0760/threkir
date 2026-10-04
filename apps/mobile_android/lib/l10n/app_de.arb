@@ -203,6 +203,7 @@
   "gymPeerSessions": "Session-Pläne",
   "homeAskCoach": "Coach fragen",
   "homeAskCoachSubtitle": "Tipps zu Läufen, Krafttraining und Ernährung",
+  "homeAskCoachSubtitleRunOnly": "Tipps zu Läufen, Training und Erholung",
   "youProfileTitle": "Dein Profil",
   "logSheetTitle": "Erfassen",
   "logRun": "Lauf erfassen",

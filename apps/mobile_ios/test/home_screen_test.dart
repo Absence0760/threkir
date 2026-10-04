@@ -276,6 +276,27 @@ void main() {
       expect(find.text('Welcome!'), findsAtLeastNWidgets(1));
     });
 
+    testWidgets('the first-run gym link switches Gym on and lands on it',
+        (tester) async {
+      // A new account is exactly the one whose Gym starts hidden, so the
+      // welcome card's "Log a gym session" used to select a tab the hub did
+      // not have and leave the runner on History.
+      final s = await _makeStores();
+      await _pump(tester, s);
+      await tester.pump();
+      expect(s.prefs.showGym, isNull);
+
+      await tester.ensureVisible(find.text('Log a gym session'));
+      await tester.tap(find.text('Log a gym session'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(s.prefs.showGym, isTrue);
+      expect(find.byType(GymScreen), findsOneWidget);
+      // The hub's tab label and the Gym screen's own title.
+      expect(find.text('Gym'), findsNWidgets(2));
+    });
+
     testWidgets('body is a PageView', (tester) async {
       final s = await _makeStores();
       await _pump(tester, s);

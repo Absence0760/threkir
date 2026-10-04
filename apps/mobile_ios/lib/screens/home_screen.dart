@@ -752,8 +752,20 @@ class _HomeScreenState extends State<HomeScreen>
     if (picked != null) _performLogAction(picked);
   }
 
-  void _performLogAction(LogAction action) {
+  Future<void> _performLogAction(LogAction action) async {
     widget.preferences.setLastLogType(action.wire);
+    // Asking to log a lift or a meal is asking for that modality, and a
+    // hidden one has no hub tab to land on — the first-run "Lifting instead?"
+    // link reaches here for exactly the account whose Gym starts hidden.
+    // Awaited so the hub's strip already has the tab when it is selected.
+    if (action == LogAction.lift && !_gymShown) {
+      await widget.preferences.setShowGym(true);
+      _roamModalityVisibility();
+    } else if (action == LogAction.food && !_nutritionShown) {
+      await widget.preferences.setShowNutrition(true);
+      _roamModalityVisibility();
+    }
+    if (!mounted) return;
     // Each Log action lands on that modality's dwell-in workspace (decisions
     // §63) — the keep-alive Run page for a recording, the Fitness hub's own Gym
     // and Nutrition tabs for the other two. All three behave identically: you
@@ -782,6 +794,14 @@ class _HomeScreenState extends State<HomeScreen>
     }
     if (tab != null) _fitnessTab.value = tab;
     _goToPage(page);
+  }
+
+  Future<void> _roamModalityVisibility() async {
+    try {
+      await widget.settingsSync?.pushModalityVisibility();
+    } catch (e) {
+      debugPrint('home: modality visibility push failed: $e');
+    }
   }
 
   String _logPageName(AppLocalizations l10n, LogAction action) =>

@@ -41,6 +41,7 @@ const List<String> setupWizardSteps = [
   'about',
   'run-privacy',
   'notifications',
+  setupWizardTrackStep,
   'done',
 ];
 
@@ -49,7 +50,7 @@ const List<String> setupWizardSteps = [
 /// [visibleSetupWizardSteps] drops anything. Written out rather than read
 /// off [setupWizardSteps] because a list's `length` is not a constant
 /// expression; `onboarding_test.dart` pins the two together.
-const int onboardingTotalSteps = 7;
+const int onboardingTotalSteps = 8;
 
 /// The steps this device actually walks, and the list the progress dots are
 /// generated from. Mobile's own, the counterpart of web's web-only
@@ -61,20 +62,13 @@ const int onboardingTotalSteps = 7;
 /// account exists, so a second ask is not a second opinion — whatever the
 /// wizard's step is left sitting on is written over the launch answer on
 /// Finish, silently.
-///
-/// [setupWizardTrackStep] is added here rather than to [setupWizardSteps]
-/// because it has no web counterpart: web always shows Gym and Nutrition
-/// (decisions § 1739), so there is nothing for it to ask.
 List<String> visibleSetupWizardSteps({required bool privacyAlreadyChosen}) => [
       for (final s in setupWizardSteps)
-        if (s != 'run-privacy' || !privacyAlreadyChosen) ...[
-          if (s == 'done') setupWizardTrackStep,
-          s,
-        ],
+        if (s != 'run-privacy' || !privacyAlreadyChosen) s,
     ];
 
-/// Mobile-only wizard step asking whether to show Gym and Nutrition. Sits
-/// just before `done`.
+/// The step asking whether to show Gym and Nutrition, just before `done` —
+/// web's `track` step, at the same position (decisions § 1739).
 const String setupWizardTrackStep = 'track';
 
 /// A create-plan preset derived from a primary-goal answer — twin of web's

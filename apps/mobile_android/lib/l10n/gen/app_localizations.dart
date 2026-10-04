@@ -2669,7 +2669,7 @@ abstract class AppLocalizations {
   /// **'Choose how many push notifications you\'d like. You can fine-tune this later in Settings.'**
   String get setupNotificationsHint;
 
-  /// Setup wizard what-to-track step title (mobile-only step)
+  /// Setup wizard what-to-track step title
   ///
   /// In en, this message translates to:
   /// **'What do you want to track?'**

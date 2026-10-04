@@ -114,7 +114,7 @@ int _forwardTaps(Preferences prefs) =>
     visibleSetupWizardSteps(privacyAlreadyChosen: prefs.onboarded).length - 1;
 
 /// The same, for the fresh fixture most tests pump: the launch flow never
-/// ran, so every step is walked, the mobile-only track step included.
+/// ran, so every step is walked.
 final int _tapsToDone =
     visibleSetupWizardSteps(privacyAlreadyChosen: false).length - 1;
 
@@ -708,7 +708,7 @@ void main() {
           matching: find.byType(Container),
         );
         expect(dots, findsNWidgets(_tapsToDone + 1));
-        expect(_tapsToDone + 1, onboardingTotalSteps + 1);
+        expect(_tapsToDone + 1, onboardingTotalSteps);
       });
 
       testWidgets('a choice writes explicit values locally and roams them',

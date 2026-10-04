@@ -169,7 +169,12 @@ test.describe('onboarding → first run → dashboard journey', () => {
 				await page.getByRole('button', { name: 'Continue' }).click();
 
 				// No notifications step: this build has no push key, so there
-				// is nothing to turn on (same as wizard.spec.ts).
+				// is nothing to turn on (same as wizard.spec.ts). The track step
+				// is left untouched, which writes no choice.
+				await expect(
+					page.getByRole('heading', { name: /What do you want to track/i })
+				).toBeVisible();
+				await page.getByRole('button', { name: 'Continue' }).click();
 				// Done. The "Open dashboard" button persists the
 				// answers + stamps onboarded_at, then full-page-navs.
 				await expect(

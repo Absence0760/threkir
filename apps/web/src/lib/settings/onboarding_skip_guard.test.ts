@@ -51,12 +51,29 @@ test('skipStep is not a bare next()', () => {
 	);
 });
 
+test('skipStep unsets both track switches, so a skipped step writes no choice', () => {
+	const track = skipStep.slice(skipStep.indexOf("current === 'track'"));
+	assert.notEqual(track, '', 'skipStep must handle the track step');
+	assert.match(track, /trackGym = null/);
+	assert.match(track, /trackNutrition = null/);
+	assert.match(
+		source,
+		/if \(trackGym !== null\) bagChanges\.show_gym = trackGym/,
+		'an untouched Gym switch must write nothing',
+	);
+	assert.match(
+		source,
+		/if \(trackNutrition !== null\) bagChanges\.show_nutrition = trackNutrition/,
+		'an untouched Nutrition switch must write nothing',
+	);
+});
+
 test('Skip is offered only on the steps that hold an unsettable answer', () => {
 	const gate = source.match(/\{#if current === 'goal'[^}]*\}/);
 	assert.notEqual(gate, null, 'the per-step Skip button must stay behind a step gate');
 	assert.equal(
 		gate![0],
-		"{#if current === 'goal' || current === 'about'}",
+		"{#if current === 'goal' || current === 'about' || current === 'track'}",
 		'units and privacy have no unset state, and the notifications step stores no answer — none may offer Skip',
 	);
 });

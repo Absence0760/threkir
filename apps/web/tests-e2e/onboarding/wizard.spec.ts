@@ -214,7 +214,25 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		await page.getByRole('button', { name: 'Continue' }).click();
 
 		// No notifications step: this build has no push key, so there is nothing
-		// to turn on and the wizard goes straight to done (visibleOnboardingSteps).
+		// to turn on and the wizard goes straight to the track step
+		// (visibleOnboardingSteps). Left untouched, it writes no choice, so the
+		// data default for Gym and Nutrition stays in force (decisions § 1650).
+		await expect(
+			page.getByRole('heading', { name: /What do you want to track/i })
+		).toBeVisible();
+		await expect(page.getByRole('checkbox', { name: /Running/ })).toHaveAttribute(
+			'aria-checked',
+			'true',
+		);
+		await expect(page.getByRole('checkbox', { name: /Gym/ })).toHaveAttribute(
+			'aria-checked',
+			'false',
+		);
+		await expect(page.getByRole('checkbox', { name: /Nutrition/ })).toHaveAttribute(
+			'aria-checked',
+			'false',
+		);
+		await page.getByRole('button', { name: 'Continue' }).click();
 		// Done. Because a goal (10K) was chosen, the goal-keyed
 		// "Create my training plan" CTA is offered alongside the neutral
 		// dashboard exit (runner-new discoverability nudge).
@@ -222,7 +240,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 			page.getByRole('heading', { name: /All set/i })
 		).toBeVisible();
 		await expect(page.getByRole('heading', { name: /Notifications/i })).toHaveCount(0);
-		await expect(page.getByRole('progressbar', { name: 'Step 6 of 6' })).toBeVisible();
+		await expect(page.getByRole('progressbar', { name: 'Step 7 of 7' })).toBeVisible();
 		await expect(
 			page.getByRole('button', { name: 'Create my training plan' })
 		).toBeVisible();
@@ -258,6 +276,8 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		expect(p.preferred_unit).toBe('mi');
 		expect(p.primary_goal).toBe('10k');
 		expect(p.privacy_default).toBe('private');
+		expect(p.show_gym).toBeUndefined();
+		expect(p.show_nutrition).toBeUndefined();
 
 		// Clean up the writes so other specs in the suite see USER_A
 		// in its seeded state (display_name = Jared Howard, etc).
@@ -309,6 +329,8 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 
 		// Step 5 — privacy
 		await page.getByRole('radio', { name: /Private/i }).click();
+		await page.getByRole('button', { name: 'Continue' }).click();
+		// Track step, left untouched: nothing is written for it.
 		await page.getByRole('button', { name: 'Continue' }).click();
 		// Done (no notifications step without a push key)
 		await page.getByRole('button', { name: 'Open dashboard' }).click();
@@ -363,6 +385,8 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		// Step 5 — privacy
 		await page.getByRole('radio', { name: /Private/i }).click();
 		await page.getByRole('button', { name: 'Continue' }).click();
+		// Track step, left untouched: nothing is written for it.
+		await page.getByRole('button', { name: 'Continue' }).click();
 		// Done (no notifications step without a push key)
 		await page.getByRole('button', { name: 'Open dashboard' }).click();
 		await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
@@ -381,6 +405,36 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		// Art 9 fields stay null without the consent tick.
 		expect(data?.health_data_consent_at).toBeNull();
 		expect(data?.gender).toBeNull();
+	});
+
+	test('the track step stores the switches the runner turned on, and nothing for the others', async ({
+		page,
+	}) => {
+		test.setTimeout(45_000);
+		await page.goto('/onboarding');
+		await expect(
+			page.getByRole('heading', { name: /What should we call you/i })
+		).toBeVisible();
+		// Name, units, goal, about, privacy: no push key, so no notifications step.
+		for (let i = 0; i < 5; i++) {
+			await page.getByRole('button', { name: 'Continue' }).click();
+		}
+		await expect(
+			page.getByRole('heading', { name: /What do you want to track/i })
+		).toBeVisible();
+		await page.getByRole('checkbox', { name: /Gym/ }).click();
+		await page.getByRole('button', { name: 'Continue' }).click();
+		await expect(page.getByRole('heading', { name: /All set/i })).toBeVisible();
+		await page.getByRole('button', { name: 'Open dashboard' }).click();
+		await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
+
+		const settings = await readMaybeRow(
+			'user_settings by user_id',
+			getAdminClient().from('user_settings').select('prefs').eq('user_id', USER_A.id).maybeSingle()
+		);
+		const p = (settings?.prefs ?? {}) as Record<string, unknown>;
+		expect(p.show_gym).toBe(true);
+		expect(p.show_nutrition).toBeUndefined();
 	});
 
 	test('per-step Skip discards the step answer instead of carrying it forward (#921)', async ({
@@ -438,14 +492,25 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		await page.getByRole('radio', { name: /Private/i }).click();
 		await page.getByRole('button', { name: 'Continue' }).click();
 
+		// Track step — switch Gym on, then skip it.
+		const gym = page.getByRole('checkbox', { name: /Gym/ });
+		await gym.click();
+		await expect(gym).toHaveAttribute('aria-checked', 'true');
+		await page.getByRole('button', { name: 'Skip', exact: true }).click();
+
 		// The skipped goal shows: no goal means no goal-keyed plan CTA.
 		await expect(page.getByRole('heading', { name: /All set/i })).toBeVisible();
 		await expect(
 			page.getByRole('button', { name: 'Create my training plan' })
 		).toHaveCount(0);
 
-		// And stepping back shows the about step emptied rather than still
+		// And stepping back shows the skipped steps emptied rather than still
 		// holding what Skip claimed to pass over.
+		await page.getByRole('button', { name: 'Back' }).click();
+		await expect(page.getByRole('checkbox', { name: /Gym/ })).toHaveAttribute(
+			'aria-checked',
+			'false',
+		);
 		await page.getByRole('button', { name: 'Back' }).click();
 		await page.getByRole('button', { name: 'Back' }).click();
 		await expect(
@@ -453,6 +518,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		).toBeVisible();
 		await expect(page.getByLabel(/Date of birth/i)).toHaveValue('');
 		await expect(page.getByLabel(/Body weight in kg/i)).toHaveValue('');
+		await page.getByRole('button', { name: 'Continue' }).click();
 		await page.getByRole('button', { name: 'Continue' }).click();
 		await page.getByRole('button', { name: 'Continue' }).click();
 
@@ -476,6 +542,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		const p = (settings?.prefs ?? {}) as Record<string, unknown>;
 		expect(p.primary_goal).toEqual(prefsBefore.primary_goal);
 		expect(p.body_weight_kg).toEqual(prefsBefore.body_weight_kg);
+		expect(p.show_gym).toEqual(prefsBefore.show_gym);
 		// …while the answers that were given did land.
 		expect(p.privacy_default).toBe('private');
 	});
@@ -528,6 +595,8 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		// Step 5 — privacy
 		await page.getByRole('radio', { name: /Private/i }).click();
 		await page.getByRole('button', { name: 'Continue' }).click();
+		// Track step, left untouched: nothing is written for it.
+		await page.getByRole('button', { name: 'Continue' }).click();
 		// Done (no notifications step without a push key)
 		await page.getByRole('button', { name: 'Open dashboard' }).click();
 		await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
@@ -560,9 +629,9 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 			page.getByRole('heading', { name: /What should we call you/i })
 		).toBeVisible();
 		// Every step before done: advance without entering or choosing
-		// anything. Five, because without a push key there is no
+		// anything. Six, because without a push key there is no
 		// notifications step.
-		for (let i = 0; i < 5; i++) {
+		for (let i = 0; i < 6; i++) {
 			await page.getByRole('button', { name: 'Continue' }).click();
 		}
 		// Done — no goal was chosen, so only the neutral exit renders.

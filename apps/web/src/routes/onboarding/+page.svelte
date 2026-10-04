@@ -108,6 +108,14 @@
 	let pushSubscribed = $state(false);
 	let pushBusy = $state(false);
 
+	// ── Step 7: what to track ─────────────────────────────────
+	// Running is always on. Gym and Nutrition start off and stay null until a
+	// switch is touched, so an untouched or skipped step writes nothing and the
+	// data default (shown once that modality has data) stays in force, as
+	// decisions § 1650 has every other step do. Mobile's wizard asks the same.
+	let trackGym = $state<boolean | null>(null);
+	let trackNutrition = $state<boolean | null>(null);
+
 	let saving = $state(false);
 
 	// Gates the wizard render until onMount has run (auth polled + fields
@@ -180,6 +188,7 @@
 		about: 'onboarding.rail.about',
 		'run-privacy': 'onboarding.rail.privacy',
 		notifications: 'onboarding.rail.notifications',
+		track: 'onboarding.rail.track',
 		done: 'onboarding.rail.done',
 	} as const satisfies Record<OnboardingStep, string>;
 
@@ -210,6 +219,9 @@
 			dateOfBirth = '';
 			bodyWeight = '';
 			healthDataConsent = false;
+		} else if (current === 'track') {
+			trackGym = null;
+			trackNutrition = null;
 		}
 		next();
 	}
@@ -325,6 +337,8 @@
 				privacy_default: privacyDefault,
 			};
 			if (primaryGoal) bagChanges[PRIMARY_GOAL_KEY] = primaryGoal;
+			if (trackGym !== null) bagChanges.show_gym = trackGym;
+			if (trackNutrition !== null) bagChanges.show_nutrition = trackNutrition;
 			// The typed value is in the display unit (kg or lbs); store canonical
 			// kg. parseWeightToKg rejects empty / non-numeric / negative input.
 			// `bind:value` on a type=number input coerces bodyWeight to a
@@ -652,6 +666,57 @@
 					</button>
 				{/if}
 			</section>
+		{:else if current === 'track'}
+			<section aria-labelledby="step-track-title">
+				<span class="step-icon" aria-hidden="true"><span class="material-symbols">tune</span></span>
+				<h1 id="step-track-title" tabindex="-1">{m('onboarding.trackTitle')}</h1>
+				<p class="hint" id="onboarding-track-hint">{m('onboarding.trackHint')}</p>
+				<div
+					class="privacy-list"
+					role="group"
+					aria-labelledby="step-track-title"
+					aria-describedby="onboarding-track-hint"
+				>
+					<div class="choice privacy-row selected fixed" role="checkbox" aria-checked="true" aria-disabled="true">
+						<span class="goal-glyph" aria-hidden="true"><span class="material-symbols">directions_run</span></span>
+						<span class="choice-text">
+							<strong class="choice-name">{m('onboarding.trackRunning')}</strong>
+							<span class="choice-desc">{m('onboarding.trackRunningDesc')}</span>
+						</span>
+						<span class="choice-mark" aria-hidden="true"></span>
+					</div>
+					<button
+						type="button"
+						class="choice privacy-row"
+						class:selected={trackGym === true}
+						role="checkbox"
+						aria-checked={trackGym === true}
+						onclick={() => (trackGym = trackGym !== true)}
+					>
+						<span class="goal-glyph" aria-hidden="true"><span class="material-symbols">fitness_center</span></span>
+						<span class="choice-text">
+							<strong class="choice-name">{m('onboarding.trackGym')}</strong>
+							<span class="choice-desc">{m('onboarding.trackGymDesc')}</span>
+						</span>
+						<span class="choice-mark" aria-hidden="true"></span>
+					</button>
+					<button
+						type="button"
+						class="choice privacy-row"
+						class:selected={trackNutrition === true}
+						role="checkbox"
+						aria-checked={trackNutrition === true}
+						onclick={() => (trackNutrition = trackNutrition !== true)}
+					>
+						<span class="goal-glyph" aria-hidden="true"><span class="material-symbols">restaurant</span></span>
+						<span class="choice-text">
+							<strong class="choice-name">{m('onboarding.trackNutrition')}</strong>
+							<span class="choice-desc">{m('onboarding.trackNutritionDesc')}</span>
+						</span>
+						<span class="choice-mark" aria-hidden="true"></span>
+					</button>
+				</div>
+			</section>
 		{:else if current === 'done'}
 			<section class="finish" aria-labelledby="step-done-title">
 				<span class="done-badge" aria-hidden="true">
@@ -687,7 +752,7 @@
 				<span></span>
 			{/if}
 			<div class="nav-right">
-				{#if current === 'goal' || current === 'about'}
+				{#if current === 'goal' || current === 'about' || current === 'track'}
 					<!-- Not disabled on an out-of-range weight the way Continue is:
 					     Skip discards the typed value, so it is the way out of that
 					     state rather than another way to carry it forward. -->
@@ -1027,6 +1092,12 @@
 		border: 2px solid var(--color-border);
 		transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 	}
+
+	/* The track step's switches are a multi-select, so their mark is square. */
+	.choice[role='checkbox'] .choice-mark { border-radius: var(--radius-sm); }
+
+	.choice.fixed { cursor: default; }
+	.choice.fixed:hover { transform: none; }
 
 	.choice.selected .choice-mark {
 		border-color: var(--color-primary);

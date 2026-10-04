@@ -927,6 +927,19 @@ to match mobile. The cards/chips self-hide on data presence, so a runner who
 never opts into gym/nutrition is never worse off either way.) The runner who
 never logs a lift/meal must never be worse off.
 
+**Mobile goes one step further: Gym and Nutrition are off until switched on**
+([decisions § 1739](../architecture/decisions.md)). The always-present Gym and
+Nutrition hub tabs, and the Log fan's Lift/Food actions, were the remaining
+clutter a pure runner paid for. On mobile they now appear only when
+`modalityShown` says so: the runner's explicit choice from Settings →
+Preferences → "Gym & nutrition" (`show_gym` / `show_nutrition`, see
+[settings.md](../backend/settings.md)) if they have made one, otherwise
+whether that modality already has data. A new runner gets History and Runs
+only; someone already logging lifts keeps the Gym tab without having to find
+a toggle. The same answer gates the Home lift/meal cards and decides the
+Log button's one-tap run start. Web is unchanged: its sidebar items stay
+always-present.
+
 ## Body metrics & sensitive data (compliance — do before any real user data)
 
 The BMR target needs **weight, height, age, sex**. Age + sex already live
@@ -1093,7 +1106,7 @@ Bottom nav becomes `Home · Train · [+] Log · Social · You` (still five slots
 - **Home** is unchanged — the prioritised, self-hiding card stack ("what's my day").
 - **Expanded widths (≥840dp — tablets / landscape foldables) swap the chrome, not the IA:** the same four destinations + the Log action render as a `NavigationRail` (Log rides the rail's leading slot and fans its speed-dial from the button's own anchor) instead of the `BottomAppBar` + docked centre FAB. Destinations, keep-alive pages, and the Log contract are identical — only the shell changes (`widthClassOf` gate, see [conventions.md § Mobile adaptive width](../architecture/conventions.md#mobile-adaptive-width--widthclass)).
 
-The **self-hiding contract holds**: a pure runner opening `Train` sees the Runs sub-tab content and an `All` timeline of only runs; the Gym/Nutrition sub-tabs render their empty-onboarding state but are never forced on them (mirroring today's data-gated cards). The Train hub being always-present is the analogue of today's always-present `Log` sheet — it's the entry point, so it can't itself be data-gated (the §63-amendment chicken-and-egg rule).
+The **self-hiding contract holds**: a pure runner opening `Train` sees the Runs sub-tab content and an `All` timeline of only runs; the Gym/Nutrition sub-tabs render their empty-onboarding state but are never forced on them (since [decisions § 1739](../architecture/decisions.md) the mobile hub leaves those two tabs out entirely until the runner switches them on or logs one; see [§ Sequencing, validation gates & risk controls](#sequencing-validation-gates--risk-controls)) (mirroring today's data-gated cards). The Train hub being always-present is the analogue of today's always-present `Log` sheet — it's the entry point, so it can't itself be data-gated (the §63-amendment chicken-and-egg rule).
 
 Keep-alive note: the in-shell `PageView` capture pages (Run/Gym/Nutrition recorders) stay exactly as the §63 2026-06-08 amendment built them — the Train hub is a *review/plan* destination, distinct from the keep-alive *capture* pages the `Log` action lands on. A live recording is unaffected by navigating to `Train`.
 

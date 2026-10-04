@@ -952,6 +952,10 @@
   "@navFitness": {
     "description": "Bottom-nav label for the Fitness modality hub (All/Runs/Gym/Nutrition)"
   },
+  "navTraining": "Training",
+  "@navTraining": {
+    "description": "Bottom-nav and rail label for the Fitness hub while Gym and Nutrition are both hidden, when it holds runs, routes, segments, plans and races (decisions § 139 amendment)"
+  },
   "navYou": "You",
   "@navYou": {
     "description": "Bottom-nav label for the You tab (profile + settings)"

@@ -699,6 +699,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get navFitness => 'フィットネス';
 
   @override
+  String get navTraining => 'トレーニング';
+
+  @override
   String get navYou => 'あなた';
 
   @override

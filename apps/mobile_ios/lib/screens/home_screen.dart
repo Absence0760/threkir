@@ -195,6 +195,11 @@ class _HomeScreenState extends State<HomeScreen>
     widget.foodStore,
   ]);
 
+  /// The nav bar and rail read the page, and the hub's label reads the same
+  /// visibility the centre button does.
+  late final Listenable _navInputs =
+      Listenable.merge([_currentIndex, _centreInputs]);
+
   late final PageController _pageController =
       PageController(initialPage: _initialIndex);
 
@@ -898,7 +903,9 @@ class _HomeScreenState extends State<HomeScreen>
     }
     return _runIsPrimary
         ? (
-            icon: Icons.directions_run,
+            // Play, not a runner: with Gym and Nutrition hidden the hub
+            // beside it wears the runner glyph.
+            icon: Icons.play_arrow,
             label: l10n.navStartRun,
             semantics: l10n.logStartRunA11yLabel,
             recording: false,
@@ -910,6 +917,17 @@ class _HomeScreenState extends State<HomeScreen>
             recording: false,
           );
   }
+
+  /// The Fitness hub's nav icon and label. "Fitness" under a dumbbell was
+  /// chosen because the hub holds gym and nutrition too (decisions § 139);
+  /// with both hidden it holds runs, routes, segments, plans and races, and
+  /// a runner looking for their runs scanned past a gym icon. "Training"
+  /// rather than "Runs" because the hub's own first tab is already "Runs",
+  /// and it names the plans and races beside them.
+  ({IconData icon, String label}) _hubLook(AppLocalizations l10n) =>
+      _gymShown || _nutritionShown
+          ? (icon: Icons.fitness_center, label: l10n.navFitness)
+          : (icon: Icons.directions_run, label: l10n.navTraining);
 
   String _logPageName(AppLocalizations l10n, LogAction action) =>
       switch (action) {
@@ -960,10 +978,12 @@ class _HomeScreenState extends State<HomeScreen>
       return _backGuard(Scaffold(
         body: Row(
           children: [
-            ValueListenableBuilder<int>(
-              valueListenable: _currentIndex,
-              builder: (context, index, _) {
+            ListenableBuilder(
+              listenable: _navInputs,
+              builder: (context, _) {
+                final index = _currentIndex.value;
                 final l10n = AppLocalizations.of(context);
+                final hub = _hubLook(l10n);
                 return NavigationRail(
                   selectedIndex: _railIndexFor(index),
                   onDestinationSelected: (i) => _goToPage(_railPages[i]),
@@ -978,8 +998,8 @@ class _HomeScreenState extends State<HomeScreen>
                       label: Text(l10n.navHome),
                     ),
                     NavigationRailDestination(
-                      icon: const Icon(Icons.fitness_center),
-                      label: Text(l10n.navFitness),
+                      icon: Icon(hub.icon),
+                      label: Text(hub.label),
                     ),
                     NavigationRailDestination(
                       icon: const Icon(Icons.public),
@@ -1019,10 +1039,12 @@ class _HomeScreenState extends State<HomeScreen>
       body: body,
       floatingActionButton: _logFab(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: ValueListenableBuilder<int>(
-        valueListenable: _currentIndex,
-        builder: (context, index, _) {
+      bottomNavigationBar: ListenableBuilder(
+        listenable: _navInputs,
+        builder: (context, _) {
+          final index = _currentIndex.value;
           final l10n = AppLocalizations.of(context);
+          final hub = _hubLook(l10n);
           final metrics =
               bottomNavMetrics(MediaQuery.textScalerOf(context).scale(1));
           return BottomAppBar(
@@ -1038,8 +1060,8 @@ class _HomeScreenState extends State<HomeScreen>
                   onTap: () => _goToPage(_pageHome),
                 ),
                 _BottomNavItem(
-                  icon: Icons.fitness_center,
-                  label: l10n.navFitness,
+                  icon: hub.icon,
+                  label: hub.label,
                   selected: index == _pageFitness,
                   onTap: () => _goToPage(_pageFitness),
                 ),

@@ -241,6 +241,7 @@ void main() {
         'shows Home/Fitness/Social/You nav labels; Run/History/Settings are not nav labels',
         (tester) async {
       final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
       await _pump(tester, s);
       final bar = find.byType(BottomAppBar);
       for (final label in ['Home', 'Fitness', 'Social', 'You']) {
@@ -259,6 +260,32 @@ void main() {
           reason: '"$gone" is no longer a bottom-nav destination',
         );
       }
+    });
+
+    testWidgets('with Gym and Nutrition hidden the hub is Training, under a '
+        'runner', (tester) async {
+      // "Fitness" under a dumbbell was chosen because the hub holds gym and
+      // nutrition too (decisions § 139). With both hidden it holds runs,
+      // routes, plans and races, and a runner scanned past a gym icon.
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final bar = find.byType(BottomAppBar);
+      expect(find.descendant(of: bar, matching: find.text('Training')),
+          findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.text('Fitness')),
+          findsNothing);
+      expect(find.descendant(of: bar, matching: find.byIcon(Icons.directions_run)),
+          findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.byIcon(Icons.fitness_center)),
+          findsNothing);
+
+      // Switching a modality on brings Fitness back, without a restart.
+      await s.prefs.setShowNutrition(true);
+      await tester.pump();
+      expect(find.descendant(of: bar, matching: find.text('Fitness')),
+          findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.byIcon(Icons.fitness_center)),
+          findsOneWidget);
     });
 
     testWidgets('the centre Log action shows a visible text label (#256)',
@@ -298,7 +325,7 @@ void main() {
       expect(
         find.descendant(
             of: find.byType(FloatingActionButton),
-            matching: find.byIcon(Icons.directions_run)),
+            matching: find.byIcon(Icons.play_arrow)),
         findsOneWidget,
       );
     });
@@ -484,7 +511,8 @@ void main() {
       expect(find.byType(BottomAppBar), findsNothing);
       expect(find.byType(FloatingActionButton), findsOneWidget);
       expect(find.text('Home'), findsWidgets);
-      expect(find.text('Fitness'), findsOneWidget);
+      // A pure runner's hub label; the rail derives it as the bar does.
+      expect(find.text('Training'), findsOneWidget);
     });
 
     testWidgets('rail destinations navigate and the Log FAB fans the dial',
@@ -588,7 +616,7 @@ void main() {
       await _pump(tester, s);
       runRecordingActive.value = true;
       await tester.pump();
-      await tester.tap(find.text('Fitness'));
+      await tester.tap(find.text('Training'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Runs'), findsWidgets,
@@ -691,8 +719,9 @@ void main() {
           : controller.initialPage.toDouble();
     }
 
+    // These shells have no lift or meal, so the hub is labelled Training.
     Future<void> goToFitness(WidgetTester tester) async {
-      await tester.tap(find.text('Fitness'));
+      await tester.tap(find.text('Training'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
     }

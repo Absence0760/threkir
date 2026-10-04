@@ -725,6 +725,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get navFitness => 'Fitness';
 
   @override
+  String get navTraining => 'Entrenamiento';
+
+  @override
   String get navYou => 'Tú';
 
   @override

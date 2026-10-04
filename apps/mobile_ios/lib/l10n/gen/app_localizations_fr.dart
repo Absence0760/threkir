@@ -727,6 +727,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get navFitness => 'Fitness';
 
   @override
+  String get navTraining => 'Entraînement';
+
+  @override
   String get navYou => 'Vous';
 
   @override

@@ -1229,6 +1229,12 @@ abstract class AppLocalizations {
   /// **'Fitness'**
   String get navFitness;
 
+  /// Bottom-nav and rail label for the Fitness hub while Gym and Nutrition are both hidden, when it holds runs, routes, segments, plans and races (decisions § 139 amendment)
+  ///
+  /// In en, this message translates to:
+  /// **'Training'**
+  String get navTraining;
+
   /// Bottom-nav label for the You tab (profile + settings)
   ///
   /// In en, this message translates to:

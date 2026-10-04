@@ -36,8 +36,8 @@ void main() {
       expect(primaryGoalValues.length, 6);
     });
 
-    test('onboardingTotalSteps matches web (7)', () {
-      expect(onboardingTotalSteps, 7);
+    test('onboardingTotalSteps matches web (8)', () {
+      expect(onboardingTotalSteps, 8);
       // The constant is written out (a list length is not a constant
       // expression), so pin it against the list it describes.
       expect(setupWizardSteps.length, onboardingTotalSteps);
@@ -51,6 +51,7 @@ void main() {
         'about',
         'run-privacy',
         'notifications',
+        'track',
         'done',
       ]);
     });
@@ -59,10 +60,8 @@ void main() {
         'already asked, and nothing else', () {
       final asked = visibleSetupWizardSteps(privacyAlreadyChosen: true);
       expect(asked.contains('run-privacy'), isFalse);
-      // One dropped, the mobile-only track step added.
-      expect(asked.length, onboardingTotalSteps);
-      expect(asked.where((s) => s != setupWizardTrackStep),
-          setupWizardSteps.where((s) => s != 'run-privacy'));
+      expect(asked.length, onboardingTotalSteps - 1);
+      expect(asked, setupWizardSteps.where((s) => s != 'run-privacy'));
       // Order is preserved — the wizard indexes this list.
       expect(asked.first, 'name');
       expect(asked.last, 'done');
@@ -71,20 +70,16 @@ void main() {
     test('visibleSetupWizardSteps walks every step when privacy is unanswered',
         () {
       final steps = visibleSetupWizardSteps(privacyAlreadyChosen: false);
-      expect(steps.length, onboardingTotalSteps + 1);
-      expect(steps.where((s) => s != setupWizardTrackStep), setupWizardSteps);
+      expect(steps, setupWizardSteps);
     });
 
-    test('the mobile-only track step sits just before done', () {
+    test('the track step sits just before done', () {
       for (final asked in [true, false]) {
         final steps = visibleSetupWizardSteps(privacyAlreadyChosen: asked);
         expect(steps.where((s) => s == setupWizardTrackStep), hasLength(1));
         expect(steps[steps.length - 2], setupWizardTrackStep);
         expect(steps.last, 'done');
       }
-      // It is not one of web's steps, so it must not leak into the list
-      // that mirrors them.
-      expect(setupWizardSteps.contains(setupWizardTrackStep), isFalse);
     });
 
     test('planPresetForGoal maps distance goals 1:1 and seeds beginners into '

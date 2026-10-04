@@ -1949,7 +1949,7 @@
   },
   "setupTrackTitle": "What do you want to track?",
   "@setupTrackTitle": {
-    "description": "Setup wizard what-to-track step title (mobile-only step)"
+    "description": "Setup wizard what-to-track step title"
   },
   "setupTrackHint": "Running is always on. Switch on Gym or Nutrition to add its tab and Log action. You can change this later in Settings.",
   "@setupTrackHint": {

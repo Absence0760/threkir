@@ -55,9 +55,11 @@ test.describe('multi-modal Home + History', () => {
 		if (workoutId) await admin.from('gym_workouts').delete().eq('id', workoutId);
 	});
 
-	test('sidebar shows Gym + Nutrition items (always present, ungated)', async ({ page }) => {
-		// The core of the §63 amendment: the sidebar entry points are always
-		// present, no flag — a runner can always reach gym/nutrition.
+	test('sidebar shows Gym + Nutrition items for a runner who logs both', async ({ page }) => {
+		// No flag and no explicit choice: USER_A's seeded lifts and meals are what
+		// surface both items (show_gym / show_nutrition resolve from data when
+		// unset, decisions § 1739). A fresh account's hidden items are covered in
+		// modality-visibility.spec.ts.
 		await page.goto('/dashboard');
 		// The nav-link's accessible name includes the material-symbols icon
 		// ligature text, so match the visible label span exactly instead.

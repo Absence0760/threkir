@@ -14,6 +14,7 @@ import type { JsonObject, TrackPoint } from '../types';
 import { isEntityId } from './entity_id';
 import { probeSaysConfigured } from './provider_probe';
 import { loadSettings, effective } from '../settings/settings';
+import type { Modality } from '../settings/modality_visibility';
 import { privacyDefaultToIsPublic } from '../social/run_visibility';
 import { bandsToRanges, type DistanceBandKey } from '../routes/distance_bands';
 import { assemblePublicRoute } from '../routes/public_route_assembly';
@@ -9461,6 +9462,20 @@ export async function fetchGymWorkoutsWithError(
 /// `fetchGymWorkoutsWithError` for the window.
 export async function fetchGymWorkouts(opts?: FetchGymWorkoutsOptions): Promise<GymWorkout[]> {
 	return (await fetchGymWorkoutsWithError(opts)).workouts;
+}
+
+/// Whether the user has ever logged a gym session (`gym`) or a food entry
+/// (`nutrition`): the data half of `modalityShown`. Reads at most one row, so
+/// it costs the same for a lifter with years of sessions as for none. Throws
+/// on a failed read, because the caller must not mistake an outage for "no
+/// data" and hide a modality the runner uses.
+export async function fetchModalityHasData(userId: string, modality: Modality): Promise<boolean> {
+	const { data, error } =
+		modality === 'gym'
+			? await supabase.from(TABLES.gym_workouts).select('id').eq('user_id', userId).limit(1)
+			: await supabase.from(TABLES.food_log).select('id').eq('user_id', userId).limit(1);
+	if (error) throw new Error(error.message);
+	return (data?.length ?? 0) > 0;
 }
 
 /// The two per-workout values the /gym list needs that no column carries:

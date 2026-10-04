@@ -130,6 +130,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
     super.initState();
     _tabs = _visibleTabs();
     _controller = _buildController();
+    _settleSelection();
     _tab.addListener(_adoptTab);
     widget.preferences.addListener(_onVisibilityInputs);
     widget.gymStore.addListener(_onVisibilityInputs);
@@ -155,9 +156,14 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
       initialIndex: index < 0 ? 0 : index,
     );
     controller.addListener(_publishTab);
-    // A tab that has just been hidden can't stay selected.
-    if (index < 0) _tab.value = _tabs.first;
     return controller;
+  }
+
+  /// A tab that has just been hidden can't stay selected. Run only once the
+  /// new controller is in [_controller]: the write notifies [_adoptTab],
+  /// which would otherwise drive the controller just disposed.
+  void _settleSelection() {
+    if (!_tabs.contains(_tab.value)) _tab.value = _tabs.first;
   }
 
   /// Rebuilds the strip only when the set of tabs actually changes — the
@@ -172,6 +178,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
         ..dispose();
       _tabs = next;
       _controller = _buildController();
+      _settleSelection();
     });
   }
 

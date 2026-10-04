@@ -1379,6 +1379,12 @@ abstract class AppLocalizations {
   /// **'Tap the centre button to start a run. Already on while Gym and Nutrition are hidden; long-press always opens the log menu'**
   String get prefsKeepRunPrimarySubtitle;
 
+  /// Subtitle of the Run as primary action switch while Gym and Nutrition are both hidden, when it is shown on and disabled because a tap on the centre button already starts a run
+  ///
+  /// In en, this message translates to:
+  /// **'On while Gym and Nutrition are hidden. Show either one to choose'**
+  String get prefsKeepRunPrimaryForcedSubtitle;
+
   /// Settings section heading for the Gym and Nutrition visibility toggles
   ///
   /// In en, this message translates to:

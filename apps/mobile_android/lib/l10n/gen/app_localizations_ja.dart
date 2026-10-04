@@ -775,6 +775,10 @@ class AppLocalizationsJa extends AppLocalizations {
       '中央のボタンをタップしてランを開始します。ジムと栄養が非表示の間はもともと有効です。長押しすると常に記録メニューが開きます';
 
   @override
+  String get prefsKeepRunPrimaryForcedSubtitle =>
+      'ジムと栄養が非表示の間はオンです。どちらかを表示すると選べます';
+
+  @override
   String get prefsSectionModalities => 'ジムと栄養';
 
   @override

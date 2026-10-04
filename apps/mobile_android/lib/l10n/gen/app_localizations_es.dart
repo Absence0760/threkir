@@ -803,6 +803,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Toca el botón central para empezar una carrera. Ya está activo mientras Gimnasio y Nutrición estén ocultos; mantén pulsado para abrir siempre el menú de registro';
 
   @override
+  String get prefsKeepRunPrimaryForcedSubtitle =>
+      'Activo mientras Gimnasio y Nutrición estén ocultos. Muestra uno de los dos para elegir';
+
+  @override
   String get prefsSectionModalities => 'Gimnasio y nutrición';
 
   @override

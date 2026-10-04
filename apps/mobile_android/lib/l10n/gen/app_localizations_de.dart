@@ -807,6 +807,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Tippe auf die mittlere Schaltfläche, um einen Lauf zu starten. Solange Gym und Ernährung ausgeblendet sind, ist das ohnehin aktiv; langes Drücken öffnet immer das Log-Menü';
 
   @override
+  String get prefsKeepRunPrimaryForcedSubtitle =>
+      'Aktiv, solange Gym und Ernährung ausgeblendet sind. Blende eins davon ein, um selbst zu wählen';
+
+  @override
   String get prefsSectionModalities => 'Gym & Ernährung';
 
   @override

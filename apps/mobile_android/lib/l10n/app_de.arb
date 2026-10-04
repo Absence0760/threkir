@@ -212,6 +212,7 @@
   "logFood": "Essen erfassen",
   "prefsKeepRunPrimary": "Lauf als primäre Aktion",
   "prefsKeepRunPrimarySubtitle": "Tippe auf die mittlere Schaltfläche, um einen Lauf zu starten. Solange Gym und Ernährung ausgeblendet sind, ist das ohnehin aktiv; langes Drücken öffnet immer das Log-Menü",
+  "prefsKeepRunPrimaryForcedSubtitle": "Aktiv, solange Gym und Ernährung ausgeblendet sind. Blende eins davon ein, um selbst zu wählen",
   "prefsSectionModalities": "Gym & Ernährung",
   "prefsShowGym": "Gym anzeigen",
   "prefsShowGymSubtitle": "Zeigt den Gym-Tab, „Training erfassen“ und deine Trainings auf der Startseite",

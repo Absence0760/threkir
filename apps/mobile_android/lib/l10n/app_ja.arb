@@ -212,6 +212,7 @@
   "logFood": "食事を記録",
   "prefsKeepRunPrimary": "ランを主要操作にする",
   "prefsKeepRunPrimarySubtitle": "中央のボタンをタップしてランを開始します。ジムと栄養が非表示の間はもともと有効です。長押しすると常に記録メニューが開きます",
+  "prefsKeepRunPrimaryForcedSubtitle": "ジムと栄養が非表示の間はオンです。どちらかを表示すると選べます",
   "prefsSectionModalities": "ジムと栄養",
   "prefsShowGym": "ジムを表示",
   "prefsShowGymSubtitle": "ジムタブ、「筋トレを記録」、ホームの筋トレ記録を表示します",

@@ -1052,6 +1052,10 @@
   "@prefsKeepRunPrimarySubtitle": {
     "description": "Subtitle for the run-as-primary-action settings toggle"
   },
+  "prefsKeepRunPrimaryForcedSubtitle": "On while Gym and Nutrition are hidden. Show either one to choose",
+  "@prefsKeepRunPrimaryForcedSubtitle": {
+    "description": "Subtitle of the Run as primary action switch while Gym and Nutrition are both hidden, when it is shown on and disabled because a tap on the centre button already starts a run"
+  },
   "prefsSectionModalities": "Gym & nutrition",
   "@prefsSectionModalities": {
     "description": "Settings section heading for the Gym and Nutrition visibility toggles"

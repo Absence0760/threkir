@@ -797,6 +797,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Tap the centre button to start a run. Already on while Gym and Nutrition are hidden; long-press always opens the log menu';
 
   @override
+  String get prefsKeepRunPrimaryForcedSubtitle =>
+      'On while Gym and Nutrition are hidden. Show either one to choose';
+
+  @override
   String get prefsSectionModalities => 'Gym & nutrition';
 
   @override

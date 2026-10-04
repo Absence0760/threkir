@@ -212,6 +212,7 @@
   "logFood": "Registrar comida",
   "prefsKeepRunPrimary": "Correr como acción principal",
   "prefsKeepRunPrimarySubtitle": "Toca el botón central para empezar una carrera. Ya está activo mientras Gimnasio y Nutrición estén ocultos; mantén pulsado para abrir siempre el menú de registro",
+  "prefsKeepRunPrimaryForcedSubtitle": "Activo mientras Gimnasio y Nutrición estén ocultos. Muestra uno de los dos para elegir",
   "prefsSectionModalities": "Gimnasio y nutrición",
   "prefsShowGym": "Mostrar Gimnasio",
   "prefsShowGymSubtitle": "Añade la pestaña Gimnasio, «Registrar pesas» y tus sesiones en Inicio",

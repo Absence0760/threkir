@@ -212,6 +212,7 @@
   "logFood": "Registar comida",
   "prefsKeepRunPrimary": "Corrida como ação principal",
   "prefsKeepRunPrimarySubtitle": "Toque no botão central para iniciar uma corrida. Já fica ativo enquanto Ginásio e Nutrição estiverem ocultos; manter premido abre sempre o menu de registo",
+  "prefsKeepRunPrimaryForcedSubtitle": "Ativo enquanto Ginásio e Nutrição estiverem ocultos. Mostre um deles para escolher",
   "prefsSectionModalities": "Ginásio e nutrição",
   "prefsShowGym": "Mostrar Ginásio",
   "prefsShowGymSubtitle": "Adiciona o separador Ginásio, «Registar musculação» e os seus treinos no Início",

@@ -760,7 +760,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  /// Long-press on the centre Log button always opens the full capture menu.
+  /// Long-press on the centre Log button opens the full capture menu.
   /// It used to mean one of two opposite things depending on a preference —
   /// open the menu, or navigate straight to the last-logged modality with
   /// nothing announced — so a press half a beat too long landed a runner on
@@ -769,13 +769,27 @@ class _HomeScreenState extends State<HomeScreen>
   /// Except mid-run: the button is then "return to your run" for both
   /// gestures, so a press held half a beat too long at a traffic light does
   /// not open a picker over the run.
+  ///
+  /// And with only one action left to offer — Gym and Nutrition both hidden
+  /// — a fan of one is the tap with an animation in front of it, so it is
+  /// the tap.
   void _onLogLongPress({Offset? anchor}) {
+    final offered = LogAction.values
+        .where((a) => !_hiddenLogActions.contains(a))
+        .toList();
     if (runRecordingActive.value) {
       _performLogAction(LogAction.run);
-      return;
+    } else if (offered.length == 1) {
+      _performLogAction(offered.single);
+    } else {
+      _openLogMenu(anchor: anchor);
     }
-    _openLogMenu(anchor: anchor);
   }
+
+  Set<LogAction> get _hiddenLogActions => hiddenLogActions(
+        gymShown: _gymShown,
+        nutritionShown: _nutritionShown,
+      );
 
   // The centre Log button fans the three capture actions up above itself
   // (speed-dial) rather than opening a bottom sheet; the History Log FAB keeps
@@ -784,10 +798,7 @@ class _HomeScreenState extends State<HomeScreen>
     final picked = await showLogSpeedDial(
       context: context,
       recent: logActionFromWire(widget.preferences.lastLogType),
-      hidden: hiddenLogActions(
-        gymShown: _gymShown,
-        nutritionShown: _nutritionShown,
-      ),
+      hidden: _hiddenLogActions,
       anchor: anchor,
     );
     if (picked != null) _performLogAction(picked);

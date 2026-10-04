@@ -919,10 +919,13 @@ void main() {
       await tester.pump(const Duration(seconds: 8));
     });
 
-    testWidgets('long-press opens the menu for a pure runner', (tester) async {
-      // It used to navigate straight to the last-logged modality with nothing
-      // announced, so a press half a beat too long landed someone on
-      // Nutrition.
+    testWidgets('long-press for a pure runner starts the run, as a tap does',
+        (tester) async {
+      // With Gym and Nutrition hidden the fan had one item, Log run — the tap
+      // with an animation in front of it. The long-press used to navigate
+      // straight to the last-logged modality with nothing announced, which
+      // landed someone on Nutrition; Nutrition is hidden here, so the
+      // last-logged type does not bring that back either.
       final s = await _makeStores();
       await s.prefs.setLastLogType('food');
       await _pump(tester, s);
@@ -931,10 +934,26 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      expect(find.byTooltip('Log run'), findsOneWidget);
-      // Nutrition is off until switched on, so the last-logged type does not
-      // bring it back into the menu either.
+      expect(find.byTooltip('Log run'), findsNothing,
+          reason: 'no fan of one');
       expect(find.byTooltip('Log food'), findsNothing);
+      expect(shellPage(tester), 2, reason: 'the long-press landed on the '
+          'recorder, exactly as a tap does');
+      tester.takeException();
+    });
+
+    testWidgets('long-press still fans the menu once there are two actions',
+        (tester) async {
+      final s = await _makeStores();
+      await s.prefs.setShowNutrition(true);
+      await _pump(tester, s);
+
+      await tester.longPress(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log run'), findsOneWidget);
+      expect(find.byTooltip('Log food'), findsOneWidget);
       expect(shellPage(tester), 0,
           reason: 'a long press picks, it never navigates on its own');
     });

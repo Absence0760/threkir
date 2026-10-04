@@ -805,6 +805,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Touchez le bouton central pour démarrer une course. Déjà actif tant que Muscu et Nutrition sont masqués ; un appui long ouvre toujours le menu d’enregistrement';
 
   @override
+  String get prefsKeepRunPrimaryForcedSubtitle =>
+      'Actif tant que Muscu et Nutrition sont masqués. Affichez l’un des deux pour choisir';
+
+  @override
   String get prefsSectionModalities => 'Muscu et nutrition';
 
   @override

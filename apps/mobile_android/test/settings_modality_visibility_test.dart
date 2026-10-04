@@ -108,6 +108,87 @@ void main() {
     expect(find.text('Show Nutrition'), findsNothing);
   });
 
+  group('rows that only mean something with a modality shown', () {
+    SwitchListTile keyed(WidgetTester tester, String key) =>
+        tester.widget<SwitchListTile>(find.byKey(Key(key)));
+
+    // The readiness row sits right under "Week starts on", far down a page
+    // that builds lazily.
+    Future<void> scrollToWeekStart(WidgetTester tester) =>
+        tester.scrollUntilVisible(
+          find.text('Week starts on'),
+          250,
+          scrollable: find.byType(Scrollable).first,
+        );
+
+    testWidgets('Run as primary action reads on, and cannot be turned off, '
+        'while both are hidden', (tester) async {
+      // It read Off for a behaviour the runner could see was on: with both
+      // hidden a tap on the centre button already starts a run.
+      final s = await stores(tester);
+      await pump(tester, s.prefs, gym: s.gym, food: s.food);
+      final primary = keyed(tester, 'prefsKeepRunPrimary');
+      expect(primary.value, isTrue);
+      expect(primary.onChanged, isNull);
+      expect(
+          find.text(
+              'On while Gym and Nutrition are hidden. Show either one to choose'),
+          findsOneWidget);
+      expect(s.prefs.keepRunPrimary, isFalse,
+          reason: 'showing the derived state stores nothing');
+    });
+
+    testWidgets('showing a modality gives the switch back', (tester) async {
+      final s = await stores(tester);
+      await pump(tester, s.prefs, gym: s.gym, food: s.food);
+
+      await tester.tap(find.widgetWithText(SwitchListTile, 'Show Nutrition'));
+      await tester.pumpAndSettle();
+
+      final primary = keyed(tester, 'prefsKeepRunPrimary');
+      expect(primary.value, isFalse);
+      expect(primary.onChanged, isNotNull);
+    });
+
+    testWidgets('the gym readiness switch is hidden with Gym hidden and no '
+        'lift, and back once there is either', (tester) async {
+      final s = await stores(tester);
+      await pump(tester, s.prefs, gym: s.gym, food: s.food);
+      await scrollToWeekStart(tester);
+      expect(find.byKey(const Key('prefsExcludeGymFromReadiness')),
+          findsNothing);
+
+      await s.prefs.setShowGym(true);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('prefsExcludeGymFromReadiness')),
+          findsOneWidget);
+    });
+
+    testWidgets('a lift on record keeps the gym readiness switch even with '
+        'Gym switched off', (tester) async {
+      // The lift still feeds readiness, so there is still something to
+      // exclude.
+      final s = await stores(tester, loggedLift: true);
+      await s.prefs.setShowGym(false);
+      await pump(tester, s.prefs, gym: s.gym, food: s.food);
+      await scrollToWeekStart(tester);
+      expect(find.byKey(const Key('prefsExcludeGymFromReadiness')),
+          findsOneWidget);
+    });
+
+    testWidgets('a mount without the stores keeps both rows as they were',
+        (tester) async {
+      final s = await stores(tester);
+      await pump(tester, s.prefs);
+      final primary = keyed(tester, 'prefsKeepRunPrimary');
+      expect(primary.value, isFalse);
+      expect(primary.onChanged, isNotNull);
+      await scrollToWeekStart(tester);
+      expect(find.byKey(const Key('prefsExcludeGymFromReadiness')),
+          findsOneWidget);
+    });
+  });
+
   test('sign-out clears the choice back to the data default', () async {
     SharedPreferences.setMockInitialValues(
         {'show_gym': true, 'show_nutrition': false});

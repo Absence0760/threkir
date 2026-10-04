@@ -212,6 +212,7 @@
   "logFood": "Enregistrer un aliment",
   "prefsKeepRunPrimary": "Course comme action principale",
   "prefsKeepRunPrimarySubtitle": "Touchez le bouton central pour démarrer une course. Déjà actif tant que Muscu et Nutrition sont masqués ; un appui long ouvre toujours le menu d’enregistrement",
+  "prefsKeepRunPrimaryForcedSubtitle": "Actif tant que Muscu et Nutrition sont masqués. Affichez l’un des deux pour choisir",
   "prefsSectionModalities": "Muscu et nutrition",
   "prefsShowGym": "Afficher la muscu",
   "prefsShowGymSubtitle": "Ajoute l’onglet Muscu, « Enregistrer la muscu » et vos séances sur l’accueil",

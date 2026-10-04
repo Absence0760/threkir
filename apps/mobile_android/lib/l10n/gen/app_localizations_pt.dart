@@ -806,6 +806,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Toque no botão central para iniciar uma corrida. Já fica ativo enquanto Ginásio e Nutrição estiverem ocultos; manter premido abre sempre o menu de registo';
 
   @override
+  String get prefsKeepRunPrimaryForcedSubtitle =>
+      'Ativo enquanto Ginásio e Nutrição estiverem ocultos. Mostre um deles para escolher';
+
+  @override
   String get prefsSectionModalities => 'Ginásio e nutrição';
 
   @override
@@ -15211,6 +15215,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get prefsKeepRunPrimarySubtitle =>
       'Toque no botão central para iniciar uma corrida. Já fica ativo enquanto Academia e Nutrição estiverem ocultas; pressione e segure para sempre abrir o menu de registro';
+
+  @override
+  String get prefsKeepRunPrimaryForcedSubtitle =>
+      'Ativo enquanto Academia e Nutrição estiverem ocultas. Mostre uma delas para escolher';
 
   @override
   String get prefsSectionModalities => 'Academia e nutrição';

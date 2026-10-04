@@ -924,6 +924,14 @@
   "@logA11yLabel": {
     "description": "Screen-reader label for the centre Log action button"
   },
+  "navStartRun": "Start run",
+  "@navStartRun": {
+    "description": "Caption under the centre nav button when a tap on it starts a run (Gym and Nutrition both hidden, or the run-primary preference on). Must fit the 56dp centre slot; deliberately not the bare noun \"Run\", which decisions § 1649 keeps out of the tab-label set"
+  },
+  "logStartRunA11yLabel": "Start a run",
+  "@logStartRunA11yLabel": {
+    "description": "Screen-reader label for the centre nav button when a tap on it starts a run"
+  },
   "navFitness": "Fitness",
   "@navFitness": {
     "description": "Bottom-nav label for the Fitness modality hub (All/Runs/Gym/Nutrition)"
@@ -2874,6 +2882,14 @@
   "historyAddRunTooltip": "Add a run manually",
   "@historyAddRunTooltip": {
     "description": "Tooltip on the add-run floating action button"
+  },
+  "historyAddPastRun": "Add past run",
+  "@historyAddPastRun": {
+    "description": "Label of the Runs list's manual-entry button and empty-state action: adds a run that already happened, as distinct from the centre button, which records one"
+  },
+  "historyEmptyBodyRunPrimary": "Tap Start run to record a run, or add one you have already finished",
+  "@historyEmptyBodyRunPrimary": {
+    "description": "Empty Runs list body when the centre button starts a run, so it names that button by its run caption (navStartRun) rather than Log"
   },
   "historyLogTooltip": "Log a run, lift or meal",
   "@historyLogTooltip": {

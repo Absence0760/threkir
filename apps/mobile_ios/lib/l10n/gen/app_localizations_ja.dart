@@ -678,6 +678,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get logA11yLabel => 'アクティビティを記録';
 
   @override
+  String get navStartRun => 'ラン開始';
+
+  @override
+  String get logStartRunA11yLabel => 'ランを開始';
+
+  @override
   String get navFitness => 'フィットネス';
 
   @override
@@ -2115,6 +2121,13 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get historyAddRunTooltip => '手動でランを追加';
+
+  @override
+  String get historyAddPastRun => '過去のランを追加';
+
+  @override
+  String get historyEmptyBodyRunPrimary =>
+      '「ラン開始」をタップしてランを記録するか、すでに走ったランを追加しましょう';
 
   @override
   String get historyLogTooltip => 'ラン・筋トレ・食事を記録';

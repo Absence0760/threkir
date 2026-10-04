@@ -707,6 +707,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get logA11yLabel => 'Registar uma atividade';
 
   @override
+  String get navStartRun => 'Correr';
+
+  @override
+  String get logStartRunA11yLabel => 'Iniciar uma corrida';
+
+  @override
   String get navFitness => 'Fitness';
 
   @override
@@ -2233,6 +2239,13 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get historyAddRunTooltip => 'Adicionar uma corrida manualmente';
+
+  @override
+  String get historyAddPastRun => 'Adicionar corrida anterior';
+
+  @override
+  String get historyEmptyBodyRunPrimary =>
+      'Toque em Correr para gravar uma corrida ou adicione uma que já tenha feito';
 
   @override
   String get historyLogTooltip => 'Registar corrida, treino ou refeição';
@@ -15082,6 +15095,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get logA11yLabel => 'Registrar uma atividade';
 
   @override
+  String get navStartRun => 'Correr';
+
+  @override
+  String get logStartRunA11yLabel => 'Iniciar uma corrida';
+
+  @override
   String get navFitness => 'Fitness';
 
   @override
@@ -16607,6 +16626,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get historyAddRunTooltip => 'Adicionar uma corrida manualmente';
+
+  @override
+  String get historyAddPastRun => 'Adicionar corrida anterior';
+
+  @override
+  String get historyEmptyBodyRunPrimary =>
+      'Toque em Correr para gravar uma corrida ou adicione uma que você já fez';
 
   @override
   String get historyLogTooltip => 'Registrar corrida, treino ou refeição';

@@ -184,6 +184,15 @@ class _HomeScreenState extends State<HomeScreen>
   /// `initState` and never re-created.
   final _currentIndex = ValueNotifier<int>(_initialIndex);
 
+  /// Everything the centre button's look reads: whether a tap starts a run
+  /// turns on the preferences and on whether a lift or a meal exists, so the
+  /// button and its caption rebuild on any of them.
+  late final Listenable _centreInputs = Listenable.merge([
+    widget.preferences,
+    widget.gymStore,
+    widget.foodStore,
+  ]);
+
   late final PageController _pageController =
       PageController(initialPage: _initialIndex);
 
@@ -818,6 +827,23 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  /// The centre button's icon, caption and spoken label. When a tap starts a
+  /// run it says so: a "+" captioned "Log" reads as "add an entry", and a
+  /// first-timer only found out it opened the GPS recorder by pressing it.
+  ({IconData icon, String label, String semantics}) _centreLook(
+          AppLocalizations l10n) =>
+      _runIsPrimary
+          ? (
+              icon: Icons.directions_run,
+              label: l10n.navStartRun,
+              semantics: l10n.logStartRunA11yLabel,
+            )
+          : (
+              icon: Icons.add,
+              label: l10n.navLog,
+              semantics: l10n.logA11yLabel,
+            );
+
   String _logPageName(AppLocalizations l10n, LogAction action) =>
       switch (action) {
         LogAction.run => l10n.navRun,
@@ -953,7 +979,14 @@ class _HomeScreenState extends State<HomeScreen>
                 // The docked centre Log FAB fills this 56 dp slot; the caption
                 // gives the centre action a visible text label like every other
                 // nav destination, so it isn't the one unlabelled "+" (#256).
-                SizedBox(width: 56, child: _CentreLogLabel(label: l10n.navLog)),
+                SizedBox(
+                  width: 56,
+                  child: ListenableBuilder(
+                    listenable: _centreInputs,
+                    builder: (context, _) =>
+                        _CentreLogLabel(label: _centreLook(l10n).label),
+                  ),
+                ),
                 _BottomNavItem(
                   icon: Icons.public,
                   label: l10n.navSocial,
@@ -990,8 +1023,9 @@ class _HomeScreenState extends State<HomeScreen>
   // speed-dial fans from the button's own position instead of the
   // bottom-centre dock.
   Widget _logFab({bool anchored = false}) {
-    return Builder(
-      builder: (fabContext) {
+    return ListenableBuilder(
+      listenable: _centreInputs,
+      builder: (fabContext, _) {
         final l10n = AppLocalizations.of(fabContext);
         Offset? anchorOf() {
           if (!anchored) return null;
@@ -1000,11 +1034,12 @@ class _HomeScreenState extends State<HomeScreen>
           return box.localToGlobal(box.size.center(Offset.zero));
         }
 
+        final look = _centreLook(l10n);
         return GestureDetector(
           onLongPress: () => _onLogLongPress(anchor: anchorOf()),
           child: Semantics(
             button: true,
-            label: l10n.logA11yLabel,
+            label: look.semantics,
             // The tooltip is OURS and manually triggered, never the
             // FloatingActionButton's own: a `tooltip:` builds a Tooltip
             // INSIDE the button, whose long-press recognizer enters the
@@ -1013,11 +1048,11 @@ class _HomeScreenState extends State<HomeScreen>
             // FAB. The visible caption under the button carries the label
             // anyway (#256), so nothing is lost by not showing it on hold.
             child: Tooltip(
-              message: l10n.navLog,
+              message: look.label,
               triggerMode: TooltipTriggerMode.manual,
               child: FloatingActionButton(
                 onPressed: () => _onLogTap(anchor: anchorOf()),
-                child: const Icon(Icons.add),
+                child: Icon(look.icon),
               ),
             ),
           ),

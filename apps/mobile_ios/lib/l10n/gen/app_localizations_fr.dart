@@ -705,6 +705,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get logA11yLabel => 'Enregistrer une activité';
 
   @override
+  String get navStartRun => 'Courir';
+
+  @override
+  String get logStartRunA11yLabel => 'Démarrer une course';
+
+  @override
   String get navFitness => 'Fitness';
 
   @override
@@ -2240,6 +2246,13 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get historyAddRunTooltip => 'Ajouter une course manuellement';
+
+  @override
+  String get historyAddPastRun => 'Ajouter une course passée';
+
+  @override
+  String get historyEmptyBodyRunPrimary =>
+      'Touchez Courir pour enregistrer une course, ou ajoutez-en une déjà terminée';
 
   @override
   String get historyLogTooltip =>

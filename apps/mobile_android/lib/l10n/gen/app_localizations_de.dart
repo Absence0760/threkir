@@ -708,6 +708,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get logA11yLabel => 'Aktivität erfassen';
 
   @override
+  String get navStartRun => 'Laufen';
+
+  @override
+  String get logStartRunA11yLabel => 'Lauf starten';
+
+  @override
   String get navFitness => 'Fitness';
 
   @override
@@ -2237,6 +2243,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get historyAddRunTooltip => 'Lauf manuell hinzufügen';
+
+  @override
+  String get historyAddPastRun => 'Vergangenen Lauf hinzufügen';
+
+  @override
+  String get historyEmptyBodyRunPrimary =>
+      'Tippe auf Laufen, um einen Lauf aufzuzeichnen, oder füge einen bereits absolvierten hinzu';
 
   @override
   String get historyLogTooltip => 'Lauf, Training oder Mahlzeit erfassen';

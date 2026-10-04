@@ -1187,6 +1187,18 @@ abstract class AppLocalizations {
   /// **'Log an activity'**
   String get logA11yLabel;
 
+  /// Caption under the centre nav button when a tap on it starts a run (Gym and Nutrition both hidden, or the run-primary preference on). Must fit the 56dp centre slot; deliberately not the bare noun "Run", which decisions § 1649 keeps out of the tab-label set
+  ///
+  /// In en, this message translates to:
+  /// **'Start run'**
+  String get navStartRun;
+
+  /// Screen-reader label for the centre nav button when a tap on it starts a run
+  ///
+  /// In en, this message translates to:
+  /// **'Start a run'**
+  String get logStartRunA11yLabel;
+
   /// Bottom-nav label for the Fitness modality hub (All/Runs/Gym/Nutrition)
   ///
   /// In en, this message translates to:
@@ -3778,6 +3790,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add a run manually'**
   String get historyAddRunTooltip;
+
+  /// Label of the Runs list's manual-entry button and empty-state action: adds a run that already happened, as distinct from the centre button, which records one
+  ///
+  /// In en, this message translates to:
+  /// **'Add past run'**
+  String get historyAddPastRun;
+
+  /// Empty Runs list body when the centre button starts a run, so it names that button by its run caption (navStartRun) rather than Log
+  ///
+  /// In en, this message translates to:
+  /// **'Tap Start run to record a run, or add one you have already finished'**
+  String get historyEmptyBodyRunPrimary;
 
   /// Tooltip on the History add button when it logs a lift, a meal, or opens the run/lift/meal picker
   ///

@@ -151,6 +151,13 @@ Future<void> _seedLoggedLift(WidgetTester tester, dynamic s) async {
   });
 }
 
+/// The centre button's `Semantics` wrapper carrying [label] — read off the widget, so the test
+/// needs no semantics tree.
+Finder _semanticsLabelled(String label) => find.ancestor(
+    of: find.byType(FloatingActionButton),
+    matching: find.byWidgetPredicate(
+        (w) => w is Semantics && w.properties.label == label));
+
 class _StampApi extends ApiClient {
   int markOnboardedCalls = 0;
   bool failStamp = false;
@@ -260,6 +267,7 @@ void main() {
       // an unlabelled "+" FAB with a tooltip only. It now caption's "Log"
       // inside the bar so the affordance is discoverable without a hover.
       final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
       await _pump(tester, s);
       final bar = find.byType(BottomAppBar);
       expect(
@@ -267,6 +275,49 @@ void main() {
         findsOneWidget,
         reason: 'the centre Log action must carry a visible label in the bar',
       );
+      expect(_semanticsLabelled('Log an activity'), findsOneWidget);
+      expect(
+        find.descendant(
+            of: find.byType(FloatingActionButton),
+            matching: find.byIcon(Icons.add)),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('when a tap starts a run, the centre button says so',
+        (tester) async {
+      // "+ Log" read as "add an entry" for a runner whose tap opened the GPS
+      // recorder; they only found out what it did by pressing it.
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final bar = find.byType(BottomAppBar);
+      expect(find.descendant(of: bar, matching: find.text('Start run')),
+          findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.text('Log')), findsNothing);
+      expect(_semanticsLabelled('Start a run'), findsOneWidget);
+      expect(
+        find.descendant(
+            of: find.byType(FloatingActionButton),
+            matching: find.byIcon(Icons.directions_run)),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('the centre button turns back into Log once a lift exists',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final bar = find.byType(BottomAppBar);
+      expect(find.descendant(of: bar, matching: find.text('Start run')),
+          findsOneWidget);
+
+      await _seedLoggedLift(tester, s);
+      await tester.pump();
+
+      expect(find.descendant(of: bar, matching: find.text('Log')),
+          findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.text('Start run')),
+          findsNothing);
     });
 
     testWidgets('initial page is Home (welcome empty state)', (tester) async {

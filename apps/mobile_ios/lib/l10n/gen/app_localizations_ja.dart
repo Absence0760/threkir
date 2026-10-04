@@ -690,6 +690,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get logModalityShownNutrition => '栄養を表示しました';
 
   @override
+  String get navRecording => '記録中';
+
+  @override
+  String get logReturnToRunA11yLabel => '記録中のランに戻る';
+
+  @override
   String get navFitness => 'フィットネス';
 
   @override

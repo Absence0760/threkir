@@ -1211,6 +1211,18 @@ abstract class AppLocalizations {
   /// **'Nutrition is now shown'**
   String get logModalityShownNutrition;
 
+  /// Caption under the centre nav button while a run is recording; a tap returns to the recorder. Must fit the 56dp centre slot
+  ///
+  /// In en, this message translates to:
+  /// **'Recording'**
+  String get navRecording;
+
+  /// Screen-reader label for the centre nav button while a run is recording
+  ///
+  /// In en, this message translates to:
+  /// **'Return to your run'**
+  String get logReturnToRunA11yLabel;
+
   /// Bottom-nav label for the Fitness modality hub (All/Runs/Gym/Nutrition)
   ///
   /// In en, this message translates to:

@@ -718,6 +718,12 @@ class AppLocalizationsFr extends AppLocalizations {
       'La nutrition est maintenant affichée';
 
   @override
+  String get navRecording => 'En cours';
+
+  @override
+  String get logReturnToRunA11yLabel => 'Revenir à votre course';
+
+  @override
   String get navFitness => 'Fitness';
 
   @override

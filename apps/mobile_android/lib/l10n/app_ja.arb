@@ -184,6 +184,8 @@
   "logStartRunA11yLabel": "ランを開始",
   "logModalityShownGym": "ジムを表示しました",
   "logModalityShownNutrition": "栄養を表示しました",
+  "navRecording": "記録中",
+  "logReturnToRunA11yLabel": "記録中のランに戻る",
   "navFitness": "フィットネス",
   "navYou": "あなた",
   "fitnessTabRuns": "ラン",

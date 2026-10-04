@@ -597,6 +597,74 @@ void main() {
     });
   });
 
+  group('the centre button mid-run', () {
+    double shellPage(WidgetTester tester) {
+      final controller =
+          tester.widget<PageView>(find.byType(PageView).first).controller!;
+      return controller.hasClients
+          ? controller.page!
+          : controller.initialPage.toDouble();
+    }
+
+    testWidgets('says the run is recording, in the error colour',
+        (tester) async {
+      // Away from the recorder the shell looked exactly as it does idle, and
+      // the way back was a "+" that reads as "start another".
+      final s = await _makeStores();
+      await _pump(tester, s);
+      runRecordingActive.value = true;
+      await tester.pump();
+
+      final bar = find.byType(BottomAppBar);
+      expect(find.descendant(of: bar, matching: find.text('Recording')),
+          findsOneWidget);
+      expect(_semanticsLabelled('Return to your run'), findsOneWidget);
+      final fab = tester
+          .widget<FloatingActionButton>(find.byType(FloatingActionButton));
+      final scheme = Theme.of(tester.element(find.byType(FloatingActionButton)))
+          .colorScheme;
+      expect(fab.backgroundColor, scheme.error);
+
+      runRecordingActive.value = false;
+      await tester.pump();
+      expect(find.descendant(of: bar, matching: find.text('Recording')),
+          findsNothing);
+    });
+
+    testWidgets('a tap returns to the recorder rather than fanning the menu',
+        (tester) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await _pump(tester, s);
+      runRecordingActive.value = true;
+      await tester.pump();
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log lift'), findsNothing);
+      expect(shellPage(tester), 2, reason: 'the tap landed on the recorder');
+      tester.takeException();
+    });
+
+    testWidgets('a long-press returns to the recorder too', (tester) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await _pump(tester, s);
+      runRecordingActive.value = true;
+      await tester.pump();
+
+      await tester.longPress(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log lift'), findsNothing);
+      expect(shellPage(tester), 2);
+      tester.takeException();
+    });
+  });
+
   group('system back walks toward Home and guards a live run', () {
     /// Records the one platform call that closes the app, so a test can tell
     /// "back navigated" from "back exited" — which is the whole distinction

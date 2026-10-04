@@ -184,10 +184,12 @@ class _HomeScreenState extends State<HomeScreen>
   /// `initState` and never re-created.
   final _currentIndex = ValueNotifier<int>(_initialIndex);
 
-  /// Everything the centre button's look reads: whether a tap starts a run
-  /// turns on the preferences and on whether a lift or a meal exists, so the
-  /// button and its caption rebuild on any of them.
+  /// Everything the centre button's look reads: whether a run is recording,
+  /// and whether a tap starts one, which turns on the preferences and on
+  /// whether a lift or a meal exists. The button and its caption rebuild on
+  /// any of them.
   late final Listenable _centreInputs = Listenable.merge([
+    runRecordingActive,
     widget.preferences,
     widget.gymStore,
     widget.foodStore,
@@ -744,8 +746,9 @@ class _HomeScreenState extends State<HomeScreen>
       );
 
   /// Tap on the centre Log button: the primary capture action for this user.
+  /// While a run records it is the way back to it instead.
   void _onLogTap({Offset? anchor}) {
-    if (_runIsPrimary) {
+    if (runRecordingActive.value || _runIsPrimary) {
       _performLogAction(LogAction.run);
     } else {
       _openLogMenu(anchor: anchor);
@@ -757,7 +760,17 @@ class _HomeScreenState extends State<HomeScreen>
   /// open the menu, or navigate straight to the last-logged modality with
   /// nothing announced — so a press half a beat too long landed a runner on
   /// Nutrition. One gesture, one meaning.
-  void _onLogLongPress({Offset? anchor}) => _openLogMenu(anchor: anchor);
+  ///
+  /// Except mid-run: the button is then "return to your run" for both
+  /// gestures, so a press held half a beat too long at a traffic light does
+  /// not open a picker over the run.
+  void _onLogLongPress({Offset? anchor}) {
+    if (runRecordingActive.value) {
+      _performLogAction(LogAction.run);
+      return;
+    }
+    _openLogMenu(anchor: anchor);
+  }
 
   // The centre Log button fans the three capture actions up above itself
   // (speed-dial) rather than opening a bottom sheet; the History Log FAB keeps
@@ -869,19 +882,34 @@ class _HomeScreenState extends State<HomeScreen>
   /// The centre button's icon, caption and spoken label. When a tap starts a
   /// run it says so: a "+" captioned "Log" reads as "add an entry", and a
   /// first-timer only found out it opened the GPS recorder by pressing it.
-  ({IconData icon, String label, String semantics}) _centreLook(
-          AppLocalizations l10n) =>
-      _runIsPrimary
-          ? (
-              icon: Icons.directions_run,
-              label: l10n.navStartRun,
-              semantics: l10n.logStartRunA11yLabel,
-            )
-          : (
-              icon: Icons.add,
-              label: l10n.navLog,
-              semantics: l10n.logA11yLabel,
-            );
+  ///
+  /// Mid-run the shell looked exactly as it does idle, and the way back to the
+  /// recorder was a "+" that reads as "start another". So while a run records
+  /// the button turns the error colour and says so, and a tap returns to it.
+  ({IconData icon, String label, String semantics, bool recording})
+      _centreLook(AppLocalizations l10n) {
+    if (runRecordingActive.value) {
+      return (
+        icon: Icons.fiber_manual_record,
+        label: l10n.navRecording,
+        semantics: l10n.logReturnToRunA11yLabel,
+        recording: true,
+      );
+    }
+    return _runIsPrimary
+        ? (
+            icon: Icons.directions_run,
+            label: l10n.navStartRun,
+            semantics: l10n.logStartRunA11yLabel,
+            recording: false,
+          )
+        : (
+            icon: Icons.add,
+            label: l10n.navLog,
+            semantics: l10n.logA11yLabel,
+            recording: false,
+          );
+  }
 
   String _logPageName(AppLocalizations l10n, LogAction action) =>
       switch (action) {
@@ -1022,8 +1050,11 @@ class _HomeScreenState extends State<HomeScreen>
                   width: 56,
                   child: ListenableBuilder(
                     listenable: _centreInputs,
-                    builder: (context, _) =>
-                        _CentreLogLabel(label: _centreLook(l10n).label),
+                    builder: (context, _) {
+                      final look = _centreLook(l10n);
+                      return _CentreLogLabel(
+                          label: look.label, alert: look.recording);
+                    },
                   ),
                 ),
                 _BottomNavItem(
@@ -1074,6 +1105,7 @@ class _HomeScreenState extends State<HomeScreen>
         }
 
         final look = _centreLook(l10n);
+        final scheme = Theme.of(fabContext).colorScheme;
         return GestureDetector(
           onLongPress: () => _onLogLongPress(anchor: anchorOf()),
           child: Semantics(
@@ -1090,6 +1122,8 @@ class _HomeScreenState extends State<HomeScreen>
               message: look.label,
               triggerMode: TooltipTriggerMode.manual,
               child: FloatingActionButton(
+                backgroundColor: look.recording ? scheme.error : null,
+                foregroundColor: look.recording ? scheme.onError : null,
                 onPressed: () => _onLogTap(anchor: anchorOf()),
                 child: Icon(look.icon),
               ),
@@ -1184,7 +1218,11 @@ class _BottomNavItem extends StatelessWidget {
 /// doesn't double-announce over the FAB's own semantics label.
 class _CentreLogLabel extends StatelessWidget {
   final String label;
-  const _CentreLogLabel({required this.label});
+
+  /// Tints the caption the error colour, matching the button above it while
+  /// a run records.
+  final bool alert;
+  const _CentreLogLabel({required this.label, this.alert = false});
 
   @override
   Widget build(BuildContext context) {
@@ -1202,8 +1240,11 @@ class _CentreLogLabel extends StatelessWidget {
           ExcludeSemantics(
             child: Text(
               label,
-              style: theme.textTheme.labelSmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: alert
+                    ? theme.colorScheme.error
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),

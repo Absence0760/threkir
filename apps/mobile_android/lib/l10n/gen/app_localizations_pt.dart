@@ -719,6 +719,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get logModalityShownNutrition => 'A Nutrição passou a ser mostrada';
 
   @override
+  String get navRecording => 'A gravar';
+
+  @override
+  String get logReturnToRunA11yLabel => 'Voltar à sua corrida';
+
+  @override
   String get navFitness => 'Fitness';
 
   @override
@@ -15111,6 +15117,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get logModalityShownNutrition => 'A Nutrição passou a ser mostrada';
+
+  @override
+  String get navRecording => 'Gravando';
+
+  @override
+  String get logReturnToRunA11yLabel => 'Voltar para sua corrida';
 
   @override
   String get navFitness => 'Fitness';

@@ -184,6 +184,8 @@
   "logStartRunA11yLabel": "Iniciar uma corrida",
   "logModalityShownGym": "O Ginásio passou a ser mostrado",
   "logModalityShownNutrition": "A Nutrição passou a ser mostrada",
+  "navRecording": "A gravar",
+  "logReturnToRunA11yLabel": "Voltar à sua corrida",
   "navFitness": "Fitness",
   "navYou": "Tu",
   "fitnessTabRuns": "Corridas",

@@ -1001,7 +1001,12 @@ class _DashboardScreenState extends State<DashboardScreen>
       final latestRun = _latestRun(runs);
       final latestRunSection =
           latestRun == null ? null : _latestRunSection(latestRun, unit);
-      final goalsSection = _goalsSection(theme, unit, runs, goals, now);
+      // An empty-goals card earns the slot above the runner's own numbers on
+      // a new account, not on visit 200: once there is a run it shrinks to a
+      // one-line link under the period stats.
+      final goalsSection = goals.isEmpty && runs.isNotEmpty
+          ? null
+          : _goalsSection(theme, unit, runs, goals, now);
       // Compact 3-column stat strip — replaced the previous stacked
       // "This Week" / "This Month" / "All Time" cards (~480 px each +
       // section headers). Same data, same tap-through into PeriodSummary
@@ -1048,25 +1053,43 @@ class _DashboardScreenState extends State<DashboardScreen>
       // in the app (#666 I8). Web renders it as a labelled link beside the
       // dashboard stat grid; this is that link, under the period cards it
       // summarises.
-      final recapLink = api == null
+      final recapButton = api == null
           ? null
-          : Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (_) => RecapScreen(
-                      runStore: widget.runStore,
-                      preferences: widget.preferences,
-                      api: api,
-                    ),
+          : TextButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => RecapScreen(
+                    runStore: widget.runStore,
+                    preferences: widget.preferences,
+                    api: api,
                   ),
                 ),
-                icon: const Icon(Icons.auto_awesome, size: 18),
-                label: Text(l10n.dashboardRecapTooltip),
               ),
+              icon: const Icon(Icons.auto_awesome, size: 18),
+              label: Text(l10n.dashboardRecapTooltip),
             );
+      final addGoalButton = goalsSection != null
+          ? null
+          : TextButton.icon(
+              key: const Key('dashboardAddGoalLink'),
+              onPressed: _newGoal,
+              icon: const Icon(Icons.flag_outlined, size: 18),
+              label: Text(l10n.dashboardSetGoal),
+            );
+      // A Wrap rather than a Row, so the two labels take a line each in a
+      // locale too long to fit both rather than overflowing.
+      final periodLinks = addGoalButton != null && recapButton != null
+          ? Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [addGoalButton, recapButton],
+            )
+          : addGoalButton != null
+              ? Align(alignment: Alignment.centerLeft, child: addGoalButton)
+              : recapButton != null
+                  ? Align(alignment: Alignment.centerRight, child: recapButton)
+                  : null;
       final thisWeekCard = Card(
         child: Padding(
           padding: _kCardPadding,
@@ -1184,6 +1207,18 @@ class _DashboardScreenState extends State<DashboardScreen>
         // alternate columns; internally self-hiding cards render
         // zero-height so a hidden card never reserves a grid cell.
         final modalityBody = _todayModalityBody();
+        final leadBlocks = [?workoutCard, ?latestRunSection, ?modalityBody];
+        final leadColumn = leadBlocks.isEmpty
+            ? null
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final (i, block) in leadBlocks.indexed) ...[
+                    if (i > 0) _kSectionGap,
+                    block,
+                  ],
+                ],
+              );
         final left = <Widget>[];
         final right = <Widget>[];
         var slot = 0;
@@ -1219,37 +1254,21 @@ class _DashboardScreenState extends State<DashboardScreen>
               actionToolbar,
               pendingBanner,
               if (coach != null) ...[coach, _kSectionGap],
-              if (workoutCard != null ||
-                  latestRunSection != null ||
-                  modalityBody != null)
+              if (leadColumn != null && goalsSection != null)
                 Row(
                   key: const Key('dashboardExpandedLeadRow'),
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          for (final (i, block) in [
-                            ?workoutCard,
-                            ?latestRunSection,
-                            ?modalityBody,
-                          ].indexed) ...[
-                            if (i > 0) _kSectionGap,
-                            block,
-                          ],
-                        ],
-                      ),
-                    ),
+                    Expanded(child: leadColumn),
                     const SizedBox(width: 16),
                     Expanded(child: goalsSection),
                   ],
                 )
-              else
-                goalsSection,
-              _kSectionGap,
+              else if (leadColumn ?? goalsSection case final lead?)
+                lead,
+              if (leadColumn != null || goalsSection != null) _kSectionGap,
               periodRow,
-              if (recapLink != null) recapLink,
+              if (periodLinks != null) periodLinks,
               _kSectionGap,
               thisWeekCard,
               _kSectionGap,
@@ -1289,10 +1308,9 @@ class _DashboardScreenState extends State<DashboardScreen>
             // logged today, so a pure runner sees nothing new here
             // (multi_modal.md § Home, anti-clutter checklist).
             ..._todayModalitySection(),
-            goalsSection,
-            _kSectionGap,
+            if (goalsSection != null) ...[goalsSection, _kSectionGap],
             periodRow,
-            if (recapLink != null) recapLink,
+            if (periodLinks != null) periodLinks,
             _kSectionGap,
             // Every card below names itself with a ChartCardHeader, so the
             // stack separates by the card grammar (§482's 4dp vertical margin

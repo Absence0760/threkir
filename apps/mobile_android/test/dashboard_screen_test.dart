@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/age_grade.dart';
+import '../lib/goals.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_food_store.dart';
 import '../lib/local_gym_store.dart';
@@ -415,18 +416,88 @@ void main() {
           await tester.pump();
           await tester.pump();
 
-          // 'Goals' is near the top of the list and visible in the test
+          // 'Last run' is near the top of the list and visible in the test
           // viewport without scrolling. The activity stat strip
           // (WEEK / MONTH / ALL TIME) replaced the previous stacked
           // section cards — pin its all-caps labels to prove the strip
           // mounted.
-          expect(find.text('Goals'), findsOneWidget);
+          expect(find.text('Last run'), findsOneWidget);
           expect(find.text('WEEK'), findsOneWidget);
           expect(find.text('MONTH'), findsOneWidget);
           expect(find.text('ALL TIME'), findsOneWidget);
         } finally {
           dir.deleteSync(recursive: true);
         }
+      });
+    });
+
+    group('goals for a runner with runs', () {
+      Future<Preferences> pumpWithRun(WidgetTester tester, Directory dir,
+          {RunGoal? goal}) async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = Preferences();
+        await prefs.init();
+        if (goal != null) await prefs.upsertGoal(goal);
+        final seedStore = LocalRunStore();
+        await seedStore.init(overrideDirectory: dir);
+        await seedStore.save(_run(id: 'r1'));
+        final runStore = LocalRunStore();
+        await runStore.init(overrideDirectory: dir);
+        await tester.pumpWidget(MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: DashboardScreen(
+            runStore: runStore,
+            routeStore: LocalRouteStore(),
+            gymStore: LocalGymStore(),
+            foodStore: LocalFoodStore(),
+            preferences: prefs,
+          ),
+        ));
+        await tester.pump();
+        await tester.pump();
+        return prefs;
+      }
+
+      testWidgets('no goals collapses to a one-line link under the period '
+          'stats', (tester) async {
+        // A runner with 40 runs and no interest in goals saw the "Set your
+        // first goal" card above this week's distance on every launch.
+        await tester.runAsync(() async {
+          final dir = Directory.systemTemp.createTempSync('dashboard_nogoal_');
+          try {
+            await pumpWithRun(tester, dir);
+            expect(find.text('Goals'), findsNothing);
+            expect(find.text('Set your first goal'), findsNothing);
+            final link = find.byKey(const Key('dashboardAddGoalLink'));
+            expect(link, findsOneWidget);
+            expect(find.descendant(of: link, matching: find.text('Set a goal')),
+                findsOneWidget);
+            expect(tester.getTopLeft(link).dy,
+                greaterThan(tester.getBottomLeft(find.text('WEEK')).dy),
+                reason: 'the link sits below the runner\'s own numbers');
+          } finally {
+            dir.deleteSync(recursive: true);
+          }
+        });
+      });
+
+      testWidgets('a set goal keeps its section above the period stats',
+          (tester) async {
+        await tester.runAsync(() async {
+          final dir = Directory.systemTemp.createTempSync('dashboard_goal_');
+          try {
+            await pumpWithRun(tester, dir,
+                goal: const RunGoal(
+                    id: 'g1', period: GoalPeriod.week, distanceMetres: 20000));
+            expect(find.text('Goals'), findsOneWidget);
+            expect(find.byKey(const Key('dashboardAddGoalLink')), findsNothing);
+            expect(tester.getTopLeft(find.text('Goals')).dy,
+                lessThan(tester.getTopLeft(find.text('WEEK')).dy));
+          } finally {
+            dir.deleteSync(recursive: true);
+          }
+        });
       });
     });
 
@@ -1069,10 +1140,15 @@ void main() {
         WidgetTester tester,
         Directory dir, {
         TrainingService? training,
+        bool withGoal = false,
       }) async {
         SharedPreferences.setMockInitialValues({});
         final prefs = Preferences();
         await prefs.init();
+        if (withGoal) {
+          await prefs.upsertGoal(const RunGoal(
+              id: 'g1', period: GoalPeriod.week, distanceMetres: 20000));
+        }
 
         final seedStore = LocalRunStore();
         await seedStore.init(overrideDirectory: dir);
@@ -1114,7 +1190,8 @@ void main() {
               Directory.systemTemp.createTempSync('dashboard_expanded_');
           try {
             await pumpSeeded(tester, dir,
-                training: _FakeTraining(_overviewWithTodayWorkout()));
+                training: _FakeTraining(_overviewWithTodayWorkout()),
+                withGoal: true);
 
             expect(contentCap(), findsOneWidget);
             // Today's workout and Goals share the lead row instead of
@@ -1162,7 +1239,7 @@ void main() {
           try {
             // No training service + empty gym/food stores → no workout card
             // and no modality cards. The seeded run is still a lead card.
-            await pumpSeeded(tester, dir);
+            await pumpSeeded(tester, dir, withGoal: true);
             expect(find.byKey(leadRowKey), findsOneWidget);
             expect(
               find.descendant(
@@ -1178,6 +1255,30 @@ void main() {
         });
       });
 
+      testWidgets(
+          'expanded with no goals lets the lead cards stand alone (no empty '
+          'cell)', (tester) async {
+        tester.view.physicalSize = const Size(2560, 1440);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(tester.view.reset);
+
+        await tester.runAsync(() async {
+          final dir =
+              Directory.systemTemp.createTempSync('dashboard_expanded_nogoal_');
+          try {
+            // A runner with no goals has no Goals section to pair with, and a
+            // grid cell can't reserve space for a hidden one.
+            await pumpSeeded(tester, dir);
+            expect(find.byKey(leadRowKey), findsNothing);
+            expect(find.byKey(const Key('dashboardLatestRun')), findsOneWidget);
+            expect(find.text('Goals'), findsNothing);
+            expect(find.byKey(const Key('dashboardAddGoalLink')), findsOneWidget);
+          } finally {
+            dir.deleteSync(recursive: true);
+          }
+        });
+      });
+
       testWidgets('default (medium) surface keeps the stacked layout',
           (tester) async {
         // The flutter_test default surface is 800dp logical — medium,
@@ -1186,7 +1287,7 @@ void main() {
           final dir =
               Directory.systemTemp.createTempSync('dashboard_stacked_');
           try {
-            await pumpSeeded(tester, dir);
+            await pumpSeeded(tester, dir, withGoal: true);
             expect(find.byKey(leadRowKey), findsNothing);
             expect(find.byKey(chartColumnsKey), findsNothing);
             expect(contentCap(), findsNothing);
@@ -1286,7 +1387,7 @@ void main() {
 
           expect(
             find.ancestor(
-                of: find.text('Goals'), matching: find.byType(Expanded)),
+                of: find.text('Last run'), matching: find.byType(Expanded)),
             findsWidgets,
           );
         } finally {

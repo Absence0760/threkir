@@ -182,6 +182,8 @@
   "logA11yLabel": "Registrar uma atividade",
   "navStartRun": "Correr",
   "logStartRunA11yLabel": "Iniciar uma corrida",
+  "logModalityShownGym": "A Academia passou a ser mostrada",
+  "logModalityShownNutrition": "A Nutrição passou a ser mostrada",
   "navFitness": "Fitness",
   "navYou": "Você",
   "fitnessTabRuns": "Corridas",

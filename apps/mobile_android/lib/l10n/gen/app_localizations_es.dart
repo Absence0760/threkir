@@ -710,6 +710,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get logStartRunA11yLabel => 'Iniciar una carrera';
 
   @override
+  String get logModalityShownGym => 'Ahora se muestra Gimnasio';
+
+  @override
+  String get logModalityShownNutrition => 'Ahora se muestra Nutrición';
+
+  @override
   String get navFitness => 'Fitness';
 
   @override

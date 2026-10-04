@@ -932,6 +932,14 @@
   "@logStartRunA11yLabel": {
     "description": "Screen-reader label for the centre nav button when a tap on it starts a run"
   },
+  "logModalityShownGym": "Gym is now shown",
+  "@logModalityShownGym": {
+    "description": "Top banner after a Log action for a hidden Gym switched it on; carries an Undo that hides it again"
+  },
+  "logModalityShownNutrition": "Nutrition is now shown",
+  "@logModalityShownNutrition": {
+    "description": "Top banner after a Log action for a hidden Nutrition switched it on; carries an Undo that hides it again"
+  },
   "navFitness": "Fitness",
   "@navFitness": {
     "description": "Bottom-nav label for the Fitness modality hub (All/Runs/Gym/Nutrition)"

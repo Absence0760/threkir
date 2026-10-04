@@ -1199,6 +1199,18 @@ abstract class AppLocalizations {
   /// **'Start a run'**
   String get logStartRunA11yLabel;
 
+  /// Top banner after a Log action for a hidden Gym switched it on; carries an Undo that hides it again
+  ///
+  /// In en, this message translates to:
+  /// **'Gym is now shown'**
+  String get logModalityShownGym;
+
+  /// Top banner after a Log action for a hidden Nutrition switched it on; carries an Undo that hides it again
+  ///
+  /// In en, this message translates to:
+  /// **'Nutrition is now shown'**
+  String get logModalityShownNutrition;
+
   /// Bottom-nav label for the Fitness modality hub (All/Runs/Gym/Nutrition)
   ///
   /// In en, this message translates to:

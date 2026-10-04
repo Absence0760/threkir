@@ -713,6 +713,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get logStartRunA11yLabel => 'Iniciar uma corrida';
 
   @override
+  String get logModalityShownGym => 'O Ginásio passou a ser mostrado';
+
+  @override
+  String get logModalityShownNutrition => 'A Nutrição passou a ser mostrada';
+
+  @override
   String get navFitness => 'Fitness';
 
   @override
@@ -15099,6 +15105,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get logStartRunA11yLabel => 'Iniciar uma corrida';
+
+  @override
+  String get logModalityShownGym => 'A Academia passou a ser mostrada';
+
+  @override
+  String get logModalityShownNutrition => 'A Nutrição passou a ser mostrada';
 
   @override
   String get navFitness => 'Fitness';

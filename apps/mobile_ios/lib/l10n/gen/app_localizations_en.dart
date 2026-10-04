@@ -704,6 +704,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get logStartRunA11yLabel => 'Start a run';
 
   @override
+  String get logModalityShownGym => 'Gym is now shown';
+
+  @override
+  String get logModalityShownNutrition => 'Nutrition is now shown';
+
+  @override
   String get navFitness => 'Fitness';
 
   @override

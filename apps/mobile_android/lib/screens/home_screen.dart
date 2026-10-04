@@ -776,17 +776,33 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _performLogAction(LogAction action) async {
+    final l10n = AppLocalizations.of(context);
     widget.preferences.setLastLogType(action.wire);
     // Asking to log a lift or a meal is asking for that modality, and a
     // hidden one has no hub tab to land on — the first-run "Lifting instead?"
     // link reaches here for exactly the account whose Gym starts hidden.
     // Awaited so the hub's strip already has the tab when it is selected.
+    //
+    // It changes what the centre button's tap does from then on, so it is
+    // announced, with an Undo: one stray tap on the first-run gym link used
+    // to re-modalise the app silently, recoverable only from Settings.
+    ({String message, Future<void> Function() undo})? switchedOn;
     if (action == LogAction.lift && !_gymShown) {
+      final prior = widget.preferences.showGym;
       await widget.preferences.setShowGym(true);
       _roamModalityVisibility();
+      switchedOn = (
+        message: l10n.logModalityShownGym,
+        undo: () => widget.preferences.setShowGym(prior),
+      );
     } else if (action == LogAction.food && !_nutritionShown) {
+      final prior = widget.preferences.showNutrition;
       await widget.preferences.setShowNutrition(true);
       _roamModalityVisibility();
+      switchedOn = (
+        message: l10n.logModalityShownNutrition,
+        undo: () => widget.preferences.setShowNutrition(prior),
+      );
     }
     if (!mounted) return;
     // Each Log action lands on that modality's dwell-in workspace (decisions
@@ -811,12 +827,35 @@ class _HomeScreenState extends State<HomeScreen>
       // Picking the page you are already on is a no-op navigation, and the
       // fan closing onto an unchanged screen reads as a dropped tap. Say
       // where the tap went instead.
-      final l10n = AppLocalizations.of(context);
       showTopBanner(context, l10n.logAlreadyOnPage(_logPageName(l10n, action)));
       return;
     }
     if (tab != null) _fitnessTab.value = tab;
     _goToPage(page);
+    if (switchedOn != null) _announceSwitchedOn(switchedOn);
+  }
+
+  /// The Undo restores the choice that was there before, which may be no
+  /// choice at all: writing false would pin the modality hidden for a runner
+  /// who later logs one, which is what the tri-state exists to avoid
+  /// (decisions § 1739).
+  void _announceSwitchedOn(
+      ({String message, Future<void> Function() undo}) switchedOn) {
+    showTopBanner(
+      context,
+      switchedOn.message,
+      duration: const Duration(seconds: 6),
+      actionLabel: AppLocalizations.of(context).undoAction,
+      onAction: () async {
+        try {
+          await switchedOn.undo();
+        } catch (e) {
+          debugPrint('home: modality visibility undo failed: $e');
+          return;
+        }
+        await _roamModalityVisibility();
+      },
+    );
   }
 
   Future<void> _roamModalityVisibility() async {

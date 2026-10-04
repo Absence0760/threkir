@@ -231,6 +231,21 @@ void main() {
       expect(lifts, 1);
     });
 
+    for (final answer in [false, true]) {
+      testWidgets('hides the gym way out once the account has answered '
+          'whether it lifts (show_gym: $answer)', (tester) async {
+        // The setup wizard's track step records an explicit answer only when
+        // it is touched (decisions § 1650). Once there is one, the link
+        // contradicts it and sits a mis-tap under Start a run.
+        final s = await _stores();
+        await s.prefs.setShowGym(answer);
+        await _pump(tester, s, onLogLift: () {});
+
+        expect(find.text('Welcome!'), findsOneWidget);
+        expect(find.text('Log a gym session'), findsNothing);
+      });
+    }
+
     testWidgets('hides the gym way out when the host cannot reach it',
         (tester) async {
       final s = await _stores();

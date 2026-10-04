@@ -182,6 +182,8 @@
   "logA11yLabel": "Aktivität erfassen",
   "navStartRun": "Laufen",
   "logStartRunA11yLabel": "Lauf starten",
+  "logModalityShownGym": "Gym wird jetzt angezeigt",
+  "logModalityShownNutrition": "Ernährung wird jetzt angezeigt",
   "navFitness": "Fitness",
   "navYou": "Du",
   "fitnessTabRuns": "Läufe",

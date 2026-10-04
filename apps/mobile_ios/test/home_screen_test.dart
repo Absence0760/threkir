@@ -346,6 +346,37 @@ void main() {
       expect(find.byType(GymScreen), findsOneWidget);
       // The hub's tab label and the Gym screen's own title.
       expect(find.text('Gym'), findsNWidgets(2));
+      // It changed what the centre button does, so it says so.
+      expect(find.text('Gym is now shown'), findsOneWidget);
+      // showTopBanner arms an auto-dismiss timer; let it run out.
+      await tester.pump(const Duration(seconds: 8));
+    });
+
+    testWidgets('Undo on the switched-on banner restores no choice, not off',
+        (tester) async {
+      // One stray tap on the first-run link used to re-modalise the app with
+      // no way back but a Settings switch. The prior value here is null — no
+      // choice yet — and writing false instead would pin Gym hidden for a
+      // runner who later logs a lift.
+      final s = await _makeStores();
+      await _pump(tester, s);
+      await tester.pump();
+      expect(s.prefs.showGym, isNull);
+
+      await tester.ensureVisible(find.text('Log a gym session'));
+      await tester.tap(find.text('Log a gym session'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(s.prefs.showGym, isTrue);
+
+      await tester.tap(find.text('Undo'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(s.prefs.showGym, isNull);
+      expect(find.byType(GymScreen), findsNothing);
+      expect(find.text('Gym is now shown'), findsNothing);
+      await tester.pump(const Duration(seconds: 8));
     });
 
     testWidgets('body is a PageView', (tester) async {

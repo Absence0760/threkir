@@ -779,7 +779,24 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get prefsKeepRunPrimarySubtitle =>
-      'Tippe auf die mittlere Schaltfläche, um einen Lauf zu starten. Bis zum ersten Kraft- oder Mahlzeiteintrag ist das ohnehin aktiv; langes Drücken öffnet immer das Log-Menü';
+      'Tippe auf die mittlere Schaltfläche, um einen Lauf zu starten. Solange Gym und Ernährung ausgeblendet sind, ist das ohnehin aktiv; langes Drücken öffnet immer das Log-Menü';
+
+  @override
+  String get prefsSectionModalities => 'Gym & Ernährung';
+
+  @override
+  String get prefsShowGym => 'Gym anzeigen';
+
+  @override
+  String get prefsShowGymSubtitle =>
+      'Zeigt den Gym-Tab, „Training erfassen“ und deine Trainings auf der Startseite';
+
+  @override
+  String get prefsShowNutrition => 'Ernährung anzeigen';
+
+  @override
+  String get prefsShowNutritionSubtitle =>
+      'Zeigt den Ernährungs-Tab, „Essen erfassen“ und die heutigen Mahlzeiten auf der Startseite';
 
   @override
   String get bodyMetricsTitle => 'Körperdaten';

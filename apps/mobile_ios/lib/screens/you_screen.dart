@@ -6,6 +6,8 @@ import '../ble_heart_rate.dart';
 import '../ble_treadmill.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../local_gear_store.dart';
+import '../local_food_store.dart';
+import '../local_gym_store.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
 import '../preferences.dart';
@@ -22,6 +24,8 @@ class YouScreen extends StatefulWidget {
   final Preferences preferences;
   final LocalRunStore? runStore;
   final LocalRouteStore? routeStore;
+  final LocalGymStore? gymStore;
+  final LocalFoodStore? foodStore;
   final LocalGearStore? gearStore;
   final BleHeartRate heartRate;
   final BleTreadmill treadmill;
@@ -35,6 +39,8 @@ class YouScreen extends StatefulWidget {
     required this.treadmill,
     this.runStore,
     this.routeStore,
+    this.gymStore,
+    this.foodStore,
     this.gearStore,
     this.settingsSync,
   });
@@ -82,6 +88,8 @@ class _YouScreenState extends State<YouScreen>
                 preferences: widget.preferences,
                 runStore: widget.runStore,
                 routeStore: widget.routeStore,
+                gymStore: widget.gymStore,
+                foodStore: widget.foodStore,
                 gearStore: widget.gearStore,
                 heartRate: widget.heartRate,
                 treadmill: widget.treadmill,

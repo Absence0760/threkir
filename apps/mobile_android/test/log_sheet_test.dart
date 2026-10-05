@@ -27,6 +27,28 @@ void main() {
       ]);
     });
 
+    test('hidden modalities drop out; Run never does', () {
+      expect(orderedLogActions(null, hidden: {LogAction.lift}),
+          [LogAction.run, LogAction.food]);
+      expect(
+          orderedLogActions(null,
+              hidden: {LogAction.run, LogAction.lift, LogAction.food}),
+          [LogAction.run]);
+    });
+
+    test('a hidden recent does not float back in', () {
+      expect(orderedLogActions(LogAction.food, hidden: {LogAction.food}),
+          [LogAction.run, LogAction.lift]);
+    });
+
+    test('hiddenLogActions maps each switched-off modality to its action', () {
+      expect(hiddenLogActions(gymShown: true, nutritionShown: true), isEmpty);
+      expect(hiddenLogActions(gymShown: false, nutritionShown: true),
+          {LogAction.lift});
+      expect(hiddenLogActions(gymShown: false, nutritionShown: false),
+          {LogAction.lift, LogAction.food});
+    });
+
     test('no duplicates regardless of recent', () {
       for (final r in LogAction.values) {
         final ordered = orderedLogActions(r);

@@ -748,7 +748,22 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get prefsKeepRunPrimarySubtitle =>
-      '中央のボタンをタップしてランを開始します。筋トレや食事を記録するまではもともと有効です。長押しすると常に記録メニューが開きます';
+      '中央のボタンをタップしてランを開始します。ジムと栄養が非表示の間はもともと有効です。長押しすると常に記録メニューが開きます';
+
+  @override
+  String get prefsSectionModalities => 'ジムと栄養';
+
+  @override
+  String get prefsShowGym => 'ジムを表示';
+
+  @override
+  String get prefsShowGymSubtitle => 'ジムタブ、「筋トレを記録」、ホームの筋トレ記録を表示します';
+
+  @override
+  String get prefsShowNutrition => '栄養を表示';
+
+  @override
+  String get prefsShowNutritionSubtitle => '栄養タブ、「食事を記録」、ホームの今日の食事を表示します';
 
   @override
   String get bodyMetricsTitle => '身体データ';

@@ -1328,8 +1328,38 @@ abstract class AppLocalizations {
   /// Subtitle for the run-as-primary-action settings toggle
   ///
   /// In en, this message translates to:
-  /// **'Tap the centre button to start a run. Already on until you log a lift or a meal; long-press always opens the log menu'**
+  /// **'Tap the centre button to start a run. Already on while Gym and Nutrition are hidden; long-press always opens the log menu'**
   String get prefsKeepRunPrimarySubtitle;
+
+  /// Settings section heading for the Gym and Nutrition visibility toggles
+  ///
+  /// In en, this message translates to:
+  /// **'Gym & nutrition'**
+  String get prefsSectionModalities;
+
+  /// Settings toggle: show the Gym tab, Log lift action and Home lift cards
+  ///
+  /// In en, this message translates to:
+  /// **'Show Gym'**
+  String get prefsShowGym;
+
+  /// Subtitle for the show-Gym settings toggle
+  ///
+  /// In en, this message translates to:
+  /// **'Adds the Gym tab, Log lift and your lifts on Home'**
+  String get prefsShowGymSubtitle;
+
+  /// Settings toggle: show the Nutrition tab, Log food action and Home meal cards
+  ///
+  /// In en, this message translates to:
+  /// **'Show Nutrition'**
+  String get prefsShowNutrition;
+
+  /// Subtitle for the show-Nutrition settings toggle
+  ///
+  /// In en, this message translates to:
+  /// **'Adds the Nutrition tab, Log food and today\'s meals on Home'**
+  String get prefsShowNutritionSubtitle;
 
   /// Title of the body-metrics settings screen
   ///

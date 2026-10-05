@@ -67,7 +67,11 @@ void main() {
   // api: null keeps Gym/Nutrition/Runs from hitting the (uninitialised)
   // Supabase server on mount — the timeline is assembled purely from the
   // seeded local stores, which is the offline-first contract.
-  Future<void> pump(
+  //
+  // Both modalities are switched on unless a test says otherwise, so the
+  // tests about the strip's mechanics see all four tabs; the visibility
+  // tests pass their own [storedPrefs].
+  Future<Preferences> pump(
     WidgetTester tester, {
     List<Run> runs = const [],
     List<({Map<String, dynamic> workout, List<Map<String, dynamic>> sets})> lifts =
@@ -75,8 +79,12 @@ void main() {
     List<Map<String, dynamic>> meals = const [],
     FitnessTab initialTab = FitnessTab.history,
     ValueNotifier<FitnessTab>? selectedTab,
+    Map<String, Object> storedPrefs = const {
+      'show_gym': true,
+      'show_nutrition': true,
+    },
   }) async {
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues(storedPrefs);
     final prefs = Preferences();
     await prefs.init();
     final runStore = LocalRunStore();
@@ -113,7 +121,13 @@ void main() {
       ),
     ));
     await tester.pumpAndSettle();
+    return prefs;
   }
+
+  List<String?> stripLabels(WidgetTester tester) => [
+        for (final t in tester.widget<TabBar>(find.byType(TabBar)).tabs)
+          (t as Tab).text,
+      ];
 
   testWidgets('renders the four sub-tabs History / Runs / Gym / Nutrition',
       (tester) async {
@@ -346,5 +360,54 @@ void main() {
     await tester.pumpAndSettle();
     expect(selected.value, FitnessTab.gym,
         reason: 'a tap on the strip never reached the host');
+  });
+
+  group('Gym and Nutrition visibility', () {
+    testWidgets('a runner who has logged neither sees only History and Runs',
+        (tester) async {
+      await pump(tester, runs: [runRow('r1')], storedPrefs: const {});
+      expect(stripLabels(tester), ['History', 'Runs']);
+      expect(find.byType(GymScreen), findsNothing);
+      expect(find.byType(NutritionScreen), findsNothing);
+    });
+
+    testWidgets('a logged lift keeps Gym without anyone opening Settings',
+        (tester) async {
+      await pump(tester,
+          lifts: [liftRow('l1', 'Leg day')], storedPrefs: const {});
+      expect(stripLabels(tester), ['History', 'Runs', 'Gym']);
+    });
+
+    testWidgets('an explicit off hides a modality that has data',
+        (tester) async {
+      await pump(tester,
+          lifts: [liftRow('l1', 'Leg day')],
+          storedPrefs: const {'show_gym': false});
+      expect(stripLabels(tester), ['History', 'Runs']);
+    });
+
+    testWidgets('switching on adds the tab live; switching the open tab off '
+        'falls back to History', (tester) async {
+      final selected = ValueNotifier(FitnessTab.history);
+      addTearDown(selected.dispose);
+      final prefs = await pump(tester,
+          runs: [runRow('r1')], storedPrefs: const {}, selectedTab: selected);
+
+      await prefs.setShowNutrition(true);
+      await tester.pumpAndSettle();
+      expect(stripLabels(tester), ['History', 'Runs', 'Nutrition']);
+
+      await tester.tap(find.text('Nutrition').first);
+      await tester.pumpAndSettle();
+      expect(selected.value, FitnessTab.nutrition);
+
+      await prefs.setShowNutrition(false);
+      await tester.pumpAndSettle();
+      expect(stripLabels(tester), ['History', 'Runs']);
+      expect(selected.value, FitnessTab.history,
+          reason: 'a hidden tab cannot stay selected');
+      expect(
+          tester.widget<TabBar>(find.byType(TabBar)).controller!.index, 0);
+    });
   });
 }

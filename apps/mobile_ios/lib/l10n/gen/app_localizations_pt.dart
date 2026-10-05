@@ -778,7 +778,24 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get prefsKeepRunPrimarySubtitle =>
-      'Toque no botão central para iniciar uma corrida. Já fica ativo até registar um treino de força ou uma refeição; manter premido abre sempre o menu de registo';
+      'Toque no botão central para iniciar uma corrida. Já fica ativo enquanto Ginásio e Nutrição estiverem ocultos; manter premido abre sempre o menu de registo';
+
+  @override
+  String get prefsSectionModalities => 'Ginásio e nutrição';
+
+  @override
+  String get prefsShowGym => 'Mostrar Ginásio';
+
+  @override
+  String get prefsShowGymSubtitle =>
+      'Adiciona o separador Ginásio, «Registar musculação» e os seus treinos no Início';
+
+  @override
+  String get prefsShowNutrition => 'Mostrar Nutrição';
+
+  @override
+  String get prefsShowNutritionSubtitle =>
+      'Adiciona o separador Nutrição, «Registar comida» e as refeições de hoje no Início';
 
   @override
   String get bodyMetricsTitle => 'Dados corporais';
@@ -15123,7 +15140,24 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get prefsKeepRunPrimarySubtitle =>
-      'Toque no botão central para iniciar uma corrida. Já fica ativo até você registrar um treino de força ou uma refeição; pressione e segure para sempre abrir o menu de registro';
+      'Toque no botão central para iniciar uma corrida. Já fica ativo enquanto Academia e Nutrição estiverem ocultas; pressione e segure para sempre abrir o menu de registro';
+
+  @override
+  String get prefsSectionModalities => 'Academia e nutrição';
+
+  @override
+  String get prefsShowGym => 'Mostrar Academia';
+
+  @override
+  String get prefsShowGymSubtitle =>
+      'Adiciona a aba Academia, \"Registrar musculação\" e seus treinos no Início';
+
+  @override
+  String get prefsShowNutrition => 'Mostrar Nutrição';
+
+  @override
+  String get prefsShowNutritionSubtitle =>
+      'Adiciona a aba Nutrição, \"Registrar comida\" e as refeições de hoje no Início';
 
   @override
   String get bodyMetricsTitle => 'Dados corporais';

@@ -313,6 +313,16 @@ class SettingsSyncService extends ChangeNotifier {
     if (wu is String) {
       preferences.setWeightUnit(WeightFormat.unitFromWire(wu));
     }
+    // A non-bool is dropped rather than read as "hidden": a corrupt bag must
+    // not take away surfaces someone is using.
+    final gym = prefs[SettingsKeys.showGym];
+    if (gym is bool && gym != preferences.showGym) {
+      preferences.setShowGym(gym);
+    }
+    final nutrition = prefs[SettingsKeys.showNutrition];
+    if (nutrition is bool && nutrition != preferences.showNutrition) {
+      preferences.setShowNutrition(nutrition);
+    }
     // Seed a weekly distance RunGoal from the universal bag value when
     // the local list doesn't already have one. We never *replace* an
     // existing local goal — the dashboard's editor is the richer
@@ -406,6 +416,17 @@ class SettingsSyncService extends ChangeNotifier {
     await s.updateUniversal(<String, dynamic>{
       SettingsKeys.carbsPerHour: preferences.carbsPerHourG,
       SettingsKeys.fluidPerHour: preferences.fluidPerHourMl,
+    });
+    notifyListeners();
+  }
+
+  /// Push the Gym / Nutrition visibility choices to the universal bag so the
+  /// same app shape follows the runner to their other phone.
+  Future<void> pushModalityVisibility() async {
+    final s = await _ensureService();
+    await s.updateUniversal(<String, dynamic>{
+      SettingsKeys.showGym: preferences.showGym,
+      SettingsKeys.showNutrition: preferences.showNutrition,
     });
     notifyListeners();
   }

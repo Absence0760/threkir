@@ -399,6 +399,12 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
+  bool get _gymShown => widget.preferences
+      .gymShown(hasData: widget.gymStore.workouts.isNotEmpty);
+
+  bool get _nutritionShown => widget.preferences
+      .nutritionShown(hasData: widget.foodStore.rows.isNotEmpty);
+
   /// Today's most-recent gym workout, or null when none was logged today.
   StoredGymWorkout? get _todaysLift {
     final now = DateTime.now();
@@ -1084,8 +1090,9 @@ class _DashboardScreenState extends State<DashboardScreen>
       final loadChart = _buildTrainingLoadChart(runs, now, loadSeries);
       final gymNote = _hasRecentLift(now) ? _gymReadinessNote(theme, l10n) : null;
       // Recent lifts trend list — self-hides for a pure runner (empty
-      // gym store), mirrors web /dashboard's recent-lifts card.
-      final liftsCard = widget.gymStore.workouts.isNotEmpty
+      // gym store) or once Gym is switched off, mirrors web /dashboard's
+      // recent-lifts card.
+      final liftsCard = _gymShown && widget.gymStore.workouts.isNotEmpty
           ? RecentLiftsCard(
               workouts: widget.gymStore.workouts,
               onOpenWorkout: _openGymWorkout,
@@ -1240,12 +1247,13 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   /// The "today's logged modalities" block — gym + nutrition cards, each
-  /// self-hiding when that modality has no data today. Renders the two
-  /// 2-up on phones wide enough (multi_modal.md § Home density rules) when
-  /// both are present, full-width otherwise. Null when neither logged.
+  /// self-hiding when that modality has no data today or is switched off in
+  /// Settings. Renders the two 2-up on phones wide enough (multi_modal.md §
+  /// Home density rules) when both are present, full-width otherwise. Null
+  /// when neither has a card.
   Widget? _todayModalityBody() {
-    final lift = _todaysLift;
-    final food = _todaysFood;
+    final lift = _gymShown ? _todaysLift : null;
+    final food = _nutritionShown ? _todaysFood : const <FoodEntry>[];
     final hasFood = food.isNotEmpty;
     if (lift == null && !hasFood) return null;
 

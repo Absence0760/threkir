@@ -276,6 +276,27 @@ void main() {
       expect(find.text('Welcome!'), findsAtLeastNWidgets(1));
     });
 
+    testWidgets('the first-run gym link switches Gym on and lands on it',
+        (tester) async {
+      // A new account is exactly the one whose Gym starts hidden, so the
+      // welcome card's "Log a gym session" used to select a tab the hub did
+      // not have and leave the runner on History.
+      final s = await _makeStores();
+      await _pump(tester, s);
+      await tester.pump();
+      expect(s.prefs.showGym, isNull);
+
+      await tester.ensureVisible(find.text('Log a gym session'));
+      await tester.tap(find.text('Log a gym session'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(s.prefs.showGym, isTrue);
+      expect(find.byType(GymScreen), findsOneWidget);
+      // The hub's tab label and the Gym screen's own title.
+      expect(find.text('Gym'), findsNWidgets(2));
+    });
+
     testWidgets('body is a PageView', (tester) async {
       final s = await _makeStores();
       await _pump(tester, s);
@@ -286,6 +307,7 @@ void main() {
         (tester) async {
       final s = await _makeStores();
       await _seedLoggedLift(tester, s);
+      await s.prefs.setShowNutrition(true);
       await _pump(tester, s);
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pump();
@@ -333,6 +355,7 @@ void main() {
         (tester) async {
       final s = await _makeStores();
       await _seedLoggedLift(tester, s);
+      await s.prefs.setShowNutrition(true);
       await _pump(tester, s);
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pump();
@@ -389,6 +412,7 @@ void main() {
       addTearDown(tester.view.reset);
       final s = await _makeStores();
       await _seedLoggedLift(tester, s);
+      await s.prefs.setShowNutrition(true);
       await _pump(tester, s);
       await tester.tap(find.text('Fitness'));
       await tester.pump();
@@ -728,9 +752,43 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      expect(find.byTooltip('Log food'), findsOneWidget);
+      expect(find.byTooltip('Log run'), findsOneWidget);
+      // Nutrition is off until switched on, so the last-logged type does not
+      // bring it back into the menu either.
+      expect(find.byTooltip('Log food'), findsNothing);
       expect(shellPage(tester), 0,
           reason: 'a long press picks, it never navigates on its own');
+    });
+
+    testWidgets('switching Nutrition on with nothing logged brings the fan '
+        'back, with Log food and without Log lift', (tester) async {
+      final s = await _makeStores();
+      await s.prefs.setShowNutrition(true);
+      await _pump(tester, s);
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log food'), findsOneWidget);
+      expect(find.byTooltip('Log lift'), findsNothing);
+      expect(shellPage(tester), 0);
+    });
+
+    testWidgets('switching Gym off restores the one-tap run start despite a '
+        'logged lift', (tester) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await s.prefs.setShowGym(false);
+      await _pump(tester, s);
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log lift'), findsNothing);
+      expect(shellPage(tester), 2, reason: 'the tap landed on the recorder');
+      tester.takeException();
     });
 
     testWidgets('long-press opens the menu with the preference on too',

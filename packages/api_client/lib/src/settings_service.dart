@@ -129,6 +129,13 @@ class SettingsKeys {
   /// + lift→load math elsewhere are unaffected; only the readiness series
   /// drops lifts. Web twin: `exclude_gym_from_readiness` (decisions §134).
   static const excludeGymFromReadiness = 'exclude_gym_from_readiness';
+  /// Explicit show/hide choice for the mobile Gym surfaces (Fitness hub tab,
+  /// Log action, Home cards). Absent = shown only once a lift is logged.
+  /// Mobile-only reader; web has no equivalent toggle (settings.md).
+  static const showGym = 'show_gym';
+  /// Explicit show/hide choice for the mobile Nutrition surfaces. Absent =
+  /// shown only once a meal is logged. Mobile-only reader.
+  static const showNutrition = 'show_nutrition';
   /// How long a destructive action stays reversible before its deferred
   /// server mutation commits — `8` (default) | `30` | `0` = no time limit.
   /// `0` is the WCAG 2.2.1 *Timing Adjustable* ("Turn off") route: a

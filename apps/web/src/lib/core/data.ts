@@ -146,7 +146,6 @@ import {
 	GLOBAL_SEGMENT_SCORING_LIMIT,
 } from './data_normalise';
 import { dashboardRunsWindowStart } from './dashboard_runs';
-import { bucketWeeklyMileage } from './weekly_mileage';
 import {
 	chunk,
 	mergeFeedPages,
@@ -343,12 +342,11 @@ export async function fetchRunsWithError(
 	}
 }
 
-/// Column-narrowed, date-windowed run fetch for the dashboard. Mirrors
-/// `fetchWeeklyMileage`'s windowing pattern (window contract +
-/// rationale in `./dashboard_runs`); the select carries exactly the
-/// columns the dashboard's consumers read (streaks, training-load,
+/// Column-narrowed, date-windowed run fetch for the dashboard (window
+/// contract + rationale in `./dashboard_runs`); the select carries exactly
+/// the columns the dashboard's consumers read (streaks, training-load,
 /// race-predictor, consistency, intensity, trend, goals, snapshot,
-/// this-week, recent list) — `metadata` stays because those consumers
+/// this-week, weekly mileage chart, recent list) — `metadata` stays because those consumers
 /// read `avg_bpm` / `elevation_m` / `indoor` from it. `track` is NOT set — it
 /// is a lazy Storage download rather than a column, so it is not one of the
 /// ten and `DashboardRun` does not declare it. `fetchRuns` answers the same
@@ -2076,29 +2074,6 @@ export async function deleteRoute(id: string): Promise<void> {
 
 // --- Dashboard stats ---
 
-export async function fetchWeeklyMileage(
-	locale?: string,
-	weekStartDay: 'monday' | 'sunday' = 'monday',
-) {
-	const { data: { user } } = await supabase.auth.getUser();
-	if (!user) return [];
-	// Only the last ~12 weeks are charted, so window the query by date
-	// rather than `.limit(2000)` ascending — that cap returned a >2000-run
-	// user's OLDEST 2000 runs, so the chart showed ancient weeks. A 14-week
-	// window (12 + a 2-week buffer for partial edges) is bounded and recent.
-	const windowStart = new Date();
-	windowStart.setDate(windowStart.getDate() - 14 * 7);
-	const { data: runs } = await supabase
-		.from(TABLES.runs)
-		.select('started_at, distance_m')
-		.eq('user_id', user.id)
-		.gte('started_at', windowStart.toISOString())
-		.order('started_at', { ascending: true });
-
-	if (!runs || runs.length === 0) return [];
-	return bucketWeeklyMileage(runs, 12, locale, weekStartDay);
-}
-
 export async function fetchPersonalRecords() {
 	// Read the trigger-maintained `personal_records` cache rather than
 	// recomputing from `runs`. The cache is already user-scoped by RLS,
@@ -3288,8 +3263,8 @@ export async function fetchUpcomingEvents(clubId: string): Promise<EventWithMeta
 	// the club's OLDEST rows, so a club with more than `limit` finished
 	// one-offs — a weekly series is 200 rows in four years — pushed every
 	// future event past the cap and its Events tab went permanently empty.
-	// (The same shape `fetchWeeklyMileage` documents: an ascending cap over a
-	// growing history windows the wrong end of it.)
+	// (The same shape `fetchRunsForDashboard` documents: an ascending cap over
+	// a growing history windows the wrong end of it.)
 	//
 	// A count-limited series carries no until-date, so it lands in the
 	// candidate set and `nextLiveInstance` retires it once exhausted — the

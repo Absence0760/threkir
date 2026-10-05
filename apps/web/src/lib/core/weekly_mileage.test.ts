@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { bucketWeeklyMileage } from './weekly_mileage';
+import { weekStartLocal } from '../training/goals';
 
 // The chart's window is CONTINUOUS: `maxWeeks` buckets ending with the week
 // containing `now`, zero where nothing was run. Every test therefore pins its
@@ -157,3 +158,38 @@ test('bucketWeeklyMileage — the bucket KEY stays locale-independent', () => {
 		'a localised label must not split a week in two',
 	);
 });
+
+// The dashboard's "This week" tile and the chart's current-week bar must be the
+// same seven days. A Sunday-first runner saw 22.50 km on the tile beside a
+// chart reading 7.50 km "this week". Both now derive the window from
+// `weekStartLocal`; this pins that they agree on either side of the
+// Saturday-night / Sunday-morning seam, built from local components so the
+// seam is the runner's midnight rather than UTC's.
+const SEAM_NOW = new Date(2026, 0, 10, 22); // Saturday 10 Jan 2026, 22:00 local
+const SEAM_RUNS = [
+	{ started_at: new Date(2026, 0, 3, 23, 30).toISOString(), distance_m: 4000 }, // Sat, late
+	{ started_at: new Date(2026, 0, 4, 0, 30).toISOString(), distance_m: 3000 }, // Sun, early
+	{ started_at: new Date(2026, 0, 5, 12).toISOString(), distance_m: 5000 }, // Mon
+	{ started_at: new Date(2026, 0, 10, 12).toISOString(), distance_m: 7500 }, // Sat
+];
+
+/// The tile's sum: every run on or after the start of this week.
+function tileTotal(weekStartDay: 'monday' | 'sunday'): number {
+	const start = weekStartLocal(SEAM_NOW, weekStartDay).getTime();
+	return SEAM_RUNS.filter((r) => new Date(r.started_at).getTime() >= start).reduce(
+		(sum, r) => sum + r.distance_m,
+		0,
+	);
+}
+
+for (const [weekStartDay, expected, prior] of [
+	['sunday', 15500, 4000],
+	['monday', 12500, 7000],
+] as const) {
+	test(`bucketWeeklyMileage — the current-week bar equals the "this week" tile (${weekStartDay})`, () => {
+		const bars = bucketWeeklyMileage(SEAM_RUNS, 12, 'en', weekStartDay, SEAM_NOW);
+		assert.equal(tileTotal(weekStartDay), expected);
+		assert.equal(bars[11].distance_m, expected, "the chart's current week is the tile's");
+		assert.equal(bars[10].distance_m, prior, 'and the seam run left of it is the prior week');
+	});
+}

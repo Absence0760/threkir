@@ -9,7 +9,6 @@
 		fetchRunAllTimeStats,
 		fetchRunStreaks,
 		fetchRunsForPeriodSummary,
-		fetchWeeklyMileage,
 		fetchPersonalRecords,
 		fetchActivePlanOverview,
 		fetchNextRsvpedEvent,
@@ -19,7 +18,7 @@
 		type PeriodSummaryRun,
 	} from '$lib/core/data';
 	import { dashboardRunsWindowStart, visibleRunSources } from '$lib/core/dashboard_runs';
-	import type { WeekBar } from '$lib/core/weekly_mileage';
+	import { bucketWeeklyMileage } from '$lib/core/weekly_mileage';
 	import {
 		computeSnapshot,
 		recoveryAdvice,
@@ -94,6 +93,7 @@
 		evaluateGoal,
 		newGoalId,
 		periodLabel,
+		weekStartLocal,
 		type RunGoal,
 	} from '$lib/training/goals';
 	import type { Run, RunSource, ActivePlanOverview } from '$lib/types';
@@ -108,7 +108,6 @@
 		totalRuns: 0,
 		longestRunM: 0,
 	});
-	let weeklyMileage = $state<WeekBar[]>([]);
 	let personalRecords = $state<{ key: string; distance: string; time_s: number; date: string }[]>([]);
 	// Distance keys the runner has chosen to hide (comeback persona #28). Stored
 	// in the universal `hidden_prs` settings bag, so it roams across devices.
@@ -573,7 +572,6 @@
 		[
 			runsRead,
 			allTimeStats,
-			weeklyMileage,
 			personalRecords,
 			planOverview,
 			upcomingEvent,
@@ -584,7 +582,6 @@
 		] = await Promise.all([
 			fetchRunsForDashboard(),
 			fetchRunAllTimeStats(),
-			fetchWeeklyMileage(currentLocale(), weekStartDay),
 			fetchPersonalRecords(),
 			fetchActivePlanOverview(),
 			fetchNextRsvpedEvent(48),
@@ -783,16 +780,17 @@
 	// pre-fix a Sunday-week-start user saw Sunday's runs in their
 	// goal card but missing from the "This Week" stat.
 	const now = new Date();
-	let weekStart = $derived.by(() => {
-		const ws = new Date(now);
-		const offset = weekStartDay === 'sunday' ? now.getDay() : (now.getDay() + 6) % 7;
-		ws.setDate(now.getDate() - offset);
-		ws.setHours(0, 0, 0, 0);
-		return ws;
-	});
+	let weekStart = $derived(weekStartLocal(now, weekStartDay));
 
 	let filteredRuns = $derived(
 		sourceFilter === 'all' ? runs : runs.filter((r) => r.source === sourceFilter)
+	);
+	// Derived, not fetched: the chart's current-week bar must be the tile's
+	// seven days. As a read in the opening batch it was handed `weekStartDay`
+	// before the settings in that same batch had set it, so a Sunday-first
+	// runner's chart was always bucketed Monday-first.
+	let weeklyMileage = $derived(
+		bucketWeeklyMileage(filteredRuns, 12, currentLocale(), weekStartDay, now)
 	);
 	let thisWeekRuns = $derived(filteredRuns.filter((r) => new Date(r.started_at) >= weekStart));
 	let thisWeekRunDistance = $derived(thisWeekRuns.reduce((sum, r) => sum + r.distance_m, 0));
@@ -1366,7 +1364,7 @@
 						<span class="stat-value stat-value-empty">{m('dash.weekEmptyValue')}</span>
 						<span class="stat-sub">{m('dash.weekEmptySub')}</span>
 					{:else}
-						<span class="stat-value">{formatDistance(thisWeekDistance)}</span>
+						<span class="stat-value" data-testid="dash-this-week-distance">{formatDistance(thisWeekDistance)}</span>
 						<span class="stat-sub">
 							{thisWeekActivityCount === 1
 								? m('dash.activityCountOne', { n: thisWeekActivityCount })
@@ -2096,6 +2094,7 @@
 			runs={filteredRuns}
 			initialType={periodModal.type}
 			initialDate={periodModal.date}
+			{weekStartDay}
 			coveredFrom={periodRunsCoveredFrom}
 			loadFullHistory={loadFullRunHistory}
 		/>

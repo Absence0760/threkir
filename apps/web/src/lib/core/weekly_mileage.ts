@@ -1,7 +1,10 @@
-/// Pure week-bucketing for the dashboard weekly-mileage chart, extracted
-/// from `fetchWeeklyMileage` so the year-stable keying is unit-testable.
+/// Pure week-bucketing for the dashboard weekly-mileage chart. The dashboard
+/// derives it from the same source-filtered runs and `week_start_day` its
+/// "This week" tile reads, so the chart's current-week bar and the tile are
+/// always the same seven days.
 ///
-/// Runs are grouped into weeks anchored on the user's `week_start_day`. The
+/// Runs are grouped into weeks anchored on the user's `week_start_day`, via
+/// `weekStartLocal` (training/goals.ts) — the one week-window helper. The
 /// bucket key is the week start's year-stable ISO date (`yyyy-mm-dd`): a
 /// day/month-only key (e.g. "5 Jan") merged the same calendar week across
 /// different years, fusing two New Year's weeks into a single bar. The human
@@ -16,6 +19,8 @@
 /// adjacent bars with the gap silently closed up. A weekly-mileage chart's
 /// subject is the weeks as much as the miles, and a week off is the most
 /// load-bearing thing it can show.
+
+import { weekStartLocal } from '../training/goals';
 
 export interface WeekBar {
 	/// The full, localised week label — what a reader hovers for.
@@ -41,15 +46,7 @@ export function bucketWeeklyMileage(
 	/// dashboard threads a `now` into its week strip and streak cards.
 	now: Date = new Date(),
 ): WeekBar[] {
-	/// Midnight at the start of the week containing `d`.
-	/// getDay(): 0 = Sunday … 6 = Saturday.
-	const weekStartOf = (d: Date): Date => {
-		const start = new Date(d);
-		const offset = weekStartDay === 'sunday' ? d.getDay() : (d.getDay() + 6) % 7;
-		start.setDate(d.getDate() - offset);
-		start.setHours(0, 0, 0, 0);
-		return start;
-	};
+	const weekStartOf = (d: Date): Date => weekStartLocal(d, weekStartDay);
 
 	const isoKey = (d: Date): string =>
 		`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

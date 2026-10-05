@@ -5,6 +5,7 @@
 	import { formatDate, formatDuration, activeFormatLocale } from '$lib/format/time';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { formatISO } from '$lib/training/training';
+	import { weekStartLocal } from '$lib/training/goals';
 	import { m } from '$lib/i18n/store.svelte';
 	import { periodNeedsFullHistory, type PeriodType } from '$lib/core/dashboard_runs';
 	import type { PeriodSummaryRun } from '$lib/core/data';
@@ -14,6 +15,9 @@
 		initialType?: PeriodType;
 		initialDate?: Date;
 		onPeriodChange?: (type: PeriodType, date: Date) => void;
+		/** The runner's `week_start_day`; a week is the same seven days the
+		 *  dashboard's "This week" tile counts. */
+		weekStartDay?: 'monday' | 'sunday';
 		/**
 		 * Earliest instant `runs` is guaranteed to cover. `null` (the
 		 * default) means it is the complete history. A caller that passes a
@@ -29,6 +33,7 @@
 		initialType = 'week',
 		initialDate,
 		onPeriodChange,
+		weekStartDay = 'monday',
 		coveredFrom = null,
 		loadFullHistory,
 	}: Props = $props();
@@ -48,14 +53,10 @@
 	let startDate = $derived(periodStart(anchor, type));
 
 	function periodStart(d: Date, t: PeriodType): Date {
+		if (t === 'week') return weekStartLocal(d, weekStartDay);
 		const out = new Date(d);
 		out.setHours(0, 0, 0, 0);
-		if (t === 'week') {
-			const dow = (out.getDay() + 6) % 7;
-			out.setDate(out.getDate() - dow);
-		} else {
-			out.setDate(1);
-		}
+		out.setDate(1);
 		return out;
 	}
 

@@ -64,6 +64,16 @@ export function noonOnBrowserDay(offsetDays = 0): string {
 	return browserDayAt(offsetDays, 12);
 }
 
+/// Offset in days from today to the most recent browser calendar day that
+/// falls on `weekday` (0 = Sunday … 6 = Saturday), strictly before today —
+/// always -1 … -7. A spec that pins the page clock to that day for a
+/// week-boundary assertion stays behind the server's clock, so the session
+/// it signed in with still reads as current.
+export function lastBrowserWeekday(weekday: number): number {
+	const today = new Date().getUTCDay();
+	return -(((today - weekday + 6) % 7) + 1);
+}
+
 /// The browser's calendar year, offset by whole years. The runner's year and
 /// the browser's disagree either side of a New Year boundary, and a surface
 /// that renders a year off the URL is only self-consistent when the year in

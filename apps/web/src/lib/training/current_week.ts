@@ -15,6 +15,8 @@
  * not a twin of anything.)
  */
 
+import { weekStartLocal } from './goals';
+
 export type WeekStart = 'monday' | 'sunday';
 
 /// The minimum an activity needs to expose for the strip: when it happened
@@ -56,17 +58,6 @@ function localIso(d: Date): string {
 	return `${y}-${mo}-${da}`;
 }
 
-/// Midnight (local) at the start of the calendar week containing `now`,
-/// honouring `weekStart`. Same offset math the dashboard's inline
-/// `weekStart` derived used before this was lifted to a shared helper.
-function weekStartMidnight(now: Date, weekStart: WeekStart): Date {
-	const ws = new Date(now);
-	const offset = weekStart === 'sunday' ? now.getDay() : (now.getDay() + 6) % 7;
-	ws.setDate(now.getDate() - offset);
-	ws.setHours(0, 0, 0, 0);
-	return ws;
-}
-
 /// Build the current calendar week from `activities`, bucketing each one
 /// onto its LOCAL day. Activities outside the week (or with a non-positive
 /// distance) are ignored. `now` defaults to the real clock; pass an
@@ -76,7 +67,7 @@ export function currentWeek(
 	weekStart: WeekStart = 'monday',
 	now: Date = new Date(),
 ): CurrentWeek {
-	const start = weekStartMidnight(now, weekStart);
+	const start = weekStartLocal(now, weekStart);
 	const todayIso = localIso(now);
 
 	const byDay = new Map<string, { distanceM: number; count: number }>();

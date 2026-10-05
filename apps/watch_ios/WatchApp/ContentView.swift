@@ -547,12 +547,29 @@ struct RunStatsView: View {
     @ObservedObject var workoutManager: WorkoutManager
     @ObservedObject var healthKit: HealthKitManager
 
+    // The readouts scroll and the two controls that end or suspend the run
+    // are pinned beneath them. One fixed column of every row is taller than a
+    // 40 mm screen, and a page that cannot scroll centres its overflow — which
+    // pushed the elapsed time up under the system clock and Pause / Stop off
+    // the bottom edge. A scroll view starts its content below the clock's
+    // safe-area inset on every watch size and Dynamic Type setting.
     var body: some View {
+        VStack(spacing: 4) {
+            ScrollView {
+                readouts
+            }
+            controls
+        }
+    }
+
+    private var readouts: some View {
         VStack(spacing: 8) {
             GpsBannerView(state: workoutManager.gpsBanner)
 
             Text(workoutManager.formattedElapsed)
                 .font(.system(.title, design: .monospaced))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
 
             HStack {
                 VStack {
@@ -616,17 +633,19 @@ struct RunStatsView: View {
             .buttonStyle(.bordered)
             .font(.caption)
             .accessibilityHint("Marks a split at the current time and distance")
+        }
+    }
 
-            HStack(spacing: 12) {
-                Button("Pause") {
-                    workoutManager.pause()
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(AppTheme.duskDeep)
-                .accessibilityHint("Pauses the recording without ending it")
-
-                HoldToStopButton { workoutManager.stop() }
+    private var controls: some View {
+        HStack(spacing: 12) {
+            Button("Pause") {
+                workoutManager.pause()
             }
+            .buttonStyle(.borderedProminent)
+            .tint(AppTheme.duskDeep)
+            .accessibilityHint("Pauses the recording without ending it")
+
+            HoldToStopButton { workoutManager.stop() }
         }
     }
 }

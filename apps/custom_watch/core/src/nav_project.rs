@@ -140,8 +140,9 @@ pub struct NavOutcome {
 ///
 /// `prev_along_m` is the last reported along-course distance, which biases the
 /// projection toward forward progress on a retracing course
-/// ([`Course::project_from`]); `None` on the first fix of a course takes the
-/// unbiased projection.
+/// ([`Course::project_from`]); `None` on the first fix of a course anchors at
+/// the start without wrapping round a loop ([`Course::project_from_start`]), so
+/// a runner beside a loop's start/finish is not read as a lap already done.
 ///
 /// `None` when the position does not project at all (a non-finite fix). The
 /// latch is then left exactly as it was: a garbage fix must not clear a live
@@ -156,7 +157,7 @@ pub fn project_fix(
 ) -> Option<NavOutcome> {
     let projected = match prev_along_m {
         Some(prev) => course.project_from(lat_deg, lon_deg, prev),
-        None => course.project(lat_deg, lon_deg),
+        None => course.project_from_start(lat_deg, lon_deg),
     };
     let p = projected?;
     let was_alerting = alert.active();
@@ -474,6 +475,47 @@ mod tests {
             "along {} ran past the loop",
             along
         );
+    }
+
+    #[test]
+    fn a_first_fix_beside_a_loops_start_reads_the_start_not_a_finished_lap() {
+        // 1 m east and 3 m north of the corral: nearer the CLOSING leg (1 m)
+        // than the opening one (3 m). The first fix has no anchor, and an
+        // unbiased projection read it as the finish — a full lap done before
+        // the runner has taken a step.
+        let side = 6_706.0 / 4.0;
+        let deg = |m: f64| m / (111_320.0 * libm::cos(40.015 * core::f64::consts::PI / 180.0));
+        let corner = |e: f64, n: f64| CoursePoint {
+            lat_deg: 40.015 + n / 110_574.0,
+            lon_deg: -105.2705 + deg(e),
+        };
+        let course = Course::from_points(&[
+            corner(0.0, 0.0),
+            corner(side, 0.0),
+            corner(side, side),
+            corner(0.0, side),
+            corner(0.0, 0.0),
+        ])
+        .unwrap();
+        let cues = course_cues(&course);
+        let mut alert = OffCourseAlert::new();
+        let start = corner(1.0, 3.0);
+        let out = project_fix(
+            &course,
+            &mut alert,
+            None,
+            &cues,
+            start.lat_deg,
+            start.lon_deg,
+        )
+        .unwrap();
+        assert!(
+            out.status.along_m < 5.0,
+            "started {} m along",
+            out.status.along_m
+        );
+        assert!(out.status.off_m < 3.5, "started {} m off", out.status.off_m);
+        assert!(!out.status.alerting);
     }
 
     #[test]

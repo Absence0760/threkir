@@ -297,7 +297,7 @@ impl Course {
     /// perpendicular offset. `None` for a non-finite position (a course always
     /// has >= 2 points by construction). Mirrors `snapToPolyline`.
     pub fn project(&self, lat_deg: f64, lon_deg: f64) -> Option<Projection> {
-        self.project_biased(lat_deg, lon_deg, None)
+        self.project_biased(lat_deg, lon_deg, None, true)
     }
 
     /// [`Course::project`] biased toward forward progress along the course.
@@ -325,7 +325,21 @@ impl Course {
         lon_deg: f64,
         prev_along_m: f64,
     ) -> Option<Projection> {
-        self.project_biased(lat_deg, lon_deg, Some(prev_along_m))
+        self.project_biased(lat_deg, lon_deg, Some(prev_along_m), true)
+    }
+
+    /// [`Course::project_from`] for the first fix of a course, anchored at the
+    /// start and NOT wrapping round a loop.
+    ///
+    /// A runner with no reading yet has run nothing, so on a closed course the
+    /// finish is a whole lap away rather than "just behind" the start the way
+    /// [`Course::project_from`]'s circle reads it. Unbiased, a first fix a
+    /// metre nearer the closing leg than the opening one read a full lap done
+    /// before the runner had taken a step; here the bias charges the closing
+    /// leg for that lap, capped as ever below [`MAX_ALONG_BIAS_M`], so a fix
+    /// genuinely nearer some other part of the course still lands there.
+    pub fn project_from_start(&self, lat_deg: f64, lon_deg: f64) -> Option<Projection> {
+        self.project_biased(lat_deg, lon_deg, Some(0.0), false)
     }
 
     fn project_biased(
@@ -333,6 +347,7 @@ impl Course {
         lat_deg: f64,
         lon_deg: f64,
         prev_along_m: Option<f64>,
+        wrap: bool,
     ) -> Option<Projection> {
         if !lat_deg.is_finite() || !lon_deg.is_finite() {
             return None;
@@ -410,7 +425,7 @@ impl Course {
             // of snapping onto the outbound leg, while a clearly-closer segment
             // still wins.
             let cost = match prev_along_m {
-                Some(prev) => off + self.along_bias_m(along, prev),
+                Some(prev) => off + self.along_bias_m(along, prev, wrap),
                 None => off,
             };
 
@@ -445,7 +460,8 @@ impl Course {
     ///
     /// The gap is measured on the course's own topology: on a closed course
     /// ([`Course::is_loop`]) the along-axis is a circle, so it is taken the
-    /// short way round. Without that, every traversal after the first reports
+    /// short way round — unless `wrap` is false, for an anchor at the start of
+    /// a run that has covered nothing yet ([`Course::project_from_start`]). Without that, every traversal after the first reports
     /// the runner a lap ahead — the anchor still reads the full loop length
     /// while the runner is metres into the next lap, and a backward charge of
     /// `ALONG_BACK_BIAS_PER_M * total_m` buys the finish segment most of the
@@ -464,10 +480,10 @@ impl Course {
     /// [`ALONG_CONTINUITY_PER_M`] then settles the one pair the circle leaves
     /// indistinguishable — the two ends of a loop's along-axis at their shared
     /// vertex.
-    fn along_bias_m(&self, along_m: f64, prev_along_m: f64) -> f64 {
+    fn along_bias_m(&self, along_m: f64, prev_along_m: f64, wrap: bool) -> f64 {
         let unwrapped = along_m - prev_along_m;
         let mut gap = unwrapped;
-        if self.is_loop {
+        if self.is_loop && wrap {
             if gap > self.total_m / 2.0 {
                 gap -= self.total_m;
             } else if gap < -self.total_m / 2.0 {

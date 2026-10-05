@@ -186,9 +186,9 @@ test('exactly one workflow emits the required `CI gate` check', () => {
 // Claude resolves a subagent by the `name:` in its frontmatter, not by path,
 // so two files declaring one name are two definitions of the same agent and
 // which one answers is not something a reader can predict. A templates-repo
-// sync proposed `.claude/agents/repo-security-auditor.md` and
-// `.claude/agents/compliance-auditor.md` while this repo already carried both
-// under `.claude/agents/auditors/` — additive by path, colliding by name, and
+// sync proposed `.claude/agents/audit/repo-security-auditor.md` and
+// `.claude/agents/audit/compliance-auditor.md` while this repo already carried both
+// under `.claude/agents/audit/` — additive by path, colliding by name, and
 // the incoming pair described a different application's architecture (a CMS
 // webhook, a DynamoDB orders store) while dropping the `Write` tool the
 // `/audit/*` commands need to persist findings to `reviews/`. A wrong-but-

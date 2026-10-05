@@ -1325,7 +1325,7 @@ jobs:
     #
     # Deliberately NOT gated on `needs.changes.outputs.code`. Every file these
     # guards read is markdown — docs/product/parity.md, CLAUDE.md,
-    # .claude/agents/shared-library-syncer.md — and the `changes` filter
+    # .claude/agents/engineering/shared-library-syncer.md — and the `changes` filter
     # classifies `docs/`, `.claude/` and `*.md` as a docs-only diff. So the
     # gate skipped this job on exactly the edits it exists to police, and the
     # CI gate counts a skip as a pass. The registry drift § 604 records

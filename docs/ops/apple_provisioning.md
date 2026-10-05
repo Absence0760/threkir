@@ -37,7 +37,7 @@ Last moved: **2026-10-05**.
 | 1 | Team ID + renewal reminder | Bitwarden | **Done 2026-10-05** — Team ID confirmed; renewal reminder on the owner's calendar (auto-renew is on) |
 | 2 | App Groups `group.com.threkir.app.activerun` + `group.com.threkir.app.share` | Apple portal | **Done 2026-10-05** |
 | 3 | App IDs `com.threkir.app` + `com.threkir.app.ShareExtension` + `com.threkir.app.RunActivity` | Apple portal | **Done 2026-10-05** — both groups on `com.threkir.app`, the share group on `ShareExtension`, nothing on `RunActivity` |
-| 4 | Watch App IDs `com.threkir.app.watchapp` + `com.threkir.app.watchapp.widget` | Apple portal | **Done 2026-10-05** — `.widget`, not `.complication`, which Apple reported unavailable ([decisions § 1739](../architecture/decisions.md)); `activerun` on both |
+| 4 | Watch App IDs `com.threkir.app.watchapp` + `com.threkir.app.watchapp.widget` | Apple portal | **Done 2026-10-05** — `.widget`, not `.complication`, which Apple reported unavailable ([decisions § 1752](../architecture/decisions.md)); `activerun` on both |
 | 5 | Services ID `com.threkir.web` | Apple portal | ☐ |
 | 6 | **APNs key** `.p8` | Firebase → Cloud Messaging | **Done 2026-09-19** |
 | 7 | **Sign-in-with-Apple key** `.p8` | Supabase (via a generated client secret) | **Done 2026-09-19** |
@@ -351,7 +351,7 @@ an App ID of its own too. Same flow again:
 | Bundle ID | **Explicit App ID** — `com.threkir.app.watchapp.widget` |
 
 The id is `.widget`, not `.complication`: Apple reported `com.threkir.app.watchapp.complication`
-as not available to this team ([decisions § 1739](../architecture/decisions.md)).
+as not available to this team ([decisions § 1752](../architecture/decisions.md)).
 
 Capability: **App Groups** only, assigned to `group.com.threkir.app.activerun`
 in the same second pass. The complication runs in its own process and draws

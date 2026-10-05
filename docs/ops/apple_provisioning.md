@@ -48,10 +48,10 @@ Last moved: **2026-10-05**.
 | 11 | `PUBLIC_APPLE_AUTH_ENABLED` truthy + `web@` Release | GitHub secret + release | ☐ |
 | 12 | `mobile_android@` release (picks up the push config) | Play | ☐ |
 | 13 | Android Apple dart-defines | `APPLE_SERVICE_CLIENT_ID` + `APPLE_REDIRECT_URI` | ☐ |
-| 14 | Apple Distribution certificate `.p12` | GitHub `production` env `IOS_BUILD_CERTIFICATE_BASE64` + `IOS_P12_PASSWORD`; estate | Secrets set 2026-10-05; estate backup pending, tracked in issue #1040 |
+| 14 | Apple Distribution certificate `.p12` | GitHub `production` env `IOS_BUILD_CERTIFICATE_BASE64` + `IOS_P12_PASSWORD`; estate | **Done 2026-10-05** — secrets set; `.p12` + password backed up in estate commit `b9280b6` (issue #1040); local copies and the keychain identity deleted |
 | 15 | App Store profiles, phone + share extension + Live Activity + watch + complication | GitHub `production` env `IOS_PROVISIONING_PROFILE_BASE64` + `IOS_SHARE_PROVISIONING_PROFILE_BASE64` + `IOS_RUN_ACTIVITY_PROVISIONING_PROFILE_BASE64` + `IOS_WATCH_PROVISIONING_PROFILE_BASE64` + `IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64` | **Done 2026-10-05** — all five checked against their bundle ids, App Store type, App Groups |
-| 16 | App Store Connect API key `.p8` | GitHub `production` env `APP_STORE_CONNECT_API_*`; estate | Secrets set 2026-10-05; estate backup pending, tracked in issue #1040 |
-| 17 | App Store Connect app record | App Store Connect | ☐ — gates nothing above; must exist before step 18 uploads |
+| 16 | App Store Connect API key `.p8` | GitHub `production` env `APP_STORE_CONNECT_API_*`; estate | **Done 2026-10-05** — secrets set; `.p8` + Key ID backed up in estate commit `b9280b6` (issue #1040); local copy deleted |
+| 17 | App Store Connect app record | App Store Connect | **Done 2026-10-05** — Apple ID 6819364574, SKU `threkir-ios` |
 | 18 | First `mobile_ios@` release → TestFlight | GitHub Release | ☐ |
 
 The open rows are `☐` rather than `- [ ]` on purpose: the survey docs grep

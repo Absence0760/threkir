@@ -521,3 +521,12 @@ test('progressAlongRoute — a non-finite previous reading is treated as no read
 	const p = progressAlongRoute(at(1, 3), squareLoop, Number.NaN, Number.NaN)!;
 	assert.ok(p.alongM < 5, `alongM ${p.alongM}`);
 });
+
+test('progressAlongRoute — with no previous reading, a fix off the line takes its nearest point', () => {
+	// Starting a recording 100 m beside the middle of the route: there is no
+	// earlier match to hold on to, so the window at the start does not win.
+	const line = [en(0, 0), en(2000, 0)];
+	const p = progressAlongRoute(at(900, 100), line, null)!;
+	assert.ok(Math.abs(p.alongM - 900) < 1, `alongM ${p.alongM}`);
+	assert.ok(Math.abs(p.offRouteM - 100) < 1, `offRouteM ${p.offRouteM}`);
+});

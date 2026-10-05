@@ -109,7 +109,8 @@ export interface RouteProgress {
  * can never outweigh real distance off the line. When nothing in that window
  * is within `ROUTE_MATCH_REACQUIRE_M`, the rest of the route ahead is
  * searched, so a runner who skips ahead or returns after a signal gap is
- * re-acquired; a runner still off the line keeps the windowed match.
+ * re-acquired; a runner still off the line keeps the windowed match, unless
+ * there is no previous reading to keep, when the nearest point is taken.
  *
  * Each segment is projected in its own local planar frame, anchored at that
  * segment's start, but candidates are ranked by the great-circle distance to
@@ -204,7 +205,7 @@ export function progressAlongRoute(
 	let match = best(lo, anchor + ROUTE_MATCH_LOOKAHEAD_M);
 	if (!match || match.offsetM > ROUTE_MATCH_REACQUIRE_M) {
 		const ahead = best(lo, total);
-		if (ahead && (!match || ahead.offsetM <= ROUTE_MATCH_REACQUIRE_M)) match = ahead;
+		if (ahead && (!match || !hasPrev || ahead.offsetM <= ROUTE_MATCH_REACQUIRE_M)) match = ahead;
 	}
 	if (!match) return null;
 	const alongM = Math.min(total, Math.max(0, match.alongM));

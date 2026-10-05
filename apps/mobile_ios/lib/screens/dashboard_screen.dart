@@ -108,6 +108,11 @@ class DashboardScreen extends StatefulWidget {
   /// dead, as with [onStartRun].
   final VoidCallback? onLogLift;
 
+  /// Pushes the unsynced runs now, from the pending-sync banner's Retry. The
+  /// host wires it to `SyncService` — the one run drain — rather than this
+  /// screen pushing runs itself. Null leaves runs counted but not retried.
+  final Future<void> Function()? onSyncRuns;
+
   const DashboardScreen({
     super.key,
     this.apiClient,
@@ -120,6 +125,7 @@ class DashboardScreen extends StatefulWidget {
     this.settingsSync,
     this.onStartRun,
     this.onLogLift,
+    this.onSyncRuns,
   });
 
   @override
@@ -839,6 +845,8 @@ class _DashboardScreenState extends State<DashboardScreen>
       api: api,
       isOnline: _isOnline,
       stores: [widget.gymStore, widget.foodStore],
+      runStore: widget.runStore,
+      onRetryRuns: widget.onSyncRuns,
     );
 
     // Web's `isNewAccount`: no runs all-time AND no gym sessions. A goal is

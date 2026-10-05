@@ -42,6 +42,11 @@ import 'runs_screen.dart';
 /// on for anyone who already logs them, and whatever the runner chose once
 /// they have chosen. The strip is rebuilt when that answer changes.
 ///
+/// With neither shown, History goes too: a timeline of nothing but runs is
+/// the Runs tab a second time. That leaves one surface, so the hub renders
+/// Runs directly rather than a strip with a single tab in it
+/// ([fitnessHubTabs]).
+///
 /// The Gym and Nutrition tabs are also where the shell's centre Log action
 /// lands, so these are the app's only instances of those two screens rather
 /// than review copies of capture pages held elsewhere ([`selectedTab`],
@@ -72,6 +77,19 @@ enum FitnessTab {
         FitnessTab.nutrition => l10n.fitnessTabNutrition,
       };
 }
+
+/// The hub's tabs for a given modality visibility, in strip order. The first
+/// is where a hidden selection falls back to and where the shell starts.
+List<FitnessTab> fitnessHubTabs({
+  required bool gymShown,
+  required bool nutritionShown,
+}) =>
+    [
+      if (gymShown || nutritionShown) FitnessTab.history,
+      FitnessTab.runs,
+      if (gymShown) FitnessTab.gym,
+      if (nutritionShown) FitnessTab.nutrition,
+    ];
 
 class FitnessHubScreen extends StatefulWidget {
   final ApiClient? apiClient;
@@ -137,16 +155,12 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
     widget.foodStore.addListener(_onVisibilityInputs);
   }
 
-  List<FitnessTab> _visibleTabs() => [
-        FitnessTab.history,
-        FitnessTab.runs,
-        if (widget.preferences
-            .gymShown(hasData: widget.gymStore.workouts.isNotEmpty))
-          FitnessTab.gym,
-        if (widget.preferences
-            .nutritionShown(hasData: widget.foodStore.rows.isNotEmpty))
-          FitnessTab.nutrition,
-      ];
+  List<FitnessTab> _visibleTabs() => fitnessHubTabs(
+        gymShown: widget.preferences
+            .gymShown(hasData: widget.gymStore.workouts.isNotEmpty),
+        nutritionShown: widget.preferences
+            .nutritionShown(hasData: widget.foodStore.rows.isNotEmpty),
+      );
 
   TabController _buildController() {
     final index = _tabs.indexOf(_tab.value);
@@ -256,6 +270,9 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    // The controller is kept at length 1 so a modality switched back on only
+    // has to grow it, the same rebuild every other visibility change takes.
+    if (_tabs.length == 1) return _body(_tabs.single, l10n);
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 0,
@@ -273,6 +290,13 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
     );
   }
 
+  /// The cloud slot (unsynced badge, Sync all, parked-run badge) lives on one
+  /// run list only, so two side-by-side tabs don't duplicate it. Pinning it to
+  /// History by name left a runner with no History tab — neither modality
+  /// shown — without any sign that a run hadn't uploaded, so it goes to
+  /// whichever run list leads the strip.
+  bool _ownsSyncActions(FitnessTab tab) => tab == _tabs.first;
+
   Widget _body(FitnessTab tab, AppLocalizations l10n) => switch (tab) {
         FitnessTab.history => RunsScreen(
             key: const PageStorageKey('fitness-all'),
@@ -284,6 +308,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
             gymStore: widget.gymStore,
             foodStore: widget.foodStore,
             showKindChips: false,
+            showSyncActions: _ownsSyncActions(tab),
             // The shell's centre Log button, one row below this tab, already
             // opens the cross-modal run / lift / meal picker this tab's own
             // FAB opened. The modality tabs keep theirs — those add into one
@@ -305,7 +330,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
               SurfacePeer(label: l10n.runSurfaceTabPlans, onTap: _openPlans),
               SurfacePeer(label: l10n.runSurfaceTabRaces, onTap: _openRaces),
             ],
-            showSyncActions: false,
+            showSyncActions: _ownsSyncActions(tab),
             titleText: l10n.fitnessTabRuns,
           ),
         FitnessTab.gym => GymScreen(

@@ -428,6 +428,49 @@ void main() {
       });
     });
 
+    testWidgets('the pending-sync banner counts a run that has not uploaded',
+        (tester) async {
+      // Home's banner watched only the gym and food stores, so a runner who
+      // never lifts or logs food saw nothing pending after an offline run.
+      await tester.runAsync(() async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = Preferences();
+        await prefs.init();
+        final dir = Directory.systemTemp.createTempSync('dashboard_unsynced_');
+        try {
+          final seedStore = LocalRunStore();
+          await seedStore.init(overrideDirectory: dir);
+          await seedStore.save(_run(id: 'r1'));
+          final runStore = LocalRunStore();
+          await runStore.init(overrideDirectory: dir);
+          expect(runStore.unsyncedCount, 1);
+
+          await tester.pumpWidget(
+            MaterialApp(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: DashboardScreen(
+                runStore: runStore,
+                routeStore: LocalRouteStore(),
+                gymStore: LocalGymStore(),
+                foodStore: LocalFoodStore(),
+                preferences: prefs,
+              ),
+            ),
+          );
+          await tester.pump();
+          await tester.pump();
+
+          expect(
+            find.text('1 change saved on this device — will sync when online'),
+            findsOneWidget,
+          );
+        } finally {
+          dir.deleteSync(recursive: true);
+        }
+      });
+    });
+
     testWidgets('activity stat strip shows distance + run count per period',
         (tester) async {
       // Verifies the consolidated 3-column strip (Week / Month / All time)

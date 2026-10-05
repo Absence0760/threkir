@@ -20,6 +20,7 @@ import '../lib/screens/nutrition_screen.dart';
 import '../lib/screens/plans_screen.dart';
 import '../lib/screens/races_screen.dart';
 import '../lib/screens/routes_screen.dart';
+import '../lib/screens/runs_screen.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/activity_timeline_list.dart';
 import '../lib/widgets/surface_peer_strip.dart';
@@ -74,6 +75,7 @@ void main() {
   Future<Preferences> pump(
     WidgetTester tester, {
     List<Run> runs = const [],
+    List<Run> unsyncedRuns = const [],
     List<({Map<String, dynamic> workout, List<Map<String, dynamic>> sets})> lifts =
         const [],
     List<Map<String, dynamic>> meals = const [],
@@ -100,6 +102,9 @@ void main() {
     // zone — seed inside runAsync (CLAUDE.md gotcha).
     await tester.runAsync(() async {
       if (runs.isNotEmpty) await runStore.saveManyFromRemote(runs);
+      for (final r in unsyncedRuns) {
+        await runStore.save(r);
+      }
       if (lifts.isNotEmpty) await gymStore.replaceFromServer(lifts);
       if (meals.isNotEmpty) {
         await foodStore.replaceFromServer(meals);
@@ -363,16 +368,53 @@ void main() {
   });
 
   group('Gym and Nutrition visibility', () {
-    testWidgets('a runner who has logged neither sees only History and Runs',
-        (tester) async {
-      await pump(tester, runs: [runRow('r1')], storedPrefs: const {});
-      expect(stripLabels(tester), ['History', 'Runs']);
+    testWidgets('a runner who has logged neither sees Runs alone, with no '
+        'one-tab strip and no History', (tester) async {
+      // History is the cross-modal timeline; with only runs in it, it is the
+      // Runs tab a second time.
+      final selected = ValueNotifier(FitnessTab.history);
+      addTearDown(selected.dispose);
+      await pump(tester,
+          runs: [runRow('r1')], storedPrefs: const {}, selectedTab: selected);
+      expect(find.byType(TabBar), findsNothing);
+      expect(find.byType(RunsScreen), findsOneWidget);
       expect(find.byType(GymScreen), findsNothing);
       expect(find.byType(NutritionScreen), findsNothing);
+      // The Runs surface keeps its peer strip when it stands alone.
+      final strip = find.byType(SurfacePeerStrip);
+      expect(strip, findsOneWidget);
+      for (final label in ['Runs', 'Routes', 'Segments', 'Plans', 'Races']) {
+        expect(find.descendant(of: strip, matching: find.text(label)),
+            findsOneWidget);
+      }
+      expect(selected.value, FitnessTab.runs,
+          reason: 'a selection on the missing History tab must fall back to '
+              'a tab that exists');
     });
 
-    testWidgets('a logged lift keeps Gym without anyone opening Settings',
+    testWidgets('Runs standing alone carries the cloud slot History had, so '
+        'an unsynced run still shows its badge and Sync all', (tester) async {
+      await pump(tester,
+          unsyncedRuns: [runRow('r1')], storedPrefs: const {});
+      expect(find.byType(TabBar), findsNothing);
+      expect(find.byIcon(Icons.cloud_upload), findsOneWidget);
+      expect(find.byTooltip('Sync 1 run'), findsOneWidget);
+    });
+
+    testWidgets('with History back, the cloud slot moves to it and leaves Runs',
         (tester) async {
+      await pump(tester,
+          unsyncedRuns: [runRow('r1')],
+          storedPrefs: const {'show_gym': true});
+      expect(stripLabels(tester), ['History', 'Runs', 'Gym']);
+      expect(find.byIcon(Icons.cloud_upload), findsOneWidget);
+      await tester.tap(find.text('Runs').first);
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.cloud_upload), findsNothing);
+    });
+
+    testWidgets('a logged lift keeps Gym, and History with it, without anyone '
+        'opening Settings', (tester) async {
       await pump(tester,
           lifts: [liftRow('l1', 'Leg day')], storedPrefs: const {});
       expect(stripLabels(tester), ['History', 'Runs', 'Gym']);
@@ -383,19 +425,52 @@ void main() {
       await pump(tester,
           lifts: [liftRow('l1', 'Leg day')],
           storedPrefs: const {'show_gym': false});
-      expect(stripLabels(tester), ['History', 'Runs']);
+      expect(find.byType(TabBar), findsNothing);
+      expect(find.byType(RunsScreen), findsOneWidget);
     });
 
-    testWidgets('switching on adds the tab live; switching the open tab off '
-        'falls back to History', (tester) async {
+    for (final (name, turnOn, tabs) in [
+      (
+        'Gym',
+        (Preferences p) => p.setShowGym(true),
+        ['History', 'Runs', 'Gym'],
+      ),
+      (
+        'Nutrition',
+        (Preferences p) => p.setShowNutrition(true),
+        ['History', 'Runs', 'Nutrition'],
+      ),
+    ]) {
+      testWidgets('History returns as soon as $name is switched on, and a '
+          'Runs selection survives the strip coming back', (tester) async {
+        final selected = ValueNotifier(FitnessTab.history);
+        addTearDown(selected.dispose);
+        final prefs = await pump(tester,
+            runs: [runRow('r1')], storedPrefs: const {}, selectedTab: selected);
+        expect(find.byType(TabBar), findsNothing);
+        expect(selected.value, FitnessTab.runs);
+
+        await turnOn(prefs);
+        await tester.pumpAndSettle();
+        expect(stripLabels(tester), tabs);
+        expect(selected.value, FitnessTab.runs);
+        expect(tester.widget<TabBar>(find.byType(TabBar)).controller!.index,
+            tabs.indexOf('Runs'));
+      });
+    }
+
+    testWidgets('switching the open tab off falls back to History while '
+        'another modality is still shown', (tester) async {
       final selected = ValueNotifier(FitnessTab.history);
       addTearDown(selected.dispose);
       final prefs = await pump(tester,
-          runs: [runRow('r1')], storedPrefs: const {}, selectedTab: selected);
+          runs: [runRow('r1')],
+          storedPrefs: const {'show_gym': true},
+          selectedTab: selected);
 
       await prefs.setShowNutrition(true);
       await tester.pumpAndSettle();
-      expect(stripLabels(tester), ['History', 'Runs', 'Nutrition']);
+      expect(stripLabels(tester), ['History', 'Runs', 'Gym', 'Nutrition']);
 
       await tester.tap(find.text('Nutrition').first);
       await tester.pumpAndSettle();
@@ -403,11 +478,41 @@ void main() {
 
       await prefs.setShowNutrition(false);
       await tester.pumpAndSettle();
-      expect(stripLabels(tester), ['History', 'Runs']);
+      expect(stripLabels(tester), ['History', 'Runs', 'Gym']);
       expect(selected.value, FitnessTab.history,
           reason: 'a hidden tab cannot stay selected');
       expect(
           tester.widget<TabBar>(find.byType(TabBar)).controller!.index, 0);
+    });
+
+    testWidgets('switching the last modality off falls back to Runs alone',
+        (tester) async {
+      final selected = ValueNotifier(FitnessTab.nutrition);
+      addTearDown(selected.dispose);
+      final prefs = await pump(tester,
+          runs: [runRow('r1')],
+          storedPrefs: const {'show_nutrition': true},
+          selectedTab: selected);
+      expect(find.byType(NutritionScreen), findsOneWidget);
+
+      await prefs.setShowNutrition(false);
+      await tester.pumpAndSettle();
+      expect(find.byType(TabBar), findsNothing);
+      expect(find.byType(NutritionScreen), findsNothing);
+      expect(find.byType(RunsScreen), findsOneWidget);
+      expect(selected.value, FitnessTab.runs);
+    });
+
+    test('fitnessHubTabs drops History only when neither modality is shown',
+        () {
+      expect(fitnessHubTabs(gymShown: false, nutritionShown: false),
+          [FitnessTab.runs]);
+      expect(fitnessHubTabs(gymShown: true, nutritionShown: false),
+          [FitnessTab.history, FitnessTab.runs, FitnessTab.gym]);
+      expect(fitnessHubTabs(gymShown: false, nutritionShown: true),
+          [FitnessTab.history, FitnessTab.runs, FitnessTab.nutrition]);
+      expect(fitnessHubTabs(gymShown: true, nutritionShown: true),
+          FitnessTab.values);
     });
   });
 }

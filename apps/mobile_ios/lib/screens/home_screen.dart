@@ -25,6 +25,7 @@ import '../push_target.dart';
 import '../race_controller.dart';
 import '../settings_destination.dart';
 import '../settings_sync.dart';
+import '../sync_service.dart';
 import '../shared_file_import.dart' show incomingRouteImport;
 import '../social_service.dart';
 import '../training_service.dart';
@@ -93,6 +94,10 @@ class HomeScreen extends StatefulWidget {
   final BleHeartRate heartRate;
   final BleTreadmill treadmill;
   final SettingsSyncService? settingsSync;
+
+  /// The run drain, so Home's pending-sync banner can retry runs. Null in
+  /// tests and leaves runs counted there but not retried.
+  final SyncService? syncService;
   final cm.Run? recoveredRun;
 
   /// Banner copy emitted by the in-progress recovery helper at app
@@ -124,6 +129,7 @@ class HomeScreen extends StatefulWidget {
     required this.heartRate,
     required this.treadmill,
     this.settingsSync,
+    this.syncService,
     this.recoveredRun,
     this.recoveryBannerMessage,
     this.resumablePartial,
@@ -164,8 +170,13 @@ class _HomeScreenState extends State<HomeScreen>
 
   /// Which Fitness sub-tab the hub is showing. Owned here rather than inside
   /// the hub because the centre Log action selects one, and the hub is a lazy
-  /// page that may not be built yet when it does.
-  final _fitnessTab = ValueNotifier<FitnessTab>(FitnessTab.history);
+  /// page that may not be built yet when it does. Starts on the hub's first
+  /// tab, which is Runs rather than History when neither Gym nor Nutrition is
+  /// shown, because History is not in the hub then.
+  late final _fitnessTab = ValueNotifier<FitnessTab>(fitnessHubTabs(
+    gymShown: _gymShown,
+    nutritionShown: _nutritionShown,
+  ).first);
 
   /// Current page index. A `ValueNotifier` instead of a `setState` int so
   /// page changes during a swipe only rebuild the bottom bar — not the
@@ -536,6 +547,9 @@ class _HomeScreenState extends State<HomeScreen>
           settingsSync: widget.settingsSync,
           onStartRun: () => _performLogAction(LogAction.run),
           onLogLift: () => _performLogAction(LogAction.lift),
+          onSyncRuns: widget.syncService == null
+              ? null
+              : () => widget.syncService!.triggerSync('manual'),
         ),
       ),
       _LazyKeepAliveTab(

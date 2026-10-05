@@ -74,6 +74,7 @@ import '../share_sheet.dart';
 import '../social_service.dart';
 import '../training.dart';
 import '../training_service.dart';
+import '../fab_clearance.dart';
 import '../widgets/collapsible_panel.dart';
 import '../widgets/ghost_pacer.dart';
 import '../widgets/live_run_map.dart';
@@ -4226,10 +4227,12 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     return SafeArea(
       child: LayoutBuilder(
         builder: (context, constraints) => SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: EdgeInsets.fromLTRB(
+              24, 16, 24, 16 + DockedFabInset.of(context)),
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              minHeight: constraints.maxHeight - 32,
+              minHeight:
+                  constraints.maxHeight - 32 - DockedFabInset.of(context),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -5037,11 +5040,14 @@ class FinishedSummary extends StatelessWidget {
       top: false,
       child: LayoutBuilder(
         builder: (context, constraints) => SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.fromLTRB(
+              24, 24, 24, 24 + DockedFabInset.of(context)),
           child: ConstrainedBox(
             constraints: BoxConstraints(
               minHeight: clampDouble(
-                  constraints.maxHeight - 48, 0, double.maxFinite),
+                  constraints.maxHeight - 48 - DockedFabInset.of(context),
+                  0,
+                  double.maxFinite),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,

@@ -25,6 +25,7 @@ import '../lib/settings_destination.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import '../lib/screens/gym_screen.dart';
+import '../lib/fab_clearance.dart';
 import '../lib/screens/home_screen.dart';
 import '../lib/screens/nutrition_screen.dart';
 import '../lib/screens/run_screen.dart';
@@ -919,6 +920,21 @@ void main() {
         tester.takeException();
       });
     }
+  });
+
+  group('docked Log FAB clearance', () {
+    testWidgets(
+        'the phone shell keeps the Log button and tells its pages how far '
+        'it rises into them', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      runRecordingActive.value = true;
+      await tester.pump();
+      expect(find.byType(FloatingActionButton), findsOneWidget,
+          reason: 'the Log button stays available during a run');
+      final inset = tester.widget<DockedFabInset>(find.byType(DockedFabInset));
+      expect(inset.height, kDockedFabOverhang);
+    });
   });
 
   group('system back walks toward Home and guards a live run', () {

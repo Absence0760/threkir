@@ -30,6 +30,7 @@ import '../sync_service.dart';
 import '../shared_file_import.dart' show incomingRouteImport;
 import '../social_service.dart';
 import '../training_service.dart';
+import '../fab_clearance.dart';
 import '../widgets/billing_issue_banner.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/log_sheet.dart';
@@ -1070,7 +1071,7 @@ class _HomeScreenState extends State<HomeScreen>
       ));
     }
     return _backGuard(Scaffold(
-      body: body,
+      body: DockedFabInset(height: kDockedFabOverhang, child: body),
       floatingActionButton: _logFab(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: ListenableBuilder(

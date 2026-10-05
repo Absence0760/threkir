@@ -16,6 +16,7 @@
  */
 
 import type { WeekStart } from './current_week';
+import { weekStartLocal } from './goals';
 
 export interface LeadActivity {
 	started_at: string;
@@ -56,14 +57,6 @@ function localIso(d: Date): string {
 function isoToEpochDay(iso: string): number {
 	const [y, m, d] = iso.split('-').map((n) => parseInt(n, 10));
 	return Math.floor(Date.UTC(y, m - 1, d) / 86_400_000);
-}
-
-function weekStartMidnight(now: Date, weekStart: WeekStart): Date {
-	const ws = new Date(now);
-	const offset = weekStart === 'sunday' ? now.getDay() : (now.getDay() + 6) % 7;
-	ws.setDate(now.getDate() - offset);
-	ws.setHours(0, 0, 0, 0);
-	return ws;
 }
 
 function addDays(d: Date, days: number): Date {
@@ -129,7 +122,7 @@ export function weekLead<W extends LeadPlanWorkout>(input: {
 	weekStart: WeekStart;
 	now: Date;
 }): WeekLead<W> {
-	const start = weekStartMidnight(input.now, input.weekStart);
+	const start = weekStartLocal(input.now, input.weekStart);
 	const todayIso = localIso(input.now);
 	const startIso = localIso(start);
 

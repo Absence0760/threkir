@@ -356,10 +356,10 @@ Pure-function tests for the period summary screen's extracted helpers in `lib/sc
 - `shortDate`: day + abbreviated month
 - `monthName`: full month name for all positions
 
-### `apps/mobile_android/test/goals_test.dart` — 32 tests
+### `apps/mobile_android/test/goals_test.dart` — 33 tests
 
 Pure-function tests for `evaluateGoal` and `RunGoal` JSON serialisation in `lib/goals.dart`:
-
+- Period bounds (week start = Monday 00:00, month end wraps to next year), and `weekStartLocal` across a late-Saturday / early-Sunday seam on both week starts
 - Period bounds (week start = Monday 00:00, month end wraps to next year)
 - Distance target: empty list, runs outside period, sum, goal reached, ahead/behind pace
 - Avg pace target: cycling-only runs excluded, meeting/exceeding/missing target, distance-weighted
@@ -522,7 +522,7 @@ What a challenge value is CALLED and what UNIT it is printed in. `check_constrai
 
 The seven ARB catalogues against the checked-in `lib/l10n/gen/` ([decisions § 844](../architecture/decisions.md)). `l10n_parity_test.dart` measures the ARBs against each other and `architecture_guards_test.dart` measures the locale set; neither measures the hand-run `gen-l10n` step between them, so an ARB whose wording changed without a regeneration ships the previous sentence in every locale and a hand-edit to a `gen/` file is invisible from both directions. Reads the generated Dart back — there is no reflection to ask an `AppLocalizations` for a getter named at runtime — and asserts the member set in both directions plus, for every non-ICU message, the literal itself with `$name` rewritten to `{name}`: 3,761 of 3,826 messages per catalogue. Each group carries a floor on how many members it parsed, so a change in what `gen-l10n` emits fails the guard rather than emptying it.
 
-### `apps/mobile_ios/test/` — 582 files, byte-for-byte
+### `apps/mobile_ios/test/` — 583 files, byte-for-byte
 
 After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kept identical to `apps/mobile_android/test/` via `diff -rq`. Every test file documented above runs on the iOS target too **locally** — `melos run test` has no scope filter — but **not in CI**: the `test-packages` job scopes `melos exec` to `run_recorder`, `mobile_android`, `api_client`, `gpx_parser`, `ui_kit` and `core_models`, and `mobile_ios` is not among them. That is not a gap for byte-identical Dart, but it is why a test gated on an `ios/` file being present asserts nothing on any CI run — two such groups existed and were removed in favour of `scripts/check_ios_native_declarations.mjs` (decisions.md § 742). Per-target counts: `flutter test` compiles separately, so each test file is executed twice when you run both apps locally. Don't add iOS-specific test files — every test belongs in both apps. The architecture-guard tests under `apps/mobile_android/test/architecture_guards_test.dart` read `lib/screens/run_screen.dart` from the working directory, so they pin the same invariants on both targets.
 
@@ -789,9 +789,9 @@ Mirror of `apps/mobile_android/test/recurrence_test.dart`. Pure tests for `lib/r
 
 Web-only (no Dart twin — mobile does not read `event_exceptions` outside its own event-detail screen). Pure tests for `lib/social/event_occurrence.ts`, the layer that subtracts cancelled occurrences from a recurrence expansion. `isOccurrenceCancelled` covers both ISO renderings of one instant matching (PostgREST `+00:00` vs a client `.000Z`), a different instant / empty list / null / undefined not matching, and an unparseable cancelled instant never matching. `nextLiveInstance` covers the nothing-cancelled fast path, skipping the cancelled next occurrence, skipping a run of consecutive cancellations, a cancellation further out leaving the next one alone, already-past cancellations not eating the search budget, every remaining occurrence cancelled returning null, an exhausted series returning null either way, and a cancelled one-off. `upcomingCancelledOccurrences` covers future-only + oldest-first ordering, an unparseable instant being dropped rather than sorted to an edge, and an occurrence starting exactly now counting as ahead.
 
-### `apps/web/src/lib/training/goals.test.ts` — 30 tests
+### `apps/web/src/lib/training/goals.test.ts` — 31 tests
 
-Mirror of `apps/mobile_android/test/goals_test.dart`. Pure tests for `lib/goals.ts`. `periodStart` / `periodEnd` cover Monday-default + Sunday-override week anchoring, month start = 1st, week end = start + 7 days, December → January wrap. `formatPaceSecPerKm` covers em-dash for non-positive / non-finite, m:ss/km formatting with zero-padded seconds, half-up rounding. `evaluateGoal` covers empty list = 0%, runs outside the period excluded, distance target accumulation + complete-on-hit, pace target excluding cycling rides from the distance-weighted average, pace target with no qualifying runs reporting 0% + em-dash currentLabel, lower-is-better partial progress, time + runCount targets, multi-target complete-only-when-every-hit, `overallPercent` as the mean of target percents, and zero / negative targets being filtered out of the targets list. `newGoalId` covers uniqueness across 100 calls. `loadGoals` / `saveGoals` cover empty when no data, save / load round-trip preservation, per-user keying isolating two users on the same browser, null userId returns empty, the legacy unscoped-key migration on first load (with the legacy key removed afterwards), accepting both legacy camelCase and canonical snake_case wire shapes, and corrupt-JSON returning empty.
+Mirror of `apps/mobile_android/test/goals_test.dart`. Pure tests for `lib/goals.ts`. `weekStartLocal` is pinned across a late-Saturday / early-Sunday seam on both week starts; `periodStart` / `periodEnd` cover Monday-default + Sunday-override week anchoring, month start = 1st, week end = start + 7 days, December → January wrap. `formatPaceSecPerKm` covers em-dash for non-positive / non-finite, m:ss/km formatting with zero-padded seconds, half-up rounding. `evaluateGoal` covers empty list = 0%, runs outside the period excluded, distance target accumulation + complete-on-hit, pace target excluding cycling rides from the distance-weighted average, pace target with no qualifying runs reporting 0% + em-dash currentLabel, lower-is-better partial progress, time + runCount targets, multi-target complete-only-when-every-hit, `overallPercent` as the mean of target percents, and zero / negative targets being filtered out of the targets list. `newGoalId` covers uniqueness across 100 calls. `loadGoals` / `saveGoals` cover empty when no data, save / load round-trip preservation, per-user keying isolating two users on the same browser, null userId returns empty, the legacy unscoped-key migration on first load (with the legacy key removed afterwards), accepting both legacy camelCase and canonical snake_case wire shapes, and corrupt-JSON returning empty.
 
 ### `apps/web/src/lib/training/fitness.test.ts` — 48 tests
 
@@ -1171,7 +1171,7 @@ Run the pure-helper slices with `cd apps/backend && deno test --no-check supabas
 
 The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets to drive and are exercised manually only — see [apps/backend/CLAUDE.md § Testing without real credentials](../../apps/backend/CLAUDE.md#testing-without-real-credentials).
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 1,927 declared tests across 507 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 1,928 declared tests across 508 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 

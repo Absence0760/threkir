@@ -146,19 +146,29 @@ export function newGoalId(): string {
 		: `g_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/// 00:00 local time of the week containing `now`, starting on the user's
+/// `week_start_day`. The single source of truth for "this week" on web — the
+/// dashboard tile, weekly chart, week strip, week lead, trend deltas,
+/// consistency card, period summary and goals all take their window from
+/// here. Dart twin: `weekStartLocal` in goals.dart. `setDate` is calendar
+/// arithmetic, so a week spanning a DST change still starts at midnight.
+export function weekStartLocal(now: Date, weekStartDay: 'monday' | 'sunday' = 'monday'): Date {
+	const d = new Date(now);
+	d.setHours(0, 0, 0, 0);
+	const offset = weekStartDay === 'sunday' ? d.getDay() : (d.getDay() + 6) % 7;
+	d.setDate(d.getDate() - offset);
+	return d;
+}
+
 export function periodStart(
 	period: GoalPeriod,
 	now: Date,
 	weekStartDay: 'monday' | 'sunday' = 'monday',
 ): Date {
+	if (period === 'week') return weekStartLocal(now, weekStartDay);
 	const d = new Date(now);
 	d.setHours(0, 0, 0, 0);
-	if (period === 'week') {
-		const offset = weekStartDay === 'sunday' ? d.getDay() : (d.getDay() + 6) % 7;
-		d.setDate(d.getDate() - offset);
-	} else {
-		d.setDate(1);
-	}
+	d.setDate(1);
 	return d;
 }
 

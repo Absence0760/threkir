@@ -381,9 +381,10 @@ String _formatSecondsCoarse(double seconds) {
 }
 
 /// 00:00 local time of the week containing [now]. The single source of truth
-/// for "this week" across goals, the history filter, and the dashboard summary
-/// cards. Honours the user's `week_start_day` setting ('monday' | 'sunday'),
-/// defaulting to Monday — mirrors web `periodStart` in training/goals.ts.
+/// for "this week" across goals, the history filter, the Home summary tile,
+/// Distance chart, This Week strip and heatmap, and the week summary.
+/// Honours the user's `week_start_day` setting ('monday' | 'sunday'),
+/// defaulting to Monday — mirrors web `weekStartLocal` in training/goals.ts.
 DateTime weekStartLocal(DateTime now, {String weekStartDay = 'monday'}) {
   final daysFromStart = weekStartDay == 'sunday'
       ? now.weekday % 7

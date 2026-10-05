@@ -75,6 +75,21 @@ void main() {
       expect(weekStartLocal(sun), DateTime(2026, 4, 6));
     });
 
+    test('a late Saturday and an early Sunday straddle a Sunday-week boundary',
+        () {
+      // Sat 3 Jan 2026 23:30 and Sun 4 Jan 2026 00:30, local. Sunday-first,
+      // the hour around midnight is two different weeks; Monday-first, both
+      // belong to the week of Mon 29 Dec. Mirrors goals.test.ts.
+      final lateSat = DateTime(2026, 1, 3, 23, 30);
+      final earlySun = DateTime(2026, 1, 4, 0, 30);
+      expect(weekStartLocal(lateSat, weekStartDay: 'sunday'), DateTime(2025, 12, 28));
+      expect(weekStartLocal(earlySun, weekStartDay: 'sunday'), DateTime(2026, 1, 4));
+      expect(weekStartLocal(lateSat, weekStartDay: 'monday'), DateTime(2025, 12, 29));
+      expect(weekStartLocal(earlySun), DateTime(2025, 12, 29));
+      expect(goalPeriodStart(GoalPeriod.week, earlySun, weekStartDay: 'sunday'),
+          weekStartLocal(earlySun, weekStartDay: 'sunday'));
+    });
+
     test('evaluateGoal week period shifts with week_start_day', () {
       const goal = RunGoal(
         id: 'g',

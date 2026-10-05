@@ -1870,6 +1870,20 @@ fails the mobile suite on every unmarked site, because this class had already
 been fixed four times in isolation before the fifth bought the guard
 (`decisions.md § 589`).
 
+## "This week" comes from `weekStartLocal`, handed the preference
+
+A calendar week starts on the runner's `week_start_day`. Every surface that
+names a week — a tile, a chart bucket, a strip, a goal, a summary, a heatmap
+column — takes its window from `weekStartLocal` (web `training/goals.ts`,
+mobile `goals.dart`) and passes the preference it was given. Do not re-derive
+the `getDay()` / `weekday` offset, and do not default the preference at a
+widget or component boundary: two adjacent cards on two private copies, one
+handed a default, is how the Home tile and chart came to disagree
+(`decisions.md § 1747`). `week_start_guard.test.ts` and
+`architecture_guards_test.dart` fail on either. A deliberately Monday-only
+week (ISO-8601 recap weeks, the weekly-recurrence anchor) is listed in the
+guard with its reason.
+
 ## Parse a date-only string as a calendar day, an ISO timestamp as an instant
 
 `new Date('2026-11-15')` is **UTC midnight** — ECMA-262 gives the date-only form

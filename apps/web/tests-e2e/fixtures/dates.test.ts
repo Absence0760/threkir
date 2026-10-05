@@ -16,6 +16,7 @@ import {
 	browserDayAt,
 	browserDayStart,
 	browserYear,
+	lastBrowserWeekday,
 	noonOnBrowserDay,
 	waterStorageKey
 } from './dates';
@@ -33,6 +34,14 @@ test('a day instant belongs to the day it names, at either edge', () => {
 	assert.equal(browserDateOf(browserDayAt(-3, 0, 0)), browserDate(-3));
 	assert.equal(browserDateOf(browserDayAt(-3, 23, 59)), browserDate(-3));
 	assert.equal(browserDayStart(-3).slice(0, 10), browserDate(-3));
+});
+
+test('lastBrowserWeekday names a past day of the asked-for weekday, within a week', () => {
+	for (let weekday = 0; weekday < 7; weekday++) {
+		const offset = lastBrowserWeekday(weekday);
+		assert.ok(offset <= -1 && offset >= -7, `offset ${offset} for weekday ${weekday}`);
+		assert.equal(new Date(browserDayStart(offset)).getUTCDay(), weekday);
+	}
 });
 
 test('offsets step whole calendar days, in both directions', () => {

@@ -4,6 +4,7 @@ import {
 	evaluateGoal,
 	periodStart,
 	periodEnd,
+	weekStartLocal,
 	formatPaceSecPerKm,
 	loadGoals,
 	saveGoals,
@@ -57,6 +58,19 @@ test('periodStart — week with sunday weekStartDay anchors on Sunday', () => {
 	const start = periodStart('week', new Date('2026-04-08T15:00:00'), 'sunday');
 	assert.equal(start.getDay(), 0); // Sunday
 	assert.equal(start.getDate(), 5);
+});
+
+test('weekStartLocal — a late Saturday and an early Sunday straddle a Sunday-week boundary', () => {
+	// Sat 3 Jan 2026 23:30 and Sun 4 Jan 2026 00:30, local. Sunday-first, the
+	// hour around midnight is two different weeks; Monday-first, both belong to
+	// the week of Mon 29 Dec. Mirrors goals_test.dart.
+	const lateSat = new Date(2026, 0, 3, 23, 30);
+	const earlySun = new Date(2026, 0, 4, 0, 30);
+	assert.deepEqual(weekStartLocal(lateSat, 'sunday'), new Date(2025, 11, 28));
+	assert.deepEqual(weekStartLocal(earlySun, 'sunday'), new Date(2026, 0, 4));
+	assert.deepEqual(weekStartLocal(lateSat, 'monday'), new Date(2025, 11, 29));
+	assert.deepEqual(weekStartLocal(earlySun), new Date(2025, 11, 29));
+	assert.deepEqual(periodStart('week', earlySun, 'sunday'), weekStartLocal(earlySun, 'sunday'));
 });
 
 test('periodStart — month starts on the 1st', () => {

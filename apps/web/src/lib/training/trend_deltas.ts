@@ -19,6 +19,8 @@
  * web↔mobile parity list.
  */
 
+import { weekStartLocal } from './goals';
+
 export type WeekStartDay = 'monday' | 'sunday';
 export type TrendDirection = 'up' | 'down' | 'flat';
 
@@ -85,14 +87,6 @@ function trendFor(cur: WindowTotals, prev: WindowTotals): PeriodTrend {
 	};
 }
 
-function startOfWeek(now: Date, weekStart: WeekStartDay): Date {
-	const ws = new Date(now);
-	const offset = weekStart === 'sunday' ? now.getDay() : (now.getDay() + 6) % 7;
-	ws.setDate(now.getDate() - offset);
-	ws.setHours(0, 0, 0, 0);
-	return ws;
-}
-
 export function computeTrendDeltas(
 	runs: RunLike[],
 	weekStart: WeekStartDay = 'monday',
@@ -104,7 +98,7 @@ export function computeTrendDeltas(
 	// derived with calendar-day arithmetic (setDate), not a fixed 7*86.4M-ms
 	// subtraction: across a DST transition a fixed-ms step lands an hour off
 	// local midnight and mis-buckets a run near the prior-week boundary.
-	const thisWeekStart = startOfWeek(now, weekStart);
+	const thisWeekStart = weekStartLocal(now, weekStart);
 	const weekStartMs = thisWeekStart.getTime();
 	const weekElapsed = nowMs - weekStartMs;
 	const priorWeekStart = new Date(thisWeekStart);

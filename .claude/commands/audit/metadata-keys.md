@@ -36,7 +36,7 @@ The Dart-side `metadata_registry_test.dart` already enforces "no unknown writes"
 
 - `docs/backend/metadata.md` — the registry
 - `apps/mobile_android/test/metadata_registry_test.dart` — the existing CI guard for Dart
-- `.claude/agents/metadata-key-keeper.md` — the diff-time agent
+- `.claude/agents/engineering/metadata-key-keeper.md` — the diff-time agent
 - `CLAUDE.md` § "Run.metadata is a jsonb bag" — the convention
 
 ## Output → `reviews/`

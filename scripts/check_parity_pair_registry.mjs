@@ -10,7 +10,7 @@
 //     registry that only matters when a session touches one of the pairs. The
 //     bullet moved verbatim; CLAUDE.md keeps the rule and points here, and
 //     property 5 below is what keeps that pointer honest.
-//   .claude/agents/shared-library-syncer.md — the "The pairs (canonical list)"
+//   .claude/agents/engineering/shared-library-syncer.md — the "The pairs (canonical list)"
 //     table, which is the list the shared-library-syncer AGENT works from.
 //
 // Why this exists: decisions.md § 604. The two had drifted 19 pairs apart —
@@ -72,7 +72,7 @@ import { listItemContaining, markdownTables } from './markdown_lines.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const REGISTRY_DOC = join(REPO_ROOT, 'docs', 'architecture', 'parity_pairs.md');
-export const SYNCER_DOC = join(REPO_ROOT, '.claude', 'agents', 'shared-library-syncer.md');
+export const SYNCER_DOC = join(REPO_ROOT, '.claude', 'agents', 'engineering', 'shared-library-syncer.md');
 /// The file every session is handed on every prompt. It no longer carries the
 /// list, so what it must carry instead is the way to it — see property 5.
 export const ORIENTATION_DOC = join(REPO_ROOT, 'CLAUDE.md');
@@ -229,7 +229,7 @@ export function parseSyncerRows(text) {
 	const headingAt = text.indexOf(SYNCER_HEADING);
 	if (headingAt === -1) {
 		errors.push(
-			`.claude/agents/shared-library-syncer.md has no "${SYNCER_HEADING}" heading. ` +
+			`.claude/agents/engineering/shared-library-syncer.md has no "${SYNCER_HEADING}" heading. ` +
 				`The table moved or was renamed and this guard now checks nothing.`,
 		);
 		return { rows, errors };
@@ -311,7 +311,7 @@ export function checkRegistries(registryText, syncerText, exists = (p) => exists
 				`  The table is the list the agent works from — its own instructions tell ` +
 				`it to stop rather than invent a parity claim about a pair it cannot find ` +
 				`there — so these are pairs whose divergence is never detected. Add a row ` +
-				`per pair to .claude/agents/shared-library-syncer.md (decisions.md § 604).`,
+				`per pair to .claude/agents/engineering/shared-library-syncer.md (decisions.md § 604).`,
 		);
 	}
 

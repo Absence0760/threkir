@@ -92,6 +92,13 @@ regexes = [
   # That gap is why the weekly full-history sweep had 22 of its 26 findings
   # here. Matched on the key shape, so a real token in badges.dart still fails.
   '''badges[A-Z][A-Za-z0-9]*(Label|Desc)''',
+  # .claude/agents/i18n/i18n-translator.md (history only): the batch example
+  # an interim commit on the agent-teams branch wrote as `"key": "<ARB key>"`.
+  # An ARB key name is not a secret, but beside the word `key` the
+  # generic-api-key rule reads it as one, and gitleaks scans a PR's commits,
+  # not only its tip. The example now uses an `id` field. Matched on the value,
+  # so a real token in that file is still a finding.
+  '''runPauseA11yLabel''',
   # ci.yml: the deliberately-fake fixture values the e2e stack's webhook and
   # cron paths sign with. Each literal says what it is, and none opens
   # anything outside a CI runner's own Supabase container.

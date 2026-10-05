@@ -40,6 +40,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stripSwiftComments, targetPhaseMembers } from './check_watch_ios_source.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -345,13 +346,22 @@ export const FIXED_PLIST_KEYS = [
 /// `PrivacyInfo.xcprivacy`'s required-reason API declarations, derived from
 /// the plugin that touches the API. Apple's upload validation rejects a binary
 /// that uses one of these without an entry.
-/** @type {{ type: string, source: SourceKind, pattern: RegExp, needed_by: string }[]} */
+/// A rule with a `reason` also requires that reason code on the entry: one
+/// category can be reached for two reasons, and Apple validates each.
+/** @type {{ type: string, source: SourceKind, pattern: RegExp, needed_by: string, reason?: string }[]} */
 export const PRIVACY_API_TYPES = [
 	{
 		type: 'NSPrivacyAccessedAPICategoryUserDefaults',
 		source: 'dart',
 		pattern: /package:shared_preferences\//,
 		needed_by: 'shared_preferences reads UserDefaults',
+	},
+	{
+		type: 'NSPrivacyAccessedAPICategoryUserDefaults',
+		source: 'dart',
+		pattern: /package:receive_sharing_intent\//,
+		needed_by: 'receive_sharing_intent reads the App Group UserDefaults suite the share extension writes',
+		reason: '1C8F.1',
 	},
 	{
 		type: 'NSPrivacyAccessedAPICategoryFileTimestamp',
@@ -762,6 +772,231 @@ function dictArray(value) {
 // ---------------------------------------------------------------------------
 // The verdict
 // ---------------------------------------------------------------------------
+
+/// Every bundle the phone app's archive ships, and the manifest it carries.
+/// Apple validates each bundle's required-reason API use against the manifest
+/// inside THAT bundle, so the Runner's own manifest answers for none of the
+/// extensions or the watch app. Each entry names the Xcode target, so
+/// membership is read out of the project rather than assumed from a file
+/// being on disk: the Runner manifest sat on disk, unreferenced and unshipped,
+/// while every check here read it and passed (decisions § 1741).
+/** @type {{ target: string, manifest: string, sourceDirs: string[], projects: string[] }[]} */
+export const BUNDLE_MANIFESTS = [
+	{
+		target: 'Runner',
+		manifest: 'apps/mobile_ios/ios/Runner/PrivacyInfo.xcprivacy',
+		sourceDirs: ['apps/mobile_ios/ios/Runner', 'apps/mobile_ios/ios/RunActivity'],
+		projects: ['apps/mobile_ios/ios/Runner.xcodeproj/project.pbxproj'],
+	},
+	{
+		target: 'ShareExtension',
+		manifest: 'apps/mobile_ios/ios/ShareExtension/PrivacyInfo.xcprivacy',
+		sourceDirs: ['apps/mobile_ios/ios/ShareExtension'],
+		projects: ['apps/mobile_ios/ios/Runner.xcodeproj/project.pbxproj'],
+	},
+	{
+		target: 'RunActivityExtension',
+		manifest: 'apps/mobile_ios/ios/RunActivity/PrivacyInfo.xcprivacy',
+		sourceDirs: ['apps/mobile_ios/ios/RunActivity', 'apps/mobile_ios/ios/Runner'],
+		projects: ['apps/mobile_ios/ios/Runner.xcodeproj/project.pbxproj'],
+	},
+	{
+		target: 'WatchApp',
+		manifest: 'apps/watch_ios/WatchApp/PrivacyInfo.xcprivacy',
+		sourceDirs: ['apps/watch_ios/WatchApp', 'apps/watch_ios/Complications'],
+		projects: [
+			'apps/mobile_ios/ios/Runner.xcodeproj/project.pbxproj',
+			'apps/watch_ios/WatchApp.xcodeproj/project.pbxproj',
+		],
+	},
+	{
+		target: 'WatchAppComplication',
+		manifest: 'apps/watch_ios/Complications/PrivacyInfo.xcprivacy',
+		sourceDirs: ['apps/watch_ios/Complications', 'apps/watch_ios/WatchApp'],
+		projects: [
+			'apps/mobile_ios/ios/Runner.xcodeproj/project.pbxproj',
+			'apps/watch_ios/WatchApp.xcodeproj/project.pbxproj',
+		],
+	},
+];
+
+/// Required-reason APIs as Swift reaches them, each with the one reason code
+/// that fits how this codebase uses it. Read per bundle, over the Swift files
+/// that bundle's own Sources phase compiles.
+/** @type {{ type: string, reason: string, pattern: RegExp, needed_by: string }[]} */
+export const SWIFT_REQUIRED_REASON_APIS = [
+	{
+		type: 'NSPrivacyAccessedAPICategoryUserDefaults',
+		reason: 'CA92.1',
+		pattern: /UserDefaults\.standard|:\s*UserDefaults\s*=\s*\.standard/,
+		needed_by: "reads the bundle's own UserDefaults",
+	},
+	{
+		type: 'NSPrivacyAccessedAPICategoryUserDefaults',
+		reason: '1C8F.1',
+		pattern: /UserDefaults\(\s*suiteName:/,
+		needed_by: 'reads an App Group UserDefaults suite',
+	},
+	{
+		type: 'NSPrivacyAccessedAPICategorySystemBootTime',
+		reason: '35F9.1',
+		pattern: /\bsystemUptime\b|\bmach_absolute_time\b/,
+		needed_by: 'measures elapsed time against system uptime',
+	},
+	{
+		type: 'NSPrivacyAccessedAPICategoryFileTimestamp',
+		reason: 'C617.1',
+		pattern: /\b(contentModificationDate|creationDate|contentAccessDate)Key\b|attributesOfItem\(/,
+		needed_by: "reads timestamps of files in the bundle's own container",
+	},
+	{
+		type: 'NSPrivacyAccessedAPICategoryDiskSpace',
+		reason: 'E174.1',
+		pattern: /volumeAvailableCapacity|systemFreeSize|\bstatfs\b/,
+		needed_by: 'checks free disk space',
+	},
+	{
+		type: 'NSPrivacyAccessedAPICategoryActiveKeyboards',
+		reason: '3EC4.1',
+		pattern: /activeInputModes/,
+		needed_by: 'reads the active keyboards',
+	},
+];
+
+/**
+ * @typedef {object} BundleInput
+ * @property {string} target
+ * @property {string} manifestPath
+ * @property {string | null} manifest
+ * @property {{ project: string, resources: string[] }[]} membership
+ * @property {SourceFile[]} swiftSources  the Swift files the target compiles
+ * @property {string[]} unresolved  Sources-phase names with no file on disk
+ */
+
+/**
+ * Per-bundle manifest checks: shipped, parseable, not tracking, and declaring
+ * every required-reason API the bundle's own Swift reaches, read both ways.
+ * The Runner's Dart-derived declarations stay with [evaluate]; here the
+ * Runner gets the membership check and its Swift-side rules only.
+ * @param {BundleInput[]} bundles
+ * @returns {{ errors: string[], ok: string[] }}
+ */
+export function evaluateBundleManifests(bundles) {
+	/** @type {string[]} */ const errors = [];
+	/** @type {string[]} */ const ok = [];
+	if (bundles.length === 0) {
+		errors.push('No bundles were read; the per-bundle manifest checks ran on nothing.');
+		return { errors, ok };
+	}
+	for (const b of bundles) {
+		for (const { project, resources } of b.membership) {
+			if (resources.includes('PrivacyInfo.xcprivacy')) {
+				ok.push(`${b.target} ships PrivacyInfo.xcprivacy (${project})`);
+			} else {
+				errors.push(
+					`${b.target}'s Resources phase in ${project} does not carry ` +
+						'PrivacyInfo.xcprivacy.\n  A manifest on disk that no target ' +
+						'copies is not in the archive, and Apple validates the bundle as ' +
+						'if it had none.',
+				);
+			}
+		}
+		for (const name of b.unresolved) {
+			errors.push(
+				`${b.target} compiles ${name}, which none of its source directories ` +
+					'holds.\n  This check reads required-reason API use out of the ' +
+					"target's own sources; a file it cannot find is a file it is blind to.",
+			);
+		}
+		if (b.manifest === null) {
+			errors.push(`${b.manifestPath} does not exist, but ${b.target} ships in the archive.`);
+			continue;
+		}
+		const manifest = parsePlist(b.manifest);
+		const apiEntries = manifest ? dictArray(manifest.get('NSPrivacyAccessedAPITypes')) : null;
+		if (!manifest || apiEntries === null) {
+			errors.push(`${b.manifestPath} did not parse into a dictionary with an NSPrivacyAccessedAPITypes array.`);
+			continue;
+		}
+		if (manifest.get('NSPrivacyTracking') !== false) {
+			errors.push(`${b.manifestPath} does not set NSPrivacyTracking to false.`);
+		}
+		/** @type {Map<string, Set<string>>} */
+		const declared = new Map();
+		for (const e of apiEntries) {
+			const reasons = e.get('NSPrivacyAccessedAPITypeReasons');
+			declared.set(
+				String(e.get('NSPrivacyAccessedAPIType')),
+				new Set(Array.isArray(reasons) ? reasons.map(String) : []),
+			);
+		}
+		/** @type {Map<string, Set<string>>} */
+		const needed = new Map();
+		for (const rule of SWIFT_REQUIRED_REASON_APIS) {
+			const hit = b.swiftSources.find((f) => rule.pattern.test(stripSwiftComments(f.text)));
+			if (!hit) continue;
+			if (!needed.has(rule.type)) needed.set(rule.type, new Set());
+			needed.get(rule.type)?.add(rule.reason);
+			if (declared.get(rule.type)?.has(rule.reason)) {
+				ok.push(`${b.target} declares \`${rule.type}\` ${rule.reason} (${hit.path}: ${rule.needed_by})`);
+			} else {
+				errors.push(
+					`${b.manifestPath} does not declare \`${rule.type}\` with ${rule.reason}, ` +
+						`but ${hit.path} ${rule.needed_by}.\n  Apple's upload validation ` +
+						'rejects a bundle using a required-reason API it has not declared.',
+				);
+			}
+		}
+		// The Runner's other categories are claimed by evaluate()'s Dart rules.
+		if (b.target === 'Runner') continue;
+		for (const [type, reasons] of declared) {
+			for (const reason of reasons) {
+				if (needed.get(type)?.has(reason)) continue;
+				errors.push(
+					`${b.manifestPath} declares \`${type}\` ${reason} and nothing ${b.target} ` +
+						'compiles needs it.\n  Either the call was removed (drop the ' +
+						'entry) or SWIFT_REQUIRED_REASON_APIS is missing the rule for it.',
+				);
+			}
+		}
+	}
+	return { errors, ok };
+}
+
+/**
+ * Builds [BundleInput] for every [BUNDLE_MANIFESTS] entry from the tree.
+ * @param {string} [root]
+ * @returns {BundleInput[]}
+ */
+export function readBundles(root = REPO_ROOT) {
+	return BUNDLE_MANIFESTS.map((b) => {
+		const membership = b.projects.map((project) => ({
+			project,
+			resources: targetPhaseMembers(readOrNull(join(root, project)) ?? '', b.target, 'Resources'),
+		}));
+		const sourceNames = targetPhaseMembers(
+			readOrNull(join(root, b.projects[0])) ?? '',
+			b.target,
+			'Sources',
+		).filter((n) => n.endsWith('.swift'));
+		/** @type {SourceFile[]} */ const swiftSources = [];
+		/** @type {string[]} */ const unresolved = [];
+		for (const name of sourceNames) {
+			const path = b.sourceDirs.map((d) => join(d, name)).find((p) => readOrNull(join(root, p)) !== null);
+			if (path) swiftSources.push({ path, text: readOrNull(join(root, path)) ?? '' });
+			else unresolved.push(name);
+		}
+		if (sourceNames.length === 0) unresolved.push(`(no Swift in ${b.target}'s Sources phase)`);
+		return {
+			target: b.target,
+			manifestPath: b.manifest,
+			manifest: readOrNull(join(root, b.manifest)),
+			membership,
+			swiftSources,
+			unresolved,
+		};
+	});
+}
 
 /**
  * @typedef {object} EvaluateInput
@@ -1304,6 +1539,15 @@ export function evaluate(input) {
 				if (!where) continue;
 				claimedApiTypes.add(rule.type);
 				if (apiTypes.has(rule.type)) {
+					const reasons = apiTypes.get(rule.type);
+					if (rule.reason && !(Array.isArray(reasons) && reasons.includes(rule.reason))) {
+						errors.push(
+							`PrivacyInfo.xcprivacy declares \`${rule.type}\` without reason code ` +
+								`${rule.reason}, but ${where} means ${rule.needed_by}.\n  Apple ` +
+								'validates each reason the binary has for the API, not just the category.',
+						);
+						continue;
+					}
 					ok.push(`PrivacyInfo declares \`${rule.type}\` (${where}: ${rule.needed_by})`);
 					continue;
 				}
@@ -1438,6 +1682,10 @@ function main() {
 		dartSources: collectDartSources(),
 		swiftSources: collectSwiftSources(),
 	});
+
+	const bundles = evaluateBundleManifests(readBundles());
+	ok.push(...bundles.ok);
+	errors.push(...bundles.errors);
 
 	for (const line of ok) console.log(`[OK] ${line}`);
 	for (const line of warnings) console.warn(`[WARN] ${line}`);

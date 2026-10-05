@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		77FB0FF69DC80661ABFFBDCE /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 5B13075A70E5AA7C4A1FFF18 /* PrivacyInfo.xcprivacy */; };
+		9C62ECA9357FD3354FDD32F0 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 545A94A725F4D370CF6453C1 /* PrivacyInfo.xcprivacy */; };
 		A1B2C3D4E5F60001000A000E /* CheckpointStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A000D /* CheckpointStore.swift */; };
 		A1B2C3D4E5F60001000A0001 /* RunApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0001 /* RunApp.swift */; };
 		A1B2C3D4E5F60001000A0002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002000A0002 /* ContentView.swift */; };
@@ -83,6 +85,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		5B13075A70E5AA7C4A1FFF18 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		545A94A725F4D370CF6453C1 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000A000D /* CheckpointStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckpointStore.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000A0001 /* RunApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunApp.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60002000A0002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -256,6 +260,7 @@
 		A1B2C3D4E5F60006000A0002 /* WatchApp */ = {
 			isa = PBXGroup;
 			children = (
+				545A94A725F4D370CF6453C1 /* PrivacyInfo.xcprivacy */,
 				A1B2C3D4E5F60002000A000D /* CheckpointStore.swift */,
 				A1B2C3D4E5F60002000A0013 /* RunPayloadStorage.swift */,
 				A1B2C3D4E5F60002000A0001 /* RunApp.swift */,
@@ -317,6 +322,7 @@
 		C3D4E5F6A7B80006000C0001 /* Complications */ = {
 			isa = PBXGroup;
 			children = (
+				5B13075A70E5AA7C4A1FFF18 /* PrivacyInfo.xcprivacy */,
 				C3D4E5F6A7B80002000C0001 /* ActiveRunComplication.swift */,
 				C3D4E5F6A7B80002000C0004 /* ActiveRunTimeline.swift */,
 				C3D4E5F6A7B80002000C0002 /* Info.plist */,
@@ -466,6 +472,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9C62ECA9357FD3354FDD32F0 /* PrivacyInfo.xcprivacy in Resources */,
 				A1B2C3D4E5F60001000A0007 /* Assets.xcassets in Resources */,
 				A1B2C3D4E5F60001000A0010 /* Localizable.xcstrings in Resources */,
 				A1B2C3D4E5F60001000A0016 /* InfoPlist.xcstrings in Resources */,
@@ -483,6 +490,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				77FB0FF69DC80661ABFFBDCE /* PrivacyInfo.xcprivacy in Resources */,
 				C3D4E5F6A7B80001000C0003 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

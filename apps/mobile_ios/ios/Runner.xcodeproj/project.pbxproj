@@ -7,6 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		88CCCCC3E2B9ED33D6E5C752 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8E2E94040ADD797F5FA23CBA /* PrivacyInfo.xcprivacy */; };
+		858A09269AE4C6BF87AAC6E4 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 23E8D7DCFA1005E23A159373 /* PrivacyInfo.xcprivacy */; };
+		0D2B2E8F311B80C12B0C1FE2 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = DE4035427B1150B51529A31C /* PrivacyInfo.xcprivacy */; };
+		19D6E28D68AE2A45711C3488 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 5BFB1CC5D045958170661200 /* PrivacyInfo.xcprivacy */; };
+		99507C063B774CFFC82DF822 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 7ED81E4BBB2FAE4BA1A34A25 /* PrivacyInfo.xcprivacy */; };
 		A5CD1E000000000000000003 /* RunActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000010 /* RunActivityAttributes.swift */; };
 		A5CD1E000000000000000004 /* LiveActivityBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000014 /* LiveActivityBridge.swift */; };
 		A5CD1E000000000000000001 /* RunActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000010 /* RunActivityAttributes.swift */; };
@@ -167,6 +172,11 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		8E2E94040ADD797F5FA23CBA /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		23E8D7DCFA1005E23A159373 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		DE4035427B1150B51529A31C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		5BFB1CC5D045958170661200 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		7ED81E4BBB2FAE4BA1A34A25 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A5CD1E000000000000000010 /* RunActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunActivityAttributes.swift; sourceTree = "<group>"; };
 		A5CD1E000000000000000014 /* LiveActivityBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityBridge.swift; sourceTree = "<group>"; };
 		A5CD1E000000000000000011 /* RunActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunActivityWidget.swift; sourceTree = "<group>"; };
@@ -308,6 +318,7 @@
 		A5CD1E000000000000000020 /* RunActivity */ = {
 			isa = PBXGroup;
 			children = (
+				DE4035427B1150B51529A31C /* PrivacyInfo.xcprivacy */,
 				A5CD1E000000000000000010 /* RunActivityAttributes.swift */,
 				A5CD1E000000000000000011 /* RunActivityWidget.swift */,
 				A5CD1E000000000000000012 /* Info.plist */,
@@ -318,6 +329,7 @@
 		7884EB0105012EC3CC00C636 /* Complications */ = {
 			isa = PBXGroup;
 			children = (
+				8E2E94040ADD797F5FA23CBA /* PrivacyInfo.xcprivacy */,
 				7884EB0102012EC3CC00C636 /* ActiveRunComplication.swift */,
 				7884EB0102042EC3CC00C636 /* ActiveRunTimeline.swift */,
 				7884EB0102022EC3CC00C636 /* Info.plist */,
@@ -408,6 +420,7 @@
 		97C146F01CF9000F007C117D /* Runner */ = {
 			isa = PBXGroup;
 			children = (
+				7ED81E4BBB2FAE4BA1A34A25 /* PrivacyInfo.xcprivacy */,
 				97C146FA1CF9000F007C117D /* Main.storyboard */,
 				97C146FD1CF9000F007C117D /* Assets.xcassets */,
 				97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */,
@@ -429,6 +442,7 @@
 		7884EA00272EC3CC00C636F4 /* WatchApp */ = {
 			isa = PBXGroup;
 			children = (
+				23E8D7DCFA1005E23A159373 /* PrivacyInfo.xcprivacy */,
 				7884EA00012EC3CC00C636F4 /* ActiveRunBridge.swift */,
 				7884EA00022EC3CC00C636F4 /* AppTheme.swift */,
 				7884EA00032EC3CC00C636F4 /* ArmedRoute.swift */,
@@ -469,6 +483,7 @@
 		5AE0C0DE0000000000000020 /* ShareExtension */ = {
 			isa = PBXGroup;
 			children = (
+				5BFB1CC5D045958170661200 /* PrivacyInfo.xcprivacy */,
 				5AE0C0DE0000000000000010 /* ShareViewController.swift */,
 				5AE0C0DE0000000000000011 /* SharedRouteHandoff.swift */,
 				5AE0C0DE0000000000000012 /* Info.plist */,
@@ -664,6 +679,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0D2B2E8F311B80C12B0C1FE2 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -671,6 +687,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				88CCCCC3E2B9ED33D6E5C752 /* PrivacyInfo.xcprivacy in Resources */,
 				7884EB0101032EC3CC00C636 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -686,6 +703,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				99507C063B774CFFC82DF822 /* PrivacyInfo.xcprivacy in Resources */,
 				97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */,
 				3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */,
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
@@ -698,6 +716,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				858A09269AE4C6BF87AAC6E4 /* PrivacyInfo.xcprivacy in Resources */,
 				7884EA00202EC3CC00C636F4 /* Assets.xcassets in Resources */,
 				7884EA00222EC3CC00C636F4 /* Localizable.xcstrings in Resources */,
 				7884EA00352EC3CC00C636F4 /* InfoPlist.xcstrings in Resources */,
@@ -708,6 +727,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				19D6E28D68AE2A45711C3488 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

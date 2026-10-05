@@ -4,12 +4,13 @@
 //! `route_snap.ts` `snapToPolyline` (web canonical, the nearest perpendicular
 //! foot on the closest segment — not merely the nearest vertex — in a local
 //! equirectangular frame per segment) and its along-course accumulation, the
-//! same shape `route_geometry.ts` `distanceAlongRoute` resolves for the
-//! predictive-live-tracking input. The off-course detector reproduces the
+//! same shape `route_geometry.ts` `progressAlongRoute` resolves for a live
+//! runner. The off-course detector reproduces the
 //! mobile run screen's route-overlay behaviour: alert past 40 m, re-arm only
 //! once back within half that, so the boundary can't flap an alert on GPS
-//! jitter. Tests mirror `route_snap.test.ts` + the `distanceAlongRoute` cases
-//! in `route_geometry.test.ts` case-for-case, plus firmware-specific ones.
+//! jitter. Tests mirror `route_snap.test.ts` + the no-previous-reading
+//! `progressAlongRoute` cases in `route_geometry.test.ts` (once
+//! `distanceAlongRoute`'s), plus firmware-specific ones.
 //!
 //! [`Course::project_from`] layers a watch-local forward-progress bias on top
 //! of that ported geometry so along-course distance stays monotonic-friendly

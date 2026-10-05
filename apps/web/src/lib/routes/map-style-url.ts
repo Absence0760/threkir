@@ -120,7 +120,13 @@ export function maptilerStyleUrl(slug: MaptilerSlug, key: string): string {
 /// [basemapIsDark] classifies the SAME slug [buildMapStyleUrl] requests —
 /// two switches would let the URL and the overlay palette drift apart,
 /// which is the whole defect below.
-function maptilerSlug(chosen: MapStyle, prefersDark: boolean): MaptilerSlug {
+///
+/// Exported for the static-image thumbnails (`static_map.ts`
+/// `buildTrackThumbnailUrl`), which request the same map id from MapTiler's
+/// Static Maps endpoint. That endpoint takes any MapTiler map id, so every
+/// slug here has a static counterpart and none needs remapping. Twin of
+/// mobile's `_maptilerSlug` (`live_run_map.dart`).
+export function maptilerSlug(chosen: MapStyle, prefersDark: boolean): MaptilerSlug {
 	switch (chosen) {
 		case 'satellite':
 			return 'satellite';

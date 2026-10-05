@@ -45,7 +45,7 @@ test('buildStaticMapUrl returns null when key missing', () => {
 			{ lat: 1, lng: 2 },
 			{ lat: 3, lng: 4 },
 		],
-		{ w: 220, h: 140, style: 'streets-v2', key: '' },
+		{ w: 220, h: 140, style: 'streets-v2', key: '', stroke: '#F2A07B' },
 	);
 	assert.equal(out, null, 'must return null when no key — caller falls back to SVG');
 });
@@ -56,6 +56,7 @@ test('buildStaticMapUrl returns null when fewer than 2 points', () => {
 		h: 140,
 		style: 'streets-v2',
 		key: KEY,
+		stroke: '#F2A07B',
 	});
 	assert.equal(out, null, 'single-waypoint routes have no polyline to draw');
 });
@@ -66,7 +67,7 @@ test('buildStaticMapUrl includes the key, dimensions, style, and path', () => {
 			{ lat: 51.5074, lng: -0.1276 },
 			{ lat: 51.5085, lng: -0.1284 },
 		],
-		{ w: 220, h: 140, style: 'streets-v2', key: KEY },
+		{ w: 220, h: 140, style: 'streets-v2', key: KEY, stroke: '#F2A07B' },
 	)!;
 	assert.ok(out.startsWith('https://api.maptiler.com/maps/streets-v2/static/auto/'));
 	assert.match(out, /\/220x140@2x\.png/);

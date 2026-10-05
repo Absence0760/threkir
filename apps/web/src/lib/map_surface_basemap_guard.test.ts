@@ -314,3 +314,125 @@ test('no MapLibre paint value is a CSS expression MapLibre cannot parse', () => 
 			'JS and pass a literal.',
 	);
 });
+
+// ── Static-map thumbnails sit on the user's basemap too ─────────────────────
+//
+// A thumbnail is a map surface drawn by a server instead of MapLibre, and it
+// drifted the same way: both list previews asked MapTiler for a hard-coded
+// `streets-v2`, ignoring `map_style` and the theme, while mobile's twin
+// hard-coded `streets-v2-dark` and showed a dark map to a light-theme runner
+// (decisions § 1749). The register below is every surface that requests a
+// static map image, checked in both directions like MAP_SURFACES above.
+
+/// Surfaces whose static image must resolve the live maps' basemap.
+const THUMBNAIL_SURFACES: Record<string, string> = {
+	'lib/components/RouteTrackPreview.svelte': 'routes list / explore / club card thumbnail',
+	'lib/components/RunTrackPreview.svelte': 'runs list / feed / profile thumbnail',
+	'routes/clubs/[slug]/events/[id]/+page.svelte': 'the event meet-point preview',
+};
+
+/// Static-image consumers that are deliberately NOT on the viewer's basemap,
+/// each with the reason. A share card is an exported image with its own
+/// pinned look — the mobile share cards are pinned the same way (settings.md
+/// `map_style`).
+const STATIC_IMAGE_EXEMPT: Record<string, string> = {
+	'routes/runs/[id]/+page.svelte': 'the run share card, a fixed-look export',
+};
+
+/// The helpers and builder module themselves, which are where the resolution
+/// lives rather than surfaces that might skip it.
+const STATIC_IMAGE_INFRA = new Set([
+	'lib/routes/static_map.ts',
+	'lib/routes/map-style.svelte.ts',
+	'lib/routes/map-style-url.ts',
+]);
+
+const STATIC_IMAGE_CONSUMER =
+	/routes\/static_map'|\btrackThumbnailUrlFromEnv\(|\bstaticMapSlugFromPreference\(|api\.maptiler\.com\/maps\/|\/static\/auto\//;
+
+/// A quoted MapTiler slug. In a thumbnail that is a basemap chosen by the
+/// widget rather than by the runner, which is the defect.
+const MAPTILER_SLUG_LITERAL = /['"`](streets-v2(-dark)?|satellite|hybrid|outdoor-v2)['"`]/;
+
+/// Calling a single-endpoint builder directly skips the precedence and the
+/// ground-keyed stroke [buildTrackThumbnailUrl] applies.
+const RAW_STATIC_BUILDER = /\b(buildStaticMapUrl|buildLocalStaticMapUrl)\(/;
+
+const THUMBNAIL_RESOLVER = /\b(trackThumbnailUrlFromEnv|staticMapSlugFromPreference)\(/;
+
+test('every static-map consumer is a registered thumbnail or a reasoned exemption', () => {
+	const unregistered = sourceFiles(srcRoot)
+		.filter((f) => STATIC_IMAGE_CONSUMER.test(stripComments(readFileSync(f, 'utf-8'))))
+		.map(rel)
+		.filter(
+			(key) =>
+				!STATIC_IMAGE_INFRA.has(key) &&
+				!(key in THUMBNAIL_SURFACES) &&
+				!(key in STATIC_IMAGE_EXEMPT),
+		);
+	assert.deepEqual(
+		unregistered,
+		[],
+		`these files request a static map image but are not registered: ${unregistered.join(', ')}. ` +
+			'Add the entry to THUMBNAIL_SURFACES and build the URL with trackThumbnailUrlFromEnv ' +
+			'(or staticMapSlugFromPreference for a single-point image), or to STATIC_IMAGE_EXEMPT ' +
+			'with the reason it is pinned.',
+	);
+	for (const key of [...Object.keys(THUMBNAIL_SURFACES), ...Object.keys(STATIC_IMAGE_EXEMPT)]) {
+		assert.ok(
+			STATIC_IMAGE_CONSUMER.test(stripComments(read(key))),
+			`${key} is registered but requests no static map image — drop the stale entry`,
+		);
+	}
+});
+
+test('a thumbnail resolves its basemap through the shared helper, never a slug literal', () => {
+	const literal: string[] = [];
+	const raw: string[] = [];
+	const missing: string[] = [];
+	for (const key of Object.keys(THUMBNAIL_SURFACES)) {
+		const lines = stripComments(withoutStyleBlock(read(key))).split('\n');
+		lines.forEach((line, i) => {
+			if (MAPTILER_SLUG_LITERAL.test(line)) literal.push(`${key}:${i + 1} ${line.trim()}`);
+			if (RAW_STATIC_BUILDER.test(line)) raw.push(`${key}:${i + 1} ${line.trim()}`);
+		});
+		if (!THUMBNAIL_RESOLVER.test(lines.join('\n'))) missing.push(key);
+	}
+	assert.equal(Object.keys(THUMBNAIL_SURFACES).length, 3, 'the population this scan ran over');
+	assert.deepEqual(
+		literal,
+		[],
+		`a thumbnail names its own MapTiler style:\n${literal.join('\n')}\n` +
+			"That ignores the runner's map_style and the theme — the light-street-map-for-" +
+			'everyone defect of § 1749. Use trackThumbnailUrlFromEnv.',
+	);
+	assert.deepEqual(
+		raw,
+		[],
+		`a thumbnail calls a single-endpoint builder directly:\n${raw.join('\n')}\n` +
+			'That skips the override/MapTiler precedence and the ground-keyed stroke.',
+	);
+	assert.deepEqual(missing, [], `these thumbnails resolve no basemap: ${missing.join(', ')}`);
+});
+
+test('the thumbnail scan flags a slug literal and a raw builder, and spares the helper', () => {
+	for (const line of [
+		"\t\t\tstyle: 'streets-v2',",
+		"\t\t\tstyle: 'streets-v2-dark',",
+		'\t\tconst slug = prefersDark ? "streets-v2-dark" : "streets-v2";',
+		"\t\t\tstyle: 'satellite',",
+	]) {
+		assert.ok(MAPTILER_SLUG_LITERAL.test(line), `must flag: ${line}`);
+	}
+	for (const line of [
+		'\t\t\tstyle: staticMapSlugFromPreference(prefersDark),',
+		"\timport { trackThumbnailUrlFromEnv } from '$lib/routes/map-style.svelte';",
+		"\t\t\tlabel: 'Satellite view',",
+	]) {
+		assert.ok(!MAPTILER_SLUG_LITERAL.test(line), `must spare: ${line}`);
+	}
+	assert.ok(RAW_STATIC_BUILDER.test('\t\tbuildLocalStaticMapUrl(points, {'));
+	assert.ok(RAW_STATIC_BUILDER.test('\t\t? buildStaticMapUrl(points, {'));
+	assert.ok(!RAW_STATIC_BUILDER.test('\t\t{@const mapUrl = trackThumbnailUrlFromEnv(points, {'));
+	assert.ok(THUMBNAIL_RESOLVER.test('\t\t{@const mapUrl = trackThumbnailUrlFromEnv(points, {'));
+});

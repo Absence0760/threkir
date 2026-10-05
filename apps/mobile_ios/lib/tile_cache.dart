@@ -51,8 +51,16 @@ class TileCache {
   /// relaunch cleared it. `TileLayer.dispose` disposes its provider;
   /// `CachedTileProvider`'s dispose is a no-op, which is what makes sharing
   /// it across layers safe.
-  static TileProvider get tileProvider => _tileProvider ??= CachedTileProvider(
-        store: store,
+  static TileProvider get tileProvider =>
+      _tileProvider ??= buildTileProvider(store);
+
+  /// The provider [tileProvider] memoises, over [store] wrapped in a
+  /// [ResilientCacheStore] so a failing cache can only cost a tile its
+  /// cache, never the tile.
+  @visibleForTesting
+  static CachedTileProvider buildTileProvider(CacheStore store) =>
+      CachedTileProvider(
+        store: ResilientCacheStore(store),
         dio: Dio(),
         maxStale: const Duration(days: 30),
         // Map raster tiles are content-addressed by z/x/y and are
@@ -152,6 +160,93 @@ class TileCache {
       debugPrint('TileCache: trim failed: $e');
     }
   }
+}
+
+/// A [CacheStore] that cannot fail a request: a read that throws is a miss,
+/// a write that throws is skipped, and each is logged.
+///
+/// dio_cache_interceptor 4.0.6 awaited the store unguarded inside
+/// `onRequest`, so a throwing read never called the handler and the tile
+/// request hung with no error. 4.0.7 rejects the request instead, which
+/// still loses a tile the network could have served. The cache is a
+/// performance layer under the map; a disk that has gone bad must degrade
+/// it to "uncached", not to "no map".
+class ResilientCacheStore extends CacheStore {
+  ResilientCacheStore(this._inner);
+
+  final CacheStore _inner;
+  int _failures = 0;
+
+  Future<T> _guard<T>(String op, Future<T> Function() body, T onError) async {
+    try {
+      return await body();
+    } catch (e) {
+      _failures++;
+      // First failure then every hundredth: a broken disk fails every tile.
+      if (_failures == 1 || _failures % 100 == 0) {
+        debugPrint(
+          'TileCache: cache store $op failed ($_failures so far), '
+          'continuing uncached: $e',
+        );
+      }
+      return onError;
+    }
+  }
+
+  @override
+  Future<bool> exists(String key) =>
+      _guard('exists', () => _inner.exists(key), false);
+
+  @override
+  Future<CacheResponse?> get(String key) =>
+      _guard('get', () => _inner.get(key), null);
+
+  @override
+  Future<List<CacheResponse>> getFromPath(
+    RegExp pathPattern, {
+    Map<String, String?>? queryParams,
+  }) =>
+      _guard(
+        'getFromPath',
+        () => _inner.getFromPath(pathPattern, queryParams: queryParams),
+        const [],
+      );
+
+  @override
+  Future<void> set(CacheResponse response) =>
+      _guard('set', () => _inner.set(response), null);
+
+  @override
+  Future<void> delete(String key, {bool staleOnly = false}) =>
+      _guard('delete', () => _inner.delete(key, staleOnly: staleOnly), null);
+
+  @override
+  Future<void> deleteFromPath(
+    RegExp pathPattern, {
+    Map<String, String?>? queryParams,
+  }) =>
+      _guard(
+        'deleteFromPath',
+        () => _inner.deleteFromPath(pathPattern, queryParams: queryParams),
+        null,
+      );
+
+  @override
+  Future<void> clean({
+    CachePriority priorityOrBelow = CachePriority.high,
+    bool staleOnly = false,
+  }) =>
+      _guard(
+        'clean',
+        () => _inner.clean(
+          priorityOrBelow: priorityOrBelow,
+          staleOnly: staleOnly,
+        ),
+        null,
+      );
+
+  @override
+  Future<void> close() => _guard('close', _inner.close, null);
 }
 
 class _TileEntry {

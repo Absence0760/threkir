@@ -48,6 +48,26 @@ class _CountingAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+/// A cache store whose disk has gone bad: reads and/or writes throw.
+class _FailingStore extends MemCacheStore {
+  _FailingStore({this.failGet = false, this.failSet = false});
+
+  final bool failGet;
+  final bool failSet;
+
+  @override
+  Future<CacheResponse?> get(String key) {
+    if (failGet) throw const FileSystemException('read failed');
+    return super.get(key);
+  }
+
+  @override
+  Future<void> set(CacheResponse response) {
+    if (failSet) throw const FileSystemException('write failed');
+    return super.set(response);
+  }
+}
+
 class _FakePathProvider extends PathProviderPlatform
     with MockPlatformInterfaceMixin {
   _FakePathProvider(this._root);
@@ -279,6 +299,66 @@ void main() {
       expect(network.calls, 1);
       expect(
         logs.where((l) => l.contains('OfflinePackTileProvider')),
+        hasLength(1),
+      );
+    });
+  });
+
+  group('a failing cache store', () {
+    late List<String> logs;
+    late DebugPrintCallback originalDebugPrint;
+
+    setUp(() {
+      logs = [];
+      originalDebugPrint = debugPrint;
+      debugPrint = (message, {wrapWidth}) {
+        if (message != null) logs.add(message);
+      };
+    });
+
+    tearDown(() => debugPrint = originalDebugPrint);
+
+    Future<Response<List<int>>> fetchTile(CachedTileProvider provider) =>
+        provider.dio
+            .get<List<int>>(
+              'http://localhost:8080/styles/basic/14/8200/5448.png',
+              options: Options(responseType: ResponseType.bytes),
+            )
+            // A store error the interceptor does not handle never calls its
+            // handler, so the request neither completes nor fails.
+            .timeout(const Duration(seconds: 5));
+
+    test('a read that throws is a miss: the tile still comes from the network',
+        () async {
+      final provider =
+          TileCache.buildTileProvider(_FailingStore(failGet: true));
+      final adapter = _CountingAdapter();
+      provider.dio.httpClientAdapter = adapter;
+
+      final res = await fetchTile(provider);
+
+      expect(res.statusCode, 200);
+      expect(res.data, adapter.body);
+      expect(adapter.calls, 1);
+      expect(
+        logs.where((l) => l.contains('cache store get failed')),
+        hasLength(1),
+      );
+    });
+
+    test('a write that throws is skipped: the tile is still returned',
+        () async {
+      final provider =
+          TileCache.buildTileProvider(_FailingStore(failSet: true));
+      final adapter = _CountingAdapter();
+      provider.dio.httpClientAdapter = adapter;
+
+      final res = await fetchTile(provider);
+
+      expect(res.statusCode, 200);
+      expect(res.data, adapter.body);
+      expect(
+        logs.where((l) => l.contains('cache store set failed')),
         hasLength(1),
       );
     });

@@ -87,14 +87,19 @@ test('duplicate h1: lines are counted once', () => {
 });
 
 test('two stacks locking the same provider version for different platform sets disagree', () => {
+	// The pair is built rather than found: Dependabot bumps each stack's
+	// provider in its own PR, so whether two real stacks share a version on a
+	// given day is an accident of merge order, and a case that waited for one
+	// went red on every PR the day the bumps landed out of step.
 	const locks = fresh();
-	const aws = parseLock(locks.get('infra/dns') ?? '').find((p) => p.source.endsWith('hashicorp/aws'));
-	assert.ok(aws);
-	const other = [...locks].find(
-		([stack, src]) => stack !== 'infra/dns' && parseLock(src).some((p) => p.source === aws.source && p.version === aws.version),
-	);
-	assert.ok(other, 'no second stack locks the same aws version, so this case cannot be exercised on this tree');
-	edit(locks, 'infra/dns', (src) => src.replace(aws.h1[0], 'h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='));
+	const [first, second] = [...locks.keys()];
+	assert.ok(first && second, 'the walk found fewer than two stacks');
+	const src = locks.get(first) ?? '';
+	locks.set(second, src);
+	const aws = parseLock(src).find((p) => p.source.endsWith('hashicorp/aws'));
+	assert.ok(aws, `${first} locks no hashicorp/aws provider`);
+	assert.ok(aws.h1.length > 0, `${first}'s aws lock carries no h1: hashes`);
+	edit(locks, first, (s) => s.replace(aws.h1[0], 'h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='));
 	assert.ok(checkLocks(locks, MATRIX).errors.some((e) => e.includes('h1: set differs')));
 });
 

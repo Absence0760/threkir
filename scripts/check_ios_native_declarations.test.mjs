@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import {
 	APS_SUBSTITUTION,
 	BACKGROUND_MODES,
+	BUNDLE_MANIFESTS,
 	ENTITLEMENTS,
 	FIREBASE_CORE_IMPORT,
 	FIREBASE_VALIDATED_FIELDS,
@@ -21,7 +22,9 @@ import {
 	collectDartSources,
 	collectSwiftSources,
 	evaluate,
+	evaluateBundleManifests,
 	parseBuildConfigurations,
+	readBundles,
 	parsePlist,
 	stripWholeLineComments,
 	swiftRuleKeys,
@@ -878,4 +881,126 @@ test('the committed iOS tree satisfies every rule', () => {
 		],
 	});
 	assert.deepEqual(errors, []);
+});
+
+/** @param {[string, string[]][]} api */
+function manifestXml(api, tracking = 'false') {
+	const entries = api
+		.map(
+			([type, reasons]) =>
+				`<dict><key>NSPrivacyAccessedAPIType</key><string>${type}</string>` +
+				`<key>NSPrivacyAccessedAPITypeReasons</key><array>${reasons.map((r) => `<string>${r}</string>`).join('')}</array></dict>`,
+		)
+		.join('');
+	return (
+		'<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict>' +
+		`<key>NSPrivacyTracking</key><${tracking}/>` +
+		`<key>NSPrivacyAccessedAPITypes</key><array>${entries}</array></dict></plist>`
+	);
+}
+
+const UD = 'NSPrivacyAccessedAPICategoryUserDefaults';
+
+/** @param {Partial<import('./check_ios_native_declarations.mjs').BundleInput>} over */
+function bundle(over = {}) {
+	return {
+		target: 'ShareExtension',
+		manifestPath: 'ShareExtension/PrivacyInfo.xcprivacy',
+		manifest: manifestXml([[UD, ['1C8F.1']]]),
+		membership: [{ project: 'Runner.xcodeproj', resources: ['PrivacyInfo.xcprivacy'] }],
+		swiftSources: [{ path: 'ShareViewController.swift', text: 'let d = UserDefaults(suiteName: group)' }],
+		unresolved: [],
+		...over,
+	};
+}
+
+test('the committed tree ships a manifest in every bundle and declares what each compiles', () => {
+	const bundles = readBundles();
+	assert.equal(bundles.length, BUNDLE_MANIFESTS.length);
+	assert.deepEqual(evaluateBundleManifests(bundles).errors, []);
+});
+
+test('a manifest on disk that the target does not copy fails', () => {
+	const { errors } = evaluateBundleManifests([
+		bundle({ membership: [{ project: 'Runner.xcodeproj', resources: ['Assets.xcassets'] }] }),
+	]);
+	assert.equal(errors.filter((e) => e.includes('does not carry')).length, 1);
+});
+
+test('a watch bundle missing from either project fails for that project only', () => {
+	const { errors } = evaluateBundleManifests([
+		bundle({
+			target: 'WatchApp',
+			membership: [
+				{ project: 'Runner.xcodeproj', resources: ['PrivacyInfo.xcprivacy'] },
+				{ project: 'WatchApp.xcodeproj', resources: [] },
+			],
+		}),
+	]);
+	assert.deepEqual(
+		errors.filter((e) => e.includes('does not carry')).map((e) => e.includes('WatchApp.xcodeproj')),
+		[true],
+	);
+});
+
+test('a required-reason API the bundle compiles, undeclared, fails naming the file', () => {
+	const { errors } = evaluateBundleManifests([
+		bundle({
+			swiftSources: [
+				{ path: 'ShareViewController.swift', text: 'let d = UserDefaults(suiteName: group)' },
+				{ path: 'Clock.swift', text: 'let t = ProcessInfo.processInfo.systemUptime' },
+			],
+		}),
+	]);
+	assert.ok(errors.some((e) => e.includes('SystemBootTime') && e.includes('Clock.swift')));
+});
+
+test('the right category with the wrong reason fails', () => {
+	const { errors } = evaluateBundleManifests([bundle({ manifest: manifestXml([[UD, ['CA92.1']]]) })]);
+	assert.ok(errors.some((e) => e.includes('with 1C8F.1')));
+	assert.ok(errors.some((e) => e.includes('CA92.1 and nothing')));
+});
+
+test('a use mentioned only in a comment obliges nothing', () => {
+	const { errors } = evaluateBundleManifests([
+		bundle({
+			manifest: manifestXml([]),
+			swiftSources: [{ path: 'A.swift', text: '// reads UserDefaults(suiteName: group) elsewhere\nlet x = 1' }],
+		}),
+	]);
+	assert.deepEqual(errors, []);
+});
+
+test('a tracking manifest, a missing manifest and an unresolved source each fail', () => {
+	assert.ok(
+		evaluateBundleManifests([bundle({ manifest: manifestXml([[UD, ['1C8F.1']]], 'true') })]).errors.some((e) =>
+			e.includes('NSPrivacyTracking'),
+		),
+	);
+	assert.ok(evaluateBundleManifests([bundle({ manifest: null })]).errors.some((e) => e.includes('does not exist')));
+	assert.ok(
+		evaluateBundleManifests([bundle({ unresolved: ['Gone.swift'] })]).errors.some((e) => e.includes('Gone.swift')),
+	);
+	assert.ok(evaluateBundleManifests([]).errors.some((e) => e.includes('ran on nothing')));
+});
+
+test('receive_sharing_intent obliges the App Group reason on UserDefaults, not just the category', () => {
+	const sources = dart(
+		'IosTextToSpeechAudioCategory.playback\n' +
+			"import 'package:firebase_messaging/x.dart';\n" +
+			"import 'package:shared_preferences/x.dart';\n" +
+			"import 'package:receive_sharing_intent/x.dart';",
+	);
+	/** @param {string[]} reasons */
+	const withUserDefaults = (reasons) =>
+		fakeManifest().replace(
+			'<key>NSPrivacyAccessedAPITypes</key>\n\t<array>\n',
+			'<key>NSPrivacyAccessedAPITypes</key>\n\t<array>\n' +
+				`\t\t<dict><key>NSPrivacyAccessedAPIType</key><string>${UD}</string>` +
+				`<key>NSPrivacyAccessedAPITypeReasons</key><array>${reasons.map((r) => `<string>${r}</string>`).join('')}</array></dict>\n`,
+		);
+	const missing = evaluate(baseline({ dartSources: sources, privacyManifest: withUserDefaults(['CA92.1']) }));
+	assert.equal(missing.errors.filter((e) => e.includes('without reason code 1C8F.1')).length, 1);
+	const both = evaluate(baseline({ dartSources: sources, privacyManifest: withUserDefaults(['CA92.1', '1C8F.1']) }));
+	assert.equal(both.errors.filter((e) => e.includes('1C8F.1')).length, 0);
 });

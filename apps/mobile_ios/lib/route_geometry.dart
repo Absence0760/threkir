@@ -116,8 +116,8 @@ class RouteProgress {
 /// route when there is no previous reading) — and within it breaks a tie
 /// between overlapping legs in favour of forward progress, with a bias capped
 /// at [_maxAlongBiasM] so it can never outweigh real distance off the line.
-/// When nothing in that window is within [_routeMatchReacquireM], the rest of
-/// the route ahead is searched, so a runner who skips ahead or returns after a
+/// When nothing in that window is within [_routeMatchReacquireM], or the
+/// runner projects past its far end, the rest of the route ahead is searched, so a runner who skips ahead or returns after a
 /// signal gap is re-acquired; a runner still off the line keeps the windowed
 /// match, unless there is no previous reading to keep, when the nearest point
 /// is taken.
@@ -186,9 +186,11 @@ RouteProgress? progressAlongRoute(
   final lo = hasPrev ? max(0.0, prev - _routeMatchBacktrackM) : 0.0;
 
   // Nearest point of the sub-line [fromM, toM], ranked by offset plus the
-  // capped forward-progress bias around `anchor`.
-  ({double alongM, double offsetM})? best(double fromM, double toM) {
-    ({double alongM, double offsetM})? found;
+  // capped forward-progress bias around `anchor`. `pastEnd` marks a match
+  // pinned to `toM` while the runner projects beyond it.
+  ({double alongM, double offsetM, bool pastEnd})? best(
+      double fromM, double toM) {
+    ({double alongM, double offsetM, bool pastEnd})? found;
     var bestCost = double.infinity;
     for (var i = 0; i < n; i++) {
       final s = segStart[i];
@@ -207,19 +209,21 @@ RouteProgress? progressAlongRoute(
       final cost = offsetM + bias + gap.abs() * _alongContinuityPerM;
       if (cost < bestCost) {
         bestCost = cost;
-        found = (alongM: alongM, offsetM: offsetM);
+        found = (alongM: alongM, offsetM: offsetM, pastEnd: tFree[i] > t);
       }
     }
     return found;
   }
 
   var match = best(lo, anchor + _routeMatchLookaheadM);
-  if (match == null || match.offsetM > _routeMatchReacquireM) {
+  if (match == null ||
+      match.offsetM > _routeMatchReacquireM ||
+      match.pastEnd) {
     final ahead = best(lo, total);
     if (ahead != null &&
         (match == null ||
-            !hasPrev ||
-            ahead.offsetM <= _routeMatchReacquireM)) {
+            (ahead.offsetM < match.offsetM &&
+                (!hasPrev || ahead.offsetM <= _routeMatchReacquireM)))) {
       match = ahead;
     }
   }

@@ -642,5 +642,13 @@ void main() {
       expect(p.alongM, closeTo(900, 1));
       expect(p.offRouteM, closeTo(100, 1));
     });
+
+    test('a fix just past the look-ahead is not pulled back to its edge', () {
+      // 230 m along and 10 m beside a straight line: the window ends at 200 m,
+      // whose edge is only ~32 m away — near enough to pass for a match.
+      final line = [en(0, 0), en(2000, 0)];
+      final p = progressAlongRoute(at(230, 10), line, null)!;
+      expect(p.alongM, closeTo(230, 1));
+    });
   });
 }

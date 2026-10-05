@@ -1347,7 +1347,9 @@ class RunRecorder {
   /// with a bias capped at [_maxAlongBiasM] so it never outweighs real
   /// distance off the line. When nothing in that window is within
   /// [_routeMatchReacquireM] the rest of the route ahead is searched, so a
-  /// runner who skips ahead or returns after a signal gap is re-acquired.
+  /// runner who skips ahead or returns after a signal gap is re-acquired; a
+  /// runner still off the line keeps the windowed match, unless there is no
+  /// previous match to keep.
   ///
   /// `offRoute` is the distance to the nearest point on the WHOLE route: a
   /// runner standing on the line is not off it, whichever lap or leg the
@@ -1442,7 +1444,9 @@ class RunRecorder {
     if (match == null || match.offset > _routeMatchReacquireM) {
       final ahead = best(lo, total);
       if (ahead != null &&
-          (match == null || ahead.offset <= _routeMatchReacquireM)) {
+          (match == null ||
+              !hasPrev ||
+              ahead.offset <= _routeMatchReacquireM)) {
         match = ahead;
       }
     }

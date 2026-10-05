@@ -597,5 +597,15 @@ void main() {
       expect(snaps.last.offRouteDistanceMetres, closeTo(100, 1));
       expect(snaps.last.routeAlongMetres, lessThan(250));
     });
+
+    test('a first fix beside the middle of the route is matched there', () {
+      // No earlier match to hold on to, so the window at the start must not
+      // win over the nearest point on the line.
+      final r = RunRecorder()
+        ..debugPrepareWithoutStream(route: route([en(0, 0), en(2000, 0)]));
+      final p = r.debugRouteProgress(at(100 / mPerDeg, 900 / mPerDeg))!;
+      expect(p.along, closeTo(900, 2));
+      expect(p.offRoute, closeTo(100, 1));
+    });
   });
 }

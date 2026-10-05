@@ -48,7 +48,7 @@ Last moved: **2026-10-05**.
 | 11 | `PUBLIC_APPLE_AUTH_ENABLED` truthy + `web@` Release | GitHub secret + release | ☐ |
 | 12 | `mobile_android@` release (picks up the push config) | Play | ☐ |
 | 13 | Android Apple dart-defines | `APPLE_SERVICE_CLIENT_ID` + `APPLE_REDIRECT_URI` | ☐ |
-| 14 | Apple Distribution certificate `.p12` | GitHub `production` env `IOS_BUILD_CERTIFICATE_BASE64` + `IOS_P12_PASSWORD`; estate | ☐ |
+| 14 | Apple Distribution certificate `.p12` | GitHub `production` env `IOS_BUILD_CERTIFICATE_BASE64` + `IOS_P12_PASSWORD`; estate | Secrets set 2026-10-05; estate backup pending |
 | 15 | App Store profiles, phone + share extension + Live Activity + watch + complication | GitHub `production` env `IOS_PROVISIONING_PROFILE_BASE64` + `IOS_SHARE_PROVISIONING_PROFILE_BASE64` + `IOS_RUN_ACTIVITY_PROVISIONING_PROFILE_BASE64` + `IOS_WATCH_PROVISIONING_PROFILE_BASE64` + `IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64` | ☐ — after steps 3–4, App Group included |
 | 16 | App Store Connect API key `.p8` | GitHub `production` env `APP_STORE_CONNECT_API_*`; estate | ☐ |
 | 17 | App Store Connect app record | App Store Connect | ☐ — gates nothing above; must exist before step 18 uploads |
@@ -673,14 +673,29 @@ install it. Pick **Apple Distribution**, not the older *iOS Distribution*:
 `release-ios.yml` looks for an identity named `Apple Distribution: …` and fails
 naming the certificate if it finds none.
 
+Two import failures, both measured on 2026-10-05:
+
+- **`Unable to import … Error: -25294`** on the double-click is Keychain Access
+  aiming at a keychain other than `login`. Select **login** under *Default
+  Keychains* in the sidebar and use **File → Import Items…**.
+- **"certificate is not trusted"** in red under the imported certificate means
+  the issuing intermediate, *Apple Worldwide Developer Relations Certification
+  Authority G3*, is not on the Mac. `security find-identity -v -p codesigning`
+  then reports 0 valid identities, and the workflow's identity check uses the
+  same `-v`. Install it from <https://www.apple.com/certificateauthority/>
+  (*Worldwide Developer Relations - G3*) into `login`.
+
 Back in Keychain Access → **My Certificates** → expand the new certificate and
 confirm a private key sits under it (no key means the CSR was made on another
 Mac, and the certificate cannot sign anything) → select the certificate →
-**File** → **Export Items…** → `threkir-distribution.p12`, with a strong
-password. Then, from the `threkir` checkout:
+**File** → **Export Items…** → `.p12`, with a strong password, into
+`~/tmp-signing`. Not Desktop or Documents, which iCloud may sync, and not
+Downloads: macOS can deny Terminal read access to Downloads, and then `base64`
+fails while `gh secret set` still reports ✓, having stored an **empty** secret
+from the empty pipe. Then, from the `threkir` checkout:
 
 ```
-base64 -i ~/Desktop/threkir-distribution.p12 | gh secret set IOS_BUILD_CERTIFICATE_BASE64 --env production
+base64 -i ~/tmp-signing/Certificates.p12 | gh secret set IOS_BUILD_CERTIFICATE_BASE64 --env production
 ```
 
 ```

@@ -589,7 +589,10 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   `docs/architecture/decisions.md § 64`.
   Selected waypoints flow via `ACTION_START` extras into
   `RunRecordingService.parseRouteWaypoints`, which calls
-  `RouteMath.offRouteDistanceM` + `routeRemainingM` per GPS sample.
+  `RouteMath.routeProgress` per GPS sample, passing the previous route
+  match back in so a loop start is not read as its finish and an
+  out-and-back return leg is not read as its outbound one (a port of web
+  `route_geometry.ts` `progressAlongRoute`).
   `RunningScreen` renders the "Off route · N m" banner (with hysteresis
   at 40 m / 20 m and a double-haptic on entry) and a "X.XX km to go"
   badge under the distance readout. `ui/RouteMiniMap.kt` draws the

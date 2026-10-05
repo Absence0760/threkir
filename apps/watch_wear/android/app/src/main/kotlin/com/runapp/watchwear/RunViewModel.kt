@@ -220,7 +220,7 @@ data class UiState(
     val routesUnavailable: Boolean = false,
     /// Live off-route distance in metres (perpendicular distance to the
     /// nearest segment). Null when no route is loaded. Published by the
-    /// recording service per GPS sample via `RouteMath.offRouteDistanceM`.
+    /// recording service per GPS sample via `RouteMath.routeProgress`.
     val offRouteDistanceM: Double? = null,
     /// Live "distance to end of route" in metres. Null when no route.
     val routeRemainingM: Double? = null,

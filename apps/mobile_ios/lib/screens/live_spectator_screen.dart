@@ -325,13 +325,24 @@ class _LiveSpectatorScreenState extends State<LiveSpectatorScreen> {
     return dElapsed / (dDist / 1000);
   }
 
+  /// Where the runner is along the linked route. The runner's own recorded
+  /// distance stands in for the matcher's "travelled since the start": without
+  /// it a loop runner at the start reads as finished and an out-and-back runner
+  /// on the way home reads as outbound.
+  double? get _alongRouteM {
+    final pos = _latestPos;
+    if (pos == null) return null;
+    return progressAlongRoute(pos, _routeWaypoints, 0, travelledM: _distanceM)
+        ?.alongM;
+  }
+
   /// The next-cutoff projection for the current position, or null when there's
   /// no route with cutoffs / no position yet / the runner is past the last
   /// cutoff. `stale` suppresses the verdict (the helper returns
   /// [LiveCutoffStatus.unknown]) rather than fabricating an ETA off an old fix.
   LiveCutoffEta? _cutoffEta(bool stale, int? ageMs, int? raceClock) {
     if (_cutoffLegs.isEmpty || _latestPos == null) return null;
-    final distAlong = distanceAlongRoute(_latestPos!, _routeWaypoints);
+    final distAlong = _alongRouteM;
     if (distAlong == null) return null;
     final eta = nextCutoffEta(
       distAlongRouteM: distAlong,
@@ -364,7 +375,7 @@ class _LiveSpectatorScreenState extends State<LiveSpectatorScreen> {
   /// bar (mirror of the web spectator's `courseProgressPct`).
   double? get _courseProgressPct {
     if (_routeWaypoints.length < 2 || _latestPos == null) return null;
-    final along = distanceAlongRoute(_latestPos!, _routeWaypoints);
+    final along = _alongRouteM;
     if (along == null) return null;
     final total = polylineLengthMetres(_routeWaypoints);
     if (total <= 0) return null;

@@ -1,8 +1,10 @@
 # Predictive live tracking — "will they make the next cutoff?"
 
 > **STATUS: shipped web + mobile (2026-06-14).** `/live/[id]` next-cut-off card +
-> `live_spectator_screen.dart`, backed by the `route_geometry` (`distanceAlongRoute`)
-> and `live_cutoff_eta` parity pairs. See [decisions.md § 156](../architecture/decisions.md#156-predictive-live-tracking-reuses-the-roadbook-cut-off-legs-and-fails-to-unknown-when-the-fix-is-stale)
+> `live_spectator_screen.dart`, backed by the `route_geometry` (`progressAlongRoute`,
+> anchored on the runner's recorded distance so a loop's start is not its finish —
+> it replaced the original whole-line `distanceAlongRoute`) and `live_cutoff_eta`
+> parity pairs. See [decisions.md § 156](../architecture/decisions.md#156-predictive-live-tracking-reuses-the-roadbook-cut-off-legs-and-fails-to-unknown-when-the-fix-is-stale)
 > for the staleness/ETA contract and the [flows.md spectator section](flows.md#predictive-next-cut-off-will-they-make-it).
 > The brief below is preserved as the design record.
 >

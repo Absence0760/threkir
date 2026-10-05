@@ -3,12 +3,12 @@ import CoreLocation
 import WatchKit
 
 /// One position's projection onto the route polyline. Swift port of the
-/// web `route_snap.ts` `snapToPolyline` / `route_geometry.ts`
-/// `distanceAlongRoute` contract (also mirrored by Wear's `RouteMath.kt`
-/// and the custom watch's `course.rs`): the nearest perpendicular foot on
-/// the closest segment — not merely the nearest vertex — in a local
-/// planar frame per segment, with along-distance accumulated over
-/// haversine segment lengths.
+/// web `route_geometry.ts` `progressAlongRoute` matcher (also ported by
+/// Wear's `RouteMath.kt` and the phone recorder): the nearest perpendicular
+/// foot per segment in a local planar frame, along-distance accumulated over
+/// haversine segment lengths, and — given the previous match — a search
+/// windowed around where the runner can plausibly be, so a loop's start is
+/// not its finish and an out-and-back's return leg is not its outbound one.
 struct RouteProjection: Equatable {
     let deviationMetres: Double
     let alongRouteMetres: Double
@@ -20,6 +20,17 @@ enum RouteGeometry {
     private static let degToRad = Double.pi / 180.0
     private static let metresPerDegree = earthRadiusMetres * degToRad
 
+    // Matcher tuning — the values web `route_geometry.ts` uses.
+    private static let lookaheadMetres = 200.0
+    private static let backtrackMetres = 50.0
+    /// The off-route alert threshold: a windowed match further off the line
+    /// than this sends the matcher looking further along the route.
+    private static let reacquireMetres = OffRouteLatch.thresholdMetres
+    private static let forwardBiasPerMetre = 0.05
+    private static let backwardBiasPerMetre = 0.5
+    private static let maxBiasMetres = 20.0
+    private static let continuityPerMetre = 1e-6
+
     static func totalLengthMetres(_ points: [CLLocationCoordinate2D]) -> Double {
         var total = 0.0
         for i in 1..<max(points.count, 1) {
@@ -30,46 +41,126 @@ enum RouteGeometry {
 
     /// Nil when there is no line to project onto (< 2 points, a
     /// non-finite fix, or any non-finite route vertex) — never a bogus
-    /// zero, matching `distanceAlongRoute`'s null contract.
+    /// zero, matching `progressAlongRoute`'s null contract.
+    ///
+    /// Only the stretch from `backtrackMetres` behind `previousAlongMetres`
+    /// to `lookaheadMetres` past `previousAlongMetres + travelledMetres` is
+    /// searched (the start of the route when there is no previous match), and
+    /// within it a tie between overlapping legs goes to forward progress, with
+    /// a bias capped at `maxBiasMetres` so it never outweighs real distance off
+    /// the line. When nothing in that window is within `reacquireMetres`, or
+    /// the runner projects past its far end, the rest of the route ahead is
+    /// searched, so a runner who skips ahead or
+    /// returns after a signal gap is re-acquired; a runner still off the line
+    /// keeps the windowed match, unless there is no previous match to keep.
+    ///
+    /// `deviationMetres` is the distance to the nearest point on the WHOLE
+    /// line: a runner standing on the route is not off it, whichever lap or
+    /// leg the matcher has them on.
     static func project(
         _ position: CLLocationCoordinate2D,
         onto points: [CLLocationCoordinate2D],
-        totalLengthMetres total: Double
+        totalLengthMetres total: Double,
+        previousAlongMetres: Double? = nil,
+        travelledMetres: Double = 0
     ) -> RouteProjection? {
         guard points.count >= 2 else { return nil }
         guard position.latitude.isFinite, position.longitude.isFinite else { return nil }
 
+        let n = points.count - 1
+        var segStart = [Double](repeating: 0, count: n)
+        var segLen = [Double](repeating: 0, count: n)
+        var tFree = [Double](repeating: 0, count: n)
         var seen = 0.0
-        var bestAlong = 0.0
         var bestPerp = Double.infinity
-        for i in 1..<points.count {
-            let a = points[i - 1]
-            let b = points[i]
+        for i in 0..<n {
+            let a = points[i]
+            let b = points[i + 1]
             guard a.latitude.isFinite, a.longitude.isFinite,
                   b.latitude.isFinite, b.longitude.isFinite else { return nil }
-            let segLen = haversineMetres(a, b)
-            let cosLat = cos(a.latitude * degToRad)
-            let bx = (b.longitude - a.longitude) * cosLat * metresPerDegree
-            let by = (b.latitude - a.latitude) * metresPerDegree
-            let px = (position.longitude - a.longitude) * cosLat * metresPerDegree
-            let py = (position.latitude - a.latitude) * metresPerDegree
-            let lenSq = bx * bx + by * by
-            let t = lenSq <= 0 ? 0 : min(1, max(0, (px * bx + py * by) / lenSq))
-            let dx = px - bx * t
-            let dy = py - by * t
-            let perp = (dx * dx + dy * dy).squareRoot()
-            if perp < bestPerp {
-                bestPerp = perp
-                bestAlong = seen + t * segLen
-            }
-            seen += segLen
+            segStart[i] = seen
+            segLen[i] = haversineMetres(a, b)
+            seen += segLen[i]
+            let projected = frame(position, a, b, t: nil)
+            tFree[i] = projected.t
+            bestPerp = min(bestPerp, projected.perp)
         }
-        let along = min(seen, max(0, bestAlong))
+        guard bestPerp.isFinite, seen.isFinite else { return nil }
+
+        let hasPrevious = previousAlongMetres?.isFinite ?? false
+        let previous = hasPrevious ? min(seen, max(0, previousAlongMetres!)) : 0
+        let travelled = travelledMetres.isFinite && travelledMetres > 0 ? travelledMetres : 0
+        let anchor = min(seen, previous + travelled)
+        let lo = hasPrevious ? max(0, previous - backtrackMetres) : 0
+
+        // `pastEnd` marks a match pinned to `toM` while the runner projects
+        // beyond it.
+        func best(
+            from fromM: Double, to toM: Double
+        ) -> (along: Double, perp: Double, pastEnd: Bool)? {
+            var found: (along: Double, perp: Double, pastEnd: Bool)?
+            var bestCost = Double.infinity
+            for i in 0..<n {
+                let s = segStart[i]
+                let len = segLen[i]
+                if s > toM || s + len < fromM { continue }
+                let tLo = len > 0 ? max(0, (fromM - s) / len) : 0
+                let tHi = len > 0 ? min(1, (toM - s) / len) : 0
+                let t = min(tHi, max(tLo, tFree[i]))
+                let perp = frame(position, points[i], points[i + 1], t: t).perp
+                let along = s + t * len
+                let gap = along - anchor
+                let bias = min(
+                    maxBiasMetres,
+                    gap >= 0 ? gap * forwardBiasPerMetre : -gap * backwardBiasPerMetre
+                )
+                let cost = perp + bias + abs(gap) * continuityPerMetre
+                if cost < bestCost {
+                    bestCost = cost
+                    found = (along, perp, tFree[i] > t)
+                }
+            }
+            return found
+        }
+
+        var match = best(from: lo, to: anchor + lookaheadMetres)
+        if match == nil || match!.perp > reacquireMetres || match!.pastEnd {
+            if let ahead = best(from: lo, to: seen),
+               match == nil
+                || (ahead.perp < match!.perp
+                    && (!hasPrevious || ahead.perp <= reacquireMetres)) {
+                match = ahead
+            }
+        }
+        guard let match else { return nil }
+        let along = min(seen, max(0, match.along))
         return RouteProjection(
             deviationMetres: bestPerp,
             alongRouteMetres: along,
             remainingMetres: max(0, total - along)
         )
+    }
+
+    /// Project `p` onto segment a→b in a local planar frame anchored at `a`.
+    /// Returns the free (clamped) projection parameter and the perpendicular
+    /// distance at `t` — or at the free parameter when `t` is nil.
+    private static func frame(
+        _ p: CLLocationCoordinate2D,
+        _ a: CLLocationCoordinate2D,
+        _ b: CLLocationCoordinate2D,
+        t: Double?
+    ) -> (t: Double, perp: Double) {
+        let cosLat = cos(a.latitude * degToRad)
+        let bx = (b.longitude - a.longitude) * cosLat * metresPerDegree
+        let by = (b.latitude - a.latitude) * metresPerDegree
+        let px = (p.longitude - a.longitude) * cosLat * metresPerDegree
+        let py = (p.latitude - a.latitude) * metresPerDegree
+        let lenSq = bx * bx + by * by
+        let tFree = lenSq <= 0 ? 0 : min(1, max(0, (px * bx + py * by) / lenSq))
+        let tt = t ?? tFree
+        let dx = px - bx * tt
+        let dy = py - by * tt
+        return (tFree, (dx * dx + dy * dy).squareRoot())
     }
 
     private static func haversineMetres(
@@ -118,6 +209,11 @@ class RouteNavigator: ObservableObject {
     private let coordinates: [CLLocationCoordinate2D]
     private let totalLengthMetres: Double
     private var latch = OffRouteLatch()
+    /// The last match and the fix it was made from: the next fix is searched
+    /// for around it, so progress follows the runner rather than snapping to
+    /// whichever pass of the line happens to be nearest.
+    private var matchedAlongMetres: Double?
+    private var matchedFrom: CLLocation?
 
     /// Auxiliary effect seam: fired once per off-route transition, after
     /// every published value is already set, so nothing it does can
@@ -132,10 +228,13 @@ class RouteNavigator: ObservableObject {
     }
 
     func update(currentLocation: CLLocation) {
+        let travelled = matchedFrom.map { currentLocation.distance(from: $0) } ?? 0
         guard let projection = RouteGeometry.project(
             currentLocation.coordinate,
             onto: coordinates,
-            totalLengthMetres: totalLengthMetres
+            totalLengthMetres: totalLengthMetres,
+            previousAlongMetres: matchedAlongMetres,
+            travelledMetres: travelled
         ) else {
             // No line, or a non-finite fix: publish honest nils. The
             // latch is left alone so one bad fix can't clear a real
@@ -145,6 +244,8 @@ class RouteNavigator: ObservableObject {
             if coordinates.count < 2 { isOffRoute = false }
             return
         }
+        matchedAlongMetres = projection.alongRouteMetres
+        matchedFrom = currentLocation
         deviationMetres = projection.deviationMetres
         remainingMetres = projection.remainingMetres
         let fired = latch.update(deviationMetres: projection.deviationMetres)

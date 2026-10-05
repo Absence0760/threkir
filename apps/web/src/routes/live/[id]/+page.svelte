@@ -13,8 +13,8 @@
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { buildRoadbook, type RoadbookLeg } from '$lib/routes/roadbook';
 	import {
-		distanceAlongRoute,
 		polylineLengthMetres,
+		progressAlongRoute,
 		type RouteWaypoint,
 	} from '$lib/routes/route_geometry';
 	import { nextCutoffEta } from '$lib/runs/live_cutoff_eta';
@@ -133,9 +133,12 @@
 		return dElapsed / (dDist / 1000);
 	});
 
+	// The runner's own recorded distance stands in for the matcher's
+	// "travelled since the start": without it a loop runner at the start reads
+	// as finished and an out-and-back runner on the way home reads as outbound.
 	const distAlongRouteM = $derived.by((): number | null => {
 		if (!latestPosition || routeWaypoints.length < 2) return null;
-		return distanceAlongRoute(latestPosition, routeWaypoints);
+		return progressAlongRoute(latestPosition, routeWaypoints, 0, distance)?.alongM ?? null;
 	});
 
 	// Course progress (0..100) — how far along a linked route the runner is.

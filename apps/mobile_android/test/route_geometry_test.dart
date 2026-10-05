@@ -1,4 +1,4 @@
-import 'dart:math' show cos, pi;
+import 'dart:math' show cos, pi, sqrt;
 
 import 'package:core_models/core_models.dart' show Waypoint;
 import 'package:flutter_test/flutter_test.dart';
@@ -19,6 +19,8 @@ void main() {
   const metresPerDegLngAtEquator = 111320.0;
 
   Waypoint wp(double lat, double lng) => Waypoint(lat: lat, lng: lng);
+  double? alongOf(({double lat, double lng}) point, List<Waypoint> wps) =>
+      progressAlongRoute(point, wps, null)?.alongM;
 
   group('interpolateAlongRoute — guard rails', () {
     test('null on empty waypoints', () {
@@ -303,18 +305,18 @@ void main() {
     });
   });
 
-  group('distanceAlongRoute — nearest-point inverse', () {
+  group('progressAlongRoute (no previous reading) — nearest-point inverse', () {
     Waypoint distWp(double metres) => wp(0, metres / metresPerDegLngAtEquator);
 
     test('null on < 2 waypoints', () {
-      expect(distanceAlongRoute((lat: 0, lng: 0), const []), isNull);
-      expect(distanceAlongRoute((lat: 0, lng: 0), [wp(0, 0)]), isNull);
+      expect(alongOf((lat: 0, lng: 0), const []), isNull);
+      expect(alongOf((lat: 0, lng: 0), [wp(0, 0)]), isNull);
     });
 
     test('point on a vertex returns its cumulative distance', () {
       // Three 100-m legs along the equator. The 2nd vertex is at 200 m.
       final wps = [distWp(0), distWp(100), distWp(200), distWp(300)];
-      final d = distanceAlongRoute((lat: wps[2].lat, lng: wps[2].lng), wps);
+      final d = alongOf((lat: wps[2].lat, lng: wps[2].lng), wps);
       expect(d, isNotNull);
       expect(d!, closeTo(200, 1));
     });
@@ -322,7 +324,7 @@ void main() {
     test('point mid-segment returns the interpolated distance', () {
       final wps = [distWp(0), distWp(100), distWp(200)];
       final p = distWp(150);
-      final d = distanceAlongRoute((lat: p.lat, lng: p.lng), wps);
+      final d = alongOf((lat: p.lat, lng: p.lng), wps);
       expect(d, isNotNull);
       expect(d!, closeTo(150, 1));
     });
@@ -334,7 +336,7 @@ void main() {
         lat: 50 / metresPerDegLngAtEquator,
         lng: 150 / metresPerDegLngAtEquator,
       );
-      final d = distanceAlongRoute(offset, wps);
+      final d = alongOf(offset, wps);
       expect(d, isNotNull);
       expect(d!, closeTo(150, 1));
     });
@@ -343,7 +345,7 @@ void main() {
       final wps = [distWp(0), distWp(100), distWp(200)];
       final total = polylineLengthMetres(wps);
       final p = distWp(199);
-      final d = distanceAlongRoute((lat: p.lat, lng: p.lng), wps);
+      final d = alongOf((lat: p.lat, lng: p.lng), wps);
       expect(d, isNotNull);
       expect(d!, closeTo(199, 1));
       expect(d, lessThanOrEqualTo(total + 1e-6));
@@ -363,7 +365,7 @@ void main() {
         lat: -2 / metresPerDegLngAtEquator,
         lng: 50 / metresPerDegLngAtEquator,
       );
-      final d = distanceAlongRoute(probe, wps);
+      final d = alongOf(probe, wps);
       expect(d, isNotNull);
       expect(d!, lessThan(100),
           reason: 'should project onto the first horizontal leg');
@@ -387,7 +389,7 @@ void main() {
         lat: 90 / metresPerDegLngAtEquator,
         lng: 102 / metresPerDegLngAtEquator,
       );
-      final d = distanceAlongRoute(probe, wps);
+      final d = alongOf(probe, wps);
       expect(d, isNotNull);
       expect(d, closeTo(190, 2));
     });
@@ -408,9 +410,9 @@ void main() {
       final oneCm =
           0.01 / (metresPerDegLngAtEquator * cos(mid * pi / 180));
 
-      final onLine = distanceAlongRoute((lat: mid, lng: 0.0), oab);
-      final east = distanceAlongRoute((lat: mid, lng: oneCm), oab);
-      final west = distanceAlongRoute((lat: mid, lng: -oneCm), oab);
+      final onLine = alongOf((lat: mid, lng: 0.0), oab);
+      final east = alongOf((lat: mid, lng: oneCm), oab);
+      final west = alongOf((lat: mid, lng: -oneCm), oab);
       expect(onLine, isNotNull);
       expect(east, isNotNull);
       expect(west, isNotNull);
@@ -427,7 +429,7 @@ void main() {
       final wps = [distWp(0), distWp(100), distWp(200)];
       final total = polylineLengthMetres(wps);
       final far = distWp(10000);
-      final d = distanceAlongRoute((lat: far.lat, lng: far.lng), wps);
+      final d = alongOf((lat: far.lat, lng: far.lng), wps);
       expect(d, isNotNull);
       expect(d, greaterThanOrEqualTo(0));
       expect(d, lessThanOrEqualTo(total + 1e-6));
@@ -437,15 +439,15 @@ void main() {
       final wps = [distWp(0), distWp(100), distWp(200)];
       final finite = distWp(100);
       expect(
-        distanceAlongRoute((lat: finite.lat, lng: finite.lng), wps),
+        alongOf((lat: finite.lat, lng: finite.lng), wps),
         isNotNull,
       );
       expect(
-        distanceAlongRoute((lat: double.nan, lng: 0.0), wps),
+        alongOf((lat: double.nan, lng: 0.0), wps),
         isNull,
       );
       expect(
-        distanceAlongRoute((lat: 0.0, lng: double.infinity), wps),
+        alongOf((lat: 0.0, lng: double.infinity), wps),
         isNull,
       );
     });
@@ -495,17 +497,158 @@ void main() {
       expect(out.lat, 0);
     });
 
-    test('distanceAlongRoute — a point past the line projects onto the leg',
+    test('progressAlongRoute — a point past the line projects onto the leg',
         () {
       final wps = [wp(0, 179.98), wp(0, -179.96)];
       final total = polylineLengthMetres(wps);
-      final along = distanceAlongRoute((lat: 0.0, lng: -179.99), wps)!;
+      final along = alongOf((lat: 0.0, lng: -179.99), wps)!;
       expect(along, closeTo(total / 2, 1));
     });
 
     test('polylineLengthMetres — a course across the line spans 0.06°', () {
       final wps = [wp(0, 179.98), wp(0, -179.96)];
       expect(polylineLengthMetres(wps), closeTo(6671.7, 1));
+    });
+  });
+
+  // progressAlongRoute — the windowed matcher a live consumer follows a route
+  // with. Fixtures are built in metres east/north of (0,0) at the equator using
+  // the haversine radius, so the lengths below are exact to well under a metre.
+  group('progressAlongRoute — following a route', () {
+    const mPerDeg = 6371000 * pi / 180;
+    Waypoint en(double eastM, double northM) =>
+        wp(northM / mPerDeg, eastM / mPerDeg);
+    ({double lat, double lng}) at(double eastM, double northM) {
+      final p = en(eastM, northM);
+      return (lat: p.lat, lng: p.lng);
+    }
+
+    // 500 m square, start == finish, run anticlockwise: east, north, west, south.
+    final squareLoop = [en(0, 0), en(500, 0), en(500, 500), en(0, 500), en(0, 0)];
+    // 1 km out east and back to the start on the same line.
+    final outAndBack = [en(0, 0), en(1000, 0), en(0, 0)];
+
+    test('null on < 2 waypoints or a non-finite point', () {
+      expect(progressAlongRoute((lat: 0, lng: 0), [wp(0, 0)], null), isNull);
+      expect(progressAlongRoute((lat: double.nan, lng: 0), squareLoop, null),
+          isNull);
+    });
+
+    test('a loop runner at the start has the whole loop to go', () {
+      // 3 m north and 1 m east of the start: nearer the CLOSING leg (1 m) than
+      // the opening one (3 m), which a global nearest-point search snaps to —
+      // reading the lap as finished the instant the run starts.
+      final p = progressAlongRoute(at(1, 3), squareLoop, null)!;
+      expect(p.alongM, lessThan(5));
+      expect(p.remainingM, closeTo(2000, 5));
+      expect(p.offRouteM, lessThan(1.5));
+    });
+
+    test('walking a loop keeps progress forward and on-route to the finish',
+        () {
+      double? prev;
+      const legs = [
+        [0.0, 0.0, 500.0, 0.0],
+        [500.0, 0.0, 500.0, 500.0],
+        [500.0, 500.0, 0.0, 500.0],
+        [0.0, 500.0, 0.0, 0.0],
+      ];
+      for (final l in legs) {
+        for (var s = 0; s <= 50; s++) {
+          final p = progressAlongRoute(
+            at(l[0] + (l[2] - l[0]) * s / 50, l[1] + (l[3] - l[1]) * s / 50),
+            squareLoop,
+            prev,
+          )!;
+          expect(p.offRouteM, lessThan(0.5));
+          if (prev != null) expect(p.alongM, greaterThanOrEqualTo(prev - 0.5));
+          prev = p.alongM;
+        }
+      }
+      expect(prev, closeTo(2000, 1));
+    });
+
+    test('an out-and-back runner past the turnaround is on the return leg', () {
+      double? prev;
+      for (var m = 0; m <= 1000; m += 10) {
+        prev = progressAlongRoute(at(m.toDouble(), 0), outAndBack, prev)!.alongM;
+      }
+      var last = progressAlongRoute(at(1000, 0), outAndBack, prev)!;
+      for (var m = 990; m >= 900; m -= 10) {
+        last = progressAlongRoute(at(m.toDouble(), 0), outAndBack, last.alongM)!;
+      }
+      expect(last.alongM, closeTo(1100, 1));
+      expect(last.remainingM, closeTo(900, 1));
+      expect(last.offRouteM, lessThan(0.5));
+    });
+
+    test('a runner genuinely off course is still measured off it', () {
+      final p = progressAlongRoute(at(250, 120), squareLoop, 250)!;
+      expect(p.offRouteM, closeTo(120, 1));
+      expect(p.alongM, closeTo(250, 1));
+    });
+
+    test('a figure-eight crossing is read on the pass the runner is on', () {
+      // Bow-tie: the two diagonals cross at (100, 100), ~141 m in on the first
+      // pass and ~624 m in on the second.
+      final eight = [en(0, 0), en(200, 200), en(200, 0), en(0, 200), en(0, 0)];
+      final d = sqrt(200 * 200 * 2);
+      double? prev;
+      final crossings = <double>[];
+      const legs = [
+        [0.0, 0.0, 200.0, 200.0],
+        [200.0, 200.0, 200.0, 0.0],
+        [200.0, 0.0, 0.0, 200.0],
+        [0.0, 200.0, 0.0, 0.0],
+      ];
+      for (final l in legs) {
+        for (var s = 0; s <= 20; s++) {
+          final x = l[0] + (l[2] - l[0]) * s / 20;
+          final y = l[1] + (l[3] - l[1]) * s / 20;
+          final p = progressAlongRoute(at(x, y), eight, prev)!;
+          if (x == 100 && y == 100) crossings.add(p.alongM);
+          prev = p.alongM;
+        }
+      }
+      expect(crossings, hasLength(2));
+      expect(crossings[0], closeTo(d / 2, 1));
+      expect(crossings[1], closeTo(d + 200 + d / 2, 1));
+    });
+
+    test('a runner back on the line beyond the look-ahead is re-acquired', () {
+      final line = [en(0, 0), en(2000, 0)];
+      final p = progressAlongRoute(at(900, 0), line, 100)!;
+      expect(p.alongM, closeTo(900, 1));
+    });
+
+    test('distance travelled since the last match picks the leg after a gap',
+        () {
+      final p = progressAlongRoute(at(900, 0), outAndBack, 0, travelledM: 1100)!;
+      expect(p.alongM, closeTo(1100, 1));
+    });
+
+    test('a non-finite previous reading is treated as no reading', () {
+      final p = progressAlongRoute(at(1, 3), squareLoop, double.nan,
+          travelledM: double.nan)!;
+      expect(p.alongM, lessThan(5));
+    });
+
+    test('with no previous reading, a fix off the line takes its nearest point',
+        () {
+      // Starting a recording 100 m beside the middle of the route: there is no
+      // earlier match to hold on to, so the window at the start does not win.
+      final line = [en(0, 0), en(2000, 0)];
+      final p = progressAlongRoute(at(900, 100), line, null)!;
+      expect(p.alongM, closeTo(900, 1));
+      expect(p.offRouteM, closeTo(100, 1));
+    });
+
+    test('a fix just past the look-ahead is not pulled back to its edge', () {
+      // 230 m along and 10 m beside a straight line: the window ends at 200 m,
+      // whose edge is only ~32 m away — near enough to pass for a match.
+      final line = [en(0, 0), en(2000, 0)];
+      final p = progressAlongRoute(at(230, 10), line, null)!;
+      expect(p.alongM, closeTo(230, 1));
     });
   });
 }

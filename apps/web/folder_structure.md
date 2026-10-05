@@ -39,7 +39,7 @@ src/
                     # NotificationBell (compact bell icon next to the profile button in the sidebar footer — unread badge + popover for kudos/comments/follows; full inbox lives on /u/[me]?tab=notifications; decisions §38).
                     # NotificationsList (the inbox body — All / Unread tabs, per-row dismiss, bulk Mark-all-read; mounted under the Notifications tab on /u/[id] when isSelf).
                     # SocialFeed, SocialPeople, SocialClubs — the three tab panels of /social. SocialPeople is the only top-level surface for finding other runners (name search + suggested-from-clubs). decisions §54.
-    stores/         # auth.svelte.ts (Supabase Auth store), toast.svelte.ts (toast notifications), notifications.svelte.ts (unread badge for the sidebar bell — decisions §38)
+    stores/         # auth.svelte.ts (Supabase Auth store), toast.svelte.ts (toast notifications), notifications.svelte.ts (unread badge for the sidebar bell — decisions §38), modality_visibility.svelte.ts (session answer to "is Gym / Nutrition surfaced?" for the sidebar, /history, /dashboard and the settings switches, plus revealOnNavigate for a link into a hidden modality — decisions §1739 amendment)
     # Loose lib modules are grouped into topical subfolders: core/ (data + supabase client),
     # training/ routes/ segments/ social/ integrations/ backup/ share/ settings/ runs/ format/ util/ billing/ gym/ nutrition/ gear/ (gear_wear.ts wear classification, gear_backfill.ts post-create "attach past runs" candidates),
     # legal/ (operator.ts — the nullable operator-facts seam for the legal pages; nulls render fail-closed "pending" lines, decisions §243).
@@ -65,6 +65,7 @@ src/
     settings/prefs_save_queue.ts  # Pure coalescing auto-save queue for the preference pages: batches edits inside a 350 ms debounce into one write, merges a failed batch back under newer edits, drives the idle/saving/saved status. Unit-tested in prefs_save_queue.test.ts.
     settings/prefs_page.svelte.ts  # `createPrefsPage(load)` — the runes shell over the queue: loadSettings + preferredUnit context, fail-closed load phase, beforeNavigate flush, locale backfill, scroll-to-anchor after load.
     settings/preferences_ia.ts  # The split preference pages (href/icon/label/summary) feeding the settings nav and the /settings/preferences landing page, plus LEGACY_PREFERENCES_ANCHORS + legacyPreferencesTarget for old section links (decisions §1640).
+    settings/modality_visibility.ts  # `modalityShown` (explicit show_gym / show_nutrition choice, else data presence) + `explicitModalityChoice` reading the universal bag; mirrors mobile's preferences.dart helper (decisions §1739).
     settings/weekly_goal.ts  # weekly_mileage_goal_m entered in km/mi, stored in metres; parity pair with mobile weekly_goal.dart (issue #902 §5).
     settings/theme.ts        # light/dark/auto theme toggle, persisted in localStorage
     settings/voice_cues.ts   # `voice_cue_types` bag key: the cue id list + sparse-map read/merge helpers (absent id = ON). Backs the per-cue toggles on /settings/recording. Ids are a wire contract with the Dart `VoiceCue` class — voice_cues.test.ts reads preferences.dart and fails on drift. Decisions §295 + §469.

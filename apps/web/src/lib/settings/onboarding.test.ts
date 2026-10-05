@@ -71,16 +71,16 @@ test('planPresetForGoal covers every PRIMARY_GOAL_VALUE', () => {
 
 test('ONBOARDING_TOTAL_STEPS matches the wizard step count', () => {
 	// Drives the progress-dot indicator. Drift would mean the user
-	// sees "step 4 of 7" while there are 8 actual steps, or vice
+	// sees "step 4 of 8" while there are 9 actual steps, or vice
 	// versa. Pin the constant; the page-level test counts the
 	// rendered <section> blocks.
-	assert.equal(ONBOARDING_TOTAL_STEPS, 7);
+	assert.equal(ONBOARDING_TOTAL_STEPS, 8);
 });
 
-test('the full wizard is the seven steps, in order', () => {
+test('the full wizard is the eight steps, in order', () => {
 	assert.deepEqual(
 		[...ONBOARDING_STEPS],
-		['name', 'units', 'goal', 'about', 'run-privacy', 'notifications', 'done'],
+		['name', 'units', 'goal', 'about', 'run-privacy', 'notifications', 'track', 'done'],
 	);
 	assert.equal(ONBOARDING_TOTAL_STEPS, ONBOARDING_STEPS.length);
 });

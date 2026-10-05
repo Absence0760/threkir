@@ -20,6 +20,12 @@
 	import { m, initLocale } from '$lib/i18n/store.svelte';
 	import type { MessageKey } from '$lib/i18n/messages';
 	import { coachEnabled } from '$lib/coach/coach_flag';
+	import {
+		hydrateModalityVisibility,
+		modalityVisible,
+		resetModalityVisibility,
+	} from '$lib/stores/modality_visibility.svelte';
+	import type { Modality } from '$lib/settings/modality_visibility';
 	import { strayConfirmationTarget } from '$lib/core/auth_confirmation';
 	import { env } from '$env/dynamic/public';
 
@@ -111,13 +117,20 @@
 	// otherwise a browser overridden to 'mi' would silently render km.
 	$effect(() => {
 		const uid = auth.user?.id;
-		if (!browser || !uid) return;
+		if (!browser) return;
+		if (!uid) {
+			resetModalityVisibility();
+			return;
+		}
 		(async () => {
 			try {
 				const { loadSettings, effective, effectivePreferredUnit } = await import(
 					'$lib/settings/settings'
 				);
 				const settings = await loadSettings(uid);
+				void hydrateModalityVisibility(uid, settings).catch((e) =>
+					console.warn('modality visibility hydrate failed', e),
+				);
 				const ms = effective<MapStyle>(settings, 'map_style');
 				setMapStyle(ms);
 				const distanceUnit = effectivePreferredUnit(settings, auth.user?.preferred_unit);
@@ -160,10 +173,10 @@
 	// content, then social. Settings lives in the profile popover at the
 	// bottom of the sidebar; Feed is a self-only tab on /u/[me]; Guided runs
 	// are surfaced from /coach (both are coach-driven). Top-down scan time
-	// matches frequency-of-use. Gym + Nutrition are always present (matching
-	// mobile's always-reachable Log sheet, decisions §63 amendment) — the
-	// pure-runner clutter is kept off the *content* surfaces instead, which
-	// self-hide their gym/nutrition cards on no data (/dashboard, /history).
+	// matches frequency-of-use. Gym + Nutrition appear only while
+	// `modalityVisible` says so: the runner's show_gym / show_nutrition choice,
+	// or, with none made, whether that modality has data (decisions § 1739).
+	// Hiding takes away the entry point, not the page: /gym still loads by URL.
 	// `section` names the --section-<x> / --section-<x>-ink token pair in
 	// app.css. The hue cannot live here as a hex: the ink half has to flip per
 	// theme and a TS string cannot, which is how all seven glyphs came to read
@@ -180,7 +193,14 @@
 	// The AI Coach nav entry is hidden when the Coach is off (rock-bottom
 	// deploy, PUBLIC_COACH_ENABLED unset) — don't surface a nav door that
 	// only leads to a "coming soon" page. coach_flag.ts.
-	const navItems = navItemsBase.filter((item) => coachEnabled() || item.href !== '/coach');
+	const NAV_MODALITY: Record<string, Modality> = { '/gym': 'gym', '/nutrition': 'nutrition' };
+	const navItems = $derived(
+		navItemsBase.filter((item) => {
+			if (item.href === '/coach') return coachEnabled();
+			const modality = NAV_MODALITY[item.href];
+			return modality === undefined || modalityVisible(modality);
+		}),
+	);
 
 	// "Shell-less" surfaces: rendered without the app sidebar regardless of
 	// auth state. Landing, auth flows, and the share / spectator pages that
@@ -479,7 +499,11 @@
 			</div>
 
 			<ul class="nav-list">
-				{#each navItems as item}
+				<!-- Keyed: Gym and Nutrition join the list once their visibility
+				     resolves, and an unkeyed list would hand an existing row the
+				     next item's href and accent, animating its glyph from one
+				     section's colour to another. -->
+				{#each navItems as item (item.href)}
 					<li>
 						<a
 							href={item.href}

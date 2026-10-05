@@ -24,6 +24,12 @@
 	import { fetchRunAllTimeStats } from '$lib/core/data';
 	import type { MessageKey } from '$lib/i18n/messages';
 	import PrefsPage from '$lib/components/settings/PrefsPage.svelte';
+	import {
+		hydrateModalityVisibility,
+		modalityVisible,
+		setModalityChoice,
+	} from '$lib/stores/modality_visibility.svelte';
+	import type { Modality } from '$lib/settings/modality_visibility';
 
 	let preferredUnit = $state<'km' | 'mi'>('km');
 	let weightUnit = $state<'kg' | 'lbs'>('kg');
@@ -57,7 +63,7 @@
 	// (decisions § 120); it is never read back to drive the UI.
 	let language = $state<Locale>('en');
 
-	const prefs = createPrefsPage(async ({ settings, preferredUnit: unit }) => {
+	const prefs = createPrefsPage(async ({ userId, settings, preferredUnit: unit }) => {
 		preferredUnit = unit;
 		setUnit(unit);
 		// Unset weight_unit follows the distance unit (lbs for imperial) rather
@@ -86,6 +92,10 @@
 		// so it is fetched beside the page rather than inside its load: a settings
 		// page must not land in its failed state over one explanatory sentence.
 		void fetchRunAllTimeStats().then((stats) => (runCount = stats.totalRuns));
+		// Awaited so the Gym / Nutrition switches open on what the sidebar shows,
+		// not on Off for a runner whose presence read had not landed yet. It never
+		// throws: a failed read resolves as data present.
+		await hydrateModalityVisibility(userId, settings);
 	});
 
 	onMount(() => {
@@ -137,6 +147,13 @@
 	function pickDisclosure(next: 'auto' | DisclosureLevel) {
 		disclosureChoice = next;
 		prefs.save({ [DISCLOSURE_LEVEL_KEY]: next === 'auto' ? null : next });
+	}
+
+	/// Any choice made here is explicit, so it outranks data presence from now
+	/// on; the store is updated first so the sidebar follows the click.
+	function pickModality(modality: Modality, shown: boolean) {
+		setModalityChoice(modality, shown);
+		prefs.save(modality === 'gym' ? { show_gym: shown } : { show_nutrition: shown });
 	}
 
 	// Weight unit is display + entry only; storage stays canonical kg.
@@ -287,6 +304,32 @@
 			<span>
 				{m('prefs.showCalories')}
 				<span class="hint">{m('prefs.showCaloriesHint')}</span>
+			</span>
+		</label>
+	</section>
+
+	<section class="card" id="gym-nutrition">
+		<h2>{m('prefs.modalitiesHeading')}</h2>
+		<label class="checkbox-row">
+			<input
+				type="checkbox"
+				checked={modalityVisible('gym')}
+				onchange={(e) => pickModality('gym', e.currentTarget.checked)}
+			/>
+			<span>
+				{m('prefs.showGym')}
+				<span class="hint">{m('prefs.showGymHint')}</span>
+			</span>
+		</label>
+		<label class="checkbox-row">
+			<input
+				type="checkbox"
+				checked={modalityVisible('nutrition')}
+				onchange={(e) => pickModality('nutrition', e.currentTarget.checked)}
+			/>
+			<span>
+				{m('prefs.showNutrition')}
+				<span class="hint">{m('prefs.showNutritionHint')}</span>
 			</span>
 		</label>
 	</section>

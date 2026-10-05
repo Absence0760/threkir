@@ -22,6 +22,7 @@
 	import ExerciseCataloguePicker from '$lib/components/ExerciseCataloguePicker.svelte';
 	import UnsavedChangesGuard from '$lib/components/UnsavedChangesGuard.svelte';
 	import { trackDirty } from '$lib/core/form_dirty';
+	import { noteModalityData } from '$lib/stores/modality_visibility.svelte';
 
 	interface Props {
 		existing?: GymWorkoutWithSets | null;
@@ -280,6 +281,7 @@
 				onupdated?.();
 			} else {
 				await createGymWorkout({ title: title.trim() || null, is_public: isPublic, sets });
+				noteModalityData('gym');
 				showToast(t('gym.created'));
 				dirty.rebaseline();
 				oncreated?.();

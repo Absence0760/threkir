@@ -25,7 +25,7 @@ design records are [`native_push.md`](../features/native_push.md),
 
 ## Status
 
-Last moved: **2026-09-21**.
+Last moved: **2026-10-05**.
 
 | # | Artifact | Where it ends up | State |
 |---|---|---|---|
@@ -34,10 +34,10 @@ Last moved: **2026-09-21**.
 | — | FCM service account | Fly `FCM_SERVICE_ACCOUNT_JSON` + `FCM_PROJECT_ID` | **Done 2026-09-18** — worker boots `native_push: enabled` |
 | — | VAPID pair (browser push) | Fly `VAPID_*` + GitHub `PUBLIC_VAPID_PUBLIC_KEY` | **Done 2026-09-18** — shipped in `web@1.7.1` |
 | — | Developer Program enrollment | — | **Active** — App Store Connect reachable 2026-09-19 |
-| 1 | Team ID + renewal reminder | Bitwarden | ☐ |
-| 2 | App Groups `group.com.threkir.app.activerun` + `group.com.threkir.app.share` | Apple portal | ☐ |
-| 3 | App IDs `com.threkir.app` + `com.threkir.app.ShareExtension` + `com.threkir.app.RunActivity` | Apple portal | ☐ |
-| 4 | Watch App IDs `com.threkir.app.watchapp` + `com.threkir.app.watchapp.widget` | Apple portal | ☐ |
+| 1 | Team ID + renewal reminder | Bitwarden | **Done 2026-10-05** — Team ID confirmed; renewal reminder on the owner's calendar (auto-renew is on) |
+| 2 | App Groups `group.com.threkir.app.activerun` + `group.com.threkir.app.share` | Apple portal | **Done 2026-10-05** |
+| 3 | App IDs `com.threkir.app` + `com.threkir.app.ShareExtension` + `com.threkir.app.RunActivity` | Apple portal | **Done 2026-10-05** — both groups on `com.threkir.app`, the share group on `ShareExtension`, nothing on `RunActivity` |
+| 4 | Watch App IDs `com.threkir.app.watchapp` + `com.threkir.app.watchapp.widget` | Apple portal | **Done 2026-10-05** — `.widget`, not `.complication`, which Apple reported unavailable ([decisions § 1739](../architecture/decisions.md)); `activerun` on both |
 | 5 | Services ID `com.threkir.web` | Apple portal | ☐ |
 | 6 | **APNs key** `.p8` | Firebase → Cloud Messaging | **Done 2026-09-19** |
 | 7 | **Sign-in-with-Apple key** `.p8` | Supabase (via a generated client secret) | **Done 2026-09-19** |

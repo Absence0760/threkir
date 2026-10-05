@@ -282,7 +282,7 @@ When the live run is linked to a **public route that carries cut-off markers** (
 
 ```
 each ping → project the runner onto the planned line
-  distanceAlongRoute(lastPos, waypoints)        (route_geometry pair)
+  progressAlongRoute(lastPos, waypoints, 0, distance_m)  (route_geometry pair)
   recentPaceSecPerKm = Δdist / Δtime over the last ~5 pings
   legs = buildRoadbook(waypoints, markers, …)   (cut-off limits only; goal-independent)
   → nextCutoffEta({ distAlongRouteM, elapsedS, recentPaceSecPerKm, legs, stale })

@@ -440,6 +440,57 @@ test('a background mode no call claims is refused', () => {
 	assert.equal(matched(errors, /declares the `audio` background mode/).length, 1, errors.join('\n'));
 });
 
+// The Start-button crash of 2026-10-05: `location` declared under
+// WKBackgroundModes builds, installs and passes every other check, then
+// `allowsBackgroundLocationUpdates = true` throws NSInternalInconsistencyException
+// because CoreLocation reads the mode from UIBackgroundModes only.
+/** @param {string} s */
+const LOCATION_UNDER_WK = (s) =>
+	s
+		.replace('\t<key>UIBackgroundModes</key>\n\t<array>\n\t\t<string>location</string>\n\t</array>\n', '')
+		.replace('\t\t<string>workout-processing</string>', '\t\t<string>location</string>\n\t\t<string>workout-processing</string>');
+
+test('`location` declared under WKBackgroundModes instead of UIBackgroundModes is refused', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, PLIST, LOCATION_UNDER_WK);
+	});
+	assert.equal(matched(errors, /UIBackgroundModes is missing `location`/).length, 1, errors.join('\n'));
+	assert.equal(
+		matched(errors, /declares `location` under WKBackgroundModes, but that mode belongs under UIBackgroundModes/).length,
+		1,
+		errors.join('\n'),
+	);
+});
+
+test('`location` under both keys is still refused for the WKBackgroundModes copy', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, PLIST, (s) =>
+			s.replace('\t\t<string>workout-processing</string>', '\t\t<string>location</string>\n\t\t<string>workout-processing</string>'),
+		);
+	});
+	assert.deepEqual(matched(errors, /UIBackgroundModes is missing/), []);
+	assert.equal(matched(errors, /declares `location` under WKBackgroundModes/).length, 1, errors.join('\n'));
+});
+
+test('`workout-processing` moved under UIBackgroundModes is refused', () => {
+	const { errors } = runMutated((dir) => {
+		edit(dir, PLIST, (s) =>
+			s
+				.replace('\t\t<string>workout-processing</string>\n', '')
+				.replace('\t\t<string>location</string>\n', '\t\t<string>location</string>\n\t\t<string>workout-processing</string>\n'),
+		);
+	});
+	assert.equal(matched(errors, /WKBackgroundModes is missing `workout-processing`/).length, 1, errors.join('\n'));
+	assert.equal(matched(errors, /declares `workout-processing` under UIBackgroundModes/).length, 1, errors.join('\n'));
+});
+
+test('the committed plist declares each background mode under the key the system reads', () => {
+	const { errors, ok } = check(WATCH_IOS, INGEST_ABS, ROUTE_BRIDGE_ABS);
+	assert.deepEqual(matched(errors, /BackgroundModes/), []);
+	assert.ok(ok.some((o) => o.startsWith('UIBackgroundModes contains `location`')));
+	assert.ok(ok.some((o) => o.startsWith('WKBackgroundModes contains `workout-processing`')));
+});
+
 test('the HealthKit entitlement removed while HKHealthStore stays is refused', () => {
 	const { errors } = runMutated((dir) => {
 		edit(dir, ENTS, (s) => s.replace('\t<key>com.apple.developer.healthkit</key>\n\t<true/>\n', ''));
@@ -569,7 +620,8 @@ test('parseFlatPlist agrees with the real files it is pointed at', () => {
 	// sets asserted rather than assumed.
 	const info = parseFlatPlist(readFileSync(join(WATCH_IOS, PLIST), 'utf8'));
 	assert.equal(info.get('WKApplication'), true);
-	assert.deepEqual(info.get('WKBackgroundModes'), ['location', 'workout-processing']);
+	assert.deepEqual(info.get('UIBackgroundModes'), ['location']);
+	assert.deepEqual(info.get('WKBackgroundModes'), ['workout-processing']);
 	assert.equal(typeof info.get('NSHealthShareUsageDescription'), 'string');
 	assert.deepEqual(info.get('CFBundleLocalizations'), ['en', 'de', 'fr', 'es', 'ja', 'pt-BR', 'pt-PT']);
 

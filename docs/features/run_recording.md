@@ -337,7 +337,7 @@ The first fix snaps (no animation). Same-target fixes are ignored.
 
 `LiveRunMap` takes a `bottomPadding` parameter in logical pixels. All programmatic camera moves go through `_moveCamera`, which passes `offset: Offset(0, -bottomPadding / 2)` to `MapController.move`. flutter_map renders the `center` at `(viewportCenter + offset)`, so a negative `dy` lifts the dot above the geometric centre — leaving it in the middle of the *visible* area above the stats panel rather than hidden behind it.
 
-`run_screen.dart` measures the actual `CollapsiblePanel` height via `GlobalKey` + post-frame callback and passes it through every build, so when the panel collapses the camera offset shrinks and the dot re-centres in the freed space automatically.
+`run_screen.dart` measures the actual `CollapsiblePanel` height with `_LaidOutSizeReporter`, a proxy render object that reports its child's size after every layout that changes it, the first layout included, and adopts it in a post-frame `setState` (a `setState` from inside layout asserts). The same height places the map credit (`MapAttribution.bottomInset`), the re-centre button and the bottom utility stack, so when the panel collapses the camera offset shrinks and the dot re-centres in the freed space automatically. It used to listen for `SizeChangedLayoutNotification`, which never fires for a widget's first layout; since the panel rarely resizes after it, most runs kept the initial 300 px guess, and once the panel grew past that the licence-required map credit was drawn behind it.
 
 ---
 

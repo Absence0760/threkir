@@ -3,6 +3,9 @@
 // loading the Svelte runtime — the .svelte file imports back from
 // here.
 
+import { mapTrackLine } from './basemap_contrast';
+import { basemapIsDark, maptilerSlug, type MapStyle } from './map-style-url';
+
 type Waypoint = { lat: number; lng: number };
 
 /// Downsample a polyline to at most `target` evenly-spaced points
@@ -25,31 +28,34 @@ export function downsampleForPreview(
 	return out;
 }
 
-/// Build a MapTiler Static Maps URL with the route polyline rendered
-/// on top of a real map background — the "map preview" users expect
-/// on a card view (instead of the bare SVG line on an empty backdrop).
-/// Returns null when the key is missing or the route has fewer than 2
-/// points so the caller can fall back to the SVG-only thumbnail.
-export function buildStaticMapUrl(
-	pts: Waypoint[],
-	opts: { w: number; h: number; style: string; key: string },
-): string | null {
-	if (!opts.key || pts.length < 2) return null;
-	const down = downsampleForPreview(pts, 60);
-	const coords = down
+/// The `path=` overlay both static endpoints accept. [stroke] is a `#RRGGBB`
+/// hex: the `#` is the HTTP fragment delimiter so it goes out as `%23`, while
+/// the pipes and commas stay literal because the path grammar uses them and
+/// neither server decodes `%7C` / `%2C` back.
+///
+/// Fill is a fully-transparent hex8 (`#ffffff00`) rather than `none` —
+/// MapTiler's static-maps path syntax doesn't recognise `none`, so closed
+/// loops (first coord ≈ last coord) get the default black polygon fill and a
+/// "hole" appears inside the loop. tileserver-gl mirrors the syntax, so the
+/// same holds there. Width 4 keeps the line legible over busy basemap content.
+function pathParam(pts: Waypoint[], stroke: string): string {
+	const coords = downsampleForPreview(pts, 60)
 		.map((p) => `${p.lng.toFixed(5)},${p.lat.toFixed(5)}`)
 		.join('|');
-	// Theme brand colour (`--color-primary` in dark mode, complement of
-	// `--color-secondary` in light mode). Static images can't read CSS
-	// variables, so the hex is hardcoded. Width bumped from 3 to 4 so
-	// the line stays legible against busy basemap content.
-	//
-	// Fill is a fully-transparent hex8 (`#ffffff00`) rather than
-	// `none` — MapTiler's static-maps path syntax doesn't recognise
-	// `none`, so closed loops (first coord ≈ last coord) get the
-	// default black polygon fill and a "hole" appears inside the
-	// loop on the thumbnail. Caught by the May 2026 audit pass.
-	const path = `fill:%23ffffff00|stroke:%23F2A07B|width:4|${coords}`;
+	return `fill:%23ffffff00|stroke:%23${stroke.replace(/^#/, '')}|width:4|${coords}`;
+}
+
+/// Build a MapTiler Static Maps URL with the route polyline rendered
+/// on top of a real map background. Returns null when the key is missing
+/// or the route has fewer than 2 points so the caller can fall back to the
+/// SVG-only preview. A list thumbnail reaches this through
+/// [buildTrackThumbnailUrl], which picks the style and stroke.
+export function buildStaticMapUrl(
+	pts: Waypoint[],
+	opts: { w: number; h: number; style: string; key: string; stroke: string },
+): string | null {
+	if (!opts.key || pts.length < 2) return null;
+	const path = pathParam(pts, opts.stroke);
 	return `https://api.maptiler.com/maps/${opts.style}/static/auto/${opts.w}x${opts.h}@2x.png?path=${path}&key=${opts.key}`;
 }
 
@@ -57,37 +63,76 @@ export function buildStaticMapUrl(
 /// endpoint at `/styles/{id}/static/auto/{w}x{h}.png?path=…` with the
 /// same `path=` shape as MapTiler. We derive the static base from the
 /// configured `PUBLIC_TILE_STYLE_URL` (which already points at
-/// `…/styles/{id}/style.json`) by swapping `/style.json` for `/static`.
-/// That keeps the override single-knob — set the style URL, get both
-/// the live MapLibre tiles and the static-map thumbnails from the
-/// same server.
+/// `…/styles/{id}/style.json`) by swapping `/style.json` for `/static`,
+/// so the override stays single-knob. The endpoint has no theme or default
+/// of its own: it renders that style, so the thumbnail is exactly as light
+/// or dark as the live map on the same server (decisions § 1749).
 ///
 /// Returns null when the style URL isn't set, the URL doesn't match
 /// the expected `…/style.json` shape, or the route has fewer than 2
 /// points — letting the caller fall through to MapTiler or SVG.
 export function buildLocalStaticMapUrl(
 	pts: Waypoint[],
-	opts: { w: number; h: number; styleUrl: string },
+	opts: { w: number; h: number; styleUrl: string; stroke: string },
 ): string | null {
 	if (pts.length < 2 || !opts.styleUrl) return null;
 	const match = opts.styleUrl.match(/^(.*)\/style\.json(?:\?.*)?$/);
 	if (!match) return null;
 	const base = match[1];
-	const down = downsampleForPreview(pts, 60);
-	const coords = down
-		.map((p) => `${p.lng.toFixed(5)},${p.lat.toFixed(5)}`)
-		.join('|');
-	// Same fully-transparent fill as buildStaticMapUrl above — the
-	// tileserver-gl static endpoint mirrors MapTiler's path syntax,
-	// so `fill:none` would produce the same closed-loop "black hole"
-	// regression here too.
-	const path = `fill:%23ffffff00|stroke:%23F2A07B|width:4|${coords}`;
+	const path = pathParam(pts, opts.stroke);
 	// `@2x` scale not supported by tileserver-gl's path syntax —
 	// it uses a `?scale=2` query param. Skip for now; thumbnails at
 	// 220×140 look fine at 1× on a HiDPI display + the disk write
 	// + transfer time at 2× isn't worth the marginal sharpness on
 	// a small card.
 	return `${base}/static/auto/${opts.w}x${opts.h}.png?path=${path}`;
+}
+
+/// The one way a track thumbnail resolves its static-map image: the basemap
+/// the user's live map surfaces resolve, through the same precedence — the
+/// `PUBLIC_TILE_STYLE_URL` override, then MapTiler under the `map_style`
+/// preference (with `streets` following the theme), then null so the caller
+/// draws the SVG-only preview.
+///
+/// The stroke is keyed on the RESOLVED ground, not the theme, for the reason
+/// `basemap_contrast.ts` gives: `dark` is dark ground under a light theme and
+/// `outdoors` is light ground under a dark one.
+///
+/// [allowThirdParty] gates only the MapTiler rung — MapTiler logs the
+/// requester IP per fetch, so it waits for consent; the self-hosted override
+/// is no third party. audit/cookie-consent.
+///
+/// Twin of mobile's `resolveStaticMapUrl` (`live_run_map.dart`).
+export function buildTrackThumbnailUrl(
+	pts: Waypoint[],
+	opts: {
+		w: number;
+		h: number;
+		mapStyle: MapStyle;
+		prefersDark: boolean;
+		key: string;
+		overrideUrl: string;
+		allowThirdParty: boolean;
+	},
+): string | null {
+	const stroke = mapTrackLine(
+		basemapIsDark(opts.mapStyle, opts.key, opts.prefersDark, opts.overrideUrl),
+	);
+	const local = buildLocalStaticMapUrl(pts, {
+		w: opts.w,
+		h: opts.h,
+		styleUrl: opts.overrideUrl.trim(),
+		stroke,
+	});
+	if (local) return local;
+	if (!opts.allowThirdParty) return null;
+	return buildStaticMapUrl(pts, {
+		w: opts.w,
+		h: opts.h,
+		style: maptilerSlug(opts.mapStyle, opts.prefersDark),
+		key: opts.key.trim(),
+		stroke,
+	});
 }
 
 /// Build a MapTiler Static Maps URL centred on a single point with a

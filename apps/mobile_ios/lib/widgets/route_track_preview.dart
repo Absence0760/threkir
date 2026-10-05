@@ -36,7 +36,6 @@ class RouteTrackPreview extends StatefulWidget {
   final String ownerUserId;
 
   final ApiClient api;
-  final Color color;
   final double aspect;
 
   const RouteTrackPreview({
@@ -45,7 +44,6 @@ class RouteTrackPreview extends StatefulWidget {
     required this.waypoints,
     required this.ownerUserId,
     required this.api,
-    this.color = const Color(0xFF4F46E5),
     this.aspect = 2.4,
   });
 
@@ -131,7 +129,7 @@ class _RouteTrackPreviewState extends State<RouteTrackPreview> {
     if (pts == null || pts.length < 2) {
       return _placeholder(context);
     }
-    return TrackPreview(points: pts, color: widget.color, aspect: widget.aspect);
+    return TrackPreview(points: pts, aspect: widget.aspect);
   }
 
   Widget _placeholder(BuildContext context) {

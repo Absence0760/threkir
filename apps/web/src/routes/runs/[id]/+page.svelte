@@ -11,6 +11,7 @@
 	import RoutePreviewScrubber from '$lib/components/RoutePreviewScrubber.svelte';
 	import { interpolateAlongRoute } from '$lib/routes/route_geometry';
 	import { buildLocalStaticMapUrl, buildStaticMapUrl } from '$lib/routes/static_map';
+	import { mapTrackLine } from '$lib/routes/basemap_contrast';
 	const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
 	const PUBLIC_TILE_STYLE_URL = env.PUBLIC_TILE_STYLE_URL ?? '';
 	import ElevationProfile from '$lib/components/ElevationProfile.svelte';
@@ -1296,7 +1297,14 @@
 			}));
 	});
 
-	/// Static-map URL for the share card. Same pipeline as the
+	/// The share card is an exported image with its own fixed look, not a map
+	/// surface, so it keeps its pinned light `streets-v2` basemap rather than
+	/// following the viewer's `map_style` — and takes the palette's track rung
+	/// for that light ground. The peach `#F2A07B` it used to bake in measures
+	/// 1.81:1 against light land, under 1.4.11's 3:1 (decisions § 1749).
+	const SHARE_CARD_STROKE = mapTrackLine(false);
+
+	/// Static-map URL for the share card. Same endpoints as the
 	/// runs/routes list thumbnails — `buildLocalStaticMapUrl` for
 	/// the local Protomaps dev stack, `buildStaticMapUrl` for
 	/// production MapTiler. 1080×600 to fit the share card cleanly
@@ -1314,6 +1322,7 @@
 				w: 1080,
 				h: 600,
 				styleUrl: PUBLIC_TILE_STYLE_URL,
+				stroke: SHARE_CARD_STROKE,
 			}) ??
 			(consent.accepted
 				? buildStaticMapUrl(pts, {
@@ -1321,6 +1330,7 @@
 						h: 600,
 						style: 'streets-v2',
 						key: PUBLIC_MAPTILER_KEY,
+						stroke: SHARE_CARD_STROKE,
 					})
 				: null)
 		);

@@ -3,10 +3,13 @@ import 'dart:math';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import '../basemap_credits.dart' show tileEnv;
 import '../geo.dart' show unwrapLonDeg;
+import '../preferences.dart' show activeMapStyle;
 import '../route_simplify.dart' show simplifyTrack;
+import 'live_run_map.dart'
+    show currentBasemapIsDark, mapTrackLine, resolveStaticMapUrl;
 
 /// Compact static thumbnail of a GPS track. Mirrors
 /// `apps/web/src/lib/components/TrackPreview.svelte` so a route saved on
@@ -14,9 +17,13 @@ import '../route_simplify.dart' show simplifyTrack;
 /// interaction — just a polyline with start (green) / end (red) caps and
 /// a few directional chevrons so out-and-backs and overlapping loops
 /// stay readable at thumbnail scale.
+///
+/// The basemap behind it is the one every live map resolves — the user's
+/// `map_style` under the app theme, through [resolveStaticMapUrl] — and the
+/// line colour is keyed on that ground, so a thumbnail never shows a dark
+/// street map to a runner whose maps are light (decisions § 1749).
 class TrackPreview extends StatelessWidget {
   final List<Waypoint> points;
-  final Color color;
   final double aspect;
 
   /// Module-level guard so the diagnostic log fires only once per
@@ -27,7 +34,6 @@ class TrackPreview extends StatelessWidget {
   const TrackPreview({
     super.key,
     required this.points,
-    this.color = const Color(0xFF4F46E5),
     this.aspect = 2.4,
   });
 
@@ -36,104 +42,36 @@ class TrackPreview extends StatelessWidget {
     if (points.length < 2) {
       return const _Placeholder();
     }
-    final mapTilerKey = dotenv.env['MAPTILER_KEY'] ?? '';
-    final tileUrlTemplate = (dotenv.env['TILE_URL_TEMPLATE'] ?? '').trim();
-    // ONE-TIME diagnostic so the user can confirm which branch
-    // ran when they see "thumbnails aren't loading the map." The
-    // log says one of:
-    //   "TrackPreview build: points=N, source=local"   →
-    //       _StaticMapPreview hitting the local tileserver-gl
-    //       static endpoint (TILE_URL_TEMPLATE configured).
-    //   "TrackPreview build: points=N, source=maptiler" →
-    //       _StaticMapPreview hitting MapTiler's Static Maps API.
-    //   "TrackPreview build: points=N, source=fallback" →
-    //       polyline-only ColoredBox; neither env var configured.
-    // Static printed-once guard so a 20-thumbnail list doesn't
-    // spam the log on every scroll.
-    final source = tileUrlTemplate.isNotEmpty
-        ? 'local'
-        : mapTilerKey.isNotEmpty
-            ? 'maptiler'
-            : 'fallback';
-    if (!_loggedKeyState) {
-      _loggedKeyState = true;
-      debugPrint(
-        'TrackPreview build: points=${points.length}, source=$source',
-      );
-    }
-    if (source == 'fallback') {
-      // Polyline-only render but with a subtle slate background (not
-      // pure white) so the thumbnail still reads as a map surface.
-      // Without this paint, dev / offline builds showed pure white
-      // cards which the user flagged as "the preview doesn't show a
-      // map background."
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: ColoredBox(
-          color: const Color(0xFF1F2937), // slate-800, subtle terrain tint
-          child: CustomPaint(
-            painter: _TrackPreviewPainter(points: points, color: color),
-            size: Size.infinite,
-          ),
-        ),
-      );
-    }
     // Map-backed preview. We hit a SINGLE PNG endpoint that bakes
     // basemap + path-overlay into one image, then render it with
-    // `Image.network` + Flutter\'s built-in image cache. Pre-fix,
+    // `Image.network` + Flutter's built-in image cache. Pre-fix,
     // the thumbnails mounted a full `FlutterMap` at 72×40 —
     // `flutter_map` has known rendering quirks at sub-100-px sizes
-    // (tiles either don\'t load or load partially-cropped). The
-    // static-image path is bulletproof at any size and matches the
-    // visual the user sees on the route detail screen, just baked
-    // at request time instead of composed client-side.
-    //
-    // `source=local` routes through the local tileserver-gl
-    // (Protomaps dev) using the same path syntax MapTiler accepts.
+    // (tiles either don't load or load partially-cropped). The
+    // static-image path is bulletproof at any size.
     return _StaticMapPreview(
       points: points,
-      color: color,
-      mapTilerKey: mapTilerKey,
-      localTileUrlTemplate: tileUrlTemplate,
+      darkBasemap: currentBasemapIsDark(context),
+      brightness: Theme.of(context).brightness,
     );
   }
 }
 
-/// Static-image track preview — hits MapTiler's Static Maps API
-/// for a single PNG (basemap + path overlay baked together) and
-/// renders via `Image.network`. Used by [TrackPreview] when
-/// `MAPTILER_KEY` is set.
-///
-/// Why static-image vs interactive FlutterMap: the user reported
-/// "the route detail map works but the list thumbnails don't."
-/// Root cause — `flutter_map` has known rendering quirks at sub-
-/// 100-px sizes (the same widget renders fine at 320-px on the
-/// route detail screen). MapTiler's Static Maps API bakes the
-/// basemap + the path into one PNG, sized exactly to the
-/// requested width × height — guaranteed-rendering at any size.
-///
-/// Falls through to the polyline-only CustomPaint render on a
-/// network error so a missing internet connection doesn't blank
-/// the thumbnail.
+/// Static-image track preview — one PNG with the basemap and the path
+/// baked together, from MapTiler's Static Maps API or the local
+/// tileserver-gl's `/styles/{id}/static/auto` endpoint, whichever
+/// [resolveStaticMapUrl] picks. With neither configured it paints the
+/// polyline-only fallback directly; a loading or failed image falls back
+/// to the same paint so the thumbnail never reads as a blank box.
 class _StaticMapPreview extends StatelessWidget {
   final List<Waypoint> points;
-  final Color color;
-  final String mapTilerKey;
-
-  /// When set (typically TILE_URL_TEMPLATE pointing at a local
-  /// Protomaps tileserver-gl in dev), the static-map URL is derived
-  /// from this template instead of MapTiler. tileserver-gl exposes
-  /// a `/styles/{id}/static/auto/{w}x{h}.png?path=…` endpoint that
-  /// accepts the same path syntax — single-knob override for both
-  /// the live raster tiles AND the thumbnails. Mirrors the web
-  /// `buildLocalStaticMapUrl` flow.
-  final String localTileUrlTemplate;
+  final bool darkBasemap;
+  final Brightness brightness;
 
   const _StaticMapPreview({
     required this.points,
-    required this.color,
-    required this.mapTilerKey,
-    this.localTileUrlTemplate = '',
+    required this.darkBasemap,
+    required this.brightness,
   });
 
   /// MapTiler's Static Maps URL has a practical length cap around
@@ -159,76 +97,31 @@ class _StaticMapPreview extends StatelessWidget {
     return simplified;
   }
 
-  /// Build the MapTiler Static Maps URL with the polyline path
-  /// overlay. `auto` for centre + zoom means MapTiler fits the
-  /// path bbox automatically — no client-side projection math
-  /// needed (the API computes it server-side).
+  /// The `path=` overlay. `auto` centre + zoom in the URL means the server
+  /// fits the path bbox — no client-side projection math.
   ///
-  /// Encoding subtlety: MapTiler's path param expects LITERAL pipes
-  /// (`|`) and commas (`,`) as part of its syntax. The previous
-  /// implementation used `Uri.encodeQueryComponent`, which turns
-  /// those into `%7C` / `%2C` — MapTiler's URL parser doesn't
-  /// decode them back, so the request 4xx'd and Image.network's
-  /// errorBuilder kicked in, falling through to the polyline-only
-  /// slate fallback. User-visible failure: "I see the route detail
-  /// map but list thumbnails don't load." Only `#` (HTTP fragment
-  /// delimiter) needs encoding inside a query string.
-  String _buildUrl(int width, int height) {
-    final path = _simplifiedPath();
-    final stroke = (color.value & 0xFFFFFF)
+  /// Encoding subtlety: the path param expects LITERAL pipes (`|`) and
+  /// commas (`,`) as its grammar. `Uri.encodeQueryComponent` turned those
+  /// into `%7C` / `%2C`, which MapTiler's parser doesn't decode back, so
+  /// every request 4xx'd and the list showed only the fallback. Only `#`
+  /// (the HTTP fragment delimiter) is encoded, as `%23`.
+  ///
+  /// Fill is a fully-transparent hex8 (`#ffffff00`) rather than `none` —
+  /// the path syntax doesn't recognise `none`, so closed loops got the
+  /// default black polygon fill and a "hole" inside the loop.
+  String _pathParam() {
+    final stroke = (mapTrackLine(darkBasemap: darkBasemap).toARGB32() & 0xFFFFFF)
         .toRadixString(16)
         .padLeft(6, '0');
-    // Canonical MapTiler path syntax: `fill:#hex|stroke:#hex|width:N|
-    // lng,lat|lng,lat|...`. The `#` becomes `%23` (HTTP fragment
-    // delimiter must be encoded in a query string); pipes + commas
-    // stay literal because MapTiler\'s path parser uses them as
-    // grammar separators and doesn\'t decode percent-encoded forms
-    // back. Pre-fix the value was wrapped in `Uri.encodeQueryComponent`
-    // which turned every pipe + comma into %7C / %2C → MapTiler
-    // 4xx\'d every request.
-    //
-    // Fill is a fully-transparent hex8 (`#ffffff00`) rather than
-    // `none` — MapTiler\'s path syntax doesn\'t recognise `none`, so
-    // closed loops (first coord ≈ last coord) get the default black
-    // polygon fill and a "hole" appears inside the loop on the
-    // thumbnail. Caught by the May 2026 audit on the web twin.
     final pathParam = StringBuffer(
       'fill:%23ffffff00|stroke:%23$stroke|width:3',
     );
-    for (final p in path) {
+    for (final p in _simplifiedPath()) {
       // lng,lat per the API (MapTiler reverses the typical Leaflet
       // lat,lng order).
       pathParam.write('|${p.lng.toStringAsFixed(6)},${p.lat.toStringAsFixed(6)}');
     }
-    // Local tileserver-gl path: derive `…/styles/{id}/static/auto/...`
-    // from the configured `TILE_URL_TEMPLATE` (which is the raster
-    // tile URL `…/styles/{id}/{z}/{x}/{y}.png`). tileserver-gl
-    // doesn\'t support the `@2x` scale suffix on its path syntax —
-    // 220×140 at 1× looks fine on a list-row thumbnail and the
-    // marginal sharpness at 2× isn\'t worth the transfer time.
-    //
-    // No `padding` param — matching the web `buildLocalStaticMapUrl` /
-    // `buildStaticMapUrl`, which omit it. tileserver-gl reads `padding`
-    // as a FRACTION of the image, so the old `padding=2` meant 200 %
-    // margin → the route shrank to the centre and the thumbnail looked
-    // "zoomed out too much" (the user-reported regression). Letting the
-    // auto-fit run with its small default frames the route tightly, and
-    // the 2x render in build() keeps the line from clipping.
-    if (localTileUrlTemplate.isNotEmpty) {
-      final base = localTileUrlTemplate.replaceFirst(
-        RegExp(r'/\{z\}/\{x\}/\{y\}\.png$'),
-        '',
-      );
-      // If the replace didn\'t match, the template isn\'t the standard
-      // raster tile shape — fall through to MapTiler so we don\'t emit
-      // a malformed URL.
-      if (base != localTileUrlTemplate) {
-        return '$base/static/auto/${width}x$height.png?path=$pathParam';
-      }
-    }
-    return 'https://api.maptiler.com/maps/streets-v2-dark/static/auto/${width}x$height@2x.png'
-        '?key=$mapTilerKey'
-        '&path=$pathParam';
+    return pathParam.toString();
   }
 
   @override
@@ -243,54 +136,76 @@ class _StaticMapPreview extends StatelessWidget {
           final h = constraints.maxHeight.isFinite
               ? constraints.maxHeight.round().clamp(40, 1024)
               : 144;
-          // The local tileserver-gl static endpoint has no `@2x` density
-          // suffix, so a thumbnail-sized request renders the sparse
-          // Protomaps `basic` style + the baked path at 1:1 — a chunky
-          // 3-px line on a soft, low-res map (the "blob" the user saw).
-          // Request it at 2x and let BoxFit.cover downsample for a crisp,
-          // thin line + sharper map. MapTiler gets density from its own
-          // `@2x` suffix in _buildUrl, so it stays at 1x here.
-          final scale = localTileUrlTemplate.isNotEmpty ? 2 : 1;
-          final url = _buildUrl(
-            (w * scale).clamp(40, 2048),
-            (h * scale).clamp(40, 2048),
+          final url = resolveStaticMapUrl(
+            tileEnv(),
+            mapStyle: activeMapStyle,
+            brightness: brightness,
+            width: w,
+            height: h,
+            path: _pathParam(),
           );
+          if (!TrackPreview._loggedKeyState) {
+            TrackPreview._loggedKeyState = true;
+            debugPrint(
+              'TrackPreview build: points=${points.length}, '
+              'source=${url == null ? 'fallback' : Uri.parse(url).host}',
+            );
+          }
+          if (url == null) return TrackPreviewFallback(points: points);
           return Image.network(
             url,
             width: w.toDouble(),
             height: h.toDouble(),
             fit: BoxFit.cover,
-            // Loading + error fallbacks both fall back to the
-            // polyline-only paint so the thumbnail always reads as
-            // a route preview — never a blank box.
             loadingBuilder: (context, child, progress) {
               if (progress == null) return child;
-              return _polylineOnlyFallback();
+              return TrackPreviewFallback(points: points);
             },
             errorBuilder: (context, error, stack) {
-              // Surface the URL + error to the device log so a user
-              // who's seeing the polyline-only fallback can paste
-              // the URL into a browser to see MapTiler's 4xx body
-              // (the most common cause of an opaque "thumbnail
-              // doesn't load" failure). Without this, the only
-              // signal is the fallback rendering.
+              // The URL goes to the device log so a fallback-only list can
+              // be diagnosed by pasting it into a browser and reading the
+              // server's 4xx body.
               debugPrint(
                 'TrackPreview: static-map failed → $error\n  url: $url',
               );
-              return _polylineOnlyFallback();
+              return TrackPreviewFallback(points: points);
             },
           );
         },
       ),
     );
   }
+}
 
-  Widget _polylineOnlyFallback() {
-    return ColoredBox(
-      color: const Color(0xFF1F2937),
-      child: CustomPaint(
-        painter: _TrackPreviewPainter(points: points, color: color),
-        size: Size.infinite,
+/// The polyline drawn on the theme's own surface — no basemap configured,
+/// the image still loading, or the image failed. Both the box and the line
+/// come from the theme: the box is `surfaceContainerHighest` so the card
+/// reads as a map slot in either theme, and the line is [mapTrackLine] keyed
+/// on that surface's luminance, the same rung it takes over a basemap of the
+/// same luminance. It used to be a fixed slate-800 box, which in the light
+/// theme was a near-black hole in a light list.
+@visibleForTesting
+class TrackPreviewFallback extends StatelessWidget {
+  final List<Waypoint> points;
+
+  const TrackPreviewFallback({super.key, required this.points});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: ColoredBox(
+        color: theme.colorScheme.surfaceContainerHighest,
+        child: CustomPaint(
+          painter: _TrackPreviewPainter(
+            points: points,
+            color: mapTrackLine(
+              darkBasemap: theme.brightness == Brightness.dark,
+            ),
+          ),
+          size: Size.infinite,
+        ),
       ),
     );
   }

@@ -25,18 +25,26 @@ test('track-preview thumbnails gate the MapTiler static map on consent', () => {
 	// because its off-screen share-card <img> lives in the DOM (fixed,
 	// top:-9999px — not display:none), so the browser fetches it on
 	// every run view, not only on the Share-as-image tap.
+	//
+	// The two list previews reach MapTiler through trackThumbnailUrlFromEnv,
+	// whose `allowThirdParty` gates only the MapTiler rung — static_map.test.ts
+	// pins that it returns null for MapTiler without it (decisions § 1749).
 	for (const file of [
 		'src/lib/components/RouteTrackPreview.svelte',
 		'src/lib/components/RunTrackPreview.svelte',
-		'src/routes/runs/[id]/+page.svelte',
 	]) {
-		const source = read(file);
 		assert.match(
-			source,
-			/consent\.accepted\s*\?[\s\S]*buildStaticMapUrl/,
-			`${file} must gate buildStaticMapUrl behind a consent.accepted ternary — otherwise it fires a MapTiler request (logging the visitor IP) before consent on anon surfaces.`,
+			read(file),
+			/trackThumbnailUrlFromEnv\([\s\S]*?allowThirdParty:\s*consent\.accepted\b/,
+			`${file} must pass allowThirdParty: consent.accepted — otherwise it fires a MapTiler request (logging the visitor IP) before consent on anon surfaces.`,
 		);
 	}
+	const shareCard = 'src/routes/runs/[id]/+page.svelte';
+	assert.match(
+		read(shareCard),
+		/consent\.accepted\s*\?[\s\S]*buildStaticMapUrl/,
+		`${shareCard} must gate buildStaticMapUrl behind a consent.accepted ternary — otherwise it fires a MapTiler request (logging the visitor IP) before consent.`,
+	);
 });
 
 test('event meet-point static map gates MapTiler on consent', () => {

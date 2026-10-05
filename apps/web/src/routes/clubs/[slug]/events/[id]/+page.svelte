@@ -83,6 +83,7 @@
 	import { buildEventIcs, buildEventSeriesIcs, icsFilename } from '$lib/social/event_ics';
 	import { env } from '$env/dynamic/public';
 	import { buildStaticMarkerMapUrl, mapsDirectionsUrl, geoUri } from '$lib/routes/static_map';
+	import { staticMapSlugFromPreference } from '$lib/routes/map-style.svelte';
 	import { buildFinisherCertificateSvg, CERT_WIDTH, CERT_HEIGHT } from '$lib/runs/finisher_certificate';
 	import { rasterizeSvgToPng, downloadBlob } from '$lib/format/svg_raster';
 	import { parseChipTimingCsv, resultsToCsv, type ParsedResultRow } from '$lib/runs/event_results_csv';
@@ -134,12 +135,16 @@
 	// thumbnail waits for the cookie-banner choice, or the explicit
 	// "Load map" tap as the affirmative act. audit/cookie-consent.
 	let meetMapConsented = $state(false);
+	// The OS read RunMap makes, so the meet-point preview's `streets` rung
+	// matches the live maps' light or dark one.
+	const prefersDark =
+		typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
 	let meetMapUrl = $derived(
 		meetPoint && (consent.accepted || meetMapConsented)
 			? buildStaticMarkerMapUrl(meetPoint.lat, meetPoint.lng, {
 					w: 320,
 					h: 180,
-					style: 'streets-v2',
+					style: staticMapSlugFromPreference(prefersDark),
 					key: env.PUBLIC_MAPTILER_KEY ?? ''
 				})
 			: null

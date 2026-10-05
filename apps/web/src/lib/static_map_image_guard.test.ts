@@ -19,7 +19,8 @@ import { stripComments } from './core/strip_comments';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SRC = join(HERE, '..');
 
-const BUILDER_CALL = /\b(?:buildStaticMapUrl|buildLocalStaticMapUrl|buildStaticMarkerMapUrl)\s*\(/;
+const BUILDER_CALL =
+	/\b(?:buildStaticMapUrl|buildLocalStaticMapUrl|buildStaticMarkerMapUrl|trackThumbnailUrlFromEnv)\s*\(/;
 
 /** Each file that builds a static-map URL, and the name its URL is rendered under. */
 const CONSUMERS: Record<string, string> = {

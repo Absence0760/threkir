@@ -57,6 +57,7 @@ DOCKER_IMAGE="${DOCKER_IMAGE:-maptiler/tileserver-gl:v5.6.0}"
 CONTAINER_NAME="run-protomaps-dev"
 CONFIG_FILE="${PROTOMAPS_HOME}/config.json"
 STYLE_FILE="${PROTOMAPS_HOME}/style.json"
+DARK_STYLE_FILE="${PROTOMAPS_HOME}/style-dark.json"
 
 # Default sample source for `fetch`. Protomaps publishes small
 # sample PMTiles in their public R2 bucket. The US-states file is
@@ -156,6 +157,50 @@ cmd_fetch() {
 	ok "downloaded ($(du -h "$PMTILES_FILE" | cut -f1))"
 }
 
+write_style() {
+	local file="$1" name="$2" ground="$3" water="$4" road="$5"
+	cat > "$file" <<EOF
+{
+	"version": 8,
+	"name": "${name}",
+	"sources": {
+		"v3": {
+			"type": "vector",
+			"url": "mbtiles://v3"
+		}
+	},
+	"layers": [
+		{
+			"id": "background",
+			"type": "background",
+			"paint": { "background-color": "${ground}" }
+		},
+		{
+			"id": "earth",
+			"type": "fill",
+			"source": "v3",
+			"source-layer": "earth",
+			"paint": { "fill-color": "${ground}" }
+		},
+		{
+			"id": "water",
+			"type": "fill",
+			"source": "v3",
+			"source-layer": "water",
+			"paint": { "fill-color": "${water}" }
+		},
+		{
+			"id": "roads",
+			"type": "line",
+			"source": "v3",
+			"source-layer": "roads",
+			"paint": { "line-color": "${road}", "line-width": 1 }
+		}
+	]
+}
+EOF
+}
+
 cmd_start() {
 	step "Checking prerequisites"
 	need_cmd docker
@@ -239,6 +284,9 @@ cmd_start() {
 	"styles": {
 		"basic": {
 			"style": "style.json"
+		},
+		"dark": {
+			"style": "style-dark.json"
 		}
 	},
 	"data": {
@@ -249,53 +297,26 @@ cmd_start() {
 }
 EOF
 
-	# Minimal MapLibre style. The "v3" source id matches the
+	# Minimal MapLibre styles. The "v3" source id matches the
 	# `data.v3` entry in config.json above; tileserver-gl rewrites
 	# the source URL at request time so the browser fetches tiles
 	# from the same origin as the style.json. A real production
 	# style would include road labels, place names, contour lines —
-	# the dev style stays minimal so the file is legible.
-	cat > "$STYLE_FILE" <<'EOF'
-{
-	"version": 8,
-	"name": "Protomaps Basic (dev)",
-	"sources": {
-		"v3": {
-			"type": "vector",
-			"url": "mbtiles://v3"
-		}
-	},
-	"layers": [
-		{
-			"id": "background",
-			"type": "background",
-			"paint": { "background-color": "#1a1a1a" }
-		},
-		{
-			"id": "earth",
-			"type": "fill",
-			"source": "v3",
-			"source-layer": "earth",
-			"paint": { "fill-color": "#222" }
-		},
-		{
-			"id": "water",
-			"type": "fill",
-			"source": "v3",
-			"source-layer": "water",
-			"paint": { "fill-color": "#15233a" }
-		},
-		{
-			"id": "roads",
-			"type": "line",
-			"source": "v3",
-			"source-layer": "roads",
-			"paint": { "line-color": "#666", "line-width": 1 }
-		}
-	]
-}
-EOF
-	ok "config + style written"
+	# the dev styles stay minimal so the files are legible.
+	#
+	# `basic` is LIGHT, and every client assumes it: an override URL is
+	# classified as light ground unless it names a dark style
+	# (`resolveBasemapIsDark` on mobile, `basemapIsDarkForSlug` on web),
+	# and the overlay palette is chosen from that. It was written dark
+	# (#1a1a1a) for a while, so the static thumbnails tileserver-gl renders
+	# from it came out dark under a light theme, with light-ground overlay
+	# colours drawn on them (decisions § 1749). The fills are the light and
+	# dark ground samples basemap_contrast.ts grades every overlay against.
+	# `dark` is the same layers on dark ground, served at /styles/dark/ so
+	# its URL says so.
+	write_style "$STYLE_FILE" "Protomaps Basic (dev)" "#F2EFE9" "#AAD3DF" "#B8B2A7"
+	write_style "$DARK_STYLE_FILE" "Protomaps Dark (dev)" "#1A1B20" "#15233A" "#4A4D55"
+	ok "config + styles written"
 
 	step "Booting ${C_DIM}${CONTAINER_NAME}${C_RESET}"
 	if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}\$"; then

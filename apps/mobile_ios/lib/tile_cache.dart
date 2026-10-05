@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_cache/flutter_map_cache.dart';
 import 'package:http_cache_file_store/http_cache_file_store.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -26,17 +28,39 @@ class TileCache {
   static const _maxDiskBytes = 500 * 1024 * 1024;
 
   static CacheStore? _store;
-  static Dio? _dio;
+  static CacheStore? _fallbackStore;
+  static CachedTileProvider? _tileProvider;
 
   /// Shared cache store. Falls back to an in-memory store with a modest
   /// budget when [init] hasn't run yet — used by widget tests and during
   /// the first frame before `main` finishes plumbing.
   static CacheStore get store =>
-      _store ?? MemCacheStore(maxSize: 50 * 1024 * 1024);
+      _store ?? (_fallbackStore ??= MemCacheStore(maxSize: 50 * 1024 * 1024));
 
-  /// Dio instance wired to the current [store]. Reused across map
-  /// instances so every tile request goes through the same cache.
-  static Dio get dio => _dio ?? _buildDio(store);
+  /// The one tile provider every basemap layer shares.
+  ///
+  /// It must be built once, not per layer: `CachedTileProvider` appends a
+  /// `DioCacheInterceptor` to the `Dio` it is given, and dio walks its
+  /// interceptors in sequence on every request, each one a cache-store
+  /// read. A provider per `build()` on a shared client therefore made each
+  /// tile request cost one disk lookup per rebuild the process had ever
+  /// done — at `LiveRunMap`'s follow-mode rebuild rate, minutes into a
+  /// session no tile reached the network, nothing errored, and only a
+  /// relaunch cleared it. `TileLayer.dispose` disposes its provider;
+  /// `CachedTileProvider`'s dispose is a no-op, which is what makes sharing
+  /// it across layers safe.
+  static TileProvider get tileProvider => _tileProvider ??= CachedTileProvider(
+        store: store,
+        dio: Dio(),
+        maxStale: const Duration(days: 30),
+        // Map raster tiles are content-addressed by z/x/y and are
+        // effectively immutable, so serve a cached tile without a
+        // revalidation round-trip whenever one exists — this is what
+        // keeps the map usable offline and stops every pan/zoom from
+        // re-hitting the tile server. _trimToBudget() bounds disk use;
+        // maxStale caps how long a never-re-requested tile lingers.
+        cachePolicy: CachePolicy.forceCache,
+      );
 
   /// Initialise the disk-backed tile cache. Call from `main()` before
   /// `runApp`. Idempotent — subsequent calls are no-ops.
@@ -49,7 +73,7 @@ class TileCache {
         tilesDir.createSync(recursive: true);
       }
       _store = FileCacheStore(tilesDir.path);
-      _dio = _buildDio(_store!);
+      _tileProvider = null;
       // Fire-and-forget LRU trim. Keeps the cache bounded without blocking
       // the first frame — eviction is best-effort and the map works fine
       // whether it runs or not.
@@ -60,7 +84,7 @@ class TileCache {
       // loses persistence across launches.
       debugPrint('TileCache: disk init failed, using in-memory store: $e');
       _store = MemCacheStore(maxSize: 100 * 1024 * 1024);
-      _dio = _buildDio(_store!);
+      _tileProvider = null;
     }
   }
 
@@ -102,25 +126,6 @@ class TileCache {
     } catch (e) {
       debugPrint('TileCache: trim failed: $e');
     }
-  }
-
-  static Dio _buildDio(CacheStore store) {
-    return Dio()
-      ..interceptors.add(
-        DioCacheInterceptor(
-          options: CacheOptions(
-            store: store,
-            maxStale: const Duration(days: 30),
-            // Map raster tiles are content-addressed by z/x/y and are
-            // effectively immutable, so serve a cached tile without a
-            // revalidation round-trip whenever one exists — this is what
-            // keeps the map usable offline and stops every pan/zoom from
-            // re-hitting the tile server. _trimToBudget() bounds disk use;
-            // maxStale caps how long a never-re-requested tile lingers.
-            policy: CachePolicy.forceCache,
-          ),
-        ),
-      );
   }
 }
 

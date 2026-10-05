@@ -1,7 +1,6 @@
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_cache/flutter_map_cache.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:ui_kit/ui_kit.dart';
 
@@ -255,12 +254,7 @@ TileLayer basemapTileLayer({
           );
         }
       },
-      tileProvider: tileProvider ??
-          CachedTileProvider(
-            store: TileCache.store,
-            maxStale: const Duration(days: 30),
-            dio: TileCache.dio,
-          ),
+      tileProvider: tileProvider ?? TileCache.tileProvider,
     );
 
 /// Separator between an overlay and the basemap: the casing under the

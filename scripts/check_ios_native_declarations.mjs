@@ -81,7 +81,12 @@ export const DART_ROOTS = ['apps/mobile_ios/lib', 'packages'];
 /// lives outside `Runner/`.
 export const SWIFT_ROOTS = ['Runner', 'ShareExtension'];
 
-const APS_KEY = 'com.apple.developer.aps-environment';
+/// iOS reads the APNs entitlement as the bare `aps-environment`. The
+/// `com.apple.developer.`-prefixed spelling is the macOS key: an iOS profile
+/// never carries it, so a Runner.entitlements that uses it fails at signing
+/// and, signed any other way, never registers for push.
+const APS_KEY = 'aps-environment';
+export const MACOS_APS_KEY = 'com.apple.developer.aps-environment';
 export const APS_SUBSTITUTION = '$(APS_ENVIRONMENT)';
 export const APS_VALUES = new Set(['development', 'production']);
 
@@ -1163,6 +1168,14 @@ export function evaluate(input) {
 		ok.push(
 			`${runnerConfigs.length} Runner build configuration(s) point ` +
 				'CODE_SIGN_ENTITLEMENTS at Runner.entitlements',
+		);
+	}
+
+	if (entitlements.has(MACOS_APS_KEY)) {
+		errors.push(
+			`Runner.entitlements declares \`${MACOS_APS_KEY}\`, the macOS spelling of ` +
+				`the APNs entitlement.\n  iOS reads \`${APS_KEY}\`; no iOS provisioning ` +
+				'profile carries the prefixed key, so signing fails on it.',
 		);
 	}
 

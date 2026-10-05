@@ -19,7 +19,7 @@
 // (`social/search_ranking.ts`, `social/dm_recipients.ts`, `core/data.ts`'s
 // suggested-people sort and the `/coaching` roster) are exactly those.
 //
-// The pair list is READ from `.claude/agents/shared-library-syncer.md`, the
+// The pair list is READ from `.claude/agents/engineering/shared-library-syncer.md`, the
 // registry the syncer agent itself works from, so registering a new pair puts
 // it under this guard the same day rather than the day someone remembers.
 

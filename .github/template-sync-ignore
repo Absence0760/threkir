@@ -16,7 +16,7 @@
 # decisions.md § 700.
 .github/workflows/ci-gate-docs.yml
 
-# This repo's auditors live under `.claude/agents/auditors/`. A subagent
+# This repo's auditors live under `.claude/agents/audit/`. A subagent
 # resolves by its frontmatter `name:`, never by path, so a top-level copy is a
 # second definition of the same agent rather than an addition — and base's
 # copies describe a different application (a `<CMS>` webhook, a DynamoDB orders
@@ -24,6 +24,16 @@
 # findings to `reviews/`. Same guard file, same ADR.
 .claude/agents/compliance-auditor.md
 .claude/agents/repo-security-auditor.md
+
+# The gate and design agents are grouped by team under `.claude/agents/
+# engineering/` and `.claude/agents/design/`, rewritten for this app. Base ships
+# them flat and generic, so its copies would land beside ours as second
+# definitions of the same names — the same collision as the auditors above.
+.claude/agents/code-reviewer.md
+.claude/agents/doc-hygiene-checker.md
+.claude/agents/migration-coordinator.md
+.claude/agents/test-gap-checker.md
+.claude/agents/ui-polisher.md
 
 # Personas here are running-specific and live under `.claude/agents/personas/`
 # (40+ of them, e.g. `runner-new`, `runner-pro`, `runner-privacy-conscious`).

@@ -133,7 +133,7 @@ grep -n 'destinations:' -A 20 apps/mobile_android/lib/screens/home_screen.dart
 
 **The navigation shape is not web's, and assuming it is will generate false findings.** Read `home_screen.dart` for what the bottom nav actually exposes, which destinations are keep-alive pages, and which surfaces are reached through the centre action rather than a nav destination. A screen having no nav destination can be deliberate.
 
-**The twin.** `apps/mobile_ios/lib` is byte-identical to `apps/mobile_android/lib` ([decisions § 39](../../docs/architecture/decisions.md)). Read and cite the Android side. Platform-specific behaviour dispatches on `Platform.isIOS` inside the shared file, so when a stall is iOS-only, name the branch rather than a separate file.
+**The twin.** `apps/mobile_ios/lib` is byte-identical to `apps/mobile_android/lib` ([decisions § 39](../../../docs/architecture/decisions.md)). Read and cite the Android side. Platform-specific behaviour dispatches on `Platform.isIOS` inside the shared file, so when a stall is iOS-only, name the branch rather than a separate file.
 
 ### Mobile-specific stalls to walk
 

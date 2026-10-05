@@ -31,7 +31,7 @@ Run `git status`. If both staged and unstaged are empty, abort: tell the user th
 
 If the diff is trivial (typo, comment, single-line dep bump, generated-file regen only), abort with a one-line "trivial — skipping `/check`" message. The agents would each independently bail on the same diff.
 
-### 3. Spawn three agents in parallel
+### 3. Spawn three agents in parallel (four when the diff touches a number)
 
 Send a single message with three Agent tool calls:
 
@@ -39,13 +39,15 @@ Send a single message with three Agent tool calls:
 - `test-gap-checker` — prompt: "Audit the working diff for missing unit + e2e test surface per docs/architecture/conventions.md § Test hygiene. Output the format from your spec."
 - `doc-hygiene-checker` — prompt: "Audit the working diff against docs/architecture/conventions.md § Docs hygiene. Output which docs need updating."
 
-Parallel because they're independent — all three only `git diff` + `Read` files.
+Add a fourth call, `metrics-reviewer`, when the diff touches a derived-number helper — anything under `apps/web/src/lib/{runs,training,nutrition,format,segments,gym}/`, a pure helper in `apps/mobile_android/lib/`, `packages/run_recorder/`, `apps/custom_watch/core/src/`, `apps/watch_garmin/source/`, or a migration that changes a trigger feeding a cache in `docs/backend/derived_state.md`. Prompt: "Review the working diff's derived numbers against your checklist. Output the strict format from your spec." Skip it otherwise; it bails on a diff with no numbers in it.
+
+Parallel because they're independent — every lane only runs `git diff` + `Read` files.
 
 **Per-lane scratchpad.** Every lane of this fan-out inherits ONE scratchpad path from the session, and `isolation: "worktree"` does not separate it — a bare filename written by one lane is read back by another. Name each lane's own `<scratchpad>/<lane-slug>/` in its prompt and tell it to keep every temporary file under there, never in the scratchpad root and never in `/tmp`. A lane that mutates a file to test something restores it with `git checkout HEAD -- <path>`, never a `.bak` copy ([CLAUDE.md § Working alongside other Claude sessions](../../CLAUDE.md)).
 
 ### 4. Aggregate
 
-When all three return, build a single short report:
+When every lane returns, build a single short report:
 
 ```
 ## /check report
@@ -61,6 +63,10 @@ Status: <CLEAN | NEEDS_CHANGES>
 
 ### Doc gaps (`doc-hygiene-checker`)
 <verbatim verdicts list, or "doc set is clean">
+
+### Numbers (`metrics-reviewer`, only when it ran)
+Status: <CLEAN | NEEDS_CHANGES>
+<verbatim findings list>
 
 ### Recommendation
 <one of:>

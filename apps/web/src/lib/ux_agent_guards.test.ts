@@ -41,8 +41,8 @@ const repo = resolve(__dirname, '../../../..');
 // no colour literal comes back). The fleet check below does not need a list;
 // this one does, because it is about these files specifically.
 const UX_TOOLCHAIN = [
-	'.claude/agents/ui-polisher.md',
-	'.claude/agents/ux-critic.md',
+	'.claude/agents/design/ui-polisher.md',
+	'.claude/agents/design/ux-critic.md',
 	'.claude/commands/polish-ui.md',
 	'.claude/commands/ux-critique.md',
 	'.claude/commands/ux-hunt.md',
@@ -175,7 +175,7 @@ test('the UI/UX toolchain files the second guard depends on are all still presen
 // facts up. A regression here looks like someone helpfully pasting the token
 // list back in, which reads as an improvement and rots within a month.
 test('ui-polisher makes the agent read the contract rather than transcribing it', () => {
-	const src = readFileSync(resolve(repo, '.claude/agents/ui-polisher.md'), 'utf-8');
+	const src = readFileSync(resolve(repo, '.claude/agents/design/ui-polisher.md'), 'utf-8');
 
 	assert.match(
 		src,

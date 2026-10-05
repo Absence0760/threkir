@@ -48,7 +48,7 @@ test('no loose production modules at the src/lib root', () => {
 
 test('every TS parity-pair source path in shared-library-syncer.md exists on disk', () => {
 	const agent = readFileSync(
-		resolve(repoRoot, '.claude', 'agents', 'shared-library-syncer.md'),
+		resolve(repoRoot, '.claude', 'agents', 'engineering', 'shared-library-syncer.md'),
 		'utf-8',
 	);
 	const paths = [...agent.matchAll(/apps\/web\/(src\/lib\/[\w./-]+\.ts)/g)].map((m) => m[1]);

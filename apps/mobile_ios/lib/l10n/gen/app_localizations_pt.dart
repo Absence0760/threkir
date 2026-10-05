@@ -722,6 +722,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get navRecording => 'A gravar';
 
   @override
+  String get navStop => 'Parar';
+
+  @override
   String get logReturnToRunA11yLabel => 'Voltar à sua corrida';
 
   @override
@@ -1820,6 +1823,10 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runStopA11yHint => 'Encerra a gravação e guardada a corrida';
+
+  @override
+  String get runHoldToStopRunA11yHint =>
+      'Mantenha premido para parar a corrida';
 
   @override
   String get runHoldToStopHint => 'Segure para parar';
@@ -15133,6 +15140,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get navRecording => 'Gravando';
 
   @override
+  String get navStop => 'Parar';
+
+  @override
   String get logReturnToRunA11yLabel => 'Voltar para sua corrida';
 
   @override
@@ -16231,6 +16241,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runStopA11yHint => 'Encerra a gravação e salva a corrida';
+
+  @override
+  String get runHoldToStopRunA11yHint =>
+      'Mantenha pressionado para parar a corrida';
 
   @override
   String get runHoldToStopHint => 'Segure para parar';

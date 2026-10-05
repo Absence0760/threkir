@@ -1211,11 +1211,17 @@ abstract class AppLocalizations {
   /// **'Nutrition is now shown'**
   String get logModalityShownNutrition;
 
-  /// Caption under the centre nav button while a run is recording; a tap returns to the recorder. Must fit the 56dp centre slot
+  /// Caption under the centre nav button while a run is recording and another page is showing; a tap returns to the recorder. Must fit the 72dp centre slot without an ellipsis
   ///
   /// In en, this message translates to:
   /// **'Recording'**
   String get navRecording;
+
+  /// Caption under the centre nav button while a run is recording on the Run page, where the button is the hold-to-stop control. Must fit the 72dp centre slot
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get navStop;
 
   /// Screen-reader label for the centre nav button while a run is recording
   ///
@@ -3154,6 +3160,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Ends the recording and saves the run'**
   String get runStopA11yHint;
+
+  /// Screen-reader hint for the centre nav button while it is the hold-to-stop control on the Run page
+  ///
+  /// In en, this message translates to:
+  /// **'Hold to stop the run'**
+  String get runHoldToStopRunA11yHint;
 
   /// Caption under the stop button telling the user to press and hold (not tap) to end the run
   ///

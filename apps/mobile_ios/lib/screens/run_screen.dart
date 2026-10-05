@@ -54,6 +54,7 @@ import '../route_geometry.dart';
 import '../route_markers.dart' show parseTarget;
 import '../route_match.dart';
 import '../route_simplify.dart';
+import '../run_stop_dock.dart';
 import '../safety_nudge.dart';
 import '../settings_sync.dart';
 import '../sim_watch_link.dart' show maybeDevBackendUrl;
@@ -741,6 +742,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     widget.training.addListener(_onTrainingChange);
     pendingStartWorkout.addListener(_onPendingStartWorkout);
     pendingArmGuidedRun.addListener(_onPendingArmGuidedRun);
+    runStopRequests.addListener(_onDockedStopRequest);
     _activityType =
         ActivityType.fromName(widget.preferences.defaultActivityType);
     _selectedRoute = widget.initialRoute;
@@ -841,6 +843,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// locale and arm it down the same path the idle picker uses, so the watch
   /// push, the cue cursor and the metadata stamp cannot diverge between the
   /// two entry points.
+  /// A completed hold on the shell's docked Stop, which stands in for the
+  /// panel's own on the phone layout ([RunStopDock]).
+  void _onDockedStopRequest() {
+    if (_state != _ScreenState.recording) return;
+    unawaited(_stop());
+  }
+
   void _onPendingArmGuidedRun() {
     final id = pendingArmGuidedRun.value;
     if (id == null) return;
@@ -3729,6 +3738,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     pendingStartWorkout.removeListener(_onPendingStartWorkout);
     pendingArmGuidedRun.removeListener(_onPendingArmGuidedRun);
+    runStopRequests.removeListener(_onDockedStopRequest);
     widget.preferences.removeListener(_onPrefsChange);
     widget.runStore.removeListener(_onPrefsChange);
     widget.social.removeListener(_onSocialChange);
@@ -4511,6 +4521,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // RouteMiniMap mounted under the digit.
     final isCountdown = _state == _ScreenState.countdown;
     final l10n = AppLocalizations.of(context);
+    // The shell's docked centre button is the Stop while a run records on
+    // the phone layout; the panel offering a second one beside it would be
+    // two controls for one act. Anywhere else the panel keeps its own.
+    final dockedStop =
+        RunStopDock.of(context) && _state == _ScreenState.recording;
     return Stack(
       children: [
         // Always-mounted map. During countdown stats.currentPosition may
@@ -4821,7 +4836,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                   valueListenable: _statsNotifier,
                   builder: (context, _, __) => _CollapsedStatsBar(
                     time: _formattedTime,
-                    onHoldComplete: _stop,
+                    onHoldComplete: dockedStop ? null : _stop,
                   ),
                 ),
                 // Expanded panel reads every stat — wrap once so the whole
@@ -4855,7 +4870,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                     bpm: _currentBpm,
                     lapCount: _lapCount,
                     paused: _manualPaused,
-                    onHoldComplete: _stop,
+                    onHoldComplete: dockedStop ? null : _stop,
                     onDiscard: _confirmDiscardMidRun,
                     onPauseToggle: _toggleManualPause,
                     onLap: _markLap,
@@ -5103,7 +5118,10 @@ class _StatsOverlay extends StatelessWidget {
   final int? bpm;
   final int lapCount;
   final bool paused;
-  final VoidCallback onHoldComplete;
+
+  /// Null when the shell's docked centre button is the Stop ([RunStopDock]),
+  /// which leaves the row Discard · Pause · Lap.
+  final VoidCallback? onHoldComplete;
   final VoidCallback onDiscard;
   final VoidCallback onPauseToggle;
   final VoidCallback onLap;
@@ -5285,10 +5303,10 @@ class _StatsOverlay extends StatelessWidget {
                   const SizedBox(width: 16),
                   // Stop button — hold-to-stop, 800ms. Prevents accidental
                   // one-tap stops mid-run.
-                  HoldToStopButton(
-                    onHoldComplete: onHoldComplete,
-                  ),
-                  const SizedBox(width: 16),
+                  if (onHoldComplete case final stop?) ...[
+                    HoldToStopButton(onHoldComplete: stop),
+                    const SizedBox(width: 16),
+                  ],
                   // Lap button.
                   // audit/accessibility (May 2026) Critical — same fix
                   // pattern. Lap count is announced so a screen-reader
@@ -5617,10 +5635,11 @@ class _LiveStats {
 
 /// Minimal stats bar shown when the overlay is collapsed. Keeps time visible
 /// plus a hold-to-stop button so the runner can still abort without
-/// expanding first.
+/// expanding first — unless the shell's docked centre button is the Stop
+/// ([RunStopDock]), which already sits under the bar.
 class _CollapsedStatsBar extends StatelessWidget {
   final String time;
-  final VoidCallback onHoldComplete;
+  final VoidCallback? onHoldComplete;
 
   const _CollapsedStatsBar({
     required this.time,
@@ -5643,12 +5662,13 @@ class _CollapsedStatsBar extends StatelessWidget {
               ),
             ),
           ),
-          HoldToStopButton(
-            size: 48,
-            iconSize: 24,
-            showHint: false,
-            onHoldComplete: onHoldComplete,
-          ),
+          if (onHoldComplete case final stop?)
+            HoldToStopButton(
+              size: 48,
+              iconSize: 24,
+              showHint: false,
+              onHoldComplete: stop,
+            ),
         ],
       ),
     );
@@ -5659,8 +5679,8 @@ class _CollapsedStatsBar extends StatelessWidget {
 /// is actually stopped. The circular progress ring grows during the hold so
 /// the user gets clear visual feedback, and (when [showHint]) a "hold to stop"
 /// caption tells the user the control needs a press-and-hold, not a tap.
-/// Cancels cleanly on release.
-@visibleForTesting
+/// Cancels cleanly on release. The shell's docked centre button reuses it as
+/// the phone layout's Stop ([RunStopDock]), so both share one gate.
 class HoldToStopButton extends StatefulWidget {
   static const holdDuration = Duration(milliseconds: 800);
 
@@ -5669,12 +5689,17 @@ class HoldToStopButton extends StatefulWidget {
   final double iconSize;
   final bool showHint;
 
+  /// Replaces the spoken hint. The docked Stop has no visible "Hold to stop"
+  /// caption beside it, so it says so to a screen reader instead.
+  final String? semanticsHint;
+
   const HoldToStopButton({
     super.key,
     required this.onHoldComplete,
     this.size = 68,
     this.iconSize = 36,
     this.showHint = true,
+    this.semanticsHint,
   });
 
   @override
@@ -5737,7 +5762,7 @@ class _HoldToStopButtonState extends State<HoldToStopButton>
       button: true,
       enabled: true,
       label: l10n.runStopA11yLabel,
-      hint: l10n.runStopA11yHint,
+      hint: widget.semanticsHint ?? l10n.runStopA11yHint,
       onTap: widget.onHoldComplete,
       child: ExcludeSemantics(
         // `behavior: HitTestBehavior.opaque` so the Listener claims any

@@ -23,6 +23,7 @@ import '../main.dart'
 import '../preferences.dart';
 import '../push_target.dart';
 import '../race_controller.dart';
+import '../run_stop_dock.dart';
 import '../settings_destination.dart';
 import '../settings_sync.dart';
 import '../sync_service.dart';
@@ -196,7 +197,8 @@ class _HomeScreenState extends State<HomeScreen>
   ]);
 
   /// The nav bar and rail read the page, and the hub's label reads the same
-  /// visibility the centre button does.
+  /// visibility the centre button does. The docked centre button reads the
+  /// page too: it is the Stop while a run records on the Run page.
   late final Listenable _navInputs =
       Listenable.merge([_currentIndex, _centreInputs]);
 
@@ -895,15 +897,32 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  /// Whether the docked centre button is the recorder's Stop: a run records
+  /// (a manual pause included) and the Run page is showing. Phone shell only
+  /// — the rail docks nothing, so the recorder panel keeps its own Stop there
+  /// ([RunStopDock]). Away from the Run page the button stays the way back to
+  /// it, so a tap from Home can never end a run.
+  bool get _centreIsStop =>
+      runRecordingActive.value && _currentIndex.value == _pageRun;
+
   /// The centre button's icon, caption and spoken label. When a tap starts a
   /// run it says so: a "+" captioned "Log" reads as "add an entry", and a
   /// first-timer only found out it opened the GPS recorder by pressing it.
   ///
   /// Mid-run the shell looked exactly as it does idle, and the way back to the
   /// recorder was a "+" that reads as "start another". So while a run records
-  /// the button turns the error colour and says so, and a tap returns to it.
+  /// the button turns the error colour and says so, and a tap returns to it —
+  /// except on the docked button over the Run page, where it is the Stop.
   ({IconData icon, String label, String semantics, bool recording})
-      _centreLook(AppLocalizations l10n) {
+      _centreLook(AppLocalizations l10n, {bool docked = false}) {
+    if (docked && _centreIsStop) {
+      return (
+        icon: Icons.stop_rounded,
+        label: l10n.navStop,
+        semantics: l10n.runStopA11yLabel,
+        recording: true,
+      );
+    }
     if (runRecordingActive.value) {
       return (
         icon: Icons.fiber_manual_record,
@@ -962,6 +981,7 @@ class _HomeScreenState extends State<HomeScreen>
     // CANCELLATION. Mirrors web's root-layout banner; renders
     // nothing when the flag is null or the user is on the free
     // tier — zero footprint in the common case.
+    final expanded = widthClassOf(context) == WidthClass.expanded;
     final body = Column(
       children: [
         BillingIssueBanner(apiClient: widget.apiClient),
@@ -971,21 +991,24 @@ class _HomeScreenState extends State<HomeScreen>
           // mid-run (issue #490). Deliberate bottom-nav taps still navigate —
           // `_goToPage` drives the controller directly, which non-scrollable
           // physics doesn't block. Fail-open: the notifier defaults to false.
-          child: ValueListenableBuilder<bool>(
-            valueListenable: runRecordingActive,
-            builder: (context, recording, _) => PageView(
-              controller: _pageController,
-              onPageChanged: _onPageChanged,
-              physics: recording
-                  ? const NeverScrollableScrollPhysics()
-                  : const PageScrollPhysics(),
-              children: _pages,
+          child: RunStopDock(
+            docked: !expanded,
+            child: ValueListenableBuilder<bool>(
+              valueListenable: runRecordingActive,
+              builder: (context, recording, _) => PageView(
+                controller: _pageController,
+                onPageChanged: _onPageChanged,
+                physics: recording
+                    ? const NeverScrollableScrollPhysics()
+                    : const PageScrollPhysics(),
+                children: _pages,
+              ),
             ),
           ),
         ),
       ],
     );
-    if (widthClassOf(context) == WidthClass.expanded) {
+    if (expanded) {
       return _backGuard(Scaffold(
         body: Row(
           children: [
@@ -1076,19 +1099,18 @@ class _HomeScreenState extends State<HomeScreen>
                   selected: index == _pageFitness,
                   onTap: () => _goToPage(_pageFitness),
                 ),
-                // The docked centre Log FAB fills this 56 dp slot; the caption
+                // The docked centre Log FAB sits over this slot; the caption
                 // gives the centre action a visible text label like every other
                 // nav destination, so it isn't the one unlabelled "+" (#256).
+                // Wider than the 56 dp button: at 56 "Recording" cut to
+                // "Recordi…" at the default text size.
                 SizedBox(
-                  width: 56,
-                  child: ListenableBuilder(
-                    listenable: _centreInputs,
-                    builder: (context, _) {
-                      final look = _centreLook(l10n);
-                      return _CentreLogLabel(
-                          label: look.label, alert: look.recording);
-                    },
-                  ),
+                  width: _centreSlotWidth,
+                  child: Builder(builder: (context) {
+                    final look = _centreLook(l10n, docked: true);
+                    return _CentreLogLabel(
+                        label: look.label, alert: look.recording);
+                  }),
                 ),
                 _BottomNavItem(
                   icon: Icons.public,
@@ -1112,6 +1134,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   static const _railPages = [_pageHome, _pageFitness, _pageSocial, _pageYou];
 
+  static const double _centreSlotWidth = 72;
+
   int? _railIndexFor(int pageIndex) {
     final i = _railPages.indexOf(pageIndex);
     return i == -1 ? null : i;
@@ -1125,11 +1149,25 @@ class _HomeScreenState extends State<HomeScreen>
   // and the 56 dp FAB clears the >=48 dp target. When [anchored], the
   // speed-dial fans from the button's own position instead of the
   // bottom-centre dock.
+  //
+  // Docked over the Run page mid-recording it is the recorder's Stop instead
+  // (the panel leaves its own out, `RunStopDock`): the same 800 ms
+  // `HoldToStopButton`, so one gate guards every way a run ends. It has no
+  // long-press wrapper, which would fire at 500 ms into the hold.
   Widget _logFab({bool anchored = false}) {
     return ListenableBuilder(
-      listenable: _centreInputs,
+      listenable: _navInputs,
       builder: (fabContext, _) {
         final l10n = AppLocalizations.of(fabContext);
+        if (!anchored && _centreIsStop) {
+          return HoldToStopButton(
+            size: 56,
+            iconSize: 28,
+            showHint: false,
+            semanticsHint: l10n.runHoldToStopRunA11yHint,
+            onHoldComplete: runStopRequests.request,
+          );
+        }
         Offset? anchorOf() {
           if (!anchored) return null;
           final box = fabContext.findRenderObject() as RenderBox?;
@@ -1270,16 +1308,21 @@ class _CentreLogLabel extends StatelessWidget {
           // FAB visually fills the space above it.
           const SizedBox(height: 24),
           const SizedBox(height: 2),
+          // Shrinks to fit rather than ellipsising: at a large text size a
+          // smaller whole word reads, a clipped one does not.
           ExcludeSemantics(
-            child: Text(
-              label,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: alert
-                    ? theme.colorScheme.error
-                    : theme.colorScheme.onSurfaceVariant,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: alert
+                      ? theme.colorScheme.error
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+                maxLines: 1,
+                softWrap: false,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

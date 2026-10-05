@@ -268,7 +268,14 @@ becomes an **action button**, not a tab.
 - **The centre button says what a tap does.** When the tap starts a run it
   shows a play icon, the caption "Start run" and the spoken label "Start a
   run" instead of "+ Log"; while a run records it turns the error colour,
-  captioned "Recording" and announced "Return to your run". The Runs list's
+  captioned "Recording" and announced "Return to your run". On the Run
+  page itself the phone's docked button is the run's **Stop** instead: the
+  recorder's 800 ms `HoldToStopButton` with its progress ring, captioned
+  "Stop" and announced "Stop and save run" / "Hold to stop the run", and
+  the recorder panel drops its own Stop (decisions § 1750). This holds in
+  both Log-button modes. The rail layout docks nothing, so there the
+  leading button stays the way back and the panel keeps its Stop. When the
+  run finishes the button reverts. The Runs list's
   manual-entry button reads "Add past run", so the two buttons a thumb apart
   no longer both read as starting one.
 - **The hub's nav label follows modality visibility.** With Gym and

@@ -399,7 +399,7 @@ The same rule applies to *waiting*, not only to throwing. An L1 write must not b
 | 1 | Crash-safe run data | Serialise partial run to `in_progress.json` every 10 s; recover on launch if ≥ 3 waypoints and ≥ 50 m | `_incrementalSaveInterval` |
 | 2 | GPS-lost awareness | Banner when the last ACCEPTED fix is > 10 s old (see row 20 — the measure is `snapshot.positionFixedAt`, not snapshot arrival). Suppressed while manually paused. | `_gpsLostThreshold` |
 | 3 | Speed clamp | Drop GPS fixes implying speed > activity max | `ActivityType.maxSpeedMps` |
-| 4 | Hold-to-stop | 800 ms hold with progress ring before `_stop()` fires | `_holdToStopDuration` |
+| 4 | Hold-to-stop | 800 ms hold with progress ring before `_stop()` fires. On a phone the control is the shell's docked centre button while the Run page shows (`RunStopDock` + `runStopRequests`), and the panel's row is Discard · Pause · Lap; on the rail layout, or with no shell above the recorder, the panel keeps its own Stop, expanded and collapsed (decisions § 1750) | `_holdToStopDuration` |
 | 5 | Monotonic clock | `Stopwatch`-based elapsed, immune to wall-clock jumps | — |
 | 6 | Pedometer resubscribe | Exponential backoff on stream error, up to 5 retries | `_pedometerMaxRetries` |
 | 7 | Permission watchdog | Poll `Geolocator.checkPermission()` every 5 s; banner if revoked | — |

@@ -713,6 +713,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navRecording => 'Recording';
 
   @override
+  String get navStop => 'Stop';
+
+  @override
   String get logReturnToRunA11yLabel => 'Return to your run';
 
   @override
@@ -1803,6 +1806,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runStopA11yHint => 'Ends the recording and saves the run';
+
+  @override
+  String get runHoldToStopRunA11yHint => 'Hold to stop the run';
 
   @override
   String get runHoldToStopHint => 'Hold to stop';

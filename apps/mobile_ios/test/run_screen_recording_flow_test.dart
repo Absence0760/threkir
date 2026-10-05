@@ -19,6 +19,7 @@ import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/race_controller.dart';
+import '../lib/run_stop_dock.dart';
 import '../lib/screens/run_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
@@ -959,6 +960,136 @@ void main() {
       }
       tester.takeException();
       await off.dispose();
+    });
+  });
+
+  group('RunScreen — the docked centre Stop (RunStopDock)', () {
+    // On the phone shell the docked centre button is the Stop while a run
+    // records, so the panel leaves its own out; the rail layout docks nothing
+    // and the panel keeps it. Driven through the real recorder: the panel is
+    // what a runner sees, and `_stop` is what a completed hold reaches.
+
+    Future<_CapturingRunStore> pumpUnder(WidgetTester tester,
+        {required bool docked}) async {
+      final runStore = _CapturingRunStore();
+      await runStore.init(overrideDirectory: runsDir);
+      final s = await makeStores();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RunStopDock(
+            docked: docked,
+            child: RunScreen(
+              apiClient: null,
+              runStore: runStore,
+              routeStore: s.routeStore,
+              preferences: s.prefs,
+              audioCues: s.audioCues,
+              social: s.social,
+              raceController: s.raceController,
+              training: s.training,
+              heartRate: s.heartRate,
+              treadmill: s.treadmill,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      return runStore;
+    }
+
+    Future<void> reachRecording(WidgetTester tester) async {
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException(); // LiveRunMap tile-fetch noise
+    }
+
+    Future<void> collapsePanel(WidgetTester tester) async {
+      await tester.tap(find.byWidgetPredicate((w) =>
+          w is Semantics && w.properties.label == 'Collapse stats panel'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      tester.takeException();
+    }
+
+    Finder labelled(String label) => find.byWidgetPredicate(
+        (w) => w is Semantics && w.properties.label == label);
+
+    Future<void> unmount(WidgetTester tester) async {
+      await tester.pumpWidget(const SizedBox());
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+    }
+
+    testWidgets(
+        'under the phone dock the panel is Discard, Pause and Lap, expanded '
+        'and collapsed', (tester) async {
+      await pumpUnder(tester, docked: true);
+      await reachRecording(tester);
+
+      expect(find.byType(HoldToStopButton), findsNothing,
+          reason: 'the docked centre button is the Stop on a phone');
+      expect(find.text('Hold to stop'), findsNothing);
+      expect(labelled('Discard run'), findsOneWidget);
+      expect(labelled('Pause run'), findsOneWidget);
+      expect(labelled('Mark lap'), findsOneWidget);
+
+      await collapsePanel(tester);
+      expect(find.byType(HoldToStopButton), findsNothing,
+          reason: 'the collapsed bar sits over the same docked Stop');
+
+      await unmount(tester);
+    });
+
+    testWidgets('without a dock (the rail layout) the panel keeps its Stop',
+        (tester) async {
+      await pumpUnder(tester, docked: false);
+      await reachRecording(tester);
+
+      expect(find.byType(HoldToStopButton).hitTestable(), findsOneWidget,
+          reason: 'nothing else on the rail layout can stop the run');
+      expect(find.text('Hold to stop'), findsOneWidget);
+
+      await collapsePanel(tester);
+      expect(find.byType(HoldToStopButton).hitTestable(), findsOneWidget);
+
+      await unmount(tester);
+    });
+
+    testWidgets('a stop request ends and saves the run, and is ignored idle',
+        (tester) async {
+      final runStore = await pumpUnder(tester, docked: true);
+
+      runStopRequests.request();
+      await tester.pump();
+      expect(find.text('START'), findsOneWidget,
+          reason: 'no run is recording, so there is nothing to stop');
+      expect(runStore.captured, isEmpty);
+
+      await reachRecording(tester);
+      for (var i = 0; i < 6; i++) {
+        geolocator.emit(_pos(metresEast: i * 12.0, secondsFromStart: i * 2));
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+
+      await tester.runAsync(() async => runStopRequests.request());
+      await pumpUntil(tester, () => runStore.captured.isNotEmpty,
+          describe: 'the docked Stop to save the run');
+      expect(runStore.captured, hasLength(1));
+      await pumpUntil(tester, () => !runRecordingActive.value,
+          describe: 'the recorder to leave its recording state');
+
+      await unmount(tester);
     });
   });
 

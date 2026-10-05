@@ -30,7 +30,10 @@
 //       does exactly this for the phone and reads nothing under
 //       `apps/watch_ios`. A missing purpose string makes watchOS deny the
 //       permission silently; an over-declared capability is an App Review
-//       rejection and a privacy over-claim.
+//       rejection and a privacy over-claim. A background mode must also sit
+//       under the plist key the system reads it from (`location` under
+//       `UIBackgroundModes`, `workout-processing` under `WKBackgroundModes`):
+//       one under the wrong key crashed the app on Start (decisions § 1742).
 //
 //   (4) RETIRED, and the number is left vacant so every claim below still
 //       answers to the number it has always had. It held the complication's
@@ -323,24 +326,36 @@ export const LOCALIZING_APIS = [
 ];
 
 /**
- * `WKBackgroundModes` entries, each derived from the call that needs it.
- * The reverse direction is an error for the same reason it is on the phone:
- * App Review rejects a binary declaring a background capability it never
- * exercises.
- * @type {{ mode: string, pattern: RegExp, needed_by: string, why: string }[]}
+ * The two Info.plist arrays a watchOS app declares background modes in. They
+ * are not interchangeable: `WKBackgroundModes` holds watch session types only
+ * (`workout-processing`, the extended-runtime modes), while CoreLocation's
+ * backgroundable check reads `location` from `UIBackgroundModes` — on watchOS
+ * as on iOS. A mode under the wrong key is as absent as a missing one.
+ */
+export const BACKGROUND_MODE_KEYS = ['UIBackgroundModes', 'WKBackgroundModes'];
+
+/**
+ * Background modes, each derived from the call that needs it and pinned to the
+ * plist key that mode belongs under. The reverse direction is an error for the
+ * same reason it is on the phone: App Review rejects a binary declaring a
+ * background capability it never exercises.
+ * @type {{ mode: string, key: string, pattern: RegExp, needed_by: string, why: string }[]}
  */
 export const BACKGROUND_MODES = [
 	{
 		mode: 'location',
+		key: 'UIBackgroundModes',
 		pattern: /allowsBackgroundLocationUpdates\s*=\s*true/,
 		needed_by: 'CoreLocation is asked to keep delivering fixes with the display asleep',
 		why:
-			'CLLocationManager.allowsBackgroundLocationUpdates throws unless the ' +
-			'`location` background mode is declared, which takes the recorder down ' +
-			'rather than degrading it.',
+			'CLLocationManager.allowsBackgroundLocationUpdates throws ' +
+			'NSInternalInconsistencyException unless `location` is declared under ' +
+			'UIBackgroundModes, which takes the recorder down on Start rather than ' +
+			'degrading it. WKBackgroundModes does not count: CoreLocation never reads it.',
 	},
 	{
 		mode: 'workout-processing',
+		key: 'WKBackgroundModes',
 		pattern: /HKWorkoutSession\s*\(/,
 		needed_by: 'the run holds an HKWorkoutSession for heart rate',
 		why:
@@ -1708,22 +1723,40 @@ export function check(
 	const info = parseFlatPlist(read(join('WatchApp', 'Info.plist')));
 	const ents = parseFlatPlist(read(join('WatchApp', 'WatchApp.entitlements')));
 
-	const declaredModes = info.get('WKBackgroundModes');
-	if (!Array.isArray(declaredModes)) {
-		errors.push('Info.plist has no usable WKBackgroundModes array.');
-	} else {
-		for (const rule of BACKGROUND_MODES) {
-			if (!rule.pattern.test(allSwift)) continue;
-			if (declaredModes.includes(rule.mode)) {
-				ok.push(`WKBackgroundModes contains \`${rule.mode}\` (${rule.needed_by})`);
+	/** @type {Map<string, string[]>} */
+	const declaredByKey = new Map();
+	for (const key of BACKGROUND_MODE_KEYS) {
+		const value = info.get(key);
+		if (value === undefined) {
+			declaredByKey.set(key, []);
+		} else if (Array.isArray(value)) {
+			declaredByKey.set(key, value);
+		} else {
+			errors.push(`Info.plist's ${key} is not an array of strings.`);
+			declaredByKey.set(key, []);
+		}
+	}
+	for (const rule of BACKGROUND_MODES) {
+		if (!rule.pattern.test(allSwift)) continue;
+		if (/** @type {string[]} */ (declaredByKey.get(rule.key)).includes(rule.mode)) {
+			ok.push(`${rule.key} contains \`${rule.mode}\` (${rule.needed_by})`);
+			continue;
+		}
+		errors.push(
+			`Info.plist's ${rule.key} is missing \`${rule.mode}\`, but ${rule.needed_by}.\n    ${rule.why}`,
+		);
+	}
+	for (const [key, modes] of declaredByKey) {
+		for (const mode of modes) {
+			const rule = BACKGROUND_MODES.find((r) => r.mode === mode);
+			if (rule && rule.key !== key) {
+				errors.push(
+					`Info.plist declares \`${mode}\` under ${key}, but that mode belongs under ${rule.key}. ` +
+						`The system reads it from ${rule.key} only, so here it declares nothing — remove it from ${key}.`,
+				);
 				continue;
 			}
-			errors.push(
-				`Info.plist's WKBackgroundModes is missing \`${rule.mode}\`, but ${rule.needed_by}.\n    ${rule.why}`,
-			);
-		}
-		for (const mode of declaredModes) {
-			if (BACKGROUND_MODES.some((r) => r.mode === mode && r.pattern.test(allSwift))) continue;
+			if (rule && rule.pattern.test(allSwift)) continue;
 			if (UNCLAIMED_BACKGROUND_MODES.includes(mode)) continue;
 			errors.push(
 				`Info.plist declares the \`${mode}\` background mode and no code in apps/watch_ios claims ` +

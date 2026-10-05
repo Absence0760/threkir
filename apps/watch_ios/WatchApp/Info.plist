@@ -48,9 +48,12 @@
 	<true/>
 	<key>WKCompanionAppBundleIdentifier</key>
 	<string>com.threkir.app</string>
-	<key>WKBackgroundModes</key>
+	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
+	</array>
+	<key>WKBackgroundModes</key>
+	<array>
 		<string>workout-processing</string>
 	</array>
 </dict>

@@ -143,7 +143,11 @@ Every one of these is translated in `ios/Runner/InfoPlist.xcstrings` (all seven 
 
 Required keys:
 
-- `UIBackgroundModes` array containing `location` (background GPS) and `workout-processing` (Apple Watch session)
+- `UIBackgroundModes` array containing `location` (background GPS), `audio` (spoken cues) and `processing` (background sync)
+- The watch target's own `Info.plist` (`apps/watch_ios/WatchApp/Info.plist`) splits its modes across two keys: `location` under
+  `UIBackgroundModes` (CoreLocation reads it only there, on watchOS as on iOS) and `workout-processing` under
+  `WKBackgroundModes`. `location` under `WKBackgroundModes` declares nothing and crashes the watch app on Start
+  ([decisions § 1742](../../docs/architecture/decisions.md)); `scripts/check_watch_ios_source.mjs` refuses it.
 - `WKApplication` (in the watch target's Info.plist) — true. This is the
   single-target key; `WKWatchKitApp` is the legacy two-target spelling and
   this project does not use it.

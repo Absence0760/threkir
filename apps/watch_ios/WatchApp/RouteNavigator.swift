@@ -48,8 +48,9 @@ enum RouteGeometry {
     /// searched (the start of the route when there is no previous match), and
     /// within it a tie between overlapping legs goes to forward progress, with
     /// a bias capped at `maxBiasMetres` so it never outweighs real distance off
-    /// the line. When nothing in that window is within `reacquireMetres` the
-    /// rest of the route ahead is searched, so a runner who skips ahead or
+    /// the line. When nothing in that window is within `reacquireMetres`, or
+    /// the runner projects past its far end, the rest of the route ahead is
+    /// searched, so a runner who skips ahead or
     /// returns after a signal gap is re-acquired; a runner still off the line
     /// keeps the windowed match, unless there is no previous match to keep.
     ///
@@ -92,8 +93,12 @@ enum RouteGeometry {
         let anchor = min(seen, previous + travelled)
         let lo = hasPrevious ? max(0, previous - backtrackMetres) : 0
 
-        func best(from fromM: Double, to toM: Double) -> (along: Double, perp: Double)? {
-            var found: (along: Double, perp: Double)?
+        // `pastEnd` marks a match pinned to `toM` while the runner projects
+        // beyond it.
+        func best(
+            from fromM: Double, to toM: Double
+        ) -> (along: Double, perp: Double, pastEnd: Bool)? {
+            var found: (along: Double, perp: Double, pastEnd: Bool)?
             var bestCost = Double.infinity
             for i in 0..<n {
                 let s = segStart[i]
@@ -112,16 +117,18 @@ enum RouteGeometry {
                 let cost = perp + bias + abs(gap) * continuityPerMetre
                 if cost < bestCost {
                     bestCost = cost
-                    found = (along, perp)
+                    found = (along, perp, tFree[i] > t)
                 }
             }
             return found
         }
 
         var match = best(from: lo, to: anchor + lookaheadMetres)
-        if match == nil || match!.perp > reacquireMetres {
+        if match == nil || match!.perp > reacquireMetres || match!.pastEnd {
             if let ahead = best(from: lo, to: seen),
-               match == nil || !hasPrevious || ahead.perp <= reacquireMetres {
+               match == nil
+                || (ahead.perp < match!.perp
+                    && (!hasPrevious || ahead.perp <= reacquireMetres)) {
                 match = ahead
             }
         }

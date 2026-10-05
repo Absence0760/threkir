@@ -194,20 +194,23 @@ class RunRecorder {
   Waypoint? _lastRouteCalcFor;
   double? _cachedOffRoute;
   double? _cachedRouteRemaining;
-  // Lowest route-segment index the closest-segment search is allowed to
-  // match. Progress along the route is monotonic: on a loop, out-and-back, or
-  // figure-eight the perpendicular-closest segment can be one already passed
-  // (the route doubles back near the runner). Without this floor the matched
-  // segment jumps backwards and "distance remaining" climbs UP. Clamping the
-  // search to start at the last matched index keeps remaining non-increasing.
-  int _minMatchedSegmentIdx = 1;
+  double? _cachedRouteAlong;
+  // Where on the route the runner was last matched, metres from its start, and
+  // the GPS distance recorded at that moment. [_routeProgress] only searches
+  // the stretch of route reachable from here (see [_routeMatchLookaheadM]): on
+  // a loop the finish is as near as the start, an out-and-back's return leg
+  // lies on its outbound one, and a figure-eight crosses itself, so a search
+  // over the whole line latched the wrong lap or leg — a loop read "0.00 km to
+  // go" at the start and, never searching backwards again, measured off-route
+  // against the closing leg alone for the rest of the run.
+  double? _matchedAlongM;
+  double _distanceAtLastMatch = 0;
   // Whether [_currentWaypoint] is a fix the L1 distance chain accepted into
   // the track. A fix rejected as an implausible teleport still refreshes the
-  // blue dot, but must never drive route progress: the closest-segment search
-  // ADVANCES the monotonic [_minMatchedSegmentIdx] floor, and the floor is by
-  // design never lowered — so one corrupt fix would pin the search kilometres
-  // ahead for the rest of the run, permanently inflating off-route distance
-  // (up to a false safety escalation) and understating distance remaining.
+  // blue dot, but must never drive route progress: the matcher anchors its
+  // next search on [_matchedAlongM], so one corrupt fix would drag the search
+  // window kilometres ahead, inflating off-route distance (up to a false
+  // safety escalation) and understating distance remaining.
   bool _currentWaypointTrusted = true;
   DateTime? _lastTrackedPositionAt;
   /// [_stopwatch] reading when [_lastTrackedPosition] was last set. Always
@@ -218,13 +221,12 @@ class RunRecorder {
   bool _recording = false;
   bool _paused = false;
   Route? _route;
-  // Suffix sums of route segment lengths, precomputed once when the route is
-  // set: `_routeTailAfter[k]` is the total length of all route segments
-  // strictly after segment k (segment j connects waypoint j-1 → j). The
-  // distance-remaining calc on every GPS fix then adds the tail in O(1)
-  // instead of re-summing the whole remaining route — that inline sum was
-  // O(R) per fix, i.e. O(R²) over a multi-hour run on a 2000-waypoint route.
-  List<double>? _routeTailAfter;
+  // Cumulative route length at each waypoint, precomputed once when the route
+  // is set: `_routeCumulativeM[k]` is the distance from the start to waypoint
+  // k. The matcher reads segment spans from it instead of re-summing haversine
+  // lengths on every GPS fix — O(R²) over a multi-hour run on a 2000-waypoint
+  // route.
+  List<double>? _routeCumulativeM;
   double _trackThresholdMetres = 3;
   double _maxSpeedMps = 10;
   double _accuracyGateMetres = 20;
@@ -239,6 +241,18 @@ class RunRecorder {
   // resumed track. A few milliseconds' worth — the resume path runs on the UI
   // isolate, ahead of the first post-resume fix.
   static const int _resumeFloorProjectionBudget = 200000;
+
+  // Route matcher tuning — the values web `route_geometry.ts` uses.
+  static const double _metresPerDegree = 111320.0;
+  static const double _routeMatchLookaheadM = 200;
+  static const double _routeMatchBacktrackM = 50;
+  // The off-route alert threshold: a windowed match further off the line than
+  // this sends the matcher looking further along the route.
+  static const double _routeMatchReacquireM = 40;
+  static const double _alongFwdBiasPerM = 0.05;
+  static const double _alongBackBiasPerM = 0.5;
+  static const double _maxAlongBiasM = 20;
+  static const double _alongContinuityPerM = 1e-6;
   // Rate-limits the "fix dropped for accuracy" log. An always-bad stream
   // would otherwise spam at ~1 Hz for the entire run.
   DateTime? _lastAccuracyDropLogAt;
@@ -389,13 +403,15 @@ class RunRecorder {
     _lastRouteCalcFor = null;
     _cachedOffRoute = null;
     _cachedRouteRemaining = null;
-    _minMatchedSegmentIdx = 1;
+    _cachedRouteAlong = null;
+    _matchedAlongM = null;
+    _distanceAtLastMatch = 0;
     _currentWaypointTrusted = true;
     _paceFloorIdx = 0;
     _recording = false;
     _paused = false;
     _route = route;
-    _routeTailAfter = _computeRouteTailAfter(route);
+    _routeCumulativeM = _computeRouteCumulative(route);
     _trackThresholdMetres =
         max(distanceFilterMetres.toDouble(), minMovementMetres);
     _maxSpeedMps = maxSpeedMps;
@@ -686,29 +702,39 @@ class RunRecorder {
     _reseedRouteFloor();
   }
 
-  /// Rebuild the monotonic route floor from the seeded track.
+  /// Rebuild the route match from the seeded track.
   ///
-  /// [prepare] resets [_minMatchedSegmentIdx] to 1, which hands a resumed run a
-  /// route matcher with no memory of the ground already covered: on a loop or
-  /// an out-and-back the closest segment to the runner is then one they passed
-  /// hours ago, so distance-remaining jumps back up and — the floor being by
-  /// design never lowered — never self-corrects. The seeded track holds exactly
-  /// the fixes the live run advanced the floor on, so replaying it through the
-  /// same closest-segment search restores the floor the killed process had.
+  /// [prepare] clears [_matchedAlongM], which hands a resumed run a route
+  /// matcher with no memory of the ground already covered: on a loop or an
+  /// out-and-back the runner is then matched to the start of the route, so
+  /// distance-remaining jumps back up. The seeded track holds exactly the fixes
+  /// the live run matched, so replaying it through the same matcher — each
+  /// probe told how far the track ran since the previous one — restores the
+  /// match the killed process had.
   void _reseedRouteFloor() {
     final route = _route;
     if (route == null || route.waypoints.length < 2 || _track.isEmpty) return;
-    // Every probe scans the route tail, so replaying a multi-day track against
-    // a dense route in one burst is the whole run's route maths at once. Probe
-    // an evenly spaced subset within a fixed budget: the floor advances by the
-    // ORDER points are matched in, not by how densely they are sampled.
+    // Every probe projects onto the route, so replaying a multi-day track
+    // against a dense route in one burst is the whole run's route maths at
+    // once. Probe an evenly spaced subset within a fixed budget; the distance
+    // between probes is summed from every fix, so a sparse replay still knows
+    // how far along the route to look.
     final probes =
         max(1, _resumeFloorProjectionBudget ~/ (route.waypoints.length - 1));
     final step = max(1, (_track.length / probes).ceil());
-    for (var i = 0; i < _track.length; i += step) {
-      _routeProgress(_track[i]);
+    var travelled = 0.0;
+    for (var i = 0; i < _track.length; i++) {
+      if (i > 0) {
+        final a = _track[i - 1];
+        final b = _track[i];
+        travelled += _haversine(a.lat, a.lng, b.lat, b.lng);
+      }
+      if (i % step == 0 || i == _track.length - 1) {
+        _routeProgress(_track[i], travelledM: travelled);
+        travelled = 0;
+      }
     }
-    _routeProgress(_track.last);
+    _distanceAtLastMatch = _distanceMetres;
   }
 
   /// [begin]-equivalent for [resumeSession]: starts the clock + 1 s snapshot
@@ -798,13 +824,15 @@ class RunRecorder {
     _lastRouteCalcFor = null;
     _cachedOffRoute = null;
     _cachedRouteRemaining = null;
-    _minMatchedSegmentIdx = 1;
+    _cachedRouteAlong = null;
+    _matchedAlongM = null;
+    _distanceAtLastMatch = 0;
     _currentWaypointTrusted = true;
     _paceFloorIdx = 0;
     _recording = false;
     _paused = false;
     _route = route;
-    _routeTailAfter = _computeRouteTailAfter(route);
+    _routeCumulativeM = _computeRouteCumulative(route);
     _trackThresholdMetres =
         max(distanceFilterMetres.toDouble(), minMovementMetres);
     _maxSpeedMps = maxSpeedMps;
@@ -856,18 +884,21 @@ class RunRecorder {
 
   /// Test-only: distance from [pos] to the end of the loaded route, summed
   /// along the remaining route segments. Null when no route is loaded.
+  /// Advances the route match, exactly as a trusted fix does.
   @visibleForTesting
-  double? debugRouteRemaining(Waypoint pos) => _routeRemaining(pos);
+  double? debugRouteRemaining(Waypoint pos) => _routeProgress(pos)?.remaining;
 
   /// Test-only: minimum distance from [pos] to any segment of the loaded
-  /// route. Null when no route is loaded.
+  /// route. Null when no route is loaded. Advances the route match, exactly
+  /// as a trusted fix does.
   @visibleForTesting
-  double? debugOffRouteDistance(Waypoint pos) => _offRouteDistance(pos);
+  double? debugOffRouteDistance(Waypoint pos) => _routeProgress(pos)?.offRoute;
 
-  /// Test-only: the single-pass off-route + remaining the snapshot path uses.
-  /// Must equal `(debugOffRouteDistance, debugRouteRemaining)`.
+  /// Test-only: the route match the snapshot path uses. Advances the match,
+  /// exactly as a trusted fix does.
   @visibleForTesting
-  ({double offRoute, double remaining})? debugRouteProgress(Waypoint pos) =>
+  ({double along, double offRoute, double remaining})? debugRouteProgress(
+          Waypoint pos) =>
       _routeProgress(pos);
 
   /// Pause the timer and stop accumulating distance until [resume] is called.
@@ -1256,24 +1287,25 @@ class RunRecorder {
     // imported ride with 2000 waypoints).
     double? offRoute;
     double? remaining;
+    double? along;
     if (current != null) {
       // Reuse the cached values both when the position hasn't changed and when
       // the current fix is one the distance filter rejected — an untrusted fix
-      // must not advance the monotonic route floor (see
-      // [_currentWaypointTrusted]). The last trusted fix's values are still
-      // the best available answer.
+      // must not move the route match (see [_currentWaypointTrusted]). The
+      // last trusted fix's values are still the best available answer.
       if (identical(current, _lastRouteCalcFor) || !_currentWaypointTrusted) {
         offRoute = _cachedOffRoute;
         remaining = _cachedRouteRemaining;
+        along = _cachedRouteAlong;
       } else {
-        // One pass for both — shares the closest-segment search instead of
-        // walking every route segment twice (off-route + remaining).
         final progress = _routeProgress(current);
         offRoute = progress?.offRoute;
         remaining = progress?.remaining;
+        along = progress?.along;
         _lastRouteCalcFor = current;
         _cachedOffRoute = offRoute;
         _cachedRouteRemaining = remaining;
+        _cachedRouteAlong = along;
       }
     }
 
@@ -1298,99 +1330,70 @@ class RunRecorder {
       track: _trackView,
       offRouteDistanceMetres: offRoute,
       routeRemainingMetres: remaining,
+      routeAlongMetres: along,
       weakGps: _weakGps,
     ));
   }
 
-  /// Distance from the runner's current position to the end of the route,
-  /// measured along the remaining route segments.
+  /// Off-route distance, distance remaining and distance along the route for
+  /// [pos], advancing the route match.
   ///
-  /// Finds the closest point on the route to the runner, then sums the
-  /// distance from there to the final waypoint. Returns null if no route is
-  /// selected.
-  double? _routeRemaining(Waypoint pos) {
+  /// Port of web `route_geometry.ts#progressAlongRoute` (the matcher, not its
+  /// projection: the recorder keeps its own equirectangular frame). Only the
+  /// stretch of route the runner can plausibly be on is searched — from
+  /// [_routeMatchBacktrackM] behind the previous match to
+  /// [_routeMatchLookaheadM] past it plus the GPS distance recorded since —
+  /// and within it a tie between overlapping legs goes to forward progress,
+  /// with a bias capped at [_maxAlongBiasM] so it never outweighs real
+  /// distance off the line. When nothing in that window is within
+  /// [_routeMatchReacquireM] the rest of the route ahead is searched, so a
+  /// runner who skips ahead or returns after a signal gap is re-acquired.
+  ///
+  /// `offRoute` is the distance to the nearest point on the WHOLE route: a
+  /// runner standing on the line is not off it, whichever lap or leg the
+  /// matcher has them on.
+  ///
+  /// [travelledM] overrides the distance-since-last-match the live path reads
+  /// from the GPS accumulator (the resume replay supplies its own). Null when
+  /// no route is selected, or when no segment yields a usable projection.
+  ({double along, double offRoute, double remaining})? _routeProgress(
+    Waypoint pos, {
+    double? travelledM,
+  }) {
     final route = _route;
-    if (route == null || route.waypoints.length < 2) return null;
+    final cum = _routeCumulativeM;
+    if (route == null || cum == null || route.waypoints.length < 2) return null;
+    final wps = route.waypoints;
+    final n = wps.length - 1;
+    final total = cum[n];
 
-    // Find the segment closest to the runner, never matching a segment
-    // earlier than [_minMatchedSegmentIdx] (monotonic progress — see the
-    // field doc). Clamp the floor to the route length in case the route
-    // shrank between calls.
-    final searchStart = _minMatchedSegmentIdx.clamp(1, route.waypoints.length - 1);
-    int closestSegmentIdx = searchStart;
-    double minDist = double.infinity;
-    double tAtClosest = 0;
-    for (int i = searchStart; i < route.waypoints.length; i++) {
-      final a = route.waypoints[i - 1];
-      final b = route.waypoints[i];
-      final result = _projectPointOnSegment(
-        pos.lat,
-        pos.lng,
-        a.lat,
-        a.lng,
-        b.lat,
-        b.lng,
-      );
-      if (result.distance < minDist) {
-        minDist = result.distance;
-        closestSegmentIdx = i;
-        tAtClosest = result.t;
-      }
+    // Equirectangular frame per segment, anchored at its start: p is the
+    // runner, b the segment end, both in metres east/north of the start.
+    double frame(int i, double t, List<double> out) {
+      final a = wps[i];
+      final b = wps[i + 1];
+      final mLng = _metresPerDegree * cos(_toRad(a.lat));
+      final px = (pos.lng - a.lng) * mLng;
+      final py = (pos.lat - a.lat) * _metresPerDegree;
+      final bx = (b.lng - a.lng) * mLng;
+      final by = (b.lat - a.lat) * _metresPerDegree;
+      final lenSq = bx * bx + by * by;
+      final tFree = lenSq == 0 ? 0.0 : ((px * bx + py * by) / lenSq).clamp(0.0, 1.0);
+      final tt = t.isNaN ? tFree : t;
+      final dx = px - bx * tt;
+      final dy = py - by * tt;
+      out[0] = tFree;
+      return sqrt(dx * dx + dy * dy);
     }
-    _minMatchedSegmentIdx = closestSegmentIdx;
 
-    // Distance from closest projection to end of current segment, then sum
-    // the lengths of all subsequent segments.
-    final a = route.waypoints[closestSegmentIdx - 1];
-    final b = route.waypoints[closestSegmentIdx];
-    final segLen = _haversine(a.lat, a.lng, b.lat, b.lng);
-    double remaining = segLen * (1 - tAtClosest);
-
-    for (int i = closestSegmentIdx + 1; i < route.waypoints.length; i++) {
-      final p = route.waypoints[i - 1];
-      final q = route.waypoints[i];
-      remaining += _haversine(p.lat, p.lng, q.lat, q.lng);
+    final scratch = [0.0];
+    final tFree = List<double>.filled(n, 0);
+    var minDist = double.infinity;
+    for (var i = 0; i < n; i++) {
+      final d = frame(i, double.nan, scratch);
+      tFree[i] = scratch[0];
+      if (d < minDist) minDist = d;
     }
-    // Same seed-untouched case as [_routeProgress]; the three must agree.
-    if (!remaining.isFinite) return null;
-    return remaining;
-  }
-
-  /// Off-route distance + distance-remaining in a SINGLE walk over the route.
-  /// [_offRouteDistance] and [_routeRemaining] each scan every segment
-  /// projecting [pos] to find the closest one; computing them separately does
-  /// that closest-segment search twice. This shares it — the min perpendicular
-  /// distance IS the off-route value (`_distanceToSegmentMetres` ==
-  /// projection distance), so the result is identical with half the projection
-  /// trig. Null when no route is selected (matches both methods' contract).
-  ({double offRoute, double remaining})? _routeProgress(Waypoint pos) {
-    final route = _route;
-    if (route == null || route.waypoints.length < 2) return null;
-
-    final searchStart = _minMatchedSegmentIdx.clamp(1, route.waypoints.length - 1);
-    int closestSegmentIdx = searchStart;
-    double minDist = double.infinity;
-    double tAtClosest = 0;
-    for (int i = searchStart; i < route.waypoints.length; i++) {
-      final a = route.waypoints[i - 1];
-      final b = route.waypoints[i];
-      final result = _projectPointOnSegment(pos.lat, pos.lng, a.lat, a.lng, b.lat, b.lng);
-      if (result.distance < minDist) {
-        minDist = result.distance;
-        closestSegmentIdx = i;
-        tAtClosest = result.t;
-      }
-    }
-    _minMatchedSegmentIdx = closestSegmentIdx;
-
-    final a = route.waypoints[closestSegmentIdx - 1];
-    final b = route.waypoints[closestSegmentIdx];
-    final segLen = _haversine(a.lat, a.lng, b.lat, b.lng);
-    // Partial current segment + the precomputed length of every segment after
-    // it (O(1)) instead of re-summing the route tail on every fix.
-    final tail = _routeTailAfter;
-    final remaining = segLen * (1 - tAtClosest) +
-        (tail != null && closestSegmentIdx < tail.length ? tail[closestSegmentIdx] : 0);
     // The running minimum is seeded at +Infinity, and a NaN never compares
     // less than it, so a route every one of whose segments projects to NaN
     // leaves the seed untouched and reports the runner as infinitely far off
@@ -1398,98 +1401,69 @@ class RunRecorder {
     // which every consumer already handles. Reporting a non-finite figure
     // instead put it on the live stats readout and, before the detector was
     // taught to refuse one, spent the run's single off-route escalation.
-    if (!minDist.isFinite || !remaining.isFinite) return null;
-    return (offRoute: minDist, remaining: remaining);
+    if (!minDist.isFinite || !total.isFinite) return null;
+
+    final prevMatch = _matchedAlongM;
+    final hasPrev = prevMatch != null;
+    final prev = hasPrev ? prevMatch.clamp(0.0, total).toDouble() : 0.0;
+    final rawTravelled = travelledM ?? (_distanceMetres - _distanceAtLastMatch);
+    final travelled =
+        rawTravelled.isFinite && rawTravelled > 0 ? rawTravelled : 0.0;
+    final anchor = min(total, prev + travelled);
+    final lo = hasPrev ? max(0.0, prev - _routeMatchBacktrackM) : 0.0;
+
+    ({double along, double offset})? best(double fromM, double toM) {
+      ({double along, double offset})? found;
+      var bestCost = double.infinity;
+      for (var i = 0; i < n; i++) {
+        final s0 = cum[i];
+        final len = cum[i + 1] - s0;
+        if (s0 > toM || s0 + len < fromM) continue;
+        final tLo = len > 0 ? max(0.0, (fromM - s0) / len) : 0.0;
+        final tHi = len > 0 ? min(1.0, (toM - s0) / len) : 0.0;
+        final t = min(tHi, max(tLo, tFree[i]));
+        final offset = frame(i, t, scratch);
+        final along = s0 + t * len;
+        final gap = along - anchor;
+        final bias = min(
+          _maxAlongBiasM,
+          gap >= 0 ? gap * _alongFwdBiasPerM : -gap * _alongBackBiasPerM,
+        );
+        final cost = offset + bias + gap.abs() * _alongContinuityPerM;
+        if (cost < bestCost) {
+          bestCost = cost;
+          found = (along: along, offset: offset);
+        }
+      }
+      return found;
+    }
+
+    var match = best(lo, anchor + _routeMatchLookaheadM);
+    if (match == null || match.offset > _routeMatchReacquireM) {
+      final ahead = best(lo, total);
+      if (ahead != null &&
+          (match == null || ahead.offset <= _routeMatchReacquireM)) {
+        match = ahead;
+      }
+    }
+    if (match == null) return null;
+    final along = match.along.clamp(0.0, total).toDouble();
+    _matchedAlongM = along;
+    _distanceAtLastMatch = _distanceMetres;
+    return (along: along, offRoute: minDist, remaining: max(0.0, total - along));
   }
 
-  /// Suffix sums of route segment lengths. `tail[k]` is the summed length of
-  /// every segment strictly after segment k (segment j connects waypoint
-  /// j-1 → j). Built once per route so [_routeProgress] can resolve the
-  /// remaining-route distance in O(1). Null for a route too short to have a
-  /// segment.
-  static List<double>? _computeRouteTailAfter(Route? route) {
+  /// Cumulative route length at each waypoint (see [_routeCumulativeM]). Null
+  /// for a route too short to have a segment.
+  static List<double>? _computeRouteCumulative(Route? route) {
     if (route == null || route.waypoints.length < 2) return null;
     final wps = route.waypoints;
-    final n = wps.length;
-    final tail = List<double>.filled(n, 0);
-    for (int k = n - 2; k >= 0; k--) {
-      tail[k] = tail[k + 1] + _haversine(wps[k].lat, wps[k].lng, wps[k + 1].lat, wps[k + 1].lng);
+    final cum = List<double>.filled(wps.length, 0);
+    for (var k = 1; k < wps.length; k++) {
+      cum[k] = cum[k - 1] +
+          _haversine(wps[k - 1].lat, wps[k - 1].lng, wps[k].lat, wps[k].lng);
     }
-    return tail;
-  }
-
-  /// Project a point onto a line segment using equirectangular coordinates.
-  /// Returns the perpendicular distance and t (0..1 along segment).
-  static _ProjectionResult _projectPointOnSegment(
-      double pLat, double pLng, double aLat, double aLng, double bLat, double bLng) {
-    const metresPerDegreeLat = 111320.0;
-    final metresPerDegreeLng = 111320.0 * cos(_toRad(aLat));
-
-    final px = (pLng - aLng) * metresPerDegreeLng;
-    final py = (pLat - aLat) * metresPerDegreeLat;
-    final bx = (bLng - aLng) * metresPerDegreeLng;
-    final by = (bLat - aLat) * metresPerDegreeLat;
-
-    final lenSq = bx * bx + by * by;
-    if (lenSq == 0) {
-      return _ProjectionResult(sqrt(px * px + py * py), 0);
-    }
-    var t = (px * bx + py * by) / lenSq;
-    t = t.clamp(0.0, 1.0);
-    final cx = bx * t;
-    final cy = by * t;
-    final dx = px - cx;
-    final dy = py - cy;
-    return _ProjectionResult(sqrt(dx * dx + dy * dy), t);
-  }
-
-  /// Minimum distance (in metres) from the current position to any segment
-  /// of the selected [Route]. Returns null if no route is selected.
-  double? _offRouteDistance(Waypoint pos) {
-    final route = _route;
-    if (route == null || route.waypoints.length < 2) return null;
-
-    // Search from the monotonic floor (see [_minMatchedSegmentIdx]) so the
-    // off-route distance reflects the same already-passed-segments view as
-    // [_routeProgress]; reading the floor without advancing it (this helper
-    // measures off-route distance, it doesn't own progress).
-    final searchStart = _minMatchedSegmentIdx.clamp(1, route.waypoints.length - 1);
-    double minDist = double.infinity;
-    for (int i = searchStart; i < route.waypoints.length; i++) {
-      final a = route.waypoints[i - 1];
-      final b = route.waypoints[i];
-      final d = _distanceToSegmentMetres(pos.lat, pos.lng, a.lat, a.lng, b.lat, b.lng);
-      if (d < minDist) minDist = d;
-    }
-    // Same seed-untouched case as [_routeProgress]; the two must agree.
-    if (!minDist.isFinite) return null;
-    return minDist;
-  }
-
-  /// Shortest distance in metres from point P to segment A-B using equirectangular
-  /// projection (accurate enough for short running-route segments).
-  static double _distanceToSegmentMetres(
-      double pLat, double pLng, double aLat, double aLng, double bLat, double bLng) {
-    // Convert to metres using equirectangular projection centered on A
-    const metresPerDegreeLat = 111320.0;
-    final metresPerDegreeLng = 111320.0 * cos(_toRad(aLat));
-
-    final px = (pLng - aLng) * metresPerDegreeLng;
-    final py = (pLat - aLat) * metresPerDegreeLat;
-    final bx = (bLng - aLng) * metresPerDegreeLng;
-    final by = (bLat - aLat) * metresPerDegreeLat;
-
-    final lenSq = bx * bx + by * by;
-    if (lenSq == 0) return sqrt(px * px + py * py);
-
-    var t = (px * bx + py * by) / lenSq;
-    t = t.clamp(0.0, 1.0);
-
-    final cx = bx * t;
-    final cy = by * t;
-    final dx = px - cx;
-    final dy = py - cy;
-    return sqrt(dx * dx + dy * dy);
+    return cum;
   }
 
   /// Calculate pace from the last ~200m of track.
@@ -1607,10 +1581,4 @@ class RunRecorder {
     _positionSub = null;
     _controller.close();
   }
-}
-
-class _ProjectionResult {
-  final double distance;
-  final double t;
-  const _ProjectionResult(this.distance, this.t);
 }

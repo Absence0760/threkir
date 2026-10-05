@@ -1346,7 +1346,8 @@ class RunRecorder {
   /// and within it a tie between overlapping legs goes to forward progress,
   /// with a bias capped at [_maxAlongBiasM] so it never outweighs real
   /// distance off the line. When nothing in that window is within
-  /// [_routeMatchReacquireM] the rest of the route ahead is searched, so a
+  /// [_routeMatchReacquireM], or the runner projects past its far end, the rest
+  /// of the route ahead is searched, so a
   /// runner who skips ahead or returns after a signal gap is re-acquired; a
   /// runner still off the line keeps the windowed match, unless there is no
   /// previous match to keep.
@@ -1414,8 +1415,11 @@ class RunRecorder {
     final anchor = min(total, prev + travelled);
     final lo = hasPrev ? max(0.0, prev - _routeMatchBacktrackM) : 0.0;
 
-    ({double along, double offset})? best(double fromM, double toM) {
-      ({double along, double offset})? found;
+    // `pastEnd` marks a match pinned to `toM` while the runner projects
+    // beyond it.
+    ({double along, double offset, bool pastEnd})? best(
+        double fromM, double toM) {
+      ({double along, double offset, bool pastEnd})? found;
       var bestCost = double.infinity;
       for (var i = 0; i < n; i++) {
         final s0 = cum[i];
@@ -1434,19 +1438,21 @@ class RunRecorder {
         final cost = offset + bias + gap.abs() * _alongContinuityPerM;
         if (cost < bestCost) {
           bestCost = cost;
-          found = (along: along, offset: offset);
+          found = (along: along, offset: offset, pastEnd: tFree[i] > t);
         }
       }
       return found;
     }
 
     var match = best(lo, anchor + _routeMatchLookaheadM);
-    if (match == null || match.offset > _routeMatchReacquireM) {
+    if (match == null ||
+        match.offset > _routeMatchReacquireM ||
+        match.pastEnd) {
       final ahead = best(lo, total);
       if (ahead != null &&
           (match == null ||
-              !hasPrev ||
-              ahead.offset <= _routeMatchReacquireM)) {
+              (ahead.offset < match.offset &&
+                  (!hasPrev || ahead.offset <= _routeMatchReacquireM)))) {
         match = ahead;
       }
     }

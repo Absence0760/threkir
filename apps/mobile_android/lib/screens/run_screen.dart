@@ -8,6 +8,7 @@ import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart'
     show ActivityType, DistanceUnit, PlanWorkoutRow, TrainingPlanRow;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderProxyBox;
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
@@ -696,9 +697,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   // Active-plan overview; drives the today's-workout card on idle.
   ActivePlanOverview? _planOverview;
 
-  // Measured height of the stats overlay — used to offset the map camera so
-  // the blue dot sits in the visible area above the overlay, not behind it.
-  final GlobalKey _statsOverlayKey = GlobalKey();
+  // Measured height of the stats overlay. Insets the map (camera offset,
+  // attribution, re-centre button) and the utility stack above it, so the
+  // blue dot and the basemap credit sit above the panel, not behind it. The
+  // initial value only lasts until the panel's first layout reports in.
   double _statsOverlayHeight = 300;
 
   // Replaces geolocator's "Run in progress" foreground-service notification
@@ -4803,69 +4805,60 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
           left: 0,
           right: 0,
           bottom: 0,
-          // SizeChangedLayoutNotifier fires precisely when the overlay's
-          // size changes (panel expand/collapse). Scheduling the previous
-          // post-frame measurement from inside build() fired the callback
-          // on every frame of the run — cheap per call, but wasteful given
-          // the panel height stabilises immediately and only changes on
-          // user interaction.
-          child: NotificationListener<SizeChangedLayoutNotification>(
-            onNotification: _onOverlaySizeChanged,
-            child: SizeChangedLayoutNotifier(
-              child: CollapsiblePanel(
-                key: _statsOverlayKey,
-                // The collapsed bar only shows elapsed time; listen to the
-                // notifier so the clock ticks without rebuilding the
-                // enclosing Stack.
-                collapsedChild: ValueListenableBuilder<_LiveStats>(
-                  valueListenable: _statsNotifier,
-                  builder: (context, _, __) => _CollapsedStatsBar(
-                    time: _formattedTime,
-                    onHoldComplete: _stop,
-                  ),
+          child: _LaidOutSizeReporter(
+            onSize: _onStatsOverlaySized,
+            child: CollapsiblePanel(
+              // The collapsed bar only shows elapsed time; listen to the
+              // notifier so the clock ticks without rebuilding the
+              // enclosing Stack.
+              collapsedChild: ValueListenableBuilder<_LiveStats>(
+                valueListenable: _statsNotifier,
+                builder: (context, _, _) => _CollapsedStatsBar(
+                  time: _formattedTime,
+                  onHoldComplete: _stop,
                 ),
-                // Expanded panel reads every stat — wrap once so the whole
-                // body rebuilds on each snapshot, but the map, chips, and
-                // banners above do not.
-                expandedChild: ValueListenableBuilder<_LiveStats>(
-                  valueListenable: _statsNotifier,
-                  builder: (context, _, __) => _StatsOverlay(
-                    time: _formattedTime,
-                    distanceValue: _formattedDistanceValue,
-                    distanceUnit: UnitFormat.distanceLabel(_unit),
-                    primaryValue: _activityType.usesSpeed
-                        ? UnitFormat.speed(_pace, _unit)
-                        : _formattedPaceValue,
-                    primaryUnit: _activityType.usesSpeed
-                        ? UnitFormat.speedLabel(_unit)
-                        : UnitFormat.paceLabel(_unit),
-                    primaryLabel: _activityType.usesSpeed
-                        ? l10n.runStatSpeed
-                        : l10n.runStatPace,
-                    secondaryValue: _activityType.usesSpeed
-                        ? _formattedAvgSpeedValue
-                        : _formattedAvgPaceValue,
-                    secondaryLabel: _activityType.usesSpeed
-                        ? l10n.runStatAvgSpeed
-                        : l10n.runStatAvgPace,
-                    calories: _formattedCalories,
-                    elevation: _formattedElevation,
-                    steps: '$_steps',
-                    cadence: '$_cadence',
-                    bpm: _currentBpm,
-                    lapCount: _lapCount,
-                    paused: _manualPaused,
-                    onHoldComplete: _stop,
-                    onDiscard: _confirmDiscardMidRun,
-                    onPauseToggle: _toggleManualPause,
-                    onLap: _markLap,
-                    paceCuesActive: !_activityType.usesSpeed &&
-                        widget.preferences.audioCues &&
-                        widget.preferences.targetPaceSecPerKm > 0,
-                    paceCuesMuted: _paceCuesMuted,
-                    onTogglePaceMute: () =>
-                        setState(() => _paceCuesMuted = !_paceCuesMuted),
-                  ),
+              ),
+              // Expanded panel reads every stat — wrap once so the whole
+              // body rebuilds on each snapshot, but the map, chips, and
+              // banners above do not.
+              expandedChild: ValueListenableBuilder<_LiveStats>(
+                valueListenable: _statsNotifier,
+                builder: (context, _, _) => _StatsOverlay(
+                  time: _formattedTime,
+                  distanceValue: _formattedDistanceValue,
+                  distanceUnit: UnitFormat.distanceLabel(_unit),
+                  primaryValue: _activityType.usesSpeed
+                      ? UnitFormat.speed(_pace, _unit)
+                      : _formattedPaceValue,
+                  primaryUnit: _activityType.usesSpeed
+                      ? UnitFormat.speedLabel(_unit)
+                      : UnitFormat.paceLabel(_unit),
+                  primaryLabel: _activityType.usesSpeed
+                      ? l10n.runStatSpeed
+                      : l10n.runStatPace,
+                  secondaryValue: _activityType.usesSpeed
+                      ? _formattedAvgSpeedValue
+                      : _formattedAvgPaceValue,
+                  secondaryLabel: _activityType.usesSpeed
+                      ? l10n.runStatAvgSpeed
+                      : l10n.runStatAvgPace,
+                  calories: _formattedCalories,
+                  elevation: _formattedElevation,
+                  steps: '$_steps',
+                  cadence: '$_cadence',
+                  bpm: _currentBpm,
+                  lapCount: _lapCount,
+                  paused: _manualPaused,
+                  onHoldComplete: _stop,
+                  onDiscard: _confirmDiscardMidRun,
+                  onPauseToggle: _toggleManualPause,
+                  onLap: _markLap,
+                  paceCuesActive: !_activityType.usesSpeed &&
+                      widget.preferences.audioCues &&
+                      widget.preferences.targetPaceSecPerKm > 0,
+                  paceCuesMuted: _paceCuesMuted,
+                  onTogglePaceMute: () =>
+                      setState(() => _paceCuesMuted = !_paceCuesMuted),
                 ),
               ),
             ),
@@ -4876,28 +4869,15 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     );
   }
 
-  /// Remeasure the stats overlay after the collapsible panel has changed
-  /// size. Cheaper than the previous per-frame post-frame callback because
-  /// SizeChangedLayoutNotification only dispatches on real layout changes.
-  ///
-  /// SizeChangedLayoutNotification dispatches synchronously from inside
-  /// `_RenderSizeChangedWithCallback.performLayout`, so we're still in the
-  /// layout phase when this fires. Calling `setState` directly throws a
-  /// "Build scheduled during frame" assertion (and was reproducing during
-  /// hold-to-stop on the collapsed bar — the per-tick progress-ring
-  /// rebuild triggered a panel relayout). Defer the state change to a
-  /// post-frame callback so the rebuild lands cleanly in the next frame.
-  bool _onOverlaySizeChanged(SizeChangedLayoutNotification _) {
-    final box =
-        _statsOverlayKey.currentContext?.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) return false;
-    final h = box.size.height;
-    if ((h - _statsOverlayHeight).abs() > 1) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _statsOverlayHeight = h);
-      });
-    }
-    return false;
+  /// Adopts the stats panel's laid-out height. Fires from inside layout, so
+  /// a direct `setState` would assert "Build scheduled during frame"; the
+  /// change lands in a post-frame callback instead.
+  void _onStatsOverlaySized(Size size) {
+    final h = size.height;
+    if ((h - _statsOverlayHeight).abs() <= 1) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _statsOverlayHeight = h);
+    });
   }
 
   /// The treadmill live-mode toggle card shown over the recording view.
@@ -5613,6 +5593,42 @@ class _LiveStats {
     offRouteDistance: null,
     routeRemaining: null,
   );
+}
+
+/// Reports its child's size after every layout that changes it, the FIRST
+/// layout included. `SizeChangedLayoutNotifier` skips the first, and the
+/// stats panel usually never changes size after it, so a run was left with
+/// a guessed inset that hid the map credit behind the panel.
+class _LaidOutSizeReporter extends SingleChildRenderObjectWidget {
+  const _LaidOutSizeReporter({required this.onSize, required super.child});
+
+  final ValueChanged<Size> onSize;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderLaidOutSizeReporter(onSize);
+
+  @override
+  void updateRenderObject(
+      BuildContext context, _RenderLaidOutSizeReporter renderObject) {
+    renderObject.onSize = onSize;
+  }
+}
+
+class _RenderLaidOutSizeReporter extends RenderProxyBox {
+  _RenderLaidOutSizeReporter(this.onSize);
+
+  ValueChanged<Size> onSize;
+  Size? _reported;
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    if (size != _reported) {
+      _reported = size;
+      onSize(size);
+    }
+  }
 }
 
 /// Minimal stats bar shown when the overlay is collapsed. Keeps time visible

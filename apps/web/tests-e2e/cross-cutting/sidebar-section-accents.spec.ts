@@ -125,9 +125,16 @@ test.describe('sidebar section accents', () => {
 		await navSettled(page);
 		const light = await glyphColours(page);
 
-		await page.evaluate(() => {
+		// The glyph inherits its colour from .nav-icon-wrap, which transitions
+		// `color`, so a read straight after the flip returns the light value
+		// mid-transition. Wait for the sidebar's transitions to finish first.
+		await page.evaluate(async () => {
 			window.localStorage.setItem('run_app.theme', 'dark');
 			document.documentElement.dataset.theme = 'dark';
+			const nav = document.querySelector('nav.sidebar');
+			if (!nav) return;
+			for (const el of nav.querySelectorAll('.nav-icon')) void getComputedStyle(el).color;
+			await Promise.all(nav.getAnimations({ subtree: true }).map((a) => a.finished));
 		});
 		const dark = await glyphColours(page);
 

@@ -1295,7 +1295,7 @@ single-round-trip convenience for dashboard cards.
 An earlier revision of this section claimed the view backed "the `weekly_mileage` RPC and the dashboard's 'This Week' card". **Neither was ever true.** For the record, so nobody re-derives the same wrong picture:
 
 - `weekly_mileage(weeks_back)` aggregates `runs` directly under `user_id = auth.uid()` (`20260406_001`, re-emitted with a pinned `search_path` in `20260710_001`). It never referenced the view — and has no caller of its own on any client.
-- The dashboard's weekly chart calls `fetchWeeklyMileage`, which selects a bounded 14-week `(started_at, distance_m)` window off `runs_user_started_at` and buckets it in TypeScript (`bucketWeeklyMileage`). The `ThisWeekStrip` ribbon is fed runs already in memory. Both bucket at the runner's **local** midnight and honour the `week_start_day` preference, which is precisely what the view's `date_trunc('week', ...)` could not do.
+- The dashboard's weekly chart issues no read of its own: it buckets the runs `fetchRunsForDashboard` already holds (a ~2-year window off `runs_user_started_at`) in TypeScript (`bucketWeeklyMileage`), as the `ThisWeekStrip` ribbon and the "This Week" tile do. All three bucket at the runner's **local** midnight on the `week_start_day` preference via `weekStartLocal`, which is precisely what the view's `date_trunc('week', ...)` could not do. (The chart used to be a separate 14-week `fetchWeeklyMileage` read, removed because it ran before the preference had loaded.)
 
 If a genuinely hot weekly aggregate ever appears, it wants a view keyed per user timezone and week-start preference — a different object, not this one revived.
 

@@ -24,6 +24,9 @@ import '../lib/screens/run_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import '../lib/turn_cues.dart';
+import '../lib/widgets/collapsible_panel.dart';
+import '../lib/widgets/live_run_map.dart';
+import '../lib/widgets/map_attribution.dart';
 import 'pump_until.dart';
 
 /// Drives the full RunScreen UI flow: tap START → countdown → recording.
@@ -502,6 +505,60 @@ void main() {
           .toList();
       expect(mapAfterBegin, isNotEmpty,
           reason: 'LiveRunMap should mount once recording begins');
+    });
+
+    Future<void> startRecording(WidgetTester tester) async {
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      // The map only draws (and so only credits itself) once it has a fix.
+      geolocator.emit(_pos(metresEast: 0, secondsFromStart: 0));
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException();
+    }
+
+    // The panel lays out once and then sits still for the whole run, so
+    // its first layout is the only measurement most runs ever get.
+    void expectMapOverlaysClearPanel(WidgetTester tester, String when) {
+      final panelTop = tester.getRect(find.byType(CollapsiblePanel)).top;
+      final panelHeight = tester.getSize(find.byType(CollapsiblePanel)).height;
+      final chip = tester.getRect(find
+          .descendant(
+            of: find.byType(MapAttribution),
+            matching: find.byType(DecoratedBox),
+          )
+          .first);
+      expect(chip.bottom, lessThanOrEqualTo(panelTop),
+          reason: 'the map credit must sit fully above the stats panel $when '
+              '(chip bottom ${chip.bottom}, panel top $panelTop)');
+      final map = tester.widget<LiveRunMap>(find.byType(LiveRunMap));
+      expect(map.bottomPadding, closeTo(panelHeight, 1),
+          reason: 'the map is inset by the panel\'s real height $when');
+    }
+
+    testWidgets(
+        'the map credit clears the stats panel from the first recording frame',
+        (tester) async {
+      await pumpRunScreen(tester);
+      await startRecording(tester);
+      expectMapOverlaysClearPanel(tester, 'on the first frame');
+
+      await tester.tap(find.bySemanticsLabel('Collapse stats panel'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+      expectMapOverlaysClearPanel(tester, 'once collapsed');
+
+      await tester.tap(find.bySemanticsLabel('Expand stats panel'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+      expectMapOverlaysClearPanel(tester, 'once expanded again');
     });
 
     testWidgets('pace-cue mute toggle appears when a pace target is set and silences cues',

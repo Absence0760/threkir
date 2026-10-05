@@ -727,26 +727,25 @@ void main() {
       );
     });
 
-    test('_onOverlaySizeChanged defers setState to a post-frame callback', () {
-      // Reason: SizeChangedLayoutNotification dispatches *synchronously*
-      // from inside `_RenderSizeChangedWithCallback.performLayout` —
-      // we're still in the layout phase when the notification fires.
-      // Calling `setState` directly from here throws a "Build scheduled
-      // during frame" assertion. Repro: hold the stop button on the
-      // collapsed bar; the per-tick progress-ring rebuild triggers a
-      // panel relayout which fires the size notifier mid-layout.
-      // Schedule the state change for the next frame instead.
+    test('_onStatsOverlaySized defers setState to a post-frame callback', () {
+      // Reason: the panel's size is reported synchronously from inside
+      // `_RenderLaidOutSizeReporter.performLayout` — we're still in the
+      // layout phase when the callback fires. Calling `setState` directly
+      // from here throws a "Build scheduled during frame" assertion.
+      // Repro: hold the stop button on the collapsed bar; the per-tick
+      // progress-ring rebuild triggers a panel relayout which reports a
+      // size mid-layout. Schedule the state change for the next frame.
       final body = _extractMethodBody(
         source,
-        r'bool _onOverlaySizeChanged\(SizeChangedLayoutNotification _\)\s*\{',
+        r'void _onStatsOverlaySized\(Size size\)\s*\{',
       );
       expect(
         body,
         contains('addPostFrameCallback'),
-        reason: '_onOverlaySizeChanged must wrap its setState in '
+        reason: '_onStatsOverlaySized must wrap its setState in '
             'WidgetsBinding.instance.addPostFrameCallback so the '
             'rebuild lands in the next frame, not during the layout '
-            'pass that fired the notification.',
+            'pass that reported the size.',
       );
     });
 

@@ -632,5 +632,15 @@ void main() {
           travelledM: double.nan)!;
       expect(p.alongM, lessThan(5));
     });
+
+    test('with no previous reading, a fix off the line takes its nearest point',
+        () {
+      // Starting a recording 100 m beside the middle of the route: there is no
+      // earlier match to hold on to, so the window at the start does not win.
+      final line = [en(0, 0), en(2000, 0)];
+      final p = progressAlongRoute(at(900, 100), line, null)!;
+      expect(p.alongM, closeTo(900, 1));
+      expect(p.offRouteM, closeTo(100, 1));
+    });
   });
 }

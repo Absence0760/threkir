@@ -119,7 +119,8 @@ class RouteProgress {
 /// When nothing in that window is within [_routeMatchReacquireM], the rest of
 /// the route ahead is searched, so a runner who skips ahead or returns after a
 /// signal gap is re-acquired; a runner still off the line keeps the windowed
-/// match.
+/// match, unless there is no previous reading to keep, when the nearest point
+/// is taken.
 ///
 /// Each segment is projected in its own local planar frame, anchored at that
 /// segment's start, but candidates are ranked by the great-circle distance to
@@ -216,7 +217,9 @@ RouteProgress? progressAlongRoute(
   if (match == null || match.offsetM > _routeMatchReacquireM) {
     final ahead = best(lo, total);
     if (ahead != null &&
-        (match == null || ahead.offsetM <= _routeMatchReacquireM)) {
+        (match == null ||
+            !hasPrev ||
+            ahead.offsetM <= _routeMatchReacquireM)) {
       match = ahead;
     }
   }

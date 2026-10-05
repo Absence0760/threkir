@@ -23,6 +23,7 @@ import '../lib/settings_destination.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import '../lib/screens/gym_screen.dart';
+import '../lib/fab_clearance.dart';
 import '../lib/screens/home_screen.dart';
 import '../lib/screens/nutrition_screen.dart';
 import '../lib/screens/run_screen.dart';
@@ -491,29 +492,18 @@ void main() {
     });
   });
 
-  group('Log FAB during recording', () {
-    testWidgets('idle: the docked Log button and its caption show',
-        (tester) async {
-      final s = await _makeStores();
-      await _pump(tester, s);
-      expect(find.byType(FloatingActionButton), findsOneWidget);
-      expect(find.text('Log'), findsOneWidget);
-    });
-
+  group('docked Log FAB clearance', () {
     testWidgets(
-        'recording: the Log button and caption step aside so they cannot '
-        'cover the Stop row', (tester) async {
+        'the phone shell keeps the Log button and tells its pages how far '
+        'it rises into them', (tester) async {
       final s = await _makeStores();
       await _pump(tester, s);
       runRecordingActive.value = true;
       await tester.pump();
-      expect(find.byType(FloatingActionButton), findsNothing);
-      expect(find.text('Log'), findsNothing);
-
-      runRecordingActive.value = false;
-      await tester.pump();
       expect(find.byType(FloatingActionButton), findsOneWidget,
-          reason: 'the button comes back once the run ends');
+          reason: 'the Log button stays available during a run');
+      final inset = tester.widget<DockedFabInset>(find.byType(DockedFabInset));
+      expect(inset.height, kDockedFabOverhang);
     });
   });
 

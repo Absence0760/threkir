@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/fab_clearance.dart';
 import '../lib/widgets/collapsible_panel.dart';
 
 Future<void> _pump(
@@ -29,7 +30,38 @@ Future<void> _pump(
   );
 }
 
+/// Bottom edge of the panel's content, with the panel pinned to the bottom of
+/// the body as the run screen pins it, optionally under a docked FAB.
+Future<double> _contentBottom(WidgetTester tester, {double? fabInset}) async {
+  Widget panel = const Align(
+    alignment: Alignment.bottomCenter,
+    child: CollapsiblePanel(
+      expandedChild: Text('expanded content'),
+      collapsedChild: Text('collapsed content'),
+    ),
+  );
+  if (fabInset != null) panel = DockedFabInset(height: fabInset, child: panel);
+  await tester.pumpWidget(MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: Scaffold(body: panel),
+  ));
+  await tester.pumpAndSettle();
+  return tester.getBottomLeft(find.text('expanded content')).dy;
+}
+
 void main() {
+  group('CollapsiblePanel under a docked FAB', () {
+    testWidgets('lifts its content clear of the FAB overhang', (tester) async {
+      final bare = await _contentBottom(tester);
+      final docked =
+          await _contentBottom(tester, fabInset: kDockedFabOverhang);
+      expect(bare - docked, kDockedFabOverhang,
+          reason: 'the bottom row (the recorder\'s Stop + "Hold to stop") '
+              'must sit above the docked Log FAB, not under it');
+    });
+  });
+
   group('CollapsiblePanel', () {
     testWidgets('shows expandedChild when initiallyExpanded is true',
         (tester) async {

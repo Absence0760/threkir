@@ -421,13 +421,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// [LiveCutoffStatus.unknown]) rather than fabricating an ETA off an old fix.
   LiveCutoffEta? _cutoffEta(_LiveStats stats, bool stale) {
     if (_cutoffLegs.isEmpty) return null;
-    final pos = stats.routePosition;
-    final route = _selectedRoute;
-    if (pos == null || route == null) return null;
+    final distAlong = stats.routeAlong;
+    if (distAlong == null) return null;
     try {
-      final distAlong =
-          distanceAlongRoute((lat: pos.lat, lng: pos.lng), route.waypoints);
-      if (distAlong == null) return null;
       final eta = nextCutoffEta(
         distAlongRouteM: distAlong,
         elapsedS: stats.elapsed.inSeconds.toDouble(),
@@ -468,11 +464,14 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   double? _pace;
   List<cm.Waypoint> _track = [];
   cm.Waypoint? _currentPosition;
-  // Last fix the recorder's distance chain accepted. Everything that maps a
-  // position onto the followed route (turn cues, marker-target cues, the
-  // cut-off ETA) reads this rather than the raw `_currentPosition`, which
-  // deliberately carries rejected fixes so the blue dot keeps up.
-  cm.Waypoint? _routePosition;
+  // Where the recorder matched the runner on the followed route, metres from
+  // its start. Everything that places the runner on the route (turn cues,
+  // marker-target cues, the cut-off ETA) reads this rather than re-projecting
+  // a position onto the whole line: the recorder remembers the previous match,
+  // so a loop's start is not its finish and an out-and-back's return leg is
+  // not its outbound one, and it only moves on a fix the distance chain
+  // accepted.
+  double? _routeAlong;
   int _lastTickNotified = 0;
   final ValueNotifier<_LiveStats> _statsNotifier =
       ValueNotifier(_LiveStats.empty);
@@ -2441,14 +2440,6 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       }
       final positionFresh = fixedAt != null &&
           DateTime.now().difference(fixedAt) <= _gpsLostThreshold;
-      // Route progress must only ever advance on a fix the recorder's
-      // distance chain ACCEPTED. A rejected teleport still drives the blue
-      // dot, but feeding it to distanceAlongRoute latches every course
-      // marker it skipped over — permanently, since the announced set is
-      // never un-latched.
-      if (snapshot.currentPosition != null && snapshot.positionTrusted) {
-        _routePosition = snapshot.currentPosition;
-      }
 
       // Extend the elevation-gain accumulator with any new waypoints. The
       // recorder only appends to the track (no reordering / truncation
@@ -2478,6 +2469,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       _currentPosition = snapshot.currentPosition;
       _offRouteDistance = snapshot.offRouteDistanceMetres;
       _routeRemaining = snapshot.routeRemainingMetres;
+      _routeAlong = snapshot.routeAlongMetres;
       // Mirror only — the visible banner flips through _checkGpsHealth's
       // setState (2 s cadence) so the GPS-rate snapshot stream never drives
       // a full-screen rebuild.
@@ -2488,7 +2480,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         pace: _pace,
         track: _track,
         currentPosition: _currentPosition,
-        routePosition: _routePosition,
+        routeAlong: _routeAlong,
         offRouteDistance: _offRouteDistance,
         routeRemaining: _routeRemaining,
       );
@@ -2635,38 +2627,30 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         debugPrint('off-route escalation check failed: $e');
       }
 
-      // L4 — Turn-by-turn voice cue. Pure geometry (distanceAlongRoute +
-      // the turn-cue announcer) decides which cue to fire; the spoken cue
+      // L4 — Turn-by-turn voice cue. The recorder's route match + the
+      // turn-cue announcer decide which cue to fire; the spoken cue
       // goes through the best-effort _ttsCue wrapper so a TTS failure never
       // disturbs the recording (decisions §169).
       try {
         final announcer = _turnAnnouncer;
-        final pos = _routePosition;
-        final route = _selectedRoute;
+        final along = _routeAlong;
         if (announcer != null &&
-            pos != null &&
-            route != null &&
+            along != null &&
             widget.preferences.audioCues &&
             widget.preferences.turnByTurnCues) {
-          final along = distanceAlongRoute(
-            (lat: pos.lat, lng: pos.lng),
-            route.waypoints,
-          );
-          if (along != null) {
-            final a = announcer.announcementFor(along);
-            if (a != null) {
-              // The runner's real distance to the turn, not the band that
-              // triggered the cue — the band is a coarse trigger.
-              final distanceStr =
-                  a.isNow ? null : UnitFormat.distance(a.aheadM, unit);
-              _ttsCue(
-                'announceTurn',
-                () => widget.audioCues.announceTurn(
-                  a.cue.direction,
-                  distance: distanceStr,
-                ),
-              );
-            }
+          final a = announcer.announcementFor(along);
+          if (a != null) {
+            // The runner's real distance to the turn, not the band that
+            // triggered the cue — the band is a coarse trigger.
+            final distanceStr =
+                a.isNow ? null : UnitFormat.distance(a.aheadM, unit);
+            _ttsCue(
+              'announceTurn',
+              () => widget.audioCues.announceTurn(
+                a.cue.direction,
+                distance: distanceStr,
+              ),
+            );
           }
         }
       } catch (e) {
@@ -2833,36 +2817,28 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       // the cue on mid-run (locally or via a settings-sync pull) can't
       // burst-announce every marker passed while it was off.
       try {
-        final route = _selectedRoute;
-        final pos = _routePosition;
-        if (_targetMarkers.isNotEmpty && route != null && pos != null) {
-          final along = distanceAlongRoute(
-            (lat: pos.lat, lng: pos.lng),
-            route.waypoints,
-          );
-          if (along != null) {
-            final last = _lastAlongM;
-            _lastAlongM = along;
-            if (last != null &&
-                along > last &&
-                widget.preferences.audioCues &&
-                widget.preferences.voiceCueEnabled(VoiceCue.markerTargets)) {
-              for (var i = 0; i < _targetMarkers.length; i++) {
-                final m = _targetMarkers[i];
-                if (m.positionM > last &&
-                    m.positionM <= along &&
-                    _announcedTargetMarkers.add(i)) {
-                  final deltaS = m.targetS - _elapsed.inSeconds;
-                  final label = m.label.isNotEmpty
-                      ? m.label
-                      : _markerKindLabel(m.kind);
-                  _ttsCue(
-                      'announceMarkerTarget',
-                      () => widget.audioCues.announceMarkerTarget(
-                            label: label,
-                            deltaS: deltaS,
-                          ));
-                }
+        final along = _routeAlong;
+        if (_targetMarkers.isNotEmpty && along != null) {
+          final last = _lastAlongM;
+          _lastAlongM = along;
+          if (last != null &&
+              along > last &&
+              widget.preferences.audioCues &&
+              widget.preferences.voiceCueEnabled(VoiceCue.markerTargets)) {
+            for (var i = 0; i < _targetMarkers.length; i++) {
+              final m = _targetMarkers[i];
+              if (m.positionM > last &&
+                  m.positionM <= along &&
+                  _announcedTargetMarkers.add(i)) {
+                final deltaS = m.targetS - _elapsed.inSeconds;
+                final label =
+                    m.label.isNotEmpty ? m.label : _markerKindLabel(m.kind);
+                _ttsCue(
+                    'announceMarkerTarget',
+                    () => widget.audioCues.announceMarkerTarget(
+                          label: label,
+                          deltaS: deltaS,
+                        ));
               }
             }
           }
@@ -3698,7 +3674,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       _pace = null;
       _track = [];
       _currentPosition = null;
-      _routePosition = null;
+      _routeAlong = null;
       _lastTickNotified = 0;
       _steps = 0;
       _startSteps = 0;
@@ -5586,9 +5562,10 @@ class _LiveStats {
   final List<cm.Waypoint> track;
   final cm.Waypoint? currentPosition;
 
-  /// Last fix the recorder ACCEPTED — the only position route-relative math
-  /// may use. [currentPosition] can be a rejected teleport.
-  final cm.Waypoint? routePosition;
+  /// Where the recorder matched the runner on the followed route, metres from
+  /// its start. [currentPosition] can be a rejected teleport; this only moves
+  /// on a fix the distance chain accepted.
+  final double? routeAlong;
   final double? offRouteDistance;
   final double? routeRemaining;
 
@@ -5598,7 +5575,7 @@ class _LiveStats {
     required this.pace,
     required this.track,
     required this.currentPosition,
-    required this.routePosition,
+    required this.routeAlong,
     required this.offRouteDistance,
     required this.routeRemaining,
   });
@@ -5609,7 +5586,7 @@ class _LiveStats {
     pace: null,
     track: [],
     currentPosition: null,
-    routePosition: null,
+    routeAlong: null,
     offRouteDistance: null,
     routeRemaining: null,
   );

@@ -67,6 +67,10 @@ const ASSET_KB = [
  *   assets?: {path: string, kb: number}[],
  * }} [opts]
  */
+// Code growth between the 2026-08-28 base (1934 KB) and the 2026-10-05
+// measurement (2122 KB) the shipped ceiling is set against.
+const GROWN_SINCE_BASE = { path: '_app/immutable/chunks/grown-since-base.js', kb: 188 };
+
 function fixture({ extraCatalogues = {}, extraCode = [], assets = ASSET_KB } = {}) {
 	/** @type {Map<string, string>} */
 	const catalogues = new Map();
@@ -130,10 +134,12 @@ test('a rogue dep the retired total ceiling had room for trips the code budget',
 			'were the cover the dep hid behind',
 	);
 
-	const { errors } = checkBudgets(rogue);
+	const { errors } = checkBudgets(
+		fixture({ extraCode: [GROWN_SINCE_BASE, ...rogue.files.filter((f) => f.path.endsWith('rogue-dep.js'))] }),
+	);
 	assert.equal(errors.length, 1);
 	assert.equal(errors[0].budget, 'code');
-	assert.match(errors[0].message, /code is 2134 KB gzipped, over the 2120 KB ceiling by 14 KB/);
+	assert.match(errors[0].message, /code is 2322 KB gzipped, over the 2308 KB ceiling by 14 KB/);
 	assert.match(
 		errors[0].message,
 		/a new locale cannot have caused it/,
@@ -264,7 +270,7 @@ test('gzipKb rounds a part-kilobyte up', () => {
 
 test('the summary states the catalogue total without gating on it', () => {
 	const text = renderSummary(checkBudgets(fixture()).summary);
-	assert.match(text, /Code \(every reader, any language\) \| 1934 KB across 9 files \| 2120 KB/);
+	assert.match(text, /Code \(every reader, any language\) \| 1934 KB across 9 files \| 2308 KB/);
 	assert.match(text, /Largest message catalogue \(ja\) \| 91 KB \| 115 KB, per catalogue/);
 	assert.match(text, /ungated in total \(522 KB across 6, one fetched per reader\)/);
 	assert.match(text, /Largest single asset[^|]*\| 74 KB \| 100 KB, per asset/);
@@ -272,7 +278,7 @@ test('the summary states the catalogue total without gating on it', () => {
 });
 
 test('the shipped ceilings are the ones this suite reasons about', () => {
-	assert.equal(MAX_CODE_KB, 2120);
+	assert.equal(MAX_CODE_KB, 2308);
 	assert.equal(MAX_CATALOGUE_KB, 115);
 	assert.equal(MAX_LARGEST_CHUNK_KB, 350);
 	assert.equal(MAX_ASSET_KB, 100);

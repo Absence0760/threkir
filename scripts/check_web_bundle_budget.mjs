@@ -83,7 +83,15 @@
 // but the next dep of any size will fire it, and the route-scoped-catalogue
 // work below is what would give it room back (the English catalogue is inside
 // this population, by design, and grew with the rest).
-// MAX_CODE_KB is 2120: ~9.6% headroom over 1934, the same convention the four
+// Re-measured 2026-10-05 in CI (the batch PR that landed web modality
+// visibility, the shared week-start helper and basemap-aware thumbnails):
+//   code 2122 KB, largest code chunk 277 KB; the English catalogue moved
+//   0.24 KB of that, so the growth is feature code, not a dependency.
+// MAX_CODE_KB is 2308: 2122 plus the same 186 KB of cover the 1934 base was
+// given. The cover is the invariant, not the percentage: ~9.6% of 2122 would
+// be 204 KB, enough to wave through the 200 KB rogue dep the suite pins. The
+// route-scoped-catalogue work remains what would give this population room.
+// It was 2120: ~9.6% headroom over 1934, the same convention the four
 // bumps this file replaces used (2026-06-10, 06-20, 07-11, 07-27), now applied
 // to a base that no longer carries 522 KB no browser fetches together. Against
 // the old rule that is 238 KB of cover for a rogue dep cut to 186 KB, and —
@@ -143,7 +151,7 @@ export const CLIENT_MANIFEST = join(
 );
 export const LOCALES_DIR = join(WEB_DIR, 'src', 'lib', 'i18n', 'locales');
 
-export const MAX_CODE_KB = 2120;
+export const MAX_CODE_KB = 2308;
 export const MAX_CATALOGUE_KB = 115;
 export const MAX_LARGEST_CHUNK_KB = 350;
 export const MAX_ASSET_KB = 100;

@@ -491,6 +491,32 @@ void main() {
     });
   });
 
+  group('Log FAB during recording', () {
+    testWidgets('idle: the docked Log button and its caption show',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+      expect(find.text('Log'), findsOneWidget);
+    });
+
+    testWidgets(
+        'recording: the Log button and caption step aside so they cannot '
+        'cover the Stop row', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      runRecordingActive.value = true;
+      await tester.pump();
+      expect(find.byType(FloatingActionButton), findsNothing);
+      expect(find.text('Log'), findsNothing);
+
+      runRecordingActive.value = false;
+      await tester.pump();
+      expect(find.byType(FloatingActionButton), findsOneWidget,
+          reason: 'the button comes back once the run ends');
+    });
+  });
+
   group('system back walks toward Home and guards a live run', () {
     /// Records the one platform call that closes the app, so a test can tell
     /// "back navigated" from "back exited" — which is the whole distinction

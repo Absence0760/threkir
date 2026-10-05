@@ -876,7 +876,17 @@ class _HomeScreenState extends State<HomeScreen>
     }
     return _backGuard(Scaffold(
       body: body,
-      floatingActionButton: _logFab(),
+      // The docked Log FAB rises half its height above the bar, which on the
+      // Run page lands on the recorder's Stop row and covers its "Hold to
+      // stop" caption — a Log tap one thumb-width from Stop, mid-run. Nothing
+      // in the Log menu belongs to a live run, so the button (and its caption
+      // below) step aside until the run ends; a manual pause still counts as
+      // recording.
+      floatingActionButton: ValueListenableBuilder<bool>(
+        valueListenable: runRecordingActive,
+        builder: (context, recording, _) =>
+            recording ? const SizedBox.shrink() : _logFab(),
+      ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: ValueListenableBuilder<int>(
         valueListenable: _currentIndex,
@@ -905,7 +915,15 @@ class _HomeScreenState extends State<HomeScreen>
                 // The docked centre Log FAB fills this 56 dp slot; the caption
                 // gives the centre action a visible text label like every other
                 // nav destination, so it isn't the one unlabelled "+" (#256).
-                SizedBox(width: 56, child: _CentreLogLabel(label: l10n.navLog)),
+                SizedBox(
+                  width: 56,
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: runRecordingActive,
+                    builder: (context, recording, _) => recording
+                        ? const SizedBox.shrink()
+                        : _CentreLogLabel(label: l10n.navLog),
+                  ),
+                ),
                 _BottomNavItem(
                   icon: Icons.public,
                   label: l10n.navSocial,

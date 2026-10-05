@@ -37,7 +37,7 @@ Last moved: **2026-09-21**.
 | 1 | Team ID + renewal reminder | Bitwarden | ☐ |
 | 2 | App Groups `group.com.threkir.app.activerun` + `group.com.threkir.app.share` | Apple portal | ☐ |
 | 3 | App IDs `com.threkir.app` + `com.threkir.app.ShareExtension` + `com.threkir.app.RunActivity` | Apple portal | ☐ |
-| 4 | Watch App IDs `com.threkir.app.watchapp` + `com.threkir.app.watchapp.complication` | Apple portal | ☐ |
+| 4 | Watch App IDs `com.threkir.app.watchapp` + `com.threkir.app.watchapp.widget` | Apple portal | ☐ |
 | 5 | Services ID `com.threkir.web` | Apple portal | ☐ |
 | 6 | **APNs key** `.p8` | Firebase → Cloud Messaging | **Done 2026-09-19** |
 | 7 | **Sign-in-with-Apple key** `.p8` | Supabase (via a generated client secret) | **Done 2026-09-19** |
@@ -348,7 +348,10 @@ an App ID of its own too. Same flow again:
 | Field | Value |
 |---|---|
 | Description | `Threkir Watch Complication` |
-| Bundle ID | **Explicit App ID** — `com.threkir.app.watchapp.complication` |
+| Bundle ID | **Explicit App ID** — `com.threkir.app.watchapp.widget` |
+
+The id is `.widget`, not `.complication`: Apple reported `com.threkir.app.watchapp.complication`
+as not available to this team ([decisions § 1739](../architecture/decisions.md)).
 
 Capability: **App Groups** only, assigned to `group.com.threkir.app.activerun`
 in the same second pass. The complication runs in its own process and draws
@@ -695,7 +698,7 @@ re-running this step.
 **Profiles** → **(+)** → under Distribution, **App Store Connect** → App ID
 `com.threkir.app` → the certificate from step 14 → name `Threkir App Store` →
 **Generate** → **Download**. Again for `com.threkir.app.watchapp`, named
-`Threkir Watch App Store`, for `com.threkir.app.watchapp.complication`,
+`Threkir Watch App Store`, for `com.threkir.app.watchapp.widget`,
 named `Threkir Watch Complication App Store`, for
 `com.threkir.app.ShareExtension`, named `Threkir Share Extension App Store`,
 and for `com.threkir.app.RunActivity`, named `Threkir Run Activity App Store`.

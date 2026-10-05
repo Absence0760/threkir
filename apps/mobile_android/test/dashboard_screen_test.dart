@@ -5,6 +5,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show ChartCardHeader;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/age_grade.dart';
 import '../lib/goals.dart';
@@ -1385,11 +1386,18 @@ void main() {
           await tester.pump();
           await tester.pump();
 
+          // "Last run" now wears the shared ChartCardHeader, whose title
+          // wraps inside a full-width Wrap rather than ellipsising (a card
+          // title that truncates stops naming the card). Bounded is the
+          // contract either way: inside the header, within the screen, and
+          // nothing overflowed.
+          final lastRun = find.text('Last run');
           expect(
-            find.ancestor(
-                of: find.text('Last run'), matching: find.byType(Expanded)),
-            findsWidgets,
+            find.ancestor(of: lastRun, matching: find.byType(ChartCardHeader)),
+            findsOneWidget,
           );
+          expect(tester.getRect(lastRun).right, lessThanOrEqualTo(480));
+          expect(tester.takeException(), isNull);
         } finally {
           dir.deleteSync(recursive: true);
         }

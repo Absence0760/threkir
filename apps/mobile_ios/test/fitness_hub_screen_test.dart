@@ -413,6 +413,13 @@ void main() {
       expect(find.byIcon(Icons.cloud_upload), findsNothing);
     });
 
+    testWidgets('Runs standing alone tells a runner with no runs to tap Start '
+        'run, which is what the centre button now says', (tester) async {
+      await pump(tester, storedPrefs: const {});
+      expect(find.textContaining('Tap Start run'), findsOneWidget);
+      expect(find.textContaining('Tap Log'), findsNothing);
+    });
+
     testWidgets('a logged lift keeps Gym, and History with it, without anyone '
         'opening Settings', (tester) async {
       await pump(tester,

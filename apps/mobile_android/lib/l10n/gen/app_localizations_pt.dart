@@ -707,7 +707,28 @@ class AppLocalizationsPt extends AppLocalizations {
   String get logA11yLabel => 'Registar uma atividade';
 
   @override
+  String get navStartRun => 'Correr';
+
+  @override
+  String get logStartRunA11yLabel => 'Iniciar uma corrida';
+
+  @override
+  String get logModalityShownGym => 'O Ginásio passou a ser mostrado';
+
+  @override
+  String get logModalityShownNutrition => 'A Nutrição passou a ser mostrada';
+
+  @override
+  String get navRecording => 'A gravar';
+
+  @override
+  String get logReturnToRunA11yLabel => 'Voltar à sua corrida';
+
+  @override
   String get navFitness => 'Fitness';
+
+  @override
+  String get navTraining => 'Treino';
 
   @override
   String get navYou => 'Tu';
@@ -759,6 +780,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Dicas sobre as suas corridas, ginásio e nutrição';
 
   @override
+  String get homeAskCoachSubtitleRunOnly =>
+      'Dicas sobre as suas corridas, treino e recuperação';
+
+  @override
   String get youProfileTitle => 'O seu perfil';
 
   @override
@@ -779,6 +804,10 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get prefsKeepRunPrimarySubtitle =>
       'Toque no botão central para iniciar uma corrida. Já fica ativo enquanto Ginásio e Nutrição estiverem ocultos; manter premido abre sempre o menu de registo';
+
+  @override
+  String get prefsKeepRunPrimaryForcedSubtitle =>
+      'Ativo enquanto Ginásio e Nutrição estiverem ocultos. Mostre um deles para escolher';
 
   @override
   String get prefsSectionModalities => 'Ginásio e nutrição';
@@ -2233,6 +2262,13 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get historyAddRunTooltip => 'Adicionar uma corrida manualmente';
+
+  @override
+  String get historyAddPastRun => 'Adicionar corrida anterior';
+
+  @override
+  String get historyEmptyBodyRunPrimary =>
+      'Toque em Correr para gravar uma corrida ou adicione uma que já tenha feito';
 
   @override
   String get historyLogTooltip => 'Registar corrida, treino ou refeição';
@@ -15082,7 +15118,28 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get logA11yLabel => 'Registrar uma atividade';
 
   @override
+  String get navStartRun => 'Correr';
+
+  @override
+  String get logStartRunA11yLabel => 'Iniciar uma corrida';
+
+  @override
+  String get logModalityShownGym => 'A Academia passou a ser mostrada';
+
+  @override
+  String get logModalityShownNutrition => 'A Nutrição passou a ser mostrada';
+
+  @override
+  String get navRecording => 'Gravando';
+
+  @override
+  String get logReturnToRunA11yLabel => 'Voltar para sua corrida';
+
+  @override
   String get navFitness => 'Fitness';
+
+  @override
+  String get navTraining => 'Treino';
 
   @override
   String get navYou => 'Você';
@@ -15134,6 +15191,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Dicas sobre suas corridas, academia e nutrição';
 
   @override
+  String get homeAskCoachSubtitleRunOnly =>
+      'Dicas sobre suas corridas, treino e recuperação';
+
+  @override
   String get youProfileTitle => 'Seu perfil';
 
   @override
@@ -15154,6 +15215,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get prefsKeepRunPrimarySubtitle =>
       'Toque no botão central para iniciar uma corrida. Já fica ativo enquanto Academia e Nutrição estiverem ocultas; pressione e segure para sempre abrir o menu de registro';
+
+  @override
+  String get prefsKeepRunPrimaryForcedSubtitle =>
+      'Ativo enquanto Academia e Nutrição estiverem ocultas. Mostre uma delas para escolher';
 
   @override
   String get prefsSectionModalities => 'Academia e nutrição';
@@ -16607,6 +16672,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get historyAddRunTooltip => 'Adicionar uma corrida manualmente';
+
+  @override
+  String get historyAddPastRun => 'Adicionar corrida anterior';
+
+  @override
+  String get historyEmptyBodyRunPrimary =>
+      'Toque em Correr para gravar uma corrida ou adicione uma que você já fez';
 
   @override
   String get historyLogTooltip => 'Registrar corrida, treino ou refeição';

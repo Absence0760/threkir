@@ -243,7 +243,7 @@ void main() {
     // Runs chip → the manual Add-run FAB.
     await tester.tap(find.text('Runs'));
     await tester.pumpAndSettle();
-    expect(find.descendant(of: fab, matching: find.text(l10n.historyAddRun)),
+    expect(find.descendant(of: fab, matching: find.text(l10n.historyAddPastRun)),
         findsOneWidget);
 
     // Lifts chip → adds a lift straight away.
@@ -265,7 +265,7 @@ void main() {
     expect(
         find.descendant(
             of: find.byType(FloatingActionButton),
-            matching: find.text(l10n.historyAddRun)),
+            matching: find.text(l10n.historyAddPastRun)),
         findsOneWidget);
   });
 

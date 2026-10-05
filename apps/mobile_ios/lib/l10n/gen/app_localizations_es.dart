@@ -704,7 +704,28 @@ class AppLocalizationsEs extends AppLocalizations {
   String get logA11yLabel => 'Registrar una actividad';
 
   @override
+  String get navStartRun => 'Correr';
+
+  @override
+  String get logStartRunA11yLabel => 'Iniciar una carrera';
+
+  @override
+  String get logModalityShownGym => 'Ahora se muestra Gimnasio';
+
+  @override
+  String get logModalityShownNutrition => 'Ahora se muestra Nutrición';
+
+  @override
+  String get navRecording => 'Grabando';
+
+  @override
+  String get logReturnToRunA11yLabel => 'Volver a tu carrera';
+
+  @override
   String get navFitness => 'Fitness';
+
+  @override
+  String get navTraining => 'Entrenamiento';
 
   @override
   String get navYou => 'Tú';
@@ -756,6 +777,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Consejos sobre tus carreras, gimnasio y nutrición';
 
   @override
+  String get homeAskCoachSubtitleRunOnly =>
+      'Consejos sobre tus carreras, entrenamiento y recuperación';
+
+  @override
   String get youProfileTitle => 'Tu perfil';
 
   @override
@@ -776,6 +801,10 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get prefsKeepRunPrimarySubtitle =>
       'Toca el botón central para empezar una carrera. Ya está activo mientras Gimnasio y Nutrición estén ocultos; mantén pulsado para abrir siempre el menú de registro';
+
+  @override
+  String get prefsKeepRunPrimaryForcedSubtitle =>
+      'Activo mientras Gimnasio y Nutrición estén ocultos. Muestra uno de los dos para elegir';
 
   @override
   String get prefsSectionModalities => 'Gimnasio y nutrición';
@@ -2232,6 +2261,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get historyAddRunTooltip => 'Añadir una carrera manualmente';
+
+  @override
+  String get historyAddPastRun => 'Añadir carrera pasada';
+
+  @override
+  String get historyEmptyBodyRunPrimary =>
+      'Toca Correr para grabar una carrera o añade una que ya hayas hecho';
 
   @override
   String get historyLogTooltip => 'Registrar una carrera, entreno o comida';

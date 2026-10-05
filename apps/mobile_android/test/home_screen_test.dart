@@ -151,6 +151,13 @@ Future<void> _seedLoggedLift(WidgetTester tester, dynamic s) async {
   });
 }
 
+/// The centre button's `Semantics` wrapper carrying [label] — read off the widget, so the test
+/// needs no semantics tree.
+Finder _semanticsLabelled(String label) => find.ancestor(
+    of: find.byType(FloatingActionButton),
+    matching: find.byWidgetPredicate(
+        (w) => w is Semantics && w.properties.label == label));
+
 class _StampApi extends ApiClient {
   int markOnboardedCalls = 0;
   bool failStamp = false;
@@ -234,6 +241,7 @@ void main() {
         'shows Home/Fitness/Social/You nav labels; Run/History/Settings are not nav labels',
         (tester) async {
       final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
       await _pump(tester, s);
       final bar = find.byType(BottomAppBar);
       for (final label in ['Home', 'Fitness', 'Social', 'You']) {
@@ -254,12 +262,39 @@ void main() {
       }
     });
 
+    testWidgets('with Gym and Nutrition hidden the hub is Training, under a '
+        'runner', (tester) async {
+      // "Fitness" under a dumbbell was chosen because the hub holds gym and
+      // nutrition too (decisions § 139). With both hidden it holds runs,
+      // routes, plans and races, and a runner scanned past a gym icon.
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final bar = find.byType(BottomAppBar);
+      expect(find.descendant(of: bar, matching: find.text('Training')),
+          findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.text('Fitness')),
+          findsNothing);
+      expect(find.descendant(of: bar, matching: find.byIcon(Icons.directions_run)),
+          findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.byIcon(Icons.fitness_center)),
+          findsNothing);
+
+      // Switching a modality on brings Fitness back, without a restart.
+      await s.prefs.setShowNutrition(true);
+      await tester.pump();
+      expect(find.descendant(of: bar, matching: find.text('Fitness')),
+          findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.byIcon(Icons.fitness_center)),
+          findsOneWidget);
+    });
+
     testWidgets('the centre Log action shows a visible text label (#256)',
         (tester) async {
       // Every nav tab carries a text label; the centre Log action used to be
       // an unlabelled "+" FAB with a tooltip only. It now caption's "Log"
       // inside the bar so the affordance is discoverable without a hover.
       final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
       await _pump(tester, s);
       final bar = find.byType(BottomAppBar);
       expect(
@@ -267,6 +302,49 @@ void main() {
         findsOneWidget,
         reason: 'the centre Log action must carry a visible label in the bar',
       );
+      expect(_semanticsLabelled('Log an activity'), findsOneWidget);
+      expect(
+        find.descendant(
+            of: find.byType(FloatingActionButton),
+            matching: find.byIcon(Icons.add)),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('when a tap starts a run, the centre button says so',
+        (tester) async {
+      // "+ Log" read as "add an entry" for a runner whose tap opened the GPS
+      // recorder; they only found out what it did by pressing it.
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final bar = find.byType(BottomAppBar);
+      expect(find.descendant(of: bar, matching: find.text('Start run')),
+          findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.text('Log')), findsNothing);
+      expect(_semanticsLabelled('Start a run'), findsOneWidget);
+      expect(
+        find.descendant(
+            of: find.byType(FloatingActionButton),
+            matching: find.byIcon(Icons.play_arrow)),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('the centre button turns back into Log once a lift exists',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final bar = find.byType(BottomAppBar);
+      expect(find.descendant(of: bar, matching: find.text('Start run')),
+          findsOneWidget);
+
+      await _seedLoggedLift(tester, s);
+      await tester.pump();
+
+      expect(find.descendant(of: bar, matching: find.text('Log')),
+          findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.text('Start run')),
+          findsNothing);
     });
 
     testWidgets('initial page is Home (welcome empty state)', (tester) async {
@@ -295,6 +373,37 @@ void main() {
       expect(find.byType(GymScreen), findsOneWidget);
       // The hub's tab label and the Gym screen's own title.
       expect(find.text('Gym'), findsNWidgets(2));
+      // It changed what the centre button does, so it says so.
+      expect(find.text('Gym is now shown'), findsOneWidget);
+      // showTopBanner arms an auto-dismiss timer; let it run out.
+      await tester.pump(const Duration(seconds: 8));
+    });
+
+    testWidgets('Undo on the switched-on banner restores no choice, not off',
+        (tester) async {
+      // One stray tap on the first-run link used to re-modalise the app with
+      // no way back but a Settings switch. The prior value here is null — no
+      // choice yet — and writing false instead would pin Gym hidden for a
+      // runner who later logs a lift.
+      final s = await _makeStores();
+      await _pump(tester, s);
+      await tester.pump();
+      expect(s.prefs.showGym, isNull);
+
+      await tester.ensureVisible(find.text('Log a gym session'));
+      await tester.tap(find.text('Log a gym session'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(s.prefs.showGym, isTrue);
+
+      await tester.tap(find.text('Undo'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(s.prefs.showGym, isNull);
+      expect(find.byType(GymScreen), findsNothing);
+      expect(find.text('Gym is now shown'), findsNothing);
+      await tester.pump(const Duration(seconds: 8));
     });
 
     testWidgets('body is a PageView', (tester) async {
@@ -402,7 +511,8 @@ void main() {
       expect(find.byType(BottomAppBar), findsNothing);
       expect(find.byType(FloatingActionButton), findsOneWidget);
       expect(find.text('Home'), findsWidgets);
-      expect(find.text('Fitness'), findsOneWidget);
+      // A pure runner's hub label; the rail derives it as the bar does.
+      expect(find.text('Training'), findsOneWidget);
     });
 
     testWidgets('rail destinations navigate and the Log FAB fans the dial',
@@ -506,12 +616,80 @@ void main() {
       await _pump(tester, s);
       runRecordingActive.value = true;
       await tester.pump();
-      await tester.tap(find.text('Fitness'));
+      await tester.tap(find.text('Training'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Runs'), findsWidgets,
           reason: 'the Fitness hub mounted, so the tap navigated the PageView '
               'despite the locked swipe physics');
+    });
+  });
+
+  group('the centre button mid-run', () {
+    double shellPage(WidgetTester tester) {
+      final controller =
+          tester.widget<PageView>(find.byType(PageView).first).controller!;
+      return controller.hasClients
+          ? controller.page!
+          : controller.initialPage.toDouble();
+    }
+
+    testWidgets('says the run is recording, in the error colour',
+        (tester) async {
+      // Away from the recorder the shell looked exactly as it does idle, and
+      // the way back was a "+" that reads as "start another".
+      final s = await _makeStores();
+      await _pump(tester, s);
+      runRecordingActive.value = true;
+      await tester.pump();
+
+      final bar = find.byType(BottomAppBar);
+      expect(find.descendant(of: bar, matching: find.text('Recording')),
+          findsOneWidget);
+      expect(_semanticsLabelled('Return to your run'), findsOneWidget);
+      final fab = tester
+          .widget<FloatingActionButton>(find.byType(FloatingActionButton));
+      final scheme = Theme.of(tester.element(find.byType(FloatingActionButton)))
+          .colorScheme;
+      expect(fab.backgroundColor, scheme.error);
+
+      runRecordingActive.value = false;
+      await tester.pump();
+      expect(find.descendant(of: bar, matching: find.text('Recording')),
+          findsNothing);
+    });
+
+    testWidgets('a tap returns to the recorder rather than fanning the menu',
+        (tester) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await _pump(tester, s);
+      runRecordingActive.value = true;
+      await tester.pump();
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log lift'), findsNothing);
+      expect(shellPage(tester), 2, reason: 'the tap landed on the recorder');
+      tester.takeException();
+    });
+
+    testWidgets('a long-press returns to the recorder too', (tester) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await _pump(tester, s);
+      runRecordingActive.value = true;
+      await tester.pump();
+
+      await tester.longPress(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log lift'), findsNothing);
+      expect(shellPage(tester), 2);
+      tester.takeException();
     });
   });
 
@@ -541,8 +719,9 @@ void main() {
           : controller.initialPage.toDouble();
     }
 
+    // These shells have no lift or meal, so the hub is labelled Training.
     Future<void> goToFitness(WidgetTester tester) async {
-      await tester.tap(find.text('Fitness'));
+      await tester.tap(find.text('Training'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
     }
@@ -740,10 +919,13 @@ void main() {
       await tester.pump(const Duration(seconds: 8));
     });
 
-    testWidgets('long-press opens the menu for a pure runner', (tester) async {
-      // It used to navigate straight to the last-logged modality with nothing
-      // announced, so a press half a beat too long landed someone on
-      // Nutrition.
+    testWidgets('long-press for a pure runner starts the run, as a tap does',
+        (tester) async {
+      // With Gym and Nutrition hidden the fan had one item, Log run — the tap
+      // with an animation in front of it. The long-press used to navigate
+      // straight to the last-logged modality with nothing announced, which
+      // landed someone on Nutrition; Nutrition is hidden here, so the
+      // last-logged type does not bring that back either.
       final s = await _makeStores();
       await s.prefs.setLastLogType('food');
       await _pump(tester, s);
@@ -752,10 +934,26 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      expect(find.byTooltip('Log run'), findsOneWidget);
-      // Nutrition is off until switched on, so the last-logged type does not
-      // bring it back into the menu either.
+      expect(find.byTooltip('Log run'), findsNothing,
+          reason: 'no fan of one');
       expect(find.byTooltip('Log food'), findsNothing);
+      expect(shellPage(tester), 2, reason: 'the long-press landed on the '
+          'recorder, exactly as a tap does');
+      tester.takeException();
+    });
+
+    testWidgets('long-press still fans the menu once there are two actions',
+        (tester) async {
+      final s = await _makeStores();
+      await s.prefs.setShowNutrition(true);
+      await _pump(tester, s);
+
+      await tester.longPress(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byTooltip('Log run'), findsOneWidget);
+      expect(find.byTooltip('Log food'), findsOneWidget);
       expect(shellPage(tester), 0,
           reason: 'a long press picks, it never navigates on its own');
     });

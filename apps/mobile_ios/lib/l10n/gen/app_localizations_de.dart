@@ -708,7 +708,28 @@ class AppLocalizationsDe extends AppLocalizations {
   String get logA11yLabel => 'Aktivität erfassen';
 
   @override
+  String get navStartRun => 'Laufen';
+
+  @override
+  String get logStartRunA11yLabel => 'Lauf starten';
+
+  @override
+  String get logModalityShownGym => 'Gym wird jetzt angezeigt';
+
+  @override
+  String get logModalityShownNutrition => 'Ernährung wird jetzt angezeigt';
+
+  @override
+  String get navRecording => 'Aufnahme';
+
+  @override
+  String get logReturnToRunA11yLabel => 'Zurück zu deinem Lauf';
+
+  @override
   String get navFitness => 'Fitness';
+
+  @override
+  String get navTraining => 'Training';
 
   @override
   String get navYou => 'Du';
@@ -760,6 +781,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Tipps zu Läufen, Krafttraining und Ernährung';
 
   @override
+  String get homeAskCoachSubtitleRunOnly =>
+      'Tipps zu Läufen, Training und Erholung';
+
+  @override
   String get youProfileTitle => 'Dein Profil';
 
   @override
@@ -780,6 +805,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get prefsKeepRunPrimarySubtitle =>
       'Tippe auf die mittlere Schaltfläche, um einen Lauf zu starten. Solange Gym und Ernährung ausgeblendet sind, ist das ohnehin aktiv; langes Drücken öffnet immer das Log-Menü';
+
+  @override
+  String get prefsKeepRunPrimaryForcedSubtitle =>
+      'Aktiv, solange Gym und Ernährung ausgeblendet sind. Blende eins davon ein, um selbst zu wählen';
 
   @override
   String get prefsSectionModalities => 'Gym & Ernährung';
@@ -2237,6 +2266,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get historyAddRunTooltip => 'Lauf manuell hinzufügen';
+
+  @override
+  String get historyAddPastRun => 'Vergangenen Lauf hinzufügen';
+
+  @override
+  String get historyEmptyBodyRunPrimary =>
+      'Tippe auf Laufen, um einen Lauf aufzuzeichnen, oder füge einen bereits absolvierten hinzu';
 
   @override
   String get historyLogTooltip => 'Lauf, Training oder Mahlzeit erfassen';

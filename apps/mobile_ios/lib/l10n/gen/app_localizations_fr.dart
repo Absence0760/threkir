@@ -705,7 +705,29 @@ class AppLocalizationsFr extends AppLocalizations {
   String get logA11yLabel => 'Enregistrer une activité';
 
   @override
+  String get navStartRun => 'Courir';
+
+  @override
+  String get logStartRunA11yLabel => 'Démarrer une course';
+
+  @override
+  String get logModalityShownGym => 'La muscu est maintenant affichée';
+
+  @override
+  String get logModalityShownNutrition =>
+      'La nutrition est maintenant affichée';
+
+  @override
+  String get navRecording => 'En cours';
+
+  @override
+  String get logReturnToRunA11yLabel => 'Revenir à votre course';
+
+  @override
   String get navFitness => 'Fitness';
+
+  @override
+  String get navTraining => 'Entraînement';
 
   @override
   String get navYou => 'Vous';
@@ -757,6 +779,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Des conseils sur vos courses, votre muscu et votre nutrition';
 
   @override
+  String get homeAskCoachSubtitleRunOnly =>
+      'Des conseils sur vos courses, votre entraînement et votre récupération';
+
+  @override
   String get youProfileTitle => 'Votre profil';
 
   @override
@@ -777,6 +803,10 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get prefsKeepRunPrimarySubtitle =>
       'Touchez le bouton central pour démarrer une course. Déjà actif tant que Muscu et Nutrition sont masqués ; un appui long ouvre toujours le menu d’enregistrement';
+
+  @override
+  String get prefsKeepRunPrimaryForcedSubtitle =>
+      'Actif tant que Muscu et Nutrition sont masqués. Affichez l’un des deux pour choisir';
 
   @override
   String get prefsSectionModalities => 'Muscu et nutrition';
@@ -2240,6 +2270,13 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get historyAddRunTooltip => 'Ajouter une course manuellement';
+
+  @override
+  String get historyAddPastRun => 'Ajouter une course passée';
+
+  @override
+  String get historyEmptyBodyRunPrimary =>
+      'Touchez Courir pour enregistrer une course, ou ajoutez-en une déjà terminée';
 
   @override
   String get historyLogTooltip =>

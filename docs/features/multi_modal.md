@@ -258,10 +258,25 @@ becomes an **action button**, not a tab.
   either modality has data, the tap fans. `keep_run_primary` stays as the
   explicit override for someone who logs other modalities and still wants
   the one-tap start.
-- **Long-press `Log` = open the capture fan, always.** One gesture, one
+- **Long-press `Log` = open the capture fan.** One gesture, one
   meaning: it used to open the menu under `keep_run_primary` and navigate
   silently to the last-logged modality without it, so a press half a beat
-  too long landed a runner on Nutrition.
+  too long landed a runner on Nutrition. Two exceptions, both where a fan
+  would offer nothing (decisions § 1739 run-only amendment): with only one
+  action left (Gym and Nutrition both hidden) a long-press is the tap, and
+  while a run records both gestures return to the recorder.
+- **The centre button says what a tap does.** When the tap starts a run it
+  shows a play icon, the caption "Start run" and the spoken label "Start a
+  run" instead of "+ Log"; while a run records it turns the error colour,
+  captioned "Recording" and announced "Return to your run". The Runs list's
+  manual-entry button reads "Add past run", so the two buttons a thumb apart
+  no longer both read as starting one.
+- **The hub's nav label follows modality visibility.** With Gym and
+  Nutrition both hidden the Fitness item is "Training" under a runner icon
+  (decisions § 139 amendment); otherwise it is "Fitness" under a dumbbell.
+- **Switching a modality on is announced.** A Log action for a hidden Gym or
+  Nutrition switches it on (§ 1739) and now shows a banner with an Undo that
+  restores the prior value, null included.
 - **System back walks toward Home** and only leaves the app from Home; a
   live recording raises a confirm first (decisions § 1644).
 - The sheet's **order adapts**: the most recently used capture type
@@ -327,6 +342,20 @@ becomes an **action button**, not a tab.
 > session" hint, which lands on the Fitness hub's Gym tab through the shell's
 > Log → Lift action. Web's record-on-your-phone hint has no counterpart, since
 > this is the phone. `test/dashboard_first_run_test.dart`.
+>
+> **Status (mobile, run-only polish, 2026-10-04):** Home carries a **Last
+> run** section under the plan card — the Runs list's own `RunListTile`, so
+> it is unit-aware and brings the unsynced / parked markers — tapping into
+> run detail and absent while there is no run. It is the event summary rule
+> 2 below describes, for the run modality, and the nearest mobile has come
+> to web's week lead. Once the account has a run and no goal, the empty
+> Goals section collapses to a one-line "Set a goal" link under the period
+> stats instead of sitting above them on every visit. The pending-sync
+> banner counts unsynced runs (retried through `SyncService`) and parked
+> runs as well as lifts and meals. With Gym and Nutrition both hidden the
+> pinned Coach card's subtitle names runs, training and recovery rather than
+> lifts and nutrition; its placement is unchanged. The first-run "Lifting
+> instead?" link is hidden once `show_gym` holds an explicit answer.
 >
 > **Status (web, #905 workstream 3):** an account **with** runs opens on
 > `DashboardWeekLead.svelte` above the plan hero — this week's distance against
@@ -1059,7 +1088,7 @@ tier where mobile leads). Byte-identical iOS twin per [decisions.md § 39](../ar
 | Body metrics | `body_metrics` table (migration `20261216_001`) + Settings height/weight entry (**mobile shipped (G5)** — `settings_body_metrics_screen.dart`, Art 9 consent-gated height/weight + activity/goal; api_client `grantHealthDataConsent`/`withdrawHealthDataConsent`/`setMyHeightCm`/`recordBodyWeightKg`/`clearBodyWeightHistory`) |
 | Lift load | `training_load.ts` / `.dart` gain `liftStress` + `source`-tagged daily contributions (**shipped** — `computeLiftStress` + `aggregateDailyLiftStress` + the `lifts` arg to `computeTrainingLoadSeries`). **Consumers wired on both platforms**: web `web/src/lib/gym/lift_load.ts` and mobile `mobile_android/lib/lift_load.dart` (`liftsFromSetHistory`, pure + tested parity pair) feed each dashboard's load curve; `TrainingLoadChart` (web + mobile) shows the "gym sessions included" hint when `liftStress > 0` |
 | Cross-modality | `coach/context.ts` (**web shipped** — bounded `recent_lifts` + 7-day `nutrition_7d` summary, pure `summarizeRecentLifts`/`summarizeNutrition` + tests); web Home gym cards (`/dashboard`); web History timeline (`/history` + `fetchActivities`). **Mobile Home card composition shipped (G5)** — `dashboard_screen.dart` + `widgets/gym_summary_card.dart` + `widgets/nutrition_rings_card.dart` + the recent-lifts trend card (`widgets/recent_lifts_card.dart`); the **unified mobile History timeline is now shipped** (`runs_screen.dart` + `widgets/activity_timeline_list.dart`, assembled from the LOCAL stores via `lib/local_activities.dart` — offline-first, all modalities, not `fetchActivities`) |
-| Runner protection | One-tap run start **derived from data presence** — on until a lift or a meal is logged (`runIsPrimaryLogAction` in `preferences.dart`, decisions § 1644); `Preferences.keepRunPrimary` + the `settings_preferences_screen.dart` switch remain as the explicit override. Long-press always opens the fan |
+| Runner protection | One-tap run start **derived from data presence** — on until a lift or a meal is logged (`runIsPrimaryLogAction` in `preferences.dart`, decisions § 1644); `Preferences.keepRunPrimary` + the `settings_preferences_screen.dart` switch remain as the explicit override. Long-press opens the fan, except that it is the tap when only one action is offered and returns to the recorder mid-run. The centre button wears the run state it is in (Start run / Recording) — see § Bottom nav |
 | Local stores | `local_gym_store.dart`, `local_food_store.dart` (shipped — mirror `LocalGearStore`, §73 / §122; gym stores sets inline). **Now wired into nav/Home (G5):** the gym/nutrition screens + the dashboard hydrate + drain them; still outside the global `main.dart`/`sync_service` sweep |
 | Data access | `packages/api_client` typed gym + food + `fetchLatestBodyWeightKg` + the unified-timeline `fetchActivities` (→ `activities` view) + `fetchRunById` (timeline run-row open) methods (shipped); web gym queries in `core/data.ts` (**shipped** — `fetchGymWorkouts` / `fetchGymWorkoutWithSets` / `fetchGymSetHistory` / `createGymWorkout` / `updateGymWorkout` / `deleteGymWorkout`); **web food + body-metrics queries shipped** (`fetchFoodLog` / `createFoodEntry` / `updateFoodEntry` / `deleteFoodEntry` / `fetchLatestWeightKg` / `recordWeightKg` / `clearWeightHistory`) |
 

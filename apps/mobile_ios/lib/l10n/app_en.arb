@@ -924,9 +924,37 @@
   "@logA11yLabel": {
     "description": "Screen-reader label for the centre Log action button"
   },
+  "navStartRun": "Start run",
+  "@navStartRun": {
+    "description": "Caption under the centre nav button when a tap on it starts a run (Gym and Nutrition both hidden, or the run-primary preference on). Must fit the 56dp centre slot; deliberately not the bare noun \"Run\", which decisions § 1649 keeps out of the tab-label set"
+  },
+  "logStartRunA11yLabel": "Start a run",
+  "@logStartRunA11yLabel": {
+    "description": "Screen-reader label for the centre nav button when a tap on it starts a run"
+  },
+  "logModalityShownGym": "Gym is now shown",
+  "@logModalityShownGym": {
+    "description": "Top banner after a Log action for a hidden Gym switched it on; carries an Undo that hides it again"
+  },
+  "logModalityShownNutrition": "Nutrition is now shown",
+  "@logModalityShownNutrition": {
+    "description": "Top banner after a Log action for a hidden Nutrition switched it on; carries an Undo that hides it again"
+  },
+  "navRecording": "Recording",
+  "@navRecording": {
+    "description": "Caption under the centre nav button while a run is recording; a tap returns to the recorder. Must fit the 56dp centre slot"
+  },
+  "logReturnToRunA11yLabel": "Return to your run",
+  "@logReturnToRunA11yLabel": {
+    "description": "Screen-reader label for the centre nav button while a run is recording"
+  },
   "navFitness": "Fitness",
   "@navFitness": {
     "description": "Bottom-nav label for the Fitness modality hub (All/Runs/Gym/Nutrition)"
+  },
+  "navTraining": "Training",
+  "@navTraining": {
+    "description": "Bottom-nav and rail label for the Fitness hub while Gym and Nutrition are both hidden, when it holds runs, routes, segments, plans and races (decisions § 139 amendment)"
   },
   "navYou": "You",
   "@navYou": {
@@ -992,6 +1020,10 @@
   "@homeAskCoachSubtitle": {
     "description": "Subtitle of the pinned coach entry at the top of the Home dashboard"
   },
+  "homeAskCoachSubtitleRunOnly": "Advice on your runs, training and recovery",
+  "@homeAskCoachSubtitleRunOnly": {
+    "description": "Subtitle of the pinned Ask your coach card on Home while Gym and Nutrition are both hidden, so it names only what this runner records"
+  },
   "youProfileTitle": "Your profile",
   "@youProfileTitle": {
     "description": "Title of the profile entry at the top of the You tab"
@@ -1019,6 +1051,10 @@
   "prefsKeepRunPrimarySubtitle": "Tap the centre button to start a run. Already on while Gym and Nutrition are hidden; long-press always opens the log menu",
   "@prefsKeepRunPrimarySubtitle": {
     "description": "Subtitle for the run-as-primary-action settings toggle"
+  },
+  "prefsKeepRunPrimaryForcedSubtitle": "On while Gym and Nutrition are hidden. Show either one to choose",
+  "@prefsKeepRunPrimaryForcedSubtitle": {
+    "description": "Subtitle of the Run as primary action switch while Gym and Nutrition are both hidden, when it is shown on and disabled because a tap on the centre button already starts a run"
   },
   "prefsSectionModalities": "Gym & nutrition",
   "@prefsSectionModalities": {
@@ -2874,6 +2910,14 @@
   "historyAddRunTooltip": "Add a run manually",
   "@historyAddRunTooltip": {
     "description": "Tooltip on the add-run floating action button"
+  },
+  "historyAddPastRun": "Add past run",
+  "@historyAddPastRun": {
+    "description": "Label of the Runs list's manual-entry button and empty-state action: adds a run that already happened, as distinct from the centre button, which records one"
+  },
+  "historyEmptyBodyRunPrimary": "Tap Start run to record a run, or add one you have already finished",
+  "@historyEmptyBodyRunPrimary": {
+    "description": "Empty Runs list body when the centre button starts a run, so it names that button by its run caption (navStartRun) rather than Log"
   },
   "historyLogTooltip": "Log a run, lift or meal",
   "@historyLogTooltip": {

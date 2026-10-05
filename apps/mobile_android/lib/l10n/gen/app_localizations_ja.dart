@@ -678,7 +678,28 @@ class AppLocalizationsJa extends AppLocalizations {
   String get logA11yLabel => 'アクティビティを記録';
 
   @override
+  String get navStartRun => 'ラン開始';
+
+  @override
+  String get logStartRunA11yLabel => 'ランを開始';
+
+  @override
+  String get logModalityShownGym => 'ジムを表示しました';
+
+  @override
+  String get logModalityShownNutrition => '栄養を表示しました';
+
+  @override
+  String get navRecording => '記録中';
+
+  @override
+  String get logReturnToRunA11yLabel => '記録中のランに戻る';
+
+  @override
   String get navFitness => 'フィットネス';
+
+  @override
+  String get navTraining => 'トレーニング';
 
   @override
   String get navYou => 'あなた';
@@ -729,6 +750,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get homeAskCoachSubtitle => 'ラン・筋トレ・栄養のアドバイス';
 
   @override
+  String get homeAskCoachSubtitleRunOnly => 'ラン・トレーニング・回復のアドバイス';
+
+  @override
   String get youProfileTitle => 'あなたのプロフィール';
 
   @override
@@ -749,6 +773,10 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get prefsKeepRunPrimarySubtitle =>
       '中央のボタンをタップしてランを開始します。ジムと栄養が非表示の間はもともと有効です。長押しすると常に記録メニューが開きます';
+
+  @override
+  String get prefsKeepRunPrimaryForcedSubtitle =>
+      'ジムと栄養が非表示の間はオンです。どちらかを表示すると選べます';
 
   @override
   String get prefsSectionModalities => 'ジムと栄養';
@@ -2115,6 +2143,13 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get historyAddRunTooltip => '手動でランを追加';
+
+  @override
+  String get historyAddPastRun => '過去のランを追加';
+
+  @override
+  String get historyEmptyBodyRunPrimary =>
+      '「ラン開始」をタップしてランを記録するか、すでに走ったランを追加しましょう';
 
   @override
   String get historyLogTooltip => 'ラン・筋トレ・食事を記録';

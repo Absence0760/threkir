@@ -98,6 +98,12 @@ class RunsScreen extends StatefulWidget {
   /// other mount's add is modality-specific, so it keeps its FAB.
   final bool showAddFab;
 
+  /// Whether the shell's centre button starts a run on tap, in which case it
+  /// is captioned "Start run" rather than "Log" and the empty state has to
+  /// name it that way. The host knows, because it is the one that can see
+  /// whether lifts or meals exist; this screen's Runs-only mount cannot.
+  final bool centreStartsRun;
+
   const RunsScreen({
     super.key,
     this.apiClient,
@@ -112,6 +118,7 @@ class RunsScreen extends StatefulWidget {
     this.showSyncActions = true,
     this.titleText,
     this.showAddFab = true,
+    this.centreStartsRun = false,
   });
 
   @override
@@ -1038,7 +1045,9 @@ class _RunsScreenState extends State<RunsScreen>
     final kind = _timelineMode ? _kind : _HistoryKind.run;
     final (String label, String tooltip, VoidCallback onPressed) = switch (kind) {
       _HistoryKind.all => (l10n.logSheetTitle, l10n.historyLogTooltip, _openLogPicker),
-      _HistoryKind.run => (l10n.historyAddRun, l10n.historyAddRunTooltip, _openAddRun),
+      // "Past" because the shell's centre button, one row below, is the one
+      // that records: two "+" buttons both reading "run" was two guesses.
+      _HistoryKind.run => (l10n.historyAddPastRun, l10n.historyAddRunTooltip, _openAddRun),
       _HistoryKind.lift => (l10n.logLift, l10n.historyLogTooltip, _openAddLift),
       _HistoryKind.meal => (l10n.logFood, l10n.historyLogTooltip, _openAddMeal),
     };
@@ -1382,8 +1391,10 @@ class _RunsScreenState extends State<RunsScreen>
       return EmptyState(
         icon: Icons.directions_run,
         title: l10n.historyEmptyTitle,
-        body: l10n.historyEmptyBody,
-        ctaLabel: l10n.historyAddRun,
+        body: widget.centreStartsRun
+            ? l10n.historyEmptyBodyRunPrimary
+            : l10n.historyEmptyBody,
+        ctaLabel: l10n.historyAddPastRun,
         onCta: _openAddRun,
       );
     }
@@ -1494,6 +1505,7 @@ class _RunsScreenState extends State<RunsScreen>
               routeStore: widget.routeStore,
               preferences: widget.preferences,
               settingsSync: widget.settingsSync,
+              centreStartsRun: widget.centreStartsRun,
             ),
           ),
         );

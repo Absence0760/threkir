@@ -137,6 +137,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
     with TickerProviderStateMixin {
   late TabController _controller;
   late List<FitnessTab> _tabs;
+  late bool _centreStartsRun;
   late final RaceService _raceService = RaceService();
 
   late final ValueNotifier<FitnessTab> _tab =
@@ -147,6 +148,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
   void initState() {
     super.initState();
     _tabs = _visibleTabs();
+    _centreStartsRun = _resolveCentreStartsRun();
     _controller = _buildController();
     _settleSelection();
     _tab.addListener(_adoptTab);
@@ -155,11 +157,19 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
     widget.foodStore.addListener(_onVisibilityInputs);
   }
 
-  List<FitnessTab> _visibleTabs() => fitnessHubTabs(
-        gymShown: widget.preferences
-            .gymShown(hasData: widget.gymStore.workouts.isNotEmpty),
-        nutritionShown: widget.preferences
-            .nutritionShown(hasData: widget.foodStore.rows.isNotEmpty),
+  bool get _gymShown =>
+      widget.preferences.gymShown(hasData: widget.gymStore.workouts.isNotEmpty);
+
+  bool get _nutritionShown => widget.preferences
+      .nutritionShown(hasData: widget.foodStore.rows.isNotEmpty);
+
+  List<FitnessTab> _visibleTabs() =>
+      fitnessHubTabs(gymShown: _gymShown, nutritionShown: _nutritionShown);
+
+  bool _resolveCentreStartsRun() => runIsPrimaryLogAction(
+        keepRunPrimary: widget.preferences.keepRunPrimary,
+        gymShown: _gymShown,
+        nutritionShown: _nutritionShown,
       );
 
   TabController _buildController() {
@@ -185,8 +195,12 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
   /// would reset the strip's animation for nothing.
   void _onVisibilityInputs() {
     final next = _visibleTabs();
-    if (listEquals(next, _tabs)) return;
+    final startsRun = _resolveCentreStartsRun();
+    final tabsChanged = !listEquals(next, _tabs);
+    if (!tabsChanged && startsRun == _centreStartsRun) return;
     setState(() {
+      _centreStartsRun = startsRun;
+      if (!tabsChanged) return;
       _controller
         ..removeListener(_publishTab)
         ..dispose();
@@ -309,6 +323,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
             foodStore: widget.foodStore,
             showKindChips: false,
             showSyncActions: _ownsSyncActions(tab),
+            centreStartsRun: _centreStartsRun,
             // The shell's centre Log button, one row below this tab, already
             // opens the cross-modal run / lift / meal picker this tab's own
             // FAB opened. The modality tabs keep theirs — those add into one
@@ -332,6 +347,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
             ],
             showSyncActions: _ownsSyncActions(tab),
             titleText: l10n.fitnessTabRuns,
+            centreStartsRun: _centreStartsRun,
           ),
         FitnessTab.gym => GymScreen(
             key: const PageStorageKey('fitness-gym'),

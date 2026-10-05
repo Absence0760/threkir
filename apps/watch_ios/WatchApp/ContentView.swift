@@ -637,16 +637,41 @@ struct RunStatsView: View {
     }
 
     private var controls: some View {
-        HStack(spacing: 12) {
-            Button("Pause") {
+        RunControlRow {
+            Button {
                 workoutManager.pause()
+            } label: {
+                Text("Pause")
+                    .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
             .tint(AppTheme.duskDeep)
             .accessibilityHint("Pauses the recording without ending it")
-
+        } stop: {
             HoldToStopButton { workoutManager.stop() }
         }
+    }
+}
+
+/// Pause-or-Resume beside Stop, the same size and in the same place on the
+/// running and paused screens. The row takes the system button's height from
+/// the primary control and Stop fills it, so the control that ends the run is
+/// never a smaller target than the one beside it.
+struct RunControlRow<Primary: View, Stop: View>: View {
+    @ViewBuilder let primary: Primary
+    @ViewBuilder let stop: Stop
+
+    var body: some View {
+        HStack(spacing: 8) {
+            primary
+                .frame(maxWidth: .infinity)
+            stop
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        // Half a 40 mm screen hyphenates "Resume" at the largest text sizes.
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
+        .fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -693,7 +718,7 @@ struct HoldToStopButton: View {
     @State private var progress: Double = 0
     @State private var holdTask: Task<Void, Never>?
 
-    private let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+    private let shape = Capsule(style: .continuous)
 
     var body: some View {
         Text("Stop")
@@ -701,6 +726,7 @@ struct HoldToStopButton: View {
             .foregroundColor(AppTheme.parchment)
             .padding(.horizontal, 14)
             .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(shape.fill(AppTheme.error))
             .overlay(
                 shape
@@ -819,14 +845,19 @@ struct PausedView: View {
                     .font(.body)
             }
 
-            Button("Resume") {
-                workoutManager.resume()
+            RunControlRow {
+                Button {
+                    workoutManager.resume()
+                } label: {
+                    Text("Resume")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(AppTheme.coralDeep)
+                .accessibilityHint("Resumes the paused recording")
+            } stop: {
+                HoldToStopButton { workoutManager.stop() }
             }
-            .buttonStyle(.borderedProminent)
-            .tint(AppTheme.coralDeep)
-            .accessibilityHint("Resumes the paused recording")
-
-            HoldToStopButton { workoutManager.stop() }
         }
     }
 }

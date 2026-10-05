@@ -5,6 +5,7 @@ import 'package:ui_kit/ui_kit.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/widgets/mileage_trend_card.dart';
+import '../lib/widgets/this_week_strip.dart';
 
 Run _run({
   required DateTime startedAt,
@@ -22,6 +23,7 @@ Future<void> _pump(
   WidgetTester tester, {
   required List<Run> runs,
   DistanceUnit unit = DistanceUnit.km,
+  String weekStartDay = 'monday',
   required DateTime now,
   double textScale = 1.0,
   Locale? locale,
@@ -40,7 +42,12 @@ Future<void> _pump(
       ),
       home: Scaffold(
         body: SingleChildScrollView(
-          child: MileageTrendCard(runs: runs, unit: unit, now: now),
+          child: MileageTrendCard(
+            runs: runs,
+            unit: unit,
+            weekStartDay: weekStartDay,
+            now: now,
+          ),
         ),
       ),
     ),
@@ -227,7 +234,10 @@ void main() {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   children: [
                     MileageTrendCard(
-                        runs: runs, unit: DistanceUnit.km, now: now),
+                        runs: runs,
+                        unit: DistanceUnit.km,
+                        weekStartDay: 'monday',
+                        now: now),
                   ],
                 ),
               ),
@@ -298,6 +308,62 @@ void main() {
         expect(labels, isNotEmpty);
         expect(labels, isNot(contains(theme.colorScheme.outline)));
         expect(labels, everyElement(theme.colorScheme.onSurfaceVariant));
+      });
+    }
+
+    // Field report: week start Sunday, the Home tile said 22.50 km this week
+    // and this card's headline said 7.50 km. The card and the This Week strip
+    // render from the same runs and preference on Home; both must name the
+    // same seven days, across a local Saturday-night / Sunday-morning seam.
+    for (final (weekStartDay, expected) in [
+      ('sunday', '15.50 km'),
+      ('monday', '12.50 km'),
+    ]) {
+      testWidgets(
+          'the "this week" headline matches the This Week strip ($weekStartDay)',
+          (tester) async {
+        final seamNow = DateTime(2026, 5, 23, 22); // Saturday, 22:00 local
+        final runs = [
+          _run(startedAt: DateTime(2026, 5, 16, 23, 30), distanceM: 4000),
+          _run(startedAt: DateTime(2026, 5, 17, 0, 30), distanceM: 3000),
+          _run(startedAt: DateTime(2026, 5, 18, 12), distanceM: 5000),
+          _run(startedAt: DateTime(2026, 5, 23, 12), distanceM: 7500),
+        ];
+        await tester.pumpWidget(MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: Column(children: [
+                MileageTrendCard(
+                  runs: runs,
+                  unit: DistanceUnit.km,
+                  weekStartDay: weekStartDay,
+                  now: seamNow,
+                ),
+                ThisWeekStrip(
+                  runs: runs,
+                  unit: DistanceUnit.km,
+                  weekStartDay: weekStartDay,
+                  now: seamNow,
+                ),
+              ]),
+            ),
+          ),
+        ));
+
+        expect(
+          find.descendant(
+              of: find.byType(MileageTrendCard), matching: find.text(expected)),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byType(ThisWeekStrip),
+            matching: find.textContaining('$expected ·'),
+          ),
+          findsOneWidget,
+        );
       });
     }
 

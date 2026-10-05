@@ -276,6 +276,25 @@ void main() {
     });
   });
 
+  group('heatmapGridStart', () {
+    // The heatmap's columns are weeks, and a tapped column opens that week's
+    // summary — which honours week_start_day. A Monday-only grid opened a
+    // Sunday-first runner's summary on a week the column did not show.
+    final saturday = DateTime(2026, 5, 23, 22);
+
+    test('the rightmost column is this week on the runner\'s week start', () {
+      expect(heatmapGridStart(saturday, 1, weekStartDay: 'sunday'),
+          DateTime(2026, 5, 17));
+      expect(heatmapGridStart(saturday, 1, weekStartDay: 'monday'),
+          DateTime(2026, 5, 18));
+    });
+
+    test('the leftmost column is weeks-1 calendar weeks before it', () {
+      expect(heatmapGridStart(saturday, 20, weekStartDay: 'sunday'),
+          DateTime(2026, 1, 4));
+    });
+  });
+
   group('DashboardScreen', () {
     testWidgets('Dashboard renders no AppBar (actions hoist into the body)',
         (tester) async {

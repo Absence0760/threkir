@@ -1012,13 +1012,19 @@ class _DashboardScreenState extends State<DashboardScreen>
           ),
         ),
       );
-      final mileageCard = MileageTrendCard(runs: runs, unit: unit, now: now);
+      final mileageCard = MileageTrendCard(
+        runs: runs,
+        unit: unit,
+        weekStartDay: _weekStartDay,
+        now: now,
+      );
       final heatmapCard = Card(
         child: Padding(
           padding: _kCardPadding,
           child: _RunHeatmap(
             runs: runs,
             weeks: 20,
+            weekStartDay: _weekStartDay,
             onWeekTap: (anchor) =>
                 _openPeriodSummary(PeriodType.week, anchor),
           ),
@@ -2205,14 +2211,34 @@ DateTime heatmapWeekAnchor({
   return DateTime(gridStart.year, gridStart.month, gridStart.day + 7 * col);
 }
 
+/// First day of the heatmap's leftmost column: the start of the week
+/// containing [now] on the runner's [weekStartDay], [weeks] - 1 weeks back.
+/// Each column is then one of the weeks a tap opens in the week summary.
+DateTime heatmapGridStart(DateTime now, int weeks,
+    {required String weekStartDay}) {
+  final weekStart = weekStartLocal(now, weekStartDay: weekStartDay);
+  // Calendar days, not 24-hour blocks: the grid reaches ~5 months back, so a
+  // fixed-Duration step is guaranteed to cross a DST transition and land
+  // `gridStart` at 23:00 the previous day — shifting every column of the
+  // heatmap, and the week a tap resolves to, one day off the calendar.
+  return DateTime(
+      weekStart.year, weekStart.month, weekStart.day - 7 * (weeks - 1));
+}
+
 class _RunHeatmap extends StatelessWidget {
   final List<Run> runs;
   final int weeks;
+  final String weekStartDay;
 
   /// Tapping a week column opens that week's summary. Null leaves the
   /// heatmap a static read-only grid.
   final void Function(DateTime weekAnchor)? onWeekTap;
-  const _RunHeatmap({required this.runs, this.weeks = 20, this.onWeekTap});
+  const _RunHeatmap({
+    required this.runs,
+    required this.weekStartDay,
+    this.weeks = 20,
+    this.onWeekTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -2220,13 +2246,8 @@ class _RunHeatmap extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final weekStart = weekStartLocal(now);
-    // Calendar days, not 24-hour blocks: the grid reaches ~5 months back, so a
-    // fixed-Duration step is guaranteed to cross a DST transition and land
-    // `gridStart` at 23:00 the previous day — shifting every column of the
-    // heatmap, and the week a tap resolves to, one day off the calendar.
     final gridStart =
-        DateTime(weekStart.year, weekStart.month, weekStart.day - 7 * (weeks - 1));
+        heatmapGridStart(now, weeks, weekStartDay: weekStartDay);
 
     final counts = heatmapDayCounts(runs, gridStart);
 

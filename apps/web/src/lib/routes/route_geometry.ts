@@ -107,8 +107,8 @@ export interface RouteProgress {
  * previous reading) — and within it breaks a tie between overlapping legs in
  * favour of forward progress, with a bias capped at `MAX_ALONG_BIAS_M` so it
  * can never outweigh real distance off the line. When nothing in that window
- * is within `ROUTE_MATCH_REACQUIRE_M`, the rest of the route ahead is
- * searched, so a runner who skips ahead or returns after a signal gap is
+ * is within `ROUTE_MATCH_REACQUIRE_M`, or the runner projects past its far
+ * end, the rest of the route ahead is searched, so a runner who skips ahead or returns after a signal gap is
  * re-acquired; a runner still off the line keeps the windowed match, unless
  * there is no previous reading to keep, when the nearest point is taken.
  *
@@ -175,9 +175,11 @@ export function progressAlongRoute(
 	const lo = hasPrev ? Math.max(0, prev - ROUTE_MATCH_BACKTRACK_M) : 0;
 
 	// Nearest point of the sub-line [fromM, toM], ranked by offset plus the
-	// capped forward-progress bias around `anchor`.
-	function best(fromM: number, toM: number): { alongM: number; offsetM: number } | null {
-		let found: { alongM: number; offsetM: number } | null = null;
+	// capped forward-progress bias around `anchor`. `pastEnd` marks a match
+	// pinned to `toM` while the runner projects beyond it.
+	type Match = { alongM: number; offsetM: number; pastEnd: boolean };
+	function best(fromM: number, toM: number): Match | null {
+		let found: Match | null = null;
 		let bestCost = Infinity;
 		for (let i = 0; i < n; i++) {
 			const s = segStart[i];
@@ -196,16 +198,23 @@ export function progressAlongRoute(
 			const cost = offsetM + bias + Math.abs(gap) * ALONG_CONTINUITY_PER_M;
 			if (cost < bestCost) {
 				bestCost = cost;
-				found = { alongM, offsetM };
+				found = { alongM, offsetM, pastEnd: tFree[i] > t };
 			}
 		}
 		return found;
 	}
 
 	let match = best(lo, anchor + ROUTE_MATCH_LOOKAHEAD_M);
-	if (!match || match.offsetM > ROUTE_MATCH_REACQUIRE_M) {
+	if (!match || match.offsetM > ROUTE_MATCH_REACQUIRE_M || match.pastEnd) {
 		const ahead = best(lo, total);
-		if (ahead && (!match || !hasPrev || ahead.offsetM <= ROUTE_MATCH_REACQUIRE_M)) match = ahead;
+		if (
+			ahead &&
+			(!match ||
+				(ahead.offsetM < match.offsetM &&
+					(!hasPrev || ahead.offsetM <= ROUTE_MATCH_REACQUIRE_M)))
+		) {
+			match = ahead;
+		}
 	}
 	if (!match) return null;
 	const alongM = Math.min(total, Math.max(0, match.alongM));

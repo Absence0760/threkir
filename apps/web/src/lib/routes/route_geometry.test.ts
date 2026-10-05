@@ -530,3 +530,11 @@ test('progressAlongRoute — with no previous reading, a fix off the line takes 
 	assert.ok(Math.abs(p.alongM - 900) < 1, `alongM ${p.alongM}`);
 	assert.ok(Math.abs(p.offRouteM - 100) < 1, `offRouteM ${p.offRouteM}`);
 });
+
+test('progressAlongRoute — a fix just past the look-ahead is not pulled back to its edge', () => {
+	// 230 m along and 10 m beside a straight line: the window ends at 200 m,
+	// whose edge is only ~32 m away — near enough to pass for a match.
+	const line = [en(0, 0), en(2000, 0)];
+	const p = progressAlongRoute(at(230, 10), line, null)!;
+	assert.ok(Math.abs(p.alongM - 230) < 1, `alongM ${p.alongM}`);
+});

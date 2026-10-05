@@ -4,8 +4,12 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_cache/flutter_map_cache.dart';
 import 'package:http_cache_file_store/http_cache_file_store.dart';
 import 'package:path_provider/path_provider.dart';
+
+import 'offline_tile_pack.dart';
 
 /// Persistent on-disk cache for MapTiler tiles shared by every live map
 /// instance in the app. Tiles survive across app launches — so the second
@@ -26,17 +30,67 @@ class TileCache {
   static const _maxDiskBytes = 500 * 1024 * 1024;
 
   static CacheStore? _store;
-  static Dio? _dio;
+  static CacheStore? _fallbackStore;
+  static CachedTileProvider? _tileProvider;
 
   /// Shared cache store. Falls back to an in-memory store with a modest
   /// budget when [init] hasn't run yet — used by widget tests and during
   /// the first frame before `main` finishes plumbing.
   static CacheStore get store =>
-      _store ?? MemCacheStore(maxSize: 50 * 1024 * 1024);
+      _store ?? (_fallbackStore ??= MemCacheStore(maxSize: 50 * 1024 * 1024));
 
-  /// Dio instance wired to the current [store]. Reused across map
-  /// instances so every tile request goes through the same cache.
-  static Dio get dio => _dio ?? _buildDio(store);
+  /// The one tile provider every basemap layer shares.
+  ///
+  /// It must be built once, not per layer: `CachedTileProvider` appends a
+  /// `DioCacheInterceptor` to the `Dio` it is given, and dio walks its
+  /// interceptors in sequence on every request, each one a cache-store
+  /// read. A provider per `build()` on a shared client therefore made each
+  /// tile request cost one disk lookup per rebuild the process had ever
+  /// done — at `LiveRunMap`'s follow-mode rebuild rate, minutes into a
+  /// session no tile reached the network, nothing errored, and only a
+  /// relaunch cleared it. `TileLayer.dispose` disposes its provider;
+  /// `CachedTileProvider`'s dispose is a no-op, which is what makes sharing
+  /// it across layers safe.
+  static TileProvider get tileProvider =>
+      _tileProvider ??= buildTileProvider(store);
+
+  /// The provider [tileProvider] memoises, over [store] wrapped in a
+  /// [ResilientCacheStore] so a failing cache can only cost a tile its
+  /// cache, never the tile.
+  @visibleForTesting
+  static CachedTileProvider buildTileProvider(CacheStore store) =>
+      CachedTileProvider(
+        store: ResilientCacheStore(store),
+        dio: Dio(),
+        maxStale: const Duration(days: 30),
+        // Map raster tiles are content-addressed by z/x/y and are
+        // effectively immutable, so serve a cached tile without a
+        // revalidation round-trip whenever one exists — this is what
+        // keeps the map usable offline and stops every pan/zoom from
+        // re-hitting the tile server. _trimToBudget() bounds disk use;
+        // maxStale caps how long a never-re-requested tile lingers.
+        cachePolicy: CachePolicy.forceCache,
+      );
+
+  static String? _offlinePacksRoot;
+  static final Map<String, TileProvider> _packProviders = {};
+
+  /// The basemap provider for a map showing [routeId]: tiles from that
+  /// route's offline pack (decisions § 170) first, then [tileProvider].
+  ///
+  /// The pack directory is checked per tile rather than once here, so a pack
+  /// downloaded while the map is open is picked up and an un-pinned route
+  /// simply misses through to [tileProvider]. One provider per route is
+  /// memoised for the same reason [tileProvider] is: a map rebuilding at
+  /// 45 Hz must hand `TileLayer` the same object every frame.
+  static TileProvider tileProviderForRoute(String? routeId) {
+    final root = _offlinePacksRoot;
+    if (routeId == null || root == null) return tileProvider;
+    return _packProviders[routeId] ??= OfflinePackTileProvider(
+      packDir: Directory('$root/$routeId'),
+      fallback: tileProvider,
+    );
+  }
 
   /// Initialise the disk-backed tile cache. Call from `main()` before
   /// `runApp`. Idempotent — subsequent calls are no-ops.
@@ -44,12 +98,14 @@ class TileCache {
     if (_store != null) return;
     try {
       final cacheRoot = await getApplicationCacheDirectory();
+      _offlinePacksRoot = '${cacheRoot.path}/$kOfflinePacksDirName';
       final tilesDir = Directory('${cacheRoot.path}/map_tiles');
       if (!tilesDir.existsSync()) {
         tilesDir.createSync(recursive: true);
       }
       _store = FileCacheStore(tilesDir.path);
-      _dio = _buildDio(_store!);
+      _tileProvider = null;
+      _packProviders.clear();
       // Fire-and-forget LRU trim. Keeps the cache bounded without blocking
       // the first frame — eviction is best-effort and the map works fine
       // whether it runs or not.
@@ -60,7 +116,8 @@ class TileCache {
       // loses persistence across launches.
       debugPrint('TileCache: disk init failed, using in-memory store: $e');
       _store = MemCacheStore(maxSize: 100 * 1024 * 1024);
-      _dio = _buildDio(_store!);
+      _tileProvider = null;
+      _packProviders.clear();
     }
   }
 
@@ -103,25 +160,93 @@ class TileCache {
       debugPrint('TileCache: trim failed: $e');
     }
   }
+}
 
-  static Dio _buildDio(CacheStore store) {
-    return Dio()
-      ..interceptors.add(
-        DioCacheInterceptor(
-          options: CacheOptions(
-            store: store,
-            maxStale: const Duration(days: 30),
-            // Map raster tiles are content-addressed by z/x/y and are
-            // effectively immutable, so serve a cached tile without a
-            // revalidation round-trip whenever one exists — this is what
-            // keeps the map usable offline and stops every pan/zoom from
-            // re-hitting the tile server. _trimToBudget() bounds disk use;
-            // maxStale caps how long a never-re-requested tile lingers.
-            policy: CachePolicy.forceCache,
-          ),
-        ),
-      );
+/// A [CacheStore] that cannot fail a request: a read that throws is a miss,
+/// a write that throws is skipped, and each is logged.
+///
+/// dio_cache_interceptor 4.0.6 awaited the store unguarded inside
+/// `onRequest`, so a throwing read never called the handler and the tile
+/// request hung with no error. 4.0.7 rejects the request instead, which
+/// still loses a tile the network could have served. The cache is a
+/// performance layer under the map; a disk that has gone bad must degrade
+/// it to "uncached", not to "no map".
+class ResilientCacheStore extends CacheStore {
+  ResilientCacheStore(this._inner);
+
+  final CacheStore _inner;
+  int _failures = 0;
+
+  Future<T> _guard<T>(String op, Future<T> Function() body, T onError) async {
+    try {
+      return await body();
+    } catch (e) {
+      _failures++;
+      // First failure then every hundredth: a broken disk fails every tile.
+      if (_failures == 1 || _failures % 100 == 0) {
+        debugPrint(
+          'TileCache: cache store $op failed ($_failures so far), '
+          'continuing uncached: $e',
+        );
+      }
+      return onError;
+    }
   }
+
+  @override
+  Future<bool> exists(String key) =>
+      _guard('exists', () => _inner.exists(key), false);
+
+  @override
+  Future<CacheResponse?> get(String key) =>
+      _guard('get', () => _inner.get(key), null);
+
+  @override
+  Future<List<CacheResponse>> getFromPath(
+    RegExp pathPattern, {
+    Map<String, String?>? queryParams,
+  }) =>
+      _guard(
+        'getFromPath',
+        () => _inner.getFromPath(pathPattern, queryParams: queryParams),
+        const [],
+      );
+
+  @override
+  Future<void> set(CacheResponse response) =>
+      _guard('set', () => _inner.set(response), null);
+
+  @override
+  Future<void> delete(String key, {bool staleOnly = false}) =>
+      _guard('delete', () => _inner.delete(key, staleOnly: staleOnly), null);
+
+  @override
+  Future<void> deleteFromPath(
+    RegExp pathPattern, {
+    Map<String, String?>? queryParams,
+  }) =>
+      _guard(
+        'deleteFromPath',
+        () => _inner.deleteFromPath(pathPattern, queryParams: queryParams),
+        null,
+      );
+
+  @override
+  Future<void> clean({
+    CachePriority priorityOrBelow = CachePriority.high,
+    bool staleOnly = false,
+  }) =>
+      _guard(
+        'clean',
+        () => _inner.clean(
+          priorityOrBelow: priorityOrBelow,
+          staleOnly: staleOnly,
+        ),
+        null,
+      );
+
+  @override
+  Future<void> close() => _guard('close', _inner.close, null);
 }
 
 class _TileEntry {

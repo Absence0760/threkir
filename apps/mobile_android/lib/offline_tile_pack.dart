@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' show ImmutableBuffer;
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -8,6 +9,11 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'tile_pack.dart';
+
+/// Directory under the app cache root that holds one subdirectory per pinned
+/// route. The downloader writes it and `TileCache.tileProviderForRoute` reads
+/// it, so both name it from here.
+const kOfflinePacksDirName = 'offline_packs';
 
 /// Status of a route's offline tile pack.
 enum OfflinePackStatus { absent, downloading, ready, partial, tooLarge }
@@ -84,7 +90,7 @@ class OfflineTilePackStore extends ChangeNotifier {
         root = overrideDirectory;
       } else {
         final cacheRoot = await getApplicationCacheDirectory();
-        root = Directory('${cacheRoot.path}/offline_packs');
+        root = Directory('${cacheRoot.path}/$kOfflinePacksDirName');
       }
       if (!root.existsSync()) root.createSync(recursive: true);
       _root = root;
@@ -112,7 +118,7 @@ class OfflineTilePackStore extends ChangeNotifier {
     final existing = _root;
     if (existing != null) return existing;
     final cacheRoot = await getApplicationCacheDirectory();
-    final root = Directory('${cacheRoot.path}/offline_packs');
+    final root = Directory('${cacheRoot.path}/$kOfflinePacksDirName');
     if (!root.existsSync()) root.createSync(recursive: true);
     _root = root;
     return root;
@@ -296,9 +302,15 @@ class OfflineTilePackStore extends ChangeNotifier {
 
 /// Read-through tile provider for a followed route: serves a tile from the
 /// route's offline pack on disk when present, else delegates to [fallback]
-/// (the normal network/LRU `CachedTileProvider`). A pinned pack thus renders
-/// the map with zero connectivity, while an absent tile or an un-pinned route
-/// falls through to the online path — fail-closed, never blocks the map.
+/// (the shared network/LRU `TileCache.tileProvider`). A pinned pack thus
+/// renders the map with zero connectivity, while an absent tile or an
+/// un-pinned route falls through to the online path.
+///
+/// The pack is never the reason a tile is missing: an absent file, a stat or
+/// read that throws, and a truncated or corrupt file all resolve the
+/// [fallback]'s image instead, each logged. The lookup runs inside the image
+/// load rather than in [getImageWithCancelLoadingSupport] so building the
+/// map never does synchronous disk I/O.
 class OfflinePackTileProvider extends TileProvider {
   OfflinePackTileProvider({
     required this.packDir,
@@ -310,14 +322,93 @@ class OfflinePackTileProvider extends TileProvider {
   final Directory packDir;
   final TileProvider fallback;
 
+  // The shared CachedTileProvider implements only the cancellable path (its
+  // getImage throws), so this provider must take that path too and hand the
+  // fallback the same cancel signal.
   @override
-  ImageProvider getImage(TileCoordinates coordinates, TileLayer options) {
-    final f = File(
-        '${packDir.path}/${coordinates.z}/${coordinates.x}/${coordinates.y}.png');
-    if (f.existsSync()) {
-      return FileImage(f);
+  bool get supportsCancelLoading => true;
+
+  @override
+  ImageProvider getImageWithCancelLoadingSupport(
+    TileCoordinates coordinates,
+    TileLayer options,
+    Future<void> cancelLoading,
+  ) =>
+      _PackTileImage(
+        file: File('${packDir.path}/${coordinates.z}/${coordinates.x}/'
+            '${coordinates.y}.png'),
+        fallback: () => fallback.supportsCancelLoading
+            ? fallback.getImageWithCancelLoadingSupport(
+                coordinates, options, cancelLoading)
+            : fallback.getImage(coordinates, options),
+      );
+}
+
+/// One tile: the pack file if it decodes, else the fallback provider's image.
+/// The fallback is built lazily so a pack hit never opens a network request.
+class _PackTileImage extends ImageProvider<_PackTileImage> {
+  _PackTileImage({required this.file, required this.fallback});
+
+  final File file;
+  final ImageProvider Function() fallback;
+
+  @override
+  Future<_PackTileImage> obtainKey(ImageConfiguration configuration) =>
+      SynchronousFuture(this);
+
+  @override
+  ImageStreamCompleter loadImage(
+    _PackTileImage key,
+    ImageDecoderCallback decode,
+  ) =>
+      OneFrameImageStreamCompleter(
+        _load(decode),
+        informationCollector: () =>
+            [DiagnosticsProperty('Pack tile', file.path)],
+      );
+
+  Future<ImageInfo> _load(ImageDecoderCallback decode) async {
+    try {
+      if (await file.exists()) {
+        final bytes = await file.readAsBytes();
+        final codec =
+            await decode(await ImmutableBuffer.fromUint8List(bytes));
+        try {
+          final frame = await codec.getNextFrame();
+          return ImageInfo(image: frame.image, debugLabel: file.path);
+        } finally {
+          codec.dispose();
+        }
+      }
+    } catch (e) {
+      debugPrint('OfflinePackTileProvider: pack tile ${file.path} unreadable, '
+          'falling back to the network/LRU cache: $e');
     }
-    return fallback.getImage(coordinates, options);
+    return _firstImage(fallback());
+  }
+
+  static Future<ImageInfo> _firstImage(ImageProvider provider) {
+    final completer = Completer<ImageInfo>();
+    final stream = provider.resolve(ImageConfiguration.empty);
+    late final ImageStreamListener listener;
+    listener = ImageStreamListener(
+      (info, _) {
+        stream.removeListener(listener);
+        // A listener owns the clone it is handed; completing with it passes
+        // that ownership on to this tile's completer.
+        if (completer.isCompleted) {
+          info.dispose();
+        } else {
+          completer.complete(info);
+        }
+      },
+      onError: (Object error, StackTrace? stack) {
+        stream.removeListener(listener);
+        if (!completer.isCompleted) completer.completeError(error, stack);
+      },
+    );
+    stream.addListener(listener);
+    return completer.future;
   }
 }
 

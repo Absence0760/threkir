@@ -4542,6 +4542,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
             track: stats.track,
             currentPosition: stats.currentPosition ?? _currentPosition,
             plannedRoute: _selectedRoute?.waypoints,
+            offlinePackRouteId: _selectedRoute?.id,
             bottomPadding: isCountdown ? 0 : _statsOverlayHeight,
             activity: isCountdown ? null : _activityType,
             ghostPosition: _computeGhostPosition(),

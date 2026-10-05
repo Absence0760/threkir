@@ -460,7 +460,11 @@ class _DashboardScreenState extends State<DashboardScreen>
       key: const Key('dashboardLatestRun'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SectionHeader(l10n.runLastRun),
+        // One row, so it names itself; _SectionHeader is kept for groups.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
+          child: ChartCardHeader(title: l10n.runLastRun),
+        ),
         RunListTile.owned(
           run: run,
           unit: unit,

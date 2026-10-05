@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -19,6 +20,7 @@ import '../lib/local_run_store.dart';
 import '../lib/main.dart' show pendingArmGuidedRun;
 import '../lib/preferences.dart';
 import '../lib/race_controller.dart';
+import '../lib/run_stop_dock.dart';
 import '../lib/settings_destination.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
@@ -691,6 +693,232 @@ void main() {
       expect(shellPage(tester), 2);
       tester.takeException();
     });
+  });
+
+  group('the docked centre button is the Stop on the Run page', () {
+    double shellPage(WidgetTester tester) {
+      final controller =
+          tester.widget<PageView>(find.byType(PageView).first).controller!;
+      return controller.hasClients
+          ? controller.page!
+          : controller.initialPage.toDouble();
+    }
+
+    Finder caption(String text) =>
+        find.descendant(of: find.byType(BottomAppBar), matching: find.text(text));
+
+    // Identical whether the Log button is run-primary (Gym and Nutrition
+    // hidden) or the "+" fan (a modality shown): mid-run the centre button is
+    // the way back to the run everywhere but the Run page, and the Stop there.
+    for (final fanMode in [false, true]) {
+      final mode = fanMode ? 'the "+" fan' : 'run-primary';
+
+      testWidgets(
+          '$mode: elsewhere a tap returns to the run without stopping it; on '
+          'the Run page a press does not stop it and a hold does',
+          (tester) async {
+        var requests = 0;
+        void listener() => requests++;
+        runStopRequests.addListener(listener);
+        addTearDown(() => runStopRequests.removeListener(listener));
+        final s = await _makeStores();
+        if (fanMode) await _seedLoggedLift(tester, s);
+        await _pump(tester, s);
+        runRecordingActive.value = true;
+        await tester.pump();
+
+        expect(find.byType(HoldToStopButton), findsNothing,
+            reason: 'away from the Run page the button is the way back');
+        expect(caption('Recording'), findsOneWidget);
+        expect(_semanticsLabelled('Return to your run'), findsOneWidget);
+
+        await tester.tap(find.byType(FloatingActionButton));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(shellPage(tester), 2, reason: 'the tap landed on the recorder');
+        expect(requests, 0, reason: 'returning to the run must not stop it');
+        tester.takeException();
+
+        expect(find.byType(FloatingActionButton), findsNothing);
+        final stop = find.byType(HoldToStopButton);
+        expect(stop, findsOneWidget);
+        expect(caption('Stop'), findsOneWidget);
+        expect(caption('Recording'), findsNothing);
+        expect(
+            find.descendant(
+                of: stop,
+                matching: find.byWidgetPredicate((w) =>
+                    w is Semantics &&
+                    w.properties.label == 'Stop and save run' &&
+                    w.properties.hint == 'Hold to stop the run')),
+            findsOneWidget);
+        expect(tester.widget<HoldToStopButton>(stop).size, 56,
+            reason: 'it fills the FAB slot');
+
+        // A press shorter than the 800 ms gate does nothing.
+        final press = await tester.startGesture(tester.getCenter(stop));
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 300));
+        await press.up();
+        await tester.pump();
+        expect(requests, 0, reason: 'a short press must not stop the run');
+
+        // The full hold does.
+        final hold = await tester.startGesture(tester.getCenter(stop));
+        for (var i = 0; i < 4; i++) {
+          await tester.pump(const Duration(milliseconds: 120));
+        }
+        expect(find.descendant(of: stop, matching: find.byType(CircularProgressIndicator)),
+            findsOneWidget,
+            reason: 'the progress ring fills during the hold');
+        expect(requests, 0);
+        await tester.pump(const Duration(milliseconds: 900));
+        expect(requests, 1, reason: 'an 800 ms hold stops the run');
+        await hold.up();
+        await tester.pump();
+        tester.takeException();
+      });
+
+      testWidgets('$mode: once the run ends the button reverts', (tester) async {
+        final s = await _makeStores();
+        if (fanMode) await _seedLoggedLift(tester, s);
+        await _pump(tester, s);
+        runRecordingActive.value = true;
+        await tester.pump();
+        await tester.tap(find.byType(FloatingActionButton));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(find.byType(HoldToStopButton), findsOneWidget);
+
+        // The recorder's finished state releases the flag.
+        runRecordingActive.value = false;
+        await tester.pump();
+
+        expect(find.byType(HoldToStopButton), findsNothing);
+        expect(find.byType(FloatingActionButton), findsOneWidget);
+        expect(caption('Stop'), findsNothing);
+        expect(caption(fanMode ? 'Log' : 'Start run'), findsOneWidget);
+        tester.takeException();
+      });
+    }
+
+    testWidgets('leaving the Run page mid-run turns the Stop back into the way '
+        'back', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      runRecordingActive.value = true;
+      await tester.pump();
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(HoldToStopButton), findsOneWidget);
+
+      await tester.tap(find.text('Training'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byType(HoldToStopButton), findsNothing);
+      expect(caption('Recording'), findsOneWidget);
+      tester.takeException();
+    });
+
+    testWidgets('the phone shell docks the Stop; the rail docks nothing',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      expect(tester.widget<RunStopDock>(find.byType(RunStopDock)).docked,
+          isTrue);
+
+      tester.view.physicalSize = const Size(2560, 1440);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.reset);
+      await tester.pump();
+      expect(find.byType(NavigationRail), findsOneWidget);
+      expect(tester.widget<RunStopDock>(find.byType(RunStopDock)).docked,
+          isFalse,
+          reason: 'the rail has no docked button, so the panel keeps Stop');
+    });
+
+    testWidgets('on the rail the leading button never becomes the Stop',
+        (tester) async {
+      tester.view.physicalSize = const Size(2560, 1440);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.reset);
+      final s = await _makeStores();
+      await _pump(tester, s);
+      runRecordingActive.value = true;
+      await tester.pump();
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(shellPage(tester), 2);
+
+      expect(
+          find.descendant(
+              of: find.byType(NavigationRail),
+              matching: find.byType(HoldToStopButton)),
+          findsNothing);
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+      tester.takeException();
+    });
+
+    // The caption cut to "Recordi…" on an iPhone 17 Pro Max at the default
+    // text size. It is a whole word or nothing: scaled to fit, never clipped.
+    for (final scale in [1.0, 1.3, 1.6]) {
+      testWidgets('the caption fits its slot at text scale $scale',
+          (tester) async {
+        final s = await _makeStores();
+        await tester.pumpWidget(MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: TextScaler.linear(scale)),
+              child: child!,
+            ),
+            home: HomeScreen(
+              runStore: s.runStore,
+              routeStore: s.routeStore,
+              gearStore: s.gearStore,
+              gymStore: s.gymStore,
+              foodStore: s.foodStore,
+              preferences: s.prefs,
+              audioCues: s.audioCues,
+              social: s.social,
+              raceController: s.raceController,
+              training: s.training,
+              heartRate: s.heartRate,
+              treadmill: s.treadmill,
+            ),
+          ),
+        ));
+        await tester.pump();
+        runRecordingActive.value = true;
+        await tester.pump();
+
+        for (final label in ['Recording', 'Stop']) {
+          if (label == 'Stop') {
+            await tester.tap(find.byType(FloatingActionButton));
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 400));
+          }
+          final text = caption(label);
+          expect(text, findsOneWidget);
+          final paragraph = tester.renderObject<RenderParagraph>(text);
+          expect(paragraph.didExceedMaxLines, isFalse,
+              reason: '"$label" must not be ellipsised');
+          final slot = tester.getRect(find
+              .ancestor(of: text, matching: find.byType(SizedBox))
+              .first);
+          final drawn = tester.getRect(text);
+          expect(drawn.width, lessThanOrEqualTo(slot.width + 0.01),
+              reason: '"$label" must be drawn inside its slot');
+        }
+        tester.takeException();
+      });
+    }
   });
 
   group('system back walks toward Home and guards a live run', () {

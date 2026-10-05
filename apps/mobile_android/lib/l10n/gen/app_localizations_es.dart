@@ -719,6 +719,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get navRecording => 'Grabando';
 
   @override
+  String get navStop => 'Detener';
+
+  @override
   String get logReturnToRunA11yLabel => 'Volver a tu carrera';
 
   @override
@@ -1817,6 +1820,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get runStopA11yHint => 'Finaliza la grabación y guarda la carrera';
+
+  @override
+  String get runHoldToStopRunA11yHint =>
+      'Mantén pulsado para detener la carrera';
 
   @override
   String get runHoldToStopHint => 'Mantén para detener';

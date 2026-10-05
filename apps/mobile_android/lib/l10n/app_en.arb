@@ -942,7 +942,11 @@
   },
   "navRecording": "Recording",
   "@navRecording": {
-    "description": "Caption under the centre nav button while a run is recording; a tap returns to the recorder. Must fit the 56dp centre slot"
+    "description": "Caption under the centre nav button while a run is recording and another page is showing; a tap returns to the recorder. Must fit the 72dp centre slot without an ellipsis"
+  },
+  "navStop": "Stop",
+  "@navStop": {
+    "description": "Caption under the centre nav button while a run is recording on the Run page, where the button is the hold-to-stop control. Must fit the 72dp centre slot"
   },
   "logReturnToRunA11yLabel": "Return to your run",
   "@logReturnToRunA11yLabel": {
@@ -2331,6 +2335,10 @@
   "runStopA11yHint": "Ends the recording and saves the run",
   "@runStopA11yHint": {
     "description": "Screen-reader hint for the stop-and-save control"
+  },
+  "runHoldToStopRunA11yHint": "Hold to stop the run",
+  "@runHoldToStopRunA11yHint": {
+    "description": "Screen-reader hint for the centre nav button while it is the hold-to-stop control on the Run page"
   },
   "runHoldToStopHint": "Hold to stop",
   "@runHoldToStopHint": {

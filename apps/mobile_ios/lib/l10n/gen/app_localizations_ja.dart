@@ -693,6 +693,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get navRecording => '記録中';
 
   @override
+  String get navStop => '停止';
+
+  @override
   String get logReturnToRunA11yLabel => '記録中のランに戻る';
 
   @override
@@ -1743,6 +1746,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runStopA11yHint => '記録を終了してランを保存します';
+
+  @override
+  String get runHoldToStopRunA11yHint => '長押しでランを停止';
 
   @override
   String get runHoldToStopHint => '長押しで停止';

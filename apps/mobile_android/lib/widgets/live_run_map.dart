@@ -233,7 +233,7 @@ int _tileFailures = 0;
 /// so a flaky network can't drown the log the recording stack writes to.
 TileLayer basemapTileLayer({
   required String urlTemplate,
-  TileProvider? tileProvider,
+  String? offlinePackRouteId,
   int maxNativeZoom = 19,
   double maxZoom = 19,
   TileBuilder? tileBuilder,
@@ -254,7 +254,7 @@ TileLayer basemapTileLayer({
           );
         }
       },
-      tileProvider: tileProvider ?? TileCache.tileProvider,
+      tileProvider: TileCache.tileProviderForRoute(offlinePackRouteId),
     );
 
 /// Separator between an overlay and the basemap: the casing under the
@@ -447,14 +447,13 @@ class LiveRunMap extends StatefulWidget {
     this.markerPlacing = false,
     this.onMarkerPlace,
     this.onMarkerTap,
-    this.offlineTileProvider,
+    this.offlinePackRouteId,
   });
 
-  /// Optional read-through tile provider serving a followed route's offline
-  /// pack from disk first, falling through to the network/LRU cache (set by
-  /// the recorder when following a route that has an offline pack pinned).
-  /// Null → the normal network-cached tile path (decisions §167).
-  final TileProvider? offlineTileProvider;
+  /// The route this map is showing or following. Its offline pack, if one
+  /// was pinned, is read first and the network/LRU cache fills the rest
+  /// (decisions § 170). Null → the network/LRU cache alone.
+  final String? offlinePackRouteId;
 
   /// Course markers (aid stations, cutoffs, …) painted as coloured pins
   /// with a label above the trace. Empty = no marker layer.
@@ -1029,7 +1028,7 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
             // the polyline floating on a white background.
             basemapTileLayer(
               urlTemplate: _tileUrl,
-              tileProvider: widget.offlineTileProvider,
+              offlinePackRouteId: widget.offlinePackRouteId,
               maxNativeZoom: 19,
               maxZoom: 22,
             ),

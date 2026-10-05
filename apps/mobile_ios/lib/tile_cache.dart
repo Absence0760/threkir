@@ -9,6 +9,8 @@ import 'package:flutter_map_cache/flutter_map_cache.dart';
 import 'package:http_cache_file_store/http_cache_file_store.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'offline_tile_pack.dart';
+
 /// Persistent on-disk cache for MapTiler tiles shared by every live map
 /// instance in the app. Tiles survive across app launches — so the second
 /// run in your neighbourhood renders the basemap with no network and the
@@ -62,18 +64,40 @@ class TileCache {
         cachePolicy: CachePolicy.forceCache,
       );
 
+  static String? _offlinePacksRoot;
+  static final Map<String, TileProvider> _packProviders = {};
+
+  /// The basemap provider for a map showing [routeId]: tiles from that
+  /// route's offline pack (decisions § 170) first, then [tileProvider].
+  ///
+  /// The pack directory is checked per tile rather than once here, so a pack
+  /// downloaded while the map is open is picked up and an un-pinned route
+  /// simply misses through to [tileProvider]. One provider per route is
+  /// memoised for the same reason [tileProvider] is: a map rebuilding at
+  /// 45 Hz must hand `TileLayer` the same object every frame.
+  static TileProvider tileProviderForRoute(String? routeId) {
+    final root = _offlinePacksRoot;
+    if (routeId == null || root == null) return tileProvider;
+    return _packProviders[routeId] ??= OfflinePackTileProvider(
+      packDir: Directory('$root/$routeId'),
+      fallback: tileProvider,
+    );
+  }
+
   /// Initialise the disk-backed tile cache. Call from `main()` before
   /// `runApp`. Idempotent — subsequent calls are no-ops.
   static Future<void> init() async {
     if (_store != null) return;
     try {
       final cacheRoot = await getApplicationCacheDirectory();
+      _offlinePacksRoot = '${cacheRoot.path}/$kOfflinePacksDirName';
       final tilesDir = Directory('${cacheRoot.path}/map_tiles');
       if (!tilesDir.existsSync()) {
         tilesDir.createSync(recursive: true);
       }
       _store = FileCacheStore(tilesDir.path);
       _tileProvider = null;
+      _packProviders.clear();
       // Fire-and-forget LRU trim. Keeps the cache bounded without blocking
       // the first frame — eviction is best-effort and the map works fine
       // whether it runs or not.
@@ -85,6 +109,7 @@ class TileCache {
       debugPrint('TileCache: disk init failed, using in-memory store: $e');
       _store = MemCacheStore(maxSize: 100 * 1024 * 1024);
       _tileProvider = null;
+      _packProviders.clear();
     }
   }
 

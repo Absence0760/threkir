@@ -13,7 +13,7 @@ depends on the extension.
 |---|---|
 | Target | `WatchAppComplication`, product type `com.apple.product-type.app-extension` |
 | Product | `WatchAppComplication.appex`, copied into `$(CONTENTS_FOLDER_PATH)/PlugIns` by the `Embed Foundation Extensions` phase on `WatchApp` |
-| Bundle id | `com.threkir.app.watchapp.complication` |
+| Bundle id | `com.threkir.app.watchapp.widget` |
 | Info.plist | `Complications/Info.plist` (`GENERATE_INFOPLIST_FILE = NO`), declaring `NSExtensionPointIdentifier = com.apple.widgetkit-extension` |
 | Entitlements | `Complications/WatchAppComplication.entitlements`, carrying the one App Group `group.com.threkir.app.activerun` |
 | Sources | `Complications/ActiveRunComplication.swift`, plus three files that are members of **both** targets: `Complications/ActiveRunTimeline.swift`, `WatchApp/ActiveRunBridge.swift`, `WatchApp/RunFormat.swift` |

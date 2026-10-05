@@ -72,7 +72,7 @@ const COMPLICATION = profileFromFields({
 	uuid: 'bbbbbbbb-cccc-dddd-eeee-ffffffffffff',
 	name: 'Threkir Watch Complication App Store',
 	teamId: TEAM,
-	applicationIdentifier: `${TEAM}.com.threkir.app.watchapp.complication`,
+	applicationIdentifier: `${TEAM}.com.threkir.app.watchapp.widget`,
 	listsDevices: false,
 	provisionsAllDevices: false,
 	getTaskAllow: false,
@@ -113,7 +113,7 @@ test('the committed project signs exactly the phone app, the bundles it embeds, 
 		'Runner com.threkir.app',
 		'ShareExtension com.threkir.app.ShareExtension',
 		'WatchApp com.threkir.app.watchapp',
-		'WatchAppComplication com.threkir.app.watchapp.complication',
+		'WatchAppComplication com.threkir.app.watchapp.widget',
 	]);
 });
 
@@ -185,7 +185,7 @@ test('a missing Live Activity profile fails naming its bundle id, not inside xco
 test('a missing complication profile fails naming the complication, since the watch app embeds it', () => {
 	assert.throws(
 		() => planSigning(PBXPROJ, [PHONE, WATCH, SHARE, RUN_ACTIVITY]),
-		/com\.threkir\.app\.watchapp\.complication \(target WatchAppComplication\)/,
+		/com\.threkir\.app\.watchapp\.widget \(target WatchAppComplication\)/,
 	);
 });
 
@@ -226,7 +226,7 @@ test('the export options name every signed bundle with its profile', () => {
 	assert.match(xml, new RegExp(`<key>com\\.threkir\\.app</key>\\n\\t\\t<string>${PHONE.uuid}</string>`));
 	assert.match(xml, new RegExp(`<key>com\\.threkir\\.app\\.watchapp</key>\\n\\t\\t<string>${WATCH.uuid}</string>`));
 	assert.match(xml, new RegExp(`<key>com\\.threkir\\.app\\.RunActivity</key>\\n\\t\\t<string>${RUN_ACTIVITY.uuid}</string>`));
-	assert.match(xml, new RegExp(`<key>com\\.threkir\\.app\\.watchapp\\.complication</key>\\n\\t\\t<string>${COMPLICATION.uuid}</string>`));
+	assert.match(xml, new RegExp(`<key>com\\.threkir\\.app\\.watchapp\\.widget</key>\\n\\t\\t<string>${COMPLICATION.uuid}</string>`));
 	assert.equal((xml.match(/<dict>/g) ?? []).length, (xml.match(/<\/dict>/g) ?? []).length);
 });
 

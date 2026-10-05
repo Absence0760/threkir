@@ -203,7 +203,7 @@ is the runbook for making each one.
 | `IOS_SHARE_PROVISIONING_PROFILE_BASE64` | base64 of the App Store profile for `com.threkir.app.ShareExtension`, the share extension the phone app embeds; its App ID must carry the `group.com.threkir.app.share` App Group |
 | `IOS_RUN_ACTIVITY_PROVISIONING_PROFILE_BASE64` | base64 of the App Store profile for `com.threkir.app.RunActivity`, the Live Activity widget extension the phone app embeds |
 | `IOS_WATCH_PROVISIONING_PROFILE_BASE64` | base64 of the App Store profile for `com.threkir.app.watchapp` |
-| `IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64` | base64 of the App Store profile for `com.threkir.app.watchapp.complication`, the WidgetKit complication the watch app embeds |
+| `IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64` | base64 of the App Store profile for `com.threkir.app.watchapp.widget`, the WidgetKit complication the watch app embeds |
 | `APP_STORE_CONNECT_API_KEY_ID` | App Store Connect API key id (App Manager role) |
 | `APP_STORE_CONNECT_API_ISSUER_ID` | that key's issuer id |
 | `APP_STORE_CONNECT_API_PRIVATE_KEY` | the key's `.p8` file contents as they are -- **not** base64; the upload action reads PKCS#8 text |

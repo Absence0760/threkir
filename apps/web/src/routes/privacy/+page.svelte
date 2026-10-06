@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { OPERATOR, OPERATOR_FACTS_COMPLETE } from '$lib/legal/operator';
 
-	const lastUpdated = '2026-10-05';
+	const lastUpdated = '2026-10-06';
 </script>
 
 <svelte:head>
@@ -118,6 +118,12 @@
 			Connect, or HealthKit, we receive the activity data they publish to us.
 		</li>
 	</ul>
+	<p data-testid="health-platform-data">
+		Data we read from <strong>Apple HealthKit</strong> or <strong>Android Health Connect</strong>
+		is used only to provide the features you connected it for, such as importing your workouts and
+		estimating calories from your body weight. We never use it for advertising, marketing, or
+		data mining, we never sell it, and we never disclose it to advertisers or data brokers.
+	</p>
 
 	<h2>3. Why we process it (lawful basis)</h2>
 	<table>

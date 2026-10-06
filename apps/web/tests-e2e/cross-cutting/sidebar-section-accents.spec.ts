@@ -134,7 +134,15 @@ test.describe('sidebar section accents', () => {
 			const nav = document.querySelector('nav.sidebar');
 			if (!nav) return;
 			for (const el of nav.querySelectorAll('.nav-icon')) void getComputedStyle(el).color;
-			await Promise.all(nav.getAnimations({ subtree: true }).map((a) => a.finished));
+			// A transition that is cancelled rather than completed (the nav
+			// re-rendering mid-flip restarts it) rejects `finished` with an
+			// AbortError and is replaced by a new one, so settle every pass and
+			// look again until nothing is running.
+			for (let pass = 0; pass < 10; pass++) {
+				const running = nav.getAnimations({ subtree: true });
+				if (running.length === 0) break;
+				await Promise.allSettled(running.map((a) => a.finished));
+			}
 		});
 		const dark = await glyphColours(page);
 

@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/gen/app_localizations.dart';
+import '../legal_links.dart';
 import '../pro_sellable.dart';
 import '../revenuecat.dart';
 import '../share_sheet.dart';
@@ -230,6 +231,21 @@ class _SettingsProScreenState extends State<SettingsProScreen> {
                       ),
                 ),
               ),
+            // App Store Guideline 3.1.2: the terms and the privacy policy must
+            // be reachable from the auto-renewing purchase itself.
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                children: [
+                  for (final doc in const [LegalDoc.terms, LegalDoc.privacy])
+                    TextButton(
+                      onPressed: () => openLegalDoc(context, doc),
+                      child: Text(legalDocLabel(l10n, doc)),
+                    ),
+                ],
+              ),
+            ),
             ListTile(
               leading: const Icon(Icons.restore),
               title: Text(l10n.proRestorePurchases),

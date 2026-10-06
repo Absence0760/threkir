@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/legal_links.dart';
 import '../lib/pro_sellable.dart';
 import '../lib/screens/settings_pro_screen.dart';
 import '../lib/store_links.dart';
@@ -110,6 +111,42 @@ void main() {
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }
+  });
+
+  testWidgets('Terms and Privacy are reachable from the storefront (3.1.2)',
+      (tester) async {
+    final launched = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(launcher,
+        (call) async {
+      if (call.method == 'launch' || call.method == 'launchUrl') {
+        launched.add((call.arguments as Map)['url'] as String);
+      }
+      return true;
+    });
+    addTearDown(() => tester.binding.defaultBinaryMessenger
+        .setMockMethodCallHandler(launcher, null));
+
+    for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+      debugDefaultTargetPlatformOverride = platform;
+      try {
+        await pumpPro(tester, const ProPerks(coach: true, routeGen: false));
+        expect(find.widgetWithText(TextButton, 'Terms of Service'),
+            findsOneWidget);
+        expect(
+            find.widgetWithText(TextButton, 'Privacy Policy'), findsOneWidget);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    }
+
+    await tester.tap(find.widgetWithText(TextButton, 'Terms of Service'));
+    await tester.pump();
+    await tester.tap(find.widgetWithText(TextButton, 'Privacy Policy'));
+    await tester.pump();
+    expect(launched, [
+      legalDocUrl(LegalDoc.terms),
+      legalDocUrl(LegalDoc.privacy),
+    ]);
   });
 
   testWidgets('Android keeps the Support link', (tester) async {

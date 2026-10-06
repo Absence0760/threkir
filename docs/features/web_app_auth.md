@@ -246,13 +246,21 @@ The redirect above is a request the hosted project can silently refuse: a Site U
 
 - **`emailOtpLink(search)`** — reads the `token_hash` + `type` pair off an auth-email landing and rejects a `type` outside GoTrue's email set. Used by `/auth/callback` and `/auth/reset` to pick the `verifyOtp` branch over the PKCE one.
 
-Pinned by `lib/core/auth_confirmation.test.ts` (21 unit tests) + `tests-e2e/auth/stray-confirmation-landing.spec.ts`. Decisions §279.
+Pinned by `lib/core/auth_confirmation.test.ts` (24 unit tests) + `tests-e2e/auth/stray-confirmation-landing.spec.ts`. Decisions §279.
+
+## Every session meets the consent gate, not just the sign-in hop (issue #1065)
+
+The redirects above fire only on the sign-in hop — `/auth/callback` and `/login`'s sign-up branch. An account that reaches the app any other way kept a live session with no recorded consent: a tab closed on `/auth/confirm-age`, a password sign-in for an account whose stamp never ran, or an Apple / Google sign-in from a client that never asked. So the root layout carries a **consent gate** ahead of the onboarding gate: `auth.user.consent_recorded` (both `age_confirmed_at` and `terms_accepted_at` present, `consentRecorded()` in `lib/core/auth_confirmation.ts`) is computed on every profile hydration, and when it is false any route outside the anon-allowed set redirects to `/auth/confirm-age`. The legal pages stay reachable so the terms can be read before they are accepted, and the onboarding gate waits until consent is recorded. `/auth/confirm-age` re-hydrates the auth store after stamping, so the gate does not bounce the user straight back.
+
+Mobile carries the same gate: `HomeScreen` pushes `ConfirmAgeScreen` (the twin of `/auth/confirm-age` — two checkboxes, Continue, or Sign out; the back gesture cannot dismiss it) whenever the signed-in profile records no consent, before the setup wizard. The sign-up screen's Apple / Google buttons collect the affirmation before the tap, so they pass `affirmedAgeAndTerms: true` and `ApiClient` stamps it inside the sign-in call; the gate awaits `ApiClient.consentStampSettled` before reading, so it never re-asks someone who just answered.
+
+Pinned by `tests-e2e/auth/consent-gate.spec.ts` (web), `test/home_screen_test.dart` + `test/confirm_age_screen_test.dart` (mobile). Decisions §1758.
 
 ---
 
 ## Consent is enforced server-side, not just by the client redirect (issue #382)
 
-The Art 8 age/terms gate above (`confirm_age_and_terms` + the `/auth/confirm-age` redirect) is a **client-side UX layer**. On its own it was bypassable: a direct `curl` to GoTrue `/auth/v1/signup`, or closing the tab before `/auth/callback` replays the stamp, yields an `authenticated` account whose `user_profiles.age_confirmed_at IS NULL` — and until now every RPC/RLS was silent on the column, so that account had full functional use of the app. Art 8 consent is invalid when the controller can't show the affirmative act happened, and the downstream Art 9 processing (location traces, workouts, food, body metrics) is then unlawful ab initio.
+The Art 8 age/terms gate above (`confirm_age_and_terms` + the `/auth/confirm-age` redirect, and its mobile twin `ConfirmAgeScreen`) is a **client-side UX layer**. On its own it was bypassable: a direct `curl` to GoTrue `/auth/v1/signup`, or closing the tab before `/auth/callback` replays the stamp, yields an `authenticated` account whose `user_profiles.age_confirmed_at IS NULL` — and until now every RPC/RLS was silent on the column, so that account had full functional use of the app. Art 8 consent is invalid when the controller can't show the affirmative act happened, and the downstream Art 9 processing (location traces, workouts, food, body metrics) is then unlawful ab initio.
 
 The enforcement beneath the redirect is a **fail-closed `BEFORE INSERT` trigger** (`private.enforce_consent()`, migration `20270424000004_consent_write_gate.sql`) on the core personal-data content tables — `runs`, `gym_workouts`, `food_log`, `body_metrics`, `routes`. An `authenticated` caller (a user JWT) cannot insert their first row of activity/health data until `confirm_age_and_terms()` has stamped `age_confirmed_at`; the guard raises `42501`. The reusable helper is keyed on `auth.uid()` (the RLS insert check already forces `new.user_id = auth.uid()`), so the caller's stamp is the row's stamp.
 

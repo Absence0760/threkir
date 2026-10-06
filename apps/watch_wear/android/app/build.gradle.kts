@@ -318,9 +318,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.11.0")
 
-    // Sentry crash reporting. Init in MainActivity.onCreate; gated on a
-    // non-empty BuildConfig.SENTRY_DSN so dev / debug builds are
-    // no-ops. The Android SDK auto-captures unhandled JVM exceptions;
+    // Sentry crash reporting. Init in WatchWearApplication.onCreate (the
+    // SDK's manifest auto-init is off); gated on a non-blank
+    // BuildConfig.SENTRY_DSN so a build without one is a no-op. The Android SDK auto-captures unhandled JVM exceptions;
     // we additionally wire breadcrumbs in long-running paths via
     // Sentry.captureException calls from coroutine catch blocks.
     implementation("io.sentry:sentry-android:8.59.0")

@@ -49,6 +49,7 @@
          flag it on the manifest scan without reading the NSC,
          so we drop it. -->
     <application
+        android:name=".WatchWearApplication"
         android:label="Threkir"
         android:icon="@mipmap/ic_launcher"
         android:localeConfig="@xml/locales_config"
@@ -63,6 +64,14 @@
         <meta-data
             android:name="com.google.android.wearable.standalone"
             android:value="true" />
+
+        <!-- Sentry's SentryInitProvider would otherwise start the SDK before
+             any app code and throw "DSN is required" when SENTRY_DSN is
+             empty, killing the app on launch. WatchWearApplication starts it
+             instead, only when a DSN is set. See ManifestGuardsTest. -->
+        <meta-data
+            android:name="io.sentry.auto-init"
+            android:value="false" />
 
         <activity
             android:name=".MainActivity"

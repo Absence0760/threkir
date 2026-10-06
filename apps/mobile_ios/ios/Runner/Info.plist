@@ -181,6 +181,13 @@
 	     files — ShareExtensionHandoffTests compares them. -->
 	<key>AppGroupId</key>
 	<string>group.com.threkir.app.share</string>
+	<!-- Declaring CFBundleDocumentTypes obliges an answer to "open in place
+	     or import a copy" (ITMS 90737). Threkir imports: shared_file_import.dart
+	     reads the bytes once and keeps its own route, never holding the
+	     original or a security-scoped bookmark to it, so iOS hands over a
+	     copy in Documents/Inbox. -->
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<false/>
 	<!-- OS "Open with" for GPX/KML route files (decisions §24 device-led).
 	     Neither type is system-declared, so Threkir imports a UTI for each
 	     and registers as a Viewer; receive_sharing_intent delivers the

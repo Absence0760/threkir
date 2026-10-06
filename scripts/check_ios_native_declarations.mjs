@@ -779,29 +779,35 @@ function dictArray(value) {
 /// extensions or the watch app. Each entry names the Xcode target, so
 /// membership is read out of the project rather than assumed from a file
 /// being on disk: the Runner manifest sat on disk, unreferenced and unshipped,
-/// while every check here read it and passed (decisions § 1741).
-/** @type {{ target: string, manifest: string, sourceDirs: string[], projects: string[] }[]} */
+/// while every check here read it and passed (decisions § 1741). `infoPlist`
+/// is the file the target's INFOPLIST_FILE names, read for the keys App Store
+/// Connect validates on every bundle.
+/** @type {{ target: string, infoPlist: string, manifest: string, sourceDirs: string[], projects: string[] }[]} */
 export const BUNDLE_MANIFESTS = [
 	{
 		target: 'Runner',
+		infoPlist: 'apps/mobile_ios/ios/Runner/Info.plist',
 		manifest: 'apps/mobile_ios/ios/Runner/PrivacyInfo.xcprivacy',
 		sourceDirs: ['apps/mobile_ios/ios/Runner', 'apps/mobile_ios/ios/RunActivity'],
 		projects: ['apps/mobile_ios/ios/Runner.xcodeproj/project.pbxproj'],
 	},
 	{
 		target: 'ShareExtension',
+		infoPlist: 'apps/mobile_ios/ios/ShareExtension/Info.plist',
 		manifest: 'apps/mobile_ios/ios/ShareExtension/PrivacyInfo.xcprivacy',
 		sourceDirs: ['apps/mobile_ios/ios/ShareExtension'],
 		projects: ['apps/mobile_ios/ios/Runner.xcodeproj/project.pbxproj'],
 	},
 	{
 		target: 'RunActivityExtension',
+		infoPlist: 'apps/mobile_ios/ios/RunActivity/Info.plist',
 		manifest: 'apps/mobile_ios/ios/RunActivity/PrivacyInfo.xcprivacy',
 		sourceDirs: ['apps/mobile_ios/ios/RunActivity', 'apps/mobile_ios/ios/Runner'],
 		projects: ['apps/mobile_ios/ios/Runner.xcodeproj/project.pbxproj'],
 	},
 	{
 		target: 'WatchApp',
+		infoPlist: 'apps/watch_ios/WatchApp/Info.plist',
 		manifest: 'apps/watch_ios/WatchApp/PrivacyInfo.xcprivacy',
 		sourceDirs: ['apps/watch_ios/WatchApp', 'apps/watch_ios/Complications'],
 		projects: [
@@ -811,6 +817,7 @@ export const BUNDLE_MANIFESTS = [
 	},
 	{
 		target: 'WatchAppComplication',
+		infoPlist: 'apps/watch_ios/Complications/Info.plist',
 		manifest: 'apps/watch_ios/Complications/PrivacyInfo.xcprivacy',
 		sourceDirs: ['apps/watch_ios/Complications', 'apps/watch_ios/WatchApp'],
 		projects: [
@@ -866,6 +873,8 @@ export const SWIFT_REQUIRED_REASON_APIS = [
 /**
  * @typedef {object} BundleInput
  * @property {string} target
+ * @property {string} infoPlistPath
+ * @property {string | null} infoPlist
  * @property {string} manifestPath
  * @property {string | null} manifest
  * @property {{ project: string, resources: string[] }[]} membership
@@ -889,6 +898,23 @@ export function evaluateBundleManifests(bundles) {
 		return { errors, ok };
 	}
 	for (const b of bundles) {
+		// App Store Connect validates every bundle in the archive for a display
+		// name, including ones whose name the OS never renders: a Live Activity
+		// extension without it was rejected at upload (ITMS 90360), and only
+		// after a twenty-minute signed build.
+		const info = b.infoPlist === null ? null : parsePlist(b.infoPlist);
+		const displayName = info?.get('CFBundleDisplayName');
+		if (b.infoPlist === null) {
+			errors.push(`${b.infoPlistPath} does not exist, but ${b.target} ships in the archive.`);
+		} else if (typeof displayName === 'string' && displayName.trim()) {
+			ok.push(`${b.target} declares CFBundleDisplayName "${displayName}"`);
+		} else {
+			errors.push(
+				`${b.infoPlistPath} does not declare a CFBundleDisplayName.\n` +
+					'  App Store Connect rejects the upload (ITMS 90360) for any bundle ' +
+					'without one, whether or not the OS ever shows its name.',
+			);
+		}
 		for (const { project, resources } of b.membership) {
 			if (resources.includes('PrivacyInfo.xcprivacy')) {
 				ok.push(`${b.target} ships PrivacyInfo.xcprivacy (${project})`);
@@ -989,6 +1015,8 @@ export function readBundles(root = REPO_ROOT) {
 		if (sourceNames.length === 0) unresolved.push(`(no Swift in ${b.target}'s Sources phase)`);
 		return {
 			target: b.target,
+			infoPlistPath: b.infoPlist,
+			infoPlist: readOrNull(join(root, b.infoPlist)),
 			manifestPath: b.manifest,
 			manifest: readOrNull(join(root, b.manifest)),
 			membership,
@@ -1210,6 +1238,26 @@ export function evaluate(input) {
 			continue;
 		}
 		errors.push(`Info.plist is missing \`${key}\`.\n  ${why}`);
+	}
+
+	// Declaring document types claims the app opens documents, and App Store
+	// Connect then wants to know how (ITMS 90737): in place, or as an imported
+	// copy. Today a warning at upload; Apple's 90xxx warnings have a history of
+	// becoming errors.
+	if (infoPlist.has('CFBundleDocumentTypes')) {
+		if (
+			typeof infoPlist.get('LSSupportsOpeningDocumentsInPlace') === 'boolean' ||
+			infoPlist.get('UISupportsDocumentBrowser') === true
+		) {
+			ok.push('Info.plist says how the document types it declares are opened');
+		} else {
+			errors.push(
+				'Info.plist declares CFBundleDocumentTypes without ' +
+					'LSSupportsOpeningDocumentsInPlace (or UISupportsDocumentBrowser).\n' +
+					'  App Store Connect flags the upload (ITMS 90737). Set it to false ' +
+					'when the app imports a copy, true only if it edits the original.',
+			);
+		}
 	}
 
 	// The display name is "Threkir"; the usage strings once said "Run App",

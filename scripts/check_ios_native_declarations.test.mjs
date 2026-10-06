@@ -276,6 +276,22 @@ test('the baseline passes, so every mutation below is the only cause of its fail
 	assert.deepEqual(errors, []);
 });
 
+test('declaring document types obliges saying how they are opened', () => {
+	const docTypes = plistWith('CFBundleDocumentTypes', [new Map()]);
+	const missing = evaluate(baseline({ infoPlist: docTypes })).errors;
+	assert.equal(missing.filter((e) => e.includes('90737')).length, 1);
+	for (const [key, value] of /** @type {[string, unknown][]} */ ([
+		['LSSupportsOpeningDocumentsInPlace', false],
+		['LSSupportsOpeningDocumentsInPlace', true],
+		['UISupportsDocumentBrowser', true],
+	])) {
+		const plist = new Map(docTypes).set(key, value);
+		assert.deepEqual(evaluate(baseline({ infoPlist: plist })).errors, [], `${key}=${value}`);
+	}
+	const asString = new Map(docTypes).set('LSSupportsOpeningDocumentsInPlace', 'NO');
+	assert.equal(evaluate(baseline({ infoPlist: asString })).errors.filter((e) => e.includes('90737')).length, 1);
+});
+
 test('a playback TTS session with no `audio` background mode fails', () => {
 	const { errors } = evaluate(
 		baseline({ infoPlist: plistWith('UIBackgroundModes', []) }),
@@ -923,10 +939,16 @@ function manifestXml(api, tracking = 'false') {
 
 const UD = 'NSPrivacyAccessedAPICategoryUserDefaults';
 
+/** @param {string} body */
+const infoPlistXml = (body) =>
+	`<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict>${body}</dict></plist>`;
+
 /** @param {Partial<import('./check_ios_native_declarations.mjs').BundleInput>} over */
 function bundle(over = {}) {
 	return {
 		target: 'ShareExtension',
+		infoPlistPath: 'ShareExtension/Info.plist',
+		infoPlist: infoPlistXml('<key>CFBundleDisplayName</key><string>Threkir</string>'),
 		manifestPath: 'ShareExtension/PrivacyInfo.xcprivacy',
 		manifest: manifestXml([[UD, ['1C8F.1']]]),
 		membership: [{ project: 'Runner.xcodeproj', resources: ['PrivacyInfo.xcprivacy'] }],
@@ -940,6 +962,19 @@ test('the committed tree ships a manifest in every bundle and declares what each
 	const bundles = readBundles();
 	assert.equal(bundles.length, BUNDLE_MANIFESTS.length);
 	assert.deepEqual(evaluateBundleManifests(bundles).errors, []);
+});
+
+test('a bundle with no CFBundleDisplayName fails, even one whose name the OS never shows', () => {
+	for (const infoPlist of [
+		infoPlistXml('<key>CFBundleName</key><string>RunActivityExtension</string>'),
+		infoPlistXml('<key>CFBundleDisplayName</key><string>  </string>'),
+		infoPlistXml('<!-- <key>CFBundleDisplayName</key><string>Threkir</string> -->'),
+	]) {
+		const { errors } = evaluateBundleManifests([bundle({ target: 'RunActivityExtension', infoPlist })]);
+		assert.equal(errors.filter((e) => e.includes('90360')).length, 1, infoPlist);
+	}
+	const missing = evaluateBundleManifests([bundle({ infoPlist: null })]).errors;
+	assert.ok(missing.some((e) => e.includes('ShareExtension/Info.plist does not exist')));
 });
 
 test('a manifest on disk that the target does not copy fails', () => {

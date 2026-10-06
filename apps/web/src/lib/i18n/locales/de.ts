@@ -3614,6 +3614,8 @@ export const messages = {
 	"upgrade.redirecting": "Weiterleitung…",
 	"upgrade.getPro": "Pro holen — {price}/Mon.",
 	"upgrade.cancelAnytime": "Jederzeit kündbar über App Store, Play Store oder Abrechnungsportal.",
+	"upgrade.termsLink": "Nutzungsbedingungen",
+	"upgrade.privacyLink": "Datenschutzerklärung",
 	"upgrade.donateTitle": "Noch nicht bereit für ein Abo?",
 	"upgrade.donateBody": "Eine einmalige Spende hilft, Kartenkacheln, Push-Benachrichtigungen und die gelegentliche Server-Rechnung zu decken. Jeder Beitrag kommt direkt dem Projekt zugute.",
 	"upgrade.donate": "Spenden",

@@ -194,6 +194,13 @@
 					{purchasing ? m('upgrade.redirecting') : m('upgrade.getPro', { price: priceLabel })}
 				</button>
 				<p class="tier-fine">{m('upgrade.cancelAnytime')}</p>
+				<!-- App Store Guideline 3.1.2 wants the terms and the privacy policy
+				     reachable beside an auto-renewing purchase, not only from a footer. -->
+				<p class="tier-legal">
+					<a href="/terms">{m('upgrade.termsLink')}</a>
+					<span aria-hidden="true">·</span>
+					<a href="/privacy">{m('upgrade.privacyLink')}</a>
+				</p>
 			{:else}
 				<p class="coming-soon-note">{m('upgrade.proComingSoon')}</p>
 			{/if}
@@ -384,6 +391,19 @@
 		color: var(--color-text-tertiary);
 		text-align: center;
 		line-height: 1.4;
+	}
+	.tier-legal {
+		display: flex;
+		justify-content: center;
+		gap: var(--space-xs);
+		margin: var(--space-xs) 0 0;
+		font-size: 0.78rem;
+		color: var(--color-text-tertiary);
+		line-height: 1.4;
+	}
+	.tier-legal a {
+		color: inherit;
+		text-decoration: underline;
 	}
 	.coming-soon-note {
 		margin: var(--space-sm) 0 0;

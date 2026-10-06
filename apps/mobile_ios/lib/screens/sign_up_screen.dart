@@ -304,7 +304,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
       // Route through ApiClient instead of `Supabase.instance.client`
       // directly — matches the Google path and keeps every auth flow
       // on the ApiClient abstraction.
-      await widget.apiClient.signInWithAppleIdToken(idToken: idToken);
+      await widget.apiClient.signInWithAppleIdToken(
+        idToken: idToken,
+        // Kept so account deletion can revoke the Apple grant (5.1.1(v)).
+        appleCode: (
+          code: credential.authorizationCode,
+          nativeFlow: appleUsesNativeFlow(),
+        ),
+      );
       // OAuth-path consent stamp — mirrors the Google branch above.
       try {
         await widget.apiClient.confirmAgeAndTerms();

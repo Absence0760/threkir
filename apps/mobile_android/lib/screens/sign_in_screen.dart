@@ -283,7 +283,14 @@ class _SignInScreenState extends State<SignInScreen> {
       // directly, matching the Google path. Keeps every auth flow on
       // the ApiClient abstraction so the SDK-version + bootstrap
       // guards in `_client` apply uniformly.
-      await widget.apiClient.signInWithAppleIdToken(idToken: idToken);
+      await widget.apiClient.signInWithAppleIdToken(
+        idToken: idToken,
+        // Kept so account deletion can revoke the Apple grant (5.1.1(v)).
+        appleCode: (
+          code: credential.authorizationCode,
+          nativeFlow: appleUsesNativeFlow(),
+        ),
+      );
       widget.onSignedIn?.call();
       if (mounted) Navigator.pop(context, true);
     } catch (e) {

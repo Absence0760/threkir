@@ -148,7 +148,8 @@ export type DeletionAuditResult =
  *                  Android device / RevenueCat key unset). Distinct
  *                  from `failed` because no recipient notification
  *                  was required.
- *   * `failed`   — the call raised. Operator can replay.
+ *   * `failed`   — the call raised. Operator can replay, except
+ *                  `apple_revoke`: its token goes with the account.
  */
 export type ThirdPartyOutcome = 'ok' | 'skipped' | 'failed';
 
@@ -163,6 +164,9 @@ export type ThirdPartyOutcomes = {
 	revenuecat_delete: ThirdPartyOutcome;
 	fcm_remove: ThirdPartyOutcome;
 	stripe_connect_delete: ThirdPartyOutcome;
+	// 'not_reached' only on an audit row from a deletion that aborted before
+	// the revoke, which runs last so that a retry still holds the token.
+	apple_revoke: ThirdPartyOutcome | 'not_reached';
 };
 
 // ─── account-deletion receipt enqueue ───

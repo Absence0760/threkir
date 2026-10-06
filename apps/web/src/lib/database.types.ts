@@ -124,6 +124,30 @@ export type Database = {
         }
         Relationships: []
       }
+      apple_sign_in_tokens: {
+        Row: {
+          client_id: string
+          created_at: string
+          refresh_token_secret_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          refresh_token_secret_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          refresh_token_secret_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       body_metrics: {
         Row: {
           created_at: string
@@ -5328,6 +5352,13 @@ export type Database = {
           raised_cents: number
         }[]
       }
+      get_apple_refresh_token: {
+        Args: { p_user_id: string }
+        Returns: {
+          client_id: string
+          refresh_token: string
+        }[]
+      }
       get_club_invite_token: { Args: { target_club: string }; Returns: string }
       get_coach_usage: { Args: { p_user_id: string }; Returns: number }
       get_event_meet_point: {
@@ -6012,6 +6043,14 @@ export type Database = {
           time_seconds: number
           user_id: string
         }[]
+      }
+      set_apple_refresh_token: {
+        Args: {
+          p_client_id: string
+          p_refresh_token: string
+          p_user_id: string
+        }
+        Returns: undefined
       }
       set_discoverable_area: {
         Args: { p_label?: string; p_lat: number; p_lng: number }

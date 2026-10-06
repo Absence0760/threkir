@@ -17,6 +17,9 @@
     <!-- Step count behind an imported workout, for the steps + cadence
          stats (#664). -->
     <permission name="android.permission.health.READ_STEPS" />
+    <!-- Latest body weight, to seed body_weight_kg for the calorie
+         estimate. -->
+    <permission name="android.permission.health.READ_WEIGHT" />
     <!-- Write recorded runs back to Health Connect (persona #36). -->
     <permission name="android.permission.health.WRITE_EXERCISE" />
     <permission name="android.permission.health.WRITE_DISTANCE" />

@@ -258,7 +258,9 @@ Play Console → App content → Data safety. Be precise; mismatches between the
 |---|---|---|---|---|
 | Approximate location | Yes | No | No (required for the core function) | Yes |
 | Precise location | Yes | No | No | Yes |
-| Health & fitness — heart rate, steps | Yes | No | Yes | Yes |
+| Health & fitness — heart rate, steps, body weight (Health Connect `READ_WEIGHT`, seeds the calorie estimate) | Yes | No | Yes | Yes |
+| Phone number | Yes (an optional safety contact's, for the SMS escalation) | No | Yes | Yes |
+| Personal info — other (date of birth, gender) | Yes (optional, setup wizard) | No | Yes | Yes |
 | Email address | Yes | No | No (account requirement) | Yes |
 | Name | Yes (optional display name, setup wizard / profile) | No | Yes | Yes |
 | User IDs | Yes | No | No | Yes |

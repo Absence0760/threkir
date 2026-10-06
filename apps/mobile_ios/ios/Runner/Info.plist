@@ -41,7 +41,7 @@
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Threkir continues tracking runs in the background so you don't lose data if you take a call or lock your phone.</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Threkir reads workout summaries from Apple Health so runs you've recorded on Apple Watch, Nike Run Club, Strava, and other apps can be imported into your history.</string>
+	<string>Threkir reads workouts, distance, heart rate and body weight from Apple Health so runs you've recorded in other apps can be imported into your history and your calorie estimate uses your real weight.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Threkir writes recorded runs back to Apple Health so the rest of your iOS health record stays in sync with what you've logged here.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>

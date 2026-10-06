@@ -469,6 +469,18 @@ export const PRIVACY_DATA_TYPES = [
 		pattern: /package:supabase_flutter\//,
 		needed_by: "auth.users.id is stored against the runner's rows and on RevenueCat",
 	},
+	{
+		type: 'NSPrivacyCollectedDataTypeOtherDataTypes',
+		source: 'dart',
+		pattern: /UserProfileRow\.col(DateOfBirth|Gender)\]?\s*[:=]/,
+		needed_by: 'onboarding writes the date of birth and gender onto user_profiles',
+	},
+	{
+		type: 'NSPrivacyCollectedDataTypePhoneNumber',
+		source: 'dart',
+		pattern: /SafetyContactRow\.colContactPhone\s*:/,
+		needed_by: "a safety contact's phone number is stored for the SMS escalation leg",
+	},
 ];
 
 /// Collected types that are a property of the product rather than of an
@@ -870,6 +882,40 @@ export const SWIFT_REQUIRED_REASON_APIS = [
 	},
 ];
 
+/// Data an embedded bundle sends off the device itself, derived from the
+/// Swift that bundle compiles. Apple reads each bundle's manifest on its own,
+/// so the watch app's direct Supabase upload has to be declared in the watch
+/// app's manifest, not inherited from the phone's. The Runner is excluded:
+/// its collected data is derived from the Dart by [PRIVACY_DATA_TYPES].
+/** @type {{ type: string, pattern: RegExp, needed_by: string }[]} */
+export const SWIFT_COLLECTED_DATA_TYPES = [
+	{
+		type: 'NSPrivacyCollectedDataTypeEmailAddress',
+		pattern: /grant_type=password/,
+		needed_by: 'signs in with an email address and password',
+	},
+	{
+		type: 'NSPrivacyCollectedDataTypeUserID',
+		pattern: /\buser_id\s*:/,
+		needed_by: "uploads rows keyed on the runner's user id",
+	},
+	{
+		type: 'NSPrivacyCollectedDataTypePreciseLocation',
+		pattern: /storage\/v1\/object\/runs\//,
+		needed_by: 'uploads the GPS track to the runs bucket',
+	},
+	{
+		type: 'NSPrivacyCollectedDataTypeHealth',
+		pattern: /\bavg_bpm\s*:/,
+		needed_by: 'uploads the average heart rate with the run',
+	},
+	{
+		type: 'NSPrivacyCollectedDataTypeFitness',
+		pattern: /\bdistance_m\s*:/,
+		needed_by: 'uploads the distance and steps of the run',
+	},
+];
+
 /**
  * @typedef {object} BundleInput
  * @property {string} target
@@ -975,6 +1021,35 @@ export function evaluateBundleManifests(bundles) {
 		}
 		// The Runner's other categories are claimed by evaluate()'s Dart rules.
 		if (b.target === 'Runner') continue;
+		const collected = dictArray(manifest.get('NSPrivacyCollectedDataTypes'));
+		if (collected === null) {
+			errors.push(`${b.manifestPath} declares NSPrivacyCollectedDataTypes as something other than an array of dictionaries.`);
+		} else {
+			const declaredData = new Set(collected.map((e) => String(e.get('NSPrivacyCollectedDataType'))));
+			const neededData = new Set();
+			for (const rule of SWIFT_COLLECTED_DATA_TYPES) {
+				const hit = b.swiftSources.find((f) => rule.pattern.test(stripSwiftComments(f.text)));
+				if (!hit) continue;
+				neededData.add(rule.type);
+				if (declaredData.has(rule.type)) {
+					ok.push(`${b.target} declares collecting \`${rule.type}\` (${hit.path}: ${rule.needed_by})`);
+				} else {
+					errors.push(
+						`${b.manifestPath} does not declare collecting \`${rule.type}\`, but ` +
+							`${hit.path} ${rule.needed_by}.\n  Apple reads each bundle's manifest ` +
+							'on its own; the phone app declaring it does not cover this bundle.',
+					);
+				}
+			}
+			for (const type of declaredData) {
+				if (neededData.has(type)) continue;
+				errors.push(
+					`${b.manifestPath} declares collecting \`${type}\` and nothing ${b.target} ` +
+						'compiles sends it.\n  Either the upload was removed (drop the entry) ' +
+						'or SWIFT_COLLECTED_DATA_TYPES is missing the rule for it.',
+				);
+			}
+		}
 		for (const [type, reasons] of declared) {
 			for (const reason of reasons) {
 				if (needed.get(type)?.has(reason)) continue;

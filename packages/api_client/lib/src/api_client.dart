@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -436,14 +437,55 @@ class ApiClient {
   /// `Supabase.instance.client.auth.signInWithIdToken` directly for
   /// Apple — they should route through this method instead so the
   /// ApiClient abstraction stays uniform for both providers.
+  /// [appleCode] is the credential's one-time authorization code and whether
+  /// the native flow issued it (iOS) or the Services-ID web flow (Android).
+  /// It is handed on without being awaited: sign-in is done either way.
   Future<String> signInWithAppleIdToken({
     required String idToken,
+    ({String code, bool nativeFlow})? appleCode,
   }) async {
     final response = await _client.auth.signInWithIdToken(
       provider: OAuthProvider.apple,
       idToken: idToken,
     );
+    if (appleCode != null && appleCode.code.isNotEmpty) {
+      unawaited(keepAppleRevocationCredential(
+        appleCode.code,
+        nativeFlow: appleCode.nativeFlow,
+      ));
+    }
     return response.user!.id;
+  }
+
+  /// Hands Apple's one-time authorization code to `apple-token-exchange`,
+  /// which trades it for a refresh token so `delete-account` can revoke the
+  /// grant later (App Store Guideline 5.1.1(v)). The code expires minutes
+  /// after sign-in, so this is the only moment it can be kept. [nativeFlow]
+  /// names the Apple client that issued it; Apple refuses an exchange
+  /// against the other one.
+  ///
+  /// A failure costs only the later revocation, so it never throws: it
+  /// answers false and logs.
+  Future<bool> keepAppleRevocationCredential(
+    String authorizationCode, {
+    required bool nativeFlow,
+  }) async {
+    try {
+      await _client.functions
+          .invoke(
+            'apple-token-exchange',
+            body: {
+              'authorization_code': authorizationCode,
+              'client': nativeFlow ? 'native' : 'web',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
+      return true;
+    } catch (e) {
+      debugPrint(
+          'ApiClient.keepAppleRevocationCredential failed: ${safeErrorLabel(e)}');
+      return false;
+    }
   }
 
   /// Ensure the signed-in user has a `user_profiles` row, creating one

@@ -921,8 +921,11 @@ test('the committed iOS tree satisfies every rule', () => {
 	assert.deepEqual(errors, []);
 });
 
-/** @param {[string, string[]][]} api */
-function manifestXml(api, tracking = 'false') {
+/**
+ * @param {[string, string[]][]} api
+ * @param {string[]} [collected]
+ */
+function manifestXml(api, tracking = 'false', collected = []) {
 	const entries = api
 		.map(
 			([type, reasons]) =>
@@ -933,7 +936,10 @@ function manifestXml(api, tracking = 'false') {
 	return (
 		'<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict>' +
 		`<key>NSPrivacyTracking</key><${tracking}/>` +
-		`<key>NSPrivacyAccessedAPITypes</key><array>${entries}</array></dict></plist>`
+		`<key>NSPrivacyAccessedAPITypes</key><array>${entries}</array>` +
+		`<key>NSPrivacyCollectedDataTypes</key><array>${collected
+			.map((t) => `<dict><key>NSPrivacyCollectedDataType</key><string>${t}</string></dict>`)
+			.join('')}</array></dict></plist>`
 	);
 }
 
@@ -975,6 +981,47 @@ test('a bundle with no CFBundleDisplayName fails, even one whose name the OS nev
 	}
 	const missing = evaluateBundleManifests([bundle({ infoPlist: null })]).errors;
 	assert.ok(missing.some((e) => e.includes('ShareExtension/Info.plist does not exist')));
+});
+
+test('a bundle that uploads data itself must declare collecting it, read both ways', () => {
+	const upload = {
+		path: 'SupabaseService.swift',
+		text: 'let body = ["email": email]\nlet u = "/auth/v1/token?grant_type=password"\nlet p = RunPayload(user_id: id, distance_m: d)',
+	};
+	const missing = evaluateBundleManifests([
+		bundle({ target: 'WatchApp', manifest: manifestXml([], 'false', []), swiftSources: [upload] }),
+	]).errors;
+	for (const t of ['EmailAddress', 'UserID', 'Fitness']) {
+		assert.ok(missing.some((e) => e.includes(`collecting \`NSPrivacyCollectedDataType${t}\``)), t);
+	}
+	assert.ok(!missing.some((e) => e.includes('PreciseLocation')));
+	const declared = evaluateBundleManifests([
+		bundle({
+			target: 'WatchApp',
+			manifest: manifestXml([], 'false', [
+				'NSPrivacyCollectedDataTypeEmailAddress',
+				'NSPrivacyCollectedDataTypeUserID',
+				'NSPrivacyCollectedDataTypeFitness',
+			]),
+			swiftSources: [upload],
+		}),
+	]).errors;
+	assert.deepEqual(declared, []);
+	const overClaim = evaluateBundleManifests([
+		bundle({ manifest: manifestXml([[UD, ['1C8F.1']]], 'false', ['NSPrivacyCollectedDataTypeHealth']) }),
+	]).errors;
+	assert.ok(overClaim.some((e) => e.includes('nothing ShareExtension compiles sends it')));
+});
+
+test('an upload mentioned only in a comment obliges no collected-data entry', () => {
+	const { errors } = evaluateBundleManifests([
+		bundle({
+			swiftSources: [
+				{ path: 'A.swift', text: 'let d = UserDefaults(suiteName: group)\n// posts avg_bpm: later' },
+			],
+		}),
+	]);
+	assert.deepEqual(errors, []);
 });
 
 test('a manifest on disk that the target does not copy fails', () => {

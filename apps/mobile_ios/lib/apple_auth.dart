@@ -25,8 +25,12 @@ String? _env(String key) {
   return (trimmed == null || trimmed.isEmpty) ? null : trimmed;
 }
 
+/// True where Apple's native flow runs, which issues credentials to the
+/// app's bundle id; elsewhere they go to the Services ID.
+bool appleUsesNativeFlow() => defaultTargetPlatform == TargetPlatform.iOS;
+
 bool appleSignInAvailable() {
-  if (defaultTargetPlatform == TargetPlatform.iOS) return true;
+  if (appleUsesNativeFlow()) return true;
   return _env('APPLE_SERVICE_CLIENT_ID') != null &&
       _env('APPLE_REDIRECT_URI') != null;
 }
@@ -35,7 +39,7 @@ bool appleSignInAvailable() {
 /// flow) or while unconfigured (callers gate on [appleSignInAvailable]
 /// first).
 WebAuthenticationOptions? appleWebAuthOptions() {
-  if (defaultTargetPlatform == TargetPlatform.iOS) return null;
+  if (appleUsesNativeFlow()) return null;
   final clientId = _env('APPLE_SERVICE_CLIENT_ID');
   final redirectUri = _env('APPLE_REDIRECT_URI');
   if (clientId == null || redirectUri == null) return null;

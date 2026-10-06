@@ -166,6 +166,7 @@ insert into server_only (fn, keeps_service_role) values
   ('find_failed_jobs', true),
   ('find_stuck_jobs', true),
   ('finish_job', true),
+  ('get_apple_refresh_token', true),
   ('jobs_backlog_summary', true),
   ('jobs_failed_summary', true),
   ('jobs_stuck_summary', true),
@@ -179,6 +180,7 @@ insert into server_only (fn, keeps_service_role) values
   ('refresh_club_member_count', false),
   ('refresh_gym_workout_totals', false),
   ('refresh_route_run_count', false),
+  ('set_apple_refresh_token', true),
   ('sweep_challenge_completions', false),
   ('try_consume_strava_quota', true);
 

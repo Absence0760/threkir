@@ -8,6 +8,7 @@ import { m } from '$lib/i18n/store.svelte';
 import { parsePreferredUnit, parseSubscriptionTier } from '$lib/types';
 import { createReadyGate, isAuthSettled } from './auth_ready';
 import { signOutWithScope } from './sign_out';
+import { OAUTH_PROVIDER_STASH_KEY } from '$lib/core/apple_revocation';
 
 /// Longest QUIET gap a `ready()` waiter tolerates before resolving
 /// anyway — the deadline re-arms on every unsettled auth lifecycle
@@ -51,7 +52,18 @@ function createAuthStore() {
 		timeoutMs: AUTH_READY_TIMEOUT_MS,
 	});
 
+	/// /auth/callback reads this back to tell an Apple sign-in, whose
+	/// refresh token must be kept for revocation, from a Google one.
+	function stashOAuthProvider(provider: 'google' | 'apple') {
+		try {
+			sessionStorage.setItem(OAUTH_PROVIDER_STASH_KEY, provider);
+		} catch (e) {
+			console.error('auth: could not stash the OAuth provider:', e);
+		}
+	}
+
 	async function signInWithGoogle() {
+		stashOAuthProvider('google');
 		const { error } = await supabase.auth.signInWithOAuth({
 			provider: 'google',
 			options: { redirectTo: `${window.location.origin}/auth/callback` }
@@ -60,6 +72,7 @@ function createAuthStore() {
 	}
 
 	async function signInWithApple() {
+		stashOAuthProvider('apple');
 		const { error } = await supabase.auth.signInWithOAuth({
 			provider: 'apple',
 			options: { redirectTo: `${window.location.origin}/auth/callback` }

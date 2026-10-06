@@ -1085,4 +1085,10 @@ export const UNREGISTERED_DEFINER_RELATIONS = [
     reason:
       "the function carries no access-control filter to drop. It is a definer only so the ten-minute alert cron reads `jobs` without a policy, and its whole WHERE is `status = 'queued'` plus an age threshold - two subject selectors, the same shape as `fetch_pending_reports` above. Its three zero-count assertions each claim a predicate rather than a visibility: that the age is measured off `scheduled_at` and not `created_at` (or `defer_job`'s backing-off retries would read as a stalled queue), and that a running and a failed job belong to the stuck and failed alerts instead. Emptiness is not what any of them turns on either - assertions (1) and (2) in the same transaction are `results_eq` positives naming the rows the function DOES return, so a function that had gone silent would fail there first",
   },
+  {
+    relation: 'get_apple_refresh_token',
+    assertion: 'an account that never signed in with Apple has nothing to read',
+    reason:
+      "the function carries no access-control filter to drop: its only WHERE is `user_id = p_user_id`, a subject selector, and who may call it at all is enforced by the EXECUTE grant (service_role only), which the same file's 42501 throws_ok assertions pin for authenticated and anon. The empty result claims that a user id with no stored token reads as nothing to revoke - delete-account's 'skipped' - not that a row is being hidden. Emptiness is not what it turns on either: two `results_eq` positives in the same transaction name the row the function DOES return for the account that has one",
+  },
 ];

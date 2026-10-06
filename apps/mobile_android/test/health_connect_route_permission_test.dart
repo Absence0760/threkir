@@ -297,6 +297,69 @@ void main() {
     });
   });
 
+  // Every type requestPermission() asks Health Connect to read obliges a
+  // manifest <uses-permission> and a Play-Console permissions-XML entry.
+  // Read off the source rather than restated, so adding a type to the
+  // request list fails here until both declarations follow — WEIGHT was
+  // requested with neither, and Health Connect refuses an undeclared type
+  // silently.
+  group('every requested Health Connect read type is declared', () {
+    final importer = File('lib/health_connect_importer.dart');
+    final manifest = File('android/app/src/main/AndroidManifest.xml');
+    final permsXml =
+        File('android/app/src/main/res/xml/health_permissions.xml');
+
+    const readPermissionFor = <String, String>{
+      'WORKOUT': 'READ_EXERCISE',
+      'WORKOUT_ROUTE': 'READ_EXERCISE_ROUTES',
+      'STEPS': 'READ_STEPS',
+      'DISTANCE_DELTA': 'READ_DISTANCE',
+      'HEART_RATE': 'READ_HEART_RATE',
+      'WEIGHT': 'READ_WEIGHT',
+    };
+
+    Set<String> requestedTypes() {
+      final source = importer.readAsStringSync();
+      final start = source.indexOf('static Future<bool> requestPermission()');
+      final end = source.indexOf('requestAuthorization', start);
+      final code = source
+          .substring(start, end)
+          .split('\n')
+          .where((l) => !l.trimLeft().startsWith('//'))
+          .join('\n');
+      return RegExp(r'HealthDataType\.(\w+)')
+          .allMatches(code)
+          .map((m) => m.group(1)!)
+          .toSet();
+    }
+
+    test('the request list is found and every type has a known permission',
+        () {
+      final types = requestedTypes();
+      expect(types, contains('WORKOUT'),
+          reason: 'requestPermission() moved or changed shape; this guard '
+              'would pass on nothing.');
+      for (final t in types) {
+        expect(readPermissionFor, contains(t),
+            reason: 'HealthDataType.$t is requested but has no Health Connect '
+                'permission mapping here — add it, then declare it.');
+      }
+    });
+
+    test('the manifest and the permissions XML declare each one', () {
+      if (!manifest.existsSync() || !permsXml.existsSync()) return;
+      final m = manifest.readAsStringSync();
+      final x = permsXml.readAsStringSync();
+      for (final t in requestedTypes()) {
+        final perm = 'android.permission.health.${readPermissionFor[t]}';
+        expect(m, contains('<uses-permission android:name="$perm"'),
+            reason: 'AndroidManifest.xml must declare $perm for $t');
+        expect(x, contains('<permission name="$perm"'),
+            reason: 'health_permissions.xml must declare $perm for $t');
+      }
+    });
+  });
+
   // The permission string is matched by four files no compiler links: the
   // manifest, the Play-Console permissions XML, the Kotlin bridge and this
   // Dart constant. A mismatch is refused by the platform with no dialog and

@@ -153,6 +153,16 @@ test.describe('/settings/upgrade — free user', () => {
 		await expect(page).toHaveURL(/\/settings\/upgrade(\?|$)/);
 	});
 
+	test('the purchase CTA carries working Terms and Privacy links (App Store 3.1.2)', async ({
+		page,
+	}) => {
+		await page.goto('/settings/upgrade');
+		const pro = page.locator('.tier-pro');
+		await expect(pro.getByRole('button', { name: /Get Pro — /i })).toBeVisible({ timeout: 10_000 });
+		await expect(pro.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute('href', '/terms');
+		await expect(pro.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy');
+	});
+
 	test('tier grid stacks (single column) at narrow widths', async ({ page }) => {
 		// `.tier-grid` uses `grid-template-columns: repeat(auto-fit,
 		// minmax(20rem, 1fr))`. At a viewport narrower than two

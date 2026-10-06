@@ -74,7 +74,7 @@ Deno.serve(withSentry('apple-token-exchange', async (req: Request) => {
     proven = 'error' in verified ? verified : { refreshToken: request.refreshToken, sub: verified.sub };
   }
   if ('error' in proven) {
-    console.error('apple-token-exchange: Apple refused the credential:', proven.error);
+    console.error('apple-token-exchange: Apple refused the credential:', String(proven.error));
     return Response.json({ error: 'apple_exchange_failed' }, { status: 502 });
   }
   if (proven.sub !== appleSub) {

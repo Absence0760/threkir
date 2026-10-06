@@ -6,12 +6,15 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
+import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/settings_account_screen.dart';
+import 'pump_until.dart';
 
 // A 1x1 transparent PNG so the avatar tile's NetworkImage decodes instead of
 // throwing a load error during pumpAndSettle (no network in widget tests).
@@ -73,6 +76,7 @@ class _AvatarApi extends ApiClient {
   _AvatarApi({this.avatar});
   String? avatar;
   int removeCalls = 0;
+  final uploads = <({Uint8List bytes, String contentType})>[];
 
   @override
   String? get userId => 'u1';
@@ -87,6 +91,15 @@ class _AvatarApi extends ApiClient {
   Future<void> removeAvatar() async {
     removeCalls++;
     avatar = null;
+  }
+
+  @override
+  Future<String> uploadAvatar({
+    required Uint8List bytes,
+    required String contentType,
+  }) async {
+    uploads.add((bytes: bytes, contentType: contentType));
+    return avatar = 'https://example.invalid/u1/avatar.jpg?v=${uploads.length}';
   }
 }
 
@@ -140,7 +153,11 @@ Future<void> _ensureSupabase() async {
   _supabaseReady = true;
 }
 
-Future<void> _pump(WidgetTester tester, ApiClient api) async {
+Future<void> _pump(
+  WidgetTester tester,
+  ApiClient api, {
+  Future<XFile?> Function()? pickAvatar,
+}) async {
   await tester.pumpWidget(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -149,6 +166,7 @@ Future<void> _pump(WidgetTester tester, ApiClient api) async {
         apiClient: api,
         preferences: Preferences(),
         settingsSync: null,
+        pickAvatarOverride: pickAvatar,
       ),
     ),
   );
@@ -273,5 +291,72 @@ void main() {
     expect(find.byIcon(Icons.block), findsNothing);
     expect(_avatarTileIcon(Icons.photo_camera), findsOneWidget);
     expect(_avatarTileIcon(Icons.delete_outline), findsNothing);
+  });
+
+  testWidgets(
+      'picking a photo opens the crop step and uploads only the turned, '
+      'EXIF-free square', (tester) async {
+    final api = _AvatarApi(avatar: null);
+    // A sideways geotagged JPEG: 40x20, red left / blue right, Orientation 6.
+    final src = img.Image(width: 40, height: 20);
+    for (var y = 0; y < 20; y++) {
+      for (var x = 0; x < 40; x++) {
+        src.setPixelRgb(x, y, x < 20 ? 255 : 0, 0, x < 20 ? 0 : 255);
+      }
+    }
+    src.exif.imageIfd.orientation = 6;
+    src.exif.gpsIfd.setGpsLocation(latitude: 51.5, longitude: -0.12);
+    final picked = img.encodeJpg(src, quality: 100);
+    await _pump(tester, api,
+        pickAvatar: () async => XFile.fromData(picked, mimeType: 'image/jpeg'));
+
+    await tester.tap(_avatarTileIcon(Icons.photo_camera));
+    await pumpUntil(
+      tester,
+      () => find.text('Adjust profile photo').evaluate().isNotEmpty,
+      describe: 'the crop step to open',
+    );
+    await tester.pump(const Duration(milliseconds: 400)); // route transition
+    FilledButton confirm() => tester
+        .widget<FilledButton>(find.byKey(const Key('avatar-crop-confirm')));
+    await pumpUntil(tester, () => confirm().onPressed != null,
+        describe: 'the picked photo to decode');
+
+    await tester.tap(find.byTooltip('Rotate right'));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('avatar-crop-confirm')));
+    await pumpUntil(tester, () => api.uploads.isNotEmpty,
+        describe: 'the cropped photo to upload');
+
+    final upload = api.uploads.single;
+    expect(upload.contentType, 'image/jpeg');
+    expect(String.fromCharCodes(upload.bytes).contains('Exif'), isFalse);
+    // Orientation 6 stands the photo up red-on-top; one clockwise turn more
+    // lays it on its side again with the red half on the right.
+    final out = img.decodeJpg(upload.bytes)!;
+    expect([out.width, out.height], [20, 20]);
+    final left = out.getPixel(5, 10);
+    final right = out.getPixel(15, 10);
+    expect(left.b > 180 && left.r < 80, isTrue, reason: 'left $left');
+    expect(right.r > 180 && right.b < 80, isTrue, reason: 'right $right');
+  });
+
+  testWidgets('backing out of the crop step uploads nothing', (tester) async {
+    final api = _AvatarApi(avatar: null);
+    final png = img.encodePng(img.Image(width: 8, height: 8));
+    await _pump(tester, api,
+        pickAvatar: () async => XFile.fromData(png, mimeType: 'image/png'));
+
+    await tester.tap(_avatarTileIcon(Icons.photo_camera));
+    await pumpUntil(
+      tester,
+      () => find.byType(CloseButton).evaluate().isNotEmpty,
+      describe: 'the crop step to open',
+    );
+    await tester.tap(find.byType(CloseButton));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Adjust profile photo'), findsNothing);
+    expect(api.uploads, isEmpty);
   });
 }

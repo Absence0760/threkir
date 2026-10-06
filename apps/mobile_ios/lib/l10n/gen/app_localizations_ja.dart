@@ -6408,7 +6408,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsAccountAvatar => 'プロフィール写真';
 
   @override
-  String get settingsAccountAvatarHint => 'JPEG、PNG、WebP、2 MB まで。';
+  String get settingsAccountAvatarHint => 'JPEG、PNG、WebP。保存前にトリミングと回転ができます。';
 
   @override
   String get settingsAccountAvatarRemove => '写真を削除';
@@ -13762,4 +13762,28 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get confirmAgeRecordError => '同意を記録できませんでした。';
+
+  @override
+  String get avatarCropTitle => 'プロフィール写真を調整';
+
+  @override
+  String get avatarCropHint => 'ドラッグで位置を調整。ピンチまたはスライダーで拡大縮小。';
+
+  @override
+  String get avatarCropRotateLeft => '左に回転';
+
+  @override
+  String get avatarCropRotateRight => '右に回転';
+
+  @override
+  String get avatarCropZoom => 'ズーム';
+
+  @override
+  String get avatarCropConfirm => 'この写真を使用';
+
+  @override
+  String get avatarCropLoading => '写真を読み込み中…';
+
+  @override
+  String get avatarCropLoadFailed => 'この画像を開けませんでした。JPEG、PNG、WebP をお試しください。';
 }

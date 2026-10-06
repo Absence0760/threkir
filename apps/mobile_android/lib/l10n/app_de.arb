@@ -1877,7 +1877,7 @@
   "settingsAccountSignOut": "Abmelden",
   "settingsAccountSignIn": "Anmelden",
   "settingsAccountAvatar": "Profilfoto",
-  "settingsAccountAvatarHint": "JPEG, PNG oder WebP, bis zu 2 MB.",
+  "settingsAccountAvatarHint": "JPEG, PNG oder WebP. Du kannst es vor dem Speichern zuschneiden und drehen.",
   "settingsAccountAvatarRemove": "Foto entfernen",
   "settingsAccountAvatarRemoveTitle": "Profilfoto entfernen?",
   "settingsAccountAvatarRemoveConfirm": "Dein aktuelles Profilfoto wird entfernt. Du kannst jederzeit ein neues hochladen.",
@@ -4171,5 +4171,13 @@
   "confirmAgeHeading": "Nur noch ein Schritt",
   "confirmAgeLede": "Bevor du loslegst, bestätige bitte ein paar Dinge. Das machen wir nur einmal pro Konto – es wird nicht erneut angezeigt.",
   "confirmAgeContinue": "Weiter",
-  "confirmAgeRecordError": "Einwilligung konnte nicht gespeichert werden."
+  "confirmAgeRecordError": "Einwilligung konnte nicht gespeichert werden.",
+  "avatarCropTitle": "Profilfoto anpassen",
+  "avatarCropHint": "Zum Verschieben ziehen. Zum Zoomen mit zwei Fingern oder dem Schieberegler.",
+  "avatarCropRotateLeft": "Nach links drehen",
+  "avatarCropRotateRight": "Nach rechts drehen",
+  "avatarCropZoom": "Zoom",
+  "avatarCropConfirm": "Foto verwenden",
+  "avatarCropLoading": "Foto wird geladen…",
+  "avatarCropLoadFailed": "Dieses Bild konnte nicht geöffnet werden. Versuche JPEG, PNG oder WebP."
 }

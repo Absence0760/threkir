@@ -70,6 +70,11 @@ dependencies:
   # of an HR strap. /audit/all 2026-05-07.
   flutter_reactive_ble: ^5.5.0
   image_picker: ^1.1.2
+  # Pure-Dart decode / EXIF-orientation bake / crop / rotate / JPEG encode for
+  # the avatar crop step (lib/avatar_crop_screen.dart). Chosen over a native
+  # cropper plugin so there is no Android activity or iOS setup to declare.
+  # MIT. See decisions.md.
+  image: ^4.10.1
   # Camera barcode scan for the nutrition log fast-path (EAN/UPC → Open Food
   # Facts product lookup). BSD-3-Clause (matches the flutter_reactive_ble
   # licence preference). Uses CameraX/ML Kit on Android and AVFoundation/Apple

@@ -1877,7 +1877,7 @@
   "settingsAccountSignOut": "サインアウト",
   "settingsAccountSignIn": "サインイン",
   "settingsAccountAvatar": "プロフィール写真",
-  "settingsAccountAvatarHint": "JPEG、PNG、WebP、2 MB まで。",
+  "settingsAccountAvatarHint": "JPEG、PNG、WebP。保存前にトリミングと回転ができます。",
   "settingsAccountAvatarRemove": "写真を削除",
   "settingsAccountAvatarRemoveTitle": "プロフィール写真を削除しますか？",
   "settingsAccountAvatarRemoveConfirm": "現在のプロフィール写真を削除します。新しい写真はいつでもアップロードできます。",
@@ -4171,5 +4171,13 @@
   "confirmAgeHeading": "あと一歩です",
   "confirmAgeLede": "始める前に、いくつか確認させてください。アカウントごとに一度だけで、二度と表示されません。",
   "confirmAgeContinue": "続ける",
-  "confirmAgeRecordError": "同意を記録できませんでした。"
+  "confirmAgeRecordError": "同意を記録できませんでした。",
+  "avatarCropTitle": "プロフィール写真を調整",
+  "avatarCropHint": "ドラッグで位置を調整。ピンチまたはスライダーで拡大縮小。",
+  "avatarCropRotateLeft": "左に回転",
+  "avatarCropRotateRight": "右に回転",
+  "avatarCropZoom": "ズーム",
+  "avatarCropConfirm": "この写真を使用",
+  "avatarCropLoading": "写真を読み込み中…",
+  "avatarCropLoadFailed": "この画像を開けませんでした。JPEG、PNG、WebP をお試しください。"
 }

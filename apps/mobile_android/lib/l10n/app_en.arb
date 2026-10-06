@@ -9014,7 +9014,7 @@
   "@settingsAccountAvatar": {
     "description": "Profile-photo (avatar) tile title in Account settings"
   },
-  "settingsAccountAvatarHint": "JPEG, PNG, or WebP, up to 2 MB.",
+  "settingsAccountAvatarHint": "JPEG, PNG, or WebP. You can crop and rotate it before saving.",
   "@settingsAccountAvatarHint": {
     "description": "Subtitle under the profile-photo tile listing accepted formats"
   },
@@ -18342,5 +18342,37 @@
   "confirmAgeRecordError": "Could not record consent.",
   "@confirmAgeRecordError": {
     "description": "Consent gate: error shown when recording the confirmations fails"
+  },
+  "avatarCropTitle": "Adjust profile photo",
+  "@avatarCropTitle": {
+    "description": "Title of the crop step shown after picking a profile photo"
+  },
+  "avatarCropHint": "Drag to reposition. Pinch or use the slider to zoom.",
+  "@avatarCropHint": {
+    "description": "Instructions under the profile-photo crop area"
+  },
+  "avatarCropRotateLeft": "Rotate left",
+  "@avatarCropRotateLeft": {
+    "description": "Tooltip on the button that turns the photo a quarter counter-clockwise"
+  },
+  "avatarCropRotateRight": "Rotate right",
+  "@avatarCropRotateRight": {
+    "description": "Tooltip on the button that turns the photo a quarter clockwise"
+  },
+  "avatarCropZoom": "Zoom",
+  "@avatarCropZoom": {
+    "description": "Label of the zoom slider in the profile-photo crop step"
+  },
+  "avatarCropConfirm": "Use photo",
+  "@avatarCropConfirm": {
+    "description": "Button that uploads the cropped profile photo"
+  },
+  "avatarCropLoading": "Loading photo…",
+  "@avatarCropLoading": {
+    "description": "Screen-reader label while the picked profile photo decodes"
+  },
+  "avatarCropLoadFailed": "This image couldn't be opened. Try a JPEG, PNG, or WebP.",
+  "@avatarCropLoadFailed": {
+    "description": "Shown when the picked profile photo cannot be decoded"
   }
 }

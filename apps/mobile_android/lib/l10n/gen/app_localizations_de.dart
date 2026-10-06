@@ -6810,7 +6810,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settingsAccountAvatar => 'Profilfoto';
 
   @override
-  String get settingsAccountAvatarHint => 'JPEG, PNG oder WebP, bis zu 2 MB.';
+  String get settingsAccountAvatarHint =>
+      'JPEG, PNG oder WebP. Du kannst es vor dem Speichern zuschneiden und drehen.';
 
   @override
   String get settingsAccountAvatarRemove => 'Foto entfernen';
@@ -14445,4 +14446,30 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get confirmAgeRecordError =>
       'Einwilligung konnte nicht gespeichert werden.';
+
+  @override
+  String get avatarCropTitle => 'Profilfoto anpassen';
+
+  @override
+  String get avatarCropHint =>
+      'Zum Verschieben ziehen. Zum Zoomen mit zwei Fingern oder dem Schieberegler.';
+
+  @override
+  String get avatarCropRotateLeft => 'Nach links drehen';
+
+  @override
+  String get avatarCropRotateRight => 'Nach rechts drehen';
+
+  @override
+  String get avatarCropZoom => 'Zoom';
+
+  @override
+  String get avatarCropConfirm => 'Foto verwenden';
+
+  @override
+  String get avatarCropLoading => 'Foto wird geladen…';
+
+  @override
+  String get avatarCropLoadFailed =>
+      'Dieses Bild konnte nicht geöffnet werden. Versuche JPEG, PNG oder WebP.';
 }

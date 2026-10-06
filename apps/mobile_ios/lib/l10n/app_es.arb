@@ -1877,7 +1877,7 @@
   "settingsAccountSignOut": "Cerrar sesión",
   "settingsAccountSignIn": "Iniciar sesión",
   "settingsAccountAvatar": "Foto de perfil",
-  "settingsAccountAvatarHint": "JPEG, PNG o WebP, hasta 2 MB.",
+  "settingsAccountAvatarHint": "JPEG, PNG o WebP. Puedes recortarla y girarla antes de guardar.",
   "settingsAccountAvatarRemove": "Quitar foto",
   "settingsAccountAvatarRemoveTitle": "¿Quitar foto de perfil?",
   "settingsAccountAvatarRemoveConfirm": "Se quitará tu foto de perfil actual. Puedes subir una nueva cuando quieras.",
@@ -4171,5 +4171,13 @@
   "confirmAgeHeading": "Un paso más",
   "confirmAgeLede": "Antes de empezar, confirma un par de cosas. Lo hacemos una vez por cuenta y no volverá a aparecer.",
   "confirmAgeContinue": "Continuar",
-  "confirmAgeRecordError": "No se pudo registrar el consentimiento."
+  "confirmAgeRecordError": "No se pudo registrar el consentimiento.",
+  "avatarCropTitle": "Ajustar foto de perfil",
+  "avatarCropHint": "Arrastra para recolocar. Pellizca o usa el control deslizante para hacer zoom.",
+  "avatarCropRotateLeft": "Girar a la izquierda",
+  "avatarCropRotateRight": "Girar a la derecha",
+  "avatarCropZoom": "Zoom",
+  "avatarCropConfirm": "Usar foto",
+  "avatarCropLoading": "Cargando foto…",
+  "avatarCropLoadFailed": "No se pudo abrir esta imagen. Prueba con JPEG, PNG o WebP."
 }

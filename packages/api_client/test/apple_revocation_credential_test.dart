@@ -15,12 +15,14 @@ class _FakeHttp extends http.BaseClient {
   final List<http.Request> requests = [];
   int exchangeStatus = 204;
   bool exchangeThrows = false;
+  Future<void>? exchangeGate;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final r = request as http.Request;
     requests.add(r);
     if (r.url.path.endsWith('/functions/v1/apple-token-exchange')) {
+      if (exchangeGate != null) await exchangeGate;
       if (exchangeThrows) throw http.ClientException('offline', r.url);
       return _json(r, exchangeStatus,
           exchangeStatus == 204 ? null : {'error': 'apple_not_configured'});
@@ -79,37 +81,67 @@ void main() {
 
   tearDown(() => client.dispose());
 
-  test('an Apple sign-in with a code hands it to apple-token-exchange',
-      () async {
+  test('an iOS sign-in hands its code over as a native-flow code', () async {
     final id = await api.signInWithAppleIdToken(
       idToken: 'id.tok',
-      authorizationCode: 'c0de',
+      appleCode: (code: 'c0de', nativeFlow: true),
     );
     expect(id, 'u-apple');
+    await pumpEventQueue();
     final posted = fake.exchanges.toList();
     expect(posted, hasLength(1));
     expect(posted.single.method, 'POST');
-    expect(jsonDecode(posted.single.body), {'authorization_code': 'c0de'});
+    expect(jsonDecode(posted.single.body),
+        {'authorization_code': 'c0de', 'client': 'native'});
+  });
+
+  test('an Android sign-in names the web flow, whose Services ID issued it',
+      () async {
+    await api.signInWithAppleIdToken(
+      idToken: 'id.tok',
+      appleCode: (code: 'c0de', nativeFlow: false),
+    );
+    await pumpEventQueue();
+    expect(jsonDecode(fake.exchanges.single.body),
+        {'authorization_code': 'c0de', 'client': 'web'});
   });
 
   test('without a code nothing is sent', () async {
     await api.signInWithAppleIdToken(idToken: 'id.tok');
-    await api.signInWithAppleIdToken(idToken: 'id.tok', authorizationCode: '');
+    await api.signInWithAppleIdToken(
+      idToken: 'id.tok',
+      appleCode: (code: '', nativeFlow: true),
+    );
+    await pumpEventQueue();
     expect(fake.exchanges, isEmpty);
+  });
+
+  test('sign-in does not wait on the handoff', () async {
+    final gate = Completer<void>();
+    fake.exchangeGate = gate.future;
+    final id = await api.signInWithAppleIdToken(
+      idToken: 'id.tok',
+      appleCode: (code: 'c0de', nativeFlow: true),
+    );
+    expect(id, 'u-apple');
+    gate.complete();
+    await pumpEventQueue();
   });
 
   test('a refused exchange does not undo the sign-in', () async {
     fake.exchangeStatus = 503;
     final id = await api.signInWithAppleIdToken(
       idToken: 'id.tok',
-      authorizationCode: 'c0de',
+      appleCode: (code: 'c0de', nativeFlow: true),
     );
     expect(id, 'u-apple');
-    expect(await api.keepAppleRevocationCredential('c0de'), isFalse);
+    expect(
+        await api.keepAppleRevocationCredential('c0de', nativeFlow: true), isFalse);
   });
 
   test('a network failure answers false rather than throwing', () async {
     fake.exchangeThrows = true;
-    expect(await api.keepAppleRevocationCredential('c0de'), isFalse);
+    expect(
+        await api.keepAppleRevocationCredential('c0de', nativeFlow: true), isFalse);
   });
 }

@@ -307,7 +307,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
       await widget.apiClient.signInWithAppleIdToken(
         idToken: idToken,
         // Kept so account deletion can revoke the Apple grant (5.1.1(v)).
-        authorizationCode: credential.authorizationCode,
+        appleCode: (
+          code: credential.authorizationCode,
+          nativeFlow: appleUsesNativeFlow(),
+        ),
       );
       // OAuth-path consent stamp — mirrors the Google branch above.
       try {

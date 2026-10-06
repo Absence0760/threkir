@@ -286,7 +286,10 @@ class _SignInScreenState extends State<SignInScreen> {
       await widget.apiClient.signInWithAppleIdToken(
         idToken: idToken,
         // Kept so account deletion can revoke the Apple grant (5.1.1(v)).
-        authorizationCode: credential.authorizationCode,
+        appleCode: (
+          code: credential.authorizationCode,
+          nativeFlow: appleUsesNativeFlow(),
+        ),
       );
       widget.onSignedIn?.call();
       if (mounted) Navigator.pop(context, true);

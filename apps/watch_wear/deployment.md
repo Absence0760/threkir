@@ -211,5 +211,5 @@ A Wear OS-specific edge: Google occasionally tightens Wear OS-specific guideline
 - [ ] Active-run tile service declared with the right permission
 - [ ] First `watch_wear@*` tag built clean, AAB landed on Internal track
 - [ ] Internal smoke test on real watch (Pixel Watch / Galaxy Watch — emulator-only is not sufficient for haptics, BLE HR, tile freshness)
-- [ ] Sentry receiving events
+- [ ] Sentry receiving events — needs a `-PSENTRY_DSN` on the `bundleRelease` step of `release-watch-wear.yml`, which passes none today, so a release build ships with Sentry off. The manifest's `io.sentry.auto-init=false` is what makes that safe: without it the SDK's init provider throws on the empty DSN and the app dies on launch (`decisions.md § 1763`)
 - [ ] [`docs/product/parity.md`](../../docs/product/parity.md) Wear OS column reflects shipped state

@@ -196,7 +196,7 @@
 				<p class="tier-fine">{m('upgrade.cancelAnytime')}</p>
 				<!-- App Store Guideline 3.1.2 wants the terms and the privacy policy
 				     reachable beside an auto-renewing purchase, not only from a footer. -->
-				<p class="tier-fine tier-legal">
+				<p class="tier-legal">
 					<a href="/terms">{m('upgrade.termsLink')}</a>
 					<span aria-hidden="true">·</span>
 					<a href="/privacy">{m('upgrade.privacyLink')}</a>
@@ -396,6 +396,10 @@
 		display: flex;
 		justify-content: center;
 		gap: var(--space-xs);
+		margin: var(--space-xs) 0 0;
+		font-size: 0.78rem;
+		color: var(--color-text-tertiary);
+		line-height: 1.4;
 	}
 	.tier-legal a {
 		color: inherit;

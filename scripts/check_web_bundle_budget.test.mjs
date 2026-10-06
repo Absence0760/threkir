@@ -60,6 +60,10 @@ const ASSET_KB = [
 	{ path: 'index.html', kb: 2 },
 ];
 
+// Code growth between the 2026-08-28 base (1934 KB) and the 2026-10-05
+// measurement (2122 KB) the shipped ceiling is set against.
+const GROWN_SINCE_BASE = { path: '_app/immutable/chunks/grown-since-base.js', kb: 188 };
+
 /**
  * @param {{
  *   extraCatalogues?: Record<string, number>,
@@ -67,9 +71,6 @@ const ASSET_KB = [
  *   assets?: {path: string, kb: number}[],
  * }} [opts]
  */
-// Code growth between the 2026-08-28 base (1934 KB) and the 2026-10-05
-// measurement (2122 KB) the shipped ceiling is set against.
-const GROWN_SINCE_BASE = { path: '_app/immutable/chunks/grown-since-base.js', kb: 188 };
 
 function fixture({ extraCatalogues = {}, extraCode = [], assets = ASSET_KB } = {}) {
 	/** @type {Map<string, string>} */

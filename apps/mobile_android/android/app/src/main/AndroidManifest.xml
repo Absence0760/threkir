@@ -51,6 +51,9 @@
          session window, so without this grant that sub-read yields nothing
          and no imported activity can ever show steps or cadence (#664). -->
     <uses-permission android:name="android.permission.health.READ_STEPS" />
+    <!-- The latest body-weight sample, read once to seed body_weight_kg for
+         the calorie estimate when the runner has not set one. -->
+    <uses-permission android:name="android.permission.health.READ_WEIGHT" />
     <!-- Write recorded runs back to Health Connect (persona #36). Opt-in
          per-device; the workout session + its distance record need these. -->
     <uses-permission android:name="android.permission.health.WRITE_EXERCISE" />

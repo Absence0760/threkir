@@ -43,7 +43,7 @@ Last moved: **2026-10-06**.
 | 7 | **Sign-in-with-Apple key** `.p8` | Supabase (via a generated client secret) | **Done 2026-09-19** |
 | 8 | Both `.p8` files backed up | estate `threkir/push-credentials.sops.yaml` | **Done 2026-09-19** — five values in estate commit `b82fefc`, pushed; the downloaded `.p8` files deleted |
 | — | Supabase URL Configuration (Site URL, Redirect URLs, manual linking) | Supabase dashboard | **Done 2026-09-21** — shared; landed with the Google thread |
-| 9 | Supabase Apple provider enabled | Supabase dashboard | ☐ |
+| 9 | Supabase Apple provider enabled | Supabase dashboard | **Native half done 2026-10-06** — enabled with Client IDs `com.threkir.app` only and no secret key, which is all iOS sign-in needs; still owed once step 5 lands: `com.threkir.web` prepended as the FIRST client ID plus the generated OAuth secret |
 | 10 | Email-relay source registered | Apple portal → Services | ☐ |
 | 11 | `PUBLIC_APPLE_AUTH_ENABLED` truthy + `web@` Release | GitHub secret + release | ☐ |
 | 12 | `mobile_android@` release (picks up the push config) | Play | ☐ |

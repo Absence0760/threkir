@@ -18,11 +18,13 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<!-- No CFBundleDisplayName and no localization: a Live Activity
-	     extension never appears in the widget gallery, in Settings' widget
-	     list, or anywhere else this bundle's own name is rendered. Every
-	     string the runner reads on the lock screen arrives from Dart, already
-	     localized (see RunActivityAttributes.swift). -->
+	<!-- Required on every embedded bundle even though a Live Activity never
+	     renders its own name: App Store Connect rejects the upload (ITMS
+	     90360) without it. No localization is needed for the same reason;
+	     every string the runner reads on the lock screen arrives from Dart,
+	     already localized (see RunActivityAttributes.swift). -->
+	<key>CFBundleDisplayName</key>
+	<string>Threkir</string>
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionPointIdentifier</key>

@@ -28,23 +28,35 @@ type FunctionsLike = {
 };
 
 /// Posts the token when there is one. Sign-in has already succeeded, so a
-/// failure only costs the later revocation: it is logged, never thrown.
+/// failure only costs the later revocation: it is logged, never thrown, and
+/// a stalled call gives up after [timeoutMs] rather than holding anything up.
 export async function keepAppleRevocationCredential(
 	functions: FunctionsLike,
 	stashedProvider: string | null,
 	session: SessionLike,
+	timeoutMs = 10_000,
 ): Promise<boolean> {
 	const body = appleRevocationRequest(stashedProvider, session);
 	if (!body) return false;
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const timedOut = new Promise<'timeout'>((resolve) => {
+		timer = setTimeout(() => resolve('timeout'), timeoutMs);
+	});
 	try {
-		const { error } = await functions.invoke('apple-token-exchange', { body });
-		if (error) {
-			console.error('apple-token-exchange failed:', error);
+		const result = await Promise.race([functions.invoke('apple-token-exchange', { body }), timedOut]);
+		if (result === 'timeout') {
+			console.error('apple-token-exchange timed out');
+			return false;
+		}
+		if (result.error) {
+			console.error('apple-token-exchange failed:', result.error);
 			return false;
 		}
 		return true;
 	} catch (e) {
 		console.error('apple-token-exchange failed:', e);
 		return false;
+	} finally {
+		clearTimeout(timer);
 	}
 }

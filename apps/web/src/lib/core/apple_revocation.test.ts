@@ -55,3 +55,17 @@ test('a refused or thrown exchange answers false rather than throwing', async ()
 		console.error = origError;
 	}
 });
+
+test('a stalled exchange gives up instead of hanging', async () => {
+	const origError = console.error;
+	console.error = () => {};
+	try {
+		const stalled = { invoke: () => new Promise<{ error: unknown }>(() => {}) };
+		assert.equal(
+			await keepAppleRevocationCredential(stalled, 'apple', { provider_refresh_token: 'r' }, 5),
+			false,
+		);
+	} finally {
+		console.error = origError;
+	}
+});

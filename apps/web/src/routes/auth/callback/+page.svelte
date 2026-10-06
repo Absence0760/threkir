@@ -55,7 +55,8 @@
 		} catch (_) {
 			/* No storage: the provider is unknown and nothing is kept. */
 		}
-		await keepAppleRevocationCredential(supabase.functions, stashedProvider, session);
+		// Not awaited: nothing below depends on it, and sign-in is already done.
+		void keepAppleRevocationCredential(supabase.functions, stashedProvider, session);
 
 		// OAuth-path age + terms capture (audit/gdpr Critical). The
 		// pre-redirect tick on /login stashed timestamps in

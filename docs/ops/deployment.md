@@ -660,11 +660,15 @@ store-facing `/delete-account` instructions page — decisions §247) are comple
 (decisions §243); what remains is operator work, not code:
 
 1. Counsel review of the four pages (plus the docs under `docs/compliance/`).
-2. Fill the operator facts in `apps/web/src/lib/legal/operator.ts` — registered postal address and
-   governing-law state; the pages' "pending" lines disappear on their own.
-3. Appoint the Art 27 EU + UK representatives (vendors + process in
-   [docs/compliance/eu-representative.md](../compliance/eu-representative.md)) and fill them in the
-   same file.
+2. ~~Fill the operator facts in `apps/web/src/lib/legal/operator.ts`~~ — **decided 2026-10-06**
+   (issue #1061, M6): governing law is Virginia; no postal address is published and no Art 27 EU / UK
+   representative is appointed, recorded as `NOT_PROVIDED` so the pages state it rather than showing
+   "pending". Counsel review (item 1) covers this decision too.
+3. Art 27 EU + UK representatives — **optional, not appointed** (see item 2). If the EU or UK
+   becomes a launch market, appoint them (vendors + process in
+   [docs/compliance/eu-representative.md](../compliance/eu-representative.md)) and replace the
+   `NOT_PROVIDED` values in the same file. Until then, consider excluding EU / UK countries from App
+   Store Connect and Play availability.
 4. Create the `dmca@threkir.com` mailbox/alias and register the DMCA agent with the US Copyright
    Office (the Terms already name the address).
 5. Confirm each sub-processor DPA is executed (list in

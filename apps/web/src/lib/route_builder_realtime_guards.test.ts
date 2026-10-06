@@ -396,9 +396,9 @@ test('RouteTrackPreview renders a static map image when a key is available', () 
 	const src = read('src/lib/components/RouteTrackPreview.svelte');
 	assert.match(
 		src,
-		/buildStaticMapUrl\(/,
-		'RouteTrackPreview must call buildStaticMapUrl to construct a ' +
-			'MapTiler Static Maps URL with the polyline drawn on top — ' +
+		/trackThumbnailUrlFromEnv\(/,
+		'RouteTrackPreview must call trackThumbnailUrlFromEnv to construct a ' +
+			'static map URL with the polyline drawn on top — ' +
 			'fixes the "I only see the line, not the map" complaint on ' +
 			'the /routes grid.',
 	);

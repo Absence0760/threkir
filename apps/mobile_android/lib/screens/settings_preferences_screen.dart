@@ -12,6 +12,8 @@ import '../hr_zones.dart'
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../l10n/number_format.dart';
+import '../local_food_store.dart';
+import '../local_gym_store.dart';
 import '../locale_defaults.dart';
 import '../main.dart' show themeModeNotifier, localeNotifier;
 import '../nearby_flag.dart';
@@ -77,12 +79,16 @@ class SettingsPreferencesScreen extends StatefulWidget {
   final ApiClient? apiClient;
   final Preferences preferences;
   final SettingsSyncService? settingsSync;
+  final LocalGymStore? gymStore;
+  final LocalFoodStore? foodStore;
 
   const SettingsPreferencesScreen({
     super.key,
     this.apiClient,
     required this.preferences,
     required this.settingsSync,
+    this.gymStore,
+    this.foodStore,
   });
 
   @override
@@ -1330,6 +1336,23 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final prefs = widget.preferences;
+    // Null when this mount has no stores to resolve visibility against (the
+    // run-detail HR shortcut); those rows then keep their plain behaviour.
+    final gymShown = switch (widget.gymStore) {
+      final gym? => prefs.gymShown(hasData: gym.workouts.isNotEmpty),
+      null => null,
+    };
+    final nutritionShown = switch (widget.foodStore) {
+      final food? => prefs.nutritionShown(hasData: food.rows.isNotEmpty),
+      null => null,
+    };
+    // With both hidden a tap on the centre button already starts a run, so
+    // the switch reading Off described a behaviour the runner could see was
+    // on. It shows the truth and says why it can't be changed here.
+    final runPrimaryForced = gymShown == false && nutritionShown == false;
+    // Nothing to exclude for a runner who neither shows Gym nor has a lift.
+    final hideGymReadiness =
+        gymShown == false && (widget.gymStore?.workouts.isEmpty ?? false);
     final offlineNotice =
         widget.settingsSync?.synced == true &&
             widget.settingsSync?.service?.isServerHydrated == false
@@ -1587,13 +1610,50 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                     // keep the centre Log button as a one-tap run start (long-press
                     // still opens the full capture sheet).
                     SwitchListTile(
+                      key: const Key('prefsKeepRunPrimary'),
                       title: Text(l10n.prefsKeepRunPrimary),
-                      subtitle: Text(l10n.prefsKeepRunPrimarySubtitle),
-                      value: prefs.keepRunPrimary,
-                      onChanged: prefs.setKeepRunPrimary,
+                      subtitle: Text(runPrimaryForced
+                          ? l10n.prefsKeepRunPrimaryForcedSubtitle
+                          : l10n.prefsKeepRunPrimarySubtitle),
+                      value: runPrimaryForced || prefs.keepRunPrimary,
+                      onChanged:
+                          runPrimaryForced ? null : prefs.setKeepRunPrimary,
                     ),
                   ],
                 ),
+                // Showing the resolved state takes the stores (unset means
+                // "shown once there is data"), so a mount without them — the
+                // run-detail HR shortcut — leaves the section out rather than
+                // render a switch that may be wrong.
+                if (widget.gymStore case final gym?)
+                  if (widget.foodStore case final food?)
+                    (
+                      l10n.prefsSectionModalities,
+                      [
+                        SwitchListTile(
+                          title: Text(l10n.prefsShowGym),
+                          subtitle: Text(l10n.prefsShowGymSubtitle),
+                          value: prefs.gymShown(
+                              hasData: gym.workouts.isNotEmpty),
+                          onChanged: (v) async {
+                            await prefs.setShowGym(v);
+                            await _roamPush(
+                                widget.settingsSync?.pushModalityVisibility);
+                          },
+                        ),
+                        SwitchListTile(
+                          title: Text(l10n.prefsShowNutrition),
+                          subtitle: Text(l10n.prefsShowNutritionSubtitle),
+                          value: prefs.nutritionShown(
+                              hasData: food.rows.isNotEmpty),
+                          onChanged: (v) async {
+                            await prefs.setShowNutrition(v);
+                            await _roamPush(
+                                widget.settingsSync?.pushModalityVisibility);
+                          },
+                        ),
+                      ],
+                    ),
                 if (prefs.audioCues)
                   (
                     l10n.prefsVoiceCueTypesLabel,
@@ -1767,18 +1827,20 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                       enabled: _bagReady,
                       onTap: _editWeekStartDay,
                     ),
-                    SwitchListTile(
-                      title: Text(l10n.prefsExcludeGymFromReadiness),
-                      subtitle: Text(l10n.prefsExcludeGymFromReadinessHint),
-                      value:
-                          _bagValue<bool>(
-                            SettingsKeys.excludeGymFromReadiness,
-                          ) ??
-                          false,
-                      onChanged: _bagReady
-                          ? (_) => _editExcludeGymFromReadiness()
-                          : null,
-                    ),
+                    if (!hideGymReadiness)
+                      SwitchListTile(
+                        key: const Key('prefsExcludeGymFromReadiness'),
+                        title: Text(l10n.prefsExcludeGymFromReadiness),
+                        subtitle: Text(l10n.prefsExcludeGymFromReadinessHint),
+                        value:
+                            _bagValue<bool>(
+                              SettingsKeys.excludeGymFromReadiness,
+                            ) ??
+                            false,
+                        onChanged: _bagReady
+                            ? (_) => _editExcludeGymFromReadiness()
+                            : null,
+                      ),
                   ],
                 ),
                 (

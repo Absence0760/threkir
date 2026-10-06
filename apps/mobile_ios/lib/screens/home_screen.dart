@@ -23,11 +23,14 @@ import '../main.dart'
 import '../preferences.dart';
 import '../push_target.dart';
 import '../race_controller.dart';
+import '../run_stop_dock.dart';
 import '../settings_destination.dart';
 import '../settings_sync.dart';
+import '../sync_service.dart';
 import '../shared_file_import.dart' show incomingRouteImport;
 import '../social_service.dart';
 import '../training_service.dart';
+import '../fab_clearance.dart';
 import '../widgets/billing_issue_banner.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/log_sheet.dart';
@@ -93,6 +96,10 @@ class HomeScreen extends StatefulWidget {
   final BleHeartRate heartRate;
   final BleTreadmill treadmill;
   final SettingsSyncService? settingsSync;
+
+  /// The run drain, so Home's pending-sync banner can retry runs. Null in
+  /// tests and leaves runs counted there but not retried.
+  final SyncService? syncService;
   final cm.Run? recoveredRun;
 
   /// Banner copy emitted by the in-progress recovery helper at app
@@ -124,6 +131,7 @@ class HomeScreen extends StatefulWidget {
     required this.heartRate,
     required this.treadmill,
     this.settingsSync,
+    this.syncService,
     this.recoveredRun,
     this.recoveryBannerMessage,
     this.resumablePartial,
@@ -164,14 +172,36 @@ class _HomeScreenState extends State<HomeScreen>
 
   /// Which Fitness sub-tab the hub is showing. Owned here rather than inside
   /// the hub because the centre Log action selects one, and the hub is a lazy
-  /// page that may not be built yet when it does.
-  final _fitnessTab = ValueNotifier<FitnessTab>(FitnessTab.history);
+  /// page that may not be built yet when it does. Starts on the hub's first
+  /// tab, which is Runs rather than History when neither Gym nor Nutrition is
+  /// shown, because History is not in the hub then.
+  late final _fitnessTab = ValueNotifier<FitnessTab>(fitnessHubTabs(
+    gymShown: _gymShown,
+    nutritionShown: _nutritionShown,
+  ).first);
 
   /// Current page index. A `ValueNotifier` instead of a `setState` int so
   /// page changes during a swipe only rebuild the bottom bar — not the
   /// entire 5-page subtree. The PageView's children are built once in
   /// `initState` and never re-created.
   final _currentIndex = ValueNotifier<int>(_initialIndex);
+
+  /// Everything the centre button's look reads: whether a run is recording,
+  /// and whether a tap starts one, which turns on the preferences and on
+  /// whether a lift or a meal exists. The button and its caption rebuild on
+  /// any of them.
+  late final Listenable _centreInputs = Listenable.merge([
+    runRecordingActive,
+    widget.preferences,
+    widget.gymStore,
+    widget.foodStore,
+  ]);
+
+  /// The nav bar and rail read the page, and the hub's label reads the same
+  /// visibility the centre button does. The docked centre button reads the
+  /// page too: it is the Stop while a run records on the Run page.
+  late final Listenable _navInputs =
+      Listenable.merge([_currentIndex, _centreInputs]);
 
   late final PageController _pageController =
       PageController(initialPage: _initialIndex);
@@ -444,6 +474,8 @@ class _HomeScreenState extends State<HomeScreen>
             apiClient: widget.apiClient,
             preferences: widget.preferences,
             settingsSync: widget.settingsSync,
+            gymStore: widget.gymStore,
+            foodStore: widget.foodStore,
           ),
         SettingsDestination.account => SettingsAccountScreen(
             apiClient: widget.apiClient,
@@ -534,6 +566,9 @@ class _HomeScreenState extends State<HomeScreen>
           settingsSync: widget.settingsSync,
           onStartRun: () => _performLogAction(LogAction.run),
           onLogLift: () => _performLogAction(LogAction.lift),
+          onSyncRuns: widget.syncService == null
+              ? null
+              : () => widget.syncService!.triggerSync('manual'),
         ),
       ),
       _LazyKeepAliveTab(
@@ -593,6 +628,8 @@ class _HomeScreenState extends State<HomeScreen>
           preferences: widget.preferences,
           runStore: widget.runStore,
           routeStore: widget.routeStore,
+          gymStore: widget.gymStore,
+          foodStore: widget.foodStore,
           gearStore: widget.gearStore,
           heartRate: widget.heartRate,
           treadmill: widget.treadmill,
@@ -701,30 +738,61 @@ class _HomeScreenState extends State<HomeScreen>
 
   // --- Centre Log button (multi_modal.md § Bottom nav) ---
 
+  bool get _gymShown => widget.preferences
+      .gymShown(hasData: widget.gymStore.workouts.isNotEmpty);
+
+  bool get _nutritionShown => widget.preferences
+      .nutritionShown(hasData: widget.foodStore.rows.isNotEmpty);
+
   /// Whether a tap on the centre Log button starts a run outright. Read at
   /// gesture time from the live stores rather than cached at build time, so
   /// the day's first logged lift flips it without a rebuild.
   bool get _runIsPrimary => runIsPrimaryLogAction(
         keepRunPrimary: widget.preferences.keepRunPrimary,
-        hasGymData: widget.gymStore.workouts.isNotEmpty,
-        hasFoodData: widget.foodStore.rows.isNotEmpty,
+        gymShown: _gymShown,
+        nutritionShown: _nutritionShown,
       );
 
   /// Tap on the centre Log button: the primary capture action for this user.
+  /// While a run records it is the way back to it instead.
   void _onLogTap({Offset? anchor}) {
-    if (_runIsPrimary) {
+    if (runRecordingActive.value || _runIsPrimary) {
       _performLogAction(LogAction.run);
     } else {
       _openLogMenu(anchor: anchor);
     }
   }
 
-  /// Long-press on the centre Log button always opens the full capture menu.
+  /// Long-press on the centre Log button opens the full capture menu.
   /// It used to mean one of two opposite things depending on a preference —
   /// open the menu, or navigate straight to the last-logged modality with
   /// nothing announced — so a press half a beat too long landed a runner on
   /// Nutrition. One gesture, one meaning.
-  void _onLogLongPress({Offset? anchor}) => _openLogMenu(anchor: anchor);
+  ///
+  /// Except mid-run: the button is then "return to your run" for both
+  /// gestures, so a press held half a beat too long at a traffic light does
+  /// not open a picker over the run.
+  ///
+  /// And with only one action left to offer — Gym and Nutrition both hidden
+  /// — a fan of one is the tap with an animation in front of it, so it is
+  /// the tap.
+  void _onLogLongPress({Offset? anchor}) {
+    final offered = LogAction.values
+        .where((a) => !_hiddenLogActions.contains(a))
+        .toList();
+    if (runRecordingActive.value) {
+      _performLogAction(LogAction.run);
+    } else if (offered.length == 1) {
+      _performLogAction(offered.single);
+    } else {
+      _openLogMenu(anchor: anchor);
+    }
+  }
+
+  Set<LogAction> get _hiddenLogActions => hiddenLogActions(
+        gymShown: _gymShown,
+        nutritionShown: _nutritionShown,
+      );
 
   // The centre Log button fans the three capture actions up above itself
   // (speed-dial) rather than opening a bottom sheet; the History Log FAB keeps
@@ -733,13 +801,42 @@ class _HomeScreenState extends State<HomeScreen>
     final picked = await showLogSpeedDial(
       context: context,
       recent: logActionFromWire(widget.preferences.lastLogType),
+      hidden: _hiddenLogActions,
       anchor: anchor,
     );
     if (picked != null) _performLogAction(picked);
   }
 
-  void _performLogAction(LogAction action) {
+  Future<void> _performLogAction(LogAction action) async {
+    final l10n = AppLocalizations.of(context);
     widget.preferences.setLastLogType(action.wire);
+    // Asking to log a lift or a meal is asking for that modality, and a
+    // hidden one has no hub tab to land on — the first-run "Lifting instead?"
+    // link reaches here for exactly the account whose Gym starts hidden.
+    // Awaited so the hub's strip already has the tab when it is selected.
+    //
+    // It changes what the centre button's tap does from then on, so it is
+    // announced, with an Undo: one stray tap on the first-run gym link used
+    // to re-modalise the app silently, recoverable only from Settings.
+    ({String message, Future<void> Function() undo})? switchedOn;
+    if (action == LogAction.lift && !_gymShown) {
+      final prior = widget.preferences.showGym;
+      await widget.preferences.setShowGym(true);
+      _roamModalityVisibility();
+      switchedOn = (
+        message: l10n.logModalityShownGym,
+        undo: () => widget.preferences.setShowGym(prior),
+      );
+    } else if (action == LogAction.food && !_nutritionShown) {
+      final prior = widget.preferences.showNutrition;
+      await widget.preferences.setShowNutrition(true);
+      _roamModalityVisibility();
+      switchedOn = (
+        message: l10n.logModalityShownNutrition,
+        undo: () => widget.preferences.setShowNutrition(prior),
+      );
+    }
+    if (!mounted) return;
     // Each Log action lands on that modality's dwell-in workspace (decisions
     // §63) — the keep-alive Run page for a recording, the Fitness hub's own Gym
     // and Nutrition tabs for the other two. All three behave identically: you
@@ -762,13 +859,106 @@ class _HomeScreenState extends State<HomeScreen>
       // Picking the page you are already on is a no-op navigation, and the
       // fan closing onto an unchanged screen reads as a dropped tap. Say
       // where the tap went instead.
-      final l10n = AppLocalizations.of(context);
       showTopBanner(context, l10n.logAlreadyOnPage(_logPageName(l10n, action)));
       return;
     }
     if (tab != null) _fitnessTab.value = tab;
     _goToPage(page);
+    if (switchedOn != null) _announceSwitchedOn(switchedOn);
   }
+
+  /// The Undo restores the choice that was there before, which may be no
+  /// choice at all: writing false would pin the modality hidden for a runner
+  /// who later logs one, which is what the tri-state exists to avoid
+  /// (decisions § 1739).
+  void _announceSwitchedOn(
+      ({String message, Future<void> Function() undo}) switchedOn) {
+    showTopBanner(
+      context,
+      switchedOn.message,
+      duration: const Duration(seconds: 6),
+      actionLabel: AppLocalizations.of(context).undoAction,
+      onAction: () async {
+        try {
+          await switchedOn.undo();
+        } catch (e) {
+          debugPrint('home: modality visibility undo failed: $e');
+          return;
+        }
+        await _roamModalityVisibility();
+      },
+    );
+  }
+
+  Future<void> _roamModalityVisibility() async {
+    try {
+      await widget.settingsSync?.pushModalityVisibility();
+    } catch (e) {
+      debugPrint('home: modality visibility push failed: $e');
+    }
+  }
+
+  /// Whether the docked centre button is the recorder's Stop: a run records
+  /// (a manual pause included) and the Run page is showing. Phone shell only
+  /// — the rail docks nothing, so the recorder panel keeps its own Stop there
+  /// ([RunStopDock]). Away from the Run page the button stays the way back to
+  /// it, so a tap from Home can never end a run.
+  bool get _centreIsStop =>
+      runRecordingActive.value && _currentIndex.value == _pageRun;
+
+  /// The centre button's icon, caption and spoken label. When a tap starts a
+  /// run it says so: a "+" captioned "Log" reads as "add an entry", and a
+  /// first-timer only found out it opened the GPS recorder by pressing it.
+  ///
+  /// Mid-run the shell looked exactly as it does idle, and the way back to the
+  /// recorder was a "+" that reads as "start another". So while a run records
+  /// the button turns the error colour and says so, and a tap returns to it —
+  /// except on the docked button over the Run page, where it is the Stop.
+  ({IconData icon, String label, String semantics, bool recording})
+      _centreLook(AppLocalizations l10n, {bool docked = false}) {
+    if (docked && _centreIsStop) {
+      return (
+        icon: Icons.stop_rounded,
+        label: l10n.navStop,
+        semantics: l10n.runStopA11yLabel,
+        recording: true,
+      );
+    }
+    if (runRecordingActive.value) {
+      return (
+        icon: Icons.fiber_manual_record,
+        label: l10n.navRecording,
+        semantics: l10n.logReturnToRunA11yLabel,
+        recording: true,
+      );
+    }
+    return _runIsPrimary
+        ? (
+            // Play, not a runner: with Gym and Nutrition hidden the hub
+            // beside it wears the runner glyph.
+            icon: Icons.play_arrow,
+            label: l10n.navStartRun,
+            semantics: l10n.logStartRunA11yLabel,
+            recording: false,
+          )
+        : (
+            icon: Icons.add,
+            label: l10n.navLog,
+            semantics: l10n.logA11yLabel,
+            recording: false,
+          );
+  }
+
+  /// The Fitness hub's nav icon and label. "Fitness" under a dumbbell was
+  /// chosen because the hub holds gym and nutrition too (decisions § 139);
+  /// with both hidden it holds runs, routes, segments, plans and races, and
+  /// a runner looking for their runs scanned past a gym icon. "Training"
+  /// rather than "Runs" because the hub's own first tab is already "Runs",
+  /// and it names the plans and races beside them.
+  ({IconData icon, String label}) _hubLook(AppLocalizations l10n) =>
+      _gymShown || _nutritionShown
+          ? (icon: Icons.fitness_center, label: l10n.navFitness)
+          : (icon: Icons.directions_run, label: l10n.navTraining);
 
   String _logPageName(AppLocalizations l10n, LogAction action) =>
       switch (action) {
@@ -792,6 +982,7 @@ class _HomeScreenState extends State<HomeScreen>
     // CANCELLATION. Mirrors web's root-layout banner; renders
     // nothing when the flag is null or the user is on the free
     // tier — zero footprint in the common case.
+    final expanded = widthClassOf(context) == WidthClass.expanded;
     final body = Column(
       children: [
         BillingIssueBanner(apiClient: widget.apiClient),
@@ -801,28 +992,33 @@ class _HomeScreenState extends State<HomeScreen>
           // mid-run (issue #490). Deliberate bottom-nav taps still navigate —
           // `_goToPage` drives the controller directly, which non-scrollable
           // physics doesn't block. Fail-open: the notifier defaults to false.
-          child: ValueListenableBuilder<bool>(
-            valueListenable: runRecordingActive,
-            builder: (context, recording, _) => PageView(
-              controller: _pageController,
-              onPageChanged: _onPageChanged,
-              physics: recording
-                  ? const NeverScrollableScrollPhysics()
-                  : const PageScrollPhysics(),
-              children: _pages,
+          child: RunStopDock(
+            docked: !expanded,
+            child: ValueListenableBuilder<bool>(
+              valueListenable: runRecordingActive,
+              builder: (context, recording, _) => PageView(
+                controller: _pageController,
+                onPageChanged: _onPageChanged,
+                physics: recording
+                    ? const NeverScrollableScrollPhysics()
+                    : const PageScrollPhysics(),
+                children: _pages,
+              ),
             ),
           ),
         ),
       ],
     );
-    if (widthClassOf(context) == WidthClass.expanded) {
+    if (expanded) {
       return _backGuard(Scaffold(
         body: Row(
           children: [
-            ValueListenableBuilder<int>(
-              valueListenable: _currentIndex,
-              builder: (context, index, _) {
+            ListenableBuilder(
+              listenable: _navInputs,
+              builder: (context, _) {
+                final index = _currentIndex.value;
                 final l10n = AppLocalizations.of(context);
+                final hub = _hubLook(l10n);
                 return NavigationRail(
                   selectedIndex: _railIndexFor(index),
                   onDestinationSelected: (i) => _goToPage(_railPages[i]),
@@ -837,8 +1033,8 @@ class _HomeScreenState extends State<HomeScreen>
                       label: Text(l10n.navHome),
                     ),
                     NavigationRailDestination(
-                      icon: const Icon(Icons.fitness_center),
-                      label: Text(l10n.navFitness),
+                      icon: Icon(hub.icon),
+                      label: Text(hub.label),
                     ),
                     NavigationRailDestination(
                       icon: const Icon(Icons.public),
@@ -875,13 +1071,15 @@ class _HomeScreenState extends State<HomeScreen>
       ));
     }
     return _backGuard(Scaffold(
-      body: body,
+      body: DockedFabInset(height: kDockedFabOverhang, child: body),
       floatingActionButton: _logFab(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: ValueListenableBuilder<int>(
-        valueListenable: _currentIndex,
-        builder: (context, index, _) {
+      bottomNavigationBar: ListenableBuilder(
+        listenable: _navInputs,
+        builder: (context, _) {
+          final index = _currentIndex.value;
           final l10n = AppLocalizations.of(context);
+          final hub = _hubLook(l10n);
           final metrics =
               bottomNavMetrics(MediaQuery.textScalerOf(context).scale(1));
           return BottomAppBar(
@@ -897,15 +1095,24 @@ class _HomeScreenState extends State<HomeScreen>
                   onTap: () => _goToPage(_pageHome),
                 ),
                 _BottomNavItem(
-                  icon: Icons.fitness_center,
-                  label: l10n.navFitness,
+                  icon: hub.icon,
+                  label: hub.label,
                   selected: index == _pageFitness,
                   onTap: () => _goToPage(_pageFitness),
                 ),
-                // The docked centre Log FAB fills this 56 dp slot; the caption
+                // The docked centre Log FAB sits over this slot; the caption
                 // gives the centre action a visible text label like every other
                 // nav destination, so it isn't the one unlabelled "+" (#256).
-                SizedBox(width: 56, child: _CentreLogLabel(label: l10n.navLog)),
+                // Wider than the 56 dp button: at 56 "Recording" cut to
+                // "Recordi…" at the default text size.
+                SizedBox(
+                  width: _centreSlotWidth,
+                  child: Builder(builder: (context) {
+                    final look = _centreLook(l10n, docked: true);
+                    return _CentreLogLabel(
+                        label: look.label, alert: look.recording);
+                  }),
+                ),
                 _BottomNavItem(
                   icon: Icons.public,
                   label: l10n.navSocial,
@@ -928,6 +1135,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   static const _railPages = [_pageHome, _pageFitness, _pageSocial, _pageYou];
 
+  static const double _centreSlotWidth = 72;
+
   int? _railIndexFor(int pageIndex) {
     final i = _railPages.indexOf(pageIndex);
     return i == -1 ? null : i;
@@ -941,10 +1150,25 @@ class _HomeScreenState extends State<HomeScreen>
   // and the 56 dp FAB clears the >=48 dp target. When [anchored], the
   // speed-dial fans from the button's own position instead of the
   // bottom-centre dock.
+  //
+  // Docked over the Run page mid-recording it is the recorder's Stop instead
+  // (the panel leaves its own out, `RunStopDock`): the same 800 ms
+  // `HoldToStopButton`, so one gate guards every way a run ends. It has no
+  // long-press wrapper, which would fire at 500 ms into the hold.
   Widget _logFab({bool anchored = false}) {
-    return Builder(
-      builder: (fabContext) {
+    return ListenableBuilder(
+      listenable: _navInputs,
+      builder: (fabContext, _) {
         final l10n = AppLocalizations.of(fabContext);
+        if (!anchored && _centreIsStop) {
+          return HoldToStopButton(
+            size: 56,
+            iconSize: 28,
+            showHint: false,
+            semanticsHint: l10n.runHoldToStopRunA11yHint,
+            onHoldComplete: runStopRequests.request,
+          );
+        }
         Offset? anchorOf() {
           if (!anchored) return null;
           final box = fabContext.findRenderObject() as RenderBox?;
@@ -952,11 +1176,13 @@ class _HomeScreenState extends State<HomeScreen>
           return box.localToGlobal(box.size.center(Offset.zero));
         }
 
+        final look = _centreLook(l10n);
+        final scheme = Theme.of(fabContext).colorScheme;
         return GestureDetector(
           onLongPress: () => _onLogLongPress(anchor: anchorOf()),
           child: Semantics(
             button: true,
-            label: l10n.logA11yLabel,
+            label: look.semantics,
             // The tooltip is OURS and manually triggered, never the
             // FloatingActionButton's own: a `tooltip:` builds a Tooltip
             // INSIDE the button, whose long-press recognizer enters the
@@ -965,11 +1191,13 @@ class _HomeScreenState extends State<HomeScreen>
             // FAB. The visible caption under the button carries the label
             // anyway (#256), so nothing is lost by not showing it on hold.
             child: Tooltip(
-              message: l10n.navLog,
+              message: look.label,
               triggerMode: TooltipTriggerMode.manual,
               child: FloatingActionButton(
+                backgroundColor: look.recording ? scheme.error : null,
+                foregroundColor: look.recording ? scheme.onError : null,
                 onPressed: () => _onLogTap(anchor: anchorOf()),
-                child: const Icon(Icons.add),
+                child: Icon(look.icon),
               ),
             ),
           ),
@@ -1062,7 +1290,11 @@ class _BottomNavItem extends StatelessWidget {
 /// doesn't double-announce over the FAB's own semantics label.
 class _CentreLogLabel extends StatelessWidget {
   final String label;
-  const _CentreLogLabel({required this.label});
+
+  /// Tints the caption the error colour, matching the button above it while
+  /// a run records.
+  final bool alert;
+  const _CentreLogLabel({required this.label, this.alert = false});
 
   @override
   Widget build(BuildContext context) {
@@ -1077,13 +1309,21 @@ class _CentreLogLabel extends StatelessWidget {
           // FAB visually fills the space above it.
           const SizedBox(height: 24),
           const SizedBox(height: 2),
+          // Shrinks to fit rather than ellipsising: at a large text size a
+          // smaller whole word reads, a clipped one does not.
           ExcludeSemantics(
-            child: Text(
-              label,
-              style: theme.textTheme.labelSmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: alert
+                      ? theme.colorScheme.error
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+                maxLines: 1,
+                softWrap: false,
+              ),
             ),
           ),
         ],

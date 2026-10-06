@@ -25,7 +25,7 @@ design records are [`native_push.md`](../features/native_push.md),
 
 ## Status
 
-Last moved: **2026-09-21**.
+Last moved: **2026-10-05**.
 
 | # | Artifact | Where it ends up | State |
 |---|---|---|---|
@@ -34,10 +34,10 @@ Last moved: **2026-09-21**.
 | — | FCM service account | Fly `FCM_SERVICE_ACCOUNT_JSON` + `FCM_PROJECT_ID` | **Done 2026-09-18** — worker boots `native_push: enabled` |
 | — | VAPID pair (browser push) | Fly `VAPID_*` + GitHub `PUBLIC_VAPID_PUBLIC_KEY` | **Done 2026-09-18** — shipped in `web@1.7.1` |
 | — | Developer Program enrollment | — | **Active** — App Store Connect reachable 2026-09-19 |
-| 1 | Team ID + renewal reminder | Bitwarden | ☐ |
-| 2 | App Groups `group.com.threkir.app.activerun` + `group.com.threkir.app.share` | Apple portal | ☐ |
-| 3 | App IDs `com.threkir.app` + `com.threkir.app.ShareExtension` + `com.threkir.app.RunActivity` | Apple portal | ☐ |
-| 4 | Watch App IDs `com.threkir.app.watchapp` + `com.threkir.app.watchapp.complication` | Apple portal | ☐ |
+| 1 | Team ID + renewal reminder | Bitwarden | **Done 2026-10-05** — Team ID confirmed; renewal reminder on the owner's calendar (auto-renew is on) |
+| 2 | App Groups `group.com.threkir.app.activerun` + `group.com.threkir.app.share` | Apple portal | **Done 2026-10-05** |
+| 3 | App IDs `com.threkir.app` + `com.threkir.app.ShareExtension` + `com.threkir.app.RunActivity` | Apple portal | **Done 2026-10-05** — both groups on `com.threkir.app`, the share group on `ShareExtension`, nothing on `RunActivity` |
+| 4 | Watch App IDs `com.threkir.app.watchapp` + `com.threkir.app.watchapp.widget` | Apple portal | **Done 2026-10-05** — `.widget`, not `.complication`, which Apple reported unavailable ([decisions § 1754](../architecture/decisions.md)); `activerun` on both |
 | 5 | Services ID `com.threkir.web` | Apple portal | ☐ |
 | 6 | **APNs key** `.p8` | Firebase → Cloud Messaging | **Done 2026-09-19** |
 | 7 | **Sign-in-with-Apple key** `.p8` | Supabase (via a generated client secret) | **Done 2026-09-19** |
@@ -48,10 +48,10 @@ Last moved: **2026-09-21**.
 | 11 | `PUBLIC_APPLE_AUTH_ENABLED` truthy + `web@` Release | GitHub secret + release | ☐ |
 | 12 | `mobile_android@` release (picks up the push config) | Play | ☐ |
 | 13 | Android Apple dart-defines | `APPLE_SERVICE_CLIENT_ID` + `APPLE_REDIRECT_URI` | ☐ |
-| 14 | Apple Distribution certificate `.p12` | GitHub `production` env `IOS_BUILD_CERTIFICATE_BASE64` + `IOS_P12_PASSWORD`; estate | ☐ |
-| 15 | App Store profiles, phone + share extension + Live Activity + watch + complication | GitHub `production` env `IOS_PROVISIONING_PROFILE_BASE64` + `IOS_SHARE_PROVISIONING_PROFILE_BASE64` + `IOS_RUN_ACTIVITY_PROVISIONING_PROFILE_BASE64` + `IOS_WATCH_PROVISIONING_PROFILE_BASE64` + `IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64` | ☐ — after steps 3–4, App Group included |
-| 16 | App Store Connect API key `.p8` | GitHub `production` env `APP_STORE_CONNECT_API_*`; estate | ☐ |
-| 17 | App Store Connect app record | App Store Connect | ☐ — gates nothing above; must exist before step 18 uploads |
+| 14 | Apple Distribution certificate `.p12` | GitHub `production` env `IOS_BUILD_CERTIFICATE_BASE64` + `IOS_P12_PASSWORD`; estate | **Done 2026-10-05** — secrets set; `.p12` + password backed up in estate commit `b9280b6` (issue #1040); local copies and the keychain identity deleted |
+| 15 | App Store profiles, phone + share extension + Live Activity + watch + complication | GitHub `production` env `IOS_PROVISIONING_PROFILE_BASE64` + `IOS_SHARE_PROVISIONING_PROFILE_BASE64` + `IOS_RUN_ACTIVITY_PROVISIONING_PROFILE_BASE64` + `IOS_WATCH_PROVISIONING_PROFILE_BASE64` + `IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64` | **Done 2026-10-05** — all five checked against their bundle ids, App Store type, App Groups |
+| 16 | App Store Connect API key `.p8` | GitHub `production` env `APP_STORE_CONNECT_API_*`; estate | **Done 2026-10-05** — secrets set; `.p8` + Key ID backed up in estate commit `b9280b6` (issue #1040); local copy deleted |
+| 17 | App Store Connect app record | App Store Connect | **Done 2026-10-05** — Apple ID 6819364574, SKU `threkir-ios` |
 | 18 | First `mobile_ios@` release → TestFlight | GitHub Release | ☐ |
 
 The open rows are `☐` rather than `- [ ]` on purpose: the survey docs grep
@@ -348,7 +348,10 @@ an App ID of its own too. Same flow again:
 | Field | Value |
 |---|---|
 | Description | `Threkir Watch Complication` |
-| Bundle ID | **Explicit App ID** — `com.threkir.app.watchapp.complication` |
+| Bundle ID | **Explicit App ID** — `com.threkir.app.watchapp.widget` |
+
+The id is `.widget`, not `.complication`: Apple reported `com.threkir.app.watchapp.complication`
+as not available to this team ([decisions § 1754](../architecture/decisions.md)).
 
 Capability: **App Groups** only, assigned to `group.com.threkir.app.activerun`
 in the same second pass. The complication runs in its own process and draws
@@ -670,14 +673,29 @@ install it. Pick **Apple Distribution**, not the older *iOS Distribution*:
 `release-ios.yml` looks for an identity named `Apple Distribution: …` and fails
 naming the certificate if it finds none.
 
+Two import failures, both measured on 2026-10-05:
+
+- **`Unable to import … Error: -25294`** on the double-click is Keychain Access
+  aiming at a keychain other than `login`. Select **login** under *Default
+  Keychains* in the sidebar and use **File → Import Items…**.
+- **"certificate is not trusted"** in red under the imported certificate means
+  the issuing intermediate, *Apple Worldwide Developer Relations Certification
+  Authority G3*, is not on the Mac. `security find-identity -v -p codesigning`
+  then reports 0 valid identities, and the workflow's identity check uses the
+  same `-v`. Install it from <https://www.apple.com/certificateauthority/>
+  (*Worldwide Developer Relations - G3*) into `login`.
+
 Back in Keychain Access → **My Certificates** → expand the new certificate and
 confirm a private key sits under it (no key means the CSR was made on another
 Mac, and the certificate cannot sign anything) → select the certificate →
-**File** → **Export Items…** → `threkir-distribution.p12`, with a strong
-password. Then, from the `threkir` checkout:
+**File** → **Export Items…** → `.p12`, with a strong password, into
+`~/tmp-signing`. Not Desktop or Documents, which iCloud may sync, and not
+Downloads: macOS can deny Terminal read access to Downloads, and then `base64`
+fails while `gh secret set` still reports ✓, having stored an **empty** secret
+from the empty pipe. Then, from the `threkir` checkout:
 
 ```
-base64 -i ~/Desktop/threkir-distribution.p12 | gh secret set IOS_BUILD_CERTIFICATE_BASE64 --env production
+base64 -i ~/tmp-signing/Certificates.p12 | gh secret set IOS_BUILD_CERTIFICATE_BASE64 --env production
 ```
 
 ```
@@ -695,7 +713,7 @@ re-running this step.
 **Profiles** → **(+)** → under Distribution, **App Store Connect** → App ID
 `com.threkir.app` → the certificate from step 14 → name `Threkir App Store` →
 **Generate** → **Download**. Again for `com.threkir.app.watchapp`, named
-`Threkir Watch App Store`, for `com.threkir.app.watchapp.complication`,
+`Threkir Watch App Store`, for `com.threkir.app.watchapp.widget`,
 named `Threkir Watch Complication App Store`, for
 `com.threkir.app.ShareExtension`, named `Threkir Share Extension App Store`,
 and for `com.threkir.app.RunActivity`, named `Threkir Run Activity App Store`.

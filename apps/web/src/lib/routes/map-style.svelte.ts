@@ -11,9 +11,12 @@ import { env } from '$env/dynamic/public';
 import {
 	basemapIsDark,
 	buildMapStyleUrl,
+	maptilerSlug,
 	resolveStyleOverride,
 	type MapStyle,
+	type MaptilerSlug,
 } from './map-style-url';
+import { buildTrackThumbnailUrl } from './static_map';
 export type { MapStyle };
 
 const style = $state<{ value: MapStyle | null }>({ value: null });
@@ -88,4 +91,28 @@ export function basemapIsDarkFromEnv(
 ): boolean {
 	const chosen = style.value ?? (prefersDark ? 'dark' : 'streets');
 	return basemapIsDark(chosen, key, prefersDark, resolveStyleOverride(envGetter));
+}
+
+/// The static-map image for a track thumbnail, on the basemap the user's live
+/// maps resolve: same `map_style` preference, same theme fallback, same dev
+/// override. Thumbnails call this rather than naming a MapTiler style, which
+/// is how they used to show light `streets-v2` to a runner whose every map was
+/// satellite or dark (decisions § 1749).
+export function trackThumbnailUrlFromEnv(
+	pts: { lat: number; lng: number }[],
+	opts: { w: number; h: number; key: string; prefersDark: boolean; allowThirdParty: boolean },
+	envGetter: () => string | undefined = () => env.PUBLIC_TILE_STYLE_URL,
+): string | null {
+	return buildTrackThumbnailUrl(pts, {
+		...opts,
+		mapStyle: style.value ?? (opts.prefersDark ? 'dark' : 'streets'),
+		overrideUrl: resolveStyleOverride(envGetter),
+	});
+}
+
+/// The MapTiler slug a single-point static image (the event meet-point
+/// preview) requests — the slug the live maps resolve, for a surface that has
+/// no polyline and so no use for [trackThumbnailUrlFromEnv].
+export function staticMapSlugFromPreference(prefersDark: boolean): MaptilerSlug {
+	return maptilerSlug(style.value ?? (prefersDark ? 'dark' : 'streets'), prefersDark);
 }

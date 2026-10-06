@@ -96,10 +96,21 @@ class SplitPaceMode {
 /// opens it, and Fitness → Gym / Nutrition are always-present destinations.
 bool runIsPrimaryLogAction({
   required bool keepRunPrimary,
-  required bool hasGymData,
-  required bool hasFoodData,
+  required bool gymShown,
+  required bool nutritionShown,
 }) =>
-    keepRunPrimary || (!hasGymData && !hasFoodData);
+    keepRunPrimary || (!gymShown && !nutritionShown);
+
+/// Whether a non-running modality (Gym, Nutrition) is surfaced on mobile —
+/// its Fitness hub tab, its Log action, its Home cards.
+///
+/// [explicit] is the runner's own choice from Settings and always wins. Left
+/// unset, the modality shows only once it [hasData]: a runner who has never
+/// logged a lift or a meal gets a run-only app, while someone who already
+/// logs them (here or on web) keeps the surfaces they use without having to
+/// find a toggle first.
+bool modalityShown({required bool? explicit, required bool hasData}) =>
+    explicit ?? hasData;
 
 /// App-wide user preferences (units, audio cues, etc.).
 class Preferences extends ChangeNotifier {
@@ -205,6 +216,10 @@ class Preferences extends ChangeNotifier {
   // repeat-last gesture and the Log sheet's most-recent-floats-to-top
   // ordering. Per-device.
   static const _kLastLogType = 'last_log_type';
+  // Mirror the universal `show_gym` / `show_nutrition` settings-bag keys.
+  // Absent = no explicit choice, resolved by [modalityShown].
+  static const _kShowGym = 'show_gym';
+  static const _kShowNutrition = 'show_nutrition';
 
   // Per-device debug/verification toggle: force the run-detail map to
   // render the RAW recorded GPS track even when the backend has produced
@@ -264,6 +279,8 @@ class Preferences extends ChangeNotifier {
   WeightUnit _weightUnit = WeightUnit.kg;
   bool _keepRunPrimary = false;
   String? _lastLogType;
+  bool? _showGym;
+  bool? _showNutrition;
   bool _showRawTrack = false;
   bool _sentryOptOut = false;
   bool _setupWizardDismissed = false;
@@ -418,6 +435,42 @@ class Preferences extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// The runner's explicit Gym visibility choice, or null when they have
+  /// never made one. Resolve through [gymShown], not this.
+  bool? get showGym => _showGym;
+
+  /// The runner's explicit Nutrition visibility choice, or null when they
+  /// have never made one. Resolve through [nutritionShown], not this.
+  bool? get showNutrition => _showNutrition;
+
+  bool gymShown({required bool hasData}) =>
+      modalityShown(explicit: _showGym, hasData: hasData);
+
+  bool nutritionShown({required bool hasData}) =>
+      modalityShown(explicit: _showNutrition, hasData: hasData);
+
+  /// Null clears the choice back to the data-presence default.
+  Future<void> setShowGym(bool? v) async {
+    _showGym = v;
+    await _setOptionalBool(_kShowGym, v);
+    notifyListeners();
+  }
+
+  /// Null clears the choice back to the data-presence default.
+  Future<void> setShowNutrition(bool? v) async {
+    _showNutrition = v;
+    await _setOptionalBool(_kShowNutrition, v);
+    notifyListeners();
+  }
+
+  Future<void> _setOptionalBool(String key, bool? v) async {
+    if (v == null) {
+      await _prefs.remove(key);
+    } else {
+      await _prefs.setBool(key, v);
+    }
+  }
+
   /// The capture type last logged via the Log button — `run` / `lift` /
   /// `meal` / `snack`, or null when nothing has been logged yet. Floats that
   /// action to the top of the Log fan.
@@ -526,6 +579,8 @@ class Preferences extends ChangeNotifier {
     await setAppleWatchHrZoneCutoffs(const []);
     await setMapStyle(kDefaultMapStyle);
     await setWeightUnit(WeightUnit.kg);
+    await setShowGym(null);
+    await setShowNutrition(null);
     await clearGoals();
     await clearRunsLastFetchedAt();
     // The deferred-onboarding flag belongs to the account that dismissed
@@ -628,6 +683,8 @@ class Preferences extends ChangeNotifier {
     _weightUnit = WeightFormat.unitFromWire(_prefs.getString(_kWeightUnit));
     _keepRunPrimary = _prefs.getBool(_kKeepRunPrimary) ?? false;
     _lastLogType = _prefs.getString(_kLastLogType);
+    _showGym = _prefs.getBool(_kShowGym);
+    _showNutrition = _prefs.getBool(_kShowNutrition);
     _showRawTrack = _prefs.getBool(_kShowRawTrack) ?? false;
     _sentryOptOut = _prefs.getBool(_kSentryOptOut) ?? false;
     _setupWizardDismissed = _prefs.getBool(_kSetupWizardDismissed) ?? false;

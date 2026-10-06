@@ -1,7 +1,6 @@
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_cache/flutter_map_cache.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:ui_kit/ui_kit.dart';
 
@@ -187,6 +186,43 @@ bool resolveBasemapIsDark(
   return slug == 'streets-v2-dark' || slug == 'satellite';
 }
 
+/// Static-image URL for a track thumbnail, on the basemap [resolveTileUrl]
+/// resolves under the same arguments — same `TILE_URL_TEMPLATE` override,
+/// same MapTiler slug for [mapStyle] × [brightness]. Null when neither is
+/// configured, so the caller paints its polyline-only fallback rather than
+/// requesting a keyless MapTiler URL that can only 4xx.
+///
+/// [width] × [height] are logical pixels; density is applied here. MapTiler
+/// takes an `@2x` suffix. tileserver-gl's static endpoint has none, so the
+/// local request is made at twice the size and the widget downsamples it.
+/// MapTiler's Static Maps API takes any MapTiler map id, so every slug
+/// [_maptilerSlug] returns has a static counterpart and none is remapped.
+///
+/// [path] is the already-encoded `path=` value. Twin of web's
+/// `buildTrackThumbnailUrl` (`routes/static_map.ts`), decisions § 1749.
+String? resolveStaticMapUrl(
+  Map<String, String> env, {
+  required String mapStyle,
+  required Brightness brightness,
+  required int width,
+  required int height,
+  required String path,
+}) {
+  final override = (env['TILE_URL_TEMPLATE'] ?? '').trim();
+  if (override.isNotEmpty) {
+    final base =
+        override.replaceFirst(RegExp(r'/\{z\}/\{x\}/\{y\}(@2x)?\.png$'), '');
+    if (base != override) {
+      return '$base/static/auto/${width * 2}x${height * 2}.png?path=$path';
+    }
+  }
+  final key = (env['MAPTILER_KEY'] ?? '').trim();
+  if (key.isEmpty) return null;
+  final slug = _maptilerSlug(mapStyle, brightness == Brightness.dark);
+  return 'https://api.maptiler.com/maps/$slug/static/auto/${width}x$height@2x.png'
+      '?key=$key&path=$path';
+}
+
 /// Tile URL for an explicit basemap choice. The share cards call this with
 /// a pinned dark basemap; every on-screen map goes through
 /// [currentTileUrl].
@@ -234,7 +270,7 @@ int _tileFailures = 0;
 /// so a flaky network can't drown the log the recording stack writes to.
 TileLayer basemapTileLayer({
   required String urlTemplate,
-  TileProvider? tileProvider,
+  String? offlinePackRouteId,
   int maxNativeZoom = 19,
   double maxZoom = 19,
   TileBuilder? tileBuilder,
@@ -255,12 +291,7 @@ TileLayer basemapTileLayer({
           );
         }
       },
-      tileProvider: tileProvider ??
-          CachedTileProvider(
-            store: TileCache.store,
-            maxStale: const Duration(days: 30),
-            dio: TileCache.dio,
-          ),
+      tileProvider: TileCache.tileProviderForRoute(offlinePackRouteId),
     );
 
 /// Separator between an overlay and the basemap: the casing under the
@@ -273,6 +304,13 @@ TileLayer basemapTileLayer({
 @visibleForTesting
 Color mapOverlayOutline({required bool darkBasemap}) =>
     darkBasemap ? Colors.white : const Color(0xFF1E1B4B);
+
+/// The saved / recorded track line drawn as one colour — the list
+/// thumbnails. Same two rungs as web's `mapTrackLine`
+/// (`basemap_contrast.ts`), and the middle stop of [trackGradientColours]
+/// on each basemap.
+Color mapTrackLine({required bool darkBasemap}) =>
+    darkBasemap ? const Color(0xFF818CF8) : const Color(0xFF4F46E5);
 
 /// Amber accent for the map's transient overlays — the selected-segment
 /// highlight, the coarse last-seen ring, and the elevation-chart hover dot.
@@ -453,14 +491,13 @@ class LiveRunMap extends StatefulWidget {
     this.markerPlacing = false,
     this.onMarkerPlace,
     this.onMarkerTap,
-    this.offlineTileProvider,
+    this.offlinePackRouteId,
   });
 
-  /// Optional read-through tile provider serving a followed route's offline
-  /// pack from disk first, falling through to the network/LRU cache (set by
-  /// the recorder when following a route that has an offline pack pinned).
-  /// Null → the normal network-cached tile path (decisions §167).
-  final TileProvider? offlineTileProvider;
+  /// The route this map is showing or following. Its offline pack, if one
+  /// was pinned, is read first and the network/LRU cache fills the rest
+  /// (decisions § 170). Null → the network/LRU cache alone.
+  final String? offlinePackRouteId;
 
   /// Course markers (aid stations, cutoffs, …) painted as coloured pins
   /// with a label above the trace. Empty = no marker layer.
@@ -1035,7 +1072,7 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
             // the polyline floating on a white background.
             basemapTileLayer(
               urlTemplate: _tileUrl,
-              tileProvider: widget.offlineTileProvider,
+              offlinePackRouteId: widget.offlinePackRouteId,
               maxNativeZoom: 19,
               maxZoom: 22,
             ),

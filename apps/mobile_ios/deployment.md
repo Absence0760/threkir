@@ -29,7 +29,7 @@ com.threkir.app                       ← iOS phone app
 com.threkir.app.ShareExtension        ← share extension the phone app embeds (route files from the share sheet)
 com.threkir.app.RunActivity           ← Live Activity widget extension the phone app embeds
 com.threkir.app.watchapp              ← Apple Watch app target
-com.threkir.app.watchapp.complication ← watch complication (WidgetKit extension the watch app embeds)
+com.threkir.app.watchapp.widget ← watch complication (WidgetKit extension the watch app embeds)
 ```
 
 **Country / region rollout:** Same shape as Android — start with UK + Australia + US, expand once stable.
@@ -72,7 +72,7 @@ com.threkir.app.watchapp.complication ← watch complication (WidgetKit extensio
    - Bundle ID: `com.threkir.app.watchapp`
    - Capabilities: **HealthKit**, **App Groups** (the same group — this is the side that actually declares it today; the phone's `Runner.entitlements` does not declare it yet, only the share group, so the bridge's phone half is still owed)
 5b. **Create the complication App ID:**
-   - Bundle ID: `com.threkir.app.watchapp.complication`
+   - Bundle ID: `com.threkir.app.watchapp.widget`
    - Capabilities: **App Groups** only (the same group). The complication is a separate process that draws the snapshot the watch app writes there, so it needs no HealthKit ([`apple_provisioning.md` step 4](../../docs/ops/apple_provisioning.md#then-the-complications-app-id)).
 5c. **Create the share extension's App ID:**
    - Bundle ID: `com.threkir.app.ShareExtension`

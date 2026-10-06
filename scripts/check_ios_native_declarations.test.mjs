@@ -248,7 +248,7 @@ function baseline(overrides = {}) {
 				['NSSupportsLiveActivities', true],
 			]),
 		),
-		entitlements: new Map([['com.apple.developer.aps-environment', APS_SUBSTITUTION]]),
+		entitlements: new Map([['aps-environment', APS_SUBSTITUTION]]),
 		privacyManifest: fakeManifest(),
 		appDelegate: APP_DELEGATE,
 		pbxproj: PBX,
@@ -350,9 +350,31 @@ test('firebase_messaging with no aps-environment entitlement fails', () => {
 
 test('an aps-environment value that is neither a substitution nor a legal literal fails', () => {
 	const { errors } = evaluate(
-		baseline({ entitlements: new Map([['com.apple.developer.aps-environment', 'sandbox']]) }),
+		baseline({ entitlements: new Map([['aps-environment', 'sandbox']]) }),
 	);
 	assert.equal(errors.filter((e) => e.includes('unusable')).length, 1);
+});
+
+test('the macOS spelling of the APNs entitlement fails, even beside the iOS one', () => {
+	const { errors } = evaluate(
+		baseline({
+			entitlements: new Map([
+				['aps-environment', APS_SUBSTITUTION],
+				['com.apple.developer.aps-environment', APS_SUBSTITUTION],
+			]),
+		}),
+	);
+	assert.equal(errors.filter((e) => e.includes('macOS spelling')).length, 1);
+});
+
+test('the macOS spelling alone does not satisfy firebase_messaging', () => {
+	const { errors } = evaluate(
+		baseline({
+			entitlements: new Map([['com.apple.developer.aps-environment', APS_SUBSTITUTION]]),
+		}),
+	);
+	assert.ok(errors.some((e) => e.includes('macOS spelling')));
+	assert.ok(errors.some((e) => e.includes('`aps-environment`') && !e.includes('macOS spelling')));
 });
 
 test('a background mode nothing claims is an error, not a warning', () => {

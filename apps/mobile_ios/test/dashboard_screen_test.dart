@@ -5,8 +5,10 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show ChartCardHeader;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/age_grade.dart';
+import '../lib/goals.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_food_store.dart';
 import '../lib/local_gym_store.dart';
@@ -14,9 +16,11 @@ import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/run_detail_screen.dart';
 import 'pump_until.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/mileage_trend_card.dart';
+import '../lib/widgets/run_list_tile.dart';
 
 /// Signed-in fake so the gated coach entry renders.
 class _FakeApi extends ApiClient {
@@ -276,6 +280,25 @@ void main() {
     });
   });
 
+  group('heatmapGridStart', () {
+    // The heatmap's columns are weeks, and a tapped column opens that week's
+    // summary — which honours week_start_day. A Monday-only grid opened a
+    // Sunday-first runner's summary on a week the column did not show.
+    final saturday = DateTime(2026, 5, 23, 22);
+
+    test('the rightmost column is this week on the runner\'s week start', () {
+      expect(heatmapGridStart(saturday, 1, weekStartDay: 'sunday'),
+          DateTime(2026, 5, 17));
+      expect(heatmapGridStart(saturday, 1, weekStartDay: 'monday'),
+          DateTime(2026, 5, 18));
+    });
+
+    test('the leftmost column is weeks-1 calendar weeks before it', () {
+      expect(heatmapGridStart(saturday, 20, weekStartDay: 'sunday'),
+          DateTime(2026, 1, 4));
+    });
+  });
+
   group('DashboardScreen', () {
     testWidgets('Dashboard renders no AppBar (actions hoist into the body)',
         (tester) async {
@@ -413,18 +436,230 @@ void main() {
           await tester.pump();
           await tester.pump();
 
-          // 'Goals' is near the top of the list and visible in the test
+          // 'Last run' is near the top of the list and visible in the test
           // viewport without scrolling. The activity stat strip
           // (WEEK / MONTH / ALL TIME) replaced the previous stacked
           // section cards — pin its all-caps labels to prove the strip
           // mounted.
-          expect(find.text('Goals'), findsOneWidget);
+          expect(find.text('Last run'), findsOneWidget);
           expect(find.text('WEEK'), findsOneWidget);
           expect(find.text('MONTH'), findsOneWidget);
           expect(find.text('ALL TIME'), findsOneWidget);
         } finally {
           dir.deleteSync(recursive: true);
         }
+      });
+    });
+
+    group('goals for a runner with runs', () {
+      Future<Preferences> pumpWithRun(WidgetTester tester, Directory dir,
+          {RunGoal? goal}) async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = Preferences();
+        await prefs.init();
+        if (goal != null) await prefs.upsertGoal(goal);
+        final seedStore = LocalRunStore();
+        await seedStore.init(overrideDirectory: dir);
+        await seedStore.save(_run(id: 'r1'));
+        final runStore = LocalRunStore();
+        await runStore.init(overrideDirectory: dir);
+        await tester.pumpWidget(MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: DashboardScreen(
+            runStore: runStore,
+            routeStore: LocalRouteStore(),
+            gymStore: LocalGymStore(),
+            foodStore: LocalFoodStore(),
+            preferences: prefs,
+          ),
+        ));
+        await tester.pump();
+        await tester.pump();
+        return prefs;
+      }
+
+      testWidgets('no goals collapses to a one-line link under the period '
+          'stats', (tester) async {
+        // A runner with 40 runs and no interest in goals saw the "Set your
+        // first goal" card above this week's distance on every launch.
+        await tester.runAsync(() async {
+          final dir = Directory.systemTemp.createTempSync('dashboard_nogoal_');
+          try {
+            await pumpWithRun(tester, dir);
+            expect(find.text('Goals'), findsNothing);
+            expect(find.text('Set your first goal'), findsNothing);
+            final link = find.byKey(const Key('dashboardAddGoalLink'));
+            expect(link, findsOneWidget);
+            expect(find.descendant(of: link, matching: find.text('Set a goal')),
+                findsOneWidget);
+            expect(tester.getTopLeft(link).dy,
+                greaterThan(tester.getBottomLeft(find.text('WEEK')).dy),
+                reason: 'the link sits below the runner\'s own numbers');
+          } finally {
+            dir.deleteSync(recursive: true);
+          }
+        });
+      });
+
+      testWidgets('a set goal keeps its section above the period stats',
+          (tester) async {
+        await tester.runAsync(() async {
+          final dir = Directory.systemTemp.createTempSync('dashboard_goal_');
+          try {
+            await pumpWithRun(tester, dir,
+                goal: const RunGoal(
+                    id: 'g1', period: GoalPeriod.week, distanceMetres: 20000));
+            expect(find.text('Goals'), findsOneWidget);
+            expect(find.byKey(const Key('dashboardAddGoalLink')), findsNothing);
+            expect(tester.getTopLeft(find.text('Goals')).dy,
+                lessThan(tester.getTopLeft(find.text('WEEK')).dy));
+          } finally {
+            dir.deleteSync(recursive: true);
+          }
+        });
+      });
+    });
+
+    testWidgets('the pending-sync banner counts a run that has not uploaded',
+        (tester) async {
+      // Home's banner watched only the gym and food stores, so a runner who
+      // never lifts or logs food saw nothing pending after an offline run.
+      await tester.runAsync(() async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = Preferences();
+        await prefs.init();
+        final dir = Directory.systemTemp.createTempSync('dashboard_unsynced_');
+        try {
+          final seedStore = LocalRunStore();
+          await seedStore.init(overrideDirectory: dir);
+          await seedStore.save(_run(id: 'r1'));
+          final runStore = LocalRunStore();
+          await runStore.init(overrideDirectory: dir);
+          expect(runStore.unsyncedCount, 1);
+
+          await tester.pumpWidget(
+            MaterialApp(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: DashboardScreen(
+                runStore: runStore,
+                routeStore: LocalRouteStore(),
+                gymStore: LocalGymStore(),
+                foodStore: LocalFoodStore(),
+                preferences: prefs,
+              ),
+            ),
+          );
+          await tester.pump();
+          await tester.pump();
+
+          expect(
+            find.text('1 change saved on this device — will sync when online'),
+            findsOneWidget,
+          );
+        } finally {
+          dir.deleteSync(recursive: true);
+        }
+      });
+    });
+
+    group('latest run', () {
+      Run dated(String id, DateTime at, double metres) => Run(
+            id: id,
+            startedAt: at,
+            duration: const Duration(minutes: 30),
+            distanceMetres: metres,
+            source: RunSource.app,
+          );
+
+      Future<({LocalRunStore runStore, Preferences prefs, Directory dir})>
+          seeded(WidgetTester tester, List<Run> runs) async {
+        late ({LocalRunStore runStore, Preferences prefs, Directory dir}) out;
+        await tester.runAsync(() async {
+          SharedPreferences.setMockInitialValues({});
+          final prefs = Preferences();
+          await prefs.init();
+          final dir = Directory.systemTemp.createTempSync('dashboard_latest_');
+          final seed = LocalRunStore();
+          await seed.init(overrideDirectory: dir);
+          for (final r in runs) {
+            await seed.save(r);
+          }
+          final runStore = LocalRunStore();
+          await runStore.init(overrideDirectory: dir);
+          out = (runStore: runStore, prefs: prefs, dir: dir);
+        });
+        addTearDown(() {
+          if (out.dir.existsSync()) out.dir.deleteSync(recursive: true);
+        });
+        return out;
+      }
+
+      Future<void> pumpHome(WidgetTester tester, LocalRunStore runStore,
+          Preferences prefs) async {
+        await tester.pumpWidget(MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: DashboardScreen(
+            runStore: runStore,
+            routeStore: LocalRouteStore(),
+            gymStore: LocalGymStore(),
+            foodStore: LocalFoodStore(),
+            preferences: prefs,
+          ),
+        ));
+        await tester.pump();
+        await tester.pump();
+      }
+
+      testWidgets('Home leads with the newest run, marked when it has not '
+          'uploaded, and a tap opens it', (tester) async {
+        // After a run the first question is how it went and whether it saved;
+        // answering it took Fitness, then Runs, then the row.
+        final now = DateTime.now().toUtc();
+        final s = await seeded(tester, [
+          dated('older', now.subtract(const Duration(days: 3)), 5000),
+          dated('newest', now.subtract(const Duration(hours: 2)), 8000),
+        ]);
+        await pumpHome(tester, s.runStore, s.prefs);
+
+        final section = find.byKey(const Key('dashboardLatestRun'));
+        expect(section, findsOneWidget);
+        expect(find.descendant(of: section, matching: find.text('Last run')),
+            findsOneWidget);
+        expect(find.descendant(of: section, matching: find.byType(RunListTile)),
+            findsOneWidget);
+        expect(
+            find.descendant(
+                of: section,
+                matching: find.text(
+                    UnitFormat.distance(8000, s.prefs.unit))),
+            findsOneWidget,
+            reason: 'the newest run, not the older one');
+        expect(
+            find.descendant(
+                of: section, matching: find.byIcon(Icons.cloud_upload_outlined)),
+            findsOneWidget,
+            reason: 'a run that has not uploaded says so on Home too');
+
+        await tester.ensureVisible(
+            find.descendant(of: section, matching: find.byType(RunListTile)));
+        await tester.tap(
+            find.descendant(of: section, matching: find.byType(RunListTile)));
+        await pumpUntil(
+          tester,
+          () => find.byType(RunDetailScreen).evaluate().isNotEmpty,
+          describe: 'the run detail screen to open',
+        );
+        tester.takeException();
+      });
+
+      testWidgets('hides itself on the welcome screen, which has no run',
+          (tester) async {
+        final s = await seeded(tester, const []);
+        await pumpHome(tester, s.runStore, s.prefs);
+        expect(find.byKey(const Key('dashboardLatestRun')), findsNothing);
       });
     });
 
@@ -736,6 +971,54 @@ void main() {
       });
     });
 
+    for (final (prefsSeed, subtitle) in [
+      (<String, Object>{}, 'Advice on your runs, training and recovery'),
+      (
+        <String, Object>{'show_nutrition': true},
+        'Advice across your runs, lifts, and nutrition',
+      ),
+    ]) {
+      testWidgets('the coach card promises only what is shown ($prefsSeed)',
+          (tester) async {
+        // A runner with Gym and Nutrition hidden was promised advice on runs,
+        // lifts and nutrition by the first card on their Home.
+        await tester.runAsync(() async {
+          SharedPreferences.setMockInitialValues(prefsSeed);
+          final prefs = Preferences();
+          await prefs.init();
+          final dir = Directory.systemTemp.createTempSync('dashboard_coach_s_');
+          try {
+            final seedStore = LocalRunStore();
+            await seedStore.init(overrideDirectory: dir);
+            await seedStore.save(_run(id: 'r1'));
+            final runStore = LocalRunStore();
+            await runStore.init(overrideDirectory: dir);
+            await tester.pumpWidget(
+              MaterialApp(
+                localizationsDelegates:
+                    AppLocalizations.localizationsDelegates,
+                supportedLocales: AppLocalizations.supportedLocales,
+                home: DashboardScreen(
+                  apiClient: _FakeApi(),
+                  training: _FakeTraining(null),
+                  runStore: runStore,
+                  routeStore: LocalRouteStore(),
+                  gymStore: LocalGymStore(),
+                  foodStore: LocalFoodStore(),
+                  preferences: prefs,
+                ),
+              ),
+            );
+            await tester.pump();
+            await tester.pump();
+            expect(find.text(subtitle), findsOneWidget);
+          } finally {
+            dir.deleteSync(recursive: true);
+          }
+        });
+      });
+    }
+
     testWidgets(
         'no coach entry on the zero-runs welcome screen even with api + training',
         (tester) async {
@@ -877,10 +1160,15 @@ void main() {
         WidgetTester tester,
         Directory dir, {
         TrainingService? training,
+        bool withGoal = false,
       }) async {
         SharedPreferences.setMockInitialValues({});
         final prefs = Preferences();
         await prefs.init();
+        if (withGoal) {
+          await prefs.upsertGoal(const RunGoal(
+              id: 'g1', period: GoalPeriod.week, distanceMetres: 20000));
+        }
 
         final seedStore = LocalRunStore();
         await seedStore.init(overrideDirectory: dir);
@@ -922,7 +1210,8 @@ void main() {
               Directory.systemTemp.createTempSync('dashboard_expanded_');
           try {
             await pumpSeeded(tester, dir,
-                training: _FakeTraining(_overviewWithTodayWorkout()));
+                training: _FakeTraining(_overviewWithTodayWorkout()),
+                withGoal: true);
 
             expect(contentCap(), findsOneWidget);
             // Today's workout and Goals share the lead row instead of
@@ -958,7 +1247,7 @@ void main() {
       });
 
       testWidgets(
-          'expanded with no lead cards renders goals full-width (no empty cell)',
+          'expanded with no plan or modality card leads with the latest run',
           (tester) async {
         tester.view.physicalSize = const Size(2560, 1440);
         tester.view.devicePixelRatio = 2.0;
@@ -968,14 +1257,42 @@ void main() {
           final dir =
               Directory.systemTemp.createTempSync('dashboard_expanded_lead_');
           try {
-            // No training service + empty gym/food stores → no workout
-            // card and no modality cards, so the lead row must not
-            // mount at all (a grid cell can't reserve space for a
-            // hidden card).
-            await pumpSeeded(tester, dir);
-            expect(find.byKey(leadRowKey), findsNothing);
+            // No training service + empty gym/food stores → no workout card
+            // and no modality cards. The seeded run is still a lead card.
+            await pumpSeeded(tester, dir, withGoal: true);
+            expect(find.byKey(leadRowKey), findsOneWidget);
+            expect(
+              find.descendant(
+                  of: find.byKey(leadRowKey),
+                  matching: find.byKey(const Key('dashboardLatestRun'))),
+              findsOneWidget,
+            );
             expect(find.text('Goals'), findsOneWidget);
             expect(contentCap(), findsOneWidget);
+          } finally {
+            dir.deleteSync(recursive: true);
+          }
+        });
+      });
+
+      testWidgets(
+          'expanded with no goals lets the lead cards stand alone (no empty '
+          'cell)', (tester) async {
+        tester.view.physicalSize = const Size(2560, 1440);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(tester.view.reset);
+
+        await tester.runAsync(() async {
+          final dir =
+              Directory.systemTemp.createTempSync('dashboard_expanded_nogoal_');
+          try {
+            // A runner with no goals has no Goals section to pair with, and a
+            // grid cell can't reserve space for a hidden one.
+            await pumpSeeded(tester, dir);
+            expect(find.byKey(leadRowKey), findsNothing);
+            expect(find.byKey(const Key('dashboardLatestRun')), findsOneWidget);
+            expect(find.text('Goals'), findsNothing);
+            expect(find.byKey(const Key('dashboardAddGoalLink')), findsOneWidget);
           } finally {
             dir.deleteSync(recursive: true);
           }
@@ -990,7 +1307,7 @@ void main() {
           final dir =
               Directory.systemTemp.createTempSync('dashboard_stacked_');
           try {
-            await pumpSeeded(tester, dir);
+            await pumpSeeded(tester, dir, withGoal: true);
             expect(find.byKey(leadRowKey), findsNothing);
             expect(find.byKey(chartColumnsKey), findsNothing);
             expect(contentCap(), findsNothing);
@@ -1088,11 +1405,18 @@ void main() {
           await tester.pump();
           await tester.pump();
 
+          // "Last run" now wears the shared ChartCardHeader, whose title
+          // wraps inside a full-width Wrap rather than ellipsising (a card
+          // title that truncates stops naming the card). Bounded is the
+          // contract either way: inside the header, within the screen, and
+          // nothing overflowed.
+          final lastRun = find.text('Last run');
           expect(
-            find.ancestor(
-                of: find.text('Goals'), matching: find.byType(Expanded)),
-            findsWidgets,
+            find.ancestor(of: lastRun, matching: find.byType(ChartCardHeader)),
+            findsOneWidget,
           );
+          expect(tester.getRect(lastRun).right, lessThanOrEqualTo(480));
+          expect(tester.takeException(), isNull);
         } finally {
           dir.deleteSync(recursive: true);
         }

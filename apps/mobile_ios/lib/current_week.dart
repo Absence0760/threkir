@@ -10,6 +10,8 @@
 /// algorithm, edge cases, outputs, and test counts in lockstep.
 library;
 
+import 'goals.dart' show weekStartLocal;
+
 enum WeekStart { monday, sunday }
 
 /// The minimum an activity needs to expose for the strip: when it happened
@@ -68,16 +70,6 @@ String _localIso(DateTime d) {
 /// 1 = Monday .. 7 = Sunday, so Sunday(7) maps to 0.
 int _jsDow(DateTime d) => d.weekday % 7;
 
-/// Midnight (local) at the start of the calendar week containing [now],
-/// honouring [weekStart]. Same offset math the web dashboard's inline
-/// weekStart derived used before this was lifted to a shared helper.
-DateTime _weekStartMidnight(DateTime now, WeekStart weekStart) {
-  final dow = _jsDow(now);
-  final offset = weekStart == WeekStart.sunday ? dow : (dow + 6) % 7;
-  final d = DateTime(now.year, now.month, now.day - offset);
-  return d;
-}
-
 /// Build the current calendar week from [activities], bucketing each one
 /// onto its LOCAL day. Activities outside the week (or with a non-positive
 /// distance) are ignored. [now] defaults to the real clock; pass an
@@ -88,7 +80,7 @@ CurrentWeek currentWeek(
   DateTime? nowArg,
 ]) {
   final now = nowArg ?? DateTime.now();
-  final start = _weekStartMidnight(now, weekStart);
+  final start = weekStartLocal(now, weekStartDay: weekStart.name);
   final todayIso = _localIso(now);
 
   final byDay = <String, List<double>>{};

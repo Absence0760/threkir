@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { m } from '$lib/i18n/store.svelte';
+	import { modalityExplicit, revealOnNavigate } from '$lib/stores/modality_visibility.svelte';
 
 	interface Props {
 		/// Onboarding's closing CTA creates a training plan before any run
@@ -32,13 +33,18 @@
 			<span class="material-symbols" aria-hidden="true">phone_iphone</span>
 			<span>{m('dash.firstRunPhoneHint')}</span>
 		</li>
-		<li>
-			<span class="material-symbols" aria-hidden="true">fitness_center</span>
-			<span>
-				{m('dash.firstRunGymHintPrefix')}<a href="/gym">{m('dash.firstRunGymHintLink')}</a
-				>{m('dash.firstRunGymHintSuffix')}
-			</span>
-		</li>
+		{#if modalityExplicit('gym') !== false}
+			<li>
+				<span class="material-symbols" aria-hidden="true">fitness_center</span>
+				<span>
+					{m('dash.firstRunGymHintPrefix')}<a
+						href="/gym"
+						data-testid="dash-first-run-gym"
+						onclick={revealOnNavigate('gym')}>{m('dash.firstRunGymHintLink')}</a
+					>{m('dash.firstRunGymHintSuffix')}
+				</span>
+			</li>
+		{/if}
 	</ul>
 </section>
 

@@ -1118,6 +1118,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                   child: LiveRunMap(
                     track: const [],
                     plannedRoute: _displayWaypoints,
+                    offlinePackRouteId: widget.route.id,
                     followRunner: false,
                     courseMarkers: _markerPins,
                     markerPlacing: _markerPlacing,

@@ -1339,7 +1339,7 @@ test('fetchUpcomingEvents windows the candidate set server-side, not the club\'s
 	// Events tab reports "no upcoming events" permanently, getting worse as the
 	// club gets older. The client-side `next_instance_start >= now` filter
 	// cannot recover a row the query never returned. Same shape
-	// `fetchRunsForDashboard` and `fetchWeeklyMileage` already carry guards for.
+	// `fetchRunsForDashboard` already carries a guard for.
 	//
 	// The predicate must stay a SUPERSET of what is live: a recurring series
 	// with no until-date has to be admitted (its end may be a `recurrence_count`

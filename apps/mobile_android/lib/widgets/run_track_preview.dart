@@ -22,7 +22,6 @@ class RunTrackPreview extends StatefulWidget {
 
   final String? trackUrl;
   final ApiClient api;
-  final Color color;
   final double aspect;
 
   /// User id of the run's owner. When set AND it differs from the
@@ -39,7 +38,6 @@ class RunTrackPreview extends StatefulWidget {
     required this.trackUrl,
     required this.api,
     this.runId,
-    this.color = const Color(0xFF4F46E5),
     this.aspect = 2.4,
     this.ownerUserId,
   });
@@ -149,7 +147,7 @@ class _RunTrackPreviewState extends State<RunTrackPreview> {
     if (pts == null || pts.length < 2) {
       return _placeholder(context);
     }
-    return TrackPreview(points: pts, color: widget.color, aspect: widget.aspect);
+    return TrackPreview(points: pts, aspect: widget.aspect);
   }
 
   Widget _placeholder(BuildContext context) {

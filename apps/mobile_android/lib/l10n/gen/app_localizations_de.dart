@@ -708,7 +708,31 @@ class AppLocalizationsDe extends AppLocalizations {
   String get logA11yLabel => 'Aktivität erfassen';
 
   @override
+  String get navStartRun => 'Laufen';
+
+  @override
+  String get logStartRunA11yLabel => 'Lauf starten';
+
+  @override
+  String get logModalityShownGym => 'Gym wird jetzt angezeigt';
+
+  @override
+  String get logModalityShownNutrition => 'Ernährung wird jetzt angezeigt';
+
+  @override
+  String get navRecording => 'Aufnahme';
+
+  @override
+  String get navStop => 'Stopp';
+
+  @override
+  String get logReturnToRunA11yLabel => 'Zurück zu deinem Lauf';
+
+  @override
   String get navFitness => 'Fitness';
+
+  @override
+  String get navTraining => 'Training';
 
   @override
   String get navYou => 'Du';
@@ -760,6 +784,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Tipps zu Läufen, Krafttraining und Ernährung';
 
   @override
+  String get homeAskCoachSubtitleRunOnly =>
+      'Tipps zu Läufen, Training und Erholung';
+
+  @override
   String get youProfileTitle => 'Dein Profil';
 
   @override
@@ -779,7 +807,28 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get prefsKeepRunPrimarySubtitle =>
-      'Tippe auf die mittlere Schaltfläche, um einen Lauf zu starten. Bis zum ersten Kraft- oder Mahlzeiteintrag ist das ohnehin aktiv; langes Drücken öffnet immer das Log-Menü';
+      'Tippe auf die mittlere Schaltfläche, um einen Lauf zu starten. Solange Gym und Ernährung ausgeblendet sind, ist das ohnehin aktiv; langes Drücken öffnet immer das Log-Menü';
+
+  @override
+  String get prefsKeepRunPrimaryForcedSubtitle =>
+      'Aktiv, solange Gym und Ernährung ausgeblendet sind. Blende eins davon ein, um selbst zu wählen';
+
+  @override
+  String get prefsSectionModalities => 'Gym & Ernährung';
+
+  @override
+  String get prefsShowGym => 'Gym anzeigen';
+
+  @override
+  String get prefsShowGymSubtitle =>
+      'Zeigt den Gym-Tab, „Training erfassen“ und deine Trainings auf der Startseite';
+
+  @override
+  String get prefsShowNutrition => 'Ernährung anzeigen';
+
+  @override
+  String get prefsShowNutritionSubtitle =>
+      'Zeigt den Ernährungs-Tab, „Essen erfassen“ und die heutigen Mahlzeiten auf der Startseite';
 
   @override
   String get bodyMetricsTitle => 'Körperdaten';
@@ -1502,6 +1551,19 @@ class AppLocalizationsDe extends AppLocalizations {
       'Wähle, wie viele Push-Benachrichtigungen du möchtest. Du kannst dies später in den Einstellungen anpassen.';
 
   @override
+  String get setupTrackTitle => 'Was möchtest du erfassen?';
+
+  @override
+  String get setupTrackHint =>
+      'Laufen ist immer dabei. Schalte Gym oder Ernährung ein, um den jeweiligen Tab und die Log-Aktion hinzuzufügen. Du kannst das später in den Einstellungen ändern.';
+
+  @override
+  String get setupTrackRunning => 'Laufen';
+
+  @override
+  String get setupTrackRunningAlwaysOn => 'Immer aktiv';
+
+  @override
   String get setupDoneTitle => 'Alles bereit';
 
   @override
@@ -1765,6 +1827,9 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get runStopA11yHint =>
       'Beendet die Aufzeichnung und speichert den Lauf';
+
+  @override
+  String get runHoldToStopRunA11yHint => 'Halten, um den Lauf zu beenden';
 
   @override
   String get runHoldToStopHint => 'Zum Stoppen halten';
@@ -2207,6 +2272,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get historyAddRunTooltip => 'Lauf manuell hinzufügen';
+
+  @override
+  String get historyAddPastRun => 'Vergangenen Lauf hinzufügen';
+
+  @override
+  String get historyEmptyBodyRunPrimary =>
+      'Tippe auf Laufen, um einen Lauf aufzuzeichnen, oder füge einen bereits absolvierten hinzu';
 
   @override
   String get historyLogTooltip => 'Lauf, Training oder Mahlzeit erfassen';

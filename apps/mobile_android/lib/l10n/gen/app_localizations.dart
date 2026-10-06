@@ -1187,11 +1187,59 @@ abstract class AppLocalizations {
   /// **'Log an activity'**
   String get logA11yLabel;
 
+  /// Caption under the centre nav button when a tap on it starts a run (Gym and Nutrition both hidden, or the run-primary preference on). Must fit the 56dp centre slot; deliberately not the bare noun "Run", which decisions § 1649 keeps out of the tab-label set
+  ///
+  /// In en, this message translates to:
+  /// **'Start run'**
+  String get navStartRun;
+
+  /// Screen-reader label for the centre nav button when a tap on it starts a run
+  ///
+  /// In en, this message translates to:
+  /// **'Start a run'**
+  String get logStartRunA11yLabel;
+
+  /// Top banner after a Log action for a hidden Gym switched it on; carries an Undo that hides it again
+  ///
+  /// In en, this message translates to:
+  /// **'Gym is now shown'**
+  String get logModalityShownGym;
+
+  /// Top banner after a Log action for a hidden Nutrition switched it on; carries an Undo that hides it again
+  ///
+  /// In en, this message translates to:
+  /// **'Nutrition is now shown'**
+  String get logModalityShownNutrition;
+
+  /// Caption under the centre nav button while a run is recording and another page is showing; a tap returns to the recorder. Must fit the 72dp centre slot without an ellipsis
+  ///
+  /// In en, this message translates to:
+  /// **'Recording'**
+  String get navRecording;
+
+  /// Caption under the centre nav button while a run is recording on the Run page, where the button is the hold-to-stop control. Must fit the 72dp centre slot
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get navStop;
+
+  /// Screen-reader label for the centre nav button while a run is recording
+  ///
+  /// In en, this message translates to:
+  /// **'Return to your run'**
+  String get logReturnToRunA11yLabel;
+
   /// Bottom-nav label for the Fitness modality hub (All/Runs/Gym/Nutrition)
   ///
   /// In en, this message translates to:
   /// **'Fitness'**
   String get navFitness;
+
+  /// Bottom-nav and rail label for the Fitness hub while Gym and Nutrition are both hidden, when it holds runs, routes, segments, plans and races (decisions § 139 amendment)
+  ///
+  /// In en, this message translates to:
+  /// **'Training'**
+  String get navTraining;
 
   /// Bottom-nav label for the You tab (profile + settings)
   ///
@@ -1289,6 +1337,12 @@ abstract class AppLocalizations {
   /// **'Advice across your runs, lifts, and nutrition'**
   String get homeAskCoachSubtitle;
 
+  /// Subtitle of the pinned Ask your coach card on Home while Gym and Nutrition are both hidden, so it names only what this runner records
+  ///
+  /// In en, this message translates to:
+  /// **'Advice on your runs, training and recovery'**
+  String get homeAskCoachSubtitleRunOnly;
+
   /// Title of the profile entry at the top of the You tab
   ///
   /// In en, this message translates to:
@@ -1328,8 +1382,44 @@ abstract class AppLocalizations {
   /// Subtitle for the run-as-primary-action settings toggle
   ///
   /// In en, this message translates to:
-  /// **'Tap the centre button to start a run. Already on until you log a lift or a meal; long-press always opens the log menu'**
+  /// **'Tap the centre button to start a run. Already on while Gym and Nutrition are hidden; long-press always opens the log menu'**
   String get prefsKeepRunPrimarySubtitle;
+
+  /// Subtitle of the Run as primary action switch while Gym and Nutrition are both hidden, when it is shown on and disabled because a tap on the centre button already starts a run
+  ///
+  /// In en, this message translates to:
+  /// **'On while Gym and Nutrition are hidden. Show either one to choose'**
+  String get prefsKeepRunPrimaryForcedSubtitle;
+
+  /// Settings section heading for the Gym and Nutrition visibility toggles
+  ///
+  /// In en, this message translates to:
+  /// **'Gym & nutrition'**
+  String get prefsSectionModalities;
+
+  /// Settings toggle: show the Gym tab, Log lift action and Home lift cards
+  ///
+  /// In en, this message translates to:
+  /// **'Show Gym'**
+  String get prefsShowGym;
+
+  /// Subtitle for the show-Gym settings toggle
+  ///
+  /// In en, this message translates to:
+  /// **'Adds the Gym tab, Log lift and your lifts on Home'**
+  String get prefsShowGymSubtitle;
+
+  /// Settings toggle: show the Nutrition tab, Log food action and Home meal cards
+  ///
+  /// In en, this message translates to:
+  /// **'Show Nutrition'**
+  String get prefsShowNutrition;
+
+  /// Subtitle for the show-Nutrition settings toggle
+  ///
+  /// In en, this message translates to:
+  /// **'Adds the Nutrition tab, Log food and today\'s meals on Home'**
+  String get prefsShowNutritionSubtitle;
 
   /// Title of the body-metrics settings screen
   ///
@@ -2585,6 +2675,30 @@ abstract class AppLocalizations {
   /// **'Choose how many push notifications you\'d like. You can fine-tune this later in Settings.'**
   String get setupNotificationsHint;
 
+  /// Setup wizard what-to-track step title
+  ///
+  /// In en, this message translates to:
+  /// **'What do you want to track?'**
+  String get setupTrackTitle;
+
+  /// Setup wizard what-to-track step hint
+  ///
+  /// In en, this message translates to:
+  /// **'Running is always on. Switch on Gym or Nutrition to add its tab and Log action. You can change this later in Settings.'**
+  String get setupTrackHint;
+
+  /// Setup wizard what-to-track step: the always-on running row
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get setupTrackRunning;
+
+  /// Setup wizard what-to-track step: subtitle saying running cannot be switched off
+  ///
+  /// In en, this message translates to:
+  /// **'Always on'**
+  String get setupTrackRunningAlwaysOn;
+
   /// Setup wizard final step title
   ///
   /// In en, this message translates to:
@@ -3046,6 +3160,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Ends the recording and saves the run'**
   String get runStopA11yHint;
+
+  /// Screen-reader hint for the centre nav button while it is the hold-to-stop control on the Run page
+  ///
+  /// In en, this message translates to:
+  /// **'Hold to stop the run'**
+  String get runHoldToStopRunA11yHint;
 
   /// Caption under the stop button telling the user to press and hold (not tap) to end the run
   ///
@@ -3724,6 +3844,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add a run manually'**
   String get historyAddRunTooltip;
+
+  /// Label of the Runs list's manual-entry button and empty-state action: adds a run that already happened, as distinct from the centre button, which records one
+  ///
+  /// In en, this message translates to:
+  /// **'Add past run'**
+  String get historyAddPastRun;
+
+  /// Empty Runs list body when the centre button starts a run, so it names that button by its run caption (navStartRun) rather than Log
+  ///
+  /// In en, this message translates to:
+  /// **'Tap Start run to record a run, or add one you have already finished'**
+  String get historyEmptyBodyRunPrimary;
 
   /// Tooltip on the History add button when it logs a lift, a meal, or opens the run/lift/meal picker
   ///

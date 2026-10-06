@@ -69,6 +69,23 @@ test.describe('Legal pages', () => {
 		expect(body).toMatch(/Live spectator pings[^\n]*48 hours/);
 	});
 
+	test('/privacy describes error monitoring the way each client actually runs it', async ({
+		page
+	}) => {
+		// The mobile apps start Sentry unless `sentry_opt_out` is set
+		// (main.dart), the web gates it on the consent banner
+		// (hooks.client.ts), and no client calls setUser. The policy
+		// once said all client monitoring was consent-gated and carried a
+		// pseudonymous user id, which matched none of them.
+		await page.goto('/privacy');
+		const body = await page.locator('.legal-page').innerText();
+		expect(body).toContain('Settings → Account → Send error reports');
+		expect(body).toMatch(/iPhone and Android apps it is on by default/);
+		expect(body).toMatch(/website, client-side error monitoring stays off until\s+you accept/);
+		expect(body).not.toContain('pseudonymous user id');
+		expect(body).not.toContain('remains gated on your telemetry');
+	});
+
 	test('/terms states the subscription pillars + marketplace + DMCA clauses', async ({
 		page
 	}) => {

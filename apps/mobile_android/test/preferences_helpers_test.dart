@@ -8,21 +8,21 @@ void main() {
     test('a pure runner gets the one-tap run start with no preference set', () {
       expect(
         runIsPrimaryLogAction(
-            keepRunPrimary: false, hasGymData: false, hasFoodData: false),
+            keepRunPrimary: false, gymShown: false, nutritionShown: false),
         isTrue,
         reason: 'the fan has nothing to choose between, so it is pure cost',
       );
     });
 
-    test('either other modality having data brings the fan back', () {
+    test('either other modality being shown brings the fan back', () {
       expect(
         runIsPrimaryLogAction(
-            keepRunPrimary: false, hasGymData: true, hasFoodData: false),
+            keepRunPrimary: false, gymShown: true, nutritionShown: false),
         isFalse,
       );
       expect(
         runIsPrimaryLogAction(
-            keepRunPrimary: false, hasGymData: false, hasFoodData: true),
+            keepRunPrimary: false, gymShown: false, nutritionShown: true),
         isFalse,
       );
     });
@@ -30,9 +30,23 @@ void main() {
     test('the explicit preference pins the run start over the data', () {
       expect(
         runIsPrimaryLogAction(
-            keepRunPrimary: true, hasGymData: true, hasFoodData: true),
+            keepRunPrimary: true, gymShown: true, nutritionShown: true),
         isTrue,
       );
+    });
+  });
+
+  group('modalityShown', () {
+    test('unset: hidden for a runner with no data, shown once there is some',
+        () {
+      expect(modalityShown(explicit: null, hasData: false), isFalse);
+      expect(modalityShown(explicit: null, hasData: true), isTrue,
+          reason: 'someone already logging lifts must not lose the surface');
+    });
+
+    test('an explicit choice wins over the data either way', () {
+      expect(modalityShown(explicit: true, hasData: false), isTrue);
+      expect(modalityShown(explicit: false, hasData: true), isFalse);
     });
   });
 

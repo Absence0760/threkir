@@ -128,6 +128,7 @@ Future<void> _pump(
   required LocalRouteStore routeStore,
   required Preferences prefs,
   double textScale = 1.0,
+  bool centreStartsRun = false,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -143,6 +144,7 @@ Future<void> _pump(
         runStore: runStore,
         routeStore: routeStore,
         preferences: prefs,
+        centreStartsRun: centreStartsRun,
       ),
     ),
   );
@@ -207,18 +209,34 @@ void main() {
       expect(empty.body, contains('Log'));
       expect(empty.onCta, isNotNull);
       await tester.tap(find.descendant(
-          of: find.byType(EmptyState), matching: find.text('Add run')));
+          of: find.byType(EmptyState), matching: find.text('Add past run')));
       await tester.pumpAndSettle();
       expect(find.byType(AddRunScreen), findsOneWidget);
     });
 
-    testWidgets('FAB is present with Add run label', (tester) async {
+    testWidgets('the empty state names the centre button by its run caption '
+        'when a tap on it starts a run', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester,
+          runStore: s.runStore,
+          routeStore: s.routeStore,
+          prefs: s.prefs,
+          centreStartsRun: true);
+      final empty = tester.widget<EmptyState>(find.byType(EmptyState));
+      expect(empty.body, contains('Start run'));
+      expect(empty.body, isNot(contains('Log')));
+    });
+
+    // The shell's centre button, a thumb away, is the one that records; this
+    // one only ever adds a run that already happened, so its label says so.
+    testWidgets('FAB is present with the Add past run label', (tester) async {
       final s = await _makeStores();
       await _pump(tester, runStore: s.runStore, routeStore: s.routeStore, prefs: s.prefs);
       expect(find.byType(FloatingActionButton), findsOneWidget);
       expect(
         find.descendant(
-            of: find.byType(FloatingActionButton), matching: find.text('Add run')),
+            of: find.byType(FloatingActionButton),
+            matching: find.text('Add past run')),
         findsOneWidget,
       );
     });

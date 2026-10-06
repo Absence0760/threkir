@@ -69,57 +69,171 @@ Waypoint? interpolateAlongRoute(
   return waypoints.last;
 }
 
-/// Inverse of [interpolateAlongRoute]: given an arbitrary point, find
-/// the nearest point on the polyline and return its cumulative
-/// distance-along-route in metres (0 = start). Returns null when the
-/// polyline has `< 2` waypoints. The runner's live position is rarely
-/// exactly on the planned line (GPS drift, course offset), so we
-/// project onto the nearest segment rather than requiring an exact
-/// match.
+/// How far past the expected position the matcher looks for the runner.
+const double _routeMatchLookaheadM = 200;
+
+/// How far behind the previous reading the matcher still accepts (GPS jitter).
+const double _routeMatchBacktrackM = 50;
+
+/// A windowed match further off the line than this is not trusted: the matcher
+/// looks for the runner further along instead. The off-route alert threshold.
+const double _routeMatchReacquireM = 40;
+const double _alongFwdBiasPerM = 0.05;
+const double _alongBackBiasPerM = 0.5;
+const double _maxAlongBiasM = 20;
+// Uncapped, far below anything the geometry can notice (a 100 km gap buys
+// 10 cm): settles a candidate pair the capped bias cannot separate — the two
+// limbs of an out-and-back seen with no previous reading — towards the anchor.
+const double _alongContinuityPerM = 1e-6;
+
+class RouteProgress {
+  const RouteProgress({
+    required this.alongM,
+    required this.offRouteM,
+    required this.remainingM,
+  });
+
+  /// Distance from the route start to the matched point, metres.
+  final double alongM;
+
+  /// Distance from the runner to the nearest point anywhere on the line, metres.
+  final double offRouteM;
+
+  /// Route length still to run from the matched point, metres.
+  final double remainingM;
+}
+
+/// Where a runner FOLLOWING the route is along it, given where they were last.
 ///
-/// Each segment is projected in its own local planar frame — accurate,
-/// since the frame is anchored at that segment's start — but the
-/// candidates are ranked by the great-circle distance to the projected
-/// foot, the way `route_snap.dart` does it. A perpendicular measured
-/// *inside* a segment's frame is scaled by the cosine of that segment's
-/// own start latitude, so the numbers are not comparable across
-/// segments: on an out-and-back the return limb anchors further along
-/// and always reports the smaller offset to a point equidistant from
-/// both, which flips the answer by the length of a limb.
-double? distanceAlongRoute(
+/// The inverse of [interpolateAlongRoute] for a live GPS fix, which is rarely
+/// exactly on the planned line. The globally nearest point is the wrong answer
+/// whenever the line passes the same place twice: on a loop the finish is as
+/// near as the start, so a run that has just begun reads as finished; on an
+/// out-and-back the return leg lies on the outbound one; a figure-eight crosses
+/// itself. This matcher only searches the stretch of route the runner can
+/// plausibly be on — from [_routeMatchBacktrackM] behind [prevAlongM] to
+/// [_routeMatchLookaheadM] past `prevAlongM + travelledM` (the start of the
+/// route when there is no previous reading) — and within it breaks a tie
+/// between overlapping legs in favour of forward progress, with a bias capped
+/// at [_maxAlongBiasM] so it can never outweigh real distance off the line.
+/// When nothing in that window is within [_routeMatchReacquireM], or the
+/// runner projects past its far end, the rest of the route ahead is searched, so a runner who skips ahead or returns after a
+/// signal gap is re-acquired; a runner still off the line keeps the windowed
+/// match, unless there is no previous reading to keep, when the nearest point
+/// is taken.
+///
+/// Each segment is projected in its own local planar frame, anchored at that
+/// segment's start, but candidates are ranked by the great-circle distance to
+/// the projected foot, the way `route_snap.dart` does it: a perpendicular
+/// measured inside a segment's frame is scaled by that segment's own cos(lat),
+/// so it is not comparable across segments.
+///
+/// [RouteProgress.offRouteM] is always the distance to the nearest point on the
+/// WHOLE line, never to the matched stretch: a runner standing on the route is
+/// not off it, whichever lap or leg the matcher has them on.
+///
+/// Null when the polyline has `< 2` waypoints or the point is not finite. A
+/// non-finite [prevAlongM] is no previous reading; a non-finite or negative
+/// [travelledM] is zero. Twin of web `route_geometry.ts#progressAlongRoute`.
+RouteProgress? progressAlongRoute(
   ({double lat, double lng}) point,
   List<Waypoint> waypoints,
-) {
+  double? prevAlongM, {
+  double travelledM = 0,
+}) {
   if (waypoints.length < 2) return null;
   if (!point.lng.isFinite || !point.lat.isFinite) return null;
   const deg = pi / 180;
   const rPerDeg = 6371000.0 * deg;
-  var seen = 0.0;
-  var best = 0.0;
-  var bestOffset = double.infinity;
-  for (var i = 1; i < waypoints.length; i++) {
-    final a = waypoints[i - 1];
-    final b = waypoints[i];
-    final segLen = haversineMetres(a.lat, a.lng, b.lat, b.lng);
+
+  double offsetAt(int i, double t) {
+    final a = waypoints[i];
+    final b = waypoints[i + 1];
+    final footLat = a.lat + (b.lat - a.lat) * t;
+    final footLng = wrapLonDeg(a.lng + lonDeltaDeg(a.lng, b.lng) * t);
+    return haversineMetres(point.lat, point.lng, footLat, footLng);
+  }
+
+  final n = waypoints.length - 1;
+  final segStart = List<double>.filled(n, 0);
+  final segLen = List<double>.filled(n, 0);
+  final tFree = List<double>.filled(n, 0);
+  var total = 0.0;
+  var offRouteM = double.infinity;
+  for (var i = 0; i < n; i++) {
+    final a = waypoints[i];
+    final b = waypoints[i + 1];
+    segStart[i] = total;
+    segLen[i] = haversineMetres(a.lat, a.lng, b.lat, b.lng);
+    total += segLen[i];
     final cosLat = cos(a.lat * deg);
     final bx = lonDeltaDeg(a.lng, b.lng) * cosLat * rPerDeg;
     final by = (b.lat - a.lat) * rPerDeg;
     final px = lonDeltaDeg(a.lng, point.lng) * cosLat * rPerDeg;
     final py = (point.lat - a.lat) * rPerDeg;
     final abLenSq = bx * bx + by * by;
-    final t = abLenSq <= 0
+    tFree[i] = abLenSq <= 0
         ? 0.0
-        : ((px * bx + py * by) / abLenSq).clamp(0.0, 1.0);
-    final footLat = a.lat + (b.lat - a.lat) * t;
-    final footLng = wrapLonDeg(a.lng + lonDeltaDeg(a.lng, b.lng) * t);
-    final offset = haversineMetres(point.lat, point.lng, footLat, footLng);
-    if (offset < bestOffset) {
-      bestOffset = offset;
-      best = seen + t * segLen;
-    }
-    seen += segLen;
+        : ((px * bx + py * by) / abLenSq).clamp(0.0, 1.0).toDouble();
+    offRouteM = min(offRouteM, offsetAt(i, tFree[i]));
   }
-  return best.clamp(0.0, seen);
+  if (!offRouteM.isFinite || !total.isFinite) return null;
+
+  final hasPrev = prevAlongM != null && prevAlongM.isFinite;
+  final prev = hasPrev ? prevAlongM.clamp(0.0, total).toDouble() : 0.0;
+  final travelled = travelledM.isFinite && travelledM > 0 ? travelledM : 0.0;
+  final anchor = min(total, prev + travelled);
+  final lo = hasPrev ? max(0.0, prev - _routeMatchBacktrackM) : 0.0;
+
+  // Nearest point of the sub-line [fromM, toM], ranked by offset plus the
+  // capped forward-progress bias around `anchor`. `pastEnd` marks a match
+  // pinned to `toM` while the runner projects beyond it.
+  ({double alongM, double offsetM, bool pastEnd})? best(
+      double fromM, double toM) {
+    ({double alongM, double offsetM, bool pastEnd})? found;
+    var bestCost = double.infinity;
+    for (var i = 0; i < n; i++) {
+      final s = segStart[i];
+      final len = segLen[i];
+      if (s > toM || s + len < fromM) continue;
+      final tLo = len > 0 ? max(0.0, (fromM - s) / len) : 0.0;
+      final tHi = len > 0 ? min(1.0, (toM - s) / len) : 0.0;
+      final t = min(tHi, max(tLo, tFree[i]));
+      final offsetM = offsetAt(i, t);
+      final alongM = s + t * len;
+      final gap = alongM - anchor;
+      final bias = min(
+        _maxAlongBiasM,
+        gap >= 0 ? gap * _alongFwdBiasPerM : -gap * _alongBackBiasPerM,
+      );
+      final cost = offsetM + bias + gap.abs() * _alongContinuityPerM;
+      if (cost < bestCost) {
+        bestCost = cost;
+        found = (alongM: alongM, offsetM: offsetM, pastEnd: tFree[i] > t);
+      }
+    }
+    return found;
+  }
+
+  var match = best(lo, anchor + _routeMatchLookaheadM);
+  if (match == null ||
+      match.offsetM > _routeMatchReacquireM ||
+      match.pastEnd) {
+    final ahead = best(lo, total);
+    if (ahead != null &&
+        (match == null ||
+            (ahead.offsetM < match.offsetM &&
+                (!hasPrev || ahead.offsetM <= _routeMatchReacquireM)))) {
+      match = ahead;
+    }
+  }
+  if (match == null) return null;
+  final alongM = match.alongM.clamp(0.0, total).toDouble();
+  return RouteProgress(
+    alongM: alongM,
+    offRouteM: offRouteM,
+    remainingM: max(0.0, total - alongM),
+  );
 }
 
 /// Compute the total polyline length (metres) via cumulative

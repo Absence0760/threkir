@@ -9,7 +9,6 @@
 		fetchRunAllTimeStats,
 		fetchRunStreaks,
 		fetchRunsForPeriodSummary,
-		fetchWeeklyMileage,
 		fetchPersonalRecords,
 		fetchActivePlanOverview,
 		fetchNextRsvpedEvent,
@@ -19,7 +18,7 @@
 		type PeriodSummaryRun,
 	} from '$lib/core/data';
 	import { dashboardRunsWindowStart, visibleRunSources } from '$lib/core/dashboard_runs';
-	import type { WeekBar } from '$lib/core/weekly_mileage';
+	import { bucketWeeklyMileage } from '$lib/core/weekly_mileage';
 	import {
 		computeSnapshot,
 		recoveryAdvice,
@@ -67,6 +66,11 @@
 	import LoadRampCard from '$lib/components/LoadRampCard.svelte';
 	import ComebackCard from '$lib/components/ComebackCard.svelte';
 	import DashboardFirstRun from '$lib/components/DashboardFirstRun.svelte';
+	import {
+		modalityExplicit,
+		modalityVisible,
+		revealOnNavigate,
+	} from '$lib/stores/modality_visibility.svelte';
 	import DashboardWeekLead from '$lib/components/DashboardWeekLead.svelte';
 	import MetricLabel from '$lib/components/MetricLabel.svelte';
 	import { workoutKindLabel } from '$lib/training/workout_labels';
@@ -94,6 +98,7 @@
 		evaluateGoal,
 		newGoalId,
 		periodLabel,
+		weekStartLocal,
 		type RunGoal,
 	} from '$lib/training/goals';
 	import type { Run, RunSource, ActivePlanOverview } from '$lib/types';
@@ -108,7 +113,6 @@
 		totalRuns: 0,
 		longestRunM: 0,
 	});
-	let weeklyMileage = $state<WeekBar[]>([]);
 	let personalRecords = $state<{ key: string; distance: string; time_s: number; date: string }[]>([]);
 	// Distance keys the runner has chosen to hide (comeback persona #28). Stored
 	// in the universal `hidden_prs` settings bag, so it roams across devices.
@@ -231,6 +235,10 @@
 	// stays null when the Art 9 health-consent body-metrics are absent (exactly
 	// as /nutrition behaves — the rings render unfilled rather than zeroed).
 	let todaysFood = $state<FoodEntry[]>([]);
+	// The runner's show_gym / show_nutrition switches, over and above each
+	// card's own data check: an explicit Off hides a card even when data exists.
+	let gymShown = $derived(modalityVisible('gym'));
+	let nutritionShown = $derived(modalityVisible('nutrition'));
 	let nutritionTargets = $state<NutritionTargets | null>(null);
 	let nutritionConsumed = $derived(sumMacros(todaysFood));
 	// Opt-out: a runner who wants a pure run-only readiness curve can exclude
@@ -573,7 +581,6 @@
 		[
 			runsRead,
 			allTimeStats,
-			weeklyMileage,
 			personalRecords,
 			planOverview,
 			upcomingEvent,
@@ -584,7 +591,6 @@
 		] = await Promise.all([
 			fetchRunsForDashboard(),
 			fetchRunAllTimeStats(),
-			fetchWeeklyMileage(currentLocale(), weekStartDay),
 			fetchPersonalRecords(),
 			fetchActivePlanOverview(),
 			fetchNextRsvpedEvent(48),
@@ -783,16 +789,17 @@
 	// pre-fix a Sunday-week-start user saw Sunday's runs in their
 	// goal card but missing from the "This Week" stat.
 	const now = new Date();
-	let weekStart = $derived.by(() => {
-		const ws = new Date(now);
-		const offset = weekStartDay === 'sunday' ? now.getDay() : (now.getDay() + 6) % 7;
-		ws.setDate(now.getDate() - offset);
-		ws.setHours(0, 0, 0, 0);
-		return ws;
-	});
+	let weekStart = $derived(weekStartLocal(now, weekStartDay));
 
 	let filteredRuns = $derived(
 		sourceFilter === 'all' ? runs : runs.filter((r) => r.source === sourceFilter)
+	);
+	// Derived, not fetched: the chart's current-week bar must be the tile's
+	// seven days. As a read in the opening batch it was handed `weekStartDay`
+	// before the settings in that same batch had set it, so a Sunday-first
+	// runner's chart was always bucketed Monday-first.
+	let weeklyMileage = $derived(
+		bucketWeeklyMileage(filteredRuns, 12, currentLocale(), weekStartDay, now)
 	);
 	let thisWeekRuns = $derived(filteredRuns.filter((r) => new Date(r.started_at) >= weekStart));
 	let thisWeekRunDistance = $derived(thisWeekRuns.reduce((sum, r) => sum + r.distance_m, 0));
@@ -1293,7 +1300,7 @@
 		<!-- Today's lift — a "today's modality" card (multi_modal.md §
 		     Home). Self-hiding: only renders when a gym session was logged
 		     today. A pure runner has none, so never sees it. -->
-		{#if latestTodayLift}
+		{#if latestTodayLift && gymShown}
 			<a class="card-elevated today-lift-card" href="/gym/{latestTodayLift.id}">
 				<div class="today-lift-icon">
 					<span class="material-symbols">fitness_center</span>
@@ -1317,7 +1324,7 @@
 		     hiding: only renders when food was logged today (a runner who tracks
 		     no food never sees it). Targets stay null without body metrics
 		     (Art 9 health-consent gate), so the rings render unfilled. -->
-		{#if todaysFood.length > 0}
+		{#if todaysFood.length > 0 && nutritionShown}
 			<NutritionRingsCard consumed={nutritionConsumed} targets={nutritionTargets} />
 		{/if}
 
@@ -1366,7 +1373,7 @@
 						<span class="stat-value stat-value-empty">{m('dash.weekEmptyValue')}</span>
 						<span class="stat-sub">{m('dash.weekEmptySub')}</span>
 					{:else}
-						<span class="stat-value">{formatDistance(thisWeekDistance)}</span>
+						<span class="stat-value" data-testid="dash-this-week-distance">{formatDistance(thisWeekDistance)}</span>
 						<span class="stat-sub">
 							{thisWeekActivityCount === 1
 								? m('dash.activityCountOne', { n: thisWeekActivityCount })
@@ -2012,7 +2019,7 @@
 			<!-- Recent lifts — gym trend card (multi_modal.md § Home). Self-
 			     hides unless the user has logged a session. Mirrors the
 			     "Recent runs" list above it. -->
-			{#if gymWorkouts.length > 0}
+			{#if gymWorkouts.length > 0 && gymShown}
 				<section class="card-elevated">
 					<div class="card-head">
 						<h2>{m('dash.recentLiftsTitle')}</h2>
@@ -2040,9 +2047,11 @@
 			<!-- First-run gym affordance — one slim line, below the fold, for a
 			     runner who hasn't logged a lift yet (the web equivalent of
 			     mobile's always-present Log sheet — discoverability without an
-			     empty card / zeroed chart, anti-clutter checklist). -->
-			{#if !loading && gymWorkouts.length === 0}
-				<a class="gym-footer-prompt" href="/gym">
+			     empty card / zeroed chart, anti-clutter checklist). Following it
+			     switches a hidden Gym on; a runner who switched Gym off is not
+			     offered it. -->
+			{#if !loading && gymWorkouts.length === 0 && modalityExplicit('gym') !== false}
+				<a class="gym-footer-prompt" href="/gym" onclick={revealOnNavigate('gym')}>
 					<span class="material-symbols">fitness_center</span>
 					<span>{m('dash.gymFooterPrompt')}</span>
 					<span class="gym-footer-cta">{m('dash.logALift')}</span>
@@ -2096,6 +2105,7 @@
 			runs={filteredRuns}
 			initialType={periodModal.type}
 			initialDate={periodModal.date}
+			{weekStartDay}
 			coveredFrom={periodRunsCoveredFrom}
 			loadFullHistory={loadFullRunHistory}
 		/>

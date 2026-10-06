@@ -24,8 +24,12 @@
 	import { consent } from '$lib/settings/consent.svelte';
 	import { env } from '$env/dynamic/public';
 	const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
-	const PUBLIC_TILE_STYLE_URL = env.PUBLIC_TILE_STYLE_URL ?? '';
-	import { buildStaticMapUrl, buildLocalStaticMapUrl } from '$lib/routes/static_map';
+	import { trackThumbnailUrlFromEnv } from '$lib/routes/map-style.svelte';
+
+	// Same OS read RunMap makes, so `streets` resolves to the same light or
+	// dark rung here as on the live map.
+	const prefersDark =
+		typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
 
 	let {
 		routeId,
@@ -110,26 +114,18 @@
 <div bind:this={el} class="wrap">
 	{#if points && points.length > 1}
 		{@const track = points}
-		{@const mapUrl =
-			buildLocalStaticMapUrl(points, {
-				w: 220,
-				h: 140,
-				styleUrl: PUBLIC_TILE_STYLE_URL,
-			}) ??
-			// MapTiler's static-map endpoint logs the requester IP per
-			// fetch, and this preview renders on anon surfaces (e.g. a
-			// public /clubs/[slug]). Hold the third-party request until
-			// consent; until then fall through to the bare SVG below.
-			// The self-hosted local tile override above is exempt — no
-			// third party. audit/cookie-consent.
-			(consent.accepted
-				? buildStaticMapUrl(points, {
-						w: 220,
-						h: 140,
-						style: 'streets-v2',
-						key: PUBLIC_MAPTILER_KEY,
-					})
-				: null)}
+		{@const mapUrl = trackThumbnailUrlFromEnv(points, {
+			w: 220,
+			h: 140,
+			key: PUBLIC_MAPTILER_KEY,
+			prefersDark,
+			allowThirdParty: consent.accepted,
+		})}
+		<!-- MapTiler logs the requester IP per static-map fetch, and this
+		     preview renders on anon surfaces (e.g. a public /clubs/[slug]),
+		     so the third-party rung waits for consent; the self-hosted
+		     override is exempt. audit/cookie-consent. -->
+
 		{#if mapUrl}
 			<!-- Static map background: shows the route polyline overlaid
 			     on real tiles (roads, parks, water) so users can scan a

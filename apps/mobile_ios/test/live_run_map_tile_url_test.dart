@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../lib/preferences.dart' show kMapStyles;
 import '../lib/widgets/live_run_map.dart';
 
 /// Unit tests for [resolveTileUrl] / [resolveBasemapIsDark] — the pure
@@ -381,6 +382,108 @@ void main() {
       expect(_contrast(preFix, _lightBasemapSample), lessThan(2.0));
       expect(mapAccentColour(darkBasemap: false), isNot(preFix));
       expect(mapAccentColour(darkBasemap: true), preFix);
+    });
+  });
+
+  // A list thumbnail is a static image of the basemap every live map
+  // resolves. Pre-fix it hard-coded `streets-v2-dark`, so a light-theme
+  // runner saw a dark street map in every list (decisions § 1749).
+  group('resolveStaticMapUrl', () {
+    String? staticUrl(
+      Map<String, String> env, {
+      String mapStyle = 'streets',
+      Brightness brightness = Brightness.light,
+    }) =>
+        resolveStaticMapUrl(env,
+            mapStyle: mapStyle,
+            brightness: brightness,
+            width: 72,
+            height: 40,
+            path: 'P');
+
+    const expected = {
+      'streets': {Brightness.light: 'streets-v2', Brightness.dark: 'streets-v2-dark'},
+      'satellite': {Brightness.light: 'satellite', Brightness.dark: 'satellite'},
+      'outdoors': {Brightness.light: 'outdoor-v2', Brightness.dark: 'outdoor-v2'},
+      'dark': {Brightness.light: 'streets-v2-dark', Brightness.dark: 'streets-v2-dark'},
+    };
+
+    test('every map_style × theme requests the slug the live map tiles use', () {
+      const env = {'MAPTILER_KEY': 'k'};
+      for (final style in kMapStyles) {
+        for (final brightness in Brightness.values) {
+          final slug = expected[style]![brightness]!;
+          expect(
+            staticUrl(env, mapStyle: style, brightness: brightness),
+            'https://api.maptiler.com/maps/$slug/static/auto/72x40@2x.png?key=k&path=P',
+            reason: '$style / ${brightness.name}',
+          );
+          // Same basemap as the live map's raster tiles.
+          expect(_url(env, mapStyle: style, brightness: brightness),
+              contains('/maps/$slug/{z}/'));
+        }
+      }
+    });
+
+    test('light streets in the light theme (the reported bug)', () {
+      final url = staticUrl(const {'MAPTILER_KEY': 'k'})!;
+      expect(url, contains('/maps/streets-v2/static/'));
+      expect(url, isNot(contains('streets-v2-dark')));
+    });
+
+    test('an unknown style falls back to streets', () {
+      expect(
+        staticUrl(const {'MAPTILER_KEY': 'k'}, mapStyle: 'from-a-newer-client'),
+        contains('/maps/streets-v2/static/'),
+      );
+    });
+
+    test('the dev override wins, at twice the size for density', () {
+      expect(
+        staticUrl(const {
+          'TILE_URL_TEMPLATE': ' http://127.0.0.1:8080/styles/basic/{z}/{x}/{y}.png ',
+          'MAPTILER_KEY': 'k',
+        }, mapStyle: 'satellite', brightness: Brightness.dark),
+        'http://127.0.0.1:8080/styles/basic/static/auto/144x80.png?path=P',
+      );
+    });
+
+    test('an override that is not a raster template falls through to MapTiler',
+        () {
+      expect(
+        staticUrl(const {
+          'TILE_URL_TEMPLATE': 'http://example.test/tiles',
+          'MAPTILER_KEY': 'k',
+        }),
+        startsWith('https://api.maptiler.com/maps/streets-v2/static/'),
+      );
+    });
+
+    test('nothing configured → null, so the widget paints its fallback', () {
+      expect(staticUrl(const {}), isNull);
+      expect(staticUrl(const {'MAPTILER_KEY': '  '}), isNull);
+      expect(staticUrl(const {'TILE_URL_TEMPLATE': 'http://example.test/x'}),
+          isNull);
+    });
+  });
+
+  group('mapTrackLine', () {
+    test('clears the floor against the basemap it is keyed to', () {
+      expect(_contrast(mapTrackLine(darkBasemap: false), _lightBasemapSample),
+          greaterThanOrEqualTo(_overlayFloor));
+      expect(_contrast(mapTrackLine(darkBasemap: false), const Color(0xFFAAD3DF)),
+          greaterThanOrEqualTo(_overlayFloor));
+      expect(_contrast(mapTrackLine(darkBasemap: true), _darkBasemapSample),
+          greaterThanOrEqualTo(_overlayFloor));
+    });
+
+    test("is web's mapTrackLine and the gradient's middle stop", () {
+      expect(mapTrackLine(darkBasemap: false), const Color(0xFF4F46E5));
+      expect(mapTrackLine(darkBasemap: true), const Color(0xFF818CF8));
+      for (final dark in [false, true]) {
+        expect(mapTrackLine(darkBasemap: dark),
+            trackGradientColours(darkBasemap: dark)[1]);
+      }
     });
   });
 }

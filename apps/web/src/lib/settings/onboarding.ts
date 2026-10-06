@@ -6,7 +6,8 @@
 /// "after sign-up the persona is dropped at an empty dashboard with
 /// no guidance." The wizard walks through display name, units, goal,
 /// optional demographics (gender + DOB + weight with GDPR Art 9
-/// consent), privacy default, and push notifications.
+/// consent), privacy default, push notifications, and what to track
+/// (Gym and Nutrition opt-in, Running always on).
 ///
 /// The `onboarded_at` column on `user_profiles` (migration
 /// 20261016_001) is the single source of truth — null means the
@@ -59,6 +60,7 @@ export const ONBOARDING_STEPS = [
 	'about',
 	'run-privacy',
 	'notifications',
+	'track',
 	'done',
 ] as const;
 

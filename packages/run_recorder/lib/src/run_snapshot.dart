@@ -33,6 +33,14 @@ class RunSnapshot {
   /// Null when no route is selected.
   final double? routeRemainingMetres;
 
+  /// How far along the selected route the runner has been matched, in metres
+  /// from its start. The recorder's matcher remembers the previous match, so
+  /// on a loop, an out-and-back or a figure-eight this is the lap or leg the
+  /// runner is actually on — consumers placing the runner on the route (turn
+  /// cues, course markers, cut-off ETAs) read it rather than re-projecting
+  /// [currentPosition] onto the whole line. Null when no route is selected.
+  final double? routeAlongMetres;
+
   /// The full GPS track recorded so far (unmodifiable).
   final List<Waypoint> track;
 
@@ -53,6 +61,7 @@ class RunSnapshot {
     this.positionTrusted = true,
     this.offRouteDistanceMetres,
     this.routeRemainingMetres,
+    this.routeAlongMetres,
     this.track = const [],
     this.weakGps = false,
   });

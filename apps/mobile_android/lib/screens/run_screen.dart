@@ -8,6 +8,7 @@ import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart'
     show ActivityType, DistanceUnit, PlanWorkoutRow, TrainingPlanRow;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderProxyBox;
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
@@ -54,6 +55,7 @@ import '../route_geometry.dart';
 import '../route_markers.dart' show parseTarget;
 import '../route_match.dart';
 import '../route_simplify.dart';
+import '../run_stop_dock.dart';
 import '../safety_nudge.dart';
 import '../settings_sync.dart';
 import '../sim_watch_link.dart' show maybeDevBackendUrl;
@@ -73,6 +75,7 @@ import '../share_sheet.dart';
 import '../social_service.dart';
 import '../training.dart';
 import '../training_service.dart';
+import '../fab_clearance.dart';
 import '../widgets/collapsible_panel.dart';
 import '../widgets/ghost_pacer.dart';
 import '../widgets/live_run_map.dart';
@@ -421,13 +424,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// [LiveCutoffStatus.unknown]) rather than fabricating an ETA off an old fix.
   LiveCutoffEta? _cutoffEta(_LiveStats stats, bool stale) {
     if (_cutoffLegs.isEmpty) return null;
-    final pos = stats.routePosition;
-    final route = _selectedRoute;
-    if (pos == null || route == null) return null;
+    final distAlong = stats.routeAlong;
+    if (distAlong == null) return null;
     try {
-      final distAlong =
-          distanceAlongRoute((lat: pos.lat, lng: pos.lng), route.waypoints);
-      if (distAlong == null) return null;
       final eta = nextCutoffEta(
         distAlongRouteM: distAlong,
         elapsedS: stats.elapsed.inSeconds.toDouble(),
@@ -468,11 +467,14 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   double? _pace;
   List<cm.Waypoint> _track = [];
   cm.Waypoint? _currentPosition;
-  // Last fix the recorder's distance chain accepted. Everything that maps a
-  // position onto the followed route (turn cues, marker-target cues, the
-  // cut-off ETA) reads this rather than the raw `_currentPosition`, which
-  // deliberately carries rejected fixes so the blue dot keeps up.
-  cm.Waypoint? _routePosition;
+  // Where the recorder matched the runner on the followed route, metres from
+  // its start. Everything that places the runner on the route (turn cues,
+  // marker-target cues, the cut-off ETA) reads this rather than re-projecting
+  // a position onto the whole line: the recorder remembers the previous match,
+  // so a loop's start is not its finish and an out-and-back's return leg is
+  // not its outbound one, and it only moves on a fix the distance chain
+  // accepted.
+  double? _routeAlong;
   int _lastTickNotified = 0;
   final ValueNotifier<_LiveStats> _statsNotifier =
       ValueNotifier(_LiveStats.empty);
@@ -696,9 +698,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   // Active-plan overview; drives the today's-workout card on idle.
   ActivePlanOverview? _planOverview;
 
-  // Measured height of the stats overlay — used to offset the map camera so
-  // the blue dot sits in the visible area above the overlay, not behind it.
-  final GlobalKey _statsOverlayKey = GlobalKey();
+  // Measured height of the stats overlay. Insets the map (camera offset,
+  // attribution, re-centre button) and the utility stack above it, so the
+  // blue dot and the basemap credit sit above the panel, not behind it. The
+  // initial value only lasts until the panel's first layout reports in.
   double _statsOverlayHeight = 300;
 
   // Replaces geolocator's "Run in progress" foreground-service notification
@@ -741,6 +744,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     widget.training.addListener(_onTrainingChange);
     pendingStartWorkout.addListener(_onPendingStartWorkout);
     pendingArmGuidedRun.addListener(_onPendingArmGuidedRun);
+    runStopRequests.addListener(_onDockedStopRequest);
     _activityType =
         ActivityType.fromName(widget.preferences.defaultActivityType);
     _selectedRoute = widget.initialRoute;
@@ -841,6 +845,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// locale and arm it down the same path the idle picker uses, so the watch
   /// push, the cue cursor and the metadata stamp cannot diverge between the
   /// two entry points.
+  /// A completed hold on the shell's docked Stop, which stands in for the
+  /// panel's own on the phone layout ([RunStopDock]).
+  void _onDockedStopRequest() {
+    if (_state != _ScreenState.recording) return;
+    unawaited(_stop());
+  }
+
   void _onPendingArmGuidedRun() {
     final id = pendingArmGuidedRun.value;
     if (id == null) return;
@@ -2441,14 +2452,6 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       }
       final positionFresh = fixedAt != null &&
           DateTime.now().difference(fixedAt) <= _gpsLostThreshold;
-      // Route progress must only ever advance on a fix the recorder's
-      // distance chain ACCEPTED. A rejected teleport still drives the blue
-      // dot, but feeding it to distanceAlongRoute latches every course
-      // marker it skipped over — permanently, since the announced set is
-      // never un-latched.
-      if (snapshot.currentPosition != null && snapshot.positionTrusted) {
-        _routePosition = snapshot.currentPosition;
-      }
 
       // Extend the elevation-gain accumulator with any new waypoints. The
       // recorder only appends to the track (no reordering / truncation
@@ -2478,6 +2481,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       _currentPosition = snapshot.currentPosition;
       _offRouteDistance = snapshot.offRouteDistanceMetres;
       _routeRemaining = snapshot.routeRemainingMetres;
+      _routeAlong = snapshot.routeAlongMetres;
       // Mirror only — the visible banner flips through _checkGpsHealth's
       // setState (2 s cadence) so the GPS-rate snapshot stream never drives
       // a full-screen rebuild.
@@ -2488,7 +2492,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         pace: _pace,
         track: _track,
         currentPosition: _currentPosition,
-        routePosition: _routePosition,
+        routeAlong: _routeAlong,
         offRouteDistance: _offRouteDistance,
         routeRemaining: _routeRemaining,
       );
@@ -2635,38 +2639,30 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         debugPrint('off-route escalation check failed: $e');
       }
 
-      // L4 — Turn-by-turn voice cue. Pure geometry (distanceAlongRoute +
-      // the turn-cue announcer) decides which cue to fire; the spoken cue
+      // L4 — Turn-by-turn voice cue. The recorder's route match + the
+      // turn-cue announcer decide which cue to fire; the spoken cue
       // goes through the best-effort _ttsCue wrapper so a TTS failure never
       // disturbs the recording (decisions §169).
       try {
         final announcer = _turnAnnouncer;
-        final pos = _routePosition;
-        final route = _selectedRoute;
+        final along = _routeAlong;
         if (announcer != null &&
-            pos != null &&
-            route != null &&
+            along != null &&
             widget.preferences.audioCues &&
             widget.preferences.turnByTurnCues) {
-          final along = distanceAlongRoute(
-            (lat: pos.lat, lng: pos.lng),
-            route.waypoints,
-          );
-          if (along != null) {
-            final a = announcer.announcementFor(along);
-            if (a != null) {
-              // The runner's real distance to the turn, not the band that
-              // triggered the cue — the band is a coarse trigger.
-              final distanceStr =
-                  a.isNow ? null : UnitFormat.distance(a.aheadM, unit);
-              _ttsCue(
-                'announceTurn',
-                () => widget.audioCues.announceTurn(
-                  a.cue.direction,
-                  distance: distanceStr,
-                ),
-              );
-            }
+          final a = announcer.announcementFor(along);
+          if (a != null) {
+            // The runner's real distance to the turn, not the band that
+            // triggered the cue — the band is a coarse trigger.
+            final distanceStr =
+                a.isNow ? null : UnitFormat.distance(a.aheadM, unit);
+            _ttsCue(
+              'announceTurn',
+              () => widget.audioCues.announceTurn(
+                a.cue.direction,
+                distance: distanceStr,
+              ),
+            );
           }
         }
       } catch (e) {
@@ -2833,36 +2829,28 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       // the cue on mid-run (locally or via a settings-sync pull) can't
       // burst-announce every marker passed while it was off.
       try {
-        final route = _selectedRoute;
-        final pos = _routePosition;
-        if (_targetMarkers.isNotEmpty && route != null && pos != null) {
-          final along = distanceAlongRoute(
-            (lat: pos.lat, lng: pos.lng),
-            route.waypoints,
-          );
-          if (along != null) {
-            final last = _lastAlongM;
-            _lastAlongM = along;
-            if (last != null &&
-                along > last &&
-                widget.preferences.audioCues &&
-                widget.preferences.voiceCueEnabled(VoiceCue.markerTargets)) {
-              for (var i = 0; i < _targetMarkers.length; i++) {
-                final m = _targetMarkers[i];
-                if (m.positionM > last &&
-                    m.positionM <= along &&
-                    _announcedTargetMarkers.add(i)) {
-                  final deltaS = m.targetS - _elapsed.inSeconds;
-                  final label = m.label.isNotEmpty
-                      ? m.label
-                      : _markerKindLabel(m.kind);
-                  _ttsCue(
-                      'announceMarkerTarget',
-                      () => widget.audioCues.announceMarkerTarget(
-                            label: label,
-                            deltaS: deltaS,
-                          ));
-                }
+        final along = _routeAlong;
+        if (_targetMarkers.isNotEmpty && along != null) {
+          final last = _lastAlongM;
+          _lastAlongM = along;
+          if (last != null &&
+              along > last &&
+              widget.preferences.audioCues &&
+              widget.preferences.voiceCueEnabled(VoiceCue.markerTargets)) {
+            for (var i = 0; i < _targetMarkers.length; i++) {
+              final m = _targetMarkers[i];
+              if (m.positionM > last &&
+                  m.positionM <= along &&
+                  _announcedTargetMarkers.add(i)) {
+                final deltaS = m.targetS - _elapsed.inSeconds;
+                final label =
+                    m.label.isNotEmpty ? m.label : _markerKindLabel(m.kind);
+                _ttsCue(
+                    'announceMarkerTarget',
+                    () => widget.audioCues.announceMarkerTarget(
+                          label: label,
+                          deltaS: deltaS,
+                        ));
               }
             }
           }
@@ -3698,7 +3686,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       _pace = null;
       _track = [];
       _currentPosition = null;
-      _routePosition = null;
+      _routeAlong = null;
       _lastTickNotified = 0;
       _steps = 0;
       _startSteps = 0;
@@ -3729,6 +3717,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     pendingStartWorkout.removeListener(_onPendingStartWorkout);
     pendingArmGuidedRun.removeListener(_onPendingArmGuidedRun);
+    runStopRequests.removeListener(_onDockedStopRequest);
     widget.preferences.removeListener(_onPrefsChange);
     widget.runStore.removeListener(_onPrefsChange);
     widget.social.removeListener(_onSocialChange);
@@ -4216,10 +4205,12 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     return SafeArea(
       child: LayoutBuilder(
         builder: (context, constraints) => SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: EdgeInsets.fromLTRB(
+              24, 16, 24, 16 + DockedFabInset.of(context)),
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              minHeight: constraints.maxHeight - 32,
+              minHeight:
+                  constraints.maxHeight - 32 - DockedFabInset.of(context),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -4511,6 +4502,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // RouteMiniMap mounted under the digit.
     final isCountdown = _state == _ScreenState.countdown;
     final l10n = AppLocalizations.of(context);
+    // The shell's docked centre button is the Stop while a run records on
+    // the phone layout; the panel offering a second one beside it would be
+    // two controls for one act. Anywhere else the panel keeps its own.
+    final dockedStop =
+        RunStopDock.of(context) && _state == _ScreenState.recording;
     return Stack(
       children: [
         // Always-mounted map. During countdown stats.currentPosition may
@@ -4524,6 +4520,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
             track: stats.track,
             currentPosition: stats.currentPosition ?? _currentPosition,
             plannedRoute: _selectedRoute?.waypoints,
+            offlinePackRouteId: _selectedRoute?.id,
             bottomPadding: isCountdown ? 0 : _statsOverlayHeight,
             activity: isCountdown ? null : _activityType,
             ghostPosition: _computeGhostPosition(),
@@ -4803,69 +4800,60 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
           left: 0,
           right: 0,
           bottom: 0,
-          // SizeChangedLayoutNotifier fires precisely when the overlay's
-          // size changes (panel expand/collapse). Scheduling the previous
-          // post-frame measurement from inside build() fired the callback
-          // on every frame of the run — cheap per call, but wasteful given
-          // the panel height stabilises immediately and only changes on
-          // user interaction.
-          child: NotificationListener<SizeChangedLayoutNotification>(
-            onNotification: _onOverlaySizeChanged,
-            child: SizeChangedLayoutNotifier(
-              child: CollapsiblePanel(
-                key: _statsOverlayKey,
-                // The collapsed bar only shows elapsed time; listen to the
-                // notifier so the clock ticks without rebuilding the
-                // enclosing Stack.
-                collapsedChild: ValueListenableBuilder<_LiveStats>(
-                  valueListenable: _statsNotifier,
-                  builder: (context, _, __) => _CollapsedStatsBar(
-                    time: _formattedTime,
-                    onHoldComplete: _stop,
-                  ),
+          child: _LaidOutSizeReporter(
+            onSize: _onStatsOverlaySized,
+            child: CollapsiblePanel(
+              // The collapsed bar only shows elapsed time; listen to the
+              // notifier so the clock ticks without rebuilding the
+              // enclosing Stack.
+              collapsedChild: ValueListenableBuilder<_LiveStats>(
+                valueListenable: _statsNotifier,
+                builder: (context, _, _) => _CollapsedStatsBar(
+                  time: _formattedTime,
+                  onHoldComplete: dockedStop ? null : _stop,
                 ),
-                // Expanded panel reads every stat — wrap once so the whole
-                // body rebuilds on each snapshot, but the map, chips, and
-                // banners above do not.
-                expandedChild: ValueListenableBuilder<_LiveStats>(
-                  valueListenable: _statsNotifier,
-                  builder: (context, _, __) => _StatsOverlay(
-                    time: _formattedTime,
-                    distanceValue: _formattedDistanceValue,
-                    distanceUnit: UnitFormat.distanceLabel(_unit),
-                    primaryValue: _activityType.usesSpeed
-                        ? UnitFormat.speed(_pace, _unit)
-                        : _formattedPaceValue,
-                    primaryUnit: _activityType.usesSpeed
-                        ? UnitFormat.speedLabel(_unit)
-                        : UnitFormat.paceLabel(_unit),
-                    primaryLabel: _activityType.usesSpeed
-                        ? l10n.runStatSpeed
-                        : l10n.runStatPace,
-                    secondaryValue: _activityType.usesSpeed
-                        ? _formattedAvgSpeedValue
-                        : _formattedAvgPaceValue,
-                    secondaryLabel: _activityType.usesSpeed
-                        ? l10n.runStatAvgSpeed
-                        : l10n.runStatAvgPace,
-                    calories: _formattedCalories,
-                    elevation: _formattedElevation,
-                    steps: '$_steps',
-                    cadence: '$_cadence',
-                    bpm: _currentBpm,
-                    lapCount: _lapCount,
-                    paused: _manualPaused,
-                    onHoldComplete: _stop,
-                    onDiscard: _confirmDiscardMidRun,
-                    onPauseToggle: _toggleManualPause,
-                    onLap: _markLap,
-                    paceCuesActive: !_activityType.usesSpeed &&
-                        widget.preferences.audioCues &&
-                        widget.preferences.targetPaceSecPerKm > 0,
-                    paceCuesMuted: _paceCuesMuted,
-                    onTogglePaceMute: () =>
-                        setState(() => _paceCuesMuted = !_paceCuesMuted),
-                  ),
+              ),
+              // Expanded panel reads every stat — wrap once so the whole
+              // body rebuilds on each snapshot, but the map, chips, and
+              // banners above do not.
+              expandedChild: ValueListenableBuilder<_LiveStats>(
+                valueListenable: _statsNotifier,
+                builder: (context, _, _) => _StatsOverlay(
+                  time: _formattedTime,
+                  distanceValue: _formattedDistanceValue,
+                  distanceUnit: UnitFormat.distanceLabel(_unit),
+                  primaryValue: _activityType.usesSpeed
+                      ? UnitFormat.speed(_pace, _unit)
+                      : _formattedPaceValue,
+                  primaryUnit: _activityType.usesSpeed
+                      ? UnitFormat.speedLabel(_unit)
+                      : UnitFormat.paceLabel(_unit),
+                  primaryLabel: _activityType.usesSpeed
+                      ? l10n.runStatSpeed
+                      : l10n.runStatPace,
+                  secondaryValue: _activityType.usesSpeed
+                      ? _formattedAvgSpeedValue
+                      : _formattedAvgPaceValue,
+                  secondaryLabel: _activityType.usesSpeed
+                      ? l10n.runStatAvgSpeed
+                      : l10n.runStatAvgPace,
+                  calories: _formattedCalories,
+                  elevation: _formattedElevation,
+                  steps: '$_steps',
+                  cadence: '$_cadence',
+                  bpm: _currentBpm,
+                  lapCount: _lapCount,
+                  paused: _manualPaused,
+                  onHoldComplete: dockedStop ? null : _stop,
+                  onDiscard: _confirmDiscardMidRun,
+                  onPauseToggle: _toggleManualPause,
+                  onLap: _markLap,
+                  paceCuesActive: !_activityType.usesSpeed &&
+                      widget.preferences.audioCues &&
+                      widget.preferences.targetPaceSecPerKm > 0,
+                  paceCuesMuted: _paceCuesMuted,
+                  onTogglePaceMute: () =>
+                      setState(() => _paceCuesMuted = !_paceCuesMuted),
                 ),
               ),
             ),
@@ -4876,28 +4864,15 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     );
   }
 
-  /// Remeasure the stats overlay after the collapsible panel has changed
-  /// size. Cheaper than the previous per-frame post-frame callback because
-  /// SizeChangedLayoutNotification only dispatches on real layout changes.
-  ///
-  /// SizeChangedLayoutNotification dispatches synchronously from inside
-  /// `_RenderSizeChangedWithCallback.performLayout`, so we're still in the
-  /// layout phase when this fires. Calling `setState` directly throws a
-  /// "Build scheduled during frame" assertion (and was reproducing during
-  /// hold-to-stop on the collapsed bar — the per-tick progress-ring
-  /// rebuild triggered a panel relayout). Defer the state change to a
-  /// post-frame callback so the rebuild lands cleanly in the next frame.
-  bool _onOverlaySizeChanged(SizeChangedLayoutNotification _) {
-    final box =
-        _statsOverlayKey.currentContext?.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) return false;
-    final h = box.size.height;
-    if ((h - _statsOverlayHeight).abs() > 1) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _statsOverlayHeight = h);
-      });
-    }
-    return false;
+  /// Adopts the stats panel's laid-out height. Fires from inside layout, so
+  /// a direct `setState` would assert "Build scheduled during frame"; the
+  /// change lands in a post-frame callback instead.
+  void _onStatsOverlaySized(Size size) {
+    final h = size.height;
+    if ((h - _statsOverlayHeight).abs() <= 1) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _statsOverlayHeight = h);
+    });
   }
 
   /// The treadmill live-mode toggle card shown over the recording view.
@@ -5022,11 +4997,14 @@ class FinishedSummary extends StatelessWidget {
       top: false,
       child: LayoutBuilder(
         builder: (context, constraints) => SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.fromLTRB(
+              24, 24, 24, 24 + DockedFabInset.of(context)),
           child: ConstrainedBox(
             constraints: BoxConstraints(
               minHeight: clampDouble(
-                  constraints.maxHeight - 48, 0, double.maxFinite),
+                  constraints.maxHeight - 48 - DockedFabInset.of(context),
+                  0,
+                  double.maxFinite),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -5103,7 +5081,10 @@ class _StatsOverlay extends StatelessWidget {
   final int? bpm;
   final int lapCount;
   final bool paused;
-  final VoidCallback onHoldComplete;
+
+  /// Null when the shell's docked centre button is the Stop ([RunStopDock]),
+  /// which leaves the row Discard · Pause · Lap.
+  final VoidCallback? onHoldComplete;
   final VoidCallback onDiscard;
   final VoidCallback onPauseToggle;
   final VoidCallback onLap;
@@ -5285,10 +5266,10 @@ class _StatsOverlay extends StatelessWidget {
                   const SizedBox(width: 16),
                   // Stop button — hold-to-stop, 800ms. Prevents accidental
                   // one-tap stops mid-run.
-                  HoldToStopButton(
-                    onHoldComplete: onHoldComplete,
-                  ),
-                  const SizedBox(width: 16),
+                  if (onHoldComplete case final stop?) ...[
+                    HoldToStopButton(onHoldComplete: stop),
+                    const SizedBox(width: 16),
+                  ],
                   // Lap button.
                   // audit/accessibility (May 2026) Critical — same fix
                   // pattern. Lap count is announced so a screen-reader
@@ -5586,9 +5567,10 @@ class _LiveStats {
   final List<cm.Waypoint> track;
   final cm.Waypoint? currentPosition;
 
-  /// Last fix the recorder ACCEPTED — the only position route-relative math
-  /// may use. [currentPosition] can be a rejected teleport.
-  final cm.Waypoint? routePosition;
+  /// Where the recorder matched the runner on the followed route, metres from
+  /// its start. [currentPosition] can be a rejected teleport; this only moves
+  /// on a fix the distance chain accepted.
+  final double? routeAlong;
   final double? offRouteDistance;
   final double? routeRemaining;
 
@@ -5598,7 +5580,7 @@ class _LiveStats {
     required this.pace,
     required this.track,
     required this.currentPosition,
-    required this.routePosition,
+    required this.routeAlong,
     required this.offRouteDistance,
     required this.routeRemaining,
   });
@@ -5609,18 +5591,55 @@ class _LiveStats {
     pace: null,
     track: [],
     currentPosition: null,
-    routePosition: null,
+    routeAlong: null,
     offRouteDistance: null,
     routeRemaining: null,
   );
 }
 
+/// Reports its child's size after every layout that changes it, the FIRST
+/// layout included. `SizeChangedLayoutNotifier` skips the first, and the
+/// stats panel usually never changes size after it, so a run was left with
+/// a guessed inset that hid the map credit behind the panel.
+class _LaidOutSizeReporter extends SingleChildRenderObjectWidget {
+  const _LaidOutSizeReporter({required this.onSize, required super.child});
+
+  final ValueChanged<Size> onSize;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderLaidOutSizeReporter(onSize);
+
+  @override
+  void updateRenderObject(
+      BuildContext context, _RenderLaidOutSizeReporter renderObject) {
+    renderObject.onSize = onSize;
+  }
+}
+
+class _RenderLaidOutSizeReporter extends RenderProxyBox {
+  _RenderLaidOutSizeReporter(this.onSize);
+
+  ValueChanged<Size> onSize;
+  Size? _reported;
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    if (size != _reported) {
+      _reported = size;
+      onSize(size);
+    }
+  }
+}
+
 /// Minimal stats bar shown when the overlay is collapsed. Keeps time visible
 /// plus a hold-to-stop button so the runner can still abort without
-/// expanding first.
+/// expanding first — unless the shell's docked centre button is the Stop
+/// ([RunStopDock]), which already sits under the bar.
 class _CollapsedStatsBar extends StatelessWidget {
   final String time;
-  final VoidCallback onHoldComplete;
+  final VoidCallback? onHoldComplete;
 
   const _CollapsedStatsBar({
     required this.time,
@@ -5643,12 +5662,13 @@ class _CollapsedStatsBar extends StatelessWidget {
               ),
             ),
           ),
-          HoldToStopButton(
-            size: 48,
-            iconSize: 24,
-            showHint: false,
-            onHoldComplete: onHoldComplete,
-          ),
+          if (onHoldComplete case final stop?)
+            HoldToStopButton(
+              size: 48,
+              iconSize: 24,
+              showHint: false,
+              onHoldComplete: stop,
+            ),
         ],
       ),
     );
@@ -5659,8 +5679,8 @@ class _CollapsedStatsBar extends StatelessWidget {
 /// is actually stopped. The circular progress ring grows during the hold so
 /// the user gets clear visual feedback, and (when [showHint]) a "hold to stop"
 /// caption tells the user the control needs a press-and-hold, not a tap.
-/// Cancels cleanly on release.
-@visibleForTesting
+/// Cancels cleanly on release. The shell's docked centre button reuses it as
+/// the phone layout's Stop ([RunStopDock]), so both share one gate.
 class HoldToStopButton extends StatefulWidget {
   static const holdDuration = Duration(milliseconds: 800);
 
@@ -5669,12 +5689,17 @@ class HoldToStopButton extends StatefulWidget {
   final double iconSize;
   final bool showHint;
 
+  /// Replaces the spoken hint. The docked Stop has no visible "Hold to stop"
+  /// caption beside it, so it says so to a screen reader instead.
+  final String? semanticsHint;
+
   const HoldToStopButton({
     super.key,
     required this.onHoldComplete,
     this.size = 68,
     this.iconSize = 36,
     this.showHint = true,
+    this.semanticsHint,
   });
 
   @override
@@ -5737,7 +5762,7 @@ class _HoldToStopButtonState extends State<HoldToStopButton>
       button: true,
       enabled: true,
       label: l10n.runStopA11yLabel,
-      hint: l10n.runStopA11yHint,
+      hint: widget.semanticsHint ?? l10n.runStopA11yHint,
       onTap: widget.onHoldComplete,
       child: ExcludeSemantics(
         // `behavior: HitTestBehavior.opaque` so the Listener claims any

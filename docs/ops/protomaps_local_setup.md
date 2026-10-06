@@ -34,8 +34,11 @@ Boots `tileserver-gl` in a Docker container that serves a regional PMTiles extra
 |---|---|---|
 | Web (MapLibre GL JS) | `/styles/basic/style.json` | vector + style |
 | Mobile + Wear OS | `/styles/basic/{z}/{x}/{y}.png` | server-rasterised PNG |
+| Run / route list thumbnails (web + mobile) | `/styles/basic/static/auto/{w}x{h}.png?path=…` | server-rendered PNG, derived from the same override |
 
 Tileserver-gl uses MapLibre Native to rasterise vector tiles on demand, so all four surfaces (web, Android, iOS twin, Wear OS) point at the same dev server with nothing more than an env override.
+
+**`basic` is a light style**, on the light ground sample `basemap_contrast.ts` grades overlays against. Every client classifies an override as light ground unless its URL names a dark style, and picks overlay colours from that. The static endpoint has no theme of its own: a thumbnail is exactly as light or dark as the style it names. The script also serves **`dark`** (`/styles/dark/…`) on the dark ground sample. Point the override at it to see the dark-ground palette, and the URL tells the classifiers it is dark. The `basic` style was once written dark, which made dev thumbnails dark in the light theme ([decisions § 1749](../architecture/decisions.md)). Restart the server (`bin/protomaps-dev.sh restart`, or `stop` + `start`) to pick up the regenerated styles.
 
 ## Prerequisites
 

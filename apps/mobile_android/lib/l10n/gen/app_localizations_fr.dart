@@ -705,7 +705,32 @@ class AppLocalizationsFr extends AppLocalizations {
   String get logA11yLabel => 'Enregistrer une activité';
 
   @override
+  String get navStartRun => 'Courir';
+
+  @override
+  String get logStartRunA11yLabel => 'Démarrer une course';
+
+  @override
+  String get logModalityShownGym => 'La muscu est maintenant affichée';
+
+  @override
+  String get logModalityShownNutrition =>
+      'La nutrition est maintenant affichée';
+
+  @override
+  String get navRecording => 'En cours';
+
+  @override
+  String get navStop => 'Arrêter';
+
+  @override
+  String get logReturnToRunA11yLabel => 'Revenir à votre course';
+
+  @override
   String get navFitness => 'Fitness';
+
+  @override
+  String get navTraining => 'Entraînement';
 
   @override
   String get navYou => 'Vous';
@@ -757,6 +782,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Des conseils sur vos courses, votre muscu et votre nutrition';
 
   @override
+  String get homeAskCoachSubtitleRunOnly =>
+      'Des conseils sur vos courses, votre entraînement et votre récupération';
+
+  @override
   String get youProfileTitle => 'Votre profil';
 
   @override
@@ -776,7 +805,28 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get prefsKeepRunPrimarySubtitle =>
-      'Touchez le bouton central pour démarrer une course. Déjà actif tant que vous n’avez enregistré ni séance de muscu ni repas ; un appui long ouvre toujours le menu d’enregistrement';
+      'Touchez le bouton central pour démarrer une course. Déjà actif tant que Muscu et Nutrition sont masqués ; un appui long ouvre toujours le menu d’enregistrement';
+
+  @override
+  String get prefsKeepRunPrimaryForcedSubtitle =>
+      'Actif tant que Muscu et Nutrition sont masqués. Affichez l’un des deux pour choisir';
+
+  @override
+  String get prefsSectionModalities => 'Muscu et nutrition';
+
+  @override
+  String get prefsShowGym => 'Afficher la muscu';
+
+  @override
+  String get prefsShowGymSubtitle =>
+      'Ajoute l’onglet Muscu, « Enregistrer la muscu » et vos séances sur l’accueil';
+
+  @override
+  String get prefsShowNutrition => 'Afficher la nutrition';
+
+  @override
+  String get prefsShowNutritionSubtitle =>
+      'Ajoute l’onglet Nutrition, « Enregistrer un aliment » et les repas du jour sur l’accueil';
 
   @override
   String get bodyMetricsTitle => 'Données corporelles';
@@ -1502,6 +1552,19 @@ class AppLocalizationsFr extends AppLocalizations {
       'Choisissez le nombre de notifications push souhaitées. Réglage affiné plus tard dans les Réglages.';
 
   @override
+  String get setupTrackTitle => 'Que voulez-vous suivre ?';
+
+  @override
+  String get setupTrackHint =>
+      'La course est toujours activée. Activez la muscu ou la nutrition pour ajouter son onglet et son action d’enregistrement. Vous pourrez changer cela plus tard dans les Réglages.';
+
+  @override
+  String get setupTrackRunning => 'Course';
+
+  @override
+  String get setupTrackRunningAlwaysOn => 'Toujours activée';
+
+  @override
   String get setupDoneTitle => 'Tout est prêt';
 
   @override
@@ -1767,6 +1830,9 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get runStopA11yHint =>
       'Termine l\'enregistrement et enregistre la course';
+
+  @override
+  String get runHoldToStopRunA11yHint => 'Maintenir pour arrêter la course';
 
   @override
   String get runHoldToStopHint => 'Maintenir pour arrêter';
@@ -2210,6 +2276,13 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get historyAddRunTooltip => 'Ajouter une course manuellement';
+
+  @override
+  String get historyAddPastRun => 'Ajouter une course passée';
+
+  @override
+  String get historyEmptyBodyRunPrimary =>
+      'Touchez Courir pour enregistrer une course, ou ajoutez-en une déjà terminée';
 
   @override
   String get historyLogTooltip =>

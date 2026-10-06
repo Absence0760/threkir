@@ -727,26 +727,25 @@ void main() {
       );
     });
 
-    test('_onOverlaySizeChanged defers setState to a post-frame callback', () {
-      // Reason: SizeChangedLayoutNotification dispatches *synchronously*
-      // from inside `_RenderSizeChangedWithCallback.performLayout` —
-      // we're still in the layout phase when the notification fires.
-      // Calling `setState` directly from here throws a "Build scheduled
-      // during frame" assertion. Repro: hold the stop button on the
-      // collapsed bar; the per-tick progress-ring rebuild triggers a
-      // panel relayout which fires the size notifier mid-layout.
-      // Schedule the state change for the next frame instead.
+    test('_onStatsOverlaySized defers setState to a post-frame callback', () {
+      // Reason: the panel's size is reported synchronously from inside
+      // `_RenderLaidOutSizeReporter.performLayout` — we're still in the
+      // layout phase when the callback fires. Calling `setState` directly
+      // from here throws a "Build scheduled during frame" assertion.
+      // Repro: hold the stop button on the collapsed bar; the per-tick
+      // progress-ring rebuild triggers a panel relayout which reports a
+      // size mid-layout. Schedule the state change for the next frame.
       final body = _extractMethodBody(
         source,
-        r'bool _onOverlaySizeChanged\(SizeChangedLayoutNotification _\)\s*\{',
+        r'void _onStatsOverlaySized\(Size size\)\s*\{',
       );
       expect(
         body,
         contains('addPostFrameCallback'),
-        reason: '_onOverlaySizeChanged must wrap its setState in '
+        reason: '_onStatsOverlaySized must wrap its setState in '
             'WidgetsBinding.instance.addPostFrameCallback so the '
             'rebuild lands in the next frame, not during the layout '
-            'pass that fired the notification.',
+            'pass that reported the size.',
       );
     });
 
@@ -5005,9 +5004,6 @@ void main() {
       'lib/screens/period_summary_screen.dart':
           r'DateTime periodEnd\(PeriodType period, DateTime anchor,\s*'
           r'\{String weekStartDay = .monday.\}\) \{',
-      // The trend chart buckets weekly the same way; a skewed Monday mislabels
-      // the bars and drops the transition week out of the chart entirely.
-      'lib/mileage_trend.dart': r'DateTime _mondayOf\(DateTime d\) \{',
     };
 
     weekBoundaryFns.forEach((path, signature) {
@@ -5071,6 +5067,50 @@ void main() {
         isFalse,
         reason: 'a fixed 7×24 h week labels the back-filled bars a week early',
       );
+    });
+  });
+
+  group('every "this week" window comes from weekStartLocal', () {
+    // Field report: week start Sunday, the Home tile read 22.50 km this week
+    // and the Distance chart beside it 7.50 km — mileage_trend.dart carried
+    // its own Monday-only `_mondayOf`, and the heatmap called weekStartLocal
+    // without the preference. One helper, always handed the preference.
+    test('no file re-derives a week start from DateTime.weekday', () {
+      const allowed = {
+        'lib/goals.dart': 'the helper itself',
+        'lib/recap.dart': 'ISO-8601 weeks for the year recap (web recap.ts)',
+        'lib/recurrence.dart': 'weekly-recurrence anchor (web recurrence.ts)',
+      };
+      final pattern = RegExp(
+          r'weekday - 1\)\)|weekday - DateTime\.monday|_mondayOf\(|_weekStartMidnight\(');
+      final offenders = Directory('lib')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart') && !f.path.contains('/gen/'))
+          .where((f) => !allowed.containsKey(f.path))
+          .where((f) => pattern.hasMatch(f.readAsStringSync()))
+          .map((f) => f.path)
+          .toList();
+      expect(offenders, isEmpty,
+          reason: 'take the week window from weekStartLocal(now, '
+              'weekStartDay: …) in goals.dart');
+    });
+
+    test('every weekStartLocal call on a Home surface passes the preference',
+        () {
+      for (final path in [
+        'lib/screens/dashboard_screen.dart',
+        'lib/mileage_trend.dart',
+        'lib/current_week.dart',
+      ]) {
+        final source = File(path).readAsStringSync();
+        final calls = RegExp(r'weekStartLocal\(([^)]*)\)').allMatches(source);
+        expect(calls, isNotEmpty, reason: '$path must read weekStartLocal');
+        for (final c in calls) {
+          expect(c.group(1), contains('weekStartDay:'),
+              reason: '$path: `${c.group(0)}` falls back to Monday');
+        }
+      }
     });
   });
 

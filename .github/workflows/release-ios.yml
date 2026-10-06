@@ -16,7 +16,7 @@ name: Release iOS
 #                                         App Store profile for com.threkir.app.RunActivity,
 #                                         the Live Activity widget extension the phone app embeds
 #   IOS_WATCH_COMPLICATION_PROVISIONING_PROFILE_BASE64
-#                                         App Store profile for com.threkir.app.watchapp.complication,
+#                                         App Store profile for com.threkir.app.watchapp.widget,
 #                                         the WidgetKit extension the watch app embeds
 #   APP_STORE_CONNECT_API_KEY_ID          App Store Connect API key id
 #   APP_STORE_CONNECT_API_ISSUER_ID       App Store Connect API issuer id

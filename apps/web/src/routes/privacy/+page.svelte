@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { OPERATOR, OPERATOR_FACTS_COMPLETE } from '$lib/legal/operator';
 
-	const lastUpdated = '2026-07-14';
+	const lastUpdated = '2026-10-05';
 </script>
 
 <svelte:head>
@@ -199,8 +199,9 @@
 			identifier, no body data. Skipping search and entering macros manually avoids it entirely.
 		</li>
 		<li>
-			<strong>Sentry</strong> — error monitoring. Receives a pseudonymous user id, URL paths, and
-			redacted error traces.
+			<strong>Sentry</strong> — error monitoring. Receives URL paths, device and app version,
+			and redacted error traces. We do not attach your account id; the mobile SDKs may tag a
+			report with a random per-install identifier that is not linked to your account.
 		</li>
 		<li>
 			<strong>RevenueCat + Stripe + Apple IAP + Google Play Billing</strong> — subscription
@@ -244,8 +245,11 @@
 		Edge Functions. Because it runs on the server it cannot consult your in-app telemetry
 		choice, so it operates on a <strong>legitimate-interest</strong> basis (Art 6(1)(f)) with
 		data minimisation: it sends no default personal identifiers and strips request bodies and
-		headers before transmission. Client-side error monitoring remains gated on your telemetry
-		consent.
+		headers before transmission. On the website, client-side error monitoring stays off until
+		you accept the consent banner. In the iPhone and Android apps it is on by default, on the same
+		legitimate-interest basis, and you can turn it off at any time under <strong>Settings →
+		Account → Send error reports</strong>. The Wear OS watch app sends crash reports with the
+		same minimisation and has no separate switch.
 	</p>
 	<p>
 		We give at least 30 days' notice before a new sub-processor goes live. The canonical

@@ -14,6 +14,8 @@
  * enforced web↔mobile parity list.
  */
 
+import { weekStartLocal } from './goals';
+
 export type WeekStart = 'monday' | 'sunday';
 
 /// The minimum an activity needs to expose: when it happened and how far it
@@ -52,17 +54,6 @@ export interface ConsistencyStats {
 /// reads variable. Documented threshold, pinned by a unit test.
 export const kSteadyCovThreshold = 0.4;
 
-/// Midnight (local) at the start of the calendar week containing `d`,
-/// honouring `weekStart`. Same offset math the dashboard's inline weekStart
-/// derivation and current_week.ts use.
-function weekStartMidnight(d: Date, weekStart: WeekStart): Date {
-	const ws = new Date(d);
-	const offset = weekStart === 'sunday' ? d.getDay() : (d.getDay() + 6) % 7;
-	ws.setDate(d.getDate() - offset);
-	ws.setHours(0, 0, 0, 0);
-	return ws;
-}
-
 /// Compute consistency over the last `windowWeeks` calendar weeks ending with
 /// the week containing `now`. Returns null when there isn't enough history to
 /// speak to consistency (< 2 active weeks) so the card self-hides — you can't
@@ -76,7 +67,7 @@ export function computeConsistency(
 ): ConsistencyStats | null {
 	if (windowWeeks < 1) return null;
 
-	const cur = weekStartMidnight(now, weekStart);
+	const cur = weekStartLocal(now, weekStart);
 	const windowStart = new Date(cur);
 	windowStart.setDate(cur.getDate() - (windowWeeks - 1) * 7);
 	windowStart.setHours(0, 0, 0, 0);
@@ -92,7 +83,7 @@ export function computeConsistency(
 		// Index by whole weeks between local week-start midnights. Both ends
 		// are local midnights, so Math.round absorbs the ±1h DST drift that
 		// would otherwise land a boundary run one week off.
-		const aws = weekStartMidnight(t, weekStart).getTime();
+		const aws = weekStartLocal(t, weekStart).getTime();
 		const idx = Math.round((aws - windowStartMs) / weekMs);
 		if (idx < 0 || idx >= windowWeeks) continue;
 		weekly[idx] += dist;

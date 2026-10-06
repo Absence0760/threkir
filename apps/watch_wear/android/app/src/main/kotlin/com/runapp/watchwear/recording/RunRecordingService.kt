@@ -99,6 +99,11 @@ class RunRecordingService : Service() {
     /// `RouteMath` helpers below skip when this is empty.
     private var routeWaypoints: List<com.runapp.watchwear.recording.RouteMath.LatLng> =
         emptyList()
+    /// The last route match and the run distance at that moment: the next fix
+    /// is searched for around it, so a loop's start is not read as its finish
+    /// and an out-and-back's return leg is not read as its outbound one.
+    private var routeMatchedAlongM: Double? = null
+    private var routeMatchedAtDistanceM = 0.0
     /// Downsampled rolling buffer of recent GPS points for the on-watch
     /// mini-map's "where I've been" overlay. Capped at
     /// `MAX_TRACK_OVERLAY_POINTS` — when we'd overflow, drop every
@@ -248,6 +253,8 @@ class RunRecordingService : Service() {
         lastAnnouncedSplit = 0
         lastPaceAlertAtMs = 0L
         routeWaypoints = parseRouteWaypoints(routeWaypointsJson)
+        routeMatchedAlongM = null
+        routeMatchedAtDistanceM = 0.0
         cues?.announceStart()
 
         val file = TrackWriter.fileFor(applicationContext, runId)
@@ -595,13 +602,20 @@ class RunRecordingService : Service() {
         val elapsedS = activeElapsedMs() / 1000.0
         val pace = if (newDistance >= 50.0 && elapsedS > 0) elapsedS / newDistance * 1000.0 else null
         val posLL = RouteMath.LatLng(p.lat, p.lng)
-        // One pass for both the off-route distance and the distance remaining —
-        // each used to walk every segment of the (un-downsampled) route per GPS
-        // fix and re-find the closest segment independently. routeProgress
-        // shares that search; on a 5k-point ultra route at ~1 Hz that halves the
-        // per-fix projection trig on the recording hot path.
-        val progress = if (routeWaypoints.isNotEmpty())
-            RouteMath.routeProgress(posLL, routeWaypoints) else null
+        val progress = if (routeWaypoints.isNotEmpty()) {
+            RouteMath.routeProgress(
+                posLL,
+                routeWaypoints,
+                previousAlongM = routeMatchedAlongM,
+                travelledM = newDistance - routeMatchedAtDistanceM,
+            )
+        } else {
+            null
+        }
+        if (progress != null) {
+            routeMatchedAlongM = progress.alongM
+            routeMatchedAtDistanceM = newDistance
+        }
         val offRoute = progress?.offRouteDistanceM
         val remaining = progress?.remainingM
         // Append to the rolling overlay buffer; halve density on

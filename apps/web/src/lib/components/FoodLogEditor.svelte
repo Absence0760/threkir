@@ -8,6 +8,7 @@
 	import { env } from '$env/dynamic/public';
 	import { trackDirty } from '$lib/core/form_dirty';
 	import UnsavedChangesGuard from './UnsavedChangesGuard.svelte';
+	import { noteModalityData } from '$lib/stores/modality_visibility.svelte';
 
 	// Fail-closed USDA gate: with PUBLIC_USDA_FDC_API_KEY unset the USDA source
 	// is simply not queried — Open Food Facts still works, no error, no broken
@@ -134,6 +135,7 @@
 				external_id: `${picked.source}:${picked.code}`,
 				started_at: startedAt(),
 			});
+			noteModalityData('nutrition');
 			showToast(m('nutrition.added'), 'success');
 			dirty.rebaseline();
 			oncreated();
@@ -162,6 +164,7 @@
 				cholesterol_mg: manualCholesterol,
 				started_at: startedAt(),
 			});
+			noteModalityData('nutrition');
 			showToast(m('nutrition.added'), 'success');
 			dirty.rebaseline();
 			oncreated();

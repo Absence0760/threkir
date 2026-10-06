@@ -4,6 +4,8 @@
 	import { onMount } from 'svelte';
 	import { fetchRunsForPeriodSummary, type PeriodSummaryRun } from '$lib/core/data';
 	import { auth } from '$lib/stores/auth.svelte';
+	import { effective, loadSettings, peekCachedSettings } from '$lib/settings/settings';
+	import type { LoadedSettings } from '$lib/settings/settings';
 	import { formatISO } from '$lib/training/training';
 	import { m } from '$lib/i18n/store.svelte';
 	import PeriodSummary from '$lib/components/PeriodSummary.svelte';
@@ -43,6 +45,7 @@
 	let runs = $state<PeriodSummaryRun[]>([]);
 	let loading = $state(true);
 	let loadFailed = $state(false);
+	let weekStartDay = $state<'monday' | 'sunday'>('monday');
 
 	let cameFromDashboard = $state(false);
 	afterNavigate(({ from }) => {
@@ -64,13 +67,26 @@
 		// would return [] and every period stat would render "—". Same
 		// pattern the dashboard / coach / plans routes use (auth_ready.ts).
 		await auth.ready();
+		const uid = auth.user?.id;
+		if (uid) applyWeekStart(peekCachedSettings(uid));
+		// The week this page shows must be the one the dashboard tile counted,
+		// so the preference is read alongside the runs. A settings blip leaves
+		// the cached (or Monday) week rather than failing the page.
+		const settings = uid ? loadSettings(uid).catch(() => null) : Promise.resolve(null);
 		try {
 			runs = await fetchRunsForPeriodSummary();
 		} catch (_) {
 			loadFailed = true;
 		}
+		const loaded = await settings;
+		if (loaded) applyWeekStart(loaded);
 		loading = false;
 	});
+
+	function applyWeekStart(s: LoadedSettings) {
+		const wsd = effective<string>(s, 'week_start_day');
+		if (wsd === 'sunday' || wsd === 'monday') weekStartDay = wsd;
+	}
 
 	function parsePeriodDate(raw: string): Date {
 		const parsed = new Date(raw);
@@ -112,6 +128,7 @@
 			{runs}
 			initialType={type}
 			{initialDate}
+			{weekStartDay}
 			onPeriodChange={handlePeriodChange}
 		/>
 	{/if}

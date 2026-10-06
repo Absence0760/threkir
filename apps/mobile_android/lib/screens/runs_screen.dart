@@ -78,9 +78,10 @@ class RunsScreen extends StatefulWidget {
   final List<SurfacePeer>? surfacePeers;
 
   /// When false the cloud slot (sync-unsynced badge / refresh / offline) is
-  /// suppressed. The Fitness hub's Runs sub-tab passes false so the sync
-  /// affordance lives only on the All tab — the two tabs sit side by side and
-  /// duplicating the cloud slot both clutters and overflows the Runs AppBar.
+  /// suppressed. The Fitness hub passes true only to whichever run list leads
+  /// its strip — History when it is there, Runs when it stands alone — since
+  /// the two tabs sit side by side and duplicating the cloud slot both
+  /// clutters and overflows the Runs AppBar.
   final bool showSyncActions;
 
   /// Static AppBar title. The Fitness hub's Runs sub-tab passes "Runs" so its
@@ -97,6 +98,12 @@ class RunsScreen extends StatefulWidget {
   /// other mount's add is modality-specific, so it keeps its FAB.
   final bool showAddFab;
 
+  /// Whether the shell's centre button starts a run on tap, in which case it
+  /// is captioned "Start run" rather than "Log" and the empty state has to
+  /// name it that way. The host knows, because it is the one that can see
+  /// whether lifts or meals exist; this screen's Runs-only mount cannot.
+  final bool centreStartsRun;
+
   const RunsScreen({
     super.key,
     this.apiClient,
@@ -111,6 +118,7 @@ class RunsScreen extends StatefulWidget {
     this.showSyncActions = true,
     this.titleText,
     this.showAddFab = true,
+    this.centreStartsRun = false,
   });
 
   @override
@@ -1037,7 +1045,9 @@ class _RunsScreenState extends State<RunsScreen>
     final kind = _timelineMode ? _kind : _HistoryKind.run;
     final (String label, String tooltip, VoidCallback onPressed) = switch (kind) {
       _HistoryKind.all => (l10n.logSheetTitle, l10n.historyLogTooltip, _openLogPicker),
-      _HistoryKind.run => (l10n.historyAddRun, l10n.historyAddRunTooltip, _openAddRun),
+      // "Past" because the shell's centre button, one row below, is the one
+      // that records: two "+" buttons both reading "run" was two guesses.
+      _HistoryKind.run => (l10n.historyAddPastRun, l10n.historyAddRunTooltip, _openAddRun),
       _HistoryKind.lift => (l10n.logLift, l10n.historyLogTooltip, _openAddLift),
       _HistoryKind.meal => (l10n.logFood, l10n.historyLogTooltip, _openAddMeal),
     };
@@ -1061,6 +1071,10 @@ class _RunsScreenState extends State<RunsScreen>
     final action = await showLogSheet(
       context: context,
       recent: logActionFromWire(widget.preferences.lastLogType),
+      hidden: hiddenLogActions(
+        gymShown: widget.preferences.gymShown(hasData: _hasLift),
+        nutritionShown: widget.preferences.nutritionShown(hasData: _hasMeal),
+      ),
     );
     if (action == null || !mounted) return;
     await widget.preferences.setLastLogType(action.wire);
@@ -1377,8 +1391,10 @@ class _RunsScreenState extends State<RunsScreen>
       return EmptyState(
         icon: Icons.directions_run,
         title: l10n.historyEmptyTitle,
-        body: l10n.historyEmptyBody,
-        ctaLabel: l10n.historyAddRun,
+        body: widget.centreStartsRun
+            ? l10n.historyEmptyBodyRunPrimary
+            : l10n.historyEmptyBody,
+        ctaLabel: l10n.historyAddPastRun,
         onCta: _openAddRun,
       );
     }
@@ -1489,6 +1505,7 @@ class _RunsScreenState extends State<RunsScreen>
               routeStore: widget.routeStore,
               preferences: widget.preferences,
               settingsSync: widget.settingsSync,
+              centreStartsRun: widget.centreStartsRun,
             ),
           ),
         );

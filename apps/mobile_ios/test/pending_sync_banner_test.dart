@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/local_run_store.dart';
 import '../lib/offline_sync_store.dart';
 import '../lib/widgets/pending_sync_banner.dart';
 
@@ -82,6 +83,26 @@ class _TestStore extends OfflineSyncStore<_TestEntry> {
   }
 }
 
+/// The run queue's two counts, without the disk: the banner reads nothing
+/// else from [LocalRunStore].
+class _RunQueue extends LocalRunStore {
+  int unsynced;
+  int parked;
+
+  _RunQueue({this.unsynced = 0, this.parked = 0});
+
+  @override
+  int get unsyncedCount => unsynced;
+
+  @override
+  int get blockedCount => parked;
+
+  void drain() {
+    unsynced = 0;
+    notifyListeners();
+  }
+}
+
 class _SignedOutApi extends ApiClient {
   @override
   String? get userId => null;
@@ -97,13 +118,21 @@ Widget _app({
   required bool isOnline,
   required List<OfflineSyncStore<SyncEntry>> stores,
   Locale? locale,
+  LocalRunStore? runStore,
+  Future<void> Function()? onRetryRuns,
 }) =>
     MaterialApp(
       locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
-        body: PendingSyncBanner(api: api, isOnline: isOnline, stores: stores),
+        body: PendingSyncBanner(
+          api: api,
+          isOnline: isOnline,
+          stores: stores,
+          runStore: runStore,
+          onRetryRuns: onRetryRuns,
+        ),
       ),
     );
 
@@ -228,5 +257,67 @@ void main() {
     expect(a.hasPending, isFalse);
     expect(b.hasPending, isFalse);
     expect(find.text('Retry'), findsNothing);
+  });
+
+  group('runs', () {
+    testWidgets('an unsynced run counts with the other pending rows, and Retry '
+        'hands it to the run drain', (tester) async {
+      final store = _TestStore()..seed('a', SyncState.pendingCreate);
+      final runs = _RunQueue(unsynced: 1);
+      var drains = 0;
+      await tester.pumpWidget(_app(
+        api: _SignedInApi(),
+        isOnline: true,
+        stores: [store],
+        runStore: runs,
+        onRetryRuns: () async {
+          drains++;
+          runs.drain();
+        },
+      ));
+      expect(find.text("2 changes haven't synced"), findsOneWidget);
+
+      await tester.tap(find.text('Retry'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(drains, 1);
+      expect(store.pushes, 1);
+      expect(find.text('Retry'), findsNothing);
+    });
+
+    testWidgets('a runner with nothing but an unsynced run still gets the '
+        'banner', (tester) async {
+      await tester.pumpWidget(_app(
+        api: _SignedInApi(),
+        isOnline: false,
+        stores: [_TestStore()],
+        runStore: _RunQueue(unsynced: 1),
+      ));
+      expect(
+        find.text('1 change saved on this device — will sync when online'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a parked run gets its own line and no Retry, since a retry '
+        'will not move it', (tester) async {
+      var drains = 0;
+      await tester.pumpWidget(_app(
+        api: _SignedInApi(),
+        isOnline: true,
+        stores: [_TestStore()],
+        runStore: _RunQueue(parked: 1),
+        onRetryRuns: () async => drains++,
+      ));
+      expect(
+        find.text("1 run can't be uploaded and won't be retried. Open it to "
+            'choose what to do.'),
+        findsOneWidget,
+      );
+      expect(find.byIcon(Icons.error_outline), findsOneWidget);
+      expect(find.text('Retry'), findsNothing);
+      expect(drains, 0);
+    });
   });
 }

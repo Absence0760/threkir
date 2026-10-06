@@ -22,12 +22,12 @@ test.describe('/onboarding design', () => {
 		await expect(page.locator('main#main-content')).toHaveCount(1);
 		await expect(page.locator('aside.auth-panel')).toBeVisible();
 
-		const progress = page.getByRole('progressbar', { name: 'Step 1 of 6' });
+		const progress = page.getByRole('progressbar', { name: 'Step 1 of 7' });
 		await expect(progress).toHaveAttribute('aria-valuenow', '1');
 		await expect(page.locator('.rail li.rail-now')).toHaveText(/Name/);
 
 		await page.getByRole('button', { name: 'Continue' }).click();
-		await expect(page.getByRole('progressbar', { name: 'Step 2 of 6' })).toHaveAttribute(
+		await expect(page.getByRole('progressbar', { name: 'Step 2 of 7' })).toHaveAttribute(
 			'aria-valuenow',
 			'2',
 		);
@@ -42,7 +42,7 @@ test.describe('/onboarding design', () => {
 		await page.setViewportSize({ width: 1440, height: 900 });
 		await page.goto('/onboarding');
 		await expect(page.getByRole('heading', { name: /What should we call you/i })).toBeVisible();
-		await expect(page.locator('.rail li')).toHaveCount(6);
+		await expect(page.locator('.rail li')).toHaveCount(7);
 		await expect(page.locator('.rail')).not.toContainText('Notifications');
 	});
 

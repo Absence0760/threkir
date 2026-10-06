@@ -16,6 +16,7 @@
 	import { goto } from '$app/navigation';
 	import { formatWeight } from '$lib/format/units.svelte';
 	import { m } from '$lib/i18n/store.svelte';
+	import { modalityVisible } from '$lib/stores/modality_visibility.svelte';
 	import type { MessageKey } from '$lib/i18n/messages';
 	import type { Snapshot } from './$types';
 
@@ -176,6 +177,16 @@
 	let logMenuTrigger = $state<HTMLButtonElement | null>(null);
 	let logMenuPanel = $state<HTMLDivElement | null>(null);
 
+	/// The Log actions on offer. Run always; Workout and Food only while Gym and
+	/// Nutrition are surfaced (show_gym / show_nutrition, decisions § 1739). The
+	/// Lifts and Meals chips stay data-gated regardless: they filter the record
+	/// of what was logged, which is not a way into either modality.
+	let logKinds = $derived<('run' | 'workout' | 'meal')[]>([
+		'run',
+		...(modalityVisible('gym') ? (['workout'] as const) : []),
+		...(modalityVisible('nutrition') ? (['meal'] as const) : []),
+	]);
+
 	/// Per-tab action descriptor for a single-modality view. `null` in the
 	/// All view, which uses the Log menu instead.
 	let singleAction = $derived.by<
@@ -289,7 +300,7 @@
 			focusLogItem(0);
 		}
 	}
-	/// Roving focus among the three menu items. Items stay tabbable too (Tab
+	/// Roving focus among the menu items. Items stay tabbable too (Tab
 	/// still works); this just adds the arrow/Home/End navigation the menu
 	/// role implies. Escape is handled by the document listener above.
 	function onLogMenuKeydown(e: KeyboardEvent) {
@@ -413,9 +424,18 @@
 						{m('history.viewAll')}
 						<span class="material-symbols" aria-hidden="true">chevron_right</span>
 					</a>
-					<button type="button" class="add-btn" onclick={() => openLog(singleAction.kind)}>
+					{#if logKinds.includes(singleAction.kind)}
+						<button type="button" class="add-btn" onclick={() => openLog(singleAction.kind)}>
+							<span class="material-symbols" aria-hidden="true">add</span>
+							{singleAction.label}
+						</button>
+					{/if}
+				{:else if logKinds.length === 1}
+					<!-- Gym and Nutrition both hidden: a one-item menu is a click
+					     that offers no choice, so Log run stands on its own. -->
+					<button type="button" class="add-btn" onclick={() => openLog('run')}>
 						<span class="material-symbols" aria-hidden="true">add</span>
-						{singleAction.label}
+						{m('history.logRun')}
 					</button>
 				{:else}
 					<div class="log-menu">
@@ -442,12 +462,16 @@
 								<button type="button" class="log-menu-item" role="menuitem" onclick={() => openLog('run')}>
 									<span class="material-symbols" aria-hidden="true">directions_run</span>{m('history.logRun')}
 								</button>
-								<button type="button" class="log-menu-item" role="menuitem" onclick={() => openLog('workout')}>
-									<span class="material-symbols" aria-hidden="true">fitness_center</span>{m('history.logWorkout')}
-								</button>
-								<button type="button" class="log-menu-item" role="menuitem" onclick={() => openLog('meal')}>
-									<span class="material-symbols" aria-hidden="true">restaurant</span>{m('history.logFood')}
-								</button>
+								{#if logKinds.includes('workout')}
+									<button type="button" class="log-menu-item" role="menuitem" onclick={() => openLog('workout')}>
+										<span class="material-symbols" aria-hidden="true">fitness_center</span>{m('history.logWorkout')}
+									</button>
+								{/if}
+								{#if logKinds.includes('meal')}
+									<button type="button" class="log-menu-item" role="menuitem" onclick={() => openLog('meal')}>
+										<span class="material-symbols" aria-hidden="true">restaurant</span>{m('history.logFood')}
+									</button>
+								{/if}
 							</div>
 						{/if}
 					</div>

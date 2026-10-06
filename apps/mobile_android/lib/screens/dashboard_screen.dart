@@ -48,6 +48,7 @@ import '../widgets/mileage_trend_card.dart';
 import '../widgets/nutrition_rings_card.dart';
 import '../widgets/readiness_card.dart';
 import '../widgets/recent_lifts_card.dart';
+import '../widgets/run_list_tile.dart';
 import '../widgets/this_week_strip.dart';
 import '../widgets/goal_editor_sheet.dart';
 import '../widgets/todays_workout_card.dart';
@@ -62,6 +63,7 @@ import 'period_summary_screen.dart';
 import 'plan_detail_screen.dart';
 import 'profile_screen.dart';
 import 'recap_screen.dart';
+import 'run_detail_screen.dart';
 
 const _kCardPadding = EdgeInsets.all(16);
 const _kSectionGap = SizedBox(height: 24);
@@ -108,6 +110,11 @@ class DashboardScreen extends StatefulWidget {
   /// dead, as with [onStartRun].
   final VoidCallback? onLogLift;
 
+  /// Pushes the unsynced runs now, from the pending-sync banner's Retry. The
+  /// host wires it to `SyncService` — the one run drain — rather than this
+  /// screen pushing runs itself. Null leaves runs counted but not retried.
+  final Future<void> Function()? onSyncRuns;
+
   const DashboardScreen({
     super.key,
     this.apiClient,
@@ -120,6 +127,7 @@ class DashboardScreen extends StatefulWidget {
     this.settingsSync,
     this.onStartRun,
     this.onLogLift,
+    this.onSyncRuns,
   });
 
   @override
@@ -399,6 +407,12 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
+  bool get _gymShown => widget.preferences
+      .gymShown(hasData: widget.gymStore.workouts.isNotEmpty);
+
+  bool get _nutritionShown => widget.preferences
+      .nutritionShown(hasData: widget.foodStore.rows.isNotEmpty);
+
   /// Today's most-recent gym workout, or null when none was logged today.
   StoredGymWorkout? get _todaysLift {
     final now = DateTime.now();
@@ -426,6 +440,60 @@ class _DashboardScreenState extends State<DashboardScreen>
       builder: (_) =>
           GymScreen(api: widget.apiClient, store: widget.gymStore),
     ));
+  }
+
+  /// The newest run on this device, or null when there is none.
+  static Run? _latestRun(List<Run> runs) {
+    Run? latest;
+    for (final r in runs) {
+      if (latest == null || r.startedAt.isAfter(latest.startedAt)) latest = r;
+    }
+    return latest;
+  }
+
+  /// "How did that go, and did it save?" is the first question after a run,
+  /// and answering it took Fitness, then Runs, then the row. The row here is
+  /// the Runs list's own, unsynced and parked markers included.
+  Widget _latestRunSection(Run run, DistanceUnit unit) {
+    final l10n = AppLocalizations.of(context);
+    return Column(
+      key: const Key('dashboardLatestRun'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // One row, so it names itself; _SectionHeader is kept for groups.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
+          child: ChartCardHeader(title: l10n.runLastRun),
+        ),
+        RunListTile.owned(
+          run: run,
+          unit: unit,
+          api: widget.apiClient,
+          isUnsynced: widget.runStore.unsyncedRuns.any((r) => r.id == run.id),
+          isBlocked: widget.runStore.blockedRuns.containsKey(run.id),
+          onTap: () => _openRun(run),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _openRun(Run run) async {
+    // The dashboard reads track-less summaries; detail needs the full run.
+    final full = await widget.runStore.runById(run.id) ?? run;
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => RunDetailScreen(
+          run: full,
+          runStore: widget.runStore,
+          routeStore: widget.routeStore,
+          preferences: widget.preferences,
+          apiClient: widget.apiClient,
+          settingsSync: widget.settingsSync,
+        ),
+      ),
+    );
   }
 
   void _openGymWorkout(String workoutId) {
@@ -492,7 +560,14 @@ class _DashboardScreenState extends State<DashboardScreen>
     final api = widget.apiClient;
     final training = widget.training;
     if (api == null || api.userId == null || training == null) return null;
+    final l10n = AppLocalizations.of(context);
     return _CoachEntryCard(
+      // Its placement is the Coach-prominence decision; its copy is not. A
+      // runner with Gym and Nutrition hidden was promised advice on two
+      // things they had just been told are hidden.
+      subtitle: _gymShown || _nutritionShown
+          ? l10n.homeAskCoachSubtitle
+          : l10n.homeAskCoachSubtitleRunOnly,
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute<void>(
@@ -833,6 +908,8 @@ class _DashboardScreenState extends State<DashboardScreen>
       api: api,
       isOnline: _isOnline,
       stores: [widget.gymStore, widget.foodStore],
+      runStore: widget.runStore,
+      onRetryRuns: widget.onSyncRuns,
     );
 
     // Web's `isNewAccount`: no runs all-time AND no gym sessions. A goal is
@@ -900,7 +977,14 @@ class _DashboardScreenState extends State<DashboardScreen>
               theme: theme,
               planAbove: heroWorkoutCard != null,
               onStartRun: widget.onStartRun,
-              onLogLift: widget.onLogLift,
+              // Shown to the account that has not said whether it lifts. Once
+              // it has — the setup wizard's track step, or Settings — the link
+              // would contradict the answer just given, and sits a mis-tap
+              // under Start a run (decisions § 1650: only a touched choice is
+              // an answer).
+              onLogLift: widget.preferences.showGym == null
+                  ? widget.onLogLift
+                  : null,
               onAddGoal: _newGoal,
               onImport: _openImport,
             ),
@@ -918,7 +1002,15 @@ class _DashboardScreenState extends State<DashboardScreen>
       // goals so a plan-runner sees what's next before scrolling. Hidden
       // when no active plan or no workout today.
       final workoutCard = heroWorkoutCard;
-      final goalsSection = _goalsSection(theme, unit, runs, goals, now);
+      final latestRun = _latestRun(runs);
+      final latestRunSection =
+          latestRun == null ? null : _latestRunSection(latestRun, unit);
+      // An empty-goals card earns the slot above the runner's own numbers on
+      // a new account, not on visit 200: once there is a run it shrinks to a
+      // one-line link under the period stats.
+      final goalsSection = goals.isEmpty && runs.isNotEmpty
+          ? null
+          : _goalsSection(theme, unit, runs, goals, now);
       // Compact 3-column stat strip — replaced the previous stacked
       // "This Week" / "This Month" / "All Time" cards (~480 px each +
       // section headers). Same data, same tap-through into PeriodSummary
@@ -965,25 +1057,43 @@ class _DashboardScreenState extends State<DashboardScreen>
       // in the app (#666 I8). Web renders it as a labelled link beside the
       // dashboard stat grid; this is that link, under the period cards it
       // summarises.
-      final recapLink = api == null
+      final recapButton = api == null
           ? null
-          : Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (_) => RecapScreen(
-                      runStore: widget.runStore,
-                      preferences: widget.preferences,
-                      api: api,
-                    ),
+          : TextButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => RecapScreen(
+                    runStore: widget.runStore,
+                    preferences: widget.preferences,
+                    api: api,
                   ),
                 ),
-                icon: const Icon(Icons.auto_awesome, size: 18),
-                label: Text(l10n.dashboardRecapTooltip),
               ),
+              icon: const Icon(Icons.auto_awesome, size: 18),
+              label: Text(l10n.dashboardRecapTooltip),
             );
+      final addGoalButton = goalsSection != null
+          ? null
+          : TextButton.icon(
+              key: const Key('dashboardAddGoalLink'),
+              onPressed: _newGoal,
+              icon: const Icon(Icons.flag_outlined, size: 18),
+              label: Text(l10n.dashboardSetGoal),
+            );
+      // A Wrap rather than a Row, so the two labels take a line each in a
+      // locale too long to fit both rather than overflowing.
+      final periodLinks = addGoalButton != null && recapButton != null
+          ? Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [addGoalButton, recapButton],
+            )
+          : addGoalButton != null
+              ? Align(alignment: Alignment.centerLeft, child: addGoalButton)
+              : recapButton != null
+                  ? Align(alignment: Alignment.centerRight, child: recapButton)
+                  : null;
       final thisWeekCard = Card(
         child: Padding(
           padding: _kCardPadding,
@@ -1012,13 +1122,19 @@ class _DashboardScreenState extends State<DashboardScreen>
           ),
         ),
       );
-      final mileageCard = MileageTrendCard(runs: runs, unit: unit, now: now);
+      final mileageCard = MileageTrendCard(
+        runs: runs,
+        unit: unit,
+        weekStartDay: _weekStartDay,
+        now: now,
+      );
       final heatmapCard = Card(
         child: Padding(
           padding: _kCardPadding,
           child: _RunHeatmap(
             runs: runs,
             weeks: 20,
+            weekStartDay: _weekStartDay,
             onWeekTap: (anchor) =>
                 _openPeriodSummary(PeriodType.week, anchor),
           ),
@@ -1084,8 +1200,9 @@ class _DashboardScreenState extends State<DashboardScreen>
       final loadChart = _buildTrainingLoadChart(runs, now, loadSeries);
       final gymNote = _hasRecentLift(now) ? _gymReadinessNote(theme, l10n) : null;
       // Recent lifts trend list — self-hides for a pure runner (empty
-      // gym store), mirrors web /dashboard's recent-lifts card.
-      final liftsCard = widget.gymStore.workouts.isNotEmpty
+      // gym store) or once Gym is switched off, mirrors web /dashboard's
+      // recent-lifts card.
+      final liftsCard = _gymShown && widget.gymStore.workouts.isNotEmpty
           ? RecentLiftsCard(
               workouts: widget.gymStore.workouts,
               onOpenWorkout: _openGymWorkout,
@@ -1100,6 +1217,18 @@ class _DashboardScreenState extends State<DashboardScreen>
         // alternate columns; internally self-hiding cards render
         // zero-height so a hidden card never reserves a grid cell.
         final modalityBody = _todayModalityBody();
+        final leadBlocks = [?workoutCard, ?latestRunSection, ?modalityBody];
+        final leadColumn = leadBlocks.isEmpty
+            ? null
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final (i, block) in leadBlocks.indexed) ...[
+                    if (i > 0) _kSectionGap,
+                    block,
+                  ],
+                ],
+              );
         final left = <Widget>[];
         final right = <Widget>[];
         var slot = 0;
@@ -1135,31 +1264,21 @@ class _DashboardScreenState extends State<DashboardScreen>
               actionToolbar,
               pendingBanner,
               if (coach != null) ...[coach, _kSectionGap],
-              if (workoutCard != null || modalityBody != null)
+              if (leadColumn != null && goalsSection != null)
                 Row(
                   key: const Key('dashboardExpandedLeadRow'),
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (workoutCard != null) workoutCard,
-                          if (workoutCard != null && modalityBody != null)
-                            _kSectionGap,
-                          if (modalityBody != null) modalityBody,
-                        ],
-                      ),
-                    ),
+                    Expanded(child: leadColumn),
                     const SizedBox(width: 16),
                     Expanded(child: goalsSection),
                   ],
                 )
-              else
-                goalsSection,
-              _kSectionGap,
+              else if (leadColumn ?? goalsSection case final lead?)
+                lead,
+              if (leadColumn != null || goalsSection != null) _kSectionGap,
               periodRow,
-              if (recapLink != null) recapLink,
+              if (periodLinks != null) periodLinks,
               _kSectionGap,
               thisWeekCard,
               _kSectionGap,
@@ -1193,15 +1312,15 @@ class _DashboardScreenState extends State<DashboardScreen>
             pendingBanner,
             if (coach != null) ...[coach, _kSectionGap],
             if (workoutCard != null) ...[workoutCard, _kSectionGap],
+            if (latestRunSection != null) ...[latestRunSection, _kSectionGap],
             // Today's logged non-run modalities (gym + nutrition).
             // Self-hiding: each card only renders when that modality was
             // logged today, so a pure runner sees nothing new here
             // (multi_modal.md § Home, anti-clutter checklist).
             ..._todayModalitySection(),
-            goalsSection,
-            _kSectionGap,
+            if (goalsSection != null) ...[goalsSection, _kSectionGap],
             periodRow,
-            if (recapLink != null) recapLink,
+            if (periodLinks != null) periodLinks,
             _kSectionGap,
             // Every card below names itself with a ChartCardHeader, so the
             // stack separates by the card grammar (§482's 4dp vertical margin
@@ -1240,12 +1359,13 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   /// The "today's logged modalities" block — gym + nutrition cards, each
-  /// self-hiding when that modality has no data today. Renders the two
-  /// 2-up on phones wide enough (multi_modal.md § Home density rules) when
-  /// both are present, full-width otherwise. Null when neither logged.
+  /// self-hiding when that modality has no data today or is switched off in
+  /// Settings. Renders the two 2-up on phones wide enough (multi_modal.md §
+  /// Home density rules) when both are present, full-width otherwise. Null
+  /// when neither has a card.
   Widget? _todayModalityBody() {
-    final lift = _todaysLift;
-    final food = _todaysFood;
+    final lift = _gymShown ? _todaysLift : null;
+    final food = _nutritionShown ? _todaysFood : const <FoodEntry>[];
     final hasFood = food.isNotEmpty;
     if (lift == null && !hasFood) return null;
 
@@ -1369,8 +1489,9 @@ class _DashboardScreenState extends State<DashboardScreen>
 /// banner that opens the AI coach in one tap (the coach has no bottom-nav
 /// slot under the Fitness-hub redesign).
 class _CoachEntryCard extends StatelessWidget {
+  final String subtitle;
   final VoidCallback onTap;
-  const _CoachEntryCard({required this.onTap});
+  const _CoachEntryCard({required this.subtitle, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1404,7 +1525,7 @@ class _CoachEntryCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        l10n.homeAskCoachSubtitle,
+                        subtitle,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onPrimaryContainer,
                         ),
@@ -2205,14 +2326,34 @@ DateTime heatmapWeekAnchor({
   return DateTime(gridStart.year, gridStart.month, gridStart.day + 7 * col);
 }
 
+/// First day of the heatmap's leftmost column: the start of the week
+/// containing [now] on the runner's [weekStartDay], [weeks] - 1 weeks back.
+/// Each column is then one of the weeks a tap opens in the week summary.
+DateTime heatmapGridStart(DateTime now, int weeks,
+    {required String weekStartDay}) {
+  final weekStart = weekStartLocal(now, weekStartDay: weekStartDay);
+  // Calendar days, not 24-hour blocks: the grid reaches ~5 months back, so a
+  // fixed-Duration step is guaranteed to cross a DST transition and land
+  // `gridStart` at 23:00 the previous day — shifting every column of the
+  // heatmap, and the week a tap resolves to, one day off the calendar.
+  return DateTime(
+      weekStart.year, weekStart.month, weekStart.day - 7 * (weeks - 1));
+}
+
 class _RunHeatmap extends StatelessWidget {
   final List<Run> runs;
   final int weeks;
+  final String weekStartDay;
 
   /// Tapping a week column opens that week's summary. Null leaves the
   /// heatmap a static read-only grid.
   final void Function(DateTime weekAnchor)? onWeekTap;
-  const _RunHeatmap({required this.runs, this.weeks = 20, this.onWeekTap});
+  const _RunHeatmap({
+    required this.runs,
+    required this.weekStartDay,
+    this.weeks = 20,
+    this.onWeekTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -2220,13 +2361,8 @@ class _RunHeatmap extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final weekStart = weekStartLocal(now);
-    // Calendar days, not 24-hour blocks: the grid reaches ~5 months back, so a
-    // fixed-Duration step is guaranteed to cross a DST transition and land
-    // `gridStart` at 23:00 the previous day — shifting every column of the
-    // heatmap, and the week a tap resolves to, one day off the calendar.
     final gridStart =
-        DateTime(weekStart.year, weekStart.month, weekStart.day - 7 * (weeks - 1));
+        heatmapGridStart(now, weeks, weekStartDay: weekStartDay);
 
     final counts = heatmapDayCounts(runs, gridStart);
 

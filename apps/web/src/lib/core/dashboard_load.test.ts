@@ -63,7 +63,6 @@ test('dashboard: the reads with no dependency all share one batch', () => {
 	for (const call of [
 		'fetchRunsForDashboard(',
 		'fetchRunAllTimeStats(',
-		'fetchWeeklyMileage(',
 		'fetchPersonalRecords(',
 		'fetchActivePlanOverview(',
 		'fetchNextRsvpedEvent(',
@@ -102,4 +101,24 @@ test('dashboard: the runs-dependent work stays downstream of the batch', () => {
 	assert.ok(nutrition > gymAssign, 'loadTodaysNutrition reads gymWorkouts — it must run after it');
 	assert.ok(nutrition > runsAssign, 'loadTodaysNutrition reads runs — it must run after it');
 	assert.ok(snapshot > runsAssign, 'the fitness snapshot is computed from runs');
+});
+
+test('dashboard: the weekly mileage chart is derived from the week_start_day it renders beside', () => {
+	// The chart used to be FETCHED in the opening batch with the page's
+	// `weekStartDay` as an argument. `weekStartDay` is filled by
+	// `applyDashboardSettings` from the settings read in that same batch, so
+	// the argument was always the 'monday' default: a Sunday-first runner's
+	// tile said 22.50 km this week and the chart beside it said 7.50 km. A
+	// derived chart re-buckets when the preference lands, and reads the same
+	// source-filtered runs the tile does.
+	assert.equal(count(/\bfetchWeeklyMileage\(/), 0, 'the weekly chart is not a separate read');
+	assert.match(
+		SRC,
+		/let weeklyMileage = \$derived\(\s*bucketWeeklyMileage\(filteredRuns, 12, [^,]+, weekStartDay, now\)/,
+	);
+	assert.match(
+		SRC,
+		/let weekStart = \$derived\(weekStartLocal\(now, weekStartDay\)\)/,
+		'the "This week" tile takes its window from the same helper',
+	);
 });

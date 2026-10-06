@@ -19,12 +19,17 @@ import '../preferences.dart';
 class MileageTrendCard extends StatefulWidget {
   final List<Run> runs;
   final DistanceUnit unit;
+
+  /// The runner's `week_start_day`. Required, not defaulted: a default is
+  /// how this card came to bucket Monday-first beside a Sunday-first tile.
+  final String weekStartDay;
   final DateTime now;
 
   const MileageTrendCard({
     super.key,
     required this.runs,
     required this.unit,
+    required this.weekStartDay,
     required this.now,
   });
 
@@ -50,6 +55,7 @@ class _MileageTrendCardState extends State<MileageTrendCard> {
       minBuckets: 3,
       padYearlyToMin: true,
       localeTag: localeToTag(Localizations.localeOf(context)),
+      weekStartDay: widget.weekStartDay,
     );
     if (periods.isEmpty) return const SizedBox.shrink();
 

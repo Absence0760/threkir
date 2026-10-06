@@ -36,8 +36,8 @@ void main() {
       expect(primaryGoalValues.length, 6);
     });
 
-    test('onboardingTotalSteps matches web (7)', () {
-      expect(onboardingTotalSteps, 7);
+    test('onboardingTotalSteps matches web (8)', () {
+      expect(onboardingTotalSteps, 8);
       // The constant is written out (a list length is not a constant
       // expression), so pin it against the list it describes.
       expect(setupWizardSteps.length, onboardingTotalSteps);
@@ -51,6 +51,7 @@ void main() {
         'about',
         'run-privacy',
         'notifications',
+        'track',
         'done',
       ]);
     });
@@ -68,8 +69,17 @@ void main() {
 
     test('visibleSetupWizardSteps walks every step when privacy is unanswered',
         () {
-      expect(visibleSetupWizardSteps(privacyAlreadyChosen: false),
-          setupWizardSteps);
+      final steps = visibleSetupWizardSteps(privacyAlreadyChosen: false);
+      expect(steps, setupWizardSteps);
+    });
+
+    test('the track step sits just before done', () {
+      for (final asked in [true, false]) {
+        final steps = visibleSetupWizardSteps(privacyAlreadyChosen: asked);
+        expect(steps.where((s) => s == setupWizardTrackStep), hasLength(1));
+        expect(steps[steps.length - 2], setupWizardTrackStep);
+        expect(steps.last, 'done');
+      }
     });
 
     test('planPresetForGoal maps distance goals 1:1 and seeds beginners into '

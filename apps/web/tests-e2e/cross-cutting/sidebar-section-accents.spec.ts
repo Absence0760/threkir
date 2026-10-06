@@ -45,6 +45,20 @@ async function tokens(page: Page, names: string[]): Promise<string[]> {
 	}, names);
 }
 
+/**
+ * Gym and Nutrition join the sidebar once the session's visibility read lands
+ * (decisions § 1739 amendment). USER_A's seed logs both, so both resolve shown
+ * and must be in the list before anything is measured; reading earlier would
+ * check five or six sections and call it seven.
+ */
+async function navSettled(page: Page): Promise<void> {
+	for (const href of ['/gym', '/nutrition']) {
+		await expect(page.locator(`nav.sidebar .nav-link[href="${href}"]`)).toBeVisible({
+			timeout: 15_000,
+		});
+	}
+}
+
 function glyphColours(page: Page): Promise<string[]> {
 	return page
 		.locator('nav.sidebar .nav-link .nav-icon')
@@ -62,6 +76,7 @@ test.describe('sidebar section accents', () => {
 			);
 			await page.goto('/dashboard');
 			await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+			await navSettled(page);
 
 			const links = page.locator('nav.sidebar .nav-link');
 			// The AI Coach row hides when the Coach is off, so the set is the
@@ -107,11 +122,27 @@ test.describe('sidebar section accents', () => {
 	test('the ink half flips with the theme while the accents stay put', async ({ page }) => {
 		await page.addInitScript(() => window.localStorage.setItem('run_app.theme', 'light'));
 		await page.goto('/dashboard');
+		await navSettled(page);
 		const light = await glyphColours(page);
 
-		await page.evaluate(() => {
+		// The glyph inherits its colour from .nav-icon-wrap, which transitions
+		// `color`, so a read straight after the flip returns the light value
+		// mid-transition. Wait for the sidebar's transitions to finish first.
+		await page.evaluate(async () => {
 			window.localStorage.setItem('run_app.theme', 'dark');
 			document.documentElement.dataset.theme = 'dark';
+			const nav = document.querySelector('nav.sidebar');
+			if (!nav) return;
+			for (const el of nav.querySelectorAll('.nav-icon')) void getComputedStyle(el).color;
+			// A transition that is cancelled rather than completed (the nav
+			// re-rendering mid-flip restarts it) rejects `finished` with an
+			// AbortError and is replaced by a new one, so settle every pass and
+			// look again until nothing is running.
+			for (let pass = 0; pass < 10; pass++) {
+				const running = nav.getAnimations({ subtree: true });
+				if (running.length === 0) break;
+				await Promise.allSettled(running.map((a) => a.finished));
+			}
 		});
 		const dark = await glyphColours(page);
 

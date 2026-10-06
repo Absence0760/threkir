@@ -698,7 +698,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get logA11yLabel => 'Log an activity';
 
   @override
+  String get navStartRun => 'Start run';
+
+  @override
+  String get logStartRunA11yLabel => 'Start a run';
+
+  @override
+  String get logModalityShownGym => 'Gym is now shown';
+
+  @override
+  String get logModalityShownNutrition => 'Nutrition is now shown';
+
+  @override
+  String get navRecording => 'Recording';
+
+  @override
+  String get navStop => 'Stop';
+
+  @override
+  String get logReturnToRunA11yLabel => 'Return to your run';
+
+  @override
   String get navFitness => 'Fitness';
+
+  @override
+  String get navTraining => 'Training';
 
   @override
   String get navYou => 'You';
@@ -750,6 +774,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Advice across your runs, lifts, and nutrition';
 
   @override
+  String get homeAskCoachSubtitleRunOnly =>
+      'Advice on your runs, training and recovery';
+
+  @override
   String get youProfileTitle => 'Your profile';
 
   @override
@@ -769,7 +797,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prefsKeepRunPrimarySubtitle =>
-      'Tap the centre button to start a run. Already on until you log a lift or a meal; long-press always opens the log menu';
+      'Tap the centre button to start a run. Already on while Gym and Nutrition are hidden; long-press always opens the log menu';
+
+  @override
+  String get prefsKeepRunPrimaryForcedSubtitle =>
+      'On while Gym and Nutrition are hidden. Show either one to choose';
+
+  @override
+  String get prefsSectionModalities => 'Gym & nutrition';
+
+  @override
+  String get prefsShowGym => 'Show Gym';
+
+  @override
+  String get prefsShowGymSubtitle =>
+      'Adds the Gym tab, Log lift and your lifts on Home';
+
+  @override
+  String get prefsShowNutrition => 'Show Nutrition';
+
+  @override
+  String get prefsShowNutritionSubtitle =>
+      'Adds the Nutrition tab, Log food and today\'s meals on Home';
 
   @override
   String get bodyMetricsTitle => 'Body metrics';
@@ -1484,6 +1533,19 @@ class AppLocalizationsEn extends AppLocalizations {
       'Choose how many push notifications you\'d like. You can fine-tune this later in Settings.';
 
   @override
+  String get setupTrackTitle => 'What do you want to track?';
+
+  @override
+  String get setupTrackHint =>
+      'Running is always on. Switch on Gym or Nutrition to add its tab and Log action. You can change this later in Settings.';
+
+  @override
+  String get setupTrackRunning => 'Running';
+
+  @override
+  String get setupTrackRunningAlwaysOn => 'Always on';
+
+  @override
   String get setupDoneTitle => 'You\'re all set';
 
   @override
@@ -1744,6 +1806,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runStopA11yHint => 'Ends the recording and saves the run';
+
+  @override
+  String get runHoldToStopRunA11yHint => 'Hold to stop the run';
 
   @override
   String get runHoldToStopHint => 'Hold to stop';
@@ -2181,6 +2246,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get historyAddRunTooltip => 'Add a run manually';
+
+  @override
+  String get historyAddPastRun => 'Add past run';
+
+  @override
+  String get historyEmptyBodyRunPrimary =>
+      'Tap Start run to record a run, or add one you have already finished';
 
   @override
   String get historyLogTooltip => 'Log a run, lift or meal';

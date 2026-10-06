@@ -14272,4 +14272,17 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get planDetailSectionShareHint =>
       'Club template and public plan library';
+
+  @override
+  String get confirmAgeHeading => 'One more step';
+
+  @override
+  String get confirmAgeLede =>
+      'Before you start, please confirm a couple of things. We do this once per account — it won\'t show again.';
+
+  @override
+  String get confirmAgeContinue => 'Continue';
+
+  @override
+  String get confirmAgeRecordError => 'Could not record consent.';
 }

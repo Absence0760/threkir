@@ -41,15 +41,6 @@ void main() {
   late SupabaseClient client;
   late ApiClient api;
 
-  // get_my_profile() `returns user_profiles`, so a missing row comes back
-  // as an all-null composite (id == null), not as SQL NULL.
-  Map<String, dynamic>? profileRow(dynamic res) {
-    final row = (res is List ? (res.isEmpty ? null : res.first) : res)
-        as Map<String, dynamic>?;
-    if (row == null || row['id'] == null) return null;
-    return row;
-  }
-
   setUpAll(() async {
     // Implicit flow: the default PKCE flow asserts on a missing
     // asyncStorage inside signUp under the plain test harness.
@@ -74,14 +65,14 @@ void main() {
 
   test('withdrawHealthDataConsent lands a row when no profile row exists',
       () async {
-    final before = profileRow(await client.rpc('get_my_profile'));
+    final before = ApiClient.profileRowFrom(await client.rpc('get_my_profile'));
     expect(before, isNull,
         reason: 'fresh user must have no client-provisioned profile row — '
             'the 0-row trigger this test exists for');
 
     await api.withdrawHealthDataConsent();
 
-    final after = profileRow(await client.rpc('get_my_profile'));
+    final after = ApiClient.profileRowFrom(await client.rpc('get_my_profile'));
     expect(after, isNotNull,
         reason: 'the RPC must land a row, not 0-row no-op');
     expect(after!['health_data_consent_at'], isNull);
@@ -98,14 +89,14 @@ void main() {
     await api.setMyHeightCm(181.5);
     await api.recordBodyWeightKg(72.5);
 
-    final granted = profileRow(await client.rpc('get_my_profile'))!;
+    final granted = ApiClient.profileRowFrom(await client.rpc('get_my_profile'))!;
     expect(granted['health_data_consent_at'], isNotNull);
     expect((granted['height_cm'] as num).toDouble(), closeTo(181.5, 0.01));
     expect(await api.fetchLatestBodyWeightKg(), closeTo(72.5, 0.01));
 
     await api.withdrawHealthDataConsent();
 
-    final withdrawn = profileRow(await client.rpc('get_my_profile'))!;
+    final withdrawn = ApiClient.profileRowFrom(await client.rpc('get_my_profile'))!;
     expect(withdrawn['health_data_consent_at'], isNull);
     expect(withdrawn['height_cm'], isNull);
     expect(await api.fetchLatestBodyWeightKg(), isNull,
@@ -120,7 +111,7 @@ void main() {
     // session it must complete without the old `uid == null → return`
     // path ever mattering.
     await api.withdrawAiDisclosureConsent();
-    final row = profileRow(await client.rpc('get_my_profile'))!;
+    final row = ApiClient.profileRowFrom(await client.rpc('get_my_profile'))!;
     expect(row['coach_consent_at'], isNull);
     expect(row['ai_disclosure_version'], isNull);
   });

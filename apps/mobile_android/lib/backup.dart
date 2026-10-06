@@ -121,7 +121,7 @@ class BackupService {
     onProgress?.call(const BackupProgress.stage('profile'));
     // Self-read via RPC — sensitive columns are column-level revoked from
     // direct SELECT (migration 20260707_001).
-    final profile = await client.rpc('get_my_profile');
+    final profile = ApiClient.profileRowFrom(await client.rpc('get_my_profile'));
     final userSettings = await client
         .from('user_settings')
         .select('prefs')
@@ -171,7 +171,7 @@ class BackupService {
       outputFile: outputFile,
       runsOut: runsOut,
       routesOut: routesOut,
-      profile: profile is Map ? Map<String, dynamic>.from(profile) : null,
+      profile: profile,
       settingsPrefs: settingsPrefs,
       userId: userId,
       exportedFrom: 'mobile_android',

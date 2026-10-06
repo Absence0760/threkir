@@ -236,16 +236,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
         throw Exception('Google sign-in did not return an ID token');
       }
 
-      await widget.apiClient.signInWithGoogleIdToken(idToken: idToken);
-      // OAuth-path consent stamp (audit/gdpr Critical). The pre-tap
-      // gate (_checkGates) confirmed the user's age + terms intent;
-      // record that server-side now the JWT is live. Idempotent —
-      // returning Google users are a no-op via first-stamp-wins.
-      try {
-        await widget.apiClient.confirmAgeAndTerms();
-      } catch (_) {
-        // Tolerated — next refresh retries; non-blocking for sign-in.
-      }
+      // The pre-tap gate (_checkGates) collected the age + terms
+      // affirmation, so the client stamps it as part of sign-in
+      // (audit/gdpr Critical). First-stamp-wins keeps a returning
+      // Google user's original timestamps.
+      await widget.apiClient.signInWithGoogleIdToken(
+        idToken: idToken,
+        affirmedAgeAndTerms: true,
+      );
       if (mounted) Navigator.pop(context, true);
     } on GoogleSignInException catch (e) {
       if (e.code != GoogleSignInExceptionCode.canceled) {
@@ -311,13 +309,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
           code: credential.authorizationCode,
           nativeFlow: appleUsesNativeFlow(),
         ),
+        affirmedAgeAndTerms: true,
       );
-      // OAuth-path consent stamp — mirrors the Google branch above.
-      try {
-        await widget.apiClient.confirmAgeAndTerms();
-      } catch (_) {
-        // Tolerated — next refresh retries.
-      }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       debugPrint('SignUpScreen._signInWithApple failed: $e');

@@ -23876,6 +23876,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Club template and public plan library'**
   String get planDetailSectionShareHint;
+
+  /// Consent gate (shown after sign-in when the account has no recorded age + terms confirmation): heading
+  ///
+  /// In en, this message translates to:
+  /// **'One more step'**
+  String get confirmAgeHeading;
+
+  /// Consent gate: explanation under the heading
+  ///
+  /// In en, this message translates to:
+  /// **'Before you start, please confirm a couple of things. We do this once per account — it won\'t show again.'**
+  String get confirmAgeLede;
+
+  /// Consent gate: button that records both confirmations
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get confirmAgeContinue;
+
+  /// Consent gate: error shown when recording the confirmations fails
+  ///
+  /// In en, this message translates to:
+  /// **'Could not record consent.'**
+  String get confirmAgeRecordError;
 }
 
 class _AppLocalizationsDelegate

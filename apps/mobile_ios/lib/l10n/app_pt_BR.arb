@@ -4167,5 +4167,9 @@
   "planDetailSectionWeeksTitle": "Semana a semana",
   "planDetailSectionWeeksHint": "Todas as {n} semanas, dia a dia",
   "planDetailSectionShareTitle": "Compartilhar e publicar",
-  "planDetailSectionShareHint": "Modelo do clube e biblioteca pública de planos"
+  "planDetailSectionShareHint": "Modelo do clube e biblioteca pública de planos",
+  "confirmAgeHeading": "Mais um passo",
+  "confirmAgeLede": "Antes de começar, confirme algumas coisas. Fazemos isso uma vez por conta — não vai aparecer de novo.",
+  "confirmAgeContinue": "Continuar",
+  "confirmAgeRecordError": "Não foi possível registrar o consentimento."
 }

@@ -342,33 +342,34 @@ class ApiClient {
     final ageIso = (ageConfirmedAt ?? DateTime.now().toUtc()).toIso8601String();
     final termsIso =
         (termsAcceptedAt ?? DateTime.now().toUtc()).toIso8601String();
-    final response = await _client.auth.signUp(
-      email: email,
-      password: password,
-      // Land the confirmation link back in the app via the custom-scheme
-      // deep link, not the project Site URL (which a mobile signup can't
-      // pass). Without this GoTrue falls back to the Site URL and the
-      // link opens a browser instead of returning to the app.
-      emailRedirectTo: kAuthDeepLinkRedirect,
-      data: {
-        'age_confirmed_at': ageIso,
-        'terms_accepted_at': termsIso,
-      },
-    );
-    // Server-side stamp on user_profiles. Fire-and-forget — when
-    // Supabase email-confirmation is enabled the JWT isn't live yet
-    // and the RPC will 401; the sign-in path after confirmation
-    // re-runs the stamp via confirmAgeAndTerms().
+    final settled = _beginAffirmedSignIn();
     try {
-      await _client.rpc('confirm_age_and_terms');
-    } catch (e) {
-      // Tolerated — sign-in path retries.
-      debugPrint('signUp: confirm_age_and_terms failed: ${safeErrorLabel(e)}');
+      final response = await _client.auth.signUp(
+        email: email,
+        password: password,
+        // Land the confirmation link back in the app via the custom-scheme
+        // deep link, not the project Site URL (which a mobile signup can't
+        // pass). Without this GoTrue falls back to the Site URL and the
+        // link opens a browser instead of returning to the app.
+        emailRedirectTo: kAuthDeepLinkRedirect,
+        data: {
+          'age_confirmed_at': ageIso,
+          'terms_accepted_at': termsIso,
+        },
+      );
+      // Server-side stamp on user_profiles. When Supabase email
+      // confirmation is on there is no session yet and the RPC fails; the
+      // account then meets the in-app consent gate on its first sign-in
+      // (HomeScreen), which re-asks rather than stamping an affirmation
+      // this device can no longer vouch for.
+      if (response.session != null) await _stampAffirmedConsent('signUp');
+      return (
+        userId: response.user!.id,
+        needsEmailConfirmation: response.session == null,
+      );
+    } finally {
+      settled.complete();
     }
-    return (
-      userId: response.user!.id,
-      needsEmailConfirmation: response.session == null,
-    );
   }
 
   /// Re-send the signup confirmation email for an unconfirmed address.
@@ -386,10 +387,9 @@ class ApiClient {
   }
 
   /// Stamps `age_confirmed_at` + `terms_accepted_at` on the caller's
-  /// user_profiles row. Idempotent — existing timestamps are
-  /// preserved (first-stamp wins). Call this on every post-OAuth
-  /// session refresh whose profile still has either column null,
-  /// once the user has been re-prompted.
+  /// user_profiles row, creating the row if it is missing. Idempotent —
+  /// existing timestamps are preserved (first-stamp wins). Call it only
+  /// once the user has affirmed both in this app.
   Future<void> confirmAgeAndTerms() async {
     await _client.rpc('confirm_age_and_terms');
   }
@@ -416,16 +416,28 @@ class ApiClient {
   /// See `mobile_android/lib/screens/sign_in_screen.dart` for the caller
   /// and `apps/mobile_android/local_testing.md` for Google Cloud Console +
   /// Supabase dashboard setup instructions.
+  ///
+  /// [affirmedAgeAndTerms] is true when the calling screen collected the
+  /// age + terms affirmation before the tap (the sign-up screen); the
+  /// stamp then lands before [consentStampSettled] resolves, so the
+  /// consent gate never re-asks someone who just answered.
   Future<String> signInWithGoogleIdToken({
     required String idToken,
     String? accessToken,
+    bool affirmedAgeAndTerms = false,
   }) async {
-    final response = await _client.auth.signInWithIdToken(
-      provider: OAuthProvider.google,
-      idToken: idToken,
-      accessToken: accessToken,
-    );
-    return response.user!.id;
+    final settled = affirmedAgeAndTerms ? _beginAffirmedSignIn() : null;
+    try {
+      final response = await _client.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: idToken,
+        accessToken: accessToken,
+      );
+      if (settled != null) await _stampAffirmedConsent('google');
+      return response.user!.id;
+    } finally {
+      settled?.complete();
+    }
   }
 
   /// Exchange an Apple ID token (obtained by the host app via the native
@@ -440,21 +452,52 @@ class ApiClient {
   /// [appleCode] is the credential's one-time authorization code and whether
   /// the native flow issued it (iOS) or the Services-ID web flow (Android).
   /// It is handed on without being awaited: sign-in is done either way.
+  /// [affirmedAgeAndTerms] as for [signInWithGoogleIdToken].
   Future<String> signInWithAppleIdToken({
     required String idToken,
     ({String code, bool nativeFlow})? appleCode,
+    bool affirmedAgeAndTerms = false,
   }) async {
-    final response = await _client.auth.signInWithIdToken(
-      provider: OAuthProvider.apple,
-      idToken: idToken,
-    );
-    if (appleCode != null && appleCode.code.isNotEmpty) {
-      unawaited(keepAppleRevocationCredential(
-        appleCode.code,
-        nativeFlow: appleCode.nativeFlow,
-      ));
+    final settled = affirmedAgeAndTerms ? _beginAffirmedSignIn() : null;
+    try {
+      final response = await _client.auth.signInWithIdToken(
+        provider: OAuthProvider.apple,
+        idToken: idToken,
+      );
+      if (appleCode != null && appleCode.code.isNotEmpty) {
+        unawaited(keepAppleRevocationCredential(
+          appleCode.code,
+          nativeFlow: appleCode.nativeFlow,
+        ));
+      }
+      if (settled != null) await _stampAffirmedConsent('apple');
+      return response.user!.id;
+    } finally {
+      settled?.complete();
     }
-    return response.user!.id;
+  }
+
+  Completer<void>? _affirmedSignIn;
+
+  /// Resolves once any in-flight sign-in that carried an in-app age +
+  /// terms affirmation has finished trying to stamp it. The auth-change
+  /// event fires inside the sign-in call, before the stamp can run, so a
+  /// consent gate listening for that event awaits this first — otherwise
+  /// it reads the profile in the gap and re-asks someone who just ticked
+  /// both boxes.
+  Future<void> get consentStampSettled =>
+      _affirmedSignIn?.future ?? Future<void>.value();
+
+  Completer<void> _beginAffirmedSignIn() => _affirmedSignIn = Completer<void>();
+
+  /// A failed stamp is not fatal to sign-in: the account is left
+  /// unstamped, and the consent gate asks again.
+  Future<void> _stampAffirmedConsent(String path) async {
+    try {
+      await confirmAgeAndTerms();
+    } catch (e) {
+      debugPrint('$path: confirm_age_and_terms failed: ${safeErrorLabel(e)}');
+    }
   }
 
   /// Hands Apple's one-time authorization code to `apple-token-exchange`,
@@ -509,8 +552,7 @@ class ApiClient {
     // Use the SECURITY DEFINER read so the column-revoked fields
     // (`subscription_tier`, `subscription_at`, `parkrun_number`) don't
     // make the SELECT silently return null when the row exists.
-    final existing = await _client.rpc('get_my_profile');
-    if (existing != null) return;
+    if (profileRowFrom(await _client.rpc('get_my_profile')) != null) return;
     await _client.from('user_profiles').upsert(
       buildDefaultProfileRow(viewerId),
       onConflict: 'id',
@@ -2928,9 +2970,7 @@ class ApiClient {
   /// so the read it replaced could only ever report "no consent".
   Future<Map<String, dynamic>?> fetchAiDisclosure() async {
     if (_client.auth.currentUser?.id == null) return null;
-    final res = await _client.rpc('get_my_profile');
-    final row = (res is List ? (res.isEmpty ? null : res.first) : res)
-        as Map<String, dynamic>?;
+    final row = profileRowFrom(await _client.rpc('get_my_profile'));
     if (row == null) return null;
     return {
       'ai_disclosure_version': row['ai_disclosure_version'],
@@ -2991,13 +3031,16 @@ class ApiClient {
   /// the `get_my_profile()` SECURITY DEFINER RPC because those columns
   /// are revoked from direct SELECT (migration 20260707_001).
   Future<UserProfileRow?> fetchMyProfile() async {
-    final result = await _client.rpc('get_my_profile');
-    if (result == null) return null;
-    if (result is List) {
-      if (result.isEmpty) return null;
-      return UserProfileRow.fromJson(result.first as Map<String, dynamic>);
-    }
-    return UserProfileRow.fromJson(result as Map<String, dynamic>);
+    final row = profileRowFrom(await _client.rpc('get_my_profile'));
+    return row == null ? null : UserProfileRow.fromJson(row);
+  }
+
+  /// The caller's row out of a `get_my_profile()` response, or null when
+  /// they have none. The RPC is `returns setof user_profiles`, so the
+  /// response is a zero- or one-element list (migration 20270715000001).
+  static Map<String, dynamic>? profileRowFrom(Object? response) {
+    final rows = response as List;
+    return rows.isEmpty ? null : rows.first as Map<String, dynamic>;
   }
 
   /// Set (or clear, when blank) the signed-in user's display name on

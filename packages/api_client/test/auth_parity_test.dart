@@ -59,6 +59,23 @@ void main() {
     });
   });
 
+  group('ApiClient.profileRowFrom — get_my_profile() is setof (#1065)', () {
+    test('no profile row → null, so the first-sign-in bootstrap runs', () {
+      expect(ApiClient.profileRowFrom(<dynamic>[]), isNull);
+    });
+
+    test('one row → that row', () {
+      final row = {'id': 'u1', 'display_name': 'Runner'};
+      expect(ApiClient.profileRowFrom([row]), same(row));
+    });
+  });
+
+  group('ApiClient.consentStampSettled', () {
+    test('resolves at once when no affirmed sign-in is in flight', () async {
+      await expectLater(ApiClient().consentStampSettled, completes);
+    });
+  });
+
   group('Apple ID token sign-in — method exists with the expected '
       'signature (symmetric counterpart to Google)', () {
     test('signInWithAppleIdToken is reachable on the ApiClient surface',

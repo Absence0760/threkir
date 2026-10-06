@@ -39,6 +39,7 @@ import '../widgets/top_banner.dart';
 import 'challenges_screen.dart';
 import 'club_detail_screen.dart';
 import 'clubs_screen.dart';
+import 'confirm_age_screen.dart';
 import 'dashboard_screen.dart';
 import 'event_detail_screen.dart';
 import 'fitness_hub_screen.dart';
@@ -260,25 +261,25 @@ class _HomeScreenState extends State<HomeScreen>
         _goToPage(_pageRun);
       });
     }
-    // Post-signup setup-wizard gate (mobile twin of web's
-    // `/onboarding` redirect). A signed-in user whose
-    // `user_profiles.onboarded_at` is still null is a fresh signup that
-    // hasn't seen the wizard yet — push it once, over the dashboard, so
-    // the same fields web collects get set. Skipped offline / signed out
-    // (the fetch returns null and we never push). Fires after the first
-    // frame so the dashboard is mounted underneath.
+    // Post-sign-in gates (mobile twin of web's root-layout consent and
+    // `/onboarding` redirects): the GDPR Art 8 consent screen when the
+    // profile records no age + terms confirmation, then the setup wizard
+    // when `user_profiles.onboarded_at` is still null. Skipped offline /
+    // signed out (the profile read fails and nothing is pushed). Fires
+    // after the first frame so the dashboard is mounted underneath.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _maybeShowSetupWizard();
+      _runSignInGates();
     });
   }
 
   bool _setupWizardShown = false;
+  bool _consentGateOpen = false;
 
   @override
   ApiClient? get authApi => widget.apiClient;
 
-  /// The post-frame wizard gate in initState only covers a session that
+  /// The post-frame gates in initState only cover a session that
   /// was already signed in at launch. The normal signup flow — launch
   /// signed out, create the account from Settings — and a fresh account
   /// signing in over a previous session both arrive here instead, so the
@@ -287,27 +288,50 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void onAuthUserChanged(String? userId) {
     _setupWizardShown = false;
-    if (userId != null) _maybeShowSetupWizard();
+    if (userId != null) _runSignInGates();
   }
 
-  Future<void> _maybeShowSetupWizard() async {
+  Future<void> _runSignInGates() async {
     final api = widget.apiClient;
     if (api == null || api.userId == null) return;
-    if (_setupWizardShown) return;
-    if (await deferredOnboardingStampHandled(api, widget.preferences)) {
-      return;
-    }
+    if (_setupWizardShown || _consentGateOpen) return;
+    // A sign-up that collected the affirmation in-app is still stamping
+    // it; reading before that lands would re-ask.
+    await api.consentStampSettled;
+    if (!mounted) return;
     cm.UserProfileRow? profile;
     try {
       profile = await api.fetchMyProfile();
     } catch (e) {
-      debugPrint('setup-wizard gate: fetchMyProfile failed: $e');
+      debugPrint('sign-in gates: fetchMyProfile failed: $e');
       return;
     }
     if (!mounted) return;
-    // Only a fresh signup with a materialised row but no onboarded_at
-    // stamp gets the wizard. A null profile (offline / RLS) is left alone
-    // — better to skip than to block a signed-in user behind a wizard we
+    if (!consentRecordedOn(profile)) {
+      _consentGateOpen = true;
+      final confirmed = await Navigator.of(context).push<bool>(
+        MaterialPageRoute<bool>(
+          fullscreenDialog: true,
+          builder: (_) => ConfirmAgeScreen(apiClient: api),
+        ),
+      );
+      _consentGateOpen = false;
+      if (!mounted || confirmed != true) return;
+      try {
+        profile = await api.fetchMyProfile();
+      } catch (e) {
+        debugPrint('sign-in gates: fetchMyProfile after consent failed: $e');
+        return;
+      }
+      if (!mounted) return;
+    }
+    if (await deferredOnboardingStampHandled(api, widget.preferences)) {
+      return;
+    }
+    if (!mounted) return;
+    // Only an account with a materialised row but no onboarded_at stamp
+    // gets the wizard. A row that still isn't there is left alone —
+    // better to skip than to block a signed-in user behind a wizard we
     // can't persist.
     if (profile == null || profile.onboardedAt != null) return;
     _setupWizardShown = true;

@@ -4167,5 +4167,9 @@
   "planDetailSectionWeeksTitle": "Woche für Woche",
   "planDetailSectionWeeksHint": "Alle {n} Wochen, Tag für Tag",
   "planDetailSectionShareTitle": "Teilen & veröffentlichen",
-  "planDetailSectionShareHint": "Vereinsvorlage und öffentliche Planbibliothek"
+  "planDetailSectionShareHint": "Vereinsvorlage und öffentliche Planbibliothek",
+  "confirmAgeHeading": "Nur noch ein Schritt",
+  "confirmAgeLede": "Bevor du loslegst, bestätige bitte ein paar Dinge. Das machen wir nur einmal pro Konto – es wird nicht erneut angezeigt.",
+  "confirmAgeContinue": "Weiter",
+  "confirmAgeRecordError": "Einwilligung konnte nicht gespeichert werden."
 }

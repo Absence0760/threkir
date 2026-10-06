@@ -41,11 +41,20 @@ export function strayConfirmationTarget(
 
 export type ConsentGateOutcome = 'ok' | 'needs-consent';
 
+/// Whether a `get_my_profile()` row records BOTH the Art 8 age
+/// affirmation and terms acceptance. A missing row is "not recorded".
+export function consentRecorded(
+	row: { age_confirmed_at?: string | null; terms_accepted_at?: string | null } | null | undefined,
+): boolean {
+	return Boolean(row?.age_confirmed_at && row?.terms_accepted_at);
+}
+
 /// Verifies the caller's profile actually carries BOTH consent
 /// timestamps. Fail-closed on every ambiguity — a missing row, a null
-/// stamp, a failed read, a thrown error — because the next session
-/// refresh does not repeat the check, so a transient failure here would
-/// otherwise hand out the app to an account with no recorded consent.
+/// stamp, a failed read, a thrown error. The root layout re-checks the
+/// same stamps on every hydration (`auth.user.consent_recorded`), so a
+/// miss here is caught on the next load too; this check exists so the
+/// sign-in hop lands on the gate directly rather than flashing the app.
 /// `confirm_age_and_terms()` is idempotent, so an already-confirmed user
 /// costs at most one extra click.
 export async function verifyConsentStamped(
@@ -53,10 +62,11 @@ export async function verifyConsentStamped(
 ): Promise<ConsentGateOutcome> {
 	try {
 		const { data } = await readProfile();
-		const row = data as
-			| { age_confirmed_at: string | null; terms_accepted_at: string | null }
-			| null;
-		return row?.age_confirmed_at && row?.terms_accepted_at ? 'ok' : 'needs-consent';
+		return consentRecorded(
+			data as { age_confirmed_at: string | null; terms_accepted_at: string | null } | null,
+		)
+			? 'ok'
+			: 'needs-consent';
 	} catch (_) {
 		return 'needs-consent';
 	}

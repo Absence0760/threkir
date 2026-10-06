@@ -78,7 +78,7 @@
 		// CLOSED — otherwise the consent + demographics fields silently render
 		// as unticked/blank defaults, which an explicit Save would then
 		// round-trip back and clear the runner's real saved values.
-		const { data: prof, error: profErr } = await supabase.rpc('get_my_profile', undefined, { get: true });
+		const { data: prof, error: profErr } = await supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle();
 		if (profErr) throw profErr;
 		if (prof) {
 			gender = prof.gender === 'male' || prof.gender === 'female' ? prof.gender : '';

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+	consentRecorded,
 	emailOtpLink,
 	strayConfirmationTarget,
 	verifyConsentStamped,
@@ -112,6 +113,25 @@ test('a failed read fails CLOSED, never open', async () => {
 		}),
 		'needs-consent',
 	);
+});
+
+// --- consentRecorded --------------------------------------------------
+
+test('consentRecorded: both stamps → true', () => {
+	assert.equal(
+		consentRecorded({ age_confirmed_at: '2026-10-06T00:00:00Z', terms_accepted_at: '2026-10-06T00:00:00Z' }),
+		true,
+	);
+});
+
+test('consentRecorded: either stamp missing → false', () => {
+	assert.equal(consentRecorded({ age_confirmed_at: '2026-10-06T00:00:00Z', terms_accepted_at: null }), false);
+	assert.equal(consentRecorded({ age_confirmed_at: null, terms_accepted_at: '2026-10-06T00:00:00Z' }), false);
+});
+
+test('consentRecorded: no profile row → false', () => {
+	assert.equal(consentRecorded(null), false);
+	assert.equal(consentRecorded(undefined), false);
 });
 
 // --- emailOtpLink -------------------------------------------------------

@@ -102,43 +102,43 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir liest Workout-Zusammenfassungen aus Apple Health, damit Läufe, die du auf der Apple Watch, in Nike Run Club, Strava und anderen Apps aufgezeichnet hast, in deinen Verlauf importiert werden können."
+            "value" : "Threkir liest Workouts, Distanz, Herzfrequenz und Körpergewicht aus Apple Health, damit Läufe aus anderen Apps in deinen Verlauf importiert werden können und die Kalorienschätzung dein tatsächliches Gewicht verwendet."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir reads workout summaries from Apple Health so runs you've recorded on Apple Watch, Nike Run Club, Strava, and other apps can be imported into your history."
+            "value" : "Threkir reads workouts, distance, heart rate and body weight from Apple Health so runs you've recorded in other apps can be imported into your history and your calorie estimate uses your real weight."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir lee los resúmenes de entrenamiento de Apple Salud para que las carreras que has registrado en Apple Watch, Nike Run Club, Strava y otras apps puedan importarse a tu historial."
+            "value" : "Threkir lee entrenamientos, distancia, frecuencia cardíaca y peso corporal de Apple Salud para importar a tu historial las carreras registradas en otras apps y para que la estimación de calorías use tu peso real."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir lit les résumés de séances dans Apple Santé pour que les courses enregistrées sur Apple Watch, Nike Run Club, Strava et d’autres apps puissent être importées dans votre historique."
+            "value" : "Threkir lit vos séances, la distance, la fréquence cardiaque et le poids corporel dans Apple Santé afin d’importer dans votre historique les courses enregistrées dans d’autres apps et de baser l’estimation des calories sur votre poids réel."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Threkir は Apple Health からワークアウトの概要を読み込み、Apple Watch、Nike Run Club、Strava などのアプリで記録したランを履歴に取り込めるようにします。"
+            "value" : "Threkir は Apple Health からワークアウト、距離、心拍数、体重を読み取り、他のアプリで記録したランを履歴に取り込み、実際の体重で消費カロリーを推定します。"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O Threkir lê resumos de treino do Apple Saúde para que as corridas gravadas no Apple Watch, Nike Run Club, Strava e outros apps possam ser importadas para o seu histórico."
+            "value" : "O Threkir lê treinos, distância, frequência cardíaca e peso corporal do Apple Saúde para importar para o seu histórico as corridas registradas em outros apps e usar o seu peso real na estimativa de calorias."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O Threkir lê resumos de treino do Apple Saúde para que as corridas registadas no Apple Watch, Nike Run Club, Strava e noutras apps possam ser importadas para o seu histórico."
+            "value" : "O Threkir lê treinos, distância, frequência cardíaca e peso corporal do Apple Saúde para importar para o seu histórico as corridas registadas noutras apps e usar o seu peso real na estimativa de calorias."
           }
         }
       }

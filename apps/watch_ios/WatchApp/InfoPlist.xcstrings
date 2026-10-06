@@ -5,13 +5,13 @@
     "NSHealthShareUsageDescription" : {
       "comment" : "Purpose string for the HealthKit read prompt raised by HealthKitManager.requestAuthorization(). Shown on the wrist before the first workout session.",
       "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Threkir benötigt Zugriff auf deine Gesundheitsdaten, um Workout-Werte wie Herzfrequenz und verbrannte Kalorien während deiner Läufe aufzuzeichnen." } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Threkir needs access to your health data to record workout metrics like heart rate and calories burned during your runs." } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Threkir necesita acceder a tus datos de salud para registrar métricas del entrenamiento, como la frecuencia cardíaca y las calorías quemadas, durante tus carreras." } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Threkir a besoin d’accéder à vos données de santé pour enregistrer les mesures de séance comme la fréquence cardiaque et les calories brûlées pendant vos courses." } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Threkir は、ラン中の心拍数や消費カロリーなどのワークアウト指標を記録するために健康データへのアクセスが必要です。" } },
-        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir precisa de acesso aos seus dados de saúde para registrar métricas do treino, como frequência cardíaca e calorias queimadas, durante suas corridas." } },
-        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir precisa de aceder aos seus dados de saúde para registar métricas do treino, como a frequência cardíaca e as calorias queimadas, durante as suas corridas." } }
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Threkir liest während eines Laufs deine Herzfrequenz, um sie live anzuzeigen und mit dem Workout zu speichern." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Threkir reads your heart rate during a run to show it live and save it with the workout." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Threkir lee tu frecuencia cardíaca durante la carrera para mostrarla en directo y guardarla con el entrenamiento." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Threkir lit votre fréquence cardiaque pendant une course pour l’afficher en direct et l’enregistrer avec la séance." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Threkir はラン中の心拍数を読み取り、リアルタイムで表示してワークアウトとともに保存します。" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir lê sua frequência cardíaca durante a corrida para mostrá-la ao vivo e salvá-la com o treino." } },
+        "pt-PT" : { "stringUnit" : { "state" : "translated", "value" : "O Threkir lê a sua frequência cardíaca durante a corrida para a mostrar em direto e guardá-la com o treino." } }
       }
     },
     "NSHealthUpdateUsageDescription" : {

@@ -35,7 +35,7 @@
 	<key>SupabaseAnonKey</key>
 	<string>$(SUPABASE_ANON_KEY)</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Threkir needs access to your health data to record workout metrics like heart rate and calories burned during your runs.</string>
+	<string>Threkir reads your heart rate during a run to show it live and save it with the workout.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Threkir needs to save workout data to Health so your runs are tracked alongside your other fitness activities.</string>
 	<key>NSMotionUsageDescription</key>

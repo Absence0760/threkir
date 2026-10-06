@@ -554,9 +554,11 @@ void main() {
         await tester.tap(find.byType(Checkbox).at(1));
         await tester.pump();
         await tester.tap(confirm);
-        await tester.pump();
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 400));
+        // The gate's reverse transition needs a frame past its end to drop
+        // the route, and the wizard push that follows needs its own frames.
+        for (var i = 0; i < 8; i++) {
+          await tester.pump(const Duration(milliseconds: 200));
+        }
 
         expect(api.confirmCalls, 1);
         expect(find.byType(ConfirmAgeScreen), findsNothing);

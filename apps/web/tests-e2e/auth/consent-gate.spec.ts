@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 
+import { readRow } from '../fixtures/db-read';
 import { signIn } from '../fixtures/helpers';
 import { getAdminClient } from '../fixtures/local-supabase';
 
@@ -38,14 +39,18 @@ test.describe('Consent gate', () => {
 			await signIn(page, { email, password, id: userId, tier: 'free', storageStatePath: '' });
 			await page.waitForURL('**/auth/confirm-age');
 
-			const { data: bootstrapped } = await admin
-				.from('user_profiles')
-				.select('id, age_confirmed_at, terms_accepted_at')
-				.eq('id', userId)
-				.maybeSingle();
-			expect(bootstrapped, 'the auth store must create the missing profile row').not.toBeNull();
-			expect(bootstrapped?.age_confirmed_at).toBeNull();
-			expect(bootstrapped?.terms_accepted_at).toBeNull();
+			// readRow throws when the row is absent: the auth store must have
+			// created it.
+			const bootstrapped = await readRow(
+				'bootstrapped user_profiles row',
+				admin
+					.from('user_profiles')
+					.select('id, age_confirmed_at, terms_accepted_at')
+					.eq('id', userId)
+					.single()
+			);
+			expect(bootstrapped.age_confirmed_at).toBeNull();
+			expect(bootstrapped.terms_accepted_at).toBeNull();
 
 			// A feature surface bounces back to the gate...
 			await page.goto('/dashboard');
@@ -66,13 +71,16 @@ test.describe('Consent gate', () => {
 			// The row has no onboarded_at, so the next gate in line takes over.
 			await page.waitForURL('**/onboarding');
 
-			const { data: stamped } = await admin
-				.from('user_profiles')
-				.select('age_confirmed_at, terms_accepted_at')
-				.eq('id', userId)
-				.single();
-			expect(stamped?.age_confirmed_at).not.toBeNull();
-			expect(stamped?.terms_accepted_at).not.toBeNull();
+			const stamped = await readRow(
+				'stamped user_profiles row',
+				admin
+					.from('user_profiles')
+					.select('age_confirmed_at, terms_accepted_at')
+					.eq('id', userId)
+					.single()
+			);
+			expect(stamped.age_confirmed_at).not.toBeNull();
+			expect(stamped.terms_accepted_at).not.toBeNull();
 		} finally {
 			await admin.auth.admin.deleteUser(userId);
 		}

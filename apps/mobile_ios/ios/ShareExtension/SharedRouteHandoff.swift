@@ -5,9 +5,12 @@ import Foundation
 /// The host half is NOT ours: `receive_sharing_intent`'s
 /// `ReceiveSharingIntentPlugin` already listens for the redirect URL, reads
 /// the App Group's `UserDefaults`, and hands the result to
-/// `lib/shared_file_import.dart` — the same Dart path the "Open with"
-/// (`CFBundleDocumentTypes`) import already uses. So the extension only has
-/// to WRITE what that plugin reads.
+/// `lib/shared_file_import.dart`. So the extension only has to WRITE what
+/// that plugin reads.
+///
+/// The host app compiles this file too: a document "Open with" arrives as a
+/// bare `file://` URL the plugin ignores, and `DocumentOpenHandoff` turns it
+/// into this same payload so both entry points reach Dart one way.
 ///
 /// Why this file re-declares the shape instead of linking the plugin: the
 /// plugin ships its extension-side controller inside a Swift package that
@@ -48,9 +51,7 @@ enum SharedRouteHandoff {
     /// `UTImportedTypeDeclarations`, and the set the share sheet's
     /// `NSExtensionActivationRule` admits. The share sheet and the "Open with"
     /// chooser accept the same types on purpose — the parsers behind them are
-    /// the same Dart. Neither `kmz`, `geojson` nor `tcx` appears, because iOS
-    /// declares no UTI for any of them and the host app imports none: that gap
-    /// belongs to `CFBundleDocumentTypes`, and closing it there closes it here.
+    /// the same Dart.
     /// `ShareExtensionHandoffTests` compares this list to the activation rule
     /// and to `CFBundleDocumentTypes`, so the three cannot drift apart.
     static let acceptedTypeIdentifiers = [
@@ -87,6 +88,46 @@ enum SharedRouteHandoff {
     /// written here therefore has to be a `file://` URL string.
     static func encodedPayload(for files: [MediaFile]) throws -> Data {
         try JSONEncoder().encode(files)
+    }
+
+    /// The `path` a `MediaFile` carries for `url`. Percent-encoding is
+    /// removed because the plugin hands the string straight to Dart's
+    /// `File()`, which does not decode it — a route named "Canal loop.gpx"
+    /// would otherwise be looked for as `Canal%20loop.gpx`.
+    static func payloadPath(for url: URL) -> String {
+        url.absoluteString.removingPercentEncoding ?? url.absoluteString
+    }
+
+    /// The directory handed-over route files are copied into, emptied of
+    /// whatever the last handoff left there and created if it does not exist.
+    /// Returns nil when it cannot be made.
+    ///
+    /// Emptying it is what stops every file a user ever shared accumulating in
+    /// the group container forever — the host app copies what it imports into
+    /// its own route store, and nothing else sweeps. It is scoped to this one
+    /// directory rather than the container root because the root also holds
+    /// the `UserDefaults` suite the payload itself is written to.
+    static func preparedPayloadDirectory(
+        in container: URL,
+        fileManager: FileManager = .default
+    ) -> URL? {
+        let directory = container.appendingPathComponent(
+            payloadDirectoryName,
+            isDirectory: true
+        )
+        let contents = (try? fileManager.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil
+        )) ?? []
+        for file in contents {
+            try? fileManager.removeItem(at: file)
+        }
+        do {
+            try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+        } catch {
+            return nil
+        }
+        return directory
     }
 
     /// The plugin derives the host app's bundle id from the extension's by

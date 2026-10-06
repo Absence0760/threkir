@@ -76,6 +76,8 @@
 		5AE0C0DE0000000000000001 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AE0C0DE0000000000000010 /* ShareViewController.swift */; };
 		5AE0C0DE0000000000000002 /* SharedRouteHandoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AE0C0DE0000000000000011 /* SharedRouteHandoff.swift */; };
 		5AE0C0DE0000000000000003 /* SharedRouteHandoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AE0C0DE0000000000000011 /* SharedRouteHandoff.swift */; };
+		D0C0BE000000000000000001 /* DocumentOpenHandoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0C0BE000000000000000011 /* DocumentOpenHandoff.swift */; };
+		D0C0BE000000000000000002 /* DocumentOpenHandoffTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0C0BE000000000000000012 /* DocumentOpenHandoffTests.swift */; };
 		5AE0C0DE0000000000000004 /* ShareExtensionHandoffTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AE0C0DE0000000000000015 /* ShareExtensionHandoffTests.swift */; };
 		5AE0C0DE0000000000000005 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5AE0C0DE0000000000000014 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -260,6 +262,8 @@
 		5AE0C0DE0000000000000012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		5AE0C0DE0000000000000013 /* ShareExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ShareExtension.entitlements; sourceTree = "<group>"; };
 		5AE0C0DE0000000000000014 /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		D0C0BE000000000000000011 /* DocumentOpenHandoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentOpenHandoff.swift; sourceTree = "<group>"; };
+		D0C0BE000000000000000012 /* DocumentOpenHandoffTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentOpenHandoffTests.swift; sourceTree = "<group>"; };
 		5AE0C0DE0000000000000015 /* ShareExtensionHandoffTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareExtensionHandoffTests.swift; sourceTree = "<group>"; };
 		5AE0C0DE0000000000000016 /* ShareExtension.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = ShareExtension.xcconfig; path = Flutter/ShareExtension.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -355,6 +359,7 @@
 				A1C0DE0000000000000C0003 /* WatchIngestBridgeTests.swift */,
 				5AE0C0DE0000000000000015 /* ShareExtensionHandoffTests.swift */,
 				A5CD1E000000000000000016 /* LiveActivityBridgeTests.swift */,
+				D0C0BE000000000000000012 /* DocumentOpenHandoffTests.swift */,
 			);
 			path = RunnerTests;
 			sourceTree = "<group>";
@@ -435,6 +440,7 @@
 				7884E9712EC3CC0A00C636F3 /* CalendarBridge.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 				A5CD1E000000000000000014 /* LiveActivityBridge.swift */,
+				D0C0BE000000000000000011 /* DocumentOpenHandoff.swift */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -889,8 +895,8 @@
 				A1C0DE0000000000000C0002 /* CalendarBridgeRruleTests.swift in Sources */,
 				A1C0DE0000000000000C0004 /* WatchIngestBridgeTests.swift in Sources */,
 				5AE0C0DE0000000000000004 /* ShareExtensionHandoffTests.swift in Sources */,
-				5AE0C0DE0000000000000003 /* SharedRouteHandoff.swift in Sources */,
 				A5CD1E000000000000000006 /* LiveActivityBridgeTests.swift in Sources */,
+				D0C0BE000000000000000002 /* DocumentOpenHandoffTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -905,6 +911,8 @@
 				7884E9702EC3CC0A00C636F3 /* CalendarBridge.swift in Sources */,
 				A5CD1E000000000000000004 /* LiveActivityBridge.swift in Sources */,
 				A5CD1E000000000000000003 /* RunActivityAttributes.swift in Sources */,
+				5AE0C0DE0000000000000003 /* SharedRouteHandoff.swift in Sources */,
+				D0C0BE000000000000000001 /* DocumentOpenHandoff.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

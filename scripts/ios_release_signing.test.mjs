@@ -12,6 +12,7 @@ import {
 	readSetting,
 	signedTargets,
 } from './ios_release_signing.mjs';
+import { settingValue, targetConfigurations } from './check_watch_ios_source.mjs';
 
 /**
  * Every case runs against the committed `Runner.xcodeproj`, because the only
@@ -319,4 +320,30 @@ test('every profile secret is documented beside its bundle id where the operator
 			assert.ok(text.includes(`\`${bundleId}\``), `${doc} names \`${bundleId}\``);
 		}
 	}
+});
+
+test('every bundle the archive embeds takes its version from the release, not a literal', () => {
+	// App Store Connect rejects an upload whose embedded bundles disagree with
+	// the app containing them on CFBundleShortVersionString / CFBundleVersion.
+	// The complication once carried MARKETING_VERSION = 1.0 and
+	// CURRENT_PROJECT_VERSION = 1 on the target, overriding WatchApp.xcconfig,
+	// so mobile_ios@1.0.0 shipped it as 1.0 (1) inside a 1.0.0 (5024) app.
+	const allowed = {
+		MARKETING_VERSION: '$(FLUTTER_BUILD_NAME)',
+		CURRENT_PROJECT_VERSION: '$(FLUTTER_BUILD_NUMBER)',
+	};
+	const targets = signedTargets(PBXPROJ).map((t) => t.name);
+	assert.ok(targets.includes('WatchAppComplication'), targets.join(', '));
+	/** @type {string[]} */ const literal = [];
+	for (const name of targets) {
+		const configs = targetConfigurations(PBXPROJ, name);
+		assert.ok(configs.length > 0, `${name} has no readable configurations`);
+		for (const { name: config, settings } of configs) {
+			for (const [key, value] of Object.entries(allowed)) {
+				const set = settingValue(settings, key);
+				if (set !== null && set !== value) literal.push(`${name} ${config}: ${key} = ${set}`);
+			}
+		}
+	}
+	assert.deepEqual(literal, []);
 });

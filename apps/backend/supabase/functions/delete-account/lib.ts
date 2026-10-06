@@ -163,7 +163,9 @@ export type ThirdPartyOutcomes = {
 	revenuecat_delete: ThirdPartyOutcome;
 	fcm_remove: ThirdPartyOutcome;
 	stripe_connect_delete: ThirdPartyOutcome;
-	apple_revoke: ThirdPartyOutcome;
+	// 'not_reached' only on an audit row from a deletion that aborted before
+	// the revoke, which runs last so that a retry still holds the token.
+	apple_revoke: ThirdPartyOutcome | 'not_reached';
 };
 
 // ─── account-deletion receipt enqueue ───

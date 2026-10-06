@@ -7,7 +7,9 @@ import {
   appleClientsFromEnv,
   appleKeyConfigFromEnv,
   exchangeAppleCode,
+  idTokenSubject,
   revokeAppleToken,
+  verifyAppleRefreshToken,
 } from './apple_auth.ts';
 
 async function testKey(): Promise<{ cfg: AppleKeyConfig; publicKey: CryptoKey }> {
@@ -32,6 +34,18 @@ function b64urlDecode(s: string): Uint8Array<ArrayBuffer> {
 }
 
 const env = (vars: Record<string, string>) => (k: string) => vars[k];
+
+function idToken(sub: unknown): string {
+  const b64 = (o: unknown) => btoa(JSON.stringify(o)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return `${b64({ alg: 'RS256' })}.${b64({ iss: 'https://appleid.apple.com', sub })}.sig`;
+}
+
+Deno.test('the subject is read out of an id_token, and anything malformed is null', () => {
+  assertEquals(idTokenSubject(idToken('001234.abcd.0001')), '001234.abcd.0001');
+  for (const bad of [idToken(''), idToken(42), 'not-a-jwt', 'a.!!!.c', null, undefined]) {
+    assertEquals(idTokenSubject(bad), null, String(bad));
+  }
+});
 
 Deno.test('the key config is fail-closed: any missing piece means no config', () => {
   const full = { APPLE_TEAM_ID: 't', APPLE_KEY_ID: 'k', APPLE_PRIVATE_KEY: 'p' };
@@ -92,9 +106,9 @@ Deno.test('the code exchange posts the code and returns the refresh token', asyn
     cfg,
     clientId: 'com.threkir.app',
     code: 'c0de',
-    fetchFn: fakeFetch(200, { refresh_token: 'r.tok', access_token: 'a' }, calls),
+    fetchFn: fakeFetch(200, { refresh_token: 'r.tok', access_token: 'a', id_token: idToken('apple.sub') }, calls),
   });
-  assertEquals(r, { refreshToken: 'r.tok' });
+  assertEquals(r, { refreshToken: 'r.tok', sub: 'apple.sub' });
   assertEquals(calls[0].url, APPLE_TOKEN_URL);
   assertEquals(calls[0].form.get('grant_type'), 'authorization_code');
   assertEquals(calls[0].form.get('code'), 'c0de');
@@ -113,6 +127,35 @@ Deno.test('an exchange Apple refuses, or answers without a refresh token, is an 
   assertEquals(refused, { error: 'apple token 400: invalid_grant' });
   const empty = await exchangeAppleCode({ cfg, clientId: 'x', code: 'c', fetchFn: fakeFetch(200, {}, []) });
   assert('error' in empty);
+  const noSubject = await exchangeAppleCode({
+    cfg,
+    clientId: 'x',
+    code: 'c',
+    fetchFn: fakeFetch(200, { refresh_token: 'r' }, []),
+  });
+  assert('error' in noSubject, 'a token with no id_token cannot be tied to a user');
+});
+
+Deno.test('a client-supplied refresh token is proven by spending it on a refresh grant', async () => {
+  const { cfg } = await testKey();
+  const calls: Call[] = [];
+  const ok = await verifyAppleRefreshToken({
+    cfg,
+    clientId: 'com.threkir.web',
+    refreshToken: 'r.tok',
+    fetchFn: fakeFetch(200, { access_token: 'a', id_token: idToken('apple.sub') }, calls),
+  });
+  assertEquals(ok, { sub: 'apple.sub' });
+  assertEquals(calls[0].url, APPLE_TOKEN_URL);
+  assertEquals(calls[0].form.get('grant_type'), 'refresh_token');
+  assertEquals(calls[0].form.get('refresh_token'), 'r.tok');
+  const forged = await verifyAppleRefreshToken({
+    cfg,
+    clientId: 'com.threkir.web',
+    refreshToken: 'junk',
+    fetchFn: fakeFetch(400, { error: 'invalid_grant' }, []),
+  });
+  assertEquals(forged, { error: 'apple token 400: invalid_grant' });
 });
 
 Deno.test('revocation posts the refresh token with its type hint', async () => {

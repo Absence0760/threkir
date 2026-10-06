@@ -5352,6 +5352,13 @@ export type Database = {
           raised_cents: number
         }[]
       }
+      get_apple_refresh_token: {
+        Args: { p_user_id: string }
+        Returns: {
+          client_id: string
+          refresh_token: string
+        }[]
+      }
       get_club_invite_token: { Args: { target_club: string }; Returns: string }
       get_coach_usage: { Args: { p_user_id: string }; Returns: number }
       get_event_meet_point: {
@@ -6102,13 +6109,6 @@ export type Database = {
         Returns: string
       }
       sweep_challenge_completions: { Args: never; Returns: undefined }
-      take_apple_refresh_token: {
-        Args: { p_user_id: string }
-        Returns: {
-          client_id: string
-          refresh_token: string
-        }[]
-      }
       try_consume_strava_quota: {
         Args: { p_day_limit?: number; p_short_limit?: number }
         Returns: boolean

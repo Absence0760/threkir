@@ -173,17 +173,18 @@ function deauthorizeGarmin(
 
 // App Store Guideline 5.1.1(v): deleting an account that signed in with
 // Apple must revoke its Apple tokens. apple-token-exchange stored the refresh
-// token at sign-in; take_apple_refresh_token returns it and deletes it, Vault
-// secret included, so the credential is gone whether or not Apple answers.
-// A token on file with the Apple key unset is 'failed', not 'skipped' — the
-// same fail-closed posture as the Stripe Connect cleanup below.
+// token at sign-in. This reads it without consuming it and runs last, just
+// before admin.deleteUser: a deletion that aborts earlier keeps the token for
+// the retry, and the auth.users cascade removes the row and its Vault secret
+// only once the account is actually gone. A token on file with the Apple key
+// unset is 'failed', not 'skipped' — the Stripe Connect posture below.
 async function revokeAppleSignIn(
   adminClient: DbClient,
   userId: string,
 ): Promise<ThirdPartyOutcome> {
   let stored: { client_id: string; refresh_token: string } | undefined;
   try {
-    const { data, error } = await adminClient.rpc('take_apple_refresh_token', {
+    const { data, error } = await adminClient.rpc('get_apple_refresh_token', {
       p_user_id: userId,
     });
     if (error) {
@@ -198,7 +199,7 @@ async function revokeAppleSignIn(
     );
     return 'failed';
   }
-  if (!stored?.refresh_token) return 'skipped';
+  if (!stored) return 'skipped';
   const cfg = appleKeyConfigFromEnv();
   if (!cfg) {
     console.error('delete-account: apple revoke impossible — APPLE_TEAM_ID / APPLE_KEY_ID / APPLE_PRIVATE_KEY unset');
@@ -589,7 +590,9 @@ Deno.serve(withSentry('delete-account', async (req: Request) => {
     revenuecat_delete: await deleteRevenueCatSubscriber(user.id),
     fcm_remove: await invalidatePushTokens(adminClient, user.id),
     stripe_connect_delete: await deleteStripeConnectAccount(adminClient, user.id),
-    apple_revoke: await revokeAppleSignIn(adminClient, user.id),
+    // Filled in just before admin.deleteUser; an audit row written by an
+    // earlier abort records that the revoke was never reached.
+    apple_revoke: 'not_reached',
   };
 
   // Per-table deleted-row counts for the audit trail. Only the tables
@@ -776,6 +779,8 @@ Deno.serve(withSentry('delete-account', async (req: Request) => {
   // where eight tables had `references auth.users` without
   // `on delete cascade`, which used to make this admin.deleteUser
   // call 23503 for any user with even a user_profiles row.
+
+  thirdPartyOutcomes.apple_revoke = await revokeAppleSignIn(adminClient, user.id);
 
   const { error } = await adminClient.auth.admin.deleteUser(user.id);
   if (error) {

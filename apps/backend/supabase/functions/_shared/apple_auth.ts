@@ -92,24 +92,35 @@ export async function appleClientSecret(
 
 type FetchFn = (url: string, init: RequestInit) => Promise<Response>;
 
-/// Trades a native-flow authorization code for a refresh token. Apple only
-/// returns a refresh token on this first exchange; the code is single-use
-/// and expires five minutes after sign-in.
-export async function exchangeAppleCode(opts: {
-	cfg: AppleKeyConfig;
-	clientId: string;
-	code: string;
-	fetchFn?: FetchFn;
-}): Promise<{ refreshToken: string } | { error: string }> {
-	const { cfg, clientId, code, fetchFn = fetch } = opts;
+/// The `sub` of an id_token Apple returned to us over TLS on a token call.
+/// The signature is not checked because the token did not pass through a
+/// client: it is the body of Apple's own response.
+export function idTokenSubject(idToken: unknown): string | null {
+	if (typeof idToken !== 'string') return null;
+	const part = idToken.split('.')[1];
+	if (!part) return null;
+	try {
+		const json = atob(part.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((part.length + 3) % 4));
+		const sub = JSON.parse(json).sub;
+		return typeof sub === 'string' && sub !== '' ? sub : null;
+	} catch {
+		return null;
+	}
+}
+
+async function appleTokenCall(
+	cfg: AppleKeyConfig,
+	clientId: string,
+	grant: Record<string, string>,
+	fetchFn: FetchFn,
+): Promise<{ json: Record<string, unknown> } | { error: string }> {
 	const res = await fetchFn(APPLE_TOKEN_URL, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
 		body: new URLSearchParams({
 			client_id: clientId,
 			client_secret: await appleClientSecret(cfg, clientId),
-			code,
-			grant_type: 'authorization_code',
+			...grant,
 		}),
 	});
 	let json: Record<string, unknown> = {};
@@ -120,11 +131,48 @@ export async function exchangeAppleCode(opts: {
 		// reported as the status alone below.
 	}
 	if (!res.ok) return { error: `apple token ${res.status}: ${String(json.error ?? 'unknown')}` };
-	const token = json.refresh_token;
-	if (typeof token !== 'string' || token === '') {
-		return { error: 'apple token response carried no refresh_token' };
+	return { json };
+}
+
+/// Trades an authorization code for a refresh token and the Apple user it
+/// belongs to. Apple returns a refresh token only on this first exchange;
+/// the code is single-use and expires five minutes after sign-in.
+export async function exchangeAppleCode(opts: {
+	cfg: AppleKeyConfig;
+	clientId: string;
+	code: string;
+	fetchFn?: FetchFn;
+}): Promise<{ refreshToken: string; sub: string } | { error: string }> {
+	const { cfg, clientId, code, fetchFn = fetch } = opts;
+	const r = await appleTokenCall(cfg, clientId, { code, grant_type: 'authorization_code' }, fetchFn);
+	if ('error' in r) return r;
+	const token = r.json.refresh_token;
+	const sub = idTokenSubject(r.json.id_token);
+	if (typeof token !== 'string' || token === '' || !sub) {
+		return { error: 'apple token response carried no refresh_token or id_token' };
 	}
-	return { refreshToken: token };
+	return { refreshToken: token, sub };
+}
+
+/// Proves a refresh token a client handed us is live and names the Apple
+/// user it was issued to, by spending it once on a refresh grant. A client
+/// could otherwise store any string, including another account's token.
+export async function verifyAppleRefreshToken(opts: {
+	cfg: AppleKeyConfig;
+	clientId: string;
+	refreshToken: string;
+	fetchFn?: FetchFn;
+}): Promise<{ sub: string } | { error: string }> {
+	const { cfg, clientId, refreshToken, fetchFn = fetch } = opts;
+	const r = await appleTokenCall(
+		cfg,
+		clientId,
+		{ refresh_token: refreshToken, grant_type: 'refresh_token' },
+		fetchFn,
+	);
+	if ('error' in r) return r;
+	const sub = idTokenSubject(r.json.id_token);
+	return sub ? { sub } : { error: 'apple refresh response carried no id_token' };
 }
 
 /// Revokes [token], invalidating the user's Sign in with Apple session for

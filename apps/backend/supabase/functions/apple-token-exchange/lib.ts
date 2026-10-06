@@ -3,11 +3,17 @@
 
 import type { AppleClients } from '../_shared/apple_auth.ts';
 
-/// iOS sends the native flow's one-time authorization code; web sends the
-/// refresh token GoTrue handed back in the OAuth session. Exactly one.
+/// The Apple client that issued a credential. iOS's native flow issues to
+/// the app's bundle id; Android's `sign_in_with_apple` and web's GoTrue
+/// redirect both go through the Services ID. A code exchanged against the
+/// wrong one is refused by Apple, so the client must say which it used.
+export type AppleFlow = 'native' | 'web';
+
+/// An authorization code (iOS, Android) or the refresh token GoTrue handed
+/// web's OAuth session. Exactly one.
 export type AppleTokenRequest =
-	| { kind: 'code'; code: string }
-	| { kind: 'refresh_token'; refreshToken: string };
+	| { kind: 'code'; code: string; flow: AppleFlow }
+	| { kind: 'refresh_token'; refreshToken: string; flow: 'web' };
 
 // Apple's codes and tokens are a few hundred characters; anything far past
 // that is not one, and is refused before it reaches Apple or Vault.
@@ -24,25 +30,32 @@ export function parseAppleTokenRequest(body: unknown): AppleTokenRequest | null 
 	const b = body as Record<string, unknown>;
 	const code = credential(b.authorization_code);
 	const refreshToken = credential(b.refresh_token);
-	if (code && !refreshToken) return { kind: 'code', code };
-	if (refreshToken && !code) return { kind: 'refresh_token', refreshToken };
+	if (code && !refreshToken) {
+		// No default: guessing the flow is exactly how an Android code was
+		// once exchanged against the bundle id and silently refused.
+		if (b.client !== 'native' && b.client !== 'web') return null;
+		return { kind: 'code', code, flow: b.client };
+	}
+	if (refreshToken && !code) return { kind: 'refresh_token', refreshToken, flow: 'web' };
 	return null;
 }
 
-/// The Apple client the credential was issued to: a native code can only
-/// have come from the app's bundle id, a GoTrue refresh token only from the
-/// web Services ID. Null when that client is not configured, so nothing is
-/// stored that delete-account could not later revoke.
+/// Null when that flow's client is not configured, so nothing is stored
+/// that delete-account could not later revoke.
 export function clientIdFor(req: AppleTokenRequest, clients: AppleClients): string | null {
-	return req.kind === 'code' ? clients.native : clients.web;
+	return req.flow === 'native' ? clients.native : clients.web;
 }
 
-/// Whether the account signed in with Apple at all. A token for an account
-/// that has no Apple identity would be revoking someone else's grant.
-export function hasAppleIdentity(
-	user: { identities?: { provider: string }[] | null; app_metadata?: Record<string, unknown> },
-): boolean {
-	if (user.identities?.some((i) => i.provider === 'apple')) return true;
-	const providers = user.app_metadata?.providers;
-	return Array.isArray(providers) && providers.includes('apple');
+type IdentityLike = { provider: string; id?: string; identity_data?: Record<string, unknown> | null };
+
+/// The Apple user id (`sub`) the account is linked to, or null when it has
+/// no Apple identity. A credential is stored only when Apple says it belongs
+/// to this same `sub`; otherwise an account could keep, and later have us
+/// revoke, a token that is not its own.
+export function appleSubjectOf(user: { identities?: IdentityLike[] | null }): string | null {
+	const identity = user.identities?.find((i) => i.provider === 'apple');
+	if (!identity) return null;
+	const sub = identity.identity_data?.sub;
+	if (typeof sub === 'string' && sub !== '') return sub;
+	return identity.id && identity.id !== '' ? identity.id : null;
 }

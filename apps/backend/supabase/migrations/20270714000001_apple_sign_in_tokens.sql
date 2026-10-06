@@ -9,9 +9,8 @@
 --
 -- The token is a live credential, so it lives in Vault exactly like the
 -- integration tokens (20260603_001), and nothing but the service role can
--- reach the row or either function. delete-account TAKES the token: one call
--- returns it and deletes both the row and the Vault secret, so a deletion
--- never leaves the secret orphaned whether or not Apple answers.
+-- reach the row or either function. Deleting the row, by any path, deletes
+-- the secret.
 
 create table public.apple_sign_in_tokens (
   user_id                 uuid primary key references auth.users(id) on delete cascade,
@@ -78,9 +77,12 @@ $$;
 revoke execute on function public.set_apple_refresh_token(uuid, text, text) from public, anon, authenticated;
 grant execute on function public.set_apple_refresh_token(uuid, text, text) to service_role;
 
--- Returns the token and deletes it in the same statement scope. No row is
--- an empty result, which delete-account records as nothing to revoke.
-create or replace function public.take_apple_refresh_token(p_user_id uuid)
+-- Read-only on purpose. delete-account revokes just before it deletes the
+-- auth user, and the row goes with that cascade; a deletion that aborts
+-- earlier, or an Apple call that fails, leaves the token in place for the
+-- retry. A row whose Vault secret is gone raises, so the caller records a
+-- failure rather than "nothing to revoke".
+create or replace function public.get_apple_refresh_token(p_user_id uuid)
 returns table (client_id text, refresh_token text)
 language plpgsql
 security definer
@@ -91,22 +93,45 @@ declare
   v_secret_id uuid;
   v_token text;
 begin
-  delete from apple_sign_in_tokens t
-    where t.user_id = p_user_id
-    returning t.client_id, t.refresh_token_secret_id into v_client_id, v_secret_id;
-
-  if v_secret_id is null then
+  select t.client_id, t.refresh_token_secret_id into v_client_id, v_secret_id
+    from apple_sign_in_tokens t
+    where t.user_id = p_user_id;
+  if not found then
     return;
   end if;
 
   select decrypted_secret into v_token
     from vault.decrypted_secrets
     where id = v_secret_id;
-  delete from vault.secrets where id = v_secret_id;
+  if v_token is null then
+    raise exception 'get_apple_refresh_token: Vault secret % missing for user %', v_secret_id, p_user_id;
+  end if;
 
   return query select v_client_id, v_token;
 end;
 $$;
 
-revoke execute on function public.take_apple_refresh_token(uuid) from public, anon, authenticated;
-grant execute on function public.take_apple_refresh_token(uuid) to service_role;
+revoke execute on function public.get_apple_refresh_token(uuid) from public, anon, authenticated;
+grant execute on function public.get_apple_refresh_token(uuid) to service_role;
+
+-- However the row goes, the secret goes with it: the auth.users cascade at
+-- the end of delete-account, an operator deleting a user from the dashboard,
+-- or a direct delete. Without this the cascade would orphan the credential
+-- in Vault, which nothing else sweeps.
+create or replace function public.apple_sign_in_tokens_drop_secret()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, vault
+as $$
+begin
+  delete from vault.secrets where id = old.refresh_token_secret_id;
+  return old;
+end;
+$$;
+
+revoke execute on function public.apple_sign_in_tokens_drop_secret() from public, anon, authenticated;
+
+create trigger apple_sign_in_tokens_drop_secret
+  after delete on public.apple_sign_in_tokens
+  for each row execute function public.apple_sign_in_tokens_drop_secret();

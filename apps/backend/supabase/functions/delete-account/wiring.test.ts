@@ -198,7 +198,7 @@ Deno.test('handler builds a third_party_outcomes record from the best-effort cal
 	// fifth argument. garmin_deauth is wired even though Garmin OAuth is
 	// deferred (it no-ops to 'skipped' today) so the deletion path can't
 	// silently forget Garmin once OAuth lands — audit-findings 2026-05-30.
-	const built = /const\s+thirdPartyOutcomes\s*:\s*ThirdPartyOutcomes\s*=\s*\{[^}]*strava_deauth[^}]*garmin_deauth[^}]*revenuecat_delete[^}]*fcm_remove[^}]*stripe_connect_delete[^}]*apple_revoke[^}]*\}/m
+	const built = /const\s+thirdPartyOutcomes\s*:\s*ThirdPartyOutcomes\s*=\s*\{[^}]*strava_deauth[^}]*garmin_deauth[^}]*revenuecat_delete[^}]*fcm_remove[^}]*stripe_connect_delete[^}]*apple_revoke:\s*'not_reached'[^}]*\}/m
 		.test(SRC);
 	assert(
 		built,
@@ -312,4 +312,19 @@ Deno.test('handler uses the shared lib.ts helpers (no duplicated URL constants)'
 		!/['"]https:\/\/api\.stripe\.com/.test(SRC),
 		'handler must use stripeAccountUrl() from ./lib.ts',
 	);
+});
+
+Deno.test('the Apple revoke runs after every mandatory cleanup and immediately before admin.deleteUser', () => {
+	// An abort anywhere earlier must leave the token for the retry; reading it
+	// any earlier would revoke a grant on an account that then survives.
+	const revoke = SRC.indexOf('thirdPartyOutcomes.apple_revoke = await revokeAppleSignIn(');
+	const del = SRC.indexOf('adminClient.auth.admin.deleteUser(user.id)');
+	assert(revoke !== -1, 'handler must call revokeAppleSignIn');
+	for (const cleanup of ['cleanupVaultSecrets(', 'deleteUserReports(', 'drainUserJobs(', 'drainUserRateLimits(', 'anonymiseAuthoredSegments(', "deletePrefix(adminClient, 'avatars'"]) {
+		const at = SRC.indexOf(cleanup);
+		assert(at !== -1 && at < revoke, `${cleanup} must run before the Apple revoke`);
+	}
+	assert(revoke < del, 'the Apple revoke must run before admin.deleteUser');
+	assert(!SRC.slice(revoke, del).includes('return '), 'nothing between the revoke and admin.deleteUser may abort the deletion');
+	assert(!SRC.includes('take_apple_refresh_token'), 'the token must be read, not consumed');
 });

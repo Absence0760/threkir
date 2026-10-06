@@ -148,7 +148,8 @@ export type DeletionAuditResult =
  *                  Android device / RevenueCat key unset). Distinct
  *                  from `failed` because no recipient notification
  *                  was required.
- *   * `failed`   — the call raised. Operator can replay.
+ *   * `failed`   — the call raised. Operator can replay, except
+ *                  `apple_revoke`: its token goes with the account.
  */
 export type ThirdPartyOutcome = 'ok' | 'skipped' | 'failed';
 

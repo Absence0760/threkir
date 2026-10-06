@@ -78,10 +78,12 @@ revoke execute on function public.set_apple_refresh_token(uuid, text, text) from
 grant execute on function public.set_apple_refresh_token(uuid, text, text) to service_role;
 
 -- Read-only on purpose. delete-account revokes just before it deletes the
--- auth user, and the row goes with that cascade; a deletion that aborts
--- earlier, or an Apple call that fails, leaves the token in place for the
--- retry. A row whose Vault secret is gone raises, so the caller records a
--- failure rather than "nothing to revoke".
+-- auth user, and the row goes with that cascade, so a deletion that aborts
+-- earlier keeps the token for its retry. An Apple call that fails does not
+-- abort the erasure (no third-party failure does): it is recorded as
+-- 'failed' and the token goes with the account. A row whose Vault secret is
+-- gone raises, so the caller records a failure rather than "nothing to
+-- revoke".
 create or replace function public.get_apple_refresh_token(p_user_id uuid)
 returns table (client_id text, refresh_token text)
 language plpgsql
@@ -135,3 +137,11 @@ revoke execute on function public.apple_sign_in_tokens_drop_secret() from public
 create trigger apple_sign_in_tokens_drop_secret
   after delete on public.apple_sign_in_tokens
   for each row execute function public.apple_sign_in_tokens_drop_secret();
+
+-- The audit column's documented vocabulary predates the Apple revoke.
+comment on column public.deletion_audit_log.third_party_outcomes is
+  'Structured per-third-party cleanup outcomes recorded by delete-account. '
+  'Keys: strava_deauth, garmin_deauth, revenuecat_delete, fcm_remove, '
+  'stripe_connect_delete, apple_revoke. Values: ok | skipped | failed, and '
+  'not_reached for apple_revoke on a deletion that aborted before it ran. '
+  'Evidence trail for GDPR Art 17(2).';

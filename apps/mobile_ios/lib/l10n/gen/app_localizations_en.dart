@@ -6557,11 +6557,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'This permanently removes your runs, routes, and profile from the server. Local device data is kept unless you sign in as a new user. This cannot be undone.';
 
   @override
-  String get settingsAccountDeleteChallengeText => 'Type \"DELETE\" to confirm';
+  String get settingsAccountDeleteChallengeWord => 'DELETE';
 
   @override
-  String settingsAccountDeleteChallengeEmail(String email) {
-    return 'Type your email ($email) to confirm';
+  String settingsAccountDeleteChallengeText(String word) {
+    return 'Type \"$word\" to confirm';
   }
 
   @override

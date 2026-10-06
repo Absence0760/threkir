@@ -10858,17 +10858,17 @@ abstract class AppLocalizations {
   /// **'This permanently removes your runs, routes, and profile from the server. Local device data is kept unless you sign in as a new user. This cannot be undone.'**
   String get settingsAccountDeleteBody;
 
-  /// Challenge field label when the account has no email on file
+  /// The fixed word the user types to confirm account deletion. Same word for every account (not the email: an Apple Hide My Email address is one the user has never seen). Localize it; keep it one short, easy-to-type word.
   ///
   /// In en, this message translates to:
-  /// **'Type \"DELETE\" to confirm'**
-  String get settingsAccountDeleteChallengeText;
+  /// **'DELETE'**
+  String get settingsAccountDeleteChallengeWord;
 
-  /// Challenge field label asking the user to type their email
+  /// Challenge field label in the delete-account dialog
   ///
   /// In en, this message translates to:
-  /// **'Type your email ({email}) to confirm'**
-  String settingsAccountDeleteChallengeEmail(String email);
+  /// **'Type \"{word}\" to confirm'**
+  String settingsAccountDeleteChallengeText(String word);
 
   /// Confirm button on the delete-account dialog
   ///

@@ -1,5 +1,7 @@
 import XCTest
 
+@testable import Runner
+
 /// The Share Extension and the host app never call each other: the extension
 /// writes JSON into an App Group's `UserDefaults` and opens a URL, and
 /// `receive_sharing_intent` reads it back on the other side. Nothing in the
@@ -7,7 +9,8 @@ import XCTest
 /// here instead.
 ///
 /// `SharedRouteHandoff.swift` has target membership in both ShareExtension
-/// and RunnerTests, which is what lets this bundle see the constants at all.
+/// and Runner — the host app's document "Open with" writes the same payload —
+/// so this bundle sees the constants through `@testable import Runner`.
 /// The plists are read off disk relative to `#filePath` rather than out of
 /// `Bundle.main`, because the entitlements files never appear in a bundle —
 /// they are compiled into a code signature this simulator build does not
@@ -150,7 +153,7 @@ final class ShareExtensionHandoffTests: XCTestCase {
         // path therefore imports nothing and reports nothing.
         let container = URL(fileURLWithPath: "/private/var/mobile/Containers/Shared/AppGroup/ABC")
         let destination = container.appendingPathComponent("Canal loop.gpx")
-        let path = try XCTUnwrap(destination.absoluteString.removingPercentEncoding)
+        let path = SharedRouteHandoff.payloadPath(for: destination)
         XCTAssertTrue(path.hasPrefix("file://"))
         XCTAssertFalse(path.contains("%20"))
     }

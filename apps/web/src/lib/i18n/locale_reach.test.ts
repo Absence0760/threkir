@@ -876,6 +876,10 @@ const INTERPOLATED_CAPITAL_EXEMPT: Record<string, string> = {
 	"onboarding.notSignedIn":
 		"is a whole sentence dropped into a `{message}` slot after a colon, and a " +
 		"sentence after a colon opens with a capital.",
+	"settingsAccount.deleteChallengeWord":
+		"is the quoted token the user types to confirm deleting their account " +
+		"(`Type \"DELETE\" to confirm`), not a word in the sentence — it is " +
+		"capitalised to read as the thing to type.",
 };
 
 /** `slot: m('inner')`, including the `slot: x ?? m('inner')` fallback shape. */

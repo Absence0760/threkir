@@ -800,7 +800,11 @@ export const BUNDLE_MANIFESTS = [
 		target: 'Runner',
 		infoPlist: 'apps/mobile_ios/ios/Runner/Info.plist',
 		manifest: 'apps/mobile_ios/ios/Runner/PrivacyInfo.xcprivacy',
-		sourceDirs: ['apps/mobile_ios/ios/Runner', 'apps/mobile_ios/ios/RunActivity'],
+		sourceDirs: [
+			'apps/mobile_ios/ios/Runner',
+			'apps/mobile_ios/ios/RunActivity',
+			'apps/mobile_ios/ios/ShareExtension',
+		],
 		projects: ['apps/mobile_ios/ios/Runner.xcodeproj/project.pbxproj'],
 	},
 	{

@@ -31,7 +31,7 @@ import { readMaybeRow, readRows } from '../fixtures/db-read';
  *      ride only the `backup` format).
  *
  *   2. RIGHT TO ERASURE (Art 17). The same user drives /settings/account
- *      → Delete Account → types their email into the re-entry challenge
+ *      → Delete Account → types DELETE into the confirm challenge
  *      → confirms. The page calls the REAL `delete-account` Edge Function
  *      (PUBLIC_EXPORT_HUB_URL-style hub flips don't apply here — the
  *      delete button always hits the EF) and redirects to /login. Then,
@@ -433,11 +433,11 @@ test.describe('saga: account data-rights cradle-to-grave (export → delete)', (
 					page.getByRole('heading', { name: /Delete your account\?/ }),
 				).toBeVisible({ timeout: 5_000 });
 
-				// Re-entry challenge: the confirm button is disabled until the
-				// user types their own email.
+				// Confirm challenge: the confirm button is disabled until the
+				// user types the fixed word DELETE.
 				const confirmBtn = page.getByRole('button', { name: /Delete my account/ });
 				await expect(confirmBtn).toBeDisabled();
-				await page.getByTestId('confirm-challenge-input').fill(user.email);
+				await page.getByTestId('confirm-challenge-input').fill('DELETE');
 				await expect(confirmBtn).toBeEnabled();
 				await confirmBtn.click();
 

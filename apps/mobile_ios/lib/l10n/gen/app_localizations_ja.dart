@@ -6246,11 +6246,11 @@ class AppLocalizationsJa extends AppLocalizations {
       'これにより、ラン、ルート、プロフィールがサーバーから完全に削除されます。新しいユーザーとしてサインインしない限り、端末のローカルデータは保持されます。この操作は取り消せません。';
 
   @override
-  String get settingsAccountDeleteChallengeText => '確認するには「DELETE」と入力してください';
+  String get settingsAccountDeleteChallengeWord => '削除';
 
   @override
-  String settingsAccountDeleteChallengeEmail(String email) {
-    return '確認するにはメールアドレス（$email）を入力してください';
+  String settingsAccountDeleteChallengeText(String word) {
+    return '確認するには「$word」と入力してください';
   }
 
   @override

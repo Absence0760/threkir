@@ -12,7 +12,7 @@
 		onconfirm: () => void | Promise<void>;
 		oncancel: () => void;
 		/// When set, the confirm button stays disabled until the user types
-		/// this exact string (case-insensitive, trimmed) into a challenge
+		/// this exact string (case-insensitive, trimmed, NFKC) into a challenge
 		/// input. Used for irreversible actions (e.g. account deletion —
 		/// Apple 5.1.1 / data-loss confirmation) so a stray click can't
 		/// trigger them.
@@ -56,8 +56,11 @@
 			busy = false;
 		}
 	});
+	// NFKC so a localized word matches however the keyboard or IME composed
+	// it (precomposed vs combining umlaut, full-width vs half-width).
+	const normalizeChallenge = (s: string) => s.normalize('NFKC').trim().toLowerCase();
 	const challengeMet = $derived(
-		!requireText || challenge.trim().toLowerCase() === requireText.trim().toLowerCase(),
+		!requireText || normalizeChallenge(challenge) === normalizeChallenge(requireText),
 	);
 
 	async function handleConfirm() {

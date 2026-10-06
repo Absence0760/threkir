@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { OPERATOR, OPERATOR_FACTS_COMPLETE } from '$lib/legal/operator';
+	import { NOT_PROVIDED, OPERATOR, OPERATOR_FACTS_COMPLETE } from '$lib/legal/operator';
 
-	const lastUpdated = '2026-09-08';
+	const lastUpdated = '2026-10-06';
 </script>
 
 <svelte:head>
@@ -257,7 +257,8 @@
 		<br />Privacy: <a href="mailto:privacy@threkir.com">privacy@threkir.com</a>
 		<br />Security: <a href="mailto:security@threkir.com">security@threkir.com</a>
 		<br />Copyright: <a href="mailto:dmca@threkir.com">dmca@threkir.com</a>
-		<br />Postal: {#if OPERATOR.postalAddress}{OPERATOR.postalAddress}{:else}<em>pending
+		<br />Postal: {#if OPERATOR.postalAddress === NOT_PROVIDED}not published — use the email
+			addresses above{:else if OPERATOR.postalAddress}{OPERATOR.postalAddress}{:else}<em>pending
 			publication — use the email addresses above in the meantime</em>{/if}
 	</p>
 </div>

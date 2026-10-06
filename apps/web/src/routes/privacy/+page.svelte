@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { OPERATOR, OPERATOR_FACTS_COMPLETE } from '$lib/legal/operator';
+	import { NOT_PROVIDED, OPERATOR, OPERATOR_FACTS_COMPLETE } from '$lib/legal/operator';
 
 	const lastUpdated = '2026-10-06';
 </script>
@@ -31,7 +31,9 @@
 		<strong>Controller:</strong> {OPERATOR.serviceName}, operated by {OPERATOR.controllerDescription}.
 		<br />
 		<strong>Postal address:</strong>
-		{#if OPERATOR.postalAddress}{OPERATOR.postalAddress}{:else}<em>pending publication — write to
+		{#if OPERATOR.postalAddress === NOT_PROVIDED}we do not publish a postal address; write to
+			<a href="mailto:privacy@threkir.com">privacy@threkir.com</a>, which reaches the controller
+			directly{:else if OPERATOR.postalAddress}{OPERATOR.postalAddress}{:else}<em>pending publication — write to
 			<a href="mailto:privacy@threkir.com">privacy@threkir.com</a> in the meantime</em>{/if}
 		<br />
 		<strong>Privacy contact:</strong> <a href="mailto:privacy@threkir.com">privacy@threkir.com</a>.
@@ -39,7 +41,9 @@
 		contact above reaches the controller directly.
 		<br />
 		<strong>EU representative (Art 27 GDPR):</strong>
-		{#if OPERATOR.euRepresentative}{OPERATOR.euRepresentative.name}, {OPERATOR.euRepresentative
+		{#if OPERATOR.euRepresentative === NOT_PROVIDED}we have not appointed one; EU residents and
+			supervisory authorities can contact the controller directly at
+			<a href="mailto:privacy@threkir.com">privacy@threkir.com</a>{:else if OPERATOR.euRepresentative}{OPERATOR.euRepresentative.name}, {OPERATOR.euRepresentative
 				.address} (<a href="mailto:{OPERATOR.euRepresentative.email}"
 				>{OPERATOR.euRepresentative.email}</a
 			>){:else}<em>appointment in progress; until published here, EU residents and supervisory
@@ -47,7 +51,9 @@
 			directly</em>{/if}
 		<br />
 		<strong>UK representative (Art 27 UK GDPR):</strong>
-		{#if OPERATOR.ukRepresentative}{OPERATOR.ukRepresentative.name}, {OPERATOR.ukRepresentative
+		{#if OPERATOR.ukRepresentative === NOT_PROVIDED}we have not appointed one; UK residents and the
+			ICO can contact the controller directly at
+			<a href="mailto:privacy@threkir.com">privacy@threkir.com</a>{:else if OPERATOR.ukRepresentative}{OPERATOR.ukRepresentative.name}, {OPERATOR.ukRepresentative
 				.address} (<a href="mailto:{OPERATOR.ukRepresentative.email}"
 				>{OPERATOR.ukRepresentative.email}</a
 			>){:else}<em>appointment in progress; until published here, UK residents and the ICO may
@@ -382,7 +388,8 @@
 	<p>
 		Privacy: <a href="mailto:privacy@threkir.com">privacy@threkir.com</a>
 		<br />Security: <a href="mailto:security@threkir.com">security@threkir.com</a>
-		<br />Postal: {#if OPERATOR.postalAddress}{OPERATOR.postalAddress}{:else}<em>pending
+		<br />Postal: {#if OPERATOR.postalAddress === NOT_PROVIDED}not published — use the privacy
+			email above{:else if OPERATOR.postalAddress}{OPERATOR.postalAddress}{:else}<em>pending
 			publication — use the privacy email above in the meantime</em>{/if}
 	</p>
 </div>

@@ -198,13 +198,13 @@ Deno.test('handler builds a third_party_outcomes record from the best-effort cal
 	// fifth argument. garmin_deauth is wired even though Garmin OAuth is
 	// deferred (it no-ops to 'skipped' today) so the deletion path can't
 	// silently forget Garmin once OAuth lands — audit-findings 2026-05-30.
-	const built = /const\s+thirdPartyOutcomes\s*:\s*ThirdPartyOutcomes\s*=\s*\{[^}]*strava_deauth[^}]*garmin_deauth[^}]*revenuecat_delete[^}]*fcm_remove[^}]*stripe_connect_delete[^}]*\}/m
+	const built = /const\s+thirdPartyOutcomes\s*:\s*ThirdPartyOutcomes\s*=\s*\{[^}]*strava_deauth[^}]*garmin_deauth[^}]*revenuecat_delete[^}]*fcm_remove[^}]*stripe_connect_delete[^}]*apple_revoke[^}]*\}/m
 		.test(SRC);
 	assert(
 		built,
 		'handler must build a ThirdPartyOutcomes record from deauthorizeStrava + ' +
 			'deauthorizeGarmin + deleteRevenueCatSubscriber + invalidatePushTokens + ' +
-			'deleteStripeConnectAccount results',
+			'deleteStripeConnectAccount + revokeAppleSignIn results',
 	);
 	// And recordAudit must receive it on every call site. Count the
 	// argument uses (`thirdPartyOutcomes` immediately followed by `,` or

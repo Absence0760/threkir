@@ -87,6 +87,13 @@ var exportGuardExclusions = map[string]string{
 	// shipped as "the subject's data". Drained/transferred on account deletion
 	// (Art 17), not part of the Art 20 portability export.
 	// CISO/counsel to confirm this exclusion stands (org SOC 2 / GovRAMP scope).
+	// A Vault reference to the Sign in with Apple refresh token, kept only so
+	// delete-account can revoke it (App Store Guideline 5.1.1(v)). It is a
+	// live credential Apple issued, not data the subject provided, and putting
+	// it in an archive would hand out a token that can act on their Apple
+	// grant. Taken and revoked on deletion (Art 17).
+	"apple_sign_in_tokens": "Sign in with Apple revocation credential (Vault ref); not subject-provided data, and exporting it would leak a live token — revoked and deleted on account deletion",
+
 	"clubs": "shared collective entity (owner_id is the founder); the subject's link ships via club_members — not Art-20 portable personal data of the subject",
 }
 

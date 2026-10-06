@@ -163,6 +163,7 @@ export type ThirdPartyOutcomes = {
 	revenuecat_delete: ThirdPartyOutcome;
 	fcm_remove: ThirdPartyOutcome;
 	stripe_connect_delete: ThirdPartyOutcome;
+	apple_revoke: ThirdPartyOutcome;
 };
 
 // ─── account-deletion receipt enqueue ───

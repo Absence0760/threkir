@@ -227,7 +227,7 @@ Triggered by publishing a GitHub Release tagged `mobile_ios@1.2.3` (a bare tag p
 6. Runs `scripts/ios_release_signing.mjs` against the three profiles (see [Signing setup](#signing-setup)), which also writes `ExportOptions.plist` (`app-store-connect`, manual signing, dSYMs uploaded to Apple).
 7. Writes `dart_defines.json`, then `flutter build ipa --release`.
 8. Attaches the `.ipa` to the Release **before** uploading, so a refused upload still leaves a signed build to upload by hand.
-9. Uploads to TestFlight with the App Store Connect API key, then deletes the keychain and the runtime config.
+9. Uploads to TestFlight with the App Store Connect API key through `altool`, which validates the binary during the upload: any ITMS error Apple raises is printed in the run log and fails the step. The job does not wait for Apple's processing queue; TestFlight shows the build, and Apple emails, when processing ends. Then it deletes the keychain and the runtime config.
 
 Lands the build in **TestFlight** (the equivalent of Play's Internal track). Promotion to the App Store is manual in App Store Connect, after a smoke test on an iPhone and a paired Apple Watch.
 

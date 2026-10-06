@@ -206,3 +206,16 @@ Append a dated block below. Rules, in the spirit of [quality_standards.md](../cu
 - **CI-parity toolchain.** Built on local Flutter 3.44.8, not the pinned CI version.
 
 **Cells converted: none, which is the correct outcome.** The column moves on one line of the derivation table; that line is a claim about the whole shipped surface; and a simulator cannot reach the classes most of that surface depends on. What this run did produce is two obstruction findings, one corrected justification (the in-app-update row, below), and independent confirmation of the HealthKit row rather than its assertion.
+
+### 2026-10-06 — document "Open with" delivery (simulator only)
+
+Xcode 26.4, Flutter 3.44.8 (local, not the CI pin), iPhone 17 Pro simulator, debug build from `flutter build ios --simulator` (trap 1 applies).
+
+| # | Scenario | Rung | Observation |
+|---|---|---|---|
+| 1 | Runner links with `DocumentOpenHandoff.swift` importing `receive_sharing_intent` | build-verified | `✓ Built build/ios/iphonesimulator/Runner.app` |
+| 2 | Native staging and payload logic | host-tested | `RunnerTests` 77 pass, 0 fail, including the nine `DocumentOpenHandoffTests` |
+| 3 | Warm open of a `file://` GPX | sim-verified | `simctl openurl` with a running app. The Inbox copy moved to the App Group's `SharedRoutes/`, `Documents/Inbox` was left empty, and `Documents/routes/` gained a route named after the file's `<trk><name>` |
+| 4 | Cold open of a `file://` GPX | sim-verified | App terminated, then `simctl openurl`. The app launched onto the imported route's detail screen (2.62 km, 3 waypoints). The previous `SharedRoutes/` file had been swept |
+
+**Not reached:** a user tapping Threkir in a Files, Mail or AirDrop "Open with" chooser (`simctl` cannot tap), an in-place open from a third-party file provider, a release build, and a device. The parity cell stays `Partial`.

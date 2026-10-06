@@ -1857,8 +1857,8 @@
 	message={m('settingsAccount.deleteConfirmMessage')}
 	confirmLabel={m('settingsAccount.deleteConfirmLabel')}
 	danger
-	requireText={auth.user?.email ?? 'DELETE'}
-	requireTextLabel={m('settingsAccount.deleteRequireTextLabel', { email: auth.user?.email ?? 'DELETE' })}
+	requireText={m('settingsAccount.deleteChallengeWord')}
+	requireTextLabel={m('settingsAccount.deleteRequireTextLabel', { word: m('settingsAccount.deleteChallengeWord') })}
 	onconfirm={handleDeleteAccount}
 	oncancel={() => (showDeleteAccount = false)}
 />

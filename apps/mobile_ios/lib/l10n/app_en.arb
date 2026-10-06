@@ -8807,15 +8807,15 @@
   "@settingsAccountDeleteBody": {
     "description": "Body copy of the delete-account confirmation dialog"
   },
-  "settingsAccountDeleteChallengeText": "Type \"DELETE\" to confirm",
-  "@settingsAccountDeleteChallengeText": {
-    "description": "Challenge field label when the account has no email on file"
+  "settingsAccountDeleteChallengeWord": "DELETE",
+  "@settingsAccountDeleteChallengeWord": {
+    "description": "The fixed word the user types to confirm account deletion. Same word for every account (not the email: an Apple Hide My Email address is one the user has never seen). Localize it; keep it one short, easy-to-type word."
   },
-  "settingsAccountDeleteChallengeEmail": "Type your email ({email}) to confirm",
-  "@settingsAccountDeleteChallengeEmail": {
-    "description": "Challenge field label asking the user to type their email",
+  "settingsAccountDeleteChallengeText": "Type \"{word}\" to confirm",
+  "@settingsAccountDeleteChallengeText": {
+    "description": "Challenge field label in the delete-account dialog",
     "placeholders": {
-      "email": {
+      "word": {
         "type": "String"
       }
     }

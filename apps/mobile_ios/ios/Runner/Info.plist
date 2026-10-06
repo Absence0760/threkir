@@ -185,16 +185,17 @@
 	     or import a copy" (ITMS 90737). Threkir imports: shared_file_import.dart
 	     reads the bytes once and keeps its own route, never holding the
 	     original or a security-scoped bookmark to it, so iOS hands over a
-	     copy in Documents/Inbox. -->
+	     copy in Documents/Inbox, which DocumentOpenHandoff.swift moves out. -->
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<false/>
-	<!-- OS "Open with" for GPX/KML route files (decisions §24 device-led).
-	     Neither type is system-declared, so Threkir imports a UTI for each
-	     and registers as a Viewer; receive_sharing_intent delivers the
-	     opened document to lib/shared_file_import.dart, which imports it as
-	     a route. This covers document "Open with"; the iOS *system share
-	     sheet* is the ShareExtension target, whose activation rule accepts
-	     exactly the two types declared here. -->
+	<!-- OS "Open with" for route files (decisions §24 device-led). None of
+	     these types is system-declared, so Threkir imports a UTI for each.
+	     The opened document arrives as a file:// URL that
+	     receive_sharing_intent does not answer; DocumentOpenHandoff.swift
+	     puts it through the Share Extension's handoff so it reaches
+	     lib/shared_file_import.dart the same way a share does. The iOS
+	     *system share sheet* is the ShareExtension target, whose activation
+	     rule accepts exactly the types declared here. -->
 	<key>CFBundleDocumentTypes</key>
 	<array>
 	<dict>

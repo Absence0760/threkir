@@ -7,7 +7,9 @@ import { USER_A } from '../fixtures/users';
  * /settings/account — profile + email / password / parkrun number /
  * DOB / HR fields. Covers the display-name round-trip + the
  * change-password validation branches; future depth: parkrun number
- * import button, profile avatar upload, account deletion.
+ * import button, profile avatar upload. The delete-account confirm
+ * challenge is pinned here without deleting anything; the destructive
+ * round-trip lives in cross-user/sagas/account-deletion.spec.ts.
  */
 
 const uniqueText = (prefix: string) =>
@@ -373,6 +375,68 @@ test.describe('/settings/account', () => {
 			// pattern that stops matching says nothing at all. Assert it
 			// fired, so the silence can never pass for a pass.
 			expect(stubbed).toBe(1);
+		});
+	});
+
+	// Issue #1064: the delete-account challenge is one fixed localized word,
+	// not the account email — a Sign in with Apple "Hide My Email" user has
+	// never seen their privaterelay address. The EF call is aborted so a
+	// regression that let the confirm through can't delete USER_A.
+	test.describe('delete account — confirm challenge', () => {
+		const DELETE_EF = /\/functions\/v1\/delete-account/;
+		const NEVER_DELETE = 'the dialog is cancelled or left open; reaching the EF would delete USER_A';
+
+		test('the fixed word confirms; the account email does not', async ({ page, mockRoute }) => {
+			await mockRoute(page, DELETE_EF, (route) => route.abort(), { neverFires: NEVER_DELETE });
+
+			await page.goto('/settings/account');
+			await page.getByRole('button', { name: 'Delete Account' }).click();
+			const dialog = page.getByRole('dialog');
+			await expect(dialog.getByRole('heading', { name: /Delete your account\?/ })).toBeVisible();
+			await expect(dialog).toContainText('Type "DELETE" to confirm');
+			await expect(dialog).not.toContainText(USER_A.email);
+
+			const confirmBtn = dialog.getByRole('button', { name: /Delete my account/ });
+			const input = page.getByTestId('confirm-challenge-input');
+			await expect(confirmBtn).toBeDisabled();
+
+			await input.fill(USER_A.email);
+			await expect(confirmBtn).toBeDisabled();
+
+			await input.fill('  delete ');
+			await expect(confirmBtn).toBeEnabled();
+
+			await dialog.getByRole('button', { name: 'Cancel' }).click();
+			await expect(dialog).toHaveCount(0);
+		});
+
+		test('the word follows the locale', async ({ browser, mockRoute }) => {
+			const context = await browser.newContext({
+				locale: 'de-DE',
+				storageState: USER_A.storageStatePath
+			});
+			// The saved storage state carries a stored `locale` choice, which
+			// wins over the browser language. This context is thrown away, so
+			// overriding it here can't leak German into other specs.
+			await context.addInitScript(() => localStorage.setItem('locale', 'de'));
+			const page = await context.newPage();
+			try {
+				await mockRoute(page, DELETE_EF, (route) => route.abort(), { neverFires: NEVER_DELETE });
+				await page.goto('/settings/account');
+				await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+				await page.getByRole('button', { name: 'Konto löschen' }).click();
+				const dialog = page.getByRole('dialog');
+				await expect(dialog).toContainText('"LÖSCHEN"');
+
+				const confirmBtn = dialog.getByRole('button', { name: /Mein Konto löschen/ });
+				const input = page.getByTestId('confirm-challenge-input');
+				await input.fill('DELETE');
+				await expect(confirmBtn).toBeDisabled();
+				await input.fill('löschen');
+				await expect(confirmBtn).toBeEnabled();
+			} finally {
+				await context.close();
+			}
 		});
 	});
 });

@@ -6623,12 +6623,11 @@ class AppLocalizationsEs extends AppLocalizations {
       'Esto elimina permanentemente tus carreras, rutas y perfil del servidor. Los datos locales del dispositivo se conservan a menos que inicies sesión como un usuario nuevo. Esto no se puede deshacer.';
 
   @override
-  String get settingsAccountDeleteChallengeText =>
-      'Escribe «DELETE» para confirmar';
+  String get settingsAccountDeleteChallengeWord => 'ELIMINAR';
 
   @override
-  String settingsAccountDeleteChallengeEmail(String email) {
-    return 'Escribe tu correo ($email) para confirmar';
+  String settingsAccountDeleteChallengeText(String word) {
+    return 'Escribe «$word» para confirmar';
   }
 
   @override

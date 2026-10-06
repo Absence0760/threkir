@@ -956,14 +956,12 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
   }
 
   Future<void> _deleteAccount() async {
-    // Re-entry challenge mirroring the web ConfirmDialog `requireText`
-    // gate: the user must type their email (or "DELETE" when offline /
-    // no email) before the Delete button enables. Apple 5.1.1 +
-    // data-loss confirmation — a stray tap can't trigger an
-    // irreversible server-side wipe.
+    // Mirrors the web ConfirmDialog `requireText` gate: one fixed localized
+    // word for every account, never the email — a Hide My Email user has
+    // never seen their relay address (Apple 5.1.1(v), issue #1064). The
+    // challenge guards against a stray tap; the session proves identity.
     final l10n = AppLocalizations.of(context);
-    final email = widget.apiClient?.userEmail ?? '';
-    final challengeTarget = email.isEmpty ? 'DELETE' : email;
+    final challengeTarget = l10n.settingsAccountDeleteChallengeWord;
     final challengeCtl = TextEditingController();
     final confirm = await showDialog<bool>(
       context: context,
@@ -984,9 +982,8 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
                   autocorrect: false,
                   enableSuggestions: false,
                   decoration: InputDecoration(
-                    labelText: email.isEmpty
-                        ? l10n.settingsAccountDeleteChallengeText
-                        : l10n.settingsAccountDeleteChallengeEmail(email),
+                    labelText:
+                        l10n.settingsAccountDeleteChallengeText(challengeTarget),
                   ),
                   onChanged: (_) => setInner(() {}),
                 ),

@@ -197,12 +197,11 @@ test.describe('saga: account deletion via /settings/account', () => {
 				page.getByRole('heading', { name: /Delete your account\?/ })
 			).toBeVisible({ timeout: 5_000 });
 
-			// Re-entry challenge (audit-findings 2026-05-30 Medium / Apple
-			// 5.1.1): the confirm button is disabled until the user types
-			// their email. Verify it's disabled, then type to enable.
+			// Confirm challenge (Apple 5.1.1(v), issue #1064): the confirm
+			// button is disabled until the user types the fixed word DELETE.
 			const confirmBtn = page.getByRole('button', { name: /Delete my account/ });
 			await expect(confirmBtn).toBeDisabled();
-			await page.getByTestId('confirm-challenge-input').fill(user.email);
+			await page.getByTestId('confirm-challenge-input').fill('DELETE');
 			await expect(confirmBtn).toBeEnabled();
 			await confirmBtn.click();
 

@@ -47,11 +47,12 @@ Flutter iOS app. **`lib/` and `test/` are now byte-for-byte identical to `apps/m
 
 - `AppDelegate.swift` — activates the `WatchIngestBridge` singleton at launch + attaches its method channel when the Flutter engine spins up.
 - `CalendarBridge.swift` — **live**: presents `EKEventEditViewController` pre-filled from a club event, handed over the `run_app/calendar` method channel by `lib/calendar_intent.dart`. Asks for write-only calendar access on iOS 17+ (`requestWriteOnlyAccessToEvents`, falling back to `requestAccess` below it) and never reads the calendar. Parses the RRULE value the Dart side sends into an `EKRecurrenceRule` — only the subset `buildRrule` emits, anything else yields no rule rather than a different one (decisions § 692). Registered in `AppDelegate.didInitializeImplicitFlutterEngine`.
+- `DocumentOpenHandoff.swift` — **live**: document "Open with" for route files. A scene life-cycle delegate registered *before* `GeneratedPluginRegistrant` (the plugin claims every cold-launch URL), it moves the `file://` Inbox copy into the share extension's App Group `SharedRoutes/`, writes the same payload, and hands `receive_sharing_intent` the redirect URL, so Dart receives it as a share (decisions § 1761). Compiles `ShareExtension/SharedRouteHandoff.swift` too.
 - `WatchIngestBridge.swift` — **live**: `WCSessionDelegate` that receives `WCSessionFile` transfers from the watch, reads the gzipped-JSON track contents, and forwards to Dart via the `run_app/watch_ingest` method channel. Payloads arriving before Flutter is ready are buffered in-process and flushed on attach.
 
 ## Native tests
 
-`ios/RunnerTests/` carries 48 XCTest cases over the two live bridges. It
+`ios/RunnerTests/` carries 77 XCTest cases (measured 2026-10-06) over the live bridges, the share extension handoff and `DocumentOpenHandoff`. It
 replaced the stock `RunnerTests.swift` template stub (`testExample`, empty
 body), which had been the entirety of iOS native coverage while the Android
 twin shipped three Kotlin bridge suites.

@@ -4,10 +4,11 @@ import UniformTypeIdentifiers
 /// The iOS system share sheet's entry point into Threkir: the counterpart of
 /// the Android manifest's `ACTION_SEND` intent-filter, and the half the
 /// existing `CFBundleDocumentTypes` "Open with" registration could never
-/// cover — a document type registration only reaches the "Open in" chooser.
+/// cover — a document type registration only reaches the "Open in" chooser,
+/// which `DocumentOpenHandoff` in the host app answers.
 ///
 /// It shows no UI. `NSExtensionActivationRule` in `Info.plist` already limits
-/// activation to the two route UTIs the host app declares, so by the time
+/// activation to the route UTIs the host app declares, so by the time
 /// this runs the only question left is whether the file can be materialised;
 /// asking the user to confirm a share they just performed would be a second
 /// tap for nothing. The outcome — imported, or "couldn't import" — is
@@ -46,7 +47,7 @@ final class ShareViewController: UIViewController {
 
         guard !providers.isEmpty else {
             // Unreachable while the activation rule holds — the OS only
-            // offers Threkir for an attachment conforming to one of the two
+            // offers Threkir for an attachment conforming to one of the
             // route types. Kept because the rule and this list are two
             // declarations of one set, and the day they disagree the user
             // should be told rather than watch the sheet close on nothing.
@@ -85,11 +86,8 @@ final class ShareViewController: UIViewController {
                 files.append(
                     SharedRouteHandoff.MediaFile(
                         // A `file://` URL string, NOT `destination.path` — see
-                        // `SharedRouteHandoff.encodedPayload`. Percent-encoding
-                        // is removed because the plugin hands the string
-                        // straight to Dart's `File()`, which does not decode it.
-                        path: destination.absoluteString.removingPercentEncoding
-                            ?? destination.absoluteString,
+                        // `SharedRouteHandoff.encodedPayload`.
+                        path: SharedRouteHandoff.payloadPath(for: destination),
                         mimeType: UTType(uti)?.preferredMIMEType,
                         type: SharedRouteHandoff.MediaFile.fileType
                     )
@@ -161,40 +159,13 @@ final class ShareViewController: UIViewController {
         )
     }
 
-    /// The directory shared route files are copied into, emptied of whatever
-    /// the last share left there and created if it does not exist. Returns nil
-    /// when the App Group is not reachable, which is the only case the caller
-    /// has to treat as a broken build.
-    ///
-    /// Emptying it is what stops every file a user ever shared accumulating in
-    /// the group container forever — the host app copies what it imports into
-    /// its own route store, and nothing else sweeps. It is scoped to this one
-    /// directory rather than the container root because the root also holds
-    /// the `UserDefaults` suite the payload itself is written to.
+    /// Nil when the App Group is not reachable, which is the only case the
+    /// caller has to treat as a broken build.
     private func preparedPayloadDirectory() -> URL? {
         guard let container = FileManager.default
             .containerURL(forSecurityApplicationGroupIdentifier: SharedRouteHandoff.appGroup)
         else { return nil }
-
-        let directory = container.appendingPathComponent(
-            SharedRouteHandoff.payloadDirectoryName,
-            isDirectory: true
-        )
-        let contents = (try? FileManager.default.contentsOfDirectory(
-            at: directory,
-            includingPropertiesForKeys: nil
-        )) ?? []
-        for file in contents {
-            try? FileManager.default.removeItem(at: file)
-        }
-        do {
-            try FileManager.default.createDirectory(
-                at: directory, withIntermediateDirectories: true
-            )
-        } catch {
-            return nil
-        }
-        return directory
+        return SharedRouteHandoff.preparedPayloadDirectory(in: container)
     }
 
     /// The shared file's own name, so the host app's format dispatch still

@@ -113,6 +113,16 @@ full card with no code change. The tier machinery (`subscription_tier`,
 `is_pro()`, `TIER_LIMITS`, RevenueCat webhook) stays intact and dormant
 either way.
 
+**Terms and Privacy sit beside the purchase** (App Store Guideline 3.1.2:
+an auto-renewing subscription must link functional Terms of Use and
+Privacy Policy from the purchase flow, not only from a footer). Web
+renders `upgrade.termsLink` / `upgrade.privacyLink` under the "Get Pro"
+CTA whenever Pro is sellable; mobile `SettingsProScreen` renders both via
+`legal_links.dart`'s `openLegalDoc` on every state, teaser included, so
+they also sit beside Restore Purchases. Pinned by
+`apps/web/tests-e2e/settings/upgrade.spec.ts` and
+`apps/mobile_android/test/settings_pro_screen_test.dart`.
+
 **Mobile mirrors the same gate** ([decisions.md § 466](../architecture/decisions.md)).
 A Flutter binary has no server-rendered env, so the web build publishes
 the two flags it already reads as a prerendered manifest at

@@ -147,7 +147,7 @@ export const REGISTERED = [
 		kind: 'ops',
 		key: 'apps/web/src/lib/format/svg_raster.ts:rasterizeSvgToPng|apps/web/src/lib/util/avatar_render.ts:encodeAvatarCrop',
 		reason:
-			'Not a shared helper. What they share is how a browser spells "a canvas of this size": `createElement(\'canvas\')` then `getContext(\'2d\')`. `rasterizeSvgToPng` loads an SVG string through an <img> and paints it 1:1 into a PNG. `encodeAvatarCrop` paints a decoded photo through the avatar crop transform (`drawAvatarCrop`, rotate then crop in rotated space, the same function the on-screen preview uses) and encodes a JPEG at a size `outputSize` derives. A helper owning only the two calls would be longer at both sites than the calls themselves (decisions § 1760).',
+			'Not a shared helper. What they share is how a browser spells "a canvas of this size": `createElement(\'canvas\')` then `getContext(\'2d\')`. `rasterizeSvgToPng` loads an SVG string through an <img> and paints it 1:1 into a PNG. `encodeAvatarCrop` paints a decoded photo through the avatar crop transform (`drawAvatarCrop`, rotate then crop in rotated space, the same function the on-screen preview uses) and encodes a JPEG at a size `outputSize` derives. A helper owning only the two calls would be longer at both sites than the calls themselves (decisions § 1762).',
 	},
 	{
 		kind: 'ops',

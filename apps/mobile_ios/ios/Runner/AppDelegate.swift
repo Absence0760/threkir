@@ -78,6 +78,11 @@ import workmanager_apple
   }
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+    // Before the generated plugins: scene URL delivery stops at the first
+    // delegate that reports a URL handled, and receive_sharing_intent claims
+    // every cold-launch URL — including the document opens it ignores.
+    engineBridge.pluginRegistry.registrar(forPlugin: "DocumentOpenHandoff")?
+      .addSceneDelegate(DocumentOpenHandoff.shared)
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     // `FlutterPluginRegistry` conforms to `FlutterBinaryMessenger`, so
     // the registry doubles as the messenger for our custom channel.

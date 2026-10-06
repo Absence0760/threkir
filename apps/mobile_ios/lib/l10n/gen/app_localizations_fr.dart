@@ -6646,12 +6646,11 @@ class AppLocalizationsFr extends AppLocalizations {
       'Cela supprime définitivement tes courses, itinéraires et ton profil du serveur. Les données locales de l\'appareil sont conservées, sauf si tu te connectes en tant que nouvel utilisateur. Cette action est irréversible.';
 
   @override
-  String get settingsAccountDeleteChallengeText =>
-      'Tape « DELETE » pour confirmer';
+  String get settingsAccountDeleteChallengeWord => 'SUPPRIMER';
 
   @override
-  String settingsAccountDeleteChallengeEmail(String email) {
-    return 'Tape ton e-mail ($email) pour confirmer';
+  String settingsAccountDeleteChallengeText(String word) {
+    return 'Tape « $word » pour confirmer';
   }
 
   @override

@@ -6639,12 +6639,11 @@ class AppLocalizationsDe extends AppLocalizations {
       'Dadurch werden deine Läufe, Routen und dein Profil dauerhaft vom Server entfernt. Lokale Gerätedaten bleiben erhalten, sofern du dich nicht als neuer Nutzer anmeldest. Dies kann nicht rückgängig gemacht werden.';
 
   @override
-  String get settingsAccountDeleteChallengeText =>
-      'Gib „DELETE“ ein, um zu bestätigen';
+  String get settingsAccountDeleteChallengeWord => 'LÖSCHEN';
 
   @override
-  String settingsAccountDeleteChallengeEmail(String email) {
-    return 'Gib deine E-Mail ($email) ein, um zu bestätigen';
+  String settingsAccountDeleteChallengeText(String word) {
+    return 'Gib „$word“ ein, um zu bestätigen';
   }
 
   @override

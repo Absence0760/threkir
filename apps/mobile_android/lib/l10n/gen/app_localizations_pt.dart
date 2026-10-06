@@ -6625,12 +6625,11 @@ class AppLocalizationsPt extends AppLocalizations {
       'Isto remove permanentemente as suas corridas, rotas e perfil do servidor. Os dados locais do dispositivo são mantidos, a menos que entre como um novo utilizador. Isto não pode ser desfeito.';
 
   @override
-  String get settingsAccountDeleteChallengeText =>
-      'Introduza \"DELETE\" para confirmar';
+  String get settingsAccountDeleteChallengeWord => 'ELIMINAR';
 
   @override
-  String settingsAccountDeleteChallengeEmail(String email) {
-    return 'Introduza o seu e-mail ($email) para confirmar';
+  String settingsAccountDeleteChallengeText(String word) {
+    return 'Introduza \"$word\" para confirmar';
   }
 
   @override
@@ -21055,12 +21054,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Isso remove permanentemente suas corridas, rotas e perfil do servidor. Os dados locais do dispositivo são mantidos, a menos que você entre como um novo usuário. Isso não pode ser desfeito.';
 
   @override
-  String get settingsAccountDeleteChallengeText =>
-      'Digite \"DELETE\" para confirmar';
+  String get settingsAccountDeleteChallengeWord => 'EXCLUIR';
 
   @override
-  String settingsAccountDeleteChallengeEmail(String email) {
-    return 'Digite seu e-mail ($email) para confirmar';
+  String settingsAccountDeleteChallengeText(String word) {
+    return 'Digite \"$word\" para confirmar';
   }
 
   @override

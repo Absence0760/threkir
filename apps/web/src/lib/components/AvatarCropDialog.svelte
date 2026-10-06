@@ -50,9 +50,14 @@
 		if (!f) return;
 		status = 'loading';
 		let cancelled = false;
+		let loaded: AvatarSource | null = null;
 		loadOrientedImage(f).then(
 			(img) => {
-				if (cancelled) return;
+				loaded = img;
+				if (cancelled) {
+					if (img instanceof ImageBitmap) img.close();
+					return;
+				}
 				const { width, height } = sourceSize(img);
 				if (width < 1 || height < 1) {
 					status = 'failed';
@@ -70,6 +75,7 @@
 		);
 		return () => {
 			cancelled = true;
+			if (loaded instanceof ImageBitmap) loaded.close();
 		};
 	});
 

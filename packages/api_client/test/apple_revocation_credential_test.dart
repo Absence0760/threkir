@@ -17,11 +17,17 @@ class _FakeHttp extends http.BaseClient {
   bool exchangeThrows = false;
   Future<void>? exchangeGate;
 
+  /// Completes when the exchange request arrives. The handoff is not awaited
+  /// by sign-in, so a test waits on the request itself rather than guessing
+  /// how many event-loop turns the functions client takes to send it.
+  final Completer<http.Request> exchangeSeen = Completer<http.Request>();
+
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final r = request as http.Request;
     requests.add(r);
     if (r.url.path.endsWith('/functions/v1/apple-token-exchange')) {
+      if (!exchangeSeen.isCompleted) exchangeSeen.complete(r);
       if (exchangeGate != null) await exchangeGate;
       if (exchangeThrows) throw http.ClientException('offline', r.url);
       return _json(r, exchangeStatus,
@@ -87,11 +93,9 @@ void main() {
       appleCode: (code: 'c0de', nativeFlow: true),
     );
     expect(id, 'u-apple');
-    await pumpEventQueue();
-    final posted = fake.exchanges.toList();
-    expect(posted, hasLength(1));
-    expect(posted.single.method, 'POST');
-    expect(jsonDecode(posted.single.body),
+    final posted = await fake.exchangeSeen.future;
+    expect(posted.method, 'POST');
+    expect(jsonDecode(posted.body),
         {'authorization_code': 'c0de', 'client': 'native'});
   });
 
@@ -101,8 +105,8 @@ void main() {
       idToken: 'id.tok',
       appleCode: (code: 'c0de', nativeFlow: false),
     );
-    await pumpEventQueue();
-    expect(jsonDecode(fake.exchanges.single.body),
+    final posted = await fake.exchangeSeen.future;
+    expect(jsonDecode(posted.body),
         {'authorization_code': 'c0de', 'client': 'web'});
   });
 
@@ -124,8 +128,8 @@ void main() {
       appleCode: (code: 'c0de', nativeFlow: true),
     );
     expect(id, 'u-apple');
+    await fake.exchangeSeen.future;
     gate.complete();
-    await pumpEventQueue();
   });
 
   test('a refused exchange does not undo the sign-in', () async {
@@ -135,6 +139,7 @@ void main() {
       appleCode: (code: 'c0de', nativeFlow: true),
     );
     expect(id, 'u-apple');
+    await fake.exchangeSeen.future;
     expect(
         await api.keepAppleRevocationCredential('c0de', nativeFlow: true), isFalse);
   });

@@ -187,8 +187,10 @@ App Store Connect → App Privacy. Same data classes as the Play Data Safety for
 | Data type | Used to track? | Linked to user? | Purpose |
 |---|---|---|---|
 | Location (precise + coarse) | No | Yes | App functionality |
-| Health & Fitness — heart rate, steps | No | Yes | App functionality |
+| Health & Fitness — workouts, heart rate, distance, steps, body weight | No | Yes | App functionality, Product personalization (Coach, training plans) |
 | Email | No | Yes | App functionality |
+| Phone number (an optional safety contact's, for the SMS escalation) | No | Yes | App functionality |
+| Other data types (optional date of birth and gender) | No | Yes | App functionality |
 | Name (optional display name) | No | Yes | App functionality |
 | User ID | No | Yes | App functionality |
 | Device ID (APNs/FCM push token) | No | Yes | App functionality |
@@ -197,7 +199,7 @@ App Store Connect → App Privacy. Same data classes as the Play Data Safety for
 | Other user content (comments, posts, reviews, notes, Coach chat) | No | Yes | App functionality |
 | Crash data, performance data | No | No | App functionality (analytics) |
 
-These rows must stay consistent with `ios/Runner/PrivacyInfo.xcprivacy` (the privacy manifest declares the same collected-data types) and with the Android Data Safety table in [`apps/mobile_android/deployment.md`](../mobile_android/deployment.md).
+These rows must stay consistent with `ios/Runner/PrivacyInfo.xcprivacy` (the privacy manifest declares the same collected-data types; `scripts/check_ios_native_declarations.mjs` derives them from the code, and the watch app's own manifest from what the watch uploads directly) and with the Android Data Safety table in [`apps/mobile_android/deployment.md`](../mobile_android/deployment.md).
 
 "Used to track" = correlated with data from other companies for ads. We don't do this; answer "No" everywhere.
 

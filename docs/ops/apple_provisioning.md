@@ -25,7 +25,7 @@ design records are [`native_push.md`](../features/native_push.md),
 
 ## Status
 
-Last moved: **2026-10-05**.
+Last moved: **2026-10-06**.
 
 | # | Artifact | Where it ends up | State |
 |---|---|---|---|
@@ -43,7 +43,7 @@ Last moved: **2026-10-05**.
 | 7 | **Sign-in-with-Apple key** `.p8` | Supabase (via a generated client secret) | **Done 2026-09-19** |
 | 8 | Both `.p8` files backed up | estate `threkir/push-credentials.sops.yaml` | **Done 2026-09-19** — five values in estate commit `b82fefc`, pushed; the downloaded `.p8` files deleted |
 | — | Supabase URL Configuration (Site URL, Redirect URLs, manual linking) | Supabase dashboard | **Done 2026-09-21** — shared; landed with the Google thread |
-| 9 | Supabase Apple provider enabled | Supabase dashboard | ☐ |
+| 9 | Supabase Apple provider enabled | Supabase dashboard | **Native half done 2026-10-06** — enabled with Client IDs `com.threkir.app` only and no secret key, which is all iOS sign-in needs; still owed once step 5 lands: `com.threkir.web` prepended as the FIRST client ID plus the generated OAuth secret |
 | 10 | Email-relay source registered | Apple portal → Services | ☐ |
 | 11 | `PUBLIC_APPLE_AUTH_ENABLED` truthy + `web@` Release | GitHub secret + release | ☐ |
 | 12 | `mobile_android@` release (picks up the push config) | Play | ☐ |
@@ -53,7 +53,7 @@ Last moved: **2026-10-05**.
 | 16 | App Store Connect API key `.p8` | GitHub `production` env `APP_STORE_CONNECT_API_*`; estate | **Done 2026-10-05** — secrets set; `.p8` + Key ID backed up in estate commit `b9280b6` (issue #1040); local copy deleted |
 | 17 | App Store Connect app record | App Store Connect | **Done 2026-10-05** — Apple ID 6819364574, SKU `threkir-ios` |
 | 18 | First `mobile_ios@` release → TestFlight | GitHub Release | ☐ |
-| 19 | Sign in with Apple **revocation** secrets: the step-7 key as `APPLE_TEAM_ID` + `APPLE_KEY_ID` + `APPLE_PRIVATE_KEY`, plus `APPLE_NATIVE_CLIENT_ID=com.threkir.app` and `APPLE_WEB_CLIENT_ID=com.threkir.web` | Supabase Edge Function secrets (`supabase secrets set`); the key is already in the estate (step 8) | ☐ — until set, `apple-token-exchange` stores nothing and `delete-account` cannot revoke (Guideline 5.1.1(v)) |
+| 19 | Sign in with Apple **revocation** secrets: the step-7 key as `APPLE_TEAM_ID` + `APPLE_KEY_ID` + `APPLE_PRIVATE_KEY`, plus `APPLE_NATIVE_CLIENT_ID=com.threkir.app` and `APPLE_WEB_CLIENT_ID=com.threkir.web` | Supabase Edge Function secrets (`supabase secrets set`); the key is already in the estate (step 8) | **Done 2026-10-06** — all five set on prod from the estate's `siwa_key_id` / `siwa_key_p8` (not the APNs key); `APPLE_WEB_CLIENT_ID` is inert until step 5's Services ID exists (issue #1061) |
 
 The open rows are `☐` rather than `- [ ]` on purpose: the survey docs grep
 `- [ ]`, and [`followups.md`](../product/followups.md) already carries these as

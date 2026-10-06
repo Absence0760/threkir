@@ -1877,7 +1877,7 @@
   "settingsAccountSignOut": "Se déconnecter",
   "settingsAccountSignIn": "Se connecter",
   "settingsAccountAvatar": "Photo de profil",
-  "settingsAccountAvatarHint": "JPEG, PNG ou WebP, jusqu'à 2 Mo.",
+  "settingsAccountAvatarHint": "JPEG, PNG ou WebP. Vous pouvez la recadrer et la faire pivoter avant d'enregistrer.",
   "settingsAccountAvatarRemove": "Supprimer la photo",
   "settingsAccountAvatarRemoveTitle": "Supprimer la photo de profil ?",
   "settingsAccountAvatarRemoveConfirm": "Cela supprime votre photo de profil actuelle. Vous pouvez en importer une nouvelle à tout moment.",
@@ -4171,5 +4171,13 @@
   "confirmAgeHeading": "Encore une étape",
   "confirmAgeLede": "Avant de commencer, confirme quelques points. On ne le fait qu'une fois par compte – ça ne réapparaîtra plus.",
   "confirmAgeContinue": "Continuer",
-  "confirmAgeRecordError": "Impossible d'enregistrer le consentement."
+  "confirmAgeRecordError": "Impossible d'enregistrer le consentement.",
+  "avatarCropTitle": "Ajuster la photo de profil",
+  "avatarCropHint": "Faites glisser pour repositionner. Pincez ou utilisez le curseur pour zoomer.",
+  "avatarCropRotateLeft": "Pivoter à gauche",
+  "avatarCropRotateRight": "Pivoter à droite",
+  "avatarCropZoom": "Zoom",
+  "avatarCropConfirm": "Utiliser la photo",
+  "avatarCropLoading": "Chargement de la photo…",
+  "avatarCropLoadFailed": "Impossible d'ouvrir cette image. Essayez un JPEG, PNG ou WebP."
 }

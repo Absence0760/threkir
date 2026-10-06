@@ -20,10 +20,10 @@
 		"rclt"
 	],
 	"subset": {
-		"bytes": 70516,
-		"sha256": "f4b707548307db903e6f96a464ab989361b8c1b3e39d234c7719a2a930c7f64b",
-		"glyphs": 312,
-		"ligatures": 421
+		"bytes": 71100,
+		"sha256": "95202949f2cb5f8c5e7151758c00e2d0a210aec2c7d5003b1f05bdbfbba257c1",
+		"glyphs": 314,
+		"ligatures": 423
 	},
 	"icons": [
 		"10k",
@@ -264,6 +264,8 @@
 		"restore",
 		"resume",
 		"road",
+		"rotate_left",
+		"rotate_right",
 		"route",
 		"satellite",
 		"satellite_alt",

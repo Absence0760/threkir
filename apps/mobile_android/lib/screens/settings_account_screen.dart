@@ -31,6 +31,7 @@ import '../widgets/ai_disclosure_notice.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/password_field.dart';
 import '../widgets/top_banner.dart';
+import 'avatar_crop_screen.dart';
 import 'import_screen.dart';
 import 'sign_in_screen.dart';
 
@@ -48,6 +49,10 @@ class SettingsAccountScreen extends StatefulWidget {
   /// enqueue → poll → resume path can be driven without sockets.
   final BackupServerClient? exportClient;
 
+  /// Replaces the gallery picker so a widget test can drive pick -> crop ->
+  /// upload without the image_picker platform channel.
+  final Future<XFile?> Function()? pickAvatarOverride;
+
   const SettingsAccountScreen({
     super.key,
     required this.apiClient,
@@ -56,6 +61,7 @@ class SettingsAccountScreen extends StatefulWidget {
     this.runStore,
     this.routeStore,
     this.exportClient,
+    this.pickAvatarOverride,
   });
 
   @override
@@ -499,12 +505,13 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
     if (_profileLoad != _ProfileLoad.ready) return;
     XFile? f;
     try {
-      f = await _avatarPicker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 90,
-        maxWidth: 1024,
-        maxHeight: 1024,
-      );
+      f = await (widget.pickAvatarOverride ??
+          () => _avatarPicker.pickImage(
+                source: ImageSource.gallery,
+                imageQuality: 90,
+                maxWidth: 1024,
+                maxHeight: 1024,
+              ))();
     } catch (e) {
       debugPrint('settings account avatar failed: $e');
       if (!mounted) return;
@@ -521,22 +528,23 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
       showTopBanner(context, l10n.settingsAccountAvatarFailed(friendlyError(l10n, e)));
       return;
     }
-    // Strip EXIF/GPS before the bytes leave the device — the avatars bucket is
-    // public with no server-side strip worker, so this is the ONLY strip. The
-    // format comes from the bytes, not the picked filename: a HEIC named
-    // `.jpg` would otherwise reach the JPEG walker, fail its SOI check, and be
-    // uploaded whole with the home coordinate still in it.
-    final contentType = detectImageMime(picked);
-    if (contentType == null) {
+    // The format comes from the bytes, not the picked filename: a HEIC named
+    // `.jpg` is refused here rather than handed to a decoder that can't read it.
+    if (detectImageMime(picked) == null) {
       if (!mounted) return;
       showTopBanner(context, l10n.settingsAccountAvatarUnsupported);
       return;
     }
     if (!mounted) return;
+    final cropped = await showAvatarCropScreen(context, picked);
+    if (cropped == null || !mounted) return;
     setState(() => _avatarBusy = true);
     try {
-      final clean = stripImageExif(picked, contentType);
-      final url = await api.uploadAvatar(bytes: clean, contentType: contentType);
+      // The crop step re-encodes from decoded pixels, so no EXIF survives it;
+      // the strip stays because the avatars bucket is public with no
+      // server-side strip worker, and this is the last rail before it.
+      final clean = stripImageExif(cropped, 'image/jpeg');
+      final url = await api.uploadAvatar(bytes: clean, contentType: 'image/jpeg');
       if (!mounted) return;
       setState(() {
         _avatarUrl = url;

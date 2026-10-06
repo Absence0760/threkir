@@ -6795,7 +6795,8 @@ class AppLocalizationsPt extends AppLocalizations {
   String get settingsAccountAvatar => 'Fotografia de perfil';
 
   @override
-  String get settingsAccountAvatarHint => 'JPEG, PNG ou WebP, até 2 MB.';
+  String get settingsAccountAvatarHint =>
+      'JPEG, PNG ou WebP. Pode recortar e rodar a imagem antes de guardar.';
 
   @override
   String get settingsAccountAvatarRemove => 'Remover fotografia';
@@ -14433,6 +14434,32 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get confirmAgeRecordError =>
       'Não foi possível registar o consentimento.';
+
+  @override
+  String get avatarCropTitle => 'Ajustar fotografia de perfil';
+
+  @override
+  String get avatarCropHint =>
+      'Arraste para reposicionar. Use o gesto de pinça ou o controlo deslizante para fazer zoom.';
+
+  @override
+  String get avatarCropRotateLeft => 'Rodar para a esquerda';
+
+  @override
+  String get avatarCropRotateRight => 'Rodar para a direita';
+
+  @override
+  String get avatarCropZoom => 'Zoom';
+
+  @override
+  String get avatarCropConfirm => 'Usar fotografia';
+
+  @override
+  String get avatarCropLoading => 'A carregar fotografia…';
+
+  @override
+  String get avatarCropLoadFailed =>
+      'Não foi possível abrir esta imagem. Experimente JPEG, PNG ou WebP.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -21224,7 +21251,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get settingsAccountAvatar => 'Foto de perfil';
 
   @override
-  String get settingsAccountAvatarHint => 'JPEG, PNG ou WebP, até 2 MB.';
+  String get settingsAccountAvatarHint =>
+      'JPEG, PNG ou WebP. Você pode cortar e girar a imagem antes de salvar.';
 
   @override
   String get settingsAccountAvatarRemove => 'Remover foto';
@@ -28855,4 +28883,30 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get confirmAgeRecordError =>
       'Não foi possível registrar o consentimento.';
+
+  @override
+  String get avatarCropTitle => 'Ajustar foto de perfil';
+
+  @override
+  String get avatarCropHint =>
+      'Arraste para reposicionar. Use o gesto de pinça ou o controle deslizante para dar zoom.';
+
+  @override
+  String get avatarCropRotateLeft => 'Girar para a esquerda';
+
+  @override
+  String get avatarCropRotateRight => 'Girar para a direita';
+
+  @override
+  String get avatarCropZoom => 'Zoom';
+
+  @override
+  String get avatarCropConfirm => 'Usar foto';
+
+  @override
+  String get avatarCropLoading => 'Carregando foto…';
+
+  @override
+  String get avatarCropLoadFailed =>
+      'Não foi possível abrir esta imagem. Tente JPEG, PNG ou WebP.';
 }

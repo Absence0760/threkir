@@ -8,6 +8,8 @@
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import DangerZone from '$lib/components/DangerZone.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
+	import AvatarCropDialog from '$lib/components/AvatarCropDialog.svelte';
+	import { AVATAR_SOURCE_MAX_BYTES } from '$lib/util/avatar_render';
 	import AiDisclosureNotice from '$lib/components/AiDisclosureNotice.svelte';
 	import { supabase } from '$lib/core/supabase';
 	import {
@@ -471,14 +473,27 @@
 		}
 	}
 
-	async function handleAvatarSelect(e: Event) {
+	// The picked file waits here while the crop dialog is open; only the
+	// cropped, re-encoded square is ever uploaded.
+	let avatarCropFile = $state<File | null>(null);
+
+	function handleAvatarSelect(e: Event) {
 		const input = e.currentTarget as HTMLInputElement;
 		const file = input.files?.[0];
 		input.value = ''; // allow re-picking the same file after an error
 		if (!file) return;
+		if (file.size > AVATAR_SOURCE_MAX_BYTES) {
+			showToast(m('settingsAccount.avatarFailed', { error: m('avatarCrop.tooLarge') }), 'error');
+			return;
+		}
+		avatarCropFile = file;
+	}
+
+	async function handleAvatarCropped(cropped: File) {
+		avatarCropFile = null;
 		avatarBusy = true;
 		try {
-			avatarUrl = await uploadAvatar(file);
+			avatarUrl = await uploadAvatar(cropped);
 			// Re-hydrate the auth store so the sidebar + feed avatars update too.
 			await auth.fetchUser();
 			showToast(m('settingsAccount.avatarSaved'), 'success');
@@ -1810,6 +1825,12 @@
 		</button>
 	</DangerZone>
 </div>
+
+<AvatarCropDialog
+	file={avatarCropFile}
+	onconfirm={handleAvatarCropped}
+	oncancel={() => (avatarCropFile = null)}
+/>
 
 <ConfirmDialog
 	open={showAvatarRemoveConfirm}

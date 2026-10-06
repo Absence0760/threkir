@@ -145,6 +145,12 @@ export const MAX_OP_HOLDERS = 3;
 export const REGISTERED = [
 	{
 		kind: 'ops',
+		key: 'apps/web/src/lib/format/svg_raster.ts:rasterizeSvgToPng|apps/web/src/lib/util/avatar_render.ts:encodeAvatarCrop',
+		reason:
+			'Not a shared helper. What they share is how a browser spells "a canvas of this size": `createElement(\'canvas\')` then `getContext(\'2d\')`. `rasterizeSvgToPng` loads an SVG string through an <img> and paints it 1:1 into a PNG. `encodeAvatarCrop` paints a decoded photo through the avatar crop transform (`drawAvatarCrop`, rotate then crop in rotated space, the same function the on-screen preview uses) and encodes a JPEG at a size `outputSize` derives. A helper owning only the two calls would be longer at both sites than the calls themselves (decisions § 1762).',
+	},
+	{
+		kind: 'ops',
 		key: 'apps/web/src/lib/coach/body.ts:decodeLambdaBody|apps/web/src/lib/core/lambda_secrets.ts:kmsDecrypt',
 		reason:
 			'Not a shared helper. All they have in common is the two-call `Buffer.from(x, \'base64\').toString(\'utf8\')` idiom, which is how Node spells base64 rather than a contract either of them owns. `decodeLambdaBody` decodes a FUNCTION URL EVENT body: it takes the event\'s own `isBase64Encoded` flag, enforces `COACH_BODY_LIMIT_BYTES` and answers with an HTTP status (400 on bad encoding, 413 over the limit). `kmsDecrypt` is a signed KMS API call — SigV4 headers, `TrentService.Decrypt`, error-type extraction — whose last step happens to decode the `Plaintext` field, which KMS defines as base64 and which carries no size limit and no status. Extracting the shared two calls would leave both call sites longer than they are now and give the result a name that lies about one of them (decisions § 1671).',

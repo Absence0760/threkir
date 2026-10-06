@@ -11118,7 +11118,7 @@ abstract class AppLocalizations {
   /// Subtitle under the profile-photo tile listing accepted formats
   ///
   /// In en, this message translates to:
-  /// **'JPEG, PNG, or WebP, up to 2 MB.'**
+  /// **'JPEG, PNG, or WebP. You can crop and rotate it before saving.'**
   String get settingsAccountAvatarHint;
 
   /// Tooltip on the remove-avatar button
@@ -23900,6 +23900,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not record consent.'**
   String get confirmAgeRecordError;
+
+  /// Title of the crop step shown after picking a profile photo
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust profile photo'**
+  String get avatarCropTitle;
+
+  /// Instructions under the profile-photo crop area
+  ///
+  /// In en, this message translates to:
+  /// **'Drag to reposition. Pinch or use the slider to zoom.'**
+  String get avatarCropHint;
+
+  /// Tooltip on the button that turns the photo a quarter counter-clockwise
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate left'**
+  String get avatarCropRotateLeft;
+
+  /// Tooltip on the button that turns the photo a quarter clockwise
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate right'**
+  String get avatarCropRotateRight;
+
+  /// Label of the zoom slider in the profile-photo crop step
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom'**
+  String get avatarCropZoom;
+
+  /// Button that uploads the cropped profile photo
+  ///
+  /// In en, this message translates to:
+  /// **'Use photo'**
+  String get avatarCropConfirm;
+
+  /// Screen-reader label while the picked profile photo decodes
+  ///
+  /// In en, this message translates to:
+  /// **'Loading photo…'**
+  String get avatarCropLoading;
+
+  /// Shown when the picked profile photo cannot be decoded
+  ///
+  /// In en, this message translates to:
+  /// **'This image couldn\'t be opened. Try a JPEG, PNG, or WebP.'**
+  String get avatarCropLoadFailed;
 }
 
 class _AppLocalizationsDelegate

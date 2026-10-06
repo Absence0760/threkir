@@ -7,6 +7,7 @@
 	import { defaultUnitForLocale } from '$lib/format/locale_defaults';
 	import { emailOtpLink, verifyConsentStamped } from '$lib/core/auth_confirmation';
 	import AuthShell from '$lib/components/auth/AuthShell.svelte';
+	import { OAUTH_PROVIDER_STASH_KEY, keepAppleRevocationCredential } from '$lib/core/apple_revocation';
 
 	let error = $state('');
 
@@ -19,7 +20,7 @@
 		// there the flow begins and ends in one browser, so the verifier
 		// is present.
 		const otp = emailOtpLink(window.location.search);
-		const { error: authError } = otp
+		const { data: exchanged, error: authError } = otp
 			? await supabase.auth.verifyOtp(otp)
 			: await supabase.auth.exchangeCodeForSession(window.location.search.substring(1));
 
@@ -31,18 +32,30 @@
 		// thinks it is on, and the navigations below run off that.
 		replaceState(window.location.pathname, {});
 
+		let session = exchanged.session;
 		if (authError) {
 			// The client's detectSessionInUrl bootstrap can win a race with
 			// this explicit exchange — it consumes the code + PKCE verifier
 			// first, leaving our call to fail with "code verifier not found"
 			// even though a valid session now exists. Treat that as success:
 			// only surface the error when no session was established.
-			const { data: { session } } = await supabase.auth.getSession();
+			session = (await supabase.auth.getSession()).data.session;
 			if (!session) {
 				error = authError.message;
 				return;
 			}
 		}
+
+		// Apple's refresh token arrives on this exchange only; keep it so
+		// account deletion can revoke the grant (Guideline 5.1.1(v)).
+		let stashedProvider: string | null = null;
+		try {
+			stashedProvider = sessionStorage.getItem(OAUTH_PROVIDER_STASH_KEY);
+			sessionStorage.removeItem(OAUTH_PROVIDER_STASH_KEY);
+		} catch (_) {
+			/* No storage: the provider is unknown and nothing is kept. */
+		}
+		await keepAppleRevocationCredential(supabase.functions, stashedProvider, session);
 
 		// OAuth-path age + terms capture (audit/gdpr Critical). The
 		// pre-redirect tick on /login stashed timestamps in

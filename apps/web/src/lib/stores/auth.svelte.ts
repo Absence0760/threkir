@@ -9,6 +9,7 @@ import { parsePreferredUnit, parseSubscriptionTier } from '$lib/types';
 import { createReadyGate, isAuthSettled } from './auth_ready';
 import { signOutWithScope } from './sign_out';
 import { OAUTH_PROVIDER_STASH_KEY } from '$lib/core/apple_revocation';
+import { consentRecorded } from '$lib/core/auth_confirmation';
 
 /// Longest QUIET gap a `ready()` waiter tolerates before resolving
 /// anyway — the deadline re-arms on every unsettled auth lifecycle
@@ -40,6 +41,12 @@ interface User {
 	/// The auth-shell layout reads this to decide whether to
 	/// redirect to /onboarding on login.
 	onboarded_at: string | null;
+	/// Both GDPR Art 8 stamps (`age_confirmed_at` + `terms_accepted_at`)
+	/// are on the profile row. False sends the layout to
+	/// /auth/confirm-age before any feature surface renders — the only
+	/// gate an OAuth account that skipped the sign-in hop, or a row
+	/// that was never stamped, ever meets (issue #1065).
+	consent_recorded: boolean;
 }
 
 function createAuthStore() {
@@ -99,7 +106,7 @@ function createAuthStore() {
 		gate.markSettled();
 	}
 
-	async function fetchUser(userId?: string, email?: string) {
+	async function fetchUser(userId?: string, email?: string, retriedAfterConflict = false) {
 		if (!userId) {
 			const { data: { session } } = await supabase.auth.getSession();
 			if (!session) return;
@@ -111,7 +118,7 @@ function createAuthStore() {
 		// because `subscription_tier`, `subscription_at`, and
 		// `parkrun_number` are column-level revoked from authenticated
 		// callers on `user_profiles` (migration 20260707_001).
-		const { data: profile, error: readErr } = await supabase.rpc('get_my_profile', undefined, { get: true });
+		const { data: profile, error: readErr } = await supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle();
 
 		// A failed self-read must NOT fall through to the create branch: that
 		// path treats the user as brand-new and, if its write also fails,
@@ -138,6 +145,7 @@ function createAuthStore() {
 				subscription_tier: parseSubscriptionTier(profile.subscription_tier),
 				billing_issue_at: profile.billing_issue_at ?? null,
 				onboarded_at: profile.onboarded_at ?? null,
+				consent_recorded: consentRecorded(profile),
 			};
 			setUnit(user.preferred_unit);
 		} else {
@@ -155,17 +163,25 @@ function createAuthStore() {
 			// skip-onboarding path — and stays overridable in Settings
 			// afterward (issue #488).
 			const defaultUnit = browser ? defaultUnitForLocale(navigator.language) : 'km';
-			const { error: createErr } = await supabase.from('user_profiles').upsert({
+			// A plain insert, not an upsert: ON CONFLICT DO UPDATE needs SELECT
+			// on the columns it sets, and `subscription_tier` is withheld by the
+			// column lockdown (20260707_001), so the upsert was refused with
+			// 42501 on every attempt. A 23505 means another tab or device
+			// created the row first; read that row instead.
+			const { error: createErr } = await supabase.from('user_profiles').insert({
 				id: userId,
 				preferred_unit: defaultUnit,
 				subscription_tier: 'free',
 			});
+			if (createErr?.code === '23505' && !retriedAfterConflict) {
+				return fetchUser(userId, email, true);
+			}
 			if (createErr) {
 				// Bootstrap write failed (e.g. a missing table grant). Don't
 				// fall through to a phantom `onboarded_at = null` user — that
 				// silently loops them through /onboarding against a row that
 				// was never created. Surface + leave un-hydrated instead.
-				console.error('[auth] profile bootstrap upsert failed', createErr);
+				console.error('[auth] profile bootstrap insert failed', createErr);
 				showToast(m('shell.profileSetupError'), 'error');
 				gate.markSettled();
 				return;
@@ -180,6 +196,7 @@ function createAuthStore() {
 				subscription_tier: 'free',
 				billing_issue_at: null,
 				onboarded_at: null,
+				consent_recorded: false,
 			};
 			setUnit(defaultUnit);
 		}

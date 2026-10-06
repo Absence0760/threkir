@@ -24,6 +24,7 @@ import '../lib/run_stop_dock.dart';
 import '../lib/settings_destination.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
+import '../lib/screens/confirm_age_screen.dart';
 import '../lib/screens/gym_screen.dart';
 import '../lib/fab_clearance.dart';
 import '../lib/screens/home_screen.dart';
@@ -42,7 +43,16 @@ import '../lib/screens/setup_wizard_screen.dart';
 /// account (onboarded_at null) signs in after launch.
 class _WizardApi extends ApiClient {
   String? uid;
+
+  /// Whether the account's profile row exists, and whether it records the
+  /// Art 8 age + terms confirmation. The defaults are an account that
+  /// consented at sign-up and has not seen the wizard.
+  bool hasRow;
+  bool consented;
+  int confirmCalls = 0;
   final _controller = StreamController<String?>.broadcast();
+
+  _WizardApi({this.hasRow = true, this.consented = true});
 
   @override
   String? get userId => uid;
@@ -51,9 +61,24 @@ class _WizardApi extends ApiClient {
   Stream<String?> get authUserChanges => _controller.stream;
 
   @override
-  Future<cm.UserProfileRow?> fetchMyProfile() async => uid == null
-      ? null
-      : cm.UserProfileRow(shadowHidden: false, id: uid!, displayName: null);
+  Future<cm.UserProfileRow?> fetchMyProfile() async {
+    if (uid == null || !hasRow) return null;
+    final stamp = consented ? DateTime.utc(2026, 10, 6) : null;
+    return cm.UserProfileRow(
+      shadowHidden: false,
+      id: uid!,
+      displayName: null,
+      ageConfirmedAt: stamp,
+      termsAcceptedAt: stamp,
+    );
+  }
+
+  @override
+  Future<void> confirmAgeAndTerms() async {
+    confirmCalls++;
+    hasRow = true;
+    consented = true;
+  }
 
   void emit() => _controller.add(uid);
 }
@@ -499,6 +524,61 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.byType(SetupWizardScreen), findsOneWidget);
+    });
+
+    for (final (label, hasRow) in [
+      ('a row with no consent stamps', true),
+      ('no profile row at all', false),
+    ]) {
+      testWidgets(
+          'consent gate holds an account with $label, then hands on to the '
+          'setup wizard once both boxes are ticked (#1065)', (tester) async {
+        final s = await _makeStores();
+        final api = _WizardApi(hasRow: hasRow, consented: false);
+        await _pump(tester, s, api: api);
+        await tester.pump();
+
+        api.uid = 'u10';
+        api.emit();
+        await tester.pump();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(find.byType(ConfirmAgeScreen), findsOneWidget);
+        expect(find.byType(SetupWizardScreen), findsNothing);
+
+        final confirm = find.widgetWithText(FilledButton, 'Continue');
+        expect(tester.widget<FilledButton>(confirm).onPressed, isNull,
+            reason: 'nothing is recorded until both boxes are ticked');
+        await tester.tap(find.byType(Checkbox).at(0));
+        await tester.pump();
+        await tester.tap(find.byType(Checkbox).at(1));
+        await tester.pump();
+        await tester.tap(confirm);
+        // The gate's reverse transition needs a frame past its end to drop
+        // the route, and the wizard push that follows needs its own frames.
+        for (var i = 0; i < 8; i++) {
+          await tester.pump(const Duration(milliseconds: 200));
+        }
+
+        expect(api.confirmCalls, 1);
+        expect(find.byType(ConfirmAgeScreen), findsNothing);
+        expect(find.byType(SetupWizardScreen), findsOneWidget);
+      });
+    }
+
+    testWidgets('an account that consented at sign-up never sees the gate',
+        (tester) async {
+      final s = await _makeStores();
+      final api = _WizardApi();
+      await _pump(tester, s, api: api);
+      await tester.pump();
+      api.uid = 'u11';
+      api.emit();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(ConfirmAgeScreen), findsNothing);
+      expect(api.confirmCalls, 0);
     });
   });
 

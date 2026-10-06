@@ -667,6 +667,28 @@ $neutralised$;`,
     },
   ],
   [
+    'get_my_profile',
+    {
+      why: 'drops `id = auth.uid()`, the self-only filter that is the whole of its access control; the function takes no argument, so there is no subject selector to keep',
+      sql: `create or replace function public.get_my_profile()
+ returns setof public.user_profiles
+ language sql stable security definer set search_path to 'public'
+as $neutralised$
+  select * from public.user_profiles u where ${mine('u')};
+$neutralised$;`,
+      subject: 'user_profiles u',
+      witness: {
+        // The caller is nobody in particular, so the real function's
+        // `id = auth.uid()` hides the profile row the witness just touched.
+        setup: `update user_profiles set display_name = display_name
+                 where id = (select id from user_profiles order by id limit 1);
+                select set_config('request.jwt.claims',
+                  '{"sub":"00000000-0000-0000-0000-0000000c0ffe"}', true);`,
+        probe: `select count(*) from get_my_profile();`,
+      },
+    },
+  ],
+  [
     'run_streaks_for_user',
     {
       why: 'drops `r.user_id = auth.uid()`; keeps the timezone bucketing and the optional source filter, both of which are the question the caller asked',

@@ -14453,4 +14453,18 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get planDetailSectionShareHint =>
       'Modèle de club et bibliothèque publique de plans';
+
+  @override
+  String get confirmAgeHeading => 'Encore une étape';
+
+  @override
+  String get confirmAgeLede =>
+      'Avant de commencer, confirme quelques points. On ne le fait qu\'une fois par compte – ça ne réapparaîtra plus.';
+
+  @override
+  String get confirmAgeContinue => 'Continuer';
+
+  @override
+  String get confirmAgeRecordError =>
+      'Impossible d\'enregistrer le consentement.';
 }

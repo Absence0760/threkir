@@ -5400,12 +5400,12 @@ export type Database = {
           subscription_tier: string | null
           terms_accepted_at: string | null
           tier_updated_event_ts: number | null
-        }
+        }[]
         SetofOptions: {
           from: "*"
           to: "user_profiles"
-          isOneToOne: true
-          isSetofReturn: false
+          isOneToOne: false
+          isSetofReturn: true
         }
       }
       global_segment_effort_ranks: {

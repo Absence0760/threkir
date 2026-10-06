@@ -4,7 +4,7 @@ GDPR Art 27 requires controllers and processors **without an establishment in th
 
 The representative is named in the Privacy Policy and is the first contact point for EU supervisory authorities and data subjects in the EU.
 
-**Status**: not yet appointed. This is a Critical-tier gap for any EU rollout.
+**Status**: not appointed, by decision (2026-10-06, issue #1061 M6) — kept as a later option, not a launch blocker. The Privacy Policy says plainly that no representative is appointed and points EU / UK residents and authorities at `privacy@threkir.com` (`NOT_PROVIDED` in `apps/web/src/lib/legal/operator.ts`). The obligation applies when the service is offered to people in the EU / UK; excluding those countries from store availability is the consistent way to hold this position. Revisit before any EU / UK rollout.
 
 ## Who qualifies
 

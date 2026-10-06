@@ -42,6 +42,26 @@ test.describe('Legal pages', () => {
 		});
 	}
 
+	test('operator facts the owner declined render as decisions, not as pending', async ({
+		page
+	}) => {
+		// operator.ts records no postal address and no Art 27 representatives
+		// as NOT_PROVIDED (issue #1061, M6): the pages must say so plainly and
+		// must not raise the "still being finalised" banner for them.
+		await page.goto('/privacy');
+		await expect(page.getByTestId('operator-facts-pending')).toHaveCount(0);
+		const privacy = await page.locator('.legal-page').innerText();
+		expect(privacy).toMatch(/EU representative \(Art 27 GDPR\):\s+we have not appointed one/);
+		expect(privacy).toMatch(/UK representative \(Art 27 UK GDPR\):\s+we have not appointed one/);
+		expect(privacy).toContain('we do not publish a postal address');
+		expect(privacy).not.toMatch(/pending publication|appointment in progress/);
+
+		await page.goto('/terms');
+		await expect(page.getByTestId('operator-facts-pending')).toHaveCount(0);
+		const terms = await page.locator('.legal-page').innerText();
+		expect(terms).toContain('governed by the laws of the Commonwealth of Virginia, United States');
+	});
+
 	test('/privacy lists every GDPR-named clause that App Store / Play reviewers look for', async ({
 		page
 	}) => {

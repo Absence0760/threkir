@@ -13750,4 +13750,16 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get planDetailSectionShareHint => 'クラブのテンプレートと公開プランライブラリ';
+
+  @override
+  String get confirmAgeHeading => 'あと一歩です';
+
+  @override
+  String get confirmAgeLede => '始める前に、いくつか確認させてください。アカウントごとに一度だけで、二度と表示されません。';
+
+  @override
+  String get confirmAgeContinue => '続ける';
+
+  @override
+  String get confirmAgeRecordError => '同意を記録できませんでした。';
 }

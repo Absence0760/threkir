@@ -116,7 +116,7 @@ export async function createBackup(
 	// all-clear the paged row reads were fixed for. A missing settings ROW
 	// is not a shortfall (a runner who never changed a preference has
 	// none); only an error is.
-	const { data: profile, error: profileErr } = await supabase.rpc('get_my_profile', undefined, { get: true });
+	const { data: profile, error: profileErr } = await supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle();
 	const { data: userSettings, error: settingsErr } = await supabase
 		.from('user_settings')
 		.select('prefs')

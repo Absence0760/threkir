@@ -2,20 +2,20 @@
 	import { goto } from '$app/navigation';
 	import { m } from '$lib/i18n/store.svelte';
 	import { supabase } from '$lib/core/supabase';
+	import { auth } from '$lib/stores/auth.svelte';
 	import { checkSignUpGates } from '$lib/core/auth_gates';
 	import { defaultUnitForLocale } from '$lib/format/locale_defaults';
 	import AuthShell from '$lib/components/auth/AuthShell.svelte';
 
-	// Post-OAuth fallback gate. Reached from /auth/callback when the
-	// user's user_profiles row is missing `age_confirmed_at` or
-	// `terms_accepted_at`. Re-asks for the same affirmation the
-	// /login sign-up flow captures, then stamps via the SECURITY
-	// DEFINER `confirm_age_and_terms()` RPC.
+	// Consent gate. Reached from /auth/callback, the /login sign-up branch,
+	// or the root layout's consent gate whenever the user's user_profiles
+	// row is missing `age_confirmed_at` or `terms_accepted_at`. Re-asks
+	// for the same affirmation the /login sign-up flow captures, then
+	// stamps via the SECURITY DEFINER `confirm_age_and_terms()` RPC.
 	//
-	// Server-side enforcement story: a user who skips this page (closes
-	// the tab, or hits /dashboard directly via a stale URL) keeps a
-	// profile with null consent timestamps. Future RPC guards can
-	// reject privileged operations against such accounts. See migration
+	// A user who closes the tab here is routed back by the layout gate on
+	// their next load, and the server-side write gate (migration
+	// 20270424000004) rejects their writes meanwhile. See migration
 	// 20260929_001 + audit/gdpr (2026-05-25) Critical.
 
 	let confirmAdult = $state(false);
@@ -37,6 +37,10 @@
 				p_preferred_unit: defaultUnitForLocale(navigator.language),
 			});
 			if (rpcError) throw rpcError;
+			// Re-hydrate before leaving: the root layout's consent gate reads
+			// `auth.user.consent_recorded`, and a stale `false` would bounce
+			// straight back here.
+			await auth.refreshSession();
 			goto('/dashboard');
 		} catch (err) {
 			error = err instanceof Error ? err.message : m('confirmAge.recordConsentError');

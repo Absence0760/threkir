@@ -14420,6 +14420,20 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get planDetailSectionShareHint =>
       'Modelo do clube e biblioteca pública de planos';
+
+  @override
+  String get confirmAgeHeading => 'Mais um passo';
+
+  @override
+  String get confirmAgeLede =>
+      'Antes de começar, confirme algumas coisas. Fazemos isto uma vez por conta — não vai aparecer novamente.';
+
+  @override
+  String get confirmAgeContinue => 'Continuar';
+
+  @override
+  String get confirmAgeRecordError =>
+      'Não foi possível registar o consentimento.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -28829,4 +28843,18 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get planDetailSectionShareHint =>
       'Modelo do clube e biblioteca pública de planos';
+
+  @override
+  String get confirmAgeHeading => 'Mais um passo';
+
+  @override
+  String get confirmAgeLede =>
+      'Antes de começar, confirme algumas coisas. Fazemos isso uma vez por conta — não vai aparecer de novo.';
+
+  @override
+  String get confirmAgeContinue => 'Continuar';
+
+  @override
+  String get confirmAgeRecordError =>
+      'Não foi possível registrar o consentimento.';
 }

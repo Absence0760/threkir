@@ -4167,5 +4167,9 @@
   "planDetailSectionWeeksTitle": "週ごと",
   "planDetailSectionWeeksHint": "全{n}週を1日ずつ",
   "planDetailSectionShareTitle": "共有と公開",
-  "planDetailSectionShareHint": "クラブのテンプレートと公開プランライブラリ"
+  "planDetailSectionShareHint": "クラブのテンプレートと公開プランライブラリ",
+  "confirmAgeHeading": "あと一歩です",
+  "confirmAgeLede": "始める前に、いくつか確認させてください。アカウントごとに一度だけで、二度と表示されません。",
+  "confirmAgeContinue": "続ける",
+  "confirmAgeRecordError": "同意を記録できませんでした。"
 }

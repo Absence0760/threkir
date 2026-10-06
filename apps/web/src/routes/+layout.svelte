@@ -295,6 +295,25 @@
 		}
 	});
 
+	// Consent gate (GDPR Art 8) — a signed-in user whose profile does not
+	// record both the age affirmation and terms acceptance goes to
+	// /auth/confirm-age before any feature surface. The sign-in hops
+	// (/auth/callback, the /login sign-up branch) route there directly;
+	// this catches every session that reaches the app another way — a
+	// tab closed on the gate, a stale deep link, or a row that was never
+	// stamped (issue #1065). Runs ahead of the onboarding gate, which
+	// waits for it. Anon-allowed surfaces (legal pages included) stay
+	// reachable so the terms can be read before accepting them.
+	$effect(() => {
+		if (!browser) return;
+		if (auth.loading || !auth.loggedIn || !auth.user) return;
+		if (auth.user.consent_recorded) return;
+		const path = $page.url.pathname;
+		if (path === '/auth/confirm-age') return;
+		if (isAnonAllowed(path)) return;
+		goto('/auth/confirm-age');
+	});
+
 	// Onboarding gate — a signed-in user whose `user_profiles.onboarded_at`
 	// is still null (= they're a fresh signup that hasn't seen the wizard
 	// yet) gets routed to /onboarding. Migration 20261016_001 backfilled
@@ -307,6 +326,7 @@
 		if (!browser) return;
 		if (auth.loading || !auth.loggedIn || !auth.user) return;
 		if (auth.user.onboarded_at != null) return;
+		if (!auth.user.consent_recorded) return;
 		const path = $page.url.pathname;
 		if (path === '/onboarding') return;
 		if (isAnonAllowed(path)) return;

@@ -14418,4 +14418,17 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get planDetailSectionShareHint =>
       'Plantilla del club y biblioteca pública de planes';
+
+  @override
+  String get confirmAgeHeading => 'Un paso más';
+
+  @override
+  String get confirmAgeLede =>
+      'Antes de empezar, confirma un par de cosas. Lo hacemos una vez por cuenta y no volverá a aparecer.';
+
+  @override
+  String get confirmAgeContinue => 'Continuar';
+
+  @override
+  String get confirmAgeRecordError => 'No se pudo registrar el consentimiento.';
 }

@@ -247,7 +247,7 @@
 			const [settings, weight, profileRes, dayRuns, dayGym] = await Promise.all([
 				loadSettings(auth.user.id),
 				fetchLatestWeightKg(),
-				supabase.rpc('get_my_profile', undefined, { get: true }),
+				supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle(),
 				fetchRuns({
 					startedAtFrom: dayWindow.startIso,
 					startedAtBefore: dayWindow.endIso,

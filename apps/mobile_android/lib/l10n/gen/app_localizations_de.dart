@@ -14431,4 +14431,18 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get planDetailSectionShareHint =>
       'Vereinsvorlage und öffentliche Planbibliothek';
+
+  @override
+  String get confirmAgeHeading => 'Nur noch ein Schritt';
+
+  @override
+  String get confirmAgeLede =>
+      'Bevor du loslegst, bestätige bitte ein paar Dinge. Das machen wir nur einmal pro Konto – es wird nicht erneut angezeigt.';
+
+  @override
+  String get confirmAgeContinue => 'Weiter';
+
+  @override
+  String get confirmAgeRecordError =>
+      'Einwilligung konnte nicht gespeichert werden.';
 }

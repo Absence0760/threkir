@@ -653,7 +653,7 @@
 	/// get_my_profile RPC. Degrades to null — both consumers are additive.
 	async function fetchDashboardProfile(): Promise<DashboardProfile | null> {
 		try {
-			const { data } = await supabase.rpc('get_my_profile', undefined, { get: true });
+			const { data } = await supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle();
 			return (data as DashboardProfile | null) ?? null;
 		} catch (_) {
 			return null;

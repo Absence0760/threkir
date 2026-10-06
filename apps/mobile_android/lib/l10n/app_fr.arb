@@ -4167,5 +4167,9 @@
   "planDetailSectionWeeksTitle": "Semaine par semaine",
   "planDetailSectionWeeksHint": "Les {n} semaines, jour par jour",
   "planDetailSectionShareTitle": "Partager et publier",
-  "planDetailSectionShareHint": "Modèle de club et bibliothèque publique de plans"
+  "planDetailSectionShareHint": "Modèle de club et bibliothèque publique de plans",
+  "confirmAgeHeading": "Encore une étape",
+  "confirmAgeLede": "Avant de commencer, confirme quelques points. On ne le fait qu'une fois par compte – ça ne réapparaîtra plus.",
+  "confirmAgeContinue": "Continuer",
+  "confirmAgeRecordError": "Impossible d'enregistrer le consentement."
 }

@@ -18326,5 +18326,21 @@
   "planDetailSectionShareHint": "Club template and public plan library",
   "@planDetailSectionShareHint": {
     "description": "Plan detail: a named expander (title or its one-line hint)"
+  },
+  "confirmAgeHeading": "One more step",
+  "@confirmAgeHeading": {
+    "description": "Consent gate (shown after sign-in when the account has no recorded age + terms confirmation): heading"
+  },
+  "confirmAgeLede": "Before you start, please confirm a couple of things. We do this once per account — it won't show again.",
+  "@confirmAgeLede": {
+    "description": "Consent gate: explanation under the heading"
+  },
+  "confirmAgeContinue": "Continue",
+  "@confirmAgeContinue": {
+    "description": "Consent gate: button that records both confirmations"
+  },
+  "confirmAgeRecordError": "Could not record consent.",
+  "@confirmAgeRecordError": {
+    "description": "Consent gate: error shown when recording the confirmations fails"
   }
 }

@@ -543,9 +543,8 @@ class ApiClient {
   /// default the readers hard-coded. Now the profile is materialised
   /// on first sign-in.
   ///
-  /// Idempotent — safe to call on every sign-in. The body is the same
-  /// shape web uses, so a user whose row already exists is unchanged
-  /// (the upsert on a present `id` is a no-op for the default columns).
+  /// Idempotent — safe to call on every sign-in: a user whose row already
+  /// exists is left unchanged.
   Future<void> ensureMyProfile() async {
     final viewerId = _client.auth.currentUser?.id;
     if (viewerId == null) return;
@@ -553,10 +552,16 @@ class ApiClient {
     // (`subscription_tier`, `subscription_at`, `parkrun_number`) don't
     // make the SELECT silently return null when the row exists.
     if (profileRowFrom(await _client.rpc('get_my_profile')) != null) return;
-    await _client.from('user_profiles').upsert(
-      buildDefaultProfileRow(viewerId),
-      onConflict: 'id',
-    );
+    // A plain insert, not an upsert: ON CONFLICT DO UPDATE needs SELECT on
+    // the columns it sets, and `subscription_tier` is withheld by the column
+    // lockdown (20260707_001), so the upsert was refused with 42501. A 23505
+    // means the row appeared in between (another device, or the consent
+    // gate's confirm_age_and_terms), which is the outcome this wanted.
+    try {
+      await _client.from('user_profiles').insert(buildDefaultProfileRow(viewerId));
+    } on PostgrestException catch (e) {
+      if (e.code != '23505') rethrow;
+    }
   }
 
   /// Pure helper: the default `user_profiles` row inserted on first

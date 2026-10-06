@@ -106,7 +106,7 @@ function createAuthStore() {
 		gate.markSettled();
 	}
 
-	async function fetchUser(userId?: string, email?: string) {
+	async function fetchUser(userId?: string, email?: string, retriedAfterConflict = false) {
 		if (!userId) {
 			const { data: { session } } = await supabase.auth.getSession();
 			if (!session) return;
@@ -163,17 +163,25 @@ function createAuthStore() {
 			// skip-onboarding path — and stays overridable in Settings
 			// afterward (issue #488).
 			const defaultUnit = browser ? defaultUnitForLocale(navigator.language) : 'km';
-			const { error: createErr } = await supabase.from('user_profiles').upsert({
+			// A plain insert, not an upsert: ON CONFLICT DO UPDATE needs SELECT
+			// on the columns it sets, and `subscription_tier` is withheld by the
+			// column lockdown (20260707_001), so the upsert was refused with
+			// 42501 on every attempt. A 23505 means another tab or device
+			// created the row first; read that row instead.
+			const { error: createErr } = await supabase.from('user_profiles').insert({
 				id: userId,
 				preferred_unit: defaultUnit,
 				subscription_tier: 'free',
 			});
+			if (createErr?.code === '23505' && !retriedAfterConflict) {
+				return fetchUser(userId, email, true);
+			}
 			if (createErr) {
 				// Bootstrap write failed (e.g. a missing table grant). Don't
 				// fall through to a phantom `onboarded_at = null` user — that
 				// silently loops them through /onboarding against a row that
 				// was never created. Surface + leave un-hydrated instead.
-				console.error('[auth] profile bootstrap upsert failed', createErr);
+				console.error('[auth] profile bootstrap insert failed', createErr);
 				showToast(m('shell.profileSetupError'), 'error');
 				gate.markSettled();
 				return;

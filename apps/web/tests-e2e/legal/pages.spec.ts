@@ -60,6 +60,18 @@ test.describe('Legal pages', () => {
 		).toHaveAttribute('href', /^mailto:/);
 	});
 
+	test('/privacy states HealthKit and Health Connect data is never used for advertising', async ({
+		page
+	}) => {
+		// App Review Guideline 5.1.3 requires the policy to say health-platform
+		// data is not used for advertising, marketing, or data mining.
+		await page.goto('/privacy');
+		const para = await page.getByTestId('health-platform-data').innerText();
+		expect(para).toContain('HealthKit');
+		expect(para).toContain('Health Connect');
+		expect(para).toMatch(/never use it for advertising, marketing, or\s+data mining/);
+	});
+
 	test('/privacy states the 48-hour live-ping retention, not the stale 24h figure', async ({
 		page
 	}) => {

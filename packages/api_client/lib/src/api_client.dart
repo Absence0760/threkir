@@ -438,12 +438,39 @@ class ApiClient {
   /// ApiClient abstraction stays uniform for both providers.
   Future<String> signInWithAppleIdToken({
     required String idToken,
+    String? authorizationCode,
   }) async {
     final response = await _client.auth.signInWithIdToken(
       provider: OAuthProvider.apple,
       idToken: idToken,
     );
+    if (authorizationCode != null && authorizationCode.isNotEmpty) {
+      await keepAppleRevocationCredential(authorizationCode);
+    }
     return response.user!.id;
+  }
+
+  /// Hands Apple's one-time authorization code to `apple-token-exchange`,
+  /// which trades it for a refresh token so `delete-account` can revoke the
+  /// grant later (App Store Guideline 5.1.1(v)). The code expires minutes
+  /// after sign-in, so this is the only moment it can be kept.
+  ///
+  /// Sign-in has already succeeded by now, and a failure here costs only the
+  /// later revocation, so it never throws: it answers false and logs.
+  Future<bool> keepAppleRevocationCredential(String authorizationCode) async {
+    try {
+      await _client.functions
+          .invoke(
+            'apple-token-exchange',
+            body: {'authorization_code': authorizationCode},
+          )
+          .timeout(const Duration(seconds: 10));
+      return true;
+    } catch (e) {
+      debugPrint(
+          'ApiClient.keepAppleRevocationCredential failed: ${safeErrorLabel(e)}');
+      return false;
+    }
   }
 
   /// Ensure the signed-in user has a `user_profiles` row, creating one

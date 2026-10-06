@@ -34,6 +34,7 @@ apps/backend/
         │                           # generated `Database` type + the `DbClient` alias
         ├── _shared/{rate_limit,sentry,strava,body_limit,redirect_allowlist}.ts
         ├── auth-email/{index,handler,lib,smtp}.ts   # GoTrue send-email hook → localized auth mail
+        ├── apple-token-exchange/{index,lib}.ts   # keeps the SIWA refresh token for revocation on deletion
         ├── clip-public-track/index.ts
         ├── delete-account/index.ts
         ├── export-data/index.ts
@@ -616,6 +617,7 @@ Variables currently used:
 - `STRIPE_EVENTS_WEBHOOK_SECRET` — Stripe webhook signing secret (whsec_…) the `stripe-events-webhook` verifies the Stripe-Signature HMAC against. SEPARATE from `REVENUECAT_WEBHOOK_SECRET` and a separate endpoint. Required: function fails closed (503 `webhook_not_configured`) without it.
 - `STRIPE_EVENTS_ALLOWED_REDIRECTS` — comma-separated allow-list of origins accepted for Account Link return/refresh + Checkout success/cancel URLs (the strava-import open-redirect defence). Required: `events-connect-onboard` + `events-checkout` 503 when empty.
 - `REVENUECAT_SECRET_API_KEY` — RevenueCat REST secret key `delete-account` uses to DELETE the subscriber on erasure. Optional — unset → `revenuecat_delete: 'skipped'`.
+- `APPLE_TEAM_ID` / `APPLE_KEY_ID` / `APPLE_PRIVATE_KEY` — the Sign in with Apple key (the `.p8` contents as-is) `apple-token-exchange` and `delete-account` sign their Apple client secret with (`_shared/apple_auth.ts`); `APPLE_NATIVE_CLIENT_ID` (`com.threkir.app`) and `APPLE_WEB_CLIENT_ID` (`com.threkir.web`) name the client each flow's token belongs to. All optional and fail-closed: unset → `apple-token-exchange` answers 503 and stores nothing, and `delete-account` records `apple_revoke: 'failed'` for a token it holds but cannot revoke (`skipped` when none is held).
 - `FCM_SERVER_KEY` — Firebase Cloud Messaging server key `delete-account` uses to batch-invalidate Android push tokens. Optional — unset → `fcm_remove: 'skipped'`.
 - `DELETION_AUDIT_KEY` — HMAC key for the `deletion_audit_log` pseudonymous user-id hash. Optional but recommended; unset → legacy salted SHA-256. **Read by the Go worker too**, under the same name, to key the `account_deletion_receipts` send-once digest — that one hashes an EMAIL ADDRESS, a guessable input, so the keyed form is what stops a membership test rather than merely time-bounding it (`decisions § 1551`, `§ 1600`). Set it on both processes; setting it on one is a safe half-state (each falls back to its own legacy digest independently), and a keyed worker reads both digests so the changeover re-sends no receipt.
 - `VAPID_PRIVATE_KEY` — web-push private signing key (public half is `PUBLIC_VAPID_PUBLIC_KEY` in `apps/web/.env.example`). **Consumed by the Go worker, not an Edge Function:** the `web_push` job handler (migration `20261219_001`) signs encrypted Web Push messages with it. Set on the **worker** as `VAPID_PRIVATE_KEY` + `VAPID_PUBLIC_KEY` + `VAPID_SUBJECT` (see `apps/job_worker/CLAUDE.md`); unset → `web_push` jobs finish done while leaving the notification rows pending.

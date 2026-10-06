@@ -1339,6 +1339,33 @@ To read or write tokens, call the SECURITY DEFINER helpers:
   upserts the row + creates / updates the vault secrets in place
   (so `access_token_secret_id` stays stable across token refreshes).
 
+#### `apple_sign_in_tokens`
+
+The Sign in with Apple refresh token, kept only so `delete-account` can revoke
+it (App Store Guideline 5.1.1(v)); migration `20270714000001`.
+
+```sql
+create table apple_sign_in_tokens (
+  user_id                 uuid primary key references auth.users(id) on delete cascade,
+  client_id               text not null check (client_id <> ''), -- bundle id (native) or Services ID (web)
+  refresh_token_secret_id uuid not null,                         -- vault.secrets
+  created_at              timestamptz not null default now(),
+  updated_at              timestamptz not null default now()
+);
+```
+
+RLS on with no policies, and `anon` / `authenticated` hold no grant on the
+table or either function — only the service role reaches it:
+
+- `set_apple_refresh_token(p_user_id, p_client_id, p_refresh_token)` — written
+  by `apple-token-exchange`; replaces the Vault secret in place on a re-sign-in.
+- `take_apple_refresh_token(p_user_id)` → `(client_id, refresh_token)` — read
+  by `delete-account`; deletes the row **and** the Vault secret in the same
+  call, so a deletion leaves no credential behind whether or not Apple answers.
+
+Not exported (Art 20): it is a live credential Apple issued, not data the user
+provided — `exportGuardExclusions` in the Go worker records why.
+
 ---
 
 #### `jobs`
@@ -1852,7 +1879,7 @@ Permanently deletes the authenticated user's account and all associated data.
 
 **Flow:**
 1. Authenticate user via JWT; rate-limit 3/hour (fail-closed)
-2. Best-effort third-party revocations — each outcome (`ok`/`skipped`/`failed`) recorded to `deletion_audit_log.third_party_outcomes`, failures logged for operator replay but never abort the erasure: Strava OAuth deauthorize, Garmin (fail-closed placeholder until OAuth ships), RevenueCat subscriber DELETE, FCM push-token batchRemove, Stripe Connect Express account DELETE (`/v1/accounts/{id}` — closes the host's live payout account before the `instructor_payout_accounts` row cascades away with its id)
+2. Best-effort third-party revocations — each outcome (`ok`/`skipped`/`failed`) recorded to `deletion_audit_log.third_party_outcomes`, failures logged for operator replay but never abort the erasure: Strava OAuth deauthorize, Garmin (fail-closed placeholder until OAuth ships), RevenueCat subscriber DELETE, FCM push-token batchRemove, Stripe Connect Express account DELETE (`/v1/accounts/{id}` — closes the host's live payout account before the `instructor_payout_accounts` row cascades away with its id), Sign in with Apple token revoke (`apple_revoke` — takes the stored refresh token, which deletes it, and posts it to `https://appleid.apple.com/auth/revoke`; a token on file with the Apple key unset is `failed`)
 3. Mandatory pre-cascade cleanups — any failure aborts with 500 and leaves the auth row intact for retry: `vault.secrets` (integration tokens), `reports` rows targeting the user, `jobs` queue payloads carrying the user id, `rate_limits` rows, `segments` anonymisation
 4. Mandatory Storage drain: recursive `{user_id}/` prefix walk of the `runs` (tracks + legacy exports), `exports`, `run-photos`, `route-photos`, and `club-photos` buckets — abort on failure; plus a best-effort `avatars` drain
 5. Delete the auth user via `admin.deleteUser()` — row data in `runs`, `routes`, `user_profiles`, `user_settings`, etc. cascades automatically via `ON DELETE CASCADE` foreign keys
@@ -1864,6 +1891,18 @@ Permanently deletes the authenticated user's account and all associated data.
 ```
 
 No request body required. Irreversible.
+
+---
+
+### `POST /apple-token-exchange`
+
+Keeps a revocable Sign in with Apple credential for the caller so `delete-account` can revoke the grant (Guideline 5.1.1(v)). Called by the client right after an Apple sign-in; sign-in has already succeeded, so clients log and ignore every failure.
+
+**Body** — exactly one of:
+- `{ "authorization_code": "…" }` — iOS's one-time code from `getAppleIDCredential`; exchanged with Apple (`/auth/token`, client id `APPLE_NATIVE_CLIENT_ID`) for a refresh token. Single-use, expires minutes after sign-in.
+- `{ "refresh_token": "…" }` — web's `session.provider_refresh_token` from the OAuth callback; stored as-is against `APPLE_WEB_CLIENT_ID`.
+
+**Responses:** 204 stored · 400 neither/both/oversized · 401 no session · 403 the account has no Apple identity · 429 over 10/hour (fail-closed) · 502 Apple refused the code · 503 `apple_not_configured` (any of `APPLE_TEAM_ID` / `APPLE_KEY_ID` / `APPLE_PRIVATE_KEY`, or the flow's client id, unset — nothing is stored).
 
 ---
 

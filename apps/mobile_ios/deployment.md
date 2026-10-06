@@ -329,7 +329,8 @@ Apple's appeal process is faster than Google's but still painful. Mitigations:
 - [ ] App Store Connect app record — step 17
 - [ ] Listing: description, keywords, support URL, and screenshots at **6.9-inch iPhone** and **Apple Watch** sizes. No iPad set: the app is iPhone-only
 - [ ] Privacy policy live at `threkir.com/privacy`
-- [ ] App Privacy nutrition label completed, matches policy
+- [ ] App Privacy nutrition label completed, matches policy (the table above; loop in the CISO before submitting it)
+- [ ] Sign in with Apple revocation configured — step 19: without it account deletion cannot revoke the Apple grant, which App Review checks under Guideline 5.1.1(v)
 - [ ] App Review notes: a working demo account with runs in it; why background location (recording a run with the screen off) and HealthKit are used
 - [x] Info.plist usage descriptions all written — guarded by `scripts/check_ios_native_declarations.mjs`
 - [x] No web payment link and no Google sign-in button on iOS ([decisions § 1700](../../docs/architecture/decisions.md))

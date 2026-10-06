@@ -125,6 +125,8 @@ create` / UI / `/release`). The last column is what the workflow attaches
 | `graph-cycle@*` | ubuntu-latest | — | Fly.io `graph-cycle` app (image only — OSM PBF stays on the `graph_cycle_data` volume; reparsed on boot) | — |
 | `graphhopper@*` | ubuntu-latest | — | Fly.io `graphhopper` app (image only — the PBF + built `graph-cache/` stay on the `graphhopper_data` volume) | — |
 
+**Why an iOS upload failed.** The upload runs through `altool`, so Apple's validation errors (ITMS codes) are in the Release iOS run's "Upload to TestFlight" step, not only in an email. The default `appstore-api` backend validated out of band: `mobile_ios@1.0.0` uploaded, never appeared in App Store Connect and sent no email, leaving no reason anywhere.
+
 **Where the signed IPA is if TestFlight refuses it.** `mobile_ios@*` attaches
 nothing back to the Release; the signed `.ipa` is kept as a workflow **artifact**
 named `mobile_ios@<version>-ipa` on the release run, for 90 days. Open the run

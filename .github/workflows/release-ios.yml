@@ -277,6 +277,19 @@ jobs:
           issuer-id: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
           api-key-id: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           api-private-key: ${{ secrets.APP_STORE_CONNECT_API_PRIVATE_KEY }}
+          # altool validates the binary during the upload and prints Apple's
+          # ITMS errors in this log, failing the step. The default
+          # appstore-api backend accepts the file unchecked and validates it
+          # afterwards, out of band: mobile_ios@1.0.0 (build 5024) uploaded,
+          # never appeared in App Store Connect, sent no email, and the job
+          # timed out polling for it with no reason anywhere.
+          backend: altool
+          # Processing takes as long as Apple's queue does; a successful
+          # upload is this job's finish line. TestFlight shows the build and
+          # Apple emails when processing ends.
+          wait-for-processing: 'false'
+          # Matches Info.plist's ITSAppUsesNonExemptEncryption = false.
+          uses-non-exempt-encryption: 'false'
 
       - name: Remove the signing keychain and the runtime config
         if: always()

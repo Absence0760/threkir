@@ -3630,6 +3630,8 @@ export const en = {
 	"upgrade.redirecting": "Redirecting…",
 	"upgrade.getPro": "Get Pro — {price}/mo",
 	"upgrade.cancelAnytime": "Cancel anytime from the App Store, Play Store, or billing portal.",
+	"upgrade.termsLink": "Terms of Service",
+	"upgrade.privacyLink": "Privacy Policy",
 	"upgrade.donateTitle": "Not ready for a subscription?",
 	"upgrade.donateBody": "A one-off donation helps cover map tiles, push notifications, and the occasional server invoice. Every chip-in lands directly with the project.",
 	"upgrade.donate": "Donate",

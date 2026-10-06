@@ -3609,6 +3609,8 @@ export const messages = {
 	"upgrade.redirecting": "リダイレクト中…",
 	"upgrade.getPro": "Proを入手 — {price}/月",
 	"upgrade.cancelAnytime": "App Store、Play Store、請求ポータルからいつでも解約できます。",
+	"upgrade.termsLink": "利用規約",
+	"upgrade.privacyLink": "プライバシーポリシー",
 	"upgrade.donateTitle": "サブスクリプションはまだ早い？",
 	"upgrade.donateBody": "一度きりの寄付は、地図タイル、プッシュ通知、たまのサーバー請求をまかなう助けになります。どの寄付もそのままプロジェクトに届きます。",
 	"upgrade.donate": "寄付する",

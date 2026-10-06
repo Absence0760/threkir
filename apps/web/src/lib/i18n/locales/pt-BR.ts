@@ -3613,6 +3613,8 @@ export const messages = {
 	"upgrade.redirecting": "Redirecionando…",
 	"upgrade.getPro": "Obter Pro — {price}/mês",
 	"upgrade.cancelAnytime": "Cancele quando quiser na App Store, Play Store ou portal de cobrança.",
+	"upgrade.termsLink": "Termos de Serviço",
+	"upgrade.privacyLink": "Política de Privacidade",
 	"upgrade.donateTitle": "Ainda não quer uma assinatura?",
 	"upgrade.donateBody": "Uma doação única ajuda a cobrir os tiles do mapa, notificações push e a fatura ocasional do servidor. Cada contribuição vai direto para o projeto.",
 	"upgrade.donate": "Doar",

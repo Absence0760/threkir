@@ -8,6 +8,7 @@
 		managementUrl,
 		isRevenueCatConfigured,
 	} from '$lib/billing/revenuecat';
+	import { annualSavingPercent, type ProPlan } from '$lib/billing/revenuecat_links';
 	import { coachEnabled } from '$lib/coach/coach_flag';
 	import { routeGenEnabled } from '$lib/routes/route_gen_flag';
 
@@ -30,7 +31,16 @@
 	const DONATE_URL = 'https://github.com/sponsors';
 
 	const PRO_PRICE_MONTHLY_USD = 9.99;
-	const priceLabel = $derived(formatPrice(PRO_PRICE_MONTHLY_USD));
+	const PRO_PRICE_ANNUAL_USD = 79.99;
+	const monthlyLabel = $derived(formatPrice(PRO_PRICE_MONTHLY_USD));
+	const annualLabel = $derived(formatPrice(PRO_PRICE_ANNUAL_USD));
+	const annualSaving = annualSavingPercent(PRO_PRICE_MONTHLY_USD, PRO_PRICE_ANNUAL_USD);
+
+	// Annual is preselected: it is the cheaper way to pay for the same Pro,
+	// and the chosen plan rides into the hosted checkout as its package_id,
+	// so the buyer pays for exactly the plan this page showed.
+	let plan = $state<ProPlan>('annual');
+	const priceLabel = $derived(plan === 'annual' ? annualLabel : monthlyLabel);
 
 	let purchasing = $state(false);
 
@@ -42,7 +52,7 @@
 			showToast(m('upgrade.signInToUpgrade'), 'error');
 			return;
 		}
-		const url = proCheckoutUrl(userId, window.location.href);
+		const url = proCheckoutUrl(userId, plan, window.location.href);
 		if (!url) {
 			// Dev / preview builds without a RevenueCat checkout link fall
 			// back to the original placeholder so the page stays usable
@@ -131,7 +141,7 @@
 				{#if isPro}<span class="pro-badge">{m('upgrade.active')}</span>{/if}
 				<p class="tier-price">
 					<span class="price-amount">{priceLabel}</span>
-					<span class="price-period">{m('upgrade.perMonth')}</span>
+					<span class="price-period">{plan === 'annual' ? m('upgrade.perYear') : m('upgrade.perMonth')}</span>
 				</p>
 				<!-- Honesty notes (audit-findings 2026-05-30 Medium [regional]):
 				     the amount is billed in USD (we don't FX-convert), and
@@ -190,8 +200,28 @@
 					{m('upgrade.manageSubscription')}
 				</button>
 			{:else if proSellable}
+				<fieldset class="plan-picker" disabled={purchasing}>
+					<legend>{m('upgrade.planLegend')}</legend>
+					<label class="plan-option" class:selected={plan === 'annual'}>
+						<input type="radio" name="pro-plan" value="annual" bind:group={plan} />
+						<span class="plan-name">{m('upgrade.planYearly')}</span>
+						<span class="plan-price">{annualLabel} {m('upgrade.perYear')}</span>
+						{#if annualSaving !== null}
+							<span class="plan-saving">{m('upgrade.annualSaving', { percent: annualSaving })}</span>
+						{/if}
+					</label>
+					<label class="plan-option" class:selected={plan === 'monthly'}>
+						<input type="radio" name="pro-plan" value="monthly" bind:group={plan} />
+						<span class="plan-name">{m('upgrade.planMonthly')}</span>
+						<span class="plan-price">{monthlyLabel} {m('upgrade.perMonth')}</span>
+					</label>
+				</fieldset>
 				<button class="btn btn-primary tier-cta" onclick={handleGetPro} disabled={purchasing}>
-					{purchasing ? m('upgrade.redirecting') : m('upgrade.getPro', { price: priceLabel })}
+					{purchasing
+						? m('upgrade.redirecting')
+						: plan === 'annual'
+							? m('upgrade.getProAnnual', { price: priceLabel })
+							: m('upgrade.getPro', { price: priceLabel })}
 				</button>
 				<p class="tier-fine">{m('upgrade.cancelAnytime')}</p>
 				<!-- App Store Guideline 3.1.2 wants the terms and the privacy policy
@@ -379,6 +409,52 @@
 		font-size: 0.95rem;
 		padding: 0.85rem 1rem;
 		margin-top: var(--space-sm);
+	}
+	.plan-picker {
+		border: 0;
+		padding: 0;
+		margin: var(--space-sm) 0 0;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xs);
+	}
+	.plan-picker legend {
+		font-size: 0.85rem;
+		font-weight: 600;
+		margin-bottom: var(--space-xs);
+	}
+	.plan-option {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: var(--space-xs) var(--space-sm);
+		padding: 0.7rem 0.9rem;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		cursor: pointer;
+		font-size: 0.9rem;
+	}
+	.plan-option.selected {
+		border-color: var(--color-primary);
+		background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+	}
+	.plan-option:has(input:focus-visible) {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
+	}
+	.plan-name {
+		font-weight: 600;
+	}
+	.plan-price {
+		margin-inline-start: auto;
+		font-variant-numeric: tabular-nums;
+		color: var(--color-text-secondary);
+	}
+	.plan-saving {
+		flex-basis: 100%;
+		font-size: 0.78rem;
+		font-weight: 600;
+		color: var(--color-success-text);
 	}
 	.tier-note {
 		margin: var(--space-sm) 0 0;

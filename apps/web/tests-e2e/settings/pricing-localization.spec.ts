@@ -13,7 +13,8 @@ import { USER_A } from '../fixtures/users';
  * user is billed — an EU Omnibus / consumer-protection problem
  * (audit-findings 2026-05-30 Medium [regional], commit 9805a5ed).
  *
- * So: en-US sees `$9.99`; en-GB sees `US$9.99`; de-DE sees `9,99 $`.
+ * So: en-US sees `$79.99`; en-GB sees `US$79.99`; de-DE sees `79,99 $`
+ * (the card leads with the preselected yearly plan).
  * The format_price.test.ts unit-test covers the helper in isolation;
  * this spec proves the helper is actually wired through to the rendered
  * page — so a future refactor that hard-codes a `$` constant, OR one
@@ -34,7 +35,7 @@ test.describe('Pro price — currency localisation', () => {
 		const page = await ctx.newPage();
 		try {
 			await page.goto('/settings/upgrade');
-			await expect(page.locator('.tier-pro .price-amount')).toContainText('$9.99');
+			await expect(page.locator('.tier-pro .price-amount')).toContainText('$79.99');
 		} finally {
 			await ctx.close();
 		}
@@ -49,7 +50,7 @@ test.describe('Pro price — currency localisation', () => {
 		try {
 			await page.goto('/settings/upgrade');
 			const text = await page.locator('.tier-pro .price-amount').textContent();
-			expect(text).toContain('9.99');
+			expect(text).toContain('79.99');
 			// The charge is in USD; the page must NOT imply a GBP price.
 			expect(text).not.toContain('£');
 			expect(text).toMatch(/US\$/);
@@ -69,7 +70,7 @@ test.describe('Pro price — currency localisation', () => {
 			const text = await page.locator('.tier-pro .price-amount').textContent();
 			// Locale drives the number format (comma decimal); currency
 			// stays USD — no euro symbol over an unconverted USD amount.
-			expect(text).toMatch(/9,99/);
+			expect(text).toMatch(/79,99/);
 			expect(text).not.toContain('€');
 			expect(text).toContain('$');
 		} finally {
@@ -78,7 +79,8 @@ test.describe('Pro price — currency localisation', () => {
 	});
 
 	test('CTA button localises the same way as the price block', async ({ browser }) => {
-		// The "Get Pro" button has `Get Pro — ${priceLabel}/mo`. If a
+		// The "Get Pro" button has `Get Pro — ${priceLabel}/yr` for the
+		// preselected yearly plan. If a
 		// future refactor used a raw constant in the button while using
 		// the helper in the price block, the price block test would still
 		// pass and the button would silently drift. Pin both to the same
@@ -91,7 +93,7 @@ test.describe('Pro price — currency localisation', () => {
 		try {
 			await page.goto('/settings/upgrade');
 			await expect(
-				page.getByRole('button', { name: /Get Pro — US\$9\.99\/mo/ })
+				page.getByRole('button', { name: /Get Pro — US\$79\.99\/yr/ })
 			).toBeVisible();
 		} finally {
 			await ctx.close();

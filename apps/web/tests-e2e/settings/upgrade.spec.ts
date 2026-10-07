@@ -38,10 +38,10 @@ test.describe('/settings/upgrade — free user', () => {
 		await expect(
 			page.getByRole('heading', { name: 'Pro', exact: true })
 		).toBeVisible();
-		// Monthly price is rendered as $N / month — assert the
-		// "/ month" half is present (PRO_PRICE_MONTHLY is a number
-		// constant, so the literal is robust to price changes).
-		await expect(page.getByText('/ month')).toBeVisible();
+		// Both plans are priced: the card leads with the preselected yearly
+		// plan, and the monthly plan stays one choice away.
+		await expect(page.locator('.tier-pro .price-period')).toHaveText('/ year');
+		await expect(page.locator('.plan-option .plan-price', { hasText: '/ month' })).toBeVisible();
 	});
 
 	test('two-tier grid: Free tier shows $0 forever + 4 features; Pro tier shows the price + 5 features + "Most popular" flag', async ({
@@ -75,8 +75,8 @@ test.describe('/settings/upgrade — free user', () => {
 		const proCard = page.locator('.tier-pro');
 		await expect(proCard).toBeVisible();
 		await expect(proCard.locator('.tier-flag')).toHaveText(/Most popular/i);
-		await expect(proCard.locator('.price-amount')).toContainText(/9\.99|9,99/);
-		await expect(proCard.locator('.price-period')).toHaveText('/ month');
+		await expect(proCard.locator('.price-amount')).toContainText(/79\.99|79,99/);
+		await expect(proCard.locator('.price-period')).toHaveText('/ year');
 		await expect(proCard.locator('.tier-features > li')).toHaveCount(5);
 		await expect(proCard.locator('.tier-features .check')).toHaveCount(5);
 		await expect(proCard).toContainText(/AI Coach\s+—\s+10\/day/i);
@@ -88,6 +88,34 @@ test.describe('/settings/upgrade — free user', () => {
 		await expect(proCard.getByRole('button', { name: /Get Pro — /i }))
 			.toBeVisible();
 		await expect(proCard.locator('.tier-fine')).toContainText(/Cancel anytime/i);
+	});
+
+	test('plan picker preselects yearly, states the saving, and prices the CTA', async ({ page }) => {
+		// C5: $79.99/year against $9.99/month saves 33% (1 - 79.99 / 119.88,
+		// rounded down). Yearly is preselected and the CTA names its period.
+		await page.goto('/settings/upgrade');
+		const proCard = page.locator('.tier-pro');
+		const yearly = proCard.getByRole('radio', { name: /^Yearly/ });
+		const monthly = proCard.getByRole('radio', { name: /^Monthly/ });
+		await expect(yearly).toBeChecked({ timeout: 10_000 });
+		await expect(monthly).not.toBeChecked();
+		await expect(proCard.locator('.plan-saving')).toHaveText('Save 33% vs monthly');
+		await expect(proCard.getByRole('button', { name: /Get Pro — .*79\.99\/yr/ })).toBeVisible();
+	});
+
+	test('choosing monthly reprices the card and the CTA', async ({ page }) => {
+		await page.goto('/settings/upgrade');
+		const proCard = page.locator('.tier-pro');
+		const monthly = proCard.getByRole('radio', { name: /^Monthly/ });
+		await expect(monthly).toBeVisible({ timeout: 10_000 });
+
+		await monthly.check();
+
+		await expect(monthly).toBeChecked();
+		await expect(proCard.locator('.price-amount')).toContainText(/9\.99|9,99/);
+		await expect(proCard.locator('.price-amount')).not.toContainText(/79/);
+		await expect(proCard.locator('.price-period')).toHaveText('/ month');
+		await expect(proCard.getByRole('button', { name: /Get Pro — .*9\.99\/mo/ })).toBeVisible();
 	});
 
 	test('donate card renders heart icon + button + the configured GitHub Sponsors link target', async ({
@@ -225,6 +253,15 @@ test.describe('/settings/upgrade — Pro user', () => {
 		await expect(proCard.locator('.pro-note')).toContainText(
 			/App Store, Play Store, or the web billing portal/i,
 		);
+	});
+
+	test('a Pro user is shown no plan picker', async ({ page }) => {
+		await page.goto('/settings/upgrade');
+		const proCard = page.locator('.tier-pro');
+		await expect(proCard.getByRole('button', { name: /Manage subscription/i })).toBeVisible({
+			timeout: 10_000,
+		});
+		await expect(proCard.locator('.plan-picker')).toHaveCount(0);
 	});
 });
 

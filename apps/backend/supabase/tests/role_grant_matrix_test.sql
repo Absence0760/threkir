@@ -28,7 +28,7 @@ begin;
 select plan(12);
 
 -- (1) Catch-all — readability. Only app_quota, deletion_audit_log,
--- data_export_jobs, payment_refunds and apple_sign_in_tokens are intentionally service_role-only (no
+-- data_export_jobs, payment_refunds, apple_sign_in_tokens and platform_fees are intentionally service_role-only (no
 -- anon/authenticated grant at all). data_export_jobs (20270603_001) holds the
 -- state of an Art 20 export request; the row is useless to a client without a
 -- signed URL, which only the service role can mint, so the whole read goes
@@ -42,13 +42,16 @@ select plan(12);
 -- reference to a live Sign in with Apple refresh token: only
 -- apple-token-exchange writes it and only delete-account reads it, both as
 -- the service role, so no client role may hold any grant on it.
+-- platform_fees (20270716000001) is the application-fee rate the checkouts
+-- read as the service role; a client that could read it gains nothing, and one
+-- that could write it would set its own fee, so no client grant at all.
 select is(
   (select count(*)::int
      from pg_class c
      join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
      where c.relkind = 'r'
        and c.relname not in ('app_quota', 'deletion_audit_log', 'data_export_jobs',
-                             'payment_refunds', 'apple_sign_in_tokens')
+                             'payment_refunds', 'apple_sign_in_tokens', 'platform_fees')
        and not has_table_privilege('authenticated', c.oid, 'SELECT')
        and not exists (
          select 1 from information_schema.role_column_grants g

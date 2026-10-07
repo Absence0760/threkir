@@ -1117,7 +1117,6 @@ export type Database = {
           event_id: string
           instance_start: string | null
           modality: string
-          platform_fee_bps: number
           price_cents: number
           refund_policy: string
           sales_close_offset_minutes: number
@@ -1129,7 +1128,6 @@ export type Database = {
           event_id: string
           instance_start?: string | null
           modality?: string
-          platform_fee_bps?: number
           price_cents: number
           refund_policy?: string
           sales_close_offset_minutes?: number
@@ -1141,7 +1139,6 @@ export type Database = {
           event_id?: string
           instance_start?: string | null
           modality?: string
-          platform_fee_bps?: number
           price_cents?: number
           refund_policy?: string
           sales_close_offset_minutes?: number
@@ -1563,7 +1560,6 @@ export type Database = {
           goal_cents: number
           id: string
           owner_user_id: string
-          platform_fee_bps: number
           run_id: string | null
           status: string
           story: string | null
@@ -1579,7 +1575,6 @@ export type Database = {
           goal_cents: number
           id?: string
           owner_user_id: string
-          platform_fee_bps?: number
           run_id?: string | null
           status?: string
           story?: string | null
@@ -1595,7 +1590,6 @@ export type Database = {
           goal_cents?: number
           id?: string
           owner_user_id?: string
-          platform_fee_bps?: number
           run_id?: string | null
           status?: string
           story?: string | null
@@ -2807,6 +2801,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      platform_fees: {
+        Row: {
+          donation_fee_bps: number
+          event_fee_bps: number
+          id: boolean
+          updated_at: string
+        }
+        Insert: {
+          donation_fee_bps: number
+          event_fee_bps: number
+          id?: boolean
+          updated_at?: string
+        }
+        Update: {
+          donation_fee_bps?: number
+          event_fee_bps?: number
+          id?: boolean
+          updated_at?: string
+        }
+        Relationships: []
       }
       public_recaps: {
         Row: {

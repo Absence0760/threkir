@@ -58,6 +58,7 @@ apps/watch_wear/
             ├── AndroidManifest.xml
             ├── kotlin/com/runapp/watchwear/
             │   ├── MainActivity.kt
+            │   ├── WatchWearApplication.kt  # the only Sentry init (manifest auto-init is off)
             │   ├── RunViewModel.kt          # single source of UI state
             │   ├── SupabaseClient.kt        # OkHttp REST + Storage client
             │   ├── GpsRecorder.kt           # FusedLocationProviderClient wrapper

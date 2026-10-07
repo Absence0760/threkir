@@ -133,7 +133,7 @@ Every code milestone honours the house rules, so "seamless" doesn't mean "sloppy
 
 1. **The go-live depends on people, not code.** M9 can stall indefinitely on sign-off; that's why Track B is structured to deliver value (free classes, real content) without it.
 2. ~~**`gym_sets.duration_s` (M2) touches the gym schema** — decide before M5 (the logging step) so timed holds log cleanly (`session_planner.md` Q1, which phrases it "before P2").~~ **Resolved** — the nullable column landed in `20261231_001` ahead of M5, and both follow-along runners write to it.
-3. **Platform fee rate** (`platform_fee_bps`) — 0% to seed vs a real take-rate. Product + finance (`club_events.md` open Q1).
+3. ~~**Platform fee rate**~~ — decided 2026-10-07: 500 bps on paid events, in the service-role-only `platform_fees` table (decisions § 1767).
 4. ~~**Validation gate honesty.** M3/M4 are themselves the probe ("do instructors build content?"); if the signal is flat after M4, freeze Track B at authoring and don't build M5 execution.~~ **Resolved** — the gate was cleared and M5 execution shipped on both platforms.
 5. **Attendance model (M6)** — a simple `attended`/`no_show` enum vs a check-in timestamp. Lean enum unless multi-check-in is needed.
 6. **Connect account type** — Express (P1 assumption) vs Standard (`club_events.md` Q4).

@@ -1,5 +1,6 @@
 package com.runapp.watchwear
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -98,6 +99,56 @@ class ManifestGuardsTest {
         assertTrue(
             "res/xml/network_security_config.xml must exist",
             File("src/main/res/xml/network_security_config.xml").exists(),
+        )
+    }
+
+    @Test
+    fun `Sentry starts only from the app's own DSN-gated init`() {
+        // Why: sentry-android merges a SentryInitProvider into the manifest
+        // that starts the SDK before any app code runs. With no DSN — every
+        // debug build, and any release built without `-PSENTRY_DSN` — it
+        // throws "DSN is required" and the app dies on launch, before the
+        // DSN check that makes crash reporting optional. Turning auto-init
+        // off leaves the explicit init as the only way in, so the init has
+        // to stay in the Application class (ahead of the recording service
+        // and the tile service, not just MainActivity) and stay gated.
+        val sources = File("src/main/kotlin").walkTopDown()
+            .filter { it.isFile && it.extension == "kt" }
+            .associate { it.path to it.readText() }
+        val initSites = sources.filterValues { it.contains("SentryAndroid.init(") }.keys
+        if (initSites.isEmpty()) return
+
+        assertTrue(
+            "The app initialises Sentry by hand, so <application> must declare " +
+                "<meta-data android:name=\"io.sentry.auto-init\" android:value=\"false\"/>; " +
+                "otherwise SentryInitProvider throws on an empty DSN at launch.",
+            Regex(
+                """<meta-data\s+android:name="io\.sentry\.auto-init"\s+android:value="false"\s*/>""",
+            ).containsMatchIn(manifest),
+        )
+        assertFalse(
+            "Do not declare io.sentry.dsn in the manifest — the DSN comes from " +
+                "BuildConfig.SENTRY_DSN and the gate in WatchWearApplication.",
+            manifest.contains("io.sentry.dsn"),
+        )
+        assertEquals(
+            "SentryAndroid.init must live only in WatchWearApplication",
+            setOf("src/main/kotlin/com/runapp/watchwear/WatchWearApplication.kt"),
+            initSites,
+        )
+        val applicationOpenTag = Regex(
+            """<application\b[^>]*>""",
+            RegexOption.DOT_MATCHES_ALL,
+        ).find(manifest)?.value
+            ?: error("Could not find <application> element in manifest")
+        assertTrue(
+            "<application> must name .WatchWearApplication, or its Sentry init never runs",
+            applicationOpenTag.contains("android:name=\".WatchWearApplication\""),
+        )
+        val app = sources.getValue("src/main/kotlin/com/runapp/watchwear/WatchWearApplication.kt")
+        assertTrue(
+            "WatchWearApplication must skip Sentry init when SENTRY_DSN is blank",
+            app.contains("isBlank()") && app.indexOf("isBlank()") < app.indexOf("SentryAndroid.init("),
         )
     }
 }

@@ -357,7 +357,7 @@ The single failure mode that's actually scary. The Play Store has a recovery flo
 3. Google generates a new upload key; you swap it into GitHub Secrets.
 4. Deploys resume.
 
-This takes 2–7 days. **Keep the keystore in the estate secrets repo (sops, § Signing setup) and consider cold storage too** (a printed QR code in a fireproof safe, an encrypted backup at a friend's house, etc.). The cost of redundancy is zero; the cost of losing the only copy is a week of zero releases.
+This takes 2–7 days. The estate secrets repo (sops, § Signing setup) is the only readable copy of the keystore, and no cold copy is kept — a deliberate call (2026-10-07): the sops copy depends on the threkir AWS account staying reachable, and the fallback if it does not is this reset, which costs a week without releases, never the app.
 
 ### Lost Play Console access
 
@@ -384,7 +384,6 @@ Rare, but if it happens (usually for ToS violations the team didn't realise appl
 - [ ] App access test creds provided (staging, not prod seed)
 - [ ] Internal testing track has ≥1 tester email
 - [x] Upload keystore generated, set as GitHub Secrets, and sops-backed-up in the estate secrets repo (2026-07-21)
-- [ ] Keystore backup stored cold (off-machine)
 - [ ] Play service account created, JSON in GitHub Secrets, granted Release manager on this app
 - [ ] Shared `PUBLIC_*` secrets present (Supabase URL/anon, MapTiler — already set for web) and `MOBILE_OSRM_URL` set (required for route-builder road-snapping — unset degrades Trail/Road to straight-line placement, not a hard failure); optional `MOBILE_*` keys left unset stay fail-closed
 - [ ] Manifest reviewed; permissions list matches data-safety form

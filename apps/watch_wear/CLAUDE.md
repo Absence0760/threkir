@@ -221,7 +221,7 @@ See [local_testing.md](local_testing.md).
 
 ## Deploying to production
 
-See [deployment.md](deployment.md) — separate Play listing under `app.threkir.watchwear`, separate upload keystore from the phone app, shared Play service account, observability, rollback, DR.
+See [deployment.md](deployment.md) — separate Play listing under `com.threkir.watchwear`, separate upload keystore from the phone app, shared Play service account, observability, rollback, DR.
 
 Build and install on a Wear OS emulator (after `npm run dev:core` from the repo
 root starts the local stack + runs `adb reverse` for the watch):

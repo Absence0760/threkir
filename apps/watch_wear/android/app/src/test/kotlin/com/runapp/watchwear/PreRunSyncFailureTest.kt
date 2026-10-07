@@ -22,6 +22,10 @@ import org.junit.Test
 /// and survives the trip through PostRun.
 class PreRunSyncFailureTest {
 
+    /// The next arm's header of the slot `when`, at whatever depth it sits —
+    /// an indentation-literal delimiter broke the moment the screen nested it.
+    private val ARM_HEADER = Regex("""\n[ \t]*SyncChipState\.\w+(?:, SyncChipState\.\w+)* ->""")
+
     private val ui: String =
         File("src/main/kotlin/com/runapp/watchwear/ui/RunWatchApp.kt").readText()
 
@@ -47,7 +51,7 @@ class PreRunSyncFailureTest {
     private fun countedBranch(): String {
         val start = ui.indexOf("SyncChipState.Queued, SyncChipState.RetryQueued -> {")
         assertTrue("the counted `Sync N` arm is gone or renamed", start >= 0)
-        val end = ui.indexOf("\n                SyncChipState.", start + 1)
+        val end = ARM_HEADER.find(ui, start + 1)?.range?.first ?: -1
         assertTrue("could not find the end of the counted arm", end > start)
         val body = ui.substring(start, end)
         assertTrue(
@@ -63,7 +67,7 @@ class PreRunSyncFailureTest {
     private fun signInBranch(): String {
         val start = ui.indexOf("SyncChipState.SignInRequired -> {")
         assertTrue("the sign-in arm is gone or renamed", start >= 0)
-        val end = ui.indexOf("\n                SyncChipState.", start + 1)
+        val end = ARM_HEADER.find(ui, start + 1)?.range?.first ?: -1
         assertTrue("could not find the end of the sign-in arm", end > start)
         val body = ui.substring(start, end)
         assertTrue(

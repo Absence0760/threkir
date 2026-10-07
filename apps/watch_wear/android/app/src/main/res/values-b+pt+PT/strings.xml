@@ -78,6 +78,8 @@
     <string name="battery_consider_charging">Bateria %1$d%% · considere carregar</string>
     <string name="route">Rota</string>
     <string name="pace">Ritmo</string>
+    <string name="pace_off">Desativado</string>
+    <string name="activity">Atividade</string>
     <string name="activity_run">Corrida</string>
     <string name="activity_walk">Caminhada</string>
     <string name="activity_hike">Trail</string>

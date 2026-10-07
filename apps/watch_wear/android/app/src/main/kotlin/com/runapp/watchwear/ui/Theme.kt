@@ -1,6 +1,7 @@
 package com.runapp.watchwear.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -29,9 +30,26 @@ object DuskPalette {
     val warning = Color(0xFFE0A44D)
 }
 
+/// The wordmark's two ends — the launcher icon's ember-to-magenta ramp —
+/// mirroring `--brand-ember` / `--brand-magenta` in `apps/web/src/app.css`.
+/// Kept apart from `DuskPalette` on purpose: Dusk is the shared UI palette
+/// (`primary` stays coral so every other screen is unchanged), this is the
+/// brand mark, and it is spent on exactly one control — the pre-run Start.
+///
+/// Ink is white, as on web. White on the ember end alone is 3.1:1, so the
+/// ramp runs ember -> magenta across the button and the label sits over its
+/// middle (~4.7:1) at a large, semibold size.
+object BrandPalette {
+    val ember = Color(0xFFFE5932)
+    val magenta = Color(0xFFA01E77)
+    val onBrand = Color(0xFFFFFFFF)
+    val ramp: Brush = Brush.horizontalGradient(listOf(ember, magenta))
+}
+
 /// Wear Compose Material colour slots mapped onto the Dusk palette.
 ///
-/// Primary = coral (warm, the "action" colour — Start / Sync live here).
+/// Primary = coral (warm, the "action" colour — selected and confirm chips;
+/// the pre-run Start wears `BrandPalette` instead).
 /// Secondary = lilac (softer accent, used for informational chips).
 /// Background / surface = midnight / duskDeep for depth layering.
 /// Error = the shared brand red (not Material's stock red).

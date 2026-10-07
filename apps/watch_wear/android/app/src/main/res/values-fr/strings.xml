@@ -78,6 +78,8 @@
     <string name="battery_consider_charging">Batterie %1$d%% · pensez à recharger</string>
     <string name="route">Itinéraire</string>
     <string name="pace">Allure</string>
+    <string name="pace_off">Désactivée</string>
+    <string name="activity">Activité</string>
     <string name="activity_run">Course</string>
     <string name="activity_walk">Marche</string>
     <string name="activity_hike">Trail</string>

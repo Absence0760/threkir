@@ -69,7 +69,10 @@ class PreRunRejectedQueueTest {
             Regex("""SyncChipState\.Rejected ->""").containsMatchIn(body),
         )
         val armStart = body.indexOf("SyncChipState.Rejected ->")
-        val armEnd = body.indexOf("\n                SyncChipState.", armStart + 1)
+        // The next arm's header, at whatever depth the `when` sits — an
+        // indentation-literal delimiter broke the moment the screen nested it.
+        val armEnd = Regex("""\n[ \t]*SyncChipState\.\w+(?:, SyncChipState\.\w+)* ->""")
+            .find(body, armStart + 1)?.range?.first ?: -1
         assertTrue("could not find the end of the Rejected arm", armEnd > armStart)
         assertTrue(
             "the discard must be reachable from that arm — a chip wired under a " +

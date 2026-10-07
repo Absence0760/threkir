@@ -29,9 +29,9 @@
 #   • stripe CLI + logged in  (brew install stripe/stripe-cli/stripe && stripe login)
 #   • node + openssl + curl   (node ships with the repo toolchain)
 #
-# Why `replay` exists: the revenuecat-webhook handler REQUIRES an
-# `x-revenuecat-hmac` header (HMAC-SHA256 of the raw body keyed by
-# REVENUECAT_WEBHOOK_SECRET). `stripe listen` forwards RAW Stripe
+# Why `replay` exists: the revenuecat-webhook handler REQUIRES RevenueCat's
+# `X-RevenueCat-Webhook-Signature: t=<unix>,v1=<hex>` header (HMAC-SHA256 of
+# `<t>.<raw body>` keyed by REVENUECAT_WEBHOOK_SECRET). `stripe listen` forwards RAW Stripe
 # events with no such header, so those deliveries return 401
 # (missing_signature) at the RC handler — expected, not a bug. The full
 # Stripe → RevenueCat → our-handler loop needs a public tunnel so
@@ -144,7 +144,7 @@ cmd_start() {
 
 	step "Stripe CLI → webhook forwarder"
 	dim "'stripe listen' forwards RAW Stripe events. The RevenueCat handler"
-	dim "needs an x-revenuecat-hmac header, so forwarded events return 401"
+	dim "needs an X-RevenueCat-Webhook-Signature header, so forwarded events return 401"
 	dim "(missing_signature) — expected. For the real tier-flip happy path:"
 	dim "  bin/payments-dev.sh replay        (or: pnpm dev:payments:replay)"
 	log "starting 'stripe listen' — Ctrl-C stops everything…"
@@ -183,15 +183,17 @@ cmd_replay() {
 			event_timestamp_ms: Number(e.RC_TS),
 		}}));
 	')"
-	# HMAC-SHA256, lowercase hex — must match _shared/webhook_security.ts hmacHex.
-	sig="$(printf '%s' "$body" | openssl dgst -sha256 -hmac "$secret" | awk '{print $NF}')"
+	# RevenueCat's scheme — must match _shared/webhook_security.ts
+	# verifyTimestampedHmac: HMAC-SHA256 hex over "<t>.<body>", t in seconds.
+	local t="$(( ts / 1000 ))"
+	sig="t=${t},v1=$(printf '%s.%s' "$t" "$body" | openssl dgst -sha256 -hmac "$secret" | awk '{print $NF}')"
 
 	step "Replaying signed RevenueCat $etype"
 	dim "→ $WEBHOOK_URL"
 	dim "app_user_id=$user  product_id=$product  id=$id"
 	resp="$(curl -sS -X POST "$WEBHOOK_URL" \
 		-H 'content-type: application/json' \
-		-H "x-revenuecat-hmac: $sig" \
+		-H "x-revenuecat-webhook-signature: $sig" \
 		--data-raw "$body" \
 		-w $'\n%{http_code}')"
 	code="${resp##*$'\n'}"

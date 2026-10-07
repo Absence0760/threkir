@@ -69,8 +69,8 @@ values ('9ef00000-0000-0000-0000-0000000000e1',
         '2026-07-01 18:00+00', '9ef00000-0000-0000-0000-000000000001',
         '9ef00000-0000-0000-0000-000000000001', 'class');
 
-insert into event_pricing (event_id, price_cents, platform_fee_bps)
-values ('9ef00000-0000-0000-0000-0000000000e1', 2200, 500);
+insert into event_pricing (event_id, price_cents)
+values ('9ef00000-0000-0000-0000-0000000000e1', 2200);
 
 insert into event_orders (id, event_id, instance_start, buyer_user_id, host_user_id,
                           amount_cents, platform_fee_cents, status, paid_at)

@@ -74,8 +74,8 @@ update instructor_payout_accounts set charges_enabled = true
   where user_id = 'aaaa1111-0000-0000-0000-000000000001';
 
 select lives_ok(
-  $$ insert into event_pricing (event_id, price_cents, platform_fee_bps)
-     values ('cccc1111-0000-0000-0000-000000000001', 2200, 500) $$,
+  $$ insert into event_pricing (event_id, price_cents)
+     values ('cccc1111-0000-0000-0000-000000000001', 2200) $$,
   'event_pricing insert succeeds once host is charges-enabled'
 );
 

@@ -29,6 +29,13 @@ Deno.test('mapEventToTier — PRODUCT_CHANGE → pro', () => {
   assertEquals(mapEventToTier('PRODUCT_CHANGE', 'pro_yearly', null), 'pro');
 });
 
+Deno.test('mapEventToTier — the annual Pro product grants pro on every activating event', () => {
+  for (const type of ACTIVATING_EVENTS) {
+    assertEquals(mapEventToTier(type, 'pro_annual', null), 'pro', type);
+    assertEquals(mapEventToTier(type, 'pro_annual', 'free'), 'pro', type);
+  }
+});
+
 Deno.test('mapEventToTier — NON_RENEWING_PURCHASE with non-lifetime sku → pro', () => {
   assertEquals(mapEventToTier('NON_RENEWING_PURCHASE', 'one_time_addon', null), 'pro');
 });

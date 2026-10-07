@@ -7279,6 +7279,30 @@ class AppLocalizationsEn extends AppLocalizations {
       'Opens the subscription portal in your browser. Auto-renews monthly until cancelled.';
 
   @override
+  String proPlanMonthly(String price) {
+    return 'Monthly — $price/month';
+  }
+
+  @override
+  String proPlanAnnual(String price) {
+    return 'Yearly — $price/year';
+  }
+
+  @override
+  String proPlanAnnualSaving(int percent) {
+    return 'Save $percent% compared with paying monthly';
+  }
+
+  @override
+  String proSubscribeTitleAnnual(String price) {
+    return 'Subscribe to Pro — $price/year';
+  }
+
+  @override
+  String get proSubscribeSubtitleConfiguredAnnual =>
+      'Billed once a year. Auto-renews yearly until cancelled in Settings → Subscriptions.';
+
+  @override
   String get proComingSoonTitle => 'Pro — coming soon';
 
   @override

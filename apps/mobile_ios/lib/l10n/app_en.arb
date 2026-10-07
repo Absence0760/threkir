@@ -9709,6 +9709,46 @@
   "@proSubscribeSubtitleWeb": {
     "description": "Pro tile subtitle when falling back to the web portal"
   },
+  "proPlanMonthly": "Monthly — {price}/month",
+  "@proPlanMonthly": {
+    "description": "Pro plan choice for monthly billing; price is the store-localised amount",
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "proPlanAnnual": "Yearly — {price}/year",
+  "@proPlanAnnual": {
+    "description": "Pro plan choice for yearly billing; price is the store-localised amount",
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "proPlanAnnualSaving": "Save {percent}% compared with paying monthly",
+  "@proPlanAnnualSaving": {
+    "description": "Subtitle under the yearly plan: whole percent saved versus twelve monthly payments, computed from the two store prices",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "proSubscribeTitleAnnual": "Subscribe to Pro — {price}/year",
+  "@proSubscribeTitleAnnual": {
+    "description": "Pro subscribe tile title when the yearly plan is selected; price is the store-localised amount",
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "proSubscribeSubtitleConfiguredAnnual": "Billed once a year. Auto-renews yearly until cancelled in Settings → Subscriptions.",
+  "@proSubscribeSubtitleConfiguredAnnual": {
+    "description": "Pro subscribe tile subtitle when the yearly plan is selected: billing period and renewal terms"
+  },
   "proComingSoonTitle": "Pro — coming soon",
   "@proComingSoonTitle": {
     "description": "Pro tile title when the deploy has no live Pro perk to sell"

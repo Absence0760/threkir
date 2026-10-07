@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:purchases_flutter/purchases_flutter.dart' show PackageType;
 
 import '../lib/revenuecat.dart';
 import '../lib/store_links.dart';
+import 'pro_plan_fixtures.dart';
 
 void main() {
   setUpAll(() {
@@ -58,8 +60,115 @@ void main() {
   group('startProCheckout', () {
     test('returns PurchaseResult.notConfigured when SDK has no API key',
         () async {
-      final r = await startProCheckout('user-1');
+      final r = await startProCheckout('user-1', plan: ProPlan.annual);
       expect(r, PurchaseResult.notConfigured);
+    });
+  });
+
+  group('pickProPackage', () {
+    final both = proOfferings([proMonthlyPackage, proAnnualPackage]);
+
+    test('the annual plan buys the annual package', () {
+      expect(pickProPackage(both, ProPlan.annual), proAnnualPackage);
+    });
+
+    test('the monthly plan buys the monthly package', () {
+      expect(pickProPackage(both, ProPlan.monthly), proMonthlyPackage);
+    });
+
+    test('never substitutes the other plan for a missing one', () {
+      final monthlyOnly = proOfferings([proMonthlyPackage]);
+      expect(pickProPackage(monthlyOnly, ProPlan.annual), isNull);
+      expect(pickProPackage(monthlyOnly, ProPlan.monthly), proMonthlyPackage);
+    });
+
+    test('no current offering buys nothing', () {
+      expect(pickProPackage(proOfferings(const []), ProPlan.monthly), isNull);
+    });
+  });
+
+  group('proPlanOptions', () {
+    test('both plans: annual is listed first and is the default', () {
+      final options =
+          proPlanOptions(proOfferings([proMonthlyPackage, proAnnualPackage]));
+      expect(options.plans, [ProPlan.annual, ProPlan.monthly]);
+      expect(options.defaultPlan, ProPlan.annual);
+      expect(options.savingPercent, 33);
+    });
+
+    test('a single package is the only plan, with no saving to state', () {
+      final options = proPlanOptions(proOfferings([proMonthlyPackage]));
+      expect(options.plans, [ProPlan.monthly]);
+      expect(options.defaultPlan, ProPlan.monthly);
+      expect(options.savingPercent, isNull);
+    });
+
+    test('custom-typed packages are recognised by identifier', () {
+      final monthly = proPackage('pro_monthly', PackageType.custom,
+          price: 9.99, priceString: r'$9.99');
+      final yearly = proPackage('pro_yearly', PackageType.custom,
+          price: 79.99, priceString: r'$79.99');
+      final options = proPlanOptions(proOfferings([yearly, monthly]));
+      expect(options.monthly, monthly);
+      expect(options.annual, yearly);
+    });
+
+    test('an unrecognisable single package is sold as the monthly plan', () {
+      final odd = proPackage('pro', PackageType.custom,
+          price: 9.99, priceString: r'$9.99');
+      final options = proPlanOptions(proOfferings([odd]));
+      expect(options.plans, [ProPlan.monthly]);
+      expect(options.monthly, odd);
+    });
+
+    test('no packages means no plans', () {
+      final options = proPlanOptions(proOfferings(const []));
+      expect(options.plans, isEmpty);
+      expect(options.defaultPlan, isNull);
+    });
+
+    test('no saving is stated across two currencies', () {
+      final eurAnnual = proPackage(r'$rc_annual', PackageType.annual,
+          price: 79.99, priceString: '79,99 €', currencyCode: 'EUR');
+      final options =
+          proPlanOptions(proOfferings([proMonthlyPackage, eurAnnual]));
+      expect(options.savingPercent, isNull);
+    });
+  });
+
+  group('annualSavingPercent', () {
+    test('rounds down so the saving is never overstated', () {
+      // 1 - 79.99 / 119.88 = 33.27%.
+      expect(annualSavingPercent(9.99, 79.99), 33);
+      // 1 - 9,800 / 14,400 = 31.94%: rounding would claim 32.
+      expect(annualSavingPercent(1200, 9800), 31);
+    });
+
+    test('an exact percentage is not floored below itself', () {
+      expect(annualSavingPercent(10, 90), 25);
+      expect(annualSavingPercent(10, 60), 50);
+    });
+
+    test('no saving when the year costs as much as twelve months or more', () {
+      expect(annualSavingPercent(9.99, 119.88), isNull);
+      expect(annualSavingPercent(9.99, 130), isNull);
+    });
+
+    test('a saving under one percent is not stated', () {
+      expect(annualSavingPercent(10, 119.5), isNull);
+    });
+
+    test('a zero or negative price states nothing', () {
+      expect(annualSavingPercent(0, 79.99), isNull);
+      expect(annualSavingPercent(9.99, 0), isNull);
+    });
+  });
+
+  group('loadProPlans', () {
+    test('returns null when SDK has no API key', () async {
+      // Unconfigured build: the Pro tile falls back to the $9.99 USD list
+      // price + regional note.
+      expect(await loadProPlans('user-1'), isNull);
     });
   });
 
@@ -95,15 +204,6 @@ void main() {
         await resolveManageSubscriptionUrl(null, keyOverride: 'rc_test_key'),
         appleSubscriptionsUrl,
       );
-    });
-  });
-
-  group('proMonthlyPriceString', () {
-    test('returns null when SDK has no API key', () async {
-      // Unconfigured build → configureRevenueCat returns false → null, so the
-      // Pro tile falls back to the $9.99 USD list price (+ regional note).
-      final price = await proMonthlyPriceString('user-1');
-      expect(price, isNull);
     });
   });
 }

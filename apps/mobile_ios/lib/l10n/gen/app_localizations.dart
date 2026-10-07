@@ -11962,6 +11962,36 @@ abstract class AppLocalizations {
   /// **'Opens the subscription portal in your browser. Auto-renews monthly until cancelled.'**
   String get proSubscribeSubtitleWeb;
 
+  /// Pro plan choice for monthly billing; price is the store-localised amount
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly — {price}/month'**
+  String proPlanMonthly(String price);
+
+  /// Pro plan choice for yearly billing; price is the store-localised amount
+  ///
+  /// In en, this message translates to:
+  /// **'Yearly — {price}/year'**
+  String proPlanAnnual(String price);
+
+  /// Subtitle under the yearly plan: whole percent saved versus twelve monthly payments, computed from the two store prices
+  ///
+  /// In en, this message translates to:
+  /// **'Save {percent}% compared with paying monthly'**
+  String proPlanAnnualSaving(int percent);
+
+  /// Pro subscribe tile title when the yearly plan is selected; price is the store-localised amount
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribe to Pro — {price}/year'**
+  String proSubscribeTitleAnnual(String price);
+
+  /// Pro subscribe tile subtitle when the yearly plan is selected: billing period and renewal terms
+  ///
+  /// In en, this message translates to:
+  /// **'Billed once a year. Auto-renews yearly until cancelled in Settings → Subscriptions.'**
+  String get proSubscribeSubtitleConfiguredAnnual;
+
   /// Pro tile title when the deploy has no live Pro perk to sell
   ///
   /// In en, this message translates to:

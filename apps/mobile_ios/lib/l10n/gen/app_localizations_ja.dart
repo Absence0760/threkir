@@ -6948,6 +6948,30 @@ class AppLocalizationsJa extends AppLocalizations {
       'ブラウザでサブスクリプションポータルを開きます。解約するまで毎月自動更新されます。';
 
   @override
+  String proPlanMonthly(String price) {
+    return '月額 — $price/月';
+  }
+
+  @override
+  String proPlanAnnual(String price) {
+    return '年額 — $price/年';
+  }
+
+  @override
+  String proPlanAnnualSaving(int percent) {
+    return '月額払いより$percent%お得';
+  }
+
+  @override
+  String proSubscribeTitleAnnual(String price) {
+    return 'Proに登録 — $price/年';
+  }
+
+  @override
+  String get proSubscribeSubtitleConfiguredAnnual =>
+      '年に1回請求されます。設定 → サブスクリプションで解約するまで毎年自動更新されます。';
+
+  @override
   String get proComingSoonTitle => 'Pro — 近日公開';
 
   @override

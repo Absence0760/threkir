@@ -3290,10 +3290,16 @@ void main() {
       );
       expect(
         source,
-        contains('proMonthlyPriceString('),
+        contains('.storeProduct.priceString'),
         reason: 'Subscribe-to-Pro tile must source the displayed price from '
-            'the store (RevenueCat proMonthlyPriceString) — Apple 3.1.1 / Play '
-            'policy forbid a hard-coded price that ignores the territory.',
+            'the store (the RevenueCat package priceString) — Apple 3.1.1 / '
+            'Play policy forbid a hard-coded price that ignores the territory.',
+      );
+      expect(
+        source,
+        contains('l10n.proSubscribeTitleAnnual(priceLabel)'),
+        reason: 'the annual plan must state its own price and period on the '
+            'Subscribe tile, not borrow the monthly copy.',
       );
       expect(
         source,
@@ -3307,6 +3313,18 @@ void main() {
         contains(r'"proSubscribeTitle": "Subscribe to Pro — {price}/month"'),
         reason: 'app_en.arb proSubscribeTitle must keep the "{price}/month" '
             'shape so the price + period stay visible in-app.',
+      );
+      expect(
+        arb,
+        contains(
+            r'"proSubscribeTitleAnnual": "Subscribe to Pro — {price}/year"'),
+        reason: 'app_en.arb proSubscribeTitleAnnual must keep the '
+            '"{price}/year" shape so the annual price + period stay visible.',
+      );
+      expect(
+        arb,
+        contains('Auto-renews yearly until cancelled'),
+        reason: 'the annual subtitle must state its own renewal period.',
       );
       expect(
         RegExp(r'Auto-renews|cancelled').hasMatch(arb),

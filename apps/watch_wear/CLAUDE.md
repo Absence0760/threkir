@@ -76,7 +76,8 @@ apps/watch_wear/
             │   ├── ui/RouteMiniMap.kt       # Polyline + position-dot + track-so-far + raster tiles
             │   ├── ui/TileSource.kt         # MapTiler raster tile fetcher (OkHttp + LRU)
             │   ├── ui/TileLayer.kt          # Compose composable that draws tile bitmaps
-            │   ├── ui/Theme.kt              # MaterialTheme palette + typography
+            │   ├── ui/Theme.kt              # MaterialTheme palette + typography + BrandPalette
+            │   ├── ui/BrandEdgeButton.kt    # bezel-hugging primary button (M1.7 rebuild of M3 EdgeButton)
             │   ├── recording/                # foreground-service-owned recording loop
             │   │   ├── RunRecordingService.kt   # foregroundServiceType=location
             │   │   ├── RecordingRepository.kt   # process-singleton StateFlow
@@ -518,18 +519,22 @@ because the watch reads `user_settings.prefs` only, not the
 gender once synced, so the only place the watch figure is final is its
 own summary. Pinned by `RunCaloriesTest`. See decisions.md § 77.
 
-**Rotary input (bezel / crown).** The genuinely scrollable list screens —
-`BatteryInstructions` and the route picker — attach
+**Rotary input (bezel / crown).** The scrollable list screens —
+`PreRunScreen`, `BatteryInstructions` and the route picker — attach
 `Modifier.rotaryScrollable(RotaryScrollableDefaults.behavior(scrollableState
 = listState), focusRequester)` and request focus on appearance, so a
 Galaxy Watch physical bezel or a Pixel Watch crown scrolls them (persona
-samsung #32). The pre-run screen is deliberately NOT a scrolling column —
-it's a region-anchored `Box` so overflow in one region can't push the
-Start button off-frame — and the sign-in screen is excluded because its
+samsung #32). The pre-run screen is a `ScalingLazyColumn` of value chips
+(Activity, Pace, Route, then the battery-exemption and Sign out chips) with
+the Start `BrandEdgeButton` pinned to the bottom bezel OUTSIDE the list, so
+overflow only scrolls the list and can never push Start off-frame (the old
+region-anchored `Box` existed for that; `PreRunHomeLayoutTest` pins it) —
+and the sign-in screen is excluded because its
 `FocusRequester` belongs to the text inputs (auto-focusing the list would
 steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
 
-- **Pre-run activity picker.** `CompactChip` on `PreRunScreen` cycles
+- **Pre-run activity picker.** The Activity value chip (`PreRunSettingChip`,
+  label "Activity", current activity as its value) on `PreRunScreen` cycles
   `run → walk → hike → cycle`; the choice flows through to
   `metadata.activity_type` on save.
 - **3-second start countdown.** Between permission grant and
@@ -694,9 +699,9 @@ Android string resources** — no custom framework, no in-app picker
 - **Shared vocabularies are the phone's, verbatim.** The five `activity_*`
   labels are the same words `apps/mobile_android/lib/l10n/app_*.arb` and
   `apps/web/src/lib/i18n/locales/*.ts` use, not shorter ones chosen for the
-  56 dp pre-run chip: that chip's label box is 32 dp, which the long words
-  already overflow in every locale, so it ellipsises and the
-  `contentDescription` carries the whole word (decisions § 713). There is no
+  wrist. They render as the full-width Activity chip's value line, which
+  ellipsises if a word still overflows, and the `contentDescription`
+  carries the whole word (decisions § 713). There is no
   divergence left: `hike` read "Hike" here and "Trail run" there under a guard
   exemption until decisions § 1155 took the owner call and the wrist adopted
   the phone's word in all six locales that differed. The guard now compares

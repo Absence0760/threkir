@@ -40,6 +40,12 @@ jobs:
     # Guard: `on: release` fires for every published release in the repo,
     # so only act on watch_wear@* releases.
     if: startsWith(github.event.release.tag_name, 'watch_wear@')
+    # Pause on the `production` environment's required-reviewer rule before
+    # any prod credentials or steps run. It is also where the signing and
+    # Play secrets live: PLAY_SERVICE_ACCOUNT_JSON and the WATCH_WEAR_*
+    # keystore secrets are environment secrets, invisible to a job that
+    # names no environment.
+    environment: production
     permissions:
       contents: write
     steps:
@@ -109,24 +115,24 @@ jobs:
           # workflow reads — keeps a single pair of GitHub secrets in
           # sync with the Supabase project's anon key + URL across all
           # client deploys.
+          #
+          # SENTRY_DSN is optional: unset, the build carries an empty DSN and
+          # WatchWearApplication leaves Sentry off (decisions § 1763).
           ./gradlew bundleRelease \
             -PSUPABASE_URL='${{ secrets.PUBLIC_SUPABASE_URL }}' \
             -PSUPABASE_ANON_KEY='${{ secrets.PUBLIC_SUPABASE_ANON_KEY }}' \
+            -PPUBLIC_MAPTILER_KEY='${{ secrets.PUBLIC_MAPTILER_KEY }}' \
+            -PSENTRY_DSN='${{ secrets.WATCH_WEAR_SENTRY_DSN }}' \
+            -PAPP_RELEASE='${{ github.event.release.tag_name }}' \
             --no-daemon
-
-      - name: Upload to Play Internal
-        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: com.threkir.watchwear
-          releaseFiles: apps/watch_wear/android/app/build/outputs/bundle/release/app-release.aab
-          track: internal
-          status: completed
 
       - name: Attach artifacts to the Release
         # The Release already exists — it triggered this run. Upload the
         # signed AAB onto it (no name/notes → the human-authored release
-        # title + notes aren't clobbered).
+        # title + notes aren't clobbered). Runs BEFORE the Play upload, as in
+        # release-android.yml: when that upload fails (Play permissions, the
+        # manual-first-upload rule for a new app), the signed AAB must still
+        # land somewhere it can be hand-uploaded from.
         #
         # Deliberately AAB-only, matching release-android.yml. A directly
         # installable `.apk` here would be distribution outside Google
@@ -141,3 +147,12 @@ jobs:
           # defaults to false, so a moved build-output path would attach nothing and
           # still report success (decisions.md § 1674).
           fail_on_unmatched_files: true
+
+      - name: Upload to Play Internal
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.threkir.watchwear
+          releaseFiles: apps/watch_wear/android/app/build/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed

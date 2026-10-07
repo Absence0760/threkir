@@ -100,6 +100,10 @@
     <string name="battery_consider_charging">Battery %1$d%% · consider charging</string>
     <string name="route">Route</string>
     <string name="pace">Pace</string>
+    <!-- Pre-run Pace chip value when no target pace is set. -->
+    <string name="pace_off">Off</string>
+    <!-- Pre-run setting chip label for the activity-type picker; the phone's word. -->
+    <string name="activity">Activity</string>
     <!-- Activity types — cycled by the pre-run Activity chip. The words are
          the phone's and the web's verbatim, NOT shortened for the 56 dp chip:
          at caption3 the chip's 32 dp label box ellipsises the long words in

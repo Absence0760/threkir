@@ -78,6 +78,8 @@
     <string name="battery_consider_charging">Akku %1$d%% · laden empfohlen</string>
     <string name="route">Route</string>
     <string name="pace">Pace</string>
+    <string name="pace_off">Aus</string>
+    <string name="activity">Aktivität</string>
     <string name="activity_run">Laufen</string>
     <string name="activity_walk">Gehen</string>
     <string name="activity_hike">Traillauf</string>

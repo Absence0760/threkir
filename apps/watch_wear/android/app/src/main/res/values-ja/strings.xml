@@ -71,6 +71,8 @@
     <string name="battery_consider_charging">バッテリー %1$d%% · 充電を検討</string>
     <string name="route">ルート</string>
     <string name="pace">ペース</string>
+    <string name="pace_off">オフ</string>
+    <string name="activity">アクティビティ</string>
     <string name="activity_run">ランニング</string>
     <string name="activity_walk">ウォーキング</string>
     <string name="activity_hike">トレイルラン</string>

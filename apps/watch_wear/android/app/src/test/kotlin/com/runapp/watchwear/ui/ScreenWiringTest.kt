@@ -409,8 +409,10 @@ class ScreenWiringTest {
         // the counted one by name: a third arm landed between them (§ 1347) and
         // the extraction silently widened to span it, so an assertion about
         // "the unreadable chip" could be satisfied by the rejected chip's body.
+        // The next arm is found at whatever depth the `when` sits; a literal
+        // indent here broke the moment the screen nested it.
         val branch = Regex(
-            """SyncChipState\.Unreadable -> \{(.*?)\n                SyncChipState\.""",
+            """SyncChipState\.Unreadable -> \{(.*?)\n[ \t]*SyncChipState\.\w+(?:, SyncChipState\.\w+)* ->""",
             RegexOption.DOT_MATCHES_ALL,
         ).find(src)
         assertTrue("no unreadable-queue branch parsed — the checks below read nothing", branch != null)

@@ -175,18 +175,24 @@ account in Google Cloud → download the JSON key → paste into
 
 Same shape as Android, different keystore (the Wear app has its own
 `applicationId`, `com.threkir.watchwear`, so it needs its own upload
-identity):
+identity).
 
-| Secret | What |
-|---|---|
-| `WATCH_WEAR_KEYSTORE_BASE64` | base64-encoded Wear keystore |
-| `WATCH_WEAR_KEYSTORE_PASSWORD` | |
-| `WATCH_WEAR_KEY_ALIAS` | |
-| `WATCH_WEAR_KEY_PASSWORD` | |
-| `SUPABASE_URL` | production Supabase URL (injected at build time) |
-| `SUPABASE_ANON_KEY` | production anon key |
-| `SENTRY_DSN` | Sentry watch_wear project DSN. Read via `BuildConfig.SENTRY_DSN` from `.env.local` at Gradle-configure time; CI sets it from this secret. Empty disables. |
-| `APP_RELEASE` | `watch_wear@<version>` tag for Sentry release tagging. Defaults to `dev`. |
+The job runs in the `production` environment, so the four keystore
+secrets and `PLAY_SERVICE_ACCOUNT_JSON` must be **environment** secrets
+there (`gh secret set NAME --env production`). A repo-level copy is not
+read.
+
+| Secret | Scope | What |
+|---|---|---|
+| `WATCH_WEAR_KEYSTORE_BASE64` | `production` | base64-encoded Wear upload keystore (`base64 -i wear-upload-keystore.jks`) |
+| `WATCH_WEAR_KEYSTORE_PASSWORD` | `production` | store password |
+| `WATCH_WEAR_KEY_ALIAS` | `production` | alias inside the keystore |
+| `WATCH_WEAR_KEY_PASSWORD` | `production` | key password |
+| `WATCH_WEAR_SENTRY_DSN` | `production` | optional. Sentry watch_wear project DSN, passed as `-PSENTRY_DSN`. Unset leaves Sentry off (decisions § 1763) |
+| `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`, `PUBLIC_MAPTILER_KEY` | repo | shared with web and Android, passed as `-P` flags |
+
+`APP_RELEASE` is not a secret: the workflow passes the release tag
+(`watch_wear@<version>`) as `-PAPP_RELEASE`.
 
 `PLAY_SERVICE_ACCOUNT_JSON` can be shared with the Android release if
 the service account has Release-manager on both apps.

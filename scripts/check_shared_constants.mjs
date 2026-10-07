@@ -333,6 +333,86 @@ export function parseStringList(src, declName) {
 	return inner === null ? [] : [...inner.matchAll(/'([^']*)'/g)].map((m) => m[1]);
 }
 
+// ── Entry: the content type a track is uploaded to the `runs` bucket under ──
+
+// Read as every upload call into the bucket rather than as one named constant,
+// because the web and the phone spell the type inline at each call: a second
+// upload added beside the first is in scope without anyone registering it. A
+// call whose type is not a literal yields a site with no values, which
+// `checkEntry` reports as the rail going blind rather than as agreement.
+const RUNS_BUCKET_UPLOAD = /\.from\(\s*(?:BUCKETS\.runs|StorageBuckets\.runs|'runs')\s*\)\s*\.(?:upload|uploadBinary)\s*\(/g;
+
+/** @param {string} src @param {string} file @returns {Site[]} */
+export function parseRunsBucketUploadTypes(src, file) {
+	/** @type {Site[]} */
+	const out = [];
+	for (const m of src.matchAll(RUNS_BUCKET_UPLOAD)) {
+		const open = (m.index ?? 0) + m[0].length - 1;
+		let depth = 0;
+		let close = open;
+		for (; close < src.length; close++) {
+			if (src[close] === '(') depth++;
+			else if (src[close] === ')' && --depth === 0) break;
+		}
+		const call = src.slice(open, close);
+		const values = [...new Set([...call.matchAll(/\b(?:contentType|type)\s*:\s*'([^']*)'/g)].map((v) => v[1]))];
+		const line = src.slice(0, m.index).split('\n').length;
+		out.push({ key: 'runs', where: `${file}:${line}`, values });
+	}
+	return out;
+}
+
+/** @param {string} src @param {string} declName @returns {string[]} */
+export function parseKotlinConstString(src, declName) {
+	const decl = new RegExp(`\\bconst\\s+val\\s+${declName}\\s*=\\s*"([^"]*)"`).exec(src);
+	return decl ? [decl[1]] : [];
+}
+
+export const RUNS_TRACK_UPLOAD_ENTRY = 'runs-bucket track upload content type';
+
+// The agreement between the writers is the registry entry's job; this is the
+// half a comparison cannot express, because the bucket legitimately holds
+// more types (CSV and zip exports) than any track writer sends. Every type a
+// writer uses must be one the bucket accepts, or storage-api answers
+// `invalid_mime_type` and the upload is refused — which is how no Wear OS run
+// ever synced while the watch sent `application/json`.
+/**
+ * @param {Ctx} ctx
+ * @param {readonly Entry[]} [registry]
+ * @returns {{ errors: string[], ok: string[] }}
+ */
+export function checkRunsTrackUploadAllowed(ctx, registry = REGISTRY) {
+	/** @type {string[]} */
+	const errors = [];
+	/** @type {string[]} */
+	const ok = [];
+	const entry = registry.find((e) => e.name === RUNS_TRACK_UPLOAD_ENTRY);
+	if (!entry) {
+		errors.push(`${RUNS_TRACK_UPLOAD_ENTRY}: the registry entry is gone, so no writer is held to the bucket.`);
+		return { errors, ok };
+	}
+	const [bucket] = bucketMimeSites(ctx.sql, ['runs']);
+	const allowed = new Set(bucket.values);
+	let checked = 0;
+	for (const rail of entry.rails) {
+		for (const site of rail.sites(ctx)) {
+			for (const value of site.values) {
+				checked++;
+				if (allowed.has(value)) continue;
+				errors.push(
+					`${RUNS_TRACK_UPLOAD_ENTRY}: ${rail.label} uploads to the runs bucket as '${value}' ` +
+						`at ${site.where}, which ${bucket.where} does not allow ` +
+						`[${bucket.values.join(', ')}]. Storage refuses it with invalid_mime_type.`,
+				);
+			}
+		}
+	}
+	if (errors.length === 0) {
+		ok.push(`${RUNS_TRACK_UPLOAD_ENTRY}: ${checked} upload type(s) sit inside ${bucket.where}`);
+	}
+	return { errors, ok };
+}
+
 // ── Entry: the Wear OS route push/persist cap ──────────────────────────────
 
 /** @param {string} src @param {string} declName @returns {string[]} */
@@ -2028,6 +2108,56 @@ export const REGISTRY = [
 			},
 		],
 	},
+	{
+		name: RUNS_TRACK_UPLOAD_ENTRY,
+		why:
+			'Every writer puts the same object in the runs bucket, a gzipped JSON ' +
+			'track at {user_id}/{run_id}.json.gz, and the bucket refuses any type ' +
+			'its allowed_mime_types does not list. The Wear OS watch sent ' +
+			'application/json for as long as that list existed, so every run it ' +
+			'recorded was refused with invalid_mime_type and sat at "can\'t sync" ' +
+			'while the phone and the web, sending application/gzip, worked.',
+		match: 'all',
+		compare: 'set',
+		rails: [
+			{
+				label: 'web (apps/web/src/lib/core/data.ts, backup/backup.ts)',
+				sites: (ctx) =>
+					['apps/web/src/lib/core/data.ts', 'apps/web/src/lib/backup/backup.ts'].flatMap((f) =>
+						parseRunsBucketUploadTypes(ctx.read(f), f),
+					),
+			},
+			{
+				label: 'mobile (packages/api_client/lib/src/api_client.dart)',
+				sites: (ctx) =>
+					parseRunsBucketUploadTypes(
+						ctx.read('packages/api_client/lib/src/api_client.dart'),
+						'packages/api_client/lib/src/api_client.dart',
+					),
+			},
+			{
+				label: 'importer (apps/backend/supabase/functions/_shared/strava.ts)',
+				sites: (ctx) =>
+					parseRunsBucketUploadTypes(
+						ctx.read('apps/backend/supabase/functions/_shared/strava.ts'),
+						'apps/backend/supabase/functions/_shared/strava.ts',
+					),
+			},
+			{
+				label: 'watch_wear (apps/watch_wear .../SupabaseUrlBuilders.kt)',
+				sites: (ctx) => [
+					{
+						key: 'runs',
+						where: 'TRACK_UPLOAD_CONTENT_TYPE',
+						values: parseKotlinConstString(
+							ctx.read('apps/watch_wear/android/app/src/main/kotlin/com/runapp/watchwear/SupabaseUrlBuilders.kt'),
+							'TRACK_UPLOAD_CONTENT_TYPE',
+						),
+					},
+				],
+			},
+		],
+	},
 ];
 
 /// The column list `FetchExportProfile` asks PostgREST for. Read out of the
@@ -2420,6 +2550,9 @@ export function check(registry = REGISTRY, ctx = defaultContext()) {
 	const foldTable = checkExerciseFoldTable(ctx);
 	errors.push(...foldTable.errors);
 	ok.push(...foldTable.ok);
+	const runsUploads = checkRunsTrackUploadAllowed(ctx, registry);
+	errors.push(...runsUploads.errors);
+	ok.push(...runsUploads.ok);
 	return { errors, ok };
 }
 

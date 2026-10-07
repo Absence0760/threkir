@@ -23,7 +23,7 @@ We picked **#3** ([decisions.md § 15](../../docs/architecture/decisions.md#15-w
 - Independent release cadence — a watch UI tweak shouldn't require shipping a phone build.
 - Independent crash + ANR metrics in the Play Console.
 
-So: `com.threkir.app` (phone) and `app.threkir.watchwear` (Wear OS) are two Play listings under the same developer account.
+So: `com.threkir.app` (phone) and `com.threkir.watchwear` (Wear OS) are two Play listings under the same developer account.
 
 ---
 
@@ -31,7 +31,7 @@ So: `com.threkir.app` (phone) and `app.threkir.watchwear` (Wear OS) are two Play
 
 Same Play Console developer account as `mobile_android`. Setup is largely identical to `apps/mobile_android/deployment.md` § One-time Play Console setup, with these differences:
 
-- Application ID: `app.threkir.watchwear`
+- Application ID: `com.threkir.watchwear`, the Play package name, which is fixed once the listing exists. It must match `applicationId` in `android/app/build.gradle.kts` and `packageName` in `release-watch-wear.yml`. The Kotlin `namespace` (`com.runapp.watchwear`) is a separate setting that only names the source packages; Play never sees it.
 - Form factor: Wear OS (declare in the Console under "Form factors")
 - Listing screenshots: Wear OS-specific (round + square watch face previews)
 - The store listing description should call out "Wear OS standalone — no phone required"
@@ -95,10 +95,10 @@ These are passed to Gradle via `-PSUPABASE_URL=...` and end up in `BuildConfig` 
 ```kotlin
 android {
     defaultConfig {
-        applicationId = "app.threkir.watchwear"
+        applicationId = "com.threkir.watchwear"
         minSdk = 30           // Wear OS 3+
         targetSdk = 35
-        compileSdk = 36
+        compileSdk = 37
         versionCode = ...     // derived from git rev-list --count HEAD
         versionName = ...     // derived from the tag
     }
@@ -198,7 +198,7 @@ A Wear OS-specific edge: Google occasionally tightens Wear OS-specific guideline
 
 ## Production readiness checklist
 
-- [ ] Play Console listing for `app.threkir.watchwear` created
+- [ ] Play Console listing for `com.threkir.watchwear` created
 - [ ] Form factor: Wear OS declared
 - [ ] Wear OS standalone meta-data set to `true`
 - [ ] Store listing complete (description, screenshots — round + square watch faces, feature graphic)

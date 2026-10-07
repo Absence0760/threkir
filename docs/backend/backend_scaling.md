@@ -286,7 +286,7 @@ therefore authenticates the caller with a constant-time shared-secret compare
 (`timingSafeEqual`, header `X-Webhook-Secret` winning over the `?secret=`
 query fallback) and refuses every POST outright when
 `STRAVA_WEBHOOK_SECRET` is unset. `revenuecat-webhook` *is* HMAC-verified
-(`x-revenuecat-hmac`, constant-time compare, plus replay protection), because
+(`X-RevenueCat-Webhook-Signature`, `t=,v1=` over `<t>.<body>`, constant-time compare, plus replay protection), because
 RevenueCat does sign.
 
 ---

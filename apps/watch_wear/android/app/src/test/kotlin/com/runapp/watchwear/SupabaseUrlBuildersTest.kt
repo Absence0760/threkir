@@ -1,8 +1,11 @@
 package com.runapp.watchwear
 
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
+import java.nio.file.Files
+import java.util.zip.GZIPInputStream
+import okio.Buffer
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -162,26 +165,12 @@ class SupabaseUrlBuildersTest {
         // an object that already exists. Without `x-upsert: true`
         // Storage returns 409 Duplicate, execute() throws, and the
         // run wedges the queue forever. The header is the fix.
-        val body = "gz".toByteArray().toRequestBody("application/json".toMediaType())
-        val req = buildUploadTrackRequest(
-            baseUrl = "https://x.supabase.co",
-            path = "user-1/run-1.json.gz",
-            anonKey = "anon",
-            token = "tok",
-            body = body,
-        )
+        val req = uploadRequestFor(gzippedTrack())
         assertEquals("true", req.header("x-upsert"))
     }
 
     @Test fun `uploadTrack request targets the runs bucket via POST with auth`() {
-        val body = "gz".toByteArray().toRequestBody("application/json".toMediaType())
-        val req = buildUploadTrackRequest(
-            baseUrl = "https://x.supabase.co",
-            path = "user-1/run-1.json.gz",
-            anonKey = "anon",
-            token = "tok",
-            body = body,
-        )
+        val req = uploadRequestFor(gzippedTrack())
         assertEquals("POST", req.method)
         assertEquals(
             "https://x.supabase.co/storage/v1/object/runs/user-1/run-1.json.gz",
@@ -189,6 +178,44 @@ class SupabaseUrlBuildersTest {
         )
         assertEquals("anon", req.header("apikey"))
         assertEquals("Bearer tok", req.header("Authorization"))
-        assertEquals("gzip", req.header("Content-Encoding"))
     }
+
+    // ───────────── uploadTrack content type (issue #1073) ─────────────
+
+    @Test fun `uploadTrack sends gzip as the body's own media type, not only as a header`() {
+        // The `runs` bucket's allowed_mime_types refuses application/json
+        // with `invalid_mime_type`, which is how every watch-recorded run
+        // sat at "can't sync". OkHttp puts the BODY's media type on the
+        // wire, so a header-only assertion passes against a request that
+        // still sends application/json — read the body's.
+        val req = uploadRequestFor(gzippedTrack())
+        assertEquals("application/gzip", req.body?.contentType()?.toString())
+        assertEquals("application/gzip", req.header("Content-Type"))
+        assertEquals(TRACK_UPLOAD_CONTENT_TYPE, req.body?.contentType()?.toString())
+        // The object is a gzip file, not a gzip-encoded JSON entity.
+        assertNull(req.header("Content-Encoding"))
+    }
+
+    @Test fun `uploadTrack body is the gzipped track json`() {
+        val json = """[{"lat":51.5,"lng":-0.12,"t":1700000000000}]"""
+        val req = uploadRequestFor(gzippedTrack(json))
+        val bytes = Buffer().also { req.body!!.writeTo(it) }.readByteArray()
+        assertEquals(0x1f.toByte(), bytes[0])
+        assertEquals(0x8b.toByte(), bytes[1])
+        assertEquals(json, GZIPInputStream(bytes.inputStream()).readBytes().decodeToString())
+    }
+
+    private fun gzippedTrack(json: String = "[]"): File {
+        val dir = Files.createTempDirectory("track_upload_test").toFile().apply { deleteOnExit() }
+        val track = File(dir, "run-1.json").apply { writeText(json) }
+        return gzipTrackToTempFile(track).apply { deleteOnExit() }
+    }
+
+    private fun uploadRequestFor(gzFile: File) = buildUploadTrackRequest(
+        baseUrl = "https://x.supabase.co",
+        path = "user-1/run-1.json.gz",
+        anonKey = "anon",
+        token = "tok",
+        gzFile = gzFile,
+    )
 }

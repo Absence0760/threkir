@@ -2,8 +2,11 @@ package com.runapp.watchwear
 
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
-import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import java.io.File
+import java.util.zip.GZIPOutputStream
 
 /// Pure helpers that build the PostgREST / GoTrue URLs + bodies the
 /// watch's [SupabaseClient] POSTs and GETs. Lifted out of the HTTP-
@@ -87,19 +90,46 @@ internal fun computeRefreshExpiryMs(
 ///
 /// Extracted so the header set — the load-bearing idempotency
 /// guarantee — is unit-testable without booting OkHttp's network.
+///
+/// The body is built here rather than passed in because OkHttp sends the
+/// BODY's media type as `Content-Type`, whatever the header says. The
+/// caller used to pass an `application/json` body, which the `runs`
+/// bucket's `allowed_mime_types` refuses (`invalid_mime_type`), so no
+/// watch-recorded run ever synced. The object is a gzip file, not a
+/// gzip-encoded JSON entity, so there is no `Content-Encoding` either —
+/// an intermediary honouring one could store the inflated JSON under a
+/// `.json.gz` key.
 internal fun buildUploadTrackRequest(
     baseUrl: String,
     path: String,
     anonKey: String,
     token: String,
-    body: RequestBody,
+    gzFile: File,
 ): Request =
     Request.Builder()
         .url("$baseUrl/storage/v1/object/runs/$path")
         .header("apikey", anonKey)
         .header("Authorization", "Bearer $token")
-        .header("Content-Type", "application/json")
-        .header("Content-Encoding", "gzip")
+        .header("Content-Type", TRACK_UPLOAD_CONTENT_TYPE)
         .header("x-upsert", "true")
-        .post(body)
+        .post(gzFile.asRequestBody(TRACK_UPLOAD_CONTENT_TYPE.toMediaType()))
         .build()
+
+/// The content type of a track object in the `runs` bucket. The phone,
+/// the web and the Strava importer upload the same bytes under the same
+/// type, and `scripts/check_shared_constants.mjs` holds every one of them
+/// to the bucket's `allowed_mime_types`.
+internal const val TRACK_UPLOAD_CONTENT_TYPE = "application/gzip"
+
+/// Gzip `src` into a sibling temp file and return the temp file. Caller
+/// owns the returned file and must delete it. Streams 8 KiB at a time
+/// so peak memory is O(buffer) regardless of track size.
+internal fun gzipTrackToTempFile(src: File): File {
+    val out = File.createTempFile("track_", ".gz", src.parentFile)
+    src.inputStream().use { input ->
+        GZIPOutputStream(out.outputStream().buffered()).use { gz ->
+            input.copyTo(gz, bufferSize = 8192)
+        }
+    }
+    return out
+}

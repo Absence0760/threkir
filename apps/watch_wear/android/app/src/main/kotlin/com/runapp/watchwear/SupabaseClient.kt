@@ -20,10 +20,8 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
-import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
-import java.util.zip.GZIPOutputStream
 
 /// Thrown by [SupabaseClient.execute] when the response is not 2xx.
 ///
@@ -601,7 +599,7 @@ class SupabaseClient(
         val token = accessToken ?: throw IllegalStateException("not authenticated")
         val uid = userId ?: throw IllegalStateException("not authenticated")
 
-        val gzFile = trackFile?.let { withContext(Dispatchers.IO) { gzipToTempFile(it) } }
+        val gzFile = trackFile?.let { withContext(Dispatchers.IO) { gzipTrackToTempFile(it) } }
         try {
             var path: String? = null
             if (gzFile != null) {
@@ -642,7 +640,7 @@ class SupabaseClient(
             path = path,
             anonKey = anonKey,
             token = token,
-            body = gzFile.asRequestBody("application/json".toMediaType()),
+            gzFile = gzFile,
         )
         execute(req)
     }
@@ -659,19 +657,6 @@ class SupabaseClient(
             }
             body
         }
-    }
-
-    /// Gzip `src` into a sibling temp file and return the temp file. Caller
-    /// owns the returned file and must delete it. Streams 8 KiB at a time
-    /// so peak memory is O(buffer) regardless of track size.
-    private fun gzipToTempFile(src: File): File {
-        val out = File.createTempFile("track_", ".gz", src.parentFile)
-        src.inputStream().use { input ->
-            GZIPOutputStream(out.outputStream().buffered()).use { gz ->
-                input.copyTo(gz, bufferSize = 8192)
-            }
-        }
-        return out
     }
 
     /// Encode a `Map<String, Any?>` from [RunRow.toJsonMap] to a JSON string.

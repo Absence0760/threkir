@@ -19,7 +19,11 @@ import {
 	MOBILE_COLUMN_LIMITS,
 	RATE_LIMIT_DOC,
 	REGISTRY,
+	RUNS_TRACK_UPLOAD_ENTRY,
 	WEB_COLUMN_LIMITS,
+	checkRunsTrackUploadAllowed,
+	parseKotlinConstString,
+	parseRunsBucketUploadTypes,
 	boundFromCheck,
 	bucketMimeSites,
 	check,
@@ -1440,4 +1444,74 @@ test('the pace-drift gate goes blind, not green, when the phone constant is inli
 	});
 	assert.equal(errors.length, 1);
 	assert.match(errors[0], /read no values at kPaceAlertRateLimitSeconds/);
+});
+
+// ── runs-bucket track upload content type ──────────────────────────────────
+
+test('every runs-bucket upload call is read, in the TS and the Dart spelling', () => {
+	const ts =
+		"await supabase.storage\n\t.from(BUCKETS.runs)\n\t.upload(path, new Blob([g], { type: 'application/gzip' }), {\n\t\tcontentType: 'application/gzip',\n\t});\n" +
+		"await supabase.storage.from('runs').upload(p, b, { contentType: 'text/csv' });\n" +
+		"await supabase.storage.from(BUCKETS.photos).upload(p, b, { contentType: 'image/png' });";
+	assert.deepEqual(parseRunsBucketUploadTypes(ts, 'a.ts'), [
+		{ key: 'runs', where: 'a.ts:2', values: ['application/gzip'] },
+		{ key: 'runs', where: 'a.ts:6', values: ['text/csv'] },
+	]);
+	const dart =
+		"await _client.storage.from(StorageBuckets.runs).uploadBinary(\n  path,\n  bytes,\n  fileOptions: const FileOptions(\n    // (a comment with parens)\n    contentType: 'application/gzip',\n  ),\n);";
+	assert.deepEqual(parseRunsBucketUploadTypes(dart, 'b.dart'), [
+		{ key: 'runs', where: 'b.dart:1', values: ['application/gzip'] },
+	]);
+});
+
+test('an upload whose type is not a literal reads as no values, which the caller reports', () => {
+	const src = 'await supabase.storage.from(BUCKETS.runs).upload(p, b, { contentType: mime });';
+	assert.deepEqual(parseRunsBucketUploadTypes(src, 'c.ts'), [{ key: 'runs', where: 'c.ts:1', values: [] }]);
+});
+
+test('a Kotlin const string is read from its declaration', () => {
+	const src = 'internal const val TRACK_UPLOAD_CONTENT_TYPE = "application/gzip"\nval other = "x"';
+	assert.deepEqual(parseKotlinConstString(src, 'TRACK_UPLOAD_CONTENT_TYPE'), ['application/gzip']);
+	assert.deepEqual(parseKotlinConstString(src, 'MISSING'), []);
+});
+
+test('a track writer whose type the runs bucket does not allow fails, naming both', () => {
+	const dir = migrationsFixture({
+		'20260101_001_runs.sql':
+			"update storage.buckets set allowed_mime_types = array['application/gzip', 'text/csv'] where id = 'runs';\n" +
+			'create or replace function f() returns int language sql as $$ select 1; $$;',
+	});
+	/** @type {any} */
+	const registry = [
+		{
+			name: RUNS_TRACK_UPLOAD_ENTRY,
+			rails: [
+				{ label: 'phone', sites: () => [{ key: 'runs', where: 'p.dart:1', values: ['application/gzip'] }] },
+				{ label: 'watch', sites: () => [{ key: 'runs', where: 'W.kt', values: ['application/json'] }] },
+			],
+		},
+	];
+	const { errors, ok } = checkRunsTrackUploadAllowed({ read: () => '', sql: indexMigrations(dir) }, registry);
+	assert.equal(ok.length, 0);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /watch uploads to the runs bucket as 'application\/json' at W\.kt/);
+	assert.match(errors[0], /20260101_001_runs\.sql/);
+});
+
+test('the real watch rail fails when the watch goes back to application/json', () => {
+	const real = defaultContext();
+	const ctx = {
+		read: (/** @type {string} */ rel) =>
+			rel.endsWith('SupabaseUrlBuilders.kt')
+				? real
+						.read(rel)
+						.replace('TRACK_UPLOAD_CONTENT_TYPE = "application/gzip"', 'TRACK_UPLOAD_CONTENT_TYPE = "application/json"')
+				: real.read(rel),
+		sql: real.sql,
+	};
+	const { errors } = checkRunsTrackUploadAllowed(ctx);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /watch_wear .* 'application\/json'/);
+	const entry = /** @type {any} */ (REGISTRY.find((e) => e.name === RUNS_TRACK_UPLOAD_ENTRY));
+	assert.match(checkEntry(entry, ctx).errors.join('\n'), /two homes disagree/);
 });

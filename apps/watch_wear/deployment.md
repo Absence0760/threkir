@@ -54,15 +54,21 @@ Different upload key from the phone app — different `applicationId` requires d
 
 ### Generate the upload keystore (one-time)
 
-```bash
-keytool -genkey -v -keystore wear-upload-keystore.jks -alias upload \
-  -keyalg RSA -keysize 2048 -validity 10000 \
-  -dname "CN=Runonward Wear, O=Runonward, L=London, ST=England, C=GB"
+Done 2026-10-06. Only a re-key after a Play upload-key reset would run this again:
 
-base64 -w0 -i wear-upload-keystore.jks | xclip -selection clipboard
+```bash
+keytool -genkey -v -keystore wear-upload-keystore.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Threkir Wear, O=Threkir, C=US"
 ```
 
-Same estate-secrets-repo (sops backup) + GitHub Secret discipline as the phone-app keystore (`apps/mobile_android/deployment.md` § Signing setup) — losing the keystore is a 2–7 day Play support recovery flow.
+A PKCS12 keystore (the JDK 21 default) holds one password, so `WATCH_WEAR_KEYSTORE_PASSWORD` and `WATCH_WEAR_KEY_PASSWORD` carry the same value.
+
+**Canonical backup: the private estate secrets repo** (`Absence0760/infra-secrets`, cloned as a sibling at `../infra-secrets`) at `threkir/wear-upload-keystore.sops.yaml` — the `.jks` (base64), the key alias, and both passwords, sops-encrypted under the same threkir prod web-stack KMS key as the phone keystore (backed up 2026-10-06 and verified byte-identical). The GitHub Secrets on the `production` environment are a **signing copy, not a backup**: they are write-only, so nobody can read the keystore back out of them. No workstation keeps a working copy; restore one when you need it:
+
+```bash
+AWS_PROFILE=threkir sops --decrypt --extract '["keystore_jks_base64"]' ../infra-secrets/threkir/wear-upload-keystore.sops.yaml | base64 -d > wear-upload-keystore.jks
+```
+
+The passwords live in the same file (`sops ../infra-secrets/threkir/wear-upload-keystore.sops.yaml` to view), and in the owner's Bitwarden. Losing the keystore is a 2–7 day Play support recovery flow.
 
 ### GitHub Secrets required
 
@@ -184,7 +190,7 @@ A Wear OS-specific rollback consideration: when the phone app + watch app deploy
 
 ### Lost upload keystore
 
-Same Play support recovery flow as the phone app. Keep `wear-upload-keystore.jks` sops-encrypted in the estate secrets repo (`../infra-secrets`, same pattern as the phone keystore) + cold storage.
+Same Play support recovery flow as the phone app. The sops copy at `../infra-secrets/threkir/wear-upload-keystore.sops.yaml` (§ Signing setup) is the first thing to restore from; cold storage is still owed.
 
 ### Lost Play Console access
 
@@ -204,7 +210,8 @@ A Wear OS-specific edge: Google occasionally tightens Wear OS-specific guideline
 - [ ] Store listing complete (description, screenshots — round + square watch faces, feature graphic)
 - [ ] Privacy policy URL set (same one as the phone app — both apps are governed by the same policy)
 - [ ] Data safety questionnaire submitted
-- [ ] Upload keystore generated, sops-backed-up in the estate secrets repo + cold storage + GitHub Secrets
+- [x] Upload keystore generated, set as `production` GitHub Secrets, and sops-backed-up in the estate secrets repo (2026-10-06)
+- [ ] Upload keystore in cold storage
 - [ ] Play service account granted Release manager on this app
 - [ ] Production Gradle properties verified (Supabase URL, anon key, MapTiler)
 - [ ] Manifest reviewed against the permissions list

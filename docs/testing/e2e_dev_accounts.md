@@ -125,7 +125,7 @@ Two Strava accounts (one as the "user", one as a "buddy" to exercise the privacy
 
 **What's needed:**
 - Stripe dashboard → switch to **Test mode**. Grab `pk_test_…` and `sk_test_…`.
-- RevenueCat → new sandbox project; paste Stripe `sk_test_…` into Integrations → Stripe. Create the `pro_monthly` product mapped to a Stripe test-mode price.
+- RevenueCat → new sandbox project; paste Stripe `sk_test_…` into Integrations → Stripe. Create the `pro_monthly` and `pro_annual` products mapped to Stripe test-mode prices ($9.99 / month and $79.99 / year), as packages `$rc_monthly` and `$rc_annual` of offering `default`, both attached to entitlement `pro`.
 - `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` (RC sandbox Web Paywall Link `https://pay.rev.cat/<token>`) in `apps/web/.env.local`; optional `PUBLIC_REVENUECAT_WEB_PORTAL_URL` for the manage-subscription link.
 - `REVENUECAT_WEBHOOK_SECRET` (RC webhook signing secret) in `apps/backend/.env.local`.
 - Optional but recommended: install `stripe` CLI for `stripe listen --forward-to http://127.0.0.1:24321/functions/v1/revenuecat-webhook`.
@@ -354,5 +354,5 @@ If your goal is "get the e2e suite to cover everything", the **best ROI** is:
 
 If your goal is "ship to international" without further e2e investment, the **existing coverage is already strong** — the gaps are:
 - Real OAuth flows (mocked or skipped, both are defensible).
-- Real payment flows (sandbox-tested manually before each release; sufficient for a $9.99/month consumer SaaS).
+- Real payment flows (sandbox-tested manually before each release; sufficient for a $9.99/month or $79.99/year consumer SaaS).
 - Mobile e2e (separate doc — [docs/testing/mobile_e2e.md](mobile_e2e.md)).

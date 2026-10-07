@@ -1,5 +1,6 @@
 package com.runapp.watchwear.tiles
 
+import com.runapp.watchwear.KotlinSources
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -61,6 +62,46 @@ class ActiveRunTileResilienceTest {
         assertTrue(
             "the tile-update catch swallows silently: ${body?.groupValues?.get(2)}",
             body!!.groupValues[2].contains("Log."),
+        )
+    }
+
+    @Test
+    fun `every updater is bound through the application context`() {
+        // `SysUiTileUpdateRequester` keeps the context it is handed and
+        // unbinds through it later, on its own executor thread. Handed the
+        // recording Service, the unbind landed after `stopSelf()` had torn
+        // the Service's bindings down and threw "Service not registered"
+        // where no catch can reach — the app died on every Stop. Read
+        // across the whole main source set, so a second updater added
+        // anywhere is held to the same rule.
+        val sites = KotlinSources.mainSources().flatMap { file ->
+            val structure = KotlinSources.structureView(file.readText())
+            Regex("""\bgetUpdater\s*\(""").findAll(structure).map { m ->
+                val open = m.range.last
+                var depth = 0
+                var close = open
+                while (close < structure.length) {
+                    if (structure[close] == '(') depth++
+                    if (structure[close] == ')' && --depth == 0) break
+                    close++
+                }
+                file.name to structure.substring(open + 1, close).trim()
+            }.toList()
+        }
+        assertTrue("found no getUpdater call — the guard is reading nothing", sites.isNotEmpty())
+        val wrong = sites.filterNot { (_, arg) ->
+            arg == "applicationContext" || arg.endsWith(".applicationContext")
+        }
+        assertEquals(
+            "TileService.getUpdater must be passed an application context, never a " +
+                "Service or Activity: $wrong",
+            emptyList<Pair<String, String>>(),
+            wrong,
+        )
+        assertEquals(
+            "only ActiveRunTileService may resolve a TileUpdateRequester",
+            setOf("ActiveRunTileService.kt"),
+            sites.map { it.first }.toSet(),
         )
     }
 

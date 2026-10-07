@@ -118,9 +118,17 @@ class ActiveRunTileService : TileService() {
         /// `Context.bindService` and `Context.sendBroadcast`, the first
         /// of which is documented to raise `SecurityException`. A
         /// glanceable tile is an L4 effect and may not cost L1.
+        ///
+        /// The updater is bound through the APPLICATION context, never the
+        /// caller's. `SysUiTileUpdateRequester` keeps the context it is given,
+        /// binds SysUI through it, and unbinds later on its own executor
+        /// thread. `stopRecording` calls this and then `stopSelf()`; the
+        /// framework tears down a destroyed Service's bindings, so that
+        /// deferred `unbindService` threw "Service not registered" on a
+        /// thread no catch here can reach, and killed the app on every Stop.
         fun requestUpdate(context: Context) {
             try {
-                getUpdater(context).requestUpdate(ActiveRunTileService::class.java)
+                getUpdater(context.applicationContext).requestUpdate(ActiveRunTileService::class.java)
             } catch (e: Throwable) {
                 android.util.Log.w(TAG, "active-run tile update refused", e)
             }

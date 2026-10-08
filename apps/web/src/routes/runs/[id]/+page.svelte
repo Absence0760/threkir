@@ -667,7 +667,11 @@
 				effective<PrivacyZone[]>(settings, PRIVACY_ZONES_KEY) ?? [];
 			hasZones = zones.length > 0;
 			if (run.track && run.track.length > 0 && hasZones) {
-				intersectsZone = run.track.some((p) => isInAnyZone(p, zones));
+				intersectsZone = run.track.some(
+					(p) =>
+						isInAnyZone(p, zones) ||
+						isInAnyZone({ lat: lineLat(p), lng: lineLng(p) }, zones),
+				);
 			}
 		} catch (_) {
 			// Settings load failure shouldn't block sharing — fall

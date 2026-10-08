@@ -5,7 +5,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:core_models/core_models.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/foundation.dart' show compute, debugPrint;
 import 'package:meta/meta.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -1627,9 +1627,15 @@ class ApiClient {
   /// is over the same finite waypoints that blob holds. For display only:
   /// persisting it would bake the sidecar into the next upload of the track.
   Future<List<Waypoint>?> smoothedLocalTrack(Run run) async {
-    if (run.track.isEmpty) return null;
+    if (!needsSmoothedSidecar(run.track) ||
+        run.metadata?[MetadataKeys.smoothedSidecarSha256] is! String) {
+      return null;
+    }
     final usable = finiteWaypoints(run.track);
-    return _withSmoothedSidecar(run, usable, localTrackSha256(usable));
+    // Off the UI isolate: the hash re-encodes the whole track, and a
+    // multi-day track is the one a runner most wants to see.
+    final sha = await compute(localTrackSha256, usable);
+    return _withSmoothedSidecar(run, usable, sha);
   }
 
   /// Lower-case hex SHA-256 of the blob [_uploadTrack] stores for [track],

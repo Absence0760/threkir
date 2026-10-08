@@ -10,7 +10,7 @@
 // readers can rely on).
 
 import type { DbClient, Json, TablesUpdate } from './database.ts';
-import { GpsDistanceEstimator } from './gps_distance.ts';
+import { type GpsEvent, smoothDistance } from './gps_distance.ts';
 
 export type StravaTokens = {
 	access_token: string;
@@ -651,25 +651,33 @@ export function medianFixIntervalS(track: readonly EmbeddedTrackPoint[]): number
 }
 
 /// Distance covered up to each point, replaying the track through the GPS
-/// distance estimator (docs/features/gps_distance.md). The raw hop-sum is
-/// inflated by GPS noise, so a "5 km" window measured on it closes early and
-/// the best reads too fast. Lockstep with `estimatorCumulativeMetres` in
+/// distance smoother (spec v1.2, docs/features/gps_distance.md) — the same
+/// figure a saved or recomputed run carries. The raw hop-sum is inflated by
+/// GPS noise, so a "5 km" window measured on it closes early and the best
+/// reads too fast. A point without a timestamp carries the previous
+/// cumulative. Lockstep with `estimatorCumulativeMetres` in
 /// apps/web/src/lib/integrations/garmin-fit.ts.
 export function estimatorCumulativeMetres(
 	track: readonly EmbeddedTrackPoint[],
 	maxSpeedMps = 10,
 ): number[] {
-	const est = new GpsDistanceEstimator(maxSpeedMps, medianFixIntervalS(track), null);
-	const out = new Array<number>(track.length).fill(0);
+	const events: GpsEvent[] = [];
+	const eventOf = new Array<number>(track.length).fill(-1);
 	let t0: number | null = null;
 	for (let i = 0; i < track.length; i++) {
 		const p = track[i];
 		const ms = pointMs(p);
-		if (ms != null) {
-			if (t0 == null) t0 = ms;
-			est.addFix((ms - t0) / 1000, p.lat, p.lng);
-		}
-		out[i] = est.distanceM;
+		if (ms == null) continue;
+		if (t0 == null) t0 = ms;
+		eventOf[i] = events.length;
+		events.push({ type: 'fix', t: (ms - t0) / 1000, lat: p.lat, lng: p.lng });
+	}
+	const cum = smoothDistance(events, maxSpeedMps, medianFixIntervalS(track), null).cumulativeM;
+	const out = new Array<number>(track.length).fill(0);
+	let last = 0;
+	for (let i = 0; i < track.length; i++) {
+		if (eventOf[i] >= 0) last = cum[eventOf[i]];
+		out[i] = last;
 	}
 	return out;
 }

@@ -12,7 +12,9 @@ import {
 	buildTrackFromStreams,
 	computeEmbeddedBests,
 	deviceCumulativeMetres,
+	estimatorCumulativeMetres,
 } from './strava.ts';
+import { smoothDistance } from './gps_distance.ts';
 
 const START = '2026-01-01T09:00:00Z';
 const M_PER_DEG = 6371000 * (Math.PI / 180);
@@ -98,4 +100,24 @@ Deno.test('computeEmbeddedBests — an invalid distance stream falls back to the
 		assertEquals(computeEmbeddedBests(track, 'run', distance), estimated);
 	}
 	assertEquals(computeEmbeddedBests(track, 'run', [0, 200]), estimated);
+});
+
+Deno.test('estimatorCumulativeMetres — the fallback reads the smoothed distance a saved run carries', () => {
+	// Not the forward filter the live screen shows: the same smoother the
+	// recorder saves with and the recompute writes. A zig-zag over 300 s.
+	const startMs = Date.parse(START);
+	const track = Array.from({ length: 301 }, (_, i) => ({
+		lat: (i % 2 === 1 ? 2 : -2) / M_PER_DEG,
+		lng: (i * 3) / M_PER_DEG,
+		ts: new Date(startMs + i * 1000).toISOString(),
+	}));
+	const cum = estimatorCumulativeMetres(track);
+	const smoothed = smoothDistance(
+		track.map((p, i) => ({ type: 'fix' as const, t: i, lat: p.lat, lng: p.lng })),
+		10,
+		1,
+		null,
+	);
+	assertEquals(cum.length, track.length);
+	cum.forEach((c, i) => assertEquals(Math.abs(c - smoothed.cumulativeM[i]) <= 1e-9, true, `point ${i}`));
 });

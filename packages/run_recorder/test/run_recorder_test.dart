@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:core_models/core_models.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:run_recorder/run_recorder.dart';
@@ -1431,6 +1432,50 @@ void main() {
       final sum = laps.fold<double>(
           0, (a, l) => a + (l['distance_m'] as num).toDouble());
       expect(sum, closeTo(run.distanceMetres, 1e-6));
+    });
+
+    test('android asks the fused provider unless raw gps is requested', () {
+      final fused = RunRecorder()..debugPrepareWithoutStream();
+      final fusedSettings = fused.debugLocationSettings as AndroidSettings;
+      expect(fusedSettings.forceLocationManager, isFalse);
+      expect(fused.locationProvider, 'fused');
+      final raw = RunRecorder()
+        ..debugPrepareWithoutStream(rawGpsProvider: true);
+      final rawSettings = raw.debugLocationSettings as AndroidSettings;
+      expect(rawSettings.forceLocationManager, isTrue);
+      expect(rawSettings.intervalDuration, const Duration(seconds: 1));
+      expect(raw.locationProvider, 'gps');
+    });
+
+    test('ios ignores the raw gps request and names no provider', () {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        final r = RunRecorder()
+          ..debugPrepareWithoutStream(rawGpsProvider: true);
+        expect(r.debugLocationSettings, isA<AppleSettings>());
+        expect(r.locationProvider, isNull);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    test('a saved gps run names the location provider it used', () async {
+      Future<Map<String, dynamic>?> record({required bool raw}) async {
+        final r = RunRecorder()..debugPrepareWithoutStream(rawGpsProvider: raw);
+        r.begin();
+        r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 0));
+        r.debugInjectPosition(makePosition(metresEast: 5, secondsFromStart: 2));
+        return (await r.stop()).metadata;
+      }
+
+      expect((await record(raw: false))?['location_provider'], 'fused');
+      expect((await record(raw: true))?['location_provider'], 'gps');
+
+      final empty = RunRecorder()..debugPrepareWithoutStream();
+      empty.begin();
+      final run = await empty.stop();
+      expect(run.metadata?.containsKey('location_provider') ?? false, isFalse,
+          reason: 'no fix, no stream to describe');
     });
 
     test('a resumed session saves without the estimator tag', () async {

@@ -303,6 +303,7 @@ class RunRecorder {
   // Remembered so the retry loop can re-open the position stream with the
   // same accuracy setting the caller passed to [prepare].
   LocationAccuracy _locationAccuracy = LocationAccuracy.bestForNavigation;
+  bool _rawGpsProvider = false;
   // The fix interval requested from Android, and the interval the estimator
   // scales its gap and freshness windows by. geolocator_android otherwise
   // falls back to 5000 ms, and on Android 13+ also sets that as the minimum
@@ -386,6 +387,16 @@ class RunRecorder {
   bool get backgroundLocationLimited => _backgroundLocationLimited;
   bool _backgroundLocationLimited = false;
 
+  /// The Android location provider the position stream asks for: `'gps'`
+  /// (raw `GPS_PROVIDER` through `LocationManager`) when [prepare] was given
+  /// `rawGpsProvider`, else `'fused'`. Null off Android, which has one
+  /// provider. Saved as `metadata.location_provider` so a run recorded for the
+  /// GPS corpus says which stream produced it.
+  String? get locationProvider =>
+      defaultTargetPlatform == TargetPlatform.android
+          ? (_rawGpsProvider ? 'gps' : 'fused')
+          : null;
+
   /// Whether [begin] has been called and time/distance are accumulating.
   bool get recording => _recording;
 
@@ -416,6 +427,12 @@ class RunRecorder {
   /// error — it records fine while the app is on screen, and only background
   /// delivery is at risk. It sets [backgroundLocationLimited] so the caller
   /// can disclose the limitation.
+  ///
+  /// [rawGpsProvider] is a developer diagnostic for #1090 item 6: on Android
+  /// it asks geolocator for the platform `LocationManager` (raw
+  /// `GPS_PROVIDER`) instead of the fused provider, which already smooths
+  /// before our filter sees a fix. Ignored on iOS. The saved run names the
+  /// provider it used in `metadata.location_provider`.
   Future<void> prepare({
     Route? route,
     int distanceFilterMetres = 3,
@@ -423,6 +440,7 @@ class RunRecorder {
     double maxSpeedMps = 10,
     LocationAccuracy accuracy = LocationAccuracy.bestForNavigation,
     double accuracyGateMetres = 20,
+    bool rawGpsProvider = false,
   }) async {
     if (_disposed) {
       throw StateError('RunRecorder.prepare() called after dispose()');
@@ -463,6 +481,7 @@ class RunRecorder {
     _resetDistance(0);
     _accuracyGateMetres = accuracyGateMetres;
     _locationAccuracy = accuracy;
+    _rawGpsProvider = rawGpsProvider;
     _lastAccuracyDropLogAt = null;
     _backgroundLocationLimited = false;
     _resetTreadmill();
@@ -577,6 +596,7 @@ class RunRecorder {
     return AndroidSettings(
       accuracy: _locationAccuracy,
       intervalDuration: _fixInterval,
+      forceLocationManager: _rawGpsProvider,
       // Receive every fix from the OS; movement filtering happens in
       // software so the blue dot can refresh without inflating the track.
       distanceFilter: 0,
@@ -658,6 +678,7 @@ class RunRecorder {
     double maxSpeedMps = 10,
     LocationAccuracy accuracy = LocationAccuracy.bestForNavigation,
     double accuracyGateMetres = 20,
+    bool rawGpsProvider = false,
   }) async {
     await prepare(
       route: route,
@@ -666,6 +687,7 @@ class RunRecorder {
       maxSpeedMps: maxSpeedMps,
       accuracy: accuracy,
       accuracyGateMetres: accuracyGateMetres,
+      rawGpsProvider: rawGpsProvider,
     );
     begin();
   }
@@ -707,6 +729,7 @@ class RunRecorder {
     double maxSpeedMps = 10,
     LocationAccuracy accuracy = LocationAccuracy.bestForNavigation,
     double accuracyGateMetres = 20,
+    bool rawGpsProvider = false,
   }) async {
     Object? prepareError;
     try {
@@ -717,6 +740,7 @@ class RunRecorder {
         maxSpeedMps: maxSpeedMps,
         accuracy: accuracy,
         accuracyGateMetres: accuracyGateMetres,
+        rawGpsProvider: rawGpsProvider,
       );
     } catch (e) {
       // prepare() reset state, flipped _prepared true, and started the retry
@@ -859,6 +883,7 @@ class RunRecorder {
     double minMovementMetres = 2,
     double maxSpeedMps = 10,
     double accuracyGateMetres = 20,
+    bool rawGpsProvider = false,
   }) {
     _startTime = null;
     _elapsedOffset = Duration.zero;
@@ -889,9 +914,14 @@ class RunRecorder {
     _maxSpeedMps = maxSpeedMps;
     _resetDistance(0);
     _accuracyGateMetres = accuracyGateMetres;
+    _rawGpsProvider = rawGpsProvider;
     _resetTreadmill();
     _prepared = true;
   }
+
+  /// Test-only: the [LocationSettings] the position stream would open with.
+  @visibleForTesting
+  LocationSettings get debugLocationSettings => _platformLocationSettings();
 
   /// Test-only: push a simulated [Position] through the same filter chain
   /// the live geolocator subscription would use.
@@ -1842,6 +1872,10 @@ class RunRecorder {
 
     final metadata = <String, dynamic>{};
     if (laps.isNotEmpty) metadata['laps'] = lapsToCanonicalJson(laps);
+    final provider = locationProvider;
+    if (provider != null && track.isNotEmpty) {
+      metadata[MetadataKeys.locationProvider] = provider;
+    }
     if (_treadmillMode) {
       // Belt-measured distance is not GPS-measured, so the same exclusion the
       // pedometer-estimated indoor path uses applies: `indoor: true` keeps it

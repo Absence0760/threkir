@@ -17,6 +17,7 @@ void main() {
       expect(MetadataKeys.distanceRecomputedAt, 'distance_recomputed_at');
       expect(MetadataKeys.distanceRecordedM, 'distance_recorded_m');
       expect(MetadataKeys.distanceStepFilledM, 'distance_step_filled_m');
+      expect(MetadataKeys.locationProvider, 'location_provider');
       expect(MetadataKeys.isDnf, 'is_dnf');
       expect(MetadataKeys.recoveredFromCrash, 'recovered_from_crash');
       expect(MetadataKeys.workoutStepResults, 'workout_step_results');
@@ -62,6 +63,7 @@ void main() {
         MetadataKeys.isDnf,
         MetadataKeys.laps,
         MetadataKeys.lastModifiedAt,
+        MetadataKeys.locationProvider,
         MetadataKeys.manualEntry,
         MetadataKeys.maxBpm,
         MetadataKeys.notes,

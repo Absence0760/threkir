@@ -52,6 +52,7 @@ class MetadataKeys {
   static const String isDnf = 'is_dnf';
   static const String laps = 'laps';
   static const String lastModifiedAt = 'last_modified_at';
+  static const String locationProvider = 'location_provider';
   static const String manualEntry = 'manual_entry';
   static const String maxBpm = 'max_bpm';
   static const String notes = 'notes';

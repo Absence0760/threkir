@@ -6,6 +6,7 @@
 // Pure functions. Unit-testable. No Svelte / Supabase dependencies.
 
 import { haversineMetres } from '../runs/run_stats';
+import { hasSmoothedPosition, type LinePointSource } from '../runs/track_line';
 
 /// Declared as an ALIAS, not an interface, and that is load-bearing rather
 /// than stylistic: TypeScript gives an object type an implicit index signature
@@ -37,26 +38,45 @@ export function isInAnyZone(point: LatLng, zones: PrivacyZone[]): boolean {
 	return false;
 }
 
-/// Walk forward from index 0 and drop points in any zone; walk
+/// True when either position a stored fix carries is inside a zone: the raw
+/// `lat` / `lng`, or the GPS smoother's `smoothedLat` / `smoothedLng` when both
+/// halves are finite. The run line draws the smoothed position, and the
+/// smoother can pull a fix just outside the edge to just inside it, so a raw
+/// test alone would let a drawn endpoint sit in the zone. Mirrors the
+/// end-walk predicate of `clip_track_for_user`
+/// (migration 20270719000005).
+export function isFixInAnyZone(point: LinePointSource, zones: PrivacyZone[]): boolean {
+	if (isInAnyZone(point, zones)) return true;
+	return (
+		hasSmoothedPosition(point) &&
+		isInAnyZone({ lat: point.smoothedLat as number, lng: point.smoothedLng as number }, zones)
+	);
+}
+
+/// Walk forward from index 0 and drop fixes in any zone; walk
 /// backward from the end with the same predicate; keep the
-/// contiguous middle. We deliberately don't slice out *interior*
-/// in-zone segments (e.g. a loop that returns home mid-run and
-/// leaves again) because (a) the leak we're protecting is "where
-/// you live," not "where you've ever been," and (b) gapping the
-/// polyline mid-track looks broken.
+/// contiguous middle. A fix is in a zone when its raw OR its
+/// smoothed position is (`isFixInAnyZone`), the rule the server's
+/// `clip_track_for_user` applies for non-owners, so an image the
+/// owner exports carries the same trimmed line a stranger is served.
+/// We deliberately don't slice out *interior* in-zone segments
+/// (e.g. a loop that returns home mid-run and leaves again) because
+/// (a) the leak we're protecting is "where you live," not "where
+/// you've ever been," and (b) gapping the polyline mid-track looks
+/// broken.
 ///
 /// When the result would be empty (every point is in a zone), we
 /// return an empty array — callers should render no polyline at all
 /// rather than a single point that gives the location away.
-export function clipPointsToZones<T extends LatLng>(points: T[], zones: PrivacyZone[]): T[] {
+export function clipPointsToZones<T extends LinePointSource>(points: T[], zones: PrivacyZone[]): T[] {
 	if (zones.length === 0 || points.length === 0) return points;
 
 	let start = 0;
-	while (start < points.length && isInAnyZone(points[start], zones)) start++;
+	while (start < points.length && isFixInAnyZone(points[start], zones)) start++;
 	if (start >= points.length) return [];
 
 	let end = points.length - 1;
-	while (end > start && isInAnyZone(points[end], zones)) end--;
+	while (end > start && isFixInAnyZone(points[end], zones)) end--;
 
 	return points.slice(start, end + 1);
 }

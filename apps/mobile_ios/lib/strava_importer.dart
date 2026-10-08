@@ -252,6 +252,7 @@ class StravaImporter {
     // read, still throws so the caller reports it — the export promised
     // something it did not deliver.
     Route? parsedRoute;
+    List<double?>? deviceDistances;
     if (path.isNotEmpty) {
       final file = archive[path];
       if (file == null) {
@@ -278,7 +279,9 @@ class StravaImporter {
       } else if (lower.contains('.tcx')) {
         parsedRoute = RouteParser.fromTcx(utf8.decode(content));
       } else if (lower.contains('.fit')) {
-        parsedRoute = FitParser.parse(Uint8List.fromList(content));
+        final fit = FitParser.parseWithDistances(Uint8List.fromList(content));
+        parsedRoute = fit.route;
+        deviceDistances = fit.distancesMetres;
       } else {
         throw FormatException('Unsupported file format: $path');
       }
@@ -329,6 +332,7 @@ class StravaImporter {
     // timestamps, so no fake bests are written.
     final metadata = enrichMetadataWithEmbeddedBests(
       track: track,
+      deviceDistancesMetres: deviceDistances,
       metadata: {
         MetadataKeys.title: name.isEmpty ? 'Strava import' : name,
         // Match the web importer's derivation in apps/web/src/lib/

@@ -71,6 +71,38 @@ List<double> estimatorCumulativeMetres(
   return out;
 }
 
+/// The file's own per-waypoint distance stream (FIT `record.distance`),
+/// rebased to 0 at the first waypoint, or null when it cannot stand in for
+/// the estimator: absent, a length other than the track's, any entry
+/// missing / non-finite / negative, a step backwards, or no distance gained
+/// at all. A device stream is what the watch measured, so it is preferred
+/// over re-estimating from the positions — the same choice Strava makes. One
+/// bad sample rejects the whole stream rather than splicing two measurements
+/// of the same run together.
+///
+/// Lockstep with `deviceCumulativeMetres` in
+/// `apps/web/src/lib/integrations/garmin-fit.ts` and
+/// `apps/backend/supabase/functions/_shared/strava.ts`.
+List<double>? deviceCumulativeMetres(List<double?>? stream, int pointCount) {
+  if (stream == null || stream.length != pointCount || pointCount < 2) {
+    return null;
+  }
+  final out = List<double>.filled(pointCount, 0);
+  var prev = double.negativeInfinity;
+  for (var i = 0; i < pointCount; i++) {
+    final v = stream[i];
+    if (v == null || !v.isFinite || v < 0 || v < prev) return null;
+    prev = v;
+    out[i] = v;
+  }
+  final base = out.first;
+  if (!(out.last > base)) return null;
+  for (var i = 0; i < pointCount; i++) {
+    out[i] -= base;
+  }
+  return out;
+}
+
 /// Median of the positive intervals (seconds) between consecutive
 /// timestamped waypoints; 1.0 when there are none. An even count takes the
 /// mean of the two middle values.
@@ -93,9 +125,11 @@ double medianFixIntervalS(List<Waypoint> track) {
 }
 
 /// Returns `metadata` with `fastest_X_s` keys merged in for each
-/// canonical distance the track is long enough to cover, measured on the
-/// estimator's cumulative ([estimatorCumulativeMetres]) with the speed
-/// ceiling of `metadata['activity_type']` (run when absent). Existing
+/// canonical distance the track is long enough to cover. Measured on
+/// [deviceDistancesMetres] when it passes [deviceCumulativeMetres],
+/// otherwise on the estimator's cumulative ([estimatorCumulativeMetres])
+/// with the speed ceiling of `metadata['activity_type']` (run when
+/// absent). Existing
 /// keys in `metadata` are preserved unless the helper computes a
 /// FASTER time for the same key (defensive: a manual edit by the
 /// runner overrides the auto-detection only if it's faster — the
@@ -107,15 +141,17 @@ double medianFixIntervalS(List<Waypoint> track) {
 Map<String, dynamic>? enrichMetadataWithEmbeddedBests({
   required List<Waypoint> track,
   Map<String, dynamic>? metadata,
+  List<double?>? deviceDistancesMetres,
 }) {
   if (track.length < 3) return metadata;
   final out = Map<String, dynamic>.from(metadata ?? const {});
   final rawType = out[MetadataKeys.activityType];
   final activity = ActivityType.fromName(rawType is String ? rawType : null);
-  final cum = estimatorCumulativeMetres(
-    track,
-    maxSpeedMps: activity.maxSpeedMps,
-  );
+  final cum = deviceCumulativeMetres(deviceDistancesMetres, track.length) ??
+      estimatorCumulativeMetres(
+        track,
+        maxSpeedMps: activity.maxSpeedMps,
+      );
   for (final entry in _embeddedBestDistances.entries) {
     final fastest = fastestWindowOf(track, entry.value, cumulative: cum);
     if (fastest == null) continue;

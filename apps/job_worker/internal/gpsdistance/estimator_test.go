@@ -264,6 +264,55 @@ func TestSmoothedGoldenVectors(t *testing.T) {
 	}
 }
 
+// forwardWithStopHintsM is the reference forward estimator's distance over
+// the scenarios whose post-hoc stop detection flags fixes that change it,
+// replayed with those stop hints (python3 -I over reference.py: detect_stops,
+// then GpsDistanceEstimator.add_fix(..., stopped_hint=...)). Every other
+// scenario's forward pass is the fixture's own forward vector.
+var forwardWithStopHintsM = map[string]float64{
+	"stationary_position_only": 0.9846665773325164,
+	"legacy_stop_clustering":   323.16068012777157,
+}
+
+func TestSmoothDistanceReportsItsForwardPass(t *testing.T) {
+	vf := loadVectors(t)
+	tol := vf.ToleranceM
+	hinted := 0
+	for _, sc := range vf.Scenarios {
+		t.Run(sc.Name, func(t *testing.T) {
+			got := SmoothDistance(eventsOf(t, sc), optionsOf(sc))
+			if len(got.ForwardCumulativeM) != len(sc.Events) {
+				t.Fatalf("forward cumulative has %d entries, want one per event (%d)", len(got.ForwardCumulativeM), len(sc.Events))
+			}
+			if want, ok := forwardWithStopHintsM[sc.Name]; ok {
+				hinted++
+				if got.StoppedFixes == 0 {
+					t.Fatal("scenario listed as stop-hinted but the smoother flagged no fix")
+				}
+				if math.Abs(got.ForwardDistanceM-want) > tol {
+					t.Errorf("forward distance %.6f, want %.6f", got.ForwardDistanceM, want)
+				}
+				if got.ForwardDistanceM >= sc.Expected.DistanceAfterEachEventM[len(sc.Events)-1] {
+					t.Errorf("stop hints must remove stationary drift: %.6f is not below the unhinted %.6f",
+						got.ForwardDistanceM, sc.Expected.DistanceAfterEachEventM[len(sc.Events)-1])
+				}
+				return
+			}
+			for i, want := range sc.Expected.DistanceAfterEachEventM {
+				if math.Abs(got.ForwardCumulativeM[i]-want) > tol {
+					t.Fatalf("after event %d: forward %.6f, want the fixture's %.6f", i, got.ForwardCumulativeM[i], want)
+				}
+			}
+			if last := sc.Expected.DistanceAfterEachEventM[len(sc.Events)-1]; math.Abs(got.ForwardDistanceM-last) > tol {
+				t.Errorf("forward distance %.6f, want %.6f", got.ForwardDistanceM, last)
+			}
+		})
+	}
+	if hinted != len(forwardWithStopHintsM) {
+		t.Errorf("%d stop-hinted scenarios found in the fixture, want %d", hinted, len(forwardWithStopHintsM))
+	}
+}
+
 func TestNewFallsBackToTheRunCeiling(t *testing.T) {
 	for _, v := range []float64{0, -1, math.NaN(), math.Inf(1)} {
 		if got := New(v).MaxSpeedMps; got != DefaultMaxSpeedMps {

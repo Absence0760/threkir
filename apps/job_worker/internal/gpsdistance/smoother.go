@@ -25,16 +25,25 @@ type Event struct {
 // LatLng is a position in degrees.
 type LatLng struct{ Lat, Lng float64 }
 
-// SmoothResult is SmoothDistance's output. CumulativeM and Positions have
-// one entry per input event; Positions is nil for a steps / finish event
-// and for an ignored fix.
+// SmoothResult is SmoothDistance's output. CumulativeM, Positions and
+// ForwardCumulativeM have one entry per input event; Positions is nil for a
+// steps / finish event and for an ignored fix.
+//
+// ForwardDistanceM and ForwardCumulativeM are the forward pass the smoother
+// runs before its backward pass: the forward estimator over the same events,
+// with the post-hoc stop hints applied, read after each event. They are the
+// figure the server recompute keeps for a position-only track that is not a
+// road run (docs/features/gps_distance.md § Server recompute), where the
+// smoother cuts more corners than the forward filter.
 type SmoothResult struct {
-	DistanceM     float64
-	GpsDistanceM  float64
-	StepDistanceM float64
-	CumulativeM   []float64
-	Positions     []*LatLng
-	StoppedFixes  int
+	DistanceM          float64
+	GpsDistanceM       float64
+	StepDistanceM      float64
+	CumulativeM        []float64
+	Positions          []*LatLng
+	StoppedFixes       int
+	ForwardDistanceM   float64
+	ForwardCumulativeM []float64
 }
 
 // StopFix is one accepted fix in the local plane, for DetectStops.
@@ -176,6 +185,7 @@ func SmoothDistance(events []Event, o Options) SmoothResult {
 	est := NewWithOptions(o)
 	est.recording = true
 	recEvent := map[int]int{}
+	forwardCum := make([]float64, len(events))
 	for i, ev := range events {
 		switch ev.Kind {
 		case EventFix:
@@ -191,6 +201,7 @@ func SmoothDistance(events []Event, o Options) SmoothResult {
 		case EventFinish:
 			est.Finish(ev.T)
 		}
+		forwardCum[i] = est.DistanceM()
 	}
 	recs := est.records
 
@@ -234,9 +245,11 @@ func SmoothDistance(events []Event, o Options) SmoothResult {
 	}
 
 	out := SmoothResult{
-		CumulativeM:  make([]float64, len(events)),
-		Positions:    make([]*LatLng, len(events)),
-		StoppedFixes: len(hints),
+		CumulativeM:        make([]float64, len(events)),
+		Positions:          make([]*LatLng, len(events)),
+		StoppedFixes:       len(hints),
+		ForwardDistanceM:   est.DistanceM(),
+		ForwardCumulativeM: forwardCum,
 	}
 	var gps, stepM float64
 	for i, ev := range events {

@@ -234,7 +234,9 @@ The title / text above are only the *initial* state. Once recording begins, `_re
 
 **`distanceFilter: 0`** is intentional. The OS-level `distanceFilter` gates position emission by physical distance — a value of 3 means no position until the device has physically moved 3 m. That starves the blue dot at slow walking speeds (the marker doesn't move until 3 m of accumulated motion crosses the threshold).
 
-With `distanceFilter: 0` we receive every fix the sensor produces (~1 Hz on most Android chips) and do all the filtering in software below, which lets the dot refresh at sensor rate while still keeping the track clean.
+With `distanceFilter: 0` we receive every fix the location request produces and do all the filtering in software below, which lets the dot refresh at sensor rate while still keeping the track clean.
+
+**`intervalDuration: 1 s`** is set explicitly (`RunRecorder._fixInterval`). Without it geolocator_android requests a fix every **5000 ms** (`LocationOptions.java`), and on Android 13+ also sets that as the minimum update interval (`FusedLocationClient.java`), so the phone recorded one fix every 5 s, not ~1 Hz as this page used to say. The same interval is passed to the estimator as `expectedIntervalS`, which scales its gap and fresh-fix windows. On Android `LocationAccuracy.high`, `best` and `bestForNavigation` are the same fused-provider request (`PRIORITY_HIGH_ACCURACY`); the levers that change what the chip does are the interval and `forceLocationManager` (raw `GPS_PROVIDER`, issue #1090 item 6). The battery cost of 1 s against 5 s fixes has not been measured on a device yet (#1090 item 0).
 
 ### iOS-specific settings
 
@@ -242,6 +244,7 @@ On iOS the recorder switches to `AppleSettings` inside `_platformLocationSetting
 
 - **`pauseLocationUpdatesAutomatically: false`** — CLLocationManager's default is `true`, which auto-pauses the GPS the moment iOS decides the user has stopped moving (including the 30 s pause to photograph something interesting mid-run). With the default flag, the run silently freezes — fixes stop arriving, distance flat-lines, no error surfaces — exactly the failure mode the Android `whileInUse` path produced. Architecture guards in `packages/run_recorder/test/architecture_guards_test.dart` pin this so a future refactor can't quietly reintroduce the auto-pause.
 - **`activityType: ActivityType.fitness`** — biases the CoreLocation power-saving heuristics for foot-paced motion instead of the default `other` (driving).
+- **`accuracy: LocationAccuracy.bestForNavigation`** — the recorder's default on both platforms. geolocator_apple maps `high` to `kCLLocationAccuracyNearestTenMeters` (`LocationAccuracyMapper.m`), which is what runs were recorded at before #1090; only `best` (`kCLLocationAccuracyBest`) and `bestForNavigation` ask CoreLocation for full GPS accuracy. iOS has no interval knob, so fixes arrive at CoreLocation's ~1 Hz. The battery cost against `high` has not been measured on a device yet.
 
 The recorder also passes `allowBackgroundLocationUpdates: true` (paired with `UIBackgroundModes:location` in Info.plist, pinned by `architecture_guards_test.dart#run_screen.dart`) and `showBackgroundLocationIndicator: false`.
 
@@ -253,7 +256,7 @@ Every incoming `Position` goes through:
 2. **Accuracy filter** — `pos.accuracy > _accuracyGateMetres` (default 20) → drop. 20 m is a compromise between rejecting urban-canyon corruption and keeping sparse fixes alive. Drops log via `debugPrint`, rate-limited to once per 5 s so an always-bad stream doesn't flood. Tightening below 20 m silently rejects realistic outdoor fixes — see [decisions.md § 21](../architecture/decisions.md).
 3. **Always** update `_currentWaypoint` (blue dot).
 4. **If not recording**, emit snapshot and return. Track and distance are untouched.
-5. **Distance** — every fix that cleared steps 1-2 goes to the shared `GpsDistanceEstimator` ([gps_distance.md](gps_distance.md), spec v1): a constant-velocity Kalman filter over position plus the chip's Doppler `speed` / `speedAccuracy` / `heading`, crediting `speed x dt` above a stationary floor and nothing across a > 10 s gap. **The headline distance no longer sums track hops** — that sum zig-zagged across the true line at running pace and read +18-45% long (a 3.1 mi course recorded as 3.92 mi). The steps below decide only what the **track** keeps (map, route match, pace window). Details:
+5. **Distance** — every fix that cleared steps 1-2 goes to the shared `GpsDistanceEstimator` ([gps_distance.md](gps_distance.md), spec v1): a constant-velocity Kalman filter over position plus the chip's Doppler `speed` / `speedAccuracy` / `heading`, crediting `speed x dt` above a stationary floor and nothing across a > 10 s gap. **The headline distance no longer sums track hops** — that sum zig-zagged across the true line at running pace and read +18-45% long (a 3.1 mi course recorded as 3.92 mi). The steps below decide only what the **track** keeps (map, route match). Live pace reads the estimator too (see [Live pace](#live-pace)). Details:
    - **Absent values.** Geolocator reports a missing value as a platform sentinel: iOS uses negative speed / course / accuracy; Android uses `0` speed with `0` speed accuracy and `0` heading with `0` heading accuracy. All of these read as absent (position-only path), never as a measured standstill — a `0 m/s` "Doppler" would pin every fix under the stationary floor.
    - **Clock.** The estimator's time advances by the GPS-reported interval when it is positive and no longer than `max(real elapsed, 10 s)`, else by the `_stopwatch` interval. GPS time keeps a burst of queued fixes (Doze batching) one second apart; the stopwatch is the fallback for a backwards, stalled or leaping device clock. Kept on a 1/1024 s grid so an exact 10 s gap is exactly 10 s.
    - **Pause / resume.** `pause()` calls `finish`; `resume()` folds the estimator into a distance offset and starts a fresh one, so the paused span is never integrated. `resumeSession` seeds the offset with the persisted distance.
@@ -263,10 +266,20 @@ Every incoming `Position` goes through:
 7. **Subsequent positions** — compute `delta` (haversine distance to last tracked position) and `dt` (seconds since last tracked). Three gates must all pass:
    - `delta > _trackThresholdMetres` — rejects jitter below the minimum-movement threshold
    - `delta < 100` — rejects implausible teleports
-   - `delta / dt <= _maxSpeedMps` — rejects implausible speed. A corrupt fix implying 50 m/s on foot would otherwise pollute the track and the pace window.
+   - `delta / dt <= _maxSpeedMps` — rejects implausible speed. A corrupt fix implying 50 m/s on foot would otherwise pollute the track.
 8. If all three gates pass: append to track, update `_lastTrackedPosition` + `_lastTrackedPositionAt`. (Distance was already credited by the estimator in step 5.)
 9. **Time-based gap re-anchor** — if the gates *don't* pass but `dt >= _gpsReanchorAfterSeconds` (10 s), the hop is treated as a real GPS gap (fixes dropped under cover / in a tunnel / while backgrounded, where the runner genuinely moved > 100 m) rather than a corrupt teleport. The anchor rebases to the new fix — append to track, update `_lastTrackedPosition` + `_lastTrackedPositionAt` + `_lastTrackedElapsed` — **without** crediting the un-sampled gap distance (the estimator independently re-anchors on its own > 10 s gap rule), exactly how `resume()` nulls the anchor so the first post-resume fix re-anchors. Without this the anchor stays stale, every later `delta` only grows past 100 m, and distance freezes for the rest of the run ([#330](https://github.com/Absence0760/threkir/issues/330)). **The gap is measured on two clocks and either one may fire it**: `dt` from the GPS-reported timestamps, and the monotonic `_stopwatch`. GPS time alone left the escape unreachable whenever the device clock misbehaved — a backwards jump (NTP correction, manual change) puts `lastAt` in the future so every later `dt` is non-positive, which is *both* implausible to the speed clamp *and* below the re-anchor window; a stalled clock (every fix sharing a timestamp) froze it outright. The stopwatch cannot go backwards or stall, so the rebase now fires on real elapsed time no matter what the timestamps do — see [decisions.md § 348](../architecture/decisions.md). The teleport guard is untouched: **both** clocks must agree the gap is short for a hop to fail closed, so a zero/near-zero-dt duplicate arriving immediately is still rejected. This also makes the weak-GPS banner honest: the first good fix after a real gap both clears `_weakGps` and re-anchors, so tracking truly resumes when the "distance paused" banner clears (row 16).
 10. `_emitSnapshot()` publishes the updated `RunSnapshot`.
+
+### Live pace
+
+`RunSnapshot.currentPaceSecondsPerKm` is the estimator's distance gained over the last ~200 m, divided by the time it took (`RunRecorder._calculatePace`). Every fix the estimator takes appends `(estimator time, estimator distance)` to `_paceSamples`, pruned to the shortest tail that still spans 200 m. Pace is null until five fixes and 50 m have landed since the window was last sealed.
+
+It used to sum haversine hops between consecutive **track** points instead, which over-read by the same GPS jitter the estimator removes from the headline distance: a steady 5:00/km with fixes 1.25 m either side of the line summed to 4:00/km. The value feeds the pace-alert and cut-off catch-up voice cues and the cut-off ETA projection, so a runner could be told they were ahead when they were on pace (#1090 item 1). `calculate_pace_test.dart` pins the zig-zag at 5:00/km with Doppler and from positions alone.
+
+`_sealPaceWindow` empties the window wherever wall-clock time passes without matching credited distance: `prepare` / `begin`, every new estimator stretch (so every `resume()` and `resumeSession`), the #330 track re-anchor (step 9), and any fix interval longer than the estimator's own gap window. A window spanning a pause read hundreds of seconds per km too slow; one spanning the #330 re-anchor read far too fast. Standing still without pausing now reads slower and slower, because the window's time keeps growing while its distance does not; the old hop-sum froze at the last moving value.
+
+The Apple Watch (`PaceWindow` in `WorkoutManager.swift`) and Wear OS (`LivePaceWindow` in `recording/LivePace.kt`) compute live pace the same way. Wear OS previously showed the whole-run average (elapsed / distance) as its live pace and pace-alert input. The custom watch's live pace is the receiver's per-fix Doppler speed, which no lateral jitter reaches, so it was unaffected; `record.rs` pins the same zig-zag.
 
 ### Per-activity tuning
 
@@ -284,16 +297,15 @@ Every incoming `Position` goes through:
 
 ### Advanced GPS override
 
-A user-facing toggle (Settings > Advanced GPS, mobile_android only) overrides the per-activity knobs for higher-fidelity recording on devices with capable chips:
+A user-facing toggle (Settings > Advanced GPS, both phones) overrides the per-activity track-threshold knobs for a denser recorded track line:
 
 | Knob | Normal | Advanced GPS |
 |---|---|---|
-| `accuracy` | `LocationAccuracy.high` | `LocationAccuracy.best` |
 | `distanceFilterMetres` | per-activity (3 or 5) | 2 |
 | `minMovementMetres` | per-activity (2 or 4) | 1 |
 | `accuracyGateMetres` | 20 (default) | 20 (default) |
 
-`maxSpeedMps` stays on the per-activity value. Since the estimator (spec v1), the toggle affects only the location accuracy mode and the track's density — **not distance**, which every fix past the accuracy gate feeds regardless of the movement threshold.
+`maxSpeedMps` stays on the per-activity value. Since the estimator (spec v1), the toggle affects only the track's density — **not distance or pace**, which every fix past the accuracy gate feeds regardless of the movement threshold. It used to raise the location accuracy from `high` to `best` as well; since #1090 every run records at `bestForNavigation`, so the toggle no longer changes the request at all, and its subtitle says so.
 
 The accuracy gate stays at the 20 m default in both modes — it has to, because the reported `pos.accuracy` is a real-world uncertainty estimate, not a knob the OS scales down when you ask for `best`. A tighter gate silently rejects the 15–30 m fixes that consumer phones routinely produce outdoors. See [decisions.md § 21](../architecture/decisions.md).
 

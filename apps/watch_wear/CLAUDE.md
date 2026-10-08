@@ -85,6 +85,7 @@ apps/watch_wear/
             │   │   ├── CheckpointStore.kt       # in-progress recovery snapshot
             │   │   ├── CheckpointRecovery.kt    # grade a survivor before offering it
             │   │   ├── GpsDistanceEstimator.kt  # spec-v1 Kalman distance (shared vectors)
+            │   │   ├── LivePace.kt              # live pace over the estimator's last ~200 m
             │   │   ├── TrackWriter.kt           # streaming GPS to disk JSON
             │   │   ├── TrackStorage.kt          # durable track dir + cache migration + orphan sweep
             │   │   ├── ElapsedMath.kt           # pure pause/resume elapsed-time math
@@ -310,7 +311,11 @@ backgrounding, low-memory kills).
   the whole point.
 - `recording/RunRecordingService.kt` — owns the GPS + HR streams, ticks
   the elapsed clock every 500ms, posts notification updates, holds the
-  wake lock.
+  wake lock. Live pace (the screen, the tile, the split cue and the
+  pace alert) is `recording/LivePace.kt`'s `LivePaceWindow`: the
+  estimator's distance gained over the last ~200 m, sealed with every
+  segment and across a re-anchored GPS gap. It was the whole-run average
+  (elapsed / distance) until #1090.
 - `recording/CheckpointStore.kt` — DataStore snapshot of an in-progress
   run, written every 15s during recording. On next launch a surviving
   checkpoint is graded (below); one that still holds the only copy of a
@@ -651,7 +656,7 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   cycles `off / 4:00 / 4:30 / 5:00 / 5:30 / 6:00 / 6:30 / 7:00 /km` via
   `RunViewModel.cycleTargetPace`. `start()` passes the value through
   `EXTRA_TARGET_PACE_SEC_PER_KM`; the service compares live pace every
-  GPS sample (after the 50 m stabilisation gate used for pace) and
+  GPS sample and
   calls `firePaceAlert(tooSlow)` when drift > 30 s/km, rate-limited to
   one alert per 30 s. Haptic fires via `VibratorManager` — a
   `createWaveform(longArrayOf(0, 180, 180, 180), ...)` double pulse

@@ -11,7 +11,7 @@ const ROUTE_ID = '11111111-2222-4333-8444-555555555555';
 
 const config = { supabaseUrl: 'http://localhost', supabaseAnonKey: 'anon' };
 
-type RpcCall = { fn: string; args: unknown };
+type RpcCall = { fn: string; args: unknown; options: unknown };
 
 function fakeClient(opts: {
 	route: unknown;
@@ -36,8 +36,8 @@ function fakeClient(opts: {
 				},
 			};
 		},
-		async rpc(fn: string, args: unknown) {
-			opts.rpcCalls.push({ fn, args });
+		async rpc(fn: string, args: unknown, options?: unknown) {
+			opts.rpcCalls.push({ fn, args, options });
 			return { data: opts.rpcData ?? null, error: null };
 		},
 	} as unknown as SupabaseClient;
@@ -52,6 +52,9 @@ test('withTrack calls clip_route_for_viewer (not clip_track_for_user) with p_rou
 	assert.equal(rpcCalls.length, 1);
 	assert.equal(rpcCalls[0].fn, 'clip_route_for_viewer');
 	assert.deepEqual(rpcCalls[0].args, { p_route_id: ROUTE_ID });
+	// A GET: the function is stable, and a POST through the local Kong can
+	// 502 on a closing keep-alive with nothing to replay it (decisions § 1735).
+	assert.deepEqual(rpcCalls[0].options, { get: true });
 });
 
 test('clipped points flow through into the returned track', async () => {

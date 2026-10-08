@@ -364,6 +364,31 @@ test('the scan reaches the call sites and the migrations it is meant to read', (
 	assert.equal(FUNCTIONS.get('clear_discoverable_area')?.volatility, 'volatile');
 });
 
+test('the SECURITY DEFINER reads that write nothing are declared stable and go out as GETs', () => {
+	// 20270722000001 re-declared these seven; each one's web call is a GET.
+	const reads = [
+		'am_i_admin',
+		'clip_route_for_viewer',
+		'fetch_checkpoint_crossings_for_organiser',
+		'fetch_pending_reports',
+		'fetch_reports_for_target',
+		'get_event_meet_point',
+		'my_pending_safety_requests'
+	];
+	for (const name of reads) {
+		const fn = FUNCTIONS.get(name);
+		assert.ok(fn, `${name} is not a live function`);
+		assert.equal(fn.volatility, 'stable', `${name}: ${explain(fn)}`);
+		const calls = SITES.filter((s) => s.fn === name);
+		assert.ok(calls.length > 0, `${name} has no web call site`);
+		assert.deepEqual(
+			calls.filter((s) => !s.get).map((s) => s.where),
+			[],
+			`${name} is still sent as a POST`
+		);
+	}
+});
+
 test('every .rpc() names a function the migrations still define', () => {
 	const missing = SITES.filter((s) => !FUNCTIONS.has(s.fn)).map((s) => `${s.where} ${s.fn}`);
 	assert.deepEqual(missing, []);

@@ -94,9 +94,11 @@ export async function lookupSharedRoute(
 			try {
 				// The route may not be loadable for anon (private + clip
 				// RPC denies). The PNG card still renders title-only.
-				const { data: clipped } = await supabase.rpc('clip_route_for_viewer', {
-					p_route_id: id,
-				});
+				const { data: clipped } = await supabase.rpc(
+					'clip_route_for_viewer',
+					{ p_route_id: id },
+					{ get: true },
+				);
 				if (Array.isArray(clipped)) {
 					track = (clipped as unknown[]).map((p) => p as TrackPoint);
 				}

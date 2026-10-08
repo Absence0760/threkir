@@ -52,6 +52,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -103,8 +104,20 @@ func (m *OSRMMatcher) Version() string {
 // otherwise one output point per input point, carrying that point's
 // `ele` / `ts` / `bpm` across unchanged.
 func (m *OSRMMatcher) Match(ctx context.Context, points []TrackPoint) ([]TrackPoint, error) {
+	out, _, err := m.MatchWithRoadDistance(ctx, points)
+	return out, err
+}
+
+// MatchWithRoadDistance is Match plus the matched track's length along
+// the road graph: each chunk's single matching `distance`, joined by the
+// great-circle hop between one chunk's last snapped point and the next
+// chunk's first. The length is reported only when every chunk matched as
+// ONE matching with every tracepoint snapped — a chunk carried through raw,
+// split into several matchings, or holding an outlier has a stretch the
+// engine never measured, and a sum that skipped it would under-read.
+func (m *OSRMMatcher) MatchWithRoadDistance(ctx context.Context, points []TrackPoint) ([]TrackPoint, RoadMatch, error) {
 	if len(points) < 2 {
-		return nil, nil
+		return nil, RoadMatch{}, nil
 	}
 	chunkSize := m.ChunkSize
 	if chunkSize <= 0 {
@@ -112,6 +125,16 @@ func (m *OSRMMatcher) Match(ctx context.Context, points []TrackPoint) ([]TrackPo
 	}
 
 	out := make([]TrackPoint, 0, len(points))
+	whole := true
+	roadM, minConfidence := 0.0, 1.0
+	var prevEnd TrackPoint
+	havePrev := false
+	join := func(next TrackPoint, last TrackPoint) {
+		if havePrev {
+			roadM += haversineM(prevEnd, next)
+		}
+		prevEnd, havePrev = last, true
+	}
 	for start := 0; start < len(points); start += chunkSize {
 		end := start + chunkSize
 		if end > len(points) {
@@ -123,13 +146,15 @@ func (m *OSRMMatcher) Match(ctx context.Context, points []TrackPoint) ([]TrackPo
 			// requires 2+. Carry the original through verbatim so
 			// the matched track ends where the raw track ends.
 			out = append(out, chunk...)
+			join(chunk[0], chunk[0])
 			continue
 		}
-		matched, ok, err := m.matchChunk(ctx, chunk)
+		matched, ok, road, err := m.matchChunk(ctx, chunk)
 		if err != nil {
-			return nil, err
+			return nil, RoadMatch{}, err
 		}
 		if !ok {
+			whole = false
 			// The engine couldn't align this chunk (code != "Ok": a
 			// tunnel gap, an unmapped trail, a too-noisy stretch).
 			// Dropping it and continuing would silently discard this
@@ -141,9 +166,26 @@ func (m *OSRMMatcher) Match(ctx context.Context, points []TrackPoint) ([]TrackPo
 			out = append(out, chunk...)
 			continue
 		}
+		if road == nil {
+			whole = false
+		} else {
+			roadM += road.distanceM
+			minConfidence = math.Min(minConfidence, road.confidence)
+		}
+		join(matched[0], matched[len(matched)-1])
 		out = append(out, matched...)
 	}
-	return out, nil
+	if !whole {
+		return out, RoadMatch{}, nil
+	}
+	return out, RoadMatch{DistanceM: &roadM, MinConfidence: minConfidence}, nil
+}
+
+// chunkRoad is one chunk's along-road length and the engine's confidence
+// in it.
+type chunkRoad struct {
+	distanceM  float64
+	confidence float64
 }
 
 // matchChunk returns the snapped points for one chunk, one per input
@@ -151,8 +193,10 @@ func (m *OSRMMatcher) Match(ctx context.Context, points []TrackPoint) ([]TrackPo
 // gave nothing this chunk's samples can be attributed to (code != "Ok",
 // no matchings, or a `tracepoints` array of the wrong length) — distinct
 // from (nil, true) so the caller can fall back to the raw input rather
-// than silently dropping the span.
-func (m *OSRMMatcher) matchChunk(ctx context.Context, chunk []TrackPoint) ([]TrackPoint, bool, error) {
+// than silently dropping the span. The chunkRoad is non-nil only when the
+// chunk matched as one matching with every tracepoint snapped and a
+// usable distance and confidence.
+func (m *OSRMMatcher) matchChunk(ctx context.Context, chunk []TrackPoint) ([]TrackPoint, bool, *chunkRoad, error) {
 	// OSRM's URL format: /match/v1/{profile}/{lng,lat;lng,lat;...}
 	// Coordinates are lng-first, semicolon-separated. Building the
 	// path manually avoids URL-encoding overhead on a hot path.
@@ -174,33 +218,33 @@ func (m *OSRMMatcher) matchChunk(ctx context.Context, chunk []TrackPoint) ([]Tra
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, sb.String(), nil)
 	if err != nil {
-		return nil, false, err
+		return nil, false, nil, err
 	}
 	resp, err := m.HTTPClient.Do(req)
 	if err != nil {
-		return nil, false, err
+		return nil, false, nil, err
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, false, err
+		return nil, false, nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
 		// Surface the OSRM error verbatim — it's small JSON like
 		// `{"code":"InvalidUrl","message":"URL is invalid"}`. The
 		// worker's transient classifier picks up 5xx as defer-worthy.
-		return nil, false, &HTTPError{StatusCode: resp.StatusCode, Body: string(body)}
+		return nil, false, nil, &HTTPError{StatusCode: resp.StatusCode, Body: string(body)}
 	}
 
 	var resp2 osrmMatchResponse
 	if err := json.Unmarshal(body, &resp2); err != nil {
-		return nil, false, fmt.Errorf("decode osrm response: %w", err)
+		return nil, false, nil, fmt.Errorf("decode osrm response: %w", err)
 	}
 	// `code != "Ok"` → engine didn't find a sufficiently confident
 	// alignment for this chunk. Report not-matched so the caller carries
 	// the chunk's raw input points through, keeping full run coverage.
 	if resp2.Code != "Ok" || len(resp2.Matchings) == 0 {
-		return nil, false, nil
+		return nil, false, nil, nil
 	}
 	// One tracepoint per input coordinate is the contract that lets a
 	// snapped location be paired with the sample it came from. A
@@ -208,18 +252,30 @@ func (m *OSRMMatcher) matchChunk(ctx context.Context, chunk []TrackPoint) ([]Tra
 	// against it would attach one sample's heart rate to another
 	// sample's position — worse than not matching the chunk at all.
 	if len(resp2.Tracepoints) != len(chunk) {
-		return nil, false, nil
+		return nil, false, nil, nil
 	}
 
 	out := make([]TrackPoint, 0, len(chunk))
+	allSnapped := true
 	for i, tp := range resp2.Tracepoints {
 		p := chunk[i]
 		if tp != nil && len(tp.Location) >= 2 {
 			p.Lng, p.Lat = tp.Location[0], tp.Location[1]
+		} else {
+			allSnapped = false
 		}
 		out = append(out, p)
 	}
-	return out, true, nil
+	var road *chunkRoad
+	if mt := resp2.Matchings; allSnapped && len(mt) == 1 && mt[0].Distance != nil &&
+		isFiniteNonNeg(*mt[0].Distance) && isFiniteNonNeg(mt[0].Confidence) {
+		road = &chunkRoad{distanceM: *mt[0].Distance, confidence: mt[0].Confidence}
+	}
+	return out, true, road, nil
+}
+
+func isFiniteNonNeg(v float64) bool {
+	return !math.IsNaN(v) && !math.IsInf(v, 0) && v >= 0
 }
 
 // osrmMatchResponse is the subset of OSRM's /match response we read.
@@ -227,14 +283,16 @@ func (m *OSRMMatcher) matchChunk(ctx context.Context, chunk []TrackPoint) ([]Tra
 //
 // `Tracepoints` carries one entry per input coordinate in input order,
 // or `null` where the engine treated that coordinate as an outlier.
-// `Matchings` is read only for its presence: `code == "Ok"` with an
-// empty array is the engine declining the chunk.
+// `Matchings`: `code == "Ok"` with an empty array is the engine declining
+// the chunk; a single matching's `distance` (metres along the matched
+// route) and `confidence` (0..1) feed the road distance.
 type osrmMatchResponse struct {
 	Code        string `json:"code"`
 	Tracepoints []*struct {
 		Location []float64 `json:"location"` // [lng, lat]
 	} `json:"tracepoints"`
 	Matchings []struct {
-		Confidence float64 `json:"confidence"`
+		Confidence float64  `json:"confidence"`
+		Distance   *float64 `json:"distance"`
 	} `json:"matchings"`
 }

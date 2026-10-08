@@ -173,6 +173,12 @@ type Backend interface {
 	ReadRunForDistanceRecompute(ctx context.Context, runID string) (*DistanceRecomputeRun, error)
 	DownloadRecordedTrack(ctx context.Context, path string) ([]RecordedTrackPoint, error)
 	UpdateRunDistance(ctx context.Context, read *DistanceRecomputeRun, upd RunDistanceUpdate) error
+	// Road-distance path — the map_match handler's last step. Reads the run
+	// with its linked route's surface and writes metadata.distance_map_matched_m
+	// through a track_url + metadata CAS; UpdateRunMetadata returns
+	// ErrRunMetadataChanged on a miss.
+	ReadRunForRoadDistance(ctx context.Context, runID string) (*RoadDistanceRun, error)
+	UpdateRunMetadata(ctx context.Context, read *RoadDistanceRun, trackURL string, metadata json.RawMessage) error
 }
 
 // WebPushSender is the transport for kind='web_push' jobs. Production wires
@@ -556,7 +562,13 @@ func (w *Worker) handleMapMatch(ctx context.Context, job *Job) error {
 		return fmt.Errorf("download track: %w", err)
 	}
 
-	matched, err := w.Matcher.Match(ctx, raw)
+	var matched []TrackPoint
+	var road RoadMatch
+	if rm, ok := w.Matcher.(RoadDistanceMatcher); ok {
+		matched, road, err = rm.MatchWithRoadDistance(ctx, raw)
+	} else {
+		matched, err = w.Matcher.Match(ctx, raw)
+	}
 	if err != nil {
 		return fmt.Errorf("match: %w", err)
 	}
@@ -635,6 +647,19 @@ func (w *Worker) handleMapMatch(ctx context.Context, job *Job) error {
 	// job because the match is already persisted; log and move on.
 	if err := w.maybeAutoLinkRoute(ctx, p, raw); err != nil {
 		w.Log.Warn("auto-link skipped",
+			"run_id", p.RunID,
+			"err", err,
+		)
+	}
+	// The road distance runs after auto-link so a route linked just now
+	// decides by its surface. Auxiliary like auto-link: the match is
+	// already persisted, so a failure is logged and never fails the job. A
+	// skipped match still runs it, to clear a figure an older track left.
+	if len(matched) < 2 {
+		road = RoadMatch{}
+	}
+	if err := w.updateRoadDistance(ctx, p.RunID, trackURL, raw, road); err != nil {
+		w.Log.Warn("road distance skipped",
 			"run_id", p.RunID,
 			"err", err,
 		)

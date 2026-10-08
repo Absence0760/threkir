@@ -88,6 +88,10 @@ type fakeBackend struct {
 	// distance_recompute state; nil fails every call. Methods live in
 	// handler_distance_recompute_test.go.
 	distance *fakeDistanceRecompute
+	// map_match road-distance state; nil reads as a deleted run so the
+	// map_match tests that do not care skip the step. Methods live in
+	// road_distance_test.go.
+	road *fakeRoadDistance
 
 	// downloadDelay, when non-zero, makes DownloadTrack block for
 	// that duration OR until the caller's context is cancelled.

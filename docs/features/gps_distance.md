@@ -30,6 +30,14 @@ The estimator only decides **distance**. The track (the waypoints stored, drawn 
 
 The rolling embedded bests are measured on the same estimator. `estimatorCumulativeMetres` (Dart `apps/mobile_android/lib/embedded_bests.dart`, TS `apps/web/src/lib/integrations/garmin-fit.ts`, Go `apps/job_worker/internal/embedded_bests.go`) replays a stored track — `t` in seconds since the first timestamped waypoint, `expectedIntervalS` the median positive fix interval, the activity's `maxSpeedMps` — and returns the cumulative distance after each waypoint; the fastest-window search runs over that instead of the raw hop-sum, so GPS zig-zag can no longer close a 5 km window early.
 
+An importer whose file carries its own per-point distance stream measures the bests on that stream instead (`deviceCumulativeMetres`, in `garmin-fit.ts`, `_shared/strava.ts` and `embedded_bests.dart`): FIT `record.distance` from the web Garmin / Strava-ZIP importers and the mobile Strava-ZIP importer (`FitParser.parseWithDistances`), and Strava's `distance` stream in the Deno importer. It is what the device measured, and it is what Strava does. The stream falls back to the estimator when it is absent, misaligned with the track, or has any missing, non-finite, negative or backward sample, or no distance at all. Note that Strava's stream is Strava's own figure: for an activity uploaded without one it is Strava's outlier-trimmed straight-line sum, not a device measurement.
+
+A road run that the OSRM `map_match` job matched end to end also gets `metadata.distance_map_matched_m`, its length along the foot graph, shown read-only on web `/runs/[id]` beside `distance_m` and never replacing it. Trails, a running track, indoor runs and anything the matcher could not measure whole get none ([metadata.md](../backend/metadata.md) lists the rules).
+
+## Ground-truth corpus
+
+`fixtures/gps_corpus/` holds tracks recorded on courses of measured length, each with a manifest giving the known distance, course type, device and an error budget; `scripts/gps_distance/replay_corpus.py` replays every entry through `reference.py` in CI and fails outside budget, printing the signed error, the mean NIS and the residual autocorrelation for tuning. It holds one synthetic entry until the owner's real tracks land; [its README](../../fixtures/gps_corpus/README.md) lists what to record.
+
 ## Waypoint fields
 
 So the server can recompute distance from a stored track with the same Doppler input, each waypoint now carries four optional keys alongside `lat` / `lng` / `elevationMetres` / `timestamp` / `bpm`:

@@ -219,4 +219,20 @@ class QueuedRunSerializationTest {
         assertEquals("run-123", decoded[0].id)
         assertEquals("run-456", decoded[1].id)
     }
+
+    @Test
+    fun `a run queued by a hop-summing build decodes with no estimator claimed`() {
+        val preEstimator = """
+        {
+            "id": "old-run",
+            "startedAtIso": "2026-05-01T08:00:00Z",
+            "durationS": 1800,
+            "distanceM": 5000.0,
+            "trackFilePath": "/old/path.json"
+        }
+        """.trimIndent()
+        val decoded = json.decodeFromString(QueuedRun.serializer(), preEstimator)
+        assertNull(decoded.distanceEstimator)
+        assertNull(decoded.distanceStepFilledM)
+    }
 }

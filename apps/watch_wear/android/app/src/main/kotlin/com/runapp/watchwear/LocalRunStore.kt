@@ -47,6 +47,11 @@ data class QueuedRun(
     /// pre-change behaviour for runs queued before this field
     /// existed (kotlinx-serialization fills the default on decode).
     val isPublic: Boolean? = null,
+    /// `metadata.distance_estimator` / `metadata.distance_step_filled_m`.
+    /// Null on a run queued by a build that summed raw hops, so it uploads
+    /// without claiming an estimator it never ran.
+    val distanceEstimator: String? = null,
+    val distanceStepFilledM: Double? = null,
 )
 
 private val Context.dataStore by preferencesDataStore(name = "watch_wear")

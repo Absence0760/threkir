@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.runapp.watchwear.recording.Checkpoint
 import com.runapp.watchwear.recording.CheckpointStore
 import com.runapp.watchwear.recording.checkpointActiveDurationS
+import com.runapp.watchwear.recording.GpsDistanceEstimator
 import com.runapp.watchwear.recording.heartRateClaim
 import com.runapp.watchwear.recording.RecordingRepository
 import com.runapp.watchwear.recording.RecoveryAction
@@ -958,6 +959,8 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     // time, so a recovered run uploads with the runner's
                     // visibility, not the always-non-public DB default.
                     isPublic = isPublicFromPrivacyDefault(cp.privacyDefault),
+                    distanceEstimator = cp.distanceEstimator,
+                    distanceStepFilledM = cp.distanceStepFilledM,
                 )
             )
             checkpoints.clear()
@@ -1351,6 +1354,8 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     // even if the user toggles the pref while the upload
                     // is pending or while the watch is offline.
                     isPublic = snapshotIsPublic(),
+                    distanceEstimator = GpsDistanceEstimator.SPEC_ID,
+                    distanceStepFilledM = m.distanceStepFilledM,
                 )
             )
             // Only now is the run recorded somewhere the checkpoint is no
@@ -1721,6 +1726,8 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             steps = run.steps,
             laps = run.laps,
             lastModifiedAtIso = Instant.now().toString(),
+            distanceEstimator = run.distanceEstimator,
+            distanceStepFilledM = run.distanceStepFilledM,
         )
         // A queued run whose payload is gone is uploaded without one rather
         // than left in the queue promising a sync that can never happen. The

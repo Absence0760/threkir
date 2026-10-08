@@ -394,4 +394,32 @@ class CheckpointSerializationTest {
         assertEquals(false, isPublicFromPrivacyDefault("private"))
         assertNull(isPublicFromPrivacyDefault(null))
     }
+
+    @Test
+    fun `a hop-summing build's checkpoint decodes with no estimator claimed`() {
+        val preEstimator = """
+        {
+            "runId": "old-run",
+            "startedAtMs": 1700000000000,
+            "savedAtMs": 1700000900000,
+            "distanceM": 5000.0,
+            "trackFilePath": "/old/path.json",
+            "trackPointCount": 1200
+        }
+        """.trimIndent()
+        val decoded = json.decodeFromString(Checkpoint.serializer(), preEstimator)
+        assertNull(decoded.distanceEstimator)
+        assertNull(decoded.distanceStepFilledM)
+    }
+
+    @Test
+    fun `distance estimator fields round-trip through JSON`() {
+        val cp = sample.copy(distanceEstimator = GpsDistanceEstimator.SPEC_ID, distanceStepFilledM = 78.4)
+        val decoded = json.decodeFromString(
+            Checkpoint.serializer(),
+            json.encodeToString(Checkpoint.serializer(), cp),
+        )
+        assertEquals("kalman_v1", decoded.distanceEstimator)
+        assertEquals(78.4, decoded.distanceStepFilledM!!, 0.0)
+    }
 }

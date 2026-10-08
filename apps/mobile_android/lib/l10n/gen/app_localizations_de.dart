@@ -8277,7 +8277,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get prefsAdvancedGpsSubtitle =>
-      'Zeichnet eine detailliertere Streckenlinie auf. Die Distanz bleibt gleich.';
+      'Zeichnet einen detaillierteren Track auf. Die Distanz bleibt gleich.';
 
   @override
   String get prefsShowRawTrack => 'Rohen GPS-Track anzeigen';

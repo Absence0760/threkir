@@ -12,6 +12,7 @@ void main() {
     required double metresEast,
     required int secondsFromStart,
     double accuracy = 5,
+    double speed = 2.5,
   }) {
     return Position(
       longitude: lngBase + metresEast / metrePerDegLng,
@@ -22,7 +23,7 @@ void main() {
       altitudeAccuracy: 2,
       heading: 90,
       headingAccuracy: 5,
-      speed: 2.5,
+      speed: speed,
       speedAccuracy: 1,
     );
   }
@@ -51,7 +52,8 @@ void main() {
       r.begin();
       for (int i = 0; i < 6; i++) {
         r.debugInjectPosition(
-          makePosition(metresEast: i * 4.0, secondsFromStart: i * 5),
+          makePosition(
+              metresEast: i * 4.0, secondsFromStart: i * 5, speed: 0.8),
         );
         await Future.delayed(const Duration(milliseconds: 2));
       }
@@ -65,7 +67,7 @@ void main() {
       r.begin();
       for (int i = 0; i < 5; i++) {
         r.debugInjectPosition(
-          makePosition(metresEast: i * 50.0, secondsFromStart: i * 10),
+          makePosition(metresEast: i * 50.0, secondsFromStart: i * 10, speed: 5),
         );
       }
       expect(r.debugTrack.length, 5);

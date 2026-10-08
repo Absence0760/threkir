@@ -180,6 +180,11 @@ export const VECTOR_PAIRS = [
  */
 export const RUST_ONLY = [
   {
+    file: 'apps/custom_watch/core/src/gps_distance.rs',
+    fn: 'the_golden_vectors_replay_within_tolerance',
+    why: 'not a wire byte vector: it replays fixtures/gps_distance_vectors.json, the same algorithm fixture the Dart, TypeScript, Kotlin, Swift and Go estimator ports replay, so the cross-rail comparison is that shared file rather than a phone byte constant',
+  },
+  {
     file: RS_SETTINGS,
     fn: 'v7_golden_vector_still_decodes',
     why: 'a decode-compat vector: the phone encoder has only ever stamped the current version, so there is nothing on that rail to mirror it',

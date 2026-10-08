@@ -223,19 +223,26 @@ func (c *SupabaseClient) DownloadTrack(ctx context.Context, path string) ([]Trac
 }
 
 func parseTrack(body []byte) ([]TrackPoint, error) {
+	return decodeTrack[TrackPoint](body)
+}
+
+// decodeTrack decodes a stored track into any point shape: TrackPoint
+// for the matcher, RecordedTrackPoint for the distance recompute, which
+// also reads the spec-v1 Doppler keys.
+func decodeTrack[T any](body []byte) ([]T, error) {
 	if len(body) >= 2 && body[0] == 0x1f && body[1] == 0x8b {
 		zr, err := gzip.NewReader(bytes.NewReader(body))
 		if err != nil {
 			return nil, err
 		}
 		defer zr.Close()
-		var pts []TrackPoint
+		var pts []T
 		if err := json.NewDecoder(zr).Decode(&pts); err != nil {
 			return nil, err
 		}
 		return pts, nil
 	}
-	var pts []TrackPoint
+	var pts []T
 	if err := json.Unmarshal(body, &pts); err != nil {
 		return nil, err
 	}

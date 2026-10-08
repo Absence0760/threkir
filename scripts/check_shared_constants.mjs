@@ -1488,9 +1488,9 @@ export const REGISTRY = [
 				sites: (ctx) => parseBadgeCatalogue(ctx.read('apps/mobile_android/lib/badges.dart')),
 			},
 			{
-				label: 'sql (award_achievements_for_user)',
+				label: 'sql (achievement_tiers_met, read by the awarder and the revoker)',
 				sites: (ctx) => {
-					const fn = ctx.sql.live.get('award_achievements_for_user');
+					const fn = ctx.sql.live.get('achievement_tiers_met');
 					return fn ? parseAwarderLadders(fn.sql) : [];
 				},
 			},

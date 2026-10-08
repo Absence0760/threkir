@@ -125,13 +125,30 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private var lastPaceAlertAt: Date? = nil
     private var currentRunId: String?
     private var checkpointStore: CheckpointStore?
-    // Reference fix for the per-update distance delta, kept SEPARATE from the
-    // bounded `track` window. Cleared on resume() so the first fix after a
-    // pause establishes a fresh reference: without this, distance() would be
-    // measured against the pre-pause fix (minutes and any aid-station wander
-    // ago) and that stale gap misattributed as post-resume distance. Mirrors
-    // Wear OS's `lastLocation = null` on resume.
-    var lastLocationForDistance: CLLocation?
+
+    /// `metadata.distance_estimator` for every run this build records.
+    static let distanceEstimatorTag = "kalman_v1"
+
+    /// The spec-v1 estimator for the CURRENT active segment. A pause banks the
+    /// segment and the next one starts on a fresh estimator, so neither the
+    /// paused span nor the wander across it can be credited — the first fix
+    /// after resume anchors and credits nothing, the old `#371` contract.
+    private(set) var distanceEstimator = GpsDistanceEstimator()
+    /// Distance banked by segments closed at a pause.
+    private var bankedDistanceMetres: Double = 0
+    private var bankedStepFilledMetres: Double = 0
+    /// Estimator clock of the last fix fed, used to seal the pace window when
+    /// the estimator re-anchors over a gap it will not credit.
+    private var lastEstimatorFixT: Double?
+
+    var distanceStepFilledMetres: Double {
+        bankedStepFilledMetres + distanceEstimator.stepDistanceM
+    }
+
+    /// A cyclist outruns the running cap, so the cap follows the picker.
+    static func maxSpeedMps(for activity: RunActivityType) -> Double {
+        activity == .cycle ? 25.0 : 10.0
+    }
 
     /// `ProcessInfo.systemUptime` of the last fix that passed the accuracy
     /// gate — the banner's clock. See `GpsHealth` for why it is not the same
@@ -175,6 +192,13 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         /// re-classify a run already recorded. Nil when the phone never said,
         /// which omits the key and leaves the row private.
         var isPublic: Bool? = nil
+        /// `metadata.distance_estimator`: which algorithm produced
+        /// `distanceMetres`. Nil for a recovered run whose checkpoint predates
+        /// the estimator, which omits the key rather than mislabel a hop-sum.
+        var distanceEstimator: String? = nil
+        /// Metres the pedometer filled across GPS gaps, already inside
+        /// `distanceMetres`. Sent only when above zero.
+        var distanceStepFilledMetres: Double = 0
     }
 
     /// A track point in the wire shape the phone, web and mobile clients
@@ -185,6 +209,10 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         let lng: Double
         let ele: Double?
         let ts: String?
+        var accuracyMetres: Double? = nil
+        var speedMps: Double? = nil
+        var speedAccuracyMps: Double? = nil
+        var bearingDeg: Double? = nil
     }
 
     /// Bytes buffered before `writeTrackJSON` flushes to the output handle.
@@ -229,7 +257,16 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 
         CheckpointStore.forEachTrackPoint(in: run.trackFileURL) { record in
             guard failure == nil else { return }
-            let point = TrackPoint(lat: record.lat, lng: record.lng, ele: record.ele, ts: record.ts)
+            let point = TrackPoint(
+                lat: record.lat,
+                lng: record.lng,
+                ele: record.ele,
+                ts: record.ts,
+                accuracyMetres: record.accuracyMetres,
+                speedMps: record.speedMps,
+                speedAccuracyMps: record.speedAccuracyMps,
+                bearingDeg: record.bearingDeg
+            )
             guard let encoded = try? encoder.encode(point) else { return }
             if wroteAny { buffer.append(comma) }
             buffer.append(encoded)
@@ -298,7 +335,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         pausedAt = nil
         totalPausedInterval = 0
         lastPaceAlertAt = nil
-        lastLocationForDistance = nil
+        resetDistanceEstimator()
         announcer.reset()
         let armedRoute = ArmedRouteStore.load()
         routeNavigator = armedRoute.map { RouteNavigator(routePoints: $0.locations) }
@@ -335,6 +372,10 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         pedometer.start(from: start) { [weak self] steps in
             guard let self, self.state == .recording else { return }
             self.steps = steps
+            self.distanceEstimator.addSteps(
+                t: ProcessInfo.processInfo.systemUptime,
+                cumulativeSteps: steps
+            )
         }
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             guard let self, let startDate = self.startDate else { return }
@@ -386,6 +427,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 
     func pause() {
         guard state == .recording else { return }
+        sealDistanceSegment()
         // Capture the frozen state once, while still .recording, so a crash
         // during a long pause recovers the exact pause-boundary values. The
         // periodic timer then skips writes until resume (see writeCheckpoint).
@@ -401,7 +443,6 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         guard state == .paused, let pausedAt else { return }
         totalPausedInterval += Date().timeIntervalSince(pausedAt)
         self.pausedAt = nil
-        lastLocationForDistance = nil
         sealPaceWindow()
         startLocationUpdates()
         healthKit.resumeSession()
@@ -423,6 +464,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         stopLocationUpdates()
         healthKit.stopWorkout()
         pedometer.stop()
+        if state == .recording { sealDistanceSegment() }
 
         // The in-memory `track` is a bounded rolling window and the full run
         // stays on disk — nothing here materialises it. Close the append
@@ -467,7 +509,9 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
                 totalDistanceMetres: distanceMetres,
                 totalDurationSeconds: duration
             ),
-            isPublic: PrivacyDefault.isPublic(PrivacyDefault.stored())
+            isPublic: PrivacyDefault.isPublic(PrivacyDefault.stored()),
+            distanceEstimator: Self.distanceEstimatorTag,
+            distanceStepFilledMetres: distanceStepFilledMetres
         )
 
         state = .finished
@@ -509,7 +553,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         pausedAt = nil
         totalPausedInterval = 0
         lastPaceAlertAt = nil
-        lastLocationForDistance = nil
+        resetDistanceEstimator()
         announcer.reset()
         lastAcceptedFixUptime = nil
         lastGpsDeliveryUptime = nil
@@ -645,11 +689,6 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
     }
 
-    /// Metres to add to the running distance for one consecutive pair of fixes.
-    /// The `2..<100 m` band rejects stationary GPS jitter (<2 m) and physically
-    /// impossible jumps (>=100 m, e.g. a reacquisition teleport); anything
-    /// outside contributes zero. Pure so the pause->wander->resume behaviour
-    /// can be unit-tested without a live `CLLocationManager`.
     /// Drop the pace look-back so it cannot span a discontinuity.
     ///
     /// `updatePace` walks `track` backwards until 200 m accumulate and divides
@@ -669,18 +708,60 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         currentPace = nil
     }
 
-    /// Rebase the distance anchor once a genuine interval has passed without
-    /// an accepted fix, WITHOUT crediting the un-sampled gap. Mirrors the
-    /// Flutter recorder's `_gpsReanchorAfterSeconds`.
-    static let gpsReanchorSeconds: TimeInterval = 10
+    private func resetDistanceEstimator() {
+        distanceEstimator = GpsDistanceEstimator(maxSpeedMps: Self.maxSpeedMps(for: activityType))
+        bankedDistanceMetres = 0
+        bankedStepFilledMetres = 0
+        lastEstimatorFixT = nil
+    }
 
-    /// Monotonic stamp of the last accepted/rebased anchor. See the re-anchor
-    /// escape in didUpdateLocations.
-    private var lastAnchorUptime: TimeInterval = 0
+    /// Close the active segment at a pause or stop: commit any steps buffered
+    /// across a trailing gap, bank the segment, and start the next one fresh
+    /// but keeping the learned stride, so a GPS gap right after a resume is
+    /// still step-filled.
+    private func sealDistanceSegment() {
+        distanceEstimator.finish(t: ProcessInfo.processInfo.systemUptime)
+        bankedDistanceMetres += distanceEstimator.distanceM
+        bankedStepFilledMetres += distanceEstimator.stepDistanceM
+        distanceEstimator = distanceEstimator.nextSegment()
+        lastEstimatorFixT = nil
+        distanceMetres = bankedDistanceMetres
+    }
 
-    static func distanceDelta(from: CLLocation, to: CLLocation) -> Double {
-        let delta = to.distance(from: from)
-        return (delta > 2 && delta < 100) ? delta : 0
+    /// The fix's own time on the uptime clock. Each fix keeps its spacing from
+    /// its timestamp, so a batched delivery is not collapsed onto one instant,
+    /// while the batch is pinned to `systemUptime` so a wall-clock step between
+    /// deliveries cannot run the estimator's clock backwards for a whole run.
+    static func estimatorTime(of location: CLLocation, nowUptime: TimeInterval, now: Date) -> Double {
+        nowUptime + location.timestamp.timeIntervalSince(now)
+    }
+
+    /// CoreLocation reports an unknown speed, course or accuracy as a
+    /// negative value; each reads as absent here, for the estimator and for
+    /// the stored track point alike.
+    static func speed(of location: CLLocation) -> Double? {
+        location.speed >= 0 ? location.speed : nil
+    }
+
+    static func speedAccuracy(of location: CLLocation) -> Double? {
+        location.speedAccuracy >= 0 ? location.speedAccuracy : nil
+    }
+
+    static func bearing(of location: CLLocation) -> Double? {
+        location.course >= 0 && location.courseAccuracy >= 0 ? location.course : nil
+    }
+
+    private func feedEstimator(_ location: CLLocation, t: Double) {
+        distanceEstimator.addFix(
+            t: t,
+            lat: location.coordinate.latitude,
+            lng: location.coordinate.longitude,
+            accuracyM: location.horizontalAccuracy,
+            speedMps: Self.speed(of: location),
+            speedAccuracyMps: Self.speedAccuracy(of: location),
+            bearingDeg: Self.bearing(of: location)
+        )
+        distanceMetres = bankedDistanceMetres + distanceEstimator.distanceM
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
@@ -691,56 +772,20 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         if !locations.isEmpty { lastGpsDeliveryUptime = ProcessInfo.processInfo.systemUptime }
         var newPoints: [TrackPointRecord] = []
         var lastAcceptedFix: CLLocation?
+        let nowUptime = ProcessInfo.processInfo.systemUptime
+        let now = Date()
         for location in locations {
             guard location.horizontalAccuracy >= 0, location.horizontalAccuracy < 30 else { continue }
 
-            // The anchor advances ONLY on an accepted delta, or after a real
-            // gap. Advancing it after a REJECTED sub-2 m hop discards that
-            // ground for good: at a 1 Hz fix rate a walker at 1.4 m/s produces
-            // ~1.4 m per fix, every one under the floor, so a long hike accrued
-            // 0.00 km. Holding the anchor is what lets two such fixes sum past
-            // the floor and count. The canonical Flutter recorder assigns its
-            // anchor inside the accepted branch for this reason, with the same
-            // re-anchor escape so a >100 m hop after dropped fixes cannot
-            // freeze the anchor for the rest of the run instead.
-            let nowUptime = ProcessInfo.processInfo.systemUptime
-            if let last = lastLocationForDistance {
-                let delta = Self.distanceDelta(from: last, to: location)
-                let rawMetres = location.distance(from: last)
-                if delta > 0 {
-                    distanceMetres += delta
-                    lastLocationForDistance = location
-                    lastAnchorUptime = nowUptime
-                } else if rawMetres >= 100,
-                          nowUptime - lastAnchorUptime >= Self.gpsReanchorSeconds {
-                    // Over-ceiling ONLY, and on a MONOTONIC clock.
-                    //
-                    // The escape exists for the >100 m case: fixes were dropped,
-                    // the runner really moved, and a fixed cap never scales — so
-                    // without it the stale anchor only recedes and distance
-                    // freezes for the rest of the run (#330). It must NOT fire
-                    // for a sub-2 m hop: that ground is DEFERRED, and discarding
-                    // the deferral is the 0.00 km bug this branch shipped
-                    // alongside. The firmware re-anchors inside its
-                    // over-ceiling branch only and holds the anchor below the
-                    // floor; this now matches.
-                    //
-                    // systemUptime, not the fix's own Date: a wall clock can
-                    // step backwards on an NTP sync, and a negative delta means
-                    // the escape never fires — freezing distance exactly the way
-                    // the escape exists to prevent.
-                    //
-                    // Rebasing without crediting the gap's metres is the SAME
-                    // discontinuity a pause creates, so it seals the pace window
-                    // too — the canonical Flutter recorder does both.
-                    lastLocationForDistance = location
-                    lastAnchorUptime = nowUptime
-                    sealPaceWindow()
-                }
-            } else {
-                lastLocationForDistance = location
-                lastAnchorUptime = nowUptime
+            // A gap the estimator will re-anchor over is a span it credits
+            // nothing for, so the pace look-back must not time across it
+            // either — the same seal a pause applies.
+            let t = Self.estimatorTime(of: location, nowUptime: nowUptime, now: now)
+            if let lastT = lastEstimatorFixT, t - lastT > distanceEstimator.gapWindowS {
+                sealPaceWindow()
             }
+            if lastEstimatorFixT.map({ t > $0 }) ?? true { lastEstimatorFixT = t }
+            feedEstimator(location, t: t)
             lastAcceptedFix = location
 
             track.append(location)
@@ -748,7 +793,11 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
                 lat: location.coordinate.latitude,
                 lng: location.coordinate.longitude,
                 ele: location.altitude > -999 ? location.altitude : nil,
-                ts: iso8601.string(from: location.timestamp)
+                ts: iso8601.string(from: location.timestamp),
+                accuracyMetres: location.horizontalAccuracy,
+                speedMps: Self.speed(of: location),
+                speedAccuracyMps: Self.speedAccuracy(of: location),
+                bearingDeg: Self.bearing(of: location)
             ))
         }
 
@@ -843,7 +892,9 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             steps: steps,
             laps: lapMarks,
             activityType: activityType.rawValue,
-            isPublic: PrivacyDefault.isPublic(PrivacyDefault.stored())
+            isPublic: PrivacyDefault.isPublic(PrivacyDefault.stored()),
+            distanceEstimator: Self.distanceEstimatorTag,
+            distanceStepFilledMetres: distanceStepFilledMetres
         )
         store.write(checkpoint: cp)
         // Match the track's crash-durability window to the checkpoint's.
@@ -890,7 +941,9 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             // The visibility in force while the run was recorded, not
             // whatever the phone says now — the stop path's rule, which Wear
             // OS's recovery keeps for the same reason (#389).
-            isPublic: cp.isPublic
+            isPublic: cp.isPublic,
+            distanceEstimator: cp.distanceEstimator,
+            distanceStepFilledMetres: cp.distanceStepFilledMetres ?? 0
         )
     }
 

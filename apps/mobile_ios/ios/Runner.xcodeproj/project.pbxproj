@@ -45,6 +45,7 @@
 		7884EA00102EC3CC00C636F4 /* ActiveRunBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00012EC3CC00C636F4 /* ActiveRunBridge.swift */; };
 		7884EA00112EC3CC00C636F4 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00022EC3CC00C636F4 /* AppTheme.swift */; };
 		7884EA00122EC3CC00C636F4 /* ArmedRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00032EC3CC00C636F4 /* ArmedRoute.swift */; };
+		C4D5E6F7A8B90001000C00F1 /* GpsDistanceEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4D5E6F7A8B90002000C00F1 /* GpsDistanceEstimator.swift */; };
 		4A6E1C0B5D2F000300C10001 /* LiveRace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6E1C0B5D2F000400C10001 /* LiveRace.swift */; };
 		4A6E1C0B5D2F000300C10002 /* RaceBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6E1C0B5D2F000400C10002 /* RaceBannerView.swift */; };
 		7884EA00132EC3CC00C636F4 /* CheckpointStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00042EC3CC00C636F4 /* CheckpointStore.swift */; };
@@ -226,6 +227,7 @@
 		7884EA00012EC3CC00C636F4 /* ActiveRunBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveRunBridge.swift; sourceTree = "<group>"; };
 		7884EA00022EC3CC00C636F4 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		7884EA00032EC3CC00C636F4 /* ArmedRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArmedRoute.swift; sourceTree = "<group>"; };
+		C4D5E6F7A8B90002000C00F1 /* GpsDistanceEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GpsDistanceEstimator.swift; sourceTree = "<group>"; };
 		4A6E1C0B5D2F000400C10001 /* LiveRace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRace.swift; sourceTree = "<group>"; };
 		4A6E1C0B5D2F000400C10002 /* RaceBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceBannerView.swift; sourceTree = "<group>"; };
 		7884EA00042EC3CC00C636F4 /* CheckpointStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckpointStore.swift; sourceTree = "<group>"; };
@@ -452,6 +454,7 @@
 				7884EA00012EC3CC00C636F4 /* ActiveRunBridge.swift */,
 				7884EA00022EC3CC00C636F4 /* AppTheme.swift */,
 				7884EA00032EC3CC00C636F4 /* ArmedRoute.swift */,
+				C4D5E6F7A8B90002000C00F1 /* GpsDistanceEstimator.swift */,
 				4A6E1C0B5D2F000400C10001 /* LiveRace.swift */,
 				4A6E1C0B5D2F000400C10002 /* RaceBannerView.swift */,
 				7884EA00042EC3CC00C636F4 /* CheckpointStore.swift */,
@@ -924,6 +927,7 @@
 				7884EB0101092EC3CC00C636 /* ActiveRunTimeline.swift in Sources */,
 				7884EA00112EC3CC00C636F4 /* AppTheme.swift in Sources */,
 				7884EA00122EC3CC00C636F4 /* ArmedRoute.swift in Sources */,
+				C4D5E6F7A8B90001000C00F1 /* GpsDistanceEstimator.swift in Sources */,
 				4A6E1C0B5D2F000300C10001 /* LiveRace.swift in Sources */,
 				4A6E1C0B5D2F000300C10002 /* RaceBannerView.swift in Sources */,
 				7884EA00132EC3CC00C636F4 /* CheckpointStore.swift in Sources */,

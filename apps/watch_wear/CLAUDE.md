@@ -84,6 +84,7 @@ apps/watch_wear/
             │   │   ├── RecordingRepository.kt   # process-singleton StateFlow
             │   │   ├── CheckpointStore.kt       # in-progress recovery snapshot
             │   │   ├── CheckpointRecovery.kt    # grade a survivor before offering it
+            │   │   ├── GpsDistanceEstimator.kt  # spec-v1 Kalman distance (shared vectors)
             │   │   ├── TrackWriter.kt           # streaming GPS to disk JSON
             │   │   ├── TrackStorage.kt          # durable track dir + cache migration + orphan sweep
             │   │   ├── ElapsedMath.kt           # pure pause/resume elapsed-time math
@@ -568,6 +569,27 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   registered while silently emitting nothing — a failure mode
   Geolocator surfaces as a stream error. Initial no-fix
   (`lastPointAtMs == 0L`) is explicitly not a stall; that's indoor mode.
+- **Distance is the shared estimator, not a hop sum.**
+  `recording/GpsDistanceEstimator.kt` is the Kotlin port of
+  `scripts/gps_distance/reference.py` ([docs/features/gps_distance.md](../../docs/features/gps_distance.md)),
+  held to `fixtures/gps_distance_vectors.json` after every event by
+  `GpsDistanceEstimatorTest`. Change it only together with the reference and
+  every other port. `onGps` feeds it every fix that passes `GpsRecorder`'s
+  30 m accuracy gate, stamped with the fix's own `elapsedRealtimeNanos`
+  (never the wall-clock `time`), plus `Location.speed` / `speedAccuracy` /
+  `bearing` only when the matching `has*()` is true; the pedometer feeds
+  `addSteps`. A pause closes the estimator segment (`finish` + bank the
+  totals + `nextSegment()`), so the paused span is never credited and the
+  next fix re-anchors; the fresh estimator is seeded (`initialStrideM`) with
+  the closing segment's stride, so a GPS gap right after a resume is still
+  step-filled. Fixes arrive at 1 s, so `expectedIntervalS` stays 1. The
+  ceiling is per activity (`maxSpeedMpsFor`, the phone's
+  `ActivityType.maxSpeedMps` values). The track itself still appends every
+  gated fix; each point now also carries the optional `accuracyMetres`,
+  `speedMps`, `speedAccuracyMps`, `bearingDeg` keys so the server can
+  recompute. Uploads stamp `metadata.distance_estimator = "kalman_v1"` and,
+  when > 0, `distance_step_filled_m`; a run queued or checkpointed by an
+  older hop-summing build carries neither.
 - **Indoor / no-GPS mode.** The elapsed clock ticks regardless of GPS;
   distance stays 0 until the first fix lands. `TrackWriter.close()`
   produces a valid empty `[]` track, so the upload and downstream run

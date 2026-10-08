@@ -17,7 +17,34 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
-data class GpsPoint(val lat: Double, val lng: Double, val ele: Double?, val epochMs: Long)
+/// [accuracyM] / [speedMps] / [speedAccuracyMps] / [bearingDeg] are null when
+/// the platform did not report them. [elapsedRealtimeMs] is the fix's own
+/// stamp on `SystemClock.elapsedRealtime`'s clock, which is what the distance
+/// estimator integrates over: `epochMs` is a wall clock that can step on an
+/// NTP sync, and the receive time is shared by every fix in a batched result.
+data class GpsPoint(
+    val lat: Double,
+    val lng: Double,
+    val ele: Double?,
+    val epochMs: Long,
+    val accuracyM: Double? = null,
+    val speedMps: Double? = null,
+    val speedAccuracyMps: Double? = null,
+    val bearingDeg: Double? = null,
+    val elapsedRealtimeMs: Long? = null,
+)
+
+internal fun gpsPointFrom(loc: Location): GpsPoint = GpsPoint(
+    lat = loc.latitude,
+    lng = loc.longitude,
+    ele = if (loc.hasAltitude()) loc.altitude else null,
+    epochMs = loc.time,
+    accuracyM = if (loc.hasAccuracy()) loc.accuracy.toDouble() else null,
+    speedMps = if (loc.hasSpeed()) loc.speed.toDouble() else null,
+    speedAccuracyMps = if (loc.hasSpeedAccuracy()) loc.speedAccuracyMetersPerSecond.toDouble() else null,
+    bearingDeg = if (loc.hasBearing()) loc.bearing.toDouble() else null,
+    elapsedRealtimeMs = loc.elapsedRealtimeNanos.takeIf { it > 0L }?.let { it / 1_000_000L },
+)
 
 /// Shape of each emission from [GpsRecorder.stream]. Either a new GPS
 /// point arrived, or the underlying provider flipped availability (GPS
@@ -71,16 +98,7 @@ class GpsRecorder(context: Context) {
             override fun onLocationResult(result: LocationResult) {
                 for (loc: Location in result.locations) {
                     if (!loc.hasAccuracy() || loc.accuracy > 30f) continue
-                    trySend(
-                        GpsEvent.Point(
-                            GpsPoint(
-                                lat = loc.latitude,
-                                lng = loc.longitude,
-                                ele = if (loc.hasAltitude()) loc.altitude else null,
-                                epochMs = loc.time,
-                            )
-                        )
-                    )
+                    trySend(GpsEvent.Point(gpsPointFrom(loc)))
                 }
             }
 

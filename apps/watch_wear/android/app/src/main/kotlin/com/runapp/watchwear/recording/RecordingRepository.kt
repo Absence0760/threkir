@@ -34,6 +34,10 @@ object RecordingRepository {
         val startedAtMs: Long = 0L,
         val elapsedMs: Long = 0L,
         val distanceM: Double = 0.0,
+        /// The share of a FINISHED run's [distanceM] the estimator credited
+        /// from pedometer steps across GPS gaps rather than from fixes. Written
+        /// once, at the `Finished` transition, and null at every other stage.
+        val distanceStepFilledM: Double? = null,
         val paceSecPerKm: Double? = null,
         val bpm: Int? = null,
         /// What the FINISHED run may claim about its heart rate: the graded

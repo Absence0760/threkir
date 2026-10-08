@@ -35,7 +35,7 @@ Pure-function tests for two helpers in `lib/run_stats.dart`:
 - Slow → fast → slow run → picks the fast middle 5 km
 - Regression: a 10 km in 1:14:34 does **not** surface as a 37:17 fastest 5k
 
-### `packages/run_recorder/test/run_recorder_test.dart` — 73 tests
+### `packages/run_recorder/test/run_recorder_test.dart` — 81 tests
 
 The recorder's state machine and GPS filter chain. Uses `@visibleForTesting` hooks (see below) to bypass the real geolocator stream and inject synthetic `Position` objects directly into `_onPosition`.
 
@@ -522,7 +522,7 @@ What a challenge value is CALLED and what UNIT it is printed in. `check_constrai
 
 The seven ARB catalogues against the checked-in `lib/l10n/gen/` ([decisions § 844](../architecture/decisions.md)). `l10n_parity_test.dart` measures the ARBs against each other and `architecture_guards_test.dart` measures the locale set; neither measures the hand-run `gen-l10n` step between them, so an ARB whose wording changed without a regeneration ships the previous sentence in every locale and a hand-edit to a `gen/` file is invisible from both directions. Reads the generated Dart back — there is no reflection to ask an `AppLocalizations` for a getter named at runtime — and asserts the member set in both directions plus, for every non-ICU message, the literal itself with `$name` rewritten to `{name}`: 3,761 of 3,826 messages per catalogue. Each group carries a floor on how many members it parsed, so a change in what `gen-l10n` emits fails the guard rather than emptying it.
 
-### `apps/mobile_ios/test/` — 589 files, byte-for-byte
+### `apps/mobile_ios/test/` — 590 files, byte-for-byte
 
 After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kept identical to `apps/mobile_android/test/` via `diff -rq`. Every test file documented above runs on the iOS target too **locally** — `melos run test` has no scope filter — but **not in CI**: the `test-packages` job scopes `melos exec` to `run_recorder`, `mobile_android`, `api_client`, `gpx_parser`, `ui_kit` and `core_models`, and `mobile_ios` is not among them. That is not a gap for byte-identical Dart, but it is why a test gated on an `ios/` file being present asserts nothing on any CI run — two such groups existed and were removed in favour of `scripts/check_ios_native_declarations.mjs` (decisions.md § 742). Per-target counts: `flutter test` compiles separately, so each test file is executed twice when you run both apps locally. Don't add iOS-specific test files — every test belongs in both apps. The architecture-guard tests under `apps/mobile_android/test/architecture_guards_test.dart` read `lib/screens/run_screen.dart` from the working directory, so they pin the same invariants on both targets.
 
@@ -530,7 +530,7 @@ After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kep
 
 Smoke tests for the `@visibleForTesting ApiClient.withClient(SupabaseClient)` named constructor — the DI seam that lets tests inject a fake `SupabaseClient` without booting `Supabase.initialize`. Pins: `userId` reads from the injected client (null when not signed in), `userEmail` reads from the injected client, two `withClient` instances stay independent (the override is an instance field, not static), and the default `ApiClient()` constructor still falls back to the global (which throws when `Supabase.initialize` hasn't run — the throw is the test value, confirming the seam only fires for `withClient`).
 
-### `packages/api_client/test/api_client_codecs_test.dart` — 34 tests
+### `packages/api_client/test/api_client_codecs_test.dart` — 37 tests
 
 Covers the four pure helpers on `ApiClient` exposed via `@visibleForTesting` static accessors (`debugWaypointToJson`, `debugWaypointFromJson`, `debugRunFromRow`, `debugRouteFromRow`). The methods drive the wire format for the gzipped track blob in the `runs` Storage bucket and the row-to-domain conversion that powers every list / detail screen — code that previously had no direct coverage because it hides behind `Supabase.instance.client`.
 
@@ -908,7 +908,7 @@ Every static-map image on web renders through `StaticMapImage.svelte`, which swa
 
 `activityUsesSpeed`: only `cycle` reads by speed, the twin of core_models' `ActivityType.usesSpeed`, and an untagged or unknown activity reads by pace. Drives the pace-or-speed key-stat tile on `/runs/[id]`.
 
-### `apps/watch_wear/android/app/src/test/kotlin/**/*Test.kt` — 849 Wear OS Kotlin/JUnit tests across 82 files
+### `apps/watch_wear/android/app/src/test/kotlin/**/*Test.kt` — 868 Wear OS Kotlin/JUnit tests across 84 files
 
 Run with `cd apps/watch_wear/android && ./gradlew testDebugUnitTest`. Pure-JVM tests — no Android instrumentation, no Robolectric. **Six of them read files outside this Gradle build** (the phone's two `Wear*Bridge.kt`, `apps/web/src/lib/core/env_flag.ts`, `docs/backend/metadata.md`, the `activity_type` migration and the two client label catalogues), plus the manifest, and none was a declared input of the test task until [decisions § 946](../architecture/decisions.md) — so a local run reported UP-TO-DATE and SUCCESSFUL on exactly the drift those guards exist to catch. They are declared now; if you add a guard that reads anything outside `app/src`, add it to `guardedCrossTreeFiles` / `guardedCrossTreeSets` in `app/build.gradle.kts` in the same change or it will not re-run when its subject changes. `ScreenWiringTest` also now pins the pre-run signed-out notice ([decisions § 948](../architecture/decisions.md)): the `!authed` branch renders `not_signed_in` and NOT `offline`, read branch-scoped so the sibling `!online && authed` branch a few lines above cannot satisfy it — two conditions sharing one string breaks nothing, so only an assertion about which branch says which can see it. The team deliberately avoided UI-test infrastructure (see `apps/watch_wear/CLAUDE.md`'s "layouts can't be unit-tested without Robolectric"); the pattern is to extract pure helpers from the Android-bound classes and exercise them at the JVM level.
 
@@ -942,7 +942,7 @@ Three source-level resilience guards were added on 2026-09-03 in the same idiom 
 
 The handful of Wear OS surfaces NOT covered (need instrumentation): `Pedometer` sensor binding itself, `HeartRateMonitor.MeasureCallback` registration with Health Services, `GpsRecorder` `FusedLocationProviderClient` callback, foreground-service lifecycle, Compose UI screen rendering (the team deliberately stayed off Robolectric — `ScreenWiringTest`'s source-grep approach is the cheap-but-effective alternative).
 
-### `apps/job_worker/internal/**/*_test.go` — 851 tests across 78 files (Go unit tests)
+### `apps/job_worker/internal/**/*_test.go` — 886 tests across 81 files (Go unit tests)
 
 Run with `go test ./...` from `apps/job_worker`. No network or Postgres dependency — the worker tests use a fake `Backend`, the matcher tests use `httptest.Server` to stand in for OSRM. Gated in CI by the `test-worker` job (`go vet` + `go test ./...`), so a Go-side guard like `internal/personal_data_export_guard_test.go` (the GDPR Art 20 export-completeness tripwire — fails the build when a new `user_id`-bearing table isn't wired into `exportPersonalDataSpecs` or the reasoned exclusion list) now fails a PR, not just a local run. Files:
 
@@ -1137,7 +1137,7 @@ These twenty-three files cover the tables + RPCs + triggers where a single-row l
 
 The behavioural guard on the § 1286 / § 1489 negative: no uniqueness on `gym_routine_exercises` may cover a column set that is a SUBSET of `(routine_id, exercise_key)`, and none on `gym_sets` may cover one of `(workout_id, exercise_key)` ([decisions § 1662](../architecture/decisions.md)). Two rails. The first saves the shape — two routine rows of one routine under one key (the heavy-top-set-then-back-off pattern), two sets of one workout under one key — so the catalogue assertions cannot pass against a table nobody can write it to. The second derives the offenders from `pg_index` rather than from an index name or a literal column list, so a bare `unique (exercise_key)` is caught; partial indexes, expression key columns and all-equality exclusion constraints are inside the net and `INCLUDE` columns are read past. The last five assertions are the detector's own controls, built on a scratch table: a unique index over a SUPERSET of the pair must stay quiet, and each of the four offending shapes must be named.
 
-### `apps/backend/supabase/functions/**/*.test.ts` — 995 deno tests across 75 files
+### `apps/backend/supabase/functions/**/*.test.ts` — 1005 deno tests across 76 files
 
 Run the pure-helper slices with `cd apps/backend && deno test --no-check supabase/functions/_shared/*.test.ts` plus the per-function `lib.test.ts` / `wiring.test.ts` / `handler.test.ts` files (`auth-email`, `delete-account`, `donations-checkout`, `events-cancel`, `events-checkout`, `events-connect-onboard`, `export-data`, `parkrun-import`, `race-results-import`, `refresh-tokens`, `revenuecat-webhook`, `strava-import`, `strava-webhook`, `stripe-events-webhook`); the network-touching ones (e.g. `_shared/handler_envelope.test.ts`) need `SUPABASE_TEST_URL=http://127.0.0.1:24321 supabase functions serve --env-file .env.local` and the `--allow-net --allow-env` flags. The `edge-functions` CI job runs all of them on every PR.
 
@@ -1174,7 +1174,7 @@ Run the pure-helper slices with `cd apps/backend && deno test --no-check supabas
 
 The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets to drive and are exercised manually only — see [apps/backend/CLAUDE.md § Testing without real credentials](../../apps/backend/CLAUDE.md#testing-without-real-credentials).
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 1,938 declared tests across 510 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 1,944 declared tests across 511 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 

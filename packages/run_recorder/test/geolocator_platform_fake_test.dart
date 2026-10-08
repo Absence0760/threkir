@@ -340,9 +340,11 @@ void main() {
       expect(r.debugTrack.length, 1);
 
       // Subsequent fix above the movement threshold accumulates distance.
-      fake.emit(_pos(metresEast: 10, secondsFromStart: 3));
+      // 5 m in 2 s, matching the fixture's 2.5 m/s Doppler speed.
+      fake.emit(_pos(metresEast: 5, secondsFromStart: 3));
       await Future<void>.delayed(Duration.zero);
-      expect(r.debugDistanceMetres, greaterThan(5));
+      expect(r.debugDistanceMetres, closeTo(5, 0.5));
+      expect(r.debugTrack.length, 2);
 
       r.dispose();
     });

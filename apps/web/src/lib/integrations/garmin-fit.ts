@@ -9,8 +9,9 @@
 /// Single-file `.fit` parsing only; the orchestrator in `garmin-zip.ts`
 /// handles bundle (ZIP) uploads on top of this.
 
-import type { TrackPoint } from '../types';
+import type { ActivityType, TrackPoint } from '../types';
 import { haversineMetres } from '../runs/run_stats';
+import { GpsDistanceEstimator } from '../runs/gps_distance';
 
 /// Canonical per-lap shape registered in docs/backend/metadata.md § laps. `index`
 /// is 1-based; `start_offset_s` is the cumulative duration up to the START
@@ -181,21 +182,113 @@ function pointMs(p: TrackPoint): number | null {
 /// orders of magnitude above that and far below any GPS fix.
 export const WINDOW_TOLERANCE_RATIO = 1e-9;
 
+/// A stored waypoint with the optional spec-v1 Doppler keys
+/// (docs/features/gps_distance.md § Waypoint fields).
+export type EstimatorTrackPoint = TrackPoint & {
+	accuracyMetres?: number;
+	speedMps?: number;
+	speedAccuracyMps?: number;
+	bearingDeg?: number;
+};
+
+/// Mirrors `ActivityType.maxSpeedMps` in
+/// packages/core_models/lib/src/activity_type.dart; unknown or absent → run.
+export function maxSpeedMpsForActivity(activityType: ActivityType | null | undefined): number {
+	switch (activityType) {
+		case 'walk':
+			return 5;
+		case 'cycle':
+			return 25;
+		case 'hike':
+			return 6;
+		case 'stroller':
+			return 9;
+		default:
+			return 10;
+	}
+}
+
+/// Median of the positive intervals (seconds) between consecutive
+/// timestamped points; 1 when there are none. An even count takes the mean
+/// of the two middle values.
+export function medianFixIntervalS(track: readonly TrackPoint[]): number {
+	const intervals: number[] = [];
+	let prev: number | null = null;
+	for (const p of track) {
+		const ms = pointMs(p);
+		if (ms == null) continue;
+		if (prev != null && ms > prev) intervals.push((ms - prev) / 1000);
+		prev = ms;
+	}
+	if (intervals.length === 0) return 1;
+	intervals.sort((a, b) => a - b);
+	const mid = Math.floor(intervals.length / 2);
+	return intervals.length % 2 === 1 ? intervals[mid] : (intervals[mid - 1] + intervals[mid]) / 2;
+}
+
+/// Distance covered up to each point, replaying the track through the
+/// spec-v1.1 GPS distance estimator — the filter that owns the run's headline
+/// distance. The raw hop-sum is inflated by GPS noise, so a "5 km" window
+/// measured on it closes early and the best reads too fast. `t` is seconds
+/// since the first timestamped point and the expected fix interval is the
+/// median positive interval, so a sparse track is not re-anchored on every
+/// fix. A point without a timestamp carries the previous cumulative. Lockstep
+/// with `estimatorCumulativeMetres` in apps/mobile_android/lib/embedded_bests.dart
+/// and apps/job_worker/internal/embedded_bests.go.
+export function estimatorCumulativeMetres(
+	track: readonly EstimatorTrackPoint[],
+	maxSpeedMps = 10,
+): number[] {
+	const est = new GpsDistanceEstimator(maxSpeedMps, medianFixIntervalS(track), null);
+	const out = new Array<number>(track.length).fill(0);
+	let t0: number | null = null;
+	for (let i = 0; i < track.length; i++) {
+		const p = track[i];
+		const ms = pointMs(p);
+		if (ms != null) {
+			if (t0 == null) t0 = ms;
+			est.addFix(
+				(ms - t0) / 1000,
+				p.lat,
+				p.lng,
+				p.accuracyMetres,
+				p.speedMps,
+				p.speedAccuracyMps,
+				p.bearingDeg,
+			);
+		}
+		out[i] = est.distanceM;
+	}
+	return out;
+}
+
 /// Fastest continuous `windowMetres` (whole seconds) anywhere in the track,
 /// or null when the track has < 2 points, is shorter than the window, or has
 /// no timestamped window. Sliding-window with linear interpolation at the
 /// exact distance boundary — the port of Dart's `fastestWindowOf`.
+/// `cumulative`, when given, is the distance up to each point (one entry per
+/// point) and replaces the raw haversine hop-sum.
 export function fastestWindowSeconds(
 	track: readonly TrackPoint[],
 	windowMetres: number,
+	cumulative?: readonly number[],
 ): number | null {
 	const n = track.length;
 	if (n < 2 || windowMetres <= 0) return null;
+	if (cumulative && cumulative.length !== n) {
+		throw new RangeError(`cumulative has ${cumulative.length} entries for ${n} points`);
+	}
 
-	const cum = new Array<number>(n).fill(0);
-	for (let i = 1; i < n; i++) {
-		cum[i] = cum[i - 1] +
-			haversineMetres(track[i - 1].lat, track[i - 1].lng, track[i].lat, track[i].lng);
+	let cum: readonly number[];
+	if (cumulative) {
+		cum = cumulative;
+	} else {
+		const hop = new Array<number>(n).fill(0);
+		for (let i = 1; i < n; i++) {
+			hop[i] = hop[i - 1] +
+				haversineMetres(track[i - 1].lat, track[i - 1].lng, track[i].lat, track[i].lng);
+		}
+		cum = hop;
 	}
 	const covers = windowMetres * (1 - WINDOW_TOLERANCE_RATIO);
 	if (cum[n - 1] < covers) return null;
@@ -233,16 +326,20 @@ export function fastestWindowSeconds(
 }
 
 /// Embedded best-effort seconds for every canonical distance the track is
-/// long enough to cover. Returns `{}` (no fake bests) when the track has < 3
-/// points or covers no canonical distance; callers pass the result to
-/// saveRun's `embedded_bests` so it lands on the promoted runs columns.
+/// long enough to cover, measured on the estimator's cumulative with the
+/// activity's speed ceiling (run when absent). Returns `{}` (no fake bests)
+/// when the track has < 3 points or covers no canonical distance; callers
+/// pass the result to saveRun's `embedded_bests` so it lands on the promoted
+/// runs columns.
 export function computeEmbeddedBests(
-	track: readonly TrackPoint[],
+	track: readonly EstimatorTrackPoint[],
+	activityType?: ActivityType | null,
 ): Partial<Record<EmbeddedBestColumn, number>> {
 	const out: Partial<Record<EmbeddedBestColumn, number>> = {};
 	if (!Array.isArray(track) || track.length < 3) return out;
+	const cum = estimatorCumulativeMetres(track, maxSpeedMpsForActivity(activityType));
 	for (const [key, dist] of EMBEDDED_BEST_DISTANCES) {
-		const secs = fastestWindowSeconds(track, dist);
+		const secs = fastestWindowSeconds(track, dist, cum);
 		if (secs != null && secs > 0) out[key] = secs;
 	}
 	return out;

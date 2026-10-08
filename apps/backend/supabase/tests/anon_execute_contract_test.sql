@@ -136,6 +136,7 @@ create temporary table server_only (fn name, keeps_service_role boolean);
 
 insert into server_only (fn, keeps_service_role) values
   ('_privacy_downsample', false),
+  ('achievement_tiers_met', false),
   ('auto_hide_target', false),
   ('award_achievements_for_user', false),
   ('claim_next_job', true),
@@ -180,6 +181,7 @@ insert into server_only (fn, keeps_service_role) values
   ('refresh_club_member_count', false),
   ('refresh_gym_workout_totals', false),
   ('refresh_route_run_count', false),
+  ('revoke_unmet_distance_achievements', false),
   ('set_apple_refresh_token', true),
   ('sweep_challenge_completions', false),
   ('try_consume_strava_quota', true);

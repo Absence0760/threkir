@@ -140,6 +140,13 @@ struct ContentView: View {
             // The runner's privacy default, snapshotted at stop. Omitted when
             // the phone never said, so the row keeps its private default.
             if let isPublic = run.isPublic { metadata["is_public"] = isPublic }
+            // Which algorithm measured `distance_m`, so a server recompute
+            // can tell a v1 figure from a hop-sum one. A recovered run from a
+            // pre-estimator checkpoint carries none (docs/features/gps_distance.md).
+            if let estimator = run.distanceEstimator { metadata["distance_estimator"] = estimator }
+            if run.distanceStepFilledMetres > 0 {
+                metadata["distance_step_filled_m"] = run.distanceStepFilledMetres
+            }
             // Only mark the run synced when WCSession actually queued it.
             // A false means nothing was handed off (session not yet
             // activated) — leave `thisRunSynced` false so `PostRunView`

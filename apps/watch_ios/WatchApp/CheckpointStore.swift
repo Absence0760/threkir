@@ -57,6 +57,12 @@ struct RunCheckpoint: Codable {
     // defaulting private — Wear OS's `Checkpoint.privacyDefault`, #389. Nil is
     // "the phone never said", the same statement the stop path makes.
     let isPublic: Bool?
+    // The estimator that produced `distanceMetres`, and the metres it filled
+    // from the pedometer. Nil in a checkpoint from a build that summed raw
+    // hops, so a recovered run is never labelled with an algorithm it was
+    // not measured by.
+    let distanceEstimator: String?
+    let distanceStepFilledMetres: Double?
 
     init(
         id: String,
@@ -72,6 +78,8 @@ struct RunCheckpoint: Codable {
         laps: [LapMark]?,
         activityType: String = RunActivityType.run.rawValue,
         isPublic: Bool? = nil,
+        distanceEstimator: String? = nil,
+        distanceStepFilledMetres: Double? = nil,
         version: Int = RunCheckpoint.currentVersion
     ) {
         self.version = version
@@ -88,6 +96,8 @@ struct RunCheckpoint: Codable {
         self.laps = laps
         self.activityType = activityType
         self.isPublic = isPublic
+        self.distanceEstimator = distanceEstimator
+        self.distanceStepFilledMetres = distanceStepFilledMetres
     }
 
     /// Every field is decoded with a fallback default rather than the
@@ -116,6 +126,8 @@ struct RunCheckpoint: Codable {
         activityType = try c.decodeIfPresent(String.self, forKey: .activityType)
             ?? RunActivityType.run.rawValue
         isPublic = try c.decodeIfPresent(Bool.self, forKey: .isPublic)
+        distanceEstimator = try c.decodeIfPresent(String.self, forKey: .distanceEstimator)
+        distanceStepFilledMetres = try c.decodeIfPresent(Double.self, forKey: .distanceStepFilledMetres)
     }
 }
 
@@ -332,4 +344,8 @@ struct TrackPointRecord: Codable {
     let lng: Double
     let ele: Double?
     let ts: String
+    var accuracyMetres: Double? = nil
+    var speedMps: Double? = nil
+    var speedAccuracyMps: Double? = nil
+    var bearingDeg: Double? = nil
 }

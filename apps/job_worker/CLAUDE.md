@@ -21,7 +21,13 @@ name, `decisions.md § 119`), `safety_email` (safety-contact confirm +
 finish alerts, `decisions.md § 131`), and `web_push` (the browser Web Push
 delivery channel — sibling of `notification_email` over the same
 notifications rows; encrypted RFC 8291 messages signed with a VAPID key,
-`decisions.md § 133` / migration `20261219_001`). Data-export will land as an
+`decisions.md § 133` / migration `20261219_001`), and `distance_recompute`
+(owner-requested via the `request_distance_recompute(p_run_id)` RPC: replays
+the stored track of an `app` / `watch` run through the spec-v1 GPS distance
+estimator in `internal/gpsdistance/` and rewrites `runs.distance_m`, keeping
+the recorder's figure in `metadata.distance_recorded_m`; imports, indoor /
+pedometer / treadmill, manual and in-progress runs are skipped as no-ops —
+[`../../docs/features/gps_distance.md`](../../docs/features/gps_distance.md)). Data-export will land as an
 additional kind in `internal/worker.go`'s dispatch when that Edge
 Function moves per
 [`../../docs/product/roadmap.md`](../../docs/product/roadmap.md) §214.
@@ -294,6 +300,12 @@ apps/job_worker/
 │   ├── handler_lifecycle_drip.go # kind='lifecycle_drip' — onboarding/re-engagement/streak nudges; opt-IN email_lifecycle_drip + suppression gate (GATED on SMTP); cohort selection is in SQL, not here
 │   ├── handler_export_blob_reap.go # kind='export_blob_reap' — erases Art 20 export archives past the 7-day window through the Storage API (a storage.objects row delete leaves the bytes, decisions § 1049). NOT yet in dispatch: the CHECK is a migration
 │   ├── handler_export_blob_reap_test.go # 11 tests on the window boundary, unknown-age skip, batching, partial progress, idempotence
+│   ├── handler_distance_recompute.go # kind='distance_recompute' — replay the stored track through gpsdistance, CAS-PATCH distance_m + merged metadata; app/watch sources only
+│   ├── handler_distance_recompute_test.go # skip set, repeat keeps distance_recorded_m, CAS re-read, untimed waypoints, permanent vs transient, PostgREST wire shape
+│   ├── supabase_distance_recompute.go # ReadRunForDistanceRecompute / DownloadRecordedTrack (reads the spec-v1 Doppler keys) / UpdateRunDistance (conditional on track_url + metadata)
+│   ├── gpsdistance/         # Go port of the GPS distance estimator spec v1 (scripts/gps_distance/reference.py)
+│   │   ├── estimator.go     # two 1-D constant-velocity Kalman filters + Doppler + stationary floor + gap re-anchor + pedometer stride
+│   │   └── estimator_test.go # replays fixtures/gps_distance_vectors.json, asserting distance after every event to tolerance_m
 │   ├── handler_lifecycle_drip_test.go # 14 tests on opt-in / digest-opt-in-does-not-imply-drip / suppression / per-template / fail-closed / unsubscribe
 │   ├── digest_builder.go    # EnqueueAllWeeklyDigests — selects opted-in recipients, chunked bulk-enqueues jobs (UNSCHEDULED; pg_cron is the CISO/counsel-gated step)
 │   ├── digest_builder_test.go # 5 tests on enqueue / no-candidates / select-error / chunking / failing-chunk skip

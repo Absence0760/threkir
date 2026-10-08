@@ -2767,6 +2767,37 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get runDetailRecalculateDistance => '距離を再計算';
+
+  @override
+  String get runDetailRecalculateDistanceDialogTitle => '距離を再計算しますか？';
+
+  @override
+  String get runDetailRecalculateDistanceDialogMessage => 'このランの距離を、改良されたGPSフィルターでGPSトラックから再計算します。GPSのぶれによって加算された余分な距離が取り除かれます。最初に記録された距離は保持され、新しい距離と並べて表示されます。';
+
+  @override
+  String get runDetailRecalculateDistanceConfirm => '再計算';
+
+  @override
+  String get runDetailRecalculatingDistance => '再計算中です。1分ほどしてから更新してください';
+
+  @override
+  String runDetailRecalculateDistanceFailed(String error) {
+    return '距離を再計算できませんでした: $error';
+  }
+
+  @override
+  String get runDetailRecalculateDistanceNotOwner => 'このランを記録した本人だけが距離を再計算できます。';
+
+  @override
+  String get runDetailRecalculateDistanceNoTrack => 'このランには再計算に使えるGPSトラックがありません。';
+
+  @override
+  String runDetailOriginallyRecorded(String distance) {
+    return '最初の記録: $distance';
+  }
+
+  @override
   String runDetailRouteSaved(String name, int kept, int smoothed) {
     return '\"$name\" を保存しました — $kept 個のウェイポイント（$smoothed 個を平滑化）';
   }

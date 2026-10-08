@@ -279,7 +279,7 @@ async function importOne(
 		// reads. Without them an imported long run can never yield the 5K/10K PR
 		// hiding inside its track, so five years of migrated Strava history lands
 		// with zero embedded bests — the Garmin importer already does this.
-		...(track ? { embedded_bests: computeEmbeddedBests(track) } : {}),
+		...(track ? { embedded_bests: computeEmbeddedBests(track, activityType) } : {}),
 		title: row[idx.name] || null,
 		// Cross-source dedupe — matches the mobile ZIP + Strava-
 		// OAuth writers. /audit/strava M3.

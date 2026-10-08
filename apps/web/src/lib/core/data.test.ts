@@ -942,7 +942,7 @@ test('the Strava ZIP importer lands embedded bests like the Garmin one', () => {
 	const source = read('src/lib/integrations/strava-zip.ts');
 	assert.match(
 		source,
-		/embedded_bests: computeEmbeddedBests\(track\)/,
+		/embedded_bests: computeEmbeddedBests\(track, activityType\)/,
 		'strava-zip must pass embedded_bests when it parsed a track'
 	);
 });

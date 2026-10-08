@@ -29,8 +29,8 @@ retention cron referenced in a comment that was never created.
   `healthconnect`, `parkrun`, `race` — every valid `runs.source` value. `parkrun`
   (weekly certified 5K) and `race` (chip-timed official results) were added by
   `20270424_001` (#378); before that both were silently excluded, so a fastest 5K
-  run at parkrun never earned a PR. `award_achievements_for_user` uses the
-  identical source list so distance badges and PRs agree on what counts.
+  run at parkrun never earned a PR. `achievement_tiers_met` (read by
+  `award_achievements_for_user`) uses the identical source list so distance badges and PRs agree on what counts.
 - **Eligible activity types:** the **run family** — every `runs.activity_type`
   except `cycle` (`20270514_001`). A bicycle covers a PR bracket at speeds no
   runner reaches, so before that migration a 5 km ride at 9:00 permanently
@@ -41,8 +41,14 @@ retention cron referenced in a comment that was never created.
   — **`award_achievements_for_user` applies it to `distance_single` only**;
   `distance_lifetime` and the streak stay cross-modal, matching the same
   helper's cross-modal totals and the client `computeRunStreaks`, which is fed
-  every activity type. Already-granted badges are never revoked (the awarder is
-  insert-on-conflict-do-nothing and has never revoked anything).
+  every activity type. Already-granted badges are not revoked by an ordinary
+  edit (the awarder is insert-on-conflict-do-nothing). The one exception is the
+  GPS distance recompute: when a write changes both `distance_m` and
+  `metadata.distance_recomputed_at`, `revoke_unmet_distance_achievements`
+  deletes the `distance_single` / `distance_lifetime` tiers the current runs no
+  longer meet (`20270719000002`). Both it and the awarder read the earned set
+  from `achievement_tiers_met`, which now holds this source list and the
+  run-family split.
 - **Authoritative recompute:** the body of `refresh_personal_records_for_user(p_user_id)`
   — the cumulative result of the widened brackets (`20260528000002`),
   embedded-best efforts (`20260529000002`; read from the promoted

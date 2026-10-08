@@ -2887,6 +2887,37 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get runDetailRecalculateDistance => 'Recalculate distance';
+
+  @override
+  String get runDetailRecalculateDistanceDialogTitle => 'Recalculate distance?';
+
+  @override
+  String get runDetailRecalculateDistanceDialogMessage => 'This run\'s distance will be recomputed from its GPS track with the improved GPS filter, which removes the extra distance GPS jitter adds. The originally recorded distance is kept and shown beside the new one.';
+
+  @override
+  String get runDetailRecalculateDistanceConfirm => 'Recalculate';
+
+  @override
+  String get runDetailRecalculatingDistance => 'Recalculating — refresh in a minute';
+
+  @override
+  String runDetailRecalculateDistanceFailed(String error) {
+    return 'Couldn\'t recalculate distance: $error';
+  }
+
+  @override
+  String get runDetailRecalculateDistanceNotOwner => 'Only the runner who recorded this run can recalculate its distance.';
+
+  @override
+  String get runDetailRecalculateDistanceNoTrack => 'This run has no GPS track to recalculate from.';
+
+  @override
+  String runDetailOriginallyRecorded(String distance) {
+    return 'Originally recorded: $distance';
+  }
+
+  @override
   String runDetailRouteSaved(String name, int kept, int smoothed) {
     return 'Saved \"$name\" — $kept waypoints ($smoothed smoothed out)';
   }

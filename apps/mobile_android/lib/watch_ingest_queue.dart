@@ -310,6 +310,10 @@ cm.Run runFromWatchPayload(Map<String, dynamic> raw) {
           // sample. `Waypoint.bpm` is `int?` so floor any decimal that
           // sneaks through and skip non-numeric values.
           bpm: (p['bpm'] as num?)?.toInt(),
+          accuracyMetres: _finiteOrNull(p['accuracyMetres']),
+          speedMps: _finiteOrNull(p['speedMps']),
+          speedAccuracyMps: _finiteOrNull(p['speedAccuracyMps']),
+          bearingDeg: _finiteOrNull(p['bearingDeg']),
         ));
       }
     }
@@ -343,6 +347,16 @@ cm.Run runFromWatchPayload(Map<String, dynamic> raw) {
   // `runRowFromRun`, so it is a link on the row rather than a bag key by the
   // time it reaches Postgres — the run detail can then get back to the event
   // without joining through `event_results`, which only carries a finisher.
+  // Recorded through the shared GPS distance estimator on the wrist, so the
+  // server recompute must not run the track through it a second time.
+  final estimator = raw['distance_estimator'];
+  if (estimator is String && estimator.isNotEmpty) {
+    metadata[cm.MetadataKeys.distanceEstimator] = estimator;
+  }
+  final stepFilled = raw['distance_step_filled_m'];
+  if (stepFilled is num && stepFilled.toDouble().isFinite && stepFilled > 0) {
+    metadata[cm.MetadataKeys.distanceStepFilledM] = stepFilled.toDouble();
+  }
   final eventId = raw['event_id'];
   if (eventId is String && eventId.isNotEmpty) {
     metadata[cm.MetadataKeys.eventId] = eventId;
@@ -415,3 +429,6 @@ cm.RunSource parseRunSource(String raw) {
   }
   return cm.RunSource.watch;
 }
+
+double? _finiteOrNull(Object? v) =>
+    v is num && v.toDouble().isFinite ? v.toDouble() : null;

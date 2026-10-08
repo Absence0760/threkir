@@ -16,6 +16,7 @@
 /// inside a long run is searched as 5000 m exactly).
 
 import 'package:core_models/core_models.dart';
+import 'package:run_recorder/run_recorder.dart' show GpsDistanceEstimator;
 
 import 'run_stats.dart';
 
@@ -27,8 +28,74 @@ const _embeddedBestDistances = <String, double>{
   'fastest_marathon_s': 42195,
 };
 
+/// Distance covered up to each waypoint of [track], replaying it through the
+/// spec-v1.1 GPS distance estimator (docs/features/gps_distance.md) — the
+/// filter that owns the run's headline distance. The raw hop-sum is inflated
+/// by GPS noise, so a "5 km" window measured on it closes early and the best
+/// reads too fast. `t` is seconds since the first timestamped waypoint, and
+/// the expected fix interval is the median positive interval so a sparse
+/// track (the custom watch's 15 s / 60 s modes) is not re-anchored on every
+/// fix. A waypoint without a timestamp carries the previous cumulative.
+///
+/// Lockstep with `estimatorCumulativeMetres` in
+/// `apps/web/src/lib/integrations/garmin-fit.ts` and
+/// `apps/job_worker/internal/embedded_bests.go`.
+List<double> estimatorCumulativeMetres(
+  List<Waypoint> track, {
+  double maxSpeedMps = 10.0,
+}) {
+  final est = GpsDistanceEstimator(
+    maxSpeedMps: maxSpeedMps,
+    expectedIntervalS: medianFixIntervalS(track),
+  );
+  final out = List<double>.filled(track.length, 0);
+  int? t0;
+  for (var i = 0; i < track.length; i++) {
+    final w = track[i];
+    final ts = w.timestamp;
+    if (ts != null) {
+      final us = ts.microsecondsSinceEpoch;
+      t0 ??= us;
+      est.addFix(
+        t: (us - t0) / 1e6,
+        lat: w.lat,
+        lng: w.lng,
+        accuracyM: w.accuracyMetres,
+        speedMps: w.speedMps,
+        speedAccuracyMps: w.speedAccuracyMps,
+        bearingDeg: w.bearingDeg,
+      );
+    }
+    out[i] = est.distanceM;
+  }
+  return out;
+}
+
+/// Median of the positive intervals (seconds) between consecutive
+/// timestamped waypoints; 1.0 when there are none. An even count takes the
+/// mean of the two middle values.
+double medianFixIntervalS(List<Waypoint> track) {
+  final intervals = <double>[];
+  int? prev;
+  for (final w in track) {
+    final ts = w.timestamp;
+    if (ts == null) continue;
+    final us = ts.microsecondsSinceEpoch;
+    if (prev != null && us > prev) intervals.add((us - prev) / 1e6);
+    prev = us;
+  }
+  if (intervals.isEmpty) return 1.0;
+  intervals.sort();
+  final mid = intervals.length ~/ 2;
+  return intervals.length.isOdd
+      ? intervals[mid]
+      : (intervals[mid - 1] + intervals[mid]) / 2;
+}
+
 /// Returns `metadata` with `fastest_X_s` keys merged in for each
-/// canonical distance the track is long enough to cover. Existing
+/// canonical distance the track is long enough to cover, measured on the
+/// estimator's cumulative ([estimatorCumulativeMetres]) with the speed
+/// ceiling of `metadata['activity_type']` (run when absent). Existing
 /// keys in `metadata` are preserved unless the helper computes a
 /// FASTER time for the same key (defensive: a manual edit by the
 /// runner overrides the auto-detection only if it's faster — the
@@ -43,10 +110,18 @@ Map<String, dynamic>? enrichMetadataWithEmbeddedBests({
 }) {
   if (track.length < 3) return metadata;
   final out = Map<String, dynamic>.from(metadata ?? const {});
+  final rawType = out[MetadataKeys.activityType];
+  final activity = ActivityType.fromName(rawType is String ? rawType : null);
+  final cum = estimatorCumulativeMetres(
+    track,
+    maxSpeedMps: activity.maxSpeedMps,
+  );
   for (final entry in _embeddedBestDistances.entries) {
-    final fastest = fastestWindowOf(track, entry.value);
+    final fastest = fastestWindowOf(track, entry.value, cumulative: cum);
     if (fastest == null) continue;
-    final secs = fastest.inSeconds;
+    // Rounded, not truncated: web's computeEmbeddedBests and the Go
+    // recompute round the same milliseconds.
+    final secs = (fastest.inMilliseconds / 1000).round();
     if (secs <= 0) continue;
     final existing = out[entry.key];
     final existingSecs = existing is int

@@ -253,14 +253,20 @@ Every incoming `Position` goes through:
 2. **Accuracy filter** — `pos.accuracy > _accuracyGateMetres` (default 20) → drop. 20 m is a compromise between rejecting urban-canyon corruption and keeping sparse fixes alive. Drops log via `debugPrint`, rate-limited to once per 5 s so an always-bad stream doesn't flood. Tightening below 20 m silently rejects realistic outdoor fixes — see [decisions.md § 21](../architecture/decisions.md).
 3. **Always** update `_currentWaypoint` (blue dot).
 4. **If not recording**, emit snapshot and return. Track and distance are untouched.
-5. **First tracked position** — set `_lastTrackedPosition` + `_lastTrackedPositionAt`, append to track, no distance delta yet.
-6. **Subsequent positions** — compute `delta` (haversine distance to last tracked position) and `dt` (seconds since last tracked). Three gates must all pass:
+5. **Distance** — every fix that cleared steps 1-2 goes to the shared `GpsDistanceEstimator` ([gps_distance.md](gps_distance.md), spec v1): a constant-velocity Kalman filter over position plus the chip's Doppler `speed` / `speedAccuracy` / `heading`, crediting `speed x dt` above a stationary floor and nothing across a > 10 s gap. **The headline distance no longer sums track hops** — that sum zig-zagged across the true line at running pace and read +18-45% long (a 3.1 mi course recorded as 3.92 mi). The steps below decide only what the **track** keeps (map, route match, pace window). Details:
+   - **Absent values.** Geolocator reports a missing value as a platform sentinel: iOS uses negative speed / course / accuracy; Android uses `0` speed with `0` speed accuracy and `0` heading with `0` heading accuracy. All of these read as absent (position-only path), never as a measured standstill — a `0 m/s` "Doppler" would pin every fix under the stationary floor.
+   - **Clock.** The estimator's time advances by the GPS-reported interval when it is positive and no longer than `max(real elapsed, 10 s)`, else by the `_stopwatch` interval. GPS time keeps a burst of queued fixes (Doze batching) one second apart; the stopwatch is the fallback for a backwards, stalled or leaping device clock. Kept on a 1/1024 s grid so an exact 10 s gap is exactly 10 s.
+   - **Pause / resume.** `pause()` calls `finish`; `resume()` folds the estimator into a distance offset and starts a fresh one, so the paused span is never integrated. `resumeSession` seeds the offset with the persisted distance.
+   - **Pedometer.** `setStepCount(cumulative)` (fed by `run_screen.dart`'s pedometer listener, skipped while paused) lets the estimator learn a stride and fill a > 10 s GPS gap with steps x stride. The filled metres land in `metadata.distance_step_filled_m`; every GPS run is tagged `metadata.distance_estimator: 'kalman_v1'` so the server recompute skips it. Treadmill mode is unchanged: the belt is the headline and neither key is written.
+   - **Stored fix quality.** Each waypoint carries `accuracyMetres`, `speedMps`, `speedAccuracyMps`, `bearingDeg` (2 dp, omitted when absent) in both `Waypoint.toJson` and the Storage track blob, so the server can recompute with the same Doppler input.
+6. **First tracked position** — set `_lastTrackedPosition` + `_lastTrackedPositionAt`, append to track, no distance delta yet.
+7. **Subsequent positions** — compute `delta` (haversine distance to last tracked position) and `dt` (seconds since last tracked). Three gates must all pass:
    - `delta > _trackThresholdMetres` — rejects jitter below the minimum-movement threshold
    - `delta < 100` — rejects implausible teleports
-   - `delta / dt <= _maxSpeedMps` — rejects implausible speed. A corrupt fix implying 50 m/s on foot would otherwise inflate distance and pace.
-7. If all three gates pass: append to track, add `delta` to `_distanceMetres`, update `_lastTrackedPosition` + `_lastTrackedPositionAt`.
-8. **Time-based gap re-anchor** — if the gates *don't* pass but `dt >= _gpsReanchorAfterSeconds` (10 s), the hop is treated as a real GPS gap (fixes dropped under cover / in a tunnel / while backgrounded, where the runner genuinely moved > 100 m) rather than a corrupt teleport. The anchor rebases to the new fix — append to track, update `_lastTrackedPosition` + `_lastTrackedPositionAt` + `_lastTrackedElapsed` — **without** crediting the un-sampled gap distance, exactly how `resume()` nulls the anchor so the first post-resume fix re-anchors. Without this the anchor stays stale, every later `delta` only grows past 100 m, and distance freezes for the rest of the run ([#330](https://github.com/Absence0760/threkir/issues/330)). **The gap is measured on two clocks and either one may fire it**: `dt` from the GPS-reported timestamps, and the monotonic `_stopwatch`. GPS time alone left the escape unreachable whenever the device clock misbehaved — a backwards jump (NTP correction, manual change) puts `lastAt` in the future so every later `dt` is non-positive, which is *both* implausible to the speed clamp *and* below the re-anchor window; a stalled clock (every fix sharing a timestamp) froze it outright. The stopwatch cannot go backwards or stall, so the rebase now fires on real elapsed time no matter what the timestamps do — see [decisions.md § 348](../architecture/decisions.md). The teleport guard is untouched: **both** clocks must agree the gap is short for a hop to fail closed, so a zero/near-zero-dt duplicate arriving immediately is still rejected. This also makes the weak-GPS banner honest: the first good fix after a real gap both clears `_weakGps` and re-anchors, so tracking truly resumes when the "distance paused" banner clears (row 16).
-9. `_emitSnapshot()` publishes the updated `RunSnapshot`.
+   - `delta / dt <= _maxSpeedMps` — rejects implausible speed. A corrupt fix implying 50 m/s on foot would otherwise pollute the track and the pace window.
+8. If all three gates pass: append to track, update `_lastTrackedPosition` + `_lastTrackedPositionAt`. (Distance was already credited by the estimator in step 5.)
+9. **Time-based gap re-anchor** — if the gates *don't* pass but `dt >= _gpsReanchorAfterSeconds` (10 s), the hop is treated as a real GPS gap (fixes dropped under cover / in a tunnel / while backgrounded, where the runner genuinely moved > 100 m) rather than a corrupt teleport. The anchor rebases to the new fix — append to track, update `_lastTrackedPosition` + `_lastTrackedPositionAt` + `_lastTrackedElapsed` — **without** crediting the un-sampled gap distance (the estimator independently re-anchors on its own > 10 s gap rule), exactly how `resume()` nulls the anchor so the first post-resume fix re-anchors. Without this the anchor stays stale, every later `delta` only grows past 100 m, and distance freezes for the rest of the run ([#330](https://github.com/Absence0760/threkir/issues/330)). **The gap is measured on two clocks and either one may fire it**: `dt` from the GPS-reported timestamps, and the monotonic `_stopwatch`. GPS time alone left the escape unreachable whenever the device clock misbehaved — a backwards jump (NTP correction, manual change) puts `lastAt` in the future so every later `dt` is non-positive, which is *both* implausible to the speed clamp *and* below the re-anchor window; a stalled clock (every fix sharing a timestamp) froze it outright. The stopwatch cannot go backwards or stall, so the rebase now fires on real elapsed time no matter what the timestamps do — see [decisions.md § 348](../architecture/decisions.md). The teleport guard is untouched: **both** clocks must agree the gap is short for a hop to fail closed, so a zero/near-zero-dt duplicate arriving immediately is still rejected. This also makes the weak-GPS banner honest: the first good fix after a real gap both clears `_weakGps` and re-anchors, so tracking truly resumes when the "distance paused" banner clears (row 16).
+10. `_emitSnapshot()` publishes the updated `RunSnapshot`.
 
 ### Per-activity tuning
 
@@ -274,7 +280,7 @@ Every incoming `Position` goes through:
 | hike | 3 | 2 | 6 | 1000 |
 | stroller | 3 | 2 | 9 | 1000 |
 
-`trackThresholdMetres` in the recorder is `max(distanceFilterMetres, minMovementMetres)` — i.e. the more conservative of the two knobs.
+`trackThresholdMetres` in the recorder is `max(distanceFilterMetres, minMovementMetres)` — i.e. the more conservative of the two knobs. It gates the **track** only; distance comes from the estimator, which uses `maxSpeedMps` as its speed cap.
 
 ### Advanced GPS override
 
@@ -287,7 +293,7 @@ A user-facing toggle (Settings > Advanced GPS, mobile_android only) overrides th
 | `minMovementMetres` | per-activity (2 or 4) | 1 |
 | `accuracyGateMetres` | 20 (default) | 20 (default) |
 
-`maxSpeedMps` stays on the per-activity value.
+`maxSpeedMps` stays on the per-activity value. Since the estimator (spec v1), the toggle affects only the location accuracy mode and the track's density — **not distance**, which every fix past the accuracy gate feeds regardless of the movement threshold.
 
 The accuracy gate stays at the 20 m default in both modes — it has to, because the reported `pos.accuracy` is a real-world uncertainty estimate, not a knob the OS scales down when you ask for `best`. A tighter gate silently rejects the 15–30 m fixes that consumer phones routinely produce outdoors. See [decisions.md § 21](../architecture/decisions.md).
 
@@ -492,9 +498,10 @@ All in `apps/mobile_android/lib/screens/run_screen.dart` unless noted.
 | `_offRouteThresholdMetres` | 40 m | Distance from selected route that triggers off-route warning |
 | `_positionTweenDuration` (in `live_run_map.dart`) | 900 ms | Dot interpolation tween length |
 | `movingTimeOf`'s `minSpeedMps` (in `run_stats.dart`) | 0.5 m/s | Minimum speed to count toward derived moving time |
-| `ActivityType.maxSpeedMps` (per-activity, in `core_models`' `activity_type.dart`) | run 10 / walk 5 / cycle 25 / hike 6 | Speed clamp for dropping bad GPS fixes |
-| `ActivityType.gpsDistanceFilter` (m) | run 3 / cycle 5 | Software track-append threshold |
-| `ActivityType.minMovementMetres` (m) | run 2 / cycle 4 | Minimum delta to count as real motion |
+| `ActivityType.maxSpeedMps` (per-activity, in `core_models`' `activity_type.dart`) | run 10 / walk 5 / cycle 25 / hike 6 | Track speed clamp for bad fixes, and the estimator's `maxSpeedMps` (Doppler cap + credited-speed ceiling) |
+| `ActivityType.gpsDistanceFilter` (m) | run 3 / cycle 5 | Software track-append threshold (track only, not distance) |
+| `ActivityType.minMovementMetres` (m) | run 2 / cycle 4 | Minimum delta to append to the track (not distance) |
+| `GpsDistanceEstimator` constants | see [gps_distance.md](gps_distance.md) | Distance filter; fixed by the spec and the golden vectors, never tuned per port |
 
 ---
 

@@ -125,7 +125,8 @@ across `CalendarBridgeRruleTests` (the RRULE subset `buildRrule` emits, and the
 negative half that must yield no rule rather than a different one,
 [decisions § 692](../architecture/decisions.md)) and `WatchIngestBridgeTests`
 (the 512-point route cap, argument decoding, the ingest payload allowlist, and
-the pending-buffer concurrency). It replaced the stock Xcode `testExample` stub,
+the holding-pen concurrency; since [decisions § 1801](../architecture/decisions.md),
+also the wait for Dart's `ready` and the true-only hand-off reply). It replaced the stock Xcode `testExample` stub,
 which had been the whole of the iOS native coverage.
 
 ```

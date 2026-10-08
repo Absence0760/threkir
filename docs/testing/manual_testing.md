@@ -271,8 +271,8 @@ The Go worker at `apps/job_worker/` drains the `jobs` queue. Default matcher is 
 | Wear OS session push | Wear OS + Android phone, paired | Sign in on phone → watch app reads `{access_token, refresh_token, user_id, base_url, anon_key, expires_at_ms}` from `/supabase_session` data layer | Watch pre-run shows the user's display name without the Sign-in chip. |
 | Wear OS token refresh | Wear OS | Let the watch sit until the access token expires, then drain the queue | `RunViewModel.refreshIfExpired` exchanges the refresh token; `drainQueue` retries once on HTTP 401 by refreshing then re-pushing. Sync succeeds. |
 | Apple Watch run ingest | Apple Watch + iOS Flutter | Record on the watch, stop, foreground iOS Flutter | Watch transfers a `WCSessionFile` (gzipped JSON track + metadata); `WatchIngestBridge.swift` posts to Dart via `run_app/watch_ingest`; `LocalRunStore.save` persists; run appears in the home list. |
-| Pre-Flutter buffering | Apple Watch | Send a watch payload while the iOS Flutter app is force-stopped | `WatchIngestBridge` buffers in-process; flushes on next attach. |
-| iOS WatchIngestQueue persistence | iOS Flutter | Receive a watch payload, then sign out before sync, then sign in | The queue persists to disk and replays on sign-in — no run lost. |
+| Pre-Flutter buffering | Apple Watch | Send a watch payload while the iOS Flutter app is force-stopped | `WatchIngestBridge` holds it in its pen until Dart signals `ready`, then hands it to `WatchIngestQueue`, which writes it to disk before answering (decisions § 1801). |
+| iOS WatchIngestQueue persistence | iOS Flutter | Receive a watch payload signed in but offline, force-quit the app, relaunch with connectivity | The run was on disk before the bridge let go of it; the relaunch's `SyncService` startup trigger drains it — no run lost (decisions § 1801). |
 
 ---
 

@@ -20,6 +20,11 @@ interface TrackPoint {
 	/// TrackPoint.bpm). Lets HR-zone e2e tests plant a track that
 	/// the run-detail page reads to compute the zone breakdown.
 	bpm?: number;
+	/// The GPS distance smoother's position for the fix (matches
+	/// `src/lib/types.ts` TrackPoint.smoothedLat / smoothedLng). Lets a spec
+	/// plant a fix whose drawn position differs from its raw one.
+	smoothedLat?: number;
+	smoothedLng?: number;
 }
 
 /**

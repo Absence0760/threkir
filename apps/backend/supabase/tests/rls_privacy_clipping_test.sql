@@ -14,7 +14,7 @@
 
 begin;
 
-select plan(19);
+select plan(23);
 
 -- ── Fixture: one user with privacy zones, one user without ──
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
@@ -293,6 +293,93 @@ begin
 end;
 $$;
 select pass('clip_track_for_user preserves first + last endpoints when downsampling');
+
+-- ── Smoothed positions (20270719000005) ──
+-- A stored waypoint may carry the RTS smoother's position as smoothedLat /
+-- smoothedLng, and every line reader draws that pair when both halves are
+-- numbers. 8.5425 is ~189 m east of the zone centre (out of the 150 m zone);
+-- 8.5410 is ~76 m east (in).
+
+-- 16. A fix whose raw position is outside the zone but whose smoothed
+--     position is inside is dropped from either end exactly as a raw
+--     in-zone fix is — so the first and last vertices a non-owner's map
+--     draws are outside the zone in BOTH positions. Survivors keep their
+--     smoothed pair.
+select is(
+  clip_track_for_user(
+    '00000000-0000-0000-0000-00000000c101',
+    jsonb_build_array(
+      jsonb_build_object('lat', 47.37, 'lng', 8.5425,
+                         'smoothedLat', 47.37, 'smoothedLng', 8.5410),  -- smoothed in → drop
+      jsonb_build_object('lat', 47.37, 'lng', 8.5550,
+                         'smoothedLat', 47.37, 'smoothedLng', 8.5551),  -- out
+      jsonb_build_object('lat', 47.37, 'lng', 8.5600,
+                         'smoothedLat', 47.37, 'smoothedLng', 8.5601),  -- out
+      jsonb_build_object('lat', 47.37, 'lng', 8.5425,
+                         'smoothedLat', 47.37, 'smoothedLng', 8.5410)   -- smoothed in → drop
+    )
+  ),
+  jsonb_build_array(
+    jsonb_build_object('lat', 47.37, 'lng', 8.5550, 'smoothedLat', 47.37, 'smoothedLng', 8.5551),
+    jsonb_build_object('lat', 47.37, 'lng', 8.5600, 'smoothedLat', 47.37, 'smoothedLng', 8.5601)
+  ),
+  'clip drops a leading or trailing fix whose smoothed position is in a zone'
+);
+
+-- 17. A raw in-zone fix is still dropped when its smoothed position is out.
+select is(
+  clip_track_for_user(
+    '00000000-0000-0000-0000-00000000c101',
+    jsonb_build_array(
+      jsonb_build_object('lat', 47.37, 'lng', 8.5400,
+                         'smoothedLat', 47.37, 'smoothedLng', 8.5550),  -- raw in → drop
+      jsonb_build_object('lat', 47.37, 'lng', 8.5600)
+    )
+  ),
+  jsonb_build_array(jsonb_build_object('lat', 47.37, 'lng', 8.5600)),
+  'clip drops a raw in-zone fix whatever its smoothed position'
+);
+
+-- 18. A half pair, or a pair that is not two JSON numbers, is no position to
+--     any reader, so the raw position decides — here out, so nothing drops.
+select is(
+  clip_track_for_user(
+    '00000000-0000-0000-0000-00000000c101',
+    jsonb_build_array(
+      jsonb_build_object('lat', 47.37, 'lng', 8.5425, 'smoothedLat', 47.37),
+      jsonb_build_object('lat', 47.37, 'lng', 8.5425,
+                         'smoothedLat', '47.37', 'smoothedLng', '8.5410'),
+      jsonb_build_object('lat', 47.37, 'lng', 8.5550)
+    )
+  ),
+  jsonb_build_array(
+    jsonb_build_object('lat', 47.37, 'lng', 8.5425, 'smoothedLat', 47.37),
+    jsonb_build_object('lat', 47.37, 'lng', 8.5425,
+                       'smoothedLat', '47.37', 'smoothedLng', '8.5410'),
+    jsonb_build_object('lat', 47.37, 'lng', 8.5550)
+  ),
+  'clip ignores a half or non-numeric smoothed pair, as every reader does'
+);
+
+-- 19. Interior fixes are kept whole, smoothed pair included, as the raw
+--     loop-home points always were (test 10).
+select is(
+  clip_track_for_user(
+    '00000000-0000-0000-0000-00000000c101',
+    jsonb_build_array(
+      jsonb_build_object('lat', 47.37, 'lng', 8.5550),
+      jsonb_build_object('lat', 47.37, 'lng', 8.5425,
+                         'smoothedLat', 47.37, 'smoothedLng', 8.5410),
+      jsonb_build_object('lat', 47.37, 'lng', 8.5600)
+    )
+  ),
+  jsonb_build_array(
+    jsonb_build_object('lat', 47.37, 'lng', 8.5550),
+    jsonb_build_object('lat', 47.37, 'lng', 8.5425, 'smoothedLat', 47.37, 'smoothedLng', 8.5410),
+    jsonb_build_object('lat', 47.37, 'lng', 8.5600)
+  ),
+  'clip keeps an interior fix whose smoothed position is in a zone'
+);
 
 -- 14. The most important wire-leak guard: the SECURITY DEFINER context
 --     bypasses RLS on user_settings to read zones. Verify that zones

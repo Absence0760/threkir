@@ -163,6 +163,94 @@ test.describe('/share/run/[id] — server-side privacy-zone clipping', () => {
 	});
 });
 
+// ~390 m north of the zone centre (outside the 300 m zone) with a smoothed
+// position ~170 m north (inside it). Every line reader draws the smoothed
+// pair, so a clipper that tests the raw fix alone hands a non-owner a drawn
+// vertex inside the zone (migration 20270719000005).
+const SMOOTHED_INTO_ZONE_FIX = {
+	lat: ZONE_LAT + 0.0035,
+	lng: ZONE_LNG,
+	ele: 11,
+	smoothedLat: ZONE_LAT + 0.0015,
+	smoothedLng: ZONE_LNG
+};
+
+test.describe('/share/run/[id] — a smoothed position inside a zone is clipped too', () => {
+	let plantedRunId: string | null = null;
+
+	test.beforeEach(async () => {
+		await setUserSetting(USER_A.id, PRIVACY_ZONES_KEY, [TEST_ZONE]);
+		plantedRunId = await insertRun({
+			user_id: USER_A.id,
+			started_at: new Date('2026-05-10T10:00:00Z').toISOString(),
+			duration_s: 1500,
+			distance_m: 4500,
+			is_public: true,
+			metadata: { activity_type: 'run', title: 'e2e smoothed-position clip' },
+			track: [SMOOTHED_INTO_ZONE_FIX, ...OUT_OF_ZONE_TRACK, SMOOTHED_INTO_ZONE_FIX]
+		});
+	});
+
+	test.afterEach(async () => {
+		if (plantedRunId) {
+			try {
+				await deleteRun(plantedRunId);
+			} catch {
+				/* best-effort */
+			}
+			plantedRunId = null;
+		}
+		await setUserSetting(USER_A.id, PRIVACY_ZONES_KEY, [SEEDED_ZONE]);
+	});
+
+	test('the non-owner response drops an edge fix whose smoothed position is in the zone', async ({
+		browser
+	}) => {
+		const ctx = await browser.newContext({ storageState: USER_B.storageStatePath });
+		await ctx.addInitScript(() => {
+			localStorage.setItem(
+				'cookie_consent',
+				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
+			);
+		});
+		const page = await ctx.newPage();
+		try {
+			const efPromise = page.waitForResponse(
+				(r) =>
+					r.url().includes('/functions/v1/clip-public-track') &&
+					r.request().method() === 'POST',
+				{ timeout: 15_000 }
+			);
+			await page.goto(`/share/run/${plantedRunId}`);
+			const ef = await efPromise;
+
+			expect(ef.status()).toBe(200);
+			const body = (await ef.json()) as {
+				points: Array<{ lat: number; lng: number; smoothedLat?: number; smoothedLng?: number }>;
+			};
+			const zones = [{ lat: ZONE_LAT, lng: ZONE_LNG, radius_m: ZONE_RADIUS_M }];
+			// The planted edge fix really is the case under test: raw out, smoothed in.
+			expect(isInAnyZone(SMOOTHED_INTO_ZONE_FIX, zones)).toBe(false);
+			expect(
+				isInAnyZone(
+					{ lat: SMOOTHED_INTO_ZONE_FIX.smoothedLat, lng: SMOOTHED_INTO_ZONE_FIX.smoothedLng },
+					zones
+				)
+			).toBe(true);
+
+			expect(body.points.length).toBe(OUT_OF_ZONE_TRACK.length);
+			for (const p of body.points) {
+				expect(isInAnyZone(p, zones)).toBe(false);
+				if (typeof p.smoothedLat === 'number' && typeof p.smoothedLng === 'number') {
+					expect(isInAnyZone({ lat: p.smoothedLat, lng: p.smoothedLng }, zones)).toBe(false);
+				}
+			}
+		} finally {
+			await ctx.close();
+		}
+	});
+});
+
 test.describe('/share/run/[id] — owner-zone clipping uses owner zones, not viewer zones', () => {
 	let plantedRunId: string | null = null;
 

@@ -65,6 +65,73 @@ export function timingSafeEqual(a: string, b: string): boolean {
   return mismatch === 0;
 }
 
+/// Verify a `t=<unix-seconds>,v1=<hex hmac-sha256>` signature header.
+///
+/// Stripe (`Stripe-Signature`) and RevenueCat
+/// (`X-RevenueCat-Webhook-Signature`) both sign this way: the signed payload
+/// is the literal string `${t}.${rawBody}`, keyed by the endpoint's signing
+/// secret. There can be several v1 values during a secret rotation, and a
+/// `v0` for older schemes, which we ignore.
+///
+/// Verification runs on the RAW request bytes — NOT a JSON.parse'd and
+/// re-stringified body, which won't round-trip whitespace/key-order and
+/// would break every signature.
+///
+/// Two gates, both required:
+///   1. signature — recompute HMAC over `${t}.${rawBody}`, constant-time
+///      compare against each `v1` value (any match passes — covers the
+///      dual-signature rotation window).
+///   2. freshness — reject if `|now - t|` exceeds the tolerance (default
+///      5 min, the default both providers recommend). `t` is stamped per
+///      delivery attempt, so a provider retry carries a fresh one; the gate
+///      is what makes a captured POST replayed later fail even though its
+///      HMAC is valid.
+export async function verifyTimestampedHmac(
+  rawBody: string,
+  sigHeader: string | null,
+  secret: string,
+  nowMs: number,
+  toleranceSec = 300,
+): Promise<boolean> {
+  if (!sigHeader || !secret) return false;
+
+  const parts = sigHeader.split(',');
+  let timestamp: number | null = null;
+  const v1Sigs: string[] = [];
+  for (const part of parts) {
+    const idx = part.indexOf('=');
+    if (idx === -1) continue;
+    const key = part.slice(0, idx).trim();
+    const value = part.slice(idx + 1).trim();
+    if (key === 't') {
+      // Exactly an integer literal. `Number.parseInt` stops at the first
+      // character it cannot read, so `t=1700000000junk` and `t=+1700000000`
+      // both recovered the real timestamp and verified — and because the
+      // signed payload is rebuilt from the PARSED integer rather than from
+      // the header text, a change to sign the text instead would have been
+      // invisible to every test, since a clean header round-trips. Requiring
+      // the two to be the same string removes the distinction.
+      if (!/^\d+$/.test(value)) continue;
+      const n = Number.parseInt(value, 10);
+      if (Number.isFinite(n)) timestamp = n;
+    } else if (key === 'v1') {
+      v1Sigs.push(value);
+    }
+  }
+
+  if (timestamp === null || v1Sigs.length === 0) return false;
+
+  // Freshness — reject a stale (replayed) or wildly future-dated event.
+  const ageSec = Math.abs(nowMs / 1000 - timestamp);
+  if (ageSec > toleranceSec) return false;
+
+  const expected = await hmacHex(secret, `${timestamp}.${rawBody}`);
+  for (const candidate of v1Sigs) {
+    if (timingSafeEqual(candidate, expected)) return true;
+  }
+  return false;
+}
+
 export type FreshnessOutcome = 'ok' | 'too_old' | 'too_future';
 
 /// Bound an event's wall-clock to a (REPLAY_WINDOW, CLOCK_SKEW) window.

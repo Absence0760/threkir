@@ -12,6 +12,7 @@ import {
   shouldReleaseDedupe,
   timingSafeEqual,
   validateFreshness,
+  verifyTimestampedHmac,
 } from './webhook_security.ts';
 
 // Reference vector pinned by RFC 4868 §2.7.2 (SHA-256 case 4): a key
@@ -260,4 +261,52 @@ Deno.test('a throw past the dispatcher releases the row too', async () => {
       `${fn} must release the dedupe row before rethrowing`,
     );
   }
+});
+
+// `t=<unix>,v1=<hex>` over `${t}.${body}` — RevenueCat's
+// X-RevenueCat-Webhook-Signature and Stripe's Stripe-Signature. The digests
+// were computed with `openssl dgst -sha256 -hmac`, not with hmacHex, so a
+// change to what gets signed cannot pass by agreeing with itself.
+const TS_SECRET = 'rc_signing_secret';
+const TS_BODY = '{"event":{"id":"evt_1"}}';
+const TS_T = 1700000000;
+const TS_NOW_MS = TS_T * 1000;
+const TS_V1 = '60cd9c38377698f209eb1653cd8137c3c3fc2846adc53cefcc539f15a4ecb0bf';
+const BODY_ONLY_V1 = '6052cd627d188bae462d6cc408bc7d6d1da15ab5b2b50497324eb0fdc3b20181';
+
+Deno.test('verifyTimestampedHmac accepts the documented t=,v1= header', async () => {
+  assert(await verifyTimestampedHmac(TS_BODY, `t=${TS_T},v1=${TS_V1}`, TS_SECRET, TS_NOW_MS));
+});
+
+Deno.test('verifyTimestampedHmac rejects a digest over the body alone', async () => {
+  // hmac(body) was the scheme revenuecat-webhook used to expect; the signed
+  // payload must include the timestamp or a captured digest never expires.
+  assertStrictEquals(
+    await verifyTimestampedHmac(TS_BODY, `t=${TS_T},v1=${BODY_ONLY_V1}`, TS_SECRET, TS_NOW_MS),
+    false,
+  );
+  assertStrictEquals(await verifyTimestampedHmac(TS_BODY, BODY_ONLY_V1, TS_SECRET, TS_NOW_MS), false);
+});
+
+Deno.test('verifyTimestampedHmac rejects a stale or future-dated timestamp', async () => {
+  const header = `t=${TS_T},v1=${TS_V1}`;
+  assert(await verifyTimestampedHmac(TS_BODY, header, TS_SECRET, TS_NOW_MS + 300_000));
+  assertStrictEquals(await verifyTimestampedHmac(TS_BODY, header, TS_SECRET, TS_NOW_MS + 301_000), false);
+  assertStrictEquals(await verifyTimestampedHmac(TS_BODY, header, TS_SECRET, TS_NOW_MS - 301_000), false);
+});
+
+Deno.test('verifyTimestampedHmac accepts any v1 during a rotation, and nothing without a secret', async () => {
+  const rotating = `t=${TS_T},v1=${'0'.repeat(64)},v1=${TS_V1}`;
+  assert(await verifyTimestampedHmac(TS_BODY, rotating, TS_SECRET, TS_NOW_MS));
+  assertStrictEquals(await verifyTimestampedHmac(TS_BODY, rotating, '', TS_NOW_MS), false);
+  assertStrictEquals(await verifyTimestampedHmac(TS_BODY, null, TS_SECRET, TS_NOW_MS), false);
+});
+
+Deno.test('revenuecat-webhook verifies the header RevenueCat sends', async () => {
+  const src = await Deno.readTextFile(new URL('../revenuecat-webhook/index.ts', import.meta.url));
+  assert(
+    src.includes(`req.headers.get('x-revenuecat-webhook-signature')`),
+    'revenuecat-webhook must read X-RevenueCat-Webhook-Signature — the only header RevenueCat signs',
+  );
+  assert(src.includes('verifyTimestampedHmac('), 'revenuecat-webhook must verify through verifyTimestampedHmac');
 });

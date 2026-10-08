@@ -92,9 +92,9 @@ values ('a0000000-0000-0000-0000-000000000cc1', 'a0000000-0000-0000-0000-0000000
        ('a0000000-0000-0000-0000-000000000cc2', 'a0000000-0000-0000-0000-000000000e12',
         'Apr Hidden Aid', 1, 'a0000000-0000-0000-0000-000000000f11');
 
-insert into event_pricing (event_id, price_cents, platform_fee_bps)
-values ('a0000000-0000-0000-0000-000000000e11', 2200, 500),
-       ('a0000000-0000-0000-0000-000000000e12', 3300, 500);
+insert into event_pricing (event_id, price_cents)
+values ('a0000000-0000-0000-0000-000000000e11', 2200),
+       ('a0000000-0000-0000-0000-000000000e12', 3300);
 
 -- A public route on the public club and a private run on it, plus their
 -- hidden siblings, for the two views.

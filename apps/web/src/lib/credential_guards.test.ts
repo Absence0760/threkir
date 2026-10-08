@@ -137,7 +137,7 @@ test('refresh-tokens refuses a CRON_SECRET too short to be one, and CI supplies 
 	);
 });
 
-test('revenuecat-webhook verifies HMAC before constructing the Supabase client', () => {
+test('revenuecat-webhook verifies its signature before constructing the Supabase client', () => {
 	// Reason: the webhook is the ONLY legitimate writer of
 	// user_profiles.subscription_tier (the lock_subscription_columns
 	// trigger from migration 20260624_001 rejects writes from anything
@@ -150,7 +150,7 @@ test('revenuecat-webhook verifies HMAC before constructing the Supabase client',
 	// Pinning the call order keeps the privilege boundary obvious.
 	const source = read('../backend/supabase/functions/revenuecat-webhook/index.ts');
 	const lines = source.split('\n');
-	const tseqLine = lines.findIndex((l) => /timingSafeEqual\s*\(/.test(l));
+	const verifyLine = lines.findIndex((l) => /verifyTimestampedHmac\s*\(/.test(l));
 	// The optional type argument is not cosmetic: every Edge Function client
 	// is `createClient<Database>(...)` since decisions § 762, and a pattern
 	// that only matched the bare call stopped locating it at all — this guard
@@ -158,9 +158,9 @@ test('revenuecat-webhook verifies HMAC before constructing the Supabase client',
 	// exists to produce, but a narrower ordering guard could have gone quiet.
 	const createLine = lines.findIndex((l) => /createClient\s*(?:<[^>]*>)?\s*\(/.test(l));
 	assert.notStrictEqual(
-		tseqLine,
+		verifyLine,
 		-1,
-		'Could not locate timingSafeEqual call in revenuecat-webhook/index.ts — has the HMAC check been removed or renamed?',
+		'Could not locate the verifyTimestampedHmac call in revenuecat-webhook/index.ts — has the signature check been removed or renamed?',
 	);
 	assert.notStrictEqual(
 		createLine,
@@ -168,8 +168,8 @@ test('revenuecat-webhook verifies HMAC before constructing the Supabase client',
 		'Could not locate createClient call in revenuecat-webhook/index.ts.',
 	);
 	assert.ok(
-		tseqLine < createLine,
-		`HMAC timingSafeEqual (line ${tseqLine + 1}) must appear before createClient (line ${createLine + 1}) — ` +
+		verifyLine < createLine,
+		`verifyTimestampedHmac (line ${verifyLine + 1}) must appear before createClient (line ${createLine + 1}) — ` +
 			'a service-role client constructed before HMAC verification opens a forge-Pro-upgrade window via the webhook URL.',
 	);
 });

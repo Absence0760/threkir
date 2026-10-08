@@ -189,11 +189,18 @@ class RunRecorder {
   // (which used to fire 1×/second minimum + once per GPS fix).
   late final UnmodifiableListView<Waypoint> _trackView =
       UnmodifiableListView(_track);
-  // Lowest `_track` index [_calculatePace] may walk back to. Bumped to the
-  // current track length on every resume so the rolling-pace window never
-  // straddles a pause (or a dead-process gap), whose wall-clock duration would
-  // otherwise be charged to the post-resume distance.
-  int _paceFloorIdx = 0;
+  // Live pace's rolling window: (estimator time, estimator distance) at each
+  // fix the estimator took, oldest first, pruned to the ~200 m [_calculatePace]
+  // reads. Pace is the estimator's distance gained over that window, not the
+  // hop-sum of the raw track, which over-reads by the jitter the estimator
+  // removes. [_sealPaceWindow] empties it at every pause, resume, re-anchored
+  // GPS gap and new estimator stretch, so the window never spans a gap whose
+  // wall-clock time was not matched by credited distance.
+  final ListQueue<({double t, double m})> _paceSamples = ListQueue();
+  int _paceSamplesSinceSeal = 0;
+  static const double _paceWindowM = 200;
+  static const double _paceMinWindowM = 50;
+  static const int _paceMinSamples = 5;
   /// Latest raw GPS fix — drives the blue dot on the live map and updates
   /// on every fix, independent of the track-append threshold.
   Waypoint? _currentWaypoint;
@@ -432,7 +439,7 @@ class RunRecorder {
     _matchedAlongM = null;
     _distanceAtLastMatch = 0;
     _currentWaypointTrusted = true;
-    _paceFloorIdx = 0;
+    _sealPaceWindow();
     _recording = false;
     _paused = false;
     _route = route;
@@ -613,7 +620,7 @@ class RunRecorder {
     _lastTrackedPosition = null;
     _lastTrackedPositionAt = null;
     _lastTrackedElapsed = null;
-    _paceFloorIdx = 0;
+    _sealPaceWindow();
     _weakGps = false;
     _resetTreadmillAccumulators();
     _recording = true;
@@ -783,7 +790,7 @@ class RunRecorder {
     _lastTrackedPosition = null;
     _lastTrackedPositionAt = null;
     _lastTrackedElapsed = null;
-    _paceFloorIdx = _track.length;
+    _sealPaceWindow();
     _weakGps = false;
     _resetTreadmillAccumulators();
     _recording = true;
@@ -859,7 +866,7 @@ class RunRecorder {
     _matchedAlongM = null;
     _distanceAtLastMatch = 0;
     _currentWaypointTrusted = true;
-    _paceFloorIdx = 0;
+    _sealPaceWindow();
     _recording = false;
     _paused = false;
     _route = route;
@@ -908,9 +915,9 @@ class RunRecorder {
   @visibleForTesting
   bool get debugWeakGps => _weakGps;
 
-  /// Test-only: rolling-pace computed from the trailing ~200 m of track.
-  /// Returns null when the track is too short or timestamps are missing —
-  /// matches the contract documented on [RunSnapshot.currentPaceSecondsPerKm].
+  /// Test-only: rolling pace over the estimator's trailing ~200 m. Null
+  /// until enough fixes have landed since the last pause, resume or GPS gap —
+  /// the contract documented on [RunSnapshot.currentPaceSecondsPerKm].
   @visibleForTesting
   double? get debugPaceSecondsPerKm => _calculatePace();
 
@@ -955,7 +962,7 @@ class RunRecorder {
     _lastTrackedPosition = null; // avoid a big jump after resume
     _lastTrackedPositionAt = null;
     _lastTrackedElapsed = null;
-    _paceFloorIdx = _track.length;
+    _sealPaceWindow();
     // Drop the speed-integration anchor too. Without this, the first
     // post-resume belt sample integrates dt back to a timestamp written
     // during/before the pause, crediting the paused gap as distance for any
@@ -1035,6 +1042,31 @@ class RunRecorder {
     _estFixMono = null;
     _estFixGps = null;
     _estStepT = null;
+    _sealPaceWindow();
+  }
+
+  // The estimator re-anchors across a fix interval longer than this, crediting
+  // none of it, so the pace window must not span it either. Mirrors the
+  // estimator's own scaling of [GpsDistanceEstimator.gapS].
+  static final double _estimatorGapS = GpsDistanceEstimator.gapS *
+      max(1.0, _fixInterval.inMilliseconds / 1000);
+
+  void _sealPaceWindow() {
+    _paceSamples.clear();
+    _paceSamplesSinceSeal = 0;
+  }
+
+  void _addPaceSample(double t) {
+    final last = _paceSamples.isEmpty ? null : _paceSamples.last;
+    if (last != null && t <= last.t) return;
+    if (last != null && t - last.t > _estimatorGapS) _sealPaceWindow();
+    final m = _estimator.distanceM;
+    _paceSamples.addLast((t: t, m: m));
+    _paceSamplesSinceSeal++;
+    while (_paceSamples.length > 2 &&
+        m - _paceSamples.elementAt(1).m >= _paceWindowM) {
+      _paceSamples.removeFirst();
+    }
   }
 
   // Estimator time is kept on a 1/1024 s grid: every value is then an exact
@@ -1354,9 +1386,11 @@ class RunRecorder {
       // Distance comes from the estimator, which sees EVERY fix that cleared
       // the gates above; the movement-gated rule below only decides what the
       // track keeps for the map and the route match.
+      double? estT;
       try {
+        final t = _estimatorFixTime(pos.timestamp);
         _estimator.addFix(
-          t: _estimatorFixTime(pos.timestamp),
+          t: t,
           lat: pos.latitude,
           lng: pos.longitude,
           accuracyM: fix.accuracyM,
@@ -1364,6 +1398,7 @@ class RunRecorder {
           speedAccuracyMps: fix.speedAccuracyMps,
           bearingDeg: fix.bearingDeg,
         );
+        estT = t;
       } catch (e) {
         debugPrint('RunRecorder: estimator rejected fix — $e');
       }
@@ -1440,15 +1475,14 @@ class RunRecorder {
           //
           // Seal the pace window at the same time, exactly as resume() and
           // _beginResumed() do — this branch creates the identical
-          // discontinuity. The gap's metres are deliberately NOT credited, so
-          // a rolling window spanning it times the un-credited distance
-          // against the gap's clock: 5 clean fixes at 200 s/km followed by a
-          // 12 s Doze batch 150 m on measured 128 s/km, i.e. the recorder
-          // claiming zero extra metres and a sub-world-record pace at once.
-          // That value feeds the pace-alert and cut-off catch-up voice cues
-          // and live_cutoff_eta's projection, so the error runs in the
-          // direction that SUPPRESSES a safety warning.
-          _paceFloorIdx = _track.length;
+          // discontinuity. A window spanning a gap whose metres were not
+          // credited times the wrong distance against the gap's clock: when
+          // pace was the track hop-sum, 5 clean fixes at 200 s/km followed by
+          // a 12 s Doze batch 150 m on measured 128 s/km. That value feeds the
+          // pace-alert and cut-off catch-up voice cues and live_cutoff_eta's
+          // projection, so the error ran in the direction that SUPPRESSES a
+          // safety warning.
+          _sealPaceWindow();
           _lastTrackedPosition = pos;
           _lastTrackedPositionAt = pos.timestamp;
           _lastTrackedElapsed = _stopwatch.elapsed;
@@ -1458,6 +1492,7 @@ class RunRecorder {
           _currentWaypointTrusted = false;
         }
       }
+      if (estT != null) _addPaceSample(estT);
     } else {
       _currentWaypointTrusted = true;
     }
@@ -1675,40 +1710,27 @@ class RunRecorder {
     return cum;
   }
 
-  /// Calculate pace from the last ~200m of track.
+  /// Live pace, seconds per km: the estimator's distance gained over the
+  /// last ~[_paceWindowM], against the time it took. Null until the window
+  /// since the last seal holds [_paceMinSamples] fixes and [_paceMinWindowM].
+  ///
+  /// The window never reaches back across a pause, a process-kill resume or a
+  /// re-anchored GPS gap (see [_sealPaceWindow]): those gaps' wall-clock time
+  /// carries no credited distance, so a window spanning one read a pace
+  /// hundreds of times too slow after a resume, and one spanning the #330 gap
+  /// re-anchor read far too fast. The run screen feeds this to the pace-alert
+  /// and cut-off catch-up voice cues and to the cut-off ETA projection.
   double? _calculatePace() {
-    // Never walk back across a pause / process-kill boundary. `_track` keeps
-    // the pre-pause tail, but its timestamps are separated from the
-    // post-resume points by the paused wall-clock gap — which is unbounded
-    // (a resumed run may have been dead for up to kResumableWindow). Timing
-    // post-resume distance against a pre-pause timestamp reported a pace
-    // hundreds of times too slow for the first ~200 m after every resume, and
-    // the run screen feeds that number to the pace-alert and cut-off
-    // catch-up voice cues.
-    final floor = _paceFloorIdx.clamp(0, _track.length);
-    if (_track.length - floor < 5) return null;
-
-    double segmentDistance = 0;
-    int segmentStart = _track.length - 1;
-
-    for (int i = _track.length - 2; i >= floor; i--) {
-      final a = _track[i];
-      final b = _track[i + 1];
-      segmentDistance += _haversine(a.lat, a.lng, b.lat, b.lng);
-      segmentStart = i;
-      if (segmentDistance >= 200) break;
+    if (_paceSamplesSinceSeal < _paceMinSamples || _paceSamples.length < 2) {
+      return null;
     }
-
-    if (segmentDistance < 50) return null;
-
-    final startTs = _track[segmentStart].timestamp;
-    final endTs = _track.last.timestamp;
-    if (startTs == null || endTs == null) return null;
-
-    final segmentTime = endTs.difference(startTs).inMilliseconds / 1000.0;
-    if (segmentTime <= 0) return null;
-
-    return (segmentTime / segmentDistance) * 1000; // seconds per km
+    final first = _paceSamples.first;
+    final last = _paceSamples.last;
+    final gained = last.m - first.m;
+    if (gained < _paceMinWindowM) return null;
+    final seconds = last.t - first.t;
+    if (seconds <= 0) return null;
+    return seconds / gained * 1000;
   }
 
   static double _haversine(double lat1, double lng1, double lat2, double lng2) {

@@ -1,8 +1,8 @@
 <!doctype html>
 <!-- Prerender default only. The web app is statically prerendered with no
      per-request SSR (adapter-static), so lang/dir are baked as en/ltr at
-     build time and then updated client-side on first mount by the i18n
-     runtime ($lib/i18n/store.svelte initLocale → document.documentElement),
+     build time and then updated client-side before the first render by the
+     i18n runtime ($lib/i18n/store.svelte loadRouteCatalogues → document.documentElement),
      mirroring the theme + unit signals. dir is the single RTL switch-point:
      the app shell uses CSS logical properties so flipping it to "rtl"
      mirrors the frame with no further plumbing. audit/i18n-readiness W-2. -->

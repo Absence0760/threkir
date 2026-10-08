@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { settleTransitions } from '../fixtures/transitions';
+
 /**
  * /learn shares the landing page's public chrome (issue #212).
  *
@@ -117,6 +119,8 @@ test.describe('/learn shared public chrome', () => {
 			const box = await nav.boundingBox();
 			expect(box!.y, 'the header scrolled away').toBe(0);
 			await expect(nav.locator('.nav-signin')).toBeInViewport();
+			// The ground fades in over --transition-base; read it once settled.
+			await settleTransitions(nav, { subtree: false });
 			const alpha = await nav.evaluate((el) => {
 				const m = getComputedStyle(el).backgroundColor.match(/rgba?\(([^)]+)\)/);
 				const parts = m ? m[1].split(',').map(Number) : [];

@@ -680,7 +680,8 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 	'lib/routes/basemap_contrast.ts': {
 		F2EFE9: [1, 'cartographic'], '1A1B20': [1, 'cartographic'],
 		AAD3DF: [1, 'cartographic'], DCDCDC: [1, 'cartographic'],
-		FFFFFF: [2, 'cartographic'], '1E1B4B': [1, 'cartographic'],
+		FFFFFF: [3, 'cartographic'], '1E1B4B': [1, 'cartographic'],
+		'172554': [1, 'cartographic'],
 		F08A5D: [1, 'cartographic'], A33D1A: [1, 'cartographic'],
 		F59E0B: [1, 'cartographic'], B45309: [1, 'cartographic'],
 		'22C55E': [1, 'cartographic'], '15803D': [1, 'cartographic'],
@@ -704,11 +705,14 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 		FF5A1F: [1, 'data'], '9061F9': [1, 'data'], C27803: [1, 'data'],
 		'6B7280': [1, 'data'],
 	},
-	// The six-bucket pace ramp: the colour IS the datum (§ 480's line), and
-	// another TS↔Dart lockstep pair (pace_segments.dart).
+	// The six-bucket live pace ramp and the three-stop finished-run gradient
+	// (yellow -> orange -> red, slow -> fast, § 1769): the colour IS the
+	// datum (§ 480's line), and another TS↔Dart lockstep pair
+	// (pace_segments.dart).
 	'lib/segments/pace_segments.ts': {
-		EF4444: [1, 'data'], F97316: [1, 'data'], FBBF24: [1, 'data'],
+		EF4444: [1, 'data'], F97316: [2, 'data'], FBBF24: [1, 'data'],
 		A3E635: [1, 'data'], '10B981': [1, 'data'], '22D3EE': [1, 'data'],
+		FACC15: [1, 'data'], DC2626: [1, 'data'],
 	},
 	// Per-source badge hues. `brand-hue` and not `brand-mark`: nothing about
 	// Strava's orange requires it to be OUR badge fill, so these owe their bar

@@ -17,6 +17,8 @@
 		mapFinishColour,
 		mapLabelHalo,
 		mapLabelInk,
+		MAP_ARROW_INK,
+		MAP_ARROW_OUTLINE,
 		mapOverlayOutline,
 		mapStartColour,
 		mapTrackLine,
@@ -25,9 +27,11 @@
 	import { minMax } from '$lib/util/min_max';
 	import type { TrackPoint } from '$lib/types';
 	import {
-		buildPaceSegments,
-		hasTrackTimestamps,
+		PACE_GRADIENT_RAMP,
+		paceGradientColour,
+		paceGradientStops,
 		type ActivityKind,
+		type PaceStop,
 	} from '$lib/segments/pace_segments';
 	import { snapToPolyline } from '$lib/routes/route_snap';
 	import {
@@ -77,13 +81,11 @@
 		/// route can render with only one mile-marker because the
 		/// straight-line polyline is just 1.5mi long.
 		totalDistanceM?: number;
-		/// When set (and the track carries per-point timestamps), the
-		/// trace renders as a per-segment NRC-style pace heatmap instead
-		/// of the single indigo line. Activity scales the speed
-		/// breakpoints so a 5:00/km run and a 25 km/h ride both land
-		/// mid-ramp. Routes (which never carry timestamps) and
-		/// imports without `ts` fall through to the legacy single-line
-		/// render.
+		/// When set (and the track carries per-point timestamps), the map
+		/// offers a "Pace colours" toggle that paints the trace as a smoothed
+		/// pace gradient on the run's own scale. The default is the single
+		/// line, as on Strava and Garmin Connect. Routes (which never carry
+		/// timestamps) and imports without `ts` never show the toggle.
 		activity?: ActivityKind;
 		/// Linked-cursor index (Nike/Strava-style). When non-null AND in
 		/// range of `track`, paint a small pulsing marker at that point
@@ -519,6 +521,7 @@
 
 		map.addSource('trace', {
 			type: 'geojson',
+			lineMetrics: true,
 			data: {
 				type: 'Feature', properties: {},
 				geometry: { type: 'LineString', coordinates: coords }
@@ -533,40 +536,27 @@
 			layout: { 'line-join': 'round', 'line-cap': 'round' }
 		});
 
-		// Pace heatmap when the host knows the activity AND the track
-		// carries per-point timestamps; otherwise fall back to the
-		// single indigo line. Mirrors the mobile behaviour
-		// (`apps/mobile_android/lib/widgets/live_run_map.dart`) so a
-		// run looks the same on web and on mobile.
-		const heatmap = activity && hasTrackTimestamps(track)
-			? buildPaceSegments(track, activity)
-			: [];
-		if (heatmap.length > 0) {
-			map.addSource('trace-pace', {
-				type: 'geojson',
-				data: {
-					type: 'FeatureCollection',
-					features: heatmap.map((s) => ({
-						type: 'Feature',
-						properties: { color: s.color },
-						geometry: { type: 'LineString', coordinates: s.coords },
-					})),
-				},
-			});
+		map.addLayer({
+			id: 'trace-line',
+			type: 'line',
+			source: 'trace',
+			paint: { 'line-color': mapTrackLine(darkBasemap), 'line-width': 3.5 },
+			layout: { 'line-join': 'round', 'line-cap': 'round' },
+		});
+
+		// Drawn over the plain line rather than instead of it, so the plain
+		// line keeps the segment-select hover cursor whichever is showing.
+		if (activity && paceStops.length > 0) {
 			map.addLayer({
-				id: 'trace-line',
-				type: 'line',
-				source: 'trace-pace',
-				paint: { 'line-color': ['get', 'color'], 'line-width': 4 },
-				layout: { 'line-join': 'round', 'line-cap': 'round' },
-			});
-		} else {
-			map.addLayer({
-				id: 'trace-line',
+				id: 'trace-pace-line',
 				type: 'line',
 				source: 'trace',
-				paint: { 'line-color': mapTrackLine(darkBasemap), 'line-width': 3.5 },
-				layout: { 'line-join': 'round', 'line-cap': 'round' },
+				paint: { 'line-width': 4.5, 'line-gradient': paceLineGradient(paceStops) },
+				layout: {
+					'line-join': 'round',
+					'line-cap': 'round',
+					visibility: colorByPace ? 'visible' : 'none',
+				},
 			});
 		}
 
@@ -584,8 +574,8 @@
 				'text-allow-overlap': true,
 			},
 			paint: {
-				'text-color': mapOverlayOutline(darkBasemap),
-				'text-halo-color': mapTrackLine(darkBasemap),
+				'text-color': MAP_ARROW_INK,
+				'text-halo-color': MAP_ARROW_OUTLINE,
 				'text-halo-width': 1.5,
 			},
 		});
@@ -716,7 +706,6 @@
 	/// source needs no second edit -- only a new source does.
 	const OWNED_SOURCE_IDS = [
 		'trace',
-		'trace-pace',
 		'distance-markers',
 		'route-markers',
 		'animated-trace',
@@ -739,6 +728,42 @@
 	}
 
 	let trackCoords: [number, number][] = [];
+	/// Pace colour stops for `track`, taken with the other snapshots.
+	let paceStops = $state<PaceStop[]>([]);
+	let colorByPace = $state(false);
+
+	/// MapLibre `line-gradient` expression for the stops. `line-progress` is
+	/// the fraction of the line's length, which is what each stop's
+	/// `fraction` measures.
+	type LineGradient = NonNullable<
+		NonNullable<Extract<maplibregl.AddLayerObject, { type: 'line' }>['paint']>['line-gradient']
+	>;
+	function paceLineGradient(stops: PaceStop[]): LineGradient {
+		const pairs: (number | string)[] = [];
+		let last = -1;
+		for (const stop of stops) {
+			if (stop.fraction <= last) continue;
+			pairs.push(stop.fraction, paceGradientColour(stop.t));
+			last = stop.fraction;
+		}
+		return [
+			'interpolate',
+			['linear'],
+			['line-progress'],
+			0,
+			paceGradientColour(stops[0].t),
+			...pairs,
+			1,
+			paceGradientColour(stops[stops.length - 1].t),
+		] as LineGradient;
+	}
+
+	$effect(() => {
+		const visibility = colorByPace ? 'visible' : 'none';
+		if (map?.getLayer('trace-pace-line')) {
+			map.setLayoutProperty('trace-pace-line', 'visibility', visibility);
+		}
+	});
 	let trackBounds: maplibregl.LngLatBoundsLike | undefined;
 	/// The `track` array the four snapshots below were taken from. Compared by
 	/// IDENTITY: every caller holds the value in `$state` or `$derived`, both
@@ -755,6 +780,7 @@
 	/// outright whenever the two differed in length (decisions § 1402).
 	function snapshotTrack(): void {
 		trackCoords = track.map((p) => [p.lng, p.lat]);
+		paceStops = activity ? paceGradientStops(track) : [];
 		trackBounds = undefined;
 		if (trackCoords.length > 0) {
 			// Reduce, don't spread: `Math.min(...lngs)` throws RangeError past
@@ -1081,6 +1107,28 @@
 				{animating ? m('runMap.stop') : m('runMap.replay')}
 			</button>
 		{/if}
+		{#if activity && paceStops.length > 0}
+			<div class="pace-control">
+				<button
+					type="button"
+					class="pace-toggle"
+					aria-pressed={colorByPace}
+					onclick={() => (colorByPace = !colorByPace)}
+				>
+					{m('runMap.paceColours')}
+				</button>
+				{#if colorByPace}
+					<div class="pace-legend">
+						<span>{m('runMap.paceSlower')}</span>
+						<span
+							class="pace-legend-bar"
+							style:background={`linear-gradient(to right, ${PACE_GRADIENT_RAMP.join(', ')})`}
+						></span>
+						<span>{m('runMap.paceFaster')}</span>
+					</div>
+				{/if}
+			</div>
+		{/if}
 	{:else}
 		<!--
 			audit/cookie-consent (2026-05-25): MapTiler logs the
@@ -1156,6 +1204,53 @@
 		font-weight: 600;
 		cursor: pointer;
 		color: var(--color-text);
+	}
+
+	.pace-control {
+		position: absolute;
+		top: 12px;
+		inset-inline-start: 12px;
+		z-index: 10;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 6px;
+	}
+
+	.pace-toggle {
+		padding: 6px 12px;
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: 999px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+		font-size: 0.8rem;
+		font-weight: 600;
+		cursor: pointer;
+		color: var(--color-text);
+	}
+
+	.pace-toggle[aria-pressed='true'] {
+		background: var(--color-primary);
+		border-color: var(--color-primary);
+		color: var(--color-on-primary);
+	}
+
+	.pace-legend {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 4px 10px;
+		background: var(--color-surface);
+		border-radius: 8px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+		font-size: 0.75rem;
+		color: var(--color-text);
+	}
+
+	.pace-legend-bar {
+		width: 72px;
+		height: 6px;
+		border-radius: 3px;
 	}
 
 	.replay-btn:hover {

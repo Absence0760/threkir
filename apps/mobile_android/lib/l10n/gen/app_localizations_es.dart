@@ -2740,16 +2740,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runDetailSectionElevation => 'Desnivel';
 
   @override
-  String get runDetailPaceLegendTitle => 'Ritmo frente a la mediana';
-
-  @override
   String get runDetailPaceBandFaster => 'Más rápido';
 
   @override
-  String get runDetailPaceBandSteady => 'Constante';
+  String get runDetailPaceBandSlower => 'Más lento';
 
   @override
-  String get runDetailPaceBandSlower => 'Más lento';
+  String get runDetailMapPaceColours => 'Colores de ritmo';
 
   @override
   String get runDetailSectionLaps => 'Vueltas';

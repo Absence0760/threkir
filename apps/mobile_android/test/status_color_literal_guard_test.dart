@@ -68,8 +68,15 @@ const _exemptFiles = {
 // file -> pattern -> exact expected occurrence count. Patterns are either a
 // six-digit hex suffix from [_bannedHexes] or a Colors.<swatch> name.
 const _dataPalettes = <String, Map<String, int>>{
-  // 6-bucket pace ramp drawn over map tiles (slow -> fast).
-  'lib/widgets/pace_segments.dart': {'EF4444': 1, 'FBBF24': 1, '10B981': 1},
+  // 6-bucket live pace ramp + the 3-stop finished-run gradient, both drawn
+  // over map tiles (slow -> fast).
+  'lib/widgets/pace_segments.dart': {
+    'EF4444': 1,
+    'FBBF24': 1,
+    '10B981': 1,
+    'FACC15': 1,
+    'DC2626': 1,
+  },
   // Heat-density scale + its legend gradient.
   'lib/screens/run_heatmap_screen.dart': {
     '10B981': 2,

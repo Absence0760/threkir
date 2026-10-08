@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:core_models/core_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
@@ -242,6 +244,95 @@ void main() {
         expect(grownBuckets[i], baseBuckets[i]);
       }
       expect(grownBuckets.length, baseBuckets.length + 2);
+    });
+  });
+
+  group('finished-run pace gradient', () {
+    const degPerM = 1 / 111320;
+    final t0 = DateTime.utc(2026, 1, 1);
+    List<Waypoint> straight(int points, double stepM,
+        {double startLat = 37, DateTime? from}) {
+      final start = from ?? t0;
+      return [
+        for (var i = 0; i < points; i++)
+          Waypoint(
+            lat: startLat + i * stepM * degPerM,
+            lng: -122,
+            timestamp: start.add(Duration(seconds: i)),
+          ),
+      ];
+    }
+
+    test('smoothedSpeeds flattens fix-to-fix GPS jitter', () {
+      // Every other fix 2 m off-line: fix-to-fix speeds swing 0.7 <-> 7.3 m/s.
+      final base = straight(121, 3.3);
+      final track = [
+        for (var i = 0; i < base.length; i++)
+          Waypoint(
+            lat: base[i].lat + (i.isEven ? 2 : -2) * degPerM,
+            lng: base[i].lng,
+            timestamp: base[i].timestamp,
+          ),
+      ];
+      final v = smoothedSpeeds(track).sublist(30, 91).cast<double>();
+      final spread = v.reduce(math.max) - v.reduce(math.min);
+      expect(spread, lessThan(0.3));
+    });
+
+    test('smoothedSpeeds is null without timestamps', () {
+      final track = [
+        for (final w in straight(5, 3)) Waypoint(lat: w.lat, lng: w.lng),
+      ];
+      expect(smoothedSpeeds(track), [null, null, null, null, null]);
+    });
+
+    test('paceGradientStops paints a steady run mid-scale everywhere', () {
+      final stops = paceGradientStops(straight(300, 3.3));
+      expect(stops, isNotEmpty);
+      for (final s in stops) {
+        expect(s.t, 0.5);
+      }
+    });
+
+    test('paceGradientStops puts the slow half low and the fast half high',
+        () {
+      final slow = straight(200, 2.5);
+      final last = slow.last;
+      final fast = [
+        for (var i = 1; i <= 200; i++)
+          Waypoint(
+            lat: last.lat + i * 4.5 * degPerM,
+            lng: last.lng,
+            timestamp: last.timestamp!.add(Duration(seconds: i)),
+          ),
+      ];
+      final stops = paceGradientStops([...slow, ...fast], bins: 10);
+      expect(stops.first.t, lessThan(0.1));
+      expect(stops.last.t, greaterThan(0.9));
+      for (final s in stops) {
+        expect(s.fraction, inExclusiveRange(0, 1));
+      }
+    });
+
+    test('paceGradientColour spans the ramp end to end', () {
+      expect(paceGradientColour(0), paceGradientRamp.first);
+      expect(paceGradientColour(1), paceGradientRamp.last);
+      expect(paceGradientColour(-3), paceGradientRamp.first);
+      expect(paceGradientColour(0.5), paceGradientRamp[1]);
+    });
+
+    test('buildPaceGradientPolylines covers the track with shared vertices',
+        () {
+      final track = straight(300, 3.3);
+      final rendered = track.map((w) => LatLng(w.lat, w.lng)).toList();
+      final polys =
+          buildPaceGradientPolylines(track: track, rendered: rendered);
+      expect(polys.length, greaterThan(1));
+      expect(polys.first.points.first, rendered.first);
+      expect(polys.last.points.last, rendered.last);
+      for (var i = 1; i < polys.length; i++) {
+        expect(polys[i].points.first, polys[i - 1].points.last);
+      }
     });
   });
 }

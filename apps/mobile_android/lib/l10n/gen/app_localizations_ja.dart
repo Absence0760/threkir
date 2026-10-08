@@ -2599,16 +2599,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runDetailSectionElevation => '獲得標高';
 
   @override
-  String get runDetailPaceLegendTitle => '中央値との比較ペース';
-
-  @override
   String get runDetailPaceBandFaster => '速い';
 
   @override
-  String get runDetailPaceBandSteady => '一定';
+  String get runDetailPaceBandSlower => '遅い';
 
   @override
-  String get runDetailPaceBandSlower => '遅い';
+  String get runDetailMapPaceColours => 'ペースで色分け';
 
   @override
   String get runDetailSectionLaps => 'ラップ';

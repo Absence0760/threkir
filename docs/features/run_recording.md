@@ -327,6 +327,10 @@ The six-colour ramp (red → orange → amber → lime → emerald → cyan) is 
 
 Mini-test list in `test/pace_segments_test.dart` covers bucket clamping, activity-specific scaling, uniform-pace coalescing, vertex-sharing continuity, and the no-timestamp fallback.
 
+#### Finished runs draw differently
+
+The glow, the fixed buckets and the age fade are recording-time signals. Run detail passes `LiveRunMap.finishedRun`, which draws one solid track-colour line over a thin dark casing instead. Its **Pace colours** chip (shown only when the drawn line carries timestamps) swaps in a continuous yellow → orange → red gradient built by `buildPaceGradientPolylines`: speed is smoothed over a centred ±15 s window and scaled to the run's own 5th-95th percentile, so it reads faster or slower than this run's typical pace, and a steady run is one colour rather than confetti. Web's `RunMap` does the same with a MapLibre `line-gradient`. Direction chevrons sit 70 px apart on screen at any zoom (`chevronStepMetresForZoom`). See [decisions § 1769](../architecture/decisions.md).
+
 ### Blue dot interpolation
 
 `_PulsingDot` is rendered at an `_animatedLatLng` held in `_LiveRunMapState`, not at the raw `currentPosition`. When a new position arrives via `didUpdateWidget`, a 900 ms `AnimationController` tweens `_animatedLatLng` from the previous interpolated position to the new target. The map camera (in follow mode) rides the interpolated value too, so panning and the dot stay in lockstep and the dot glides between fixes instead of hopping at sensor rate.

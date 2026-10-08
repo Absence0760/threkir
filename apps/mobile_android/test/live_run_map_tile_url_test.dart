@@ -468,6 +468,21 @@ void main() {
   });
 
   group('mapTrackLine', () {
+    test('a direction chevron keeps a 3:1 edge on the line of either basemap',
+        () {
+      // The navy body or the white outline has to clear the line it sits on;
+      // the pair must also separate, or the outline reads as the glyph.
+      expect(_contrast(chevronInk, Colors.white), greaterThanOrEqualTo(3));
+      for (final dark in [false, true]) {
+        final line = mapTrackLine(darkBasemap: dark);
+        final best = math.max(
+          _contrast(chevronInk, line),
+          _contrast(Colors.white, line),
+        );
+        expect(best, greaterThanOrEqualTo(_overlayFloor));
+      }
+    });
+
     test('clears the floor against the basemap it is keyed to', () {
       expect(_contrast(mapTrackLine(darkBasemap: false), _lightBasemapSample),
           greaterThanOrEqualTo(_overlayFloor));

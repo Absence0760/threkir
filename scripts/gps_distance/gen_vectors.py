@@ -7,7 +7,7 @@ LAT0, LNG0 = 40.0, -75.0
 MLAT = 111195.0
 MLNG = MLAT * math.cos(math.radians(LAT0))
 
-def walk(T, v, seed, sigma=3.0, rho=0.9, doppler=True, stops=(), drop=(), steps=False, cadence=2.8, gaps_steps=True):
+def walk(T, v, seed, sigma=3.0, rho=0.9, doppler=True, stops=(), drop=(), steps=False, cadence=2.8, gaps_steps=True, every=1):
     r = random.Random(seed)
     x = y = h = 0.0; nx = ny = 0.0; k = math.sqrt(1 - rho * rho); ev = []; cnt = 0; stepacc = 0.0
     for t in range(T):
@@ -21,7 +21,7 @@ def walk(T, v, seed, sigma=3.0, rho=0.9, doppler=True, stops=(), drop=(), steps=
         if steps:
             cnt = int(stepacc)
             ev.append({"type": "steps", "t": float(t) + 0.5, "count": cnt})
-        if any(a <= t < a + l for a, l in drop):
+        if any(a <= t < a + l for a, l in drop) or t % every:
             continue
         fix = {"type": "fix", "t": float(t),
                "lat": round(LAT0 + (y + ny) / MLAT, 9), "lng": round(LNG0 + (x + nx) / MLNG, 9),
@@ -36,8 +36,8 @@ def walk(T, v, seed, sigma=3.0, rho=0.9, doppler=True, stops=(), drop=(), steps=
     ev.append({"type": "finish", "t": float(T)})
     return ev
 
-def evaluate(events, max_speed=10.0):
-    e = GpsDistanceEstimator(max_speed)
+def evaluate(events, max_speed=10.0, interval=1.0, stride=None):
+    e = GpsDistanceEstimator(max_speed, interval, stride)
     out = []
     for x in events:
         if x["type"] == "fix":
@@ -50,9 +50,10 @@ def evaluate(events, max_speed=10.0):
     return e, out
 
 scen = []
-def add(name, desc, events, max_speed=10.0):
-    e, out = evaluate(events, max_speed)
-    scen.append({"name": name, "description": desc, "maxSpeedMps": max_speed, "events": events,
+def add(name, desc, events, max_speed=10.0, interval=1.0, stride=None):
+    e, out = evaluate(events, max_speed, interval, stride)
+    scen.append({"name": name, "description": desc, "maxSpeedMps": max_speed,
+                 "expectedIntervalS": interval, "initialStrideM": stride, "events": events,
                  "expected": {"distanceAfterEachEventM": out,
                               "gpsDistanceM": round(e.gps_distance_m, 6),
                               "stepDistanceM": round(e.step_distance_m, 6),
@@ -68,6 +69,11 @@ add("gap_with_steps", "stride learned over 80 s, then 40 s fix gap filled by ste
 add("short_gap_with_steps", "6 s fix gap: filter integrates it, buffered steps discarded", walk(120, 2.68, 8, drop=((80, 6),), steps=True))
 add("trailing_gap_with_steps", "fixes stop 30 s before finish: steps committed at finish", walk(140, 2.68, 9, drop=((110, 40),), steps=True))
 add("walker", "1.3 m/s walk with Doppler", walk(120, 1.3, 10), max_speed=5.0)
+add("sparse_15s", "fixes every 15 s (firmware power mode) with Doppler; expectedIntervalS 15 keeps them inside the gap window", walk(300, 2.68, 12, every=15), interval=15.0)
+add("sparse_60s_position_only", "fixes every 60 s, no Doppler, expectedIntervalS 60", walk(600, 2.68, 13, doppler=False, every=60), interval=60.0)
+add("sparse_without_interval_hint", "fixes every 15 s but expectedIntervalS left at 1: every fix re-anchors and credits nothing", walk(120, 2.68, 14, every=15))
+add("seeded_stride_gap_fill", "initialStrideM 0.95 carried over a pause: a gap 10 s after the start is filled before any stride is learned", walk(90, 2.68, 15, drop=((10, 40),), steps=True), stride=0.95)
+add("seeded_stride_out_of_range", "initialStrideM 3.0 is outside 0.4-2.5 m and ignored, so the early gap is not filled", walk(90, 2.68, 16, drop=((10, 40),), steps=True), stride=3.0)
 inv = walk(20, 2.68, 11)
 inv.insert(5, {"type": "fix", "t": 3.0, "lat": 40.0, "lng": -75.0, "acc": 5.0, "speed": 2.6, "speedAcc": 0.3, "bearing": 10.0})
 inv[8]["speed"] = 50.0
@@ -76,7 +82,7 @@ inv[10]["acc"] = -1.0
 inv.insert(12, {"type": "steps", "t": 9.0, "count": -5})
 add("invalid_inputs", "non-monotonic t (ignored), speed>max and speedAcc>1.5 (Doppler ignored, fix kept), negative accuracy (floored), bad step count", inv)
 
-doc = {"spec": "gps-distance-estimator v1",
+doc = {"spec": "gps-distance-estimator v1.1",
        "reference": "docs/features/gps_distance.md",
        "tolerance_m": 0.001,
        "constants": {k: getattr(ref, k) for k in dir(ref) if k.isupper()},

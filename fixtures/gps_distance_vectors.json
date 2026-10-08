@@ -1,5 +1,5 @@
 {
- "spec": "gps-distance-estimator v1",
+ "spec": "gps-distance-estimator v1.1",
  "reference": "docs/features/gps_distance.md",
  "tolerance_m": 0.001,
  "constants": {
@@ -24,6 +24,8 @@
    "name": "doppler_run",
    "description": "120 s run at 2.68 m/s with Doppler speed + bearing; true distance 318.9 m",
    "maxSpeedMps": 10.0,
+   "expectedIntervalS": 1.0,
+   "initialStrideM": null,
    "events": [
     {
      "type": "fix",
@@ -1363,6 +1365,8 @@
    "name": "position_only_run",
    "description": "120 s run with no Doppler (legacy track); true distance 318.9 m",
    "maxSpeedMps": 10.0,
+   "expectedIntervalS": 1.0,
+   "initialStrideM": null,
    "events": [
     {
      "type": "fix",
@@ -2702,6 +2706,8 @@
    "name": "stationary_doppler",
    "description": "90 s standing still with jitter; Doppler ~0.15 m/s; expect ~0",
    "maxSpeedMps": 10.0,
+   "expectedIntervalS": 1.0,
+   "initialStrideM": null,
    "events": [
     {
      "type": "fix",
@@ -3711,6 +3717,8 @@
    "name": "stationary_position_only",
    "description": "90 s standing still, no Doppler; expect ~0",
    "maxSpeedMps": 10.0,
+   "expectedIntervalS": 1.0,
+   "initialStrideM": null,
    "events": [
     {
      "type": "fix",
@@ -4720,6 +4728,8 @@
    "name": "stop_and_go",
    "description": "red-light stop mid-run with Doppler",
    "maxSpeedMps": 10.0,
+   "expectedIntervalS": 1.0,
+   "initialStrideM": null,
    "events": [
     {
      "type": "fix",
@@ -6389,6 +6399,8 @@
    "name": "gap_no_steps",
    "description": "30 s fix gap mid-run, no pedometer: gap not credited",
    "maxSpeedMps": 10.0,
+   "expectedIntervalS": 1.0,
+   "initialStrideM": null,
    "events": [
     {
      "type": "fix",
@@ -7398,6 +7410,8 @@
    "name": "gap_with_steps",
    "description": "stride learned over 80 s, then 40 s fix gap filled by steps x stride",
    "maxSpeedMps": 10.0,
+   "expectedIntervalS": 1.0,
+   "initialStrideM": null,
    "events": [
     {
      "type": "fix",
@@ -9697,6 +9711,8 @@
    "name": "short_gap_with_steps",
    "description": "6 s fix gap: filter integrates it, buffered steps discarded",
    "maxSpeedMps": 10.0,
+   "expectedIntervalS": 1.0,
+   "initialStrideM": null,
    "events": [
     {
      "type": "fix",
@@ -11690,6 +11706,8 @@
    "name": "trailing_gap_with_steps",
    "description": "fixes stop 30 s before finish: steps committed at finish",
    "maxSpeedMps": 10.0,
+   "expectedIntervalS": 1.0,
+   "initialStrideM": null,
    "events": [
     {
      "type": "fix",
@@ -13759,6 +13777,8 @@
    "name": "walker",
    "description": "1.3 m/s walk with Doppler",
    "maxSpeedMps": 5.0,
+   "expectedIntervalS": 1.0,
+   "initialStrideM": null,
    "events": [
     {
      "type": "fix",
@@ -15095,9 +15115,2714 @@
    }
   },
   {
+   "name": "sparse_15s",
+   "description": "fixes every 15 s (firmware power mode) with Doppler; expectedIntervalS 15 keeps them inside the gap window",
+   "maxSpeedMps": 10.0,
+   "expectedIntervalS": 15.0,
+   "initialStrideM": null,
+   "events": [
+    {
+     "type": "fix",
+     "t": 0.0,
+     "lat": 40.000026841,
+     "lng": -75.000022186,
+     "acc": 3.88,
+     "speed": 2.608,
+     "speedAcc": 0.397,
+     "bearing": 0.53
+    },
+    {
+     "type": "fix",
+     "t": 15.0,
+     "lat": 40.000419061,
+     "lng": -74.999935442,
+     "acc": 3.71,
+     "speed": 2.634,
+     "speedAcc": 0.387,
+     "bearing": 12.95
+    },
+    {
+     "type": "fix",
+     "t": 30.0,
+     "lat": 40.000778479,
+     "lng": -74.999987881,
+     "acc": 4.27,
+     "speed": 2.888,
+     "speedAcc": 0.378,
+     "bearing": 1.48
+    },
+    {
+     "type": "fix",
+     "t": 45.0,
+     "lat": 40.001041438,
+     "lng": -74.999787155,
+     "acc": 4.3,
+     "speed": 2.494,
+     "speedAcc": 0.316,
+     "bearing": 79.71
+    },
+    {
+     "type": "fix",
+     "t": 60.0,
+     "lat": 40.001150493,
+     "lng": -74.999403603,
+     "acc": 5.43,
+     "speed": 2.51,
+     "speedAcc": 0.332,
+     "bearing": 59.78
+    },
+    {
+     "type": "fix",
+     "t": 75.0,
+     "lat": 40.00127729,
+     "lng": -74.99893629,
+     "acc": 4.19,
+     "speed": 2.894,
+     "speedAcc": 0.309,
+     "bearing": 58.28
+    },
+    {
+     "type": "fix",
+     "t": 90.0,
+     "lat": 40.001576096,
+     "lng": -74.998699387,
+     "acc": 3.67,
+     "speed": 2.53,
+     "speedAcc": 0.368,
+     "bearing": 9.54
+    },
+    {
+     "type": "fix",
+     "t": 105.0,
+     "lat": 40.001871028,
+     "lng": -74.998519786,
+     "acc": 4.41,
+     "speed": 2.761,
+     "speedAcc": 0.376,
+     "bearing": 25.36
+    },
+    {
+     "type": "fix",
+     "t": 120.0,
+     "lat": 40.002221978,
+     "lng": -74.998284414,
+     "acc": 4.82,
+     "speed": 2.817,
+     "speedAcc": 0.406,
+     "bearing": 88.03
+    },
+    {
+     "type": "fix",
+     "t": 135.0,
+     "lat": 40.002176898,
+     "lng": -74.997856954,
+     "acc": 4.75,
+     "speed": 2.829,
+     "speedAcc": 0.494,
+     "bearing": 76.18
+    },
+    {
+     "type": "fix",
+     "t": 150.0,
+     "lat": 40.002180242,
+     "lng": -74.99742034,
+     "acc": 4.12,
+     "speed": 2.804,
+     "speedAcc": 0.496,
+     "bearing": 71.61
+    },
+    {
+     "type": "fix",
+     "t": 165.0,
+     "lat": 40.002330012,
+     "lng": -74.997022641,
+     "acc": 3.85,
+     "speed": 2.807,
+     "speedAcc": 0.362,
+     "bearing": 45.5
+    },
+    {
+     "type": "fix",
+     "t": 180.0,
+     "lat": 40.002605464,
+     "lng": -74.996710681,
+     "acc": 3.96,
+     "speed": 2.436,
+     "speedAcc": 0.308,
+     "bearing": 49.75
+    },
+    {
+     "type": "fix",
+     "t": 195.0,
+     "lat": 40.00287164,
+     "lng": -74.996430165,
+     "acc": 4.04,
+     "speed": 2.766,
+     "speedAcc": 0.44,
+     "bearing": 26.51
+    },
+    {
+     "type": "fix",
+     "t": 210.0,
+     "lat": 40.00282239,
+     "lng": -74.995991001,
+     "acc": 4.15,
+     "speed": 2.561,
+     "speedAcc": 0.318,
+     "bearing": 108.96
+    },
+    {
+     "type": "fix",
+     "t": 225.0,
+     "lat": 40.002697052,
+     "lng": -74.995519936,
+     "acc": 4.03,
+     "speed": 2.576,
+     "speedAcc": 0.441,
+     "bearing": 104.75
+    },
+    {
+     "type": "fix",
+     "t": 240.0,
+     "lat": 40.002603481,
+     "lng": -74.995142756,
+     "acc": 3.96,
+     "speed": 2.666,
+     "speedAcc": 0.348,
+     "bearing": 67.58
+    },
+    {
+     "type": "fix",
+     "t": 255.0,
+     "lat": 40.002770388,
+     "lng": -74.994682145,
+     "acc": 4.15,
+     "speed": 2.708,
+     "speedAcc": 0.331,
+     "bearing": 67.86
+    },
+    {
+     "type": "fix",
+     "t": 270.0,
+     "lat": 40.002987287,
+     "lng": -74.994290728,
+     "acc": 4.76,
+     "speed": 2.656,
+     "speedAcc": 0.347,
+     "bearing": 57.57
+    },
+    {
+     "type": "fix",
+     "t": 285.0,
+     "lat": 40.003014822,
+     "lng": -74.993912295,
+     "acc": 4.13,
+     "speed": 2.729,
+     "speedAcc": 0.35,
+     "bearing": 143.65
+    },
+    {
+     "type": "finish",
+     "t": 300.0
+    }
+   ],
+   "expected": {
+    "distanceAfterEachEventM": [
+     0.0,
+     39.51,
+     82.83,
+     120.24,
+     157.89,
+     201.3,
+     239.25,
+     280.665,
+     322.92,
+     365.355,
+     407.415,
+     449.52,
+     486.06,
+     527.55,
+     565.965,
+     604.605,
+     644.595,
+     685.215,
+     725.055,
+     765.99,
+     765.99
+    ],
+    "gpsDistanceM": 765.99,
+    "stepDistanceM": 0.0,
+    "strideM": null
+   }
+  },
+  {
+   "name": "sparse_60s_position_only",
+   "description": "fixes every 60 s, no Doppler, expectedIntervalS 60",
+   "maxSpeedMps": 10.0,
+   "expectedIntervalS": 60.0,
+   "initialStrideM": null,
+   "events": [
+    {
+     "type": "fix",
+     "t": 0.0,
+     "lat": 40.000041955,
+     "lng": -75.000001321,
+     "acc": 4.38,
+     "speed": null,
+     "speedAcc": null,
+     "bearing": null
+    },
+    {
+     "type": "fix",
+     "t": 60.0,
+     "lat": 40.001154684,
+     "lng": -74.999335234,
+     "acc": 4.47,
+     "speed": null,
+     "speedAcc": null,
+     "bearing": null
+    },
+    {
+     "type": "fix",
+     "t": 120.0,
+     "lat": 40.002240651,
+     "lng": -74.998357276,
+     "acc": 4.48,
+     "speed": null,
+     "speedAcc": null,
+     "bearing": null
+    },
+    {
+     "type": "fix",
+     "t": 180.0,
+     "lat": 40.002568781,
+     "lng": -74.996696299,
+     "acc": 4.43,
+     "speed": null,
+     "speedAcc": null,
+     "bearing": null
+    },
+    {
+     "type": "fix",
+     "t": 240.0,
+     "lat": 40.002651151,
+     "lng": -74.995109428,
+     "acc": 3.63,
+     "speed": null,
+     "speedAcc": null,
+     "bearing": null
+    },
+    {
+     "type": "fix",
+     "t": 300.0,
+     "lat": 40.002757359,
+     "lng": -74.993496866,
+     "acc": 5.17,
+     "speed": null,
+     "speedAcc": null,
+     "bearing": null
+    },
+    {
+     "type": "fix",
+     "t": 360.0,
+     "lat": 40.002637816,
+     "lng": -74.991845329,
+     "acc": 3.64,
+     "speed": null,
+     "speedAcc": null,
+     "bearing": null
+    },
+    {
+     "type": "fix",
+     "t": 420.0,
+     "lat": 40.00171895,
+     "lng": -74.990553213,
+     "acc": 5.02,
+     "speed": null,
+     "speedAcc": null,
+     "bearing": null
+    },
+    {
+     "type": "fix",
+     "t": 480.0,
+     "lat": 40.000664396,
+     "lng": -74.989783158,
+     "acc": 4.09,
+     "speed": null,
+     "speedAcc": null,
+     "bearing": null
+    },
+    {
+     "type": "fix",
+     "t": 540.0,
+     "lat": 39.999704659,
+     "lng": -74.988744999,
+     "acc": 3.76,
+     "speed": null,
+     "speedAcc": null,
+     "bearing": null
+    },
+    {
+     "type": "finish",
+     "t": 600.0
+    }
+   ],
+   "expected": {
+    "distanceAfterEachEventM": [
+     0.0,
+     158.145308,
+     302.695353,
+     459.242709,
+     589.149613,
+     729.151302,
+     871.626261,
+     1032.078571,
+     1160.403482,
+     1302.954026,
+     1302.954026
+    ],
+    "gpsDistanceM": 1302.954026,
+    "stepDistanceM": 0.0,
+    "strideM": null
+   }
+  },
+  {
+   "name": "sparse_without_interval_hint",
+   "description": "fixes every 15 s but expectedIntervalS left at 1: every fix re-anchors and credits nothing",
+   "maxSpeedMps": 10.0,
+   "expectedIntervalS": 1.0,
+   "initialStrideM": null,
+   "events": [
+    {
+     "type": "fix",
+     "t": 0.0,
+     "lat": 40.000035492,
+     "lng": -74.999981279,
+     "acc": 4.97,
+     "speed": 2.389,
+     "speedAcc": 0.31,
+     "bearing": 6.1
+    },
+    {
+     "type": "fix",
+     "t": 15.0,
+     "lat": 40.000389099,
+     "lng": -74.999993833,
+     "acc": 4.8,
+     "speed": 2.567,
+     "speedAcc": 0.319,
+     "bearing": 3.24
+    },
+    {
+     "type": "fix",
+     "t": 30.0,
+     "lat": 40.00073421,
+     "lng": -75.000014144,
+     "acc": 3.98,
+     "speed": 2.493,
+     "speedAcc": 0.455,
+     "bearing": 1.5
+    },
+    {
+     "type": "fix",
+     "t": 45.0,
+     "lat": 40.001045183,
+     "lng": -74.999794082,
+     "acc": 3.67,
+     "speed": 2.537,
+     "speedAcc": 0.425,
+     "bearing": 65.97
+    },
+    {
+     "type": "fix",
+     "t": 60.0,
+     "lat": 40.001194661,
+     "lng": -74.999398842,
+     "acc": 3.7,
+     "speed": 2.763,
+     "speedAcc": 0.309,
+     "bearing": 65.55
+    },
+    {
+     "type": "fix",
+     "t": 75.0,
+     "lat": 40.001276655,
+     "lng": -74.998895852,
+     "acc": 3.68,
+     "speed": 2.672,
+     "speedAcc": 0.466,
+     "bearing": 74.36
+    },
+    {
+     "type": "fix",
+     "t": 90.0,
+     "lat": 40.001553935,
+     "lng": -74.998709065,
+     "acc": 5.17,
+     "speed": 2.556,
+     "speedAcc": 0.434,
+     "bearing": 25.66
+    },
+    {
+     "type": "fix",
+     "t": 105.0,
+     "lat": 40.001868927,
+     "lng": -74.998563266,
+     "acc": 4.62,
+     "speed": 2.815,
+     "speedAcc": 0.465,
+     "bearing": 22.27
+    },
+    {
+     "type": "finish",
+     "t": 120.0
+    }
+   ],
+   "expected": {
+    "distanceAfterEachEventM": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "gpsDistanceM": 0.0,
+    "stepDistanceM": 0.0,
+    "strideM": null
+   }
+  },
+  {
+   "name": "seeded_stride_gap_fill",
+   "description": "initialStrideM 0.95 carried over a pause: a gap 10 s after the start is filled before any stride is learned",
+   "maxSpeedMps": 10.0,
+   "expectedIntervalS": 1.0,
+   "initialStrideM": 0.95,
+   "events": [
+    {
+     "type": "fix",
+     "t": 0.0,
+     "lat": 40.000023712,
+     "lng": -74.999997705,
+     "acc": 3.65,
+     "speed": 2.592,
+     "speedAcc": 0.318,
+     "bearing": 359.87
+    },
+    {
+     "type": "steps",
+     "t": 0.5,
+     "count": 2
+    },
+    {
+     "type": "fix",
+     "t": 1.0,
+     "lat": 40.000035636,
+     "lng": -74.99998106,
+     "acc": 6.19,
+     "speed": 2.194,
+     "speedAcc": 0.306,
+     "bearing": 7.25
+    },
+    {
+     "type": "steps",
+     "t": 1.5,
+     "count": 5
+    },
+    {
+     "type": "fix",
+     "t": 2.0,
+     "lat": 40.000051778,
+     "lng": -74.999986189,
+     "acc": 3.66,
+     "speed": 2.788,
+     "speedAcc": 0.428,
+     "bearing": 347.3
+    },
+    {
+     "type": "steps",
+     "t": 2.5,
+     "count": 8
+    },
+    {
+     "type": "fix",
+     "t": 3.0,
+     "lat": 40.000069941,
+     "lng": -74.999984353,
+     "acc": 4.67,
+     "speed": 2.598,
+     "speedAcc": 0.313,
+     "bearing": 8.76
+    },
+    {
+     "type": "steps",
+     "t": 3.5,
+     "count": 11
+    },
+    {
+     "type": "fix",
+     "t": 4.0,
+     "lat": 40.000098991,
+     "lng": -74.999991372,
+     "acc": 4.47,
+     "speed": 2.624,
+     "speedAcc": 0.509,
+     "bearing": 352.18
+    },
+    {
+     "type": "steps",
+     "t": 4.5,
+     "count": 14
+    },
+    {
+     "type": "fix",
+     "t": 5.0,
+     "lat": 40.000115748,
+     "lng": -75.00000178,
+     "acc": 5.74,
+     "speed": 2.31,
+     "speedAcc": 0.54,
+     "bearing": 1.18
+    },
+    {
+     "type": "steps",
+     "t": 5.5,
+     "count": 16
+    },
+    {
+     "type": "fix",
+     "t": 6.0,
+     "lat": 40.000143496,
+     "lng": -74.999993218,
+     "acc": 4.71,
+     "speed": 2.992,
+     "speedAcc": 0.358,
+     "bearing": 348.13
+    },
+    {
+     "type": "steps",
+     "t": 6.5,
+     "count": 19
+    },
+    {
+     "type": "fix",
+     "t": 7.0,
+     "lat": 40.000183504,
+     "lng": -74.999997989,
+     "acc": 3.95,
+     "speed": 2.635,
+     "speedAcc": 0.323,
+     "bearing": 1.66
+    },
+    {
+     "type": "steps",
+     "t": 7.5,
+     "count": 22
+    },
+    {
+     "type": "fix",
+     "t": 8.0,
+     "lat": 40.000212945,
+     "lng": -75.000027036,
+     "acc": 4.55,
+     "speed": 2.629,
+     "speedAcc": 0.363,
+     "bearing": 359.94
+    },
+    {
+     "type": "steps",
+     "t": 8.5,
+     "count": 25
+    },
+    {
+     "type": "fix",
+     "t": 9.0,
+     "lat": 40.000233925,
+     "lng": -75.000010741,
+     "acc": 3.68,
+     "speed": 2.809,
+     "speedAcc": 0.34,
+     "bearing": 353.76
+    },
+    {
+     "type": "steps",
+     "t": 9.5,
+     "count": 28
+    },
+    {
+     "type": "steps",
+     "t": 10.5,
+     "count": 30
+    },
+    {
+     "type": "steps",
+     "t": 11.5,
+     "count": 33
+    },
+    {
+     "type": "steps",
+     "t": 12.5,
+     "count": 36
+    },
+    {
+     "type": "steps",
+     "t": 13.5,
+     "count": 39
+    },
+    {
+     "type": "steps",
+     "t": 14.5,
+     "count": 41
+    },
+    {
+     "type": "steps",
+     "t": 15.5,
+     "count": 44
+    },
+    {
+     "type": "steps",
+     "t": 16.5,
+     "count": 47
+    },
+    {
+     "type": "steps",
+     "t": 17.5,
+     "count": 50
+    },
+    {
+     "type": "steps",
+     "t": 18.5,
+     "count": 53
+    },
+    {
+     "type": "steps",
+     "t": 19.5,
+     "count": 55
+    },
+    {
+     "type": "steps",
+     "t": 20.5,
+     "count": 58
+    },
+    {
+     "type": "steps",
+     "t": 21.5,
+     "count": 61
+    },
+    {
+     "type": "steps",
+     "t": 22.5,
+     "count": 64
+    },
+    {
+     "type": "steps",
+     "t": 23.5,
+     "count": 67
+    },
+    {
+     "type": "steps",
+     "t": 24.5,
+     "count": 69
+    },
+    {
+     "type": "steps",
+     "t": 25.5,
+     "count": 72
+    },
+    {
+     "type": "steps",
+     "t": 26.5,
+     "count": 75
+    },
+    {
+     "type": "steps",
+     "t": 27.5,
+     "count": 78
+    },
+    {
+     "type": "steps",
+     "t": 28.5,
+     "count": 81
+    },
+    {
+     "type": "steps",
+     "t": 29.5,
+     "count": 83
+    },
+    {
+     "type": "steps",
+     "t": 30.5,
+     "count": 86
+    },
+    {
+     "type": "steps",
+     "t": 31.5,
+     "count": 89
+    },
+    {
+     "type": "steps",
+     "t": 32.5,
+     "count": 92
+    },
+    {
+     "type": "steps",
+     "t": 33.5,
+     "count": 95
+    },
+    {
+     "type": "steps",
+     "t": 34.5,
+     "count": 97
+    },
+    {
+     "type": "steps",
+     "t": 35.5,
+     "count": 100
+    },
+    {
+     "type": "steps",
+     "t": 36.5,
+     "count": 103
+    },
+    {
+     "type": "steps",
+     "t": 37.5,
+     "count": 106
+    },
+    {
+     "type": "steps",
+     "t": 38.5,
+     "count": 109
+    },
+    {
+     "type": "steps",
+     "t": 39.5,
+     "count": 111
+    },
+    {
+     "type": "steps",
+     "t": 40.5,
+     "count": 114
+    },
+    {
+     "type": "steps",
+     "t": 41.5,
+     "count": 117
+    },
+    {
+     "type": "steps",
+     "t": 42.5,
+     "count": 120
+    },
+    {
+     "type": "steps",
+     "t": 43.5,
+     "count": 123
+    },
+    {
+     "type": "steps",
+     "t": 44.5,
+     "count": 125
+    },
+    {
+     "type": "steps",
+     "t": 45.5,
+     "count": 128
+    },
+    {
+     "type": "steps",
+     "t": 46.5,
+     "count": 131
+    },
+    {
+     "type": "steps",
+     "t": 47.5,
+     "count": 134
+    },
+    {
+     "type": "steps",
+     "t": 48.5,
+     "count": 137
+    },
+    {
+     "type": "steps",
+     "t": 49.5,
+     "count": 139
+    },
+    {
+     "type": "fix",
+     "t": 50.0,
+     "lat": 40.001078408,
+     "lng": -74.999664022,
+     "acc": 4.37,
+     "speed": 2.494,
+     "speedAcc": 0.411,
+     "bearing": 65.2
+    },
+    {
+     "type": "steps",
+     "t": 50.5,
+     "count": 142
+    },
+    {
+     "type": "fix",
+     "t": 51.0,
+     "lat": 40.001073005,
+     "lng": -74.999635402,
+     "acc": 3.73,
+     "speed": 2.87,
+     "speedAcc": 0.349,
+     "bearing": 69.49
+    },
+    {
+     "type": "steps",
+     "t": 51.5,
+     "count": 145
+    },
+    {
+     "type": "fix",
+     "t": 52.0,
+     "lat": 40.001077768,
+     "lng": -74.99962373,
+     "acc": 4.47,
+     "speed": 2.876,
+     "speedAcc": 0.316,
+     "bearing": 62.84
+    },
+    {
+     "type": "steps",
+     "t": 52.5,
+     "count": 148
+    },
+    {
+     "type": "fix",
+     "t": 53.0,
+     "lat": 40.001059359,
+     "lng": -74.999563278,
+     "acc": 4.14,
+     "speed": 2.549,
+     "speedAcc": 0.307,
+     "bearing": 74.18
+    },
+    {
+     "type": "steps",
+     "t": 53.5,
+     "count": 151
+    },
+    {
+     "type": "fix",
+     "t": 54.0,
+     "lat": 40.001112343,
+     "lng": -74.999544113,
+     "acc": 5.67,
+     "speed": 2.804,
+     "speedAcc": 0.357,
+     "bearing": 56.76
+    },
+    {
+     "type": "steps",
+     "t": 54.5,
+     "count": 154
+    },
+    {
+     "type": "fix",
+     "t": 55.0,
+     "lat": 40.001128024,
+     "lng": -74.999497827,
+     "acc": 4.02,
+     "speed": 2.897,
+     "speedAcc": 0.344,
+     "bearing": 57.7
+    },
+    {
+     "type": "steps",
+     "t": 55.5,
+     "count": 156
+    },
+    {
+     "type": "fix",
+     "t": 56.0,
+     "lat": 40.001127684,
+     "lng": -74.999502296,
+     "acc": 3.68,
+     "speed": 2.767,
+     "speedAcc": 0.322,
+     "bearing": 67.97
+    },
+    {
+     "type": "steps",
+     "t": 56.5,
+     "count": 159
+    },
+    {
+     "type": "fix",
+     "t": 57.0,
+     "lat": 40.001139627,
+     "lng": -74.999486182,
+     "acc": 4.29,
+     "speed": 2.579,
+     "speedAcc": 0.407,
+     "bearing": 66.02
+    },
+    {
+     "type": "steps",
+     "t": 57.5,
+     "count": 162
+    },
+    {
+     "type": "fix",
+     "t": 58.0,
+     "lat": 40.00114692,
+     "lng": -74.999472011,
+     "acc": 4.92,
+     "speed": 2.72,
+     "speedAcc": 0.396,
+     "bearing": 73.46
+    },
+    {
+     "type": "steps",
+     "t": 58.5,
+     "count": 165
+    },
+    {
+     "type": "fix",
+     "t": 59.0,
+     "lat": 40.001137893,
+     "lng": -74.99940164,
+     "acc": 3.64,
+     "speed": 3.044,
+     "speedAcc": 0.389,
+     "bearing": 71.07
+    },
+    {
+     "type": "steps",
+     "t": 59.5,
+     "count": 168
+    },
+    {
+     "type": "fix",
+     "t": 60.0,
+     "lat": 40.001141,
+     "lng": -74.999365253,
+     "acc": 5.16,
+     "speed": 2.26,
+     "speedAcc": 0.385,
+     "bearing": 64.26
+    },
+    {
+     "type": "steps",
+     "t": 60.5,
+     "count": 170
+    },
+    {
+     "type": "fix",
+     "t": 61.0,
+     "lat": 40.001151314,
+     "lng": -74.99932057,
+     "acc": 5.32,
+     "speed": 2.74,
+     "speedAcc": 0.44,
+     "bearing": 79.21
+    },
+    {
+     "type": "steps",
+     "t": 61.5,
+     "count": 173
+    },
+    {
+     "type": "fix",
+     "t": 62.0,
+     "lat": 40.001168339,
+     "lng": -74.999311956,
+     "acc": 3.63,
+     "speed": 2.59,
+     "speedAcc": 0.405,
+     "bearing": 67.48
+    },
+    {
+     "type": "steps",
+     "t": 62.5,
+     "count": 176
+    },
+    {
+     "type": "fix",
+     "t": 63.0,
+     "lat": 40.001179163,
+     "lng": -74.999324031,
+     "acc": 4.69,
+     "speed": 2.601,
+     "speedAcc": 0.316,
+     "bearing": 75.49
+    },
+    {
+     "type": "steps",
+     "t": 63.5,
+     "count": 179
+    },
+    {
+     "type": "fix",
+     "t": 64.0,
+     "lat": 40.001171747,
+     "lng": -74.999289899,
+     "acc": 4.44,
+     "speed": 2.486,
+     "speedAcc": 0.336,
+     "bearing": 63.56
+    },
+    {
+     "type": "steps",
+     "t": 64.5,
+     "count": 182
+    },
+    {
+     "type": "fix",
+     "t": 65.0,
+     "lat": 40.001170078,
+     "lng": -74.999246498,
+     "acc": 4.5,
+     "speed": 2.949,
+     "speedAcc": 0.341,
+     "bearing": 67.65
+    },
+    {
+     "type": "steps",
+     "t": 65.5,
+     "count": 184
+    },
+    {
+     "type": "fix",
+     "t": 66.0,
+     "lat": 40.001167291,
+     "lng": -74.999197814,
+     "acc": 3.76,
+     "speed": 2.875,
+     "speedAcc": 0.351,
+     "bearing": 67.84
+    },
+    {
+     "type": "steps",
+     "t": 66.5,
+     "count": 187
+    },
+    {
+     "type": "fix",
+     "t": 67.0,
+     "lat": 40.001170104,
+     "lng": -74.999174739,
+     "acc": 5.05,
+     "speed": 2.977,
+     "speedAcc": 0.446,
+     "bearing": 69.65
+    },
+    {
+     "type": "steps",
+     "t": 67.5,
+     "count": 190
+    },
+    {
+     "type": "fix",
+     "t": 68.0,
+     "lat": 40.00116945,
+     "lng": -74.99914087,
+     "acc": 4.84,
+     "speed": 2.77,
+     "speedAcc": 0.361,
+     "bearing": 58.56
+    },
+    {
+     "type": "steps",
+     "t": 68.5,
+     "count": 193
+    },
+    {
+     "type": "fix",
+     "t": 69.0,
+     "lat": 40.001184185,
+     "lng": -74.999132669,
+     "acc": 5.09,
+     "speed": 2.837,
+     "speedAcc": 0.417,
+     "bearing": 59.89
+    },
+    {
+     "type": "steps",
+     "t": 69.5,
+     "count": 196
+    },
+    {
+     "type": "fix",
+     "t": 70.0,
+     "lat": 40.00120552,
+     "lng": -74.999107678,
+     "acc": 4.57,
+     "speed": 2.662,
+     "speedAcc": 0.323,
+     "bearing": 66.9
+    },
+    {
+     "type": "steps",
+     "t": 70.5,
+     "count": 198
+    },
+    {
+     "type": "fix",
+     "t": 71.0,
+     "lat": 40.001221365,
+     "lng": -74.999068265,
+     "acc": 3.93,
+     "speed": 2.585,
+     "speedAcc": 0.321,
+     "bearing": 67.41
+    },
+    {
+     "type": "steps",
+     "t": 71.5,
+     "count": 201
+    },
+    {
+     "type": "fix",
+     "t": 72.0,
+     "lat": 40.00121318,
+     "lng": -74.999045857,
+     "acc": 3.63,
+     "speed": 2.791,
+     "speedAcc": 0.301,
+     "bearing": 79.34
+    },
+    {
+     "type": "steps",
+     "t": 72.5,
+     "count": 204
+    },
+    {
+     "type": "fix",
+     "t": 73.0,
+     "lat": 40.001231604,
+     "lng": -74.999009683,
+     "acc": 4.39,
+     "speed": 2.348,
+     "speedAcc": 0.364,
+     "bearing": 78.21
+    },
+    {
+     "type": "steps",
+     "t": 73.5,
+     "count": 207
+    },
+    {
+     "type": "fix",
+     "t": 74.0,
+     "lat": 40.001216989,
+     "lng": -74.998998948,
+     "acc": 4.75,
+     "speed": 2.612,
+     "speedAcc": 0.324,
+     "bearing": 56.03
+    },
+    {
+     "type": "steps",
+     "t": 74.5,
+     "count": 210
+    },
+    {
+     "type": "fix",
+     "t": 75.0,
+     "lat": 40.001212837,
+     "lng": -74.998971051,
+     "acc": 3.71,
+     "speed": 2.639,
+     "speedAcc": 0.308,
+     "bearing": 64.36
+    },
+    {
+     "type": "steps",
+     "t": 75.5,
+     "count": 212
+    },
+    {
+     "type": "fix",
+     "t": 76.0,
+     "lat": 40.001235245,
+     "lng": -74.99894724,
+     "acc": 4.93,
+     "speed": 2.655,
+     "speedAcc": 0.375,
+     "bearing": 66.38
+    },
+    {
+     "type": "steps",
+     "t": 76.5,
+     "count": 215
+    },
+    {
+     "type": "fix",
+     "t": 77.0,
+     "lat": 40.001260037,
+     "lng": -74.998927967,
+     "acc": 4.49,
+     "speed": 2.619,
+     "speedAcc": 0.496,
+     "bearing": 70.79
+    },
+    {
+     "type": "steps",
+     "t": 77.5,
+     "count": 218
+    },
+    {
+     "type": "fix",
+     "t": 78.0,
+     "lat": 40.001255334,
+     "lng": -74.998870914,
+     "acc": 4.28,
+     "speed": 2.562,
+     "speedAcc": 0.506,
+     "bearing": 77.18
+    },
+    {
+     "type": "steps",
+     "t": 78.5,
+     "count": 221
+    },
+    {
+     "type": "fix",
+     "t": 79.0,
+     "lat": 40.00126894,
+     "lng": -74.998846186,
+     "acc": 3.81,
+     "speed": 2.648,
+     "speedAcc": 0.404,
+     "bearing": 76.99
+    },
+    {
+     "type": "steps",
+     "t": 79.5,
+     "count": 224
+    },
+    {
+     "type": "fix",
+     "t": 80.0,
+     "lat": 40.001283585,
+     "lng": -74.998827832,
+     "acc": 3.91,
+     "speed": 2.81,
+     "speedAcc": 0.319,
+     "bearing": 16.84
+    },
+    {
+     "type": "steps",
+     "t": 80.5,
+     "count": 226
+    },
+    {
+     "type": "fix",
+     "t": 81.0,
+     "lat": 40.001317854,
+     "lng": -74.998805838,
+     "acc": 5.58,
+     "speed": 2.588,
+     "speedAcc": 0.331,
+     "bearing": 19.49
+    },
+    {
+     "type": "steps",
+     "t": 81.5,
+     "count": 229
+    },
+    {
+     "type": "fix",
+     "t": 82.0,
+     "lat": 40.001342579,
+     "lng": -74.99880268,
+     "acc": 5.13,
+     "speed": 2.544,
+     "speedAcc": 0.452,
+     "bearing": 21.38
+    },
+    {
+     "type": "steps",
+     "t": 82.5,
+     "count": 232
+    },
+    {
+     "type": "fix",
+     "t": 83.0,
+     "lat": 40.001354446,
+     "lng": -74.998797809,
+     "acc": 4.17,
+     "speed": 2.751,
+     "speedAcc": 0.352,
+     "bearing": 357.8
+    },
+    {
+     "type": "steps",
+     "t": 83.5,
+     "count": 235
+    },
+    {
+     "type": "fix",
+     "t": 84.0,
+     "lat": 40.001374763,
+     "lng": -74.998750545,
+     "acc": 4.44,
+     "speed": 2.501,
+     "speedAcc": 0.351,
+     "bearing": 20.11
+    },
+    {
+     "type": "steps",
+     "t": 84.5,
+     "count": 238
+    },
+    {
+     "type": "fix",
+     "t": 85.0,
+     "lat": 40.001393499,
+     "lng": -74.998738145,
+     "acc": 5.39,
+     "speed": 2.555,
+     "speedAcc": 0.345,
+     "bearing": 37.04
+    },
+    {
+     "type": "steps",
+     "t": 85.5,
+     "count": 240
+    },
+    {
+     "type": "fix",
+     "t": 86.0,
+     "lat": 40.001398287,
+     "lng": -74.998727773,
+     "acc": 4.22,
+     "speed": 2.755,
+     "speedAcc": 0.434,
+     "bearing": 35.76
+    },
+    {
+     "type": "steps",
+     "t": 86.5,
+     "count": 243
+    },
+    {
+     "type": "fix",
+     "t": 87.0,
+     "lat": 40.001439073,
+     "lng": -74.998717805,
+     "acc": 3.61,
+     "speed": 2.529,
+     "speedAcc": 0.395,
+     "bearing": 11.75
+    },
+    {
+     "type": "steps",
+     "t": 87.5,
+     "count": 246
+    },
+    {
+     "type": "fix",
+     "t": 88.0,
+     "lat": 40.001483799,
+     "lng": -74.998733944,
+     "acc": 4.4,
+     "speed": 2.465,
+     "speedAcc": 0.316,
+     "bearing": 8.95
+    },
+    {
+     "type": "steps",
+     "t": 88.5,
+     "count": 249
+    },
+    {
+     "type": "fix",
+     "t": 89.0,
+     "lat": 40.001530646,
+     "lng": -74.998705325,
+     "acc": 4.03,
+     "speed": 2.655,
+     "speedAcc": 0.343,
+     "bearing": 23.8
+    },
+    {
+     "type": "steps",
+     "t": 89.5,
+     "count": 252
+    },
+    {
+     "type": "finish",
+     "t": 90.0
+    }
+   ],
+   "expected": {
+    "distanceAfterEachEventM": [
+     0.0,
+     0.0,
+     2.194,
+     2.194,
+     4.982,
+     4.982,
+     7.58,
+     7.58,
+     10.204,
+     10.204,
+     12.514,
+     12.514,
+     15.506,
+     15.506,
+     18.141,
+     18.141,
+     20.77,
+     20.77,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     23.579,
+     127.129,
+     127.129,
+     129.999,
+     129.999,
+     132.875,
+     132.875,
+     135.424,
+     135.424,
+     138.228,
+     138.228,
+     141.125,
+     141.125,
+     143.892,
+     143.892,
+     146.471,
+     146.471,
+     149.191,
+     149.191,
+     152.235,
+     152.235,
+     154.495,
+     154.495,
+     157.235,
+     157.235,
+     159.825,
+     159.825,
+     162.426,
+     162.426,
+     164.912,
+     164.912,
+     167.861,
+     167.861,
+     170.736,
+     170.736,
+     173.713,
+     173.713,
+     176.483,
+     176.483,
+     179.32,
+     179.32,
+     181.982,
+     181.982,
+     184.567,
+     184.567,
+     187.358,
+     187.358,
+     189.706,
+     189.706,
+     192.318,
+     192.318,
+     194.957,
+     194.957,
+     197.612,
+     197.612,
+     200.231,
+     200.231,
+     202.793,
+     202.793,
+     205.441,
+     205.441,
+     208.251,
+     208.251,
+     210.839,
+     210.839,
+     213.383,
+     213.383,
+     216.134,
+     216.134,
+     218.635,
+     218.635,
+     221.19,
+     221.19,
+     223.945,
+     223.945,
+     226.474,
+     226.474,
+     228.939,
+     228.939,
+     231.594,
+     231.594,
+     231.594
+    ],
+    "gpsDistanceM": 128.044,
+    "stepDistanceM": 103.55,
+    "strideM": 0.944054
+   }
+  },
+  {
+   "name": "seeded_stride_out_of_range",
+   "description": "initialStrideM 3.0 is outside 0.4-2.5 m and ignored, so the early gap is not filled",
+   "maxSpeedMps": 10.0,
+   "expectedIntervalS": 1.0,
+   "initialStrideM": 3.0,
+   "events": [
+    {
+     "type": "fix",
+     "t": 0.0,
+     "lat": 40.000034389,
+     "lng": -75.000011328,
+     "acc": 4.54,
+     "speed": 2.761,
+     "speedAcc": 0.423,
+     "bearing": 6.31
+    },
+    {
+     "type": "steps",
+     "t": 0.5,
+     "count": 2
+    },
+    {
+     "type": "fix",
+     "t": 1.0,
+     "lat": 40.000074133,
+     "lng": -75.000011407,
+     "acc": 4.45,
+     "speed": 2.688,
+     "speedAcc": 0.328,
+     "bearing": 3.81
+    },
+    {
+     "type": "steps",
+     "t": 1.5,
+     "count": 5
+    },
+    {
+     "type": "fix",
+     "t": 2.0,
+     "lat": 40.000085517,
+     "lng": -75.000010814,
+     "acc": 4.21,
+     "speed": 2.316,
+     "speedAcc": 0.305,
+     "bearing": 16.93
+    },
+    {
+     "type": "steps",
+     "t": 2.5,
+     "count": 8
+    },
+    {
+     "type": "fix",
+     "t": 3.0,
+     "lat": 40.00009198,
+     "lng": -75.000001662,
+     "acc": 4.69,
+     "speed": 2.708,
+     "speedAcc": 0.359,
+     "bearing": 355.21
+    },
+    {
+     "type": "steps",
+     "t": 3.5,
+     "count": 11
+    },
+    {
+     "type": "fix",
+     "t": 4.0,
+     "lat": 40.00012652,
+     "lng": -74.999999373,
+     "acc": 3.69,
+     "speed": 2.944,
+     "speedAcc": 0.36,
+     "bearing": 6.86
+    },
+    {
+     "type": "steps",
+     "t": 4.5,
+     "count": 14
+    },
+    {
+     "type": "fix",
+     "t": 5.0,
+     "lat": 40.000127616,
+     "lng": -75.00002271,
+     "acc": 3.68,
+     "speed": 2.723,
+     "speedAcc": 0.487,
+     "bearing": 357.53
+    },
+    {
+     "type": "steps",
+     "t": 5.5,
+     "count": 16
+    },
+    {
+     "type": "fix",
+     "t": 6.0,
+     "lat": 40.000139558,
+     "lng": -75.000015753,
+     "acc": 3.66,
+     "speed": 2.767,
+     "speedAcc": 0.337,
+     "bearing": 8.38
+    },
+    {
+     "type": "steps",
+     "t": 6.5,
+     "count": 19
+    },
+    {
+     "type": "fix",
+     "t": 7.0,
+     "lat": 40.000173892,
+     "lng": -74.999992381,
+     "acc": 3.62,
+     "speed": 2.656,
+     "speedAcc": 0.364,
+     "bearing": 352.22
+    },
+    {
+     "type": "steps",
+     "t": 7.5,
+     "count": 22
+    },
+    {
+     "type": "fix",
+     "t": 8.0,
+     "lat": 40.000193364,
+     "lng": -74.999977934,
+     "acc": 3.91,
+     "speed": 2.522,
+     "speedAcc": 0.389,
+     "bearing": 353.87
+    },
+    {
+     "type": "steps",
+     "t": 8.5,
+     "count": 25
+    },
+    {
+     "type": "fix",
+     "t": 9.0,
+     "lat": 40.000220755,
+     "lng": -74.999971669,
+     "acc": 3.71,
+     "speed": 2.832,
+     "speedAcc": 0.385,
+     "bearing": 7.29
+    },
+    {
+     "type": "steps",
+     "t": 9.5,
+     "count": 28
+    },
+    {
+     "type": "steps",
+     "t": 10.5,
+     "count": 30
+    },
+    {
+     "type": "steps",
+     "t": 11.5,
+     "count": 33
+    },
+    {
+     "type": "steps",
+     "t": 12.5,
+     "count": 36
+    },
+    {
+     "type": "steps",
+     "t": 13.5,
+     "count": 39
+    },
+    {
+     "type": "steps",
+     "t": 14.5,
+     "count": 41
+    },
+    {
+     "type": "steps",
+     "t": 15.5,
+     "count": 44
+    },
+    {
+     "type": "steps",
+     "t": 16.5,
+     "count": 47
+    },
+    {
+     "type": "steps",
+     "t": 17.5,
+     "count": 50
+    },
+    {
+     "type": "steps",
+     "t": 18.5,
+     "count": 53
+    },
+    {
+     "type": "steps",
+     "t": 19.5,
+     "count": 55
+    },
+    {
+     "type": "steps",
+     "t": 20.5,
+     "count": 58
+    },
+    {
+     "type": "steps",
+     "t": 21.5,
+     "count": 61
+    },
+    {
+     "type": "steps",
+     "t": 22.5,
+     "count": 64
+    },
+    {
+     "type": "steps",
+     "t": 23.5,
+     "count": 67
+    },
+    {
+     "type": "steps",
+     "t": 24.5,
+     "count": 69
+    },
+    {
+     "type": "steps",
+     "t": 25.5,
+     "count": 72
+    },
+    {
+     "type": "steps",
+     "t": 26.5,
+     "count": 75
+    },
+    {
+     "type": "steps",
+     "t": 27.5,
+     "count": 78
+    },
+    {
+     "type": "steps",
+     "t": 28.5,
+     "count": 81
+    },
+    {
+     "type": "steps",
+     "t": 29.5,
+     "count": 83
+    },
+    {
+     "type": "steps",
+     "t": 30.5,
+     "count": 86
+    },
+    {
+     "type": "steps",
+     "t": 31.5,
+     "count": 89
+    },
+    {
+     "type": "steps",
+     "t": 32.5,
+     "count": 92
+    },
+    {
+     "type": "steps",
+     "t": 33.5,
+     "count": 95
+    },
+    {
+     "type": "steps",
+     "t": 34.5,
+     "count": 97
+    },
+    {
+     "type": "steps",
+     "t": 35.5,
+     "count": 100
+    },
+    {
+     "type": "steps",
+     "t": 36.5,
+     "count": 103
+    },
+    {
+     "type": "steps",
+     "t": 37.5,
+     "count": 106
+    },
+    {
+     "type": "steps",
+     "t": 38.5,
+     "count": 109
+    },
+    {
+     "type": "steps",
+     "t": 39.5,
+     "count": 111
+    },
+    {
+     "type": "steps",
+     "t": 40.5,
+     "count": 114
+    },
+    {
+     "type": "steps",
+     "t": 41.5,
+     "count": 117
+    },
+    {
+     "type": "steps",
+     "t": 42.5,
+     "count": 120
+    },
+    {
+     "type": "steps",
+     "t": 43.5,
+     "count": 123
+    },
+    {
+     "type": "steps",
+     "t": 44.5,
+     "count": 125
+    },
+    {
+     "type": "steps",
+     "t": 45.5,
+     "count": 128
+    },
+    {
+     "type": "steps",
+     "t": 46.5,
+     "count": 131
+    },
+    {
+     "type": "steps",
+     "t": 47.5,
+     "count": 134
+    },
+    {
+     "type": "steps",
+     "t": 48.5,
+     "count": 137
+    },
+    {
+     "type": "steps",
+     "t": 49.5,
+     "count": 139
+    },
+    {
+     "type": "fix",
+     "t": 50.0,
+     "lat": 40.001065658,
+     "lng": -74.99967514,
+     "acc": 4.41,
+     "speed": 2.766,
+     "speedAcc": 0.319,
+     "bearing": 78.68
+    },
+    {
+     "type": "steps",
+     "t": 50.5,
+     "count": 142
+    },
+    {
+     "type": "fix",
+     "t": 51.0,
+     "lat": 40.00105653,
+     "lng": -74.99964982,
+     "acc": 3.78,
+     "speed": 2.828,
+     "speedAcc": 0.324,
+     "bearing": 68.11
+    },
+    {
+     "type": "steps",
+     "t": 51.5,
+     "count": 145
+    },
+    {
+     "type": "fix",
+     "t": 52.0,
+     "lat": 40.001063961,
+     "lng": -74.999617091,
+     "acc": 4.0,
+     "speed": 2.62,
+     "speedAcc": 0.448,
+     "bearing": 66.67
+    },
+    {
+     "type": "steps",
+     "t": 52.5,
+     "count": 148
+    },
+    {
+     "type": "fix",
+     "t": 53.0,
+     "lat": 40.001086644,
+     "lng": -74.999584267,
+     "acc": 4.71,
+     "speed": 2.437,
+     "speedAcc": 0.374,
+     "bearing": 60.26
+    },
+    {
+     "type": "steps",
+     "t": 53.5,
+     "count": 151
+    },
+    {
+     "type": "fix",
+     "t": 54.0,
+     "lat": 40.001068058,
+     "lng": -74.999556521,
+     "acc": 4.98,
+     "speed": 2.662,
+     "speedAcc": 0.336,
+     "bearing": 60.87
+    },
+    {
+     "type": "steps",
+     "t": 54.5,
+     "count": 154
+    },
+    {
+     "type": "fix",
+     "t": 55.0,
+     "lat": 40.001093469,
+     "lng": -74.999522997,
+     "acc": 4.52,
+     "speed": 2.873,
+     "speedAcc": 0.303,
+     "bearing": 52.59
+    },
+    {
+     "type": "steps",
+     "t": 55.5,
+     "count": 156
+    },
+    {
+     "type": "fix",
+     "t": 56.0,
+     "lat": 40.001103545,
+     "lng": -74.99949129,
+     "acc": 5.07,
+     "speed": 2.578,
+     "speedAcc": 0.483,
+     "bearing": 69.76
+    },
+    {
+     "type": "steps",
+     "t": 56.5,
+     "count": 159
+    },
+    {
+     "type": "fix",
+     "t": 57.0,
+     "lat": 40.001109881,
+     "lng": -74.999453795,
+     "acc": 4.14,
+     "speed": 2.87,
+     "speedAcc": 0.302,
+     "bearing": 66.0
+    },
+    {
+     "type": "steps",
+     "t": 57.5,
+     "count": 162
+    },
+    {
+     "type": "fix",
+     "t": 58.0,
+     "lat": 40.001115661,
+     "lng": -74.999415121,
+     "acc": 3.91,
+     "speed": 2.834,
+     "speedAcc": 0.318,
+     "bearing": 73.16
+    },
+    {
+     "type": "steps",
+     "t": 58.5,
+     "count": 165
+    },
+    {
+     "type": "fix",
+     "t": 59.0,
+     "lat": 40.001125848,
+     "lng": -74.999384389,
+     "acc": 4.48,
+     "speed": 2.864,
+     "speedAcc": 0.332,
+     "bearing": 56.47
+    },
+    {
+     "type": "steps",
+     "t": 59.5,
+     "count": 168
+    },
+    {
+     "type": "fix",
+     "t": 60.0,
+     "lat": 40.001144143,
+     "lng": -74.99937955,
+     "acc": 5.1,
+     "speed": 2.879,
+     "speedAcc": 0.343,
+     "bearing": 72.19
+    },
+    {
+     "type": "steps",
+     "t": 60.5,
+     "count": 170
+    },
+    {
+     "type": "fix",
+     "t": 61.0,
+     "lat": 40.001156855,
+     "lng": -74.999357421,
+     "acc": 3.64,
+     "speed": 2.535,
+     "speedAcc": 0.365,
+     "bearing": 70.56
+    },
+    {
+     "type": "steps",
+     "t": 61.5,
+     "count": 173
+    },
+    {
+     "type": "fix",
+     "t": 62.0,
+     "lat": 40.001177914,
+     "lng": -74.999293986,
+     "acc": 5.08,
+     "speed": 2.819,
+     "speedAcc": 0.386,
+     "bearing": 65.43
+    },
+    {
+     "type": "steps",
+     "t": 62.5,
+     "count": 176
+    },
+    {
+     "type": "fix",
+     "t": 63.0,
+     "lat": 40.001168904,
+     "lng": -74.999269202,
+     "acc": 6.68,
+     "speed": 2.81,
+     "speedAcc": 0.385,
+     "bearing": 79.45
+    },
+    {
+     "type": "steps",
+     "t": 63.5,
+     "count": 179
+    },
+    {
+     "type": "fix",
+     "t": 64.0,
+     "lat": 40.001191461,
+     "lng": -74.999275843,
+     "acc": 3.77,
+     "speed": 2.724,
+     "speedAcc": 0.398,
+     "bearing": 72.14
+    },
+    {
+     "type": "steps",
+     "t": 64.5,
+     "count": 182
+    },
+    {
+     "type": "fix",
+     "t": 65.0,
+     "lat": 40.001187129,
+     "lng": -74.999235101,
+     "acc": 4.1,
+     "speed": 2.645,
+     "speedAcc": 0.359,
+     "bearing": 68.98
+    },
+    {
+     "type": "steps",
+     "t": 65.5,
+     "count": 184
+    },
+    {
+     "type": "fix",
+     "t": 66.0,
+     "lat": 40.001189344,
+     "lng": -74.999197609,
+     "acc": 4.8,
+     "speed": 2.578,
+     "speedAcc": 0.401,
+     "bearing": 68.52
+    },
+    {
+     "type": "steps",
+     "t": 66.5,
+     "count": 187
+    },
+    {
+     "type": "fix",
+     "t": 67.0,
+     "lat": 40.001194121,
+     "lng": -74.999165725,
+     "acc": 4.57,
+     "speed": 2.573,
+     "speedAcc": 0.556,
+     "bearing": 65.11
+    },
+    {
+     "type": "steps",
+     "t": 67.5,
+     "count": 190
+    },
+    {
+     "type": "fix",
+     "t": 68.0,
+     "lat": 40.001217384,
+     "lng": -74.99914508,
+     "acc": 4.33,
+     "speed": 2.614,
+     "speedAcc": 0.364,
+     "bearing": 76.75
+    },
+    {
+     "type": "steps",
+     "t": 68.5,
+     "count": 193
+    },
+    {
+     "type": "fix",
+     "t": 69.0,
+     "lat": 40.001239995,
+     "lng": -74.999119593,
+     "acc": 3.95,
+     "speed": 2.714,
+     "speedAcc": 0.384,
+     "bearing": 53.14
+    },
+    {
+     "type": "steps",
+     "t": 69.5,
+     "count": 196
+    },
+    {
+     "type": "fix",
+     "t": 70.0,
+     "lat": 40.00123875,
+     "lng": -74.999098953,
+     "acc": 4.42,
+     "speed": 3.036,
+     "speedAcc": 0.451,
+     "bearing": 74.41
+    },
+    {
+     "type": "steps",
+     "t": 70.5,
+     "count": 198
+    },
+    {
+     "type": "fix",
+     "t": 71.0,
+     "lat": 40.00125482,
+     "lng": -74.999042721,
+     "acc": 4.21,
+     "speed": 2.608,
+     "speedAcc": 0.351,
+     "bearing": 80.86
+    },
+    {
+     "type": "steps",
+     "t": 71.5,
+     "count": 201
+    },
+    {
+     "type": "fix",
+     "t": 72.0,
+     "lat": 40.001254344,
+     "lng": -74.998988485,
+     "acc": 4.09,
+     "speed": 2.69,
+     "speedAcc": 0.378,
+     "bearing": 64.78
+    },
+    {
+     "type": "steps",
+     "t": 72.5,
+     "count": 204
+    },
+    {
+     "type": "fix",
+     "t": 73.0,
+     "lat": 40.001257007,
+     "lng": -74.998946459,
+     "acc": 3.96,
+     "speed": 2.589,
+     "speedAcc": 0.411,
+     "bearing": 68.0
+    },
+    {
+     "type": "steps",
+     "t": 73.5,
+     "count": 207
+    },
+    {
+     "type": "fix",
+     "t": 74.0,
+     "lat": 40.001264186,
+     "lng": -74.998911536,
+     "acc": 4.51,
+     "speed": 2.757,
+     "speedAcc": 0.557,
+     "bearing": 64.36
+    },
+    {
+     "type": "steps",
+     "t": 74.5,
+     "count": 210
+    },
+    {
+     "type": "fix",
+     "t": 75.0,
+     "lat": 40.001265982,
+     "lng": -74.998873193,
+     "acc": 3.8,
+     "speed": 2.435,
+     "speedAcc": 0.429,
+     "bearing": 51.63
+    },
+    {
+     "type": "steps",
+     "t": 75.5,
+     "count": 212
+    },
+    {
+     "type": "fix",
+     "t": 76.0,
+     "lat": 40.001256361,
+     "lng": -74.998836888,
+     "acc": 3.85,
+     "speed": 2.763,
+     "speedAcc": 0.372,
+     "bearing": 73.27
+    },
+    {
+     "type": "steps",
+     "t": 76.5,
+     "count": 215
+    },
+    {
+     "type": "fix",
+     "t": 77.0,
+     "lat": 40.001258996,
+     "lng": -74.998814097,
+     "acc": 4.07,
+     "speed": 2.912,
+     "speedAcc": 0.341,
+     "bearing": 70.82
+    },
+    {
+     "type": "steps",
+     "t": 77.5,
+     "count": 218
+    },
+    {
+     "type": "fix",
+     "t": 78.0,
+     "lat": 40.001269079,
+     "lng": -74.99878772,
+     "acc": 4.94,
+     "speed": 2.823,
+     "speedAcc": 0.306,
+     "bearing": 73.77
+    },
+    {
+     "type": "steps",
+     "t": 78.5,
+     "count": 221
+    },
+    {
+     "type": "fix",
+     "t": 79.0,
+     "lat": 40.001279128,
+     "lng": -74.998778517,
+     "acc": 3.97,
+     "speed": 2.681,
+     "speedAcc": 0.303,
+     "bearing": 78.34
+    },
+    {
+     "type": "steps",
+     "t": 79.5,
+     "count": 224
+    },
+    {
+     "type": "fix",
+     "t": 80.0,
+     "lat": 40.00131153,
+     "lng": -74.998759839,
+     "acc": 5.88,
+     "speed": 2.715,
+     "speedAcc": 0.366,
+     "bearing": 15.69
+    },
+    {
+     "type": "steps",
+     "t": 80.5,
+     "count": 226
+    },
+    {
+     "type": "fix",
+     "t": 81.0,
+     "lat": 40.001342024,
+     "lng": -74.998752094,
+     "acc": 5.48,
+     "speed": 2.922,
+     "speedAcc": 0.356,
+     "bearing": 19.11
+    },
+    {
+     "type": "steps",
+     "t": 81.5,
+     "count": 229
+    },
+    {
+     "type": "fix",
+     "t": 82.0,
+     "lat": 40.0013486,
+     "lng": -74.998761706,
+     "acc": 5.1,
+     "speed": 2.566,
+     "speedAcc": 0.329,
+     "bearing": 17.41
+    },
+    {
+     "type": "steps",
+     "t": 82.5,
+     "count": 232
+    },
+    {
+     "type": "fix",
+     "t": 83.0,
+     "lat": 40.001400324,
+     "lng": -74.99875649,
+     "acc": 5.36,
+     "speed": 2.514,
+     "speedAcc": 0.391,
+     "bearing": 31.93
+    },
+    {
+     "type": "steps",
+     "t": 83.5,
+     "count": 235
+    },
+    {
+     "type": "fix",
+     "t": 84.0,
+     "lat": 40.001409906,
+     "lng": -74.998743866,
+     "acc": 4.17,
+     "speed": 2.823,
+     "speedAcc": 0.319,
+     "bearing": 19.63
+    },
+    {
+     "type": "steps",
+     "t": 84.5,
+     "count": 238
+    },
+    {
+     "type": "fix",
+     "t": 85.0,
+     "lat": 40.001438254,
+     "lng": -74.998677585,
+     "acc": 4.46,
+     "speed": 2.765,
+     "speedAcc": 0.404,
+     "bearing": 14.77
+    },
+    {
+     "type": "steps",
+     "t": 85.5,
+     "count": 240
+    },
+    {
+     "type": "fix",
+     "t": 86.0,
+     "lat": 40.001446323,
+     "lng": -74.998680446,
+     "acc": 3.9,
+     "speed": 2.685,
+     "speedAcc": 0.308,
+     "bearing": 27.55
+    },
+    {
+     "type": "steps",
+     "t": 86.5,
+     "count": 243
+    },
+    {
+     "type": "fix",
+     "t": 87.0,
+     "lat": 40.001468342,
+     "lng": -74.998657919,
+     "acc": 4.89,
+     "speed": 2.889,
+     "speedAcc": 0.341,
+     "bearing": 27.68
+    },
+    {
+     "type": "steps",
+     "t": 87.5,
+     "count": 246
+    },
+    {
+     "type": "fix",
+     "t": 88.0,
+     "lat": 40.001477797,
+     "lng": -74.998670991,
+     "acc": 3.64,
+     "speed": 2.835,
+     "speedAcc": 0.533,
+     "bearing": 21.16
+    },
+    {
+     "type": "steps",
+     "t": 88.5,
+     "count": 249
+    },
+    {
+     "type": "fix",
+     "t": 89.0,
+     "lat": 40.00148715,
+     "lng": -74.998644983,
+     "acc": 3.99,
+     "speed": 2.882,
+     "speedAcc": 0.352,
+     "bearing": 21.91
+    },
+    {
+     "type": "steps",
+     "t": 89.5,
+     "count": 252
+    },
+    {
+     "type": "finish",
+     "t": 90.0
+    }
+   ],
+   "expected": {
+    "distanceAfterEachEventM": [
+     0.0,
+     0.0,
+     2.688,
+     2.688,
+     5.004,
+     5.004,
+     7.712,
+     7.712,
+     10.656,
+     10.656,
+     13.379,
+     13.379,
+     16.146,
+     16.146,
+     18.802,
+     18.802,
+     21.324,
+     21.324,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     24.156,
+     26.984,
+     26.984,
+     29.604,
+     29.604,
+     32.041,
+     32.041,
+     34.703,
+     34.703,
+     37.576,
+     37.576,
+     40.154,
+     40.154,
+     43.024,
+     43.024,
+     45.858,
+     45.858,
+     48.722,
+     48.722,
+     51.601,
+     51.601,
+     54.136,
+     54.136,
+     56.955,
+     56.955,
+     59.765,
+     59.765,
+     62.489,
+     62.489,
+     65.134,
+     65.134,
+     67.712,
+     67.712,
+     70.285,
+     70.285,
+     72.899,
+     72.899,
+     75.613,
+     75.613,
+     78.649,
+     78.649,
+     81.257,
+     81.257,
+     83.947,
+     83.947,
+     86.536,
+     86.536,
+     89.293,
+     89.293,
+     91.728,
+     91.728,
+     94.491,
+     94.491,
+     97.403,
+     97.403,
+     100.226,
+     100.226,
+     102.907,
+     102.907,
+     105.622,
+     105.622,
+     108.544,
+     108.544,
+     111.11,
+     111.11,
+     113.624,
+     113.624,
+     116.447,
+     116.447,
+     119.212,
+     119.212,
+     121.897,
+     121.897,
+     124.786,
+     124.786,
+     127.621,
+     127.621,
+     130.503,
+     130.503,
+     130.503
+    ],
+    "gpsDistanceM": 130.503,
+    "stepDistanceM": 0.0,
+    "strideM": 0.9193
+   }
+  },
+  {
    "name": "invalid_inputs",
    "description": "non-monotonic t (ignored), speed>max and speedAcc>1.5 (Doppler ignored, fix kept), negative accuracy (floored), bad step count",
    "maxSpeedMps": 10.0,
+   "expectedIntervalS": 1.0,
+   "initialStrideM": null,
    "events": [
     {
      "type": "fix",

@@ -14525,4 +14525,66 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get avatarCropLoadFailed =>
       'No se pudo abrir esta imagen. Prueba con JPEG, PNG o WebP.';
+
+  @override
+  String get dashboardLeadTitle => 'Tu semana';
+
+  @override
+  String get dashboardLeadEmpty => 'Aún sin carreras';
+
+  @override
+  String dashboardLeadVsPlan(String done, String target) {
+    return '$done de $target previstos';
+  }
+
+  @override
+  String dashboardLeadVsGoal(String done, String target) {
+    return '$done de tu objetivo semanal de $target';
+  }
+
+  @override
+  String dashboardLeadVsGoalRuns(int done, int target) {
+    String _temp0 = intl.Intl.pluralLogic(
+      target,
+      locale: localeName,
+      other: '$done de $target actividades, tu objetivo semanal',
+      one: '$done de 1 actividad, tu objetivo semanal',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dashboardLeadVsAverage(int weeks, String avg) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: 'Tu media semanal de las últimas $weeks semanas: $avg',
+      one: 'La semana pasada: $avg',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dashboardLeadPlanProgressAria =>
+      'Distancia de esta semana frente a tu plan';
+
+  @override
+  String get dashboardLeadGoalProgressAria =>
+      'Progreso de esta semana frente a tu objetivo semanal';
+
+  @override
+  String get dashboardLeadNextSession => 'Próxima sesión';
+
+  @override
+  String get dashboardLeadToday => 'Hoy';
+
+  @override
+  String get dashboardLeadTomorrow => 'Mañana';
+
+  @override
+  String get dashboardLeadNoNextSession =>
+      'No quedan más sesiones programadas en tu plan.';
+
+  @override
+  String get dashboardLeadAddRun => 'Añadir carrera';
 }

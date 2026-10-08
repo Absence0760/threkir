@@ -3,10 +3,12 @@
 // module and by messages_parity.test.ts). Keys are dotted, grouped by
 // surface; `{name}`-style placeholders are filled by m()'s params arg.
 //
-// English is statically bundled (it is the fallback for any missing key
-// and the prerender default); other locales are lazy-imported by the
-// runtime in store.svelte.ts so a single-locale visitor only downloads
-// their own strings.
+// The browser never loads this file whole. The i18n Vite plugin splits every
+// locale into a core part and one part per area (../areas.ts, decisions
+// § 1802); only the English CORE is bundled (the fallback for a missing key
+// and the prerender default), and a reader fetches their own locale's core
+// plus the areas of the routes they open. Which part a key lands in is
+// derived from where it is used — just add it here and in every locale.
 
 export const en = {
 	// App shell / sidebar (+layout.svelte)

@@ -1,7 +1,9 @@
 import { sveltekit } from "@sveltejs/kit/vite";
+import { fileURLToPath } from "node:url";
 import { defineConfig, loadEnv, type Plugin } from "vite";
 
 import { esbuildTarget } from "./scripts/browser_baseline.mjs";
+import { i18nAreaCatalogues } from "./src/lib/i18n/vite_plugin.ts";
 import { checkEnvIsolation, formatGuardError } from "./scripts/env_isolation.mjs";
 
 function envIsolationGuard(): Plugin {
@@ -29,6 +31,8 @@ function envIsolationGuard(): Plugin {
 export default defineConfig({
 	plugins: [
 		envIsolationGuard(),
+		// Splits each locale catalogue into core + per-area chunks (decisions § 1802).
+		i18nAreaCatalogues({ srcDir: fileURLToPath(new URL("./src", import.meta.url)) }),
 		sveltekit(),
 	],
 	build: {

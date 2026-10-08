@@ -14379,4 +14379,66 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get avatarCropLoadFailed =>
       'This image couldn\'t be opened. Try a JPEG, PNG, or WebP.';
+
+  @override
+  String get dashboardLeadTitle => 'Your week';
+
+  @override
+  String get dashboardLeadEmpty => 'No runs yet';
+
+  @override
+  String dashboardLeadVsPlan(String done, String target) {
+    return '$done of $target planned';
+  }
+
+  @override
+  String dashboardLeadVsGoal(String done, String target) {
+    return '$done of your $target weekly goal';
+  }
+
+  @override
+  String dashboardLeadVsGoalRuns(int done, int target) {
+    String _temp0 = intl.Intl.pluralLogic(
+      target,
+      locale: localeName,
+      other: '$done of $target activities, your weekly goal',
+      one: '$done of 1 activity, your weekly goal',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dashboardLeadVsAverage(int weeks, String avg) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: 'Your weekly average over the last $weeks weeks: $avg',
+      one: 'Last week: $avg',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dashboardLeadPlanProgressAria =>
+      'This week\'s distance against your plan';
+
+  @override
+  String get dashboardLeadGoalProgressAria =>
+      'This week\'s progress against your weekly goal';
+
+  @override
+  String get dashboardLeadNextSession => 'Next session';
+
+  @override
+  String get dashboardLeadToday => 'Today';
+
+  @override
+  String get dashboardLeadTomorrow => 'Tomorrow';
+
+  @override
+  String get dashboardLeadNoNextSession =>
+      'No more sessions scheduled in your plan.';
+
+  @override
+  String get dashboardLeadAddRun => 'Add a run';
 }

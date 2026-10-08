@@ -18468,5 +18468,89 @@
   "avatarCropLoadFailed": "This image couldn't be opened. Try a JPEG, PNG, or WebP.",
   "@avatarCropLoadFailed": {
     "description": "Shown when the picked profile photo cannot be decoded"
+  },
+  "dashboardLeadTitle": "Your week",
+  "@dashboardLeadTitle": {
+    "description": "Heading of the dashboard's opening this-week card"
+  },
+  "dashboardLeadEmpty": "No runs yet",
+  "@dashboardLeadEmpty": {
+    "description": "Shown in place of the week's distance when nothing has been logged this calendar week"
+  },
+  "dashboardLeadVsPlan": "{done} of {target} planned",
+  "@dashboardLeadVsPlan": {
+    "description": "This week's distance against the active plan's distance for the same calendar week; both values are formatted distances",
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardLeadVsGoal": "{done} of your {target} weekly goal",
+  "@dashboardLeadVsGoal": {
+    "description": "This week's distance against the runner's weekly distance goal; both values are formatted distances",
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardLeadVsGoalRuns": "{target, plural, one{{done} of 1 activity, your weekly goal} other{{done} of {target} activities, your weekly goal}}",
+  "@dashboardLeadVsGoalRuns": {
+    "description": "This week's activity count against the runner's weekly run-count goal",
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "target": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboardLeadVsAverage": "{weeks, plural, one{Last week: {avg}} other{Your weekly average over the last {weeks} weeks: {avg}}}",
+  "@dashboardLeadVsAverage": {
+    "description": "The runner's own weekly average over the weeks before this one, used when there is no plan distance or weekly goal; avg is a formatted distance",
+    "placeholders": {
+      "weeks": {
+        "type": "int"
+      },
+      "avg": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardLeadPlanProgressAria": "This week's distance against your plan",
+  "@dashboardLeadPlanProgressAria": {
+    "description": "Accessibility label for the progress bar measuring this week against the plan"
+  },
+  "dashboardLeadGoalProgressAria": "This week's progress against your weekly goal",
+  "@dashboardLeadGoalProgressAria": {
+    "description": "Accessibility label for the progress bar measuring this week against the weekly goal"
+  },
+  "dashboardLeadNextSession": "Next session",
+  "@dashboardLeadNextSession": {
+    "description": "Kicker above the next scheduled plan session on the dashboard week card"
+  },
+  "dashboardLeadToday": "Today",
+  "@dashboardLeadToday": {
+    "description": "The next plan session is scheduled today"
+  },
+  "dashboardLeadTomorrow": "Tomorrow",
+  "@dashboardLeadTomorrow": {
+    "description": "The next plan session is scheduled tomorrow"
+  },
+  "dashboardLeadNoNextSession": "No more sessions scheduled in your plan.",
+  "@dashboardLeadNoNextSession": {
+    "description": "Shown on the dashboard week card when the active plan has no open session left"
+  },
+  "dashboardLeadAddRun": "Add a run",
+  "@dashboardLeadAddRun": {
+    "description": "Button on the dashboard week card that opens the manual add-a-run form"
   }
 }

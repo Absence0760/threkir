@@ -15,6 +15,10 @@
  * set against a flat weekly goal would read as falling short on purpose. A week with no activity inside the average window is a real zero,
  * but weeks before the runner's first activity are not weeks they missed, so
  * the window is shortened to their history rather than diluted by it.
+ *
+ * Web half of a registered parity pair with the Dart twin
+ * `apps/mobile_android/lib/week_lead.dart`. Keep the algorithm, edge cases,
+ * outputs, and test counts in lockstep.
  */
 
 import type { WeekStart } from './current_week';

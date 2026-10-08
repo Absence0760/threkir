@@ -312,6 +312,7 @@ class ApiClient {
           'p_max_lat': maxLat,
           'p_max_points': maxPoints,
         },
+        get: true,
       );
       if (data is! List) return const [];
       return data.map<HeatmapPoint>((row) {
@@ -568,7 +569,9 @@ class ApiClient {
     // Use the SECURITY DEFINER read so the column-revoked fields
     // (`subscription_tier`, `subscription_at`, `parkrun_number`) don't
     // make the SELECT silently return null when the row exists.
-    if (profileRowFrom(await _client.rpc('get_my_profile')) != null) return;
+    final existing =
+        await _client.rpc('get_my_profile', params: const {}, get: true);
+    if (profileRowFrom(existing) != null) return;
     // A plain insert, not an upsert: ON CONFLICT DO UPDATE needs SELECT on
     // the columns it sets, and `subscription_tier` is withheld by the column
     // lockdown (20260707_001), so the upsert was refused with 42501. A 23505
@@ -859,7 +862,8 @@ class ApiClient {
   /// confirming). Fails soft to an empty list.
   Future<List<PendingSafetyRequest>> fetchPendingSafetyRequests() async {
     try {
-      final data = await _client.rpc('my_pending_safety_requests');
+      final data = await _client.rpc('my_pending_safety_requests',
+          params: const {}, get: true);
       if (data is! List) return const [];
       return data
           .map<PendingSafetyRequest>((row) =>
@@ -1495,7 +1499,7 @@ class ApiClient {
     try {
       final data = await _client.rpc('route_conditions_for_viewer', params: {
         'p_route_id': routeId,
-      });
+      }, get: true);
       if (data is! List) return const [];
       return data
           .whereType<Map>()
@@ -2234,14 +2238,14 @@ class ApiClient {
   }) async {
     final q = query?.trim();
     final data = await _client.rpc('search_public_events', params: {
-      'p_query': (q != null && q.isNotEmpty) ? q : null,
-      'p_category': category,
-      'p_cadence': cadence,
-      'p_byday': byday,
-      'p_paid': paid,
-      'p_time': time,
+      if (q != null && q.isNotEmpty) 'p_query': q,
+      'p_category': ?category,
+      'p_cadence': ?cadence,
+      'p_byday': ?byday,
+      'p_paid': ?paid,
+      'p_time': ?time,
       'p_limit': limit,
-    });
+    }, get: true);
     return (data as List)
         .map<PublicEventResult>(
             (row) => PublicEventResult.fromRow(row as Map<String, dynamic>))
@@ -2254,7 +2258,7 @@ class ApiClient {
   /// 500 rows down the wire and counting in memory.
   Future<List<String>> fetchPopularRouteTags({int limit = 20}) async {
     final rows = await _client
-        .rpc('popular_route_tags', params: {'tag_limit': limit});
+        .rpc('popular_route_tags', params: {'tag_limit': limit}, get: true);
     return (rows as List)
         .cast<Map<String, dynamic>>()
         .map((r) => r['tag'] as String)
@@ -2281,7 +2285,7 @@ class ApiClient {
       'lng': lng,
       'radius_m': radiusM,
       'max_results': limit,
-    });
+    }, get: true);
     return (data as List)
         .map<Route>((row) => _routeFromRow(row as Map<String, dynamic>))
         .toList();
@@ -2356,7 +2360,7 @@ class ApiClient {
         'p_max_lng': maxLng,
         'p_max_lat': maxLat,
         'p_limit': limit,
-      });
+      }, get: true);
       if (data is! List) return const [];
       return data.map<ClubPin>((row) {
         final r = row as Map<String, dynamic>;
@@ -2600,7 +2604,7 @@ class ApiClient {
     final profiles = await _client.rpc('search_user_profiles', params: {
       'p_query': term,
       'p_limit': candidateLimit,
-    });
+    }, get: true);
     final ids = (profiles as List<dynamic>)
         .map<String>((p) => (p as Map<String, dynamic>)['id'] as String)
         .where((id) => id != viewerId)
@@ -2793,7 +2797,7 @@ class ApiClient {
 
     final rows = await _client.rpc('discoverable_runners_near', params: {
       'p_radius_m': radiusM,
-    });
+    }, get: true);
     final list = (rows as List<dynamic>?) ?? const [];
     if (list.isEmpty) return const [];
 
@@ -2852,7 +2856,8 @@ class ApiClient {
   /// The caller's own stored area LABEL (never the coordinate), for the
   /// settings surface. Null when no area is set.
   Future<String?> fetchMyDiscoverableArea() async {
-    final label = await _client.rpc('my_discoverable_area');
+    final label = await _client.rpc('my_discoverable_area',
+        params: const {}, get: true);
     return label as String?;
   }
 
@@ -3042,6 +3047,7 @@ class ApiClient {
       final clip = await _client.rpc(
         'clip_route_for_viewer',
         params: {'p_route_id': routeId},
+        get: true,
       );
       return (clip as List?)
               ?.map((p) {
@@ -3115,7 +3121,8 @@ class ApiClient {
   /// so the read it replaced could only ever report "no consent".
   Future<Map<String, dynamic>?> fetchAiDisclosure() async {
     if (_client.auth.currentUser?.id == null) return null;
-    final row = profileRowFrom(await _client.rpc('get_my_profile'));
+    final row = profileRowFrom(
+        await _client.rpc('get_my_profile', params: const {}, get: true));
     if (row == null) return null;
     return {
       'ai_disclosure_version': row['ai_disclosure_version'],
@@ -3176,7 +3183,8 @@ class ApiClient {
   /// the `get_my_profile()` SECURITY DEFINER RPC because those columns
   /// are revoked from direct SELECT (migration 20260707_001).
   Future<UserProfileRow?> fetchMyProfile() async {
-    final row = profileRowFrom(await _client.rpc('get_my_profile'));
+    final row = profileRowFrom(
+        await _client.rpc('get_my_profile', params: const {}, get: true));
     return row == null ? null : UserProfileRow.fromJson(row);
   }
 
@@ -4326,7 +4334,8 @@ class ApiClient {
   /// (run_gear_chips reads only id / kind / name). For the owner's editable
   /// inventory use [fetchMyGear], which returns full rows via the owner policy.
   Future<List<GearRow>> fetchRunGear(String runId) async {
-    final data = await _client.rpc('public_run_gear', params: {'p_run_id': runId});
+    final data = await _client.rpc('public_run_gear',
+        params: {'p_run_id': runId}, get: true);
     final rows = (data as List).cast<Map<String, dynamic>>();
     final epoch = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
     return rows
@@ -4778,11 +4787,12 @@ class ApiClient {
       'global_segment_leaderboard',
       params: {
         'p_segment_id': segmentId,
-        'p_gender': gender,
-        'p_age_band': ageBand,
+        'p_gender': ?gender,
+        'p_age_band': ?ageBand,
         'p_limit': limit,
-        'p_club_id': clubId,
+        'p_club_id': ?clubId,
       },
+      get: true,
     );
     if (rows is! List || rows.isEmpty) return const [];
     final maps = [
@@ -4851,6 +4861,7 @@ class ApiClient {
     final rankRows = await _client.rpc(
       'global_segment_effort_ranks',
       params: {'p_run_id': runId},
+      get: true,
     );
     final rankByEffort = readEffortRankRows(rankRows);
 
@@ -4886,7 +4897,7 @@ class ApiClient {
     try {
       final data = await _client.rpc('clip_route_for_viewer', params: {
         'p_route_id': routeId,
-      });
+      }, get: true);
       if (data is! List) return const [];
       return data
           .whereType<Map>()
@@ -5027,6 +5038,7 @@ class ApiClient {
     final value = await _client.rpc(
       'get_coach_usage',
       params: {'p_user_id': viewerId},
+      get: true,
     );
     if (value is int) return value;
     if (value is num) return value.toInt();
@@ -5036,7 +5048,7 @@ class ApiClient {
   /// RPC `is_pro` — true when the viewer's active subscription tier
   /// is paid. Used to short-circuit the daily cap and gate Pro UI.
   Future<bool> isPro() async {
-    final value = await _client.rpc('is_pro');
+    final value = await _client.rpc('is_pro', params: const {}, get: true);
     return value == true;
   }
 
@@ -5906,10 +5918,11 @@ class ApiClient {
       'segment_leaderboard_tiered',
       params: {
         'p_segment_id': segmentId,
-        'p_gender': gender,
-        'p_age_band': ageBand,
+        'p_gender': ?gender,
+        'p_age_band': ?ageBand,
         'p_limit': limit,
       },
+      get: true,
     );
     if (rows is! List || rows.isEmpty) return const [];
     final maps = [
@@ -5974,6 +5987,7 @@ class ApiClient {
     final rankRows = await _client.rpc(
       'segment_effort_ranks',
       params: {'p_run_id': runId},
+      get: true,
     );
     final rankByEffort = readEffortRankRows(rankRows);
 
@@ -7112,6 +7126,7 @@ class ApiClient {
     final data = await _client.rpc(
       'gym_routine_history',
       params: {'p_routine_id': routineId, 'p_recent_limit': recentLimit},
+      get: true,
     );
     final rows = data is List ? data : const [];
     if (rows.isEmpty) return empty;
@@ -7539,8 +7554,8 @@ class ApiClient {
     try {
       final data = await _client.rpc('run_streaks_for_user', params: {
         'p_tz': tz,
-        if (source != null) 'p_source': source,
-      });
+        'p_source': ?source,
+      }, get: true);
       final rows = (data as List?) ?? const <dynamic>[];
       final row = rows.isEmpty ? null : rows.first as Map?;
       if (row == null) return null;
@@ -7722,7 +7737,8 @@ class ApiClient {
   /// gets zero rows, an unauthenticated caller raises. Returns no track bytes.
   Future<List<CoachRosterRow>> fetchCoachRosterSummary() async {
     if (userId == null) return const [];
-    final data = await _client.rpc('coach_roster_summary');
+    final data =
+        await _client.rpc('coach_roster_summary', params: const {}, get: true);
     return (data as List).cast<Map<String, dynamic>>().map((r) {
       return CoachRosterRow(
         athleteId: r['athlete_id'] as String,

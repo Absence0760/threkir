@@ -13852,4 +13852,62 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get avatarCropLoadFailed => 'この画像を開けませんでした。JPEG、PNG、WebP をお試しください。';
+
+  @override
+  String get dashboardLeadTitle => '今週のまとめ';
+
+  @override
+  String get dashboardLeadEmpty => 'まだランはありません';
+
+  @override
+  String dashboardLeadVsPlan(String done, String target) {
+    return '予定 $target のうち $done';
+  }
+
+  @override
+  String dashboardLeadVsGoal(String done, String target) {
+    return '週間目標 $target のうち $done';
+  }
+
+  @override
+  String dashboardLeadVsGoalRuns(int done, int target) {
+    String _temp0 = intl.Intl.pluralLogic(
+      target,
+      locale: localeName,
+      other: '週間目標 $target件のうち $done件',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dashboardLeadVsAverage(int weeks, String avg) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '過去$weeks週間の週平均: $avg',
+      one: '先週: $avg',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dashboardLeadPlanProgressAria => '今週の距離とプランの比較';
+
+  @override
+  String get dashboardLeadGoalProgressAria => '週間目標に対する今週の進捗';
+
+  @override
+  String get dashboardLeadNextSession => '次のセッション';
+
+  @override
+  String get dashboardLeadToday => '今日';
+
+  @override
+  String get dashboardLeadTomorrow => '明日';
+
+  @override
+  String get dashboardLeadNoNextSession => 'プランに予定されているセッションはもうありません。';
+
+  @override
+  String get dashboardLeadAddRun => 'ランを追加';
 }

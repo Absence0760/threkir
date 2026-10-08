@@ -24044,6 +24044,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This image couldn\'t be opened. Try a JPEG, PNG, or WebP.'**
   String get avatarCropLoadFailed;
+
+  /// Heading of the dashboard's opening this-week card
+  ///
+  /// In en, this message translates to:
+  /// **'Your week'**
+  String get dashboardLeadTitle;
+
+  /// Shown in place of the week's distance when nothing has been logged this calendar week
+  ///
+  /// In en, this message translates to:
+  /// **'No runs yet'**
+  String get dashboardLeadEmpty;
+
+  /// This week's distance against the active plan's distance for the same calendar week; both values are formatted distances
+  ///
+  /// In en, this message translates to:
+  /// **'{done} of {target} planned'**
+  String dashboardLeadVsPlan(String done, String target);
+
+  /// This week's distance against the runner's weekly distance goal; both values are formatted distances
+  ///
+  /// In en, this message translates to:
+  /// **'{done} of your {target} weekly goal'**
+  String dashboardLeadVsGoal(String done, String target);
+
+  /// This week's activity count against the runner's weekly run-count goal
+  ///
+  /// In en, this message translates to:
+  /// **'{target, plural, one{{done} of 1 activity, your weekly goal} other{{done} of {target} activities, your weekly goal}}'**
+  String dashboardLeadVsGoalRuns(int done, int target);
+
+  /// The runner's own weekly average over the weeks before this one, used when there is no plan distance or weekly goal; avg is a formatted distance
+  ///
+  /// In en, this message translates to:
+  /// **'{weeks, plural, one{Last week: {avg}} other{Your weekly average over the last {weeks} weeks: {avg}}}'**
+  String dashboardLeadVsAverage(int weeks, String avg);
+
+  /// Accessibility label for the progress bar measuring this week against the plan
+  ///
+  /// In en, this message translates to:
+  /// **'This week\'s distance against your plan'**
+  String get dashboardLeadPlanProgressAria;
+
+  /// Accessibility label for the progress bar measuring this week against the weekly goal
+  ///
+  /// In en, this message translates to:
+  /// **'This week\'s progress against your weekly goal'**
+  String get dashboardLeadGoalProgressAria;
+
+  /// Kicker above the next scheduled plan session on the dashboard week card
+  ///
+  /// In en, this message translates to:
+  /// **'Next session'**
+  String get dashboardLeadNextSession;
+
+  /// The next plan session is scheduled today
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get dashboardLeadToday;
+
+  /// The next plan session is scheduled tomorrow
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow'**
+  String get dashboardLeadTomorrow;
+
+  /// Shown on the dashboard week card when the active plan has no open session left
+  ///
+  /// In en, this message translates to:
+  /// **'No more sessions scheduled in your plan.'**
+  String get dashboardLeadNoNextSession;
+
+  /// Button on the dashboard week card that opens the manual add-a-run form
+  ///
+  /// In en, this message translates to:
+  /// **'Add a run'**
+  String get dashboardLeadAddRun;
 }
 
 class _AppLocalizationsDelegate

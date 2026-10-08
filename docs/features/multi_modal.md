@@ -370,14 +370,25 @@ becomes an **action button**, not a tab.
 > (distance, then activity count), else their recent weekly average; the plan's
 > next open session; and **Add a run** plus **Import from Strava / Garmin**
 > above the fold ([decisions § 1792](../architecture/decisions.md)).
-> Nothing below it moved or went away; this is ordering, not removal. Mobile
-> still owes the same lead.
+> Nothing below it moved or went away; this is ordering, not removal.
+>
+> **Status (mobile, #905 workstream 3):** the same lead now opens mobile Home
+> for an account with runs — `_DashboardWeekLead` in `dashboard_screen.dart`,
+> under the pinned Coach card and above the today's-workout card, fed by the
+> `week_lead.dart` parity pair so the yardstick order is web's to the letter.
+> Its next-session row opens `WorkoutDetailScreen`, **Add a run** opens the
+> manual `AddRunScreen`, and the import action keeps the welcome state's
+> **Import runs** label, since `ImportScreen` takes more than Strava and
+> Garmin ([decisions § 1800](../architecture/decisions.md)). A lifter with no
+> runs, and the runless welcome state, get no lead.
+> `test/dashboard_week_lead_test.dart`.
 
 Home is a vertical scroll of cards. The order is **driven by what the
 user logs**, not a fixed grid. The ordering algorithm:
 
 1. **Today's actionable card first** — if a training plan has a workout
-   scheduled today, the today's-workout card leads (as it does now).
+   scheduled today, the today's-workout card leads, under only the week
+   lead an account with runs opens on (#905 workstream 3).
 2. **Today's logged modalities next**, most-recently-touched first
    (today's run summary, today's lift summary, today's nutrition rings).
 3. **Trend cards** the user has data for (training load, fitness,

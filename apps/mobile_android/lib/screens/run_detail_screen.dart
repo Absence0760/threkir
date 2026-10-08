@@ -11,7 +11,7 @@ import 'package:flutter/material.dart' hide Route;
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppSemanticColors, ChartPalette, StatGrid, StatTile;
+    show AppRadius, AppSemanticColors, ChartPalette, StatGrid, StatTile;
 import 'package:uuid/uuid.dart';
 
 import '../adaptive_width.dart';
@@ -3124,7 +3124,7 @@ class _MapPaceLegend extends StatelessWidget {
             width: 64,
             height: 6,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(3),
+              borderRadius: BorderRadius.circular(AppRadius.xs),
               gradient: const LinearGradient(colors: paceGradientRamp),
             ),
           ),
@@ -3171,15 +3171,17 @@ class _ElevationPainter extends CustomPainter {
     final colour = ChartPalette.ofTheme(theme).series.first;
     final labelStyle = theme.textTheme.labelSmall!
         .copyWith(color: theme.colorScheme.onSurfaceVariant);
-    final gridPaint = Paint()
-      ..color = theme.colorScheme.outlineVariant.withValues(alpha: 0.5)
-      ..strokeWidth = 1;
-
     // Gridlines and labels at the data's own low and high points, in the
     // gutter rather than on the plot, so neither ever sits on the line.
     for (final ele in {dataMin.roundToDouble(), dataMax.roundToDouble()}) {
       final y = yAt(ele);
-      canvas.drawLine(Offset(plotLeft, y), Offset(size.width, y), gridPaint);
+      canvas.drawLine(
+        Offset(plotLeft, y),
+        Offset(size.width, y),
+        Paint()
+          ..color = theme.dividerColor
+          ..strokeWidth = 1,
+      );
       final tp = TextPainter(
         text: TextSpan(text: '${ele.round()} m', style: labelStyle),
         textDirection: TextDirection.ltr,

@@ -75,11 +75,6 @@ const _register = <String, int>{
   // Two map overlay panels. Their `onSurface` type clears 4.5:1 against both
   // tile extremes (>= 14.272/12.715), which bounds every tile between them.
   'lib/screens/route_builder_screen.dart': 2,
-  // `onSurface@0.08` — the elevation chart's "no pace derivable here" fill, at
-  // 1.173/1.196 an absence rather than a fourth band: deliberately fainter
-  // than the palette's own 1.5:1 band floor and deliberately not in the
-  // legend. Nothing is owed by a mark that is meant to read as the page.
-  'lib/screens/run_detail_screen.dart': 1,
   // Two map overlay panels plus three washes (1.109/1.087, 1.143/1.162,
   // 1.184/1.207); the type and glyph on each is full strength.
   'lib/screens/run_screen.dart': 5,

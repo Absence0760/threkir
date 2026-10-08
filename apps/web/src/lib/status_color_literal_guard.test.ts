@@ -548,7 +548,7 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 	// 6.161:1 on its own fill, bronze's white 5.022:1; gold alone is
 	// theme-aware through --color-crown.
 	'lib/components/RunSegmentEfforts.svelte': {
-		'94A3B8': [1, 'data'], '1F2328': [1, 'data'], B45309: [1, 'data'],
+		'94A3B8': [1, 'data'], '1A1722': [1, 'data'], B45309: [1, 'data'],
 	},
 	// Four per-stat-card accent bars, 2px and text-free: chart series
 	// separated by hue.
@@ -570,7 +570,7 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 	// `--kept-accent` is gone: § 536 minted --color-route-pinned in app.css,
 	// which is the token the old entry's own comment asked for.
 	'lib/components/RouteHeatmap.svelte': {
-		'7FB3C2': [1, 'cartographic'], F2A07B: [2, 'cartographic'],
+		'7FB3C2': [1, 'cartographic'], F08A5D: [2, 'cartographic'],
 	},
 	// The closing-CTA ramp, the journey step-number disc and the on-hero
 	// button. The hero's four stops are not here: the hero paints
@@ -644,7 +644,7 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 	// (8.022:1) and hairline (4.111:1) are fixed with it.
 	'routes/runs/[id]/+page.svelte': {
 		'9B4A24': [1, 'gradient-stop'], '6E4F94': [1, 'gradient-stop'], '5B4478': [1, 'gradient-stop'],
-		FFFFFF: [1, 'fixed-canvas'], F7F3EC: [1, 'fixed-canvas'], B5ADC3: [1, 'fixed-canvas'],
+		FFFFFF: [1, 'fixed-canvas'], F3F1F7: [1, 'fixed-canvas'], A9A4B6: [1, 'fixed-canvas'],
 	},
 	// The @media print sheet: white paper, where a theme token resolves to
 	// the SCREEN theme and prints dark-on-dark. The amber was deepened from
@@ -681,7 +681,7 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 		F2EFE9: [1, 'cartographic'], '1A1B20': [1, 'cartographic'],
 		AAD3DF: [1, 'cartographic'], DCDCDC: [1, 'cartographic'],
 		FFFFFF: [2, 'cartographic'], '1E1B4B': [1, 'cartographic'],
-		'818CF8': [1, 'cartographic'], '4F46E5': [1, 'cartographic'],
+		F08A5D: [1, 'cartographic'], A33D1A: [1, 'cartographic'],
 		F59E0B: [1, 'cartographic'], B45309: [1, 'cartographic'],
 		'22C55E': [1, 'cartographic'], '15803D': [1, 'cartographic'],
 		EF4444: [2, 'cartographic'], B91C1C: [1, 'cartographic'],
@@ -722,17 +722,17 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 		// The two foregrounds `sourceInk` picks between. Frozen literals rather
 		// than tokens BECAUSE the fills are theme-independent: a token would
 		// flip in dark and re-open the debt these entries used to carry.
-		FFFFFF: [1, 'fixed-canvas'], '1B1628': [1, 'fixed-canvas'],
+		FFFFFF: [1, 'fixed-canvas'], '1A1722': [1, 'fixed-canvas'],
 	},
 	// The two rasterised-share-card palettes, with every ink's measured ratio
 	// and its ground recorded in the module itself. Five card builders used to
 	// spell these independently — 22 literals for 9 values, the two recap cards
 	// byte-identical.
 	'lib/share/og_card_palette.ts': {
-		FFFFFF: [2, 'fixed-canvas'], '3B82F6': [1, 'fixed-canvas'],
-		'0F172A': [2, 'fixed-canvas'], '64748B': [1, 'fixed-canvas'],
-		'60A5FA': [1, 'fixed-canvas'], '94A3B8': [1, 'fixed-canvas'],
-		E2E8F0: [1, 'fixed-canvas'],
+		FFFFFF: [2, 'fixed-canvas'], C24E24: [1, 'fixed-canvas'],
+		'1A1722': [1, 'fixed-canvas'], '5F5A6B': [1, 'fixed-canvas'],
+		'121117': [1, 'fixed-canvas'], F08A5D: [1, 'fixed-canvas'],
+		A9A4B6: [1, 'fixed-canvas'], E4E1EA: [1, 'fixed-canvas'],
 	},
 	// The badge card's tier metals — the same four-rung ladder BadgeGrid and
 	// the badge share page carry, on a rasterised canvas.
@@ -760,7 +760,7 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 	// from a hue hash, so the pair cannot be theme tokens: the clamp picks
 	// whichever of the two clears 4.5:1 on the generated fill and nudges the
 	// lightness until one does.
-	'lib/format/avatar.ts': { '1B1628': [1, 'data'], FFFFFF: [1, 'data'] },
+	'lib/format/avatar.ts': { '1A1722': [1, 'data'], FFFFFF: [1, 'data'] },
 };
 
 // Every literal the register knows is still a measured FAILURE, with the
@@ -982,7 +982,7 @@ test('the register is keyed on the hue, never on the CSS property', () => {
 	// scan reads every line whatever it declares, a border literal is an
 	// entry like any other. Both of the surviving border literals are
 	// registered, so there is one register and not two.
-	assert.equal(REGISTER['routes/runs/[id]/+page.svelte']?.B5ADC3?.[0], 1);
+	assert.equal(REGISTER['routes/runs/[id]/+page.svelte']?.A9A4B6?.[0], 1);
 	assert.equal(REGISTER['routes/login/+page.svelte']?.['334155']?.[0], 1);
 	// And the matcher itself has no property in it.
 	assert.deepEqual(literalsOn('\tborder: 1px solid #B5ADC3;'), ['B5ADC3']);

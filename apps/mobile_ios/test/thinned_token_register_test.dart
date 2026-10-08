@@ -131,7 +131,7 @@ const _fixtures = <(String, bool)>[
   // must not: the bare token, a non-scheme colour, and the three §510 owns.
   ('color: theme.colorScheme.primary', false),
   ('color: Colors.black.withValues(alpha: 0.55)', false),
-  ('color: AppTheme.parchment.withOpacity(0.55)', false),
+  ('color: AppTheme.mist.withOpacity(0.55)', false),
   ('color: theme.colorScheme.outline.withValues(alpha: 0.6)', false),
   ('color: theme.colorScheme.outlineVariant.withOpacity(0.5)', false),
 ];

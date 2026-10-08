@@ -51,9 +51,10 @@ export function mapOverlayOutline(darkBasemap: boolean): string {
 	return darkBasemap ? '#FFFFFF' : '#1E1B4B';
 }
 
-/// The recorded / saved track line.
+/// The recorded / saved track line, in the theme's coral (decisions § 1768).
+/// The light rung is deep enough to hold 3:1 over water as well as land.
 export function mapTrackLine(darkBasemap: boolean): string {
-	return darkBasemap ? '#818CF8' : '#4F46E5';
+	return darkBasemap ? '#F08A5D' : '#A33D1A';
 }
 
 /// Transient amber accent — the selected-segment highlight, the animated

@@ -15,7 +15,11 @@
 import { timingSafeEqual } from '../_shared/webhook_security.ts';
 
 const BRAND_NAME = 'Threkir';
-const BRAND_COLOR = '#2C5F6E';
+/// Kept in lockstep with apps/web/src/app.css: the CTA is the light
+/// --color-primary coral, the header bar the light --color-text ink, which
+/// the ember-to-magenta mark reads against where coral would not.
+const BRAND_COLOR = '#C24E24';
+const HEADER_COLOR = '#1A1722';
 /// The header mark, served off the web apex (apps/web/static/email-logo.png).
 /// Resolved against the GoTrue Site URL rather than SUPABASE_URL — the asset
 /// lives with the web app, not the API.
@@ -1196,7 +1200,7 @@ export function renderAuthEmail(
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(strings.preheader)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;"><tr><td align="center" style="padding:24px 12px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-<tr><td style="background:${BRAND_COLOR};padding:20px 32px;">${renderBrandLockup(opts.appBaseUrl)}</td></tr>
+<tr><td style="background:${HEADER_COLOR};padding:20px 32px;">${renderBrandLockup(opts.appBaseUrl)}</td></tr>
 <tr><td style="padding:32px;"><h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;color:#111827;">${escapeHtml(strings.heading)}</h1>${paras}${cta}</td></tr>
 <tr><td style="padding:20px 32px;border-top:1px solid #e5e7eb;"><p style="margin:0;font-size:12px;line-height:1.5;color:#9ca3af;">${escapeHtml(shared.footer)}</p></td></tr>
 </table></td></tr></table>

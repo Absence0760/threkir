@@ -27,7 +27,7 @@ struct RunMiniMapView: View {
                 route: route, trail: trail, current: current, sideLength: side
             )
             ZStack {
-                AppTheme.midnight
+                AppTheme.night
                 if let content {
                     Canvas { context, size in
                         draw(content, into: &context, size: size, side: side)
@@ -39,7 +39,7 @@ struct RunMiniMapView: View {
                         .font(.caption2)
                         .foregroundColor(.secondary)
                         .padding(.horizontal, 4)
-                        .background(AppTheme.midnight.opacity(0.75))
+                        .background(AppTheme.night.opacity(0.75))
                 }
             }
         }
@@ -100,11 +100,11 @@ struct RunMiniMapView: View {
         if let position = content.current.flatMap(place) {
             context.fill(
                 Self.circle(at: position, radius: Self.haloRadius),
-                with: .color(AppTheme.parchment.opacity(0.3))
+                with: .color(AppTheme.mist.opacity(0.3))
             )
             context.fill(
                 Self.circle(at: position, radius: Self.markerRadius),
-                with: .color(AppTheme.parchment)
+                with: .color(AppTheme.mist)
             )
         }
     }

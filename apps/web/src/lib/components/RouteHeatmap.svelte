@@ -506,7 +506,7 @@
 				source: ROUTE_PINS_SOURCE,
 				filter: ['has', 'point_count'],
 				paint: {
-					'circle-color': '#F2A07B',
+					'circle-color': '#F08A5D',
 					'circle-opacity': 0.92,
 					'circle-stroke-color': mapOverlayOutline(darkBasemap),
 					'circle-stroke-width': 2,
@@ -603,7 +603,7 @@
 					// the colour reads as "this is a route" across the
 					// whole product. Featured routes get a thicker gold
 					// halo via the `case` expression below.
-					'circle-color': '#F2A07B',
+					'circle-color': '#F08A5D',
 					'circle-radius': 8,
 					'circle-stroke-color': [
 						'case',

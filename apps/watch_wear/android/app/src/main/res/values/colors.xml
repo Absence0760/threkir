@@ -6,9 +6,8 @@
       seamlessly when Wear OS crops the icon to a circle. Tune toward
       the exact PNG colour if a designer revisits the brand mark.
     -->
-    <!-- Matches `coralDeep` from the shared Dusk palette
-         (`packages/ui_kit/lib/src/theme/app_theme.dart`). Keep in sync
-         when the palette shifts; the adaptive icon's mask edge blends
-         into this colour so a wrong hex shows up as a visible halo. -->
+    <!-- Matches the launcher PNG's own coral edge, NOT the UI palette:
+         the adaptive icon's mask edge blends into this colour, so it moves
+         only when assets/icon.svg does (a wrong hex shows as a halo). -->
     <color name="ic_launcher_background">#D97A54</color>
 </resources>

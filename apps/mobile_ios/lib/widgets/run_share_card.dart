@@ -267,7 +267,7 @@ class RunShareCard extends StatelessWidget {
     final track = run.track.map((w) => LatLng(w.lat, w.lng)).toList();
 
     return Container(
-      color: const Color(0xFF0B0A1F),
+      color: const Color(0xFF121117),
       child: Column(
         children: [
           Expanded(flex: 3, child: _buildMap(track)),
@@ -284,7 +284,7 @@ class RunShareCard extends StatelessWidget {
     if (track.length < 2) {
       return const Center(
         child: Icon(Icons.directions_run,
-            size: 96, color: Color(0xFF4F46E5)),
+            size: 96, color: Color(0xFFC24E24)),
       );
     }
 
@@ -333,7 +333,7 @@ class RunShareCard extends StatelessWidget {
             Polyline(
               points: track,
               strokeWidth: 14,
-              color: const Color(0xFF818CF8).withValues(alpha: 0.18),
+              color: const Color(0xFFF08A5D).withValues(alpha: 0.18),
             ),
           ],
         ),
@@ -343,12 +343,12 @@ class RunShareCard extends StatelessWidget {
               points: track,
               strokeWidth: 6,
               gradientColors: const [
-                Color(0xFF4F46E5),
-                Color(0xFF818CF8),
-                Color(0xFFC7D2FE),
+                Color(0xFFC24E24),
+                Color(0xFFF08A5D),
+                Color(0xFFF8B597),
               ],
               borderStrokeWidth: 2,
-              borderColor: const Color(0xFF1E1B4B),
+              borderColor: const Color(0xFF1A0E08),
             ),
           ],
         ),
@@ -417,7 +417,7 @@ class RunShareCard extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color: Color(0xFF9CA3AF),
+                  color: Color(0xFFA9A4B6),
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
                   height: 1.1,
@@ -472,7 +472,7 @@ class RunShareCard extends StatelessWidget {
               const Text(
                 '© MapTiler · OpenStreetMap',
                 style: TextStyle(
-                  color: Color(0xFF6B7280),
+                  color: Color(0xFF8A8496),
                   fontSize: 8,
                   height: 1.0,
                 ),
@@ -496,7 +496,7 @@ class RunShareCard extends StatelessWidget {
         Text(
           label.toUpperCase(),
           style: const TextStyle(
-            color: Color(0xFF9CA3AF),
+            color: Color(0xFFA9A4B6),
             fontSize: 9,
             letterSpacing: 1.2,
             fontWeight: FontWeight.w600,
@@ -522,7 +522,7 @@ class RunShareCard extends StatelessWidget {
               Text(
                 unitLabel,
                 style: const TextStyle(
-                  color: Color(0xFF9CA3AF),
+                  color: Color(0xFFA9A4B6),
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                   height: 1.0,

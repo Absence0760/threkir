@@ -478,8 +478,8 @@ void main() {
     });
 
     test("is web's mapTrackLine and the gradient's middle stop", () {
-      expect(mapTrackLine(darkBasemap: false), const Color(0xFF4F46E5));
-      expect(mapTrackLine(darkBasemap: true), const Color(0xFF818CF8));
+      expect(mapTrackLine(darkBasemap: false), const Color(0xFFA33D1A));
+      expect(mapTrackLine(darkBasemap: true), const Color(0xFFF08A5D));
       for (final dark in [false, true]) {
         expect(mapTrackLine(darkBasemap: dark),
             trackGradientColours(darkBasemap: dark)[1]);

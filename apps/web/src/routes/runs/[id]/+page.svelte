@@ -2631,10 +2631,10 @@
 		   the hairline INVERTS: --color-border is 6.084:1 in light but 2.366:1
 		   once it carries the 3:1 line value. Measured against the worst-case
 		   composite (the scrim over a white map tile): 8.022:1 and 4.111:1. */
-		color: #F7F3EC;
+		color: #F3F1F7;
 		font-size: 0.75rem;
 		line-height: 1;
-		border: 1px solid #B5ADC3;
+		border: 1px solid #A9A4B6;
 		backdrop-filter: blur(6px);
 		z-index: 5;
 		pointer-events: none;

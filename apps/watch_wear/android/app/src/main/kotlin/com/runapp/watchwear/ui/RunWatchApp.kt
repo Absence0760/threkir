@@ -437,7 +437,7 @@ private fun CountdownOverlay(
             style = MaterialTheme.typography.display1.copy(
                 shadow = Shadow(Color.Black.copy(alpha = 0.8f), Offset(0f, 2f), 8f),
             ),
-            color = DuskPalette.parchment,
+            color = DuskPalette.mist,
             fontSize = 84.sp,
         )
     }
@@ -488,7 +488,7 @@ private fun BatteryInstructions(
                     stringResource(R.string.battery_stock_summary)
                 },
                 style = MaterialTheme.typography.caption2,
-                color = DuskPalette.haze,
+                color = DuskPalette.mistMuted,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(vertical = 6.dp),
             )
@@ -503,7 +503,7 @@ private fun BatteryInstructions(
                     stringResource(R.string.battery_stock_steps)
                 },
                 style = MaterialTheme.typography.caption2,
-                color = DuskPalette.parchment,
+                color = DuskPalette.mist,
                 textAlign = TextAlign.Start,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
             )
@@ -516,7 +516,7 @@ private fun BatteryInstructions(
                 Text(
                     stringResource(R.string.battery_on_watch_steps),
                     style = MaterialTheme.typography.caption3,
-                    color = DuskPalette.haze,
+                    color = DuskPalette.mistMuted,
                     textAlign = TextAlign.Start,
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
                 )
@@ -596,7 +596,7 @@ private fun PermissionNotice(
             Text(
                 stringResource(permissionCostLabel(outcome.costs[i])),
                 style = MaterialTheme.typography.caption2,
-                color = DuskPalette.parchment,
+                color = DuskPalette.mist,
                 textAlign = TextAlign.Start,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
             )
@@ -605,7 +605,7 @@ private fun PermissionNotice(
             Text(
                 stringResource(R.string.perm_watch_steps),
                 style = MaterialTheme.typography.caption3,
-                color = DuskPalette.haze,
+                color = DuskPalette.mistMuted,
                 textAlign = TextAlign.Start,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
             )
@@ -743,7 +743,7 @@ private fun PreRunScreen(
                 Text(
                     distanceRecordedLabel(pendingRecoveryDistance, preferredUnit),
                     style = MaterialTheme.typography.caption2,
-                    color = DuskPalette.haze,
+                    color = DuskPalette.mistMuted,
                 )
                 // The one condition under which "Save it" cannot work, said
                 // out loud. `recoverCheckpoint` re-grades on the tap and an
@@ -1084,7 +1084,7 @@ private fun PreRunScreen(
                                         indicatorColor = if (syncFailedNow) {
                                             DuskPalette.warning
                                         } else {
-                                            DuskPalette.parchment
+                                            DuskPalette.mist
                                         },
                                     )
                                 } else {
@@ -1548,7 +1548,7 @@ private fun InlineTextField(
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(DuskPalette.dusk)
+            .background(DuskPalette.nightHigh)
             .clickable {
                 focusRequester.requestFocus()
                 keyboard?.show()
@@ -1559,14 +1559,14 @@ private fun InlineTextField(
             Text(
                 label,
                 style = MaterialTheme.typography.caption3,
-                color = DuskPalette.haze,
+                color = DuskPalette.mistMuted,
             )
             Box {
                 if (value.isEmpty()) {
                     Text(
                         stringResource(R.string.tap_here),
                         style = MaterialTheme.typography.body2,
-                        color = DuskPalette.haze,
+                        color = DuskPalette.mistMuted,
                     )
                 }
                 BasicTextField(
@@ -1601,10 +1601,10 @@ private fun InlineTextField(
                         VisualTransformation.None
                     },
                     textStyle = TextStyle(
-                        color = DuskPalette.parchment,
+                        color = DuskPalette.mist,
                         fontSize = MaterialTheme.typography.body2.fontSize,
                     ),
-                    cursorBrush = SolidColor(DuskPalette.parchment),
+                    cursorBrush = SolidColor(DuskPalette.mist),
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(focusRequester),
@@ -1795,7 +1795,7 @@ private fun RunningScreen(
             Text(
                 formatElapsed(elapsedMs),
                 style = timeStyle,
-                color = if (paused) DuskPalette.haze else DuskPalette.parchment,
+                color = if (paused) DuskPalette.mistMuted else DuskPalette.mist,
             )
             Text(
                 distanceLabel(distanceM, preferredUnit),
@@ -1817,7 +1817,7 @@ private fun RunningScreen(
                 Text(
                     paceLabel(paceSecPerKm, preferredUnit),
                     style = MaterialTheme.typography.caption2.copy(shadow = captionShadow),
-                    color = DuskPalette.parchment,
+                    color = DuskPalette.mist,
                 )
             }
             if (routeRemainingM != null && routeRemainingM > 1.0) {
@@ -1857,7 +1857,7 @@ private fun RunningScreen(
                 Text(
                     secondary.joinToString(" · "),
                     style = MaterialTheme.typography.caption3.copy(shadow = captionShadow),
-                    color = DuskPalette.haze,
+                    color = DuskPalette.mistMuted,
                 )
             }
         }
@@ -1877,7 +1877,7 @@ private fun RunningScreen(
         ) {
             val translucent = ButtonDefaults.secondaryButtonColors(
                 backgroundColor = Color.Black.copy(alpha = 0.55f),
-                contentColor = DuskPalette.parchment,
+                contentColor = DuskPalette.mist,
             )
             // audit/accessibility (May 2026) High — every running-screen
             // Button below now declares a Modifier.semantics {
@@ -2034,7 +2034,7 @@ private fun RoutePickerScreen(
                         Text(
                             distanceLabel(r.distanceM, preferredUnit),
                             style = MaterialTheme.typography.caption3,
-                            color = DuskPalette.haze,
+                            color = DuskPalette.mistMuted,
                         )
                     }
                 },
@@ -2060,7 +2060,7 @@ private fun RoutePickerScreen(
                         }
                     ),
                     style = MaterialTheme.typography.caption3,
-                    color = DuskPalette.haze,
+                    color = DuskPalette.mistMuted,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
                 )
@@ -2201,12 +2201,12 @@ private fun PostRunScreen(
                 Text(
                     distanceLabel(summary.distanceM, preferredUnit),
                     style = MaterialTheme.typography.title2.copy(shadow = titleShadow),
-                    color = DuskPalette.parchment,
+                    color = DuskPalette.mist,
                 )
                 Text(
                     formatDuration(summary.durationS),
                     style = MaterialTheme.typography.caption2.copy(shadow = captionShadow),
-                    color = DuskPalette.haze,
+                    color = DuskPalette.mistMuted,
                 )
                 if (summary.avgBpm != null) {
                     Text(
@@ -2234,7 +2234,7 @@ private fun PostRunScreen(
                                 kcal,
                             ),
                             style = MaterialTheme.typography.caption3.copy(shadow = captionShadow),
-                            color = DuskPalette.haze,
+                            color = DuskPalette.mistMuted,
                         )
                     }
                 }
@@ -2261,7 +2261,7 @@ private fun PostRunScreen(
         // surface vocabulary is consistent.
         val translucent = ButtonDefaults.secondaryButtonColors(
             backgroundColor = Color.White.copy(alpha = 0.15f),
-            contentColor = DuskPalette.parchment,
+            contentColor = DuskPalette.mist,
         )
 
         // Discard on this screen ends an UNSYNCED run: `RunViewModel.discard`

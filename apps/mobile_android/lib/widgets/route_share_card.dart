@@ -202,7 +202,7 @@ class RouteShareCard extends StatelessWidget {
         route.waypoints.map((w) => LatLng(w.lat, w.lng)).toList();
 
     return Container(
-      color: const Color(0xFF0B0A1F),
+      color: const Color(0xFF121117),
       child: Column(
         children: [
           Expanded(flex: 3, child: _buildMap(waypoints)),
@@ -215,7 +215,7 @@ class RouteShareCard extends StatelessWidget {
   Widget _buildMap(List<LatLng> waypoints) {
     if (waypoints.length < 2) {
       return const Center(
-        child: Icon(Icons.route, size: 96, color: Color(0xFF4F46E5)),
+        child: Icon(Icons.route, size: 96, color: Color(0xFFC24E24)),
       );
     }
 
@@ -240,7 +240,7 @@ class RouteShareCard extends StatelessWidget {
             Polyline(
               points: waypoints,
               strokeWidth: 14,
-              color: const Color(0xFF818CF8).withValues(alpha: 0.18),
+              color: const Color(0xFFF08A5D).withValues(alpha: 0.18),
             ),
           ],
         ),
@@ -249,9 +249,9 @@ class RouteShareCard extends StatelessWidget {
             Polyline(
               points: waypoints,
               strokeWidth: 6,
-              color: const Color(0xFF818CF8),
+              color: const Color(0xFFF08A5D),
               borderStrokeWidth: 2,
-              borderColor: const Color(0xFF1E1B4B),
+              borderColor: const Color(0xFF1A0E08),
             ),
           ],
         ),
@@ -311,7 +311,7 @@ class RouteShareCard extends StatelessWidget {
                 Text(
                   route.surface!.toUpperCase(),
                   style: const TextStyle(
-                    color: Color(0xFFC7D2FE),
+                    color: Color(0xFFF8B597),
                     fontSize: 11,
                     letterSpacing: 1.2,
                     fontWeight: FontWeight.w600,
@@ -331,7 +331,7 @@ class RouteShareCard extends StatelessWidget {
           const Text(
             'Run · Threkir',
             style: TextStyle(
-              color: Color(0xFF818CF8),
+              color: Color(0xFFF08A5D),
               fontSize: 11,
               letterSpacing: 1.6,
               fontWeight: FontWeight.w700,
@@ -357,7 +357,7 @@ class _Stat extends StatelessWidget {
         Text(
           label.toUpperCase(),
           style: const TextStyle(
-            color: Color(0xFF818CF8),
+            color: Color(0xFFF08A5D),
             fontSize: 10,
             letterSpacing: 1.2,
             fontWeight: FontWeight.w600,

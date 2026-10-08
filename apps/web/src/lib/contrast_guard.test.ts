@@ -791,19 +791,19 @@ test('workout-kind tokens match mobile ChartPalette.kinds', () => {
 });
 
 // Mobile pinned the same token per brightness in § 487 and web's surfaces ARE
-// mobile's (parchment / parchmentDim / duskDeep / midnight are --color-bg /
-// --color-bg-tertiary / --color-surface / --color-bg), so the two hairlines
+// mobile's (snow / white / nightRaised / night are --color-bg /
+// --color-surface / --color-surface / --color-bg, § 1768), so the two hairlines
 // must be the same colour or a card reads apart on one platform and not the
 // other. A Dart file cannot import a CSS custom property, so the lockstep is
 // checked here, the same way the chart, zone and semantic palettes already are.
-test('the line token matches mobile AppTheme.parchmentLine / duskLine', () => {
+test('the line token matches mobile AppTheme.snowLine / nightLine', () => {
 	const dart = readFileSync(
 		resolve(__dirname, '../../../../packages/ui_kit/lib/src/theme/app_theme.dart'),
 		'utf-8',
 	);
 	for (const [marker, symbol] of [
-		[':root {', 'parchmentLine'],
-		[':root[data-theme="dark"]', 'duskLine'],
+		[':root {', 'snowLine'],
+		[':root[data-theme="dark"]', 'nightLine'],
 	] as const) {
 		const hex = dart.match(
 			new RegExp(`static const Color ${symbol} = Color\\(0xFF([0-9A-Fa-f]{6})\\)`),
@@ -1606,34 +1606,31 @@ test('success/danger -text tokens match mobile AppSemanticColors', () => {
 	}
 });
 
-// The accent foreground is the same idea on both platforms and, since round 13,
-// the same value: mobile's light `colorScheme.secondary` is `AppTheme.coralMark`
-// because every mobile site that reads `secondary` paints an icon, and the base
-// coral it used to hold reads 2.767:1 on parchment. Rather than mint a second
-// guess at "coral, but legible", it took the value web had already measured for
-// exactly this. Mobile's FILL coral — the FAB background and the navigation
-// bar's indicator tint — stays `AppTheme.coralDeep`, which is web's
-// `--color-secondary`; that half of the pair is asserted here too, so a change
-// to either colour has to face both platforms. Dark is excluded on purpose:
-// web's dark `-text` token aliases to its base and mobile's dark `secondary` is
-// lilac, so there is no shared value to pin.
-test('the light accent foreground and fill match mobile AppTheme', () => {
+// The accent and the secondary are one value per brightness across the two
+// platforms (decisions § 1768): mobile's colorScheme.primary is web's
+// --color-primary, and mobile's colorScheme.secondary is web's
+// --color-secondary-text, the token web paints secondary-coloured marks with.
+// A Dart file cannot import a CSS custom property, so a change to any of these
+// has to face both platforms here.
+test('the accent and secondary match mobile AppTheme in both themes', () => {
 	const dart = readFileSync(
 		resolve(__dirname, '../../../../packages/ui_kit/lib/src/theme/app_theme.dart'),
 		'utf-8',
 	);
-	for (const [symbol, token] of [
-		['coralMark', 'color-secondary-text'],
-		['coralDeep', 'color-secondary'],
+	for (const [marker, symbol, token] of [
+		[':root {', 'coralDeep', 'color-primary'],
+		[':root {', 'violet', 'color-secondary-text'],
+		[':root[data-theme="dark"]', 'coral', 'color-primary'],
+		[':root[data-theme="dark"]', 'lilac', 'color-secondary'],
 	] as const) {
 		const hex: string | undefined = dart.match(
 			new RegExp(`static const Color ${symbol} = Color\\(0xFF([0-9A-Fa-f]{6})\\)`),
 		)?.[1];
 		assert.ok(hex, `app_theme.dart has no ${symbol}`);
 		assert.equal(
-			resolveToken(':root {', token).toUpperCase(),
+			resolveToken(marker, token).toUpperCase(),
 			`#${hex!.toUpperCase()}`,
-			`--${token} has drifted from AppTheme.${symbol}.`,
+			`--${token} in ${marker} has drifted from AppTheme.${symbol}.`,
 		);
 	}
 });

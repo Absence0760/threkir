@@ -117,25 +117,23 @@ void main() {
     });
   }
 
-  group('the coral the light theme could not use', () {
-    test('coralDeep fails 3:1 on parchment and on its own indicator tint', () {
-      final pill = _over(
-        AppTheme.coralDeep.withOpacity(0.18),
-        AppTheme.parchment,
-      );
-      expect(_contrast(AppTheme.coralDeep, AppTheme.parchment), lessThan(3),
-          reason: 'if this ever clears 3:1 the second coral has stopped '
-              'earning its place — collapse the two');
-      expect(_contrast(AppTheme.coralDeep, pill), lessThan(3));
-      expect(_contrast(AppTheme.parchment, AppTheme.coralDeep), lessThan(3),
-          reason: 'the FAB pairing that was shipping');
+  group('the light theme has one coral, used as fill and as mark', () {
+    test('white type on coralDeep clears AA (buttons, FAB, selected chip)', () {
+      expect(_contrast(Colors.white, AppTheme.coralDeep),
+          greaterThanOrEqualTo(_aaText));
     });
 
-    test('coralMark clears AA as text on every light surface, so a tint or a '
-        'weight cannot push it under', () {
+    test('coralDeep clears AA as a mark on the card and the scaffold', () {
+      for (final bg in [Colors.white, AppTheme.snow]) {
+        expect(_contrast(AppTheme.coralDeep, bg),
+            greaterThanOrEqualTo(_aaText));
+      }
+    });
+
+    test('coralDeep clears 3:1 on every light container and its own pill', () {
       final s = AppTheme.light.colorScheme;
+      final pill = _over(AppTheme.coralDeep.withOpacity(0.18), AppTheme.snow);
       for (final bg in [
-        s.surface,
         s.surfaceContainerLowest,
         s.surfaceContainerLow,
         s.surfaceContainer,
@@ -144,23 +142,21 @@ void main() {
         s.primaryContainer,
         s.secondaryContainer,
         s.tertiaryContainer,
-        AppTheme.parchmentDim,
+        AppTheme.snowDim,
+        pill,
       ]) {
-        expect(_contrast(AppTheme.coralMark, bg),
-            greaterThanOrEqualTo(_aaText));
+        expect(_contrast(AppTheme.coralDeep, bg), greaterThanOrEqualTo(3));
       }
     });
 
-    test('coralMark is the light secondary and coralDeep only ever a fill', () {
-      expect(AppTheme.light.colorScheme.secondary, AppTheme.coralMark);
-      expect(
-        AppTheme.light.floatingActionButtonTheme.backgroundColor,
-        AppTheme.coralDeep,
-      );
-      expect(
-        AppTheme.light.navigationBarTheme.indicatorColor,
-        AppTheme.coralDeep.withOpacity(0.18),
-      );
+    test('coralDeep is the light primary and FAB; violet the secondary', () {
+      final light = AppTheme.light;
+      expect(light.colorScheme.primary, AppTheme.coralDeep);
+      expect(light.colorScheme.secondary, AppTheme.violet);
+      expect(light.floatingActionButtonTheme.backgroundColor,
+          AppTheme.coralDeep);
+      expect(light.navigationBarTheme.indicatorColor,
+          AppTheme.coralDeep.withOpacity(0.18));
     });
   });
 }

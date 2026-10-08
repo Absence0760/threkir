@@ -7,16 +7,19 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
-/// Persists watch-run payloads that arrive before the user has signed in.
+/// The durable home of every watch-run payload until the server has it.
 ///
-/// When WatchIngest receives a run and the user is not authenticated, the
-/// payload is written to disk under `<documents>/watch_ingest_queue/<uuid>.json`
-/// rather than being discarded. On the next sign-in event, `drain` replays
-/// every queued file and deletes each one on success.
+/// `WatchIngest` writes each run here under
+/// `<documents>/watch_ingest_queue/<uuid>.json` BEFORE anything else — signed
+/// in or not, online or not — and [drain] uploads and deletes. Drain runs on
+/// sign-in, on every newly received run, and on each `SyncService` trigger
+/// (startup, foreground, connectivity), so an entry left by a failed upload is
+/// retried on the next of those rather than on the next sign-in only.
 ///
-/// The previous behaviour silently dropped watch runs received before sign-in
-/// because the in-process `pending` buffer in WatchIngestBridge.swift was lost
-/// on app restart. See docs/architecture/decisions.md for the full rationale.
+/// Watch-run durability lives here, deliberately, and not in
+/// `WatchIngestBridge.swift`: the bridge's buffer is in memory, and it only
+/// ever saw a bare refusal where this side knows the auth state and why an
+/// upload failed (decisions § 1801).
 ///
 /// **Shared-device owner-tag (added 2026-05).** Each queued file carries
 /// the user_id who was most recently signed in on the phone — the
@@ -120,29 +123,52 @@ class WatchIngestQueue {
   String? get debugLastKnownOwner => _lastKnownOwnerCache;
 
   /// Write a raw watch-run payload to the queue directory, wrapped
-  /// with the current last-known-owner stamp so [drain] can skip it
-  /// when a different user signs in later (shared-device guard).
-  Future<void> enqueue(Map<String, dynamic> payload) async {
+  /// with an owner stamp so [drain] can skip it when a different user
+  /// signs in later (shared-device guard). The stamp is [owner] — the
+  /// signed-in user, when there is one — else the last-known owner.
+  ///
+  /// Returns whether the payload is now on disk. The Apple Watch bridge
+  /// lets go of its copy on `true`, so `true` must never be said of a
+  /// write that did not land.
+  Future<bool> enqueue(Map<String, dynamic> payload, {String? owner}) async {
     final filename = '${_uuid.v4()}.json';
     final file = File('${_queueDir.path}/$filename');
+    final stamp = owner ?? _lastKnownOwnerCache;
     final envelope = <String, dynamic>{
-      if (_lastKnownOwnerCache != null)
-        'intended_owner_user_id': _lastKnownOwnerCache,
+      'intended_owner_user_id': ?stamp,
       'payload': payload,
     };
     try {
       // Atomic, like every sibling store: a bare writeAsString truncates the
       // target first, so a process death mid-write leaves a truncated file
       // that drain can never parse.
-      await cm.writeStringAtomic(file, jsonEncode(envelope));
+      await cm.writeStringAtomic(
+          file, jsonEncode(envelope, toEncodable: _nonFiniteAsNull));
+      return true;
     } catch (e) {
       debugPrint('WatchIngestQueue.enqueue failed: $e');
+      return false;
     }
   }
 
+  /// `jsonEncode` refuses a non-finite double (decisions § 986), which made a
+  /// NaN anywhere in a payload a write that could never land. Encoded as null
+  /// it lands, and the decoder then refuses the entry on the parse side, where
+  /// [drain] quarantines it rather than the run being lost.
+  static Object? _nonFiniteAsNull(Object? value) {
+    if (value is double && !value.isFinite) return null;
+    throw JsonUnsupportedObjectError(value);
+  }
+
   /// Replay queued runs via [api.saveRun]. Each file is deleted on
-  /// success. Files that fail are left on disk and will be retried on
-  /// the next sign-in.
+  /// success. A transient failure leaves the file on disk for the next
+  /// trigger; a failure the same bytes will always hit — an unparseable
+  /// entry, or a track the bucket refused as too large (decisions § 1009)
+  /// — quarantines it instead, so no trigger retries it forever.
+  ///
+  /// One drain at a time. Every received run starts one, so they overlap
+  /// with the sign-in and sync triggers; a call that lands mid-pass joins
+  /// it and asks for one more pass, which picks up whatever it came for.
   ///
   /// Files whose `intended_owner_user_id` stamp names a DIFFERENT user
   /// from the one currently signed in are skipped (and left on disk
@@ -150,7 +176,32 @@ class WatchIngestQueue {
   /// Untagged files (legacy / pre-stamp / queued before init wrote
   /// the sidecar) drain unconditionally, matching the pre-stamp
   /// "adopt to whoever signs in next" behaviour.
-  Future<void> drain(ApiClient api) async {
+  Future<void> drain(ApiClient api) {
+    final inFlight = _draining;
+    if (inFlight != null) {
+      _drainAgain = true;
+      return inFlight;
+    }
+    final passes = _drainPasses(api);
+    _draining = passes;
+    return passes;
+  }
+
+  Future<void>? _draining;
+  bool _drainAgain = false;
+
+  Future<void> _drainPasses(ApiClient api) async {
+    try {
+      do {
+        _drainAgain = false;
+        await _drainOnce(api);
+      } while (_drainAgain);
+    } finally {
+      _draining = null;
+    }
+  }
+
+  Future<void> _drainOnce(ApiClient api) async {
     final currentUserId = api.userId;
     if (currentUserId == null) return;
 
@@ -198,9 +249,12 @@ class WatchIngestQueue {
       }
       try {
         await api.saveRun(run, isPublic: isPublic);
+      } on TrackTooLargeException catch (e) {
+        _reject(file, e);
+        continue;
       } catch (e) {
         debugPrint('WatchIngestQueue.drain upload failed for ${file.path}: $e');
-        continue; // transient — left on disk for the next sign-in
+        continue; // transient — left on disk for the next trigger
       }
       try {
         await file.delete();
@@ -210,7 +264,7 @@ class WatchIngestQueue {
     }
   }
 
-  /// Move an unreadable entry out of the queue glob so it stops being retried.
+  /// Move an entry no retry can land out of the queue glob.
   void _reject(File file, Object error) {
     debugPrint('WatchIngestQueue.drain rejecting ${file.path}: $error');
     try {

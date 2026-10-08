@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:api_client/api_client.dart';
@@ -42,6 +41,7 @@ import 'ble_heart_rate.dart';
 import 'ble_treadmill.dart';
 import 'tile_cache.dart';
 import 'training_service.dart';
+import 'watch_ingest.dart';
 import 'watch_ingest_queue.dart';
 import 'wear_auth_bridge.dart';
 import 'wear_routes_bridge.dart';
@@ -386,6 +386,7 @@ void main() async {
     runStore: store,
     routeStore: routeStore,
     socialService: social,
+    watchQueue: watchQueue,
   );
   syncService.start();
 
@@ -412,9 +413,10 @@ void main() async {
   // the `run_app/watch_ingest` MethodChannel. On Android the channel
   // isn't registered, so `WatchIngest.attach` fires `MissingPluginException`
   // (caught) and the no-op is invisible — keeps the bootstrap identical
-  // across both apps.
+  // across both apps. Attached whatever the auth state: a run that lands
+  // signed out is queued on disk, never left unanswered (decisions § 1801).
+  WatchIngest.attach(api, watchQueue);
   if (api != null && api.userId != null) {
-    WatchIngest.attach(api, watchQueue);
     // Bootstrap with whoever is currently signed in (cached session
     // from a previous launch). Any payloads enqueued during a future
     // signed-out window will carry this stamp, so a different user
@@ -453,7 +455,6 @@ void main() async {
         _lastSignedInUserId = sessionUserId;
       }
       if (event.event == AuthChangeEvent.signedIn) {
-        WatchIngest.attach(apiNonNull, watchQueue);
         // Stamp the queue with the freshly-signed-in user BEFORE
         // draining. The drain below skips files whose stamp names a
         // different user — without this update the drain would still
@@ -855,67 +856,5 @@ class _RunAppState extends State<RunApp> {
         );
       },
     );
-  }
-}
-
-/// Receives runs from the paired Apple Watch via a method channel owned
-/// by `Runner/AppDelegate.swift` + `Runner/WatchIngestBridge.swift` on
-/// iOS. Android doesn't register the channel, so the `setMethodCallHandler`
-/// installation is a harmless no-op and the bridge never fires.
-///
-/// Each call carries: `{id, started_at, duration_s, distance_m, source,
-/// avg_bpm?, hr_coverage?, activity_type?, last_modified_at?, track}` —
-/// `track` as the JSON TEXT of the file the watch wrote. Decoding is
-/// [runFromWatchPayload]'s, not this class's: the same payload is decoded
-/// here when the runner is signed in and by the queue's drain when they are
-/// not, so a second copy of the decode could only ever be a divergence
-/// waiting to happen, and was one.
-///
-/// When the user is not authenticated, the payload is persisted to the
-/// [WatchIngestQueue] on disk and replayed on the next sign-in.
-class WatchIngest {
-  static const _channel = MethodChannel('run_app/watch_ingest');
-
-  static void attach(ApiClient api, WatchIngestQueue queue) {
-    _channel.setMethodCallHandler((call) async {
-      if (call.method != 'run') return null;
-      final args = call.arguments as Map<Object?, Object?>?;
-      if (args == null) return false;
-
-      // One payload, ONE decoder. This handler used to carry a second
-      // hand-written copy of the decode for the signed-in branch, and the two
-      // copies had already drifted in both directions over the same bridge
-      // payload: this one never learned the per-point `bpm` that
-      // `docs/backend/metadata.md` says the watch-ingest decoder reads, and
-      // `runFromWatchPayload` never learned that this bridge sends `track` as
-      // JSON TEXT — so an Apple Watch run that arrived while signed out was
-      // enqueued and later replayed with no track at all. Whether the runner
-      // happened to be signed in is not something a decoder should be able to
-      // change about the run.
-      final payload = <String, dynamic>{
-        for (final e in args.entries)
-          if (e.key is String) e.key as String: e.value,
-      };
-
-      if (api.userId == null) {
-        try {
-          await queue.enqueue(payload);
-        } catch (e) {
-          debugPrint('Watch ingest queue write failed: $e');
-        }
-        return false;
-      }
-
-      try {
-        await api.saveRun(
-          runFromWatchPayload(payload),
-          isPublic: isPublicFromWatchPayload(payload),
-        );
-        return true;
-      } catch (e) {
-        debugPrint('Watch ingest failed: $e');
-        return false;
-      }
-    });
   }
 }

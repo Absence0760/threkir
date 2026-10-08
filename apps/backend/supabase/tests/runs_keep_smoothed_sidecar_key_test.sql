@@ -4,9 +4,16 @@
 -- it, and a stale copy of a recomputed run; the worker (service role) can
 -- still remove it, a client that sends the key sets it as sent, a change to
 -- track_url drops it, and the road distance keeps the carry it already had.
+-- Since 20270719000020 that road distance is kept only beside a
+-- distance_map_matched_track_version naming the stored object, so run 1's
+-- track object is staged before the run, leaving the rewrite trigger on
+-- storage.objects no run to act on.
 
 begin;
 select plan(10);
+
+insert into storage.objects (bucket_id, name, version) values
+  ('runs', 'b5000000-0000-0000-0000-0000000000a1/b5000001-0000-0000-0000-000000000001.json.gz', 'k1');
 
 insert into auth.users (id, email, encrypted_password, email_confirmed_at,
                         instance_id, aud, role)
@@ -23,7 +30,7 @@ values
   ('b5000001-0000-0000-0000-000000000001', 'b5000000-0000-0000-0000-0000000000a1',
    '2026-09-01 09:00:00+00', 5000, 1800, 'watch', 'run',
    'b5000000-0000-0000-0000-0000000000a1/b5000001-0000-0000-0000-000000000001.json.gz',
-   '{"smoothed_sidecar_sha256":"1111111111111111111111111111111111111111111111111111111111111111","distance_map_matched_m":4990.5}'),
+   '{"smoothed_sidecar_sha256":"1111111111111111111111111111111111111111111111111111111111111111","distance_map_matched_m":4990.5,"distance_map_matched_track_version":"k1"}'),
   ('b5000001-0000-0000-0000-000000000002', 'b5000000-0000-0000-0000-0000000000a1',
    '2026-09-02 09:00:00+00', 5000, 1800, 'app', 'run',
    'b5000000-0000-0000-0000-0000000000a1/b5000001-0000-0000-0000-000000000002.json.gz',

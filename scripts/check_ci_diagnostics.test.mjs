@@ -642,6 +642,15 @@ const OFF_THE_GATE = new Map([
 			'envs, in the `env-isolation` job of ci.yml (decisions § 862).',
 	],
 	[
+		'scripts/ios_watch_runtime_config.mjs',
+		'release-ios.yml at tag time, and only there — `write` is a release step and `verify` ' +
+			'asserts on the built IPA, which exists nowhere but a release run, and both need the ' +
+			'production Supabase secrets CI does not hold. What the gate holds instead is its ' +
+			'SUITE, which exercises both subcommands against crafted values and the committed ' +
+			'xcconfig, plist and workflow wiring, in the `workflow-lint` job of ci.yml ' +
+			'(decisions § 1810).',
+	],
+	[
 		'scripts/check_compliance_drift.mjs',
 		'compliance-drift.yml, deliberately advisory (COMPLIANCE_DRIFT_MODE=warn) — it ' +
 			'reports findings and never fails the job, so being off the gate is the design ' +

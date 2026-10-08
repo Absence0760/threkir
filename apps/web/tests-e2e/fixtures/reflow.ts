@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { expect, type Page } from '@playwright/test';
 
 /**
@@ -21,6 +23,27 @@ import { expect, type Page } from '@playwright/test';
  * below the requirement converts that invisible 2 px into a visible 20 px, and
  * it is the same derivation — no absolute width is asserted anywhere.
  */
+/**
+ * Origins of the raster tiles in `static/osm-fallback-style.json`, the style
+ * every map falls back to without a MapTiler key — which is CI. Read from the
+ * style itself so a host it gains is stubbed too.
+ */
+const FALLBACK_TILE_ORIGINS: ReadonlySet<string> = new Set(
+	Object.values(
+		(
+			JSON.parse(
+				readFileSync(resolve(import.meta.dirname, '..', '..', 'static', 'osm-fallback-style.json'), 'utf-8')
+			) as { sources: Record<string, { tiles?: string[] }> }
+		).sources
+	).flatMap((source) => (source.tiles ?? []).map((url) => new URL(url.replace(/[{}]/g, '')).origin))
+);
+
+/** A 1×1 transparent PNG. */
+const BLANK_TILE = Buffer.from(
+	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+	'base64'
+);
+
 export const VIEWPORTS = [
 	{ width: 300, height: 720 },
 	{ width: 320, height: 720 },
@@ -47,6 +70,13 @@ export async function expectReflows(
 	route: string,
 	populated?: { locator: string; min?: number }
 ) {
+	// A map page's `networkidle` otherwise waits on a third-party tile server,
+	// which took 29 s on one CI shard and timed the test out. Tile imagery sits
+	// inside a fixed-size map box and cannot change the document's width.
+	await page.route(
+		(url) => FALLBACK_TILE_ORIGINS.has(url.origin),
+		(route) => route.fulfill({ status: 200, contentType: 'image/png', body: BLANK_TILE })
+	);
 	for (const viewport of VIEWPORTS) {
 		await page.setViewportSize(viewport);
 		await page.goto(route);

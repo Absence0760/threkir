@@ -1599,9 +1599,11 @@ class ApiClient {
   /// `metadata['track_url']` (returned by [getRuns] / [_runFromRow]).
   /// Returns an empty list if the run has no track. A track with no smoothed
   /// pair on any waypoint (a watch run, an old run the server recomputed)
-  /// gets the job_worker's smoothed-position sidecar merged on when the
-  /// sidecar names these exact bytes ([mergeSmoothedSidecar]); any failure to
-  /// fetch or read it leaves the raw track, which is what it always was.
+  /// gets the job_worker's smoothed-position sidecar merged on when the run's
+  /// metadata names these exact bytes ([sidecarNamedFor]) and the sidecar's
+  /// own fingerprint agrees ([mergeSmoothedSidecar]); a run that names no
+  /// sidecar for this track makes no sidecar request, and any failure to
+  /// fetch or read one leaves the raw track, which is what it always was.
   Future<List<Waypoint>> fetchTrack(Run run) async {
     final url = run.metadata?['track_url'] as String?;
     if (url == null || url.isEmpty) return const [];
@@ -1609,21 +1611,57 @@ class ApiClient {
       await _client.storage.from(StorageBuckets.runs).download(url),
     );
     final track = _decodeTrack(inflated);
+    return await _withSmoothedSidecar(run, track, trackSha256Hex(inflated)) ??
+        track;
+  }
+
+  /// The line for a track this device holds (its own recording, or a watch
+  /// run relayed through the phone): [Run.track] with the job_worker's
+  /// smoothed-position sidecar merged on, or null when there is nothing to
+  /// merge — the run names no sidecar for these bytes, the track already
+  /// carries its own pair, or the sidecar is missing or unreadable.
+  ///
+  /// The sidecar names the hash of the bytes the `runs` bucket holds, and the
+  /// local copy is not those bytes, so the fingerprint is taken over the blob
+  /// [_uploadTrack] would store for it ([localTrackSha256]); the merged list
+  /// is over the same finite waypoints that blob holds. For display only:
+  /// persisting it would bake the sidecar into the next upload of the track.
+  Future<List<Waypoint>?> smoothedLocalTrack(Run run) async {
+    if (run.track.isEmpty) return null;
+    final usable = finiteWaypoints(run.track);
+    return _withSmoothedSidecar(run, usable, localTrackSha256(usable));
+  }
+
+  /// Lower-case hex SHA-256 of the blob [_uploadTrack] stores for [track],
+  /// before gzip: the fingerprint a sidecar built from that upload names.
+  static String localTrackSha256(List<Waypoint> track) =>
+      trackSha256Hex(utf8.encode(_trackBlobJson(track)));
+
+  Future<List<Waypoint>?> _withSmoothedSidecar(
+    Run run,
+    List<Waypoint> track,
+    String sha256Hex,
+  ) async {
     final userId = _client.auth.currentUser?.id;
-    if (userId == null || !needsSmoothedSidecar(track)) return track;
+    if (userId == null ||
+        !needsSmoothedSidecar(track) ||
+        !sidecarNamedFor(run.metadata, sha256Hex)) {
+      return null;
+    }
     try {
       final sidecar = await _client.storage
           .from(StorageBuckets.runs)
           .download(smoothedSidecarPath(userId, run.id));
-      return mergeSmoothedSidecar(
+      final merged = mergeSmoothedSidecar(
         track,
         decodeSmoothedSidecar(gzip.decode(sidecar)),
         points: track.length,
-        sha256Hex: trackSha256Hex(inflated),
+        sha256Hex: sha256Hex,
       );
+      return identical(merged, track) ? null : merged;
     } catch (e) {
-      debugPrint('No smoothed sidecar for run ${run.id}: $e');
-      return track;
+      debugPrint('Smoothed sidecar unreadable for run ${run.id}: $e');
+      return null;
     }
   }
 

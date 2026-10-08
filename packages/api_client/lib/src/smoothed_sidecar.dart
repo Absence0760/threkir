@@ -9,7 +9,9 @@ import 'package:crypto/crypto.dart';
 /// smoother's position per stored waypoint plus the fingerprint of the exact
 /// track bytes it was computed from. Merged only onto that track, and only
 /// onto a waypoint with no pair of its own, so a track re-uploaded after the
-/// sidecar was written keeps its own positions.
+/// sidecar was written keeps its own positions. The run names the track a
+/// stored sidecar was built for in `metadata.smoothed_sidecar_sha256`, and a
+/// reader fetches the sidecar only when that names the bytes it holds.
 ///
 /// Same rule as `apps/web/src/lib/runs/smoothed_sidecar.ts` and the Deno copy
 /// in `_shared/smoothed_sidecar.ts`; all replay
@@ -22,6 +24,16 @@ String smoothedSidecarPath(String userId, String runId) =>
 /// Lower-case hex SHA-256 of the decompressed track bytes.
 String trackSha256Hex(List<int> decompressed) =>
     sha256.convert(decompressed).toString();
+
+/// Whether the run's [metadata] names a sidecar built for the track whose
+/// bytes hash to [sha256Hex]: the job_worker records
+/// `smoothed_sidecar_sha256` while the sidecar is stored, so a run without it,
+/// or whose hash names another track (a re-upload), has nothing to fetch.
+/// Checked before the sidecar download so a run with no sidecar costs no
+/// Storage request; [mergeSmoothedSidecar] still checks the sidecar's own
+/// fingerprint.
+bool sidecarNamedFor(Map<String, dynamic>? metadata, String sha256Hex) =>
+    metadata?[MetadataKeys.smoothedSidecarSha256] == sha256Hex;
 
 /// Whether a sidecar could add anything: a track with no smoothed pair on any
 /// waypoint.

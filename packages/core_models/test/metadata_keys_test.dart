@@ -27,6 +27,7 @@ void main() {
       expect(MetadataKeys.sessionPlanId, 'session_plan_id');
       expect(MetadataKeys.sessionStepResults, 'session_step_results');
       expect(MetadataKeys.sessionAdherence, 'session_adherence');
+      expect(MetadataKeys.smoothedSidecarSha256, 'smoothed_sidecar_sha256');
     });
 
     test('every value is unique snake_case', () {
@@ -79,6 +80,7 @@ void main() {
         MetadataKeys.sessionAdherence,
         MetadataKeys.sessionPlanId,
         MetadataKeys.sessionStepResults,
+        MetadataKeys.smoothedSidecarSha256,
         MetadataKeys.sourceFile,
         MetadataKeys.steps,
         MetadataKeys.stravaActivityType,

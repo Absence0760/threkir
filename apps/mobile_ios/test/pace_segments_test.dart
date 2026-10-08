@@ -335,4 +335,29 @@ void main() {
       }
     });
   });
+
+  test('a segment is timed on the smoothed positions when present', () {
+    // Raw hop 15 m in 10 s (1.5 m/s, the slowest run bucket); the smoother
+    // put the fixes 50 m apart (5 m/s). Mirrors the web twin's smoothed case.
+    const degPerM = 1 / 111320;
+    final t0 = DateTime.utc(2026, 1, 1);
+    final t1 = t0.add(const Duration(seconds: 10));
+    final a = Waypoint(
+        lat: 0, lng: 0, timestamp: t0, smoothedLat: 0, smoothedLng: 0);
+    final b = Waypoint(
+      lat: 15 * degPerM,
+      lng: 0,
+      timestamp: t1,
+      smoothedLat: 50 * degPerM,
+      smoothedLng: 0,
+    );
+    expect(
+      paceBucketForSegment(a, b, ActivityType.run),
+      paceBucketForSegment(
+        Waypoint(lat: 0, lng: 0, timestamp: t0),
+        Waypoint(lat: 50 * degPerM, lng: 0, timestamp: t1),
+        ActivityType.run,
+      ),
+    );
+  });
 }

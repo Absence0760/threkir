@@ -189,3 +189,30 @@ test('paceGradientColour spans the ramp end to end', () => {
 	assert.equal(paceGradientColour(-3), PACE_GRADIENT_RAMP[0]);
 	assert.equal(paceGradientColour(0.5), PACE_GRADIENT_RAMP[1]);
 });
+
+test('a segment is timed and drawn on the smoothed positions when present', () => {
+	// Raw hop 15 m in 10 s (1.5 m/s, the slowest run bucket); the smoother put
+	// the fixes 50 m apart (5 m/s). Mirrors the Dart twin's smoothed case.
+	const degPerM = 1 / 111_320;
+	const a: TrackPoint = { lat: 0, lng: 0, ts: '2026-01-01T00:00:00Z', smoothedLat: 0, smoothedLng: 0 };
+	const b: TrackPoint = {
+		lat: 15 * degPerM,
+		lng: 0,
+		ts: '2026-01-01T00:00:10Z',
+		smoothedLat: 50 * degPerM,
+		smoothedLng: 0,
+	};
+	const [seg] = buildPaceSegments([a, b], 'run');
+	const [asIfRaw] = buildPaceSegments(
+		[
+			{ lat: 0, lng: 0, ts: a.ts },
+			{ lat: 50 * degPerM, lng: 0, ts: b.ts },
+		],
+		'run',
+	);
+	assert.equal(seg.color, asIfRaw.color);
+	assert.deepEqual(seg.coords, [
+		[0, 0],
+		[0, 50 * degPerM],
+	]);
+});

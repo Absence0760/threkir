@@ -7,6 +7,7 @@
 import type { TrackPoint } from '../types';
 import { haversineMetres } from '../runs/run_stats';
 import { cumulativeMetres } from '../runs/elevation_profile';
+import { lineLat, lineLng, lineLngLat } from '../runs/track_line';
 
 export type ActivityKind = 'run' | 'walk' | 'cycle' | 'hike';
 
@@ -62,7 +63,7 @@ function segmentSpeedMps(a: TrackPoint, b: TrackPoint): number | null {
 	if (!a.ts || !b.ts) return null;
 	const dtSec = (Date.parse(b.ts) - Date.parse(a.ts)) / 1000;
 	if (!Number.isFinite(dtSec) || dtSec <= 0) return null;
-	const d = haversineMetres(a.lat, a.lng, b.lat, b.lng);
+	const d = haversineMetres(lineLat(a), lineLng(a), lineLat(b), lineLng(b));
 	if (d <= 0) return null;
 	return d / dtSec;
 }
@@ -101,7 +102,7 @@ export function buildPaceSegments(track: TrackPoint[], activity: ActivityKind): 
 	const emit = (firstSeg: number, lastSegExclusive: number) => {
 		const coords: [number, number][] = [];
 		for (let j = firstSeg; j <= lastSegExclusive; j++) {
-			coords.push([track[j].lng, track[j].lat]);
+			coords.push(lineLngLat(track[j]));
 		}
 		out.push({ coords, color: rgbaFor(paceBucket[firstSeg], ageBand[firstSeg]) });
 	};

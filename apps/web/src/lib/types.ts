@@ -87,6 +87,12 @@ export type TrackPoint = {
 	/// it falls back to a "No HR samples on this run" message. See
 	/// `docs/backend/metadata.md`.
 	bpm?: number;
+	/// The GPS distance smoother's position for this fix (spec v1.2,
+	/// docs/features/gps_distance.md § Waypoint fields), written when the run
+	/// was saved; `lat` / `lng` stay the raw fix. Readers that draw the line
+	/// go through `lineLat` / `lineLng` (lib/runs/track_line.ts).
+	smoothedLat?: number;
+	smoothedLng?: number;
 };
 
 // `track` is populated on-demand by `data.ts#fetchRunById` from the gzipped

@@ -179,3 +179,36 @@ test('isTrackRenderable accepts a genuine run crossing the antimeridian', () => 
 		true,
 	);
 });
+
+test('projectTrack draws the smoothed position when the stored track carries it', () => {
+	// Raw fixes zig-zag 3 m either side of a north-bound line; the smoothed
+	// positions sit on it, so the projected line is vertical.
+	const step = 10 / 111_320;
+	const off = 3 / 111_320;
+	const track: TrackPoint[] = Array.from({ length: 11 }, (_, i) => ({
+		lat: i * step,
+		lng: i % 2 === 1 ? off : -off,
+		smoothedLat: i * step,
+		smoothedLng: 0,
+	}));
+	const xs = new Set(projectTrack(track, 100, 100).map((p) => p.x));
+	assert.equal(xs.size, 1);
+	const raw = projectTrack(
+		track.map(({ lat, lng }) => ({ lat, lng })),
+		100,
+		100,
+	);
+	assert.ok(new Set(raw.map((p) => p.x)).size > 1);
+});
+
+test('isTrackRenderable judges the smoothed span when present', () => {
+	// A stationary jitter cluster whose smoothed positions collapse to one
+	// spot is not worth drawing, however far the raw fixes scatter.
+	assert.equal(
+		isTrackRenderable([
+			{ lat: 0, lng: 0, smoothedLat: 0, smoothedLng: 0 },
+			{ lat: 0.0001, lng: 0.0001, smoothedLat: 0.000001, smoothedLng: 0 },
+		]),
+		false,
+	);
+});

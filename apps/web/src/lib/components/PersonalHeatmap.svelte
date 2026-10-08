@@ -13,6 +13,7 @@
 	import { mapTrackLine } from '$lib/routes/basemap_contrast';
 	import { watchMapResize } from '$lib/routes/map_resize';
 	import { fetchRuns, fetchTrackByPath } from '$lib/core/data';
+	import { toLinePoint } from '$lib/runs/track_line';
 	import { buildHeatCells, heatBounds, toHeatGeoJSON, toTrackLinesGeoJSON, MAX_CELL_WEIGHT } from '$lib/routes/run_heatmap';
 	import { hasAcceptedConsent } from '$lib/settings/consent.svelte';
 	import type { TrackPoint } from '$lib/types';
@@ -96,7 +97,7 @@
 				empty = true;
 				return;
 			}
-			const tracks = await downloadTracks(paths);
+			const tracks = (await downloadTracks(paths)).map((t) => t.map(toLinePoint));
 			const cells = buildHeatCells(tracks);
 			if (cells.length === 0) {
 				empty = true;

@@ -42,6 +42,19 @@ void main() {
     expect(raw.map((o) => o.dx).toSet().length, greaterThan(1));
   });
 
+  test('isTrackRenderable judges the smoothed span when present', () {
+    // A stationary jitter cluster whose smoothed positions collapse to one
+    // spot is not worth drawing, however far the raw fixes scatter.
+    expect(
+      isTrackRenderable(const [
+        Waypoint(lat: 0, lng: 0, smoothedLat: 0, smoothedLng: 0),
+        Waypoint(
+            lat: 0.0001, lng: 0.0001, smoothedLat: 0.000001, smoothedLng: 0),
+      ]),
+      isFalse,
+    );
+  });
+
   test('a half smoothed pair falls back to the raw fix', () {
     final track = [
       const Waypoint(lat: 0, lng: 0, smoothedLat: 0.001),

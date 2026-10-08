@@ -103,6 +103,7 @@ import {
 } from '../training/relink_candidates';
 import type { GeneratedPlan, GoalEvent, PlanPhase } from '../training/training';
 import { auth } from '../stores/auth.svelte';
+import { lineLngLat } from '../runs/track_line';
 import { compareLeaderboard } from '../runs/race_leaderboard';
 import { readRankRows } from '../segments/effort_rank';
 import type { RecapPeriodKind } from '../types';
@@ -822,7 +823,7 @@ export async function fetchRoutesIntersectingTrack(
 	if (!userId || track.length < 2) return [];
 	const geojson = {
 		type: 'LineString' as const,
-		coordinates: track.map((p) => [p.lng, p.lat]),
+		coordinates: track.map(lineLngLat),
 	};
 	const { data, error } = await supabase.rpc('routes_intersecting_track', {
 		caller_user_id: userId,

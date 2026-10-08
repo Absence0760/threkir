@@ -54,6 +54,7 @@
 	import type { PlanWorkout } from '$lib/types';
 	import { toRunGpx, downloadFile } from '$lib/routes/gpx';
 	import { movingTimeSeconds, computeRealSplits } from '$lib/runs/run_stats';
+	import { lineLat, lineLng } from '$lib/runs/track_line';
 	import { computeElevationGain } from '$lib/routes/route_simplify';
 	import {
 		cadenceSpm,
@@ -1254,7 +1255,7 @@
 	let scrubPreviewLngLat = $derived.by<[number, number] | null>(() => {
 		if (!scrubbing || !hasMapTrack) return null;
 		const pt = interpolateAlongRoute(
-			baseTrack.map((p) => ({ lat: p.lat, lng: p.lng })),
+			baseTrack.map((p) => ({ lat: lineLat(p), lng: lineLng(p) })),
 			scrubFraction,
 		);
 		return pt ? [pt.lng, pt.lat] : null;

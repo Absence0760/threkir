@@ -26,6 +26,7 @@
 	import { watchMapResize } from '$lib/routes/map_resize';
 	import { minMax } from '$lib/util/min_max';
 	import type { TrackPoint } from '$lib/types';
+	import { lineLngLat } from '$lib/runs/track_line';
 	import {
 		PACE_GRADIENT_RAMP,
 		paceGradientColour,
@@ -257,7 +258,7 @@
 
 	export function startAnimation() {
 		if (!map || animating) return;
-		const coords: [number, number][] = track.map((p) => [p.lng, p.lat]);
+		const coords: [number, number][] = track.map(lineLngLat);
 		if (coords.length < 2) return;
 
 		animating = true;
@@ -340,7 +341,7 @@
 			hoverMarker = undefined;
 			return;
 		}
-		const at: [number, number] = [p.lng, p.lat];
+		const at: [number, number] = lineLngLat(p);
 		if (!hoverMarker) {
 			const el = document.createElement('div');
 			el.className = 'hover-marker';
@@ -779,7 +780,7 @@
 	/// mixed one track's indices with another's values, and returned null
 	/// outright whenever the two differed in length (decisions § 1402).
 	function snapshotTrack(): void {
-		trackCoords = track.map((p) => [p.lng, p.lat]);
+		trackCoords = track.map(lineLngLat);
 		paceStops = activity ? paceGradientStops(track) : [];
 		trackBounds = undefined;
 		if (trackCoords.length > 0) {

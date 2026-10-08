@@ -163,8 +163,10 @@ would fail one:
   `error_framing.test.ts` (an `{error}` slot must stay inside a translated
   sentence), `nutrition_add_failed.test.ts`, all under
   `apps/web/src/lib/i18n/`, render real catalogue values in every locale.
-- **Size** — `scripts/check_web_bundle_budget.mjs` caps each lazy web
-  catalogue chunk (`MAX_CATALOGUE_KB`); a very long batch is worth a note.
+- **Size** — `scripts/check_web_bundle_budget.mjs` caps each web catalogue
+  part: a locale's core (`MAX_CORE_CATALOGUE_KB`) and each of its areas
+  (`MAX_AREA_CATALOGUE_KB`), split at build time by
+  `apps/web/src/lib/i18n/vite_plugin.ts`; a very long batch is worth a note.
 
 Reply with the output path; counts (checked, corrected, errors, warnings,
 catalogue findings); and the handful of findings a human reviewer should

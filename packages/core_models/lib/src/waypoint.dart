@@ -52,8 +52,12 @@ class Waypoint {
     this.smoothedLng,
   });
 
-  /// Whether the stored track carries a smoothed position for this fix.
-  bool get hasSmoothedPosition => smoothedLat != null && smoothedLng != null;
+  /// Whether the stored track carries a usable smoothed position for this
+  /// fix: both halves present and finite, as `hasSmoothedPosition` in web
+  /// `lib/runs/track_line.ts` reads it. A NaN half would otherwise put the
+  /// line vertex nowhere instead of on the raw fix.
+  bool get hasSmoothedPosition =>
+      (smoothedLat?.isFinite ?? false) && (smoothedLng?.isFinite ?? false);
 
   /// Where the run line, a route match or a hop-sum distance places this
   /// fix: the smoothed position when both halves are present, else the raw

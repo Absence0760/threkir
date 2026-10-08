@@ -249,7 +249,7 @@ The Watch target needs its own HealthKit entitlement (separate from the iOS one)
 
 ### Watch Connectivity
 
-The phone-watch transport is `WCSession.transferFile(_:metadata:)` (decisions.md § 40). The phone-side `WatchIngestBridge.swift` is **live**; the queue persists pre-auth payloads to disk via `apps/mobile_ios/ios/Runner/WatchIngestBridge.swift` so a phone restart between watch transfer and sign-in doesn't lose the run. No additional setup at deploy time — entitlements travel with the App Group.
+The phone-watch transport is `WCSession.transferFile(_:metadata:)` (decisions.md § 40). The phone-side `WatchIngestBridge.swift` is **live**; it hands every run to the Dart `WatchIngestQueue` (`lib/watch_ingest.dart`), which writes it to disk before answering, so a phone restart at any point after the hand-off — before sign-in, offline, or mid-upload — doesn't lose the run (decisions.md § 1801). No additional setup at deploy time — entitlements travel with the App Group.
 
 ### Active-run complication
 

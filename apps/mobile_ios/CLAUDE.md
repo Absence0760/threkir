@@ -48,7 +48,7 @@ Flutter iOS app. **`lib/` and `test/` are now byte-for-byte identical to `apps/m
 - `AppDelegate.swift` — activates the `WatchIngestBridge` singleton at launch + attaches its method channel when the Flutter engine spins up.
 - `CalendarBridge.swift` — **live**: presents `EKEventEditViewController` pre-filled from a club event, handed over the `run_app/calendar` method channel by `lib/calendar_intent.dart`. Asks for write-only calendar access on iOS 17+ (`requestWriteOnlyAccessToEvents`, falling back to `requestAccess` below it) and never reads the calendar. Parses the RRULE value the Dart side sends into an `EKRecurrenceRule` — only the subset `buildRrule` emits, anything else yields no rule rather than a different one (decisions § 692). Registered in `AppDelegate.didInitializeImplicitFlutterEngine`.
 - `DocumentOpenHandoff.swift` — **live**: document "Open with" for route files. A scene life-cycle delegate registered *before* `GeneratedPluginRegistrant` (the plugin claims every cold-launch URL), it moves the `file://` Inbox copy into the share extension's App Group `SharedRoutes/`, writes the same payload, and hands `receive_sharing_intent` the redirect URL, so Dart receives it as a share (decisions § 1761). Compiles `ShareExtension/SharedRouteHandoff.swift` too.
-- `WatchIngestBridge.swift` — **live**: `WCSessionDelegate` that receives `WCSessionFile` transfers from the watch, reads the gzipped-JSON track contents, and forwards to Dart via the `run_app/watch_ingest` method channel. Payloads arriving before Flutter is ready are buffered in-process and flushed on attach.
+- `WatchIngestBridge.swift` — **live**: `WCSessionDelegate` that receives `WCSessionFile` transfers from the watch, reads the gzipped-JSON track contents, and forwards to Dart via the `run_app/watch_ingest` method channel. Runs arriving before Dart has installed its handler are held in an in-memory pen and flushed when Dart signals `ready` on that engine; Dart writes each one to `WatchIngestQueue` before answering `true`, so the pen is never where a run is kept safe ([decisions § 1801](../../docs/architecture/decisions.md)).
 
 ## Native tests
 
@@ -67,13 +67,23 @@ of the delegate methods: `CalendarBridge.recurrenceRule(from:)`,
 `WatchIngestBridge.ingestPayload(metadata:track:)`. Keep them internal (not
 `private`) and keep them pure, or the coverage goes with them.
 
-`WatchIngestBridge`'s mutable state — the pending buffer, the ingest channel and
-the refused-retry budget — lives behind one private serial queue. Two rules
-follow and both are pinned by tests: `flushPending` snapshots and clears **under**
-the lock but dispatches **outside** it (`dispatch` re-enters the queue, so a
-`sync` from inside a held block deadlocks), and internal writes go through
-`buffer(_:)` / `requeueRefused(_:)` rather than appending through the computed
-`pending` property, which would be a non-atomic read-modify-write.
+`WatchIngestBridge`'s mutable state — the holding pen, the ingest channel and
+the Dart-ready flag — lives behind one private serial queue. Two rules follow
+and both are pinned by tests: `flushPending` snapshots and clears **under** the
+lock but dispatches **outside** it (`dispatch` re-enters the queue, so a `sync`
+from inside a held block deadlocks), and internal writes go through `buffer(_:)`
+rather than appending through the computed `pending` property, which would be a
+non-atomic read-modify-write.
+
+**The ingest reply is a hand-off, and only a literal `true` releases a run**
+(`isHandOff(_:)`, [decisions § 1801](../../docs/architecture/decisions.md)).
+Dart's `WatchIngest.handle` writes every run to the on-disk `WatchIngestQueue`
+before it answers, so `true` means "on disk" in every auth and network state and
+the queue owns every retry. Anything else — `false` (the disk write failed and a
+direct save could not rescue it), not-implemented, an error — sends the run back
+to the pen with no retry ceiling, because a refusal is no longer a verdict on the
+payload. Don't re-add a refusal budget here, and don't dispatch before Dart's
+`ready`: a new engine starts with `_dartReady = false`.
 
 ## Internationalization (i18n)
 
@@ -92,7 +102,7 @@ Android-specific concerns that don't port:
 - Disk-backed tile cache → the same `flutter_map_cache` + `dio_cache_interceptor` combo works.
 
 iOS-only concerns with no Android analogue:
-- **Watch run ingest.** `WatchIngestBridge.swift` is live. The `WatchIngestQueue` now persists unauthenticated payloads to disk and replays them on sign-in — no runs are lost across restarts. Previously the in-process `pending` buffer was lost on app restart.
+- **Watch run ingest.** `WatchIngestBridge.swift` is live. Every run is written to `WatchIngestQueue` on disk before Dart answers the bridge — signed in or not, online or not — and the queue drains on sign-in, on each new run and on every `SyncService` trigger, so a run survives an app termination at any point after the hand-off ([decisions § 1801](../../docs/architecture/decisions.md)). The bridge's in-memory pen covers only the window before Dart is ready.
 
 ## Catch-up status
 

@@ -707,7 +707,7 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 		'6B7280': [1, 'data'],
 	},
 	// The six-bucket live pace ramp and the three-stop finished-run gradient
-	// (yellow -> orange -> red, slow -> fast, § 1767): the colour IS the
+	// (yellow -> orange -> red, slow -> fast, § 1769): the colour IS the
 	// datum (§ 480's line), and another TS↔Dart lockstep pair
 	// (pace_segments.dart).
 	'lib/segments/pace_segments.ts': {

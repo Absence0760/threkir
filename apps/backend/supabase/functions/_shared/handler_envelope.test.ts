@@ -195,9 +195,9 @@ Deno.test({
 });
 
 // ── revenuecat-webhook ────────────────────────────────────────────
-// RevenueCat HMAC-signs the raw body with REVENUECAT_WEBHOOK_SECRET
-// and sends the hex digest in `x-revenuecat-hmac`. The handler
-// constant-time compares against its own HMAC of the body. Replay
+// RevenueCat HMAC-signs `${t}.${rawBody}` with REVENUECAT_WEBHOOK_SECRET
+// and sends `t=<unix>,v1=<hex>` in `X-RevenueCat-Webhook-Signature` — the
+// same scheme as Stripe's, verified by the shared `verifyTimestampedHmac`. Replay
 // protection lives downstream of the signature check, so an
 // unsigned request never even reaches the replay window.
 
@@ -218,7 +218,7 @@ Deno.test({
 
 Deno.test({
   name: 'revenuecat-webhook: 401 missing_signature when no ' +
-    'x-revenuecat-hmac header',
+    'x-revenuecat-webhook-signature header',
   ignore: SKIP,
   fn: async () => {
     const res = await fetch(endpoint('revenuecat-webhook'), {
@@ -250,9 +250,10 @@ Deno.test({
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        // A plausible-shape 64-char hex digest that isn't the real one.
-        'x-revenuecat-hmac':
-          '0'.repeat(64),
+        // A fresh timestamp and a plausible-shape digest that isn't the real
+        // one, so the reject is the signature and not the freshness gate.
+        'x-revenuecat-webhook-signature':
+          `t=${Math.floor(Date.now() / 1000)},v1=${'0'.repeat(64)}`,
       },
       body: '{"event":{"id":"evt_test","event_timestamp_ms":1}}',
     });
@@ -397,15 +398,15 @@ function svc(path: string, init: RequestInit = {}): Promise<Response> {
   });
 }
 
-// POST a RevenueCat event with a valid HMAC over the serialized body.
+// POST a RevenueCat event with a valid signature over the serialized body.
 async function postRcEvent(
   ev: Record<string, unknown>,
 ): Promise<{ status: number; json: { new_tier?: unknown; skipped?: unknown } | null }> {
   const body = JSON.stringify({ event: ev });
-  const sig = await hmacHex(REVENUECAT_SECRET, body);
+  const sig = await rcSignature(body);
   const res = await fetch(endpoint('revenuecat-webhook'), {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-revenuecat-hmac': sig },
+    headers: { 'content-type': 'application/json', 'x-revenuecat-webhook-signature': sig },
     body,
   });
   const json = await res.json().catch(() => null);
@@ -436,6 +437,13 @@ async function postStripeEvent(
   });
   const json = await res.json().catch(() => null);
   return { status: res.status, json };
+}
+
+// RevenueCat's `X-RevenueCat-Webhook-Signature` value for `body`, stamped
+// now so every call clears the five-minute freshness gate.
+async function rcSignature(body: string): Promise<string> {
+  const t = Math.floor(Date.now() / 1000);
+  return `t=${t},v1=${await hmacHex(REVENUECAT_SECRET, `${t}.${body}`)}`;
 }
 
 // HMAC-SHA256 hex of `body` keyed by `secret`. Matches the EF's
@@ -475,12 +483,12 @@ Deno.test({
       },
     };
     const body = JSON.stringify(event);
-    const sig = await hmacHex(REVENUECAT_SECRET, body);
+    const sig = await rcSignature(body);
     const res = await fetch(endpoint('revenuecat-webhook'), {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'x-revenuecat-hmac': sig,
+        'x-revenuecat-webhook-signature': sig,
       },
       body,
     });
@@ -517,12 +525,12 @@ Deno.test({
       },
     };
     const body = JSON.stringify(event);
-    const sig = await hmacHex(REVENUECAT_SECRET, body);
+    const sig = await rcSignature(body);
     const res = await fetch(endpoint('revenuecat-webhook'), {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'x-revenuecat-hmac': sig,
+        'x-revenuecat-webhook-signature': sig,
       },
       body,
     });
@@ -555,12 +563,12 @@ Deno.test({
       },
     };
     const body = JSON.stringify(event);
-    const sig = await hmacHex(REVENUECAT_SECRET, body);
+    const sig = await rcSignature(body);
     const res = await fetch(endpoint('revenuecat-webhook'), {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'x-revenuecat-hmac': sig,
+        'x-revenuecat-webhook-signature': sig,
       },
       body,
     });
@@ -778,10 +786,10 @@ Deno.test({
       // (b) Replay the SAME delivery — identical body → identical event
       // id → 23505 → skipped, and the tier must NOT move again.
       const initialBody = JSON.stringify({ event: initial });
-      const initialSig = await hmacHex(REVENUECAT_SECRET, initialBody);
+      const initialSig = await rcSignature(initialBody);
       const replay = await fetch(endpoint('revenuecat-webhook'), {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-revenuecat-hmac': initialSig },
+        headers: { 'content-type': 'application/json', 'x-revenuecat-webhook-signature': initialSig },
         body: initialBody,
       });
       const replayJson = await replay.json().catch(() => null);

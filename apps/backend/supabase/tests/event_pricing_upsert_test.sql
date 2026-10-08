@@ -49,10 +49,9 @@ set local "request.jwt.claims" =
 -- ── Series price: insert, then re-price ─────────────────────────────────────
 select lives_ok(
   $$ insert into event_pricing (event_id, instance_start, price_cents, currency,
-                                modality, refund_policy, sales_close_offset_minutes,
-                                platform_fee_bps)
+                                modality, refund_policy, sales_close_offset_minutes)
      values ('cccc2222-0000-0000-0000-000000000001', null, 2200, 'usd',
-             'in_person', 'full_until_24h', 0, 0)
+             'in_person', 'full_until_24h', 0)
      on conflict (event_id, instance_start) do update
        set price_cents = excluded.price_cents,
            refund_policy = excluded.refund_policy $$,
@@ -61,10 +60,9 @@ select lives_ok(
 
 select lives_ok(
   $$ insert into event_pricing (event_id, instance_start, price_cents, currency,
-                                modality, refund_policy, sales_close_offset_minutes,
-                                platform_fee_bps)
+                                modality, refund_policy, sales_close_offset_minutes)
      values ('cccc2222-0000-0000-0000-000000000001', null, 3300, 'usd',
-             'in_person', 'no_refund', 0, 0)
+             'in_person', 'no_refund', 0)
      on conflict (event_id, instance_start) do update
        set price_cents = excluded.price_cents,
            refund_policy = excluded.refund_policy $$,
@@ -98,10 +96,9 @@ select is(
 -- ── Per-instance override: insert, then re-price ────────────────────────────
 select lives_ok(
   $$ insert into event_pricing (event_id, instance_start, price_cents, currency,
-                                modality, refund_policy, sales_close_offset_minutes,
-                                platform_fee_bps)
+                                modality, refund_policy, sales_close_offset_minutes)
      values ('cccc2222-0000-0000-0000-000000000001', '2026-07-08 18:00+00', 4400,
-             'usd', 'in_person', 'full_until_24h', 0, 0)
+             'usd', 'in_person', 'full_until_24h', 0)
      on conflict (event_id, instance_start) do update
        set price_cents = excluded.price_cents $$,
   'per-instance override upserts (insert branch)'
@@ -109,10 +106,9 @@ select lives_ok(
 
 select lives_ok(
   $$ insert into event_pricing (event_id, instance_start, price_cents, currency,
-                                modality, refund_policy, sales_close_offset_minutes,
-                                platform_fee_bps)
+                                modality, refund_policy, sales_close_offset_minutes)
      values ('cccc2222-0000-0000-0000-000000000001', '2026-07-08 18:00+00', 5500,
-             'usd', 'in_person', 'full_until_24h', 0, 0)
+             'usd', 'in_person', 'full_until_24h', 0)
      on conflict (event_id, instance_start) do update
        set price_cents = excluded.price_cents $$,
   're-pricing one instance upserts (update branch)'

@@ -329,7 +329,7 @@ Mini-test list in `test/pace_segments_test.dart` covers bucket clamping, activit
 
 #### Finished runs draw differently
 
-The glow, the fixed buckets and the age fade are recording-time signals. Run detail passes `LiveRunMap.finishedRun`, which draws one solid track-colour line over a thin dark casing instead. Its **Pace colours** chip (shown only when the drawn line carries timestamps) swaps in a continuous yellow → orange → red gradient built by `buildPaceGradientPolylines`: speed is smoothed over a centred ±15 s window and scaled to the run's own 5th-95th percentile, so it reads faster or slower than this run's typical pace, and a steady run is one colour rather than confetti. Web's `RunMap` does the same with a MapLibre `line-gradient`. Direction chevrons sit 70 px apart on screen at any zoom (`chevronStepMetresForZoom`). See [decisions § 1767](../architecture/decisions.md).
+The glow, the fixed buckets and the age fade are recording-time signals. Run detail passes `LiveRunMap.finishedRun`, which draws one solid track-colour line over a thin dark casing instead. Its **Pace colours** chip (shown only when the drawn line carries timestamps) swaps in a continuous yellow → orange → red gradient built by `buildPaceGradientPolylines`: speed is smoothed over a centred ±15 s window and scaled to the run's own 5th-95th percentile, so it reads faster or slower than this run's typical pace, and a steady run is one colour rather than confetti. Web's `RunMap` does the same with a MapLibre `line-gradient`. Direction chevrons sit 70 px apart on screen at any zoom (`chevronStepMetresForZoom`). See [decisions § 1769](../architecture/decisions.md).
 
 ### Blue dot interpolation
 

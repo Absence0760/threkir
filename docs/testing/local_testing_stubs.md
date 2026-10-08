@@ -64,7 +64,7 @@ PUBLIC_REVENUECAT_WEB_CHECKOUT_URL=https://pay.rev.cat/xxxxxxxx   # sandbox Web 
 PUBLIC_REVENUECAT_WEB_PORTAL_URL=                                  # optional customer-portal link
 
 # apps/backend/.env.local
-REVENUECAT_WEBHOOK_SECRET=whsec_xxx        # sandbox webhook signing secret
+REVENUECAT_WEBHOOK_SECRET=...              # RC webhook → HMAC webhook signing → signing secret (shown once)
 ```
 
 Restart `pnpm dev:run:web` so the SvelteKit Vite dev server picks them up.
@@ -93,7 +93,7 @@ pnpm dev:payments:status     # what's running / configured
 pnpm dev:payments:stop       # stop functions serve (DB stays up)
 ```
 
-To actually exercise the happy path (tier flip), use the signed replay — it POSTs a RevenueCat-shaped event with a correct `x-revenuecat-hmac`, fresh timestamp, and the seed user's id:
+To actually exercise the happy path (tier flip), use the signed replay — it POSTs a RevenueCat-shaped event with a correct `X-RevenueCat-Webhook-Signature`, fresh timestamp, and the seed user's id:
 
 ```bash
 pnpm dev:payments:replay                    # seed user -> pro (INITIAL_PURCHASE / pro_monthly)
@@ -111,7 +111,7 @@ stripe listen --forward-to http://127.0.0.1:24321/functions/v1/revenuecat-webhoo
 stripe trigger checkout.session.completed     # in a second terminal
 ```
 
-Caveat: this forwards **raw Stripe** events straight to our handler, which requires the RevenueCat `x-revenuecat-hmac` header — so forwarded Stripe events return `401 missing_signature` (expected, not a bug). It confirms the endpoint is reachable and lets you watch real events, but it does **not** flip the tier. The genuine Stripe → RevenueCat → our-handler loop needs RevenueCat (cloud) to reach your localhost: configure a public tunnel (ngrok / cloudflared) as the RC sandbox webhook URL, then a real test purchase round-trips. For day-to-day local dev, the signed `replay` above is the shortcut.
+Caveat: this forwards **raw Stripe** events straight to our handler, which requires the RevenueCat `X-RevenueCat-Webhook-Signature` header — so forwarded Stripe events return `401 missing_signature` (expected, not a bug). It confirms the endpoint is reachable and lets you watch real events, but it does **not** flip the tier. The genuine Stripe → RevenueCat → our-handler loop needs RevenueCat (cloud) to reach your localhost: configure a public tunnel (ngrok / cloudflared) as the RC sandbox webhook URL, then a real test purchase round-trips. For day-to-day local dev, the signed `replay` above is the shortcut.
 
 **(c) Curl replay (manual).** Capture a payload from the RevenueCat dashboard "Test webhook" feature, sign it with the secret, replay. `pnpm dev:payments:replay` automates exactly this.
 

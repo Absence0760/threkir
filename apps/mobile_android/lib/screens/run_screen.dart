@@ -4424,7 +4424,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                     // The brand accent, not the success green: starting a
                     // run is the app's primary action, and the dock's
                     // Start-run button beside it is already the accent.
-                    // Green stays the in-run "resume" signal (§ 1767).
+                    // Green stays the in-run "resume" signal (§ 1769).
                     child: GestureDetector(
                       onTap: _beginCountdown,
                       child: Container(

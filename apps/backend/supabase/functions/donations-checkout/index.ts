@@ -33,6 +33,7 @@ import Stripe, {
   type UnknownParamKeys,
 } from '../_shared/stripe.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0';
+import { readPlatformFeeBps } from '../_shared/platform_fees.ts';
 import type { Database } from '../_shared/database.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { isValidUuid } from '../_shared/input_validation.ts';
@@ -184,7 +185,7 @@ Deno.serve(withSentry('donations-checkout', async (req: Request) => {
   // via the service role, scoped to the already-visibility-checked fundraiser.
   const { data: fundraiser, error: frErr } = await service
     .from('fundraisers')
-    .select('owner_user_id, charity_name, title, currency, platform_fee_bps')
+    .select('owner_user_id, charity_name, title, currency')
     .eq('id', fundraiserId)
     .maybeSingle();
   if (frErr || !fundraiser) {
@@ -217,7 +218,10 @@ Deno.serve(withSentry('donations-checkout', async (req: Request) => {
   const ownerAccountId = ownerAccount.stripe_connect_account_id as string;
 
   const currency = (fundraiser.currency as string) ?? 'usd';
-  const platformFeeBps = (fundraiser.platform_fee_bps as number) ?? 0;
+  const platformFeeBps = await readPlatformFeeBps(service, 'donation');
+  if (platformFeeBps === null) {
+    return Response.json({ error: 'platform_fee_not_configured' }, { status: 503 });
+  }
   const applicationFee = computeApplicationFeeCents(amountCents, platformFeeBps);
   const isAnonymous = body.is_anonymous === true;
   const displayName = isAnonymous ? null : clampText(body.display_name, MAX_DISPLAY_NAME_LEN);

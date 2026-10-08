@@ -373,9 +373,13 @@ Webhook URL (configure in RevenueCat → Integrations → Webhooks):
 https://<project-ref>.supabase.co/functions/v1/revenuecat-webhook
 ```
 
-Signing secret: the `REVENUECAT_WEBHOOK_SECRET` env var. Set this on
-both the RevenueCat dashboard and the Supabase project's function
-secrets (`supabase secrets set REVENUECAT_WEBHOOK_SECRET=whsec_...`).
+Signing secret: turn on **HMAC webhook signing** on the webhook in the
+RevenueCat dashboard and store the secret it shows (once) as the
+`REVENUECAT_WEBHOOK_SECRET` function secret. RevenueCat then sends
+`X-RevenueCat-Webhook-Signature: t=<unix>,v1=<hex>`, an HMAC-SHA256 over
+`<t>.<raw body>` — the same scheme as Stripe's, verified by the shared
+`verifyTimestampedHmac` with a five-minute tolerance on `t`. The optional
+authorization-header setting is not used.
 
 ### Client → RevenueCat SDK
 

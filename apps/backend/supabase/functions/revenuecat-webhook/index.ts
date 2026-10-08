@@ -5,8 +5,10 @@
 /// between "has an active entitlement" and "doesn't", and map that to
 /// `user_profiles.subscription_tier`.
 ///
-/// Auth: the webhook request is verified via HMAC (the shared secret is
-/// the REVENUECAT_WEBHOOK_SECRET env var). The function runs with the
+/// Auth: RevenueCat's HMAC webhook signing — an
+/// `X-RevenueCat-Webhook-Signature: t=<unix>,v1=<hex>` header over
+/// `${t}.${body}`, keyed by the signing secret the dashboard shows once when
+/// signing is switched on (the REVENUECAT_WEBHOOK_SECRET env var). The function runs with the
 /// Supabase service role so it can update any user's tier.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0';
@@ -15,11 +17,10 @@ import { readTextWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import { isValidUuid } from '../_shared/input_validation.ts';
 import {
-  hmacHex,
   isAnonymousAppUserId,
   shouldReleaseDedupe,
-  timingSafeEqual,
   validateFreshness,
+  verifyTimestampedHmac,
 } from '../_shared/webhook_security.ts';
 import {
   ACTIVATING_EVENTS,
@@ -48,15 +49,11 @@ Deno.serve(withSentry('revenuecat-webhook', async (req: Request) => {
     return Response.json({ error: 'webhook_not_configured' }, { status: 503 });
   }
 
-  // Verify HMAC signature with a constant-time compare so an attacker
-  // can't tease the digest out one byte at a time via response-timing
-  // (low practical risk over a network, but free to do correctly).
-  const sig = req.headers.get('x-revenuecat-hmac');
+  const sig = req.headers.get('x-revenuecat-webhook-signature');
   if (!sig) {
     return Response.json({ error: 'missing_signature' }, { status: 401 });
   }
-  const expected = await hmacHex(secret, body);
-  if (!timingSafeEqual(sig, expected)) {
+  if (!(await verifyTimestampedHmac(body, sig, secret, Date.now()))) {
     return Response.json({ error: 'bad_signature' }, { status: 401 });
   }
 

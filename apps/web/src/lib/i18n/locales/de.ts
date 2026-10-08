@@ -1161,6 +1161,7 @@ export const messages = {
 	"runDetail.savedAsRoute": "Als Route gespeichert.",
 	"runDetail.imageSaved": "Bild gespeichert.",
 	"runDetail.imageGenerateFailed": "Bild konnte nicht erstellt werden: {error}",
+	"runDetail.shareZonesUnknown": "Deine Datenschutzzonen konnten nicht geladen werden, daher wurde nichts geteilt. Prüfe deine Verbindung und versuche es erneut.",
 	"runDetail.reSnapping": "Wird erneut an Straßen angepasst…",
 	"runDetail.rematchFailed": "Neuabgleich fehlgeschlagen: {error}",
 	"runDetail.recalculateDistance": "Distanz neu berechnen",

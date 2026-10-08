@@ -1160,6 +1160,7 @@ export const messages = {
 	"runDetail.savedAsRoute": "Salvo como rota.",
 	"runDetail.imageSaved": "Imagem salva.",
 	"runDetail.imageGenerateFailed": "Não foi possível gerar a imagem: {error}",
+	"runDetail.shareZonesUnknown": "Não foi possível carregar suas zonas de privacidade, então nada foi compartilhado. Verifique sua conexão e tente novamente.",
 	"runDetail.reSnapping": "Reajustando às vias…",
 	"runDetail.rematchFailed": "Falha no reajuste: {error}",
 	"runDetail.recalculateDistance": "Recalcular distância",

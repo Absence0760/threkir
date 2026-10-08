@@ -1156,6 +1156,7 @@ export const messages = {
 	"runDetail.savedAsRoute": "ルートとして保存しました。",
 	"runDetail.imageSaved": "画像を保存しました。",
 	"runDetail.imageGenerateFailed": "画像を生成できませんでした: {error}",
+	"runDetail.shareZonesUnknown": "プライバシーゾーンを読み込めなかったため、何も共有されませんでした。接続を確認してもう一度お試しください。",
 	"runDetail.reSnapping": "道路に再スナップしています…",
 	"runDetail.rematchFailed": "再マッチに失敗しました: {error}",
 	"runDetail.recalculateDistance": "距離を再計算",

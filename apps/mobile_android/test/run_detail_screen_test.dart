@@ -482,7 +482,7 @@ void main() {
       testWidgets('an ineligible run hides it', (tester) async {
         final cases = [
           recomputable(extra: {'distance_source': 'pedometer'}),
-          recomputable(extra: {'distance_estimator': 'kalman_v1'}),
+          recomputable(extra: {'distance_estimator': 'kalman_v2'}),
           _run(metadata: {'activity_type': 'run'}),
         ];
         for (final run in cases) {
@@ -569,7 +569,7 @@ void main() {
         await _pump(
           tester,
           recomputable(extra: {
-            'distance_estimator': 'kalman_v1',
+            'distance_estimator': 'kalman_v2',
             'distance_recorded_m': 6309.4,
           }),
           apiClient: _RecomputeApi(),

@@ -14,9 +14,10 @@ import 'package:core_models/core_models.dart';
 /// job_worker's distance_recompute handler accepts.
 const List<RunSource> recomputableSources = [RunSource.app, RunSource.watch];
 
-/// The estimator a recompute applies. A run already carrying it has nothing
-/// to gain.
-const String currentDistanceEstimator = 'kalman_v1';
+/// The estimator a recompute applies: spec v1.2's smoother. A run already
+/// carrying it has nothing to gain; a `kalman_v1` run (spec v1.1's forward
+/// filter) is offered again.
+const String currentDistanceEstimator = 'kalman_v2';
 
 /// The four fields the predicate reads, so a server row and a local [Run]
 /// can both be asked. A local [Run] carries no owner id and keeps its

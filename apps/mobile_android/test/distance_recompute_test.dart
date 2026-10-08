@@ -75,15 +75,24 @@ void main() {
   });
 
   test('a run already on the current estimator is not offered again', () {
-    expect(currentDistanceEstimator, 'kalman_v1');
+    expect(currentDistanceEstimator, 'kalman_v2');
     expect(
       canRecomputeDistance(
-          run(metadata: {'distance_estimator': 'kalman_v1'}), owner),
+          run(metadata: {'distance_estimator': 'kalman_v2'}), owner),
       isFalse,
     );
     expect(
       canRecomputeDistance(
           run(metadata: {'distance_estimator': 'something_older'}), owner),
+      isTrue,
+    );
+  });
+
+  test('a kalman_v1 run (the v1.1 forward filter, no smoother) is offered again',
+      () {
+    expect(
+      canRecomputeDistance(
+          run(metadata: {'distance_estimator': 'kalman_v1'}), owner),
       isTrue,
     );
   });

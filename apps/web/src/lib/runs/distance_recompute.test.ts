@@ -64,13 +64,20 @@ test('a pedometer distance is not recomputable, a treadmill tag is no blocker by
 });
 
 test('a run already on the current estimator is not offered again', () => {
-	assert.equal(CURRENT_DISTANCE_ESTIMATOR, 'kalman_v1');
+	assert.equal(CURRENT_DISTANCE_ESTIMATOR, 'kalman_v2');
 	assert.equal(
-		canRecomputeDistance(run({ metadata: { distance_estimator: 'kalman_v1' } }), OWNER),
+		canRecomputeDistance(run({ metadata: { distance_estimator: 'kalman_v2' } }), OWNER),
 		false,
 	);
 	assert.equal(
 		canRecomputeDistance(run({ metadata: { distance_estimator: 'something_older' } }), OWNER),
+		true,
+	);
+});
+
+test('a kalman_v1 run (the v1.1 forward filter, no smoother) is offered again', () => {
+	assert.equal(
+		canRecomputeDistance(run({ metadata: { distance_estimator: 'kalman_v1' } }), OWNER),
 		true,
 	);
 });

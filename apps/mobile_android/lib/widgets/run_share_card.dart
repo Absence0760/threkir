@@ -264,7 +264,7 @@ class RunShareCard extends StatelessWidget {
         ActivityType.fromName(run.metadata?['activity_type'] as String?);
     final moving = _movingTime();
     final pace = _movingPaceSecPerKm(moving);
-    final track = run.track.map((w) => LatLng(w.lat, w.lng)).toList();
+    final track = run.track.map((w) => LatLng(w.lineLat, w.lineLng)).toList();
 
     return Container(
       color: const Color(0xFF121117),

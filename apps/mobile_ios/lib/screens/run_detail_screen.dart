@@ -2862,7 +2862,9 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     final hasZones = zones.isNotEmpty;
     final track = run.track;
     final intersectsZone = hasZones && track.isNotEmpty &&
-        track.any((p) => isInAnyZone(p.lat, p.lng, zones));
+        track.any((p) =>
+            isInAnyZone(p.lat, p.lng, zones) ||
+            isInAnyZone(p.lineLat, p.lineLng, zones));
     final body = intersectsZone
         ? l10n.runDetailMakePublicBodyZone
         : hasZones
@@ -3141,8 +3143,8 @@ class _ElevationChartState extends State<_ElevationChart> {
         double segDist = 0;
         for (var i = windowStart + 1; i <= windowEnd; i++) {
           segDist += haversineMetres(
-            widget.track[i - 1].lat, widget.track[i - 1].lng,
-            widget.track[i].lat, widget.track[i].lng,
+            widget.track[i - 1].lineLat, widget.track[i - 1].lineLng,
+            widget.track[i].lineLat, widget.track[i].lineLng,
           );
         }
         if (segDist > 10) {

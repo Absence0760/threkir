@@ -1983,7 +1983,7 @@ class ApiClient {
         'caller_user_id': userId,
         'track_geojson': <String, dynamic>{
           'type': 'LineString',
-          'coordinates': track.map((w) => [w.lng, w.lat]).toList(),
+          'coordinates': track.map((w) => [w.lineLng, w.lineLat]).toList(),
         },
         'tolerance_m': toleranceMetres,
         'max_results': maxResults,

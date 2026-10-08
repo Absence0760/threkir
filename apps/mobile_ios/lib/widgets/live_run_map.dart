@@ -742,7 +742,7 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
         _cachedSmoothedForLength == track.length) {
       return _cachedSmoothedTrack!;
     }
-    final raw = track.map((w) => LatLng(w.lat, w.lng)).toList();
+    final raw = track.map((w) => LatLng(w.lineLat, w.lineLng)).toList();
     final smoothed = smoothTrackIncremental(
       raw,
       _cachedSmoothedTrack,
@@ -905,7 +905,7 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
       _cachedCumulativeForLen = track.length;
     }
     final idx = nearestTrackIdx(tap, track);
-    final nearest = LatLng(track[idx].lat, track[idx].lng);
+    final nearest = LatLng(track[idx].lineLat, track[idx].lineLng);
     final distanceToTrack = const Distance().as(LengthUnit.Meter, tap, nearest);
     if (distanceToTrack > _tapMatchRadiusMetres) {
       if (_selectedSegment != null) {
@@ -1257,8 +1257,8 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
                 markers: [
                   Marker(
                     point: LatLng(
-                      widget.track[widget.hoverIdx!].lat,
-                      widget.track[widget.hoverIdx!].lng,
+                      widget.track[widget.hoverIdx!].lineLat,
+                      widget.track[widget.hoverIdx!].lineLng,
                     ),
                     width: 28,
                     height: 28,

@@ -98,7 +98,7 @@ double? _segmentSpeedMps(Waypoint a, Waypoint b) {
   if (ta == null || tb == null) return null;
   final dtSec = tb.difference(ta).inMilliseconds / 1000.0;
   if (dtSec <= 0) return null;
-  final d = haversineMetres(a.lat, a.lng, b.lat, b.lng);
+  final d = haversineMetres(a.lineLat, a.lineLng, b.lineLat, b.lineLng);
   if (d <= 0) return null;
   return d / dtSec;
 }

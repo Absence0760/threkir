@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as gps from './gps_distance';
-import { GpsDistanceEstimator } from './gps_distance';
+import { GpsDistanceEstimator, SPEC_VERSION, smoothDistance, type GpsEvent } from './gps_distance';
 
 // Replays the golden vectors every port of the GPS distance estimator shares
 // (docs/features/gps_distance.md § Ports). The Dart half of the pair is
@@ -36,17 +36,31 @@ type Scenario = {
 		gpsDistanceM: number;
 		stepDistanceM: number;
 		strideM: number | null;
+		rejectedFixes: number;
+		zuptFixes: number;
+		rScale: number;
+		dopplerTrusted: boolean;
+	};
+	smoothed: {
+		distanceAfterEachEventM: number[];
+		distanceM: number;
+		gpsDistanceM: number;
+		stepDistanceM: number;
+		stoppedFixes: number;
+		positions: Array<[number, number] | null>;
 	};
 };
 type Fixture = {
 	spec: string;
 	tolerance_m: number;
+	position_tolerance_deg: number;
 	constants: Record<string, number>;
 	scenarios: Scenario[];
 };
 
 const fixture = JSON.parse(readFileSync(FIXTURE_PATH, 'utf-8')) as Fixture;
 const TOL = fixture.tolerance_m;
+const POS_TOL = fixture.position_tolerance_deg;
 
 function replay(s: Scenario): { est: GpsDistanceEstimator; after: number[] } {
 	const est = new GpsDistanceEstimator(s.maxSpeedMps, s.expectedIntervalS, s.initialStrideM);
@@ -60,10 +74,12 @@ function replay(s: Scenario): { est: GpsDistanceEstimator; after: number[] } {
 	return { est, after };
 }
 
-test('fixture is spec v1.1 with a non-trivial scenario set', () => {
-	assert.equal(fixture.spec, 'gps-distance-estimator v1.1');
-	assert.ok(fixture.scenarios.length >= 10, `only ${fixture.scenarios.length} scenarios`);
+test('fixture is spec v1.2 with a non-trivial scenario set', () => {
+	assert.equal(fixture.spec, 'gps-distance-estimator v1.2');
+	assert.equal(SPEC_VERSION, '1.2');
+	assert.ok(fixture.scenarios.length >= 27, `only ${fixture.scenarios.length} scenarios`);
 	assert.ok(TOL > 0 && TOL <= 0.001);
+	assert.ok(POS_TOL > 0 && POS_TOL <= 1e-8);
 });
 
 test('every fixture constant matches the port', () => {
@@ -94,8 +110,42 @@ for (const s of fixture.scenarios) {
 			assert.equal(est.strideM, null);
 		} else {
 			assert.notEqual(est.strideM, null);
-			assert.ok(Math.abs((est.strideM as number) - s.expected.strideM) <= 1e-5, `stride ${est.strideM}`);
+			assert.ok(Math.abs((est.strideM as number) - s.expected.strideM) <= TOL, `stride ${est.strideM}`);
 		}
+	});
+
+	test(`vector ${s.name}: gate, zupt, adaptive R and cross-check diagnostics`, () => {
+		const { est } = replay(s);
+		assert.equal(est.rejectedFixes, s.expected.rejectedFixes);
+		assert.equal(est.zuptFixes, s.expected.zuptFixes);
+		assert.equal(est.dopplerTrusted, s.expected.dopplerTrusted);
+		assert.ok(Math.abs(est.rScale - s.expected.rScale) <= 1e-6, `rScale ${est.rScale}`);
+	});
+
+	test(`vector ${s.name}: smoothed distance and positions`, () => {
+		const sm = smoothDistance(s.events as GpsEvent[], s.maxSpeedMps, s.expectedIntervalS, s.initialStrideM);
+		const want = s.smoothed;
+		assert.equal(sm.cumulativeM.length, want.distanceAfterEachEventM.length);
+		sm.cumulativeM.forEach((got, i) => {
+			const w = want.distanceAfterEachEventM[i];
+			assert.ok(Math.abs(got - w) <= TOL, `${s.name} smoothed event ${i}: got ${got}, want ${w}`);
+		});
+		assert.ok(Math.abs(sm.distanceM - want.distanceM) <= TOL, `distance ${sm.distanceM}`);
+		assert.ok(Math.abs(sm.gpsDistanceM - want.gpsDistanceM) <= TOL, `gps ${sm.gpsDistanceM}`);
+		assert.ok(Math.abs(sm.stepDistanceM - want.stepDistanceM) <= TOL, `steps ${sm.stepDistanceM}`);
+		assert.equal(sm.stoppedFixes, want.stoppedFixes);
+		assert.equal(sm.positions.length, want.positions.length);
+		sm.positions.forEach((got, i) => {
+			const w = want.positions[i];
+			if (w === null) {
+				assert.equal(got, null, `${s.name} position ${i}`);
+				return;
+			}
+			assert.notEqual(got, null, `${s.name} position ${i}`);
+			const [lat, lng] = got as [number, number];
+			assert.ok(Math.abs(lat - w[0]) <= POS_TOL, `${s.name} lat ${i}: got ${lat}, want ${w[0]}`);
+			assert.ok(Math.abs(lng - w[1]) <= POS_TOL, `${s.name} lng ${i}: got ${lng}, want ${w[1]}`);
+		});
 	});
 }
 

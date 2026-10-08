@@ -120,9 +120,20 @@ loop is a reasonable start), commit the pair, and run the replay.
 ## Item 6 — fused provider vs raw GPS on Android
 
 The same corpus answers #1090 item 6. On an Android phone, record the track
-and road-loop runs twice: once on the normal build (fused provider) and once on
-a build with `forceLocationManager: true` (raw `GPS_PROVIDER`), each as its own
-entry with the provider named in `device`. Compare their `saved` error, their
+and road-loop runs twice, each as its own entry: once on the fused provider
+(the default) and once on raw `GPS_PROVIDER`.
+
+1. Install a debug or profile build (`flutter run --profile` from
+   `apps/mobile_android`, against the backend you will export from). A release
+   build only shows the switch against a loopback backend.
+2. Settings → Developer → **Raw GPS provider**: off for the fused run, on for
+   the raw run. It applies from the next run started, not one in progress.
+3. Record, then check the saved run's `metadata.location_provider` reads
+   `fused` or `gps` (it is in the export's run record), and name the provider
+   in the entry's `device` too.
+4. Turn the switch off again afterwards.
+
+Compare the two entries' `saved` error, their
 `NIS` and `C` (a fused track that already smooths shows lower `C` residuals and
 lower NIS — double smoothing), and the battery each used over the run (Settings
 → Battery → app usage, noted in `notes`). Dual-frequency L1+L5 cannot be

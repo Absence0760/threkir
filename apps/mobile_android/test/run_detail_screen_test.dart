@@ -257,10 +257,12 @@ Future<void> _pump(WidgetTester tester, Run run,
     LocalRouteStore? routeStore,
     ApiClient? apiClient,
     SettingsSyncService? settingsSync,
+    bool showRawTrack = false,
     double textScale = 1.0}) async {
-  SharedPreferences.setMockInitialValues(
-    bodyWeightKg != null ? {'body_weight_kg': bodyWeightKg} : {},
-  );
+  SharedPreferences.setMockInitialValues({
+    if (bodyWeightKg != null) 'body_weight_kg': bodyWeightKg,
+    if (showRawTrack) 'show_raw_track': true,
+  });
   final prefs = Preferences();
   await prefs.init();
 
@@ -959,6 +961,40 @@ void main() {
       expect(api.calls, isEmpty);
       final drawn = tester.widget<LiveRunMap>(find.byType(LiveRunMap)).track;
       expect(drawn.any((w) => w.hasSmoothedPosition), isFalse);
+    });
+
+    testWidgets('"Show raw GPS track" draws the raw fixes, not the sidecar',
+        (tester) async {
+      final api = _LocalSidecarApi(line: smoothed);
+      await _pump(
+        tester,
+        _run(
+          track: recorded,
+          metadata: {'smoothed_sidecar_sha256': sha},
+        ),
+        apiClient: api,
+        showRawTrack: true,
+      );
+      await tester.pump();
+
+      final drawn = tester.widget<LiveRunMap>(find.byType(LiveRunMap)).track;
+      expect(drawn, hasLength(recorded.length));
+      expect(drawn.any((w) => w.hasSmoothedPosition), isFalse);
+    });
+
+    testWidgets(
+        '"Show raw GPS track" clears the smoothed pair a phone save stored',
+        (tester) async {
+      await _pump(tester, _run(track: smoothed), showRawTrack: true);
+      await tester.pump();
+
+      final drawn = tester.widget<LiveRunMap>(find.byType(LiveRunMap)).track;
+      expect(drawn, hasLength(recorded.length));
+      for (var i = 0; i < drawn.length; i++) {
+        expect(drawn[i].hasSmoothedPosition, isFalse);
+        expect(drawn[i].lineLat, recorded[i].lat);
+        expect(drawn[i].lineLng, recorded[i].lng);
+      }
     });
 
     testWidgets('a sidecar that cannot be read leaves the raw line',

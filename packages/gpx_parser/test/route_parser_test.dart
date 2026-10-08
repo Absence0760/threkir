@@ -1027,6 +1027,43 @@ void main() {
       expect(r.waypoints, hasLength(1));
       expect(r.waypoints.single.lat, closeTo(69.0, 1e-4));
     });
+
+    test('FIT: parseWithDistances carries record.distance per waypoint', () {
+      List<int> u32(int v) =>
+          [v & 0xFF, (v >> 8) & 0xFF, (v >> 16) & 0xFF, (v >> 24) & 0xFF];
+      const semicirclesPerDegree = (1 << 31) / 180.0;
+      final lat = (51.5 * semicirclesPerDegree).round();
+      final lng = (10.0 * semicirclesPerDegree).round();
+      final body = <int>[
+        0x40, 0x00, 0x00, 20, 0, 3, //
+        0, 4, 0x85, //
+        1, 4, 0x85, //
+        5, 4, 0x86, //
+        0x00, ...u32(lat), ...u32(lng), ...u32(1200), //
+        0x00, ...u32(lat), ...u32(lng + 1000), ...u32(0xFFFFFFFF), //
+        0x00, ...u32(lat), ...u32(lng + 2000), ...u32(31050),
+      ];
+
+      final parsed = FitParser.parseWithDistances(_fitFile(body));
+
+      expect(parsed.route.waypoints, hasLength(3));
+      expect(parsed.distancesMetres, [12.0, null, 310.5]);
+      expect(FitParser.parse(_fitFile(body)).waypoints, hasLength(3));
+    });
+
+    test('FIT: parseWithDistances is null when no record carried distance', () {
+      final body = <int>[
+        0x40, 0x00, 0x00, 20, 0, 2, //
+        0, 4, 0x85, //
+        1, 4, 0x85, //
+        0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x10,
+      ];
+
+      final parsed = FitParser.parseWithDistances(_fitFile(body));
+
+      expect(parsed.route.waypoints, hasLength(1));
+      expect(parsed.distancesMetres, isNull);
+    });
   });
 
   // package:xml resolves only the five predefined entities and numeric

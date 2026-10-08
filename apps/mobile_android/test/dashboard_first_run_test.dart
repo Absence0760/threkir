@@ -201,6 +201,20 @@ void main() {
   });
 
   group('the runless welcome state', () {
+    testWidgets('replaces the derived-metric stack rather than sitting above '
+        'it', (tester) async {
+      // Web gates the whole block, not one more self-hiding card (decisions
+      // § 1616): a welcome over a column of zeroed cards is the screen #905
+      // set out to remove.
+      final s = await _stores();
+      await _pump(tester, s);
+
+      expect(find.text('Welcome!'), findsOneWidget);
+      expect(find.text('WEEK'), findsNothing);
+      expect(find.text('ALL TIME'), findsNothing);
+      expect(find.byKey(const Key('dashboardStreakRow')), findsNothing);
+    });
+
     testWidgets('survives the runner accepting its own offer to set a goal',
         (tester) async {
       final s = await _stores();
@@ -296,6 +310,8 @@ void main() {
       await tester.pump();
       expect(find.text('Welcome!'), findsNothing,
           reason: 'web gates on runs AND gym sessions; 50 lifts is a history');
+      expect(find.text('ALL TIME'), findsOneWidget,
+          reason: 'the account with history gets the dashboard, not a blank');
       await pumpUntilStoreWritesSettle(tester);
     });
 

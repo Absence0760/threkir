@@ -97,6 +97,7 @@
 		loadGoals,
 		saveGoals,
 		evaluateGoal,
+		markedDoneTally,
 		newGoalId,
 		periodLabel,
 		weekStartLocal,
@@ -806,23 +807,11 @@
 	let thisWeekRunDistance = $derived(thisWeekRuns.reduce((sum, r) => sum + r.distance_m, 0));
 
 	/// Plan workouts the user marked as done this week without
-	/// recording a run. Their target distance is folded into the
-	/// "This Week" card so the dashboard reflects the user's stated
-	/// progress, matching the mark-as-done UX expectation. Workouts
-	/// linked to an actual run (`completed_run_id != null`) are
-	/// excluded since the run already counts via `thisWeekRuns`.
-	let thisWeekManualWorkouts = $derived.by(() => {
-		const overview = planOverview;
-		if (!overview) return [];
-		return overview.workouts.filter((w) => {
-			if (!(w.manually_completed === true && w.completed_run_id == null)) return false;
-			if (!w.scheduled_date) return false;
-			const d = new Date(w.scheduled_date + 'T00:00:00');
-			return d >= weekStart && d <= now;
-		});
-	});
-	let thisWeekManualDistance = $derived(
-		thisWeekManualWorkouts.reduce((sum, w) => sum + (w.target_distance_m ?? 0), 0)
+	/// recording a run, folded into the "This Week" card through the
+	/// same `markedDoneTally` the week lead and the Goals section read,
+	/// so the three never count the week differently (decisions § 1813).
+	let thisWeekMarkedDone = $derived(
+		markedDoneTally(planOverview?.workouts ?? [], weekStart, now)
 	);
 
 	/// Calendar-position helpers for the active-plan hero card. Match
@@ -921,8 +910,8 @@
 	/// Distance includes manually-completed workouts' target distance;
 	/// the count includes them too so "X runs / workouts" reflects
 	/// actions taken this week.
-	let thisWeekDistance = $derived(thisWeekRunDistance + thisWeekManualDistance);
-	let thisWeekActivityCount = $derived(thisWeekRuns.length + thisWeekManualWorkouts.length);
+	let thisWeekDistance = $derived(thisWeekRunDistance + thisWeekMarkedDone.distanceM);
+	let thisWeekActivityCount = $derived(thisWeekRuns.length + thisWeekMarkedDone.count);
 	// Lifetime totals from the all-time aggregate (not the ~2-year `runs`
 	// window), so the "all sources" / "all time" cards stay exact for a
 	// deep-history runner. Unlike the recency cards these are not scoped to
@@ -1380,9 +1369,9 @@
 							{thisWeekActivityCount === 1
 								? m('dash.activityCountOne', { n: thisWeekActivityCount })
 								: m('dash.activityCountOther', { n: thisWeekActivityCount })}
-							{#if thisWeekManualWorkouts.length > 0}
+							{#if thisWeekMarkedDone.count > 0}
 								<span class="manual-hint">
-									{m('dash.inclMarkedDone', { n: thisWeekManualWorkouts.length })}
+									{m('dash.inclMarkedDone', { n: thisWeekMarkedDone.count })}
 								</span>
 							{/if}
 						</span>
@@ -1501,7 +1490,7 @@
 				{:else}
 					<div class="goal-grid">
 						{#each displayGoals as g (g.id)}
-							{@const p = evaluateGoal(g, runs, new Date(), weekStartDay)}
+							{@const p = evaluateGoal(g, runs, new Date(), weekStartDay, planOverview?.workouts ?? [])}
 							{@const isSynthetic = g.id === SYNTHETIC_WEEKLY_GOAL_ID}
 							{@const isDone = p.overallPercent >= 1}
 							<button

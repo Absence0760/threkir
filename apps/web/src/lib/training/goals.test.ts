@@ -10,6 +10,8 @@ import {
 	saveGoals,
 	newGoalId,
 	periodLabel,
+	markedDoneTally,
+	type PlanCompletion,
 	type RunGoal,
 } from './goals';
 import type { Run } from '../types';
@@ -322,6 +324,60 @@ test('evaluateGoal — zero / negative target is ignored (not added to targets l
 	const p = evaluateGoal(goal, [r], NOW);
 	assert.equal(p.targets.length, 1);
 	assert.equal(p.targets[0].kind, 'runCount');
+});
+
+function done(
+	scheduled_date: string,
+	over: Partial<PlanCompletion> = {},
+): PlanCompletion {
+	return {
+		scheduled_date,
+		target_distance_m: 5000,
+		manually_completed: true,
+		completed_run_id: null,
+		...over,
+	};
+}
+
+test('markedDoneTally — counts hand-marked sessions from the period start through today only', () => {
+	// NOW is Wed 2026-04-08; the Monday week starts 2026-04-06.
+	const tally = markedDoneTally(
+		[
+			done('2026-04-05'),
+			done('2026-04-06', { target_distance_m: 6000 }),
+			done('2026-04-07', { target_distance_m: null }),
+			done('2026-04-07', { completed_run_id: 'r1' }),
+			done('2026-04-08', { manually_completed: false }),
+			done('2026-04-08'),
+			done('2026-04-09'),
+		],
+		periodStart('week', NOW),
+		NOW,
+	);
+	assert.deepEqual(tally, { distanceM: 11000, count: 3 });
+});
+
+test('evaluateGoal — sessions marked done without a run add to distance and run count, not time or pace', () => {
+	const goal: RunGoal = {
+		id: 'g1',
+		period: 'week',
+		distanceMetres: 20000,
+		timeSeconds: 7200,
+		paceSecPerKm: 300,
+		runCount: 2,
+	};
+	const tue = run({ started_at: '2026-04-07T07:00:00', distance_m: 10000, duration_s: 3000 });
+	const p = evaluateGoal(goal, [tue], NOW, 'monday', [
+		done('2026-04-06', { target_distance_m: 8000 }),
+		done('2026-04-07', { completed_run_id: 'r-tue' }),
+	]);
+	assert.equal(p.runCount, 2);
+	const byKind = Object.fromEntries(p.targets.map((t) => [t.kind, t]));
+	assert.equal(byKind.distance.currentLabel, '18.0 km');
+	assert.equal(byKind.time.currentLabel, '50m');
+	assert.equal(byKind.pace.currentLabel, '5:00/km');
+	assert.equal(byKind.runCount.currentLabel, '2');
+	assert.equal(byKind.runCount.complete, true);
 });
 
 // ─────────────── newGoalId ───────────────

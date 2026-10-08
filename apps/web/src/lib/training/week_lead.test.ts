@@ -8,6 +8,7 @@ import {
 	weeklyGoalTarget,
 	type LeadPlanWorkout,
 } from './week_lead';
+import { evaluateGoal, type RunGoal } from './goals';
 
 // 2026-06-10 is a Wednesday; the Monday-start week runs 06-08..06-14.
 const WED = new Date(2026, 5, 10, 12, 0, 0);
@@ -132,6 +133,27 @@ test('weekLead: a run-count goal is the yardstick when there is no distance goal
 		now: WED,
 	});
 	assert.deepEqual(lead.comparison, { kind: 'goalRuns', targetCount: 3 });
+});
+
+test('weekLead: a run-count goal reads the same count as its Goals ring in a plan week with no planned distance', () => {
+	const goal: RunGoal = { id: 'g', period: 'week', runCount: 3 };
+	const runs = [{ started_at: at(2026, 6, 9), distance_m: 5000, duration_s: 1800, activity_type: 'run' as const }];
+	const planWorkouts = [
+		wo('2026-06-08', { target_distance_m: null, manually_completed: true }),
+		wo('2026-06-12', { target_distance_m: null }),
+	];
+	const lead = weekLead({
+		activities: runs,
+		planWorkouts,
+		weeklyGoal: weeklyGoalTarget([goal]),
+		weekStart: 'monday',
+		now: WED,
+	});
+	const ring = evaluateGoal(goal, runs, WED, 'monday', planWorkouts);
+	assert.deepEqual(lead.comparison, { kind: 'goalRuns', targetCount: 3 });
+	assert.equal(lead.count, 2);
+	assert.equal(ring.runCount, lead.count);
+	assert.equal(ring.targets[0].currentLabel, String(lead.count));
 });
 
 test('weeklyGoalTarget: takes the first week-period distance and run-count targets, ignoring other periods', () => {

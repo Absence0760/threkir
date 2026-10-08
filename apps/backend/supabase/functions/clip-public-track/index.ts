@@ -11,6 +11,12 @@ import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import { isValidUuid } from '../_shared/input_validation.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
+import {
+  mergeSmoothedSidecar,
+  needsSmoothedSidecar,
+  sha256Hex,
+  smoothedSidecarPath,
+} from '../_shared/smoothed_sidecar.ts';
 
 // Serves a privacy-zone-clipped track for a public run. Replaces
 // direct Storage download for non-owner viewers (audit/storage High,
@@ -24,9 +30,11 @@ import { publishableKey, secretKey } from '../_shared/api_keys.ts';
 //      private rows get null and we 404.
 //   3. Download the gzipped track via the service-role client (the
 //      anon Storage policy was just removed).
-//   4. If the caller is not the owner, route the points through
+//   4. Merge the job_worker's smoothed-position sidecar onto the points
+//      when it names this exact track (watch runs, recomputed runs).
+//   5. If the caller is not the owner, route the points through
 //      clip_track_for_user. Owners receive the unclipped track.
-//   5. Return the points as JSON.
+//   6. Return the points as JSON.
 
 Deno.serve(withSentry('clip-public-track', async (req: Request) => {
   if (req.method !== 'POST') {
@@ -178,11 +186,10 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
   // is an upstream fault, not a caller fault: 502, like the download failure
   // above it.
   let points: unknown;
+  let trackBytes: Uint8Array<ArrayBuffer>;
   try {
-    const ds = new (globalThis as { DecompressionStream: typeof DecompressionStream })
-      .DecompressionStream('gzip');
-    const stream = new Response(gz).body!.pipeThrough(ds);
-    points = JSON.parse(await new Response(stream).text());
+    trackBytes = await gunzip(gz);
+    points = JSON.parse(new TextDecoder().decode(trackBytes));
   } catch {
     return Response.json({ error: 'malformed track' }, { status: 502 });
   }
@@ -197,8 +204,35 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
     return Response.json({ error: 'track too long' }, { status: 502 });
   }
 
+  // The smoother's positions for a track whose waypoints carry none of
+  // their own (a watch run, an old run the server recomputed) live in a
+  // sidecar the job_worker writes beside the track. It is merged HERE,
+  // before the owner return and before the clip, so the non-owner clip sees
+  // every smoothed position the viewer will draw and its either-pair-in-zone
+  // rule (20270719000005) trims a fix whose smoothed position sits in a zone.
+  // Merged only when the sidecar names these exact bytes; any failure to read
+  // it leaves the raw line, which is what the track always was.
+  const withSmoothedSidecar = async <T,>(pts: T[]): Promise<T[]> => {
+    try {
+      const { data: scBlob, error: scErr } = await adminClient.storage
+        .from('runs')
+        .download(smoothedSidecarPath(ownerId, runId));
+      if (scErr || !scBlob) return pts;
+      const scGz = new Uint8Array(await scBlob.arrayBuffer());
+      if (scGz.byteLength > 5 * 1024 * 1024) return pts;
+      const sidecar = JSON.parse(new TextDecoder().decode(await gunzip(scGz)));
+      return mergeSmoothedSidecar(pts, sidecar, {
+        points: pts.length,
+        sha256: await sha256Hex(trackBytes),
+      });
+    } catch {
+      return pts;
+    }
+  };
+  const served = needsSmoothedSidecar(points) ? await withSmoothedSidecar(points) : points;
+
   if (callerId === ownerId) {
-    return Response.json({ points });
+    return Response.json({ points: served });
   }
 
   // Go through the service-role admin client for the clip RPC.
@@ -212,10 +246,17 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
   // never used for this read, only the row lookup above.
   const { data: clipped, error: clipErr } = await adminClient.rpc(
     'clip_track_for_user',
-    { target_user_id: ownerId, points },
+    { target_user_id: ownerId, points: served },
   );
   if (clipErr) {
     return Response.json({ error: 'clip failed' }, { status: 500 });
   }
   return Response.json({ points: clipped ?? [] });
 }));
+
+async function gunzip(gz: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
+  const ds = new (globalThis as { DecompressionStream: typeof DecompressionStream })
+    .DecompressionStream('gzip');
+  const stream = new Response(gz).body!.pipeThrough(ds);
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}

@@ -89,8 +89,12 @@ Deno.test('an unreadable stored track answers 502, and the refusal is reachable'
   // both throw. Thrown past the handler they became a 500 from withSentry,
   // which paged Sentry and made the `!Array.isArray` refusal below them dead
   // code for exactly the input it names.
-  const decode = SRC.indexOf("DecompressionStream('gzip')");
+  const decode = SRC.indexOf('trackBytes = await gunzip(gz);');
   assert(decode !== -1, 'the track decode is gone');
+  assert(
+    /async function gunzip\([\s\S]*?DecompressionStream\('gzip'\)/.test(SRC),
+    'gunzip must still be the DecompressionStream inflate',
+  );
   const tryAt = SRC.lastIndexOf('try {', decode);
   const catchAt = SRC.indexOf('} catch', decode);
   assert(tryAt !== -1 && catchAt !== -1 && tryAt < decode && catchAt > decode,
@@ -119,5 +123,35 @@ Deno.test('both amplification bounds are still in place, on the right quantities
     'the inflated point count must be capped before the clip walk',
   );
   const gzCap = SRC.indexOf('gz.byteLength > 5 * 1024 * 1024');
-  assert(gzCap < SRC.indexOf("DecompressionStream('gzip')"), 'the size cap must precede inflation');
+  assert(gzCap < SRC.indexOf('trackBytes = await gunzip(gz);'), 'the size cap must precede inflation');
+});
+
+Deno.test('the smoothed sidecar is merged before the owner return AND before the clip', () => {
+  // The job_worker's sidecar ({owner}/{run}.smoothed.json.gz) carries the
+  // smoothed position a viewer's map draws for a watch or recomputed run.
+  // Merged after the clip, a fix just outside a zone whose smoothed position
+  // sits inside it would survive at either end of the line — the coordinate
+  // decisions §33 withholds. Merged before, clip_track_for_user's
+  // either-pair-in-zone rule (20270719000005) trims it.
+  const merge = SRC.indexOf('const served = needsSmoothedSidecar(points)');
+  assert(merge !== -1, 'the sidecar merge is gone');
+  assert(merge < SRC.indexOf('if (callerId === ownerId) {'), 'the merge must precede the owner return');
+  assert(merge < SRC.indexOf("'clip_track_for_user'"), 'the merge must precede the clip');
+  assert(
+    /\{ target_user_id: ownerId, points: served \}/.test(SRC),
+    'the clip must receive the merged points',
+  );
+  assert(/return Response\.json\(\{ points: served \}\)/.test(SRC), 'the owner must receive the merged points');
+  assert(
+    /adminClient\.storage\s*\.from\('runs'\)\s*\.download\(smoothedSidecarPath\(ownerId, runId\)\)/.test(SRC),
+    "the sidecar is the OWNER's, read by the service role (the caller may not be able to read it)",
+  );
+  assert(
+    /scGz\.byteLength > 5 \* 1024 \* 1024/.test(SRC),
+    'the sidecar blob is capped before inflation, like the track',
+  );
+  assert(
+    /sha256: await sha256Hex\(trackBytes\)/.test(SRC),
+    'the sidecar must be checked against the bytes of the track it is merged onto',
+  );
 });

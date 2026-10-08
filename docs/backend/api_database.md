@@ -99,6 +99,16 @@ HR alongside GPS — used by the run-detail zone-distribution card. Most histori
 runs only carry scalar `metadata.avg_bpm`; consumers should gracefully fall back
 when `bpm` is absent.
 
+A phone-recorded track also carries the raw fix quality (`accuracyMetres`,
+`speedMps`, `speedAccuracyMps`, `bearingDeg`) and, from GPS distance spec v1.2,
+the smoother's position for the fix (`smoothedLat`, `smoothedLng`, degrees),
+written by `RunRecorder.stop()`. Each is omitted when absent; the smoothed pair
+is written as both halves or neither, and `lat` / `lng` are never altered.
+Readers that draw the run line or route-match it prefer the smoothed pair when
+both are present (`lineLat` / `lineLng`: `Waypoint` in core_models, web
+`lib/runs/track_line.ts`); the distance estimator always reads the raw fix.
+See [gps_distance.md](../features/gps_distance.md).
+
 **`metadata` shape (source-dependent):**
 
 ```json

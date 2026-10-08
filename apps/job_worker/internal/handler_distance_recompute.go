@@ -78,7 +78,7 @@ func maxSpeedMpsForActivity(activityType string) float64 {
 // recorded figure in metadata.distance_recorded_m, and rewrites the four
 // fastest_* embedded bests from the same replay's cumulative distance.
 // When it keeps the smoothed pass it also writes the smoothed-position
-// sidecar (smoothed_sidecar.go), after the distance write has landed.
+// sidecar (smoothed_sidecar.go) and records its hash in the same write.
 func (w *Worker) handleDistanceRecompute(ctx context.Context, job *Job) error {
 	var p DistanceRecomputePayload
 	if err := json.Unmarshal(job.Payload, &p); err != nil {
@@ -125,7 +125,18 @@ func (w *Worker) handleDistanceRecompute(ctx context.Context, job *Job) error {
 		}
 		distanceM := math.Round(rawDistanceM*100) / 100
 
-		merged, err := mergeDistanceMetadata(meta, run.DistanceM, pass, time.Now().UTC())
+		// The line follows the figure the run now carries, so only a
+		// smoothed-pass recompute has a sidecar: a forward-pass one keeps its
+		// raw line rather than the smoother's, which cuts the corners the
+		// forward pass was kept to avoid. The sidecar goes up before the
+		// distance write and its hash lands in that same conditional write,
+		// so the run names it exactly when the figure it belongs to lands; a
+		// write that never lands leaves an object nothing names.
+		sidecarSHA := ""
+		if pass == EstimatorPassSmoothed {
+			sidecarSHA = w.uploadSmoothedSidecar(ctx, run.UserID, run.ID, track, storedIdx, replay)
+		}
+		merged, err := mergeDistanceMetadata(meta, run.DistanceM, pass, sidecarSHA, time.Now().UTC())
 		if err != nil {
 			return err
 		}
@@ -142,16 +153,15 @@ func (w *Worker) handleDistanceRecompute(ctx context.Context, job *Job) error {
 		if err != nil {
 			return fmt.Errorf("update run distance: %w", err)
 		}
-		// The line follows the figure the run now carries: a forward-pass
-		// recompute keeps its raw line rather than the smoother's, which
-		// cuts the corners the forward pass was kept to avoid, and so removes
-		// a sidecar an earlier smoothed-pass recompute of this same track
-		// left (its fingerprint would still match).
-		if pass == EstimatorPassSmoothed {
-			w.writeSmoothedSidecar(ctx, run.UserID, run.ID, track, storedIdx, replay)
-		} else if err := w.Backend.DeleteStorageObjects(ctx, schema.BucketRuns,
-			[]string{smoothedSidecarPath(run.UserID, run.ID)}); err != nil {
-			w.Log.Warn("stale smoothed sidecar not removed", "run_id", run.ID, "err", err)
+		// A forward-pass recompute also removes a sidecar an earlier
+		// smoothed-pass recompute of this same track left (its fingerprint
+		// would still match); the write above already dropped the key that
+		// named it, so a refused delete leaves an object no reader fetches.
+		if pass != EstimatorPassSmoothed {
+			if err := w.Backend.DeleteStorageObjects(ctx, schema.BucketRuns,
+				[]string{smoothedSidecarPath(run.UserID, run.ID)}); err != nil {
+				w.Log.Warn("stale smoothed sidecar not removed", "run_id", run.ID, "err", err)
+			}
 		}
 		w.Log.Info("distance recomputed",
 			"run_id", p.RunID,
@@ -160,6 +170,7 @@ func (w *Worker) handleDistanceRecompute(ctx context.Context, job *Job) error {
 			"fixes", replay.Fixes,
 			"pass", pass,
 			"pass_reason", why,
+			"smoothed_sidecar", sidecarSHA != "",
 		)
 		return nil
 	}
@@ -221,15 +232,13 @@ func distanceRecomputeSkipReason(run *DistanceRecomputeRun, meta map[string]json
 	return ""
 }
 
-// mergeDistanceMetadata adds the recompute's four keys to the bag and
+// mergeDistanceMetadata adds the recompute's four keys to the bag, sets
+// smoothed_sidecar_sha256 to sidecarSHA (removing it when that is ""), and
 // leaves every other key byte-for-byte as read. distance_recorded_m keeps
 // an existing value so a repeated recompute never overwrites the
 // recorder's original figure with a previous recompute's.
-func mergeDistanceMetadata(meta map[string]json.RawMessage, previousDistanceM float64, pass string, now time.Time) (json.RawMessage, error) {
-	out := make(map[string]json.RawMessage, len(meta)+4)
-	for k, v := range meta {
-		out[k] = v
-	}
+func mergeDistanceMetadata(meta map[string]json.RawMessage, previousDistanceM float64, pass, sidecarSHA string, now time.Time) (json.RawMessage, error) {
+	out := withSmoothedSidecarKey(meta, sidecarSHA)
 	if v, ok := out[schema.MetaDistanceRecordedM]; !ok || isJSONNull(v) {
 		raw, err := json.Marshal(previousDistanceM)
 		if err != nil {

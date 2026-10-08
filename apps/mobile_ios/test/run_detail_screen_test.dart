@@ -160,6 +160,38 @@ class _RecomputeApi extends ApiClient {
   }
 }
 
+/// Signed-in fake that answers [ApiClient.smoothedLocalTrack] with [line] (or
+/// throws [error]) and counts the calls, so the local-track sidecar merge is
+/// driven without Storage.
+class _LocalSidecarApi extends ApiClient {
+  _LocalSidecarApi({this.line, this.error});
+
+  final List<Waypoint>? line;
+  final Object? error;
+  final List<String> calls = [];
+
+  @override
+  String? get userId => 'user-1';
+
+  @override
+  Future<RunMatchInfo?> fetchRunMatchedTrack(String runId) async => null;
+
+  @override
+  Future<List<RouteMatchCandidate>> fetchRoutesIntersectingTrack(
+    List<Waypoint> track, {
+    double toleranceMetres = 100,
+    int maxResults = 10,
+  }) async =>
+      const [];
+
+  @override
+  Future<List<Waypoint>?> smoothedLocalTrack(Run run) async {
+    calls.add(run.id);
+    if (error != null) throw error!;
+    return line;
+  }
+}
+
 /// Signed-in fake whose `deleteRun` always throws — the flaky-signal /
 /// offline cloud delete of issue #252.
 class _DeleteFailApi extends ApiClient {
@@ -884,6 +916,68 @@ void main() {
         ),
       );
       expect(find.text('Set max HR'), findsNothing);
+    });
+  });
+
+  // ───────── the smoothed sidecar over a track the phone holds ─────────
+  group('RunDetailScreen — smoothed sidecar over a local track', () {
+    const sha =
+        'ab12ab12ab12ab12ab12ab12ab12ab12ab12ab12ab12ab12ab12ab12ab12ab12';
+    final recorded = _straightTrack(1);
+    final smoothed = [
+      for (final w in recorded)
+        w.withSmoothedPosition(w.lat + 0.00001, w.lng - 0.00001),
+    ];
+
+    testWidgets('a watch run relayed through the phone draws the smoothed line',
+        (tester) async {
+      final api = _LocalSidecarApi(line: smoothed);
+      await _pump(
+        tester,
+        _run(
+          track: recorded,
+          metadata: {'smoothed_sidecar_sha256': sha},
+        ),
+        apiClient: api,
+      );
+      await tester.pump();
+
+      expect(api.calls, ['run-1']);
+      final drawn = tester.widget<LiveRunMap>(find.byType(LiveRunMap)).track;
+      expect(drawn, hasLength(recorded.length));
+      expect(drawn.every((w) => w.hasSmoothedPosition), isTrue,
+          reason: 'the map line takes the sidecar the run names');
+      expect(drawn.first.lat, recorded.first.lat,
+          reason: 'raw lat/lng stay as recorded');
+    });
+
+    testWidgets('a run that names no sidecar asks for none', (tester) async {
+      final api = _LocalSidecarApi(line: smoothed);
+      await _pump(tester, _run(track: recorded), apiClient: api);
+      await tester.pump();
+
+      expect(api.calls, isEmpty);
+      final drawn = tester.widget<LiveRunMap>(find.byType(LiveRunMap)).track;
+      expect(drawn.any((w) => w.hasSmoothedPosition), isFalse);
+    });
+
+    testWidgets('a sidecar that cannot be read leaves the raw line',
+        (tester) async {
+      final api = _LocalSidecarApi(error: Exception('storage down'));
+      await _pump(
+        tester,
+        _run(
+          track: recorded,
+          metadata: {'smoothed_sidecar_sha256': sha},
+        ),
+        apiClient: api,
+      );
+      await tester.pump();
+
+      expect(api.calls, ['run-1']);
+      final drawn = tester.widget<LiveRunMap>(find.byType(LiveRunMap)).track;
+      expect(drawn, hasLength(recorded.length));
+      expect(drawn.any((w) => w.hasSmoothedPosition), isFalse);
     });
   });
 

@@ -88,4 +88,77 @@ void main() {
   test('the sidecar sits beside the track in the owner folder', () {
     expect(smoothedSidecarPath('u-1', 'r-1'), 'u-1/r-1.smoothed.json.gz');
   });
+
+  test('only metadata naming this exact track names a sidecar to fetch', () {
+    expect(sidecarNamedFor({'smoothed_sidecar_sha256': sha}, sha), isTrue);
+    expect(
+      sidecarNamedFor({'smoothed_sidecar_sha256': sha, 'title': 'Tempo'}, sha),
+      isTrue,
+    );
+    expect(sidecarNamedFor(null, sha), isFalse);
+    expect(sidecarNamedFor(const {}, sha), isFalse,
+        reason: 'a run with no recorded sidecar has nothing to fetch');
+    expect(
+      sidecarNamedFor({'smoothed_sidecar_sha256': '0' * 64}, sha),
+      isFalse,
+      reason: 'a hash carried forward from a re-uploaded track names another',
+    );
+    expect(
+        sidecarNamedFor({'smoothed_sidecar_sha256': sha.toUpperCase()}, sha),
+        isFalse);
+    expect(sidecarNamedFor({'smoothed_sidecar_sha256': true}, sha), isFalse);
+  });
+
+  group('a locally held track', () {
+    // A watch run relayed through the phone, as the bridge hands it over:
+    // local-zone and sub-second timestamps, Doppler keys, no smoothed pair.
+    final recorded = [
+      for (var i = 0; i < 5; i++)
+        Waypoint(
+          lat: 40 + i * 0.0001,
+          lng: -75.0,
+          elevationMetres: i == 2 ? null : 12.5,
+          timestamp: DateTime(2026, 10, 8, 7, 0, i, 250, 125),
+          bpm: 140 + i,
+          accuracyMetres: 4,
+          speedMps: 2.5,
+          speedAccuracyMps: 0.4,
+          bearingDeg: 0,
+        ),
+    ];
+
+    test('fingerprints as the blob the upload stores', () {
+      expect(
+        ApiClient.localTrackSha256(recorded),
+        trackSha256Hex(utf8.encode(ApiClient.debugTrackBlobJson(recorded))),
+      );
+    });
+
+    test('keeps that fingerprint through the local run store codec', () {
+      final run = Run(
+        id: 'run-1',
+        startedAt: DateTime.utc(2026, 10, 8, 7),
+        duration: const Duration(seconds: 4),
+        distanceMetres: 44.5,
+        track: recorded,
+        source: RunSource.watch,
+      );
+      final reloaded = Run.fromJson(
+        jsonDecode(jsonEncode(run.toJson())) as Map<String, dynamic>,
+      );
+      expect(ApiClient.localTrackSha256(reloaded.track),
+          ApiClient.localTrackSha256(recorded),
+          reason: 'the sidecar names the uploaded bytes; a copy the phone '
+              'reloaded from disk must hash to the same, or it never merges');
+    });
+
+    test('a different track does not share the fingerprint', () {
+      final moved = [
+        ...recorded.take(4),
+        Waypoint(lat: 40.0005, lng: -75.0, timestamp: recorded[4].timestamp),
+      ];
+      expect(ApiClient.localTrackSha256(moved),
+          isNot(ApiClient.localTrackSha256(recorded)));
+    });
+  });
 }

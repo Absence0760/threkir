@@ -131,6 +131,12 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// switches to it when present. A failure here cannot break the
   /// page.
   RunMatchInfo? _matchInfo;
+  /// The job_worker's smoothed-position sidecar merged onto a track this
+  /// device holds, for the map line only, and the [Run.track] it was merged
+  /// over ([_maybeMergeLocalSidecar]). Ignored once `run.track` is another
+  /// list (a dropped track).
+  List<Waypoint>? _sidecarLine;
+  List<Waypoint>? _sidecarLineSource;
   /// The last map-match read couldn't reach the backend/network (the
   /// PostgREST row query threw a transport error, or a `matched` row's
   /// gz wouldn't download). The raw track still renders; the status pill
@@ -230,6 +236,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     super.initState();
     _loadLinkedRoute();
     _maybeFetchTrack();
+    _maybeMergeLocalSidecar();
     _maybeFetchHrSeries();
     _maybeFetchMatchedTrack();
     _maybeSuggestRoute();
@@ -547,6 +554,39 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       if (mounted) setState(() => _loadingTrack = false);
     }
   }
+
+  /// A track held on this device (its own recording, or a watch run relayed
+  /// through the phone) never passes through [ApiClient.fetchTrack], so the
+  /// sidecar the job_worker wrote for the uploaded copy is merged here when
+  /// the run's metadata names those bytes ([ApiClient.smoothedLocalTrack]).
+  /// Display only: `run.track` stays the recorded copy, so an edit that
+  /// persists the run never bakes the sidecar into the next upload. L4
+  /// auxiliary — any failure leaves the raw line.
+  Future<void> _maybeMergeLocalSidecar() async {
+    final source = run.track;
+    if (source.isEmpty) return;
+    if (run.metadata?[MetadataKeys.smoothedSidecarSha256] == null) return;
+    final api = widget.apiClient;
+    if (api == null) return;
+    try {
+      final line =
+          await api.smoothedLocalTrack(run).timeout(kBackendLoadTimeout);
+      if (line == null || !mounted || !identical(source, run.track)) return;
+      setState(() {
+        _sidecarLine = line;
+        _sidecarLineSource = source;
+      });
+    } catch (e) {
+      debugPrint('Smoothed sidecar not merged for ${run.id}: $e');
+    }
+  }
+
+  /// The track the map line draws when no matched line replaces it:
+  /// [_sidecarLine] while it is still over `run.track`, else `run.track`.
+  List<Waypoint> get _lineTrack =>
+      _sidecarLine != null && identical(_sidecarLineSource, run.track)
+          ? _sidecarLine!
+          : run.track;
 
   /// The waypoint list the HR-zone breakdown reads: the GPS track when it
   /// carries per-point bpm (outdoor), otherwise the indoor HR sidecar.
@@ -1025,7 +1065,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// it, and a toggle that changes nothing is worse than none.
   bool get _mapTrackHasTiming =>
       displayedRunTrack(
-        run.track,
+        _lineTrack,
         _matchInfo,
         showRaw: widget.preferences.showRawTrack,
       ).where((w) => w.timestamp != null).take(2).length ==
@@ -1046,7 +1086,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
             // alter the numbers. The "Show raw GPS track"
             // preference forces the raw line for verification.
             final mapTrack = displayedRunTrack(
-              run.track,
+              _lineTrack,
               _matchInfo,
               showRaw: widget.preferences.showRawTrack,
             );

@@ -7,6 +7,7 @@ import {
 	mergeSmoothedSidecar,
 	needsSmoothedSidecar,
 	sha256Hex,
+	sidecarNamedFor,
 	smoothedSidecarPath,
 } from './smoothed_sidecar';
 
@@ -68,4 +69,38 @@ test('only a track with no pair anywhere needs a sidecar', () => {
 
 test('the sidecar sits beside the track in the owner folder', () => {
 	assert.equal(smoothedSidecarPath('u-1', 'r-1'), 'u-1/r-1.smoothed.json.gz');
+});
+
+test('only metadata naming this exact track names a sidecar to fetch', () => {
+	const sha = FIXTURE.sha256;
+	assert.equal(sidecarNamedFor({ smoothed_sidecar_sha256: sha }, sha), true);
+	assert.equal(sidecarNamedFor({ smoothed_sidecar_sha256: sha, title: 'Tempo' }, sha), true);
+	assert.equal(sidecarNamedFor({}, sha), false, 'a run with no recorded sidecar has nothing to fetch');
+	assert.equal(sidecarNamedFor(null, sha), false);
+	assert.equal(sidecarNamedFor(undefined, sha), false);
+	assert.equal(sidecarNamedFor([sha], sha), false);
+	assert.equal(
+		sidecarNamedFor({ smoothed_sidecar_sha256: '0'.repeat(64) }, sha),
+		false,
+		'a hash carried forward from a track since re-uploaded names another track',
+	);
+	assert.equal(sidecarNamedFor({ smoothed_sidecar_sha256: sha.toUpperCase() }, sha), false);
+	assert.equal(sidecarNamedFor({ smoothed_sidecar_sha256: true }, sha), false);
+});
+
+test('the run-detail track asks for the sidecar only when the run names this track', () => {
+	const src = readFileSync(join(__dirname, '..', 'core', 'data.ts'), 'utf-8');
+	const start = src.indexOf('async function fetchOwnerTrack(');
+	assert.ok(start !== -1, 'fetchOwnerTrack is gone');
+	const body = src.slice(start, src.indexOf('\n}\n', start));
+	const gate = body.indexOf('sidecarNamedFor(metadata, sha256)');
+	const download = body.indexOf('.download(smoothedSidecarPath(');
+	assert.ok(gate !== -1, 'fetchOwnerTrack must check metadata.smoothed_sidecar_sha256 against the track bytes');
+	assert.ok(download !== -1, 'fetchOwnerTrack no longer downloads the sidecar');
+	assert.ok(gate < download, 'the metadata check must come before the sidecar request, or every run without one 404s');
+	assert.match(
+		src,
+		/fetchOwnerTrack\(data\.track_url, data\.user_id, data\.id, data\.metadata\)/,
+		'fetchRunById must pass the row metadata it read',
+	);
 });

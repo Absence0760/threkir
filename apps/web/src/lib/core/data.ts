@@ -108,6 +108,7 @@ import {
 	mergeSmoothedSidecar,
 	needsSmoothedSidecar,
 	sha256Hex,
+	sidecarNamedFor,
 	smoothedSidecarPath,
 } from '../runs/smoothed_sidecar';
 import { compareLeaderboard } from '../runs/race_leaderboard';
@@ -682,7 +683,7 @@ export async function fetchRunById(
 	let track = null;
 	if (data.track_url) {
 		try {
-			track = await fetchOwnerTrack(data.track_url, data.user_id, data.id);
+			track = await fetchOwnerTrack(data.track_url, data.user_id, data.id, data.metadata);
 		} catch (e) {
 			console.warn('Failed to fetch track', e);
 		}
@@ -692,26 +693,27 @@ export async function fetchRunById(
 
 /// The owner's run-detail track: the stored waypoints plus, for a track that
 /// carries no smoothed pair of its own (a watch run, an old run the server
-/// recomputed), the job_worker's smoothed-position sidecar merged on when it
-/// names these exact bytes (`runs/smoothed_sidecar.ts`). The sidecar is an
-/// auxiliary layer over the track: any failure to fetch or read it leaves the
-/// raw line, and is not an error.
-async function fetchOwnerTrack(path: string, userId: string, runId: string) {
+/// recomputed), the job_worker's smoothed-position sidecar merged on when the
+/// run's metadata names these exact bytes and the sidecar's own fingerprint
+/// agrees (`runs/smoothed_sidecar.ts`). A run whose metadata names no sidecar
+/// for this track makes no sidecar request. The sidecar is an auxiliary layer
+/// over the track: any failure to fetch or read it leaves the raw line, and is
+/// not an error.
+async function fetchOwnerTrack(path: string, userId: string, runId: string, metadata: unknown) {
 	const { data, error } = await supabase.storage.from(BUCKETS.runs).download(path);
 	if (error || !data) throw error ?? new Error('No data');
 	const decompressed = await decompressGzip(await data.arrayBuffer());
 	const points = JSON.parse(new TextDecoder().decode(decompressed));
 	if (!Array.isArray(points) || !needsSmoothedSidecar(points)) return points;
 	try {
+		const sha256 = await sha256Hex(decompressed);
+		if (!sidecarNamedFor(metadata, sha256)) return points;
 		const { data: sc, error: scErr } = await supabase.storage
 			.from(BUCKETS.runs)
 			.download(smoothedSidecarPath(userId, runId));
 		if (scErr || !sc) return points;
 		const sidecar = JSON.parse(new TextDecoder().decode(await decompressGzip(await sc.arrayBuffer())));
-		return mergeSmoothedSidecar(points, sidecar, {
-			points: points.length,
-			sha256: await sha256Hex(decompressed),
-		});
+		return mergeSmoothedSidecar(points, sidecar, { points: points.length, sha256 });
 	} catch (e) {
 		console.warn('smoothed sidecar unreadable; drawing the raw line', { run_id: runId, error: e });
 		return points;

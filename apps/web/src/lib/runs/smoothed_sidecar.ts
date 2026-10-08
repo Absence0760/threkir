@@ -4,12 +4,16 @@
 // distance smoother's position per stored waypoint plus the fingerprint of the
 // exact track bytes it was computed from; a reader merges it only onto that
 // track, and only onto a waypoint that carries no pair of its own, so a track
-// re-uploaded after the sidecar was written keeps its own positions.
+// re-uploaded after the sidecar was written keeps its own positions. The run
+// names the track a stored sidecar was built for in
+// `metadata.smoothed_sidecar_sha256`, and a reader fetches the sidecar only
+// when that names the bytes it holds.
 //
 // Same rule as `_shared/smoothed_sidecar.ts` (Deno, clip-public-track) and
 // `packages/api_client/lib/src/smoothed_sidecar.dart`; all three replay
 // fixtures/smoothed_sidecar_vectors.json, as does the Go writer.
 
+import { METADATA_KEYS } from '../core/schema';
 import { hasSmoothedPosition, type LinePointSource } from './track_line';
 
 export const SMOOTHED_SIDECAR_VERSION = 1;
@@ -24,6 +28,19 @@ export function smoothedSidecarPath(userId: string, runId: string): string {
 export async function sha256Hex(bytes: Uint8Array): Promise<string> {
 	const digest = await crypto.subtle.digest('SHA-256', bytes as Uint8Array<ArrayBuffer>);
 	return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Whether the run's metadata names a sidecar built for the track whose bytes
+ * hash to `sha256`: the worker records `smoothed_sidecar_sha256` while the
+ * sidecar is stored, so a run without it, or whose hash names another track
+ * (a re-upload), has nothing to fetch. Checked before the sidecar download so
+ * a run with no sidecar costs no Storage request; the merge still checks the
+ * sidecar's own fingerprint.
+ */
+export function sidecarNamedFor(metadata: unknown, sha256: string): boolean {
+	if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return false;
+	return (metadata as Record<string, unknown>)[METADATA_KEYS.smoothed_sidecar_sha256] === sha256;
 }
 
 /** Whether a sidecar could add anything: a track with no smoothed pair on any waypoint. */

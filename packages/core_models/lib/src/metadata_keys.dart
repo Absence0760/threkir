@@ -70,6 +70,7 @@ class MetadataKeys {
   static const String sessionAdherence = 'session_adherence';
   static const String sessionPlanId = 'session_plan_id';
   static const String sessionStepResults = 'session_step_results';
+  static const String smoothedSidecarSha256 = 'smoothed_sidecar_sha256';
   static const String sourceFile = 'source_file';
   static const String steps = 'steps';
   static const String stravaActivityType = 'strava_activity_type';

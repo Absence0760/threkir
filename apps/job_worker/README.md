@@ -17,7 +17,9 @@ does not accept as a road run keeps the smoother's forward pass instead, and
 raw position when both are present.
 Both write the smoothed-position sidecar `{user_id}/{run_id}.smoothed.json.gz`
 (`internal/smoothed_sidecar.go`): a recompute that kept the smoothed pass, and
-`map_match` for a `watch` run, whose recorders store no smoothed pair.
+`map_match` for a `watch` run, whose recorders store no smoothed pair. Each
+records the sidecar's track hash in `metadata.smoothed_sidecar_sha256`, which
+readers check before they request the sidecar.
 
 ## Required env
 

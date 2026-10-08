@@ -96,7 +96,7 @@ So the server can recompute distance from a stored track with the same Doppler i
 
 Old tracks have none of them and recompute through the position-only path, with post-hoc stop detection.
 
-Readers that draw the line, route-match or match pace segments prefer the smoothed pair when both halves are present (web `lib/runs/track_line.ts`, Dart `Waypoint.lineLat` / `lineLng`, Go `parseTrack`); the estimator always reads raw.
+Readers that draw the line, route-match or match pace segments prefer the smoothed pair when both halves are present and finite (web `lib/runs/track_line.ts`, Dart `Waypoint.lineLat` / `lineLng`, Go `parseTrack`); the estimator always reads raw.
 
 Privacy-zone clipping therefore tests both positions: a leading or trailing fix is dropped when its raw OR its smoothed position is inside a zone, so no drawn endpoint can sit inside one. The server applies it for non-owners in `clip_track_for_user` (migration `20270719000005`); the client copy is the `privacy` parity pair (`isFixInAnyZone` / `clipPointsToZones` in web `routes/privacy.ts` and Dart `lib/privacy.dart`), which the mobile run share image applies to the owner's track before drawing it.
 

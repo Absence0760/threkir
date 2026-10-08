@@ -60,10 +60,15 @@ void main() {
   });
 
   group('settings switch', () {
-    Future<Preferences> pumpSettings(WidgetTester tester) async {
+    Future<Preferences> pumpSettings(WidgetTester tester,
+        {TargetPlatform? platform}) async {
       SharedPreferences.setMockInitialValues({});
       final prefs = Preferences();
       await prefs.init();
+      // After init, not before: on iOS init mirrors its prefs to the Apple
+      // Watch over a platform channel, whose reply never arrives inside the
+      // widget test's fake-async zone, so the test hangs until it times out.
+      debugDefaultTargetPlatformOverride = platform;
       await tester.pumpWidget(
         MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -94,9 +99,8 @@ void main() {
     });
 
     testWidgets('hidden on iOS', (tester) async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       try {
-        await pumpSettings(tester);
+        await pumpSettings(tester, platform: TargetPlatform.iOS);
         await tester.drag(find.byType(ListView), const Offset(0, -4000));
         await tester.pump();
         expect(find.byKey(const Key('settingsDevRawGps')), findsNothing);

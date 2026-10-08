@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clipPointsToZones, isInAnyZone, type PrivacyZone, type LatLng } from './privacy';
+import {
+	clipPointsToZones,
+	isInAnyZone,
+	trackEntersAnyZone,
+	type PrivacyZone,
+	type LatLng
+} from './privacy';
 import type { Json } from '../database.types';
 
 const home: PrivacyZone = { lat: 40.7128, lng: -74.006, radius_m: 200 };
@@ -92,4 +98,28 @@ test('a zone list is assignable to the jsonb column that stores it', () => {
 	const zones: PrivacyZone[] = [{ lat: 51.5, lng: -0.1, radius_m: 300 }];
 	const asJson: Json = zones;
 	assert.deepEqual(asJson, zones);
+});
+
+// The share confirm's warning (decisions §33): a fix whose raw position is
+// ~843 m east of the zone but whose stored smoothed position is the zone
+// centre is drawn inside the zone, so the track enters it.
+test('trackEntersAnyZone — a smoothed position inside a zone counts when the raw fix is outside', () => {
+	const raw = offset(home.lat, home.lng, 0.01);
+	const track = [{ ...raw, smoothedLat: home.lat, smoothedLng: home.lng }];
+	assert.equal(isInAnyZone(raw, [home]), false);
+	assert.equal(trackEntersAnyZone(track, [home]), true);
+	assert.equal(trackEntersAnyZone([raw], [home]), false);
+});
+
+test('trackEntersAnyZone — raw in-zone fixes count, and no zones never warns', () => {
+	const far = offset(home.lat, home.lng, 0.02);
+	const inZone = {
+		lat: home.lat,
+		lng: home.lng,
+		smoothedLat: far.lat,
+		smoothedLng: far.lng
+	};
+	assert.equal(trackEntersAnyZone([far, inZone], [home]), true);
+	assert.equal(trackEntersAnyZone([inZone], []), false);
+	assert.equal(trackEntersAnyZone([], [home]), false);
 });

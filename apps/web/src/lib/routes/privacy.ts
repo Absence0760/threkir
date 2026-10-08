@@ -6,6 +6,7 @@
 // Pure functions. Unit-testable. No Svelte / Supabase dependencies.
 
 import { haversineMetres } from '../runs/run_stats';
+import { lineLat, lineLng, type LinePointSource } from '../runs/track_line';
 
 /// Declared as an ALIAS, not an interface, and that is load-bearing rather
 /// than stylistic: TypeScript gives an object type an implicit index signature
@@ -35,6 +36,18 @@ export function isInAnyZone(point: LatLng, zones: PrivacyZone[]): boolean {
 		if (haversineMetres(point.lat, point.lng, z.lat, z.lng) <= z.radius_m) return true;
 	}
 	return false;
+}
+
+/// Whether any fix of `track` sits in a zone at its raw position or at the
+/// position the run line draws it (the smoother's, when the track stores
+/// one). The share confirm warns on this, so a fix whose raw position is
+/// outside a zone but whose drawn vertex is inside still counts. Mirrors
+/// `trackEntersAnyZone` in `privacy.dart`.
+export function trackEntersAnyZone(track: LinePointSource[], zones: PrivacyZone[]): boolean {
+	if (zones.length === 0) return false;
+	return track.some(
+		(p) => isInAnyZone(p, zones) || isInAnyZone({ lat: lineLat(p), lng: lineLng(p) }, zones)
+	);
 }
 
 /// Walk forward from index 0 and drop points in any zone; walk

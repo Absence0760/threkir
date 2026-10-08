@@ -63,6 +63,20 @@ struct RunCheckpoint: Codable {
     // not measured by.
     let distanceEstimator: String?
     let distanceStepFilledMetres: Double?
+    // When the run was paused, if it was paused at this checkpoint. A run
+    // that is continued after the app was terminated resumes paused rather
+    // than silently crediting the pause as running time. Nil in a recording
+    // checkpoint and in one from a build predating the field, which wrote no
+    // checkpoint at all while paused — see `RunResumePlan`.
+    let pausedAt: Date?
+    // The UNGRADED mean and the covered seconds behind `averageBPM` /
+    // `hrCoverage`. Those two are what a saved run claims, and the graded
+    // mean is nil below half coverage, so a run continued from them could
+    // not carry its pre-crash heart rate forward to be graded again at the
+    // finish. Nil from an older build; `RunResumePlan.heartRatePrior` falls
+    // back to the graded pair.
+    let hrMeanUngraded: Double?
+    let hrCoveredSeconds: Double?
 
     init(
         id: String,
@@ -80,6 +94,9 @@ struct RunCheckpoint: Codable {
         isPublic: Bool? = nil,
         distanceEstimator: String? = nil,
         distanceStepFilledMetres: Double? = nil,
+        pausedAt: Date? = nil,
+        hrMeanUngraded: Double? = nil,
+        hrCoveredSeconds: Double? = nil,
         version: Int = RunCheckpoint.currentVersion
     ) {
         self.version = version
@@ -98,6 +115,9 @@ struct RunCheckpoint: Codable {
         self.isPublic = isPublic
         self.distanceEstimator = distanceEstimator
         self.distanceStepFilledMetres = distanceStepFilledMetres
+        self.pausedAt = pausedAt
+        self.hrMeanUngraded = hrMeanUngraded
+        self.hrCoveredSeconds = hrCoveredSeconds
     }
 
     /// Every field is decoded with a fallback default rather than the
@@ -128,6 +148,9 @@ struct RunCheckpoint: Codable {
         isPublic = try c.decodeIfPresent(Bool.self, forKey: .isPublic)
         distanceEstimator = try c.decodeIfPresent(String.self, forKey: .distanceEstimator)
         distanceStepFilledMetres = try c.decodeIfPresent(Double.self, forKey: .distanceStepFilledMetres)
+        pausedAt = try c.decodeIfPresent(Date.self, forKey: .pausedAt)
+        hrMeanUngraded = try c.decodeIfPresent(Double.self, forKey: .hrMeanUngraded)
+        hrCoveredSeconds = try c.decodeIfPresent(Double.self, forKey: .hrCoveredSeconds)
     }
 }
 

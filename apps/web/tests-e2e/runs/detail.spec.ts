@@ -323,6 +323,61 @@ test.describe('/runs/[id]', () => {
 		}
 	});
 
+	test('Share and Share as image refuse when the privacy zones cannot be loaded', async ({
+		page,
+		mockRoute
+	}) => {
+		// Fail closed: a settings bag that came from neither the server nor the
+		// device cache holds no zones at all. Read as "no zones" it sent the
+		// share image out with the unclipped line, and told the make-public
+		// confirm the owner had no zone set up.
+		const planted = await insertRun({
+			user_id: USER_A.id,
+			distance_m: 400,
+			duration_s: 120,
+			is_public: false,
+			track: [
+				{ lat: -37.8, lng: 144.96, ts: '2026-05-10T08:00:00Z' },
+				{ lat: -37.799, lng: 144.96, ts: '2026-05-10T08:01:00Z' },
+				{ lat: -37.798, lng: 144.96, ts: '2026-05-10T08:02:00Z' }
+			]
+		});
+		try {
+			await page.addInitScript(() => {
+				for (const key of Object.keys(localStorage)) {
+					if (key.startsWith('settings_cache_')) localStorage.removeItem(key);
+				}
+			});
+			for (const table of ['user_settings', 'user_device_settings']) {
+				await mockRoute(page, `**/rest/v1/${table}*`, (route) =>
+					route.request().method() === 'GET' ? route.abort() : route.continue()
+				);
+			}
+
+			await page.goto(`/runs/${planted}`);
+			await expect(page.locator('button[title="Download GPX"]')).toBeEnabled({
+				timeout: 15_000
+			});
+			await expect(page.getByTestId('share-card-map')).toHaveCount(0);
+
+			await page.locator('button[title="Share as image"]').click();
+			await expect(
+				page.locator('.toast', { hasText: /Couldn't load your privacy zones/ })
+			).toBeVisible({ timeout: 5_000 });
+
+			await page.locator('button[title="Share link"]').click();
+			await expect(page.locator('[data-testid="share-confirm-dialog"]')).toHaveCount(0);
+
+			const row = await readRow(
+				'runs by id',
+				getAdminClient().from('runs').select('is_public').eq('id', planted).single()
+			);
+			expect(row.is_public).toBe(false);
+		} finally {
+			await deleteRun(planted);
+		}
+	});
+
 	test('Share dialog Cancel keeps the run private (consent gate)', async ({
 		page,
 		context

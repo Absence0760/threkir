@@ -1161,6 +1161,7 @@ export const messages = {
 	"runDetail.savedAsRoute": "Enregistré comme itinéraire.",
 	"runDetail.imageSaved": "Image enregistrée.",
 	"runDetail.imageGenerateFailed": "Impossible de générer l'image : {error}",
+	"runDetail.shareZonesUnknown": "Impossible de charger vos zones de confidentialité, rien n'a donc été partagé. Vérifiez votre connexion et réessayez.",
 	"runDetail.reSnapping": "Réalignement sur les routes…",
 	"runDetail.rematchFailed": "Échec du réalignement : {error}",
 	"runDetail.recalculateDistance": "Recalculer la distance",

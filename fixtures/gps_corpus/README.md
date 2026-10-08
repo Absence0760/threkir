@@ -96,7 +96,7 @@ v1.1+ estimator; keep the phone where you normally carry it and note that in
 1. **The field-report course (#922 § 11).** Run the same 3.1 mi course with the
    phone and the Garmin together. Export the Threkir track (web `/settings/account`
    → the full account archive, then take `tracks/<run_id>.json.gz` from it) and the
-   Garmin FIT (Garmin Connect → the activity → ⚙ → Export Original). If the
+   Garmin FIT (Garmin Connect → the activity → Settings → Export Original). If the
    course is not measured, the Garmin figure is a comparison, not the truth —
    set `known_distance_m` only from a measurement and say which in
    `distance_source`. Course type `road` or `urban`.

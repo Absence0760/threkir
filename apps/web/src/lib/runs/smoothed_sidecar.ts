@@ -44,7 +44,7 @@ export function sidecarNamedFor(metadata: unknown, sha256: string): boolean {
 }
 
 /** Whether a sidecar could add anything: a track with no smoothed pair on any waypoint. */
-export function needsSmoothedSidecar(points: readonly LinePointSource[]): boolean {
+export function needsSmoothedSidecar(points: readonly (LinePointSource | null | undefined)[]): boolean {
 	return points.length > 0 && !points.some(hasSmoothedPosition);
 }
 
@@ -67,7 +67,7 @@ function usablePosition(v: unknown): v is [number, number] {
  * sidecar is not for this track (version, point count or hash differ) or is
  * not a sidecar at all. Never alters `lat` / `lng`.
  */
-export function mergeSmoothedSidecar<T extends LinePointSource>(
+export function mergeSmoothedSidecar<T extends LinePointSource | null | undefined>(
 	points: T[],
 	sidecar: unknown,
 	track: TrackFingerprint,
@@ -89,6 +89,7 @@ export function mergeSmoothedSidecar<T extends LinePointSource>(
 	const positions = sc.positions;
 	return points.map((p, i) => {
 		const pos = positions[i];
+		if (!p || typeof p !== 'object' || Array.isArray(p)) return p;
 		if (hasSmoothedPosition(p) || !usablePosition(pos)) return p;
 		return { ...p, smoothedLat: pos[0], smoothedLng: pos[1] };
 	});

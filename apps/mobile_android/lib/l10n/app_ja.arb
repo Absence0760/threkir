@@ -810,6 +810,7 @@
   "runDetailRouteSaved": "\"{name}\" を保存しました — {kept} 個のウェイポイント（{smoothed} 個を平滑化）",
   "runDetailRouteSaveFailed": "「{name}」をルートとして保存できませんでした。",
   "runDetailMakePublicFailed": "ランを公開できませんでした: {error}",
+  "runDetailShareZonesUnknown": "プライバシーゾーンを読み込めなかったため、何も共有されませんでした。接続を確認してもう一度お試しください。",
   "runDetailMakePublicTitle": "このランを公開しますか？",
   "runDetailMakePublicBodyZone": "共有すると、このランは公開され、リンクを知っている人なら誰でも閲覧できます。このランはプライバシーゾーンのいずれかの内側で開始または終了しているため、閲覧者にはゾーン内の区間が隠された切り取り済みのトラックが表示されます。",
   "runDetailMakePublicBodyHasZones": "共有すると、このランは公開され、リンクを知っている人なら誰でも閲覧できます。このトラックに交差するプライバシーゾーンはないため、トラック全体が表示されます。",

@@ -1982,10 +1982,22 @@ class ApiClient {
     return _decodeTrack(gzip.decode(bytes));
   }
 
+  /// A stored entry that is not an object is not a waypoint and is dropped,
+  /// rather than a cast error that loses the whole track. The track then has
+  /// fewer waypoints than the stored array, so a smoothed sidecar (whose point
+  /// count names that array) no longer matches and the raw line is drawn.
   static List<Waypoint> _decodeTrack(List<int> inflated) {
     final list = jsonDecode(utf8.decode(inflated)) as List<dynamic>;
-    return list.map((t) => _waypointFromJson(t as Map<String, dynamic>)).toList();
+    return [
+      for (final t in list)
+        if (t is Map<String, dynamic>) _waypointFromJson(t),
+    ];
   }
+
+  /// Test-only: the stored-track decoder [fetchTrack] reads with.
+  @visibleForTesting
+  static List<Waypoint> debugDecodeTrack(List<int> inflated) =>
+      _decodeTrack(inflated);
 
   /// Test-only: exposes the private waypoint codec used by the track
   /// upload/download path. Returns the JSON shape stored inside the

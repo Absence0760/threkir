@@ -2971,6 +2971,10 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get runDetailShareZonesUnknown =>
+      'Deine Datenschutzzonen konnten nicht geladen werden, daher wurde nichts geteilt. Prüfe deine Verbindung und versuche es erneut.';
+
+  @override
   String get runDetailMakePublicTitle => 'Diesen Lauf öffentlich machen?';
 
   @override

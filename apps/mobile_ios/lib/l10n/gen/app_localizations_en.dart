@@ -2937,6 +2937,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get runDetailShareZonesUnknown =>
+      'Couldn\'t load your privacy zones, so nothing was shared. Check your connection and try again.';
+
+  @override
   String get runDetailMakePublicTitle => 'Make this run public?';
 
   @override

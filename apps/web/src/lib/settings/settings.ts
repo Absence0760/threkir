@@ -2,6 +2,7 @@ import { supabase } from '../core/supabase';
 import {
 	effective,
 	effectivePreferredUnit,
+	knownEffective,
 	type LoadedSettings,
 	type PrefsBag,
 } from './settings_overlay';
@@ -30,7 +31,7 @@ import { SettingsWriteError, drainQueue, pushOrQueue } from './settings_write';
 /// `import { loadSettings, effective } from '$lib/settings/settings'` callers
 /// keep working unchanged.
 
-export { effective, effectivePreferredUnit };
+export { effective, effectivePreferredUnit, knownEffective };
 export type { LoadedSettings, PrefsBag };
 
 const DEVICE_ID_KEY = 'run_app.device_id';
@@ -176,6 +177,7 @@ export async function loadSettings(userId: string): Promise<LoadedSettings> {
 		return {
 			universal: cachedU !== null ? { ...cachedU } : {},
 			device: cachedD !== null ? { ...cachedD } : {},
+			...(cachedU === null ? { universalUnknown: true as const } : {}),
 		};
 	}
 }

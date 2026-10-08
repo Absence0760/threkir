@@ -124,7 +124,20 @@ class RunRecorder {
   /// [clock] exists so tests can drive the monotonic gap the re-anchor escape
   /// in [_onPosition] gates on without waiting out real seconds. Production
   /// always takes the default.
-  RunRecorder({Stopwatch? clock}) : _stopwatch = clock ?? Stopwatch();
+  RunRecorder({
+    Stopwatch? clock,
+    @visibleForTesting int maxSmoothedStretchEvents = defaultMaxSmoothedStretchEvents,
+  })  : _stopwatch = clock ?? Stopwatch(),
+        _maxSmoothedStretchEvents = maxSmoothedStretchEvents;
+
+  /// The most estimator inputs one stretch keeps for [stop]'s smoother replay.
+  /// The replay runs on the UI isolate at stop and holds every input plus the
+  /// smoother's per-fix records, ~1.2 KB a fix (~+425 MB at the 360k fixes of
+  /// a 100-hour ultra). Past this a stretch stops keeping inputs and is saved
+  /// on its forward distance and raw positions, unstamped, so the server
+  /// recompute smooths it instead. 100k fixes is ~28 hours at 1 Hz.
+  static const int defaultMaxSmoothedStretchEvents = 100000;
+  final int _maxSmoothedStretchEvents;
 
   static const _uuid = Uuid();
 
@@ -1048,7 +1061,7 @@ class RunRecorder {
     try {
       final t = _estimatorStepTime();
       _estimator.addSteps(t, cumulative);
-      _stretch?.events.add(GpsStepsEvent(t: t, count: cumulative));
+      _keepStretchEvent(GpsStepsEvent(t: t, count: cumulative));
     } catch (e) {
       debugPrint('RunRecorder: step sample dropped — $e');
     }
@@ -1074,10 +1087,29 @@ class RunRecorder {
     try {
       final t = _estimatorStepTime();
       _estimator.finish(t);
-      _stretch?.events.add(GpsFinishEvent(t: t));
+      _keepStretchEvent(GpsFinishEvent(t: t));
     } catch (e) {
       debugPrint('RunRecorder: estimator finish failed — $e');
     }
+  }
+
+  /// Keeps [event] for the current stretch's smoother replay and returns its
+  /// index, or null when the stretch keeps none: there is no stretch, it will
+  /// not be smoothed, or it has reached [_maxSmoothedStretchEvents], at which
+  /// point it drops what it holds and is marked [_DistanceStretch.capped].
+  int? _keepStretchEvent(GpsEvent event) {
+    final stretch = _stretch;
+    if (stretch == null || !stretch.smoothable) return null;
+    if (stretch.events.length >= _maxSmoothedStretchEvents) {
+      stretch
+        ..smoothable = false
+        ..capped = true
+        ..events.clear()
+        ..trackLinks.clear();
+      return null;
+    }
+    stretch.events.add(event);
+    return stretch.events.length - 1;
   }
 
   void _startEstimatorSegment() {
@@ -1469,19 +1501,15 @@ class RunRecorder {
           bearingDeg: fix.bearingDeg,
         );
         estT = t;
-        final stretch = _stretch;
-        if (stretch != null) {
-          eventIndex = stretch.events.length;
-          stretch.events.add(GpsFixEvent(
-            t: t,
-            lat: pos.latitude,
-            lng: pos.longitude,
-            accuracyM: fix.accuracyM,
-            speedMps: fix.speedMps,
-            speedAccuracyMps: fix.speedAccuracyMps,
-            bearingDeg: fix.bearingDeg,
-          ));
-        }
+        eventIndex = _keepStretchEvent(GpsFixEvent(
+          t: t,
+          lat: pos.latitude,
+          lng: pos.longitude,
+          accuracyM: fix.accuracyM,
+          speedMps: fix.speedMps,
+          speedAccuracyMps: fix.speedAccuracyMps,
+          bearingDeg: fix.bearingDeg,
+        ));
       } catch (e) {
         debugPrint('RunRecorder: estimator rejected fix — $e');
       }
@@ -1872,12 +1900,14 @@ class RunRecorder {
     final track = List<Waypoint>.of(_track);
     var distanceMetres = _reportedDistanceMetres;
     var laps = _laps;
+    var everyStretchSmoothed = false;
     if (!_treadmillMode) {
       final smoothed = _applySmoother(track);
       for (final s in smoothed) {
         if (s != null) distanceMetres += s.correctionM;
       }
       laps = _smoothedLaps(smoothed);
+      everyStretchSmoothed = _everyStretchSmoothed(smoothed);
     }
 
     final metadata = <String, dynamic>{};
@@ -1896,9 +1926,11 @@ class RunRecorder {
       metadata['distance_source'] = 'treadmill';
     } else {
       // A resumed session's seeded distance is the killed process's forward
-      // figure, which the smoother never saw: leave the tag off so the
-      // server recompute is offered and smooths the whole stored track.
-      if (!_distanceSeeded) {
+      // figure, which the smoother never saw, and a stretch the smoother
+      // failed on or that outgrew its replay cap keeps its forward figure:
+      // leave the tag off in both cases so the server recompute is offered
+      // and smooths the whole stored track.
+      if (!_distanceSeeded && everyStretchSmoothed) {
         metadata[MetadataKeys.distanceEstimator] = distanceEstimatorVersion;
       }
       final stepFilled = stepFilledDistanceMetres.round();
@@ -1956,6 +1988,24 @@ class RunRecorder {
       }
     }
     return out;
+  }
+
+  /// Whether [stop]'s distance is the smoother's for every stretch that had
+  /// GPS inputs: none outgrew its replay cap, and every smoothable stretch
+  /// with inputs smoothed. A stretch the belt took over is not smoothable and
+  /// not a failure.
+  bool _everyStretchSmoothed(
+      List<({double correctionM, List<double> cumulativeM})?> smoothed) {
+    for (var i = 0; i < _stretches.length; i++) {
+      final stretch = _stretches[i];
+      if (stretch.capped) return false;
+      if (stretch.smoothable &&
+          stretch.events.isNotEmpty &&
+          (i >= smoothed.length || smoothed[i] == null)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /// [_laps] re-measured on the smoothed distance, so the laps of a run that
@@ -2031,4 +2081,7 @@ class _DistanceStretch {
   final List<GpsEvent> events = [];
   final List<({int track, int event})> trackLinks = [];
   bool smoothable = true;
+  /// Reached [RunRecorder._maxSmoothedStretchEvents]: its inputs were dropped
+  /// and its forward distance is what the run saves.
+  bool capped = false;
 }

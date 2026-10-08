@@ -2965,6 +2965,10 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get runDetailShareZonesUnknown =>
+      'No se pudieron cargar tus zonas de privacidad, así que no se compartió nada. Comprueba tu conexión e inténtalo de nuevo.';
+
+  @override
   String get runDetailMakePublicTitle => '¿Hacer pública esta carrera?';
 
   @override

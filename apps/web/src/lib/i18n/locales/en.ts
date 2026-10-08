@@ -1172,6 +1172,7 @@ export const en = {
 	"runDetail.savedAsRoute": "Saved as route.",
 	"runDetail.imageSaved": "Image saved.",
 	"runDetail.imageGenerateFailed": "Couldn't generate image: {error}",
+	"runDetail.shareZonesUnknown": "Couldn't load your privacy zones, so nothing was shared. Check your connection and try again.",
 	"runDetail.reSnapping": "Re-snapping to roads…",
 	"runDetail.rematchFailed": "Re-match failed: {error}",
 	"runDetail.recalculateDistance": "Recalculate distance",

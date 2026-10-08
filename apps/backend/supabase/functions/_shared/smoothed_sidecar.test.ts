@@ -23,6 +23,12 @@ const FIXTURE = JSON.parse(
   trackJson: string;
   sha256: string;
   cases: { name: string; sidecar: unknown; expected: ([number, number] | null)[] }[];
+  nonObjectTrack: {
+    trackJson: string;
+    sha256: string;
+    sidecar: unknown;
+    expected: ([number, number] | null)[];
+  };
 };
 
 type Point = { lat: number; lng: number; smoothedLat?: unknown; smoothedLng?: unknown };
@@ -59,6 +65,25 @@ Deno.test('a non-object waypoint passes through untouched', () => {
   const sidecar = FIXTURE.cases[0].sidecar as { track: { sha256: string } };
   const merged = mergeSmoothedSidecar([null, 'x', 3, []], sidecar, { points: 4, sha256: sidecar.track.sha256 });
   assertEquals(merged, [null, 'x', 3, []]);
+});
+
+Deno.test('the fixture track with a non-object entry keeps it and merges the rest', async () => {
+  const v = FIXTURE.nonObjectTrack;
+  assertEquals(await sha256Hex(new TextEncoder().encode(v.trackJson)), v.sha256);
+  const points = JSON.parse(v.trackJson) as (Point | null)[];
+  assertEquals(needsSmoothedSidecar(points), true);
+  const merged = mergeSmoothedSidecar(points, v.sidecar, { points: points.length, sha256: v.sha256 });
+  assertEquals(merged.length, v.expected.length);
+  merged.forEach((p, i) => {
+    if (p === null) {
+      assertEquals(v.expected[i], null, `waypoint ${i}`);
+      return;
+    }
+    const got = typeof p.smoothedLat === 'number' && typeof p.smoothedLng === 'number'
+      ? [p.smoothedLat, p.smoothedLng]
+      : null;
+    assertEquals(got, v.expected[i], `waypoint ${i}`);
+  });
 });
 
 Deno.test('only a track with no pair anywhere needs a sidecar', () => {

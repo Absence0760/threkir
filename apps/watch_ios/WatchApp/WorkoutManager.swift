@@ -68,8 +68,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     /// only its projection of the current fix.
     @Published var mapRoute: [MiniMapPoint] = []
 
-    /// The mini-map's own bounded breadcrumb of the run — see `MiniMapTrail`
-    /// for why the map cannot be fed from `track`.
+    /// The mini-map's own bounded breadcrumb of the run: the recorder holds
+    /// no track in memory to draw from — see `MiniMapTrail`.
     @Published var mapTrail = MiniMapTrail()
 
     /// The last accepted fix, or nil while this run has none.

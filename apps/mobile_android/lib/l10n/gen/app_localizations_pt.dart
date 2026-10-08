@@ -2963,6 +2963,10 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get runDetailShareZonesUnknown =>
+      'Não foi possível carregar as suas zonas de privacidade, por isso nada foi partilhado. Verifique a sua ligação e tente novamente.';
+
+  @override
   String get runDetailMakePublicTitle => 'Tornar esta corrida pública?';
 
   @override
@@ -17483,6 +17487,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String runDetailMakePublicFailed(String error) {
     return 'Não foi possível tornar a corrida pública: $error';
   }
+
+  @override
+  String get runDetailShareZonesUnknown =>
+      'Não foi possível carregar suas zonas de privacidade, então nada foi compartilhado. Verifique sua conexão e tente novamente.';
 
   @override
   String get runDetailMakePublicTitle => 'Tornar esta corrida pública?';

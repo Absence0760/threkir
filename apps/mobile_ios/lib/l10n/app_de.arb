@@ -810,6 +810,7 @@
   "runDetailRouteSaved": "\"{name}\" gespeichert — {kept} Wegpunkte ({smoothed} geglättet)",
   "runDetailRouteSaveFailed": "\"{name}\" konnte nicht als Route gespeichert werden.",
   "runDetailMakePublicFailed": "Lauf konnte nicht öffentlich gemacht werden: {error}",
+  "runDetailShareZonesUnknown": "Deine Datenschutzzonen konnten nicht geladen werden, daher wurde nichts geteilt. Prüfe deine Verbindung und versuche es erneut.",
   "runDetailMakePublicTitle": "Diesen Lauf öffentlich machen?",
   "runDetailMakePublicBodyZone": "Durch das Teilen wird dieser Lauf öffentlich, sodass jeder mit dem Link ihn ansehen kann. Dieser Lauf beginnt oder endet in einer deiner Datenschutzzonen, daher sehen Betrachter eine beschnittene Aufzeichnung, bei der die Abschnitte innerhalb der Zone ausgeblendet sind.",
   "runDetailMakePublicBodyHasZones": "Durch das Teilen wird dieser Lauf öffentlich, sodass jeder mit dem Link ihn ansehen kann. Keine deiner Datenschutzzonen überschneidet sich mit dieser Aufzeichnung, daher ist die vollständige Aufzeichnung sichtbar.",

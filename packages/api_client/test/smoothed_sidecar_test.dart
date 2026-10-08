@@ -63,6 +63,30 @@ void main() {
     });
   }
 
+  test('a stored entry that is not an object is dropped, and the sidecar with '
+      'it', () {
+    final v = fixture['nonObjectTrack'] as Map<String, dynamic>;
+    final bytes = utf8.encode(v['trackJson'] as String);
+    final vsha = v['sha256'] as String;
+    expect(trackSha256Hex(bytes), vsha);
+    final points = ApiClient.debugDecodeTrack(bytes);
+    final expected = v['expectedDroppingNonObjects'] as List;
+    expect(points, hasLength(expected.length),
+        reason: 'the decoder drops the non-object entry instead of throwing');
+    final merged = mergeSmoothedSidecar(
+      points,
+      v['sidecar'],
+      points: points.length,
+      sha256Hex: vsha,
+    );
+    expect(identical(merged, points), isTrue,
+        reason: 'the sidecar counts the stored array, not the decoded list');
+    for (var i = 0; i < merged.length; i++) {
+      expect(merged[i].hasSmoothedPosition, expected[i] != null,
+          reason: 'waypoint $i');
+    }
+  });
+
   test('only a track with no pair anywhere needs a sidecar', () {
     expect(needsSmoothedSidecar(const []), isFalse);
     expect(

@@ -18,6 +18,7 @@ import {
 	medianFixIntervalS,
 } from './garmin-fit';
 import { haversineMetres } from '../runs/run_stats';
+import { smoothDistance } from '../runs/gps_distance';
 
 const M_PER_DEG = 6371000 * (Math.PI / 180);
 
@@ -146,6 +147,27 @@ test('estimatorCumulativeMetres — non-decreasing, carries over untimestamped p
 	assert.equal(cum[0], 0);
 	for (let i = 1; i < cum.length; i++) assert.ok(cum[i] >= cum[i - 1], `dropped at ${i}`);
 	assert.equal(cum[10], cum[9]);
+});
+
+test('estimatorCumulativeMetres — measures on the smoothed distance a saved run carries', () => {
+	// The fallback must read the same smoother the recorder saves and the
+	// recompute writes, not the forward filter the live screen shows: the
+	// cumulative's last entry is smoothDistance's per-event figure.
+	const startMs = Date.parse('2026-04-01T00:00:00Z');
+	const track: TrackPoint[] = Array.from({ length: 301 }, (_, i) => ({
+		lat: (i % 2 === 1 ? 2 : -2) / M_PER_DEG,
+		lng: (i * 3) / M_PER_DEG,
+		ts: new Date(startMs + i * 1000).toISOString(),
+	}));
+	const cum = estimatorCumulativeMetres(track);
+	const smoothed = smoothDistance(
+		track.map((p, i) => ({ type: 'fix' as const, t: i, lat: p.lat, lng: p.lng })),
+		10,
+		1,
+		null,
+	);
+	assert.equal(cum.length, track.length);
+	cum.forEach((c, i) => assert.ok(Math.abs(c - smoothed.cumulativeM[i]) <= 1e-9, `point ${i}`));
 });
 
 test('medianFixIntervalS — the median positive interval', () => {

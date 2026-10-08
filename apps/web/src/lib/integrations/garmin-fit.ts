@@ -11,7 +11,7 @@
 
 import type { ActivityType, TrackPoint } from '../types';
 import { haversineMetres } from '../runs/run_stats';
-import { GpsDistanceEstimator } from '../runs/gps_distance';
+import { smoothDistance, type GpsEvent } from '../runs/gps_distance';
 
 /// Canonical per-lap shape registered in docs/backend/metadata.md § laps. `index`
 /// is 1-based; `start_offset_s` is the cumulative duration up to the START
@@ -226,38 +226,46 @@ export function medianFixIntervalS(track: readonly TrackPoint[]): number {
 	return intervals.length % 2 === 1 ? intervals[mid] : (intervals[mid - 1] + intervals[mid]) / 2;
 }
 
-/// Distance covered up to each point, replaying the track through the
-/// spec-v1.1 GPS distance estimator — the filter that owns the run's headline
-/// distance. The raw hop-sum is inflated by GPS noise, so a "5 km" window
-/// measured on it closes early and the best reads too fast. `t` is seconds
-/// since the first timestamped point and the expected fix interval is the
-/// median positive interval, so a sparse track is not re-anchored on every
-/// fix. A point without a timestamp carries the previous cumulative. Lockstep
-/// with `estimatorCumulativeMetres` in apps/mobile_android/lib/embedded_bests.dart
-/// and apps/job_worker/internal/embedded_bests.go.
+/// Distance covered up to each point, replaying the track through the GPS
+/// distance smoother (spec v1.2, docs/features/gps_distance.md) — the same
+/// figure a saved or recomputed run carries. The raw hop-sum is inflated by
+/// GPS noise, so a "5 km" window measured on it closes early and the best
+/// reads too fast. `t` is seconds since the first timestamped point and the
+/// expected fix interval is the median positive interval, so a sparse track is
+/// not re-anchored on every fix. A point without a timestamp carries the
+/// previous cumulative. Lockstep with `estimatorCumulativeMetres` in
+/// apps/mobile_android/lib/embedded_bests.dart and
+/// apps/job_worker/internal/embedded_bests.go.
 export function estimatorCumulativeMetres(
 	track: readonly EstimatorTrackPoint[],
 	maxSpeedMps = 10,
 ): number[] {
-	const est = new GpsDistanceEstimator(maxSpeedMps, medianFixIntervalS(track), null);
-	const out = new Array<number>(track.length).fill(0);
+	const events: GpsEvent[] = [];
+	const eventOf = new Array<number>(track.length).fill(-1);
 	let t0: number | null = null;
 	for (let i = 0; i < track.length; i++) {
 		const p = track[i];
 		const ms = pointMs(p);
-		if (ms != null) {
-			if (t0 == null) t0 = ms;
-			est.addFix(
-				(ms - t0) / 1000,
-				p.lat,
-				p.lng,
-				p.accuracyMetres,
-				p.speedMps,
-				p.speedAccuracyMps,
-				p.bearingDeg,
-			);
-		}
-		out[i] = est.distanceM;
+		if (ms == null) continue;
+		if (t0 == null) t0 = ms;
+		eventOf[i] = events.length;
+		events.push({
+			type: 'fix',
+			t: (ms - t0) / 1000,
+			lat: p.lat,
+			lng: p.lng,
+			acc: p.accuracyMetres,
+			speed: p.speedMps,
+			speedAcc: p.speedAccuracyMps,
+			bearing: p.bearingDeg,
+		});
+	}
+	const cum = smoothDistance(events, maxSpeedMps, medianFixIntervalS(track), null).cumulativeM;
+	const out = new Array<number>(track.length).fill(0);
+	let last = 0;
+	for (let i = 0; i < track.length; i++) {
+		if (eventOf[i] >= 0) last = cum[eventOf[i]];
+		out[i] = last;
 	}
 	return out;
 }

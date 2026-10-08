@@ -35,7 +35,7 @@ apps/web/src/lib/learn/
   guides/*.md          # one .md per guide; filename stem = slug; YAML frontmatter
   guides.ts            # import.meta.glob load; binds the guides_index helpers to the built index (thin, glob-coupled)
   guides_index.ts      # pure, env-free index ops over the entry set — listGuides/getGuide/guidesByCategory + the language-then-English fallback resolver (getGuide / localizedGuideMeta / isEnglishFallback); tsx-testable
-  guides/<slug>.<locale>.md  # optional per-locale prose variants (de/fr/es/ja/pt-BR); resolver falls back within the reader's LANGUAGE first (pt-PT → pt-BR), then English
+  guides/<slug>.<locale>.md  # per-locale prose variants (de/fr/es/ja/pt-BR/pt-PT; every shipped locale, guarded); resolver falls back within the reader's LANGUAGE first (pt-PT → pt-BR), then English
   guides.test.ts       # frontmatter / slug-uniqueness / category / CTA guard (reads .md off disk; tsx-runnable)
   guides_index.test.ts # unit tests for the pure index ops (ordering, locale fallback, empty-category filtering)
   categories.ts        # CATEGORIES catalogue + CTA_TARGETS map (pure; labelKeys typed MessageKey)
@@ -59,8 +59,9 @@ Sitemap entries (hub 0.8 / category 0.6 / guide 0.7 + frontmatter lastmod) are b
 2. Frontmatter: `title`, `description`, `category` (one of `CATEGORIES`), `slug` (= filename stem), `order`, `updated` (ISO date), optional `heroImage`, optional `cta.feature` (one of `CTA_TARGETS`).
 3. Write the body in markdown (`##`/`###`, lists, links). The end-of-article CTA is auto-appended from `cta.feature`.
 4. New category? Add it to `categories.ts` + its `labelKey` to `en.ts` and all six other locales.
-5. `npx tsx --test apps/web/src/lib/learn/guides.test.ts` validates frontmatter / slug / category / CTA (and, for localized files, sibling agreement — see below).
-6. `npm run build --workspace=apps/web` then confirm `build/learn/<slug>.html` exists and `build/sitemap.xml` lists it.
+5. Translate it into every non-English shipped locale (see below) in the same change — `guides.test.ts` fails until `<slug>.<locale>.md` exists for each.
+6. `npx tsx --test apps/web/src/lib/learn/guides.test.ts` validates frontmatter / slug / category / CTA, sibling agreement for localized files, and that coverage.
+7. `npm run build --workspace=apps/web` then confirm `build/learn/<slug>.html` exists and `build/sitemap.xml` lists it.
 
 No DB migration; no deploy step beyond the normal web build/release.
 
@@ -102,7 +103,7 @@ Two layers:
    - The English body still **prerenders** into the static `build/learn/<slug>.html` (the canonical, SEO-indexed copy — `<head>` meta is English by design); the localized component is lazy-resolved client-side after `initLocale` swaps the active locale.
    - `guides.test.ts` guards the localized files: the suffix must be a supported non-default locale, an English source must exist to fall back to, `(slug, locale)` is unique, and the localized frontmatter agrees with its English sibling on `slug`/`category`/`order`/`cta.feature` (only `title`/`description` differ).
 
-   **Localized today:** all eight guides — `road-running-101`, `couch-to-5k`, `choosing-running-shoes`, `weekly-running-routine`, `how-to-pace-your-first-race`, `trail-running-basics`, `what-to-eat-before-a-long-run`, `your-first-race` — in six languages of record (`en` source + `de/fr/es/ja/pt-BR`), 48 files on disk. That is the **prose** set; the `learn.*` chrome ships in all seven UI locales. `pt-PT` carries no prose of its own and needs none — the same-language step serves it the `pt-BR` guide. The prose-localization content is **complete** (2026-06-20); the resolver's field-by-field English fallback stays wired for any future guide added before its translations land. See [decisions.md § 179](../architecture/decisions.md).
+   **Localized today:** all eight guides — `road-running-101`, `couch-to-5k`, `choosing-running-shoes`, `weekly-running-routine`, `how-to-pace-your-first-race`, `trail-running-basics`, `what-to-eat-before-a-long-run`, `your-first-race` — in all seven locales (`en` source + `de/fr/es/ja/pt-BR/pt-PT`), 56 files on disk. The `pt-PT` set landed 2026-10-08, translated from the English source rather than adapted from `pt-BR`, in the catalogue's register (third-person verbs and `o seu`/`a sua`, `você` never written, no `tu`) and its running vocabulary (`prova`, `sapatilhas`, `corrida longa`, `treinador de IA`, `dorsal`); before that the same-language step served Lisbon the Brazilian prose. Like the catalogue it is model-authored and **not natively reviewed** — covered by the native-review item in `followups.md`. Two guards keep the set honest: `guides.test.ts` fails when any English guide lacks a variant for any shipped locale (the fallback chain otherwise hides a missing translation completely), and `locale_reach.test.ts` scans both Portuguese guide sets with the catalogue's own variant-word lists and tu markers. The resolver's field-by-field English fallback stays wired, but the coverage guard means a new guide now ships with its translations rather than before them. See [decisions.md § 179](../architecture/decisions.md).
 
 ## Mobile / watch
 
@@ -120,6 +121,6 @@ A **category page wears the same furniture as the hub** — kicker, chip row wit
 
 ## Tests
 
-- Unit (`npx tsx --test`): `guides.test.ts`, `learn_meta.test.ts`, `sitemap.test.ts` (extended).
+- Unit (`npx tsx --test`): `guides.test.ts` (including every-guide-in-every-locale coverage), `learn_meta.test.ts`, `sitemap.test.ts` (extended); `i18n/locale_reach.test.ts` scans the `pt-BR`/`pt-PT` guides for the other variant's words and for `tu`.
 - Playwright (`apps/web/tests-e2e/learn/`): `hub` (one grid + a promoted guide, chips resolve, every card states a reading time), `article` (plus the Keep-reading block and the header's reading time), `seo`, `category`, `cta-links-resolve`, `localized-prose` (localized body + H1, English fallback + notice, localized hub-card title), `chrome` (the shared PublicHeader/PublicFooter landing chrome on all three learn routes, the header pinned with its glass once scrolled on `/` and `/learn`, and an in-page jump stopping below it).
 - Artifact guards (`apps/web/src/lib/seo/`): `learn_structured_data.test.ts` reads the BUILT pages and pins one JSON-LD block per learn route whose `@type` matches the route kind, a breadcrumb of the right depth whose last rung links nowhere, and a non-empty self-consistent `ItemList` on the two index kinds; `document_title.test.ts` pins that every prerendered page carries exactly one `<title>`, its own. Both self-skip when `apps/web/build` is absent, so they bind only after a production build (decisions § 1167 + § 1168).

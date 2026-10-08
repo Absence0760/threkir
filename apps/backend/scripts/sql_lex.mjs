@@ -39,16 +39,20 @@ function isEscapeString(sql, index) {
 
 /**
  * @param {string} sql
- * @param {{ blankLiterals?: boolean }} [options] blank the CONTENT of every
- *   literal, quoted identifier and dollar-quoted body, keeping the delimiters.
- *   A guard grading SQL keywords wants this: `check (note <> 'not valid')`
- *   otherwise reads as a statement carrying `not valid`.
+ * @param {{ blankLiterals?: boolean, keepIdentifiers?: boolean }} [options]
+ *   `blankLiterals` blanks the CONTENT of every literal, quoted identifier and
+ *   dollar-quoted body, keeping the delimiters. A guard grading SQL keywords
+ *   wants this: `check (note <> 'not valid')` otherwise reads as a statement
+ *   carrying `not valid`. `keepIdentifiers` exempts quoted identifiers from
+ *   that, for a guard that reads names: `"limit" int` is a parameter called
+ *   `limit`, and blanked it is a parameter with no name.
  * @returns {string[]} one entry per statement, comments removed, in file order.
  *   A trailing fragment after the last `;` is included; whitespace-only ones
  *   are dropped.
  */
 export function splitSqlStatements(sql, options = {}) {
 	const blank = options.blankLiterals === true;
+	const keepIdentifiers = options.keepIdentifiers === true;
 	/** @type {string[]} */
 	const statements = [];
 	let buffer = '';
@@ -122,7 +126,8 @@ export function splitSqlStatements(sql, options = {}) {
 			if (!closed) {
 				throw unterminated(opened, char === "'" ? 'string literal' : 'quoted identifier');
 			}
-			buffer += char + (blank ? '' : body) + char;
+			const keep = !blank || (char === '"' && keepIdentifiers);
+			buffer += char + (keep ? body : '') + char;
 			continue;
 		}
 

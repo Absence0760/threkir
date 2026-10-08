@@ -1,7 +1,7 @@
 import { browser, dev } from '$app/environment';
 import { AREA_LOADERS, CORE_LOADERS, FALLBACK_CORE } from 'virtual:i18n-catalogues';
 import { areasForRoute, type Area } from './areas';
-import { CatalogueSet, type Catalogue } from './catalogue_set';
+import { CatalogueSet, holdsServerMarkup, type Catalogue } from './catalogue_set';
 import { interpolate } from './interpolate';
 import { setActiveFormatLocale } from '$lib/format/time';
 import type { MessageKey } from './messages';
@@ -62,12 +62,30 @@ export function m(key: MessageKey, params?: Record<string, string | number>): st
 	return interpolate(value, params, locale);
 }
 
+let firstLoad = true;
+
 /// Load the catalogues `routeId` renders with. Called by the root layout's
 /// `load`, which SvelteKit resolves before any component of the route
 /// renders — on the server for a prerendered page and in the browser for every
 /// navigation. Never rejects (CatalogueSet keeps the current dict on failure).
-export function loadRouteCatalogues(routeId: string | null | undefined): Promise<void> {
-	return catalogues.ensureAreas(areasForRoute(routeId));
+///
+/// On a cold start into the SPA shell there is nothing to hydrate, so the
+/// reader's locale is applied here, before the first render: a German reader
+/// deep-linking to /gym fetches the German core and gym area and never the
+/// English gym area, and sees no English first paint (holdsServerMarkup).
+export async function loadRouteCatalogues(routeId: string | null | undefined): Promise<void> {
+	const areas = areasForRoute(routeId);
+	if (browser && firstLoad) {
+		firstLoad = false;
+		const next = negotiatedLocale();
+		if (next !== DEFAULT_LOCALE && !holdsServerMarkup(document.body.querySelector(':scope > div'))) {
+			// setLocale moves the target synchronously, so ensureAreas fetches
+			// the areas in `next`, not in English.
+			await Promise.all([setLocale(next), catalogues.ensureAreas(areas)]);
+			return;
+		}
+	}
+	await catalogues.ensureAreas(areas);
 }
 
 function applyDocumentLocale(next: Locale): void {
@@ -102,10 +120,8 @@ export async function setLocale(next: Locale): Promise<void> {
 	if (await catalogues.setLocale(next)) applyDocumentLocale(next);
 }
 
-// Detect the visitor's locale on first client mount: a stored choice
-// wins, else navigator.language(s). Called once from +layout.svelte.
-export function initLocale(): void {
-	if (!browser) return;
+// The visitor's locale: a stored choice wins, else navigator.language(s).
+function negotiatedLocale(): Locale {
 	let stored: string | null = null;
 	try {
 		stored = localStorage.getItem('locale');
@@ -116,8 +132,16 @@ export function initLocale(): void {
 		typeof navigator !== 'undefined'
 			? (navigator.languages?.join(',') ?? navigator.language ?? null)
 			: null;
-	const next = negotiateLocale(navLangs, stored);
-	void setLocale(next);
+	return negotiateLocale(navLangs, stored);
+}
+
+// Apply the visitor's locale on first client mount. Called once from
+// +layout.svelte. A no-op fetch-wise when loadRouteCatalogues already applied
+// it before the first render; it still syncs <html lang/dir> and the stored
+// choice, as it always has.
+export function initLocale(): void {
+	if (!browser) return;
+	void setLocale(negotiatedLocale());
 }
 
 export { isSupportedLocale };

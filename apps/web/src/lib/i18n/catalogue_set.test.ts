@@ -3,8 +3,10 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
-import { CatalogueSet, type Catalogue } from './catalogue_set';
+import { CatalogueSet, holdsServerMarkup, type Catalogue } from './catalogue_set';
 
 type L = 'en' | 'de';
 type A = 'gym' | 'clubs';
@@ -176,4 +178,21 @@ test('setting the locale already shown is a no-op', async () => {
 	const h = harness();
 	assert.equal(await h.set.setLocale('en'), true);
 	assert.equal(h.emitted.length, 0, 're-emitting would re-render every m() caller for nothing');
+});
+
+test('the SPA shell holds only its bootstrap script; server-rendered markup holds more', () => {
+	const el = (tagName: string) => ({ tagName });
+	assert.equal(holdsServerMarkup({ children: [el('SCRIPT')] }), false, 'the 200.html shell');
+	assert.equal(holdsServerMarkup({ children: [el('DIV'), el('SCRIPT')] }), true, 'a prerendered page');
+	assert.equal(holdsServerMarkup({ children: [] }), false);
+	assert.equal(holdsServerMarkup(null), false);
+});
+
+test('app.html still wraps the body in the one div holdsServerMarkup reads', () => {
+	// The store passes `body > div` to holdsServerMarkup. If app.html stops
+	// wrapping `%sveltekit.body%` in a single div, the probe reads the wrong
+	// element and every cold start falls back to an English first paint.
+	const html = readFileSync(resolve('src/app.html'), 'utf-8');
+	const body = /<body[^>]*>([\s\S]*)<\/body>/.exec(html)?.[1].trim() ?? '';
+	assert.match(body, /^<div style="display: contents">%sveltekit\.body%<\/div>$/);
 });

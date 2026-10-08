@@ -111,6 +111,16 @@ test('blankLiterals empties the content and keeps the delimiters', () => {
   );
 });
 
+test('keepIdentifiers leaves a quoted identifier readable while literals stay blank', () => {
+  assert.deepEqual(
+    splitSqlStatements("create function f(\"limit\" int default 'x') as $$ y $$;", {
+      blankLiterals: true,
+      keepIdentifiers: true,
+    }).map((s) => s.trim()),
+    ["create function f(\"limit\" int default '') as $$$$"],
+  );
+});
+
 test('a trailing statement with no terminator is still returned', () => {
   assert.deepEqual(
     splitSqlStatements('select 1;\nselect 2').map((s) => s.trim()),

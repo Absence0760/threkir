@@ -1594,6 +1594,18 @@ jobs:
             echo "Reproduce with: node --test scripts/check_watch_page_ring.test.mjs (stdlib only, no install needed)."
             exit 1
           fi
+      # Not a watch check: it shares this job because it is the cheapest one
+      # that already runs bare interpreters against a checkout, and python3
+      # ships on the runner. Issue #1090 item 2: every real track under
+      # fixtures/gps_corpus/ is replayed through the reference estimator and
+      # must land within its own error budget of the course's measured length.
+      - name: GPS ground-truth corpus replays within budget
+        run: |
+          if ! python3 -I scripts/gps_distance/replay_corpus.py; then
+            echo "::error::A GPS corpus entry's replayed distance is outside its error budget, or the corpus is malformed. The table above prints each entry's signed error against the course's measured length. A change to scripts/gps_distance/reference.py moved it: retune, or justify a new budget in that entry's manifest. fixtures/gps_corpus/README.md."
+            echo "Reproduce with: python3 -I scripts/gps_distance/replay_corpus.py (stdlib only, no install needed)."
+            exit 1
+          fi
 
   ios-native-declarations:
     needs: changes

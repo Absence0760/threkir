@@ -4,9 +4,9 @@
 /// tested without the Stripe SDK or the Supabase stack.
 ///
 /// Keep this file free of RUNTIME dependencies — no `Deno.env`, no
-/// `createClient`, no `fetch`, no Stripe value import. It reuses `hmacHex`
-/// + `timingSafeEqual` from _shared/webhook_security.ts (Web Crypto, zero
-/// supply-chain surface) so the verifier is testable against constructed
+/// `createClient`, no `fetch`, no Stripe value import. The signature
+/// verifier is `verifyTimestampedHmac` from _shared/webhook_security.ts (Web
+/// Crypto, zero supply-chain surface), testable against constructed
 /// fixtures.
 ///
 /// The Stripe import below is TYPE-ONLY and is erased before anything is
@@ -18,9 +18,8 @@
 
 import type Stripe from '../_shared/stripe.ts';
 import {
-  hmacHex,
   shouldReleaseDedupe,
-  timingSafeEqual,
+  verifyTimestampedHmac,
 } from '../_shared/webhook_security.ts';
 import {
   type CapacityOutcome,
@@ -405,70 +404,10 @@ export function isPaymentSettled(status: CheckoutSession['paymentStatus']): bool
   return status === 'paid' || status === 'no_payment_required';
 }
 
-/// Verify a Stripe webhook signature.
-///
-/// Stripe signs with the `Stripe-Signature` header in the form
-/// `t=<unix-seconds>,v1=<hex hmac-sha256>` (there can be multiple v1
-/// schemes during a secret rotation, and a `v0` for older schemes which
-/// we ignore). The signed payload is the literal string
-/// `${t}.${rawBody}`, keyed by the endpoint's signing secret (whsec_…).
-///
-/// Verification runs on the RAW request bytes — NOT a JSON.parse'd and
-/// re-stringified body, which won't round-trip whitespace/key-order and
-/// would break every signature.
-///
-/// Two gates, both required:
-///   1. signature — recompute HMAC over `${t}.${rawBody}`, constant-time
-///      compare against each `v1` value (any match passes — covers the
-///      dual-signature rotation window).
-///   2. freshness — reject if `|now - t|` exceeds the tolerance (default
-///      5 min, Stripe's recommended default). This is the replay gate: a
-///      captured POST replayed later fails even though its HMAC is valid.
-export async function verifyStripeSignature(
-  rawBody: string,
-  sigHeader: string | null,
-  secret: string,
-  nowMs: number,
-  toleranceSec = 300,
-): Promise<boolean> {
-  if (!sigHeader || !secret) return false;
-
-  const parts = sigHeader.split(',');
-  let timestamp: number | null = null;
-  const v1Sigs: string[] = [];
-  for (const part of parts) {
-    const idx = part.indexOf('=');
-    if (idx === -1) continue;
-    const key = part.slice(0, idx).trim();
-    const value = part.slice(idx + 1).trim();
-    if (key === 't') {
-      // Exactly an integer literal. `Number.parseInt` stops at the first
-      // character it cannot read, so `t=1700000000junk` and `t=+1700000000`
-      // both recovered the real timestamp and verified — and because the
-      // signed payload is rebuilt from the PARSED integer rather than from
-      // the header text, a change to sign the text instead would have been
-      // invisible to every test, since a clean header round-trips. Requiring
-      // the two to be the same string removes the distinction.
-      if (!/^\d+$/.test(value)) continue;
-      const n = Number.parseInt(value, 10);
-      if (Number.isFinite(n)) timestamp = n;
-    } else if (key === 'v1') {
-      v1Sigs.push(value);
-    }
-  }
-
-  if (timestamp === null || v1Sigs.length === 0) return false;
-
-  // Freshness — reject a stale (replayed) or wildly future-dated event.
-  const ageSec = Math.abs(nowMs / 1000 - timestamp);
-  if (ageSec > toleranceSec) return false;
-
-  const expected = await hmacHex(secret, `${timestamp}.${rawBody}`);
-  for (const candidate of v1Sigs) {
-    if (timingSafeEqual(candidate, expected)) return true;
-  }
-  return false;
-}
+/// Verify a Stripe webhook signature (`Stripe-Signature` header). Stripe's
+/// scheme is the shared `t=,v1=` one RevenueCat also uses — see
+/// `verifyTimestampedHmac` for the payload and the two gates.
+export const verifyStripeSignature = verifyTimestampedHmac;
 
 export interface StripeEventEnvelope {
   id: string;

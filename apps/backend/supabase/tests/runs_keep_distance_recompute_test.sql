@@ -1,4 +1,4 @@
--- Pins migration 20270718000001_runs_keep_distance_recompute.sql: a write from
+-- Pins migration 20270719000003_runs_keep_distance_recompute.sql: a write from
 -- a client that loaded a run before its distance was recomputed cannot put the
 -- inflated figure back or drop the recompute's metadata keys, while a write
 -- from a client that has the recomputed row, a deliberate distance edit, and a

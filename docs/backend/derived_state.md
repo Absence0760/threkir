@@ -46,7 +46,7 @@ retention cron referenced in a comment that was never created.
   GPS distance recompute: when a write changes both `distance_m` and
   `metadata.distance_recomputed_at`, `revoke_unmet_distance_achievements`
   deletes the `distance_single` / `distance_lifetime` tiers the current runs no
-  longer meet (`20270717000001`). Both it and the awarder read the earned set
+  longer meet (`20270719000002`). Both it and the awarder read the earned set
   from `achievement_tiers_met`, which now holds this source list and the
   run-family split.
 - **Authoritative recompute:** the body of `refresh_personal_records_for_user(p_user_id)`

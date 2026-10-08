@@ -1,5 +1,5 @@
 -- A client holding a copy of a run from before its distance was recomputed
--- (20270716000001) cannot write the inflated figure back.
+-- (20270719000001) cannot write the inflated figure back.
 --
 -- The mobile run-detail edit (ApiClient.updateRunFields) and the web saveEdit
 -- PATCH distance_m and the WHOLE metadata bag from whatever the screen loaded,

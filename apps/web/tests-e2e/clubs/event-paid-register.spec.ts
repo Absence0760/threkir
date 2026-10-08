@@ -50,7 +50,6 @@ async function priceEvent(
 		price_cents: opts.priceCents,
 		currency: 'usd',
 		modality: 'in_person',
-		platform_fee_bps: 500,
 		refund_policy: 'full_until_24h',
 		sales_close_offset_minutes: opts.salesCloseOffset ?? 0
 	});

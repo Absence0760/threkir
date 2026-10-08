@@ -3702,7 +3702,6 @@ export async function setEventPricing(
 		currency: string;
 		refund_policy: EventPricing['refund_policy'];
 		sales_close_offset_minutes: number;
-		platform_fee_bps?: number;
 		instance_start?: string | null;
 	}
 ): Promise<void> {
@@ -3714,8 +3713,7 @@ export async function setEventPricing(
 			currency: input.currency,
 			modality: 'in_person',
 			refund_policy: input.refund_policy,
-			sales_close_offset_minutes: input.sales_close_offset_minutes,
-			platform_fee_bps: input.platform_fee_bps ?? 0
+			sales_close_offset_minutes: input.sales_close_offset_minutes
 		},
 		// One arbiter for both branches: event_pricing_event_instance_uniq is
 		// non-partial (NULLS NOT DISTINCT), so a NULL instance_start conflicts

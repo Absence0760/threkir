@@ -1,4 +1,4 @@
--- Pins migration 20270717000001_achievements_revoke_on_distance_recompute.sql:
+-- Pins migration 20270719000002_achievements_revoke_on_distance_recompute.sql:
 -- the distance_recompute worker's write (distance_m and
 -- metadata.distance_recomputed_at changing together) takes back the distance
 -- tiers the corrected figure no longer earns, an ordinary distance edit does

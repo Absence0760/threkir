@@ -1,6 +1,6 @@
 -- request_distance_recompute(uuid) — the owner-only enqueue behind the run
 -- detail page's "Recalculate distance" action (migration
--- 20270716000001_distance_recompute.sql).
+-- 20270719000001_distance_recompute.sql).
 --
 -- Pinned: the function's shape (SECURITY DEFINER with a pinned search_path,
 -- EXECUTE for authenticated and not anon), the owner path enqueuing exactly

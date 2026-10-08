@@ -100,7 +100,7 @@ supabase secrets set --project-ref <ref> \
 
 **RevenueCat webhook URL.** In the RevenueCat dashboard → Project → Integrations → Webhooks, set:
 - URL: `https://<ref>.supabase.co/functions/v1/revenuecat-webhook`
-- Auth header: `Authorization: Bearer <REVENUECAT_WEBHOOK_SECRET>`
+- Leave the authorization header empty, and turn on **HMAC webhook signing**. The signing secret it shows (once) is `REVENUECAT_WEBHOOK_SECRET`. The function verifies RevenueCat's `X-RevenueCat-Webhook-Signature: t=<unix>,v1=<hex>` header over `<t>.<body>`, and refuses any delivery without it.
 
 **Strava webhook URL.** Once you're issuing OAuth tokens you'll need to call `POST https://www.strava.com/api/v3/push_subscriptions` with our callback URL `https://<ref>.supabase.co/functions/v1/strava-webhook?secret=<STRAVA_WEBHOOK_SECRET>` and the `STRAVA_VERIFY_TOKEN`. Strava verifies, persists the subscription, and starts firing events.
 

@@ -1,5 +1,5 @@
 -- A distance badge earned on an inflated GPS distance is taken back when the
--- owner-requested `distance_recompute` job (20270716000001) lowers the run.
+-- owner-requested `distance_recompute` job (20270719000001) lowers the run.
 --
 -- Awards are durable by design: award_achievements_for_user only inserts, so a
 -- deleted run or an ordinary edit never takes a badge away. The recompute is

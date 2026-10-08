@@ -150,6 +150,11 @@ const (
 	// graph, beside distance_m and never in place of it.
 	MetaSubSport            = "sub_sport"
 	MetaDistanceMapMatchedM = "distance_map_matched_m"
+	// Written by the distance recompute and the map_match watch step: the
+	// SHA-256 of the track bytes the smoothed-position sidecar was built
+	// for, present only while that sidecar is stored, so a reader fetches
+	// the sidecar only for the track it names.
+	MetaSmoothedSidecarSHA256 = "smoothed_sidecar_sha256"
 )
 
 // PrefsKey is a key inside the `user_settings.prefs` jsonb bag — the

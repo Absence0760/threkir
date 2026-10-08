@@ -12,7 +12,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 )
 
 const drSidecar = drUserID + "/" + drRunID + ".smoothed.json.gz"
@@ -176,10 +178,13 @@ func TestDistanceRecompute_WritesTheSidecarOnTheSmoothedPass(t *testing.T) {
 	if sc.Track != fingerprintTrack(raw, 101) || len(sc.Positions) != 101 {
 		t.Errorf("sidecar names %+v over %d positions, want the downloaded track's fingerprint over 101", sc.Track, len(sc.Positions))
 	}
+	if got := b.distance.updates[0].Metadata["smoothed_sidecar_sha256"]; got != sc.Track.SHA256 {
+		t.Errorf("metadata.smoothed_sidecar_sha256 = %v, want the sidecar's track hash %s in the distance write", got, sc.Track.SHA256)
+	}
 }
 
 func TestDistanceRecompute_NoSidecarOnTheForwardPass(t *testing.T) {
-	w, b := distanceWorker(t, appRun(`{}`), legacyStopTrack())
+	w, b := distanceWorker(t, appRun(`{"smoothed_sidecar_sha256":"`+strings.Repeat("ab", 32)+`"}`), legacyStopTrack())
 	if err := w.handleDistanceRecompute(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID})); err != nil {
 		t.Fatalf("handle: %v", err)
 	}
@@ -191,6 +196,9 @@ func TestDistanceRecompute_NoSidecarOnTheForwardPass(t *testing.T) {
 	}
 	if len(b.storageDeleted) != 1 || len(b.storageDeleted[0]) != 1 || b.storageDeleted[0][0] != drSidecar {
 		t.Errorf("deleted = %v, want the sidecar an earlier smoothed-pass recompute may have left", b.storageDeleted)
+	}
+	if _, ok := b.distance.updates[0].Metadata["smoothed_sidecar_sha256"]; ok {
+		t.Error("the distance write must drop the key that named the removed sidecar")
 	}
 }
 
@@ -215,16 +223,76 @@ func TestDistanceRecompute_SidecarFailureDoesNotFailTheRecompute(t *testing.T) {
 	if len(b.distance.updates) != 1 {
 		t.Fatalf("updates = %d, want the distance written", len(b.distance.updates))
 	}
+	if _, ok := b.distance.updates[0].Metadata["smoothed_sidecar_sha256"]; ok {
+		t.Error("a sidecar that was not stored must not be named on the run")
+	}
 }
 
-func TestDistanceRecompute_NoSidecarWhenTheWriteNeverLands(t *testing.T) {
+func TestDistanceRecompute_ARetriedWriteNamesTheSidecarOnce(t *testing.T) {
+	w, b := distanceWorker(t, appRun(`{}`), straightDopplerTrack(11, 2.5))
+	b.distance.casMisses = 1
+	if err := w.handleDistanceRecompute(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID})); err != nil {
+		t.Fatalf("handle: %v", err)
+	}
+	raw, _ := json.Marshal(straightDopplerTrack(11, 2.5))
+	want := fingerprintTrack(raw, 11).SHA256
+	if len(b.distance.updates) != 1 || b.distance.updates[0].Metadata["smoothed_sidecar_sha256"] != want {
+		t.Fatalf("updates = %+v, want one write naming %s", b.distance.updates, want)
+	}
+	if sc := b.distance.sidecars[drSidecar]; sc == nil || sc.Track.SHA256 != want {
+		t.Errorf("stored sidecar = %+v, want the one the write names", sc)
+	}
+}
+
+func TestDistanceRecompute_NoWriteNoNamedSidecar(t *testing.T) {
 	w, b := distanceWorker(t, appRun(`{}`), straightDopplerTrack(11, 2.5))
 	b.distance.casMisses = distanceRecomputeMaxAttempts
 	if err := w.handleDistanceRecompute(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID})); err == nil {
 		t.Fatal("want the attempts-exhausted error")
 	}
+	// The sidecar goes up before each attempt, but only a landed distance
+	// write names it, so the object is one no reader fetches.
+	if len(b.distance.updates) != 0 {
+		t.Errorf("updates = %+v, want none", b.distance.updates)
+	}
+}
+
+func TestDistanceRecompute_ATrackWithItsOwnPairDropsAStaleKey(t *testing.T) {
+	track := straightDopplerTrack(11, 2.5)
+	track[3].SmoothedLat, track[3].SmoothedLng = f64(40.00001), f64(-75.00001)
+	w, b := distanceWorker(t, appRun(`{"smoothed_sidecar_sha256":"`+strings.Repeat("cd", 32)+`"}`), track)
+	if err := w.handleDistanceRecompute(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID})); err != nil {
+		t.Fatalf("handle: %v", err)
+	}
 	if len(b.distance.sidecars) != 0 {
-		t.Error("a recompute whose distance never landed must not write a sidecar")
+		t.Errorf("sidecars = %v, want none for a track that carries its own pair", b.distance.sidecars)
+	}
+	if _, ok := b.distance.updates[0].Metadata["smoothed_sidecar_sha256"]; ok {
+		t.Error("a key naming a sidecar this recompute did not write must go")
+	}
+}
+
+func TestMergeDistanceMetadata_SetsAndRemovesTheSidecarKey(t *testing.T) {
+	now := time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC)
+	meta := map[string]json.RawMessage{"title": json.RawMessage(`"Tempo"`)}
+	raw, err := mergeDistanceMetadata(meta, 5000, EstimatorPassSmoothed, "abc", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	_ = json.Unmarshal(raw, &got)
+	if got["smoothed_sidecar_sha256"] != "abc" || got["title"] != "Tempo" {
+		t.Fatalf("merged = %v", got)
+	}
+	meta["smoothed_sidecar_sha256"] = json.RawMessage(`"abc"`)
+	raw, _ = mergeDistanceMetadata(meta, 5000, EstimatorPassForward, "", now)
+	got = nil
+	_ = json.Unmarshal(raw, &got)
+	if _, ok := got["smoothed_sidecar_sha256"]; ok || got["title"] != "Tempo" {
+		t.Fatalf("merged = %v, want the key removed and the rest kept", got)
+	}
+	if _, ok := meta["title"]; !ok || len(meta) != 2 {
+		t.Error("the merge must not mutate the bag it read")
 	}
 }
 
@@ -255,6 +323,47 @@ func TestMapMatch_WritesTheSidecarForAWatchRun(t *testing.T) {
 	sc := b.distance.sidecars["user-1/run-1.smoothed.json.gz"]
 	if sc == nil || len(sc.Positions) != 60 {
 		t.Fatalf("sidecars = %v, want one for the watch run's 60 waypoints", b.distance.sidecars)
+	}
+	if n := len(b.road.writes); n != 1 || b.road.writes[n-1]["smoothed_sidecar_sha256"] != sc.Track.SHA256 {
+		t.Errorf("metadata writes = %v, want one naming the sidecar's track hash %s", b.road.writes, sc.Track.SHA256)
+	}
+}
+
+func TestMapMatch_RecordsTheSidecarThroughACASMiss(t *testing.T) {
+	w, b, job := watchSidecarWorker(t, watchRun(`{"title":"Long"}`), straightDopplerTrack(60, 2.5), fakeRoadMatcher{})
+	b.road.casMisses = 1
+	if err := w.handleMapMatch(context.Background(), job); err != nil {
+		t.Fatal(err)
+	}
+	sc := b.distance.sidecars["user-1/run-1.smoothed.json.gz"]
+	if sc == nil || len(b.road.writes) != 1 {
+		t.Fatalf("sidecar = %v, writes = %v; want the key recorded after one re-read", sc, b.road.writes)
+	}
+	if got := b.road.writes[0]; got["smoothed_sidecar_sha256"] != sc.Track.SHA256 || got["title"] != "Long" {
+		t.Errorf("write = %v, want the hash merged over the bag read", got)
+	}
+}
+
+func TestMapMatch_AnUnstoredSidecarIsNeverNamed(t *testing.T) {
+	w, b, job := watchSidecarWorker(t, watchRun(`{}`), straightDopplerTrack(60, 2.5), fakeRoadMatcher{})
+	b.distance.uploadErr = &HTTPError{StatusCode: http.StatusServiceUnavailable}
+	if err := w.handleMapMatch(context.Background(), job); err != nil {
+		t.Fatalf("the sidecar is auxiliary to the match; got %v", err)
+	}
+	if len(b.road.writes) != 0 {
+		t.Errorf("metadata writes = %v, want none for a sidecar that failed to upload", b.road.writes)
+	}
+}
+
+func TestMapMatch_AnUnchangedKeyIsNotRewritten(t *testing.T) {
+	raw, _ := json.Marshal(straightDopplerTrack(60, 2.5))
+	sha := fingerprintTrack(raw, 60).SHA256
+	w, b, job := watchSidecarWorker(t, watchRun(`{"smoothed_sidecar_sha256":"`+sha+`"}`), straightDopplerTrack(60, 2.5), fakeRoadMatcher{})
+	if err := w.handleMapMatch(context.Background(), job); err != nil {
+		t.Fatal(err)
+	}
+	if len(b.road.writes) != 0 {
+		t.Errorf("metadata writes = %v, want none when the run already names this sidecar", b.road.writes)
 	}
 }
 

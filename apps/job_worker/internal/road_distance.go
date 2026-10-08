@@ -237,7 +237,8 @@ func haversineM(a, b TrackPoint) float64 {
 // writeWatchSmoothedSidecar is the map_match job's last step: for a run the
 // wrist recorded (source 'watch', whose recorders keep the forward filter and
 // never store a smoothed pair), replay the stored track through the smoother
-// and write the smoothed-position sidecar. A track with no Doppler that is
+// and write the smoothed-position sidecar, then record its hash on the run
+// (recordSmoothedSidecar). A track with no Doppler that is
 // not a road run by roadDistanceFor gets none, the same rule that keeps the
 // recompute on the forward pass there. road is the match this job just made.
 // Auxiliary like the road distance: the caller logs an error, never fails.
@@ -282,6 +283,13 @@ func (w *Worker) writeWatchSmoothedSidecar(ctx context.Context, runID, trackURL 
 			return nil
 		}
 	}
-	w.writeSmoothedSidecar(ctx, run.UserID, run.ID, track, storedIdx, replay)
+	sha := w.uploadSmoothedSidecar(ctx, run.UserID, run.ID, track, storedIdx, replay)
+	if sha == "" {
+		return nil
+	}
+	if err := w.recordSmoothedSidecar(ctx, runID, trackURL, sha); err != nil {
+		return fmt.Errorf("record smoothed sidecar: %w", err)
+	}
+	w.Log.Info("smoothed sidecar written", "run_id", runID, "points", track.Fingerprint.Points)
 	return nil
 }

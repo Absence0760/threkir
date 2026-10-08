@@ -34,6 +34,12 @@ name: Release iOS
 #                                         straight lines and says so, as on Android)
 #   PUBLIC_SENTRY_DSN, MOBILE_LIVE_HUB_URL, MOBILE_STRAVA_CLIENT_ID      (optional)
 #
+# The Apple Watch app reads none of dart_defines.json: Flutter hands it to Xcode
+# only as DART_DEFINES, which no watchOS code decodes. PUBLIC_SUPABASE_URL and
+# PUBLIC_SUPABASE_ANON_KEY reach the watch as the build settings its Info.plist
+# expands, through the untracked Flutter/WatchRuntime.xcconfig written below, and
+# the built .ipa is checked for them before upload (decisions § 1810).
+#
 # The signing secrets and GOOGLE_SERVICE_INFO_PLIST_BASE64 live in the
 # `production` environment beside Android's keystore; the PUBLIC_* ones are
 # repository secrets shared with the web release.
@@ -235,6 +241,16 @@ jobs:
             APP_RELEASE: env.APP_RELEASE
           }' > dart_defines.json
 
+      # The watch's Info.plist expands SupabaseURL / SupabaseAnonKey from the
+      # SUPABASE_URL / SUPABASE_ANON_KEY build settings, and Flutter/WatchApp.xcconfig
+      # includes this file to define them. The script refuses a value that is
+      # not an https origin or a client key, and prints only lengths.
+      - name: Write the watch app's Supabase config
+        env:
+          SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.PUBLIC_SUPABASE_ANON_KEY }}
+        run: node scripts/ios_watch_runtime_config.mjs write apps/mobile_ios/ios/Flutter/WatchRuntime.xcconfig
+
       - name: Build the signed IPA
         working-directory: apps/mobile_ios
         run: flutter build ipa --release --export-options-plist="$RUNNER_TEMP/ExportOptions.plist" --dart-define-from-file=dart_defines.json
@@ -250,6 +266,24 @@ jobs:
             exit 1
           fi
           echo "path=apps/mobile_ios/$found" >> "$GITHUB_OUTPUT"
+
+      # Before anything keeps or uploads the IPA. The include in WatchApp.xcconfig
+      # is optional by design, so a missing or misnamed file builds green and
+      # ships a watch that cannot sign in; only the bundle itself can say the
+      # settings arrived. Compared with the secrets, so a value an xcconfig
+      # comment truncated fails too. Prints lengths, never a value.
+      - name: The shipped watch app carries its Supabase config
+        env:
+          IPA_PATH: ${{ steps.ipa.outputs.path }}
+          SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          plist="$RUNNER_TEMP/WatchApp-Info.plist"
+          if ! unzip -p "$IPA_PATH" 'Payload/*.app/Watch/WatchApp.app/Info.plist' > "$plist" || [ ! -s "$plist" ]; then
+            echo "::error::The IPA has no Payload/<app>/Watch/WatchApp.app/Info.plist, so the Apple Watch app is not embedded in it at all."
+            exit 1
+          fi
+          plutil -convert json -o - "$plist" | node scripts/ios_watch_runtime_config.mjs verify -
 
       # Before the upload, as on Android: if TestFlight refuses the build, the
       # signed IPA still lands somewhere durable to upload by hand. An artifact
@@ -291,8 +325,8 @@ jobs:
           # Matches Info.plist's ITSAppUsesNonExemptEncryption = false.
           uses-non-exempt-encryption: 'false'
 
-      - name: Remove the signing keychain and the runtime config
+      - name: Remove the signing keychain and the runtime configs
         if: always()
         run: |
           if [ -n "${KEYCHAIN_PATH:-}" ]; then security delete-keychain "$KEYCHAIN_PATH" || true; fi
-          rm -f apps/mobile_ios/dart_defines.json "$RUNNER_TEMP"/*.mobileprovision
+          rm -f apps/mobile_ios/dart_defines.json apps/mobile_ios/ios/Flutter/WatchRuntime.xcconfig "$RUNNER_TEMP/WatchApp-Info.plist" "$RUNNER_TEMP"/*.mobileprovision

@@ -162,10 +162,60 @@ class GoalProgress {
   });
 }
 
-/// Pure evaluator: given a goal and the full run list, compute progress
-/// for every active target.
+/// The plan-workout fields that say whether a session was marked done by
+/// hand. The week lead's [LeadPlanWorkout] implements it, so the dashboard
+/// hands the same list to the lead and to [evaluateGoal].
+abstract interface class PlanCompletion {
+  String get scheduledDate;
+  double? get targetDistanceM;
+  bool get manuallyCompleted;
+  String? get completedRunId;
+}
+
+String _localIsoDate(DateTime d) {
+  final mo = d.month.toString().padLeft(2, '0');
+  final da = d.day.toString().padLeft(2, '0');
+  return '${d.year}-$mo-$da';
+}
+
+/// Plan workouts the runner marked done without a linked run, scheduled from
+/// [from]'s calendar day through [now]'s. Such a session is activity the
+/// runner says happened (a treadmill run logged elsewhere, a run recorded on
+/// a device that never synced), so it counts toward a period the way web's
+/// This Week card has always counted it, with its target distance standing in
+/// for the distance nobody recorded. A workout with a linked run is left out
+/// because that run is already counted, and a future-dated one because a mark
+/// on a day that has not happened is not activity yet. The one definition
+/// behind both the week lead and the Goals section (decisions § 1813).
+({double distanceM, int count}) markedDoneTally(
+  List<PlanCompletion> workouts,
+  DateTime from,
+  DateTime now,
+) {
+  final first = _localIsoDate(from);
+  final last = _localIsoDate(now);
+  var distanceM = 0.0;
+  var count = 0;
+  for (final w in workouts) {
+    if (!(w.manuallyCompleted && w.completedRunId == null)) continue;
+    if (w.scheduledDate.compareTo(first) < 0 ||
+        w.scheduledDate.compareTo(last) > 0) {
+      continue;
+    }
+    distanceM += w.targetDistanceM ?? 0;
+    count += 1;
+  }
+  return (distanceM: distanceM, count: count);
+}
+
+/// Pure evaluator: given a goal, the full run list and the active plan's
+/// workouts, compute progress for every active target. Workouts marked done
+/// without a run add to the distance and run-count targets through
+/// [markedDoneTally]; time and pace stay with recorded runs, since a mark
+/// carries no duration anyone measured.
 GoalProgress evaluateGoal(RunGoal goal, List<Run> runs, DateTime now,
-    {String weekStartDay = 'monday'}) {
+    {String weekStartDay = 'monday',
+    List<PlanCompletion> planWorkouts = const []}) {
   final periodStart =
       goalPeriodStart(goal.period, now, weekStartDay: weekStartDay);
   final periodEnd = goalPeriodEnd(goal.period, now, weekStartDay: weekStartDay);
@@ -175,6 +225,8 @@ GoalProgress evaluateGoal(RunGoal goal, List<Run> runs, DateTime now,
           !r.startedAt.isBefore(periodStart) &&
           r.startedAt.isBefore(periodEnd))
       .toList();
+  final marked = markedDoneTally(planWorkouts, periodStart, now);
+  final activityCount = inPeriod.length + marked.count;
 
   // Pace calculations exclude cycling — a distance-weighted average would
   // otherwise be dominated by a single long bike ride.
@@ -182,7 +234,9 @@ GoalProgress evaluateGoal(RunGoal goal, List<Run> runs, DateTime now,
       .where((r) => r.metadata?['activity_type'] != 'cycle')
       .toList();
 
-  final totalMetres = inPeriod.fold<double>(0, (s, r) => s + r.distanceMetres);
+  final totalMetres =
+      inPeriod.fold<double>(0, (s, r) => s + r.distanceMetres) +
+          marked.distanceM;
   final totalSeconds =
       inPeriod.fold<int>(0, (s, r) => s + r.duration.inSeconds);
 
@@ -193,7 +247,7 @@ GoalProgress evaluateGoal(RunGoal goal, List<Run> runs, DateTime now,
       kind: GoalTargetKind.distance,
       target: goal.distanceMetres!,
       current: totalMetres,
-      runsInPeriod: inPeriod.length,
+      runsInPeriod: activityCount,
       now: now,
       periodStart: periodStart,
       periodEnd: periodEnd,
@@ -235,7 +289,7 @@ GoalProgress evaluateGoal(RunGoal goal, List<Run> runs, DateTime now,
   if (goal.runCount != null) {
     targets.add(_evalRunCount(
       target: goal.runCount!,
-      current: inPeriod.length.toDouble(),
+      current: activityCount.toDouble(),
     ));
   }
 
@@ -254,7 +308,7 @@ GoalProgress evaluateGoal(RunGoal goal, List<Run> runs, DateTime now,
     targets: targets,
     overallPercent: overall,
     complete: complete,
-    runCount: inPeriod.length,
+    runCount: activityCount,
   );
 }
 

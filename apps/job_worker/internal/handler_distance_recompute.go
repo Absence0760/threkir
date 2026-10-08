@@ -118,7 +118,10 @@ func (w *Worker) handleDistanceRecompute(ctx context.Context, job *Job) error {
 		if replay.Fixes < 2 {
 			return fmt.Errorf("track %s has %d timestamped waypoints; need at least 2", *run.TrackURL, replay.Fixes)
 		}
-		pass, why := w.distanceEstimatorPass(ctx, run, meta, pts, replay)
+		pass, why, err := w.distanceEstimatorPass(ctx, run, meta, pts, replay)
+		if err != nil {
+			return fmt.Errorf("classify road run: %w", err)
+		}
 		rawDistanceM, cum := replay.SmoothedM, replay.SmoothedCumM
 		if pass == EstimatorPassForward {
 			rawDistanceM, cum = replay.ForwardM, replay.ForwardCumM
@@ -261,23 +264,28 @@ func mergeDistanceMetadata(meta map[string]json.RawMessage, previousDistanceM fl
 // roadDistanceFor: either that step already measured this track along the
 // road graph (metadata.distance_map_matched_m), or the matcher measures it
 // now and the classifier accepts it, checked against the smoothed figure
-// because the stored distance_m of an old run is the inflated hop-sum. A
-// matcher failure is auxiliary to the distance and leaves the run unclassified,
-// which keeps the forward figure.
+// because the stored distance_m of an old run is the inflated hop-sum.
+//
+// A transient matcher failure (an engine 5xx, a timeout) is returned, so the
+// job is deferred and retried rather than stamping the run kalman_v2 with a
+// figure its classification never decided: a stamped run is no longer offered
+// Recalculate, so an outage would have pinned every road run it touched to the
+// forward pass for good. Only a non-transient matcher verdict keeps the
+// forward figure, as an unclassifiable run.
 func (w *Worker) distanceEstimatorPass(
 	ctx context.Context, run *DistanceRecomputeRun, meta map[string]json.RawMessage,
 	pts []RecordedTrackPoint, replay trackReplay,
-) (string, string) {
+) (string, string, error) {
 	if !replay.PositionOnly {
-		return EstimatorPassSmoothed, "track carries Doppler speed"
+		return EstimatorPassSmoothed, "track carries Doppler speed", nil
 	}
 	var matched float64
 	if json.Unmarshal(meta[schema.MetaDistanceMapMatchedM], &matched) == nil && matched > 0 {
-		return EstimatorPassSmoothed, "road run: map_match measured it on the road graph"
+		return EstimatorPassSmoothed, "road run: map_match measured it on the road graph", nil
 	}
 	rm, ok := w.Matcher.(RoadDistanceMatcher)
 	if !ok {
-		return EstimatorPassForward, "no road matcher to classify a position-only track"
+		return EstimatorPassForward, "no road matcher to classify a position-only track", nil
 	}
 	raw := make([]TrackPoint, 0, len(pts))
 	for _, p := range pts {
@@ -285,8 +293,11 @@ func (w *Worker) distanceEstimatorPass(
 	}
 	out, road, err := rm.MatchWithRoadDistance(ctx, raw)
 	if err != nil {
-		w.Log.Warn("distance recompute road match failed; keeping the forward pass", "run_id", run.ID, "err", err)
-		return EstimatorPassForward, "road match failed"
+		if isTransient(err) {
+			return "", "", err
+		}
+		w.Log.Warn("distance recompute road match refused; keeping the forward pass", "run_id", run.ID, "err", err)
+		return EstimatorPassForward, "road match failed", nil
 	}
 	if len(out) < 2 {
 		road = RoadMatch{}
@@ -297,7 +308,7 @@ func (w *Worker) distanceEstimatorPass(
 		DistanceM: replay.SmoothedM, Metadata: run.Metadata, Route: run.Route,
 	}
 	if v, reason := roadDistanceFor(candidate, meta, raw, road); v == nil {
-		return EstimatorPassForward, "not a road run: " + reason
+		return EstimatorPassForward, "not a road run: " + reason, nil
 	}
-	return EstimatorPassSmoothed, "road run: matched on the road graph"
+	return EstimatorPassSmoothed, "road run: matched on the road graph", nil
 }

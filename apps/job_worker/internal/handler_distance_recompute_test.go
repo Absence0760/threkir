@@ -255,16 +255,39 @@ func TestDistanceRecompute_DopplerTrackKeepsTheSmoothedPass(t *testing.T) {
 	}
 }
 
-// errRoadMatcher is a RoadDistanceMatcher whose engine is down.
-type errRoadMatcher struct{}
+// errRoadMatcher is a RoadDistanceMatcher whose engine answers status.
+type errRoadMatcher struct{ status int }
 
 func (errRoadMatcher) Algorithm() string { return "err-road" }
 func (errRoadMatcher) Version() string   { return "v1" }
-func (errRoadMatcher) Match(context.Context, []TrackPoint) ([]TrackPoint, error) {
-	return nil, &HTTPError{StatusCode: http.StatusBadGateway}
+func (m errRoadMatcher) Match(context.Context, []TrackPoint) ([]TrackPoint, error) {
+	return nil, &HTTPError{StatusCode: m.status}
 }
-func (errRoadMatcher) MatchWithRoadDistance(context.Context, []TrackPoint) ([]TrackPoint, RoadMatch, error) {
-	return nil, RoadMatch{}, &HTTPError{StatusCode: http.StatusBadGateway}
+func (m errRoadMatcher) MatchWithRoadDistance(context.Context, []TrackPoint) ([]TrackPoint, RoadMatch, error) {
+	return nil, RoadMatch{}, &HTTPError{StatusCode: m.status}
+}
+
+// An engine outage must not decide the pass: a run written now is stamped
+// kalman_v2 and never offered Recalculate again, so a road run recomputed
+// during a 502 would keep the forward figure for good. The job is deferred
+// instead, and nothing is written.
+func TestDistanceRecompute_TransientRoadMatchFailureDefersTheJob(t *testing.T) {
+	for _, status := range []int{http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusTooManyRequests} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			w, b := distanceWorker(t, appRun(`{}`), legacyStopTrack())
+			w.Matcher = errRoadMatcher{status: status}
+			err := w.handleDistanceRecompute(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID}))
+			if err == nil {
+				t.Fatal("handle returned nil; want the matcher's error so the job is deferred")
+			}
+			if !isTransient(err) {
+				t.Errorf("err %v is not transient; the worker would fail the job instead of deferring it", err)
+			}
+			if len(b.distance.updates) != 0 {
+				t.Errorf("updates = %d, want 0 — nothing may be stamped before the run is classified", len(b.distance.updates))
+			}
+		})
+	}
 }
 
 // legacyRoadMatch reports the legacy stop track as matched end to end at the
@@ -293,7 +316,7 @@ func TestDistanceRecompute_PositionOnlyTrackPicksItsPassByTheRoadClassifier(t *t
 	}{
 		{"no matcher configured", nil, nil, "forward", forward},
 		{"matcher without road distance", nopMatcherForRecompute{}, nil, "forward", forward},
-		{"matcher down", errRoadMatcher{}, nil, "forward", forward},
+		{"matcher refuses the track", errRoadMatcher{status: http.StatusBadRequest}, nil, "forward", forward},
 		{"not matched end to end", fakeRoadMatcher{road: RoadMatch{}}, nil, "forward", forward},
 		{"matched road run", fakeRoadMatcher{road: legacyRoadMatch()}, nil, "smoothed", smoothed},
 		{"matched but a hike", fakeRoadMatcher{road: legacyRoadMatch()},

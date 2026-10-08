@@ -274,7 +274,7 @@ Every incoming `Position` goes through:
 
 ### Live pace
 
-`RunSnapshot.currentPaceSecondsPerKm` is the estimator's distance gained over the last ~200 m, divided by the time it took (`RunRecorder._calculatePace`). Every fix the estimator takes appends `(estimator time, estimator distance)` to `_paceSamples`, pruned to the shortest tail that still spans 200 m. Pace is null until five fixes and 50 m have landed since the window was last sealed.
+`RunSnapshot.currentPaceSecondsPerKm` is the estimator's distance gained over the last ~200 m, divided by the time it took (`RunRecorder._calculatePace`). Every fix the estimator takes appends `(estimator time, estimator distance)` to `_paceSamples`, pruned to the shortest tail that still spans 200 m. Pace is null until five fixes and 50 m have landed since the window was last sealed. A sample with a non-finite time or distance is dropped before it reaches the window, so the pace is never NaN or Infinity (the watch ports' `PaceWindow` / `LivePaceWindow` do the same).
 
 It used to sum haversine hops between consecutive **track** points instead, which over-read by the same GPS jitter the estimator removes from the headline distance: a steady 5:00/km with fixes 1.25 m either side of the line summed to 4:00/km. The value feeds the pace-alert and cut-off catch-up voice cues and the cut-off ETA projection, so a runner could be told they were ahead when they were on pace (#1090 item 1). `calculate_pace_test.dart` pins the zig-zag at 5:00/km with Doppler and from positions alone.
 

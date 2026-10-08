@@ -416,4 +416,48 @@ void main() {
       expect(r.debugPaceSecondsPerKm, closeTo(300, 3));
     });
   });
+
+  // Every comparison against NaN is false, so a NaN sample used to pass the
+  // ordering and gap checks and make the pace NaN; an infinite distance made
+  // it 0 s/km. Both are dropped now, as PaceWindow (watch_ios) and
+  // LivePaceWindow (watch_wear) drop them.
+  group('live pace rejects a non-finite sample', () {
+    // Five samples 10 s and 50 m apart: 40 s over 200 m is 200 s/km.
+    RunRecorder steadyWindow() {
+      final r = RunRecorder()..debugPrepareWithoutStream();
+      r.begin();
+      for (var i = 0; i < 5; i++) {
+        r.debugAddPaceSample(i * 10.0, i * 50.0);
+      }
+      expect(r.debugPaceSecondsPerKm, closeTo(200, 1e-9));
+      return r;
+    }
+
+    test('a non-finite time leaves the pace as it was', () {
+      final r = steadyWindow();
+      addTearDown(r.dispose);
+      r.debugAddPaceSample(double.nan, 250);
+      r.debugAddPaceSample(double.infinity, 250);
+      r.debugAddPaceSample(double.negativeInfinity, 250);
+      expect(r.debugPaceSecondsPerKm, closeTo(200, 1e-9));
+      // The next finite sample still lands: the window prunes to (10 s, 50 m)
+      // and reads 35 s over 200 m.
+      r.debugAddPaceSample(45, 250);
+      expect(r.debugPaceSecondsPerKm, closeTo(175, 1e-9));
+    });
+
+    test('a non-finite distance leaves the pace as it was', () {
+      final r = steadyWindow();
+      addTearDown(r.dispose);
+      r.debugAddPaceSample(41, double.nan);
+      r.debugAddPaceSample(42, double.infinity);
+      r.debugAddPaceSample(43, double.negativeInfinity);
+      final pace = r.debugPaceSecondsPerKm;
+      expect(pace, isNotNull);
+      expect(pace!.isFinite, isTrue);
+      expect(pace, closeTo(200, 1e-9));
+      r.debugAddPaceSample(45, 250);
+      expect(r.debugPaceSecondsPerKm, closeTo(175, 1e-9));
+    });
+  });
 }

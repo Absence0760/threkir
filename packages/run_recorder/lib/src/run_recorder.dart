@@ -964,6 +964,12 @@ class RunRecorder {
   @visibleForTesting
   double? get debugPaceSecondsPerKm => _calculatePace();
 
+  /// Test-only: append one (estimator time, estimator distance) sample to the
+  /// live pace window, as a fix the estimator took would.
+  @visibleForTesting
+  void debugAddPaceSample(double t, double distanceM) =>
+      _addPaceSample(t, distanceM);
+
   /// Test-only: distance from [pos] to the end of the loaded route, summed
   /// along the remaining route segments. Null when no route is loaded.
   /// Advances the route match, exactly as a trusted fix does.
@@ -1111,11 +1117,15 @@ class RunRecorder {
     _paceSamplesSinceSeal = 0;
   }
 
-  void _addPaceSample(double t) {
+  // A non-finite sample is dropped, not stored: every comparison against NaN
+  // is false, so it would pass the ordering and gap checks and turn the pace
+  // into NaN for as long as it stayed in the window. Mirrors `PaceWindow.add`
+  // (watch_ios) and `LivePaceWindow.add` (watch_wear).
+  void _addPaceSample(double t, double m) {
+    if (!t.isFinite || !m.isFinite) return;
     final last = _paceSamples.isEmpty ? null : _paceSamples.last;
     if (last != null && t <= last.t) return;
     if (last != null && t - last.t > _estimatorGapS) _sealPaceWindow();
-    final m = _estimator.distanceM;
     _paceSamples.addLast((t: t, m: m));
     _paceSamplesSinceSeal++;
     while (_paceSamples.length > 2 &&
@@ -1568,7 +1578,7 @@ class RunRecorder {
       if (eventIndex != null && _track.length > trackLengthBefore) {
         _stretch?.trackLinks.add((track: trackLengthBefore, event: eventIndex));
       }
-      if (estT != null) _addPaceSample(estT);
+      if (estT != null) _addPaceSample(estT, _estimator.distanceM);
     } else {
       _currentWaypointTrusted = true;
     }

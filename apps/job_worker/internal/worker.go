@@ -166,13 +166,13 @@ type Backend interface {
 	NotifyDataExportReady(ctx context.Context, exportJobID string) (bool, error)
 	// Distance-recompute path — kind='distance_recompute', enqueued by the
 	// owner-only request_distance_recompute RPC. Replays the stored track
-	// through the spec-v1 estimator (internal/gpsdistance) and rewrites
-	// runs.distance_m. ReadRunForDistanceRecompute returns ErrRunNotFound
+	// through the spec-v1.1 estimator (internal/gpsdistance) and rewrites
+	// runs.distance_m plus the four fastest_* embedded bests. ReadRunForDistanceRecompute returns ErrRunNotFound
 	// for a deleted run; UpdateRunDistance returns
 	// ErrRunChangedDuringRecompute when its track_url + metadata CAS misses.
 	ReadRunForDistanceRecompute(ctx context.Context, runID string) (*DistanceRecomputeRun, error)
 	DownloadRecordedTrack(ctx context.Context, path string) ([]RecordedTrackPoint, error)
-	UpdateRunDistance(ctx context.Context, read *DistanceRecomputeRun, distanceM float64, metadata json.RawMessage) error
+	UpdateRunDistance(ctx context.Context, read *DistanceRecomputeRun, upd RunDistanceUpdate) error
 }
 
 // WebPushSender is the transport for kind='web_push' jobs. Production wires

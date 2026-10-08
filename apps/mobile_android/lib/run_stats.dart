@@ -101,19 +101,34 @@ const double windowToleranceRatio = 1e-9;
 /// the precise start time — otherwise the result would be quantised to
 /// whichever waypoint first pushed the window over the threshold, which
 /// is noisy for sparse tracks. O(n).
-Duration? fastestWindowOf(List<Waypoint> track, double windowMetres) {
+///
+/// [cumulative], when given, is the distance covered up to each waypoint
+/// (same length as [track]) and replaces the raw haversine hop-sum — the
+/// embedded-best writer passes the GPS distance estimator's cumulative so
+/// GPS noise cannot close a window early.
+Duration? fastestWindowOf(
+  List<Waypoint> track,
+  double windowMetres, {
+  List<double>? cumulative,
+}) {
   final n = track.length;
   if (n < 2 || windowMetres <= 0) return null;
+  if (cumulative != null && cumulative.length != n) {
+    throw ArgumentError.value(
+        cumulative.length, 'cumulative', 'must have one entry per waypoint ($n)');
+  }
 
-  final cum = List<double>.filled(n, 0);
-  for (var i = 1; i < n; i++) {
-    cum[i] = cum[i - 1] +
-        haversineMetres(
-          track[i - 1].lat,
-          track[i - 1].lng,
-          track[i].lat,
-          track[i].lng,
-        );
+  final cum = cumulative ?? List<double>.filled(n, 0);
+  if (cumulative == null) {
+    for (var i = 1; i < n; i++) {
+      cum[i] = cum[i - 1] +
+          haversineMetres(
+            track[i - 1].lat,
+            track[i - 1].lng,
+            track[i].lat,
+            track[i].lng,
+          );
+    }
   }
   final covers = windowMetres * (1 - windowToleranceRatio);
   if (cum[n - 1] < covers) return null;

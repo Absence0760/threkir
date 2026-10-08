@@ -17,6 +17,7 @@ import (
 type distanceUpdate struct {
 	RunID     string
 	DistanceM float64
+	Bests     map[string]*int
 	Metadata  map[string]any
 }
 
@@ -66,7 +67,7 @@ func (f *fakeBackend) DownloadRecordedTrack(_ context.Context, path string) ([]R
 	return pts, nil
 }
 
-func (f *fakeBackend) UpdateRunDistance(_ context.Context, read *DistanceRecomputeRun, distanceM float64, metadata json.RawMessage) error {
+func (f *fakeBackend) UpdateRunDistance(_ context.Context, read *DistanceRecomputeRun, upd RunDistanceUpdate) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.distance == nil {
@@ -77,10 +78,10 @@ func (f *fakeBackend) UpdateRunDistance(_ context.Context, read *DistanceRecompu
 		return ErrRunChangedDuringRecompute
 	}
 	var meta map[string]any
-	if err := json.Unmarshal(metadata, &meta); err != nil {
+	if err := json.Unmarshal(upd.Metadata, &meta); err != nil {
 		return err
 	}
-	f.distance.updates = append(f.distance.updates, distanceUpdate{RunID: read.ID, DistanceM: distanceM, Metadata: meta})
+	f.distance.updates = append(f.distance.updates, distanceUpdate{RunID: read.ID, DistanceM: upd.DistanceM, Bests: upd.EmbeddedBests, Metadata: meta})
 	return nil
 }
 
@@ -289,9 +290,10 @@ func TestDistanceRecompute_UntimedWaypointsAreSkippedAndTimeStartsAtTheFirstTime
 	if got := b.distance.updates[0].DistanceM; got != 25 {
 		t.Errorf("distance_m = %v, want 25", got)
 	}
-	fixes := recordedTrackFixes(track)
-	if len(fixes) != 10 || fixes[0].T != 0 || fixes[1].T != 1 {
-		t.Errorf("fixes = %d, first t = %v, %v", len(fixes), fixes[0].T, fixes[1].T)
+	pts := coordinatePoints(track)
+	cum, _, fixes := replayRecordedTrack(pts, 10)
+	if len(pts) != 11 || fixes != 10 || cum[0] != 0 || cum[1] != 0 || cum[2] != 2.5 {
+		t.Errorf("points = %d, fixes = %d, cum[:3] = %v", len(pts), fixes, cum[:3])
 	}
 }
 
@@ -410,7 +412,12 @@ func TestUpdateRunDistance_IsConditionalOnTrackAndMetadata(t *testing.T) {
 		_, _ = w.Write([]byte(respond))
 	})
 	run := appRun(`{"title":"a, b"}`)
-	if err := client.UpdateRunDistance(context.Background(), &run, 5000.12, json.RawMessage(`{"title":"a, b","distance_estimator":"kalman_v1"}`)); err != nil {
+	fiveK := 1498
+	if err := client.UpdateRunDistance(context.Background(), &run, RunDistanceUpdate{
+		DistanceM:     5000.12,
+		EmbeddedBests: map[string]*int{"fastest_5k_s": &fiveK, "fastest_10k_s": nil},
+		Metadata:      json.RawMessage(`{"title":"a, b","distance_estimator":"kalman_v1"}`),
+	}); err != nil {
 		t.Fatalf("update: %v", err)
 	}
 	if gotQuery.Get("id") != "eq."+drRunID || gotQuery.Get("track_url") != "eq."+drTrack {
@@ -425,18 +432,54 @@ func TestUpdateRunDistance_IsConditionalOnTrackAndMetadata(t *testing.T) {
 	if string(gotBody["distance_m"]) != "5000.12" || !strings.Contains(string(gotBody["metadata"]), "kalman_v1") {
 		t.Errorf("body = %v", gotBody)
 	}
+	if string(gotBody["fastest_5k_s"]) != "1498" || string(gotBody["fastest_10k_s"]) != "null" {
+		t.Errorf("bests in body = %s / %s, want 1498 / null", gotBody["fastest_5k_s"], gotBody["fastest_10k_s"])
+	}
 
 	respond = `[]`
-	if err := client.UpdateRunDistance(context.Background(), &run, 1, json.RawMessage(`{}`)); !errors.Is(err, ErrRunChangedDuringRecompute) {
+	if err := client.UpdateRunDistance(context.Background(), &run, RunDistanceUpdate{DistanceM: 1, Metadata: json.RawMessage(`{}`)}); !errors.Is(err, ErrRunChangedDuringRecompute) {
 		t.Errorf("zero-row PATCH: err = %v, want ErrRunChangedDuringRecompute", err)
 	}
 
 	respond = `[{"id":"x"}]`
 	nullRun := appRun(`null`)
-	if err := client.UpdateRunDistance(context.Background(), &nullRun, 1, json.RawMessage(`{}`)); err != nil {
+	if err := client.UpdateRunDistance(context.Background(), &nullRun, RunDistanceUpdate{DistanceM: 1, Metadata: json.RawMessage(`{}`)}); err != nil {
 		t.Fatalf("update: %v", err)
 	}
 	if gotQuery.Get("metadata") != "is.null" {
 		t.Errorf("null metadata filter = %q, want is.null", gotQuery.Get("metadata"))
+	}
+}
+
+func TestDistanceRecompute_WritesEmbeddedBestsFromTheEstimatorCumulative(t *testing.T) {
+	w, b := distanceWorker(t, appRun(`{}`), zigZagTrack(1800, 6000, 2))
+	if err := w.handleDistanceRecompute(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID})); err != nil {
+		t.Fatalf("handle: %v", err)
+	}
+	u := b.distance.updates[0]
+	if len(u.Bests) != 4 {
+		t.Fatalf("bests = %v, want all four columns", u.Bests)
+	}
+	if s := u.Bests["fastest_5k_s"]; s == nil || *s < 1480 || *s > 1520 {
+		t.Errorf("fastest_5k_s = %v, want ~1500 s (6 km at 5:00/km)", s)
+	}
+	for _, col := range []string{"fastest_10k_s", "fastest_half_marathon_s", "fastest_marathon_s"} {
+		if u.Bests[col] != nil {
+			t.Errorf("%s = %d, want null for a 6 km run", col, *u.Bests[col])
+		}
+	}
+}
+
+func TestDistanceRecompute_ShortRunNullsEveryEmbeddedBest(t *testing.T) {
+	w, b := distanceWorker(t, appRun(`{}`), straightDopplerTrack(101, 2.5))
+	if err := w.handleDistanceRecompute(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID})); err != nil {
+		t.Fatalf("handle: %v", err)
+	}
+	bests := b.distance.updates[0].Bests
+	for _, d := range embeddedBestDistances {
+		v, ok := bests[d.Column]
+		if !ok || v != nil {
+			t.Errorf("%s: present = %v, value = %v; want an explicit null", d.Column, ok, v)
+		}
 	}
 }

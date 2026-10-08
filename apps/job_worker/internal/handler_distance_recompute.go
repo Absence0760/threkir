@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/Absence0760/threkir/apps/job_worker/internal/gpsdistance"
 	"github.com/Absence0760/threkir/apps/job_worker/internal/schema"
 )
 
@@ -58,9 +57,10 @@ func maxSpeedMpsForActivity(activityType string) float64 {
 	}
 }
 
-// handleDistanceRecompute replays a stored track through the spec-v1
+// handleDistanceRecompute replays a stored track through the spec-v1.1
 // estimator and rewrites runs.distance_m, keeping the originally
-// recorded figure in metadata.distance_recorded_m.
+// recorded figure in metadata.distance_recorded_m, and rewrites the four
+// fastest_* embedded bests from the same replay's cumulative distance.
 func (w *Worker) handleDistanceRecompute(ctx context.Context, job *Job) error {
 	var p DistanceRecomputePayload
 	if err := json.Unmarshal(job.Payload, &p); err != nil {
@@ -95,22 +95,22 @@ func (w *Worker) handleDistanceRecompute(ctx context.Context, job *Job) error {
 		if err != nil {
 			return fmt.Errorf("download track: %w", err)
 		}
-		fixes := recordedTrackFixes(pts)
-		if len(fixes) < 2 {
-			return fmt.Errorf("track %s has %d timestamped waypoints; need at least 2", *run.TrackURL, len(fixes))
+		pts = coordinatePoints(pts)
+		cum, rawDistanceM, fixes := replayRecordedTrack(pts, maxSpeedMpsForActivity(run.ActivityType))
+		if fixes < 2 {
+			return fmt.Errorf("track %s has %d timestamped waypoints; need at least 2", *run.TrackURL, fixes)
 		}
-		est := gpsdistance.New(maxSpeedMpsForActivity(run.ActivityType))
-		for _, f := range fixes {
-			est.AddFix(f)
-		}
-		est.Finish(fixes[len(fixes)-1].T)
-		distanceM := math.Round(est.DistanceM()*100) / 100
+		distanceM := math.Round(rawDistanceM*100) / 100
 
 		merged, err := mergeDistanceMetadata(meta, run.DistanceM, time.Now().UTC())
 		if err != nil {
 			return err
 		}
-		err = w.Backend.UpdateRunDistance(ctx, run, distanceM, merged)
+		err = w.Backend.UpdateRunDistance(ctx, run, RunDistanceUpdate{
+			DistanceM:     distanceM,
+			EmbeddedBests: embeddedBestsOver(pts, cum),
+			Metadata:      merged,
+		})
 		if errors.Is(err, ErrRunChangedDuringRecompute) {
 			w.Log.Info("run changed during distance recompute; re-reading",
 				"run_id", p.RunID, "attempt", attempt)
@@ -123,7 +123,7 @@ func (w *Worker) handleDistanceRecompute(ctx context.Context, job *Job) error {
 			"run_id", p.RunID,
 			"previous_m", run.DistanceM,
 			"distance_m", distanceM,
-			"fixes", len(fixes),
+			"fixes", fixes,
 		)
 		return nil
 	}
@@ -179,32 +179,6 @@ func distanceRecomputeSkipReason(run *DistanceRecomputeRun, meta map[string]json
 		return "recorded live by " + metaString(meta, schema.MetaDistanceEstimator)
 	}
 	return ""
-}
-
-// recordedTrackFixes turns stored waypoints into estimator fixes, in
-// order, with t in seconds since the first timestamped waypoint.
-// Waypoints without a timestamp or a coordinate are skipped.
-func recordedTrackFixes(pts []RecordedTrackPoint) []gpsdistance.Fix {
-	fixes := make([]gpsdistance.Fix, 0, len(pts))
-	var t0 time.Time
-	for _, p := range pts {
-		if p.Timestamp == nil || p.Lat == nil || p.Lng == nil {
-			continue
-		}
-		if len(fixes) == 0 {
-			t0 = *p.Timestamp
-		}
-		fixes = append(fixes, gpsdistance.Fix{
-			T:                p.Timestamp.Sub(t0).Seconds(),
-			Lat:              *p.Lat,
-			Lng:              *p.Lng,
-			AccuracyM:        p.AccuracyM,
-			SpeedMps:         p.SpeedMps,
-			SpeedAccuracyMps: p.SpeedAccuracyMps,
-			BearingDeg:       p.BearingDeg,
-		})
-	}
-	return fixes
 }
 
 // mergeDistanceMetadata adds the recompute's three keys to the bag and

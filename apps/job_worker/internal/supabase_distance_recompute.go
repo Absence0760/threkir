@@ -96,23 +96,35 @@ func (c *SupabaseClient) DownloadRecordedTrack(ctx context.Context, path string)
 	return pts, nil
 }
 
-// UpdateRunDistance writes the recomputed distance and the merged
-// metadata bag, conditional on the run still holding the track_url and
+// RunDistanceUpdate is what one recompute writes: the distance, every
+// fastest_* column keyed by name (nil writes null), and the merged bag.
+type RunDistanceUpdate struct {
+	DistanceM     float64
+	EmbeddedBests map[string]*int
+	Metadata      json.RawMessage
+}
+
+// UpdateRunDistance writes the recomputed distance, the embedded bests and
+// the merged metadata bag in one PATCH, conditional on the run still holding the track_url and
 // metadata the worker read. PostgREST cannot merge into a jsonb column,
 // so the merge is done by the caller over the bytes it read; the
 // metadata filter (jsonb equality, so key order is irrelevant) is what
 // stops that read-modify-write from erasing a concurrent edit — a title
 // rename, a gear tag. Returns ErrRunChangedDuringRecompute on a miss.
 func (c *SupabaseClient) UpdateRunDistance(
-	ctx context.Context, read *DistanceRecomputeRun, distanceM float64, metadata json.RawMessage,
+	ctx context.Context, read *DistanceRecomputeRun, upd RunDistanceUpdate,
 ) error {
 	if read.TrackURL == nil {
 		return errors.New("update run distance: read carries no track_url")
 	}
-	payload, err := json.Marshal(map[string]any{
-		"distance_m": distanceM,
-		"metadata":   metadata,
-	})
+	fields := map[string]any{
+		"distance_m": upd.DistanceM,
+		"metadata":   upd.Metadata,
+	}
+	for col, secs := range upd.EmbeddedBests {
+		fields[col] = secs
+	}
+	payload, err := json.Marshal(fields)
 	if err != nil {
 		return err
 	}

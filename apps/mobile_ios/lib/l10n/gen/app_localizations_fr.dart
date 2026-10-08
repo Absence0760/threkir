@@ -2749,16 +2749,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runDetailSectionElevation => 'Dénivelé';
 
   @override
-  String get runDetailPaceLegendTitle => 'Allure vs médiane';
-
-  @override
   String get runDetailPaceBandFaster => 'Plus rapide';
 
   @override
-  String get runDetailPaceBandSteady => 'Régulier';
+  String get runDetailPaceBandSlower => 'Plus lent';
 
   @override
-  String get runDetailPaceBandSlower => 'Plus lent';
+  String get runDetailMapPaceColours => 'Couleurs d\'allure';
 
   @override
   String get runDetailSectionLaps => 'Tours';

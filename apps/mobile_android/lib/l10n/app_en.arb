@@ -3521,21 +3521,17 @@
   "@runDetailSectionElevation": {
     "description": "Section header for the elevation chart on run-detail"
   },
-  "runDetailPaceLegendTitle": "Pace vs median",
-  "@runDetailPaceLegendTitle": {
-    "description": "Caption of the pace-band legend under the run-detail elevation chart"
-  },
   "runDetailPaceBandFaster": "Faster",
   "@runDetailPaceBandFaster": {
-    "description": "Legend key for elevation-chart segments run faster than the run's median pace"
-  },
-  "runDetailPaceBandSteady": "Steady",
-  "@runDetailPaceBandSteady": {
-    "description": "Legend key for elevation-chart segments run within 10% of the run's median pace"
+    "description": "Fast end of the run-detail map's pace-colour legend"
   },
   "runDetailPaceBandSlower": "Slower",
   "@runDetailPaceBandSlower": {
-    "description": "Legend key for elevation-chart segments run slower than the run's median pace"
+    "description": "Slow end of the run-detail map's pace-colour legend"
+  },
+  "runDetailMapPaceColours": "Pace colours",
+  "@runDetailMapPaceColours": {
+    "description": "Toggle chip on the run-detail map that colours the route by smoothed pace instead of one solid colour"
   },
   "runDetailSectionLaps": "Laps",
   "@runDetailSectionLaps": {

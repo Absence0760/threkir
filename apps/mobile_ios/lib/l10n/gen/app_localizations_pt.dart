@@ -2738,16 +2738,13 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runDetailSectionElevation => 'Elevação';
 
   @override
-  String get runDetailPaceLegendTitle => 'Ritmo vs mediana';
-
-  @override
   String get runDetailPaceBandFaster => 'Mais depressa';
 
   @override
-  String get runDetailPaceBandSteady => 'Constante';
+  String get runDetailPaceBandSlower => 'Mais lento';
 
   @override
-  String get runDetailPaceBandSlower => 'Mais lento';
+  String get runDetailMapPaceColours => 'Cores de ritmo';
 
   @override
   String get runDetailSectionLaps => 'Voltas';
@@ -17220,16 +17217,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get runDetailSectionElevation => 'Elevação';
 
   @override
-  String get runDetailPaceLegendTitle => 'Ritmo x mediana';
-
-  @override
   String get runDetailPaceBandFaster => 'Mais rápido';
 
   @override
-  String get runDetailPaceBandSteady => 'Constante';
+  String get runDetailPaceBandSlower => 'Mais lento';
 
   @override
-  String get runDetailPaceBandSlower => 'Mais lento';
+  String get runDetailMapPaceColours => 'Cores de ritmo';
 
   @override
   String get runDetailSectionLaps => 'Voltas';

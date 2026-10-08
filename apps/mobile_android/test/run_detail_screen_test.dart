@@ -1107,19 +1107,38 @@ void main() {
       );
     });
 
-    // Issue #666 round 2: the elevation chart's pace banding existed only
-    // in a Dart doc comment — nothing on screen said the fill meant pace.
-    testWidgets('elevation chart carries a pace-band legend', (tester) async {
+    // The map draws one solid line by default; pace colouring is an
+    // explicit choice, and its legend only appears once it is on.
+    testWidgets('map pace colours are off until the chip is toggled',
+        (tester) async {
       tester.view.physicalSize = const Size(1000, 5000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
       await _pump(tester, _elevationRun());
 
-      expect(find.text('Pace vs median'), findsOneWidget);
+      final chip = find.widgetWithText(FilterChip, 'Pace colours');
+      expect(chip, findsOneWidget);
+      expect(tester.widget<FilterChip>(chip).selected, isFalse);
+      expect(find.text('Faster'), findsNothing);
+
+      await tester.tap(chip);
+      await tester.pump();
+
+      expect(tester.widget<FilterChip>(chip).selected, isTrue);
       expect(find.text('Faster'), findsOneWidget);
-      expect(find.text('Steady'), findsOneWidget);
       expect(find.text('Slower'), findsOneWidget);
+    });
+
+    testWidgets('elevation chart labels its distance axis', (tester) async {
+      tester.view.physicalSize = const Size(1000, 5000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await _pump(tester, _elevationRun());
+
+      expect(find.text('Elevation'), findsWidgets);
+      expect(find.textContaining(RegExp(r'^0(\.0+)? ?(km|mi)$')), findsWidgets);
     });
   });
 

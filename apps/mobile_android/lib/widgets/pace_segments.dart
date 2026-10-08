@@ -1,4 +1,6 @@
 
+import 'dart:math' as math;
+
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -149,5 +151,167 @@ List<Polyline> buildPaceSegments({
   }
   emit(runStart, segCount);
 
+  return out;
+}
+
+/// Finished-run pace ramp, slow → fast. Sequential (one hue family, ordered
+/// by lightness) rather than the live map's six-bucket traffic light, so a
+/// steady run reads as one warm line instead of confetti. Kept in lockstep
+/// with `PACE_GRADIENT_RAMP` in `pace_segments.ts`.
+const paceGradientRamp = <Color>[
+  Color(0xFFFACC15), // yellow — slowest
+  Color(0xFFF97316), // orange
+  Color(0xFFDC2626), // red — fastest
+];
+
+/// Half-width of the centred window [smoothedSpeeds] averages over. One GPS
+/// fix a second at ~3 m apart has metres of position error, which swings a
+/// fix-to-fix speed by 30-100 %; 30 s of travel averages that out while
+/// still showing a hill or a stoplight.
+const paceSmoothingHalfWindowS = 15.0;
+
+/// Number of distance bins a finished-run pace line is drawn in.
+const paceGradientBins = 128;
+
+/// Per-point speed (m/s) over a centred ±[paceSmoothingHalfWindowS] window,
+/// measured as along-track distance over elapsed time. Null where the point
+/// has no timestamp or the window spans no time.
+List<double?> smoothedSpeeds(List<Waypoint> track) {
+  final n = track.length;
+  final out = List<double?>.filled(n, null);
+  if (n < 2) return out;
+  final cum = List<double>.filled(n, 0);
+  for (var i = 1; i < n; i++) {
+    final a = track[i - 1], b = track[i];
+    cum[i] = cum[i - 1] + haversineMetres(a.lat, a.lng, b.lat, b.lng);
+  }
+  final secs = List<double?>.generate(n, (i) {
+    final t = track[i].timestamp;
+    return t == null ? null : t.millisecondsSinceEpoch / 1000.0;
+  });
+  var lo = 0;
+  var hi = 0;
+  for (var i = 0; i < n; i++) {
+    final s = secs[i];
+    if (s == null) continue;
+    while (lo < i &&
+        (secs[lo] == null || secs[lo]! < s - paceSmoothingHalfWindowS)) {
+      lo++;
+    }
+    if (hi < i) hi = i;
+    while (hi + 1 < n &&
+        secs[hi + 1] != null &&
+        secs[hi + 1]! <= s + paceSmoothingHalfWindowS) {
+      hi++;
+    }
+    final dt = secs[hi]! - secs[lo]!;
+    if (dt <= 0) continue;
+    out[i] = (cum[hi] - cum[lo]) / dt;
+  }
+  return out;
+}
+
+/// One colour stop on a finished-run pace line: [fraction] is the position
+/// along the track by distance (0..1), [t] the pace on the run's own scale
+/// (0 = slowest, 1 = fastest).
+class PaceStop {
+  final double fraction;
+  final double t;
+  const PaceStop(this.fraction, this.t);
+}
+
+/// Colour stops for a finished run's pace line, one per non-empty distance
+/// bin. The domain is the run's own 5th-95th percentile of smoothed speed, so
+/// a stop at a crossing or a GPS spike cannot stretch the scale for the rest
+/// of the run. Empty when the track carries no usable timing.
+List<PaceStop> paceGradientStops(
+  List<Waypoint> track, {
+  int bins = paceGradientBins,
+}) {
+  final n = track.length;
+  if (n < 2 || bins < 1) return const [];
+  final speeds = smoothedSpeeds(track);
+  final known = [for (final v in speeds) if (v != null) v]..sort();
+  if (known.isEmpty) return const [];
+  final lo = known[((known.length - 1) * 0.05).floor()];
+  final hi = known[((known.length - 1) * 0.95).floor()];
+  final span = hi - lo;
+
+  final cum = List<double>.filled(n, 0);
+  for (var i = 1; i < n; i++) {
+    final a = track[i - 1], b = track[i];
+    cum[i] = cum[i - 1] + haversineMetres(a.lat, a.lng, b.lat, b.lng);
+  }
+  final total = cum[n - 1];
+  if (total <= 0) return const [];
+
+  final sums = List<double>.filled(bins, 0);
+  final counts = List<int>.filled(bins, 0);
+  for (var i = 0; i < n; i++) {
+    final v = speeds[i];
+    if (v == null) continue;
+    final t = span < 0.05 ? 0.5 : ((v - lo) / span).clamp(0.0, 1.0);
+    final bin = math.min(bins - 1, (cum[i] / total * bins).floor());
+    sums[bin] += t;
+    counts[bin]++;
+  }
+  return [
+    for (var b = 0; b < bins; b++)
+      if (counts[b] > 0) PaceStop((b + 0.5) / bins, sums[b] / counts[b]),
+  ];
+}
+
+/// The [paceGradientRamp] colour at [t] (0 = slowest, 1 = fastest).
+Color paceGradientColour(double t) {
+  final c = t.clamp(0.0, 1.0) * (paceGradientRamp.length - 1);
+  final i = math.min(c.floor(), paceGradientRamp.length - 2);
+  return Color.lerp(paceGradientRamp[i], paceGradientRamp[i + 1], c - i)!;
+}
+
+/// Polylines for a finished run's pace line: the track cut at the
+/// [paceGradientStops] bin boundaries, each piece coloured by its bin.
+/// Neighbouring bins differ by a shade, so the pieces read as one continuous
+/// gradient. Empty when the track carries no usable timing.
+List<Polyline> buildPaceGradientPolylines({
+  required List<Waypoint> track,
+  required List<LatLng> rendered,
+  double strokeWidth = 5,
+}) {
+  assert(track.length == rendered.length,
+      'track and rendered must have matching lengths');
+  final stops = paceGradientStops(track);
+  if (stops.isEmpty) return const [];
+  final n = track.length;
+  final cum = List<double>.filled(n, 0);
+  for (var i = 1; i < n; i++) {
+    final a = track[i - 1], b = track[i];
+    cum[i] = cum[i - 1] + haversineMetres(a.lat, a.lng, b.lat, b.lng);
+  }
+  final total = cum[n - 1];
+  final tByBin = List<double?>.filled(paceGradientBins, null);
+  for (final s in stops) {
+    tByBin[math.min(paceGradientBins - 1, (s.fraction * paceGradientBins).floor())] =
+        s.t;
+  }
+  var carried = stops.first.t;
+  for (var b = 0; b < paceGradientBins; b++) {
+    carried = tByBin[b] ?? carried;
+    tByBin[b] = carried;
+  }
+  int binOf(int i) =>
+      math.min(paceGradientBins - 1, (cum[i] / total * paceGradientBins).floor());
+
+  final out = <Polyline>[];
+  var start = 0;
+  for (var i = 1; i < n; i++) {
+    final last = i == n - 1;
+    if (!last && binOf(i) == binOf(start)) continue;
+    out.add(Polyline(
+      points: rendered.sublist(start, i + 1),
+      strokeWidth: strokeWidth,
+      color: paceGradientColour(tByBin[binOf(start)]!),
+    ));
+    start = i;
+  }
   return out;
 }

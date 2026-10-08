@@ -15,6 +15,7 @@
 	const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
 	const PUBLIC_TILE_STYLE_URL = env.PUBLIC_TILE_STYLE_URL ?? '';
 	import ElevationProfile from '$lib/components/ElevationProfile.svelte';
+	import { cumulativeMetres, smoothElevation } from '$lib/runs/elevation_profile';
 	import RunSocial from '$lib/components/RunSocial.svelte';
 	import RunShareView from '$lib/components/RunShareView.svelte';
 	import StaticMapImage from '$lib/components/StaticMapImage.svelte';
@@ -1187,7 +1188,11 @@
 	// every dropout. Null when too few points carry an altitude to draw a
 	// profile at all.
 	let elevationSamples = $derived(elevationSeries(baseTrack));
-	let elevations = $derived(elevationSamples ?? []);
+	/// Drawn smoothed over an along-track window: phone GPS altitude wanders
+	/// by metres between fixes, which the raw series drew as a sawtooth.
+	let elevations = $derived(
+		elevationSamples ? smoothElevation(elevationSamples, cumulativeMetres(baseTrack)) : [],
+	);
 	let hasElevation = $derived(elevationSamples !== null);
 
 	/// Linked-cursor index — fed by ElevationProfile's onhover, consumed

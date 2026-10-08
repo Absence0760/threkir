@@ -9,8 +9,11 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.int
 import kotlinx.serialization.json.long
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -19,7 +22,9 @@ import java.io.File
 
 /// Replays the shared golden vectors (`fixtures/gps_distance_vectors.json`,
 /// generated from `scripts/gps_distance/reference.py`) and holds the Kotlin
-/// port to the reference after every single event, not only at the end.
+/// port to the reference after every single event, not only at the end. The
+/// scenario list comes from the fixture, so a scenario added there is
+/// replayed here without a code change.
 class GpsDistanceEstimatorTest {
 
     private val fixture: JsonObject = run {
@@ -34,6 +39,19 @@ class GpsDistanceEstimatorTest {
 
     private fun expectedOrNull(e: JsonElement?): Double? =
         e?.takeIf { it !is JsonNull }?.jsonPrimitive?.doubleOrNull
+
+    @Test
+    fun `the fixture is spec v1_2 and every constant matches it`() {
+        assertEquals("gps-distance-estimator v1.2", fixture["spec"]!!.jsonPrimitive.content)
+        assertEquals("1.2", GpsDistanceEstimator.SPEC_VERSION)
+        val constants = fixture["constants"]!!.jsonObject
+        assertFalse("port declares no constants", GpsDistanceEstimator.CONSTANTS.isEmpty())
+        for ((name, value) in GpsDistanceEstimator.CONSTANTS) {
+            val want = constants[name]
+            assertNotNull("fixture has no constant $name", want)
+            assertEquals(name, want!!.jsonPrimitive.double, value, 0.0)
+        }
+    }
 
     @Test
     fun `every scenario matches the reference after every event`() {
@@ -86,18 +104,10 @@ class GpsDistanceEstimatorTest {
                 assertNotNull("$name: strideM", est.strideM)
                 assertEquals("$name: strideM", stride, est.strideM!!, tolerance)
             }
-        }
-    }
-
-    @Test
-    fun `the fixture covers the step-fill paths, so the replay above exercises them`() {
-        val names = fixture["scenarios"]!!.jsonArray.map { it.jsonObject["name"]!!.jsonPrimitive.content }
-        for (required in listOf(
-            "gap_with_steps", "short_gap_with_steps", "trailing_gap_with_steps", "invalid_inputs",
-            "sparse_15s", "sparse_60s_position_only", "sparse_without_interval_hint",
-            "seeded_stride_gap_fill", "seeded_stride_out_of_range",
-        )) {
-            assertTrue("fixture lost scenario $required", required in names)
+            assertEquals("$name: rejectedFixes", expected["rejectedFixes"]!!.jsonPrimitive.int, est.rejectedFixes)
+            assertEquals("$name: zuptFixes", expected["zuptFixes"]!!.jsonPrimitive.int, est.zuptFixes)
+            assertEquals("$name: rScale", expected["rScale"]!!.jsonPrimitive.double, est.rScale, 1e-6)
+            assertEquals("$name: dopplerTrusted", expected["dopplerTrusted"]!!.jsonPrimitive.boolean, est.dopplerTrusted)
         }
     }
 

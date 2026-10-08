@@ -84,7 +84,7 @@ apps/watch_wear/
             │   │   ├── RecordingRepository.kt   # process-singleton StateFlow
             │   │   ├── CheckpointStore.kt       # in-progress recovery snapshot
             │   │   ├── CheckpointRecovery.kt    # grade a survivor before offering it
-            │   │   ├── GpsDistanceEstimator.kt  # spec-v1 Kalman distance (shared vectors)
+            │   │   ├── GpsDistanceEstimator.kt  # spec-v1.2 forward Kalman distance (shared vectors)
             │   │   ├── LivePace.kt              # live pace over the estimator's last ~200 m
             │   │   ├── TrackWriter.kt           # streaming GPS to disk JSON
             │   │   ├── TrackStorage.kt          # durable track dir + cache migration + orphan sweep
@@ -575,8 +575,10 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   Geolocator surfaces as a stream error. Initial no-fix
   (`lastPointAtMs == 0L`) is explicitly not a stall; that's indoor mode.
 - **Distance is the shared estimator, not a hop sum.**
-  `recording/GpsDistanceEstimator.kt` is the Kotlin port of
-  `scripts/gps_distance/reference.py` ([docs/features/gps_distance.md](../../docs/features/gps_distance.md)),
+  `recording/GpsDistanceEstimator.kt` is the Kotlin port of the spec-v1.2
+  forward filter in `scripts/gps_distance/reference.py` (gate, adaptive R,
+  Doppler cross-check and debias, pedometer ZUPT; no smoother —
+  [docs/features/gps_distance.md](../../docs/features/gps_distance.md)),
   held to `fixtures/gps_distance_vectors.json` after every event by
   `GpsDistanceEstimatorTest`. Change it only together with the reference and
   every other port. `onGps` feeds it every fix that passes `GpsRecorder`'s

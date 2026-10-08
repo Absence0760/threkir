@@ -1,12 +1,14 @@
 package com.runapp.watchwear.recording
 
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
+import kotlin.math.sqrt
 
-/// GPS distance estimator, spec v1.1 — the Wear OS port of
+/// GPS distance estimator, spec v1.2 (forward filter) — the Wear OS port of
 /// `scripts/gps_distance/reference.py`, which is the spec. Read
 /// `docs/features/gps_distance.md` before changing anything here: every port
 /// replays `fixtures/gps_distance_vectors.json` to 1e-3 m, so a change to one
@@ -16,6 +18,10 @@ import kotlin.math.sin
 /// is the interval the recorder samples GPS at on purpose: it scales the gap
 /// and fresh-fix windows. `initialStrideM` carries a stride learned earlier
 /// (e.g. before a pause) and is ignored outside the stride bounds.
+///
+/// The watch runs only the forward (causal) filter; the spec's smoother is
+/// ported where the saved figure is computed from a whole run (phone, web,
+/// server).
 class GpsDistanceEstimator(
     val maxSpeedMps: Double = 10.0,
     val expectedIntervalS: Double = 1.0,
@@ -35,6 +41,15 @@ class GpsDistanceEstimator(
 
     val distanceM: Double get() = gpsDistanceM + stepDistanceM
 
+    var rScale = 1.0
+        private set
+    var rejectedFixes = 0
+        private set
+    var zuptFixes = 0
+        private set
+    var dopplerTrusted = true
+        private set
+
     private var lat0: Double? = null
     private var lng0: Double? = null
     private var x: Axis? = null
@@ -45,6 +60,27 @@ class GpsDistanceEstimator(
     private var lastSteps: Long? = null
     private var lastStepT: Double? = null
     private var pendingStepM = 0.0
+
+    private var rejectStreak = 0
+    private var xcDoppler = 0.0
+    private var xcPos = 0.0
+    private var xcTime = 0.0
+    private var xcPersistS = 0.0
+    private var xcLastX = 0.0
+    private var xcLastY = 0.0
+    private var xcLastT = 0.0
+    private var stepsSeen = false
+    private var lastStepIncT = 0.0
+    private var zuptReleased = false
+    private var zuptAnchorX: Double? = null
+    private var zuptAnchorY = 0.0
+
+    /// The pedometer says stationary: steps seen this run, none for
+    /// ZUPT_NO_STEP_S, and trusted Doppler not contradicting it.
+    private fun zuptDue(t: Double, dop: Double?): Boolean {
+        if (!stepsSeen || zuptReleased || t - lastStepIncT <= ZUPT_NO_STEP_S) return false
+        return !(dop != null && dopplerTrusted && dop >= ZUPT_DOPPLER_OVERRIDE_MPS)
+    }
 
     fun addFix(
         t: Double,
@@ -60,21 +96,31 @@ class GpsDistanceEstimator(
             lat0 = lat
             lng0 = lng
         }
-        val zx = Math.toRadians(lng - lng0!!) * EARTH_RADIUS_M * cos(Math.toRadians(lat0!!))
+        val zx = Math.toRadians(wrapLng(lng - lng0!!)) * EARTH_RADIUS_M * cos(Math.toRadians(lat0!!))
         val zy = Math.toRadians(lat - lat0!!) * EARTH_RADIUS_M
         val sigma = accuracyM?.takeIf { it.isFinite() && it > 0 } ?: MIN_POS_SIGMA_M
         val s = max(sigma, MIN_POS_SIGMA_M)
-        val r = s * s
+        val rStated = s * s
+        val r = max(rStated * rScale, MIN_POS_SIGMA_M * MIN_POS_SIGMA_M)
         val prevT = lastT
         if (prevT != null && t <= prevT) return 0.0
+        val doppler = dopplerSpeed(speedMps, speedAccuracyMps, maxSpeedMps)
+        val dop = doppler?.first
         if (prevT == null || t - prevT > gapS) {
+            // (Re-)anchor. Steps buffered across a real gap are committed now.
             if (prevT != null) stepDistanceM += pendingStepM
             pendingStepM = 0.0
             x = Axis(zx, r)
             y = Axis(zy, r)
             lastT = t
+            xcLastX = zx
+            xcLastY = zy
+            xcLastT = t
+            rejectStreak = 0
+            zuptAnchorX = null
             return 0.0
         }
+        // The gap closed inside the gap window, so the filter integrates it: drop the buffer.
         pendingStepM = 0.0
         val dt = t - prevT
         lastT = t
@@ -82,34 +128,129 @@ class GpsDistanceEstimator(
         val ay = y!!
         ax.predict(dt)
         ay.predict(dt)
-        ax.updatePos(zx, r)
-        ay.updatePos(zy, r)
 
-        val doppler = speedMps?.takeIf { it.isFinite() && it >= 0.0 && it <= maxSpeedMps }?.let { sp ->
-            val sa = speedAccuracyMps?.takeIf { it.isFinite() && it > 0 } ?: DEFAULT_SPEED_SIGMA_MPS
-            if (sa > MAX_SPEED_SIGMA_MPS) return@let null
-            val bearing = bearingDeg?.takeIf { it.isFinite() }
-            if (bearing != null && sp >= STATIONARY_SPEED_MPS) {
-                val sv = max(sa, MIN_SPEED_SIGMA_MPS)
-                val rv = sv * sv
-                val b = Math.toRadians(bearing)
-                ax.updateVel(sp * sin(b), rv)
-                ay.updateVel(sp * cos(b), rv)
-            }
-            sp
-        }
-
-        val speed: Double
-        val floor: Double
-        if (doppler != null) {
-            speed = doppler
-            floor = STATIONARY_SPEED_MPS
+        // 1. Innovation gate on the predicted position.
+        val yx = zx - ax.p
+        val yy = zy - ay.p
+        val pax = ax.a
+        val pay = ay.a
+        val nis = yx * yx / (pax + r) + yy * yy / (pay + r)
+        val accepted = nis <= GATE_CHI2
+        if (accepted) {
+            rejectStreak = 0
+            ax.updatePos(zx, r)
+            ay.updatePos(zy, r)
+            // 2. Adaptive R: covariance matching, sample clamped, EMA, bounded.
+            val sample = min(max(((yx * yx - pax) + (yy * yy - pay)) / (2.0 * rStated), 0.0), R_SCALE_MAX)
+            val ema = (1.0 - R_SCALE_ALPHA) * rScale + R_SCALE_ALPHA * sample
+            rScale = min(max(ema, R_SCALE_MIN), R_SCALE_MAX)
         } else {
-            speed = hypot(ax.v, ay.v)
-            floor = POS_ONLY_STATIONARY_SPEED_MPS
+            rejectedFixes += 1
+            rejectStreak += 1
+            if (rejectStreak > GATE_MAX_REJECTS) {
+                ax.resetPos(zx, r)
+                ay.resetPos(zy, r)
+                rejectStreak = 0
+                xcLastX = zx
+                xcLastY = zy
+                xcLastT = t
+            }
         }
-        if (speed < floor) return 0.0
-        val inc = min(speed, maxSpeedMps) * dt
+
+        // 3. Pedometer zero-velocity update.
+        var zupt = zuptDue(t, dop)
+        var chord: Double? = null
+        if (zupt) {
+            val anchorX = zuptAnchorX
+            if (anchorX == null) {
+                zuptAnchorX = ax.p
+                zuptAnchorY = ay.p
+            } else {
+                val moved = hypot(ax.p - anchorX, ay.p - zuptAnchorY)
+                if (moved > ZUPT_RELEASE_M) {
+                    // The pedometer stalled while the runner moved: stop trusting it until it counts again.
+                    zuptReleased = true
+                    zuptAnchorX = null
+                    zupt = false
+                    chord = moved
+                }
+            }
+        } else {
+            zuptAnchorX = null
+        }
+        if (zupt) {
+            zuptFixes += 1
+            val rz = ZUPT_VEL_SIGMA_MPS * ZUPT_VEL_SIGMA_MPS
+            ax.updateVel(0.0, rz)
+            ay.updateVel(0.0, rz)
+        }
+
+        // 4. Doppler-vs-position cross-check: Doppler speed against the raw
+        //    fixes' displacement projected on the Doppler bearing.
+        val bearing = bearingDeg?.takeIf { it.isFinite() }
+        if (accepted) {
+            val span = t - xcLastT
+            if (dop != null && !zupt && bearing != null &&
+                dop >= POS_ONLY_STATIONARY_SPEED_MPS && span <= XCHECK_MAX_SPAN_S
+            ) {
+                val b = Math.toRadians(bearing)
+                val u = ((zx - xcLastX) * sin(b) + (zy - xcLastY) * cos(b)) / span
+                if (xcTime == 0.0) {
+                    xcDoppler = dop
+                    xcPos = dop
+                } else {
+                    val alpha = min(1.0, span / XCHECK_TAU_S)
+                    xcDoppler += alpha * (dop - xcDoppler)
+                    xcPos += alpha * (u - xcPos)
+                }
+                xcTime += span
+                if (xcTime >= XCHECK_MIN_S) {
+                    val diff = abs(xcDoppler - xcPos)
+                    val ref = abs(xcPos)
+                    val flip = if (dopplerTrusted) {
+                        diff > max(XCHECK_ENTER_ABS_MPS, XCHECK_ENTER_REL * ref)
+                    } else {
+                        diff < max(XCHECK_EXIT_ABS_MPS, XCHECK_EXIT_REL * ref)
+                    }
+                    xcPersistS = if (flip) xcPersistS + span else 0.0
+                    if (xcPersistS >= XCHECK_PERSIST_S) {
+                        dopplerTrusted = !dopplerTrusted
+                        xcPersistS = 0.0
+                    }
+                }
+            }
+            xcLastX = zx
+            xcLastY = zy
+            xcLastT = t
+        }
+
+        // 5. Doppler velocity update.
+        val useDop = if (dop != null && dopplerTrusted) dop else null
+        if (useDop != null && !zupt && bearing != null && useDop >= STATIONARY_SPEED_MPS) {
+            val sv = max(doppler!!.second, MIN_SPEED_SIGMA_MPS)
+            val rv = sv * sv
+            val b = Math.toRadians(bearing)
+            ax.updateVel(useDop * sin(b), rv)
+            ay.updateVel(useDop * cos(b), rv)
+        }
+
+        // 6. Credit.
+        val inc = when {
+            chord != null -> chord
+            zupt -> 0.0
+            else -> {
+                val speed: Double
+                val floor: Double
+                if (useDop != null) {
+                    speed = useDop
+                    floor = STATIONARY_SPEED_MPS
+                } else {
+                    speed = hypot(ax.v, ay.v)
+                    floor = POS_ONLY_STATIONARY_SPEED_MPS
+                }
+                if (speed < floor) 0.0 else min(speed, maxSpeedMps) * dt
+            }
+        }
         gpsDistanceM += inc
         winM += inc
         return inc
@@ -123,6 +264,11 @@ class GpsDistanceEstimator(
         lastStepT = t
         if (prev == null || cumulativeSteps < prev || prevT == null || t <= prevT) return
         val d = cumulativeSteps - prev
+        if (d > 0) {
+            stepsSeen = true
+            lastStepIncT = t
+            zuptReleased = false
+        }
         val fixT = lastT
         if (fixT != null && t - fixT <= freshFixS) {
             winSteps += d
@@ -204,10 +350,18 @@ class GpsDistanceEstimator(
             b = (1 - k1) * ob
             c = (1 - k1) * oc
         }
+
+        /// Gate lock-out re-anchor: position jumps to z, velocity is kept.
+        fun resetPos(z: Double, r: Double) {
+            p = z
+            a = r
+            b = 0.0
+        }
     }
 
     companion object {
         const val SPEC_ID = "kalman_v1"
+        const val SPEC_VERSION = "1.2"
 
         private const val EARTH_RADIUS_M = 6371008.8
         private const val Q_ACCEL = 0.6
@@ -224,8 +378,87 @@ class GpsDistanceEstimator(
         private const val MIN_STRIDE_M = 0.4
         private const val MAX_STRIDE_M = 2.5
         private const val STRIDE_EMA_ALPHA = 0.2
+        private const val GATE_CHI2 = 13.8155
+        private const val GATE_MAX_REJECTS = 5
+        private const val R_SCALE_ALPHA = 0.05
+        private const val R_SCALE_MIN = 1.0
+        private const val R_SCALE_MAX = 9.0
+        private const val XCHECK_TAU_S = 60.0
+        private const val XCHECK_MIN_S = 120.0
+        private const val XCHECK_ENTER_ABS_MPS = 0.4
+        private const val XCHECK_ENTER_REL = 0.15
+        private const val XCHECK_EXIT_ABS_MPS = 0.2
+        private const val XCHECK_EXIT_REL = 0.08
+        private const val XCHECK_PERSIST_S = 60.0
+        private const val XCHECK_MAX_SPAN_S = 5.0
+        private const val DEBIAS_FULL_MPS = 0.5
+        private const val DEBIAS_ZERO_MPS = 1.0
+        private const val ZUPT_NO_STEP_S = 6.0
+        private const val ZUPT_VEL_SIGMA_MPS = 0.1
+        private const val ZUPT_DOPPLER_OVERRIDE_MPS = 1.0
+        private const val ZUPT_RELEASE_M = 40.0
 
         private fun valid(x: Double): Boolean = x.isFinite()
+
+        /// Wraps a longitude difference (inputs within [-180, 180]) into [-180, 180).
+        private fun wrapLng(d: Double): Double = when {
+            d >= 180.0 -> d - 360.0
+            d < -180.0 -> d + 360.0
+            else -> d
+        }
+
+        /// Usable, debiased Doppler speed and its sigma, or null.
+        private fun dopplerSpeed(speedMps: Double?, speedAccuracyMps: Double?, maxSpeedMps: Double): Pair<Double, Double>? {
+            val sp = speedMps?.takeIf { it.isFinite() && it >= 0.0 && it <= maxSpeedMps } ?: return null
+            val reported = speedAccuracyMps != null && speedAccuracyMps.isFinite() && speedAccuracyMps > 0
+            val sa = if (reported) speedAccuracyMps else DEFAULT_SPEED_SIGMA_MPS
+            if (sa > MAX_SPEED_SIGMA_MPS) return null
+            var s = sp
+            if (reported && s < DEBIAS_ZERO_MPS) {
+                val w = if (s <= DEBIAS_FULL_MPS) 1.0 else (DEBIAS_ZERO_MPS - s) / (DEBIAS_ZERO_MPS - DEBIAS_FULL_MPS)
+                s = sqrt(max(0.0, s * s - w * sa * sa))
+            }
+            return s to sa
+        }
+
+        /// Every tunable constant by its reference name, so the vector test can
+        /// hold each one to the fixture's `constants` block.
+        internal val CONSTANTS: Map<String, Double> = mapOf(
+            "EARTH_RADIUS_M" to EARTH_RADIUS_M,
+            "Q_ACCEL" to Q_ACCEL,
+            "MIN_POS_SIGMA_M" to MIN_POS_SIGMA_M,
+            "INIT_VEL_VAR" to INIT_VEL_VAR,
+            "MIN_SPEED_SIGMA_MPS" to MIN_SPEED_SIGMA_MPS,
+            "DEFAULT_SPEED_SIGMA_MPS" to DEFAULT_SPEED_SIGMA_MPS,
+            "MAX_SPEED_SIGMA_MPS" to MAX_SPEED_SIGMA_MPS,
+            "STATIONARY_SPEED_MPS" to STATIONARY_SPEED_MPS,
+            "POS_ONLY_STATIONARY_SPEED_MPS" to POS_ONLY_STATIONARY_SPEED_MPS,
+            "GAP_S" to GAP_S,
+            "FRESH_FIX_S" to FRESH_FIX_S,
+            "STRIDE_WINDOW_STEPS" to STRIDE_WINDOW_STEPS.toDouble(),
+            "MIN_STRIDE_M" to MIN_STRIDE_M,
+            "MAX_STRIDE_M" to MAX_STRIDE_M,
+            "STRIDE_EMA_ALPHA" to STRIDE_EMA_ALPHA,
+            "GATE_CHI2" to GATE_CHI2,
+            "GATE_MAX_REJECTS" to GATE_MAX_REJECTS.toDouble(),
+            "R_SCALE_ALPHA" to R_SCALE_ALPHA,
+            "R_SCALE_MIN" to R_SCALE_MIN,
+            "R_SCALE_MAX" to R_SCALE_MAX,
+            "XCHECK_TAU_S" to XCHECK_TAU_S,
+            "XCHECK_MIN_S" to XCHECK_MIN_S,
+            "XCHECK_ENTER_ABS_MPS" to XCHECK_ENTER_ABS_MPS,
+            "XCHECK_ENTER_REL" to XCHECK_ENTER_REL,
+            "XCHECK_EXIT_ABS_MPS" to XCHECK_EXIT_ABS_MPS,
+            "XCHECK_EXIT_REL" to XCHECK_EXIT_REL,
+            "XCHECK_PERSIST_S" to XCHECK_PERSIST_S,
+            "XCHECK_MAX_SPAN_S" to XCHECK_MAX_SPAN_S,
+            "DEBIAS_FULL_MPS" to DEBIAS_FULL_MPS,
+            "DEBIAS_ZERO_MPS" to DEBIAS_ZERO_MPS,
+            "ZUPT_NO_STEP_S" to ZUPT_NO_STEP_S,
+            "ZUPT_VEL_SIGMA_MPS" to ZUPT_VEL_SIGMA_MPS,
+            "ZUPT_DOPPLER_OVERRIDE_MPS" to ZUPT_DOPPLER_OVERRIDE_MPS,
+            "ZUPT_RELEASE_M" to ZUPT_RELEASE_M,
+        )
 
         /// Same ceilings as the phone's `ActivityType.maxSpeedMps`
         /// (`packages/core_models/lib/src/activity_type.dart`), so a ride

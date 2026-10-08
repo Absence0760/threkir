@@ -2751,6 +2751,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         run: run,
         preferences: widget.preferences,
         title: _title,
+        privacyZones: _loadPrivacyZones(),
       );
     } finally {
       if (mounted) {
@@ -2772,6 +2773,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       run: run,
       preferences: widget.preferences,
       title: _title,
+      privacyZones: _loadPrivacyZones(),
     );
   }
 
@@ -2863,8 +2865,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     final track = run.track;
     final intersectsZone = hasZones && track.isNotEmpty &&
         track.any((p) =>
-            isInAnyZone(p.lat, p.lng, zones) ||
-            isInAnyZone(p.lineLat, p.lineLng, zones));
+            isFixInAnyZone(p.lat, p.lng, p.smoothedLat, p.smoothedLng, zones));
     final body = intersectsZone
         ? l10n.runDetailMakePublicBodyZone
         : hasZones

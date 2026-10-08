@@ -2109,10 +2109,10 @@ grant  execute on function public.<fn>(<args>) to authenticated;   -- and/or ser
 
 Add `authenticated` to the revoke list when no client role should hold it at all
 (the `cleanup_*` / `enqueue_*` cron family, and helpers only a SECURITY DEFINER
-trigger calls). 62 migrations write a function-level `from public, anon` revoke
-today (50 as `revoke execute`, 12 as `revoke all`); it is the house form for
+trigger calls). 63 migrations write a function-level `from public, anon` revoke
+today (51 as `revoke execute`, 12 as `revoke all`); it is the house form for
 exactly this reason, and `check_migration_function_revoke_noop.mjs` is what
-keeps it — it replays all 486 migrations in version order and fails the PR on
+keeps it — it replays all 487 migrations in version order and fails the PR on
 any EXECUTE revoke that leaves the other channel at its image-dependent
 default, in either direction. **Those four figures are derived, not typed**: the
 guard prints them and `check_migration_function_revoke_noop.test.mjs` asserts
@@ -2397,6 +2397,8 @@ SECURITY DEFINER. Owner-only manual re-match trigger called by the "Re-match" bu
 ### `request_distance_recompute(p_run_id)`
 
 SECURITY DEFINER, `search_path = public`, EXECUTE for `authenticated` only (revoked `from public, anon`). Returns `void`. Called by the "Recalculate distance" action on `/runs/[id]` through `requestDistanceRecompute` in `core/data.ts`. Raises `42501` unless `auth.uid()` owns the run — a missing run raises the same `42501`, so the RPC is not an existence oracle for run ids — and `22000` when the run has no `track_url`. Otherwise inserts a `distance_recompute` job with payload `{run_id, user_id}` and tier-aware `scheduled_at` (`job_scheduled_at_for_user`), `on conflict do nothing` against `jobs_dedupe_distance_recompute`, so a second tap while one is queued or running is a no-op. Which runs are worth recomputing (app/watch source, not a pedometer distance, not already `kalman_v1`) is decided by the page's `canRecomputeDistance` and again by the worker; the RPC checks only ownership and the track. Migration `20270716000001_distance_recompute.sql`; pgtap `request_distance_recompute_test.sql`.
+
+A BEFORE UPDATE trigger on `runs`, `runs_keep_distance_recompute` (migration `20270718000001`), stops a stale client copy from undoing the job: when the stored row carries `metadata.distance_recomputed_at` and the incoming bag does not, it carries `distance_recomputed_at` / `distance_recorded_m` / `distance_estimator` forward, keeps the four `fastest_*` columns, and keeps `distance_m` when the incoming value is within 0.5 m of `distance_recorded_m` (a deliberately typed distance is kept). The job's own write carries the key and passes through. EXECUTE on the function is revoked `from public, anon, authenticated`. pgtap `runs_keep_distance_recompute_test.sql`.
 
 ### `clone_plan_template(template_id uuid, new_start_date date)`
 

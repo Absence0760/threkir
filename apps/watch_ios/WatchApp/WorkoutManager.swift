@@ -511,7 +511,6 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         pausedAt = plan.pausedAt
         elapsedSeconds = plan.elapsedSeconds
         finishedRun = nil
-        track = []
         currentPace = nil
         lastPaceAlertAt = nil
 

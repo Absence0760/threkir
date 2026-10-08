@@ -17,7 +17,7 @@ import { timingSafeEqual } from '../_shared/webhook_security.ts';
 const BRAND_NAME = 'Threkir';
 /// Kept in lockstep with apps/web/src/app.css: the CTA is the light
 /// --color-primary coral, the header bar the light --color-text ink, which
-/// the ember-to-magenta mark reads against where coral would not.
+/// the coral-to-violet mark reads against where coral would not.
 const BRAND_COLOR = '#C24E24';
 const HEADER_COLOR = '#1A1722';
 /// The header mark, served off the web apex (apps/web/static/email-logo.png).

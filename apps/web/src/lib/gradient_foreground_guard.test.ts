@@ -86,7 +86,7 @@ type Ramp = {
 const RAMPS: Ramp[] = [
 	{
 		file: 'routes/runs/[id]/+page.svelte',
-		anchor: 'background: linear-gradient(135deg, #9B4A24',
+		anchor: 'background: linear-gradient(135deg, #C24E24',
 		stops: 3,
 		ink: '#FFFFFF',
 		floor: 4.5,
@@ -109,8 +109,8 @@ const RAMPS: Ramp[] = [
 		ink: 'rgba(255, 255, 255, 0.85)',
 		floor: 4.5,
 		veils: [
-			{ colour: '#FE5932', alpha: 0.18, why: '.hero-glow::before wordmark orange' },
-			{ colour: '#2C5F6E', alpha: 0.18, why: '.hero-glow::after product teal' },
+			{ colour: '#C24E24', alpha: 0.18, why: '.hero-glow::before wordmark coral' },
+			{ colour: '#5B4B8A', alpha: 0.18, why: '.hero-glow::after wordmark violet' },
 			{ colour: '#FFFFFF', alpha: 0.07, why: '.topo--hero contour lines' },
 		],
 		why: 'the marketing hero headline + subhead',
@@ -122,7 +122,7 @@ const RAMPS: Ramp[] = [
 		ink: 'rgba(255, 255, 255, 0.85)',
 		floor: 4.5,
 		veils: [
-			{ colour: '#FE5932', alpha: 0.18, why: '.auth-panel::before ember glow' },
+			{ colour: '#C24E24', alpha: 0.18, why: '.auth-panel::before coral glow' },
 			{ colour: '#FFFFFF', alpha: 0.07, why: '.panel-topo contour lines' },
 		],
 		why: 'the auth panel body copy (brand foot, bullets, onboarding rail)',
@@ -134,14 +134,14 @@ const RAMPS: Ramp[] = [
 		ink: '#FFD6C8',
 		floor: 4.5,
 		veils: [
-			{ colour: '#FE5932', alpha: 0.18, why: '.auth-panel::before ember glow' },
+			{ colour: '#C24E24', alpha: 0.18, why: '.auth-panel::before coral glow' },
 			{ colour: '#FFFFFF', alpha: 0.07, why: '.panel-topo contour lines' },
 		],
-		why: 'the auth panel peach kickers and marks (4.633:1 at the magenta stop under the ember glow)',
+		why: 'the auth panel peach kickers and marks (measured at the violet stop under the coral glow)',
 	},
 	{
 		file: 'routes/+page.svelte',
-		anchor: 'background: linear-gradient(140deg, #A01E77',
+		anchor: 'background: linear-gradient(140deg, #5B4B8A',
 		stops: 2,
 		ink: '#FFFFFF',
 		floor: 4.5,
@@ -149,7 +149,7 @@ const RAMPS: Ramp[] = [
 	},
 	{
 		file: 'lib/components/LearnPage.svelte',
-		anchor: 'background: linear-gradient(135deg, #140A18',
+		anchor: 'background: linear-gradient(135deg, #121117',
 		stops: 2,
 		ink: 'rgba(255, 255, 255, 0.85)',
 		floor: 4.5,
@@ -157,13 +157,13 @@ const RAMPS: Ramp[] = [
 	},
 	{
 		file: 'routes/+page.svelte',
-		anchor: 'background: linear-gradient(135deg, #102A32',
+		anchor: 'background: linear-gradient(135deg, #121117',
 		stops: 2,
 		ink: 'rgba(255, 255, 255, 0.85)',
 		floor: 4.5,
 		veils: [
-			{ colour: '#FE5932', alpha: 0.2, why: '.closing-glow::before ember' },
-			{ colour: '#A01E77', alpha: 0.22, why: '.closing-glow::after magenta' },
+			{ colour: '#C24E24', alpha: 0.2, why: '.closing-glow::before coral' },
+			{ colour: '#5B4B8A', alpha: 0.22, why: '.closing-glow::after violet' },
 			{ colour: '#FFFFFF', alpha: 0.06, why: '.topo--closing contour lines' },
 		],
 		why: 'the closing call-to-action block',

@@ -9,5 +9,5 @@
     <!-- Matches the launcher PNG's own coral edge, NOT the UI palette:
          the adaptive icon's mask edge blends into this colour, so it moves
          only when assets/icon.svg does (a wrong hex shows as a halo). -->
-    <color name="ic_launcher_background">#D97A54</color>
+    <color name="ic_launcher_background">#C24E24</color>
 </resources>

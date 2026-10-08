@@ -233,7 +233,7 @@ class RunNotificationBridge(
     private fun postSplit(title: String, text: String) {
         val builder = NotificationCompat.Builder(context, GEOLOCATOR_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_threkir)
-            .setColor(ContextCompat.getColor(context, R.color.brand_ember))
+            .setColor(ContextCompat.getColor(context, R.color.brand_coral))
             .setContentTitle(title)
             .setContentText(text)
             .setOngoing(false)
@@ -254,7 +254,7 @@ class RunNotificationBridge(
 
         val builder = NotificationCompat.Builder(context, GEOLOCATOR_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_threkir)
-            .setColor(ContextCompat.getColor(context, R.color.brand_ember))
+            .setColor(ContextCompat.getColor(context, R.color.brand_coral))
             .setContentTitle(title)
             .setContentText(text)
             .setOngoing(true)

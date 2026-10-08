@@ -3,7 +3,7 @@
 // The app icon renders in many places — web favicon / PWA manifest,
 // Android + iOS launcher icons, and the Android status-bar notification
 // icon — and every one derives from ONE master, assets/icon.svg, whose
-// ember→magenta gradient is #FE5932 → #A01E77. This test pins that
+// coral→violet gradient is #C24E24 → #5B4B8A (decisions § 1769). This test pins that
 // canonical pair across every machine-readable brand-colour surface so a
 // future edit to one of them can't silently drift the icon colour out of
 // sync on a single platform (which is exactly what #483 reported).
@@ -17,8 +17,8 @@ import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const EMBER = '#FE5932';
-const MAGENTA = '#A01E77';
+const CORAL = '#C24E24';
+const VIOLET = '#5B4B8A';
 
 // cwd is apps/web (see `test:unit` in package.json). Repo root is two up.
 function readWeb(...parts: string[]): string {
@@ -28,32 +28,32 @@ function readRepo(...parts: string[]): string {
 	return readFileSync(resolve('..', '..', ...parts), 'utf-8');
 }
 
-test('master icon.svg carries the canonical ember→magenta gradient', () => {
+test('master icon.svg carries the canonical coral→violet gradient', () => {
 	const svg = readRepo('assets', 'icon.svg');
-	assert.match(svg, new RegExp(`stop-color="${EMBER}"`), 'master must start ember');
-	assert.match(svg, new RegExp(`stop-color="${MAGENTA}"`), 'master must end magenta');
+	assert.match(svg, new RegExp(`stop-color="${CORAL}"`), 'master must start coral');
+	assert.match(svg, new RegExp(`stop-color="${VIOLET}"`), 'master must end violet');
 });
 
 test('PWA manifest theme/background colours match the master gradient stops', () => {
 	const manifest = JSON.parse(readWeb('static', 'manifest.webmanifest'));
-	assert.equal(manifest.theme_color, EMBER, 'theme_color must be the ember stop');
-	assert.equal(manifest.background_color, MAGENTA, 'background_color must be the magenta stop');
+	assert.equal(manifest.theme_color, CORAL, 'theme_color must be the coral stop');
+	assert.equal(manifest.background_color, VIOLET, 'background_color must be the violet stop');
 });
 
 test('app.html meta theme-color matches the manifest theme_color', () => {
 	const html = readWeb('src', 'app.html');
 	assert.match(
 		html,
-		new RegExp(`<meta name="theme-color" content="${EMBER}"`),
-		'the browser chrome colour must be the ember brand colour'
+		new RegExp(`<meta name="theme-color" content="${CORAL}"`),
+		'the browser chrome colour must be the coral brand colour'
 	);
 });
 
 test('web logo-mark + wordmark SVGs reuse the same gradient stops', () => {
 	for (const file of ['logo-mark.svg', 'wordmark.svg', 'wordmark-light.svg', 'bimi-logo.svg']) {
 		const svg = readWeb('static', file);
-		assert.match(svg, new RegExp(`stop-color="${EMBER}"`), `${file} must start ember`);
-		assert.match(svg, new RegExp(`stop-color="${MAGENTA}"`), `${file} must end magenta`);
+		assert.match(svg, new RegExp(`stop-color="${CORAL}"`), `${file} must start coral`);
+		assert.match(svg, new RegExp(`stop-color="${VIOLET}"`), `${file} must end violet`);
 	}
 });
 
@@ -78,16 +78,16 @@ test('the brand SVGs draw their words as outlines, never as live text', () => {
 // every email drifts from the icon beside it in the inbox.
 test('email header mark source reuses the same gradient stops', () => {
 	const svg = readRepo('assets', 'email-logo.svg');
-	assert.match(svg, new RegExp(`stop-color="${EMBER}"`), 'email-logo.svg must start ember');
-	assert.match(svg, new RegExp(`stop-color="${MAGENTA}"`), 'email-logo.svg must end magenta');
+	assert.match(svg, new RegExp(`stop-color="${CORAL}"`), 'email-logo.svg must start coral');
+	assert.match(svg, new RegExp(`stop-color="${VIOLET}"`), 'email-logo.svg must end violet');
 	// Same hazard as the outlined wordmarks above: gen-email-logo.sh rasterises
 	// this on whoever's machine runs it, so live <text> would bake in that
 	// machine's font.
 	assert.doesNotMatch(svg, /<text[\s>]/, 'email-logo.svg must not draw live <text>');
 });
 
-test('Android brand_ember colour resource matches the master ember stop', () => {
-	// Android colours are #AARRGGBB; the ember stop is fully opaque.
+test('Android brand_coral colour resource matches the master coral stop', () => {
+	// Android colours are #AARRGGBB; the coral stop is fully opaque.
 	const colors = readRepo(
 		'apps',
 		'mobile_android',
@@ -101,8 +101,8 @@ test('Android brand_ember colour resource matches the master ember stop', () => 
 	);
 	assert.match(
 		colors,
-		/<color name="brand_ember">#FFFE5932<\/color>/,
-		'brand_ember must be opaque #FE5932 so the notification accent matches the icon'
+		/<color name="brand_coral">#FFC24E24<\/color>/,
+		'brand_coral must be opaque #C24E24 so the notification accent matches the icon'
 	);
 });
 

@@ -577,10 +577,10 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 	// --brand-ramp, whose stops are an app.css DECLARATION and so are spared by
 	// name. Every ink over these ramps is measured by
 	// gradient_foreground_guard.test.ts. The decorative brand hues (rail,
-	// fastest split) read --brand-ember / --brand-magenta instead.
+	// fastest split) read --brand-coral / --brand-rose / --brand-violet instead.
 	'routes/+page.svelte': {
-		'6E1450': [1, 'gradient-stop'], A01E77: [1, 'gradient-stop'],
-		'102A32': [1, 'gradient-stop'], '2C5F6E': [1, 'gradient-stop'],
+		'5B4B8A': [1, 'gradient-stop'], '43356A': [2, 'gradient-stop'],
+		'121117': [1, 'gradient-stop'],
 		FFFFFF: [6, 'fixed-canvas'], '8A1A62': [1, 'fixed-canvas'],
 		FDEFF7: [1, 'fixed-canvas'], '1F4854': [1, 'fixed-canvas'],
 		EAF3F5: [1, 'fixed-canvas'],
@@ -601,7 +601,7 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 	// strip rather than a hero. A fixed dark canvas, which is why the inks on
 	// it are literals too — the theme's text tokens are dark-on-dark here.
 	'lib/components/LearnPage.svelte': {
-		'140A18': [1, 'gradient-stop'], '6E1450': [1, 'gradient-stop'],
+		'121117': [1, 'gradient-stop'], '43356A': [1, 'gradient-stop'],
 		FFFFFF: [1, 'fixed-canvas'],
 	},
 	// Header over that same hero: white hover ink, 5.699:1 on the ramp's
@@ -628,9 +628,9 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 	// done-step check (the kicker measured per veil by
 	// gradient_foreground_guard.test.ts), the current step's white disc with a
 	// plum numeral (11.18:1) and its white label, and the white check on the
-	// finish badge's brand gradient (a 3:1 glyph: 3.14:1 at the ember end).
+	// finish badge's brand gradient (a 3:1 glyph: 4.76:1 at the coral end).
 	'routes/onboarding/+page.svelte': {
-		FFD6C8: [2, 'fixed-canvas'], FFFFFF: [3, 'fixed-canvas'], '6E1450': [1, 'fixed-canvas'],
+		FFD6C8: [2, 'fixed-canvas'], FFFFFF: [3, 'fixed-canvas'], '43356A': [1, 'fixed-canvas'],
 	},
 	// The same two marks on the linked-accounts rows.
 	'routes/settings/account/+page.svelte': {
@@ -643,7 +643,7 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 	// match pill is a fixed near-black scrim over the basemap whose ink
 	// (8.022:1) and hairline (4.111:1) are fixed with it.
 	'routes/runs/[id]/+page.svelte': {
-		'9B4A24': [1, 'gradient-stop'], '6E4F94': [1, 'gradient-stop'], '5B4478': [1, 'gradient-stop'],
+		C24E24: [1, 'gradient-stop'], A8426A: [1, 'gradient-stop'], '5B4B8A': [1, 'gradient-stop'],
 		FFFFFF: [1, 'fixed-canvas'], F3F1F7: [1, 'fixed-canvas'], A9A4B6: [1, 'fixed-canvas'],
 	},
 	// The @media print sheet: white paper, where a theme token resolves to

@@ -169,7 +169,7 @@ class PreRunHomeLayoutTest {
         val css = WearLocales.findUp("apps/web/src/app.css")
         assertNotNull("could not locate apps/web/src/app.css", css)
         val cssText = css!!.readText()
-        for ((token, kotlin) in listOf("--brand-ember" to "ember", "--brand-magenta" to "magenta")) {
+        for ((token, kotlin) in listOf("--brand-coral" to "coral", "--brand-rose" to "rose", "--brand-violet" to "violet")) {
             val web = Regex("""${Regex.escape(token)}:\s*#([0-9A-Fa-f]{6});""").find(cssText)
                 ?.groupValues?.get(1)?.uppercase()
             assertNotNull("app.css no longer declares $token", web)

@@ -876,7 +876,7 @@
 	.rail-now .rail-mark {
 		border-color: transparent;
 		background: #FFFFFF;
-		color: #6E1450;
+		color: #43356A;
 		box-shadow: 0 0 0 0.3rem rgba(255, 255, 255, 0.14);
 	}
 
@@ -906,7 +906,7 @@
 		height: 100%;
 		width: calc(var(--progress) * 100%);
 		border-radius: inherit;
-		background: linear-gradient(90deg, var(--brand-ember), var(--brand-magenta));
+		background: linear-gradient(90deg, var(--brand-coral), var(--brand-rose), var(--brand-violet));
 		transition: width 500ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 
@@ -1223,9 +1223,9 @@
 		width: 4.5rem;
 		height: 4.5rem;
 		border-radius: var(--radius-pill);
-		background: linear-gradient(140deg, var(--brand-ember), var(--brand-magenta));
+		background: linear-gradient(140deg, var(--brand-coral), var(--brand-rose), var(--brand-violet));
 		color: #FFFFFF;
-		box-shadow: 0 1rem 2.5rem -0.75rem rgba(160, 30, 119, 0.6);
+		box-shadow: 0 1rem 2.5rem -0.75rem rgba(91, 75, 138, 0.6);
 	}
 
 	.done-badge .material-symbols {
@@ -1236,7 +1236,7 @@
 		position: absolute;
 		inset: 0;
 		border-radius: inherit;
-		border: 2px solid var(--brand-ember);
+		border: 2px solid var(--brand-coral);
 		opacity: 0;
 	}
 

@@ -32,20 +32,19 @@ object DuskPalette {
     val warning = Color(0xFFE0A44D)
 }
 
-/// The wordmark's two ends — the launcher icon's ember-to-magenta ramp —
-/// mirroring `--brand-ember` / `--brand-magenta` in `apps/web/src/app.css`.
-/// Kept apart from `DuskPalette` on purpose: Dusk is the shared UI palette
-/// (`primary` stays coral so every other screen is unchanged), this is the
-/// brand mark, and it is spent on exactly one control — the pre-run Start.
+/// The wordmark's gradient — deep coral through rose to violet (decisions
+/// § 1769) — mirroring `--brand-coral` / `--brand-rose` / `--brand-violet` in
+/// `apps/web/src/app.css`. Kept apart from `DuskPalette` on purpose: Dusk is
+/// the shared UI palette, this is the brand mark, and it is spent on exactly
+/// one control — the pre-run Start.
 ///
-/// Ink is white, as on web. White on the ember end alone is 3.1:1, so the
-/// ramp runs ember -> magenta across the button and the label sits over its
-/// middle (~4.7:1) at a large, semibold size.
+/// Ink is white, as on web: 4.76:1 on the coral end, higher on the rest.
 object BrandPalette {
-    val ember = Color(0xFFFE5932)
-    val magenta = Color(0xFFA01E77)
+    val coral = Color(0xFFC24E24)
+    val rose = Color(0xFFA8426A)
+    val violet = Color(0xFF5B4B8A)
     val onBrand = Color(0xFFFFFFFF)
-    val ramp: Brush = Brush.horizontalGradient(listOf(ember, magenta))
+    val ramp: Brush = Brush.horizontalGradient(listOf(coral, rose, violet))
 }
 
 /// Wear Compose Material colour slots mapped onto the Dusk palette.

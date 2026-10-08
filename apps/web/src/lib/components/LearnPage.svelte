@@ -49,7 +49,7 @@
 	   early — an index page gets a strip, not a hero. Its stops and the inks
 	   on them are measured in gradient_foreground_guard.test.ts. */
 	.learn-page :global(.learn-band) {
-		background: linear-gradient(135deg, #140A18 0%, #6E1450 100%);
+		background: linear-gradient(135deg, #121117 0%, #43356A 100%);
 		padding-block-start: 4.5rem;
 	}
 

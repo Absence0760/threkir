@@ -42,7 +42,7 @@ type Email struct {
 
 // Brand tokens — kept in lockstep with apps/web/src/app.css: the CTA is the
 // light --color-primary coral, and the header bar is the light --color-text
-// ink, which the ember-to-magenta mark reads against where coral would not.
+// ink, which the coral-to-violet mark reads against where coral would not.
 // Email clients can't read CSS variables, so the values are inlined here.
 const (
 	brandName   = "Threkir"

@@ -3507,7 +3507,7 @@
 		   it replaces read 2.081 and 2.153:1 against the white copy, and the
 		   card centres its content on the middle one; these read 6.179 /
 		   6.544 / 8.258:1. */
-		background: linear-gradient(135deg, #9B4A24 0%, #6E4F94 55%, #5B4478 100%);
+		background: linear-gradient(135deg, #C24E24 0%, #A8426A 55%, #5B4B8A 100%);
 		color: #FFFFFF;
 		display: flex;
 		align-items: center;

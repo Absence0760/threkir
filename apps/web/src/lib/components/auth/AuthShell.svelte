@@ -119,7 +119,7 @@
 		inset-inline-end: -30%;
 		width: 80%;
 		height: 90%;
-		background: radial-gradient(ellipse, rgba(254, 89, 50, 0.18) 0%, transparent 70%);
+		background: radial-gradient(ellipse, rgba(194, 78, 36, 0.18) 0%, transparent 70%);
 		pointer-events: none;
 	}
 
@@ -326,8 +326,8 @@
 			width: 0.45rem;
 			height: 0.45rem;
 			border-radius: var(--radius-pill);
-			background: var(--brand-ember);
-			box-shadow: 0 0 0.6rem rgba(254, 89, 50, 0.9);
+			background: var(--brand-coral);
+			box-shadow: 0 0 0.6rem rgba(194, 78, 36, 0.9);
 		}
 
 		.panel-card-clock {

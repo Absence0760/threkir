@@ -1,3 +1,4 @@
+import 'package:core_models/core_models.dart' show Waypoint;
 import 'package:flutter_test/flutter_test.dart';
 import '../lib/privacy.dart';
 
@@ -149,6 +150,48 @@ void main() {
       final out = clipPointsToZones<_Pt>(pts, const [_home],
           latOf: _lat, lngOf: _lng, smoothedLatOf: _sLat, smoothedLngOf: _sLng);
       expect(out, equals(pts));
+    });
+  });
+
+  // The make-public confirm's warning (decisions §33): a fix whose raw
+  // position is ~843 m east of the zone but whose stored smoothed position is
+  // the zone centre is drawn inside the zone, so the track enters it.
+  group('trackEntersAnyZone', () {
+    test('a smoothed position inside a zone counts when the raw fix is outside',
+        () {
+      final raw = _offset(_home.lat, _home.lng, 0.01);
+      final track = [
+        Waypoint(
+          lat: raw.lat,
+          lng: raw.lng,
+          smoothedLat: _home.lat,
+          smoothedLng: _home.lng,
+        ),
+      ];
+      expect(isInAnyZone(raw.lat, raw.lng, const [_home]), isFalse);
+      expect(trackEntersAnyZone(track, const [_home]), isTrue);
+      expect(
+        trackEntersAnyZone([Waypoint(lat: raw.lat, lng: raw.lng)],
+            const [_home]),
+        isFalse,
+      );
+    });
+
+    test('raw in-zone fixes count, and no zones never warns', () {
+      final far = _offset(_home.lat, _home.lng, 0.02);
+      final inZone = Waypoint(
+        lat: _home.lat,
+        lng: _home.lng,
+        smoothedLat: far.lat,
+        smoothedLng: far.lng,
+      );
+      expect(
+        trackEntersAnyZone(
+            [Waypoint(lat: far.lat, lng: far.lng), inZone], const [_home]),
+        isTrue,
+      );
+      expect(trackEntersAnyZone([inZone], const []), isFalse);
+      expect(trackEntersAnyZone(const [], const [_home]), isFalse);
     });
   });
 }

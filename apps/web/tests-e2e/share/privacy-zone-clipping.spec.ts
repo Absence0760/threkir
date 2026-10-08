@@ -315,3 +315,65 @@ test.describe('/share/run/[id] — owner-zone clipping uses owner zones, not vie
 		}
 	});
 });
+
+test.describe('/runs/[id] share confirm — a smoothed position inside a zone warns the owner', () => {
+	let plantedRunId: string | null = null;
+
+	test.beforeEach(async () => {
+		await setUserSetting(USER_A.id, PRIVACY_ZONES_KEY, [TEST_ZONE]);
+		plantedRunId = await insertRun({
+			user_id: USER_A.id,
+			started_at: new Date('2026-05-10T11:00:00Z').toISOString(),
+			duration_s: 1500,
+			distance_m: 4500,
+			is_public: false,
+			metadata: { activity_type: 'run', title: 'e2e smoothed-position share warning' },
+			track: [SMOOTHED_INTO_ZONE_FIX, ...OUT_OF_ZONE_TRACK]
+		});
+	});
+
+	test.afterEach(async () => {
+		if (plantedRunId) {
+			try {
+				await deleteRun(plantedRunId);
+			} catch {
+				/* best-effort */
+			}
+			plantedRunId = null;
+		}
+		await setUserSetting(USER_A.id, PRIVACY_ZONES_KEY, [SEEDED_ZONE]);
+	});
+
+	test('the make-public dialog says the run enters a zone though every raw fix is outside it', async ({
+		browser
+	}) => {
+		const zones = [{ lat: ZONE_LAT, lng: ZONE_LNG, radius_m: ZONE_RADIUS_M }];
+		for (const p of [SMOOTHED_INTO_ZONE_FIX, ...OUT_OF_ZONE_TRACK]) {
+			expect(isInAnyZone(p, zones)).toBe(false);
+		}
+
+		const ctx = await browser.newContext({ storageState: USER_A.storageStatePath });
+		await ctx.addInitScript(() => {
+			localStorage.setItem(
+				'cookie_consent',
+				JSON.stringify({ choice: 'accepted', timestamp: Date.now() })
+			);
+		});
+		const page = await ctx.newPage();
+		try {
+			await page.goto(`/runs/${plantedRunId}`);
+			// The share check reads the loaded track; GPX download enables
+			// only once it has arrived.
+			await expect(page.locator('button[title="Download GPX"]')).toBeEnabled({
+				timeout: 15_000
+			});
+			await page.locator('button[title="Share link"]').click();
+
+			const dialog = page.locator('[data-testid="share-confirm-dialog"]');
+			await expect(dialog).toBeVisible({ timeout: 5_000 });
+			await expect(dialog).toContainText('inside one of your privacy zones');
+		} finally {
+			await ctx.close();
+		}
+	});
+});

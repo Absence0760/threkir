@@ -21,11 +21,14 @@ void main() {
       expect(w.lng, 2);
     });
 
-    test('a missing or half pair falls back to the raw fix', () {
+    test('a missing, half or non-finite pair falls back to the raw fix', () {
       for (final w in const [
         Waypoint(lat: 1, lng: 2),
         Waypoint(lat: 1, lng: 2, smoothedLat: 1.00001),
         Waypoint(lat: 1, lng: 2, smoothedLng: 2.00002),
+        Waypoint(lat: 1, lng: 2, smoothedLat: double.nan, smoothedLng: 2.00002),
+        Waypoint(
+            lat: 1, lng: 2, smoothedLat: 1.00001, smoothedLng: double.infinity),
       ]) {
         expect(w.hasSmoothedPosition, isFalse);
         expect(w.lineLat, 1);

@@ -2863,9 +2863,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     final zones = _loadPrivacyZones();
     final hasZones = zones.isNotEmpty;
     final track = run.track;
-    final intersectsZone = hasZones && track.isNotEmpty &&
-        track.any((p) =>
-            isFixInAnyZone(p.lat, p.lng, p.smoothedLat, p.smoothedLng, zones));
+    final intersectsZone = trackEntersAnyZone(track, zones);
     final body = intersectsZone
         ? l10n.runDetailMakePublicBodyZone
         : hasZones

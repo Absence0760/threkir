@@ -1,3 +1,5 @@
+import 'package:core_models/core_models.dart' show Waypoint;
+
 import 'run_stats.dart' show haversineMetres;
 
 /// Pure Dart port of `apps/web/src/lib/routes/privacy.ts` (decisions §33).
@@ -60,6 +62,16 @@ bool isFixInAnyZone(
       smoothedLat.isFinite &&
       smoothedLng.isFinite &&
       isInAnyZone(smoothedLat, smoothedLng, zones);
+}
+
+/// Whether any fix of [track] sits in a zone at its raw or its smoothed
+/// position ([isFixInAnyZone]). The make-public confirm warns on this, so a
+/// fix whose raw position is outside a zone but whose drawn vertex is inside
+/// still counts. Mirrors `trackEntersAnyZone` in `privacy.ts`.
+bool trackEntersAnyZone(List<Waypoint> track, List<PrivacyZone> zones) {
+  if (zones.isEmpty) return false;
+  return track.any((p) =>
+      isFixInAnyZone(p.lat, p.lng, p.smoothedLat, p.smoothedLng, zones));
 }
 
 /// Walk forward from index 0 and drop fixes in any zone; walk backward from

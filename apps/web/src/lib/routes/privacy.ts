@@ -53,6 +53,15 @@ export function isFixInAnyZone(point: LinePointSource, zones: PrivacyZone[]): bo
 	);
 }
 
+/// Whether any fix of `track` sits in a zone at its raw or its smoothed
+/// position (`isFixInAnyZone`). The share confirm warns on this, so a fix
+/// whose raw position is outside a zone but whose drawn vertex is inside
+/// still counts. Mirrors `trackEntersAnyZone` in `privacy.dart`.
+export function trackEntersAnyZone(track: LinePointSource[], zones: PrivacyZone[]): boolean {
+	if (zones.length === 0) return false;
+	return track.some((p) => isFixInAnyZone(p, zones));
+}
+
 /// Walk forward from index 0 and drop fixes in any zone; walk
 /// backward from the end with the same predicate; keep the
 /// contiguous middle. A fix is in a zone when its raw OR its

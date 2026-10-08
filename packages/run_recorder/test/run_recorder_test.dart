@@ -1356,6 +1356,83 @@ void main() {
           reason: 'the live track is not rewritten');
     });
 
+    test('saved laps are re-measured on the smoothed distance', () async {
+      // Laps record the forward figure live; the saved run is the smoother's,
+      // so each lap boundary moves to the smoother's cumulative at the fix it
+      // was marked on (not a proportional share). Expected figures from
+      // scripts/gps_distance/reference.py: smooth_distance cumulative_m[5] =
+      // 19.4101 m (forward 14.9633 m), total 39.4875 m.
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock)..debugPrepareWithoutStream();
+      r.begin();
+      for (var i = 0; i <= 10; i++) {
+        r.debugInjectPosition(makePosition(
+          metresEast: 4.0 * i,
+          secondsFromStart: i,
+          speed: 0,
+          speedAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+        ));
+        if (i == 5 || i == 10) r.lap();
+        clock.advance(const Duration(seconds: 1));
+      }
+      expect(r.laps.first.cumulativeDistanceMetres,
+          closeTo(14.963280580167973, 1e-6),
+          reason: 'the live lap keeps the forward figure');
+      final run = await r.stop();
+      final laps = (run.metadata?['laps'] as List).cast<Map<String, dynamic>>();
+      expect(laps, hasLength(2));
+      expect(laps[0]['distance_m'], closeTo(19.410119564935258, 1e-6));
+      expect(laps[1]['distance_m'],
+          closeTo(39.487530494657875 - 19.410119564935258, 1e-6));
+      final sum = laps.fold<double>(
+          0, (a, l) => a + (l['distance_m'] as num).toDouble());
+      expect(sum, closeTo(run.distanceMetres, 1e-6));
+    });
+
+    test('saved laps after a pause carry the earlier stretch correction',
+        () async {
+      // Two stretches, each 11 fixes 4 m apart at 1 s. Expected from
+      // scripts/gps_distance/reference.py: stretch one smooths 34.9210 m to
+      // 39.4875 m (cumulative_m[5] = 19.4101 m), stretch two (t = 41..51,
+      // finish 52) to 39.4875 m, so the run saves 78.9751 m.
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock)..debugPrepareWithoutStream();
+      r.begin();
+      void inject(double east, int t) => r.debugInjectPosition(makePosition(
+            metresEast: east,
+            secondsFromStart: t,
+            speed: 0,
+            speedAccuracy: 0,
+            heading: 0,
+            headingAccuracy: 0,
+          ));
+      for (var i = 0; i <= 10; i++) {
+        inject(4.0 * i, i);
+        if (i == 5) r.lap();
+        clock.advance(const Duration(seconds: 1));
+      }
+      r.pause();
+      clock.advance(const Duration(seconds: 30));
+      r.resume();
+      for (var j = 0; j <= 10; j++) {
+        inject(40 + 4.0 * j, 41 + j);
+        clock.advance(const Duration(seconds: 1));
+      }
+      r.lap();
+      final run = await r.stop();
+      expect(run.distanceMetres, closeTo(78.97506098938024, 1e-6));
+      final laps = (run.metadata?['laps'] as List).cast<Map<String, dynamic>>();
+      expect(laps, hasLength(2));
+      expect(laps[0]['distance_m'], closeTo(19.410119564935258, 1e-6));
+      expect(laps[1]['distance_m'],
+          closeTo(78.97506098938024 - 19.410119564935258, 1e-6));
+      final sum = laps.fold<double>(
+          0, (a, l) => a + (l['distance_m'] as num).toDouble());
+      expect(sum, closeTo(run.distanceMetres, 1e-6));
+    });
+
     test('a resumed session saves without the estimator tag', () async {
       // The seeded distance is the killed process's forward figure, which the
       // smoother never saw, so the server recompute must stay on offer.

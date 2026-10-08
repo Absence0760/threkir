@@ -151,6 +151,11 @@ class RunRecorder {
   Timer? _timer;
   Timer? _gpsRetryTimer;
   final List<LapSplit> _laps = [];
+  // Where each lap fell in the estimator's inputs, so [stop] can re-measure it
+  // on the smoothed distance. Keyed by the split itself, so the several places
+  // that clear or replace [_laps] cannot leave the two out of step.
+  final Expando<({int stretch, int events, double forwardM})> _lapAnchors =
+      Expando();
 
   /// All lap splits recorded so far.
   List<LapSplit> get laps => List.unmodifiable(_laps);
@@ -1789,12 +1794,21 @@ class RunRecorder {
   int lap() {
     if (!_recording) return 0;
     final now = DateTime.now();
-    _laps.add(LapSplit(
+    final split = LapSplit(
       number: _laps.length + 1,
       timestamp: now,
       cumulativeDistanceMetres: _reportedDistanceMetres,
       cumulativeDuration: _currentElapsed(),
-    ));
+    );
+    final stretch = _stretch;
+    if (!_treadmillMode && stretch != null) {
+      _lapAnchors[split] = (
+        stretch: _stretches.length - 1,
+        events: stretch.events.length,
+        forwardM: _estimator.distanceM,
+      );
+    }
+    _laps.add(split);
     return _laps.length;
   }
 
@@ -1817,10 +1831,17 @@ class RunRecorder {
     final elapsed = _stopwatch.elapsed + _elapsedOffset;
     final track = List<Waypoint>.of(_track);
     var distanceMetres = _reportedDistanceMetres;
-    if (!_treadmillMode) distanceMetres += _applySmoother(track);
+    var laps = _laps;
+    if (!_treadmillMode) {
+      final smoothed = _applySmoother(track);
+      for (final s in smoothed) {
+        if (s != null) distanceMetres += s.correctionM;
+      }
+      laps = _smoothedLaps(smoothed);
+    }
 
     final metadata = <String, dynamic>{};
-    if (_laps.isNotEmpty) metadata['laps'] = lapsToCanonicalJson(_laps);
+    if (laps.isNotEmpty) metadata['laps'] = lapsToCanonicalJson(laps);
     if (_treadmillMode) {
       // Belt-measured distance is not GPS-measured, so the same exclusion the
       // pedometer-estimated indoor path uses applies: `indoor: true` keeps it
@@ -1855,14 +1876,17 @@ class RunRecorder {
 
   /// Replays each stretch's estimator inputs through [smoothDistance], writes
   /// the smoothed position onto every [track] waypoint the stretch appended,
-  /// and returns how far the smoothed distances differ from the forward ones
-  /// the live screen showed (metres to add to the reported distance).
+  /// and returns, per stretch in [_stretches] order, how far the smoothed
+  /// distance differs from the forward one the live screen showed plus the
+  /// smoother's per-event cumulative distance.
   ///
-  /// A stretch that fails to smooth keeps its forward distance and raw
-  /// positions: the saved run must never depend on the smoother succeeding.
-  double _applySmoother(List<Waypoint> track) {
-    var correction = 0.0;
+  /// A stretch that fails to smooth is null and keeps its forward distance and
+  /// raw positions: the saved run must never depend on the smoother succeeding.
+  List<({double correctionM, List<double> cumulativeM})?> _applySmoother(
+      List<Waypoint> track) {
+    final out = <({double correctionM, List<double> cumulativeM})?>[];
     for (final stretch in _stretches) {
+      out.add(null);
       if (!stretch.smoothable || stretch.events.isEmpty) continue;
       try {
         final smoothed = smoothDistance(
@@ -1872,19 +1896,62 @@ class RunRecorder {
           initialStrideM: stretch.initialStrideM,
         );
         if (!smoothed.distanceM.isFinite) continue;
-        correction += smoothed.distanceM - stretch.forward.distanceM;
         for (final link in stretch.trackLinks) {
           final p = smoothed.positions[link.event];
           if (p == null || link.track >= track.length) continue;
           track[link.track] =
               track[link.track].withSmoothedPosition(p.lat, p.lng);
         }
+        out[out.length - 1] = (
+          correctionM: smoothed.distanceM - stretch.forward.distanceM,
+          cumulativeM: smoothed.cumulativeM,
+        );
       } catch (e) {
         debugPrint(
             'RunRecorder: smoother failed, keeping forward distance — $e');
       }
     }
-    return correction;
+    return out;
+  }
+
+  /// [_laps] re-measured on the smoothed distance, so the laps of a run that
+  /// ends on a lap mark sum to the saved total. Each lap boundary moves by the
+  /// corrections of every stretch before its own, plus the smoother's
+  /// cumulative at the boundary's event minus the forward figure the lap
+  /// recorded there. A lap with no anchor (carried over from a resumed
+  /// session, or marked on the belt) or in a stretch that did not smooth only
+  /// takes the earlier stretches' corrections.
+  List<LapSplit> _smoothedLaps(
+      List<({double correctionM, List<double> cumulativeM})?> smoothed) {
+    if (smoothed.every((s) => s == null)) return _laps;
+    final before = List<double>.filled(smoothed.length + 1, 0);
+    for (var i = 0; i < smoothed.length; i++) {
+      before[i + 1] = before[i] + (smoothed[i]?.correctionM ?? 0);
+    }
+    return [
+      for (final lap in _laps)
+        switch (_lapAnchors[lap]) {
+          null => lap,
+          final a => LapSplit(
+              number: lap.number,
+              timestamp: lap.timestamp,
+              cumulativeDistanceMetres: lap.cumulativeDistanceMetres +
+                  before[a.stretch] +
+                  _withinStretchCorrection(smoothed[a.stretch], a),
+              cumulativeDuration: lap.cumulativeDuration,
+            ),
+        },
+    ];
+  }
+
+  static double _withinStretchCorrection(
+    ({double correctionM, List<double> cumulativeM})? smoothed,
+    ({int stretch, int events, double forwardM}) anchor,
+  ) {
+    if (smoothed == null) return 0;
+    final smoothedM =
+        anchor.events == 0 ? 0.0 : smoothed.cumulativeM[anchor.events - 1];
+    return smoothedM - anchor.forwardM;
   }
 
   /// Clean up resources. Terminal: the recorder cannot record again, and

@@ -705,11 +705,14 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 		FF5A1F: [1, 'data'], '9061F9': [1, 'data'], C27803: [1, 'data'],
 		'6B7280': [1, 'data'],
 	},
-	// The six-bucket pace ramp: the colour IS the datum (§ 480's line), and
-	// another TS↔Dart lockstep pair (pace_segments.dart).
+	// The six-bucket live pace ramp and the three-stop finished-run gradient
+	// (yellow -> orange -> red, slow -> fast, § 1767): the colour IS the
+	// datum (§ 480's line), and another TS↔Dart lockstep pair
+	// (pace_segments.dart).
 	'lib/segments/pace_segments.ts': {
-		EF4444: [1, 'data'], F97316: [1, 'data'], FBBF24: [1, 'data'],
+		EF4444: [1, 'data'], F97316: [2, 'data'], FBBF24: [1, 'data'],
 		A3E635: [1, 'data'], '10B981': [1, 'data'], '22D3EE': [1, 'data'],
+		FACC15: [1, 'data'], DC2626: [1, 'data'],
 	},
 	// Per-source badge hues. `brand-hue` and not `brand-mark`: nothing about
 	// Strava's orange requires it to be OUR badge fill, so these owe their bar

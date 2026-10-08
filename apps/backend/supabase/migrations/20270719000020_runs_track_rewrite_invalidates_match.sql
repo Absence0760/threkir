@@ -227,7 +227,8 @@ create trigger runs_road_distance_matches_track
 
 -- runs_keep_distance_recompute carries the version with the figure, so a
 -- client bag that omits both keeps a current pair rather than a bare figure
--- (2) would then drop. Body otherwise as 20270719000006.
+-- (2) would then drop. Body otherwise as 20270719000016, whose
+-- smoothed_sidecar_sha256 carry-forward it keeps.
 create or replace function public.runs_keep_distance_recompute()
 returns trigger
 language plpgsql
@@ -247,6 +248,14 @@ begin
     ));
   end if;
 
+  if v_old ? 'smoothed_sidecar_sha256'
+     and not (coalesce(new.metadata, '{}'::jsonb) ? 'smoothed_sidecar_sha256')
+     and auth.uid() is not null
+     and new.track_url is not distinct from old.track_url then
+    new.metadata := coalesce(new.metadata, '{}'::jsonb)
+      || jsonb_build_object('smoothed_sidecar_sha256', v_old -> 'smoothed_sidecar_sha256');
+  end if;
+
   if not (v_old ? 'distance_recomputed_at')
      or coalesce(new.metadata, '{}'::jsonb) ? 'distance_recomputed_at' then
     return new;
@@ -258,7 +267,8 @@ begin
     'distance_estimator', v_old -> 'distance_estimator',
     'distance_estimator_pass', v_old -> 'distance_estimator_pass',
     'distance_map_matched_m', v_old -> 'distance_map_matched_m',
-    'distance_map_matched_track_version', v_old -> 'distance_map_matched_track_version'
+    'distance_map_matched_track_version', v_old -> 'distance_map_matched_track_version',
+    'smoothed_sidecar_sha256', v_old -> 'smoothed_sidecar_sha256'
   ));
 
   new.fastest_5k_s := old.fastest_5k_s;

@@ -7,12 +7,20 @@
  * distance via haversine, and record the timestamps at the moments
  * cumulative distance crosses `start_distance_m` and `end_distance_m`.
  *
+ * Every position read off the run track is its LINE position
+ * (`runs/track_line.ts`): the smoother's fix when the stored waypoint carries
+ * both halves of it, else the raw one. Raw zig-zag inflates the hop-summed
+ * distance, which moves the crossings and trips the end-to-end guard on a run
+ * that did follow the segment. Timestamps are untouched — the crossings still
+ * interpolate between the same fixes' `ts`.
+ *
  * Pure module — no Supabase, no DOM. Stress-tested in segments.test.ts.
  */
 
 import type { TrackPoint } from '../types';
 import { unwrapLonDeg } from '../routes/geo';
 import { haversineMetres } from '../runs/run_stats';
+import { lineLat, lineLng } from '../runs/track_line';
 
 export interface SegmentSlice {
 	start_distance_m: number;
@@ -79,7 +87,7 @@ function distanceIndex(track: TrackPoint[]): TrackDistanceIndex {
 	for (let i = 1; i < track.length; i++) {
 		const a = track[i - 1];
 		const b = track[i];
-		const d = haversineMetres(a.lat, a.lng, b.lat, b.lng);
+		const d = haversineMetres(lineLat(a), lineLng(a), lineLat(b), lineLng(b));
 		cum[i] = cum[i - 1] + d;
 		if (d > 0) steps.push(d);
 	}
@@ -214,7 +222,7 @@ function scoreAgainstTrack(
 	let startIdx = -1;
 	let startBest = Infinity;
 	for (let i = 0; i < track.length; i++) {
-		const d = haversineMetres(track[i].lat, track[i].lng, start.lat, start.lng);
+		const d = haversineMetres(lineLat(track[i]), lineLng(track[i]), start.lat, start.lng);
 		if (d < startBest) {
 			startBest = d;
 			startIdx = i;
@@ -226,7 +234,7 @@ function scoreAgainstTrack(
 	let endIdx = -1;
 	let endBest = Infinity;
 	for (let i = startIdx + 1; i < track.length; i++) {
-		const d = haversineMetres(track[i].lat, track[i].lng, end.lat, end.lng);
+		const d = haversineMetres(lineLat(track[i]), lineLng(track[i]), end.lat, end.lng);
 		if (d < endBest) {
 			endBest = d;
 			endIdx = i;
@@ -272,16 +280,16 @@ interface TrackBounds {
 const CONSERVATIVE_METRES_PER_DEG = 110_574;
 
 function trackBounds(track: TrackPoint[]): TrackBounds {
-	const refLon = track[0].lng;
-	let minLat = track[0].lat;
+	const refLon = lineLng(track[0]);
+	let minLat = lineLat(track[0]);
 	let maxLat = minLat;
 	let minLon = refLon;
 	let maxLon = refLon;
 	for (let i = 1; i < track.length; i++) {
-		const lat = track[i].lat;
+		const lat = lineLat(track[i]);
 		if (lat < minLat) minLat = lat;
 		else if (lat > maxLat) maxLat = lat;
-		const lon = unwrapLonDeg(refLon, track[i].lng);
+		const lon = unwrapLonDeg(refLon, lineLng(track[i]));
 		if (lon < minLon) minLon = lon;
 		else if (lon > maxLon) maxLon = lon;
 	}

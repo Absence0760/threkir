@@ -651,3 +651,58 @@ test('global sweep: the extent test never rejects a segment the full scan matche
 	}
 	assert.ok(matched >= 10, `oracle produced too few matches to be meaningful (${matched})`);
 });
+
+// ─── Line position: the smoother's fix over the raw one ───
+
+/**
+ * `straightTrack` whose raw fixes alternate 20 m either side of the meridian
+ * while each fix's `smoothedLat` / `smoothedLng` sits on it — a run that
+ * followed the line but whose raw positions zig-zag. Raw hops are ~40 m
+ * against the line's ~5 m, so raw-summed distance reads ~8x long.
+ */
+function zigZagTrack(
+	pair: 'both' | 'latOnly' | 'lngOnly' | 'none',
+): TrackPoint[] {
+	const lngOff = 20 / (111_320 * Math.cos((37 * Math.PI) / 180));
+	return straightTrack({ points: 200, stepM: 5, stepS: 1 }).map((p, i) => {
+		const raw = { ...p, lng: p.lng + (i % 2 === 0 ? lngOff : -lngOff) };
+		if (pair === 'both') return { ...raw, smoothedLat: p.lat, smoothedLng: p.lng };
+		if (pair === 'latOnly') return { ...raw, smoothedLat: p.lat };
+		if (pair === 'lngOnly') return { ...raw, smoothedLng: p.lng };
+		return raw;
+	});
+}
+
+test('line: a global segment is matched on the smoothed line through a raw zig-zag', () => {
+	const segment = { points: [coordAt(100), coordAt(600)], distance_m: 500 };
+	// Raw: ~4026 m covered between the crossings fails the 25% end-to-end guard.
+	assert.equal(computeGlobalSegmentEffort(zigZagTrack('none'), segment), null);
+	const eff = computeGlobalSegmentEffort(zigZagTrack('both'), segment);
+	assert.notEqual(eff, null);
+	// The crossings land on fixes 20 and 120, 1 s apart each: 100 s from t0+20 s.
+	assert.ok(Math.abs(eff!.time_seconds - 100) < 1e-6);
+	assert.equal(eff!.started_at, '2026-01-01T00:00:20.000Z');
+});
+
+test('line: a route slice is timed on the smoothed line distance', () => {
+	const slice = { start_distance_m: 100, end_distance_m: 600 };
+	// Raw-summed distance reaches 600 m after ~15 s: a 12.4 s "effort".
+	const raw = computeEffortFromTrack(zigZagTrack('none'), slice);
+	assert.notEqual(raw, null);
+	assert.ok(raw!.time_seconds < 13);
+	// On the line the slice is the ~100.1 s it took, crossed at ~t0+20.02 s.
+	const eff = computeEffortFromTrack(zigZagTrack('both'), slice);
+	assert.notEqual(eff, null);
+	assert.ok(Math.abs(eff!.time_seconds - 100.11) < 0.01);
+	assert.equal(eff!.started_at, '2026-01-01T00:00:20.022Z');
+});
+
+test('line: half a smoothed pair falls back to the raw fix', () => {
+	const slice = { start_distance_m: 100, end_distance_m: 600 };
+	const segment = { points: [coordAt(100), coordAt(600)], distance_m: 500 };
+	const raw = computeEffortFromTrack(zigZagTrack('none'), slice);
+	for (const pair of ['latOnly', 'lngOnly'] as const) {
+		assert.deepEqual(computeEffortFromTrack(zigZagTrack(pair), slice), raw, pair);
+		assert.equal(computeGlobalSegmentEffort(zigZagTrack(pair), segment), null, pair);
+	}
+});

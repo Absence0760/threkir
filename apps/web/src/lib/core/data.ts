@@ -8497,7 +8497,7 @@ export async function fetchGlobalSegmentLeaderboard(
 export async function computeGlobalSegmentEffortsForRun(input: {
 	run_id: string;
 	user_id: string;
-	track: { lat: number; lng: number; ts?: string }[];
+	track: TrackPoint[];
 }): Promise<number> {
 	if (!input.track || input.track.length < 2) return 0;
 	const userId = auth.user?.id;
@@ -8528,7 +8528,7 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 	// extent is then measured once and the (overwhelming) majority of segments,
 	// which are nowhere near this run, are rejected without walking it.
 	const efforts = computeGlobalSegmentEfforts(
-		input.track as import('$lib/types').TrackPoint[],
+		input.track,
 		segments.map((seg) => ({
 			points: (seg.waypoints ?? []).map((w) => ({ lat: Number(w.lat), lng: Number(w.lng) })),
 			distance_m: Number(seg.distance_m),

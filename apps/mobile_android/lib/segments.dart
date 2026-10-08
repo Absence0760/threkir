@@ -9,6 +9,14 @@ import 'run_stats.dart' show haversineMetres;
 /// Pure Dart port of `apps/web/src/lib/segments/segments.ts` (decisions §37).
 /// Walks a run track to extract elapsed time over a (start, end)
 /// distance window of a saved route. Stays in sync with the web copy.
+///
+/// Every position read off the run track is its line position
+/// ([Waypoint.lineLat] / [Waypoint.lineLng]): the smoother's fix when the
+/// stored waypoint carries both halves of it, else the raw one. Raw zig-zag
+/// inflates the hop-summed distance, which moves the crossings and trips the
+/// end-to-end guard on a run that did follow the segment. Timestamps are
+/// untouched — the crossings still interpolate between the same fixes'
+/// timestamps.
 
 class SegmentSlice {
   final double startDistanceM;
@@ -71,7 +79,7 @@ _TrackDistanceIndex _distanceIndex(List<Waypoint> track) {
   for (var i = 1; i < track.length; i++) {
     final a = track[i - 1];
     final b = track[i];
-    final d = haversineMetres(a.lat, a.lng, b.lat, b.lng);
+    final d = haversineMetres(a.lineLat, a.lineLng, b.lineLat, b.lineLng);
     cum[i] = cum[i - 1] + d;
     if (d > 0) steps.add(d);
   }
@@ -208,19 +216,19 @@ class _TrackBounds {
 const double _conservativeMetresPerDeg = 110574;
 
 _TrackBounds _trackBounds(List<Waypoint> track) {
-  final refLon = track.first.lng;
-  var minLat = track.first.lat;
+  final refLon = track.first.lineLng;
+  var minLat = track.first.lineLat;
   var maxLat = minLat;
   var minLon = refLon;
   var maxLon = refLon;
   for (var i = 1; i < track.length; i++) {
-    final lat = track[i].lat;
+    final lat = track[i].lineLat;
     if (lat < minLat) {
       minLat = lat;
     } else if (lat > maxLat) {
       maxLat = lat;
     }
-    final lon = unwrapLonDeg(refLon, track[i].lng);
+    final lon = unwrapLonDeg(refLon, track[i].lineLng);
     if (lon < minLon) {
       minLon = lon;
     } else if (lon > maxLon) {
@@ -276,7 +284,8 @@ EffortResult? _scoreAgainstTrack(
   var startIdx = -1;
   var startBest = double.infinity;
   for (var i = 0; i < track.length; i++) {
-    final d = haversineMetres(track[i].lat, track[i].lng, start.lat, start.lng);
+    final d =
+        haversineMetres(track[i].lineLat, track[i].lineLng, start.lat, start.lng);
     if (d < startBest) {
       startBest = d;
       startIdx = i;
@@ -287,7 +296,8 @@ EffortResult? _scoreAgainstTrack(
   var endIdx = -1;
   var endBest = double.infinity;
   for (var i = startIdx + 1; i < track.length; i++) {
-    final d = haversineMetres(track[i].lat, track[i].lng, end.lat, end.lng);
+    final d =
+        haversineMetres(track[i].lineLat, track[i].lineLng, end.lat, end.lng);
     if (d < endBest) {
       endBest = d;
       endIdx = i;

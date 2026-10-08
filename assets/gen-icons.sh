@@ -61,6 +61,9 @@ echo "Regenerating app icons from $SVG"
 # 1. Master roundtrip -------------------------------------------------------
 echo "[master]"
 render_png 1024 "$SCRIPT_DIR/icon_1024.png"
+# Play Console's store-listing icon: 512x512, 32-bit PNG with alpha. Kept
+# apart from the web icon-512.png, which is quantised for the bundle budget.
+render_png 512 "$SCRIPT_DIR/play-store-icon-512.png"
 
 # 2. Web --------------------------------------------------------------------
 echo "[web]"

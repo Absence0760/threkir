@@ -44,14 +44,25 @@ final class WorkoutManagerPaceTests: XCTestCase {
         wm.locationManager(CLLocationManager(), didUpdateLocations: locations)
     }
 
+    /// Great-circle metres on the estimator's own sphere. Not
+    /// `CLLocation.distance(from:)`: the estimator never calls it, it measures
+    /// on an ellipsoid, and on the watchOS 26.5 simulator CI runs it returned
+    /// NaN, which failed every harness check that leaned on it.
+    private func metres(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Double {
+        let rad = Double.pi / 180
+        let dLat = (b.latitude - a.latitude) * rad
+        let dLng = (b.longitude - a.longitude) * rad
+        let h = sin(dLat / 2) * sin(dLat / 2)
+            + cos(a.latitude * rad) * cos(b.latitude * rad) * sin(dLng / 2) * sin(dLng / 2)
+        return GpsDistanceEstimator.earthRadiusM * 2 * asin(min(1, h.squareRoot()))
+    }
+
     /// Seconds per km implied by one leg — the honest pace of both halves of
-    /// the run below, derived rather than hardcoded so it tracks whatever
-    /// `CLLocation` measures a 0.0001° step to be.
+    /// the run below, derived from the leg's geometry rather than hardcoded.
     private func expectedPace() -> Double {
-        let base = Date()
-        let a = loc(51.5, at: base)
-        let b = loc(51.5 + legDegrees, at: base)
-        return (legSeconds / a.distance(from: b)) * 1000
+        let a = CLLocationCoordinate2D(latitude: 51.5, longitude: -0.1)
+        let b = CLLocationCoordinate2D(latitude: 51.5 + legDegrees, longitude: -0.1)
+        return (legSeconds / metres(a, b)) * 1000
     }
 
     func testPaceAfterResumeExcludesThePausedSpan() {
@@ -130,8 +141,8 @@ final class WorkoutManagerPaceTests: XCTestCase {
 
     private func hopSumPace(_ fixes: [CLLocation], hops: Int) -> Double {
         let tail = Array(fixes.suffix(hops + 1))
-        let metres = zip(tail, tail.dropFirst()).reduce(0.0) { $0 + $1.1.distance(from: $1.0) }
-        return Double(hops) / metres * 1000
+        let summed = zip(tail, tail.dropFirst()).reduce(0.0) { $0 + metres($1.0.coordinate, $1.1.coordinate) }
+        return Double(hops) / summed * 1000
     }
 
     func testZigZagPaceReadsTheEstimatorWithDoppler() {

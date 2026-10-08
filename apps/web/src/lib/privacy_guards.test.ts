@@ -357,6 +357,30 @@ test('run-photo delete sites sweep BOTH storage_path and thumb_512_path', () => 
 	);
 });
 
+test('run delete sites sweep the smoothed-position sidecar with the track', () => {
+	// Reason: the job_worker writes `{user_id}/{run_id}.smoothed.json.gz`
+	// beside a track it replayed (docs/features/gps_distance.md § Waypoint
+	// fields). No column names it, so nothing in the row cascade reaches it:
+	// a run delete that removed only `track_url` would leave the smoother's
+	// copy of the whole route in the bucket after the owner deleted the run.
+	const web = read('src/lib/core/data.ts').match(/export async function deleteRun\(id: string\)[\s\S]*?\n\}/);
+	assert.ok(web, 'Could not locate deleteRun in data.ts');
+	assert.match(
+		web![0],
+		/smoothedSidecarPath\(run\.user_id, id\)[\s\S]*?from\(BUCKETS\.runs\)\.remove\(orphanPaths\)/,
+		'deleteRun (web) must add smoothedSidecarPath(user_id, id) to the runs-bucket removal.',
+	);
+	const apiClient = read('../../packages/api_client/lib/src/api_client.dart').match(
+		/Future<void> deleteRun\(Run run\)[\s\S]*?\n {2}\}/,
+	);
+	assert.ok(apiClient, 'Could not locate deleteRun in api_client.dart');
+	assert.match(
+		apiClient![0],
+		/smoothedSidecarPath\(userId, run\.id\)[\s\S]*?StorageBuckets\.runs\)\.remove\(/,
+		'api_client.dart#deleteRun must remove smoothedSidecarPath(userId, run.id) from the runs bucket too.',
+	);
+});
+
 test('export-data validates track_url against the canonical Storage path', () => {
 	// Reason: pass-2 commit 978b4c9 added a runtime backstop ahead of
 	// the service-role Storage download. RLS already prevents cross-

@@ -104,6 +104,12 @@ import {
 import type { GeneratedPlan, GoalEvent, PlanPhase } from '../training/training';
 import { auth } from '../stores/auth.svelte';
 import { lineLngLat } from '../runs/track_line';
+import {
+	mergeSmoothedSidecar,
+	needsSmoothedSidecar,
+	sha256Hex,
+	smoothedSidecarPath,
+} from '../runs/smoothed_sidecar';
 import { compareLeaderboard } from '../runs/race_leaderboard';
 import { readRankRows } from '../segments/effort_rank';
 import type { RecapPeriodKind } from '../types';
@@ -676,12 +682,40 @@ export async function fetchRunById(
 	let track = null;
 	if (data.track_url) {
 		try {
-			track = await fetchTrack(data.track_url);
+			track = await fetchOwnerTrack(data.track_url, data.user_id, data.id);
 		} catch (e) {
 			console.warn('Failed to fetch track', e);
 		}
 	}
 	return { run: asRun(data, track), error: null };
+}
+
+/// The owner's run-detail track: the stored waypoints plus, for a track that
+/// carries no smoothed pair of its own (a watch run, an old run the server
+/// recomputed), the job_worker's smoothed-position sidecar merged on when it
+/// names these exact bytes (`runs/smoothed_sidecar.ts`). The sidecar is an
+/// auxiliary layer over the track: any failure to fetch or read it leaves the
+/// raw line, and is not an error.
+async function fetchOwnerTrack(path: string, userId: string, runId: string) {
+	const { data, error } = await supabase.storage.from(BUCKETS.runs).download(path);
+	if (error || !data) throw error ?? new Error('No data');
+	const decompressed = await decompressGzip(await data.arrayBuffer());
+	const points = JSON.parse(new TextDecoder().decode(decompressed));
+	if (!Array.isArray(points) || !needsSmoothedSidecar(points)) return points;
+	try {
+		const { data: sc, error: scErr } = await supabase.storage
+			.from(BUCKETS.runs)
+			.download(smoothedSidecarPath(userId, runId));
+		if (scErr || !sc) return points;
+		const sidecar = JSON.parse(new TextDecoder().decode(await decompressGzip(await sc.arrayBuffer())));
+		return mergeSmoothedSidecar(points, sidecar, {
+			points: points.length,
+			sha256: await sha256Hex(decompressed),
+		});
+	} catch (e) {
+		console.warn('smoothed sidecar unreadable; drawing the raw line', { run_id: runId, error: e });
+		return points;
+	}
 }
 
 /// Fetch every run by the signed-in user against `routeId`, ordered
@@ -1044,14 +1078,18 @@ export async function deleteRun(id: string): Promise<void> {
 	// orphan bytes still occupy the bucket.) Audit/storage Medium fix.
 	const { data: run } = await supabase
 		.from(TABLES.runs)
-		.select('track_url, hr_series_url')
+		.select('user_id, track_url, hr_series_url')
 		.eq('id', id)
 		.single();
-	// Both Storage sidecars (GPS track + indoor HR series) are removed
-	// alongside the row so the bucket doesn't accumulate orphans.
-	const orphanPaths = [run?.track_url, run?.hr_series_url].filter(
-		(p): p is string => !!p,
-	);
+	// The GPS track, the indoor HR series and the job_worker's smoothed-
+	// position sidecar (which no column names; removing a path that is not
+	// there is a no-op) are removed alongside the row so the bucket doesn't
+	// accumulate orphans.
+	const orphanPaths = [
+		run?.track_url,
+		run?.hr_series_url,
+		run?.user_id ? smoothedSidecarPath(run.user_id, id) : null,
+	].filter((p): p is string => !!p);
 	if (orphanPaths.length > 0) {
 		try {
 			await supabase.storage.from(BUCKETS.runs).remove(orphanPaths);

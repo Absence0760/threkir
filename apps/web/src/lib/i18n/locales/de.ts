@@ -1173,7 +1173,7 @@ export const messages = {
 	"runDetail.recalculateDistanceNotOwner": "Nur die Person, die diesen Lauf aufgezeichnet hat, kann seine Distanz neu berechnen.",
 	"runDetail.recalculateDistanceNoTrack": "Dieser Lauf hat keinen GPS-Track, aus dem neu berechnet werden kann.",
 	"runDetail.originallyRecorded": "Ursprünglich aufgezeichnet: {distance}",
-	"runDetail.roadMatched": "Auf Straßen abgeglichen: {distance}",
+	"runDetail.roadMatched": "An Straßen angepasst: {distance}",
 	"runDetail.roadMatchedTitle": "Distanz entlang der kartierten Straßen, die du gelaufen bist, per Kartenabgleich ermittelt. Deine aufgezeichnete Distanz bleibt unverändert.",
 	"runDetail.zone1": "Zone 1",
 	"runDetail.zone2": "Zone 2",

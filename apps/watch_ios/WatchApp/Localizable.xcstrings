@@ -834,6 +834,47 @@
         }
       }
     },
+    "Battery %@ · consider charging": {
+      "comment": "Start screen, shown below 40 percent battery. The placeholder is a locale-formatted percentage. Wording matches Wear OS's battery_consider_charging.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Akku %@ · laden empfohlen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Batería %@ · considera cargar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Batterie %@ · pensez à recharger"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バッテリー %@ · 充電を検討"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bateria %@ · considere carregar"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bateria %@ · considere carregar"
+          }
+        }
+      }
+    },
     "Begins a new run, starting GPS and heart-rate recording": {
       "comment": "VoiceOver hint on the Start button (pre-run screen).",
       "localizations": {

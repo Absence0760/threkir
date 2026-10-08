@@ -301,6 +301,7 @@ struct PreRunView: View {
     @State private var selectedPaceIndex: Int? = nil
     @State private var showingAccount = false
     @State private var pickingRoute = false
+    @State private var lowBatteryPercent: Int?
 
     var body: some View {
         ScrollView {
@@ -312,6 +313,16 @@ struct PreRunView: View {
                     Text("\(queuedCount) run queued to sync")
                         .font(.caption2)
                         .foregroundColor(.secondary)
+                }
+
+                // Advice, never a gate — Wear OS's rule. The percent is
+                // formatted by the locale (`40 %` in French), so the catalog
+                // carries no literal percent sign.
+                if let lowBatteryPercent {
+                    Text("Battery \((Double(lowBatteryPercent) / 100).formatted(.percent)) · consider charging")
+                        .font(.caption2)
+                        .foregroundColor(AppTheme.coral)
+                        .multilineTextAlignment(.center)
                 }
 
                 RaceBannerView(race: liveRace)
@@ -442,6 +453,7 @@ struct PreRunView: View {
                 onClear: onClearRoute
             )
         }
+        .onAppear { lowBatteryPercent = BatteryCheck.currentWarningPercent() }
     }
 }
 

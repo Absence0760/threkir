@@ -463,6 +463,7 @@ class SocialService extends ChangeNotifier {
     final raw = await _c.rpc(
       'fundraiser_totals',
       params: {'p_fundraiser_id': fundraiserId},
+      get: true,
     );
     if (raw is! List || raw.isEmpty) return null;
     final row = Map<String, dynamic>.from(raw.first as Map);
@@ -481,6 +482,7 @@ class SocialService extends ChangeNotifier {
     final raw = await _c.rpc(
       'fundraiser_feed',
       params: {'p_fundraiser_id': fundraiserId, 'p_limit': limit},
+      get: true,
     );
     if (raw is! List) return const [];
     return raw.map((r) {
@@ -537,7 +539,7 @@ class SocialService extends ChangeNotifier {
         params['p_center_lat'] = place.lat;
         params['p_radius_m'] = place.radiusM;
       }
-      final raw = await _c.rpc('search_clubs', params: params);
+      final raw = await _c.rpc('search_clubs', params: params, get: true);
       final rows = ((raw ?? <dynamic>[]) as List)
           .whereType<Map<String, dynamic>>()
           .toList();
@@ -1149,7 +1151,8 @@ class SocialService extends ChangeNotifier {
   /// them. Returns null for non-members and events with no point set.
   /// Persona-hunt social-group #10.
   Future<({double lat, double lng})?> fetchEventMeetPoint(String eventId) async {
-    final res = await _c.rpc('get_event_meet_point', params: {'p_event_id': eventId});
+    final res = await _c.rpc('get_event_meet_point',
+        params: {'p_event_id': eventId}, get: true);
     if (res is! List || res.isEmpty) return null;
     final row = res.first;
     if (row is! Map) return null;
@@ -2070,7 +2073,7 @@ class SocialService extends ChangeNotifier {
     final raw = await _c.rpc('challenge_leaderboard', params: {
       'p_challenge_id': id,
       'p_by_team': byTeam,
-    });
+    }, get: true);
     return ((raw ?? <dynamic>[]) as List)
         .whereType<Map>()
         .map((r) => ChallengeLeaderboardEntry(
@@ -2086,7 +2089,8 @@ class SocialService extends ChangeNotifier {
   /// The self-hide driver: challenges the caller has joined that are live or
   /// recently ended. An empty list means render nothing.
   Future<List<ChallengeView>> myActiveChallenges() async {
-    final raw = await _c.rpc('my_active_challenges');
+    final raw =
+        await _c.rpc('my_active_challenges', params: const {}, get: true);
     return ((raw ?? <dynamic>[]) as List).whereType<Map>().map((r) {
       return _challengeFromRow(
         r.cast<String, dynamic>(),

@@ -35,7 +35,7 @@ Pure-function tests for two helpers in `lib/run_stats.dart`:
 - Slow → fast → slow run → picks the fast middle 5 km
 - Regression: a 10 km in 1:14:34 does **not** surface as a 37:17 fastest 5k
 
-### `packages/run_recorder/test/run_recorder_test.dart` — 90 tests
+### `packages/run_recorder/test/run_recorder_test.dart` — 91 tests
 
 The recorder's state machine and GPS filter chain. Uses `@visibleForTesting` hooks (see below) to bypass the real geolocator stream and inject synthetic `Position` objects directly into `_onPosition`.
 

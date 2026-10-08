@@ -265,7 +265,12 @@ void main() {
       // Two fixes sharing a timestamp (batched/queued fixes, or a clock
       // correction): dt = 0 makes speed undefined. A 90 m hop must not slip
       // through the < 100 m filter — the speed clamp can't vet it.
-      final r = RunRecorder()..debugPrepareWithoutStream(maxSpeedMps: 10);
+      // A duplicate GPS timestamp makes the estimator fall back to the real
+      // clock for its interval, so on a slow runner the gap between these
+      // two calls rounds to 1/1024 s and credits Doppler distance for it.
+      // A frozen clock states the zero elapsed time this case is about.
+      final r = RunRecorder(clock: _FakeClock())
+        ..debugPrepareWithoutStream(maxSpeedMps: 10);
       r.begin();
       r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 5));
       r.debugInjectPosition(makePosition(metresEast: 90, secondsFromStart: 5));
@@ -273,11 +278,36 @@ void main() {
       expect(r.debugDistanceMetres, 0);
     });
 
+    test(
+        'a duplicate GPS timestamp is timed by the real clock, so Doppler '
+        'speed is credited for the time that actually passed', () {
+      // The other zero-dt cases freeze the clock because this fallback is
+      // real: _estimatorFixTime uses the stopwatch when the GPS interval is
+      // not positive, and a slow CI runner once read 1/1024 s between two
+      // back-to-back injections (0.001953125 m at 2 m/s, run 37858012856).
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock)
+        ..debugPrepareWithoutStream(maxSpeedMps: 10);
+      r.begin();
+      r.debugInjectPosition(
+          makePosition(metresEast: 0, secondsFromStart: 0, speed: 2));
+      clock.advance(const Duration(seconds: 1));
+      r.debugInjectPosition(
+          makePosition(metresEast: 90, secondsFromStart: 0, speed: 2));
+      expect(r.debugTrack.length, 1, reason: 'the teleport is still rejected');
+      expect(r.debugDistanceMetres, closeTo(2, 0.05));
+    });
+
     test('zero-dt rejection is lossless — next valid fix still accumulates', () {
       // After a rejected same-timestamp fix, a later fix with a real
       // timestamp accumulates the delta from the last good position over the
       // true elapsed time (20 m in 10 s = 2 m/s, within the clamp).
-      final r = RunRecorder()..debugPrepareWithoutStream(maxSpeedMps: 10);
+      // A duplicate GPS timestamp makes the estimator fall back to the real
+      // clock for its interval, so on a slow runner the gap between these
+      // two calls rounds to 1/1024 s and credits Doppler distance for it.
+      // A frozen clock states the zero elapsed time this case is about.
+      final r = RunRecorder(clock: _FakeClock())
+        ..debugPrepareWithoutStream(maxSpeedMps: 10);
       r.begin();
       r.debugInjectPosition(
           makePosition(metresEast: 0, secondsFromStart: 0, speed: 2));
@@ -362,7 +392,11 @@ void main() {
       // The re-anchor must not open a hole for the zero-dt duplicate case:
       // two fixes sharing a timestamp give dt = 0, which is < the re-anchor
       // window, so a 120 m hop is still rejected.
-      final r = RunRecorder()
+      // A duplicate GPS timestamp makes the estimator fall back to the real
+      // clock for its interval, so on a slow runner the gap between these
+      // two calls rounds to 1/1024 s and credits Doppler distance for it.
+      // A frozen clock states the zero elapsed time this case is about.
+      final r = RunRecorder(clock: _FakeClock())
         ..debugPrepareWithoutStream(maxSpeedMps: 1000);
       r.begin();
       r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 30));

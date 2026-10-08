@@ -142,6 +142,11 @@ const (
 	MetaDistanceRecordedM    = "distance_recorded_m"
 	MetaDistanceEstimator    = "distance_estimator"
 	MetaDistanceRecomputedAt = "distance_recomputed_at"
+	// Read by the map_match road-distance step to rule out a run that is
+	// not on a road, and written by it: the matched length along the road
+	// graph, beside distance_m and never in place of it.
+	MetaSubSport            = "sub_sport"
+	MetaDistanceMapMatchedM = "distance_map_matched_m"
 )
 
 // PrefsKey is a key inside the `user_settings.prefs` jsonb bag — the

@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/Absence0760/threkir/apps/job_worker/internal/schema"
 )
 
 type fakeRoadDistance struct {
@@ -194,8 +196,8 @@ func TestHandleMapMatch_StoresRoadDistanceBesideTheRecomputeKeys(t *testing.T) {
 		t.Fatalf("writes=%d, want 1 after one CAS retry", len(b.road.writes))
 	}
 	got := b.road.writes[0]
-	if got[MetadataDistanceMapMatchedM] != 1990.0 {
-		t.Errorf("distance_map_matched_m=%v", got[MetadataDistanceMapMatchedM])
+	if got[schema.MetaDistanceMapMatchedM] != 1990.0 {
+		t.Errorf("distance_map_matched_m=%v", got[schema.MetaDistanceMapMatchedM])
 	}
 	// The stale-copy guard (20270719000003) restores the recompute keys on a
 	// write whose bag lacks distance_recomputed_at; carrying them means this
@@ -214,7 +216,7 @@ func TestHandleMapMatch_ClearsAStaleRoadDistance(t *testing.T) {
 	if len(b.road.writes) != 1 {
 		t.Fatalf("writes=%d, want 1", len(b.road.writes))
 	}
-	if _, ok := b.road.writes[0][MetadataDistanceMapMatchedM]; ok {
+	if _, ok := b.road.writes[0][schema.MetaDistanceMapMatchedM]; ok {
 		t.Errorf("stale key kept: %v", b.road.writes[0])
 	}
 }

@@ -275,8 +275,11 @@ apps/job_worker/
 │   ├── strava_test.go       # 4 tests: parse, error surface, malformed, default URL
 │   ├── matcher.go           # Matcher interface + PassthroughMatcher stub
 │   ├── matcher_test.go
-│   ├── matcher_osrm.go      # OSRMMatcher — /match/v1/foot, chunked
+│   ├── matcher_osrm.go      # OSRMMatcher — /match/v1/foot, chunked; MatchWithRoadDistance also sums the matched length along the road graph
 │   ├── matcher_osrm_test.go
+│   ├── road_distance.go     # map_match's last step: metadata.distance_map_matched_m for a road run (never trails, a track, indoor), CAS on track_url + metadata
+│   ├── road_distance_test.go
+│   ├── supabase_road_distance.go # ReadRunForRoadDistance (route surface embedded) + UpdateRunMetadata CAS PATCH
 │   ├── worker.go            # claim → handle → finish loop; dispatch by kind
 │   ├── handler_token_refresh.go  # kind='token_refresh' sweep + rotate
 │   ├── handler_notification_email.go # kind='notification_email' send-or-skip

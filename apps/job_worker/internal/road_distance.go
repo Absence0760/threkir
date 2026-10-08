@@ -6,13 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"math"
-)
 
-// MetadataDistanceMapMatchedM is the runs.metadata key the map_match job
-// writes the road-matched distance under (docs/backend/metadata.md). It
-// never replaces distance_m: the recorder's estimator owns that figure, and
-// a road graph's length is a second opinion that only holds on roads.
-const MetadataDistanceMapMatchedM = "distance_map_matched_m"
+	"github.com/Absence0760/threkir/apps/job_worker/internal/schema"
+)
 
 // RoadMatch is what a road-aware matcher reports beside the matched
 // track. DistanceM is nil whenever any stretch of the run was not
@@ -97,20 +93,14 @@ func roadDistanceFor(run *RoadDistanceRun, meta map[string]json.RawMessage, raw 
 	if !roadActivityTypes[activity] {
 		return nil, "activity " + activity + " is not on the foot road graph"
 	}
-	if v, ok := meta["indoor"]; ok && string(v) == "true" {
+	if metaIsTrue(meta, schema.MetaIndoor) || metaIsTrue(meta, schema.MetaIndoorEstimated) {
 		return nil, "indoor run"
 	}
-	if v, ok := meta["sub_sport"]; ok {
-		var sub string
-		if json.Unmarshal(v, &sub) == nil && !roadSubSports[sub] {
-			return nil, "sub_sport " + sub + " is not a road discipline"
-		}
+	if sub := metaString(meta, schema.MetaSubSport); sub != "" && !roadSubSports[sub] {
+		return nil, "sub_sport " + sub + " is not a road discipline"
 	}
-	if v, ok := meta["strava_activity_type"]; ok {
-		var st string
-		if json.Unmarshal(v, &st) == nil && !roadStravaTypes[st] {
-			return nil, "strava activity type " + st + " is not a road discipline"
-		}
+	if st := metaString(meta, schema.MetaStravaActivityType); st != "" && !roadStravaTypes[st] {
+		return nil, "strava activity type " + st + " is not a road discipline"
 	}
 	if run.Route != nil && run.Route.Surface != nil && *run.Route.Surface != "road" {
 		return nil, "linked route surface is " + *run.Route.Surface
@@ -137,7 +127,7 @@ func roadDistanceFor(run *RoadDistanceRun, meta map[string]json.RawMessage, raw 
 // mergeRoadDistance returns meta with distance_map_matched_m set to want,
 // or removed when want is nil, and whether that changes the stored bag.
 func mergeRoadDistance(meta map[string]json.RawMessage, want *float64) (json.RawMessage, bool, error) {
-	old, had := meta[MetadataDistanceMapMatchedM]
+	old, had := meta[schema.MetaDistanceMapMatchedM]
 	out := make(map[string]json.RawMessage, len(meta)+1)
 	for k, v := range meta {
 		out[k] = v
@@ -146,7 +136,7 @@ func mergeRoadDistance(meta map[string]json.RawMessage, want *float64) (json.Raw
 		if !had {
 			return nil, false, nil
 		}
-		delete(out, MetadataDistanceMapMatchedM)
+		delete(out, schema.MetaDistanceMapMatchedM)
 	} else {
 		enc, err := json.Marshal(*want)
 		if err != nil {
@@ -158,7 +148,7 @@ func mergeRoadDistance(meta map[string]json.RawMessage, want *float64) (json.Raw
 				return nil, false, nil
 			}
 		}
-		out[MetadataDistanceMapMatchedM] = enc
+		out[schema.MetaDistanceMapMatchedM] = enc
 	}
 	merged, err := json.Marshal(out)
 	if err != nil {

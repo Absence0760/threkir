@@ -16,22 +16,20 @@ double? _num(Map<String, dynamic> m, String key) =>
     (m[key] as num?)?.toDouble();
 
 GpsEvent _event(Map<String, dynamic> ev) => switch (ev['type']) {
-  'fix' => GpsFixEvent(
-    t: _num(ev, 't')!,
-    lat: _num(ev, 'lat')!,
-    lng: _num(ev, 'lng')!,
-    accuracyM: _num(ev, 'acc'),
-    speedMps: _num(ev, 'speed'),
-    speedAccuracyMps: _num(ev, 'speedAcc'),
-    bearingDeg: _num(ev, 'bearing'),
-  ),
-  'steps' => GpsStepsEvent(
-    t: _num(ev, 't')!,
-    count: (ev['count'] as num).toInt(),
-  ),
-  'finish' => GpsFinishEvent(t: _num(ev, 't')!),
-  _ => throw StateError('unknown event type ${ev['type']}'),
-};
+      'fix' => GpsFixEvent(
+          t: _num(ev, 't')!,
+          lat: _num(ev, 'lat')!,
+          lng: _num(ev, 'lng')!,
+          accuracyM: _num(ev, 'acc'),
+          speedMps: _num(ev, 'speed'),
+          speedAccuracyMps: _num(ev, 'speedAcc'),
+          bearingDeg: _num(ev, 'bearing'),
+        ),
+      'steps' =>
+        GpsStepsEvent(t: _num(ev, 't')!, count: (ev['count'] as num).toInt()),
+      'finish' => GpsFinishEvent(t: _num(ev, 't')!),
+      _ => throw StateError('unknown event type ${ev['type']}'),
+    };
 
 void _apply(GpsDistanceEstimator e, GpsEvent ev) {
   switch (ev) {
@@ -56,7 +54,8 @@ void main() {
   final vectors = _loadVectors();
   final tolerance = (vectors['tolerance_m'] as num).toDouble();
   final posTolerance = (vectors['position_tolerance_deg'] as num).toDouble();
-  final scenarios = (vectors['scenarios'] as List).cast<Map<String, dynamic>>();
+  final scenarios =
+      (vectors['scenarios'] as List).cast<Map<String, dynamic>>();
 
   test('fixture is spec v1.2 and carries every scenario', () {
     expect(vectors['spec'], 'gps-distance-estimator v1.2');
@@ -72,15 +71,11 @@ void main() {
     expect(c['INIT_VEL_VAR'], GpsDistanceEstimator.initVelVar);
     expect(c['MIN_SPEED_SIGMA_MPS'], GpsDistanceEstimator.minSpeedSigmaMps);
     expect(
-      c['DEFAULT_SPEED_SIGMA_MPS'],
-      GpsDistanceEstimator.defaultSpeedSigmaMps,
-    );
+        c['DEFAULT_SPEED_SIGMA_MPS'], GpsDistanceEstimator.defaultSpeedSigmaMps);
     expect(c['MAX_SPEED_SIGMA_MPS'], GpsDistanceEstimator.maxSpeedSigmaMps);
     expect(c['STATIONARY_SPEED_MPS'], GpsDistanceEstimator.stationarySpeedMps);
-    expect(
-      c['POS_ONLY_STATIONARY_SPEED_MPS'],
-      GpsDistanceEstimator.posOnlyStationarySpeedMps,
-    );
+    expect(c['POS_ONLY_STATIONARY_SPEED_MPS'],
+        GpsDistanceEstimator.posOnlyStationarySpeedMps);
     expect(c['GAP_S'], GpsDistanceEstimator.gapS);
     expect(c['FRESH_FIX_S'], GpsDistanceEstimator.freshFixS);
     expect(c['STRIDE_WINDOW_STEPS'], GpsDistanceEstimator.strideWindowSteps);
@@ -104,10 +99,8 @@ void main() {
     expect(c['DEBIAS_ZERO_MPS'], GpsDistanceEstimator.debiasZeroMps);
     expect(c['ZUPT_NO_STEP_S'], GpsDistanceEstimator.zuptNoStepS);
     expect(c['ZUPT_VEL_SIGMA_MPS'], GpsDistanceEstimator.zuptVelSigmaMps);
-    expect(
-      c['ZUPT_DOPPLER_OVERRIDE_MPS'],
-      GpsDistanceEstimator.zuptDopplerOverrideMps,
-    );
+    expect(c['ZUPT_DOPPLER_OVERRIDE_MPS'],
+        GpsDistanceEstimator.zuptDopplerOverrideMps);
     expect(c['ZUPT_RELEASE_M'], GpsDistanceEstimator.zuptReleaseM);
     expect(c['STOP_HALF_WINDOW_S'], GpsDistanceEstimator.stopHalfWindowS);
     expect(c['STOP_MIN_HALF_FIXES'], GpsDistanceEstimator.stopMinHalfFixes);
@@ -136,20 +129,13 @@ void main() {
         expect(after, hasLength(events.length));
         for (var i = 0; i < events.length; i++) {
           _apply(e, events[i]);
-          expect(
-            e.distanceM,
-            closeTo(after[i], tolerance),
-            reason: 'distance after event $i (${events[i].runtimeType})',
-          );
+          expect(e.distanceM, closeTo(after[i], tolerance),
+              reason: 'distance after event $i (${events[i].runtimeType})');
         }
-        expect(
-          e.gpsDistanceM,
-          closeTo(_num(expected, 'gpsDistanceM')!, tolerance),
-        );
-        expect(
-          e.stepDistanceM,
-          closeTo(_num(expected, 'stepDistanceM')!, tolerance),
-        );
+        expect(e.gpsDistanceM,
+            closeTo(_num(expected, 'gpsDistanceM')!, tolerance));
+        expect(e.stepDistanceM,
+            closeTo(_num(expected, 'stepDistanceM')!, tolerance));
         final stride = _num(expected, 'strideM');
         if (stride == null) {
           expect(e.strideM, isNull);
@@ -184,21 +170,14 @@ void main() {
             .toList();
         expect(got.cumulativeM, hasLength(events.length));
         for (var i = 0; i < events.length; i++) {
-          expect(
-            got.cumulativeM[i],
-            closeTo(after[i], tolerance),
-            reason: 'smoothed distance after event $i',
-          );
+          expect(got.cumulativeM[i], closeTo(after[i], tolerance),
+              reason: 'smoothed distance after event $i');
         }
         expect(got.distanceM, closeTo(_num(want, 'distanceM')!, tolerance));
-        expect(
-          got.gpsDistanceM,
-          closeTo(_num(want, 'gpsDistanceM')!, tolerance),
-        );
-        expect(
-          got.stepDistanceM,
-          closeTo(_num(want, 'stepDistanceM')!, tolerance),
-        );
+        expect(got.gpsDistanceM,
+            closeTo(_num(want, 'gpsDistanceM')!, tolerance));
+        expect(got.stepDistanceM,
+            closeTo(_num(want, 'stepDistanceM')!, tolerance));
         expect(got.stoppedFixes, want['stoppedFixes']);
         final positions = want['positions'] as List;
         expect(got.positions, hasLength(positions.length));
@@ -210,16 +189,10 @@ void main() {
             continue;
           }
           expect(p, isNotNull, reason: 'position $i');
-          expect(
-            p!.lat,
-            closeTo((w[0] as num).toDouble(), posTolerance),
-            reason: 'lat $i',
-          );
-          expect(
-            p.lng,
-            closeTo((w[1] as num).toDouble(), posTolerance),
-            reason: 'lng $i',
-          );
+          expect(p!.lat, closeTo((w[0] as num).toDouble(), posTolerance),
+              reason: 'lat $i');
+          expect(p.lng, closeTo((w[1] as num).toDouble(), posTolerance),
+              reason: 'lng $i');
         }
       });
     }
@@ -253,32 +226,29 @@ void main() {
       expect(e.distanceM.isFinite, isTrue);
     });
 
-    test(
-      'a NaN accuracy, speed or bearing falls back instead of poisoning',
-      () {
-        final e = running();
-        e.addFix(
-          t: 5,
-          lat: 40.000125,
-          lng: -75,
-          accuracyM: double.nan,
-          speedMps: double.nan,
-          speedAccuracyMps: double.nan,
-          bearingDeg: double.nan,
-        );
-        e.addFix(
-          t: 6,
-          lat: 40.00015,
-          lng: -75,
-          accuracyM: double.infinity,
-          speedMps: 2.7,
-          speedAccuracyMps: double.infinity,
-          bearingDeg: double.infinity,
-        );
-        expect(e.distanceM.isFinite, isTrue);
-        expect(e.gpsDistanceM, greaterThan(0));
-      },
-    );
+    test('a NaN accuracy, speed or bearing falls back instead of poisoning', () {
+      final e = running();
+      e.addFix(
+        t: 5,
+        lat: 40.000125,
+        lng: -75,
+        accuracyM: double.nan,
+        speedMps: double.nan,
+        speedAccuracyMps: double.nan,
+        bearingDeg: double.nan,
+      );
+      e.addFix(
+        t: 6,
+        lat: 40.00015,
+        lng: -75,
+        accuracyM: double.infinity,
+        speedMps: 2.7,
+        speedAccuracyMps: double.infinity,
+        bearingDeg: double.infinity,
+      );
+      expect(e.distanceM.isFinite, isTrue);
+      expect(e.gpsDistanceM, greaterThan(0));
+    });
 
     test('a NaN step time is ignored and finish(NaN) commits nothing', () {
       final e = running();

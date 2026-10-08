@@ -61,8 +61,7 @@ func haversineCumulative(pts []RecordedTrackPoint) []float64 {
 
 func bestsOf(pts []RecordedTrackPoint) map[string]*int {
 	pts = coordinatePoints(pts)
-	cum, _, _ := replayRecordedTrack(pts, 10)
-	return embeddedBestsOver(pts, cum)
+	return embeddedBestsOver(pts, replayRecordedTrack(pts, 10).SmoothedCumM)
 }
 
 func TestEmbeddedBestDistancesMatchTheDartAndWebKeys(t *testing.T) {
@@ -193,7 +192,8 @@ func TestEstimatorCumulative_NonDecreasingAndCarriesUntimedPoints(t *testing.T) 
 		}
 		pts = append(pts, ebPoint(0, float64(i)*3/ebMPerDeg, at))
 	}
-	cum, _, fixes := replayRecordedTrack(pts, 10)
+	replay := replayRecordedTrack(pts, 10)
+	cum, fixes := replay.SmoothedCumM, replay.Fixes
 	if len(cum) != len(pts) || cum[0] != 0 || fixes != 20 {
 		t.Fatalf("len = %d, cum[0] = %v, fixes = %d", len(cum), cum[0], fixes)
 	}

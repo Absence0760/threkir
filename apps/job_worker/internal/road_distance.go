@@ -64,14 +64,17 @@ var roadActivityTypes = map[string]bool{"": true, "run": true, "walk": true, "st
 // Route is the linked route's surface through the runs.route_id foreign
 // key, nil when no route is linked.
 type RoadDistanceRun struct {
-	ID           string          `json:"id"`
-	ActivityType *string         `json:"activity_type"`
-	TrackURL     *string         `json:"track_url"`
-	DistanceM    float64         `json:"distance_m"`
-	Metadata     json.RawMessage `json:"metadata"`
-	Route        *struct {
-		Surface *string `json:"surface"`
-	} `json:"route"`
+	ID           string            `json:"id"`
+	ActivityType *string           `json:"activity_type"`
+	TrackURL     *string           `json:"track_url"`
+	DistanceM    float64           `json:"distance_m"`
+	Metadata     json.RawMessage   `json:"metadata"`
+	Route        *RoadRouteSurface `json:"route"`
+}
+
+// RoadRouteSurface is a run's linked route as the road classifier reads it.
+type RoadRouteSurface struct {
+	Surface *string `json:"surface"`
 }
 
 // ErrRunMetadataChanged is returned by UpdateRunMetadata when its

@@ -207,15 +207,131 @@ func legacyStopTrack() []RecordedTrackPoint {
 	return pts
 }
 
-func TestDistanceRecompute_LegacyTrackTakesThePositionOnlySmoother(t *testing.T) {
+func TestDistanceRecompute_LegacyTrackCreditsNothingThroughTheStop(t *testing.T) {
 	w, b := distanceWorker(t, appRun(`{}`), legacyStopTrack())
 	if err := w.handleDistanceRecompute(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID})); err != nil {
 		t.Fatalf("handle: %v", err)
 	}
-	// The hop-sum reads ~784 m; the smoother reads 357.36 m.
+	// The hop-sum reads ~784 m; the smoother 357.36 m, and its forward pass,
+	// kept here because no road matcher classifies the run, 357.79 m: both
+	// carry the post-hoc stop hints.
 	if got := b.distance.updates[0].DistanceM; got < 350 || got > 365 {
 		t.Errorf("distance_m = %v, want ~360 m (the 90 s stop credits nothing)", got)
 	}
+}
+
+func TestDistanceRecompute_DopplerTrackKeepsTheSmoothedPass(t *testing.T) {
+	w, b := distanceWorker(t, appRun(`{}`), straightDopplerTrack(101, 2.5))
+	if err := w.handleDistanceRecompute(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID})); err != nil {
+		t.Fatalf("handle: %v", err)
+	}
+	if got := b.distance.updates[0].Metadata["distance_estimator_pass"]; got != "smoothed" {
+		t.Errorf("distance_estimator_pass = %v, want smoothed for a track with Doppler", got)
+	}
+}
+
+// errRoadMatcher is a RoadDistanceMatcher whose engine is down.
+type errRoadMatcher struct{}
+
+func (errRoadMatcher) Algorithm() string { return "err-road" }
+func (errRoadMatcher) Version() string   { return "v1" }
+func (errRoadMatcher) Match(context.Context, []TrackPoint) ([]TrackPoint, error) {
+	return nil, &HTTPError{StatusCode: http.StatusBadGateway}
+}
+func (errRoadMatcher) MatchWithRoadDistance(context.Context, []TrackPoint) ([]TrackPoint, RoadMatch, error) {
+	return nil, RoadMatch{}, &HTTPError{StatusCode: http.StatusBadGateway}
+}
+
+// legacyRoadMatch reports the legacy stop track as matched end to end at the
+// smoother's own length, so roadDistanceFor accepts it unless another of its
+// checks rules the run out.
+func legacyRoadMatch() RoadMatch {
+	pts := coordinatePoints(legacyStopTrack())
+	return roadOf(replayRecordedTrack(pts, 10).SmoothedM, 0.9)
+}
+
+func TestDistanceRecompute_PositionOnlyTrackPicksItsPassByTheRoadClassifier(t *testing.T) {
+	pts := coordinatePoints(legacyStopTrack())
+	replay := replayRecordedTrack(pts, 10)
+	if !replay.PositionOnly || replay.ForwardM == replay.SmoothedM {
+		t.Fatalf("fixture must be position-only with distinct passes: positionOnly=%v forward=%v smoothed=%v",
+			replay.PositionOnly, replay.ForwardM, replay.SmoothedM)
+	}
+	forward := math.Round(replay.ForwardM*100) / 100
+	smoothed := math.Round(replay.SmoothedM*100) / 100
+	cases := []struct {
+		name     string
+		matcher  Matcher
+		mutate   func(*DistanceRecomputeRun)
+		wantPass string
+		wantM    float64
+	}{
+		{"no matcher configured", nil, nil, "forward", forward},
+		{"matcher without road distance", nopMatcherForRecompute{}, nil, "forward", forward},
+		{"matcher down", errRoadMatcher{}, nil, "forward", forward},
+		{"not matched end to end", fakeRoadMatcher{road: RoadMatch{}}, nil, "forward", forward},
+		{"matched road run", fakeRoadMatcher{road: legacyRoadMatch()}, nil, "smoothed", smoothed},
+		{"matched but a hike", fakeRoadMatcher{road: legacyRoadMatch()},
+			func(r *DistanceRecomputeRun) { r.ActivityType = "hike" }, "forward", forward},
+		{"matched but on a trail route", fakeRoadMatcher{road: legacyRoadMatch()},
+			func(r *DistanceRecomputeRun) { r.Route = &RoadRouteSurface{Surface: strp("trail")} }, "forward", forward},
+		{"matched but sub_sport trail", fakeRoadMatcher{road: legacyRoadMatch()},
+			func(r *DistanceRecomputeRun) { r.Metadata = json.RawMessage(`{"sub_sport":"trail"}`) }, "forward", forward},
+		{"already road-matched by map_match", nil,
+			func(r *DistanceRecomputeRun) { r.Metadata = json.RawMessage(`{"distance_map_matched_m":361.2}`) }, "smoothed", smoothed},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			run := appRun(`{}`)
+			if tc.mutate != nil {
+				tc.mutate(&run)
+			}
+			w, b := distanceWorker(t, run, legacyStopTrack())
+			w.Matcher = tc.matcher
+			if err := w.handleDistanceRecompute(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID})); err != nil {
+				t.Fatalf("handle: %v", err)
+			}
+			u := b.distance.updates[0]
+			if got := u.Metadata["distance_estimator_pass"]; got != tc.wantPass {
+				t.Errorf("distance_estimator_pass = %v, want %s", got, tc.wantPass)
+			}
+			if u.DistanceM != tc.wantM {
+				t.Errorf("distance_m = %v, want %v (the %s pass)", u.DistanceM, tc.wantM, tc.wantPass)
+			}
+		})
+	}
+}
+
+func TestDistanceRecompute_ForwardPassAlsoMeasuresTheBests(t *testing.T) {
+	track := zigZagTrack(1800, 6000, 2)
+	pts := coordinatePoints(track)
+	want := embeddedBestsOver(pts, replayRecordedTrack(pts, 10).ForwardCumM)
+	if want["fastest_5k_s"] == nil {
+		t.Fatal("fixture must cover 5 km on the forward pass")
+	}
+	w, b := distanceWorker(t, appRun(`{}`), track)
+	if err := w.handleDistanceRecompute(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID})); err != nil {
+		t.Fatalf("handle: %v", err)
+	}
+	u := b.distance.updates[0]
+	if u.Metadata["distance_estimator_pass"] != "forward" {
+		t.Fatalf("pass = %v, want forward for a position-only run nothing classifies as road", u.Metadata["distance_estimator_pass"])
+	}
+	for col, wv := range want {
+		have := u.Bests[col]
+		if (wv == nil) != (have == nil) || (wv != nil && *wv != *have) {
+			t.Errorf("%s = %v, want the forward cumulative's %v", col, have, wv)
+		}
+	}
+}
+
+// nopMatcherForRecompute is a Matcher that cannot measure road distance.
+type nopMatcherForRecompute struct{}
+
+func (nopMatcherForRecompute) Algorithm() string { return "nop" }
+func (nopMatcherForRecompute) Version() string   { return "v1" }
+func (nopMatcherForRecompute) Match(_ context.Context, pts []TrackPoint) ([]TrackPoint, error) {
+	return pts, nil
 }
 
 func TestDistanceRecompute_NullMetadataGetsABag(t *testing.T) {
@@ -328,7 +444,8 @@ func TestDistanceRecompute_UntimedWaypointsAreSkippedAndTimeStartsAtTheFirstTime
 		t.Errorf("distance_m = %v, want 25", got)
 	}
 	pts := coordinatePoints(track)
-	cum, _, fixes := replayRecordedTrack(pts, 10)
+	replay := replayRecordedTrack(pts, 10)
+	cum, fixes := replay.SmoothedCumM, replay.Fixes
 	if len(pts) != 11 || fixes != 10 || cum[0] != 0 || cum[1] != 0 || cum[2] != 2.5 {
 		t.Errorf("points = %d, fixes = %d, cum[:3] = %v", len(pts), fixes, cum[:3])
 	}
@@ -403,7 +520,7 @@ func TestReadRunForDistanceRecompute_NoRowIsErrRunNotFound(t *testing.T) {
 	if !errors.Is(err, ErrRunNotFound) {
 		t.Fatalf("err = %v, want ErrRunNotFound", err)
 	}
-	if !strings.Contains(query, "select=id%2Cuser_id%2Csource%2Cactivity_type%2Ctrack_url%2Cdistance_m%2Cmetadata") {
+	if !strings.Contains(query, "select=id%2Cuser_id%2Csource%2Cactivity_type%2Ctrack_url%2Cdistance_m%2Cmetadata%2Croute%3Aroutes%28surface%29") {
 		t.Errorf("query = %s", query)
 	}
 }

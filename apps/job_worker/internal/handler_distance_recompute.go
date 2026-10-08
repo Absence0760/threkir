@@ -27,6 +27,19 @@ type DistanceRecomputePayload struct {
 // whether a recompute has ever stamped the run, not at which estimator).
 const DistanceEstimatorV2 = "kalman_v2"
 
+// The two values of metadata.distance_estimator_pass: which of the
+// smoother's passes the recompute kept. A track with Doppler always keeps
+// the smoothed figure. A position-only track keeps it only on a road run:
+// off road the constant-velocity model cuts corners, and the backward pass
+// cuts them more than the forward filter (the bench's position-only forest
+// trail -3.1% smoothed against -1.2% forward, 12 s switchbacks -31% against
+// -21%), so the forward figure is kept until the ground-truth corpus can
+// retune Q_ACCEL (docs/features/gps_distance.md § Server recompute).
+const (
+	EstimatorPassSmoothed = "smoothed"
+	EstimatorPassForward  = "forward"
+)
+
 // distanceRecomputeMaxAttempts bounds the re-read loop when the CAS on
 // track_url + metadata misses because the run changed under the worker.
 const distanceRecomputeMaxAttempts = 3
@@ -99,13 +112,18 @@ func (w *Worker) handleDistanceRecompute(ctx context.Context, job *Job) error {
 			return fmt.Errorf("download track: %w", err)
 		}
 		pts = coordinatePoints(pts)
-		cum, rawDistanceM, fixes := replayRecordedTrack(pts, maxSpeedMpsForActivity(run.ActivityType))
-		if fixes < 2 {
-			return fmt.Errorf("track %s has %d timestamped waypoints; need at least 2", *run.TrackURL, fixes)
+		replay := replayRecordedTrack(pts, maxSpeedMpsForActivity(run.ActivityType))
+		if replay.Fixes < 2 {
+			return fmt.Errorf("track %s has %d timestamped waypoints; need at least 2", *run.TrackURL, replay.Fixes)
+		}
+		pass, why := w.distanceEstimatorPass(ctx, run, meta, pts, replay)
+		rawDistanceM, cum := replay.SmoothedM, replay.SmoothedCumM
+		if pass == EstimatorPassForward {
+			rawDistanceM, cum = replay.ForwardM, replay.ForwardCumM
 		}
 		distanceM := math.Round(rawDistanceM*100) / 100
 
-		merged, err := mergeDistanceMetadata(meta, run.DistanceM, time.Now().UTC())
+		merged, err := mergeDistanceMetadata(meta, run.DistanceM, pass, time.Now().UTC())
 		if err != nil {
 			return err
 		}
@@ -126,7 +144,9 @@ func (w *Worker) handleDistanceRecompute(ctx context.Context, job *Job) error {
 			"run_id", p.RunID,
 			"previous_m", run.DistanceM,
 			"distance_m", distanceM,
-			"fixes", fixes,
+			"fixes", replay.Fixes,
+			"pass", pass,
+			"pass_reason", why,
 		)
 		return nil
 	}
@@ -188,12 +208,12 @@ func distanceRecomputeSkipReason(run *DistanceRecomputeRun, meta map[string]json
 	return ""
 }
 
-// mergeDistanceMetadata adds the recompute's three keys to the bag and
+// mergeDistanceMetadata adds the recompute's four keys to the bag and
 // leaves every other key byte-for-byte as read. distance_recorded_m keeps
 // an existing value so a repeated recompute never overwrites the
 // recorder's original figure with a previous recompute's.
-func mergeDistanceMetadata(meta map[string]json.RawMessage, previousDistanceM float64, now time.Time) (json.RawMessage, error) {
-	out := make(map[string]json.RawMessage, len(meta)+3)
+func mergeDistanceMetadata(meta map[string]json.RawMessage, previousDistanceM float64, pass string, now time.Time) (json.RawMessage, error) {
+	out := make(map[string]json.RawMessage, len(meta)+4)
 	for k, v := range meta {
 		out[k] = v
 	}
@@ -206,7 +226,56 @@ func mergeDistanceMetadata(meta map[string]json.RawMessage, previousDistanceM fl
 	}
 	est, _ := json.Marshal(DistanceEstimatorV2)
 	out[schema.MetaDistanceEstimator] = est
+	p, _ := json.Marshal(pass)
+	out[schema.MetaDistanceEstimatorPass] = p
 	at, _ := json.Marshal(now.Format(time.RFC3339))
 	out[schema.MetaDistanceRecomputedAt] = at
 	return json.Marshal(out)
+}
+
+// distanceEstimatorPass decides which of the replay's passes the recompute
+// keeps, and why. Only a position-only track can take the forward pass, and
+// only when it is not a road run by the map_match step's own classifier,
+// roadDistanceFor: either that step already measured this track along the
+// road graph (metadata.distance_map_matched_m), or the matcher measures it
+// now and the classifier accepts it, checked against the smoothed figure
+// because the stored distance_m of an old run is the inflated hop-sum. A
+// matcher failure is auxiliary to the distance and leaves the run unclassified,
+// which keeps the forward figure.
+func (w *Worker) distanceEstimatorPass(
+	ctx context.Context, run *DistanceRecomputeRun, meta map[string]json.RawMessage,
+	pts []RecordedTrackPoint, replay trackReplay,
+) (string, string) {
+	if !replay.PositionOnly {
+		return EstimatorPassSmoothed, "track carries Doppler speed"
+	}
+	var matched float64
+	if json.Unmarshal(meta[schema.MetaDistanceMapMatchedM], &matched) == nil && matched > 0 {
+		return EstimatorPassSmoothed, "road run: map_match measured it on the road graph"
+	}
+	rm, ok := w.Matcher.(RoadDistanceMatcher)
+	if !ok {
+		return EstimatorPassForward, "no road matcher to classify a position-only track"
+	}
+	raw := make([]TrackPoint, 0, len(pts))
+	for _, p := range pts {
+		raw = append(raw, TrackPoint{Lat: *p.Lat, Lng: *p.Lng, Timestamp: p.Timestamp})
+	}
+	out, road, err := rm.MatchWithRoadDistance(ctx, raw)
+	if err != nil {
+		w.Log.Warn("distance recompute road match failed; keeping the forward pass", "run_id", run.ID, "err", err)
+		return EstimatorPassForward, "road match failed"
+	}
+	if len(out) < 2 {
+		road = RoadMatch{}
+	}
+	activity := run.ActivityType
+	candidate := &RoadDistanceRun{
+		ID: run.ID, ActivityType: &activity, TrackURL: run.TrackURL,
+		DistanceM: replay.SmoothedM, Metadata: run.Metadata, Route: run.Route,
+	}
+	if v, reason := roadDistanceFor(candidate, meta, raw, road); v == nil {
+		return EstimatorPassForward, "not a road run: " + reason
+	}
+	return EstimatorPassSmoothed, "road run: matched on the road graph"
 }

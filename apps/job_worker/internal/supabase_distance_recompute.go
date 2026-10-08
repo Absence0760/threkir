@@ -25,6 +25,9 @@ type DistanceRecomputeRun struct {
 	TrackURL     *string         `json:"track_url"`
 	DistanceM    float64         `json:"distance_m"`
 	Metadata     json.RawMessage `json:"metadata"`
+	// Route is the linked route's surface, for the road classifier that
+	// decides a position-only track's pass (roadDistanceFor).
+	Route *RoadRouteSurface `json:"route"`
 }
 
 // RecordedTrackPoint is a stored waypoint as the distance recompute
@@ -57,7 +60,7 @@ var ErrRunChangedDuringRecompute = errors.New("run changed during distance recom
 func (c *SupabaseClient) ReadRunForDistanceRecompute(ctx context.Context, runID string) (*DistanceRecomputeRun, error) {
 	q := url.Values{}
 	q.Set("id", "eq."+runID)
-	q.Set("select", "id,user_id,source,activity_type,track_url,distance_m,metadata")
+	q.Set("select", "id,user_id,source,activity_type,track_url,distance_m,metadata,route:"+schema.TableRoutes+"(surface)")
 	u := c.BaseURL + "/rest/v1/" + schema.TableRuns + "?" + q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {

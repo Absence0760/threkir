@@ -36,12 +36,15 @@ type LatLng struct{ Lat, Lng float64 }
 // road run (docs/features/gps_distance.md § Server recompute), where the
 // smoother cuts more corners than the forward filter.
 type SmoothResult struct {
-	DistanceM          float64
-	GpsDistanceM       float64
-	StepDistanceM      float64
-	CumulativeM        []float64
-	Positions          []*LatLng
-	StoppedFixes       int
+	DistanceM     float64
+	GpsDistanceM  float64
+	StepDistanceM float64
+	CumulativeM   []float64
+	Positions     []*LatLng
+	StoppedFixes  int
+	// PositionOnly: no accepted fix carried a finite Doppler speed, so
+	// post-hoc stop detection ran.
+	PositionOnly       bool
 	ForwardDistanceM   float64
 	ForwardCumulativeM []float64
 }
@@ -248,6 +251,7 @@ func SmoothDistance(events []Event, o Options) SmoothResult {
 		CumulativeM:        make([]float64, len(events)),
 		Positions:          make([]*LatLng, len(events)),
 		StoppedFixes:       len(hints),
+		PositionOnly:       !hasDoppler,
 		ForwardDistanceM:   est.DistanceM(),
 		ForwardCumulativeM: forwardCum,
 	}

@@ -85,9 +85,7 @@ func TestRoadDistanceFor_StoresAnEligibleRoadRun(t *testing.T) {
 func TestRoadDistanceFor_NeverTrailsTracksOrIndoor(t *testing.T) {
 	surface := func(s string) *RoadDistanceRun {
 		r := roadRun(`{}`)
-		r.Route = &struct {
-			Surface *string `json:"surface"`
-		}{Surface: strp(s)}
+		r.Route = &RoadRouteSurface{Surface: strp(s)}
 		return r
 	}
 	hike := roadRun(`{}`)

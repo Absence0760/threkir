@@ -2,12 +2,16 @@ import XCTest
 @testable import WatchApp
 
 /// Replays `fixtures/gps_distance_vectors.json` — the golden vectors every
-/// port of the spec-v1.1 estimator is held to (`docs/features/gps_distance.md`).
+/// port of the spec-v1.2 estimator is held to (`docs/features/gps_distance.md`).
 /// The distance is asserted after every event, not only at the end, so a port
-/// that reaches the right total by a different path still fails.
+/// that reaches the right total by a different path still fails. The scenario
+/// list comes from the fixture, so a new scenario is replayed without a code
+/// change.
 final class GpsDistanceEstimatorTests: XCTestCase {
 
     private struct Vectors: Decodable {
+        let spec: String
+        let constants: [String: Double]
         let tolerance_m: Double
         let scenarios: [Scenario]
     }
@@ -38,6 +42,10 @@ final class GpsDistanceEstimatorTests: XCTestCase {
         let gpsDistanceM: Double
         let stepDistanceM: Double
         let strideM: Double?
+        let rejectedFixes: Int
+        let zuptFixes: Int
+        let rScale: Double
+        let dopplerTrusted: Bool
     }
 
     private func loadVectors(file: StaticString = #filePath) throws -> Vectors {
@@ -52,13 +60,14 @@ final class GpsDistanceEstimatorTests: XCTestCase {
         return try JSONDecoder().decode(Vectors.self, from: data)
     }
 
-    func testFixtureCarriesScenarios() throws {
+    func testFixtureIsSpecOneTwoAndEveryConstantMatches() throws {
         let vectors = try loadVectors()
         XCTAssertFalse(vectors.scenarios.isEmpty)
-        let names = Set(vectors.scenarios.map(\.name))
-        for required in ["sparse_15s", "sparse_60s_position_only", "sparse_without_interval_hint",
-                         "seeded_stride_gap_fill", "seeded_stride_out_of_range"] {
-            XCTAssertTrue(names.contains(required), "fixture lost scenario \(required)")
+        XCTAssertEqual(vectors.spec, "gps-distance-estimator v1.2")
+        XCTAssertEqual(GpsDistanceEstimator.specVersion, "1.2")
+        XCTAssertFalse(GpsDistanceEstimator.constants.isEmpty)
+        for (name, value) in GpsDistanceEstimator.constants {
+            XCTAssertEqual(vectors.constants[name], value, "\(name)")
         }
     }
 
@@ -141,6 +150,10 @@ final class GpsDistanceEstimatorTests: XCTestCase {
             } else {
                 XCTAssertNil(estimator.strideM, "\(scenario.name): strideM")
             }
+            XCTAssertEqual(estimator.rejectedFixes, scenario.expected.rejectedFixes, "\(scenario.name): rejectedFixes")
+            XCTAssertEqual(estimator.zuptFixes, scenario.expected.zuptFixes, "\(scenario.name): zuptFixes")
+            XCTAssertEqual(estimator.rScale, scenario.expected.rScale, accuracy: 1e-6, "\(scenario.name): rScale")
+            XCTAssertEqual(estimator.dopplerTrusted, scenario.expected.dopplerTrusted, "\(scenario.name): dopplerTrusted")
         }
     }
 

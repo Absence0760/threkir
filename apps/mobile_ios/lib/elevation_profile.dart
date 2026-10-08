@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:core_models/core_models.dart';
 
 import 'run_stats.dart' show haversineMetres;
@@ -70,9 +72,12 @@ List<double> cumulativeMetres(List<Waypoint> track) {
   return out;
 }
 
-/// Centred moving average of [series] over the points within ±[halfWindowM]
-/// of each point's along-track distance. Same length as the input, so a
-/// hovered index still maps back to the same track point.
+/// Centred moving average of [series] over the points within ±h of each
+/// point's along-track distance, where h is [halfWindowM] shrunk near either
+/// end so the window stays symmetric. A one-sided window at the ends would
+/// drag the first and last values toward the middle; a symmetric one leaves
+/// a straight climb exactly as recorded, ends included. Same length as the
+/// input, so a hovered index still maps back to the same track point.
 List<double> smoothElevation(
   List<double> series,
   List<double> cumulativeM, {
@@ -82,20 +87,44 @@ List<double> smoothElevation(
   if (n != cumulativeM.length) {
     throw ArgumentError('series and cumulativeM must match');
   }
-  final out = List<double>.filled(n, 0);
-  var lo = 0;
-  var hi = -1;
-  var sum = 0.0;
+  final prefix = List<double>.filled(n + 1, 0);
   for (var i = 0; i < n; i++) {
-    while (hi + 1 < n && cumulativeM[hi + 1] <= cumulativeM[i] + halfWindowM) {
-      hi++;
-      sum += series[hi];
+    prefix[i + 1] = prefix[i] + series[i];
+  }
+  int firstAtLeast(double d) {
+    var lo = 0, hi = n - 1;
+    while (lo < hi) {
+      final mid = (lo + hi) >> 1;
+      if (cumulativeM[mid] < d) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
     }
-    while (cumulativeM[lo] < cumulativeM[i] - halfWindowM) {
-      sum -= series[lo];
-      lo++;
+    return lo;
+  }
+
+  int lastAtMost(double d) {
+    var lo = 0, hi = n - 1;
+    while (lo < hi) {
+      final mid = (lo + hi + 1) >> 1;
+      if (cumulativeM[mid] > d) {
+        hi = mid - 1;
+      } else {
+        lo = mid;
+      }
     }
-    out[i] = sum / (hi - lo + 1);
+    return lo;
+  }
+
+  final total = n > 0 ? cumulativeM[n - 1] : 0.0;
+  final out = List<double>.filled(n, 0);
+  for (var i = 0; i < n; i++) {
+    final h = [halfWindowM, cumulativeM[i] - cumulativeM[0], total - cumulativeM[i]]
+        .reduce((a, b) => a < b ? a : b);
+    final lo = math.min(i, firstAtLeast(cumulativeM[i] - h));
+    final hi = math.max(i, lastAtMost(cumulativeM[i] + h));
+    out[i] = (prefix[hi + 1] - prefix[lo]) / (hi - lo + 1);
   }
   return out;
 }

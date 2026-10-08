@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 
 import 'package:core_models/core_models.dart' show ActivityType;
 
+import '../elevation_profile.dart' show cumulativeMetres;
 import '../run_stats.dart' show haversineMetres;
 
 /// Pace colour ramp — slow → fast, 6 buckets. Designed to read clearly
@@ -180,11 +181,7 @@ List<double?> smoothedSpeeds(List<Waypoint> track) {
   final n = track.length;
   final out = List<double?>.filled(n, null);
   if (n < 2) return out;
-  final cum = List<double>.filled(n, 0);
-  for (var i = 1; i < n; i++) {
-    final a = track[i - 1], b = track[i];
-    cum[i] = cum[i - 1] + haversineMetres(a.lat, a.lng, b.lat, b.lng);
-  }
+  final cum = cumulativeMetres(track);
   final secs = List<double?>.generate(n, (i) {
     final t = track[i].timestamp;
     return t == null ? null : t.millisecondsSinceEpoch / 1000.0;
@@ -237,11 +234,7 @@ List<PaceStop> paceGradientStops(
   final hi = known[((known.length - 1) * 0.95).floor()];
   final span = hi - lo;
 
-  final cum = List<double>.filled(n, 0);
-  for (var i = 1; i < n; i++) {
-    final a = track[i - 1], b = track[i];
-    cum[i] = cum[i - 1] + haversineMetres(a.lat, a.lng, b.lat, b.lng);
-  }
+  final cum = cumulativeMetres(track);
   final total = cum[n - 1];
   if (total <= 0) return const [];
 
@@ -282,11 +275,7 @@ List<Polyline> buildPaceGradientPolylines({
   final stops = paceGradientStops(track);
   if (stops.isEmpty) return const [];
   final n = track.length;
-  final cum = List<double>.filled(n, 0);
-  for (var i = 1; i < n; i++) {
-    final a = track[i - 1], b = track[i];
-    cum[i] = cum[i - 1] + haversineMetres(a.lat, a.lng, b.lat, b.lng);
-  }
+  final cum = cumulativeMetres(track);
   final total = cum[n - 1];
   final tByBin = List<double?>.filled(paceGradientBins, null);
   for (final s in stops) {

@@ -6,6 +6,7 @@
 
 import type { TrackPoint } from '../types';
 import { haversineMetres } from '../runs/run_stats';
+import { cumulativeMetres } from '../runs/elevation_profile';
 
 export type ActivityKind = 'run' | 'walk' | 'cycle' | 'hike';
 
@@ -153,16 +154,6 @@ export const PACE_SMOOTHING_HALF_WINDOW_S = 15;
 
 /// Number of distance bins a finished-run pace line is drawn in.
 export const PACE_GRADIENT_BINS = 128;
-
-function cumulativeMetres(track: TrackPoint[]): number[] {
-	const cum = new Array<number>(track.length).fill(0);
-	for (let i = 1; i < track.length; i++) {
-		const a = track[i - 1];
-		const b = track[i];
-		cum[i] = cum[i - 1] + haversineMetres(a.lat, a.lng, b.lat, b.lng);
-	}
-	return cum;
-}
 
 /// Per-point speed (m/s) over a centred ±PACE_SMOOTHING_HALF_WINDOW_S window,
 /// measured as along-track distance over elapsed time. Null where the point

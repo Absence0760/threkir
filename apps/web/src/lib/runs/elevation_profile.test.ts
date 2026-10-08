@@ -18,8 +18,10 @@ test('smoothElevation flattens per-fix altitude jitter', () => {
 	for (const v of out.slice(20, 180)) assert.ok(Math.abs(v - 100) < 0.2, `${v}`);
 });
 
-test('smoothElevation with a window wider than the track averages the whole track', () => {
-	assert.deepEqual(smoothElevation([10, 20, 30], [0, 5, 10], 1000), [20, 20, 20]);
+test('smoothElevation leaves a straight climb exact, ends included', () => {
+	const series = Array.from({ length: 40 }, (_, i) => 100 + i);
+	const out = smoothElevation(series, evenSpacing(40, 7));
+	out.forEach((v, i) => assert.ok(Math.abs(v - series[i]) < 1e-9, `index ${i} read ${v}`));
 });
 
 test('smoothElevation keeps one value per point', () => {

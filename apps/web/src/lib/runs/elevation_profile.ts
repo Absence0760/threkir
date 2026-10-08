@@ -25,8 +25,11 @@ export function cumulativeMetres(track: TrackPoint[]): number[] {
 	return out;
 }
 
-/// Centred moving average of `series` over the points within
-/// ±`halfWindowM` of each point's along-track distance. Same length as the
+/// Centred moving average of `series` over the points within ±h of each
+/// point's along-track distance, where h is `halfWindowM` shrunk near either
+/// end so the window stays symmetric. A one-sided window at the ends would
+/// drag the first and last values toward the middle; a symmetric one leaves
+/// a straight climb exactly as recorded, ends included. Same length as the
 /// input, so a hovered index still maps back to the same track point.
 export function smoothElevation(
 	series: number[],
@@ -35,20 +38,35 @@ export function smoothElevation(
 ): number[] {
 	const n = series.length;
 	if (n !== cumulativeM.length) throw new Error('series and cumulativeM must match');
+	const prefix = new Array<number>(n + 1).fill(0);
+	for (let i = 0; i < n; i++) prefix[i + 1] = prefix[i] + series[i];
+	const firstAtLeast = (d: number) => {
+		let lo = 0;
+		let hi = n - 1;
+		while (lo < hi) {
+			const mid = (lo + hi) >> 1;
+			if (cumulativeM[mid] < d) lo = mid + 1;
+			else hi = mid;
+		}
+		return lo;
+	};
+	const lastAtMost = (d: number) => {
+		let lo = 0;
+		let hi = n - 1;
+		while (lo < hi) {
+			const mid = (lo + hi + 1) >> 1;
+			if (cumulativeM[mid] > d) hi = mid - 1;
+			else lo = mid;
+		}
+		return lo;
+	};
+	const total = n > 0 ? cumulativeM[n - 1] : 0;
 	const out = new Array<number>(n);
-	let lo = 0;
-	let hi = -1;
-	let sum = 0;
 	for (let i = 0; i < n; i++) {
-		while (hi + 1 < n && cumulativeM[hi + 1] <= cumulativeM[i] + halfWindowM) {
-			hi++;
-			sum += series[hi];
-		}
-		while (cumulativeM[lo] < cumulativeM[i] - halfWindowM) {
-			sum -= series[lo];
-			lo++;
-		}
-		out[i] = sum / (hi - lo + 1);
+		const h = Math.min(halfWindowM, cumulativeM[i] - cumulativeM[0], total - cumulativeM[i]);
+		const lo = Math.min(i, firstAtLeast(cumulativeM[i] - h));
+		const hi = Math.max(i, lastAtMost(cumulativeM[i] + h));
+		out[i] = (prefix[hi + 1] - prefix[lo]) / (hi - lo + 1);
 	}
 	return out;
 }

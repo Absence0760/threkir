@@ -25,9 +25,12 @@ void main() {
       }
     });
 
-    test('a window wider than the track averages the whole track', () {
-      final out = smoothElevation([10, 20, 30], [0, 5, 10], halfWindowM: 1000);
-      expect(out, [20, 20, 20]);
+    test('leaves a straight climb exact, ends included', () {
+      final series = [for (var i = 0; i < 40; i++) 100.0 + i];
+      final out = smoothElevation(series, evenSpacing(40, 7));
+      for (var i = 0; i < out.length; i++) {
+        expect(out[i], closeTo(series[i], 1e-9));
+      }
     });
 
     test('keeps one value per point', () {

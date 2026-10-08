@@ -414,31 +414,40 @@ by `worker_panic_test.go`.
 
 ## Re-upload race
 
-Closed at the DB level via a `source_track_url` CAS (migration
-`20260611_001_run_matched_tracks_cas.sql`). The trigger writes
-`NEW.track_url` into `run_matched_tracks.source_track_url` on every
-insert and every reset; the worker captures `runs.track_url` at job
-start and PATCHes the row conditionally on
-`?source_track_url=eq.<value>` via `Prefer: return=representation`.
-A re-upload that lands between the worker's read and write changes
-`source_track_url`, the conditional PATCH affects 0 rows, the worker
-client returns `ErrStaleSourceTrackURL`, and the worker logs +
-returns `nil` — the OLD job ends cleanly via `finish_job(done)`,
-the NEW job already queued by the trigger produces the right
-result.
+`runs.track_url` is one fixed path per run (`runs_track_url_path_shape`), so a
+client re-uploading a track rewrites the same Storage object and only the
+object's `version` changes. Closed at the DB level by migration
+`20270719000020_runs_track_rewrite_invalidates_match.sql`:
 
-The pre-write `track_url` recheck is kept as a fast path: it skips
-the upload + PATCH entirely when the change is already visible at
-read time, saving a wasted Storage write. Defence in depth — the
-CAS is what closes the actual race; the recheck is for niceness.
+- The worker reads `track_url` and the object version together
+  (`map_match_track_source`, `ReadRunTrackSource`) before downloading, and
+  records its result through `record_map_match_result`
+  (`UpdateMatchedTrackRow`), which locks the `run_matched_tracks` row and
+  writes only while `track_url` and the version are unchanged. A refusal is
+  `ErrStaleSourceTrackURL`; the worker logs and returns `nil`.
+- The road distance is written with `distance_map_matched_track_version`, and
+  the `runs_road_distance_matches_track` trigger drops any figure whose version
+  is not the stored object's.
+- A trigger on `storage.objects` resets the row to `pending`, drops the road
+  distance and queues a re-match on every rewrite; `finish_job` re-queues a
+  `map_match` job that finishes `done` with its row still `pending`, because
+  `jobs_dedupe_map_match` makes the rewrite's own enqueue a no-op while the job
+  runs.
+
+The pre-write recheck (same read, after matching) is kept as a fast path: it
+skips the upload + write entirely when the change is already visible, saving a
+wasted Storage write. The RPC is what closes the actual race.
 
 Pinned by:
-- `TestWorker_ReuploadDuringMatchDiscardsResult` — recheck path.
-- `TestWorker_StaleSourceTrackURLDiscardsResult` — CAS path
-  (recheck would have passed but the row was reset under the
-  worker's feet between recheck and PATCH).
+- `TestWorker_ReuploadDuringMatchDiscardsResult` /
+  `TestWorker_ReuploadInPlaceDuringMatchDiscardsResult` — recheck path
+  (track_url change; same path, new version).
+- `TestWorker_StaleSourceTrackURLDiscardsResult` /
+  `TestWorker_StaleTrackVersionDiscardsResult` — refused-write path.
+- pgtap `runs_track_rewrite_invalidates_match_test.sql` — the triggers, the
+  RPC's refusal and `finish_job`'s re-queue.
 
-If the matched gz was uploaded before the CAS rejected the PATCH,
+If the matched gz was uploaded before the RPC refused the write,
 the file is now an orphan in Storage. The worker logs the path so
 an operator can sweep these later; an automated cleanup job would
 be the natural follow-up.

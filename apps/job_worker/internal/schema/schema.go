@@ -155,6 +155,10 @@ const (
 	// for, present only while that sidecar is stored, so a reader fetches
 	// the sidecar only for the track it names.
 	MetaSmoothedSidecarSHA256 = "smoothed_sidecar_sha256"
+	// The Storage version of the track bytes distance_map_matched_m was
+	// measured on. Written with it; the runs_road_distance_matches_track
+	// trigger drops the pair when it no longer names the stored object.
+	MetaDistanceMapMatchedTrackVersion = "distance_map_matched_track_version"
 )
 
 // PrefsKey is a key inside the `user_settings.prefs` jsonb bag — the

@@ -25,8 +25,8 @@ type Backend interface {
 	DeferJob(ctx context.Context, jobID int64, delaySeconds int, errMsg *string) (string, error)
 	DownloadTrack(ctx context.Context, path string) ([]TrackPoint, error)
 	UploadMatchedTrack(ctx context.Context, path string, points []TrackPoint) error
-	UpdateMatchedTrackRow(ctx context.Context, runID string, expectedSourceTrackURL string, row MatchedTrackRow) error
-	ReadRunTrackURL(ctx context.Context, runID string) (string, error)
+	UpdateMatchedTrackRow(ctx context.Context, runID string, src TrackSource, row MatchedTrackRow) error
+	ReadRunTrackSource(ctx context.Context, runID string) (TrackSource, error)
 	ReadRunForAutoLink(ctx context.Context, runID string) (RunLinkInfo, error)
 	FindMatchingRoutes(ctx context.Context, userID string, track []TrackPoint, toleranceM float64, maxResults int) ([]RouteMatchCandidate, error)
 	LinkRunToRoute(ctx context.Context, runID, routeID string) error
@@ -531,23 +531,21 @@ func (w *Worker) dispatch(ctx context.Context, job *Job) error {
 	}
 }
 
-// handleMapMatch is the production handler for map_match jobs. Reads
-// the latest track_url at match time so a re-upload that changes the
-// path is matched against the freshest data — the trigger's reset of
-// run_matched_tracks pairs with this read so the worker never persists
-// a result tagged against a stale track.
+// handleMapMatch is the production handler for map_match jobs.
 //
-// Re-upload race handling: between reading track_url and writing the
-// result, a runner can re-upload (replacing track_url). Without a
-// recheck, the worker would persist a 'matched' state tagged against
-// the OLD url over the trigger's pending reset. We re-read the url
-// just before the write and discard the result if it changed — the
-// newer job already queued by the trigger will produce the right one.
-// A small TOCTOU window remains between recheck and PATCH; closing it
-// fully needs a server-side CAS (e.g. a `source_track_url` column on
-// run_matched_tracks), which is the upgrade path when a real engine
-// lands. The recheck shrinks the race from O(match duration) to
-// O(network round-trip), good enough for the stub matcher.
+// Re-upload race handling. A run's track_url is fixed once set, so a client
+// that re-uploads the track (web save, mobile sync, a backup restore)
+// replaces the bytes behind the same path; what changes is the Storage
+// object's version. The worker reads the path and that version together
+// before downloading, and every result it writes is conditional on both:
+// record_map_match_result refuses a matched-track row, and the
+// runs_road_distance_matches_track trigger refuses a road distance, for any
+// version but the one now stored (migration 20270719000020). A rewrite
+// also resets run_matched_tracks to pending from a trigger on
+// storage.objects, and finish_job puts a map_match job back in the queue
+// when it ends with the row still pending — so a job whose result was
+// refused, or whose write a rewrite undid, is matched again rather than
+// left behind by the queue's one-job-per-run dedupe.
 func (w *Worker) handleMapMatch(ctx context.Context, job *Job) error {
 	var p MapMatchPayload
 	if err := json.Unmarshal(job.Payload, &p); err != nil {
@@ -557,10 +555,11 @@ func (w *Worker) handleMapMatch(ctx context.Context, job *Job) error {
 		return errors.New("payload missing run_id or user_id")
 	}
 
-	trackURL, err := w.Backend.ReadRunTrackURL(ctx, p.RunID)
+	src, err := w.Backend.ReadRunTrackSource(ctx, p.RunID)
 	if err != nil {
 		return fmt.Errorf("read track_url: %w", err)
 	}
+	trackURL := src.URL
 
 	raw, err := w.Backend.DownloadTrack(ctx, trackURL)
 	if err != nil {
@@ -578,21 +577,19 @@ func (w *Worker) handleMapMatch(ctx context.Context, job *Job) error {
 		return fmt.Errorf("match: %w", err)
 	}
 
-	// Pre-write recheck. Skips the upload + PATCH when we already
-	// know track_url has changed — saves wasted Storage writes.
-	// Doesn't replace the source_track_url CAS below; the CAS is
-	// what closes the residual TOCTOU window (re-upload between
-	// recheck and PATCH).
-	currentURL, err := w.Backend.ReadRunTrackURL(ctx, p.RunID)
+	// Pre-write recheck. Skips the upload + write when the track has
+	// already moved on — saves a wasted Storage write. The conditional
+	// write below is what closes the window after it.
+	current, err := w.Backend.ReadRunTrackSource(ctx, p.RunID)
 	if err != nil {
 		return fmt.Errorf("recheck track_url: %w", err)
 	}
-	if currentURL != trackURL {
+	if current != src {
 		w.Log.Info(
-			"track_url changed mid-match; discarding stale result",
+			"track changed mid-match; discarding stale result",
 			"run_id", p.RunID,
 			"matched_against", trackURL,
-			"current", currentURL,
+			"current", current.URL,
 		)
 		return nil
 	}
@@ -602,13 +599,11 @@ func (w *Worker) handleMapMatch(ctx context.Context, job *Job) error {
 	// floor was too high. The status update lets the client tell
 	// "matcher decided no" apart from "matcher hasn't run yet".
 	//
-	// Both write paths PATCH conditionally on source_track_url; an
-	// ErrStaleSourceTrackURL means the trigger reset the row out
-	// from under us between recheck and PATCH (the residual
-	// TOCTOU window). Discard cleanly — the trigger already queued
-	// a fresh job, no need to fail the current one.
+	// Both write paths are conditional on src; an ErrStaleSourceTrackURL
+	// means the track was replaced between recheck and write. Discard
+	// cleanly: finish_job re-queues this job because the row is pending.
 	if len(matched) < 2 {
-		err := w.Backend.UpdateMatchedTrackRow(ctx, p.RunID, trackURL, MatchedTrackRow{
+		err := w.Backend.UpdateMatchedTrackRow(ctx, p.RunID, src, MatchedTrackRow{
 			Status:           "skipped",
 			MatchedTrackURL:  nil,
 			Algorithm:        w.Matcher.Algorithm(),
@@ -628,7 +623,7 @@ func (w *Worker) handleMapMatch(ctx context.Context, job *Job) error {
 			return fmt.Errorf("upload matched: %w", err)
 		}
 		now := time.Now().UTC()
-		err := w.Backend.UpdateMatchedTrackRow(ctx, p.RunID, trackURL, MatchedTrackRow{
+		err := w.Backend.UpdateMatchedTrackRow(ctx, p.RunID, src, MatchedTrackRow{
 			Status:           "matched",
 			MatchedTrackURL:  &matchedPath,
 			MatchedAt:        &now,
@@ -663,7 +658,7 @@ func (w *Worker) handleMapMatch(ctx context.Context, job *Job) error {
 	if len(matched) < 2 {
 		road = RoadMatch{}
 	}
-	if err := w.updateRoadDistance(ctx, p.RunID, trackURL, raw, road); err != nil {
+	if err := w.updateRoadDistance(ctx, p.RunID, src, raw, road); err != nil {
 		w.Log.Warn("road distance skipped",
 			"run_id", p.RunID,
 			"err", err,

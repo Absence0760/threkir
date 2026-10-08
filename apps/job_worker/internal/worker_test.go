@@ -37,12 +37,16 @@ type fakeBackend struct {
 	storageDeleteErrAfter int
 	storageListErr        error
 	trackURL              string
-	// Optional override: when non-nil, ReadRunTrackURL returns
+	// Optional override: when non-nil, ReadRunTrackSource returns
 	// trackURLs[i] on the i-th call (clamped to the last entry).
 	// Lets tests simulate a re-upload mid-match — the worker reads
 	// trackURL at start, then re-reads before writing, and the
 	// second read returns the new URL.
 	trackURLs []string
+	// trackVersions scripts the Storage version ReadRunTrackSource reports
+	// the same way (a re-upload in place keeps the URL and changes this);
+	// empty means "v1" on every call.
+	trackVersions []string
 	// Auto-link inputs
 	autoLinkInfo    RunLinkInfo
 	autoLinkInfoErr error
@@ -52,10 +56,16 @@ type fakeBackend struct {
 	// Auto-link outputs
 	links []linkCall
 	// CAS: when non-empty, UpdateMatchedTrackRow returns
-	// ErrStaleSourceTrackURL whenever the worker's
-	// expectedSourceTrackURL doesn't equal this value. Lets a test
-	// model "trigger reset the row between recheck and PATCH".
+	// ErrStaleSourceTrackURL whenever the worker's source URL doesn't
+	// equal this value. Lets a test model "trigger reset the row between
+	// recheck and write".
 	casExpected string
+	// casVersion does the same for the Storage version: a re-upload in
+	// place landing between recheck and write.
+	casVersion string
+	// trackSourceWrites records the source each UpdateMatchedTrackRow
+	// call was conditional on.
+	trackSourceWrites []TrackSource
 
 	// Errors to inject — return on the next call to that method.
 	claimErr     error
@@ -727,7 +737,7 @@ func (f *fakeBackend) UploadMatchedTrack(_ context.Context, path string, pts []T
 }
 
 func (f *fakeBackend) UpdateMatchedTrackRow(
-	_ context.Context, runID string, expectedSourceTrackURL string, row MatchedTrackRow,
+	_ context.Context, runID string, src TrackSource, row MatchedTrackRow,
 ) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -739,8 +749,11 @@ func (f *fakeBackend) UpdateMatchedTrackRow(
 	// CAS: the test sets `casExpected` to whatever the row's
 	// source_track_url is "currently". Mismatch surfaces the same
 	// sentinel the production client returns.
-	if expectedSourceTrackURL != "" && f.casExpected != "" &&
-		expectedSourceTrackURL != f.casExpected {
+	f.trackSourceWrites = append(f.trackSourceWrites, src)
+	if f.casExpected != "" && src.URL != f.casExpected {
+		return ErrStaleSourceTrackURL
+	}
+	if f.casVersion != "" && src.Version != f.casVersion {
 		return ErrStaleSourceTrackURL
 	}
 	f.rowSets = append(f.rowSets, rowSet{RunID: runID, Row: row})
@@ -783,25 +796,30 @@ func (f *fakeBackend) LinkRunToRoute(_ context.Context, runID, routeID string) e
 	return nil
 }
 
-func (f *fakeBackend) ReadRunTrackURL(_ context.Context, _ string) (string, error) {
+func (f *fakeBackend) ReadRunTrackSource(_ context.Context, _ string) (TrackSource, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.readURLErr != nil {
 		err := f.readURLErr
 		f.readURLErr = nil
-		return "", err
+		return TrackSource{}, err
 	}
+	// Each script returns its next entry, sticking on the last one once it
+	// runs out (extra reads behave like the final state).
+	src := TrackSource{URL: f.trackURL, Version: "v1"}
 	if len(f.trackURLs) > 0 {
-		// Return the next scripted URL, sticking on the last entry
-		// once the script runs out (extra reads behave like the
-		// final state).
-		url := f.trackURLs[0]
+		src.URL = f.trackURLs[0]
 		if len(f.trackURLs) > 1 {
 			f.trackURLs = f.trackURLs[1:]
 		}
-		return url, nil
 	}
-	return f.trackURL, nil
+	if len(f.trackVersions) > 0 {
+		src.Version = f.trackVersions[0]
+		if len(f.trackVersions) > 1 {
+			f.trackVersions = f.trackVersions[1:]
+		}
+	}
+	return src, nil
 }
 
 // --- token_refresh fake state ---
@@ -1208,9 +1226,9 @@ func TestWorker_SkipsTooFewPoints(t *testing.T) {
 // ---- re-upload race ---------------------------------------------------
 
 // If track_url changes between the start of the match and the write
-// back, the worker should discard its result and finish_job(done) so
-// the OLD job exits cleanly. The trigger has already enqueued a new
-// job for the fresh track; that one will produce the right result.
+// back, the worker should discard its result and finish_job(done);
+// finish_job re-queues the job because the trigger left
+// run_matched_tracks pending, and the next run matches the fresh track.
 func TestWorker_ReuploadDuringMatchDiscardsResult(t *testing.T) {
 	be := newFakeBackend()
 	be.trackURLs = []string{
@@ -1244,11 +1262,10 @@ func TestWorker_ReuploadDuringMatchDiscardsResult(t *testing.T) {
 // ---- CAS race ----------------------------------------------------------
 
 // Source-track-url CAS: when the trigger has reset the row's
-// source_track_url between the worker's recheck and its PATCH, the
-// PATCH targets zero rows and the worker discards cleanly. Same
-// "OLD job exits done, NEW job already queued by trigger produces
-// the right result" outcome as the recheck path — this closes the
-// residual TOCTOU window that the recheck alone couldn't.
+// source_track_url between the worker's recheck and its write, the
+// write is refused and the worker discards cleanly. Same "job exits
+// done, finish_job re-queues it" outcome as the recheck path — this
+// closes the residual TOCTOU window that the recheck alone couldn't.
 func TestWorker_StaleSourceTrackURLDiscardsResult(t *testing.T) {
 	be := newFakeBackend()
 	be.trackURL = "user-1/run-1.json.gz"
@@ -1274,6 +1291,70 @@ func TestWorker_StaleSourceTrackURLDiscardsResult(t *testing.T) {
 	}
 	if got := len(be.finished); got != 1 || be.finished[0].Status != "done" {
 		t.Errorf("finish=%+v, want done despite CAS miss", be.finished)
+	}
+}
+
+// A re-upload in place keeps track_url — the runs_track_url_path_shape
+// CHECK allows one path per run — and changes the Storage version. The
+// recheck compares the version too, so the old bytes' match is never
+// uploaded or written.
+func TestWorker_ReuploadInPlaceDuringMatchDiscardsResult(t *testing.T) {
+	be := newFakeBackend()
+	be.trackURL = "user-1/run-1.json.gz"
+	be.trackVersions = []string{"v1", "v2"}
+	be.trackByPath["user-1/run-1.json.gz"] = []TrackPoint{
+		{Lat: 1, Lng: 2}, {Lat: 1.001, Lng: 2.001}, {Lat: 1.002, Lng: 2.002},
+	}
+	be.jobs = []*Job{{
+		ID: 22, Kind: "map_match",
+		Payload: mustPayload(t, MapMatchPayload{RunID: "run-1", UserID: "user-1"}),
+	}}
+
+	w := newTestWorker(be, PassthroughMatcher{})
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	_ = w.Run(ctx)
+
+	if got := len(be.uploaded); got != 0 {
+		t.Errorf("uploaded count=%d, want 0 (old bytes' match discarded)", got)
+	}
+	if got := len(be.trackSourceWrites); got != 0 {
+		t.Errorf("row writes=%d, want 0 (old bytes' match discarded)", got)
+	}
+	if got := len(be.finished); got != 1 || be.finished[0].Status != "done" {
+		t.Errorf("finish=%+v, want one done", be.finished)
+	}
+}
+
+// A re-upload in place landing after the recheck: the write carries the
+// version the worker downloaded, record_map_match_result refuses it, and
+// the job ends cleanly for finish_job to re-queue.
+func TestWorker_StaleTrackVersionDiscardsResult(t *testing.T) {
+	be := newFakeBackend()
+	be.trackURL = "user-1/run-1.json.gz"
+	be.trackByPath["user-1/run-1.json.gz"] = []TrackPoint{
+		{Lat: 1, Lng: 2}, {Lat: 1.001, Lng: 2.001}, {Lat: 1.002, Lng: 2.002},
+	}
+	be.casVersion = "v2"
+	be.jobs = []*Job{{
+		ID: 42, Kind: "map_match",
+		Payload: mustPayload(t, MapMatchPayload{RunID: "run-1", UserID: "user-1"}),
+	}}
+
+	w := newTestWorker(be, PassthroughMatcher{})
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	_ = w.Run(ctx)
+
+	want := TrackSource{URL: "user-1/run-1.json.gz", Version: "v1"}
+	if len(be.trackSourceWrites) != 1 || be.trackSourceWrites[0] != want {
+		t.Errorf("write conditional on %+v, want one on %+v", be.trackSourceWrites, want)
+	}
+	if got := len(be.rowSets); got != 0 {
+		t.Errorf("rowSets=%d, want 0 (version CAS refused the write)", got)
+	}
+	if got := len(be.finished); got != 1 || be.finished[0].Status != "done" {
+		t.Errorf("finish=%+v, want done despite the refused write", be.finished)
 	}
 }
 

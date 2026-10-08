@@ -3,10 +3,19 @@
 -- survives a signed-in client's bag that was loaded before the matcher ran,
 -- and a stale copy of a recomputed run; the worker (service role) can still
 -- clear it, a client that has the current value can still change it, and a
--- change to track_url drops it.
+-- change to track_url drops it. Since 20270719000020 the figure travels with
+-- distance_map_matched_track_version, the Storage version of the bytes it was
+-- measured on, and is kept only while that names the stored object — so each
+-- run here has its track object, staged before the run so the rewrite
+-- trigger on storage.objects has no run to act on.
 
 begin;
-select plan(9);
+select plan(12);
+
+insert into storage.objects (bucket_id, name, version) values
+  ('runs', 'af000000-0000-0000-0000-0000000000a1/af000001-0000-0000-0000-000000000001.json.gz', 'k1'),
+  ('runs', 'af000000-0000-0000-0000-0000000000a1/af000001-0000-0000-0000-000000000002.json.gz', 'k2'),
+  ('runs', 'af000000-0000-0000-0000-0000000000a1/af000001-0000-0000-0000-000000000003.json.gz', 'k3');
 
 insert into auth.users (id, email, encrypted_password, email_confirmed_at,
                         instance_id, aud, role)
@@ -23,15 +32,15 @@ values
   ('af000001-0000-0000-0000-000000000001', 'af000000-0000-0000-0000-0000000000a1',
    '2026-09-01 09:00:00+00', 5000, 1800, 'app', 'run',
    'af000000-0000-0000-0000-0000000000a1/af000001-0000-0000-0000-000000000001.json.gz',
-   '{"activity_type":"run","distance_map_matched_m":4990.5}'),
+   '{"activity_type":"run","distance_map_matched_m":4990.5,"distance_map_matched_track_version":"k1"}'),
   ('af000001-0000-0000-0000-000000000002', 'af000000-0000-0000-0000-0000000000a1',
    '2026-09-02 09:00:00+00', 5000, 1800, 'app', 'run',
    'af000000-0000-0000-0000-0000000000a1/af000001-0000-0000-0000-000000000002.json.gz',
-   '{"activity_type":"run","distance_map_matched_m":4985.2,"distance_recorded_m":6300,"distance_estimator":"kalman_v2","distance_recomputed_at":"2026-10-08T12:00:00Z"}'),
+   '{"activity_type":"run","distance_map_matched_m":4985.2,"distance_map_matched_track_version":"k2","distance_recorded_m":6300,"distance_estimator":"kalman_v2","distance_recomputed_at":"2026-10-08T12:00:00Z"}'),
   ('af000001-0000-0000-0000-000000000003', 'af000000-0000-0000-0000-0000000000a1',
    '2026-09-03 09:00:00+00', 5000, 1800, 'app', 'run',
    'af000000-0000-0000-0000-0000000000a1/af000001-0000-0000-0000-000000000003.json.gz',
-   '{"activity_type":"run","distance_map_matched_m":4970.0}');
+   '{"activity_type":"run","distance_map_matched_m":4970.0,"distance_map_matched_track_version":"k3"}');
 
 -- ── the owner, signed in, edits from a copy loaded before the match ─────
 
@@ -45,15 +54,24 @@ update runs
 
 select is((select (metadata ->> 'distance_map_matched_m')::numeric from runs where id = 'af000001-0000-0000-0000-000000000001'),
   4990.5::numeric, 'a signed-in write without the road distance keeps it');
+select is((select metadata ->> 'distance_map_matched_track_version' from runs where id = 'af000001-0000-0000-0000-000000000001'),
+  'k1', 'and keeps the track version beside it, without which the figure would be dropped');
 select is((select metadata ->> 'title' from runs where id = 'af000001-0000-0000-0000-000000000001'),
   'Tempo', 'the rest of that write still lands');
 
 update runs
-   set metadata = '{"activity_type":"run","title":"Tempo","distance_map_matched_m":4991.0}'
+   set metadata = '{"activity_type":"run","title":"Tempo","distance_map_matched_m":4991.0,"distance_map_matched_track_version":"k1"}'
  where id = 'af000001-0000-0000-0000-000000000001';
 
 select is((select (metadata ->> 'distance_map_matched_m')::numeric from runs where id = 'af000001-0000-0000-0000-000000000001'),
-  4991.0::numeric, 'a write that carries the key sets it as sent');
+  4991.0::numeric, 'a write that carries the key for the stored track sets it as sent');
+
+update runs
+   set metadata = '{"activity_type":"run","title":"Tempo","distance_map_matched_m":5200.0}'
+ where id = 'af000001-0000-0000-0000-000000000001';
+
+select is((select (metadata ->> 'distance_map_matched_m')::numeric from runs where id = 'af000001-0000-0000-0000-000000000001'),
+  4991.0::numeric, 'a figure sent without the stored track''s version does not replace the current one');
 
 -- runs_track_url_path_shape allows one non-null track_url per run, so the
 -- only track change a write can name is to or from null.
@@ -70,8 +88,11 @@ reset role;
 -- ── the worker clears it as the service role ─────────────────────────────
 
 update runs
-   set metadata = '{"activity_type":"run","distance_map_matched_m":4970.0}'
+   set track_url = 'af000000-0000-0000-0000-0000000000a1/af000001-0000-0000-0000-000000000003.json.gz',
+       metadata = '{"activity_type":"run","distance_map_matched_m":4970.0,"distance_map_matched_track_version":"k3"}'
  where id = 'af000001-0000-0000-0000-000000000003';
+select is((select (metadata ->> 'distance_map_matched_m')::numeric from runs where id = 'af000001-0000-0000-0000-000000000003'),
+  4970.0::numeric, 'fixture: the run is road-matched again before the worker clears it');
 select set_config('request.jwt.claims', '{"role":"service_role"}', true);
 set local role service_role;
 

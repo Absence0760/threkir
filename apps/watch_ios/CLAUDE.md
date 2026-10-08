@@ -258,6 +258,11 @@ xcodebuild test -project apps/watch_ios/WatchApp.xcodeproj \
 
 That is what `.github/workflows/ci.yml`'s `test-watch-ios` job runs on a macOS runner — it resolves the UDID at runtime and pre-boots the device with `simctl bootstatus -b` before the install.
 
+**Where the wrist's Supabase project comes from, per build.** `SupabaseEnvironment` (`WatchAuth.swift`) reads the process environment first, then the bundle's `SupabaseURL` / `SupabaseAnonKey`, which `Info.plist` expands from the `SUPABASE_URL` / `SUPABASE_ANON_KEY` build settings. Neither committed project defines those settings, on purpose — nothing is baked into a public repo:
+
+- **`WatchApp.xcodeproj` (dev, tests):** set `SUPABASE_URL` / `SUPABASE_ANON_KEY` as environment variables in the WatchApp scheme's Run action (Edit Scheme, not committed). Unset, the sign-in sheet says the watch is not set up and sends nothing.
+- **`Runner.xcodeproj` (every shipped `.ipa`):** the `WatchApp` target's base config `apps/mobile_ios/ios/Flutter/WatchApp.xcconfig` does `#include? "WatchRuntime.xcconfig"`, an untracked file `release-ios.yml` writes from `PUBLIC_SUPABASE_URL` / `PUBLIC_SUPABASE_ANON_KEY` through `scripts/ios_watch_runtime_config.mjs`; the same workflow then fails unless the built IPA's `WatchApp.app/Info.plist` carries both, equal to the secrets. `--dart-define-from-file` does **not** reach this target: Flutter passes it to Xcode only as `DART_DEFINES`, which no watchOS code decodes ([decisions § 1810](../../docs/architecture/decisions.md)). To archive from Xcode by hand, create that file yourself (`SUPABASE_URL = https:/$()/<ref>.supabase.co` — an xcconfig reads `//` as a comment — and `SUPABASE_ANON_KEY = <anon key>`); never commit it.
+
 **Unit tests: `WatchAppTests` XCTest target.** `apps/watch_ios/WatchAppTests/`
 holds the first automated coverage for the watch app — a host-bundle unit-test
 target wired into `WatchApp.xcodeproj` (product type

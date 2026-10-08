@@ -107,6 +107,10 @@ is written as both halves or neither, and `lat` / `lng` are never altered.
 Readers that draw the run line or route-match it prefer the smoothed pair when
 both are present (`lineLat` / `lineLng`: `Waypoint` in core_models, web
 `lib/runs/track_line.ts`); the distance estimator always reads the raw fix.
+A track that carries no smoothed pair of its own (a watch run, an old run the
+server recomputed) can get one from the job_worker's **smoothed-position
+sidecar** beside it (Storage, below), which the owner's readers and
+`clip-public-track` merge only when its fingerprint names the exact track bytes.
 See [gps_distance.md](../features/gps_distance.md).
 
 **`metadata` shape (source-dependent):**
@@ -1996,7 +2000,7 @@ GET /functions/v1/clip-public-track?run_id={uuid}
 
 Anon-callable — `config.toml` keeps `verify_jwt = true`, so the platform requires a Supabase **anon** (or user) JWT, but the function authenticates via the `runs.is_public = true` row check, not the caller's identity. If a JWT is present, it's used to apply owner-visibility rules (owner sees their own raw track; non-owner gets the clipped version).
 
-**Response:** track JSON identical in shape to `runs/{user_id}/{run_id}.json.gz`, with privacy-zone segments clipped.
+**Response:** track JSON identical in shape to `runs/{user_id}/{run_id}.json.gz`, with privacy-zone segments clipped. Before the owner return and before the clip, a track whose waypoints carry no smoothed pair gets the job_worker's smoothed-position sidecar (`{owner}/{run_id}.smoothed.json.gz`, read with the service role) merged on when its fingerprint matches; merging first is what lets `clip_track_for_user`'s either-pair-in-zone rule trim a fix whose smoothed position sits in a zone. A missing or unreadable sidecar leaves the raw points. Pinned by `clip-public-track/wiring.test.ts`.
 
 ---
 
@@ -2554,9 +2558,12 @@ The `routes` bucket shown in older revisions of this doc was never created — `
 
 ```
 {user_id}/{run_id}.json.gz         # gzipped GPS track for run {run_id}
+{user_id}/{run_id}.smoothed.json.gz  # job_worker's smoothed positions for that track
 {user_id}/exports/{timestamp}.zip  # LEGACY data-export bundles (both rails
 {user_id}/exports/{timestamp}.csv  # now write to the `exports` bucket)
 ```
+
+**The smoothed-position sidecar** (`{user_id}/{run_id}.smoothed.json.gz`, gzipped JSON `{version: 1, track: {points, sha256}, positions: [[lat, lng] | null, ...]}`) holds the GPS distance smoother's position for each stored waypoint of a track the job_worker replayed: after a distance recompute that kept the smoothed pass, and after a `watch` run's `map_match` ([gps_distance.md § Waypoint fields](../features/gps_distance.md#waypoint-fields)). It exists because the worker cannot safely rewrite the track (no conditional upload; clients overwrite the same path), so instead of a column it carries `track` — the waypoint count and the lower-case hex SHA-256 of the track's decompressed bytes — and every reader (web `fetchRunById`, `api_client` `fetchTrack`, `clip-public-track`) merges it only when that matches the track it holds and only onto a waypoint with no pair of its own. Access is the bucket's existing per-folder policies, no new one: the owner can read it (and, as with the matched track, write or delete it — harmless, since the owner controls their raw track the same way), the worker writes it as the service role, and no other user or anon can read it (pgtap `runs_smoothed_sidecar_storage_access_test.sql`); a non-owner sees its positions only through `clip-public-track`, merged before the clip. No column names it, so the run deletes (web `deleteRun`, `api_client` `deleteRun`) remove it by path beside `track_url` (pinned in `privacy_guards.test.ts`), `delete-account`'s prefix drain removes it with everything else under `{user_id}/`, and both export builders archive it through their Storage prefix walk as `storage/runs/{run_id}.smoothed.json.gz`. **Pre-prod deploy checklist:** CISO sign-off on this privacy-boundary change (a second per-point position reaching non-owners through `clip-public-track`) before the worker build that writes sidecars and the Edge Function that merges them reach production ([followups.md § Deploys](../product/followups.md)). Nothing reaches a viewer until a sidecar exists, so holding the worker build holds the change.
 
 Export artifacts moved to the `exports` bucket — the Edge Function in migration `20270602_001` ([decisions § 703](../architecture/decisions.md)), the Go worker in [§ 708](../architecture/decisions.md). What is left under this prefix is what was written before those, and it is still drained by `delete-account`, still reaped at 7 days — `enqueue_export_blob_reap()` emits one prefix-scoped job per user who still holds an archive here, so the set empties itself ([§ 1172](../architecture/decisions.md)) — and still skipped by the export's own Storage orphan walk so an export never archives a previous export.
 

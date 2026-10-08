@@ -5401,6 +5401,9 @@ void main() {
       'screens/run_detail_screen.dart::l10n.runDetailMakePrivateTitle': 1,
       'screens/run_detail_screen.dart::l10n.runDetailMakePublicTitle': 1,
       'screens/run_detail_screen.dart::l10n.runDetailSaveAsRouteTitle': 1,
+      // Re-derives the distance from the stored track; the recorded figure
+      // is kept in metadata.distance_recorded_m, so nothing is discarded.
+      'screens/run_detail_screen.dart::l10n.runDetailRecalculateDistanceDialogTitle': 1,
       // States what the OS just refused and offers the Settings shortcut.
       // Either action finishes onboarding; nothing is discarded by it.
       'screens/onboarding_screen.dart::l10n.onboardingLocationDeniedTitle': 1,

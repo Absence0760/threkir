@@ -15,6 +15,9 @@ does not accept as a road run keeps the smoother's forward pass instead, and
 `metadata.distance_estimator_pass` records which pass was kept.
 `map_match` reads a waypoint's `smoothedLat` / `smoothedLng` in place of its
 raw position when both are present.
+Both write the smoothed-position sidecar `{user_id}/{run_id}.smoothed.json.gz`
+(`internal/smoothed_sidecar.go`): a recompute that kept the smoothed pass, and
+`map_match` for a `watch` run, whose recorders store no smoothed pair.
 
 ## Required env
 

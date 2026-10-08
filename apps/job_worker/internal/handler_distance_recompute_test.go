@@ -32,6 +32,8 @@ type fakeDistanceRecompute struct {
 	downloadErr error
 	reads       int
 	updates     []distanceUpdate
+	uploadErr   error
+	sidecars    map[string]*SmoothedSidecar
 }
 
 func (f *fakeBackend) ReadRunForDistanceRecompute(_ context.Context, runID string) (*DistanceRecomputeRun, error) {
@@ -52,7 +54,7 @@ func (f *fakeBackend) ReadRunForDistanceRecompute(_ context.Context, runID strin
 	return &cp, nil
 }
 
-func (f *fakeBackend) DownloadRecordedTrack(_ context.Context, path string) ([]RecordedTrackPoint, error) {
+func (f *fakeBackend) DownloadRecordedTrack(_ context.Context, path string) (*RecordedTrack, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.distance == nil {
@@ -65,7 +67,27 @@ func (f *fakeBackend) DownloadRecordedTrack(_ context.Context, path string) ([]R
 	if !ok {
 		return nil, &HTTPError{StatusCode: http.StatusNotFound}
 	}
-	return pts, nil
+	raw, err := json.Marshal(pts)
+	if err != nil {
+		return nil, err
+	}
+	return &RecordedTrack{Points: pts, Fingerprint: fingerprintTrack(raw, len(pts))}, nil
+}
+
+func (f *fakeBackend) UploadSmoothedSidecar(_ context.Context, path string, sc *SmoothedSidecar) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.distance == nil {
+		return errors.New("fake: distance state not configured")
+	}
+	if f.distance.uploadErr != nil {
+		return f.distance.uploadErr
+	}
+	if f.distance.sidecars == nil {
+		f.distance.sidecars = map[string]*SmoothedSidecar{}
+	}
+	f.distance.sidecars[path] = sc
+	return nil
 }
 
 func (f *fakeBackend) UpdateRunDistance(_ context.Context, read *DistanceRecomputeRun, upd RunDistanceUpdate) error {
@@ -535,10 +557,11 @@ func TestDownloadRecordedTrack_DecodesTheDopplerKeys(t *testing.T) {
 		path = r.URL.Path
 		_, _ = w.Write(buf.Bytes())
 	})
-	pts, err := client.DownloadRecordedTrack(context.Background(), drTrack)
+	track, err := client.DownloadRecordedTrack(context.Background(), drTrack)
 	if err != nil {
 		t.Fatalf("download: %v", err)
 	}
+	pts := track.Points
 	if path != "/storage/v1/object/runs/"+drTrack {
 		t.Errorf("path = %s", path)
 	}
@@ -646,10 +669,11 @@ func TestDownloadRecordedTrack_FeedsTheSmootherRawPositions(t *testing.T) {
 	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(smoothedTrackJSON))
 	})
-	pts, err := client.DownloadRecordedTrack(context.Background(), drTrack)
+	track, err := client.DownloadRecordedTrack(context.Background(), drTrack)
 	if err != nil {
 		t.Fatalf("download: %v", err)
 	}
+	pts := track.Points
 	if *pts[0].Lat != 40 || *pts[0].Lng != -75 {
 		t.Errorf("pts[0] = (%v, %v); the recompute must replay the raw fix, not a previous smoothing", *pts[0].Lat, *pts[0].Lng)
 	}

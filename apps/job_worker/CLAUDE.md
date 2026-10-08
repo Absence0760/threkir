@@ -309,7 +309,8 @@ apps/job_worker/
 │   ├── handler_export_blob_reap_test.go # 11 tests on the window boundary, unknown-age skip, batching, partial progress, idempotence
 │   ├── handler_distance_recompute.go # kind='distance_recompute' — replay the stored track through gpsdistance, CAS-PATCH distance_m + merged metadata; app/watch sources only
 │   ├── handler_distance_recompute_test.go # skip set, repeat keeps distance_recorded_m, CAS re-read, untimed waypoints, permanent vs transient, PostgREST wire shape
-│   ├── supabase_distance_recompute.go # ReadRunForDistanceRecompute / DownloadRecordedTrack (reads the spec-v1 Doppler keys, raw lat/lng only) / UpdateRunDistance (conditional on track_url + metadata)
+│   ├── supabase_distance_recompute.go # ReadRunForDistanceRecompute / DownloadRecordedTrack (reads the spec-v1 Doppler keys, raw lat/lng only, fingerprints the inflated bytes) / UpdateRunDistance (conditional on track_url + metadata) / UploadSmoothedSidecar
+│   ├── smoothed_sidecar.go # {user_id}/{run_id}.smoothed.json.gz: the smoother's position per stored waypoint + the track's fingerprint; written after a smoothed-pass recompute and after a watch run's map_match
 │   ├── gpsdistance/         # Go port of the GPS distance estimator spec v1 (scripts/gps_distance/reference.py)
 │   │   ├── estimator.go     # two 1-D constant-velocity Kalman filters + Doppler + stationary floor + gap re-anchor + pedometer stride
 │   │   └── estimator_test.go # replays fixtures/gps_distance_vectors.json, asserting distance after every event to tolerance_m

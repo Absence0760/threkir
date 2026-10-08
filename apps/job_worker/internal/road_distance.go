@@ -60,11 +60,14 @@ var roadStravaTypes = map[string]bool{"Run": true, "Walk": true}
 // is trail by nature and a ride is not on the foot graph.
 var roadActivityTypes = map[string]bool{"": true, "run": true, "walk": true, "stroller": true}
 
-// RoadDistanceRun is the projection of `runs` the road-distance step reads.
+// RoadDistanceRun is the projection of `runs` the road-distance step reads,
+// and the watch-run smoothed-sidecar step after it (UserID, Source).
 // Route is the linked route's surface through the runs.route_id foreign
 // key, nil when no route is linked.
 type RoadDistanceRun struct {
 	ID           string            `json:"id"`
+	UserID       string            `json:"user_id"`
+	Source       string            `json:"source"`
 	ActivityType *string           `json:"activity_type"`
 	TrackURL     *string           `json:"track_url"`
 	DistanceM    float64           `json:"distance_m"`
@@ -229,4 +232,56 @@ func haversineM(a, b TrackPoint) float64 {
 	dLat, dLng := lat2-lat1, rad(b.Lng-a.Lng)
 	h := math.Sin(dLat/2)*math.Sin(dLat/2) + math.Cos(lat1)*math.Cos(lat2)*math.Sin(dLng/2)*math.Sin(dLng/2)
 	return 2 * 6371000 * math.Asin(math.Min(1, math.Sqrt(h)))
+}
+
+// writeWatchSmoothedSidecar is the map_match job's last step: for a run the
+// wrist recorded (source 'watch', whose recorders keep the forward filter and
+// never store a smoothed pair), replay the stored track through the smoother
+// and write the smoothed-position sidecar. A track with no Doppler that is
+// not a road run by roadDistanceFor gets none, the same rule that keeps the
+// recompute on the forward pass there. road is the match this job just made.
+// Auxiliary like the road distance: the caller logs an error, never fails.
+func (w *Worker) writeWatchSmoothedSidecar(ctx context.Context, runID, trackURL string, road RoadMatch) error {
+	run, err := w.Backend.ReadRunForRoadDistance(ctx, runID)
+	if errors.Is(err, ErrRunNotFound) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("read run: %w", err)
+	}
+	if run.Source != "watch" || run.TrackURL == nil || *run.TrackURL != trackURL {
+		return nil
+	}
+	meta, err := decodeRunMetadata(run.Metadata)
+	if err != nil {
+		return fmt.Errorf("run %s metadata: %w", runID, err)
+	}
+	if metaIsTrue(meta, schema.MetaInProgress) {
+		return nil
+	}
+	track, err := w.Backend.DownloadRecordedTrack(ctx, trackURL)
+	if err != nil {
+		return fmt.Errorf("download track: %w", err)
+	}
+	pts, storedIdx := coordinatePointsIndexed(track.Points)
+	activity := ""
+	if run.ActivityType != nil {
+		activity = *run.ActivityType
+	}
+	replay := replayRecordedTrack(pts, maxSpeedMpsForActivity(activity))
+	if replay.Fixes < 2 {
+		return nil
+	}
+	if replay.PositionOnly {
+		raw := make([]TrackPoint, 0, len(pts))
+		for _, p := range pts {
+			raw = append(raw, TrackPoint{Lat: *p.Lat, Lng: *p.Lng, Timestamp: p.Timestamp})
+		}
+		if v, reason := roadDistanceFor(run, meta, raw, road); v == nil {
+			w.Log.Info("smoothed sidecar skipped", "run_id", runID, "reason", "position-only and not a road run: "+reason)
+			return nil
+		}
+	}
+	w.writeSmoothedSidecar(ctx, run.UserID, run.ID, track, storedIdx, replay)
+	return nil
 }

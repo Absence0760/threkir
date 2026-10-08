@@ -17,7 +17,7 @@ import (
 func (c *SupabaseClient) ReadRunForRoadDistance(ctx context.Context, runID string) (*RoadDistanceRun, error) {
 	q := url.Values{}
 	q.Set("id", "eq."+runID)
-	q.Set("select", "id,activity_type,track_url,distance_m,metadata,route:"+schema.TableRoutes+"(surface)")
+	q.Set("select", "id,user_id,source,activity_type,track_url,distance_m,metadata,route:"+schema.TableRoutes+"(surface)")
 	u := c.BaseURL + "/rest/v1/" + schema.TableRuns + "?" + q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {

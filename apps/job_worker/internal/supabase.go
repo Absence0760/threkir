@@ -275,9 +275,15 @@ func decodeTrack[T any](body []byte) ([]T, error) {
 // UploadMatchedTrack gzips and stores the matched track at the given
 // path. Uses upsert=true so a re-match overwrites any prior file.
 func (c *SupabaseClient) UploadMatchedTrack(ctx context.Context, path string, points []TrackPoint) error {
+	return c.uploadGzippedJSON(ctx, path, points)
+}
+
+// uploadGzippedJSON gzips v's JSON and stores it in the `runs` bucket at path,
+// overwriting any object already there.
+func (c *SupabaseClient) uploadGzippedJSON(ctx context.Context, path string, v any) error {
 	var buf bytes.Buffer
 	zw := gzip.NewWriter(&buf)
-	if err := json.NewEncoder(zw).Encode(points); err != nil {
+	if err := json.NewEncoder(zw).Encode(v); err != nil {
 		return err
 	}
 	if err := zw.Close(); err != nil {
@@ -295,7 +301,7 @@ func (c *SupabaseClient) UploadMatchedTrack(ctx context.Context, path string, po
 	// invite intermediaries to transparently decompress a body the
 	// consumers gunzip explicitly.
 	req.Header.Set("Content-Type", "application/gzip")
-	// Storage's "x-upsert: true" header lets re-matches overwrite the
+	// Storage's "x-upsert: true" header lets a rewrite overwrite the
 	// previous file rather than 409ing.
 	req.Header.Set("x-upsert", "true")
 	_, err = c.do(ctx, req)

@@ -77,6 +77,8 @@ func maxSpeedMpsForActivity(activityType string) float64 {
 // smoother and rewrites runs.distance_m, keeping the originally
 // recorded figure in metadata.distance_recorded_m, and rewrites the four
 // fastest_* embedded bests from the same replay's cumulative distance.
+// When it keeps the smoothed pass it also writes the smoothed-position
+// sidecar (smoothed_sidecar.go), after the distance write has landed.
 func (w *Worker) handleDistanceRecompute(ctx context.Context, job *Job) error {
 	var p DistanceRecomputePayload
 	if err := json.Unmarshal(job.Payload, &p); err != nil {
@@ -107,11 +109,11 @@ func (w *Worker) handleDistanceRecompute(ctx context.Context, job *Job) error {
 			return nil
 		}
 
-		pts, err := w.Backend.DownloadRecordedTrack(ctx, *run.TrackURL)
+		track, err := w.Backend.DownloadRecordedTrack(ctx, *run.TrackURL)
 		if err != nil {
 			return fmt.Errorf("download track: %w", err)
 		}
-		pts = coordinatePoints(pts)
+		pts, storedIdx := coordinatePointsIndexed(track.Points)
 		replay := replayRecordedTrack(pts, maxSpeedMpsForActivity(run.ActivityType))
 		if replay.Fixes < 2 {
 			return fmt.Errorf("track %s has %d timestamped waypoints; need at least 2", *run.TrackURL, replay.Fixes)
@@ -139,6 +141,12 @@ func (w *Worker) handleDistanceRecompute(ctx context.Context, job *Job) error {
 		}
 		if err != nil {
 			return fmt.Errorf("update run distance: %w", err)
+		}
+		// The line follows the figure the run now carries: a forward-pass
+		// recompute keeps its raw line rather than the smoother's, which
+		// cuts the corners the forward pass was kept to avoid.
+		if pass == EstimatorPassSmoothed {
+			w.writeSmoothedSidecar(ctx, run.UserID, run.ID, track, storedIdx, replay)
 		}
 		w.Log.Info("distance recomputed",
 			"run_id", p.RunID,

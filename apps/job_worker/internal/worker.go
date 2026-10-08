@@ -171,8 +171,13 @@ type Backend interface {
 	// for a deleted run; UpdateRunDistance returns
 	// ErrRunChangedDuringRecompute when its track_url + metadata CAS misses.
 	ReadRunForDistanceRecompute(ctx context.Context, runID string) (*DistanceRecomputeRun, error)
-	DownloadRecordedTrack(ctx context.Context, path string) ([]RecordedTrackPoint, error)
+	DownloadRecordedTrack(ctx context.Context, path string) (*RecordedTrack, error)
 	UpdateRunDistance(ctx context.Context, read *DistanceRecomputeRun, upd RunDistanceUpdate) error
+	// UploadSmoothedSidecar writes `{user_id}/{run_id}.smoothed.json.gz`, the
+	// smoother's per-waypoint positions plus the fingerprint of the track
+	// they were computed from (smoothed_sidecar.go). Written after a
+	// recompute and, for a watch run, after its map_match.
+	UploadSmoothedSidecar(ctx context.Context, path string, sc *SmoothedSidecar) error
 	// Road-distance path — the map_match handler's last step. Reads the run
 	// with its linked route's surface and writes metadata.distance_map_matched_m
 	// through a track_url + metadata CAS; UpdateRunMetadata returns
@@ -660,6 +665,12 @@ func (w *Worker) handleMapMatch(ctx context.Context, job *Job) error {
 	}
 	if err := w.updateRoadDistance(ctx, p.RunID, trackURL, raw, road); err != nil {
 		w.Log.Warn("road distance skipped",
+			"run_id", p.RunID,
+			"err", err,
+		)
+	}
+	if err := w.writeWatchSmoothedSidecar(ctx, p.RunID, trackURL, road); err != nil {
+		w.Log.Warn("smoothed sidecar skipped",
 			"run_id", p.RunID,
 			"err", err,
 		)

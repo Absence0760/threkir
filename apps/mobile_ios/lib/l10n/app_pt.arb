@@ -810,6 +810,7 @@
   "runDetailRouteSaved": "\"{name}\" guardada — {kept} pontos de passagem ({smoothed} suavizados)",
   "runDetailRouteSaveFailed": "Não foi possível guardar \"{name}\" como rota.",
   "runDetailMakePublicFailed": "Não foi possível tornar a corrida pública: {error}",
+  "runDetailShareZonesUnknown": "Não foi possível carregar as suas zonas de privacidade, por isso nada foi partilhado. Verifique a sua ligação e tente novamente.",
   "runDetailMakePublicTitle": "Tornar esta corrida pública?",
   "runDetailMakePublicBodyZone": "Partilhar torna esta corrida pública, para que qualquer pessoa com o link possa vê-la. Esta corrida começa ou termina dentro de uma das suas zonas de privacidade, então quem visualizar verá um trajeto recortado com os trechos dentro da zona ocultos.",
   "runDetailMakePublicBodyHasZones": "Partilhar torna esta corrida pública, para que qualquer pessoa com o link possa vê-la. Nenhuma das suas zonas de privacidade cruza este trajeto, então o trajeto completo ficará visível.",

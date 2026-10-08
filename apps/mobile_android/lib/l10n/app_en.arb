@@ -3855,6 +3855,10 @@
       }
     }
   },
+  "runDetailShareZonesUnknown": "Couldn't load your privacy zones, so nothing was shared. Check your connection and try again.",
+  "@runDetailShareZonesUnknown": {
+    "description": "Banner shown when Share is refused because the owner's privacy zones could not be loaded, so the shared image could not be clipped"
+  },
   "runDetailMakePublicTitle": "Make this run public?",
   "@runDetailMakePublicTitle": {
     "description": "Title of the make-run-public confirmation dialog"

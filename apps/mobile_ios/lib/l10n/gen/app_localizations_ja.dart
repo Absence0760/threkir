@@ -2816,6 +2816,10 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get runDetailShareZonesUnknown =>
+      'プライバシーゾーンを読み込めなかったため、何も共有されませんでした。接続を確認してもう一度お試しください。';
+
+  @override
   String get runDetailMakePublicTitle => 'このランを公開しますか？';
 
   @override

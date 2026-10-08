@@ -2806,9 +2806,16 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     _sharing = true;
     setState(() {});
     try {
+      final zones = await _knownPrivacyZones();
+      if (!mounted) return;
+      if (zones == null) {
+        showTopBanner(
+            context, AppLocalizations.of(context).runDetailShareZonesUnknown);
+        return;
+      }
       final api = widget.apiClient;
       if (api != null && api.userId != null) {
-        final ok = await _confirmMakePublic();
+        final ok = await _confirmMakePublic(zones);
         if (!ok) return;
         try {
           await api.makeRunPublic(run.id);
@@ -2826,7 +2833,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         run: run,
         preferences: widget.preferences,
         title: _title,
-        privacyZones: _loadPrivacyZones(),
+        privacyZones: zones,
       );
     } finally {
       if (mounted) {
@@ -2843,12 +2850,21 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// first: this entry exists so a runner can keep a copy of a trace they are
   /// about to lose, which is a local file, not a published link.
   Future<void> _exportBeforeDrop() async {
+    // The sheet can also share the image, which withholds the zones, so it
+    // opens only once they are known.
+    final zones = await _knownPrivacyZones();
+    if (!mounted) return;
+    if (zones == null) {
+      showTopBanner(
+          context, AppLocalizations.of(context).runDetailShareZonesUnknown);
+      return;
+    }
     await showRunShareSheet(
       context,
       run: run,
       preferences: widget.preferences,
       title: _title,
-      privacyZones: _loadPrivacyZones(),
+      privacyZones: zones,
     );
   }
 
@@ -2933,9 +2949,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// dialog body branches on whether the user has privacy zones and
   /// whether this track passes through one of them — same shape as
   /// the web `handleShare` flow.
-  Future<bool> _confirmMakePublic() async {
+  Future<bool> _confirmMakePublic(List<PrivacyZone> zones) async {
     final l10n = AppLocalizations.of(context);
-    final zones = _loadPrivacyZones();
     final hasZones = zones.isNotEmpty;
     final track = run.track;
     final intersectsZone = trackEntersAnyZone(track, zones);
@@ -2965,9 +2980,24 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     return ok == true;
   }
 
-  List<PrivacyZone> _loadPrivacyZones() {
-    final svc = widget.settingsSync?.service;
-    if (svc == null) return const [];
+  /// The owner's privacy zones, or null when they are not known — and an
+  /// unknown list is never read as "no zones": that is what sent a shared
+  /// image out unclipped and told the make-public confirm the track entered
+  /// no zone, whenever the settings bag had not loaded yet. Signed out there
+  /// is no account and so no zone. Signed in, the bag is loaded first when
+  /// sign-in never loaded it; a failure to load it is null.
+  Future<List<PrivacyZone>?> _knownPrivacyZones() async {
+    final api = widget.apiClient;
+    if (api == null || api.userId == null) return const [];
+    final sync = widget.settingsSync;
+    if (sync == null) return null;
+    final SettingsService svc;
+    try {
+      svc = sync.service ?? await sync.loadedService();
+    } catch (e) {
+      debugPrint('run_detail: privacy zones unknown — $e');
+      return null;
+    }
     final raw = svc.effective<List<dynamic>>(
       privacyZonesKey,
       fallback: const <dynamic>[],

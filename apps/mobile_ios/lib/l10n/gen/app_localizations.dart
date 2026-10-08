@@ -4973,6 +4973,12 @@ abstract class AppLocalizations {
   /// **'Could not make run public: {error}'**
   String runDetailMakePublicFailed(String error);
 
+  /// Banner shown when Share is refused because the owner's privacy zones could not be loaded, so the shared image could not be clipped
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your privacy zones, so nothing was shared. Check your connection and try again.'**
+  String get runDetailShareZonesUnknown;
+
   /// Title of the make-run-public confirmation dialog
   ///
   /// In en, this message translates to:

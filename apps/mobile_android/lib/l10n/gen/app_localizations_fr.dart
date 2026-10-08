@@ -2974,6 +2974,10 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get runDetailShareZonesUnknown =>
+      'Impossible de charger vos zones de confidentialité, rien n\'a donc été partagé. Vérifiez votre connexion et réessayez.';
+
+  @override
   String get runDetailMakePublicTitle => 'Rendre cette course publique ?';
 
   @override

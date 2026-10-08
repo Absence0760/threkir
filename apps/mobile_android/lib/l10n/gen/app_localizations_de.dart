@@ -2923,16 +2923,19 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runDetailRecalculateDistance => 'Distanz neu berechnen';
 
   @override
-  String get runDetailRecalculateDistanceDialogTitle => 'Distanz neu berechnen?';
+  String get runDetailRecalculateDistanceDialogTitle =>
+      'Distanz neu berechnen?';
 
   @override
-  String get runDetailRecalculateDistanceDialogMessage => 'Die Distanz dieses Laufs wird mit dem verbesserten GPS-Filter aus dem GPS-Track neu berechnet. Er entfernt die zusätzliche Strecke, die durch GPS-Schwankungen entsteht. Die ursprünglich aufgezeichnete Distanz bleibt erhalten und wird neben der neuen angezeigt.';
+  String get runDetailRecalculateDistanceDialogMessage =>
+      'Die Distanz dieses Laufs wird mit dem verbesserten GPS-Filter aus dem GPS-Track neu berechnet. Er entfernt die zusätzliche Strecke, die durch GPS-Schwankungen entsteht. Die ursprünglich aufgezeichnete Distanz bleibt erhalten und wird neben der neuen angezeigt.';
 
   @override
   String get runDetailRecalculateDistanceConfirm => 'Neu berechnen';
 
   @override
-  String get runDetailRecalculatingDistance => 'Wird neu berechnet – aktualisiere in einer Minute';
+  String get runDetailRecalculatingDistance =>
+      'Wird neu berechnet – aktualisiere in einer Minute';
 
   @override
   String runDetailRecalculateDistanceFailed(String error) {
@@ -2940,10 +2943,12 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get runDetailRecalculateDistanceNotOwner => 'Nur die Person, die diesen Lauf aufgezeichnet hat, kann seine Distanz neu berechnen.';
+  String get runDetailRecalculateDistanceNotOwner =>
+      'Nur die Person, die diesen Lauf aufgezeichnet hat, kann seine Distanz neu berechnen.';
 
   @override
-  String get runDetailRecalculateDistanceNoTrack => 'Dieser Lauf hat keinen GPS-Track, aus dem neu berechnet werden kann.';
+  String get runDetailRecalculateDistanceNoTrack =>
+      'Dieser Lauf hat keinen GPS-Track, aus dem neu berechnet werden kann.';
 
   @override
   String runDetailOriginallyRecorded(String distance) {
@@ -8272,7 +8277,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get prefsAdvancedGpsSubtitle =>
-      'Höhere Genauigkeit, feinere Track-Details, mehr Akkuverbrauch';
+      'Zeichnet eine detailliertere Streckenlinie auf. Die Distanz bleibt gleich.';
 
   @override
   String get prefsShowRawTrack => 'Rohen GPS-Track anzeigen';

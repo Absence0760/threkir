@@ -1375,7 +1375,6 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       distanceFilterMetres: adv ? 2 : _activityType.gpsDistanceFilter,
       minMovementMetres: adv ? 1 : _activityType.minMovementMetres,
       maxSpeedMps: _activityType.maxSpeedMps,
-      accuracy: adv ? LocationAccuracy.best : LocationAccuracy.high,
     )
         .catchError((Object e) {
       _prepareError = e;
@@ -2225,7 +2224,6 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         distanceFilterMetres: adv ? 2 : _activityType.gpsDistanceFilter,
         minMovementMetres: adv ? 1 : _activityType.minMovementMetres,
         maxSpeedMps: _activityType.maxSpeedMps,
-        accuracy: adv ? LocationAccuracy.best : LocationAccuracy.high,
       );
     } catch (e) {
       _notifyGpsUnavailable(e);

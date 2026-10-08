@@ -282,7 +282,13 @@ class RunRecorder {
   bool _weakGps = false;
   // Remembered so the retry loop can re-open the position stream with the
   // same accuracy setting the caller passed to [prepare].
-  LocationAccuracy _locationAccuracy = LocationAccuracy.high;
+  LocationAccuracy _locationAccuracy = LocationAccuracy.bestForNavigation;
+  // The fix interval requested from Android, and the interval the estimator
+  // scales its gap and freshness windows by. geolocator_android otherwise
+  // falls back to 5000 ms, and on Android 13+ also sets that as the minimum
+  // update interval, so the phone recorded one fix every 5 s. iOS has no
+  // interval knob; CoreLocation delivers ~1 Hz at this accuracy.
+  static const Duration _fixInterval = Duration(seconds: 1);
 
   /// Latest heart-rate sample, in BPM. Stamped onto each new [Waypoint]
   /// when constructed so the saved track carries per-point BPM and the
@@ -395,7 +401,7 @@ class RunRecorder {
     int distanceFilterMetres = 3,
     double minMovementMetres = 2,
     double maxSpeedMps = 10,
-    LocationAccuracy accuracy = LocationAccuracy.high,
+    LocationAccuracy accuracy = LocationAccuracy.bestForNavigation,
     double accuracyGateMetres = 20,
   }) async {
     if (_disposed) {
@@ -526,12 +532,17 @@ class RunRecorder {
   /// foreground capability stays alive so no error surfaces, and the user
   /// only notices once they look at the finished run. Pinning the flag here
   /// keeps the iOS twin honest. `activityType: fitness` biases the
-  /// CoreLocation power-saving heuristics for foot-paced motion.
+  /// CoreLocation power-saving heuristics for foot-paced motion. The default
+  /// accuracy is [LocationAccuracy.bestForNavigation]: geolocator_apple maps
+  /// `high` to `kCLLocationAccuracyNearestTenMeters`, and only `best` and
+  /// `bestForNavigation` ask CoreLocation for full GPS accuracy.
   ///
   /// Android gets [AndroidSettings] with [ForegroundNotificationConfig] so
   /// the geolocator package can promote its service to a typed foreground
-  /// service. `distanceFilter: 0` keeps every fix flowing so software
-  /// filtering can drive the blue dot at sensor rate.
+  /// service, and an explicit 1 s [_fixInterval]. `distanceFilter: 0` keeps
+  /// every fix flowing so software filtering can drive the blue dot at
+  /// sensor rate. On Android `high`, `best` and `bestForNavigation` are the
+  /// same fused-provider request (`PRIORITY_HIGH_ACCURACY`).
   LocationSettings _platformLocationSettings() {
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       return AppleSettings(
@@ -545,6 +556,7 @@ class RunRecorder {
     }
     return AndroidSettings(
       accuracy: _locationAccuracy,
+      intervalDuration: _fixInterval,
       // Receive every fix from the OS; movement filtering happens in
       // software so the blue dot can refresh without inflating the track.
       distanceFilter: 0,
@@ -624,7 +636,7 @@ class RunRecorder {
     int distanceFilterMetres = 3,
     double minMovementMetres = 2,
     double maxSpeedMps = 10,
-    LocationAccuracy accuracy = LocationAccuracy.high,
+    LocationAccuracy accuracy = LocationAccuracy.bestForNavigation,
     double accuracyGateMetres = 20,
   }) async {
     await prepare(
@@ -673,7 +685,7 @@ class RunRecorder {
     int distanceFilterMetres = 3,
     double minMovementMetres = 2,
     double maxSpeedMps = 10,
-    LocationAccuracy accuracy = LocationAccuracy.high,
+    LocationAccuracy accuracy = LocationAccuracy.bestForNavigation,
     double accuracyGateMetres = 20,
   }) async {
     Object? prepareError;
@@ -1016,6 +1028,7 @@ class RunRecorder {
   void _newEstimator() {
     _estimator = GpsDistanceEstimator(
       maxSpeedMps: _maxSpeedMps,
+      expectedIntervalS: _fixInterval.inMilliseconds / 1000,
       initialStrideM: _priorStrideM,
     );
     _estFixT = null;

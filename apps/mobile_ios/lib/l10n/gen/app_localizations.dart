@@ -13453,7 +13453,7 @@ abstract class AppLocalizations {
   /// Subtitle of the advanced-GPS toggle
   ///
   /// In en, this message translates to:
-  /// **'Higher accuracy, finer track detail, more battery usage'**
+  /// **'Records a more detailed track line. Distance is unchanged.'**
   String get prefsAdvancedGpsSubtitle;
 
   /// Toggle title for forcing the raw GPS track on the run map instead of the map-matched line

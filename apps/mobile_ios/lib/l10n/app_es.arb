@@ -2278,7 +2278,7 @@
   "prefsDimScreenWhileRecording": "Atenuar la pantalla al grabar",
   "prefsDimScreenWhileRecordingSubtitle": "Oscurece el mapa durante una carrera para ahorrar batería. Las estadísticas siguen siendo legibles.",
   "prefsAdvancedGps": "GPS avanzado",
-  "prefsAdvancedGpsSubtitle": "Mayor precisión, trazado más detallado, más consumo de batería",
+  "prefsAdvancedGpsSubtitle": "Registra un trazado más detallado. La distancia no cambia.",
   "prefsShowRawTrack": "Mostrar trayecto GPS sin procesar",
   "prefsShowRawTrackSubtitle": "Dibuja la línea grabada sin ajustar en el mapa de la carrera, aunque exista un trayecto ya corregido",
   "prefsShowCalories": "Mostrar estimaciones de calorías",

@@ -10897,7 +10897,7 @@
   "@prefsAdvancedGps": {
     "description": "Toggle title for advanced GPS"
   },
-  "prefsAdvancedGpsSubtitle": "Higher accuracy, finer track detail, more battery usage",
+  "prefsAdvancedGpsSubtitle": "Records a more detailed track line. Distance is unchanged.",
   "@prefsAdvancedGpsSubtitle": {
     "description": "Subtitle of the advanced-GPS toggle"
   },

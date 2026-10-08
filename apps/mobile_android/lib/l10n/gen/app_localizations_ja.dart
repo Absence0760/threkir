@@ -2773,7 +2773,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runDetailRecalculateDistanceDialogTitle => '距離を再計算しますか？';
 
   @override
-  String get runDetailRecalculateDistanceDialogMessage => 'このランの距離を、改良されたGPSフィルターでGPSトラックから再計算します。GPSのぶれによって加算された余分な距離が取り除かれます。最初に記録された距離は保持され、新しい距離と並べて表示されます。';
+  String get runDetailRecalculateDistanceDialogMessage =>
+      'このランの距離を、改良されたGPSフィルターでGPSトラックから再計算します。GPSのぶれによって加算された余分な距離が取り除かれます。最初に記録された距離は保持され、新しい距離と並べて表示されます。';
 
   @override
   String get runDetailRecalculateDistanceConfirm => '再計算';
@@ -2787,10 +2788,12 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get runDetailRecalculateDistanceNotOwner => 'このランを記録した本人だけが距離を再計算できます。';
+  String get runDetailRecalculateDistanceNotOwner =>
+      'このランを記録した本人だけが距離を再計算できます。';
 
   @override
-  String get runDetailRecalculateDistanceNoTrack => 'このランには再計算に使えるGPSトラックがありません。';
+  String get runDetailRecalculateDistanceNoTrack =>
+      'このランには再計算に使えるGPSトラックがありません。';
 
   @override
   String runDetailOriginallyRecorded(String distance) {
@@ -7813,7 +7816,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get prefsAdvancedGps => '高度なGPS';
 
   @override
-  String get prefsAdvancedGpsSubtitle => '高精度、より細かいトラック、バッテリー消費増';
+  String get prefsAdvancedGpsSubtitle => 'より詳細なトラックを記録します。距離は変わりません。';
 
   @override
   String get prefsShowRawTrack => '生のGPSトラックを表示';

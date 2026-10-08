@@ -2278,7 +2278,7 @@
   "prefsDimScreenWhileRecording": "Bildschirm beim Aufzeichnen abdunkeln",
   "prefsDimScreenWhileRecordingSubtitle": "Dunkelt die Karte während eines Laufs ab, um Akku zu sparen. Die Werte bleiben lesbar.",
   "prefsAdvancedGps": "Erweitertes GPS",
-  "prefsAdvancedGpsSubtitle": "Höhere Genauigkeit, feinere Track-Details, mehr Akkuverbrauch",
+  "prefsAdvancedGpsSubtitle": "Zeichnet eine detailliertere Streckenlinie auf. Die Distanz bleibt gleich.",
   "prefsShowRawTrack": "Rohen GPS-Track anzeigen",
   "prefsShowRawTrackSubtitle": "Die ungeglättete aufgezeichnete Linie auf der Laufkarte anzeigen, auch wenn ein bereinigter, abgeglichener Track vorliegt",
   "prefsShowCalories": "Kalorienschätzungen anzeigen",

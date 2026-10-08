@@ -1,5 +1,6 @@
-// Build-time split of every locale catalogue into a core part and one part per
-// area (`areas.ts`, decisions § 1802). Registered in `vite.config.ts`; never
+// Build-time split of every locale catalogue into a core part, one part per
+// area (`areas.ts`, decisions § 1802) and one per derived group of areas
+// (decisions § 1812). Registered in `vite.config.ts`; never
 // imported by the app (it reads the tree with `node:fs`).
 //
 // The catalogues stay one source file per locale (`locales/<tag>.ts`), so
@@ -7,7 +8,8 @@
 // them are unchanged. What changes is what the browser downloads: the plugin
 // serves
 //
-//   virtual:i18n-catalogues               the loader table the store imports
+//   virtual:i18n-catalogues               the loader table the store imports,
+//                                         and the derived groups' route prefixes
 //   virtual:i18n-catalogue/<tag>/<part>   one part of one locale, as a plain
 //                                         object literal holding only its keys
 //
@@ -20,7 +22,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { transformSync } from 'esbuild';
 import type { Plugin, ViteDevServer } from 'vite';
-import { AREA_NAMES, type Area } from './areas.ts';
+import { AREA_NAMES, type GroupTable } from './areas.ts';
 import { CORE, SOURCE_EXTENSIONS, splitCatalogue, type Part } from './area_scan.ts';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, type Locale } from './locale.ts';
 
@@ -51,6 +53,7 @@ export function readCatalogue(file: string): Record<string, string> {
 
 type Split = {
 	parts: Map<string, Part>;
+	groups: GroupTable;
 	catalogues: Map<Locale, Record<string, string>>;
 };
 
@@ -60,8 +63,7 @@ export function computeSplit(srcDir: string): Split {
 	for (const locale of SUPPORTED_LOCALES) {
 		catalogues.set(locale, readCatalogue(join(localesDir, `${locale}.ts`)));
 	}
-	const keys = Object.keys(catalogues.get(DEFAULT_LOCALE)!);
-	return { parts: splitCatalogue(srcDir, keys), catalogues };
+	return { ...splitCatalogue(srcDir, catalogues.get(DEFAULT_LOCALE)!), catalogues };
 }
 
 /// The keys of one part, in source order, mapped to `locale`'s strings.
@@ -74,7 +76,12 @@ export function partCatalogue(split: Split, locale: Locale, part: Part): Record<
 	return out;
 }
 
-export function loadersModule(): string {
+/// Every part of the split but core: the areas, then the derived groups.
+export function partNames(split: Pick<Split, 'groups'>): Part[] {
+	return [...AREA_NAMES, ...(Object.keys(split.groups) as Part[])];
+}
+
+export function loadersModule(split: Pick<Split, 'groups'>): string {
 	const parts: string[] = [];
 	parts.push(`import fallbackCore from ${JSON.stringify(partId(DEFAULT_LOCALE, CORE))};`);
 	parts.push('export const FALLBACK_CORE = fallbackCore;');
@@ -85,22 +92,23 @@ export function loadersModule(): string {
 		parts.push(`\t${JSON.stringify(locale)}: ${body},`);
 	}
 	parts.push('};');
-	parts.push('export const AREA_LOADERS = {');
+	parts.push(`export const GROUPS = ${JSON.stringify(split.groups)};`);
+	parts.push('export const PART_LOADERS = {');
 	for (const locale of SUPPORTED_LOCALES) {
 		parts.push(`\t${JSON.stringify(locale)}: {`);
-		for (const area of AREA_NAMES) parts.push(`\t\t${JSON.stringify(area)}: ${pick(partId(locale, area))},`);
+		for (const part of partNames(split)) parts.push(`\t\t${JSON.stringify(part)}: ${pick(partId(locale, part))},`);
 		parts.push('\t},');
 	}
 	parts.push('};');
 	return parts.join('\n');
 }
 
-function parsePartId(id: string): { locale: Locale; part: Part } | null {
+function parsePartId(id: string, split: Pick<Split, 'groups'>): { locale: Locale; part: Part } | null {
 	if (!id.startsWith(PART_ID_PREFIX)) return null;
 	const [locale, part] = id.slice(PART_ID_PREFIX.length).split('/');
 	if (!(SUPPORTED_LOCALES as readonly string[]).includes(locale)) return null;
-	if (part !== CORE && !(AREA_NAMES as readonly string[]).includes(part)) return null;
-	return { locale: locale as Locale, part: part as Area | typeof CORE };
+	if (part !== CORE && !(partNames(split) as string[]).includes(part)) return null;
+	return { locale: locale as Locale, part: part as Part };
 }
 
 export function i18nAreaCatalogues(options: { srcDir: string }): Plugin {
@@ -117,14 +125,15 @@ export function i18nAreaCatalogues(options: { srcDir: string }): Plugin {
 			}
 		},
 		resolveId(id) {
-			if (id === LOADERS_ID || parsePartId(id)) return `\0${id}`;
+			if (id === LOADERS_ID) return `\0${id}`;
+			if (id.startsWith(PART_ID_PREFIX) && parsePartId(id, current())) return `\0${id}`;
 			return null;
 		},
 		load(id) {
 			if (!id.startsWith('\0')) return null;
 			const bare = id.slice(1);
-			if (bare === LOADERS_ID) return loadersModule();
-			const parsed = parsePartId(bare);
+			if (bare === LOADERS_ID) return loadersModule(current());
+			const parsed = parsePartId(bare, current());
 			if (!parsed) return null;
 			const dict = partCatalogue(current(), parsed.locale, parsed.part);
 			return `export default ${JSON.stringify(dict, null, '\t')};\n`;
@@ -140,13 +149,19 @@ export function i18nAreaCatalogues(options: { srcDir: string }): Plugin {
 				// Nothing has been served from the old split, so there is
 				// nothing to invalidate; the next load computes afresh.
 				if (!before) return;
-				if (sameSplit(before, current())) return;
-				for (const env of Object.values(server.environments)) {
+				const after = current();
+				if (sameSplit(before, after)) return;
+				// The loader table names the groups, so it goes too.
+				const ids = new Set([`\0${LOADERS_ID}`]);
+				for (const split of [before, after]) {
 					for (const locale of SUPPORTED_LOCALES) {
-						for (const part of [CORE, ...AREA_NAMES] as Part[]) {
-							const mod = env.moduleGraph.getModuleById(`\0${partId(locale, part)}`);
-							if (mod) env.moduleGraph.invalidateModule(mod);
-						}
+						for (const part of [CORE, ...partNames(split)]) ids.add(`\0${partId(locale, part)}`);
+					}
+				}
+				for (const env of Object.values(server.environments)) {
+					for (const id of ids) {
+						const mod = env.moduleGraph.getModuleById(id);
+						if (mod) env.moduleGraph.invalidateModule(mod);
 					}
 				}
 				server.ws.send({ type: 'full-reload' });
@@ -159,6 +174,7 @@ export function i18nAreaCatalogues(options: { srcDir: string }): Plugin {
 }
 
 function sameSplit(a: Split, b: Split): boolean {
+	if (JSON.stringify(a.groups) !== JSON.stringify(b.groups)) return false;
 	if (a.parts.size !== b.parts.size) return false;
 	for (const [k, p] of a.parts) if (b.parts.get(k) !== p) return false;
 	for (const locale of SUPPORTED_LOCALES) {

@@ -141,15 +141,29 @@
 //           largest area ja/settings 12 KB; 188 parts, 875 KB in total
 // So a German reader opening /gym went from 102 + 92 = 194 KB of catalogue to
 // 24 + 3 + the 21 KB English core = 48 KB.
-// MAX_CODE_KB is 2251: 2065 plus the same 186 KB of cover, which is the
+// MAX_CODE_KB was 2251: 2065 plus the same 186 KB of cover, which is the
 // invariant this file has kept since 1934. Lowered, not left at 2308, because
 // a ceiling that kept the 65 KB the split gave back would hand it to the next
 // dep as unexamined cover.
-// MAX_CORE_CATALOGUE_KB is 28 (~10% over ja, 25) and MAX_AREA_CATALOGUE_KB is 14
+// MAX_CORE_CATALOGUE_KB was 28 (~10% over ja, 25) and MAX_AREA_CATALOGUE_KB is 14
 // (~10% over ja/settings, 12), the per-catalogue convention above. A core that
 // grows is often a key that moved there because a second area started using it
 // — the split does that on its own and correctly, and it is still payload for
 // every reader, which is what this ceiling is for.
+// Then the keys several areas shared left core too (decisions § 1812). The
+// split groups them by the exact set of areas and unregistered segments that
+// render them, and a set of 1 KB of English source or more becomes a part of
+// its own: 21 such GROUPS, held to MAX_AREA_CATALOGUE_KB like an area, since a
+// reader pays one per route that loads it. Re-measured 2026-10-08, same build
+// and method:
+//   before  cores de 24, es 23, fr 24, ja 25, pt-BR 23, pt-PT 23 (§ 1802)
+//   after   code 2057 KB (431 files), the English core 8 KB inside it
+//           cores de 10, es 9, fr 10, ja 10, pt-BR 9, pt-PT 9
+//           largest area still ja/settings 12 KB; 335 parts, 990 KB in total
+// A German reader's catalogue payload, averaged over all 109 routes, went from
+// 28 KB to 16 (/gym 27 to 17, /history 24 to 14), at most 7 parts per route.
+// MAX_CORE_CATALOGUE_KB is 11 (~10% over ja, 10). MAX_CODE_KB is 2243: 2057
+// plus the same 186 KB of cover, lowered for the reason given above.
 // MAX_LARGEST_CHUNK_KB stays 350, unchanged: 245 KB * the 33% headroom that
 // number was always justified by is 326, so the existing figure still states
 // the rule. What changed is the population it measures, not the ceiling.
@@ -184,8 +198,8 @@ export const CLIENT_MANIFEST = join(
 );
 export const LOCALES_DIR = join(WEB_DIR, 'src', 'lib', 'i18n', 'locales');
 
-export const MAX_CODE_KB = 2251;
-export const MAX_CORE_CATALOGUE_KB = 28;
+export const MAX_CODE_KB = 2243;
+export const MAX_CORE_CATALOGUE_KB = 11;
 export const MAX_AREA_CATALOGUE_KB = 14;
 export const MAX_LARGEST_CHUNK_KB = 350;
 export const MAX_ASSET_KB = 100;
@@ -436,10 +450,13 @@ export function checkBudgets({
 				`grew for every locale, or this part carries something that is not ` +
 				`translated text` +
 				(isCore
-					? `, or keys moved into core: a key reused on a second area's route is ` +
-						`moved there by the split (apps/web/src/lib/i18n/areas.ts), which is ` +
-						`correct and is still payload for every reader.`
-					: `. A large area is a candidate to split along its sub-routes in areas.ts.`),
+					? `, or keys moved into core: a key reused on a route outside its ` +
+						`area, or rendered by the root layout, is moved there by the split ` +
+						`(apps/web/src/lib/i18n/areas.ts), which is correct and is still ` +
+						`payload for every reader.`
+					: `. A large area is a candidate to split along its sub-routes in areas.ts; ` +
+						`a large derived group (a name with \`~\` or a leading \`_\`) is keys ` +
+						`several routes share, placed by area_scan.ts.`),
 		});
 	}
 

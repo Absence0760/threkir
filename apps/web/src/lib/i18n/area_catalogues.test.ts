@@ -17,17 +17,27 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 
 import { en } from './locales/en';
-import { AREA_NAMES, AREAS, areasForRoute } from './areas';
-import { CORE, assignParts, keyUsage, pinnedNamespaces, routeIdOf } from './area_scan';
+import { AREA_NAMES, AREAS, partsForRoute } from './areas';
+import {
+	CORE,
+	MIN_GROUP_SOURCE_BYTES,
+	assignParts,
+	deriveGroups,
+	englishSourceBytes,
+	keyUsage,
+	pinnedNamespaces,
+	routeIdOf,
+	unitOf,
+} from './area_scan';
 
 const SRC = resolve('src');
 const ROUTES = join(SRC, 'routes');
 const KEYS = Object.keys(en);
 const { usage, graph, reach } = keyUsage(SRC, KEYS);
-const parts = assignParts(KEYS, usage);
+const { parts, groups } = deriveGroups(assignParts(KEYS, usage), usage, englishSourceBytes(en));
 const rel = (p: string) => relative(SRC, p);
 
-test('every area key is rendered only on routes that load its area', () => {
+test('every area and group key is rendered only on routes that load its part', () => {
 	const violations: string[] = [];
 	for (const [key, part] of parts) {
 		if (part === CORE) continue;
@@ -37,7 +47,7 @@ test('every area key is rendered only on routes that load its area', () => {
 				continue;
 			}
 			for (const routeId of use.routes) {
-				if (!areasForRoute(routeId).includes(part)) {
+				if (!partsForRoute(routeId, groups).includes(part)) {
 					violations.push(`${key} (${part}) renders on ${routeId} via ${rel(use.file)}`);
 				}
 			}
@@ -46,8 +56,8 @@ test('every area key is rendered only on routes that load its area', () => {
 	assert.deepEqual(
 		violations,
 		[],
-		'these keys would render as their raw names: the route never loads the area ' +
-			'catalogue that holds them',
+		'these keys would render as their raw names: the route never loads the ' +
+			'catalogue part that holds them',
 	);
 });
 
@@ -73,6 +83,80 @@ test('a key shared by two areas, or named nowhere, ships in core', () => {
 		'clubRole.owner': CORE,
 		'unused.key': CORE,
 	});
+});
+
+test('keys several areas share are grouped by exactly who renders them, past a size', () => {
+	const one = (file: string, ...routes: string[]) => ({ file, routes: new Set(routes) });
+	const fixture = new Map([
+		['gym.a', [one('a', '/gym'), one('b', '/plans/[id]')]],
+		['gym.b', [one('c', '/plans'), one('d', '/gym/[id]')]],
+		['gym.small', [one('e', '/gym'), one('f', '/clubs')]],
+		['history.a', [one('g', '/history'), one('h', '/gym')]],
+		['history.b', [one('g', '/history/x'), one('h', '/gym/[id]')]],
+		['sessions.a', [one('i', '/sessions/[id]')]],
+		['sessions.b', [one('i', '/sessions')]],
+		['global.a', [one('j', '/'), one('k', '/gym')]],
+		['global.b', [one('j', '/'), one('k', '/gym')]],
+		['orphan.a', [one('l', '/gym'), one('m')]],
+		['orphan.b', [one('l', '/gym'), one('m')]],
+		['clubRole.owner', [one('n', '/gym'), one('o', '/plans')]],
+		['clubRole.admin', [one('n', '/gym'), one('o', '/plans')]],
+		['gym.only', [one('p', '/gym')]],
+	]);
+	const keys = [...fixture.keys()];
+	// 600 bytes a key against the 1024 threshold: one key is never a group.
+	const bytes = (ks: readonly string[]) =>
+		ks.reduce((n, k) => n + (k === 'gym.small' ? 10 : 600), 0);
+	const { parts: got, groups: table } = deriveGroups(assignParts(keys, fixture), fixture, bytes);
+	assert.deepEqual(Object.fromEntries(got), {
+		// /plans/[id]'s narrowest area is planDetail and /plans's is plans, so
+		// these are two different sets of one key each: under the threshold.
+		'gym.a': CORE,
+		'gym.b': CORE,
+		'gym.small': CORE,
+		// An area with an unregistered segment, and a segment alone, both
+		// reach it with two keys.
+		'history.a': '_history~gym',
+		'history.b': '_history~gym',
+		'sessions.a': '_sessions',
+		'sessions.b': '_sessions',
+		// The root's layout renders everywhere, an orphan's reader is unknown,
+		// and a pinned namespace is core whatever its size.
+		'global.b': CORE,
+		'orphan.b': CORE,
+		'clubRole.admin': CORE,
+		'global.a': CORE,
+		'orphan.a': CORE,
+		'clubRole.owner': CORE,
+		'gym.only': 'gym',
+	});
+	assert.deepEqual(table, { '_history~gym': ['/gym', '/history'], _sessions: ['/sessions'] });
+	assert.deepEqual(partsForRoute('/gym/[id]', table), ['gym', '_history~gym']);
+	assert.deepEqual(partsForRoute('/history', table), ['_history~gym']);
+	assert.deepEqual(partsForRoute('/sessions/[id]', table), ['_sessions']);
+	assert.deepEqual(partsForRoute('/clubs', table), ['clubs']);
+});
+
+test('every derived group earns its part and names real route directories', () => {
+	assert.ok(Object.keys(groups).length > 0, 'no group derived — the scan or the threshold is off');
+	const source = englishSourceBytes(en);
+	for (const [name, prefixes] of Object.entries(groups)) {
+		const keys = [...parts].filter(([, p]) => p === name).map(([k]) => k);
+		assert.ok(
+			source(keys) >= MIN_GROUP_SOURCE_BYTES,
+			`${name} holds ${source(keys)} bytes, under MIN_GROUP_SOURCE_BYTES`,
+		);
+		for (const prefix of prefixes) {
+			assert.ok(existsSync(join(ROUTES, prefix)), `${name}: ${prefix} is not a route directory`);
+		}
+		// A group is loaded by its own units' routes and nothing else: the
+		// root (unit null) would make it every reader's, which is core.
+		for (const key of keys) {
+			for (const use of usage.get(key) ?? []) {
+				for (const routeId of use.routes) assert.notEqual(unitOf(routeId), null, `${key} renders on /`);
+			}
+		}
+	}
 });
 
 test('the namespaces only a fully dynamic builder names are pinned to core', () => {
@@ -103,13 +187,13 @@ test('the root layout loads the route catalogues in its load', () => {
 	);
 	const store = readFileSync(join(SRC, 'lib', 'i18n', 'store.svelte.ts'), 'utf8');
 	const body = /export async function loadRouteCatalogues\([\s\S]*?\n\}/.exec(store)?.[0] ?? '';
-	assert.match(body, /const areas = areasForRoute\(routeId\);/);
+	assert.match(body, /const parts = partsForRoute\(routeId, GROUPS\);/);
 	assert.match(
 		body,
-		/if \(await catalogues\.open\(next, areas\)\)/,
-		'the first load must open the reader locale WITH the areas, before anything renders (§ 1812)',
+		/if \(await catalogues\.open\(next, parts\)\)/,
+		'the first load must open the reader locale WITH the parts, before anything renders (§ 1812)',
 	);
-	assert.match(body, /await catalogues\.ensureAreas\(areas\);\n\}$/, 'every path must end by loading the areas');
+	assert.match(body, /await catalogues\.ensureAreas\(parts\);\n\}$/, 'every path must end by loading the parts');
 });
 
 test('no other load function can read a message before the catalogues arrive', () => {

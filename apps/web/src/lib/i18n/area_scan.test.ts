@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 import { areasForRoute, routeUnder } from './areas';
-import { keyUsage, keysNamedIn, routeIdOf } from './area_scan';
+import { englishSourceBytes, keyUsage, keysNamedIn, routeIdOf, unitOf, unitPrefixes } from './area_scan';
 
 const KEYS = [
 	'gym.title',
@@ -64,6 +64,23 @@ test('areasForRoute matches by whole segments, nested areas included', () => {
 	assert.deepEqual(areasForRoute('/'), []);
 	assert.deepEqual(areasForRoute(null), []);
 	assert.deepEqual(areasForRoute('/history'), []);
+});
+
+test('a route groups under its narrowest area, else its top-level segment, never the root', () => {
+	assert.equal(unitOf('/settings/account/delete'), 'settingsAccount');
+	assert.equal(unitOf('/settings'), 'settings');
+	assert.equal(unitOf('/history'), '_history');
+	assert.equal(unitOf('/sessions/[id]'), '_sessions');
+	assert.equal(unitOf('/'), null, 'the root layout renders on every route');
+	assert.deepEqual(unitPrefixes('_sessions'), ['/sessions']);
+	assert.deepEqual(unitPrefixes('settingsAccount'), ['/settings/account']);
+	assert.throws(() => unitPrefixes('noSuchArea'));
+});
+
+test('englishSourceBytes measures the keys it is given, as JSON', () => {
+	const bytes = englishSourceBytes({ 'a.b': 'x', 'c.d': 'ü' });
+	assert.equal(bytes(['a.b']), Buffer.byteLength('{"a.b":"x"}'));
+	assert.equal(bytes(['a.b', 'c.d', 'missing.key']), Buffer.byteLength('{"a.b":"x","c.d":"ü"}'));
 });
 
 test('keyUsage follows $lib, relative, extensionless, dynamic and re-export imports', () => {

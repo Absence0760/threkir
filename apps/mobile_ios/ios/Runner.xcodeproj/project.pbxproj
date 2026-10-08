@@ -56,6 +56,7 @@
 		7884EA00162EC3CC00C636F4 /* MiniMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00072EC3CC00C636F4 /* MiniMap.swift */; };
 		7884EA003A2EC3CC00C636F4 /* Pedometer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00372EC3CC00C636F4 /* Pedometer.swift */; };
 		7884EA95002EC3CC00C636F4 /* RunResume.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA95012EC3CC00C636F4 /* RunResume.swift */; };
+		7884EA95022EC3CC00C636F4 /* BatteryCheck.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA95032EC3CC00C636F4 /* BatteryCheck.swift */; };
 		7884EA0F3A2EC3CC00C636F4 /* PhoneSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA0F372EC3CC00C636F4 /* PhoneSettings.swift */; };
 		7884EA00172EC3CC00C636F4 /* RouteNavigator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00082EC3CC00C636F4 /* RouteNavigator.swift */; };
 		7A11C0E5B4920001000C0001 /* RunAnnouncer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A11C0E5B4920002000C0001 /* RunAnnouncer.swift */; };
@@ -239,6 +240,7 @@
 		7884EA00072EC3CC00C636F4 /* MiniMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniMap.swift; sourceTree = "<group>"; };
 		7884EA00372EC3CC00C636F4 /* Pedometer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pedometer.swift; sourceTree = "<group>"; };
 		7884EA95012EC3CC00C636F4 /* RunResume.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunResume.swift; sourceTree = "<group>"; };
+		7884EA95032EC3CC00C636F4 /* BatteryCheck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatteryCheck.swift; sourceTree = "<group>"; };
 		7884EA0F372EC3CC00C636F4 /* PhoneSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneSettings.swift; sourceTree = "<group>"; };
 		7884EA00082EC3CC00C636F4 /* RouteNavigator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteNavigator.swift; sourceTree = "<group>"; };
 		7A11C0E5B4920002000C0001 /* RunAnnouncer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunAnnouncer.swift; sourceTree = "<group>"; };
@@ -467,6 +469,7 @@
 				7884EA00072EC3CC00C636F4 /* MiniMap.swift */,
 				7884EA00372EC3CC00C636F4 /* Pedometer.swift */,
 				7884EA95012EC3CC00C636F4 /* RunResume.swift */,
+				7884EA95032EC3CC00C636F4 /* BatteryCheck.swift */,
 				7884EA0F372EC3CC00C636F4 /* PhoneSettings.swift */,
 				7884EA00082EC3CC00C636F4 /* RouteNavigator.swift */,
 				7A11C0E5B4920002000C0001 /* RunAnnouncer.swift */,
@@ -941,6 +944,7 @@
 				7884EA00162EC3CC00C636F4 /* MiniMap.swift in Sources */,
 				7884EA003A2EC3CC00C636F4 /* Pedometer.swift in Sources */,
 				7884EA95002EC3CC00C636F4 /* RunResume.swift in Sources */,
+				7884EA95022EC3CC00C636F4 /* BatteryCheck.swift in Sources */,
 				7884EA0F3A2EC3CC00C636F4 /* PhoneSettings.swift in Sources */,
 				7884EA00172EC3CC00C636F4 /* RouteNavigator.swift in Sources */,
 				7A11C0E5B4920001000C0001 /* RunAnnouncer.swift in Sources */,

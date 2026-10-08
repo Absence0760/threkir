@@ -3,7 +3,7 @@
 	import { activeFormatLocale } from '$lib/format/time';
 	import { fmtKm, formatDistance } from '$lib/format/units.svelte';
 	import { workoutKindLabel } from '$lib/training/workout_labels';
-	import { weekLead, type LeadActivity } from '$lib/training/week_lead';
+	import { weekLead, type LeadActivity, type WeeklyGoalTarget } from '$lib/training/week_lead';
 	import type { WeekStart } from '$lib/training/current_week';
 	import type { PlanWorkout } from '$lib/types';
 
@@ -12,19 +12,25 @@
 		/// The active plan's workouts, or null when there is no active plan —
 		/// which is what hides the next-session half, not an empty list.
 		planWorkouts: PlanWorkout[] | null;
+		/// The week-period targets from the Goals section, or null without one.
+		weeklyGoal: WeeklyGoalTarget | null;
 		weekStart: WeekStart;
 		now: Date;
 		onopensession?: (w: PlanWorkout) => void;
 	}
-	let { activities, planWorkouts, weekStart, now, onopensession }: Props = $props();
+	let { activities, planWorkouts, weeklyGoal, weekStart, now, onopensession }: Props = $props();
 
-	let lead = $derived(weekLead({ activities, planWorkouts, weekStart, now }));
+	let lead = $derived(weekLead({ activities, planWorkouts, weeklyGoal, weekStart, now }));
 
-	let planPct = $derived(
-		lead.comparison?.kind === 'plan'
-			? Math.min(100, Math.round((lead.distanceM / lead.comparison.targetM) * 100))
-			: null,
-	);
+	let meter = $derived.by<{ pct: number; aria: string } | null>(() => {
+		const c = lead.comparison;
+		if (c == null || c.kind === 'average') return null;
+		const ratio = c.kind === 'goalRuns' ? lead.count / c.targetCount : lead.distanceM / c.targetM;
+		return {
+			pct: Math.min(100, Math.round(ratio * 100)),
+			aria: c.kind === 'plan' ? m('dash.leadPlanProgressAria') : m('dash.leadGoalProgressAria'),
+		};
+	});
 
 	function whenLabel(iso: string, inDays: number | null): string {
 		if (inDays === 0) return m('dash.today');
@@ -53,22 +59,37 @@
 				</span>
 			</p>
 		{/if}
-		{#if lead.comparison?.kind === 'plan'}
+		{#if meter}
 			<div
 				class="week-lead-meter"
 				role="progressbar"
 				aria-valuemin="0"
 				aria-valuemax="100"
-				aria-valuenow={planPct}
-				aria-label={m('dash.leadPlanProgressAria')}
+				aria-valuenow={meter.pct}
+				aria-label={meter.aria}
 			>
-				<span class="week-lead-meter-fill" style="width: {planPct}%"></span>
+				<span class="week-lead-meter-fill" style="width: {meter.pct}%"></span>
 			</div>
+		{/if}
+		{#if lead.comparison?.kind === 'plan'}
 			<p class="week-lead-vs" data-testid="dash-week-lead-vs">
 				{m('dash.leadVsPlan', {
 					done: formatDistance(lead.distanceM),
 					target: formatDistance(lead.comparison.targetM),
 				})}
+			</p>
+		{:else if lead.comparison?.kind === 'goal'}
+			<p class="week-lead-vs" data-testid="dash-week-lead-vs">
+				{m('dash.leadVsGoal', {
+					done: formatDistance(lead.distanceM),
+					target: formatDistance(lead.comparison.targetM),
+				})}
+			</p>
+		{:else if lead.comparison?.kind === 'goalRuns'}
+			<p class="week-lead-vs" data-testid="dash-week-lead-vs">
+				{lead.comparison.targetCount === 1
+					? m('dash.leadVsGoalRunsOne', { done: lead.count, target: lead.comparison.targetCount })
+					: m('dash.leadVsGoalRunsOther', { done: lead.count, target: lead.comparison.targetCount })}
 			</p>
 		{:else if lead.comparison?.kind === 'average'}
 			<p class="week-lead-vs" data-testid="dash-week-lead-vs">
@@ -108,6 +129,9 @@
 		<a class="btn btn-primary" href="/runs/new" data-testid="dash-week-lead-add">
 			<span class="material-symbols" aria-hidden="true">add</span>
 			{m('dash.addARun')}
+		</a>
+		<a class="btn btn-outline" href="/settings/integrations" data-testid="dash-week-lead-import">
+			{m('dash.importFromStravaGarmin')}
 		</a>
 	</div>
 </section>
@@ -217,7 +241,12 @@
 	}
 	.week-lead-actions {
 		display: flex;
-		justify-content: flex-end;
+		flex-direction: column;
+		align-items: stretch;
+		gap: var(--space-sm);
+	}
+	.week-lead-actions .btn {
+		justify-content: center;
 	}
 
 	@media (max-width: 720px) {
@@ -226,11 +255,11 @@
 			padding: var(--space-md);
 		}
 		.week-lead-actions {
-			justify-content: stretch;
+			flex-direction: row;
+			flex-wrap: wrap;
 		}
 		.week-lead-actions .btn {
-			flex: 1;
-			justify-content: center;
+			flex: 1 1 auto;
 		}
 	}
 </style>

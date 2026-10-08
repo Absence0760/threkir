@@ -5,6 +5,7 @@ import {
 	plannedDistanceForWeek,
 	recentWeeklyAverage,
 	weekLead,
+	weeklyGoalTarget,
 	type LeadPlanWorkout,
 } from './week_lead';
 
@@ -89,6 +90,63 @@ test('weekLead: falls back to the recent average when the plan has nothing this 
 		now: WED,
 	});
 	assert.deepEqual(lead.comparison, { kind: 'average', averageM: 5000, weeks: 4 });
+});
+
+test('weekLead: a weekly distance goal is the yardstick when the plan puts no distance in this week', () => {
+	const history = [{ started_at: at(2026, 6, 2), distance_m: 12_000 }];
+	const goal = { distanceM: 30_000, runCount: 4 };
+	assert.deepEqual(
+		weekLead({ activities: history, planWorkouts: null, weeklyGoal: goal, weekStart: 'monday', now: WED })
+			.comparison,
+		{ kind: 'goal', targetM: 30_000 },
+	);
+	assert.deepEqual(
+		weekLead({
+			activities: history,
+			planWorkouts: [wo('2026-06-20')],
+			weeklyGoal: goal,
+			weekStart: 'monday',
+			now: WED,
+		}).comparison,
+		{ kind: 'goal', targetM: 30_000 },
+	);
+});
+
+test('weekLead: the plan outranks a weekly goal, since it is written for this particular week', () => {
+	const lead = weekLead({
+		activities: [],
+		planWorkouts: [wo('2026-06-11', { target_distance_m: 8000 })],
+		weeklyGoal: { distanceM: 40_000, runCount: null },
+		weekStart: 'monday',
+		now: WED,
+	});
+	assert.deepEqual(lead.comparison, { kind: 'plan', targetM: 8000 });
+});
+
+test('weekLead: a run-count goal is the yardstick when there is no distance goal', () => {
+	const lead = weekLead({
+		activities: [{ started_at: at(2026, 6, 2), distance_m: 12_000 }],
+		planWorkouts: null,
+		weeklyGoal: { distanceM: null, runCount: 3 },
+		weekStart: 'monday',
+		now: WED,
+	});
+	assert.deepEqual(lead.comparison, { kind: 'goalRuns', targetCount: 3 });
+});
+
+test('weeklyGoalTarget: takes the first week-period distance and run-count targets, ignoring other periods', () => {
+	assert.equal(weeklyGoalTarget([]), null);
+	assert.equal(weeklyGoalTarget([{ id: 'm', period: 'month', distanceMetres: 100_000 }]), null);
+	assert.equal(weeklyGoalTarget([{ id: 'w', period: 'week', distanceMetres: 0, runCount: 0 }]), null);
+	assert.deepEqual(
+		weeklyGoalTarget([
+			{ id: 'm', period: 'month', distanceMetres: 100_000, runCount: 12 },
+			{ id: 'a', period: 'week', runCount: 4 },
+			{ id: 'b', period: 'week', distanceMetres: 25_000, runCount: 6 },
+			{ id: 'c', period: 'week', distanceMetres: 50_000 },
+		]),
+		{ distanceM: 25_000, runCount: 4 },
+	);
 });
 
 test('weekLead: no yardstick when there is no plan distance and no recent activity', () => {

@@ -7,11 +7,14 @@ import test from 'node:test';
 import {
 	ASSET_EXEMPTIONS,
 	CATALOGUE_SOURCE,
+	CORE_PART,
+	MAX_AREA_CATALOGUE_KB,
 	MAX_ASSET_KB,
-	MAX_CATALOGUE_KB,
 	MAX_CODE_KB,
+	MAX_CORE_CATALOGUE_KB,
 	MAX_LARGEST_CHUNK_KB,
 	catalogueChunks,
+	catalogueSentinel,
 	checkBudgets,
 	collectEmitted,
 	gzipKb,
@@ -21,7 +24,7 @@ import {
 } from './check_web_bundle_budget.mjs';
 
 /// The ceiling this guard replaces: one number over every emitted file, which
-/// is what let a language move it and a dep hide under it. Both fixtures below
+/// is what let a language move it and a dep hide under it. The fixtures below
 /// are scored against it as well as against the new rule, because "the new rule
 /// is better" is a claim about a disagreement, and a test that only ran the new
 /// rule could not show one.
@@ -35,11 +38,14 @@ const retiredTotalPasses = (files) =>
 	files.filter((f) => isCodeFile(f.path)).reduce((sum, f) => sum + f.kb, 0) <=
 	RETIRED_TOTAL_KB;
 
-/// apps/web as measured on 2026-08-28: 1934 KB of code in 403 files (largest
-/// chunk 245 KB) plus six lazily-imported catalogues. Collapsed to a handful of
-/// entries whose sizes add up to the real ones — the arithmetic under test is
-/// the partition, not the file count.
-const CATALOGUE_KB = { de: 88, es: 85, fr: 88, ja: 91, 'pt-BR': 85, 'pt-PT': 85 };
+/// apps/web as measured on 2026-10-08, after the area split (decisions § 1802):
+/// 2065 KB of code in 431 files (largest chunk 277 KB), the English core inside
+/// it, and every other catalogue part lazy. Collapsed to a handful of entries
+/// whose sizes add up to the real ones — the arithmetic under test is the
+/// partition, not the file count — and to two areas per locale, the largest
+/// (settings) and a typical one (gym).
+const CORE_KB = { de: 24, es: 23, fr: 24, ja: 25, 'pt-BR': 23, 'pt-PT': 23 };
+const AREA_KB = { settings: 11, gym: 3 };
 const LOCALES = ['de', 'en', 'es', 'fr', 'ja', 'pt-BR', 'pt-PT'];
 
 /// The non-JS/CSS half of the same build: 33 files, 266 KB gzipped, collapsed
@@ -60,67 +66,77 @@ const ASSET_KB = [
 	{ path: 'index.html', kb: 2 },
 ];
 
-// Code growth between the 2026-08-28 base (1934 KB) and the 2026-10-05
-// measurement (2122 KB) the shipped ceiling is set against.
-const GROWN_SINCE_BASE = { path: '_app/immutable/chunks/grown-since-base.js', kb: 188 };
+/// `tag -> { part -> kb }` for the default fixture: every locale's areas, and a
+/// core for every locale but English, whose core is inside the store chunk.
+/** @param {readonly string[]} tags */
+function partsFor(tags) {
+	/** @type {Record<string, number>} */
+	const out = {};
+	for (const tag of tags) {
+		if (tag !== 'en') out[`${tag}/${CORE_PART}`] = CORE_KB[/** @type {keyof typeof CORE_KB} */ (tag)] ?? 24;
+		for (const [area, kb] of Object.entries(AREA_KB)) out[`${tag}/${area}`] = kb;
+	}
+	return out;
+}
 
 /**
  * @param {{
  *   extraCatalogues?: Record<string, number>,
  *   extraCode?: {path: string, kb: number}[],
  *   assets?: {path: string, kb: number}[],
+ *   extraLocales?: string[],
  * }} [opts]
  */
-
-function fixture({ extraCatalogues = {}, extraCode = [], assets = ASSET_KB } = {}) {
+function fixture({ extraCatalogues = {}, extraCode = [], assets = ASSET_KB, extraLocales = [] } = {}) {
 	/** @type {Map<string, string>} */
 	const catalogues = new Map();
 	const files = [
-		{ path: '_app/immutable/chunks/largest.js', kb: 245 },
-		// The English catalogue is inside this one: store.svelte.ts imports it
+		{ path: '_app/immutable/chunks/largest.js', kb: 277 },
+		// The English core is inside this one: store.svelte.ts imports it
 		// statically as the fallback dict, so it is never its own chunk.
 		{ path: '_app/immutable/chunks/store.js', kb: 80 },
 	];
-	// The remaining 1609 KB of code, spread so no single chunk is the largest.
-	for (let i = 0; i < 7; i++) {
-		files.push({ path: `_app/immutable/nodes/${i}.js`, kb: i === 6 ? 229 : 230 });
-	}
-	for (const [locale, kb] of Object.entries({ ...CATALOGUE_KB, ...extraCatalogues })) {
-		const path = `_app/immutable/chunks/${locale}.js`;
-		catalogues.set(locale, path);
+	// The remaining 1708 KB of code, spread so no single chunk is the largest.
+	for (let i = 0; i < 7; i++) files.push({ path: `_app/immutable/nodes/${i}.js`, kb: 244 });
+	const locales = [...new Set([...LOCALES, ...extraLocales])].sort();
+	for (const [id, kb] of Object.entries({ ...partsFor(locales), ...extraCatalogues })) {
+		const path = `_app/immutable/chunks/${id.replace('/', '-')}.js`;
+		catalogues.set(id, path);
 		files.push({ path, kb });
 	}
 	files.push(...extraCode, ...assets);
-	const locales = [...new Set([...LOCALES, ...Object.keys(extraCatalogues)])].sort();
 	return { files, catalogues, locales };
 }
 
 test('the shipped ceilings pass against the measured build', () => {
 	const { errors, summary } = checkBudgets(fixture());
 	assert.deepEqual(errors, []);
-	assert.equal(summary.codeKb, 1934);
-	assert.equal(summary.catalogueKb, 522);
-	assert.equal(summary.catalogueFiles.length, 6);
-	assert.equal(summary.largest.kb, 245);
+	assert.equal(summary.codeKb, 2065);
+	assert.equal(summary.catalogueKb, 142 + 7 * 14);
+	assert.equal(summary.catalogueFiles.length, 6 + 7 * 2);
+	assert.equal(summary.largest.kb, 277);
+	assert.equal(summary.largestCore.kb, 25);
+	assert.equal(summary.largestArea.kb, 11);
 	assert.equal(summary.assetFileCount, 9);
 	assert.equal(summary.assetKb, 199);
 	assert.equal(summary.largestAsset.kb, 74);
 });
 
-test('three more languages move no budget, where the retired total ceiling fails', () => {
-	const grown = fixture({ extraCatalogues: { it: 88, nl: 88, ko: 91 } });
+test('a dozen more languages move no budget, where the retired total ceiling fails', () => {
+	const tags = ['it', 'nl', 'ko', 'pl', 'sv', 'da', 'nb', 'fi', 'tr', 'cs', 'el', 'he'];
+	const grown = fixture({ extraLocales: tags });
 
 	assert.equal(
 		retiredTotalPasses(grown.files),
 		false,
-		'the retired rule summed catalogues, so the tenth language alone pushed ' +
-			'2456 KB past 2700 and forced another bump',
+		'the retired rule summed catalogues, so languages alone pushed the total past ' +
+			'2700 and would have forced another bump',
 	);
 
 	const { errors, summary } = checkBudgets(grown);
-	assert.deepEqual(errors, [], 'nine catalogues cost a reader exactly what six did');
-	assert.equal(summary.codeKb, 1934, 'the code budget does not know a language was added');
-	assert.equal(summary.catalogueFiles.length, 9);
+	assert.deepEqual(errors, [], 'nineteen languages cost a reader exactly what seven did');
+	assert.equal(summary.codeKb, 2065, 'the code budget does not know a language was added');
+	assert.equal(summary.catalogueFiles.filter((c) => c.part === CORE_PART).length, 18);
 });
 
 test('a rogue dep the retired total ceiling had room for trips the code budget', () => {
@@ -131,16 +147,14 @@ test('a rogue dep the retired total ceiling had room for trips the code budget',
 	assert.equal(
 		retiredTotalPasses(rogue.files),
 		true,
-		'2456 + 200 = 2656 sat under 2700 — the 522 KB of catalogues in that total ' +
-			'were the cover the dep hid behind',
+		'2065 + 240 KB of catalogue parts + 200 = 2505 sits under 2700 — the catalogues ' +
+			'in that total were the cover the dep hid behind',
 	);
 
-	const { errors } = checkBudgets(
-		fixture({ extraCode: [GROWN_SINCE_BASE, ...rogue.files.filter((f) => f.path.endsWith('rogue-dep.js'))] }),
-	);
+	const { errors } = checkBudgets(rogue);
 	assert.equal(errors.length, 1);
 	assert.equal(errors[0].budget, 'code');
-	assert.match(errors[0].message, /code is 2322 KB gzipped, over the 2308 KB ceiling by 14 KB/);
+	assert.match(errors[0].message, /code is 2265 KB gzipped, over the 2251 KB ceiling by 14 KB/);
 	assert.match(
 		errors[0].message,
 		/a new locale cannot have caused it/,
@@ -148,22 +162,31 @@ test('a rogue dep the retired total ceiling had room for trips the code budget',
 	);
 });
 
-test('an oversized catalogue names its own locale and its own budget', () => {
-	const { errors } = checkBudgets(fixture({ extraCatalogues: { ja: 140 } }));
+test('an oversized core names its own locale and its own budget', () => {
+	const { errors } = checkBudgets(fixture({ extraCatalogues: { 'ja/core': 40 } }));
 	assert.equal(errors.length, 1);
 	assert.equal(errors[0].budget, 'catalogue');
-	assert.match(errors[0].message, /the ja catalogue is 140 KB/);
-	assert.match(errors[0].message, /over the 115 KB per-catalogue ceiling by 25 KB/);
+	assert.match(errors[0].message, /the ja core catalogue is 40 KB/);
+	assert.match(errors[0].message, /over the 28 KB per-core ceiling by 12 KB/);
 	assert.match(errors[0].message, /adding a language cannot trip it/);
+	assert.match(errors[0].message, /keys moved into core/);
+});
+
+test('an oversized area names its locale, its area and its own budget', () => {
+	const { errors } = checkBudgets(fixture({ extraCatalogues: { 'ja/settings': 20 } }));
+	assert.deepEqual(errors.map((e) => e.budget), ['catalogue']);
+	assert.match(errors[0].message, /the ja 'settings' area catalogue is 20 KB/);
+	assert.match(errors[0].message, /over the 14 KB per-area ceiling by 6 KB/);
+	assert.match(errors[0].message, /split along its sub-routes/);
 });
 
 test('a catalogue is not measured against the largest-code-chunk ceiling', () => {
-	const { errors } = checkBudgets(fixture({ extraCatalogues: { ja: 400 } }));
+	const { errors } = checkBudgets(fixture({ extraCatalogues: { 'ja/settings': 400 } }));
 	assert.deepEqual(
 		errors.map((e) => e.budget),
 		['catalogue'],
-		'400 KB is over MAX_LARGEST_CHUNK_KB too, but a catalogue is already a lazy ' +
-			'chunk and cannot be split — one budget owns it, and it is not that one',
+		'400 KB is over MAX_LARGEST_CHUNK_KB too, but a catalogue part is already a ' +
+			'lazy chunk — one budget owns it, and it is not that one',
 	);
 });
 
@@ -180,49 +203,107 @@ test('an oversized code chunk trips the largest-chunk budget alone', () => {
 
 test('a catalogue the manifest names but the build lacks fails classification', () => {
 	const f = fixture();
-	f.files = f.files.filter((x) => !x.path.endsWith('/ja.js'));
+	f.files = f.files.filter((x) => !x.path.endsWith('/ja-core.js'));
 	const { errors } = checkBudgets(f);
 	assert.deepEqual(errors.map((e) => e.budget), ['classification']);
-	assert.match(errors[0].message, /locale ja to _app\/immutable\/chunks\/ja\.js/);
+	assert.match(errors[0].message, /catalogue ja\/core to _app\/immutable\/chunks\/ja-core\.js/);
 	assert.match(errors[0].message, /no ceiling below means anything/);
 });
 
-test('a second statically-bundled catalogue is named, not absorbed into code', () => {
+test('a second statically-bundled core is named, not absorbed into code', () => {
 	const f = fixture();
-	// What a catalogue merging into a shared chunk looks like from here: it
-	// leaves the manifest, so its bytes land in the code budget under a message
-	// about deps unless the count is checked.
-	f.catalogues.delete('ja');
+	// What a part merging into a shared chunk looks like from here: it leaves
+	// the manifest, so its bytes land in the code budget under a message about
+	// deps unless the grid is checked.
+	f.catalogues.delete('ja/core');
 	f.files = f.files.map((x) =>
-		x.path.endsWith('/ja.js') ? { ...x, path: '_app/immutable/chunks/store.js' } : x,
+		x.path.endsWith('/ja-core.js') ? { ...x, path: '_app/immutable/chunks/store.js' } : x,
 	);
 	const { errors } = checkBudgets(f);
 	const classification = errors.filter((e) => e.budget === 'classification');
 	assert.equal(classification.length, 1);
-	assert.match(classification[0].message, /found 2 — en, ja/);
+	assert.match(classification[0].message, /found 2 — en\/core, ja\/core/);
+});
+
+test('an area merged into a shared chunk is named too', () => {
+	const f = fixture();
+	f.catalogues.delete('ja/gym');
+	const { errors } = checkBudgets(f);
+	const classification = errors.filter((e) => e.budget === 'classification');
+	assert.equal(classification.length, 1);
+	assert.match(classification[0].message, /found 2 — en\/core, ja\/gym/);
+});
+
+test('the one static part must be a core, not an area', () => {
+	const f = fixture({ extraCatalogues: { 'en/core': 21 } });
+	f.catalogues.delete('en/gym');
+	const { errors } = checkBudgets(f);
+	assert.deepEqual(errors.map((e) => e.budget), ['classification']);
+	assert.match(errors[0].message, /found 1 — en\/gym/);
 });
 
 test('every catalogue going lazy is a classification failure too', () => {
-	const f = fixture({ extraCatalogues: { en: 80 } });
+	const f = fixture({ extraCatalogues: { 'en/core': 21 } });
 	const { errors } = checkBudgets(f);
 	assert.deepEqual(errors.map((e) => e.budget), ['classification']);
 	assert.match(errors[0].message, /found 0\./);
 });
 
-test('catalogueChunks reads hyphenated tags and ignores everything else', () => {
+test('a whole catalogue bundled into code is a leak, named by the chunk carrying it', () => {
+	// Every part is still lazy and in the manifest, and 90 KB fits inside the
+	// code ceiling's cover, so nothing above can see this. It is what one client
+	// page calling `englishBadge` (which imports locales/en.ts) did mid-split.
+	const f = fixture();
+	const sentinels = new Map([
+		['en/gym', '"gym.title":`Gym`'],
+		['en/settings', '"settings.title":`Settings`'],
+		['de/gym', '"gym.empty":`Noch nichts`'],
+	]);
+	const leaked = new Set(['"gym.title":`Gym`', '"settings.title":`Settings`']);
+	const { errors } = checkBudgets({
+		...f,
+		sentinels,
+		codeContains: (path, needle) => path.endsWith('nodes/3.js') && leaked.has(needle),
+	});
+	assert.deepEqual(errors.map((e) => e.budget), ['catalogue-leak']);
+	assert.match(errors[0].message, /nodes\/3\.js carries the strings of 2 catalogue part\(s\) — en\/gym, en\/settings/);
+	assert.match(errors[0].message, /through m\(\)/);
+});
+
+test('a lazy part is not a leak of itself', () => {
+	const f = fixture();
+	const { errors } = checkBudgets({
+		...f,
+		sentinels: new Map([['de/gym', '"gym.empty":`Noch nichts`']]),
+		codeContains: (path) => path.endsWith('/de-gym.js'),
+	});
+	assert.deepEqual(errors, [], 'the part chunk holds its own sentinel by construction; it is not code');
+});
+
+test('catalogueSentinel takes the first property in any quote style the minifier picks', () => {
+	assert.equal(
+		catalogueSentinel('var e={"admin.reports.title":`通報キュー`,"admin.x":`y`};export{e as default};'),
+		'"admin.reports.title":`通報キュー`',
+	);
+	assert.equal(catalogueSentinel(`var e={"a.b":"it's",}`), '"a.b":"it\'s"');
+	assert.equal(catalogueSentinel(`var e={"a.b":'say "hi"'}`), `"a.b":'say "hi"'`);
+	assert.equal(catalogueSentinel('var e={};export{e as default};'), null);
+});
+
+test('catalogueChunks reads hyphenated tags and parts, and ignores everything else', () => {
 	const chunks = catalogueChunks({
-		'src/lib/i18n/locales/pt-BR.ts': { file: 'chunks/a.js' },
-		'src/lib/i18n/locales/de.ts': { file: 'chunks/b.js' },
-		'src/lib/i18n/locale.ts': { file: 'chunks/c.js' },
-		'src/lib/i18n/locales/nested/de.ts': { file: 'chunks/d.js' },
-		'src/routes/+page.svelte': { file: 'chunks/e.js' },
-		'src/lib/i18n/locales/fr.ts': {},
+		'virtual:i18n-catalogue/pt-BR/core': { file: 'chunks/a.js' },
+		'virtual:i18n-catalogue/de/settingsAccount': { file: 'chunks/b.js' },
+		'virtual:i18n-catalogues': { file: 'chunks/c.js' },
+		'virtual:i18n-catalogue/de/nested/gym': { file: 'chunks/d.js' },
+		'src/lib/i18n/locales/de.ts': { file: 'chunks/e.js' },
+		'virtual:i18n-catalogue/fr/core': {},
 	});
 	assert.deepEqual([...chunks], [
-		['pt-BR', 'chunks/a.js'],
-		['de', 'chunks/b.js'],
+		['pt-BR/core', 'chunks/a.js'],
+		['de/settingsAccount', 'chunks/b.js'],
 	]);
-	assert.equal(CATALOGUE_SOURCE.test('src/lib/i18n/locales/en.ts'), true);
+	assert.equal(CATALOGUE_SOURCE.test('virtual:i18n-catalogue/en/gym'), true);
 });
 
 test('localeTags reads the catalogue directory and skips its tests', () => {
@@ -271,16 +352,18 @@ test('gzipKb rounds a part-kilobyte up', () => {
 
 test('the summary states the catalogue total without gating on it', () => {
 	const text = renderSummary(checkBudgets(fixture()).summary);
-	assert.match(text, /Code \(every reader, any language\) \| 1934 KB across 9 files \| 2308 KB/);
-	assert.match(text, /Largest message catalogue \(ja\) \| 91 KB \| 115 KB, per catalogue/);
-	assert.match(text, /ungated in total \(522 KB across 6, one fetched per reader\)/);
+	assert.match(text, /Code \(every reader, any language\) \| 2065 KB across 9 files \| 2251 KB/);
+	assert.match(text, /Largest core catalogue \(ja\) \| 25 KB \| 28 KB, per core/);
+	assert.match(text, /Largest area catalogue \(de\/settings\) \| 11 KB \| 14 KB, per area/);
+	assert.match(text, /ungated in total \(240 KB across 20 parts; a reader fetches one core/);
 	assert.match(text, /Largest single asset[^|]*\| 74 KB \| 100 KB, per asset/);
 	assert.match(text, /ungated in total too \(199 KB across 9/);
 });
 
 test('the shipped ceilings are the ones this suite reasons about', () => {
-	assert.equal(MAX_CODE_KB, 2308);
-	assert.equal(MAX_CATALOGUE_KB, 115);
+	assert.equal(MAX_CODE_KB, 2251);
+	assert.equal(MAX_CORE_CATALOGUE_KB, 28);
+	assert.equal(MAX_AREA_CATALOGUE_KB, 14);
 	assert.equal(MAX_LARGEST_CHUNK_KB, 350);
 	assert.equal(MAX_ASSET_KB, 100);
 	assert.equal(
@@ -375,7 +458,7 @@ test('assets are outside the code and largest-chunk budgets, not silently inside
 		...ASSET_KB.slice(1),
 	]));
 	assert.deepEqual(errors, []);
-	assert.equal(summary.codeKb, 1934);
+	assert.equal(summary.codeKb, 2065);
 	assert.match(summary.largest.path, /\.js$/);
 	assert.ok(summary.largestAsset.kb > MAX_CODE_KB, 'the font outweighs the entire code ceiling');
 });

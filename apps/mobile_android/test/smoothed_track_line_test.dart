@@ -11,7 +11,9 @@ import '../lib/widgets/track_segment.dart';
 // draws the run line draws the smoothed pair when both halves are present,
 // and the raw fix otherwise.
 
-const double _mPerLatDeg = 111320;
+// Metres per degree on the sphere `haversineMetres` measures (R = 6371 km),
+// so a 10 m step in the fixture is 10 m to the reader under test.
+const double _mPerLatDeg = 6371000 * pi / 180;
 
 /// A north-bound line whose raw fixes zig-zag 3 m either side of it while
 /// the smoothed positions sit on it.

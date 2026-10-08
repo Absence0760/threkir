@@ -1574,7 +1574,7 @@ through the estate config and names `sops-init.sh` when the file is missing.
 hard-fails a wrong account, a missing slot and a missing rule. Not covered: sops's
 own matching and KMS, `deploy-env.sh`, `disaster-recovery.sh`.
 
-### `.github/actions/start-supabase/start_stack.test.mjs` — 14 tests (9 added, then 5 for #963)
+### `.github/actions/start-supabase/start_stack.test.mjs` — 20 tests (9 added, then 5 for #963, then 6 for #916)
 
 The port-clean retry ladder, extracted from `action.yml` so something other than
 CI reads it. The property under test is which SOCKET STATES the holder probe
@@ -1596,6 +1596,14 @@ with db on 54322 and studio unpinned is asserted to produce both violations,
 and flipping the real `[db] port` to 54322 was verified to fail two cases.
 The fifth pins `wait_for_sidecars.sh`'s default API URL to the same api
 port, the consumer the first sweep of the move missed.
+
+The six #916 cases pin the edge runtime override (decisions § 1795). The
+`EDGE_RUNTIME_VERSION` file is on disk before the first `supabase start`.
+A pin path that cannot be written fails before any attempt. After a start,
+a `supabase_edge_runtime` container on the pinned tag passes and one on
+v1.73.0 fails. The retirement guard reads every `setup-supabase-cli` pin in
+`ci.yml` and fails once one reaches 2.119.0, the first CLI that bundles the
+fix, and a companion case proves it reads all of them and bites on a bump.
 
 ---
 

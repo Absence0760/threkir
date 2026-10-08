@@ -215,7 +215,7 @@ Deno.test('fastestWindowSeconds — a track that measures exactly the window sti
 	// `apps/web/src/lib/integrations/embedded_best_efforts.test.ts`.
 	const track = evenTrack('2026-01-01T09:00:00Z', 50, 100, 30);
 	assertEquals(fastestWindowSeconds(track, 5000), 1500);
-	assertEquals(computeEmbeddedBests(track).fastest_5k_s, 1500);
+	assertEquals(fastestWindowSeconds(track, 5000, track.map((_, i) => i * 100)), 1500);
 });
 
 Deno.test('fastestWindowSeconds — the tolerance is relative, so it never admits a real shortfall', () => {

@@ -18,11 +18,12 @@ import { USER_A, USER_B } from '../fixtures/users';
  * but the owner. A recomputed run shows the recorder's original figure.
  */
 
+const TRACK_START_MS = Date.parse(browserDayAt(-1, 7));
 const TRACK = Array.from({ length: 6 }, (_, i) => ({
 	lat: 51.46 + i * 0.0005,
 	lng: -0.3,
 	ele: 100,
-	ts: new Date(Date.parse(browserDayAt(-1, 7)) + i * 60_000).toISOString(),
+	ts: new Date(TRACK_START_MS + i * 60_000).toISOString(),
 }));
 
 async function recomputeJobs(runId: string): Promise<unknown[]> {

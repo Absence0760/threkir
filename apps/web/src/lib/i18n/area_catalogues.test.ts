@@ -104,6 +104,11 @@ test('the root layout loads the route catalogues in its load', () => {
 	const store = readFileSync(join(SRC, 'lib', 'i18n', 'store.svelte.ts'), 'utf8');
 	const body = /export async function loadRouteCatalogues\([\s\S]*?\n\}/.exec(store)?.[0] ?? '';
 	assert.match(body, /const areas = areasForRoute\(routeId\);/);
+	assert.match(
+		body,
+		/if \(await catalogues\.open\(next, areas\)\)/,
+		'the first load must open the reader locale WITH the areas, before anything renders (§ 1812)',
+	);
 	assert.match(body, /await catalogues\.ensureAreas\(areas\);\n\}$/, 'every path must end by loading the areas');
 });
 

@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { USER_A } from '../fixtures/users';
 
 /**
@@ -25,6 +25,76 @@ async function expectNoRawKeys(page: Page, namespaces: string[]): Promise<void> 
 		);
 	}
 }
+
+/**
+ * Server-rendered pages (decisions § 1812). `/learn` is prerendered in
+ * production and every page is server-rendered under the dev server this
+ * suite runs against, always in English: there is no request-time renderer in
+ * production to know the reader's language. Before § 1812 such a page hydrated
+ * in English — fetching the route's ENGLISH catalogue parts to do it — and
+ * only switched on mount. Now the first load applies the reader's locale
+ * before hydrating, so the only parts requested are the reader's own.
+ *
+ * Every h1 text the document ever holds is recorded from before the first
+ * byte is parsed: the server's English, then whatever hydration writes. The
+ * contract is that the first thing the app writes is already the translation,
+ * and that nothing after it is English or a key name.
+ */
+async function recordHeadings(context: BrowserContext): Promise<void> {
+	await context.addInitScript(() => {
+		const seen: string[] = [];
+		(window as unknown as { __h1: string[] }).__h1 = seen;
+		const record = () => {
+			const text = document.querySelector('h1')?.textContent?.trim();
+			if (text && seen.at(-1) !== text) seen.push(text);
+		};
+		new MutationObserver(record).observe(document, {
+			subtree: true,
+			childList: true,
+			characterData: true,
+		});
+	});
+}
+
+function englishPartRequests(page: Page): string[] {
+	const hits: string[] = [];
+	page.on('request', (request) => {
+		const url = decodeURIComponent(request.url());
+		// The English core is the bundled fallback every reader has; any other
+		// English part is a download a Japanese reader has no use for.
+		if (/i18n-catalogue\/en\/(?!core\b)/.test(url)) hits.push(url);
+	});
+	return hits;
+}
+
+test.describe('a server-rendered page hydrates in the reader locale', () => {
+	for (const { path, english, japanese, namespace } of [
+		{ path: '/learn', english: 'Learn to run', japanese: 'ランニングを学ぶ', namespace: 'learn' },
+		{ path: '/login', english: 'Sign in to your account', japanese: 'アカウントにサインイン', namespace: 'login' },
+	]) {
+		test(`${path} fetches no English catalogue part and writes Japanese first`, async ({ browser }) => {
+			const context = await browser.newContext({
+				locale: 'ja-JP',
+				storageState: { cookies: [], origins: [] },
+			});
+			await recordHeadings(context);
+			const page = await context.newPage();
+			const englishParts = englishPartRequests(page);
+
+			await page.goto(path);
+			await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+			await expect(page.locator('h1').first()).toHaveText(japanese);
+
+			const headings = await page.evaluate(() => (window as unknown as { __h1: string[] }).__h1);
+			const written = headings[0] === english ? headings.slice(1) : headings;
+			expect(written[0], `the first heading the app wrote on ${path}`).toBe(japanese);
+			expect(written.filter((h) => h !== japanese), 'a heading other than the translation').toEqual([]);
+			expect(englishParts, 'English catalogue parts requested by a Japanese reader').toEqual([]);
+			await expectNoRawKeys(page, [namespace]);
+			await context.close();
+		});
+	}
+});
 
 test.describe('area catalogues on a cold deep link', () => {
 	test('an anonymous Japanese reader lands on /login in Japanese', async ({ browser }) => {

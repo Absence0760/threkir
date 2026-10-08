@@ -56,6 +56,14 @@ export function mapTrackLine(darkBasemap: boolean): string {
 	return darkBasemap ? '#818CF8' : '#4F46E5';
 }
 
+/// Direction-arrow ink and its outline, the same on every basemap. One flat
+/// colour cannot read on both track rungs (navy is 6.3:1 on the dark rung but
+/// 2.4:1 on the light one, white the reverse), so the glyph is navy for the
+/// bright rung and carries a white halo that is the edge on the deep one.
+/// Twin of mobile's `chevronInk` / `chevronOutline`.
+export const MAP_ARROW_INK = '#172554';
+export const MAP_ARROW_OUTLINE = '#FFFFFF';
+
 /// Transient amber accent — the selected-segment highlight, the animated
 /// replay trace, and a coarse (privacy-clipped) last-seen position. Twin of
 /// mobile's `mapAccentColour`, same two rungs.

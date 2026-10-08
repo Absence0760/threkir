@@ -680,7 +680,8 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 	'lib/routes/basemap_contrast.ts': {
 		F2EFE9: [1, 'cartographic'], '1A1B20': [1, 'cartographic'],
 		AAD3DF: [1, 'cartographic'], DCDCDC: [1, 'cartographic'],
-		FFFFFF: [2, 'cartographic'], '1E1B4B': [1, 'cartographic'],
+		FFFFFF: [3, 'cartographic'], '1E1B4B': [1, 'cartographic'],
+		'172554': [1, 'cartographic'],
 		'818CF8': [1, 'cartographic'], '4F46E5': [1, 'cartographic'],
 		F59E0B: [1, 'cartographic'], B45309: [1, 'cartographic'],
 		'22C55E': [1, 'cartographic'], '15803D': [1, 'cartographic'],

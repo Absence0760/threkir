@@ -30,6 +30,8 @@ import {
 	mapPinnedLine,
 	mapStartColour,
 	mapTrackLine,
+	MAP_ARROW_INK,
+	MAP_ARROW_OUTLINE,
 	mapZoneBoundary,
 } from './basemap_contrast';
 
@@ -294,4 +296,15 @@ test('the pre-fix figures reproduce, so the mismatch was real', () => {
 	// The frozen amber every surface shared, on the light basemap § 489
 	// made reachable.
 	assert.ok(contrast('#F59E0B', LIGHT_BASEMAP_SAMPLE) < 2);
+});
+
+test('a direction arrow keeps a 3:1 edge on the track line of either basemap', () => {
+	// The navy body or the white halo has to clear the line it sits on; the
+	// pair itself must also separate, or the halo would read as part of the glyph.
+	assert.ok(contrast(MAP_ARROW_INK, MAP_ARROW_OUTLINE) >= MAP_OVERLAY_FLOOR);
+	for (const dark of [true, false]) {
+		const line = mapTrackLine(dark);
+		const best = Math.max(contrast(MAP_ARROW_INK, line), contrast(MAP_ARROW_OUTLINE, line));
+		assert.ok(best >= MAP_OVERLAY_FLOOR, `${line}: best edge ${best.toFixed(2)}:1`);
+	}
 });

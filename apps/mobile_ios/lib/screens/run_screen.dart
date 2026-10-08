@@ -4218,7 +4218,6 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
 
   Widget _buildIdle(BuildContext context) {
     final theme = Theme.of(context);
-    final semantic = AppSemanticColors.of(context);
     final l10n = AppLocalizations.of(context);
     final lastRun = _mostRecentRun();
     return SafeArea(
@@ -4422,6 +4421,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                   child: Semantics(
                     button: true,
                     label: l10n.runStartA11yLabel,
+                    // The brand accent, not the success green: starting a
+                    // run is the app's primary action, and the dock's
+                    // Start-run button beside it is already the accent.
+                    // Green stays the in-run "resume" signal (§ 1767).
                     child: GestureDetector(
                       onTap: _beginCountdown,
                       child: Container(
@@ -4430,7 +4433,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: semantic.success.withOpacity(0.3),
+                            color: theme.colorScheme.primary.withOpacity(0.3),
                             width: 3,
                           ),
                         ),
@@ -4438,10 +4441,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                         child: Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: semantic.success,
+                            color: theme.colorScheme.primary,
                             boxShadow: [
                               BoxShadow(
-                                color: semantic.success.withValues(alpha: 0.25),
+                                color: theme.colorScheme.primary.withValues(alpha: 0.25),
                                 blurRadius: 24,
                                 spreadRadius: 4,
                               ),
@@ -4465,7 +4468,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                                   style: TextStyle(
                                     fontSize: 22,
                                     fontWeight: FontWeight.w800,
-                                    color: semantic.onSuccess,
+                                    color: theme.colorScheme.onPrimary,
                                     letterSpacing: 1.5,
                                   ),
                                 ),

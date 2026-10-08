@@ -1645,6 +1645,28 @@ class _HoverMarkerDot extends StatelessWidget {
   }
 }
 
+/// Direction-chevron ink: navy, over a crisp white outline ([chevronOutline]).
+///
+/// One flat colour cannot read on both track rungs: navy is 6.3:1 on the
+/// dark-basemap coral and only 2.4:1 on the deep light-basemap coral, where
+/// white is 6.5:1 and navy-on-white is the edge that carries the shape. The
+/// outline is what makes a single ink work everywhere, the pace gradient
+/// included (>= 3.2:1 on its red end).
+const Color chevronInk = Color(0xFF172554);
+
+/// A 1 px white ring around the chevron glyph, built from eight unblurred
+/// offset shadows because `Icon` has no stroke.
+const List<Shadow> chevronOutline = [
+  Shadow(color: Colors.white, offset: Offset(1, 0)),
+  Shadow(color: Colors.white, offset: Offset(-1, 0)),
+  Shadow(color: Colors.white, offset: Offset(0, 1)),
+  Shadow(color: Colors.white, offset: Offset(0, -1)),
+  Shadow(color: Colors.white, offset: Offset(1, 1)),
+  Shadow(color: Colors.white, offset: Offset(-1, -1)),
+  Shadow(color: Colors.white, offset: Offset(1, -1)),
+  Shadow(color: Colors.white, offset: Offset(-1, 1)),
+];
+
 /// Direction chevrons along [coords], spaced [chevronSpacingPx] apart on
 /// screen at whatever zoom the map is at. Reads the camera so a pinch
 /// re-spaces them, and caches per snapped zoom level so a pan doesn't
@@ -1683,8 +1705,8 @@ class _ChevronLayerState extends State<_ChevronLayer> {
               child: const Icon(
                 Icons.play_arrow,
                 size: 16,
-                color: Color(0xFF1D4ED8),
-                shadows: [Shadow(color: Colors.white, blurRadius: 3)],
+                color: chevronInk,
+                shadows: chevronOutline,
               ),
             ),
           ),

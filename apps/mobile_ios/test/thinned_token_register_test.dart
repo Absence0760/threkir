@@ -76,8 +76,11 @@ const _register = <String, int>{
   // tile extremes (>= 14.272/12.715), which bounds every tile between them.
   'lib/screens/route_builder_screen.dart': 2,
   // Two map overlay panels plus three washes (1.109/1.087, 1.143/1.162,
-  // 1.184/1.207); the type and glyph on each is full strength.
-  'lib/screens/run_screen.dart': 5,
+  // 1.184/1.207); the type and glyph on each is full strength. Plus the
+  // START disc's halo ring (primary@0.3) and glow (primary@0.25): both sit
+  // outside a solid primary disc that carries the boundary itself (>= 3:1 on
+  // the scaffold in both themes), so neither owes a floor of its own.
+  'lib/screens/run_screen.dart': 7,
   // The live stats panel, blurred over the map. Type >= 11.292/9.165 at both
   // tile extremes.
   'lib/widgets/collapsible_panel.dart': 1,

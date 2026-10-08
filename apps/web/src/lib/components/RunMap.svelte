@@ -17,6 +17,8 @@
 		mapFinishColour,
 		mapLabelHalo,
 		mapLabelInk,
+		MAP_ARROW_INK,
+		MAP_ARROW_OUTLINE,
 		mapOverlayOutline,
 		mapStartColour,
 		mapTrackLine,
@@ -572,8 +574,8 @@
 				'text-allow-overlap': true,
 			},
 			paint: {
-				'text-color': mapOverlayOutline(darkBasemap),
-				'text-halo-color': mapTrackLine(darkBasemap),
+				'text-color': MAP_ARROW_INK,
+				'text-halo-color': MAP_ARROW_OUTLINE,
 				'text-halo-width': 1.5,
 			},
 		});

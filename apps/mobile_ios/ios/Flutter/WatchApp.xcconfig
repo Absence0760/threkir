@@ -7,3 +7,13 @@
 
 MARKETING_VERSION=$(FLUTTER_BUILD_NAME)
 CURRENT_PROJECT_VERSION=$(FLUTTER_BUILD_NUMBER)
+
+// The watch's Supabase project. Info.plist expands SupabaseURL /
+// SupabaseAnonKey from these two settings, and nothing else defines them:
+// Flutter hands `--dart-define-from-file` to Xcode only as DART_DEFINES, which
+// no watchOS code decodes. release-ios.yml writes this untracked file from the
+// release secrets (scripts/ios_watch_runtime_config.mjs) and then checks the
+// shipped WatchApp.app/Info.plist holds both. Absent, both expand to empty and
+// the watch's sign-in is fail-closed, which is the right state for a build
+// nobody configured (decisions § 1810).
+#include? "WatchRuntime.xcconfig"

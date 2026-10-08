@@ -19,6 +19,8 @@ Flutter/App.framework
 Flutter/Flutter.framework
 Flutter/Flutter.podspec
 Flutter/Generated.xcconfig
+# The watch's Supabase project, written by release-ios.yml (decisions § 1810).
+Flutter/WatchRuntime.xcconfig
 Flutter/ephemeral/
 Flutter/app.flx
 Flutter/app.zip

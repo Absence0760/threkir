@@ -368,6 +368,18 @@ jobs:
             echo "Reproduce with: node --test scripts/ios_release_signing.test.mjs (stdlib only, no Xcode needed)."
             exit 1
           fi
+      # The watch's Supabase config is written and checked only inside a
+      # release, on a Mac. This pins the script and the wiring around it —
+      # the xcconfig include, the gitignore, the workflow's step order — so a
+      # release cannot again ship a watch whose sign-in is fail-closed
+      # (decisions.md § 1810).
+      - name: The iOS release still hands the watch app its Supabase config
+        run: |
+          if ! node --test scripts/ios_watch_runtime_config.test.mjs; then
+            echo "::error::scripts/ios_watch_runtime_config.mjs or its wiring regressed: the Supabase values a release writes for the Apple Watch app no longer reach the WatchApp target, are no longer checked in the built IPA before upload, or the script accepts a value it must refuse. Nothing here is about signing."
+            echo "Reproduce with: node --test scripts/ios_watch_runtime_config.test.mjs (stdlib only, no Xcode needed)."
+            exit 1
+          fi
       # The stack-start wait loop is shell inside a composite action, so it
       # runs in no job's test suite. Its accounting (a wall-clock deadline the
       # error string can be trusted to report) and its failure forensics are

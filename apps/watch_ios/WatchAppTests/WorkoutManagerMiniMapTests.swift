@@ -55,11 +55,10 @@ final class WorkoutManagerMiniMapTests: XCTestCase {
 
     func testTheTrailSpansTheWholeRunRatherThanTheRollingWindow() {
         let wm = WorkoutManager()
-        // ~33 m per fix, well past the in-memory track window so the recorder's
-        // own buffer no longer holds the start of the run.
+        // ~33 m per fix, far more fixes than the trail's capacity.
         let fixes = (0..<1_200).map { loc(51.5 + Double($0) * 0.0003, -0.1) }
         feed(wm, fixes)
-        XCTAssertGreaterThan(wm.trackPointCount, wm.track.count)
+        XCTAssertEqual(wm.trackPointCount, fixes.count)
         XCTAssertEqual(
             wm.mapTrail.points.first,
             MiniMapPoint(latitude: 51.5, longitude: -0.1),

@@ -220,11 +220,9 @@ enum MiniMapThinning {
 
 /// A fixed-capacity, distance-decimated breadcrumb of the run so far.
 ///
-/// `WorkoutManager.track` cannot be drawn: it is a 600-fix rolling window
-/// (decisions § 467), so a map fed from it shows the last few minutes and
-/// silently drops the start of the run. Holding the whole track instead is
-/// exactly the unbounded array that window exists to avoid — a 100-hour ultra
-/// is ~360k fixes.
+/// `WorkoutManager` holds no track in memory: the trace streams to disk, and
+/// holding the whole of it would be an unbounded array — a 100-hour ultra is
+/// ~360k fixes (decisions § 467).
 ///
 /// So the map keeps its own trail. A fix is admitted once it is
 /// `spacingMetres` from the last kept one; when the buffer fills, the trail

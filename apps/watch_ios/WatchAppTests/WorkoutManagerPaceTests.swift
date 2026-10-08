@@ -2,10 +2,10 @@ import XCTest
 import CoreLocation
 @testable import WatchApp
 
-/// The rolling pace window across a pause boundary.
+/// The rolling pace window: what it measures, and across a pause boundary.
 ///
-/// `updatePace` walks `track` backwards until ~200 m accumulate and divides
-/// by the timestamp span of that segment. A pause puts an unbounded wall-clock
+/// Pace is the GPS distance estimator's distance gained over the last ~200 m
+/// (`PaceWindow`), divided by its time span. A pause puts an unbounded wall-clock
 /// gap between two adjacent track points, so a window allowed to straddle it
 /// charges the whole aid-station stop to the metres run after it: a 12-minute
 /// stop makes the first ~200 m read on the order of an hour per kilometre.
@@ -96,5 +96,60 @@ final class WorkoutManagerPaceTests: XCTestCase {
         let resumedAt = base.addingTimeInterval(7 * legSeconds + 720)
         feed(wm, leg(from: 51.5 + 8 * legDegrees, at: resumedAt, count: 4))
         XCTAssertNil(wm.currentPace)
+    }
+
+    // A steady 5:00/km (10/3 m/s) due north, one fix a second, each fix 1.25 m
+    // either side of the true line. Every hop is then 4.17 m for 3.33 m of
+    // progress, so a hop-sum reads 4:00/km. scripts/gps_distance/reference.py
+    // over the same track gives 300.0 s/km with Doppler and 299.9 s/km from
+    // positions alone.
+    private let zigZagSpeed = 10.0 / 3.0
+    private let zigZagFixes = 121
+
+    private func zigZag(doppler: Bool) -> [CLLocation] {
+        let base = Date()
+        let degLatPerM = 1 / 111_195.0
+        let degLngPerM = degLatPerM / cos(51.5 * .pi / 180)
+        return (0..<zigZagFixes).map { i in
+            CLLocation(
+                coordinate: CLLocationCoordinate2D(
+                    latitude: 51.5 + Double(i) * zigZagSpeed * degLatPerM,
+                    longitude: -0.1 + (i % 2 == 1 ? 1.25 : -1.25) * degLngPerM
+                ),
+                altitude: 10,
+                horizontalAccuracy: 5,
+                verticalAccuracy: 5,
+                course: doppler ? 0 : -1,
+                courseAccuracy: doppler ? 5 : -1,
+                speed: doppler ? zigZagSpeed : -1,
+                speedAccuracy: doppler ? 0.5 : -1,
+                timestamp: base.addingTimeInterval(Double(i))
+            )
+        }
+    }
+
+    private func hopSumPace(_ fixes: [CLLocation], hops: Int) -> Double {
+        let tail = Array(fixes.suffix(hops + 1))
+        let metres = zip(tail, tail.dropFirst()).reduce(0.0) { $0 + $1.1.distance(from: $1.0) }
+        return Double(hops) / metres * 1000
+    }
+
+    func testZigZagPaceReadsTheEstimatorWithDoppler() {
+        let wm = WorkoutManager()
+        wm.state = .recording
+        let fixes = zigZag(doppler: true)
+        XCTAssertEqual(hopSumPace(fixes, hops: 60), 240, accuracy: 3,
+                       "harness check: the raw hop-sum reads 4:00/km")
+        feed(wm, fixes)
+        XCTAssertEqual(wm.currentPace ?? 0, 300, accuracy: 1)
+    }
+
+    func testZigZagPaceReadsTheEstimatorFromPositionsAlone() {
+        let wm = WorkoutManager()
+        wm.state = .recording
+        let fixes = zigZag(doppler: false)
+        XCTAssertEqual(hopSumPace(fixes, hops: 60), 240, accuracy: 3)
+        feed(wm, fixes)
+        XCTAssertEqual(wm.currentPace ?? 0, 300, accuracy: 3)
     }
 }

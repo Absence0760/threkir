@@ -664,6 +664,20 @@ Deno.test('orphanStorageEntries sweeps unarchived objects, dedupes, and skips ex
 	]);
 });
 
+Deno.test('orphanStorageEntries carries the smoothed-position sidecar into the archive', () => {
+	// The job_worker's {uid}/{run_id}.smoothed.json.gz has no column, so no
+	// row-driven loop archives it; the prefix walk is its only way in.
+	const entries = orphanStorageEntries({
+		bucket: 'runs',
+		userId: TEST_UID,
+		archived: new Set([`${TEST_UID}/run-1.json.gz`]),
+		keys: [`${TEST_UID}/run-1.json.gz`, `${TEST_UID}/run-1.smoothed.json.gz`],
+	});
+	assertEquals(entries, [
+		{ key: `${TEST_UID}/run-1.smoothed.json.gz`, entry: 'storage/runs/run-1.smoothed.json.gz' },
+	]);
+});
+
 Deno.test('orphanStorageEntries only skips exports/ in the runs bucket', () => {
 	// run-photos has no exports/ convention; an object under that name
 	// there is still the subject's data and must be swept.

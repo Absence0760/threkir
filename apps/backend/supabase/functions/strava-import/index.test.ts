@@ -153,13 +153,16 @@ Deno.test('computeEmbeddedBests — even 6 km run yields a ~total-time 5k', () =
 });
 
 Deno.test('computeEmbeddedBests — a fast 5 km inside a long run is detected', () => {
-	// First 5 km fast (100 m / 20 s → 1000 s), last 5 km slow (100 m / 40 s).
+	// First 5 km fast (100 m / 20 s → 1000 s), the rest slow (100 m / 40 s).
+	// 104 steps rather than 100: the distance estimator lags the pace change
+	// and credits ~20 m less than the straight line, which a track ending at
+	// exactly 10 km would turn into no 10 km window at all.
 	const mPerDeg = 6371000 * (Math.PI / 180);
 	const stepDeg = 100 / mPerDeg;
 	const startMs = Date.parse('2026-01-01T09:00:00Z');
 	const track: { lat: number; lng: number; ts: string }[] = [{ lat: 0, lng: 0, ts: new Date(startMs).toISOString() }];
 	let t = startMs;
-	for (let i = 1; i <= 100; i++) {
+	for (let i = 1; i <= 104; i++) {
 		t += (i <= 50 ? 20 : 40) * 1000;
 		track.push({ lat: 0, lng: i * stepDeg, ts: new Date(t).toISOString() });
 	}
@@ -167,10 +170,27 @@ Deno.test('computeEmbeddedBests — a fast 5 km inside a long run is detected', 
 	// The embedded fast 5k (~1000 s) beats the whole-run-scaled pace (1500 s).
 	assertExists(bests.fastest_5k_s, 'a 10 km track must yield a 5 km best');
 	assert(bests.fastest_5k_s >= 995 && bests.fastest_5k_s <= 1005, `got ${bests.fastest_5k_s}`);
-	// Only one 10k window (the whole track): 1000 + 2000 = 3000 s.
-	assertExists(bests.fastest_10k_s, 'a 10 km track must yield a 10 km best');
-	assert(bests.fastest_10k_s >= 2990 && bests.fastest_10k_s <= 3010, `got ${bests.fastest_10k_s}`);
+	// The fast 5 km plus 5 km slow is 3000 s on the straight line; the
+	// estimator's lag at the pace change makes it ~25 s slower.
+	assertExists(bests.fastest_10k_s, 'a 10.4 km track must yield a 10 km best');
+	assert(bests.fastest_10k_s >= 2990 && bests.fastest_10k_s <= 3040, `got ${bests.fastest_10k_s}`);
 	assertEquals(bests.fastest_half_marathon_s, undefined);
+});
+
+Deno.test('computeEmbeddedBests — GPS zig-zag no longer closes the 5k window early', () => {
+	// 6 km due east at 5:00/km, one fix a second, each fix 2 m either side of
+	// the line: the hop-sum reads ~9.4 km and its 5k ~960 s.
+	const mPerDeg = 6371000 * (Math.PI / 180);
+	const startMs = Date.parse('2026-04-01T00:00:00Z');
+	const track = Array.from({ length: 1801 }, (_, i) => ({
+		lat: (i % 2 === 1 ? 2 : -2) / mPerDeg,
+		lng: (i * (6000 / 1800)) / mPerDeg,
+		ts: new Date(startMs + i * 1000).toISOString(),
+	}));
+	const raw = fastestWindowSeconds(track, 5000) ?? -1;
+	assert(raw > 0 && raw < 1100, `fixture must be noisy, got ${raw}`);
+	const s = computeEmbeddedBests(track, 'run').fastest_5k_s ?? -1;
+	assert(s >= 1480 && s <= 1520, `got ${s}`);
 });
 
 Deno.test('computeEmbeddedBests — a track with no timestamps writes nothing (no fake bests)', () => {

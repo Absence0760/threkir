@@ -62,7 +62,7 @@
 		"@zip.js/zip.js": "^2.22.0",
 		"fit-file-parser": "^6.1.2",
 		"html-to-image": "^1.11.13",
-		"isomorphic-dompurify": "^4.3.0",
+		"isomorphic-dompurify": "^4.5.0",
 		"jszip": "^3.10.2",
 		"maplibre-gl": "^6.11.2",
 		"marked": "^18.0.14",

@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clipPointsToZones, isInAnyZone, type PrivacyZone, type LatLng } from './privacy';
+import {
+	clipPointsToZones,
+	isFixInAnyZone,
+	isInAnyZone,
+	type PrivacyZone,
+	type LatLng,
+} from './privacy';
 import type { Json } from '../database.types';
 
 const home: PrivacyZone = { lat: 40.7128, lng: -74.006, radius_m: 200 };
@@ -79,6 +85,49 @@ test('clipPointsToZones — multiple zones', () => {
 	const out = clipPointsToZones(pts, [home, work]);
 	assert.equal(out.length, 1);
 	assert.equal(out[0], pts[1]);
+});
+
+type Fix = LatLng & { smoothedLat?: number | null; smoothedLng?: number | null };
+
+// A fix whose raw position is ~840 m east of home but whose smoothed position
+// the RTS smoother pulled onto home itself.
+const smoothedHome = (dLng: number): Fix => ({
+	...offset(home.lat, home.lng, dLng),
+	smoothedLat: home.lat,
+	smoothedLng: home.lng,
+});
+
+test('isFixInAnyZone — a smoothed position in a zone is in, though the raw one is out', () => {
+	const p = smoothedHome(0.01);
+	assert.equal(isInAnyZone(p, [home]), false);
+	assert.equal(isFixInAnyZone(p, [home]), true);
+});
+
+test('isFixInAnyZone — half a smoothed pair is ignored and the raw position decides', () => {
+	const p: Fix = { ...offset(home.lat, home.lng, 0.01), smoothedLat: home.lat, smoothedLng: null };
+	assert.equal(isFixInAnyZone(p, [home]), false);
+});
+
+test('clipPointsToZones — drops leading + trailing fixes whose smoothed position is in a zone', () => {
+	const pts: Fix[] = [
+		smoothedHome(0.01), // raw out, smoothed in (leading)
+		offset(home.lat, home.lng, 0.02), // out
+		offset(home.lat, home.lng, 0.03), // out
+		smoothedHome(0.01), // raw out, smoothed in (trailing)
+	];
+	const out = clipPointsToZones(pts, [home]);
+	assert.equal(out.length, 2);
+	assert.equal(out[0], pts[1]);
+	assert.equal(out[1], pts[2]);
+});
+
+test('clipPointsToZones — keeps an interior fix whose smoothed position is in a zone', () => {
+	const pts: Fix[] = [
+		offset(home.lat, home.lng, 0.02), // out
+		smoothedHome(0.01), // interior — kept
+		offset(home.lat, home.lng, 0.03), // out
+	];
+	assert.deepEqual(clipPointsToZones(pts, [home]), pts);
 });
 
 test('a zone list is assignable to the jsonb column that stores it', () => {

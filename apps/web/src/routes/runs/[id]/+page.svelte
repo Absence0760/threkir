@@ -77,7 +77,7 @@
 	import { showToast } from '$lib/stores/toast.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import Modal from '$lib/components/Modal.svelte';
-	import { isInAnyZone, PRIVACY_ZONES_KEY, type PrivacyZone } from '$lib/routes/privacy';
+	import { isFixInAnyZone, PRIVACY_ZONES_KEY, type PrivacyZone } from '$lib/routes/privacy';
 	import {
 		estimateRunCalories,
 		ACTIVITY_KCAL_PER_KG_PER_KM,
@@ -667,11 +667,7 @@
 				effective<PrivacyZone[]>(settings, PRIVACY_ZONES_KEY) ?? [];
 			hasZones = zones.length > 0;
 			if (run.track && run.track.length > 0 && hasZones) {
-				intersectsZone = run.track.some(
-					(p) =>
-						isInAnyZone(p, zones) ||
-						isInAnyZone({ lat: lineLat(p), lng: lineLng(p) }, zones),
-				);
+				intersectsZone = run.track.some((p) => isFixInAnyZone(p, zones));
 			}
 		} catch (_) {
 			// Settings load failure shouldn't block sharing — fall

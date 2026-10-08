@@ -16,8 +16,13 @@ function finite(v: unknown): v is number {
 	return typeof v === 'number' && Number.isFinite(v);
 }
 
-/** Whether the fix carries a usable smoothed position. */
-export function hasSmoothedPosition(p: LinePointSource): boolean {
+/**
+ * Whether the fix carries a usable smoothed position. Takes a stored track's
+ * element as it decoded, so a `null` or other non-object entry is no position
+ * rather than a throw that would cost the reader the whole track.
+ */
+export function hasSmoothedPosition(p: LinePointSource | null | undefined): boolean {
+	if (!p || typeof p !== 'object') return false;
 	return finite(p.smoothedLat) && finite(p.smoothedLng);
 }
 

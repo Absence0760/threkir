@@ -276,5 +276,43 @@
         null
       ]
     }
-  ]
+  ],
+  "nonObjectTrack": {
+    "description": "A stored track whose middle element is not an object. A reader that keeps the stored array (web, Deno) leaves that entry as it is and merges onto the rest, and must not throw: a throw costs it the whole track. The Go writer decodes it as a point with no coordinate, counts it, and places no position on it. The Dart reader cannot hold it in a List<Waypoint>: it drops the entry on decode, and the sidecar, whose point count names the stored array, no longer matches, so expectedDroppingNonObjects is the raw line.",
+    "trackJson": "[{\"lat\":40,\"lng\":-75,\"ts\":\"2026-10-08T07:00:00Z\"},null,{\"lat\":40.0002,\"lng\":-75.0001,\"ts\":\"2026-10-08T07:00:02Z\"}]",
+    "sha256": "c7c1238d5431e665491a759077dc42f401a2d2e056904d4d10b832275c1f4804",
+    "sidecar": {
+      "version": 1,
+      "track": {
+        "points": 3,
+        "sha256": "c7c1238d5431e665491a759077dc42f401a2d2e056904d4d10b832275c1f4804"
+      },
+      "positions": [
+        [
+          40.0000005,
+          -75.0000004
+        ],
+        null,
+        [
+          40.0002001,
+          -75.0000998
+        ]
+      ]
+    },
+    "expected": [
+      [
+        40.0000005,
+        -75.0000004
+      ],
+      null,
+      [
+        40.0002001,
+        -75.0000998
+      ]
+    ],
+    "expectedDroppingNonObjects": [
+      null,
+      null
+    ]
+  }
 }

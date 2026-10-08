@@ -15,6 +15,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Absence0760/threkir/apps/job_worker/internal/gpsdistance"
 )
 
 const drSidecar = drUserID + "/" + drRunID + ".smoothed.json.gz"
@@ -62,6 +64,60 @@ func TestSmoothedSidecar_WriterAgreesWithTheReadersVectors(t *testing.T) {
 	_ = json.Unmarshal(vf.Cases[0].Sidecar, &b)
 	if ja, jb := canonicalJSON(t, a), canonicalJSON(t, b); ja != jb {
 		t.Errorf("writer re-encodes the readers' sidecar as %s, want %s", ja, jb)
+	}
+}
+
+// A stored track entry that is not an object: the readers keep or drop it
+// but must not lose the track, and the writer has to count it the same way
+// the array-keeping readers do, or its fingerprint would name a different
+// point count than the one they check.
+func TestSmoothedSidecar_WriterCountsANonObjectEntryAsTheReadersDo(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "fixtures", "smoothed_sidecar_vectors.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var vf struct {
+		NonObjectTrack struct {
+			TrackJSON string          `json:"trackJson"`
+			SHA256    string          `json:"sha256"`
+			Sidecar   json.RawMessage `json:"sidecar"`
+			Expected  []*[2]float64   `json:"expected"`
+		} `json:"nonObjectTrack"`
+	}
+	if err := json.Unmarshal(raw, &vf); err != nil {
+		t.Fatal(err)
+	}
+	v := vf.NonObjectTrack
+	var stored []RecordedTrackPoint
+	if err := json.Unmarshal([]byte(v.TrackJSON), &stored); err != nil {
+		t.Fatalf("the writer's decoder refuses the track: %v", err)
+	}
+	var want SmoothedSidecar
+	if err := json.Unmarshal(v.Sidecar, &want); err != nil {
+		t.Fatal(err)
+	}
+	fp := fingerprintTrack([]byte(v.TrackJSON), len(stored))
+	if fp != want.Track || fp.SHA256 != v.SHA256 {
+		t.Fatalf("fingerprint = %+v, want the readers' %+v", fp, want.Track)
+	}
+	pts, idx := coordinatePointsIndexed(stored)
+	if len(idx) != 2 || idx[0] != 0 || idx[1] != 2 {
+		t.Fatalf("kept indices = %v, want [0 2]: the non-object entry has no coordinate", idx)
+	}
+	replay := trackReplay{Positions: make([]*gpsdistance.LatLng, len(pts))}
+	for k, i := range idx {
+		replay.Positions[k] = &gpsdistance.LatLng{Lat: v.Expected[i][0], Lng: v.Expected[i][1]}
+	}
+	sc, why := buildSmoothedSidecar(&RecordedTrack{Points: stored, Fingerprint: fp}, idx, replay)
+	if sc == nil {
+		t.Fatalf("no sidecar: %s", why)
+	}
+	got, _ := json.Marshal(sc)
+	var a, b any
+	_ = json.Unmarshal(got, &a)
+	_ = json.Unmarshal(v.Sidecar, &b)
+	if ja, jb := canonicalJSON(t, a), canonicalJSON(t, b); ja != jb {
+		t.Errorf("writer builds %s, want the readers' %s", ja, jb)
 	}
 }
 

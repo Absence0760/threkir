@@ -16,3 +16,4 @@ export 'src/effort_rank.dart';
 export 'src/paged_read.dart';
 export 'src/segments_rank.dart';
 export 'src/settings_service.dart';
+export 'src/smoothed_sidecar.dart';

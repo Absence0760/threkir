@@ -13,6 +13,7 @@ import 'chunk.dart';
 import 'effort_rank.dart';
 import 'paged_read.dart';
 import 'segments_rank.dart';
+import 'smoothed_sidecar.dart';
 
 // Column-level grant lockdowns: see migrations 20260801_001 +
 // 20260818_001 (clubs.invite_token) and 20260723_001 + 20260806_001 +
@@ -1291,13 +1292,17 @@ class ApiClient {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
 
+    // The track and the job_worker's smoothed-position sidecar, which no
+    // column names (removing a path that is not there is a no-op).
     final trackPath = run.metadata?['track_url'] as String?;
-    if (trackPath != null && trackPath.isNotEmpty) {
-      try {
-        await _client.storage.from(StorageBuckets.runs).remove([trackPath]);
-      } catch (e) {
-        // Best-effort — the row delete is more important than the file cleanup.
-      }
+    final runPaths = [
+      if (trackPath != null && trackPath.isNotEmpty) trackPath,
+      smoothedSidecarPath(userId, run.id),
+    ];
+    try {
+      await _client.storage.from(StorageBuckets.runs).remove(runPaths);
+    } catch (e) {
+      // Best-effort — the row delete is more important than the file cleanup.
     }
 
     try {
@@ -1585,15 +1590,39 @@ class ApiClient {
     return data.map<Run>((row) => _runFromRow(row)).toList();
   }
 
-  /// Download and decode the GPS track for a single run.
+  /// Download and decode the GPS track for a single run of the signed-in
+  /// user's.
   ///
   /// Reads the gzipped JSON from Supabase Storage at the path stored in
   /// `metadata['track_url']` (returned by [getRuns] / [_runFromRow]).
-  /// Returns an empty list if the run has no track.
+  /// Returns an empty list if the run has no track. A track with no smoothed
+  /// pair on any waypoint (a watch run, an old run the server recomputed)
+  /// gets the job_worker's smoothed-position sidecar merged on when the
+  /// sidecar names these exact bytes ([mergeSmoothedSidecar]); any failure to
+  /// fetch or read it leaves the raw track, which is what it always was.
   Future<List<Waypoint>> fetchTrack(Run run) async {
     final url = run.metadata?['track_url'] as String?;
     if (url == null || url.isEmpty) return const [];
-    return _downloadTrack(url);
+    final inflated = gzip.decode(
+      await _client.storage.from(StorageBuckets.runs).download(url),
+    );
+    final track = _decodeTrack(inflated);
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null || !needsSmoothedSidecar(track)) return track;
+    try {
+      final sidecar = await _client.storage
+          .from(StorageBuckets.runs)
+          .download(smoothedSidecarPath(userId, run.id));
+      return mergeSmoothedSidecar(
+        track,
+        decodeSmoothedSidecar(gzip.decode(sidecar)),
+        points: track.length,
+        sha256Hex: trackSha256Hex(inflated),
+      );
+    } catch (e) {
+      debugPrint('No smoothed sidecar for run ${run.id}: $e');
+      return track;
+    }
   }
 
   /// Download a track by its Storage path. Used when a caller has a
@@ -1904,8 +1933,11 @@ class ApiClient {
 
   Future<List<Waypoint>> _downloadTrack(String path) async {
     final bytes = await _client.storage.from(StorageBuckets.runs).download(path);
-    final json = utf8.decode(gzip.decode(bytes));
-    final list = jsonDecode(json) as List<dynamic>;
+    return _decodeTrack(gzip.decode(bytes));
+  }
+
+  static List<Waypoint> _decodeTrack(List<int> inflated) {
+    final list = jsonDecode(utf8.decode(inflated)) as List<dynamic>;
     return list.map((t) => _waypointFromJson(t as Map<String, dynamic>)).toList();
   }
 

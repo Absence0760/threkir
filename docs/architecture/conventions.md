@@ -1778,12 +1778,16 @@ complete, this proves the shipped set is the set that exists.
 ## A web message key's catalogue part is derived, never placed
 
 Each web locale ships as a core catalogue plus one per **area**
-(`apps/web/src/lib/i18n/areas.ts`, decisions § 1802): the build-time split puts
-a key in area A when every route that can render a file naming it lies under
-one of A's route prefixes, and in core otherwise. **Adding a key is unchanged**
-— write it in `locales/<tag>.ts` for every locale and call `m('key')`. Reusing a
-key on a second area's screen is unchanged too; the next build moves it to core
-on its own. What the split relies on, and `area_catalogues.test.ts` holds:
+(`apps/web/src/lib/i18n/areas.ts`, decisions § 1802) and one per derived
+**group** (§ 1812): the build-time split puts a key in area A when every route
+that can render a file naming it lies under one of A's route prefixes; else in
+the group named by the exact set of areas and unregistered segments that render
+it, when that set holds 1 KB of English source or more; and in core otherwise
+(always, for a key the root layout renders). **Adding a key is unchanged** —
+write it in `locales/<tag>.ts` for every locale and call `m('key')`. Reusing a
+key on a second area's screen is unchanged too; the next build moves it to a
+group or to core on its own. Nobody lists a group. What the split relies on,
+and `area_catalogues.test.ts` holds:
 
 - **Name a key where its reader can see it.** The scan follows literals: a key
   written in full (`'gym.title'`), a template with a dotted static head
@@ -1800,7 +1804,18 @@ on its own. What the split relies on, and `area_catalogues.test.ts` holds:
   whole catalogue reaches a code chunk anyway (`catalogue-leak`).
 - **An area earns its place.** A new entry in `AREAS` must name a real route
   and receive at least one key; a segment whose own sentences are a few hundred
-  bytes is cheaper in core than as a round trip.
+  bytes is cheaper in core than as a round trip. A segment no area covers gets
+  a derived `_segment` group on its own once it is big enough, so an area is
+  only worth declaring for a sub-route split (`/settings/account`) or a
+  segment you want held to that name.
+- **Choose structure by `structureLocale()`, words by `m()`.** A page's first
+  load applies the reader's locale before it renders, including when it
+  hydrates English markup the server wrote (decisions § 1812). Svelte rewrites
+  differing text and attributes as it hydrates, but a different component or
+  `{#if}` branch per locale is a hydration mismatch. A component that picks
+  WHICH subtree to render by locale (the learn guide body picks a per-locale
+  mdsvex component) reads `structureLocale()`, which answers the server's
+  locale until the app mounts and the reader's after.
 
 ## A size budget measures what one reader downloads, not what the build emits
 

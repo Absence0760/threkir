@@ -135,6 +135,8 @@
 			);
 			return;
 		}
+		// Read before the try: the withdrawal arm nulls `healthDataConsentAt`.
+		const withdrawing = !healthDataConsent && healthDataConsentAt != null;
 		savingDemographics = true;
 		demographicsSaved = false;
 		try {
@@ -189,8 +191,13 @@
 			// HR-max derivation) — it follows consent in both directions, so a
 			// withdrawal clears it here rather than leaving withdrawn
 			// special-category data feeding those reads.
+			// `body_weight_kg` is the same kind of mirror — of the weight series
+			// — and every calorie estimate (web, phone, Wear OS) reads it, so it
+			// goes with the series on a real withdrawal. Only a real one: a
+			// runner who never consented may hold a weight typed at onboarding.
 			await updateUniversal(auth.user.id, {
 				date_of_birth: healthDataConsent && dateOfBirth ? dateOfBirth : null,
+				...(withdrawing ? { body_weight_kg: null } : {}),
 			});
 			if (healthDataConsent && weightDisplay != null && weightDisplay > 0) {
 				// Append a new measurement only when the value changed, so
@@ -200,6 +207,13 @@
 					await recordWeightKg(kg);
 					loadedWeightKg = kg;
 				}
+				// The series is the canonical store, but the calorie estimates
+				// read the bag's `body_weight_kg`, which nothing here used to
+				// write — so a weight saved on this card reached no estimate and
+				// the wrist kept its 70 kg default (decisions § 1811). Written
+				// even when the value is unchanged, so a re-save repairs a stale
+				// mirror.
+				await updateUniversal(auth.user.id, { body_weight_kg: kg });
 			}
 			demographicsSaved = true;
 			showToast(m('prefs.demographicsSavedToast'), 'success');

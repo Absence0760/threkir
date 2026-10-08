@@ -597,7 +597,8 @@
 			if (stampedAt) healthDataConsentAt = stampedAt as string;
 		}
 
-		if (!healthDataConsent && healthDataConsentAt != null) {
+		const withdrawing = !healthDataConsent && healthDataConsentAt != null;
+		if (withdrawing) {
 			// Withdrawal (Art 7(3)) — the SECURITY DEFINER RPC nulls the
 			// consent stamp + gender + height and erases the weight series
 			// atomically; insert-or-update server-side so a missing profile
@@ -658,6 +659,9 @@
 		// on withdrawal it is explicitly nulled so the stored value is cleared.
 		const prefs: PrefsBag = {};
 		prefs.date_of_birth = healthDataConsent && dateOfBirth ? dateOfBirth : null;
+		// The weight series' mirror, read by every calorie estimate — it goes
+		// with the series on a withdrawal, as `/settings/body` does (§ 1811).
+		if (withdrawing) prefs.body_weight_kg = null;
 		prefs.resting_hr_bpm = restingHrParsed;
 		prefs.max_hr_bpm = maxHrParsed;
 		// Cycle/pregnancy inputs are Art 9 reproductive-health data — write

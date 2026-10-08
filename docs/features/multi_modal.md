@@ -366,8 +366,10 @@ becomes an **action button**, not a tab.
 >
 > **Status (web, #905 workstream 3):** an account **with** runs opens on
 > `DashboardWeekLead.svelte` above the plan hero — this week's distance against
-> the plan's distance for the calendar week (or the runner's recent weekly
-> average), the plan's next open session, and **Add a run** above the fold.
+> the plan's distance for the calendar week, else the runner's weekly goal
+> (distance, then activity count), else their recent weekly average; the plan's
+> next open session; and **Add a run** plus **Import from Strava / Garmin**
+> above the fold ([decisions § 1792](../architecture/decisions.md)).
 > Nothing below it moved or went away; this is ordering, not removal. Mobile
 > still owes the same lead.
 

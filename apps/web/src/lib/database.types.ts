@@ -5609,6 +5609,13 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      map_match_track_source: {
+        Args: { p_run_id: string }
+        Returns: {
+          track_url: string
+          track_version: string
+        }[]
+      }
       mark_attendance: {
         Args: {
           p_attendance: string
@@ -5773,6 +5780,20 @@ export type Database = {
         }[]
       }
       record_coach_consent: { Args: never; Returns: string }
+      record_map_match_result: {
+        Args: {
+          p_algorithm: string
+          p_algorithm_version: string
+          p_error_message: string
+          p_matched_at: string
+          p_matched_track_url: string
+          p_run_id: string
+          p_source_track_url: string
+          p_status: string
+          p_track_version: string
+        }
+        Returns: boolean
+      }
       redeem_coach_invite: { Args: { token: string }; Returns: string }
       refresh_club_member_count: {
         Args: { p_club_id: string }
@@ -5911,6 +5932,10 @@ export type Database = {
           best_streak: number
           current_streak: number
         }[]
+      }
+      runs_track_object_version: {
+        Args: { p_track_url: string }
+        Returns: string
       }
       search_clubs: {
         Args: {

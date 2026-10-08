@@ -25,7 +25,12 @@ struct ContentView: View {
                         onStart: { countingDown = true }
                     )
                 case .recovering:
-                    RecoveryView(workoutManager: workoutManager, onRecover: recoverRun, onDiscard: discardRecovery)
+                    RecoveryView(
+                        workoutManager: workoutManager,
+                        onContinue: continueRun,
+                        onRecover: recoverRun,
+                        onDiscard: discardRecovery
+                    )
                 case .recording:
                     RunningView(
                         workoutManager: workoutManager,
@@ -63,6 +68,12 @@ struct ContentView: View {
         }
         .task {
             workoutManager.liveRaceRelay = connectivity.liveRaceRelay()
+            // Before anything is awaited: a run whose workout session outlived
+            // the app goes straight back to recording, and the recovery prompt
+            // below is then not raised over it.
+            SurvivingWorkout.handoff.register { survivor in
+                workoutManager.adoptSurvivingWorkout(survivor)
+            }
             await workoutManager.healthKit.requestAuthorization()
             workoutManager.checkForPendingRecovery()
         }
@@ -194,6 +205,15 @@ struct ContentView: View {
             }
         }
         #endif
+    }
+
+    /// Keep recording the checkpointed run. Falls back to saving it when the
+    /// checkpoint can no longer be continued, so the tap is never lost.
+    private func continueRun() {
+        guard workoutManager.continueRecoveredRun() else {
+            recoverRun()
+            return
+        }
     }
 
     private func recoverRun() {
@@ -873,6 +893,7 @@ struct PausedView: View {
 
 struct RecoveryView: View {
     let workoutManager: WorkoutManager
+    let onContinue: () -> Void
     let onRecover: () -> Void
     let onDiscard: () -> Void
     @State private var confirmingDiscard = false
@@ -893,11 +914,23 @@ struct RecoveryView: View {
                         .foregroundColor(.secondary)
                 }
 
-                Button("Recover") {
+                // Continue is offered only while the run is recent enough to
+                // still be the same outing — see `RunResumePlan`. Past that,
+                // saving it is the only way to keep it.
+                if workoutManager.canContinueRecoveredRun {
+                    Button("Continue run") {
+                        onContinue()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(AppTheme.coralDeep)
+                    .accessibilityHint("Keeps recording this run from where it stopped")
+                }
+
+                Button("Save run") {
                     onRecover()
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(AppTheme.coralDeep)
+                .tint(workoutManager.canContinueRecoveredRun ? Color.gray : AppTheme.coralDeep)
                 .accessibilityHint("Restores the unsaved run from the last checkpoint")
 
                 Button("Discard", role: .destructive) {

@@ -311,6 +311,13 @@ final class RunAnnouncer {
 
     func reset() { splits.reset() }
 
+    /// Mark every split a continued run already banked as heard, silently.
+    /// Without it the first fix after a relaunch at 80 km announces "80
+    /// kilometres" as though the runner had just reached it.
+    func primeSplits(distanceMetres: Double) {
+        _ = splits.splitDue(distanceMetres: distanceMetres, prefersMiles: prefersMiles())
+    }
+
     func announceStart() { emit(.started) }
 
     /// Fed the run's cumulative distance on every fix. The tracker advances

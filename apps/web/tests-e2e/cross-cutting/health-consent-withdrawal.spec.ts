@@ -69,10 +69,10 @@ test.describe('health-data consent — withdrawal erases Art 9, keeps the age re
 			.insert({ user_id: user.id, weight_kg: WEIGHT_KG, recorded_at: noonOnBrowserDay() });
 		if (bmErr) throw bmErr;
 
-		// The Art 9 mirror the health-use surfaces actually read.
+		// The Art 9 mirrors the health-use surfaces and calorie estimates read.
 		const { error: setErr } = await admin
 			.from('user_settings')
-			.upsert({ user_id: user.id, prefs: { date_of_birth: DOB } });
+			.upsert({ user_id: user.id, prefs: { date_of_birth: DOB, body_weight_kg: WEIGHT_KG } });
 		if (setErr) throw setErr;
 	});
 
@@ -139,6 +139,60 @@ test.describe('health-data consent — withdrawal erases Art 9, keeps the age re
 			// The mirror is the value every health-use surface reads. Left
 			// behind, the age grade keeps running off a withdrawn consent.
 			expect(settings.prefs?.date_of_birth ?? null).toBeNull();
+			// The weight series' mirror, which every calorie estimate (web,
+			// phone, Wear OS) reads — it goes with the series (§ 1811).
+			expect(settings.prefs?.body_weight_kg ?? null).toBeNull();
+		} finally {
+			await ctx.close();
+		}
+	});
+
+	test('saving a weight on /settings/body writes the series AND the calorie mirror', async ({
+		browser,
+	}) => {
+		// § 1811: the card appended to `body_metrics` and never touched the
+		// bag's `body_weight_kg`, which is the value every calorie estimate
+		// reads — web run detail, the phone and the Wear OS PostRun line. A
+		// weight saved here reached none of them. Plant a stale mirror so the
+		// assertion separates "written" from "left as it was".
+		const { error: setErr } = await admin
+			.from('user_settings')
+			.upsert({ user_id: user.id, prefs: { date_of_birth: DOB, body_weight_kg: 60, weight_unit: 'kg' } });
+		if (setErr) throw setErr;
+
+		const ctx = await browser.newContext({ storageState: user.storageStatePath });
+		const page = await ctx.newPage();
+		try {
+			await page.goto('/settings/body');
+			const weight = page.getByTestId('weight');
+			await expect(weight).toHaveValue(String(WEIGHT_KG), { timeout: 15_000 });
+			await weight.fill('81.5');
+			await page.getByTestId('save-demographics').click();
+
+			await expect
+				.poll(
+					async () => {
+						const { data } = await admin
+							.from('user_settings')
+							.select('prefs')
+							.eq('user_id', user.id)
+							.single();
+						return (data?.prefs as Record<string, unknown> | null)?.body_weight_kg ?? null;
+					},
+					{ timeout: 15_000 },
+				)
+				.toBe(81.5);
+
+			const latest = await readRows(
+				'body_metrics after save',
+				admin
+					.from('body_metrics')
+					.select('weight_kg')
+					.eq('user_id', user.id)
+					.order('recorded_at', { ascending: false })
+					.limit(1),
+			);
+			expect(Number((latest[0] as { weight_kg: number }).weight_kg)).toBe(81.5);
 		} finally {
 			await ctx.close();
 		}

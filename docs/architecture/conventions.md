@@ -316,6 +316,17 @@ GET-able function, GETs one that is not, sends a `null` in a GET, or omits an
 argument that has no default. A function that must stay a POST despite
 qualifying goes in its `POST_EXEMPT` table with the reason.
 
+**The same rule holds on Dart** (decisions § 1803): `_client.rpc('fn', params:
+{...}, get: true)`. Two things differ from web. postgrest-dart throws
+`ArgumentError` on a GET with no params map, so a no-argument read is
+`rpc('fn', params: const {}, get: true)`. And a Dart POST sent an explicit
+`null` where web's `undefined` was always dropped, so a Dart GET may omit an
+argument — `'p_x': ?x`, or a collection-`if` — only when its SQL default is
+NULL; otherwise omitting it changes what the function receives.
+`scripts/check_dart_rpc_transport.mjs` holds `packages/*/lib` and
+`apps/mobile_android/lib` to this, reading the migrations through
+`scripts/rpc_transport.mjs`, the module the web test reads them through too.
+
 ### What not to catch
 
 - `StateError` / `TypeError` / precondition failures — these are bugs. Let them crash in debug, let crash reporting catch them in release.

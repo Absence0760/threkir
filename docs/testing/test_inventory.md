@@ -1546,6 +1546,14 @@ path that ends a sentence. Two vacuity cases — no estate path in scope, no `bi
 script read — and three non-findings: a comment naming a placeholder, a history
 doc, an `.example` template.
 
+### `scripts/rpc_transport.test.mjs` — 7 tests
+
+The migration replay both client transport guards read ([decisions § 1803](../architecture/decisions.md)): the last definition of a signature wins and an `alter function … stable` re-declares it; a `stable` inside a body, a comment or a default literal does not answer for the header; `drop` by signature, a bare `drop` and `set schema` each remove a function; two live overloads of one name throw rather than pick one; each argument carries its type, whether it has a default and whether that default is NULL; and the GET verdict refuses a volatile function, a jsonb or array input and an argument named like a PostgREST directive (quoted, which is why sql_lex.mjs gained `keepIdentifiers`). The last case replays the committed migrations.
+
+### `scripts/check_dart_rpc_transport.test.mjs` — 14 tests
+
+The Dart half of web's `rpc_transport_guard.test.ts` ([decisions § 1803](../architecture/decisions.md)). The real tree is the positive control — clean, at least 60 call sites across `packages/api_client` and `apps/mobile_android`, and the three reads § 1791 left POSTing now GETs — and each case mutates an in-memory copy into one refused shape: a stable read POSTed, a no-argument one POSTed (told it needs `params: const {}` too), a GET to a volatile function and to a jsonb-argument one, a GET with no params map (postgrest-dart throws `ArgumentError` on one), a GET that would send null, a conditional omission of a parameter whose default is not NULL, and an unknown or missing parameter name. Plus a non-literal callee or `get:` flag, a commented-out call, a stale `POST_EXEMPT` entry, and the map-literal reader (collection-`if`, null-aware `?v`, spreads).
+
 ### `scripts/bin_lib_estate.test.mjs` — 11 tests
 
 `bin/lib/estate.sh`'s sops creation-rule lookup, against fixture configs

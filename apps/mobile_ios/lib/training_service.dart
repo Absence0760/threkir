@@ -101,7 +101,8 @@ class TrainingService extends ChangeNotifier {
   Future<UserProfileRow?> _fetchMyProfile() async {
     try {
       if (_uid == null) return null;
-      final row = ApiClient.profileRowFrom(await _c.rpc('get_my_profile'));
+      final row = ApiClient.profileRowFrom(
+          await _c.rpc('get_my_profile', params: const {}, get: true));
       if (row == null) return null;
       return UserProfileRow.fromJson(row);
     } catch (_) {

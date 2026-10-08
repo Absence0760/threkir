@@ -289,7 +289,8 @@ class RaceService extends ChangeNotifier {
     }
 
     try {
-      final raw = await _c.rpc('search_race_listings', params: params);
+      final raw =
+          await _c.rpc('search_race_listings', params: params, get: true);
       return ((raw ?? <dynamic>[]) as List)
           .whereType<Map<String, dynamic>>()
           .map(RaceListingView.fromJson)

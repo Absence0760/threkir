@@ -709,6 +709,26 @@ jobs:
             echo "Name both — 'revoke execute on function <f> from public, anon;' — in that migration or a later one, and re-grant the roles that must keep it. A shipped migration is uneditable, so repair it forward in a new one."
             exit 1
           fi
+      # The Dart half of the web `rpc_transport_guard.test.ts` (which runs in
+      # the Web TS unit tests step below): every Dart `.rpc()` to a stable,
+      # all-scalar function goes out as a GET, the one method a closing
+      # PostgREST connection is retried on, and nothing else does. Both read
+      # the migrations through scripts/rpc_transport.mjs (decisions § 1803).
+      # Drift first, then the suites: the guard's own last cases read the
+      # committed tree, so running them first would report a broken tool over
+      # an ordinary missing `get: true`.
+      - name: Dart RPCs use the method their function takes
+        run: |
+          if ! node scripts/check_dart_rpc_transport.mjs; then
+            echo "::error::A Dart .rpc() call is sent with an HTTP method its function cannot take, or a stable all-scalar read is still POSTed. Nothing here is about the generated types, the migrations' locks or grants, or the web call sites — the web half is the rpc_transport_guard unit test."
+            echo "The failing line above names the call site and what to pass. Reproduce with: node scripts/check_dart_rpc_transport.mjs (stdlib only, no Flutter needed)."
+            exit 1
+          fi
+          if ! node --test scripts/rpc_transport.test.mjs scripts/check_dart_rpc_transport.test.mjs; then
+            echo "::error::The RPC-transport guard's own unit tests failed. The Dart call sites themselves are fine — the check above just passed — so this is a defect in scripts/rpc_transport.mjs or scripts/check_dart_rpc_transport.mjs, or a mutation case whose source text moved."
+            echo "Reproduce with: node --test scripts/rpc_transport.test.mjs scripts/check_dart_rpc_transport.test.mjs (stdlib only, no install needed)."
+            exit 1
+          fi
       # The four `pnpm.overrides` entries are security pins, and a bot can drop
       # them. Dependabot #812 regenerated pnpm-lock.yaml without its top-level
       # `overrides:` block, and all 17 pnpm jobs then died at

@@ -1253,6 +1253,27 @@ owner notification (`kind = 'achievement'`, linked via the new
 migration tail over all existing users. See [features/achievements.md](../features/achievements.md)
 + [decisions.md § 164](../architecture/decisions.md).
 
+**Earned set + recompute revocation (`20270717000001`):** the ladders and the
+eligible-run rules live in `achievement_tiers_met(p_user)` (SQL, SECURITY
+INVOKER, stable, EXECUTE revoked `from public, anon, authenticated`), which
+returns every tier met per family, not only the top one.
+`award_achievements_for_user` inserts the top tier per family from it, and
+`scripts/check_shared_constants.mjs` reads the ladders from it.
+`revoke_unmet_distance_achievements(p_user) returns integer` (SECURITY DEFINER,
+`search_path = public`, same depth-0 role guard and per-user advisory lock as
+the awarder, EXECUTE revoked `from public, anon, authenticated`) deletes the
+user's `distance_single` / `distance_lifetime` rows whose tier
+`achievement_tiers_met` no longer returns, and returns how many it deleted.
+Its only caller is the statement-level AFTER UPDATE trigger
+`runs_achievements_revoke_on_distance_recompute`
+(`trigger_revoke_recomputed_distance_achievements`), which fires it for a run
+whose `distance_m` and `metadata.distance_recomputed_at` both changed — the
+`distance_recompute` worker's single write, never an ordinary edit. The name
+sorts before `runs_award_achievements_update`, so the revoke runs first and the
+awarder then inserts any lower tier still met. A revoked award's `achievement`
+notification goes with it through `notifications.achievement_id`'s `on delete
+cascade`. pgtap `achievements_distance_recompute_revoke_test.sql`.
+
 ---
 
 #### `fitness_snapshots`
@@ -2088,10 +2109,10 @@ grant  execute on function public.<fn>(<args>) to authenticated;   -- and/or ser
 
 Add `authenticated` to the revoke list when no client role should hold it at all
 (the `cleanup_*` / `enqueue_*` cron family, and helpers only a SECURITY DEFINER
-trigger calls). 61 migrations write a function-level `from public, anon` revoke
-today (49 as `revoke execute`, 12 as `revoke all`); it is the house form for
+trigger calls). 62 migrations write a function-level `from public, anon` revoke
+today (50 as `revoke execute`, 12 as `revoke all`); it is the house form for
 exactly this reason, and `check_migration_function_revoke_noop.mjs` is what
-keeps it — it replays all 485 migrations in version order and fails the PR on
+keeps it — it replays all 486 migrations in version order and fails the PR on
 any EXECUTE revoke that leaves the other channel at its image-dependent
 default, in either direction. **Those four figures are derived, not typed**: the
 guard prints them and `check_migration_function_revoke_noop.test.mjs` asserts

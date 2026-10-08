@@ -63,6 +63,7 @@ Runs recorded before v1 keep their inflated hop-sum distance until something re-
 2. **RPC.** `request_distance_recompute(p_run_id uuid) returns void` (migration `20270716000001`) is SECURITY DEFINER, `authenticated`-only, raises `42501` unless the caller owns the run and `22000` when it has no track, and inserts a `distance_recompute` job with payload `{run_id, user_id}`. A partial unique index (`jobs_dedupe_distance_recompute`) makes a second request while one is queued or running a no-op. See [api_database.md](../backend/api_database.md).
 3. **Job.** The Go worker (`apps/job_worker/internal/gpsdistance/`) downloads the track, replays its waypoints through the estimator (the Doppler path when the waypoints carry `speedMps` and friends, position-only otherwise), and rewrites `runs.distance_m`. It skips sources other than `app` / `watch`.
 4. **Metadata.** The worker writes `distance_estimator = "kalman_v1"` and `distance_recomputed_at`, and copies the recorder's figure into `distance_recorded_m` (only when absent, so a second recompute never loses the original). The page shows it as "Originally recorded: X" in the viewer's unit. All keys are registered in [metadata.md § Distance estimator](../backend/metadata.md).
+5. **Badges.** The same write takes back any distance badge (`distance_single`, `distance_lifetime`) the corrected distance no longer earns, via the `runs_achievements_revoke_on_distance_recompute` trigger; every other badge family stays durable ([achievements.md](achievements.md)).
 
 ## Tuning
 

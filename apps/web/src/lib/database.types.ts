@@ -4884,6 +4884,17 @@ export type Database = {
         Args: { parent_id: string }
         Returns: boolean
       }
+      achievement_tiers_met: {
+        Args: { p_user: string }
+        Returns: {
+          badge_key: string
+          rank: number
+          source_id: string
+          source_kind: string
+          tier: string
+          value_num: number
+        }[]
+      }
       admin_unhide_target: {
         Args: { p_target_id: string; p_target_kind: string }
         Returns: boolean
@@ -5775,6 +5786,10 @@ export type Database = {
           p_target_id: string
           p_target_kind: string
         }
+        Returns: number
+      }
+      revoke_unmet_distance_achievements: {
+        Args: { p_user: string }
         Returns: number
       }
       route_conditions_for_viewer: {

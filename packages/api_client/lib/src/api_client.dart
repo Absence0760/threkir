@@ -1899,6 +1899,10 @@ class ApiClient {
         'ele': w.elevationMetres,
         'ts': w.timestamp?.toUtc().toIso8601String(),
         if (w.bpm != null) 'bpm': w.bpm,
+        if (w.accuracyMetres != null) 'accuracyMetres': w.accuracyMetres,
+        if (w.speedMps != null) 'speedMps': w.speedMps,
+        if (w.speedAccuracyMps != null) 'speedAccuracyMps': w.speedAccuracyMps,
+        if (w.bearingDeg != null) 'bearingDeg': w.bearingDeg,
       };
 
   static Waypoint _waypointFromJson(Map<String, dynamic> m) => Waypoint(
@@ -1907,6 +1911,10 @@ class ApiClient {
         elevationMetres: (m['ele'] as num?)?.toDouble(),
         timestamp: parseIsoStrictValue(m['ts']),
         bpm: (m['bpm'] as num?)?.toInt(),
+        accuracyMetres: (m['accuracyMetres'] as num?)?.toDouble(),
+        speedMps: (m['speedMps'] as num?)?.toDouble(),
+        speedAccuracyMps: (m['speedAccuracyMps'] as num?)?.toDouble(),
+        bearingDeg: (m['bearingDeg'] as num?)?.toDouble(),
       );
 
   /// Auto-link helper: ask the DB which of the user's saved routes

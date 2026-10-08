@@ -28,6 +28,10 @@ void main() {
     double accuracy = 5,
     double altitude = 400,
     double altitudeAccuracy = 2,
+    double speed = 2.5,
+    double speedAccuracy = 1,
+    double heading = 90,
+    double headingAccuracy = 5,
   }) {
     return Position(
       longitude: lngBase + metresEast / metrePerDegLng,
@@ -36,10 +40,10 @@ void main() {
       accuracy: accuracy,
       altitude: altitude,
       altitudeAccuracy: altitudeAccuracy,
-      heading: 90,
-      headingAccuracy: 5,
-      speed: 2.5,
-      speedAccuracy: 1,
+      heading: heading,
+      headingAccuracy: headingAccuracy,
+      speed: speed,
+      speedAccuracy: speedAccuracy,
     );
   }
 
@@ -204,8 +208,12 @@ void main() {
     test('movement threshold rejects sub-3m jitter', () {
       final r = RunRecorder()..debugPrepareWithoutStream();
       r.begin();
-      r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 0));
-      r.debugInjectPosition(makePosition(metresEast: 2, secondsFromStart: 1));
+      // A runner standing still: the chip's Doppler speed reads 0, so the
+      // 2 m of position jitter is neither kept in the track nor credited.
+      r.debugInjectPosition(
+          makePosition(metresEast: 0, secondsFromStart: 0, speed: 0));
+      r.debugInjectPosition(
+          makePosition(metresEast: 2, secondsFromStart: 1, speed: 0));
       // Delta 2m < 3m threshold → not appended
       expect(r.debugTrack.length, 1);
       expect(r.debugDistanceMetres, 0);
@@ -231,7 +239,9 @@ void main() {
       r.debugInjectPosition(makePosition(metresEast: 50, secondsFromStart: 1));
       // Track should reject the corrupt fix.
       expect(r.debugTrack.length, 1);
-      expect(r.debugDistanceMetres, 0);
+      // Distance is the chip's 2.5 m/s Doppler speed over the 1 s interval;
+      // the 50 m position jump itself is never credited.
+      expect(r.debugDistanceMetres, closeTo(2.5, 1e-9));
     });
 
     test('implausible short-interval single-hop jump (> 100m) is rejected', () {
@@ -246,7 +256,8 @@ void main() {
         makePosition(metresEast: 150, secondsFromStart: 5),
       );
       expect(r.debugTrack.length, 1);
-      expect(r.debugDistanceMetres, 0);
+      // 2.5 m/s Doppler over 5 s, not the 150 m hop.
+      expect(r.debugDistanceMetres, closeTo(12.5, 1e-9));
     });
 
     test('teleport on a duplicate (zero-dt) GPS timestamp is rejected', () {
@@ -267,10 +278,13 @@ void main() {
       // true elapsed time (20 m in 10 s = 2 m/s, within the clamp).
       final r = RunRecorder()..debugPrepareWithoutStream(maxSpeedMps: 10);
       r.begin();
-      r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 0));
-      r.debugInjectPosition(makePosition(metresEast: 90, secondsFromStart: 0));
+      r.debugInjectPosition(
+          makePosition(metresEast: 0, secondsFromStart: 0, speed: 2));
+      r.debugInjectPosition(
+          makePosition(metresEast: 90, secondsFromStart: 0, speed: 2));
       expect(r.debugDistanceMetres, 0);
-      r.debugInjectPosition(makePosition(metresEast: 20, secondsFromStart: 10));
+      r.debugInjectPosition(
+          makePosition(metresEast: 20, secondsFromStart: 10, speed: 2));
       expect(r.debugDistanceMetres, closeTo(20, 0.5));
       expect(r.debugTrack.length, 2);
     });
@@ -281,16 +295,21 @@ void main() {
       // > 100 m from the stale anchor but a genuine interval has elapsed, so
       // the anchor rebases to it WITHOUT crediting the un-sampled gap, and
       // ordinary movement accumulates again from the new anchor.
-      final r = RunRecorder()
+      // The monotonic clock advances with the GPS one, as on a real phone.
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock)
         ..debugPrepareWithoutStream(maxSpeedMps: 1000);
       r.begin();
       r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 0));
       // 150 m gap over 60 s (> the 10 s re-anchor window): rebase, no credit.
+      clock.advance(const Duration(seconds: 60));
       r.debugInjectPosition(makePosition(metresEast: 150, secondsFromStart: 60));
       expect(r.debugDistanceMetres, 0);
       expect(r.debugTrack.length, 2);
       // Normal movement from the re-anchored position now accumulates.
-      r.debugInjectPosition(makePosition(metresEast: 160, secondsFromStart: 70));
+      clock.advance(const Duration(seconds: 10));
+      r.debugInjectPosition(
+          makePosition(metresEast: 160, secondsFromStart: 70, speed: 1));
       expect(r.debugDistanceMetres, closeTo(10, 0.5));
       expect(r.debugTrack.length, 3);
     });
@@ -302,14 +321,20 @@ void main() {
       // anchor could never re-qualify and distance was frozen for the rest of
       // the run. Inject three fixes each further away after a gap; the first
       // rebases and the next two accumulate the real movement between them.
-      final r = RunRecorder()
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock)
         ..debugPrepareWithoutStream(maxSpeedMps: 1000);
       r.begin();
       r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 0));
       // 200 m gap over 60 s → re-anchor at 200 m, nothing credited.
+      clock.advance(const Duration(seconds: 60));
       r.debugInjectPosition(makePosition(metresEast: 200, secondsFromStart: 60));
-      r.debugInjectPosition(makePosition(metresEast: 230, secondsFromStart: 70));
-      r.debugInjectPosition(makePosition(metresEast: 260, secondsFromStart: 80));
+      clock.advance(const Duration(seconds: 10));
+      r.debugInjectPosition(
+          makePosition(metresEast: 230, secondsFromStart: 70, speed: 3));
+      clock.advance(const Duration(seconds: 10));
+      r.debugInjectPosition(
+          makePosition(metresEast: 260, secondsFromStart: 80, speed: 3));
       // 30 m + 30 m of real movement after the re-anchor; the 200 m gap itself
       // is never credited.
       expect(r.debugDistanceMetres, closeTo(60, 1.0));
@@ -326,7 +351,8 @@ void main() {
       r.begin();
       r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 0));
       r.debugInjectPosition(makePosition(metresEast: 150, secondsFromStart: 8));
-      expect(r.debugDistanceMetres, 0);
+      // 2.5 m/s Doppler over 8 s; the 150 m hop is not credited.
+      expect(r.debugDistanceMetres, closeTo(20, 1e-9));
       expect(r.debugTrack.length, 1);
     });
 
@@ -364,8 +390,8 @@ void main() {
       expect(r.debugTrack.length, 2, reason: 'but the anchor must rebase');
       // Ordinary movement accumulates again from the re-anchored position.
       clock.advance(const Duration(seconds: 10));
-      r.debugInjectPosition(
-          makePosition(metresEast: 160, secondsFromStart: -3590));
+      r.debugInjectPosition(makePosition(
+          metresEast: 160, secondsFromStart: -3590, speed: 1));
       expect(r.debugDistanceMetres, closeTo(10, 0.5));
       expect(r.debugTrack.length, 3);
     });
@@ -416,7 +442,10 @@ void main() {
       r.begin();
       r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 0));
       r.debugInjectPosition(makePosition(metresEast: 150, secondsFromStart: 8));
-      expect(r.debugDistanceMetres, 0);
+      // The track refuses the hop. Distance is the chip's 2.5 m/s over the
+      // 8 s the fix claims — bounded by the estimator's gap and speed caps,
+      // and never the 150 m the position jumped.
+      expect(r.debugDistanceMetres, closeTo(20, 1e-9));
       expect(r.debugTrack.length, 1);
     });
   });
@@ -632,7 +661,8 @@ void main() {
       r.begin();
       expect(r.debugTreadmillMode, isFalse);
       r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 0));
-      r.debugInjectPosition(makePosition(metresEast: 10, secondsFromStart: 5));
+      r.debugInjectPosition(
+          makePosition(metresEast: 10, secondsFromStart: 5, speed: 2));
       expect(r.debugReportedDistanceMetres, closeTo(10, 0.5),
           reason: 'GPS distance is reported when treadmill mode is off');
     });
@@ -652,7 +682,8 @@ void main() {
       final r = RunRecorder()..debugPrepareWithoutStream();
       r.begin();
       r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 0));
-      r.debugInjectPosition(makePosition(metresEast: 30, secondsFromStart: 10));
+      r.debugInjectPosition(
+          makePosition(metresEast: 30, secondsFromStart: 10, speed: 3));
       r.setTreadmillSample(3.0, totalDistanceMetres: 1000);
       r.setTreadmillSample(3.0, totalDistanceMetres: 1500);
       expect(r.debugReportedDistanceMetres, closeTo(530, 0.5),
@@ -666,7 +697,10 @@ void main() {
       final r = RunRecorder()..debugPrepareWithoutStream();
       r.begin();
       r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 0));
-      r.debugInjectPosition(makePosition(metresEast: 60, secondsFromStart: 20));
+      r.debugInjectPosition(
+          makePosition(metresEast: 30, secondsFromStart: 10, speed: 3));
+      r.debugInjectPosition(
+          makePosition(metresEast: 60, secondsFromStart: 20, speed: 3));
       expect(r.debugReportedDistanceMetres, closeTo(60, 0.5));
       // Mid-run is the ONLY way to enable treadmill mode, so the switch always
       // lands on an already-accumulating run. Anchoring at the belt's own total
@@ -687,7 +721,10 @@ void main() {
       final r = RunRecorder()..debugPrepareWithoutStream();
       r.begin();
       r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 0));
-      r.debugInjectPosition(makePosition(metresEast: 60, secondsFromStart: 20));
+      r.debugInjectPosition(
+          makePosition(metresEast: 30, secondsFromStart: 10, speed: 3));
+      r.debugInjectPosition(
+          makePosition(metresEast: 60, secondsFromStart: 20, speed: 3));
       r.setTreadmillSample(2.0);
       await Future<void>.delayed(const Duration(milliseconds: 50));
       r.setTreadmillSample(2.0);
@@ -829,6 +866,8 @@ void main() {
       expect(run.metadata?['indoor'], isTrue);
       expect(run.metadata?['indoor_source'], 'treadmill');
       expect(run.metadata?['distance_source'], 'treadmill');
+      expect(run.metadata?['distance_estimator'], isNull,
+          reason: 'belt distance is not the GPS estimator\'s');
     });
 
     test('stop() on a normal GPS run carries no indoor metadata', () async {
@@ -839,6 +878,9 @@ void main() {
       final run = await r.stop();
       expect(run.metadata?['indoor'], isNull);
       expect(run.metadata?['indoor_source'], isNull);
+      expect(run.metadata?['distance_estimator'], 'kalman_v1');
+      expect(run.metadata?.containsKey('distance_step_filled_m'), isFalse,
+          reason: 'no pedometer fill happened, so the key is omitted');
     });
 
     test('lap() records belt distance in treadmill mode, not GPS', () {
@@ -975,10 +1017,10 @@ void main() {
       );
       // First post-resume fix re-anchors (no spurious delta across the gap).
       r.debugInjectPosition(
-          makePosition(metresEast: 1000, secondsFromStart: 20));
+          makePosition(metresEast: 1000, secondsFromStart: 20, speed: 6));
       // Second fix 30 m further adds real movement onto the seeded distance.
       r.debugInjectPosition(
-          makePosition(metresEast: 1030, secondsFromStart: 25));
+          makePosition(metresEast: 1030, secondsFromStart: 25, speed: 6));
       expect(r.debugTrack.length, greaterThan(track.length),
           reason: 'new fixes extend the seeded track');
       expect(r.debugDistanceMetres, closeTo(1030, 2),
@@ -1167,9 +1209,11 @@ void main() {
       r.begin();
       r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 0));
       await Future<void>.delayed(Duration.zero);
-      r.debugInjectPosition(makePosition(metresEast: 10, secondsFromStart: 2));
+      r.debugInjectPosition(
+          makePosition(metresEast: 10, secondsFromStart: 2, speed: 5));
       await Future<void>.delayed(Duration.zero);
-      r.debugInjectPosition(makePosition(metresEast: 20, secondsFromStart: 4));
+      r.debugInjectPosition(
+          makePosition(metresEast: 20, secondsFromStart: 4, speed: 5));
       await Future<void>.delayed(Duration.zero);
 
       expect(caught, greaterThanOrEqualTo(3),
@@ -1229,6 +1273,158 @@ void main() {
       expect(laps.single['duration_s'], 112 * 3600);
       expect(laps.single['distance_m'], 386_000);
       expect(() => jsonEncode(run.toJson()), returnsNormally);
+    });
+  });
+
+  // Distance comes from the shared GPS distance estimator (spec v1,
+  // docs/features/gps_distance.md); the track keeps its own movement gate.
+  group('GPS distance estimator wiring', () {
+    test('standing still at a light credits nothing despite position jitter',
+        () {
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock)..debugPrepareWithoutStream();
+      r.begin();
+      const jitter = [0.0, 4.0, -3.5, 5.0, -4.5, 3.8, 0.0, -4.2];
+      for (var i = 0; i < jitter.length; i++) {
+        r.debugInjectPosition(makePosition(
+            metresEast: jitter[i], secondsFromStart: i, speed: 0));
+        clock.advance(const Duration(seconds: 1));
+      }
+      expect(r.debugDistanceMetres, 0,
+          reason: 'a 0 m/s Doppler speed is below the stationary floor');
+    });
+
+    test('Android "no speed" (0 with no accuracy) falls to position-only', () {
+      // Geolocator reports a missing speed / bearing as 0 on Android. Read as
+      // a measured 0 m/s it would credit nothing for the whole run. The
+      // expected figure is scripts/gps_distance/reference.py replaying the
+      // same 11 fixes with no speed, accuracy 5 m.
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock)..debugPrepareWithoutStream();
+      r.begin();
+      for (var i = 0; i <= 10; i++) {
+        r.debugInjectPosition(makePosition(
+          metresEast: 4.0 * i,
+          secondsFromStart: i,
+          speed: 0,
+          speedAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+        ));
+        clock.advance(const Duration(seconds: 1));
+      }
+      expect(r.debugDistanceMetres, closeTo(34.92098239921727, 1e-6));
+      expect(r.debugTrack.last.speedMps, isNull);
+      expect(r.debugTrack.last.speedAccuracyMps, isNull);
+      expect(r.debugTrack.last.bearingDeg, isNull);
+      expect(r.debugTrack.last.accuracyMetres, 5);
+    });
+
+    test('appended waypoints carry the fix quality, rounded to 2 dp', () {
+      final r = RunRecorder()..debugPrepareWithoutStream();
+      r.begin();
+      r.debugInjectPosition(makePosition(
+        metresEast: 0,
+        secondsFromStart: 0,
+        accuracy: 4.567,
+        speed: 2.6789,
+        speedAccuracy: 0.4123,
+        heading: 359.876,
+      ));
+      final w = r.debugTrack.single;
+      expect(w.accuracyMetres, 4.57);
+      expect(w.speedMps, 2.68);
+      expect(w.speedAccuracyMps, 0.41);
+      expect(w.bearingDeg, 359.88);
+    });
+
+    test('iOS invalid (negative) speed and course are stored as absent', () {
+      final r = RunRecorder()..debugPrepareWithoutStream();
+      r.begin();
+      r.debugInjectPosition(makePosition(
+        metresEast: 0,
+        secondsFromStart: 0,
+        speed: -1,
+        speedAccuracy: -1,
+        heading: -1,
+      ));
+      final w = r.debugTrack.single;
+      expect(w.speedMps, isNull);
+      expect(w.speedAccuracyMps, isNull);
+      expect(w.bearingDeg, isNull);
+    });
+
+    test('pedometer steps fill a GPS gap with the learned stride', () async {
+      // 4 m/s with 3 steps a second teaches a 4/3 m stride. Fixes then stop
+      // for 20 s while the steps keep coming; the gap is longer than the
+      // estimator's 10 s window, so its steps x stride are committed when the
+      // next fix lands. Expected figures from scripts/gps_distance/reference.py
+      // replaying the same events.
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock)..debugPrepareWithoutStream();
+      r.begin();
+      for (var i = 0; i <= 25; i++) {
+        r.debugInjectPosition(makePosition(
+            metresEast: 4.0 * i, secondsFromStart: i, speed: 4));
+        r.setStepCount(3 * i);
+        clock.advance(const Duration(seconds: 1));
+      }
+      expect(r.debugDistanceMetres, closeTo(100, 1e-6));
+      expect(r.strideMetres, closeTo(4 / 3, 1e-9));
+      for (var i = 26; i <= 45; i++) {
+        r.setStepCount(3 * i);
+        clock.advance(const Duration(seconds: 1));
+      }
+      r.debugInjectPosition(
+          makePosition(metresEast: 4.0 * 46, secondsFromStart: 46, speed: 4));
+      expect(r.stepFilledDistanceMetres, closeTo(72, 1e-6));
+      expect(r.debugDistanceMetres, closeTo(172, 1e-6));
+
+      final run = await r.stop();
+      expect(run.distanceMetres, closeTo(172, 1e-6));
+      expect(run.metadata?['distance_estimator'], 'kalman_v1');
+      expect(run.metadata?['distance_step_filled_m'], 72);
+    });
+
+    test('steps while paused are never credited', () {
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock)..debugPrepareWithoutStream();
+      r.begin();
+      for (var i = 0; i <= 25; i++) {
+        r.debugInjectPosition(makePosition(
+            metresEast: 4.0 * i, secondsFromStart: i, speed: 4));
+        r.setStepCount(3 * i);
+        clock.advance(const Duration(seconds: 1));
+      }
+      r.pause();
+      r.setStepCount(500);
+      r.resume();
+      clock.advance(const Duration(seconds: 30));
+      r.debugInjectPosition(
+          makePosition(metresEast: 400, secondsFromStart: 60, speed: 4));
+      expect(r.stepFilledDistanceMetres, 0);
+      expect(r.debugDistanceMetres, closeTo(100, 1e-6),
+          reason: 'the first post-resume fix re-anchors a fresh stretch');
+    });
+
+    test('a short pause does not credit the ground covered while paused', () {
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock)..debugPrepareWithoutStream();
+      r.begin();
+      for (var i = 0; i <= 5; i++) {
+        r.debugInjectPosition(makePosition(
+            metresEast: 4.0 * i, secondsFromStart: i, speed: 4));
+        clock.advance(const Duration(seconds: 1));
+      }
+      expect(r.debugDistanceMetres, closeTo(20, 1e-6));
+      // Paused for 3 s of wall time; the stopwatch stops, so on the run's
+      // clock the next fix is only 1 s after the last one. Without the
+      // re-anchor on resume that would credit a Doppler hop across the pause.
+      r.pause();
+      r.resume();
+      r.debugInjectPosition(
+          makePosition(metresEast: 40, secondsFromStart: 9, speed: 4));
+      expect(r.debugDistanceMetres, closeTo(20, 1e-6));
     });
   });
 

@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
 
+import 'gps_distance_estimator.dart';
 import 'run_snapshot.dart';
 
 /// Thrown by [RunRecorder.prepare] when device location services are turned
@@ -127,6 +128,9 @@ class RunRecorder {
 
   static const _uuid = Uuid();
 
+  /// `metadata.distance_estimator` on a GPS-distance run.
+  static const distanceEstimatorVersion = 'kalman_v1';
+
   /// How often [prepare] retries opening the position stream when it is
   /// currently absent (services/permission denied at start, or the stream
   /// errored mid-run). Short enough that re-enabling Location in Settings
@@ -162,7 +166,22 @@ class RunRecorder {
   /// is unaffected by wall-clock jumps (NTP sync, manual time change,
   /// timezone change) — the run duration stays correct.
   final Stopwatch _stopwatch;
-  double _distanceMetres = 0;
+
+  /// The headline GPS distance (spec v1, `docs/features/gps_distance.md`).
+  /// One estimator per un-paused stretch: [resume] folds the finished one into
+  /// [_distanceOffsetMetres] and starts another, so a paused span is never
+  /// integrated. A resumed session seeds the offset with the prior distance.
+  GpsDistanceEstimator _estimator = GpsDistanceEstimator();
+  double _distanceOffsetMetres = 0;
+  double _stepFilledOffsetMetres = 0;
+  double? _priorStrideM;
+  // The estimator's clock (see [_estimatorFixTime]).
+  double? _estFixT;
+  Duration? _estFixMono;
+  DateTime? _estFixGps;
+  double? _estStepT;
+
+  double get _distanceMetres => _distanceOffsetMetres + _estimator.distanceM;
   final List<Waypoint> _track = [];
   // Single read-only view handed out on every snapshot. `UnmodifiableListView`
   // wraps `_track` by reference — appending to `_track` is still visible
@@ -354,8 +373,9 @@ class RunRecorder {
   /// indoor / treadmill runs where GPS is unavailable at the start.
   ///
   /// [distanceFilterMetres] and [minMovementMetres] are combined into a single
-  /// software threshold that gates when a GPS fix gets appended to the track
-  /// and counted toward distance. The OS-level filter is always 0 so the blue
+  /// software threshold that gates when a GPS fix gets appended to the track.
+  /// It does not gate distance: every fix that clears the accuracy gate feeds
+  /// the [GpsDistanceEstimator]. The OS-level filter is always 0 so the blue
   /// dot can update at the GPS sensor's native rate, independent of this
   /// threshold.
   ///
@@ -392,7 +412,6 @@ class RunRecorder {
     _stopwatch
       ..stop()
       ..reset();
-    _distanceMetres = 0;
     _track.clear();
     _laps.clear();
     _currentWaypoint = null;
@@ -415,6 +434,7 @@ class RunRecorder {
     _trackThresholdMetres =
         max(distanceFilterMetres.toDouble(), minMovementMetres);
     _maxSpeedMps = maxSpeedMps;
+    _resetDistance(0);
     _accuracyGateMetres = accuracyGateMetres;
     _locationAccuracy = accuracy;
     _lastAccuracyDropLogAt = null;
@@ -575,7 +595,7 @@ class RunRecorder {
     _stopwatch
       ..reset()
       ..start();
-    _distanceMetres = 0;
+    _resetDistance(0);
     _track.clear();
     _laps.clear();
     _lastTrackedPosition = null;
@@ -693,7 +713,7 @@ class RunRecorder {
     _track
       ..clear()
       ..addAll(track);
-    _distanceMetres = distanceMetres;
+    _resetDistance(distanceMetres);
     _elapsedOffset = elapsed;
     _startTime = startedAt;
     _laps
@@ -813,7 +833,6 @@ class RunRecorder {
     _stopwatch
       ..stop()
       ..reset();
-    _distanceMetres = 0;
     _track.clear();
     _laps.clear();
     _currentWaypoint = null;
@@ -836,6 +855,7 @@ class RunRecorder {
     _trackThresholdMetres =
         max(distanceFilterMetres.toDouble(), minMovementMetres);
     _maxSpeedMps = maxSpeedMps;
+    _resetDistance(0);
     _accuracyGateMetres = accuracyGateMetres;
     _resetTreadmill();
     _prepared = true;
@@ -906,6 +926,7 @@ class RunRecorder {
     if (!_recording || _paused) return;
     _paused = true;
     _stopwatch.stop();
+    _finishEstimatorSegment();
     // Arm the cumulative-distance re-anchor. If a belt sample lands DURING the
     // pause it rebases the baseline itself and disarms this; if none does, the
     // first post-resume sample re-anchors instead. Without one or the other,
@@ -918,6 +939,7 @@ class RunRecorder {
     if (!_recording || !_paused) return;
     _paused = false;
     _stopwatch.start();
+    _startEstimatorSegment();
     _lastTrackedPosition = null; // avoid a big jump after resume
     _lastTrackedPositionAt = null;
     _lastTrackedElapsed = null;
@@ -946,6 +968,112 @@ class RunRecorder {
     // visible in the breakdown anyway.
     if (bpm != null && (bpm < 30 || bpm > 230)) return;
     _currentBpm = bpm;
+  }
+
+  /// Feed the pedometer's run-relative cumulative step count. While GPS is
+  /// good the estimator learns a stride from it; across a GPS gap longer than
+  /// [GpsDistanceEstimator.gapS] the steps x stride fill the distance the
+  /// gap would otherwise drop. No-op while paused or not recording; the next
+  /// stretch re-anchors on its first sample, so paused steps never count.
+  void setStepCount(int cumulative) {
+    if (!_recording || _paused) return;
+    try {
+      _estimator.addSteps(_estimatorStepTime(), cumulative);
+    } catch (e) {
+      debugPrint('RunRecorder: step sample dropped — $e');
+    }
+  }
+
+  /// Metres the pedometer filled across GPS gaps this run (0 when none).
+  double get stepFilledDistanceMetres =>
+      _stepFilledOffsetMetres + _estimator.stepDistanceM;
+
+  /// Stride learned from GPS + pedometer, metres. Null until learned.
+  double? get strideMetres => _estimator.strideM ?? _priorStrideM;
+
+  void _resetDistance(double seedMetres) {
+    _distanceOffsetMetres = seedMetres;
+    _stepFilledOffsetMetres = 0;
+    _priorStrideM = null;
+    _newEstimator();
+  }
+
+  void _finishEstimatorSegment() {
+    try {
+      _estimator.finish(_estimatorStepTime());
+    } catch (e) {
+      debugPrint('RunRecorder: estimator finish failed — $e');
+    }
+  }
+
+  void _startEstimatorSegment() {
+    _distanceOffsetMetres += _estimator.distanceM;
+    _stepFilledOffsetMetres += _estimator.stepDistanceM;
+    _priorStrideM = _estimator.strideM ?? _priorStrideM;
+    _newEstimator();
+  }
+
+  void _newEstimator() {
+    _estimator = GpsDistanceEstimator(maxSpeedMps: _maxSpeedMps);
+    _estFixT = null;
+    _estFixMono = null;
+    _estFixGps = null;
+    _estStepT = null;
+  }
+
+  // Estimator time is kept on a 1/1024 s grid: every value is then an exact
+  // binary fraction, so an interval of exactly [GpsDistanceEstimator.gapS]
+  // reads as exactly 10 s rather than 10 s plus a rounding error that would
+  // tip it into a re-anchor.
+  static double _seconds(Duration d) =>
+      (d.inMicroseconds * 1024 / 1e6).roundToDouble() / 1024;
+
+  /// Estimator time for a fix, seconds, strictly monotonic within a stretch.
+  ///
+  /// Advances by the GPS-reported interval when it is positive and no longer
+  /// than the real elapsed time or [GpsDistanceEstimator.gapS], whichever is
+  /// larger, and by the [_stopwatch] interval otherwise. The GPS interval is
+  /// what keeps a burst of queued fixes (Android Doze batching, a CPU stall)
+  /// one second apart instead of crediting them nothing; the stopwatch is
+  /// what a backwards, stalled or leaping device clock falls back to, so a
+  /// wall-clock jump can neither freeze the distance nor credit an hour.
+  double _estimatorFixTime(DateTime gpsTime) {
+    final mono = _stopwatch.elapsed;
+    final lastT = _estFixT;
+    final lastMono = _estFixMono;
+    final lastGps = _estFixGps;
+    final double t;
+    if (lastT == null || lastMono == null || lastGps == null) {
+      t = _seconds(mono);
+    } else {
+      final monoGap = _seconds(mono - lastMono);
+      final gpsGap = _seconds(gpsTime.difference(lastGps));
+      final useGps =
+          gpsGap > 0 && gpsGap <= max(monoGap, GpsDistanceEstimator.gapS);
+      t = lastT + (useGps ? gpsGap : monoGap);
+    }
+    _estFixT = t;
+    _estFixMono = mono;
+    _estFixGps = gpsTime;
+    return t;
+  }
+
+  /// Estimator time for a step sample or [GpsDistanceEstimator.finish]: the
+  /// last fix's time plus the real time since it arrived, so the estimator's
+  /// "is GPS fresh" and "how long was the gap" questions are answered in real
+  /// seconds. Nudged forward if a fix's GPS-clocked advance left it behind the
+  /// previous step sample, which the estimator would otherwise discard.
+  double _estimatorStepTime() {
+    final mono = _stopwatch.elapsed;
+    final lastT = _estFixT;
+    final lastMono = _estFixMono;
+    var t = (lastT == null || lastMono == null)
+        ? _seconds(mono)
+        : lastT + _seconds(mono - lastMono);
+    final prev = _estStepT;
+    if (prev != null && t <= prev) t = prev + 1 / 1024;
+    _estStepT = t;
+    return t;
   }
 
   /// Feed a treadmill (FTMS) sample. The first call flips the recorder into
@@ -1049,7 +1177,9 @@ class RunRecorder {
   /// distance, handed between sources, never two rival accumulators one of
   /// which is discarded at the switch.
   void clearTreadmillMode() {
-    if (_treadmillMode) _distanceMetres = _treadmillDistanceMetres;
+    if (_treadmillMode) {
+      _distanceOffsetMetres = _treadmillDistanceMetres - _estimator.distanceM;
+    }
     _treadmillMode = false;
     _resetTreadmillAccumulators();
   }
@@ -1119,6 +1249,39 @@ class RunRecorder {
     }
   }
 
+  /// Geolocator's fix-quality fields, with the platforms' "not reported"
+  /// encodings mapped to null (spec: absent, not zero). iOS reports an
+  /// invalid speed, course or accuracy as negative. Android reports a field it
+  /// does not have as 0 — and a 0 speed with no speed accuracy is that, not a
+  /// measured standstill: read as Doppler it would pin the credited speed
+  /// under the stationary floor and record no distance at all. Likewise a 0
+  /// bearing with no bearing accuracy is "none", not north.
+  static ({
+    double? accuracyM,
+    double? speedMps,
+    double? speedAccuracyMps,
+    double? bearingDeg,
+  }) _fixQuality(Position pos) {
+    bool positive(double v) => v.isFinite && v > 0;
+    final speedAcc = positive(pos.speedAccuracy) ? pos.speedAccuracy : null;
+    final speedOk = pos.speed.isFinite &&
+        pos.speed >= 0 &&
+        (pos.speed > 0 || speedAcc != null);
+    final bearingOk = pos.heading.isFinite &&
+        pos.heading >= 0 &&
+        pos.heading <= 360 &&
+        (pos.heading > 0 || positive(pos.headingAccuracy));
+    return (
+      accuracyM: positive(pos.accuracy) ? pos.accuracy : null,
+      speedMps: speedOk ? pos.speed : null,
+      speedAccuracyMps: speedAcc,
+      bearingDeg: bearingOk ? pos.heading : null,
+    );
+  }
+
+  static double? _round2(double? v) =>
+      v == null ? null : (v * 100).roundToDouble() / 100;
+
   void _onPosition(Position pos) {
     if (_paused) return;
 
@@ -1134,6 +1297,7 @@ class RunRecorder {
       return;
     }
     _weakGps = false;
+    final fix = _fixQuality(pos);
 
     // Always refresh the raw current position so the blue dot updates on
     // every valid fix, independent of the track-append threshold. This
@@ -1161,12 +1325,32 @@ class RunRecorder {
           : null,
       timestamp: pos.timestamp,
       bpm: _currentBpm,
+      accuracyMetres: _round2(fix.accuracyM),
+      speedMps: _round2(fix.speedMps),
+      speedAccuracyMps: _round2(fix.speedAccuracyMps),
+      bearingDeg: _round2(fix.bearingDeg),
     );
     _currentWaypointAt = DateTime.now();
 
     // Only append to the track and accumulate distance once the run has
     // officially started (post-[begin]).
     if (_recording) {
+      // Distance comes from the estimator, which sees EVERY fix that cleared
+      // the gates above; the movement-gated rule below only decides what the
+      // track keeps for the map and the route match.
+      try {
+        _estimator.addFix(
+          t: _estimatorFixTime(pos.timestamp),
+          lat: pos.latitude,
+          lng: pos.longitude,
+          accuracyM: fix.accuracyM,
+          speedMps: fix.speedMps,
+          speedAccuracyMps: fix.speedAccuracyMps,
+          bearingDeg: fix.bearingDeg,
+        );
+      } catch (e) {
+        debugPrint('RunRecorder: estimator rejected fix — $e');
+      }
       final last = _lastTrackedPosition;
       final lastAt = _lastTrackedPositionAt;
       final lastElapsed = _lastTrackedElapsed;
@@ -1202,7 +1386,7 @@ class RunRecorder {
         final implausible =
             dtSec <= 0 || (delta / dtSec) > _maxSpeedMps;
 
-        // Only grow the track + accumulate distance on real movement. Ignore
+        // Only grow the track on real movement. Ignore
         // GPS jitter below the threshold, implausible jumps (>100m in one
         // hop), and anything faster than the activity's max plausible speed.
         // The same "has a genuine interval elapsed" question asked of the
@@ -1221,7 +1405,6 @@ class RunRecorder {
         final monotonicGapSec =
             (_stopwatch.elapsed - lastElapsed).inMilliseconds / 1000.0;
         if (delta > _trackThresholdMetres && delta < 100 && !implausible) {
-          _distanceMetres += delta;
           _lastTrackedPosition = pos;
           _lastTrackedPositionAt = pos.timestamp;
           _lastTrackedElapsed = _stopwatch.elapsed;
@@ -1549,6 +1732,7 @@ class RunRecorder {
     _gpsRetryTimer = null;
     await _positionSub?.cancel();
     _positionSub = null;
+    _finishEstimatorSegment();
 
     final startedAt = _startTime ?? DateTime.now();
     final elapsed = _stopwatch.elapsed + _elapsedOffset;
@@ -1563,6 +1747,12 @@ class RunRecorder {
       metadata['indoor'] = true;
       metadata['indoor_source'] = 'treadmill';
       metadata['distance_source'] = 'treadmill';
+    } else {
+      metadata[MetadataKeys.distanceEstimator] = distanceEstimatorVersion;
+      final stepFilled = stepFilledDistanceMetres.round();
+      if (stepFilled > 0) {
+        metadata[MetadataKeys.distanceStepFilledM] = stepFilled;
+      }
     }
 
     return Run(

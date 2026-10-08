@@ -1419,6 +1419,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
           _cadence = ((last.steps - first.steps) / dt * 60).round();
         }
       }
+      _recorder?.setStepCount(newSteps);
       if (mounted) setState(() => _steps = newSteps);
     }, onError: (e) {
       debugPrint('Pedometer stream error: $e');
@@ -3010,6 +3011,15 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       if (indoorEstimate) cm.MetadataKeys.indoor: true,
       if (indoorEstimate) cm.MetadataKeys.indoorEstimated: true,
       if (indoorEstimate) cm.MetadataKeys.distanceSource: 'pedometer',
+      // Mirrors RunRecorder.stop(): a crash-finalized run carries the same
+      // estimator tag, so the server recompute leaves it alone.
+      if (!indoorEstimate && !(_recorder?.treadmillMode ?? false))
+        cm.MetadataKeys.distanceEstimator: RunRecorder.distanceEstimatorVersion,
+      if (!indoorEstimate &&
+          !(_recorder?.treadmillMode ?? false) &&
+          (_recorder?.stepFilledDistanceMetres.round() ?? 0) > 0)
+        cm.MetadataKeys.distanceStepFilledM:
+            _recorder!.stepFilledDistanceMetres.round(),
       if (_steps > 0) cm.MetadataKeys.steps: _steps,
       // The active race strategy, so a crash-recovered run resumes its
       // phases (and the final save keeps the metadata the runner actually
@@ -3290,6 +3300,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       metadata[cm.MetadataKeys.indoor] = true;
       metadata[cm.MetadataKeys.indoorEstimated] = true;
       metadata[cm.MetadataKeys.distanceSource] = 'pedometer';
+      // The saved distance is the pedometer's, not the GPS estimator's.
+      metadata.remove(cm.MetadataKeys.distanceEstimator);
+      metadata.remove(cm.MetadataKeys.distanceStepFilledM);
     }
 
     // Average heart rate across the run (BLE chest-strap samples).

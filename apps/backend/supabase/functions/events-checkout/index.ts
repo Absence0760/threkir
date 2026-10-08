@@ -36,6 +36,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0';
 import type { Database, DbClient } from '../_shared/database.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { selectEffectivePricing } from '../_shared/event_instance.ts';
+import { readPlatformFeeBps } from '../_shared/platform_fees.ts';
 import { isValidTimestamptz, isValidUuid } from '../_shared/input_validation.ts';
 import { checkRateLimit } from '../_shared/rate_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
@@ -173,7 +174,7 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
   // allows reading pricing with the event).
   const { data: pricingRows, error: pricingErr } = await userClient
     .from('event_pricing')
-    .select('instance_start, price_cents, currency, modality, platform_fee_bps, sales_close_offset_minutes')
+    .select('instance_start, price_cents, currency, modality, sales_close_offset_minutes')
     .eq('event_id', eventId);
   if (pricingErr) {
     console.error('pricing read failed (code):', pricingErr?.code ?? 'unknown');
@@ -184,7 +185,6 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
     price_cents: number;
     currency: string;
     modality: string;
-    platform_fee_bps: number;
     sales_close_offset_minutes: number;
   }>;
   const pricing = selectEffectivePricing(rows, instanceStart);
@@ -194,6 +194,12 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
   if (pricing.modality !== 'in_person') {
     // 'virtual' is reserved for P4 (digital-good IAP decision).
     return Response.json({ error: 'modality_not_supported' }, { status: 400 });
+  }
+
+  // Read before anything is reserved, so a refusal here holds no seat.
+  const platformFeeBps = await readPlatformFeeBps(service, 'event');
+  if (platformFeeBps === null) {
+    return Response.json({ error: 'platform_fee_not_configured' }, { status: 503 });
   }
 
   // Cancelled-occurrence guard: a cancelled instance is un-buyable.
@@ -282,7 +288,7 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
     }
   }
 
-  const applicationFee = computeApplicationFeeCents(pricing.price_cents, pricing.platform_fee_bps);
+  const applicationFee = computeApplicationFeeCents(pricing.price_cents, platformFeeBps);
 
   const successUrl = body.success_url && validateReturnUrl(body.success_url, allowlist)
     ? body.success_url

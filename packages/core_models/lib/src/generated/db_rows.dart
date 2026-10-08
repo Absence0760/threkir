@@ -1184,7 +1184,6 @@ class EventPricingRow {
   static const String colPriceCents = 'price_cents';
   static const String colCurrency = 'currency';
   static const String colModality = 'modality';
-  static const String colPlatformFeeBps = 'platform_fee_bps';
   static const String colRefundPolicy = 'refund_policy';
   static const String colSalesCloseOffsetMinutes = 'sales_close_offset_minutes';
   static const String colCreatedAt = 'created_at';
@@ -1195,7 +1194,6 @@ class EventPricingRow {
   final int priceCents;
   final String currency;
   final String modality;
-  final int platformFeeBps;
   final String refundPolicy;
   final int salesCloseOffsetMinutes;
   final DateTime createdAt;
@@ -1207,7 +1205,6 @@ class EventPricingRow {
     required this.priceCents,
     required this.currency,
     required this.modality,
-    required this.platformFeeBps,
     required this.refundPolicy,
     required this.salesCloseOffsetMinutes,
     required this.createdAt,
@@ -1220,7 +1217,6 @@ class EventPricingRow {
     priceCents: (json['price_cents'] as num).toInt(),
     currency: json['currency'] as String,
     modality: json['modality'] as String,
-    platformFeeBps: (json['platform_fee_bps'] as num).toInt(),
     refundPolicy: json['refund_policy'] as String,
     salesCloseOffsetMinutes: (json['sales_close_offset_minutes'] as num).toInt(),
     createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
@@ -1233,7 +1229,6 @@ class EventPricingRow {
     colPriceCents: priceCents,
     colCurrency: currency,
     colModality: modality,
-    colPlatformFeeBps: platformFeeBps,
     colRefundPolicy: refundPolicy,
     colSalesCloseOffsetMinutes: salesCloseOffsetMinutes,
     colCreatedAt: createdAt.toIso8601String(),
@@ -1760,7 +1755,6 @@ class FundraiserRow {
   static const String colStory = 'story';
   static const String colGoalCents = 'goal_cents';
   static const String colCurrency = 'currency';
-  static const String colPlatformFeeBps = 'platform_fee_bps';
   static const String colStatus = 'status';
   static const String colCreatedAt = 'created_at';
   static const String colUpdatedAt = 'updated_at';
@@ -1775,7 +1769,6 @@ class FundraiserRow {
   final String? story;
   final int goalCents;
   final String currency;
-  final int platformFeeBps;
   final String status;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -1791,7 +1784,6 @@ class FundraiserRow {
     this.story,
     required this.goalCents,
     required this.currency,
-    required this.platformFeeBps,
     required this.status,
     required this.createdAt,
     required this.updatedAt,
@@ -1808,7 +1800,6 @@ class FundraiserRow {
     story: json['story'] as String?,
     goalCents: (json['goal_cents'] as num).toInt(),
     currency: json['currency'] as String,
-    platformFeeBps: (json['platform_fee_bps'] as num).toInt(),
     status: json['status'] as String,
     createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
     updatedAt: parseIsoStrictRequired(json['updated_at'], 'updated_at'),
@@ -1825,7 +1816,6 @@ class FundraiserRow {
     colStory: story,
     colGoalCents: goalCents,
     colCurrency: currency,
-    colPlatformFeeBps: platformFeeBps,
     colStatus: status,
     colCreatedAt: createdAt.toIso8601String(),
     colUpdatedAt: updatedAt.toIso8601String(),

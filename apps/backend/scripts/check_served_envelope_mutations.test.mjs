@@ -250,7 +250,7 @@ test('declaredCases reads every Deno.test the shipped file carries', () => {
   // carrying a literal ` + ` (which splitting on `+` would cut in half), and
   // one carrying an escaped quote.
   assert.ok(names.includes('refresh-tokens: 403 on wrong CRON_SECRET'));
-  assert.ok(names.includes('revenuecat-webhook: 401 missing_signature when no x-revenuecat-hmac header'));
+  assert.ok(names.includes('revenuecat-webhook: 401 missing_signature when no x-revenuecat-webhook-signature header'));
   assert.ok(names.includes('revenuecat-webhook: 200 on valid HMAC + fresh anonymous event'));
   assert.ok(
     names.includes(

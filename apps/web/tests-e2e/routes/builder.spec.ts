@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test';
 
 import { resetRateLimit } from '../fixtures/local-supabase';
 import { deleteRoute } from '../fixtures/simulate';
+import { settleTransitions } from '../fixtures/transitions';
 import { USER_A } from '../fixtures/users';
 
 /**
@@ -383,14 +384,13 @@ test.describe('/routes/new — Route Builder control surface', () => {
 
 		// Baseline: cursor outside the map area, opacity = 1.
 		await page.locator('aside.sidebar').hover();
-		// Wait for the 180ms CSS transition.
-		await page.waitForTimeout(250);
+		await settleTransitions(card, { subtree: false });
 		const baseline = await card.evaluate((el) => getComputedStyle(el).opacity);
 		expect(parseFloat(baseline)).toBeGreaterThan(0.9);
 
 		// Hover the map area — the card fades toward 0.15.
 		await page.locator('.map-area').hover();
-		await page.waitForTimeout(250);
+		await settleTransitions(card, { subtree: false });
 		const hovered = await card.evaluate((el) => getComputedStyle(el).opacity);
 		expect(parseFloat(hovered)).toBeLessThan(0.5);
 	});

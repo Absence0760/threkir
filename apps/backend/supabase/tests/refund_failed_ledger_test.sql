@@ -63,9 +63,9 @@ values
    '2026-07-02 18:00+00', '4efd0000-0000-0000-0000-000000000001',
    '4efd0000-0000-0000-0000-000000000001', 'class', 1);
 
-insert into event_pricing (event_id, price_cents, platform_fee_bps)
-values ('4efd0000-0000-0000-0000-0000000000e1', 2200, 500),
-       ('4efd0000-0000-0000-0000-0000000000e2', 2200, 500);
+insert into event_pricing (event_id, price_cents)
+values ('4efd0000-0000-0000-0000-0000000000e1', 2200),
+       ('4efd0000-0000-0000-0000-0000000000e2', 2200);
 
 -- One order per buyer, so the trigger's (buyer, event, instance) match is
 -- satisfied by construction and only `status` decides the verdict.

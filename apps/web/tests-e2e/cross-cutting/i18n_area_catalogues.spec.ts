@@ -62,8 +62,11 @@ test.describe('area catalogues on a cold deep link', () => {
 
 		await page.goto('/gym');
 		await expect(page.locator('html')).toHaveAttribute('lang', 'de');
-		// `gym.log` is a `gym` area key.
-		await expect(page.getByTestId('gym-log')).toHaveText('Workout erfassen', { timeout: 10_000 });
+		// `gym.log` is a `gym` area key. The accessible name, not the text: the
+		// button's icon ligature (`add`) is text content, hidden from the name.
+		await expect(page.getByTestId('gym-log')).toHaveAccessibleName('Workout erfassen', {
+			timeout: 10_000,
+		});
 		await expectNoRawKeys(page, ['gym']);
 
 		// Client-side navigation into a second area: the root load re-runs for

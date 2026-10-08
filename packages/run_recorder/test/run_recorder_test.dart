@@ -1357,6 +1357,78 @@ void main() {
           reason: 'the live track is not rewritten');
     });
 
+    // stop() replays every stretch through the smoother on the UI isolate,
+    // so a stretch keeps at most maxSmoothedStretchEvents inputs. Past that it
+    // saves its forward figure and raw positions, and the run is left
+    // unstamped so the server recompute smooths it instead.
+    test('a stretch past the replay cap saves the forward distance, unstamped',
+        () async {
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock, maxSmoothedStretchEvents: 5)
+        ..debugPrepareWithoutStream();
+      r.begin();
+      for (var i = 0; i <= 10; i++) {
+        r.debugInjectPosition(makePosition(
+          metresEast: 4.0 * i,
+          secondsFromStart: i,
+          speed: 0,
+          speedAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+        ));
+        clock.advance(const Duration(seconds: 1));
+      }
+      expect(r.debugDistanceMetres, closeTo(34.92098239921727, 1e-6),
+          reason: 'the live figure is unaffected by the cap');
+      final run = await r.stop();
+      expect(run.distanceMetres, r.debugDistanceMetres,
+          reason: 'the forward figure, with no smoother correction');
+      expect(run.metadata?['distance_estimator'], isNull);
+      expect(run.track, hasLength(11));
+      expect(run.track.any((w) => w.hasSmoothedPosition), isFalse);
+    });
+
+    test('one stretch not smoothed leaves the whole run unstamped', () async {
+      // The first stretch (11 fixes plus the pause's finish) fits a cap of 12
+      // and is smoothed; the second outgrows it. The saved distance takes the
+      // first stretch's correction, but kalman_v2 would claim the second was
+      // smoothed too and hide Recalculate for a run the server could still
+      // improve.
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock, maxSmoothedStretchEvents: 12)
+        ..debugPrepareWithoutStream();
+      r.begin();
+      for (var i = 0; i <= 10; i++) {
+        r.debugInjectPosition(makePosition(
+          metresEast: 4.0 * i,
+          secondsFromStart: i,
+          speed: 0,
+          speedAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+        ));
+        clock.advance(const Duration(seconds: 1));
+      }
+      r.pause();
+      r.resume();
+      for (var i = 0; i <= 14; i++) {
+        r.debugInjectPosition(makePosition(
+          metresEast: 40.0 + 4.0 * i,
+          secondsFromStart: 60 + i,
+          speed: 0,
+          speedAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+        ));
+        clock.advance(const Duration(seconds: 1));
+      }
+      final run = await r.stop();
+      expect(run.metadata?['distance_estimator'], isNull);
+      expect(run.track.take(11).every((w) => w.hasSmoothedPosition), isTrue,
+          reason: 'the stretch inside the cap is still smoothed');
+      expect(run.track.skip(11).any((w) => w.hasSmoothedPosition), isFalse);
+    });
+
     test('saved laps are re-measured on the smoothed distance', () async {
       // Laps record the forward figure live; the saved run is the smoother's,
       // so each lap boundary moves to the smoother's cumulative at the fix it

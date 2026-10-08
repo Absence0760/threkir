@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// Guardrail: the four `pnpm.overrides` entries are supply-chain pins, and they
+// Guardrail: the `pnpm.overrides` entries are supply-chain pins, and they
 // are still both DECLARED and IN EFFECT.
 //
 // They are not preferences. Each one nudges a transitive dependency off a
 // version with a live advisory that its own parent has not bumped past —
-// `cookie` (GHSA-pxg6-pf52-xh8x), `devalue` (GHSA-77vg-94rm-hx3p), `undici`
-// (the five SOCKS5/cookie/websocket/cache CVEs fixed in 7.28.0) and
-// `brace-expansion` (GHSA-mh99-v99m-4gvg). The rationale for each lives in
-// root package.json's `_overrides_rationale`.
+// `cookie` (GHSA-pxg6-pf52-xh8x), `devalue` (the <=5.9.2 uneval/stringify
+// advisories), `brace-expansion` (the <5.0.12 stack-exhaustion and quadratic
+// expansion advisories) and `source-map-js` (GHSA-68fv-2mgg-jv7q). The
+// rationale for each lives in root package.json's `_overrides_rationale`.
 //
 // Why a guard rather than a shrug. Dependabot PR #812 (@types/node 26.1.2 ->
 // 26.2.0) regenerated pnpm-lock.yaml and dropped the top-level `overrides:`

@@ -54,13 +54,10 @@ function replay(s: Scenario): { est: GpsDistanceEstimator; after: number[] } {
 	return { est, after };
 }
 
-Deno.test('fixture is spec v1.1 with a non-trivial scenario set', () => {
+Deno.test('the port implements the spec v1.1 fixture: version, scenario set and every constant', () => {
 	assertEquals(fixture.spec, 'gps-distance-estimator v1.1');
 	assert(fixture.scenarios.length >= 10, `only ${fixture.scenarios.length} scenarios`);
 	assert(TOL > 0 && TOL <= 0.001);
-});
-
-Deno.test('every fixture constant matches the port', () => {
 	const port = gps as unknown as Record<string, unknown>;
 	for (const [name, value] of Object.entries(fixture.constants)) {
 		assertEquals(port[name], value, `constant ${name}`);

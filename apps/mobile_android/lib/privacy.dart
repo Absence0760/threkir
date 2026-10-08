@@ -1,3 +1,5 @@
+import 'package:core_models/core_models.dart' show Waypoint;
+
 import 'run_stats.dart' show haversineMetres;
 
 /// Pure Dart port of `apps/web/src/lib/routes/privacy.ts` (decisions §33).
@@ -37,6 +39,18 @@ bool isInAnyZone(double lat, double lng, List<PrivacyZone> zones) {
     if (haversineMetres(lat, lng, z.lat, z.lng) <= z.radiusM) return true;
   }
   return false;
+}
+
+/// Whether any fix of [track] sits in a zone at its raw position or at the
+/// position the run line draws it (the smoother's, when the track stores
+/// one). The make-public confirm warns on this, so a fix whose raw position
+/// is outside a zone but whose drawn vertex is inside still counts. Mirrors
+/// `trackEntersAnyZone` in `privacy.ts`.
+bool trackEntersAnyZone(List<Waypoint> track, List<PrivacyZone> zones) {
+  if (zones.isEmpty) return false;
+  return track.any((p) =>
+      isInAnyZone(p.lat, p.lng, zones) ||
+      isInAnyZone(p.lineLat, p.lineLng, zones));
 }
 
 /// Walk forward from index 0 and drop points in any zone; walk

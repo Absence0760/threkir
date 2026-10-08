@@ -25,12 +25,18 @@ class AppTheme {
   static const Color snowDim = Color(0xFFECE9F1);
 
   /// Text on dark, and its muted variant.
+  ///
+  /// Both muted steps ([mistMuted], [inkMuted]) are set by their worst real
+  /// pair, not by the card: muted type on the seeded `tertiaryContainer` (a
+  /// completed plan-calendar cell) inside a [dimmedSubtreeOpacity] subtree,
+  /// 4.51:1 dark and 4.52:1 light. `#A9A4B6` / `#5F5A6B` read well on the card
+  /// and failed there at 3.32 / 3.74:1.
   static const Color mist = Color(0xFFF3F1F7);
-  static const Color mistMuted = Color(0xFFA9A4B6);
+  static const Color mistMuted = Color(0xFFC6C2CF);
 
   /// Text on light, and its muted variant.
   static const Color ink = Color(0xFF1A1722);
-  static const Color inkMuted = Color(0xFF5F5A6B);
+  static const Color inkMuted = Color(0xFF504B5B);
 
   /// The accent on dark: a fill (buttons, FAB, selected chip) under [onCoral],
   /// and a mark (the selected nav icon) on every dark surface.

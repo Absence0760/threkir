@@ -267,7 +267,7 @@
 	   next. Enforced per call site, composited, in contrast_guard.test.ts. */
 	--color-border: #8A8496;
 	--color-text: #1A1722;
-	--color-text-secondary: #5F5A6B;
+	--color-text-secondary: #504B5B;
 	/* >=4.5:1 (WCAG AA) against the worst-case (darkest) light surface tertiary
 	   text sits on — #EBE5D8 (--color-bg-tertiary). #8A8E93 was 2.63:1 there
 	   and failed; stays lighter than --color-text-secondary to keep hierarchy. */
@@ -335,7 +335,7 @@
 
 	/* Sidebar palette — overridden in dark mode below. */
 	--sidebar-text: #1A1722;
-	--sidebar-text-muted: #5F5A6B;
+	--sidebar-text-muted: #504B5B;
 	--sidebar-hover-bg: rgba(26, 23, 34, 0.06);
 	--sidebar-active-bg: var(--color-primary-light);
 	--sidebar-active-text: var(--color-primary);
@@ -538,7 +538,7 @@
 		--color-border: #736D85;
 		--color-fill-subtle: #2C2937;
 		--color-text: #F3F1F7;
-		--color-text-secondary: #A9A4B6;
+		--color-text-secondary: #C6C2CF;
 		/* >=4.5:1 against the lightest dark surface (#241B3D). #7E7692 was
 		   3.77:1 there and failed AA. */
 		--color-text-tertiary: #9893A6;
@@ -548,7 +548,7 @@
 		--gradient-sidebar: linear-gradient(180deg, #0C0B10 0%, #17151E 100%);
 
 		--sidebar-text: #F3F1F7;
-		--sidebar-text-muted: #A9A4B6;
+		--sidebar-text-muted: #C6C2CF;
 		--sidebar-hover-bg: rgba(243, 241, 247, 0.06);
 		--sidebar-active-bg: rgba(240, 138, 93, 0.16);
 		--sidebar-active-text: #F3F1F7;
@@ -642,7 +642,7 @@
 	--color-border: #736D85;
 	--color-fill-subtle: #2C2937;
 	--color-text: #F3F1F7;
-	--color-text-secondary: #A9A4B6;
+	--color-text-secondary: #C6C2CF;
 	/* >=4.5:1 against the lightest dark surface (#241B3D); see :root note. */
 	--color-text-tertiary: #9893A6;
 
@@ -651,7 +651,7 @@
 	--gradient-sidebar: linear-gradient(180deg, #0C0B10 0%, #17151E 100%);
 
 	--sidebar-text: #F3F1F7;
-	--sidebar-text-muted: #A9A4B6;
+	--sidebar-text-muted: #C6C2CF;
 	--sidebar-hover-bg: rgba(243, 241, 247, 0.06);
 	--sidebar-active-bg: rgba(240, 138, 93, 0.16);
 	--sidebar-active-text: #F3F1F7;

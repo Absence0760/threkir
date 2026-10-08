@@ -11,6 +11,6 @@ enum AppTheme {
     static let coralDeep = Color(red: 0xC2 / 255, green: 0x4E / 255, blue: 0x24 / 255)
     static let lilac = Color(red: 0xB9 / 255, green: 0xA7 / 255, blue: 0xE8 / 255)
     static let mist = Color(red: 0xF3 / 255, green: 0xF1 / 255, blue: 0xF7 / 255)
-    static let mistMuted = Color(red: 0xA9 / 255, green: 0xA4 / 255, blue: 0xB6 / 255)
+    static let mistMuted = Color(red: 0xC6 / 255, green: 0xC2 / 255, blue: 0xCF / 255)
     static let error = Color(red: 0xD8 / 255, green: 0x59 / 255, blue: 0x4C / 255)
 }

@@ -26,7 +26,7 @@ object DuskPalette {
     val onCoral = Color(0xFF1A0E08)
     val lilac = Color(0xFFB9A7E8)
     val mist = Color(0xFFF3F1F7)
-    val mistMuted = Color(0xFFA9A4B6)
+    val mistMuted = Color(0xFFC6C2CF)
     val error = Color(0xFFD8594C)
     val success = Color(0xFF66BB6A)
     val warning = Color(0xFFE0A44D)

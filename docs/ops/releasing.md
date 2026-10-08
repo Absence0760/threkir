@@ -226,6 +226,15 @@ The runtime config otherwise reuses the Android release's secrets:
 There is no keychain-password secret: the runner generates one per run. The
 team id is not a secret either -- it is read out of the two profiles.
 
+`PUBLIC_SUPABASE_URL` and `PUBLIC_SUPABASE_ANON_KEY` also reach the embedded
+Apple Watch app, which cannot read `dart_defines.json`: the workflow writes
+them into the untracked `apps/mobile_ios/ios/Flutter/WatchRuntime.xcconfig`
+and then fails unless the built IPA's `WatchApp.app/Info.plist` carries both
+([decisions § 1810](../architecture/decisions.md)). That step also refuses a
+URL that is not an https origin and an anon key that is not a client key
+(`sb_publishable_…` or an anon-role JWT), so a misfiled `sb_secret_` key
+fails the release instead of shipping.
+
 The watch_ios target reads `SENTRY_DSN` + `APP_RELEASE` from the
 build's Info.plist (set via Xcode build settings or a `xcrun
 agvtool`-style script step in CI); the Sentry SwiftPM package needs

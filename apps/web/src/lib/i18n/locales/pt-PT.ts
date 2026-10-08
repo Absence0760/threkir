@@ -5122,7 +5122,7 @@ export const messages = {
 	"verifiedBadge.tooltip": "Clube verificado oficial",
 	// Learn / guides public content (learn_pages.md)
 	"learn.hubPageTitle": "Aprenda a correr — guias para iniciantes — Threkir",
-	"learn.hubPageDescription": "Guias gratuitos e atemporais para corredores novos ou que estão a voltar — equipamento, treino, nutrição, provas e suas primeiras semanas na rua ou na trilho.",
+	"learn.hubPageDescription": "Guias gratuitos e atemporais para corredores novos ou que estão a voltar — equipamento, treino, nutrição, provas e as suas primeiras semanas na rua ou no trilho.",
 	"learn.hubKicker": "Guias",
 	"learn.hubTitle": "Aprenda a correr",
 	"learn.hubSub": "Guias em linguagem simples para começar, escolher equipamento, treinar com mais inteligência e encontrar sua primeira prova. Sem precisar de conta.",

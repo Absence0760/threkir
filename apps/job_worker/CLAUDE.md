@@ -25,7 +25,9 @@ notifications rows; encrypted RFC 8291 messages signed with a VAPID key,
 (owner-requested via the `request_distance_recompute(p_run_id)` RPC: replays
 the stored track of an `app` / `watch` run through the spec-v1.2 GPS distance
 smoother in `internal/gpsdistance/` (post-hoc stop detection when the track
-has no Doppler) and rewrites `runs.distance_m` + the `fastest_*` bests,
+has no Doppler; such a track keeps the forward pass unless `roadDistanceFor`
+classifies it as a road run, recorded as `distance_estimator_pass`) and
+rewrites `runs.distance_m` + the `fastest_*` bests,
 stamping `distance_estimator = "kalman_v2"` and keeping the recorder's figure
 in `metadata.distance_recorded_m`; a `kalman_v1` recompute is eligible again; imports, indoor /
 pedometer / treadmill, manual and in-progress runs are skipped as no-ops —

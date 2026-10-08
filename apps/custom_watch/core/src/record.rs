@@ -4271,6 +4271,28 @@ mod tests {
     }
 
     #[test]
+    fn a_zig_zag_at_five_minutes_per_km_reads_five_minutes_per_km() {
+        // A steady 5:00/km due north at 1 Hz, each fix 1.25 m either side of
+        // the line: every hop is 4.17 m for 3.33 m of progress, so a hop-sum
+        // reads 4:00/km (#1090). Live pace here is the receiver's Doppler
+        // speed and distance the estimator's, neither of which sees the
+        // lateral jitter; scripts/gps_distance/reference.py credits 400.0 m.
+        let speed = 10.0_f32 / 3.0;
+        let deg_lat_per_m = 1.0 / 111_195.0;
+        let deg_lon_per_m = deg_lat_per_m / 51.5_f64.to_radians().cos();
+        let mut r = Recorder::new();
+        r.start(0);
+        for i in 0..=120u32 {
+            let side = if i % 2 == 1 { 1.25 } else { -1.25 };
+            let lat = 51.5 + f64::from(i) * f64::from(speed) * deg_lat_per_m;
+            r.on_fix(&fix(lat, -0.1 + side * deg_lon_per_m, speed, i));
+        }
+        let s = r.snapshot();
+        assert_eq!(s.current_pace_s_per_km, Some(300));
+        assert!((s.distance_m - 400.0).abs() < 0.5, "{}", s.distance_m);
+    }
+
+    #[test]
     fn gap_prefers_the_baro_altitude_over_the_gps_fix() {
         let mut r = Recorder::new();
         r.start(0);

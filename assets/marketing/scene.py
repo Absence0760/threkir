@@ -2,7 +2,7 @@
 
 A night-lit landscape built from `terrain.height()`, with contour lines drawn
 into the ground material and the route from `terrain.route()` glowing across
-it in the wordmark's ember -> magenta ramp. Two cameras frame the same scene:
+it in the wordmark's coral -> violet ramp. Two cameras frame the same scene:
 
     hero   2400x860   landing hero, a wide band behind the product shot
     panel  1200x1500  the sign-up / sign-in brand panel
@@ -44,16 +44,17 @@ def srgb(hex_colour, alpha=1.0):
         out.append(c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4)
     return (*out, alpha)
 
-
-# Brand anchors: the wordmark ramp, the hero ramp's plums, the app teal.
-EMBER = srgb("#FE5932")
-MAGENTA = srgb("#A01E77")
-PLUM_DEEP = srgb("#140A18")
-PLUM = srgb("#3A0F33")
-PLUM_HOT = srgb("#6E1450")
-GROUND = srgb("#1B0D1F")
-RIDGE = srgb("#3B2238")
-TEAL = srgb("#2C5F6E")
+# Brand anchors: the wordmark ramp over the dark theme's night.
+# "Dusk, refined" (decisions § 1769): the wordmark's coral and violet, lifted
+# to emissive brightness, over the dark theme's violet-tinted night.
+CORAL = srgb("#F08A5D")
+VIOLET = srgb("#7B63B8")
+NIGHT_DEEP = srgb("#121117")
+NIGHT = srgb("#2A2140")
+NIGHT_HOT = srgb("#43356A")
+GROUND = srgb("#17141F")
+RIDGE = srgb("#2E2840")
+DUSK = srgb("#5B4B8A")
 
 
 def reset():
@@ -143,7 +144,7 @@ def terrain_material():
     xyz = nodes.new("ShaderNodeSeparateXYZ")
     links.new(geo.outputs["Position"], xyz.inputs[0])
 
-    # Height tint: plum valleys, dusty mauve ridges.
+    # Height tint: night valleys, dusky violet ridges.
     hmap = nodes.new("ShaderNodeMapRange")
     hmap.inputs["From Min"].default_value = -1.0
     hmap.inputs["From Max"].default_value = 3.5
@@ -192,7 +193,7 @@ def terrain_material():
 
     bsdf = nodes.new("ShaderNodeBsdfPrincipled")
     bsdf.inputs["Roughness"].default_value = 0.92
-    bsdf.inputs["Emission Color"].default_value = MAGENTA
+    bsdf.inputs["Emission Color"].default_value = VIOLET
     links.new(tint.outputs["Color"], bsdf.inputs["Base Color"])
     links.new(gain.outputs[0], bsdf.inputs["Emission Strength"])
 
@@ -204,7 +205,7 @@ def terrain_material():
     fog.inputs["To Max"].default_value = 0.92
     links.new(cam.outputs["View Distance"], fog.inputs["Value"])
     haze = nodes.new("ShaderNodeEmission")
-    haze.inputs["Color"].default_value = PLUM_HOT
+    haze.inputs["Color"].default_value = NIGHT_HOT
     haze.inputs["Strength"].default_value = 0.55
     mix = nodes.new("ShaderNodeMixShader")
     links.new(fog.outputs["Result"], mix.inputs["Fac"])
@@ -223,8 +224,8 @@ def route_material():
     xyz = nodes.new("ShaderNodeSeparateXYZ")
     links.new(uv.outputs["UV"], xyz.inputs[0])
     ramp = nodes.new("ShaderNodeValToRGB")
-    ramp.color_ramp.elements[0].color = EMBER
-    ramp.color_ramp.elements[1].color = MAGENTA
+    ramp.color_ramp.elements[0].color = CORAL
+    ramp.color_ramp.elements[1].color = VIOLET
     links.new(xyz.outputs["X"], ramp.inputs["Fac"])
     emit = nodes.new("ShaderNodeEmission")
     emit.inputs["Strength"].default_value = 4.5
@@ -247,14 +248,14 @@ def glow_material(name, colour, strength):
 def markers(points):
     start = Vector(points[0])
     bpy.ops.mesh.primitive_uv_sphere_add(radius=0.16, location=start + Vector((0, 0, 0.12)))
-    bpy.context.active_object.data.materials.append(glow_material("start", EMBER, 12.0))
+    bpy.context.active_object.data.materials.append(glow_material("start", CORAL, 12.0))
     bpy.ops.mesh.primitive_torus_add(
         major_radius=0.5, minor_radius=0.025, location=start + Vector((0, 0, 0.03))
     )
-    bpy.context.active_object.data.materials.append(glow_material("ring", EMBER, 5.0))
+    bpy.context.active_object.data.materials.append(glow_material("ring", CORAL, 5.0))
     end = Vector(points[-1])
     bpy.ops.mesh.primitive_uv_sphere_add(radius=0.14, location=end + Vector((0, 0, 0.1)))
-    bpy.context.active_object.data.materials.append(glow_material("finish", MAGENTA, 12.0))
+    bpy.context.active_object.data.materials.append(glow_material("finish", VIOLET, 12.0))
 
 
 def world():
@@ -276,11 +277,11 @@ def world():
     ramp = nodes.new("ShaderNodeValToRGB")
     els = ramp.color_ramp.elements
     els[0].position, els[0].color = 0.0, srgb("#B8325A")
-    els[1].position, els[1].color = 1.0, PLUM_DEEP
+    els[1].position, els[1].color = 1.0, NIGHT_DEEP
     mid = els.new(0.12)
-    mid.color = PLUM_HOT
+    mid.color = NIGHT_HOT
     upper = els.new(0.42)
-    upper.color = PLUM
+    upper.color = NIGHT
     links.new(span.outputs["Result"], ramp.inputs["Fac"])
     bg = nodes.new("ShaderNodeBackground")
     bg.inputs["Strength"].default_value = 1.0
@@ -299,7 +300,7 @@ def lights():
 
     fill = bpy.data.lights.new("fill", "SUN")
     fill.energy = 0.35
-    fill.color = TEAL[:3]
+    fill.color = DUSK[:3]
     obj = link(bpy.data.objects.new("fill", fill))
     obj.rotation_euler = (math.radians(52), 0, math.radians(-35))
 

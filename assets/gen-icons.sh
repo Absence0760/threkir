@@ -17,7 +17,7 @@ SVG="$SCRIPT_DIR/icon.svg"
 
 # iOS / watchOS require opaque icons (no alpha). The master's top-left gradient
 # stop is the flatten backdrop; the master is fully opaque so this is lossless.
-OPAQUE_BG="#FE5932"
+OPAQUE_BG="#C24E24"
 
 if [[ ! -f "$SVG" ]]; then
   echo "error: master not found at $SVG" >&2
@@ -69,6 +69,13 @@ render_png 32  "$WEB/favicon.png"
 render_png 180 "$WEB/apple-touch-icon.png"
 render_png 192 "$WEB/icon-192.png"
 render_png 512 "$WEB/icon-512.png"
+# Web icons are budgeted per file (scripts/check_web_bundle_budget.mjs), and a
+# diagonal three-stop gradient leaves a truecolour PNG at ~2x the old flat-held
+# one. 256 colours with no dither is visually identical at these sizes and
+# well inside the budget.
+for f in favicon.png apple-touch-icon.png icon-192.png icon-512.png; do
+  magick "$WEB/$f" +dither -colors 256 -define png:compression-level=9 "PNG8:$WEB/$f"
+done
 
 # 3. Garmin (size read from the existing file) ------------------------------
 echo "[garmin]"

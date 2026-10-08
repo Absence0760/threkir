@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="brand" x1="0" y1="0" x2="1200" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#C24E24"/>
+      <stop offset="0.5" stop-color="#A8426A"/>
+      <stop offset="1" stop-color="#5B4B8A"/>
+    </linearGradient>
+    <linearGradient id="tile" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#C24E24"/>
+      <stop offset="0.5" stop-color="#A8426A"/>
+      <stop offset="1" stop-color="#5B4B8A"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="#121117"/>
+  <rect width="1200" height="12" fill="url(#brand)"/>
+  <text x="80" y="300" font-family="Manrope, sans-serif" font-size="96" font-weight="800"
+        letter-spacing="-2" fill="#FFFFFF">Learn to run</text>
+  <text x="80" y="370" font-family="Manrope, sans-serif" font-size="36" font-weight="500"
+        fill="#E4E1EA">Free, plain-language guides for new runners</text>
+  <g transform="translate(80 508) scale(0.0547)">
+    <rect width="1024" height="1024" rx="180" fill="url(#tile)"/>
+    <g fill="#FFFFFF" fill-rule="evenodd" transform="translate(512 512) scale(7.6) translate(-54.5 -50)">
+      <path d="M30 10 H44 V90 H30 Z M44 29 H58 A21 21 0 0 1 58 71 H44 Z M44 42 H56 A8 8 0 0 1 56 58 H44 Z"/>
+    </g>
+  </g>
+  <text x="152" y="548" font-family="Manrope, sans-serif" font-size="40" font-weight="800"
+        fill="#F08A5D">Threkir</text>
+</svg>

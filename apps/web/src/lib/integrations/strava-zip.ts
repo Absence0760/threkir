@@ -216,6 +216,7 @@ async function importOne(
 	// its track instead of importing trackless. (persona round-5 F4)
 	// audit/strava May 2026 Medium #2.
 	let track: ImportedRoute['waypoints'] | null = null;
+	let deviceDistance: number[] | null = null;
 	// Throws when the row names a member the archive does not hold, or one
 	// in a format neither parser reads — the caller's per-row catch turns
 	// that into an `ImportFailureReport` entry instead of a summary-only
@@ -248,7 +249,10 @@ async function importOne(
 			// row keeps the CSV's own numbers and imports trackless.
 			if (member.parser === 'fit') {
 				const parsed = await parseFitBuffer(await blob.arrayBuffer());
-				if (parsed && parsed.track.length > 0) track = parsed.track;
+				if (parsed && parsed.track.length > 0) {
+					track = parsed.track;
+					deviceDistance = parsed.distance_stream;
+				}
 			} else {
 				const synthetic = new File([blob], innerName);
 				const routes = await parseRouteFile(synthetic);
@@ -279,7 +283,7 @@ async function importOne(
 		// reads. Without them an imported long run can never yield the 5K/10K PR
 		// hiding inside its track, so five years of migrated Strava history lands
 		// with zero embedded bests — the Garmin importer already does this.
-		...(track ? { embedded_bests: computeEmbeddedBests(track, activityType) } : {}),
+		...(track ? { embedded_bests: computeEmbeddedBests(track, activityType, deviceDistance) } : {}),
 		title: row[idx.name] || null,
 		// Cross-source dedupe — matches the mobile ZIP + Strava-
 		// OAuth writers. /audit/strava M3.

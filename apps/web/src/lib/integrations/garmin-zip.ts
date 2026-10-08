@@ -334,7 +334,11 @@ async function importFitFile(
 	// marathon}_s columns, 20270325_001) so a fast sub-distance inside a long
 	// imported run reaches personal_records. Empty {} → nothing written for
 	// indoor/trackless or too-short runs; no fake bests.
-	const embeddedBests = computeEmbeddedBests(parsed.track, parsed.activity_type);
+	const embeddedBests = computeEmbeddedBests(
+		parsed.track,
+		parsed.activity_type,
+		parsed.distance_stream,
+	);
 
 	await saveRun({
 		embedded_bests: embeddedBests,

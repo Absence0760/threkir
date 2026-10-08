@@ -381,7 +381,7 @@ Gesture UX: pinch to zoom, long-press to undo last waypoint, double-tap to finis
 
 **Spec:**
 
-Price: **$9.99 / month**. Managed via RevenueCat (abstracts App Store + Play Store + Stripe web checkout). The Pro tier is the only paying tier marketed today; the `lifetime` tier exists in the schema as a future option.
+Price: **$9.99 / month** or **$79.99 / year** (33% less than twelve months; yearly is the preselected plan on web and mobile). Managed via RevenueCat (abstracts App Store + Play Store + Stripe web checkout). The Pro tier is the only paying tier marketed today; the `lifetime` tier exists in the schema as a future option.
 
 **Free forever:**
 - Every feature. Recording, routes, plans, clubs, sync, imports, dashboard, public share pages.

@@ -35,7 +35,7 @@ Of the 16 `✗` Android rows, several are **not Android gaps**: they're web-cano
 
 | Gap | Section in parity.md | What's left |
 |---|---|---|
-| Native paywall sheets (RevenueCat / Play Billing) | Paywall and funding | The native path is **built**: `revenuecat.dart` wraps `purchases_flutter` behind an env gate and `screens/settings_pro_screen.dart` drives purchase / restore / manage through it, falling back to the browser only when `isRevenueCatConfigured()` is false. Flips from `Partial` to `✓` once the RevenueCat dashboard / `pro_monthly` product / API keys are provisioned operator-side — **gated on credentials, not on code.** |
+| Native paywall sheets (RevenueCat / Play Billing) | Paywall and funding | The native path is **built**: `revenuecat.dart` wraps `purchases_flutter` behind an env gate and `screens/settings_pro_screen.dart` drives purchase / restore / manage through it, falling back to the browser only when `isRevenueCatConfigured()` is false. Flips from `Partial` to `✓` once the RevenueCat dashboard / `pro_monthly` + `pro_annual` products / API keys are provisioned operator-side — **gated on credentials, not on code.** |
 
 ### Gaps that are web-canonical or credential-blocked (not Android work)
 

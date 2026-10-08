@@ -30,7 +30,7 @@
 
 import { env } from '$env/dynamic/public';
 
-import { buildCheckoutUrl } from './revenuecat_links';
+import { buildCheckoutUrl, PRO_PACKAGE_IDS, type ProPlan } from './revenuecat_links';
 
 // Read via `$env/dynamic/public` rather than `static/public` so an
 // unconfigured build returns an empty string and the wrapper reports
@@ -49,11 +49,12 @@ export function isRevenueCatConfigured(): boolean {
 	return Boolean(CHECKOUT_BASE.trim());
 }
 
-/// Build the Pro hosted-checkout URL for a specific Supabase user id.
-/// Returns `null` when the checkout link isn't configured on this build,
-/// so the caller can fail closed to the "coming soon" placeholder.
-export function proCheckoutUrl(userId: string, returnUrl?: string): string | null {
-	return buildCheckoutUrl(CHECKOUT_BASE, userId, returnUrl);
+/// Build the Pro hosted-checkout URL for a specific Supabase user id,
+/// preselecting the package for `plan`. Returns `null` when the checkout
+/// link isn't configured on this build, so the caller can fail closed to
+/// the "coming soon" placeholder.
+export function proCheckoutUrl(userId: string, plan: ProPlan, returnUrl?: string): string | null {
+	return buildCheckoutUrl(CHECKOUT_BASE, userId, returnUrl, PRO_PACKAGE_IDS[plan]);
 }
 
 /// The hosted subscription-management URL. RevenueCat's no-code customer

@@ -10,8 +10,30 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/legal_links.dart';
 import '../lib/pro_sellable.dart';
+import '../lib/revenuecat.dart';
 import '../lib/screens/settings_pro_screen.dart';
 import '../lib/store_links.dart';
+import 'pro_plan_fixtures.dart';
+import 'pump_until.dart';
+
+class _FakeProStore implements ProStore {
+  _FakeProStore(this._load);
+
+  final Future<ProPlanOptions?> Function() _load;
+  final purchased = <ProPlan>[];
+
+  @override
+  bool get configured => true;
+
+  @override
+  Future<ProPlanOptions?> loadPlans() => _load();
+
+  @override
+  Future<PurchaseResult> purchase(ProPlan plan) async {
+    purchased.add(plan);
+    return PurchaseResult.cancelled;
+  }
+}
 
 /// Pins two things about the mobile Pro storefront:
 ///
@@ -19,7 +41,10 @@ import '../lib/store_links.dart';
 ///    renders only when the deploy has a live Pro perk, mirroring web's
 ///    `proSellable` branch. Unknown (the manifest didn't answer) counts as
 ///    not sellable, so the failure direction is "don't take the money".
-/// 2. The payment double-submit guard: tapping Subscribe puts the IAP tiles
+/// 2. The plan choice (C5): annual and monthly priced from the store, the
+///    chosen plan is the one purchased, and a missing or failed offering
+///    degrades to the single monthly fallback rather than breaking.
+/// 3. The payment double-submit guard: tapping Subscribe puts the IAP tiles
 ///    into a busy state, so a second tap can't open a second checkout.
 ///    RevenueCat is unconfigured in the test env, so checkout falls through
 ///    to the external-upgrade URL — we gate that launch to hold the busy
@@ -216,5 +241,152 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(seconds: 4));
     expect(launchCalls, 1);
+  });
+
+  group('plan choice', () {
+    const livePerks = ProPerks(coach: true, routeGen: false);
+
+    Future<_FakeProStore> pumpWithStore(
+      WidgetTester tester,
+      Future<ProPlanOptions?> Function() load,
+    ) async {
+      final store = _FakeProStore(load);
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SettingsProScreen(
+            loadPerks: () async => livePerks,
+            store: store,
+          ),
+        ),
+      );
+      await tester.pump();
+      return store;
+    }
+
+    Future<void> waitForSubscribe(WidgetTester tester, String title) =>
+        pumpUntil(
+          tester,
+          () => find.text(title).evaluate().isNotEmpty,
+          describe: 'the subscribe tile to read "$title"',
+        );
+
+    final bothPlans = ProPlanOptions(
+      monthly: proMonthlyPackage,
+      annual: proAnnualPackage,
+    );
+
+    testWidgets('both plans show store prices, the saving, and default to annual',
+        (tester) async {
+      await pumpWithStore(tester, () async => bothPlans);
+      await waitForSubscribe(tester, r'Subscribe to Pro — $79.99/year');
+
+      expect(find.text(r'Yearly — $79.99/year'), findsOneWidget);
+      expect(find.text(r'Monthly — $9.99/month'), findsOneWidget);
+      expect(find.text('Save 33% compared with paying monthly'), findsOneWidget);
+      expect(find.byIcon(Icons.radio_button_checked), findsOneWidget);
+      expect(
+        find.widgetWithText(ListTile, r'Yearly — $79.99/year'),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<ListTile>(
+                find.widgetWithText(ListTile, r'Yearly — $79.99/year'))
+            .selected,
+        isTrue,
+      );
+      expect(find.textContaining('Auto-renews yearly'), findsOneWidget);
+      // The store price is the real one, so the USD disclaimer is not shown.
+      expect(find.textContaining('Billed in US dollars'), findsNothing);
+    });
+
+    testWidgets('subscribing on the default buys the annual package',
+        (tester) async {
+      final store = await pumpWithStore(tester, () async => bothPlans);
+      await waitForSubscribe(tester, r'Subscribe to Pro — $79.99/year');
+
+      await tester.tap(subscribeTile);
+      await pumpUntil(tester, () => store.purchased.isNotEmpty,
+          describe: 'the checkout to start');
+      expect(store.purchased, [ProPlan.annual]);
+    });
+
+    testWidgets('choosing monthly buys the monthly package', (tester) async {
+      final store = await pumpWithStore(tester, () async => bothPlans);
+      await waitForSubscribe(tester, r'Subscribe to Pro — $79.99/year');
+
+      await tester.tap(find.text(r'Monthly — $9.99/month'));
+      await tester.pump();
+      expect(find.text(r'Subscribe to Pro — $9.99/month'), findsOneWidget);
+      expect(find.textContaining('Auto-renews monthly'), findsOneWidget);
+
+      await tester.tap(subscribeTile);
+      await pumpUntil(tester, () => store.purchased.isNotEmpty,
+          describe: 'the checkout to start');
+      expect(store.purchased, [ProPlan.monthly]);
+    });
+
+    testWidgets('a single package is offered alone, at its store price',
+        (tester) async {
+      final store = await pumpWithStore(
+          tester, () async => ProPlanOptions(monthly: proMonthlyPackage));
+      await pumpUntil(
+        tester,
+        () =>
+            find.text(r'Subscribe to Pro — $9.99/month').evaluate().isNotEmpty &&
+            find.textContaining('Billed in US dollars').evaluate().isEmpty,
+        describe: 'the store price to replace the USD fallback',
+      );
+
+      expect(find.text(r'Subscribe to Pro — $9.99/month'), findsOneWidget);
+      expect(find.byIcon(Icons.radio_button_checked), findsNothing);
+      expect(find.byIcon(Icons.radio_button_unchecked), findsNothing);
+      expect(find.textContaining('compared with paying monthly'), findsNothing);
+
+      await tester.tap(subscribeTile);
+      await pumpUntil(tester, () => store.purchased.isNotEmpty,
+          describe: 'the checkout to start');
+      expect(store.purchased, [ProPlan.monthly]);
+    });
+
+    testWidgets('an annual-only offering sells the annual package',
+        (tester) async {
+      final store = await pumpWithStore(
+          tester, () async => ProPlanOptions(annual: proAnnualPackage));
+      await waitForSubscribe(tester, r'Subscribe to Pro — $79.99/year');
+      expect(find.byIcon(Icons.radio_button_checked), findsNothing);
+
+      await tester.tap(subscribeTile);
+      await pumpUntil(tester, () => store.purchased.isNotEmpty,
+          describe: 'the checkout to start');
+      expect(store.purchased, [ProPlan.annual]);
+    });
+
+    testWidgets('no offering falls back to the monthly USD list price',
+        (tester) async {
+      final store = await pumpWithStore(tester, () async => null);
+      await waitForSubscribe(tester, r'Subscribe to Pro — $9.99/month');
+
+      expect(find.textContaining('Billed in US dollars'), findsOneWidget);
+      expect(find.byIcon(Icons.radio_button_checked), findsNothing);
+
+      await tester.tap(subscribeTile);
+      await pumpUntil(tester, () => store.purchased.isNotEmpty,
+          describe: 'the checkout to start');
+      expect(store.purchased, [ProPlan.monthly]);
+    });
+
+    testWidgets('a failing offerings fetch leaves the screen usable',
+        (tester) async {
+      await pumpWithStore(
+          tester, () => Future<ProPlanOptions?>.error(StateError('offline')));
+      await waitForSubscribe(tester, r'Subscribe to Pro — $9.99/month');
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Restore purchases'), findsOneWidget);
+      expect(find.text('Manage subscription'), findsOneWidget);
+    });
   });
 }

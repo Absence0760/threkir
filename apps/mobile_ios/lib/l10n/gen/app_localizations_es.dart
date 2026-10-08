@@ -7356,6 +7356,30 @@ class AppLocalizationsEs extends AppLocalizations {
       'Abre el portal de suscripción en tu navegador. Se renueva automáticamente cada mes hasta su cancelación.';
 
   @override
+  String proPlanMonthly(String price) {
+    return 'Mensual — $price/mes';
+  }
+
+  @override
+  String proPlanAnnual(String price) {
+    return 'Anual — $price/año';
+  }
+
+  @override
+  String proPlanAnnualSaving(int percent) {
+    return 'Ahorra un $percent % frente al pago mensual';
+  }
+
+  @override
+  String proSubscribeTitleAnnual(String price) {
+    return 'Suscribirse a Pro — $price/año';
+  }
+
+  @override
+  String get proSubscribeSubtitleConfiguredAnnual =>
+      'Se factura una vez al año. Se renueva automáticamente cada año hasta que se cancele en Ajustes → Suscripciones.';
+
+  @override
   String get proComingSoonTitle => 'Pro: próximamente';
 
   @override

@@ -7380,6 +7380,30 @@ class AppLocalizationsFr extends AppLocalizations {
       'Ouvre le portail d\'abonnement dans ton navigateur. Renouvellement mensuel automatique jusqu\'à résiliation.';
 
   @override
+  String proPlanMonthly(String price) {
+    return 'Mensuel — $price/mois';
+  }
+
+  @override
+  String proPlanAnnual(String price) {
+    return 'Annuel — $price/an';
+  }
+
+  @override
+  String proPlanAnnualSaving(int percent) {
+    return '$percent % d\'économie par rapport au paiement mensuel';
+  }
+
+  @override
+  String proSubscribeTitleAnnual(String price) {
+    return 'S\'abonner à Pro — $price/an';
+  }
+
+  @override
+  String get proSubscribeSubtitleConfiguredAnnual =>
+      'Facturé une fois par an. Renouvellement annuel automatique jusqu\'à résiliation dans Réglages → Abonnements.';
+
+  @override
   String get proComingSoonTitle => 'Pro — bientôt disponible';
 
   @override

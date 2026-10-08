@@ -7357,6 +7357,30 @@ class AppLocalizationsPt extends AppLocalizations {
       'Abre o portal de assinatura no seu navegador. Renova automaticamente todo mês até ser cancelado.';
 
   @override
+  String proPlanMonthly(String price) {
+    return 'Mensal — $price/mês';
+  }
+
+  @override
+  String proPlanAnnual(String price) {
+    return 'Anual — $price/ano';
+  }
+
+  @override
+  String proPlanAnnualSaving(int percent) {
+    return 'Poupe $percent% em relação ao pagamento mensal';
+  }
+
+  @override
+  String proSubscribeTitleAnnual(String price) {
+    return 'Assinar o Pro — $price/ano';
+  }
+
+  @override
+  String get proSubscribeSubtitleConfiguredAnnual =>
+      'Cobrado uma vez por ano. Renova automaticamente todos os anos até ser cancelado em Definições → Assinaturas.';
+
+  @override
   String get proComingSoonTitle => 'Pro — em breve';
 
   @override
@@ -21809,6 +21833,30 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get proSubscribeSubtitleWeb =>
       'Abre o portal de assinatura no seu navegador. Renova automaticamente todo mês até ser cancelado.';
+
+  @override
+  String proPlanMonthly(String price) {
+    return 'Mensal — $price/mês';
+  }
+
+  @override
+  String proPlanAnnual(String price) {
+    return 'Anual — $price/ano';
+  }
+
+  @override
+  String proPlanAnnualSaving(int percent) {
+    return 'Economize $percent% em relação ao pagamento mensal';
+  }
+
+  @override
+  String proSubscribeTitleAnnual(String price) {
+    return 'Assinar o Pro — $price/ano';
+  }
+
+  @override
+  String get proSubscribeSubtitleConfiguredAnnual =>
+      'Cobrado uma vez por ano. Renova automaticamente todo ano até ser cancelado em Configurações → Assinaturas.';
 
   @override
   String get proComingSoonTitle => 'Pro — em breve';

@@ -142,6 +142,9 @@ func distanceWorker(t *testing.T, run DistanceRecomputeRun, track []RecordedTrac
 		runs:   map[string]*DistanceRecomputeRun{run.ID: &run},
 		tracks: map[string][]RecordedTrackPoint{},
 	}
+	// A forward-pass recompute removes a stale sidecar through the Storage
+	// fake, which writes into this map.
+	b.storageObjects = map[string][]StorageObject{}
 	if run.TrackURL != nil {
 		b.distance.tracks[*run.TrackURL] = track
 	}

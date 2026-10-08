@@ -144,9 +144,14 @@ func (w *Worker) handleDistanceRecompute(ctx context.Context, job *Job) error {
 		}
 		// The line follows the figure the run now carries: a forward-pass
 		// recompute keeps its raw line rather than the smoother's, which
-		// cuts the corners the forward pass was kept to avoid.
+		// cuts the corners the forward pass was kept to avoid, and so removes
+		// a sidecar an earlier smoothed-pass recompute of this same track
+		// left (its fingerprint would still match).
 		if pass == EstimatorPassSmoothed {
 			w.writeSmoothedSidecar(ctx, run.UserID, run.ID, track, storedIdx, replay)
+		} else if err := w.Backend.DeleteStorageObjects(ctx, schema.BucketRuns,
+			[]string{smoothedSidecarPath(run.UserID, run.ID)}); err != nil {
+			w.Log.Warn("stale smoothed sidecar not removed", "run_id", run.ID, "err", err)
 		}
 		w.Log.Info("distance recomputed",
 			"run_id", p.RunID,

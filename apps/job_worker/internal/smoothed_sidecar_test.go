@@ -189,6 +189,21 @@ func TestDistanceRecompute_NoSidecarOnTheForwardPass(t *testing.T) {
 	if len(b.distance.sidecars) != 0 {
 		t.Errorf("a forward-pass recompute keeps the raw line; got sidecars %v", b.distance.sidecars)
 	}
+	if len(b.storageDeleted) != 1 || len(b.storageDeleted[0]) != 1 || b.storageDeleted[0][0] != drSidecar {
+		t.Errorf("deleted = %v, want the sidecar an earlier smoothed-pass recompute may have left", b.storageDeleted)
+	}
+}
+
+func TestDistanceRecompute_StaleSidecarRemovalFailureDoesNotFailTheRecompute(t *testing.T) {
+	w, b := distanceWorker(t, appRun(`{}`), legacyStopTrack())
+	// The fake refuses every delete after the first storageDeleteErrAfter calls.
+	b.storageDeleteErrAfter, b.storageDeleteCalls = 1, 1
+	if err := w.handleDistanceRecompute(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID})); err != nil {
+		t.Fatalf("the sidecar removal is auxiliary to the distance; got %v", err)
+	}
+	if len(b.distance.updates) != 1 || len(b.storageDeleted) != 0 {
+		t.Errorf("updates = %d, deleted = %v; want the distance written and the refused delete logged", len(b.distance.updates), b.storageDeleted)
+	}
 }
 
 func TestDistanceRecompute_SidecarFailureDoesNotFailTheRecompute(t *testing.T) {

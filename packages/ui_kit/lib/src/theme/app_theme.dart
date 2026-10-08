@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// App-wide theme and design tokens: "Dusk, refined" (decisions § 1768).
+/// App-wide theme and design tokens: "Dusk, refined" (decisions § 1772).
 ///
 /// One coral accent in both brightnesses — bright [coral] on dark, [coralDeep]
 /// on light — with lilac / [violet] as the secondary, over near-neutral greys

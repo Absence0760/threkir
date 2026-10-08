@@ -10,7 +10,7 @@
 # cannot load a webfont either, so outlining is the only way the lockup looks
 # the same everywhere.
 #
-# The face is Manrope ExtraBold, the product face (decisions § 1768), read from
+# The face is Manrope ExtraBold, the product face (decisions § 1772), read from
 # the repo's own generated TTFs through a private fontconfig so no system
 # install is needed, and the canvas is sized to the outlined text, so a
 # different face can never be clipped again.

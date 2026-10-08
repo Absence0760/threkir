@@ -51,7 +51,7 @@ export function mapOverlayOutline(darkBasemap: boolean): string {
 	return darkBasemap ? '#FFFFFF' : '#1E1B4B';
 }
 
-/// The recorded / saved track line, in the theme's coral (decisions § 1768).
+/// The recorded / saved track line, in the theme's coral (decisions § 1772).
 /// The light rung is deep enough to hold 3:1 over water as well as land.
 export function mapTrackLine(darkBasemap: boolean): string {
 	return darkBasemap ? '#F08A5D' : '#A33D1A';
@@ -126,7 +126,7 @@ export function mapOverlapLine(darkBasemap: boolean): string {
 }
 
 /// A live spectator trace: the runner's track as it is being recorded, so the
-/// same coral as a recorded track (§ 1768), and the colour mobile's spectator
+/// same coral as a recorded track (§ 1772), and the colour mobile's spectator
 /// map already draws it in.
 export function mapLiveLine(darkBasemap: boolean): string {
 	return mapTrackLine(darkBasemap);

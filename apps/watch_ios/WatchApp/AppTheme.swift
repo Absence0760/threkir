@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// App-wide color palette: "Dusk, refined" (decisions § 1768), the dark half.
+/// App-wide color palette: "Dusk, refined" (decisions § 1772), the dark half.
 /// Mirrors `packages/ui_kit/lib/src/theme/app_theme.dart` and the Wear OS
 /// `DuskPalette`. Keep hex values in sync when either side changes.
 enum AppTheme {

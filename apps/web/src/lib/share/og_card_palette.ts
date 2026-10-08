@@ -20,7 +20,7 @@
 /// warns about. Only the palette is common.
 
 /// White-paper card: the run, route and badge unfurls, in the "Dusk, refined"
-/// palette (decisions § 1768).
+/// palette (decisions § 1772).
 ///
 /// Measured against `bg` (#FFFFFF):
 ///   brand  4.763:1 — the "Threkir" wordmark, the light theme's coral accent.

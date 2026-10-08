@@ -792,7 +792,7 @@ test('workout-kind tokens match mobile ChartPalette.kinds', () => {
 
 // Mobile pinned the same token per brightness in § 487 and web's surfaces ARE
 // mobile's (snow / white / nightRaised / night are --color-bg /
-// --color-surface / --color-surface / --color-bg, § 1768), so the two hairlines
+// --color-surface / --color-surface / --color-bg, § 1772), so the two hairlines
 // must be the same colour or a card reads apart on one platform and not the
 // other. A Dart file cannot import a CSS custom property, so the lockstep is
 // checked here, the same way the chart, zone and semantic palettes already are.
@@ -1607,7 +1607,7 @@ test('success/danger -text tokens match mobile AppSemanticColors', () => {
 });
 
 // The accent and the secondary are one value per brightness across the two
-// platforms (decisions § 1768): mobile's colorScheme.primary is web's
+// platforms (decisions § 1772): mobile's colorScheme.primary is web's
 // --color-primary, and mobile's colorScheme.secondary is web's
 // --color-secondary-text, the token web paints secondary-coloured marks with.
 // A Dart file cannot import a CSS custom property, so a change to any of these

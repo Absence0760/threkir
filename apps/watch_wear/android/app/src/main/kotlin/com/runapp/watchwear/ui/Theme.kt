@@ -14,7 +14,7 @@ import com.runapp.watchwear.R
 
 /// Design tokens mirroring the dark half of
 /// `packages/ui_kit/lib/src/theme/app_theme.dart` ("Dusk, refined",
-/// decisions § 1768) and `apps/watch_ios/WatchApp/AppTheme.swift`. Keep hex
+/// decisions § 1772) and `apps/watch_ios/WatchApp/AppTheme.swift`. Keep hex
 /// values in sync with those files — every platform's colour palette is one
 /// thing with three language bindings. The watch is dark-only.
 object DuskPalette {
@@ -33,7 +33,7 @@ object DuskPalette {
 }
 
 /// The wordmark's gradient — deep coral through rose to violet (decisions
-/// § 1769) — mirroring `--brand-coral` / `--brand-rose` / `--brand-violet` in
+/// § 1773) — mirroring `--brand-coral` / `--brand-rose` / `--brand-violet` in
 /// `apps/web/src/app.css`. Kept apart from `DuskPalette` on purpose: Dusk is
 /// the shared UI palette, this is the brand mark, and it is spent on exactly
 /// one control — the pre-run Start.
@@ -70,7 +70,7 @@ private val DuskColors = Colors(
     onError = DuskPalette.mist,
 )
 
-/// Manrope, the product face (decisions § 1768), bundled as font resources
+/// Manrope, the product face (decisions § 1772), bundled as font resources
 /// by `assets/fonts/gen-manrope.py` (SIL OFL 1.1, `assets/licenses/`).
 private val Manrope = FontFamily(
     Font(R.font.manrope_light, FontWeight.Light),

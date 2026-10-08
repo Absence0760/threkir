@@ -8,7 +8,7 @@
 		'Noto Sans CJK JP', 'Noto Sans CJK KR', 'Apple Color Emoji',
 		'Segoe UI Emoji', sans-serif;
 
-	/* Colors — "Dusk, refined" (decisions § 1768): one coral accent in both
+	/* Colors — "Dusk, refined" (decisions § 1772): one coral accent in both
 	   themes (deep coral in light, bright coral in dark), lilac / violet as
 	   the secondary, over near-neutral greys with a trace of violet. Kept in
 	   lockstep with packages/ui_kit/lib/src/theme/app_theme.dart. */
@@ -82,7 +82,7 @@
 	--color-danger-text: #A93B2E;
 
 	/* The wordmark's gradient — deep coral, a rose midpoint, violet
-	   (decisions § 1769) — for decoration on the public pages: the landing
+	   (decisions § 1773) — for decoration on the public pages: the landing
 	   journey rail, the fastest split, a recording dot. Theme-independent,
 	   because the wordmark is one file in both themes. White reads 4.76:1 on
 	   the coral end and higher on the rest, but these are still fills, not
@@ -187,7 +187,7 @@
 	   Enforced per call site, composited, in contrast_guard.test.ts. */
 	--section-dashboard: var(--color-accent-orange);
 	--section-dashboard-ink: var(--color-accent-orange-text);
-	/* The theme's secondary family (§ 1768): the lilac fill is dark's
+	/* The theme's secondary family (§ 1772): the lilac fill is dark's
 	   --color-secondary and the ink is light's --color-secondary-text. Not
 	   aliased, because a section hue must hold one family in both themes
 	   while the secondary token flips between lilac and violet. The dark
@@ -218,7 +218,7 @@
 	   brand hue (it is the larger recognition cue, and the provider's NAME is
 	   set beside it); the ink is theme-keyed off the same hue, lightness only.
 	   parkrun's brand coral used to be the history accent and shared its
-	   ink; history moved to the secondary family (§ 1768), so parkrun keeps
+	   ink; history moved to the secondary family (§ 1772), so parkrun keeps
 	   the coral rungs history had. Worst measured: 5.138:1 light, 5.135 dark. */
 	--provider-strava-ink: #9C2F01;
 	--provider-parkrun-ink: #A8401B;

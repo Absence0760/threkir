@@ -306,7 +306,7 @@ Color mapOverlayOutline({required bool darkBasemap}) =>
     darkBasemap ? Colors.white : const Color(0xFF1E1B4B);
 
 /// The saved / recorded track line drawn as one colour — the list
-/// thumbnails. The theme's coral (decisions § 1768): bright coral on a dark
+/// thumbnails. The theme's coral (decisions § 1772): bright coral on a dark
 /// basemap, a deep coral on a light one, where it also holds 3:1 over water.
 /// Same two rungs as web's `mapTrackLine` (`basemap_contrast.ts`), and the
 /// middle stop of [trackGradientColours] on each basemap.

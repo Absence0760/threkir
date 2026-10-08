@@ -45,7 +45,7 @@ def srgb(hex_colour, alpha=1.0):
     return (*out, alpha)
 
 # Brand anchors: the wordmark ramp over the dark theme's night.
-# "Dusk, refined" (decisions § 1769): the wordmark's coral and violet, lifted
+# "Dusk, refined" (decisions § 1773): the wordmark's coral and violet, lifted
 # to emissive brightness, over the dark theme's violet-tinted night.
 CORAL = srgb("#F08A5D")
 VIOLET = srgb("#7B63B8")

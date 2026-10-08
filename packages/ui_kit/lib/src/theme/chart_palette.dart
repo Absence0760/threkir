@@ -80,7 +80,7 @@ class ChartPalette {
   /// top step — the same colour the heatmap's busiest day gets.
   Color get bar => ramp.last;
 
-  /// "Dusk, refined" hues (decisions § 1768) at the luminances the § 495 /
+  /// "Dusk, refined" hues (decisions § 1772) at the luminances the § 495 /
   /// § 516 ladders were measured at. Contrast against the white card —
   /// series: 14.849 / 3.468 / 7.369;
   /// zones z1->z5: 16.743 / 11.214 / 7.665 / 5.236 / 3.590;
@@ -114,7 +114,7 @@ class ChartPalette {
     ],
   );
 
-  /// "Dusk, refined" hues (decisions § 1768) at the luminances the § 495 /
+  /// "Dusk, refined" hues (decisions § 1772) at the luminances the § 495 /
   /// § 516 ladders were measured at. Contrast against the nightRaised card —
   /// series: 14.017 / 6.865 / 3.524;
   /// zones z1->z5: 14.659 / 10.330 / 7.317 / 5.197 / 3.677;

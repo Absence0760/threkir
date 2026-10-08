@@ -3,7 +3,7 @@
 // The app icon renders in many places — web favicon / PWA manifest,
 // Android + iOS launcher icons, and the Android status-bar notification
 // icon — and every one derives from ONE master, assets/icon.svg, whose
-// coral→violet gradient is #C24E24 → #5B4B8A (decisions § 1769). This test pins that
+// coral→violet gradient is #C24E24 → #5B4B8A (decisions § 1773). This test pins that
 // canonical pair across every machine-readable brand-colour surface so a
 // future edit to one of them can't silently drift the icon colour out of
 // sync on a single platform (which is exactly what #483 reported).

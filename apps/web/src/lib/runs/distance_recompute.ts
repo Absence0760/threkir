@@ -40,6 +40,14 @@ export function recordedDistanceM(metadata: JsonObject | null | undefined): numb
 	return typeof raw === 'number' && Number.isFinite(raw) && raw > 0 ? raw : null;
 }
 
+/// The run's length along the road graph the map_match job measured for a
+/// road run (metadata.distance_map_matched_m), or null when it has none.
+/// Display-only: it never replaces distance_m.
+export function mapMatchedDistanceM(metadata: JsonObject | null | undefined): number | null {
+	const raw = metadata?.[METADATA_KEYS.distance_map_matched_m];
+	return typeof raw === 'number' && Number.isFinite(raw) && raw > 0 ? raw : null;
+}
+
 export type RecomputeFailure = 'not_authorized' | 'no_track' | 'other';
 
 /// Maps the RPC's typed refusals (42501 not the owner, 22000 no stored track)

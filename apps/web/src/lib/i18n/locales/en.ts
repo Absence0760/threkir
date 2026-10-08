@@ -1184,6 +1184,8 @@ export const en = {
 	"runDetail.recalculateDistanceNotOwner": "Only the runner who recorded this run can recalculate its distance.",
 	"runDetail.recalculateDistanceNoTrack": "This run has no GPS track to recalculate from.",
 	"runDetail.originallyRecorded": "Originally recorded: {distance}",
+	"runDetail.roadMatched": "Road-matched: {distance}",
+	"runDetail.roadMatchedTitle": "Distance along the mapped roads you ran, from map matching. Your recorded distance is unchanged.",
 	"runDetail.zone1": "Zone 1",
 	"runDetail.zone2": "Zone 2",
 	"runDetail.zone3": "Zone 3",

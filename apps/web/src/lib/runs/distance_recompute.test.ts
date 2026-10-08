@@ -5,6 +5,7 @@ import {
 	RECOMPUTABLE_SOURCES,
 	canRecomputeDistance,
 	classifyRecomputeError,
+	mapMatchedDistanceM,
 	recordedDistanceM,
 	type RecomputeCandidate,
 } from './distance_recompute';
@@ -94,4 +95,14 @@ test('classifyRecomputeError maps the RPC refusals by SQLSTATE', () => {
 	assert.equal(classifyRecomputeError({ code: '500', message: 'boom' }), 'other');
 	assert.equal(classifyRecomputeError(new Error('network')), 'other');
 	assert.equal(classifyRecomputeError(null), 'other');
+});
+
+test('mapMatchedDistanceM returns only a usable positive number', () => {
+	assert.equal(mapMatchedDistanceM({ distance_map_matched_m: 4988.3 }), 4988.3);
+	assert.equal(mapMatchedDistanceM({ distance_map_matched_m: 0 }), null);
+	assert.equal(mapMatchedDistanceM({ distance_map_matched_m: -1 }), null);
+	assert.equal(mapMatchedDistanceM({ distance_map_matched_m: '4988' }), null);
+	assert.equal(mapMatchedDistanceM({}), null);
+	assert.equal(mapMatchedDistanceM(null), null);
+	assert.equal(mapMatchedDistanceM(undefined), null);
 });

@@ -122,4 +122,5 @@ export const METADATA_KEYS = {
 	distance_source: 'distance_source',
 	distance_estimator: 'distance_estimator',
 	distance_recorded_m: 'distance_recorded_m',
+	distance_map_matched_m: 'distance_map_matched_m',
 } as const;

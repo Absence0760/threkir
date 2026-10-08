@@ -87,6 +87,7 @@
 	import {
 		canRecomputeDistance,
 		classifyRecomputeError,
+		mapMatchedDistanceM,
 		recordedDistanceM,
 	} from '$lib/runs/distance_recompute';
 	import { supabase } from '$lib/core/supabase';
@@ -825,6 +826,7 @@
 		!recomputeRequested && canRecomputeDistance(run, auth.user?.id),
 	);
 	let originalDistanceM = $derived(recordedDistanceM(run?.metadata));
+	let roadMatchedDistanceM = $derived(mapMatchedDistanceM(run?.metadata));
 
 	async function confirmRecomputeDistance() {
 		if (!run) return;
@@ -1829,11 +1831,20 @@
 				</div>
 			{/if}
 		</div>
-		{#if originalDistanceM != null || showRecomputeDistance}
+		{#if originalDistanceM != null || roadMatchedDistanceM != null || showRecomputeDistance}
 			<div class="distance-recompute" data-testid="distance-recompute">
 				{#if originalDistanceM != null}
 					<p class="distance-recorded-note" data-testid="distance-recorded-note">
 						{m('runDetail.originallyRecorded', { distance: formatDistance(originalDistanceM) })}
+					</p>
+				{/if}
+				{#if roadMatchedDistanceM != null}
+					<p
+						class="distance-recorded-note"
+						title={m('runDetail.roadMatchedTitle')}
+						data-testid="distance-road-matched-note"
+					>
+						{m('runDetail.roadMatched', { distance: formatDistance(roadMatchedDistanceM) })}
 					</p>
 				{/if}
 				{#if showRecomputeDistance}

@@ -1168,6 +1168,8 @@ export const messages = {
 	"runDetail.recalculateDistanceNotOwner": "このランを記録した本人だけが距離を再計算できます。",
 	"runDetail.recalculateDistanceNoTrack": "このランには再計算に使えるGPSトラックがありません。",
 	"runDetail.originallyRecorded": "最初の記録: {distance}",
+	"runDetail.roadMatched": "道路に合わせた距離: {distance}",
+	"runDetail.roadMatchedTitle": "地図上の道路に合わせて算出した、走った道路に沿った距離です。記録された距離は変わりません。",
 	"runDetail.zone1": "ゾーン 1",
 	"runDetail.zone2": "ゾーン 2",
 	"runDetail.zone3": "ゾーン 3",

@@ -1173,6 +1173,8 @@ export const messages = {
 	"runDetail.recalculateDistanceNotOwner": "Seule la personne qui a enregistré cette course peut en recalculer la distance.",
 	"runDetail.recalculateDistanceNoTrack": "Cette course n'a pas de tracé GPS à partir duquel recalculer.",
 	"runDetail.originallyRecorded": "Enregistrée à l'origine : {distance}",
+	"runDetail.roadMatched": "Recalée sur les routes : {distance}",
+	"runDetail.roadMatchedTitle": "Distance le long des routes cartographiées que vous avez parcourues, obtenue par recalage sur la carte. Votre distance enregistrée reste inchangée.",
 	"runDetail.zone1": "Zone 1",
 	"runDetail.zone2": "Zone 2",
 	"runDetail.zone3": "Zone 3",

@@ -816,9 +816,11 @@ export async function fetchClippedTrackForRun(runId: string) {
 export async function fetchClippedRouteForViewer(
 	routeId: string,
 ): Promise<Array<{ lat: number; lng: number }>> {
-	const { data, error } = await supabase.rpc('clip_route_for_viewer', {
-		p_route_id: routeId,
-	});
+	const { data, error } = await supabase.rpc(
+		'clip_route_for_viewer',
+		{ p_route_id: routeId },
+		{ get: true },
+	);
 	if (error) {
 		// Fail closed — returning the unclipped waypoints on RPC error
 		// would defeat the helper's purpose. Render an empty polyline
@@ -3650,9 +3652,11 @@ export async function fetchEventExceptions(eventId: string): Promise<EventExcept
 export async function fetchEventMeetPoint(
 	eventId: string
 ): Promise<{ lat: number; lng: number } | null> {
-	const { data, error } = await supabase.rpc('get_event_meet_point', {
-		p_event_id: eventId
-	});
+	const { data, error } = await supabase.rpc(
+		'get_event_meet_point',
+		{ p_event_id: eventId },
+		{ get: true }
+	);
 	if (error || !data || data.length === 0) return null;
 	const row = data[0];
 	if (typeof row.meet_lat !== 'number' || typeof row.meet_lng !== 'number') return null;
@@ -8033,7 +8037,7 @@ export async function fetchPendingSafetyRequests(): Promise<{
 	requests: PendingSafetyRequest[];
 	error: string | null;
 }> {
-	const { data, error } = await supabase.rpc('my_pending_safety_requests');
+	const { data, error } = await supabase.rpc('my_pending_safety_requests', undefined, { get: true });
 	return {
 		requests: (data ?? []) as PendingSafetyRequest[],
 		error: error?.message ?? null,
@@ -11247,14 +11251,14 @@ export interface TargetReport {
 /** Whether the current user is a moderator. Chrome gate only — the RPCs
  *  below are the real boundary. */
 export async function amIAdmin(): Promise<boolean> {
-	const { data, error } = await supabase.rpc('am_i_admin');
+	const { data, error } = await supabase.rpc('am_i_admin', undefined, { get: true });
 	if (error) return false;
 	return data === true;
 }
 
 /** The moderation queue: one row per reported target with pending reports. */
 export async function fetchPendingReports(): Promise<PendingReportTarget[]> {
-	const { data, error } = await supabase.rpc('fetch_pending_reports');
+	const { data, error } = await supabase.rpc('fetch_pending_reports', undefined, { get: true });
 	if (error) throw error;
 	return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
 		target_kind: r.target_kind as ReportTargetKind,
@@ -11272,10 +11276,11 @@ export async function fetchReportsForTarget(
 	targetKind: ReportTargetKind,
 	targetId: string
 ): Promise<TargetReport[]> {
-	const { data, error } = await supabase.rpc('fetch_reports_for_target', {
-		p_target_kind: targetKind,
-		p_target_id: targetId,
-	});
+	const { data, error } = await supabase.rpc(
+		'fetch_reports_for_target',
+		{ p_target_kind: targetKind, p_target_id: targetId },
+		{ get: true },
+	);
 	if (error) throw error;
 	return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
 		id: r.id as string,
@@ -11673,10 +11678,11 @@ export async function fetchOrganiserCrossings(
 	eventId: string,
 	instanceStart: string
 ): Promise<OrganiserCrossing[]> {
-	const { data, error } = await supabase.rpc('fetch_checkpoint_crossings_for_organiser', {
-		p_event_id: eventId,
-		p_instance_start: instanceStart
-	});
+	const { data, error } = await supabase.rpc(
+		'fetch_checkpoint_crossings_for_organiser',
+		{ p_event_id: eventId, p_instance_start: instanceStart },
+		{ get: true }
+	);
 	if (error) throw error;
 	return (data ?? []) as OrganiserCrossing[];
 }

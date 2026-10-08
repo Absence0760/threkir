@@ -11,8 +11,9 @@
 # being able to drive with stubs.
 #
 # Five failure modes are handled, a sixth entry records the move that
-# removed the cause of two of them, and a seventh records one that is fixed
-# outside this file, in ci.yml's env. The port numbers in incidents 1-5 are the
+# removed the cause of two of them, a seventh records one that is fixed
+# outside this file, in ci.yml's env, and an eighth pins one image the stack
+# runs. The port numbers in incidents 1-5 are the
 # block the stack published at the time (54321-54327); see 6.
 #
 #   1. Slow ghcr.io image pulls. A single 353MB image once trickled at
@@ -102,6 +103,22 @@
 #      workflow-wide, where Supabase mirrors the same tags. That is the
 #      registry incident 1's slow pull came from, which is why the 480s
 #      per-attempt budget above stays.
+#
+#   8. An edge runtime that dies on its first request. Seven runs between
+#      2026-09-08 and 2026-09-22 lost a job to the edge runtime exiting 135
+#      (SIGBUS, `Bus error (core dumped)`) while serving the clip-public-track
+#      readiness probe (issue #916). The cause is upstream: the runtime's
+#      vendored Deno cache layer deleted a SQLite cache database that another
+#      connection in the process still had mapped, and that connection's next
+#      WAL-index write faulted. edge-runtime v1.77.1 fixed it
+#      (supabase/edge-runtime#746); the CLI pin, 2.84.2, ships v1.73.0, and
+#      the first CLI to ship the fix is 2.119.0, which also moves the Postgres
+#      image the EXECUTE-revoke guards are premised on. So the runtime alone
+#      is pinned, through the CLI's own per-service override file, which it
+#      reads at every config load (`supabase start` and `functions serve`
+#      alike). start_stack.test.mjs fails once the CLI pin reaches 2.119.0,
+#      because from there the override is redundant at best and a downgrade
+#      at worst. decisions.md § 1795.
 set -uo pipefail
 
 # Host ports config.toml pins: shadow db 24320 (db diff only), api 24321, db
@@ -122,6 +139,32 @@ SETTLE_TRIES=${STACK_SETTLE_TRIES:-15}
 SETTLE_INTERVAL_S=${STACK_SETTLE_INTERVAL_S:-2}
 SETTLE_GRACE_S=${STACK_SETTLE_GRACE_S:-5}
 RESERVED_PORTS_FILE=${STACK_RESERVED_PORTS_FILE:-/proc/sys/net/ipv4/ip_local_reserved_ports}
+
+EDGE_RUNTIME_VERSION="v1.77.1"
+EDGE_RUNTIME_VERSION_FILE=${STACK_EDGE_RUNTIME_VERSION_FILE:-supabase/.temp/edge-runtime-version}
+
+# Incident 8. Fail closed: a pin that silently did not land would boot the
+# crashing image and read as the fix having failed.
+mkdir -p "$(dirname "$EDGE_RUNTIME_VERSION_FILE")"
+printf '%s' "$EDGE_RUNTIME_VERSION" > "$EDGE_RUNTIME_VERSION_FILE" 2>/dev/null || true
+if [ "$(cat "$EDGE_RUNTIME_VERSION_FILE" 2>/dev/null)" != "$EDGE_RUNTIME_VERSION" ]; then
+  echo "::error::could not pin the edge runtime to $EDGE_RUNTIME_VERSION in $EDGE_RUNTIME_VERSION_FILE — the stack would boot the CLI's default image, which dies with SIGBUS on its first request (issue #916)"
+  exit 1
+fi
+echo "edge runtime pinned to $EDGE_RUNTIME_VERSION"
+
+verify_edge_runtime() {
+  # The file is only a request: a CLI that stopped reading it would boot its
+  # own image and nothing else would say so until the next SIGBUS. Read the
+  # tag off the container the CLI actually started.
+  local image
+  image=$(docker ps --filter "name=supabase_edge_runtime" --format '{{.Image}}' 2>/dev/null | head -n1)
+  if [ -n "$image" ] && [ "${image##*:}" != "$EDGE_RUNTIME_VERSION" ]; then
+    echo "::error::the edge runtime is running $image, not the pinned $EDGE_RUNTIME_VERSION — the CLI ignored $EDGE_RUNTIME_VERSION_FILE, and that image dies with SIGBUS on its first request (issue #916)"
+    return 1
+  fi
+  echo "edge runtime image: ${image:-<none running>}"
+}
 
 # Keep the kernel from handing any stack port out as an outbound connection's
 # ephemeral source port (incident 3). The block sits below the default
@@ -273,6 +316,7 @@ for attempt in $(seq 1 "$ATTEMPTS"); do
   fi
 
   if timeout "$START_TIMEOUT_S" supabase start; then
+    verify_edge_runtime || exit 1
     exit 0
   fi
 

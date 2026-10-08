@@ -8,6 +8,7 @@ import { test } from 'node:test';
 
 const SCRIPT = fileURLToPath(new URL('./start_stack.sh', import.meta.url));
 const CONFIG = fileURLToPath(new URL('../../../apps/backend/supabase/config.toml', import.meta.url));
+const CI = fileURLToPath(new URL('../../workflows/ci.yml', import.meta.url));
 
 // Linux's default net.ipv4.ip_local_port_range is 32768-60999. A host port
 // the stack publishes inside it can be taken as an outbound socket's source
@@ -53,6 +54,13 @@ function scriptVar(/** @type {string} */ name) {
 
 const PORTS = scriptVar('PORTS').split(' ').map(Number);
 const RESERVED_RANGE = scriptVar('RESERVED_RANGE');
+const EDGE_RUNTIME_VERSION = scriptVar('EDGE_RUNTIME_VERSION');
+
+// The first Supabase CLI whose bundled edge runtime carries the SIGBUS fix
+// (v1.77.1, supabase/edge-runtime#746) — read off the FROM line of
+// apps/cli-go/pkg/config/templates/Dockerfile at each release tag. From this
+// CLI on, the script's runtime override is redundant or a downgrade.
+const FIRST_CLI_WITH_FIX = '2.119.0';
 
 function expandRange(/** @type {string} */ spec) {
 	return spec.split(',').flatMap((part) => {
@@ -124,7 +132,8 @@ exec "$@"
 const DOCKER_STUB = `#!/usr/bin/env bash
 case "$1" in
   network) [ "$2" = ls ] && exit 0;;
-  ps) exit 0;;
+  ps) case "$*" in *supabase_edge_runtime*Image*) [ -n "$EDGE_IMAGE" ] && printf '%s\\n' "$EDGE_IMAGE";; esac
+      exit 0;;
   rm) exit 0;;
 esac
 exit 0
@@ -143,9 +152,9 @@ exit 0
 `;
 
 /**
- * @param {{ rows: string[], startExit?: number, reserved?: string }} knobs
+ * @param {{ rows: string[], startExit?: number, reserved?: string, edgePinFile?: string, edgeImage?: string }} knobs
  */
-function run({ rows, startExit = 0, reserved = RESERVED_RANGE }) {
+function run({ rows, startExit = 0, reserved = RESERVED_RANGE, edgePinFile = join('temp', 'edge-runtime-version'), edgeImage = '' }) {
 	const dir = mkdtempSync(join(tmpdir(), 'start-stack-'));
 	const bin = join(dir, 'bin');
 	spawnSync('mkdir', ['-p', bin]);
@@ -180,6 +189,8 @@ function run({ rows, startExit = 0, reserved = RESERVED_RANGE }) {
 			SS_KILL_LOG: join(dir, 'kills'),
 			SS_KILLED_PORTS: join(dir, 'killed-ports'),
 			STACK_RESERVED_PORTS_FILE: reservedFile,
+			STACK_EDGE_RUNTIME_VERSION_FILE: join(dir, edgePinFile),
+			EDGE_IMAGE: edgeImage,
 			STACK_START_ATTEMPTS: '3',
 			STACK_START_TIMEOUT_S: '5',
 			STACK_SETTLE_TRIES: '2',
@@ -199,6 +210,7 @@ function run({ rows, startExit = 0, reserved = RESERVED_RANGE }) {
 		out: `${res.stdout}${res.stderr}`,
 		starts: read('starts').length,
 		kills: read('kills'),
+		edgePin: read(edgePinFile),
 		wallMs: Date.now() - started,
 	};
 }
@@ -272,6 +284,74 @@ test('a reservation that does not take fails before any start attempt', () => {
 	assert.equal(r.status, 1);
 	assert.equal(r.starts, 0);
 	assert.match(r.out, new RegExp(`could not reserve stack ports ${RESERVED_RANGE}`));
+});
+
+// Issue #916. The CLI reads this file at every config load and swaps the
+// edge runtime's tag for its contents, so the pin has to be on disk before
+// the first `supabase start`, not merely somewhere in the script.
+test('the edge runtime is pinned before the first start attempt', () => {
+	const r = run({ rows: [] });
+	assert.equal(r.status, 0);
+	assert.equal(r.starts, 1);
+	assert.deepEqual(r.edgePin, [EDGE_RUNTIME_VERSION]);
+});
+
+test('a pin that cannot be written fails before any start attempt', () => {
+	// `reserved` is a regular file, so nothing can be created beneath it.
+	const r = run({ rows: [], edgePinFile: join('reserved', 'edge-runtime-version') });
+	assert.equal(r.status, 1);
+	assert.equal(r.starts, 0);
+	assert.match(r.out, new RegExp(`could not pin the edge runtime to ${EDGE_RUNTIME_VERSION}`));
+});
+
+test('a started stack running the pinned runtime passes', () => {
+	const image = `ghcr.io/supabase/edge-runtime:${EDGE_RUNTIME_VERSION}`;
+	const r = run({ rows: [], edgeImage: image });
+	assert.equal(r.status, 0);
+	assert.ok(r.out.includes(`edge runtime image: ${image}`), r.out);
+});
+
+// The override is a file the CLI may or may not honour; what it started is
+// the fact. v1.73.0 is the image every #916 occurrence ran.
+test('a started stack running some other runtime fails', () => {
+	const r = run({ rows: [], edgeImage: 'public.ecr.aws/supabase/edge-runtime:v1.73.0' });
+	assert.equal(r.status, 1);
+	assert.equal(r.starts, 1);
+	assert.ok(r.out.includes('the edge runtime is running public.ecr.aws/supabase/edge-runtime:v1.73.0, not the pinned'), r.out);
+});
+
+function compareVersions(/** @type {string} */ a, /** @type {string} */ b) {
+	const pa = a.split('.').map(Number);
+	const pb = b.split('.').map(Number);
+	for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+		const d = (pa[i] ?? 0) - (pb[i] ?? 0);
+		if (d !== 0) return Math.sign(d);
+	}
+	return 0;
+}
+
+function cliPins(text = readFileSync(CI, 'utf8')) {
+	return [...text.matchAll(/uses: \.\/\.github\/actions\/setup-supabase-cli\n\s+with:\n\s+version: ([\d.]+)/g)].map((m) => m[1]);
+}
+
+test('the edge runtime override is retired once the CLI pin ships the fix itself', () => {
+	const pins = cliPins();
+	assert.ok(pins.length > 0, 'no setup-supabase-cli version pin found in ci.yml');
+	const stale = pins.filter((v) => compareVersions(v, FIRST_CLI_WITH_FIX) >= 0);
+	assert.deepEqual(
+		stale,
+		[],
+		`ci.yml pins Supabase CLI ${stale.join(', ')}, which already ships edge-runtime ${EDGE_RUNTIME_VERSION} or newer — delete EDGE_RUNTIME_VERSION and its override from start_stack.sh (decisions.md § 1795) rather than let it pin an older runtime than the CLI's own`,
+	);
+});
+
+test('the retirement guard reads every pin and bites on one at the fixing CLI', () => {
+	const text = readFileSync(CI, 'utf8');
+	assert.equal(cliPins(text).length, (text.match(/uses: \.\/\.github\/actions\/setup-supabase-cli/g) ?? []).length);
+	const bumped = text.replace(/(setup-supabase-cli\n\s+with:\n\s+version: )[\d.]+/, `$1${FIRST_CLI_WITH_FIX}`);
+	assert.ok(cliPins(bumped).some((v) => compareVersions(v, FIRST_CLI_WITH_FIX) >= 0));
+	assert.equal(compareVersions('2.84.2', FIRST_CLI_WITH_FIX), -1);
+	assert.equal(compareVersions('2.120.0', FIRST_CLI_WITH_FIX), 1);
 });
 
 test('a start that keeps failing gives up after the attempt budget', () => {

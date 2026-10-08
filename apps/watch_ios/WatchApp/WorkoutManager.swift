@@ -1,5 +1,6 @@
 import Foundation
 import CoreLocation
+import HealthKit
 import WatchKit
 import WidgetKit
 
@@ -314,7 +315,10 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     // MARK: - Controls
 
     func checkForPendingRecovery() {
-        guard CheckpointStore.peekCheckpoint() != nil else { return }
+        // Only from idle: a run continued on a surviving workout session has
+        // already rewritten the checkpoint, and must not be offered back to
+        // the runner as an unsaved one.
+        guard state == .idle, CheckpointStore.peekCheckpoint() != nil else { return }
         state = .recovering
     }
 
@@ -331,11 +335,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         lastPaceAlertAt = nil
         resetDistanceEstimator()
         announcer.reset()
-        let armedRoute = ArmedRouteStore.load()
-        routeNavigator = armedRoute.map { RouteNavigator(routePoints: $0.locations) }
-        mapRoute = armedRoute?.coordinates.map {
-            MiniMapPoint(latitude: $0.latitude, longitude: $0.longitude)
-        } ?? []
+        armRouteGuidance()
         mapTrail.reset()
         mapPosition = nil
         lapMarks = []
@@ -359,18 +359,49 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 
         let start = Date()
         startDate = start
+        startPedometer(from: start, priorSteps: nil)
+        startRecordingTimers()
+
+        state = .recording
+        publishComplicationSnapshot()
+        announcer.announceStart()
+    }
+
+    /// The armed route's guidance and its map line, from whatever the phone
+    /// last armed.
+    private func armRouteGuidance() {
+        let armedRoute = ArmedRouteStore.load()
+        routeNavigator = armedRoute.map { RouteNavigator(routePoints: $0.locations) }
+        mapRoute = armedRoute?.coordinates.map {
+            MiniMapPoint(latitude: $0.latitude, longitude: $0.longitude)
+        } ?? []
+    }
+
+    /// `priorSteps` is what a continued run had counted before the app was
+    /// terminated. The pedometer is re-baselined at the relaunch rather than
+    /// asked for history from the run's start, because its baseline is what
+    /// keeps a device total from ever reaching a row — so steps taken across
+    /// the termination itself are not counted, and the figure errs low.
+    private func startPedometer(from start: Date, priorSteps: Int?) {
         // Dropped while paused rather than suspended, mirroring Wear OS: the
         // counter is cumulative on both platforms, so stopping it would not
         // exclude the steps taken during the pause anyway — it would only make
         // the figure disagree between the two wrists.
-        pedometer.start(from: start) { [weak self] steps in
+        pedometer.start(from: start) { [weak self] counted in
             guard let self, self.state == .recording else { return }
+            let steps = (priorSteps ?? 0) + counted
             self.steps = steps
             self.distanceEstimator.addSteps(
                 t: ProcessInfo.processInfo.systemUptime,
                 cumulativeSteps: steps
             )
         }
+    }
+
+    private func startRecordingTimers() {
+        timer?.invalidate()
+        checkpointTimer?.invalidate()
+        gpsRetryTimer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             guard let self, let startDate = self.startDate else { return }
             guard self.state == .recording else { return }
@@ -398,10 +429,121 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         ) { [weak self] _ in
             self?.selfHealGps()
         }
+    }
 
-        state = .recording
+    // MARK: - Continuing a run after the app was terminated
+
+    /// Whether the pending checkpoint can be continued, not only saved.
+    var canContinueRecoveredRun: Bool {
+        guard let cp = CheckpointStore.peekCheckpoint() else { return false }
+        return RunResumePlan.canContinue(cp, now: Date())
+    }
+
+    /// watchOS relaunched the app into a workout session that outlived it.
+    /// Continue the checkpointed run on that session — no prompt, because the
+    /// runner never stopped — or, when there is no run of ours to continue,
+    /// end the session so Health does not file a workout nobody recorded.
+    func adoptSurvivingWorkout(_ survivor: HKWorkoutSession) {
+        guard state == .idle || state == .recovering,
+              continueRecoveredRun(recoveredSession: survivor) else {
+            healthKit.endOrphanedSession(survivor)
+            return
+        }
+    }
+
+    /// Pick the checkpointed run up where it stopped and keep recording it
+    /// under the SAME id, into the SAME track file — one run on the phone,
+    /// not two. Returns false when there is nothing continuable, leaving the
+    /// recovery prompt's other two answers as they were.
+    ///
+    /// The restore is committed before any framework is touched, and each
+    /// source is restarted on its own after it: a session that will not open
+    /// or a pedometer that will not start costs its own figure, never the
+    /// clock, the distance or the track the run already has.
+    @discardableResult
+    func continueRecoveredRun(recoveredSession: HKWorkoutSession? = nil, now: Date = Date()) -> Bool {
+        guard let cp = CheckpointStore.peekCheckpoint(),
+              RunResumePlan.canContinue(cp, now: now) else { return false }
+        let plan = RunResumePlan.make(
+            checkpoint: cp,
+            now: now,
+            workoutSessionSurvived: recoveredSession != nil
+        )
+        restoreRun(from: cp, plan: plan)
+
+        let prior = RunResumePlan.heartRatePrior(cp, resumingAt: plan.elapsedSeconds)
+        if let recoveredSession {
+            healthKit.adoptRecoveredWorkout(recoveredSession, resuming: prior)
+        } else {
+            healthKit.startWorkout(activityType: activityType.healthKitActivityType, resuming: prior)
+        }
+        if plan.resumesPaused {
+            healthKit.pauseSession()
+        } else {
+            locationManager.requestWhenInUseAuthorization()
+            locationManager.allowsBackgroundLocationUpdates = true
+            startLocationUpdates()
+        }
+        startPedometer(from: now, priorSteps: cp.steps)
+        startRecordingTimers()
+        // The checkpoint now describes the resumed clock, so a second
+        // termination before the next tick resumes from here and not from
+        // the first one's arithmetic again.
+        writeCheckpoint()
         publishComplicationSnapshot()
-        announcer.announceStart()
+        return true
+    }
+
+    /// Everything a continued run carries over, as plain state — no
+    /// framework call, so the test host exercises all of it.
+    ///
+    /// The distance is banked as a closed segment: no fix was recorded across
+    /// the termination, so the first fix after it anchors a fresh one and
+    /// credits nothing for the span, the same contract a pause keeps (#371).
+    /// The mini-map's trail is rebuilt by streaming the track file the run
+    /// kept writing, so the map shows the whole run rather than only what
+    /// follows the relaunch, at the trail's own flat memory.
+    func restoreRun(from cp: RunCheckpoint, plan: RunResumePlan) {
+        currentRunId = cp.id
+        activityType = RunActivityType.parse(cp.activityType)
+        startDate = cp.startedAt
+        totalPausedInterval = plan.totalPausedInterval
+        pausedAt = plan.pausedAt
+        elapsedSeconds = plan.elapsedSeconds
+        finishedRun = nil
+        track = []
+        currentPace = nil
+        lastPaceAlertAt = nil
+
+        resetDistanceEstimator()
+        bankedDistanceMetres = cp.distanceMetres.isFinite ? max(cp.distanceMetres, 0) : 0
+        bankedStepFilledMetres = cp.distanceStepFilledMetres ?? 0
+        distanceMetres = bankedDistanceMetres
+        lapMarks = cp.laps ?? []
+        steps = cp.steps
+
+        let store = CheckpointStore(runId: cp.id)
+        checkpointStore = store
+        var trail = MiniMapTrail()
+        var count = 0
+        var last: TrackPointRecord?
+        store.forEachTrackPoint { record in
+            count += 1
+            trail.append(MiniMapPoint(latitude: record.lat, longitude: record.lng))
+            last = record
+        }
+        trackPointCount = count
+        mapTrail = trail
+        mapPosition = last.map { MiniMapPoint(latitude: $0.lat, longitude: $0.lng) }
+
+        armRouteGuidance()
+        announcer.reset()
+        announcer.primeSplits(distanceMetres: distanceMetres)
+
+        lastAcceptedFixUptime = nil
+        lastGpsDeliveryUptime = nil
+        gpsBanner = .noFixYet
+        state = plan.resumesPaused ? .paused : .recording
     }
 
     /// Record a lap at the current position. Ignored unless the run is
@@ -425,8 +567,11 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         // Capture the frozen state once, while still .recording, so a crash
         // during a long pause recovers the exact pause-boundary values. The
         // periodic timer then skips writes until resume (see writeCheckpoint).
-        writeCheckpoint()
+        // `pausedAt` is stamped first so the checkpoint records that the run
+        // was paused: a run continued after a termination resumes paused
+        // instead of crediting the pause as running time.
         pausedAt = Date()
+        writeCheckpoint()
         stopLocationUpdates()
         healthKit.pauseSession()
         state = .paused
@@ -441,6 +586,9 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         startLocationUpdates()
         healthKit.resumeSession()
         state = .recording
+        // Clears the pause from the checkpoint at once rather than up to 15 s
+        // later: a run terminated in that window would otherwise resume paused.
+        writeCheckpoint()
         publishComplicationSnapshot()
     }
 
@@ -863,6 +1011,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         // claim it would have carried had it been stopped here, rather than an
         // ungraded mean the recovery path has no way to grade.
         let claim = healthKit.heartRateClaim(activeElapsedSeconds: elapsedSeconds)
+        let measured = healthKit.checkpointMeasurement
         let cp = RunCheckpoint(
             id: runId,
             startedAt: start,
@@ -878,7 +1027,10 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             activityType: activityType.rawValue,
             isPublic: PrivacyDefault.isPublic(PrivacyDefault.stored()),
             distanceEstimator: Self.distanceEstimatorTag,
-            distanceStepFilledMetres: distanceStepFilledMetres
+            distanceStepFilledMetres: distanceStepFilledMetres,
+            pausedAt: pausedAt,
+            hrMeanUngraded: measured.mean,
+            hrCoveredSeconds: measured.coveredSeconds
         )
         store.write(checkpoint: cp)
         // Match the track's crash-durability window to the checkpoint's.

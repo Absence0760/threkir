@@ -99,7 +99,10 @@ dump_sidecar_forensics() {
   # a record rather than an inference from a log line, which is what a bug
   # report upstream would have to name. The kernel ring names the faulting
   # address, which is what separates a truncated mapping from a real
-  # hardware fault. None of it changes what the probe decides.
+  # hardware fault. None of it changes what the probe decides. The cause was
+  # later found upstream (decisions.md § 1663) and start_stack.sh now pins
+  # the runtime that fixes it (§ 1795); the capture stays so a recurrence on
+  # the fixed image arrives with its evidence.
   echo "--- host capacity ---"
   df -h / /tmp 2>&1 || true
   docker system df 2>&1 || true

@@ -356,7 +356,7 @@ Pure-function tests for the period summary screen's extracted helpers in `lib/sc
 - `shortDate`: day + abbreviated month
 - `monthName`: full month name for all positions
 
-### `apps/mobile_android/test/goals_test.dart` — 33 tests
+### `apps/mobile_android/test/goals_test.dart` — 35 tests
 
 Pure-function tests for `evaluateGoal` and `RunGoal` JSON serialisation in `lib/goals.dart`:
 - Period bounds (week start = Monday 00:00, month end wraps to next year), and `weekStartLocal` across a late-Saturday / early-Sunday seam on both week starts
@@ -365,6 +365,7 @@ Pure-function tests for `evaluateGoal` and `RunGoal` JSON serialisation in `lib/
 - Avg pace target: cycling-only runs excluded, meeting/exceeding/missing target, distance-weighted
 - Run count and time targets
 - Multi-target goal: each target evaluated independently, overall complete only when all met
+- Marked done without a run: `markedDoneTally` counts hand-marked sessions from the period start through today only (linked, unmarked and future-dated ones left out, a null target adding no distance), and `evaluateGoal` adds them to the distance and run-count targets but not time or pace (decisions § 1813)
 - `RunGoal.toJson` / `fromJson` round-trip, legacy single-target migration
 
 ### `apps/mobile_android/test/fit_export_test.dart` — 3 tests
@@ -793,9 +794,9 @@ Mirror of `apps/mobile_android/test/recurrence_test.dart`. Pure tests for `lib/r
 
 Web-only (no Dart twin — mobile does not read `event_exceptions` outside its own event-detail screen). Pure tests for `lib/social/event_occurrence.ts`, the layer that subtracts cancelled occurrences from a recurrence expansion. `isOccurrenceCancelled` covers both ISO renderings of one instant matching (PostgREST `+00:00` vs a client `.000Z`), a different instant / empty list / null / undefined not matching, and an unparseable cancelled instant never matching. `nextLiveInstance` covers the nothing-cancelled fast path, skipping the cancelled next occurrence, skipping a run of consecutive cancellations, a cancellation further out leaving the next one alone, already-past cancellations not eating the search budget, every remaining occurrence cancelled returning null, an exhausted series returning null either way, and a cancelled one-off. `upcomingCancelledOccurrences` covers future-only + oldest-first ordering, an unparseable instant being dropped rather than sorted to an edge, and an occurrence starting exactly now counting as ahead.
 
-### `apps/web/src/lib/training/goals.test.ts` — 31 tests
+### `apps/web/src/lib/training/goals.test.ts` — 33 tests
 
-Mirror of `apps/mobile_android/test/goals_test.dart`. Pure tests for `lib/goals.ts`. `weekStartLocal` is pinned across a late-Saturday / early-Sunday seam on both week starts; `periodStart` / `periodEnd` cover Monday-default + Sunday-override week anchoring, month start = 1st, week end = start + 7 days, December → January wrap. `formatPaceSecPerKm` covers em-dash for non-positive / non-finite, m:ss/km formatting with zero-padded seconds, half-up rounding. `evaluateGoal` covers empty list = 0%, runs outside the period excluded, distance target accumulation + complete-on-hit, pace target excluding cycling rides from the distance-weighted average, pace target with no qualifying runs reporting 0% + em-dash currentLabel, lower-is-better partial progress, time + runCount targets, multi-target complete-only-when-every-hit, `overallPercent` as the mean of target percents, and zero / negative targets being filtered out of the targets list. `newGoalId` covers uniqueness across 100 calls. `loadGoals` / `saveGoals` cover empty when no data, save / load round-trip preservation, per-user keying isolating two users on the same browser, null userId returns empty, the legacy unscoped-key migration on first load (with the legacy key removed afterwards), accepting both legacy camelCase and canonical snake_case wire shapes, and corrupt-JSON returning empty.
+Mirror of `apps/mobile_android/test/goals_test.dart`. Pure tests for `lib/goals.ts`. `weekStartLocal` is pinned across a late-Saturday / early-Sunday seam on both week starts; `periodStart` / `periodEnd` cover Monday-default + Sunday-override week anchoring, month start = 1st, week end = start + 7 days, December → January wrap. `formatPaceSecPerKm` covers em-dash for non-positive / non-finite, m:ss/km formatting with zero-padded seconds, half-up rounding. `evaluateGoal` covers empty list = 0%, runs outside the period excluded, distance target accumulation + complete-on-hit, pace target excluding cycling rides from the distance-weighted average, pace target with no qualifying runs reporting 0% + em-dash currentLabel, lower-is-better partial progress, time + runCount targets, multi-target complete-only-when-every-hit, `overallPercent` as the mean of target percents, and zero / negative targets being filtered out of the targets list. `markedDoneTally` counts hand-marked sessions from the period start through today only, and `evaluateGoal` adds them to the distance and run-count targets but not time or pace (decisions § 1813). `newGoalId` covers uniqueness across 100 calls. `loadGoals` / `saveGoals` cover empty when no data, save / load round-trip preservation, per-user keying isolating two users on the same browser, null userId returns empty, the legacy unscoped-key migration on first load (with the legacy key removed afterwards), accepting both legacy camelCase and canonical snake_case wire shapes, and corrupt-JSON returning empty.
 
 ### `apps/web/src/lib/training/fitness.test.ts` — 48 tests
 

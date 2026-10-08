@@ -252,16 +252,20 @@ def _forward(fixes, max_speed, interval):
     """Forward filter replay plus mean NIS over accepted fixes. NIS is
     recomputed from the recorded prediction with the same formula the gate
     uses; when the reference does not record predictions it is None."""
-    est = reference.GpsDistanceEstimator(max_speed, interval, None, record=True)
+    try:
+        est = reference.GpsDistanceEstimator(max_speed, interval, None, record=True)
+    except TypeError:
+        est = reference.GpsDistanceEstimator(max_speed, interval, None)
     min_sigma = getattr(reference, "MIN_POS_SIGMA_M", 3.0)
     gate = getattr(reference, "GATE_CHI2", math.inf)
     nis_sum, nis_n = 0.0, 0
     for f in fixes:
         r_scale = getattr(est, "r_scale", 1.0)
-        n_before = len(est.records) if est.records is not None else 0
+        recs = getattr(est, "records", None) or []
+        n_before = len(recs)
         est.add_fix(f["t"], f["lat"], f["lng"], f.get("acc"), f.get("speed"),
                     f.get("speedAcc"), f.get("bearing"))
-        recs = est.records or []
+        recs = getattr(est, "records", None) or []
         if len(recs) <= n_before:
             continue
         rec = recs[-1]
@@ -277,7 +281,7 @@ def _forward(fixes, max_speed, interval):
         if nis <= gate:
             nis_sum += nis
             nis_n += 1
-    if fixes:
+    if fixes and hasattr(est, "finish"):
         est.finish(fixes[-1]["t"])
     return est, (nis_sum / nis_n if nis_n else None)
 

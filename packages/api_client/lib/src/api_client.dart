@@ -1292,12 +1292,14 @@ class ApiClient {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
 
-    // The track and the job_worker's smoothed-position sidecar, which no
-    // column names (removing a path that is not there is a no-op).
+    // The track, and the job_worker's map-matched track and smoothed-position
+    // sidecar, whose bytes the row cascade never reaches (removing a path that
+    // is not there is a no-op).
     final trackPath = run.metadata?['track_url'] as String?;
     final runPaths = [
       if (trackPath != null && trackPath.isNotEmpty) trackPath,
       smoothedSidecarPath(userId, run.id),
+      '$userId/${run.id}.matched.json.gz',
     ];
     try {
       await _client.storage.from(StorageBuckets.runs).remove(runPaths);

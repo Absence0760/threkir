@@ -1081,14 +1081,15 @@ export async function deleteRun(id: string): Promise<void> {
 		.select('user_id, track_url, hr_series_url')
 		.eq('id', id)
 		.single();
-	// The GPS track, the indoor HR series and the job_worker's smoothed-
-	// position sidecar (which no column names; removing a path that is not
-	// there is a no-op) are removed alongside the row so the bucket doesn't
-	// accumulate orphans.
+	// The GPS track, the indoor HR series, and the job_worker's map-matched
+	// track and smoothed-position sidecar (whose rows cascade away without
+	// their bytes; removing a path that is not there is a no-op) are removed
+	// alongside the row so the bucket doesn't accumulate orphans.
 	const orphanPaths = [
 		run?.track_url,
 		run?.hr_series_url,
 		run?.user_id ? smoothedSidecarPath(run.user_id, id) : null,
+		run?.user_id ? `${run.user_id}/${id}.matched.json.gz` : null,
 	].filter((p): p is string => !!p);
 	if (orphanPaths.length > 0) {
 		try {

@@ -3,7 +3,7 @@
 -- survives a signed-in client's bag that was loaded before the matcher ran,
 -- and a stale copy of a recomputed run; the worker (service role) can still
 -- clear it, a client that has the current value can still change it, and a
--- new track drops it.
+-- change to track_url drops it.
 
 begin;
 select plan(9);
@@ -55,13 +55,15 @@ update runs
 select is((select (metadata ->> 'distance_map_matched_m')::numeric from runs where id = 'af000001-0000-0000-0000-000000000001'),
   4991.0::numeric, 'a write that carries the key sets it as sent');
 
+-- runs_track_url_path_shape allows one non-null track_url per run, so the
+-- only track change a write can name is to or from null.
 update runs
-   set track_url = 'af000000-0000-0000-0000-0000000000a1/af000001-0000-0000-0000-000000000003-v2.json.gz',
+   set track_url = null,
        metadata = '{"activity_type":"run"}'
  where id = 'af000001-0000-0000-0000-000000000003';
 
 select ok((select not (metadata ? 'distance_map_matched_m') from runs where id = 'af000001-0000-0000-0000-000000000003'),
-  'a write that replaces the track does not carry the old track''s road distance');
+  'a write that changes track_url does not carry the old track''s road distance');
 
 reset role;
 

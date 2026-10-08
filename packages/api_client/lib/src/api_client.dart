@@ -1941,6 +1941,8 @@ class ApiClient {
         if (w.speedMps != null) 'speedMps': w.speedMps,
         if (w.speedAccuracyMps != null) 'speedAccuracyMps': w.speedAccuracyMps,
         if (w.bearingDeg != null) 'bearingDeg': w.bearingDeg,
+        if (w.hasSmoothedPosition) 'smoothedLat': w.smoothedLat,
+        if (w.hasSmoothedPosition) 'smoothedLng': w.smoothedLng,
       };
 
   static Waypoint _waypointFromJson(Map<String, dynamic> m) => Waypoint(
@@ -1953,6 +1955,8 @@ class ApiClient {
         speedMps: (m['speedMps'] as num?)?.toDouble(),
         speedAccuracyMps: (m['speedAccuracyMps'] as num?)?.toDouble(),
         bearingDeg: (m['bearingDeg'] as num?)?.toDouble(),
+        smoothedLat: (m['smoothedLat'] as num?)?.toDouble(),
+        smoothedLng: (m['smoothedLng'] as num?)?.toDouble(),
       );
 
   /// Auto-link helper: ask the DB which of the user's saved routes

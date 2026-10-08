@@ -39,8 +39,10 @@ void main() {
       final json = ApiClient.debugWaypointToJson(w);
 
       expect(json['ts'], '2026-04-10T08:30:15.000Z');
-      expect(ApiClient.debugWaypointFromJson(json).timestamp,
-          DateTime.utc(2026, 4, 10, 8, 30, 15));
+      expect(
+        ApiClient.debugWaypointFromJson(json).timestamp,
+        DateTime.utc(2026, 4, 10, 8, 30, 15),
+      );
     });
 
     test('local-time timestamps are normalised to UTC on encode', () {
@@ -68,15 +70,21 @@ void main() {
 
     test('decodes elevation null vs absent the same (both → null)', () {
       final w1 = ApiClient.debugWaypointFromJson({'lat': 0, 'lng': 0});
-      final w2 = ApiClient.debugWaypointFromJson(
-          {'lat': 0, 'lng': 0, 'ele': null});
+      final w2 = ApiClient.debugWaypointFromJson({
+        'lat': 0,
+        'lng': 0,
+        'ele': null,
+      });
       expect(w1.elevationMetres, isNull);
       expect(w2.elevationMetres, isNull);
     });
 
     test('rejects malformed timestamp gracefully (DateTime.tryParse)', () {
-      final w = ApiClient.debugWaypointFromJson(
-          {'lat': 0, 'lng': 0, 'ts': 'not-a-date'});
+      final w = ApiClient.debugWaypointFromJson({
+        'lat': 0,
+        'lng': 0,
+        'ts': 'not-a-date',
+      });
       expect(w.timestamp, isNull);
     });
 
@@ -97,7 +105,8 @@ void main() {
       expect(json['speedAccuracyMps'], 0.41);
       expect(json['bearingDeg'], 359.5);
       final back = ApiClient.debugWaypointFromJson(
-          jsonDecode(jsonEncode(json)) as Map<String, dynamic>);
+        jsonDecode(jsonEncode(json)) as Map<String, dynamic>,
+      );
       expect(back.accuracyMetres, 4.25);
       expect(back.speedMps, 2.68);
       expect(back.speedAccuracyMps, 0.41);
@@ -105,8 +114,9 @@ void main() {
     });
 
     test('absent fix-quality fields are omitted, not written as null', () {
-      final json =
-          ApiClient.debugWaypointToJson(const Waypoint(lat: 1, lng: 2));
+      final json = ApiClient.debugWaypointToJson(
+        const Waypoint(lat: 1, lng: 2),
+      );
       for (final k in [
         'accuracyMetres',
         'speedMps',
@@ -132,6 +142,51 @@ void main() {
       expect(w.speedAccuracyMps, isNull);
       expect(w.bearingDeg, isNull);
     });
+
+    // Every reader that draws the run line reads these two keys
+    // (docs/features/gps_distance.md § Waypoint fields); lat/lng stay raw.
+    test('the smoothed position round-trips under its wire names', () {
+      const w = Waypoint(
+        lat: 47.37,
+        lng: 8.54,
+        smoothedLat: 47.370012,
+        smoothedLng: 8.539991,
+      );
+      final json = ApiClient.debugWaypointToJson(w);
+      expect(json['lat'], 47.37);
+      expect(json['lng'], 8.54);
+      expect(json['smoothedLat'], 47.370012);
+      expect(json['smoothedLng'], 8.539991);
+      final back = ApiClient.debugWaypointFromJson(
+        jsonDecode(jsonEncode(json)) as Map<String, dynamic>,
+      );
+      expect(back.smoothedLat, 47.370012);
+      expect(back.smoothedLng, 8.539991);
+      expect(back.lat, 47.37);
+    });
+
+    test('a half smoothed pair is not written', () {
+      final json = ApiClient.debugWaypointToJson(
+        const Waypoint(lat: 1, lng: 2, smoothedLat: 1.00001),
+      );
+      expect(json.containsKey('smoothedLat'), isFalse);
+      expect(json.containsKey('smoothedLng'), isFalse);
+    });
+
+    test(
+      'the track blob drops a non-finite smoothed pair, keeps the point',
+      () {
+        final blob = ApiClient.debugTrackBlobJson(const [
+          Waypoint(lat: 1, lng: 2, smoothedLat: double.nan, smoothedLng: 2.0),
+        ]);
+        final points = jsonDecode(blob) as List;
+        expect(points, hasLength(1));
+        final p = points.single as Map<String, dynamic>;
+        expect(p.containsKey('smoothedLat'), isFalse);
+        expect(p.containsKey('smoothedLng'), isFalse);
+        expect(p['lat'], 1);
+      },
+    );
   });
 
   group('debugRunFromRow', () {
@@ -210,19 +265,18 @@ void main() {
       final run = ApiClient.debugRunFromRow(minimalRow());
       expect(run.metadata?.containsKey('fastest_5k_s'), isNot(true));
       expect(run.metadata?.containsKey('fastest_10k_s'), isNot(true));
-      expect(
-        run.metadata?.containsKey('fastest_half_marathon_s'),
-        isNot(true),
-      );
+      expect(run.metadata?.containsKey('fastest_half_marathon_s'), isNot(true));
       expect(run.metadata?.containsKey('fastest_marathon_s'), isNot(true));
     });
 
     test('existing metadata keys survive alongside the stashed columns', () {
-      final run = ApiClient.debugRunFromRow(minimalRow(
-        activityType: 'cycle',
-        metadata: {'avg_bpm': 142},
-        trackUrl: 'u/r.json.gz',
-      ));
+      final run = ApiClient.debugRunFromRow(
+        minimalRow(
+          activityType: 'cycle',
+          metadata: {'avg_bpm': 142},
+          trackUrl: 'u/r.json.gz',
+        ),
+      );
       expect(run.metadata?['activity_type'], 'cycle');
       expect(run.metadata?['avg_bpm'], 142);
       expect(run.metadata?['track_url'], 'u/r.json.gz');
@@ -230,21 +284,22 @@ void main() {
 
     test('every RunSource value parses correctly', () {
       for (final s in RunSource.values) {
-        final run =
-            ApiClient.debugRunFromRow(minimalRow(source: s.name));
+        final run = ApiClient.debugRunFromRow(minimalRow(source: s.name));
         expect(run.source, s, reason: 'failed for ${s.name}');
       }
     });
 
     test('unknown source falls back to RunSource.app', () {
-      final run =
-          ApiClient.debugRunFromRow(minimalRow(source: 'made-up-source'));
+      final run = ApiClient.debugRunFromRow(
+        minimalRow(source: 'made-up-source'),
+      );
       expect(run.source, RunSource.app);
     });
 
     test('externalId passes through unchanged', () {
       final run = ApiClient.debugRunFromRow(
-          minimalRow(externalId: 'strava:1234567890'));
+        minimalRow(externalId: 'strava:1234567890'),
+      );
       expect(run.externalId, 'strava:1234567890');
     });
 
@@ -254,14 +309,16 @@ void main() {
       expect(run.createdAt, created);
     });
 
-    test('route_id is parsed onto Run.routeId so linkRunToRoute survives sync',
-        () {
-      // Regression: _runFromRow used to drop route_id entirely, so the
-      // newer-wins merge wiped a run's route link to null on the next
-      // normal sync after linkRunToRoute(). The read must carry it.
-      final run = ApiClient.debugRunFromRow(minimalRow(routeId: 'route-9'));
-      expect(run.routeId, 'route-9');
-    });
+    test(
+      'route_id is parsed onto Run.routeId so linkRunToRoute survives sync',
+      () {
+        // Regression: _runFromRow used to drop route_id entirely, so the
+        // newer-wins merge wiped a run's route link to null on the next
+        // normal sync after linkRunToRoute(). The read must carry it.
+        final run = ApiClient.debugRunFromRow(minimalRow(routeId: 'route-9'));
+        expect(run.routeId, 'route-9');
+      },
+    );
 
     test('null route_id decodes to a null routeId', () {
       final run = ApiClient.debugRunFromRow(minimalRow());
@@ -295,9 +352,13 @@ void main() {
       };
 
       test('every declared column has a sample value', () {
-        expect(declared.values.toSet().difference(sample.keys.toSet()), isEmpty,
-            reason: 'a migration promoted a column and this suite cannot '
-                'exercise it — add a row value for it to `sample`');
+        expect(
+          declared.values.toSet().difference(sample.keys.toSet()),
+          isEmpty,
+          reason:
+              'a migration promoted a column and this suite cannot '
+              'exercise it — add a row value for it to `sample`',
+        );
       });
 
       test('the read surfaces each one under its metadata key', () {
@@ -307,10 +368,14 @@ void main() {
         }
         final meta = ApiClient.debugRunFromRow(row).metadata;
         for (final entry in declared.entries) {
-          expect(meta?[entry.key], sample[entry.value],
-              reason: '${entry.value} is authoritative and a Run carries no '
-                  'column, so dropping it here hides it from every Dart '
-                  'reader of metadata.${entry.key}');
+          expect(
+            meta?[entry.key],
+            sample[entry.value],
+            reason:
+                '${entry.value} is authoritative and a Run carries no '
+                'column, so dropping it here hides it from every Dart '
+                'reader of metadata.${entry.key}',
+          );
         }
       });
 
@@ -329,7 +394,8 @@ void main() {
         // bag, so both arrive. The column is authoritative (§ 1187), which is
         // what the web half's `storedElevationGainM` reads first.
         final row = minimalRow(
-            metadata: <String, dynamic>{MetadataKeys.elevationM: 250});
+          metadata: <String, dynamic>{MetadataKeys.elevationM: 250},
+        );
         row[RunRow.colElevationGainM] = 312.5;
         final meta = ApiClient.debugRunFromRow(row).metadata;
         expect(meta?[MetadataKeys.elevationM], 312.5);
@@ -398,8 +464,9 @@ void main() {
     });
 
     test('elevation_m is preserved when present', () {
-      final route =
-          ApiClient.debugRouteFromRow(minimalRouteRow(elevationM: 145.5));
+      final route = ApiClient.debugRouteFromRow(
+        minimalRouteRow(elevationM: 145.5),
+      );
       expect(route.elevationGainMetres, 145.5);
     });
 
@@ -409,33 +476,37 @@ void main() {
     });
 
     test('explicit is_public=true round-trips', () {
-      final route =
-          ApiClient.debugRouteFromRow(minimalRouteRow(isPublic: true));
+      final route = ApiClient.debugRouteFromRow(
+        minimalRouteRow(isPublic: true),
+      );
       expect(route.isPublic, isTrue);
     });
 
     test('tags pass through verbatim', () {
       final route = ApiClient.debugRouteFromRow(
-          minimalRouteRow(tags: ['5k', 'parkrun_course', 'hilly']));
+        minimalRouteRow(tags: ['5k', 'parkrun_course', 'hilly']),
+      );
       expect(route.tags, ['5k', 'parkrun_course', 'hilly']);
     });
 
     test('featured + run_count + is_starred populate as expected', () {
-      final route = ApiClient.debugRouteFromRow(minimalRouteRow(
-        featured: true,
-        runCount: 42,
-        isStarred: true,
-      ));
+      final route = ApiClient.debugRouteFromRow(
+        minimalRouteRow(featured: true, runCount: 42, isStarred: true),
+      );
       expect(route.featured, isTrue);
       expect(route.runCount, 42);
       expect(route.isStarred, isTrue);
     });
 
     test('waypoint elevation passes through when present', () {
-      final route = ApiClient.debugRouteFromRow(minimalRouteRow(waypoints: [
-        {'lat': 0, 'lng': 0, 'ele': 100},
-        {'lat': 0, 'lng': 0.001, 'ele': 110},
-      ]));
+      final route = ApiClient.debugRouteFromRow(
+        minimalRouteRow(
+          waypoints: [
+            {'lat': 0, 'lng': 0, 'ele': 100},
+            {'lat': 0, 'lng': 0.001, 'ele': 110},
+          ],
+        ),
+      );
       expect(route.waypoints[0].elevationMetres, 100);
       expect(route.waypoints[1].elevationMetres, 110);
     });

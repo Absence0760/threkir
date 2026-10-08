@@ -3009,10 +3009,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       if (indoorEstimate) cm.MetadataKeys.indoor: true,
       if (indoorEstimate) cm.MetadataKeys.indoorEstimated: true,
       if (indoorEstimate) cm.MetadataKeys.distanceSource: 'pedometer',
-      // Mirrors RunRecorder.stop(): a crash-finalized run carries the same
-      // estimator tag, so the server recompute leaves it alone.
-      if (!indoorEstimate && !(_recorder?.treadmillMode ?? false))
-        cm.MetadataKeys.distanceEstimator: RunRecorder.distanceEstimatorVersion,
+      // No estimator tag: this distance is the live forward filter's, not
+      // the smoother's RunRecorder.stop() saves, so a crash-finalized run
+      // stays on offer for the server recompute, which smooths the track.
       if (!indoorEstimate &&
           !(_recorder?.treadmillMode ?? false) &&
           (_recorder?.stepFilledDistanceMetres.round() ?? 0) > 0)

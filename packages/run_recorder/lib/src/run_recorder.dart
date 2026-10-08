@@ -128,8 +128,10 @@ class RunRecorder {
 
   static const _uuid = Uuid();
 
-  /// `metadata.distance_estimator` on a GPS-distance run.
-  static const distanceEstimatorVersion = 'kalman_v1';
+  /// `metadata.distance_estimator` on a GPS-distance run whose saved distance
+  /// is the spec v1.2 smoother's ([smoothDistance]). The live screen reads the
+  /// forward filter; [stop] replays every stretch through the smoother.
+  static const distanceEstimatorVersion = 'kalman_v2';
 
   /// How often [prepare] retries opening the position stream when it is
   /// currently absent (services/permission denied at start, or the stream
@@ -167,11 +169,17 @@ class RunRecorder {
   /// timezone change) — the run duration stays correct.
   final Stopwatch _stopwatch;
 
-  /// The headline GPS distance (spec v1.1, `docs/features/gps_distance.md`).
+  /// The headline GPS distance (spec v1.2, `docs/features/gps_distance.md`).
   /// One estimator per un-paused stretch: [resume] folds the finished one into
   /// [_distanceOffsetMetres] and starts another, so a paused span is never
   /// integrated. A resumed session seeds the offset with the prior distance.
   GpsDistanceEstimator _estimator = GpsDistanceEstimator();
+  // Every input each stretch's estimator took, replayed through the smoother
+  // at [stop]; one per estimator, in order.
+  final List<_DistanceStretch> _stretches = [];
+  // A process-kill resume seeded a distance the smoother never saw.
+  bool _distanceSeeded = false;
+  _DistanceStretch? get _stretch => _stretches.isEmpty ? null : _stretches.last;
   double _distanceOffsetMetres = 0;
   double _stepFilledOffsetMetres = 0;
   double? _priorStrideM;
@@ -997,7 +1005,9 @@ class RunRecorder {
   void setStepCount(int cumulative) {
     if (!_recording || _paused) return;
     try {
-      _estimator.addSteps(_estimatorStepTime(), cumulative);
+      final t = _estimatorStepTime();
+      _estimator.addSteps(t, cumulative);
+      _stretch?.events.add(GpsStepsEvent(t: t, count: cumulative));
     } catch (e) {
       debugPrint('RunRecorder: step sample dropped — $e');
     }
@@ -1014,12 +1024,16 @@ class RunRecorder {
     _distanceOffsetMetres = seedMetres;
     _stepFilledOffsetMetres = 0;
     _priorStrideM = null;
+    _stretches.clear();
+    _distanceSeeded = seedMetres > 0;
     _newEstimator();
   }
 
   void _finishEstimatorSegment() {
     try {
-      _estimator.finish(_estimatorStepTime());
+      final t = _estimatorStepTime();
+      _estimator.finish(t);
+      _stretch?.events.add(GpsFinishEvent(t: t));
     } catch (e) {
       debugPrint('RunRecorder: estimator finish failed — $e');
     }
@@ -1033,11 +1047,17 @@ class RunRecorder {
   }
 
   void _newEstimator() {
+    final expectedIntervalS = _fixInterval.inMilliseconds / 1000;
     _estimator = GpsDistanceEstimator(
       maxSpeedMps: _maxSpeedMps,
-      expectedIntervalS: _fixInterval.inMilliseconds / 1000,
+      expectedIntervalS: expectedIntervalS,
       initialStrideM: _priorStrideM,
     );
+    _stretches.add(_DistanceStretch(
+      forward: _estimator,
+      expectedIntervalS: expectedIntervalS,
+      initialStrideM: _priorStrideM,
+    ));
     _estFixT = null;
     _estFixMono = null;
     _estFixGps = null;
@@ -1149,6 +1169,9 @@ class RunRecorder {
         // the same formula the pause and console-reset re-anchors use.
         _treadmillDistanceMetres = _distanceMetres;
         _treadmillNeedsRebaseline = true;
+        // The belt now owns this stretch's distance, so smoothing its GPS
+        // half would correct a figure the run no longer reports.
+        _stretch?.smoothable = false;
       }
       if (!_recording) return;
       final now = DateTime.now();
@@ -1387,6 +1410,8 @@ class RunRecorder {
       // the gates above; the movement-gated rule below only decides what the
       // track keeps for the map and the route match.
       double? estT;
+      int? eventIndex;
+      final trackLengthBefore = _track.length;
       try {
         final t = _estimatorFixTime(pos.timestamp);
         _estimator.addFix(
@@ -1399,6 +1424,19 @@ class RunRecorder {
           bearingDeg: fix.bearingDeg,
         );
         estT = t;
+        final stretch = _stretch;
+        if (stretch != null) {
+          eventIndex = stretch.events.length;
+          stretch.events.add(GpsFixEvent(
+            t: t,
+            lat: pos.latitude,
+            lng: pos.longitude,
+            accuracyM: fix.accuracyM,
+            speedMps: fix.speedMps,
+            speedAccuracyMps: fix.speedAccuracyMps,
+            bearingDeg: fix.bearingDeg,
+          ));
+        }
       } catch (e) {
         debugPrint('RunRecorder: estimator rejected fix — $e');
       }
@@ -1491,6 +1529,9 @@ class RunRecorder {
         } else {
           _currentWaypointTrusted = false;
         }
+      }
+      if (eventIndex != null && _track.length > trackLengthBefore) {
+        _stretch?.trackLinks.add((track: trackLengthBefore, event: eventIndex));
       }
       if (estT != null) _addPaceSample(estT);
     } else {
@@ -1774,6 +1815,9 @@ class RunRecorder {
 
     final startedAt = _startTime ?? DateTime.now();
     final elapsed = _stopwatch.elapsed + _elapsedOffset;
+    final track = List<Waypoint>.of(_track);
+    var distanceMetres = _reportedDistanceMetres;
+    if (!_treadmillMode) distanceMetres += _applySmoother(track);
 
     final metadata = <String, dynamic>{};
     if (_laps.isNotEmpty) metadata['laps'] = lapsToCanonicalJson(_laps);
@@ -1786,7 +1830,12 @@ class RunRecorder {
       metadata['indoor_source'] = 'treadmill';
       metadata['distance_source'] = 'treadmill';
     } else {
-      metadata[MetadataKeys.distanceEstimator] = distanceEstimatorVersion;
+      // A resumed session's seeded distance is the killed process's forward
+      // figure, which the smoother never saw: leave the tag off so the
+      // server recompute is offered and smooths the whole stored track.
+      if (!_distanceSeeded) {
+        metadata[MetadataKeys.distanceEstimator] = distanceEstimatorVersion;
+      }
       final stepFilled = stepFilledDistanceMetres.round();
       if (stepFilled > 0) {
         metadata[MetadataKeys.distanceStepFilledM] = stepFilled;
@@ -1797,11 +1846,45 @@ class RunRecorder {
       id: _uuid.v4(),
       startedAt: startedAt,
       duration: elapsed,
-      distanceMetres: _reportedDistanceMetres,
-      track: List.unmodifiable(_track),
+      distanceMetres: distanceMetres,
+      track: List.unmodifiable(track),
       source: RunSource.app,
       metadata: metadata.isEmpty ? null : metadata,
     );
+  }
+
+  /// Replays each stretch's estimator inputs through [smoothDistance], writes
+  /// the smoothed position onto every [track] waypoint the stretch appended,
+  /// and returns how far the smoothed distances differ from the forward ones
+  /// the live screen showed (metres to add to the reported distance).
+  ///
+  /// A stretch that fails to smooth keeps its forward distance and raw
+  /// positions: the saved run must never depend on the smoother succeeding.
+  double _applySmoother(List<Waypoint> track) {
+    var correction = 0.0;
+    for (final stretch in _stretches) {
+      if (!stretch.smoothable || stretch.events.isEmpty) continue;
+      try {
+        final smoothed = smoothDistance(
+          stretch.events,
+          maxSpeedMps: stretch.forward.maxSpeedMps,
+          expectedIntervalS: stretch.expectedIntervalS,
+          initialStrideM: stretch.initialStrideM,
+        );
+        if (!smoothed.distanceM.isFinite) continue;
+        correction += smoothed.distanceM - stretch.forward.distanceM;
+        for (final link in stretch.trackLinks) {
+          final p = smoothed.positions[link.event];
+          if (p == null || link.track >= track.length) continue;
+          track[link.track] =
+              track[link.track].withSmoothedPosition(p.lat, p.lng);
+        }
+      } catch (e) {
+        debugPrint(
+            'RunRecorder: smoother failed, keeping forward distance — $e');
+      }
+    }
+    return correction;
   }
 
   /// Clean up resources. Terminal: the recorder cannot record again, and
@@ -1819,4 +1902,22 @@ class RunRecorder {
     _positionSub = null;
     _controller.close();
   }
+}
+
+/// One estimator stretch's inputs, kept so [RunRecorder.stop] can replay them
+/// through the smoother. [trackLinks] pairs each waypoint the stretch appended
+/// to the track with the fix event it came from.
+class _DistanceStretch {
+  _DistanceStretch({
+    required this.forward,
+    required this.expectedIntervalS,
+    required this.initialStrideM,
+  });
+
+  final GpsDistanceEstimator forward;
+  final double expectedIntervalS;
+  final double? initialStrideM;
+  final List<GpsEvent> events = [];
+  final List<({int track, int event})> trackLinks = [];
+  bool smoothable = true;
 }

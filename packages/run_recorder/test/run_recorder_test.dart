@@ -878,7 +878,7 @@ void main() {
       final run = await r.stop();
       expect(run.metadata?['indoor'], isNull);
       expect(run.metadata?['indoor_source'], isNull);
-      expect(run.metadata?['distance_estimator'], 'kalman_v1');
+      expect(run.metadata?['distance_estimator'], 'kalman_v2');
       expect(run.metadata?.containsKey('distance_step_filled_m'), isFalse,
           reason: 'no pedometer fill happened, so the key is omitted');
     });
@@ -1320,6 +1320,59 @@ void main() {
       expect(r.debugTrack.last.accuracyMetres, 5);
     });
 
+    test('stop() saves the smoothed distance and the smoothed positions',
+        () async {
+      // The live screen reads the forward filter; the saved run is the spec
+      // v1.2 smoother over the same fixes. Expected figures from
+      // scripts/gps_distance/reference.py: forward 34.92 m, smooth_distance
+      // 39.49 m, and its positions for the first and last fix.
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock)..debugPrepareWithoutStream();
+      r.begin();
+      for (var i = 0; i <= 10; i++) {
+        r.debugInjectPosition(makePosition(
+          metresEast: 4.0 * i,
+          secondsFromStart: i,
+          speed: 0,
+          speedAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+        ));
+        clock.advance(const Duration(seconds: 1));
+      }
+      expect(r.debugDistanceMetres, closeTo(34.92098239921727, 1e-6));
+      final run = await r.stop();
+      expect(run.distanceMetres, closeTo(39.487530494657875, 1e-6));
+      expect(run.metadata?['distance_estimator'], 'kalman_v2');
+      expect(run.track, hasLength(11));
+      for (final w in run.track) {
+        expect(w.hasSmoothedPosition, isTrue);
+        expect(w.smoothedLat, closeTo(lat, 1e-9));
+      }
+      expect(run.track.first.smoothedLng, closeTo(8.540005777291086, 1e-9));
+      expect(run.track.last.smoothedLng, closeTo(8.540530222154533, 1e-9));
+      expect(run.track.first.lng, lngBase, reason: 'the raw fix is kept');
+      expect(r.debugTrack.first.hasSmoothedPosition, isFalse,
+          reason: 'the live track is not rewritten');
+    });
+
+    test('a resumed session saves without the estimator tag', () async {
+      // The seeded distance is the killed process's forward figure, which the
+      // smoother never saw, so the server recompute must stay on offer.
+      final r = RunRecorder();
+      r.debugResumeWithoutStream(
+        track: const [],
+        distanceMetres: 1000,
+        elapsed: const Duration(minutes: 10),
+        startedAt: DateTime(2026, 4, 10, 9, 50),
+      );
+      r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 0));
+      r.debugInjectPosition(makePosition(metresEast: 10, secondsFromStart: 4));
+      final run = await r.stop();
+      expect(run.metadata?.containsKey('distance_estimator'), isFalse);
+      expect(run.distanceMetres, greaterThanOrEqualTo(1000));
+    });
+
     test('appended waypoints carry the fix quality, rounded to 2 dp', () {
       final r = RunRecorder()..debugPrepareWithoutStream();
       r.begin();
@@ -1382,7 +1435,7 @@ void main() {
 
       final run = await r.stop();
       expect(run.distanceMetres, closeTo(172, 1e-6));
-      expect(run.metadata?['distance_estimator'], 'kalman_v1');
+      expect(run.metadata?['distance_estimator'], 'kalman_v2');
       expect(run.metadata?['distance_step_filled_m'], 72);
     });
 

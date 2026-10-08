@@ -299,7 +299,10 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         // over an install with an unsynced run does not orphan it.
         RunPayloadStorage.prepare()
         locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        // The phone recorder's bestForNavigation (#1090): the strongest GPS
+        // request CoreLocation takes. Its battery cost on the wrist against
+        // kCLLocationAccuracyBest has not been measured on a device yet.
+        locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
         locationManager.activityType = .fitness
         // allowsBackgroundLocationUpdates is set in start(), not here:
         // CoreLocation traps (CLClientIsBackgroundable) if it's enabled before

@@ -7370,6 +7370,30 @@ class AppLocalizationsDe extends AppLocalizations {
       'Öffnet das Abo-Portal in deinem Browser. Verlängert sich monatlich automatisch bis zur Kündigung.';
 
   @override
+  String proPlanMonthly(String price) {
+    return 'Monatlich — $price/Monat';
+  }
+
+  @override
+  String proPlanAnnual(String price) {
+    return 'Jährlich — $price/Jahr';
+  }
+
+  @override
+  String proPlanAnnualSaving(int percent) {
+    return '$percent % günstiger als monatliche Zahlung';
+  }
+
+  @override
+  String proSubscribeTitleAnnual(String price) {
+    return 'Pro abonnieren — $price/Jahr';
+  }
+
+  @override
+  String get proSubscribeSubtitleConfiguredAnnual =>
+      'Einmal im Jahr abgerechnet. Verlängert sich jährlich automatisch, bis es unter Einstellungen → Abonnements gekündigt wird.';
+
+  @override
   String get proComingSoonTitle => 'Pro – demnächst';
 
   @override

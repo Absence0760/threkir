@@ -10,7 +10,7 @@
 -- carried the chargebacks. A host who knew the column existed could also set
 -- it to 0 against any rate the platform chose. The checkouts now read the rate
 -- from here at charge time, and the rate actually charged is recorded on each
--- order as platform_fee_cents (decisions § 1767).
+-- order as platform_fee_cents (decisions § 1768).
 
 create table platform_fees (
   id                boolean primary key default true,

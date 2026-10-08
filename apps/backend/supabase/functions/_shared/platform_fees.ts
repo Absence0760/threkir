@@ -1,6 +1,6 @@
 /// The platform's application-fee rate, read from `platform_fees` at charge
 /// time. Only the service role can read that table, so the rate is never a
-/// value the paying host or fundraiser owner supplies (decisions § 1767).
+/// value the paying host or fundraiser owner supplies (decisions § 1768).
 
 import type { DbClient } from './database.ts';
 

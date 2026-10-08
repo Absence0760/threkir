@@ -86,11 +86,100 @@ Future<bool> configureRevenueCat(
 /// [webPaymentLinksAllowed] permits one).
 enum PurchaseResult { purchased, cancelled, notConfigured, failed }
 
-/// Present the native Pro checkout sheet for [userId]. Prefers a
-/// monthly package when one is available, matching the "$9.99 /
-/// month" copy on the web settings page.
+/// The two Pro billing periods the `default` offering sells:
+/// `$rc_monthly` (product `pro_monthly`) and `$rc_annual` (product
+/// `pro_annual`), both granting the `pro` entitlement.
+enum ProPlan { monthly, annual }
+
+/// The Pro packages the current offering carries, keyed by [ProPlan].
+/// Either side may be missing: the screen offers only the plans that are
+/// here, so a purchase can never target a package the buyer was not shown.
+class ProPlanOptions {
+  const ProPlanOptions({this.monthly, this.annual});
+
+  final Package? monthly;
+  final Package? annual;
+
+  Package? packageFor(ProPlan plan) =>
+      plan == ProPlan.annual ? annual : monthly;
+
+  /// Annual first: it is the plan the screen recommends.
+  List<ProPlan> get plans => [
+        if (annual != null) ProPlan.annual,
+        if (monthly != null) ProPlan.monthly,
+      ];
+
+  ProPlan? get defaultPlan => plans.isEmpty ? null : plans.first;
+
+  /// Whole percent the annual plan saves over twelve monthly payments, from
+  /// the two store prices, or null when either side is missing or the two
+  /// are priced in different currencies.
+  int? get savingPercent {
+    final m = monthly?.storeProduct;
+    final a = annual?.storeProduct;
+    if (m == null || a == null || m.currencyCode != a.currencyCode) {
+      return null;
+    }
+    return annualSavingPercent(m.price, a.price);
+  }
+}
+
+/// Percent saved by paying [annualPrice] once instead of [monthlyPrice]
+/// twelve times, rounded DOWN so the copy never overstates the saving.
+/// Null when there is no saving of at least 1% to state.
+int? annualSavingPercent(double monthlyPrice, double annualPrice) {
+  if (monthlyPrice <= 0 || annualPrice <= 0) return null;
+  final yearOfMonths = monthlyPrice * 12;
+  if (annualPrice >= yearOfMonths) return null;
+  // The epsilon keeps binary rounding from flooring an exact 25.0 to 24.
+  final percent =
+      ((yearOfMonths - annualPrice) / yearOfMonths * 100 + 1e-9).floor();
+  return percent >= 1 ? percent : null;
+}
+
+Package? _packageMatching(
+  List<Package> packages,
+  PackageType type,
+  RegExp identifier,
+) {
+  for (final p in packages) {
+    if (p.packageType == type) return p;
+  }
+  for (final p in packages) {
+    if (identifier.hasMatch(p.identifier)) return p;
+  }
+  return null;
+}
+
+/// Sort the current offering's packages into plans: by RevenueCat's
+/// package type first, then by identifier. An offering whose packages are
+/// neither keeps the pre-annual behaviour of selling its first package as
+/// the monthly plan.
+ProPlanOptions proPlanOptions(Offerings offerings) {
+  final packages = offerings.current?.availablePackages ?? const <Package>[];
+  if (packages.isEmpty) return const ProPlanOptions();
+  final monthly = _packageMatching(packages, PackageType.monthly,
+      RegExp(r'monthly|month', caseSensitive: false));
+  final annual = _packageMatching(packages, PackageType.annual,
+      RegExp(r'annual|year', caseSensitive: false));
+  if (monthly == null && annual == null) {
+    return ProPlanOptions(monthly: packages.first);
+  }
+  return ProPlanOptions(monthly: monthly, annual: annual);
+}
+
+/// The package [startProCheckout] buys for [plan], or null when the
+/// offering does not carry that plan. Deliberately no cross-plan fallback:
+/// silently buying a year when the buyer chose a month is worse than a
+/// failed purchase.
+@visibleForTesting
+Package? pickProPackage(Offerings offerings, ProPlan plan) =>
+    proPlanOptions(offerings).packageFor(plan);
+
+/// Present the native Pro checkout sheet for [userId], buying [plan].
 Future<PurchaseResult> startProCheckout(
   String userId, {
+  required ProPlan plan,
   String? keyOverride,
 }) async {
   if (!await configureRevenueCat(userId, keyOverride: keyOverride)) {
@@ -98,9 +187,9 @@ Future<PurchaseResult> startProCheckout(
   }
   try {
     final offerings = await Purchases.getOfferings();
-    final pkg = pickProPackage(offerings);
+    final pkg = pickProPackage(offerings, plan);
     if (pkg == null) {
-      debugPrint('RevenueCat: no Pro offering available');
+      debugPrint('RevenueCat: no Pro ${plan.name} package available');
       return PurchaseResult.failed;
     }
     await Purchases.purchase(PurchaseParams.package(pkg));
@@ -118,20 +207,59 @@ Future<PurchaseResult> startProCheckout(
   }
 }
 
-/// Pick the "best" package out of the current offering — prefer a
-/// monthly identifier, fall back to the first available. Public for
-/// unit tests.
-@visibleForTesting
-Package? pickProPackage(Offerings offerings) {
-  final current = offerings.current;
-  if (current == null) return null;
-  final packages = current.availablePackages;
-  if (packages.isEmpty) return null;
-  final monthlyPattern = RegExp(r'monthly|month', caseSensitive: false);
-  for (final p in packages) {
-    if (monthlyPattern.hasMatch(p.identifier)) return p;
+/// The Pro plans the current offering sells for [userId], each carrying its
+/// store-localised price. Null when the SDK isn't configured or the offering
+/// can't be fetched: the screen then falls back to the USD list price.
+/// Apple Guideline 3.1.1 + Play subscription policy require the displayed
+/// price to come from the store, since it varies by territory.
+Future<ProPlanOptions?> loadProPlans(
+  String userId, {
+  String? keyOverride,
+}) async {
+  if (!await configureRevenueCat(userId, keyOverride: keyOverride)) {
+    return null;
   }
-  return packages.first;
+  try {
+    final options = proPlanOptions(await Purchases.getOfferings());
+    return options.plans.isEmpty ? null : options;
+  } catch (e) {
+    debugPrint('RevenueCat offerings fetch failed: $e');
+    return null;
+  }
+}
+
+/// The store operations the Pro screen drives. [RevenueCatProStore] is the
+/// live one; widget tests substitute a fake, since the native SDK has no
+/// host-test platform channel.
+abstract class ProStore {
+  bool get configured;
+  Future<ProPlanOptions?> loadPlans();
+  Future<PurchaseResult> purchase(ProPlan plan);
+}
+
+class RevenueCatProStore implements ProStore {
+  const RevenueCatProStore(this.currentUserId);
+
+  /// Read lazily so an unconfigured build never touches the auth client.
+  final String? Function() currentUserId;
+
+  @override
+  bool get configured => isRevenueCatConfigured();
+
+  @override
+  Future<ProPlanOptions?> loadPlans() async {
+    if (!configured) return null;
+    final userId = currentUserId();
+    if (userId == null) return null;
+    return loadProPlans(userId);
+  }
+
+  @override
+  Future<PurchaseResult> purchase(ProPlan plan) async {
+    final userId = configured ? currentUserId() : null;
+    if (userId == null) return PurchaseResult.notConfigured;
+    return startProCheckout(userId, plan: plan);
+  }
 }
 
 /// Restore purchases — drives RC's restore flow so a user who has
@@ -195,29 +323,6 @@ Future<String> resolveManageSubscriptionUrl(
     if (url != null) return url;
   }
   return manageSubscriptionFallbackUrl();
-}
-
-/// The store-localised monthly Pro price string (e.g. `$9.99`, `9,99 €`,
-/// `¥1,200`) from the current RevenueCat offering, or null when the SDK
-/// isn't configured / no Pro package is available. Apple Guideline 3.1.1 +
-/// Play subscription policy require the displayed price to come from the
-/// store — it varies by territory — so the UI shows this when configured and
-/// falls back to the USD list price only otherwise. Reuses [pickProPackage]
-/// so the priced package matches the one [startProCheckout] purchases.
-Future<String?> proMonthlyPriceString(
-  String userId, {
-  String? keyOverride,
-}) async {
-  if (!await configureRevenueCat(userId, keyOverride: keyOverride)) {
-    return null;
-  }
-  try {
-    final offerings = await Purchases.getOfferings();
-    return pickProPackage(offerings)?.storeProduct.priceString;
-  } catch (e) {
-    debugPrint('RevenueCat price fetch failed: $e');
-    return null;
-  }
 }
 
 /// Test-only reset — clears the cached configuration so a second test

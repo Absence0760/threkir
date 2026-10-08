@@ -190,7 +190,7 @@ A Wear OS-specific rollback consideration: when the phone app + watch app deploy
 
 ### Lost upload keystore
 
-Same Play support recovery flow as the phone app. The sops copy at `../infra-secrets/threkir/wear-upload-keystore.sops.yaml` (§ Signing setup) is the first thing to restore from; cold storage is still owed.
+Same Play support recovery flow as the phone app. The sops copy at `../infra-secrets/threkir/wear-upload-keystore.sops.yaml` (§ Signing setup) is the only readable copy; no cold copy is kept, for the reason the phone app's § Lost upload keystore gives.
 
 ### Lost Play Console access
 
@@ -211,7 +211,6 @@ A Wear OS-specific edge: Google occasionally tightens Wear OS-specific guideline
 - [ ] Privacy policy URL set (same one as the phone app — both apps are governed by the same policy)
 - [ ] Data safety questionnaire submitted
 - [x] Upload keystore generated, set as `production` GitHub Secrets, and sops-backed-up in the estate secrets repo (2026-10-06)
-- [ ] Upload keystore in cold storage
 - [ ] Play service account granted Release manager on this app
 - [ ] Production Gradle properties verified (Supabase URL, anon key, MapTiler)
 - [ ] Manifest reviewed against the permissions list

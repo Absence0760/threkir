@@ -15,7 +15,11 @@ class SettingsProScreen extends StatefulWidget {
   /// both storefront states without a network.
   final Future<ProPerks> Function()? loadPerks;
 
-  const SettingsProScreen({super.key, this.loadPerks});
+  /// Injection seam for the store, so widget tests can drive plan choice
+  /// and the purchase it leads to without the native RevenueCat SDK.
+  final ProStore? store;
+
+  const SettingsProScreen({super.key, this.loadPerks, this.store});
 
   @override
   State<SettingsProScreen> createState() => _SettingsProScreenState();
@@ -29,9 +33,17 @@ class _SettingsProScreenState extends State<SettingsProScreen> {
   // the brief window before the offering loads.
   static const String _usdListPrice = r'$9.99';
 
-  // The store-localised monthly price once RevenueCat resolves the offering;
-  // null until then (and on unconfigured builds).
-  String? _storePrice;
+  late final ProStore _store = widget.store ??
+      RevenueCatProStore(() => Supabase.instance.client.auth.currentUser?.id);
+
+  // The plans the offering sells, each with its store-localised price, once
+  // RevenueCat resolves it; null until then, on unconfigured builds, and when
+  // the fetch fails, all of which fall back to the monthly USD list price.
+  ProPlanOptions? _plans;
+
+  // The buyer's explicit choice; null means the offering's default (annual
+  // when the offering carries it).
+  ProPlan? _chosenPlan;
 
   // In-flight guard for the IAP actions (checkout / restore / manage). A
   // double-tap on a payment tile must not open two checkout sheets or fire
@@ -47,7 +59,7 @@ class _SettingsProScreenState extends State<SettingsProScreen> {
   @override
   void initState() {
     super.initState();
-    _loadStorePrice();
+    _loadPlans();
     _loadPerks();
   }
 
@@ -57,17 +69,23 @@ class _SettingsProScreenState extends State<SettingsProScreen> {
     setState(() => _perks = perks);
   }
 
-  Future<void> _loadStorePrice() async {
-    // Check configuration first: on unconfigured builds (dev / CI / tests)
-    // this returns before touching Supabase.instance, so the screen mounts
-    // without a live Supabase — matching the lazy access in the tap handlers.
-    if (!isRevenueCatConfigured()) return;
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-    if (userId == null) return;
-    final price = await proMonthlyPriceString(userId);
-    if (!mounted || price == null) return;
-    setState(() => _storePrice = price);
+  Future<void> _loadPlans() async {
+    // On unconfigured builds (dev / CI / tests) the live store returns before
+    // touching Supabase.instance, so the screen mounts without a live
+    // Supabase — matching the lazy access in the tap handlers.
+    final ProPlanOptions? plans;
+    try {
+      plans = await _store.loadPlans();
+    } catch (e) {
+      debugPrint('Pro plans load failed: $e');
+      return;
+    }
+    if (!mounted || plans == null) return;
+    setState(() => _plans = plans);
   }
+
+  ProPlan get _selectedPlan =>
+      _chosenPlan ?? _plans?.defaultPlan ?? ProPlan.monthly;
 
   Future<void> _openExternal(BuildContext context, String url) async {
     final uri = Uri.parse(url);
@@ -94,15 +112,13 @@ class _SettingsProScreenState extends State<SettingsProScreen> {
     if (!(_perks?.sellable ?? false)) return;
     setState(() => _proBusy = true);
     try {
-      final supabase = Supabase.instance.client;
-      final userId = supabase.auth.currentUser?.id;
-      if (!isRevenueCatConfigured() || userId == null) {
+      if (!_store.configured) {
         if (webPaymentLinksAllowed()) {
           await _openExternal(context, webUpgradeUrl);
         }
         return;
       }
-      final r = await startProCheckout(userId);
+      final r = await _store.purchase(_selectedPlan);
       if (!context.mounted) return;
       final l10n = AppLocalizations.of(context);
       switch (r) {
@@ -172,16 +188,48 @@ class _SettingsProScreenState extends State<SettingsProScreen> {
     }
   }
 
+  Widget _planTile(
+    BuildContext context,
+    ProPlanOptions plans,
+    ProPlan plan, {
+    required bool selected,
+  }) {
+    final l10n = AppLocalizations.of(context);
+    final price = plans.packageFor(plan)!.storeProduct.priceString;
+    final saving = plan == ProPlan.annual ? plans.savingPercent : null;
+    return Semantics(
+      inMutuallyExclusiveGroup: true,
+      checked: selected,
+      child: ListTile(
+        leading: Icon(
+          selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+        ),
+        title: Text(plan == ProPlan.annual
+            ? l10n.proPlanAnnual(price)
+            : l10n.proPlanMonthly(price)),
+        subtitle: saving == null ? null : Text(l10n.proPlanAnnualSaving(saving)),
+        selected: selected,
+        enabled: !_proBusy,
+        onTap: () => setState(() => _chosenPlan = plan),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final rcConfigured = isRevenueCatConfigured();
-    // Prefer the store-localised price; fall back to the USD list price until
-    // (or unless) the offering resolves. When we have the real localised
-    // price the USD-disclaimer note below is redundant + misleading, so it
-    // only shows on the fallback.
-    final priceLabel = _storePrice ?? _usdListPrice;
-    final showRegionalNote = _storePrice == null;
+    final rcConfigured = _store.configured;
+    final plans = _plans;
+    final plan = _selectedPlan;
+    // Prefer the store-localised price; fall back to the monthly USD list
+    // price until (or unless) the offering resolves. When we have the real
+    // localised price the USD-disclaimer note below is redundant + misleading,
+    // so it only shows on the fallback.
+    final storePrice = plans?.packageFor(plan)?.storeProduct.priceString;
+    final priceLabel = storePrice ?? _usdListPrice;
+    final showRegionalNote = storePrice == null;
+    final annual = storePrice != null && plan == ProPlan.annual;
+    final choices = plans?.plans ?? const <ProPlan>[];
     // Mirrors web's proSellable branch: a purchase CTA only where a perk
     // is live, else the coming-soon teaser. Unknown counts as not sellable.
     // Where the store SDK is unconfigured the purchase would be a web
@@ -194,14 +242,21 @@ class _SettingsProScreenState extends State<SettingsProScreen> {
       body: SafeArea(
         child: ListView(
           children: [
+            if (sellable && choices.length > 1)
+              for (final choice in choices)
+                _planTile(context, plans!, choice, selected: choice == plan),
             if (sellable)
               ListTile(
                 leading: const Icon(Icons.workspace_premium_outlined),
-                title: Text(l10n.proSubscribeTitle(priceLabel)),
+                title: Text(annual
+                    ? l10n.proSubscribeTitleAnnual(priceLabel)
+                    : l10n.proSubscribeTitle(priceLabel)),
                 subtitle: Text(
-                  rcConfigured
-                      ? l10n.proSubscribeSubtitleConfigured
-                      : l10n.proSubscribeSubtitleWeb,
+                  annual
+                      ? l10n.proSubscribeSubtitleConfiguredAnnual
+                      : rcConfigured
+                          ? l10n.proSubscribeSubtitleConfigured
+                          : l10n.proSubscribeSubtitleWeb,
                 ),
                 trailing: Icon(
                   rcConfigured ? Icons.chevron_right : Icons.open_in_new,

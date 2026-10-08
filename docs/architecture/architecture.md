@@ -212,7 +212,7 @@ src/routes/
     ├── preferences/+page.svelte # Units, map style, activity defaults, coach tone, HR zones
     ├── integrations/+page.svelte # Connect Strava, Garmin, parkrun
     ├── devices/+page.svelte     # Per-device settings
-    └── upgrade/+page.svelte     # Pro tier ($9.99 / mo) + one-off donate
+    └── upgrade/+page.svelte     # Pro tier ($9.99 / mo or $79.99 / yr) + one-off donate
 ```
 
 **Route builder (web-specific):**

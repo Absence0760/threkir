@@ -1,4 +1,4 @@
--- Pins migration 20270716000001 (decisions § 1767): the application-fee rate is
+-- Pins migration 20270716000001 (decisions § 1768): the application-fee rate is
 -- platform config that only the service role can see, not a column on a row
 -- the paying host writes.
 --   * exactly one row, at the owner-decided 500 bps on events and 0 on donations;

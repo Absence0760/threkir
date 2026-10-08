@@ -341,7 +341,7 @@ Slice P2 (web + backend) additions:
 
 ## Open questions
 
-1. ~~**Platform fee rate**~~ — **decided 2026-10-07: 500 bps (5%) on paid events**, held in `platform_fees` (service-role only) and read by `events-checkout` at charge time; the rate actually charged is recorded on each order as `platform_fee_cents` (decisions § 1767). Below ~3% + 30c a destination charge loses money, because Stripe's processing fee is the platform's.
+1. ~~**Platform fee rate**~~ — **decided 2026-10-07: 500 bps (5%) on paid events**, held in `platform_fees` (service-role only) and read by `events-checkout` at charge time; the rate actually charged is recorded on each order as `platform_fee_cents` (decisions § 1768). Below ~3% + 30c a destination charge loses money, because Stripe's processing fee is the platform's.
 2. **Paid-buyer-lands-on-waitlist** — auto-refund (spec default) vs hold-as-paid-waitlisted. Confirm.
 3. **Account-deletion vs financial retention** term for `event_orders`. Counsel.
 4. **Connect account type** — Express (Stripe-hosted dashboard, fastest; P1 assumption) vs Standard.

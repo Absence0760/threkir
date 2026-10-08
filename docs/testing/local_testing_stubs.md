@@ -53,7 +53,7 @@ Stripe's **test mode** is the canonical local-testing path. RevenueCat acts as a
 
 1. <https://app.revenuecat.com> → create a project for local testing (separate from prod).
 2. Project settings → Integrations → Stripe → paste `sk_test_...`.
-3. Add a product: `pro_monthly` with the Stripe test-mode price you create.
+3. Add two products: `pro_monthly` and `pro_annual`, each with the Stripe test-mode price you create ($9.99 / month and $79.99 / year), as packages `$rc_monthly` and `$rc_annual` of offering `default`, both attached to entitlement `pro`.
 4. Project settings → API keys → copy the **public web** key.
 
 ### 3. Wire into the app
@@ -202,7 +202,7 @@ These can't be exercised on a laptop without the matching device + a sandbox tes
 **iOS:**
 
 1. App Store Connect → Users + Access → Sandbox → add a test user (e.g. `pro+sandbox-1@example.com`). Use this email/password to sign in to Settings → iTunes Store on a real device or simulator with sandbox sign-in enabled.
-2. App Store Connect → In-App Purchases → create the `pro_monthly` product. Status: "Ready to Submit" is sufficient for sandbox.
+2. App Store Connect → In-App Purchases → create the `pro_monthly` and `pro_annual` products. Status: "Ready to Submit" is sufficient for sandbox.
 3. Build the app with the RevenueCat iOS SDK keyed to the sandbox project.
 4. Sandbox subscriptions have an accelerated renewal cycle (1 month = 5 minutes). Burn a few sandbox cycles to verify the renewal webhook.
 

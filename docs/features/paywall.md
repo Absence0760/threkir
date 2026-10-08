@@ -85,7 +85,8 @@ What the Pro tier changes:
   `PUBLIC_SUPABASE_ANON_KEY`.
 
 `/settings/upgrade` shows a two-card layout: a Pro plan card
-($9.99 / month, feature bullets, "Get Pro" CTA) and a one-off Donate
+(a Yearly $79.99 / Monthly $9.99 plan picker with the yearly saving,
+feature bullets, "Get Pro" CTA) and a one-off Donate
 button that links to an external payment provider. The transparent
 cost breakdown, monthly progress bars, donor count, and tiered
 donation buttons that existed under the previous donations-only model
@@ -171,7 +172,7 @@ dropped); reviving transparent funding later is a one-page revert.
 | Tier | How you get it | What it unlocks |
 |---|---|---|
 | `free` | Default for every new account | Every screen in the app. AI Coach capped at 2 messages/day. Standard request priority. Route generation via the in-browser heuristic. |
-| `pro` | RevenueCat subscription ($9.99 / month) | Everything free users get + AI Coach capped at 10 messages/day (5× the free cap) + priority processing (wider context budget, longer responses) + AI route descriptions + server-side route generation (real street-graph loops, decisions §204). |
+| `pro` | RevenueCat subscription: $9.99 / month (`pro_monthly`, package `$rc_monthly`) or $79.99 / year (`pro_annual`, package `$rc_annual`), both in offering `default` and both granting entitlement `pro` | Everything free users get + AI Coach capped at 10 messages/day (5× the free cap) + priority processing (wider context budget, longer responses) + AI route descriptions + server-side route generation (real street-graph loops, decisions §204). |
 | `lifetime` | RevenueCat one-time purchase (not currently sold) | Same as `pro`. |
 
 `user_profiles.subscription_tier` is the authoritative column. A CHECK
@@ -391,8 +392,12 @@ that weight leaves the bundle entirely (see decisions.md + followups.md
 thin env-reading shell over the pure `revenuecat_links.ts` URL builder:
 
 - **Checkout**: `/settings/upgrade` "Get Pro" does a full-page redirect to
-  the project's Web Paywall Link, `proCheckoutUrl(userId, returnUrl)` →
-  `https://pay.rev.cat/<token>/<urlEncodedUserId>?redirect_url=<page>`.
+  the project's Web Paywall Link, `proCheckoutUrl(userId, plan, returnUrl)` →
+  `https://pay.rev.cat/<token>/<urlEncodedUserId>?package_id=<pkg>&redirect_url=<page>`.
+  `package_id` is RevenueCat's documented Web Purchase Link parameter: it
+  preselects `$rc_annual` or `$rc_monthly` (whichever plan the page's picker
+  holds, yearly by default) and skips the hosted package picker, so the
+  buyer checks out exactly the plan the page priced.
   The Supabase user id is the App User ID, so RevenueCat keys the purchase
   to the identity the webhook sees. On success RevenueCat redirects back to
   `/settings/upgrade`; the `revenuecat-webhook` Edge Function flips
@@ -434,13 +439,13 @@ watch inherits the phone's subscription via the paired Supabase session
 **RevenueCat is not the payment processor.** On mobile it sits on top of **Apple StoreKit** (App Store) and **Google Play Billing**; the charge runs through the buyer's Apple ID / Google account. That makes cross-border purchases work *for free* — but only once the store-side configuration exists. The split is:
 
 - **Handled by Apple / Google (no work for us):** local currency + payment methods (e.g. UPI / net-banking / cards / carrier billing in India), currency conversion, and — critically — **tax as merchant of record** (Apple/Google collect + remit GST/VAT/sales tax per territory; we never file foreign tax for IAP). They also own refunds and the auto-renewal mechanics. We're paid out in our configured currency after their 15–30% cut.
-- **The buyer always sees their store-localized price**, not a hard-coded USD figure. The mobile Subscribe tile reads it via `proMonthlyPriceString` → `storeProduct.priceString` (`apps/mobile_android/lib/screens/settings_pro_screen.dart` + iOS twin), falling back to the `$9.99` USD list price + a "billed in USD" note only when RevenueCat is unconfigured or the offering hasn't loaded. Apple Guideline 3.1.1 / the Play subscription policy require the displayed amount to come from the store (it varies by territory), which is why the price is never hard-coded.
+- **The buyer always sees their store-localized price**, not a hard-coded USD figure. The mobile screen reads it via `loadProPlans` → each package's `storeProduct.priceString` (`apps/mobile_android/lib/screens/settings_pro_screen.dart` + iOS twin). When the offering carries both plans the buyer picks Yearly or Monthly (yearly preselected), the yearly row states the saving computed from the two STORE prices (rounded down, omitted across two currencies), and the purchase buys exactly the chosen package; a single package is offered alone. It falls back to the monthly `$9.99` USD list price + a "billed in USD" note only when RevenueCat is unconfigured or the offering hasn't loaded or failed. Apple Guideline 3.1.1 / the Play subscription policy require the displayed amount to come from the store (it varies by territory), which is why the price is never hard-coded.
 
 **Operator prerequisites — a purchase from (say) India only succeeds when all of these are set up (none are code):**
 
 1. **Storefront availability.** The app *and* the subscription product must be enabled for the buyer's country (App Store Connect → Availability; Play Console → Countries/regions). Excluding a country silently makes Pro unbuyable there — this is the most common gap, so any "is Pro reachable in country X?" check starts here. (`/audit/regional-availability` exercises this.)
 2. **Per-region price.** Apple via a price tier (auto-generates the local amount per storefront) or a custom per-region price; Play via per-country pricing. RevenueCat just reports whatever the store says.
-3. **RC project provisioned** — the `pro_monthly` package + `REVENUECAT_API_KEY_*` (followups.md §#9). Until then the tile falls through to the web URL.
+3. **RC project provisioned** — offering `default` with packages `$rc_monthly` → `pro_monthly` and `$rc_annual` → `pro_annual`, both attached to entitlement `pro`, + `REVENUECAT_API_KEY_*` (followups.md §#9). Both products need a store price in every territory: an offering missing one simply offers the other alone. Until then the tile falls through to the web URL.
 
 **Caveats:**
 
@@ -452,7 +457,7 @@ watch inherits the phone's subscription via the paired Supabase session
 
 1. User navigates to `/settings/upgrade` (linked from sidebar and
    settings layout).
-2. Page shows the two-card layout: Pro plan card ($9.99 / month) plus
+2. Page shows the two-card layout: Pro plan card ($79.99 / year or $9.99 / month) plus
    a one-off **Donate** button.
 3. Tapping Donate opens an external payment link in a new tab.
 

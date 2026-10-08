@@ -36,6 +36,19 @@ function hasSmoothedPosition(p: unknown): boolean {
   return finite(q.smoothedLat) && finite(q.smoothedLng);
 }
 
+/**
+ * Whether the run's metadata names a sidecar built for the track whose bytes
+ * hash to `sha256`: the job_worker records `smoothed_sidecar_sha256` while the
+ * sidecar is stored, so a run without it, or whose hash names another track (a
+ * re-upload), has nothing to fetch. Checked before the sidecar download so a
+ * run with no sidecar costs no Storage request; the merge still checks the
+ * sidecar's own fingerprint.
+ */
+export function sidecarNamedFor(metadata: unknown, sha256: string): boolean {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return false;
+  return (metadata as Record<string, unknown>).smoothed_sidecar_sha256 === sha256;
+}
+
 /** Whether a sidecar could add anything: a track with no smoothed pair on any waypoint. */
 export function needsSmoothedSidecar(points: readonly unknown[]): boolean {
   return points.length > 0 && !points.some(hasSmoothedPosition);

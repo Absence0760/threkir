@@ -151,7 +151,18 @@ Deno.test('the smoothed sidecar is merged before the owner return AND before the
     'the sidecar blob is capped before inflation, like the track',
   );
   assert(
-    /sha256: await sha256Hex\(trackBytes\)/.test(SRC),
+    /const sha256 = await sha256Hex\(trackBytes\);/.test(SRC) &&
+      /mergeSmoothedSidecar\(pts, sidecar, \{ points: pts\.length, sha256 \}\)/.test(SRC),
     'the sidecar must be checked against the bytes of the track it is merged onto',
   );
+});
+
+Deno.test('the sidecar is requested only when the row names this track', () => {
+  // A run whose metadata names no sidecar (most runs: every phone save, every
+  // import) or names another track's (a re-upload) has nothing to fetch, and
+  // asking Storage anyway is one 404 per share-page view.
+  const gate = SRC.indexOf('if (!sidecarNamedFor(run.metadata, sha256)) return pts;');
+  assert(gate !== -1, 'the metadata gate on the sidecar request is gone');
+  assert(gate < SRC.indexOf('.download(smoothedSidecarPath(ownerId, runId))'), 'the gate must precede the request');
+  assert(/\.select\('user_id, is_public, metadata'\)/.test(SRC), 'the row read must carry the metadata the gate reads');
 });

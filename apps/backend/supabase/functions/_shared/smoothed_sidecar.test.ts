@@ -3,6 +3,7 @@ import {
   mergeSmoothedSidecar,
   needsSmoothedSidecar,
   sha256Hex,
+  sidecarNamedFor,
   smoothedSidecarPath,
 } from './smoothed_sidecar.ts';
 
@@ -71,4 +72,14 @@ Deno.test('only a track with no pair anywhere needs a sidecar', () => {
 
 Deno.test('the sidecar sits beside the track in the owner folder', () => {
   assertEquals(smoothedSidecarPath('u-1', 'r-1'), 'u-1/r-1.smoothed.json.gz');
+});
+
+Deno.test('only metadata naming this exact track names a sidecar to fetch', () => {
+  const sha = FIXTURE.sha256;
+  assertEquals(sidecarNamedFor({ smoothed_sidecar_sha256: sha }, sha), true);
+  assertEquals(sidecarNamedFor({}, sha), false);
+  assertEquals(sidecarNamedFor(null, sha), false);
+  assertEquals(sidecarNamedFor([sha], sha), false);
+  assertEquals(sidecarNamedFor({ smoothed_sidecar_sha256: '0'.repeat(64) }, sha), false);
+  assertEquals(sidecarNamedFor({ smoothed_sidecar_sha256: sha.toUpperCase() }, sha), false);
 });

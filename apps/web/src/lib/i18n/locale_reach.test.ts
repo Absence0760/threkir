@@ -459,6 +459,9 @@ const TU_PRETERITE = /(?<![a-zà-ÿ])[a-zà-ÿ]{3,}(?:aste|este|iste)(?![a-zà-�
 const NOT_A_PRETERITE = new Set([
 	"arraste", "desgaste", "deste", "este", "existe", "leste", "neste",
 	"oeste", "registe",
+	// `-sistir` verbs: the third-person present ends in `-siste`, and the Learn
+	// guides' running prose is where they turn up ("a maior parte desiste").
+	"assiste", "consiste", "desiste", "insiste", "persiste", "resiste", "subsiste",
 ]);
 
 /**
@@ -575,6 +578,36 @@ test("the pt-PT catalogue uses no tu imperative its Brazilian twin does not", as
 			"`Importe`, not `Importa`, in the register this catalogue uses everywhere " +
 			"else (decisions § 755). If the word is not a verb, add the pair to " +
 			"VARIANT_WORD_PAIRS with what it means.",
+	);
+});
+
+test("a Portuguese Learn guide reads as its own variant, in the catalogue's register", () => {
+	// The guides are prose outside the catalogues, so neither scan above sees
+	// them — and a guide is where a Brazilian word or a `tu` slips in most
+	// easily, being a long text written in one sitting rather than one string at
+	// a time. Same word lists and markers as the catalogues, so the two cannot
+	// drift apart about what European Portuguese is.
+	const dir = join(SRC, "lib", "learn", "guides");
+	const offenders: string[] = [];
+	let scanned = 0;
+	for (const file of readdirSync(dir)) {
+		const tag = PORTUGUESE.find((t) => file.endsWith(`.${t}.md`));
+		if (!tag) continue;
+		scanned++;
+		const text = readFileSync(join(dir, file), "utf8");
+		for (const word of VARIANT_WORDS[tag]) {
+			if (new RegExp(`(?<![a-zà-ÿ])${word}(s|es)?(?![a-zà-ÿ])`, "iu").test(text)) {
+				offenders.push(`${file}: "${word}"`);
+			}
+		}
+		for (const marker of tuMarkersIn(text, tag)) offenders.push(`${file}: ${marker}`);
+	}
+	assert.ok(scanned > 0, "found no Portuguese Learn guide — has lib/learn/guides moved?");
+	assert.deepEqual(
+		offenders,
+		[],
+		"a Portuguese Learn guide uses the other variant's word, or addresses its reader " +
+			"as `tu` where every catalogue string uses the third person (decisions § 755).",
 	);
 });
 

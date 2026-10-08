@@ -60,9 +60,9 @@ test('computeEmbeddedBests — even 6 km run yields ~total-time 5k, no 10k', () 
 
 test('computeEmbeddedBests — a fast 5k inside a long run is detected', () => {
 	// First fifty steps fast (20 s a step), the rest slow (40 s a step). The
-	// track runs 104 steps rather than 100 because the estimator lags the pace
-	// change and credits ~20 m less than the straight line, which a track
-	// ending at 10 000.5 m would turn into no 10 km window at all.
+	// track runs 104 steps rather than 100 so the slow tail holds a 10 km
+	// window. The smoother spreads the 2:1 pace change across both sides of
+	// it, so the fast half credits ~8 m short and its best reads ~1016 s.
 	const stepDeg = 100.01 / M_PER_DEG;
 	const startMs = Date.parse('2026-01-01T09:00:00Z');
 	const track: TrackPoint[] = [{ lat: 0, lng: 0, ts: new Date(startMs).toISOString() }];
@@ -72,12 +72,12 @@ test('computeEmbeddedBests — a fast 5k inside a long run is detected', () => {
 		track.push({ lat: 0, lng: i * stepDeg, ts: new Date(t).toISOString() });
 	}
 	const bests = computeEmbeddedBests(track);
-	// Embedded fast 5k (~1000 s) beats the whole-run-scaled pace (1500 s).
+	// Embedded fast 5k (~1016 s) beats the whole-run-scaled pace (1500 s).
 	const fast5k = bests.fastest_5k_s ?? -1;
 	const fast10k = bests.fastest_10k_s ?? -1;
-	assert.ok(fast5k >= 995 && fast5k <= 1005, `got ${bests.fastest_5k_s}`);
-	// The same lag makes the 10 km window ~25 s slower than the 3 000 s the
-	// straight line gives.
+	assert.ok(fast5k >= 995 && fast5k <= 1020, `got ${bests.fastest_5k_s}`);
+	// The 10 km window reads ~2998 s against the 3 000 s the straight line
+	// gives.
 	assert.ok(fast10k >= 2990 && fast10k <= 3040, `got ${bests.fastest_10k_s}`);
 	assert.equal(bests.fastest_half_marathon_s, undefined);
 });

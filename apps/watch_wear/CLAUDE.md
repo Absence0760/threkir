@@ -527,6 +527,11 @@ because the watch reads `user_settings.prefs` only, not the
 `user_profiles.gender` column — the run-detail pages recompute with
 gender once synced, so the only place the watch figure is final is its
 own summary. Pinned by `RunCaloriesTest`. See decisions.md § 77.
+The weight reaches the bag from onboarding, the Health Connect import and,
+since decisions § 1811, every consented save on Settings → Body metrics (web
+and phone), which also clear it on a withdrawal. There is no phone→watch
+DataLayer settings envelope on Wear OS — the watch reads the bag over its own
+session — so don't add one for this key.
 
 **Rotary input (bezel / crown).** The scrollable list screens —
 `PreRunScreen`, `BatteryInstructions` and the route picker — attach

@@ -593,10 +593,11 @@ class _DashboardScreenState extends State<DashboardScreen>
   /// The opening week card (web `DashboardWeekLead.svelte`). Its plan input is
   /// null without an active plan, which is what hides the next-session half,
   /// not an empty list.
-  Widget _weekLeadCard(
-      List<Run> runs, List<RunGoal> goals, DistanceUnit unit, DateTime now) {
+  /// The active plan's workouts in the shape both the week lead and the Goals
+  /// section read, or null without an active plan.
+  List<LeadPlanWorkout>? _leadPlanWorkouts() {
     final plan = _planOverview;
-    final planWorkouts = plan == null
+    return plan == null
         ? null
         : [
             for (final w in plan.workouts)
@@ -610,6 +611,11 @@ class _DashboardScreenState extends State<DashboardScreen>
                 skippedAt: w.skippedAt?.toIso8601String(),
               ),
           ];
+  }
+
+  Widget _weekLeadCard(
+      List<Run> runs, List<RunGoal> goals, DistanceUnit unit, DateTime now) {
+    final planWorkouts = _leadPlanWorkouts();
     final lead = weekLead(
       activities: [
         for (final r in runs)
@@ -1509,6 +1515,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     DateTime now,
   ) {
     final l10n = AppLocalizations.of(context);
+    final planWorkouts = _leadPlanWorkouts() ?? const <LeadPlanWorkout>[];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1532,8 +1539,9 @@ class _DashboardScreenState extends State<DashboardScreen>
           for (final goal in goals)
             _GoalCard(
               goal: goal,
-              progress:
-                  evaluateGoal(goal, runs, now, weekStartDay: _weekStartDay),
+              progress: evaluateGoal(goal, runs, now,
+                  weekStartDay: _weekStartDay,
+                  planWorkouts: planWorkouts),
               unit: unit,
               onTap: () => _editGoal(goal),
             ),

@@ -376,6 +376,69 @@ void main() {
     });
   });
 
+  group('marked done without a run', () {
+    _Done done(String date,
+            {double? targetDistanceM = 5000,
+            bool manuallyCompleted = true,
+            String? completedRunId}) =>
+        _Done(date, targetDistanceM, manuallyCompleted, completedRunId);
+
+    test(
+        'markedDoneTally counts hand-marked sessions from the period start '
+        'through today only', () {
+      // now is Wed 2026-04-15; the Monday week starts 2026-04-13.
+      final tally = markedDoneTally(
+        [
+          done('2026-04-12'),
+          done('2026-04-13', targetDistanceM: 6000),
+          done('2026-04-14', targetDistanceM: null),
+          done('2026-04-14', completedRunId: 'r1'),
+          done('2026-04-15', manuallyCompleted: false),
+          done('2026-04-15'),
+          done('2026-04-16'),
+        ],
+        goalPeriodStart(GoalPeriod.week, now),
+        now,
+      );
+      expect(tally.distanceM, 11000);
+      expect(tally.count, 3);
+    });
+
+    test(
+        'evaluateGoal adds them to distance and run count, not time or pace',
+        () {
+      const goal = RunGoal(
+        id: 'g1',
+        period: GoalPeriod.week,
+        distanceMetres: 20000,
+        timeSeconds: 7200,
+        avgPaceSecPerKm: 300,
+        runCount: 2,
+      );
+      final p = evaluateGoal(
+        goal,
+        [
+          makeRun(
+            startedAt: DateTime(2026, 4, 14, 7),
+            distance: 10000,
+            duration: const Duration(minutes: 50),
+          ),
+        ],
+        now,
+        planWorkouts: [
+          done('2026-04-13', targetDistanceM: 8000),
+          done('2026-04-14', completedRunId: 'r-tue'),
+        ],
+      );
+      expect(p.runCount, 2);
+      expect(targetOf(p, GoalTargetKind.distance).current, 18000);
+      expect(targetOf(p, GoalTargetKind.time).current, 3000);
+      expect(targetOf(p, GoalTargetKind.avgPace).current, 300);
+      expect(targetOf(p, GoalTargetKind.runCount).current, 2);
+      expect(targetOf(p, GoalTargetKind.runCount).complete, isTrue);
+    });
+  });
+
   group('RunGoal JSON', () {
     test('round-trips a multi-target goal', () {
       const goal = RunGoal(
@@ -636,4 +699,17 @@ void main() {
       });
     }
   });
+}
+
+class _Done implements PlanCompletion {
+  @override
+  final String scheduledDate;
+  @override
+  final double? targetDistanceM;
+  @override
+  final bool manuallyCompleted;
+  @override
+  final String? completedRunId;
+  const _Done(this.scheduledDate, this.targetDistanceM, this.manuallyCompleted,
+      this.completedRunId);
 }

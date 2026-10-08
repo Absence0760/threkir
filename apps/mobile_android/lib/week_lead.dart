@@ -5,7 +5,9 @@
 /// The week is the runner's calendar week on their `week_start` pref, the same
 /// window the "This Week" stat card and `ThisWeekStrip` use, so the three never
 /// disagree about what "this week" holds. Plan workouts marked done without a
-/// linked run count toward it the way the stat card counts them.
+/// linked run count toward it through `markedDoneTally`, the same tally the
+/// Goals section takes, so a run-count goal reads the same number here and on
+/// its ring (decisions § 1813).
 ///
 /// The yardstick is, in order: the plan's distance for the same calendar week,
 /// the runner's own weekly goal (distance, then run count), and otherwise their
@@ -22,7 +24,8 @@
 library;
 
 import 'current_week.dart' show WeekStart;
-import 'goals.dart' show GoalPeriod, RunGoal, weekStartLocal;
+import 'goals.dart'
+    show GoalPeriod, PlanCompletion, RunGoal, markedDoneTally, weekStartLocal;
 
 class LeadActivity {
   final String startedAt;
@@ -30,12 +33,16 @@ class LeadActivity {
   const LeadActivity({required this.startedAt, required this.distanceM});
 }
 
-class LeadPlanWorkout {
+class LeadPlanWorkout implements PlanCompletion {
   final String? id;
+  @override
   final String scheduledDate;
   final String kind;
+  @override
   final double? targetDistanceM;
+  @override
   final bool manuallyCompleted;
+  @override
   final String? completedRunId;
   final String? skippedAt;
 
@@ -249,7 +256,6 @@ WeekLead weekLead({
   final start = weekStartLocal(now, weekStartDay: weekStart.name);
   final startMs = start.millisecondsSinceEpoch;
   final todayIso = _localIso(now);
-  final startIso = _localIso(start);
 
   var distanceM = 0.0;
   var count = 0;
@@ -261,15 +267,9 @@ WeekLead weekLead({
   }
 
   final workouts = planWorkouts ?? const <LeadPlanWorkout>[];
-  for (final w in workouts) {
-    if (!(w.manuallyCompleted && w.completedRunId == null)) continue;
-    if (w.scheduledDate.compareTo(startIso) < 0 ||
-        w.scheduledDate.compareTo(todayIso) > 0) {
-      continue;
-    }
-    distanceM += w.targetDistanceM ?? 0;
-    count += 1;
-  }
+  final marked = markedDoneTally(workouts, start, now);
+  distanceM += marked.distanceM;
+  count += marked.count;
 
   WeekComparison? comparison;
   final planned =

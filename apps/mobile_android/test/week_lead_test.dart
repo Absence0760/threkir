@@ -1,3 +1,4 @@
+import 'package:core_models/core_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../lib/current_week.dart';
 import '../lib/goals.dart';
@@ -161,6 +162,41 @@ void main() {
       now: _wed,
     );
     expect(lead.comparison, const WeekComparison.goalRuns(3));
+  });
+
+  test(
+      'weekLead: a run-count goal reads the same count as its Goals ring in a '
+      'plan week with no planned distance', () {
+    const goal = RunGoal(id: 'g', period: GoalPeriod.week, runCount: 3);
+    final runs = [
+      Run(
+        id: 'r',
+        startedAt: DateTime(2026, 6, 9, 9),
+        duration: const Duration(minutes: 30),
+        distanceMetres: 5000,
+        track: const [],
+        source: RunSource.app,
+      ),
+    ];
+    final planWorkouts = [
+      _wo('2026-06-08', targetDistanceM: null, manuallyCompleted: true),
+      _wo('2026-06-12', targetDistanceM: null),
+    ];
+    final lead = weekLead(
+      activities: [
+        for (final r in runs)
+          _act(r.startedAt.toUtc().toIso8601String(), r.distanceMetres),
+      ],
+      planWorkouts: planWorkouts,
+      weeklyGoal: weeklyGoalTarget([goal]),
+      weekStart: WeekStart.monday,
+      now: _wed,
+    );
+    final ring = evaluateGoal(goal, runs, _wed, planWorkouts: planWorkouts);
+    expect(lead.comparison, const WeekComparison.goalRuns(3));
+    expect(lead.count, 2);
+    expect(ring.runCount, lead.count);
+    expect(ring.targets.single.current, lead.count);
   });
 
   test(

@@ -167,7 +167,7 @@ class RunRecorder {
   /// timezone change) — the run duration stays correct.
   final Stopwatch _stopwatch;
 
-  /// The headline GPS distance (spec v1, `docs/features/gps_distance.md`).
+  /// The headline GPS distance (spec v1.1, `docs/features/gps_distance.md`).
   /// One estimator per un-paused stretch: [resume] folds the finished one into
   /// [_distanceOffsetMetres] and starts another, so a paused span is never
   /// integrated. A resumed session seeds the offset with the prior distance.
@@ -1014,7 +1014,10 @@ class RunRecorder {
   }
 
   void _newEstimator() {
-    _estimator = GpsDistanceEstimator(maxSpeedMps: _maxSpeedMps);
+    _estimator = GpsDistanceEstimator(
+      maxSpeedMps: _maxSpeedMps,
+      initialStrideM: _priorStrideM,
+    );
     _estFixT = null;
     _estFixMono = null;
     _estFixGps = null;

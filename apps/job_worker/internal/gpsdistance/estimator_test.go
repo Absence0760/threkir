@@ -25,10 +25,12 @@ type vectorEvent struct {
 }
 
 type vectorScenario struct {
-	Name        string        `json:"name"`
-	MaxSpeedMps float64       `json:"maxSpeedMps"`
-	Events      []vectorEvent `json:"events"`
-	Expected    struct {
+	Name              string        `json:"name"`
+	MaxSpeedMps       float64       `json:"maxSpeedMps"`
+	ExpectedIntervalS float64       `json:"expectedIntervalS"`
+	InitialStrideM    *float64      `json:"initialStrideM"`
+	Events            []vectorEvent `json:"events"`
+	Expected          struct {
 		DistanceAfterEachEventM []float64 `json:"distanceAfterEachEventM"`
 		GpsDistanceM            float64   `json:"gpsDistanceM"`
 		StepDistanceM           float64   `json:"stepDistanceM"`
@@ -64,8 +66,8 @@ func loadVectors(t *testing.T) vectorFile {
 
 func TestConstantsMatchTheVectorFile(t *testing.T) {
 	vf := loadVectors(t)
-	if vf.Spec != "gps-distance-estimator v1" {
-		t.Fatalf("vectors are for %q; this port implements v1", vf.Spec)
+	if vf.Spec != "gps-distance-estimator v1.1" {
+		t.Fatalf("vectors are for %q; this port implements v1.1", vf.Spec)
 	}
 	ours := map[string]float64{
 		"DEFAULT_SPEED_SIGMA_MPS":       DefaultSpeedSigmaMps,
@@ -107,7 +109,11 @@ func TestGoldenVectors(t *testing.T) {
 			if len(sc.Expected.DistanceAfterEachEventM) != len(sc.Events) {
 				t.Fatalf("%d expectations for %d events", len(sc.Expected.DistanceAfterEachEventM), len(sc.Events))
 			}
-			e := New(sc.MaxSpeedMps)
+			e := NewWithOptions(Options{
+				MaxSpeedMps:       sc.MaxSpeedMps,
+				ExpectedIntervalS: sc.ExpectedIntervalS,
+				InitialStrideM:    sc.InitialStrideM,
+			})
 			for i, ev := range sc.Events {
 				switch ev.Type {
 				case "fix":
@@ -157,5 +163,35 @@ func TestNewFallsBackToTheRunCeiling(t *testing.T) {
 		if got := New(v).MaxSpeedMps; got != DefaultMaxSpeedMps {
 			t.Errorf("New(%v).MaxSpeedMps = %v, want %v", v, got, DefaultMaxSpeedMps)
 		}
+	}
+}
+
+func TestNewWithOptionsZeroValueIsOneHertz(t *testing.T) {
+	for _, it := range []float64{0, -3, 0.5, math.NaN(), math.Inf(1)} {
+		e := NewWithOptions(Options{ExpectedIntervalS: it})
+		if e.MaxSpeedMps != DefaultMaxSpeedMps {
+			t.Errorf("interval %v: MaxSpeedMps = %v", it, e.MaxSpeedMps)
+		}
+		e.AddFix(Fix{T: 0, Lat: 40, Lng: -75})
+		e.AddFix(Fix{T: 11, Lat: 40.0003, Lng: -75})
+		if e.GpsDistanceM != 0 {
+			t.Errorf("interval %v: an 11 s gap credited %v m", it, e.GpsDistanceM)
+		}
+	}
+}
+
+func TestNewWithOptionsSeedsOnlyAnInRangeStride(t *testing.T) {
+	for _, tc := range []struct {
+		in   float64
+		keep bool
+	}{{1.1, true}, {0.3, false}, {2.6, false}, {math.NaN(), false}} {
+		in := tc.in
+		e := NewWithOptions(Options{InitialStrideM: &in})
+		if (e.StrideM != nil) != tc.keep || (tc.keep && *e.StrideM != in) {
+			t.Errorf("initial stride %v: StrideM = %v", in, e.StrideM)
+		}
+	}
+	if NewWithOptions(Options{}).StrideM != nil {
+		t.Error("no initial stride should leave StrideM nil")
 	}
 }

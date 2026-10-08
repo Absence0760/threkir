@@ -1,12 +1,22 @@
 import 'dart:math' as math;
 
-/// GPS distance estimator, spec v1 — a port of
+/// GPS distance estimator, spec v1.1 — a port of
 /// `scripts/gps_distance/reference.py`, which is the spec. See
 /// `docs/features/gps_distance.md`. Every operation mirrors the reference so
 /// `fixtures/gps_distance_vectors.json` replays to 1e-3 m; do not tune a
 /// constant here without changing the reference and every other port.
 class GpsDistanceEstimator {
-  GpsDistanceEstimator({this.maxSpeedMps = 10.0});
+  GpsDistanceEstimator({
+    this.maxSpeedMps = 10.0,
+    double expectedIntervalS = 1.0,
+    double? initialStrideM,
+  })  : _gapS = gapS * _intervalScale(expectedIntervalS),
+        _freshFixS = freshFixS * _intervalScale(expectedIntervalS),
+        _strideM = (_valid(initialStrideM) &&
+                minStrideM <= initialStrideM! &&
+                initialStrideM <= maxStrideM)
+            ? initialStrideM
+            : null;
 
   static const double earthRadiusM = 6371008.8;
   static const double qAccel = 0.6;
@@ -25,6 +35,8 @@ class GpsDistanceEstimator {
   static const double strideEmaAlpha = 0.2;
 
   final double maxSpeedMps;
+  final double _gapS;
+  final double _freshFixS;
 
   double _gpsDistanceM = 0.0;
   double _stepDistanceM = 0.0;
@@ -46,6 +58,9 @@ class GpsDistanceEstimator {
   double? get strideM => _strideM;
 
   static bool _valid(double? x) => x != null && x.isFinite;
+
+  static double _intervalScale(double it) =>
+      (_valid(it) && it > 1.0) ? it : 1.0;
 
   static double _radians(double deg) => deg * (math.pi / 180.0);
 
@@ -73,7 +88,7 @@ class GpsDistanceEstimator {
     final r = math.pow(math.max(sigma, minPosSigmaM), 2).toDouble();
     final prevT = _t;
     if (prevT != null && t <= prevT) return 0.0;
-    if (prevT == null || t - prevT > gapS) {
+    if (prevT == null || t - prevT > _gapS) {
       if (prevT != null) _stepDistanceM += _pendingStepM;
       _pendingStepM = 0.0;
       _x = _Axis(zx, r);
@@ -81,7 +96,7 @@ class GpsDistanceEstimator {
       _t = t;
       return 0.0;
     }
-    // The gap closed inside gapS, so the filter integrates it: drop the buffer.
+    // The gap closed inside the gap window, so the filter integrates it: drop the buffer.
     _pendingStepM = 0.0;
     final dt = t - prevT;
     _t = t;
@@ -125,7 +140,7 @@ class GpsDistanceEstimator {
   }
 
   /// Cumulative pedometer count. Learns a stride while GPS is good; buffers
-  /// steps x stride while it is not (committed only if the gap exceeds gapS).
+  /// steps x stride while it is not (committed only if the gap exceeds the gap window).
   void addSteps(double t, int cumulativeSteps) {
     if (!_valid(t)) return;
     final prev = _lastSteps;
@@ -137,7 +152,7 @@ class GpsDistanceEstimator {
     }
     final d = cumulativeSteps - prev;
     final fixT = _t;
-    if (fixT != null && t - fixT <= freshFixS) {
+    if (fixT != null && t - fixT <= _freshFixS) {
       _winSteps += d;
       if (_winSteps >= strideWindowSteps) {
         final stride = _winM / _winSteps;
@@ -159,10 +174,10 @@ class GpsDistanceEstimator {
     _pendingStepM += math.min(d * stride, maxSpeedMps * (t - prevT));
   }
 
-  /// End of run: commit buffered steps if the trailing gap exceeds gapS.
+  /// End of run: commit buffered steps if the trailing gap exceeds the gap window.
   void finish(double t) {
     final fixT = _t;
-    if (fixT != null && _valid(t) && t - fixT > gapS) {
+    if (fixT != null && _valid(t) && t - fixT > _gapS) {
       _stepDistanceM += _pendingStepM;
     }
     _pendingStepM = 0.0;

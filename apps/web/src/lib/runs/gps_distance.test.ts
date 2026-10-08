@@ -28,6 +28,8 @@ type FinishEvent = { type: 'finish'; t: number };
 type Scenario = {
 	name: string;
 	maxSpeedMps: number;
+	expectedIntervalS: number;
+	initialStrideM: number | null;
 	events: Array<FixEvent | StepsEvent | FinishEvent>;
 	expected: {
 		distanceAfterEachEventM: number[];
@@ -47,7 +49,7 @@ const fixture = JSON.parse(readFileSync(FIXTURE_PATH, 'utf-8')) as Fixture;
 const TOL = fixture.tolerance_m;
 
 function replay(s: Scenario): { est: GpsDistanceEstimator; after: number[] } {
-	const est = new GpsDistanceEstimator(s.maxSpeedMps);
+	const est = new GpsDistanceEstimator(s.maxSpeedMps, s.expectedIntervalS, s.initialStrideM);
 	const after: number[] = [];
 	for (const e of s.events) {
 		if (e.type === 'fix') est.addFix(e.t, e.lat, e.lng, e.acc, e.speed, e.speedAcc, e.bearing);
@@ -58,8 +60,8 @@ function replay(s: Scenario): { est: GpsDistanceEstimator; after: number[] } {
 	return { est, after };
 }
 
-test('fixture is spec v1 with a non-trivial scenario set', () => {
-	assert.equal(fixture.spec, 'gps-distance-estimator v1');
+test('fixture is spec v1.1 with a non-trivial scenario set', () => {
+	assert.equal(fixture.spec, 'gps-distance-estimator v1.1');
 	assert.ok(fixture.scenarios.length >= 10, `only ${fixture.scenarios.length} scenarios`);
 	assert.ok(TOL > 0 && TOL <= 0.001);
 });
@@ -121,4 +123,20 @@ test('finish with no pending steps and no fixes is a no-op', () => {
 	est.finish(100);
 	assert.equal(est.distanceM, 0);
 	assert.equal(est.strideM, null);
+});
+
+test('a non-finite or sub-second interval hint behaves as 1 s', () => {
+	for (const it of [Number.NaN, Number.POSITIVE_INFINITY, 0.5, -3]) {
+		const est = new GpsDistanceEstimator(10, it);
+		est.addFix(0, 40, -75);
+		est.addFix(11, 40.0003, -75);
+		assert.equal(est.gpsDistanceM, 0, `interval ${it}`);
+	}
+});
+
+test('initial stride is kept only when finite and in range', () => {
+	assert.equal(new GpsDistanceEstimator(10, 1, 1.1).strideM, 1.1);
+	assert.equal(new GpsDistanceEstimator(10, 1, 0.3).strideM, null);
+	assert.equal(new GpsDistanceEstimator(10, 1, 2.6).strideM, null);
+	assert.equal(new GpsDistanceEstimator(10, 1, Number.NaN).strideM, null);
 });

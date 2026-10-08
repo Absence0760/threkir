@@ -1386,6 +1386,37 @@ void main() {
       expect(run.metadata?['distance_step_filled_m'], 72);
     });
 
+    test('a gap right after a resume is filled with the pre-pause stride',
+        () {
+      // The stride learned before the pause seeds the post-resume estimator,
+      // so the 18 stale-GPS step samples (3 steps x 4/3 m each) are committed
+      // when the 21 s gap closes, before the new stretch could relearn one.
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock)..debugPrepareWithoutStream();
+      r.begin();
+      for (var i = 0; i <= 25; i++) {
+        r.debugInjectPosition(makePosition(
+            metresEast: 4.0 * i, secondsFromStart: i, speed: 4));
+        r.setStepCount(3 * i);
+        clock.advance(const Duration(seconds: 1));
+      }
+      expect(r.strideMetres, closeTo(4 / 3, 1e-9));
+      r.pause();
+      r.resume();
+      r.debugInjectPosition(
+          makePosition(metresEast: 104, secondsFromStart: 27, speed: 4));
+      r.setStepCount(75);
+      for (var k = 1; k <= 20; k++) {
+        clock.advance(const Duration(seconds: 1));
+        r.setStepCount(75 + 3 * k);
+      }
+      clock.advance(const Duration(seconds: 1));
+      r.debugInjectPosition(
+          makePosition(metresEast: 188, secondsFromStart: 48, speed: 4));
+      expect(r.stepFilledDistanceMetres, closeTo(72, 1e-6));
+      expect(r.debugDistanceMetres, closeTo(172, 1e-6));
+    });
+
     test('steps while paused are never credited', () {
       final clock = _FakeClock();
       final r = RunRecorder(clock: clock)..debugPrepareWithoutStream();

@@ -1,4 +1,4 @@
-// GPS distance estimator, spec v1. docs/features/gps_distance.md is the spec
+// GPS distance estimator, spec v1.1. docs/features/gps_distance.md is the spec
 // and scripts/gps_distance/reference.py the reference; every port must
 // reproduce fixtures/gps_distance_vectors.json to 1e-3 m, so keep the
 // formulas in the reference's order. Parity pair with
@@ -81,6 +81,8 @@ class Axis {
 
 export class GpsDistanceEstimator {
 	readonly maxSpeedMps: number;
+	private readonly gapS: number;
+	private readonly freshFixS: number;
 	gpsDistanceM = 0;
 	stepDistanceM = 0;
 	strideM: number | null = null;
@@ -96,8 +98,15 @@ export class GpsDistanceEstimator {
 	private lastStepT: number | null = null;
 	private pendingStepM = 0;
 
-	constructor(maxSpeedMps = 10.0) {
+	constructor(maxSpeedMps = 10.0, expectedIntervalS = 1.0, initialStrideM: number | null = null) {
 		this.maxSpeedMps = maxSpeedMps;
+		const scale = valid(expectedIntervalS) && expectedIntervalS > 1.0 ? expectedIntervalS : 1.0;
+		this.gapS = GAP_S * scale;
+		this.freshFixS = FRESH_FIX_S * scale;
+		this.strideM =
+			valid(initialStrideM) && MIN_STRIDE_M <= initialStrideM && initialStrideM <= MAX_STRIDE_M
+				? initialStrideM
+				: null;
 	}
 
 	get distanceM(): number {
@@ -131,7 +140,7 @@ export class GpsDistanceEstimator {
 		const sigma = valid(accuracyM) && accuracyM > 0 ? accuracyM : MIN_POS_SIGMA_M;
 		const r = Math.max(sigma, MIN_POS_SIGMA_M) ** 2;
 		if (this.t !== null && t <= this.t) return 0;
-		if (this.t === null || t - this.t > GAP_S || this.x === null || this.y === null) {
+		if (this.t === null || t - this.t > this.gapS || this.x === null || this.y === null) {
 			// (Re-)anchor. Steps buffered across a real gap are committed now.
 			if (this.t !== null) this.stepDistanceM += this.pendingStepM;
 			this.pendingStepM = 0;
@@ -140,7 +149,7 @@ export class GpsDistanceEstimator {
 			this.t = t;
 			return 0;
 		}
-		// The gap closed inside GAP_S, so the filter integrates it: drop the buffer.
+		// The gap closed inside the gap window, so the filter integrates it: drop the buffer.
 		this.pendingStepM = 0;
 		const dt = t - this.t;
 		this.t = t;
@@ -182,7 +191,7 @@ export class GpsDistanceEstimator {
 
 	/**
 	 * Cumulative pedometer count. Learns stride while GPS is good; buffers
-	 * steps x stride while it is not (committed only if the gap exceeds GAP_S).
+	 * steps x stride while it is not (committed only if the gap exceeds the gap window).
 	 */
 	addSteps(t: MaybeNumber, cumulativeSteps: MaybeNumber): void {
 		if (!valid(t) || cumulativeSteps === null || cumulativeSteps === undefined) return;
@@ -192,7 +201,7 @@ export class GpsDistanceEstimator {
 		this.lastStepT = t;
 		if (prev === null || cumulativeSteps < prev || prevT === null || t <= prevT) return;
 		const d = cumulativeSteps - prev;
-		if (this.t !== null && t - this.t <= FRESH_FIX_S) {
+		if (this.t !== null && t - this.t <= this.freshFixS) {
 			this.winSteps += d;
 			if (this.winSteps >= STRIDE_WINDOW_STEPS) {
 				const stride = this.winM / this.winSteps;
@@ -213,9 +222,9 @@ export class GpsDistanceEstimator {
 		this.pendingStepM += Math.min(d * this.strideM, this.maxSpeedMps * (t - prevT));
 	}
 
-	/** End of run: commit buffered steps if the trailing gap exceeds GAP_S. */
+	/** End of run: commit buffered steps if the trailing gap exceeds the gap window. */
 	finish(t: MaybeNumber): void {
-		if (this.t !== null && valid(t) && t - this.t > GAP_S) {
+		if (this.t !== null && valid(t) && t - this.t > this.gapS) {
 			this.stepDistanceM += this.pendingStepM;
 		}
 		this.pendingStepM = 0;

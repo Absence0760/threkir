@@ -1,5 +1,5 @@
 // Package gpsdistance is the Go port of the GPS distance estimator,
-// spec v1 (docs/features/gps_distance.md). The reference implementation
+// spec v1.1 (docs/features/gps_distance.md). The reference implementation
 // is scripts/gps_distance/reference.py and this file follows it
 // operation for operation; every port replays
 // fixtures/gps_distance_vectors.json to 1e-3 m, so a change here without
@@ -102,6 +102,8 @@ type Estimator struct {
 	// StrideM is nil until a stride has been learned.
 	StrideM *float64
 
+	gapS, freshFixS float64
+
 	anchored   bool
 	lat0, lng0 float64
 	x, y       *axis
@@ -116,13 +118,41 @@ type Estimator struct {
 	pendingStepM float64
 }
 
-// New returns an estimator with the given speed ceiling (m/s). A
+// Options configures NewWithOptions. The zero value is the 1 Hz default.
+type Options struct {
+	// MaxSpeedMps is the speed ceiling; non-positive or non-finite means
+	// DefaultMaxSpeedMps.
+	MaxSpeedMps float64
+	// ExpectedIntervalS is the nominal fix interval. It scales the gap and
+	// fresh-fix windows; non-finite or <= 1 means 1.
+	ExpectedIntervalS float64
+	// InitialStrideM seeds StrideM when finite and within
+	// [MinStrideM, MaxStrideM]; otherwise it is ignored.
+	InitialStrideM *float64
+}
+
+// New returns a 1 Hz estimator with the given speed ceiling (m/s). A
 // non-positive or non-finite ceiling falls back to DefaultMaxSpeedMps.
 func New(maxSpeedMps float64) *Estimator {
+	return NewWithOptions(Options{MaxSpeedMps: maxSpeedMps})
+}
+
+// NewWithOptions returns an estimator configured by o.
+func NewWithOptions(o Options) *Estimator {
+	maxSpeedMps := o.MaxSpeedMps
 	if !finite(maxSpeedMps) || maxSpeedMps <= 0 {
 		maxSpeedMps = DefaultMaxSpeedMps
 	}
-	return &Estimator{MaxSpeedMps: maxSpeedMps}
+	scale := 1.0
+	if finite(o.ExpectedIntervalS) && o.ExpectedIntervalS > 1.0 {
+		scale = o.ExpectedIntervalS
+	}
+	e := &Estimator{MaxSpeedMps: maxSpeedMps, gapS: GapS * scale, freshFixS: FreshFixS * scale}
+	if validPtr(o.InitialStrideM) && *o.InitialStrideM >= MinStrideM && *o.InitialStrideM <= MaxStrideM {
+		stride := *o.InitialStrideM
+		e.StrideM = &stride
+	}
+	return e
 }
 
 // DistanceM is gpsDistance + stepDistance.
@@ -152,7 +182,7 @@ func (e *Estimator) AddFix(f Fix) float64 {
 	if e.hasT && f.T <= e.t {
 		return 0
 	}
-	if !e.hasT || f.T-e.t > GapS {
+	if !e.hasT || f.T-e.t > e.gapS {
 		// (Re-)anchor. Steps buffered across a real gap are committed now.
 		if e.hasT {
 			e.StepDistanceM += e.pendingStepM
@@ -162,7 +192,7 @@ func (e *Estimator) AddFix(f Fix) float64 {
 		e.t, e.hasT = f.T, true
 		return 0
 	}
-	// The gap closed inside GapS, so the filter integrates it: drop the buffer.
+	// The gap closed inside the gap window, so the filter integrates it: drop the buffer.
 	e.pendingStepM = 0
 	dt := f.T - e.t
 	e.t = f.T
@@ -206,7 +236,7 @@ func (e *Estimator) AddFix(f Fix) float64 {
 
 // AddSteps feeds a cumulative pedometer count. Learns a stride while GPS
 // is good; buffers steps x stride while it is not (committed only if the
-// gap exceeds GapS).
+// gap exceeds the gap window).
 func (e *Estimator) AddSteps(t float64, cumulativeSteps int) {
 	if !finite(t) {
 		return
@@ -217,7 +247,7 @@ func (e *Estimator) AddSteps(t float64, cumulativeSteps int) {
 		return
 	}
 	d := cumulativeSteps - prev
-	if e.hasT && t-e.t <= FreshFixS {
+	if e.hasT && t-e.t <= e.freshFixS {
 		e.winSteps += d
 		if e.winSteps >= StrideWindowSteps {
 			stride := e.winM / float64(e.winSteps)
@@ -240,9 +270,9 @@ func (e *Estimator) AddSteps(t float64, cumulativeSteps int) {
 }
 
 // Finish ends the run: commits buffered steps if the trailing gap
-// exceeds GapS.
+// exceeds the gap window.
 func (e *Estimator) Finish(t float64) {
-	if e.hasT && finite(t) && t-e.t > GapS {
+	if e.hasT && finite(t) && t-e.t > e.gapS {
 		e.StepDistanceM += e.pendingStepM
 	}
 	e.pendingStepM = 0

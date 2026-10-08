@@ -4,14 +4,14 @@ import type { Locale } from './locale';
 
 // One loader per supported locale, typed `Record<Locale, …>` so adding a
 // locale to SUPPORTED_LOCALES without a catalogue here is a compile error.
-// English resolves synchronously (it is the static fallback dict + the
-// prerender default); every other locale is a dynamic import() so it
-// splits into its own chunk and only downloads when actually selected —
-// the i18n layer adds ~nothing to the initial payload (decisions §108).
+// Each resolves the WHOLE catalogue of its locale.
 //
-// Used by the runtime (store.svelte.ts) to switch locale and by
-// messages_parity.test.ts to validate every shipped catalogue without
-// hard-coding the locale list.
+// The app does not use this. The runtime (store.svelte.ts) loads a locale as
+// a core part plus one part per area, split at build time by vite_plugin.ts
+// (decisions § 1802), so no reader ever downloads a whole catalogue. This
+// registry is for the tests that validate every shipped catalogue without
+// hard-coding the locale list (messages_parity.test.ts and its siblings);
+// `area_catalogues.test.ts` fails if app code imports it.
 export const CATALOGUE_LOADERS: Record<Locale, () => Promise<Messages>> = {
 	en: () => Promise.resolve(en),
 	de: () => import('./locales/de').then((m) => m.messages),

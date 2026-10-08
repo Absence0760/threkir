@@ -1,4 +1,4 @@
-import type { MessageKey } from './messages';
+import type { MessageKey } from './messages.ts';
 
 /// The narrow unions from `types.ts` whose values reach the UI as a NAME, each
 /// mapped to the one catalogue namespace that names it.

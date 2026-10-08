@@ -10,6 +10,8 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -19,6 +21,55 @@ func TestSmoothedSidecarPathSitsBesideTheTrack(t *testing.T) {
 	if got := smoothedSidecarPath(drUserID, drRunID); got != drSidecar {
 		t.Errorf("path = %s, want %s", got, drSidecar)
 	}
+}
+
+// The readers (web, Deno, Dart) replay fixtures/smoothed_sidecar_vectors.json;
+// the writer must produce the fingerprint and the JSON shape they accept.
+func TestSmoothedSidecar_WriterAgreesWithTheReadersVectors(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "fixtures", "smoothed_sidecar_vectors.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var vf struct {
+		Version   int    `json:"version"`
+		TrackJSON string `json:"trackJson"`
+		SHA256    string `json:"sha256"`
+		Cases     []struct {
+			Name    string          `json:"name"`
+			Sidecar json.RawMessage `json:"sidecar"`
+		} `json:"cases"`
+	}
+	if err := json.Unmarshal(raw, &vf); err != nil {
+		t.Fatal(err)
+	}
+	if vf.Version != SmoothedSidecarVersion {
+		t.Fatalf("vectors are for sidecar v%d; the writer writes v%d", vf.Version, SmoothedSidecarVersion)
+	}
+	if got := fingerprintTrack([]byte(vf.TrackJSON), 4); got.SHA256 != vf.SHA256 {
+		t.Errorf("sha256 = %s, want the readers' %s", got.SHA256, vf.SHA256)
+	}
+	// The matching case decodes into the writer's own type and re-encodes to
+	// the same object, so a renamed or retyped field fails here.
+	var sc SmoothedSidecar
+	if err := json.Unmarshal(vf.Cases[0].Sidecar, &sc); err != nil {
+		t.Fatalf("the readers' sidecar is not the writer's shape: %v", err)
+	}
+	back, _ := json.Marshal(sc)
+	var a, b any
+	_ = json.Unmarshal(back, &a)
+	_ = json.Unmarshal(vf.Cases[0].Sidecar, &b)
+	if ja, jb := canonicalJSON(t, a), canonicalJSON(t, b); ja != jb {
+		t.Errorf("writer re-encodes the readers' sidecar as %s, want %s", ja, jb)
+	}
+}
+
+func canonicalJSON(t *testing.T, v any) string {
+	t.Helper()
+	out, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(out)
 }
 
 func TestDownloadRecordedTrack_FingerprintsTheDecompressedBytes(t *testing.T) {

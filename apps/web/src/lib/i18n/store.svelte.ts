@@ -1,6 +1,6 @@
 import { browser, dev } from '$app/environment';
-import { AREA_LOADERS, CORE_LOADERS, FALLBACK_CORE } from 'virtual:i18n-catalogues';
-import { areasForRoute, type Area } from './areas';
+import { CORE_LOADERS, FALLBACK_CORE, GROUPS, PART_LOADERS } from 'virtual:i18n-catalogues';
+import { partsForRoute } from './areas';
 import { CatalogueSet, holdsServerMarkup, type Catalogue } from './catalogue_set';
 import { interpolate } from './interpolate';
 import { setActiveFormatLocale } from '$lib/format/time';
@@ -16,15 +16,19 @@ import {
 let locale = $state<Locale>(DEFAULT_LOCALE);
 let dict = $state<Catalogue>(FALLBACK_CORE);
 
-// A locale is a core catalogue plus one per area (areas.ts, decisions § 1802),
-// all served by the build-time split in vite_plugin.ts. Only the default
-// locale's core is bundled; every other part is its own lazy chunk, so a
-// reader downloads the core and the areas of the routes they open, in their
-// own language, and nothing else.
-const catalogues = new CatalogueSet<Locale, Area>({
+// A locale is a core catalogue plus one per area (areas.ts, decisions § 1802)
+// and one per derived group of areas (§ 1812), all served by the build-time
+// split in vite_plugin.ts. Only the default locale's core is bundled; every
+// other part is its own lazy chunk, so a reader downloads the core and the
+// parts of the routes they open, in their own language, and nothing else.
+const catalogues = new CatalogueSet<Locale, string>({
 	sources: {
 		core: (l) => CORE_LOADERS[l](),
-		area: (l, a) => AREA_LOADERS[l][a](),
+		area: (l, part) => {
+			const load = PART_LOADERS[l][part];
+			if (!load) return Promise.reject(new Error(`no catalogue part ${part}`));
+			return load();
+		},
 	},
 	fallbackLocale: DEFAULT_LOCALE,
 	fallbackCore: FALLBACK_CORE,
@@ -93,15 +97,15 @@ let firstLoad = true;
 /// hydrates; a component that picks different STRUCTURE by locale reads
 /// `structureLocale()` instead. decisions § 1812.
 export async function loadRouteCatalogues(routeId: string | null | undefined): Promise<void> {
-	const areas = areasForRoute(routeId);
+	const parts = partsForRoute(routeId, GROUPS);
 	if (browser && firstLoad) {
 		firstLoad = false;
 		hydratingServerMarkup = holdsServerMarkup(document.body.querySelector(':scope > div'));
 		const next = negotiatedLocale();
-		if (await catalogues.open(next, areas)) applyDocumentLocale(next);
+		if (await catalogues.open(next, parts)) applyDocumentLocale(next);
 		return;
 	}
-	await catalogues.ensureAreas(areas);
+	await catalogues.ensureAreas(parts);
 }
 
 function applyDocumentLocale(next: Locale): void {

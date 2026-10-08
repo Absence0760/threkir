@@ -14,7 +14,7 @@
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
-import { AREAS, areasForRoute, type Area } from './areas.ts';
+import { AREAS, areasForRoute, type Area, type GroupTable } from './areas.ts';
 import { ENUM_VOCABULARIES } from './enum_labels.ts';
 
 export const SOURCE_EXTENSIONS = ['.svelte', '.ts', '.js', '.md'] as const;
@@ -202,7 +202,12 @@ export function keyUsage(
 }
 
 export const CORE = 'core' as const;
-export type Part = Area | typeof CORE;
+
+/// A derived group's name: its units joined by `~` (several units), or a
+/// lone `_segment` unit. Neither shape can be an area name, which is a plain
+/// identifier, so the three kinds of part never collide.
+export type GroupName = `${string}~${string}` | `_${string}`;
+export type Part = Area | typeof CORE | GroupName;
 
 /// Namespaces whose keys are built with NO static head (`${vocab}.${value}`
 /// in `enum_labels.ts`), so no literal anywhere names them and the scan above
@@ -243,14 +248,112 @@ function partFor(key: string, uses: readonly Usage[] | undefined, pinned: readon
 	if (!candidates || candidates.length === 0) return CORE;
 	// Nested areas (`/settings` and `/settings/account`) can both cover every
 	// reader of a key; the narrower one ships it to fewer of them.
-	return candidates.reduce((best, a) => (areaDepth(a) > areaDepth(best) ? a : best));
+	return narrowest(candidates);
+}
+
+function narrowest(areas: readonly Area[]): Area {
+	return areas.reduce((best, a) => (areaDepth(a) > areaDepth(best) ? a : best));
 }
 
 function areaDepth(area: Area): number {
 	return Math.max(...(AREAS[area] as readonly string[]).map((p) => p.split('/').length));
 }
 
-/// The whole split for a source tree: key -> part, from the tree's own usage.
-export function splitCatalogue(srcDir: string, keys: readonly string[]): Map<string, Part> {
-	return assignParts(keys, keyUsage(srcDir, keys).usage);
+/// The smallest group worth its own part, in bytes of English source
+/// (`JSON.stringify` of its keys and strings). Measured, decisions § 1812:
+/// halving it from 2048 to 1024 took the mean route's catalogue payload from
+/// 21 to 16 KB gzip and the core from 16 to 9, for at most one more part on
+/// any route; 512 bought another 1.4 KB for six more parts. A part costs a
+/// request (in parallel with the others, so per-request overhead rather than
+/// a serial round trip), paid only on the routes that load it; the bytes it
+/// takes out of core are saved by every reader on every route.
+export const MIN_GROUP_SOURCE_BYTES = 1024;
+
+/// The unit a route belongs to for grouping: its narrowest area, or `_x` for
+/// a route under the top-level segment `/x` that no area covers. `null` for
+/// the root, whose layout renders on every route — a key it names is global.
+export function unitOf(routeId: string): string | null {
+	const areas = areasForRoute(routeId);
+	if (areas.length > 0) return narrowest(areas);
+	const segment = routeId.split('/')[1];
+	return segment ? `_${segment}` : null;
+}
+
+/// The route prefixes a unit covers: the area's own, or its segment.
+export function unitPrefixes(unit: string): readonly string[] {
+	if (unit.startsWith('_')) return [`/${unit.slice(1)}`];
+	const prefixes = (AREAS as Record<string, readonly string[]>)[unit];
+	if (!prefixes) throw new Error(`no area or segment unit named ${unit}`);
+	return prefixes;
+}
+
+/// Keys that no single area covers but that never render outside a known set
+/// of units (two areas, an area and an unregistered segment, or one such
+/// segment alone) are grouped by that exact set. A set whose keys reach
+/// `minBytes` of English source becomes a part of its own, loaded by every
+/// route under any of its units (`partsForRoute`); smaller sets stay in core.
+/// Nobody lists a group or its keys: both follow from who renders what, so a
+/// key reused on a new surface moves to the right group, or to core, on the
+/// next build.
+export function deriveGroups(
+	parts: ReadonlyMap<string, Part>,
+	usage: ReadonlyMap<string, readonly Usage[]>,
+	sourceBytes: (keys: readonly string[]) => number,
+	pinned: readonly string[] = pinnedNamespaces(),
+	minBytes: number = MIN_GROUP_SOURCE_BYTES,
+): CatalogueSplit {
+	const bySet = new Map<string, string[]>();
+	for (const [key, part] of parts) {
+		if (part !== CORE || pinned.some((ns) => key.startsWith(ns))) continue;
+		const units = unitsFor(usage.get(key));
+		if (!units) continue;
+		const name = units.join('~');
+		let list = bySet.get(name);
+		if (!list) bySet.set(name, (list = []));
+		list.push(key);
+	}
+	const out = new Map(parts);
+	const groups: Record<string, readonly string[]> = {};
+	for (const [name, keys] of [...bySet].sort(([a], [b]) => (a < b ? -1 : 1))) {
+		if (sourceBytes(keys) < minBytes) continue;
+		groups[name] = [...new Set(name.split('~').flatMap(unitPrefixes))].sort();
+		for (const key of keys) out.set(key, name as GroupName);
+	}
+	return { parts: out, groups };
+}
+
+/// The sorted units every reader of a key lies in, or null when one of them
+/// is global (the root) or unreachable, which keeps the key in core.
+function unitsFor(uses: readonly Usage[] | undefined): string[] | null {
+	if (!uses || uses.length === 0) return null;
+	const units = new Set<string>();
+	for (const use of uses) {
+		if (use.routes.size === 0) return null;
+		for (const routeId of use.routes) {
+			const unit = unitOf(routeId);
+			if (unit === null) return null;
+			units.add(unit);
+		}
+	}
+	return [...units].sort();
+}
+
+/// How many bytes of English source a set of keys is: the unit
+/// `MIN_GROUP_SOURCE_BYTES` is measured in.
+export function englishSourceBytes(english: Readonly<Record<string, string>>) {
+	return (keys: readonly string[]): number => {
+		const picked: Record<string, string> = {};
+		for (const key of keys) if (key in english) picked[key] = english[key];
+		return Buffer.byteLength(JSON.stringify(picked));
+	};
+}
+
+export type CatalogueSplit = { parts: Map<string, Part>; groups: GroupTable };
+
+/// The whole split for a source tree, from the tree's own usage: key -> part
+/// (core, an area, or a derived group) and the groups that exist.
+export function splitCatalogue(srcDir: string, english: Readonly<Record<string, string>>): CatalogueSplit {
+	const keys = Object.keys(english);
+	const { usage } = keyUsage(srcDir, keys);
+	return deriveGroups(assignParts(keys, usage), usage, englishSourceBytes(english));
 }

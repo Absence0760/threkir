@@ -12,6 +12,25 @@
 
 export type Catalogue = Readonly<Record<string, string>>;
 
+/// Whether SvelteKit is about to HYDRATE server-rendered markup rather than
+/// render into the SPA shell. `root` is app.html's single `display: contents`
+/// div around `%sveltekit.body%`: in the shell (`200.html`, which every
+/// production route but `/` and `/learn` boots from) it holds only the
+/// bootstrap <script>; a prerendered page, and every page under the dev
+/// server, has the rendered markup in it too.
+///
+/// The store applies the reader's locale BEFORE the first render only when
+/// there is nothing to hydrate. Over server-rendered English it keeps today's
+/// order (hydrate, then switch on mount), because hydrating different text
+/// than the server wrote is a mismatch Svelte has to repair. Either answer
+/// being wrong is benign: one costs an English first paint, the other a repair.
+export function holdsServerMarkup(
+	root: { readonly children: ArrayLike<{ readonly tagName: string }> } | null | undefined,
+): boolean {
+	if (!root) return false;
+	return Array.from(root.children).some((el) => el.tagName !== 'SCRIPT');
+}
+
 export type CatalogueSources<L extends string, A extends string> = {
 	core: (locale: L) => Promise<Catalogue>;
 	area: (locale: L, area: A) => Promise<Catalogue>;

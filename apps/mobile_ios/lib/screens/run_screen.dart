@@ -3324,32 +3324,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // stop-time uuid so the saved run matches any incremental in-progress
     // file that may have been written while recording.
     final runId = _runId ?? raw.id;
-    var resolvedRouteId = _selectedRoute?.id ?? raw.routeId;
+    final resolvedRouteId = _selectedRoute?.id ?? raw.routeId;
     final api = widget.apiClient;
     final distanceMetres =
         indoorEstimate ? _displayDistanceMetres : raw.distanceMetres;
-
-    // L4 — Auto-link unmatched runs to a saved route. Only when no
-    // route was pre-selected, the track has enough points to bother
-    // the RPC with, and we're signed in. Network failure here is
-    // best-effort; never let it block the save.
-    if (resolvedRouteId == null &&
-        api != null &&
-        api.userId != null &&
-        raw.track.length >= 2) {
-      try {
-        final candidates = await api
-            .fetchRoutesIntersectingTrack(raw.track, maxResults: 5)
-            .timeout(kBackendLoadTimeout);
-        final match = bestStrongRouteMatch(
-          candidates,
-          runDistanceMetres: distanceMetres,
-        );
-        if (match != null) resolvedRouteId = match.id;
-      } catch (e) {
-        debugPrint('Auto-link routes_intersecting_track failed: $e');
-      }
-    }
 
     // Persona-hunt Round 2 #4: compute embedded best efforts (per
     // canonical distance) over the GPS track and merge into metadata;
@@ -3362,7 +3340,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       metadata: metadata,
     );
 
-    final run = cm.Run(
+    var run = cm.Run(
       id: runId,
       startedAt: _runStartedAtWall ?? raw.startedAt,
       duration: raw.duration,
@@ -3441,6 +3419,47 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // source of truth and pushing a row whose authoritative copy isn't
     // on disk would diverge web from mobile until the next reconciliation.
     if (!localSaved) return;
+
+    // L4 — Auto-link unmatched runs to a saved route. Runs AFTER the finish
+    // screen is up: the RPC ships the whole track over the network with a
+    // 15 s timeout, and awaiting it before the flip left the recording UI on
+    // screen for seconds after the hold completed. It still runs before the
+    // cloud push so the first upload carries the route id.
+    if (resolvedRouteId == null &&
+        api != null &&
+        api.userId != null &&
+        run.track.length >= 2) {
+      try {
+        final candidates = await api
+            .fetchRoutesIntersectingTrack(run.track, maxResults: 5)
+            .timeout(kBackendLoadTimeout);
+        final match = bestStrongRouteMatch(
+          candidates,
+          runDistanceMetres: distanceMetres,
+        );
+        if (match != null) {
+          final linked = cm.Run(
+            id: run.id,
+            startedAt: run.startedAt,
+            duration: run.duration,
+            distanceMetres: run.distanceMetres,
+            track: run.track,
+            routeId: match.id,
+            source: run.source,
+            externalId: run.externalId,
+            metadata: run.metadata,
+            createdAt: run.createdAt,
+          );
+          await widget.runStore.save(linked);
+          run = linked;
+          if (mounted && _finishedRun?.id == linked.id) {
+            setState(() => _finishedRun = linked);
+          }
+        }
+      } catch (e) {
+        debugPrint('Auto-link routes_intersecting_track failed: $e');
+      }
+    }
 
     if (api != null && api.userId != null) {
       try {

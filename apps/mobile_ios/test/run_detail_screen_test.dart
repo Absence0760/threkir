@@ -998,9 +998,8 @@ void main() {
 
   // ───────── the smoothed sidecar over a track the phone holds ─────────
   group('RunDetailScreen — smoothed sidecar over a local track', () {
-    const sha =
-        'ab12ab12ab12ab12ab12ab12ab12ab12ab12ab12ab12ab12ab12ab12ab12ab12';
     final recorded = _straightTrack(1);
+    final sha = ApiClient.localTrackSha256(recorded);
     final smoothed = [
       for (final w in recorded)
         w.withSmoothedPosition(w.lat + 0.00001, w.lng - 0.00001),

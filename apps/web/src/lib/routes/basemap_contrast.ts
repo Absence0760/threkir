@@ -125,9 +125,11 @@ export function mapOverlapLine(darkBasemap: boolean): string {
 	return darkBasemap ? '#C084FC' : '#7E22CE';
 }
 
-/// A live spectator trace.
+/// A live spectator trace: the runner's track as it is being recorded, so the
+/// same coral as a recorded track (§ 1768), and the colour mobile's spectator
+/// map already draws it in.
 export function mapLiveLine(darkBasemap: boolean): string {
-	return darkBasemap ? '#7FB3C2' : '#2C5F6E';
+	return mapTrackLine(darkBasemap);
 }
 
 /// A dashed hint line — the un-snapped preview, the waypoint tethers.

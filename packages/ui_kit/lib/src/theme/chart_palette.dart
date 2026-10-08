@@ -80,73 +80,71 @@ class ChartPalette {
   /// top step — the same colour the heatmap's busiest day gets.
   Color get bar => ramp.last;
 
-  /// Contrast against the parchment card — series: 13.386 / 3.139 / 6.665;
-  /// zones z1->z5: 15.178 / 10.168 / 6.978 / 4.737 / 3.248;
-  /// ramp: 3.897 / 7.228 / 13.386;
-  /// kinds 0->5: 15.282 / 11.377 / 8.621 / 6.550 / 4.929 / 3.737, and on the
-  /// tightest surface a kind mark is drawn on — `tertiaryContainer`, the
-  /// completed-day fill — 13.109 / 9.759 / 7.395 / 5.618 / 4.228 / 3.206.
+  /// "Dusk, refined" hues (decisions § 1768) at the luminances the § 495 /
+  /// § 516 ladders were measured at. Contrast against the white card —
+  /// series: 14.849 / 3.468 / 7.369;
+  /// zones z1->z5: 16.743 / 11.214 / 7.665 / 5.236 / 3.590;
+  /// ramp: 4.326 / 8.002 / 14.849;
+  /// kinds 0->5: 16.874 / 12.575 / 9.555 / 7.229 / 5.446 / 4.123.
   static const light = ChartPalette(
     series: [
-      Color(0xFF1F1A6B),
-      Color(0xFFB4801F),
-      Color(0xFFA62020),
+      Color(0xFF340F68),
+      Color(0xFFB97E12),
+      Color(0xFFA62115),
     ],
     zones: [
-      Color(0xFF0C1E34),
-      Color(0xFF174326),
-      Color(0xFF6B4E0D),
-      Color(0xFFAF5111),
-      Color(0xFFE9544F),
+      Color(0xFF121B3F),
+      Color(0xFF114421),
+      Color(0xFF714C09),
+      Color(0xFFAE520A),
+      Color(0xFFE65846),
     ],
     ramp: [
-      Color(0xFF7975A1),
-      Color(0xFF4E4987),
-      Color(0xFF1F1A6B),
+      Color(0xFF7E73A1),
+      Color(0xFF584684),
+      Color(0xFF340F68),
     ],
     kinds: [
-      Color(0xFF082024),
-      Color(0xFF0E3558),
-      Color(0xFF6D2A6D),
-      Color(0xFF72510E),
-      Color(0xFFCC2429),
-      Color(0xFF807A8C),
+      Color(0xFF032122),
+      Color(0xFF13345B),
+      Color(0xFF6C2C68),
+      Color(0xFF774F05),
+      Color(0xFFC72F20),
+      Color(0xFF7E7B8B),
     ],
   );
 
-  /// Contrast against the duskDeep card — series: 13.149 / 6.453 / 3.321;
-  /// zones z1->z5: 13.775 / 9.698 / 6.900 / 4.899 / 3.457;
-  /// ramp: 3.859 / 7.126 / 13.149;
-  /// kinds 0->5: 14.483 / 11.996 / 9.808 / 8.035 / 6.637 / 5.459, and on the
-  /// tightest surface a kind mark is drawn on — `tertiaryContainer`, the
-  /// completed-day fill — 8.354 / 6.919 / 5.657 / 4.634 / 3.828 / 3.149. That
-  /// midtone fill is what caps the dark ladder: white itself is only 9.324:1
-  /// against it, so six rungs above 3:1 cannot step further apart than 1.255.
+  /// "Dusk, refined" hues (decisions § 1768) at the luminances the § 495 /
+  /// § 516 ladders were measured at. Contrast against the nightRaised card —
+  /// series: 14.017 / 6.865 / 3.524;
+  /// zones z1->z5: 14.659 / 10.330 / 7.317 / 5.197 / 3.677;
+  /// ramp: 4.085 / 7.588 / 14.017;
+  /// kinds 0->5: 15.383 / 12.743 / 10.379 / 8.571 / 7.056 / 5.803.
   static const dark = ChartPalette(
     series: [
-      Color(0xFFE8E5FF),
-      Color(0xFFE59105),
-      Color(0xFFDE1F17),
+      Color(0xFFEAE5FE),
+      Color(0xFFE1931D),
+      Color(0xFFCF3C13),
     ],
     zones: [
-      Color(0xFFE4EEF9),
-      Color(0xFF91D8A9),
-      Color(0xFFD8A01B),
-      Color(0xFFE56917),
-      Color(0xFFE2231C),
+      Color(0xFFE6EDFF),
+      Color(0xFF95D8A3),
+      Color(0xFFD99F2C),
+      Color(0xFFE16C10),
+      Color(0xFFD83727),
     ],
     ramp: [
-      Color(0xFF7E7896),
-      Color(0xFFADA9C5),
-      Color(0xFFE8E5FF),
+      Color(0xFF7F7798),
+      Color(0xFFAFA8CA),
+      Color(0xFFEAE5FE),
     ],
     kinds: [
-      Color(0xFFE3F6F9),
-      Color(0xFFC9E1F6),
-      Color(0xFFE5BDE5),
-      Color(0xFFE7AD3B),
-      Color(0xFFEB8B8F),
-      Color(0xFF9894A2),
+      Color(0xFFDBF8F9),
+      Color(0xFFCAE0FC),
+      Color(0xFFE7BCE2),
+      Color(0xFFE9AC4F),
+      Color(0xFFED8B84),
+      Color(0xFF9794A5),
     ],
   );
 

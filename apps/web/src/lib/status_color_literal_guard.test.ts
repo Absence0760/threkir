@@ -690,7 +690,6 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 		A78BFA: [1, 'cartographic'], '6D28D9': [1, 'cartographic'],
 		'60A5FA': [1, 'cartographic'], '1D4ED8': [1, 'cartographic'],
 		C084FC: [1, 'cartographic'], '7E22CE': [1, 'cartographic'],
-		'7FB3C2': [1, 'cartographic'], '2C5F6E': [1, 'cartographic'],
 		'94A3B8': [1, 'cartographic'], '475569': [1, 'cartographic'],
 		FACC15: [1, 'cartographic'], '7A5C10': [1, 'cartographic'],
 		F1F5F9: [1, 'cartographic'], '1E293B': [1, 'cartographic'],

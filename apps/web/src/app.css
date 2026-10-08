@@ -104,9 +104,9 @@
 	   survives greyscale and red-green colour-vision deficiency — the §489
 	   reasoning. Pairwise 3:1 across three series is unreachable once each
 	   also owes 3:1 to its own surface. */
-	--chart-fitness: #1F1A6B;
-	--chart-fatigue: #B4801F;
-	--chart-form: #A62020;
+	--chart-fitness: #340F68;
+	--chart-fatigue: #B97E12;
+	--chart-form: #A62115;
 
 	/* Five heart-rate zone bands, in lockstep with mobile's hr_zone_palette.
 	   The run-detail band and the mobile intensity card used to carry two
@@ -119,11 +119,11 @@
 	   behind the bar, which is what makes the surface-coloured gap between
 	   segments visible against every band. z1 -> z5 on white:
 	   16.79 / 11.25 / 7.72 / 5.24 / 3.59. */
-	--zone-1: #0C1E34;
-	--zone-2: #174326;
-	--zone-3: #6B4E0D;
-	--zone-4: #AF5111;
-	--zone-5: #E9544F;
+	--zone-1: #121B3F;
+	--zone-2: #114421;
+	--zone-3: #714C09;
+	--zone-4: #AE520A;
+	--zone-5: #E65846;
 
 	/* Six planned-workout kind marks, in lockstep with mobile's
 	   ChartPalette.kinds. These used to be three raw hexes inlined in
@@ -137,12 +137,12 @@
 	   zone bands. Index order is the ladder, coolest first:
 	   easy/recovery, long/race, tempo, marathon pace, interval/walk-run, rest.
 	   kind-1 -> kind-6 on the page: 15.28 / 11.38 / 8.62 / 6.55 / 4.93 / 3.74. */
-	--kind-1: #082024;
-	--kind-2: #0E3558;
-	--kind-3: #6D2A6D;
-	--kind-4: #72510E;
-	--kind-5: #CC2429;
-	--kind-6: #807A8C;
+	--kind-1: #032122;
+	--kind-2: #13345B;
+	--kind-3: #6C2C68;
+	--kind-4: #774F05;
+	--kind-5: #C72F20;
+	--kind-6: #7E7B8B;
 
 	--color-accent-orange: #F08A5D;
 	--color-accent-pink: #E8B89A;
@@ -184,12 +184,14 @@
 	   Enforced per call site, composited, in contrast_guard.test.ts. */
 	--section-dashboard: var(--color-accent-orange);
 	--section-dashboard-ink: var(--color-accent-orange-text);
-	/* Equal to --color-secondary / -secondary-text in light, but NOT aliased
-	   to the base: --color-secondary is violet in dark, and a section hue that
-	   changes family between themes is a different section. The dark blocks
-	   therefore re-declare the ink. */
-	--section-history: #D97A54;
-	--section-history-ink: #A8401B;
+	/* The theme's secondary family (§ 1768): the lilac fill is dark's
+	   --color-secondary and the ink is light's --color-secondary-text. Not
+	   aliased, because a section hue must hold one family in both themes
+	   while the secondary token flips between lilac and violet. The dark
+	   blocks re-declare the ink as the fill itself. History used to share
+	   coral with the dashboard, which the coral accent now owns. */
+	--section-history: #B9A7E8;
+	--section-history-ink: #5B4B8A;
 	--section-runs: #6FA8DC;
 	--section-runs-ink: #245F95;
 	--section-gym: #8FBF9F;
@@ -212,10 +214,11 @@
 	   ultrasignup 2.690 and chronotrack 2.886 in dark. The disc keeps the
 	   brand hue (it is the larger recognition cue, and the provider's NAME is
 	   set beside it); the ink is theme-keyed off the same hue, lightness only.
-	   parkrun's brand coral IS the history accent, so it shares that ink
-	   rather than re-spelling it. Worst measured: 5.138:1 light, 5.135 dark. */
+	   parkrun's brand coral used to be the history accent and shared its
+	   ink; history moved to the secondary family (§ 1768), so parkrun keeps
+	   the coral rungs history had. Worst measured: 5.138:1 light, 5.135 dark. */
 	--provider-strava-ink: #9C2F01;
-	--provider-parkrun-ink: var(--section-history-ink);
+	--provider-parkrun-ink: #A8401B;
 	--provider-garmin-ink: #005691;
 	--provider-healthkit-ink: #AD031C;
 	--provider-runsignup-ink: #98338B;
@@ -471,13 +474,14 @@
 		   clears its own disc for gym and nutrition, so those revert to it; the
 		   other three are lightened a step. dashboard and coach follow their
 		   --color-accent-*-text aliases, which already revert here. */
-		--section-history-ink: #DF9171;
+		--section-history-ink: #B9A7E8;
 		--section-runs-ink: #7AAFDF;
 		--section-gym-ink: var(--section-gym);
 		--section-nutrition-ink: var(--section-nutrition);
 		--section-social-ink: #CE98D3;
 
 		--provider-strava-ink: #FD763E;
+		--provider-parkrun-ink: #DF9171;
 		--provider-garmin-ink: #139FFF;
 		--provider-healthkit-ink: #FD7086;
 		--provider-runsignup-ink: #DB95D2;
@@ -502,26 +506,26 @@
 		--color-crown: #E0BE4E;
 		--color-on-crown: #121117;
 
-		--chart-fitness: #E8E5FF;
-		--chart-fatigue: #E59105;
-		--chart-form: #DE1F17;
+		--chart-fitness: #EAE5FE;
+		--chart-fatigue: #E1931D;
+		--chart-form: #CF3C13;
 
-		--zone-1: #E4EEF9;
-		--zone-2: #91D8A9;
-		--zone-3: #D8A01B;
-		--zone-4: #E56917;
-		--zone-5: #E2231C;
+		--zone-1: #E6EDFF;
+		--zone-2: #95D8A3;
+		--zone-3: #D99F2C;
+		--zone-4: #E16C10;
+		--zone-5: #D83727;
 
 		/* See the :root note. kind-1 -> kind-6 on the page:
 		   17.01 / 14.09 / 11.52 / 9.44 / 7.79 / 6.41; on the tightest surface a
 		   mark is drawn against, mobile's completed-day fill, 8.35 down to
 		   3.15 — that midtone is what caps the dark ladder. */
-		--kind-1: #E3F6F9;
-		--kind-2: #C9E1F6;
-		--kind-3: #E5BDE5;
-		--kind-4: #E7AD3B;
-		--kind-5: #EB8B8F;
-		--kind-6: #9894A2;
+		--kind-1: #DBF8F9;
+		--kind-2: #CAE0FC;
+		--kind-3: #E7BCE2;
+		--kind-4: #E9AC4F;
+		--kind-5: #ED8B84;
+		--kind-6: #9794A5;
 
 		--color-bg: #121117;
 		--color-bg-secondary: #0C0B10;
@@ -581,13 +585,14 @@
 
 	/* Section inks on the dark sidebar / card — see the prefers-color-scheme
 	   block above for why gym and nutrition revert to their accent. */
-	--section-history-ink: #DF9171;
+	--section-history-ink: #B9A7E8;
 	--section-runs-ink: #7AAFDF;
 	--section-gym-ink: var(--section-gym);
 	--section-nutrition-ink: var(--section-nutrition);
 	--section-social-ink: #CE98D3;
 
 	--provider-strava-ink: #FD763E;
+	--provider-parkrun-ink: #DF9171;
 	--provider-garmin-ink: #139FFF;
 	--provider-healthkit-ink: #FD7086;
 	--provider-runsignup-ink: #DB95D2;
@@ -609,23 +614,23 @@
 	--color-crown: #E0BE4E;
 	--color-on-crown: #121117;
 
-	--chart-fitness: #E8E5FF;
-	--chart-fatigue: #E59105;
-	--chart-form: #DE1F17;
+	--chart-fitness: #EAE5FE;
+	--chart-fatigue: #E1931D;
+	--chart-form: #CF3C13;
 
-	--zone-1: #E4EEF9;
-	--zone-2: #91D8A9;
-	--zone-3: #D8A01B;
-	--zone-4: #E56917;
-	--zone-5: #E2231C;
+	--zone-1: #E6EDFF;
+	--zone-2: #95D8A3;
+	--zone-3: #D99F2C;
+	--zone-4: #E16C10;
+	--zone-5: #D83727;
 
 	/* See the :root note; same values as the media-query block. */
-	--kind-1: #E3F6F9;
-	--kind-2: #C9E1F6;
-	--kind-3: #E5BDE5;
-	--kind-4: #E7AD3B;
-	--kind-5: #EB8B8F;
-	--kind-6: #9894A2;
+	--kind-1: #DBF8F9;
+	--kind-2: #CAE0FC;
+	--kind-3: #E7BCE2;
+	--kind-4: #E9AC4F;
+	--kind-5: #ED8B84;
+	--kind-6: #9794A5;
 
 	--color-bg: #121117;
 	--color-bg-secondary: #0C0B10;

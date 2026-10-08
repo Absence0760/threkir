@@ -4192,5 +4192,18 @@
   "avatarCropZoom": "Zoom",
   "avatarCropConfirm": "Foto verwenden",
   "avatarCropLoading": "Foto wird geladen…",
-  "avatarCropLoadFailed": "Dieses Bild konnte nicht geöffnet werden. Versuche JPEG, PNG oder WebP."
+  "avatarCropLoadFailed": "Dieses Bild konnte nicht geöffnet werden. Versuche JPEG, PNG oder WebP.",
+  "dashboardLeadTitle": "Deine Woche",
+  "dashboardLeadEmpty": "Noch keine Läufe",
+  "dashboardLeadVsPlan": "{done} von {target} geplant",
+  "dashboardLeadVsGoal": "{done} von deinem Wochenziel ({target})",
+  "dashboardLeadVsGoalRuns": "{target, plural, one{{done} von 1 Aktivität, deinem Wochenziel} other{{done} von {target} Aktivitäten, deinem Wochenziel}}",
+  "dashboardLeadVsAverage": "{weeks, plural, one{Letzte Woche: {avg}} other{Dein Wochenschnitt der letzten {weeks} Wochen: {avg}}}",
+  "dashboardLeadPlanProgressAria": "Distanz dieser Woche im Vergleich zu deinem Plan",
+  "dashboardLeadGoalProgressAria": "Fortschritt dieser Woche im Vergleich zu deinem Wochenziel",
+  "dashboardLeadNextSession": "Nächste Einheit",
+  "dashboardLeadToday": "Heute",
+  "dashboardLeadTomorrow": "Morgen",
+  "dashboardLeadNoNextSession": "In deinem Plan sind keine weiteren Einheiten geplant.",
+  "dashboardLeadAddRun": "Lauf hinzufügen"
 }

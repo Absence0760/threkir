@@ -4192,5 +4192,18 @@
   "avatarCropZoom": "ズーム",
   "avatarCropConfirm": "この写真を使用",
   "avatarCropLoading": "写真を読み込み中…",
-  "avatarCropLoadFailed": "この画像を開けませんでした。JPEG、PNG、WebP をお試しください。"
+  "avatarCropLoadFailed": "この画像を開けませんでした。JPEG、PNG、WebP をお試しください。",
+  "dashboardLeadTitle": "今週のまとめ",
+  "dashboardLeadEmpty": "まだランはありません",
+  "dashboardLeadVsPlan": "予定 {target} のうち {done}",
+  "dashboardLeadVsGoal": "週間目標 {target} のうち {done}",
+  "dashboardLeadVsGoalRuns": "{target, plural, other{週間目標 {target}件のうち {done}件}}",
+  "dashboardLeadVsAverage": "{weeks, plural, one{先週: {avg}} other{過去{weeks}週間の週平均: {avg}}}",
+  "dashboardLeadPlanProgressAria": "今週の距離とプランの比較",
+  "dashboardLeadGoalProgressAria": "週間目標に対する今週の進捗",
+  "dashboardLeadNextSession": "次のセッション",
+  "dashboardLeadToday": "今日",
+  "dashboardLeadTomorrow": "明日",
+  "dashboardLeadNoNextSession": "プランに予定されているセッションはもうありません。",
+  "dashboardLeadAddRun": "ランを追加"
 }

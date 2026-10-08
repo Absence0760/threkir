@@ -4192,5 +4192,18 @@
   "avatarCropZoom": "Zoom",
   "avatarCropConfirm": "Usar fotografia",
   "avatarCropLoading": "A carregar fotografia…",
-  "avatarCropLoadFailed": "Não foi possível abrir esta imagem. Experimente JPEG, PNG ou WebP."
+  "avatarCropLoadFailed": "Não foi possível abrir esta imagem. Experimente JPEG, PNG ou WebP.",
+  "dashboardLeadTitle": "A sua semana",
+  "dashboardLeadEmpty": "Ainda sem corridas",
+  "dashboardLeadVsPlan": "{done} de {target} planeados",
+  "dashboardLeadVsGoal": "{done} da sua meta semanal de {target}",
+  "dashboardLeadVsGoalRuns": "{target, plural, one{{done} de 1 atividade, a sua meta semanal} other{{done} de {target} atividades, a sua meta semanal}}",
+  "dashboardLeadVsAverage": "{weeks, plural, one{Semana passada: {avg}} other{A sua média semanal nas últimas {weeks} semanas: {avg}}}",
+  "dashboardLeadPlanProgressAria": "Distância desta semana face ao seu plano",
+  "dashboardLeadGoalProgressAria": "Progresso desta semana face à sua meta semanal",
+  "dashboardLeadNextSession": "Próxima sessão",
+  "dashboardLeadToday": "Hoje",
+  "dashboardLeadTomorrow": "Amanhã",
+  "dashboardLeadNoNextSession": "Não há mais sessões agendadas no seu plano.",
+  "dashboardLeadAddRun": "Adicionar corrida"
 }

@@ -25,6 +25,7 @@ import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/dashboard_screen.dart';
+import '../lib/widgets/this_week_strip.dart';
 
 Run _run(String id, DateTime startedAt) => Run(
       id: id,
@@ -88,9 +89,19 @@ void main() {
           ..sort((a, b) => a.top.compareTo(b.top));
 
         // The self-heading run: the "This Week" strip through the training-load
-        // chart. Everything above it is a group block (goals, the three-abreast
-        // period strip) and keeps its section gap.
-        final headed = rects.where((r) => r.top > 300).toList();
+        // chart. Everything above it is a group block (the week lead, goals,
+        // the three-abreast period strip) and keeps its section gap, so the
+        // run is anchored on the strip's own card rather than on a fixed
+        // offset that any block added above it would shift.
+        final stripCard = find
+            .ancestor(of: find.byType(ThisWeekStrip), matching: find.byType(Card))
+            .first;
+        final stripTop = tester
+            .getRect(find
+                .descendant(of: stripCard, matching: find.byType(Material))
+                .first)
+            .top;
+        final headed = rects.where((r) => r.top >= stripTop).toList();
         expect(headed.length, greaterThanOrEqualTo(6),
             reason: 'the card stack must actually have mounted');
 

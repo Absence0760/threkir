@@ -21,8 +21,11 @@ type DistanceRecomputePayload struct {
 	UserID string `json:"user_id,omitempty"`
 }
 
-// DistanceEstimatorV1 is the value stamped in metadata.distance_estimator.
-const DistanceEstimatorV1 = "kalman_v1"
+// DistanceEstimatorV2 is the value stamped in metadata.distance_estimator:
+// the spec-v1.2 smoother. "kalman_v1" was the v1 / v1.1 forward filter; a
+// run recomputed under it is eligible again (the skip below looks only at
+// whether a recompute has ever stamped the run, not at which estimator).
+const DistanceEstimatorV2 = "kalman_v2"
 
 // distanceRecomputeMaxAttempts bounds the re-read loop when the CAS on
 // track_url + metadata misses because the run changed under the worker.
@@ -57,8 +60,8 @@ func maxSpeedMpsForActivity(activityType string) float64 {
 	}
 }
 
-// handleDistanceRecompute replays a stored track through the spec-v1.1
-// estimator and rewrites runs.distance_m, keeping the originally
+// handleDistanceRecompute replays a stored track through the spec-v1.2
+// smoother and rewrites runs.distance_m, keeping the originally
 // recorded figure in metadata.distance_recorded_m, and rewrites the four
 // fastest_* embedded bests from the same replay's cumulative distance.
 func (w *Worker) handleDistanceRecompute(ctx context.Context, job *Job) error {
@@ -197,7 +200,7 @@ func mergeDistanceMetadata(meta map[string]json.RawMessage, previousDistanceM fl
 		}
 		out[schema.MetaDistanceRecordedM] = raw
 	}
-	est, _ := json.Marshal(DistanceEstimatorV1)
+	est, _ := json.Marshal(DistanceEstimatorV2)
 	out[schema.MetaDistanceEstimator] = est
 	at, _ := json.Marshal(now.Format(time.RFC3339))
 	out[schema.MetaDistanceRecomputedAt] = at

@@ -23,9 +23,11 @@ delivery channel — sibling of `notification_email` over the same
 notifications rows; encrypted RFC 8291 messages signed with a VAPID key,
 `decisions.md § 133` / migration `20261219_001`), and `distance_recompute`
 (owner-requested via the `request_distance_recompute(p_run_id)` RPC: replays
-the stored track of an `app` / `watch` run through the spec-v1 GPS distance
-estimator in `internal/gpsdistance/` and rewrites `runs.distance_m`, keeping
-the recorder's figure in `metadata.distance_recorded_m`; imports, indoor /
+the stored track of an `app` / `watch` run through the spec-v1.2 GPS distance
+smoother in `internal/gpsdistance/` (post-hoc stop detection when the track
+has no Doppler) and rewrites `runs.distance_m` + the `fastest_*` bests,
+stamping `distance_estimator = "kalman_v2"` and keeping the recorder's figure
+in `metadata.distance_recorded_m`; a `kalman_v1` recompute is eligible again; imports, indoor /
 pedometer / treadmill, manual and in-progress runs are skipped as no-ops —
 [`../../docs/features/gps_distance.md`](../../docs/features/gps_distance.md)). Data-export will land as an
 additional kind in `internal/worker.go`'s dispatch when that Edge
@@ -305,7 +307,7 @@ apps/job_worker/
 │   ├── handler_export_blob_reap_test.go # 11 tests on the window boundary, unknown-age skip, batching, partial progress, idempotence
 │   ├── handler_distance_recompute.go # kind='distance_recompute' — replay the stored track through gpsdistance, CAS-PATCH distance_m + merged metadata; app/watch sources only
 │   ├── handler_distance_recompute_test.go # skip set, repeat keeps distance_recorded_m, CAS re-read, untimed waypoints, permanent vs transient, PostgREST wire shape
-│   ├── supabase_distance_recompute.go # ReadRunForDistanceRecompute / DownloadRecordedTrack (reads the spec-v1 Doppler keys) / UpdateRunDistance (conditional on track_url + metadata)
+│   ├── supabase_distance_recompute.go # ReadRunForDistanceRecompute / DownloadRecordedTrack (reads the spec-v1 Doppler keys, raw lat/lng only) / UpdateRunDistance (conditional on track_url + metadata)
 │   ├── gpsdistance/         # Go port of the GPS distance estimator spec v1 (scripts/gps_distance/reference.py)
 │   │   ├── estimator.go     # two 1-D constant-velocity Kalman filters + Doppler + stationary floor + gap re-anchor + pedometer stride
 │   │   └── estimator_test.go # replays fixtures/gps_distance_vectors.json, asserting distance after every event to tolerance_m

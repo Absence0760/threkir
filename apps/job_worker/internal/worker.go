@@ -166,7 +166,7 @@ type Backend interface {
 	NotifyDataExportReady(ctx context.Context, exportJobID string) (bool, error)
 	// Distance-recompute path — kind='distance_recompute', enqueued by the
 	// owner-only request_distance_recompute RPC. Replays the stored track
-	// through the spec-v1.1 estimator (internal/gpsdistance) and rewrites
+	// through the spec-v1.2 smoother (internal/gpsdistance) and rewrites
 	// runs.distance_m plus the four fastest_* embedded bests. ReadRunForDistanceRecompute returns ErrRunNotFound
 	// for a deleted run; UpdateRunDistance returns
 	// ErrRunChangedDuringRecompute when its track_url + metadata CAS misses.

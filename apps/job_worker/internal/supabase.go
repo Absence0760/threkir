@@ -222,8 +222,31 @@ func (c *SupabaseClient) DownloadTrack(ctx context.Context, path string) ([]Trac
 	return pts, nil
 }
 
+// storedTrackPoint is a TrackPoint plus the smoother's filtered position
+// (docs/features/gps_distance.md § Waypoint fields).
+type storedTrackPoint struct {
+	TrackPoint
+	SmoothedLat *float64 `json:"smoothedLat,omitempty"`
+	SmoothedLng *float64 `json:"smoothedLng,omitempty"`
+}
+
+// parseTrack decodes a stored track for the matcher, taking the smoothed
+// position of a waypoint that carries both smoothedLat and smoothedLng:
+// the filtered line is what route-matching should follow. Raw lat/lng
+// stay in the stored file; the matched output carries no smoothed keys.
 func parseTrack(body []byte) ([]TrackPoint, error) {
-	return decodeTrack[TrackPoint](body)
+	stored, err := decodeTrack[storedTrackPoint](body)
+	if err != nil {
+		return nil, err
+	}
+	pts := make([]TrackPoint, len(stored))
+	for i, sp := range stored {
+		pts[i] = sp.TrackPoint
+		if sp.SmoothedLat != nil && sp.SmoothedLng != nil {
+			pts[i].Lat, pts[i].Lng = *sp.SmoothedLat, *sp.SmoothedLng
+		}
+	}
+	return pts, nil
 }
 
 // decodeTrack decodes a stored track into any point shape: TrackPoint

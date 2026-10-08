@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"strings"
@@ -160,7 +161,7 @@ func TestDistanceRecompute_RewritesDistanceAndKeepsEveryOtherKey(t *testing.T) {
 	if u.Metadata["distance_recorded_m"] != 6308.7 {
 		t.Errorf("distance_recorded_m = %v, want the old distance_m 6308.7", u.Metadata["distance_recorded_m"])
 	}
-	if u.Metadata["distance_estimator"] != "kalman_v1" {
+	if u.Metadata["distance_estimator"] != "kalman_v2" {
 		t.Errorf("distance_estimator = %v", u.Metadata["distance_estimator"])
 	}
 	at, _ := u.Metadata["distance_recomputed_at"].(string)
@@ -181,6 +182,39 @@ func TestDistanceRecompute_RepeatKeepsTheOriginalRecordedDistance(t *testing.T) 
 	}
 	if got := b.distance.updates[0].Metadata["distance_recorded_m"]; got != 6308.7 {
 		t.Errorf("distance_recorded_m = %v, want the original 6308.7, not the previous recompute's 250", got)
+	}
+	if got := b.distance.updates[0].Metadata["distance_estimator"]; got != "kalman_v2" {
+		t.Errorf("distance_estimator = %v, want a kalman_v1 recompute restamped kalman_v2", got)
+	}
+}
+
+// legacyStopTrack is a track recorded before spec v1 (no Doppler keys):
+// 60 s north at 3 m/s, 90 s standing still, 60 s more at 3 m/s — 360 m —
+// with deterministic +-2 m jitter on every fix.
+func legacyStopTrack() []RecordedTrackPoint {
+	t0 := time.Date(2026, 10, 8, 7, 0, 0, 0, time.UTC)
+	pts := make([]RecordedTrackPoint, 0, 211)
+	north := 0.0
+	for i := 0; i <= 210; i++ {
+		if i > 0 && (i <= 60 || i > 150) {
+			north += 3
+		}
+		lat := 40.0 + (north+2*math.Sin(float64(i)*1.7))/111195.0
+		lng := -75.0 + 2*math.Cos(float64(i)*2.3)/(111195.0*math.Cos(40*math.Pi/180))
+		ts := t0.Add(time.Duration(i) * time.Second)
+		pts = append(pts, RecordedTrackPoint{Lat: &lat, Lng: &lng, Timestamp: &ts, AccuracyM: f64(4)})
+	}
+	return pts
+}
+
+func TestDistanceRecompute_LegacyTrackTakesThePositionOnlySmoother(t *testing.T) {
+	w, b := distanceWorker(t, appRun(`{}`), legacyStopTrack())
+	if err := w.handleDistanceRecompute(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID})); err != nil {
+		t.Fatalf("handle: %v", err)
+	}
+	// The hop-sum reads ~784 m; the smoother reads 357.36 m.
+	if got := b.distance.updates[0].DistanceM; got < 350 || got > 365 {
+		t.Errorf("distance_m = %v, want ~360 m (the 90 s stop credits nothing)", got)
 	}
 }
 
@@ -217,6 +251,9 @@ func TestDistanceRecompute_SkipsWhatIsNotTheEstimatorsToReplace(t *testing.T) {
 		{"manual entry", func(r *DistanceRecomputeRun) { r.Metadata = json.RawMessage(`{"manual_entry":true}`) }},
 		{"recorded live by the estimator", func(r *DistanceRecomputeRun) {
 			r.Metadata = json.RawMessage(`{"distance_estimator":"kalman_v1"}`)
+		}},
+		{"saved by the smoother on the phone", func(r *DistanceRecomputeRun) {
+			r.Metadata = json.RawMessage(`{"distance_estimator":"kalman_v2"}`)
 		}},
 	}
 	for _, tc := range cases {
@@ -416,7 +453,7 @@ func TestUpdateRunDistance_IsConditionalOnTrackAndMetadata(t *testing.T) {
 	if err := client.UpdateRunDistance(context.Background(), &run, RunDistanceUpdate{
 		DistanceM:     5000.12,
 		EmbeddedBests: map[string]*int{"fastest_5k_s": &fiveK, "fastest_10k_s": nil},
-		Metadata:      json.RawMessage(`{"title":"a, b","distance_estimator":"kalman_v1"}`),
+		Metadata:      json.RawMessage(`{"title":"a, b","distance_estimator":"kalman_v2"}`),
 	}); err != nil {
 		t.Fatalf("update: %v", err)
 	}
@@ -429,7 +466,7 @@ func TestUpdateRunDistance_IsConditionalOnTrackAndMetadata(t *testing.T) {
 	if gotPrefer != "return=representation" {
 		t.Errorf("Prefer = %q — the CAS cannot count rows under return=minimal", gotPrefer)
 	}
-	if string(gotBody["distance_m"]) != "5000.12" || !strings.Contains(string(gotBody["metadata"]), "kalman_v1") {
+	if string(gotBody["distance_m"]) != "5000.12" || !strings.Contains(string(gotBody["metadata"]), "kalman_v2") {
 		t.Errorf("body = %v", gotBody)
 	}
 	if string(gotBody["fastest_5k_s"]) != "1498" || string(gotBody["fastest_10k_s"]) != "null" {
@@ -481,5 +518,39 @@ func TestDistanceRecompute_ShortRunNullsEveryEmbeddedBest(t *testing.T) {
 		if !ok || v != nil {
 			t.Errorf("%s: present = %v, value = %v; want an explicit null", d.Column, ok, v)
 		}
+	}
+}
+
+const smoothedTrackJSON = `[{"lat":40,"lng":-75,"ts":"2026-10-08T07:00:00Z","smoothedLat":40.00001,"smoothedLng":-75.00002},` +
+	`{"lat":40.0001,"lng":-75,"ts":"2026-10-08T07:00:01Z","smoothedLat":40.00009},` +
+	`{"lat":40.0002,"lng":-75,"ts":"2026-10-08T07:00:02Z"}]`
+
+func TestDownloadRecordedTrack_FeedsTheSmootherRawPositions(t *testing.T) {
+	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(smoothedTrackJSON))
+	})
+	pts, err := client.DownloadRecordedTrack(context.Background(), drTrack)
+	if err != nil {
+		t.Fatalf("download: %v", err)
+	}
+	if *pts[0].Lat != 40 || *pts[0].Lng != -75 {
+		t.Errorf("pts[0] = (%v, %v); the recompute must replay the raw fix, not a previous smoothing", *pts[0].Lat, *pts[0].Lng)
+	}
+}
+
+func TestParseTrack_PrefersTheSmoothedPairOnlyWhenBothArePresent(t *testing.T) {
+	pts, err := parseTrack([]byte(smoothedTrackJSON))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	want := [][2]float64{{40.00001, -75.00002}, {40.0001, -75}, {40.0002, -75}}
+	for i, w := range want {
+		if pts[i].Lat != w[0] || pts[i].Lng != w[1] {
+			t.Errorf("pts[%d] = (%v, %v), want (%v, %v)", i, pts[i].Lat, pts[i].Lng, w[0], w[1])
+		}
+	}
+	out, _ := json.Marshal(pts)
+	if strings.Contains(string(out), "smoothed") {
+		t.Errorf("a matcher point re-encodes the smoothed keys: %s", out)
 	}
 }

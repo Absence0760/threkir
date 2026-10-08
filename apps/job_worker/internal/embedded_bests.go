@@ -78,44 +78,57 @@ func medianFixIntervalS(pts []RecordedTrackPoint) float64 {
 	return (intervals[mid-1] + intervals[mid]) / 2
 }
 
-// replayRecordedTrack feeds every timestamped point of pts (all
-// coordinate-bearing) through the spec-v1.1 estimator. It returns the
-// cumulative distance after each point — an untimestamped point carries
-// the previous value — the final distance, and how many fixes were fed.
-// t is seconds since the first timestamped point; the expected interval is
-// the median one, so a sparse watch track is not re-anchored on every fix.
+// replayRecordedTrack replays every timestamped point of pts (all
+// coordinate-bearing) through the spec-v1.2 smoother. It returns the
+// smoothed cumulative distance at each point — an untimestamped point
+// carries the previous value — the final distance, and how many fixes were
+// fed. t is seconds since the first timestamped point; the expected interval
+// is the median one, so a sparse watch track is not re-anchored on every
+// fix. A track with no speedMps on any point (recorded before spec v1) takes
+// the position-only path with post-hoc stop detection.
 func replayRecordedTrack(pts []RecordedTrackPoint, maxSpeedMps float64) (cumulative []float64, distanceM float64, fixes int) {
-	est := gpsdistance.NewWithOptions(gpsdistance.Options{
-		MaxSpeedMps:       maxSpeedMps,
-		ExpectedIntervalS: medianFixIntervalS(pts),
-		InitialStrideM:    nil,
-	})
-	cumulative = make([]float64, len(pts))
+	events := make([]gpsdistance.Event, 0, len(pts)+1)
+	eventOf := make([]int, len(pts))
 	var t0 int64
 	var lastT float64
 	for i, p := range pts {
-		if ms, ok := pointMs(p); ok {
-			if fixes == 0 {
-				t0 = ms
-			}
-			lastT = float64(ms-t0) / 1000
-			est.AddFix(gpsdistance.Fix{
-				T:                lastT,
-				Lat:              *p.Lat,
-				Lng:              *p.Lng,
-				AccuracyM:        p.AccuracyM,
-				SpeedMps:         p.SpeedMps,
-				SpeedAccuracyMps: p.SpeedAccuracyMps,
-				BearingDeg:       p.BearingDeg,
-			})
-			fixes++
+		eventOf[i] = -1
+		ms, ok := pointMs(p)
+		if !ok {
+			continue
 		}
-		cumulative[i] = est.DistanceM()
+		if fixes == 0 {
+			t0 = ms
+		}
+		lastT = float64(ms-t0) / 1000
+		eventOf[i] = len(events)
+		events = append(events, gpsdistance.Event{Kind: gpsdistance.EventFix, Fix: gpsdistance.Fix{
+			T:                lastT,
+			Lat:              *p.Lat,
+			Lng:              *p.Lng,
+			AccuracyM:        p.AccuracyM,
+			SpeedMps:         p.SpeedMps,
+			SpeedAccuracyMps: p.SpeedAccuracyMps,
+			BearingDeg:       p.BearingDeg,
+		}})
+		fixes++
 	}
 	if fixes > 0 {
-		est.Finish(lastT)
+		events = append(events, gpsdistance.Event{Kind: gpsdistance.EventFinish, T: lastT})
 	}
-	return cumulative, est.DistanceM(), fixes
+	res := gpsdistance.SmoothDistance(events, gpsdistance.Options{
+		MaxSpeedMps:       maxSpeedMps,
+		ExpectedIntervalS: medianFixIntervalS(pts),
+	})
+	cumulative = make([]float64, len(pts))
+	carried := 0.0
+	for i, ev := range eventOf {
+		if ev >= 0 {
+			carried = res.CumulativeM[ev]
+		}
+		cumulative[i] = carried
+	}
+	return cumulative, res.DistanceM, fixes
 }
 
 // fastestWindowSeconds is the fastest continuous windowMetres (whole

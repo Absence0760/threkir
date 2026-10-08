@@ -151,11 +151,13 @@ void main() {
       describe: 'the week lead to mount',
     );
 
+    // Read off the keyed Text itself: a Text renders a RichText, so a
+    // find.text descendant of it matches nothing even when the value is right.
     expect(
-      find.descendant(
-          of: find.byKey(const Key('dashboardWeekLeadDistance')),
-          matching: find.text(UnitFormat.distance(5000, DistanceUnit.km))),
-      findsOneWidget,
+      tester
+          .widget<Text>(find.byKey(const Key('dashboardWeekLeadDistance')))
+          .data,
+      UnitFormat.distance(5000, DistanceUnit.km),
     );
     expect(find.descendant(of: _lead, matching: find.text('1 activity')),
         findsOneWidget);

@@ -505,6 +505,13 @@ void main() {
 
       testWidgets('a set goal keeps its section above the period stats',
           (tester) async {
+        // The week lead sits above both, and the dashboard is a lazy ListView,
+        // so on the default surface the WEEK strip is never built to measure.
+        // A tall surface keeps the width (and so the layout class) unchanged.
+        tester.view.physicalSize = const Size(800, 3000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
         await tester.runAsync(() async {
           final dir = Directory.systemTemp.createTempSync('dashboard_goal_');
           try {
@@ -1318,6 +1325,10 @@ void main() {
             expect(find.byKey(chartColumnsKey), findsNothing);
             expect(contentCap(), findsNothing);
             expect(find.text('Goals'), findsOneWidget);
+            // The week lead pushes the period strip below the default
+            // surface's fold, where the lazy ListView has not built it.
+            await tester.scrollUntilVisible(find.text('WEEK'), 300,
+                scrollable: find.byType(Scrollable).first);
             expect(find.text('WEEK'), findsOneWidget);
           } finally {
             dir.deleteSync(recursive: true);

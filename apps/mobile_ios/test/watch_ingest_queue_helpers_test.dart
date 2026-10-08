@@ -187,6 +187,47 @@ void main() {
       expect(run.metadata, isNull);
     });
 
+    test('keeps the estimator fix fields on each track point', () {
+      final raw = _basePayload()
+        ..['track'] = [
+          {
+            'lat': 40.0,
+            'lng': -75.0,
+            'ts': '2026-04-15T07:30:01Z',
+            'accuracyMetres': 4.5,
+            'speedMps': 2.68,
+            'speedAccuracyMps': 0.4,
+            'bearingDeg': 91.5,
+          },
+          {'lat': 40.0001, 'lng': -75.0, 'ts': '2026-04-15T07:30:02Z'},
+        ];
+      final run = runFromWatchPayload(raw);
+      final first = run.track.first;
+      expect(first.accuracyMetres, 4.5);
+      expect(first.speedMps, 2.68);
+      expect(first.speedAccuracyMps, 0.4);
+      expect(first.bearingDeg, 91.5);
+      expect(run.track.last.speedMps, isNull);
+    });
+
+    test('forwards the distance estimator stamp and step-filled metres', () {
+      final raw = _basePayload()
+        ..['distance_estimator'] = 'kalman_v1'
+        ..['distance_step_filled_m'] = 105.7;
+      final run = runFromWatchPayload(raw);
+      expect(run.metadata![MetadataKeys.distanceEstimator], 'kalman_v1');
+      expect(run.metadata![MetadataKeys.distanceStepFilledM], 105.7);
+    });
+
+    test('drops a zero or non-numeric step-filled distance', () {
+      final zero = runFromWatchPayload(
+          _basePayload()..['distance_step_filled_m'] = 0);
+      expect(zero.metadata, isNull);
+      final junk = runFromWatchPayload(
+          _basePayload()..['distance_step_filled_m'] = 'x');
+      expect(junk.metadata, isNull);
+    });
+
     test('promotes hr_coverage into metadata beside the average', () {
       final raw = _basePayload()
         ..['avg_bpm'] = 145

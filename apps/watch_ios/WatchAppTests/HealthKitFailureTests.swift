@@ -21,13 +21,24 @@ final class HealthKitFailureTests: XCTestCase {
         wait(for: [drained], timeout: 1)
     }
 
+    private let base = Date()
+
+    /// A runner heading north at ~2.8 m/s: each 0.0001 deg step is ~11 m, so
+    /// the fix is stamped 4 s after the previous one and carries a matching
+    /// Doppler speed. The distance estimator credits time x speed, so fixes
+    /// stamped at one instant would bank nothing.
     private func loc(_ lat: Double) -> CLLocation {
-        CLLocation(
+        let seconds = ((lat - 51.5) / 0.0001).rounded() * 4
+        return CLLocation(
             coordinate: CLLocationCoordinate2D(latitude: lat, longitude: -0.1),
             altitude: 10,
             horizontalAccuracy: 5,
             verticalAccuracy: 5,
-            timestamp: Date()
+            course: 0,
+            courseAccuracy: 5,
+            speed: 2.8,
+            speedAccuracy: 0.3,
+            timestamp: base.addingTimeInterval(seconds)
         )
     }
 

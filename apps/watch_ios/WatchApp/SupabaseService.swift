@@ -141,7 +141,9 @@ actor SupabaseService {
                 avg_bpm: run.averageBPM,
                 hr_coverage: run.hrCoverage,
                 steps: run.steps.flatMap { $0 > 0 ? $0 : nil },
-                laps: run.laps.isEmpty ? nil : run.laps.map(LapPayload.init)
+                laps: run.laps.isEmpty ? nil : run.laps.map(LapPayload.init),
+                distance_estimator: run.distanceEstimator,
+                distance_step_filled_m: run.distanceStepFilledMetres > 0 ? run.distanceStepFilledMetres : nil
             )
         )
 
@@ -221,6 +223,8 @@ actor SupabaseService {
         let hr_coverage: Double?
         let steps: Int?
         let laps: [LapPayload]?
+        let distance_estimator: String?
+        let distance_step_filled_m: Double?
     }
 
     /// The registered `metadata.laps` element. Declared here rather than

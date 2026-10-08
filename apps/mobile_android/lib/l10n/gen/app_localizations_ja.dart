@@ -12538,6 +12538,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsTabSimWatchSubtitle => 'シミュレーション中のカスタムウォッチのライブ状態';
 
   @override
+  String get settingsDevRawGps => '生のGPS';
+
+  @override
+  String get settingsDevRawGpsSubtitle =>
+      '統合位置情報サービスではなくGPSチップのみで記録し、距離の精度を比較します。次のランから適用されます。';
+
+  @override
   String get simWatchTitle => 'シミュレータウォッチ接続';
 
   @override

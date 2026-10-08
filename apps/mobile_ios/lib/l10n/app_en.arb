@@ -17123,6 +17123,14 @@
   },
   "settingsSectionDeveloper": "Developer",
   "settingsTabSimWatchSubtitle": "Live status from the simulated custom watch",
+  "settingsDevRawGps": "Raw GPS provider",
+  "@settingsDevRawGps": {
+    "description": "Developer-section switch title: record a run from Android's raw GPS_PROVIDER instead of the fused location provider (GPS accuracy diagnostic)"
+  },
+  "settingsDevRawGpsSubtitle": "Record from the GPS chip alone instead of the fused location service, to compare distance accuracy. Applies from the next run.",
+  "@settingsDevRawGpsSubtitle": {
+    "description": "Subtitle under the developer raw GPS provider switch. 'Fused location service' is Android's combined GPS + Wi-Fi + cell provider."
+  },
   "simWatchTitle": "Sim watch link",
   "simWatchHostLabel": "Host",
   "simWatchPortLabel": "Port",

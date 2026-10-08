@@ -3772,6 +3772,8 @@
   "racePredictorFootnote": "Equivalência de Riegel a partir do seu melhor esforço recente, ponderada pela recência. Distâncias mais próximas são mais confiáveis.",
   "settingsSectionDeveloper": "Programador",
   "settingsTabSimWatchSubtitle": "Estado em direto do relógio personalizado simulado",
+  "settingsDevRawGps": "GPS bruto",
+  "settingsDevRawGpsSubtitle": "Regista apenas com o chip GPS em vez do serviço de localização combinado, para comparar a precisão da distância. Aplica-se a partir da próxima corrida.",
   "simWatchTitle": "Link do relógio simulado",
   "simWatchHostLabel": "Anfitrião",
   "simWatchPortLabel": "Porta",

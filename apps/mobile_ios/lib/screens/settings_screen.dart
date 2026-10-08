@@ -12,6 +12,7 @@ import '../local_route_store.dart';
 import '../local_run_store.dart';
 import '../dev_auto_login.dart';
 import '../preferences.dart';
+import '../raw_gps_diagnostic.dart';
 import '../settings_sync.dart';
 import '../sim_watch_link.dart';
 import '../widgets/top_banner.dart';
@@ -113,6 +114,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final api = widget.apiClient;
     final signedIn = api?.userId != null;
     final l10n = AppLocalizations.of(context);
+    final backendUrl = widget.devBackendUrl ?? maybeDevBackendUrl();
+    final localBackend = isLocalSupabaseUrl(backendUrl);
+    final rawGpsAvailable = rawGpsDiagnosticAvailable(backendUrl: backendUrl);
     return Scaffold(
       body: SafeArea(
         child: ListView(
@@ -241,18 +245,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
               subtitle: l10n.settingsTabAboutSubtitle,
               onTap: () => _open((_) => const SettingsAboutScreen()),
             ),
-            if (isLocalSupabaseUrl(
-                widget.devBackendUrl ?? maybeDevBackendUrl())) ...[
+            if (localBackend || rawGpsAvailable) ...[
               Padding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
-              child: SectionHeader(label: l10n.settingsSectionDeveloper),
-            ),
-              _tab(
-                icon: Icons.watch_outlined,
-                label: l10n.simWatchTitle,
-                subtitle: l10n.settingsTabSimWatchSubtitle,
-                onTap: () => _open((_) => const SimWatchScreen()),
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
+                child: SectionHeader(label: l10n.settingsSectionDeveloper),
               ),
+              if (localBackend)
+                _tab(
+                  icon: Icons.watch_outlined,
+                  label: l10n.simWatchTitle,
+                  subtitle: l10n.settingsTabSimWatchSubtitle,
+                  onTap: () => _open((_) => const SimWatchScreen()),
+                ),
+              if (rawGpsAvailable)
+                ListenableBuilder(
+                  listenable: widget.preferences,
+                  builder: (context, _) => SwitchListTile(
+                    key: const Key('settingsDevRawGps'),
+                    secondary: const Icon(Icons.satellite_alt_outlined),
+                    title: Text(l10n.settingsDevRawGps),
+                    subtitle: Text(l10n.settingsDevRawGpsSubtitle),
+                    value: widget.preferences.devRawGpsProvider,
+                    onChanged: widget.preferences.setDevRawGpsProvider,
+                  ),
+                ),
             ],
           ],
         ),

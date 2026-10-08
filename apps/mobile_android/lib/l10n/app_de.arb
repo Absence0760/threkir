@@ -3772,6 +3772,8 @@
   "racePredictorFootnote": "Riegel-Äquivalenz aus deinem besten aktuellen Lauf, aktualitätsgewichtet. Näher liegende Distanzen sind verlässlicher.",
   "settingsSectionDeveloper": "Entwickler",
   "settingsTabSimWatchSubtitle": "Live-Status der simulierten Custom Watch",
+  "settingsDevRawGps": "Rohes GPS",
+  "settingsDevRawGpsSubtitle": "Zeichnet nur mit dem GPS-Chip auf statt mit dem kombinierten Standortdienst, um die Distanzgenauigkeit zu vergleichen. Gilt ab dem nächsten Lauf.",
   "simWatchTitle": "Sim-Watch-Verbindung",
   "simWatchHostLabel": "Host",
   "simWatchPortLabel": "Port",

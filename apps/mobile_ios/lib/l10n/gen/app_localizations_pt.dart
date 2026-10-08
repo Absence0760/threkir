@@ -13151,6 +13151,13 @@ class AppLocalizationsPt extends AppLocalizations {
       'Estado em direto do relógio personalizado simulado';
 
   @override
+  String get settingsDevRawGps => 'GPS bruto';
+
+  @override
+  String get settingsDevRawGpsSubtitle =>
+      'Regista apenas com o chip GPS em vez do serviço de localização combinado, para comparar a precisão da distância. Aplica-se a partir da próxima corrida.';
+
+  @override
   String get simWatchTitle => 'Link do relógio simulado';
 
   @override
@@ -27656,6 +27663,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get settingsTabSimWatchSubtitle =>
       'Status ao vivo do relógio personalizado simulado';
+
+  @override
+  String get settingsDevRawGps => 'GPS bruto';
+
+  @override
+  String get settingsDevRawGpsSubtitle =>
+      'Registra apenas com o chip GPS em vez do serviço de localização combinado, para comparar a precisão da distância. Vale a partir da próxima corrida.';
 
   @override
   String get simWatchTitle => 'Conexão do relógio simulado';

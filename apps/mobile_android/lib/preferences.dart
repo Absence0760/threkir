@@ -124,6 +124,8 @@ class Preferences extends ChangeNotifier {
   static const _kTargetPaceSecPerKm = 'target_pace_sec_per_km';
   static const _kGoalsJson = 'goals_json';
   static const _kAdvancedGps = 'advanced_gps';
+  // Developer diagnostic, read through rawGpsDiagnosticAvailable.
+  static const _kDevRawGpsProvider = 'dev_raw_gps_provider';
   static const _kSplitIntervalMetres = 'split_interval_metres';
   static const _kUndoWindowS = 'undo_window_s';
   // Device-local: which pace the split cue reads out (SplitPaceMode).
@@ -260,6 +262,7 @@ class Preferences extends ChangeNotifier {
   int _targetPaceSecPerKm = 0;
   List<RunGoal> _goals = [];
   bool _advancedGps = false;
+  bool _devRawGpsProvider = false;
   int _splitIntervalMetres = 0;
   int _undoWindowS = kDefaultUndoWindowS;
   String _splitPaceMode = SplitPaceMode.split;
@@ -307,6 +310,10 @@ class Preferences extends ChangeNotifier {
   bool get turnByTurnCues => _turnByTurnCues;
   bool get onboarded => _onboarded;
   bool get advancedGps => _advancedGps;
+
+  /// The developer switch asking Android for raw `GPS_PROVIDER` fixes. Only
+  /// meaningful where `rawGpsDiagnosticAvailable` holds.
+  bool get devRawGpsProvider => _devRawGpsProvider;
 
   /// Custom split interval in metres. 0 means use the activity-type default
   /// (1 km for run/walk/hike, 5 km for cycling).
@@ -659,6 +666,7 @@ class Preferences extends ChangeNotifier {
     _onboarded = _prefs.getBool(_kOnboarded) ?? false;
     _targetPaceSecPerKm = _prefs.getInt(_kTargetPaceSecPerKm) ?? 0;
     _advancedGps = _prefs.getBool(_kAdvancedGps) ?? false;
+    _devRawGpsProvider = _prefs.getBool(_kDevRawGpsProvider) ?? false;
     _writeToHealthConnect = _prefs.getBool(_kWriteToHealthConnect) ?? false;
     _splitIntervalMetres = _prefs.getInt(_kSplitIntervalMetres) ?? 0;
     _undoWindowS = undoWindowSFromPref(_prefs.getInt(_kUndoWindowS));
@@ -824,6 +832,12 @@ class Preferences extends ChangeNotifier {
   Future<void> setAdvancedGps(bool v) async {
     _advancedGps = v;
     await _prefs.setBool(_kAdvancedGps, v);
+    notifyListeners();
+  }
+
+  Future<void> setDevRawGpsProvider(bool v) async {
+    _devRawGpsProvider = v;
+    await _prefs.setBool(_kDevRawGpsProvider, v);
     notifyListeners();
   }
 

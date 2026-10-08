@@ -13014,6 +13014,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Live status from the simulated custom watch';
 
   @override
+  String get settingsDevRawGps => 'Raw GPS provider';
+
+  @override
+  String get settingsDevRawGpsSubtitle =>
+      'Record from the GPS chip alone instead of the fused location service, to compare distance accuracy. Applies from the next run.';
+
+  @override
   String get simWatchTitle => 'Sim watch link';
 
   @override

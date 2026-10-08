@@ -3772,6 +3772,8 @@
   "racePredictorFootnote": "最近のベストな走りからリーゲルの換算式で算出し、新しさで重み付けしています。近い距離ほど信頼できます。",
   "settingsSectionDeveloper": "開発者",
   "settingsTabSimWatchSubtitle": "シミュレーション中のカスタムウォッチのライブ状態",
+  "settingsDevRawGps": "生のGPS",
+  "settingsDevRawGpsSubtitle": "統合位置情報サービスではなくGPSチップのみで記録し、距離の精度を比較します。次のランから適用されます。",
   "simWatchTitle": "シミュレータウォッチ接続",
   "simWatchHostLabel": "ホスト",
   "simWatchPortLabel": "ポート",

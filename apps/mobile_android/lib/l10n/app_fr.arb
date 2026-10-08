@@ -3772,6 +3772,8 @@
   "racePredictorFootnote": "Équivalence de Riegel à partir de votre meilleur effort récent, pondérée par la récence. Les distances proches sont plus fiables.",
   "settingsSectionDeveloper": "Développeur",
   "settingsTabSimWatchSubtitle": "État en direct de la montre personnalisée simulée",
+  "settingsDevRawGps": "GPS brut",
+  "settingsDevRawGpsSubtitle": "Enregistre avec la seule puce GPS au lieu du service de localisation combiné, pour comparer la précision de la distance. S'applique dès la prochaine course.",
   "simWatchTitle": "Liaison montre simulée",
   "simWatchHostLabel": "Hôte",
   "simWatchPortLabel": "Port",

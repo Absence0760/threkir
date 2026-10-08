@@ -21771,6 +21771,18 @@ abstract class AppLocalizations {
   /// **'Live status from the simulated custom watch'**
   String get settingsTabSimWatchSubtitle;
 
+  /// Developer-section switch title: record a run from Android's raw GPS_PROVIDER instead of the fused location provider (GPS accuracy diagnostic)
+  ///
+  /// In en, this message translates to:
+  /// **'Raw GPS provider'**
+  String get settingsDevRawGps;
+
+  /// Subtitle under the developer raw GPS provider switch. 'Fused location service' is Android's combined GPS + Wi-Fi + cell provider.
+  ///
+  /// In en, this message translates to:
+  /// **'Record from the GPS chip alone instead of the fused location service, to compare distance accuracy. Applies from the next run.'**
+  String get settingsDevRawGpsSubtitle;
+
   /// No description provided for @simWatchTitle.
   ///
   /// In en, this message translates to:

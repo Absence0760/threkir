@@ -13177,6 +13177,13 @@ class AppLocalizationsFr extends AppLocalizations {
       'État en direct de la montre personnalisée simulée';
 
   @override
+  String get settingsDevRawGps => 'GPS brut';
+
+  @override
+  String get settingsDevRawGpsSubtitle =>
+      'Enregistre avec la seule puce GPS au lieu du service de localisation combiné, pour comparer la précision de la distance. S\'applique dès la prochaine course.';
+
+  @override
   String get simWatchTitle => 'Liaison montre simulée';
 
   @override

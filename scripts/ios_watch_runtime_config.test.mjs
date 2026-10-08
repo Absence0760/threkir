@@ -87,10 +87,13 @@ test('the rendered xcconfig survives Xcode reading it: no // in a value, and the
 test('the shipped plist passes only when both keys came through equal to the secrets', () => {
 	const expected = { url: ORIGIN, key: PUBLISHABLE };
 	const lines = verifyInfo({ [URL_INFO_KEY]: ORIGIN, [KEY_INFO_KEY]: PUBLISHABLE }, expected);
-	assert.equal(lines.length, 2);
-	for (const line of lines) {
-		assert.ok(!line.includes(ORIGIN) && !line.includes('abcdefghijkl') && !line.includes(PUBLISHABLE), line);
-	}
+	// Pinned to the exact text rather than scanned for the values: a line that
+	// equals its expected wording carries nothing but the two lengths, which
+	// proves more than a substring search for each secret could.
+	assert.deepEqual(lines, [
+		`${URL_INFO_KEY}: https origin present, length ${ORIGIN.length}, equal to the release secret`,
+		`${KEY_INFO_KEY}: present, length ${PUBLISHABLE.length}, equal to the release secret`,
+	]);
 
 	for (const [info, needle] of /** @type {const} */ ([
 		[{}, 'is empty'],

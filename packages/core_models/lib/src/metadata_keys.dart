@@ -23,6 +23,7 @@ class MetadataKeys {
   static const String chipTime = 'chip_time';
   static const String createdByUserId = 'created_by_user_id';
   static const String distanceEstimator = 'distance_estimator';
+  static const String distanceRecordedM = 'distance_recorded_m';
   static const String distanceSource = 'distance_source';
   static const String distanceStepFilledM = 'distance_step_filled_m';
   static const String elevationM = 'elevation_m';

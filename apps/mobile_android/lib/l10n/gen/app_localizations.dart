@@ -4907,6 +4907,60 @@ abstract class AppLocalizations {
   /// **'Re-match failed: {error}'**
   String runDetailRematchFailed(String error);
 
+  /// Overflow-menu action on the owner's own run that queues a server recompute of its distance from the GPS track with the improved GPS filter
+  ///
+  /// In en, this message translates to:
+  /// **'Recalculate distance'**
+  String get runDetailRecalculateDistance;
+
+  /// Title of the dialog confirming a distance recompute
+  ///
+  /// In en, this message translates to:
+  /// **'Recalculate distance?'**
+  String get runDetailRecalculateDistanceDialogTitle;
+
+  /// Body of the dialog confirming a distance recompute; the original distance is kept
+  ///
+  /// In en, this message translates to:
+  /// **'This run\'s distance will be recomputed from its GPS track with the improved GPS filter, which removes the extra distance GPS jitter adds. The originally recorded distance is kept and shown beside the new one.'**
+  String get runDetailRecalculateDistanceDialogMessage;
+
+  /// Confirm button of the distance-recompute dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Recalculate'**
+  String get runDetailRecalculateDistanceConfirm;
+
+  /// Banner shown once the distance recompute is queued; the new distance lands after the background job runs
+  ///
+  /// In en, this message translates to:
+  /// **'Recalculating — refresh in a minute'**
+  String get runDetailRecalculatingDistance;
+
+  /// Banner shown when the distance-recompute request fails for a reason other than ownership or a missing track
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t recalculate distance: {error}'**
+  String runDetailRecalculateDistanceFailed(String error);
+
+  /// Banner shown when the server refuses a distance recompute because the viewer did not record the run
+  ///
+  /// In en, this message translates to:
+  /// **'Only the runner who recorded this run can recalculate its distance.'**
+  String get runDetailRecalculateDistanceNotOwner;
+
+  /// Banner shown when the server refuses a distance recompute because the run has no stored GPS track
+  ///
+  /// In en, this message translates to:
+  /// **'This run has no GPS track to recalculate from.'**
+  String get runDetailRecalculateDistanceNoTrack;
+
+  /// Note under the key stats of a recomputed run, showing the recorder's original distance in the viewer's unit
+  ///
+  /// In en, this message translates to:
+  /// **'Originally recorded: {distance}'**
+  String runDetailOriginallyRecorded(String distance);
+
   /// Banner shown after saving a run's track as a route, with waypoint counts
   ///
   /// In en, this message translates to:

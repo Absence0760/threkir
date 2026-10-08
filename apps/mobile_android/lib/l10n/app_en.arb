@@ -3780,6 +3780,52 @@
       }
     }
   },
+  "runDetailRecalculateDistance": "Recalculate distance",
+  "@runDetailRecalculateDistance": {
+    "description": "Overflow-menu action on the owner's own run that queues a server recompute of its distance from the GPS track with the improved GPS filter"
+  },
+  "runDetailRecalculateDistanceDialogTitle": "Recalculate distance?",
+  "@runDetailRecalculateDistanceDialogTitle": {
+    "description": "Title of the dialog confirming a distance recompute"
+  },
+  "runDetailRecalculateDistanceDialogMessage": "This run's distance will be recomputed from its GPS track with the improved GPS filter, which removes the extra distance GPS jitter adds. The originally recorded distance is kept and shown beside the new one.",
+  "@runDetailRecalculateDistanceDialogMessage": {
+    "description": "Body of the dialog confirming a distance recompute; the original distance is kept"
+  },
+  "runDetailRecalculateDistanceConfirm": "Recalculate",
+  "@runDetailRecalculateDistanceConfirm": {
+    "description": "Confirm button of the distance-recompute dialog"
+  },
+  "runDetailRecalculatingDistance": "Recalculating — refresh in a minute",
+  "@runDetailRecalculatingDistance": {
+    "description": "Banner shown once the distance recompute is queued; the new distance lands after the background job runs"
+  },
+  "runDetailRecalculateDistanceFailed": "Couldn't recalculate distance: {error}",
+  "@runDetailRecalculateDistanceFailed": {
+    "description": "Banner shown when the distance-recompute request fails for a reason other than ownership or a missing track",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "runDetailRecalculateDistanceNotOwner": "Only the runner who recorded this run can recalculate its distance.",
+  "@runDetailRecalculateDistanceNotOwner": {
+    "description": "Banner shown when the server refuses a distance recompute because the viewer did not record the run"
+  },
+  "runDetailRecalculateDistanceNoTrack": "This run has no GPS track to recalculate from.",
+  "@runDetailRecalculateDistanceNoTrack": {
+    "description": "Banner shown when the server refuses a distance recompute because the run has no stored GPS track"
+  },
+  "runDetailOriginallyRecorded": "Originally recorded: {distance}",
+  "@runDetailOriginallyRecorded": {
+    "description": "Note under the key stats of a recomputed run, showing the recorder's original distance in the viewer's unit",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
   "runDetailRouteSaved": "Saved \"{name}\" — {kept} waypoints ({smoothed} smoothed out)",
   "@runDetailRouteSaved": {
     "description": "Banner shown after saving a run's track as a route, with waypoint counts",

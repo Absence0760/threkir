@@ -2923,6 +2923,37 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get runDetailRecalculateDistance => 'Distanz neu berechnen';
+
+  @override
+  String get runDetailRecalculateDistanceDialogTitle => 'Distanz neu berechnen?';
+
+  @override
+  String get runDetailRecalculateDistanceDialogMessage => 'Die Distanz dieses Laufs wird mit dem verbesserten GPS-Filter aus dem GPS-Track neu berechnet. Er entfernt die zusätzliche Strecke, die durch GPS-Schwankungen entsteht. Die ursprünglich aufgezeichnete Distanz bleibt erhalten und wird neben der neuen angezeigt.';
+
+  @override
+  String get runDetailRecalculateDistanceConfirm => 'Neu berechnen';
+
+  @override
+  String get runDetailRecalculatingDistance => 'Wird neu berechnet – aktualisiere in einer Minute';
+
+  @override
+  String runDetailRecalculateDistanceFailed(String error) {
+    return 'Distanz konnte nicht neu berechnet werden: $error';
+  }
+
+  @override
+  String get runDetailRecalculateDistanceNotOwner => 'Nur die Person, die diesen Lauf aufgezeichnet hat, kann seine Distanz neu berechnen.';
+
+  @override
+  String get runDetailRecalculateDistanceNoTrack => 'Dieser Lauf hat keinen GPS-Track, aus dem neu berechnet werden kann.';
+
+  @override
+  String runDetailOriginallyRecorded(String distance) {
+    return 'Ursprünglich aufgezeichnet: $distance';
+  }
+
+  @override
   String runDetailRouteSaved(String name, int kept, int smoothed) {
     return '\"$name\" gespeichert — $kept Wegpunkte ($smoothed geglättet)';
   }

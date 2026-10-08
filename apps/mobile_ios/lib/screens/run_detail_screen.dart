@@ -19,6 +19,7 @@ import '../age_grade.dart';
 import '../backend_timeout.dart';
 import '../calories.dart';
 import '../detail_map_height.dart';
+import '../distance_recompute.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
@@ -141,6 +142,10 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// can't fire two redundant enqueues (the unique-index dedupe would
   /// catch it server-side anyway, but the UI feedback matters).
   bool _rematchBusy = false;
+  bool _recomputeBusy = false;
+  /// Set once the distance recompute is queued so the action stops offering
+  /// itself; the new distance lands only after the background job runs.
+  bool _recomputeRequested = false;
   /// Auto-link suggestion: when run.routeId is null AND the track
   /// confidently overlaps one of the runner's saved routes, surface
   /// a one-tap "Looks like you ran X — link?" banner. Stays null
@@ -376,6 +381,64 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     }
   }
 
+  bool get _canRecomputeDistance {
+    if (_recomputeRequested) return false;
+    final viewerId = widget.apiClient?.userId;
+    // Every run this screen shows comes from the viewer's own LocalRunStore,
+    // so the viewer is the owner; the RPC re-checks that server-side.
+    return canRecomputeDistance(
+      RecomputeCandidate.fromRun(run, ownerId: viewerId),
+      viewerId,
+    );
+  }
+
+  /// Queues a server-side recompute of this run's distance from its stored
+  /// track. Mirrors the web's `confirmRecomputeDistance` on `/runs/[id]`.
+  Future<void> _recomputeDistance() async {
+    final api = widget.apiClient;
+    if (api == null || _recomputeBusy) return;
+    final l10n = AppLocalizations.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        key: const ValueKey('recalculate-distance-dialog'),
+        title: Text(l10n.runDetailRecalculateDistanceDialogTitle),
+        content: Text(l10n.runDetailRecalculateDistanceDialogMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.runDetailCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.runDetailRecalculateDistanceConfirm),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    setState(() => _recomputeBusy = true);
+    try {
+      await api.requestDistanceRecompute(run.id);
+      if (!mounted) return;
+      setState(() => _recomputeRequested = true);
+      showTopBanner(context, l10n.runDetailRecalculatingDistance);
+    } catch (e) {
+      debugPrint('run detail distance recompute failed: $e');
+      if (!mounted) return;
+      final message = switch (classifyRecomputeError(e)) {
+        RecomputeFailure.notAuthorized =>
+          l10n.runDetailRecalculateDistanceNotOwner,
+        RecomputeFailure.noTrack => l10n.runDetailRecalculateDistanceNoTrack,
+        RecomputeFailure.other => l10n
+            .runDetailRecalculateDistanceFailed(friendlyError(l10n, e)),
+      };
+      showTopBanner(context, message);
+    } finally {
+      if (mounted) setState(() => _recomputeBusy = false);
+    }
+  }
+
   @override
   void dispose() {
     _connectivitySub?.cancel();
@@ -523,6 +586,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   String get _notes => (run.metadata?[MetadataKeys.notes] as String?) ?? '';
 
   static const _metresPerMile = 1609.344;
+
+  double? get _recordedDistanceM => recordedDistanceM(run.metadata);
 
   bool get _isDnf => run.metadata?[MetadataKeys.isDnf] == true;
 
@@ -852,6 +917,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                   _saveAsRoute();
                 case 'make_private':
                   _makePrivate();
+                case 'recalculate_distance':
+                  _recomputeDistance();
                 case 'delete':
                   _confirmDelete(context);
               }
@@ -872,6 +939,17 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.lock_outline),
                     title: Text(l10n.runDetailMakePrivate),
+                  ),
+                ),
+              if (_canRecomputeDistance)
+                PopupMenuItem(
+                  key: const ValueKey('recalculate-distance'),
+                  value: 'recalculate_distance',
+                  enabled: !_recomputeBusy,
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.straighten),
+                    title: Text(l10n.runDetailRecalculateDistance),
                   ),
                 ),
               const PopupMenuDivider(),
@@ -1213,6 +1291,19 @@ class _RunDetailScreenState extends State<RunDetailScreen>
           ],
         ),
       ),
+
+      if (_recordedDistanceM != null)
+        Padding(
+          key: const ValueKey('distance-recorded-note'),
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          child: Text(
+            l10n.runDetailOriginallyRecorded(
+                UnitFormat.distance(_recordedDistanceM!, unit)),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
 
       // Secondary stats
       if (secondaryStats.isNotEmpty)

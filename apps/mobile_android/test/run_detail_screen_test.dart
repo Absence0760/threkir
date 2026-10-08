@@ -139,6 +139,27 @@ class _MakePrivateApi extends ApiClient {
   }
 }
 
+/// Signed-in fake that records requestDistanceRecompute calls and throws
+/// [error] when set, so each refusal's banner can be driven without a
+/// backend. The track fetch answers empty so a `track_url` run never reaches
+/// for Storage.
+class _RecomputeApi extends ApiClient {
+  final List<String> calls = [];
+  Object? error;
+
+  @override
+  String? get userId => 'user-1';
+
+  @override
+  Future<List<Waypoint>> fetchTrack(Run run) async => const [];
+
+  @override
+  Future<void> requestDistanceRecompute(String runId) async {
+    calls.add(runId);
+    if (error != null) throw error!;
+  }
+}
+
 /// Signed-in fake whose `deleteRun` always throws — the flaky-signal /
 /// offline cloud delete of issue #252.
 class _DeleteFailApi extends ApiClient {
@@ -421,6 +442,150 @@ void main() {
 
       expect(find.text('Save as route'), findsOneWidget);
       expect(find.text('Make private'), findsNothing);
+    });
+
+    group('recalculate distance', () {
+      Run recomputable({Map<String, dynamic> extra = const {}}) => _run(
+            metadata: {
+              'activity_type': 'run',
+              'track_url': 'user-1/run-1.json.gz',
+              ...extra,
+            },
+          );
+
+      Future<void> openMenu(WidgetTester tester) async {
+        await tester.tap(find.byTooltip('More'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+      }
+
+      Future<void> confirmRecompute(WidgetTester tester) async {
+        await openMenu(tester);
+        await tester.tap(find.text('Recalculate distance'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(find.text('Recalculate distance?'), findsOneWidget);
+        await tester.tap(find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.widgetWithText(FilledButton, 'Recalculate'),
+        ));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+      }
+
+      testWidgets('an eligible run offers the action', (tester) async {
+        await _pump(tester, recomputable(), apiClient: _RecomputeApi());
+        await openMenu(tester);
+        expect(find.text('Recalculate distance'), findsOneWidget);
+      });
+
+      testWidgets('an ineligible run hides it', (tester) async {
+        final cases = [
+          recomputable(extra: {'distance_source': 'pedometer'}),
+          recomputable(extra: {'distance_estimator': 'kalman_v1'}),
+          _run(metadata: {'activity_type': 'run'}),
+        ];
+        for (final run in cases) {
+          await _pump(tester, run, apiClient: _RecomputeApi());
+          await openMenu(tester);
+          expect(find.text('Recalculate distance'), findsNothing,
+              reason: '${run.metadata}');
+          await tester.pumpWidget(const SizedBox());
+          if (_runsDir.existsSync()) _runsDir.deleteSync(recursive: true);
+        }
+      });
+
+      testWidgets('signed out hides it', (tester) async {
+        await _pump(tester, recomputable());
+        await openMenu(tester);
+        expect(find.text('Recalculate distance'), findsNothing);
+      });
+
+      testWidgets('cancel leaves the run untouched', (tester) async {
+        final api = _RecomputeApi();
+        await _pump(tester, recomputable(), apiClient: api);
+        await openMenu(tester);
+        await tester.tap(find.text('Recalculate distance'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.tap(find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.widgetWithText(TextButton, 'Cancel'),
+        ));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(api.calls, isEmpty);
+      });
+
+      testWidgets('confirm calls the RPC, banners, and stops offering it',
+          (tester) async {
+        final api = _RecomputeApi();
+        await _pump(tester, recomputable(), apiClient: api);
+        await confirmRecompute(tester);
+
+        expect(api.calls, ['run-1']);
+        expect(find.text('Recalculating — refresh in a minute'),
+            findsOneWidget);
+
+        await tester.pump(const Duration(seconds: 4));
+        await tester.pump(const Duration(milliseconds: 500));
+        await openMenu(tester);
+        expect(find.text('Recalculate distance'), findsNothing);
+      });
+
+      testWidgets('each failure is surfaced distinctly and keeps the action',
+          (tester) async {
+        final cases = <Object, String>{
+          const DistanceRecomputeRefused(
+                  DistanceRecomputeRefusal.notAuthorized):
+              'Only the runner who recorded this run can recalculate its '
+                  'distance.',
+          const DistanceRecomputeRefused(DistanceRecomputeRefusal.noTrack):
+              'This run has no GPS track to recalculate from.',
+          Exception('offline'): "Couldn't recalculate distance:",
+        };
+        for (final entry in cases.entries) {
+          final api = _RecomputeApi()..error = entry.key;
+          await _pump(tester, recomputable(), apiClient: api);
+          await confirmRecompute(tester);
+
+          expect(api.calls, ['run-1']);
+          expect(find.textContaining(entry.value), findsOneWidget,
+              reason: '${entry.key}');
+          expect(find.text('Recalculating — refresh in a minute'),
+              findsNothing);
+
+          await tester.pump(const Duration(seconds: 4));
+          await tester.pump(const Duration(milliseconds: 500));
+          await openMenu(tester);
+          expect(find.text('Recalculate distance'), findsOneWidget);
+          await tester.pumpWidget(const SizedBox());
+          if (_runsDir.existsSync()) _runsDir.deleteSync(recursive: true);
+        }
+      });
+
+      testWidgets('a recomputed run shows its original distance',
+          (tester) async {
+        await _pump(
+          tester,
+          recomputable(extra: {
+            'distance_estimator': 'kalman_v1',
+            'distance_recorded_m': 6309.4,
+          }),
+          apiClient: _RecomputeApi(),
+        );
+        expect(find.byKey(const ValueKey('distance-recorded-note')),
+            findsOneWidget);
+        expect(find.textContaining('Originally recorded: 6.31 km'),
+            findsOneWidget);
+      });
+
+      testWidgets('a never-recomputed run shows no original-distance note',
+          (tester) async {
+        await _pump(tester, recomputable(), apiClient: _RecomputeApi());
+        expect(find.byKey(const ValueKey('distance-recorded-note')),
+            findsNothing);
+      });
     });
 
     testWidgets('save-as-route shows an error banner when the store throws',

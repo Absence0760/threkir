@@ -101,6 +101,22 @@ class TrackTooLargeException implements Exception {
       'bytes, over the maximum allowed size of $limitBytes)';
 }
 
+/// Why `request_distance_recompute` refused to queue a recompute. The RPC
+/// raises 42501 for a missing run and for someone else's run alike, so
+/// [notAuthorized] never says which.
+enum DistanceRecomputeRefusal { notAuthorized, noTrack }
+
+/// A typed refusal from [ApiClient.requestDistanceRecompute], so a caller can
+/// tell "not yours" and "no track" apart from a transport failure.
+class DistanceRecomputeRefused implements Exception {
+  final DistanceRecomputeRefusal reason;
+
+  const DistanceRecomputeRefused(this.reason);
+
+  @override
+  String toString() => 'DistanceRecomputeRefused(${reason.name})';
+}
+
 class ApiClient {
   /// Custom-scheme deep link GoTrue redirects the signup-confirmation /
   /// magic-link auth mail to on mobile. supabase_flutter's app_links
@@ -1701,6 +1717,28 @@ class ApiClient {
   /// Mirrors `enqueueRunRematch` in `apps/web/src/lib/core/data.ts`.
   Future<void> enqueueRunRematch(String runId) async {
     await _client.rpc('enqueue_run_rematch', params: {'p_run_id': runId});
+  }
+
+  /// Queue a server-side recompute of a run's distance from its stored GPS
+  /// track (docs/features/gps_distance.md § Server recompute). The
+  /// `request_distance_recompute` SECURITY DEFINER RPC raises 42501 unless the
+  /// caller owns the run and 22000 when it has no track; both surface as a
+  /// [DistanceRecomputeRefused], anything else is rethrown as-is. A second
+  /// request while one is queued is a no-op server-side. Mirrors
+  /// `requestDistanceRecompute` in `apps/web/src/lib/core/data.ts`.
+  Future<void> requestDistanceRecompute(String runId) async {
+    try {
+      await _client
+          .rpc('request_distance_recompute', params: {'p_run_id': runId});
+    } on PostgrestException catch (e) {
+      final refusal = switch (e.code) {
+        '42501' => DistanceRecomputeRefusal.notAuthorized,
+        '22000' => DistanceRecomputeRefusal.noTrack,
+        _ => null,
+      };
+      if (refusal == null) rethrow;
+      throw DistanceRecomputeRefused(refusal);
+    }
   }
 
   /// Escalate a sustained off-route departure to the runner's confirmed

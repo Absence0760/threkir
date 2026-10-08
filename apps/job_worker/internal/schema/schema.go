@@ -128,6 +128,20 @@ const (
 	MetaStravaActivityType = "strava_activity_type"
 	MetaImportedFrom       = "imported_from"
 	MetaImportedAt         = "imported_at"
+
+	// Read by the distance recompute (kind='distance_recompute') to decide
+	// whether a run's distance is GPS-measured and the estimator's to
+	// replace.
+	MetaInProgress      = "in_progress"
+	MetaManualEntry     = "manual_entry"
+	MetaIndoor          = "indoor"
+	MetaIndoorEstimated = "indoor_estimated"
+	MetaDistanceSource  = "distance_source"
+	// Written by the distance recompute. distance_recorded_m keeps the
+	// recorder's original figure across repeated recomputes.
+	MetaDistanceRecordedM    = "distance_recorded_m"
+	MetaDistanceEstimator    = "distance_estimator"
+	MetaDistanceRecomputedAt = "distance_recomputed_at"
 )
 
 // PrefsKey is a key inside the `user_settings.prefs` jsonb bag — the

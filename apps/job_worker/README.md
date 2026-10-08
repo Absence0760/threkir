@@ -3,7 +3,13 @@
 Background-job drainer for the `jobs` Postgres queue (migration
 [`20260609_001_run_match_pipeline.sql`](../backend/supabase/migrations/20260609_001_run_match_pipeline.sql)).
 First registered handler is `kind='map_match'`; additional kinds plug
-into `internal/worker.go`'s dispatch switch.
+into `internal/worker.go`'s dispatch switch. `kind='distance_recompute'`
+(enqueued by the owner-only `request_distance_recompute(p_run_id)` RPC,
+payload `{run_id, user_id}`) replays an app- or watch-recorded run's
+stored track through the spec-v1 GPS distance estimator
+(`internal/gpsdistance/`, [`docs/features/gps_distance.md`](../../docs/features/gps_distance.md))
+and rewrites `runs.distance_m`, keeping the original in
+`metadata.distance_recorded_m`.
 
 ## Required env
 

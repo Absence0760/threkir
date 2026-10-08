@@ -164,6 +164,15 @@ type Backend interface {
 	// at-least-once redelivery; reports whether it was the caller that
 	// announced.
 	NotifyDataExportReady(ctx context.Context, exportJobID string) (bool, error)
+	// Distance-recompute path — kind='distance_recompute', enqueued by the
+	// owner-only request_distance_recompute RPC. Replays the stored track
+	// through the spec-v1 estimator (internal/gpsdistance) and rewrites
+	// runs.distance_m. ReadRunForDistanceRecompute returns ErrRunNotFound
+	// for a deleted run; UpdateRunDistance returns
+	// ErrRunChangedDuringRecompute when its track_url + metadata CAS misses.
+	ReadRunForDistanceRecompute(ctx context.Context, runID string) (*DistanceRecomputeRun, error)
+	DownloadRecordedTrack(ctx context.Context, path string) ([]RecordedTrackPoint, error)
+	UpdateRunDistance(ctx context.Context, read *DistanceRecomputeRun, distanceM float64, metadata json.RawMessage) error
 }
 
 // WebPushSender is the transport for kind='web_push' jobs. Production wires
@@ -504,6 +513,8 @@ func (w *Worker) dispatch(ctx context.Context, job *Job) error {
 		return w.handleDataExport(ctx, job)
 	case "export_blob_reap":
 		return w.handleExportBlobReap(ctx, job)
+	case "distance_recompute":
+		return w.handleDistanceRecompute(ctx, job)
 	default:
 		return fmt.Errorf("unknown job kind %q", job.Kind)
 	}

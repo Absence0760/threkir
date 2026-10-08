@@ -62,6 +62,8 @@ Start every session with `supabase start` in this directory. Ports are fixed via
 
 Confirm it's running with `supabase status`. The gotcha I keep hitting: `supabase status` returns an error if you run it from the repo root (it looks for `config.toml` in the cwd). `cd` here first.
 
+**The edge runtime is pinned separately from the CLI.** Every CLI up to 2.118.0 bundles an edge runtime that can die with `Bus error (core dumped)` (exit 135) on its first request (issue #916). CI pins `edge-runtime:v1.77.1`, which fixes it, through the CLI's own `supabase/.temp/edge-runtime-version` override (`.github/actions/start-supabase/start_stack.sh`, decisions § 1795). If you see that crash locally, apply the same pin: `printf v1.77.1 > supabase/.temp/edge-runtime-version`, then `supabase stop && supabase start`. The file is gitignored CLI state, so a fresh clone or a wiped `.temp/` needs it again.
+
 **Reset the database** with `supabase db reset`. This drops and recreates the local DB, replays every migration in `supabase/migrations/`, runs `seed.sql`, and leaves you at a known-good state. Use this between destructive experiments.
 
 ## The test users

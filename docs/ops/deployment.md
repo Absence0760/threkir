@@ -482,26 +482,28 @@ were 16 and 20 of those. They were left for whoever owns them. Like branch
 protection, the setting is invisible from inside the tree, so this paragraph is
 the only record of it.
 
-### One red gate is not the pull request's fault, and it has no fix here
+### The edge runtime's first-request SIGBUS is fixed by a pinned image
 
-The gate can go red on a change with nothing wrong with it. The known case is
-[issue #916](https://github.com/Absence0760/threkir/issues/916): the local
-Supabase stack's edge runtime exits **135 (SIGBUS)** while serving the first
-request it gets, which is the `start-supabase` action's own readiness probe, so
-a Playwright shard fails before a test runs and reports
-`edge runtime (clip-public-track) never became ready`. Three occurrences since
-2026-09-08, all on `ubuntu-latest`. The cause is upstream and unfixed: the
-runtime carries a copy of Deno's cache layer that deletes a cache database
-another connection still has mapped, and no released edge-runtime image has
-taken [denoland/deno#34873](https://github.com/denoland/deno/pull/34873), which
-fixed it. Nothing in this repo can close it — the CLI pin cannot move to an
-image with the same bug, and both levers that would turn the check green
-(a wider budget, an automatic restart on 135) would hide a live crash.
+[Issue #916](https://github.com/Absence0760/threkir/issues/916): the local
+Supabase stack's edge runtime exited **135 (SIGBUS)** while serving the first
+request it got, which is the `start-supabase` action's own readiness probe, so
+a job failed before a test ran and reported
+`edge runtime (clip-public-track) never became ready`. Seven occurrences
+between 2026-09-08 and 2026-09-22, on Playwright shards and on
+`Kotlin row codegen drift`. The cause was upstream: the runtime's copy of
+Deno's cache layer deleted a cache database another connection still had
+mapped ([decisions § 1663](../architecture/decisions.md)). edge-runtime
+**v1.77.1** fixed it
+([supabase/edge-runtime#746](https://github.com/supabase/edge-runtime/issues/746)),
+and `start_stack.sh` pins the runtime to that image through the CLI's own
+override file while the CLI itself stays on `2.84.2`
+([decisions § 1795](../architecture/decisions.md)).
 
-**Operator action: re-run the failed job.** Do not treat it as the branch's
-failure and do not chase it as a flaky test.
-[decisions § 1663](../architecture/decisions.md) holds the evidence and the
-one-command check that says when the pin can move.
+**Operator action if it recurs:** check the forensics' `image=` line. On
+`edge-runtime:v1.77.1` or later it is a new bug, not this one: reopen #916 with
+the dump rather than re-running until it passes. On an older image the pin did
+not land, which `start_stack.sh` is meant to refuse, so treat that as a bug in
+the action.
 
 ## Release vs deploy
 

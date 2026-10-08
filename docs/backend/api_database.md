@@ -1376,7 +1376,7 @@ provided — `exportGuardExclusions` in the Go worker records why.
 
 #### `jobs`
 
-Generic Postgres-backed job queue. First tenant was map matching (`kind = 'map_match'`); it now also hosts the Strava webhook ingest (`kind = 'strava_event'`), hourly token rotation (`kind = 'token_refresh'`), the run-photo EXIF-strip + thumbnail (`kind = 'photo_process'`), and the club-photo EXIF-strip + thumbnail (`kind = 'club_photo_process'`, migration `20270301_001`) that moved off / never lived in Edge Functions (see `roadmap.md` Phase 2 backend bullets). The `kind` CHECK allowlist is maintained by ALTER migrations (latest adds `data_export`, `20270603_001`); a new kind must extend the CHECK + the Go dispatch switch + the pgtap kind test together. Data export is a job kind as of [decisions § 717](../architecture/decisions.md) — `kind = 'data_export'`, enqueued by `enqueue_data_export` alongside its `data_export_jobs` state row, with `max_attempts = 2` (every attempt past the tus Finish uploads a whole archive) and a 15-minute per-attempt worker clock instead of the generic five. The subject no longer blocks on the signed URL: they poll `GET /v1/export/jobs/latest`, which mints it at read time.
+Generic Postgres-backed job queue. First tenant was map matching (`kind = 'map_match'`); it now also hosts the Strava webhook ingest (`kind = 'strava_event'`), hourly token rotation (`kind = 'token_refresh'`), the run-photo EXIF-strip + thumbnail (`kind = 'photo_process'`), and the club-photo EXIF-strip + thumbnail (`kind = 'club_photo_process'`, migration `20270301_001`) that moved off / never lived in Edge Functions (see `roadmap.md` Phase 2 backend bullets). The `kind` CHECK allowlist is maintained by ALTER migrations (latest adds `data_export`, `20270603_001`); a new kind must extend the CHECK + the Go dispatch switch + the pgtap kind test together. Data export is a job kind as of [decisions § 717](../architecture/decisions.md) — `kind = 'data_export'`, enqueued by `enqueue_data_export` alongside its `data_export_jobs` state row, with `max_attempts = 2` (every attempt past the tus Finish uploads a whole archive) and a 15-minute per-attempt worker clock instead of the generic five. The subject no longer blocks on the signed URL: they poll `GET /v1/export/jobs/latest`, which mints it at read time. The GPS distance recompute is a job kind as of migration `20270716000001` — `kind = 'distance_recompute'`, payload `{run_id, user_id}` (the `map_match` shape; `jobs` has no `run_id` column), enqueued only by the owner-only `request_distance_recompute` RPC below and deduped per run by the partial unique index `jobs_dedupe_distance_recompute` (same predicate as `jobs_dedupe_map_match`). The worker re-derives `runs.distance_m` from the stored track with the GPS distance estimator, keeping the original in `metadata.distance_recorded_m` ([gps_distance.md § Server recompute](../features/gps_distance.md#server-recompute)).
 
 ```sql
 create table jobs (
@@ -2088,10 +2088,10 @@ grant  execute on function public.<fn>(<args>) to authenticated;   -- and/or ser
 
 Add `authenticated` to the revoke list when no client role should hold it at all
 (the `cleanup_*` / `enqueue_*` cron family, and helpers only a SECURITY DEFINER
-trigger calls). 60 migrations write a function-level `from public, anon` revoke
-today (48 as `revoke execute`, 12 as `revoke all`); it is the house form for
+trigger calls). 61 migrations write a function-level `from public, anon` revoke
+today (49 as `revoke execute`, 12 as `revoke all`); it is the house form for
 exactly this reason, and `check_migration_function_revoke_noop.mjs` is what
-keeps it — it replays all 484 migrations in version order and fails the PR on
+keeps it — it replays all 485 migrations in version order and fails the PR on
 any EXECUTE revoke that leaves the other channel at its image-dependent
 default, in either direction. **Those four figures are derived, not typed**: the
 guard prints them and `check_migration_function_revoke_noop.test.mjs` asserts
@@ -2372,6 +2372,10 @@ SECURITY DEFINER, `service_role`-only. The observability pair for terminal job f
 ### `enqueue_run_rematch(p_run_id)`
 
 SECURITY DEFINER. Owner-only manual re-match trigger called by the "Re-match" button on `/runs/[id]`. Resets `run_matched_tracks` (status=pending, attempts=0, error_message=null, …) and inserts a fresh `map_match` row into `jobs`. Self-gates on `auth.uid() = run.user_id`; non-owner calls raise `42501`. Idempotent against in-flight jobs via `jobs_dedupe_map_match`. Migration `20260612_001_enqueue_run_rematch.sql`.
+
+### `request_distance_recompute(p_run_id)`
+
+SECURITY DEFINER, `search_path = public`, EXECUTE for `authenticated` only (revoked `from public, anon`). Returns `void`. Called by the "Recalculate distance" action on `/runs/[id]` through `requestDistanceRecompute` in `core/data.ts`. Raises `42501` unless `auth.uid()` owns the run — a missing run raises the same `42501`, so the RPC is not an existence oracle for run ids — and `22000` when the run has no `track_url`. Otherwise inserts a `distance_recompute` job with payload `{run_id, user_id}` and tier-aware `scheduled_at` (`job_scheduled_at_for_user`), `on conflict do nothing` against `jobs_dedupe_distance_recompute`, so a second tap while one is queued or running is a no-op. Which runs are worth recomputing (app/watch source, not a pedometer distance, not already `kalman_v1`) is decided by the page's `canRecomputeDistance` and again by the worker; the RPC checks only ownership and the track. Migration `20270716000001_distance_recompute.sql`; pgtap `request_distance_recompute_test.sql`.
 
 ### `clone_plan_template(template_id uuid, new_start_date date)`
 

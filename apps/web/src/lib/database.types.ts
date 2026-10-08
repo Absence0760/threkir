@@ -5764,6 +5764,10 @@ export type Database = {
         Args: { p_route_id: string }
         Returns: undefined
       }
+      request_distance_recompute: {
+        Args: { p_run_id: string }
+        Returns: undefined
+      }
       resolve_target_reports: {
         Args: {
           p_resolution?: string

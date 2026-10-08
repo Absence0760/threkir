@@ -15,9 +15,16 @@ import WatchConnectivity
 ///
 /// The singleton is installed in `AppDelegate` at launch (so the
 /// delegate is live before the Flutter engine exists) and the method
-/// channel is attached as soon as the engine spins up. Any runs that
-/// arrive before the engine is ready are queued in memory and flushed
-/// when the channel becomes available.
+/// channel is attached as soon as the engine spins up. Runs that arrive
+/// before Dart has installed its handler and said `ready` are held in
+/// memory and flushed when it does.
+///
+/// That holding pen is the only buffer here, and it is not where a run is
+/// kept safe. Dart writes every run to its on-disk `WatchIngestQueue` before
+/// it answers, and answers `true` once the write lands — signed in or not,
+/// online or not — so the queue, which knows the auth state and why an upload
+/// failed, owns every retry. Anything but `true` means Dart could not take the
+/// run at all, and it goes back in the pen (decisions § 1801).
 @objc class WatchIngestBridge: NSObject, WCSessionDelegate {
     @objc static let shared = WatchIngestBridge()
 
@@ -41,13 +48,6 @@ import WatchConnectivity
     static let maxSavedRoutes = 12
     static let maxSavedRoutePoints = 128
 
-    /// A run Dart keeps refusing is re-dispatched on every watch contact, so
-    /// without a ceiling a permanently-failing payload would spend a dispatch
-    /// per activation and per received file for the life of the process. Past
-    /// the ceiling the runs stay buffered — dropping them is the worse failure
-    /// — and retrying resumes when a fresh engine attaches.
-    static let maxRefusedRetries = 8
-
     /// Finisher times held here while no Flutter engine can take them. Matches
     /// `PendingRaceResultStore.maxEntries` on the watch and
     /// `kPendingRaceResultsMax` in `race_controller.dart`: one row per race, so
@@ -61,7 +61,9 @@ import WatchConnectivity
     private let state = DispatchQueue(label: "com.threkir.watch-ingest.state")
     private var _methodChannel: FlutterMethodChannel?
     private var _pending: [[String: Any]] = []
-    private var _refusedRetries = 0
+    /// Dart has installed its `run` handler on this engine. Before that a
+    /// dispatch is answered "not implemented" by a channel nobody listens on.
+    private var _dartReady = false
 
     private var routeChannel: FlutterMethodChannel?
     private var _raceChannel: FlutterMethodChannel?
@@ -73,8 +75,9 @@ import WatchConnectivity
     }
     private var prefsChannel: FlutterMethodChannel?
 
-    private var methodChannel: FlutterMethodChannel? {
-        state.sync { _methodChannel }
+    /// The channel, but only once Dart can answer on it.
+    private var readyChannel: FlutterMethodChannel? {
+        state.sync { _dartReady ? _methodChannel : nil }
     }
 
     var pending: [[String: Any]] {
@@ -93,6 +96,14 @@ import WatchConnectivity
             name: "run_app/watch_ingest",
             binaryMessenger: binaryMessenger
         )
+        ingest.setMethodCallHandler { call, result in
+            guard call.method == "ready" else {
+                result(FlutterMethodNotImplemented)
+                return
+            }
+            self.markDartReady()
+            result(nil)
+        }
         let routes = FlutterMethodChannel(
             name: "run_app/watch_route",
             binaryMessenger: binaryMessenger
@@ -123,15 +134,19 @@ import WatchConnectivity
         prefsChannel = prefs
         state.sync {
             _methodChannel = ingest
+            // A new engine runs a new isolate, which has not installed its
+            // handler yet; `ready` from Dart is what releases the pen.
+            _dartReady = false
             _raceChannel = race
-            // A fresh engine is a genuinely new chance at the write, so a run
-            // stranded by the retry ceiling gets tried again rather than
-            // sitting in the buffer until the process dies.
-            _refusedRetries = 0
             _raceResultRetries = 0
         }
-        flushPending()
         flushPendingRaceResults()
+    }
+
+    /// Dart's `ready`: its handler is installed, so the pen can drain.
+    func markDartReady() {
+        state.sync { _dartReady = true }
+        flushPending()
     }
 
     // MARK: - Live race relay (phone <-> watch)
@@ -534,9 +549,8 @@ import WatchConnectivity
     }
 
     func session(_ session: WCSession, didReceive file: WCSessionFile) {
-        // Watch contact is the retry trigger: a run Dart refused earlier gets
-        // another go here, ahead of the one just handed over, so the buffer
-        // drains in arrival order instead of waiting for an engine re-attach.
+        // Anything still in the pen goes ahead of the run just handed over, so
+        // runs reach Dart in arrival order.
         flushPending()
         guard let metadata = file.metadata else { return }
 
@@ -551,14 +565,14 @@ import WatchConnectivity
         }
 
         let payload = Self.ingestPayload(metadata: metadata, track: track)
-        let engineIsUp = state.sync { () -> Bool in
-            guard _methodChannel != nil else {
+        let dartIsUp = state.sync { () -> Bool in
+            guard _methodChannel != nil, _dartReady else {
                 _pending.append(payload)
                 return false
             }
             return true
         }
-        if engineIsUp { dispatch(payload) }
+        if dartIsUp { dispatch(payload) }
     }
 
     static func ingestPayload(metadata: [String: Any], track: String) -> [String: Any] {
@@ -587,7 +601,6 @@ import WatchConnectivity
         // dispatch re-enters this queue to re-buffer a run, and a `sync` from
         // inside a held block would deadlock.
         let snapshot = state.sync { () -> [[String: Any]] in
-            guard _refusedRetries < Self.maxRefusedRetries else { return [] }
             let snapshot = _pending
             _pending.removeAll()
             return snapshot
@@ -598,30 +611,32 @@ import WatchConnectivity
     func dispatch(_ payload: [String: Any]) {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            guard let channel = self.methodChannel else {
-                // The engine is not up yet. That is not a refusal, so it must
-                // not spend the retry budget a real refusal is bounded by.
+            guard let channel = self.readyChannel else {
                 self.buffer(payload)
                 return
             }
             channel.invokeMethod("run", arguments: payload) { [weak self] result in
-                // If Dart returned false, the Supabase write failed — re-queue
-                // for the next watch contact so we don't drop the run.
-                if let ok = result as? Bool, !ok {
-                    self?.requeueRefused(payload)
-                }
+                if !Self.isHandOff(result) { self?.buffer(payload) }
             }
         }
     }
 
-    private func buffer(_ payload: [String: Any]) {
-        state.sync { _pending.append(payload) }
+    /// Whether Dart's reply means it now owns the run. Only a literal `true`
+    /// does: `false` is Dart saying its disk write and its direct save both
+    /// failed, and "not implemented" or an error is a Dart that never ran the
+    /// handler. Every one of those used to be read as success except `false`,
+    /// which is how a run reached a handler-less channel and vanished.
+    ///
+    /// There is no retry ceiling on what this sends back to the pen. The old
+    /// one bounded a payload Dart refused for its own reasons, forever; a
+    /// refusal now says nothing about the payload — the queue writes every one,
+    /// decodable or not — so the pen retries on the
+    /// next watch contact or `ready`, and nothing more often.
+    static func isHandOff(_ reply: Any?) -> Bool {
+        (reply as? Bool) == true
     }
 
-    func requeueRefused(_ payload: [String: Any]) {
-        state.sync {
-            _refusedRetries += 1
-            _pending.append(payload)
-        }
+    func buffer(_ payload: [String: Any]) {
+        state.sync { _pending.append(payload) }
     }
 }

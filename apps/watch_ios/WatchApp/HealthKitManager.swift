@@ -108,6 +108,29 @@ enum HeartRateCoverage {
             coverage: coverage
         )
     }
+
+    /// One mean across a run recorded by two sessions: the one the app held
+    /// before it was terminated, and the one it opened to continue the run.
+    ///
+    /// Each mean is weighted by the active seconds its sensor was credited
+    /// with, so ten minutes after a relaunch cannot outvote eight hours
+    /// before it. Either side alone is the answer when the other is absent,
+    /// and with no weight on either side the current mean wins — that is the
+    /// recovered-session case, where HealthKit's own builder survived and its
+    /// average already spans the whole workout.
+    static func blendedMean(
+        priorMean: Double?,
+        priorWeightSeconds: TimeInterval,
+        currentMean: Double?,
+        currentWeightSeconds: TimeInterval
+    ) -> Double? {
+        guard let current = currentMean, current.isFinite else { return priorMean }
+        guard let prior = priorMean, prior.isFinite else { return current }
+        let pw = priorWeightSeconds.isFinite ? max(priorWeightSeconds, 0) : 0
+        let cw = currentWeightSeconds.isFinite ? max(currentWeightSeconds, 0) : 0
+        guard pw + cw > 0 else { return current }
+        return (prior * pw + current * cw) / (pw + cw)
+    }
 }
 
 /// The coverage measurement itself, as a value: how many of the run's active
@@ -146,6 +169,18 @@ struct HeartRateCoverageAccumulator {
     /// `Optional<Double>` is a word plus a tag, and a torn read of THAT is a
     /// plausible-looking age rather than a wrong one by a fraction.
     private var lastSampleAtEpoch: TimeInterval = 0
+
+    /// Pick up a measurement the app was terminated in the middle of.
+    ///
+    /// `atActiveSeconds` is where the resumed run's clock stands, so the
+    /// first tick after the relaunch credits one tick, not the whole span
+    /// since the start of the run. The sample stamp is cleared: a sample from
+    /// before the termination is no evidence the sensor is delivering now.
+    mutating func restore(coveredSeconds covered: TimeInterval, atActiveSeconds: TimeInterval) {
+        coveredSeconds = covered.isFinite ? max(covered, 0) : 0
+        lastTickSeconds = atActiveSeconds.isFinite ? atActiveSeconds : 0
+        lastSampleAtEpoch = 0
+    }
 
     /// The session started: from here a zero is a measurement.
     mutating func begin() {
@@ -228,6 +263,10 @@ class HealthKitManager: NSObject, ObservableObject {
     /// one Wear's `lastHrSampleAtMs` has. The two touch disjoint fields.
     private var coverage = HeartRateCoverageAccumulator()
 
+    /// What the run measured before the app was terminated, when this run is
+    /// a continued one. Nil for a run recorded in one process.
+    private var prior: HeartRatePrior?
+
     func requestAuthorization() async {
         guard HKHealthStore.isHealthDataAvailable() else { return }
         let hrType = HKQuantityType(.heartRate)
@@ -239,8 +278,16 @@ class HealthKitManager: NSObject, ObservableObject {
     /// `activityType` is the runner's pre-run choice, not a constant: HealthKit
     /// scores energy and heart rate by it, so a walk or a ride configured as a
     /// run is filed in Health as something the runner did not do.
-    func startWorkout(activityType: HKWorkoutActivityType) {
+    func startWorkout(activityType: HKWorkoutActivityType, resuming resumed: HeartRatePrior? = nil) {
         guard session == nil else { return }
+        // Restored before the session is attempted, so a continued run whose
+        // new session cannot open still carries the mean and the coverage it
+        // measured before the termination — and from here on is charged for
+        // a sensor that delivers nothing, which is the truth.
+        if let resumed {
+            prior = resumed
+            coverage.restore(coveredSeconds: resumed.coveredSeconds, atActiveSeconds: resumed.atActiveSeconds)
+        }
         let config = HKWorkoutConfiguration()
         config.activityType = activityType
         config.locationType = .outdoor
@@ -259,11 +306,64 @@ class HealthKitManager: NSObject, ObservableObject {
             session.startActivity(with: startDate)
             builder.beginCollection(withStart: startDate) { _, _ in }
             // From here a zero is a real measurement. Before it — and in the
-            // catch below — there is no sensor to have a duty cycle.
-            coverage.begin()
+            // catch below — there is no sensor to have a duty cycle. A
+            // continued run is already measuring, from what it restored above.
+            if resumed == nil { coverage.begin() }
         } catch {
             // HealthKit unavailable (simulator edge cases, missing entitlement).
             // HR display stays at "—"; the rest of the run records normally.
+        }
+    }
+
+    /// Take back the workout session watchOS kept running while the app was
+    /// terminated, so the continued run's heart rate is the same workout's
+    /// and Health files one workout rather than an orphan plus a second.
+    ///
+    /// The surviving builder's average already spans the whole workout, so
+    /// the prior mean is kept only as a fallback for a run stopped before the
+    /// builder has delivered again: it carries no weight against the
+    /// builder's own figure.
+    func adoptRecoveredWorkout(_ recovered: HKWorkoutSession, resuming resumed: HeartRatePrior) {
+        guard session == nil else { return }
+        let builder = recovered.associatedWorkoutBuilder()
+        builder.dataSource = HKLiveWorkoutDataSource(
+            healthStore: healthStore,
+            workoutConfiguration: recovered.workoutConfiguration
+        )
+        recovered.delegate = self
+        builder.delegate = self
+        session = recovered
+        self.builder = builder
+        sessionDidFail = false
+        prior = HeartRatePrior(
+            mean: resumed.mean,
+            coveredSeconds: 0,
+            atActiveSeconds: resumed.atActiveSeconds
+        )
+        coverage.restore(coveredSeconds: resumed.coveredSeconds, atActiveSeconds: resumed.atActiveSeconds)
+    }
+
+    /// End a workout session the app has no run to continue into, so Health
+    /// does not keep a workout open that nothing is recording.
+    func endOrphanedSession(_ orphan: HKWorkoutSession) {
+        guard orphan !== session else { return }
+        orphan.end()
+    }
+
+    /// Held for the life of the process: the recovery request answers
+    /// asynchronously, and a store released before it does need never answer.
+    private static let recoveryStore = HKHealthStore()
+
+    /// Ask HealthKit for the workout session that outlived the app. Called
+    /// from `handleActiveWorkoutRecovery()`; answers on the main queue, and
+    /// not at all when there is none.
+    static func recoverActiveWorkoutSession(_ completion: @escaping (HKWorkoutSession) -> Void) {
+        recoveryStore.recoverActiveWorkoutSession { recovered, error in
+            guard let recovered else {
+                if let error { print("HealthKitManager: workout recovery failed: \(error)") }
+                return
+            }
+            DispatchQueue.main.async { completion(recovered) }
         }
     }
 
@@ -299,6 +399,7 @@ class HealthKitManager: NSObject, ObservableObject {
     func reset() {
         sessionDidFail = false
         coverage.reset()
+        prior = nil
         DispatchQueue.main.async {
             self.currentBPM = nil
             self.averageBPM = nil
@@ -348,7 +449,26 @@ class HealthKitManager: NSObject, ObservableObject {
     /// never carried it. `docs/backend/metadata.md`'s `hr_coverage` row states
     /// the population.
     var summaryAverageBPM: Double? {
-        sessionDidFail ? nil : averageBPM
+        sessionDidFail ? nil : ungradedMean
+    }
+
+    /// The mean of the whole run's samples, across a termination when there
+    /// was one. Ungraded: only `heartRateClaim` may put it on a row.
+    private var ungradedMean: Double? {
+        guard let prior else { return averageBPM }
+        return HeartRateCoverage.blendedMean(
+            priorMean: prior.mean,
+            priorWeightSeconds: prior.coveredSeconds,
+            currentMean: averageBPM,
+            currentWeightSeconds: max((coverage.coveredSeconds ?? 0) - prior.coveredSeconds, 0)
+        )
+    }
+
+    /// What the crash checkpoint carries so a continued run can grade its
+    /// heart rate again at the finish: the ungraded mean and the covered
+    /// seconds behind it.
+    var checkpointMeasurement: (mean: Double?, coveredSeconds: TimeInterval?) {
+        (summaryAverageBPM, coverage.coveredSeconds)
     }
 
     /// Credit the tick's active seconds to coverage when the newest usable

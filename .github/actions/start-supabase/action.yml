@@ -1,8 +1,9 @@
 name: Start local Supabase stack
 description: >
   Boot the local Supabase stack (applies migrations + seed.sql on the
-  pinned 2.84.2 CLI) with a port-clean retry, then wait until its
-  sidecars actually serve.
+  pinned 2.84.2 CLI, with the edge runtime alone pinned to v1.77.1 for the
+  SIGBUS fix -- start_stack.sh incident 8) with a port-clean retry, then
+  wait until its sidecars actually serve.
 
   Why a composite action rather than six inline copies: the start step
   is duplicated across every stack-using job (parity-types, schema

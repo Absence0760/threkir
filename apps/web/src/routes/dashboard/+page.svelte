@@ -72,6 +72,7 @@
 		revealOnNavigate,
 	} from '$lib/stores/modality_visibility.svelte';
 	import DashboardWeekLead from '$lib/components/DashboardWeekLead.svelte';
+	import { weeklyGoalTarget } from '$lib/training/week_lead';
 	import MetricLabel from '$lib/components/MetricLabel.svelte';
 	import { workoutKindLabel } from '$lib/training/workout_labels';
 	import WorkoutEditor from '$lib/components/WorkoutEditor.svelte';
@@ -1128,6 +1129,7 @@
 			<DashboardWeekLead
 				activities={runs}
 				planWorkouts={planOverview?.workouts ?? null}
+				weeklyGoal={weeklyGoalTarget(displayGoals)}
 				weekStart={weekStartDay}
 				{now}
 				onopensession={(w) => (editingWorkout = w)}

@@ -834,6 +834,47 @@
         }
       }
     },
+    "Battery %@ · consider charging": {
+      "comment": "Start screen, shown below 40 percent battery. The placeholder is a locale-formatted percentage. Wording matches Wear OS's battery_consider_charging.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Akku %@ · laden empfohlen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Batería %@ · considera cargar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Batterie %@ · pensez à recharger"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バッテリー %@ · 充電を検討"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bateria %@ · considere carregar"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bateria %@ · considere carregar"
+          }
+        }
+      }
+    },
     "Begins a new run, starting GPS and heart-rate recording": {
       "comment": "VoiceOver hint on the Start button (pre-run screen).",
       "localizations": {
@@ -1117,6 +1158,47 @@
           "stringUnit": {
             "state": "translated",
             "value": "Remove esta corrida sincronizada do relógio e volta ao ecrã inicial"
+          }
+        }
+      }
+    },
+    "Continue run": {
+      "comment": "Recovery button: keep recording the run the app was terminated in the middle of, as the same run.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lauf fortsetzen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continuar la carrera"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reprendre la course"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ランを続ける"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continuar a corrida"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continuar a corrida"
           }
         }
       }
@@ -1813,6 +1895,47 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mantenha premido para terminar a corrida e abrir o resumo"
+          }
+        }
+      }
+    },
+    "Keeps recording this run from where it stopped": {
+      "comment": "VoiceOver hint on the Continue run button.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeichnet diesen Lauf dort weiter auf, wo er unterbrochen wurde"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sigue registrando esta carrera desde donde se detuvo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poursuit l’enregistrement de cette course là où il s’est arrêté"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中断したところからこのランの記録を続けます"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continua registrando esta corrida de onde parou"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continua a registar esta corrida a partir de onde parou"
           }
         }
       }
@@ -3128,47 +3251,6 @@
         }
       }
     },
-    "Recover": {
-      "comment": "Button: recover the unsaved run from the last checkpoint.",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wiederherstellen"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recuperar"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Récupérer"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "復元"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recuperar"
-          }
-        },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recuperar"
-          }
-        }
-      }
-    },
     "Recover unsaved run from %@, %@, %@?": {
       "comment": "Recovery prompt. Placeholders: date, distance, duration — each pre-formatted locale-aware by the caller.",
       "localizations": {
@@ -3738,6 +3820,47 @@
           "stringUnit": {
             "state": "translated",
             "value": "Corre sem rota, portanto sem orientação"
+          }
+        }
+      }
+    },
+    "Save run": {
+      "comment": "Recovery button: end the unsaved run at its last checkpoint and open its summary.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lauf speichern"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar la carrera"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrer la course"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ランを保存"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salvar a corrida"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar a corrida"
           }
         }
       }

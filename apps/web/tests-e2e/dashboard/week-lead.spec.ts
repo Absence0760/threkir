@@ -11,8 +11,9 @@ import { USER_A } from '../fixtures/users';
  * An account with runs used to open on the plan hero, or the plan promo, and
  * then a source filter and a stat grid — with the only "Add a run" action
  * inside the Recent runs card, below every derived metric on the page. The
- * first screen now opens on this week's distance against the plan or the
- * runner's recent average, the plan's next session, and the add action.
+ * first screen now opens on this week's distance against the plan, the
+ * runner's weekly goal or their recent average, the plan's next session, and
+ * the add and import actions.
  * Nothing below it moved out of existence, so the stat grid and the plan hero
  * are asserted present as well as ordered.
  */
@@ -77,6 +78,9 @@ test.describe('/dashboard — this week leads', () => {
 				const add = lead.getByTestId('dash-week-lead-add');
 				await expect(add).toHaveAttribute('href', '/runs/new');
 				await expect(add).toBeInViewport();
+				const importLink = lead.getByTestId('dash-week-lead-import');
+				await expect(importLink).toHaveAttribute('href', '/settings/integrations');
+				await expect(importLink).toBeInViewport();
 
 				const statGrid = page.locator('.stat-grid');
 				await expect(statGrid).toBeVisible();
@@ -85,6 +89,26 @@ test.describe('/dashboard — this week leads', () => {
 			} finally {
 				await ctx.close();
 			}
+		}
+	});
+
+	test('a weekly distance goal replaces the recent average as the yardstick', async ({ browser }) => {
+		const ctx = await browser.newContext({ storageState: user.storageStatePath });
+		await ctx.addInitScript(setConsentAccepted);
+		await ctx.addInitScript(
+			([key, value]) => localStorage.setItem(key, value),
+			[`run_app.goals_v1:${user.id}`, JSON.stringify([{ id: 'wk', period: 'week', distance_m: 20_000 }])] as const,
+		);
+		const page = await ctx.newPage();
+		try {
+			await page.goto('/dashboard');
+			const lead = page.getByTestId('dash-week-lead');
+			await expect(lead).toBeVisible({ timeout: 15_000 });
+			await expect(lead.getByTestId('dash-week-lead-vs')).toContainText(/weekly goal/i);
+			await expect(lead.getByTestId('dash-week-lead-vs')).not.toContainText(/average/i);
+			await expect(lead.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '25');
+		} finally {
+			await ctx.close();
 		}
 	});
 

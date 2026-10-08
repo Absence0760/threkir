@@ -8,15 +8,17 @@
  * disagree about what "this week" holds. Plan workouts marked done without a
  * linked run count toward it the way the stat card counts them.
  *
- * The yardstick is the plan's distance for the same calendar week when the
- * plan has one, and otherwise the runner's own average over the weeks before
- * this one. A week with no activity inside the average window is a real zero,
+ * The yardstick is, in order: the plan's distance for the same calendar week,
+ * the runner's own weekly goal (distance, then run count), and otherwise their
+ * average over the weeks before this one. The plan wins over a standing goal
+ * because it is written for this particular week — a taper or a cutback week
+ * set against a flat weekly goal would read as falling short on purpose. A week with no activity inside the average window is a real zero,
  * but weeks before the runner's first activity are not weeks they missed, so
  * the window is shortened to their history rather than diluted by it.
  */
 
 import type { WeekStart } from './current_week';
-import { weekStartLocal } from './goals';
+import { weekStartLocal, type RunGoal } from './goals';
 
 export interface LeadActivity {
 	started_at: string;
@@ -36,6 +38,8 @@ export const RECENT_AVERAGE_WEEKS = 4;
 
 export type WeekComparison =
 	| { kind: 'plan'; targetM: number }
+	| { kind: 'goal'; targetM: number }
+	| { kind: 'goalRuns'; targetCount: number }
 	| { kind: 'average'; averageM: number; weeks: number };
 
 export interface WeekLead<W extends LeadPlanWorkout> {
@@ -91,6 +95,27 @@ export function recentWeeklyAverage(
 	return { averageM: totalM / span, weeks: span };
 }
 
+export interface WeeklyGoalTarget {
+	distanceM: number | null;
+	runCount: number | null;
+}
+
+/// The week-period targets among the dashboard's goals: the first distance
+/// target and the first run-count target, which need not be the same goal.
+/// The dashboard's own list already drops the settings-backed weekly mileage
+/// goal when the runner has a weekly distance goal of their own, so the first
+/// match is the one the Goals section shows.
+export function weeklyGoalTarget(goals: RunGoal[]): WeeklyGoalTarget | null {
+	let distanceM: number | null = null;
+	let runCount: number | null = null;
+	for (const g of goals) {
+		if (g.period !== 'week') continue;
+		if (distanceM == null && g.distanceMetres != null && g.distanceMetres > 0) distanceM = g.distanceMetres;
+		if (runCount == null && g.runCount != null && g.runCount > 0) runCount = g.runCount;
+	}
+	return distanceM == null && runCount == null ? null : { distanceM, runCount };
+}
+
 export function plannedDistanceForWeek(
 	workouts: LeadPlanWorkout[],
 	thisWeekStart: Date,
@@ -119,6 +144,7 @@ export function nextPlanSession<W extends LeadPlanWorkout>(workouts: W[], todayI
 export function weekLead<W extends LeadPlanWorkout>(input: {
 	activities: LeadActivity[];
 	planWorkouts: W[] | null;
+	weeklyGoal?: WeeklyGoalTarget | null;
 	weekStart: WeekStart;
 	now: Date;
 }): WeekLead<W> {
@@ -145,8 +171,13 @@ export function weekLead<W extends LeadPlanWorkout>(input: {
 
 	let comparison: WeekComparison | null = null;
 	const planned = input.planWorkouts ? plannedDistanceForWeek(workouts, start) : 0;
+	const goal = input.weeklyGoal ?? null;
 	if (planned > 0) {
 		comparison = { kind: 'plan', targetM: planned };
+	} else if (goal?.distanceM != null && goal.distanceM > 0) {
+		comparison = { kind: 'goal', targetM: goal.distanceM };
+	} else if (goal?.runCount != null && goal.runCount > 0) {
+		comparison = { kind: 'goalRuns', targetCount: goal.runCount };
 	} else {
 		const avg = recentWeeklyAverage(input.activities, start);
 		if (avg && avg.averageM > 0) comparison = { kind: 'average', ...avg };

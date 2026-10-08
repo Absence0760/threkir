@@ -99,6 +99,7 @@ export const METADATA_KEYS = {
 	cadence_spm: 'cadence_spm',
 	laps: 'laps',
 	indoor: 'indoor',
+	indoor_estimated: 'indoor_estimated',
 	sub_sport: 'sub_sport',
 	running_dynamics: 'running_dynamics',
 	garmin_id: 'garmin_id',
@@ -108,6 +109,7 @@ export const METADATA_KEYS = {
 	strava_id: 'strava_id',
 	strava_activity_type: 'strava_activity_type',
 	manual_entry: 'manual_entry',
+	in_progress: 'in_progress',
 	recovered_unfinished: 'recovered_unfinished',
 	notes: 'notes',
 	title: 'title',
@@ -122,5 +124,6 @@ export const METADATA_KEYS = {
 	distance_source: 'distance_source',
 	distance_estimator: 'distance_estimator',
 	distance_recorded_m: 'distance_recorded_m',
+	distance_recomputed_at: 'distance_recomputed_at',
 	distance_map_matched_m: 'distance_map_matched_m',
 } as const;

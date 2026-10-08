@@ -14,6 +14,7 @@ void main() {
       expect(MetadataKeys.lastModifiedAt, 'last_modified_at');
       expect(MetadataKeys.trackUrl, 'track_url');
       expect(MetadataKeys.distanceEstimator, 'distance_estimator');
+      expect(MetadataKeys.distanceRecomputedAt, 'distance_recomputed_at');
       expect(MetadataKeys.distanceRecordedM, 'distance_recorded_m');
       expect(MetadataKeys.distanceStepFilledM, 'distance_step_filled_m');
       expect(MetadataKeys.isDnf, 'is_dnf');
@@ -37,6 +38,7 @@ void main() {
         MetadataKeys.chipTime,
         MetadataKeys.createdByUserId,
         MetadataKeys.distanceEstimator,
+        MetadataKeys.distanceRecomputedAt,
         MetadataKeys.distanceRecordedM,
         MetadataKeys.distanceSource,
         MetadataKeys.distanceStepFilledM,

@@ -165,15 +165,16 @@ test.describe('owner', () => {
 		await expect(page.getByTestId('recalculate-distance')).toHaveCount(0);
 	});
 
-	test('imports, pedometer distances and trackless runs are not offered the action', async ({
+	test('imports, pedometer, live-stamped and trackless runs are not offered the action', async ({
 		page,
 	}) => {
 		const cases = [
 			await plant({ title: 'From Strava', source: 'strava' }),
 			await plant({ title: 'Pedometer run', metadata: { distance_source: 'pedometer' } }),
+			await plant({ title: 'Stamped live', metadata: { distance_estimator: 'kalman_v1' } }),
 			await plant({ title: 'No track', track: false }),
 		];
-		const titles = ['From Strava', 'Pedometer run', 'No track'];
+		const titles = ['From Strava', 'Pedometer run', 'Stamped live', 'No track'];
 
 		for (const [i, id] of cases.entries()) {
 			await page.goto(`/runs/${id}`);

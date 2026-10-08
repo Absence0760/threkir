@@ -158,7 +158,11 @@ func metaString(meta map[string]json.RawMessage, key string) string {
 }
 
 // distanceRecomputeSkipReason returns why a run's distance is not the
-// estimator's to replace, or "" when it is.
+// estimator's to replace, or "" when it is. The clients' offer gate —
+// canRecomputeDistance in apps/web/src/lib/runs/distance_recompute.ts and
+// apps/mobile_android/lib/distance_recompute.dart — mirrors this rule so a
+// runner is never offered a recompute this skips silently; change them
+// together.
 func distanceRecomputeSkipReason(run *DistanceRecomputeRun, meta map[string]json.RawMessage) string {
 	switch {
 	case run.TrackURL == nil || *run.TrackURL == "":

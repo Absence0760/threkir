@@ -52,15 +52,21 @@ test('a run with no stored track has nothing to recompute from', () => {
 	assert.equal(canRecomputeDistance(run({ track_url: '' }), OWNER), false);
 });
 
-test('a pedometer distance is not recomputable, a treadmill tag is no blocker by itself', () => {
-	assert.equal(
-		canRecomputeDistance(run({ metadata: { distance_source: 'pedometer' } }), OWNER),
-		false,
-	);
-	assert.equal(
-		canRecomputeDistance(run({ metadata: { distance_source: 'treadmill' } }), OWNER),
-		true,
-	);
+test('any distance provenance tag blocks the recompute, as the worker skips it', () => {
+	for (const tag of ['pedometer', 'treadmill', 'something_new']) {
+		const candidate = run({ metadata: { distance_source: tag } });
+		assert.equal(canRecomputeDistance(candidate, OWNER), false, tag);
+	}
+	assert.equal(canRecomputeDistance(run({ metadata: { distance_source: '' } }), OWNER), true);
+	assert.equal(canRecomputeDistance(run({ metadata: { distance_source: 7 } }), OWNER), true);
+});
+
+test('an in-progress stub, a manual entry and an indoor run are never offered', () => {
+	for (const key of ['in_progress', 'manual_entry', 'indoor', 'indoor_estimated']) {
+		assert.equal(canRecomputeDistance(run({ metadata: { [key]: true } }), OWNER), false, key);
+		assert.equal(canRecomputeDistance(run({ metadata: { [key]: false } }), OWNER), true, key);
+		assert.equal(canRecomputeDistance(run({ metadata: { [key]: 'true' } }), OWNER), true, key);
+	}
 });
 
 test('a run already on the current estimator is not offered again', () => {
@@ -70,14 +76,35 @@ test('a run already on the current estimator is not offered again', () => {
 		false,
 	);
 	assert.equal(
-		canRecomputeDistance(run({ metadata: { distance_estimator: 'something_older' } }), OWNER),
-		true,
+		canRecomputeDistance(
+			run({
+				metadata: { distance_estimator: 'kalman_v2', distance_recomputed_at: '2026-10-08T08:00:00Z' },
+			}),
+			OWNER,
+		),
+		false,
 	);
 });
 
-test('a kalman_v1 run (the v1.1 forward filter, no smoother) is offered again', () => {
+test('a run its recorder stamped live is not offered, whatever the estimator', () => {
+	// The Wear OS and watchOS recorders stamp kalman_v1 on every run; the
+	// worker skips a live stamp because the stored track is movement-gated.
+	for (const estimator of ['kalman_v1', 'something_older']) {
+		const candidate = run({ source: 'watch', metadata: { distance_estimator: estimator } });
+		assert.equal(canRecomputeDistance(candidate, OWNER), false, estimator);
+	}
+	assert.equal(canRecomputeDistance(run({ metadata: { distance_estimator: null } }), OWNER), false);
+});
+
+test('a run a recompute stamped kalman_v1 (the v1.1 forward filter) is offered again', () => {
 	assert.equal(
-		canRecomputeDistance(run({ metadata: { distance_estimator: 'kalman_v1' } }), OWNER),
+		canRecomputeDistance(
+			run({
+				source: 'watch',
+				metadata: { distance_estimator: 'kalman_v1', distance_recomputed_at: '2026-10-08T08:00:00Z' },
+			}),
+			OWNER,
+		),
 		true,
 	);
 });

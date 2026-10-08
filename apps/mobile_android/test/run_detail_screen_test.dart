@@ -483,6 +483,7 @@ void main() {
         final cases = [
           recomputable(extra: {'distance_source': 'pedometer'}),
           recomputable(extra: {'distance_estimator': 'kalman_v2'}),
+          recomputable(extra: {'distance_estimator': 'kalman_v1'}),
           _run(metadata: {'activity_type': 'run'}),
         ];
         for (final run in cases) {

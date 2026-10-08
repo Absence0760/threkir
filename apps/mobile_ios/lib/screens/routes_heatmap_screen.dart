@@ -1253,7 +1253,7 @@ class _ClusterBubble extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: const Color(0xF2F2A07B),
+        color: const Color(0xF2F08A5D),
         border: Border.all(color: const Color(0xFF0F172A), width: 2),
       ),
       child: Center(
@@ -1285,7 +1285,7 @@ class _RoutePinDot extends StatelessWidget {
         height: selected ? 18 : 14,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: const Color(0xFFF2A07B),
+          color: const Color(0xFFF08A5D),
           border: Border.all(
             color: featured ? const Color(0xFFFACC15) : const Color(0xFF0F172A),
             width: featured ? 3 : 2,

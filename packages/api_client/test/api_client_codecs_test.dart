@@ -79,6 +79,59 @@ void main() {
           {'lat': 0, 'lng': 0, 'ts': 'not-a-date'});
       expect(w.timestamp, isNull);
     });
+
+    // The server-side distance recompute (apps/job_worker) reads these exact
+    // key names from the Storage blob; docs/features/gps_distance.md.
+    test('fix-quality fields round-trip under their wire names', () {
+      const w = Waypoint(
+        lat: 47.37,
+        lng: 8.54,
+        accuracyMetres: 4.25,
+        speedMps: 2.68,
+        speedAccuracyMps: 0.41,
+        bearingDeg: 359.5,
+      );
+      final json = ApiClient.debugWaypointToJson(w);
+      expect(json['accuracyMetres'], 4.25);
+      expect(json['speedMps'], 2.68);
+      expect(json['speedAccuracyMps'], 0.41);
+      expect(json['bearingDeg'], 359.5);
+      final back = ApiClient.debugWaypointFromJson(
+          jsonDecode(jsonEncode(json)) as Map<String, dynamic>);
+      expect(back.accuracyMetres, 4.25);
+      expect(back.speedMps, 2.68);
+      expect(back.speedAccuracyMps, 0.41);
+      expect(back.bearingDeg, 359.5);
+    });
+
+    test('absent fix-quality fields are omitted, not written as null', () {
+      final json =
+          ApiClient.debugWaypointToJson(const Waypoint(lat: 1, lng: 2));
+      for (final k in [
+        'accuracyMetres',
+        'speedMps',
+        'speedAccuracyMps',
+        'bearingDeg',
+      ]) {
+        expect(json.containsKey(k), isFalse, reason: k);
+      }
+    });
+
+    test('a pre-v1 track point without fix-quality fields still parses', () {
+      final w = ApiClient.debugWaypointFromJson({
+        'lat': 47.37,
+        'lng': 8.54,
+        'ele': 400,
+        'ts': '2026-04-10T10:00:00.000Z',
+        'bpm': 150,
+      });
+      expect(w.lat, 47.37);
+      expect(w.bpm, 150);
+      expect(w.accuracyMetres, isNull);
+      expect(w.speedMps, isNull);
+      expect(w.speedAccuracyMps, isNull);
+      expect(w.bearingDeg, isNull);
+    });
   });
 
   group('debugRunFromRow', () {

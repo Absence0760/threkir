@@ -3,9 +3,12 @@
 // runs.metadata so the SQL trigger can include them in
 // personal_records alongside whole-run candidates.
 
+import 'dart:math' as math;
+
 import 'package:core_models/core_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../lib/embedded_bests.dart';
+import '../lib/run_stats.dart';
 
 // Build a constant-speed track 5050 m long over 1170 s — the fastest
 // 5k window inside should clock exactly 1170 * (5000 / 5050) ≈ 1158
@@ -108,6 +111,71 @@ void main() {
       final s = out!['fastest_5k_s'] as int;
       expect(s < 1500, isTrue,
           reason: 'a slower existing value is overwritten with the auto value, got $s');
+    });
+  });
+
+  group('estimator cumulative', () {
+    const mPerDeg = 6371000 * math.pi / 180;
+
+    test('GPS zig-zag no longer closes the 5k window early', () {
+      // 6 km due east at 5:00/km, one fix a second, each fix 2 m either
+      // side of the line: the hop-sum reads ~9.4 km and its 5k ~960 s.
+      final start = DateTime.utc(2026, 4, 1);
+      final track = <Waypoint>[
+        for (var i = 0; i <= 1800; i++)
+          Waypoint(
+            lat: (i.isOdd ? 2.0 : -2.0) / mPerDeg,
+            lng: i * (6000 / 1800) / mPerDeg,
+            timestamp: start.add(Duration(seconds: i)),
+          ),
+      ];
+      final raw = fastestWindowOf(track, 5000)!.inSeconds;
+      expect(raw, lessThan(1100), reason: 'fixture must be noisy, got $raw');
+      final out = enrichMetadataWithEmbeddedBests(
+        track: track,
+        metadata: {'activity_type': 'run'},
+      );
+      final s = out!['fastest_5k_s'] as int;
+      expect(s, inInclusiveRange(1480, 1520));
+    });
+
+    test('cumulative is non-decreasing and carries over untimestamped points',
+        () {
+      final start = DateTime.utc(2026, 4, 1);
+      final track = <Waypoint>[
+        for (var i = 0; i <= 20; i++)
+          Waypoint(
+            lat: 0,
+            lng: i * 3 / mPerDeg,
+            timestamp: i == 10 ? null : start.add(Duration(seconds: i)),
+          ),
+      ];
+      final cum = estimatorCumulativeMetres(track);
+      expect(cum.length, track.length);
+      expect(cum.first, 0);
+      for (var i = 1; i < cum.length; i++) {
+        expect(cum[i], greaterThanOrEqualTo(cum[i - 1]));
+      }
+      expect(cum[10], cum[9]);
+    });
+
+    test('medianFixIntervalS takes the median positive interval', () {
+      final start = DateTime.utc(2026, 4, 1);
+      Waypoint at(int s) =>
+          Waypoint(lat: 0, lng: 0, timestamp: start.add(Duration(seconds: s)));
+      expect(medianFixIntervalS(const []), 1.0);
+      expect(
+        medianFixIntervalS([
+          at(0),
+          at(1),
+          at(1),
+          const Waypoint(lat: 0, lng: 0),
+          at(2),
+          at(7),
+          at(67),
+        ]),
+        3.0,
+      );
     });
   });
 }

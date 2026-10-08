@@ -147,7 +147,8 @@ const _derivedAllowlist = <_Family, Map<String, int>>{
     // Each of these holds the scale (or one entry of it) in a local and paints
     // bars, strokes, dots or a cell edge with it — no `TextStyle` in any.
     'lib/screens/dashboard_screen.dart': 1,
-    'lib/screens/run_detail_screen.dart': 1,
+    // The HR-zone bar, and the elevation chart's line + fill colour.
+    'lib/screens/run_detail_screen.dart': 2,
     'lib/widgets/intensity_card.dart': 1,
     'lib/widgets/mileage_trend_card.dart': 1,
     'lib/widgets/this_week_strip.dart': 1,
@@ -162,8 +163,8 @@ const _derivedAllowlist = <_Family, Map<String, int>>{
 /// device theme does not control, which is the only reason a fixed hex can be
 /// measured at all.
 const _textLiteralAllowlist = <String, int>{
-  // Rasterised share-card PNGs on a fixed #0B0A1F panel: #9CA3AF reads
-  // 7.677:1 there, and the card does not follow the device theme by design.
+  // Rasterised share-card PNGs on a fixed #121117 panel: #A9A4B6 reads
+  // 7.76:1 there, and the card does not follow the device theme by design.
   'lib/widgets/run_share_card.dart': 4,
   'lib/widgets/route_share_card.dart': 3,
   // The period share card inside the screen that builds it — same fixed panel.
@@ -172,8 +173,8 @@ const _textLiteralAllowlist = <String, int>{
   // theme surface: #1E293B is 14.629:1 on white and 10.364:1 at the worst
   // backing (a black tile showing through the chip).
   'lib/widgets/live_run_map.dart': 2,
-  // The map cluster-count pin: #0F172A on the 95%-opaque coral disc, 8.578:1
-  // opaque and 7.747:1 with a black tile behind it.
+  // The map cluster-count pin: #0F172A on the 95%-opaque coral disc, 7.2:1
+  // opaque and above 6.5:1 with a black tile behind it.
   'lib/screens/routes_heatmap_screen.dart': 1,
 };
 

@@ -51,10 +51,19 @@ export function mapOverlayOutline(darkBasemap: boolean): string {
 	return darkBasemap ? '#FFFFFF' : '#1E1B4B';
 }
 
-/// The recorded / saved track line.
+/// The recorded / saved track line, in the theme's coral (decisions § 1772).
+/// The light rung is deep enough to hold 3:1 over water as well as land.
 export function mapTrackLine(darkBasemap: boolean): string {
-	return darkBasemap ? '#818CF8' : '#4F46E5';
+	return darkBasemap ? '#F08A5D' : '#A33D1A';
 }
+
+/// Direction-arrow ink and its outline, the same on every basemap. One flat
+/// colour cannot read on both track rungs (navy is 6.3:1 on the dark rung but
+/// 2.4:1 on the light one, white the reverse), so the glyph is navy for the
+/// bright rung and carries a white halo that is the edge on the deep one.
+/// Twin of mobile's `chevronInk` / `chevronOutline`.
+export const MAP_ARROW_INK = '#172554';
+export const MAP_ARROW_OUTLINE = '#FFFFFF';
 
 /// Transient amber accent — the selected-segment highlight, the animated
 /// replay trace, and a coarse (privacy-clipped) last-seen position. Twin of
@@ -124,9 +133,11 @@ export function mapOverlapLine(darkBasemap: boolean): string {
 	return darkBasemap ? '#C084FC' : '#7E22CE';
 }
 
-/// A live spectator trace.
+/// A live spectator trace: the runner's track as it is being recorded, so the
+/// same coral as a recorded track (§ 1772), and the colour mobile's spectator
+/// map already draws it in.
 export function mapLiveLine(darkBasemap: boolean): string {
-	return darkBasemap ? '#7FB3C2' : '#2C5F6E';
+	return mapTrackLine(darkBasemap);
 }
 
 /// A dashed hint line — the un-snapped preview, the waypoint tethers.

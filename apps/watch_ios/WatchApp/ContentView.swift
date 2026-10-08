@@ -140,6 +140,13 @@ struct ContentView: View {
             // The runner's privacy default, snapshotted at stop. Omitted when
             // the phone never said, so the row keeps its private default.
             if let isPublic = run.isPublic { metadata["is_public"] = isPublic }
+            // Which algorithm measured `distance_m`, so a server recompute
+            // can tell a v1 figure from a hop-sum one. A recovered run from a
+            // pre-estimator checkpoint carries none (docs/features/gps_distance.md).
+            if let estimator = run.distanceEstimator { metadata["distance_estimator"] = estimator }
+            if run.distanceStepFilledMetres > 0 {
+                metadata["distance_step_filled_m"] = run.distanceStepFilledMetres
+            }
             // Only mark the run synced when WCSession actually queued it.
             // A false means nothing was handed off (session not yet
             // activated) — leave `thisRunSynced` false so `PostRunView`
@@ -495,12 +502,12 @@ struct CountdownOverlay: View {
 
     var body: some View {
         ZStack {
-            AppTheme.midnight.opacity(0.92)
+            AppTheme.night.opacity(0.92)
                 .ignoresSafeArea()
             Text(countdown.count.formatted())
                 .font(.system(size: 64, weight: .bold, design: .rounded))
                 .monospacedDigit()
-                .foregroundColor(AppTheme.parchment)
+                .foregroundColor(AppTheme.mist)
         }
         .contentShape(Rectangle())
         .onTapGesture { onCancel() }
@@ -645,7 +652,7 @@ struct RunStatsView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .tint(AppTheme.duskDeep)
+            .tint(AppTheme.nightRaised)
             .accessibilityHint("Pauses the recording without ending it")
         } stop: {
             HoldToStopButton { workoutManager.stop() }
@@ -723,7 +730,7 @@ struct HoldToStopButton: View {
     var body: some View {
         Text("Stop")
             .font(.body)
-            .foregroundColor(AppTheme.parchment)
+            .foregroundColor(AppTheme.mist)
             .padding(.horizontal, 14)
             .padding(.vertical, 6)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -732,7 +739,7 @@ struct HoldToStopButton: View {
                 shape
                     .trim(from: 0, to: progress)
                     .stroke(
-                        AppTheme.parchment,
+                        AppTheme.mist,
                         style: StrokeStyle(lineWidth: 3, lineCap: .round)
                     )
             )
@@ -1002,7 +1009,7 @@ struct PostRunView: View {
                         onDiscard()
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.duskDeep)
+                    .tint(AppTheme.nightRaised)
                     .accessibilityHint("Clears this synced run from the watch and returns to the start screen")
                 } else {
                     if let error = syncError {

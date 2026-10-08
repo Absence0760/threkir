@@ -17,7 +17,7 @@ SVG="$SCRIPT_DIR/icon.svg"
 
 # iOS / watchOS require opaque icons (no alpha). The master's top-left gradient
 # stop is the flatten backdrop; the master is fully opaque so this is lossless.
-OPAQUE_BG="#FE5932"
+OPAQUE_BG="#C24E24"
 
 if [[ ! -f "$SVG" ]]; then
   echo "error: master not found at $SVG" >&2
@@ -61,6 +61,9 @@ echo "Regenerating app icons from $SVG"
 # 1. Master roundtrip -------------------------------------------------------
 echo "[master]"
 render_png 1024 "$SCRIPT_DIR/icon_1024.png"
+# Play Console's store-listing icon: 512x512, 32-bit PNG with alpha. Kept
+# apart from the web icon-512.png, which is quantised for the bundle budget.
+render_png 512 "$SCRIPT_DIR/play-store-icon-512.png"
 
 # 2. Web --------------------------------------------------------------------
 echo "[web]"
@@ -69,6 +72,13 @@ render_png 32  "$WEB/favicon.png"
 render_png 180 "$WEB/apple-touch-icon.png"
 render_png 192 "$WEB/icon-192.png"
 render_png 512 "$WEB/icon-512.png"
+# Web icons are budgeted per file (scripts/check_web_bundle_budget.mjs), and a
+# diagonal three-stop gradient leaves a truecolour PNG at ~2x the old flat-held
+# one. 256 colours with no dither is visually identical at these sizes and
+# well inside the budget.
+for f in favicon.png apple-touch-icon.png icon-192.png icon-512.png; do
+  magick "$WEB/$f" +dither -colors 256 -define png:compression-level=9 "PNG8:$WEB/$f"
+done
 
 # 3. Garmin (size read from the existing file) ------------------------------
 echo "[garmin]"

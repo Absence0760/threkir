@@ -277,8 +277,8 @@
 		<svg class="shot-defs" width="0" height="0">
 			<defs>
 				<linearGradient id="shot-route" x1="0" y1="0" x2="1" y2="1">
-					<stop offset="0" style="stop-color: var(--brand-ember)" />
-					<stop offset="1" style="stop-color: var(--brand-magenta)" />
+					<stop offset="0" style="stop-color: var(--brand-coral)" />
+					<stop offset="1" style="stop-color: var(--brand-violet)" />
 				</linearGradient>
 			</defs>
 		</svg>
@@ -449,8 +449,8 @@
 		z-index: -1;
 		border-radius: 50%;
 		background:
-			radial-gradient(closest-side at 30% 60%, rgba(254, 89, 50, 0.35), transparent),
-			radial-gradient(closest-side at 72% 40%, rgba(160, 30, 119, 0.4), transparent);
+			radial-gradient(closest-side at 30% 60%, rgba(194, 78, 36, 0.35), transparent),
+			radial-gradient(closest-side at 72% 40%, rgba(91, 75, 138, 0.4), transparent);
 		filter: blur(2.5rem);
 		pointer-events: none;
 	}
@@ -631,7 +631,7 @@
 		width: 1.5rem;
 		height: 1.5rem;
 		border-radius: var(--radius-pill);
-		background: linear-gradient(135deg, var(--brand-ember), var(--brand-magenta));
+		background: linear-gradient(135deg, var(--brand-coral), var(--brand-rose), var(--brand-violet));
 		box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 3px var(--color-fill-subtle);
 	}
 
@@ -725,8 +725,8 @@
 	}
 
 	.bar--best {
-		background: linear-gradient(180deg, var(--brand-ember), var(--brand-magenta));
-		box-shadow: 0 0 1rem rgba(254, 89, 50, 0.45);
+		background: linear-gradient(180deg, var(--brand-coral), var(--brand-rose), var(--brand-violet));
+		box-shadow: 0 0 1rem rgba(194, 78, 36, 0.45);
 	}
 
 	.split-km {
@@ -1022,8 +1022,8 @@
 	}
 
 	.control--pause {
-		background: linear-gradient(135deg, var(--brand-ember), var(--brand-magenta));
-		box-shadow: 0 0.3rem 0.8rem -0.2rem rgba(254, 89, 50, 0.6);
+		background: linear-gradient(135deg, var(--brand-coral), var(--brand-rose), var(--brand-violet));
+		box-shadow: 0 0.3rem 0.8rem -0.2rem rgba(194, 78, 36, 0.6);
 	}
 
 	.control--pause::before,

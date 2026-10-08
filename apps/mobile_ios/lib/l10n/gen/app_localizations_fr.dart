@@ -2749,16 +2749,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runDetailSectionElevation => 'Dénivelé';
 
   @override
-  String get runDetailPaceLegendTitle => 'Allure vs médiane';
-
-  @override
   String get runDetailPaceBandFaster => 'Plus rapide';
 
   @override
-  String get runDetailPaceBandSteady => 'Régulier';
+  String get runDetailPaceBandSlower => 'Plus lent';
 
   @override
-  String get runDetailPaceBandSlower => 'Plus lent';
+  String get runDetailMapPaceColours => 'Couleurs d\'allure';
 
   @override
   String get runDetailSectionLaps => 'Tours';
@@ -2923,6 +2920,37 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String runDetailRematchFailed(String error) {
     return 'Échec du réajustement : $error';
+  }
+
+  @override
+  String get runDetailRecalculateDistance => 'Recalculer la distance';
+
+  @override
+  String get runDetailRecalculateDistanceDialogTitle => 'Recalculer la distance ?';
+
+  @override
+  String get runDetailRecalculateDistanceDialogMessage => 'La distance de cette course sera recalculée à partir de son tracé GPS avec le filtre GPS amélioré, qui supprime la distance en trop due aux imprécisions du GPS. La distance enregistrée à l\'origine est conservée et affichée à côté de la nouvelle.';
+
+  @override
+  String get runDetailRecalculateDistanceConfirm => 'Recalculer';
+
+  @override
+  String get runDetailRecalculatingDistance => 'Recalcul en cours — actualisez dans une minute';
+
+  @override
+  String runDetailRecalculateDistanceFailed(String error) {
+    return 'Impossible de recalculer la distance : $error';
+  }
+
+  @override
+  String get runDetailRecalculateDistanceNotOwner => 'Seule la personne qui a enregistré cette course peut en recalculer la distance.';
+
+  @override
+  String get runDetailRecalculateDistanceNoTrack => 'Cette course n\'a pas de tracé GPS à partir duquel recalculer.';
+
+  @override
+  String runDetailOriginallyRecorded(String distance) {
+    return 'Enregistrée à l\'origine : $distance';
   }
 
   @override

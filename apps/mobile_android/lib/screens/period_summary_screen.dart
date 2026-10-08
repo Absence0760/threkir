@@ -692,7 +692,7 @@ class _PeriodShareCard extends StatelessWidget {
     final paceLabel = UnitFormat.paceLabel(unit);
 
     return Container(
-      color: const Color(0xFF0B0A1F),
+      color: const Color(0xFF121117),
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -715,7 +715,7 @@ class _PeriodShareCard extends StatelessWidget {
               Text(
                 periodLabel,
                 style: const TextStyle(
-                  color: Color(0xFF9CA3AF),
+                  color: Color(0xFFA9A4B6),
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                   height: 1.1,
@@ -790,7 +790,7 @@ class _PeriodShareCard extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
-            color: Color(0xFF9CA3AF),
+            color: Color(0xFFA9A4B6),
             fontSize: 9,
             letterSpacing: 1.2,
             fontWeight: FontWeight.w600,
@@ -821,7 +821,7 @@ class _PeriodShareCard extends StatelessWidget {
               Text(
                 unitLabel,
                 style: const TextStyle(
-                  color: Color(0xFF9CA3AF),
+                  color: Color(0xFFA9A4B6),
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                   height: 1.0,

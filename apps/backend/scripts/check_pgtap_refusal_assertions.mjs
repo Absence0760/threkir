@@ -2055,6 +2055,17 @@ export const UNOBSERVED_RPC_WRITES = [
  */
 export const CONDITIONALLY_STAMPED_ASSERTIONS = [
   {
+    file: 'unbounded_numeric_column_bounds_test.sql',
+    description: 'a real 15-minute embedded 5k still stores',
+    columns: ['runs.fastest_5k_s'],
+    readBack: 'the 15-minute embedded 5k is stored as sent, not rewritten',
+    reason:
+      '`runs_keep_distance_recompute` (20270719000003) puts the recomputed fastest_* columns back ' +
+      'when a write lacking metadata.distance_recomputed_at lands on a recomputed run. This fixture ' +
+      'run was never recomputed, so the value must stand; the read-back proves it rather than ' +
+      'relying on the fixture staying that way.',
+  },
+  {
     file: 'notify_event_rsvp_organisers_test.sql',
     description: 'a member can RSVP going to the event',
     columns: ['event_attendees.status'],

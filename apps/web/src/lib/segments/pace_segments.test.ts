@@ -5,6 +5,10 @@ import {
 	buildPaceSegments,
 	hasTrackTimestamps,
 	paceBucketForSpeed,
+	paceGradientColour,
+	paceGradientStops,
+	smoothedSpeeds,
+	PACE_GRADIENT_RAMP,
 } from './pace_segments';
 import type { TrackPoint } from '../types';
 
@@ -137,4 +141,51 @@ test('buildPaceSegments emits rgba strings with descending alpha for older bands
 	const firstAlpha = parseFloat(segs[0].color.split(',').pop()!.replace(')', ''));
 	const lastAlpha = parseFloat(segs[segs.length - 1].color.split(',').pop()!.replace(')', ''));
 	assert.ok(firstAlpha < lastAlpha, `expected first alpha ${firstAlpha} < last ${lastAlpha}`);
+});
+
+test('smoothedSpeeds flattens fix-to-fix GPS jitter', () => {
+	// Every other fix 2 m off-line: fix-to-fix speeds swing 0.7 <-> 7.3 m/s.
+	const track = straightTrack({ points: 121, stepM: 3.3, stepS: 1 }).map((p, i) => ({
+		...p,
+		lat: p.lat + (i % 2 === 0 ? 2 : -2) / 111_320,
+	}));
+	const v = smoothedSpeeds(track).slice(30, 91) as number[];
+	const spread = Math.max(...v) - Math.min(...v);
+	assert.ok(spread < 0.3, `spread ${spread}`);
+});
+
+test('smoothedSpeeds is null without timestamps', () => {
+	const track = straightTrack({ points: 5, stepM: 3, stepS: 1 }).map(({ lat, lng }) => ({ lat, lng }));
+	assert.deepEqual(smoothedSpeeds(track), [null, null, null, null, null]);
+});
+
+test('paceGradientStops paints a steady run mid-scale everywhere', () => {
+	const stops = paceGradientStops(straightTrack({ points: 300, stepM: 3.3, stepS: 1 }));
+	assert.ok(stops.length > 0);
+	for (const s of stops) assert.equal(s.t, 0.5);
+});
+
+test('paceGradientStops puts the slow half low and the fast half high', () => {
+	const slow = straightTrack({ points: 200, stepM: 2.5, stepS: 1 });
+	const last = slow[slow.length - 1];
+	const t0 = Date.parse(last.ts as string);
+	const fast: TrackPoint[] = [];
+	for (let i = 1; i <= 200; i++) {
+		fast.push({
+			lat: last.lat + (i * 4.5) / 111_320,
+			lng: last.lng,
+			ts: new Date(t0 + i * 1000).toISOString(),
+		});
+	}
+	const stops = paceGradientStops([...slow, ...fast], 10);
+	assert.ok(stops[0].t < 0.1, `first ${stops[0].t}`);
+	assert.ok(stops[stops.length - 1].t > 0.9, `last ${stops[stops.length - 1].t}`);
+	for (const s of stops) assert.ok(s.fraction > 0 && s.fraction < 1);
+});
+
+test('paceGradientColour spans the ramp end to end', () => {
+	assert.equal(paceGradientColour(0), PACE_GRADIENT_RAMP[0]);
+	assert.equal(paceGradientColour(1), PACE_GRADIENT_RAMP[PACE_GRADIENT_RAMP.length - 1]);
+	assert.equal(paceGradientColour(-3), PACE_GRADIENT_RAMP[0]);
+	assert.equal(paceGradientColour(0.5), PACE_GRADIENT_RAMP[1]);
 });

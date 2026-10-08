@@ -5,7 +5,7 @@ Generated art for the landing page and the auth shell ([decisions.md § 1626](..
 | File | Tool | Role |
 |---|---|---|
 | `terrain.py` | plain Python | The one seeded heightfield and route both generators read, so the render and the contour map show the same place. |
-| `scene.py` | Blender 5.x, Cycles | Night landscape: contour lines in the ground shader, the route glowing in the wordmark's ember to magenta ramp, start and finish markers. Two cameras: `hero` (2400x860) and `panel` (1200x1500). |
+| `scene.py` | Blender 5.x, Cycles | Night landscape: contour lines in the ground shader, the route glowing in the wordmark's coral to violet ramp, start and finish markers. Two cameras: `hero` (2400x860) and `panel` (1200x1500). |
 | `contours.py` | plain Python | Marching squares over the heightfield, drawn as `topo.svg`. The web uses it as a CSS mask, so the page supplies the colour. |
 | `gen-marketing.sh` | Blender + ImageMagick | Renders, adds bloom, exports the WebP sizes and writes `topo.svg`. |
 

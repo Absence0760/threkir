@@ -40,12 +40,14 @@ type Email struct {
 	ListUnsubscribeOneClick bool
 }
 
-// Brand tokens — kept in lockstep with apps/web/src/app.css (--color-primary
-// deep teal). Email clients can't read CSS variables, so the values are
-// inlined here.
+// Brand tokens — kept in lockstep with apps/web/src/app.css: the CTA is the
+// light --color-primary coral, and the header bar is the light --color-text
+// ink, which the coral-to-violet mark reads against where coral would not.
+// Email clients can't read CSS variables, so the values are inlined here.
 const (
-	brandName  = "Threkir"
-	brandColor = "#2C5F6E"
+	brandName   = "Threkir"
+	brandColor  = "#C24E24"
+	headerColor = "#1A1722"
 
 	// emailLogoPath is the brand mark the HTML header renders, served off
 	// the apex CloudFront distribution from apps/web/static/. Regenerate
@@ -291,7 +293,7 @@ func renderHTMLBody(c emailContent) string {
 <tr><td style="padding:20px 32px;border-top:1px solid #e5e7eb;"><p style="margin:0;font-size:12px;line-height:1.5;color:#9ca3af;">%s</p></td></tr>
 </table></td></tr></table>
 </body></html>`,
-		lang, html.EscapeString(c.preheader), brandColor, renderBrandLockup(c.logoURL),
+		lang, html.EscapeString(c.preheader), headerColor, renderBrandLockup(c.logoURL),
 		html.EscapeString(c.heading), paras.String(), cta, footer)
 }
 

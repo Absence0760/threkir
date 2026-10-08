@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { formatDistance } from '$lib/format/units.svelte';
 	import { minMax } from '$lib/util/min_max';
+	import { elevationDomain } from '$lib/runs/elevation_profile';
 	import { m } from '$lib/i18n/store.svelte';
 
 	/// `onhover` is fired with the elevations-index the user is
@@ -39,9 +40,13 @@
 	// `minMax` reduces instead of spreading: `Math.min(...elevations)` throws
 	// RangeError past ~110k args, and an ultra track is ~180k points.
 	let extent = $derived(minMax(elevations));
-	let minEle = $derived(extent?.min ?? 0);
-	let maxEle = $derived(extent?.max ?? 100);
-	let eleRange = $derived(Math.max(maxEle - minEle, 1));
+	/// At least ELEVATION_MIN_SPAN_M tall with headroom, so a flat run is
+	/// not stretched into a mountain range and the line never hits the frame.
+	let domain = $derived(extent ? elevationDomain(extent.min, extent.max) : { lo: 0, hi: 100 });
+	let minEle = $derived(domain.lo);
+	let dataMin = $derived(extent?.min ?? 0);
+	let dataMax = $derived(extent?.max ?? 0);
+	let eleRange = $derived(domain.hi - domain.lo);
 
 	function xFor(i: number): number {
 		if (elevations.length < 2) return padding.left;
@@ -233,18 +238,18 @@
 				<path d={areaD} class="area" />
 				<path d={pathD} class="line" />
 
-				<!-- Min / max corner pills, mirroring the Android chart's
-				     top-left max + bottom-left min annotations. -->
+				<!-- The run's own min / max as corner pills; the axis itself is
+				     padded past both. -->
 				<g class="extreme">
 					<rect x={padding.left + 4} y={padding.top - 12} width="56" height="16" rx="4" class="extreme-pill" />
 					<text x={padding.left + 32} y={padding.top - 0.5} class="extreme-text" text-anchor="middle">
-						▲ {Math.round(maxEle)} m
+						▲ {Math.round(dataMax)} m
 					</text>
 				</g>
 				<g class="extreme">
 					<rect x={padding.left + 4} y={padding.top + plotHeight - 4} width="56" height="16" rx="4" class="extreme-pill" />
 					<text x={padding.left + 32} y={padding.top + plotHeight + 7.5} class="extreme-text" text-anchor="middle">
-						▼ {Math.round(minEle)} m
+						▼ {Math.round(dataMin)} m
 					</text>
 				</g>
 

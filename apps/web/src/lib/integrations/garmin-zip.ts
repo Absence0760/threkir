@@ -334,7 +334,7 @@ async function importFitFile(
 	// marathon}_s columns, 20270325_001) so a fast sub-distance inside a long
 	// imported run reaches personal_records. Empty {} → nothing written for
 	// indoor/trackless or too-short runs; no fake bests.
-	const embeddedBests = computeEmbeddedBests(parsed.track);
+	const embeddedBests = computeEmbeddedBests(parsed.track, parsed.activity_type);
 
 	await saveRun({
 		embedded_bests: embeddedBests,
@@ -409,7 +409,7 @@ async function importRouteFile(
 	// same as the FIT path — written to the promoted runs columns. {} when
 	// the original carried no per-point times.
 	await saveRun({
-		embedded_bests: computeEmbeddedBests(waypoints),
+		embedded_bests: computeEmbeddedBests(waypoints, 'run'),
 		started_at: new Date(startedAt).toISOString(),
 		distance_m: distanceM,
 		duration_s: durationS,

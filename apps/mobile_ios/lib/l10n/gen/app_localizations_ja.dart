@@ -2599,16 +2599,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runDetailSectionElevation => '獲得標高';
 
   @override
-  String get runDetailPaceLegendTitle => '中央値との比較ペース';
-
-  @override
   String get runDetailPaceBandFaster => '速い';
 
   @override
-  String get runDetailPaceBandSteady => '一定';
+  String get runDetailPaceBandSlower => '遅い';
 
   @override
-  String get runDetailPaceBandSlower => '遅い';
+  String get runDetailMapPaceColours => 'ペースで色分け';
 
   @override
   String get runDetailSectionLaps => 'ラップ';
@@ -2767,6 +2764,37 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String runDetailRematchFailed(String error) {
     return '再マッチに失敗しました: $error';
+  }
+
+  @override
+  String get runDetailRecalculateDistance => '距離を再計算';
+
+  @override
+  String get runDetailRecalculateDistanceDialogTitle => '距離を再計算しますか？';
+
+  @override
+  String get runDetailRecalculateDistanceDialogMessage => 'このランの距離を、改良されたGPSフィルターでGPSトラックから再計算します。GPSのぶれによって加算された余分な距離が取り除かれます。最初に記録された距離は保持され、新しい距離と並べて表示されます。';
+
+  @override
+  String get runDetailRecalculateDistanceConfirm => '再計算';
+
+  @override
+  String get runDetailRecalculatingDistance => '再計算中です。1分ほどしてから更新してください';
+
+  @override
+  String runDetailRecalculateDistanceFailed(String error) {
+    return '距離を再計算できませんでした: $error';
+  }
+
+  @override
+  String get runDetailRecalculateDistanceNotOwner => 'このランを記録した本人だけが距離を再計算できます。';
+
+  @override
+  String get runDetailRecalculateDistanceNoTrack => 'このランには再計算に使えるGPSトラックがありません。';
+
+  @override
+  String runDetailOriginallyRecorded(String distance) {
+    return '最初の記録: $distance';
   }
 
   @override

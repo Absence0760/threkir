@@ -33,6 +33,16 @@ class PreRunHomeLayoutTest {
         return ui.substring(start, end)
     }
 
+    /// The `BrandPalette` object's own text. `DuskPalette` declares a `coral`
+    /// too, so a search over the whole file reads the UI accent instead.
+    private fun brandPalette(): String {
+        val start = theme.indexOf("object BrandPalette {")
+        assertTrue("BrandPalette is gone or renamed — this guard reads nothing", start >= 0)
+        val end = theme.indexOf("\n}", start)
+        assertTrue("could not find the end of BrandPalette", end > start)
+        return theme.substring(start, end)
+    }
+
     /// The home list's content lambda, brace-matched on a view where braces in
     /// strings and comments do not count.
     private fun listContent(body: String): String {
@@ -169,11 +179,11 @@ class PreRunHomeLayoutTest {
         val css = WearLocales.findUp("apps/web/src/app.css")
         assertNotNull("could not locate apps/web/src/app.css", css)
         val cssText = css!!.readText()
-        for ((token, kotlin) in listOf("--brand-ember" to "ember", "--brand-magenta" to "magenta")) {
+        for ((token, kotlin) in listOf("--brand-coral" to "coral", "--brand-rose" to "rose", "--brand-violet" to "violet")) {
             val web = Regex("""${Regex.escape(token)}:\s*#([0-9A-Fa-f]{6});""").find(cssText)
                 ?.groupValues?.get(1)?.uppercase()
             assertNotNull("app.css no longer declares $token", web)
-            val wear = Regex("""val $kotlin = Color\(0xFF([0-9A-Fa-f]{6})\)""").find(theme)
+            val wear = Regex("""val $kotlin = Color\(0xFF([0-9A-Fa-f]{6})\)""").find(brandPalette())
                 ?.groupValues?.get(1)?.uppercase()
             assertEquals("BrandPalette.$kotlin drifted from web's $token", web, wear)
         }

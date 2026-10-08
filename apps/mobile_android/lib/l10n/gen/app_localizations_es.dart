@@ -2740,16 +2740,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runDetailSectionElevation => 'Desnivel';
 
   @override
-  String get runDetailPaceLegendTitle => 'Ritmo frente a la mediana';
-
-  @override
   String get runDetailPaceBandFaster => 'Más rápido';
 
   @override
-  String get runDetailPaceBandSteady => 'Constante';
+  String get runDetailPaceBandSlower => 'Más lento';
 
   @override
-  String get runDetailPaceBandSlower => 'Más lento';
+  String get runDetailMapPaceColours => 'Colores de ritmo';
 
   @override
   String get runDetailSectionLaps => 'Vueltas';
@@ -2914,6 +2911,37 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String runDetailRematchFailed(String error) {
     return 'Reajuste fallido: $error';
+  }
+
+  @override
+  String get runDetailRecalculateDistance => 'Recalcular distancia';
+
+  @override
+  String get runDetailRecalculateDistanceDialogTitle => '¿Recalcular la distancia?';
+
+  @override
+  String get runDetailRecalculateDistanceDialogMessage => 'La distancia de esta carrera se volverá a calcular a partir de su ruta GPS con el filtro GPS mejorado, que elimina la distancia de más que añaden las oscilaciones del GPS. La distancia registrada originalmente se conserva y se muestra junto a la nueva.';
+
+  @override
+  String get runDetailRecalculateDistanceConfirm => 'Recalcular';
+
+  @override
+  String get runDetailRecalculatingDistance => 'Recalculando: actualiza en un minuto';
+
+  @override
+  String runDetailRecalculateDistanceFailed(String error) {
+    return 'No se pudo recalcular la distancia: $error';
+  }
+
+  @override
+  String get runDetailRecalculateDistanceNotOwner => 'Solo quien registró esta carrera puede recalcular su distancia.';
+
+  @override
+  String get runDetailRecalculateDistanceNoTrack => 'Esta carrera no tiene una ruta GPS a partir de la cual recalcular.';
+
+  @override
+  String runDetailOriginallyRecorded(String distance) {
+    return 'Registrada originalmente: $distance';
   }
 
   @override

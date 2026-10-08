@@ -15,12 +15,30 @@ class Waypoint {
   /// FIT/TCX importers, and watch recorders. See `docs/backend/metadata.md`.
   final int? bpm;
 
+  /// Raw fix quality the recorder saw, kept so the server can recompute
+  /// distance from a stored track with the same Doppler input the phone used
+  /// (`docs/features/gps_distance.md` § Waypoint fields). All optional and
+  /// omitted from the JSON when absent, so old tracks parse unchanged and
+  /// recompute through the position-only path.
+  @JsonKey(includeIfNull: false)
+  final double? accuracyMetres;
+  @JsonKey(includeIfNull: false)
+  final double? speedMps;
+  @JsonKey(includeIfNull: false)
+  final double? speedAccuracyMps;
+  @JsonKey(includeIfNull: false)
+  final double? bearingDeg;
+
   const Waypoint({
     required this.lat,
     required this.lng,
     this.elevationMetres,
     this.timestamp,
     this.bpm,
+    this.accuracyMetres,
+    this.speedMps,
+    this.speedAccuracyMps,
+    this.bearingDeg,
   });
 
   factory Waypoint.fromJson(Map<String, dynamic> json) =>
@@ -30,7 +48,7 @@ class Waypoint {
 }
 
 /// The waypoints of [track] that are actually locations, with any non-finite
-/// elevation dropped to null.
+/// elevation or fix-quality field dropped to null.
 ///
 /// Two reasons, and the second is the one that loses a run. A non-finite
 /// latitude or longitude is not a coordinate but the absence of one
@@ -54,7 +72,11 @@ List<Waypoint> finiteWaypoints(List<Waypoint> track) {
   for (final w in track) {
     if (!w.lat.isFinite ||
         !w.lng.isFinite ||
-        (w.elevationMetres != null && !w.elevationMetres!.isFinite)) {
+        _nonFinite(w.elevationMetres) ||
+        _nonFinite(w.accuracyMetres) ||
+        _nonFinite(w.speedMps) ||
+        _nonFinite(w.speedAccuracyMps) ||
+        _nonFinite(w.bearingDeg)) {
       needsFilter = true;
       break;
     }
@@ -66,11 +88,17 @@ List<Waypoint> finiteWaypoints(List<Waypoint> track) {
         Waypoint(
           lat: w.lat,
           lng: w.lng,
-          elevationMetres: (w.elevationMetres?.isFinite ?? false)
-              ? w.elevationMetres
-              : null,
+          elevationMetres: _finiteOrNull(w.elevationMetres),
           timestamp: w.timestamp,
           bpm: w.bpm,
+          accuracyMetres: _finiteOrNull(w.accuracyMetres),
+          speedMps: _finiteOrNull(w.speedMps),
+          speedAccuracyMps: _finiteOrNull(w.speedAccuracyMps),
+          bearingDeg: _finiteOrNull(w.bearingDeg),
         ),
   ];
 }
+
+bool _nonFinite(double? v) => v != null && !v.isFinite;
+
+double? _finiteOrNull(double? v) => (v?.isFinite ?? false) ? v : null;

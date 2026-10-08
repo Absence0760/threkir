@@ -366,7 +366,7 @@
 		inset-inline-end: -20%;
 		width: 60%;
 		height: 200%;
-		background: radial-gradient(ellipse, rgba(254, 89, 50, 0.18) 0%, transparent 70%);
+		background: radial-gradient(ellipse, rgba(194, 78, 36, 0.18) 0%, transparent 70%);
 		animation: aurora-a 22s ease-in-out infinite alternate;
 	}
 
@@ -377,7 +377,7 @@
 		inset-inline-start: -10%;
 		width: 55%;
 		height: 160%;
-		background: radial-gradient(ellipse, rgba(44, 95, 110, 0.18) 0%, transparent 70%);
+		background: radial-gradient(ellipse, rgba(91, 75, 138, 0.18) 0%, transparent 70%);
 		animation: aurora-b 28s ease-in-out infinite alternate;
 	}
 
@@ -479,14 +479,14 @@
 		width: 0.45rem;
 		height: 0.45rem;
 		border-radius: var(--radius-pill);
-		background: var(--brand-ember);
-		box-shadow: 0 0 0 0 rgba(254, 89, 50, 0.6);
+		background: var(--brand-coral);
+		box-shadow: 0 0 0 0 rgba(194, 78, 36, 0.6);
 		animation: beacon 2.4s ease-out infinite;
 	}
 
 	@keyframes beacon {
-		70% { box-shadow: 0 0 0 0.55rem rgba(254, 89, 50, 0); }
-		100% { box-shadow: 0 0 0 0 rgba(254, 89, 50, 0); }
+		70% { box-shadow: 0 0 0 0.55rem rgba(194, 78, 36, 0); }
+		100% { box-shadow: 0 0 0 0 rgba(194, 78, 36, 0); }
 	}
 
 	h1 {
@@ -570,7 +570,7 @@
 		border: none;
 		box-shadow:
 			0 0.25rem 0.9rem rgba(0, 0, 0, 0.18),
-			0 0 2.5rem rgba(254, 89, 50, 0.25);
+			0 0 2.5rem rgba(194, 78, 36, 0.25);
 	}
 
 	/* A light sweep across the face on hover. A transition, so it runs once
@@ -590,7 +590,7 @@
 		transform: translateY(-2px);
 		box-shadow:
 			0 0.5rem 1.4rem rgba(0, 0, 0, 0.24),
-			0 0 3.5rem rgba(254, 89, 50, 0.35);
+			0 0 3.5rem rgba(194, 78, 36, 0.35);
 	}
 
 	.btn-primary:hover::after {
@@ -663,7 +663,7 @@
 		inset-inline-start: calc(50% - 1.5px);
 		width: 3px;
 		border-radius: var(--radius-pill);
-		background: linear-gradient(180deg, var(--brand-ember), var(--brand-magenta) 70%, var(--color-primary));
+		background: linear-gradient(180deg, var(--brand-coral), var(--brand-rose), var(--brand-violet) 70%, var(--color-primary));
 		transform-origin: top;
 		opacity: 0.85;
 	}
@@ -720,11 +720,11 @@
 		font-variant-numeric: tabular-nums;
 		/* Lit state is the resting state. White on these two stops reads
 		   6.513 / 9.713:1. */
-		background: linear-gradient(140deg, #A01E77, #6E1450);
+		background: linear-gradient(140deg, #5B4B8A, #43356A);
 		color: #FFFFFF;
 		box-shadow:
 			0 0 0 0.35rem var(--color-bg),
-			0 0 1.75rem rgba(254, 89, 50, 0.45);
+			0 0 1.75rem rgba(194, 78, 36, 0.45);
 		z-index: 1;
 	}
 
@@ -1024,8 +1024,8 @@
 	}
 
 	.chart-bar--best {
-		background: linear-gradient(180deg, var(--brand-ember), var(--brand-magenta));
-		box-shadow: 0 0 1.5rem rgba(254, 89, 50, 0.4);
+		background: linear-gradient(180deg, var(--brand-coral), var(--brand-rose), var(--brand-violet));
+		box-shadow: 0 0 1.5rem rgba(194, 78, 36, 0.4);
 	}
 
 	.chart-km {
@@ -1209,7 +1209,7 @@
 		overflow: hidden;
 		padding: 7rem var(--space-2xl);
 		text-align: center;
-		background: linear-gradient(135deg, #102A32 0%, #2C5F6E 100%);
+		background: linear-gradient(135deg, #121117 0%, #43356A 100%);
 		color: #FFFFFF;
 	}
 
@@ -1231,14 +1231,14 @@
 	.closing-glow::before {
 		top: -22rem;
 		inset-inline-start: -10rem;
-		background: radial-gradient(circle, rgba(254, 89, 50, 0.2) 0%, transparent 65%);
+		background: radial-gradient(circle, rgba(194, 78, 36, 0.2) 0%, transparent 65%);
 		animation: aurora-b 24s ease-in-out infinite alternate;
 	}
 
 	.closing-glow::after {
 		bottom: -24rem;
 		inset-inline-end: -8rem;
-		background: radial-gradient(circle, rgba(160, 30, 119, 0.22) 0%, transparent 65%);
+		background: radial-gradient(circle, rgba(91, 75, 138, 0.22) 0%, transparent 65%);
 		animation: aurora-a 30s ease-in-out infinite alternate;
 	}
 

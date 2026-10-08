@@ -175,10 +175,13 @@ class _NoOpWakelock extends WakelockPlusPlatformInterface {
   Future<bool> get enabled async => _on;
 }
 
+// Most callers move 12 m every 2 s; the Doppler speed matches, since the
+// distance estimator credits the chip's speed rather than the position hop.
 Position _pos({
   required double metresEast,
   required int secondsFromStart,
   double accuracy = 5,
+  double speed = 6,
 }) {
   const lat = 47.37;
   const lngBase = 8.54;
@@ -192,7 +195,7 @@ Position _pos({
     altitudeAccuracy: 2,
     heading: 90,
     headingAccuracy: 5,
-    speed: 2.5,
+    speed: speed,
     speedAccuracy: 1,
   );
 }
@@ -965,8 +968,8 @@ void main() {
       expect(cues.turnDistances, hasLength(1),
           reason: 'the far band announces once on the approach');
 
-      // A multipath fix 300 m up the course in 2 s: the recorder rejects it
-      // for distance, so it must not advance route progress either.
+      // A multipath fix 300 m up the course in 2 s: the recorder keeps it out
+      // of the track, so it must not advance route progress either.
       geolocator.emit(_pos(metresEast: 480, secondsFromStart: 6));
       await tester.pump(const Duration(milliseconds: 50));
       geolocator.emit(_pos(metresEast: 482, secondsFromStart: 8));

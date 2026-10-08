@@ -8,7 +8,6 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.location.Location
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
@@ -38,10 +37,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import java.util.UUID
-import kotlin.math.cos
-import kotlin.math.pow
-import kotlin.math.sin
-import kotlin.math.sqrt
 
 /// Foreground service that owns the GPS + HR streams during a run.
 ///
@@ -83,7 +78,16 @@ class RunRecordingService : Service() {
     /// Matches the 30 s gap used on Android.
     private var lastPaceAlertAtMs = 0L
 
-    private var lastLocation: Location? = null
+    /// The distance estimator for the current recording segment
+    /// (docs/features/gps_distance.md). A pause closes the segment and banks
+    /// its totals below, so the next fix after a resume re-anchors instead of
+    /// letting the filter integrate across the paused span. Guarded by
+    /// [distanceLock]: the GPS and step collectors run on different
+    /// `Dispatchers.Default` threads, and pause/stop arrive on the main thread.
+    private var distanceEstimator = GpsDistanceEstimator()
+    private var bankedGpsDistanceM = 0.0
+    private var bankedStepDistanceM = 0.0
+    private val distanceLock = Any()
     /// Wall-clock timestamp of the most recent GPS point delivered while
     /// Recording. Used by the self-heal watchdog to re-subscribe if the
     /// FusedLocationProviderClient stream goes silent despite availability
@@ -135,10 +139,6 @@ class RunRecordingService : Service() {
     /// preference, and must still be shut down.
     private val cues: TtsAnnouncer?
         get() = if (voiceFeedbackEnabled) tts else null
-
-    /// Monotonic stamp of the last accepted/rebased anchor. See the re-anchor
-    /// escape in onGps.
-    private var lastAnchorRealtimeMs: Long = 0L
 
     /// Runner's universal `privacy_default` ("public" / "followers" /
     /// "private"), passed once from the ACTION_START intent and written
@@ -241,7 +241,11 @@ class RunRecordingService : Service() {
         pausedAccumulatedMs = 0
         pausedSinceMs = 0
         laps.clear()
-        lastLocation = null
+        synchronized(distanceLock) {
+            distanceEstimator = GpsDistanceEstimator(GpsDistanceEstimator.maxSpeedMpsFor(activity))
+            bankedGpsDistanceM = 0.0
+            bankedStepDistanceM = 0.0
+        }
         lastPointAtMs = 0L
         trackOverlay.clear()
         bpmSum = 0
@@ -380,6 +384,9 @@ class RunRecordingService : Service() {
                 .catch { e -> android.util.Log.w(TAG, "step stream failed", e) }
                 .collect { stepsThisRun ->
                     if (isPaused()) return@collect
+                    synchronized(distanceLock) {
+                        distanceEstimator.addSteps(realtimeS(), stepsThisRun.toLong())
+                    }
                     RecordingRepository.update { it.copy(steps = stepsThisRun) }
                 }
         }
@@ -419,6 +426,7 @@ class RunRecordingService : Service() {
         if (RecordingRepository.metrics.value.stage != RecordingRepository.Stage.Recording) return
         pausedSinceMs = System.currentTimeMillis()
         RecordingRepository.update { it.copy(stage = RecordingRepository.Stage.Paused) }
+        synchronized(distanceLock) { closeDistanceSegment() }
         val elapsed = activeElapsedMs()
         refreshNotification(elapsed, RecordingRepository.metrics.value.distanceM, paused = true)
         com.runapp.watchwear.tiles.ActiveRunTileService.requestUpdate(this)
@@ -430,7 +438,6 @@ class RunRecordingService : Service() {
             pausedAccumulatedMs += System.currentTimeMillis() - pausedSinceMs
             pausedSinceMs = 0
         }
-        lastLocation = null
         RecordingRepository.update { it.copy(stage = RecordingRepository.Stage.Recording) }
         com.runapp.watchwear.tiles.ActiveRunTileService.requestUpdate(this)
     }
@@ -443,16 +450,18 @@ class RunRecordingService : Service() {
         tickerJob?.cancel(); tickerJob = null
         checkpointJob?.cancel(); checkpointJob = null
 
-        val distanceAtFinish = RecordingRepository.metrics.value.distanceM
+        val (finishDistanceM, stepFilledM) = synchronized(distanceLock) {
+            closeDistanceSegment()
+            bankedDistanceM() to bankedStepDistanceM
+        }
         val durationAtFinish = (activeElapsedMs() / 1000).toInt()
-        cues?.announceFinish(distanceAtFinish, durationAtFinish, preferredUnit)
+        cues?.announceFinish(finishDistanceM, durationAtFinish, preferredUnit)
 
         if (pausedSinceMs > 0) {
             pausedAccumulatedMs += System.currentTimeMillis() - pausedSinceMs
             pausedSinceMs = 0
         }
         val finalElapsed = activeElapsedMs()
-        val finalDistance = RecordingRepository.metrics.value.distanceM
         advanceHrCoverage(finalElapsed)
         val hr = heartRateClaim(
             bpmSum = bpmSum,
@@ -468,7 +477,8 @@ class RunRecordingService : Service() {
             it.copy(
                 stage = RecordingRepository.Stage.Finished,
                 elapsedMs = finalElapsed,
-                distanceM = finalDistance,
+                distanceM = finishDistanceM,
+                distanceStepFilledM = stepFilledM,
                 finishedHr = hr,
                 trackFilePath = file?.absolutePath,
                 laps = laps.toList(),
@@ -550,54 +560,17 @@ class RunRecordingService : Service() {
     private fun onGps(p: GpsPoint) {
         lastPointAtMs = System.currentTimeMillis()
         trackWriter?.append(p)
-        val asLoc = Location("").apply {
-            latitude = p.lat; longitude = p.lng; time = p.epochMs
-        }
-        var newDistance = RecordingRepository.metrics.value.distanceM
-        // The anchor advances ONLY on an accepted delta, or on a real gap.
-        //
-        // Advancing it after a REJECTED sub-2 m hop discards that ground for
-        // good: at the 1 Hz fix rate a walker at 1.4 m/s produces ~1.4 m per
-        // fix, every one of them under the floor, so a two-hour hike accrued
-        // 0.00 km. Holding the anchor is exactly what lets two such fixes sum
-        // to 2.8 m and count. The canonical Flutter recorder assigns
-        // `_lastTrackedPosition` inside the accepted branch for this reason.
-        //
-        // The escape mirrors its `_gpsReanchorAfterSeconds`: once a real
-        // interval has passed, rebase to the fresh fix WITHOUT crediting the
-        // un-sampled gap, so a >100 m hop after dropped fixes cannot freeze the
-        // anchor for the rest of the run instead.
-        val prev = lastLocation
-        val nowRealtimeMs = SystemClock.elapsedRealtime()
-        if (prev == null) {
-            lastLocation = asLoc
-            lastAnchorRealtimeMs = nowRealtimeMs
-        } else {
-            val delta = haversineM(prev.latitude, prev.longitude, p.lat, p.lng)
-            if (delta in 2.0..100.0) {
-                newDistance += delta
-                lastLocation = asLoc
-                lastAnchorRealtimeMs = nowRealtimeMs
-            } else if (delta > 100.0 && nowRealtimeMs - lastAnchorRealtimeMs >= GPS_REANCHOR_MS) {
-                // Over-ceiling ONLY, and on a MONOTONIC clock.
-                //
-                // The escape exists for the >100 m case: fixes were dropped, the
-                // runner really moved, and a fixed cap never scales — so without
-                // it the stale anchor only ever recedes and distance freezes for
-                // the rest of the run (#330). It must NOT fire for a sub-2 m
-                // hop: that ground is DEFERRED, and discarding the deferral is
-                // the 0.00 km bug this branch was added alongside. The firmware
-                // re-anchors inside its over-ceiling branch only and holds the
-                // anchor below the floor; this now matches.
-                //
-                // elapsedRealtime, not the fix's own stamp: a wall clock can
-                // step backwards on an NTP sync (and a mock/test provider can
-                // stall it entirely), and a negative or frozen delta means the
-                // escape never fires — freezing distance exactly the way the
-                // escape exists to prevent.
-                lastLocation = asLoc
-                lastAnchorRealtimeMs = nowRealtimeMs
-            }
+        val newDistance = synchronized(distanceLock) {
+            distanceEstimator.addFix(
+                t = (p.elapsedRealtimeMs ?: SystemClock.elapsedRealtime()) / 1000.0,
+                lat = p.lat,
+                lng = p.lng,
+                accuracyM = p.accuracyM,
+                speedMps = p.speedMps,
+                speedAccuracyMps = p.speedAccuracyMps,
+                bearingDeg = p.bearingDeg,
+            )
+            bankedDistanceM() + distanceEstimator.distanceM
         }
         val elapsedS = activeElapsedMs() / 1000.0
         val pace = if (newDistance >= 50.0 && elapsedS > 0) elapsedS / newDistance * 1000.0 else null
@@ -689,6 +662,7 @@ class RunRecordingService : Service() {
         if (file.pointCount == 0 && bpmCount == 0L) return
         val savedAtMs = System.currentTimeMillis()
         val currentPauseMs = if (pausedSinceMs > 0) savedAtMs - pausedSinceMs else 0
+        val stepFilledM = synchronized(distanceLock) { bankedStepDistanceM + distanceEstimator.stepDistanceM }
         checkpoints.save(
             Checkpoint(
                 runId = runId,
@@ -705,6 +679,8 @@ class RunRecordingService : Service() {
                 steps = RecordingRepository.metrics.value.steps,
                 privacyDefault = privacyDefault,
                 pausedAccumulatedMs = pausedAccumulatedMs + currentPauseMs,
+                distanceEstimator = GpsDistanceEstimator.SPEC_ID,
+                distanceStepFilledM = stepFilledM,
             )
         )
     }
@@ -749,15 +725,21 @@ class RunRecordingService : Service() {
         cues?.announcePaceAlert(tooSlow)
     }
 
-    private fun haversineM(aLat: Double, aLng: Double, bLat: Double, bLng: Double): Double {
-        val r = 6371000.0
-        val dLat = Math.toRadians(bLat - aLat)
-        val dLng = Math.toRadians(bLng - aLng)
-        val a = sin(dLat / 2).pow(2.0) +
-            cos(Math.toRadians(aLat)) * cos(Math.toRadians(bLat)) *
-            sin(dLng / 2).pow(2.0)
-        return r * 2 * Math.asin(sqrt(a))
+    private fun realtimeS(): Double = SystemClock.elapsedRealtime() / 1000.0
+
+    /// End the current estimator segment: commit any step distance buffered
+    /// across a trailing GPS gap, bank the segment's totals, and start a
+    /// fresh estimator that keeps the learned stride, so a GPS gap right
+    /// after a resume is still step-filled. Caller holds [distanceLock].
+    private fun closeDistanceSegment() {
+        val segment = distanceEstimator
+        segment.finish(realtimeS())
+        bankedGpsDistanceM += segment.gpsDistanceM
+        bankedStepDistanceM += segment.stepDistanceM
+        distanceEstimator = segment.nextSegment()
     }
+
+    private fun bankedDistanceM(): Double = bankedGpsDistanceM + bankedStepDistanceM
 
     // ----- Notifications -----
 
@@ -905,12 +887,6 @@ class RunRecordingService : Service() {
         /// buffer covers the whole run regardless of duration. ~4 KiB
         /// of memory per run.
         const val MAX_TRACK_OVERLAY_POINTS = 256
-
-        /// Re-anchor the distance accumulator after a real gap, so a hop that
-        /// failed the 100 m cap because fixes were dropped cannot freeze the
-        /// anchor for the rest of the run. Mirrors the Flutter recorder's
-        /// `_gpsReanchorAfterSeconds`.
-        const val GPS_REANCHOR_MS = 10_000L
 
         const val ACTION_START = "com.runapp.watchwear.action.START_RECORDING"
         const val ACTION_STOP = "com.runapp.watchwear.action.STOP_RECORDING"

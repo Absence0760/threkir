@@ -243,6 +243,8 @@ tasks.withType<Test>().configureEach {
             root.resolve("apps/web/src/lib/core/env_flag.ts"),
             // MetadataRegistryTest: the runs.metadata key registry.
             root.resolve("docs/backend/metadata.md"),
+            // GpsDistanceEstimatorTest: the cross-port golden vectors.
+            root.resolve("fixtures/gps_distance_vectors.json"),
         )
             .withPathSensitivity(PathSensitivity.NAME_ONLY)
             .withPropertyName("guardedCrossTreeFiles")

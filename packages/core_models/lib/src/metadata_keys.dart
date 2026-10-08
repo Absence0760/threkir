@@ -22,7 +22,10 @@ class MetadataKeys {
   static const String cadenceSpm = 'cadence_spm';
   static const String chipTime = 'chip_time';
   static const String createdByUserId = 'created_by_user_id';
+  static const String distanceEstimator = 'distance_estimator';
+  static const String distanceRecordedM = 'distance_recorded_m';
   static const String distanceSource = 'distance_source';
+  static const String distanceStepFilledM = 'distance_step_filled_m';
   static const String elevationM = 'elevation_m';
   static const String event = 'event';
   static const String eventId = 'event_id';

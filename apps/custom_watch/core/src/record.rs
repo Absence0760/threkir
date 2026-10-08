@@ -30,6 +30,7 @@ use crate::fuel_plan::{
 };
 use crate::gear_wear::{gear_wear, GearWear};
 use crate::geo::lon_delta_deg;
+use crate::gps_distance::GpsDistanceEstimator;
 use crate::grade_adjusted_pace::GapEstimator;
 use crate::guided_runs::{cues_due, find_guided_run, is_guided_run_valid, GuidedRun};
 use crate::hr_zones::{
@@ -1092,8 +1093,16 @@ pub struct Recorder {
     manual_paused_s: u32,
     distance_m: f64,
     current_speed_mps: f32,
-    /// Last fix accepted for distance — the anchor the next segment measures
-    /// from. Cleared on start / resume so a pause gap is never one huge hop.
+    /// The headline-distance estimator (docs/features/gps_distance.md), built
+    /// for the GNSS mode's fix interval so a 15 s or 60 s cadence scales its
+    /// gap window instead of re-anchoring on every fix. Rebuilt on start, on
+    /// resume (a manual pause is a fresh anchor, so the paused span is never
+    /// credited) and when the interval changes; the run total lives in
+    /// `distance_m`, so a rebuild never loses distance, and the stride carries.
+    gps: GpsDistanceEstimator,
+    /// Last fix accepted for the stored track, moving time and the auto-pause
+    /// state — the anchor the next segment measures from. Cleared on start /
+    /// resume so a pause gap is never one huge hop.
     last: Option<Fix>,
     /// Whether the most recent [`on_fix`](Recorder::on_fix) call adopted the
     /// fix as a new anchor (the run's first fix, an accepted move, or a
@@ -1333,6 +1342,7 @@ impl Recorder {
             manual_paused_s: 0,
             distance_m: 0.0,
             current_speed_mps: 0.0,
+            gps: GpsDistanceEstimator::new(MAX_SPEED_MPS),
             last: None,
             last_fix_stored: false,
             track_thinning: 1,
@@ -1542,6 +1552,11 @@ impl Recorder {
     /// `run_recorder`'s #330 — so recording resumes from the reacquire point
     /// instead of freezing against a stale anchor.)
     ///
+    /// Also rebuilds the distance estimator for the new interval when it
+    /// changes, carrying its stride; the next fix re-anchors it, so a change
+    /// mid-run credits nothing for that one interval. The mode only changes
+    /// while idle in practice (see the app's record task).
+    ///
     /// Forwarded to the GAP estimator, whose power-hike hold budget scales
     /// off the same cadence
     /// ([`gap_hold_ticks`](crate::grade_adjusted_pace::gap_hold_ticks)):
@@ -1549,8 +1564,21 @@ impl Recorder {
     /// to the interval would expire mid-gap against a speed that could not
     /// yet have changed.
     pub fn set_fix_interval_s(&mut self, interval_s: u32) {
-        self.fix_interval_s = interval_s.max(1);
+        let interval_s = interval_s.max(1);
+        if interval_s != self.fix_interval_s {
+            self.fix_interval_s = interval_s;
+            self.gps = GpsDistanceEstimator::with_config(
+                MAX_SPEED_MPS,
+                f64::from(interval_s),
+                self.gps.stride_m(),
+            );
+        }
         self.gap.set_fix_interval_s(interval_s);
+    }
+
+    /// A fresh distance estimator for a new run at the current fix interval.
+    fn fresh_gps(&self) -> GpsDistanceEstimator {
+        GpsDistanceEstimator::with_config(MAX_SPEED_MPS, f64::from(self.fix_interval_s), None)
     }
 
     pub fn state(&self) -> RecordState {
@@ -2025,6 +2053,7 @@ impl Recorder {
         self.manual_paused_s = 0;
         self.distance_m = 0.0;
         self.current_speed_mps = 0.0;
+        self.gps = self.fresh_gps();
         self.last = None;
         self.track_thinning = 1;
         self.backyard.on_run_start();
@@ -2079,6 +2108,7 @@ impl Recorder {
         self.state = RecordState::Recording;
         self.manual_paused = false;
         self.last = None;
+        self.gps = self.gps.next_segment();
     }
 
     /// Choose what closes a lap without a press ([`crate::auto_lap`]). Takes
@@ -2178,6 +2208,15 @@ impl Recorder {
     /// Consume one GPS fix, using its `uptime_s` as the current time. Ignored
     /// unless recording or auto-paused — a manual pause gates fixes out
     /// entirely, mirroring `run_recorder`'s `if (_paused) return`.
+    ///
+    /// Two decisions ride one fix and are made separately. **Distance** is the
+    /// spec-v1.1 estimator's credit in every GNSS mode
+    /// ([`crate::gps_distance`]): summing raw hops inflated a run by ~20%
+    /// because a 1 Hz fix moves about as far as its own error, and in a 15 s /
+    /// 60 s mode it cuts every bend between fixes. The estimator is built for
+    /// the mode's interval, which scales its gap window. **The stored track,
+    /// moving time and the auto-pause state** keep the movement-gated anchor
+    /// below, unchanged — the spec decides distance only.
     pub fn on_fix(&mut self, fix: &Fix) {
         self.last_fix_stored = false;
         if let Some(tod) = fix.time_of_day {
@@ -2190,6 +2229,51 @@ impl Recorder {
         }
         self.advance_now(fix.uptime_s);
 
+        let credited = self.credit_estimated(fix);
+        let settled = self.on_fix_segment(fix);
+        if credited > 0.0 && !settled {
+            self.after_distance();
+        }
+    }
+
+    /// Feed the estimator and bank what it credits, into the run total and
+    /// into the pace bucket for the speed it credited at. RMC's speed over
+    /// ground is the receiver's Doppler figure and its course the bearing;
+    /// NMEA carries no horizontal accuracy in metres, so the estimator's 3 m
+    /// floor stands in for it.
+    fn credit_estimated(&mut self, fix: &Fix) -> f64 {
+        let t = f64::from(fix.uptime_s);
+        let prev_t = self.gps.last_fix_t();
+        let inc = self.gps.add_fix(
+            t,
+            fix.lat_deg,
+            fix.lon_deg,
+            None,
+            Some(f64::from(fix.speed_mps)),
+            None,
+            fix.course_deg.map(f64::from),
+        );
+        if inc > 0.0 {
+            self.distance_m += inc;
+            if let Some(prev_t) = prev_t {
+                let bucket = pace_bucket_for_speed(inc / (t - prev_t), ActivityKind::Run);
+                self.pace_bucket_m[bucket] += inc;
+            }
+        }
+        inc
+    }
+
+    /// The consumers that read the run total, fed after it moves.
+    fn after_distance(&mut self) {
+        self.pacer.on_distance(self.distance_m, self.elapsed_s());
+        self.feed_workout();
+        self.check_auto_lap();
+    }
+
+    /// The movement-gated anchor: stored track point, moving time, HR-zone
+    /// time and the auto-pause state. Returns whether it reached the accepted
+    /// branch, which feeds the distance consumers itself.
+    fn on_fix_segment(&mut self, fix: &Fix) -> bool {
         let last = match self.last {
             Some(l) => l,
             None => {
@@ -2197,7 +2281,7 @@ impl Recorder {
                 self.current_speed_mps = fix.speed_mps.max(0.0);
                 self.last_fix_stored = true;
                 self.feed_gap(fix);
-                return;
+                return false;
             }
         };
 
@@ -2217,14 +2301,14 @@ impl Recorder {
             // Real GPS gap, not a teleport: the hop failed the one-hop cap but
             // a genuine interval elapsed (`run_recorder`'s #330 re-anchor,
             // `_gpsReanchorAfterSeconds`). Rebase the anchor to the fresh fix
-            // WITHOUT crediting the un-sampled gap distance or its time —
-            // exactly how the first fix of a run anchors. The rebased point is
-            // stored so the flash track carries the reacquire position, and
-            // the gap banks no moving time. Without this, a 1 Hz dropout that
-            // displaced the runner past MAX_JUMP_M froze distance for the rest
-            // of the run: the fixed cap never scales, so the stale anchor only
-            // ever receded. 1 Hz only, mirroring the Dart recorder it ports —
-            // a throttled mode needs no re-anchor because its `MAX_SPEED_MPS *
+            // WITHOUT crediting the un-sampled gap's time — exactly how the
+            // first fix of a run anchors. The rebased point is stored so the
+            // flash track carries the reacquire position, and the gap banks no
+            // moving time. Without this, a 1 Hz dropout that displaced the
+            // runner past MAX_JUMP_M froze the anchor for the rest of the run:
+            // the fixed cap never scales, so the stale anchor only ever
+            // receded. 1 Hz only, mirroring the Dart recorder it ports — a
+            // throttled mode needs no re-anchor because its `MAX_SPEED_MPS *
             // dt` ceiling grows faster than any real displacement, so a held
             // anchor self-heals on a later fix. A dt == 0 duplicate can never
             // reach here (dt >= the gate), so timestamp dupes stay
@@ -2235,24 +2319,18 @@ impl Recorder {
                 self.last_fix_stored = true;
                 self.feed_gap(fix);
             }
-            return;
+            return false;
         }
         self.current_speed_mps = fix.speed_mps.max(0.0);
 
         if delta <= TRACK_THRESHOLD_M {
             self.state = RecordState::Paused;
-            return;
+            return false;
         }
 
-        // Distance always accrues on an accepted segment; the segment's time
-        // only counts as moving when its speed clears the moving gate — the
-        // movingTimeOf rule, which auto-pauses a slow (stopped-but-drifting)
-        // stretch out of moving time while still crediting the ground covered.
-        self.distance_m += delta;
-        // Pace-distribution: bank the segment's distance in the bucket for its
-        // own speed — the Splits page's pace analogue of the HR-zone time.
-        let bucket = pace_bucket_for_speed(delta / dt as f64, ActivityKind::Run);
-        self.pace_bucket_m[bucket] += delta;
+        // The segment's time only counts as moving when its speed clears the
+        // moving gate — the movingTimeOf rule, which auto-pauses a slow
+        // (stopped-but-drifting) stretch out of moving time.
         if delta / dt as f64 >= MIN_MOVING_SPEED_MPS {
             self.moving_s += dt;
             // Zone time banks exactly where moving time does, into the zone of
@@ -2272,12 +2350,8 @@ impl Recorder {
         self.last = Some(*fix);
         self.last_fix_stored = true;
         self.feed_gap(fix);
-        // Distance only moves here, so this is the one place the partner's
-        // finish crossing can happen.
-        self.pacer.on_distance(self.distance_m, self.elapsed_s());
-        self.feed_workout();
-
-        self.check_auto_lap();
+        self.after_distance();
+        true
     }
 
     /// Close whatever laps the armed trigger has come due for. Both axes bank
@@ -3346,7 +3420,11 @@ mod tests {
     }
 
     #[test]
-    fn distance_accumulates_to_ground_truth() {
+    fn distance_credits_the_receivers_doppler_speed_over_each_interval() {
+        // The spec-v1 estimator (crate::gps_distance): at 1 Hz the credit is
+        // RMC's speed over ground x the interval, not the hop between two
+        // noisy positions — five 1 s intervals at 5 m/s are 25 m whatever the
+        // fixes' scatter.
         let mut r = Recorder::new();
         r.start(0);
         let pts = [
@@ -3357,19 +3435,14 @@ mod tests {
             (40.00016, -105.00008),
             (40.00020, -105.00010),
         ];
-        let mut expected = 0.0;
-        for w in pts.windows(2) {
-            expected += expected_m(w[0], w[1]);
-        }
         for (i, p) in pts.iter().enumerate() {
             r.on_fix(&fix(p.0, p.1, 5.0, i as u32));
         }
         let s = r.snapshot();
         assert!(
-            libm::fabs(s.distance_m - expected) < 1e-3,
-            "distance {} vs expected {}",
-            s.distance_m,
-            expected
+            libm::fabs(s.distance_m - 25.0) < 1e-9,
+            "distance {} vs 5 x 5 m/s",
+            s.distance_m
         );
         // Every 1 s segment cleared the moving gate.
         assert_eq!(s.moving_s, (pts.len() - 1) as u32);
@@ -3383,24 +3456,30 @@ mod tests {
         r.start(0);
         r.on_fix(&fix(40.0, -105.0, 3.0, 0));
 
-        // ~130 m in 1 s: over the speed ceiling and the jump ceiling.
+        // ~130 m in 1 s: over the speed ceiling and the jump ceiling. The
+        // corrupt POSITION is refused for the track, and the distance is the
+        // second of 3 m/s Doppler the receiver reported — never the jump.
         r.on_fix(&fix(40.001, -105.001, 3.0, 1));
-        assert_eq!(r.snapshot().distance_m, 0.0);
+        assert!(!r.last_fix_stored(), "the teleport is not a track point");
+        assert!((r.snapshot().distance_m - 3.0).abs() < 1e-9);
 
-        // Shared timestamp (dt == 0): undefined speed, rejected.
+        // Shared timestamp (dt == 0): no interval to credit, rejected.
         r.on_fix(&fix(40.00005, -105.0, 3.0, 0));
-        assert_eq!(r.snapshot().distance_m, 0.0);
+        assert!((r.snapshot().distance_m - 3.0).abs() < 1e-9);
 
-        // A good fix still measures from the original anchor.
+        // A good fix still measures its track segment from the original
+        // anchor, and credits its own second.
         r.on_fix(&fix(40.00005, -105.0, 4.0, 2));
-        let d = r.snapshot().distance_m;
-        assert!((d - expected_m((40.0, -105.0), (40.00005, -105.0))).abs() < 1e-3);
+        assert!(r.last_fix_stored());
+        assert!((r.snapshot().distance_m - 7.0).abs() < 1e-9);
     }
 
     #[test]
     fn throttled_interval_accepts_legitimate_minute_apart_segments() {
         // Expedition mode: one fix per 60 s. A runner at ~4 m/s covers ~240 m
         // per segment — far past the 1 Hz MAX_JUMP_M ceiling, entirely real.
+        // The estimator is built for the 60 s interval, so no interval is a
+        // gap: each credits the receiver's 4 m/s over its 60 s.
         let mut r = Recorder::new();
         r.set_fix_interval_s(60);
         r.start(0);
@@ -3410,10 +3489,7 @@ mod tests {
             (40.00432, -105.0),
             (40.00648, -105.0),
         ];
-        let mut expected = 0.0;
-        for w in pts.windows(2) {
-            expected += expected_m(w[0], w[1]);
-        }
+        let expected = 3.0 * 60.0 * 4.0;
         for (i, p) in pts.iter().enumerate() {
             r.on_fix(&fix(p.0, p.1, 4.0, i as u32 * 60));
         }
@@ -3429,21 +3505,68 @@ mod tests {
     }
 
     #[test]
+    fn a_mode_change_mid_run_rebuilds_the_estimator_and_keeps_the_distance() {
+        let mut r = Recorder::new();
+        r.start(0);
+        for t in 0..=10u32 {
+            r.on_fix(&fix(north(f64::from(t) * 4.0), -105.0, 4.0, t));
+        }
+        assert!((r.snapshot().distance_m - 40.0).abs() < 1e-9);
+        // Repeating the interval in force is not a change: no re-anchor.
+        r.set_fix_interval_s(1);
+        r.on_fix(&fix(north(44.0), -105.0, 4.0, 11));
+        assert!((r.snapshot().distance_m - 44.0).abs() < 1e-9);
+        // Balanced: the rebuilt estimator anchors on its first fix and credits
+        // nothing for that one interval, then 15 s of 4 m/s per fix — where
+        // the 1 Hz estimator's 10 s gap would have re-anchored every time.
+        r.set_fix_interval_s(15);
+        r.on_fix(&fix(north(104.0), -105.0, 4.0, 26));
+        assert!((r.snapshot().distance_m - 44.0).abs() < 1e-9);
+        r.on_fix(&fix(north(164.0), -105.0, 4.0, 41));
+        r.on_fix(&fix(north(224.0), -105.0, 4.0, 56));
+        assert!((r.snapshot().distance_m - 164.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_resume_keeps_the_sparse_interval() {
+        let mut r = Recorder::new();
+        r.set_fix_interval_s(60);
+        r.start(0);
+        r.on_fix(&fix(north(0.0), -105.0, 4.0, 0));
+        r.on_fix(&fix(north(240.0), -105.0, 4.0, 60));
+        r.pause(60);
+        r.resume(600);
+        r.on_fix(&fix(north(600.0), -105.0, 4.0, 600));
+        assert!(
+            (r.snapshot().distance_m - 240.0).abs() < 1e-9,
+            "the resume re-anchors"
+        );
+        r.on_fix(&fix(north(840.0), -105.0, 4.0, 660));
+        assert!(
+            (r.snapshot().distance_m - 480.0).abs() < 1e-9,
+            "60 s is still no gap"
+        );
+    }
+
+    #[test]
     fn throttled_interval_still_rejects_implausible_speed() {
         // The physical plausibility bound survives the throttle: ~700 m in
-        // 60 s implies ~11.7 m/s, past MAX_SPEED_MPS — corrupt, dropped, and
-        // the anchor kept for the next fix to measure from.
+        // 60 s implies ~11.7 m/s, past MAX_SPEED_MPS — a corrupt POSITION,
+        // refused for the track, and the anchor kept for the next fix to
+        // measure from. Distance is the receiver's 4 m/s Doppler over the
+        // interval, never the jump, exactly as at 1 Hz.
         let mut r = Recorder::new();
         r.set_fix_interval_s(60);
         r.start(0);
         r.on_fix(&fix(40.0, -105.0, 4.0, 0));
         r.on_fix(&fix(40.0063, -105.0, 4.0, 60));
-        assert_eq!(r.snapshot().distance_m, 0.0);
-        // A missed forwarding (dt = 2 intervals) scales the allowance with the
-        // actual gap: ~480 m over 120 s is 4 m/s, accepted.
+        assert!(!r.last_fix_stored(), "the teleport is not a track point");
+        assert!((r.snapshot().distance_m - 240.0).abs() < 1e-9);
+        // The next good fix measures its track segment from the kept anchor:
+        // ~480 m over 120 s is 4 m/s, accepted.
         r.on_fix(&fix(40.00432, -105.0, 4.0, 120));
-        let d = r.snapshot().distance_m;
-        assert!((d - expected_m((40.0, -105.0), (40.00432, -105.0))).abs() < 1e-3);
+        assert!(r.last_fix_stored());
+        assert!((r.snapshot().distance_m - 480.0).abs() < 1e-9);
     }
 
     #[test]
@@ -3497,10 +3620,12 @@ mod tests {
         let mut r = Recorder::new();
         r.set_fix_interval_s(60);
         r.start(0);
-        r.on_fix(&fix(40.0, -105.0, 4.0, 0));
+        r.on_fix(&fix(40.0, -105.0, 8.3, 0));
         // ~2.5 km north in one 300 s gap (5 missed 60 s fixes): ~8.3 m/s, under
-        // the 10 m/s ceiling × 300 s, so the interval jump gate accepts it.
-        r.on_fix(&fix(40.0 + 0.0225, -105.0, 4.0, 300));
+        // the 10 m/s ceiling × 300 s, so the interval jump gate accepts it, and
+        // inside the 60 s mode's 600 s gap window, so the estimator credits the
+        // receiver's 8.3 m/s over the whole 300 s.
+        r.on_fix(&fix(40.0 + 0.0225, -105.0, 8.3, 300));
         let s = r.snapshot();
         // Two boundaries crossed → two laps closed → now on lap 3, instead of
         // the pre-fix behaviour of a single merged ~2.5 km lap (lap == 2).
@@ -3854,28 +3979,34 @@ mod tests {
         r.on_fix(&fix(40.0, -105.0, 3.0, 0));
         r.on_fix(&fix(40.00005, -105.0, 3.0, 1));
         let dist_before = r.snapshot().distance_m;
-        assert!(dist_before > 5.0, "sanity: pre-gap segment accrued");
+        assert!(
+            (dist_before - 3.0).abs() < 1e-9,
+            "sanity: pre-gap second accrued"
+        );
         assert_eq!(r.snapshot().moving_s, 1);
 
-        // 41 s dropout during which the runner moved ~150 m: past MAX_JUMP_M,
-        // so the hop credits nothing — but the anchor rebases (and the point
-        // is stored so the flash track carries the reacquire position).
+        // 41 s dropout during which the runner moved ~150 m: past MAX_JUMP_M
+        // and past the estimator's 10 s gap, so neither credits the gap — but
+        // both anchors rebase (and the point is stored so the flash track
+        // carries the reacquire position).
         r.on_fix(&fix(40.00140, -105.0, 3.0, 42));
         let s = r.snapshot();
         assert_eq!(s.distance_m, dist_before, "gap distance never credited");
         assert_eq!(s.moving_s, 1, "gap banks no moving time");
         assert!(r.last_fix_stored(), "reacquire point stored to the track");
 
-        // The very next fix measures from the reacquire point — ~5.6 m, not
-        // ~155 m from the pre-gap anchor. Before the re-anchor this fix (and
-        // every one after it) was rejected and distance stayed frozen.
+        // The very next fix measures from the reacquire point — a ~5.6 m
+        // track segment, not ~155 m from the pre-gap anchor — and credits its
+        // own second. Before the re-anchor this fix (and every one after it)
+        // was rejected and distance stayed frozen.
         r.on_fix(&fix(40.00145, -105.0, 3.0, 43));
         let s = r.snapshot();
         let resumed = s.distance_m - dist_before;
         assert!(
-            (5.0..7.0).contains(&resumed),
+            (resumed - 3.0).abs() < 1e-9,
             "recording resumed from the reacquire point (got {resumed} m)"
         );
+        assert!(r.last_fix_stored());
         assert_eq!(s.state, RecordState::Recording);
     }
 
@@ -3888,31 +4019,31 @@ mod tests {
         r.on_fix(&fix(40.0, -105.0, 3.0, 0));
 
         // 150 m in 9 s (16.7 m/s): both implausible and past the cap, and
-        // too soon to be a trusted gap — dropped, anchor untouched.
+        // too soon to be a trusted gap — dropped from the track, anchor
+        // untouched. Distance is the nine seconds at the reported 3 m/s, not
+        // the 150 m the corrupt position implies.
         r.on_fix(&fix(40.00135, -105.0, 3.0, 9));
-        assert_eq!(r.snapshot().distance_m, 0.0);
+        assert!((r.snapshot().distance_m - 27.0).abs() < 1e-9);
         assert!(!r.last_fix_stored(), "teleport not stored");
 
-        // A fix near the ORIGINAL anchor is accepted and measures from it —
-        // proof the teleport did not move the anchor.
+        // A fix near the ORIGINAL anchor is accepted for the track — proof the
+        // teleport did not move the anchor.
         r.on_fix(&fix(40.00004, -105.0, 3.0, 10));
-        let d = r.snapshot().distance_m;
-        assert!(
-            (3.0..6.0).contains(&d),
-            "next fix measured from the held anchor (got {d} m)"
-        );
+        assert!(r.last_fix_stored(), "measured from the held anchor");
+        assert!((r.snapshot().distance_m - 30.0).abs() < 1e-9);
     }
 
     #[test]
     fn slow_segment_counts_distance_not_moving_time() {
         let mut r = Recorder::new();
         r.start(0);
-        r.on_fix(&fix(40.0, -105.0, 0.3, 0));
-        // ~4.45 m over 10 s => 0.44 m/s: past the movement gate, under the
+        r.on_fix(&fix(40.0, -105.0, 0.45, 0));
+        // ~4.45 m over 10 s at a reported 0.45 m/s: past the estimator's
+        // 0.4 m/s stationary floor and the movement gate, under the
         // moving-speed gate. Distance counts; the 10 s does not.
-        r.on_fix(&fix(40.00004, -105.0, 0.3, 10));
+        r.on_fix(&fix(40.00004, -105.0, 0.45, 10));
         let s = r.snapshot();
-        assert!(s.distance_m > TRACK_THRESHOLD_M);
+        assert!((s.distance_m - 4.5).abs() < 1e-6, "{}", s.distance_m);
         assert_eq!(s.moving_s, 0);
         assert_eq!(s.state, RecordState::Paused);
     }
@@ -3989,10 +4120,13 @@ mod tests {
     fn auto_lap_closes_at_each_kilometre_boundary() {
         let mut r = Recorder::new();
         r.start(0);
-        let seg_m = expected_m((40.0, -105.0), (40.00008, -105.0)); // ~8.9 m
+        // The fix's Doppler speed matches its ~8.9 m/s displacement, so the
+        // credit per 1 s interval is the segment.
+        let speed = expected_m((40.0, -105.0), (40.00008, -105.0)) as f32;
+        let seg_m = f64::from(speed);
         let fixes_per_lap = (AUTO_LAP_DISTANCE_M / seg_m) as u32 + 1; // first crossing
         for i in 0..=fixes_per_lap * 2 {
-            r.on_fix(&fix(40.0 + i as f64 * 0.00008, -105.0, 5.0, i));
+            r.on_fix(&fix(40.0 + i as f64 * 0.00008, -105.0, speed, i));
             if i < fixes_per_lap {
                 assert_eq!(r.snapshot().lap, 1, "no lap before the boundary (i={})", i);
             }
@@ -4027,9 +4161,10 @@ mod tests {
     fn manual_lap_closes_now_and_resets_the_auto_boundary() {
         let mut r = Recorder::new();
         r.start(0);
+        let speed = expected_m((40.0, -105.0), (40.00008, -105.0)) as f32;
         // ~445 m in 50 segments.
         for i in 0..=50 {
-            r.on_fix(&fix(40.0 + i as f64 * 0.00008, -105.0, 5.0, i));
+            r.on_fix(&fix(40.0 + i as f64 * 0.00008, -105.0, speed, i));
         }
         let before = r.snapshot();
         assert_eq!(before.lap, 1);
@@ -4048,7 +4183,7 @@ mod tests {
         // The auto boundary measures from the manual lap: the run total passing
         // 1 km must not close lap 2 — only 1 km within lap 2 would.
         for i in 51..=120 {
-            r.on_fix(&fix(40.0 + i as f64 * 0.00008, -105.0, 5.0, i));
+            r.on_fix(&fix(40.0 + i as f64 * 0.00008, -105.0, speed, i));
         }
         let s = r.snapshot();
         assert!(s.distance_m > AUTO_LAP_DISTANCE_M);
@@ -4737,12 +4872,13 @@ mod tests {
         assert_eq!(r.snapshot().pace_bucket_m, [0.0; PACE_BUCKET_COUNT]);
 
         // A throttled interval lets the test cover ~5 km in a few long legs
-        // rather than 500 one-second fixes.
+        // rather than 500 one-second fixes: ten 60 s intervals at the
+        // receiver's 8.4 m/s credit 5040 m.
         r.set_fix_interval_s(60);
         r.start(0);
         let d = 500.0 / METRES_PER_DEGREE_LAT;
         for i in 1..=11 {
-            r.on_fix(&fix(40.0 + i as f64 * d, -105.0, 8.0, i * 60));
+            r.on_fix(&fix(40.0 + i as f64 * d, -105.0, 8.4, i * 60));
         }
         let snap = r.snapshot();
         assert!(
@@ -4776,7 +4912,7 @@ mod tests {
         r.set_hr(Some(150));
         let d = 500.0 / METRES_PER_DEGREE_LAT;
         for i in 1..=11 {
-            r.on_fix(&fix(40.0 + i as f64 * d, -105.0, 8.0, i * 60));
+            r.on_fix(&fix(40.0 + i as f64 * d, -105.0, 8.4, i * 60));
         }
         let snap = r.snapshot();
         let stress = snap.training_stress.expect("stress once distance accrues");
@@ -4794,8 +4930,8 @@ mod tests {
         half.set_max_hr(190);
         half.start(0);
         half.set_hr(Some(150));
-        half.on_fix(&fix(40.0, -105.0, 8.0, 0));
-        half.on_fix(&fix(40.0 + 3.0 * d, -105.0, 8.0, 180));
+        half.on_fix(&fix(40.0, -105.0, 8.4, 0));
+        half.on_fix(&fix(40.0 + 3.0 * d, -105.0, 8.4, 180));
         let s = half.snapshot();
         assert!(!s.training_stress_trimp);
 
@@ -4804,8 +4940,8 @@ mod tests {
         no_avg.set_max_hr(190);
         no_avg.set_resting_hr(50);
         no_avg.start(0);
-        no_avg.on_fix(&fix(40.0, -105.0, 8.0, 0));
-        no_avg.on_fix(&fix(40.0 + 3.0 * d, -105.0, 8.0, 180));
+        no_avg.on_fix(&fix(40.0, -105.0, 8.4, 0));
+        no_avg.on_fix(&fix(40.0 + 3.0 * d, -105.0, 8.4, 180));
         let s = no_avg.snapshot();
         assert!(!s.training_stress_trimp, "sensorless run keeps the proxy");
     }
@@ -4821,7 +4957,7 @@ mod tests {
         r.set_hr(Some(150));
         let d = 500.0 / METRES_PER_DEGREE_LAT;
         for i in 1..=4 {
-            r.on_fix(&fix(40.0 + i as f64 * d, -105.0, 8.0, i * 60));
+            r.on_fix(&fix(40.0 + i as f64 * d, -105.0, 8.4, i * 60));
         }
         assert!(
             !r.snapshot().training_stress_trimp,
@@ -6003,7 +6139,7 @@ mod tests {
         r.start(0);
         let d = 500.0 / METRES_PER_DEGREE_LAT;
         for i in 1..=11 {
-            r.on_fix(&fix(40.0 + i as f64 * d, -105.0, 8.0, i * 60));
+            r.on_fix(&fix(40.0 + i as f64 * d, -105.0, 8.4, i * 60));
         }
         let p = r.snapshot().race_phase.expect("still active mid-run");
         assert_eq!((p.index, p.total), (2, 2));
@@ -6062,12 +6198,12 @@ mod tests {
 
         r.set_fix_interval_s(60);
         r.start(0);
-        // The first fix anchors, then two 200 m hops: 400 m clears the
-        // generalised ten-mile boundary at 381.4 m, which no other preset
-        // reaches before its own halfway.
+        // The first fix anchors, then two 200 m legs at the receiver's
+        // 10/3 m/s over 60 s: 400 m clears the generalised ten-mile boundary
+        // at 381.4 m, which no other preset reaches before its own halfway.
         let d = 200.0 / METRES_PER_DEGREE_LAT;
         for i in 1..=3 {
-            r.on_fix(&fix(40.0 + i as f64 * d, -105.0, 8.0, i * 60));
+            r.on_fix(&fix(40.0 + i as f64 * d, -105.0, 10.0 / 3.0, i * 60));
         }
         let p = r.snapshot().race_phase.expect("still active mid-run");
         assert_eq!((p.index, p.intent), (2, RacePhaseIntent::Settle));
@@ -6357,9 +6493,10 @@ mod tests {
         let mut r = Recorder::new();
         r.set_workout(&workout_steps());
         r.start(0);
-        // Four ~33 m hops: 100.2 m banked, past the first 100 m rep.
+        // Three credited 10 s intervals at a reported 3.4 m/s: 102 m banked,
+        // past the first 100 m rep.
         for (i, t) in [1u32, 11, 21, 31].iter().enumerate() {
-            r.on_fix(&fix(40.0 + i as f64 * 0.0003, -105.0, 3.0, *t));
+            r.on_fix(&fix(40.0 + i as f64 * 0.0003, -105.0, 3.4, *t));
         }
         let w = r.snapshot().workout.expect("armed");
         assert_eq!(w.step_index, 1, "the covered distance advanced the rep");
@@ -6392,7 +6529,7 @@ mod tests {
         r.start(0);
         assert!(r.pop_settled_workout_result().is_none(), "nothing settled");
         for (i, t) in [1u32, 11, 21, 31].iter().enumerate() {
-            r.on_fix(&fix(40.0 + i as f64 * 0.0003, -105.0, 3.0, *t));
+            r.on_fix(&fix(40.0 + i as f64 * 0.0003, -105.0, 3.4, *t));
         }
         let first = r.pop_settled_workout_result().expect("step 0 settled");
         assert_eq!(first.step_index, 0);
@@ -6558,7 +6695,7 @@ mod tests {
         r.set_workout(&workout_steps());
         r.start(0);
         for (i, t) in [1u32, 11, 21, 31].iter().enumerate() {
-            r.on_fix(&fix(40.0 + i as f64 * 0.0003, -105.0, 3.0, *t));
+            r.on_fix(&fix(40.0 + i as f64 * 0.0003, -105.0, 3.4, *t));
         }
         assert_eq!(r.snapshot().workout.unwrap().step_index, 1);
         r.stop(40);
@@ -6731,10 +6868,22 @@ mod tests {
         assert_eq!(p.samples[0], 1_624, "the stuck read outranked the receiver");
         // ...and it is not held as the preferred altitude for later fixes
         // either: the last honest reading stands.
+        // The profile keeps a sample per ELEV_PROFILE_SPACING_M of credited
+        // distance, so the run has to cover it: 1 Hz fixes 3.5 m apart at the
+        // receiver's 3.5 m/s credit 28 m by the ninth second.
         r.set_baro_altitude(1_600.0);
         r.set_baro_altitude(stuck);
-        r.on_fix(&fix_alt(40.0008, -105.0, 3.0, 40, 1_624.0));
+        for t in 2..=9u32 {
+            r.on_fix(&fix_alt(
+                north(f64::from(t - 1) * 3.5),
+                -105.0,
+                3.5,
+                t,
+                1_624.0,
+            ));
+        }
         let p = r.snapshot().elev_profile;
+        assert_eq!(p.len, 2, "the run crossed one profile spacing");
         assert_eq!(p.samples[p.len - 1], 1_600);
     }
 

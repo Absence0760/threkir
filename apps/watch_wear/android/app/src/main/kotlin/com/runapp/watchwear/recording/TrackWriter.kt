@@ -48,11 +48,22 @@ class TrackWriter(private val file: File) {
             "{\"lat\":${point.lat}," +
                 "\"lng\":${point.lng}," +
                 "\"ele\":$ele," +
-                "\"ts\":\"$ts\"}"
+                "\"ts\":\"$ts\"" +
+                optionalField("accuracyMetres", point.accuracyM?.takeIf { it > 0 }) +
+                optionalField("speedMps", point.speedMps?.takeIf { it >= 0 }) +
+                optionalField("speedAccuracyMps", point.speedAccuracyMps?.takeIf { it > 0 }) +
+                optionalField("bearingDeg", point.bearingDeg) +
+                "}"
         )
         count++
         if (count % FLUSH_EVERY == 0) w.flush()
     }
+
+    /// The estimator inputs, so the server can recompute distance from the
+    /// stored track (`docs/features/gps_distance.md` § Waypoint fields). A key
+    /// is omitted rather than written as null when the fix did not carry it.
+    private fun optionalField(key: String, value: Double?): String =
+        if (value != null && value.isFinite()) ",\"$key\":$value" else ""
 
     /// Close and return the finished file. Safe to call more than once;
     /// the file contents remain a valid JSON array once sealed.

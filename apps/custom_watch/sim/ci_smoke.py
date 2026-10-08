@@ -251,11 +251,12 @@ SCENARIO_FIXTURES = {
     # Idle-only: it never starts a run, so the fixture is just something for the
     # receiver to chew on while the thumb works the menu.
     "idle": "bench_jog",
-    # The sim demo workout's steps are sized against THIS fixture: its ~1.5 m/s
-    # of CREDITED distance (consecutive fixes step ~2.97 m against the 3.0 m
-    # TRACK_THRESHOLD_M, so about half are absorbed) settles the 50-60 m steps
-    # in ~33-40 s each. A slower fixture, or one whose min-move filter thins
-    # harder, stretches the same five steps past this scenario's budget.
+    # The sim demo workout's steps are sized against THIS fixture. At 1 Hz the
+    # credit is the RMC speed over ground (~3.0 m/s, `watch_core::gps_distance`),
+    # so the 50-60 m steps settle in ~17-20 s each; before the estimator, half
+    # the ~2.97 m steps fell under the 3.0 m TRACK_THRESHOLD_M and the same
+    # steps took ~33-40 s. A slower fixture stretches the same five steps
+    # toward this scenario's budget.
     "workout": "bench_jog",
     # Flat ground and a constant GPS altitude, which is what makes the scripted
     # weather the ONLY thing moving the reduced pressure — see `scenario_storm`.
@@ -412,12 +413,12 @@ DROPOUT_VOID_MIN_S = 12.0
 # ~116 m of ground truth; this floor is a third of that, so it pins "the leg
 # accrued" without pinning the filter's exact arithmetic.
 DROPOUT_PRE_VOID_M = 40.0
-# Growth after the reacquire that a stale anchor cannot produce. Set to
-# `watch_core::record::TRACK_THRESHOLD_M`, because that is the smallest credit
-# the recorder can make at all — anything under it was absorbed into the next
-# hop and moved nothing. So a single accepted fix clears this by construction
-# (on this fixture the first one credits ~5.97 m), and the claim stays the
-# minimal one: distance moved AT ALL again, which is the bit #330 broke.
+# Growth after the reacquire that a stale anchor cannot produce. At 1 Hz the
+# credit is the estimator's (`watch_core::gps_distance`): the reacquire fix
+# re-anchors and banks nothing, and each fix after it credits its second of
+# RMC speed over ground (~3.0 m/s here), so two fixes clear this. The claim
+# stays the minimal one: distance moved AT ALL again, which is the bit #330
+# broke.
 DROPOUT_RESUME_M = 3.0
 # How long after the void's far edge the resume has to land, in the firmware's
 # own clock. A real re-anchor credits on the FIRST accepted fix past the void —

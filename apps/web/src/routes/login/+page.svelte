@@ -809,12 +809,11 @@
 		outline-offset: 2px;
 	}
 
-	/* --gradient-primary passes through a pale stop in BOTH themes (#F2A07B
-	   light, #B9A7E8 dark), so no single ink clears it: white read 2.081:1
-	   light and 2.153:1 dark. A gradient is a fill and its palest stop sets
-	   the ink, so the primary-action button takes the solid pair § 506 minted
-	   for exactly this — 9.120:1 — the same fix § 511 applied to
-	   .btn-primary. */
+	/* --gradient-primary passes through a pale stop in BOTH themes (#F08A5D
+	   light, #B9A7E8 dark), so no single ink clears it. A gradient is a fill
+	   and its palest stop sets the ink, so the primary-action button takes
+	   the solid pair § 506 minted for exactly this, the same fix § 511
+	   applied to .btn-primary. */
 	.btn-email {
 		background: var(--color-primary);
 		color: var(--color-on-primary);

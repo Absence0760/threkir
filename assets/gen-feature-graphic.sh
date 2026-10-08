@@ -5,7 +5,8 @@
 # SVG source. Deterministic, idempotent, safe to re-run. Sibling of
 # gen-icons.sh, which owns the square app-icon pipeline.
 #
-# Requires: inkscape.
+# Requires: inkscape, and packages/ui_kit/fonts (gen-manrope.py) for the
+# Manrope text.
 #
 set -euo pipefail
 
@@ -18,6 +19,12 @@ if [[ ! -f "$SVG" ]]; then
   exit 1
 fi
 command -v inkscape >/dev/null 2>&1 || { echo "error: 'inkscape' not on PATH" >&2; exit 1; }
+
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+WORK="$(mktemp -d)"
+trap 'rm -rf "$WORK"' EXIT
+# shellcheck source=assets/fonts/manrope-fontconfig.sh
+source "$SCRIPT_DIR/fonts/manrope-fontconfig.sh"
 
 inkscape "$SVG" -w 1024 -h 500 -o "$OUT" >/dev/null 2>&1
 echo "wrote $OUT (1024x500)"

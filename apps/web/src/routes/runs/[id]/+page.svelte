@@ -15,6 +15,7 @@
 	const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
 	const PUBLIC_TILE_STYLE_URL = env.PUBLIC_TILE_STYLE_URL ?? '';
 	import ElevationProfile from '$lib/components/ElevationProfile.svelte';
+	import { cumulativeMetres, smoothElevation } from '$lib/runs/elevation_profile';
 	import RunSocial from '$lib/components/RunSocial.svelte';
 	import RunShareView from '$lib/components/RunShareView.svelte';
 	import StaticMapImage from '$lib/components/StaticMapImage.svelte';
@@ -43,6 +44,7 @@
 		fetchRoutesIntersectingTrack,
 		linkRunToRoute,
 		enqueueRunRematch,
+		requestDistanceRecompute,
 		fetchHrSeries,
 		type RunMatchInfo,
 		type RouteMatchCandidate,
@@ -82,6 +84,11 @@
 	} from '$lib/runs/calories';
 	import { ageGradeForRun, formatAgeGradePercent } from '$lib/runs/age_grade';
 	import { hrCoveragePercent } from '$lib/runs/hr_coverage';
+	import {
+		canRecomputeDistance,
+		classifyRecomputeError,
+		recordedDistanceM,
+	} from '$lib/runs/distance_recompute';
 	import { supabase } from '$lib/core/supabase';
 	import { TABLES, METADATA_KEYS } from '$lib/core/schema';
 	import { m } from '$lib/i18n/store.svelte';
@@ -166,6 +173,10 @@
 	let showDeleteConfirm = $state(false);
 	let showShareConfirm = $state(false);
 	let showMakePrivateConfirm = $state(false);
+	let showRecomputeConfirm = $state(false);
+	/// Set once the recompute job is queued so the action does not offer itself
+	/// again before the worker has rewritten the run; a reload re-reads the row.
+	let recomputeRequested = $state(false);
 	let showReportRun = $state(false);
 	let showNameRoute = $state(false);
 	let routeNameInput = $state('');
@@ -810,6 +821,34 @@
 		}
 	}
 
+	let showRecomputeDistance = $derived(
+		!recomputeRequested && canRecomputeDistance(run, auth.user?.id),
+	);
+	let originalDistanceM = $derived(recordedDistanceM(run?.metadata));
+
+	async function confirmRecomputeDistance() {
+		if (!run) return;
+		try {
+			await requestDistanceRecompute(run.id);
+			recomputeRequested = true;
+			showToast(m('runDetail.recalculatingDistance'), 'success');
+		} catch (e) {
+			const kind = classifyRecomputeError(e);
+			showToast(
+				kind === 'not_authorized'
+					? m('runDetail.recalculateDistanceNotOwner')
+					: kind === 'no_track'
+						? m('runDetail.recalculateDistanceNoTrack')
+						: m('runDetail.recalculateDistanceFailed', {
+								error: (e as Error)?.message ?? String(e),
+							}),
+				'error',
+			);
+		} finally {
+			showRecomputeConfirm = false;
+		}
+	}
+
 	function handleDownloadGpx() {
 		if (!run?.track || run.track.length < 2) return;
 		const title =
@@ -1187,7 +1226,11 @@
 	// every dropout. Null when too few points carry an altitude to draw a
 	// profile at all.
 	let elevationSamples = $derived(elevationSeries(baseTrack));
-	let elevations = $derived(elevationSamples ?? []);
+	/// Drawn smoothed over an along-track window: phone GPS altitude wanders
+	/// by metres between fixes, which the raw series drew as a sawtooth.
+	let elevations = $derived(
+		elevationSamples ? smoothElevation(elevationSamples, cumulativeMetres(baseTrack)) : [],
+	);
 	let hasElevation = $derived(elevationSamples !== null);
 
 	/// Linked-cursor index — fed by ElevationProfile's onhover, consumed
@@ -1786,6 +1829,27 @@
 				</div>
 			{/if}
 		</div>
+		{#if originalDistanceM != null || showRecomputeDistance}
+			<div class="distance-recompute" data-testid="distance-recompute">
+				{#if originalDistanceM != null}
+					<p class="distance-recorded-note" data-testid="distance-recorded-note">
+						{m('runDetail.originallyRecorded', { distance: formatDistance(originalDistanceM) })}
+					</p>
+				{/if}
+				{#if showRecomputeDistance}
+					<button
+						type="button"
+						class="btn-outline distance-recompute-btn"
+						title={m('runDetail.recalculateDistanceTitle')}
+						onclick={() => (showRecomputeConfirm = true)}
+						data-testid="recalculate-distance"
+					>
+						<span class="material-symbols" aria-hidden="true">straighten</span>
+						{m('runDetail.recalculateDistance')}
+					</button>
+				{/if}
+			</div>
+		{/if}
 
 		<!-- Scrubber section. Lives in the info panel (not below the
 			 map) so it's always visible above the page fold + the
@@ -2235,6 +2299,16 @@
 	danger
 />
 
+<ConfirmDialog
+	open={showRecomputeConfirm}
+	title={m('runDetail.recalculateDistanceDialogTitle')}
+	message={m('runDetail.recalculateDistanceDialogMessage')}
+	confirmLabel={m('runDetail.recalculateDistanceConfirm')}
+	onconfirm={confirmRecomputeDistance}
+	oncancel={() => (showRecomputeConfirm = false)}
+	data-testid="recalculate-distance-dialog"
+/>
+
 <!-- Off-screen share card. 1080 square, rendered to PNG by
      `html-to-image` when the user taps Share-as-image. Lives outside
      the main layout so it doesn't affect scrolling; positioned
@@ -2631,10 +2705,10 @@
 		   the hairline INVERTS: --color-border is 6.084:1 in light but 2.366:1
 		   once it carries the 3:1 line value. Measured against the worst-case
 		   composite (the scrim over a white map tile): 8.022:1 and 4.111:1. */
-		color: #F7F3EC;
+		color: #F3F1F7;
 		font-size: 0.75rem;
 		line-height: 1;
-		border: 1px solid #B5ADC3;
+		border: 1px solid #A9A4B6;
 		backdrop-filter: blur(6px);
 		z-index: 5;
 		pointer-events: none;
@@ -2948,6 +3022,27 @@
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-lg);
 		overflow: hidden;
+	}
+
+	.distance-recompute {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-sm) var(--space-md);
+		margin: calc(-1 * var(--space-md)) 0 var(--space-xl);
+	}
+
+	.distance-recorded-note {
+		margin: 0;
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+	}
+
+	.distance-recompute-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-xs);
 	}
 
 	.key-stat {
@@ -3507,7 +3602,7 @@
 		   it replaces read 2.081 and 2.153:1 against the white copy, and the
 		   card centres its content on the middle one; these read 6.179 /
 		   6.544 / 8.258:1. */
-		background: linear-gradient(135deg, #9B4A24 0%, #6E4F94 55%, #5B4478 100%);
+		background: linear-gradient(135deg, #C24E24 0%, #A8426A 55%, #5B4B8A 100%);
 		color: #FFFFFF;
 		display: flex;
 		align-items: center;

@@ -38,7 +38,7 @@ const SEED_BASE_LIGHTNESS = 55;
 const SEED_MIN_CONTRAST = 4.5;
 
 /** Mobile's AppTheme.ink. Theme-independent, because the seed fill is too. */
-export const SEED_INK = '#1B1628';
+export const SEED_INK = '#1A1722';
 export const SEED_ON_LIGHT = '#FFFFFF';
 
 function hslToRgb(h: number, s: number, l: number): [number, number, number] {

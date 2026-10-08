@@ -1,4 +1,5 @@
 import '../activity_type_labels.dart';
+import '../elevation_profile.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -10,7 +11,7 @@ import 'package:flutter/material.dart' hide Route;
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppSemanticColors, ChartPalette, StatGrid, StatTile;
+    show AppRadius, AppSemanticColors, ChartPalette, StatGrid, StatTile;
 import 'package:uuid/uuid.dart';
 
 import '../adaptive_width.dart';
@@ -19,6 +20,7 @@ import '../age_grade.dart';
 import '../backend_timeout.dart';
 import '../calories.dart';
 import '../detail_map_height.dart';
+import '../distance_recompute.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
@@ -43,6 +45,7 @@ import 'settings_preferences_screen.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/fundraiser_section.dart';
 import '../widgets/live_run_map.dart';
+import '../widgets/pace_segments.dart' show paceGradientRamp;
 import '../widgets/track_segment.dart';
 import '../race_service.dart';
 import '../widgets/run_gear_chips.dart';
@@ -141,6 +144,10 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// can't fire two redundant enqueues (the unique-index dedupe would
   /// catch it server-side anyway, but the UI feedback matters).
   bool _rematchBusy = false;
+  bool _recomputeBusy = false;
+  /// Set once the distance recompute is queued so the action stops offering
+  /// itself; the new distance lands only after the background job runs.
+  bool _recomputeRequested = false;
   /// Auto-link suggestion: when run.routeId is null AND the track
   /// confidently overlaps one of the runner's saved routes, surface
   /// a one-tap "Looks like you ran X — link?" banner. Stays null
@@ -154,6 +161,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// consumed by `LiveRunMap.hoverIdx`. Null when the chart pointer
   /// is released. Mirrors the web `chartHoverIdx` on /runs/[id].
   int? _chartHoverIdx;
+  bool _colourByPace = false;
 
   /// Animation state for the "replay" feature. `null` index = not
   /// replaying. Non-null = the current step into `run.track`. Held in a
@@ -376,6 +384,64 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     }
   }
 
+  bool get _canRecomputeDistance {
+    if (_recomputeRequested) return false;
+    final viewerId = widget.apiClient?.userId;
+    // Every run this screen shows comes from the viewer's own LocalRunStore,
+    // so the viewer is the owner; the RPC re-checks that server-side.
+    return canRecomputeDistance(
+      RecomputeCandidate.fromRun(run, ownerId: viewerId),
+      viewerId,
+    );
+  }
+
+  /// Queues a server-side recompute of this run's distance from its stored
+  /// track. Mirrors the web's `confirmRecomputeDistance` on `/runs/[id]`.
+  Future<void> _recomputeDistance() async {
+    final api = widget.apiClient;
+    if (api == null || _recomputeBusy) return;
+    final l10n = AppLocalizations.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        key: const ValueKey('recalculate-distance-dialog'),
+        title: Text(l10n.runDetailRecalculateDistanceDialogTitle),
+        content: Text(l10n.runDetailRecalculateDistanceDialogMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.runDetailCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.runDetailRecalculateDistanceConfirm),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    setState(() => _recomputeBusy = true);
+    try {
+      await api.requestDistanceRecompute(run.id);
+      if (!mounted) return;
+      setState(() => _recomputeRequested = true);
+      showTopBanner(context, l10n.runDetailRecalculatingDistance);
+    } catch (e) {
+      debugPrint('run detail distance recompute failed: $e');
+      if (!mounted) return;
+      final message = switch (classifyRecomputeError(e)) {
+        RecomputeFailure.notAuthorized =>
+          l10n.runDetailRecalculateDistanceNotOwner,
+        RecomputeFailure.noTrack => l10n.runDetailRecalculateDistanceNoTrack,
+        RecomputeFailure.other => l10n
+            .runDetailRecalculateDistanceFailed(friendlyError(l10n, e)),
+      };
+      showTopBanner(context, message);
+    } finally {
+      if (mounted) setState(() => _recomputeBusy = false);
+    }
+  }
+
   @override
   void dispose() {
     _connectivitySub?.cancel();
@@ -523,6 +589,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   String get _notes => (run.metadata?[MetadataKeys.notes] as String?) ?? '';
 
   static const _metresPerMile = 1609.344;
+
+  double? get _recordedDistanceM => recordedDistanceM(run.metadata);
 
   bool get _isDnf => run.metadata?[MetadataKeys.isDnf] == true;
 
@@ -852,6 +920,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                   _saveAsRoute();
                 case 'make_private':
                   _makePrivate();
+                case 'recalculate_distance':
+                  _recomputeDistance();
                 case 'delete':
                   _confirmDelete(context);
               }
@@ -872,6 +942,17 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.lock_outline),
                     title: Text(l10n.runDetailMakePrivate),
+                  ),
+                ),
+              if (_canRecomputeDistance)
+                PopupMenuItem(
+                  key: const ValueKey('recalculate-distance'),
+                  value: 'recalculate_distance',
+                  enabled: !_recomputeBusy,
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.straighten),
+                    title: Text(l10n.runDetailRecalculateDistance),
                   ),
                 ),
               const PopupMenuDivider(),
@@ -939,6 +1020,17 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     );
   }
 
+  /// Whether the line the map draws carries enough timing for the pace
+  /// colours toggle to mean anything — a matched line or an import can lack
+  /// it, and a toggle that changes nothing is worse than none.
+  bool get _mapTrackHasTiming =>
+      displayedRunTrack(
+        run.track,
+        _matchInfo,
+        showRaw: widget.preferences.showRawTrack,
+      ).where((w) => w.timestamp != null).take(2).length ==
+      2;
+
   Widget _buildMapStack(AppLocalizations l10n) {
     return Stack(
       children: [
@@ -978,7 +1070,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                   ? _linkedRoute?.waypoints
                   : null,
               followRunner: false,
-              activity: mapTrack.isNotEmpty ? _activityType : null,
+              finishedRun: true,
+              colourByPace: _colourByPace,
               currentPosition:
                   dotIndex != null ? mapTrack[dotIndex] : null,
               // Authoritative index for the smoothed-dot
@@ -1044,6 +1137,23 @@ class _RunDetailScreenState extends State<RunDetailScreen>
             );
           },
         ),
+        if (_mapTrackHasTiming)
+          Positioned(
+            top: 12,
+            right: 12,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                FilterChip(
+                  label: Text(l10n.runDetailMapPaceColours),
+                  selected: _colourByPace,
+                  onSelected: (v) => setState(() => _colourByPace = v),
+                  backgroundColor: Theme.of(context).colorScheme.surface,
+                ),
+                if (_colourByPace) const _MapPaceLegend(),
+              ],
+            ),
+          ),
         if (run.track.length >= 2)
           Positioned(
             bottom: 12,
@@ -1214,6 +1324,19 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         ),
       ),
 
+      if (_recordedDistanceM != null)
+        Padding(
+          key: const ValueKey('distance-recorded-note'),
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          child: Text(
+            l10n.runDetailOriginallyRecorded(
+                UnitFormat.distance(_recordedDistanceM!, unit)),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+
       // Secondary stats
       if (secondaryStats.isNotEmpty)
         Padding(
@@ -1228,7 +1351,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       ..._buildRouteComparison(theme, l10n, unit),
 
       // Elevation chart
-      if (_hasElevation) ...[
+      if (_hasElevationProfile) ...[
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
           child: Text(l10n.runDetailSectionElevation,
@@ -1439,6 +1562,15 @@ class _RunDetailScreenState extends State<RunDetailScreen>
 
   bool get _hasElevation =>
       run.track.any((w) => w.elevationMetres != null);
+
+  /// One altitude is a point, not a profile — the same
+  /// [minElevationSamples] floor [elevationSeries] applies.
+  bool get _hasElevationProfile =>
+      run.track
+          .where((w) => w.elevationMetres?.isFinite ?? false)
+          .take(minElevationSamples)
+          .length ==
+      minElevationSamples;
 
   List<Map<String, dynamic>> get _laps {
     final laps = run.metadata?[MetadataKeys.laps];
@@ -2837,27 +2969,10 @@ class _Split {
   const _Split(this.tick, this.duration);
 }
 
-/// Fill colours for the elevation chart's pace bands, ordered
-/// faster → steady → slower.
-///
-/// The bands are separated by luminance, not by hue alone. A WCAG contrast
-/// ratio is computed from relative luminance only, so the floors these clear
-/// (>= 2:1 between neighbouring bands, >= 4:1 between faster and slower, >=
-/// 1.5:1 against the page background) are simultaneously greyscale-separation
-/// floors — which the previous red/green ramp, at 1.03:1 in the light theme,
-/// was not at any level of colour vision. "Slower" always sits furthest from
-/// the page background, so heavier ink means slower in both themes even
-/// though the ramp direction inverts with the background, exactly as the
-/// AppSemanticColors pairs do.
-@visibleForTesting
-List<Color> elevationPaceBandColours(Brightness brightness) =>
-    brightness == Brightness.dark
-        ? const [Color(0xFF325D42), Color(0xFFB47F34), Color(0xFFEFCDC7)]
-        : const [Color(0xFF89BF9D), Color(0xFF9E702E), Color(0xFF7C3024)];
-
-/// Interactive elevation + pace chart. Drag or tap to see elevation and
-/// pace at any point along the run. The fill under the profile is banded by
-/// pace against the run's own median, keyed by [_ElevationPaceLegend].
+/// Interactive elevation chart. Drag or tap to read distance, elevation and
+/// pace at any point along the run. One smoothed line over one gradient
+/// fill, plotted against distance on a y-axis at least
+/// [elevationMinSpanM] tall, so a flat run looks flat.
 class _ElevationChart extends StatefulWidget {
   final List<Waypoint> track;
   final ThemeData theme;
@@ -2877,34 +2992,78 @@ class _ElevationChart extends StatefulWidget {
   State<_ElevationChart> createState() => _ElevationChartState();
 }
 
+/// The chart's derived series, computed once per track rather than per
+/// frame of a drag.
+class _ElevationProfile {
+  final List<double> smoothed;
+  final double dataMin;
+  final double dataMax;
+  final ({double lo, double hi}) domain;
+  const _ElevationProfile(this.smoothed, this.dataMin, this.dataMax, this.domain);
+}
+
 class _ElevationChartState extends State<_ElevationChart> {
-  double? _touchFraction;
+  static const double _chartHeight = 140;
+  static const double _gutter = 40;
+
+  int? _touchIdx;
   int? _lastEmittedIdx;
+  late List<double> _cum;
+  _ElevationProfile? _profile;
+
+  @override
+  void initState() {
+    super.initState();
+    _derive();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ElevationChart old) {
+    super.didUpdateWidget(old);
+    if (!identical(old.track, widget.track)) _derive();
+  }
+
+  void _derive() {
+    _cum = cumulativeMetres(widget.track);
+    final series = elevationSeries(widget.track);
+    if (series == null) {
+      _profile = null;
+      return;
+    }
+    final smoothed = smoothElevation(series, _cum);
+    var lo = smoothed.first, hi = smoothed.first;
+    for (final v in smoothed) {
+      if (v < lo) lo = v;
+      if (v > hi) hi = v;
+    }
+    _profile = _ElevationProfile(smoothed, lo, hi, elevationDomain(lo, hi));
+  }
 
   void _emitHover() {
     if (widget.onHoverIdx == null) return;
-    final int? idx;
-    if (_touchFraction == null || widget.track.length < 2) {
-      idx = null;
-    } else {
-      idx = (_touchFraction! * (widget.track.length - 1))
-          .round()
-          .clamp(0, widget.track.length - 1);
-    }
-    if (idx != _lastEmittedIdx) {
-      _lastEmittedIdx = idx;
-      widget.onHoverIdx!(idx);
+    if (_touchIdx != _lastEmittedIdx) {
+      _lastEmittedIdx = _touchIdx;
+      widget.onHoverIdx!(_touchIdx);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final profile = _profile;
+    if (profile == null) return const SizedBox.shrink();
+    final theme = widget.theme;
+    final labelStyle = theme.textTheme.labelSmall
+        ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final total = _cum.isEmpty ? 0.0 : _cum.last;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (_touchFraction != null) _buildCrosshairLabel(),
         SizedBox(
-          height: 120,
+          height: 20,
+          child: _touchIdx != null ? _buildCrosshairLabel() : null,
+        ),
+        SizedBox(
+          height: _chartHeight,
           child: GestureDetector(
             onPanStart: (d) => _onTouch(d.localPosition),
             onPanUpdate: (d) => _onTouch(d.localPosition),
@@ -2912,58 +3071,64 @@ class _ElevationChartState extends State<_ElevationChart> {
             onTapDown: (d) => _onTouch(d.localPosition),
             onTapUp: (_) => _clearTouch(),
             onTapCancel: _clearTouch,
-            child: LayoutBuilder(
-              builder: (ctx, constraints) {
-                return CustomPaint(
-                  painter: _ElevationPacePainter(
-                    track: widget.track,
-                    theme: widget.theme,
-                    touchFraction: _touchFraction,
-                  ),
-                  size: Size(constraints.maxWidth, 120),
-                );
-              },
+            child: CustomPaint(
+              painter: _ElevationPainter(
+                smoothed: profile.smoothed,
+                cumulativeM: _cum,
+                dataMin: profile.dataMin,
+                dataMax: profile.dataMax,
+                domain: profile.domain,
+                theme: theme,
+                gutter: _gutter,
+                touchIdx: _touchIdx,
+              ),
+              size: const Size(double.infinity, _chartHeight),
             ),
           ),
         ),
-        const _ElevationPaceLegend(),
+        Padding(
+          padding: const EdgeInsets.only(left: _gutter, top: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(UnitFormat.distance(0, widget.unit), style: labelStyle),
+              Text(UnitFormat.distance(total, widget.unit), style: labelStyle),
+            ],
+          ),
+        ),
       ],
     );
   }
 
   void _clearTouch() {
-    setState(() => _touchFraction = null);
+    setState(() => _touchIdx = null);
     _emitHover();
   }
 
   void _onTouch(Offset local) {
     final box = context.findRenderObject() as RenderBox?;
-    if (box == null) return;
-    final chartWidth = box.size.width;
-    if (chartWidth <= 0) return;
-    setState(() {
-      _touchFraction = (local.dx / chartWidth).clamp(0.0, 1.0);
-    });
+    if (box == null || _cum.length < 2) return;
+    final plotWidth = box.size.width - _gutter;
+    if (plotWidth <= 0) return;
+    final frac = ((local.dx - _gutter) / plotWidth).clamp(0.0, 1.0);
+    final target = frac * _cum.last;
+    var lo = 0, hi = _cum.length - 1;
+    while (lo < hi) {
+      final mid = (lo + hi) >> 1;
+      if (_cum[mid] < target) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
+    }
+    setState(() => _touchIdx = lo);
     _emitHover();
   }
 
   Widget _buildCrosshairLabel() {
-    final frac = _touchFraction!;
-    final idx = (frac * (widget.track.length - 1)).round()
-        .clamp(0, widget.track.length - 1);
-    final w = widget.track[idx];
-    final ele = w.elevationMetres;
-
-    // Compute cumulative distance to this point.
-    double cumDist = 0;
-    for (var i = 1; i <= idx; i++) {
-      cumDist += haversineMetres(
-        widget.track[i - 1].lat,
-        widget.track[i - 1].lng,
-        widget.track[i].lat,
-        widget.track[i].lng,
-      );
-    }
+    final idx = _touchIdx!;
+    final ele = _profile?.smoothed[idx];
+    final cumDist = _cum[idx];
 
     // Local pace: compute from a ~200m window around this point.
     String paceStr = '--';
@@ -3024,185 +3189,130 @@ class _ElevationChartState extends State<_ElevationChart> {
   }
 }
 
-/// Key for the elevation chart's pace banding. Without it the encoding
-/// existed only in a source comment, so the colour carried no meaning to
-/// the reader at all.
-class _ElevationPaceLegend extends StatelessWidget {
-  const _ElevationPaceLegend();
+/// Key for the map's pace colours: the slow → fast ramp as one bar between
+/// its two end labels.
+class _MapPaceLegend extends StatelessWidget {
+  const _MapPaceLegend();
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final bands = elevationPaceBandColours(theme.brightness);
-    final labels = <String>[
-      l10n.runDetailPaceBandFaster,
-      l10n.runDetailPaceBandSteady,
-      l10n.runDetailPaceBandSlower,
-    ];
-    final labelStyle = theme.textTheme.labelSmall?.copyWith(
-      color: theme.colorScheme.onSurfaceVariant,
-    );
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 4,
-        crossAxisAlignment: WrapCrossAlignment.center,
+    final labelStyle = theme.textTheme.labelSmall;
+    return Container(
+      margin: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(l10n.runDetailPaceLegendTitle, style: labelStyle),
-          for (var i = 0; i < bands.length; i++)
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: bands[i],
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-                const SizedBox(width: 5),
-                Text(labels[i], style: labelStyle),
-              ],
+          Text(l10n.runDetailPaceBandSlower, style: labelStyle),
+          const SizedBox(width: 6),
+          Container(
+            width: 64,
+            height: 6,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.xs),
+              gradient: const LinearGradient(colors: paceGradientRamp),
             ),
+          ),
+          const SizedBox(width: 6),
+          Text(l10n.runDetailPaceBandFaster, style: labelStyle),
         ],
       ),
     );
   }
 }
 
-class _ElevationPacePainter extends CustomPainter {
-  final List<Waypoint> track;
+class _ElevationPainter extends CustomPainter {
+  final List<double> smoothed;
+  final List<double> cumulativeM;
+  final double dataMin;
+  final double dataMax;
+  final ({double lo, double hi}) domain;
   final ThemeData theme;
-  final double? touchFraction;
+  final double gutter;
+  final int? touchIdx;
 
-  _ElevationPacePainter({
-    required this.track,
+  _ElevationPainter({
+    required this.smoothed,
+    required this.cumulativeM,
+    required this.dataMin,
+    required this.dataMax,
+    required this.domain,
     required this.theme,
-    this.touchFraction,
+    required this.gutter,
+    this.touchIdx,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final elevations = <double>[];
-    final paces = <double?>[];
+    final n = smoothed.length;
+    final total = cumulativeM.last;
+    if (n < 2 || total <= 0) return;
+    final plotLeft = gutter;
+    final plotWidth = size.width - gutter;
+    final range = domain.hi - domain.lo;
+    double xAt(int i) => plotLeft + cumulativeM[i] / total * plotWidth;
+    double yAt(double ele) => size.height - (ele - domain.lo) / range * size.height;
 
-    for (int i = 0; i < track.length; i++) {
-      elevations.add(track[i].elevationMetres ?? 0);
-
-      if (i == 0) {
-        paces.add(null);
-        continue;
-      }
-      final a = track[i - 1];
-      final b = track[i];
-      if (a.timestamp == null || b.timestamp == null) {
-        paces.add(null);
-        continue;
-      }
-      final dt = b.timestamp!.difference(a.timestamp!).inMilliseconds / 1000.0;
-      final dist = haversineMetres(a.lat, a.lng, b.lat, b.lng);
-      if (dt <= 0 || dist < 1) {
-        paces.add(null);
-      } else {
-        paces.add(dt / dist * 1000);
-      }
-    }
-
-    if (elevations.length < 2) return;
-
-    final minEle = elevations.reduce(math.min);
-    final maxEle = elevations.reduce(math.max);
-    final range = (maxEle - minEle).abs() < 1 ? 1.0 : maxEle - minEle;
-
-    // Compute pace percentiles for coloring.
-    final validPaces =
-        paces.where((p) => p != null && p > 60 && p < 1200).toList();
-    final medianPace = validPaces.isNotEmpty
-        ? (validPaces.cast<double>()..sort())[validPaces.length ~/ 2]
-        : 300.0;
-
-    // Draw filled segments colored by pace.
-    final bands = elevationPaceBandColours(theme.brightness);
-    for (int i = 1; i < elevations.length; i++) {
-      final x0 = (i - 1) / (elevations.length - 1) * size.width;
-      final x1 = i / (elevations.length - 1) * size.width;
-      final y0 =
-          size.height - ((elevations[i - 1] - minEle) / range) * size.height;
-      final y1 =
-          size.height - ((elevations[i] - minEle) / range) * size.height;
-
-      final p = paces[i];
-      final Color segColor;
-      if (p == null || p < 60 || p > 1200) {
-        // Deliberately the faintest fill of the four and absent from the
-        // legend: no pace could be derived here, which is an absence rather
-        // than a fourth band.
-        segColor = theme.colorScheme.onSurface.withValues(alpha: 0.08);
-      } else if (p < medianPace * 0.9) {
-        segColor = bands[0];
-      } else if (p > medianPace * 1.1) {
-        segColor = bands[2];
-      } else {
-        segColor = bands[1];
-      }
-
-      final fill = Path()
-        ..moveTo(x0, size.height)
-        ..lineTo(x0, y0)
-        ..lineTo(x1, y1)
-        ..lineTo(x1, size.height)
-        ..close();
-      canvas.drawPath(fill, Paint()..color = segColor);
-    }
-
-    // Elevation line.
-    final linePath = Path();
-    for (int i = 0; i < elevations.length; i++) {
-      final x = i / (elevations.length - 1) * size.width;
-      final y =
-          size.height - ((elevations[i] - minEle) / range) * size.height;
-      if (i == 0) {
-        linePath.moveTo(x, y);
-      } else {
-        linePath.lineTo(x, y);
-      }
-    }
-    canvas.drawPath(
-      linePath,
-      Paint()
-        ..color = theme.colorScheme.primary
-        ..strokeWidth = 2
-        ..style = PaintingStyle.stroke,
-    );
-
-    // Min/max labels. `dividerColor` (~#E0E0E0 in the light theme) on the
-    // chart's surface fails WCAG contrast — use the secondary-text token,
-    // which is contrast-checked against the surface in both themes.
+    final colour = ChartPalette.ofTheme(theme).series.first;
     final labelStyle = theme.textTheme.labelSmall!
         .copyWith(color: theme.colorScheme.onSurfaceVariant);
-    final maxText = TextPainter(
-      text: TextSpan(text: '${maxEle.round()}m', style: labelStyle),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    maxText.paint(canvas, const Offset(4, 0));
+    // Gridlines and labels at the data's own low and high points, in the
+    // gutter rather than on the plot, so neither ever sits on the line.
+    for (final ele in {dataMin.roundToDouble(), dataMax.roundToDouble()}) {
+      final y = yAt(ele);
+      canvas.drawLine(
+        Offset(plotLeft, y),
+        Offset(size.width, y),
+        Paint()
+          ..color = theme.dividerColor
+          ..strokeWidth = 1,
+      );
+      final tp = TextPainter(
+        text: TextSpan(text: '${ele.round()} m', style: labelStyle),
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: gutter - 4);
+      tp.paint(canvas, Offset(gutter - 4 - tp.width, y - tp.height / 2));
+    }
 
-    final minText = TextPainter(
-      text: TextSpan(text: '${minEle.round()}m', style: labelStyle),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    minText.paint(canvas, Offset(4, size.height - minText.height));
+    final line = Path()..moveTo(xAt(0), yAt(smoothed[0]));
+    for (var i = 1; i < n; i++) {
+      line.lineTo(xAt(i), yAt(smoothed[i]));
+    }
+    final fill = Path.from(line)
+      ..lineTo(xAt(n - 1), size.height)
+      ..lineTo(xAt(0), size.height)
+      ..close();
+    canvas.drawPath(
+      fill,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            colour.withValues(alpha: 0.35),
+            colour.withValues(alpha: 0.04),
+          ],
+        ).createShader(Rect.fromLTWH(plotLeft, 0, plotWidth, size.height)),
+    );
+    canvas.drawPath(
+      line,
+      Paint()
+        ..color = colour
+        ..strokeWidth = 2
+        ..style = PaintingStyle.stroke
+        ..strokeJoin = StrokeJoin.round,
+    );
 
-    // Touch crosshair.
-    if (touchFraction != null) {
-      final tx = touchFraction! * size.width;
-      final tIdx =
-          (touchFraction! * (elevations.length - 1)).round().clamp(0, elevations.length - 1);
-      final ty = size.height -
-          ((elevations[tIdx] - minEle) / range) * size.height;
-
+    final idx = touchIdx;
+    if (idx != null && idx >= 0 && idx < n) {
+      final tx = xAt(idx);
+      final ty = yAt(smoothed[idx]);
       canvas.drawLine(
         Offset(tx, 0),
         Offset(tx, size.height),
@@ -3210,11 +3320,7 @@ class _ElevationPacePainter extends CustomPainter {
           ..color = theme.colorScheme.outline
           ..strokeWidth = 1,
       );
-      canvas.drawCircle(
-        Offset(tx, ty),
-        5,
-        Paint()..color = theme.colorScheme.primary,
-      );
+      canvas.drawCircle(Offset(tx, ty), 5, Paint()..color = colour);
       canvas.drawCircle(
         Offset(tx, ty),
         5,
@@ -3227,8 +3333,10 @@ class _ElevationPacePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _ElevationPacePainter old) =>
-      old.track != track || old.touchFraction != touchFraction;
+  bool shouldRepaint(covariant _ElevationPainter old) =>
+      !identical(old.smoothed, smoothed) ||
+      old.touchIdx != touchIdx ||
+      old.theme != theme;
 }
 
 /// Auto-link prompt: "Looks like you ran *X*". Mirrors the web

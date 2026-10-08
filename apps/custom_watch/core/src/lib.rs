@@ -15,6 +15,10 @@
 //!   batch its segment-effort rows (port of web
 //!   `segments/auto_segment_effort.ts`; reuses [`segments`])
 //! - [`fix`] — the GPS fix domain model + the RMC/GGA accumulator
+//! - [`gps_distance`] — the spec-v1 GPS distance estimator: Kalman-filtered
+//!   position, Doppler speed-over-ground credit, a stationary floor and a gap
+//!   re-anchor (port of `scripts/gps_distance/reference.py`, held to the shared
+//!   `fixtures/gps_distance_vectors.json`)
 //! - [`course`] — breadcrumb course polyline, nearest-point projection,
 //!   off-course alert latch, and the panel-fit pixel mapping (fifth parity
 //!   port: web `route_snap.ts` / `route_geometry.ts` + the mobile
@@ -307,6 +311,7 @@ pub mod gnss_mode;
 pub mod gnss_power;
 pub mod gnss_signal;
 pub mod goals;
+pub mod gps_distance;
 pub mod grade_adjusted_pace;
 pub mod guided_runs;
 pub mod hr_drain;

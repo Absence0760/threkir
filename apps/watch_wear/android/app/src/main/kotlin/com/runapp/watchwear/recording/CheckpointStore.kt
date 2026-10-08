@@ -53,6 +53,11 @@ data class Checkpoint(
     // checkpoint (no paused field) recovers the raw span exactly as it
     // did before the field existed — see the forward-compat note above.
     val pausedAccumulatedMs: Long = 0L,
+    // Which estimator produced [distanceM], and how much of it the pedometer
+    // filled across GPS gaps. Null on a checkpoint written by a build that
+    // summed raw hops, so a recovered run of that vintage claims no estimator.
+    val distanceEstimator: String? = null,
+    val distanceStepFilledM: Double? = null,
 )
 
 @Serializable

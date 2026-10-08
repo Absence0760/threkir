@@ -207,4 +207,39 @@ class TrackWriterTest {
         assertEquals(trackFile.absolutePath, w.path)
         assertTrue(w.path.startsWith("/"))
     }
+
+    @Test
+    fun `estimator inputs are written under their spec keys when the fix carries them`() {
+        val w = TrackWriter(trackFile)
+        w.open()
+        w.append(
+            GpsPoint(
+                lat = 51.5, lng = -0.1, ele = null, epochMs = 1_716_000_000_000,
+                accuracyM = 4.5, speedMps = 2.7, speedAccuracyMps = 0.4, bearingDeg = 182.0,
+            ),
+        )
+        val p = Json.parseToJsonElement(w.close().readText()).jsonArray[0].jsonObject
+        assertEquals(4.5, p["accuracyMetres"]!!.jsonPrimitive.content.toDouble(), 1e-9)
+        assertEquals(2.7, p["speedMps"]!!.jsonPrimitive.content.toDouble(), 1e-9)
+        assertEquals(0.4, p["speedAccuracyMps"]!!.jsonPrimitive.content.toDouble(), 1e-9)
+        assertEquals(182.0, p["bearingDeg"]!!.jsonPrimitive.content.toDouble(), 1e-9)
+    }
+
+    @Test
+    fun `estimator inputs are omitted, not nulled, when absent or invalid`() {
+        val w = TrackWriter(trackFile)
+        w.open()
+        w.append(GpsPoint(lat = 51.5, lng = -0.1, ele = null, epochMs = 0))
+        w.append(
+            GpsPoint(
+                lat = 51.5, lng = -0.1, ele = null, epochMs = 1000,
+                accuracyM = 0.0, speedMps = -1.0, speedAccuracyMps = Double.NaN, bearingDeg = Double.NaN,
+            ),
+        )
+        val arr = Json.parseToJsonElement(w.close().readText()).jsonArray
+        for (el in arr) {
+            val keys = el.jsonObject.keys
+            assertEquals(setOf("lat", "lng", "ele", "ts"), keys)
+        }
+    }
 }

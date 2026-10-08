@@ -3,14 +3,15 @@
 	   system-ui (per-glyph) and then to broad cross-platform Noto families
 	   so Arabic / Hebrew / CJK render with a real face instead of tofu when
 	   the OS default is sparse (audit-findings 2026-05-30 High, i18n W-11). */
-	font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto,
+	font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto,
 		'Noto Sans', 'Noto Sans Arabic', 'Noto Sans Hebrew', 'Noto Sans CJK SC',
 		'Noto Sans CJK JP', 'Noto Sans CJK KR', 'Apple Color Emoji',
 		'Segoe UI Emoji', sans-serif;
 
-	/* Colors — Cream + petrol + terracotta. Light-mode palette swaps the
-	   old purple primary for a deep teal that complements the cream
-	   background and the warm secondary accent. */
+	/* Colors — "Dusk, refined" (decisions § 1772): one coral accent in both
+	   themes (deep coral in light, bright coral in dark), lilac / violet as
+	   the secondary, over near-neutral greys with a trace of violet. Kept in
+	   lockstep with packages/ui_kit/lib/src/theme/app_theme.dart. */
 	/* Render native form controls (the <select> dropdown popup, number
 	   spinners, the type=search clear button, date pickers, default
 	   scrollbars) in the matching light/dark chrome. Without this the
@@ -28,11 +29,11 @@
 	   documents. Guarded by lib/rtl_css_guards.test.ts. */
 	--dir-sign: 1;
 
-	--color-primary: #2C5F6E;
-	--color-primary-hover: #1F4854;
-	--color-primary-light: rgba(44, 95, 110, 0.10);
-	--color-secondary: #D97A54;
-	--color-secondary-hover: #C26642;
+	--color-primary: #C24E24;
+	--color-primary-hover: #A8401B;
+	--color-primary-light: rgba(194, 78, 36, 0.10);
+	--color-secondary: #5B4B8A;
+	--color-secondary-hover: #4A3C75;
 	--color-danger: #C84D3F;
 	--color-danger-light: rgba(200, 77, 63, 0.08);
 	--color-warning: #E6A96B;
@@ -63,7 +64,7 @@
 	   the dark surface). Light text contrast: warning 5.42, secondary 5.91,
 	   cyan 5.29 on white; >=4.68:1 on the matching same-hue chip. */
 	--color-warning-text: var(--color-warning-strong);
-	--color-secondary-text: #A24A2C;
+	--color-secondary-text: #5B4B8A;
 	--color-accent-cyan-text: #3A7385;
 	/* Completes the set so the guard can ban EVERY base accent token as a
 	   foreground rather than an ad-hoc subset: --color-accent-orange is the
@@ -80,12 +81,15 @@
 	--color-success-text: #2E6B3C;
 	--color-danger-text: #A93B2E;
 
-	/* The wordmark's two ends, for decoration on the public pages: the landing
+	/* The wordmark's gradient — deep coral, a rose midpoint, violet
+	   (decisions § 1773) — for decoration on the public pages: the landing
 	   journey rail, the fastest split, a recording dot. Theme-independent,
-	   because the wordmark is one file in both themes. Never a text ink:
-	   white on ember reads 3.139:1, and ember on the light page is lower. */
-	--brand-ember: #FE5932;
-	--brand-magenta: #A01E77;
+	   because the wordmark is one file in both themes. White reads 4.76:1 on
+	   the coral end and higher on the rest, but these are still fills, not
+	   text inks. */
+	--brand-coral: #C24E24;
+	--brand-rose: #A8426A;
+	--brand-violet: #5B4B8A;
 
 	/* Rank-1 / segment-crown gold, as a fill + its own foreground. Mirrors
 	   mobile's AppSemanticColors.crown / onCrown so a leaderboard pill reads
@@ -93,7 +97,7 @@
 	   both: the bright #F5B30A this replaces was 1.85:1 as an icon on the light
 	   surface and 2.15:1 under the white pill text it carried. */
 	--color-crown: #7A5C10;
-	--color-on-crown: #F7F3EC;
+	--color-on-crown: #FAF9FB;
 
 	/* Fitness / Fatigue / Form series hues, in lockstep with mobile's
 	   TrainingLoadPalette. One fixed trio could not clear WCAG 1.4.11's 3:1
@@ -103,9 +107,9 @@
 	   survives greyscale and red-green colour-vision deficiency — the §489
 	   reasoning. Pairwise 3:1 across three series is unreachable once each
 	   also owes 3:1 to its own surface. */
-	--chart-fitness: #1F1A6B;
-	--chart-fatigue: #B4801F;
-	--chart-form: #A62020;
+	--chart-fitness: #340F68;
+	--chart-fatigue: #B97E12;
+	--chart-form: #A62115;
 
 	/* Five heart-rate zone bands, in lockstep with mobile's hr_zone_palette.
 	   The run-detail band and the mobile intensity card used to carry two
@@ -118,11 +122,11 @@
 	   behind the bar, which is what makes the surface-coloured gap between
 	   segments visible against every band. z1 -> z5 on white:
 	   16.79 / 11.25 / 7.72 / 5.24 / 3.59. */
-	--zone-1: #0C1E34;
-	--zone-2: #174326;
-	--zone-3: #6B4E0D;
-	--zone-4: #AF5111;
-	--zone-5: #E9544F;
+	--zone-1: #121B3F;
+	--zone-2: #114421;
+	--zone-3: #714C09;
+	--zone-4: #AE520A;
+	--zone-5: #E65846;
 
 	/* Six planned-workout kind marks, in lockstep with mobile's
 	   ChartPalette.kinds. These used to be three raw hexes inlined in
@@ -136,14 +140,14 @@
 	   zone bands. Index order is the ladder, coolest first:
 	   easy/recovery, long/race, tempo, marathon pace, interval/walk-run, rest.
 	   kind-1 -> kind-6 on the page: 15.28 / 11.38 / 8.62 / 6.55 / 4.93 / 3.74. */
-	--kind-1: #082024;
-	--kind-2: #0E3558;
-	--kind-3: #6D2A6D;
-	--kind-4: #72510E;
-	--kind-5: #CC2429;
-	--kind-6: #807A8C;
+	--kind-1: #032122;
+	--kind-2: #13345B;
+	--kind-3: #6C2C68;
+	--kind-4: #774F05;
+	--kind-5: #C72F20;
+	--kind-6: #7E7B8B;
 
-	--color-accent-orange: #F2A07B;
+	--color-accent-orange: #F08A5D;
 	--color-accent-pink: #E8B89A;
 	--color-accent-cyan: #7FB3C2;
 
@@ -183,12 +187,14 @@
 	   Enforced per call site, composited, in contrast_guard.test.ts. */
 	--section-dashboard: var(--color-accent-orange);
 	--section-dashboard-ink: var(--color-accent-orange-text);
-	/* Equal to --color-secondary / -secondary-text in light, but NOT aliased
-	   to the base: --color-secondary is violet in dark, and a section hue that
-	   changes family between themes is a different section. The dark blocks
-	   therefore re-declare the ink. */
-	--section-history: #D97A54;
-	--section-history-ink: var(--color-secondary-text);
+	/* The theme's secondary family (§ 1772): the lilac fill is dark's
+	   --color-secondary and the ink is light's --color-secondary-text. Not
+	   aliased, because a section hue must hold one family in both themes
+	   while the secondary token flips between lilac and violet. The dark
+	   blocks re-declare the ink as the fill itself. History used to share
+	   coral with the dashboard, which the coral accent now owns. */
+	--section-history: #B9A7E8;
+	--section-history-ink: #5B4B8A;
 	--section-runs: #6FA8DC;
 	--section-runs-ink: #245F95;
 	--section-gym: #8FBF9F;
@@ -202,7 +208,7 @@
 	/* Foreground for the ACTIVE nav disc, which fills with the whole accent.
 	   Theme-independent because the accents are: 5.757-10.291:1 on all seven.
 	   The § 506 --color-on-primary shape, one vocabulary over. */
-	--section-on-accent: #1B1628;
+	--section-on-accent: #1A1722;
 
 	/* Provider glyph inks. A third party's MARK is theirs to tone (the Google
 	   "G", Apple's required black); the same party's hue reused as OUR paint
@@ -211,10 +217,11 @@
 	   ultrasignup 2.690 and chronotrack 2.886 in dark. The disc keeps the
 	   brand hue (it is the larger recognition cue, and the provider's NAME is
 	   set beside it); the ink is theme-keyed off the same hue, lightness only.
-	   parkrun's brand coral IS the history accent, so it shares that ink
-	   rather than re-spelling it. Worst measured: 5.138:1 light, 5.135 dark. */
+	   parkrun's brand coral used to be the history accent and shared its
+	   ink; history moved to the secondary family (§ 1772), so parkrun keeps
+	   the coral rungs history had. Worst measured: 5.138:1 light, 5.135 dark. */
 	--provider-strava-ink: #9C2F01;
-	--provider-parkrun-ink: var(--section-history-ink);
+	--provider-parkrun-ink: #A8401B;
 	--provider-garmin-ink: #005691;
 	--provider-healthkit-ink: #AD031C;
 	--provider-runsignup-ink: #98338B;
@@ -230,9 +237,9 @@
 	   (5.169 / 5.169 light, 4.014 / 4.027 dark), same hue angle. */
 	--color-verified: #2563EB;
 
-	--color-bg: #F7F3EC;
-	--color-bg-secondary: #F1ECE0;
-	--color-bg-tertiary: #EBE5D8;
+	--color-bg: #FAF9FB;
+	--color-bg-secondary: #F4F2F7;
+	--color-bg-tertiary: #ECE9F1;
 	--color-surface: #FFFFFF;
 	/* The one LINE token: every border, hairline outline and divider resolves
 	   to it, and it guarantees WCAG 1.4.11's 3:1 non-text floor against every
@@ -258,13 +265,13 @@
 	   single value can replace that: the share and the hue are both per-card, so
 	   a second fixed line token would be tuned for one tint and wrong at the
 	   next. Enforced per call site, composited, in contrast_guard.test.ts. */
-	--color-border: #8A806A;
-	--color-text: #1F2328;
-	--color-text-secondary: #56616B;
+	--color-border: #8A8496;
+	--color-text: #1A1722;
+	--color-text-secondary: #504B5B;
 	/* >=4.5:1 (WCAG AA) against the worst-case (darkest) light surface tertiary
 	   text sits on — #EBE5D8 (--color-bg-tertiary). #8A8E93 was 2.63:1 there
 	   and failed; stays lighter than --color-text-secondary to keep hierarchy. */
-	--color-text-tertiary: #62666B;
+	--color-text-tertiary: #67627A;
 
 	/* The subtle neutral FILL — a progress-bar track, an inactive bar cell, a
 	   neutral metadata chip, a button hover, a skeleton shimmer stop. These
@@ -280,7 +287,7 @@
 	   --color-surface is already at 0.01496, so the chip would fall from 1.328:1
 	   to 1.110:1 against the card it sits on. A control whose fill flips to this
 	   on hover moves its edge instead (see .btn-secondary:hover). */
-	--color-fill-subtle: #DDD5C5;
+	--color-fill-subtle: #DEDAE5;
 
 	/* Neutral metadata chip (tag / count / label pills on a card). Aliased
 	   rather than duplicated per theme: a var() in a custom-property value is
@@ -294,21 +301,21 @@
 	--chip-fg: var(--color-text);
 
 	/* Gradients */
-	--gradient-primary: linear-gradient(135deg, #2C5F6E 0%, #4F8090 50%, #F2A07B 100%);
+	--gradient-primary: linear-gradient(135deg, #A8401B 0%, #C24E24 50%, #F08A5D 100%);
 	/* Identity-avatar disc. Distinct from --gradient-primary because that one
 	   carries a LIGHT stop in both themes (its light third stop and its dark
 	   first two), so white on it read 2.081 / 2.153:1 and no foreground hex
 	   fixes a gradient spanning that range. Two stops instead of three, both
 	   drawn from token pairs that flip together with --color-on-primary, so one
-	   declaration resolves per theme: white on #2C5F6E / #A24A2C is 7.073 /
-	   5.912, and #120D22 on #F2A07B / #B9A7E8 is 9.120 / 8.818. Every stop is
+	   declaration resolves per theme: white on #C24E24 / #5B4B8A is 4.77 /
+	   7.5, and #1A0E08 on #F08A5D / #B9A7E8 is 7.8 / 9.6. Every stop is
 	   AA-checked against --color-on-primary in contrast_guard.test.ts. */
 	--gradient-avatar: linear-gradient(
 		135deg,
 		var(--color-primary) 0%,
 		var(--color-secondary-text) 100%
 	);
-	/* The BRAND CANVAS ramp — the wordmark's own gradient (#FE5932 -> #A01E77)
+	/* The BRAND CANVAS ramp — the wordmark's own gradient (#C24E24 -> #5B4B8A)
 	   taken to a legible depth. Every unauthenticated full-bleed dark surface
 	   reads this one declaration: the marketing hero and the sign-in brand
 	   pane. It was inline in the hero, and the sign-in pane carried a
@@ -319,22 +326,21 @@
 	   Not theme-keyed: a fixed brand canvas is exempt from THEMING, not from
 	   contrast (§ 511's print-sheet amber), so the ink on it is a literal
 	   white and every stop is measured under it — plus each consumer's own
-	   veils, at their own peaks — in gradient_foreground_guard.test.ts. The
-	   orange end of the wordmark cannot carry body copy (3.139:1 under
-	   white), which is why it terminates on the magenta and returns only as
-	   a glow where no text sits. */
-	--brand-ramp: linear-gradient(150deg, #140A18 0%, #3A0F33 32%, #6E1450 66%, #A01E77 100%);
-	--gradient-surface: linear-gradient(135deg, rgba(44, 95, 110, 0.04) 0%, rgba(242, 160, 123, 0.04) 100%);
-	--gradient-sidebar: linear-gradient(180deg, #FFFFFF 0%, #F1ECE0 100%);
+	   veils, at their own peaks — in gradient_foreground_guard.test.ts. It
+	   runs from the dark theme's night into the wordmark's violet end; the
+	   coral end returns only as a glow where no text sits. */
+	--brand-ramp: linear-gradient(150deg, #121117 0%, #2A2140 32%, #43356A 66%, #5B4B8A 100%);
+	--gradient-surface: linear-gradient(135deg, rgba(194, 78, 36, 0.04) 0%, rgba(91, 75, 138, 0.04) 100%);
+	--gradient-sidebar: linear-gradient(180deg, #FFFFFF 0%, #F4F2F7 100%);
 
 	/* Sidebar palette — overridden in dark mode below. */
-	--sidebar-text: #1F2328;
-	--sidebar-text-muted: #56616B;
-	--sidebar-hover-bg: rgba(31, 35, 40, 0.06);
+	--sidebar-text: #1A1722;
+	--sidebar-text-muted: #504B5B;
+	--sidebar-hover-bg: rgba(26, 23, 34, 0.06);
 	--sidebar-active-bg: var(--color-primary-light);
 	--sidebar-active-text: var(--color-primary);
 	--sidebar-border: var(--color-border);
-	--sidebar-logo: #1F2328;
+	--sidebar-logo: #1A1722;
 
 	/* Spacing */
 	--space-2xs: 0.125rem;
@@ -368,7 +374,7 @@
 	--shadow-sm: 0 1px 2px rgba(31, 35, 40, 0.05);
 	--shadow-md: 0 4px 12px rgba(31, 35, 40, 0.07), 0 1px 3px rgba(31, 35, 40, 0.04);
 	--shadow-lg: 0 12px 24px rgba(31, 35, 40, 0.10), 0 4px 8px rgba(31, 35, 40, 0.05);
-	--shadow-glow: 0 0 20px rgba(44, 95, 110, 0.18);
+	--shadow-glow: 0 0 20px rgba(194, 78, 36, 0.18);
 
 	/* Transitions */
 	--transition-fast: 150ms ease;
@@ -446,9 +452,9 @@
 	:root[data-theme="auto"], :root:not([data-theme]) {
 		color-scheme: dark;
 
-		--color-primary: #F2A07B;
-		--color-primary-hover: #D97A54;
-		--color-primary-light: rgba(242, 160, 123, 0.14);
+		--color-primary: #F08A5D;
+		--color-primary-hover: #E0703F;
+		--color-primary-light: rgba(240, 138, 93, 0.14);
 		--color-secondary: #B9A7E8;
 		--color-secondary-hover: #9F89D4;
 		--color-danger: #E07468;
@@ -458,9 +464,9 @@
 		--color-success: #6BC07A;
 		--color-success-light: rgba(107, 192, 122, 0.16);
 		/* Primary flips to a light coral here, so white on it is 2.08:1. */
-		--color-on-primary: #120D22;
+		--color-on-primary: #1A0E08;
 
-		--color-accent-orange: #F2A07B;
+		--color-accent-orange: #F08A5D;
 		--color-accent-pink: #B9A7E8;
 		--color-accent-cyan: #8FB8C7;
 
@@ -470,13 +476,14 @@
 		   clears its own disc for gym and nutrition, so those revert to it; the
 		   other three are lightened a step. dashboard and coach follow their
 		   --color-accent-*-text aliases, which already revert here. */
-		--section-history-ink: #DF9171;
+		--section-history-ink: #B9A7E8;
 		--section-runs-ink: #7AAFDF;
 		--section-gym-ink: var(--section-gym);
 		--section-nutrition-ink: var(--section-nutrition);
 		--section-social-ink: #CE98D3;
 
 		--provider-strava-ink: #FD763E;
+		--provider-parkrun-ink: #DF9171;
 		--provider-garmin-ink: #139FFF;
 		--provider-healthkit-ink: #FD7086;
 		--provider-runsignup-ink: #DB95D2;
@@ -499,58 +506,58 @@
 		--color-danger-text: #EC8B7A;
 
 		--color-crown: #E0BE4E;
-		--color-on-crown: #120D22;
+		--color-on-crown: #121117;
 
-		--chart-fitness: #E8E5FF;
-		--chart-fatigue: #E59105;
-		--chart-form: #DE1F17;
+		--chart-fitness: #EAE5FE;
+		--chart-fatigue: #E1931D;
+		--chart-form: #CF3C13;
 
-		--zone-1: #E4EEF9;
-		--zone-2: #91D8A9;
-		--zone-3: #D8A01B;
-		--zone-4: #E56917;
-		--zone-5: #E2231C;
+		--zone-1: #E6EDFF;
+		--zone-2: #95D8A3;
+		--zone-3: #D99F2C;
+		--zone-4: #E16C10;
+		--zone-5: #D83727;
 
 		/* See the :root note. kind-1 -> kind-6 on the page:
 		   17.01 / 14.09 / 11.52 / 9.44 / 7.79 / 6.41; on the tightest surface a
 		   mark is drawn against, mobile's completed-day fill, 8.35 down to
 		   3.15 — that midtone is what caps the dark ladder. */
-		--kind-1: #E3F6F9;
-		--kind-2: #C9E1F6;
-		--kind-3: #E5BDE5;
-		--kind-4: #E7AD3B;
-		--kind-5: #EB8B8F;
-		--kind-6: #9894A2;
+		--kind-1: #DBF8F9;
+		--kind-2: #CAE0FC;
+		--kind-3: #E7BCE2;
+		--kind-4: #E9AC4F;
+		--kind-5: #ED8B84;
+		--kind-6: #9794A5;
 
-		--color-bg: #120D22;
-		--color-bg-secondary: #0C0818;
-		--color-bg-tertiary: #241B3D;
-		--color-surface: #241B3D;
+		--color-bg: #121117;
+		--color-bg-secondary: #0C0B10;
+		--color-bg-tertiary: #24212E;
+		--color-surface: #1C1A24;
 		/* mobile's AppTheme.duskLine; 3.330 on the card, 3.911 / 4.068 on the
 		   page steps. The #3A2E5C it replaces was 1.328:1 on the card. */
-		--color-border: #786A9A;
-		--color-fill-subtle: #3A2E5C;
-		--color-text: #F7F3EC;
-		--color-text-secondary: #B5ADC3;
+		--color-border: #736D85;
+		--color-fill-subtle: #2C2937;
+		--color-text: #F3F1F7;
+		--color-text-secondary: #C6C2CF;
 		/* >=4.5:1 against the lightest dark surface (#241B3D). #7E7692 was
 		   3.77:1 there and failed AA. */
-		--color-text-tertiary: #9A93AE;
+		--color-text-tertiary: #9893A6;
 
-		--gradient-primary: linear-gradient(135deg, #F2A07B 0%, #B9A7E8 50%, #6B4C8A 100%);
-		--gradient-surface: linear-gradient(135deg, rgba(242, 160, 123, 0.06) 0%, rgba(185, 167, 232, 0.06) 100%);
-		--gradient-sidebar: linear-gradient(180deg, #0C0818 0%, #1B1232 100%);
+		--gradient-primary: linear-gradient(135deg, #F08A5D 0%, #B9A7E8 50%, #6B4C8A 100%);
+		--gradient-surface: linear-gradient(135deg, rgba(240, 138, 93, 0.06) 0%, rgba(185, 167, 232, 0.06) 100%);
+		--gradient-sidebar: linear-gradient(180deg, #0C0B10 0%, #17151E 100%);
 
-		--sidebar-text: #F7F3EC;
-		--sidebar-text-muted: #B5ADC3;
-		--sidebar-hover-bg: rgba(247, 243, 236, 0.06);
-		--sidebar-active-bg: rgba(58, 46, 92, 0.55);
-		--sidebar-active-text: #F7F3EC;
+		--sidebar-text: #F3F1F7;
+		--sidebar-text-muted: #C6C2CF;
+		--sidebar-hover-bg: rgba(243, 241, 247, 0.06);
+		--sidebar-active-bg: rgba(240, 138, 93, 0.16);
+		--sidebar-active-text: #F3F1F7;
 		--sidebar-logo: #FFFFFF;
 
 		--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
 		--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.35);
 		--shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.4);
-		--shadow-glow: 0 0 20px rgba(242, 160, 123, 0.22);
+		--shadow-glow: 0 0 20px rgba(240, 138, 93, 0.22);
 	}
 }
 
@@ -558,9 +565,9 @@
 :root[data-theme="dark"] {
 	color-scheme: dark;
 
-	--color-primary: #F2A07B;
-	--color-primary-hover: #D97A54;
-	--color-primary-light: rgba(242, 160, 123, 0.14);
+	--color-primary: #F08A5D;
+	--color-primary-hover: #E0703F;
+	--color-primary-light: rgba(240, 138, 93, 0.14);
 	--color-secondary: #B9A7E8;
 	--color-secondary-hover: #9F89D4;
 	--color-danger: #E07468;
@@ -570,9 +577,9 @@
 	--color-success: #6BC07A;
 	--color-success-light: rgba(107, 192, 122, 0.16);
 	/* Primary flips to a light coral here, so white on it is 2.08:1. */
-	--color-on-primary: #120D22;
+	--color-on-primary: #1A0E08;
 
-	--color-accent-orange: #F2A07B;
+	--color-accent-orange: #F08A5D;
 	--color-accent-pink: #B9A7E8;
 	--color-accent-cyan: #8FB8C7;
 
@@ -580,13 +587,14 @@
 
 	/* Section inks on the dark sidebar / card — see the prefers-color-scheme
 	   block above for why gym and nutrition revert to their accent. */
-	--section-history-ink: #DF9171;
+	--section-history-ink: #B9A7E8;
 	--section-runs-ink: #7AAFDF;
 	--section-gym-ink: var(--section-gym);
 	--section-nutrition-ink: var(--section-nutrition);
 	--section-social-ink: #CE98D3;
 
 	--provider-strava-ink: #FD763E;
+	--provider-parkrun-ink: #DF9171;
 	--provider-garmin-ink: #139FFF;
 	--provider-healthkit-ink: #FD7086;
 	--provider-runsignup-ink: #DB95D2;
@@ -606,53 +614,53 @@
 	--color-danger-text: #EC8B7A;
 
 	--color-crown: #E0BE4E;
-	--color-on-crown: #120D22;
+	--color-on-crown: #121117;
 
-	--chart-fitness: #E8E5FF;
-	--chart-fatigue: #E59105;
-	--chart-form: #DE1F17;
+	--chart-fitness: #EAE5FE;
+	--chart-fatigue: #E1931D;
+	--chart-form: #CF3C13;
 
-	--zone-1: #E4EEF9;
-	--zone-2: #91D8A9;
-	--zone-3: #D8A01B;
-	--zone-4: #E56917;
-	--zone-5: #E2231C;
+	--zone-1: #E6EDFF;
+	--zone-2: #95D8A3;
+	--zone-3: #D99F2C;
+	--zone-4: #E16C10;
+	--zone-5: #D83727;
 
 	/* See the :root note; same values as the media-query block. */
-	--kind-1: #E3F6F9;
-	--kind-2: #C9E1F6;
-	--kind-3: #E5BDE5;
-	--kind-4: #E7AD3B;
-	--kind-5: #EB8B8F;
-	--kind-6: #9894A2;
+	--kind-1: #DBF8F9;
+	--kind-2: #CAE0FC;
+	--kind-3: #E7BCE2;
+	--kind-4: #E9AC4F;
+	--kind-5: #ED8B84;
+	--kind-6: #9794A5;
 
-	--color-bg: #120D22;
-	--color-bg-secondary: #0C0818;
-	--color-bg-tertiary: #241B3D;
-	--color-surface: #241B3D;
+	--color-bg: #121117;
+	--color-bg-secondary: #0C0B10;
+	--color-bg-tertiary: #24212E;
+	--color-surface: #1C1A24;
 	/* mobile's AppTheme.duskLine; see the :root note for the floor. */
-	--color-border: #786A9A;
-	--color-fill-subtle: #3A2E5C;
-	--color-text: #F7F3EC;
-	--color-text-secondary: #B5ADC3;
+	--color-border: #736D85;
+	--color-fill-subtle: #2C2937;
+	--color-text: #F3F1F7;
+	--color-text-secondary: #C6C2CF;
 	/* >=4.5:1 against the lightest dark surface (#241B3D); see :root note. */
-	--color-text-tertiary: #9A93AE;
+	--color-text-tertiary: #9893A6;
 
-	--gradient-primary: linear-gradient(135deg, #F2A07B 0%, #B9A7E8 50%, #6B4C8A 100%);
-	--gradient-surface: linear-gradient(135deg, rgba(242, 160, 123, 0.06) 0%, rgba(185, 167, 232, 0.06) 100%);
-	--gradient-sidebar: linear-gradient(180deg, #0C0818 0%, #1B1232 100%);
+	--gradient-primary: linear-gradient(135deg, #F08A5D 0%, #B9A7E8 50%, #6B4C8A 100%);
+	--gradient-surface: linear-gradient(135deg, rgba(240, 138, 93, 0.06) 0%, rgba(185, 167, 232, 0.06) 100%);
+	--gradient-sidebar: linear-gradient(180deg, #0C0B10 0%, #17151E 100%);
 
-	--sidebar-text: #F7F3EC;
-	--sidebar-text-muted: #B5ADC3;
-	--sidebar-hover-bg: rgba(247, 243, 236, 0.06);
-	--sidebar-active-bg: rgba(58, 46, 92, 0.55);
-	--sidebar-active-text: #F7F3EC;
+	--sidebar-text: #F3F1F7;
+	--sidebar-text-muted: #C6C2CF;
+	--sidebar-hover-bg: rgba(243, 241, 247, 0.06);
+	--sidebar-active-bg: rgba(240, 138, 93, 0.16);
+	--sidebar-active-text: #F3F1F7;
 	--sidebar-logo: #FFFFFF;
 
 	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
 	--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.35);
 	--shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.4);
-	--shadow-glow: 0 0 20px rgba(242, 160, 123, 0.22);
+	--shadow-glow: 0 0 20px rgba(240, 138, 93, 0.22);
 }
 
 *,
@@ -782,6 +790,53 @@ body, .sidebar, .login-card {
 	font-weight: 100 700;
 	font-display: block;
 	src: url('./lib/assets/material-symbols-subset.woff2') format('woff2');
+}
+
+/* Manrope, the product face (SIL OFL 1.1, lib/assets/fonts/OFL.txt). Static
+ * Latin subsets generated by assets/fonts/gen-manrope.py; `swap` because the
+ * system fallback is a perfectly readable stand-in for the first paint.
+ */
+@font-face {
+	font-family: 'Manrope';
+	font-style: normal;
+	font-weight: 300;
+	font-display: swap;
+	src: url('./lib/assets/fonts/manrope-300.woff2') format('woff2');
+}
+@font-face {
+	font-family: 'Manrope';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('./lib/assets/fonts/manrope-400.woff2') format('woff2');
+}
+@font-face {
+	font-family: 'Manrope';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('./lib/assets/fonts/manrope-500.woff2') format('woff2');
+}
+@font-face {
+	font-family: 'Manrope';
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src: url('./lib/assets/fonts/manrope-600.woff2') format('woff2');
+}
+@font-face {
+	font-family: 'Manrope';
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url('./lib/assets/fonts/manrope-700.woff2') format('woff2');
+}
+@font-face {
+	font-family: 'Manrope';
+	font-style: normal;
+	font-weight: 800;
+	font-display: swap;
+	src: url('./lib/assets/fonts/manrope-800.woff2') format('woff2');
 }
 
 /* Hide material icon text until font loads */

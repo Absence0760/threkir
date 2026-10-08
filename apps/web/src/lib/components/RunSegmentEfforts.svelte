@@ -292,7 +292,7 @@
 	}
 	.rank-pill.silver {
 		background: #94a3b8;
-		color: #1f2328;
+		color: #1A1722;
 	}
 	.rank-pill.bronze {
 		background: #b45309;

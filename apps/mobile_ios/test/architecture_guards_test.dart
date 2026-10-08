@@ -660,6 +660,28 @@ void main() {
       );
     });
 
+    test('_stop shows the finished screen before the route auto-link RPC',
+        () {
+      // Reason: the auto-link RPC ships the whole track over the network
+      // with a 15 s timeout. Awaited ahead of the finish flip, it left the
+      // recording UI on screen for seconds after the hold-to-stop completed,
+      // so the stop read as laggy (and invited a second hold). It is an L4
+      // auxiliary effect and must never sit between the gesture and the UI.
+      final body = _extractMethodBody(
+        source,
+        r'Future<void> _stop\(\)\s*async\s*\{',
+      );
+      final flipIdx = body.indexOf('_setScreenState(_ScreenState.finished)');
+      final rpcIdx = body.indexOf('fetchRoutesIntersectingTrack');
+      expect(flipIdx, greaterThan(-1),
+          reason: '_stop must flip to the finished screen');
+      expect(rpcIdx, greaterThan(-1),
+          reason: '_stop must still auto-link unmatched runs to a route');
+      expect(flipIdx, lessThan(rpcIdx),
+          reason: 'The finish flip must come before the auto-link RPC in '
+              '_stop; a network await ahead of it delays the stop.');
+    });
+
     test('_stop is guarded against re-entry before it awaits the recorder',
         () {
       // Reason: _stop() awaits the recorder, the local save, and the cloud
@@ -5379,6 +5401,9 @@ void main() {
       'screens/run_detail_screen.dart::l10n.runDetailMakePrivateTitle': 1,
       'screens/run_detail_screen.dart::l10n.runDetailMakePublicTitle': 1,
       'screens/run_detail_screen.dart::l10n.runDetailSaveAsRouteTitle': 1,
+      // Re-derives the distance from the stored track; the recorded figure
+      // is kept in metadata.distance_recorded_m, so nothing is discarded.
+      'screens/run_detail_screen.dart::l10n.runDetailRecalculateDistanceDialogTitle': 1,
       // States what the OS just refused and offers the Settings shortcut.
       // Either action finishes onboarding; nothing is discarded by it.
       'screens/onboarding_screen.dart::l10n.onboardingLocationDeniedTitle': 1,

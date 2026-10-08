@@ -80,10 +80,26 @@ List<DistanceMarker> computeDistanceMarkers(
   return out;
 }
 
+/// Screen gap between direction chevrons, in logical pixels — the phone
+/// counterpart of the web map's `symbol-spacing: 60`, a touch wider for a
+/// smaller screen. A fixed gap in metres (the old half-mile) left a 6 km run
+/// with five arrows when zoomed to fit, and a pile of them when zoomed in.
+const double chevronSpacingPx = 70;
+
+/// Metres between chevrons at map [zoom] near latitude [lat], so they sit
+/// [chevronSpacingPx] apart on screen at every zoom. The zoom is snapped down
+/// to the half level so a pinch doesn't re-walk the track every frame.
+double chevronStepMetresForZoom(double zoom, double lat) {
+  final z = (zoom * 2).floor() / 2;
+  final metresPerPixel = 156543.03392 * cos(lat * pi / 180) / pow(2, z);
+  return max(10, chevronSpacingPx * metresPerPixel);
+}
+
 /// Walk the polyline and emit a [TrackChevron] every [stepMetres]. Each
 /// chevron points along the local segment so the runner's direction is
-/// obvious at a glance — the equivalent of MapLibre's
-/// `symbol-placement: line` arrows on the web map. Skips chevrons within
+/// obvious at a glance. Pair with [chevronStepMetresForZoom] for the
+/// equivalent of MapLibre's `symbol-placement: line` arrows on the web
+/// map. Skips chevrons within
 /// `stepMetres / 2` of the start and end so they don't crowd the green /
 /// red caps.
 List<TrackChevron> computeChevrons(

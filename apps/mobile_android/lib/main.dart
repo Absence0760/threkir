@@ -64,6 +64,7 @@ PushMessagingBridge? _pushBridge;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  registerFontLicenses();
 
   // Load the locale-specific date symbols so `intl`'s DateFormat renders
   // month / weekday names in the active language. Cheap, idempotent, and

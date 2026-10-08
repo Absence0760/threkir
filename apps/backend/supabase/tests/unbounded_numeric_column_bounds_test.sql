@@ -27,7 +27,7 @@
 
 begin;
 
-select plan(31);
+select plan(32);
 
 -- ── the two Postgres facts the bounds are shaped around ────────────────────
 select ok(
@@ -208,6 +208,11 @@ select lives_ok(
   $$ update runs set fastest_5k_s = 900
       where id = 'd1000000-0000-0000-0000-00000000a001' $$,
   'a real 15-minute embedded 5k still stores'
+);
+select is(
+  (select fastest_5k_s from runs where id = 'd1000000-0000-0000-0000-00000000a001'),
+  900,
+  'the 15-minute embedded 5k is stored as sent, not rewritten'
 );
 select throws_ok(
   $$ update runs set fastest_5k_s = 0

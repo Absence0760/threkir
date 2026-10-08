@@ -27,11 +27,11 @@ struct RaceBannerView: View {
                 if let title = RaceBanner.title(for: race) {
                     Text(verbatim: title)
                         .font(.caption)
-                        .foregroundColor(AppTheme.parchment)
+                        .foregroundColor(AppTheme.mist)
                 } else {
                     Text("Event")
                         .font(.caption)
-                        .foregroundColor(AppTheme.parchment)
+                        .foregroundColor(AppTheme.mist)
                 }
 
                 switch phase {

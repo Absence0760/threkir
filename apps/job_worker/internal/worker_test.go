@@ -85,6 +85,10 @@ type fakeBackend struct {
 	exportNotified  map[string]bool
 	notifyExportErr error
 
+	// distance_recompute state; nil fails every call. Methods live in
+	// handler_distance_recompute_test.go.
+	distance *fakeDistanceRecompute
+
 	// downloadDelay, when non-zero, makes DownloadTrack block for
 	// that duration OR until the caller's context is cancelled.
 	// Used by the HandleTimeout test to simulate a wedged Storage

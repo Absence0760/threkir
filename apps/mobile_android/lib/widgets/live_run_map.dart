@@ -14,8 +14,6 @@ import 'pace_segments.dart';
 import 'track_decorations.dart';
 import 'track_segment.dart';
 
-const double _metresPerMile = 1609.344;
-
 /// Apply a 1-2-3-2-1 weighted moving average to the track so GPS jitter
 /// shows as a smoother line instead of a visible zig-zag. The first two
 /// and last two points are preserved unchanged. Display-only — the stored
@@ -306,11 +304,12 @@ Color mapOverlayOutline({required bool darkBasemap}) =>
     darkBasemap ? Colors.white : const Color(0xFF1E1B4B);
 
 /// The saved / recorded track line drawn as one colour — the list
-/// thumbnails. Same two rungs as web's `mapTrackLine`
-/// (`basemap_contrast.ts`), and the middle stop of [trackGradientColours]
-/// on each basemap.
+/// thumbnails. The theme's coral (decisions § 1772): bright coral on a dark
+/// basemap, a deep coral on a light one, where it also holds 3:1 over water.
+/// Same two rungs as web's `mapTrackLine` (`basemap_contrast.ts`), and the
+/// middle stop of [trackGradientColours] on each basemap.
 Color mapTrackLine({required bool darkBasemap}) =>
-    darkBasemap ? const Color(0xFF818CF8) : const Color(0xFF4F46E5);
+    darkBasemap ? const Color(0xFFF08A5D) : const Color(0xFFA33D1A);
 
 /// Amber accent for the map's transient overlays — the selected-segment
 /// highlight, the coarse last-seen ring, and the elevation-chart hover dot.
@@ -326,15 +325,13 @@ Color mapTrackLine({required bool darkBasemap}) =>
 Color mapAccentColour({required bool darkBasemap}) =>
     darkBasemap ? const Color(0xFFF59E0B) : const Color(0xFFB45309);
 
-/// Gradient stops for the recorded track, oldest → newest. Both ramps
-/// start at the same mid indigo and move away from the basemap, so the
-/// newest stretch is always the most prominent and every stop clears 3:1
-/// against its basemap — the old pale `#C7D2FE` tail computes to 1.30:1
-/// over an OSM light fill.
+/// Gradient stops for the recorded track, oldest → newest. Both coral ramps
+/// move away from the basemap, so the newest stretch is always the most
+/// prominent and every stop clears 3:1 against its basemap.
 @visibleForTesting
 List<Color> trackGradientColours({required bool darkBasemap}) => darkBasemap
-    ? const [Color(0xFF6366F1), Color(0xFF818CF8), Color(0xFFC7D2FE)]
-    : const [Color(0xFF6366F1), Color(0xFF4F46E5), Color(0xFF3730A3)];
+    ? const [Color(0xFFD9683A), Color(0xFFF08A5D), Color(0xFFF8B597)]
+    : const [Color(0xFFB5461F), Color(0xFFA33D1A), Color(0xFF7A2C12)];
 
 /// Point at a fractional [index] along [line], linearly interpolated
 /// between the two adjacent vertices (clamped to the line's range).
@@ -411,7 +408,19 @@ class LiveRunMap extends StatefulWidget {
   /// drawn as a per-segment pace heatmap (NRC-style) with an age-based
   /// alpha fade; when null it falls back to the legacy single gradient
   /// polyline — used by route_detail (no pace data) and manual-entry runs.
+  /// Ignored when [finishedRun] is set.
   final ActivityType? activity;
+
+  /// Draw [track] as a finished run rather than a live one: one solid line
+  /// over a thin dark casing, with no glow and no age fade (both are
+  /// recording-time signals), or — with [colourByPace] — a smoothed pace
+  /// gradient on the run's own scale.
+  final bool finishedRun;
+
+  /// With [finishedRun], colour the line by smoothed pace
+  /// ([buildPaceGradientPolylines]). Falls back to the solid line when the
+  /// track carries no timing.
+  final bool colourByPace;
 
   /// When true, decorate the recorded track with km / mile distance
   /// markers and direction chevrons (mirrors web's run-detail map).
@@ -479,6 +488,8 @@ class LiveRunMap extends StatefulWidget {
     this.followRunner = true,
     this.bottomPadding = 0,
     this.activity,
+    this.finishedRun = false,
+    this.colourByPace = false,
     this.showDecorations = false,
     this.useMilesForDecorations = false,
     this.totalDistanceM,
@@ -575,6 +586,10 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
   List<Polyline>? _cachedPaceSegments;
   int _cachedPaceSegmentsForLength = -1;
   ActivityType? _cachedPaceSegmentsForActivity;
+
+  // Cached finished-run pace gradient, keyed by the track it was built from.
+  List<Polyline>? _cachedPaceGradient;
+  List<Waypoint>? _cachedPaceGradientFor;
 
   // Cached halo + casing polylines for the recorded track. Without this,
   // the 45 Hz position-tween setState path re-allocates three Polyline +
@@ -786,6 +801,53 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
     _cachedPaceSegmentsForLength = track.length;
     _cachedPaceSegmentsForActivity = activity;
     return segs;
+  }
+
+  List<Polyline> _paceGradientFor(
+    List<Waypoint> track,
+    List<LatLng> rendered,
+  ) {
+    if (_cachedPaceGradient != null &&
+        identical(_cachedPaceGradientFor, track)) {
+      return _cachedPaceGradient!;
+    }
+    final out = buildPaceGradientPolylines(track: track, rendered: rendered);
+    _cachedPaceGradient = out;
+    _cachedPaceGradientFor = track;
+    return out;
+  }
+
+  /// A finished run's line: a thin dark casing for separation from the
+  /// basemap, then either the pace gradient or one solid track colour.
+  List<Widget> _finishedRunLayers(
+    List<LatLng> rendered,
+    bool darkBasemap,
+  ) {
+    final pace = widget.colourByPace
+        ? _paceGradientFor(widget.track, rendered)
+        : const <Polyline>[];
+    return [
+      PolylineLayer(
+        polylines: [
+          Polyline(
+            points: rendered,
+            strokeWidth: 8,
+            color: const Color(0xFF0B0A14).withValues(alpha: 0.55),
+          ),
+        ],
+      ),
+      PolylineLayer(
+        polylines: pace.isNotEmpty
+            ? pace
+            : [
+                Polyline(
+                  points: rendered,
+                  strokeWidth: 5,
+                  color: mapTrackLine(darkBasemap: darkBasemap),
+                ),
+              ],
+      ),
+    ];
   }
 
   /// Halo + casing polylines for [rendered], cached by length + basemap.
@@ -1097,7 +1159,9 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
             //      per-segment border, which would show visible seams
             //      between coalesced pace buckets)
             //   4. pace heatmap OR legacy gradient on top
-            if (trackLatLngs.length >= 2) ...[
+            if (trackLatLngs.length >= 2 && widget.finishedRun)
+              ..._finishedRunLayers(trackLatLngs, darkBasemap)
+            else if (trackLatLngs.length >= 2) ...[
               PolylineLayer(
                   polylines: _haloPolylinesFor(trackLatLngs, darkBasemap)),
               if (widget.activity != null)
@@ -1143,30 +1207,7 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
             // already has a pulsing dot so direction is implicit; cluttering
             // the live map with arrows would compete with that signal.
             if (widget.showDecorations && trackLatLngs.length >= 2) ...[
-              MarkerLayer(
-                markers: [
-                  for (final c in computeChevrons(
-                    trackLatLngs,
-                    stepMetres: widget.useMilesForDecorations
-                        ? _metresPerMile / 2
-                        : 500,
-                  ))
-                    Marker(
-                      point: c.position,
-                      width: 18,
-                      height: 18,
-                      child: Transform.rotate(
-                        angle: c.angleRadians,
-                        child: const Icon(
-                          Icons.play_arrow,
-                          size: 16,
-                          color: Color(0xFF1D4ED8),
-                          shadows: [Shadow(color: Colors.white, blurRadius: 3)],
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+              _ChevronLayer(coords: trackLatLngs),
               MarkerLayer(
                 markers: [
                   for (final m in computeDistanceMarkers(
@@ -1356,7 +1397,7 @@ class _DistanceMarkerPin extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFF4F46E5), width: 2),
+        border: Border.all(color: const Color(0xFFC24E24), width: 2),
         boxShadow: const [
           BoxShadow(color: Colors.black26, blurRadius: 3, spreadRadius: 0.5),
         ],
@@ -1450,7 +1491,7 @@ class _GhostDot extends StatelessWidget {
         shape: BoxShape.circle,
         color: const Color(0x55FFFFFF),
         border: Border.all(
-          color: const Color(0xCC818CF8),
+          color: const Color(0xCCC24E24),
           width: 2,
         ),
       ),
@@ -1507,11 +1548,11 @@ class _PulsingDot extends StatelessWidget {
       height: 14,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: const Color(0xFF818CF8),
+        color: const Color(0xFFC24E24),
         border: Border.all(color: ringColour, width: 2.5),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x66818CF8),
+            color: Color(0x66C24E24),
             blurRadius: 8,
             spreadRadius: 2,
           ),
@@ -1532,7 +1573,7 @@ class _PulsingDot extends StatelessWidget {
                 height: 48 * (0.5 + animation.value),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: const Color(0xFF818CF8).withValues(alpha: animation.value),
+                  color: const Color(0xFFC24E24).withValues(alpha: animation.value),
                 ),
               ),
               if (child != null) child,
@@ -1600,5 +1641,76 @@ class _HoverMarkerDot extends StatelessWidget {
         );
       },
     );
+  }
+}
+
+/// Direction-chevron ink: navy, over a crisp white outline ([chevronOutline]).
+///
+/// One flat colour cannot read on both track rungs: navy is 6.3:1 on the
+/// dark-basemap coral and only 2.4:1 on the deep light-basemap coral, where
+/// white is 6.5:1 and navy-on-white is the edge that carries the shape. The
+/// outline is what makes a single ink work everywhere, the pace gradient
+/// included (>= 3.2:1 on its red end).
+const Color chevronInk = Color(0xFF172554);
+
+/// A 1 px white ring around the chevron glyph, built from eight unblurred
+/// offset shadows because `Icon` has no stroke.
+const List<Shadow> chevronOutline = [
+  Shadow(color: Colors.white, offset: Offset(1, 0)),
+  Shadow(color: Colors.white, offset: Offset(-1, 0)),
+  Shadow(color: Colors.white, offset: Offset(0, 1)),
+  Shadow(color: Colors.white, offset: Offset(0, -1)),
+  Shadow(color: Colors.white, offset: Offset(1, 1)),
+  Shadow(color: Colors.white, offset: Offset(-1, -1)),
+  Shadow(color: Colors.white, offset: Offset(1, -1)),
+  Shadow(color: Colors.white, offset: Offset(-1, 1)),
+];
+
+/// Direction chevrons along [coords], spaced [chevronSpacingPx] apart on
+/// screen at whatever zoom the map is at. Reads the camera so a pinch
+/// re-spaces them, and caches per snapped zoom level so a pan doesn't
+/// re-walk the track.
+class _ChevronLayer extends StatefulWidget {
+  final List<LatLng> coords;
+  const _ChevronLayer({required this.coords});
+
+  @override
+  State<_ChevronLayer> createState() => _ChevronLayerState();
+}
+
+class _ChevronLayerState extends State<_ChevronLayer> {
+  List<LatLng>? _forCoords;
+  double? _forStep;
+  List<Marker> _markers = const [];
+
+  @override
+  Widget build(BuildContext context) {
+    final camera = MapCamera.of(context);
+    final step = chevronStepMetresForZoom(
+      camera.zoom,
+      widget.coords[widget.coords.length ~/ 2].latitude,
+    );
+    if (!identical(_forCoords, widget.coords) || _forStep != step) {
+      _forCoords = widget.coords;
+      _forStep = step;
+      _markers = [
+        for (final c in computeChevrons(widget.coords, stepMetres: step))
+          Marker(
+            point: c.position,
+            width: 18,
+            height: 18,
+            child: Transform.rotate(
+              angle: c.angleRadians,
+              child: const Icon(
+                Icons.play_arrow,
+                size: 16,
+                color: chevronInk,
+                shadows: chevronOutline,
+              ),
+            ),
+          ),
+      ];
+    }
+    return MarkerLayer(markers: _markers);
   }
 }

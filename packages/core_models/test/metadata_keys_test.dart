@@ -13,6 +13,9 @@ void main() {
       expect(MetadataKeys.createdByUserId, 'created_by_user_id');
       expect(MetadataKeys.lastModifiedAt, 'last_modified_at');
       expect(MetadataKeys.trackUrl, 'track_url');
+      expect(MetadataKeys.distanceEstimator, 'distance_estimator');
+      expect(MetadataKeys.distanceRecordedM, 'distance_recorded_m');
+      expect(MetadataKeys.distanceStepFilledM, 'distance_step_filled_m');
       expect(MetadataKeys.isDnf, 'is_dnf');
       expect(MetadataKeys.recoveredFromCrash, 'recovered_from_crash');
       expect(MetadataKeys.workoutStepResults, 'workout_step_results');
@@ -33,7 +36,10 @@ void main() {
         MetadataKeys.cadenceSpm,
         MetadataKeys.chipTime,
         MetadataKeys.createdByUserId,
+        MetadataKeys.distanceEstimator,
+        MetadataKeys.distanceRecordedM,
         MetadataKeys.distanceSource,
+        MetadataKeys.distanceStepFilledM,
         MetadataKeys.elevationM,
         MetadataKeys.event,
         MetadataKeys.fastest10kS,

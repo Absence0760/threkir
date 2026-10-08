@@ -2746,16 +2746,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runDetailSectionElevation => 'Höhenmeter';
 
   @override
-  String get runDetailPaceLegendTitle => 'Tempo ggü. Median';
-
-  @override
   String get runDetailPaceBandFaster => 'Schneller';
 
   @override
-  String get runDetailPaceBandSteady => 'Gleichmäßig';
+  String get runDetailPaceBandSlower => 'Langsamer';
 
   @override
-  String get runDetailPaceBandSlower => 'Langsamer';
+  String get runDetailMapPaceColours => 'Tempofarben';
 
   @override
   String get runDetailSectionLaps => 'Runden';
@@ -2920,6 +2917,37 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String runDetailRematchFailed(String error) {
     return 'Neuabgleich fehlgeschlagen: $error';
+  }
+
+  @override
+  String get runDetailRecalculateDistance => 'Distanz neu berechnen';
+
+  @override
+  String get runDetailRecalculateDistanceDialogTitle => 'Distanz neu berechnen?';
+
+  @override
+  String get runDetailRecalculateDistanceDialogMessage => 'Die Distanz dieses Laufs wird mit dem verbesserten GPS-Filter aus dem GPS-Track neu berechnet. Er entfernt die zusätzliche Strecke, die durch GPS-Schwankungen entsteht. Die ursprünglich aufgezeichnete Distanz bleibt erhalten und wird neben der neuen angezeigt.';
+
+  @override
+  String get runDetailRecalculateDistanceConfirm => 'Neu berechnen';
+
+  @override
+  String get runDetailRecalculatingDistance => 'Wird neu berechnet – aktualisiere in einer Minute';
+
+  @override
+  String runDetailRecalculateDistanceFailed(String error) {
+    return 'Distanz konnte nicht neu berechnet werden: $error';
+  }
+
+  @override
+  String get runDetailRecalculateDistanceNotOwner => 'Nur die Person, die diesen Lauf aufgezeichnet hat, kann seine Distanz neu berechnen.';
+
+  @override
+  String get runDetailRecalculateDistanceNoTrack => 'Dieser Lauf hat keinen GPS-Track, aus dem neu berechnet werden kann.';
+
+  @override
+  String runDetailOriginallyRecorded(String distance) {
+    return 'Ursprünglich aufgezeichnet: $distance';
   }
 
   @override

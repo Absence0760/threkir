@@ -348,7 +348,7 @@ Shared Flutter widgets used by both phone apps. Ensures visual consistency acros
 - `SectionHeader` — the one uppercased eyebrow that names a list group
 - `ImportSheet` — bottom sheet for GPX/KML file selection
 
-Plus `AppTheme` (the Dusk light / dark themes and the `AppSemanticColors` status
+Plus `AppTheme` (the "Dusk, refined" light / dark themes, decisions § 1772, and the `AppSemanticColors` status
 roles) and `ChartPalette` (the categorical / ordinal / sequential scales every
 chart draws its marks in).
 

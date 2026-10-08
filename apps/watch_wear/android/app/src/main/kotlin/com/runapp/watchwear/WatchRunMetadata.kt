@@ -27,6 +27,8 @@ fun buildRunMetadata(
     steps: Int?,
     laps: List<QueuedLap>,
     lastModifiedAtIso: String,
+    distanceEstimator: String? = null,
+    distanceStepFilledM: Double? = null,
 ): JsonObject = buildJsonObject {
     put("activity_type", activityType)
     if (avgBpm != null) put("avg_bpm", avgBpm)
@@ -42,6 +44,10 @@ fun buildRunMetadata(
     // the row is invisible to every refresh after the first full
     // pull. See docs/backend/metadata.md § last_modified_at.
     put("last_modified_at", lastModifiedAtIso)
+    if (distanceEstimator != null) put("distance_estimator", distanceEstimator)
+    if (distanceEstimator != null && distanceStepFilledM != null && distanceStepFilledM > 0) {
+        put("distance_step_filled_m", distanceStepFilledM)
+    }
     if (laps.isNotEmpty()) {
         put("laps", buildJsonArray {
             var prevMs = 0L

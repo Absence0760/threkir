@@ -339,4 +339,35 @@ class WatchRunMetadataTest {
         assertNull(md["steps"])
         assertNull(md["laps"])
     }
+
+    private fun withEstimator(estimator: String?, stepFilledM: Double?) = buildRunMetadata(
+        activityType = "run",
+        avgBpm = null,
+        hrCoverage = null,
+        steps = null,
+        laps = emptyList(),
+        lastModifiedAtIso = isoStamp,
+        distanceEstimator = estimator,
+        distanceStepFilledM = stepFilledM,
+    )
+
+    @Test
+    fun `an estimator run stamps distance_estimator`() {
+        val md = withEstimator("kalman_v1", 0.0)
+        assertEquals("kalman_v1", md["distance_estimator"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun `distance_step_filled_m is written only when the pedometer filled something`() {
+        assertEquals(105.7, withEstimator("kalman_v1", 105.7)["distance_step_filled_m"]!!.jsonPrimitive.double, 1e-9)
+        assertFalse(withEstimator("kalman_v1", 0.0).containsKey("distance_step_filled_m"))
+        assertFalse(withEstimator("kalman_v1", null).containsKey("distance_step_filled_m"))
+    }
+
+    @Test
+    fun `a run queued by a hop-summing build claims no estimator`() {
+        val md = withEstimator(null, null)
+        assertFalse(md.containsKey("distance_estimator"))
+        assertFalse(md.containsKey("distance_step_filled_m"))
+    }
 }

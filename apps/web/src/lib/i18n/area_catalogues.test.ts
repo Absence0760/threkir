@@ -102,7 +102,9 @@ test('the root layout loads the route catalogues in its load', () => {
 			'no area catalogue is ever fetched and every area key renders as its name',
 	);
 	const store = readFileSync(join(SRC, 'lib', 'i18n', 'store.svelte.ts'), 'utf8');
-	assert.match(store, /ensureAreas\(areasForRoute\(routeId\)\)/);
+	const body = /export async function loadRouteCatalogues\([\s\S]*?\n\}/.exec(store)?.[0] ?? '';
+	assert.match(body, /const areas = areasForRoute\(routeId\);/);
+	assert.match(body, /await catalogues\.ensureAreas\(areas\);\n\}$/, 'every path must end by loading the areas');
 });
 
 test('no other load function can read a message before the catalogues arrive', () => {

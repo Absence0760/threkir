@@ -3,6 +3,7 @@ import {
   mergeSmoothedSidecar,
   needsSmoothedSidecar,
   sha256Hex,
+  SMOOTHED_SIDECAR_VERSION,
   smoothedSidecarPath,
 } from './smoothed_sidecar.ts';
 
@@ -26,8 +27,9 @@ const FIXTURE = JSON.parse(
 
 type Point = { lat: number; lng: number; smoothedLat?: unknown; smoothedLng?: unknown };
 
-Deno.test('the fixture is for sidecar version 1 and holds cases', () => {
-  assertEquals(FIXTURE.version, 1);
+Deno.test('the fixture is for the sidecar version this reader accepts, and holds cases', () => {
+  assertEquals(SMOOTHED_SIDECAR_VERSION, 1);
+  assertEquals(FIXTURE.version, SMOOTHED_SIDECAR_VERSION);
   assert(FIXTURE.cases.length > 0);
 });
 

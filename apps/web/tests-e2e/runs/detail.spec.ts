@@ -331,6 +331,8 @@ test.describe('/runs/[id]', () => {
 		// device cache holds no zones at all. Read as "no zones" it sent the
 		// share image out with the unclipped line, and told the make-public
 		// confirm the owner had no zone set up.
+		// Two zone loads that each retry for ~7 s before refusing.
+		test.setTimeout(60_000);
 		const planted = await insertRun({
 			user_id: USER_A.id,
 			distance_m: 400,
@@ -360,12 +362,17 @@ test.describe('/runs/[id]', () => {
 			});
 			await expect(page.getByTestId('share-card-map')).toHaveCount(0);
 
+			// postgrest-js retries a GET that fails on the network three times,
+			// 1 s, 2 s and 4 s apart, so each zone load takes ~7 s to give up.
+			const zonesUnknown = page.locator('.toast', {
+				hasText: /Couldn't load your privacy zones/
+			});
 			await page.locator('button[title="Share as image"]').click();
-			await expect(
-				page.locator('.toast', { hasText: /Couldn't load your privacy zones/ })
-			).toBeVisible({ timeout: 5_000 });
+			await expect(zonesUnknown).toBeVisible({ timeout: 15_000 });
+			await expect(zonesUnknown).toHaveCount(0, { timeout: 10_000 });
 
 			await page.locator('button[title="Share link"]').click();
+			await expect(zonesUnknown).toBeVisible({ timeout: 15_000 });
 			await expect(page.locator('[data-testid="share-confirm-dialog"]')).toHaveCount(0);
 
 			const row = await readRow(

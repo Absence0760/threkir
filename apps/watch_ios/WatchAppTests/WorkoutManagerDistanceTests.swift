@@ -3,7 +3,7 @@ import CoreLocation
 @testable import WatchApp
 
 /// How the watchOS recorder turns fixes into distance: every accepted fix goes
-/// through the spec-v1 `GpsDistanceEstimator` (docs/features/gps_distance.md),
+/// through the spec-v1.1 `GpsDistanceEstimator` (docs/features/gps_distance.md),
 /// whose own arithmetic `GpsDistanceEstimatorTests` pins against the shared
 /// vectors. These tests pin the wiring — the clock it is fed, the CoreLocation
 /// sentinels it is spared, and the pause boundary (issue #371) that must credit
@@ -137,6 +137,31 @@ final class WorkoutManagerDistanceTests: XCTestCase {
 
         feed(wm, run(from: resumeLat, at: 35, seconds: 10).dropFirst().map { $0 })
         XCTAssertEqual(wm.distanceMetres, bankedBeforePause + 2.8 * 10, accuracy: 0.01)
+    }
+
+    func testLearnedStrideSurvivesEveryPause() {
+        let wm = WorkoutManager()
+        wm.state = .recording
+        let first = wm.distanceEstimator
+        let degPerM = 180.0 / (Double.pi * 6371008.8)
+        first.addFix(t: 0, lat: 45, lng: 7, accuracyM: 5, speedMps: 0, speedAccuracyMps: 0.5, bearingDeg: 0)
+        first.addSteps(t: 0.5, cumulativeSteps: 0)
+        for i in 1...20 {
+            first.addFix(t: Double(i), lat: 45 + 3.0 * Double(i) * degPerM, lng: 7, accuracyM: 5,
+                         speedMps: 3, speedAccuracyMps: 0.5, bearingDeg: 0)
+            first.addSteps(t: Double(i) + 0.5, cumulativeSteps: 3 * i)
+        }
+        XCTAssertEqual(first.strideM ?? -1, 1.0, accuracy: 1e-9)
+
+        wm.pause()
+        XCTAssertFalse(wm.distanceEstimator === first, "a pause starts a fresh segment")
+        XCTAssertEqual(wm.distanceEstimator.strideM ?? -1, 1.0, accuracy: 1e-9,
+                       "the fresh segment is seeded with the stride the last one learned")
+
+        wm.resume()
+        wm.pause()
+        XCTAssertEqual(wm.distanceEstimator.strideM ?? -1, 1.0, accuracy: 1e-9,
+                       "a segment that learned nothing passes on the stride it carried")
     }
 
     func testStopKeepsTheBankedFigure() {

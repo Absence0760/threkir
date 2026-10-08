@@ -729,13 +729,14 @@ class RunRecordingService : Service() {
 
     /// End the current estimator segment: commit any step distance buffered
     /// across a trailing GPS gap, bank the segment's totals, and start a
-    /// fresh estimator. Caller holds [distanceLock].
+    /// fresh estimator that keeps the learned stride, so a GPS gap right
+    /// after a resume is still step-filled. Caller holds [distanceLock].
     private fun closeDistanceSegment() {
         val segment = distanceEstimator
         segment.finish(realtimeS())
         bankedGpsDistanceM += segment.gpsDistanceM
         bankedStepDistanceM += segment.stepDistanceM
-        distanceEstimator = GpsDistanceEstimator(segment.maxSpeedMps)
+        distanceEstimator = segment.nextSegment()
     }
 
     private fun bankedDistanceM(): Double = bankedGpsDistanceM + bankedStepDistanceM

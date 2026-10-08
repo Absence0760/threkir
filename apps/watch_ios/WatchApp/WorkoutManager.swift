@@ -716,12 +716,14 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
 
     /// Close the active segment at a pause or stop: commit any steps buffered
-    /// across a trailing gap, bank the segment, and start the next one fresh.
+    /// across a trailing gap, bank the segment, and start the next one fresh
+    /// but keeping the learned stride, so a GPS gap right after a resume is
+    /// still step-filled.
     private func sealDistanceSegment() {
         distanceEstimator.finish(t: ProcessInfo.processInfo.systemUptime)
         bankedDistanceMetres += distanceEstimator.distanceM
         bankedStepFilledMetres += distanceEstimator.stepDistanceM
-        distanceEstimator = GpsDistanceEstimator(maxSpeedMps: Self.maxSpeedMps(for: activityType))
+        distanceEstimator = distanceEstimator.nextSegment()
         lastEstimatorFixT = nil
         distanceMetres = bankedDistanceMetres
     }
@@ -779,7 +781,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             // nothing for, so the pace look-back must not time across it
             // either — the same seal a pause applies.
             let t = Self.estimatorTime(of: location, nowUptime: nowUptime, now: now)
-            if let lastT = lastEstimatorFixT, t - lastT > GpsDistanceEstimator.gapS {
+            if let lastT = lastEstimatorFixT, t - lastT > distanceEstimator.gapWindowS {
                 sealPaceWindow()
             }
             if lastEstimatorFixT.map({ t > $0 }) ?? true { lastEstimatorFixT = t }

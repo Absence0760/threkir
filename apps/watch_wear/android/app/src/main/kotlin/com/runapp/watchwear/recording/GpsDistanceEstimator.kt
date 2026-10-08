@@ -6,20 +6,31 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
-/// GPS distance estimator, spec v1 — the Wear OS port of
+/// GPS distance estimator, spec v1.1 — the Wear OS port of
 /// `scripts/gps_distance/reference.py`, which is the spec. Read
 /// `docs/features/gps_distance.md` before changing anything here: every port
 /// replays `fixtures/gps_distance_vectors.json` to 1e-3 m, so a change to one
 /// port alone fails its vector test (`GpsDistanceEstimatorTest`).
 ///
-/// `t` is seconds on a clock monotonic within the run.
-class GpsDistanceEstimator(val maxSpeedMps: Double = 10.0) {
+/// `t` is seconds on a clock monotonic within the run. `expectedIntervalS`
+/// is the interval the recorder samples GPS at on purpose: it scales the gap
+/// and fresh-fix windows. `initialStrideM` carries a stride learned earlier
+/// (e.g. before a pause) and is ignored outside the stride bounds.
+class GpsDistanceEstimator(
+    val maxSpeedMps: Double = 10.0,
+    val expectedIntervalS: Double = 1.0,
+    initialStrideM: Double? = null,
+) {
+
+    private val intervalScale = if (expectedIntervalS.isFinite() && expectedIntervalS > 1.0) expectedIntervalS else 1.0
+    private val gapS = GAP_S * intervalScale
+    private val freshFixS = FRESH_FIX_S * intervalScale
 
     var gpsDistanceM = 0.0
         private set
     var stepDistanceM = 0.0
         private set
-    var strideM: Double? = null
+    var strideM: Double? = initialStrideM?.takeIf { it.isFinite() && it >= MIN_STRIDE_M && it <= MAX_STRIDE_M }
         private set
 
     val distanceM: Double get() = gpsDistanceM + stepDistanceM
@@ -56,7 +67,7 @@ class GpsDistanceEstimator(val maxSpeedMps: Double = 10.0) {
         val r = s * s
         val prevT = lastT
         if (prevT != null && t <= prevT) return 0.0
-        if (prevT == null || t - prevT > GAP_S) {
+        if (prevT == null || t - prevT > gapS) {
             if (prevT != null) stepDistanceM += pendingStepM
             pendingStepM = 0.0
             x = Axis(zx, r)
@@ -113,7 +124,7 @@ class GpsDistanceEstimator(val maxSpeedMps: Double = 10.0) {
         if (prev == null || cumulativeSteps < prev || prevT == null || t <= prevT) return
         val d = cumulativeSteps - prev
         val fixT = lastT
-        if (fixT != null && t - fixT <= FRESH_FIX_S) {
+        if (fixT != null && t - fixT <= freshFixS) {
             winSteps += d
             if (winSteps >= STRIDE_WINDOW_STEPS) {
                 val stride = winM / winSteps
@@ -136,9 +147,15 @@ class GpsDistanceEstimator(val maxSpeedMps: Double = 10.0) {
         pendingStepM += min(d * stride, maxSpeedMps * (t - prevT))
     }
 
+    /// A fresh estimator for the segment after a pause: same configuration,
+    /// seeded with this one's stride, which is itself the carried stride when
+    /// this segment learned none.
+    fun nextSegment(): GpsDistanceEstimator =
+        GpsDistanceEstimator(maxSpeedMps, expectedIntervalS, strideM)
+
     fun finish(t: Double) {
         val fixT = lastT
-        if (fixT != null && valid(t) && t - fixT > GAP_S) stepDistanceM += pendingStepM
+        if (fixT != null && valid(t) && t - fixT > gapS) stepDistanceM += pendingStepM
         pendingStepM = 0.0
     }
 

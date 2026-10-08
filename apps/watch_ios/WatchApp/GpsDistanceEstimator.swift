@@ -1,6 +1,6 @@
 import Foundation
 
-/// GPS distance estimator, spec v1 — the watchOS port of
+/// GPS distance estimator, spec v1.1 — the watchOS port of
 /// `scripts/gps_distance/reference.py`. See `docs/features/gps_distance.md`.
 ///
 /// Every port replays `fixtures/gps_distance_vectors.json` to 1e-3 m, so the
@@ -76,6 +76,11 @@ final class GpsDistanceEstimator {
     }
 
     let maxSpeedMps: Double
+    let expectedIntervalS: Double
+    /// The gap and fresh-fix windows, scaled by the interval the recorder
+    /// samples GPS at on purpose.
+    let gapWindowS: Double
+    let freshFixWindowS: Double
     private(set) var gpsDistanceM: Double = 0
     private(set) var stepDistanceM: Double = 0
     private(set) var strideM: Double?
@@ -91,8 +96,24 @@ final class GpsDistanceEstimator {
     private var lastStepT: Double?
     private var pendingStepM: Double = 0
 
-    init(maxSpeedMps: Double = 10.0) {
+    /// `initialStrideM` carries a stride learned earlier (e.g. before a
+    /// pause); it is ignored outside `minStrideM...maxStrideM`.
+    init(maxSpeedMps: Double = 10.0, expectedIntervalS: Double = 1.0, initialStrideM: Double? = nil) {
         self.maxSpeedMps = maxSpeedMps
+        self.expectedIntervalS = expectedIntervalS
+        let scale = expectedIntervalS.isFinite && expectedIntervalS > 1.0 ? expectedIntervalS : 1.0
+        self.gapWindowS = Self.gapS * scale
+        self.freshFixWindowS = Self.freshFixS * scale
+        if let seed = initialStrideM, seed.isFinite, seed >= Self.minStrideM, seed <= Self.maxStrideM {
+            self.strideM = seed
+        }
+    }
+
+    /// A fresh estimator for the segment after a pause: same configuration,
+    /// seeded with this one's stride, which is itself the carried stride when
+    /// this segment learned none.
+    func nextSegment() -> GpsDistanceEstimator {
+        GpsDistanceEstimator(maxSpeedMps: maxSpeedMps, expectedIntervalS: expectedIntervalS, initialStrideM: strideM)
     }
 
     var distanceM: Double { gpsDistanceM + stepDistanceM }
@@ -128,7 +149,7 @@ final class GpsDistanceEstimator {
         let r = floored * floored
 
         if let last = self.t, t <= last { return 0 }
-        guard let last = self.t, t - last <= Self.gapS, var ax = x, var ay = y else {
+        guard let last = self.t, t - last <= gapWindowS, var ax = x, var ay = y else {
             if self.t != nil {
                 stepDistanceM += pendingStepM
             }
@@ -182,7 +203,7 @@ final class GpsDistanceEstimator {
 
     /// Cumulative pedometer count. Learns a stride while GPS is good and
     /// buffers steps x stride while it is not; the buffer is committed only
-    /// when the gap turns out to exceed `gapS`.
+    /// when the gap turns out to exceed `gapWindowS`.
     func addSteps(t: Double, cumulativeSteps: Int) {
         guard t.isFinite else { return }
         let prev = lastSteps
@@ -191,7 +212,7 @@ final class GpsDistanceEstimator {
         lastStepT = t
         guard let prev, let prevT, cumulativeSteps >= prev, t > prevT else { return }
         let d = cumulativeSteps - prev
-        if let fixT = self.t, t - fixT <= Self.freshFixS {
+        if let fixT = self.t, t - fixT <= freshFixWindowS {
             winSteps += d
             if winSteps >= Self.strideWindowSteps {
                 let stride = winM / Double(winSteps)
@@ -213,9 +234,9 @@ final class GpsDistanceEstimator {
         pendingStepM += min(Double(d) * stride, maxSpeedMps * (t - prevT))
     }
 
-    /// End of run: commit buffered steps if the trailing gap exceeds `gapS`.
+    /// End of run: commit buffered steps if the trailing gap exceeds `gapWindowS`.
     func finish(t: Double) {
-        if let fixT = self.t, t.isFinite, t - fixT > Self.gapS {
+        if let fixT = self.t, t.isFinite, t - fixT > gapWindowS {
             stepDistanceM += pendingStepM
         }
         pendingStepM = 0

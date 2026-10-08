@@ -58,7 +58,10 @@ class DistanceEstimatorWiringTest {
         assertTrue(body(serviceSrc, "private fun stopRecording()").contains("closeDistanceSegment()"))
         val close = body(serviceSrc, "private fun closeDistanceSegment()")
         assertTrue("finish() commits steps buffered across a trailing gap", close.contains(".finish("))
-        assertTrue(close.contains("distanceEstimator = GpsDistanceEstimator("))
+        assertTrue(
+            "the next segment keeps the learned stride",
+            close.contains("distanceEstimator = segment.nextSegment()"),
+        )
     }
 
     @Test

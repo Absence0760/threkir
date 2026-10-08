@@ -579,8 +579,10 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   (never the wall-clock `time`), plus `Location.speed` / `speedAccuracy` /
   `bearing` only when the matching `has*()` is true; the pedometer feeds
   `addSteps`. A pause closes the estimator segment (`finish` + bank the
-  totals + a fresh estimator), so the paused span is never credited and the
-  next fix re-anchors — the learned stride does not survive a pause. The
+  totals + `nextSegment()`), so the paused span is never credited and the
+  next fix re-anchors; the fresh estimator is seeded (`initialStrideM`) with
+  the closing segment's stride, so a GPS gap right after a resume is still
+  step-filled. Fixes arrive at 1 s, so `expectedIntervalS` stays 1. The
   ceiling is per activity (`maxSpeedMpsFor`, the phone's
   `ActivityType.maxSpeedMps` values). The track itself still appends every
   gated fix; each point now also carries the optional `accuracyMetres`,

@@ -1,4 +1,4 @@
-//! GPS distance estimator, spec v1 — the `no_std` port of
+//! GPS distance estimator, spec v1.1 — the `no_std` port of
 //! `scripts/gps_distance/reference.py` (docs/features/gps_distance.md).
 //!
 //! Summing the straight hop between consecutive raw fixes inflates distance
@@ -98,6 +98,9 @@ fn valid(x: Option<f64>) -> Option<f64> {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GpsDistanceEstimator {
     max_speed_mps: f64,
+    expected_interval_s: f64,
+    gap_s: f64,
+    fresh_fix_s: f64,
     gps_distance_m: f64,
     step_distance_m: f64,
     stride_m: Option<f64>,
@@ -119,11 +122,35 @@ impl Default for GpsDistanceEstimator {
 
 impl GpsDistanceEstimator {
     pub const fn new(max_speed_mps: f64) -> Self {
+        Self::with_config(max_speed_mps, 1.0, None)
+    }
+
+    /// `expected_interval_s` is the interval the receiver is sampled at on
+    /// purpose: it scales the gap and fresh-fix windows, so a 60 s mode is not
+    /// re-anchored on every fix. `initial_stride_m` carries a stride learned
+    /// earlier and is ignored outside [`MIN_STRIDE_M`]..=[`MAX_STRIDE_M`].
+    pub const fn with_config(
+        max_speed_mps: f64,
+        expected_interval_s: f64,
+        initial_stride_m: Option<f64>,
+    ) -> Self {
+        let scale = if expected_interval_s.is_finite() && expected_interval_s > 1.0 {
+            expected_interval_s
+        } else {
+            1.0
+        };
+        let stride_m = match initial_stride_m {
+            Some(s) if s.is_finite() && s >= MIN_STRIDE_M && s <= MAX_STRIDE_M => Some(s),
+            _ => None,
+        };
         Self {
             max_speed_mps,
+            expected_interval_s,
+            gap_s: GAP_S * scale,
+            fresh_fix_s: FRESH_FIX_S * scale,
             gps_distance_m: 0.0,
             step_distance_m: 0.0,
-            stride_m: None,
+            stride_m,
             origin: None,
             axes: None,
             t: None,
@@ -151,6 +178,21 @@ impl GpsDistanceEstimator {
         self.stride_m
     }
 
+    /// A fresh estimator for the segment after a pause: same configuration,
+    /// seeded with this one's stride, which is itself the carried stride when
+    /// this segment learned none.
+    pub const fn next_segment(&self) -> Self {
+        Self::with_config(self.max_speed_mps, self.expected_interval_s, self.stride_m)
+    }
+
+    pub fn max_speed_mps(&self) -> f64 {
+        self.max_speed_mps
+    }
+
+    pub fn expected_interval_s(&self) -> f64 {
+        self.expected_interval_s
+    }
+
     /// Clock of the last fix the filter took, `None` before the first.
     pub fn last_fix_t(&self) -> Option<f64> {
         self.t
@@ -175,7 +217,9 @@ impl GpsDistanceEstimator {
         let (lat0, lng0) = *self.origin.get_or_insert((lat, lng));
         let zx = (lng - lng0) * DEG_TO_RAD * EARTH_RADIUS_M * libm::cos(lat0 * DEG_TO_RAD);
         let zy = (lat - lat0) * DEG_TO_RAD * EARTH_RADIUS_M;
-        let sigma = valid(accuracy_m).filter(|a| *a > 0.0).unwrap_or(MIN_POS_SIGMA_M);
+        let sigma = valid(accuracy_m)
+            .filter(|a| *a > 0.0)
+            .unwrap_or(MIN_POS_SIGMA_M);
         let floored = sigma.max(MIN_POS_SIGMA_M);
         let r = floored * floored;
 
@@ -185,7 +229,7 @@ impl GpsDistanceEstimator {
             }
         }
         let (mut x, mut y, last) = match (self.axes, self.t) {
-            (Some((x, y)), Some(last)) if t - last <= GAP_S => (x, y, last),
+            (Some((x, y)), Some(last)) if t - last <= self.gap_s => (x, y, last),
             _ => {
                 if self.t.is_some() {
                     self.step_distance_m += self.pending_step_m;
@@ -241,7 +285,7 @@ impl GpsDistanceEstimator {
 
     /// Cumulative pedometer count. Learns a stride while GPS is good and
     /// buffers steps x stride while it is not; the buffer is committed only
-    /// when the gap turns out to exceed [`GAP_S`].
+    /// when the gap turns out to exceed [`GAP_S`] x the expected interval.
     pub fn add_steps(&mut self, t: f64, cumulative_steps: i64) {
         if !t.is_finite() {
             return;
@@ -257,7 +301,7 @@ impl GpsDistanceEstimator {
         }
         let d = cumulative_steps - prev;
         if let Some(fix_t) = self.t {
-            if t - fix_t <= FRESH_FIX_S {
+            if t - fix_t <= self.fresh_fix_s {
                 self.win_steps += d;
                 if self.win_steps >= STRIDE_WINDOW_STEPS {
                     let stride = self.win_m / self.win_steps as f64;
@@ -281,10 +325,11 @@ impl GpsDistanceEstimator {
         self.pending_step_m += (d as f64 * stride).min(self.max_speed_mps * (t - prev_t));
     }
 
-    /// End of run: commit buffered steps if the trailing gap exceeds [`GAP_S`].
+    /// End of run: commit buffered steps if the trailing gap exceeds [`GAP_S`]
+    /// x the expected interval.
     pub fn finish(&mut self, t: f64) {
         if let Some(fix_t) = self.t {
-            if t.is_finite() && t - fix_t > GAP_S {
+            if t.is_finite() && t - fix_t > self.gap_s {
                 self.step_distance_m += self.pending_step_m;
             }
         }
@@ -310,10 +355,20 @@ mod tests {
         assert!(!scenarios.is_empty());
         for sc in scenarios {
             let name = sc["name"].as_str().unwrap_or("?");
-            let mut e = GpsDistanceEstimator::new(sc["maxSpeedMps"].as_f64().expect("maxSpeedMps"));
+            let mut e = GpsDistanceEstimator::with_config(
+                sc["maxSpeedMps"].as_f64().expect("maxSpeedMps"),
+                sc["expectedIntervalS"].as_f64().expect("expectedIntervalS"),
+                sc["initialStrideM"].as_f64(),
+            );
             let events = sc["events"].as_array().expect("events");
-            let want = sc["expected"]["distanceAfterEachEventM"].as_array().expect("expected");
-            assert_eq!(events.len(), want.len(), "{name}: one expectation per event");
+            let want = sc["expected"]["distanceAfterEachEventM"]
+                .as_array()
+                .expect("expected");
+            assert_eq!(
+                events.len(),
+                want.len(),
+                "{name}: one expectation per event"
+            );
             for (i, ev) in events.iter().enumerate() {
                 let t = ev["t"].as_f64().expect("t");
                 match ev["type"].as_str() {
@@ -349,7 +404,10 @@ mod tests {
             assert!((e.gps_distance_m() - gps).abs() <= tol, "{name}: gps");
             assert!((e.step_distance_m() - step).abs() <= tol, "{name}: step");
             match exp["strideM"].as_f64() {
-                Some(s) => assert!((e.stride_m().expect("stride learned") - s).abs() <= tol, "{name}: stride"),
+                Some(s) => assert!(
+                    (e.stride_m().expect("stride learned") - s).abs() <= tol,
+                    "{name}: stride"
+                ),
                 None => assert!(e.stride_m().is_none(), "{name}: no stride"),
             }
         }
@@ -368,7 +426,10 @@ mod tests {
         assert_eq!(f("DEFAULT_SPEED_SIGMA_MPS"), DEFAULT_SPEED_SIGMA_MPS);
         assert_eq!(f("MAX_SPEED_SIGMA_MPS"), MAX_SPEED_SIGMA_MPS);
         assert_eq!(f("STATIONARY_SPEED_MPS"), STATIONARY_SPEED_MPS);
-        assert_eq!(f("POS_ONLY_STATIONARY_SPEED_MPS"), POS_ONLY_STATIONARY_SPEED_MPS);
+        assert_eq!(
+            f("POS_ONLY_STATIONARY_SPEED_MPS"),
+            POS_ONLY_STATIONARY_SPEED_MPS
+        );
         assert_eq!(f("GAP_S"), GAP_S);
         assert_eq!(f("FRESH_FIX_S"), FRESH_FIX_S);
         assert_eq!(f("STRIDE_WINDOW_STEPS") as i64, STRIDE_WINDOW_STEPS);
@@ -380,7 +441,10 @@ mod tests {
     #[test]
     fn a_doppler_fix_credits_speed_times_interval() {
         let mut e = GpsDistanceEstimator::default();
-        assert_eq!(e.add_fix(0.0, 40.0, -75.0, Some(4.0), Some(3.0), None, None), 0.0);
+        assert_eq!(
+            e.add_fix(0.0, 40.0, -75.0, Some(4.0), Some(3.0), None, None),
+            0.0
+        );
         let inc = e.add_fix(2.0, 40.00005, -75.0, Some(4.0), Some(3.0), None, None);
         assert!((inc - 6.0).abs() < 1e-12);
     }
@@ -389,8 +453,90 @@ mod tests {
     fn a_gap_over_ten_seconds_reanchors_without_credit() {
         let mut e = GpsDistanceEstimator::default();
         e.add_fix(0.0, 40.0, -75.0, None, Some(3.0), None, None);
-        assert_eq!(e.add_fix(30.0, 40.001, -75.0, None, Some(3.0), None, None), 0.0);
+        assert_eq!(
+            e.add_fix(30.0, 40.001, -75.0, None, Some(3.0), None, None),
+            0.0
+        );
         assert_eq!(e.distance_m(), 0.0);
+    }
+
+    #[test]
+    fn the_fixture_covers_the_v1_1_scenarios() {
+        let doc: serde_json::Value = serde_json::from_str(VECTORS).expect("vectors parse");
+        let names: Vec<&str> = doc["scenarios"]
+            .as_array()
+            .expect("scenarios")
+            .iter()
+            .filter_map(|s| s["name"].as_str())
+            .collect();
+        for required in [
+            "sparse_15s",
+            "sparse_60s_position_only",
+            "sparse_without_interval_hint",
+            "seeded_stride_gap_fill",
+            "seeded_stride_out_of_range",
+        ] {
+            assert!(
+                names.contains(&required),
+                "fixture lost scenario {required}"
+            );
+        }
+    }
+
+    fn learn_stride(e: &mut GpsDistanceEstimator) {
+        let deg_per_m = 180.0 / (core::f64::consts::PI * EARTH_RADIUS_M);
+        e.add_fix(0.0, 45.0, 7.0, Some(5.0), Some(0.0), Some(0.5), Some(0.0));
+        e.add_steps(0.5, 0);
+        for i in 1..=20i64 {
+            let t = i as f64;
+            let lat = 45.0 + 3.0 * t * deg_per_m;
+            e.add_fix(t, lat, 7.0, Some(5.0), Some(3.0), Some(0.5), Some(0.0));
+            e.add_steps(t + 0.5, 3 * i);
+        }
+    }
+
+    #[test]
+    fn the_next_segment_carries_the_learned_stride_and_the_configuration() {
+        let mut first = GpsDistanceEstimator::with_config(6.0, 15.0, None);
+        learn_stride(&mut first);
+        assert!((first.stride_m().expect("learned") - 1.0).abs() < 1e-9);
+        let next = first.next_segment();
+        assert!((next.stride_m().expect("carried") - 1.0).abs() < 1e-9);
+        assert_eq!(next.max_speed_mps(), 6.0);
+        assert_eq!(next.expected_interval_s(), 15.0);
+        assert_eq!(next.distance_m(), 0.0);
+        assert_eq!(next.last_fix_t(), None);
+    }
+
+    #[test]
+    fn a_segment_that_learned_nothing_passes_on_its_seed() {
+        let seeded = GpsDistanceEstimator::with_config(DEFAULT_MAX_SPEED_MPS, 1.0, Some(0.95));
+        assert_eq!(seeded.next_segment().next_segment().stride_m(), Some(0.95));
+        assert_eq!(
+            GpsDistanceEstimator::default().next_segment().stride_m(),
+            None
+        );
+        let out_of_range = GpsDistanceEstimator::with_config(DEFAULT_MAX_SPEED_MPS, 1.0, Some(3.0));
+        assert_eq!(out_of_range.stride_m(), None);
+    }
+
+    #[test]
+    fn a_carried_stride_blends_with_the_next_learned_one() {
+        let mut e = GpsDistanceEstimator::with_config(DEFAULT_MAX_SPEED_MPS, 1.0, Some(0.95));
+        learn_stride(&mut e);
+        assert!((e.stride_m().expect("blended") - 0.96).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_minute_interval_is_not_a_gap_when_it_is_the_expected_one() {
+        let mut e = GpsDistanceEstimator::with_config(DEFAULT_MAX_SPEED_MPS, 60.0, None);
+        e.add_fix(0.0, 40.0, -75.0, None, Some(3.0), None, None);
+        let inc = e.add_fix(60.0, 40.0016, -75.0, None, Some(3.0), None, None);
+        assert!((inc - 180.0).abs() < 1e-9);
+        assert_eq!(
+            e.add_fix(661.0, 40.02, -75.0, None, Some(3.0), None, None),
+            0.0
+        );
     }
 
     #[test]

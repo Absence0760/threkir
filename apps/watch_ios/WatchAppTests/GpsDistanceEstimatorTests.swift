@@ -2,7 +2,7 @@ import XCTest
 @testable import WatchApp
 
 /// Replays `fixtures/gps_distance_vectors.json` — the golden vectors every
-/// port of the spec-v1 estimator is held to (`docs/features/gps_distance.md`).
+/// port of the spec-v1.1 estimator is held to (`docs/features/gps_distance.md`).
 /// The distance is asserted after every event, not only at the end, so a port
 /// that reaches the right total by a different path still fails.
 final class GpsDistanceEstimatorTests: XCTestCase {
@@ -15,6 +15,8 @@ final class GpsDistanceEstimatorTests: XCTestCase {
     private struct Scenario: Decodable {
         let name: String
         let maxSpeedMps: Double
+        let expectedIntervalS: Double
+        let initialStrideM: Double?
         let events: [Event]
         let expected: Expected
     }
@@ -53,6 +55,46 @@ final class GpsDistanceEstimatorTests: XCTestCase {
     func testFixtureCarriesScenarios() throws {
         let vectors = try loadVectors()
         XCTAssertFalse(vectors.scenarios.isEmpty)
+        let names = Set(vectors.scenarios.map(\.name))
+        for required in ["sparse_15s", "sparse_60s_position_only", "sparse_without_interval_hint",
+                         "seeded_stride_gap_fill", "seeded_stride_out_of_range"] {
+            XCTAssertTrue(names.contains(required), "fixture lost scenario \(required)")
+        }
+    }
+
+    private func learnStride(_ estimator: GpsDistanceEstimator) {
+        let degPerM = 180.0 / (Double.pi * 6371008.8)
+        estimator.addFix(t: 0, lat: 45, lng: 7, accuracyM: 5, speedMps: 0, speedAccuracyMps: 0.5, bearingDeg: 0)
+        estimator.addSteps(t: 0.5, cumulativeSteps: 0)
+        for i in 1...20 {
+            estimator.addFix(t: Double(i), lat: 45 + 3.0 * Double(i) * degPerM, lng: 7, accuracyM: 5,
+                             speedMps: 3, speedAccuracyMps: 0.5, bearingDeg: 0)
+            estimator.addSteps(t: Double(i) + 0.5, cumulativeSteps: 3 * i)
+        }
+    }
+
+    func testNextSegmentCarriesLearnedStrideAndConfiguration() {
+        let first = GpsDistanceEstimator(maxSpeedMps: 6, expectedIntervalS: 15)
+        learnStride(first)
+        XCTAssertEqual(first.strideM ?? -1, 1.0, accuracy: 1e-9)
+        let next = first.nextSegment()
+        XCTAssertEqual(next.strideM ?? -1, 1.0, accuracy: 1e-9)
+        XCTAssertEqual(next.maxSpeedMps, 6)
+        XCTAssertEqual(next.expectedIntervalS, 15)
+        XCTAssertEqual(next.gapWindowS, 150)
+        XCTAssertEqual(next.distanceM, 0)
+    }
+
+    func testSegmentThatLearnedNothingPassesOnItsSeed() {
+        XCTAssertEqual(GpsDistanceEstimator(initialStrideM: 0.95).nextSegment().nextSegment().strideM, 0.95)
+        XCTAssertNil(GpsDistanceEstimator().nextSegment().strideM)
+        XCTAssertNil(GpsDistanceEstimator(initialStrideM: 3.0).strideM)
+    }
+
+    func testCarriedStrideBlendsWithTheNextLearnedOne() {
+        let estimator = GpsDistanceEstimator(initialStrideM: 0.95)
+        learnStride(estimator)
+        XCTAssertEqual(estimator.strideM ?? -1, 0.96, accuracy: 1e-9)
     }
 
     func testEveryScenarioReplaysWithinTolerance() throws {
@@ -61,7 +103,11 @@ final class GpsDistanceEstimatorTests: XCTestCase {
         for scenario in vectors.scenarios {
             XCTAssertEqual(scenario.events.count, scenario.expected.distanceAfterEachEventM.count,
                            "\(scenario.name): one expected distance per event")
-            let estimator = GpsDistanceEstimator(maxSpeedMps: scenario.maxSpeedMps)
+            let estimator = GpsDistanceEstimator(
+                maxSpeedMps: scenario.maxSpeedMps,
+                expectedIntervalS: scenario.expectedIntervalS,
+                initialStrideM: scenario.initialStrideM
+            )
             for (i, event) in scenario.events.enumerated() {
                 switch event.type {
                 case "fix":

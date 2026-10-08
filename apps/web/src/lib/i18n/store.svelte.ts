@@ -39,6 +39,21 @@ export function currentLocale(): Locale {
 	return locale;
 }
 
+// True from the first load until the root layout mounts, when that first
+// render hydrates markup the server wrote (in the default locale) rather than
+// rendering into the SPA shell.
+let hydratingServerMarkup = $state(false);
+
+/// The locale a component may choose STRUCTURE by — which component, which
+/// branch — as opposed to which words, which `currentLocale()` and `m()`
+/// decide. Text the server wrote in English is rewritten as the page hydrates
+/// in the reader's locale; a different subtree is not, it is a hydration
+/// mismatch. So while a server-rendered page hydrates this answers the locale
+/// the server rendered in, and the reader's own from the moment it mounts.
+export function structureLocale(): Locale {
+	return hydratingServerMarkup ? DEFAULT_LOCALE : locale;
+}
+
 const reportedMissing = new Set<string>();
 
 // Reactive message lookup. Reading `dict` here makes every call site
@@ -69,21 +84,22 @@ let firstLoad = true;
 /// renders — on the server for a prerendered page and in the browser for every
 /// navigation. Never rejects (CatalogueSet keeps the current dict on failure).
 ///
-/// On a cold start into the SPA shell there is nothing to hydrate, so the
-/// reader's locale is applied here, before the first render: a German reader
-/// deep-linking to /gym fetches the German core and gym area and never the
-/// English gym area, and sees no English first paint (holdsServerMarkup).
+/// The first load in the browser applies the reader's locale before anything
+/// renders, whether the page boots from the SPA shell or hydrates markup the
+/// server wrote. So a German reader fetches the German core and the route's
+/// German parts and never an English part, cold deep link and prerendered
+/// page alike. Hydrating over English markup in German is safe because
+/// Svelte rewrites a text node or attribute whose value differs as it
+/// hydrates; a component that picks different STRUCTURE by locale reads
+/// `structureLocale()` instead. decisions § 1812.
 export async function loadRouteCatalogues(routeId: string | null | undefined): Promise<void> {
 	const areas = areasForRoute(routeId);
 	if (browser && firstLoad) {
 		firstLoad = false;
+		hydratingServerMarkup = holdsServerMarkup(document.body.querySelector(':scope > div'));
 		const next = negotiatedLocale();
-		if (next !== DEFAULT_LOCALE && !holdsServerMarkup(document.body.querySelector(':scope > div'))) {
-			// setLocale moves the target synchronously, so ensureAreas fetches
-			// the areas in `next`, not in English.
-			await Promise.all([setLocale(next), catalogues.ensureAreas(areas)]);
-			return;
-		}
+		if (await catalogues.open(next, areas)) applyDocumentLocale(next);
+		return;
 	}
 	await catalogues.ensureAreas(areas);
 }
@@ -136,11 +152,14 @@ function negotiatedLocale(): Locale {
 }
 
 // Apply the visitor's locale on first client mount. Called once from
-// +layout.svelte. A no-op fetch-wise when loadRouteCatalogues already applied
-// it before the first render; it still syncs <html lang/dir> and the stored
-// choice, as it always has.
+// +layout.svelte. loadRouteCatalogues has already applied it before the first
+// render, so this fetches nothing; it is the retry when that first apply
+// could not fetch the locale's core. Hydration is over by the time any
+// onMount runs, so a component choosing structure by locale may now follow
+// the reader's (structureLocale).
 export function initLocale(): void {
 	if (!browser) return;
+	hydratingServerMarkup = false;
 	void setLocale(negotiatedLocale());
 }
 

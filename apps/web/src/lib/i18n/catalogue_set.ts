@@ -19,11 +19,12 @@ export type Catalogue = Readonly<Record<string, string>>;
 /// bootstrap <script>; a prerendered page, and every page under the dev
 /// server, has the rendered markup in it too.
 ///
-/// The store applies the reader's locale BEFORE the first render only when
-/// there is nothing to hydrate. Over server-rendered English it keeps today's
-/// order (hydrate, then switch on mount), because hydrating different text
-/// than the server wrote is a mismatch Svelte has to repair. Either answer
-/// being wrong is benign: one costs an English first paint, the other a repair.
+/// It no longer decides which catalogues load: the reader's locale is applied
+/// before the first render either way, and Svelte rewrites any text the
+/// server wrote in English as it hydrates (decisions § 1812). What hydration
+/// cannot rewrite is STRUCTURE, so the store uses this to tell a component
+/// that picks a different subtree per locale (`structureLocale()`) to keep the
+/// server's choice until the app has mounted.
 export function holdsServerMarkup(
 	root: { readonly children: ArrayLike<{ readonly tagName: string }> } | null | undefined,
 ): boolean {
@@ -95,6 +96,22 @@ export class CatalogueSet<L extends string, A extends string> {
 		const ok = await this.compose(next);
 		if (!ok && this.target === next) this.target = previous;
 		return ok;
+	}
+
+	/// The first load of a page: apply `locale` with `areas` already in the
+	/// dict, so the first render (or hydration) reads them in the reader's own
+	/// language and nothing is fetched in any other. When `locale`'s core
+	/// cannot be fetched the areas are composed in the locale still shown, so
+	/// the route renders in that language rather than as key names. Resolves
+	/// whether `locale` was applied.
+	async open(locale: L, areas: readonly A[]): Promise<boolean> {
+		for (const a of areas) this.wanted.add(a);
+		const previous = this.target;
+		this.target = locale;
+		if (await this.compose(locale)) return true;
+		if (this.target === locale) this.target = previous;
+		await this.compose(this.target);
+		return false;
 	}
 
 	private load(key: string, fetch: () => Promise<Catalogue>): Promise<Catalogue> {

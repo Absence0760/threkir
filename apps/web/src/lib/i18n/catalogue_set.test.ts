@@ -180,6 +180,37 @@ test('setting the locale already shown is a no-op', async () => {
 	assert.equal(h.emitted.length, 0, 're-emitting would re-render every m() caller for nothing');
 });
 
+test('a first load in German fetches the German core and areas and never an English area', async () => {
+	// Nothing has rendered yet, shell boot and hydration alike (decisions
+	// § 1812): the first dict the page reads must already be the reader's.
+	const h = harness();
+	assert.equal(await h.set.open('de', ['gym']), true);
+	assert.deepEqual(h.fetches.sort(), ['de/core', 'de/gym']);
+	assert.deepEqual(h.emitted, [{ locale: 'de', dict: { 'nav.home': 'Start', 'gym.title': 'Fitnessstudio' } }]);
+	assert.equal(h.set.locale, 'de');
+});
+
+test('a first load in English fetches only its areas', async () => {
+	const h = harness();
+	assert.equal(await h.set.open('en', ['gym']), true);
+	assert.deepEqual(h.fetches, ['en/gym']);
+	assert.deepEqual(h.last(), { locale: 'en', dict: { 'nav.home': 'Home', 'gym.title': 'Gym' } });
+});
+
+test('a first load whose core is unreachable still renders its areas, in English', async () => {
+	// Without the second compose the route would render the English core with
+	// none of its area keys: every one of them a key name on screen.
+	const h = harness();
+	h.failing.add('de/core');
+	assert.equal(await h.set.open('de', ['gym']), false);
+	assert.equal(h.set.locale, 'en');
+	assert.deepEqual(h.last(), { locale: 'en', dict: { 'nav.home': 'Home', 'gym.title': 'Gym' } });
+	// The mount-time retry then applies German with the area already wanted.
+	h.failing.delete('de/core');
+	assert.equal(await h.set.setLocale('de'), true);
+	assert.deepEqual(h.last()?.dict, { 'nav.home': 'Start', 'gym.title': 'Fitnessstudio' });
+});
+
 test('the SPA shell holds only its bootstrap script; server-rendered markup holds more', () => {
 	const el = (tagName: string) => ({ tagName });
 	assert.equal(holdsServerMarkup({ children: [el('SCRIPT')] }), false, 'the 200.html shell');
@@ -191,7 +222,8 @@ test('the SPA shell holds only its bootstrap script; server-rendered markup hold
 test('app.html still wraps the body in the one div holdsServerMarkup reads', () => {
 	// The store passes `body > div` to holdsServerMarkup. If app.html stops
 	// wrapping `%sveltekit.body%` in a single div, the probe reads the wrong
-	// element and every cold start falls back to an English first paint.
+	// element, and a component choosing structure by locale (structureLocale)
+	// hydrates against markup it did not write.
 	const html = readFileSync(resolve('src/app.html'), 'utf-8');
 	const body = /<body[^>]*>([\s\S]*)<\/body>/.exec(html)?.[1].trim() ?? '';
 	assert.match(body, /^<div style="display: contents">%sveltekit\.body%<\/div>$/);

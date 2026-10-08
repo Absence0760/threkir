@@ -137,22 +137,30 @@ func TestRoadDistanceFor_NeverTrailsTracksOrIndoor(t *testing.T) {
 }
 
 func TestMergeRoadDistance_SetsClearsAndSkipsNoOps(t *testing.T) {
-	meta, _ := decodeRunMetadata(json.RawMessage(`{"title":"x","distance_map_matched_m":1500.2}`))
+	meta, _ := decodeRunMetadata(json.RawMessage(`{"title":"x","distance_map_matched_m":1500.2,"distance_map_matched_track_version":"v1"}`))
 	v := 1500.2
-	if _, changed, _ := mergeRoadDistance(meta, &v); changed {
-		t.Error("an unchanged value must not write")
+	if _, changed, _ := mergeRoadDistance(meta, &v, "v1"); changed {
+		t.Error("an unchanged value on the same track version must not write")
+	}
+	merged, changed, _ := mergeRoadDistance(meta, &v, "v2")
+	if !changed || !strings.Contains(string(merged), `"distance_map_matched_track_version":"v2"`) {
+		t.Errorf("the same figure measured on new bytes must restamp the version: %s %v", merged, changed)
 	}
 	w := 1600.0
-	merged, changed, err := mergeRoadDistance(meta, &w)
+	merged, changed, err := mergeRoadDistance(meta, &w, "v1")
 	if err != nil || !changed || !strings.Contains(string(merged), `"distance_map_matched_m":1600`) || !strings.Contains(string(merged), `"title":"x"`) {
 		t.Errorf("set: %s %v %v", merged, changed, err)
 	}
-	merged, changed, _ = mergeRoadDistance(meta, nil)
-	if !changed || strings.Contains(string(merged), "distance_map_matched_m") {
-		t.Errorf("clear: %s %v", merged, changed)
+	merged, changed, _ = mergeRoadDistance(meta, nil, "v1")
+	if !changed || strings.Contains(string(merged), "distance_map_matched_m") || strings.Contains(string(merged), "distance_map_matched_track_version") {
+		t.Errorf("clear must drop the figure and its version: %s %v", merged, changed)
+	}
+	orphan, _ := decodeRunMetadata(json.RawMessage(`{"title":"x","distance_map_matched_track_version":"v1"}`))
+	if merged, changed, _ := mergeRoadDistance(orphan, nil, "v1"); !changed || strings.Contains(string(merged), "distance_map_matched_track_version") {
+		t.Errorf("clear must drop a version left without its figure: %s %v", merged, changed)
 	}
 	empty, _ := decodeRunMetadata(json.RawMessage(`{"title":"x"}`))
-	if _, changed, _ := mergeRoadDistance(empty, nil); changed {
+	if _, changed, _ := mergeRoadDistance(empty, nil, "v1"); changed {
 		t.Error("clearing an absent key must not write")
 	}
 }
@@ -197,6 +205,12 @@ func TestHandleMapMatch_StoresRoadDistanceBesideTheRecomputeKeys(t *testing.T) {
 	if got[schema.MetaDistanceMapMatchedM] != 1990.0 {
 		t.Errorf("distance_map_matched_m=%v", got[schema.MetaDistanceMapMatchedM])
 	}
+	// Stamped with the version of the bytes the job downloaded, so the
+	// runs_road_distance_matches_track trigger drops it if the track is
+	// re-uploaded in place.
+	if got[schema.MetaDistanceMapMatchedTrackVersion] != "v1" {
+		t.Errorf("distance_map_matched_track_version=%v, want v1", got[schema.MetaDistanceMapMatchedTrackVersion])
+	}
 	// The stale-copy guard (20270719000003) restores the recompute keys on a
 	// write whose bag lacks distance_recomputed_at; carrying them means this
 	// write is never mistaken for one.
@@ -206,7 +220,7 @@ func TestHandleMapMatch_StoresRoadDistanceBesideTheRecomputeKeys(t *testing.T) {
 }
 
 func TestHandleMapMatch_ClearsAStaleRoadDistance(t *testing.T) {
-	run := roadRun(`{"distance_map_matched_m":1990,"sub_sport":"trail"}`)
+	run := roadRun(`{"distance_map_matched_m":1990,"distance_map_matched_track_version":"v0","sub_sport":"trail"}`)
 	w, b, job := roadWorker(t, run, roadOf(1990, 0.8))
 	if err := w.handleMapMatch(context.Background(), job); err != nil {
 		t.Fatal(err)
@@ -216,6 +230,9 @@ func TestHandleMapMatch_ClearsAStaleRoadDistance(t *testing.T) {
 	}
 	if _, ok := b.road.writes[0][schema.MetaDistanceMapMatchedM]; ok {
 		t.Errorf("stale key kept: %v", b.road.writes[0])
+	}
+	if _, ok := b.road.writes[0][schema.MetaDistanceMapMatchedTrackVersion]; ok {
+		t.Errorf("stale version kept: %v", b.road.writes[0])
 	}
 }
 

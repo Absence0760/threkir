@@ -46,8 +46,18 @@ type MatchOutput struct {
 	AlgorithmVersion string
 }
 
+// TrackSource is the stored track a map_match job matches: its path, and
+// the version the Storage API stamped on the bytes behind that path when
+// the worker read it. track_url never changes once set (the
+// runs_track_url_path_shape CHECK), so Version is what tells one upload of
+// the track from the next; every result the job writes is conditional on it.
+type TrackSource struct {
+	URL     string
+	Version string
+}
+
 // MatchedTrackRow is the subset of run_matched_tracks the worker writes
-// after a successful match. PATCH'd via PostgREST.
+// after a match, through the record_map_match_result RPC.
 type MatchedTrackRow struct {
 	Status string `json:"status"`
 	// Pointer, not string: the run_matched_tracks_matched_track_url_shape

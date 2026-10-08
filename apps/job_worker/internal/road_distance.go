@@ -130,31 +130,43 @@ func roadDistanceFor(run *RoadDistanceRun, meta map[string]json.RawMessage, raw 
 	return &v, ""
 }
 
-// mergeRoadDistance returns meta with distance_map_matched_m set to want,
-// or removed when want is nil, and whether that changes the stored bag.
-func mergeRoadDistance(meta map[string]json.RawMessage, want *float64) (json.RawMessage, bool, error) {
-	old, had := meta[schema.MetaDistanceMapMatchedM]
-	out := make(map[string]json.RawMessage, len(meta)+1)
+// mergeRoadDistance returns meta with distance_map_matched_m set to want
+// and distance_map_matched_track_version to version, or both removed when
+// want is nil, and whether that changes the stored bag. The pair travels
+// together: the runs_road_distance_matches_track trigger keeps a figure
+// only while its version names the bytes now behind track_url.
+func mergeRoadDistance(meta map[string]json.RawMessage, want *float64, version string) (json.RawMessage, bool, error) {
+	oldM, hadM := meta[schema.MetaDistanceMapMatchedM]
+	oldV, hadV := meta[schema.MetaDistanceMapMatchedTrackVersion]
+	out := make(map[string]json.RawMessage, len(meta)+2)
 	for k, v := range meta {
 		out[k] = v
 	}
 	if want == nil {
-		if !had {
+		if !hadM && !hadV {
 			return nil, false, nil
 		}
 		delete(out, schema.MetaDistanceMapMatchedM)
+		delete(out, schema.MetaDistanceMapMatchedTrackVersion)
 	} else {
-		enc, err := json.Marshal(*want)
+		encM, err := json.Marshal(*want)
 		if err != nil {
 			return nil, false, err
 		}
-		if had {
+		encV, err := json.Marshal(version)
+		if err != nil {
+			return nil, false, err
+		}
+		if hadM && hadV {
 			var cur float64
-			if json.Unmarshal(old, &cur) == nil && cur == *want {
+			var curV string
+			if json.Unmarshal(oldM, &cur) == nil && cur == *want &&
+				json.Unmarshal(oldV, &curV) == nil && curV == version {
 				return nil, false, nil
 			}
 		}
-		out[schema.MetaDistanceMapMatchedM] = enc
+		out[schema.MetaDistanceMapMatchedM] = encM
+		out[schema.MetaDistanceMapMatchedTrackVersion] = encV
 	}
 	merged, err := json.Marshal(out)
 	if err != nil {
@@ -164,14 +176,18 @@ func mergeRoadDistance(meta map[string]json.RawMessage, want *float64) (json.Raw
 }
 
 // updateRoadDistance writes (or clears) metadata.distance_map_matched_m for
-// the run the map_match job just matched against trackURL. The write is a
+// the run the map_match job just matched against src. The write is a
 // read-modify-write of the whole bag, conditional on the bag and the
-// track_url the worker read, so it can neither erase a concurrent edit nor
-// land against a newer track; on a miss it re-reads. It never touches
-// distance_m or a fastest_* column, and it carries the bag it read —
-// distance_recomputed_at included — so the runs_keep_distance_recompute
+// track_url the worker read, so it cannot erase a concurrent edit; on a
+// miss it re-reads. It stamps the figure with src.Version, and the
+// runs_road_distance_matches_track trigger (20270719000020) drops a figure
+// whose version is not the stored object's, so a track re-uploaded in place
+// while this job ran cannot be left with the old bytes' road distance. It
+// never touches distance_m or a fastest_* column, and it carries the bag it
+// read — distance_recomputed_at included — so the runs_keep_distance_recompute
 // trigger (20270719000003) sees a current write and leaves it alone.
-func (w *Worker) updateRoadDistance(ctx context.Context, runID, trackURL string, raw []TrackPoint, road RoadMatch) error {
+func (w *Worker) updateRoadDistance(ctx context.Context, runID string, src TrackSource, raw []TrackPoint, road RoadMatch) error {
+	trackURL := src.URL
 	for attempt := 1; attempt <= roadDistanceMaxAttempts; attempt++ {
 		run, err := w.Backend.ReadRunForRoadDistance(ctx, runID)
 		if errors.Is(err, ErrRunNotFound) {
@@ -188,7 +204,7 @@ func (w *Worker) updateRoadDistance(ctx context.Context, runID, trackURL string,
 			return fmt.Errorf("run %s metadata: %w", runID, err)
 		}
 		want, reason := roadDistanceFor(run, meta, raw, road)
-		merged, changed, err := mergeRoadDistance(meta, want)
+		merged, changed, err := mergeRoadDistance(meta, want, src.Version)
 		if err != nil {
 			return err
 		}

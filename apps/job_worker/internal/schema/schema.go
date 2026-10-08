@@ -150,6 +150,10 @@ const (
 	// graph, beside distance_m and never in place of it.
 	MetaSubSport            = "sub_sport"
 	MetaDistanceMapMatchedM = "distance_map_matched_m"
+	// The Storage version of the track bytes distance_map_matched_m was
+	// measured on. Written with it; the runs_road_distance_matches_track
+	// trigger drops the pair when it no longer names the stored object.
+	MetaDistanceMapMatchedTrackVersion = "distance_map_matched_track_version"
 )
 
 // PrefsKey is a key inside the `user_settings.prefs` jsonb bag — the

@@ -2773,7 +2773,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runDetailRecalculateDistanceDialogTitle => '距離を再計算しますか？';
 
   @override
-  String get runDetailRecalculateDistanceDialogMessage => 'このランの距離を、改良されたGPSフィルターでGPSトラックから再計算します。GPSのぶれによって加算された余分な距離が取り除かれます。最初に記録された距離は保持され、新しい距離と並べて表示されます。';
+  String get runDetailRecalculateDistanceDialogMessage =>
+      'このランの距離を、改良されたGPSフィルターでGPSトラックから再計算します。GPSのぶれによって加算された余分な距離が取り除かれます。最初に記録された距離は保持され、新しい距離と並べて表示されます。';
 
   @override
   String get runDetailRecalculateDistanceConfirm => '再計算';
@@ -2787,10 +2788,12 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get runDetailRecalculateDistanceNotOwner => 'このランを記録した本人だけが距離を再計算できます。';
+  String get runDetailRecalculateDistanceNotOwner =>
+      'このランを記録した本人だけが距離を再計算できます。';
 
   @override
-  String get runDetailRecalculateDistanceNoTrack => 'このランには再計算に使えるGPSトラックがありません。';
+  String get runDetailRecalculateDistanceNoTrack =>
+      'このランには再計算に使えるGPSトラックがありません。';
 
   @override
   String runDetailOriginallyRecorded(String distance) {
@@ -13838,4 +13841,62 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get avatarCropLoadFailed => 'この画像を開けませんでした。JPEG、PNG、WebP をお試しください。';
+
+  @override
+  String get dashboardLeadTitle => '今週のまとめ';
+
+  @override
+  String get dashboardLeadEmpty => 'まだランはありません';
+
+  @override
+  String dashboardLeadVsPlan(String done, String target) {
+    return '予定 $target のうち $done';
+  }
+
+  @override
+  String dashboardLeadVsGoal(String done, String target) {
+    return '週間目標 $target のうち $done';
+  }
+
+  @override
+  String dashboardLeadVsGoalRuns(int done, int target) {
+    String _temp0 = intl.Intl.pluralLogic(
+      target,
+      locale: localeName,
+      other: '週間目標 $target件のうち $done件',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dashboardLeadVsAverage(int weeks, String avg) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '過去$weeks週間の週平均: $avg',
+      one: '先週: $avg',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dashboardLeadPlanProgressAria => '今週の距離とプランの比較';
+
+  @override
+  String get dashboardLeadGoalProgressAria => '週間目標に対する今週の進捗';
+
+  @override
+  String get dashboardLeadNextSession => '次のセッション';
+
+  @override
+  String get dashboardLeadToday => '今日';
+
+  @override
+  String get dashboardLeadTomorrow => '明日';
+
+  @override
+  String get dashboardLeadNoNextSession => 'プランに予定されているセッションはもうありません。';
+
+  @override
+  String get dashboardLeadAddRun => 'ランを追加';
 }

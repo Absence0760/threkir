@@ -14,10 +14,13 @@ import 'package:ui_kit/ui_kit.dart'
 import '../adaptive_width.dart';
 import '../age_grade.dart';
 import '../auth_change_aware.dart';
+import '../current_week.dart' show WeekStart;
 import '../device_timezone.dart';
 import '../goals.dart';
 import '../health_consent.dart';
+import '../l10n/date_format.dart' show formatDowDateShort;
 import '../l10n/gen/app_localizations.dart';
+import '../l10n/locale_support.dart' show activeLocaleTag;
 import '../local_food_store.dart';
 import '../local_gym_store.dart';
 import '../lift_load.dart';
@@ -31,9 +34,12 @@ import '../run_stats.dart';
 import '../settings_sync.dart';
 import '../streak_card.dart';
 import '../streaks.dart';
+import '../training.dart' show parseIsoDate, toIsoDate, workoutKindFromDb;
+import '../training_labels.dart' show workoutKindLabel;
 import '../training_load.dart';
 import '../plan_ramp.dart' show RunForVolume;
 import '../training_service.dart';
+import '../week_lead.dart';
 import '../widgets/comeback_card.dart';
 import '../widgets/fitness_card.dart';
 import '../widgets/load_ramp_card.dart';
@@ -53,6 +59,7 @@ import '../widgets/this_week_strip.dart';
 import '../widgets/goal_editor_sheet.dart';
 import '../widgets/todays_workout_card.dart';
 import '../widgets/training_load_chart.dart';
+import 'add_run_screen.dart';
 import 'coach_screen.dart';
 import 'feed_screen.dart';
 import 'gym_detail_screen.dart';
@@ -64,6 +71,7 @@ import 'plan_detail_screen.dart';
 import 'profile_screen.dart';
 import 'recap_screen.dart';
 import 'run_detail_screen.dart';
+import 'workout_detail_screen.dart';
 
 const _kCardPadding = EdgeInsets.all(16);
 const _kSectionGap = SizedBox(height: 24);
@@ -553,6 +561,80 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
+  void _openAddRun() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => AddRunScreen(
+          runStore: widget.runStore,
+          routeStore: widget.routeStore,
+          preferences: widget.preferences,
+        ),
+      ),
+    );
+  }
+
+  void _openPlanSession(LeadPlanWorkout w) {
+    final svc = widget.training;
+    final p = _planOverview;
+    final id = w.id;
+    if (svc == null || p == null || id == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => WorkoutDetailScreen(
+          training: svc,
+          planId: p.plan.id,
+          workoutId: id,
+        ),
+      ),
+    );
+  }
+
+  /// The opening week card (web `DashboardWeekLead.svelte`). Its plan input is
+  /// null without an active plan, which is what hides the next-session half,
+  /// not an empty list.
+  Widget _weekLeadCard(
+      List<Run> runs, List<RunGoal> goals, DistanceUnit unit, DateTime now) {
+    final plan = _planOverview;
+    final planWorkouts = plan == null
+        ? null
+        : [
+            for (final w in plan.workouts)
+              LeadPlanWorkout(
+                id: w.id,
+                scheduledDate: toIsoDate(w.scheduledDate),
+                kind: w.kind,
+                targetDistanceM: w.targetDistanceM,
+                manuallyCompleted: w.manuallyCompleted,
+                completedRunId: w.completedRunId,
+                skippedAt: w.skippedAt?.toIso8601String(),
+              ),
+          ];
+    final lead = weekLead(
+      activities: [
+        for (final r in runs)
+          LeadActivity(
+            startedAt: r.startedAt.toIso8601String(),
+            distanceM: r.distanceMetres,
+          ),
+      ],
+      planWorkouts: planWorkouts,
+      weeklyGoal: weeklyGoalTarget(goals),
+      weekStart:
+          _weekStartDay == 'sunday' ? WeekStart.sunday : WeekStart.monday,
+      now: now,
+    );
+    return _DashboardWeekLead(
+      key: const Key('dashboardWeekLead'),
+      lead: lead,
+      hasPlan: planWorkouts != null,
+      unit: unit,
+      onOpenSession: _openPlanSession,
+      onAddRun: _openAddRun,
+      onImport: _openImport,
+    );
+  }
+
   /// The pinned "Ask your coach" entry shown at the top of Home. Null when
   /// signed out or no training service (same guard as the toolbar action), so
   /// it never renders a dead tap.
@@ -998,6 +1080,11 @@ class _DashboardScreenState extends State<DashboardScreen>
       // action, plus runs.isNotEmpty (#272) so it never dominates a
       // zero-runs first screen.
       final coach = runs.isNotEmpty ? _coachEntry() : null;
+      // The week lead opens Home for an account with runs (#905 workstream
+      // 3). A lifter with no runs reaches this branch too and has no running
+      // week to lead with.
+      final weekLeadCard =
+          runs.isNotEmpty ? _weekLeadCard(runs, goals, unit, now) : null;
       // Active-plan hero: surface the day's structured workout above
       // goals so a plan-runner sees what's next before scrolling. Hidden
       // when no active plan or no workout today.
@@ -1264,6 +1351,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               actionToolbar,
               pendingBanner,
               if (coach != null) ...[coach, _kSectionGap],
+              if (weekLeadCard != null) ...[weekLeadCard, _kSectionGap],
               if (leadColumn != null && goalsSection != null)
                 Row(
                   key: const Key('dashboardExpandedLeadRow'),
@@ -1311,6 +1399,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             actionToolbar,
             pendingBanner,
             if (coach != null) ...[coach, _kSectionGap],
+            if (weekLeadCard != null) ...[weekLeadCard, _kSectionGap],
             if (workoutCard != null) ...[workoutCard, _kSectionGap],
             if (latestRunSection != null) ...[latestRunSection, _kSectionGap],
             // Today's logged non-run modalities (gym + nutrition).
@@ -1482,6 +1571,218 @@ class _DashboardScreenState extends State<DashboardScreen>
       return '$h:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
     }
     return '$m:${s.toString().padLeft(2, '0')}';
+  }
+}
+
+/// The opening card of Home for an account with runs: this calendar week
+/// against its yardstick, the next plan session, and the two ways to get a run
+/// in. Mirrors web `DashboardWeekLead.svelte`; the numbers come from the
+/// `week_lead.dart` parity pair.
+class _DashboardWeekLead extends StatelessWidget {
+  final WeekLead lead;
+  final bool hasPlan;
+  final DistanceUnit unit;
+  final ValueChanged<LeadPlanWorkout> onOpenSession;
+  final VoidCallback onAddRun;
+  final VoidCallback onImport;
+
+  const _DashboardWeekLead({
+    super.key,
+    required this.lead,
+    required this.hasPlan,
+    required this.unit,
+    required this.onOpenSession,
+    required this.onAddRun,
+    required this.onImport,
+  });
+
+  String _whenLabel(AppLocalizations l10n, String iso, int? inDays) {
+    if (inDays == 0) return l10n.dashboardLeadToday;
+    if (inDays == 1) return l10n.dashboardLeadTomorrow;
+    return formatDowDateShort(parseIsoDate(iso), activeLocaleTag);
+  }
+
+  String? _vsText(AppLocalizations l10n) {
+    final c = lead.comparison;
+    if (c == null) return null;
+    final done = UnitFormat.distance(lead.distanceM, unit);
+    return switch (c.kind) {
+      WeekComparisonKind.plan => l10n.dashboardLeadVsPlan(
+          done, UnitFormat.distance(c.targetM!, unit)),
+      WeekComparisonKind.goal => l10n.dashboardLeadVsGoal(
+          done, UnitFormat.distance(c.targetM!, unit)),
+      WeekComparisonKind.goalRuns =>
+        l10n.dashboardLeadVsGoalRuns(lead.count, c.targetCount!.round()),
+      WeekComparisonKind.average => l10n.dashboardLeadVsAverage(
+          c.weeks!, UnitFormat.distance(c.averageM!, unit)),
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    final c = lead.comparison;
+    final ratio = c == null || c.kind == WeekComparisonKind.average
+        ? null
+        : c.kind == WeekComparisonKind.goalRuns
+            ? lead.count / c.targetCount!
+            : lead.distanceM / c.targetM!;
+    final vs = _vsText(l10n);
+    final next = lead.next;
+
+    return Card(
+      child: Padding(
+        padding: _kCardPadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ChartCardHeader(title: l10n.dashboardLeadTitle),
+            const SizedBox(height: 8),
+            if (lead.count == 0)
+              Text(
+                l10n.dashboardLeadEmpty,
+                key: const Key('dashboardWeekLeadEmpty'),
+                style: theme.textTheme.titleMedium?.copyWith(color: muted),
+              )
+            else
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.end,
+                spacing: 8,
+                children: [
+                  Text(
+                    UnitFormat.distance(lead.distanceM, unit),
+                    key: const Key('dashboardWeekLeadDistance'),
+                    style: theme.textTheme.headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  Text(
+                    l10n.dashboardWeekStripCount(lead.count),
+                    style: theme.textTheme.bodyMedium?.copyWith(color: muted),
+                  ),
+                ],
+              ),
+            if (ratio != null) ...[
+              const SizedBox(height: 8),
+              ProgressBar(
+                key: const Key('dashboardWeekLeadMeter'),
+                value: ratio.clamp(0.0, 1.0),
+                semanticsLabel: c!.kind == WeekComparisonKind.plan
+                    ? l10n.dashboardLeadPlanProgressAria
+                    : l10n.dashboardLeadGoalProgressAria,
+              ),
+            ],
+            if (vs != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                vs,
+                key: const Key('dashboardWeekLeadVs'),
+                style: theme.textTheme.bodyMedium?.copyWith(color: muted),
+              ),
+            ],
+            if (hasPlan) ...[
+              const SizedBox(height: 16),
+              Text(
+                l10n.dashboardLeadNextSession,
+                style: theme.textTheme.labelMedium?.copyWith(color: muted),
+              ),
+              const SizedBox(height: 6),
+              if (next != null)
+                _WeekLeadSession(
+                  key: const Key('dashboardWeekLeadNext'),
+                  when: _whenLabel(l10n, next.scheduledDate, lead.nextInDays),
+                  detail: [
+                    workoutKindLabel(l10n, workoutKindFromDb(next.kind)),
+                    if (next.targetDistanceM != null)
+                      UnitFormat.distance(next.targetDistanceM!, unit),
+                  ].join(' · '),
+                  onTap: () => onOpenSession(next),
+                )
+              else
+                Text(
+                  l10n.dashboardLeadNoNextSession,
+                  key: const Key('dashboardWeekLeadNoNext'),
+                  style: theme.textTheme.bodyMedium?.copyWith(color: muted),
+                ),
+            ],
+            const SizedBox(height: 16),
+            // A Wrap so the two labels stack in a locale too long to fit both
+            // on one line rather than overflowing.
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.icon(
+                  key: const Key('dashboardWeekLeadAddRun'),
+                  onPressed: onAddRun,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: Text(l10n.dashboardLeadAddRun),
+                ),
+                OutlinedButton(
+                  key: const Key('dashboardWeekLeadImport'),
+                  onPressed: onImport,
+                  child: Text(l10n.dashboardImportRuns),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WeekLeadSession extends StatelessWidget {
+  final String when;
+  final String detail;
+  final VoidCallback onTap;
+
+  const _WeekLeadSession({
+    super.key,
+    required this.when,
+    required this.detail,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Material(
+      color: scheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                Icon(Icons.directions_run, color: scheme.primary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(when,
+                          style: theme.textTheme.bodyLarge
+                              ?.copyWith(fontWeight: FontWeight.w600)),
+                      Text(detail,
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(color: scheme.onSurfaceVariant)),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

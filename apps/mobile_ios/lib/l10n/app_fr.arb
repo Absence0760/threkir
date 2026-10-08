@@ -4192,5 +4192,18 @@
   "avatarCropZoom": "Zoom",
   "avatarCropConfirm": "Utiliser la photo",
   "avatarCropLoading": "Chargement de la photo…",
-  "avatarCropLoadFailed": "Impossible d'ouvrir cette image. Essayez un JPEG, PNG ou WebP."
+  "avatarCropLoadFailed": "Impossible d'ouvrir cette image. Essayez un JPEG, PNG ou WebP.",
+  "dashboardLeadTitle": "Ta semaine",
+  "dashboardLeadEmpty": "Aucune course pour l'instant",
+  "dashboardLeadVsPlan": "{done} sur {target} prévus",
+  "dashboardLeadVsGoal": "{done} sur ton objectif hebdomadaire de {target}",
+  "dashboardLeadVsGoalRuns": "{target, plural, one{{done} sur 1 activité, ton objectif hebdomadaire} other{{done} sur {target} activités, ton objectif hebdomadaire}}",
+  "dashboardLeadVsAverage": "{weeks, plural, one{La semaine dernière : {avg}} other{Ta moyenne hebdomadaire sur les {weeks} dernières semaines : {avg}}}",
+  "dashboardLeadPlanProgressAria": "Distance de la semaine par rapport à ton plan",
+  "dashboardLeadGoalProgressAria": "Progression de la semaine par rapport à ton objectif hebdomadaire",
+  "dashboardLeadNextSession": "Prochaine séance",
+  "dashboardLeadToday": "Aujourd'hui",
+  "dashboardLeadTomorrow": "Demain",
+  "dashboardLeadNoNextSession": "Aucune autre séance n'est prévue dans ton plan.",
+  "dashboardLeadAddRun": "Ajouter une course"
 }

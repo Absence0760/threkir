@@ -2917,16 +2917,19 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runDetailRecalculateDistance => 'Recalcular distancia';
 
   @override
-  String get runDetailRecalculateDistanceDialogTitle => '¿Recalcular la distancia?';
+  String get runDetailRecalculateDistanceDialogTitle =>
+      '¿Recalcular la distancia?';
 
   @override
-  String get runDetailRecalculateDistanceDialogMessage => 'La distancia de esta carrera se volverá a calcular a partir de su ruta GPS con el filtro GPS mejorado, que elimina la distancia de más que añaden las oscilaciones del GPS. La distancia registrada originalmente se conserva y se muestra junto a la nueva.';
+  String get runDetailRecalculateDistanceDialogMessage =>
+      'La distancia de esta carrera se volverá a calcular a partir de su ruta GPS con el filtro GPS mejorado, que elimina la distancia de más que añaden las oscilaciones del GPS. La distancia registrada originalmente se conserva y se muestra junto a la nueva.';
 
   @override
   String get runDetailRecalculateDistanceConfirm => 'Recalcular';
 
   @override
-  String get runDetailRecalculatingDistance => 'Recalculando: actualiza en un minuto';
+  String get runDetailRecalculatingDistance =>
+      'Recalculando: actualiza en un minuto';
 
   @override
   String runDetailRecalculateDistanceFailed(String error) {
@@ -2934,10 +2937,12 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get runDetailRecalculateDistanceNotOwner => 'Solo quien registró esta carrera puede recalcular su distancia.';
+  String get runDetailRecalculateDistanceNotOwner =>
+      'Solo quien registró esta carrera puede recalcular su distancia.';
 
   @override
-  String get runDetailRecalculateDistanceNoTrack => 'Esta carrera no tiene una ruta GPS a partir de la cual recalcular.';
+  String get runDetailRecalculateDistanceNoTrack =>
+      'Esta carrera no tiene una ruta GPS a partir de la cual recalcular.';
 
   @override
   String runDetailOriginallyRecorded(String distance) {
@@ -14509,4 +14514,66 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get avatarCropLoadFailed =>
       'No se pudo abrir esta imagen. Prueba con JPEG, PNG o WebP.';
+
+  @override
+  String get dashboardLeadTitle => 'Tu semana';
+
+  @override
+  String get dashboardLeadEmpty => 'Aún sin carreras';
+
+  @override
+  String dashboardLeadVsPlan(String done, String target) {
+    return '$done de $target previstos';
+  }
+
+  @override
+  String dashboardLeadVsGoal(String done, String target) {
+    return '$done de tu objetivo semanal de $target';
+  }
+
+  @override
+  String dashboardLeadVsGoalRuns(int done, int target) {
+    String _temp0 = intl.Intl.pluralLogic(
+      target,
+      locale: localeName,
+      other: '$done de $target actividades, tu objetivo semanal',
+      one: '$done de 1 actividad, tu objetivo semanal',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dashboardLeadVsAverage(int weeks, String avg) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: 'Tu media semanal de las últimas $weeks semanas: $avg',
+      one: 'La semana pasada: $avg',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dashboardLeadPlanProgressAria =>
+      'Distancia de esta semana frente a tu plan';
+
+  @override
+  String get dashboardLeadGoalProgressAria =>
+      'Progreso de esta semana frente a tu objetivo semanal';
+
+  @override
+  String get dashboardLeadNextSession => 'Próxima sesión';
+
+  @override
+  String get dashboardLeadToday => 'Hoy';
+
+  @override
+  String get dashboardLeadTomorrow => 'Mañana';
+
+  @override
+  String get dashboardLeadNoNextSession =>
+      'No quedan más sesiones programadas en tu plan.';
+
+  @override
+  String get dashboardLeadAddRun => 'Añadir carrera';
 }

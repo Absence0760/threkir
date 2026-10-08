@@ -21,6 +21,7 @@ import 'pump_until.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/mileage_trend_card.dart';
 import '../lib/widgets/run_list_tile.dart';
+import '../lib/widgets/todays_workout_card.dart';
 
 /// Signed-in fake so the gated coach entry renders.
 class _FakeApi extends ApiClient {
@@ -761,8 +762,13 @@ void main() {
           // false + no completedRunId, "TODAY'S WORKOUT" is expected.
           expect(find.text("TODAY'S WORKOUT"), findsOneWidget);
           // Workout kind label — "long" → "Long run" per
-          // workoutKindLabel.
-          expect(find.text('Long run'), findsOneWidget);
+          // workoutKindLabel. Scoped to the card: the week lead above it
+          // names the same session as its next one.
+          expect(
+              find.descendant(
+                  of: find.byType(TodaysWorkoutCard),
+                  matching: find.text('Long run')),
+              findsOneWidget);
         } finally {
           dir.deleteSync(recursive: true);
         }

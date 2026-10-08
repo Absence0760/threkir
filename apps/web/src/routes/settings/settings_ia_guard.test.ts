@@ -86,7 +86,11 @@ const HOMES: Record<string, Home> = {
 		also: { body: 'reads it to show and parse body weight in the chosen unit; it has no control for it' },
 	},
 	body_weight_kg: {
-		none: 'seeded by onboarding and the Health Connect importer; the body page records weight into body_metrics',
+		page: 'body',
+		also: {
+			account:
+				'clears it with the weight series on a health-data consent withdrawal (decisions § 1811); it has no control for it',
+		},
 	},
 	weekly_mileage_goal_m: { page: 'training', via: 'WEEKLY_GOAL_KEY' },
 	nutrition_activity_level: { page: 'body' },

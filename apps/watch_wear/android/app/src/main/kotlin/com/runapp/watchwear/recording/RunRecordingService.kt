@@ -87,6 +87,9 @@ class RunRecordingService : Service() {
     private var distanceEstimator = GpsDistanceEstimator()
     private var bankedGpsDistanceM = 0.0
     private var bankedStepDistanceM = 0.0
+    /// Live pace over the current segment's estimator distance. Sealed with
+    /// every new segment, so it never spans a pause. Guarded by [distanceLock].
+    private val livePace = LivePaceWindow()
     private val distanceLock = Any()
     /// Wall-clock timestamp of the most recent GPS point delivered while
     /// Recording. Used by the self-heal watchdog to re-subscribe if the
@@ -245,6 +248,7 @@ class RunRecordingService : Service() {
             distanceEstimator = GpsDistanceEstimator(GpsDistanceEstimator.maxSpeedMpsFor(activity))
             bankedGpsDistanceM = 0.0
             bankedStepDistanceM = 0.0
+            livePace.seal()
         }
         lastPointAtMs = 0L
         trackOverlay.clear()
@@ -560,9 +564,10 @@ class RunRecordingService : Service() {
     private fun onGps(p: GpsPoint) {
         lastPointAtMs = System.currentTimeMillis()
         trackWriter?.append(p)
-        val newDistance = synchronized(distanceLock) {
+        val (newDistance, pace) = synchronized(distanceLock) {
+            val t = (p.elapsedRealtimeMs ?: SystemClock.elapsedRealtime()) / 1000.0
             distanceEstimator.addFix(
-                t = (p.elapsedRealtimeMs ?: SystemClock.elapsedRealtime()) / 1000.0,
+                t = t,
                 lat = p.lat,
                 lng = p.lng,
                 accuracyM = p.accuracyM,
@@ -570,10 +575,9 @@ class RunRecordingService : Service() {
                 speedAccuracyMps = p.speedAccuracyMps,
                 bearingDeg = p.bearingDeg,
             )
-            bankedDistanceM() + distanceEstimator.distanceM
+            livePace.add(t, distanceEstimator.distanceM)
+            (bankedDistanceM() + distanceEstimator.distanceM) to livePace.secondsPerKm
         }
-        val elapsedS = activeElapsedMs() / 1000.0
-        val pace = if (newDistance >= 50.0 && elapsedS > 0) elapsedS / newDistance * 1000.0 else null
         val posLL = RouteMath.LatLng(p.lat, p.lng)
         val progress = if (routeWaypoints.isNotEmpty()) {
             RouteMath.routeProgress(
@@ -623,8 +627,8 @@ class RunRecordingService : Service() {
 
         // Pace-drift alert. Only fires when:
         //  - a target pace is set for this run
-        //  - pace has stabilised (need at least 50 m of distance — same
-        //    gate used for computing `pace` above)
+        //  - live pace exists (five fixes and 50 m since the last pause or
+        //    GPS gap — see `LivePaceWindow`)
         //  - the runner is currently moving (activity not paused is
         //    already implicit — onGps skips when paused)
         //  - the drift is >30 s/km in either direction
@@ -737,6 +741,7 @@ class RunRecordingService : Service() {
         bankedGpsDistanceM += segment.gpsDistanceM
         bankedStepDistanceM += segment.stepDistanceM
         distanceEstimator = segment.nextSegment()
+        livePace.seal()
     }
 
     private fun bankedDistanceM(): Double = bankedGpsDistanceM + bankedStepDistanceM

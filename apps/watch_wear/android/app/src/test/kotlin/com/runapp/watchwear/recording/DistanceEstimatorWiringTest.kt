@@ -65,6 +65,18 @@ class DistanceEstimatorWiringTest {
     }
 
     @Test
+    fun `live pace reads the estimator's distance, sealed with every segment`() {
+        val onGps = body(serviceSrc, "private fun onGps(p: GpsPoint)")
+        assertTrue(onGps.contains("livePace.add(t, distanceEstimator.distanceM)"))
+        assertTrue(onGps.contains("livePace.secondsPerKm"))
+        assertFalse(
+            "pace is the rolling window, not the whole-run average",
+            onGps.contains("elapsedS / newDistance"),
+        )
+        assertTrue(body(serviceSrc, "private fun closeDistanceSegment()").contains("livePace.seal()"))
+    }
+
+    @Test
     fun `the finished run carries the step-filled share to the queue`() {
         val stop = body(serviceSrc, "private fun stopRecording()")
         assertTrue(stop.contains("distanceStepFilledM = stepFilledM"))

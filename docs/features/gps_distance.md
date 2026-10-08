@@ -47,13 +47,22 @@ Old tracks have none of them and recompute through the position-only path.
 |---|---|
 | Reference (Python) | `scripts/gps_distance/reference.py` |
 | Dart (phone) | `packages/run_recorder/lib/src/gps_distance_estimator.dart` |
-| TypeScript (web, canonical pair) | `apps/web/src/lib/gps_distance.ts` |
+| TypeScript (web, canonical pair) | `apps/web/src/lib/runs/gps_distance.ts` |
 | Kotlin (Wear OS) | `apps/watch_wear/android/app/src/main/kotlin/com/runapp/watchwear/recording/GpsDistanceEstimator.kt` |
 | Swift (watchOS) | `apps/watch_ios/WatchApp/GpsDistanceEstimator.swift` |
 | Rust `no_std` (custom watch) | `apps/custom_watch/core/src/gps_distance.rs` |
 | Go (server recompute) | `apps/job_worker/internal/gpsdistance/` |
 
 Every port has a test that replays [`fixtures/gps_distance_vectors.json`](../../fixtures/gps_distance_vectors.json) and asserts the distance after **every** event to `tolerance_m` (1e-3 m). Changing the algorithm means editing `reference.py`, regenerating with `python3 -I scripts/gps_distance/gen_vectors.py fixtures/gps_distance_vectors.json`, and updating every port in the same change, bumping the spec version.
+
+## Server recompute
+
+Runs recorded before v1 keep their inflated hop-sum distance until something re-derives it. The server can, from the stored track:
+
+1. **UI.** On `/runs/[id]` the owner sees **Recalculate distance** under the key stats when `canRecomputeDistance` (`apps/web/src/lib/runs/distance_recompute.ts`) holds: they own the run, it has a `track_url`, its `source` is `app` or `watch` (an import's distance belongs to the system that recorded it), `metadata.distance_source` is not `pedometer` (no GPS to recompute from), and `metadata.distance_estimator` is not already `kalman_v1`. The action opens a ConfirmDialog saying the distance will be recomputed with the improved GPS filter and the original kept, then calls the RPC. Success shows "Recalculating — refresh in a minute" and hides the action; a refusal (not the owner, no track) or any other failure is shown as an error toast and the action stays offered.
+2. **RPC.** `request_distance_recompute(p_run_id uuid) returns void` (migration `20270716000001`) is SECURITY DEFINER, `authenticated`-only, raises `42501` unless the caller owns the run and `22000` when it has no track, and inserts a `distance_recompute` job with payload `{run_id, user_id}`. A partial unique index (`jobs_dedupe_distance_recompute`) makes a second request while one is queued or running a no-op. See [api_database.md](../backend/api_database.md).
+3. **Job.** The Go worker (`apps/job_worker/internal/gpsdistance/`) downloads the track, replays its waypoints through the estimator (the Doppler path when the waypoints carry `speedMps` and friends, position-only otherwise), and rewrites `runs.distance_m`. It skips sources other than `app` / `watch`.
+4. **Metadata.** The worker writes `distance_estimator = "kalman_v1"` and `distance_recomputed_at`, and copies the recorder's figure into `distance_recorded_m` (only when absent, so a second recompute never loses the original). The page shows it as "Originally recorded: X" in the viewer's unit. All keys are registered in [metadata.md § Distance estimator](../backend/metadata.md).
 
 ## Tuning
 

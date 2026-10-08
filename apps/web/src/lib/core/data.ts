@@ -910,6 +910,16 @@ export async function enqueueRunRematch(runId: string): Promise<void> {
 	if (error) throw error;
 }
 
+/// Queue a server-side recompute of a run's distance from its stored track
+/// with the GPS distance estimator (docs/features/gps_distance.md § Server
+/// recompute). The RPC raises 42501 unless the caller owns the run and 22000
+/// when the run has no track; both are thrown for the caller to surface. A
+/// second request while one is in flight is a no-op server-side.
+export async function requestDistanceRecompute(runId: string): Promise<void> {
+	const { error } = await supabase.rpc('request_distance_recompute', { p_run_id: runId });
+	if (error) throw error;
+}
+
 /** Decompress a gzipped ArrayBuffer using the browser's DecompressionStream. */
 async function decompressGzip(buf: ArrayBuffer): Promise<Uint8Array> {
 	const ds = new (globalThis as any).DecompressionStream('gzip');

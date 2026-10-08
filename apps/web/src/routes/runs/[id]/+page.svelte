@@ -43,6 +43,7 @@
 		fetchRoutesIntersectingTrack,
 		linkRunToRoute,
 		enqueueRunRematch,
+		requestDistanceRecompute,
 		fetchHrSeries,
 		type RunMatchInfo,
 		type RouteMatchCandidate,
@@ -82,6 +83,11 @@
 	} from '$lib/runs/calories';
 	import { ageGradeForRun, formatAgeGradePercent } from '$lib/runs/age_grade';
 	import { hrCoveragePercent } from '$lib/runs/hr_coverage';
+	import {
+		canRecomputeDistance,
+		classifyRecomputeError,
+		recordedDistanceM,
+	} from '$lib/runs/distance_recompute';
 	import { supabase } from '$lib/core/supabase';
 	import { TABLES, METADATA_KEYS } from '$lib/core/schema';
 	import { m } from '$lib/i18n/store.svelte';
@@ -166,6 +172,10 @@
 	let showDeleteConfirm = $state(false);
 	let showShareConfirm = $state(false);
 	let showMakePrivateConfirm = $state(false);
+	let showRecomputeConfirm = $state(false);
+	/// Set once the recompute job is queued so the action does not offer itself
+	/// again before the worker has rewritten the run; a reload re-reads the row.
+	let recomputeRequested = $state(false);
 	let showReportRun = $state(false);
 	let showNameRoute = $state(false);
 	let routeNameInput = $state('');
@@ -807,6 +817,34 @@
 			showToast(m('runDetail.rematchFailed', { error: msg }), 'error');
 		} finally {
 			rematchBusy = false;
+		}
+	}
+
+	let showRecomputeDistance = $derived(
+		!recomputeRequested && canRecomputeDistance(run, auth.user?.id),
+	);
+	let originalDistanceM = $derived(recordedDistanceM(run?.metadata));
+
+	async function confirmRecomputeDistance() {
+		if (!run) return;
+		try {
+			await requestDistanceRecompute(run.id);
+			recomputeRequested = true;
+			showToast(m('runDetail.recalculatingDistance'), 'success');
+		} catch (e) {
+			const kind = classifyRecomputeError(e);
+			showToast(
+				kind === 'not_authorized'
+					? m('runDetail.recalculateDistanceNotOwner')
+					: kind === 'no_track'
+						? m('runDetail.recalculateDistanceNoTrack')
+						: m('runDetail.recalculateDistanceFailed', {
+								error: (e as Error)?.message ?? String(e),
+							}),
+				'error',
+			);
+		} finally {
+			showRecomputeConfirm = false;
 		}
 	}
 
@@ -1786,6 +1824,27 @@
 				</div>
 			{/if}
 		</div>
+		{#if originalDistanceM != null || showRecomputeDistance}
+			<div class="distance-recompute" data-testid="distance-recompute">
+				{#if originalDistanceM != null}
+					<p class="distance-recorded-note" data-testid="distance-recorded-note">
+						{m('runDetail.originallyRecorded', { distance: formatDistance(originalDistanceM) })}
+					</p>
+				{/if}
+				{#if showRecomputeDistance}
+					<button
+						type="button"
+						class="btn-outline distance-recompute-btn"
+						title={m('runDetail.recalculateDistanceTitle')}
+						onclick={() => (showRecomputeConfirm = true)}
+						data-testid="recalculate-distance"
+					>
+						<span class="material-symbols" aria-hidden="true">straighten</span>
+						{m('runDetail.recalculateDistance')}
+					</button>
+				{/if}
+			</div>
+		{/if}
 
 		<!-- Scrubber section. Lives in the info panel (not below the
 			 map) so it's always visible above the page fold + the
@@ -2233,6 +2292,16 @@
 	oncancel={() => (showMakePrivateConfirm = false)}
 	data-testid="make-private-confirm-dialog"
 	danger
+/>
+
+<ConfirmDialog
+	open={showRecomputeConfirm}
+	title={m('runDetail.recalculateDistanceDialogTitle')}
+	message={m('runDetail.recalculateDistanceDialogMessage')}
+	confirmLabel={m('runDetail.recalculateDistanceConfirm')}
+	onconfirm={confirmRecomputeDistance}
+	oncancel={() => (showRecomputeConfirm = false)}
+	data-testid="recalculate-distance-dialog"
 />
 
 <!-- Off-screen share card. 1080 square, rendered to PNG by
@@ -2948,6 +3017,27 @@
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-lg);
 		overflow: hidden;
+	}
+
+	.distance-recompute {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-sm) var(--space-md);
+		margin: calc(-1 * var(--space-md)) 0 var(--space-xl);
+	}
+
+	.distance-recorded-note {
+		margin: 0;
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+	}
+
+	.distance-recompute-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-xs);
 	}
 
 	.key-stat {

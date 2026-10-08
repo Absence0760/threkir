@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { settleTransitions } from '../fixtures/transitions';
 import { USER_A } from '../fixtures/users';
 
 /**
@@ -125,25 +126,14 @@ test.describe('sidebar section accents', () => {
 		await navSettled(page);
 		const light = await glyphColours(page);
 
-		// The glyph inherits its colour from .nav-icon-wrap, which transitions
-		// `color`, so a read straight after the flip returns the light value
-		// mid-transition. Wait for the sidebar's transitions to finish first.
-		await page.evaluate(async () => {
+		await page.evaluate(() => {
 			window.localStorage.setItem('run_app.theme', 'dark');
 			document.documentElement.dataset.theme = 'dark';
-			const nav = document.querySelector('nav.sidebar');
-			if (!nav) return;
-			for (const el of nav.querySelectorAll('.nav-icon')) void getComputedStyle(el).color;
-			// A transition that is cancelled rather than completed (the nav
-			// re-rendering mid-flip restarts it) rejects `finished` with an
-			// AbortError and is replaced by a new one, so settle every pass and
-			// look again until nothing is running.
-			for (let pass = 0; pass < 10; pass++) {
-				const running = nav.getAnimations({ subtree: true });
-				if (running.length === 0) break;
-				await Promise.allSettled(running.map((a) => a.finished));
-			}
 		});
+		// The glyph inherits its colour from .nav-icon-wrap, which transitions
+		// `color`, so a read straight after the flip returns the light value
+		// mid-transition.
+		await settleTransitions(page.locator('nav.sidebar'));
 		const dark = await glyphColours(page);
 
 		expect(dark).toHaveLength(light.length);

@@ -74,15 +74,15 @@ test('keyUsage follows $lib, relative, extensionless, dynamic and re-export impo
 			mkdirSync(dirname(join(src, path)), { recursive: true });
 			writeFileSync(join(src, path), text);
 		};
-		put('routes/+layout.svelte', `<script>import Shell from '$lib/Shell.svelte';</script>`);
-		put('lib/Shell.svelte', `<script>m('common.cancel');</script>`);
+		put('routes/+layout.svelte', `<script>import Shell from '$lib/components/Shell.svelte';</script>`);
+		put('lib/components/Shell.svelte', `<script>m('common.cancel');</script>`);
 		put('routes/gym/+page.svelte', `<script>import { label } from './helpers';</script>`);
 		put('routes/gym/helpers.ts', `export { slots } from '$lib/gym/index'; export const label = 'gym.title';`);
 		put('lib/gym/index.ts', 'export const slots = (s: string) => `gym.slot_${s}`;');
 		// Spelled in two halves so unit_suite_resolvable_imports.test.ts does not
 		// read the fixture as this suite importing through an alias.
-		put('routes/nutrition/+page.svelte', '<script>const Lazy = import' + "('$lib/Nutri.svelte');</script>");
-		put('lib/Nutri.svelte', `<script>m(('nutrition.source_' + s));</script>`);
+		put('routes/nutrition/+page.svelte', '<script>const Lazy = import' + "('$lib/components/Nutri.svelte');</script>");
+		put('lib/components/Nutri.svelte', `<script>m(('nutrition.source_' + s));</script>`);
 		put('lib/Dead.svelte', `<script>m('settingsIntegrations.stravaLookback30');</script>`);
 		put('lib/i18n/locales/en.ts', `export const en = { 'gym.title': 'Gym' };`);
 		put('lib/thing.test.ts', `m('common.cancel')`);

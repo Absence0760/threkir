@@ -225,7 +225,7 @@ The runtime config otherwise reuses the Android release's secrets:
 `MOBILE_STRAVA_CLIENT_ID` (optional). The signing secrets go in the
 `production` environment, beside Android's keystore. `APP_RELEASE` is the tag's version.
 There is no keychain-password secret: the runner generates one per run. The
-team id is not a secret either -- it is read out of the two profiles.
+team id is not a secret either -- it is read out of the five profiles.
 
 `PUBLIC_SUPABASE_URL` and `PUBLIC_SUPABASE_ANON_KEY` also reach the embedded
 Apple Watch app, which cannot read `dart_defines.json`: the workflow writes

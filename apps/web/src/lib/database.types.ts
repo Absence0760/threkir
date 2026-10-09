@@ -4910,6 +4910,36 @@ export type Database = {
           value_num: number
         }[]
       }
+      admin_platform_fee_months: {
+        Args: never
+        Returns: {
+          charge_count: number
+          currency: string
+          gross_fee_cents: number
+          month: string
+          net_fee_cents: number
+          partially_refunded_count: number
+          refund_failed_count: number
+          refunded_count: number
+          reversed_fee_cents: number
+          source: string
+        }[]
+      }
+      admin_platform_fees_by_host: {
+        Args: { p_month?: string }
+        Returns: {
+          charge_count: number
+          club_id: string
+          club_name: string
+          club_slug: string
+          currency: string
+          gross_fee_cents: number
+          host_display_name: string
+          host_user_id: string
+          net_fee_cents: number
+          reversed_fee_cents: number
+        }[]
+      }
       admin_unhide_target: {
         Args: { p_target_id: string; p_target_kind: string }
         Returns: boolean
@@ -5004,6 +5034,10 @@ export type Database = {
           starts_at: string
           title: string
         }[]
+      }
+      can_cancel_event_occurrence: {
+        Args: { p_event_id: string }
+        Returns: boolean
       }
       challenge_leaderboard: {
         Args: { p_by_team?: boolean; p_challenge_id: string }

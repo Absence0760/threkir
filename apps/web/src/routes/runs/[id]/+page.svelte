@@ -83,7 +83,7 @@
 		type PrivacyZone,
 	} from '$lib/routes/privacy';
 	import { knownEffective, type LoadedSettings } from '$lib/settings/settings_overlay';
-	import { shareCardTrack } from '$lib/share/share_card_track';
+	import { SHARE_CARD_MAP, shareCardTrack } from '$lib/share/share_card_track';
 	import {
 		estimateRunCalories,
 		ACTIVITY_KCAL_PER_KG_PER_KM,
@@ -1388,8 +1388,8 @@
 	/// Static-map URL for the share card. Same endpoints as the
 	/// runs/routes list thumbnails — `buildLocalStaticMapUrl` for
 	/// the local Protomaps dev stack, `buildStaticMapUrl` for
-	/// production MapTiler. 1080×600 to fit the share card cleanly
-	/// at 1080-square; null when there's no track to render (the
+	/// production MapTiler, at the map box's own size (SHARE_CARD_MAP), so
+	/// nothing is cropped; null when there's no track to render (the
 	/// card falls back to the stats-only layout). The card's <img>
 	/// sits in the DOM (off-screen, not display:none) so the browser
 	/// fetches it on every page view — the MapTiler branch must
@@ -1401,18 +1401,20 @@
 	let shareCardLine = $derived(shareCardTrack(baseTrack, ownerZones));
 	let shareMapUrl = $derived.by(() => {
 		if (shareCardLine.length < 2) return null;
-		const pts = shareCardLine.map((p) => ({ lat: p.lat, lng: p.lng }));
+		// Passed whole, so the image draws the smoothed line the run map draws
+		// (`previewPolyline`); the clip above already trimmed raw OR smoothed.
+		const pts = shareCardLine;
 		return (
 			buildLocalStaticMapUrl(pts, {
-				w: 1080,
-				h: 600,
+				w: SHARE_CARD_MAP.w,
+				h: SHARE_CARD_MAP.h,
 				styleUrl: PUBLIC_TILE_STYLE_URL,
 				stroke: SHARE_CARD_STROKE,
 			}) ??
 			(consent.accepted
 				? buildStaticMapUrl(pts, {
-						w: 1080,
-						h: 600,
+						w: SHARE_CARD_MAP.w,
+						h: SHARE_CARD_MAP.h,
 						style: 'streets-v2',
 						key: PUBLIC_MAPTILER_KEY,
 						stroke: SHARE_CARD_STROKE,

@@ -267,7 +267,7 @@ Covers the universal-bag and device-bag overlay logic on `SettingsSyncService` v
 
 **Sign-out account reset (3 tests):** issue #231 — bag-mirrored `Preferences` reset to defaults, the prior user's cached bags dropped when the id is known, idempotent with no cache / no prior id.
 
-### `apps/mobile_android/test/run_screen_recording_flow_test.dart` — 40 tests
+### `apps/mobile_android/test/run_screen_recording_flow_test.dart` — 41 tests
 
 Drives the full RunScreen UI flow on top of the existing data-pipeline integration test. Adds a mock-everything setUp that closes every platform-channel surface RunScreen touches when transitioning out of idle:
 

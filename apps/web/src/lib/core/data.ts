@@ -119,6 +119,7 @@ import { dedupeShadowedExercises } from '../gym/exercise_catalogue';
 import { namesAnExercise } from '../gym/gym_prs';
 import type { RoutineHistoryAggregate, RoutineSessionRow } from '../gym/routine_history';
 import type { YearInRunningRecap } from '../runs/recap';
+import type { PlatformFeeMonthRow } from '../billing/platform_fee_summary';
 import { mergeRecapRuns, recapYearWindow } from '../runs/recap_window';
 import type {
 	CoachAthleteStatus,
@@ -11325,6 +11326,65 @@ export async function adminUnhideTarget(
 	});
 	if (error) throw error;
 	return data === true;
+}
+
+// ─── Platform-fee earnings (operator back-office; /admin/earnings) ──────
+// Same boundary as moderation: both RPCs raise 42501 for anyone not in
+// app_admins, a host included (decisions § 1817).
+
+export interface PlatformFeeHostRow {
+	host_user_id: string;
+	host_display_name: string | null;
+	club_id: string | null;
+	club_name: string | null;
+	club_slug: string | null;
+	currency: string;
+	charge_count: number;
+	gross_fee_cents: number;
+	reversed_fee_cents: number;
+	net_fee_cents: number;
+}
+
+/** Platform fees per UTC month of sale, per currency and source, net of
+ *  refunds. Throws for a non-admin. */
+export async function fetchPlatformFeeMonths(): Promise<PlatformFeeMonthRow[]> {
+	const { data, error } = await supabase.rpc('admin_platform_fee_months', undefined, { get: true });
+	if (error) throw error;
+	return (data ?? []).map((r) => ({
+		month: r.month,
+		currency: r.currency,
+		source: r.source === 'donation' ? 'donation' : 'event',
+		charge_count: Number(r.charge_count ?? 0),
+		gross_fee_cents: Number(r.gross_fee_cents ?? 0),
+		reversed_fee_cents: Number(r.reversed_fee_cents ?? 0),
+		net_fee_cents: Number(r.net_fee_cents ?? 0),
+		refunded_count: Number(r.refunded_count ?? 0),
+		partially_refunded_count: Number(r.partially_refunded_count ?? 0),
+		refund_failed_count: Number(r.refund_failed_count ?? 0),
+	}));
+}
+
+/** One UTC month's platform fees split by host + club + currency (`month` is
+ *  any day in it, `YYYY-MM-DD`). Throws for a non-admin. */
+export async function fetchPlatformFeesByHost(month: string): Promise<PlatformFeeHostRow[]> {
+	const { data, error } = await supabase.rpc(
+		'admin_platform_fees_by_host',
+		{ p_month: month },
+		{ get: true },
+	);
+	if (error) throw error;
+	return (data ?? []).map((r) => ({
+		host_user_id: r.host_user_id,
+		host_display_name: r.host_display_name ?? null,
+		club_id: r.club_id ?? null,
+		club_name: r.club_name ?? null,
+		club_slug: r.club_slug ?? null,
+		currency: r.currency,
+		charge_count: Number(r.charge_count ?? 0),
+		gross_fee_cents: Number(r.gross_fee_cents ?? 0),
+		reversed_fee_cents: Number(r.reversed_fee_cents ?? 0),
+		net_fee_cents: Number(r.net_fee_cents ?? 0),
+	}));
 }
 
 /** Club-owned session plans (the club's "session templates"). Visible to club

@@ -5,7 +5,10 @@ import {
 	ANY_OS,
 	cacheSteps,
 	checkCacheKeys,
+	checkFlutterSdkCached,
 	checkHashFilesPatterns,
+	flutterSdkSteps,
+	UNCACHED_FLUTTER,
 	globToRegExp,
 	hashFilesPatterns,
 	osOf,
@@ -227,4 +230,55 @@ test('the reader sees the committed hashFiles() patterns, the workspace lockfile
 		patterns.some((p) => p.pattern === 'pubspec.lock'),
 		'the mobile_android Gradle key no longer hashes the workspace lockfile',
 	);
+});
+
+/**
+ * A workflow whose one job installs Flutter, with or without `cache: true`.
+ * @param {boolean} cached
+ */
+const flutterWorkflow = (cached) =>
+	[
+		'name: t',
+		'on: push',
+		'jobs:',
+		'  docs:',
+		'    runs-on: ubuntu-latest',
+		'    steps:',
+		'      - uses: subosito/flutter-action@0000000000000000000000000000000000000000 # v2',
+		'        with:',
+		'          channel: stable',
+		'          flutter-version: ${{ env.FLUTTER_VERSION }}',
+		...(cached ? ['          cache: true'] : []),
+		'      - run: dart run scripts/x.dart',
+		'',
+	].join('\n');
+
+test('the run 37864887082 shape fails: a Flutter install with no cache downloads the SDK every run', () => {
+	const steps = flutterSdkSteps([{ name: 'ci.yml', text: flutterWorkflow(false) }], []);
+	assert.equal(steps.length, 1);
+	const errors = checkFlutterSdkCached(steps, new Map());
+	assert.equal(errors.length, 1);
+	assert.ok(errors[0].includes('ci.yml:') && errors[0].includes('(docs)') && errors[0].includes('cache: true'), errors[0]);
+});
+
+test('a cached Flutter install passes, and an exemption names its own workflow only', () => {
+	const cached = flutterSdkSteps([{ name: 'ci.yml', text: flutterWorkflow(true) }], []);
+	assert.deepEqual(checkFlutterSdkCached(cached, new Map()), []);
+	const release = flutterSdkSteps([{ name: 'release-x.yml', text: flutterWorkflow(false) }], []);
+	assert.deepEqual(checkFlutterSdkCached(release, new Map([['release-x.yml', 'signed release']])), []);
+	assert.equal(checkFlutterSdkCached(release, new Map([['other.yml', 'signed release']])).length, 2);
+});
+
+test('an exemption for a workflow that now caches, or no longer installs Flutter, is stale', () => {
+	const cached = flutterSdkSteps([{ name: 'release-x.yml', text: flutterWorkflow(true) }], []);
+	const errors = checkFlutterSdkCached(cached, new Map([['release-x.yml', 'signed release']]));
+	assert.equal(errors.length, 1);
+	assert.ok(errors[0].includes('UNCACHED_FLUTTER names release-x.yml'), errors[0]);
+});
+
+test('every Flutter install in the real tree is cached or a named release exemption', () => {
+	const steps = flutterSdkSteps(readWorkflows(WORKFLOW_DIR), readActions(ACTION_DIR));
+	assert.ok(steps.length >= 5, `expected the tree's Flutter installs, read ${steps.length}`);
+	assert.deepEqual(checkFlutterSdkCached(steps, UNCACHED_FLUTTER), []);
+	for (const [file, why] of UNCACHED_FLUTTER) assert.ok(why.length > 20, `${file}'s exemption needs a reason`);
 });

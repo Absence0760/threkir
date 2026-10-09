@@ -91,6 +91,21 @@ cd packages/core_models && flutter test
 cd packages/run_recorder && flutter test
 ```
 
+### On-device smoke (`integration_test/`)
+
+`simctl` cannot tap, so this is how a scripted pass gets past the launch screen ([decisions § 1820](../../docs/architecture/decisions.md)). The suites run inside the app on a booted simulator or a paired iPhone. They are byte-identical to `apps/mobile_android/integration_test/` and do not run in CI.
+
+```bash
+xcrun simctl boot <UDID>
+cd apps/mobile_ios
+flutter test integration_test -d <UDID>                                   # both suites, debug
+flutter test integration_test/home_navigation_test.dart -d <UDID>
+# Real iPhone only: AOT, assertions off, no .env.development
+flutter drive --profile -d <device-id> --driver=integration_test/driver.dart --target=integration_test/home_navigation_test.dart --dart-define-from-file=dart_defines.json
+```
+
+The simulator build is always **debug**, so `.env.development` loads and, with the local stack up, the app auto-signs-in to the seed account. The suites pass signed in or out, but a green simulator run says nothing about the release sign-in path. Both suites stop before any system dialog (location, HealthKit, "Open in"), because an in-process driver cannot tap them. Record each run in [ios_verification.md](../../docs/testing/ios_verification.md#results-log) with its rung.
+
 ## Lint
 
 ```bash

@@ -70,6 +70,42 @@ The corollary: a simulator pass is strongest on **cold launch, auth, reads and w
 
 ---
 
+## Driving the screens: `integration_test` (decided 2026-10-09)
+
+The tooling decision this file used to leave open is made ([decisions § 1820](../architecture/decisions.md)). Both twins carry an `integration_test/` target driven by **Flutter's own `integration_test` package**. It runs inside the app and taps by widget type and catalogue key, so the same assertion holds in all seven locales. It is the same `testWidgets` API the widget suites use, `FLUTTER_VERSION` pins it like `flutter_test`, and the identical files run on an Android emulator, which is the point of the twin.
+
+| Option | Verdict | Why |
+|---|---|---|
+| **`integration_test`** | **Adopted** | In-process, ships with the SDK, locale-proof finders, one harness for both platforms and for Firebase Test Lab later |
+| **Patrol** | **The next layer, not yet added** | Built on `integration_test`, so these suites carry over. It is the only way to tap UI the app does not draw: the location prompt, the HealthKit sheet, SpringBoard's "Open in" alert. It needs a native UI-test target in both Runner projects, which can only be built and checked on a Mac |
+| `idb` | Rejected | An external daemon and client to install on the Mac. It asserts on pixels or accessibility text, and it is iOS-only, so Android would need a second tool |
+| Maestro | Rejected as the driver | YAML flows against an installed build, so its assertions are accessibility text and break per locale. It is a second test language and another CLI to pin. Still worth a look as a QA hand-off ([mobile_e2e.md](mobile_e2e.md)) |
+
+**What exists:**
+
+| Suite | What it drives | Where it stops, and why |
+|---|---|---|
+| `integration_test/launch_onboarding_test.dart` | The real `main()` with `onboarded` cleared. It lands on onboarding and taps Next through the routes card to the location disclosure, asserting the platform's own disclosure copy | Before the privacy page, whose button asks the OS for location |
+| `integration_test/home_navigation_test.dart` | The real `main()` with `onboarded` set. It reaches the Home shell, then taps You, the Fitness/Training hub and Home on the bottom nav, asserting each page is the hit-testable one | It skips Run, which asks for location |
+
+`app_harness.dart` is the shared launcher and real-clock wait; it is not a suite. `driver.dart` is the `flutter drive` entry (below). All of `integration_test/` is twin source: byte-identical across `apps/mobile_android` and `apps/mobile_ios`, and held there by the `twin-parity` CI job.
+
+**Run it:**
+
+```bash
+xcrun simctl boot <UDID>
+cd apps/mobile_ios
+flutter test integration_test -d <UDID>                                   # both suites, debug
+flutter test integration_test/home_navigation_test.dart -d <UDID>         # one suite
+flutter drive --profile -d <device> --driver=integration_test/driver.dart --target=integration_test/home_navigation_test.dart   # real iPhone only
+```
+
+**What a run may claim.** Trap 1 applies in full. `flutter test integration_test` builds **debug**, so on the simulator `.env.development` loads. With the local stack up, the launch auto-signs-in to the seed account. The suites pass either way, because nothing they assert depends on a session. A green debug run is **sim-verified** for launch, onboarding paging and shell navigation, and **says nothing about the release sign-in path**. `--profile` through `flutter drive` is AOT with assertions off, so it is the closest a driven run gets to what ships. It needs a real device, because the simulator has no AOT, and it reads no `.env.development`, so pass `--dart-define-from-file=dart_defines.json` if the run should have a backend. `--release` cannot be driven at all: a release build has no VM service.
+
+**Not verified from the machine that added it.** The suites were written on a Linux workstation. They analyze clean (`dart analyze`, 0 warnings) but have **not yet run on an iOS simulator or an Android emulator**: there is no Android SDK there, and the Linux-desktop build stops on `desktop_webview_window`'s missing `webkit2gtk-4.0`. The first Mac run is owed. Record it in the results log below as its own entry, naming the Xcode and Flutter versions.
+
+---
+
 ## The pass
 
 ### Step 0 — preconditions
@@ -143,9 +179,9 @@ The observables a scripted run can change and re-run identically:
 
 ### Step 5 — the screens that need hands
 
-There is **no UI automation for the Flutter apps**: no `integration_test/` directory exists in either mobile target, mobile e2e is out of scope by design ([testing.md](testing.md)), and `simctl` has no tap primitive. Every screen past the launch destination has to be walked by a person, and a scripted run can claim none of it.
+`simctl` still has no tap primitive, but the app can now drive itself. Run the `integration_test/` suites first (see [Driving the screens](#driving-the-screens-integration_test-decided-2026-10-09)): they take a cold launch through onboarding and across the shell's destinations unattended. A green run is scripted, sim-verified evidence for exactly the screens it names.
 
-Walk [manual_testing.md](manual_testing.md) top to bottom on the simulator, skipping the rows the capability table marks unreachable, and record one line per scenario: what you did, what you saw, the rung. This is the bulk of the pass and it does not compress.
+What they do not reach still needs a person: anything behind a system dialog (location, HealthKit, notifications, "Open in"), and every screen no suite drives yet. Walk [manual_testing.md](manual_testing.md) top to bottom on the simulator for those, skipping the rows the capability table marks unreachable, and record one line per scenario: what you did, what you saw, the rung. This is still the bulk of the pass. Each manual scenario that becomes a suite shrinks it, and a scenario behind a system dialog is a Patrol case rather than a manual one forever.
 
 ### Step 6 — the device leg
 

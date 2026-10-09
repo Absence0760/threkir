@@ -81,22 +81,41 @@ export function partNames(split: Pick<Split, 'groups'>): Part[] {
 	return [...AREA_NAMES, ...(Object.keys(split.groups) as Part[])];
 }
 
+/// Every value the generated module embeds is a locale tag, a part or group
+/// name, a route prefix, or a virtual module id built from those — all derived
+/// from this repo's own route tree at build time. None needs a character
+/// outside this set, so anything else is refused rather than escaped: a route
+/// folder named with a quote or a line break fails the build here instead of
+/// reaching generated code.
+const CODE_LITERAL = /^[A-Za-z0-9_~./:\[\]-]+$/;
+
+export function codeLiteral(value: string): string {
+	if (!CODE_LITERAL.test(value)) {
+		throw new Error(`i18n catalogue split: refusing to embed ${JSON.stringify(value)} in generated code`);
+	}
+	return `'${value}'`;
+}
+
 export function loadersModule(split: Pick<Split, 'groups'>): string {
 	const parts: string[] = [];
-	parts.push(`import fallbackCore from ${JSON.stringify(partId(DEFAULT_LOCALE, CORE))};`);
+	parts.push(`import fallbackCore from ${codeLiteral(partId(DEFAULT_LOCALE, CORE))};`);
 	parts.push('export const FALLBACK_CORE = fallbackCore;');
-	const pick = (id: string) => `() => import(${JSON.stringify(id)}).then((m) => m.default)`;
+	const pick = (id: string) => `() => import(${codeLiteral(id)}).then((m) => m.default)`;
 	parts.push('export const CORE_LOADERS = {');
 	for (const locale of SUPPORTED_LOCALES) {
 		const body = locale === DEFAULT_LOCALE ? '() => Promise.resolve(fallbackCore)' : pick(partId(locale, CORE));
-		parts.push(`\t${JSON.stringify(locale)}: ${body},`);
+		parts.push(`\t${codeLiteral(locale)}: ${body},`);
 	}
 	parts.push('};');
-	parts.push(`export const GROUPS = ${JSON.stringify(split.groups)};`);
+	parts.push('export const GROUPS = {');
+	for (const [name, prefixes] of Object.entries(split.groups)) {
+		parts.push(`\t${codeLiteral(name)}: [${prefixes.map(codeLiteral).join(', ')}],`);
+	}
+	parts.push('};');
 	parts.push('export const PART_LOADERS = {');
 	for (const locale of SUPPORTED_LOCALES) {
-		parts.push(`\t${JSON.stringify(locale)}: {`);
-		for (const part of partNames(split)) parts.push(`\t\t${JSON.stringify(part)}: ${pick(partId(locale, part))},`);
+		parts.push(`\t${codeLiteral(locale)}: {`);
+		for (const part of partNames(split)) parts.push(`\t\t${codeLiteral(part)}: ${pick(partId(locale, part))},`);
 		parts.push('\t},');
 	}
 	parts.push('};');

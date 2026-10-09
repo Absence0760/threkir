@@ -137,7 +137,7 @@ select is(
   'the host has exactly four rows: three instances, one of them in two currencies'
 );
 
--- refusal: the organiser's own class was paid to the organiser, not this host
+-- The organiser's own class was paid to the organiser, not this host
 select is(
   (select count(*)::int from host_earnings_summary()
     where event_id = 'c7c70000-0000-0000-0000-000000000004'),

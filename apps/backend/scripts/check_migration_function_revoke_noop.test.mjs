@@ -355,6 +355,7 @@ test('docs/backend/api_database.md states the counts this guard measures', () =>
   // (issue 1099's three lanes landed 69/57/12/495 against a true 71/58/13/497).
   // So the message names the measured figure: the fix is to restate it, never to
   // pick a side of the conflict.
+  /** @param {string} what @param {number} measured */
   const restate = (what, measured) =>
     `docs/backend/api_database.md states a stale ${what}; the migrations measure ${measured} — restate it as ${measured}`;
   assert.equal(Number(stated[1]), counts.files, restate('count of migrations with a function-level revoke', counts.files));

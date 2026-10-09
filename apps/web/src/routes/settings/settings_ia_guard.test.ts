@@ -59,7 +59,10 @@ const HOMES: Record<string, Home> = {
 	email_weekly_digest: { page: 'notifications' },
 	email_lifecycle_drip: { page: 'notifications' },
 	notify_data_export_ready: { page: 'notifications' },
-	locale: { page: 'display' },
+	locale: {
+		page: 'display',
+		also: { payouts: 'reads it to format earnings amounts in the reader\'s language; it has no control for it' },
+	},
 	discoverable_in_search: { page: 'privacy' },
 	discoverable_nearby: { page: 'privacy' },
 	trusted_contacts: { none: 'dormant: no surface reads or writes it (safety.md)' },

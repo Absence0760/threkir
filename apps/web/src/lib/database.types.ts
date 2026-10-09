@@ -5541,6 +5541,28 @@ export type Database = {
         }[]
       }
       host_can_take_payment: { Args: { p_user_id: string }; Returns: boolean }
+      host_earnings_summary: {
+        Args: never
+        Returns: {
+          club_id: string
+          currency: string
+          event_id: string
+          event_title: string
+          gross_cents: number
+          instance_start: string
+          local_month: string
+          net_cents: number
+          partial_refunds_unrecorded: number
+          partially_refunded_orders: number
+          platform_fee_cents: number
+          refund_failed_orders: number
+          refunded_cents: number
+          refunded_orders: number
+          registrations: number
+          timezone: string
+          unsettled_cents: number
+        }[]
+      }
       increment_coach_usage: { Args: { p_user_id: string }; Returns: number }
       is_blocked_either_way: {
         Args: { a: string; b: string }

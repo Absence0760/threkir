@@ -64,9 +64,13 @@ test.describe('health-data consent — withdrawal erases Art 9, keeps the age re
 			.eq('id', user.id);
 		if (profErr) throw profErr;
 
+		// Yesterday, not today: a weight the page saves is stamped by the
+		// column's now() default, and noon today is still in the future for a
+		// shard that runs before midday UTC, which made the seed outrank the
+		// save as the newest row (run 37863807968, 00:19 UTC).
 		const { error: bmErr } = await admin
 			.from('body_metrics')
-			.insert({ user_id: user.id, weight_kg: WEIGHT_KG, recorded_at: noonOnBrowserDay() });
+			.insert({ user_id: user.id, weight_kg: WEIGHT_KG, recorded_at: noonOnBrowserDay(-1) });
 		if (bmErr) throw bmErr;
 
 		// The Art 9 mirrors the health-use surfaces and calorie estimates read.

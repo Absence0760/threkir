@@ -2852,7 +2852,7 @@ jobs:
     # backstop: a diverged PR fails CI rather than landing.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: lib/ + test/ byte-identical
+      - name: lib/ + test/ + integration_test/ byte-identical
         run: |
           if ! diff -rq apps/mobile_android/lib apps/mobile_ios/lib; then
             echo "::error::apps/mobile_android/lib has diverged from apps/mobile_ios/lib (decisions.md §39)."
@@ -2861,6 +2861,13 @@ jobs:
           fi
           if ! diff -rq apps/mobile_android/test apps/mobile_ios/test; then
             echo "::error::apps/mobile_android/test has diverged from apps/mobile_ios/test (decisions.md §39)."
+            echo "Mirror the change or invoke the mobile-twin-mirror agent."
+            exit 1
+          fi
+          # The on-device smoke drives the same Dart app on both targets, so
+          # it is shared source under the same rule (decisions.md § 1820).
+          if ! diff -rq apps/mobile_android/integration_test apps/mobile_ios/integration_test; then
+            echo "::error::apps/mobile_android/integration_test has diverged from apps/mobile_ios/integration_test (decisions.md §39, § 1820)."
             echo "Mirror the change or invoke the mobile-twin-mirror agent."
             exit 1
           fi

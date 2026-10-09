@@ -1,13 +1,13 @@
 ---
-description: Verify apps/mobile_android and apps/mobile_ios lib/+test/ are byte-identical
+description: Verify apps/mobile_android and apps/mobile_ios lib/+test/+integration_test/ are byte-identical
 ---
 
-Verify the byte-identical-twin invariant between `apps/mobile_android/` and `apps/mobile_ios/` per `docs/architecture/decisions.md §39`.
+Verify the byte-identical-twin invariant between `apps/mobile_android/` and `apps/mobile_ios/` per `docs/architecture/decisions.md §39` (extended to `integration_test/` by § 1820).
 
 ## What to do
 
-1. Run `diff -rq apps/mobile_android/lib apps/mobile_ios/lib` and `diff -rq apps/mobile_android/test apps/mobile_ios/test`.
-2. If both are clean, report the invariant holds and exit.
+1. Run `diff -rq apps/mobile_android/lib apps/mobile_ios/lib`, `diff -rq apps/mobile_android/test apps/mobile_ios/test` and `diff -rq apps/mobile_android/integration_test apps/mobile_ios/integration_test`.
+2. If all three are clean, report the invariant holds and exit.
 3. If either reports differences, list each diverged file. For each:
    - **Differs** — which side has the newer change? Compare commit dates.
    - **Only-in-android / only-in-ios** — was the file added or removed without mirroring?

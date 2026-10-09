@@ -144,7 +144,7 @@ test('buildTrackThumbnailUrl: the dev override wins and keeps the path grammar',
 		url?.startsWith('http://localhost:8080/styles/basic/static/auto/220x140.png?path='),
 		url ?? 'null',
 	);
-	assert.match(url ?? '', /fill:%23ffffff00\|stroke:%23[0-9A-F]{6}\|width:4\|-0\.12000,51\.50000\|/);
+	assert.match(url ?? '', /fill:%23ffffff00\|stroke:%23[0-9A-F]{6}\|width:3\|-0\.12000,51\.50000\|/);
 	// An override is light ground unless its URL names a dark style.
 	assert.equal(strokeOf(url), mapTrackLine(false));
 	const dark = thumb('streets', false, {

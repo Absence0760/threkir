@@ -3,29 +3,51 @@
 // loading the Svelte runtime — the .svelte file imports back from
 // here.
 
+import { toLinePoint, type LinePointSource } from '../runs/track_line';
 import { mapTrackLine } from './basemap_contrast';
 import { basemapIsDark, maptilerSlug, type MapStyle } from './map-style-url';
+import { simplifyTrack } from './route_simplify';
 
 type Waypoint = { lat: number; lng: number };
 
-/// Downsample a polyline to at most `target` evenly-spaced points
-/// before building the MapTiler static-maps URL. Two reasons:
-///   - MapTiler's `path` query parameter is hard-capped at a few
-///     kilobytes; a 1000-point route blows past that with every
-///     thumbnail.
-///   - The endpoints stay (first + last), and the visual fidelity
-///     of a 144x144 thumbnail tops out around ~60 points anyway.
-export function downsampleForPreview(
-	pts: Waypoint[],
-	target: number,
-): Waypoint[] {
-	if (pts.length <= target) return pts;
-	const out: Waypoint[] = [];
-	const step = (pts.length - 1) / (target - 1);
-	for (let i = 0; i < target; i++) {
-		out.push(pts[Math.min(pts.length - 1, Math.round(i * step))]);
+/// The most points a thumbnail's `path=` overlay carries. MapTiler caps the
+/// query at a few kilobytes, and a card-sized thumbnail shows no more detail.
+export const MAX_PREVIEW_POINTS = 60;
+
+/// The polyline a static thumbnail draws: each fix at its smoothed position
+/// when the track carries one (`lib/runs/track_line.ts`, the same line the run
+/// map and the SVG fallback draw), simplified with Ramer-Douglas-Peucker until
+/// it fits [MAX_PREVIEW_POINTS]. Epsilon starts at 10 m and doubles, at most
+/// six times (10 m to 640 m). Picking every Nth point instead kept GPS jitter
+/// and cut real corners, which drew a run as a row of zig-zags.
+///
+/// Twin of mobile's `_StaticMapPreview._simplifiedPath` (`track_preview.dart`).
+export function previewPolyline(pts: LinePointSource[]): Waypoint[] {
+	const line = pts.map((p) => {
+		const q = toLinePoint(p);
+		return { lat: q.lat, lng: q.lng };
+	});
+	if (line.length <= MAX_PREVIEW_POINTS) return line;
+	let epsilon = 10;
+	let simplified = simplifyTrack(line, epsilon);
+	for (let i = 0; i < 6 && simplified.length > MAX_PREVIEW_POINTS; i++) {
+		epsilon *= 2;
+		simplified = simplifyTrack(line, epsilon);
 	}
-	return out;
+	return simplified.map((p) => ({ lat: p.lat, lng: p.lng }));
+}
+
+/// The pixel size a thumbnail requests, from the box it is drawn into. Asking
+/// for a fixed 220x140 and letting `object-fit: cover` stretch it into a wide
+/// card scaled the 3 px line to a blurred ~10 px band. The width is rounded UP
+/// to a 40 px step so a window resize reuses the cached image rather than
+/// refetching on every pixel, and the height follows the box's own aspect: a
+/// height rounded on its own changes the shape, and `cover` then crops the
+/// route's edges off. Both are clamped to 40..1024 like mobile's `TrackPreview`.
+export function thumbnailSize(width: number, height: number): { w: number; h: number } {
+	const clamp = (v: number) => Math.min(1024, Math.max(40, v));
+	const w = clamp(Math.ceil(width / 40) * 40);
+	return { w, h: clamp(Math.round((w * height) / Math.max(width, 1))) };
 }
 
 /// The `path=` overlay both static endpoints accept. [stroke] is a `#RRGGBB`
@@ -37,12 +59,13 @@ export function downsampleForPreview(
 /// MapTiler's static-maps path syntax doesn't recognise `none`, so closed
 /// loops (first coord ≈ last coord) get the default black polygon fill and a
 /// "hole" appears inside the loop. tileserver-gl mirrors the syntax, so the
-/// same holds there. Width 4 keeps the line legible over busy basemap content.
+/// same holds there. Width 3 matches mobile; on a correctly sized image it reads as
+/// a 3 px line rather than the blurred band an upscaled image made of it.
 function pathParam(pts: Waypoint[], stroke: string): string {
-	const coords = downsampleForPreview(pts, 60)
+	const coords = previewPolyline(pts)
 		.map((p) => `${p.lng.toFixed(5)},${p.lat.toFixed(5)}`)
 		.join('|');
-	return `fill:%23ffffff00|stroke:%23${stroke.replace(/^#/, '')}|width:4|${coords}`;
+	return `fill:%23ffffff00|stroke:%23${stroke.replace(/^#/, '')}|width:3|${coords}`;
 }
 
 /// Build a MapTiler Static Maps URL with the route polyline rendered

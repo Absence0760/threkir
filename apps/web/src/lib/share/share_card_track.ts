@@ -16,3 +16,12 @@ export function shareCardTrack<T extends LinePointSource>(
 ): T[] {
 	return zones === null ? [] : clipPointsToZones(track, zones);
 }
+
+/// The box the share card's map image is drawn into: the 1080 px card less
+/// its 96 px padding on each side, by the map's 360 px height, less the map's
+/// 4 px border all round (the app is `box-sizing: border-box`). The image is
+/// requested at exactly this shape; the 1080x600 it used to ask for was
+/// cropped by `object-fit: cover`, which could cut the route's ends off the
+/// image that gets posted. `share_card_track.test.ts` reads these numbers back
+/// out of the card's CSS, so a layout change that forgets this fails there.
+export const SHARE_CARD_MAP = { w: 880, h: 352 } as const;

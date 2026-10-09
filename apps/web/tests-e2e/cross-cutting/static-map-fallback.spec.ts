@@ -31,8 +31,12 @@ import { USER_A } from '../fixtures/users';
 
 const MAPTILER_HOST = 'api.maptiler.com';
 
-async function simulateStaticMapOutage(mockRoute: MockRoute, page: Page): Promise<{ aborted: () => number }> {
+async function simulateStaticMapOutage(
+	mockRoute: MockRoute,
+	page: Page
+): Promise<{ aborted: () => number; requested: () => string[] }> {
 	let aborted = 0;
+	const requested: string[] = [];
 	await page.addInitScript(() => {
 		localStorage.setItem(
 			'cookie_consent',
@@ -54,10 +58,11 @@ async function simulateStaticMapOutage(mockRoute: MockRoute, page: Page): Promis
 		(url) => url.hostname === MAPTILER_HOST,
 		async (route) => {
 			aborted++;
+			requested.push(route.request().url());
 			await route.abort('failed');
 		}
 	);
-	return { aborted: () => aborted };
+	return { aborted: () => aborted, requested: () => [...requested] };
 }
 
 /** A lazy image still waiting for the viewport is neither complete nor broken. */
@@ -123,6 +128,51 @@ test.describe('static map outage falls back to the SVG track preview', () => {
 			await expect.poll(outage.aborted).toBeGreaterThan(before);
 			await expect(page.locator('[data-testid="share-card-map"]')).toHaveCount(0);
 			await expect.poll(() => brokenImages(page, '.share-card')).toBe(0);
+		} finally {
+			await deleteRun(runId);
+		}
+	});
+});
+
+test.describe('a static map thumbnail is requested at the size it is drawn', () => {
+	test.use({ storageState: USER_A.storageStatePath });
+
+	test('/runs asks MapTiler for the card box, not a fixed 220x140 stretched to fit', async ({
+		page,
+		mockRoute
+	}) => {
+		// A fixed 220x140 image under object-fit: cover was blown up ~2.5x into
+		// the wide /runs card, turning a 3 px line into a blurred band.
+		const runId = await insertRun({
+			user_id: USER_A.id,
+			distance_m: 1_450,
+			duration_s: 580,
+			track: straightTrack()
+		});
+		try {
+			const outage = await simulateStaticMapOutage(mockRoute, page);
+			await page.goto('/runs');
+			const card = page.locator(`a.run-card[href="/runs/${runId}"]`);
+			await expect(card).toBeVisible();
+			await expect.poll(outage.aborted).toBeGreaterThan(0);
+
+			// The component sizes from its wrapper's clientWidth / clientHeight,
+			// which are whole pixels; boundingBox() is fractional and computes a
+			// height one pixel off (CI read 480x133 against 480x134).
+			const box = await card
+				.locator('.run-map-placeholder .wrap')
+				.evaluate((el) => ({ width: el.clientWidth, height: el.clientHeight }));
+			const sizes = outage
+				.requested()
+				.map((u) => /\/static\/auto\/(\d+)x(\d+)@2x\.png/.exec(u))
+				.filter((m): m is RegExpExecArray => m !== null)
+				.map((m) => ({ w: Number(m[1]), h: Number(m[2]) }));
+			expect(sizes.length).toBeGreaterThan(0);
+			// The width rounds up to a 40 px step (thumbnailSize) and the height
+			// keeps the box's shape, so cover never crops the route's edges.
+			const w = Math.min(1024, Math.max(40, Math.ceil(box.width / 40) * 40));
+			const h = Math.min(1024, Math.max(40, Math.round((w * box.height) / box.width)));
+			expect(sizes).toContainEqual({ w, h });
 		} finally {
 			await deleteRun(runId);
 		}

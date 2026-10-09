@@ -156,8 +156,12 @@ test.describe('a static map thumbnail is requested at the size it is drawn', () 
 			await expect(card).toBeVisible();
 			await expect.poll(outage.aborted).toBeGreaterThan(0);
 
-			const box = await card.locator('.run-map-placeholder').boundingBox();
-			if (!box) throw new Error('the run card has no map box');
+			// The component sizes from its wrapper's clientWidth / clientHeight,
+			// which are whole pixels; boundingBox() is fractional and computes a
+			// height one pixel off (CI read 480x133 against 480x134).
+			const box = await card
+				.locator('.run-map-placeholder .wrap')
+				.evaluate((el) => ({ width: el.clientWidth, height: el.clientHeight }));
 			const sizes = outage
 				.requested()
 				.map((u) => /\/static\/auto\/(\d+)x(\d+)@2x\.png/.exec(u))

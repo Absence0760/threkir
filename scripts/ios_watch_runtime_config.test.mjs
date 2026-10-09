@@ -5,13 +5,19 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+	DSN_INFO_KEY,
+	DSN_SETTING,
 	KEY_INFO_KEY,
 	KEY_SETTING,
+	RELEASE_INFO_KEY,
+	RELEASE_SETTING,
 	URL_INFO_KEY,
 	URL_SETTING,
 	expandEscapes,
 	main,
+	normalizeDsn,
 	normalizeKey,
+	normalizeRelease,
 	normalizeUrl,
 	renderXcconfig,
 	verifyInfo,
@@ -41,6 +47,17 @@ const jwt = (/** @type {object} */ payload) =>
 const ANON_JWT = jwt({ iss: 'supabase', role: 'anon' });
 const PUBLISHABLE = 'sb_publishable_AbC123-xyz_789';
 const ORIGIN = 'https://abcdefghijkl.supabase.co';
+const DSN_KEY = '0123456789abcdef0123456789abcdef';
+const DSN = `https://${DSN_KEY}@o4501234.ingest.us.sentry.io/4507654321`;
+const RELEASE = 'mobile_ios@1.2.3';
+/** A complete release environment, with `over` replacing any of it. @param {Record<string, string | undefined>} [over] */
+const env = (over = {}) => ({
+	[URL_SETTING]: ORIGIN,
+	[KEY_SETTING]: PUBLISHABLE,
+	[DSN_SETTING]: DSN,
+	[RELEASE_SETTING]: RELEASE,
+	...over,
+});
 
 test('an https origin is accepted and a pasted trailing slash dropped', () => {
 	assert.equal(normalizeUrl(ORIGIN), ORIGIN);
@@ -69,56 +86,143 @@ test('a key that bypasses RLS is refused before it can ship in a binary', () => 
 	}
 });
 
-test('the rendered xcconfig survives Xcode reading it: no // in a value, and the escape expands back', () => {
-	const out = renderXcconfig({ url: ORIGIN, key: ANON_JWT });
-	const settings = Object.fromEntries(
-		out
-			.split('\n')
-			.filter((l) => l !== '' && !l.startsWith('//'))
-			.map((l) => {
-				assert.ok(!l.includes('//'), `an xcconfig would read the rest of this line as a comment: ${l}`);
-				const [k, ...v] = l.split('=');
-				return [k.trim(), expandEscapes(v.join('=').trim())];
-			}),
-	);
-	assert.deepEqual(settings, { [URL_SETTING]: ORIGIN, [KEY_SETTING]: ANON_JWT });
+test('an unset or blank Sentry DSN is accepted as "Sentry off", not refused', () => {
+	for (const off of [undefined, '', '  \n']) assert.equal(normalizeDsn(off), '', String(off));
 });
 
-test('the shipped plist passes only when both keys came through equal to the secrets', () => {
-	const expected = { url: ORIGIN, key: PUBLISHABLE };
-	const lines = verifyInfo({ [URL_INFO_KEY]: ORIGIN, [KEY_INFO_KEY]: PUBLISHABLE }, expected);
+test('a Sentry DSN is accepted in its SaaS and self-hosted forms', () => {
+	assert.equal(normalizeDsn(` ${DSN}\n`), DSN);
+	const selfHosted = `https://${DSN_KEY}@sentry.example.org:9000/sentry/42`;
+	assert.equal(normalizeDsn(selfHosted), selfHosted);
+});
+
+test('anything else in the DSN secret is refused, naming the setting and not the value', () => {
+	for (const bad of [
+		`http://${DSN_KEY}@o1.ingest.sentry.io/1`,
+		`https://${DSN_KEY}:deadbeefdeadbeefdeadbeefdeadbeef@o1.ingest.sentry.io/1`,
+		'https://o1.ingest.sentry.io/1',
+		`https://${DSN_KEY}@o1.ingest.sentry.io`,
+		`https://${DSN_KEY}@o1.ingest.sentry.io/`,
+		`https://${DSN_KEY}@o1.ingest.sentry.io/1/`,
+		`https://${DSN_KEY}@o1.ingest.sentry.io/project`,
+		`https://${DSN_KEY.toUpperCase()}@o1.ingest.sentry.io/1`,
+		'https://abc@o1.ingest.sentry.io/1',
+		`https://${DSN_KEY}@o1.ingest.sentry.io/1?x=1`,
+		`https://${DSN_KEY}@o1 ingest.sentry.io/1`,
+		`https://${DSN_KEY}@$(EVIL)/1`,
+		ORIGIN,
+		PUBLISHABLE,
+	]) {
+		assert.throws(
+			() => normalizeDsn(bad),
+			(e) => e instanceof Error && e.message.includes(DSN_SETTING) && !e.message.includes(DSN_KEY) && !e.message.includes('abcdefghijkl'),
+			bad,
+		);
+	}
+});
+
+test('the legacy key:secret DSN is refused for carrying a credential', () => {
+	assert.throws(() => normalizeDsn(`https://${DSN_KEY}:deadbeefdeadbeefdeadbeefdeadbeef@o1.ingest.sentry.io/1`), /legacy secret key/);
+});
+
+test('the release is a mobile_ios@ tag and nothing else', () => {
+	for (const ok of ['mobile_ios@1', 'mobile_ios@1.2', RELEASE, ' mobile_ios@10.20.30 ']) assert.equal(normalizeRelease(ok), ok.trim());
+	for (const bad of [undefined, '', '1.2.3', 'watch_ios@1.2.3', 'mobile_android@1.2.3', 'mobile_ios@1.2.3.4', 'mobile_ios@v1.2.3', 'mobile_ios@1.2.3-rc1', 'dev']) {
+		assert.throws(() => normalizeRelease(bad), (e) => e instanceof Error && e.message.includes(RELEASE_SETTING), String(bad));
+	}
+});
+
+test('the rendered xcconfig survives Xcode reading it: no // in a value, and the escape expands back', () => {
+	/** @param {string} out */
+	const parse = (out) =>
+		Object.fromEntries(
+			out
+				.split('\n')
+				.filter((l) => l !== '' && !l.startsWith('//'))
+				.map((l) => {
+					assert.ok(!l.includes('//'), `an xcconfig would read the rest of this line as a comment: ${l}`);
+					const [k, ...v] = l.split('=');
+					return [k.trim(), expandEscapes(v.join('=').trim())];
+				}),
+		);
+	assert.deepEqual(parse(renderXcconfig({ url: ORIGIN, key: ANON_JWT, dsn: DSN, release: RELEASE })), {
+		[URL_SETTING]: ORIGIN,
+		[KEY_SETTING]: ANON_JWT,
+		[DSN_SETTING]: DSN,
+		[RELEASE_SETTING]: RELEASE,
+	});
+	// An unset DSN is still DEFINED, as empty, so nothing else can supply one.
+	const off = renderXcconfig({ url: ORIGIN, key: ANON_JWT, dsn: '', release: RELEASE });
+	assert.match(off, new RegExp(`^${DSN_SETTING} =$`, 'm'));
+	assert.equal(parse(off)[DSN_SETTING], '');
+});
+
+test('the shipped plist passes only when every key came through equal to the release values', () => {
+	const expected = { url: ORIGIN, key: PUBLISHABLE, dsn: DSN, release: RELEASE };
+	const good = { [URL_INFO_KEY]: ORIGIN, [KEY_INFO_KEY]: PUBLISHABLE, [DSN_INFO_KEY]: DSN, [RELEASE_INFO_KEY]: RELEASE };
 	// Pinned to the exact text rather than scanned for the values: a line that
-	// equals its expected wording carries nothing but the two lengths, which
-	// proves more than a substring search for each secret could.
-	assert.deepEqual(lines, [
+	// equals its expected wording carries nothing but the lengths (and the
+	// public tag), which proves more than a substring search for each secret could.
+	assert.deepEqual(verifyInfo(good, expected), [
 		`${URL_INFO_KEY}: https origin present, length ${ORIGIN.length}, equal to the release secret`,
 		`${KEY_INFO_KEY}: present, length ${PUBLISHABLE.length}, equal to the release secret`,
+		`${DSN_INFO_KEY}: present, length ${DSN.length}, equal to the release secret`,
+		`${RELEASE_INFO_KEY}: ${RELEASE}`,
 	]);
 
-	for (const [info, needle] of /** @type {const} */ ([
-		[{}, 'is empty'],
+	for (const [over, needle] of /** @type {const} */ ([
+		[{ [URL_INFO_KEY]: undefined, [KEY_INFO_KEY]: undefined }, 'is empty'],
 		[{ [URL_INFO_KEY]: '', [KEY_INFO_KEY]: '' }, 'is empty'],
 		[{ [URL_INFO_KEY]: '$(SUPABASE_URL)', [KEY_INFO_KEY]: '$(SUPABASE_ANON_KEY)' }, 'unexpanded'],
-		[{ [URL_INFO_KEY]: 'https:', [KEY_INFO_KEY]: PUBLISHABLE }, 'differs'],
-		[{ [URL_INFO_KEY]: ORIGIN, [KEY_INFO_KEY]: 'sb_publishable_other' }, 'differs'],
+		[{ [URL_INFO_KEY]: 'https:' }, 'differs'],
+		[{ [KEY_INFO_KEY]: 'sb_publishable_other' }, 'differs'],
+		[{ [DSN_INFO_KEY]: undefined }, `${DSN_INFO_KEY} is empty`],
+		[{ [DSN_INFO_KEY]: '' }, `${DSN_INFO_KEY} is empty`],
+		[{ [DSN_INFO_KEY]: '$(SENTRY_DSN)' }, 'unexpanded'],
+		[{ [DSN_INFO_KEY]: 'https:' }, 'differs'],
+		[{ [RELEASE_INFO_KEY]: undefined }, `${RELEASE_INFO_KEY} is empty`],
+		[{ [RELEASE_INFO_KEY]: '$(APP_RELEASE)' }, 'unexpanded'],
+		[{ [RELEASE_INFO_KEY]: 'mobile_ios@1.2.2' }, 'differs'],
 	])) {
+		const info = { ...good, ...over };
 		assert.throws(
 			() => verifyInfo(info, expected),
-			(e) => e instanceof Error && e.message.includes(needle) && !e.message.includes(PUBLISHABLE) && !e.message.includes('abcdefghijkl'),
+			(e) =>
+				e instanceof Error &&
+				e.message.includes(needle) &&
+				!e.message.includes(PUBLISHABLE) &&
+				!e.message.includes('abcdefghijkl') &&
+				!e.message.includes(DSN_KEY),
 			JSON.stringify(info),
 		);
 	}
 });
 
+test('a release with no DSN passes only while the shipped watch carries none', () => {
+	const expected = { url: ORIGIN, key: PUBLISHABLE, dsn: '', release: RELEASE };
+	const base = { [URL_INFO_KEY]: ORIGIN, [KEY_INFO_KEY]: PUBLISHABLE, [RELEASE_INFO_KEY]: RELEASE };
+	for (const info of [{ ...base, [DSN_INFO_KEY]: '' }, base]) {
+		assert.equal(verifyInfo(info, expected)[2], `${DSN_INFO_KEY}: empty, as the release set none, so the watch starts no Sentry`);
+	}
+	assert.throws(
+		() => verifyInfo({ ...base, [DSN_INFO_KEY]: DSN }, expected),
+		(e) => e instanceof Error && e.message.includes('although the release set no') && !e.message.includes(DSN_KEY),
+	);
+});
+
 test('the command line prints an ::error:: and exits 1 on a bad secret, and never prints a value', (t) => {
 	/** @type {string[]} */ const printed = [];
 	t.mock.method(console, 'log', (/** @type {string} */ s) => printed.push(s));
-	assert.equal(main(['write', '/dev/null'], { [URL_SETTING]: ORIGIN, [KEY_SETTING]: jwt({ role: 'service_role' }) }), 1);
+	assert.equal(main(['write', '/dev/null'], env({ [KEY_SETTING]: jwt({ role: 'service_role' }) })), 1);
 	assert.match(printed.join('\n'), /^::error::/m);
-	assert.equal(main(['write', '/dev/null'], { [URL_SETTING]: ORIGIN, [KEY_SETTING]: PUBLISHABLE }), 0);
-	assert.equal(main(['frobnicate', 'x'], { [URL_SETTING]: ORIGIN, [KEY_SETTING]: PUBLISHABLE }), 1);
+	assert.equal(main(['write', '/dev/null'], env({ [DSN_SETTING]: `http://${DSN_KEY}@o1.ingest.sentry.io/1` })), 1);
+	assert.equal(main(['write', '/dev/null'], env({ [RELEASE_SETTING]: undefined })), 1);
+	assert.equal(main(['write', '/dev/null'], env()), 0);
+	assert.equal(main(['write', '/dev/null'], env({ [DSN_SETTING]: undefined })), 0, 'an unset DSN must not fail the release');
+	assert.equal(main(['write', '/dev/null'], env({ [DSN_SETTING]: '' })), 0, 'an empty DSN secret must not fail the release');
+	assert.equal(main(['frobnicate', 'x'], env()), 1);
 	const all = printed.join('\n');
-	assert.ok(!all.includes('abcdefghijkl') && !all.includes(PUBLISHABLE), all);
+	assert.ok(!all.includes('abcdefghijkl') && !all.includes(PUBLISHABLE) && !all.includes(DSN_KEY), all);
 });
 
 // --- Wiring: the values have to land where the watch actually reads them.
@@ -140,8 +244,8 @@ const stepIndex = (needle) => {
 	return i;
 };
 
-const WRITE_STEP = "Write the watch app's Supabase config";
-const VERIFY_STEP = 'The shipped watch app carries its Supabase config';
+const WRITE_STEP = "Write the watch app's runtime config";
+const VERIFY_STEP = 'The shipped watch app carries its runtime config';
 
 test('the watch target builds against the xcconfig that includes the generated file', () => {
 	const include = /^#include\? "([^"]+)"$/m.exec(WATCH_XCCONFIG);
@@ -160,7 +264,10 @@ test('the watch target builds against the xcconfig that includes the generated f
 	assert.ok(configs.some((c) => c.name === 'Release'), configs.map((c) => c.name).join(', '));
 	for (const { name, body } of configs) {
 		assert.match(body, /baseConfigurationReference = [0-9A-F]{24} \/\* WatchApp\.xcconfig \*\//, `WatchApp ${name}`);
-		assert.ok(!/\bSUPABASE_(ORIGIN|ANON_KEY) =/.test(body), `WatchApp ${name} sets a Supabase value in the committed project`);
+		assert.ok(
+			!/\b(SUPABASE_(URL|ORIGIN|ANON_KEY)|SENTRY_DSN|APP_RELEASE) =/.test(body),
+			`WatchApp ${name} sets a release-written value in the committed project`,
+		);
 	}
 
 	const write = stepBody(WRITE_STEP);
@@ -172,10 +279,23 @@ test('the watch target builds against the xcconfig that includes the generated f
 	);
 });
 
-test('the watch Info.plist expands exactly the two settings the script writes', () => {
-	for (const [infoKey, setting] of [[URL_INFO_KEY, URL_SETTING], [KEY_INFO_KEY, KEY_SETTING]]) {
+test('the watch Info.plist expands exactly the four settings the script writes', () => {
+	for (const [infoKey, setting] of [
+		[URL_INFO_KEY, URL_SETTING],
+		[KEY_INFO_KEY, KEY_SETTING],
+		[DSN_INFO_KEY, DSN_SETTING],
+		[RELEASE_INFO_KEY, RELEASE_SETTING],
+	]) {
 		assert.match(WATCH_PLIST, new RegExp(`<key>${infoKey}</key>\\s*<string>\\$\\(${setting}\\)</string>`));
 	}
+});
+
+test('RunApp.swift reads the two Sentry keys the plist carries and starts Sentry only behind a non-empty DSN', () => {
+	const runApp = read('apps/watch_ios/WatchApp/RunApp.swift');
+	for (const infoKey of [DSN_INFO_KEY, RELEASE_INFO_KEY]) {
+		assert.ok(runApp.includes(`forInfoDictionaryKey: "${infoKey}"`), `RunApp.swift no longer reads ${infoKey}`);
+	}
+	assert.match(runApp, /if !dsn\.isEmpty \{[\s\S]*?SentrySDK\.start/);
 });
 
 test('release-ios.yml writes the config before the build and verifies the IPA before keeping or uploading it', () => {
@@ -189,6 +309,8 @@ test('release-ios.yml writes the config before the build and verifies the IPA be
 		assert.ok(!/\bif:/.test(body), `${name} must not be conditional`);
 		assert.match(body, /SUPABASE_URL: \$\{\{ secrets\.PUBLIC_SUPABASE_URL \}\}/, name);
 		assert.match(body, /SUPABASE_ANON_KEY: \$\{\{ secrets\.PUBLIC_SUPABASE_ANON_KEY \}\}/, name);
+		assert.match(body, /SENTRY_DSN: \$\{\{ secrets\.WATCH_IOS_SENTRY_DSN \}\}/, name);
+		assert.match(body, /APP_RELEASE: \$\{\{ github\.event\.release\.tag_name \}\}/, name);
 		assert.ok(!/\$\{\{ secrets\./.test(body.split('run:')[1] ?? ''), `${name} interpolates a secret into its shell`);
 	}
 	const verify = stepBody(VERIFY_STEP);

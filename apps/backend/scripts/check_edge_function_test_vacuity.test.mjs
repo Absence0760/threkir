@@ -10,7 +10,8 @@
 // case absent from the mutant report), and these are the cheap half.
 
 import assert from 'node:assert/strict';
-import { readFileSync, statSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
@@ -18,6 +19,7 @@ import { neuterModule, topLevelExports } from './edge_function_neuter.mjs';
 import {
   EXPECTED_SURVIVORS,
   MATERIALISED,
+  runLogged,
   NEUTERED_ARTIFACTS,
   parseJunit,
   REPO_ROOT,
@@ -151,5 +153,28 @@ test('every expected survivor names a reason and a file that exists', () => {
   for (const e of EXPECTED_SURVIVORS) {
     assert.ok(e.reason.trim(), `${e.file} :: ${e.name} carries no reason`);
     statSync(join(REPO_ROOT, 'apps', 'backend', e.file.replace(/^\.\//, '')));
+  }
+});
+
+test('a child that prints past the 1 MiB pipe buffer still runs to completion', () => {
+  // The neutered suite's failure output outgrew spawnSync's default maxBuffer on
+  // PR #1101, which kills the child before deno writes its JUnit report. 3 MiB
+  // here, then a file only a child that was not killed can write.
+  const dir = mkdtempSync(join(tmpdir(), 'edge-vacuity-test-'));
+  try {
+    const done = join(dir, 'done');
+    const res = runLogged(
+      process.execPath,
+      ['-e', `process.stdout.write('x'.repeat(3 * 1024 * 1024)); require('fs').writeFileSync(${JSON.stringify(done)}, 'ok')`],
+      dir,
+      join(dir, 'run'),
+    );
+    assert.equal(res.error, undefined);
+    assert.equal(res.signal, null);
+    assert.equal(res.status, 0);
+    assert.equal(readFileSync(done, 'utf8'), 'ok');
+    assert.equal(statSync(res.stdoutPath).size, 3 * 1024 * 1024);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });

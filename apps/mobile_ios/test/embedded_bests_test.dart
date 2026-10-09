@@ -7,6 +7,7 @@ import 'dart:math' as math;
 
 import 'package:core_models/core_models.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:run_recorder/run_recorder.dart' show GpsFixEvent, smoothDistance;
 import '../lib/embedded_bests.dart';
 import '../lib/run_stats.dart';
 
@@ -157,6 +158,29 @@ void main() {
         expect(cum[i], greaterThanOrEqualTo(cum[i - 1]));
       }
       expect(cum[10], cum[9]);
+    });
+
+    test('cumulative is the smoothed distance a saved run carries', () {
+      // Not the forward filter the live screen shows: the smoother the
+      // recorder saves with and the server recompute writes.
+      final start = DateTime.utc(2026, 4, 1);
+      final track = <Waypoint>[
+        for (var i = 0; i <= 300; i++)
+          Waypoint(
+            lat: (i.isOdd ? 2 : -2) / mPerDeg,
+            lng: i * 3 / mPerDeg,
+            timestamp: start.add(Duration(seconds: i)),
+          ),
+      ];
+      final cum = estimatorCumulativeMetres(track);
+      final smoothed = smoothDistance([
+        for (var i = 0; i < track.length; i++)
+          GpsFixEvent(t: i.toDouble(), lat: track[i].lat, lng: track[i].lng),
+      ]).cumulativeM;
+      expect(cum.length, track.length);
+      for (var i = 0; i < cum.length; i++) {
+        expect(cum[i], closeTo(smoothed[i], 1e-9), reason: 'point $i');
+      }
     });
 
     test('medianFixIntervalS takes the median positive interval', () {

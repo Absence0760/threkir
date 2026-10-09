@@ -11,7 +11,7 @@
 
 import type { ActivityType, TrackPoint } from '../types';
 import { haversineMetres } from '../runs/run_stats';
-import { GpsDistanceEstimator } from '../runs/gps_distance';
+import { smoothDistance, type GpsEvent } from '../runs/gps_distance';
 
 /// Canonical per-lap shape registered in docs/backend/metadata.md § laps. `index`
 /// is 1-based; `start_offset_s` is the cumulative duration up to the START
@@ -226,38 +226,46 @@ export function medianFixIntervalS(track: readonly TrackPoint[]): number {
 	return intervals.length % 2 === 1 ? intervals[mid] : (intervals[mid - 1] + intervals[mid]) / 2;
 }
 
-/// Distance covered up to each point, replaying the track through the
-/// spec-v1.1 GPS distance estimator — the filter that owns the run's headline
-/// distance. The raw hop-sum is inflated by GPS noise, so a "5 km" window
-/// measured on it closes early and the best reads too fast. `t` is seconds
-/// since the first timestamped point and the expected fix interval is the
-/// median positive interval, so a sparse track is not re-anchored on every
-/// fix. A point without a timestamp carries the previous cumulative. Lockstep
-/// with `estimatorCumulativeMetres` in apps/mobile_android/lib/embedded_bests.dart
-/// and apps/job_worker/internal/embedded_bests.go.
+/// Distance covered up to each point, replaying the track through the GPS
+/// distance smoother (spec v1.2, docs/features/gps_distance.md) — the same
+/// figure a saved or recomputed run carries. The raw hop-sum is inflated by
+/// GPS noise, so a "5 km" window measured on it closes early and the best
+/// reads too fast. `t` is seconds since the first timestamped point and the
+/// expected fix interval is the median positive interval, so a sparse track is
+/// not re-anchored on every fix. A point without a timestamp carries the
+/// previous cumulative. Lockstep with `estimatorCumulativeMetres` in
+/// apps/mobile_android/lib/embedded_bests.dart and
+/// apps/job_worker/internal/embedded_bests.go.
 export function estimatorCumulativeMetres(
 	track: readonly EstimatorTrackPoint[],
 	maxSpeedMps = 10,
 ): number[] {
-	const est = new GpsDistanceEstimator(maxSpeedMps, medianFixIntervalS(track), null);
-	const out = new Array<number>(track.length).fill(0);
+	const events: GpsEvent[] = [];
+	const eventOf = new Array<number>(track.length).fill(-1);
 	let t0: number | null = null;
 	for (let i = 0; i < track.length; i++) {
 		const p = track[i];
 		const ms = pointMs(p);
-		if (ms != null) {
-			if (t0 == null) t0 = ms;
-			est.addFix(
-				(ms - t0) / 1000,
-				p.lat,
-				p.lng,
-				p.accuracyMetres,
-				p.speedMps,
-				p.speedAccuracyMps,
-				p.bearingDeg,
-			);
-		}
-		out[i] = est.distanceM;
+		if (ms == null) continue;
+		if (t0 == null) t0 = ms;
+		eventOf[i] = events.length;
+		events.push({
+			type: 'fix',
+			t: (ms - t0) / 1000,
+			lat: p.lat,
+			lng: p.lng,
+			acc: p.accuracyMetres,
+			speed: p.speedMps,
+			speedAcc: p.speedAccuracyMps,
+			bearing: p.bearingDeg,
+		});
+	}
+	const cum = smoothDistance(events, maxSpeedMps, medianFixIntervalS(track), null).cumulativeM;
+	const out = new Array<number>(track.length).fill(0);
+	let last = 0;
+	for (let i = 0; i < track.length; i++) {
+		if (eventOf[i] >= 0) last = cum[eventOf[i]];
+		out[i] = last;
 	}
 	return out;
 }
@@ -325,19 +333,53 @@ export function fastestWindowSeconds(
 	return best == null ? null : Math.round(best / 1000);
 }
 
+/// The file's own per-point distance stream (FIT `record.distance`, Strava's
+/// `distance` stream), rebased to 0 at the first point, or null when it
+/// cannot stand in for the estimator: absent, a length other than the
+/// track's, any value missing / non-finite / negative, a step backwards, or
+/// no distance gained at all. A device stream is what the watch measured
+/// (wheel or foot pod, or its own filtered GPS), so it is preferred over
+/// re-estimating from the positions — the same choice Strava makes. One bad
+/// sample rejects the whole stream: patching around it would splice two
+/// measurements of the same run together. Lockstep with
+/// `deviceCumulativeMetres` in apps/backend/supabase/functions/_shared/strava.ts
+/// and apps/mobile_android/lib/embedded_bests.dart.
+export function deviceCumulativeMetres(
+	stream: readonly unknown[] | null | undefined,
+	pointCount: number,
+): number[] | null {
+	if (!Array.isArray(stream) || stream.length !== pointCount || pointCount < 2) return null;
+	const out = new Array<number>(pointCount);
+	let prev = -Infinity;
+	for (let i = 0; i < pointCount; i++) {
+		const v = stream[i];
+		if (typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v < prev) return null;
+		prev = v;
+		out[i] = v;
+	}
+	const base = out[0];
+	if (!(out[pointCount - 1] > base)) return null;
+	for (let i = 0; i < pointCount; i++) out[i] -= base;
+	return out;
+}
+
 /// Embedded best-effort seconds for every canonical distance the track is
-/// long enough to cover, measured on the estimator's cumulative with the
-/// activity's speed ceiling (run when absent). Returns `{}` (no fake bests)
-/// when the track has < 3 points or covers no canonical distance; callers
-/// pass the result to saveRun's `embedded_bests` so it lands on the promoted
-/// runs columns.
+/// long enough to cover. Measured on the file's own distance stream when
+/// `deviceDistance` passes `deviceCumulativeMetres`, otherwise on the
+/// estimator's cumulative with the activity's speed ceiling (run when
+/// absent). Returns `{}` (no fake bests) when the track has < 3 points or
+/// covers no canonical distance; callers pass the result to saveRun's
+/// `embedded_bests` so it lands on the promoted runs columns.
 export function computeEmbeddedBests(
 	track: readonly EstimatorTrackPoint[],
 	activityType?: ActivityType | null,
+	deviceDistance?: readonly unknown[] | null,
 ): Partial<Record<EmbeddedBestColumn, number>> {
 	const out: Partial<Record<EmbeddedBestColumn, number>> = {};
 	if (!Array.isArray(track) || track.length < 3) return out;
-	const cum = estimatorCumulativeMetres(track, maxSpeedMpsForActivity(activityType));
+	const cum =
+		deviceCumulativeMetres(deviceDistance, track.length) ??
+		estimatorCumulativeMetres(track, maxSpeedMpsForActivity(activityType));
 	for (const [key, dist] of EMBEDDED_BEST_DISTANCES) {
 		const secs = fastestWindowSeconds(track, dist, cum);
 		if (secs != null && secs > 0) out[key] = secs;
@@ -386,6 +428,11 @@ export interface ParsedFitRun {
 	/// `hr_zones` setting on import. `null` when the file had no zones.
 	hr_zones: FitHrZones | null;
 	track: TrackPoint[];
+	/// The device's cumulative distance (metres) at each `track` point, one
+	/// entry per point, from FIT `record.distance`; NaN where a record carried
+	/// none. `null` when no positioned record carried a distance. Not stored —
+	/// it only feeds `computeEmbeddedBests`, which validates it.
+	distance_stream: number[] | null;
 	/// Per-point HR for records that carried no GPS fix (indoor / treadmill).
 	/// On an outdoor run every record has a fix and its HR rides on the
 	/// `track` point, so this is empty; on an indoor run `track` is empty and
@@ -473,6 +520,8 @@ export async function parseFitBuffer(buf: ArrayBuffer): Promise<ParsedFitRun | n
 	const records = data.records ?? [];
 
 	const track: TrackPoint[] = [];
+	const distanceStream: number[] = [];
+	let anyDistance = false;
 	const hrSeries: { bpm: number; ts?: string }[] = [];
 	for (const r of records) {
 		// FIT positions arrive in semicircles by default but the parser
@@ -496,6 +545,13 @@ export async function parseFitBuffer(buf: ArrayBuffer): Promise<ParsedFitRun | n
 			if (typeof ts === 'string') tp.ts = ts;
 			if (validHr) tp.bpm = r.heart_rate as number;
 			track.push(tp);
+			const d = (r as { distance?: unknown }).distance;
+			if (typeof d === 'number' && Number.isFinite(d)) {
+				distanceStream.push(d);
+				anyDistance = true;
+			} else {
+				distanceStream.push(NaN);
+			}
 		} else if (validHr) {
 			// Indoor / treadmill record: HR but no GPS. Garmin emits these on
 			// every belt session. Collect the HR so the run-detail zone chart
@@ -584,6 +640,7 @@ export async function parseFitBuffer(buf: ArrayBuffer): Promise<ParsedFitRun | n
 			(data as { hr_zone?: { high_bpm?: unknown }[] }).hr_zone,
 		),
 		track,
+		distance_stream: anyDistance ? distanceStream : null,
 		hr_series: hrSeries,
 	};
 }

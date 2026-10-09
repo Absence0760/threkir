@@ -47,10 +47,6 @@ const decisionsPath = resolve(repoRoot, 'docs/architecture/decisions.md');
 const KNOWN_DANGLING_REFS = new Map<number, string>([
 	[4704, '"§ 4704\'s `+` packing" — no entry 4704, and § 470 is unrelated to the glyph table'],
 	[
-		1810,
-		'cited twice in the exercise_catalogue_picker Dart twins beside a live § 1574, as though it had an opinion about shadowed exercises; above the maximum, so it is a typo or an entry that never landed'
-	],
-	[
 		1958,
 		'cited twice in exercise_catalogue_picker.test.ts as having "asked for a Playwright" test and "raised an objection"; above the maximum'
 	],
@@ -69,6 +65,23 @@ const REF_EXTENSIONS = /\.(md|mjs|ts|dart|swift|kt|yml|yaml|sh|rs|go|py)$/;
 /// followed: `§ 1254, 2026-09-18` is a section and a date, and reading the tail
 /// as a reference reports the YEAR as a missing entry.
 const REF_PATTERN = /§§?\s?(\d+)(?:\s*[-\u2013]\s*(\d+))?/g;
+
+/// The allowlisted stray numbers that an entry heading now claims.
+function allowlistedNumbersNowClaimed(
+	existing: ReadonlySet<number>,
+	allowlist: ReadonlyMap<number, string>
+): number[] {
+	return [...allowlist.keys()].filter((n) => existing.has(n)).sort((a, b) => a - b);
+}
+
+test('an allowlisted stray number that an entry later claims is reported as claimed, not repaired', () => {
+	const allowlist = new Map([
+		[4704, 'stray'],
+		[1810, 'stray'],
+	]);
+	assert.deepEqual(allowlistedNumbersNowClaimed(new Set([1, 2, 1810]), allowlist), [1810]);
+	assert.deepEqual(allowlistedNumbersNowClaimed(new Set([1, 2]), allowlist), []);
+});
 
 function decisionsDoc(): string {
 	return readFileSync(decisionsPath, 'utf-8');
@@ -159,6 +172,23 @@ test('every §N reference anywhere in the tree resolves to an entry', () => {
 			}
 		}
 	}
+	// A listed number stops dangling one of two ways, and only one of them means
+	// the citation was fixed. When an entry is appended under that very number,
+	// every stray citation the list excused now points at an entry it never
+	// meant — § 1810 was excused as a typo in the exercise-picker Dart twins until
+	// the Apple Watch release entry took 1810, and the shrink check below then
+	// asked for the excuse to be deleted, which would have blessed the wrong
+	// pointer. Name that case first, with the instruction it needs.
+	const claimed = allowlistedNumbersNowClaimed(existing, KNOWN_DANGLING_REFS);
+	assert.deepEqual(
+		claimed,
+		[],
+		`KNOWN_DANGLING_REFS excuses ${claimed.map((n) => `§ ${n}`).join(', ')} as a stray citation, and an ` +
+			`entry now carries that number, so the stray citations point at an entry they never meant. Fix ` +
+			`each citation the reason describes (point it at the right entry, or drop it), THEN delete the ` +
+			`KNOWN_DANGLING_REFS entry. Deleting the entry alone leaves the wrong pointer looking valid.`
+	);
+
 	const repaired = [...KNOWN_DANGLING_REFS.keys()].filter((n) => !stillDangling.has(n));
 	assert.deepEqual(
 		repaired,

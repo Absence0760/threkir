@@ -6,7 +6,9 @@
  * The week is the runner's calendar week on their `week_start` pref, the same
  * window the "This Week" stat card and `ThisWeekStrip` use, so the three never
  * disagree about what "this week" holds. Plan workouts marked done without a
- * linked run count toward it the way the stat card counts them.
+ * linked run count toward it through `markedDoneTally`, the same tally the
+ * stat card and the Goals section take, so a run-count goal reads the same
+ * number here and on its ring (decisions § 1813).
  *
  * The yardstick is, in order: the plan's distance for the same calendar week,
  * the runner's own weekly goal (distance, then run count), and otherwise their
@@ -15,22 +17,22 @@
  * set against a flat weekly goal would read as falling short on purpose. A week with no activity inside the average window is a real zero,
  * but weeks before the runner's first activity are not weeks they missed, so
  * the window is shortened to their history rather than diluted by it.
+ *
+ * Web half of a registered parity pair with the Dart twin
+ * `apps/mobile_android/lib/week_lead.dart`. Keep the algorithm, edge cases,
+ * outputs, and test counts in lockstep.
  */
 
 import type { WeekStart } from './current_week';
-import { weekStartLocal, type RunGoal } from './goals';
+import { markedDoneTally, weekStartLocal, type PlanCompletion, type RunGoal } from './goals';
 
 export interface LeadActivity {
 	started_at: string;
 	distance_m: number;
 }
 
-export interface LeadPlanWorkout {
-	scheduled_date: string;
+export interface LeadPlanWorkout extends PlanCompletion {
 	kind: string;
-	target_distance_m: number | null;
-	manually_completed: boolean;
-	completed_run_id: string | null;
 	skipped_at: string | null;
 }
 
@@ -150,7 +152,6 @@ export function weekLead<W extends LeadPlanWorkout>(input: {
 }): WeekLead<W> {
 	const start = weekStartLocal(input.now, input.weekStart);
 	const todayIso = localIso(input.now);
-	const startIso = localIso(start);
 
 	let distanceM = 0;
 	let count = 0;
@@ -162,12 +163,9 @@ export function weekLead<W extends LeadPlanWorkout>(input: {
 	}
 
 	const workouts = input.planWorkouts ?? [];
-	for (const w of workouts) {
-		if (!(w.manually_completed === true && w.completed_run_id == null)) continue;
-		if (w.scheduled_date < startIso || w.scheduled_date > todayIso) continue;
-		distanceM += w.target_distance_m ?? 0;
-		count += 1;
-	}
+	const marked = markedDoneTally(workouts, start, input.now);
+	distanceM += marked.distanceM;
+	count += marked.count;
 
 	let comparison: WeekComparison | null = null;
 	const planned = input.planWorkouts ? plannedDistanceForWeek(workouts, start) : 0;

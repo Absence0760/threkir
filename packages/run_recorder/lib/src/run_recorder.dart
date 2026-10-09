@@ -124,12 +124,27 @@ class RunRecorder {
   /// [clock] exists so tests can drive the monotonic gap the re-anchor escape
   /// in [_onPosition] gates on without waiting out real seconds. Production
   /// always takes the default.
-  RunRecorder({Stopwatch? clock}) : _stopwatch = clock ?? Stopwatch();
+  RunRecorder({
+    Stopwatch? clock,
+    @visibleForTesting int maxSmoothedStretchEvents = defaultMaxSmoothedStretchEvents,
+  })  : _stopwatch = clock ?? Stopwatch(),
+        _maxSmoothedStretchEvents = maxSmoothedStretchEvents;
+
+  /// The most estimator inputs one stretch keeps for [stop]'s smoother replay.
+  /// The replay runs on the UI isolate at stop and holds every input plus the
+  /// smoother's per-fix records, ~1.2 KB a fix (~+425 MB at the 360k fixes of
+  /// a 100-hour ultra). Past this a stretch stops keeping inputs and is saved
+  /// on its forward distance and raw positions, unstamped, so the server
+  /// recompute smooths it instead. 100k fixes is ~28 hours at 1 Hz.
+  static const int defaultMaxSmoothedStretchEvents = 100000;
+  final int _maxSmoothedStretchEvents;
 
   static const _uuid = Uuid();
 
-  /// `metadata.distance_estimator` on a GPS-distance run.
-  static const distanceEstimatorVersion = 'kalman_v1';
+  /// `metadata.distance_estimator` on a GPS-distance run whose saved distance
+  /// is the spec v1.2 smoother's ([smoothDistance]). The live screen reads the
+  /// forward filter; [stop] replays every stretch through the smoother.
+  static const distanceEstimatorVersion = 'kalman_v2';
 
   /// How often [prepare] retries opening the position stream when it is
   /// currently absent (services/permission denied at start, or the stream
@@ -149,6 +164,11 @@ class RunRecorder {
   Timer? _timer;
   Timer? _gpsRetryTimer;
   final List<LapSplit> _laps = [];
+  // Where each lap fell in the estimator's inputs, so [stop] can re-measure it
+  // on the smoothed distance. Keyed by the split itself, so the several places
+  // that clear or replace [_laps] cannot leave the two out of step.
+  final Expando<({int stretch, int events, double forwardM})> _lapAnchors =
+      Expando();
 
   /// All lap splits recorded so far.
   List<LapSplit> get laps => List.unmodifiable(_laps);
@@ -167,11 +187,17 @@ class RunRecorder {
   /// timezone change) — the run duration stays correct.
   final Stopwatch _stopwatch;
 
-  /// The headline GPS distance (spec v1.1, `docs/features/gps_distance.md`).
+  /// The headline GPS distance (spec v1.2, `docs/features/gps_distance.md`).
   /// One estimator per un-paused stretch: [resume] folds the finished one into
   /// [_distanceOffsetMetres] and starts another, so a paused span is never
   /// integrated. A resumed session seeds the offset with the prior distance.
   GpsDistanceEstimator _estimator = GpsDistanceEstimator();
+  // Every input each stretch's estimator took, replayed through the smoother
+  // at [stop]; one per estimator, in order.
+  final List<_DistanceStretch> _stretches = [];
+  // A process-kill resume seeded a distance the smoother never saw.
+  bool _distanceSeeded = false;
+  _DistanceStretch? get _stretch => _stretches.isEmpty ? null : _stretches.last;
   double _distanceOffsetMetres = 0;
   double _stepFilledOffsetMetres = 0;
   double? _priorStrideM;
@@ -189,11 +215,18 @@ class RunRecorder {
   // (which used to fire 1×/second minimum + once per GPS fix).
   late final UnmodifiableListView<Waypoint> _trackView =
       UnmodifiableListView(_track);
-  // Lowest `_track` index [_calculatePace] may walk back to. Bumped to the
-  // current track length on every resume so the rolling-pace window never
-  // straddles a pause (or a dead-process gap), whose wall-clock duration would
-  // otherwise be charged to the post-resume distance.
-  int _paceFloorIdx = 0;
+  // Live pace's rolling window: (estimator time, estimator distance) at each
+  // fix the estimator took, oldest first, pruned to the ~200 m [_calculatePace]
+  // reads. Pace is the estimator's distance gained over that window, not the
+  // hop-sum of the raw track, which over-reads by the jitter the estimator
+  // removes. [_sealPaceWindow] empties it at every pause, resume, re-anchored
+  // GPS gap and new estimator stretch, so the window never spans a gap whose
+  // wall-clock time was not matched by credited distance.
+  final ListQueue<({double t, double m})> _paceSamples = ListQueue();
+  int _paceSamplesSinceSeal = 0;
+  static const double _paceWindowM = 200;
+  static const double _paceMinWindowM = 50;
+  static const int _paceMinSamples = 5;
   /// Latest raw GPS fix — drives the blue dot on the live map and updates
   /// on every fix, independent of the track-append threshold.
   Waypoint? _currentWaypoint;
@@ -282,7 +315,14 @@ class RunRecorder {
   bool _weakGps = false;
   // Remembered so the retry loop can re-open the position stream with the
   // same accuracy setting the caller passed to [prepare].
-  LocationAccuracy _locationAccuracy = LocationAccuracy.high;
+  LocationAccuracy _locationAccuracy = LocationAccuracy.bestForNavigation;
+  bool _rawGpsProvider = false;
+  // The fix interval requested from Android, and the interval the estimator
+  // scales its gap and freshness windows by. geolocator_android otherwise
+  // falls back to 5000 ms, and on Android 13+ also sets that as the minimum
+  // update interval, so the phone recorded one fix every 5 s. iOS has no
+  // interval knob; CoreLocation delivers ~1 Hz at this accuracy.
+  static const Duration _fixInterval = Duration(seconds: 1);
 
   /// Latest heart-rate sample, in BPM. Stamped onto each new [Waypoint]
   /// when constructed so the saved track carries per-point BPM and the
@@ -360,6 +400,16 @@ class RunRecorder {
   bool get backgroundLocationLimited => _backgroundLocationLimited;
   bool _backgroundLocationLimited = false;
 
+  /// The Android location provider the position stream asks for: `'gps'`
+  /// (raw `GPS_PROVIDER` through `LocationManager`) when [prepare] was given
+  /// `rawGpsProvider`, else `'fused'`. Null off Android, which has one
+  /// provider. Saved as `metadata.location_provider` so a run recorded for the
+  /// GPS corpus says which stream produced it.
+  String? get locationProvider =>
+      defaultTargetPlatform == TargetPlatform.android
+          ? (_rawGpsProvider ? 'gps' : 'fused')
+          : null;
+
   /// Whether [begin] has been called and time/distance are accumulating.
   bool get recording => _recording;
 
@@ -390,13 +440,20 @@ class RunRecorder {
   /// error — it records fine while the app is on screen, and only background
   /// delivery is at risk. It sets [backgroundLocationLimited] so the caller
   /// can disclose the limitation.
+  ///
+  /// [rawGpsProvider] is a developer diagnostic for #1090 item 6: on Android
+  /// it asks geolocator for the platform `LocationManager` (raw
+  /// `GPS_PROVIDER`) instead of the fused provider, which already smooths
+  /// before our filter sees a fix. Ignored on iOS. The saved run names the
+  /// provider it used in `metadata.location_provider`.
   Future<void> prepare({
     Route? route,
     int distanceFilterMetres = 3,
     double minMovementMetres = 2,
     double maxSpeedMps = 10,
-    LocationAccuracy accuracy = LocationAccuracy.high,
+    LocationAccuracy accuracy = LocationAccuracy.bestForNavigation,
     double accuracyGateMetres = 20,
+    bool rawGpsProvider = false,
   }) async {
     if (_disposed) {
       throw StateError('RunRecorder.prepare() called after dispose()');
@@ -426,7 +483,7 @@ class RunRecorder {
     _matchedAlongM = null;
     _distanceAtLastMatch = 0;
     _currentWaypointTrusted = true;
-    _paceFloorIdx = 0;
+    _sealPaceWindow();
     _recording = false;
     _paused = false;
     _route = route;
@@ -437,6 +494,7 @@ class RunRecorder {
     _resetDistance(0);
     _accuracyGateMetres = accuracyGateMetres;
     _locationAccuracy = accuracy;
+    _rawGpsProvider = rawGpsProvider;
     _lastAccuracyDropLogAt = null;
     _backgroundLocationLimited = false;
     _resetTreadmill();
@@ -526,12 +584,17 @@ class RunRecorder {
   /// foreground capability stays alive so no error surfaces, and the user
   /// only notices once they look at the finished run. Pinning the flag here
   /// keeps the iOS twin honest. `activityType: fitness` biases the
-  /// CoreLocation power-saving heuristics for foot-paced motion.
+  /// CoreLocation power-saving heuristics for foot-paced motion. The default
+  /// accuracy is [LocationAccuracy.bestForNavigation]: geolocator_apple maps
+  /// `high` to `kCLLocationAccuracyNearestTenMeters`, and only `best` and
+  /// `bestForNavigation` ask CoreLocation for full GPS accuracy.
   ///
   /// Android gets [AndroidSettings] with [ForegroundNotificationConfig] so
   /// the geolocator package can promote its service to a typed foreground
-  /// service. `distanceFilter: 0` keeps every fix flowing so software
-  /// filtering can drive the blue dot at sensor rate.
+  /// service, and an explicit 1 s [_fixInterval]. `distanceFilter: 0` keeps
+  /// every fix flowing so software filtering can drive the blue dot at
+  /// sensor rate. On Android `high`, `best` and `bestForNavigation` are the
+  /// same fused-provider request (`PRIORITY_HIGH_ACCURACY`).
   LocationSettings _platformLocationSettings() {
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       return AppleSettings(
@@ -545,6 +608,8 @@ class RunRecorder {
     }
     return AndroidSettings(
       accuracy: _locationAccuracy,
+      intervalDuration: _fixInterval,
+      forceLocationManager: _rawGpsProvider,
       // Receive every fix from the OS; movement filtering happens in
       // software so the blue dot can refresh without inflating the track.
       distanceFilter: 0,
@@ -601,7 +666,7 @@ class RunRecorder {
     _lastTrackedPosition = null;
     _lastTrackedPositionAt = null;
     _lastTrackedElapsed = null;
-    _paceFloorIdx = 0;
+    _sealPaceWindow();
     _weakGps = false;
     _resetTreadmillAccumulators();
     _recording = true;
@@ -624,8 +689,9 @@ class RunRecorder {
     int distanceFilterMetres = 3,
     double minMovementMetres = 2,
     double maxSpeedMps = 10,
-    LocationAccuracy accuracy = LocationAccuracy.high,
+    LocationAccuracy accuracy = LocationAccuracy.bestForNavigation,
     double accuracyGateMetres = 20,
+    bool rawGpsProvider = false,
   }) async {
     await prepare(
       route: route,
@@ -634,6 +700,7 @@ class RunRecorder {
       maxSpeedMps: maxSpeedMps,
       accuracy: accuracy,
       accuracyGateMetres: accuracyGateMetres,
+      rawGpsProvider: rawGpsProvider,
     );
     begin();
   }
@@ -673,8 +740,9 @@ class RunRecorder {
     int distanceFilterMetres = 3,
     double minMovementMetres = 2,
     double maxSpeedMps = 10,
-    LocationAccuracy accuracy = LocationAccuracy.high,
+    LocationAccuracy accuracy = LocationAccuracy.bestForNavigation,
     double accuracyGateMetres = 20,
+    bool rawGpsProvider = false,
   }) async {
     Object? prepareError;
     try {
@@ -685,6 +753,7 @@ class RunRecorder {
         maxSpeedMps: maxSpeedMps,
         accuracy: accuracy,
         accuracyGateMetres: accuracyGateMetres,
+        rawGpsProvider: rawGpsProvider,
       );
     } catch (e) {
       // prepare() reset state, flipped _prepared true, and started the retry
@@ -771,7 +840,7 @@ class RunRecorder {
     _lastTrackedPosition = null;
     _lastTrackedPositionAt = null;
     _lastTrackedElapsed = null;
-    _paceFloorIdx = _track.length;
+    _sealPaceWindow();
     _weakGps = false;
     _resetTreadmillAccumulators();
     _recording = true;
@@ -827,6 +896,7 @@ class RunRecorder {
     double minMovementMetres = 2,
     double maxSpeedMps = 10,
     double accuracyGateMetres = 20,
+    bool rawGpsProvider = false,
   }) {
     _startTime = null;
     _elapsedOffset = Duration.zero;
@@ -847,7 +917,7 @@ class RunRecorder {
     _matchedAlongM = null;
     _distanceAtLastMatch = 0;
     _currentWaypointTrusted = true;
-    _paceFloorIdx = 0;
+    _sealPaceWindow();
     _recording = false;
     _paused = false;
     _route = route;
@@ -857,9 +927,14 @@ class RunRecorder {
     _maxSpeedMps = maxSpeedMps;
     _resetDistance(0);
     _accuracyGateMetres = accuracyGateMetres;
+    _rawGpsProvider = rawGpsProvider;
     _resetTreadmill();
     _prepared = true;
   }
+
+  /// Test-only: the [LocationSettings] the position stream would open with.
+  @visibleForTesting
+  LocationSettings get debugLocationSettings => _platformLocationSettings();
 
   /// Test-only: push a simulated [Position] through the same filter chain
   /// the live geolocator subscription would use.
@@ -896,11 +971,17 @@ class RunRecorder {
   @visibleForTesting
   bool get debugWeakGps => _weakGps;
 
-  /// Test-only: rolling-pace computed from the trailing ~200 m of track.
-  /// Returns null when the track is too short or timestamps are missing —
-  /// matches the contract documented on [RunSnapshot.currentPaceSecondsPerKm].
+  /// Test-only: rolling pace over the estimator's trailing ~200 m. Null
+  /// until enough fixes have landed since the last pause, resume or GPS gap —
+  /// the contract documented on [RunSnapshot.currentPaceSecondsPerKm].
   @visibleForTesting
   double? get debugPaceSecondsPerKm => _calculatePace();
+
+  /// Test-only: append one (estimator time, estimator distance) sample to the
+  /// live pace window, as a fix the estimator took would.
+  @visibleForTesting
+  void debugAddPaceSample(double t, double distanceM) =>
+      _addPaceSample(t, distanceM);
 
   /// Test-only: distance from [pos] to the end of the loaded route, summed
   /// along the remaining route segments. Null when no route is loaded.
@@ -943,7 +1024,7 @@ class RunRecorder {
     _lastTrackedPosition = null; // avoid a big jump after resume
     _lastTrackedPositionAt = null;
     _lastTrackedElapsed = null;
-    _paceFloorIdx = _track.length;
+    _sealPaceWindow();
     // Drop the speed-integration anchor too. Without this, the first
     // post-resume belt sample integrates dt back to a timestamp written
     // during/before the pause, crediting the paused gap as distance for any
@@ -978,7 +1059,9 @@ class RunRecorder {
   void setStepCount(int cumulative) {
     if (!_recording || _paused) return;
     try {
-      _estimator.addSteps(_estimatorStepTime(), cumulative);
+      final t = _estimatorStepTime();
+      _estimator.addSteps(t, cumulative);
+      _keepStretchEvent(GpsStepsEvent(t: t, count: cumulative));
     } catch (e) {
       debugPrint('RunRecorder: step sample dropped — $e');
     }
@@ -995,15 +1078,38 @@ class RunRecorder {
     _distanceOffsetMetres = seedMetres;
     _stepFilledOffsetMetres = 0;
     _priorStrideM = null;
+    _stretches.clear();
+    _distanceSeeded = seedMetres > 0;
     _newEstimator();
   }
 
   void _finishEstimatorSegment() {
     try {
-      _estimator.finish(_estimatorStepTime());
+      final t = _estimatorStepTime();
+      _estimator.finish(t);
+      _keepStretchEvent(GpsFinishEvent(t: t));
     } catch (e) {
       debugPrint('RunRecorder: estimator finish failed — $e');
     }
+  }
+
+  /// Keeps [event] for the current stretch's smoother replay and returns its
+  /// index, or null when the stretch keeps none: there is no stretch, it will
+  /// not be smoothed, or it has reached [_maxSmoothedStretchEvents], at which
+  /// point it drops what it holds and is marked [_DistanceStretch.capped].
+  int? _keepStretchEvent(GpsEvent event) {
+    final stretch = _stretch;
+    if (stretch == null || !stretch.smoothable) return null;
+    if (stretch.events.length >= _maxSmoothedStretchEvents) {
+      stretch
+        ..smoothable = false
+        ..capped = true
+        ..events.clear()
+        ..trackLinks.clear();
+      return null;
+    }
+    stretch.events.add(event);
+    return stretch.events.length - 1;
   }
 
   void _startEstimatorSegment() {
@@ -1014,14 +1120,50 @@ class RunRecorder {
   }
 
   void _newEstimator() {
+    final expectedIntervalS = _fixInterval.inMilliseconds / 1000;
     _estimator = GpsDistanceEstimator(
       maxSpeedMps: _maxSpeedMps,
+      expectedIntervalS: expectedIntervalS,
       initialStrideM: _priorStrideM,
     );
+    _stretches.add(_DistanceStretch(
+      forward: _estimator,
+      expectedIntervalS: expectedIntervalS,
+      initialStrideM: _priorStrideM,
+    ));
     _estFixT = null;
     _estFixMono = null;
     _estFixGps = null;
     _estStepT = null;
+    _sealPaceWindow();
+  }
+
+  // The estimator re-anchors across a fix interval longer than this, crediting
+  // none of it, so the pace window must not span it either. Mirrors the
+  // estimator's own scaling of [GpsDistanceEstimator.gapS].
+  static final double _estimatorGapS = GpsDistanceEstimator.gapS *
+      max(1.0, _fixInterval.inMilliseconds / 1000);
+
+  void _sealPaceWindow() {
+    _paceSamples.clear();
+    _paceSamplesSinceSeal = 0;
+  }
+
+  // A non-finite sample is dropped, not stored: every comparison against NaN
+  // is false, so it would pass the ordering and gap checks and turn the pace
+  // into NaN for as long as it stayed in the window. Mirrors `PaceWindow.add`
+  // (watch_ios) and `LivePaceWindow.add` (watch_wear).
+  void _addPaceSample(double t, double m) {
+    if (!t.isFinite || !m.isFinite) return;
+    final last = _paceSamples.isEmpty ? null : _paceSamples.last;
+    if (last != null && t <= last.t) return;
+    if (last != null && t - last.t > _estimatorGapS) _sealPaceWindow();
+    _paceSamples.addLast((t: t, m: m));
+    _paceSamplesSinceSeal++;
+    while (_paceSamples.length > 2 &&
+        m - _paceSamples.elementAt(1).m >= _paceWindowM) {
+      _paceSamples.removeFirst();
+    }
   }
 
   // Estimator time is kept on a 1/1024 s grid: every value is then an exact
@@ -1104,6 +1246,9 @@ class RunRecorder {
         // the same formula the pause and console-reset re-anchors use.
         _treadmillDistanceMetres = _distanceMetres;
         _treadmillNeedsRebaseline = true;
+        // The belt now owns this stretch's distance, so smoothing its GPS
+        // half would correct a figure the run no longer reports.
+        _stretch?.smoothable = false;
       }
       if (!_recording) return;
       final now = DateTime.now();
@@ -1341,9 +1486,13 @@ class RunRecorder {
       // Distance comes from the estimator, which sees EVERY fix that cleared
       // the gates above; the movement-gated rule below only decides what the
       // track keeps for the map and the route match.
+      double? estT;
+      int? eventIndex;
+      final trackLengthBefore = _track.length;
       try {
+        final t = _estimatorFixTime(pos.timestamp);
         _estimator.addFix(
-          t: _estimatorFixTime(pos.timestamp),
+          t: t,
           lat: pos.latitude,
           lng: pos.longitude,
           accuracyM: fix.accuracyM,
@@ -1351,6 +1500,16 @@ class RunRecorder {
           speedAccuracyMps: fix.speedAccuracyMps,
           bearingDeg: fix.bearingDeg,
         );
+        estT = t;
+        eventIndex = _keepStretchEvent(GpsFixEvent(
+          t: t,
+          lat: pos.latitude,
+          lng: pos.longitude,
+          accuracyM: fix.accuracyM,
+          speedMps: fix.speedMps,
+          speedAccuracyMps: fix.speedAccuracyMps,
+          bearingDeg: fix.bearingDeg,
+        ));
       } catch (e) {
         debugPrint('RunRecorder: estimator rejected fix — $e');
       }
@@ -1427,15 +1586,14 @@ class RunRecorder {
           //
           // Seal the pace window at the same time, exactly as resume() and
           // _beginResumed() do — this branch creates the identical
-          // discontinuity. The gap's metres are deliberately NOT credited, so
-          // a rolling window spanning it times the un-credited distance
-          // against the gap's clock: 5 clean fixes at 200 s/km followed by a
-          // 12 s Doze batch 150 m on measured 128 s/km, i.e. the recorder
-          // claiming zero extra metres and a sub-world-record pace at once.
-          // That value feeds the pace-alert and cut-off catch-up voice cues
-          // and live_cutoff_eta's projection, so the error runs in the
-          // direction that SUPPRESSES a safety warning.
-          _paceFloorIdx = _track.length;
+          // discontinuity. A window spanning a gap whose metres were not
+          // credited times the wrong distance against the gap's clock: when
+          // pace was the track hop-sum, 5 clean fixes at 200 s/km followed by
+          // a 12 s Doze batch 150 m on measured 128 s/km. That value feeds the
+          // pace-alert and cut-off catch-up voice cues and live_cutoff_eta's
+          // projection, so the error ran in the direction that SUPPRESSES a
+          // safety warning.
+          _sealPaceWindow();
           _lastTrackedPosition = pos;
           _lastTrackedPositionAt = pos.timestamp;
           _lastTrackedElapsed = _stopwatch.elapsed;
@@ -1445,6 +1603,10 @@ class RunRecorder {
           _currentWaypointTrusted = false;
         }
       }
+      if (eventIndex != null && _track.length > trackLengthBefore) {
+        _stretch?.trackLinks.add((track: trackLengthBefore, event: eventIndex));
+      }
+      if (estT != null) _addPaceSample(estT, _estimator.distanceM);
     } else {
       _currentWaypointTrusted = true;
     }
@@ -1662,40 +1824,27 @@ class RunRecorder {
     return cum;
   }
 
-  /// Calculate pace from the last ~200m of track.
+  /// Live pace, seconds per km: the estimator's distance gained over the
+  /// last ~[_paceWindowM], against the time it took. Null until the window
+  /// since the last seal holds [_paceMinSamples] fixes and [_paceMinWindowM].
+  ///
+  /// The window never reaches back across a pause, a process-kill resume or a
+  /// re-anchored GPS gap (see [_sealPaceWindow]): those gaps' wall-clock time
+  /// carries no credited distance, so a window spanning one read a pace
+  /// hundreds of times too slow after a resume, and one spanning the #330 gap
+  /// re-anchor read far too fast. The run screen feeds this to the pace-alert
+  /// and cut-off catch-up voice cues and to the cut-off ETA projection.
   double? _calculatePace() {
-    // Never walk back across a pause / process-kill boundary. `_track` keeps
-    // the pre-pause tail, but its timestamps are separated from the
-    // post-resume points by the paused wall-clock gap — which is unbounded
-    // (a resumed run may have been dead for up to kResumableWindow). Timing
-    // post-resume distance against a pre-pause timestamp reported a pace
-    // hundreds of times too slow for the first ~200 m after every resume, and
-    // the run screen feeds that number to the pace-alert and cut-off
-    // catch-up voice cues.
-    final floor = _paceFloorIdx.clamp(0, _track.length);
-    if (_track.length - floor < 5) return null;
-
-    double segmentDistance = 0;
-    int segmentStart = _track.length - 1;
-
-    for (int i = _track.length - 2; i >= floor; i--) {
-      final a = _track[i];
-      final b = _track[i + 1];
-      segmentDistance += _haversine(a.lat, a.lng, b.lat, b.lng);
-      segmentStart = i;
-      if (segmentDistance >= 200) break;
+    if (_paceSamplesSinceSeal < _paceMinSamples || _paceSamples.length < 2) {
+      return null;
     }
-
-    if (segmentDistance < 50) return null;
-
-    final startTs = _track[segmentStart].timestamp;
-    final endTs = _track.last.timestamp;
-    if (startTs == null || endTs == null) return null;
-
-    final segmentTime = endTs.difference(startTs).inMilliseconds / 1000.0;
-    if (segmentTime <= 0) return null;
-
-    return (segmentTime / segmentDistance) * 1000; // seconds per km
+    final first = _paceSamples.first;
+    final last = _paceSamples.last;
+    final gained = last.m - first.m;
+    if (gained < _paceMinWindowM) return null;
+    final seconds = last.t - first.t;
+    if (seconds <= 0) return null;
+    return seconds / gained * 1000;
   }
 
   static double _haversine(double lat1, double lng1, double lat2, double lng2) {
@@ -1713,12 +1862,21 @@ class RunRecorder {
   int lap() {
     if (!_recording) return 0;
     final now = DateTime.now();
-    _laps.add(LapSplit(
+    final split = LapSplit(
       number: _laps.length + 1,
       timestamp: now,
       cumulativeDistanceMetres: _reportedDistanceMetres,
       cumulativeDuration: _currentElapsed(),
-    ));
+    );
+    final stretch = _stretch;
+    if (!_treadmillMode && stretch != null) {
+      _lapAnchors[split] = (
+        stretch: _stretches.length - 1,
+        events: stretch.events.length,
+        forwardM: _estimator.distanceM,
+      );
+    }
+    _laps.add(split);
     return _laps.length;
   }
 
@@ -1739,9 +1897,25 @@ class RunRecorder {
 
     final startedAt = _startTime ?? DateTime.now();
     final elapsed = _stopwatch.elapsed + _elapsedOffset;
+    final track = List<Waypoint>.of(_track);
+    var distanceMetres = _reportedDistanceMetres;
+    var laps = _laps;
+    var everyStretchSmoothed = false;
+    if (!_treadmillMode) {
+      final smoothed = _applySmoother(track);
+      for (final s in smoothed) {
+        if (s != null) distanceMetres += s.correctionM;
+      }
+      laps = _smoothedLaps(smoothed);
+      everyStretchSmoothed = _everyStretchSmoothed(smoothed);
+    }
 
     final metadata = <String, dynamic>{};
-    if (_laps.isNotEmpty) metadata['laps'] = lapsToCanonicalJson(_laps);
+    if (laps.isNotEmpty) metadata['laps'] = lapsToCanonicalJson(laps);
+    final provider = locationProvider;
+    if (provider != null && track.isNotEmpty) {
+      metadata[MetadataKeys.locationProvider] = provider;
+    }
     if (_treadmillMode) {
       // Belt-measured distance is not GPS-measured, so the same exclusion the
       // pedometer-estimated indoor path uses applies: `indoor: true` keeps it
@@ -1751,7 +1925,14 @@ class RunRecorder {
       metadata['indoor_source'] = 'treadmill';
       metadata['distance_source'] = 'treadmill';
     } else {
-      metadata[MetadataKeys.distanceEstimator] = distanceEstimatorVersion;
+      // A resumed session's seeded distance is the killed process's forward
+      // figure, which the smoother never saw, and a stretch the smoother
+      // failed on or that outgrew its replay cap keeps its forward figure:
+      // leave the tag off in both cases so the server recompute is offered
+      // and smooths the whole stored track.
+      if (!_distanceSeeded && everyStretchSmoothed) {
+        metadata[MetadataKeys.distanceEstimator] = distanceEstimatorVersion;
+      }
       final stepFilled = stepFilledDistanceMetres.round();
       if (stepFilled > 0) {
         metadata[MetadataKeys.distanceStepFilledM] = stepFilled;
@@ -1762,11 +1943,109 @@ class RunRecorder {
       id: _uuid.v4(),
       startedAt: startedAt,
       duration: elapsed,
-      distanceMetres: _reportedDistanceMetres,
-      track: List.unmodifiable(_track),
+      distanceMetres: distanceMetres,
+      track: List.unmodifiable(track),
       source: RunSource.app,
       metadata: metadata.isEmpty ? null : metadata,
     );
+  }
+
+  /// Replays each stretch's estimator inputs through [smoothDistance], writes
+  /// the smoothed position onto every [track] waypoint the stretch appended,
+  /// and returns, per stretch in [_stretches] order, how far the smoothed
+  /// distance differs from the forward one the live screen showed plus the
+  /// smoother's per-event cumulative distance.
+  ///
+  /// A stretch that fails to smooth is null and keeps its forward distance and
+  /// raw positions: the saved run must never depend on the smoother succeeding.
+  List<({double correctionM, List<double> cumulativeM})?> _applySmoother(
+      List<Waypoint> track) {
+    final out = <({double correctionM, List<double> cumulativeM})?>[];
+    for (final stretch in _stretches) {
+      out.add(null);
+      if (!stretch.smoothable || stretch.events.isEmpty) continue;
+      try {
+        final smoothed = smoothDistance(
+          stretch.events,
+          maxSpeedMps: stretch.forward.maxSpeedMps,
+          expectedIntervalS: stretch.expectedIntervalS,
+          initialStrideM: stretch.initialStrideM,
+        );
+        if (!smoothed.distanceM.isFinite) continue;
+        for (final link in stretch.trackLinks) {
+          final p = smoothed.positions[link.event];
+          if (p == null || link.track >= track.length) continue;
+          track[link.track] =
+              track[link.track].withSmoothedPosition(p.lat, p.lng);
+        }
+        out[out.length - 1] = (
+          correctionM: smoothed.distanceM - stretch.forward.distanceM,
+          cumulativeM: smoothed.cumulativeM,
+        );
+      } catch (e) {
+        debugPrint(
+            'RunRecorder: smoother failed, keeping forward distance — $e');
+      }
+    }
+    return out;
+  }
+
+  /// Whether [stop]'s distance is the smoother's for every stretch that had
+  /// GPS inputs: none outgrew its replay cap, and every smoothable stretch
+  /// with inputs smoothed. A stretch the belt took over is not smoothable and
+  /// not a failure.
+  bool _everyStretchSmoothed(
+      List<({double correctionM, List<double> cumulativeM})?> smoothed) {
+    for (var i = 0; i < _stretches.length; i++) {
+      final stretch = _stretches[i];
+      if (stretch.capped) return false;
+      if (stretch.smoothable &&
+          stretch.events.isNotEmpty &&
+          (i >= smoothed.length || smoothed[i] == null)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// [_laps] re-measured on the smoothed distance, so the laps of a run that
+  /// ends on a lap mark sum to the saved total. Each lap boundary moves by the
+  /// corrections of every stretch before its own, plus the smoother's
+  /// cumulative at the boundary's event minus the forward figure the lap
+  /// recorded there. A lap with no anchor (carried over from a resumed
+  /// session, or marked on the belt) or in a stretch that did not smooth only
+  /// takes the earlier stretches' corrections.
+  List<LapSplit> _smoothedLaps(
+      List<({double correctionM, List<double> cumulativeM})?> smoothed) {
+    if (smoothed.every((s) => s == null)) return _laps;
+    final before = List<double>.filled(smoothed.length + 1, 0);
+    for (var i = 0; i < smoothed.length; i++) {
+      before[i + 1] = before[i] + (smoothed[i]?.correctionM ?? 0);
+    }
+    return [
+      for (final lap in _laps)
+        switch (_lapAnchors[lap]) {
+          null => lap,
+          final a => LapSplit(
+              number: lap.number,
+              timestamp: lap.timestamp,
+              cumulativeDistanceMetres: lap.cumulativeDistanceMetres +
+                  before[a.stretch] +
+                  _withinStretchCorrection(smoothed[a.stretch], a),
+              cumulativeDuration: lap.cumulativeDuration,
+            ),
+        },
+    ];
+  }
+
+  static double _withinStretchCorrection(
+    ({double correctionM, List<double> cumulativeM})? smoothed,
+    ({int stretch, int events, double forwardM}) anchor,
+  ) {
+    if (smoothed == null) return 0;
+    final smoothedM =
+        anchor.events == 0 ? 0.0 : smoothed.cumulativeM[anchor.events - 1];
+    return smoothedM - anchor.forwardM;
   }
 
   /// Clean up resources. Terminal: the recorder cannot record again, and
@@ -1784,4 +2063,25 @@ class RunRecorder {
     _positionSub = null;
     _controller.close();
   }
+}
+
+/// One estimator stretch's inputs, kept so [RunRecorder.stop] can replay them
+/// through the smoother. [trackLinks] pairs each waypoint the stretch appended
+/// to the track with the fix event it came from.
+class _DistanceStretch {
+  _DistanceStretch({
+    required this.forward,
+    required this.expectedIntervalS,
+    required this.initialStrideM,
+  });
+
+  final GpsDistanceEstimator forward;
+  final double expectedIntervalS;
+  final double? initialStrideM;
+  final List<GpsEvent> events = [];
+  final List<({int track, int event})> trackLinks = [];
+  bool smoothable = true;
+  /// Reached [RunRecorder._maxSmoothedStretchEvents]: its inputs were dropped
+  /// and its forward distance is what the run saves.
+  bool capped = false;
 }

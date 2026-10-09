@@ -189,7 +189,7 @@ class _RunHeatmapScreenState extends State<RunHeatmapScreen> {
       final tracks = [...localTracks, ...await _downloadTracks(paths)];
       final heatTracks = [
         for (final t in tracks)
-          [for (final w in t) HeatLatLng(w.lat, w.lng)],
+          [for (final w in t) HeatLatLng(w.lineLat, w.lineLng)],
       ];
       final cells = buildHeatCells(heatTracks);
       if (cells.isEmpty) {
@@ -198,7 +198,7 @@ class _RunHeatmapScreenState extends State<RunHeatmapScreen> {
       }
       final lines = [
         for (final t in tracks)
-          if (t.length >= 2) [for (final w in t) LatLng(w.lat, w.lng)],
+          if (t.length >= 2) [for (final w in t) LatLng(w.lineLat, w.lineLng)],
       ];
       if (mounted) {
         setState(() {

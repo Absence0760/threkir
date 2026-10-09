@@ -31,6 +31,15 @@
 // files under it. It reads `git ls-files`, so an untracked build output on a
 // workstation cannot make a pattern look alive.
 //
+// A third rule, about the Flutter SDK: every `subosito/flutter-action` step
+// sets `cache: true`. Uncached, the step downloads the ~700 MB SDK tarball
+// from Google Cloud Storage on every run, and twice in a row (runs
+// 37863807968 and 37864887082) GCS answered with a 193-byte error body that
+// tar rejected, failing a docs-only job whose only use for Flutter is
+// `dart run` on a dart:io script. Cached, the SDK comes from the Actions cache
+// and GCS is touched only when FLUTTER_VERSION moves. The release workflows
+// are named exemptions: a signed release build restores nothing from a cache.
+//
 // Reads: `.github/workflows/*.yml` and `.github/actions/*/action.yml`.
 // CI:  the `workflow-lint` job in .github/workflows/ci.yml.
 import { execFileSync } from 'node:child_process';
@@ -145,6 +154,62 @@ export function cacheSteps(workflows, actions) {
 		for (const step of parseActionSteps(action.text, action.name)) add(action.name, step, ANY_OS);
 	}
 	return out;
+}
+
+const FLUTTER_USES = /^\s*(?:-\s+)?uses:\s*subosito\/flutter-action@/m;
+
+/**
+ * Workflows whose Flutter install is deliberately uncached, and why.
+ * @type {Map<string, string>}
+ */
+export const UNCACHED_FLUTTER = new Map([
+	['release-android.yml', 'a signed Play release builds from a fresh SDK; it restores nothing from a cache'],
+	['release-ios.yml', 'a signed App Store release builds from a fresh SDK; it restores nothing from a cache'],
+]);
+
+/**
+ * Every `subosito/flutter-action` step, with whether it sets `cache: true`.
+ * @param {WorkflowFile[]} workflows
+ * @param {WorkflowFile[]} actions
+ * @returns {{ file: string, line: number, owner: string, cached: boolean }[]}
+ */
+export function flutterSdkSteps(workflows, actions) {
+	/** @type {{ file: string, line: number, owner: string, cached: boolean }[]} */
+	const out = [];
+	/**
+	 * @param {string} file
+	 * @param {import('./check_ci_diagnostics.mjs').Step} step
+	 */
+	const add = (file, step) => {
+		if (!FLUTTER_USES.test(step.body)) return;
+		out.push({ file, line: step.line, owner: step.job, cached: withInput(step.body, 'cache')[0] === 'true' });
+	};
+	for (const wf of workflows) for (const step of parseSteps(wf.text)) add(wf.name, step);
+	for (const action of actions) for (const step of parseActionSteps(action.text, action.name)) add(action.name, step);
+	return out;
+}
+
+/**
+ * @param {{ file: string, line: number, owner: string, cached: boolean }[]} steps
+ * @param {Map<string, string>} exempt
+ * @returns {string[]}
+ */
+export function checkFlutterSdkCached(steps, exempt) {
+	/** @type {string[]} */
+	const errors = [];
+	for (const s of steps) {
+		if (s.cached || exempt.has(s.file)) continue;
+		errors.push(
+			`${s.file}:${s.line} (${s.owner}) installs Flutter without \`cache: true\`, so every run downloads the SDK from Google Cloud Storage and a bad response fails the job. Add \`cache: true\` under \`with:\`.`,
+		);
+	}
+	for (const file of exempt.keys()) {
+		const uses = steps.filter((s) => s.file === file);
+		if (uses.length === 0 || uses.every((s) => s.cached)) {
+			errors.push(`UNCACHED_FLUTTER names ${file}, which installs no uncached Flutter SDK any more. Delete the entry.`);
+		}
+	}
+	return errors;
 }
 
 /**
@@ -303,13 +368,20 @@ function main() {
 		console.log('::error::check_cache_keys read no hashFiles() pattern at all, which means its reader broke, not that the tree is clean.');
 		return 1;
 	}
+	const flutter = flutterSdkSteps(workflows, actions);
+	if (flutter.length === 0) {
+		console.log('::error::check_cache_keys read no subosito/flutter-action step at all, which means its reader broke, not that the tree is clean.');
+		return 1;
+	}
 	const { errors, shared } = checkCacheKeys(steps);
 	errors.push(...checkHashFilesPatterns(patterns, trackedFiles()));
+	errors.push(...checkFlutterSdkCached(flutter, UNCACHED_FLUTTER));
 	for (const e of errors) console.log(`::error::${e}`);
 	if (errors.length > 0) return 1;
 	console.log(
 		`${steps.length} actions/cache step(s) read; ${shared} path(s) are cached on more than one runner OS, and every key and restore key for them names the OS. ` +
-			`${patterns.length} hashFiles() pattern(s) read, each matching a tracked file.`,
+			`${patterns.length} hashFiles() pattern(s) read, each matching a tracked file. ` +
+			`${flutter.length} Flutter SDK install(s) read, each cached or a named release exemption.`,
 	);
 	return 0;
 }

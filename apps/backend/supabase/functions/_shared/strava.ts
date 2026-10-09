@@ -10,7 +10,7 @@
 // readers can rely on).
 
 import type { DbClient, Json, TablesUpdate } from './database.ts';
-import { GpsDistanceEstimator } from './gps_distance.ts';
+import { type GpsEvent, smoothDistance } from './gps_distance.ts';
 
 export type StravaTokens = {
 	access_token: string;
@@ -280,12 +280,12 @@ export async function ingestActivity(
 	if (act.distance >= 200) {
 		try {
 			const streamResp = await fetch(
-				`https://www.strava.com/api/v3/activities/${act.id}/streams?keys=latlng,altitude,time,heartrate&key_by_type=true`,
+				`https://www.strava.com/api/v3/activities/${act.id}/streams?keys=latlng,altitude,time,heartrate,distance&key_by_type=true`,
 				{ headers: { Authorization: `Bearer ${accessToken}` } },
 			);
 			if (streamResp.ok) {
 				const streams = await streamResp.json();
-				const track = buildTrackFromStreams(streams, act.start_date);
+				const { track, distance } = buildTrackAndDistanceFromStreams(streams, act.start_date);
 				if (track.length >= 2) {
 					await uploadTrack(supabase, userId, runId, track);
 					// Embedded best efforts: a fast 5k/10k inside a long run
@@ -295,8 +295,9 @@ export async function ingestActivity(
 					// stream is materialised — so both `strava-import` and
 					// `strava-webhook` get it off a single fetch. Skipped silently
 					// (no write) when the track is too short to cover any
-					// canonical distance.
-					const bests = computeEmbeddedBests(track, activityType);
+					// canonical distance. Measured on Strava's own `distance`
+					// stream when it is usable, the estimator otherwise.
+					const bests = computeEmbeddedBests(track, activityType, distance);
 					if (Object.keys(bests).length > 0) {
 						await supabase
 							.from('runs')
@@ -328,15 +329,35 @@ export async function ingestActivity(
 	}
 }
 
+type StreamTrackPoint = { lat: number; lng: number; ele?: number; ts?: string; bpm?: number };
+
 export function buildTrackFromStreams(
 	streams: Record<string, { data: unknown[] }>,
 	startIso: string,
-): Array<{ lat: number; lng: number; ele?: number; ts?: string; bpm?: number }> {
+): StreamTrackPoint[] {
+	return buildTrackAndDistanceFromStreams(streams, startIso).track;
+}
+
+/// The sanitised track plus Strava's `distance` stream sample for each point
+/// that survived sanitising, so the two stay index-aligned. `distance` is null
+/// when the response carried no `distance` stream or one of a different
+/// length than `latlng`; a kept point whose sample is not a number gets NaN,
+/// which `deviceCumulativeMetres` then rejects. The distance never reaches
+/// the stored track: it only feeds the embedded bests.
+export function buildTrackAndDistanceFromStreams(
+	streams: Record<string, { data: unknown[] }>,
+	startIso: string,
+): { track: StreamTrackPoint[]; distance: number[] | null } {
 	const latlng = streams.latlng?.data as [number, number][] | undefined;
-	if (!Array.isArray(latlng) || latlng.length === 0) return [];
+	if (!Array.isArray(latlng) || latlng.length === 0) return { track: [], distance: null };
 	const altitude = streams.altitude?.data as number[] | undefined;
 	const time = streams.time?.data as number[] | undefined;
 	const hr = streams.heartrate?.data as number[] | undefined;
+	const rawDistance = streams.distance?.data;
+	const distanceIn = Array.isArray(rawDistance) && rawDistance.length === latlng.length
+		? rawDistance
+		: null;
+	const distanceOut: number[] = [];
 	const startMs = Date.parse(startIso);
 
 	// audit/strava May 2026 High #4 — bounds-check every sample.
@@ -344,7 +365,7 @@ export function buildTrackFromStreams(
 	// _event.go BuildTrackFromStreams: any drift between the EF and
 	// Go path causes the same activity to render differently
 	// depending on which transport ingested it.
-	const out: Array<{ lat: number; lng: number; ele?: number; ts?: string; bpm?: number }> = [];
+	const out: StreamTrackPoint[] = [];
 	let lastTs = -1;
 	for (let i = 0; i < latlng.length; i++) {
 		const pair = latlng[i];
@@ -352,10 +373,7 @@ export function buildTrackFromStreams(
 		const [lat, lng] = pair;
 		if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
 		if (lat < -90 || lat > 90 || lng < -180 || lng > 180) continue;
-		const point: { lat: number; lng: number; ele?: number; ts?: string; bpm?: number } = {
-			lat,
-			lng,
-		};
+		const point: StreamTrackPoint = { lat, lng };
 		if (altitude?.[i] != null) {
 			const ele = altitude[i];
 			if (Number.isFinite(ele) && ele >= -500 && ele <= 9000) point.ele = ele;
@@ -381,8 +399,12 @@ export function buildTrackFromStreams(
 		}
 		if (hr?.[i] != null && hr[i] >= 30 && hr[i] <= 230) point.bpm = hr[i];
 		out.push(point);
+		if (distanceIn) {
+			const d = distanceIn[i];
+			distanceOut.push(typeof d === 'number' ? d : NaN);
+		}
 	}
-	return out;
+	return { track: out, distance: distanceIn ? distanceOut : null };
 }
 
 /// The one log-safe field of a thrown value. supabase-js rejects with a plain
@@ -629,25 +651,33 @@ export function medianFixIntervalS(track: readonly EmbeddedTrackPoint[]): number
 }
 
 /// Distance covered up to each point, replaying the track through the GPS
-/// distance estimator (docs/features/gps_distance.md). The raw hop-sum is
-/// inflated by GPS noise, so a "5 km" window measured on it closes early and
-/// the best reads too fast. Lockstep with `estimatorCumulativeMetres` in
+/// distance smoother (spec v1.2, docs/features/gps_distance.md) — the same
+/// figure a saved or recomputed run carries. The raw hop-sum is inflated by
+/// GPS noise, so a "5 km" window measured on it closes early and the best
+/// reads too fast. A point without a timestamp carries the previous
+/// cumulative. Lockstep with `estimatorCumulativeMetres` in
 /// apps/web/src/lib/integrations/garmin-fit.ts.
 export function estimatorCumulativeMetres(
 	track: readonly EmbeddedTrackPoint[],
 	maxSpeedMps = 10,
 ): number[] {
-	const est = new GpsDistanceEstimator(maxSpeedMps, medianFixIntervalS(track), null);
-	const out = new Array<number>(track.length).fill(0);
+	const events: GpsEvent[] = [];
+	const eventOf = new Array<number>(track.length).fill(-1);
 	let t0: number | null = null;
 	for (let i = 0; i < track.length; i++) {
 		const p = track[i];
 		const ms = pointMs(p);
-		if (ms != null) {
-			if (t0 == null) t0 = ms;
-			est.addFix((ms - t0) / 1000, p.lat, p.lng);
-		}
-		out[i] = est.distanceM;
+		if (ms == null) continue;
+		if (t0 == null) t0 = ms;
+		eventOf[i] = events.length;
+		events.push({ type: 'fix', t: (ms - t0) / 1000, lat: p.lat, lng: p.lng });
+	}
+	const cum = smoothDistance(events, maxSpeedMps, medianFixIntervalS(track), null).cumulativeM;
+	const out = new Array<number>(track.length).fill(0);
+	let last = 0;
+	for (let i = 0; i < track.length; i++) {
+		if (eventOf[i] >= 0) last = cum[eventOf[i]];
+		out[i] = last;
 	}
 	return out;
 }
@@ -715,18 +745,50 @@ export function fastestWindowSeconds(
 	return best == null ? null : Math.round(best / 1000);
 }
 
+/// The provider's own per-point distance stream, rebased to 0 at the first
+/// point, or null when it cannot stand in for the estimator: absent, a length
+/// other than the track's, any value missing / non-finite / negative, a step
+/// backwards, or no distance gained at all. It is what the device measured,
+/// so it is preferred over re-estimating from the positions — the same
+/// choice Strava makes. One bad sample rejects the whole stream rather than
+/// splicing two measurements of the same run together. Lockstep with
+/// `deviceCumulativeMetres` in apps/web/src/lib/integrations/garmin-fit.ts.
+export function deviceCumulativeMetres(
+	stream: readonly unknown[] | null | undefined,
+	pointCount: number,
+): number[] | null {
+	if (!Array.isArray(stream) || stream.length !== pointCount || pointCount < 2) return null;
+	const out = new Array<number>(pointCount);
+	let prev = -Infinity;
+	for (let i = 0; i < pointCount; i++) {
+		const v = stream[i];
+		if (typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v < prev) return null;
+		prev = v;
+		out[i] = v;
+	}
+	const base = out[0];
+	if (!(out[pointCount - 1] > base)) return null;
+	for (let i = 0; i < pointCount; i++) out[i] -= base;
+	return out;
+}
+
 /// Embedded best-effort seconds for every canonical distance the track is
-/// long enough to cover, measured on the estimator's cumulative with the
-/// activity's speed ceiling (run when absent). Returns `{}` (no fake bests)
-/// when the track has < 3 points or covers no canonical distance; callers
-/// write the result to the promoted runs columns and skip the write when empty.
+/// long enough to cover. Measured on the provider's distance stream when
+/// `deviceDistance` passes `deviceCumulativeMetres`, otherwise on the
+/// estimator's cumulative with the activity's speed ceiling (run when
+/// absent). Returns `{}` (no fake bests) when the track has < 3 points or
+/// covers no canonical distance; callers write the result to the promoted
+/// runs columns and skip the write when empty.
 export function computeEmbeddedBests(
 	track: readonly EmbeddedTrackPoint[],
 	activityType?: string | null,
+	deviceDistance?: readonly unknown[] | null,
 ): Partial<Record<EmbeddedBestColumn, number>> {
 	const out: Partial<Record<EmbeddedBestColumn, number>> = {};
 	if (!Array.isArray(track) || track.length < 3) return out;
-	const cum = estimatorCumulativeMetres(track, maxSpeedMpsForActivity(activityType));
+	const cum =
+		deviceCumulativeMetres(deviceDistance, track.length) ??
+		estimatorCumulativeMetres(track, maxSpeedMpsForActivity(activityType));
 	for (const [key, dist] of EMBEDDED_BEST_DISTANCES) {
 		const secs = fastestWindowSeconds(track, dist, cum);
 		if (secs != null && secs > 0) out[key] = secs;

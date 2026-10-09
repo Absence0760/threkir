@@ -195,3 +195,25 @@ test('localized frontmatter agrees with its English sibling on slug, category, o
 		);
 	}
 });
+
+// The fallback chain makes a missing translation invisible: a pt-PT reader
+// was served the Brazilian prose and nothing failed, which is how the eight
+// guides went without a European version (decisions § 755). So the set is
+// pinned complete — every English guide in every shipped locale — and a new
+// guide or a new locale fails here until it is translated.
+test('every English guide is translated into every shipped locale', () => {
+	const present = new Set(
+		files.map((f) => {
+			const { slug, locale } = parseStem(f);
+			return `${slug}.${locale}`;
+		}),
+	);
+	const missing: string[] = [];
+	for (const slug of englishSlugs) {
+		for (const locale of SUPPORTED_LOCALES) {
+			if (locale === DEFAULT_LOCALE) continue;
+			if (!present.has(`${slug}.${locale}`)) missing.push(`${slug}.${locale}.md`);
+		}
+	}
+	assert.deepEqual(missing, [], 'a Learn guide is missing a translation');
+});

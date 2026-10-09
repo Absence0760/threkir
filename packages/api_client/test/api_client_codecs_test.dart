@@ -132,6 +132,47 @@ void main() {
       expect(w.speedAccuracyMps, isNull);
       expect(w.bearingDeg, isNull);
     });
+
+    // Every reader that draws the run line reads these two keys
+    // (docs/features/gps_distance.md § Waypoint fields); lat/lng stay raw.
+    test('the smoothed position round-trips under its wire names', () {
+      const w = Waypoint(
+        lat: 47.37,
+        lng: 8.54,
+        smoothedLat: 47.370012,
+        smoothedLng: 8.539991,
+      );
+      final json = ApiClient.debugWaypointToJson(w);
+      expect(json['lat'], 47.37);
+      expect(json['lng'], 8.54);
+      expect(json['smoothedLat'], 47.370012);
+      expect(json['smoothedLng'], 8.539991);
+      final back = ApiClient.debugWaypointFromJson(
+          jsonDecode(jsonEncode(json)) as Map<String, dynamic>);
+      expect(back.smoothedLat, 47.370012);
+      expect(back.smoothedLng, 8.539991);
+      expect(back.lat, 47.37);
+    });
+
+    test('a half smoothed pair is not written', () {
+      final json = ApiClient.debugWaypointToJson(
+          const Waypoint(lat: 1, lng: 2, smoothedLat: 1.00001));
+      expect(json.containsKey('smoothedLat'), isFalse);
+      expect(json.containsKey('smoothedLng'), isFalse);
+    });
+
+    test('the track blob drops a non-finite smoothed pair, keeps the point',
+        () {
+      final blob = ApiClient.debugTrackBlobJson(const [
+        Waypoint(lat: 1, lng: 2, smoothedLat: double.nan, smoothedLng: 2.0),
+      ]);
+      final points = jsonDecode(blob) as List;
+      expect(points, hasLength(1));
+      final p = points.single as Map<String, dynamic>;
+      expect(p.containsKey('smoothedLat'), isFalse);
+      expect(p.containsKey('smoothedLng'), isFalse);
+      expect(p['lat'], 1);
+    });
   });
 
   group('debugRunFromRow', () {

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:core_models/core_models.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:run_recorder/run_recorder.dart';
@@ -264,7 +265,12 @@ void main() {
       // Two fixes sharing a timestamp (batched/queued fixes, or a clock
       // correction): dt = 0 makes speed undefined. A 90 m hop must not slip
       // through the < 100 m filter — the speed clamp can't vet it.
-      final r = RunRecorder()..debugPrepareWithoutStream(maxSpeedMps: 10);
+      // A duplicate GPS timestamp makes the estimator fall back to the real
+      // clock for its interval, so on a slow runner the gap between these
+      // two calls rounds to 1/1024 s and credits Doppler distance for it.
+      // A frozen clock states the zero elapsed time this case is about.
+      final r = RunRecorder(clock: _FakeClock())
+        ..debugPrepareWithoutStream(maxSpeedMps: 10);
       r.begin();
       r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 5));
       r.debugInjectPosition(makePosition(metresEast: 90, secondsFromStart: 5));
@@ -272,11 +278,36 @@ void main() {
       expect(r.debugDistanceMetres, 0);
     });
 
+    test(
+        'a duplicate GPS timestamp is timed by the real clock, so Doppler '
+        'speed is credited for the time that actually passed', () {
+      // The other zero-dt cases freeze the clock because this fallback is
+      // real: _estimatorFixTime uses the stopwatch when the GPS interval is
+      // not positive, and a slow CI runner once read 1/1024 s between two
+      // back-to-back injections (0.001953125 m at 2 m/s, run 37858012856).
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock)
+        ..debugPrepareWithoutStream(maxSpeedMps: 10);
+      r.begin();
+      r.debugInjectPosition(
+          makePosition(metresEast: 0, secondsFromStart: 0, speed: 2));
+      clock.advance(const Duration(seconds: 1));
+      r.debugInjectPosition(
+          makePosition(metresEast: 90, secondsFromStart: 0, speed: 2));
+      expect(r.debugTrack.length, 1, reason: 'the teleport is still rejected');
+      expect(r.debugDistanceMetres, closeTo(2, 0.05));
+    });
+
     test('zero-dt rejection is lossless — next valid fix still accumulates', () {
       // After a rejected same-timestamp fix, a later fix with a real
       // timestamp accumulates the delta from the last good position over the
       // true elapsed time (20 m in 10 s = 2 m/s, within the clamp).
-      final r = RunRecorder()..debugPrepareWithoutStream(maxSpeedMps: 10);
+      // A duplicate GPS timestamp makes the estimator fall back to the real
+      // clock for its interval, so on a slow runner the gap between these
+      // two calls rounds to 1/1024 s and credits Doppler distance for it.
+      // A frozen clock states the zero elapsed time this case is about.
+      final r = RunRecorder(clock: _FakeClock())
+        ..debugPrepareWithoutStream(maxSpeedMps: 10);
       r.begin();
       r.debugInjectPosition(
           makePosition(metresEast: 0, secondsFromStart: 0, speed: 2));
@@ -361,7 +392,11 @@ void main() {
       // The re-anchor must not open a hole for the zero-dt duplicate case:
       // two fixes sharing a timestamp give dt = 0, which is < the re-anchor
       // window, so a 120 m hop is still rejected.
-      final r = RunRecorder()
+      // A duplicate GPS timestamp makes the estimator fall back to the real
+      // clock for its interval, so on a slow runner the gap between these
+      // two calls rounds to 1/1024 s and credits Doppler distance for it.
+      // A frozen clock states the zero elapsed time this case is about.
+      final r = RunRecorder(clock: _FakeClock())
         ..debugPrepareWithoutStream(maxSpeedMps: 1000);
       r.begin();
       r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 30));
@@ -878,7 +913,7 @@ void main() {
       final run = await r.stop();
       expect(run.metadata?['indoor'], isNull);
       expect(run.metadata?['indoor_source'], isNull);
-      expect(run.metadata?['distance_estimator'], 'kalman_v1');
+      expect(run.metadata?['distance_estimator'], 'kalman_v2');
       expect(run.metadata?.containsKey('distance_step_filled_m'), isFalse,
           reason: 'no pedometer fill happened, so the key is omitted');
     });
@@ -1320,6 +1355,252 @@ void main() {
       expect(r.debugTrack.last.accuracyMetres, 5);
     });
 
+    test('stop() saves the smoothed distance and the smoothed positions',
+        () async {
+      // The live screen reads the forward filter; the saved run is the spec
+      // v1.2 smoother over the same fixes. Expected figures from
+      // scripts/gps_distance/reference.py: forward 34.92 m, smooth_distance
+      // 39.49 m, and its positions for the first and last fix.
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock)..debugPrepareWithoutStream();
+      r.begin();
+      for (var i = 0; i <= 10; i++) {
+        r.debugInjectPosition(makePosition(
+          metresEast: 4.0 * i,
+          secondsFromStart: i,
+          speed: 0,
+          speedAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+        ));
+        clock.advance(const Duration(seconds: 1));
+      }
+      expect(r.debugDistanceMetres, closeTo(34.92098239921727, 1e-6));
+      final run = await r.stop();
+      expect(run.distanceMetres, closeTo(39.487530494657875, 1e-6));
+      expect(run.metadata?['distance_estimator'], 'kalman_v2');
+      expect(run.track, hasLength(11));
+      for (final w in run.track) {
+        expect(w.hasSmoothedPosition, isTrue);
+        expect(w.smoothedLat, closeTo(lat, 1e-9));
+      }
+      expect(run.track.first.smoothedLng, closeTo(8.540005777291086, 1e-9));
+      expect(run.track.last.smoothedLng, closeTo(8.540530222154533, 1e-9));
+      expect(run.track.first.lng, lngBase, reason: 'the raw fix is kept');
+      expect(r.debugTrack.first.hasSmoothedPosition, isFalse,
+          reason: 'the live track is not rewritten');
+    });
+
+    // stop() replays every stretch through the smoother on the UI isolate,
+    // so a stretch keeps at most maxSmoothedStretchEvents inputs. Past that it
+    // saves its forward figure and raw positions, and the run is left
+    // unstamped so the server recompute smooths it instead.
+    test('a stretch past the replay cap saves the forward distance, unstamped',
+        () async {
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock, maxSmoothedStretchEvents: 5)
+        ..debugPrepareWithoutStream();
+      r.begin();
+      for (var i = 0; i <= 10; i++) {
+        r.debugInjectPosition(makePosition(
+          metresEast: 4.0 * i,
+          secondsFromStart: i,
+          speed: 0,
+          speedAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+        ));
+        clock.advance(const Duration(seconds: 1));
+      }
+      expect(r.debugDistanceMetres, closeTo(34.92098239921727, 1e-6),
+          reason: 'the live figure is unaffected by the cap');
+      final run = await r.stop();
+      expect(run.distanceMetres, r.debugDistanceMetres,
+          reason: 'the forward figure, with no smoother correction');
+      expect(run.metadata?['distance_estimator'], isNull);
+      expect(run.track, hasLength(11));
+      expect(run.track.any((w) => w.hasSmoothedPosition), isFalse);
+    });
+
+    test('one stretch not smoothed leaves the whole run unstamped', () async {
+      // The first stretch (11 fixes plus the pause's finish) fits a cap of 12
+      // and is smoothed; the second outgrows it. The saved distance takes the
+      // first stretch's correction, but kalman_v2 would claim the second was
+      // smoothed too and hide Recalculate for a run the server could still
+      // improve.
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock, maxSmoothedStretchEvents: 12)
+        ..debugPrepareWithoutStream();
+      r.begin();
+      for (var i = 0; i <= 10; i++) {
+        r.debugInjectPosition(makePosition(
+          metresEast: 4.0 * i,
+          secondsFromStart: i,
+          speed: 0,
+          speedAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+        ));
+        clock.advance(const Duration(seconds: 1));
+      }
+      r.pause();
+      r.resume();
+      for (var i = 0; i <= 14; i++) {
+        r.debugInjectPosition(makePosition(
+          metresEast: 40.0 + 4.0 * i,
+          secondsFromStart: 60 + i,
+          speed: 0,
+          speedAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+        ));
+        clock.advance(const Duration(seconds: 1));
+      }
+      final run = await r.stop();
+      expect(run.metadata?['distance_estimator'], isNull);
+      expect(run.track.take(11).every((w) => w.hasSmoothedPosition), isTrue,
+          reason: 'the stretch inside the cap is still smoothed');
+      expect(run.track.skip(11).any((w) => w.hasSmoothedPosition), isFalse);
+    });
+
+    test('saved laps are re-measured on the smoothed distance', () async {
+      // Laps record the forward figure live; the saved run is the smoother's,
+      // so each lap boundary moves to the smoother's cumulative at the fix it
+      // was marked on (not a proportional share). Expected figures from
+      // scripts/gps_distance/reference.py: smooth_distance cumulative_m[5] =
+      // 19.4101 m (forward 14.9633 m), total 39.4875 m.
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock)..debugPrepareWithoutStream();
+      r.begin();
+      for (var i = 0; i <= 10; i++) {
+        r.debugInjectPosition(makePosition(
+          metresEast: 4.0 * i,
+          secondsFromStart: i,
+          speed: 0,
+          speedAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+        ));
+        if (i == 5 || i == 10) r.lap();
+        clock.advance(const Duration(seconds: 1));
+      }
+      expect(r.laps.first.cumulativeDistanceMetres,
+          closeTo(14.963280580167973, 1e-6),
+          reason: 'the live lap keeps the forward figure');
+      final run = await r.stop();
+      final laps = (run.metadata?['laps'] as List).cast<Map<String, dynamic>>();
+      expect(laps, hasLength(2));
+      expect(laps[0]['distance_m'], closeTo(19.410119564935258, 1e-6));
+      expect(laps[1]['distance_m'],
+          closeTo(39.487530494657875 - 19.410119564935258, 1e-6));
+      final sum = laps.fold<double>(
+          0, (a, l) => a + (l['distance_m'] as num).toDouble());
+      expect(sum, closeTo(run.distanceMetres, 1e-6));
+    });
+
+    test('saved laps after a pause carry the earlier stretch correction',
+        () async {
+      // Two stretches, each 11 fixes 4 m apart at 1 s. Expected from
+      // scripts/gps_distance/reference.py: stretch one smooths 34.9210 m to
+      // 39.4875 m (cumulative_m[5] = 19.4101 m), stretch two (t = 41..51,
+      // finish 52) to 39.4875 m, so the run saves 78.9751 m.
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock)..debugPrepareWithoutStream();
+      r.begin();
+      void inject(double east, int t) => r.debugInjectPosition(makePosition(
+            metresEast: east,
+            secondsFromStart: t,
+            speed: 0,
+            speedAccuracy: 0,
+            heading: 0,
+            headingAccuracy: 0,
+          ));
+      for (var i = 0; i <= 10; i++) {
+        inject(4.0 * i, i);
+        if (i == 5) r.lap();
+        clock.advance(const Duration(seconds: 1));
+      }
+      r.pause();
+      clock.advance(const Duration(seconds: 30));
+      r.resume();
+      for (var j = 0; j <= 10; j++) {
+        inject(40 + 4.0 * j, 41 + j);
+        clock.advance(const Duration(seconds: 1));
+      }
+      r.lap();
+      final run = await r.stop();
+      expect(run.distanceMetres, closeTo(78.97506098938024, 1e-6));
+      final laps = (run.metadata?['laps'] as List).cast<Map<String, dynamic>>();
+      expect(laps, hasLength(2));
+      expect(laps[0]['distance_m'], closeTo(19.410119564935258, 1e-6));
+      expect(laps[1]['distance_m'],
+          closeTo(78.97506098938024 - 19.410119564935258, 1e-6));
+      final sum = laps.fold<double>(
+          0, (a, l) => a + (l['distance_m'] as num).toDouble());
+      expect(sum, closeTo(run.distanceMetres, 1e-6));
+    });
+
+    test('android asks the fused provider unless raw gps is requested', () {
+      final fused = RunRecorder()..debugPrepareWithoutStream();
+      final fusedSettings = fused.debugLocationSettings as AndroidSettings;
+      expect(fusedSettings.forceLocationManager, isFalse);
+      expect(fused.locationProvider, 'fused');
+      final raw = RunRecorder()
+        ..debugPrepareWithoutStream(rawGpsProvider: true);
+      final rawSettings = raw.debugLocationSettings as AndroidSettings;
+      expect(rawSettings.forceLocationManager, isTrue);
+      expect(rawSettings.intervalDuration, const Duration(seconds: 1));
+      expect(raw.locationProvider, 'gps');
+    });
+
+    test('ios ignores the raw gps request and names no provider', () {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        final r = RunRecorder()
+          ..debugPrepareWithoutStream(rawGpsProvider: true);
+        expect(r.debugLocationSettings, isA<AppleSettings>());
+        expect(r.locationProvider, isNull);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    test('a saved gps run names the location provider it used', () async {
+      Future<Map<String, dynamic>?> record({required bool raw}) async {
+        final r = RunRecorder()..debugPrepareWithoutStream(rawGpsProvider: raw);
+        r.begin();
+        r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 0));
+        r.debugInjectPosition(makePosition(metresEast: 5, secondsFromStart: 2));
+        return (await r.stop()).metadata;
+      }
+
+      expect((await record(raw: false))?['location_provider'], 'fused');
+      expect((await record(raw: true))?['location_provider'], 'gps');
+
+      final empty = RunRecorder()..debugPrepareWithoutStream();
+      empty.begin();
+      final run = await empty.stop();
+      expect(run.metadata?.containsKey('location_provider') ?? false, isFalse,
+          reason: 'no fix, no stream to describe');
+    });
+
+    test('a resumed session saves without the estimator tag', () async {
+      // The seeded distance is the killed process's forward figure, which the
+      // smoother never saw, so the server recompute must stay on offer.
+      final r = RunRecorder();
+      r.debugResumeWithoutStream(
+        track: const [],
+        distanceMetres: 1000,
+        elapsed: const Duration(minutes: 10),
+        startedAt: DateTime(2026, 4, 10, 9, 50),
+      );
+      r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 0));
+      r.debugInjectPosition(makePosition(metresEast: 10, secondsFromStart: 4));
+      final run = await r.stop();
+      expect(run.metadata?.containsKey('distance_estimator'), isFalse);
+      expect(run.distanceMetres, greaterThanOrEqualTo(1000));
+    });
+
     test('appended waypoints carry the fix quality, rounded to 2 dp', () {
       final r = RunRecorder()..debugPrepareWithoutStream();
       r.begin();
@@ -1382,7 +1663,7 @@ void main() {
 
       final run = await r.stop();
       expect(run.distanceMetres, closeTo(172, 1e-6));
-      expect(run.metadata?['distance_estimator'], 'kalman_v1');
+      expect(run.metadata?['distance_estimator'], 'kalman_v2');
       expect(run.metadata?['distance_step_filled_m'], 72);
     });
 

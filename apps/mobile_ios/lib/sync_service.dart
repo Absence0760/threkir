@@ -9,6 +9,7 @@ import 'package:flutter/widgets.dart';
 import 'local_route_store.dart';
 import 'local_run_store.dart';
 import 'social_service.dart';
+import 'watch_ingest_queue.dart';
 
 /// Pushes unsynced runs to the backend whenever:
 ///
@@ -38,6 +39,11 @@ class SyncService with WidgetsBindingObserver {
   /// mobile analogue of web's on-save fan-out). When null, the daily cron sweep
   /// remains the only completion path.
   final SocialService? socialService;
+  /// Optional — when provided, every cycle that gets past the auth and
+  /// backoff gates also drains the Apple Watch ingest queue, so a watch run
+  /// whose upload failed offline is retried when connectivity returns rather
+  /// than on the next sign-in (decisions § 1801).
+  final WatchIngestQueue? watchQueue;
 
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   bool _syncing = false;
@@ -66,6 +72,7 @@ class SyncService with WidgetsBindingObserver {
     required this.runStore,
     this.routeStore,
     this.socialService,
+    this.watchQueue,
   });
 
   void start() {
@@ -199,6 +206,14 @@ class SyncService with WidgetsBindingObserver {
     }
     final api = apiClient;
     if (api == null || api.userId == null) return;
+    // Unawaited and outside `_syncing`: the queue serialises its own drains,
+    // and a stalled watch upload must not hold the run-store cycle behind it.
+    final queue = watchQueue;
+    if (queue != null && queue.pendingCount > 0) {
+      queue.drain(api).catchError((Object e) {
+        debugPrint('SyncService: watch ingest drain failed: $e');
+      });
+    }
     final allUnsynced = runStore.unsyncedRuns;
     // Owner-tag filter: skip runs whose `metadata.created_by_user_id`
     // names a different user. Without this, on a shared device where

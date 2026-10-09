@@ -6,6 +6,7 @@
 
 import type { TrackPoint } from '../types';
 import { unwrapLonDeg } from './geo';
+import { toLinePoint } from '../runs/track_line';
 
 export interface Projected {
 	x: number;
@@ -14,17 +15,20 @@ export interface Projected {
 
 /// Project `points` into a `[0, vbW] × [0, vbH]` viewBox with a
 /// `cos(midLat)` longitude correction so a square loop at any latitude
-/// renders square instead of a horizontally-stretched rectangle.
+/// renders square instead of a horizontally-stretched rectangle. Each fix
+/// is drawn at its smoothed position when the stored track carries one
+/// (`lineLat` / `lineLng`, lib/runs/track_line.ts).
 ///
 /// `pad` is the inset margin on every side of the viewBox (default 4).
 /// Returns an empty array for tracks with fewer than two points.
 export function projectTrack(
-	points: TrackPoint[],
+	track: TrackPoint[],
 	vbW: number,
 	vbH: number,
 	pad = 4,
 ): Projected[] {
-	if (points.length < 2) return [];
+	if (track.length < 2) return [];
+	const points = track.map(toLinePoint);
 	// Longitudes are expressed on the first point's side of the antimeridian,
 	// so a track that crosses it spans its own width instead of ~360° (which
 	// collapsed the fitted scale to a dot). Identity inside a hemisphere.
@@ -93,12 +97,13 @@ export const MIN_RENDERABLE_SPAN_M = 5;
 /// lockstep.
 export function isTrackRenderable(track: TrackPoint[]): boolean {
 	if (!track || track.length < 2) return false;
-	const refLng = track[0].lng;
-	let minLat = track[0].lat;
-	let maxLat = track[0].lat;
+	const points = track.map(toLinePoint);
+	const refLng = points[0].lng;
+	let minLat = points[0].lat;
+	let maxLat = points[0].lat;
 	let minLng = refLng;
 	let maxLng = refLng;
-	for (const p of track) {
+	for (const p of points) {
 		if (p.lat < minLat) minLat = p.lat;
 		if (p.lat > maxLat) maxLat = p.lat;
 		const lng = unwrapLonDeg(refLng, p.lng);

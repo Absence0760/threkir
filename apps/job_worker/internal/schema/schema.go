@@ -142,6 +142,23 @@ const (
 	MetaDistanceRecordedM    = "distance_recorded_m"
 	MetaDistanceEstimator    = "distance_estimator"
 	MetaDistanceRecomputedAt = "distance_recomputed_at"
+	// Which of the smoother's passes the recompute kept: "smoothed", or
+	// "forward" for a position-only track that is not a road run.
+	MetaDistanceEstimatorPass = "distance_estimator_pass"
+	// Read by the map_match road-distance step to rule out a run that is
+	// not on a road, and written by it: the matched length along the road
+	// graph, beside distance_m and never in place of it.
+	MetaSubSport            = "sub_sport"
+	MetaDistanceMapMatchedM = "distance_map_matched_m"
+	// Written by the distance recompute and the map_match watch step: the
+	// SHA-256 of the track bytes the smoothed-position sidecar was built
+	// for, present only while that sidecar is stored, so a reader fetches
+	// the sidecar only for the track it names.
+	MetaSmoothedSidecarSHA256 = "smoothed_sidecar_sha256"
+	// The Storage version of the track bytes distance_map_matched_m was
+	// measured on. Written with it; the runs_road_distance_matches_track
+	// trigger drops the pair when it no longer names the stored object.
+	MetaDistanceMapMatchedTrackVersion = "distance_map_matched_track_version"
 )
 
 // PrefsKey is a key inside the `user_settings.prefs` jsonb bag — the

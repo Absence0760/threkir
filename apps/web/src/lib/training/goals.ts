@@ -200,23 +200,74 @@ export function formatPaceSecPerKm(secPerKm: number): string {
 	return `${paceMinutesSeconds(secPerKm)}/km`;
 }
 
-/// Pure evaluator. Given a goal and the full run list, compute progress
-/// per active target. Mirrors the shape of `evaluateGoal` in
-/// `goals.dart` — active-target list, aggregate percent, overall
-/// completion flag.
+/// The plan-workout fields that say whether a session was marked done by
+/// hand. A structural bound so the dashboard's plan rows and the week lead's
+/// own input type both satisfy it.
+export interface PlanCompletion {
+	scheduled_date: string;
+	target_distance_m: number | null;
+	manually_completed: boolean;
+	completed_run_id: string | null;
+}
+
+function localIsoDate(d: Date): string {
+	const y = d.getFullYear();
+	const mo = String(d.getMonth() + 1).padStart(2, '0');
+	const da = String(d.getDate()).padStart(2, '0');
+	return `${y}-${mo}-${da}`;
+}
+
+/// Plan workouts the runner marked done without a linked run, scheduled from
+/// `from`'s calendar day through `now`'s. Such a session is activity the
+/// runner says happened (a treadmill run logged elsewhere, a run recorded on
+/// a device that never synced), so it counts toward a period the way the
+/// dashboard's This Week card has always counted it, with its target distance
+/// standing in for the distance nobody recorded. A workout with a linked run
+/// is left out because that run is already counted, and a future-dated one
+/// because a mark on a day that has not happened is not activity yet. The one
+/// definition behind both the week lead and the Goals section (decisions
+/// § 1813).
+export function markedDoneTally(
+	workouts: readonly PlanCompletion[],
+	from: Date,
+	now: Date,
+): { distanceM: number; count: number } {
+	const first = localIsoDate(from);
+	const last = localIsoDate(now);
+	let distanceM = 0;
+	let count = 0;
+	for (const w of workouts) {
+		if (!(w.manually_completed === true && w.completed_run_id == null)) continue;
+		if (w.scheduled_date < first || w.scheduled_date > last) continue;
+		distanceM += w.target_distance_m ?? 0;
+		count += 1;
+	}
+	return { distanceM, count };
+}
+
+/// Pure evaluator. Given a goal, the full run list and the active plan's
+/// workouts, compute progress per active target. Mirrors the shape of
+/// `evaluateGoal` in `goals.dart` — active-target list, aggregate percent,
+/// overall completion flag. Workouts marked done without a run add to the
+/// distance and run-count targets through `markedDoneTally`; time and pace
+/// stay with recorded runs, since a mark carries no duration anyone measured.
 export function evaluateGoal(
 	goal: RunGoal,
 	runs: readonly Pick<Run, 'started_at' | 'distance_m' | 'duration_s' | 'activity_type'>[],
 	now: Date,
 	weekStartDay: 'monday' | 'sunday' = 'monday',
+	planWorkouts: readonly PlanCompletion[] = [],
 ): GoalProgress {
-	const start = periodStart(goal.period, now, weekStartDay).getTime();
+	const startDate = periodStart(goal.period, now, weekStartDay);
+	const start = startDate.getTime();
 	const end = periodEnd(goal.period, now, weekStartDay).getTime();
 	const inPeriod = runs.filter((r) => {
 		const t = new Date(r.started_at).getTime();
 		return t >= start && t < end;
 	});
-	const totalMetres = inPeriod.reduce((s, r) => s + r.distance_m, 0);
+	const marked = markedDoneTally(planWorkouts, startDate, now);
+	const activityCount = inPeriod.length + marked.count;
+	const totalMetres = inPeriod.reduce((s, r) => s + r.distance_m, 0) + marked.distanceM;
 	const totalSeconds = inPeriod.reduce((s, r) => s + r.duration_s, 0);
 
 	// Pace calculations exclude cycling — a distance-weighted average
@@ -280,14 +331,14 @@ export function evaluateGoal(
 		});
 	}
 	if (goal.runCount != null && goal.runCount > 0) {
-		const pct = Math.min(1, inPeriod.length / goal.runCount);
+		const pct = Math.min(1, activityCount / goal.runCount);
 		targets.push({
 			kind: 'runCount',
 			label: 'Runs',
-			currentLabel: `${inPeriod.length}`,
+			currentLabel: `${activityCount}`,
 			targetLabel: `${goal.runCount}`,
 			percent: pct,
-			complete: inPeriod.length >= goal.runCount,
+			complete: activityCount >= goal.runCount,
 		});
 	}
 
@@ -307,7 +358,7 @@ export function evaluateGoal(
 		targets,
 		overallPercent: overall,
 		complete,
-		runCount: inPeriod.length,
+		runCount: activityCount,
 	};
 }
 

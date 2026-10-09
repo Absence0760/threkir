@@ -1,0 +1,318 @@
+{
+  "description": "Smoothed-position sidecar merge vectors (docs/features/gps_distance.md \u00a7 Waypoint fields). trackJson is the exact decompressed track bytes; sha256 is their lower-case hex digest. Each case's expected is the [smoothedLat, smoothedLng] every reader leaves on each waypoint after merging the sidecar (null = none). Waypoint 1 carries its own pair and keeps it; waypoint 2 carries half a pair, which is no pair, so the sidecar fills it. Shared by the Go writer and the web, Deno and Dart readers.",
+  "version": 1,
+  "trackJson": "[{\"lat\":40,\"lng\":-75,\"ts\":\"2026-10-08T07:00:00Z\"},{\"lat\":40.0001,\"lng\":-75,\"ts\":\"2026-10-08T07:00:01Z\",\"smoothedLat\":40.00011,\"smoothedLng\":-75.00001},{\"lat\":40.0002,\"lng\":-75.0001,\"ts\":\"2026-10-08T07:00:02Z\",\"smoothedLat\":40.00019},{\"lat\":40.0003,\"lng\":-75.0001,\"ts\":\"2026-10-08T07:00:03Z\"}]",
+  "sha256": "204d9d2a12000023ab0b04877e4e65b935ae028f2a4b4c9f2b0437d634ca9dab",
+  "cases": [
+    {
+      "name": "matching fingerprint merges every waypoint without its own pair",
+      "sidecar": {
+        "version": 1,
+        "track": {
+          "points": 4,
+          "sha256": "204d9d2a12000023ab0b04877e4e65b935ae028f2a4b4c9f2b0437d634ca9dab"
+        },
+        "positions": [
+          [
+            40.0000005,
+            -75.0000004
+          ],
+          [
+            40.0001002,
+            -75.0000003
+          ],
+          [
+            40.0002001,
+            -75.0000998
+          ],
+          null
+        ]
+      },
+      "expected": [
+        [
+          40.0000005,
+          -75.0000004
+        ],
+        [
+          40.00011,
+          -75.00001
+        ],
+        [
+          40.0002001,
+          -75.0000998
+        ],
+        null
+      ]
+    },
+    {
+      "name": "a different track hash is ignored",
+      "sidecar": {
+        "version": 1,
+        "track": {
+          "points": 4,
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "positions": [
+          [
+            40.0000005,
+            -75.0000004
+          ],
+          [
+            40.0001002,
+            -75.0000003
+          ],
+          [
+            40.0002001,
+            -75.0000998
+          ],
+          null
+        ]
+      },
+      "expected": [
+        null,
+        [
+          40.00011,
+          -75.00001
+        ],
+        null,
+        null
+      ]
+    },
+    {
+      "name": "a different point count is ignored",
+      "sidecar": {
+        "version": 1,
+        "track": {
+          "points": 5,
+          "sha256": "204d9d2a12000023ab0b04877e4e65b935ae028f2a4b4c9f2b0437d634ca9dab"
+        },
+        "positions": [
+          [
+            40.0000005,
+            -75.0000004
+          ],
+          [
+            40.0001002,
+            -75.0000003
+          ],
+          [
+            40.0002001,
+            -75.0000998
+          ],
+          null
+        ]
+      },
+      "expected": [
+        null,
+        [
+          40.00011,
+          -75.00001
+        ],
+        null,
+        null
+      ]
+    },
+    {
+      "name": "an unknown version is ignored",
+      "sidecar": {
+        "version": 2,
+        "track": {
+          "points": 4,
+          "sha256": "204d9d2a12000023ab0b04877e4e65b935ae028f2a4b4c9f2b0437d634ca9dab"
+        },
+        "positions": [
+          [
+            40.0000005,
+            -75.0000004
+          ],
+          [
+            40.0001002,
+            -75.0000003
+          ],
+          [
+            40.0002001,
+            -75.0000998
+          ],
+          null
+        ]
+      },
+      "expected": [
+        null,
+        [
+          40.00011,
+          -75.00001
+        ],
+        null,
+        null
+      ]
+    },
+    {
+      "name": "positions of the wrong length are ignored",
+      "sidecar": {
+        "version": 1,
+        "track": {
+          "points": 4,
+          "sha256": "204d9d2a12000023ab0b04877e4e65b935ae028f2a4b4c9f2b0437d634ca9dab"
+        },
+        "positions": [
+          [
+            40.0000005,
+            -75.0000004
+          ],
+          [
+            40.0001002,
+            -75.0000003
+          ],
+          [
+            40.0002001,
+            -75.0000998
+          ]
+        ]
+      },
+      "expected": [
+        null,
+        [
+          40.00011,
+          -75.00001
+        ],
+        null,
+        null
+      ]
+    },
+    {
+      "name": "a malformed entry is skipped, the rest merge",
+      "sidecar": {
+        "version": 1,
+        "track": {
+          "points": 4,
+          "sha256": "204d9d2a12000023ab0b04877e4e65b935ae028f2a4b4c9f2b0437d634ca9dab"
+        },
+        "positions": [
+          [
+            40.0000005
+          ],
+          "x",
+          [
+            91.0,
+            -75.0
+          ],
+          [
+            40.0003001,
+            -75.0001001
+          ]
+        ]
+      },
+      "expected": [
+        null,
+        [
+          40.00011,
+          -75.00001
+        ],
+        null,
+        [
+          40.0003001,
+          -75.0001001
+        ]
+      ]
+    },
+    {
+      "name": "a sidecar that is not an object is ignored",
+      "sidecar": [
+        [
+          40.0000005,
+          -75.0000004
+        ],
+        [
+          40.0001002,
+          -75.0000003
+        ],
+        [
+          40.0002001,
+          -75.0000998
+        ],
+        null
+      ],
+      "expected": [
+        null,
+        [
+          40.00011,
+          -75.00001
+        ],
+        null,
+        null
+      ]
+    },
+    {
+      "name": "an upper-case hash is not the same hash",
+      "sidecar": {
+        "version": 1,
+        "track": {
+          "points": 4,
+          "sha256": "204D9D2A12000023AB0B04877E4E65B935AE028F2A4B4C9F2B0437D634CA9DAB"
+        },
+        "positions": [
+          [
+            40.0000005,
+            -75.0000004
+          ],
+          [
+            40.0001002,
+            -75.0000003
+          ],
+          [
+            40.0002001,
+            -75.0000998
+          ],
+          null
+        ]
+      },
+      "expected": [
+        null,
+        [
+          40.00011,
+          -75.00001
+        ],
+        null,
+        null
+      ]
+    }
+  ],
+  "nonObjectTrack": {
+    "description": "A stored track whose middle element is not an object. A reader that keeps the stored array (web, Deno) leaves that entry as it is and merges onto the rest, and must not throw: a throw costs it the whole track. The Go writer decodes it as a point with no coordinate, counts it, and places no position on it. The Dart reader cannot hold it in a List<Waypoint>: it drops the entry on decode, and the sidecar, whose point count names the stored array, no longer matches, so expectedDroppingNonObjects is the raw line.",
+    "trackJson": "[{\"lat\":40,\"lng\":-75,\"ts\":\"2026-10-08T07:00:00Z\"},null,{\"lat\":40.0002,\"lng\":-75.0001,\"ts\":\"2026-10-08T07:00:02Z\"}]",
+    "sha256": "c7c1238d5431e665491a759077dc42f401a2d2e056904d4d10b832275c1f4804",
+    "sidecar": {
+      "version": 1,
+      "track": {
+        "points": 3,
+        "sha256": "c7c1238d5431e665491a759077dc42f401a2d2e056904d4d10b832275c1f4804"
+      },
+      "positions": [
+        [
+          40.0000005,
+          -75.0000004
+        ],
+        null,
+        [
+          40.0002001,
+          -75.0000998
+        ]
+      ]
+    },
+    "expected": [
+      [
+        40.0000005,
+        -75.0000004
+      ],
+      null,
+      [
+        40.0002001,
+        -75.0000998
+      ]
+    ],
+    "expectedDroppingNonObjects": [
+      null,
+      null
+    ]
+  }
+}

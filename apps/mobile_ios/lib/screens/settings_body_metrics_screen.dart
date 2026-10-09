@@ -226,6 +226,16 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
           await api.recordBodyWeightKg(weightVal);
           _loadedWeightKg = weightVal;
         }
+        // The calorie estimates (here, web, Wear OS) read the bag's
+        // `body_weight_kg`, not the series, and nothing wrote it from this
+        // screen (decisions § 1811). Written even when unchanged so a re-save
+        // repairs a stale mirror.
+        if (weightVal != null) {
+          await widget.settingsSync?.updateUniversal(
+            <String, dynamic>{SettingsKeys.bodyWeightKg: weightVal},
+          );
+          await widget.preferences.setBodyWeightKg(weightVal);
+        }
       } else {
         // Art 7(3) withdrawal: one RPC nulls consent + the Art 9 profile
         // columns (height, gender) and erases the weight series atomically.
@@ -241,9 +251,14 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
         // column is the child-safety age record and this screen never
         // touches it: since § 721 the RPC leaves it standing, so there is
         // nothing to put back.
-        await widget.settingsSync?.updateUniversal(
-          <String, dynamic>{SettingsKeys.dateOfBirth: null},
-        );
+        // The weight series' mirror goes with the series — but only on a real
+        // withdrawal: a runner who never consented may hold a weight typed in
+        // the setup wizard.
+        await widget.settingsSync?.updateUniversal(<String, dynamic>{
+          SettingsKeys.dateOfBirth: null,
+          if (withdrawing) SettingsKeys.bodyWeightKg: null,
+        });
+        if (withdrawing) await widget.preferences.setBodyWeightKg(null);
       }
       _snack(l10n.bodyMetricsSaved);
     } catch (e) {

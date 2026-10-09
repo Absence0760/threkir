@@ -533,7 +533,7 @@
 							title={sidebarCollapsed ? m(item.labelKey) : undefined}
 						>
 							<span class="nav-icon-wrap">
-								<span class="nav-icon material-symbols">{item.icon}</span>
+								<span class="nav-icon material-symbols" aria-hidden="true">{item.icon}</span>
 							</span>
 							<span class="nav-label">{m(item.labelKey)}</span>
 						</a>

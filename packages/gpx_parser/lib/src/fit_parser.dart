@@ -27,13 +27,24 @@ class FitParser {
   static const _fieldPositionLat = 0;
   static const _fieldPositionLng = 1;
   static const _fieldAltitude = 2;
+  static const _fieldDistance = 5;
   static const _fieldTimestamp = 253;
   static const _fieldEnhancedAltitude = 78;
 
   /// Parse a FIT binary file into a [Route].
   ///
   /// Throws [FormatException] if the file is not a valid FIT file.
-  static Route parse(Uint8List bytes) {
+  static Route parse(Uint8List bytes) => parseWithDistances(bytes).route;
+
+  /// [parse], plus the device's cumulative distance (FIT `record.distance`,
+  /// metres) at each of the route's waypoints, index-aligned with
+  /// `route.waypoints`. An entry is null where that record carried no
+  /// distance; the whole list is null when none did. The distances are what
+  /// the device measured (its own filtered GPS, or a foot pod / wheel), so an
+  /// importer can measure embedded bests on them instead of re-estimating
+  /// from the positions.
+  static ({Route route, List<double?>? distancesMetres}) parseWithDistances(
+      Uint8List bytes) {
     if (bytes.length < 14) {
       throw const FormatException('FIT file too short');
     }
@@ -61,6 +72,15 @@ class FitParser {
     // Track definition messages so we know how to decode data messages.
     final definitions = <int, _FieldDefinition>{};
     final waypoints = <Waypoint>[];
+    final distances = <double?>[];
+    var anyDistance = false;
+    void addRecord(_Record? rec) {
+      if (rec == null) return;
+      waypoints.add(rec.waypoint);
+      distances.add(rec.distanceMetres);
+      if (rec.distanceMetres != null) anyDistance = true;
+    }
+
     var offset = dataStart;
 
     while (offset < dataEnd) {
@@ -78,8 +98,7 @@ class FitParser {
           break; // can't decode without a definition
         }
         if (def.globalMesgNum == _recordMesgNum) {
-          final wp = _parseRecordMessage(bytes, offset, def);
-          if (wp != null) waypoints.add(wp);
+          addRecord(_parseRecordMessage(bytes, offset, def));
         }
         offset += def.totalFieldSize;
         continue;
@@ -139,18 +158,21 @@ class FitParser {
         }
 
         if (def.globalMesgNum == _recordMesgNum) {
-          final wp = _parseRecordMessage(bytes, offset, def);
-          if (wp != null) waypoints.add(wp);
+          addRecord(_parseRecordMessage(bytes, offset, def));
         }
         offset += def.totalFieldSize;
       }
     }
 
-    return _buildRoute(waypoints);
+    return (
+      route: _buildRoute(waypoints),
+      distancesMetres: anyDistance ? distances : null,
+    );
   }
 
-  static Waypoint? _parseRecordMessage(
+  static _Record? _parseRecordMessage(
       Uint8List bytes, int startOffset, _FieldDefinition def) {
+    int? rawDistance;
     int? rawLat;
     int? rawLng;
     int? rawAltitude;
@@ -190,6 +212,13 @@ class FitParser {
                 : _readUint32LE(bytes, offset);
             if (v != 0xFFFFFFFF) rawEnhancedAlt = v;
           }
+        case _fieldDistance:
+          if (field.size >= 4) {
+            final v = def.bigEndian
+                ? _readUint32BE(bytes, offset)
+                : _readUint32LE(bytes, offset);
+            if (v != 0xFFFFFFFF) rawDistance = v;
+          }
         case _fieldTimestamp:
           if (field.size >= 4) {
             final v = def.bigEndian
@@ -225,11 +254,14 @@ class FitParser {
       timestamp = _fitEpoch.add(Duration(seconds: rawTimestamp));
     }
 
-    return Waypoint(
-      lat: lat,
-      lng: lng,
-      elevationMetres: elevation,
-      timestamp: timestamp,
+    return _Record(
+      Waypoint(
+        lat: lat,
+        lng: lng,
+        elevationMetres: elevation,
+        timestamp: timestamp,
+      ),
+      rawDistance == null ? null : rawDistance / 100.0,
     );
   }
 
@@ -311,4 +343,10 @@ class _Field {
   final int baseType;
 
   const _Field(this.fieldNum, this.size, this.baseType);
+}
+
+class _Record {
+  final Waypoint waypoint;
+  final double? distanceMetres;
+  const _Record(this.waypoint, this.distanceMetres);
 }

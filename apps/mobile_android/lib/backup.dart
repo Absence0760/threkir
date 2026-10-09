@@ -121,7 +121,8 @@ class BackupService {
     onProgress?.call(const BackupProgress.stage('profile'));
     // Self-read via RPC — sensitive columns are column-level revoked from
     // direct SELECT (migration 20260707_001).
-    final profile = ApiClient.profileRowFrom(await client.rpc('get_my_profile'));
+    final profile = ApiClient.profileRowFrom(
+        await client.rpc('get_my_profile', params: const {}, get: true));
     final userSettings = await client
         .from('user_settings')
         .select('prefs')

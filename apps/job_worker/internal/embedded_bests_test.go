@@ -61,8 +61,7 @@ func haversineCumulative(pts []RecordedTrackPoint) []float64 {
 
 func bestsOf(pts []RecordedTrackPoint) map[string]*int {
 	pts = coordinatePoints(pts)
-	cum, _, _ := replayRecordedTrack(pts, 10)
-	return embeddedBestsOver(pts, cum)
+	return embeddedBestsOver(pts, replayRecordedTrack(pts, 10).SmoothedCumM)
 }
 
 func TestEmbeddedBestDistancesMatchTheDartAndWebKeys(t *testing.T) {
@@ -109,8 +108,9 @@ func TestEmbeddedBests_EvenSixKmRun(t *testing.T) {
 }
 
 func TestEmbeddedBests_FastFiveKmInsideALongRun(t *testing.T) {
-	// 104 steps rather than 100: the estimator lags the pace change and
-	// credits ~20 m less than the straight line.
+	// 104 steps rather than 100 so the slow tail holds a 10 km window. The
+	// smoother spreads the 2:1 pace change across both sides of it, so the
+	// fast half credits ~8 m short and its best reads ~1016 s, not 1000.
 	pts := []RecordedTrackPoint{ebPoint(0, 0, ebAt(0))}
 	var ms int64
 	for i := 1; i <= 104; i++ {
@@ -122,8 +122,8 @@ func TestEmbeddedBests_FastFiveKmInsideALongRun(t *testing.T) {
 		pts = append(pts, ebPoint(0, float64(i)*100.01/ebMPerDeg, ebAt(ms)))
 	}
 	b := bestsOf(pts)
-	if s := b["fastest_5k_s"]; s == nil || *s < 995 || *s > 1005 {
-		t.Errorf("fastest_5k_s = %v, want ~1000", s)
+	if s := b["fastest_5k_s"]; s == nil || *s < 995 || *s > 1020 {
+		t.Errorf("fastest_5k_s = %v, want 1000-1020", s)
 	}
 	if s := b["fastest_10k_s"]; s == nil || *s < 2990 || *s > 3040 {
 		t.Errorf("fastest_10k_s = %v, want ~3000-3025", s)
@@ -192,7 +192,8 @@ func TestEstimatorCumulative_NonDecreasingAndCarriesUntimedPoints(t *testing.T) 
 		}
 		pts = append(pts, ebPoint(0, float64(i)*3/ebMPerDeg, at))
 	}
-	cum, _, fixes := replayRecordedTrack(pts, 10)
+	replay := replayRecordedTrack(pts, 10)
+	cum, fixes := replay.SmoothedCumM, replay.Fixes
 	if len(cum) != len(pts) || cum[0] != 0 || fixes != 20 {
 		t.Fatalf("len = %d, cum[0] = %v, fixes = %d", len(cum), cum[0], fixes)
 	}

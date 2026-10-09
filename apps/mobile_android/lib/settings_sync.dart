@@ -152,6 +152,12 @@ class SettingsSyncService extends ChangeNotifier {
     return loaded;
   }
 
+  /// [service], loading it first when [onSignedIn] never ran or failed: the
+  /// read for a decision that must not run on a bag nobody loaded, such as
+  /// which privacy zones a shared image withholds. Throws when there is no
+  /// session or the bags cannot be loaded at all.
+  Future<SettingsService> loadedService() => _ensureService();
+
   /// Push the user's current distance-unit choice to the universal bag.
   /// Call from the settings-screen toggle handler. Throws when there is no
   /// session to write against — the local pref has already been saved by

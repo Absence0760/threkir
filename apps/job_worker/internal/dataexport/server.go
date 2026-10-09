@@ -1239,8 +1239,9 @@ func WriteBackupZip(ctx context.Context, w io.Writer, in BuildBackupZipInput, f 
 	// so every object under {uid}/ lands in the zip even without a DB
 	// row — the row-driven loops above miss CAS-orphaned matched tracks
 	// ({uid}/{run_id}.matched.json.gz left behind by the re-upload race,
-	// see worker.go), legacy tracks whose run row is gone, and the
-	// worker-generated photo thumbnails. Deduped against the row-driven
+	// see worker.go), legacy tracks whose run row is gone, the worker's
+	// smoothed-position sidecars ({uid}/{run_id}.smoothed.json.gz, which no
+	// column points at), and the worker-generated photo thumbnails. Deduped against the row-driven
 	// entries; {uid}/exports/ is skipped (prior export artifacts —
 	// self-referential, and each is itself a copy of this data; the
 	// artifact now lands in its own bucket, but legacy ones are still

@@ -29,6 +29,15 @@ class Waypoint {
   @JsonKey(includeIfNull: false)
   final double? bearingDeg;
 
+  /// The smoothed GPS distance filter's position for this fix (spec v1.2,
+  /// `docs/features/gps_distance.md` § Waypoint fields), written at save.
+  /// [lat] / [lng] stay the raw fix. Omitted when the smoother placed no
+  /// position on the fix, and on every track recorded before it existed.
+  @JsonKey(includeIfNull: false)
+  final double? smoothedLat;
+  @JsonKey(includeIfNull: false)
+  final double? smoothedLng;
+
   const Waypoint({
     required this.lat,
     required this.lng,
@@ -39,7 +48,39 @@ class Waypoint {
     this.speedMps,
     this.speedAccuracyMps,
     this.bearingDeg,
+    this.smoothedLat,
+    this.smoothedLng,
   });
+
+  /// Whether the stored track carries a usable smoothed position for this
+  /// fix: both halves present and finite, as `hasSmoothedPosition` in web
+  /// `lib/runs/track_line.ts` reads it. A NaN half would otherwise put the
+  /// line vertex nowhere instead of on the raw fix.
+  bool get hasSmoothedPosition =>
+      (smoothedLat?.isFinite ?? false) && (smoothedLng?.isFinite ?? false);
+
+  /// Where the run line, a route match or a hop-sum distance places this
+  /// fix: the smoothed position when both halves are present, else the raw
+  /// fix. Never an estimator input — the estimator always takes [lat] /
+  /// [lng].
+  double get lineLat => hasSmoothedPosition ? smoothedLat! : lat;
+  double get lineLng => hasSmoothedPosition ? smoothedLng! : lng;
+
+  /// This fix with the smoother's position attached (or cleared, with nulls).
+  Waypoint withSmoothedPosition(double? smoothedLat, double? smoothedLng) =>
+      Waypoint(
+        lat: lat,
+        lng: lng,
+        elevationMetres: elevationMetres,
+        timestamp: timestamp,
+        bpm: bpm,
+        accuracyMetres: accuracyMetres,
+        speedMps: speedMps,
+        speedAccuracyMps: speedAccuracyMps,
+        bearingDeg: bearingDeg,
+        smoothedLat: smoothedLat,
+        smoothedLng: smoothedLng,
+      );
 
   factory Waypoint.fromJson(Map<String, dynamic> json) =>
       _$WaypointFromJson(json);
@@ -76,7 +117,9 @@ List<Waypoint> finiteWaypoints(List<Waypoint> track) {
         _nonFinite(w.accuracyMetres) ||
         _nonFinite(w.speedMps) ||
         _nonFinite(w.speedAccuracyMps) ||
-        _nonFinite(w.bearingDeg)) {
+        _nonFinite(w.bearingDeg) ||
+        _nonFinite(w.smoothedLat) ||
+        _nonFinite(w.smoothedLng)) {
       needsFilter = true;
       break;
     }
@@ -95,10 +138,16 @@ List<Waypoint> finiteWaypoints(List<Waypoint> track) {
           speedMps: _finiteOrNull(w.speedMps),
           speedAccuracyMps: _finiteOrNull(w.speedAccuracyMps),
           bearingDeg: _finiteOrNull(w.bearingDeg),
+          // A half-finite smoothed pair is no position: both or neither.
+          smoothedLat: _finiteSmoothedPair(w) ? w.smoothedLat : null,
+          smoothedLng: _finiteSmoothedPair(w) ? w.smoothedLng : null,
         ),
   ];
 }
 
 bool _nonFinite(double? v) => v != null && !v.isFinite;
+
+bool _finiteSmoothedPair(Waypoint w) =>
+    (w.smoothedLat?.isFinite ?? false) && (w.smoothedLng?.isFinite ?? false);
 
 double? _finiteOrNull(double? v) => (v?.isFinite ?? false) ? v : null;

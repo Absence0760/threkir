@@ -14,9 +14,10 @@ import 'package:core_models/core_models.dart';
 /// job_worker's distance_recompute handler accepts.
 const List<RunSource> recomputableSources = [RunSource.app, RunSource.watch];
 
-/// The estimator a recompute applies. A run already carrying it has nothing
-/// to gain.
-const String currentDistanceEstimator = 'kalman_v1';
+/// The estimator a recompute applies: spec v1.2's smoother. A run already
+/// carrying it has nothing to gain; a run a recompute stamped `kalman_v1`
+/// (spec v1.1's forward filter) is offered again.
+const String currentDistanceEstimator = 'kalman_v2';
 
 /// The four fields the predicate reads, so a server row and a local [Run]
 /// can both be asked. A local [Run] carries no owner id and keeps its
@@ -43,10 +44,15 @@ class RecomputeCandidate {
       );
 }
 
-/// The viewer owns the run, it has a stored track, one of our recorders
-/// wrote it, its distance is not a pedometer estimate, and it was not already
-/// recorded or recomputed with the current estimator. The RPC re-checks the
-/// first two server-side; the rest only decide whether the action is useful.
+/// The viewer owns the run and it is a run the server recompute would
+/// actually rewrite. The rule past ownership mirrors
+/// `distanceRecomputeSkipReason` in
+/// apps/job_worker/internal/handler_distance_recompute.go exactly — the
+/// worker re-checks it and completes a refused job silently, so an action
+/// offered here that the worker would skip is a no-op the runner cannot see.
+/// Change the two together. On top of the worker's rule, a run already on the
+/// current estimator is not offered: the worker would accept it, but a replay
+/// through the same smoother has nothing to gain.
 bool canRecomputeDistance(RecomputeCandidate? run, String? viewerId) {
   if (run == null || viewerId == null || viewerId.isEmpty) return false;
   if (run.userId != viewerId) return false;
@@ -54,7 +60,21 @@ bool canRecomputeDistance(RecomputeCandidate? run, String? viewerId) {
   if (trackUrl == null || trackUrl.isEmpty) return false;
   if (!recomputableSources.contains(run.source)) return false;
   final metadata = run.metadata ?? const <String, dynamic>{};
-  if (metadata[MetadataKeys.distanceSource] == 'pedometer') return false;
+  if (metadata[MetadataKeys.inProgress] == true) return false;
+  if (metadata[MetadataKeys.manualEntry] == true) return false;
+  if (metadata[MetadataKeys.indoor] == true) return false;
+  if (metadata[MetadataKeys.indoorEstimated] == true) return false;
+  // Any provenance tag names a non-GPS distance (pedometer, treadmill), and
+  // an unknown one is not the estimator's to overwrite.
+  final distanceSource = metadata[MetadataKeys.distanceSource];
+  if (distanceSource is String && distanceSource.isNotEmpty) return false;
+  // Stamped live by a recorder that ran the estimator over every fix (the
+  // watches stamp `kalman_v1`) and never recomputed: the stored track is
+  // movement-gated, so a replay would see fewer fixes than the live figure.
+  if (metadata.containsKey(MetadataKeys.distanceEstimator) &&
+      !metadata.containsKey(MetadataKeys.distanceRecomputedAt)) {
+    return false;
+  }
   if (metadata[MetadataKeys.distanceEstimator] == currentDistanceEstimator) {
     return false;
   }

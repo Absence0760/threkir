@@ -274,6 +274,10 @@ void main() {
           reason: 'distanceFilter must stay 0 so every fix flows through '
               'software filtering (same rule as Android — see ADR §21).');
       expect(apple.allowBackgroundLocationUpdates, isTrue);
+      expect(apple.accuracy, LocationAccuracy.bestForNavigation,
+          reason: 'geolocator_apple maps `high` to '
+              'kCLLocationAccuracyNearestTenMeters; a run needs full GPS '
+              'accuracy (#1090 item 0).');
       r.dispose();
     });
 
@@ -307,6 +311,11 @@ void main() {
       expect(android.distanceFilter, 0,
           reason: 'distanceFilter must stay 0 so every fix flows through '
               'software filtering (ADR §21).');
+      expect(android.intervalDuration, const Duration(seconds: 1),
+          reason: 'without it geolocator_android requests a fix every '
+              '5000 ms, and on Android 13+ also sets that as the minimum '
+              'update interval (#1090 item 0).');
+      expect(android.accuracy, LocationAccuracy.bestForNavigation);
       r.dispose();
     });
   });

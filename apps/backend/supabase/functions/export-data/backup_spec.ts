@@ -504,7 +504,8 @@ export function isSafeStoragePath(p: string): boolean {
 
 /// Pick the objects the orphan prefix-walk should archive: every key
 /// under `{userId}/` that the row-driven loops did NOT already ship —
-/// CAS-orphaned matched tracks, legacy tracks whose run row is gone,
+/// CAS-orphaned matched tracks, legacy tracks whose run row is gone, the
+/// worker's smoothed-position sidecars (no column names them),
 /// worker-generated photo thumbnails. `{userId}/exports/` is skipped in
 /// the runs bucket (prior export artifacts — self-referential). Mirrors
 /// the Go builder's walk filter so both backup paths sweep the same set.

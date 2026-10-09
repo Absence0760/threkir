@@ -2176,6 +2176,33 @@ export const CONDITIONALLY_STAMPED_ASSERTIONS = [
     readBack: 'the stored race ping is the supplied one, not a privacy-coarsened substitute',
     reason: 'The race-board half of the live-ping entry above, with the same repair.',
   },
+  {
+    file: 'runs_physical_quantity_bounds_test.sql',
+    description: 'an ordinary 5 km run still stores',
+    columns: ['runs.metadata'],
+    reason:
+      'The claim is about the distance_m / duration_s CHECKs, and `runs_road_distance_matches_track` ' +
+      '(20270719000020) only rewrites metadata that carries distance_map_matched_m or ' +
+      'distance_map_matched_track_version; this bag carries neither, so the trigger returns it unchanged.',
+  },
+  {
+    file: 'runs_physical_quantity_bounds_test.sql',
+    description: 'a zero-distance run is accepted at the floor — a treadmill row is one',
+    columns: ['runs.metadata'],
+    reason:
+      'The claim is about the distance_m / duration_s CHECKs, and `runs_road_distance_matches_track` ' +
+      '(20270719000020) only rewrites metadata that carries distance_map_matched_m or ' +
+      'distance_map_matched_track_version; this bag carries neither, so the trigger returns it unchanged.',
+  },
+  {
+    file: 'runs_physical_quantity_bounds_test.sql',
+    description: 'a zero duration is accepted at the floor',
+    columns: ['runs.metadata'],
+    reason:
+      'The claim is about the distance_m / duration_s CHECKs, and `runs_road_distance_matches_track` ' +
+      '(20270719000020) only rewrites metadata that carries distance_map_matched_m or ' +
+      'distance_map_matched_track_version; this bag carries neither, so the trigger returns it unchanged.',
+  },
 ];
 
 /**

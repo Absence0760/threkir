@@ -1112,6 +1112,53 @@ func TestBuildBackupZip_PrefixWalkArchivesOrphanObjects(t *testing.T) {
 	}
 }
 
+func TestBuildBackupZip_PrefixWalkArchivesTheSmoothedSidecar(t *testing.T) {
+	// The worker's smoothed-position sidecar ({uid}/{run_id}.smoothed.json.gz,
+	// docs/features/gps_distance.md § Waypoint fields) has no DB column, so
+	// the prefix walk is what carries it into the Art 20 archive.
+	trackURL := "uid/run-1.json.gz"
+	sidecarBytes := gzipString(t, `{"version":1,"track":{"points":1,"sha256":"ab"},"positions":[[1.0,2.0]]}`)
+	runs := []ExportRun{{
+		ID: "run-1", UserID: "uid", StartedAt: "2026-05-11T10:00:00Z",
+		DurationS: 1500, DistanceM: 5000, Source: "watch", TrackURL: &trackURL,
+	}}
+	rawFetch := func(_ context.Context, p string) ([]byte, error) {
+		switch p {
+		case trackURL:
+			return gzipString(t, `[{"lat":1.0,"lng":2.0}]`), nil
+		case "uid/run-1.smoothed.json.gz":
+			return sidecarBytes, nil
+		}
+		return nil, errors.New("unexpected raw fetch: " + p)
+	}
+	lister := func(_ context.Context, bucket, _ string) ([]string, error) {
+		if bucket == "runs" {
+			return []string{trackURL, "uid/run-1.smoothed.json.gz"}, nil
+		}
+		return nil, nil
+	}
+	body, err := buildBackupZip(context.Background(), BuildBackupZipInput{
+		Runs: runSource(runs), UserID: "uid", ExportedFrom: "test",
+	}, BackupFetchers{RawTrack: rawFetch, ListObjects: lister})
+	if err != nil {
+		t.Fatal(err)
+	}
+	zr, _ := zip.NewReader(bytes.NewReader(body), int64(len(body)))
+	found := false
+	for _, f := range zr.File {
+		if f.Name != "storage/runs/run-1.smoothed.json.gz" {
+			continue
+		}
+		rc, _ := f.Open()
+		b, _ := io.ReadAll(rc)
+		rc.Close()
+		found = bytes.Equal(b, sidecarBytes)
+	}
+	if !found {
+		t.Error("the smoothed sidecar must land in the archive verbatim at storage/runs/run-1.smoothed.json.gz")
+	}
+}
+
 func TestBuildBackupZip_ListerErrorDoesNotSinkArchive(t *testing.T) {
 	trackURL := "uid/run-1.json.gz"
 	rawTrack := gzipString(t, `[{"lat":1.0,"lng":2.0},{"lat":3.0,"lng":4.0}]`)

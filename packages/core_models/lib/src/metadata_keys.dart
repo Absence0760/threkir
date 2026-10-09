@@ -23,6 +23,7 @@ class MetadataKeys {
   static const String chipTime = 'chip_time';
   static const String createdByUserId = 'created_by_user_id';
   static const String distanceEstimator = 'distance_estimator';
+  static const String distanceRecomputedAt = 'distance_recomputed_at';
   static const String distanceRecordedM = 'distance_recorded_m';
   static const String distanceSource = 'distance_source';
   static const String distanceStepFilledM = 'distance_step_filled_m';
@@ -51,6 +52,7 @@ class MetadataKeys {
   static const String isDnf = 'is_dnf';
   static const String laps = 'laps';
   static const String lastModifiedAt = 'last_modified_at';
+  static const String locationProvider = 'location_provider';
   static const String manualEntry = 'manual_entry';
   static const String maxBpm = 'max_bpm';
   static const String notes = 'notes';
@@ -68,6 +70,7 @@ class MetadataKeys {
   static const String sessionAdherence = 'session_adherence';
   static const String sessionPlanId = 'session_plan_id';
   static const String sessionStepResults = 'session_step_results';
+  static const String smoothedSidecarSha256 = 'smoothed_sidecar_sha256';
   static const String sourceFile = 'source_file';
   static const String steps = 'steps';
   static const String stravaActivityType = 'strava_activity_type';

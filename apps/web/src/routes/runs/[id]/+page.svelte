@@ -2,7 +2,7 @@
 	import { siteOrigin } from '$lib/core/site_url';
 	import MetricLabel from '$lib/components/MetricLabel.svelte';
 	import type { MetricId } from '$lib/metrics/metric_registry';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { fmtPace, getUnit, formatPaceNoSuffix } from '$lib/format/units.svelte';
 
 	const METRES_PER_MILE = 1609.344;
@@ -54,6 +54,7 @@
 	import type { PlanWorkout } from '$lib/types';
 	import { toRunGpx, downloadFile } from '$lib/routes/gpx';
 	import { movingTimeSeconds, computeRealSplits } from '$lib/runs/run_stats';
+	import { lineLat, lineLng } from '$lib/runs/track_line';
 	import { computeElevationGain } from '$lib/routes/route_simplify';
 	import {
 		cadenceSpm,
@@ -76,7 +77,13 @@
 	import { showToast } from '$lib/stores/toast.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import Modal from '$lib/components/Modal.svelte';
-	import { isInAnyZone, PRIVACY_ZONES_KEY, type PrivacyZone } from '$lib/routes/privacy';
+	import {
+		trackEntersAnyZone,
+		PRIVACY_ZONES_KEY,
+		type PrivacyZone,
+	} from '$lib/routes/privacy';
+	import { knownEffective, type LoadedSettings } from '$lib/settings/settings_overlay';
+	import { shareCardTrack } from '$lib/share/share_card_track';
 	import {
 		estimateRunCalories,
 		ACTIVITY_KCAL_PER_KG_PER_KM,
@@ -87,6 +94,7 @@
 	import {
 		canRecomputeDistance,
 		classifyRecomputeError,
+		mapMatchedDistanceM,
 		recordedDistanceM,
 	} from '$lib/runs/distance_recompute';
 	import { supabase } from '$lib/core/supabase';
@@ -316,6 +324,7 @@
 					const age = ageFromDob(dob, Date.now());
 					if (age !== null) viewerAgeYears = age;
 				}
+				ownerZones = zonesFrom(settings);
 				const bw = effective<number>(settings, 'body_weight_kg');
 				if (typeof bw === 'number' && bw > 0) bodyWeightKg = bw;
 				showCalories = effective<boolean>(settings, 'show_calories', true) !== false;
@@ -640,6 +649,31 @@
 		}
 	}
 
+	/// The owner's privacy zones as last loaded, or null while they are not
+	/// known: before the settings load lands, when it fails, or offline on a
+	/// cold cache. Null is never read as "no zones" — the share image and the
+	/// make-public confirm both wait for a known list.
+	let ownerZones = $state<PrivacyZone[] | null>(null);
+
+	function zonesFrom(settings: LoadedSettings): PrivacyZone[] | null {
+		const zones = knownEffective<PrivacyZone[]>(settings, PRIVACY_ZONES_KEY);
+		return zones === null ? null : (zones ?? []);
+	}
+
+	/// [ownerZones], loading them when they are not known yet.
+	async function loadOwnerZones(): Promise<PrivacyZone[] | null> {
+		if (ownerZones !== null) return ownerZones;
+		const uid = auth.user?.id;
+		if (!uid) return null;
+		try {
+			const { loadSettings } = await import('$lib/settings/settings');
+			ownerZones = zonesFrom(await loadSettings(uid));
+		} catch (e) {
+			console.warn('privacy zones unknown', e);
+		}
+		return ownerZones;
+	}
+
 	async function handleShare() {
 		if (!run || !auth.user || shareBusy) return;
 		// Skip the prompt when the run is already public — Share becomes
@@ -656,23 +690,18 @@
 		// on the user's actual situation: privacy-zone clip warning if
 		// the track intersects a zone, otherwise a no-zones notice with
 		// a link to set one up before sharing.
-		let intersectsZone = false;
-		let hasZones = false;
-		try {
-			const { loadSettings, effective } = await import('$lib/settings/settings');
-			const settings = await loadSettings(auth.user.id);
-			const zones =
-				effective<PrivacyZone[]>(settings, PRIVACY_ZONES_KEY) ?? [];
-			hasZones = zones.length > 0;
-			if (run.track && run.track.length > 0 && hasZones) {
-				intersectsZone = run.track.some((p) => isInAnyZone(p, zones));
-			}
-		} catch (_) {
-			// Settings load failure shouldn't block sharing — fall
-			// through to the no-zones branch.
+		// Unknown zones refuse the share rather than fall through to the
+		// no-zones body, which would tell the owner they have no zone set up.
+		// The public page clips on the server's copy of the zones either way;
+		// what an unknown list would get wrong here is the warning.
+		const zones = await loadOwnerZones();
+		if (zones === null) {
+			showToast(m('runDetail.shareZonesUnknown'), 'error');
+			return;
 		}
-		shareConfirmIntersectsZone = intersectsZone;
-		shareConfirmHasZones = hasZones;
+		shareConfirmIntersectsZone =
+			zones.length > 0 && !!run.track && trackEntersAnyZone(run.track, zones);
+		shareConfirmHasZones = zones.length > 0;
 		showShareConfirm = true;
 	}
 
@@ -756,6 +785,14 @@
 		if (!run || generatingImage) return;
 		generatingImage = true;
 		try {
+			// The card's map is the owner's track clipped to their zones
+			// (`shareCardTrack`), so an image cannot go out before the zones
+			// are known: it would carry the unclipped line.
+			if ((await loadOwnerZones()) === null) {
+				showToast(m('runDetail.shareZonesUnknown'), 'error');
+				return;
+			}
+			await tick();
 			// Dynamic import keeps the 30 KB lib out of the initial
 			// bundle for users who never click Share-as-image.
 			const { toPng } = await import('html-to-image');
@@ -825,6 +862,7 @@
 		!recomputeRequested && canRecomputeDistance(run, auth.user?.id),
 	);
 	let originalDistanceM = $derived(recordedDistanceM(run?.metadata));
+	let roadMatchedDistanceM = $derived(mapMatchedDistanceM(run?.metadata));
 
 	async function confirmRecomputeDistance() {
 		if (!run) return;
@@ -1252,7 +1290,7 @@
 	let scrubPreviewLngLat = $derived.by<[number, number] | null>(() => {
 		if (!scrubbing || !hasMapTrack) return null;
 		const pt = interpolateAlongRoute(
-			baseTrack.map((p) => ({ lat: p.lat, lng: p.lng })),
+			baseTrack.map((p) => ({ lat: lineLat(p), lng: lineLng(p) })),
 			scrubFraction,
 		);
 		return pt ? [pt.lng, pt.lat] : null;
@@ -1357,9 +1395,13 @@
 	/// fetches it on every page view — the MapTiler branch must
 	/// therefore wait for consent like the list thumbnails do; the
 	/// self-hosted local override is exempt. audit/cookie-consent.
+	///
+	/// The line is the map track clipped to the owner's zones, and absent
+	/// until they are known (`shareCardTrack`).
+	let shareCardLine = $derived(shareCardTrack(baseTrack, ownerZones));
 	let shareMapUrl = $derived.by(() => {
-		if (!hasMapTrack || baseTrack.length < 2) return null;
-		const pts = baseTrack.map((p) => ({ lat: p.lat, lng: p.lng }));
+		if (shareCardLine.length < 2) return null;
+		const pts = shareCardLine.map((p) => ({ lat: p.lat, lng: p.lng }));
 		return (
 			buildLocalStaticMapUrl(pts, {
 				w: 1080,
@@ -1829,11 +1871,20 @@
 				</div>
 			{/if}
 		</div>
-		{#if originalDistanceM != null || showRecomputeDistance}
+		{#if originalDistanceM != null || roadMatchedDistanceM != null || showRecomputeDistance}
 			<div class="distance-recompute" data-testid="distance-recompute">
 				{#if originalDistanceM != null}
 					<p class="distance-recorded-note" data-testid="distance-recorded-note">
 						{m('runDetail.originallyRecorded', { distance: formatDistance(originalDistanceM) })}
+					</p>
+				{/if}
+				{#if roadMatchedDistanceM != null}
+					<p
+						class="distance-recorded-note"
+						title={m('runDetail.roadMatchedTitle')}
+						data-testid="distance-road-matched-note"
+					>
+						{m('runDetail.roadMatched', { distance: formatDistance(roadMatchedDistanceM) })}
 					</p>
 				{/if}
 				{#if showRecomputeDistance}

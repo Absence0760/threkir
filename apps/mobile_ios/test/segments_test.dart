@@ -449,4 +449,73 @@ void main() {
     expect(matched >= 10, isTrue,
         reason: 'oracle produced too few matches to be meaningful ($matched)');
   });
+
+  // ─── Line position: the smoother's fix over the raw one ───
+
+  /// [_straightTrack] whose raw fixes alternate 20 m either side of the
+  /// meridian while each fix's smoothedLat / smoothedLng sits on it — a run
+  /// that followed the line but whose raw positions zig-zag. Raw hops are
+  /// ~40 m against the line's ~5 m, so raw-summed distance reads ~8x long.
+  /// Mirrors `zigZagTrack` in `apps/web/src/lib/segments/segments.test.ts`.
+  List<Waypoint> zigZagTrack(String pair) {
+    final lngOff = 20 / (111320 * math.cos(37 * math.pi / 180));
+    final straight = _straightTrack(points: 200, stepM: 5, stepS: 1);
+    return [
+      for (var i = 0; i < straight.length; i++)
+        Waypoint(
+          lat: straight[i].lat,
+          lng: straight[i].lng + (i.isEven ? lngOff : -lngOff),
+          timestamp: straight[i].timestamp,
+          smoothedLat:
+              pair == 'both' || pair == 'latOnly' ? straight[i].lat : null,
+          smoothedLng:
+              pair == 'both' || pair == 'lngOnly' ? straight[i].lng : null,
+        ),
+    ];
+  }
+
+  test('line: a global segment is matched on the smoothed line through a raw zig-zag',
+      () {
+    final segment = GlobalSegmentGeometry(
+      points: [coordAt(100), coordAt(600)],
+      distanceM: 500,
+    );
+    // Raw: ~4026 m covered between the crossings fails the 25% end-to-end guard.
+    expect(computeGlobalSegmentEffort(zigZagTrack('none'), segment), isNull);
+    final eff = computeGlobalSegmentEffort(zigZagTrack('both'), segment);
+    expect(eff, isNotNull);
+    // The crossings land on fixes 20 and 120, 1 s apart each: 100 s from t0+20 s.
+    expect((eff!.timeSeconds - 100).abs() < 1e-6, isTrue);
+    expect(eff.startedAt, DateTime.utc(2026, 1, 1, 0, 0, 20));
+  });
+
+  test('line: a route slice is timed on the smoothed line distance', () {
+    const slice = SegmentSlice(startDistanceM: 100, endDistanceM: 600);
+    // Raw-summed distance reaches 600 m after ~15 s: a 12.4 s "effort".
+    final raw = computeEffortFromTrack(zigZagTrack('none'), slice);
+    expect(raw, isNotNull);
+    expect(raw!.timeSeconds < 13, isTrue);
+    // On the line the slice is the ~100.1 s it took, crossed at ~t0+20.02 s.
+    final eff = computeEffortFromTrack(zigZagTrack('both'), slice);
+    expect(eff, isNotNull);
+    expect((eff!.timeSeconds - 100.11).abs() < 0.01, isTrue);
+    expect(eff.startedAt, DateTime.utc(2026, 1, 1, 0, 0, 20, 22));
+  });
+
+  test('line: half a smoothed pair falls back to the raw fix', () {
+    const slice = SegmentSlice(startDistanceM: 100, endDistanceM: 600);
+    final segment = GlobalSegmentGeometry(
+      points: [coordAt(100), coordAt(600)],
+      distanceM: 500,
+    );
+    final raw = computeEffortFromTrack(zigZagTrack('none'), slice)!;
+    for (final pair in ['latOnly', 'lngOnly']) {
+      final eff = computeEffortFromTrack(zigZagTrack(pair), slice);
+      expect(eff, isNotNull, reason: pair);
+      expect(eff!.timeSeconds, raw.timeSeconds, reason: pair);
+      expect(eff.startedAt, raw.startedAt, reason: pair);
+      expect(computeGlobalSegmentEffort(zigZagTrack(pair), segment), isNull,
+          reason: pair);
+    }
+  });
 }

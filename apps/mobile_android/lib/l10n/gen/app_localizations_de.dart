@@ -2923,16 +2923,19 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runDetailRecalculateDistance => 'Distanz neu berechnen';
 
   @override
-  String get runDetailRecalculateDistanceDialogTitle => 'Distanz neu berechnen?';
+  String get runDetailRecalculateDistanceDialogTitle =>
+      'Distanz neu berechnen?';
 
   @override
-  String get runDetailRecalculateDistanceDialogMessage => 'Die Distanz dieses Laufs wird mit dem verbesserten GPS-Filter aus dem GPS-Track neu berechnet. Er entfernt die zusätzliche Strecke, die durch GPS-Schwankungen entsteht. Die ursprünglich aufgezeichnete Distanz bleibt erhalten und wird neben der neuen angezeigt.';
+  String get runDetailRecalculateDistanceDialogMessage =>
+      'Die Distanz dieses Laufs wird mit dem verbesserten GPS-Filter aus dem GPS-Track neu berechnet. Er entfernt die zusätzliche Strecke, die durch GPS-Schwankungen entsteht. Die ursprünglich aufgezeichnete Distanz bleibt erhalten und wird neben der neuen angezeigt.';
 
   @override
   String get runDetailRecalculateDistanceConfirm => 'Neu berechnen';
 
   @override
-  String get runDetailRecalculatingDistance => 'Wird neu berechnet – aktualisiere in einer Minute';
+  String get runDetailRecalculatingDistance =>
+      'Wird neu berechnet – aktualisiere in einer Minute';
 
   @override
   String runDetailRecalculateDistanceFailed(String error) {
@@ -2940,10 +2943,12 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get runDetailRecalculateDistanceNotOwner => 'Nur die Person, die diesen Lauf aufgezeichnet hat, kann seine Distanz neu berechnen.';
+  String get runDetailRecalculateDistanceNotOwner =>
+      'Nur die Person, die diesen Lauf aufgezeichnet hat, kann seine Distanz neu berechnen.';
 
   @override
-  String get runDetailRecalculateDistanceNoTrack => 'Dieser Lauf hat keinen GPS-Track, aus dem neu berechnet werden kann.';
+  String get runDetailRecalculateDistanceNoTrack =>
+      'Dieser Lauf hat keinen GPS-Track, aus dem neu berechnet werden kann.';
 
   @override
   String runDetailOriginallyRecorded(String distance) {
@@ -2964,6 +2969,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String runDetailMakePublicFailed(String error) {
     return 'Lauf konnte nicht öffentlich gemacht werden: $error';
   }
+
+  @override
+  String get runDetailShareZonesUnknown =>
+      'Deine Datenschutzzonen konnten nicht geladen werden, daher wurde nichts geteilt. Prüfe deine Verbindung und versuche es erneut.';
 
   @override
   String get runDetailMakePublicTitle => 'Diesen Lauf öffentlich machen?';
@@ -8272,7 +8281,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get prefsAdvancedGpsSubtitle =>
-      'Höhere Genauigkeit, feinere Track-Details, mehr Akkuverbrauch';
+      'Zeichnet einen detaillierteren Track auf. Die Distanz bleibt gleich.';
 
   @override
   String get prefsShowRawTrack => 'Rohen GPS-Track anzeigen';
@@ -13155,6 +13164,13 @@ class AppLocalizationsDe extends AppLocalizations {
       'Live-Status der simulierten Custom Watch';
 
   @override
+  String get settingsDevRawGps => 'Rohes GPS';
+
+  @override
+  String get settingsDevRawGpsSubtitle =>
+      'Zeichnet nur mit dem GPS-Chip auf statt mit dem kombinierten Standortdienst, um die Distanzgenauigkeit zu vergleichen. Gilt ab dem nächsten Lauf.';
+
+  @override
   String get simWatchTitle => 'Sim-Watch-Verbindung';
 
   @override
@@ -14523,4 +14539,66 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get avatarCropLoadFailed =>
       'Dieses Bild konnte nicht geöffnet werden. Versuche JPEG, PNG oder WebP.';
+
+  @override
+  String get dashboardLeadTitle => 'Deine Woche';
+
+  @override
+  String get dashboardLeadEmpty => 'Noch keine Läufe';
+
+  @override
+  String dashboardLeadVsPlan(String done, String target) {
+    return '$done von $target geplant';
+  }
+
+  @override
+  String dashboardLeadVsGoal(String done, String target) {
+    return '$done von deinem Wochenziel ($target)';
+  }
+
+  @override
+  String dashboardLeadVsGoalRuns(int done, int target) {
+    String _temp0 = intl.Intl.pluralLogic(
+      target,
+      locale: localeName,
+      other: '$done von $target Aktivitäten, deinem Wochenziel',
+      one: '$done von 1 Aktivität, deinem Wochenziel',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dashboardLeadVsAverage(int weeks, String avg) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: 'Dein Wochenschnitt der letzten $weeks Wochen: $avg',
+      one: 'Letzte Woche: $avg',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dashboardLeadPlanProgressAria =>
+      'Distanz dieser Woche im Vergleich zu deinem Plan';
+
+  @override
+  String get dashboardLeadGoalProgressAria =>
+      'Fortschritt dieser Woche im Vergleich zu deinem Wochenziel';
+
+  @override
+  String get dashboardLeadNextSession => 'Nächste Einheit';
+
+  @override
+  String get dashboardLeadToday => 'Heute';
+
+  @override
+  String get dashboardLeadTomorrow => 'Morgen';
+
+  @override
+  String get dashboardLeadNoNextSession =>
+      'In deinem Plan sind keine weiteren Einheiten geplant.';
+
+  @override
+  String get dashboardLeadAddRun => 'Lauf hinzufügen';
 }

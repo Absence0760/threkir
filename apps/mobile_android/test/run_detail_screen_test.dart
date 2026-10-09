@@ -160,6 +160,38 @@ class _RecomputeApi extends ApiClient {
   }
 }
 
+/// Signed-in fake that answers [ApiClient.smoothedLocalTrack] with [line] (or
+/// throws [error]) and counts the calls, so the local-track sidecar merge is
+/// driven without Storage.
+class _LocalSidecarApi extends ApiClient {
+  _LocalSidecarApi({this.line, this.error});
+
+  final List<Waypoint>? line;
+  final Object? error;
+  final List<String> calls = [];
+
+  @override
+  String? get userId => 'user-1';
+
+  @override
+  Future<RunMatchInfo?> fetchRunMatchedTrack(String runId) async => null;
+
+  @override
+  Future<List<RouteMatchCandidate>> fetchRoutesIntersectingTrack(
+    List<Waypoint> track, {
+    double toleranceMetres = 100,
+    int maxResults = 10,
+  }) async =>
+      const [];
+
+  @override
+  Future<List<Waypoint>?> smoothedLocalTrack(Run run) async {
+    calls.add(run.id);
+    if (error != null) throw error!;
+    return line;
+  }
+}
+
 /// Signed-in fake whose `deleteRun` always throws — the flaky-signal /
 /// offline cloud delete of issue #252.
 class _DeleteFailApi extends ApiClient {
@@ -225,10 +257,12 @@ Future<void> _pump(WidgetTester tester, Run run,
     LocalRouteStore? routeStore,
     ApiClient? apiClient,
     SettingsSyncService? settingsSync,
+    bool showRawTrack = false,
     double textScale = 1.0}) async {
-  SharedPreferences.setMockInitialValues(
-    bodyWeightKg != null ? {'body_weight_kg': bodyWeightKg} : {},
-  );
+  SharedPreferences.setMockInitialValues({
+    if (bodyWeightKg != null) 'body_weight_kg': bodyWeightKg,
+    if (showRawTrack) 'show_raw_track': true,
+  });
   final prefs = Preferences();
   await prefs.init();
 
@@ -304,7 +338,10 @@ void main() {
         (tester) async {
       final run = _run(title: 'Morning Tempo');
       final api = _SlowShareApi();
-      await _pump(tester, run, apiClient: api);
+      await _pump(tester, run,
+          apiClient: api,
+          settingsSync:
+              _FakeSettingsSync(Preferences(), _FakeSettingsService({})));
 
       final shareFinder = find.widgetWithIcon(IconButton, Icons.share_outlined);
       expect(shareFinder, findsOneWidget);
@@ -346,6 +383,78 @@ void main() {
         await tester.pumpWidget(const SizedBox.shrink());
         await tester.pump();
       });
+    });
+
+    // Share fails closed on the privacy zones: an unloaded settings bag is
+    // not "no zones". Read as one, it sent the share image out unclipped and
+    // told the confirm the run entered no zone.
+    testWidgets('share is refused, with a retryable banner, when the privacy '
+        'zones cannot be loaded', (tester) async {
+      final api = _SlowShareApi();
+      await _pump(
+        tester,
+        _run(title: 'Morning Tempo', track: _straightTrack(1)),
+        apiClient: api,
+        settingsSync: SettingsSyncService(
+          preferences: Preferences(),
+          serviceLoader: () async => throw Exception('offline'),
+        ),
+      );
+
+      await tester.runAsync(() async {
+        await tester.tap(find.widgetWithIcon(IconButton, Icons.share_outlined));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+      });
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('share-confirm-dialog')), findsNothing);
+      expect(api.calls, 0, reason: 'nothing may be published');
+      expect(find.textContaining("Couldn't load your privacy zones"),
+          findsOneWidget);
+      await tester.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets('share loads the privacy zones sign-in never loaded before '
+        'deciding the confirm', (tester) async {
+      final track = _straightTrack(1);
+      final api = _SlowShareApi();
+      await _pump(
+        tester,
+        _run(title: 'Morning Tempo', track: track),
+        apiClient: api,
+        settingsSync: SettingsSyncService(
+          preferences: Preferences(),
+          serviceLoader: () async => _FakeSettingsService({
+            'privacy_zones': [
+              {'lat': track.first.lat, 'lng': track.first.lng, 'radius_m': 200},
+            ],
+          }),
+        ),
+      );
+
+      await tester.runAsync(() async {
+        await tester.tap(find.widgetWithIcon(IconButton, Icons.share_outlined));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+      });
+      await tester.pump();
+
+      final dialog = find.byKey(const ValueKey('share-confirm-dialog'));
+      expect(dialog, findsOneWidget);
+      expect(
+        find.descendant(
+          of: dialog,
+          matching: find.textContaining('inside one of your privacy zones'),
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.descendant(
+        of: dialog,
+        matching: find.widgetWithText(TextButton, 'Cancel'),
+      ));
+      await tester.pump();
+      expect(api.calls, 0);
     });
 
     testWidgets('make-private confirms then calls makeRunPrivate',
@@ -482,6 +591,7 @@ void main() {
       testWidgets('an ineligible run hides it', (tester) async {
         final cases = [
           recomputable(extra: {'distance_source': 'pedometer'}),
+          recomputable(extra: {'distance_estimator': 'kalman_v2'}),
           recomputable(extra: {'distance_estimator': 'kalman_v1'}),
           _run(metadata: {'activity_type': 'run'}),
         ];
@@ -569,7 +679,7 @@ void main() {
         await _pump(
           tester,
           recomputable(extra: {
-            'distance_estimator': 'kalman_v1',
+            'distance_estimator': 'kalman_v2',
             'distance_recorded_m': 6309.4,
           }),
           apiClient: _RecomputeApi(),
@@ -883,6 +993,101 @@ void main() {
         ),
       );
       expect(find.text('Set max HR'), findsNothing);
+    });
+  });
+
+  // ───────── the smoothed sidecar over a track the phone holds ─────────
+  group('RunDetailScreen — smoothed sidecar over a local track', () {
+    final recorded = _straightTrack(1);
+    final sha = ApiClient.localTrackSha256(recorded);
+    final smoothed = [
+      for (final w in recorded)
+        w.withSmoothedPosition(w.lat + 0.00001, w.lng - 0.00001),
+    ];
+
+    testWidgets('a watch run relayed through the phone draws the smoothed line',
+        (tester) async {
+      final api = _LocalSidecarApi(line: smoothed);
+      await _pump(
+        tester,
+        _run(
+          track: recorded,
+          metadata: {'smoothed_sidecar_sha256': sha},
+        ),
+        apiClient: api,
+      );
+      await tester.pump();
+
+      expect(api.calls, ['run-1']);
+      final drawn = tester.widget<LiveRunMap>(find.byType(LiveRunMap)).track;
+      expect(drawn, hasLength(recorded.length));
+      expect(drawn.every((w) => w.hasSmoothedPosition), isTrue,
+          reason: 'the map line takes the sidecar the run names');
+      expect(drawn.first.lat, recorded.first.lat,
+          reason: 'raw lat/lng stay as recorded');
+    });
+
+    testWidgets('a run that names no sidecar asks for none', (tester) async {
+      final api = _LocalSidecarApi(line: smoothed);
+      await _pump(tester, _run(track: recorded), apiClient: api);
+      await tester.pump();
+
+      expect(api.calls, isEmpty);
+      final drawn = tester.widget<LiveRunMap>(find.byType(LiveRunMap)).track;
+      expect(drawn.any((w) => w.hasSmoothedPosition), isFalse);
+    });
+
+    testWidgets('"Show raw GPS track" draws the raw fixes, not the sidecar',
+        (tester) async {
+      final api = _LocalSidecarApi(line: smoothed);
+      await _pump(
+        tester,
+        _run(
+          track: recorded,
+          metadata: {'smoothed_sidecar_sha256': sha},
+        ),
+        apiClient: api,
+        showRawTrack: true,
+      );
+      await tester.pump();
+
+      final drawn = tester.widget<LiveRunMap>(find.byType(LiveRunMap)).track;
+      expect(drawn, hasLength(recorded.length));
+      expect(drawn.any((w) => w.hasSmoothedPosition), isFalse);
+    });
+
+    testWidgets(
+        '"Show raw GPS track" clears the smoothed pair a phone save stored',
+        (tester) async {
+      await _pump(tester, _run(track: smoothed), showRawTrack: true);
+      await tester.pump();
+
+      final drawn = tester.widget<LiveRunMap>(find.byType(LiveRunMap)).track;
+      expect(drawn, hasLength(recorded.length));
+      for (var i = 0; i < drawn.length; i++) {
+        expect(drawn[i].hasSmoothedPosition, isFalse);
+        expect(drawn[i].lineLat, recorded[i].lat);
+        expect(drawn[i].lineLng, recorded[i].lng);
+      }
+    });
+
+    testWidgets('a sidecar that cannot be read leaves the raw line',
+        (tester) async {
+      final api = _LocalSidecarApi(error: Exception('storage down'));
+      await _pump(
+        tester,
+        _run(
+          track: recorded,
+          metadata: {'smoothed_sidecar_sha256': sha},
+        ),
+        apiClient: api,
+      );
+      await tester.pump();
+
+      expect(api.calls, ['run-1']);
+      final drawn = tester.widget<LiveRunMap>(find.byType(LiveRunMap)).track;
+      expect(drawn, hasLength(recorded.length));
+      expect(drawn.any((w) => w.hasSmoothedPosition), isFalse);
     });
   });
 

@@ -4,6 +4,10 @@ import 'package:core_models/core_models.dart';
 class RunSnapshot {
   final Duration elapsed;
   final double distanceMetres;
+
+  /// Rolling pace, s/km, over the GPS distance estimator's last ~200 m. Null
+  /// until five fixes and 50 m have landed since the last pause, resume or
+  /// re-anchored GPS gap.
   final double? currentPaceSecondsPerKm;
 
   /// Latest GPS fix, if any. Null during the initial warmup and for indoor

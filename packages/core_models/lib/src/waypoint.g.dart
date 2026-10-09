@@ -18,6 +18,8 @@ Waypoint _$WaypointFromJson(Map<String, dynamic> json) => Waypoint(
   speedMps: (json['speedMps'] as num?)?.toDouble(),
   speedAccuracyMps: (json['speedAccuracyMps'] as num?)?.toDouble(),
   bearingDeg: (json['bearingDeg'] as num?)?.toDouble(),
+  smoothedLat: (json['smoothedLat'] as num?)?.toDouble(),
+  smoothedLng: (json['smoothedLng'] as num?)?.toDouble(),
 );
 
 Map<String, dynamic> _$WaypointToJson(Waypoint instance) => <String, dynamic>{
@@ -30,4 +32,6 @@ Map<String, dynamic> _$WaypointToJson(Waypoint instance) => <String, dynamic>{
   'speedMps': ?instance.speedMps,
   'speedAccuracyMps': ?instance.speedAccuracyMps,
   'bearingDeg': ?instance.bearingDeg,
+  'smoothedLat': ?instance.smoothedLat,
+  'smoothedLng': ?instance.smoothedLng,
 };

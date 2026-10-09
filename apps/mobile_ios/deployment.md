@@ -122,6 +122,12 @@ later update but never removed once shipped
 
 The iOS toolchain doesn't accept Supabase's `sb_publishable_...` keys via inline `--dart-define=` — the underscores break Xcode's argument parsing ([decisions.md § 13](../../docs/architecture/decisions.md)). Instead `release-ios.yml` writes a temporary, gitignored `dart_defines.json` from the same secrets the Android release reads — `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `MAPTILER_KEY`, `WEB_BASE_URL`, `OSRM_URL`, `LIVE_HUB_URL`, `SENTRY_DSN`, `STRAVA_CLIENT_ID`, `APP_RELEASE` — plus `REVENUECAT_API_KEY_IOS`, then builds with `flutter build ipa --release --dart-define-from-file=dart_defines.json` and deletes it. An unset `REVENUECAT_API_KEY_IOS` means Pro is not for sale on iOS: the store SDK is the only way an iOS build may sell it ([decisions § 1700](../../docs/architecture/decisions.md)). `GOOGLE_WEB_CLIENT_ID` is not passed, because iOS offers no Google sign-in (same decision).
 
+#### The Apple Watch app's Supabase project
+
+`dart_defines.json` reaches the Flutter build and nothing else: Flutter hands `--dart-define-from-file` to Xcode only as the `DART_DEFINES` build setting, a base64 list the Dart build decodes and no watchOS code reads. The embedded watch app needs the project for its own sign-in, which it reads from `SupabaseURL` / `SupabaseAnonKey` in its Info.plist, expanded from the build settings `SUPABASE_URL` / `SUPABASE_ANON_KEY`. Until [decisions § 1810](../../docs/architecture/decisions.md) nothing defined those, so a release built green and shipped a watch whose sign-in was fail-closed.
+
+So `release-ios.yml` runs `scripts/ios_watch_runtime_config.mjs write`, which turns `PUBLIC_SUPABASE_URL` / `PUBLIC_SUPABASE_ANON_KEY` into `ios/Flutter/WatchRuntime.xcconfig` (gitignored; `Flutter/WatchApp.xcconfig` includes it with `#include?`). It refuses a URL that is not an https origin and a key that is not a client key — an `sb_secret_` key or a JWT whose role is not `anon` fails the release rather than ship inside a binary anyone can unzip. After the build, `verify` reads the shipped `Payload/*.app/Watch/WatchApp.app/Info.plist` and fails before the IPA is kept or uploaded if either value is empty, unexpanded, or different from the secret. Both print lengths only. No secret of its own: an operator sets nothing beyond the two the phone already uses.
+
 The sign-off-gated feature flags (`OFF_ROUTE_ESCALATION_ENABLED`, `ADAPTIVE_FITNESS_GATE`, `WEIGH_IN_GATE`, `ENABLE_NEARBY_RUNNERS`) go in the same file, one key each, once their sign-off lands — `main.dart`'s `String.fromEnvironment` bridge reads them the same way it reads the Supabase keys, and an absent key stays fail-closed. See the table in [`apps/mobile_android/deployment.md`](../mobile_android/deployment.md) for what each one unlocks; the bridge is shared code, so the two platforms accept the same names and the same values ([decisions.md § 709](../../docs/architecture/decisions.md)).
 
 ### Info.plist keys to verify before launch
@@ -227,7 +233,7 @@ Triggered by publishing a GitHub Release tagged `mobile_ios@1.2.3` (a bare tag p
 4. Decodes `GoogleService-Info.plist` and checks its bundle id; stubs the bundled `.env.development` asset empty, as Android does.
 5. Imports the `.p12` into a keychain whose password is generated for the run, and fails unless it holds an `Apple Distribution` identity.
 6. Runs `scripts/ios_release_signing.mjs` against the three profiles (see [Signing setup](#signing-setup)), which also writes `ExportOptions.plist` (`app-store-connect`, manual signing, dSYMs uploaded to Apple).
-7. Writes `dart_defines.json`, then `flutter build ipa --release`.
+7. Writes `dart_defines.json` and the Apple Watch app's untracked `ios/Flutter/WatchRuntime.xcconfig` (see [The Apple Watch app's Supabase project](#the-apple-watch-apps-supabase-project)), then `flutter build ipa --release`, then fails unless the IPA's `WatchApp.app/Info.plist` holds both Supabase values equal to the secrets.
 8. Attaches the `.ipa` to the Release **before** uploading, so a refused upload still leaves a signed build to upload by hand.
 9. Uploads to TestFlight with the App Store Connect API key through `altool`, which validates the binary during the upload: any ITMS error Apple raises is printed in the run log and fails the step. The job does not wait for Apple's processing queue; TestFlight shows the build, and Apple emails, when processing ends. Then it deletes the keychain and the runtime config.
 
@@ -249,7 +255,7 @@ The Watch target needs its own HealthKit entitlement (separate from the iOS one)
 
 ### Watch Connectivity
 
-The phone-watch transport is `WCSession.transferFile(_:metadata:)` (decisions.md § 40). The phone-side `WatchIngestBridge.swift` is **live**; the queue persists pre-auth payloads to disk via `apps/mobile_ios/ios/Runner/WatchIngestBridge.swift` so a phone restart between watch transfer and sign-in doesn't lose the run. No additional setup at deploy time — entitlements travel with the App Group.
+The phone-watch transport is `WCSession.transferFile(_:metadata:)` (decisions.md § 40). The phone-side `WatchIngestBridge.swift` is **live**; it hands every run to the Dart `WatchIngestQueue` (`lib/watch_ingest.dart`), which writes it to disk before answering, so a phone restart at any point after the hand-off — before sign-in, offline, or mid-upload — doesn't lose the run (decisions.md § 1801). No additional setup at deploy time — entitlements travel with the App Group.
 
 ### Active-run complication
 

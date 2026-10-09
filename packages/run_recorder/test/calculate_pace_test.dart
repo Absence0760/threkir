@@ -8,23 +8,30 @@ void main() {
   const lngBase = 8.54;
   const metrePerDegLng = 111320 * 0.6773;
 
+  // Distance, and so pace, comes from the GPS distance estimator, which
+  // integrates the reported Doppler speed when there is one. Every fixture
+  // therefore reports the speed its positions actually move at.
   Position makePosition({
     required double metresEast,
     required int secondsFromStart,
+    double metresNorth = 0,
     double accuracy = 5,
     double speed = 2.5,
+    double speedAccuracy = 1,
+    double heading = 90,
+    double headingAccuracy = 5,
   }) {
     return Position(
       longitude: lngBase + metresEast / metrePerDegLng,
-      latitude: lat,
+      latitude: lat + metresNorth / 111320,
       timestamp: DateTime(2026, 4, 10, 10, 0, secondsFromStart),
       accuracy: accuracy,
       altitude: 400,
       altitudeAccuracy: 2,
-      heading: 90,
-      headingAccuracy: 5,
+      heading: heading,
+      headingAccuracy: headingAccuracy,
       speed: speed,
-      speedAccuracy: 1,
+      speedAccuracy: speedAccuracy,
     );
   }
 
@@ -83,7 +90,8 @@ void main() {
       r.begin();
       for (int i = 0; i < 5; i++) {
         r.debugInjectPosition(
-          makePosition(metresEast: i * 50.0, secondsFromStart: i * 10),
+          makePosition(
+              metresEast: i * 50.0, secondsFromStart: i * 10, speed: 5),
         );
       }
       expect(r.debugTrack.length, 5);
@@ -94,16 +102,19 @@ void main() {
     test('window slides — early-slow segments excluded from pace', () {
       final r = RunRecorder()..debugPrepareWithoutStream();
       r.begin();
-      r.debugInjectPosition(makePosition(metresEast: 0, secondsFromStart: 0));
-      r.debugInjectPosition(makePosition(metresEast: 50, secondsFromStart: 60));
-      r.debugInjectPosition(makePosition(metresEast: 100, secondsFromStart: 120));
-      r.debugInjectPosition(makePosition(metresEast: 150, secondsFromStart: 130));
-      r.debugInjectPosition(makePosition(metresEast: 200, secondsFromStart: 140));
-      r.debugInjectPosition(makePosition(metresEast: 250, secondsFromStart: 150));
-      r.debugInjectPosition(makePosition(metresEast: 300, secondsFromStart: 160));
-      r.debugInjectPosition(makePosition(metresEast: 350, secondsFromStart: 170));
+      // 90 m at 1 m/s (1000 s/km), then 250 m at 5 m/s (200 s/km).
+      for (int i = 0; i < 10; i++) {
+        r.debugInjectPosition(makePosition(
+            metresEast: i * 10.0, secondsFromStart: i * 10, speed: 1));
+      }
+      for (int j = 1; j <= 5; j++) {
+        r.debugInjectPosition(makePosition(
+            metresEast: 90 + j * 50.0,
+            secondsFromStart: 90 + j * 10,
+            speed: 5));
+      }
 
-      expect(r.debugTrack.length, 8);
+      expect(r.debugTrack.length, 15);
 
       final pace = r.debugPaceSecondsPerKm;
       expect(pace, isNotNull);
@@ -156,7 +167,8 @@ void main() {
     void runPrePauseLeg(RunRecorder r) {
       for (int i = 0; i < 5; i++) {
         r.debugInjectPosition(
-          makePosition(metresEast: i * 50.0, secondsFromStart: i * 10),
+          makePosition(
+              metresEast: i * 50.0, secondsFromStart: i * 10, speed: 5),
         );
       }
     }
@@ -174,6 +186,7 @@ void main() {
         r.debugInjectPosition(makePosition(
           metresEast: 200 + i * 15.0,
           secondsFromStart: 640 + i * 5,
+          speed: 3,
         ));
       }
       // Walking back across the pause billed 225 m against 645 s of wall clock
@@ -193,9 +206,9 @@ void main() {
       // Two post-resume points is below the 5-point smoothing floor, so the
       // honest answer is "unknown" rather than a pace timed off a stale fix.
       r.debugInjectPosition(
-          makePosition(metresEast: 200, secondsFromStart: 640));
+          makePosition(metresEast: 200, secondsFromStart: 640, speed: 5));
       r.debugInjectPosition(
-          makePosition(metresEast: 250, secondsFromStart: 650));
+          makePosition(metresEast: 250, secondsFromStart: 650, speed: 5));
       expect(r.debugPaceSecondsPerKm, isNull);
     });
 
@@ -213,6 +226,7 @@ void main() {
         r.debugInjectPosition(makePosition(
           metresEast: 200 + i * 50.0,
           secondsFromStart: 640 + i * 10,
+          speed: 5,
         ));
       }
       expect(r.debugPaceSecondsPerKm, closeTo(200, 10));
@@ -229,6 +243,7 @@ void main() {
         r.debugInjectPosition(makePosition(
           metresEast: 200 + i * 15.0,
           secondsFromStart: 640 + i * 5,
+          speed: 3,
         ));
       }
       r.pause();
@@ -237,6 +252,7 @@ void main() {
         r.debugInjectPosition(makePosition(
           metresEast: 275 + i * 15.0,
           secondsFromStart: 1300 + i * 5,
+          speed: 3,
         ));
       }
       expect(r.debugPaceSecondsPerKm, closeTo(333, 20));
@@ -268,6 +284,7 @@ void main() {
         r.debugInjectPosition(makePosition(
           metresEast: 200 + i * 15.0,
           secondsFromStart: i * 5,
+          speed: 3,
         ));
       }
       expect(r.debugPaceSecondsPerKm, closeTo(333, 20));
@@ -292,15 +309,15 @@ void main() {
       final r = RunRecorder()..debugPrepareWithoutStream(maxSpeedMps: 1000);
       r.begin();
       for (var i = 0; i <= 4; i++) {
-        r.debugInjectPosition(
-            makePosition(metresEast: 50.0 * i, secondsFromStart: 10 * i));
+        r.debugInjectPosition(makePosition(
+            metresEast: 50.0 * i, secondsFromStart: 10 * i, speed: 5));
       }
       expect(r.debugPaceSecondsPerKm, closeTo(200, 1),
           reason: 'baseline: 50 m per 10 s is 200 s/km');
       final beforeGap = r.debugDistanceMetres;
 
       r.debugInjectPosition(
-          makePosition(metresEast: 350, secondsFromStart: 52));
+          makePosition(metresEast: 350, secondsFromStart: 52, speed: 5));
       expect(r.debugDistanceMetres, closeTo(beforeGap, 0.01),
           reason: 'the gap itself is still not credited');
       expect(r.debugPaceSecondsPerKm, isNull,
@@ -318,7 +335,9 @@ void main() {
       // look-back window.
       for (var i = 1; i <= 8; i++) {
         r.debugInjectPosition(makePosition(
-            metresEast: 300.0 + 40 * i, secondsFromStart: 40 + 10 * i));
+            metresEast: 300.0 + 40 * i,
+            secondsFromStart: 40 + 10 * i,
+            speed: 4));
       }
       expect(r.debugPaceSecondsPerKm, closeTo(250, 5),
           reason: 'post-gap pace is measured only against post-gap fixes');
@@ -330,13 +349,115 @@ void main() {
       final r = RunRecorder()..debugPrepareWithoutStream(maxSpeedMps: 1000);
       r.begin();
       for (var i = 0; i <= 4; i++) {
-        r.debugInjectPosition(
-            makePosition(metresEast: 50.0 * i, secondsFromStart: 10 * i));
+        r.debugInjectPosition(makePosition(
+            metresEast: 50.0 * i, secondsFromStart: 10 * i, speed: 5));
       }
       final before = r.debugPaceSecondsPerKm;
-      // 500 m in 2 s: fails the hop cap and both re-anchor gates.
-      r.debugInjectPosition(makePosition(metresEast: 700, secondsFromStart: 42));
+      // 500 m in 2 s: fails the hop cap and both re-anchor gates. The
+      // estimator still takes the fix, and credits its 5 m/s Doppler speed.
+      r.debugInjectPosition(
+          makePosition(metresEast: 700, secondsFromStart: 42, speed: 5));
       expect(r.debugPaceSecondsPerKm, closeTo(before!, 0.01));
+    });
+  });
+
+  group('pace reads the GPS distance estimator, not the hop-sum (#1090)', () {
+    // A steady 5:00/km (10/3 m/s) straight east, one fix a second, with each
+    // fix 1.25 m either side of the true line. Every hop is then 4.17 m for
+    // 3.33 m of progress, so summing hops over-reads distance by 25% and
+    // reported 4:00/km — a pace alert told the runner to slow down, and the
+    // cut-off projection read them as ahead. scripts/gps_distance/reference.py
+    // over the same track gives 300.0 s/km with Doppler and 299.9 s/km from
+    // positions alone.
+    const speed = 10 / 3;
+    const fixes = 121;
+
+    Position zigZag(int i, {required bool doppler}) => makePosition(
+          metresEast: speed * i,
+          metresNorth: i.isOdd ? 1.25 : -1.25,
+          secondsFromStart: i,
+          speed: doppler ? speed : 0,
+          speedAccuracy: doppler ? 0.5 : 0,
+          heading: doppler ? 90 : 0,
+          headingAccuracy: doppler ? 5 : 0,
+        );
+
+    double hopSumPace(List<Waypoint> track, int hops) {
+      var metres = 0.0;
+      for (var k = track.length - hops; k < track.length; k++) {
+        metres += Geolocator.distanceBetween(
+            track[k - 1].lat, track[k - 1].lng, track[k].lat, track[k].lng);
+      }
+      return hops / metres * 1000;
+    }
+
+    test('with Doppler speed', () {
+      final r = RunRecorder()..debugPrepareWithoutStream();
+      addTearDown(r.dispose);
+      r.begin();
+      for (var i = 0; i < fixes; i++) {
+        r.debugInjectPosition(zigZag(i, doppler: true));
+      }
+      expect(r.debugTrack.length, fixes,
+          reason: 'every zig-zag hop clears the 3 m track threshold');
+      expect(hopSumPace(r.debugTrack, 60), closeTo(240, 3),
+          reason: 'precondition: the raw hop-sum reads 4:00/km');
+      expect(r.debugPaceSecondsPerKm, closeTo(300, 1));
+    });
+
+    test('from positions alone', () {
+      final r = RunRecorder()..debugPrepareWithoutStream();
+      addTearDown(r.dispose);
+      r.begin();
+      for (var i = 0; i < fixes; i++) {
+        r.debugInjectPosition(zigZag(i, doppler: false));
+      }
+      expect(hopSumPace(r.debugTrack, 60), closeTo(240, 3));
+      expect(r.debugPaceSecondsPerKm, closeTo(300, 3));
+    });
+  });
+
+  // Every comparison against NaN is false, so a NaN sample used to pass the
+  // ordering and gap checks and make the pace NaN; an infinite distance made
+  // it 0 s/km. Both are dropped now, as PaceWindow (watch_ios) and
+  // LivePaceWindow (watch_wear) drop them.
+  group('live pace rejects a non-finite sample', () {
+    // Five samples 10 s and 50 m apart: 40 s over 200 m is 200 s/km.
+    RunRecorder steadyWindow() {
+      final r = RunRecorder()..debugPrepareWithoutStream();
+      r.begin();
+      for (var i = 0; i < 5; i++) {
+        r.debugAddPaceSample(i * 10.0, i * 50.0);
+      }
+      expect(r.debugPaceSecondsPerKm, closeTo(200, 1e-9));
+      return r;
+    }
+
+    test('a non-finite time leaves the pace as it was', () {
+      final r = steadyWindow();
+      addTearDown(r.dispose);
+      r.debugAddPaceSample(double.nan, 250);
+      r.debugAddPaceSample(double.infinity, 250);
+      r.debugAddPaceSample(double.negativeInfinity, 250);
+      expect(r.debugPaceSecondsPerKm, closeTo(200, 1e-9));
+      // The next finite sample still lands: the window prunes to (10 s, 50 m)
+      // and reads 35 s over 200 m.
+      r.debugAddPaceSample(45, 250);
+      expect(r.debugPaceSecondsPerKm, closeTo(175, 1e-9));
+    });
+
+    test('a non-finite distance leaves the pace as it was', () {
+      final r = steadyWindow();
+      addTearDown(r.dispose);
+      r.debugAddPaceSample(41, double.nan);
+      r.debugAddPaceSample(42, double.infinity);
+      r.debugAddPaceSample(43, double.negativeInfinity);
+      final pace = r.debugPaceSecondsPerKm;
+      expect(pace, isNotNull);
+      expect(pace!.isFinite, isTrue);
+      expect(pace, closeTo(200, 1e-9));
+      r.debugAddPaceSample(45, 250);
+      expect(r.debugPaceSecondsPerKm, closeTo(175, 1e-9));
     });
   });
 }

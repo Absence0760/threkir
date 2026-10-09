@@ -50,8 +50,8 @@ List<double> buildCumulativeDistances(List<Waypoint> track) {
   for (int i = 1; i < track.length; i++) {
     out[i] = out[i - 1] +
         _haversineMetres(
-          LatLng(track[i - 1].lat, track[i - 1].lng),
-          LatLng(track[i].lat, track[i].lng),
+          LatLng(track[i - 1].lineLat, track[i - 1].lineLng),
+          LatLng(track[i].lineLat, track[i].lineLng),
         );
   }
   return out;
@@ -63,7 +63,8 @@ int nearestTrackIdx(LatLng tap, List<Waypoint> track) {
   int best = 0;
   double bestDist = double.infinity;
   for (int i = 0; i < track.length; i++) {
-    final d = _haversineMetres(tap, LatLng(track[i].lat, track[i].lng));
+    final d =
+        _haversineMetres(tap, LatLng(track[i].lineLat, track[i].lineLng));
     if (d < bestDist) {
       bestDist = d;
       best = i;

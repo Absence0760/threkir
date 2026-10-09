@@ -73,20 +73,36 @@ int? replayDotIndex(int? replayIndex, int rawLength, int displayedLength) {
 
 /// Which polyline the run-detail map should draw. Prefers the matched
 /// (road-snapped) line when the worker produced a renderable one, falling
-/// back to the raw recorded track otherwise. The `showRaw` preference
-/// (Settings → Show raw GPS track) forces the raw line for verification,
-/// even when a matched track exists. Stats keep deriving from the raw
-/// track regardless — this only changes the rendered geometry.
+/// back to the recorded track otherwise. The `showRaw` preference
+/// (Settings → Show raw GPS track) forces the raw GPS fixes for
+/// verification: no matched line, and no smoothed positions either, since
+/// every drawing site reads [Waypoint.lineLat] / [Waypoint.lineLng] and
+/// would otherwise draw the smoother's line under a "raw" label. Stats keep
+/// deriving from the recorded track regardless — this only changes the
+/// rendered geometry.
 @visibleForTesting
 List<Waypoint> displayedRunTrack(
   List<Waypoint> rawTrack,
   RunMatchInfo? matchInfo, {
   required bool showRaw,
 }) {
-  if (!showRaw && matchInfo?.hasRenderableTrack == true) {
+  if (showRaw) return rawFixTrack(rawTrack);
+  if (matchInfo?.hasRenderableTrack == true) {
     return matchInfo!.track!;
   }
   return rawTrack;
+}
+
+/// [track] with every smoothed position cleared, so its line runs through the
+/// raw fixes. [track] itself when no waypoint carries one, so the common case
+/// allocates nothing and keeps its identity.
+@visibleForTesting
+List<Waypoint> rawFixTrack(List<Waypoint> track) {
+  if (!track.any((w) => w.hasSmoothedPosition)) return track;
+  return List.unmodifiable([
+    for (final w in track)
+      w.hasSmoothedPosition ? w.withSmoothedPosition(null, null) : w,
+  ]);
 }
 
 /// Detail view for a completed run, showing the route map, splits, and stats.
@@ -131,6 +147,12 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// switches to it when present. A failure here cannot break the
   /// page.
   RunMatchInfo? _matchInfo;
+  /// The job_worker's smoothed-position sidecar merged onto a track this
+  /// device holds, for the map line only, and the [Run.track] it was merged
+  /// over ([_maybeMergeLocalSidecar]). Ignored once `run.track` is another
+  /// list (a dropped track).
+  List<Waypoint>? _sidecarLine;
+  List<Waypoint>? _sidecarLineSource;
   /// The last map-match read couldn't reach the backend/network (the
   /// PostgREST row query threw a transport error, or a `matched` row's
   /// gz wouldn't download). The raw track still renders; the status pill
@@ -230,6 +252,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     super.initState();
     _loadLinkedRoute();
     _maybeFetchTrack();
+    _maybeMergeLocalSidecar();
     _maybeFetchHrSeries();
     _maybeFetchMatchedTrack();
     _maybeSuggestRoute();
@@ -547,6 +570,66 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       if (mounted) setState(() => _loadingTrack = false);
     }
   }
+
+  /// A track held on this device (its own recording, or a watch run relayed
+  /// through the phone) never passes through [ApiClient.fetchTrack], so the
+  /// sidecar the job_worker wrote for the uploaded copy is merged here when
+  /// the run's metadata names those bytes ([ApiClient.smoothedLocalTrack]).
+  /// Display only: `run.track` stays the recorded copy, so an edit that
+  /// persists the run never bakes the sidecar into the next upload. L4
+  /// auxiliary — any failure leaves the raw line.
+  Future<void> _maybeMergeLocalSidecar() async {
+    final source = run.track;
+    if (source.isEmpty) return;
+    if (run.metadata?[MetadataKeys.smoothedSidecarSha256] == null) return;
+    final api = widget.apiClient;
+    if (api == null) return;
+    try {
+      final line =
+          await api.smoothedLocalTrack(run).timeout(kBackendLoadTimeout);
+      if (line == null || !mounted || !identical(source, run.track)) return;
+      setState(() {
+        _sidecarLine = line;
+        _sidecarLineSource = source;
+      });
+    } catch (e) {
+      debugPrint('Smoothed sidecar not merged for ${run.id}: $e');
+    }
+  }
+
+  /// The track the map line draws when no matched line replaces it:
+  /// [_sidecarLine] while it is still over `run.track`, else `run.track`.
+  /// Never the sidecar under "Show raw GPS track".
+  List<Waypoint> get _lineTrack => !widget.preferences.showRawTrack &&
+          _sidecarLine != null &&
+          identical(_sidecarLineSource, run.track)
+      ? _sidecarLine!
+      : run.track;
+
+  /// The line the map draws ([displayedRunTrack]), memoised on its inputs:
+  /// the replay builder reads it every tick, and the raw view of a smoothed
+  /// track is a fresh list.
+  List<Waypoint> get _mapTrack {
+    final line = _lineTrack;
+    final match = _matchInfo;
+    final showRaw = widget.preferences.showRawTrack;
+    final cached = _mapTrackCache;
+    if (cached != null &&
+        identical(_mapTrackCacheLine, line) &&
+        identical(_mapTrackCacheMatch, match) &&
+        _mapTrackCacheShowRaw == showRaw) {
+      return cached;
+    }
+    _mapTrackCacheLine = line;
+    _mapTrackCacheMatch = match;
+    _mapTrackCacheShowRaw = showRaw;
+    return _mapTrackCache = displayedRunTrack(line, match, showRaw: showRaw);
+  }
+
+  List<Waypoint>? _mapTrackCache;
+  List<Waypoint>? _mapTrackCacheLine;
+  RunMatchInfo? _mapTrackCacheMatch;
+  bool? _mapTrackCacheShowRaw;
 
   /// The waypoint list the HR-zone breakdown reads: the GPS track when it
   /// carries per-point bpm (outdoor), otherwise the indoor HR sidecar.
@@ -1024,12 +1107,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// colours toggle to mean anything — a matched line or an import can lack
   /// it, and a toggle that changes nothing is worse than none.
   bool get _mapTrackHasTiming =>
-      displayedRunTrack(
-        run.track,
-        _matchInfo,
-        showRaw: widget.preferences.showRawTrack,
-      ).where((w) => w.timestamp != null).take(2).length ==
-      2;
+      _mapTrack.where((w) => w.timestamp != null).take(2).length == 2;
 
   Widget _buildMapStack(AppLocalizations l10n) {
     return Stack(
@@ -1045,11 +1123,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
             // drawn — switching the visual layer must not
             // alter the numbers. The "Show raw GPS track"
             // preference forces the raw line for verification.
-            final mapTrack = displayedRunTrack(
-              run.track,
-              _matchInfo,
-              showRaw: widget.preferences.showRawTrack,
-            );
+            final mapTrack = _mapTrack;
             // The replay index advances over `run.track`, but
             // the line on screen is `mapTrack` — the matched
             // line when the worker produced one, with a
@@ -1089,12 +1163,13 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                   : null,
               // Linked cursor: paints a pulsing marker at
               // the elevation chart's current pointer index
-              // on the live track. Gated on track === mapTrack
-              // alignment — the chart reads run.track, but
-              // the map sometimes shows the matched track,
-              // which has a different index space. Only feed
-              // the marker when the two are the same.
-              hoverIdx: identical(mapTrack, run.track)
+              // on the live track. Gated on index alignment —
+              // the chart reads run.track, but the map
+              // sometimes shows the matched track, which has
+              // a different index space. The sidecar line and
+              // the raw view are run.track point for point.
+              hoverIdx: !identical(mapTrack, _matchInfo?.track) &&
+                      mapTrack.length == run.track.length
                   ? _chartHoverIdx
                   : null,
             );
@@ -2731,9 +2806,16 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     _sharing = true;
     setState(() {});
     try {
+      final zones = await _knownPrivacyZones();
+      if (!mounted) return;
+      if (zones == null) {
+        showTopBanner(
+            context, AppLocalizations.of(context).runDetailShareZonesUnknown);
+        return;
+      }
       final api = widget.apiClient;
       if (api != null && api.userId != null) {
-        final ok = await _confirmMakePublic();
+        final ok = await _confirmMakePublic(zones);
         if (!ok) return;
         try {
           await api.makeRunPublic(run.id);
@@ -2751,6 +2833,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         run: run,
         preferences: widget.preferences,
         title: _title,
+        privacyZones: zones,
       );
     } finally {
       if (mounted) {
@@ -2767,11 +2850,21 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// first: this entry exists so a runner can keep a copy of a trace they are
   /// about to lose, which is a local file, not a published link.
   Future<void> _exportBeforeDrop() async {
+    // The sheet can also share the image, which withholds the zones, so it
+    // opens only once they are known.
+    final zones = await _knownPrivacyZones();
+    if (!mounted) return;
+    if (zones == null) {
+      showTopBanner(
+          context, AppLocalizations.of(context).runDetailShareZonesUnknown);
+      return;
+    }
     await showRunShareSheet(
       context,
       run: run,
       preferences: widget.preferences,
       title: _title,
+      privacyZones: zones,
     );
   }
 
@@ -2856,13 +2949,11 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// dialog body branches on whether the user has privacy zones and
   /// whether this track passes through one of them — same shape as
   /// the web `handleShare` flow.
-  Future<bool> _confirmMakePublic() async {
+  Future<bool> _confirmMakePublic(List<PrivacyZone> zones) async {
     final l10n = AppLocalizations.of(context);
-    final zones = _loadPrivacyZones();
     final hasZones = zones.isNotEmpty;
     final track = run.track;
-    final intersectsZone = hasZones && track.isNotEmpty &&
-        track.any((p) => isInAnyZone(p.lat, p.lng, zones));
+    final intersectsZone = trackEntersAnyZone(track, zones);
     final body = intersectsZone
         ? l10n.runDetailMakePublicBodyZone
         : hasZones
@@ -2889,9 +2980,24 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     return ok == true;
   }
 
-  List<PrivacyZone> _loadPrivacyZones() {
-    final svc = widget.settingsSync?.service;
-    if (svc == null) return const [];
+  /// The owner's privacy zones, or null when they are not known — and an
+  /// unknown list is never read as "no zones": that is what sent a shared
+  /// image out unclipped and told the make-public confirm the track entered
+  /// no zone, whenever the settings bag had not loaded yet. Signed out there
+  /// is no account and so no zone. Signed in, the bag is loaded first when
+  /// sign-in never loaded it; a failure to load it is null.
+  Future<List<PrivacyZone>?> _knownPrivacyZones() async {
+    final api = widget.apiClient;
+    if (api == null || api.userId == null) return const [];
+    final sync = widget.settingsSync;
+    if (sync == null) return null;
+    final SettingsService svc;
+    try {
+      svc = sync.service ?? await sync.loadedService();
+    } catch (e) {
+      debugPrint('run_detail: privacy zones unknown — $e');
+      return null;
+    }
     final raw = svc.effective<List<dynamic>>(
       privacyZonesKey,
       fallback: const <dynamic>[],
@@ -3141,8 +3247,8 @@ class _ElevationChartState extends State<_ElevationChart> {
         double segDist = 0;
         for (var i = windowStart + 1; i <= windowEnd; i++) {
           segDist += haversineMetres(
-            widget.track[i - 1].lat, widget.track[i - 1].lng,
-            widget.track[i].lat, widget.track[i].lng,
+            widget.track[i - 1].lineLat, widget.track[i - 1].lineLng,
+            widget.track[i].lineLat, widget.track[i].lineLng,
           );
         }
         if (segDist > 10) {

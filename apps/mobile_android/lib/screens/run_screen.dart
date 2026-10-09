@@ -29,6 +29,7 @@ import '../ble_heart_rate.dart';
 import '../ble_readiness_labels.dart';
 import '../ble_treadmill.dart';
 import '../dev_auto_login.dart' show isLocalSupabaseUrl;
+import '../raw_gps_diagnostic.dart';
 import '../embedded_bests.dart';
 import '../goal_time.dart';
 import '../guided_runs.dart';
@@ -1375,7 +1376,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       distanceFilterMetres: adv ? 2 : _activityType.gpsDistanceFilter,
       minMovementMetres: adv ? 1 : _activityType.minMovementMetres,
       maxSpeedMps: _activityType.maxSpeedMps,
-      accuracy: adv ? LocationAccuracy.best : LocationAccuracy.high,
+      rawGpsProvider: _rawGpsProvider,
     )
         .catchError((Object e) {
       _prepareError = e;
@@ -2225,7 +2226,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         distanceFilterMetres: adv ? 2 : _activityType.gpsDistanceFilter,
         minMovementMetres: adv ? 1 : _activityType.minMovementMetres,
         maxSpeedMps: _activityType.maxSpeedMps,
-        accuracy: adv ? LocationAccuracy.best : LocationAccuracy.high,
+        rawGpsProvider: _rawGpsProvider,
       );
     } catch (e) {
       _notifyGpsUnavailable(e);
@@ -2991,6 +2992,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _liveActivity.update(frame);
   }
 
+  bool get _rawGpsProvider =>
+      widget.preferences.devRawGpsProvider &&
+      rawGpsDiagnosticAvailable(
+          backendUrl: widget.devBackendUrl ?? maybeDevBackendUrl());
+
   /// Serialise the in-progress run to disk. Runs every 10s via
   /// [_incrementalSaveTimer] so a crash mid-run is recoverable.
   Future<void> _saveInProgress() async {
@@ -3011,16 +3017,17 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       if (indoorEstimate) cm.MetadataKeys.indoor: true,
       if (indoorEstimate) cm.MetadataKeys.indoorEstimated: true,
       if (indoorEstimate) cm.MetadataKeys.distanceSource: 'pedometer',
-      // Mirrors RunRecorder.stop(): a crash-finalized run carries the same
-      // estimator tag, so the server recompute leaves it alone.
-      if (!indoorEstimate && !(_recorder?.treadmillMode ?? false))
-        cm.MetadataKeys.distanceEstimator: RunRecorder.distanceEstimatorVersion,
+      // No estimator tag: this distance is the live forward filter's, not
+      // the smoother's RunRecorder.stop() saves, so a crash-finalized run
+      // stays on offer for the server recompute, which smooths the track.
       if (!indoorEstimate &&
           !(_recorder?.treadmillMode ?? false) &&
           (_recorder?.stepFilledDistanceMetres.round() ?? 0) > 0)
         cm.MetadataKeys.distanceStepFilledM:
             _recorder!.stepFilledDistanceMetres.round(),
       if (_steps > 0) cm.MetadataKeys.steps: _steps,
+      if (_everHadGpsFix && _recorder?.locationProvider != null)
+        cm.MetadataKeys.locationProvider: _recorder!.locationProvider,
       // The active race strategy, so a crash-recovered run resumes its
       // phases (and the final save keeps the metadata the runner actually
       // executed against).

@@ -3,10 +3,12 @@
 // module and by messages_parity.test.ts). Keys are dotted, grouped by
 // surface; `{name}`-style placeholders are filled by m()'s params arg.
 //
-// English is statically bundled (it is the fallback for any missing key
-// and the prerender default); other locales are lazy-imported by the
-// runtime in store.svelte.ts so a single-locale visitor only downloads
-// their own strings.
+// The browser never loads this file whole. The i18n Vite plugin splits every
+// locale into a core part and one part per area (../areas.ts, decisions
+// § 1802); only the English CORE is bundled (the fallback for a missing key
+// and the prerender default), and a reader fetches their own locale's core
+// plus the areas of the routes they open. Which part a key lands in is
+// derived from where it is used — just add it here and in every locale.
 
 export const en = {
 	// App shell / sidebar (+layout.svelte)
@@ -1176,6 +1178,7 @@ export const en = {
 	"runDetail.savedAsRoute": "Saved as route.",
 	"runDetail.imageSaved": "Image saved.",
 	"runDetail.imageGenerateFailed": "Couldn't generate image: {error}",
+	"runDetail.shareZonesUnknown": "Couldn't load your privacy zones, so nothing was shared. Check your connection and try again.",
 	"runDetail.reSnapping": "Re-snapping to roads…",
 	"runDetail.rematchFailed": "Re-match failed: {error}",
 	"runDetail.recalculateDistance": "Recalculate distance",
@@ -1188,6 +1191,8 @@ export const en = {
 	"runDetail.recalculateDistanceNotOwner": "Only the runner who recorded this run can recalculate its distance.",
 	"runDetail.recalculateDistanceNoTrack": "This run has no GPS track to recalculate from.",
 	"runDetail.originallyRecorded": "Originally recorded: {distance}",
+	"runDetail.roadMatched": "Road-matched: {distance}",
+	"runDetail.roadMatchedTitle": "Distance along the mapped roads you ran, from map matching. Your recorded distance is unchanged.",
 	"runDetail.zone1": "Zone 1",
 	"runDetail.zone2": "Zone 2",
 	"runDetail.zone3": "Zone 3",

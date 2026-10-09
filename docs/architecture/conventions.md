@@ -316,6 +316,17 @@ GET-able function, GETs one that is not, sends a `null` in a GET, or omits an
 argument that has no default. A function that must stay a POST despite
 qualifying goes in its `POST_EXEMPT` table with the reason.
 
+**The same rule holds on Dart** (decisions § 1803): `_client.rpc('fn', params:
+{...}, get: true)`. Two things differ from web. postgrest-dart throws
+`ArgumentError` on a GET with no params map, so a no-argument read is
+`rpc('fn', params: const {}, get: true)`. And a Dart POST sent an explicit
+`null` where web's `undefined` was always dropped, so a Dart GET may omit an
+argument — `'p_x': ?x`, or a collection-`if` — only when its SQL default is
+NULL; otherwise omitting it changes what the function receives.
+`scripts/check_dart_rpc_transport.mjs` holds `packages/*/lib` and
+`apps/mobile_android/lib` to this, reading the migrations through
+`scripts/rpc_transport.mjs`, the module the web test reads them through too.
+
 ### What not to catch
 
 - `StateError` / `TypeError` / precondition failures — these are bugs. Let them crash in debug, let crash reporting catch them in release.
@@ -1764,6 +1775,48 @@ Distinct from key parity, which `messages_parity.test.ts` and
 `l10n_parity_test.dart` already own: those prove a *shipped* locale is
 complete, this proves the shipped set is the set that exists.
 
+## A web message key's catalogue part is derived, never placed
+
+Each web locale ships as a core catalogue plus one per **area**
+(`apps/web/src/lib/i18n/areas.ts`, decisions § 1802) and one per derived
+**group** (§ 1812): the build-time split puts a key in area A when every route
+that can render a file naming it lies under one of A's route prefixes; else in
+the group named by the exact set of areas and unregistered segments that render
+it, when that set holds 1 KB of English source or more; and in core otherwise
+(always, for a key the root layout renders). **Adding a key is unchanged** —
+write it in `locales/<tag>.ts` for every locale and call `m('key')`. Reusing a
+key on a second area's screen is unchanged too; the next build moves it to a
+group or to core on its own. Nobody lists a group. What the split relies on,
+and `area_catalogues.test.ts` holds:
+
+- **Name a key where its reader can see it.** The scan follows literals: a key
+  written in full (`'gym.title'`), a template with a dotted static head
+  (`` `nutrition.slot_${s}` ``), or a dotted / underscored prefix glued on with
+  `+`. A key built with no static head at all (`` `${vocab}.${value}` ``) is
+  invisible to it, so its namespace must be pinned to core —
+  `pinnedNamespaces()` derives that set from `ENUM_VOCABULARIES`, and the guard
+  fails on a second builder of that shape.
+- **Never call `m()` from a `load` function** other than the root one. Loads
+  run in parallel, so a page load can run before the root load has fetched its
+  area; components render after every load resolves, which is why they are safe.
+- **App code never imports a whole catalogue** (`locales/<tag>.ts`,
+  `i18n/catalogues.ts`). Resolve through `m()`. The bundle budget fails if a
+  whole catalogue reaches a code chunk anyway (`catalogue-leak`).
+- **An area earns its place.** A new entry in `AREAS` must name a real route
+  and receive at least one key; a segment whose own sentences are a few hundred
+  bytes is cheaper in core than as a round trip. A segment no area covers gets
+  a derived `_segment` group on its own once it is big enough, so an area is
+  only worth declaring for a sub-route split (`/settings/account`) or a
+  segment you want held to that name.
+- **Choose structure by `structureLocale()`, words by `m()`.** A page's first
+  load applies the reader's locale before it renders, including when it
+  hydrates English markup the server wrote (decisions § 1812). Svelte rewrites
+  differing text and attributes as it hydrates, but a different component or
+  `{#if}` branch per locale is a hydration mismatch. A component that picks
+  WHICH subtree to render by locale (the learn guide body picks a per-locale
+  mdsvex component) reads `structureLocale()`, which answers the server's
+  locale until the app mounts and the reader's after.
+
 ## A size budget measures what one reader downloads, not what the build emits
 
 A total over every emitted file is the right metric for a dependency: a dep
@@ -1778,19 +1831,23 @@ language's worth every time (decisions § 771).
 
 So the rule is that **a build artifact only some readers fetch gets a budget of
 its own, sized per artifact rather than summed**, and the shared budget keeps
-only what every reader downloads whatever they are. `MAX_CATALOGUE_KB` in
-`scripts/check_web_bundle_budget.mjs` is per catalogue and never totalled, so a
-new locale cannot move it and a bloated one still trips it; `MAX_CODE_KB` holds
-everything unconditional and stays fixed as languages ship. The total of the
+only what every reader downloads whatever they are. `MAX_CORE_CATALOGUE_KB` and
+`MAX_AREA_CATALOGUE_KB` in `scripts/check_web_bundle_budget.mjs` are per
+catalogue part (a locale's core, or one of its areas — decisions § 1802) and
+never totalled, so a new locale cannot move them and a bloated part still trips
+them; `MAX_CODE_KB` holds everything unconditional and stays fixed as languages
+ship. The total of the
 optional population is still *reported*, deliberately — a number nobody may
 gate on is the one that cannot silently become a ceiling again.
 
 Two things decide which side an artifact falls on, and neither is its file
-type. **Ask what a reader actually fetches**: the English catalogue is
+type. **Ask what a reader actually fetches**: the English core catalogue is
 statically imported as the synchronous fallback dict, so it is in the shared
 chunk every reader downloads before a locale is negotiated — it is
 unconditional weight and it sits in the code budget, even though it is a
-translation. And **classify from the build's own module graph, not from a
+translation. (Before § 1802 that was the whole English catalogue; the English
+areas are lazy parts now, and the guard fails if a whole catalogue leaks back
+into a code chunk.) And **classify from the build's own module graph, not from a
 filename**: client chunks are content-hashed with no name component, so the
 mapping comes from vite's manifest, and a chunk that stops being separately
 loadable disappears from it — which the guard fails on by name rather than

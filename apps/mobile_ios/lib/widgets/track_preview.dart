@@ -119,7 +119,8 @@ class _StaticMapPreview extends StatelessWidget {
     for (final p in _simplifiedPath()) {
       // lng,lat per the API (MapTiler reverses the typical Leaflet
       // lat,lng order).
-      pathParam.write('|${p.lng.toStringAsFixed(6)},${p.lat.toStringAsFixed(6)}');
+      pathParam.write(
+          '|${p.lineLng.toStringAsFixed(6)},${p.lineLat.toStringAsFixed(6)}');
     }
     return pathParam.toString();
   }
@@ -337,6 +338,8 @@ class _TrackPreviewPainter extends CustomPainter {
 /// so the projection can be unit-tested without spinning up a Flutter
 /// canvas, and so every track thumbnail in the app draws the same shape
 /// for the same run — `run_screen`'s spark cards project through it too.
+/// Each fix is drawn at its smoothed position when the stored track carries
+/// one ([Waypoint.lineLat] / [Waypoint.lineLng]).
 /// Mirrors `apps/web/src/lib/components/TrackPreview.svelte` — keep them
 /// in lockstep.
 List<Offset> projectTrack(List<Waypoint> points, double vbW, double vbH,
@@ -345,13 +348,13 @@ List<Offset> projectTrack(List<Waypoint> points, double vbW, double vbH,
   // Longitudes are expressed on the first point's side of the antimeridian,
   // so a track that crosses it spans its own width instead of ~360° (which
   // collapsed the fitted scale to a dot). Identity inside a hemisphere.
-  final refLng = points.first.lng;
-  double minLat = points.first.lat, maxLat = points.first.lat;
+  final refLng = points.first.lineLng;
+  double minLat = points.first.lineLat, maxLat = points.first.lineLat;
   double minLng = refLng, maxLng = refLng;
   for (final p in points) {
-    if (p.lat < minLat) minLat = p.lat;
-    if (p.lat > maxLat) maxLat = p.lat;
-    final lng = unwrapLonDeg(refLng, p.lng);
+    if (p.lineLat < minLat) minLat = p.lineLat;
+    if (p.lineLat > maxLat) maxLat = p.lineLat;
+    final lng = unwrapLonDeg(refLng, p.lineLng);
     if (lng < minLng) minLng = lng;
     if (lng > maxLng) maxLng = lng;
   }
@@ -372,8 +375,8 @@ List<Offset> projectTrack(List<Waypoint> points, double vbW, double vbH,
   return [
     for (final p in points)
       Offset(
-        offX + (unwrapLonDeg(refLng, p.lng) - minLng) * lngScale * scale,
-        offY + (maxLat - p.lat) * scale,
+        offX + (unwrapLonDeg(refLng, p.lineLng) - minLng) * lngScale * scale,
+        offY + (maxLat - p.lineLat) * scale,
       ),
   ];
 }
@@ -398,13 +401,13 @@ const double kMinRenderableSpanM = 5.0;
 /// `routes/track_projection.ts` — keep in lockstep.
 bool isTrackRenderable(List<Waypoint> track) {
   if (track.length < 2) return false;
-  final refLng = track.first.lng;
-  double minLat = track.first.lat, maxLat = track.first.lat;
+  final refLng = track.first.lineLng;
+  double minLat = track.first.lineLat, maxLat = track.first.lineLat;
   double minLng = refLng, maxLng = refLng;
   for (final p in track) {
-    if (p.lat < minLat) minLat = p.lat;
-    if (p.lat > maxLat) maxLat = p.lat;
-    final lng = unwrapLonDeg(refLng, p.lng);
+    if (p.lineLat < minLat) minLat = p.lineLat;
+    if (p.lineLat > maxLat) maxLat = p.lineLat;
+    final lng = unwrapLonDeg(refLng, p.lineLng);
     if (lng < minLng) minLng = lng;
     if (lng > maxLng) maxLng = lng;
   }

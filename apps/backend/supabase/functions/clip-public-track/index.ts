@@ -11,6 +11,13 @@ import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import { isValidUuid } from '../_shared/input_validation.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
+import {
+  mergeSmoothedSidecar,
+  needsSmoothedSidecar,
+  sidecarNamedFor,
+  sha256Hex,
+  smoothedSidecarPath,
+} from '../_shared/smoothed_sidecar.ts';
 
 // Serves a privacy-zone-clipped track for a public run. Replaces
 // direct Storage download for non-owner viewers (audit/storage High,
@@ -24,9 +31,11 @@ import { publishableKey, secretKey } from '../_shared/api_keys.ts';
 //      private rows get null and we 404.
 //   3. Download the gzipped track via the service-role client (the
 //      anon Storage policy was just removed).
-//   4. If the caller is not the owner, route the points through
+//   4. Merge the job_worker's smoothed-position sidecar onto the points
+//      when it names this exact track (watch runs, recomputed runs).
+//   5. If the caller is not the owner, route the points through
 //      clip_track_for_user. Owners receive the unclipped track.
-//   5. Return the points as JSON.
+//   6. Return the points as JSON.
 
 Deno.serve(withSentry('clip-public-track', async (req: Request) => {
   if (req.method !== 'POST') {
@@ -105,7 +114,8 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
   // so a non-owner querying `runs.id = ?` now returns zero rows and
   // every clip request would 404. The view's underlying definer-owned
   // query bypasses runs RLS, returns only `is_public = true` rows,
-  // and exposes the two columns we need (user_id, is_public). The
+  // and exposes the columns we need (user_id, is_public, and the redacted
+  // metadata, for the smoothed-sidecar hash). The
   // `track_url` column was removed from the view in migration
   // 20260924_001 per audit/storage (2026-05-25); we derive the path
   // from `user_id + runId` below using the same shape the
@@ -115,7 +125,7 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
   // renders nothing for a private run).
   const { data: run, error: runErr } = await userClient
     .from('public_runs')
-    .select('user_id, is_public')
+    .select('user_id, is_public, metadata')
     .eq('id', runId)
     .maybeSingle();
   // `user_id` is NOT NULL on `runs`, but `public_runs` is a view and Postgres
@@ -178,11 +188,10 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
   // is an upstream fault, not a caller fault: 502, like the download failure
   // above it.
   let points: unknown;
+  let trackBytes: Uint8Array<ArrayBuffer>;
   try {
-    const ds = new (globalThis as { DecompressionStream: typeof DecompressionStream })
-      .DecompressionStream('gzip');
-    const stream = new Response(gz).body!.pipeThrough(ds);
-    points = JSON.parse(await new Response(stream).text());
+    trackBytes = await gunzip(gz);
+    points = JSON.parse(new TextDecoder().decode(trackBytes));
   } catch {
     return Response.json({ error: 'malformed track' }, { status: 502 });
   }
@@ -197,8 +206,36 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
     return Response.json({ error: 'track too long' }, { status: 502 });
   }
 
+  // The smoother's positions for a track whose waypoints carry none of
+  // their own (a watch run, an old run the server recomputed) live in a
+  // sidecar the job_worker writes beside the track. It is merged HERE,
+  // before the owner return and before the clip, so the non-owner clip sees
+  // every smoothed position the viewer will draw and its either-pair-in-zone
+  // rule (20270719000005) trims a fix whose smoothed position sits in a zone.
+  // Fetched only when the row's metadata names a sidecar for these exact
+  // bytes (smoothed_sidecar_sha256), so a run without one costs no Storage
+  // request, and merged only when the sidecar's own fingerprint agrees; any
+  // failure to read it leaves the raw line, which is what the track always was.
+  const withSmoothedSidecar = async <T,>(pts: T[]): Promise<T[]> => {
+    try {
+      const sha256 = await sha256Hex(trackBytes);
+      if (!sidecarNamedFor(run.metadata, sha256)) return pts;
+      const { data: scBlob, error: scErr } = await adminClient.storage
+        .from('runs')
+        .download(smoothedSidecarPath(ownerId, runId));
+      if (scErr || !scBlob) return pts;
+      const scGz = new Uint8Array(await scBlob.arrayBuffer());
+      if (scGz.byteLength > 5 * 1024 * 1024) return pts;
+      const sidecar = JSON.parse(new TextDecoder().decode(await gunzip(scGz)));
+      return mergeSmoothedSidecar(pts, sidecar, { points: pts.length, sha256 });
+    } catch {
+      return pts;
+    }
+  };
+  const served = needsSmoothedSidecar(points) ? await withSmoothedSidecar(points) : points;
+
   if (callerId === ownerId) {
-    return Response.json({ points });
+    return Response.json({ points: served });
   }
 
   // Go through the service-role admin client for the clip RPC.
@@ -212,10 +249,17 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
   // never used for this read, only the row lookup above.
   const { data: clipped, error: clipErr } = await adminClient.rpc(
     'clip_track_for_user',
-    { target_user_id: ownerId, points },
+    { target_user_id: ownerId, points: served },
   );
   if (clipErr) {
     return Response.json({ error: 'clip failed' }, { status: 500 });
   }
   return Response.json({ points: clipped ?? [] });
 }));
+
+async function gunzip(gz: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
+  const ds = new (globalThis as { DecompressionStream: typeof DecompressionStream })
+    .DecompressionStream('gzip');
+  const stream = new Response(gz).body!.pipeThrough(ds);
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}

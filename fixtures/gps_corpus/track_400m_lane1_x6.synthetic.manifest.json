@@ -1,0 +1,14 @@
+{
+  "id": "track-400m-lane1-x6-synthetic",
+  "synthetic": true,
+  "track_file": "track_400m_lane1_x6.synthetic.json",
+  "format": "threkir_json",
+  "known_distance_m": 2400.01,
+  "distance_source": "synthetic: 6 x the IAAF lane-1 measurement line (2 x 84.39 m + 2 x pi x 36.80 m)",
+  "course_type": "track",
+  "device": "synthetic (gen_synthetic_corpus.py, seed 1090)",
+  "platform": "synthetic",
+  "activity_type": "run",
+  "error_budget_pct": 3.0,
+  "notes": "Generated, not recorded. 1 Hz, AR(1) position error sigma 3 m / lag-1 0.95, Doppler sigma 0.15 m/s, one 25 m multipath spike at t=300 s. Proves the harness runs; says nothing about real GPS."
+}

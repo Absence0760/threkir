@@ -154,9 +154,9 @@ Deno.test('computeEmbeddedBests — even 6 km run yields a ~total-time 5k', () =
 
 Deno.test('computeEmbeddedBests — a fast 5 km inside a long run is detected', () => {
 	// First 5 km fast (100 m / 20 s → 1000 s), the rest slow (100 m / 40 s).
-	// 104 steps rather than 100: the distance estimator lags the pace change
-	// and credits ~20 m less than the straight line, which a track ending at
-	// exactly 10 km would turn into no 10 km window at all.
+	// 104 steps rather than 100 so the slow tail holds a 10 km window. The
+	// smoother spreads the 2:1 pace change across both sides of it, so the
+	// fast half credits ~8 m short and its best reads ~1016 s, not 1000.
 	const mPerDeg = 6371000 * (Math.PI / 180);
 	const stepDeg = 100 / mPerDeg;
 	const startMs = Date.parse('2026-01-01T09:00:00Z');
@@ -167,11 +167,11 @@ Deno.test('computeEmbeddedBests — a fast 5 km inside a long run is detected', 
 		track.push({ lat: 0, lng: i * stepDeg, ts: new Date(t).toISOString() });
 	}
 	const bests = computeEmbeddedBests(track);
-	// The embedded fast 5k (~1000 s) beats the whole-run-scaled pace (1500 s).
+	// The embedded fast 5k (~1016 s) beats the whole-run-scaled pace (1500 s).
 	assertExists(bests.fastest_5k_s, 'a 10 km track must yield a 5 km best');
-	assert(bests.fastest_5k_s >= 995 && bests.fastest_5k_s <= 1005, `got ${bests.fastest_5k_s}`);
+	assert(bests.fastest_5k_s >= 995 && bests.fastest_5k_s <= 1020, `got ${bests.fastest_5k_s}`);
 	// The fast 5 km plus 5 km slow is 3000 s on the straight line; the
-	// estimator's lag at the pace change makes it ~25 s slower.
+	// smoothed cumulative reads ~2998 s.
 	assertExists(bests.fastest_10k_s, 'a 10.4 km track must yield a 10 km best');
 	assert(bests.fastest_10k_s >= 2990 && bests.fastest_10k_s <= 3040, `got ${bests.fastest_10k_s}`);
 	assertEquals(bests.fastest_half_marathon_s, undefined);

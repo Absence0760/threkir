@@ -68,6 +68,29 @@ class _ConsentedWithDobApi extends ApiClient {
       ageRecordCalls++;
 }
 
+/// Consented, recording what a Save writes — the weight-mirror half of
+/// decisions § 1811.
+class _ConsentedSaveApi extends ApiClient {
+  final List<double> recorded = [];
+
+  @override
+  String? get userId => 'u1';
+  @override
+  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(
+        shadowHidden: false,
+        id: 'u1',
+        healthDataConsentAt: DateTime.utc(2026, 1, 1),
+        heightCm: 175,
+      );
+  @override
+  Future<double?> fetchLatestBodyWeightKg() async => 70.0;
+  @override
+  Future<void> setMyHeightCm(double? heightCm) async {}
+  @override
+  Future<void> recordBodyWeightKg(double weightKg) async =>
+      recorded.add(weightKg);
+}
+
 /// Records the universal-bag writes so the Art 9 mirror clear is observable.
 class _RecordingSync extends SettingsSyncService {
   _RecordingSync(Preferences prefs) : super(preferences: prefs);
@@ -394,6 +417,7 @@ void main() {
       SharedPreferences.setMockInitialValues({});
       final prefs = Preferences();
       await prefs.init();
+      await prefs.setBodyWeightKg(70);
       final api = _ConsentedWithDobApi();
       final sync = _RecordingSync(prefs);
       await tester.pumpWidget(
@@ -429,6 +453,85 @@ void main() {
       expect(sync.writes.any((w) => w.containsKey(SettingsKeys.dateOfBirth) &&
               w[SettingsKeys.dateOfBirth] == null), isTrue,
           reason: 'the Art 9 prefs-bag mirror must be cleared');
+      expect(sync.writes.any((w) => w.containsKey(SettingsKeys.bodyWeightKg) &&
+              w[SettingsKeys.bodyWeightKg] == null), isTrue,
+          reason: 'the weight series\' mirror goes with the series (§ 1811)');
+      expect(prefs.bodyWeightKg, isNull,
+          reason: 'the on-device calorie weight must not outlive the withdrawal');
+
+      await tester.pump(const Duration(seconds: 4));
+    });
+  });
+
+  group('SettingsBodyMetricsScreen — calorie weight mirror (§ 1811)', () {
+    testWidgets('a saved weight lands in the series AND the bag key every '
+        'calorie estimate reads', (tester) async {
+      // The screen used to append to body_metrics only, so the run-detail
+      // estimate here, on web and on the Wear OS post-run line kept reading
+      // a bag key nothing on this screen wrote — 70 kg for a runner who had
+      // just told us their weight.
+      SharedPreferences.setMockInitialValues({});
+      final prefs = Preferences();
+      await prefs.init();
+      final api = _ConsentedSaveApi();
+      final sync = _RecordingSync(prefs);
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SettingsBodyMetricsScreen(
+            api: api,
+            settingsSync: sync,
+            preferences: prefs,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Weight'), '81.5');
+      await tester.pump();
+      await tester
+          .runAsync(() => tester.tap(find.widgetWithText(FilledButton, 'Save')));
+      await tester.pumpAndSettle();
+
+      expect(api.recorded, [81.5]);
+      expect(
+          sync.writes.any((w) => w[SettingsKeys.bodyWeightKg] == 81.5), isTrue,
+          reason: 'the bag mirror is what the calorie estimates read');
+      expect(prefs.bodyWeightKg, 81.5);
+
+      await tester.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets('re-saving an unchanged weight repairs a stale mirror without '
+        'padding the series', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = Preferences();
+      await prefs.init();
+      final api = _ConsentedSaveApi();
+      final sync = _RecordingSync(prefs);
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SettingsBodyMetricsScreen(
+            api: api,
+            settingsSync: sync,
+            preferences: prefs,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      await tester
+          .runAsync(() => tester.tap(find.widgetWithText(FilledButton, 'Save')));
+      await tester.pumpAndSettle();
+
+      expect(api.recorded, isEmpty);
+      expect(sync.writes.any((w) => w[SettingsKeys.bodyWeightKg] == 70.0), isTrue);
+      expect(prefs.bodyWeightKg, 70.0);
 
       await tester.pump(const Duration(seconds: 4));
     });

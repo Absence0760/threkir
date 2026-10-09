@@ -59,31 +59,84 @@ void main() {
     expect(canRecomputeDistance(run(trackUrl: ''), owner), isFalse);
   });
 
-  test(
-      'a pedometer distance is not recomputable, a treadmill tag is no '
-      'blocker by itself', () {
-    expect(
-      canRecomputeDistance(
-          run(metadata: {'distance_source': 'pedometer'}), owner),
-      isFalse,
-    );
-    expect(
-      canRecomputeDistance(
-          run(metadata: {'distance_source': 'treadmill'}), owner),
-      isTrue,
-    );
+  test('any distance provenance tag blocks the recompute, as the worker skips it',
+      () {
+    for (final tag in ['pedometer', 'treadmill', 'something_new']) {
+      expect(canRecomputeDistance(run(metadata: {'distance_source': tag}), owner),
+          isFalse,
+          reason: tag);
+    }
+    expect(canRecomputeDistance(run(metadata: {'distance_source': ''}), owner),
+        isTrue);
+    expect(canRecomputeDistance(run(metadata: {'distance_source': 7}), owner),
+        isTrue);
+  });
+
+  test('an in-progress stub, a manual entry and an indoor run are never offered',
+      () {
+    for (final key in [
+      'in_progress',
+      'manual_entry',
+      'indoor',
+      'indoor_estimated',
+    ]) {
+      expect(canRecomputeDistance(run(metadata: {key: true}), owner), isFalse,
+          reason: key);
+      expect(canRecomputeDistance(run(metadata: {key: false}), owner), isTrue,
+          reason: key);
+      expect(canRecomputeDistance(run(metadata: {key: 'true'}), owner), isTrue,
+          reason: key);
+    }
   });
 
   test('a run already on the current estimator is not offered again', () {
-    expect(currentDistanceEstimator, 'kalman_v1');
+    expect(currentDistanceEstimator, 'kalman_v2');
     expect(
       canRecomputeDistance(
-          run(metadata: {'distance_estimator': 'kalman_v1'}), owner),
+          run(metadata: {'distance_estimator': 'kalman_v2'}), owner),
       isFalse,
     );
     expect(
       canRecomputeDistance(
-          run(metadata: {'distance_estimator': 'something_older'}), owner),
+          run(metadata: {
+            'distance_estimator': 'kalman_v2',
+            'distance_recomputed_at': '2026-10-08T08:00:00Z',
+          }),
+          owner),
+      isFalse,
+    );
+  });
+
+  test('a run its recorder stamped live is not offered, whatever the estimator',
+      () {
+    // The Wear OS and watchOS recorders stamp kalman_v1 on every run; the
+    // worker skips a live stamp because the stored track is movement-gated.
+    for (final estimator in ['kalman_v1', 'something_older']) {
+      expect(
+        canRecomputeDistance(
+            run(
+                source: RunSource.watch,
+                metadata: {'distance_estimator': estimator}),
+            owner),
+        isFalse,
+        reason: estimator,
+      );
+    }
+    expect(
+      canRecomputeDistance(run(metadata: {'distance_estimator': null}), owner),
+      isFalse,
+    );
+  });
+
+  test('a run a recompute stamped kalman_v1 (the v1.1 forward filter) is '
+      'offered again', () {
+    expect(
+      canRecomputeDistance(
+          run(source: RunSource.watch, metadata: {
+            'distance_estimator': 'kalman_v1',
+            'distance_recomputed_at': '2026-10-08T08:00:00Z',
+          }),
+          owner),
       isTrue,
     );
   });

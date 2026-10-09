@@ -361,15 +361,9 @@ void main() {
               'fill=none would surface as a black polygon on closed '
               'loops.',
         );
-        // Pipe separator is a literal `|` (not %7C / not encoded
-        // by anything).
-        expect(
-          src.contains("pathParam.write('|"),
-          isTrue,
-          reason: 'Polyline points must be separated by a LITERAL '
-              'pipe — MapTiler\'s path parser does not decode '
-              '%7C back.',
-        );
+        // The literal `|` and `,` between points are pinned on the built
+        // URL in the "with a MapTiler key" tests below, not on the source
+        // text, which the formatter is free to re-wrap.
         // No `Uri.encodeQueryComponent` over the whole path
         // string — that was the bug.
         expect(
@@ -478,6 +472,15 @@ void main() {
           contains('stroke:%23${stroke.toRadixString(16).padLeft(6, '0')}|'),
           reason: 'the line colour is keyed to the basemap it is drawn on',
         );
+        expect(
+          url,
+          endsWith('|-0.120000,51.500000|-0.130000,51.510000'),
+          reason: 'Polyline points must be separated by a LITERAL pipe and '
+              "lng,lat by a LITERAL comma — MapTiler's path parser does not "
+              'decode %7C / %2C back.',
+        );
+        expect(url, isNot(contains('%7C')));
+        expect(url, isNot(contains('%2C')));
       });
     }
   });

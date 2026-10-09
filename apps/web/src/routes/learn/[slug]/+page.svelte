@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { m, currentLocale } from '$lib/i18n/store.svelte';
+	import { m, structureLocale } from '$lib/i18n/store.svelte';
 	import { formatDate } from '$lib/format/time';
 	import {
 		buildGuideDescription,
@@ -30,8 +30,11 @@
 	// visitor gets the localized guide when one exists (and the
 	// "in English" notice when it falls back). The build-time prerender
 	// bakes the English guide; the head meta is stable across locales.
-	const guide = $derived(getGuide(data.guide.slug, currentLocale()) ?? data.guide);
-	const showFallbackNotice = $derived(isEnglishFallback(data.guide.slug, currentLocale()));
+	// A localized guide is a different component, not different words, so
+	// it follows structureLocale(): the page hydrates against the English
+	// body it was prerendered with and swaps on mount (decisions § 1812).
+	const guide = $derived(getGuide(data.guide.slug, structureLocale()) ?? data.guide);
+	const showFallbackNotice = $derived(isEnglishFallback(data.guide.slug, structureLocale()));
 
 	const minutes = $derived(readingMinutes(data.guide.slug));
 

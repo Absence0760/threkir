@@ -1,8 +1,10 @@
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../lib/preferences.dart';
+import '../lib/privacy.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/widgets/run_share_card.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -30,7 +32,12 @@ Future<Preferences> _makePrefs() async {
   return prefs;
 }
 
-Future<void> _pump(WidgetTester tester, Run run, Preferences prefs) async {
+Future<void> _pump(
+  WidgetTester tester,
+  Run run,
+  Preferences prefs, {
+  List<PrivacyZone> zones = const [],
+}) async {
   await tester.pumpWidget(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -43,6 +50,7 @@ Future<void> _pump(WidgetTester tester, Run run, Preferences prefs) async {
             run: run,
             preferences: prefs,
             title: run.metadata?['title'] as String? ?? 'Run',
+            privacyZones: zones,
           ),
         ),
       ),
@@ -102,6 +110,107 @@ void main() {
         ),
         findsOneWidget,
       );
+    });
+  });
+
+  // The PNG is posted where anyone can read it, so the line it draws must be
+  // trimmed by the owner's zones exactly as `clip_track_for_user` trims the
+  // same run for a non-owner (migration 20270719000005): leading / trailing
+  // fixes whose raw OR smoothed position is in a zone are not drawn.
+  group('privacy zones', () {
+    const home = PrivacyZone(lat: 51.44, lng: -0.27, radiusM: 200);
+
+    // ~55 m north of home: inside the 200 m zone.
+    const nearHome = Waypoint(lat: 51.4405, lng: -0.27);
+    // 0.01 deg of longitude at 51.44 N is ~694 m: every one of these is out.
+    Waypoint away(int i) => Waypoint(lat: 51.44, lng: -0.27 + i * 0.01);
+
+    List<PolylineLayer> lines(WidgetTester tester) =>
+        tester.widgetList<PolylineLayer>(find.byType(PolylineLayer)).toList();
+
+    testWidgets('a start inside a privacy zone is not drawn', (tester) async {
+      final track = [
+        const Waypoint(lat: 51.44, lng: -0.27),
+        nearHome,
+        away(1),
+        away(2),
+        away(3),
+      ];
+      await _pump(tester, _run(track: track), await _makePrefs(),
+          zones: const [home]);
+
+      final layers = lines(tester);
+      expect(layers, isNotEmpty, reason: 'the card draws no line at all');
+      for (final layer in layers) {
+        final pts = layer.polylines.single.points;
+        expect(pts.length, 3);
+        expect(pts.first.longitude, closeTo(away(1).lng, 1e-9));
+        for (final p in pts) {
+          expect(isInAnyZone(p.latitude, p.longitude, const [home]), isFalse,
+              reason: 'a drawn vertex sits inside the privacy zone');
+        }
+      }
+      final markers =
+          tester.widget<MarkerLayer>(find.byType(MarkerLayer)).markers;
+      for (final m in markers) {
+        expect(isInAnyZone(m.point.latitude, m.point.longitude, const [home]),
+            isFalse,
+            reason: 'an endpoint dot sits inside the privacy zone');
+      }
+    });
+
+    testWidgets(
+        'a start whose smoothed position is in the zone is not drawn, '
+        'though its raw fix is outside it', (tester) async {
+      final track = [
+        Waypoint(
+          lat: away(1).lat,
+          lng: away(1).lng,
+          smoothedLat: home.lat,
+          smoothedLng: home.lng,
+        ),
+        away(2),
+        away(3),
+      ];
+      await _pump(tester, _run(track: track), await _makePrefs(),
+          zones: const [home]);
+
+      for (final layer in lines(tester)) {
+        final pts = layer.polylines.single.points;
+        expect(pts.length, 2);
+        expect(pts.first.longitude, closeTo(away(2).lng, 1e-9));
+      }
+    });
+
+    testWidgets('a track wholly inside a zone draws the glyph, not a map',
+        (tester) async {
+      final run = _run(track: const [
+        Waypoint(lat: 51.44, lng: -0.27),
+        nearHome,
+      ]);
+      expect(runShareCardHasMap(run, const [home]), isFalse);
+      expect(runShareCardHasMap(run, const []), isTrue);
+      await _pump(tester, run, await _makePrefs(), zones: const [home]);
+      expect(find.byType(PolylineLayer), findsNothing);
+      expect(find.byIcon(Icons.directions_run), findsOneWidget);
+    });
+
+    testWidgets('with no zones the whole track is drawn', (tester) async {
+      final track = [
+        const Waypoint(lat: 51.44, lng: -0.27),
+        away(1),
+        away(2),
+      ];
+      await _pump(tester, _run(track: track), await _makePrefs());
+      for (final layer in lines(tester)) {
+        expect(layer.polylines.single.points.length, 3);
+      }
+    });
+
+    test('an interior pass through the zone is kept, as the server keeps it',
+        () {
+      final track = [away(1), nearHome, away(2)];
+      expect(runShareCardTrack(_run(track: track), const [home]), track);
     });
   });
 }

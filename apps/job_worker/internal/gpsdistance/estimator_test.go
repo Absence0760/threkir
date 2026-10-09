@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// The golden vectors are shared by all six ports. The path is relative to
+// The golden vectors are shared by every port. The path is relative to
 // this package directory: apps/job_worker/internal/gpsdistance -> repo root.
 var vectorsPath = filepath.Join("..", "..", "..", "..", "fixtures", "gps_distance_vectors.json")
 
@@ -35,12 +35,25 @@ type vectorScenario struct {
 		GpsDistanceM            float64   `json:"gpsDistanceM"`
 		StepDistanceM           float64   `json:"stepDistanceM"`
 		StrideM                 *float64  `json:"strideM"`
+		RejectedFixes           int       `json:"rejectedFixes"`
+		ZuptFixes               int       `json:"zuptFixes"`
+		RScale                  float64   `json:"rScale"`
+		DopplerTrusted          bool      `json:"dopplerTrusted"`
 	} `json:"expected"`
+	Smoothed struct {
+		DistanceAfterEachEventM []float64     `json:"distanceAfterEachEventM"`
+		DistanceM               float64       `json:"distanceM"`
+		GpsDistanceM            float64       `json:"gpsDistanceM"`
+		StepDistanceM           float64       `json:"stepDistanceM"`
+		StoppedFixes            int           `json:"stoppedFixes"`
+		Positions               []*[2]float64 `json:"positions"`
+	} `json:"smoothed"`
 }
 
 type vectorFile struct {
 	Spec       string             `json:"spec"`
 	ToleranceM float64            `json:"tolerance_m"`
+	PosTolDeg  float64            `json:"position_tolerance_deg"`
 	Constants  map[string]float64 `json:"constants"`
 	Scenarios  []vectorScenario   `json:"scenarios"`
 }
@@ -58,16 +71,16 @@ func loadVectors(t *testing.T) vectorFile {
 	if len(vf.Scenarios) == 0 {
 		t.Fatal("vector file holds no scenarios — the test would pass vacuously")
 	}
-	if vf.ToleranceM <= 0 {
-		t.Fatalf("tolerance_m = %v, want > 0", vf.ToleranceM)
+	if vf.ToleranceM <= 0 || vf.PosTolDeg <= 0 {
+		t.Fatalf("tolerance_m = %v, position_tolerance_deg = %v, want both > 0", vf.ToleranceM, vf.PosTolDeg)
 	}
 	return vf
 }
 
 func TestConstantsMatchTheVectorFile(t *testing.T) {
 	vf := loadVectors(t)
-	if vf.Spec != "gps-distance-estimator v1.1" {
-		t.Fatalf("vectors are for %q; this port implements v1.1", vf.Spec)
+	if vf.Spec != "gps-distance-estimator v"+SpecVersion || SpecVersion != "1.2" {
+		t.Fatalf("vectors are for %q; this port implements v%s", vf.Spec, SpecVersion)
 	}
 	ours := map[string]float64{
 		"DEFAULT_SPEED_SIGMA_MPS":       DefaultSpeedSigmaMps,
@@ -85,6 +98,29 @@ func TestConstantsMatchTheVectorFile(t *testing.T) {
 		"STATIONARY_SPEED_MPS":          StationarySpeedMps,
 		"STRIDE_EMA_ALPHA":              StrideEMAAlpha,
 		"STRIDE_WINDOW_STEPS":           StrideWindowSteps,
+		"GATE_CHI2":                     GateChi2,
+		"GATE_MAX_REJECTS":              GateMaxRejects,
+		"R_SCALE_ALPHA":                 RScaleAlpha,
+		"R_SCALE_MIN":                   RScaleMin,
+		"R_SCALE_MAX":                   RScaleMax,
+		"XCHECK_TAU_S":                  XcheckTauS,
+		"XCHECK_MIN_S":                  XcheckMinS,
+		"XCHECK_ENTER_ABS_MPS":          XcheckEnterAbsMps,
+		"XCHECK_ENTER_REL":              XcheckEnterRel,
+		"XCHECK_EXIT_ABS_MPS":           XcheckExitAbsMps,
+		"XCHECK_EXIT_REL":               XcheckExitRel,
+		"XCHECK_PERSIST_S":              XcheckPersistS,
+		"XCHECK_MAX_SPAN_S":             XcheckMaxSpanS,
+		"DEBIAS_FULL_MPS":               DebiasFullMps,
+		"DEBIAS_ZERO_MPS":               DebiasZeroMps,
+		"ZUPT_NO_STEP_S":                ZuptNoStepS,
+		"ZUPT_VEL_SIGMA_MPS":            ZuptVelSigmaMps,
+		"ZUPT_DOPPLER_OVERRIDE_MPS":     ZuptDopplerOverrideMps,
+		"ZUPT_RELEASE_M":                ZuptReleaseM,
+		"STOP_HALF_WINDOW_S":            StopHalfWindowS,
+		"STOP_MIN_HALF_FIXES":           StopMinHalfFixes,
+		"STOP_SPEED_MPS":                StopSpeedMps,
+		"STOP_RADIUS_M":                 StopRadiusM,
 	}
 	for k, want := range vf.Constants {
 		got, ok := ours[k]
@@ -101,6 +137,42 @@ func TestConstantsMatchTheVectorFile(t *testing.T) {
 	}
 }
 
+func optionsOf(sc vectorScenario) Options {
+	return Options{
+		MaxSpeedMps:       sc.MaxSpeedMps,
+		ExpectedIntervalS: sc.ExpectedIntervalS,
+		InitialStrideM:    sc.InitialStrideM,
+	}
+}
+
+func eventsOf(t *testing.T, sc vectorScenario) []Event {
+	t.Helper()
+	out := make([]Event, len(sc.Events))
+	for i, ev := range sc.Events {
+		switch ev.Type {
+		case "fix":
+			if ev.Lat == nil || ev.Lng == nil {
+				t.Fatalf("event %d: fix without lat/lng", i)
+			}
+			out[i] = Event{Kind: EventFix, Fix: Fix{
+				T: ev.T, Lat: *ev.Lat, Lng: *ev.Lng,
+				AccuracyM: ev.Acc, SpeedMps: ev.Speed,
+				SpeedAccuracyMps: ev.SpeedAcc, BearingDeg: ev.Bearing,
+			}}
+		case "steps":
+			if ev.Count == nil {
+				t.Fatalf("event %d: steps without count", i)
+			}
+			out[i] = Event{Kind: EventSteps, T: ev.T, Steps: *ev.Count}
+		case "finish":
+			out[i] = Event{Kind: EventFinish, T: ev.T}
+		default:
+			t.Fatalf("event %d: unknown type %q", i, ev.Type)
+		}
+	}
+	return out
+}
+
 func TestGoldenVectors(t *testing.T) {
 	vf := loadVectors(t)
 	tol := vf.ToleranceM
@@ -109,35 +181,19 @@ func TestGoldenVectors(t *testing.T) {
 			if len(sc.Expected.DistanceAfterEachEventM) != len(sc.Events) {
 				t.Fatalf("%d expectations for %d events", len(sc.Expected.DistanceAfterEachEventM), len(sc.Events))
 			}
-			e := NewWithOptions(Options{
-				MaxSpeedMps:       sc.MaxSpeedMps,
-				ExpectedIntervalS: sc.ExpectedIntervalS,
-				InitialStrideM:    sc.InitialStrideM,
-			})
-			for i, ev := range sc.Events {
-				switch ev.Type {
-				case "fix":
-					if ev.Lat == nil || ev.Lng == nil {
-						t.Fatalf("event %d: fix without lat/lng", i)
-					}
-					e.AddFix(Fix{
-						T: ev.T, Lat: *ev.Lat, Lng: *ev.Lng,
-						AccuracyM: ev.Acc, SpeedMps: ev.Speed,
-						SpeedAccuracyMps: ev.SpeedAcc, BearingDeg: ev.Bearing,
-					})
-				case "steps":
-					if ev.Count == nil {
-						t.Fatalf("event %d: steps without count", i)
-					}
-					e.AddSteps(ev.T, *ev.Count)
-				case "finish":
+			e := NewWithOptions(optionsOf(sc))
+			for i, ev := range eventsOf(t, sc) {
+				switch ev.Kind {
+				case EventFix:
+					e.AddFix(ev.Fix)
+				case EventSteps:
+					e.AddSteps(ev.T, ev.Steps)
+				case EventFinish:
 					e.Finish(ev.T)
-				default:
-					t.Fatalf("event %d: unknown type %q", i, ev.Type)
 				}
 				want := sc.Expected.DistanceAfterEachEventM[i]
 				if got := e.DistanceM(); math.Abs(got-want) > tol {
-					t.Fatalf("after event %d (%s t=%v): distance %.6f, want %.6f", i, ev.Type, ev.T, got, want)
+					t.Fatalf("after event %d (t=%v): distance %.6f, want %.6f", i, ev.T, got, want)
 				}
 			}
 			if math.Abs(e.GpsDistanceM-sc.Expected.GpsDistanceM) > tol {
@@ -154,7 +210,106 @@ func TestGoldenVectors(t *testing.T) {
 			case sc.Expected.StrideM != nil && math.Abs(*e.StrideM-*sc.Expected.StrideM) > tol:
 				t.Errorf("strideM %.6f, want %.6f", *e.StrideM, *sc.Expected.StrideM)
 			}
+			if e.RejectedFixes != sc.Expected.RejectedFixes {
+				t.Errorf("rejectedFixes %d, want %d", e.RejectedFixes, sc.Expected.RejectedFixes)
+			}
+			if e.ZuptFixes != sc.Expected.ZuptFixes {
+				t.Errorf("zuptFixes %d, want %d", e.ZuptFixes, sc.Expected.ZuptFixes)
+			}
+			if math.Abs(e.RScale-sc.Expected.RScale) > 1e-6 {
+				t.Errorf("rScale %.9f, want %.9f", e.RScale, sc.Expected.RScale)
+			}
+			if e.DopplerTrusted != sc.Expected.DopplerTrusted {
+				t.Errorf("dopplerTrusted %v, want %v", e.DopplerTrusted, sc.Expected.DopplerTrusted)
+			}
 		})
+	}
+}
+
+func TestSmoothedGoldenVectors(t *testing.T) {
+	vf := loadVectors(t)
+	tol, ptol := vf.ToleranceM, vf.PosTolDeg
+	for _, sc := range vf.Scenarios {
+		t.Run(sc.Name, func(t *testing.T) {
+			want := sc.Smoothed
+			if len(want.DistanceAfterEachEventM) != len(sc.Events) || len(want.Positions) != len(sc.Events) {
+				t.Fatalf("smoothed block does not have one entry per event (%d events)", len(sc.Events))
+			}
+			got := SmoothDistance(eventsOf(t, sc), optionsOf(sc))
+			for i := range sc.Events {
+				if math.Abs(got.CumulativeM[i]-want.DistanceAfterEachEventM[i]) > tol {
+					t.Fatalf("after event %d: smoothed %.6f, want %.6f", i, got.CumulativeM[i], want.DistanceAfterEachEventM[i])
+				}
+				gp, wp := got.Positions[i], want.Positions[i]
+				switch {
+				case (gp == nil) != (wp == nil):
+					t.Fatalf("event %d: position %v, want %v", i, gp, wp)
+				case gp != nil && (math.Abs(gp.Lat-wp[0]) > ptol || math.Abs(gp.Lng-wp[1]) > ptol):
+					t.Fatalf("event %d: position (%.10f, %.10f), want (%.10f, %.10f)", i, gp.Lat, gp.Lng, wp[0], wp[1])
+				}
+			}
+			if math.Abs(got.DistanceM-want.DistanceM) > tol {
+				t.Errorf("distanceM %.6f, want %.6f", got.DistanceM, want.DistanceM)
+			}
+			if math.Abs(got.GpsDistanceM-want.GpsDistanceM) > tol {
+				t.Errorf("gpsDistanceM %.6f, want %.6f", got.GpsDistanceM, want.GpsDistanceM)
+			}
+			if math.Abs(got.StepDistanceM-want.StepDistanceM) > tol {
+				t.Errorf("stepDistanceM %.6f, want %.6f", got.StepDistanceM, want.StepDistanceM)
+			}
+			if got.StoppedFixes != want.StoppedFixes {
+				t.Errorf("stoppedFixes %d, want %d", got.StoppedFixes, want.StoppedFixes)
+			}
+		})
+	}
+}
+
+// forwardWithStopHintsM is the reference forward estimator's distance over
+// the scenarios whose post-hoc stop detection flags fixes that change it,
+// replayed with those stop hints (python3 -I over reference.py: detect_stops,
+// then GpsDistanceEstimator.add_fix(..., stopped_hint=...)). Every other
+// scenario's forward pass is the fixture's own forward vector.
+var forwardWithStopHintsM = map[string]float64{
+	"stationary_position_only": 0.9846665773325164,
+	"legacy_stop_clustering":   323.16068012777157,
+}
+
+func TestSmoothDistanceReportsItsForwardPass(t *testing.T) {
+	vf := loadVectors(t)
+	tol := vf.ToleranceM
+	hinted := 0
+	for _, sc := range vf.Scenarios {
+		t.Run(sc.Name, func(t *testing.T) {
+			got := SmoothDistance(eventsOf(t, sc), optionsOf(sc))
+			if len(got.ForwardCumulativeM) != len(sc.Events) {
+				t.Fatalf("forward cumulative has %d entries, want one per event (%d)", len(got.ForwardCumulativeM), len(sc.Events))
+			}
+			if want, ok := forwardWithStopHintsM[sc.Name]; ok {
+				hinted++
+				if got.StoppedFixes == 0 {
+					t.Fatal("scenario listed as stop-hinted but the smoother flagged no fix")
+				}
+				if math.Abs(got.ForwardDistanceM-want) > tol {
+					t.Errorf("forward distance %.6f, want %.6f", got.ForwardDistanceM, want)
+				}
+				if got.ForwardDistanceM >= sc.Expected.DistanceAfterEachEventM[len(sc.Events)-1] {
+					t.Errorf("stop hints must remove stationary drift: %.6f is not below the unhinted %.6f",
+						got.ForwardDistanceM, sc.Expected.DistanceAfterEachEventM[len(sc.Events)-1])
+				}
+				return
+			}
+			for i, want := range sc.Expected.DistanceAfterEachEventM {
+				if math.Abs(got.ForwardCumulativeM[i]-want) > tol {
+					t.Fatalf("after event %d: forward %.6f, want the fixture's %.6f", i, got.ForwardCumulativeM[i], want)
+				}
+			}
+			if last := sc.Expected.DistanceAfterEachEventM[len(sc.Events)-1]; math.Abs(got.ForwardDistanceM-last) > tol {
+				t.Errorf("forward distance %.6f, want %.6f", got.ForwardDistanceM, last)
+			}
+		})
+	}
+	if hinted != len(forwardWithStopHintsM) {
+		t.Errorf("%d stop-hinted scenarios found in the fixture, want %d", hinted, len(forwardWithStopHintsM))
 	}
 }
 

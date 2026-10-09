@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"strings"
@@ -31,6 +32,8 @@ type fakeDistanceRecompute struct {
 	downloadErr error
 	reads       int
 	updates     []distanceUpdate
+	uploadErr   error
+	sidecars    map[string]*SmoothedSidecar
 }
 
 func (f *fakeBackend) ReadRunForDistanceRecompute(_ context.Context, runID string) (*DistanceRecomputeRun, error) {
@@ -51,7 +54,7 @@ func (f *fakeBackend) ReadRunForDistanceRecompute(_ context.Context, runID strin
 	return &cp, nil
 }
 
-func (f *fakeBackend) DownloadRecordedTrack(_ context.Context, path string) ([]RecordedTrackPoint, error) {
+func (f *fakeBackend) DownloadRecordedTrack(_ context.Context, path string) (*RecordedTrack, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.distance == nil {
@@ -64,7 +67,27 @@ func (f *fakeBackend) DownloadRecordedTrack(_ context.Context, path string) ([]R
 	if !ok {
 		return nil, &HTTPError{StatusCode: http.StatusNotFound}
 	}
-	return pts, nil
+	raw, err := json.Marshal(pts)
+	if err != nil {
+		return nil, err
+	}
+	return &RecordedTrack{Points: pts, Fingerprint: fingerprintTrack(raw, len(pts))}, nil
+}
+
+func (f *fakeBackend) UploadSmoothedSidecar(_ context.Context, path string, sc *SmoothedSidecar) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.distance == nil {
+		return errors.New("fake: distance state not configured")
+	}
+	if f.distance.uploadErr != nil {
+		return f.distance.uploadErr
+	}
+	if f.distance.sidecars == nil {
+		f.distance.sidecars = map[string]*SmoothedSidecar{}
+	}
+	f.distance.sidecars[path] = sc
+	return nil
 }
 
 func (f *fakeBackend) UpdateRunDistance(_ context.Context, read *DistanceRecomputeRun, upd RunDistanceUpdate) error {
@@ -119,6 +142,9 @@ func distanceWorker(t *testing.T, run DistanceRecomputeRun, track []RecordedTrac
 		runs:   map[string]*DistanceRecomputeRun{run.ID: &run},
 		tracks: map[string][]RecordedTrackPoint{},
 	}
+	// A forward-pass recompute removes a stale sidecar through the Storage
+	// fake, which writes into this map.
+	b.storageObjects = map[string][]StorageObject{}
 	if run.TrackURL != nil {
 		b.distance.tracks[*run.TrackURL] = track
 	}
@@ -160,7 +186,7 @@ func TestDistanceRecompute_RewritesDistanceAndKeepsEveryOtherKey(t *testing.T) {
 	if u.Metadata["distance_recorded_m"] != 6308.7 {
 		t.Errorf("distance_recorded_m = %v, want the old distance_m 6308.7", u.Metadata["distance_recorded_m"])
 	}
-	if u.Metadata["distance_estimator"] != "kalman_v1" {
+	if u.Metadata["distance_estimator"] != "kalman_v2" {
 		t.Errorf("distance_estimator = %v", u.Metadata["distance_estimator"])
 	}
 	at, _ := u.Metadata["distance_recomputed_at"].(string)
@@ -182,6 +208,178 @@ func TestDistanceRecompute_RepeatKeepsTheOriginalRecordedDistance(t *testing.T) 
 	if got := b.distance.updates[0].Metadata["distance_recorded_m"]; got != 6308.7 {
 		t.Errorf("distance_recorded_m = %v, want the original 6308.7, not the previous recompute's 250", got)
 	}
+	if got := b.distance.updates[0].Metadata["distance_estimator"]; got != "kalman_v2" {
+		t.Errorf("distance_estimator = %v, want a kalman_v1 recompute restamped kalman_v2", got)
+	}
+}
+
+// legacyStopTrack is a track recorded before spec v1 (no Doppler keys):
+// 60 s north at 3 m/s, 90 s standing still, 60 s more at 3 m/s — 360 m —
+// with deterministic +-2 m jitter on every fix.
+func legacyStopTrack() []RecordedTrackPoint {
+	t0 := time.Date(2026, 10, 8, 7, 0, 0, 0, time.UTC)
+	pts := make([]RecordedTrackPoint, 0, 211)
+	north := 0.0
+	for i := 0; i <= 210; i++ {
+		if i > 0 && (i <= 60 || i > 150) {
+			north += 3
+		}
+		lat := 40.0 + (north+2*math.Sin(float64(i)*1.7))/111195.0
+		lng := -75.0 + 2*math.Cos(float64(i)*2.3)/(111195.0*math.Cos(40*math.Pi/180))
+		ts := t0.Add(time.Duration(i) * time.Second)
+		pts = append(pts, RecordedTrackPoint{Lat: &lat, Lng: &lng, Timestamp: &ts, AccuracyM: f64(4)})
+	}
+	return pts
+}
+
+func TestDistanceRecompute_LegacyTrackCreditsNothingThroughTheStop(t *testing.T) {
+	w, b := distanceWorker(t, appRun(`{}`), legacyStopTrack())
+	if err := w.handleDistanceRecompute(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID})); err != nil {
+		t.Fatalf("handle: %v", err)
+	}
+	// The hop-sum reads ~784 m; the smoother 357.36 m, and its forward pass,
+	// kept here because no road matcher classifies the run, 357.79 m: both
+	// carry the post-hoc stop hints.
+	if got := b.distance.updates[0].DistanceM; got < 350 || got > 365 {
+		t.Errorf("distance_m = %v, want ~360 m (the 90 s stop credits nothing)", got)
+	}
+}
+
+func TestDistanceRecompute_DopplerTrackKeepsTheSmoothedPass(t *testing.T) {
+	w, b := distanceWorker(t, appRun(`{}`), straightDopplerTrack(101, 2.5))
+	if err := w.handleDistanceRecompute(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID})); err != nil {
+		t.Fatalf("handle: %v", err)
+	}
+	if got := b.distance.updates[0].Metadata["distance_estimator_pass"]; got != "smoothed" {
+		t.Errorf("distance_estimator_pass = %v, want smoothed for a track with Doppler", got)
+	}
+}
+
+// errRoadMatcher is a RoadDistanceMatcher whose engine answers status.
+type errRoadMatcher struct{ status int }
+
+func (errRoadMatcher) Algorithm() string { return "err-road" }
+func (errRoadMatcher) Version() string   { return "v1" }
+func (m errRoadMatcher) Match(context.Context, []TrackPoint) ([]TrackPoint, error) {
+	return nil, &HTTPError{StatusCode: m.status}
+}
+func (m errRoadMatcher) MatchWithRoadDistance(context.Context, []TrackPoint) ([]TrackPoint, RoadMatch, error) {
+	return nil, RoadMatch{}, &HTTPError{StatusCode: m.status}
+}
+
+// An engine outage must not decide the pass: a run written now is stamped
+// kalman_v2 and never offered Recalculate again, so a road run recomputed
+// during a 502 would keep the forward figure for good. The job is deferred
+// instead, and nothing is written.
+func TestDistanceRecompute_TransientRoadMatchFailureDefersTheJob(t *testing.T) {
+	for _, status := range []int{http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusTooManyRequests} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			w, b := distanceWorker(t, appRun(`{}`), legacyStopTrack())
+			w.Matcher = errRoadMatcher{status: status}
+			err := w.handleDistanceRecompute(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID}))
+			if err == nil {
+				t.Fatal("handle returned nil; want the matcher's error so the job is deferred")
+			}
+			if !isTransient(err) {
+				t.Errorf("err %v is not transient; the worker would fail the job instead of deferring it", err)
+			}
+			if len(b.distance.updates) != 0 {
+				t.Errorf("updates = %d, want 0 — nothing may be stamped before the run is classified", len(b.distance.updates))
+			}
+		})
+	}
+}
+
+// legacyRoadMatch reports the legacy stop track as matched end to end at the
+// smoother's own length, so roadDistanceFor accepts it unless another of its
+// checks rules the run out.
+func legacyRoadMatch() RoadMatch {
+	pts := coordinatePoints(legacyStopTrack())
+	return roadOf(replayRecordedTrack(pts, 10).SmoothedM, 0.9)
+}
+
+func TestDistanceRecompute_PositionOnlyTrackPicksItsPassByTheRoadClassifier(t *testing.T) {
+	pts := coordinatePoints(legacyStopTrack())
+	replay := replayRecordedTrack(pts, 10)
+	if !replay.PositionOnly || replay.ForwardM == replay.SmoothedM {
+		t.Fatalf("fixture must be position-only with distinct passes: positionOnly=%v forward=%v smoothed=%v",
+			replay.PositionOnly, replay.ForwardM, replay.SmoothedM)
+	}
+	forward := math.Round(replay.ForwardM*100) / 100
+	smoothed := math.Round(replay.SmoothedM*100) / 100
+	cases := []struct {
+		name     string
+		matcher  Matcher
+		mutate   func(*DistanceRecomputeRun)
+		wantPass string
+		wantM    float64
+	}{
+		{"no matcher configured", nil, nil, "forward", forward},
+		{"matcher without road distance", nopMatcherForRecompute{}, nil, "forward", forward},
+		{"matcher refuses the track", errRoadMatcher{status: http.StatusBadRequest}, nil, "forward", forward},
+		{"not matched end to end", fakeRoadMatcher{road: RoadMatch{}}, nil, "forward", forward},
+		{"matched road run", fakeRoadMatcher{road: legacyRoadMatch()}, nil, "smoothed", smoothed},
+		{"matched but a hike", fakeRoadMatcher{road: legacyRoadMatch()},
+			func(r *DistanceRecomputeRun) { r.ActivityType = "hike" }, "forward", forward},
+		{"matched but on a trail route", fakeRoadMatcher{road: legacyRoadMatch()},
+			func(r *DistanceRecomputeRun) { r.Route = &RoadRouteSurface{Surface: strp("trail")} }, "forward", forward},
+		{"matched but sub_sport trail", fakeRoadMatcher{road: legacyRoadMatch()},
+			func(r *DistanceRecomputeRun) { r.Metadata = json.RawMessage(`{"sub_sport":"trail"}`) }, "forward", forward},
+		{"already road-matched by map_match", nil,
+			func(r *DistanceRecomputeRun) { r.Metadata = json.RawMessage(`{"distance_map_matched_m":361.2}`) }, "smoothed", smoothed},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			run := appRun(`{}`)
+			if tc.mutate != nil {
+				tc.mutate(&run)
+			}
+			w, b := distanceWorker(t, run, legacyStopTrack())
+			w.Matcher = tc.matcher
+			if err := w.handleDistanceRecompute(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID})); err != nil {
+				t.Fatalf("handle: %v", err)
+			}
+			u := b.distance.updates[0]
+			if got := u.Metadata["distance_estimator_pass"]; got != tc.wantPass {
+				t.Errorf("distance_estimator_pass = %v, want %s", got, tc.wantPass)
+			}
+			if u.DistanceM != tc.wantM {
+				t.Errorf("distance_m = %v, want %v (the %s pass)", u.DistanceM, tc.wantM, tc.wantPass)
+			}
+		})
+	}
+}
+
+func TestDistanceRecompute_ForwardPassAlsoMeasuresTheBests(t *testing.T) {
+	track := zigZagTrack(1800, 6000, 2)
+	pts := coordinatePoints(track)
+	want := embeddedBestsOver(pts, replayRecordedTrack(pts, 10).ForwardCumM)
+	if want["fastest_5k_s"] == nil {
+		t.Fatal("fixture must cover 5 km on the forward pass")
+	}
+	w, b := distanceWorker(t, appRun(`{}`), track)
+	if err := w.handleDistanceRecompute(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID})); err != nil {
+		t.Fatalf("handle: %v", err)
+	}
+	u := b.distance.updates[0]
+	if u.Metadata["distance_estimator_pass"] != "forward" {
+		t.Fatalf("pass = %v, want forward for a position-only run nothing classifies as road", u.Metadata["distance_estimator_pass"])
+	}
+	for col, wv := range want {
+		have := u.Bests[col]
+		if (wv == nil) != (have == nil) || (wv != nil && *wv != *have) {
+			t.Errorf("%s = %v, want the forward cumulative's %v", col, have, wv)
+		}
+	}
+}
+
+// nopMatcherForRecompute is a Matcher that cannot measure road distance.
+type nopMatcherForRecompute struct{}
+
+func (nopMatcherForRecompute) Algorithm() string { return "nop" }
+func (nopMatcherForRecompute) Version() string   { return "v1" }
+func (nopMatcherForRecompute) Match(_ context.Context, pts []TrackPoint) ([]TrackPoint, error) {
+	return pts, nil
 }
 
 func TestDistanceRecompute_NullMetadataGetsABag(t *testing.T) {
@@ -217,6 +415,9 @@ func TestDistanceRecompute_SkipsWhatIsNotTheEstimatorsToReplace(t *testing.T) {
 		{"manual entry", func(r *DistanceRecomputeRun) { r.Metadata = json.RawMessage(`{"manual_entry":true}`) }},
 		{"recorded live by the estimator", func(r *DistanceRecomputeRun) {
 			r.Metadata = json.RawMessage(`{"distance_estimator":"kalman_v1"}`)
+		}},
+		{"saved by the smoother on the phone", func(r *DistanceRecomputeRun) {
+			r.Metadata = json.RawMessage(`{"distance_estimator":"kalman_v2"}`)
 		}},
 	}
 	for _, tc := range cases {
@@ -291,7 +492,8 @@ func TestDistanceRecompute_UntimedWaypointsAreSkippedAndTimeStartsAtTheFirstTime
 		t.Errorf("distance_m = %v, want 25", got)
 	}
 	pts := coordinatePoints(track)
-	cum, _, fixes := replayRecordedTrack(pts, 10)
+	replay := replayRecordedTrack(pts, 10)
+	cum, fixes := replay.SmoothedCumM, replay.Fixes
 	if len(pts) != 11 || fixes != 10 || cum[0] != 0 || cum[1] != 0 || cum[2] != 2.5 {
 		t.Errorf("points = %d, fixes = %d, cum[:3] = %v", len(pts), fixes, cum[:3])
 	}
@@ -366,7 +568,7 @@ func TestReadRunForDistanceRecompute_NoRowIsErrRunNotFound(t *testing.T) {
 	if !errors.Is(err, ErrRunNotFound) {
 		t.Fatalf("err = %v, want ErrRunNotFound", err)
 	}
-	if !strings.Contains(query, "select=id%2Cuser_id%2Csource%2Cactivity_type%2Ctrack_url%2Cdistance_m%2Cmetadata") {
+	if !strings.Contains(query, "select=id%2Cuser_id%2Csource%2Cactivity_type%2Ctrack_url%2Cdistance_m%2Cmetadata%2Croute%3Aroutes%28surface%29") {
 		t.Errorf("query = %s", query)
 	}
 }
@@ -381,10 +583,11 @@ func TestDownloadRecordedTrack_DecodesTheDopplerKeys(t *testing.T) {
 		path = r.URL.Path
 		_, _ = w.Write(buf.Bytes())
 	})
-	pts, err := client.DownloadRecordedTrack(context.Background(), drTrack)
+	track, err := client.DownloadRecordedTrack(context.Background(), drTrack)
 	if err != nil {
 		t.Fatalf("download: %v", err)
 	}
+	pts := track.Points
 	if path != "/storage/v1/object/runs/"+drTrack {
 		t.Errorf("path = %s", path)
 	}
@@ -416,7 +619,7 @@ func TestUpdateRunDistance_IsConditionalOnTrackAndMetadata(t *testing.T) {
 	if err := client.UpdateRunDistance(context.Background(), &run, RunDistanceUpdate{
 		DistanceM:     5000.12,
 		EmbeddedBests: map[string]*int{"fastest_5k_s": &fiveK, "fastest_10k_s": nil},
-		Metadata:      json.RawMessage(`{"title":"a, b","distance_estimator":"kalman_v1"}`),
+		Metadata:      json.RawMessage(`{"title":"a, b","distance_estimator":"kalman_v2"}`),
 	}); err != nil {
 		t.Fatalf("update: %v", err)
 	}
@@ -429,7 +632,7 @@ func TestUpdateRunDistance_IsConditionalOnTrackAndMetadata(t *testing.T) {
 	if gotPrefer != "return=representation" {
 		t.Errorf("Prefer = %q — the CAS cannot count rows under return=minimal", gotPrefer)
 	}
-	if string(gotBody["distance_m"]) != "5000.12" || !strings.Contains(string(gotBody["metadata"]), "kalman_v1") {
+	if string(gotBody["distance_m"]) != "5000.12" || !strings.Contains(string(gotBody["metadata"]), "kalman_v2") {
 		t.Errorf("body = %v", gotBody)
 	}
 	if string(gotBody["fastest_5k_s"]) != "1498" || string(gotBody["fastest_10k_s"]) != "null" {
@@ -481,5 +684,40 @@ func TestDistanceRecompute_ShortRunNullsEveryEmbeddedBest(t *testing.T) {
 		if !ok || v != nil {
 			t.Errorf("%s: present = %v, value = %v; want an explicit null", d.Column, ok, v)
 		}
+	}
+}
+
+const smoothedTrackJSON = `[{"lat":40,"lng":-75,"ts":"2026-10-08T07:00:00Z","smoothedLat":40.00001,"smoothedLng":-75.00002},` +
+	`{"lat":40.0001,"lng":-75,"ts":"2026-10-08T07:00:01Z","smoothedLat":40.00009},` +
+	`{"lat":40.0002,"lng":-75,"ts":"2026-10-08T07:00:02Z"}]`
+
+func TestDownloadRecordedTrack_FeedsTheSmootherRawPositions(t *testing.T) {
+	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(smoothedTrackJSON))
+	})
+	track, err := client.DownloadRecordedTrack(context.Background(), drTrack)
+	if err != nil {
+		t.Fatalf("download: %v", err)
+	}
+	pts := track.Points
+	if *pts[0].Lat != 40 || *pts[0].Lng != -75 {
+		t.Errorf("pts[0] = (%v, %v); the recompute must replay the raw fix, not a previous smoothing", *pts[0].Lat, *pts[0].Lng)
+	}
+}
+
+func TestParseTrack_PrefersTheSmoothedPairOnlyWhenBothArePresent(t *testing.T) {
+	pts, err := parseTrack([]byte(smoothedTrackJSON))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	want := [][2]float64{{40.00001, -75.00002}, {40.0001, -75}, {40.0002, -75}}
+	for i, w := range want {
+		if pts[i].Lat != w[0] || pts[i].Lng != w[1] {
+			t.Errorf("pts[%d] = (%v, %v), want (%v, %v)", i, pts[i].Lat, pts[i].Lng, w[0], w[1])
+		}
+	}
+	out, _ := json.Marshal(pts)
+	if strings.Contains(string(out), "smoothed") {
+		t.Errorf("a matcher point re-encodes the smoothed keys: %s", out)
 	}
 }

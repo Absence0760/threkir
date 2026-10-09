@@ -44,22 +44,14 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         )
     }
 
-    /// Rolling window of the most recent GPS fixes, kept only to compute
-    /// live pace and the per-fix distance delta. The full track is
-    /// streamed to disk by `CheckpointStore`; holding the whole thing in
-    /// memory would grow without bound on an all-day ultra (a 100-hour
-    /// run at 1 Hz is ~360k points). Capped at `maxInMemoryTrackPoints`.
-    @Published var track: [CLLocation] = []
-
-    /// Authoritative count of every GPS fix recorded this run. Unlike
-    /// `track.count` (now bounded), this never resets mid-run, so the UI
-    /// and the crash checkpoint report the true number of points.
+    /// Count of every GPS fix recorded this run. The track itself is never
+    /// held in memory: it streams to disk through `CheckpointStore`, because
+    /// a 100-hour ultra at 1 Hz is ~360k points. This never resets mid-run,
+    /// so the UI and the crash checkpoint report the true number of points.
     @Published var trackPointCount: Int = 0
 
-    /// Upper bound on the in-memory rolling window. 600 fixes comfortably
-    /// covers the ~200 m pace look-back even at dense sampling, while
-    /// keeping memory flat regardless of run length.
-    private let maxInMemoryTrackPoints = 600
+    /// Live pace's look-back over the estimator's distance; see `PaceWindow`.
+    private var paceWindow = PaceWindow()
 
     /// Off-route guidance for the route the phone armed, or nil when this run
     /// is unguided. Built once at `start()` and fed from the GPS stream as an
@@ -77,8 +69,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     /// only its projection of the current fix.
     @Published var mapRoute: [MiniMapPoint] = []
 
-    /// The mini-map's own bounded breadcrumb of the run — see `MiniMapTrail`
-    /// for why the map cannot be fed from `track`.
+    /// The mini-map's own bounded breadcrumb of the run: the recorder holds
+    /// no track in memory to draw from — see `MiniMapTrail`.
     @Published var mapTrail = MiniMapTrail()
 
     /// The last accepted fix, or nil while this run has none.
@@ -308,7 +300,10 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         // over an install with an unsynced run does not orphan it.
         RunPayloadStorage.prepare()
         locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        // The phone recorder's bestForNavigation (#1090): the strongest GPS
+        // request CoreLocation takes. Its battery cost on the wrist against
+        // kCLLocationAccuracyBest has not been measured on a device yet.
+        locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
         locationManager.activityType = .fitness
         // allowsBackgroundLocationUpdates is set in start(), not here:
         // CoreLocation traps (CLClientIsBackgroundable) if it's enabled before
@@ -330,7 +325,6 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     func start() {
         let runId = UUID().uuidString.lowercased()
         currentRunId = runId
-        track = []
         trackPointCount = 0
         distanceMetres = 0
         elapsedSeconds = 0
@@ -517,7 +511,6 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         pausedAt = plan.pausedAt
         elapsedSeconds = plan.elapsedSeconds
         finishedRun = nil
-        track = []
         currentPace = nil
         lastPaceAlertAt = nil
 
@@ -614,8 +607,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         pedometer.stop()
         if state == .recording { sealDistanceSegment() }
 
-        // The in-memory `track` is a bounded rolling window and the full run
-        // stays on disk — nothing here materialises it. Close the append
+        // The full run stays on disk — nothing here materialises it. Close the append
         // handle so every fix is flushed, then hand the finished run the
         // file; `writeTrackJSON` streams from it at sync time.
         let store = checkpointStore
@@ -692,7 +684,6 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         if let trackFileURL = finishedRun?.trackFileURL {
             try? FileManager.default.removeItem(at: trackFileURL)
         }
-        track = []
         trackPointCount = 0
         distanceMetres = 0
         elapsedSeconds = 0
@@ -839,20 +830,15 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 
     /// Drop the pace look-back so it cannot span a discontinuity.
     ///
-    /// `updatePace` walks `track` backwards until 200 m accumulate and divides
-    /// by the timestamp span, so any gap the distance accumulator refused to
-    /// credit would be timed against metres it never counted. Two places create
-    /// that gap and BOTH must seal: a pause (a 20-minute aid-station stop read
-    /// 1:48:35 /km and fired a false "too slow" alert — issue #371's defect,
-    /// fixed for distance and never applied to pace), and the re-anchor escape
-    /// below, where dropped fixes mean the same thing. The canonical Flutter
-    /// recorder seals `_paceFloorIdx` at both, noting that the error "runs in
-    /// the direction that SUPPRESSES a safety warning".
-    ///
-    /// Clearing `track` loses nothing: it is a bounded in-memory window used
-    /// only for pace and the per-fix delta — the trace itself streams to disk.
+    /// Pace is the estimator's distance gained over the look-back divided by
+    /// its time span, so any gap the estimator refused to credit would be
+    /// timed against metres it never counted. Two places create that gap and
+    /// BOTH must seal: a pause (a 20-minute aid-station stop read 1:48:35 /km
+    /// and fired a false "too slow" alert — issue #371's defect, fixed for
+    /// distance and never applied to pace), and a GPS gap the estimator
+    /// re-anchors over. The canonical Flutter recorder seals at both.
     private func sealPaceWindow() {
-        track.removeAll(keepingCapacity: true)
+        paceWindow.seal()
         currentPace = nil
     }
 
@@ -861,6 +847,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         bankedDistanceMetres = 0
         bankedStepFilledMetres = 0
         lastEstimatorFixT = nil
+        paceWindow.seal()
     }
 
     /// Close the active segment at a pause or stop: commit any steps buffered
@@ -873,6 +860,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         bankedStepFilledMetres += distanceEstimator.stepDistanceM
         distanceEstimator = distanceEstimator.nextSegment()
         lastEstimatorFixT = nil
+        paceWindow.seal()
         distanceMetres = bankedDistanceMetres
     }
 
@@ -934,9 +922,9 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             }
             if lastEstimatorFixT.map({ t > $0 }) ?? true { lastEstimatorFixT = t }
             feedEstimator(location, t: t)
+            paceWindow.add(t: t, distanceM: distanceEstimator.distanceM)
             lastAcceptedFix = location
 
-            track.append(location)
             newPoints.append(TrackPointRecord(
                 lat: location.coordinate.latitude,
                 lng: location.coordinate.longitude,
@@ -956,11 +944,6 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         if !newPoints.isEmpty {
             checkpointStore?.appendTrackPoints(newPoints)
             trackPointCount += newPoints.count
-        }
-
-        // Keep the in-memory window bounded — the full track lives on disk.
-        if track.count > maxInMemoryTrackPoints {
-            track.removeFirst(track.count - maxInMemoryTrackPoints)
         }
 
         updatePace()
@@ -1104,25 +1087,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
 
     private func updatePace() {
-        let minPoints = 5
-        guard track.count >= minPoints else { return }
-
-        // Look back to find a segment of ~200m
-        var segmentDistance: Double = 0
-        var segmentStart = track.count - 1
-        for i in stride(from: track.count - 2, through: 0, by: -1) {
-            segmentDistance += track[i + 1].distance(from: track[i])
-            segmentStart = i
-            if segmentDistance >= 200 { break }
-        }
-
-        guard segmentDistance > 50 else { return }
-
-        let segmentTime = track.last!.timestamp.timeIntervalSince(track[segmentStart].timestamp)
-        guard segmentTime > 0 else { return }
-
-        // seconds per km
-        let pace = (segmentTime / segmentDistance) * 1000
+        guard let pace = paceWindow.secondsPerKm else { return }
         currentPace = pace
         checkPaceAlert(pace: pace)
     }
@@ -1141,5 +1106,51 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         lastPaceAlertAt = now
         WKInterfaceDevice.current().play(.notification)
         announcer.announcePaceAlert(tooSlow: decision.tooSlow)
+    }
+}
+
+/// Live pace over the GPS distance estimator's last ~200 m.
+///
+/// Each sample is the estimator's clock and its cumulative distance at a fix,
+/// so pace is the filtered distance gained over the window, not the sum of
+/// fix-to-fix hops. The hop-sum over-reads by the GPS jitter the estimator
+/// removes: a steady 5:00/km with fixes 1.25 m either side of the line sums
+/// to 4:00/km, which told the runner to slow down when they were on pace.
+/// `seal()` empties the window at every pause, resume and re-anchored gap.
+struct PaceWindow {
+    static let windowM = 200.0
+    static let minWindowM = 50.0
+    static let minSamples = 5
+
+    private var samples: [(t: Double, m: Double)] = []
+    private var sinceSeal = 0
+
+    mutating func seal() {
+        samples.removeAll(keepingCapacity: true)
+        sinceSeal = 0
+    }
+
+    mutating func add(t: Double, distanceM: Double) {
+        guard t.isFinite, distanceM.isFinite else { return }
+        if let last = samples.last, t <= last.t { return }
+        samples.append((t: t, m: distanceM))
+        sinceSeal += 1
+        var drop = 0
+        while samples.count - drop > 2, distanceM - samples[drop + 1].m >= Self.windowM {
+            drop += 1
+        }
+        if drop > 0 { samples.removeFirst(drop) }
+    }
+
+    /// Null until the window since the last seal holds `minSamples` fixes and
+    /// `minWindowM`.
+    var secondsPerKm: Double? {
+        guard sinceSeal >= Self.minSamples, let first = samples.first, let last = samples.last else {
+            return nil
+        }
+        let gained = last.m - first.m
+        let seconds = last.t - first.t
+        guard gained >= Self.minWindowM, seconds > 0 else { return nil }
+        return seconds / gained * 1000
     }
 }

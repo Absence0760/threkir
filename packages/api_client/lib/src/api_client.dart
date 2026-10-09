@@ -5,7 +5,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:core_models/core_models.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/foundation.dart' show compute, debugPrint;
 import 'package:meta/meta.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -13,6 +13,7 @@ import 'chunk.dart';
 import 'effort_rank.dart';
 import 'paged_read.dart';
 import 'segments_rank.dart';
+import 'smoothed_sidecar.dart';
 
 // Column-level grant lockdowns: see migrations 20260801_001 +
 // 20260818_001 (clubs.invite_token) and 20260723_001 + 20260806_001 +
@@ -311,6 +312,7 @@ class ApiClient {
           'p_max_lat': maxLat,
           'p_max_points': maxPoints,
         },
+        get: true,
       );
       if (data is! List) return const [];
       return data.map<HeatmapPoint>((row) {
@@ -567,7 +569,9 @@ class ApiClient {
     // Use the SECURITY DEFINER read so the column-revoked fields
     // (`subscription_tier`, `subscription_at`, `parkrun_number`) don't
     // make the SELECT silently return null when the row exists.
-    if (profileRowFrom(await _client.rpc('get_my_profile')) != null) return;
+    final existing =
+        await _client.rpc('get_my_profile', params: const {}, get: true);
+    if (profileRowFrom(existing) != null) return;
     // A plain insert, not an upsert: ON CONFLICT DO UPDATE needs SELECT on
     // the columns it sets, and `subscription_tier` is withheld by the column
     // lockdown (20260707_001), so the upsert was refused with 42501. A 23505
@@ -858,7 +862,8 @@ class ApiClient {
   /// confirming). Fails soft to an empty list.
   Future<List<PendingSafetyRequest>> fetchPendingSafetyRequests() async {
     try {
-      final data = await _client.rpc('my_pending_safety_requests');
+      final data = await _client.rpc('my_pending_safety_requests',
+          params: const {}, get: true);
       if (data is! List) return const [];
       return data
           .map<PendingSafetyRequest>((row) =>
@@ -1291,13 +1296,19 @@ class ApiClient {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
 
+    // The track, and the job_worker's map-matched track and smoothed-position
+    // sidecar, whose bytes the row cascade never reaches (removing a path that
+    // is not there is a no-op).
     final trackPath = run.metadata?['track_url'] as String?;
-    if (trackPath != null && trackPath.isNotEmpty) {
-      try {
-        await _client.storage.from(StorageBuckets.runs).remove([trackPath]);
-      } catch (e) {
-        // Best-effort — the row delete is more important than the file cleanup.
-      }
+    final runPaths = [
+      if (trackPath != null && trackPath.isNotEmpty) trackPath,
+      smoothedSidecarPath(userId, run.id),
+      '$userId/${run.id}.matched.json.gz',
+    ];
+    try {
+      await _client.storage.from(StorageBuckets.runs).remove(runPaths);
+    } catch (e) {
+      // Best-effort — the row delete is more important than the file cleanup.
     }
 
     try {
@@ -1488,7 +1499,7 @@ class ApiClient {
     try {
       final data = await _client.rpc('route_conditions_for_viewer', params: {
         'p_route_id': routeId,
-      });
+      }, get: true);
       if (data is! List) return const [];
       return data
           .whereType<Map>()
@@ -1585,15 +1596,83 @@ class ApiClient {
     return data.map<Run>((row) => _runFromRow(row)).toList();
   }
 
-  /// Download and decode the GPS track for a single run.
+  /// Download and decode the GPS track for a single run of the signed-in
+  /// user's.
   ///
   /// Reads the gzipped JSON from Supabase Storage at the path stored in
   /// `metadata['track_url']` (returned by [getRuns] / [_runFromRow]).
-  /// Returns an empty list if the run has no track.
+  /// Returns an empty list if the run has no track. A track with no smoothed
+  /// pair on any waypoint (a watch run, an old run the server recomputed)
+  /// gets the job_worker's smoothed-position sidecar merged on when the run's
+  /// metadata names these exact bytes ([sidecarNamedFor]) and the sidecar's
+  /// own fingerprint agrees ([mergeSmoothedSidecar]); a run that names no
+  /// sidecar for this track makes no sidecar request, and any failure to
+  /// fetch or read one leaves the raw track, which is what it always was.
   Future<List<Waypoint>> fetchTrack(Run run) async {
     final url = run.metadata?['track_url'] as String?;
     if (url == null || url.isEmpty) return const [];
-    return _downloadTrack(url);
+    final inflated = gzip.decode(
+      await _client.storage.from(StorageBuckets.runs).download(url),
+    );
+    final track = _decodeTrack(inflated);
+    return await _withSmoothedSidecar(run, track, trackSha256Hex(inflated)) ??
+        track;
+  }
+
+  /// The line for a track this device holds (its own recording, or a watch
+  /// run relayed through the phone): [Run.track] with the job_worker's
+  /// smoothed-position sidecar merged on, or null when there is nothing to
+  /// merge — the run names no sidecar for these bytes, the track already
+  /// carries its own pair, or the sidecar is missing or unreadable.
+  ///
+  /// The sidecar names the hash of the bytes the `runs` bucket holds, and the
+  /// local copy is not those bytes, so the fingerprint is taken over the blob
+  /// [_uploadTrack] would store for it ([localTrackSha256]); the merged list
+  /// is over the same finite waypoints that blob holds. For display only:
+  /// persisting it would bake the sidecar into the next upload of the track.
+  Future<List<Waypoint>?> smoothedLocalTrack(Run run) async {
+    if (!needsSmoothedSidecar(run.track) ||
+        run.metadata?[MetadataKeys.smoothedSidecarSha256] is! String) {
+      return null;
+    }
+    final usable = finiteWaypoints(run.track);
+    // Off the UI isolate: the hash re-encodes the whole track, and a
+    // multi-day track is the one a runner most wants to see.
+    final sha = await compute(localTrackSha256, usable);
+    return _withSmoothedSidecar(run, usable, sha);
+  }
+
+  /// Lower-case hex SHA-256 of the blob [_uploadTrack] stores for [track],
+  /// before gzip: the fingerprint a sidecar built from that upload names.
+  static String localTrackSha256(List<Waypoint> track) =>
+      trackSha256Hex(utf8.encode(_trackBlobJson(track)));
+
+  Future<List<Waypoint>?> _withSmoothedSidecar(
+    Run run,
+    List<Waypoint> track,
+    String sha256Hex,
+  ) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null ||
+        !needsSmoothedSidecar(track) ||
+        !sidecarNamedFor(run.metadata, sha256Hex)) {
+      return null;
+    }
+    try {
+      final sidecar = await _client.storage
+          .from(StorageBuckets.runs)
+          .download(smoothedSidecarPath(userId, run.id));
+      final merged = mergeSmoothedSidecar(
+        track,
+        decodeSmoothedSidecar(gzip.decode(sidecar)),
+        points: track.length,
+        sha256Hex: sha256Hex,
+      );
+      return identical(merged, track) ? null : merged;
+    } catch (e) {
+      debugPrint('Smoothed sidecar unreadable for run ${run.id}: $e');
+      return null;
+    }
   }
 
   /// Download a track by its Storage path. Used when a caller has a
@@ -1904,10 +1983,25 @@ class ApiClient {
 
   Future<List<Waypoint>> _downloadTrack(String path) async {
     final bytes = await _client.storage.from(StorageBuckets.runs).download(path);
-    final json = utf8.decode(gzip.decode(bytes));
-    final list = jsonDecode(json) as List<dynamic>;
-    return list.map((t) => _waypointFromJson(t as Map<String, dynamic>)).toList();
+    return _decodeTrack(gzip.decode(bytes));
   }
+
+  /// A stored entry that is not an object is not a waypoint and is dropped,
+  /// rather than a cast error that loses the whole track. The track then has
+  /// fewer waypoints than the stored array, so a smoothed sidecar (whose point
+  /// count names that array) no longer matches and the raw line is drawn.
+  static List<Waypoint> _decodeTrack(List<int> inflated) {
+    final list = jsonDecode(utf8.decode(inflated)) as List<dynamic>;
+    return [
+      for (final t in list)
+        if (t is Map<String, dynamic>) _waypointFromJson(t),
+    ];
+  }
+
+  /// Test-only: the stored-track decoder [fetchTrack] reads with.
+  @visibleForTesting
+  static List<Waypoint> debugDecodeTrack(List<int> inflated) =>
+      _decodeTrack(inflated);
 
   /// Test-only: exposes the private waypoint codec used by the track
   /// upload/download path. Returns the JSON shape stored inside the
@@ -1941,6 +2035,8 @@ class ApiClient {
         if (w.speedMps != null) 'speedMps': w.speedMps,
         if (w.speedAccuracyMps != null) 'speedAccuracyMps': w.speedAccuracyMps,
         if (w.bearingDeg != null) 'bearingDeg': w.bearingDeg,
+        if (w.hasSmoothedPosition) 'smoothedLat': w.smoothedLat,
+        if (w.hasSmoothedPosition) 'smoothedLng': w.smoothedLng,
       };
 
   static Waypoint _waypointFromJson(Map<String, dynamic> m) => Waypoint(
@@ -1953,6 +2049,8 @@ class ApiClient {
         speedMps: (m['speedMps'] as num?)?.toDouble(),
         speedAccuracyMps: (m['speedAccuracyMps'] as num?)?.toDouble(),
         bearingDeg: (m['bearingDeg'] as num?)?.toDouble(),
+        smoothedLat: (m['smoothedLat'] as num?)?.toDouble(),
+        smoothedLng: (m['smoothedLng'] as num?)?.toDouble(),
       );
 
   /// Auto-link helper: ask the DB which of the user's saved routes
@@ -1979,7 +2077,7 @@ class ApiClient {
         'caller_user_id': userId,
         'track_geojson': <String, dynamic>{
           'type': 'LineString',
-          'coordinates': track.map((w) => [w.lng, w.lat]).toList(),
+          'coordinates': track.map((w) => [w.lineLng, w.lineLat]).toList(),
         },
         'tolerance_m': toleranceMetres,
         'max_results': maxResults,
@@ -2140,14 +2238,14 @@ class ApiClient {
   }) async {
     final q = query?.trim();
     final data = await _client.rpc('search_public_events', params: {
-      'p_query': (q != null && q.isNotEmpty) ? q : null,
-      'p_category': category,
-      'p_cadence': cadence,
-      'p_byday': byday,
-      'p_paid': paid,
-      'p_time': time,
+      if (q != null && q.isNotEmpty) 'p_query': q,
+      'p_category': ?category,
+      'p_cadence': ?cadence,
+      'p_byday': ?byday,
+      'p_paid': ?paid,
+      'p_time': ?time,
       'p_limit': limit,
-    });
+    }, get: true);
     return (data as List)
         .map<PublicEventResult>(
             (row) => PublicEventResult.fromRow(row as Map<String, dynamic>))
@@ -2160,7 +2258,7 @@ class ApiClient {
   /// 500 rows down the wire and counting in memory.
   Future<List<String>> fetchPopularRouteTags({int limit = 20}) async {
     final rows = await _client
-        .rpc('popular_route_tags', params: {'tag_limit': limit});
+        .rpc('popular_route_tags', params: {'tag_limit': limit}, get: true);
     return (rows as List)
         .cast<Map<String, dynamic>>()
         .map((r) => r['tag'] as String)
@@ -2187,7 +2285,7 @@ class ApiClient {
       'lng': lng,
       'radius_m': radiusM,
       'max_results': limit,
-    });
+    }, get: true);
     return (data as List)
         .map<Route>((row) => _routeFromRow(row as Map<String, dynamic>))
         .toList();
@@ -2262,7 +2360,7 @@ class ApiClient {
         'p_max_lng': maxLng,
         'p_max_lat': maxLat,
         'p_limit': limit,
-      });
+      }, get: true);
       if (data is! List) return const [];
       return data.map<ClubPin>((row) {
         final r = row as Map<String, dynamic>;
@@ -2506,7 +2604,7 @@ class ApiClient {
     final profiles = await _client.rpc('search_user_profiles', params: {
       'p_query': term,
       'p_limit': candidateLimit,
-    });
+    }, get: true);
     final ids = (profiles as List<dynamic>)
         .map<String>((p) => (p as Map<String, dynamic>)['id'] as String)
         .where((id) => id != viewerId)
@@ -2699,7 +2797,7 @@ class ApiClient {
 
     final rows = await _client.rpc('discoverable_runners_near', params: {
       'p_radius_m': radiusM,
-    });
+    }, get: true);
     final list = (rows as List<dynamic>?) ?? const [];
     if (list.isEmpty) return const [];
 
@@ -2758,7 +2856,8 @@ class ApiClient {
   /// The caller's own stored area LABEL (never the coordinate), for the
   /// settings surface. Null when no area is set.
   Future<String?> fetchMyDiscoverableArea() async {
-    final label = await _client.rpc('my_discoverable_area');
+    final label = await _client.rpc('my_discoverable_area',
+        params: const {}, get: true);
     return label as String?;
   }
 
@@ -2948,6 +3047,7 @@ class ApiClient {
       final clip = await _client.rpc(
         'clip_route_for_viewer',
         params: {'p_route_id': routeId},
+        get: true,
       );
       return (clip as List?)
               ?.map((p) {
@@ -3021,7 +3121,8 @@ class ApiClient {
   /// so the read it replaced could only ever report "no consent".
   Future<Map<String, dynamic>?> fetchAiDisclosure() async {
     if (_client.auth.currentUser?.id == null) return null;
-    final row = profileRowFrom(await _client.rpc('get_my_profile'));
+    final row = profileRowFrom(
+        await _client.rpc('get_my_profile', params: const {}, get: true));
     if (row == null) return null;
     return {
       'ai_disclosure_version': row['ai_disclosure_version'],
@@ -3082,7 +3183,8 @@ class ApiClient {
   /// the `get_my_profile()` SECURITY DEFINER RPC because those columns
   /// are revoked from direct SELECT (migration 20260707_001).
   Future<UserProfileRow?> fetchMyProfile() async {
-    final row = profileRowFrom(await _client.rpc('get_my_profile'));
+    final row = profileRowFrom(
+        await _client.rpc('get_my_profile', params: const {}, get: true));
     return row == null ? null : UserProfileRow.fromJson(row);
   }
 
@@ -4232,7 +4334,8 @@ class ApiClient {
   /// (run_gear_chips reads only id / kind / name). For the owner's editable
   /// inventory use [fetchMyGear], which returns full rows via the owner policy.
   Future<List<GearRow>> fetchRunGear(String runId) async {
-    final data = await _client.rpc('public_run_gear', params: {'p_run_id': runId});
+    final data = await _client.rpc('public_run_gear',
+        params: {'p_run_id': runId}, get: true);
     final rows = (data as List).cast<Map<String, dynamic>>();
     final epoch = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
     return rows
@@ -4684,11 +4787,12 @@ class ApiClient {
       'global_segment_leaderboard',
       params: {
         'p_segment_id': segmentId,
-        'p_gender': gender,
-        'p_age_band': ageBand,
+        'p_gender': ?gender,
+        'p_age_band': ?ageBand,
         'p_limit': limit,
-        'p_club_id': clubId,
+        'p_club_id': ?clubId,
       },
+      get: true,
     );
     if (rows is! List || rows.isEmpty) return const [];
     final maps = [
@@ -4757,6 +4861,7 @@ class ApiClient {
     final rankRows = await _client.rpc(
       'global_segment_effort_ranks',
       params: {'p_run_id': runId},
+      get: true,
     );
     final rankByEffort = readEffortRankRows(rankRows);
 
@@ -4792,7 +4897,7 @@ class ApiClient {
     try {
       final data = await _client.rpc('clip_route_for_viewer', params: {
         'p_route_id': routeId,
-      });
+      }, get: true);
       if (data is! List) return const [];
       return data
           .whereType<Map>()
@@ -4933,6 +5038,7 @@ class ApiClient {
     final value = await _client.rpc(
       'get_coach_usage',
       params: {'p_user_id': viewerId},
+      get: true,
     );
     if (value is int) return value;
     if (value is num) return value.toInt();
@@ -4942,7 +5048,7 @@ class ApiClient {
   /// RPC `is_pro` — true when the viewer's active subscription tier
   /// is paid. Used to short-circuit the daily cap and gate Pro UI.
   Future<bool> isPro() async {
-    final value = await _client.rpc('is_pro');
+    final value = await _client.rpc('is_pro', params: const {}, get: true);
     return value == true;
   }
 
@@ -5812,10 +5918,11 @@ class ApiClient {
       'segment_leaderboard_tiered',
       params: {
         'p_segment_id': segmentId,
-        'p_gender': gender,
-        'p_age_band': ageBand,
+        'p_gender': ?gender,
+        'p_age_band': ?ageBand,
         'p_limit': limit,
       },
+      get: true,
     );
     if (rows is! List || rows.isEmpty) return const [];
     final maps = [
@@ -5880,6 +5987,7 @@ class ApiClient {
     final rankRows = await _client.rpc(
       'segment_effort_ranks',
       params: {'p_run_id': runId},
+      get: true,
     );
     final rankByEffort = readEffortRankRows(rankRows);
 
@@ -7018,6 +7126,7 @@ class ApiClient {
     final data = await _client.rpc(
       'gym_routine_history',
       params: {'p_routine_id': routineId, 'p_recent_limit': recentLimit},
+      get: true,
     );
     final rows = data is List ? data : const [];
     if (rows.isEmpty) return empty;
@@ -7445,8 +7554,8 @@ class ApiClient {
     try {
       final data = await _client.rpc('run_streaks_for_user', params: {
         'p_tz': tz,
-        if (source != null) 'p_source': source,
-      });
+        'p_source': ?source,
+      }, get: true);
       final rows = (data as List?) ?? const <dynamic>[];
       final row = rows.isEmpty ? null : rows.first as Map?;
       if (row == null) return null;
@@ -7628,7 +7737,8 @@ class ApiClient {
   /// gets zero rows, an unauthenticated caller raises. Returns no track bytes.
   Future<List<CoachRosterRow>> fetchCoachRosterSummary() async {
     if (userId == null) return const [];
-    final data = await _client.rpc('coach_roster_summary');
+    final data =
+        await _client.rpc('coach_roster_summary', params: const {}, get: true);
     return (data as List).cast<Map<String, dynamic>>().map((r) {
       return CoachRosterRow(
         athleteId: r['athlete_id'] as String,

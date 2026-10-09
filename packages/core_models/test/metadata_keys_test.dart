@@ -14,8 +14,10 @@ void main() {
       expect(MetadataKeys.lastModifiedAt, 'last_modified_at');
       expect(MetadataKeys.trackUrl, 'track_url');
       expect(MetadataKeys.distanceEstimator, 'distance_estimator');
+      expect(MetadataKeys.distanceRecomputedAt, 'distance_recomputed_at');
       expect(MetadataKeys.distanceRecordedM, 'distance_recorded_m');
       expect(MetadataKeys.distanceStepFilledM, 'distance_step_filled_m');
+      expect(MetadataKeys.locationProvider, 'location_provider');
       expect(MetadataKeys.isDnf, 'is_dnf');
       expect(MetadataKeys.recoveredFromCrash, 'recovered_from_crash');
       expect(MetadataKeys.workoutStepResults, 'workout_step_results');
@@ -25,6 +27,7 @@ void main() {
       expect(MetadataKeys.sessionPlanId, 'session_plan_id');
       expect(MetadataKeys.sessionStepResults, 'session_step_results');
       expect(MetadataKeys.sessionAdherence, 'session_adherence');
+      expect(MetadataKeys.smoothedSidecarSha256, 'smoothed_sidecar_sha256');
     });
 
     test('every value is unique snake_case', () {
@@ -37,6 +40,7 @@ void main() {
         MetadataKeys.chipTime,
         MetadataKeys.createdByUserId,
         MetadataKeys.distanceEstimator,
+        MetadataKeys.distanceRecomputedAt,
         MetadataKeys.distanceRecordedM,
         MetadataKeys.distanceSource,
         MetadataKeys.distanceStepFilledM,
@@ -60,6 +64,7 @@ void main() {
         MetadataKeys.isDnf,
         MetadataKeys.laps,
         MetadataKeys.lastModifiedAt,
+        MetadataKeys.locationProvider,
         MetadataKeys.manualEntry,
         MetadataKeys.maxBpm,
         MetadataKeys.notes,
@@ -75,6 +80,7 @@ void main() {
         MetadataKeys.sessionAdherence,
         MetadataKeys.sessionPlanId,
         MetadataKeys.sessionStepResults,
+        MetadataKeys.smoothedSidecarSha256,
         MetadataKeys.sourceFile,
         MetadataKeys.steps,
         MetadataKeys.stravaActivityType,

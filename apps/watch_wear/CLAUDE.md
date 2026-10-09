@@ -84,7 +84,8 @@ apps/watch_wear/
             │   │   ├── RecordingRepository.kt   # process-singleton StateFlow
             │   │   ├── CheckpointStore.kt       # in-progress recovery snapshot
             │   │   ├── CheckpointRecovery.kt    # grade a survivor before offering it
-            │   │   ├── GpsDistanceEstimator.kt  # spec-v1 Kalman distance (shared vectors)
+            │   │   ├── GpsDistanceEstimator.kt  # spec-v1.2 forward Kalman distance (shared vectors)
+            │   │   ├── LivePace.kt              # live pace over the estimator's last ~200 m
             │   │   ├── TrackWriter.kt           # streaming GPS to disk JSON
             │   │   ├── TrackStorage.kt          # durable track dir + cache migration + orphan sweep
             │   │   ├── ElapsedMath.kt           # pure pause/resume elapsed-time math
@@ -310,7 +311,11 @@ backgrounding, low-memory kills).
   the whole point.
 - `recording/RunRecordingService.kt` — owns the GPS + HR streams, ticks
   the elapsed clock every 500ms, posts notification updates, holds the
-  wake lock.
+  wake lock. Live pace (the screen, the tile, the split cue and the
+  pace alert) is `recording/LivePace.kt`'s `LivePaceWindow`: the
+  estimator's distance gained over the last ~200 m, sealed with every
+  segment and across a re-anchored GPS gap. It was the whole-run average
+  (elapsed / distance) until #1090.
 - `recording/CheckpointStore.kt` — DataStore snapshot of an in-progress
   run, written every 15s during recording. On next launch a surviving
   checkpoint is graded (below); one that still holds the only copy of a
@@ -522,6 +527,11 @@ because the watch reads `user_settings.prefs` only, not the
 `user_profiles.gender` column — the run-detail pages recompute with
 gender once synced, so the only place the watch figure is final is its
 own summary. Pinned by `RunCaloriesTest`. See decisions.md § 77.
+The weight reaches the bag from onboarding, the Health Connect import and,
+since decisions § 1811, every consented save on Settings → Body metrics (web
+and phone), which also clear it on a withdrawal. There is no phone→watch
+DataLayer settings envelope on Wear OS — the watch reads the bag over its own
+session — so don't add one for this key.
 
 **Rotary input (bezel / crown).** The scrollable list screens —
 `PreRunScreen`, `BatteryInstructions` and the route picker — attach
@@ -570,8 +580,10 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   Geolocator surfaces as a stream error. Initial no-fix
   (`lastPointAtMs == 0L`) is explicitly not a stall; that's indoor mode.
 - **Distance is the shared estimator, not a hop sum.**
-  `recording/GpsDistanceEstimator.kt` is the Kotlin port of
-  `scripts/gps_distance/reference.py` ([docs/features/gps_distance.md](../../docs/features/gps_distance.md)),
+  `recording/GpsDistanceEstimator.kt` is the Kotlin port of the spec-v1.2
+  forward filter in `scripts/gps_distance/reference.py` (gate, adaptive R,
+  Doppler cross-check and debias, pedometer ZUPT; no smoother —
+  [docs/features/gps_distance.md](../../docs/features/gps_distance.md)),
   held to `fixtures/gps_distance_vectors.json` after every event by
   `GpsDistanceEstimatorTest`. Change it only together with the reference and
   every other port. `onGps` feeds it every fix that passes `GpsRecorder`'s
@@ -651,7 +663,7 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   cycles `off / 4:00 / 4:30 / 5:00 / 5:30 / 6:00 / 6:30 / 7:00 /km` via
   `RunViewModel.cycleTargetPace`. `start()` passes the value through
   `EXTRA_TARGET_PACE_SEC_PER_KM`; the service compares live pace every
-  GPS sample (after the 50 m stabilisation gate used for pace) and
+  GPS sample and
   calls `firePaceAlert(tooSlow)` when drift > 30 s/km, rate-limited to
   one alert per 30 s. Haptic fires via `VibratorManager` — a
   `createWaveform(longArrayOf(0, 180, 180, 180), ...)` double pulse

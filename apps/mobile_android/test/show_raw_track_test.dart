@@ -70,5 +70,30 @@ void main() {
         isTrue,
       );
     });
+
+    // Every drawing site reads lineLat / lineLng, so a "raw" line that kept
+    // the smoother's pair would draw the smoothed line under the raw label.
+    test('showRaw clears the smoothed positions and keeps the raw fixes', () {
+      final smoothedTrack = [
+        for (final w in rawTrack)
+          w.withSmoothedPosition(w.lat + 0.5, w.lng + 0.5),
+      ];
+      for (final match in [null, matched]) {
+        final shown = displayedRunTrack(smoothedTrack, match, showRaw: true);
+        expect(shown, hasLength(rawTrack.length));
+        for (var i = 0; i < shown.length; i++) {
+          expect(shown[i].hasSmoothedPosition, isFalse);
+          expect(shown[i].lineLat, rawTrack[i].lat);
+          expect(shown[i].lineLng, rawTrack[i].lng);
+        }
+      }
+      expect(
+        identical(
+            displayedRunTrack(smoothedTrack, null, showRaw: false),
+            smoothedTrack),
+        isTrue,
+        reason: 'the default view keeps drawing the smoothed line',
+      );
+    });
   });
 }

@@ -17,24 +17,49 @@ import '../activity_type_labels.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../preferences.dart';
+import '../privacy.dart';
 import '../run_stats.dart';
 import '../share_sheet.dart';
 import 'capture_png.dart';
 import '../widgets/top_banner.dart';
 
+/// The part of [run]'s track the share card draws: the stored track with its
+/// leading and trailing fixes inside any of the owner's [zones] trimmed, by the
+/// rule `clip_track_for_user` applies before a non-owner is served the same
+/// run (raw OR smoothed position in a zone, interior passes kept). Always
+/// applied when the owner has zones, with no opt-out: the PNG leaves the
+/// device and is posted where anyone can read it, so it must withhold exactly
+/// what the public run page withholds.
+List<Waypoint> runShareCardTrack(Run run, List<PrivacyZone> zones) =>
+    clipPointsToZones<Waypoint>(
+      run.track,
+      zones,
+      latOf: (w) => w.lat,
+      lngOf: (w) => w.lng,
+      smoothedLatOf: (w) => w.smoothedLat,
+      smoothedLngOf: (w) => w.smoothedLng,
+    );
+
 /// Whether the share card for [run] draws a basemap at all, and therefore
-/// whether a capture has any tiles to wait for. A track that short renders the
-/// activity glyph instead.
-bool runShareCardHasMap(Run run) => run.track.length >= 2;
+/// whether a capture has any tiles to wait for. A clipped track that short
+/// renders the activity glyph instead.
+bool runShareCardHasMap(Run run, List<PrivacyZone> zones) =>
+    runShareCardTrack(run, zones).length >= 2;
 
 /// Opens a modal sheet showing a portrait "share card" for [run] — a branded
 /// preview of the route map plus headline stats — and lets the user share
 /// either the rendered PNG or the raw GPX via the system share sheet.
+///
+/// [privacyZones] is required so no entry point can open the sheet without
+/// deciding what the image withholds; pass the owner's zones. The GPX / TCX /
+/// FIT exports stay the full track: they are the owner's own copy of their
+/// data, not a published rendering.
 Future<void> showRunShareSheet(
   BuildContext context, {
   required Run run,
   required Preferences preferences,
   required String title,
+  required List<PrivacyZone> privacyZones,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -46,6 +71,7 @@ Future<void> showRunShareSheet(
       run: run,
       preferences: preferences,
       title: title,
+      privacyZones: privacyZones,
     ),
   );
 }
@@ -54,11 +80,13 @@ class _ShareRunSheet extends StatefulWidget {
   final Run run;
   final Preferences preferences;
   final String title;
+  final List<PrivacyZone> privacyZones;
 
   const _ShareRunSheet({
     required this.run,
     required this.preferences,
     required this.title,
+    required this.privacyZones,
   });
 
   @override
@@ -88,7 +116,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
       // Wait for the tiles the card is actually showing, not for a guessed
       // interval: a fixed sleep rasterised a part-black map whenever a cold
       // fetch outran it, and made every cached share wait for nothing.
-      if (runShareCardHasMap(widget.run)) {
+      if (runShareCardHasMap(widget.run, widget.privacyZones)) {
         await _tiles.settled();
       }
       await WidgetsBinding.instance.endOfFrame;
@@ -173,6 +201,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
                       run: widget.run,
                       preferences: widget.preferences,
                       title: widget.title,
+                      privacyZones: widget.privacyZones,
                       tileReadiness: _tiles,
                     ),
                   ),
@@ -232,6 +261,11 @@ class RunShareCard extends StatelessWidget {
   final Preferences preferences;
   final String title;
 
+  /// The owner's privacy zones; the drawn line is [runShareCardTrack] of them.
+  /// Required, like the sheet's, so a new mount cannot draw the unclipped
+  /// track by omission.
+  final List<PrivacyZone> privacyZones;
+
   /// Set by the sheet that rasterises this card, so it can wait for the
   /// basemap instead of sleeping. Null for a plain on-screen render.
   final MapTileReadiness? tileReadiness;
@@ -241,6 +275,7 @@ class RunShareCard extends StatelessWidget {
     required this.run,
     required this.preferences,
     required this.title,
+    required this.privacyZones,
     this.tileReadiness,
   });
 
@@ -264,7 +299,9 @@ class RunShareCard extends StatelessWidget {
         ActivityType.fromName(run.metadata?['activity_type'] as String?);
     final moving = _movingTime();
     final pace = _movingPaceSecPerKm(moving);
-    final track = run.track.map((w) => LatLng(w.lat, w.lng)).toList();
+    final track = runShareCardTrack(run, privacyZones)
+        .map((w) => LatLng(w.lineLat, w.lineLng))
+        .toList();
 
     return Container(
       color: const Color(0xFF121117),

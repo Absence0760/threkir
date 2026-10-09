@@ -103,6 +103,14 @@ import {
 } from '../training/relink_candidates';
 import type { GeneratedPlan, GoalEvent, PlanPhase } from '../training/training';
 import { auth } from '../stores/auth.svelte';
+import { lineLngLat } from '../runs/track_line';
+import {
+	mergeSmoothedSidecar,
+	needsSmoothedSidecar,
+	sha256Hex,
+	sidecarNamedFor,
+	smoothedSidecarPath,
+} from '../runs/smoothed_sidecar';
 import { compareLeaderboard } from '../runs/race_leaderboard';
 import { readRankRows } from '../segments/effort_rank';
 import type { RecapPeriodKind } from '../types';
@@ -675,12 +683,41 @@ export async function fetchRunById(
 	let track = null;
 	if (data.track_url) {
 		try {
-			track = await fetchTrack(data.track_url);
+			track = await fetchOwnerTrack(data.track_url, data.user_id, data.id, data.metadata);
 		} catch (e) {
 			console.warn('Failed to fetch track', e);
 		}
 	}
 	return { run: asRun(data, track), error: null };
+}
+
+/// The owner's run-detail track: the stored waypoints plus, for a track that
+/// carries no smoothed pair of its own (a watch run, an old run the server
+/// recomputed), the job_worker's smoothed-position sidecar merged on when the
+/// run's metadata names these exact bytes and the sidecar's own fingerprint
+/// agrees (`runs/smoothed_sidecar.ts`). A run whose metadata names no sidecar
+/// for this track makes no sidecar request. The sidecar is an auxiliary layer
+/// over the track: any failure to fetch or read it leaves the raw line, and is
+/// not an error.
+async function fetchOwnerTrack(path: string, userId: string, runId: string, metadata: unknown) {
+	const { data, error } = await supabase.storage.from(BUCKETS.runs).download(path);
+	if (error || !data) throw error ?? new Error('No data');
+	const decompressed = await decompressGzip(await data.arrayBuffer());
+	const points = JSON.parse(new TextDecoder().decode(decompressed));
+	if (!Array.isArray(points) || !needsSmoothedSidecar(points)) return points;
+	try {
+		const sha256 = await sha256Hex(decompressed);
+		if (!sidecarNamedFor(metadata, sha256)) return points;
+		const { data: sc, error: scErr } = await supabase.storage
+			.from(BUCKETS.runs)
+			.download(smoothedSidecarPath(userId, runId));
+		if (scErr || !sc) return points;
+		const sidecar = JSON.parse(new TextDecoder().decode(await decompressGzip(await sc.arrayBuffer())));
+		return mergeSmoothedSidecar(points, sidecar, { points: points.length, sha256 });
+	} catch (e) {
+		console.warn('smoothed sidecar unreadable; drawing the raw line', { run_id: runId, error: e });
+		return points;
+	}
 }
 
 /// Fetch every run by the signed-in user against `routeId`, ordered
@@ -824,7 +861,7 @@ export async function fetchRoutesIntersectingTrack(
 	if (!userId || track.length < 2) return [];
 	const geojson = {
 		type: 'LineString' as const,
-		coordinates: track.map((p) => [p.lng, p.lat]),
+		coordinates: track.map(lineLngLat),
 	};
 	const { data, error } = await supabase.rpc('routes_intersecting_track', {
 		caller_user_id: userId,
@@ -1045,14 +1082,19 @@ export async function deleteRun(id: string): Promise<void> {
 	// orphan bytes still occupy the bucket.) Audit/storage Medium fix.
 	const { data: run } = await supabase
 		.from(TABLES.runs)
-		.select('track_url, hr_series_url')
+		.select('user_id, track_url, hr_series_url')
 		.eq('id', id)
 		.single();
-	// Both Storage sidecars (GPS track + indoor HR series) are removed
+	// The GPS track, the indoor HR series, and the job_worker's map-matched
+	// track and smoothed-position sidecar (whose rows cascade away without
+	// their bytes; removing a path that is not there is a no-op) are removed
 	// alongside the row so the bucket doesn't accumulate orphans.
-	const orphanPaths = [run?.track_url, run?.hr_series_url].filter(
-		(p): p is string => !!p,
-	);
+	const orphanPaths = [
+		run?.track_url,
+		run?.hr_series_url,
+		run?.user_id ? smoothedSidecarPath(run.user_id, id) : null,
+		run?.user_id ? `${run.user_id}/${id}.matched.json.gz` : null,
+	].filter((p): p is string => !!p);
 	if (orphanPaths.length > 0) {
 		try {
 			await supabase.storage.from(BUCKETS.runs).remove(orphanPaths);
@@ -8500,7 +8542,7 @@ export async function fetchGlobalSegmentLeaderboard(
 export async function computeGlobalSegmentEffortsForRun(input: {
 	run_id: string;
 	user_id: string;
-	track: { lat: number; lng: number; ts?: string }[];
+	track: TrackPoint[];
 }): Promise<number> {
 	if (!input.track || input.track.length < 2) return 0;
 	const userId = auth.user?.id;
@@ -8531,7 +8573,7 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 	// extent is then measured once and the (overwhelming) majority of segments,
 	// which are nowhere near this run, are rejected without walking it.
 	const efforts = computeGlobalSegmentEfforts(
-		input.track as import('$lib/types').TrackPoint[],
+		input.track,
 		segments.map((seg) => ({
 			points: (seg.waypoints ?? []).map((w) => ({ lat: Number(w.lat), lng: Number(w.lng) })),
 			distance_m: Number(seg.distance_m),

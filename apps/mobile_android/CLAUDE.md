@@ -68,7 +68,7 @@ Nearly everything under Phase 1 "Android" in `roadmap.md` is implemented. Specif
 - Personal bests, weekly goals, edit title/notes, share as GPX, delete.
 - Runs filter by activity type (run/walk/cycle/hike filter chips).
 - Configurable split interval for voice cues (Settings > Split interval).
-- Advanced GPS mode (Settings > Advanced GPS) for higher accuracy under tree cover. It changes the location accuracy mode and track density only; distance comes from the shared `GpsDistanceEstimator` in `run_recorder` ([docs/features/gps_distance.md](../../docs/features/gps_distance.md)) for every fix past the accuracy gate, with the pedometer filling GPS gaps via `RunRecorder.setStepCount`.
+- Advanced GPS mode (Settings > Advanced GPS). It changes the recorded track's density only; every run already records at `LocationAccuracy.bestForNavigation` with a 1 s Android fix interval (#1090), so distance comes from the shared `GpsDistanceEstimator` in `run_recorder` ([docs/features/gps_distance.md](../../docs/features/gps_distance.md)) for every fix past the accuracy gate, with the pedometer filling GPS gaps via `RunRecorder.setStepCount`.
 
 **Stubbed or deferred:**
 - Strava live OAuth (the ZIP import path is shipped). The OAuth surface is a Settings → Connect Strava button that's still scaffolded behind the same `apps/web` flow that ADR §41 covers.

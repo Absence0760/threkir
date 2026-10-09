@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertNotEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 import * as gps from './gps_distance.ts';
-import { GpsDistanceEstimator } from './gps_distance.ts';
+import { GpsDistanceEstimator, SPEC_VERSION, smoothDistance, type GpsEvent } from './gps_distance.ts';
 
 // The Deno copy of the estimator replays the same golden vectors as every
 // other port (docs/features/gps_distance.md § Ports).
@@ -28,11 +28,24 @@ type Scenario = {
 		gpsDistanceM: number;
 		stepDistanceM: number;
 		strideM: number | null;
+		rejectedFixes: number;
+		zuptFixes: number;
+		rScale: number;
+		dopplerTrusted: boolean;
+	};
+	smoothed: {
+		distanceAfterEachEventM: number[];
+		distanceM: number;
+		gpsDistanceM: number;
+		stepDistanceM: number;
+		stoppedFixes: number;
+		positions: Array<[number, number] | null>;
 	};
 };
 type Fixture = {
 	spec: string;
 	tolerance_m: number;
+	position_tolerance_deg: number;
 	constants: Record<string, number>;
 	scenarios: Scenario[];
 };
@@ -41,6 +54,7 @@ const fixture = JSON.parse(
 	await Deno.readTextFile(new URL('../../../../../fixtures/gps_distance_vectors.json', import.meta.url)),
 ) as Fixture;
 const TOL = fixture.tolerance_m;
+const POS_TOL = fixture.position_tolerance_deg;
 
 function replay(s: Scenario): { est: GpsDistanceEstimator; after: number[] } {
 	const est = new GpsDistanceEstimator(s.maxSpeedMps, s.expectedIntervalS, s.initialStrideM);
@@ -54,10 +68,12 @@ function replay(s: Scenario): { est: GpsDistanceEstimator; after: number[] } {
 	return { est, after };
 }
 
-Deno.test('the port implements the spec v1.1 fixture: version, scenario set and every constant', () => {
-	assertEquals(fixture.spec, 'gps-distance-estimator v1.1');
-	assert(fixture.scenarios.length >= 10, `only ${fixture.scenarios.length} scenarios`);
+Deno.test('the port implements the spec v1.2 fixture: version, scenario set and every constant', () => {
+	assertEquals(fixture.spec, 'gps-distance-estimator v1.2');
+	assertEquals(SPEC_VERSION, '1.2');
+	assert(fixture.scenarios.length >= 27, `only ${fixture.scenarios.length} scenarios`);
 	assert(TOL > 0 && TOL <= 0.001);
+	assert(POS_TOL > 0 && POS_TOL <= 1e-8);
 	const port = gps as unknown as Record<string, unknown>;
 	for (const [name, value] of Object.entries(fixture.constants)) {
 		assertEquals(port[name], value, `constant ${name}`);
@@ -85,8 +101,42 @@ for (const s of fixture.scenarios) {
 			assertEquals(est.strideM, null);
 		} else {
 			assertNotEquals(est.strideM, null);
-			assert(Math.abs((est.strideM as number) - s.expected.strideM) <= 1e-5, `stride ${est.strideM}`);
+			assert(Math.abs((est.strideM as number) - s.expected.strideM) <= TOL, `stride ${est.strideM}`);
 		}
+	});
+
+	Deno.test(`vector ${s.name}: gate, zupt, adaptive R and cross-check diagnostics`, () => {
+		const { est } = replay(s);
+		assertEquals(est.rejectedFixes, s.expected.rejectedFixes);
+		assertEquals(est.zuptFixes, s.expected.zuptFixes);
+		assertEquals(est.dopplerTrusted, s.expected.dopplerTrusted);
+		assert(Math.abs(est.rScale - s.expected.rScale) <= 1e-6, `rScale ${est.rScale}`);
+	});
+
+	Deno.test(`vector ${s.name}: smoothed distance and positions`, () => {
+		const sm = smoothDistance(s.events as GpsEvent[], s.maxSpeedMps, s.expectedIntervalS, s.initialStrideM);
+		const want = s.smoothed;
+		assertEquals(sm.cumulativeM.length, want.distanceAfterEachEventM.length);
+		sm.cumulativeM.forEach((got, i) => {
+			const w = want.distanceAfterEachEventM[i];
+			assert(Math.abs(got - w) <= TOL, `${s.name} smoothed event ${i}: got ${got}, want ${w}`);
+		});
+		assert(Math.abs(sm.distanceM - want.distanceM) <= TOL, `distance ${sm.distanceM}`);
+		assert(Math.abs(sm.gpsDistanceM - want.gpsDistanceM) <= TOL, `gps ${sm.gpsDistanceM}`);
+		assert(Math.abs(sm.stepDistanceM - want.stepDistanceM) <= TOL, `steps ${sm.stepDistanceM}`);
+		assertEquals(sm.stoppedFixes, want.stoppedFixes);
+		assertEquals(sm.positions.length, want.positions.length);
+		sm.positions.forEach((got, i) => {
+			const w = want.positions[i];
+			if (w === null) {
+				assertEquals(got, null, `${s.name} position ${i}`);
+				return;
+			}
+			assertNotEquals(got, null, `${s.name} position ${i}`);
+			const [lat, lng] = got as [number, number];
+			assert(Math.abs(lat - w[0]) <= POS_TOL, `${s.name} lat ${i}: got ${lat}, want ${w[0]}`);
+			assert(Math.abs(lng - w[1]) <= POS_TOL, `${s.name} lng ${i}: got ${lng}, want ${w[1]}`);
+		});
 	});
 }
 

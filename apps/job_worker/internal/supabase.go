@@ -222,8 +222,31 @@ func (c *SupabaseClient) DownloadTrack(ctx context.Context, path string) ([]Trac
 	return pts, nil
 }
 
+// storedTrackPoint is a TrackPoint plus the smoother's filtered position
+// (docs/features/gps_distance.md § Waypoint fields).
+type storedTrackPoint struct {
+	TrackPoint
+	SmoothedLat *float64 `json:"smoothedLat,omitempty"`
+	SmoothedLng *float64 `json:"smoothedLng,omitempty"`
+}
+
+// parseTrack decodes a stored track for the matcher, taking the smoothed
+// position of a waypoint that carries both smoothedLat and smoothedLng:
+// the filtered line is what route-matching should follow. Raw lat/lng
+// stay in the stored file; the matched output carries no smoothed keys.
 func parseTrack(body []byte) ([]TrackPoint, error) {
-	return decodeTrack[TrackPoint](body)
+	stored, err := decodeTrack[storedTrackPoint](body)
+	if err != nil {
+		return nil, err
+	}
+	pts := make([]TrackPoint, len(stored))
+	for i, sp := range stored {
+		pts[i] = sp.TrackPoint
+		if sp.SmoothedLat != nil && sp.SmoothedLng != nil {
+			pts[i].Lat, pts[i].Lng = *sp.SmoothedLat, *sp.SmoothedLng
+		}
+	}
+	return pts, nil
 }
 
 // decodeTrack decodes a stored track into any point shape: TrackPoint
@@ -252,9 +275,15 @@ func decodeTrack[T any](body []byte) ([]T, error) {
 // UploadMatchedTrack gzips and stores the matched track at the given
 // path. Uses upsert=true so a re-match overwrites any prior file.
 func (c *SupabaseClient) UploadMatchedTrack(ctx context.Context, path string, points []TrackPoint) error {
+	return c.uploadGzippedJSON(ctx, path, points)
+}
+
+// uploadGzippedJSON gzips v's JSON and stores it in the `runs` bucket at path,
+// overwriting any object already there.
+func (c *SupabaseClient) uploadGzippedJSON(ctx context.Context, path string, v any) error {
 	var buf bytes.Buffer
 	zw := gzip.NewWriter(&buf)
-	if err := json.NewEncoder(zw).Encode(points); err != nil {
+	if err := json.NewEncoder(zw).Encode(v); err != nil {
 		return err
 	}
 	if err := zw.Close(); err != nil {
@@ -272,7 +301,7 @@ func (c *SupabaseClient) UploadMatchedTrack(ctx context.Context, path string, po
 	// invite intermediaries to transparently decompress a body the
 	// consumers gunzip explicitly.
 	req.Header.Set("Content-Type", "application/gzip")
-	// Storage's "x-upsert: true" header lets re-matches overwrite the
+	// Storage's "x-upsert: true" header lets a rewrite overwrite the
 	// previous file rather than 409ing.
 	req.Header.Set("x-upsert", "true")
 	_, err = c.do(ctx, req)
@@ -538,90 +567,69 @@ func (c *SupabaseClient) UpdateClubPhotoThumb512Path(ctx context.Context, photoI
 	return c.updateThumb512Path(ctx, schema.TableClubPhotos, photoID, path)
 }
 
-// ErrStaleSourceTrackURL is returned by UpdateMatchedTrackRow when the
-// conditional PATCH found zero rows — meaning a re-upload trigger
-// reset the row's source_track_url between the worker reading it and
-// writing the result. Caller treats this as "discard cleanly": the
-// match the worker just produced is for an old track, and a fresh
-// job already queued by the trigger will produce the right answer.
-var ErrStaleSourceTrackURL = errors.New("source_track_url changed during match")
+// ErrStaleSourceTrackURL is returned by UpdateMatchedTrackRow when
+// record_map_match_result refused the write: the run's track_url, or the
+// Storage version of the bytes behind it, is no longer the one the worker
+// matched. Caller treats this as "discard cleanly": finish_job re-queues
+// the job, because the rewrite left run_matched_tracks pending.
+var ErrStaleSourceTrackURL = errors.New("track changed during match")
 
-// UpdateMatchedTrackRow PATCHes the run_matched_tracks row with the
-// match output. When `expectedSourceTrackURL` is non-empty, the PATCH
-// is conditional on `source_track_url = <value>` — closing the
-// re-upload race at the DB level via CAS. Service role bypasses RLS
-// so the standard PostgREST surface works without going through a
-// definer function.
+// UpdateMatchedTrackRow records the match output through the
+// record_map_match_result RPC (migration 20270719000020), which locks the
+// run_matched_tracks row and writes only while runs.track_url and the
+// stored object's version still equal src. A PATCH filtered on
+// source_track_url cannot express that: track_url is the same path for
+// every upload of a run's track, so only the object version tells a
+// re-upload apart, and storage.objects is not on the PostgREST surface.
 //
-// Returns ErrStaleSourceTrackURL when the CAS matched 0 rows. Pass
-// the empty string to skip the CAS for callers that don't care
-// (none today; left as an escape hatch).
+// Returns ErrStaleSourceTrackURL when the RPC refused.
 func (c *SupabaseClient) UpdateMatchedTrackRow(
 	ctx context.Context,
 	runID string,
-	expectedSourceTrackURL string,
+	src TrackSource,
 	row MatchedTrackRow,
 ) error {
-	payload, err := json.Marshal(row)
-	if err != nil {
+	params := map[string]any{
+		"p_run_id":            runID,
+		"p_source_track_url":  src.URL,
+		"p_track_version":     src.Version,
+		"p_status":            row.Status,
+		"p_matched_track_url": row.MatchedTrackURL,
+		"p_matched_at":        row.MatchedAt,
+		"p_algorithm":         row.Algorithm,
+		"p_algorithm_version": row.AlgorithmVersion,
+		"p_error_message":     row.ErrorMessage,
+	}
+	var recorded bool
+	if err := c.rpc(ctx, "record_map_match_result", params, &recorded); err != nil {
 		return err
 	}
-	q := "run_id=eq." + runID
-	if expectedSourceTrackURL != "" {
-		q += "&source_track_url=eq." + url.QueryEscape(expectedSourceTrackURL)
-	}
-	endpoint := c.BaseURL + "/rest/v1/" + schema.TableRunMatchedTracks + "?" + q
-	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, endpoint, bytes.NewReader(payload))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	// Prefer=return=representation makes PostgREST return the
-	// updated rows in the response body — that's how we count
-	// affected rows for the CAS check. With return=minimal we'd
-	// just get a 204 and have no idea whether the conditional
-	// matched.
-	req.Header.Set("Prefer", "return=representation")
-	body, err := c.do(ctx, req)
-	if err != nil {
-		return err
-	}
-	if expectedSourceTrackURL != "" {
-		var rows []json.RawMessage
-		if err := json.Unmarshal(body, &rows); err != nil {
-			return fmt.Errorf("decode update response: %w", err)
-		}
-		if len(rows) == 0 {
-			return ErrStaleSourceTrackURL
-		}
+	if !recorded {
+		return ErrStaleSourceTrackURL
 	}
 	return nil
 }
 
-// ReadRunTrackURL fetches just the runs.track_url for a given id. The
-// trigger payload carries user_id but not the path; we look it up at
-// match time so a re-upload that changes track_url is matched against
-// the latest version.
-func (c *SupabaseClient) ReadRunTrackURL(ctx context.Context, runID string) (string, error) {
-	url := c.BaseURL + "/rest/v1/" + schema.TableRuns + "?id=eq." + runID + "&select=track_url"
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return "", err
-	}
-	body, err := c.do(ctx, req)
-	if err != nil {
-		return "", err
-	}
+// ReadRunTrackSource fetches runs.track_url and the Storage version of the
+// object behind it, read together by the map_match_track_source RPC. The
+// trigger payload carries user_id but not the path; we look both up at
+// match time so a re-upload is matched against the latest bytes.
+func (c *SupabaseClient) ReadRunTrackSource(ctx context.Context, runID string) (TrackSource, error) {
 	var rows []struct {
-		TrackURL *string `json:"track_url"`
+		TrackURL     *string `json:"track_url"`
+		TrackVersion *string `json:"track_version"`
 	}
-	if err := json.Unmarshal(body, &rows); err != nil {
-		return "", err
+	if err := c.rpc(ctx, "map_match_track_source", map[string]any{"p_run_id": runID}, &rows); err != nil {
+		return TrackSource{}, err
 	}
 	if len(rows) == 0 || rows[0].TrackURL == nil {
-		return "", errors.New("run has no track_url")
+		return TrackSource{}, errors.New("run has no track_url")
 	}
-	return *rows[0].TrackURL, nil
+	src := TrackSource{URL: *rows[0].TrackURL}
+	if rows[0].TrackVersion != nil {
+		src.Version = *rows[0].TrackVersion
+	}
+	return src, nil
 }
 
 // MaxLivePingID returns the current highest live_run_pings.id, or 0

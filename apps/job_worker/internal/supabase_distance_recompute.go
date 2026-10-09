@@ -2,10 +2,12 @@ package internal
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -25,6 +27,9 @@ type DistanceRecomputeRun struct {
 	TrackURL     *string         `json:"track_url"`
 	DistanceM    float64         `json:"distance_m"`
 	Metadata     json.RawMessage `json:"metadata"`
+	// Route is the linked route's surface, for the road classifier that
+	// decides a position-only track's pass (roadDistanceFor).
+	Route *RoadRouteSurface `json:"route"`
 }
 
 // RecordedTrackPoint is a stored waypoint as the distance recompute
@@ -41,6 +46,11 @@ type RecordedTrackPoint struct {
 	SpeedMps         *float64   `json:"speedMps,omitempty"`
 	SpeedAccuracyMps *float64   `json:"speedAccuracyMps,omitempty"`
 	BearingDeg       *float64   `json:"bearingDeg,omitempty"`
+	// SmoothedLat / SmoothedLng are a phone-saved smoother position. The
+	// replay never reads them (it takes the raw fix); they only tell the
+	// sidecar writer that the track already carries its own pair.
+	SmoothedLat *float64 `json:"smoothedLat,omitempty"`
+	SmoothedLng *float64 `json:"smoothedLng,omitempty"`
 }
 
 // ErrRunNotFound means the run named by a job payload no longer exists
@@ -57,7 +67,7 @@ var ErrRunChangedDuringRecompute = errors.New("run changed during distance recom
 func (c *SupabaseClient) ReadRunForDistanceRecompute(ctx context.Context, runID string) (*DistanceRecomputeRun, error) {
 	q := url.Values{}
 	q.Set("id", "eq."+runID)
-	q.Set("select", "id,user_id,source,activity_type,track_url,distance_m,metadata")
+	q.Set("select", "id,user_id,source,activity_type,track_url,distance_m,metadata,route:"+schema.TableRoutes+"(surface)")
 	u := c.BaseURL + "/rest/v1/" + schema.TableRuns + "?" + q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
@@ -78,8 +88,9 @@ func (c *SupabaseClient) ReadRunForDistanceRecompute(ctx context.Context, runID 
 }
 
 // DownloadRecordedTrack fetches a track from the `runs` bucket the same
-// way DownloadTrack does, decoding the Doppler keys as well.
-func (c *SupabaseClient) DownloadRecordedTrack(ctx context.Context, path string) ([]RecordedTrackPoint, error) {
+// way DownloadTrack does, decoding the Doppler keys as well, and
+// fingerprints its decompressed bytes for the smoothed-position sidecar.
+func (c *SupabaseClient) DownloadRecordedTrack(ctx context.Context, path string) (*RecordedTrack, error) {
 	u := c.BaseURL + "/storage/v1/object/" + schema.BucketRuns + "/" + path
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
@@ -89,11 +100,37 @@ func (c *SupabaseClient) DownloadRecordedTrack(ctx context.Context, path string)
 	if err != nil {
 		return nil, err
 	}
-	pts, err := decodeTrack[RecordedTrackPoint](body)
+	raw, err := gunzipIfGzipped(body)
 	if err != nil {
 		return nil, fmt.Errorf("parse track %s: %w", path, err)
 	}
-	return pts, nil
+	var pts []RecordedTrackPoint
+	if err := json.Unmarshal(raw, &pts); err != nil {
+		return nil, fmt.Errorf("parse track %s: %w", path, err)
+	}
+	return &RecordedTrack{Points: pts, Fingerprint: fingerprintTrack(raw, len(pts))}, nil
+}
+
+// gunzipIfGzipped is decodeTrack's framing rule: a gzip body is inflated,
+// anything else is taken as the JSON itself.
+func gunzipIfGzipped(body []byte) ([]byte, error) {
+	if len(body) < 2 || body[0] != 0x1f || body[1] != 0x8b {
+		return body, nil
+	}
+	zr, err := gzip.NewReader(bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	defer zr.Close()
+	return io.ReadAll(zr)
+}
+
+// UploadSmoothedSidecar gzips and stores a smoothed-position sidecar,
+// overwriting the previous one (a later replay of the same run supersedes
+// it). Service role only: the owner may read it through the per-folder
+// Storage policy, nobody else may.
+func (c *SupabaseClient) UploadSmoothedSidecar(ctx context.Context, path string, sc *SmoothedSidecar) error {
+	return c.uploadGzippedJSON(ctx, path, sc)
 }
 
 // RunDistanceUpdate is what one recompute writes: the distance, every

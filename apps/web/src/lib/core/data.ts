@@ -24,6 +24,7 @@ import { logInputFromRecipe } from '../nutrition/recipe';
 import { challengesToRecomputeForRun } from '../social/challenge_progress';
 import { mergeMyProgress } from '../social/challenge_list';
 import { selectEffectivePricing } from '../social/event_instance';
+import { parseHostEarningsRow, type HostEarningsInstance } from '../social/host_earnings';
 import { planHeadCopyFields, planWeekCopyRows, planWorkoutCopyRows } from './plan_copy';
 import { clubSlug, CLUB_SLUG_FALLBACK } from '../social/club_slug';
 import {
@@ -3698,6 +3699,23 @@ export async function fetchPayoutAccount(): Promise<PayoutAccountStatus | null> 
 		country: (data.country as string | null) ?? null,
 		default_currency: (data.default_currency as string | null) ?? null
 	};
+}
+
+/// The signed-in host's earnings, one row per (class instance, currency):
+/// what they were PAID for, keyed on `event_orders.host_user_id`, which is
+/// not the organiser scope the table's own SELECT policy grants
+/// (instructor_business.md M7, migration 20270723000001). Throws on a failed
+/// read so the page can offer a retry instead of a false "no earnings yet".
+export async function fetchHostEarnings(): Promise<HostEarningsInstance[]> {
+	if (!auth.user?.id) return [];
+	const { data, error } = await supabase.rpc('host_earnings_summary', undefined, { get: true });
+	if (error) throw error;
+	const rows: HostEarningsInstance[] = [];
+	for (const raw of data ?? []) {
+		const row = parseHostEarningsRow(raw);
+		if (row) rows.push(row);
+	}
+	return rows;
 }
 
 /// Start (or resume) Stripe Connect onboarding for the signed-in host.

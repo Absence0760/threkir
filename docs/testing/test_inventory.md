@@ -1042,7 +1042,7 @@ Three diff3 `|||||||` base markers sat in `docs/architecture/decisions.md` on `m
 
 The committed `.terraform.lock.hcl` files carried one `h1:` hash per provider, so `validate` failed on a macOS workstation ([decisions § 1729](../architecture/decisions.md)). The real locks are the positive control. Each other case mutates an in-memory copy: a single-platform re-lock fails per provider and names the repair command; duplicate `h1:` lines count once; two stacks locking the same aws version for different platforms disagree; a validated stack with no lock fails. The parser is checked to read each provider block's own version and hashes, and an empty scan, an empty stack list or an unparseable lock are findings, not passes.
 
-### `scripts/ios_watch_runtime_config.test.mjs` — 10 tests (new)
+### `scripts/ios_watch_runtime_config.test.mjs` — 17 tests (new)
 
 Every `mobile_ios@*` release shipped an Apple Watch app whose sign-in was fail-closed: the Supabase values went into `dart_defines.json`, which reaches Xcode only as Flutter's `DART_DEFINES`, and nothing defined the build settings the watch's `Info.plist` expands ([decisions § 1810](../architecture/decisions.md)). Seven cases hold `scripts/ios_watch_runtime_config.mjs` itself — an https origin accepted and anything else refused, an anon JWT or `sb_publishable_` key accepted and a `service_role` JWT or `sb_secret_` key refused, the rendered xcconfig carrying no `//` that Xcode would read as a comment and expanding back to the input, the post-build check passing only on values equal to the secrets, and no printed line ever holding a value. Three read the committed files, because the defect was a gap between them: `WatchApp.xcconfig` includes the generated file and every `WatchApp` configuration in `Runner.xcodeproj` is based on it, the generated file is gitignored and the watch `Info.plist` expands exactly the two settings written, and `release-ios.yml` writes before the build and verifies the IPA before keeping or uploading it, with a cleanup that removes the file. Runs in the `workflow-lint` job.
 
@@ -1193,7 +1193,7 @@ Run the pure-helper slices with `cd apps/backend && deno test --no-check supabas
 
 The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets to drive and are exercised manually only — see [apps/backend/CLAUDE.md § Testing without real credentials](../../apps/backend/CLAUDE.md#testing-without-real-credentials).
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 1,956 declared tests across 513 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 1,961 declared tests across 515 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 

@@ -16,8 +16,14 @@ import {
   buildRefundParams,
   type CancelAction,
   cancelAction,
+  hostCancelAction,
+  isAlreadyRefundedError,
+  OCCURRENCE_CANCEL_STATUSES,
+  type OrderRefundResult,
+  refundIdempotencyKey,
   type RefundPolicy,
   resolveRefundEligibility,
+  summarizeOccurrenceRefunds,
 } from './lib.ts';
 
 /// Every status `event_orders_status_check` can hold, plus two the column
@@ -208,4 +214,116 @@ Deno.test('buildRefundParams — a fresh object per call, so one caller cannot p
   const a = buildRefundParams('pi_1') as Record<string, unknown>;
   a.reverse_transfer = false;
   assertEquals(buildRefundParams('pi_2').reverse_transfer, true);
+});
+
+// ── Host cancels an occurrence (M8) ──
+
+Deno.test('hostCancelAction — the whole table: every money-bearing order is refunded or released', () => {
+  const table: Record<string, string> = {
+    pending: 'release_reservation',
+    paid: 'refund',
+    partially_refunded: 'refund',
+    refunded: 'noop',
+    refund_failed: 'noop',
+    failed: 'noop',
+    canceled: 'noop',
+    '': 'noop',
+    Paid: 'noop',
+  };
+  for (const status of ALL_STATUSES) {
+    assertEquals(hostCancelAction(status), table[status], status);
+  }
+});
+
+Deno.test('hostCancelAction — refunds where a buyer cancel would be refused by policy', () => {
+  // The host called the class off. A buyer inside the no-refund window is
+  // still owed their money, so the occurrence path must never land on the
+  // policy arm the buyer path has.
+  assertEquals(cancelAction('paid', false), 'policy_no_refund');
+  assertEquals(hostCancelAction('paid'), 'refund');
+  assertEquals(cancelAction('partially_refunded', false), 'policy_no_refund');
+  assertEquals(hostCancelAction('partially_refunded'), 'refund');
+});
+
+Deno.test('OCCURRENCE_CANCEL_STATUSES — the buyer selector, and each one acts', () => {
+  // The occurrence path and the buyer path must agree on which orders carry
+  // money; the guard trigger in 20270723000003 is pinned to the same list by
+  // wiring.test.ts.
+  assertEquals([...OCCURRENCE_CANCEL_STATUSES].sort(), [...SELECTED_BY_THE_HANDLER].sort());
+  for (const status of OCCURRENCE_CANCEL_STATUSES) {
+    assert(['release_reservation', 'refund'].includes(hostCancelAction(status)), status);
+  }
+});
+
+Deno.test('refundIdempotencyKey — one key per order, whoever cancels', () => {
+  const a = refundIdempotencyKey('dddd0000-0000-0000-0000-000000000001');
+  assertEquals(a, 'event-order-refund:dddd0000-0000-0000-0000-000000000001');
+  // Stable: a retry replays the first refund instead of attempting a second.
+  assertEquals(refundIdempotencyKey('dddd0000-0000-0000-0000-000000000001'), a);
+  // Distinct: two registrants' refunds are never collapsed into one, which
+  // would return one buyer's money and silently not the other's.
+  const ids = Array.from({ length: 50 }, (_, i) => `order-${i}`);
+  assertEquals(new Set(ids.map(refundIdempotencyKey)).size, ids.length);
+});
+
+Deno.test('isAlreadyRefundedError — only Stripe\'s own code counts as already refunded', () => {
+  assertEquals(isAlreadyRefundedError({ code: 'charge_already_refunded' }), true);
+  const err = Object.assign(new Error('Charge ch_1 has already been refunded.'), {
+    code: 'charge_already_refunded',
+  });
+  assertEquals(isAlreadyRefundedError(err), true);
+  // Everything else is a real failure the host has to hear about.
+  for (const e of [
+    { code: 'charge_disputed' },
+    { code: 'insufficient_funds' },
+    { code: 'resource_missing' },
+    new Error('Charge ch_1 has already been refunded.'),
+    { message: 'charge_already_refunded' },
+    'charge_already_refunded',
+    null,
+    undefined,
+  ]) {
+    assertEquals(isAlreadyRefundedError(e), false, JSON.stringify(e));
+  }
+});
+
+Deno.test('summarizeOccurrenceRefunds — one failure makes the whole cancel incomplete', () => {
+  const results: OrderRefundResult[] = [
+    { orderId: 'o1', outcome: 'initiated' },
+    { orderId: 'o2', outcome: 'already_refunded' },
+    { orderId: 'o3', outcome: 'released' },
+    { orderId: 'o4', outcome: 'failed', code: 'stripe_refund_failed' },
+    { orderId: 'o5', outcome: 'initiated' },
+    { orderId: 'o6', outcome: 'failed', code: 'missing_payment_intent' },
+  ];
+  assertEquals(summarizeOccurrenceRefunds(results), {
+    outcome: 'incomplete',
+    initiated: 2,
+    already_refunded: 1,
+    released: 1,
+    failed: 2,
+    failed_order_ids: ['o4', 'o6'],
+  });
+});
+
+Deno.test('summarizeOccurrenceRefunds — complete exactly when nothing failed, and every order is counted once', () => {
+  assertEquals(summarizeOccurrenceRefunds([]), {
+    outcome: 'complete',
+    initiated: 0,
+    already_refunded: 0,
+    released: 0,
+    failed: 0,
+    failed_order_ids: [],
+  });
+  const outcomes = ['initiated', 'already_refunded', 'released', 'failed'] as const;
+  for (let n = 0; n < 40; n++) {
+    const results: OrderRefundResult[] = Array.from({ length: n }, (_, i) => ({
+      orderId: `o${i}`,
+      outcome: outcomes[(i * 7 + n) % outcomes.length],
+    }));
+    const s = summarizeOccurrenceRefunds(results);
+    assertEquals(s.initiated + s.already_refunded + s.released + s.failed, n, `n=${n}`);
+    assertEquals(s.failed_order_ids.length, s.failed);
+    assertEquals(s.outcome, s.failed === 0 ? 'complete' : 'incomplete', `n=${n}`);
+  }
 });

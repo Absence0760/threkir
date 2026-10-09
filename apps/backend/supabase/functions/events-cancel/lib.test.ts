@@ -4,7 +4,14 @@ import {
   assertEquals,
   assertStrictEquals,
 } from 'https://deno.land/std@0.224.0/assert/mod.ts';
-import { buildRefundParams, cancelAction, resolveRefundEligibility } from './lib.ts';
+import {
+  buildRefundParams,
+  CANCEL_REASON_MAX_CHARS,
+  cancelAction,
+  normalizeCancelReason,
+  parseCancelScope,
+  resolveRefundEligibility,
+} from './lib.ts';
 
 const HOUR = 60 * 60 * 1000;
 const START = Date.parse('2026-07-01T18:00:00Z');
@@ -126,4 +133,34 @@ Deno.test('buildRefundParams — sends no amount, so Stripe refunds what is stil
   // explicit amount would over-refund the second (Stripe errors) or would have
   // to be reconstructed from a ledger this EF does not hold.
   assertStrictEquals('amount' in buildRefundParams('pi_123'), false);
+});
+
+Deno.test('parseCancelScope — absent is the buyer path, the two scopes pass, anything else is refused', () => {
+  assertStrictEquals(parseCancelScope(undefined), 'self');
+  assertStrictEquals(parseCancelScope(null), 'self');
+  assertStrictEquals(parseCancelScope('self'), 'self');
+  assertStrictEquals(parseCancelScope('occurrence'), 'occurrence');
+  // A typo must not fall back to `self`: the host would be told their class
+  // was handled while nobody was refunded.
+  for (const bad of ['Occurrence', 'instance', 'all', '', 1, true, {}, []]) {
+    assertStrictEquals(parseCancelScope(bad), null, JSON.stringify(bad));
+  }
+});
+
+Deno.test('normalizeCancelReason — trims, blank is none, the column cap is a refusal', () => {
+  assertStrictEquals(normalizeCancelReason(undefined), null);
+  assertStrictEquals(normalizeCancelReason(null), null);
+  assertStrictEquals(normalizeCancelReason('   '), null);
+  assertStrictEquals(normalizeCancelReason('  Studio flooded \n'), 'Studio flooded');
+  assertStrictEquals(CANCEL_REASON_MAX_CHARS, 500);
+  const atCap = 'x'.repeat(500);
+  assertStrictEquals(normalizeCancelReason(atCap), atCap);
+  assertStrictEquals(normalizeCancelReason('x'.repeat(501)), undefined);
+  // Counted in code points, as char_length() counts them: 500 emoji are 1000
+  // UTF-16 units and still fit the column.
+  const emoji = '\u{1F9D8}'.repeat(500);
+  assertStrictEquals(normalizeCancelReason(emoji), emoji);
+  for (const bad of [42, true, {}, ['x']]) {
+    assertStrictEquals(normalizeCancelReason(bad), undefined, JSON.stringify(bad));
+  }
 });

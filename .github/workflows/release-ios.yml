@@ -1,8 +1,9 @@
 name: Release iOS
 
 # Tag: `mobile_ios@1.2.3`. Builds the iPhone app with the Apple Watch app it
-# embeds, signs each bundle for the App Store, attaches the .ipa to the Release and
-# uploads it to TestFlight. Promotion from TestFlight to the App Store is a
+# embeds, signs each bundle for the App Store, keeps the .ipa as a workflow
+# artifact (not a Release asset — see the permissions note below) and uploads
+# it to TestFlight. Promotion from TestFlight to the App Store is a
 # manual step in App Store Connect. apps/mobile_ios/deployment.md is the
 # operator runbook for every secret below; decisions.md § 1701 is the design.
 #

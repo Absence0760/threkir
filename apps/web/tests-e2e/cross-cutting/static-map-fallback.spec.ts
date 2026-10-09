@@ -164,11 +164,11 @@ test.describe('a static map thumbnail is requested at the size it is drawn', () 
 				.filter((m): m is RegExpExecArray => m !== null)
 				.map((m) => ({ w: Number(m[1]), h: Number(m[2]) }));
 			expect(sizes.length).toBeGreaterThan(0);
-			// Rounded up to a 40 px step (thumbnailSize), so at most 40 px over.
-			expect(sizes).toContainEqual({
-				w: Math.min(1024, Math.max(40, Math.ceil(box.width / 40) * 40)),
-				h: Math.min(1024, Math.max(40, Math.ceil(box.height / 40) * 40))
-			});
+			// The width rounds up to a 40 px step (thumbnailSize) and the height
+			// keeps the box's shape, so cover never crops the route's edges.
+			const w = Math.min(1024, Math.max(40, Math.ceil(box.width / 40) * 40));
+			const h = Math.min(1024, Math.max(40, Math.round((w * box.height) / box.width)));
+			expect(sizes).toContainEqual({ w, h });
 		} finally {
 			await deleteRun(runId);
 		}

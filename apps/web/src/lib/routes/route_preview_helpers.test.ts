@@ -57,11 +57,18 @@ test('previewPolyline fits the cap, keeps both ends, and keeps a real corner a j
 	assert.ok(out.length < 20, `${out.length} points for two straight legs`);
 });
 
-test('thumbnailSize requests the box it is drawn into, in 40 px steps, clamped like mobile', () => {
-	assert.deepEqual(thumbnailSize(553, 128), { w: 560, h: 160 });
+test('thumbnailSize requests the box it is drawn into: width in 40 px steps, height at the box aspect', () => {
+	// 553x128 rounds the width to 560 and keeps the 4.32:1 shape, so `cover`
+	// scales the image into the box rather than cropping the route's edges.
+	assert.deepEqual(thumbnailSize(553, 128), { w: 560, h: 130 });
+	assert.deepEqual(thumbnailSize(354, 128), { w: 360, h: 130 });
 	assert.deepEqual(thumbnailSize(560, 160), { w: 560, h: 160 });
+	for (const [bw, bh] of [[553, 128], [354, 128], [912, 160], [301, 301]]) {
+		const { w, h } = thumbnailSize(bw, bh);
+		assert.ok(Math.abs(w / h - bw / bh) < 0.02, `${bw}x${bh} -> ${w}x${h} changes the shape`);
+	}
 	assert.deepEqual(thumbnailSize(10, 10), { w: 40, h: 40 });
-	assert.deepEqual(thumbnailSize(5000, 300), { w: 1024, h: 320 });
+	assert.deepEqual(thumbnailSize(5000, 300), { w: 1024, h: 61 });
 });
 
 test('buildStaticMapUrl returns null when key missing', () => {

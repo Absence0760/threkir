@@ -39,12 +39,15 @@ export function previewPolyline(pts: LinePointSource[]): Waypoint[] {
 
 /// The pixel size a thumbnail requests, from the box it is drawn into. Asking
 /// for a fixed 220x140 and letting `object-fit: cover` stretch it into a wide
-/// card scaled the 3 px line to a blurred ~10 px band. Rounded UP to a 40 px
-/// step so a window resize reuses the cached image rather than refetching on
-/// every pixel, and clamped to 40..1024 like mobile's `TrackPreview`.
+/// card scaled the 3 px line to a blurred ~10 px band. The width is rounded UP
+/// to a 40 px step so a window resize reuses the cached image rather than
+/// refetching on every pixel, and the height follows the box's own aspect: a
+/// height rounded on its own changes the shape, and `cover` then crops the
+/// route's edges off. Both are clamped to 40..1024 like mobile's `TrackPreview`.
 export function thumbnailSize(width: number, height: number): { w: number; h: number } {
-	const step = (v: number) => Math.min(1024, Math.max(40, Math.ceil(v / 40) * 40));
-	return { w: step(width), h: step(height) };
+	const clamp = (v: number) => Math.min(1024, Math.max(40, v));
+	const w = clamp(Math.ceil(width / 40) * 40);
+	return { w, h: clamp(Math.round((w * height) / Math.max(width, 1))) };
 }
 
 /// The `path=` overlay both static endpoints accept. [stroke] is a `#RRGGBB`

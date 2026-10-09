@@ -25,6 +25,7 @@
 	import { env } from '$env/dynamic/public';
 	const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
 	import { trackThumbnailUrlFromEnv } from '$lib/routes/map-style.svelte';
+	import { thumbnailSize } from '$lib/routes/static_map';
 
 	// Same OS read RunMap makes, so `streets` resolves to the same light or
 	// dark rung here as on the live map.
@@ -60,6 +61,9 @@
 	const cacheKey = $derived(`${shouldClip ? 'clip' : 'raw'}:${routeId}`);
 
 	let el: HTMLDivElement;
+	// The box the image is drawn into, so the request matches it (thumbnailSize).
+	let boxW = $state(0);
+	let boxH = $state(0);
 	let points = $state<Waypoint[] | null>(null);
 	let attempted = $state(false);
 
@@ -111,16 +115,20 @@
 	}
 </script>
 
-<div bind:this={el} class="wrap">
+<div bind:this={el} bind:clientWidth={boxW} bind:clientHeight={boxH} class="wrap">
 	{#if points && points.length > 1}
 		{@const track = points}
-		{@const mapUrl = trackThumbnailUrlFromEnv(points, {
-			w: 220,
-			h: 140,
-			key: PUBLIC_MAPTILER_KEY,
-			prefersDark,
-			allowThirdParty: consent.accepted,
-		})}
+		{@const size = thumbnailSize(boxW, boxH)}
+		{@const mapUrl =
+			boxW > 0 && boxH > 0
+				? trackThumbnailUrlFromEnv(points, {
+						w: size.w,
+						h: size.h,
+						key: PUBLIC_MAPTILER_KEY,
+						prefersDark,
+						allowThirdParty: consent.accepted,
+					})
+				: null}
 		<!-- MapTiler logs the requester IP per static-map fetch, and this
 		     preview renders on anon surfaces (e.g. a public /clubs/[slug]),
 		     so the third-party rung waits for consent; the self-hosted

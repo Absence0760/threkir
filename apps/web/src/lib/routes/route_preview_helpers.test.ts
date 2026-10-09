@@ -12,31 +12,56 @@ import { strict as assert } from 'node:assert';
 // block into a re-exportable module, and `tsx --test` will route
 // through svelte-package's resolver. For test purposes we point at
 // the same .svelte file — the named exports are visible.
-import { buildStaticMapUrl, downsampleForPreview } from './static_map';
+import { buildStaticMapUrl, MAX_PREVIEW_POINTS, previewPolyline, thumbnailSize } from './static_map';
 
 const KEY = 'test-key-123';
 
-test('downsampleForPreview returns input unchanged when len <= target', () => {
+test('previewPolyline returns a short track unchanged, at its raw fixes when it has no smoothed ones', () => {
 	const pts = [
 		{ lat: 1, lng: 1 },
 		{ lat: 2, lng: 2 },
 		{ lat: 3, lng: 3 },
 	];
-	const out = downsampleForPreview(pts, 60);
-	assert.equal(out.length, 3);
-	assert.deepEqual(out, pts);
+	assert.deepEqual(previewPolyline(pts), pts);
 });
 
-test('downsampleForPreview reduces a long polyline to ~target points', () => {
-	const pts = Array.from({ length: 1000 }, (_, i) => ({
-		lat: 0.001 * i,
-		lng: 0.001 * i,
-	}));
-	const out = downsampleForPreview(pts, 60);
-	assert.equal(out.length, 60);
-	// First + last preserved so the visible endpoints stay anchored.
-	assert.equal(out[0].lat, pts[0].lat);
-	assert.equal(out[out.length - 1].lat, pts[pts.length - 1].lat);
+test('previewPolyline draws the smoothed line when the track carries one', () => {
+	const pts = [
+		{ lat: 1, lng: 1, smoothedLat: 1.5, smoothedLng: 1.25 },
+		{ lat: 2, lng: 2, smoothedLat: null, smoothedLng: null },
+	];
+	assert.deepEqual(previewPolyline(pts), [
+		{ lat: 1.5, lng: 1.25 },
+		{ lat: 2, lng: 2 },
+	]);
+});
+
+test('previewPolyline fits the cap, keeps both ends, and keeps a real corner a jittery track turns', () => {
+	// An L: 500 fixes ~10 m apart east, then 500 north, each with ~3 m of
+	// alternating jitter. Picking every Nth fix kept the jitter and could land
+	// up to ~80 m either side of the corner; simplifying keeps the corner.
+	const M = 1 / 111_320;
+	const pts = [];
+	for (let i = 0; i < 1000; i++) {
+		const j = (i % 2 ? 3 : -3) * M;
+		pts.push(i < 500 ? { lat: j, lng: i * 10 * M } : { lat: (i - 499) * 10 * M, lng: 4990 * M + j });
+	}
+	const out = previewPolyline(pts);
+	assert.ok(out.length <= MAX_PREVIEW_POINTS, `${out.length} points`);
+	assert.deepEqual(out[0], { lat: pts[0].lat, lng: pts[0].lng });
+	assert.deepEqual(out[out.length - 1], { lat: pts[999].lat, lng: pts[999].lng });
+	const corner = { lat: 0, lng: 4990 * M };
+	const nearest = Math.min(...out.map((p) => Math.hypot(p.lat - corner.lat, p.lng - corner.lng) / M));
+	assert.ok(nearest < 15, `nearest kept point is ${nearest.toFixed(1)} m from the corner`);
+	// The jitter is gone: a straight leg collapses to a handful of points.
+	assert.ok(out.length < 20, `${out.length} points for two straight legs`);
+});
+
+test('thumbnailSize requests the box it is drawn into, in 40 px steps, clamped like mobile', () => {
+	assert.deepEqual(thumbnailSize(553, 128), { w: 560, h: 160 });
+	assert.deepEqual(thumbnailSize(560, 160), { w: 560, h: 160 });
+	assert.deepEqual(thumbnailSize(10, 10), { w: 40, h: 40 });
+	assert.deepEqual(thumbnailSize(5000, 300), { w: 1024, h: 320 });
 });
 
 test('buildStaticMapUrl returns null when key missing', () => {
@@ -76,7 +101,7 @@ test('buildStaticMapUrl includes the key, dimensions, style, and path', () => {
 	// as a black polygon), the brand stroke (URL-encoded #), width,
 	// and coordinates.
 	assert.match(out, /fill:%23ffffff00\|/);
-	assert.match(out, /stroke:%23F2A07B\|width:4\|/);
+	assert.match(out, /stroke:%23F2A07B\|width:3\|/);
 	assert.match(out, /-0\.12760,51\.50740/);
 	assert.match(out, /-0\.12840,51\.50850/);
 });

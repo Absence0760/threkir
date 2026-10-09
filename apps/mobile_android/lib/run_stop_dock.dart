@@ -33,3 +33,19 @@ class RunStopRequests extends ChangeNotifier {
 }
 
 final RunStopRequests runStopRequests = RunStopRequests();
+
+/// A Log-run action that found the Run page still showing a finished run's
+/// summary ([runSummaryShowing]).
+///
+/// The summary lives on the Run page itself, so the shell read a runner
+/// looking at their last run as already on the start screen: the centre
+/// button answered "You're already on Run" and there was no way to a new run
+/// except finding Done. The run is saved by the time the summary shows, so
+/// asking for a new run closes it exactly as Done does. A recorder showing no
+/// summary ignores it.
+class RunSummaryDismissRequests extends ChangeNotifier {
+  void request() => notifyListeners();
+}
+
+final RunSummaryDismissRequests runSummaryDismissRequests =
+    RunSummaryDismissRequests();

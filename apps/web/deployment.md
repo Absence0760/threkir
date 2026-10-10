@@ -321,6 +321,16 @@ A subscription is stored per device on `user_device_settings.prefs.push_subscrip
 Every alarm evaluates two consecutive 5-minute windows and treats missing data
 as not-breaching, so a quiet preview env never sits in ALARM.
 
+> **Which of these exist is per env, via `alarm_tier`.** The list below is the
+> `"full"` set. Prod runs `"essential"` — coach error rate, CloudFront 5xx, the
+> three throttle alarms and the bypass-paywall tripwire (7 alarm metrics) — and
+> preview runs `"none"`, because the CloudWatch free tier is 10 alarm metrics
+> shared across the whole AWS Organization, and the full set is ~40 per env. The
+> p95, per-share-surface, `engine_unreachable` and CloudFront 4xx alarms are
+> declared but not created in prod; those signals are still in the metrics and
+> logs, just unpaged. Set `alarm_tier = "full"` in an env's `main.tf` to restore
+> them (~$0.10 per alarm metric per month past the free 10).
+
 - Coach Lambda error rate >2% → SNS topic `threkir-web-<env>-alerts`
 - Coach Lambda p95 duration >25 s (approaching the 30 s timeout) → same topic
 - Throttles ≥ `lambda_throttle_alarm_threshold` (prod 1, preview 5) on **coach, generate-route and osrm-proxy** → same topic. A throttled invocation increments `Throttles` and never `Errors`, so no error-rate alarm can see one; these three are the functions whose reserved concurrency is a deliberate ceiling on spend or on an engine's load. The five share Lambdas deliberately have none — concurrency-capped buffered reads whose degradation their upstream alarms already cover.

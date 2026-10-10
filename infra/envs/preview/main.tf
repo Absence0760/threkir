@@ -72,6 +72,12 @@ module "web" {
   # route-builder traffic.
   osrm_proxy_reserved_concurrency = 5
 
+  # No alarms: preview carries smoke-test traffic only, and every alarm here
+  # would spend the org-wide 10-alarm-metric CloudWatch free tier that prod
+  # needs. The threshold and subscribers below stay wired so flipping this to
+  # "essential" is the only edit needed to alarm a preview again.
+  alarm_tier = "none"
+
   # Explicit rather than module-default so a future module-default
   # change doesn't silently shift preview's throttle-alarm
   # sensitivity. 5 throttles in the 5-min eval window is enough to

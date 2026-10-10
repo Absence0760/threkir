@@ -4036,25 +4036,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get exploreRoutesSort => 'Sort';
 
   @override
-  String exploreRoutesSaveCheckConnection(String name) {
-    return 'Couldn\'t save \"$name\" — check your connection and try again.';
-  }
-
-  @override
-  String exploreRoutesSaveFailed(String name) {
-    return 'Couldn\'t save \"$name\".';
-  }
-
-  @override
   String exploreRoutesSaved(String name) {
     return 'Saved \"$name\" to your library';
   }
 
   @override
-  String get exploreRoutesAlreadySaved => 'Already saved';
+  String get exploreRoutesSaveToLibrary => 'Save to library';
 
   @override
-  String get exploreRoutesSaveToLibrary => 'Save to library';
+  String get exploreRoutesRemoveFromLibrary => 'Remove from your library';
+
+  @override
+  String exploreRoutesRemoved(String name) {
+    return 'Removed \"$name\" from your library';
+  }
 
   @override
   String get exploreRoutesSurfaceTrailShort => 'Trail';

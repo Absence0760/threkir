@@ -4088,25 +4088,20 @@ class AppLocalizationsFr extends AppLocalizations {
   String get exploreRoutesSort => 'Trier';
 
   @override
-  String exploreRoutesSaveCheckConnection(String name) {
-    return 'Impossible d\'enregistrer « $name » — vérifiez votre connexion et réessayez.';
-  }
-
-  @override
-  String exploreRoutesSaveFailed(String name) {
-    return 'Impossible d\'enregistrer « $name ».';
-  }
-
-  @override
   String exploreRoutesSaved(String name) {
     return '« $name » enregistré dans votre bibliothèque';
   }
 
   @override
-  String get exploreRoutesAlreadySaved => 'Déjà enregistré';
+  String get exploreRoutesSaveToLibrary => 'Enregistrer dans la bibliothèque';
 
   @override
-  String get exploreRoutesSaveToLibrary => 'Enregistrer dans la bibliothèque';
+  String get exploreRoutesRemoveFromLibrary => 'Retirer de votre bibliothèque';
+
+  @override
+  String exploreRoutesRemoved(String name) {
+    return '« $name » retiré de votre bibliothèque';
+  }
 
   @override
   String get exploreRoutesSurfaceTrailShort => 'Sentier';

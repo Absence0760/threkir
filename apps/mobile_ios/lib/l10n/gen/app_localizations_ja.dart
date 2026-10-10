@@ -3832,25 +3832,20 @@ class AppLocalizationsJa extends AppLocalizations {
   String get exploreRoutesSort => '並べ替え';
 
   @override
-  String exploreRoutesSaveCheckConnection(String name) {
-    return '「$name」を保存できませんでした — 接続を確認して再試行してください。';
-  }
-
-  @override
-  String exploreRoutesSaveFailed(String name) {
-    return '「$name」を保存できませんでした。';
-  }
-
-  @override
   String exploreRoutesSaved(String name) {
     return '「$name」をライブラリに保存しました';
   }
 
   @override
-  String get exploreRoutesAlreadySaved => '保存済み';
+  String get exploreRoutesSaveToLibrary => 'ライブラリに保存';
 
   @override
-  String get exploreRoutesSaveToLibrary => 'ライブラリに保存';
+  String get exploreRoutesRemoveFromLibrary => 'ライブラリから削除';
+
+  @override
+  String exploreRoutesRemoved(String name) {
+    return '「$name」をライブラリから削除しました';
+  }
 
   @override
   String get exploreRoutesSurfaceTrailShort => 'トレイル';

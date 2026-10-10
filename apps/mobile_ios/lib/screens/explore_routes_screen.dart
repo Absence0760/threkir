@@ -10,6 +10,7 @@ import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow, Status
 import '../l10n/gen/app_localizations.dart';
 import '../local_route_store.dart';
 import '../preferences.dart';
+import '../auth_error.dart';
 import '../backend_timeout.dart';
 import '../widgets/error_state.dart';
 import '../widgets/route_track_preview.dart';
@@ -54,6 +55,8 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
   bool _featuredOnly = false;
   String _sort = 'popular';
   List<String> _popularTags = const [];
+  Set<String> _bookmarkedIds = const {};
+  final Set<String> _bookmarkBusy = {};
 
   static const _pageSize = 30;
 
@@ -68,6 +71,20 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
       if (mounted) _search();
     });
     _loadPopularTags();
+    _loadBookmarkedIds();
+  }
+
+  /// Ids the viewer has bookmarked, for the row icons. A failure leaves every
+  /// icon unfilled rather than claiming a state nothing confirmed.
+  Future<void> _loadBookmarkedIds() async {
+    final api = widget.apiClient;
+    if (api == null || api.userId == null) return;
+    try {
+      final saved = await api.fetchBookmarkedRoutes(limit: 1000);
+      if (mounted) setState(() => _bookmarkedIds = {for (final r in saved) r.id});
+    } catch (e) {
+      debugPrint('fetchBookmarkedRoutes failed: $e');
+    }
   }
 
   Future<void> _loadPopularTags() async {
@@ -306,55 +323,55 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
     }
   }
 
-  Future<void> _saveRoute(cm.Route route) async {
-    // Browse-list rows come back from `search_public_routes` /
-    // `nearby_routes` / `routes_within_box` with no waypoints (the
-    // public_routes view strips them — see migration
-    // 20260703_001_public_routes_view.sql). Pull the privacy-zone-
-    // clipped polyline via `fetchRouteById` before persisting so the
-    // locally-cached copy doesn't carry the original author's
-    // unclipped start coordinate. Owner-of-route gets their full
-    // unclipped polyline through the same call. Audit/privacy-zones
-    // High fix.
+  /// Saving a public route to the library is a `saved_routes` reference, not
+  /// a private copy (decisions § 30), and a second tap removes it — as on web
+  /// and on the route detail screen. This used to clone the route into the
+  /// local store and never rebuild the row, so the bookmark stayed unfilled
+  /// after a save and could not be undone from here.
+  ///
+  /// The icon flips before the request so the tap visibly lands, and flips
+  /// back if it fails. A tap while that row's request is in flight is
+  /// dropped, so a double tap cannot save and then unsave.
+  Future<void> _toggleBookmark(cm.Route route) async {
     final api = widget.apiClient;
-    cm.Route toSave = route;
-    // Browse rows carry no waypoints; the fetch is what makes the saved
-    // copy usable. If it fails we must NOT persist a polyline-less route
-    // and then claim success — that produced an empty-thumbnail "saved"
-    // route that looked like the bookmark silently did nothing.
-    var hasGeometry = route.waypoints.length >= 2;
-    if (api != null) {
-      try {
-        final result = await api.fetchRouteById(route.id);
-        if (result.route != null && result.route!.waypoints.length >= 2) {
-          toSave = result.route!;
-          hasGeometry = true;
-        }
-      } catch (e) {
-        debugPrint('save-route clip fetch failed: $e');
+    if (api == null || api.userId == null) return;
+    if (_bookmarkBusy.contains(route.id)) return;
+    final l10n = AppLocalizations.of(context);
+    final wasSaved = _bookmarkedIds.contains(route.id);
+    setState(() {
+      _bookmarkBusy.add(route.id);
+      _bookmarkedIds = wasSaved
+          ? ({..._bookmarkedIds}..remove(route.id))
+          : {..._bookmarkedIds, route.id};
+    });
+    try {
+      if (wasSaved) {
+        await api.unbookmarkRoute(route.id);
+      } else {
+        await api.bookmarkRoute(route.id);
       }
-    }
-    if (!hasGeometry) {
       if (!mounted) return;
       showTopBanner(
         context,
-        AppLocalizations.of(context)
-            .exploreRoutesSaveCheckConnection(route.name),
+        wasSaved
+            ? l10n.exploreRoutesRemoved(route.name)
+            : l10n.exploreRoutesSaved(route.name),
       );
-      return;
-    }
-    try {
-      await widget.routeStore.save(toSave);
     } catch (e) {
-      debugPrint('save-route persist failed: $e');
+      debugPrint('explore bookmark toggle failed: $e');
       if (!mounted) return;
+      setState(() {
+        _bookmarkedIds = wasSaved
+            ? {..._bookmarkedIds, route.id}
+            : ({..._bookmarkedIds}..remove(route.id));
+      });
       showTopBanner(
-          context, AppLocalizations.of(context).exploreRoutesSaveFailed(route.name));
-      return;
+        context,
+        l10n.routeDetailBookmarkFailed(friendlyError(l10n, e)),
+      );
+    } finally {
+      if (mounted) setState(() => _bookmarkBusy.remove(route.id));
     }
-    if (!mounted) return;
-    showTopBanner(
-        context, AppLocalizations.of(context).exploreRoutesSaved(route.name));
   }
 
   @override
@@ -625,16 +642,14 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
         }
 
         final route = _results[index];
-        final alreadySaved = widget.routeStore.routes.any((r) =>
-            r.id == route.id || r.name == route.name);
 
         return _RouteCard(
           route: route,
           unit: unit,
           theme: theme,
-          alreadySaved: alreadySaved,
-          onTap: () {
-            Navigator.push<void>(
+          saved: _bookmarkedIds.contains(route.id),
+          onTap: () async {
+            await Navigator.push<void>(
               context,
               MaterialPageRoute<void>(
                 builder: (_) => RouteDetailScreen(
@@ -645,8 +660,10 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
                 ),
               ),
             );
+            // The detail screen carries its own bookmark toggle.
+            _loadBookmarkedIds();
           },
-          onSave: () => _saveRoute(route),
+          onToggleBookmark: () => _toggleBookmark(route),
         );
       },
     );
@@ -657,17 +674,17 @@ class _RouteCard extends StatelessWidget {
   final cm.Route route;
   final DistanceUnit unit;
   final ThemeData theme;
-  final bool alreadySaved;
+  final bool saved;
   final VoidCallback onTap;
-  final VoidCallback onSave;
+  final VoidCallback onToggleBookmark;
 
   const _RouteCard({
     required this.route,
     required this.unit,
     required this.theme,
-    required this.alreadySaved,
+    required this.saved,
     required this.onTap,
-    required this.onSave,
+    required this.onToggleBookmark,
   });
 
   @override
@@ -774,15 +791,15 @@ class _RouteCard extends StatelessWidget {
               ),
               IconButton(
                 icon: Icon(
-                  alreadySaved ? Icons.bookmark : Icons.bookmark_border,
-                  color: alreadySaved
+                  saved ? Icons.bookmark : Icons.bookmark_border,
+                  color: saved
                       ? theme.colorScheme.primary
                       : theme.colorScheme.outline,
                 ),
-                tooltip: alreadySaved
-                    ? l10n.exploreRoutesAlreadySaved
+                tooltip: saved
+                    ? l10n.exploreRoutesRemoveFromLibrary
                     : l10n.exploreRoutesSaveToLibrary,
-                onPressed: alreadySaved ? null : onSave,
+                onPressed: onToggleBookmark,
               ),
             ],
           ),

@@ -6718,35 +6718,29 @@ abstract class AppLocalizations {
   /// **'Sort'**
   String get exploreRoutesSort;
 
-  /// Banner shown when a saved explore route can't fetch its geometry
-  ///
-  /// In en, this message translates to:
-  /// **'Couldn\'t save \"{name}\" — check your connection and try again.'**
-  String exploreRoutesSaveCheckConnection(String name);
-
-  /// Banner shown when persisting a saved explore route fails
-  ///
-  /// In en, this message translates to:
-  /// **'Couldn\'t save \"{name}\".'**
-  String exploreRoutesSaveFailed(String name);
-
   /// Banner shown after a route is saved to the user's library from explore
   ///
   /// In en, this message translates to:
   /// **'Saved \"{name}\" to your library'**
   String exploreRoutesSaved(String name);
 
-  /// Tooltip on the save button when an explore route is already in the library
-  ///
-  /// In en, this message translates to:
-  /// **'Already saved'**
-  String get exploreRoutesAlreadySaved;
-
   /// Tooltip on the save button on an explore route card
   ///
   /// In en, this message translates to:
   /// **'Save to library'**
   String get exploreRoutesSaveToLibrary;
+
+  /// Tooltip on the bookmark button of an explore route card the user has already saved; a tap removes the bookmark
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from your library'**
+  String get exploreRoutesRemoveFromLibrary;
+
+  /// Banner shown after a route is removed from the user's library from explore
+  ///
+  /// In en, this message translates to:
+  /// **'Removed \"{name}\" from your library'**
+  String exploreRoutesRemoved(String name);
 
   /// Surface badge label for trail routes on an explore route card
   ///

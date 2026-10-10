@@ -4087,25 +4087,21 @@ class AppLocalizationsDe extends AppLocalizations {
   String get exploreRoutesSort => 'Sortieren';
 
   @override
-  String exploreRoutesSaveCheckConnection(String name) {
-    return '\"$name\" konnte nicht gespeichert werden — überprüfe deine Verbindung und versuche es erneut.';
-  }
-
-  @override
-  String exploreRoutesSaveFailed(String name) {
-    return '\"$name\" konnte nicht gespeichert werden.';
-  }
-
-  @override
   String exploreRoutesSaved(String name) {
     return '\"$name\" in deiner Bibliothek gespeichert';
   }
 
   @override
-  String get exploreRoutesAlreadySaved => 'Bereits gespeichert';
+  String get exploreRoutesSaveToLibrary => 'In Bibliothek speichern';
 
   @override
-  String get exploreRoutesSaveToLibrary => 'In Bibliothek speichern';
+  String get exploreRoutesRemoveFromLibrary =>
+      'Aus deiner Bibliothek entfernen';
+
+  @override
+  String exploreRoutesRemoved(String name) {
+    return '\"$name\" aus deiner Bibliothek entfernt';
+  }
 
   @override
   String get exploreRoutesSurfaceTrailShort => 'Trail';

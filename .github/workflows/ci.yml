@@ -380,6 +380,18 @@ jobs:
             echo "Reproduce with: node --test scripts/ios_watch_runtime_config.test.mjs (stdlib only, no Xcode needed)."
             exit 1
           fi
+      # The Apple client-secret rotation runs only on its monthly cron, against
+      # prod. This signs with a key generated in the test and drives the
+      # Management API calls against a stub, so a broken JWT or a PATCH that
+      # reaches past external_apple_secret fails a PR instead of lapsing web
+      # Apple sign-in five months later (decisions.md § 1824).
+      - name: The Apple client-secret rotation still signs and installs a valid secret
+        run: |
+          if ! node --test scripts/rotate_apple_client_secret.test.mjs; then
+            echo "::error::scripts/rotate_apple_client_secret.mjs regressed: the ES256 JWT it signs no longer verifies or carries the claims Apple checks, its lifetime can exceed Apple's six-month cap, it writes more than external_apple_secret, it leaks a response body or key into an error, or rotate-apple-client-secret.yml stopped wiring a secret it reads. Nothing here is about the iOS release."
+            echo "Reproduce with: node --test scripts/rotate_apple_client_secret.test.mjs (stdlib only, no credentials needed)."
+            exit 1
+          fi
       # The stack-start wait loop is shell inside a composite action, so it
       # runs in no job's test suite. Its accounting (a wall-clock deadline the
       # error string can be trusted to report) and its failure forensics are

@@ -1151,6 +1151,39 @@ void main() {
 
       await unmount(tester);
     });
+
+    testWidgets(
+        'a summary-dismiss request closes the finished summary to the start '
+        'screen, and is ignored idle', (tester) async {
+      final runStore = await pumpUnder(tester, docked: true);
+
+      runSummaryDismissRequests.request();
+      await tester.pump();
+      expect(find.text('START'), findsOneWidget);
+      expect(runSummaryShowing.value, isFalse);
+
+      await reachRecording(tester);
+      for (var i = 0; i < 6; i++) {
+        geolocator.emit(_pos(metresEast: i * 12.0, secondsFromStart: i * 2));
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+
+      await tester.runAsync(() async => runStopRequests.request());
+      await pumpUntil(tester, () => runSummaryShowing.value,
+          describe: 'the recorder to show the finished summary');
+      expect(runStore.captured, hasLength(1));
+
+      runSummaryDismissRequests.request();
+      await tester.pump();
+      expect(runSummaryShowing.value, isFalse);
+      expect(find.text('START'), findsOneWidget,
+          reason: 'a new run starts from the start screen');
+      expect(runStore.captured, hasLength(1),
+          reason: 'closing the summary keeps the saved run');
+
+      await unmount(tester);
+    });
   });
 
   group('RunScreen — resume a process-killed partial', () {

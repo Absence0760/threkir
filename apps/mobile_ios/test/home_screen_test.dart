@@ -205,6 +205,7 @@ void main() {
     // The swipe-lock signal is a process-global ValueNotifier; reset it so a
     // recording-active test can't leak the lock into the next test (#490).
     runRecordingActive.value = false;
+    runSummaryShowing.value = false;
     // Null when the test never built the stores (the pure gate-helper
     // group below has no run store on disk).
     if (_runsDir?.existsSync() ?? false) {
@@ -1239,6 +1240,48 @@ void main() {
 
       expect(find.text("You're already on Gym"), findsOneWidget);
       expect(shellPage(tester), 1);
+      // showTopBanner arms an auto-dismiss timer; let it run out.
+      await tester.pump(const Duration(seconds: 8));
+    });
+
+    testWidgets(
+        'Start run over the finished summary closes it rather than claiming '
+        'the runner is already on Run', (tester) async {
+      // Stopping a run leaves its summary on the Run page itself, so the
+      // shell read a runner looking at their last run as already on the
+      // start screen: the centre button answered "You're already on Run" and
+      // offered no way to a new run.
+      var dismissals = 0;
+      void listener() => dismissals++;
+      runSummaryDismissRequests.addListener(listener);
+      addTearDown(() => runSummaryDismissRequests.removeListener(listener));
+      final s = await _makeStores();
+      await _pump(tester, s);
+      runSummaryShowing.value = true;
+
+      // From another page: the tap lands on Run with the summary closing.
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      tester.takeException();
+      expect(shellPage(tester), 2);
+      expect(dismissals, 1);
+
+      // On the Run page itself: closing it is the whole navigation.
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(dismissals, 2);
+      expect(find.textContaining('already on'), findsNothing);
+      expect(shellPage(tester), 2);
+
+      // Once the start screen is what shows, the banner is true again.
+      runSummaryShowing.value = false;
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(dismissals, 2);
+      expect(find.text("You're already on Run"), findsOneWidget);
       // showTopBanner arms an auto-dismiss timer; let it run out.
       await tester.pump(const Duration(seconds: 8));
     });

@@ -116,6 +116,11 @@ bool shouldDimRecordingMap({
 /// (fail-open — the lock is a safety nicety, never a core guarantee).
 final ValueNotifier<bool> runRecordingActive = ValueNotifier<bool>(false);
 
+/// Whether the Run page is showing a finished run's summary rather than its
+/// start surface, so the shell does not count a runner looking at their last
+/// run as already on the start screen ([RunSummaryDismissRequests]).
+final ValueNotifier<bool> runSummaryShowing = ValueNotifier<bool>(false);
+
 /// How far the live pace may sit from the target before the pace cue speaks.
 /// Held against both watches by `scripts/check_shared_constants.mjs`
 /// (decisions § 1716): a ~200 m look-back moves by ~15 s/km on GNSS noise
@@ -211,6 +216,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   void _setScreenState(_ScreenState next) {
     _state = next;
     runRecordingActive.value = next == _ScreenState.recording;
+    runSummaryShowing.value = next == _ScreenState.finished;
   }
 
   RunRecorder? _recorder;
@@ -746,6 +752,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     pendingStartWorkout.addListener(_onPendingStartWorkout);
     pendingArmGuidedRun.addListener(_onPendingArmGuidedRun);
     runStopRequests.addListener(_onDockedStopRequest);
+    runSummaryDismissRequests.addListener(_onSummaryDismissRequest);
     _activityType =
         ActivityType.fromName(widget.preferences.defaultActivityType);
     _selectedRoute = widget.initialRoute;
@@ -851,6 +858,12 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   void _onDockedStopRequest() {
     if (_state != _ScreenState.recording) return;
     unawaited(_stop());
+  }
+
+  /// A Log-run action over the finished summary: the same exit as its Done.
+  void _onSummaryDismissRequest() {
+    if (!mounted || _state != _ScreenState.finished) return;
+    _discard();
   }
 
   void _onPendingArmGuidedRun() {
@@ -3753,10 +3766,12 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // nav-shell swipe lock (issue #490) — leaving it latched would trap the
     // shell in non-swipeable state.
     runRecordingActive.value = false;
+    runSummaryShowing.value = false;
     WidgetsBinding.instance.removeObserver(this);
     pendingStartWorkout.removeListener(_onPendingStartWorkout);
     pendingArmGuidedRun.removeListener(_onPendingArmGuidedRun);
     runStopRequests.removeListener(_onDockedStopRequest);
+    runSummaryDismissRequests.removeListener(_onSummaryDismissRequest);
     widget.preferences.removeListener(_onPrefsChange);
     widget.runStore.removeListener(_onPrefsChange);
     widget.social.removeListener(_onSocialChange);

@@ -878,7 +878,13 @@ class _HomeScreenState extends State<HomeScreen>
       LogAction.food => FitnessTab.nutrition,
     };
     final page = tab == null ? _pageRun : _pageFitness;
-    if (page == _currentIndex.value &&
+    // The Run page showing a finished run's summary is not the start screen,
+    // wherever the tap came from: asking for a run closes the summary first.
+    final leavingSummary =
+        action == LogAction.run && runSummaryShowing.value;
+    if (leavingSummary) runSummaryDismissRequests.request();
+    if (!leavingSummary &&
+        page == _currentIndex.value &&
         (tab == null || tab == _fitnessTab.value)) {
       // Picking the page you are already on is a no-op navigation, and the
       // fan closing onto an unchanged screen reads as a dropped tap. Say

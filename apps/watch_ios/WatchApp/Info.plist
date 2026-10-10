@@ -34,6 +34,10 @@
 	<string>$(SUPABASE_URL)</string>
 	<key>SupabaseAnonKey</key>
 	<string>$(SUPABASE_ANON_KEY)</string>
+	<key>SENTRY_DSN</key>
+	<string>$(SENTRY_DSN)</string>
+	<key>APP_RELEASE</key>
+	<string>$(APP_RELEASE)</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Threkir reads your heart rate during a run to show it live and save it with the workout.</string>
 	<key>NSHealthUpdateUsageDescription</key>

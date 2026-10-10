@@ -50,13 +50,12 @@
 // Run: node apps/backend/scripts/check_served_envelope_mutations.mjs
 // Unit tests: node --test apps/backend/scripts/check_served_envelope_mutations.test.mjs
 
-import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { parseJunit } from './check_edge_function_test_vacuity.mjs';
+import { parseJunit, runLogged } from './check_edge_function_test_vacuity.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const BACKEND_DIR = resolve(HERE, '..');
@@ -936,23 +935,21 @@ async function runFiltered(filter, junitPath) {
     TEST_FILE,
   ];
   if (filter) args.splice(5, 0, `--filter=${filter}`);
-  const res = spawnSync('deno', args, {
-    cwd: BACKEND_DIR,
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
+  const res = runLogged('deno', args, BACKEND_DIR, junitPath);
+  const output = `${readFileSync(res.stdoutPath, 'utf8')}${readFileSync(res.stderrPath, 'utf8')}`;
   let xml = '';
   try {
     xml = readFileSync(junitPath, 'utf8');
   } catch {
     throw new Error(
-      `deno test produced no JUnit report.\nstdout:\n${res.stdout}\nstderr:\n${res.stderr}`,
+      `deno test produced no JUnit report ` +
+        `(exit ${res.status}, signal ${res.signal}${res.error ? `, ${res.error.message}` : ''}).\n${output}`,
     );
   }
   /** @type {Map<string, boolean>} */
   const report = new Map();
   for (const t of parseJunit(xml).values()) report.set(t.name, t.passed);
-  return { report, output: `${res.stdout ?? ''}${res.stderr ?? ''}` };
+  return { report, output };
 }
 
 async function main() {

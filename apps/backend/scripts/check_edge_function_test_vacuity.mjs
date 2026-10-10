@@ -39,9 +39,11 @@
 
 import { spawnSync } from 'node:child_process';
 import {
+  closeSync,
   cpSync,
   mkdirSync,
   mkdtempSync,
+  openSync,
   readdirSync,
   readFileSync,
   rmSync,
@@ -217,12 +219,44 @@ export function applyNeuter(dest, modules) {
 }
 
 /**
+ * Run a command with its stdout and stderr written to files rather than piped
+ * into memory. spawnSync's pipe has a 1 MiB maxBuffer, and on overflow it kills
+ * the child: a neutered suite's failure diffs crossed that on PR #1101 (run
+ * 37938310379), so deno died before writing the JUnit report the guard reads.
+ * Nothing here parses the output, so it does not belong in the parent's memory.
+ *
+ * @param {string} command
+ * @param {readonly string[]} args
+ * @param {string} cwd
+ * @param {string} logPrefix stdout lands at `${logPrefix}.stdout`, stderr at `${logPrefix}.stderr`
+ */
+export function runLogged(command, args, cwd, logPrefix) {
+  const stdoutPath = `${logPrefix}.stdout`;
+  const stderrPath = `${logPrefix}.stderr`;
+  const out = openSync(stdoutPath, 'w');
+  const err = openSync(stderrPath, 'w');
+  try {
+    const res = spawnSync(command, args, { cwd, stdio: ['ignore', out, err] });
+    return { status: res.status, signal: res.signal, error: res.error, stdoutPath, stderrPath };
+  } finally {
+    closeSync(out);
+    closeSync(err);
+  }
+}
+
+/** @param {string} path */
+function tail(path, bytes = 8192) {
+  const text = readFileSync(path, 'utf8');
+  return text.length > bytes ? `[...${text.length - bytes} earlier bytes in ${path}]\n${text.slice(-bytes)}` : text;
+}
+
+/**
  * @param {string} root mirror root
  * @param {string} junitPath
  * @returns {Map<string, { file: string, name: string, line: string, passed: boolean }>}
  */
 function runSuite(root, junitPath) {
-  const res = spawnSync(
+  const res = runLogged(
     'deno',
     [
       'test',
@@ -232,14 +266,17 @@ function runSuite(root, junitPath) {
       `--junit-path=${junitPath}`,
       'supabase/functions/',
     ],
-    { cwd: join(root, 'apps', 'backend'), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+    join(root, 'apps', 'backend'),
+    junitPath,
   );
   let xml = '';
   try {
     xml = readFileSync(junitPath, 'utf8');
   } catch {
     throw new Error(
-      `deno test produced no JUnit report in ${root}.\nstdout:\n${res.stdout}\nstderr:\n${res.stderr}`,
+      `deno test produced no JUnit report in ${root} ` +
+        `(exit ${res.status}, signal ${res.signal}${res.error ? `, ${res.error.message}` : ''}).\n` +
+        `stdout:\n${tail(res.stdoutPath)}\nstderr:\n${tail(res.stderrPath)}`,
     );
   }
   return parseJunit(xml);

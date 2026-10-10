@@ -713,8 +713,8 @@ jobs:
       - name: Migration EXECUTE revokes withhold on both CLI images
         run: |
           if ! node --test apps/backend/scripts/check_migration_function_revoke_noop.test.mjs; then
-            echo "::error::The function-revoke guard's own unit tests failed, so its verdict on the migration set cannot be trusted. This is not schema drift, not a lock-safety failure and not the column-revoke guard."
-            echo "Fix apps/backend/scripts/check_migration_function_revoke_noop.mjs (or its tests) first, then re-read what it says about the migrations."
+            echo "::error::The function-revoke guard's own unit tests failed. If the failing case is 'docs/backend/api_database.md states the counts this guard measures', a migration was added without restating the counted paragraph there — restate the figure the assertion names. Otherwise its verdict on the migration set cannot be trusted. Either way this is not schema drift, not a lock-safety failure and not the column-revoke guard."
+            echo "Fix the doc figure, or apps/backend/scripts/check_migration_function_revoke_noop.mjs (or its tests), then re-read what it says about the migrations."
             exit 1
           fi
           if ! node apps/backend/scripts/check_migration_function_revoke_noop.mjs; then
@@ -2852,7 +2852,7 @@ jobs:
     # backstop: a diverged PR fails CI rather than landing.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: lib/ + test/ byte-identical
+      - name: lib/ + test/ + integration_test/ byte-identical
         run: |
           if ! diff -rq apps/mobile_android/lib apps/mobile_ios/lib; then
             echo "::error::apps/mobile_android/lib has diverged from apps/mobile_ios/lib (decisions.md §39)."
@@ -2861,6 +2861,13 @@ jobs:
           fi
           if ! diff -rq apps/mobile_android/test apps/mobile_ios/test; then
             echo "::error::apps/mobile_android/test has diverged from apps/mobile_ios/test (decisions.md §39)."
+            echo "Mirror the change or invoke the mobile-twin-mirror agent."
+            exit 1
+          fi
+          # The on-device smoke drives the same Dart app on both targets, so
+          # it is shared source under the same rule (decisions.md § 1820).
+          if ! diff -rq apps/mobile_android/integration_test apps/mobile_ios/integration_test; then
+            echo "::error::apps/mobile_android/integration_test has diverged from apps/mobile_ios/integration_test (decisions.md §39, § 1820)."
             echo "Mirror the change or invoke the mobile-twin-mirror agent."
             exit 1
           fi

@@ -217,6 +217,7 @@ is the runbook for making each one.
 | `APP_STORE_CONNECT_API_PRIVATE_KEY` | the key's `.p8` file contents as they are -- **not** base64; the upload action reads PKCS#8 text |
 | `GOOGLE_SERVICE_INFO_PLIST_BASE64` | base64 of `GoogleService-Info.plist` from the Firebase project's `com.threkir.app` iOS app |
 | `MOBILE_REVENUECAT_API_KEY_IOS` | RevenueCat's Apple app key (`appl_…`). Optional: unset, Pro is not for sale on iOS, because iOS may not fall back to the web checkout ([decisions § 1700](../architecture/decisions.md)) |
+| `WATCH_IOS_SENTRY_DSN` | `production` environment. Optional: the Apple Watch Sentry project's DSN, written into the embedded watch app (below). Unset leaves the watch's Sentry off, as `WATCH_WEAR_SENTRY_DSN` does on Wear OS ([decisions § 1819](../architecture/decisions.md)) |
 
 The runtime config otherwise reuses the Android release's secrets:
 `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY` and `PUBLIC_MAPTILER_KEY`
@@ -224,7 +225,7 @@ The runtime config otherwise reuses the Android release's secrets:
 `MOBILE_STRAVA_CLIENT_ID` (optional). The signing secrets go in the
 `production` environment, beside Android's keystore. `APP_RELEASE` is the tag's version.
 There is no keychain-password secret: the runner generates one per run. The
-team id is not a secret either -- it is read out of the two profiles.
+team id is not a secret either -- it is read out of the five profiles.
 
 `PUBLIC_SUPABASE_URL` and `PUBLIC_SUPABASE_ANON_KEY` also reach the embedded
 Apple Watch app, which cannot read `dart_defines.json`: the workflow writes
@@ -235,11 +236,22 @@ URL that is not an https origin and an anon key that is not a client key
 (`sb_publishable_…` or an anon-role JWT), so a misfiled `sb_secret_` key
 fails the release instead of shipping.
 
-The watch_ios target reads `SENTRY_DSN` + `APP_RELEASE` from the
-build's Info.plist (set via Xcode build settings or a `xcrun
-agvtool`-style script step in CI); the Sentry SwiftPM package needs
-to be added to the watchOS target before the init in `RunApp.init()`
-activates (gated on `canImport(Sentry)`).
+The same file and the same post-build check carry the watch's Sentry config
+([decisions § 1819](../architecture/decisions.md)). `RunApp.init()` reads
+`SENTRY_DSN` and `APP_RELEASE` from the watch's Info.plist, which expands them
+from build settings of the same names. `SENTRY_DSN` comes from
+`WATCH_IOS_SENTRY_DSN` and is optional: unset, the file defines it as empty and
+the watch starts no Sentry; set, it must be a Sentry DSN
+(`https://<32-hex key>@<host>/<project id>`, no legacy `key:secret` form) or the
+release fails. `APP_RELEASE` is the release tag itself, `mobile_ios@<version>`
+-- the watch has no tag of its own and ships only inside that one. The check
+fails if a set DSN is missing, unexpanded or different in the built watch app,
+or if the watch carries a DSN the release did not set; it prints lengths only.
+**The DSN is not yet sufficient on its own:** the init is gated on
+`canImport(Sentry)`, and no target that builds the watch links the
+`sentry-cocoa` package (the phone's copy arrives through Flutter's plugin
+package, for iOS only), so the init compiles out until that package is added
+to the `WatchApp` target in both Xcode projects (`followups.md`).
 
 ### Web (AWS deploy)
 

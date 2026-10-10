@@ -261,6 +261,9 @@ The matrix of "what lives where":
 | Wear OS upload keystore | We generate once | GitHub Secrets (`WATCH_WEAR_KEYSTORE_BASE64`) |
 | Play `service-account.json` | Google Cloud | GitHub Secrets (`PLAY_SERVICE_ACCOUNT_JSON`) |
 | App Store Connect `.p8` API key | Apple Developer | GitHub `production` environment secret `APP_STORE_CONNECT_API_PRIVATE_KEY` (the raw `.p8` text); backed up in the estate |
+| Sign-in-with-Apple `.p8` + the OAuth client secret it signs | Apple Developer | The `.p8` in the estate (`siwa_key_p8`), the Supabase EF env (`APPLE_PRIVATE_KEY`, for revocation) and the GitHub `apple-secret-rotation` environment (`APPLE_SIWA_PRIVATE_KEY`). The derived ES256 JWT lives only in the Supabase Apple provider; `rotate-apple-client-secret.yml` re-signs it on the 1st of every month, because Apple refuses one older than six months ([`apple_provisioning.md` § 9](apple_provisioning.md), [decisions § 1824](../architecture/decisions.md)) |
+
+**Scheduled rotation**: the Apple OAuth client secret is the one credential that expires on a fixed clock without a leak, so it is the one rotated by a workflow rather than by hand. That workflow runs on a reviewer-less `apple-secret-rotation` environment restricted to `main`, not on `production`, because a cron run that waits for an approval rotates nothing; a red run opens an `apple-secret` issue.
 
 **Rotation rule**: if a secret is suspected leaked, the rotation is in three steps: (1) issue a new key in the provider, (2) update everywhere it's stored, (3) revoke the old key. Step 3 is what "the old one is dead" really means — without it the leaked key still works.
 

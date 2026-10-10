@@ -43,7 +43,7 @@ Last moved: **2026-10-06**.
 | 7 | **Sign-in-with-Apple key** `.p8` | Supabase (via a generated client secret) | **Done 2026-09-19** |
 | 8 | Both `.p8` files backed up | estate `threkir/push-credentials.sops.yaml` | **Done 2026-09-19** — five values in estate commit `b82fefc`, pushed; the downloaded `.p8` files deleted |
 | — | Supabase URL Configuration (Site URL, Redirect URLs, manual linking) | Supabase dashboard | **Done 2026-09-21** — shared; landed with the Google thread |
-| 9 | Supabase Apple provider enabled | Supabase dashboard | **Native half done 2026-10-06** — enabled with Client IDs `com.threkir.app` only and no secret key, which is all iOS sign-in needs; still owed once step 5 lands: `com.threkir.web` prepended as the FIRST client ID plus the generated OAuth secret |
+| 9 | Supabase Apple provider enabled | Supabase dashboard | **Native half done 2026-10-06** — enabled with Client IDs `com.threkir.app` only and no secret key, which is all iOS sign-in needs; still owed once step 5 lands: `com.threkir.web` prepended as the FIRST client ID, the `apple-secret-rotation` environment's five secrets, and one manual run of `rotate-apple-client-secret.yml` to install the OAuth secret |
 | 10 | Email-relay source registered | Apple portal → Services | ☐ |
 | 11 | `PUBLIC_APPLE_AUTH_ENABLED` truthy + `web@` Release | GitHub secret + release | ☐ |
 | 12 | `mobile_android@` release (picks up the push config) | Play | **Done 2026-10-07** — `mobile_android@1.8.1` published, `release-android.yml` green (run 37551472463); a `device_tokens` row on first sign-in is still to be confirmed (`followups.md` § Push notifications) |
@@ -549,7 +549,7 @@ enable.
 | Field | Value |
 |---|---|
 | Client IDs | `com.threkir.web` **first**, then `com.threkir.app` |
-| Secret Key (for OAuth) | a generated client secret — see below |
+| Secret Key (for OAuth) | leave it to the rotation workflow — see below |
 
 Order matters in that list: the Services ID must be first, or the web flow and
 the native flow route to the wrong client.
@@ -564,15 +564,64 @@ beyond confirming they are still set.
 
 **The secret is NOT the `.p8`.** Apple's client secret is an ES256 **JWT**
 signed *with* the `.p8` — `iss` = Team ID, `sub` = Services ID, `aud` =
-`https://appleid.apple.com`, `kid` = the step-7 Key ID. Supabase's dashboard
-has a generator that takes those four inputs plus the `.p8` contents and emits
-the JWT; use it rather than pasting the key file.
+`https://appleid.apple.com`, `kid` = the step-7 Key ID — and Apple hard-caps it
+at six months. When it expires every web Apple sign-in starts failing with
+`invalid_client`, on a working configuration, with nothing in our logs to
+distinguish it from a misconfiguration. The native iOS flow does not use it.
 
-**Apple hard-caps that JWT at six months.** When it expires every Apple sign-in
-starts failing with `invalid_client`, on a working configuration, with nothing
-in our logs to distinguish it from a misconfiguration. Put a **calendar
-reminder at five months** next to the membership-renewal one from step 1, and
-note the expiry date in the estate file beside the key.
+**A workflow mints it, not the dashboard and not a calendar.**
+`.github/workflows/rotate-apple-client-secret.yml` runs at 06:00 UTC on the 1st
+of every month: it signs a fresh 180-day JWT with the step-7 key and writes it
+into this field through the Supabase Management API (`PATCH
+/v1/projects/{ref}/config/auth`, `external_apple_secret` alone — the Client IDs
+are never touched). The live secret is therefore never more than a month old,
+and a missed run still leaves five months. Before writing it checks that the
+provider is enabled and that `com.threkir.web` is the **first** Client ID,
+because a secret signed for the Services ID is useless to any other; after
+writing it reads the field back. Design: [decisions
+§ 1824](../architecture/decisions.md).
+
+**One-time setup** (Settings → Environments → **New environment**):
+
+1. Name it `apple-secret-rotation`. **No required reviewers** — a scheduled run
+   that waits for an approval is the calendar reminder again — and under
+   **Deployment branches** choose *Selected branches* → `main`, so only code
+   that passed the CI gate can read it.
+2. Add five environment secrets. Claude does not handle these; set each
+   yourself, from inside the estate repo (`threkir/push-credentials.sops.yaml`)
+   or from the Supabase dashboard:
+
+| Secret | Value |
+|---|---|
+| `APPLE_TEAM_ID` | estate `apple_team_id` |
+| `APPLE_SIWA_KEY_ID` | estate `siwa_key_id` — the step-7 key, the same one the Edge Functions hold as `APPLE_KEY_ID` (step 19); **not** the APNs key |
+| `APPLE_SIWA_PRIVATE_KEY` | estate `siwa_key_p8`, the PEM as is |
+| `SUPABASE_ACCESS_TOKEN` | a **new** personal access token (supabase.com → Account → Access Tokens) named for this job, so it can be revoked without breaking the release workflows |
+| `SUPABASE_PROJECT_REF` | the prod project ref, the same value `production` holds |
+
+The `.p8` can be piped straight from `sops` into `gh` so it never lands on disk
+or in shell history:
+
+```
+cd ~/github/infra-secrets && AWS_PROFILE=threkir sops -d --extract '["siwa_key_p8"]' threkir/push-credentials.sops.yaml | gh secret set APPLE_SIWA_PRIVATE_KEY --env apple-secret-rotation --repo Absence0760/threkir
+```
+
+3. Run it once by hand, after step 5 and the Client IDs above are in place:
+   **Actions** → **Rotate Apple OAuth client secret** → **Run workflow**, or
+   `gh workflow run rotate-apple-client-secret.yml --repo Absence0760/threkir`.
+   A green run logs the new expiry date and nothing else.
+
+**When it fails**, the run's `::error::` line names the cause and the
+`report` job opens an `apple-secret`-labelled issue, which the next green run
+closes. Nothing is broken yet — the installed secret stays valid until its own
+expiry. The usual causes: an unset secret (named in the error); a 401/403 on
+the read, which is the access token (expired or revoked — mint another); a 404,
+which is the project ref; *"first Client ID is not com.threkir.web"*, which is
+the ordering in the table above; *"not a P-256 EC key"*, which is usually the
+APNs or App Store Connect `.p8` pasted in place of the step-7 one. Fix it and
+rerun by hand. If the step-7 key itself is ever revoked, make a new one (step
+7), back it up (step 8), update `APPLE_SIWA_KEY_ID` + `APPLE_SIWA_PRIVATE_KEY`
+here and the step-19 Edge Function pair, then rerun.
 
 ## 10. Register the email-relay source
 
@@ -841,7 +890,7 @@ Two Apple-specific behaviours to expect on that check, neither of them a bug:
 
 | Symptom | Cause |
 |---|---|
-| `invalid_client` on every Apple sign-in, previously working | The step-9 client secret hit Apple's six-month cap. Regenerate it. |
+| `invalid_client` on every web Apple sign-in, previously working | The step-9 client secret hit Apple's six-month cap, which means `rotate-apple-client-secret.yml` has been failing for months — look for the open `apple-secret` issue, fix its cause, rerun the workflow. |
 | `invalid_client` on a brand-new setup | Services ID not first in Client IDs, or the secret's `sub` is the bundle ID rather than the Services ID. |
 | Apple asks to verify a domain at step 5 | You entered `threkir.com` instead of the Supabase project domain. |
 | No `device_tokens` row on iOS | Expected until step 6 lands — `getToken()` needs an APNs registration first. After it, check the build's `aps-environment`. |

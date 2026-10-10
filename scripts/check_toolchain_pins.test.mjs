@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 
 import {
 	ACTION_DIR,
+	GO_DOCKERFILES,
 	GO_MODS,
 	LOCKFILE,
 	PREREQ_DOC,
@@ -17,6 +18,7 @@ import {
 	checkDefmtPrint,
 	checkDeno,
 	checkFlutter,
+	checkGoDockerfiles,
 	checkMelos,
 	checkNode,
 	checkPrerequisites,
@@ -936,6 +938,65 @@ test('parseGoDirective refuses to pin when the modules disagree', () => {
 	assert.equal(split.version, null);
 	assert.equal(split.errors.length, 1);
 	assert.match(split.errors[0], /2 different `go` directives/);
+});
+
+const PINNED = '@sha256:' + 'a'.repeat(64);
+
+test('checkGoDockerfiles holds each builder to the go directive', () => {
+	const ok = checkGoDockerfiles(
+		[{ path: 'a/Dockerfile', text: `FROM golang:1.27.2-alpine${PINNED} AS build\n` }],
+		'1.27.2',
+	);
+	assert.deepEqual(ok.errors, []);
+	assert.equal(ok.ok.length, 1);
+
+	const drifted = checkGoDockerfiles(
+		[{ path: 'a/Dockerfile', text: `FROM golang:1.26.6-alpine${PINNED} AS build\n` }],
+		'1.27.2',
+	);
+	assert.equal(drifted.errors.length, 1);
+	assert.match(drifted.errors[0], /builder is Go 1\.26\.6 but go\.mod declares `go 1\.27\.2`/);
+});
+
+test('checkGoDockerfiles refuses a minor tag, a missing digest, and no builder', () => {
+	const minor = checkGoDockerfiles(
+		[{ path: 'a/Dockerfile', text: `FROM golang:1.27-alpine${PINNED} AS build\n` }],
+		'1.27.2',
+	);
+	assert.match(minor.errors[0], /names no exact patch/);
+
+	const floating = checkGoDockerfiles(
+		[{ path: 'a/Dockerfile', text: 'FROM golang:1.27.2-alpine AS build\n' }],
+		'1.27.2',
+	);
+	assert.match(floating.errors[0], /carries no @sha256 digest/);
+
+	const none = checkGoDockerfiles(
+		[{ path: 'a/Dockerfile', text: 'FROM alpine:3.22\n' }],
+		'1.27.2',
+	);
+	assert.match(none.errors[0], /has no `FROM golang:` builder stage/);
+});
+
+test('checkGoDockerfiles defers to the directive check when the modules disagree', () => {
+	const r = checkGoDockerfiles(
+		[{ path: 'a/Dockerfile', text: `FROM golang:1.27.2-alpine${PINNED} AS build\n` }],
+		null,
+	);
+	assert.deepEqual(r.errors, []);
+});
+
+test('every Go module ships from a Dockerfile, and the committed ones agree with go.mod', () => {
+	assert.equal(GO_DOCKERFILES.length, GO_MODS.length);
+	const read = (/** @type {string} */ rel) => ({
+		path: rel,
+		text: readFileSync(join(WORKFLOW_DIR, '..', '..', rel), 'utf-8'),
+	});
+	const go = parseGoDirective(GO_MODS.map(read));
+	assert.deepEqual(go.errors, []);
+	const images = checkGoDockerfiles(GO_DOCKERFILES.map(read), go.version);
+	assert.deepEqual(images.errors, []);
+	assert.equal(images.ok.length, GO_DOCKERFILES.length);
 });
 
 test('parseUsesStepVersions is what both rails read through', () => {

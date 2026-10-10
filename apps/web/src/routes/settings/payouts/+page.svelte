@@ -2,12 +2,27 @@
 	import { onMount } from 'svelte';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
-	import { fetchPayoutAccount, startConnectOnboarding, type PayoutAccountStatus } from '$lib/core/data';
-	import { m } from '$lib/i18n/store.svelte';
+	import {
+		fetchHostEarnings,
+		fetchPayoutAccount,
+		startConnectOnboarding,
+		type PayoutAccountStatus
+	} from '$lib/core/data';
+	import { currentLocale, m } from '$lib/i18n/store.svelte';
+	import { formatPrice } from '$lib/format/format_price';
+	import { fromMinorUnits } from '$lib/format/minor_units';
+	import {
+		formatClassStart,
+		formatEarningsMonth,
+		rollupEarningsByMonth,
+		type HostEarningsMonth
+	} from '$lib/social/host_earnings';
 
 	let account = $state<PayoutAccountStatus | null>(null);
 	let loaded = $state(false);
 	let redirecting = $state(false);
+	let earnings = $state<HostEarningsMonth[]>([]);
+	let earningsState = $state<'idle' | 'loading' | 'ready' | 'failed'>('idle');
 
 	// Onboarding started but not yet charges-enabled — Stripe still needs
 	// more info. Restricted = onboarding submitted but charges disabled.
@@ -28,7 +43,28 @@
 			account = await fetchPayoutAccount();
 		}
 		loaded = true;
+		if (account) await loadEarnings();
 	});
+
+	// Only a host with a payout account can have been paid, so the summary
+	// is read only then. A failed read is its own state with a retry: an
+	// empty list would tell a paid instructor they earned nothing.
+	async function loadEarnings() {
+		earningsState = 'loading';
+		try {
+			earnings = rollupEarningsByMonth(await fetchHostEarnings());
+			earningsState = 'ready';
+		} catch {
+			earningsState = 'failed';
+		}
+	}
+
+	function money(cents: number, currency: string): string {
+		return formatPrice(fromMinorUnits(cents, currency), {
+			currency: currency.toUpperCase(),
+			locale: currentLocale()
+		});
+	}
 
 	async function startSetup() {
 		if (redirecting) return;
@@ -98,6 +134,103 @@
 			</button>
 		{/if}
 	</section>
+
+	{#if loaded && account}
+		<section class="earnings" aria-labelledby="earnings-title" aria-busy={earningsState === 'loading'}>
+			<h2 id="earnings-title">{m('payouts.earningsTitle')}</h2>
+			<p class="earnings-intro">{m('payouts.earningsIntro')}</p>
+			{#if earningsState === 'loading' || earningsState === 'idle'}
+				<p class="muted">{m('payouts.earningsLoading')}</p>
+			{:else if earningsState === 'failed'}
+				<div class="earnings-failed" role="alert">
+					<span>{m('payouts.earningsFailed')}</span>
+					<button class="btn btn-outline btn-sm" onclick={loadEarnings}>
+						{m('payouts.earningsRetry')}
+					</button>
+				</div>
+			{:else if earnings.length === 0}
+				<p class="muted">{m('payouts.earningsEmpty')}</p>
+			{:else}
+				<ul class="months">
+					{#each earnings as month (month.month + month.currency)}
+						<li class="month card">
+							<div class="month-head">
+								<h3>
+									{m('payouts.earningsMonthHeading', {
+										month: formatEarningsMonth(month.month, currentLocale()),
+										currency: month.currency.toUpperCase()
+									})}
+								</h3>
+								<p class="net">
+									<span class="net-label">{m('payouts.earningsNet')}</span>
+									<span class="net-value" data-testid="earnings-net">
+										{money(month.net_cents, month.currency)}
+									</span>
+								</p>
+							</div>
+							<dl class="figures">
+								<div>
+									<dt>{m('payouts.earningsRegistrations')}</dt>
+									<dd>{month.registrations}</dd>
+								</div>
+								<div>
+									<dt>{m('payouts.earningsGross')}</dt>
+									<dd>{money(month.gross_cents, month.currency)}</dd>
+								</div>
+								<div>
+									<dt>{m('payouts.earningsRefunded')}</dt>
+									<dd>{money(month.refunded_cents, month.currency)}</dd>
+								</div>
+								<div>
+									<dt>{m('payouts.earningsFee')}</dt>
+									<dd>{money(month.platform_fee_cents, month.currency)}</dd>
+								</div>
+							</dl>
+							{#if month.partial_refunds_unrecorded > 0}
+								<p class="note">
+									{m('payouts.earningsUnrecorded', { n: month.partial_refunds_unrecorded })}
+								</p>
+							{/if}
+							{#if month.refund_failed_orders > 0}
+								<p class="note note-warn">
+									{m('payouts.earningsRefundFailed', {
+										n: month.refund_failed_orders,
+										amount: money(month.unsettled_cents, month.currency)
+									})}
+								</p>
+							{/if}
+							<details>
+								<summary>{m('payouts.earningsByClass', { n: month.instances.length })}</summary>
+								<div class="table-wrap">
+									<table>
+										<thead>
+											<tr>
+												<th scope="col">{m('payouts.earningsClassCol')}</th>
+												<th scope="col">{m('payouts.earningsWhenCol')}</th>
+												<th scope="col" class="num">{m('payouts.earningsRegistrations')}</th>
+												<th scope="col" class="num">{m('payouts.earningsNet')}</th>
+											</tr>
+										</thead>
+										<tbody>
+											{#each month.instances as row (row.event_id + row.instance_start)}
+												<tr>
+													<td>{row.event_title}</td>
+													<td>{formatClassStart(row.instance_start, row.timezone, currentLocale())}</td>
+													<td class="num">{row.registrations}</td>
+													<td class="num">{money(row.net_cents, row.currency)}</td>
+												</tr>
+											{/each}
+										</tbody>
+									</table>
+								</div>
+							</details>
+						</li>
+					{/each}
+				</ul>
+				<p class="footnote">{m('payouts.earningsFootnote')}</p>
+			{/if}
+		</section>
+	{/if}
 </div>
 
 <style>
@@ -164,5 +297,126 @@
 	.muted {
 		color: var(--color-text-tertiary);
 		margin: 0;
+	}
+	.earnings {
+		margin-top: var(--space-xl);
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-md);
+	}
+	.earnings h2 {
+		font-size: 1.25rem;
+		font-weight: 700;
+		margin: 0;
+	}
+	.earnings-intro,
+	.footnote {
+		margin: 0;
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+		line-height: 1.5;
+	}
+	.earnings-failed {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: var(--space-sm);
+		color: var(--color-text-secondary);
+	}
+	.months {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-md);
+	}
+	.month {
+		align-items: stretch;
+		gap: var(--space-sm);
+	}
+	.month-head {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: var(--space-sm);
+	}
+	.month-head h3 {
+		margin: 0;
+		font-size: 1rem;
+		font-weight: 700;
+	}
+	.net {
+		margin: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+	}
+	.net-label {
+		font-size: 0.75rem;
+		color: var(--color-text-tertiary);
+	}
+	.net-value {
+		font-size: 1.3rem;
+		font-weight: 800;
+		font-variant-numeric: tabular-nums;
+	}
+	.figures {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+		gap: var(--space-sm);
+		margin: 0;
+	}
+	.figures dt {
+		font-size: 0.75rem;
+		color: var(--color-text-tertiary);
+	}
+	.figures dd {
+		margin: 0;
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+	}
+	.note {
+		margin: 0;
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+		line-height: 1.5;
+	}
+	.note-warn {
+		color: var(--color-warning-text);
+	}
+	details summary {
+		cursor: pointer;
+		font-size: 0.9rem;
+		font-weight: 600;
+	}
+	.table-wrap {
+		overflow-x: auto;
+	}
+	table {
+		width: 100%;
+		border-collapse: collapse;
+		margin-top: var(--space-sm);
+		font-size: 0.85rem;
+	}
+	th,
+	td {
+		text-align: start;
+		padding: var(--space-2xs) var(--space-xs);
+		border-bottom: 1px solid var(--color-border);
+	}
+	th {
+		font-weight: 600;
+		color: var(--color-text-tertiary);
+	}
+	.num {
+		text-align: end;
+		font-variant-numeric: tabular-nums;
+	}
+	@media (max-width: 480px) {
+		.card {
+			padding: var(--space-lg);
+		}
 	}
 </style>

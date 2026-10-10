@@ -15,5 +15,7 @@ CURRENT_PROJECT_VERSION=$(FLUTTER_BUILD_NUMBER)
 // release secrets (scripts/ios_watch_runtime_config.mjs) and then checks the
 // shipped WatchApp.app/Info.plist holds both. Absent, both expand to empty and
 // the watch's sign-in is fail-closed, which is the right state for a build
-// nobody configured (decisions § 1810).
+// nobody configured (decisions § 1810). The same file defines SENTRY_DSN
+// (empty when the release sets none, leaving Sentry off) and APP_RELEASE, the
+// mobile_ios@<version> tag, for RunApp.init() (decisions § 1819).
 #include? "WatchRuntime.xcconfig"

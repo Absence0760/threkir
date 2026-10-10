@@ -134,4 +134,16 @@ object RecordingRepository {
     fun reset() {
         _metrics.value = Metrics()
     }
+
+    /// Back to idle, but only from the finished run [runId].
+    ///
+    /// `RunViewModel.handleFinishedRun` resets after the queue write, on a
+    /// background job, and the next run can start before that job gets there:
+    /// the service only refuses a start while a run is active, and `Finished`
+    /// is not active. An unconditional reset landing then wiped the NEW run
+    /// back to idle while the service kept recording it, so the running screen
+    /// froze at zero and its stop was dropped on the null run id.
+    fun resetIfFinished(runId: String) {
+        _metrics.update { if (it.runId == runId && it.stage == Stage.Finished) Metrics() else it }
+    }
 }

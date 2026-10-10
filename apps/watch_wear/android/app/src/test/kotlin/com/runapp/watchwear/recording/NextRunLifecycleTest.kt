@@ -157,7 +157,7 @@ class NextRunLifecycleTest {
         finishTheRun()
 
         // `handleFinishedRun` resets once the run is in the upload queue.
-        RecordingRepository.reset()
+        RecordingRepository.resetIfFinished("run-a")
         assertEquals(RecordingRepository.Stage.Idle, stage())
         assertNull(RecordingRepository.metrics.value.runId)
 
@@ -168,6 +168,55 @@ class NextRunLifecycleTest {
         assertEquals("run-b", m.runId)
         assertNotEquals("each run is its own row", "run-a", m.runId)
         assertEquals("the second run measures only itself", 250.0, m.distanceM, 1e-9)
+    }
+
+    @Test
+    fun `a late reset for the finished run leaves the next run recording`() {
+        // `handleFinishedRun` resets on a background job after the queue
+        // write. A start landing first used to be wiped back to Idle while the
+        // service kept recording it: frozen screen, and a stop dropped on the
+        // null run id.
+        startRun("run-a", atMs = 1_000L)
+        recordSomeDistance(5_000.0)
+        finishTheRun()
+        assertTrue(startRun("run-b", atMs = 9_000L))
+        recordSomeDistance(120.0)
+
+        RecordingRepository.resetIfFinished("run-a")
+
+        val m = RecordingRepository.metrics.value
+        assertEquals(RecordingRepository.Stage.Recording, m.stage)
+        assertEquals("run-b", m.runId)
+        assertEquals(120.0, m.distanceM, 1e-9)
+    }
+
+    @Test
+    fun `the scoped reset leaves an unfinished run alone, even its own`() {
+        startRun("run-a", atMs = 1_000L)
+        RecordingRepository.resetIfFinished("run-a")
+        assertEquals(
+            "only a Finished run is the cleanup's to reset",
+            RecordingRepository.Stage.Recording,
+            stage(),
+        )
+    }
+
+    @Test
+    fun `the finished-run cleanup clears only that run's checkpoint`() {
+        fun cp(id: String) = Checkpoint(
+            runId = id,
+            startedAtMs = 1_000L,
+            savedAtMs = 16_000L,
+            distanceM = 40.0,
+            trackFilePath = "/tracks/$id.json",
+            trackPointCount = 3,
+        )
+        assertTrue(checkpointClearableFor(cp("run-a"), "run-a"))
+        assertFalse(
+            "the next run's checkpoint is its only crash protection",
+            checkpointClearableFor(cp("run-b"), "run-a"),
+        )
+        assertTrue("an unreadable checkpoint recovers nothing", checkpointClearableFor(null, "run-a"))
     }
 
     // ───────────────────── the wiring half ─────────────────────
@@ -280,11 +329,24 @@ class NextRunLifecycleTest {
     }
 
     @Test
+    fun `the finished-run cleanup never clears or resets unscoped`() {
+        val fn = body(viewModelSrc, "private fun handleFinishedRun(")
+        assertFalse(
+            "an unscoped reset wipes a next run that started before the cleanup ran",
+            fn.contains("RecordingRepository.reset()"),
+        )
+        assertFalse(
+            "an unscoped clear deletes the next run's crash checkpoint",
+            fn.contains("checkpoints.clear()"),
+        )
+    }
+
+    @Test
     fun `a finished run is shown, banked, and only then cleared from the recorder`() {
         val fn = body(viewModelSrc, "private fun handleFinishedRun(")
         val postRun = fn.indexOf("stage = Stage.PostRun")
         val save = fn.indexOf("store.save(")
-        val reset = fn.indexOf("RecordingRepository.reset()")
+        val reset = fn.indexOf("RecordingRepository.resetIfFinished(runId)")
         assertTrue("the summary must be shown", postRun >= 0)
         assertTrue("the run must be queued", save >= 0)
         assertTrue("the recorder must be returned to Idle", reset >= 0)

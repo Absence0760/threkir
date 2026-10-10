@@ -1073,6 +1073,62 @@ $neutralised$;`,
       },
     },
   ],
+  [
+    'host_earnings_summary',
+    {
+      why: 'drops `o.host_user_id = auth.uid()`, the payee scope; keeps the money-moving status set, the refund join and the timezone fallback, which say which orders are earnings rather than whose',
+      sql: `create or replace function public.host_earnings_summary()
+ returns table(event_id uuid, event_title text, club_id uuid, instance_start timestamptz,
+               local_month date, timezone text, currency text, registrations integer,
+               refunded_orders integer, partially_refunded_orders integer,
+               partial_refunds_unrecorded integer, refund_failed_orders integer,
+               gross_cents bigint, refunded_cents bigint, platform_fee_cents bigint,
+               net_cents bigint, unsettled_cents bigint)
+ language sql stable security definer set search_path to 'public'
+as $neutralised$
+  with mine as (
+    select o.id, o.event_id, o.instance_start, o.currency, o.status,
+           o.amount_cents, o.platform_fee_cents
+      from event_orders o
+     where ${mine('o')}
+       and o.status in ('paid', 'partially_refunded', 'refunded', 'refund_failed')
+  ),
+  zones as (
+    select e.id as event_id, e.title, e.club_id,
+           coalesce((select tz.name from pg_timezone_names tz where tz.name = e.timezone limit 1), 'UTC') as tz
+      from events e
+     where e.id in (select distinct m.event_id from mine m)
+  )
+  select z.event_id, z.title, z.club_id, m.instance_start,
+         date_trunc('month', m.instance_start at time zone z.tz)::date, z.tz, m.currency,
+         count(*)::int, 0, 0, 0, 0,
+         sum(m.amount_cents)::bigint, 0::bigint, sum(m.platform_fee_cents)::bigint,
+         sum(m.amount_cents - m.platform_fee_cents)::bigint, 0::bigint
+    from mine m
+    join zones z on z.event_id = m.event_id
+   group by z.event_id, z.title, z.club_id, m.instance_start, z.tz, m.currency;
+$neutralised$;`,
+      subject: 'event_orders o — the orders whose payee scope was dropped',
+      witness: {
+        setup: `insert into clubs (id, owner_id, name, slug, is_public)
+                 values ('00000000-0000-0000-0000-00000000e701',
+                         (select id from auth.users order by id limit 1),
+                         'guard witness studio', 'pgtap-guard-witness-studio', true);
+                insert into events (id, club_id, title, starts_at, author_id, category)
+                 values ('00000000-0000-0000-0000-00000000e702',
+                         '00000000-0000-0000-0000-00000000e701', 'guard witness class',
+                         now(), (select id from auth.users order by id limit 1), 'class');
+                insert into event_orders (event_id, instance_start, buyer_user_id, host_user_id,
+                                          amount_cents, platform_fee_cents, status, paid_at)
+                 values ('00000000-0000-0000-0000-00000000e702', now(),
+                         (select id from auth.users order by id limit 1),
+                         (select id from auth.users order by id limit 1),
+                         1000, 50, 'paid', now());`,
+        probe: `select count(*) from host_earnings_summary()
+                 where event_id = '00000000-0000-0000-0000-00000000e702';`,
+      },
+    },
+  ],
 ]);
 
 // Definer relations a zero-or-empty assertion reads and that deliberately have

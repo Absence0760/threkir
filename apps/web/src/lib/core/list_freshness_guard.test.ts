@@ -1,4 +1,4 @@
-// Source guards for the list-snapshot freshness contract (decisions § 1816).
+// Source guards for the list-snapshot freshness contract (decisions § 1822).
 //
 // /runs, /history, /plans and /routes restore a captured list on back-
 // navigation instead of refetching; the restore is only right while no

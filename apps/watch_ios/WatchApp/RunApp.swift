@@ -31,14 +31,14 @@ struct RunApp: App {
 
     init() {
         #if canImport(Sentry)
-        // Crash reporting + breadcrumb trail for production builds.
-        // Add the `sentry-cocoa` SwiftPM package to the watchOS target
-        // and define `SENTRY_DSN` + `APP_RELEASE` in the Xcode build
-        // settings (Other Swift Flags: `-DSENTRY_DSN=...`) — or read
-        // from Info.plist. Off when DSN is empty (dev / debug).
+        // Info.plist expands both keys from build settings that only a
+        // release defines (scripts/ios_watch_runtime_config.mjs), so every
+        // other build reads them as empty strings: no DSN means no Sentry,
+        // and no release means "dev" (decisions § 1819).
         let dsn = Bundle.main.object(forInfoDictionaryKey: "SENTRY_DSN") as? String ?? ""
         if !dsn.isEmpty {
-            let release = (Bundle.main.object(forInfoDictionaryKey: "APP_RELEASE") as? String) ?? "dev"
+            let plistRelease = Bundle.main.object(forInfoDictionaryKey: "APP_RELEASE") as? String ?? ""
+            let release = plistRelease.isEmpty ? "dev" : plistRelease
             SentrySDK.start { options in
                 options.dsn = dsn
                 options.releaseName = release

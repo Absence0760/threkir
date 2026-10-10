@@ -16,7 +16,7 @@ What they don't catch:
 - Whether Health Connect / HealthKit imports actually surface real workouts.
 - Visual regressions (we have no golden tests today — separate issue).
 
-Closing those gaps is the job of integration tests + e2e tests on a real device or emulator. None are wired up today.
+Closing those gaps is the job of integration tests + e2e tests on a real device or emulator. **The harness exists; no CI job runs it yet.** Both apps carry an `integration_test/` target ([decisions § 1820](../architecture/decisions.md)), byte-identical across the twins: `launch_onboarding_test.dart` cold-launches through the real `main()` and pages onboarding to the location disclosure, and `home_navigation_test.dart` reaches Home and switches destinations on the bottom nav. Run them locally with `flutter test integration_test -d <device-id>` from either app. They stop short of every OS dialog by design, and the Tier B job below is still to be built.
 
 ## What "e2e" can mean
 
@@ -40,9 +40,9 @@ Cost: a few minutes of free GitHub Actions Ubuntu compute on every push to `main
 
 Wiring:
 
-1. `apps/mobile_android/pubspec.yaml`: add `integration_test:` to `dev_dependencies` (it's bundled with Flutter SDK).
-2. `apps/mobile_android/integration_test/` directory with `*_test.dart` files. Same `testWidgets(...)` API; the binding is `IntegrationTestWidgetsFlutterBinding.ensureInitialized()`.
-3. GitHub Actions: add a `mobile-android-e2e` job using `reactivecircus/android-emulator-runner@v2` (KVM-accelerated on Ubuntu). The matrix runs `api-level: [29, 34]` or similar.
+1. ~~`apps/mobile_android/pubspec.yaml`: add `integration_test:` to `dev_dependencies`~~ **Done** (both twins, § 1820).
+2. ~~`apps/mobile_android/integration_test/` directory with `*_test.dart` files~~ **Done**: two suites plus `app_harness.dart`, mirrored to `apps/mobile_ios/integration_test/` and held there by `twin-parity`.
+3. **Still to do.** GitHub Actions: add a `mobile-android-e2e` job using `reactivecircus/android-emulator-runner@v2` (KVM-accelerated on Ubuntu). The matrix runs `api-level: [29, 34]` or similar.
 
 Sample test scope (start small):
 - App cold-launches to onboarding.
@@ -141,11 +141,11 @@ mobile-android-e2e:
           flutter test integration_test/
 ```
 
-The matching `integration_test/onboarding_smoke_test.dart` would be ~30 LoC.
+The suites it would run already exist: `integration_test/launch_onboarding_test.dart` and `integration_test/home_navigation_test.dart`.
 
 ## TL;DR
 
 - **Can mobile e2e run in CI?** Yes.
 - **Is it too resource-heavy?** Android: no, fits in free tier. iOS on PR: yes for any non-trivial volume; do it nightly.
-- **What blocks adoption today?** The `integration_test/` directory + Patrol dep + the CI job don't exist yet. ~1–2 days of work to land the first 5 smoke tests.
+- **What blocks adoption today?** The `integration_test/` target and its first two smoke suites landed 2026-10-09 (§ 1820). Still missing: their first observed run on an emulator or simulator, the `mobile-android-e2e` CI job, and Patrol for the OS-dialog flows.
 - **Pick this next** when the manual-testing burden of "did GPS / permissions / Health Connect still work?" outweighs ~1 day of integration-test wiring.

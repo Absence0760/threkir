@@ -139,6 +139,11 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  # Drives the real app in-process on a simulator / emulator / device for
+  # the launch smoke under integration_test/ (decisions.md § 1820). Ships
+  # with the Flutter SDK, so FLUTTER_VERSION pins it like flutter_test.
+  integration_test:
+    sdk: flutter
   flutter_lints: ^6.0.0
 
 flutter:

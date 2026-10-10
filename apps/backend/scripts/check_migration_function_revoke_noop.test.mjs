@@ -350,8 +350,16 @@ test('docs/backend/api_database.md states the counts this guard measures', () =>
   const replayed = /replays all (\d+) migrations in version order/.exec(doc);
   assert.ok(stated && spellings && replayed, 'the counted paragraph is no longer where the guard states it is');
 
-  assert.equal(Number(stated[1]), counts.files);
-  assert.equal(Number(spellings[1]), counts.execute);
-  assert.equal(Number(spellings[2]), counts.all);
-  assert.equal(Number(replayed[1]), counts.total);
+  // Parallel lanes that each add a migration each bump these from the same base,
+  // and a merge that keeps either side's figure is off by the other lanes' share
+  // (issue 1099's three lanes landed 69/57/12/495 against a true 71/58/13/497).
+  // So the message names the measured figure: the fix is to restate it, never to
+  // pick a side of the conflict.
+  /** @param {string} what @param {number} measured */
+  const restate = (what, measured) =>
+    `docs/backend/api_database.md states a stale ${what}; the migrations measure ${measured} — restate it as ${measured}`;
+  assert.equal(Number(stated[1]), counts.files, restate('count of migrations with a function-level revoke', counts.files));
+  assert.equal(Number(spellings[1]), counts.execute, restate('`revoke execute` count', counts.execute));
+  assert.equal(Number(spellings[2]), counts.all, restate('`revoke all` count', counts.all));
+  assert.equal(Number(replayed[1]), counts.total, restate('replayed migration total', counts.total));
 });

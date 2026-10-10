@@ -289,6 +289,19 @@ flutter test test/run_stats_test.dart
 flutter test --plain-name "speed clamp"
 ```
 
+### On-device smoke (`integration_test/`)
+
+The app driven in-process on a running emulator or a USB device ([decisions § 1820](../../docs/architecture/decisions.md)). It is not part of `flutter test`, which reads `test/` only, and it does not run in CI yet.
+
+```bash
+flutter emulators --launch <emulator-name>
+cd apps/mobile_android
+flutter test integration_test -d emulator-5554                            # both suites
+flutter test integration_test/launch_onboarding_test.dart -d emulator-5554
+```
+
+Each suite launches through the real `main()` and sets the `onboarded` pref itself, so the emulator's leftover state does not matter. Neither suite needs the local Supabase stack. Both stop before any OS permission dialog, which an in-process driver cannot tap. A green run is a debug build: it proves launch and navigation, not release behaviour. The byte-identical copy in `apps/mobile_ios/integration_test/` is the same suite on iOS; edit here and mirror, as with `lib/` and `test/`.
+
 See [testing.md](../../docs/testing/testing.md) for the complete testing reference — what's covered, how to add a new test, the `@visibleForTesting` / override-directory / synthetic-`Position` patterns, and what's still uncovered.
 
 ## Lint

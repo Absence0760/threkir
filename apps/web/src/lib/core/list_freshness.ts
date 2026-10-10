@@ -6,7 +6,7 @@
 // run created from the list's own modal and opened on its detail page, an
 // edit or delete on that detail page — then came back as the pre-write list,
 // because nothing told the restore that the data had moved on (decisions
-// § 1816).
+// § 1822).
 //
 // Every write in the data layer bumps the token of each list that shows the
 // written entity. A page notes the token when it STARTS loading its list —

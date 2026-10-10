@@ -25,6 +25,13 @@ import { logInputFromRecipe } from '../nutrition/recipe';
 import { challengesToRecomputeForRun } from '../social/challenge_progress';
 import { mergeMyProgress } from '../social/challenge_list';
 import { selectEffectivePricing } from '../social/event_instance';
+import { parseHostEarningsRow, type HostEarningsInstance } from '../social/host_earnings';
+import {
+	cancelledOccurrenceRefunds,
+	parseOccurrenceRefundSummary,
+	type OccurrenceRefundState,
+	type OccurrenceRefundSummary
+} from '../social/paid_registration';
 import { planHeadCopyFields, planWeekCopyRows, planWorkoutCopyRows } from './plan_copy';
 import { clubSlug, CLUB_SLUG_FALLBACK } from '../social/club_slug';
 import {
@@ -120,6 +127,7 @@ import { dedupeShadowedExercises } from '../gym/exercise_catalogue';
 import { namesAnExercise } from '../gym/gym_prs';
 import type { RoutineHistoryAggregate, RoutineSessionRow } from '../gym/routine_history';
 import type { YearInRunningRecap } from '../runs/recap';
+import type { PlatformFeeMonthRow } from '../billing/platform_fee_summary';
 import { mergeRecapRuns, recapYearWindow } from '../runs/recap_window';
 import type {
 	CoachAthleteStatus,
@@ -3718,6 +3726,23 @@ export async function fetchPayoutAccount(): Promise<PayoutAccountStatus | null> 
 	};
 }
 
+/// The signed-in host's earnings, one row per (class instance, currency):
+/// what they were PAID for, keyed on `event_orders.host_user_id`, which is
+/// not the organiser scope the table's own SELECT policy grants
+/// (instructor_business.md M7, migration 20270723000001). Throws on a failed
+/// read so the page can offer a retry instead of a false "no earnings yet".
+export async function fetchHostEarnings(): Promise<HostEarningsInstance[]> {
+	if (!auth.user?.id) return [];
+	const { data, error } = await supabase.rpc('host_earnings_summary', undefined, { get: true });
+	if (error) throw error;
+	const rows: HostEarningsInstance[] = [];
+	for (const raw of data ?? []) {
+		const row = parseHostEarningsRow(raw);
+		if (row) rows.push(row);
+	}
+	return rows;
+}
+
 /// Start (or resume) Stripe Connect onboarding for the signed-in host.
 /// Invokes the events-connect-onboard Edge Function, which creates/reuses
 /// an Express account and returns a hosted Account Link URL. The caller
@@ -3871,11 +3896,19 @@ export async function cancelEventOrder(
 /// Cancel a single occurrence of a recurring event (the rest of the series
 /// is untouched). Organiser-only via RLS; the fan-out trigger notifies every
 /// going / maybe / waitlisted attendee of this instance.
+///
+/// An occurrence that still holds money (a pending, paid or partially
+/// refunded order) cannot be cancelled by this insert:
+/// `guard_paid_occurrence_cancel` refuses it, and the cancel is handed to the
+/// events-cancel function, which calls it off and refunds every registrant in
+/// one request (M8). The database decides, not the page, so a class whose
+/// price was removed after people paid is still refunded. `refunds` is that
+/// function's per-order summary, or null when no money was involved.
 export async function cancelEventInstance(
 	eventId: string,
 	instanceStart: string,
 	reason: string | null
-): Promise<void> {
+): Promise<{ refunds: OccurrenceRefundSummary | null }> {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not authenticated');
 	// Idempotent: two organisers cancelling the same occurrence (or a
@@ -3890,7 +3923,65 @@ export async function cancelEventInstance(
 		},
 		{ onConflict: 'event_id,instance_start', ignoreDuplicates: true }
 	);
+	if (error) {
+		if (error.message === PAID_OCCURRENCE_REFUSAL) {
+			return { refunds: await cancelPaidEventInstance(eventId, instanceStart, reason) };
+		}
+		throw error;
+	}
+	return { refunds: null };
+}
+
+/// The message `guard_paid_occurrence_cancel` (20270723000003) raises.
+const PAID_OCCURRENCE_REFUSAL = 'paid_occurrence_requires_refund';
+
+/// Call off a paid occurrence and refund everyone registered for it, through
+/// the events-cancel function's `occurrence` scope. Also what "Refund now"
+/// calls on an already-cancelled occurrence: the function's exception insert
+/// is idempotent and each refund is keyed by its order, so re-running it
+/// resumes the refunds that failed and replays the ones that did not.
+/// Throws an Error whose message is the function's machine code
+/// (`stripe_not_configured`, `not_event_organiser`, …) on a non-2xx.
+export async function cancelPaidEventInstance(
+	eventId: string,
+	instanceStart: string,
+	reason: string | null
+): Promise<OccurrenceRefundSummary> {
+	const { data, error } = await supabase.functions.invoke('events-cancel', {
+		body: {
+			event_id: eventId,
+			instance_start: instanceStart,
+			scope: 'occurrence',
+			reason: reason?.trim() || null
+		}
+	});
+	if (error) {
+		const code = await edgeFunctionErrorCode(error);
+		throw new Error(code ?? (error instanceof Error ? error.message : 'cancel_failed'));
+	}
+	const refunds = parseOccurrenceRefundSummary((data as { refunds?: unknown } | null)?.refunds);
+	if (!refunds) throw new Error('cancel_failed');
+	return refunds;
+}
+
+/// What is still owed on each cancelled occurrence of an event, for its
+/// organisers: one entry per occurrence with anything unsettled, in date
+/// order, past occurrences included (a class called off last week can still
+/// owe someone their money). Reads only the orders that are not settled; the
+/// organiser RLS policy on event_orders is what lets a non-host organiser see
+/// them.
+export async function fetchCancelledOccurrenceRefunds(
+	eventId: string,
+	cancelledInstanceStarts: readonly string[]
+): Promise<Array<{ instanceStart: string; state: OccurrenceRefundState }>> {
+	if (cancelledInstanceStarts.length === 0) return [];
+	const { data, error } = await supabase
+		.from('event_orders')
+		.select('instance_start, status, refund_initiated_at')
+		.eq('event_id', eventId)
+		.in('status', ['pending', 'paid', 'partially_refunded', 'refund_failed']);
 	if (error) throw error;
+	return cancelledOccurrenceRefunds(data ?? [], cancelledInstanceStarts);
 }
 
 export async function reinstateEventInstance(
@@ -11364,6 +11455,65 @@ export async function adminUnhideTarget(
 	});
 	if (error) throw error;
 	return data === true;
+}
+
+// ─── Platform-fee earnings (operator back-office; /admin/earnings) ──────
+// Same boundary as moderation: both RPCs raise 42501 for anyone not in
+// app_admins, a host included (decisions § 1817).
+
+export interface PlatformFeeHostRow {
+	host_user_id: string;
+	host_display_name: string | null;
+	club_id: string | null;
+	club_name: string | null;
+	club_slug: string | null;
+	currency: string;
+	charge_count: number;
+	gross_fee_cents: number;
+	reversed_fee_cents: number;
+	net_fee_cents: number;
+}
+
+/** Platform fees per UTC month of sale, per currency and source, net of
+ *  refunds. Throws for a non-admin. */
+export async function fetchPlatformFeeMonths(): Promise<PlatformFeeMonthRow[]> {
+	const { data, error } = await supabase.rpc('admin_platform_fee_months', undefined, { get: true });
+	if (error) throw error;
+	return (data ?? []).map((r) => ({
+		month: r.month,
+		currency: r.currency,
+		source: r.source === 'donation' ? 'donation' : 'event',
+		charge_count: Number(r.charge_count ?? 0),
+		gross_fee_cents: Number(r.gross_fee_cents ?? 0),
+		reversed_fee_cents: Number(r.reversed_fee_cents ?? 0),
+		net_fee_cents: Number(r.net_fee_cents ?? 0),
+		refunded_count: Number(r.refunded_count ?? 0),
+		partially_refunded_count: Number(r.partially_refunded_count ?? 0),
+		refund_failed_count: Number(r.refund_failed_count ?? 0),
+	}));
+}
+
+/** One UTC month's platform fees split by host + club + currency (`month` is
+ *  any day in it, `YYYY-MM-DD`). Throws for a non-admin. */
+export async function fetchPlatformFeesByHost(month: string): Promise<PlatformFeeHostRow[]> {
+	const { data, error } = await supabase.rpc(
+		'admin_platform_fees_by_host',
+		{ p_month: month },
+		{ get: true },
+	);
+	if (error) throw error;
+	return (data ?? []).map((r) => ({
+		host_user_id: r.host_user_id,
+		host_display_name: r.host_display_name ?? null,
+		club_id: r.club_id ?? null,
+		club_name: r.club_name ?? null,
+		club_slug: r.club_slug ?? null,
+		currency: r.currency,
+		charge_count: Number(r.charge_count ?? 0),
+		gross_fee_cents: Number(r.gross_fee_cents ?? 0),
+		reversed_fee_cents: Number(r.reversed_fee_cents ?? 0),
+		net_fee_cents: Number(r.net_fee_cents ?? 0),
+	}));
 }
 
 /** Club-owned session plans (the club's "session templates"). Visible to club

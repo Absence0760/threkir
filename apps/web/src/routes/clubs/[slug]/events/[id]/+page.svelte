@@ -43,6 +43,8 @@
 		type EventResultClaimWithUser,
 		fetchEventExceptions,
 		cancelEventInstance,
+		cancelPaidEventInstance,
+		fetchCancelledOccurrenceRefunds,
 		reinstateEventInstance,
 		fetchEventPhotos,
 		addRunPhoto,
@@ -79,7 +81,12 @@
 	import { formatDistance, getUnit, fmtPace } from '$lib/format/units.svelte';
 	import { formatPrice } from '$lib/format/format_price';
 	import { fromMinorUnits } from '$lib/format/minor_units';
-	import { registrationOpen, resolveRefundEligibility } from '$lib/social/paid_registration';
+	import {
+		registrationOpen,
+		resolveRefundEligibility,
+		type OccurrenceRefundState,
+		type OccurrenceRefundSummary
+	} from '$lib/social/paid_registration';
 	import { buildEventIcs, buildEventSeriesIcs, icsFilename } from '$lib/social/event_ics';
 	import { env } from '$env/dynamic/public';
 	import { buildStaticMarkerMapUrl, mapsDirectionsUrl, geoUri } from '$lib/routes/static_map';
@@ -192,6 +199,13 @@
 	let exceptions = $state<EventException[]>([]);
 	let showCancelInstance = $state(false);
 	let cancelReason = $state('');
+	// What cancelled occurrences still owe their registrants (M8), for the
+	// event's organisers: one entry per cancelled occurrence with anything
+	// unsettled. Empty when nothing is owed, for a non-organiser, or unreadable.
+	let occurrenceRefunds = $state<Array<{ instanceStart: string; state: OccurrenceRefundState }>>(
+		[]
+	);
+	let retryingRefundsFor = $state<string | null>(null);
 
 	// Paid registration (club_events.md slice P1). `pricing` is the
 	// effective price for the active instance (per-instance override wins
@@ -569,6 +583,22 @@
 		// surface can offer Cancel + reflect an in-flight refund (P2). Only
 		// meaningful on a priced event with a signed-in viewer.
 		myOrder = pricing && myUserId ? await fetchMyOrder(event.id, activeInstance) : null;
+		// A cancelled occurrence can still owe registrants money (a refund that
+		// failed, or a buyer who paid in the moment before the cancel), so its
+		// organisers see what is left and can re-run the refunds. Read
+		// regardless of `pricing`: a price removed after people paid is still
+		// money owed. A failed read hides the panel rather than the page.
+		try {
+			occurrenceRefunds = isEventOrganiser
+				? await fetchCancelledOccurrenceRefunds(
+						event.id,
+						exceptions.map((e) => e.instance_start)
+					)
+				: [];
+		} catch (e) {
+			console.error('cancelled occurrence refunds read failed:', e);
+			occurrenceRefunds = [];
+		}
 		// Bib-result claims (persona #43): the viewer's own claim state for
 		// the pending-row affordance, and the organiser's adjudication queue.
 		myClaims = myUserId
@@ -1407,15 +1437,51 @@
 		if (!event || !activeInstance || busy) return;
 		busy = true;
 		try {
-			await cancelEventInstance(event.id, activeInstance, cancelReason || null);
+			const { refunds } = await cancelEventInstance(event.id, activeInstance, cancelReason || null);
 			cancelReason = '';
 			showCancelInstance = false;
+			if (refunds) reportOccurrenceRefunds(refunds);
 			await load();
 		} catch (e: unknown) {
-			error = e instanceof Error ? e.message : m('clubEvent.cancelOccurrenceFailed');
+			error = occurrenceCancelError(e);
 		} finally {
 			busy = false;
 		}
+	}
+
+	/// Re-run the refunds of an occurrence that is already cancelled. The same
+	/// request as the cancel: it resumes whatever is still owed.
+	async function retryOccurrenceRefunds(instanceStart: string) {
+		if (!event || retryingRefundsFor) return;
+		retryingRefundsFor = instanceStart;
+		try {
+			reportOccurrenceRefunds(await cancelPaidEventInstance(event.id, instanceStart, null));
+			await load();
+		} catch (e: unknown) {
+			showToast(occurrenceCancelError(e), 'error');
+		} finally {
+			retryingRefundsFor = null;
+		}
+	}
+
+	/// A failed refund is an error toast, never folded into the success one.
+	function reportOccurrenceRefunds(refunds: OccurrenceRefundSummary) {
+		if (refunds.outcome === 'incomplete') {
+			showToast(m('clubEvent.occurrenceRefundsIncomplete', { n: refunds.failed }), 'error');
+			return;
+		}
+		const refunded = refunds.initiated + refunds.already_refunded;
+		if (refunded > 0) {
+			showToast(m('clubEvent.occurrenceRefundsStarted', { n: refunded }), 'success');
+		}
+	}
+
+	function occurrenceCancelError(e: unknown): string {
+		const code = e instanceof Error ? e.message : '';
+		if (code === 'stripe_not_configured') return m('clubEvent.occurrenceCancelNotConfigured');
+		if (code === 'not_event_organiser') return m('clubEvent.occurrenceCancelNotOrganiser');
+		console.error('occurrence cancel failed:', e);
+		return m('clubEvent.cancelOccurrenceFailed');
 	}
 
 	async function reinstateInstance(instanceIso: string | null = activeInstance) {
@@ -1970,6 +2036,51 @@
 							: m('clubEvent.showAllUpcoming', { n: liveInstances.length })}
 					</button>
 				{/if}
+			</section>
+		{/if}
+
+		{#if isEventOrganiser && occurrenceRefunds.length > 0}
+			<section class="cancelled-list" data-testid="occurrence-refunds">
+				<span class="label">{m('clubEvent.occurrenceRefundsTitle')}</span>
+				<ul>
+					{#each occurrenceRefunds as row (row.instanceStart)}
+						<li
+							class="occurrence-refunds"
+							class:owed={row.state.owed > 0}
+							role={row.state.owed > 0 ? 'alert' : 'status'}
+						>
+							<span class="cancelled-date">
+								{new Date(row.instanceStart).toLocaleDateString(activeFormatLocale(), {
+									weekday: 'short',
+									month: 'short',
+									day: 'numeric'
+								})}
+							</span>
+							{#if row.state.owed > 0}
+								<p>{m('clubEvent.occurrenceRefundsOwed', { n: row.state.owed })}</p>
+							{/if}
+							{#if row.state.inFlight > 0}
+								<p>{m('clubEvent.occurrenceRefundsInFlight', { n: row.state.inFlight })}</p>
+							{/if}
+							{#if row.state.returned > 0}
+								<p>{m('clubEvent.occurrenceRefundsReturned', { n: row.state.returned })}</p>
+							{/if}
+							{#if row.state.owed > 0}
+								<button
+									type="button"
+									class="btn btn-primary btn-sm"
+									onclick={() => retryOccurrenceRefunds(row.instanceStart)}
+									disabled={retryingRefundsFor !== null}
+									data-testid="occurrence-refunds-retry"
+								>
+									{retryingRefundsFor === row.instanceStart
+										? m('clubEvent.occurrenceRefundsRetrying')
+										: m('clubEvent.occurrenceRefundsRetry')}
+								</button>
+							{/if}
+						</li>
+					{/each}
+				</ul>
 			</section>
 		{/if}
 
@@ -2564,6 +2675,9 @@
 		<p>
 			{m('clubEvent.cancelInstanceBody')}
 		</p>
+		{#if pricing}
+			<p data-testid="cancel-instance-refund-note">{m('clubEvent.cancelInstancePaidBody')}</p>
+		{/if}
 		<label>
 			<span>{m('clubEvent.reasonOptional')}</span>
 			<textarea
@@ -2914,6 +3028,22 @@
 		border-radius: var(--radius-md);
 		background: var(--color-bg-secondary);
 		margin-bottom: 0.6rem;
+	}
+	.cancelled-list li.occurrence-refunds {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.3rem;
+		padding: 0.6rem 0.75rem;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		background: var(--color-bg-secondary);
+	}
+	.cancelled-list li.occurrence-refunds.owed {
+		border-color: var(--color-warning);
+		background: var(--color-warning-light);
+	}
+	.occurrence-refunds p {
+		margin: 0;
 	}
 	.cancelled-banner .cancel-reason {
 		display: block;

@@ -135,9 +135,11 @@ Purchase, web checkout after live Stripe activation and the tax decision
 (#1081 S6.x). A Pro bought in the app unlocks web in every state — the
 tier is the account's `subscription_tier`, written by the RevenueCat
 webhook whichever store sold it — so a Pro user sees "Active" and gets the
-Pro Coach caps on web regardless. `/app-capabilities.json` is unaffected
-(it publishes the perk flags, not the web checkout), so mobile sells Pro
-in `app_only` exactly as in `checkout`.
+Pro Coach caps on web regardless. `/app-capabilities.json` publishes
+`web_checkout` from the same `webCheckoutAvailable()` gate, so a mobile
+build knows whether the web page can take the payment (see "Mobile
+mirrors the same gate" below); the perk flags are unchanged, so iOS with
+the store key sells Pro in `app_only` exactly as in `checkout`.
 
 **Terms and Privacy sit beside the purchase** (App Store Guideline 3.1.2:
 an auto-renewing subscription must link functional Terms of Use and
@@ -153,16 +155,26 @@ they also sit beside Restore Purchases. Pinned by
 A Flutter binary has no server-rendered env, so the web build publishes
 the two flags it already reads as a prerendered manifest at
 **`/app-capabilities.json`** (`apps/web/src/routes/app-capabilities.json/+server.ts`,
-body `{coach, route_gen}`, derived from the *same* `coachEnabled()` /
-`routeGenEnabled()` gates — there is no second flag to keep in sync).
+body `{coach, route_gen, web_checkout}`, derived from the *same*
+`coachEnabled()` / `routeGenEnabled()` / `webCheckoutAvailable()` gates —
+there is no second flag to keep in sync).
 `apps/mobile_android/lib/pro_sellable.dart` (twin-mirrored) fetches it
 from `WEB_BASE_URL` — the origin the app already calls for `/api/coach`
 — and `SettingsProScreen` swaps the "Subscribe to Pro" tile for the
-`proComingSoonTitle` / `proComingSoon` teaser when `ProPerks.sellable`
-is false, exactly as web swaps in `upgrade.proComingSoon`.
+`proComingSoonTitle` / `proComingSoon` teaser unless
+`proPurchasable(perks, storeConfigured:, webLinksAllowed:)` holds: a perk
+must be live (`ProPerks.sellable`, exactly as web swaps in
+`upgrade.proComingSoon`) **and** there must be somewhere to pay — the
+RevenueCat store SDK, or, where the platform may link out to pay
+(`webPaymentLinksAllowed()`, never on iOS per § 1700), a web checkout the
+deploy actually has (`ProPerks.webCheckout`). Without that last condition
+an Android build with no `MOBILE_REVENUECAT_API_KEY_ANDROID` sent buyers to
+a web page that, in the `app_only` storefront, can only point at the
+iPhone app ([decisions.md § 1826](../architecture/decisions.md)).
 **Fail-closed:** an unreachable host, a timeout, a non-200, a malformed
 body, a missing field, and a truthy-but-not-boolean field all resolve to
-`ProPerks.none`, and the state is unknown-therefore-not-sellable until
+`ProPerks.none` (and a missing or non-boolean `web_checkout` alone to
+"no web checkout"), and the state is unknown-therefore-not-sellable until
 the manifest lands — a client that can't establish a perk is live never
 takes a payment. `_startProCheckout` carries the same gate so no caller
 can route around the hidden tile. **Restore purchases** and **Manage

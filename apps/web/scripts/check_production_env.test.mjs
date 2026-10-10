@@ -139,7 +139,7 @@ test('reports every missing required var together', () => {
 	// should surface ALL the required keys at once rather than fail
 	// after the first one, so the operator gets a single readable list
 	// instead of N edit-rerun cycles. (RevenueCat checkout is absent
-	// here: with both Pro perk flags off it isn't required.)
+	// here: an unset link is never a finding, decisions § 1826.)
 	const r = checkProductionEnv({});
 	assert.equal(r.ok, false);
 	assert.equal(r.findings.length, 3);
@@ -150,8 +150,7 @@ test('reports every missing required var together', () => {
 		'PUBLIC_SUPABASE_URL',
 	]);
 	const withProFlag = checkProductionEnv({ PUBLIC_COACH_ENABLED: 'true' });
-	assert.equal(withProFlag.findings.length, 4);
-	assert.ok(withProFlag.findings.some((f) => f.envVar === 'PUBLIC_REVENUECAT_WEB_CHECKOUT_URL'));
+	assert.equal(withProFlag.findings.length, 3);
 });
 
 test('rejects an empty PUBLIC_MAPTILER_KEY', () => {
@@ -169,42 +168,102 @@ test('rejects an empty PUBLIC_MAPTILER_KEY', () => {
 	assert.equal(r.findings[0].envVar, 'PUBLIC_MAPTILER_KEY');
 });
 
-test('rejects an empty PUBLIC_REVENUECAT_WEB_CHECKOUT_URL when a Pro perk flag is on', () => {
-	// `/settings/upgrade` redirects to this hosted-checkout link; with a
-	// Pro perk advertised (coach or route-gen flag truthy) an empty value
-	// disables the purchase flow silently (the CTA degrades to a "not
-	// configured" toast). Fail the build. Both flags trigger it.
+const RELEASE_BASE = {
+	PUBLIC_SUPABASE_URL: 'https://prod-project.supabase.co',
+	PUBLIC_SUPABASE_ANON_KEY: 'sb_publishable_real_key_12345',
+	PUBLIC_MAPTILER_KEY: 'real-maptiler-key',
+};
+
+test('passes an empty PUBLIC_REVENUECAT_WEB_CHECKOUT_URL with a Pro perk flag on, as the app-only storefront, with a notice', () => {
+	// Owner decision 2026-10-10 (decisions § 1826): Pro goes live through the
+	// iPhone app's In-App Purchase before web checkout exists. With the Coach
+	// on and no checkout link, /settings/upgrade renders the app-only
+	// storefront rather than a dead buy button, so this is a supported
+	// release config. It used to fail here, and failed web@1.11.1.
 	for (const flags of [
 		{ PUBLIC_COACH_ENABLED: 'true' },
 		{ PUBLIC_ROUTE_GEN_ENABLED: '1' },
 	]) {
 		const r = checkProductionEnv({
-			PUBLIC_SUPABASE_URL: 'https://prod-project.supabase.co',
-			PUBLIC_SUPABASE_ANON_KEY: 'sb_publishable_real_key_12345',
-			PUBLIC_MAPTILER_KEY: 'real-maptiler-key',
-			PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: '',
-			...flags,
-		});
-		assert.equal(r.ok, false, `expected reject with ${JSON.stringify(flags)}`);
-		assert.equal(r.findings[0].envVar, 'PUBLIC_REVENUECAT_WEB_CHECKOUT_URL');
-	}
-});
-
-test('allows an empty PUBLIC_REVENUECAT_WEB_CHECKOUT_URL when Pro is not sellable', () => {
-	// The rock-bottom tier (deployment_lean.md) deliberately ships with
-	// both Pro perk flags off — /settings/upgrade shows the "coming soon"
-	// teaser instead of selling, so an empty checkout link is the
-	// intended config and must not block the release.
-	for (const flags of [{}, { PUBLIC_COACH_ENABLED: 'false' }, { PUBLIC_ROUTE_GEN_ENABLED: '' }]) {
-		const r = checkProductionEnv({
-			PUBLIC_SUPABASE_URL: 'https://prod-project.supabase.co',
-			PUBLIC_SUPABASE_ANON_KEY: 'sb_publishable_real_key_12345',
-			PUBLIC_MAPTILER_KEY: 'real-maptiler-key',
+			...RELEASE_BASE,
 			PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: '',
 			...flags,
 		});
 		assert.equal(r.ok, true, `expected pass with ${JSON.stringify(flags)}`);
+		assert.equal(r.notices.length, 1);
+		assert.match(r.notices[0], /Web checkout is off/);
+		assert.match(r.notices[0], /iPhone app/);
 	}
+});
+
+test('allows an empty PUBLIC_REVENUECAT_WEB_CHECKOUT_URL when Pro is not sellable, without a notice', () => {
+	// The rock-bottom tier (deployment_lean.md) deliberately ships with
+	// both Pro perk flags off — /settings/upgrade shows the "coming soon"
+	// teaser, and there is no checkout to be missing.
+	for (const flags of [{}, { PUBLIC_COACH_ENABLED: 'false' }, { PUBLIC_ROUTE_GEN_ENABLED: '' }]) {
+		const r = checkProductionEnv({
+			...RELEASE_BASE,
+			PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: '',
+			...flags,
+		});
+		assert.equal(r.ok, true, `expected pass with ${JSON.stringify(flags)}`);
+		assert.deepEqual(r.notices, []);
+	}
+});
+
+test('a set PUBLIC_REVENUECAT_WEB_CHECKOUT_URL produces no notice', () => {
+	const r = checkProductionEnv({
+		...RELEASE_BASE,
+		PUBLIC_COACH_ENABLED: 'true',
+		PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: 'https://pay.rev.cat/abc123',
+	});
+	assert.equal(r.ok, true);
+	assert.deepEqual(r.notices, []);
+});
+
+test('rejects a set PUBLIC_REVENUECAT_WEB_CHECKOUT_URL that is not a Web Purchase Link, perk flags or not', () => {
+	// Unset is a decision; a malformed value is a mistake. The page would
+	// hide the buy button for any of these (same checkoutBaseProblem test),
+	// so shipping one means believing web checkout is live when it is not.
+	for (const bad of [
+		'TODO',
+		'abc123',
+		'http://pay.rev.cat/abc123',
+		'https://pay.rev.cat',
+		'https://pay.rev.cat/placeholder',
+		'https://checkout.stripe.com/c/pay/abc123',
+		'https://pay.rev.cat.evil.example/abc123',
+	]) {
+		for (const flags of [{}, { PUBLIC_COACH_ENABLED: 'true' }]) {
+			const r = checkProductionEnv({
+				...RELEASE_BASE,
+				PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: bad,
+				...flags,
+			});
+			assert.equal(r.ok, false, `expected reject for ${JSON.stringify(bad)} with ${JSON.stringify(flags)}`);
+			assert.equal(r.findings.length, 1);
+			assert.equal(r.findings[0].envVar, 'PUBLIC_REVENUECAT_WEB_CHECKOUT_URL');
+		}
+	}
+});
+
+test('CLI prints a ::notice:: for the app-only storefront and exits 0', () => {
+	const r = runScript({
+		...RELEASE_BASE,
+		PUBLIC_COACH_ENABLED: 'true',
+	});
+	assert.equal(r.status, 0, r.stderr);
+	assert.match(r.stdout, /^::notice title=check-production-env::Web checkout is off/m);
+});
+
+test('CLI exits 1 on a placeholder checkout link and no longer lists it as a required secret', () => {
+	const r = runScript({
+		...RELEASE_BASE,
+		PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: 'https://pay.rev.cat/placeholder',
+	});
+	assert.equal(r.status, 1);
+	assert.match(r.stderr, /PUBLIC_REVENUECAT_WEB_CHECKOUT_URL = https:\/\/pay\.rev\.cat\/placeholder/);
+	assert.doesNotMatch(r.stderr, /^ {2}- PUBLIC_REVENUECAT_WEB_CHECKOUT_URL$/m);
 });
 
 test('does NOT enforce PUBLIC_REVENUECAT_WEB_PORTAL_URL (management portal is optional)', () => {

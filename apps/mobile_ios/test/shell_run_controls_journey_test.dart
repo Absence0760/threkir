@@ -37,6 +37,7 @@ import '../lib/screens/run_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import 'pump_until.dart';
+import 'store_write_watch.dart';
 
 class _FakeGeolocatorPlatform extends GeolocatorPlatform {
   StreamController<Position>? _positions;
@@ -339,11 +340,17 @@ void main() {
   Future<void> holdDockedStop(WidgetTester tester) => holdStop(tester,
       reason: 'on the Run page mid-run the centre button is the Stop');
 
+  // The shell hydrates and syncs its stores in the background, so a write
+  // can still be open at the end of a journey, and teardown deletes the
+  // temp directories it writes into. Wait it out on both sides of the
+  // unmount: dispose can queue one too.
   Future<void> unmount(WidgetTester tester) async {
+    await pumpUntilStoreWritesSettle(tester);
     await tester.pumpWidget(const SizedBox());
     for (var i = 0; i < 4; i++) {
       await tester.pump(const Duration(milliseconds: 50));
     }
+    await pumpUntilStoreWritesSettle(tester);
     tester.takeException();
   }
 
@@ -554,7 +561,8 @@ void main() {
 
       await tester.tap(dialogAction('Resume'));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 50));
+      // Past the dialog's exit transition (150 ms), on the fake clock.
+      await tester.pump(const Duration(milliseconds: 300));
       tester.takeException();
       expect(find.text('Resume your run?'), findsNothing);
       await pumpUntil(tester, () => runRecordingActive.value,
@@ -601,7 +609,9 @@ void main() {
       await pumpUntil(
           tester, () => !File('${dir.path}/in_progress.json').existsSync(),
           describe: 'Discard to drop the checkpoint');
-      await tester.pump();
+      // pumpUntil never advances the fake clock; the dialog's exit
+      // transition (150 ms) needs it.
+      await tester.pump(const Duration(milliseconds: 300));
       tester.takeException();
 
       expect(find.text('Resume your run?'), findsNothing);

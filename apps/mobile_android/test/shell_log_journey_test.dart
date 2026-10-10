@@ -274,10 +274,11 @@ void main() {
     await tester.tap(find.text('Save workout'));
     await pumpUntil(tester, () => written,
         describe: "the composer's workout to land on disk");
-    await pumpUntil(
-        tester, () => !tester.any(find.byType(GymComposeSheet)),
-        describe: 'the composer to close after its save');
+    // The pop is microtasks behind the write, but the sheet's exit
+    // animation runs on the fake clock, which pumpUntil never advances.
     await settle(tester);
+    expect(find.byType(GymComposeSheet), findsNothing,
+        reason: 'the composer closes after its save');
   }
 
   /// Nutrition's own add, the manual entry, Add. Returns once the store has
@@ -305,10 +306,11 @@ void main() {
     await tester.tap(addButton);
     await pumpUntil(tester, () => written,
         describe: "the meal's row and index to land on disk");
-    await pumpUntil(
-        tester, () => !tester.any(find.byType(NutritionLogSheet)),
-        describe: 'the composer to close after its save');
+    // The pop is microtasks behind the write, but the sheet's exit
+    // animation runs on the fake clock, which pumpUntil never advances.
     await settle(tester);
+    expect(find.byType(NutritionLogSheet), findsNothing,
+        reason: 'the composer closes after its save');
   }
 
   Future<void> unmount(WidgetTester tester) async {

@@ -42,6 +42,7 @@ import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/run_list_tile.dart';
 import 'pump_until.dart';
+import 'store_write_watch.dart';
 
 class _FakeGeolocatorPlatform extends GeolocatorPlatform {
   StreamController<Position>? _positions;
@@ -380,11 +381,17 @@ void main() {
     ),
   );
 
+  // The shell hydrates and syncs its stores in the background, so a write
+  // can still be open at the end of a journey, and teardown deletes the
+  // temp directories it writes into. Wait it out on both sides of the
+  // unmount: dispose can queue one too.
   Future<void> unmount(WidgetTester tester) async {
+    await pumpUntilStoreWritesSettle(tester);
     await tester.pumpWidget(const SizedBox());
     for (var i = 0; i < 4; i++) {
       await tester.pump(const Duration(milliseconds: 50));
     }
+    await pumpUntilStoreWritesSettle(tester);
     tester.takeException();
   }
 

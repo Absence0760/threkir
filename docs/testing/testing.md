@@ -368,6 +368,10 @@ Every optimistic handler in the app sets local state and *then* awaits the netwo
 
 Read the row before navigating away: `await expect.poll(readStarredFlag).toBe(true)` between the click and the reload. The same rule covers any one-shot DOM read of a settling layout — `boundingBox()` is not a web-first assertion, so `dashboard/page.spec.ts`'s 44 px tap-target check polls it rather than snapshotting it once.
 
+### 10. Return to a list the way a user does, not with `page.goto`
+
+`/runs`, `/history`, `/plans` and `/routes` restore their list from a SvelteKit snapshot when a detail page's back link pops history, and that restore skips the fetch. A spec that creates something and then re-enters the list with `page.goto` mounts a fresh page and fetches, so it can never see a restore that brought back the pre-write list — every create spec did exactly that while "All runs" returned a list without the run just added ([decisions § 1822](../architecture/decisions.md)). When the journey under test is create → detail → back, click the detail page's back link. `runs/add-consecutive-runs-journey`, `plans/create-back-to-list-journey`, `history/log-run-back-to-timeline-journey` and `cross-cutting/click-through-session-journey` are the reference shape.
+
 ---
 
 ## How to add a new test

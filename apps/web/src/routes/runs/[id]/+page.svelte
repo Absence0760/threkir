@@ -98,7 +98,7 @@
 		recordedDistanceM,
 	} from '$lib/runs/distance_recompute';
 	import { supabase } from '$lib/core/supabase';
-	import { TABLES, METADATA_KEYS } from '$lib/core/schema';
+	import { METADATA_KEYS } from '$lib/core/schema';
 	import { m } from '$lib/i18n/store.svelte';
 	import { activityTypeIcon, activityUsesSpeed } from '$lib/runs/activity_type';
 	import { activityTypeLabel } from '$lib/runs/activity_type.svelte';
@@ -599,32 +599,23 @@
 		if (!run || savingEdit) return;
 		savingEdit = true;
 		try {
-			// title/notes go through updateRunMetadata's normalised patch.
-			// is_dnf is a real `runs.is_dnf` column (20261207_001), so when it
-			// changed apply the title/notes patch plus the column in a single
-			// round-trip. Setting it true excludes the run from personal-records
-			// scoring; the PR trigger drops it on the next refresh.
-			if (editIsDnf !== isDnf) {
-				const nextMeta = applyRunMetadataPatch(
+			// title/notes go through updateRunMetadata's normalised patch;
+			// is_dnf rides the same write only when the checkbox changed it.
+			const dnfChanged = editIsDnf !== isDnf;
+			await updateRunMetadata(
+				run.id,
+				{ title: editTitle, notes: editNotes },
+				dnfChanged ? editIsDnf : undefined,
+			);
+			run = {
+				...run,
+				metadata: applyRunMetadataPatch(
 					run.metadata,
 					{ title: editTitle, notes: editNotes },
 					new Date().toISOString(),
-				);
-				const { error } = await supabase
-					.from(TABLES.runs)
-					.update({ metadata: nextMeta, is_dnf: editIsDnf })
-					.eq('id', run.id);
-				if (error) throw error;
-				run = { ...run, metadata: nextMeta, is_dnf: editIsDnf } as Run;
-			} else {
-				await updateRunMetadata(run.id, { title: editTitle, notes: editNotes });
-				const metadata = {
-					...(run.metadata ?? {}),
-					[METADATA_KEYS.title]: editTitle,
-					[METADATA_KEYS.notes]: editNotes,
-				};
-				run = { ...run, metadata } as Run;
-			}
+				),
+				...(dnfChanged ? { is_dnf: editIsDnf } : {}),
+			} as Run;
 			editing = false;
 		} catch (e) {
 			showToast(m('runDetail.saveFailed', { error: String(e) }), 'error');

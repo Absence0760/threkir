@@ -12,6 +12,7 @@ import { SELECT_SEPARATOR, type Join } from './database';
 import type { Insertable, Updatable } from './database';
 import type { JsonObject, TrackPoint } from '../types';
 import { isEntityId } from './entity_id';
+import { markListsStale } from './list_freshness';
 import { probeSaysConfigured } from './provider_probe';
 import { loadSettings, effective } from '../settings/settings';
 import type { Modality } from '../settings/modality_visibility';
@@ -897,6 +898,7 @@ export async function fetchRoutesIntersectingTrack(
 /// /runs/[id] and by any future "save as route" flow that wants
 /// to back-link the run to its source.
 export async function linkRunToRoute(runId: string, routeId: string): Promise<void> {
+	markListsStale('runs', 'history', 'routes');
 	const { error } = await supabase.from(TABLES.runs).update({ route_id: routeId }).eq('id', runId);
 	if (error) throw error;
 }
@@ -1142,6 +1144,7 @@ export async function deleteRun(id: string): Promise<void> {
 			}
 		}
 	}
+	markListsStale('runs', 'history', 'routes');
 	const { error } = await supabase.from(TABLES.runs).delete().eq('id', id);
 	if (error) throw error;
 }
@@ -1165,6 +1168,7 @@ export async function deleteRuns(ids: string[]): Promise<{ failed: string[] }> {
 /// flow assumed. RLS guards ownership; the caller should still gate
 /// the UI so non-owners never see the control.
 export async function setRoutePublic(id: string, isPublic: boolean): Promise<void> {
+	markListsStale('routes');
 	const { error } = await supabase
 		.from('routes')
 		.update({ is_public: isPublic })
@@ -1179,6 +1183,7 @@ export async function setRoutePublic(id: string, isPublic: boolean): Promise<voi
 /// page. RLS guards ownership; the caller should still gate the UI
 /// so non-owners never see the control.
 export async function setRunPublic(id: string, isPublic: boolean): Promise<void> {
+	markListsStale('runs', 'history', 'routes');
 	const { error } = await supabase
 		.from(TABLES.runs)
 		.update({ is_public: isPublic })
@@ -1293,6 +1298,7 @@ export async function saveRunAsRoute(
 	const userId = authUser.user?.id;
 	if (!userId) throw new Error('Not authenticated');
 
+	markListsStale('runs', 'history', 'routes');
 	const { data, error } = await supabase
 		.from('routes')
 		.insert({
@@ -1366,6 +1372,7 @@ export async function createManualRun(input: {
 	};
 	if (input.notes && input.notes.trim()) metadata[METADATA_KEYS.notes] = input.notes.trim();
 
+	markListsStale('runs', 'history', 'routes');
 	const { data, error } = await supabase
 		.from(TABLES.runs)
 		.insert({
@@ -1461,6 +1468,7 @@ export async function saveRun(input: {
 	if (input.embedded_bests) Object.assign(row, input.embedded_bests);
 	if (input.external_id) row.external_id = input.external_id;
 
+	markListsStale('runs', 'history', 'routes');
 	const { data, error } = await supabase
 		.from(TABLES.runs)
 		.insert(row)
@@ -1586,9 +1594,13 @@ async function gzipBytes(data: Uint8Array): Promise<Uint8Array> {
 	return out;
 }
 
+/// `isDnf` rides the same round-trip when the edit dialog changed it:
+/// `runs.is_dnf` is a real column (20261207_001), not a metadata key, and
+/// setting it true drops the run from personal-records scoring.
 export async function updateRunMetadata(
 	id: string,
 	fields: { title?: string; notes?: string },
+	isDnf?: boolean,
 ): Promise<void> {
 	const { data: run } = await supabase
 		.from(TABLES.runs)
@@ -1606,9 +1618,10 @@ export async function updateRunMetadata(
 		fields,
 		new Date().toISOString(),
 	);
+	markListsStale('runs', 'history', 'routes');
 	const { error } = await supabase
 		.from(TABLES.runs)
-		.update({ metadata: next })
+		.update(isDnf === undefined ? { metadata: next } : { metadata: next, is_dnf: isDnf })
 		.eq('id', id);
 	if (error) throw error;
 }
@@ -1747,6 +1760,7 @@ export async function fetchPopularRouteTags(limit = 20): Promise<string[]> {
 }
 
 export async function updateRouteTags(routeId: string, tags: string[]): Promise<void> {
+	markListsStale('routes');
 	const { error } = await supabase
 		.from('routes')
 		.update({ tags, updated_at: new Date().toISOString() })
@@ -1759,6 +1773,7 @@ export async function updateRouteTags(routeId: string, tags: string[]): Promise<
 /// runner's training rotation on a 1.4-inch picker that can't show
 /// 30+ entries comfortably.
 export async function setRouteStar(routeId: string, starred: boolean): Promise<void> {
+	markListsStale('routes');
 	const { error } = await supabase
 		.from('routes')
 		.update({ is_starred: starred, updated_at: new Date().toISOString() })
@@ -1957,6 +1972,7 @@ export async function unbookmarkRoute(routeId: string): Promise<void> {
 /// back out (`clubId = null`). Server-side RLS enforces that only
 /// admins of the target club may set `club_id`.
 export async function setRouteClubId(routeId: string, clubId: string | null): Promise<void> {
+	markListsStale('routes');
 	const { error } = await supabase
 		.from('routes')
 		.update({ club_id: clubId, updated_at: new Date().toISOString() })
@@ -2079,6 +2095,7 @@ export async function saveRoute(route: {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not authenticated');
 
+	markListsStale('routes');
 	const { data, error } = await supabase
 		.from('routes')
 		.insert({
@@ -2131,6 +2148,7 @@ export async function deleteRoute(id: string): Promise<void> {
 			}
 		}
 	}
+	markListsStale('routes');
 	const { error } = await supabase.from('routes').delete().eq('id', id);
 	if (error) throw error;
 }
@@ -2569,6 +2587,7 @@ export interface ImportRaceResultOutcome {
 export async function importRaceResult(
 	input: ImportRaceResultInput
 ): Promise<ImportRaceResultOutcome> {
+	markListsStale('runs', 'history', 'routes');
 	const { data, error } = await supabase.functions.invoke('race-results-import', {
 		body: {
 			provider: input.provider,
@@ -4246,6 +4265,7 @@ export async function submitEventResult(params: {
 		{ onConflict: 'event_id,instance_start,user_id' }
 	);
 	if (error) throw error;
+	markListsStale('runs', 'history', 'routes');
 	// Best-effort back-link so the run-detail page can show "ran at {event}".
 	if (params.runId) {
 		await supabase
@@ -4852,6 +4872,7 @@ export async function clonePlanTemplate(
 	templateId: string,
 	newStartDate: string
 ): Promise<string> {
+	markListsStale('plans');
 	const { data, error } = await supabase.rpc('clone_plan_template', {
 		template_id: templateId,
 		new_start_date: newStartDate,
@@ -4890,6 +4911,7 @@ export async function setPlanIsTemplate(
 		// policy and the update 403'd — the Unpublish button never worked.
 		patch.club_id = null;
 	}
+	markListsStale('plans');
 	const { error } = await supabase.from('training_plans').update(patch).eq('id', planId);
 	if (error) throw error;
 }
@@ -4941,6 +4963,7 @@ export async function clonePublicPlan(
 	templateId: string,
 	newStartDate: string
 ): Promise<string> {
+	markListsStale('plans');
 	const { data, error } = await supabase.rpc('clone_public_plan', {
 		template_id: templateId,
 		new_start_date: newStartDate,
@@ -4970,6 +4993,7 @@ export async function publishPlanToLibrary(sourcePlanId: string): Promise<string
 	}
 	const src = source.plan;
 
+	markListsStale('plans');
 	const { data: tmpl, error: planErr } = await supabase
 		.from('training_plans')
 		.insert({
@@ -5020,6 +5044,7 @@ export async function publishPlanToLibrary(sourcePlanId: string): Promise<string
 /// Unpublish a public-library template the viewer owns — deletes the
 /// published copy (weeks + workouts cascade). Owner-only via RLS.
 export async function unpublishFromLibrary(templateId: string): Promise<void> {
+	markListsStale('plans');
 	const { error } = await supabase
 		.from('training_plans')
 		.delete()
@@ -5068,6 +5093,7 @@ export async function publishPlanAsTemplate(
 	}
 	const src = source.plan;
 
+	markListsStale('plans');
 	// vdot, current_5k_seconds and notes are the publisher's private
 	// fields — fitness proxies and their own free text (training
 	// constraints, injury history). They aren't template-design values;
@@ -5256,6 +5282,7 @@ export async function createTrainingPlan(input: {
 		}
 	}
 
+	markListsStale('plans');
 	// Auto-complete any existing active plan so the partial unique index
 	// (one-active-per-user) doesn't reject the insert.
 	await supabase
@@ -5328,6 +5355,7 @@ export async function updatePlanStatus(
 	id: string,
 	status: PlanStatus
 ): Promise<void> {
+	markListsStale('plans');
 	const { error } = await supabase
 		.from('training_plans')
 		.update({ status })
@@ -5336,6 +5364,7 @@ export async function updatePlanStatus(
 }
 
 export async function deletePlan(id: string): Promise<void> {
+	markListsStale('plans');
 	const { error } = await supabase.from('training_plans').delete().eq('id', id);
 	if (error) throw error;
 }
@@ -5621,6 +5650,7 @@ export async function updatePlanMeta(
 		end_date: string;
 	}>
 ): Promise<void> {
+	markListsStale('plans');
 	const { error } = await supabase.from('training_plans').update(patch).eq('id', id);
 	if (error) throw error;
 }
@@ -10089,6 +10119,7 @@ export async function createGymWorkout(input: {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not signed in');
 	const nowIso = new Date().toISOString();
+	markListsStale('history');
 	const { data, error } = await supabase
 		.from(TABLES.gym_workouts)
 		.insert({
@@ -10121,6 +10152,7 @@ export async function updateGymWorkout(
 	>,
 	sets?: GymSetInput[],
 ): Promise<void> {
+	markListsStale('history');
 	const { error } = await supabase
 		.from(TABLES.gym_workouts)
 		.update({ ...patch, last_modified_at: new Date().toISOString() })
@@ -10134,6 +10166,7 @@ export async function updateGymWorkout(
 /// UI so non-owners never see the control. Stamps `last_modified_at` so the
 /// offline newer-wins reconciliation on mobile picks the change up.
 export async function setGymWorkoutPublic(id: string, isPublic: boolean): Promise<void> {
+	markListsStale('history');
 	const { error } = await supabase
 		.from(TABLES.gym_workouts)
 		.update({ is_public: isPublic, last_modified_at: new Date().toISOString() })
@@ -10143,6 +10176,7 @@ export async function setGymWorkoutPublic(id: string, isPublic: boolean): Promis
 
 /// Deletes the workout; gym_sets cascade via the FK (migration 20261204_001).
 export async function deleteGymWorkout(id: string): Promise<void> {
+	markListsStale('history');
 	const { error } = await supabase.from(TABLES.gym_workouts).delete().eq('id', id);
 	if (error) throw error;
 }
@@ -10583,6 +10617,7 @@ export async function createFoodEntry(input: FoodEntryInput): Promise<FoodEntry>
 		external_id: input.external_id ?? null,
 		last_modified_at: now,
 	};
+	markListsStale('history');
 	const { data, error } = await supabase
 		.from(TABLES.food_log)
 		.insert(row)
@@ -10596,6 +10631,7 @@ export async function updateFoodEntry(
 	id: string,
 	patch: Partial<FoodEntryInput>,
 ): Promise<void> {
+	markListsStale('history');
 	const { error } = await supabase
 		.from(TABLES.food_log)
 		.update({ ...patch, last_modified_at: new Date().toISOString() })
@@ -10604,6 +10640,7 @@ export async function updateFoodEntry(
 }
 
 export async function deleteFoodEntry(id: string): Promise<void> {
+	markListsStale('history');
 	const { error } = await supabase.from(TABLES.food_log).delete().eq('id', id);
 	if (error) throw error;
 }
@@ -10794,6 +10831,7 @@ export async function logMealTemplate(
 		external_id: it.externalId,
 		last_modified_at: nowIso,
 	}));
+	markListsStale('history');
 	const { error } = await supabase.from(TABLES.food_log).insert(rows);
 	if (error) throw error;
 	return rows.length;
@@ -10977,6 +11015,7 @@ export async function logRecipe(
 	if (!input) return 0;
 	const startedAt = opts.startedAt ?? new Date().toISOString();
 	const nowIso = new Date().toISOString();
+	markListsStale('history');
 	const { error } = await supabase.from(TABLES.food_log).insert({
 		user_id: userId,
 		item_name: input.itemName,

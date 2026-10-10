@@ -2,13 +2,14 @@ package com.runapp.watchwear.recording
 
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/// GPS distance estimator, spec v1.2 (forward filter) — the Wear OS port of
+/// GPS distance estimator, spec v1.3 (forward filter) — the Wear OS port of
 /// `scripts/gps_distance/reference.py`, which is the spec. Read
 /// `docs/features/gps_distance.md` before changing anything here: every port
 /// replays `fixtures/gps_distance_vectors.json` to 1e-3 m, so a change to one
@@ -49,6 +50,8 @@ class GpsDistanceEstimator(
         private set
     var dopplerTrusted = true
         private set
+    var dopplerScale = 1.0
+        private set
 
     private var lat0: Double? = null
     private var lng0: Double? = null
@@ -69,6 +72,15 @@ class GpsDistanceEstimator(
     private var xcLastX = 0.0
     private var xcLastY = 0.0
     private var xcLastT = 0.0
+    private var dsPos = 0.0
+    private var dsDop = 0.0
+    private var dsTime = 0.0
+    // (x, y, t, dop, bearing) of the last fix whose position the filter took.
+    private var dsLastX = 0.0
+    private var dsLastY = 0.0
+    private var dsLastT = 0.0
+    private var dsLastDop: Double? = null
+    private var dsLastBearing: Double? = null
     private var stepsSeen = false
     private var lastStepIncT = 0.0
     private var zuptReleased = false
@@ -80,6 +92,14 @@ class GpsDistanceEstimator(
     private fun zuptDue(t: Double, dop: Double?): Boolean {
         if (!stepsSeen || zuptReleased || t - lastStepIncT <= ZUPT_NO_STEP_S) return false
         return !(dop != null && dopplerTrusted && dop >= ZUPT_DOPPLER_OVERRIDE_MPS)
+    }
+
+    private fun setDsLast(x: Double, y: Double, t: Double, dop: Double?, bearing: Double?) {
+        dsLastX = x
+        dsLastY = y
+        dsLastT = t
+        dsLastDop = dop
+        dsLastBearing = bearing?.takeIf { it.isFinite() }
     }
 
     fun addFix(
@@ -116,6 +136,7 @@ class GpsDistanceEstimator(
             xcLastX = zx
             xcLastY = zy
             xcLastT = t
+            setDsLast(zx, zy, t, dop, bearingDeg)
             rejectStreak = 0
             zuptAnchorX = null
             return 0.0
@@ -154,6 +175,7 @@ class GpsDistanceEstimator(
                 xcLastX = zx
                 xcLastY = zy
                 xcLastT = t
+                setDsLast(zx, zy, t, dop, bearingDeg)
             }
         }
 
@@ -222,10 +244,37 @@ class GpsDistanceEstimator(
             xcLastX = zx
             xcLastY = zy
             xcLastT = t
+
+            // 4b. Doppler scale (v1.3): exponentially forgotten integrals of the
+            //     fixes' displacement along the span's mean Doppler bearing and of
+            //     the trapezoid Doppler distance over the same span.
+            val ldop = dsLastDop
+            val lb = dsLastBearing
+            val dsSpan = t - dsLastT
+            if (!zupt && dop != null && ldop != null && bearing != null && lb != null &&
+                dop >= DSCALE_MIN_SPEED_MPS && ldop >= DSCALE_MIN_SPEED_MPS && dsSpan <= XCHECK_MAX_SPAN_S
+            ) {
+                val turn = abs(bearing - lb) % 360.0
+                if (min(turn, 360.0 - turn) <= DSCALE_MAX_TURN_DEG) {
+                    val b0 = Math.toRadians(lb)
+                    val b1 = Math.toRadians(bearing)
+                    val ux = sin(b0) + sin(b1)
+                    val uy = cos(b0) + cos(b1)
+                    val n = hypot(ux, uy)
+                    val w = exp(-dsSpan / DSCALE_TAU_S)
+                    dsPos = w * dsPos + ((zx - dsLastX) * ux + (zy - dsLastY) * uy) / n
+                    dsDop = w * dsDop + 0.5 * (ldop + dop) * dsSpan
+                    dsTime += dsSpan
+                    if (dsTime >= DSCALE_MIN_S && dsDop > 0.0) {
+                        dopplerScale = min(max(dsPos / dsDop, DSCALE_MIN), DSCALE_MAX)
+                    }
+                }
+            }
+            setDsLast(zx, zy, t, dop, bearingDeg)
         }
 
         // 5. Doppler velocity update.
-        val useDop = if (dop != null && dopplerTrusted) dop else null
+        val useDop = if (dop != null && dopplerTrusted) dop * dopplerScale else null
         if (useDop != null && !zupt && bearing != null && useDop >= STATIONARY_SPEED_MPS) {
             val sv = max(doppler!!.second, MIN_SPEED_SIGMA_MPS)
             val rv = sv * sv
@@ -361,7 +410,7 @@ class GpsDistanceEstimator(
 
     companion object {
         const val SPEC_ID = "kalman_v1"
-        const val SPEC_VERSION = "1.2"
+        const val SPEC_VERSION = "1.3"
 
         private const val EARTH_RADIUS_M = 6371008.8
         private const val Q_ACCEL = 0.6
@@ -393,6 +442,12 @@ class GpsDistanceEstimator(
         private const val XCHECK_MAX_SPAN_S = 5.0
         private const val DEBIAS_FULL_MPS = 0.5
         private const val DEBIAS_ZERO_MPS = 1.0
+        private const val DSCALE_TAU_S = 600.0
+        private const val DSCALE_MIN_S = 60.0
+        private const val DSCALE_MIN = 0.8
+        private const val DSCALE_MAX = 1.25
+        private const val DSCALE_MIN_SPEED_MPS = 1.5
+        private const val DSCALE_MAX_TURN_DEG = 45.0
         private const val ZUPT_NO_STEP_S = 6.0
         private const val ZUPT_VEL_SIGMA_MPS = 0.1
         private const val ZUPT_DOPPLER_OVERRIDE_MPS = 1.0
@@ -454,6 +509,12 @@ class GpsDistanceEstimator(
             "XCHECK_MAX_SPAN_S" to XCHECK_MAX_SPAN_S,
             "DEBIAS_FULL_MPS" to DEBIAS_FULL_MPS,
             "DEBIAS_ZERO_MPS" to DEBIAS_ZERO_MPS,
+            "DSCALE_TAU_S" to DSCALE_TAU_S,
+            "DSCALE_MIN_S" to DSCALE_MIN_S,
+            "DSCALE_MIN" to DSCALE_MIN,
+            "DSCALE_MAX" to DSCALE_MAX,
+            "DSCALE_MIN_SPEED_MPS" to DSCALE_MIN_SPEED_MPS,
+            "DSCALE_MAX_TURN_DEG" to DSCALE_MAX_TURN_DEG,
             "ZUPT_NO_STEP_S" to ZUPT_NO_STEP_S,
             "ZUPT_VEL_SIGMA_MPS" to ZUPT_VEL_SIGMA_MPS,
             "ZUPT_DOPPLER_OVERRIDE_MPS" to ZUPT_DOPPLER_OVERRIDE_MPS,

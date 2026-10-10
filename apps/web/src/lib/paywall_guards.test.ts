@@ -131,7 +131,7 @@ test('/settings/upgrade gates the Get Pro CTA on a live perk (never sells a holl
 	assert.match(rgFlag, /PUBLIC_ROUTE_GEN_ENABLED/, 'route_gen_flag must read PUBLIC_ROUTE_GEN_ENABLED.');
 });
 
-test('/app-capabilities.json publishes the same two perk flags the storefront gates on', () => {
+test('/app-capabilities.json publishes the same perk flags and web-checkout gate the storefront reads', () => {
 	// Reason: the native clients have no server-rendered env, so they learn
 	// whether Pro is sellable by reading this prerendered manifest
 	// (decisions §466). It must derive from the SAME fail-closed gates the
@@ -154,6 +154,19 @@ test('/app-capabilities.json publishes the same two perk flags the storefront ga
 		manifest,
 		/coach: coachEnabled\(\)[\s\S]*?route_gen: routeGenEnabled\(\)/,
 		'the manifest body must publish both flags under the `coach` / `route_gen` keys the mobile parser reads.',
+	);
+	// decisions § 1826: mobile falls back to the web page only when the
+	// deploy can take a payment there, so `web_checkout` must come from the
+	// same fail-closed gate the web buy button renders under.
+	assert.match(
+		manifest,
+		/import \{ webCheckoutAvailable \} from '\$lib\/billing\/revenuecat'/,
+		'the capability manifest must derive `web_checkout` from the shared webCheckoutAvailable() gate.',
+	);
+	assert.match(
+		manifest,
+		/web_checkout: webCheckoutAvailable\(\)/,
+		'the manifest body must publish `web_checkout` under the key the mobile parser reads.',
 	);
 	assert.match(
 		manifest,

@@ -613,6 +613,12 @@ const NOT_A_GUARD = new Map([
 			+ 'guard is its suite, which workflow-lint runs against the committed project '
 			+ '(decisions § 1701)',
 	],
+	[
+		'scripts/rotate_apple_client_secret.mjs',
+		'a scheduled ops step, run monthly by rotate-apple-client-secret.yml against prod ' +
+			'with secrets CI does not hold; the guard is its suite, which workflow-lint runs ' +
+			'against a generated key and a stubbed Management API (decisions § 1824)',
+	],
 	['scripts/dev_run_graphhopper.mjs', 'a local dev tool'],
 	['scripts/dev_run_osrm.mjs', 'a local dev tool'],
 	['scripts/seed-run-tracks.mjs', 'a local dev seeding tool'],

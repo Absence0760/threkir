@@ -499,6 +499,11 @@ void main() {
       await holdStop(tester,
           reason: 'on the rail the run panel carries its own Stop');
       expect(runStore.runs, hasLength(1));
+      expect(shellPage(tester), 2, reason: 'stopping keeps you on Run');
+      expect(find.byType(ErrorWidget), findsNothing,
+          reason: 'nothing on the shell failed to build after the stop');
+      expect(find.byType(FinishedSummary), findsOneWidget,
+          reason: 'the Run page shows the finished summary');
       expect(find.text('Done'), findsOneWidget);
       expect(runRecordingActive.value, isFalse);
       expect(centreLabelled('Start a run'), findsOneWidget);

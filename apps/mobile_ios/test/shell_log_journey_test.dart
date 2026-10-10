@@ -249,6 +249,19 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
   }
 
+  /// The composer pops once its save returns, which is real-loop work behind
+  /// the store's notify (the write chain settles there), and then animates
+  /// out on the fake clock. pumpUntil turns only the first, so this turns
+  /// both until the sheet has gone. Bounded: 100 steps is 5 s of fake time.
+  Future<void> waitForSheetToClose(WidgetTester tester, Finder sheet) async {
+    for (var i = 0; i < 100 && tester.any(sheet); i++) {
+      await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 5)));
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(sheet, findsNothing, reason: 'the composer closes after its save');
+  }
+
   /// Gym's own add, the composer it opens, one exercise with one set, Save.
   /// Returns once the store has written the workout and the composer is gone.
   Future<void> logALift(WidgetTester tester, LocalGymStore gymStore) async {
@@ -274,11 +287,8 @@ void main() {
     await tester.tap(find.text('Save workout'));
     await pumpUntil(tester, () => written,
         describe: "the composer's workout to land on disk");
-    // The pop is microtasks behind the write, but the sheet's exit
-    // animation runs on the fake clock, which pumpUntil never advances.
+    await waitForSheetToClose(tester, find.byType(GymComposeSheet));
     await settle(tester);
-    expect(find.byType(GymComposeSheet), findsNothing,
-        reason: 'the composer closes after its save');
   }
 
   /// Nutrition's own add, the manual entry, Add. Returns once the store has
@@ -306,11 +316,8 @@ void main() {
     await tester.tap(addButton);
     await pumpUntil(tester, () => written,
         describe: "the meal's row and index to land on disk");
-    // The pop is microtasks behind the write, but the sheet's exit
-    // animation runs on the fake clock, which pumpUntil never advances.
+    await waitForSheetToClose(tester, find.byType(NutritionLogSheet));
     await settle(tester);
-    expect(find.byType(NutritionLogSheet), findsNothing,
-        reason: 'the composer closes after its save');
   }
 
   Future<void> unmount(WidgetTester tester) async {

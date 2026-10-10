@@ -18,7 +18,7 @@
 #               CI names the patch since decisions § 1214, so a bare major here
 #               would be a pin nothing compares — § 1216)
 #   rust      — apps/custom_watch/rust-toolchain.toml
-#   golang    — apps/*/go.mod
+#   golang    — apps/*/go.mod (each module's Dockerfile builder is held to it too)
 #   flutter   — each workflow's top-level env.FLUTTER_VERSION
 #   terraform — .github/workflows/terraform.yml
 #   deno      — each workflow's `denoland/setup-deno` step (exact, not a
@@ -30,7 +30,7 @@
 nodejs 24.20.0
 
 # rust 1.98.0
-# golang 1.26.6
+# golang 1.27.2
 # flutter 3.47.0
 # terraform 1.13.0
 # deno 2.9.6

@@ -12,9 +12,12 @@
 
 # Pinned by digest (in addition to tag) to satisfy OpenSSF Scorecard
 # PinnedDependenciesID — resolve a new digest with
-# `docker manifest inspect golang:<tag>` when bumping. Kept identical to
-# apps/job_worker/Dockerfile so both Go services share one base.
-FROM golang:1.26-alpine@sha256:3889b425f035be855a72fb4755265311293b6d414521f0a519d819df32222d83 AS build
+# `docker manifest inspect golang:<tag>` when bumping. The tag names the exact
+# patch, equal to go.mod's `go` directive — scripts/check_toolchain_pins.mjs
+# holds every Go module's builder to it, which is what keeps this identical to
+# apps/job_worker/Dockerfile (a comment saying so did not: this file sat on
+# 1.26 while that one moved to 1.27).
+FROM golang:1.27.2-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS build
 WORKDIR /src
 
 # Cache go.mod / go.sum first so dependency-only changes don't invalidate the

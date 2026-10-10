@@ -1,6 +1,6 @@
 import Foundation
 
-/// GPS distance estimator, spec v1.2 forward filter — the watchOS port of
+/// GPS distance estimator, spec v1.3 forward filter — the watchOS port of
 /// `scripts/gps_distance/reference.py`. See `docs/features/gps_distance.md`.
 /// The watch runs only the causal filter; the spec's smoother is ported where
 /// a whole run's saved figure is computed (phone, web, server).
@@ -39,11 +39,17 @@ final class GpsDistanceEstimator {
     static let xcheckMaxSpanS = 5.0
     static let debiasFullMps = 0.5
     static let debiasZeroMps = 1.0
+    static let dscaleTauS = 600.0
+    static let dscaleMinS = 60.0
+    static let dscaleMin = 0.8
+    static let dscaleMax = 1.25
+    static let dscaleMinSpeedMps = 1.5
+    static let dscaleMaxTurnDeg = 45.0
     static let zuptNoStepS = 6.0
     static let zuptVelSigmaMps = 0.1
     static let zuptDopplerOverrideMps = 1.0
     static let zuptReleaseM = 40.0
-    static let specVersion = "1.2"
+    static let specVersion = "1.3"
 
     /// Every constant by its reference name, so the vector test can hold each
     /// one to the fixture's `constants` block.
@@ -61,6 +67,8 @@ final class GpsDistanceEstimator {
         "XCHECK_EXIT_ABS_MPS": xcheckExitAbsMps, "XCHECK_EXIT_REL": xcheckExitRel,
         "XCHECK_PERSIST_S": xcheckPersistS, "XCHECK_MAX_SPAN_S": xcheckMaxSpanS,
         "DEBIAS_FULL_MPS": debiasFullMps, "DEBIAS_ZERO_MPS": debiasZeroMps,
+        "DSCALE_TAU_S": dscaleTauS, "DSCALE_MIN_S": dscaleMinS, "DSCALE_MIN": dscaleMin, "DSCALE_MAX": dscaleMax,
+        "DSCALE_MIN_SPEED_MPS": dscaleMinSpeedMps, "DSCALE_MAX_TURN_DEG": dscaleMaxTurnDeg,
         "ZUPT_NO_STEP_S": zuptNoStepS, "ZUPT_VEL_SIGMA_MPS": zuptVelSigmaMps,
         "ZUPT_DOPPLER_OVERRIDE_MPS": zuptDopplerOverrideMps, "ZUPT_RELEASE_M": zuptReleaseM,
     ]
@@ -137,6 +145,7 @@ final class GpsDistanceEstimator {
     private(set) var rejectedFixes = 0
     private(set) var zuptFixes = 0
     private(set) var dopplerTrusted = true
+    private(set) var dopplerScale: Double = 1
 
     private var lat0: Double?
     private var lng0: Double = 0
@@ -154,6 +163,11 @@ final class GpsDistanceEstimator {
     private var xcTime: Double = 0
     private var xcPersistS: Double = 0
     private var xcLast = (x: 0.0, y: 0.0, t: 0.0)
+    private var dsPos: Double = 0
+    private var dsDop: Double = 0
+    private var dsTime: Double = 0
+    /// The last fix whose position the filter took, with its Doppler speed and bearing.
+    private var dsLast: (x: Double, y: Double, t: Double, dop: Double?, bearing: Double?) = (0, 0, 0, nil, nil)
     private var stepsSeen = false
     private var lastStepIncT: Double = 0
     private var zuptReleased = false
@@ -253,6 +267,7 @@ final class GpsDistanceEstimator {
             y = Axis(p: zy, posVar: r)
             self.t = t
             xcLast = (zx, zy, t)
+            dsLast = (zx, zy, t, dop, bearingDeg.flatMap { $0.isFinite ? $0 : nil })
             rejectStreak = 0
             zuptAnchor = nil
             return 0
@@ -287,6 +302,7 @@ final class GpsDistanceEstimator {
                 ay.resetPos(zy, r)
                 rejectStreak = 0
                 xcLast = (zx, zy, t)
+                dsLast = (zx, zy, t, dop, bearingDeg.flatMap { $0.isFinite ? $0 : nil })
             }
         }
 
@@ -347,10 +363,35 @@ final class GpsDistanceEstimator {
                 }
             }
             xcLast = (zx, zy, t)
+
+            // 4b. Doppler scale (v1.3): exponentially forgotten integrals of the
+            //     fixes' displacement along the span's mean Doppler bearing and of
+            //     the trapezoid Doppler distance over the same span.
+            let dsSpan = t - dsLast.t
+            if !zupt, let dop, let ldop = dsLast.dop, let bearing, let lb = dsLast.bearing,
+               dop >= Self.dscaleMinSpeedMps, ldop >= Self.dscaleMinSpeedMps, dsSpan <= Self.xcheckMaxSpanS {
+                let turn = abs(bearing - lb).truncatingRemainder(dividingBy: 360.0)
+                if min(turn, 360.0 - turn) <= Self.dscaleMaxTurnDeg {
+                    let b0 = lb * Self.degToRad
+                    let b1 = bearing * Self.degToRad
+                    let ux = sin(b0) + sin(b1)
+                    let uy = cos(b0) + cos(b1)
+                    let n = hypot(ux, uy)
+                    let w = exp(-dsSpan / Self.dscaleTauS)
+                    dsPos = w * dsPos + ((zx - dsLast.x) * ux + (zy - dsLast.y) * uy) / n
+                    dsDop = w * dsDop + 0.5 * (ldop + dop) * dsSpan
+                    dsTime += dsSpan
+                    if dsTime >= Self.dscaleMinS, dsDop > 0 {
+                        dopplerScale = min(max(dsPos / dsDop, Self.dscaleMin), Self.dscaleMax)
+                    }
+                }
+            }
+            dsLast = (zx, zy, t, dop, bearing)
         }
 
         // 5. Doppler velocity update.
-        let useDop = dopplerTrusted ? doppler : nil
+        let scale = dopplerScale
+        let useDop = dopplerTrusted ? doppler.map { (s: $0.s * scale, sa: $0.sa) } : nil
         if let useDop, !zupt, let bearing, useDop.s >= Self.stationarySpeedMps {
             let flooredSa = max(useDop.sa, Self.minSpeedSigmaMps)
             let rv = flooredSa * flooredSa

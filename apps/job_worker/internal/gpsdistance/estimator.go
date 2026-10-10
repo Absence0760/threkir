@@ -1,5 +1,5 @@
 // Package gpsdistance is the Go port of the GPS distance estimator,
-// spec v1.2 (docs/features/gps_distance.md). The reference implementation
+// spec v1.3 (docs/features/gps_distance.md). The reference implementation
 // is scripts/gps_distance/reference.py and this file follows it
 // operation for operation; every port replays
 // fixtures/gps_distance_vectors.json to 1e-3 m, so a change here without
@@ -15,7 +15,7 @@ package gpsdistance
 import "math"
 
 // SpecVersion is the spec this port implements.
-const SpecVersion = "1.2"
+const SpecVersion = "1.3"
 
 const (
 	EarthRadiusM              = 6371008.8
@@ -52,6 +52,13 @@ const (
 
 	DebiasFullMps = 0.5
 	DebiasZeroMps = 1.0
+
+	DscaleTauS        = 600.0
+	DscaleMinS        = 60.0
+	DscaleMin         = 0.8
+	DscaleMax         = 1.25
+	DscaleMinSpeedMps = 1.5
+	DscaleMaxTurnDeg  = 45.0
 
 	ZuptNoStepS            = 6.0
 	ZuptVelSigmaMps        = 0.1
@@ -196,11 +203,13 @@ type Estimator struct {
 	StepDistanceM float64
 	// StrideM is nil until a stride has been learned.
 	StrideM *float64
-	// Diagnostics (spec v1.2).
+	// Diagnostics (spec v1.2 and v1.3).
 	RScale         float64
 	RejectedFixes  int
 	ZuptFixes      int
 	DopplerTrusted bool
+	// DopplerScale is the learned Doppler speed scale (spec v1.3).
+	DopplerScale float64
 
 	gapS, freshFixS float64
 
@@ -222,12 +231,22 @@ type Estimator struct {
 	xcTime, xcPersistS float64
 	xcLastX, xcLastY   float64
 	xcLastT            float64
-	stepsSeen          bool
-	lastStepIncT       float64
-	zuptReleased       bool
-	hasZuptAnchor      bool
-	zuptAnchorX        float64
-	zuptAnchorY        float64
+	dsPos, dsDop       float64
+	dsTime             float64
+	// The last fix whose position the filter took: (x, y, t), its Doppler
+	// speed and bearing when it had them.
+	dsLastX, dsLastY float64
+	dsLastT          float64
+	dsLastHasDop     bool
+	dsLastDop        float64
+	dsLastHasBearing bool
+	dsLastBearing    float64
+	stepsSeen        bool
+	lastStepIncT     float64
+	zuptReleased     bool
+	hasZuptAnchor    bool
+	zuptAnchorX      float64
+	zuptAnchorY      float64
 
 	recording bool
 	records   []record
@@ -268,7 +287,7 @@ func NewWithOptions(o Options) *Estimator {
 	scale := intervalScale(o.ExpectedIntervalS)
 	e := &Estimator{
 		MaxSpeedMps: maxSpeedMps, gapS: GapS * scale, freshFixS: FreshFixS * scale,
-		RScale: 1.0, DopplerTrusted: true,
+		RScale: 1.0, DopplerTrusted: true, DopplerScale: 1.0,
 	}
 	if validPtr(o.InitialStrideM) && *o.InitialStrideM >= MinStrideM && *o.InitialStrideM <= MaxStrideM {
 		stride := *o.InitialStrideM
@@ -341,11 +360,12 @@ func (e *Estimator) AddFix(f Fix) float64 {
 		e.x, e.y = newAxis(zx, r), newAxis(zy, r)
 		e.t, e.hasT = f.T, true
 		e.xcLastX, e.xcLastY, e.xcLastT = zx, zy, f.T
+		e.setDsLast(zx, zy, f.T, dopOK, dop, f.BearingDeg)
 		e.rejectStreak = 0
 		e.hasZuptAnchor = false
 		zupt := f.StoppedHint || e.zuptDue(f.T, dopOK, dop)
 		e.record(record{anchor: true, chainBreak: true, zupt: zupt,
-			hasDop: dopOK && e.DopplerTrusted, dop: dop})
+			hasDop: dopOK && e.DopplerTrusted, dop: dop * e.DopplerScale})
 		return 0
 	}
 	// The gap closed inside the gap window, so the filter integrates it: drop the buffer.
@@ -379,6 +399,7 @@ func (e *Estimator) AddFix(f Fix) float64 {
 			e.y.resetPos(zy, r)
 			e.rejectStreak = 0
 			e.xcLastX, e.xcLastY, e.xcLastT = zx, zy, f.T
+			e.setDsLast(zx, zy, f.T, dopOK, dop, f.BearingDeg)
 			chainBreak = true
 		}
 	}
@@ -448,15 +469,38 @@ func (e *Estimator) AddFix(f Fix) float64 {
 			}
 		}
 		e.xcLastX, e.xcLastY, e.xcLastT = zx, zy, f.T
+
+		// 4b. Doppler scale (v1.3): exponentially forgotten integrals of the
+		//     fixes' displacement along the span's mean Doppler bearing and of
+		//     the trapezoid Doppler distance over the same span.
+		dsSpan := f.T - e.dsLastT
+		if !zupt && dopOK && e.dsLastHasDop && validPtr(f.BearingDeg) && e.dsLastHasBearing &&
+			dop >= DscaleMinSpeedMps && e.dsLastDop >= DscaleMinSpeedMps && dsSpan <= XcheckMaxSpanS {
+			turn := math.Mod(math.Abs(*f.BearingDeg-e.dsLastBearing), 360.0)
+			if math.Min(turn, 360.0-turn) <= DscaleMaxTurnDeg {
+				b0, b1 := radians(e.dsLastBearing), radians(*f.BearingDeg)
+				ux, uy := math.Sin(b0)+math.Sin(b1), math.Cos(b0)+math.Cos(b1)
+				n := math.Hypot(ux, uy)
+				w := math.Exp(-dsSpan / DscaleTauS)
+				e.dsPos = w*e.dsPos + ((zx-e.dsLastX)*ux+(zy-e.dsLastY)*uy)/n
+				e.dsDop = w*e.dsDop + 0.5*(e.dsLastDop+dop)*dsSpan
+				e.dsTime += dsSpan
+				if e.dsTime >= DscaleMinS && e.dsDop > 0 {
+					e.DopplerScale = math.Min(math.Max(e.dsPos/e.dsDop, DscaleMin), DscaleMax)
+				}
+			}
+		}
+		e.setDsLast(zx, zy, f.T, dopOK, dop, f.BearingDeg)
 	}
 
 	// 5. Doppler velocity update.
 	useDop := dopOK && e.DopplerTrusted
-	if useDop && !zupt && validPtr(f.BearingDeg) && dop >= StationarySpeedMps {
+	sdop := dop * e.DopplerScale
+	if useDop && !zupt && validPtr(f.BearingDeg) && sdop >= StationarySpeedMps {
 		rv := math.Pow(math.Max(sa, MinSpeedSigmaMps), 2)
 		b := radians(*f.BearingDeg)
-		e.x.updateVel(dop*math.Sin(b), rv)
-		e.y.updateVel(dop*math.Cos(b), rv)
+		e.x.updateVel(sdop*math.Sin(b), rv)
+		e.y.updateVel(sdop*math.Cos(b), rv)
 	}
 
 	// 6. Credit.
@@ -469,7 +513,7 @@ func (e *Estimator) AddFix(f Fix) float64 {
 	default:
 		speed, floor := math.Hypot(e.x.v, e.y.v), PosOnlyStationarySpeedMps
 		if useDop {
-			speed, floor = dop, StationarySpeedMps
+			speed, floor = sdop, StationarySpeedMps
 		}
 		if speed >= floor {
 			inc = math.Min(speed, e.MaxSpeedMps) * dt
@@ -478,8 +522,17 @@ func (e *Estimator) AddFix(f Fix) float64 {
 	e.GpsDistanceM += inc
 	e.winM += inc
 	e.record(record{dt: dt, chainBreak: chainBreak, predX: predX, predY: predY, zupt: zupt,
-		hasDop: useDop, dop: dop, hasChord: hasChord, chord: chord})
+		hasDop: useDop, dop: sdop, hasChord: hasChord, chord: chord})
 	return inc
+}
+
+func (e *Estimator) setDsLast(x, y, t float64, hasDop bool, dop float64, bearing *float64) {
+	e.dsLastX, e.dsLastY, e.dsLastT = x, y, t
+	e.dsLastHasDop, e.dsLastDop = hasDop, dop
+	e.dsLastHasBearing = validPtr(bearing)
+	if e.dsLastHasBearing {
+		e.dsLastBearing = *bearing
+	}
 }
 
 // AddSteps feeds a cumulative pedometer count. Learns a stride while GPS

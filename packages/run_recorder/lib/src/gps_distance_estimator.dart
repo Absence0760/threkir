@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-/// GPS distance estimator, spec v1.2 — a port of
+/// GPS distance estimator, spec v1.3 — a port of
 /// `scripts/gps_distance/reference.py`, which is the spec. See
 /// `docs/features/gps_distance.md`. Every operation mirrors the reference so
 /// `fixtures/gps_distance_vectors.json` replays to 1e-3 m; do not tune a
@@ -36,7 +36,7 @@ class GpsDistanceEstimator {
            : null,
        _records = record ? <_FixRecord>[] : null;
 
-  static const String specVersion = '1.2';
+  static const String specVersion = '1.3';
 
   static const double earthRadiusM = 6371008.8;
   static const double qAccel = 0.6;
@@ -69,6 +69,12 @@ class GpsDistanceEstimator {
   static const double xcheckMaxSpanS = 5.0;
   static const double debiasFullMps = 0.5;
   static const double debiasZeroMps = 1.0;
+  static const double dscaleTauS = 600.0;
+  static const double dscaleMinS = 60.0;
+  static const double dscaleMin = 0.8;
+  static const double dscaleMax = 1.25;
+  static const double dscaleMinSpeedMps = 1.5;
+  static const double dscaleMaxTurnDeg = 45.0;
   static const double zuptNoStepS = 6.0;
   static const double zuptVelSigmaMps = 0.1;
   static const double zuptDopplerOverrideMps = 1.0;
@@ -108,6 +114,16 @@ class GpsDistanceEstimator {
   double? _xcLastX;
   double? _xcLastY;
   double? _xcLastT;
+  double _dopplerScale = 1.0;
+  double _dsPos = 0.0;
+  double _dsDop = 0.0;
+  double _dsTime = 0.0;
+  // (x, y, t, dop, bearing) of the last fix whose position the filter took.
+  double? _dsLastX;
+  double? _dsLastY;
+  double? _dsLastT;
+  double? _dsLastDop;
+  double? _dsLastBearing;
   bool _stepsSeen = false;
   double? _lastStepIncT;
   bool _zuptReleased = false;
@@ -124,8 +140,17 @@ class GpsDistanceEstimator {
   int get rejectedFixes => _rejectedFixes;
   int get zuptFixes => _zuptFixes;
   bool get dopplerTrusted => _dopplerTrusted;
+  double get dopplerScale => _dopplerScale;
 
   static bool _valid(double? x) => x != null && x.isFinite;
+
+  void _setDsLast(double x, double y, double t, double? dop, double? bearing) {
+    _dsLastX = x;
+    _dsLastY = y;
+    _dsLastT = t;
+    _dsLastDop = dop;
+    _dsLastBearing = bearing;
+  }
 
   static double _intervalScale(double it) =>
       (_valid(it) && it > 1.0) ? it : 1.0;
@@ -229,6 +254,7 @@ class GpsDistanceEstimator {
       _xcLastX = zx;
       _xcLastY = zy;
       _xcLastT = t;
+      _setDsLast(zx, zy, t, dop, bearingDeg);
       _rejectStreak = 0;
       _zuptAnchorX = null;
       _zuptAnchorY = null;
@@ -240,7 +266,7 @@ class GpsDistanceEstimator {
         predX: null,
         predY: null,
         zupt: zupt,
-        dop: (dop != null && _dopplerTrusted) ? dop : null,
+        dop: (dop != null && _dopplerTrusted) ? dop * _dopplerScale : null,
         chord: null,
       );
       return 0.0;
@@ -283,6 +309,7 @@ class GpsDistanceEstimator {
         _xcLastX = zx;
         _xcLastY = zy;
         _xcLastT = t;
+        _setDsLast(zx, zy, t, dop, bearingDeg);
         chainBreak = true;
       }
     }
@@ -358,10 +385,48 @@ class GpsDistanceEstimator {
       _xcLastX = zx;
       _xcLastY = zy;
       _xcLastT = t;
+
+      // 4b. Doppler scale (v1.3): exponentially forgotten integrals of the
+      //     fixes' displacement along the span's mean Doppler bearing and of
+      //     the trapezoid Doppler distance over the same span.
+      final ldop = _dsLastDop;
+      final lb = _dsLastBearing;
+      final dsSpan = t - _dsLastT!;
+      final turn = (_valid(bearingDeg) && _valid(lb))
+          ? (bearingDeg! - lb!).abs() % 360.0
+          : null;
+      if (!zupt &&
+          dop != null &&
+          ldop != null &&
+          turn != null &&
+          dop >= dscaleMinSpeedMps &&
+          ldop >= dscaleMinSpeedMps &&
+          dsSpan <= xcheckMaxSpanS &&
+          math.min(turn, 360.0 - turn) <= dscaleMaxTurnDeg) {
+        final b0 = _radians(lb!);
+        final b1 = _radians(bearingDeg!);
+        final ux = math.sin(b0) + math.sin(b1);
+        final uy = math.cos(b0) + math.cos(b1);
+        final n = _hypot(ux, uy);
+        final w = math.exp(-dsSpan / dscaleTauS);
+        _dsPos =
+            w * _dsPos + ((zx - _dsLastX!) * ux + (zy - _dsLastY!) * uy) / n;
+        _dsDop = w * _dsDop + 0.5 * (ldop + dop) * dsSpan;
+        _dsTime += dsSpan;
+        if (_dsTime >= dscaleMinS && _dsDop > 0.0) {
+          _dopplerScale = math.min(
+            math.max(_dsPos / _dsDop, dscaleMin),
+            dscaleMax,
+          );
+        }
+      }
+      _setDsLast(zx, zy, t, dop, bearingDeg);
     }
 
     // 5. Doppler velocity update.
-    final useDop = (doppler != null && _dopplerTrusted) ? doppler.s : null;
+    final useDop = (doppler != null && _dopplerTrusted)
+        ? doppler.s * _dopplerScale
+        : null;
     if (useDop != null &&
         !zupt &&
         _valid(bearingDeg) &&

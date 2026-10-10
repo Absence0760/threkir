@@ -57,10 +57,10 @@ void main() {
   final scenarios =
       (vectors['scenarios'] as List).cast<Map<String, dynamic>>();
 
-  test('fixture is spec v1.2 and carries every scenario', () {
-    expect(vectors['spec'], 'gps-distance-estimator v1.2');
-    expect(GpsDistanceEstimator.specVersion, '1.2');
-    expect(scenarios.length, greaterThanOrEqualTo(27));
+  test('fixture is spec v1.3 and carries every scenario', () {
+    expect(vectors['spec'], 'gps-distance-estimator v1.3');
+    expect(GpsDistanceEstimator.specVersion, '1.3');
+    expect(scenarios.length, greaterThanOrEqualTo(29));
   });
 
   test('constants match the fixture', () {
@@ -97,6 +97,12 @@ void main() {
     expect(c['XCHECK_MAX_SPAN_S'], GpsDistanceEstimator.xcheckMaxSpanS);
     expect(c['DEBIAS_FULL_MPS'], GpsDistanceEstimator.debiasFullMps);
     expect(c['DEBIAS_ZERO_MPS'], GpsDistanceEstimator.debiasZeroMps);
+    expect(c['DSCALE_TAU_S'], GpsDistanceEstimator.dscaleTauS);
+    expect(c['DSCALE_MIN_S'], GpsDistanceEstimator.dscaleMinS);
+    expect(c['DSCALE_MIN'], GpsDistanceEstimator.dscaleMin);
+    expect(c['DSCALE_MAX'], GpsDistanceEstimator.dscaleMax);
+    expect(c['DSCALE_MIN_SPEED_MPS'], GpsDistanceEstimator.dscaleMinSpeedMps);
+    expect(c['DSCALE_MAX_TURN_DEG'], GpsDistanceEstimator.dscaleMaxTurnDeg);
     expect(c['ZUPT_NO_STEP_S'], GpsDistanceEstimator.zuptNoStepS);
     expect(c['ZUPT_VEL_SIGMA_MPS'], GpsDistanceEstimator.zuptVelSigmaMps);
     expect(c['ZUPT_DOPPLER_OVERRIDE_MPS'],
@@ -107,7 +113,7 @@ void main() {
     expect(c['STOP_SPEED_MPS'], GpsDistanceEstimator.stopSpeedMps);
     expect(c['STOP_RADIUS_M'], GpsDistanceEstimator.stopRadiusM);
     // Every fixture constant is pinned above; a new one fails here until it is.
-    expect(c.length, 38);
+    expect(c.length, 44);
   });
 
   group('golden vectors', () {
@@ -147,6 +153,8 @@ void main() {
         expect(e.zuptFixes, expected['zuptFixes']);
         expect(e.dopplerTrusted, expected['dopplerTrusted']);
         expect(e.rScale, closeTo(_num(expected, 'rScale')!, 1e-6));
+        expect(
+            e.dopplerScale, closeTo(_num(expected, 'dopplerScale')!, 1e-6));
       });
     }
   });

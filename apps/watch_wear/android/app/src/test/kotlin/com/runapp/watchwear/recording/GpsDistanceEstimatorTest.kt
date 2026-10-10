@@ -42,8 +42,8 @@ class GpsDistanceEstimatorTest {
 
     @Test
     fun `the fixture is spec v1_2 and every constant matches it`() {
-        assertEquals("gps-distance-estimator v1.2", fixture["spec"]!!.jsonPrimitive.content)
-        assertEquals("1.2", GpsDistanceEstimator.SPEC_VERSION)
+        assertEquals("gps-distance-estimator v1.3", fixture["spec"]!!.jsonPrimitive.content)
+        assertEquals("1.3", GpsDistanceEstimator.SPEC_VERSION)
         val constants = fixture["constants"]!!.jsonObject
         assertFalse("port declares no constants", GpsDistanceEstimator.CONSTANTS.isEmpty())
         for ((name, value) in GpsDistanceEstimator.CONSTANTS) {
@@ -107,6 +107,7 @@ class GpsDistanceEstimatorTest {
             assertEquals("$name: rejectedFixes", expected["rejectedFixes"]!!.jsonPrimitive.int, est.rejectedFixes)
             assertEquals("$name: zuptFixes", expected["zuptFixes"]!!.jsonPrimitive.int, est.zuptFixes)
             assertEquals("$name: rScale", expected["rScale"]!!.jsonPrimitive.double, est.rScale, 1e-6)
+            assertEquals("$name: dopplerScale", expected["dopplerScale"]!!.jsonPrimitive.double, est.dopplerScale, 1e-6)
             assertEquals("$name: dopplerTrusted", expected["dopplerTrusted"]!!.jsonPrimitive.boolean, est.dopplerTrusted)
         }
     }

@@ -21,11 +21,12 @@ type DistanceRecomputePayload struct {
 	UserID string `json:"user_id,omitempty"`
 }
 
-// DistanceEstimatorV2 is the value stamped in metadata.distance_estimator:
-// the spec-v1.2 smoother. "kalman_v1" was the v1 / v1.1 forward filter; a
-// run recomputed under it is eligible again (the skip below looks only at
+// DistanceEstimatorCurrent is the value stamped in
+// metadata.distance_estimator: the spec-v1.3 smoother. "kalman_v2" was the
+// spec-v1.2 smoother and "kalman_v1" the v1 / v1.1 forward filter; a run
+// recomputed under either is eligible again (the skip below looks only at
 // whether a recompute has ever stamped the run, not at which estimator).
-const DistanceEstimatorV2 = "kalman_v2"
+const DistanceEstimatorCurrent = "kalman_v3"
 
 // The two values of metadata.distance_estimator_pass: which of the
 // smoother's passes the recompute kept. A track with Doppler always keeps
@@ -249,7 +250,7 @@ func mergeDistanceMetadata(meta map[string]json.RawMessage, previousDistanceM fl
 		}
 		out[schema.MetaDistanceRecordedM] = raw
 	}
-	est, _ := json.Marshal(DistanceEstimatorV2)
+	est, _ := json.Marshal(DistanceEstimatorCurrent)
 	out[schema.MetaDistanceEstimator] = est
 	p, _ := json.Marshal(pass)
 	out[schema.MetaDistanceEstimatorPass] = p
@@ -267,7 +268,7 @@ func mergeDistanceMetadata(meta map[string]json.RawMessage, previousDistanceM fl
 // because the stored distance_m of an old run is the inflated hop-sum.
 //
 // A transient matcher failure (an engine 5xx, a timeout) is returned, so the
-// job is deferred and retried rather than stamping the run kalman_v2 with a
+// job is deferred and retried rather than stamping the run kalman_v3 with a
 // figure its classification never decided: a stamped run is no longer offered
 // Recalculate, so an outage would have pinned every road run it touched to the
 // forward pass for good. Only a non-transient matcher verdict keeps the

@@ -1,4 +1,4 @@
-//! GPS distance estimator, spec v1.2 forward filter — the `no_std` port of
+//! GPS distance estimator, spec v1.3 forward filter — the `no_std` port of
 //! `scripts/gps_distance/reference.py` (docs/features/gps_distance.md). The
 //! spec's smoother needs the whole run in memory and is not ported here; the
 //! phone or server re-derives a saved figure from the uploaded track.
@@ -48,11 +48,17 @@ pub const XCHECK_PERSIST_S: f64 = 60.0;
 pub const XCHECK_MAX_SPAN_S: f64 = 5.0;
 pub const DEBIAS_FULL_MPS: f64 = 0.5;
 pub const DEBIAS_ZERO_MPS: f64 = 1.0;
+pub const DSCALE_TAU_S: f64 = 600.0;
+pub const DSCALE_MIN_S: f64 = 60.0;
+pub const DSCALE_MIN: f64 = 0.8;
+pub const DSCALE_MAX: f64 = 1.25;
+pub const DSCALE_MIN_SPEED_MPS: f64 = 1.5;
+pub const DSCALE_MAX_TURN_DEG: f64 = 45.0;
 pub const ZUPT_NO_STEP_S: f64 = 6.0;
 pub const ZUPT_VEL_SIGMA_MPS: f64 = 0.1;
 pub const ZUPT_DOPPLER_OVERRIDE_MPS: f64 = 1.0;
 pub const ZUPT_RELEASE_M: f64 = 40.0;
-pub const SPEC_VERSION: &str = "1.2";
+pub const SPEC_VERSION: &str = "1.3";
 pub const DEFAULT_MAX_SPEED_MPS: f64 = 10.0;
 
 const DEG_TO_RAD: f64 = core::f64::consts::PI / 180.0;
@@ -192,6 +198,13 @@ pub struct GpsDistanceEstimator {
     xc_persist_s: f64,
     /// `(x, y, t)` of the last fix whose position the filter took.
     xc_last: (f64, f64, f64),
+    doppler_scale: f64,
+    ds_pos: f64,
+    ds_dop: f64,
+    ds_time: f64,
+    /// `(x, y, t)` of the last fix whose position the filter took, with its
+    /// Doppler speed and bearing.
+    ds_last: (f64, f64, f64, Option<f64>, Option<f64>),
     last_step_inc_t: f64,
     zupt_anchor: Option<(f64, f64)>,
 }
@@ -199,11 +212,11 @@ pub struct GpsDistanceEstimator {
 /// One estimator lives in the `Recorder`, which the firmware holds once, so
 /// the pin is about noticing growth rather than a hard ceiling. Measured at
 /// spec v1.2: v1.1's 248 B plus 112 B for the gate, adaptive-R, cross-check
-/// and ZUPT state. The state stays `f64`: the projection and the covariance
+/// and ZUPT state; spec v1.3 adds 88 B for the Doppler scale. The state stays `f64`: the projection and the covariance
 /// recursion over a run of thousands of fixes do not hold the vectors' 1e-3 m
 /// in `f32`. Identical on both targets because every field is 8-aligned
 /// scalars, `u32`s and `bool`s.
-const _: () = assert!(core::mem::size_of::<GpsDistanceEstimator>() == 360);
+const _: () = assert!(core::mem::size_of::<GpsDistanceEstimator>() == 448);
 
 impl Default for GpsDistanceEstimator {
     fn default() -> Self {
@@ -262,6 +275,11 @@ impl GpsDistanceEstimator {
             xc_time: 0.0,
             xc_persist_s: 0.0,
             xc_last: (0.0, 0.0, 0.0),
+            doppler_scale: 1.0,
+            ds_pos: 0.0,
+            ds_dop: 0.0,
+            ds_time: 0.0,
+            ds_last: (0.0, 0.0, 0.0, None, None),
             last_step_inc_t: 0.0,
             zupt_anchor: None,
         }
@@ -297,6 +315,10 @@ impl GpsDistanceEstimator {
 
     pub fn doppler_trusted(&self) -> bool {
         self.doppler_trusted
+    }
+
+    pub fn doppler_scale(&self) -> f64 {
+        self.doppler_scale
     }
 
     /// The pedometer says stationary: steps seen this run, none for
@@ -372,6 +394,7 @@ impl GpsDistanceEstimator {
                 self.axes = Some((Axis::new(zx, r), Axis::new(zy, r)));
                 self.t = Some(t);
                 self.xc_last = (zx, zy, t);
+                self.ds_last = (zx, zy, t, dop, valid(bearing_deg));
                 self.reject_streak = 0;
                 self.zupt_anchor = None;
                 return 0.0;
@@ -406,6 +429,7 @@ impl GpsDistanceEstimator {
                 y.reset_pos(zy, r);
                 self.reject_streak = 0;
                 self.xc_last = (zx, zy, t);
+                self.ds_last = (zx, zy, t, dop, valid(bearing_deg));
             }
         }
 
@@ -472,10 +496,42 @@ impl GpsDistanceEstimator {
                 }
             }
             self.xc_last = (zx, zy, t);
+
+            // 4b. Doppler scale (v1.3): exponentially forgotten integrals of the
+            //     fixes' displacement along the span's mean Doppler bearing and of
+            //     the trapezoid Doppler distance over the same span.
+            let (dlx, dly, dlt, ldop, lb) = self.ds_last;
+            let ds_span = t - dlt;
+            if let (Some(d), Some(ld), Some(bd), Some(lbd), false) = (dop, ldop, bearing, lb, zupt)
+            {
+                let turn = (bd - lbd).abs() % 360.0;
+                if d >= DSCALE_MIN_SPEED_MPS
+                    && ld >= DSCALE_MIN_SPEED_MPS
+                    && ds_span <= XCHECK_MAX_SPAN_S
+                    && turn.min(360.0 - turn) <= DSCALE_MAX_TURN_DEG
+                {
+                    let (b0, b1) = (lbd * DEG_TO_RAD, bd * DEG_TO_RAD);
+                    let ux = libm::sin(b0) + libm::sin(b1);
+                    let uy = libm::cos(b0) + libm::cos(b1);
+                    let n = libm::hypot(ux, uy);
+                    let w = libm::exp(-ds_span / DSCALE_TAU_S);
+                    self.ds_pos = w * self.ds_pos + ((zx - dlx) * ux + (zy - dly) * uy) / n;
+                    self.ds_dop = w * self.ds_dop + 0.5 * (ld + d) * ds_span;
+                    self.ds_time += ds_span;
+                    if self.ds_time >= DSCALE_MIN_S && self.ds_dop > 0.0 {
+                        self.doppler_scale =
+                            (self.ds_pos / self.ds_dop).clamp(DSCALE_MIN, DSCALE_MAX);
+                    }
+                }
+            }
+            self.ds_last = (zx, zy, t, dop, bearing);
         }
 
         // 5. Doppler velocity update.
-        let use_dop = doppler.filter(|_| self.doppler_trusted);
+        let scale = self.doppler_scale;
+        let use_dop = doppler
+            .filter(|_| self.doppler_trusted)
+            .map(|(s, sa)| (s * scale, sa));
         if let (Some((d, sa)), Some(bd), false) = (use_dop, bearing, zupt) {
             if d >= STATIONARY_SPEED_MPS {
                 let sa_floored = sa.max(MIN_SPEED_SIGMA_MPS);
@@ -652,6 +708,11 @@ mod tests {
             );
             let r_scale = exp["rScale"].as_f64().expect("rScale");
             assert!((e.r_scale() - r_scale).abs() <= 1e-6, "{name}: rScale");
+            let doppler_scale = exp["dopplerScale"].as_f64().expect("dopplerScale");
+            assert!(
+                (e.doppler_scale() - doppler_scale).abs() <= 1e-6,
+                "{name}: dopplerScale"
+            );
             assert_eq!(
                 Some(e.doppler_trusted()),
                 exp["dopplerTrusted"].as_bool(),
@@ -698,6 +759,12 @@ mod tests {
         assert_eq!(f("XCHECK_MAX_SPAN_S"), XCHECK_MAX_SPAN_S);
         assert_eq!(f("DEBIAS_FULL_MPS"), DEBIAS_FULL_MPS);
         assert_eq!(f("DEBIAS_ZERO_MPS"), DEBIAS_ZERO_MPS);
+        assert_eq!(f("DSCALE_TAU_S"), DSCALE_TAU_S);
+        assert_eq!(f("DSCALE_MIN_S"), DSCALE_MIN_S);
+        assert_eq!(f("DSCALE_MIN"), DSCALE_MIN);
+        assert_eq!(f("DSCALE_MAX"), DSCALE_MAX);
+        assert_eq!(f("DSCALE_MIN_SPEED_MPS"), DSCALE_MIN_SPEED_MPS);
+        assert_eq!(f("DSCALE_MAX_TURN_DEG"), DSCALE_MAX_TURN_DEG);
         assert_eq!(f("ZUPT_NO_STEP_S"), ZUPT_NO_STEP_S);
         assert_eq!(f("ZUPT_VEL_SIGMA_MPS"), ZUPT_VEL_SIGMA_MPS);
         assert_eq!(f("ZUPT_DOPPLER_OVERRIDE_MPS"), ZUPT_DOPPLER_OVERRIDE_MPS);
@@ -707,8 +774,8 @@ mod tests {
     #[test]
     fn the_fixture_is_this_port_s_spec_version() {
         let doc: serde_json::Value = serde_json::from_str(VECTORS).expect("vectors parse");
-        assert_eq!(SPEC_VERSION, "1.2");
-        assert_eq!(doc["spec"].as_str(), Some("gps-distance-estimator v1.2"));
+        assert_eq!(SPEC_VERSION, "1.3");
+        assert_eq!(doc["spec"].as_str(), Some("gps-distance-estimator v1.3"));
     }
 
     #[test]

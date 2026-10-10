@@ -1,4 +1,4 @@
-// GPS distance estimator, spec v1.2. docs/features/gps_distance.md is the spec
+// GPS distance estimator, spec v1.3. docs/features/gps_distance.md is the spec
 // and scripts/gps_distance/reference.py the reference; every port must
 // reproduce fixtures/gps_distance_vectors.json to 1e-3 m, so keep the
 // formulas in the reference's order. A copy of apps/web/src/lib/runs/gps_distance.ts
@@ -9,7 +9,7 @@
 // screen runs; smoothDistance is the saved / recomputed figure, a forward pass
 // plus a Rauch-Tung-Striebel backward pass over the whole run.
 
-export const SPEC_VERSION = '1.2';
+export const SPEC_VERSION = '1.3';
 
 export const EARTH_RADIUS_M = 6371008.8;
 export const Q_ACCEL = 0.6;
@@ -42,6 +42,12 @@ export const XCHECK_PERSIST_S = 60.0;
 export const XCHECK_MAX_SPAN_S = 5.0;
 export const DEBIAS_FULL_MPS = 0.5;
 export const DEBIAS_ZERO_MPS = 1.0;
+export const DSCALE_TAU_S = 600.0;
+export const DSCALE_MIN_S = 60.0;
+export const DSCALE_MIN = 0.8;
+export const DSCALE_MAX = 1.25;
+export const DSCALE_MIN_SPEED_MPS = 1.5;
+export const DSCALE_MAX_TURN_DEG = 45.0;
 export const ZUPT_NO_STEP_S = 6.0;
 export const ZUPT_VEL_SIGMA_MPS = 0.1;
 export const ZUPT_DOPPLER_OVERRIDE_MPS = 1.0;
@@ -181,6 +187,7 @@ export class GpsDistanceEstimator {
 	rejectedFixes = 0;
 	zuptFixes = 0;
 	dopplerTrusted = true;
+	dopplerScale = 1.0;
 
 	private lat0: number | null = null;
 	private lng0: number | null = null;
@@ -198,6 +205,11 @@ export class GpsDistanceEstimator {
 	private xcTime = 0;
 	private xcPersistS = 0;
 	private xcLast: [number, number, number] | null = null;
+	private dsPos = 0;
+	private dsDop = 0;
+	private dsTime = 0;
+	// (x, y, t, dop, bearing) of the last fix whose position the filter took.
+	private dsLast: [number, number, number, number | null, number | null] | null = null;
 	private stepsSeen = false;
 	private lastStepIncT: number | null = null;
 	private zuptReleased = false;
@@ -299,6 +311,7 @@ export class GpsDistanceEstimator {
 			this.y = new Axis(zy, r);
 			this.t = t;
 			this.xcLast = [zx, zy, t];
+			this.dsLast = [zx, zy, t, dop, valid(bearingDeg) ? bearingDeg : null];
 			this.rejectStreak = 0;
 			this.zuptAnchor = null;
 			const zupt = stoppedHint || this.zuptDue(t, dop);
@@ -309,7 +322,7 @@ export class GpsDistanceEstimator {
 					dt: 0,
 					pred: null,
 					zupt,
-					dop: dop !== null && this.dopplerTrusted ? dop : null,
+					dop: dop !== null && this.dopplerTrusted ? dop * this.dopplerScale : null,
 					chord: null,
 				},
 				this.x,
@@ -352,6 +365,7 @@ export class GpsDistanceEstimator {
 				y.resetPos(zy, r);
 				this.rejectStreak = 0;
 				this.xcLast = [zx, zy, t];
+				this.dsLast = [zx, zy, t, dop, valid(bearingDeg) ? bearingDeg : null];
 				chainBreak = true;
 			}
 		}
@@ -421,10 +435,43 @@ export class GpsDistanceEstimator {
 				}
 			}
 			this.xcLast = [zx, zy, t];
+
+			// 4b. Doppler scale (v1.3): exponentially forgotten integrals of the
+			//     fixes' displacement along the span's mean Doppler bearing and of
+			//     the trapezoid Doppler distance over the same span.
+			const [dx0, dy0, dt0, ldop, lb] = this.dsLast as [number, number, number, number | null, number | null];
+			const dsSpan = t - dt0;
+			const turn = valid(bearingDeg) && lb !== null ? Math.abs(bearingDeg - lb) % 360.0 : null;
+			if (
+				!zupt &&
+				dop !== null &&
+				ldop !== null &&
+				turn !== null &&
+				lb !== null &&
+				valid(bearingDeg) &&
+				dop >= DSCALE_MIN_SPEED_MPS &&
+				ldop >= DSCALE_MIN_SPEED_MPS &&
+				dsSpan <= XCHECK_MAX_SPAN_S &&
+				Math.min(turn, 360.0 - turn) <= DSCALE_MAX_TURN_DEG
+			) {
+				const b0 = rad(lb);
+				const b1 = rad(bearingDeg);
+				const ux = Math.sin(b0) + Math.sin(b1);
+				const uy = Math.cos(b0) + Math.cos(b1);
+				const n = Math.hypot(ux, uy);
+				const w = Math.exp(-dsSpan / DSCALE_TAU_S);
+				this.dsPos = w * this.dsPos + ((zx - dx0) * ux + (zy - dy0) * uy) / n;
+				this.dsDop = w * this.dsDop + 0.5 * (ldop + dop) * dsSpan;
+				this.dsTime += dsSpan;
+				if (this.dsTime >= DSCALE_MIN_S && this.dsDop > 0.0) {
+					this.dopplerScale = Math.min(Math.max(this.dsPos / this.dsDop, DSCALE_MIN), DSCALE_MAX);
+				}
+			}
+			this.dsLast = [zx, zy, t, dop, valid(bearingDeg) ? bearingDeg : null];
 		}
 
 		// 5. Doppler velocity update.
-		const useDop = doppler !== null && this.dopplerTrusted ? doppler.s : null;
+		const useDop = doppler !== null && this.dopplerTrusted ? doppler.s * this.dopplerScale : null;
 		if (useDop !== null && !zupt && valid(bearingDeg) && useDop >= STATIONARY_SPEED_MPS) {
 			const rv = Math.max((doppler as { sa: number }).sa, MIN_SPEED_SIGMA_MPS) ** 2;
 			const b = rad(bearingDeg);

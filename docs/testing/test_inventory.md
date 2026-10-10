@@ -1513,7 +1513,7 @@ comprehension that carries no predicate, and `envPlaintextKeys` on the
 intermediate local (`sentry_env`) that a reader looking only at `*_lambda_env`
 would miss.
 
-### `scripts/check_infra_coverage.test.mjs` — 81 tests
+### `scripts/check_infra_coverage.test.mjs` — 82 tests
 
 What in `infra/` is watched by nothing ([decisions § 890](../architecture/decisions.md)).
 Two halves, each mutated on its own. Stack coverage: a new directory missing from
@@ -1526,7 +1526,8 @@ one with no error-rate alarm, a new Lambda with neither, either distribution
 alarm removed, a classifier that stopped matching, and an empty function list —
 the last two because a guard that resolves nothing reports every subject as fine.
 The parsers are exercised separately, including the `for_each`-through-a-locals-map
-resolution that makes the five share Lambdas read as five. One case runs the real
+resolution that makes the five share Lambdas read as five, and a `for_each`
+that is gated on `alarm_tier` resolving through that same map. One case runs the real
 script end to end through `execFileSync` against a copy of `alarms.tf` with the
 `osrm-proxy` p95 alarm stripped, asserting the process exits non-zero: the guard
 is shown to fail on the exact regression it was written for, exit code and all.

@@ -26,6 +26,10 @@
 //     had been serving a cached binary whose provenance the config could not
 //     express (run 31623789083 shows the cache hit and `command -v` winning,
 //     with `cargo install` never executing).
+//   Go images — each Go module's Dockerfile `FROM golang:` builder is digest-
+//     pinned, names an exact patch, and equals go.mod's `go` directive. CI
+//     tests on the directive; the image ships the builder; Trivy scans only
+//     the image. See checkGoDockerfiles.
 //
 // Why this exists: decisions.md § 595. Each of those steps was SHA-pinned but
 // took only `channel: stable`, so the SDK itself floated. Flutter 3.47.0
@@ -135,6 +139,9 @@ export const RUST_TOOLCHAIN = join(REPO_ROOT, 'apps', 'custom_watch', 'rust-tool
 export const TOOL_VERSIONS = join(REPO_ROOT, '.tool-versions');
 export const PREREQ_DOC = join(REPO_ROOT, 'docs', 'architecture', 'monorepo.md');
 export const GO_MODS = ['apps/job_worker/go.mod', 'apps/graph_cycle/go.mod'];
+// The image each module ships is compiled by its Dockerfile's builder stage,
+// not by the toolchain CI resolves from go.mod, so the two are compared.
+export const GO_DOCKERFILES = GO_MODS.map((m) => m.replace(/go\.mod$/, 'Dockerfile'));
 export const TERRAFORM_WORKFLOW = 'terraform.yml';
 
 const ACTION = 'subosito/flutter-action@';
@@ -1341,6 +1348,71 @@ export function parseGoDirective(mods) {
 	return { version: [...seen.keys()][0] ?? null, errors };
 }
 
+/// Every Go module's Dockerfile builder against the `go` directive.
+///
+/// CI compiles and tests on the toolchain go.mod names (`setup-go` reads it),
+/// but what ships is whatever the `FROM golang:` stage holds, and nothing used
+/// to compare the two. A bare-minor tag like `golang:1.27-alpine` let the
+/// digest sit on 1.27.1 while go.mod said 1.26.6 and the sibling image built
+/// on 1.26.6 — three toolchains, and Trivy found the stdlib CVEs only in the
+/// shipped ones. The tag must name the exact patch, carry a digest, and equal
+/// the directive; when the modules disagree among themselves `goVersion` is
+/// null and that disagreement is already the reported error.
+/**
+ * @param {readonly {path: string, text: string}[]} dockerfiles
+ * @param {string | null} goVersion
+ * @returns {{ errors: string[], ok: string[] }}
+ */
+export function checkGoDockerfiles(dockerfiles, goVersion) {
+	/** @type {string[]} */
+	const errors = [];
+	/** @type {string[]} */
+	const ok = [];
+	for (const { path, text } of dockerfiles) {
+		const froms = text
+			.split('\n')
+			.map((l, i) => ({ l, line: i + 1 }))
+			.filter(({ l }) => /^FROM\s+golang:/i.test(l));
+		if (froms.length === 0) {
+			errors.push(
+				`${path} has no \`FROM golang:\` builder stage, so nothing states which Go ` +
+					`compiled the image this module ships.`,
+			);
+			continue;
+		}
+		for (const { l, line } of froms) {
+			const m = l.match(/^FROM\s+golang:([^\s@]+)(@sha256:[0-9a-f]{64})?/i);
+			const tag = m?.[1] ?? '';
+			const version = tag.match(/^(\d+(?:\.\d+)*)/)?.[1] ?? '';
+			if (!m?.[2]) {
+				errors.push(
+					`${path}:${line} — \`golang:${tag}\` carries no @sha256 digest, so the ` +
+						`builder is whatever the registry serves under that tag today.`,
+				);
+				continue;
+			}
+			if (!EXACT_VERSION.test(version)) {
+				errors.push(
+					`${path}:${line} — \`golang:${tag}\` names no exact patch. A minor tag lets ` +
+						`the digest hold any patch of it, and the patch is what carries the ` +
+						`stdlib fixes; name it (\`golang:${goVersion ?? 'X.Y.Z'}-alpine\`).`,
+				);
+				continue;
+			}
+			if (goVersion !== null && version !== goVersion) {
+				errors.push(
+					`${path}:${line} — the builder is Go ${version} but go.mod declares ` +
+						`\`go ${goVersion}\`. CI tests on ${goVersion} and the image ships ` +
+						`${version}; move both together, re-resolving the digest.`,
+				);
+				continue;
+			}
+			ok.push(`${path}:${line} -> golang ${version} matches go.mod`);
+		}
+	}
+	return { errors, ok };
+}
+
 /** @param {string} text */
 export function parseTerraformVersion(text) {
 	const m = text.split('\n').find((l) => /^\s*terraform_version:/.test(l));
@@ -1355,6 +1427,7 @@ export function parseTerraformVersion(text) {
  * @param {string | null} [toolVersionsText]
  * @param {readonly {path: string, text: string}[]} [goMods]
  * @param {string | null} [prereqText]
+ * @param {readonly {path: string, text: string}[]} [goDockerfiles]
  */
 export function checkAll(
 	files,
@@ -1364,6 +1437,7 @@ export function checkAll(
 	toolVersionsText = null,
 	goMods = [],
 	prereqText = null,
+	goDockerfiles = [],
 ) {
 	const flutter = checkFlutter(files);
 	const melos = checkMelos(files, lockText);
@@ -1373,6 +1447,7 @@ export function checkAll(
 	const node = checkNode(files);
 	const deno = checkDeno(files);
 	const go = parseGoDirective(goMods);
+	const goImages = checkGoDockerfiles(goDockerfiles, go.version);
 	const terraform = (() => {
 		const f = files.find((x) => x.name === TERRAFORM_WORKFLOW);
 		return f ? parseTerraformVersion(f.text) : null;
@@ -1398,6 +1473,7 @@ export function checkAll(
 			...node.errors,
 			...deno.errors,
 			...go.errors,
+			...goImages.errors,
 			...tools.errors,
 			...prereq.errors,
 		],
@@ -1409,6 +1485,7 @@ export function checkAll(
 			...rust.ok,
 			...node.ok,
 			...deno.ok,
+			...goImages.ok,
 			...tools.ok,
 			...prereq.ok,
 		],
@@ -1458,6 +1535,10 @@ function main() {
 			text: readFileSync(join(REPO_ROOT, path), 'utf-8'),
 		})),
 		existsSync(PREREQ_DOC) ? readFileSync(PREREQ_DOC, 'utf-8') : null,
+		GO_DOCKERFILES.filter((d) => existsSync(join(REPO_ROOT, d))).map((path) => ({
+			path,
+			text: readFileSync(join(REPO_ROOT, path), 'utf-8'),
+		})),
 	);
 
 	for (const line of ok) console.log(`[OK] ${line}`);

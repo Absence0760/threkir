@@ -127,6 +127,12 @@ module "web" {
   # void. /audit/all cost-controls Medium 2026-05-07.
   alert_emails = var.alert_emails
 
+  # Essential alarms only, to stay inside the org-wide 10-alarm-metric
+  # CloudWatch free tier: coach error rate, CloudFront 5xx, the throttle
+  # ceilings and the bypass-paywall tripwire. Set "full" to bring the
+  # per-surface and p95 alarms back (~$0.10 per alarm metric per month).
+  alarm_tier = "essential"
+
   # Prod tightens the Lambda throttle alarm: a single throttle pages
   # immediately. The reserved concurrency cap is the cost ceiling and
   # hitting it must not be a quiet event. Preview keeps the default 5

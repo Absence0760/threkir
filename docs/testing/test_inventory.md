@@ -267,7 +267,7 @@ Covers the universal-bag and device-bag overlay logic on `SettingsSyncService` v
 
 **Sign-out account reset (3 tests):** issue #231 — bag-mirrored `Preferences` reset to defaults, the prior user's cached bags dropped when the id is known, idempotent with no cache / no prior id.
 
-### `apps/mobile_android/test/run_screen_recording_flow_test.dart` — 40 tests
+### `apps/mobile_android/test/run_screen_recording_flow_test.dart` — 41 tests
 
 Drives the full RunScreen UI flow on top of the existing data-pipeline integration test. Adds a mock-everything setUp that closes every platform-channel surface RunScreen touches when transitioning out of idle:
 
@@ -527,7 +527,7 @@ The seven ARB catalogues against the checked-in `lib/l10n/gen/` ([decisions § 8
 
 The Apple Watch hand-off contract ([decisions § 1801](../architecture/decisions.md)). `WatchIngestBridge.swift` lets go of a run when the channel answers `true`, so `WatchIngest.handle` must say `true` only once the run is on disk, and it must say it in every state: signed out, no Supabase, signed in and online (queued first, then uploaded and deleted), signed in with the signed-in user as the stamp, offline (stays queued, not quarantined), and a `TrackTooLargeException` (quarantined, never re-sent). `false` is pinned for the three disk-failure shapes: signed out, signed in with a failed direct save, and the one rescue where the direct save lands and answers `true`. Also: `enqueue` reports whether the write landed, a NaN payload lands (encoded as null) and is quarantined by the drain rather than failing every write, overlapping `drain` calls join one pass and upload each run once, and `SyncService` drains the queue on a connectivity trigger when signed in and leaves it alone when not.
 
-### `apps/mobile_ios/test/` — 596 files, byte-for-byte
+### `apps/mobile_ios/test/` — 600 files, byte-for-byte
 
 After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kept identical to `apps/mobile_android/test/` via `diff -rq`. Every test file documented above runs on the iOS target too **locally** — `melos run test` has no scope filter — but **not in CI**: the `test-packages` job scopes `melos exec` to `run_recorder`, `mobile_android`, `api_client`, `gpx_parser`, `ui_kit` and `core_models`, and `mobile_ios` is not among them. That is not a gap for byte-identical Dart, but it is why a test gated on an `ios/` file being present asserts nothing on any CI run — two such groups existed and were removed in favour of `scripts/check_ios_native_declarations.mjs` (decisions.md § 742). Per-target counts: `flutter test` compiles separately, so each test file is executed twice when you run both apps locally. Don't add iOS-specific test files — every test belongs in both apps. The architecture-guard tests under `apps/mobile_android/test/architecture_guards_test.dart` read `lib/screens/run_screen.dart` from the working directory, so they pin the same invariants on both targets.
 
@@ -1513,7 +1513,7 @@ comprehension that carries no predicate, and `envPlaintextKeys` on the
 intermediate local (`sentry_env`) that a reader looking only at `*_lambda_env`
 would miss.
 
-### `scripts/check_infra_coverage.test.mjs` — 81 tests
+### `scripts/check_infra_coverage.test.mjs` — 82 tests
 
 What in `infra/` is watched by nothing ([decisions § 890](../architecture/decisions.md)).
 Two halves, each mutated on its own. Stack coverage: a new directory missing from
@@ -1526,7 +1526,8 @@ one with no error-rate alarm, a new Lambda with neither, either distribution
 alarm removed, a classifier that stopped matching, and an empty function list —
 the last two because a guard that resolves nothing reports every subject as fine.
 The parsers are exercised separately, including the `for_each`-through-a-locals-map
-resolution that makes the five share Lambdas read as five. One case runs the real
+resolution that makes the five share Lambdas read as five, and a `for_each`
+that is gated on `alarm_tier` resolving through that same map. One case runs the real
 script end to end through `execFileSync` against a copy of `alarms.tf` with the
 `osrm-proxy` p95 alarm stripped, asserting the process exits non-zero: the guard
 is shown to fail on the exact regression it was written for, exit code and all.

@@ -10,6 +10,22 @@
 # The first apply per address sends an opt-in confirmation email; the
 # subscription stays in `pending_confirmation` until the recipient
 # clicks the link. Subsequent applies are idempotent.
+#
+# Every alarm below is DECLARED unconditionally-shaped (so
+# scripts/check_infra_coverage.mjs still sees each Lambda's error-rate + p95
+# pair) but CREATED per `var.alarm_tier`. The estate's CloudWatch free tier is
+# 10 alarm metrics shared across the whole AWS Organization, billed per metric
+# (each error-rate alarm below reads two), and this module at "full" is ~40 per
+# env. "essential" keeps the alarms that guard spend or total outage — the
+# coach error rate, CloudFront 5xx, the three throttle ceilings and the
+# bypass-paywall tripwire, 7 alarm metrics — and drops the per-surface and
+# latency alarms. A dropped alarm takes its log metric filter with it: a filter
+# with `default_value` publishes a custom metric, which has its own 10-metric
+# free tier.
+locals {
+  alarms_essential = var.alarm_tier != "none"
+  alarms_full      = var.alarm_tier == "full"
+}
 
 resource "aws_sns_topic" "alerts" {
   name = "${local.resource_prefix}-alerts"
@@ -29,6 +45,7 @@ resource "aws_sns_topic_subscription" "alerts_email" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "lambda_errors" {
+  count               = local.alarms_essential ? 1 : 0
   alarm_name          = "${local.resource_prefix}-coach-lambda-errors"
   alarm_description   = "Coach Lambda 4xx/5xx error rate over 2% across two consecutive 5-min windows (10 min sustained)."
   comparison_operator = "GreaterThanThreshold"
@@ -74,6 +91,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_errors" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "lambda_p95_duration" {
+  count               = local.alarms_full ? 1 : 0
   alarm_name          = "${local.resource_prefix}-coach-lambda-p95"
   alarm_description   = "Coach Lambda p95 duration >25 s across two consecutive 5-min windows (approaching the 30 s timeout)."
   comparison_operator = "GreaterThanThreshold"
@@ -94,6 +112,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_p95_duration" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "generate_route_lambda_errors" {
+  count               = local.alarms_full ? 1 : 0
   alarm_name          = "${local.resource_prefix}-generate-route-lambda-errors"
   alarm_description   = "Generate-route Lambda 4xx/5xx error rate over 2% across two consecutive 5-min windows (10 min sustained). Usually the GraphHopper engine being unreachable."
   comparison_operator = "GreaterThanThreshold"
@@ -139,6 +158,7 @@ resource "aws_cloudwatch_metric_alarm" "generate_route_lambda_errors" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "generate_route_lambda_p95_duration" {
+  count               = local.alarms_full ? 1 : 0
   alarm_name          = "${local.resource_prefix}-generate-route-lambda-p95"
   alarm_description   = "Generate-route Lambda p95 duration >12 s across two consecutive 5-min windows (approaching the 15 s timeout). Usually a slow / overloaded GraphHopper engine."
   comparison_operator = "GreaterThanThreshold"
@@ -159,6 +179,7 @@ resource "aws_cloudwatch_metric_alarm" "generate_route_lambda_p95_duration" {
 }
 
 resource "aws_cloudwatch_log_metric_filter" "generate_route_engine_unreachable" {
+  count          = local.alarms_full ? 1 : 0
   name           = "${local.resource_prefix}-generate-route-engine-unreachable"
   log_group_name = aws_cloudwatch_log_group.lambda_generate_route.name
   # `console.error('[generate-route] engine_unreachable')` from the Lambda when
@@ -178,14 +199,15 @@ resource "aws_cloudwatch_log_metric_filter" "generate_route_engine_unreachable" 
   }
 }
 resource "aws_cloudwatch_metric_alarm" "generate_route_engine_unreachable" {
+  count               = local.alarms_full ? 1 : 0
   alarm_name          = "${local.resource_prefix}-generate-route-engine-unreachable"
   alarm_description   = "GraphHopper is unreachable from the generate-route Lambda (>=5 engine_unreachable events in each of two consecutive 5-min windows). Route generation has silently degraded to the in-browser OSRM heuristic for all users. Check the GraphHopper Fly app."
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 2
   threshold           = 5
   treat_missing_data  = "notBreaching"
-  metric_name         = aws_cloudwatch_log_metric_filter.generate_route_engine_unreachable.metric_transformation[0].name
-  namespace           = aws_cloudwatch_log_metric_filter.generate_route_engine_unreachable.metric_transformation[0].namespace
+  metric_name         = aws_cloudwatch_log_metric_filter.generate_route_engine_unreachable[0].metric_transformation[0].name
+  namespace           = aws_cloudwatch_log_metric_filter.generate_route_engine_unreachable[0].metric_transformation[0].namespace
   period              = 300
   statistic           = "Sum"
   alarm_actions       = [aws_sns_topic.alerts.arn]
@@ -197,6 +219,7 @@ resource "aws_cloudwatch_metric_alarm" "generate_route_engine_unreachable" {
 # CLEAN 502 (the builder degrades to straight-line segments), not a Lambda
 # throw, so the Errors metric alone would sleep through an engine outage.
 resource "aws_cloudwatch_metric_alarm" "osrm_proxy_lambda_errors" {
+  count               = local.alarms_full ? 1 : 0
   alarm_name          = "${local.resource_prefix}-osrm-proxy-lambda-errors"
   alarm_description   = "Osrm-proxy Lambda 4xx/5xx error rate over 2% across two consecutive 5-min windows (10 min sustained)."
   comparison_operator = "GreaterThanThreshold"
@@ -249,6 +272,7 @@ resource "aws_cloudwatch_metric_alarm" "osrm_proxy_lambda_errors" {
 # rewrites a Lambda-origin 403 into the shell at 200 — nothing downstream
 # looks wrong either. The alarm is the only place that outage becomes visible.
 resource "aws_cloudwatch_metric_alarm" "osrm_proxy_lambda_p95_duration" {
+  count               = local.alarms_full ? 1 : 0
   alarm_name          = "${local.resource_prefix}-osrm-proxy-lambda-p95"
   alarm_description   = "Osrm-proxy Lambda p95 duration >12 s across two consecutive 5-min windows (approaching the 15 s timeout). Usually a slow / overloaded OSRM engine."
   comparison_operator = "GreaterThanThreshold"
@@ -269,6 +293,7 @@ resource "aws_cloudwatch_metric_alarm" "osrm_proxy_lambda_p95_duration" {
 }
 
 resource "aws_cloudwatch_log_metric_filter" "osrm_proxy_engine_unreachable" {
+  count          = local.alarms_full ? 1 : 0
   name           = "${local.resource_prefix}-osrm-proxy-engine-unreachable"
   log_group_name = aws_cloudwatch_log_group.lambda_osrm_proxy.name
   # `console.error('[osrm-proxy] engine_unreachable')` from the Lambda when
@@ -283,14 +308,15 @@ resource "aws_cloudwatch_log_metric_filter" "osrm_proxy_engine_unreachable" {
   }
 }
 resource "aws_cloudwatch_metric_alarm" "osrm_proxy_engine_unreachable" {
+  count               = local.alarms_full ? 1 : 0
   alarm_name          = "${local.resource_prefix}-osrm-proxy-engine-unreachable"
   alarm_description   = "The OSRM engine is unreachable from the osrm-proxy Lambda (>=5 engine_unreachable events in each of two consecutive 5-min windows). Route-builder snapping has silently degraded to straight-line segments for all users. Check the OSRM Fly app."
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 2
   threshold           = 5
   treat_missing_data  = "notBreaching"
-  metric_name         = aws_cloudwatch_log_metric_filter.osrm_proxy_engine_unreachable.metric_transformation[0].name
-  namespace           = aws_cloudwatch_log_metric_filter.osrm_proxy_engine_unreachable.metric_transformation[0].namespace
+  metric_name         = aws_cloudwatch_log_metric_filter.osrm_proxy_engine_unreachable[0].metric_transformation[0].name
+  namespace           = aws_cloudwatch_log_metric_filter.osrm_proxy_engine_unreachable[0].metric_transformation[0].namespace
   period              = 300
   statistic           = "Sum"
   alarm_actions       = [aws_sns_topic.alerts.arn]
@@ -328,7 +354,7 @@ locals {
 }
 
 resource "aws_cloudwatch_log_metric_filter" "share_upstream_unreachable" {
-  for_each       = local.share_log_groups
+  for_each       = local.alarms_full ? local.share_log_groups : {}
   name           = "${local.resource_prefix}-share-${each.key}-upstream-unreachable"
   log_group_name = each.value
   pattern        = "\"[share-${each.key}] upstream_unreachable\""
@@ -342,7 +368,7 @@ resource "aws_cloudwatch_log_metric_filter" "share_upstream_unreachable" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "share_upstream_unreachable" {
-  for_each            = local.share_log_groups
+  for_each            = local.alarms_full ? local.share_log_groups : {}
   alarm_name          = "${local.resource_prefix}-share-${each.key}-upstream-unreachable"
   alarm_description   = "Share-${each.key} Lambda logged >=5 upstream_unreachable events in each of two consecutive 5-min windows — Supabase is unreachable from the share renderer and every ${each.key} unfurl has silently degraded to the branded fallback card. Check Supabase health."
   comparison_operator = "GreaterThanOrEqualToThreshold"
@@ -359,6 +385,7 @@ resource "aws_cloudwatch_metric_alarm" "share_upstream_unreachable" {
 }
 
 resource "aws_cloudwatch_log_metric_filter" "coach_bypass_paywall" {
+  count          = local.alarms_essential ? 1 : 0
   name           = "${local.resource_prefix}-coach-bypass-paywall"
   log_group_name = aws_cloudwatch_log_group.lambda.name
   # `console.error('[coach] bypass_paywall_active …')` from the
@@ -378,14 +405,15 @@ resource "aws_cloudwatch_log_metric_filter" "coach_bypass_paywall" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "coach_bypass_paywall" {
+  count               = local.alarms_essential ? 1 : 0
   alarm_name          = "${local.resource_prefix}-coach-bypass-paywall"
   alarm_description   = "BYPASS_PAYWALL fired in the coach handler. In production this means the env gate failed and the daily cap + spend ceilings are off — billing emergency. /audit/coach Low #14."
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   threshold           = 1
   treat_missing_data  = "notBreaching"
-  metric_name         = aws_cloudwatch_log_metric_filter.coach_bypass_paywall.metric_transformation[0].name
-  namespace           = aws_cloudwatch_log_metric_filter.coach_bypass_paywall.metric_transformation[0].namespace
+  metric_name         = aws_cloudwatch_log_metric_filter.coach_bypass_paywall[0].metric_transformation[0].name
+  namespace           = aws_cloudwatch_log_metric_filter.coach_bypass_paywall[0].metric_transformation[0].namespace
   period              = 60
   statistic           = "Sum"
   alarm_actions       = [aws_sns_topic.alerts.arn]
@@ -419,7 +447,7 @@ locals {
 }
 
 resource "aws_cloudwatch_metric_alarm" "share_lambda_errors" {
-  for_each            = local.share_lambdas
+  for_each            = local.alarms_full ? local.share_lambdas : {}
   alarm_name          = "${local.resource_prefix}-share-${each.key}-lambda-errors"
   alarm_description   = "Share-${each.key} Lambda 4xx/5xx error rate over 2% across two consecutive 5-min windows (10 min sustained). Social unfurl cards are failing."
   comparison_operator = "GreaterThanThreshold"
@@ -465,7 +493,7 @@ resource "aws_cloudwatch_metric_alarm" "share_lambda_errors" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "share_lambda_p95_duration" {
-  for_each            = local.share_lambdas
+  for_each            = local.alarms_full ? local.share_lambdas : {}
   alarm_name          = "${local.resource_prefix}-share-${each.key}-lambda-p95"
   alarm_description   = "Share-${each.key} Lambda p95 duration >12 s across two consecutive 5-min windows (approaching the 15 s timeout). Usually a slow Supabase read or resvg render pressure on the 512 MB budget."
   comparison_operator = "GreaterThanThreshold"
@@ -508,6 +536,7 @@ resource "aws_cloudwatch_metric_alarm" "share_lambda_p95_duration" {
 # stack's primary region is already a manual multi-file edit, and this is one
 # more file it has to touch.
 resource "aws_cloudwatch_metric_alarm" "cloudfront_4xx" {
+  count               = local.alarms_full ? 1 : 0
   alarm_name          = "${local.resource_prefix}-cloudfront-4xx"
   alarm_description   = "CloudFront 4xx rate over ${var.cloudfront_4xx_alarm_threshold}% across two consecutive 5-min windows. Catches mass auth failures, a broken behaviour ordering, or an SPA fallback misconfiguration."
   comparison_operator = "GreaterThanThreshold"
@@ -529,6 +558,7 @@ resource "aws_cloudwatch_metric_alarm" "cloudfront_4xx" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "cloudfront_5xx" {
+  count               = local.alarms_essential ? 1 : 0
   alarm_name          = "${local.resource_prefix}-cloudfront-5xx"
   alarm_description   = "CloudFront 5xx rate over ${var.cloudfront_5xx_alarm_threshold}% across two consecutive 5-min windows. The site is failing for a share of viewers, whichever origin is at fault."
   comparison_operator = "GreaterThanThreshold"
@@ -567,7 +597,7 @@ locals {
 }
 
 resource "aws_cloudwatch_metric_alarm" "lambda_throttles" {
-  for_each          = local.throttle_alarms
+  for_each          = local.alarms_essential ? local.throttle_alarms : {}
   alarm_name        = "${local.resource_prefix}-${each.key}-lambda-throttles"
   alarm_description = "${each.key} Lambda throttled (≥${var.lambda_throttle_alarm_threshold} throttles across two 5-min windows). Concurrent execution cap is being hit."
   # Threshold parameterised per-env: preview keeps the default 5

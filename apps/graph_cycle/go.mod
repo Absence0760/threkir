@@ -1,9 +1,11 @@
 module github.com/Absence0760/threkir/apps/graph_cycle
 
-// Patch-level floor, not a bare `go 1.26`: CVE-2026-46600 has no fix in the
-// 1.25 line at all, so anything below 1.26.6 links a stdlib that cannot be
-// patched against it. CI resolves its toolchain from this line.
-go 1.26.6
+// Patch-level floor, not a bare `go 1.27`: the stdlib CVEs Trivy raised
+// against 1.27.1 (CVE-2026-78667, -78669, -97031 and ten more) are fixed in
+// 1.27.2, and CI resolves its toolchain from this line. Each module's
+// Dockerfile builder must name this exact version — check_toolchain_pins.mjs
+// fails the PR otherwise, so the shipped binary and the tested one agree.
+go 1.27.2
 
 require github.com/paulmach/osm v0.9.0
 

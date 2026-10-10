@@ -303,6 +303,22 @@ test('parseAlarms resolves a for_each alarm through its locals map', () => {
   assert.deepEqual(alarm.functions.sort(), ['share_badge', 'share_run']);
 });
 
+test('parseAlarms resolves a tier-gated for_each through the same map', () => {
+  const src =
+    'locals {\n  share_lambdas = {\n' +
+    '    run   = aws_lambda_function.share_run.function_name\n' +
+    '    badge = aws_lambda_function.share_badge.function_name\n' +
+    '  }\n}\n\n' +
+    'resource "aws_cloudwatch_metric_alarm" "share_p95" {\n' +
+    '  for_each           = local.alarms_full ? local.share_lambdas : {}\n' +
+    '  metric_name        = "Duration"\n' +
+    '  extended_statistic = "p95"\n' +
+    '  dimensions = {\n    FunctionName = each.value\n  }\n}\n';
+  const [alarm] = parseAlarms(src);
+  assert.equal(alarm.kind, 'p95');
+  assert.deepEqual(alarm.functions.sort(), ['share_badge', 'share_run']);
+});
+
 test('parseAlarms tells an error-rate alarm from a p95 one', () => {
   const src =
     'resource "aws_cloudwatch_metric_alarm" "e" {\n' +

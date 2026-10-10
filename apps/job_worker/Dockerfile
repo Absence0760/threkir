@@ -5,8 +5,11 @@
 # Pinned by digest (in addition to tag) to satisfy OpenSSF Scorecard
 # PinnedDependenciesID — bumping the tag without re-pinning the
 # digest no-ops the pin, so resolve the new digest with
-# `docker manifest inspect golang:<tag>` when bumping.
-FROM golang:1.27-alpine@sha256:8a5910f31396cd4d89662f56c68b3ae31d374308270a1c3bd96672ee5ed43414 AS build
+# `docker manifest inspect golang:<tag>` when bumping. The tag names the
+# exact patch, equal to go.mod's `go` directive: a bare `1.27` let the digest
+# hold 1.27.1 while nothing compared it, and scripts/check_toolchain_pins.mjs
+# now fails the PR when the two differ.
+FROM golang:1.27.2-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS build
 WORKDIR /src
 
 # Cache go.mod / go.sum first so dependency-only changes don't

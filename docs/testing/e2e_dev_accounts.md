@@ -253,10 +253,10 @@ Four destinations. The client DSN goes to one, the backend DSN to two.
   in the env's sops file is merged into the coach Lambda env:
   `bin/secret-set.sh prod SENTRY_DSN --prompt`
   then `(cd ../infra-secrets && git add threkir/prod.sops.yaml && git commit -m 'threkir: sentry dsn')`
-- **Apply, then repoint the alias.** An env-only apply publishes a new Lambda version but
-  leaves the CI-owned `live` alias on the old one (issue #590), so the rotation does not
-  actually serve until the second command runs:
-  `bin/deploy-prod.sh && bin/lambda-alias-sync.sh prod`
+- **Apply, which repoints the alias.** An env-only apply publishes a new Lambda version but
+  leaves the CI-owned `live` alias on the old one (issue #590); `deploy-prod.sh` repoints it
+  after the apply, and exits non-zero naming `bin/lambda-alias-sync.sh prod` if it can't:
+  `bin/deploy-prod.sh`
 
 Repeat the last two for `preview` if that env should report too. Wear OS takes
 `SENTRY_DSN` as a Gradle property; watchOS reads it from `Info.plist`.

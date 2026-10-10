@@ -913,7 +913,7 @@ void main() {
       final run = await r.stop();
       expect(run.metadata?['indoor'], isNull);
       expect(run.metadata?['indoor_source'], isNull);
-      expect(run.metadata?['distance_estimator'], 'kalman_v2');
+      expect(run.metadata?['distance_estimator'], 'kalman_v3');
       expect(run.metadata?.containsKey('distance_step_filled_m'), isFalse,
           reason: 'no pedometer fill happened, so the key is omitted');
     });
@@ -1378,7 +1378,7 @@ void main() {
       expect(r.debugDistanceMetres, closeTo(34.92098239921727, 1e-6));
       final run = await r.stop();
       expect(run.distanceMetres, closeTo(39.487530494657875, 1e-6));
-      expect(run.metadata?['distance_estimator'], 'kalman_v2');
+      expect(run.metadata?['distance_estimator'], 'kalman_v3');
       expect(run.track, hasLength(11));
       for (final w in run.track) {
         expect(w.hasSmoothedPosition, isTrue);
@@ -1425,7 +1425,7 @@ void main() {
     test('one stretch not smoothed leaves the whole run unstamped', () async {
       // The first stretch (11 fixes plus the pause's finish) fits a cap of 12
       // and is smoothed; the second outgrows it. The saved distance takes the
-      // first stretch's correction, but kalman_v2 would claim the second was
+      // first stretch's correction, but kalman_v3 would claim the second was
       // smoothed too and hide Recalculate for a run the server could still
       // improve.
       final clock = _FakeClock();
@@ -1663,7 +1663,7 @@ void main() {
 
       final run = await r.stop();
       expect(run.distanceMetres, closeTo(172, 1e-6));
-      expect(run.metadata?['distance_estimator'], 'kalman_v2');
+      expect(run.metadata?['distance_estimator'], 'kalman_v3');
       expect(run.metadata?['distance_step_filled_m'], 72);
     });
 

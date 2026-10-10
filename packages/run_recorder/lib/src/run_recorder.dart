@@ -142,9 +142,9 @@ class RunRecorder {
   static const _uuid = Uuid();
 
   /// `metadata.distance_estimator` on a GPS-distance run whose saved distance
-  /// is the spec v1.2 smoother's ([smoothDistance]). The live screen reads the
+  /// is the spec v1.3 smoother's ([smoothDistance]). The live screen reads the
   /// forward filter; [stop] replays every stretch through the smoother.
-  static const distanceEstimatorVersion = 'kalman_v2';
+  static const distanceEstimatorVersion = 'kalman_v3';
 
   /// How often [prepare] retries opening the position stream when it is
   /// currently absent (services/permission denied at start, or the stream

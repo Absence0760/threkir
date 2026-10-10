@@ -14,7 +14,7 @@ import { USER_A, USER_B } from '../fixtures/users';
  * re-derive its distance with the GPS distance estimator. The action goes
  * through a ConfirmDialog, calls `request_distance_recompute`, and says what
  * happened either way. It is not offered on an import, on a pedometer
- * distance, on a run already on `kalman_v2`, on a trackless run, or to anyone
+ * distance, on a run already on `kalman_v3`, on a trackless run, or to anyone
  * but the owner. A recomputed run shows the recorder's original figure.
  */
 
@@ -150,7 +150,7 @@ test.describe('owner', () => {
 		const id = await plant({
 			title: 'Already fixed',
 			metadata: {
-				distance_estimator: 'kalman_v2',
+				distance_estimator: 'kalman_v3',
 				distance_recorded_m: 6_308,
 				distance_recomputed_at: browserDayAt(0, 6),
 			},

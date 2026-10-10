@@ -10,9 +10,10 @@ import type { JsonObject, Run, RunSource } from '../types';
 export const RECOMPUTABLE_SOURCES: readonly RunSource[] = ['app', 'watch'];
 
 /// The estimator a recompute applies (docs/features/gps_distance.md): spec
-/// v1.2's smoother. A run already carrying it has nothing to gain; a run a
-/// recompute stamped `kalman_v1` (spec v1.1's forward filter) is offered again.
-export const CURRENT_DISTANCE_ESTIMATOR = 'kalman_v2';
+/// v1.3's smoother. A run already carrying it has nothing to gain; a run a
+/// recompute stamped `kalman_v2` (spec v1.2's smoother) or `kalman_v1` (spec
+/// v1.1's forward filter) is offered again.
+export const CURRENT_DISTANCE_ESTIMATOR = 'kalman_v3';
 
 export type RecomputeCandidate = Pick<Run, 'user_id' | 'source' | 'track_url' | 'metadata'>;
 

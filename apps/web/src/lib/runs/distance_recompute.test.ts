@@ -70,9 +70,18 @@ test('an in-progress stub, a manual entry and an indoor run are never offered', 
 });
 
 test('a run already on the current estimator is not offered again', () => {
-	assert.equal(CURRENT_DISTANCE_ESTIMATOR, 'kalman_v2');
+	assert.equal(CURRENT_DISTANCE_ESTIMATOR, 'kalman_v3');
 	assert.equal(
-		canRecomputeDistance(run({ metadata: { distance_estimator: 'kalman_v2' } }), OWNER),
+		canRecomputeDistance(run({ metadata: { distance_estimator: 'kalman_v3' } }), OWNER),
+		false,
+	);
+	assert.equal(
+		canRecomputeDistance(
+			run({
+				metadata: { distance_estimator: 'kalman_v3', distance_recomputed_at: '2026-10-08T08:00:00Z' },
+			}),
+			OWNER,
+		),
 		false,
 	);
 	assert.equal(
@@ -82,7 +91,8 @@ test('a run already on the current estimator is not offered again', () => {
 			}),
 			OWNER,
 		),
-		false,
+		true,
+		'a run recomputed under spec v1.2 gains the v1.3 Doppler scale',
 	);
 });
 

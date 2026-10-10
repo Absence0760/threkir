@@ -251,14 +251,17 @@ void main() {
 
   /// The composer pops once its save returns, which is real-loop work behind
   /// the store's notify (the write chain settles there), and then animates
-  /// out on the fake clock. pumpUntil turns only the first, so this turns
-  /// both until the sheet has gone. Bounded: 100 steps is 5 s of fake time.
+  /// out on the fake clock. Wait on the pop itself — its route stops being
+  /// current the moment it is popped — then run the exit on the fake clock,
+  /// which pumpUntil never advances.
   Future<void> waitForSheetToClose(WidgetTester tester, Finder sheet) async {
-    for (var i = 0; i < 100 && tester.any(sheet); i++) {
-      await tester.runAsync(
-          () => Future<void>.delayed(const Duration(milliseconds: 5)));
-      await tester.pump(const Duration(milliseconds: 50));
-    }
+    await pumpUntil(
+        tester,
+        () =>
+            !tester.any(sheet) ||
+            !ModalRoute.of(tester.element(sheet))!.isCurrent,
+        describe: 'the composer to pop after its save');
+    await settle(tester);
     expect(sheet, findsNothing, reason: 'the composer closes after its save');
   }
 
@@ -288,7 +291,6 @@ void main() {
     await pumpUntil(tester, () => written,
         describe: "the composer's workout to land on disk");
     await waitForSheetToClose(tester, find.byType(GymComposeSheet));
-    await settle(tester);
   }
 
   /// Nutrition's own add, the manual entry, Add. Returns once the store has
@@ -317,7 +319,6 @@ void main() {
     await pumpUntil(tester, () => written,
         describe: "the meal's row and index to land on disk");
     await waitForSheetToClose(tester, find.byType(NutritionLogSheet));
-    await settle(tester);
   }
 
   Future<void> unmount(WidgetTester tester) async {

@@ -28,8 +28,8 @@ smoother in `internal/gpsdistance/` (post-hoc stop detection when the track
 has no Doppler; such a track keeps the forward pass unless `roadDistanceFor`
 classifies it as a road run, recorded as `distance_estimator_pass`) and
 rewrites `runs.distance_m` + the `fastest_*` bests,
-stamping `distance_estimator = "kalman_v2"` and keeping the recorder's figure
-in `metadata.distance_recorded_m`; a `kalman_v1` recompute is eligible again; imports, indoor /
+stamping `distance_estimator = "kalman_v3"` and keeping the recorder's figure
+in `metadata.distance_recorded_m`; a `kalman_v1` or `kalman_v2` recompute is eligible again; imports, indoor /
 pedometer / treadmill, manual and in-progress runs are skipped as no-ops —
 [`../../docs/features/gps_distance.md`](../../docs/features/gps_distance.md)). Data-export will land as an
 additional kind in `internal/worker.go`'s dispatch when that Edge

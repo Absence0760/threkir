@@ -290,6 +290,8 @@ The `decisions.md` § entries for wave 2 (§273) **and** this batch (§274) are 
 
 **GPS distance spec v1.2 forward filter (2026-10-08, [`gps_distance.md`](../../docs/features/gps_distance.md)).** `watch_core::gps_distance` now ports spec v1.2's forward filter: an innovation gate (chi-square 2 dof, p = 0.001) with a lock-out re-anchor after five consecutive rejections, adaptive measurement noise that only inflates, a Doppler-vs-position cross-check on the RMC course, a low-speed Doppler debias (inert here: NMEA reports no speed accuracy), a pedometer zero-velocity update (unwired: no pedometer on this board) and an antimeridian-safe projection. The spec's smoother is not ported — it needs the whole run in memory, and the phone or server re-derives a saved figure from the uploaded track. The estimator grows from 248 B to 360 B, pinned by a `const` assert on both targets (one copy, inside the `Recorder`); the state stays `f64` because the covariance recursion over a run's thousands of fixes does not hold the vectors' 1e-3 m in `f32`. Type-checked on the host and the firmware target (`cargo check -p watch_core [--tests]`); the vector replay is written but was not run here, so it is *host-tested* only once CI's test job passes.
 
+**GPS distance spec v1.3 (2026-10-09, [`gps_distance.md`](../../docs/features/gps_distance.md)).** The forward filter learns a Doppler speed scale from the fixes' displacement along the RMC course and multiplies every Doppler speed by it (decisions § 1821). The estimator grows from 360 B to 448 B. Type-checked on the host and the firmware target; the vector replay assertion for the scale is written but not run here, so it is *host-tested* only once CI's test job passes.
+
 
 ## Layout
 

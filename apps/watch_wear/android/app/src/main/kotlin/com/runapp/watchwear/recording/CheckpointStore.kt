@@ -96,4 +96,22 @@ class CheckpointStore(private val context: Context) {
     suspend fun clear() {
         context.checkpointDataStore.edit { prefs -> prefs.remove(KEY_CHECKPOINT) }
     }
+
+    /// Clears the checkpoint only if it is [runId]'s, in one edit. The
+    /// finished-run cleanup runs after the queue write, by which time the
+    /// next run may have written its own checkpoint, and that one is its
+    /// only crash protection.
+    suspend fun clearIfFor(runId: String) {
+        context.checkpointDataStore.edit { prefs ->
+            val stored = prefs[KEY_CHECKPOINT]?.let { raw ->
+                runCatching { json.decodeFromString(Checkpoint.serializer(), raw) }.getOrNull()
+            }
+            if (checkpointClearableFor(stored, runId)) prefs.remove(KEY_CHECKPOINT)
+        }
+    }
 }
+
+/// An unreadable checkpoint recovers nothing, so it goes; a readable one goes
+/// only when it belongs to the run being cleaned up.
+internal fun checkpointClearableFor(stored: Checkpoint?, runId: String): Boolean =
+    stored == null || stored.runId == runId

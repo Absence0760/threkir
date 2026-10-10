@@ -18,6 +18,7 @@
 	import RouteTrackPreview from '$lib/components/RouteTrackPreview.svelte';
 	import type { RouteListItem } from '$lib/routes/route_list_columns';
 	import type { Snapshot } from './$types';
+	import { isListStale, listToken } from '$lib/core/list_freshness';
 
 	let tab = $state<'mine' | 'explore' | 'heatmap'>('mine');
 	let routes = $state<RouteListItem[]>([]);
@@ -59,15 +60,20 @@
 	/// on mount discards its result instead of clobbering the captured
 	/// list on back-nav from a route-detail page.
 	let fetchGen = $state(0);
+	/// The list-freshness token `routes` was loaded under. Plain `let`: only
+	/// the snapshot reads it. See lib/core/list_freshness.ts.
+	let loadedToken = '';
 
 	async function load() {
 		loading = true;
 		fetchError = null;
 		const gen = ++fetchGen;
+		const token = listToken('routes');
 		const result = await fetchRoutesWithError();
 		if (gen !== fetchGen) return;
 		routes = result.routes;
 		fetchError = result.error;
+		if (!result.error) loadedToken = token;
 		loading = false;
 	}
 
@@ -222,6 +228,7 @@
 		routes = routes.map((r) => (r.id === routeId ? { ...r, is_starred: next } : r));
 		try {
 			await setRouteStar(routeId, next);
+			loadedToken = listToken('routes');
 		} catch (e) {
 			routes = routes.map((r) => (r.id === routeId ? { ...r, is_starred: !next } : r));
 			showToast(
@@ -242,6 +249,7 @@
 		sortKey: SortKey;
 		starredOnly: boolean;
 		scrollY: number;
+		listToken: string;
 	}> = {
 		capture: () => ({
 			routes,
@@ -252,12 +260,9 @@
 			sortKey,
 			starredOnly,
 			scrollY: typeof window === 'undefined' ? 0 : window.scrollY,
+			listToken: loadedToken,
 		}),
 		restore: (s) => {
-			// Invalidate any in-flight load() the mount-time path may have
-			// already kicked off so it doesn't overwrite the captured list.
-			fetchGen++;
-			routes = s.routes;
 			tab = s.tab;
 			search = s.search;
 			surfaceFilter = s.surfaceFilter;
@@ -265,6 +270,16 @@
 			sortKey = s.sortKey;
 			starredOnly = s.starredOnly;
 			filtersHydrated = true;
+			// A route was written since the list was loaded (saved, edited,
+			// starred or deleted on its detail page, or a run moved its
+			// run_count): keep the tab and filters, leave `routes` empty and
+			// `loading` set so onMount fetches.
+			if (isListStale('routes', s.listToken)) return;
+			// Invalidate any in-flight load() the mount-time path may have
+			// already kicked off so it doesn't overwrite the captured list.
+			fetchGen++;
+			routes = s.routes;
+			loadedToken = s.listToken;
 			loading = false;
 			// SvelteKit's auto scroll-restoration runs before the list has
 			// rendered, so the page is too short and scroll falls back to

@@ -311,6 +311,16 @@ A skip is a pass at the gate, so a green `CI gate` on such a PR means the iOS
 target was not compiled -- which is correct, because nothing in that diff can
 reach it.
 
+Most of that build's plugin graph is fetched through Swift Package Manager
+(~27 git repositories plus prebuilt binary zips from `dl.google.com`), so the
+job caches the remote-derived halves of `apps/mobile_ios/build/ios/SourcePackages`
+-- the `-clonedSourcePackagesDirPath` Flutter passes to xcodebuild -- keyed on
+`Package.resolved`, and the `RunnerTests` step reuses that directory instead
+of resolving the graph a second time into DerivedData. Before that, one
+dropped download failed the lane on a PR that touched no iOS code (run
+37947299387). A fetch failure that still gets through is reported as a Swift
+package download failure, not as "does not compile".
+
 A `needs:` entry is scoped to its own workflow, so a job in a sibling workflow
 file can never be waited on directly. Two workflows reach the gate anyway by
 being **called instead of triggered** -- `terraform.yml` ([decisions

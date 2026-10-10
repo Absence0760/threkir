@@ -18,6 +18,7 @@
 	import Modal from '$lib/components/Modal.svelte';
 	import type { TrainingPlan, PlanStatus } from '$lib/types';
 	import type { Snapshot } from './$types';
+	import { isListStale, listToken } from '$lib/core/list_freshness';
 
 	let plans = $state<TrainingPlan[]>([]);
 	let loading = $state(true);
@@ -28,13 +29,18 @@
 
 	type StatusFilter = 'all' | PlanStatus;
 	let statusFilter = $state<StatusFilter>('all');
+	/// The list-freshness token `plans` was loaded under. Plain `let`: only
+	/// the snapshot reads it. See lib/core/list_freshness.ts.
+	let loadedToken = '';
 
 	async function load() {
 		loading = true;
 		loadError = null;
+		const token = listToken('plans');
 		const result = await fetchMyPlansWithError();
 		plans = result.plans;
 		loadError = result.error;
+		if (!result.error) loadedToken = token;
 		loading = false;
 	}
 
@@ -52,11 +58,20 @@
 		}
 	});
 
-	export const snapshot: Snapshot<{ plans: TrainingPlan[]; statusFilter: StatusFilter }> = {
-		capture: () => ({ plans, statusFilter }),
+	export const snapshot: Snapshot<{
+		plans: TrainingPlan[];
+		statusFilter: StatusFilter;
+		listToken: string;
+	}> = {
+		capture: () => ({ plans, statusFilter, listToken: loadedToken }),
 		restore: (s) => {
-			plans = s.plans;
 			statusFilter = s.statusFilter;
+			// A plan was written since the list was loaded (created here and
+			// opened on its detail page, or edited / abandoned there): keep the
+			// filter, leave `plans` empty and `loading` set so onMount fetches.
+			if (isListStale('plans', s.listToken)) return;
+			plans = s.plans;
+			loadedToken = s.listToken;
 			loading = false;
 		}
 	};

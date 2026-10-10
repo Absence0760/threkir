@@ -78,7 +78,7 @@ class CheckpointHandoffWiringTest {
     fun `the finished run is banked before its checkpoint is cleared`() {
         val fn = body(viewModelSrc, "private fun handleFinishedRun(")
         val save = fn.indexOf("store.save(")
-        val clear = fn.indexOf("checkpoints.clear()")
+        val clear = fn.indexOf("checkpoints.clearIfFor(runId)")
         assertTrue("the finished run must be queued", save >= 0)
         assertTrue("the checkpoint must be cleared once the run is queued", clear >= 0)
         assertTrue(

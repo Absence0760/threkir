@@ -333,7 +333,12 @@ backgrounding, low-memory kills).
   `RunViewModel.handleFinishedRun` *after* `LocalRunStore` has accepted
   the run. Clearing it in the service ran concurrently with that write,
   right as the process left foreground-service state, so a kill in the
-  window lost both records of the run.
+  window lost both records of the run. Both halves of that cleanup are scoped to
+  the finished run (`checkpoints.clearIfFor(runId)`,
+  `RecordingRepository.resetIfFinished(runId)`): it runs on a background
+  job, and the next run can start before it gets there — an unscoped reset
+  wiped the new run to idle while the service kept recording it.
+  `NextRunLifecycleTest` pins it.
 - `recording/CheckpointRecovery.kt` — grades a surviving checkpoint
   before it is offered (`recoveryActionFor`), because `saveRun` upserts
   on the run id and re-uploads to the same Storage key: recovering a run

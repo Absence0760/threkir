@@ -1328,7 +1328,7 @@ tests-e2e/
     integrations.spec.ts       — Strava, parkrun, Garmin (list render + parkrun connect/disconnect round-trip + Strava OAuth-redirect path)
     devices.spec.ts            — current-browser row + "This device" badge + inline label edit round-trip
     licenses.spec.ts           — open-source license list
-    upgrade.spec.ts            — Pro pricing, the Yearly / Monthly plan picker (yearly preselected with the 33% saving, monthly reprices the card + CTA, no picker for a Pro user), RevenueCat checkout
+    upgrade.spec.ts            — Pro pricing, the Yearly / Monthly plan picker (yearly preselected with the 33% saving, monthly reprices the card + CTA, no picker for a Pro user), the RevenueCat checkout redirect (intercepted; App User ID path segment, `package_id`, `redirect_url`) against the e2e fixture link
   share/
     run.spec.ts                — /share/run/[id] anon + authed-non-owner view; private-run not-found for anon; sign-up CTA click-through; run-meta render
     route.spec.ts              — /share/route/[id] anon view

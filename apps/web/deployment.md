@@ -145,7 +145,7 @@ The static SvelteKit build inlines `PUBLIC_*` vars at build time. The CI workflo
 | `PUBLIC_SUPABASE_URL` | `PUBLIC_SUPABASE_URL` | the raw `https://<ref>.supabase.co` (`api.threkir.com` is a Pro-only custom domain, not provisioned on Free) |
 | `PUBLIC_SUPABASE_ANON_KEY` | `PUBLIC_SUPABASE_ANON_KEY` | the **publishable** key, not service-role |
 | `PUBLIC_MAPTILER_KEY` | `PUBLIC_MAPTILER_KEY` | shared with mobile + Wear OS |
-| `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` | `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` | hosted Web Paywall Link; required for prod (build guard) |
+| `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` | `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` | hosted Web Paywall Link; optional — unset with a Pro perk on sells Pro in the iPhone app only (decisions § 1826), a set value must be `https://pay.rev.cat/<token>` (build guard) |
 | `PUBLIC_REVENUECAT_WEB_PORTAL_URL` | `PUBLIC_REVENUECAT_WEB_PORTAL_URL` | optional customer-portal link |
 | `PUBLIC_SENTRY_DSN` | `PUBLIC_SENTRY_DSN` | optional — empty disables client-side capture |
 | `PUBLIC_LIVE_HUB_URL` | `PUBLIC_LIVE_HUB_URL` | optional — unset keeps the live path on Supabase Realtime |
@@ -444,7 +444,7 @@ Reconciled 2026-09-28 against what the prod deploys actually did (`web@1.6.0` ru
 - [ ] sops file populated for preview: `infra-secrets/threkir/preview.sops.yaml` — only `preview.sops.yaml.example` exists
 - [ ] The sops values reach the serving Lambdas — needs the `infra/envs/prod` apply in [`docs/ops/deployment.md` § Lambda secrets](../../docs/ops/deployment.md) plus `bin/lambda-alias-sync.sh prod`; `POST https://threkir.com/api/coach` still answers 503 (2026-09-28)
 - [x] GitHub Secrets populated: `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`, `PUBLIC_MAPTILER_KEY`, `PUBLIC_SENTRY_DSN`, `PUBLIC_VAPID_PUBLIC_KEY`, `AWS_DEPLOY_ROLE_ARN_PROD`, `AWS_DEPLOY_ROLE_ARN_PREVIEW` — all on `gh secret list` (2026-09-28); the release's `check_production_env.mjs` guard passed on every run above
-- [ ] GitHub Secrets `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` + `PUBLIC_REVENUECAT_WEB_PORTAL_URL` — unset, and the live bundle ships both empty; not required until Pro is sellable (`PUBLIC_COACH_ENABLED` or `PUBLIC_ROUTE_GEN_ENABLED` truthy), at which point the guard fails the release without the checkout URL
+- [ ] GitHub Secrets `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` + `PUBLIC_REVENUECAT_WEB_PORTAL_URL` — unset, and the live bundle ships both empty. `PUBLIC_COACH_ENABLED=true` is set (2026-10-10), so Pro is sold through the iPhone app only and `/settings/upgrade` says so (the `app_only` storefront, decisions § 1826); the release guard prints a `::notice::` for it rather than failing. Set the checkout URL after live Stripe activation + the tax decision (#1081 S6.x) to turn web checkout on
 - [ ] First preview deploy green; smoke test sign-in + dashboard + run detail at `preview.threkir.com` — blocked on the preview stack above; `release-web.yml` also has no preview trigger yet
 - [x] First prod deploy green — `web@1.0.3`, run 29143725709, 2026-07-11 (a tag push, before the published Release became the deploy gate; a bare `web@*` tag deploys nothing now). Latest: `web@1.8.0`, run 35556025161, 2026-09-21
 - [ ] Coach endpoint responds (try a free user → expect 2 successful streamed replies, then a 3rd request → expect 429; free tier cap is `TIER_LIMITS.free.dailyLimit = 2` per `apps/web/src/lib/coach/types.ts`) — 503 today and `PUBLIC_COACH_ENABLED` is empty on the live bundle

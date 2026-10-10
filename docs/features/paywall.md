@@ -114,11 +114,36 @@ full card with no code change. The tier machinery (`subscription_tier`,
 `is_pro()`, `TIER_LIMITS`, RevenueCat webhook) stays intact and dormant
 either way.
 
+**Selling Pro and selling it on the web are separate questions**
+([decisions.md § 1826](../architecture/decisions.md)). The web card reads a
+three-state storefront, `proStorefront(proSellable, webCheckoutAvailable())`
+in `$lib/billing/revenuecat_links.ts`:
+
+| Storefront | When | Web Pro card (free user) |
+|---|---|---|
+| `checkout` | a perk is live **and** `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` is a usable Web Purchase Link | plan picker + "Get Pro" + Terms / Privacy |
+| `app_only` | a perk is live, no usable web checkout link | `upgrade.proInIosApp` ("Pro is available now as a subscription in the Threkir app for iPhone…") + `upgrade.webCheckoutComingSoon`, the price note swapped for `upgrade.appPriceNote`, Donate becomes the primary button, **no buy button** |
+| `coming_soon` | no perk is live | `upgrade.proComingSoon` teaser |
+
+`webCheckoutAvailable()` (`$lib/billing/revenuecat.ts`) fails closed
+through `checkoutBaseProblem()`: unset, unparseable, non-https, a host
+other than `pay.rev.cat`, a bare host, and a placeholder token all answer
+false. The release guard applies the same function, so a link the guard
+lets ship is a link the page redirects to. `app_only` is how Pro launched
+(owner decision 2026-10-10): Coach on, Pro sold through iPhone In-App
+Purchase, web checkout after live Stripe activation and the tax decision
+(#1081 S6.x). A Pro bought in the app unlocks web in every state — the
+tier is the account's `subscription_tier`, written by the RevenueCat
+webhook whichever store sold it — so a Pro user sees "Active" and gets the
+Pro Coach caps on web regardless. `/app-capabilities.json` is unaffected
+(it publishes the perk flags, not the web checkout), so mobile sells Pro
+in `app_only` exactly as in `checkout`.
+
 **Terms and Privacy sit beside the purchase** (App Store Guideline 3.1.2:
 an auto-renewing subscription must link functional Terms of Use and
 Privacy Policy from the purchase flow, not only from a footer). Web
 renders `upgrade.termsLink` / `upgrade.privacyLink` under the "Get Pro"
-CTA whenever Pro is sellable; mobile `SettingsProScreen` renders both via
+CTA on the `checkout` storefront; mobile `SettingsProScreen` renders both via
 `legal_links.dart`'s `openLegalDoc` on every state, teaser included, so
 they also sit beside Restore Purchases. Pinned by
 `apps/web/tests-e2e/settings/upgrade.spec.ts` and
@@ -409,9 +434,12 @@ thin env-reading shell over the pure `revenuecat_links.ts` URL builder:
   `getCustomerInfo()` call.
 
 Env-gated by `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` (the portal URL is
-optional): an unconfigured build reports `configured = false` and the CTAs
-fall back to the "coming soon" / "manage where you started it" toasts so
-local dev and previews still compile and stay usable end-to-end.
+optional): a build without a usable link has `webCheckoutAvailable()`
+false, so the Pro card renders the `app_only` storefront (or `coming_soon`
+with no perk live) instead of a buy button, and "Manage subscription"
+shows the "manage where you started it" hint. Local dev and previews stay
+usable end-to-end; the e2e dev server sets a `pay.rev.cat` fixture link so
+the purchase specs exercise the `checkout` storefront.
 
 **Android (Flutter)**: use `purchases_flutter` package. Initialise in
 `main.dart` after sign-in with the user id as `appUserId`. The
@@ -431,7 +459,7 @@ watch inherits the phone's subscription via the paired Supabase session
 | `REVENUECAT_WEBHOOK_SECRET` | Supabase function env | HMAC signing secret from RevenueCat |
 | `REVENUECAT_API_KEY_IOS` | iOS app `.env` / CI secrets | RevenueCat project API key for iOS |
 | `REVENUECAT_API_KEY_ANDROID` | Android app `.env` / CI secrets | RevenueCat project API key for Android |
-| `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` | `apps/web/.env.local` / CI public env | Hosted Web Paywall Link base `https://pay.rev.cat/<token>` (read by `$lib/billing/revenuecat.ts`); unset → Pro CTA falls back to placeholder. **Public** — no secret/API key ships in the web bundle anymore |
+| `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` | `apps/web/.env.local` / CI public env | Hosted Web Paywall Link base `https://pay.rev.cat/<token>` (read by `$lib/billing/revenuecat.ts`); unset or malformed → no web buy button, the `app_only` storefront. **Public** — no secret/API key ships in the web bundle anymore |
 | `PUBLIC_REVENUECAT_WEB_PORTAL_URL` | `apps/web/.env.local` / CI public env | No-code customer-portal link for managing/cancelling a web subscription; optional, unset → "Manage subscription" shows a hint |
 
 ### Regional availability & international payments

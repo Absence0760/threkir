@@ -332,7 +332,10 @@ void main() {
     expect(stop, findsOneWidget, reason: reason);
     final button = tester.widget<HoldToStopButton>(stop);
     await tester.runAsync(() async => button.onHoldComplete());
-    await pumpUntil(tester, () => runSummaryShowing.value,
+    // Wait on the summary, not runSummaryShowing: the rail panel's Stop is
+    // `_stop` itself, so the runAsync above already awaited the whole stop
+    // and the flag is set before any frame has built the summary.
+    await pumpUntil(tester, () => tester.any(find.byType(FinishedSummary)),
         describe: 'the finished summary after the Stop hold');
     tester.takeException();
   }

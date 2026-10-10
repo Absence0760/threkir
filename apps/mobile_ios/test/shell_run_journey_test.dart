@@ -268,7 +268,7 @@ void main() {
         reason: 'on the Run page mid-run the centre button is the Stop');
     final button = tester.widget<HoldToStopButton>(stop);
     await tester.runAsync(() async => button.onHoldComplete());
-    await pumpUntil(tester, () => runSummaryShowing.value,
+    await pumpUntil(tester, () => tester.any(find.byType(FinishedSummary)),
         describe: 'the finished summary after the Stop hold');
     tester.takeException();
   }

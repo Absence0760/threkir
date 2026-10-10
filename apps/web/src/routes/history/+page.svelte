@@ -19,6 +19,7 @@
 	import { modalityVisible } from '$lib/stores/modality_visibility.svelte';
 	import type { MessageKey } from '$lib/i18n/messages';
 	import type { Snapshot } from './$types';
+	import { isListStale, listToken } from '$lib/core/list_freshness';
 
 	// The unified, cross-modal History timeline (multi_modal.md § History).
 	// The full run-list management surface lives at /runs (parallel to /gym +
@@ -134,6 +135,9 @@
 	/// (by restore or a newer fetch) discards its result instead of
 	/// overwriting the current feed.
 	let fetchGen = $state(0);
+	/// The list-freshness token the feed was loaded under. Plain `let`: only
+	/// the snapshot reads it. See lib/core/list_freshness.ts.
+	let loadedToken = '';
 	// Pull the unified activities feed (windowed to the most recent 200). The
 	// full per-modality history lives on /runs, /gym, /nutrition; the "View
 	// all" link on each single-modality tab points there. Surfaces a real
@@ -144,11 +148,15 @@
 		loadError = null;
 		activitiesLoaded = false;
 		const gen = ++fetchGen;
+		const token = listToken('history');
 		fetchActivitiesWithError(200)
 			.then((res) => {
 				if (gen !== fetchGen) return;
 				if (res.error) loadError = res.error;
-				else activityFeed = res.activities;
+				else {
+					activityFeed = res.activities;
+					loadedToken = token;
+				}
 			})
 			.catch((e) => {
 				if (gen === fetchGen) loadError = (e as Error)?.message ?? 'Failed to load history';
@@ -234,9 +242,13 @@
 	/// in-flight mount-time fetch.
 	async function reloadActivities() {
 		const gen = ++fetchGen;
+		const token = listToken('history');
 		try {
 			const rows = await fetchActivities(200);
-			if (gen === fetchGen) activityFeed = rows;
+			if (gen === fetchGen) {
+				activityFeed = rows;
+				loadedToken = token;
+			}
 		} catch (_) {
 			/* silent — keep the current feed */
 		}
@@ -330,14 +342,23 @@
 		activitiesLoaded: boolean;
 		kindFilter: KindFilter;
 		scrollY: number;
+		listToken: string;
 	}> = {
 		capture: () => ({
 			activityFeed,
 			activitiesLoaded,
 			kindFilter,
 			scrollY: typeof window === 'undefined' ? 0 : window.scrollY,
+			listToken: loadedToken,
 		}),
 		restore: (s) => {
+			kindFilter = s.kindFilter;
+			// A run, workout or meal was written since the feed was loaded
+			// (logged from the Log menu and opened on its detail page, or
+			// edited there), so the captured feed is the pre-write one. Keep
+			// the tab and let the fetch effect load the feed as on a fresh
+			// visit.
+			if (isListStale('history', s.listToken)) return;
 			// Invalidate any in-flight mount-time fetch the fresh instance may
 			// have kicked off before restore ran, then mark the feed restored so
 			// the fetch effect stays out — gating on the user id alone is unsafe
@@ -348,7 +369,7 @@
 			restoredFeed = true;
 			activityFeed = s.activityFeed;
 			activitiesLoaded = s.activitiesLoaded;
-			kindFilter = s.kindFilter;
+			loadedToken = s.listToken;
 			activitiesLoadedFor = auth.user?.id ?? null;
 			if (typeof window !== 'undefined' && s.scrollY > 0) {
 				queueMicrotask(() => {

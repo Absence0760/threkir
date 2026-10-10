@@ -11,6 +11,7 @@ function prefsBagOf(value: Json | null | undefined): JsonObject {
 	return value != null && typeof value === 'object' && !Array.isArray(value) ? value : {};
 }
 import { TABLES, BUCKETS } from '../core/schema';
+import { markListsStale } from '../core/list_freshness';
 import { auth } from '../stores/auth.svelte';
 import {
 	buildBackupZip,
@@ -240,12 +241,14 @@ function supabaseRestoreBackend(): RestoreBackend {
 			if (error) throw error;
 		},
 		async upsertRun(row) {
+			markListsStale('runs', 'history', 'routes');
 			const { error } = await supabase
 				.from(TABLES.runs)
 				.upsert(row as Insertable<'runs'>, { onConflict: 'id' });
 			if (error) throw error;
 		},
 		async upsertRoute(row) {
+			markListsStale('routes');
 			const { error } = await supabase
 				.from('routes')
 				.upsert(row as Insertable<'routes'>, { onConflict: 'id' });

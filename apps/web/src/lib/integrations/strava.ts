@@ -11,6 +11,7 @@
 import { env } from '$env/dynamic/public';
 import { supabase } from '../core/supabase';
 import { edgeFunctionErrorMessage } from '../core/edge_function_error';
+import { markListsStale } from '../core/list_freshness';
 import {
 	STRAVA_LOOKBACK_DEFAULT_DAYS,
 	parseStravaSyncResult,
@@ -130,6 +131,7 @@ export async function completeStravaOAuth(
 	// URL — see `stravaAuthUrl`.
 	const redirect_uri = `${origin}/settings/integrations`;
 
+	markListsStale('runs', 'history', 'routes');
 	const { data, error: fnError } = await supabase.functions.invoke('strava-import', {
 		body: { action: 'connect', code, scope, redirect_uri },
 	});
@@ -149,6 +151,7 @@ export async function completeStravaOAuth(
 export async function syncStrava(
 	lookbackDays = STRAVA_LOOKBACK_DEFAULT_DAYS,
 ): Promise<StravaSyncResult> {
+	markListsStale('runs', 'history', 'routes');
 	const { data, error } = await supabase.functions.invoke('strava-import', {
 		body: { action: 'sync', lookbackDays },
 	});

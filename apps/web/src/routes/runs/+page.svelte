@@ -23,6 +23,7 @@
 	import { activityTypeLabel } from '$lib/runs/activity_type.svelte';
 	import type { Snapshot } from './$types';
 	import { runsFetchMode } from './fetch_mode';
+	import { isListStale, listToken } from '$lib/core/list_freshness';
 
 	// The full run list — filters, pagination, bulk-delete, manual entry.
 	// Split out of /history (which is now the unified cross-modal timeline)
@@ -236,6 +237,7 @@
 		// still exists.
 		const requested = new Set(ids);
 		runs = runs.filter((r) => failedSet.has(r.id) || !requested.has(r.id));
+		loadedToken = listToken('runs');
 		deleting = false;
 		if (failed.length === 0) {
 			showToast(
@@ -383,11 +385,15 @@
 	/// snapshot.restore bumps the generation, so the in-flight
 	/// loadInitial that was kicked off on mount aborts on return.
 	let fetchGen = $state(0);
+	/// The list-freshness token `runs` was loaded under. Plain `let`: only
+	/// the snapshot reads it. See lib/core/list_freshness.ts.
+	let loadedToken = '';
 
 	async function loadInitial() {
 		loading = true;
 		loadError = null;
 		const gen = ++fetchGen;
+		const token = listToken('runs');
 		let res: { runs: Run[]; error: string | null };
 		let nextHasMore: boolean;
 		if (fetchMode === 'paginated') {
@@ -407,6 +413,7 @@
 		}
 		runs = res.runs;
 		hasMore = nextHasMore;
+		loadedToken = token;
 		loading = false;
 	}
 
@@ -498,6 +505,7 @@
 		customTo: string;
 		renderLimit: number;
 		scrollY: number;
+		listToken: string;
 	}> = {
 		capture: () => ({
 			runs,
@@ -511,8 +519,24 @@
 			customTo,
 			renderLimit,
 			scrollY: typeof window === 'undefined' ? 0 : window.scrollY,
+			listToken: loadedToken,
 		}),
 		restore: (s) => {
+			sourceFilter = s.sourceFilter;
+			activityFilter = s.activityFilter;
+			sortKey = s.sortKey;
+			dateRange = s.dateRange;
+			customFrom = s.customFrom;
+			customTo = s.customTo;
+			filtersHydrated = true;
+			// A run was written since the list was loaded (created from the
+			// Add-run modal, edited or deleted on its detail page), so the
+			// captured list is the pre-write one. Keep the filters — they are the
+			// user's choice and still valid — and leave runs, lastFetchMode
+			// and loading at their mount values, so the fetch effect runs
+			// loadInitial under the restored filters. fetchGen is not bumped:
+			// an in-flight load is one this mount started after the write.
+			if (isListStale('runs', s.listToken)) return;
 			// Invalidate any in-flight loadInitial that the mount-time
 			// fetch-effect already kicked off. Without this the async
 			// fetch returns after restore and overwrites the captured
@@ -521,18 +545,12 @@
 			runs = s.runs;
 			hasMore = s.hasMore;
 			lastFetchMode = s.lastFetchMode;
-			sourceFilter = s.sourceFilter;
-			activityFilter = s.activityFilter;
-			sortKey = s.sortKey;
-			dateRange = s.dateRange;
-			customFrom = s.customFrom;
-			customTo = s.customTo;
+			loadedToken = s.listToken;
 			// After the filters, so the signature is taken over the restored
 			// set — and before the paint, so the captured window is what the
 			// scroll below is re-applied against.
 			renderLimit = s.renderLimit ?? PAGE_SIZE;
 			renderWindowKey = renderWindowSignature();
-			filtersHydrated = true;
 			loading = false;
 			// SvelteKit's auto scroll-restoration runs before our list
 			// has had a chance to render, so the page is too short and

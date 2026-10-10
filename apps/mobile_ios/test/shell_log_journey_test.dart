@@ -252,15 +252,14 @@ void main() {
   /// The composer pops once its save returns, which is real-loop work behind
   /// the store's notify (the write chain settles there), and then animates
   /// out on the fake clock. Wait on the pop itself — its route stops being
-  /// current the moment it is popped — then run the exit on the fake clock,
-  /// which pumpUntil never advances.
+  /// current the moment it is popped — then advance the fake clock, which
+  /// pumpUntil never does, by the route's own exit duration: it is a
+  /// full-screen page route whose platform transition outlasts [settle].
   Future<void> waitForSheetToClose(WidgetTester tester, Finder sheet) async {
-    await pumpUntil(
-        tester,
-        () =>
-            !tester.any(sheet) ||
-            !ModalRoute.of(tester.element(sheet))!.isCurrent,
+    final route = ModalRoute.of(tester.element(sheet))!;
+    await pumpUntil(tester, () => !route.isCurrent,
         describe: 'the composer to pop after its save');
+    await tester.pump(route.reverseTransitionDuration);
     await settle(tester);
     expect(sheet, findsNothing, reason: 'the composer closes after its save');
   }

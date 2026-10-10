@@ -4073,25 +4073,20 @@ class AppLocalizationsPt extends AppLocalizations {
   String get exploreRoutesSort => 'Ordenar';
 
   @override
-  String exploreRoutesSaveCheckConnection(String name) {
-    return 'Não foi possível guardar \"$name\" — verifique a sua ligação e tente novamente.';
-  }
-
-  @override
-  String exploreRoutesSaveFailed(String name) {
-    return 'Não foi possível guardar \"$name\".';
-  }
-
-  @override
   String exploreRoutesSaved(String name) {
     return '\"$name\" guardada na sua biblioteca';
   }
 
   @override
-  String get exploreRoutesAlreadySaved => 'Já guardada';
+  String get exploreRoutesSaveToLibrary => 'Guardar na biblioteca';
 
   @override
-  String get exploreRoutesSaveToLibrary => 'Guardar na biblioteca';
+  String get exploreRoutesRemoveFromLibrary => 'Remover da sua biblioteca';
+
+  @override
+  String exploreRoutesRemoved(String name) {
+    return '\"$name\" removida da sua biblioteca';
+  }
 
   @override
   String get exploreRoutesSurfaceTrailShort => 'Trilho';
@@ -18662,25 +18657,20 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get exploreRoutesSort => 'Ordenar';
 
   @override
-  String exploreRoutesSaveCheckConnection(String name) {
-    return 'Não foi possível salvar \"$name\" — verifique sua conexão e tente novamente.';
-  }
-
-  @override
-  String exploreRoutesSaveFailed(String name) {
-    return 'Não foi possível salvar \"$name\".';
-  }
-
-  @override
   String exploreRoutesSaved(String name) {
     return '\"$name\" salva na sua biblioteca';
   }
 
   @override
-  String get exploreRoutesAlreadySaved => 'Já salva';
+  String get exploreRoutesSaveToLibrary => 'Salvar na biblioteca';
 
   @override
-  String get exploreRoutesSaveToLibrary => 'Salvar na biblioteca';
+  String get exploreRoutesRemoveFromLibrary => 'Remover da sua biblioteca';
+
+  @override
+  String exploreRoutesRemoved(String name) {
+    return '\"$name\" removida da sua biblioteca';
+  }
 
   @override
   String get exploreRoutesSurfaceTrailShort => 'Trilha';

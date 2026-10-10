@@ -2608,51 +2608,43 @@ void main() {
     });
   });
 
-  group('explore-screen save clips non-owner routes', () {
+  group('explore-screen save never copies a non-owner route', () {
     // Reason: Explore browsing reads from `search_public_routes` /
     // `nearby_routes` / `routes_within_box`, which (after migration
     // 20260703_001_public_routes_view.sql) return rows from the
-    // `public_routes` view — i.e. with no waypoints. Naively saving
-    // such a row to LocalRouteStore stores an empty-waypoint route
-    // (broken offline preview), and reaching for the original
-    // unclipped waypoints would leak the original author's start
-    // coordinate to anyone the saver shares the route with. The
-    // mitigation is `_saveRoute` calling `ApiClient.fetchRouteById`
-    // before `routeStore.save` — that helper does owner-aware
-    // clipping (full polyline if the saver IS the owner, server-
-    // clipped polyline via `clip_route_for_viewer` otherwise). This
-    // guard pins that flow in place.
+    // `public_routes` view — i.e. with no waypoints. Saving such a row
+    // into LocalRouteStore stored an empty-waypoint route, and reaching
+    // for the unclipped waypoints would leak the author's start
+    // coordinate. Saving is now a `saved_routes` reference by id
+    // (decisions § 30), so no polyline crosses this screen at all; the
+    // detail screen it opens owns any clipped fetch. This guard pins
+    // that the screen keeps it that way.
 
-    test('_saveRoute fetches via ApiClient before persisting', () {
-      final src =
-          File('lib/screens/explore_routes_screen.dart').readAsStringSync();
+    final src =
+        File('lib/screens/explore_routes_screen.dart').readAsStringSync();
+
+    test('_toggleBookmark writes a saved_routes reference, not a copy', () {
       final body = _extractMethodBody(
         src,
-        r'Future<void> _saveRoute\(cm\.Route route\)\s*async\s*\{',
+        r'Future<void> _toggleBookmark\(cm\.Route route\)\s*async\s*\{',
       );
-      expect(
-        body.contains('fetchRouteById'),
-        isTrue,
-        reason: '_saveRoute must call ApiClient.fetchRouteById to fetch '
-            'the privacy-zone-clipped polyline before saving — see the '
-            'audit/privacy-zones High finding from /audit/all on '
-            '2026-05-03.',
-      );
-      expect(
-        body.contains('routeStore.save'),
-        isTrue,
-        reason: '_saveRoute should still persist via routeStore.save '
-            'once it has the clipped Route in hand.',
-      );
-      // Order check: the fetch must come BEFORE the save.
-      final fetchIdx = body.indexOf('fetchRouteById');
-      final saveIdx = body.indexOf('routeStore.save');
-      expect(
-        fetchIdx < saveIdx,
-        isTrue,
-        reason: 'fetchRouteById must run before routeStore.save — '
-            'persisting before clipping defeats the whole point.',
-      );
+      expect(body.contains('bookmarkRoute(route.id)'), isTrue,
+          reason: 'saving from Explore must go through '
+              'ApiClient.bookmarkRoute, the saved_routes reference.');
+      expect(body.contains('unbookmarkRoute(route.id)'), isTrue,
+          reason: 'a second tap must remove the reference via '
+              'ApiClient.unbookmarkRoute.');
+      expect(body.contains('routeStore'), isFalse,
+          reason: 'the bookmark must not persist the route locally — '
+              'an Explore row has no clipped polyline to store.');
+    });
+
+    test('nothing on the screen saves a route into the local store', () {
+      expect(RegExp(r'routeStore\s*\.\s*save').hasMatch(src), isFalse,
+          reason: 'Explore must not copy a public route into '
+              'LocalRouteStore; if a local copy is ever needed again, it '
+              'must come from ApiClient.fetchRouteById (owner-aware '
+              'clipping), and this guard must pin that order.');
     });
   });
 

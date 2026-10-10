@@ -4071,25 +4071,20 @@ class AppLocalizationsEs extends AppLocalizations {
   String get exploreRoutesSort => 'Ordenar';
 
   @override
-  String exploreRoutesSaveCheckConnection(String name) {
-    return 'No se pudo guardar \"$name\" — comprueba tu conexión e inténtalo de nuevo.';
-  }
-
-  @override
-  String exploreRoutesSaveFailed(String name) {
-    return 'No se pudo guardar \"$name\".';
-  }
-
-  @override
   String exploreRoutesSaved(String name) {
     return '\"$name\" guardada en tu biblioteca';
   }
 
   @override
-  String get exploreRoutesAlreadySaved => 'Ya guardada';
+  String get exploreRoutesSaveToLibrary => 'Guardar en biblioteca';
 
   @override
-  String get exploreRoutesSaveToLibrary => 'Guardar en biblioteca';
+  String get exploreRoutesRemoveFromLibrary => 'Quitar de tu biblioteca';
+
+  @override
+  String exploreRoutesRemoved(String name) {
+    return '\"$name\" quitada de tu biblioteca';
+  }
 
   @override
   String get exploreRoutesSurfaceTrailShort => 'Sendero';

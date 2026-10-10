@@ -25,11 +25,34 @@ class ProPerks {
   /// Server-side route generation is live (web's `PUBLIC_ROUTE_GEN_ENABLED`).
   final bool routeGen;
 
-  const ProPerks({required this.coach, required this.routeGen});
+  /// The web deploy can take a Pro payment (`webCheckoutAvailable()` on web).
+  /// Not a perk: it decides only whether the web page is somewhere to send a
+  /// buyer this build cannot sell to itself (decisions § 1826).
+  final bool webCheckout;
+
+  const ProPerks({
+    required this.coach,
+    required this.routeGen,
+    this.webCheckout = false,
+  });
 
   static const ProPerks none = ProPerks(coach: false, routeGen: false);
 
   bool get sellable => coach || routeGen;
+}
+
+/// Whether this build can offer Pro for sale right now: a perk must be live,
+/// and there must be somewhere to pay — the store SDK, or a web checkout this
+/// platform may link to that the web deploy actually has. Without the last
+/// condition an Android build with no RevenueCat key sent buyers to a web
+/// page that could only point them at the iPhone app (decisions § 1826).
+bool proPurchasable(
+  ProPerks? perks, {
+  required bool storeConfigured,
+  required bool webLinksAllowed,
+}) {
+  if (perks == null || !perks.sellable) return false;
+  return storeConfigured || (webLinksAllowed && perks.webCheckout);
 }
 
 /// Give up rather than hang the Pro screen on a dead network. The screen
@@ -47,6 +70,7 @@ ProPerks parseProPerks(String raw) {
     return ProPerks(
       coach: json['coach'] == true,
       routeGen: json['route_gen'] == true,
+      webCheckout: json['web_checkout'] == true,
     );
   } catch (_) {
     return ProPerks.none;

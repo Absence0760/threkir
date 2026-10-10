@@ -199,6 +199,17 @@ variable "alert_emails" {
   }
 }
 
+variable "alarm_tier" {
+  description = "Which CloudWatch alarms to create. \"full\" is every alarm in alarms.tf (~40 alarm metrics). \"essential\" keeps the ones guarding spend or total outage — coach error rate, CloudFront 5xx, the three Lambda throttle ceilings, the bypass-paywall tripwire — 7 alarm metrics. \"none\" creates no alarms. The CloudWatch free tier is 10 alarm metrics shared across the whole AWS Organization; see the header of alarms.tf."
+  type        = string
+  default     = "full"
+
+  validation {
+    condition     = contains(["full", "essential", "none"], var.alarm_tier)
+    error_message = "alarm_tier must be one of \"full\", \"essential\", \"none\"."
+  }
+}
+
 variable "lambda_throttle_alarm_threshold" {
   description = "Number of Lambda throttles across two 5-min windows that fires the alarm. Default 5 is fine for preview's noisy demo traffic; prod should override to 1 so a single throttle pages immediately (the reserved concurrency is the cost ceiling — hitting it should be a loud signal). audit/cost-controls Medium 2026-05-07."
   type        = number

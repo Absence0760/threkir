@@ -447,7 +447,12 @@ export function parseAlarms(raw) {
         [...body.matchAll(/aws_lambda_function\.([A-Za-z0-9_]+)\./g)].map((x) => x[1]),
       ),
     ];
-    const each = body.match(/^\s*for_each\s*=\s*local\.([A-Za-z0-9_]+)/m)?.[1];
+    // `for_each = local.<map>` or the tier-gated `for_each = <cond> ? local.<map> : {}`
+    // — the alarm is declared against the same map either way, and the guard
+    // checks declarations, not which env's `alarm_tier` creates them.
+    const each = body.match(
+      /^\s*for_each\s*=\s*(?:[^?\n]*\?\s*)?local\.([A-Za-z0-9_]+)/m,
+    )?.[1];
     if (functions.length === 0 && each !== undefined) {
       functions = localMaps.get(each) ?? [];
     }

@@ -1367,8 +1367,12 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             // have rebuilt it. Clearing after the write means the worst
             // case is a checkpoint outliving a banked run, which
             // `recoveryActionFor` discards without prompting.
-            checkpoints.clear()
-            RecordingRepository.reset()
+            //
+            // Both are scoped to this run: the next one can start before this
+            // job reaches them, and an unscoped clear or reset would take its
+            // checkpoint and its live state with them.
+            checkpoints.clearIfFor(runId)
+            RecordingRepository.resetIfFinished(runId)
             drainQueue(force = true)
             if (race != null) {
                 val token = supabase.currentAccessToken

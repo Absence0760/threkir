@@ -40,6 +40,7 @@ type Scenario = {
 		zuptFixes: number;
 		rScale: number;
 		dopplerTrusted: boolean;
+		dopplerScale: number;
 	};
 	smoothed: {
 		distanceAfterEachEventM: number[];
@@ -74,10 +75,10 @@ function replay(s: Scenario): { est: GpsDistanceEstimator; after: number[] } {
 	return { est, after };
 }
 
-test('fixture is spec v1.2 with a non-trivial scenario set', () => {
-	assert.equal(fixture.spec, 'gps-distance-estimator v1.2');
-	assert.equal(SPEC_VERSION, '1.2');
-	assert.ok(fixture.scenarios.length >= 27, `only ${fixture.scenarios.length} scenarios`);
+test('fixture is spec v1.3 with a non-trivial scenario set', () => {
+	assert.equal(fixture.spec, 'gps-distance-estimator v1.3');
+	assert.equal(SPEC_VERSION, '1.3');
+	assert.ok(fixture.scenarios.length >= 29, `only ${fixture.scenarios.length} scenarios`);
 	assert.ok(TOL > 0 && TOL <= 0.001);
 	assert.ok(POS_TOL > 0 && POS_TOL <= 1e-8);
 });
@@ -114,12 +115,16 @@ for (const s of fixture.scenarios) {
 		}
 	});
 
-	test(`vector ${s.name}: gate, zupt, adaptive R and cross-check diagnostics`, () => {
+	test(`vector ${s.name}: gate, zupt, adaptive R, cross-check and Doppler scale diagnostics`, () => {
 		const { est } = replay(s);
 		assert.equal(est.rejectedFixes, s.expected.rejectedFixes);
 		assert.equal(est.zuptFixes, s.expected.zuptFixes);
 		assert.equal(est.dopplerTrusted, s.expected.dopplerTrusted);
 		assert.ok(Math.abs(est.rScale - s.expected.rScale) <= 1e-6, `rScale ${est.rScale}`);
+		assert.ok(
+			Math.abs(est.dopplerScale - s.expected.dopplerScale) <= 1e-6,
+			`dopplerScale ${est.dopplerScale}`,
+		);
 	});
 
 	test(`vector ${s.name}: smoothed distance and positions`, () => {

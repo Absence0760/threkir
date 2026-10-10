@@ -32,6 +32,7 @@ type Scenario = {
 		zuptFixes: number;
 		rScale: number;
 		dopplerTrusted: boolean;
+		dopplerScale: number;
 	};
 	smoothed: {
 		distanceAfterEachEventM: number[];
@@ -68,10 +69,10 @@ function replay(s: Scenario): { est: GpsDistanceEstimator; after: number[] } {
 	return { est, after };
 }
 
-Deno.test('the port implements the spec v1.2 fixture: version, scenario set and every constant', () => {
-	assertEquals(fixture.spec, 'gps-distance-estimator v1.2');
-	assertEquals(SPEC_VERSION, '1.2');
-	assert(fixture.scenarios.length >= 27, `only ${fixture.scenarios.length} scenarios`);
+Deno.test('the port implements the spec v1.3 fixture: version, scenario set and every constant', () => {
+	assertEquals(fixture.spec, 'gps-distance-estimator v1.3');
+	assertEquals(SPEC_VERSION, '1.3');
+	assert(fixture.scenarios.length >= 29, `only ${fixture.scenarios.length} scenarios`);
 	assert(TOL > 0 && TOL <= 0.001);
 	assert(POS_TOL > 0 && POS_TOL <= 1e-8);
 	const port = gps as unknown as Record<string, unknown>;
@@ -111,6 +112,10 @@ for (const s of fixture.scenarios) {
 		assertEquals(est.zuptFixes, s.expected.zuptFixes);
 		assertEquals(est.dopplerTrusted, s.expected.dopplerTrusted);
 		assert(Math.abs(est.rScale - s.expected.rScale) <= 1e-6, `rScale ${est.rScale}`);
+		assert(
+			Math.abs(est.dopplerScale - s.expected.dopplerScale) <= 1e-6,
+			`dopplerScale ${est.dopplerScale}`,
+		);
 	});
 
 	Deno.test(`vector ${s.name}: smoothed distance and positions`, () => {

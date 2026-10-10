@@ -77,6 +77,12 @@ Future<void> _pump(WidgetTester tester,
   );
 }
 
+// The route list's own scroller. The Discover strip above it is a
+// horizontal scroller too, so "the first Scrollable" is not the list.
+final _routeList = find.byWidgetPredicate(
+  (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+);
+
 void main() {
   group('RoutesScreen — initial render', () {
     testWidgets('AppBar carries the "Routes" title', (tester) async {
@@ -405,7 +411,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.text('Load 20 more'),
         300,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: _routeList,
       );
       expect(find.text('Load 20 more'), findsOneWidget);
     });
@@ -452,7 +458,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.text('Load 20 more'),
         300,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: _routeList,
       );
       expect(find.text('Load 20 more'), findsOneWidget);
       // ensureVisible — the route-cards are taller after the

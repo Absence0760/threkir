@@ -802,68 +802,91 @@ class RoutesScreenState extends State<RoutesScreen> {
             onRetry: _fetchRemoteRoutes,
           )
         : mergedRoutes.isEmpty
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.route,
-                      size: 64,
-                      color: theme.colorScheme.outline,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      l10n.routesEmptyTitle,
-                      style: theme.textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      // Mention BOTH affordances. The Build FAB is the
-                      // canonical "create from scratch" path; Import
-                      // covers GPX / KML / GeoJSON / TCX files.
-                      // The old copy only mentioned Import — users
-                      // missed the in-app builder.
-                      l10n.routesEmptyBody,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+          // Scrolls when it cannot fit (a short phone at a raised text
+          // scale), centred otherwise, as ui_kit's EmptyState does.
+          ? LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints:
+                      BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.route,
+                                size: 64,
+                                color: theme.colorScheme.outline,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                l10n.routesEmptyTitle,
+                                style: theme.textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                // Mention BOTH affordances. The Build FAB is the
+                                // canonical "create from scratch" path; Import
+                                // covers GPX / KML / GeoJSON / TCX files.
+                                // The old copy only mentioned Import — users
+                                // missed the in-app builder.
+                                l10n.routesEmptyBody,
+                                textAlign: TextAlign.center,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              // Compact inline reminder for the two FAB icons so
+                              // a user who lands on this screen for the first
+                              // time can match the verbal CTA to the visual
+                              // affordances on the right edge. A Wrap, so the two
+                              // hints stack on a narrow phone at a raised text scale
+                              // instead of overflowing.
+                              Wrap(
+                                alignment: WrapAlignment.center,
+                                spacing: 16,
+                                runSpacing: 4,
+                                children: [
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.add_road,
+                                          size: 18,
+                                          color: theme.colorScheme.outline),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        l10n.routesBuild,
+                                        style: theme.textTheme.labelSmall?.copyWith(
+                                          color: theme.colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.file_upload,
+                                          size: 18,
+                                          color: theme.colorScheme.outline),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        l10n.routesImport,
+                                        style: theme.textTheme.labelSmall?.copyWith(
+                                          color: theme.colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Compact inline reminder for the two FAB icons so
-                    // a user who lands on this screen for the first
-                    // time can match the verbal CTA to the visual
-                    // affordances on the right edge.
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.add_road,
-                            size: 18,
-                            color: theme.colorScheme.outline),
-                        const SizedBox(width: 4),
-                        Text(
-                          l10n.routesBuild,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Icon(Icons.file_upload,
-                            size: 18,
-                            color: theme.colorScheme.outline),
-                        const SizedBox(width: 4),
-                        Text(
-                          l10n.routesImport,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
                 ),
               ),
             )

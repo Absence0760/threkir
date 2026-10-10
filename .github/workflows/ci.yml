@@ -2775,10 +2775,46 @@ jobs:
             ~/Library/Caches/CocoaPods
           key: cocoapods-${{ hashFiles('apps/mobile_ios/ios/Podfile.lock') }}
           restore-keys: cocoapods-
+      # Most of the plugin graph arrives through Swift Package Manager, not
+      # CocoaPods: ~27 git repositories (firebase-ios-sdk, sentry-cocoa,
+      # purchases-ios-spm, ...) plus prebuilt binary zips from dl.google.com
+      # (grpc, openssl_grpc, abseil). Uncached, every run cloned and
+      # downloaded all of it cold, and one dropped connection failed the job:
+      # run 37947299387 (PR #1101, which touched no iOS code) died on
+      # "failed downloading .../grpc/1.69.1/rc0/openssl_grpc.zip ...
+      # The network connection was lost." Flutter hands xcodebuild an
+      # explicit -clonedSourcePackagesDirPath of build/ios/SourcePackages
+      # (flutter_tools xcodeproj.dart, checked at the pinned 3.47.0), so that
+      # is a fixed path. Only the three subdirectories fetched from remotes
+      # are cached: Flutter rsyncs plugin copies into the same parent with
+      # --delete on every build, so those are its to regenerate. The key is
+      # the pinned graph itself; restore-keys still serves the bulk of the
+      # artifacts after a single package bump.
+      - name: Cache Swift packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            apps/mobile_ios/build/ios/SourcePackages/repositories
+            apps/mobile_ios/build/ios/SourcePackages/checkouts
+            apps/mobile_ios/build/ios/SourcePackages/artifacts
+          key: swiftpm-${{ runner.os }}-${{ hashFiles('apps/mobile_ios/ios/**/Package.resolved') }}
+          restore-keys: swiftpm-${{ runner.os }}-
+      # A Swift package fetch fails inside this same command (Flutter resolves
+      # the graph in its first xcodebuild call, --config-only included, so it
+      # cannot be split into a step of its own). The output is therefore read
+      # for xcodebuild's resolution error, so a dropped download is reported
+      # as one rather than as "does not compile" — which is what run
+      # 37947299387 said about a PR that changed no iOS code.
       - name: Build the simulator app (Dart + plugins + Runner Swift)
         working-directory: apps/mobile_ios
         run: |
-          if ! flutter build ios --simulator --no-codesign; then
+          set -o pipefail
+          log="$RUNNER_TEMP/flutter-build-ios.log"
+          if ! flutter build ios --simulator --no-codesign 2>&1 | tee "$log"; then
+            if grep -q "Could not resolve package dependencies" "$log"; then
+              echo "::error::Swift Package Manager could not fetch the iOS plugin dependency graph (the xcodebuild resolution error is in the log above, naming the URL). That is a download from github.com or dl.google.com, not a compile error and not a change in this PR's code. If the URL is a network drop, re-run; if it is a 404 or a checksum mismatch, a pinned package in ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved has moved."
+              exit 1
+            fi
             echo "::error::apps/mobile_ios does not compile for the iOS simulator. This is the Dart, the plugins' iOS units, the CocoaPods resolution and the Swift under ios/Runner — nothing here is about signing, which this build does not do, and nothing here is about the watchOS app, which is test-watch-ios."
             echo "Reproduce with: cd apps/mobile_ios && flutter build ios --simulator --no-codesign (needs Xcode; no Apple Developer account, certificate or provisioning profile is involved)."
             exit 1
@@ -2820,11 +2856,19 @@ jobs:
       # compiles. The Runner scheme is shared (xcshareddata/xcschemes) and
       # already names RunnerTests as its testable, so the target is wired
       # deterministically rather than by an auto-generated scheme.
+      #
+      # -clonedSourcePackagesDirPath names the directory the build step
+      # resolved into. Without it this xcodebuild defaults to DerivedData and
+      # re-fetches the whole Swift package graph from the network a second
+      # time, in the same job, after the build has already proved it.
+      # -skipPackageUpdates holds it to the pins the build used.
       - name: Run RunnerTests
         run: |
           if ! xcodebuild test \
             -workspace apps/mobile_ios/ios/Runner.xcworkspace \
             -scheme Runner \
+            -clonedSourcePackagesDirPath apps/mobile_ios/build/ios/SourcePackages \
+            -skipPackageUpdates \
             -destination "platform=iOS Simulator,id=${{ steps.ios-sim.outputs.udid }}" \
             -resultBundlePath RunnerTests.xcresult \
             CODE_SIGNING_ALLOWED=NO; then

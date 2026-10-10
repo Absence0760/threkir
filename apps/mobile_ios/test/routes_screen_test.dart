@@ -94,7 +94,7 @@ void main() {
       final prefs = await _makePrefs();
       await _pump(tester, prefs: prefs);
       await tester.pump();
-      expect(find.widgetWithText(OutlinedButton, 'Public routes'),
+      expect(find.widgetWithText(ActionChip, 'Public routes'),
           findsOneWidget);
     });
 
@@ -108,17 +108,17 @@ void main() {
       // labelled buttons — the routes page is the single home of the
       // map/discovery entry points. Both labels carry their qualifier
       // since the siblings sit side by side.
-      expect(find.widgetWithText(OutlinedButton, 'Routes heatmap'),
+      expect(find.widgetWithText(ActionChip, 'Routes heatmap'),
           findsOneWidget);
       expect(
-          find.widgetWithText(OutlinedButton, 'Run heatmap'), findsOneWidget);
+          find.widgetWithText(ActionChip, 'Run heatmap'), findsOneWidget);
 
       await _pump(tester, prefs: prefs);
       await tester.pump();
-      expect(find.widgetWithText(OutlinedButton, 'Routes heatmap'),
+      expect(find.widgetWithText(ActionChip, 'Routes heatmap'),
           findsNothing);
       expect(
-          find.widgetWithText(OutlinedButton, 'Run heatmap'), findsNothing);
+          find.widgetWithText(ActionChip, 'Run heatmap'), findsNothing);
     });
 
     testWidgets('hides the cloud-sync icon when apiClient is null',
@@ -655,24 +655,45 @@ void main() {
   });
 
   group('RoutesScreen — narrow-width overflow (issue #666 V7)', () {
-    testWidgets(
-        'renders at 320 logical width with the Discover strip label bounded '
-        'so a long localized label ellipsizes instead of striping',
-        (tester) async {
-      tester.view.physicalSize = const Size(320, 1200);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
+    // The strip sits above the list and never scrolls away. It used to be a
+    // title row over a Wrap that restacked the three buttons onto two or
+    // three lines on a narrow phone, so the header took about half the
+    // screen before the first route.
+    for (final scale in [1.0, 2.0]) {
+      testWidgets(
+          'at 320 logical width and text scale $scale the Discover strip is '
+          'one line that scrolls sideways', (tester) async {
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
 
-      final prefs = await _makePrefs();
-      await _pump(tester, prefs: prefs);
-      await tester.pump();
+        final prefs = await _makePrefs();
+        await _pump(tester, prefs: prefs, api: _FakeApi(), textScale: scale);
+        await tester.pump();
+        expect(tester.takeException(), isNull, reason: 'no overflow stripe');
 
-      expect(
-        find.ancestor(
-            of: find.text('Discover'), matching: find.byType(Expanded)),
-        findsWidgets,
-      );
-    });
+        final chips = find.byType(ActionChip);
+        expect(chips, findsNWidgets(3));
+        final tops = [
+          for (var i = 0; i < 3; i++) tester.getTopLeft(chips.at(i)).dy,
+        ];
+        expect(tops.toSet(), hasLength(1),
+            reason: 'the three entries share one line rather than wrapping');
+
+        final strip = find.byKey(const ValueKey('routes-discover-strip'));
+        expect(
+          tester.widget<SingleChildScrollView>(strip).scrollDirection,
+          Axis.horizontal,
+        );
+        expect(tester.getSize(strip).height, lessThan(640 / 5),
+            reason: 'the header must leave the screen to the routes');
+        expect(
+            find.byWidgetPredicate(
+                (w) => w is Semantics && w.properties.label == 'Discover'),
+            findsOneWidget,
+            reason: 'the strip is still named for assistive tech');
+      });
+    }
   });
 
   group('RoutesScreen — OS text scaling (issue #666 V12)', () {

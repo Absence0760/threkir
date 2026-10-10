@@ -1160,9 +1160,9 @@ class RoutesScreenState extends State<RoutesScreen> {
               },
             );
 
-    // Both mounts share the same body shape: the labelled "Discover" strip
-    // (Public routes / Heatmap / Your heatmap + the compact sync affordance)
-    // over the route list. The strip is the single home of every map/
+    // Both mounts share the same body shape: the one-line "Discover" strip
+    // (Public routes / Routes heatmap / Run heatmap + the compact sync
+    // affordance) over the route list. The strip is the single home of every map/
     // discovery entry point — icon-only AppBar actions proved
     // undiscoverable (field reports for both heatmaps).
     final content = Column(
@@ -1184,37 +1184,90 @@ class RoutesScreenState extends State<RoutesScreen> {
     );
   }
 
-  /// The "Discover" strip: a titled row with the compact sync affordance,
-  /// then the labelled discovery buttons — Public routes, the community
-  /// routes heatmap (discoverable-route + club pins), and the user's own
-  /// run heatmap. Wrap-laid so three buttons flow to a second line on
-  /// narrow phones instead of overflowing.
+  /// The "Discover" strip: the labelled discovery entry points — Public
+  /// routes, the community routes heatmap (discoverable-route + club pins)
+  /// and the user's own run heatmap — then the compact sync affordance, on
+  /// ONE line. It sits above the list and never scrolls away, so it used to
+  /// cost a title row plus a Wrap that restacked the three buttons onto two
+  /// or three lines on a narrow phone or at a raised text scale: about half
+  /// the screen before the first route. The chips scroll horizontally
+  /// instead, like the surface peer strip (decisions § 486); "Discover"
+  /// names the strip for assistive tech rather than spending a row.
   List<Widget> _discoverHeader(ThemeData theme, AppLocalizations l10n) {
+    ActionChip chip(IconData icon, String label, VoidCallback onPressed) =>
+        ActionChip(
+          avatar: Icon(icon, size: 18),
+          label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+          onPressed: onPressed,
+        );
+
     return [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
+      Semantics(
+        container: true,
+        explicitChildNodes: true,
+        label: l10n.routesDiscover,
         child: Row(
           children: [
-            Icon(
-              Icons.travel_explore_outlined,
-              size: 16,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: 6),
             Expanded(
-              child: Text(
-                l10n.routesDiscover,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
+              child: SingleChildScrollView(
+                key: const ValueKey('routes-discover-strip'),
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(16, 4, 8, 4),
+                child: Row(
+                  children: [
+                    chip(Icons.explore, l10n.routesPublicRoutes, () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ExploreRoutesScreen(
+                            apiClient: widget.apiClient,
+                            routeStore: widget.routeStore,
+                            preferences: widget.preferences,
+                          ),
+                        ),
+                      );
+                    }),
+                    if (widget.apiClient != null) ...[
+                      // The two heatmaps sit side by side, so both labels
+                      // carry their qualifier ("Routes" = community
+                      // discoverable-route + club pins; "Run" = the user's
+                      // own tracks) — a bare "Heatmap" next to a sibling
+                      // heatmap says nothing.
+                      const SizedBox(width: 8),
+                      chip(
+                        Icons.local_fire_department,
+                        l10n.routesHeatmapTooltip,
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => RoutesHeatmapScreen(
+                              api: widget.apiClient!,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      chip(
+                        Icons.person_pin_circle_outlined,
+                        l10n.runHeatmapTooltip,
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => RunHeatmapScreen(
+                              api: widget.apiClient!,
+                              runStore: widget.runStore,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
             if (_syncing)
               const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
+                padding: EdgeInsets.symmetric(horizontal: 16),
                 child: SizedBox(
                   width: 16,
                   height: 16,
@@ -1222,71 +1275,16 @@ class RoutesScreenState extends State<RoutesScreen> {
                 ),
               )
             else if (widget.apiClient?.userId != null)
-              IconButton(
-                icon: const Icon(Icons.cloud_download, size: 20),
-                tooltip: l10n.routesSyncFromCloud,
-                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-                onPressed: _fetchRemoteRoutes,
-              ),
-          ],
-        ),
-      ),
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            OutlinedButton.icon(
-              icon: const Icon(Icons.explore, size: 18),
-              label: Text(l10n.routesPublicRoutes),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ExploreRoutesScreen(
-                      apiClient: widget.apiClient,
-                      routeStore: widget.routeStore,
-                      preferences: widget.preferences,
-                    ),
-                  ),
-                );
-              },
-            ),
-            if (widget.apiClient != null) ...[
-              // The two heatmaps sit side by side, so both labels carry
-              // their qualifier ("Routes" = community discoverable-route +
-              // club pins; "Run" = the user's own tracks) — a bare
-              // "Heatmap" next to a sibling heatmap says nothing.
-              OutlinedButton.icon(
-                icon: const Icon(
-                  Icons.local_fire_department,
-                  size: 18,
-                ),
-                label: Text(l10n.routesHeatmapTooltip),
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => RoutesHeatmapScreen(
-                      api: widget.apiClient!,
-                    ),
-                  ),
+              Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: IconButton(
+                  icon: const Icon(Icons.cloud_download, size: 20),
+                  tooltip: l10n.routesSyncFromCloud,
+                  constraints:
+                      const BoxConstraints(minWidth: 48, minHeight: 48),
+                  onPressed: _fetchRemoteRoutes,
                 ),
               ),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.person_pin_circle_outlined, size: 18),
-                label: Text(l10n.runHeatmapTooltip),
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => RunHeatmapScreen(
-                      api: widget.apiClient!,
-                      runStore: widget.runStore,
-                    ),
-                  ),
-                ),
-              ),
-            ],
           ],
         ),
       ),

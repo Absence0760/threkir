@@ -39,6 +39,7 @@ type vectorScenario struct {
 		ZuptFixes               int       `json:"zuptFixes"`
 		RScale                  float64   `json:"rScale"`
 		DopplerTrusted          bool      `json:"dopplerTrusted"`
+		DopplerScale            float64   `json:"dopplerScale"`
 	} `json:"expected"`
 	Smoothed struct {
 		DistanceAfterEachEventM []float64     `json:"distanceAfterEachEventM"`
@@ -79,7 +80,7 @@ func loadVectors(t *testing.T) vectorFile {
 
 func TestConstantsMatchTheVectorFile(t *testing.T) {
 	vf := loadVectors(t)
-	if vf.Spec != "gps-distance-estimator v"+SpecVersion || SpecVersion != "1.2" {
+	if vf.Spec != "gps-distance-estimator v"+SpecVersion || SpecVersion != "1.3" {
 		t.Fatalf("vectors are for %q; this port implements v%s", vf.Spec, SpecVersion)
 	}
 	ours := map[string]float64{
@@ -113,6 +114,12 @@ func TestConstantsMatchTheVectorFile(t *testing.T) {
 		"XCHECK_MAX_SPAN_S":             XcheckMaxSpanS,
 		"DEBIAS_FULL_MPS":               DebiasFullMps,
 		"DEBIAS_ZERO_MPS":               DebiasZeroMps,
+		"DSCALE_TAU_S":                  DscaleTauS,
+		"DSCALE_MIN_S":                  DscaleMinS,
+		"DSCALE_MIN":                    DscaleMin,
+		"DSCALE_MAX":                    DscaleMax,
+		"DSCALE_MIN_SPEED_MPS":          DscaleMinSpeedMps,
+		"DSCALE_MAX_TURN_DEG":           DscaleMaxTurnDeg,
 		"ZUPT_NO_STEP_S":                ZuptNoStepS,
 		"ZUPT_VEL_SIGMA_MPS":            ZuptVelSigmaMps,
 		"ZUPT_DOPPLER_OVERRIDE_MPS":     ZuptDopplerOverrideMps,
@@ -218,6 +225,9 @@ func TestGoldenVectors(t *testing.T) {
 			}
 			if math.Abs(e.RScale-sc.Expected.RScale) > 1e-6 {
 				t.Errorf("rScale %.9f, want %.9f", e.RScale, sc.Expected.RScale)
+			}
+			if math.Abs(e.DopplerScale-sc.Expected.DopplerScale) > 1e-6 {
+				t.Errorf("dopplerScale %.9f, want %.9f", e.DopplerScale, sc.Expected.DopplerScale)
 			}
 			if e.DopplerTrusted != sc.Expected.DopplerTrusted {
 				t.Errorf("dopplerTrusted %v, want %v", e.DopplerTrusted, sc.Expected.DopplerTrusted)

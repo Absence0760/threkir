@@ -9,7 +9,7 @@ MLAT = 111195.0
 
 
 def walk(T, v, seed, sigma=3.0, rho=0.9, doppler=True, stops=(), drop=(), steps=False, cadence=2.8,
-         gaps_steps=True, every=1, lat0=LAT0, lng0=LNG0, h0=0.0, speed_at=None, dop2d=None, bias=0.0,
+         gaps_steps=True, every=1, lat0=LAT0, lng0=LNG0, h0=0.0, speed_at=None, dop2d=None, bias=0.0, scale=1.0,
          spikes=(), jump=None, acc=None, steps_until=None):
     r = random.Random(seed)
     mlng = MLAT * math.cos(math.radians(lat0))
@@ -46,7 +46,7 @@ def walk(T, v, seed, sigma=3.0, rho=0.9, doppler=True, stops=(), drop=(), steps=
             fix["speedAcc"] = dop2d
             fix["bearing"] = round(math.degrees(math.atan2(dvx, dvy)) % 360, 2)
         elif doppler:
-            fix["speed"] = round(abs(s + r.gauss(0, 0.15)) + bias, 3)
+            fix["speed"] = round(abs(s + r.gauss(0, 0.15)) * scale + bias, 3)
             fix["speedAcc"] = round(0.3 + abs(r.gauss(0, 0.1)), 3)
             fix["bearing"] = round((math.degrees(h) + r.gauss(0, 8)) % 360, 2) if s > 0 else None
         ev.append(fix)
@@ -82,7 +82,8 @@ def add(name, desc, events, max_speed=10.0, interval=1.0, stride=None):
                               "rejectedFixes": e.rejected_fixes,
                               "zuptFixes": e.zupt_fixes,
                               "rScale": round(e.r_scale, 6),
-                              "dopplerTrusted": e.doppler_trusted},
+                              "dopplerTrusted": e.doppler_trusted,
+                              "dopplerScale": round(e.doppler_scale, 6)},
                  "smoothed": {"distanceAfterEachEventM": [round(c, 6) for c in sm["cumulative_m"]],
                               "distanceM": round(sm["distance_m"], 6),
                               "gpsDistanceM": round(sm["gps_distance_m"], 6),
@@ -139,6 +140,12 @@ add("antimeridian_crossing", "v1.2 projection: eastward position-only run at -17
 add("smoother_pace_change", "v1.2 smoother: position-only, alternating 2.0 and 4.0 m/s every 40 s; true distance 478 m",
     walk(160, 2.68, 30, doppler=False, speed_at=lambda t: 2.0 if (t // 40) % 2 == 0 else 4.0))
 
+# v1.3 scenarios.
+add("doppler_scale_low", "v1.3 Doppler scale: Doppler reads 8% low for the whole 420 s run (an iPhone); the learned scale rises to about 1.07 and distance follows the fixes",
+    walk(420, 2.68, 31, scale=0.92))
+add("doppler_scale_high", "v1.3 Doppler scale: Doppler reads 10% high for the whole 420 s run (a fused-provider Android); the learned scale falls to about 0.93",
+    walk(420, 2.68, 32, scale=1.10))
+
 doc = {"spec": "gps-distance-estimator v" + ref.SPEC_VERSION,
        "reference": "docs/features/gps_distance.md",
        "tolerance_m": 0.001,
@@ -161,4 +168,4 @@ for s in scen:
     x, m = s["expected"], s["smoothed"]
     print(f'{s["name"]:30s} fwd={x["distanceAfterEachEventM"][-1]:9.2f} smooth={m["distanceM"]:9.2f} '
           f'steps={x["stepDistanceM"]:7.2f} stride={x["strideM"]} rej={x["rejectedFixes"]} zupt={x["zuptFixes"]} '
-          f'rScale={x["rScale"]:.3f} trusted={x["dopplerTrusted"]} stopped={m["stoppedFixes"]}')
+          f'rScale={x["rScale"]:.3f} trusted={x["dopplerTrusted"]} scale={x["dopplerScale"]:.3f} stopped={m["stoppedFixes"]}')

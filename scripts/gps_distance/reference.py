@@ -1,9 +1,9 @@
-"""GPS distance estimator — reference implementation, spec v1.2.
+"""GPS distance estimator — reference implementation, spec v1.3.
 
 Every port (Dart, TypeScript, Deno, Kotlin, Swift, Rust, Go) must reproduce
 gps_distance_vectors.json to 1e-3 m. Operation order matters only at the
 1e-9 level; keep formulas as written. Scalar float64 arithmetic only, no
-library beyond sqrt / hypot / sin / cos / radians / degrees.
+library beyond sqrt / hypot / sin / cos / exp / radians / degrees.
 
 Two entry points:
   GpsDistanceEstimator  the forward (causal) filter every live screen runs.
@@ -12,7 +12,7 @@ Two entry points:
 """
 import math
 
-SPEC_VERSION = "1.2"
+SPEC_VERSION = "1.3"
 
 EARTH_RADIUS_M = 6371008.8
 Q_ACCEL = 0.6                     # m^2/s^3, white-acceleration spectral density (unvalidated, see doc)
@@ -44,6 +44,16 @@ XCHECK_PERSIST_S = 60.0           # a verdict flips only after disagreeing (or a
 XCHECK_MAX_SPAN_S = 5.0           # longer fix-to-fix spans cut corners, so they are not compared
 # v1.2 — Doppler low-speed debias.
 DEBIAS_FULL_MPS, DEBIAS_ZERO_MPS = 0.5, 1.0
+# v1.3 — Doppler speed scale. Phones carry a slowly varying Doppler speed bias of
+# several percent (2026-10-09, against a Garmin on the same course: an iPhone 7% low,
+# a fused-provider Android 10% high and then low within one run), far below the
+# cross-check's threshold, and the filter credits distance from Doppler speed. The
+# constants are tuned against that watch, not a measured course (issue #1090 item 2).
+DSCALE_TAU_S = 600.0              # exponential forgetting time of both integrals
+DSCALE_MIN_S = 60.0               # compared seconds before the scale leaves 1
+DSCALE_MIN, DSCALE_MAX = 0.8, 1.25
+DSCALE_MIN_SPEED_MPS = 1.5        # both ends' Doppler; below it, keeping only high readings biases the scale low
+DSCALE_MAX_TURN_DEG = 45.0        # bearing change across the span; a chord across a turn is shorter than the arc
 # v1.2 — pedometer zero-velocity update. ZUPT_NO_STEP_S must be measured on device.
 ZUPT_NO_STEP_S = 6.0
 ZUPT_VEL_SIGMA_MPS = 0.1
@@ -151,6 +161,11 @@ class GpsDistanceEstimator:
         self._xc_time = 0.0
         self._xc_persist_s = 0.0
         self._xc_last = None              # (x, y, t) of the last fix whose position the filter took
+        # v1.3 state
+        self.doppler_scale = 1.0
+        self._ds_pos = self._ds_dop = 0.0
+        self._ds_time = 0.0
+        self._ds_last = None              # (x, y, t, dop, bearing) of the last fix whose position the filter took
         self._steps_seen = False
         self._last_step_inc_t = None
         self._zupt_released = False
@@ -207,11 +222,13 @@ class GpsDistanceEstimator:
             self._x, self._y = _Axis(zx, r), _Axis(zy, r)
             self._t = t
             self._xc_last = (zx, zy, t)
+            self._ds_last = (zx, zy, t, dop, bearing_deg)
             self._reject_streak = 0
             self._zupt_anchor = None
             zupt = stopped_hint or self._zupt_due(t, dop)
             self._record(t=t, anchor=True, chain_break=True, dt=0.0, pred=None,
-                         zupt=zupt, dop=dop if (dop is not None and self.doppler_trusted) else None, chord=None)
+                         zupt=zupt, dop=dop * self.doppler_scale if (dop is not None and self.doppler_trusted) else None,
+                         chord=None)
             return 0.0
         # The gap closed inside the gap window, so the filter integrates it: drop the buffer.
         self._pending_step_m = 0.0
@@ -244,6 +261,7 @@ class GpsDistanceEstimator:
                 self._y.reset_pos(zy, r)
                 self._reject_streak = 0
                 self._xc_last = (zx, zy, t)
+                self._ds_last = (zx, zy, t, dop, bearing_deg)
                 chain_break = True
 
         # 3. Zero-velocity update (pedometer, or the caller's stop hint).
@@ -300,8 +318,29 @@ class GpsDistanceEstimator:
                         self._xc_persist_s = 0.0
             self._xc_last = (zx, zy, t)
 
+            # 4b. Doppler scale (v1.3): the ratio of exponentially forgotten integrals of
+            #     the fixes' displacement along the span's mean Doppler bearing and of the
+            #     trapezoid Doppler distance over the same span. Position noise averages
+            #     out of a sum of displacements, where it does not out of a sum of hop lengths.
+            lx, ly, lt, ldop, lb = self._ds_last
+            span = t - lt
+            turn = abs(bearing_deg - lb) % 360.0 if (_valid(bearing_deg) and _valid(lb)) else None
+            if (not zupt and dop is not None and ldop is not None and turn is not None
+                    and dop >= DSCALE_MIN_SPEED_MPS and ldop >= DSCALE_MIN_SPEED_MPS
+                    and span <= XCHECK_MAX_SPAN_S and min(turn, 360.0 - turn) <= DSCALE_MAX_TURN_DEG):
+                b0, b1 = math.radians(lb), math.radians(bearing_deg)
+                ux, uy = math.sin(b0) + math.sin(b1), math.cos(b0) + math.cos(b1)
+                n = math.hypot(ux, uy)
+                w = math.exp(-span / DSCALE_TAU_S)
+                self._ds_pos = w * self._ds_pos + ((zx - lx) * ux + (zy - ly) * uy) / n
+                self._ds_dop = w * self._ds_dop + 0.5 * (ldop + dop) * span
+                self._ds_time += span
+                if self._ds_time >= DSCALE_MIN_S and self._ds_dop > 0.0:
+                    self.doppler_scale = min(max(self._ds_pos / self._ds_dop, DSCALE_MIN), DSCALE_MAX)
+            self._ds_last = (zx, zy, t, dop, bearing_deg)
+
         # 5. Doppler velocity update.
-        use_dop = dop if (dop is not None and self.doppler_trusted) else None
+        use_dop = dop * self.doppler_scale if (dop is not None and self.doppler_trusted) else None
         if use_dop is not None and not zupt and _valid(bearing_deg) and use_dop >= STATIONARY_SPEED_MPS:
             rv = max(sa, MIN_SPEED_SIGMA_MPS) ** 2
             b = math.radians(bearing_deg)

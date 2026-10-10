@@ -71,7 +71,8 @@ test('/settings/upgrade gates the Get Pro CTA on a live perk (never sells a holl
 	// server route generation (PUBLIC_ROUTE_GEN_ENABLED — decisions §204).
 	// When both are off (rock-bottom deploy) a Pro subscription delivers
 	// nothing. The storefront must not sell it: the purchasable "Get Pro" CTA
-	// renders only under the proSellable (coachOn || routeGenOn) branch, else
+	// renders only on the `checkout` storefront (a live perk AND a usable web
+	// checkout link), else the app-only note or
 	// a "coming soon" teaser — and each flagged perk's bullet is gated on its
 	// own flag so the card never advertises a dead feature. Un-gating this
 	// re-introduces a hollow-subscription (consumer-protection / chargeback)
@@ -94,9 +95,21 @@ test('/settings/upgrade gates the Get Pro CTA on a live perk (never sells a holl
 	);
 	assert.match(
 		page,
-		/\{:else if proSellable\}[\s\S]*?upgrade\.getPro/,
-		'the "Get Pro" CTA must live under the {:else if proSellable} branch so it is hidden when every perk is off.',
+		/const storefront = proStorefront\(proSellable, webCheckoutAvailable\(\)\)/,
+		'the storefront must derive from proSellable AND the fail-closed webCheckoutAvailable() gate.',
 	);
+	assert.match(
+		page,
+		/\{:else if storefront === 'checkout'\}[\s\S]*?upgrade\.getPro/,
+		'the "Get Pro" CTA must live under the checkout storefront so it is hidden when every perk is off or web checkout is unavailable.',
+	);
+	// Coach live with no web checkout link (decisions § 1826): Pro is sold
+	// through the iPhone app, and the card must say so rather than render a buy
+	// button that cannot take payment.
+	const appOnly = page.match(/\{:else if storefront === 'app_only'\}([\s\S]*?)\{:else\}/);
+	assert.ok(appOnly, 'the Pro card must carry an app_only branch.');
+	assert.match(appOnly![1], /upgrade\.proInIosApp/, 'the app_only branch must point at the iPhone app.');
+	assert.doesNotMatch(appOnly![1], /<button/, 'the app_only branch must not render a purchase button.');
 	assert.match(
 		page,
 		/\{:else\}[\s\S]*?upgrade\.proComingSoon/,

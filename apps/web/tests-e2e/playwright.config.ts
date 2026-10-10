@@ -120,7 +120,18 @@ export default defineConfig({
 		// /api/routes/osrm proxy's demo fallback, though the specs mock the
 		// proxy path in-browser) deterministically, local and CI alike, instead
 		// of chasing services that aren't there. See decisions.md § 137.
-		env: { PUBLIC_TILE_STYLE_URL: '', OSRM_URL: '' },
+		//
+		// The checkout link goes the other way: set to a well-formed fixture so
+		// /settings/upgrade renders its `checkout` storefront and the purchase
+		// specs exercise the plan picker and the redirect. Nothing is fetched
+		// from it — upgrade.spec.ts intercepts the navigation. Without it the
+		// page renders the app-only storefront (decisions § 1826), which the
+		// unit guards in paywall_guards.test.ts pin instead.
+		env: {
+			PUBLIC_TILE_STYLE_URL: '',
+			OSRM_URL: '',
+			PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: 'https://pay.rev.cat/e2e-fixture',
+		},
 		// Vite logs are noisy; only surface them on failure.
 		stdout: 'ignore',
 		stderr: 'pipe'

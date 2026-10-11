@@ -182,7 +182,7 @@ export const NOT_PAIRS = [
 			'a hosted-checkout URL, the mobile half drives the native purchase sheet. ' +
 			'What they share is the not-configured sentinel contract, not an algorithm ' +
 			'(decisions § 1244).',
-		shared: ['isRevenueCatConfigured', 'managementUrl'],
+		shared: ['managementUrl'],
 	},
 	{
 		web: 'apps/web/src/lib/integrations/strava.ts',

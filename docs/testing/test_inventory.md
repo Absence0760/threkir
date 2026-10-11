@@ -1594,7 +1594,7 @@ resolved directory, and `is_kms_arn` rejects a placeholder, an alias ARN and a
 trailing space. The parser's output was also compared under GNU awk,
 `gawk --posix` and Ubuntu 24.04's `mawk`: identical.
 
-### `scripts/bin_estate_scripts.test.mjs` — 11 tests
+### `scripts/bin_estate_scripts.test.mjs` — 16 tests (5 added for the post-apply alias sync)
 
 `sops-init.sh`, `key-rotate.sh`, `secret-set.sh` and `aws-preflight.sh`, driven
 against a fixture estate with `aws`, `terraform`, `sops` and `gh` stubbed on
@@ -1608,8 +1608,11 @@ sends a placeholder to `sops-init.sh` (reaching the warning a file with no ARN
 used to exit before) and refuses the pre-rename rules. `secret-set.sh` writes
 through the estate config and names `sops-init.sh` when the file is missing.
 `aws-preflight.sh` passes on the pinned account, only warns on a placeholder, and
-hard-fails a wrong account, a missing slot and a missing rule. Not covered: sops's
-own matching and KMS, `deploy-env.sh`, `disaster-recovery.sh`.
+hard-fails a wrong account, a missing slot and a missing rule. `deploy-env.sh`
+repoints the `live` aliases after an apply without a second prompt, holds an alias
+that was already behind (a rollback), changes nothing on `--plan`, only reports
+drift when the env stack had nothing to apply, and fails loudly when the repoint
+fails. Not covered: sops's own matching and KMS, `disaster-recovery.sh`.
 
 ### `.github/actions/start-supabase/start_stack.test.mjs` — 20 tests (9 added, then 5 for #963, then 6 for #916)
 

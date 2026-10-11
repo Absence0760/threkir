@@ -108,12 +108,18 @@ class _SettingsProScreenState extends State<SettingsProScreen> {
   Future<void> _startProCheckout(BuildContext context) async {
     if (_proBusy) return;
     // Second gate behind the hidden CTA: no caller may reach checkout
-    // while the deploy has no live perk to sell.
-    if (!(_perks?.sellable ?? false)) return;
+    // while the deploy has no live perk to sell or nowhere to pay.
+    if (!proPurchasable(_perks,
+        storeConfigured: _store.configured,
+        webLinksAllowed: webPaymentLinksAllowed())) {
+      return;
+    }
+    final webCheckout =
+        webPaymentLinksAllowed() && (_perks?.webCheckout ?? false);
     setState(() => _proBusy = true);
     try {
       if (!_store.configured) {
-        if (webPaymentLinksAllowed()) {
+        if (webCheckout) {
           await _openExternal(context, webUpgradeUrl);
         }
         return;
@@ -131,7 +137,7 @@ class _SettingsProScreenState extends State<SettingsProScreen> {
           showTopBanner(context, l10n.proPurchaseFailed);
           break;
         case PurchaseResult.notConfigured:
-          if (webPaymentLinksAllowed()) {
+          if (webCheckout) {
             await _openExternal(context, webUpgradeUrl);
           }
           break;
@@ -233,10 +239,11 @@ class _SettingsProScreenState extends State<SettingsProScreen> {
     // Mirrors web's proSellable branch: a purchase CTA only where a perk
     // is live, else the coming-soon teaser. Unknown counts as not sellable.
     // Where the store SDK is unconfigured the purchase would be a web
-    // checkout, which iOS may not offer (decisions § 1700), so there it is
-    // not sellable either.
-    final sellable = (_perks?.sellable ?? false) &&
-        (rcConfigured || webPaymentLinksAllowed());
+    // checkout, which iOS may not offer (decisions § 1700) and which counts
+    // only while the web deploy has one (decisions § 1826).
+    final sellable = proPurchasable(_perks,
+        storeConfigured: rcConfigured,
+        webLinksAllowed: webPaymentLinksAllowed());
     return Scaffold(
       appBar: AppBar(title: Text(l10n.proTitle)),
       body: SafeArea(

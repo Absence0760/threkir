@@ -32,13 +32,17 @@
  *     PNG renderer at prerender time and by the maplibre tile
  *     source at runtime; an empty key bakes broken map / share-
  *     image URLs into every public route + run page.
- *   - PUBLIC_REVENUECAT_WEB_CHECKOUT_URL must be non-empty — but only
- *     when Pro is sellable, i.e. PUBLIC_COACH_ENABLED or
- *     PUBLIC_ROUTE_GEN_ENABLED is truthy (Pro's two perks, decisions
- *     §204). With both flags off (the rock-bottom tier,
- *     deployment_lean.md) /settings/upgrade deliberately shows the
- *     "coming soon" teaser instead of selling, so an empty checkout
- *     link is the intended config, not a broken one.
+ *   - PUBLIC_REVENUECAT_WEB_CHECKOUT_URL may be unset, but a value that
+ *     IS set must be a RevenueCat Web Purchase Link: https, host
+ *     pay.rev.cat, a real token (no placeholder). The test is
+ *     `checkoutBaseProblem` in src/lib/billing/revenuecat_links.ts — the
+ *     same one /settings/upgrade applies before it renders a buy button,
+ *     so a value this guard passes is a value the page redirects to.
+ *     Unset with a Pro perk flag on (PUBLIC_COACH_ENABLED /
+ *     PUBLIC_ROUTE_GEN_ENABLED) used to fail the build; it is now a
+ *     supported configuration — Pro is sold through the iPhone app's
+ *     In-App Purchase and the page says so (decisions § 1826) — and the
+ *     CLI prints a `::notice::` naming the state instead.
  *   - The OPTIONAL origins below (PUBLIC_SITE_URL, PUBLIC_LIVE_HUB_URL,
  *     PUBLIC_EXPORT_HUB_URL) may be unset — each has a defined
  *     unconfigured behaviour — but a value that IS set has to be a
@@ -72,6 +76,7 @@
  * envs — from the `env-isolation` job of ci.yml (decisions § 862).
  */
 
+import { checkoutBaseProblem } from '../src/lib/billing/revenuecat_links.ts';
 import { isTruthyFlagValue } from '../src/lib/core/env_flag.ts';
 
 const PLACEHOLDER_HOST_RE = /\bplaceholder\.supabase\.co\b/i;
@@ -172,7 +177,7 @@ export function vapidPublicKeyProblem(value) {
 
 /**
  * @typedef {{ envVar: string; value: string; reason: string }} Finding
- * @typedef {{ ok: boolean; findings: Finding[] }} GuardResult
+ * @typedef {{ ok: boolean; findings: Finding[]; notices: string[] }} GuardResult
  */
 
 /**
@@ -251,18 +256,27 @@ export function checkProductionEnv(env) {
 		}
 	}
 
+	/** @type {string[]} */
+	const notices = [];
 	const proSellable =
 		isTruthyFlagValue(env.PUBLIC_COACH_ENABLED) || isTruthyFlagValue(env.PUBLIC_ROUTE_GEN_ENABLED);
 	const revenueCatCheckout = String(env.PUBLIC_REVENUECAT_WEB_CHECKOUT_URL ?? '').trim();
-	if (proSellable && !revenueCatCheckout) {
-		findings.push({
-			envVar: 'PUBLIC_REVENUECAT_WEB_CHECKOUT_URL',
-			value: '<empty>',
-			reason: 'Missing / empty while a Pro perk flag (PUBLIC_COACH_ENABLED / PUBLIC_ROUTE_GEN_ENABLED) is on. A sellable Pro with no hosted-checkout link silently disables the purchase flow on /settings/upgrade.',
-		});
+	if (revenueCatCheckout) {
+		const problem = checkoutBaseProblem(revenueCatCheckout);
+		if (problem) {
+			findings.push({
+				envVar: 'PUBLIC_REVENUECAT_WEB_CHECKOUT_URL',
+				value: redactCredentials(revenueCatCheckout),
+				reason: `${problem} /settings/upgrade refuses a link like this and hides the buy button, so the release would ship believing web checkout is live when it is not.`,
+			});
+		}
+	} else if (proSellable) {
+		notices.push(
+			'Web checkout is off: PUBLIC_REVENUECAT_WEB_CHECKOUT_URL is unset while a Pro perk flag is on, so /settings/upgrade sells Pro through the iPhone app only (decisions § 1826). Set the secret to a https://pay.rev.cat/<token> link to turn web checkout on.',
+		);
 	}
 
-	return { ok: findings.length === 0, findings };
+	return { ok: findings.length === 0, findings, notices };
 }
 
 /**
@@ -292,7 +306,6 @@ export function formatGuardError(result) {
 	lines.push('  - PUBLIC_SUPABASE_URL');
 	lines.push('  - PUBLIC_SUPABASE_ANON_KEY');
 	lines.push('  - PUBLIC_MAPTILER_KEY');
-	lines.push('  - PUBLIC_REVENUECAT_WEB_CHECKOUT_URL');
 	lines.push('');
 	lines.push(banner);
 	lines.push('');
@@ -306,6 +319,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 	if (!result.ok) {
 		process.stderr.write(formatGuardError(result));
 		process.exit(1);
+	}
+	// GitHub Actions turns a `::notice::` line into an annotation on the run;
+	// anywhere else it reads as a plain line.
+	for (const notice of result.notices) {
+		process.stdout.write(`::notice title=check-production-env::${notice}\n`);
 	}
 	process.stdout.write('[check-production-env] PUBLIC_SUPABASE_URL + ANON_KEY look real — proceeding.\n');
 }

@@ -47,9 +47,10 @@ test('release-web.yml runs the production-env guard before npm run build', () =>
 		'PUBLIC_SUPABASE_ANON_KEY',
 		'PUBLIC_MAPTILER_KEY',
 		'PUBLIC_REVENUECAT_WEB_CHECKOUT_URL',
-		// Pro perk flags: the guard requires the RevenueCat checkout URL
-		// only when one of these is truthy, so they must reach the guard's
-		// env or a sellable Pro would pass with no checkout link.
+		// Pro perk flags: with one truthy and no checkout link the guard
+		// names the app-only storefront in a ::notice:: (decisions § 1826),
+		// so they must reach the guard's env or the run says nothing about
+		// web checkout being off.
 		'PUBLIC_COACH_ENABLED',
 		'PUBLIC_ROUTE_GEN_ENABLED',
 	]) {

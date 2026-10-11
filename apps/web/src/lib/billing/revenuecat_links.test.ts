@@ -6,7 +6,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { annualSavingPercent, buildCheckoutUrl, PRO_PACKAGE_IDS } from './revenuecat_links';
+import {
+	annualSavingPercent,
+	buildCheckoutUrl,
+	checkoutBaseProblem,
+	PRO_PACKAGE_IDS,
+	proStorefront,
+} from './revenuecat_links';
 
 const BASE = 'https://pay.rev.cat/abc123';
 
@@ -39,6 +45,47 @@ test('omits the redirect_url query when no return URL is given', () => {
 test('returns null when the base is empty (fail-closed / unconfigured)', () => {
 	assert.equal(buildCheckoutUrl('', 'user-1'), null);
 	assert.equal(buildCheckoutUrl('   ', 'user-1', 'https://x/y'), null);
+});
+
+test('returns null for a base that is not a Web Purchase Link', () => {
+	assert.equal(buildCheckoutUrl('http://pay.rev.cat/abc123', 'user-1'), null);
+	assert.equal(buildCheckoutUrl('https://evil.example/abc123', 'user-1'), null);
+	assert.equal(buildCheckoutUrl('https://pay.rev.cat/placeholder', 'user-1'), null);
+});
+
+test('checkoutBaseProblem accepts a real Web Purchase Link, trimmed', () => {
+	assert.equal(checkoutBaseProblem(BASE), null);
+	assert.equal(checkoutBaseProblem(`  ${BASE}/\n`), null);
+});
+
+test('checkoutBaseProblem refuses empty, non-URL, plaintext, foreign-host, bare-host and placeholder values', () => {
+	for (const bad of [
+		'',
+		'   ',
+		'abc123',
+		'TODO',
+		'http://pay.rev.cat/abc123',
+		'https://pay.rev.cat.evil.example/abc123',
+		'https://checkout.stripe.com/abc123',
+		'https://pay.rev.cat',
+		'https://pay.rev.cat/',
+		'https://pay.rev.cat/placeholder',
+		'https://pay.rev.cat/TODO',
+		'https://pay.rev.cat/xxxx',
+		'https://pay.rev.cat/your-token',
+	]) {
+		assert.notEqual(checkoutBaseProblem(bad), null, `expected a problem for ${JSON.stringify(bad)}`);
+	}
+});
+
+test('proStorefront: nothing to sell without a live perk, whatever the checkout', () => {
+	assert.equal(proStorefront(false, false), 'coming_soon');
+	assert.equal(proStorefront(false, true), 'coming_soon');
+});
+
+test('proStorefront: a live perk sells on the web only where web checkout exists', () => {
+	assert.equal(proStorefront(true, true), 'checkout');
+	assert.equal(proStorefront(true, false), 'app_only');
 });
 
 test('appends the documented package_id for a preselected plan', () => {

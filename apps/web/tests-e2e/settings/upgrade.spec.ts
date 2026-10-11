@@ -160,25 +160,30 @@ test.describe('/settings/upgrade — free user', () => {
 		expect(urls[0]).toMatch(/^https:\/\/github\.com\/sponsors/);
 	});
 
-	test('Get Pro on an unconfigured build shows the "not configured" toast and does not navigate', async ({
+	test('Get Pro redirects to the hosted checkout with the user id, the chosen plan and a way back', async ({
 		page,
 	}) => {
-		// The e2e dev server boots with no PUBLIC_REVENUECAT_WEB_CHECKOUT_URL
-		// (playwright.config.ts forces the localhost services empty), so
-		// `isRevenueCatConfigured()` is false. The hosted-checkout path
-		// must fail closed: clicking "Get Pro" surfaces the info toast and
-		// stays on /settings/upgrade rather than redirecting anywhere.
+		// playwright.config.ts sets PUBLIC_REVENUECAT_WEB_CHECKOUT_URL to a
+		// well-formed fixture link, so the page renders its `checkout`
+		// storefront. The navigation is intercepted: the assertion is on the
+		// URL the page built, which is what RevenueCat keys the purchase on
+		// (App User ID path segment) and what preselects the plan (package_id).
+		let checkoutUrl = '';
+		await page.route('https://pay.rev.cat/**', async (route) => {
+			checkoutUrl = route.request().url();
+			await route.fulfill({ status: 200, contentType: 'text/html', body: '<p>checkout</p>' });
+		});
 		await page.goto('/settings/upgrade');
 		const getPro = page.locator('.tier-pro').getByRole('button', { name: /Get Pro — /i });
 		await expect(getPro).toBeVisible({ timeout: 10_000 });
 
 		await getPro.click();
 
-		await expect(page.locator('.toast-info')).toContainText(/not configured/i, {
-			timeout: 5_000,
-		});
-		// No redirect — we're still on the upgrade page.
-		await expect(page).toHaveURL(/\/settings\/upgrade(\?|$)/);
+		await expect.poll(() => checkoutUrl, { timeout: 10_000 }).not.toBe('');
+		const url = new URL(checkoutUrl);
+		expect(url.pathname).toMatch(/^\/e2e-fixture\/[0-9a-f-]{36}$/);
+		expect(url.searchParams.get('package_id')).toBe('$rc_annual');
+		expect(url.searchParams.get('redirect_url')).toMatch(/\/settings\/upgrade$/);
 	});
 
 	test('the purchase CTA carries working Terms and Privacy links (App Store 3.1.2)', async ({

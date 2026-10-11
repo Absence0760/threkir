@@ -264,7 +264,7 @@ The web workflow assumes an IAM role via GitHub OIDC — there is **no** `AWS_AC
 | `PUBLIC_SUPABASE_URL` | Production Supabase REST URL — the raw `https://<ref>.supabase.co` (`api.threkir.com` is a Pro-only custom domain, not provisioned on the current Free tier). Inlined into the build. |
 | `PUBLIC_SUPABASE_ANON_KEY` | Supabase **publishable** key. Inlined into the build. |
 | `PUBLIC_MAPTILER_KEY` | MapTiler key shared with mobile + Wear OS. Inlined into the build. |
-| `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` | RevenueCat hosted Web Paywall Link (`https://pay.rev.cat/<token>`). Inlined into the build; the prod-env guard fails the release if unset. |
+| `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` | RevenueCat hosted Web Paywall Link (`https://pay.rev.cat/<token>`). Inlined into the build. Optional: unset with `PUBLIC_COACH_ENABLED` / `PUBLIC_ROUTE_GEN_ENABLED` on is the app-only storefront (Pro sold in the iPhone app, decisions § 1826) and the prod-env guard prints a `::notice::`; a value that is set must be `https://pay.rev.cat/<token>` or the guard fails the release. |
 | `PUBLIC_REVENUECAT_WEB_PORTAL_URL` | RevenueCat no-code customer-portal link. Optional — empty degrades the manage-subscription button to a hint. |
 | `PUBLIC_SENTRY_DSN` | Frontend Sentry DSN. Optional — empty disables client-side capture. |
 | `APP_RELEASE` | `web@<version>` tag — passed as `PUBLIC_APP_RELEASE` for Sentry release tagging. Defaults to `dev`. |

@@ -90,7 +90,8 @@ void main() {
 
   testWidgets('purchase CTA returns when a single perk goes live',
       (tester) async {
-    await pumpPro(tester, const ProPerks(coach: false, routeGen: true));
+    await pumpPro(tester,
+        const ProPerks(coach: false, routeGen: true, webCheckout: true));
 
     expect(find.textContaining('Subscribe to Pro'), findsOneWidget);
     expect(find.text('Pro — coming soon'), findsNothing);
@@ -112,11 +113,26 @@ void main() {
     expect(find.text('Pro — coming soon'), findsOneWidget);
     expect(find.textContaining('Subscribe to Pro'), findsNothing);
 
-    pending.complete(const ProPerks(coach: true, routeGen: false));
+    pending.complete(
+        const ProPerks(coach: true, routeGen: false, webCheckout: true));
     // One pump to let the await continuation run, one to rebuild.
     await tester.pump();
     await tester.pump();
     expect(find.textContaining('Subscribe to Pro'), findsOneWidget);
+  });
+
+  // decisions § 1826: with no RevenueCat key the purchase would be the web
+  // page, and with web checkout off that page can only point at the iPhone
+  // app. Android shows the teaser rather than a tile into that dead end.
+  testWidgets('Android with no store and no web checkout shows the teaser',
+      (tester) async {
+    await pumpPro(tester, const ProPerks(coach: true, routeGen: false));
+
+    expect(find.textContaining('Subscribe to Pro'), findsNothing);
+    expect(find.text('Pro — coming soon'), findsOneWidget);
+    expect(tester.widget<ListTile>(subscribeTile).onTap, isNull);
+    expect(find.text('Restore purchases'), findsOneWidget);
+    expect(find.text('Manage subscription'), findsOneWidget);
   });
 
   // decisions § 1700: iOS may not route a digital purchase or a donation to
@@ -126,7 +142,9 @@ void main() {
       (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     try {
-      await pumpPro(tester, const ProPerks(coach: true, routeGen: false));
+      // Web checkout live too: iOS still may not link out to it.
+      await pumpPro(tester,
+          const ProPerks(coach: true, routeGen: false, webCheckout: true));
 
       expect(find.textContaining('Subscribe to Pro'), findsNothing);
       expect(find.text('Pro — coming soon'), findsOneWidget);
@@ -224,7 +242,8 @@ void main() {
     addTearDown(() => tester.binding.defaultBinaryMessenger
         .setMockMethodCallHandler(launcher, null));
 
-    await pumpPro(tester, const ProPerks(coach: true, routeGen: false));
+    await pumpPro(tester,
+        const ProPerks(coach: true, routeGen: false, webCheckout: true));
 
     expect(subscribeTile, findsOneWidget);
     expect(tester.widget<ListTile>(subscribeTile).enabled, isTrue);

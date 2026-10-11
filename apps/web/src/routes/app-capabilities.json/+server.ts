@@ -1,4 +1,5 @@
 import type { RequestHandler } from './$types';
+import { webCheckoutAvailable } from '$lib/billing/revenuecat';
 import { coachEnabled } from '$lib/coach/coach_flag';
 import { routeGenEnabled } from '$lib/routes/route_gen_flag';
 
@@ -17,7 +18,14 @@ import { routeGenEnabled } from '$lib/routes/route_gen_flag';
 // /api/coach. There is no second flag to keep in sync — flipping the env
 // and redeploying web moves both storefronts at once.
 //
-// Public by construction: both values are already PUBLIC_ flags present in
+// `web_checkout` is the third answer the storefront reads: whether this
+// deploy can take a Pro payment on the web (`webCheckoutAvailable()`, the
+// same gate the /settings/upgrade buy button renders under). A mobile build
+// that cannot sell through its own store falls back to the web page only
+// when this is true; otherwise that page could only point at the iPhone app
+// (decisions § 1826). It is not a perk and sells nothing on its own.
+//
+// Public by construction: every value derives from a PUBLIC_ var present in
 // the client bundle every visitor downloads. Nothing here is a secret.
 //
 // The release workflow gives this file the short HTML-style cache-control
@@ -26,7 +34,11 @@ export const prerender = true;
 
 export const GET: RequestHandler = () =>
 	new Response(
-		JSON.stringify({ coach: coachEnabled(), route_gen: routeGenEnabled() }),
+		JSON.stringify({
+			coach: coachEnabled(),
+			route_gen: routeGenEnabled(),
+			web_checkout: webCheckoutAvailable(),
+		}),
 		{
 			headers: {
 				'content-type': 'application/json',

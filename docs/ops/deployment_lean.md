@@ -219,9 +219,12 @@ once.
 Set the required build-input GitHub secrets (`PUBLIC_SUPABASE_URL` = the same raw
 `<ref>.supabase.co` URL, `PUBLIC_SUPABASE_ANON_KEY`, `PUBLIC_MAPTILER_KEY`) before the first
 `web@*` deploy, then push to trigger `release-web.yml`. `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL`
-is NOT needed at this tier: the release guard (`check_production_env.mjs`) only requires it
-when a Pro perk flag (`PUBLIC_COACH_ENABLED` / `PUBLIC_ROUTE_GEN_ENABLED`) is truthy — with
-both unset, the empty checkout link matches the "Pro — coming soon" teaser.
+is NOT needed at this tier: with both Pro perk flags (`PUBLIC_COACH_ENABLED` /
+`PUBLIC_ROUTE_GEN_ENABLED`) unset the empty checkout link matches the "Pro — coming soon"
+teaser. It is not required with a perk on either: Coach on and no checkout link is the
+app-only storefront, where Pro is sold in the iPhone app and the release guard
+(`check_production_env.mjs`) prints a `::notice::` instead of failing (decisions § 1826). A
+value that IS set must be `https://pay.rev.cat/<token>` or the guard fails the release.
 
 ### 3. Skip Fly entirely
 

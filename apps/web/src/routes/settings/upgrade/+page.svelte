@@ -6,9 +6,13 @@
 	import {
 		proCheckoutUrl,
 		managementUrl,
-		isRevenueCatConfigured,
+		webCheckoutAvailable,
 	} from '$lib/billing/revenuecat';
-	import { annualSavingPercent, type ProPlan } from '$lib/billing/revenuecat_links';
+	import {
+		annualSavingPercent,
+		proStorefront,
+		type ProPlan,
+	} from '$lib/billing/revenuecat_links';
 	import { coachEnabled } from '$lib/coach/coach_flag';
 	import { routeGenEnabled } from '$lib/routes/route_gen_flag';
 
@@ -23,6 +27,13 @@
 	const coachOn = coachEnabled();
 	const routeGenOn = routeGenEnabled();
 	const proSellable = coachOn || routeGenOn;
+	// Selling Pro and selling it HERE are separate questions. With a perk live
+	// and no web checkout link, Pro is bought through the iPhone app's In-App
+	// Purchase and the card says so, instead of offering a buy button that
+	// cannot take payment. A Pro bought in the app unlocks web too: the tier
+	// is the account's, written by the RevenueCat webhook whichever store
+	// sold it. decisions § 1826.
+	const storefront = proStorefront(proSellable, webCheckoutAvailable());
 
 	// External donation link. One-off donations are intentionally routed
 	// through an external provider so the app doesn't have to own a payment
@@ -53,13 +64,10 @@
 			return;
 		}
 		const url = proCheckoutUrl(userId, plan, window.location.href);
-		if (!url) {
-			// Dev / preview builds without a RevenueCat checkout link fall
-			// back to the original placeholder so the page stays usable
-			// end-to-end without a real billing account.
-			showToast(m('upgrade.checkoutNotConfigured'), 'info');
-			return;
-		}
+		// The button renders only on the `checkout` storefront, which is the
+		// same test proCheckoutUrl applies, so this is unreachable short of a
+		// drift between the two.
+		if (!url) return;
 		// Full-page redirect to the hosted checkout. On success RevenueCat
 		// redirects back to `redirect_url` (this page); the webhook flips
 		// the tier server-side and the reloaded page refetches the profile.
@@ -77,7 +85,7 @@
 	/// no-code customer portal authenticates the user by email, so we open
 	/// the hosted portal link directly (no per-user SDK call).
 	function handleManageSubscription() {
-		if (!isRevenueCatConfigured()) {
+		if (!webCheckoutAvailable()) {
 			showToast(m('upgrade.manageWhereStarted'), 'info');
 			return;
 		}
@@ -147,7 +155,7 @@
 				     the amount is billed in USD (we don't FX-convert), and
 				     the payment processor can't serve every country. -->
 				<p class="tier-price-note">
-					{m('upgrade.priceNote')}
+					{storefront === 'app_only' ? m('upgrade.appPriceNote') : m('upgrade.priceNote')}
 				</p>
 			</header>
 			<p class="tier-blurb">{m('upgrade.proBlurb')}</p>
@@ -199,7 +207,7 @@
 				<button class="btn btn-outline" onclick={handleManageSubscription}>
 					{m('upgrade.manageSubscription')}
 				</button>
-			{:else if proSellable}
+			{:else if storefront === 'checkout'}
 				<fieldset class="plan-picker" disabled={purchasing}>
 					<legend>{m('upgrade.planLegend')}</legend>
 					<label class="plan-option" class:selected={plan === 'annual'}>
@@ -231,6 +239,14 @@
 					<span aria-hidden="true">·</span>
 					<a href="/privacy">{m('upgrade.privacyLink')}</a>
 				</p>
+			{:else if storefront === 'app_only'}
+				<div class="app-only-note">
+					<span class="material-symbols" aria-hidden="true">phone_iphone</span>
+					<div>
+						<p>{m('upgrade.proInIosApp')}</p>
+						<p class="app-only-sub">{m('upgrade.webCheckoutComingSoon')}</p>
+					</div>
+				</div>
 			{:else}
 				<p class="coming-soon-note">{m('upgrade.proComingSoon')}</p>
 			{/if}
@@ -244,7 +260,12 @@
 				{m('upgrade.donateBody')}
 			</p>
 		</div>
-		<button class="btn" class:btn-primary={!proSellable} class:btn-outline={proSellable} onclick={handleDonate}>
+		<button
+			class="btn"
+			class:btn-primary={storefront !== 'checkout'}
+			class:btn-outline={storefront === 'checkout'}
+			onclick={handleDonate}
+		>
 			<span class="material-symbols" aria-hidden="true">favorite</span>
 			{m('upgrade.donate')}
 		</button>
@@ -491,6 +512,34 @@
 		color: var(--color-text-secondary);
 		text-align: center;
 		line-height: 1.45;
+	}
+	.app-only-note {
+		display: flex;
+		gap: var(--space-sm);
+		align-items: flex-start;
+		margin: var(--space-sm) 0 0;
+		padding: 0.75rem 1rem;
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		font-size: 0.88rem;
+		line-height: 1.5;
+	}
+	.app-only-note p {
+		margin: 0;
+	}
+	.app-only-note p + p {
+		margin-top: var(--space-2xs);
+	}
+	.app-only-note .material-symbols {
+		font-family: 'Material Symbols Outlined';
+		font-size: 1.4rem;
+		color: var(--color-primary);
+		flex-shrink: 0;
+	}
+	.app-only-sub {
+		font-size: 0.82rem;
+		color: var(--color-text-secondary);
 	}
 	.pro-note {
 		margin: var(--space-sm) 0;

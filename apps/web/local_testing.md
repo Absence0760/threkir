@@ -234,7 +234,7 @@ No OAuth — the user types their parkrun athlete number into `/settings/account
 
 ### RevenueCat (Pro tier checkout)
 
-Optional — only needed if you're touching the paywall flow. Without `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL`, `/settings/upgrade` falls back to a "coming soon" toast. The web flow is a hosted-checkout redirect now (no embedded SDK).
+Optional — only needed if you're touching the paywall flow. Without `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` (or with one that is not a `https://pay.rev.cat/<token>` link), `/settings/upgrade` shows no buy button: with the Coach on it says Pro is sold in the iPhone app (the `app_only` storefront, decisions § 1826). The web flow is a hosted-checkout redirect now (no embedded SDK).
 
 **Test path**
 1. Set `PUBLIC_REVENUECAT_WEB_CHECKOUT_URL` in `.env.local` to your RevenueCat sandbox Web Paywall Link (`https://pay.rev.cat/<token>`); optionally `PUBLIC_REVENUECAT_WEB_PORTAL_URL` for the manage-subscription link.

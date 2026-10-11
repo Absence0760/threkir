@@ -580,8 +580,11 @@ provider is enabled and that `com.threkir.web` is the **first** Client ID,
 because a secret signed for the Services ID is useless to any other; after
 writing it reads the field back and accepts either the secret or its SHA-256
 digest: the first live run (2026-10-11) wrote successfully but read back something
-other than the value, and a digest is how Supabase reports secrets elsewhere. If a
-run fails here, the error names the shape it read back without printing it. Design: [decisions
+other than the value, and a digest is how Supabase reports secrets elsewhere. The
+read-back is polled for up to a minute, because the config applies asynchronously
+and an immediate read can still show the previous secret. If it never matches, the
+error says whether the value stayed as it was (the write did not take) or changed
+to a form the check does not recognise, without printing either. Design: [decisions
 § 1824](../architecture/decisions.md).
 
 **One-time setup** (Settings → Environments → **New environment**):

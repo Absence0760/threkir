@@ -686,9 +686,10 @@ resource "aws_lambda_alias" "live" {
   # this module): an env-only `terraform apply` publishes a fresh
   # version (`publish = true`) carrying the new env, but the alias —
   # and the Function URL, which targets the alias — keeps serving the
-  # old version with its FROZEN env snapshot. After any secret / env
-  # rotation apply, run `bin/lambda-alias-sync.sh <env>` (or cut a
-  # release) so the rotation actually reaches the serving path.
+  # old version with its FROZEN env snapshot. bin/deploy-env.sh runs
+  # `bin/lambda-alias-sync.sh <env> --after-apply` after every apply of
+  # an env root; after a bare `terraform apply`, run the sync by hand
+  # (or cut a release) so the rotation actually reaches the serving path.
   lifecycle {
     ignore_changes = [function_version]
   }

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { generateKeyPairSync, verify } from 'node:crypto';
+import { createHash, generateKeyPairSync, verify } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,7 +11,9 @@ import {
 	REQUIRED_ENV,
 	SERVICES_ID,
 	buildClientSecret,
+	describeReadBack,
 	firstClientId,
+	holdsSecret,
 	missingEnv,
 	normalizePem,
 	rotate,
@@ -115,9 +117,9 @@ const ENV = {
  * named method answer with that status; the body it returns then carries a
  * sentinel the error message must not repeat.
  *
- * @param {{ config?: Record<string, unknown>, failOn?: { method: string, status: number }, ignorePatch?: boolean }} [opts]
+ * @param {{ config?: Record<string, unknown>, failOn?: { method: string, status: number }, ignorePatch?: boolean, readBack?: (stored: unknown) => unknown }} [opts]
  */
-function fakeApi({ config, failOn, ignorePatch = false } = {}) {
+function fakeApi({ config, failOn, ignorePatch = false, readBack } = {}) {
 	/** @type {Record<string, unknown>} */
 	const state = {
 		external_apple_enabled: true,
@@ -135,7 +137,9 @@ function fakeApi({ config, failOn, ignorePatch = false } = {}) {
 			return { ok: false, status: failOn.status, json: async () => ({ message: 'SENTINEL-OTHER-SECRET' }) };
 		}
 		if (init.method === 'PATCH' && !ignorePatch) Object.assign(state, JSON.parse(init.body ?? '{}'));
-		return { ok: true, status: 200, json: async () => ({ ...state }) };
+		const view = { ...state };
+		if (readBack && init.method === 'GET') view.external_apple_secret = readBack(state.external_apple_secret);
+		return { ok: true, status: 200, json: async () => view };
 	};
 	return { fetcher, calls, state };
 }
@@ -185,6 +189,33 @@ for (const [method, status] of /** @type {const} */ ([['GET', 401], ['PATCH', 50
 		);
 	});
 }
+
+test('a read-back of the secret as its SHA-256 digest confirms the write', async () => {
+	const api = fakeApi({ readBack: (v) => createHash('sha256').update(String(v)).digest('hex') });
+	await rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW });
+	assert.deepEqual(api.calls.map((c) => c.method), ['GET', 'PATCH', 'GET']);
+});
+
+test('holdsSecret accepts the value or its digest and nothing else', () => {
+	const digest = createHash('sha256').update('s3cret').digest('hex');
+	assert.equal(holdsSecret('s3cret', 's3cret'), true);
+	assert.equal(holdsSecret(digest, 's3cret'), true);
+	assert.equal(holdsSecret(digest.toUpperCase(), 's3cret'), true);
+	assert.equal(holdsSecret(createHash('sha256').update('other').digest('hex'), 's3cret'), false);
+	assert.equal(holdsSecret('******', 's3cret'), false);
+	assert.equal(holdsSecret(undefined, 's3cret'), false);
+});
+
+test('a failed read-back is described by shape, never by content', async () => {
+	const api = fakeApi({ readBack: () => 'SENTINEL-READ-BACK' });
+	await assert.rejects(
+		rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW }),
+		(err) => err instanceof Error && /18-character string/.test(err.message) && !err.message.includes('SENTINEL'),
+	);
+	assert.equal(describeReadBack(''), 'empty');
+	assert.equal(describeReadBack('****'), 'masked');
+	assert.equal(describeReadBack('a'.repeat(64)), 'as a SHA-256 digest of a different value');
+});
 
 test('a write the API accepted but did not apply is a failure, not a rotation', async () => {
 	const api = fakeApi({ ignorePatch: true });

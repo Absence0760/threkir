@@ -578,7 +578,10 @@ are never touched). The live secret is therefore never more than a month old,
 and a missed run still leaves five months. Before writing it checks that the
 provider is enabled and that `com.threkir.web` is the **first** Client ID,
 because a secret signed for the Services ID is useless to any other; after
-writing it reads the field back. Design: [decisions
+writing it reads the field back and accepts either the secret or its SHA-256
+digest: the first live run (2026-10-11) wrote successfully but read back something
+other than the value, and a digest is how Supabase reports secrets elsewhere. If a
+run fails here, the error names the shape it read back without printing it. Design: [decisions
 § 1824](../architecture/decisions.md).
 
 **One-time setup** (Settings → Environments → **New environment**):

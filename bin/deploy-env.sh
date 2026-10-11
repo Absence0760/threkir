@@ -18,6 +18,13 @@
 # they show no changes and are skipped. For each stack: terraform init →
 # plan → prompt → apply. Skips a stack if `terraform plan` shows no changes.
 #
+# After an apply of infra/envs/<env> this also repoints the web Lambdas'
+# CI-owned `live` aliases (bin/lambda-alias-sync.sh), because the apply
+# publishes new versions the Function URLs never serve until the alias
+# moves (issue #590 defect 2; again 2026-10-10). Only aliases that were
+# current before the apply are advanced — one already behind may be a
+# rollback, and is held with a warning. --plan never touches them.
+#
 # Flags (after the env arg):
 #   --plan          plan only, never apply (read-only)
 #   --auto-approve  apply without prompting (CI-style)
@@ -54,6 +61,8 @@ done
 ENV_STACK="infra/envs/$ENV_NAME"
 
 preflight_log=""
+alias_snapshot=""
+ENV_STACK_APPLIED=0
 
 # Single EXIT trap that cleans up everything we may have created:
 #   - the preflight log tmpfile
@@ -61,6 +70,7 @@ preflight_log=""
 #     under set -e leaves these behind; harmless but clutter)
 cleanup_on_exit() {
 	[[ -n "$preflight_log" && -f "$preflight_log" ]] && rm -f "$preflight_log"
+	[[ -n "$alias_snapshot" && -f "$alias_snapshot" ]] && rm -f "$alias_snapshot"
 	for stack_dir in infra/bootstrap infra/dns infra/github-oidc "$ENV_STACK"; do
 		rm -f "$REPO_ROOT/$stack_dir/.tfplan"
 	done
@@ -151,8 +161,18 @@ apply_stack() {
 	fi
 
 	if [[ $proceed -eq 1 ]]; then
+		if [[ "$dir" == "$ENV_STACK" ]]; then
+			# Taken after the prompt so it is as close to the apply as it can
+			# be. A failed read is fatal here, while nothing has changed yet,
+			# rather than after the apply, when the sync could not tell a
+			# rollback from the apply's own versions.
+			alias_snapshot="$(mktemp)"
+			"$REPO_ROOT/bin/lambda-alias-sync.sh" "$ENV_NAME" --snapshot "$alias_snapshot" ||
+				fatal "$label: could not read the Lambda live aliases before applying — nothing applied"
+		fi
 		terraform apply -input=false "$plan_file"
 		ok "$label applied"
+		[[ "$dir" == "$ENV_STACK" ]] && ENV_STACK_APPLIED=1
 	else
 		warn "$label not applied — stopping the chain so later stacks don't run on stale state"
 		popd >/dev/null
@@ -171,6 +191,25 @@ apply_stack "Stack 3/4: github-oidc (deploy roles)" "infra/github-oidc"
 apply_stack "Stack 4/4: envs/$ENV_NAME (S3 + CloudFront + Lambda + KMS)" "$ENV_STACK"
 
 step "Post-apply"
+if [[ $ENV_STACK_APPLIED -eq 1 ]]; then
+	# --auto-approve regardless of how this run was invoked: the operator has
+	# just approved the apply, the repoint is what makes it take effect, and
+	# --after-apply limits it to aliases the apply itself moved past. A second
+	# prompt here is a second chance to recreate the incident.
+	step "Lambda live aliases"
+	if ! "$REPO_ROOT/bin/lambda-alias-sync.sh" "$ENV_NAME" --after-apply "$alias_snapshot" --auto-approve; then
+		err "envs/$ENV_NAME WAS applied, but repointing the Lambda live aliases failed —"
+		err "the applied Lambda config is not serving yet. Finish it by hand:"
+		dim "  bin/lambda-alias-sync.sh $ENV_NAME"
+		exit 1
+	fi
+elif [[ $PLAN_ONLY -eq 0 ]]; then
+	# Nothing published by this run, but an earlier apply made outside this
+	# script may still have left an alias behind; report it, change nothing.
+	step "Lambda live aliases (report only — envs/$ENV_NAME not applied this run)"
+	"$REPO_ROOT/bin/lambda-alias-sync.sh" "$ENV_NAME" --dry-run ||
+		warn "could not read the live aliases; check them with: bin/lambda-alias-sync.sh $ENV_NAME --dry-run"
+fi
 if [[ $PLAN_ONLY -eq 0 ]]; then
 	# Detect whether the coach secret is already wired. If the env's
 	# secrets file exists in the estate repo, the operator has already

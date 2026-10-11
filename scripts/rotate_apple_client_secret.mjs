@@ -41,6 +41,8 @@ export const MAX_LIFETIME_S = 15777000;
 export const DEFAULT_LIFETIME_S = 180 * 24 * 60 * 60;
 
 export const MANAGEMENT_API = 'https://api.supabase.com';
+export const READ_BACK_ATTEMPTS = 7;
+export const READ_BACK_DELAY_MS = 10_000;
 
 /** Every environment variable the rotation reads, in the order they are checked. */
 export const REQUIRED_ENV = [
@@ -158,6 +160,9 @@ export function firstClientId(value) {
  *   env: Record<string, string | undefined>,
  *   fetcher: Fetcher,
  *   nowS: number,
+ *   sleep?: (ms: number) => Promise<void>,
+ *   readBackAttempts?: number,
+ *   readBackDelayMs?: number,
  * }} RotateInput
  */
 
@@ -168,7 +173,14 @@ export function firstClientId(value) {
  * @param {RotateInput} input
  * @returns {Promise<{ expiresAtS: number }>}
  */
-export async function rotate({ env, fetcher, nowS }) {
+export async function rotate({
+	env,
+	fetcher,
+	nowS,
+	sleep = (ms) => new Promise((done) => setTimeout(done, ms)),
+	readBackAttempts = READ_BACK_ATTEMPTS,
+	readBackDelayMs = READ_BACK_DELAY_MS,
+}) {
 	const missing = missingEnv(env);
 	if (missing.length) {
 		throw new Error(
@@ -216,17 +228,28 @@ export async function rotate({ env, fetcher, nowS }) {
 		);
 	}
 
-	const after = await fetcher(url, { method: 'GET', headers });
-	if (!after.ok) {
-		throw new Error(`The write returned success, but reading it back failed with HTTP ${after.status}, so the rotation is unconfirmed.`);
+	// The auth config is applied asynchronously: a read straight after the
+	// PATCH can still return the previous secret's digest, so poll.
+	const previous = config.external_apple_secret;
+	/** @type {unknown} */
+	let readBack;
+	for (let attempt = 1; attempt <= readBackAttempts; attempt++) {
+		if (attempt > 1) await sleep(readBackDelayMs);
+		const after = await fetcher(url, { method: 'GET', headers });
+		if (!after.ok) {
+			throw new Error(`The write returned success, but reading it back failed with HTTP ${after.status}, so the rotation is unconfirmed.`);
+		}
+		readBack = (/** @type {Record<string, unknown>} */ (await after.json())).external_apple_secret;
+		if (holdsSecret(readBack, jwt)) return { expiresAtS };
 	}
-	const written = /** @type {Record<string, unknown>} */ (await after.json());
-	if (!holdsSecret(written.external_apple_secret, jwt)) {
-		throw new Error(
-			`The write returned success, but the auth config does not hold the secret this run generated (it reads back ${describeReadBack(written.external_apple_secret)}). Something else wrote it, or the API ignored the field.`,
-		);
-	}
-	return { expiresAtS };
+	const waitedS = Math.round(((readBackAttempts - 1) * readBackDelayMs) / 1000);
+	const verdict =
+		readBack === previous
+			? 'it still reads back the value from before the write, so the update has not taken effect'
+			: `it changed from the value before the write, but now reads back ${describeReadBack(readBack)}, so the API reports the secret in a form this check does not know`;
+	throw new Error(
+		`The write returned success, but after ${readBackAttempts} reads over ${waitedS}s the auth config does not hold the secret this run generated: ${verdict}.`,
+	);
 }
 
 /**

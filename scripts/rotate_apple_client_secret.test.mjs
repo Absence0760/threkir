@@ -112,14 +112,16 @@ const ENV = {
 	SUPABASE_PROJECT_REF: 'abcdefghijklmnopqrst',
 };
 
+const noSleep = async () => {};
+
 /**
  * A stand-in Management API holding one auth config. `failOn` makes the
  * named method answer with that status; the body it returns then carries a
  * sentinel the error message must not repeat.
  *
- * @param {{ config?: Record<string, unknown>, failOn?: { method: string, status: number }, ignorePatch?: boolean, readBack?: (stored: unknown) => unknown }} [opts]
+ * @param {{ config?: Record<string, unknown>, failOn?: { method: string, status: number }, ignorePatch?: boolean, readBack?: (stored: unknown) => unknown, staleReads?: number }} [opts]
  */
-function fakeApi({ config, failOn, ignorePatch = false, readBack } = {}) {
+function fakeApi({ config, failOn, ignorePatch = false, readBack, staleReads = 0 } = {}) {
 	/** @type {Record<string, unknown>} */
 	const state = {
 		external_apple_enabled: true,
@@ -130,13 +132,25 @@ function fakeApi({ config, failOn, ignorePatch = false, readBack } = {}) {
 	};
 	/** @type {{ url: string, method: string, headers: Record<string, string>, body?: string }[]} */
 	const calls = [];
+	/** @type {Record<string, unknown> | null} */
+	let pending = null;
+	let readsUntilApplied = 0;
 	/** @type {import('./rotate_apple_client_secret.mjs').Fetcher} */
 	const fetcher = async (url, init) => {
 		calls.push({ url, ...init });
 		if (failOn && failOn.method === init.method) {
 			return { ok: false, status: failOn.status, json: async () => ({ message: 'SENTINEL-OTHER-SECRET' }) };
 		}
-		if (init.method === 'PATCH' && !ignorePatch) Object.assign(state, JSON.parse(init.body ?? '{}'));
+		if (init.method === 'PATCH' && !ignorePatch) {
+			pending = JSON.parse(init.body ?? '{}');
+			readsUntilApplied = staleReads;
+		}
+		if (init.method === 'GET' && pending) {
+			if (readsUntilApplied === 0) {
+				Object.assign(state, pending);
+				pending = null;
+			} else readsUntilApplied--;
+		}
 		const view = { ...state };
 		if (readBack && init.method === 'GET') view.external_apple_secret = readBack(state.external_apple_secret);
 		return { ok: true, status: 200, json: async () => view };
@@ -146,7 +160,7 @@ function fakeApi({ config, failOn, ignorePatch = false, readBack } = {}) {
 
 test('rotate writes only external_apple_secret, then reads it back', async () => {
 	const api = fakeApi();
-	const { expiresAtS } = await rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW });
+	const { expiresAtS } = await rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW, sleep: noSleep });
 	assert.deepEqual(api.calls.map((c) => c.method), ['GET', 'PATCH', 'GET']);
 	for (const call of api.calls) {
 		assert.equal(call.url, 'https://api.supabase.com/v1/projects/abcdefghijklmnopqrst/config/auth');
@@ -161,7 +175,7 @@ test('rotate writes only external_apple_secret, then reads it back', async () =>
 test('rotate fails closed, naming every missing secret, before any request', async () => {
 	const api = fakeApi();
 	await assert.rejects(
-		rotate({ env: { ...ENV, APPLE_SIWA_PRIVATE_KEY: '', APPLE_TEAM_ID: undefined }, fetcher: api.fetcher, nowS: NOW }),
+		rotate({ env: { ...ENV, APPLE_SIWA_PRIVATE_KEY: '', APPLE_TEAM_ID: undefined }, fetcher: api.fetcher, nowS: NOW, sleep: noSleep }),
 		/APPLE_TEAM_ID, APPLE_SIWA_PRIVATE_KEY/,
 	);
 	assert.equal(api.calls.length, 0);
@@ -169,14 +183,14 @@ test('rotate fails closed, naming every missing secret, before any request', asy
 
 test('rotate refuses to write when the web Services ID is not the first client id', async () => {
 	const api = fakeApi({ config: { external_apple_client_id: 'com.threkir.app' } });
-	await assert.rejects(rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW }), /first Client ID is not com\.threkir\.web/);
+	await assert.rejects(rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW, sleep: noSleep }), /first Client ID is not com\.threkir\.web/);
 	assert.deepEqual(api.calls.map((c) => c.method), ['GET']);
 	assert.equal(api.state.external_apple_secret, 'old');
 });
 
 test('rotate refuses to write when the Apple provider is disabled', async () => {
 	const api = fakeApi({ config: { external_apple_enabled: false } });
-	await assert.rejects(rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW }), /disabled/);
+	await assert.rejects(rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW, sleep: noSleep }), /disabled/);
 	assert.deepEqual(api.calls.map((c) => c.method), ['GET']);
 });
 
@@ -184,7 +198,7 @@ for (const [method, status] of /** @type {const} */ ([['GET', 401], ['PATCH', 50
 	test(`a ${status} on ${method} fails with the status and none of the response body`, async () => {
 		const api = fakeApi({ failOn: { method, status } });
 		await assert.rejects(
-			rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW }),
+			rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW, sleep: noSleep }),
 			(err) => err instanceof Error && err.message.includes(`HTTP ${status}`) && !err.message.includes('SENTINEL'),
 		);
 	});
@@ -192,7 +206,7 @@ for (const [method, status] of /** @type {const} */ ([['GET', 401], ['PATCH', 50
 
 test('a read-back of the secret as its SHA-256 digest confirms the write', async () => {
 	const api = fakeApi({ readBack: (v) => createHash('sha256').update(String(v)).digest('hex') });
-	await rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW });
+	await rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW, sleep: noSleep });
 	assert.deepEqual(api.calls.map((c) => c.method), ['GET', 'PATCH', 'GET']);
 });
 
@@ -207,9 +221,9 @@ test('holdsSecret accepts the value or its digest and nothing else', () => {
 });
 
 test('a failed read-back is described by shape, never by content', async () => {
-	const api = fakeApi({ readBack: () => 'SENTINEL-READ-BACK' });
+	const api = fakeApi({ readBack: (v) => (v === 'old' ? 'old' : 'SENTINEL-READ-BACK') });
 	await assert.rejects(
-		rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW }),
+		rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW, sleep: noSleep }),
 		(err) => err instanceof Error && /18-character string/.test(err.message) && !err.message.includes('SENTINEL'),
 	);
 	assert.equal(describeReadBack(''), 'empty');
@@ -217,9 +231,35 @@ test('a failed read-back is described by shape, never by content', async () => {
 	assert.equal(describeReadBack('a'.repeat(64)), 'as a SHA-256 digest of a different value');
 });
 
+test('a read-back that lags the write is polled until it matches', async () => {
+	const api = fakeApi({ staleReads: 3, readBack: (v) => createHash('sha256').update(String(v)).digest('hex') });
+	/** @type {number[]} */
+	const slept = [];
+	await rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW, sleep: async (ms) => void slept.push(ms) });
+	assert.deepEqual(api.calls.map((c) => c.method), ['GET', 'PATCH', 'GET', 'GET', 'GET', 'GET']);
+	assert.deepEqual(slept, [10_000, 10_000, 10_000]);
+});
+
+test('a read-back that never changes says the update did not take effect', async () => {
+	const api = fakeApi({ ignorePatch: true, readBack: (v) => createHash('sha256').update(String(v)).digest('hex') });
+	await assert.rejects(
+		rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW, sleep: noSleep }),
+		/after 7 reads over 60s .*still reads back the value from before the write/,
+	);
+	assert.equal(api.calls.filter((c) => c.method === 'GET').length, 8);
+});
+
+test('a read-back that changed to an unknown form says so, without the value', async () => {
+	const api = fakeApi({ readBack: (v) => createHash('sha256').update(`salt:${String(v)}`).digest('hex') });
+	await assert.rejects(
+		rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW, sleep: noSleep }),
+		(err) => err instanceof Error && /changed from the value before the write/.test(err.message) && /SHA-256 digest of a different value/.test(err.message),
+	);
+});
+
 test('a write the API accepted but did not apply is a failure, not a rotation', async () => {
 	const api = fakeApi({ ignorePatch: true });
-	await assert.rejects(rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW }), /does not hold the secret/);
+	await assert.rejects(rotate({ env: ENV, fetcher: api.fetcher, nowS: NOW, sleep: noSleep }), /does not hold the secret/);
 });
 
 test('the workflow runs this script and wires every secret it reads', () => {

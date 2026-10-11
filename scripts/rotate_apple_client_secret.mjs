@@ -22,7 +22,7 @@
 // every provider's secret. Failures name a status code and what to check.
 //
 // Usage: node scripts/rotate_apple_client_secret.mjs
-import { createPrivateKey, sign } from 'node:crypto';
+import { createHash, createPrivateKey, sign } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 /** The Services ID the web flow presents to Apple; it is the JWT's `sub`. */
@@ -221,10 +221,38 @@ export async function rotate({ env, fetcher, nowS }) {
 		throw new Error(`The write returned success, but reading it back failed with HTTP ${after.status}, so the rotation is unconfirmed.`);
 	}
 	const written = /** @type {Record<string, unknown>} */ (await after.json());
-	if (written.external_apple_secret !== jwt) {
-		throw new Error('The write returned success, but the auth config does not hold the secret this run generated. Something else wrote it, or the API ignored the field.');
+	if (!holdsSecret(written.external_apple_secret, jwt)) {
+		throw new Error(
+			`The write returned success, but the auth config does not hold the secret this run generated (it reads back ${describeReadBack(written.external_apple_secret)}). Something else wrote it, or the API ignored the field.`,
+		);
 	}
 	return { expiresAtS };
+}
+
+/**
+ * The Management API reads a secret setting back as its SHA-256 hex digest
+ * rather than the value (the same form `supabase secrets list` prints), so the
+ * read-back proves the write when it is either the value or that digest.
+ *
+ * @param {unknown} readBack
+ * @param {string} secret
+ */
+export function holdsSecret(readBack, secret) {
+	if (typeof readBack !== 'string') return false;
+	return readBack === secret || readBack.toLowerCase() === createHash('sha256').update(secret).digest('hex');
+}
+
+/**
+ * The shape of a read-back that failed {@link holdsSecret}, never its content.
+ *
+ * @param {unknown} readBack
+ */
+export function describeReadBack(readBack) {
+	if (readBack === undefined || readBack === null || readBack === '') return 'empty';
+	if (typeof readBack !== 'string') return `as a ${typeof readBack}`;
+	if (/^[0-9a-f]{64}$/i.test(readBack)) return 'as a SHA-256 digest of a different value';
+	if (/^\*+$/.test(readBack)) return 'masked';
+	return `as a ${readBack.length}-character string that is neither this secret nor its digest`;
 }
 
 async function main() {

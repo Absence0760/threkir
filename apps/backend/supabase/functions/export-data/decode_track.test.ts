@@ -104,3 +104,13 @@ Deno.test('a real list of points still decodes, so the refusal is not blanket', 
 	]);
 	assertEquals((await decodeTrack(two)).length, 2);
 });
+
+// The compressed cap above cannot see a gzip bomb: a few KB that inflate past
+// the isolate's heap. The inflated stream is bounded too, and an over-cap
+// track is the same skipped-run TrackTooLargeError the GPX loop already counts.
+Deno.test('decodeTrack — a small blob that inflates past the cap throws TrackTooLargeError', async () => {
+	const huge = '[' + ' '.repeat(20 * 1024 * 1024) + ']';
+	const gz = await gzipString(huge);
+	assertEquals(gz.byteLength < MAX_TRACK_GZIP_BYTES, true, 'passes the compressed cap');
+	await assertRejects(() => decodeTrack(new Blob([gz as Uint8Array<ArrayBuffer>])), TrackTooLargeError, 'track too large');
+});

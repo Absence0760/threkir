@@ -13,6 +13,8 @@
 // pathological or an attempt to chain gzip + JSON.parse into a
 // memory amplifier on the EF instance (~250 MB heap budget).
 // Matches the cap used by clip-public-track.
+import { gunzipCapped, InflateLimitError } from '../_shared/gunzip_capped.ts';
+
 export const MAX_TRACK_GZIP_BYTES = 5 * 1024 * 1024;
 
 export class TrackTooLargeError extends Error {
@@ -56,11 +58,15 @@ export async function decodeTrack(blob: Blob): Promise<TrackPoint[]> {
 		// must be observable.
 		throw new TrackTooLargeError();
 	}
-	const ds = new (globalThis as { DecompressionStream: typeof DecompressionStream })
-		.DecompressionStream('gzip');
-	const stream = new Response(gz).body!.pipeThrough(ds);
-	const txt = await new Response(stream).text();
-	const parsed: unknown = JSON.parse(txt);
+	// The compressed cap alone does not bound memory — see gunzip_capped.ts.
+	let inflated: Uint8Array;
+	try {
+		inflated = await gunzipCapped(gz);
+	} catch (e) {
+		if (e instanceof InflateLimitError) throw new TrackTooLargeError();
+		throw e;
+	}
+	const parsed: unknown = JSON.parse(new TextDecoder().decode(inflated));
 	if (!Array.isArray(parsed)) throw new TrackShapeError();
 	return parsed as TrackPoint[];
 }

@@ -92,8 +92,8 @@ Deno.test('an unreadable stored track answers 502, and the refusal is reachable'
   const decode = SRC.indexOf('trackBytes = await gunzip(gz);');
   assert(decode !== -1, 'the track decode is gone');
   assert(
-    /async function gunzip\([\s\S]*?DecompressionStream\('gzip'\)/.test(SRC),
-    'gunzip must still be the DecompressionStream inflate',
+    /function gunzip\([\s\S]*?return gunzipCapped\(gz\);/.test(SRC),
+    'gunzip must be the output-bounded inflate from _shared/gunzip_capped.ts',
   );
   const tryAt = SRC.lastIndexOf('try {', decode);
   const catchAt = SRC.indexOf('} catch', decode);

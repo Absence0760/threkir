@@ -10,6 +10,7 @@ import { checkRateLimit, ipBucketKey } from '../_shared/rate_limit.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import { isValidUuid } from '../_shared/input_validation.ts';
+import { gunzipCapped, InflateLimitError } from '../_shared/gunzip_capped.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
 import {
   mergeSmoothedSidecar,
@@ -186,14 +187,16 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
   // `withSentry` answered 500 and the `!Array.isArray` refusal below was dead
   // for exactly the input it was written for. A stored object we cannot read
   // is an upstream fault, not a caller fault: 502, like the download failure
-  // above it.
+  // above it. Past the inflated-size cap is the same refusal as past the
+  // compressed one above.
   let points: unknown;
   let trackBytes: Uint8Array<ArrayBuffer>;
   try {
     trackBytes = await gunzip(gz);
     points = JSON.parse(new TextDecoder().decode(trackBytes));
-  } catch {
-    return Response.json({ error: 'malformed track' }, { status: 502 });
+  } catch (e) {
+    const error = e instanceof InflateLimitError ? 'track too large' : 'malformed track';
+    return Response.json({ error }, { status: 502 });
   }
   if (!Array.isArray(points)) {
     return Response.json({ error: 'malformed track' }, { status: 502 });
@@ -257,9 +260,9 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
   return Response.json({ points: clipped ?? [] });
 }));
 
-async function gunzip(gz: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
-  const ds = new (globalThis as { DecompressionStream: typeof DecompressionStream })
-    .DecompressionStream('gzip');
-  const stream = new Response(gz).body!.pipeThrough(ds);
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+/// Inflate a stored track or sidecar, bounded on the OUTPUT: the 5 MB cap on
+/// the compressed blob does not stop a ~1000:1 gzip from filling the isolate's
+/// heap before the point-count cap is reached (gunzip_capped.ts).
+function gunzip(gz: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
+  return gunzipCapped(gz);
 }

@@ -17,9 +17,9 @@ const EVIL = '"><script>alert(1)</script><img src=x onerror=alert(2)>';
 
 /** Every <script> the head opens is the one JSON-LD block, and it closes once. */
 function assertOnlyJsonLdScript(html: string) {
-	const opens = html.match(/<script\b[^>]*>/g) ?? [];
+	const opens = html.match(/<script\b[^>]*>/gi) ?? [];
 	assert.deepEqual(opens, ['<script type="application/ld+json">']);
-	assert.equal((html.match(/<\/script>/g) ?? []).length, 1);
+	assert.equal((html.match(/<\/script\s*>/gi) ?? []).length, 1);
 	assert.ok(!/<img\b/i.test(html), 'no injected element');
 	// Escaped hostile text may still READ "onerror=" inside <title> or an
 	// attribute value; what must never exist is a real tag carrying it.

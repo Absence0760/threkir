@@ -51,7 +51,7 @@ Deno.test('the resolved tier is what reaches the mapper, and it is read first', 
   assert(map !== -1, 'the tier mapper is never called');
   assert(read < map, 'the profile read must precede the tier decision');
   assert(
-    /mapEventToTier\(event\.type, event\.product_id \?\? null, currentTier\)/.test(SRC),
+    /mapEventToTier\(event\.type, event\.product_id \?\? null, currentTier[,)]/.test(SRC),
     'the mapper must be handed the resolved tier, not a literal',
   );
 });
@@ -94,4 +94,12 @@ Deno.test('a signed body carrying no event object is a 400, not a 500', () => {
     /status: 400/.test(status),
     'an unreadable event body must answer 400, or RevenueCat retries it for days',
   );
+});
+
+Deno.test('the handler hands the mapper a CANCELLATION\'s expiration and cancel reason', () => {
+  // Without them every CANCELLATION reads as already expired and downgrades
+  // a user who turned off auto-renew but paid through the period end.
+  const call = SRC.slice(SRC.indexOf('mapEventToTier('), SRC.indexOf('mapEventToBillingIssue(event.type)'));
+  assert(call.includes('expirationAtMs: event.expiration_at_ms'), 'expiration_at_ms must reach the mapper');
+  assert(call.includes('cancelReason: event.cancel_reason'), 'cancel_reason must reach the mapper');
 });

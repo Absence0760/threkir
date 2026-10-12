@@ -405,6 +405,21 @@ events from RevenueCat's server-to-server webhook. On relevant events
 updates `user_profiles.subscription_tier` for the `app_user_id` (which
 must be set to the Supabase user id on the client SDK).
 
+**A cancellation does not end Pro; the expiry does.** RevenueCat sends
+`CANCELLATION` the moment auto-renew is turned off, while the period the
+user paid for runs on to the event's `expiration_at_ms`, and `EXPIRATION`
+follows at that instant. So a `CANCELLATION` leaves the tier alone when
+`expiration_at_ms` is still in the future, and the `EXPIRATION` does the
+downgrade. A `CANCELLATION` downgrades at once only when it is a refund
+(`cancel_reason: "CUSTOMER_SUPPORT"`), when its `expiration_at_ms` has
+already passed (a late delivery, a billing-error cancel at the end of the
+grace period), or when `expiration_at_ms` is missing — the paywall fails
+closed, and an `UNCANCELLATION` / `RENEWAL` restores Pro. The rule is
+`cancellationEndsAccessNow` in `revenuecat-webhook/lib.ts`. There is no
+column for the expiry: `user_profiles` records only the tier, so the
+"Pro until <date>" a cancelled subscriber sees comes from the store /
+RevenueCat customer info on the client, not from the row.
+
 Webhook URL (configure in RevenueCat → Integrations → Webhooks):
 ```
 https://<project-ref>.supabase.co/functions/v1/revenuecat-webhook

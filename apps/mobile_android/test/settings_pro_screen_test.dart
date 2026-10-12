@@ -582,7 +582,9 @@ void main() {
         tester,
         entitlementOnSuccess:
             ProEntitlement(plan: ProPlan.annual, expiresAt: renewsAt),
-        serverPro: true,
+        // A server tier that already says Pro would show the subscriber
+        // state before the restore, leaving it nothing to prove.
+        serverPro: false,
       );
       await waitForText(tester, r'Subscribe to Pro — $79.99/year');
 

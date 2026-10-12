@@ -311,7 +311,7 @@ jobs:
       # name and stays on — an attach that matched nothing once reported
       # success here (decisions § 1673).
       - name: Keep the signed IPA as an artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ github.event.release.tag_name }}-ipa
           path: apps/mobile_ios/build/ios/ipa/*.ipa
@@ -319,7 +319,7 @@ jobs:
           retention-days: 90
 
       - name: Upload to TestFlight
-        uses: apple-actions/upload-testflight-build@14df18fee5a4ff3b76971dd382f033494a0194e9 # v5.5.0
+        uses: apple-actions/upload-testflight-build@155ea93be9ee6d5186c71f660a612f5eddb14510 # v5.6.0
         with:
           app-path: ${{ steps.ipa.outputs.path }}
           issuer-id: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}

@@ -224,3 +224,30 @@ test('the CSV report states truncation rather than silently omitting', () => {
 test('an empty log still produces a header-only report', () => {
 	assert.equal(importFailureReportCsv(newImportFailureLog()), 'Activity,Started,Reason,Detail');
 });
+
+// A runner opens this report in a spreadsheet. The activity name comes out of
+// their archive and the detail out of a server's error text; quoting a field
+// does not stop Excel or Sheets evaluating `=HYPERLINK(...)`, so a cell that
+// starts like a formula is prefixed with `'` (same guard as event_results_csv).
+test('the CSV report neutralises an activity name that starts like a formula', () => {
+	const log = newImportFailureLog();
+	recordImportFailure(log, { name: '=HYPERLINK("https://evil.example","Open")' }, new Error('boom'));
+	recordImportFailure(log, { name: '@SUM(1+1)' }, new Error('boom'));
+	const lines = importFailureReportCsv(log).split('\n');
+	assert.equal(lines[1].split(',')[0], `"'=HYPERLINK(""https://evil.example""`);
+	assert.ok(lines[2].startsWith(`"'@SUM(1+1)",`));
+});
+
+test('the CSV report neutralises a detail that starts like a formula', () => {
+	const log = newImportFailureLog();
+	recordImportFailure(log, { name: 'Tempo', startedAt: '+2026-01-01' }, new Error('-1 rows written'));
+	const [, row] = importFailureReportCsv(log).split('\n');
+	assert.equal(row, `"Tempo","'+2026-01-01","unknown","'-1 rows written"`);
+});
+
+test('the CSV report leaves names with a formula character past the first position as written', () => {
+	const log = newImportFailureLog();
+	recordImportFailure(log, { name: 'Intervals 6x800 @ 5k pace = hard' }, new Error('Failed to fetch'));
+	const [, row] = importFailureReportCsv(log).split('\n');
+	assert.ok(row.startsWith('"Intervals 6x800 @ 5k pace = hard",'));
+});

@@ -50,6 +50,23 @@ Deno.test('clampText — trims, nulls blank, caps length', () => {
   assertStrictEquals(clampText('x'.repeat(200), MAX_DISPLAY_NAME_LEN)!.length, MAX_DISPLAY_NAME_LEN);
 });
 
+// A cap measured in UTF-16 units can land between the two halves of an emoji,
+// and Postgres refuses a lone surrogate in text: the donation insert would fail
+// AFTER the donor had chosen an amount. The half is dropped, never stored.
+Deno.test('clampText — a cut through a surrogate pair drops the stranded half', () => {
+  const out = clampText('a'.repeat(MAX_DISPLAY_NAME_LEN - 1) + '\u{1F3C3}', MAX_DISPLAY_NAME_LEN);
+  assertStrictEquals(out, 'a'.repeat(MAX_DISPLAY_NAME_LEN - 1));
+  // A whole pair that fits survives untouched.
+  assertStrictEquals(clampText('Run \u{1F3C3} club', MAX_DISPLAY_NAME_LEN), 'Run \u{1F3C3} club');
+});
+
+Deno.test('clampText — lone surrogates already in the input are removed, and an all-surrogate value is null', () => {
+  assertStrictEquals(clampText('Jo\uD800hn\uDC00', MAX_DISPLAY_NAME_LEN), 'John');
+  assertStrictEquals(clampText('\uDFFF\uD83C', MAX_DISPLAY_NAME_LEN), null);
+  // A pair written low-then-high is two lone halves, not a character.
+  assertStrictEquals(clampText('x\uDFC3\uD83Cy', MAX_DISPLAY_NAME_LEN), 'xy');
+});
+
 Deno.test('donationIdempotencyKey — stable function of the donation id', () => {
   assertStrictEquals(donationIdempotencyKey('abc'), 'donations-checkout:abc');
   // different rows -> different keys

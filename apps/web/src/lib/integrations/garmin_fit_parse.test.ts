@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 
-import { parseFitBuffer, garminExternalId } from './garmin-fit';
+import { fitTimestampIso, parseFitBuffer, garminExternalId } from './garmin-fit';
 
 const SEMI = 2 ** 31 / 180;
 
@@ -284,9 +284,6 @@ test('parseFitBuffer — treadmill run yields hr_series + empty track (indoor HR
 		[140, 150, 160],
 		'every HR-bearing trackless record lands in hr_series',
 	);
-	// `ts` mirrors the track path: fit-file-parser returns a Date (not an ISO
-	// string) since `timestamps` isn't enabled, so the string-guard leaves it
-	// unset — the HR-zone breakdown falls back to sample-count weighting.
 });
 
 test('parseFitBuffer — trail run preserves sub_sport + activity_type=run (F1)', async () => {
@@ -420,4 +417,34 @@ test('parseFitBuffer — an unnamed sport enum degrades, it does not throw', asy
 	assert.equal(parsed!.indoor, false, 'and is not guessed to be indoor');
 	assert.equal(parsed!.distance_m, 5000);
 	assert.equal(parsed!.duration_s, 1800);
+});
+
+// fit-file-parser decodes every FIT `date_time` into a JS Date. The record
+// reader only accepted a string, so no FIT import ever carried a per-point
+// time: no splits, no GAP, and no embedded bests. FIT time is seconds since
+// 1989-12-31T00:00:00Z, so the fixture's t0 = 1e9 is 2021-09-08T01:46:40Z.
+const FIT_T0_ISO = '2021-09-08T01:46:40.000Z';
+
+test('parseFitBuffer — every GPS record carries its FIT timestamp as an ISO string', async () => {
+	const parsed = await parseFitBuffer(buildSyntheticTrailFit());
+	assert.deepEqual(
+		parsed!.track.map((p) => p.ts),
+		[FIT_T0_ISO, '2021-09-08T01:47:40.000Z'],
+	);
+});
+
+test('parseFitBuffer — trackless HR samples carry their timestamps too', async () => {
+	const parsed = await parseFitBuffer(buildSyntheticIndoorFit());
+	assert.deepEqual(
+		parsed!.hr_series.map((s) => s.ts),
+		[FIT_T0_ISO, '2021-09-08T01:46:41.000Z', '2021-09-08T01:46:42.000Z'],
+	);
+});
+
+test('fitTimestampIso — a Date or an ISO string becomes ISO; anything unusable is null', () => {
+	assert.equal(fitTimestampIso(new Date(Date.UTC(2026, 0, 2, 3, 4, 5))), '2026-01-02T03:04:05.000Z');
+	assert.equal(fitTimestampIso('2026-01-02T03:04:05Z'), '2026-01-02T03:04:05Z');
+	for (const bad of [new Date(Number.NaN), 'not a date', 1_000_000_000, null, undefined, {}]) {
+		assert.equal(fitTimestampIso(bad), null, String(bad));
+	}
 });

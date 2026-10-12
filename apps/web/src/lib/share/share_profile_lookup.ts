@@ -10,6 +10,7 @@
 /// this surface.
 
 import { createClient } from '@supabase/supabase-js';
+import { isEntityId } from '../core/entity_id';
 
 export interface SharedProfile {
 	id: string;
@@ -36,6 +37,11 @@ export async function lookupSharedProfile(
 	if (!config?.supabaseUrl || !config?.supabaseAnonKey) {
 		return { profile: null };
 	}
+	// A non-uuid segment makes Postgres raise 22P02 on the RPC's uuid
+	// argument, which lands in the tagged upstream_unreachable branch the
+	// CloudWatch alarm keys off. A malformed id is a not-found, not an outage
+	// (same guard as share_run_lookup).
+	if (!isEntityId(id)) return { profile: null };
 	try {
 		const supabase = createClient(config.supabaseUrl, config.supabaseAnonKey, {
 			auth: { persistSession: false },

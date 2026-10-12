@@ -13,7 +13,7 @@
  */
 
 import { parseCutoff } from './route_markers';
-import { escapeHtml } from '../util/html_escape';
+import { escapeXml, xmlNumber } from '../util/html_escape';
 
 export interface RouteGpxMarker {
 	label: string;
@@ -45,12 +45,18 @@ export function toRouteGpxWithMarkers(
 	elevations: number[],
 	markers: RouteGpxMarker[]
 ): string {
-	const waypoints = markers.map((m) => renderWaypoint(m)).join('\n');
+	const waypoints = markers.flatMap((m) => renderWaypoint(m) ?? []).join('\n');
 
+	// A point or marker without finite coordinates is dropped rather than
+	// written as `lat="NaN"`, which every GPX reader refuses; a missing or
+	// non-finite elevation keeps the existing 0 fallback.
 	const trackpoints = coordinates
-		.map(([lng, lat], i) => {
-			const ele = elevations[i] ?? 0;
-			return `      <trkpt lat="${lat}" lon="${lng}"><ele>${ele}</ele></trkpt>`;
+		.flatMap(([lng, lat], i) => {
+			const latText = xmlNumber(lat);
+			const lngText = xmlNumber(lng);
+			if (latText === null || lngText === null) return [];
+			const ele = xmlNumber(elevations[i]) ?? '0';
+			return [`      <trkpt lat="${latText}" lon="${lngText}"><ele>${ele}</ele></trkpt>`];
 		})
 		.join('\n');
 
@@ -60,10 +66,10 @@ export function toRouteGpxWithMarkers(
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
   <metadata>
-    <name>${escapeHtml(name)}</name>
+    <name>${escapeXml(name)}</name>
   </metadata>
 ${waypoints ? waypoints + '\n' : ''}  <trk>
-    <name>${escapeHtml(name)}</name>
+    <name>${escapeXml(name)}</name>
     <trkseg>
 ${trackpoints}
     </trkseg>
@@ -71,16 +77,19 @@ ${trackpoints}
 </gpx>`;
 }
 
-function renderWaypoint(m: RouteGpxMarker): string {
+function renderWaypoint(m: RouteGpxMarker): string | null {
+	const latText = xmlNumber(m.lat);
+	const lngText = xmlNumber(m.lng);
+	if (latText === null || lngText === null) return null;
 	const parts: string[] = [
-		`  <wpt lat="${m.lat}" lon="${m.lng}">`,
-		`<name>${escapeHtml(m.label)}</name>`,
-		`<type>${escapeHtml(m.kind)}</type>`
+		`  <wpt lat="${latText}" lon="${lngText}">`,
+		`<name>${escapeXml(m.label)}</name>`,
+		`<type>${escapeXml(m.kind)}</type>`
 	];
 	const sym = SYM_BY_KIND[m.kind];
 	if (sym) parts.push(`<sym>${sym}</sym>`);
 	const desc = buildDesc(m.meta);
-	if (desc) parts.push(`<desc>${escapeHtml(desc)}</desc>`);
+	if (desc) parts.push(`<desc>${escapeXml(desc)}</desc>`);
 	parts.push('</wpt>');
 	return parts.join('');
 }

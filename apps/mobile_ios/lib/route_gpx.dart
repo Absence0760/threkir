@@ -51,13 +51,19 @@ String toRouteGpxWithMarkers(
   List<double> elevations,
   List<RouteGpxMarker> markers,
 ) {
-  final waypoints = markers.map(_renderWaypoint).join('\n');
+  final waypoints =
+      markers.map(_renderWaypoint).whereType<String>().join('\n');
 
+  // A point or marker without finite coordinates is dropped rather than
+  // written as `lat="NaN"`, which every GPX reader refuses; a missing or
+  // non-finite elevation keeps the existing 0 fallback.
   final trackpoints = <String>[];
   for (var i = 0; i < coordinates.length; i++) {
     final lng = coordinates[i][0];
     final lat = coordinates[i][1];
-    final ele = i < elevations.length ? elevations[i] : 0;
+    if (!lat.isFinite || !lng.isFinite) continue;
+    final num ele =
+        i < elevations.length && elevations[i].isFinite ? elevations[i] : 0;
     trackpoints.add(
         '      <trkpt lat="${_gpxNum(lat)}" lon="${_gpxNum(lng)}">'
         '<ele>${_gpxNum(ele)}</ele></trkpt>');
@@ -80,7 +86,8 @@ ${trackpoints.join('\n')}
 </gpx>''';
 }
 
-String _renderWaypoint(RouteGpxMarker m) {
+String? _renderWaypoint(RouteGpxMarker m) {
+  if (!m.lat.isFinite || !m.lng.isFinite) return null;
   final parts = <String>[
     '  <wpt lat="${_gpxNum(m.lat)}" lon="${_gpxNum(m.lng)}">',
     '<name>${_escapeXml(m.label)}</name>',
@@ -122,13 +129,32 @@ String _buildDesc(Map<String, dynamic> meta) {
 /// `util/html_escape.ts`, which chose the numeric form so one escaper serves
 /// HTML4, HTML5 and XML/SVG alike; both spellings parse to `'`, but the two
 /// halves have to emit the same bytes (decisions § 1450).
+///
+/// Code points XML 1.0 cannot carry at all — C0 controls other than tab / LF
+/// / CR, lone surrogates, U+FFFE / U+FFFF — become U+FFFD first, as on web
+/// (`escapeXml` in `util/html_escape.ts`): one in a label otherwise made
+/// every GPX reader refuse the whole course file.
 String _escapeXml(String str) {
-  return str
+  return _xmlChars(str)
       .replaceAll('&', '&amp;')
       .replaceAll('<', '&lt;')
       .replaceAll('>', '&gt;')
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#39;');
+}
+
+String _xmlChars(String s) {
+  final out = StringBuffer();
+  for (final r in s.runes) {
+    final legal = r == 0x9 ||
+        r == 0xA ||
+        r == 0xD ||
+        (r >= 0x20 && r <= 0xD7FF) ||
+        (r >= 0xE000 && r <= 0xFFFD) ||
+        (r >= 0x10000 && r <= 0x10FFFF);
+    out.writeCharCode(legal ? r : 0xFFFD);
+  }
+  return out.toString();
 }
 
 /// Render a coordinate the way the web twin's template literal does, so the

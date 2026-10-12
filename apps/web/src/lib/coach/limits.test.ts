@@ -325,6 +325,25 @@ test('validateRunsLimit — caps absurdly large numbers', () => {
 	assert.equal(validateRunsLimit(2_000_000).ok, false);
 });
 
+// The contract: anything else "must coerce to a finite positive integer"
+// or the handler 400s rather than silently flooring. `Number()` turned each of
+// these into an integer the clamp then used.
+test('validateRunsLimit — rejects a fraction rather than flooring it', () => {
+	for (const bad of [1.5, 2.7, '2.7', 0.999]) {
+		assert.equal(validateRunsLimit(bad).ok, false, String(bad));
+	}
+});
+
+test('validateRunsLimit — rejects values only Number() coercion reads as a count', () => {
+	for (const bad of [[5], ['10'], '0x10', ' 7 ', '1e2', '', '+5', '-0']) {
+		assert.equal(validateRunsLimit(bad).ok, false, JSON.stringify(bad));
+	}
+	// The integer forms a client really sends still pass.
+	for (const good of [5, '5', 1_000_000, '1000000']) {
+		assert.deepEqual(validateRunsLimit(good), { ok: true }, String(good));
+	}
+});
+
 // ─────────────── resolveUsageCount (fail-closed paywall) ───────────────
 
 test('resolveUsageCount — a finite non-negative count enforces (the gate runs)', () => {

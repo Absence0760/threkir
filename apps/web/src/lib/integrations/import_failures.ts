@@ -14,6 +14,8 @@
 /// fields of a Supabase/PostgREST error, never `.details` / `.hint` —
 /// those echo row fragments (see core/supabase_error.ts).
 
+import { neutraliseSpreadsheetFormula } from '../util/csv_formula';
+
 export type ImportFailureReason =
 	| 'network'
 	| 'auth'
@@ -172,8 +174,12 @@ export function groupImportFailures(
 		.sort((a, b) => b.count - a.count || compareImportFailureReasons(a.reason, b.reason));
 }
 
+/// Activity names come out of the runner's archive and `detail` out of a
+/// server's error text, so a cell starting `=` / `+` / `-` / `@` is
+/// neutralised before quoting — quoting alone does not stop a spreadsheet
+/// evaluating it.
 function csvField(value: string): string {
-	return `"${value.replace(/"/g, '""')}"`;
+	return `"${neutraliseSpreadsheetFormula(value).replace(/"/g, '""')}"`;
 }
 
 /// A downloadable report of what did not import. Column headers are

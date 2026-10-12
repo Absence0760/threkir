@@ -188,3 +188,83 @@ test("formatClassStart shows the class on its own wall clock", () => {
     "an unknown zone falls back to UTC rather than throwing",
   );
 });
+
+const minimalRow = (over: Record<string, unknown>) => ({
+  event_id: "e1",
+  instance_start: "2026-10-10T17:00:00Z",
+  local_month: "2026-10-01",
+  currency: "usd",
+  ...over,
+});
+
+test("parseHostEarningsRow refuses a month label that names no calendar month", () => {
+  // The server files every row under a real first-of-month; a label outside
+  // 01-12 would otherwise be summed under a month that does not exist and
+  // printed as a neighbouring one ("2026-13" reads as January 2027).
+  for (const local_month of ["2026-00-01", "2026-13-01", "2026-99-01"]) {
+    assert.equal(
+      parseHostEarningsRow(minimalRow({ local_month })),
+      null,
+      local_month,
+    );
+  }
+  assert.equal(
+    parseHostEarningsRow(minimalRow({ local_month: "2026-10-01T00:00:00Z" })),
+    null,
+    "a timestamp is not a month label",
+  );
+  assert.ok(parseHostEarningsRow(minimalRow({ local_month: "2026-12-01" })));
+  assert.ok(parseHostEarningsRow(minimalRow({ local_month: "2026-01-01" })));
+});
+
+test("formatEarningsMonth never prints a different month than the label says", () => {
+  assert.equal(formatEarningsMonth("2026-13-01", "en-US"), "2026-13-01");
+  assert.equal(formatEarningsMonth("2026-00-01", "en-US"), "2026-00-01");
+  assert.equal(formatEarningsMonth("2026-12-01", "en-US"), "December 2026");
+});
+
+test("parseHostEarningsRow reads an unusable amount as zero, never as NaN", () => {
+  const parsed = parseHostEarningsRow(
+    minimalRow({
+      gross_cents: "abc",
+      net_cents: Number.NaN,
+      refunded_cents: Infinity,
+      platform_fee_cents: null,
+      unsettled_cents: { cents: 5 },
+    }),
+  );
+  assert.ok(parsed);
+  for (const k of [
+    "gross_cents",
+    "net_cents",
+    "refunded_cents",
+    "platform_fee_cents",
+    "unsettled_cents",
+  ] as const) {
+    assert.equal(parsed[k], 0, k);
+  }
+  const totals = rollupEarningsByMonth([parsed, row({ net_cents: 700 })]);
+  assert.equal(totals[0].net_cents, 700, "one bad row cannot NaN a month total");
+});
+
+test("parseHostEarningsRow defaults a missing title, club and zone", () => {
+  const parsed = parseHostEarningsRow(minimalRow({ timezone: "" }));
+  assert.ok(parsed);
+  assert.equal(parsed.event_title, "");
+  assert.equal(parsed.club_id, "");
+  assert.equal(parsed.timezone, "UTC");
+});
+
+test("rollupEarningsByMonth folds currency case before grouping", () => {
+  const rows = [
+    parseHostEarningsRow(minimalRow({ currency: "USD", net_cents: 100 })),
+    parseHostEarningsRow(minimalRow({ currency: "usd", net_cents: 50 })),
+  ].filter((r): r is HostEarningsInstance => r !== null);
+  const months = rollupEarningsByMonth(rows);
+  assert.equal(months.length, 1, "USD and usd are one currency");
+  assert.equal(months[0].net_cents, 150);
+});
+
+test("formatClassStart returns an unparseable start as given", () => {
+  assert.equal(formatClassStart("not-a-date", "UTC", "en-US"), "not-a-date");
+});

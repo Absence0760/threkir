@@ -13,6 +13,7 @@
 
 import type { Json } from '../_shared/database.ts';
 import { isIsoCalendarDate } from '../_shared/calendar_date.ts';
+import { clipText } from '../_shared/text_clip.ts';
 import { SYNTHETIC_START_TIME_UTC } from '../_shared/synthetic_start_time.ts';
 
 export const MAX_FIELD_LEN = 200;
@@ -44,8 +45,7 @@ export function resultsPossiblyTruncated(rowCount: number): boolean {
 /** Trim + truncate an untrusted text field. Non-strings become ''. */
 export function capField(raw: unknown, max: number = MAX_FIELD_LEN): string {
   if (typeof raw !== 'string') return '';
-  const trimmed = raw.trim();
-  return trimmed.length <= max ? trimmed : trimmed.slice(0, max);
+  return clipText(raw, max);
 }
 
 /** Parse "H:MM:SS" / "MM:SS" / "SS" into whole seconds. 0 on garbage. */

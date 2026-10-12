@@ -188,7 +188,13 @@ export function mapsDirectionsUrl(lat: number, lng: number): string {
 	return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
 }
 
+/// The label sits inside `(...)`, which `encodeURIComponent` leaves as is, so a
+/// meet label like "Car park (north gate)" closed the label early and the map
+/// app showed "Car park (north gate" or dropped it. Parentheses are encoded too.
 export function geoUri(lat: number, lng: number, label?: string): string {
-	const q = label ? `?q=${lat},${lng}(${encodeURIComponent(label)})` : '';
+	const encoded = label
+		? encodeURIComponent(label).replace(/\(/g, '%28').replace(/\)/g, '%29')
+		: '';
+	const q = label ? `?q=${lat},${lng}(${encoded})` : '';
 	return `geo:${lat},${lng}${q}`;
 }

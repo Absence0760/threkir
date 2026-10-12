@@ -390,3 +390,31 @@ Deno.test('canonicalHrUrl admits only the exact hr path, not the track one', () 
 	assertEquals(canonicalHrUrl({ ...REF, hr_series_url: REF.track_url }), null);
 	assertEquals(canonicalTrackUrl({ ...REF, track_url: REF.hr_series_url }), null);
 });
+
+/// Every code point XML 1.0 forbids in a document (the `Char` production).
+const XML_FORBIDDEN = /[^\t\n\r -퟿-�\u{10000}-\u{10FFFF}]/u;
+
+Deno.test('xmlEscape replaces the control characters XML 1.0 forbids, keeping tab, LF and CR', () => {
+	// A title pasted with a stray control character used to reach the GPX
+	// verbatim, and every XML parser refuses the whole file over one byte —
+	// so the subject's export of that run opened nowhere.
+	assertEquals(xmlEscape('Hill\u0007 repeats\u000B'), 'Hill� repeats�');
+	assertEquals(xmlEscape('a\u0001b\u001Fc'), 'a�b�c');
+	assertEquals(xmlEscape('line\tone\nline\rtwo'), 'line\tone\nline\rtwo');
+	assertEquals(xmlEscape('￾￿'), '��', 'the two non-characters are not Chars either');
+});
+
+Deno.test('xmlEscape replaces a lone surrogate but keeps a real astral character', () => {
+	assertEquals(xmlEscape('Parkrun 🏃'), 'Parkrun 🏃', 'an emoji is two halves of one Char');
+	assertEquals(xmlEscape('cut \uD83C'), 'cut �', 'half an emoji is not a Char');
+	assertEquals(xmlEscape('\uDFC3 tail'), '� tail');
+});
+
+Deno.test('buildGpx emits no character an XML parser would refuse, whatever the run carried', () => {
+	const gpx = buildGpx(
+		{ ...GPX_REF, title: 'Bell\u0007 lap \uD83C', startedAt: '2026-05-01T06:00:00Z\u0000' },
+		[{ lat: 1, lng: 2, ts: '2026-05-01T06:00:01Z\u0008' }],
+	);
+	assert(!XML_FORBIDDEN.test(gpx), `forbidden character in ${JSON.stringify(gpx)}`);
+	assert(gpx.includes('<name>Bell� lap �</name>'), 'the title keeps every character it can');
+});

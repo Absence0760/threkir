@@ -62,6 +62,16 @@ Deno.test('fcmBatchRemoveBody truncates at 1000 tokens', () => {
 	assertEquals(parsed.registration_tokens.length, 1000);
 });
 
+// Account deletion must unregister every device it can. Blanks and repeats
+// filtered AFTER the 1000-token cap used up slots, so a real token past them
+// was never sent and that phone kept its registration.
+Deno.test('fcmBatchRemoveBody spends the cap on real, distinct tokens only', () => {
+	const padded = [...Array.from({ length: 1000 }, () => ''), 'real-device'];
+	assertEquals(JSON.parse(fcmBatchRemoveBody(padded)), { registration_tokens: ['real-device'] });
+	const repeated = [...Array.from({ length: 1000 }, () => 'phone-a'), 'phone-b'];
+	assertEquals(JSON.parse(fcmBatchRemoveBody(repeated)), { registration_tokens: ['phone-a', 'phone-b'] });
+});
+
 Deno.test('formatDeletedCounts returns null for an empty map', () => {
 	// Nothing explicitly drained → notes stays null (the cascade did all
 	// the work). Distinct from `{}` which would be a misleading empty

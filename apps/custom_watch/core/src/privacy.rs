@@ -64,10 +64,17 @@ pub fn is_in_any_zone(point: &TrackPoint, zones: &[PrivacyZone]) -> bool {
     false
 }
 
-/// Walk forward from the start dropping in-zone points, walk backward from the
-/// end doing the same, and keep the contiguous middle. Empty zones or empty
-/// input returns the input unchanged (clamped to [`MAX_CLIPPED_TRACK_POINTS`]);
-/// an all-in-zone input returns empty.
+/// Whether the edge walks drop `point`: it is in a zone, or it has no finite
+/// position. A position-less point draws nothing, so stopping the walk there
+/// would publish every in-zone point behind it.
+fn is_hidden_at_edge(point: &TrackPoint, zones: &[PrivacyZone]) -> bool {
+    !(point.lat_deg.is_finite() && point.lon_deg.is_finite()) || is_in_any_zone(point, zones)
+}
+
+/// Walk forward from the start dropping in-zone and position-less points,
+/// walk backward from the end doing the same, and keep the contiguous middle.
+/// Empty zones or empty input returns the input unchanged (clamped to
+/// [`MAX_CLIPPED_TRACK_POINTS`]); an all-hidden input returns empty.
 pub fn clip_points_to_zones(
     points: &[TrackPoint],
     zones: &[PrivacyZone],
@@ -77,7 +84,7 @@ pub fn clip_points_to_zones(
     }
 
     let mut start = 0;
-    while start < points.len() && is_in_any_zone(&points[start], zones) {
+    while start < points.len() && is_hidden_at_edge(&points[start], zones) {
         start += 1;
     }
     if start >= points.len() {
@@ -85,7 +92,7 @@ pub fn clip_points_to_zones(
     }
 
     let mut end = points.len() - 1;
-    while end > start && is_in_any_zone(&points[end], zones) {
+    while end > start && is_hidden_at_edge(&points[end], zones) {
         end -= 1;
     }
 
@@ -217,5 +224,44 @@ mod tests {
         let out = clip_points_to_zones(&pts, &[HOME, work]);
         assert_eq!(out.len(), 1);
         assert_eq!(out[0], pts[1]);
+    }
+
+    #[test]
+    fn clip_coordinate_less_leading_point_does_not_end_the_trim() {
+        let nan = TrackPoint {
+            lat_deg: f64::NAN,
+            lon_deg: f64::NAN,
+        };
+        let pts = [
+            nan,
+            at(&HOME),
+            TrackPoint {
+                lat_deg: HOME.lat_deg + 0.0001,
+                lon_deg: HOME.lon_deg,
+            },
+            offset(HOME.lat_deg, HOME.lon_deg, 0.01),
+            offset(HOME.lat_deg, HOME.lon_deg, 0.02),
+            at(&HOME),
+            nan,
+        ];
+        let out = clip_points_to_zones(&pts, &[HOME]);
+        assert_eq!(out.len(), 2);
+        assert_eq!(out[0], pts[3]);
+        assert_eq!(out[1], pts[4]);
+    }
+
+    #[test]
+    fn clip_all_coordinate_less_returns_empty() {
+        let pts = [
+            TrackPoint {
+                lat_deg: f64::NAN,
+                lon_deg: f64::NAN,
+            },
+            TrackPoint {
+                lat_deg: f64::NAN,
+                lon_deg: 1.0,
+            },
+        ];
+        assert!(clip_points_to_zones(&pts, &[HOME]).is_empty());
     }
 }

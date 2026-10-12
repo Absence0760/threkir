@@ -417,14 +417,13 @@ Deno.test('verifyStripeSignature — the default tolerance is the five minutes S
 });
 
 Deno.test('verifyStripeSignature — a timestamp that is not an integer literal is refused', async () => {
-  // The signed payload is rebuilt from the PARSED integer, and
   // `Number.parseInt` stops at the first character it cannot read — so
-  // `t=1700000000junk` recovered the real timestamp and verified against a
-  // genuine Stripe signature. Nothing was gained by an attacker (any other
-  // integer changes the signed payload and breaks the HMAC), but the parse
-  // and the payload disagreed about what `t` was, and a regression that
-  // signed the header TEXT instead would have been invisible: a clean header
-  // round-trips through both.
+  // `t=1700000000junk` recovered the real timestamp and, while the signed
+  // payload was rebuilt from the PARSED integer, verified against a genuine
+  // Stripe signature. Nothing was gained by an attacker (any other integer
+  // changes the signed payload and breaks the HMAC), but the parse and the
+  // payload disagreed about what `t` was. The payload is now signed over the
+  // header text, and this pins that the literal check still refuses first.
   const raw = '{"id":"evt_1"}';
   const v1 = await sign(raw);
   for (const t of [`${T}junk`, `+${T}`, ` ${T}x`, `${T}.0`, `0x${T.toString(16)}`, `${T}e0`]) {

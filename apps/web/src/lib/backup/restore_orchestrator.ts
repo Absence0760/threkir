@@ -117,6 +117,13 @@ function noteDroppedColumns(
 	);
 }
 
+/// The archive is a file from disk, so a list entry can be any JSON value. A
+/// null or a string reaching `r.id` used to throw out of the whole restore,
+/// taking every later run and the routes section with it.
+function isRowObject(r: unknown): r is JsonObject {
+	return typeof r === 'object' && r !== null && !Array.isArray(r);
+}
+
 export interface RestoreOrchestrateOptions {
 	generateNewIds?: boolean;
 	onProgress?: (p: RestoreProgress) => void;
@@ -180,6 +187,11 @@ export async function restoreOrchestrate(
 		const droppedRunColumns = new Set<string>();
 		for (const r of runs) {
 			onProgress?.({ stage: 'runs', current: i, total: runs.length });
+			if (!isRowObject(r)) {
+				result.warnings.push(`run #${i + 1}: not a run row — skipped`);
+				i++;
+				continue;
+			}
 			const origId = r.id as string;
 			const newId = opts.generateNewIds ? newUUID() : origId;
 
@@ -247,6 +259,11 @@ export async function restoreOrchestrate(
 		const droppedRouteColumns = new Set<string>();
 		for (const r of routes) {
 			onProgress?.({ stage: 'routes', current: i, total: routes.length });
+			if (!isRowObject(r)) {
+				result.warnings.push(`route #${i + 1}: not a route row — skipped`);
+				i++;
+				continue;
+			}
 			const newId = opts.generateNewIds ? newUUID() : (r.id as string);
 			const known = keepKnownColumns({ ...r, id: newId, user_id: userId }, ROUTE_RESTORE_COLUMNS);
 			for (const name of known.dropped) droppedRouteColumns.add(name);

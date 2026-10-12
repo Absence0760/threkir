@@ -14,7 +14,7 @@
 
 begin;
 
-select plan(23);
+select plan(26);
 
 -- ── Fixture: one user with privacy zones, one user without ──
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
@@ -379,6 +379,66 @@ select is(
     jsonb_build_object('lat', 47.37, 'lng', 8.5600)
   ),
   'clip keeps an interior fix whose smoothed position is in a zone'
+);
+
+-- ── Unplaced fixes (20270724000001) ──
+-- A fix with no usable position (no numeric raw pair, no numeric smoothed
+-- pair) draws nothing; it must not end the trim walk, or the in-zone fixes
+-- behind it are served to non-owners.
+
+-- 20. A leading coordinate-less fix is dropped and the walk carries on
+--     through the in-zone fixes after it; same at the tail.
+select is(
+  clip_track_for_user(
+    '00000000-0000-0000-0000-00000000c101',
+    jsonb_build_array(
+      jsonb_build_object('t', 0),                         -- unplaced → drop
+      jsonb_build_object('lat', 47.37, 'lng', 8.5400),    -- in → drop
+      jsonb_build_object('lat', 47.37, 'lng', 8.5410),    -- in → drop
+      jsonb_build_object('lat', 47.37, 'lng', 8.5550),    -- out
+      jsonb_build_object('lat', 47.37, 'lng', 8.5600),    -- out
+      jsonb_build_object('lat', 47.37, 'lng', 8.5405),    -- in → drop
+      jsonb_build_object('lat', null, 'lng', null)        -- unplaced → drop
+    )
+  ),
+  jsonb_build_array(
+    jsonb_build_object('lat', 47.37, 'lng', 8.5550),
+    jsonb_build_object('lat', 47.37, 'lng', 8.5600)
+  ),
+  'clip skips a coordinate-less fix at either end and keeps trimming'
+);
+
+-- 21. Non-numeric raw positions and non-object elements are unplaced too,
+--     and a non-numeric lat is never cast (it used to raise).
+select is(
+  clip_track_for_user(
+    '00000000-0000-0000-0000-00000000c101',
+    jsonb_build_array(
+      jsonb_build_object('lat', 'abc', 'lng', 'def'),
+      'null'::jsonb,
+      jsonb_build_object('lat', 47.37, 'lng', 8.5400),
+      jsonb_build_object('lat', 47.37, 'lng', 8.5550)
+    )
+  ),
+  jsonb_build_array(jsonb_build_object('lat', 47.37, 'lng', 8.5550)),
+  'clip treats a non-numeric or non-object fix as unplaced'
+);
+
+-- 22. A fix whose raw pair is missing but whose smoothed pair is outside
+--     the zone is placed (it is drawn there), so it ends the walk.
+select is(
+  clip_track_for_user(
+    '00000000-0000-0000-0000-00000000c101',
+    jsonb_build_array(
+      jsonb_build_object('smoothedLat', 47.37, 'smoothedLng', 8.5550),
+      jsonb_build_object('lat', 47.37, 'lng', 8.5600)
+    )
+  ),
+  jsonb_build_array(
+    jsonb_build_object('smoothedLat', 47.37, 'smoothedLng', 8.5550),
+    jsonb_build_object('lat', 47.37, 'lng', 8.5600)
+  ),
+  'clip keeps a fix placed only by its smoothed pair when that pair is out'
 );
 
 -- 14. The most important wire-leak guard: the SECURITY DEFINER context

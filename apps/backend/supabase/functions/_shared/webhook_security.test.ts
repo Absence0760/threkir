@@ -302,6 +302,21 @@ Deno.test('verifyTimestampedHmac accepts any v1 during a rotation, and nothing w
   assertStrictEquals(await verifyTimestampedHmac(TS_BODY, null, TS_SECRET, TS_NOW_MS), false);
 });
 
+// The signed payload is `${t}.${body}` with `t` exactly as the header carries
+// it. Rebuilt from the parsed integer instead, a zero-padded `t` that parses to
+// the signed second verified under a digest computed over different text.
+Deno.test('verifyTimestampedHmac refuses a zero-padded t whose integer was signed', async () => {
+  for (const t of [`0${TS_T}`, `000${TS_T}`]) {
+    assertStrictEquals(
+      await verifyTimestampedHmac(TS_BODY, `t=${t},v1=${TS_V1}`, TS_SECRET, TS_NOW_MS),
+      false,
+      t,
+    );
+  }
+  // Positive control: the same digest under the literal it was computed over.
+  assert(await verifyTimestampedHmac(TS_BODY, ` t = ${TS_T} , v1 = ${TS_V1} `, TS_SECRET, TS_NOW_MS));
+});
+
 Deno.test('revenuecat-webhook verifies the header RevenueCat sends', async () => {
   const src = await Deno.readTextFile(new URL('../revenuecat-webhook/index.ts', import.meta.url));
   assert(

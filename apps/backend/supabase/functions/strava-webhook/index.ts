@@ -63,6 +63,11 @@ import {
 	validateFreshness,
 } from '../_shared/webhook_security.ts';
 import { secretKey } from '../_shared/api_keys.ts';
+import {
+	type StravaWebhookEvent,
+	disconnectDeauthorizedAthlete,
+	isAthleteDeauthorization,
+} from '../_shared/strava_disconnect.ts';
 
 Deno.serve(withSentry('strava-webhook', async (req: Request) => {
 	// Body cap is enforced in the POST branch below via readJsonWithLimit
@@ -151,20 +156,42 @@ Deno.serve(withSentry('strava-webhook', async (req: Request) => {
 		return refuseUnread(Response.json({ error: 'method_not_allowed' }, { status: 405 }));
 	}
 
-	// POST: Activity event from Strava. Payload shape:
+	// POST: event from Strava. Payload shape:
 	//   { object_type, object_id, aspect_type, owner_id, subscription_id,
 	//     event_time, updates }
-	// We only handle 'activity' / 'create' — updates and deletes are
-	// ignored (the backfill picks up edits on the next manual sync).
-	const guarded = await readJsonWithLimit<{
-		object_type?: string;
-		object_id?: number;
-		aspect_type?: string;
-		owner_id?: number;
-		event_time?: number;
-	}>(req, 4096);
+	// Two events are acted on: 'athlete' / 'update' with
+	// `updates.authorized: "false"` (the athlete revoked our access) and
+	// 'activity' / 'create'. Activity updates and deletes are ignored (the
+	// backfill picks up edits on the next manual sync).
+	const guarded = await readJsonWithLimit<StravaWebhookEvent>(req, 4096);
 	if ('tooLarge' in guarded) return guarded.tooLarge;
 	const event = guarded.body ?? {};
+
+	if (isAthleteDeauthorization(event)) {
+		// Strava API terms require acting on a deauthorization. Always 200:
+		// Strava retries a non-200, and a retry can do nothing a failed
+		// first attempt could not. Not deduped — disconnecting is
+		// idempotent — but freshness-gated like an activity event, so a
+		// captured POST cannot be replayed later to cut a user's
+		// re-established connection.
+		const athleteId = event.owner_id;
+		if (
+			typeof athleteId !== 'number' ||
+			typeof event.event_time !== 'number' ||
+			validateFreshness(event.event_time * 1000, Date.now()) !== 'ok'
+		) {
+			return new Response('OK');
+		}
+		const { failed } = await disconnectDeauthorizedAthlete(adminClient, athleteId);
+		if (failed > 0) {
+			Sentry.captureMessage('strava deauthorization not fully applied', {
+				level: 'error',
+				tags: { alert: 'strava_deauth_failure' },
+				extra: { failed },
+			});
+		}
+		return new Response('OK');
+	}
 
 	if (event.object_type !== 'activity' || event.aspect_type !== 'create') {
 		// Strava expects a 200 within 2s for any POST; logging 'OK' for

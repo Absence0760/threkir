@@ -2,7 +2,7 @@
  * Generate a GPX XML string from route coordinates and metadata.
  */
 
-import { escapeHtml } from '../util/html_escape';
+import { escapeXml, xmlNumber } from '../util/html_escape';
 
 export function toGpx(
 	name: string,
@@ -12,9 +12,12 @@ export function toGpx(
 	const now = new Date().toISOString();
 
 	const trackpoints = coordinates
-		.map(([lng, lat], i) => {
-			const ele = elevations[i] ?? 0;
-			return `      <trkpt lat="${lat}" lon="${lng}"><ele>${ele}</ele></trkpt>`;
+		.flatMap(([lng, lat], i) => {
+			const latText = xmlNumber(lat);
+			const lngText = xmlNumber(lng);
+			if (latText === null || lngText === null) return [];
+			const ele = xmlNumber(elevations[i]) ?? '0';
+			return [`      <trkpt lat="${latText}" lon="${lngText}"><ele>${ele}</ele></trkpt>`];
 		})
 		.join('\n');
 
@@ -24,11 +27,11 @@ export function toGpx(
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
   <metadata>
-    <name>${escapeHtml(name)}</name>
+    <name>${escapeXml(name)}</name>
     <time>${now}</time>
   </metadata>
   <trk>
-    <name>${escapeHtml(name)}</name>
+    <name>${escapeXml(name)}</name>
     <trkseg>
 ${trackpoints}
     </trkseg>
@@ -48,12 +51,16 @@ export function toRunGpx(
 	track: Array<{ lat: number; lng: number; ele?: number | null; ts?: string | null }>,
 ): string {
 	const trackpoints = track
-		.map((p) => {
-			const parts: string[] = [`<trkpt lat="${p.lat}" lon="${p.lng}">`];
-			if (p.ele != null) parts.push(`<ele>${p.ele}</ele>`);
-			if (p.ts) parts.push(`<time>${p.ts}</time>`);
+		.flatMap((p) => {
+			const latText = xmlNumber(p.lat);
+			const lngText = xmlNumber(p.lng);
+			if (latText === null || lngText === null) return [];
+			const parts: string[] = [`<trkpt lat="${latText}" lon="${lngText}">`];
+			const ele = xmlNumber(p.ele);
+			if (ele !== null) parts.push(`<ele>${ele}</ele>`);
+			if (p.ts) parts.push(`<time>${escapeXml(String(p.ts))}</time>`);
 			parts.push('</trkpt>');
-			return '      ' + parts.join('');
+			return ['      ' + parts.join('')];
 		})
 		.join('\n');
 
@@ -63,11 +70,11 @@ export function toRunGpx(
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
   <metadata>
-    <name>${escapeHtml(name)}</name>
-    <time>${startedAtIso}</time>
+    <name>${escapeXml(name)}</name>
+    <time>${escapeXml(startedAtIso)}</time>
   </metadata>
   <trk>
-    <name>${escapeHtml(name)}</name>
+    <name>${escapeXml(name)}</name>
     <trkseg>
 ${trackpoints}
     </trkseg>
@@ -97,15 +104,20 @@ export function toKml(
 	elevations: number[]
 ): string {
 	const coordString = coordinates
-		.map(([lng, lat], i) => `${lng},${lat},${elevations[i] ?? 0}`)
+		.flatMap(([lng, lat], i) => {
+			const latText = xmlNumber(lat);
+			const lngText = xmlNumber(lng);
+			if (latText === null || lngText === null) return [];
+			return [`${lngText},${latText},${xmlNumber(elevations[i]) ?? '0'}`];
+		})
 		.join('\n          ');
 
 	return `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
-    <name>${escapeHtml(name)}</name>
+    <name>${escapeXml(name)}</name>
     <Placemark>
-      <name>${escapeHtml(name)}</name>
+      <name>${escapeXml(name)}</name>
       <Style>
         <LineStyle>
           <color>ffff0000</color>

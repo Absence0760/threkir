@@ -47,9 +47,17 @@ export type RegistrationState =
 ///   1. `already_registered` — if the viewer already holds a paid slot,
 ///      that wins over everything (we show "You're registered", never
 ///      "sold out", to someone who already has a seat).
-///   2. `sold_out` — capacity reached (a null/0 capacity means unlimited).
-///   3. `sales_closed` — past the sales-close instant.
+///   2. `sold_out` — capacity reached. Only a null capacity is unlimited: 0
+///      is zero seats, as `capacityDecision` in events-checkout and the
+///      `enforce_event_capacity` trigger read it, so the page never offers a
+///      Register press the checkout is certain to refuse.
+///   3. `sales_closed` — past the sales-close instant, or an occurrence whose
+///      start cannot be read (checkout's `isSalesWindowOpen` refuses that
+///      sale, so the page must not offer it).
 ///   4. `open`.
+///
+/// `_shared/client_money_parity.test.ts` runs this against the server's
+/// decision over the same grid.
 ///
 /// `goingCount` should already include pending soft-reservations that
 /// count toward capacity (the server holds them); the client passes the
@@ -63,9 +71,9 @@ export function registrationOpen(
 	viewerHasPaidOrder: boolean,
 ): RegistrationState {
 	if (viewerHasPaidOrder) return 'already_registered';
-	if (capacity != null && capacity > 0 && goingCount >= capacity) return 'sold_out';
+	if (capacity != null && goingCount >= capacity) return 'sold_out';
 	const closeIso = salesCloseAt(instanceStartIso, offsetMinutes);
-	if (closeIso != null && now.getTime() >= Date.parse(closeIso)) return 'sales_closed';
+	if (closeIso == null || now.getTime() >= Date.parse(closeIso)) return 'sales_closed';
 	return 'open';
 }
 

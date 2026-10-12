@@ -20,6 +20,33 @@ export function escapeHtml(s: string): string {
 		.replace(/'/g, '&#39;');
 }
 
+/// Code points outside XML 1.0's `Char` production — C0 controls other than
+/// tab / LF / CR, lone surrogates, U+FFFE / U+FFFF. No entity can carry them,
+/// so one in a single name made every XML reader (a GPX importer, resvg, a
+/// browser loading an SVG) refuse the whole document. Same set and U+FFFD
+/// replacement as the Art 20 exporter (export-data/render.ts).
+const XML_FORBIDDEN_CHARS = /[^\t\n\r\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/gu;
+
+/**
+ * `escapeHtml` for an XML document (GPX, KML, SVG, sitemap): also replaces
+ * the code points XML cannot carry at all with U+FFFD, so one stray control
+ * character in user text degrades to a replacement glyph instead of making
+ * the file unreadable.
+ */
+export function escapeXml(s: string): string {
+	return escapeHtml(s.replace(XML_FORBIDDEN_CHARS, '\uFFFD'));
+}
+
+/**
+ * A value as an XML number, or null when it is not a finite number. Stored
+ * coordinates and elevations reach the XML writers from JSON with no schema
+ * in between and land inside quoted attributes, so anything else is dropped
+ * rather than written as `NaN` or as markup.
+ */
+export function xmlNumber(v: unknown): string | null {
+	return typeof v === 'number' && Number.isFinite(v) ? String(v) : null;
+}
+
 /**
  * Scheme guard for an `href` interpolated into a raw-HTML sink. `escapeHtml`
  * alone does NOT neutralise a `javascript:` / `data:` URI — none of those
@@ -28,13 +55,16 @@ export function escapeHtml(s: string): string {
  * fixed root-relative or http(s) template must pass through here first.
  *
  * Returns the URL when it is root-relative (`/…`, but not protocol-relative
- * `//host` which the browser resolves to an external origin) or http(s);
- * otherwise `#`. Pair with `escapeHtml` for the attribute-context encoding:
+ * `//host` or `/\host`, which the browser resolves to an external origin) or
+ * http(s); otherwise `#`. Pair with `escapeHtml` for the attribute-context encoding:
  * `href="${escapeHtml(safeHref(url))}"`.
  */
 export function safeHref(url: string): string {
-	const u = url.trim();
+	// The URL parser drops ASCII tab / LF / CR wherever they appear, so check
+	// the string the browser will actually follow: `/\t/evil.com` is `//evil.com`.
+	const u = url.trim().replace(/[\t\n\r]/g, '');
 	if (/^https?:\/\//i.test(u)) return u;
-	if (u.startsWith('/') && !u.startsWith('//')) return u;
+	// `\` reads as `/` in an http(s) URL, so `/\host` is protocol-relative too.
+	if (u[0] === '/' && u[1] !== '/' && u[1] !== '\\') return u;
 	return '#';
 }

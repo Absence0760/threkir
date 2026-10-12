@@ -12,6 +12,7 @@
 /// try/catch on every consumer. Only aggregate, non-track numbers are read.
 
 import { createClient } from '@supabase/supabase-js';
+import { isEntityId } from '../core/entity_id';
 import { recapPeriodLabel } from './recap_period_label';
 
 export { recapPeriodLabel };
@@ -52,6 +53,11 @@ export async function lookupSharedRecap(
 	if (!config?.supabaseUrl || !config?.supabaseAnonKey) {
 		return { recap: null };
 	}
+	// A non-uuid segment makes Postgres raise 22P02 on the RPC's uuid
+	// argument, which lands in the tagged upstream_unreachable branch the
+	// CloudWatch alarm keys off. A malformed id is a not-found, not an outage
+	// (same guard as share_run_lookup).
+	if (!isEntityId(id)) return { recap: null };
 	try {
 		const supabase = createClient(config.supabaseUrl, config.supabaseAnonKey, {
 			auth: { persistSession: false },

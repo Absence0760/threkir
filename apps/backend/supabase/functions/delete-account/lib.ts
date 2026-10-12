@@ -32,7 +32,10 @@ export function fcmBatchRemoveBody(tokens: string[]): string {
 	// The deletion path should never hit this in practice (a user
 	// rarely has more than a handful of devices), but truncate
 	// silently rather than 400 on a freak case.
-	const capped = tokens.slice(0, 1000).filter((t) => t.length > 0);
+	// Empties and repeats are dropped BEFORE the cap: filtered after it, a
+	// list padded with blanks or duplicates spent the 1000 slots on them and
+	// a real device token past that point was never unregistered.
+	const capped = [...new Set(tokens.filter((t) => t.length > 0))].slice(0, 1000);
 	return JSON.stringify({ registration_tokens: capped });
 }
 

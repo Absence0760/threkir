@@ -178,3 +178,15 @@ test('buildTrackThumbnailUrl: no key and no override → null, so the SVG previe
 		null,
 	);
 });
+
+// The label is delimited by `(` and `)`, which encodeURIComponent leaves
+// unescaped, so a label carrying its own parentheses ended the label early.
+test('geoUri encodes parentheses so a label cannot close its own delimiter', () => {
+	const uri = geoUri(51.5, -0.12, 'Car park (north gate)');
+	assert.equal(uri, 'geo:51.5,-0.12?q=51.5,-0.12(Car%20park%20%28north%20gate%29)');
+	// Exactly one unescaped pair: the delimiter.
+	assert.equal((uri.match(/\(/g) ?? []).length, 1);
+	assert.equal((uri.match(/\)/g) ?? []).length, 1);
+	assert.ok(uri.endsWith(')'));
+	assert.equal(decodeURIComponent(uri.slice(uri.indexOf('(') + 1, -1)), 'Car park (north gate)');
+});

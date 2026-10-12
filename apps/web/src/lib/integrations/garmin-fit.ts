@@ -497,6 +497,18 @@ export function normalizeSportToken(raw: unknown): string | null {
 /// `fit-file-parser` is dynamically imported so the ~200 KB binary
 /// decoder is only fetched when a user actually triggers a Garmin
 /// import — keeps the rest of the integrations page light.
+/// A record's `timestamp` as an ISO string, or null. fit-file-parser decodes
+/// every FIT `date_time` field into a JS `Date` (see `time_created` below), so
+/// a string-only check never matched and no FIT import carried a per-point
+/// time: no splits, no grade-adjusted pace, and no embedded 5k / 10k / half /
+/// marathon bests, which need timed points. The Dart twin
+/// (packages/gpx_parser/lib/src/fit_parser.dart) stamps every record.
+export function fitTimestampIso(v: unknown): string | null {
+	if (v instanceof Date) return Number.isFinite(v.getTime()) ? v.toISOString() : null;
+	if (typeof v === 'string' && Number.isFinite(Date.parse(v))) return v;
+	return null;
+}
+
 export async function parseFitBuffer(buf: ArrayBuffer): Promise<ParsedFitRun | null> {
 	const { default: FitParser } = await import('fit-file-parser');
 	const parser = new FitParser({
@@ -525,15 +537,21 @@ export async function parseFitBuffer(buf: ArrayBuffer): Promise<ParsedFitRun | n
 	const hrSeries: { bpm: number; ts?: string }[] = [];
 	for (const r of records) {
 		// FIT positions arrive in semicircles by default but the parser
-		// converts them to degrees once `lengthUnit` is set.
+		// converts them to degrees once `lengthUnit` is set. Any sint32
+		// decodes into [-180, 180), so a corrupt or misaligned field still
+		// reads as a number: a latitude past ±90 is not a place, and is
+		// refused like a missing fix — the same bound as the Dart twin in
+		// packages/gpx_parser/lib/src/fit_parser.dart.
 		const hasFix =
 			typeof r.position_lat === 'number' &&
 			typeof r.position_long === 'number' &&
 			Number.isFinite(r.position_lat) &&
-			Number.isFinite(r.position_long);
+			Number.isFinite(r.position_long) &&
+			Math.abs(r.position_lat) <= 90 &&
+			Math.abs(r.position_long) <= 180;
 		const validHr =
 			typeof r.heart_rate === 'number' && r.heart_rate >= 30 && r.heart_rate <= 230;
-		const ts = (r as { timestamp?: string }).timestamp;
+		const ts = fitTimestampIso((r as { timestamp?: unknown }).timestamp);
 		if (hasFix) {
 			const tp: TrackPoint = {
 				lat: r.position_lat as number,
@@ -542,7 +560,7 @@ export async function parseFitBuffer(buf: ArrayBuffer): Promise<ParsedFitRun | n
 			if (typeof r.altitude === 'number' && Number.isFinite(r.altitude)) {
 				tp.ele = r.altitude;
 			}
-			if (typeof ts === 'string') tp.ts = ts;
+			if (ts !== null) tp.ts = ts;
 			if (validHr) tp.bpm = r.heart_rate as number;
 			track.push(tp);
 			const d = (r as { distance?: unknown }).distance;
@@ -557,7 +575,7 @@ export async function parseFitBuffer(buf: ArrayBuffer): Promise<ParsedFitRun | n
 			// every belt session. Collect the HR so the run-detail zone chart
 			// has a series even though `track` will be empty.
 			const sample: { bpm: number; ts?: string } = { bpm: r.heart_rate as number };
-			if (typeof ts === 'string') sample.ts = ts;
+			if (ts !== null) sample.ts = ts;
 			hrSeries.push(sample);
 		}
 	}

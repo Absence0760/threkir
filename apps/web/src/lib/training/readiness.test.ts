@@ -148,3 +148,22 @@ test('the tiebreak does not override a genuinely larger contributor', () => {
 	const r = computeReadiness({ tsb: -12, sleepHours: 4 });
 	assert.match(r.advice, /^Very little sleep/);
 });
+
+// Every comparison is false for NaN, so a NaN fell through to each scorer's
+// last branch: "Over-tapered" (-3) for TSB, "Extended sleep" for sleep. A
+// signal that is not a number is no signal, exactly like null.
+test('a non-finite TSB or sleep figure is ignored, not scored as over-tapered or extended sleep', () => {
+	for (const bad of [Number.NaN, Infinity, -Infinity]) {
+		const r = computeReadiness({ tsb: bad, sleepHours: bad });
+		assert.equal(r.contributors.length, 0, String(bad));
+		assert.equal(r.score, 75, String(bad));
+	}
+});
+
+test('a non-finite resting HR reading is ignored, the other signals still count', () => {
+	const r = computeReadiness({ tsb: 10, restingHrBpm: Number.NaN, baselineRestingHrBpm: 50 });
+	assert.deepEqual(
+		r.contributors.map((c) => c.kind),
+		['form'],
+	);
+});

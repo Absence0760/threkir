@@ -128,12 +128,33 @@ type WebhookEventsStore interface {
 // subscription URL. Kept in this package (rather than importing
 // `internal`) so the hook package stays a leaf — tests don't
 // need to pull in the worker.
+//
+// SubscriptionID and Updates are declared because the decoder refuses
+// unknown fields and Strava sends both on every event; without them every
+// real delivery was a 400.
 type StravaEventPayload struct {
-	ObjectType string `json:"object_type"`
-	ObjectID   int64  `json:"object_id"`
-	AspectType string `json:"aspect_type"`
-	OwnerID    int64  `json:"owner_id"`
-	EventTime  int64  `json:"event_time"`
+	ObjectType     string         `json:"object_type"`
+	ObjectID       int64          `json:"object_id"`
+	AspectType     string         `json:"aspect_type"`
+	OwnerID        int64          `json:"owner_id"`
+	EventTime      int64          `json:"event_time"`
+	SubscriptionID int64          `json:"subscription_id,omitempty"`
+	Updates        map[string]any `json:"updates,omitempty"`
+}
+
+// isAthleteDeauthorization mirrors internal.StravaEventPayload's method of
+// the same name (this package stays a leaf).
+func (p StravaEventPayload) isAthleteDeauthorization() bool {
+	if p.ObjectType != "athlete" || p.AspectType != "update" {
+		return false
+	}
+	switch v := p.Updates["authorized"].(type) {
+	case string:
+		return v == "false"
+	case bool:
+		return !v
+	}
+	return false
 }
 
 // WebhookSecretHeader is the request header a caller may carry the
@@ -244,8 +265,30 @@ func (s *Server) handlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// An athlete revoking our access. Strava API terms require acting on
+	// it, so it is enqueued for the worker to disconnect the integration.
+	// Every exit is a 200: Strava retries a non-200 and a retry cannot do
+	// what this attempt could not. Not deduped (disconnecting is
+	// idempotent) but freshness-gated, so a captured POST replayed later
+	// cannot cut a re-established connection.
+	if event.isAthleteDeauthorization() {
+		if event.OwnerID == 0 || event.EventTime == 0 || !s.freshnessOK(event.EventTime) {
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true, "skipped": "unusable_deauthorization"})
+			return
+		}
+		jobID, err := s.Enqueuer.EnqueueStravaEvent(r.Context(), event)
+		if err != nil {
+			s.log().Error("strava webhook: deauthorization enqueue failed",
+				"err", err, "owner_id", event.OwnerID)
+			writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "enqueue_failed"})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "job_id": jobID})
+		return
+	}
+
 	// Strava sends webhook events for every subscribed object type
-	// (activity / athlete). We only act on activity events; everything
+	// (activity / athlete). Beyond a deauthorization we only act on activity events; everything
 	// else gets a fast 200 so Strava drops the event from its retry
 	// queue without us burning a `webhook_events` row.
 	if event.ObjectType != "activity" {

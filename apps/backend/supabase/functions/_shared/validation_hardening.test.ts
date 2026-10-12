@@ -84,6 +84,26 @@ Deno.test('isValidTimestamptz — the end-of-day literal and the leap second, at
   assertEquals(isValidTimestamptz('2026-01-01T23:60:00Z'), false);
 });
 
+// Postgres bounds the whole time of day, fraction included, after rounding it
+// to microseconds (half to even). Every expectation below was read off a live Postgres
+// `select '<literal>'::timestamptz`; before the fraction was
+// captured, the first three were accepted here and raised 22008 on the wire.
+Deno.test('isValidTimestamptz — a fraction past the end-of-day literal is out of range', () => {
+  assertEquals(isValidTimestamptz('2026-01-01T24:00:00.5Z'), false);
+  assertEquals(isValidTimestamptz('2026-01-01T24:00:00.000001Z'), false);
+  assertEquals(isValidTimestamptz('2026-01-01T23:59:60.5Z'), false, 'rolls to 24:00:00.5');
+  assertEquals(isValidTimestamptz('2026-01-01T24:00:00.000Z'), true, 'a zero fraction is still 24:00:00');
+  assertEquals(isValidTimestamptz('2026-01-01T12:30:60.2Z'), true, 'a leap-second fraction mid-day is fine');
+});
+
+Deno.test('isValidTimestamptz — the fraction is rounded to microseconds the way Postgres rounds it', () => {
+  assertEquals(isValidTimestamptz('2026-01-01T24:00:00.0000004Z'), true, 'rounds down to 24:00:00');
+  assertEquals(isValidTimestamptz('2026-01-01T24:00:00.0000005Z'), true, 'an exact half goes to the even 0');
+  assertEquals(isValidTimestamptz('2026-01-01T24:00:00.0000015Z'), false, 'an exact half goes to the even 2');
+  assertEquals(isValidTimestamptz('2026-01-01T24:00:00.00000051Z'), false, 'past the half rounds up');
+  assertEquals(isValidTimestamptz('2026-01-01T23:59:59.9999995Z'), true, 'rounds up to exactly 24:00:00');
+});
+
 Deno.test('isValidTimestamptz — the offset tops out where Postgres does', () => {
   assertEquals(isValidTimestamptz('2026-01-01T00:00:00+15:59'), true);
   assertEquals(isValidTimestamptz('2026-01-01T00:00:00-15:59'), true);

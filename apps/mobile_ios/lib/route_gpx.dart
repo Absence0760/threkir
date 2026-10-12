@@ -12,6 +12,7 @@
 /// lockstep.
 
 import 'route_markers.dart';
+import 'xml_text.dart';
 
 class RouteGpxMarker {
   final String label;
@@ -51,13 +52,19 @@ String toRouteGpxWithMarkers(
   List<double> elevations,
   List<RouteGpxMarker> markers,
 ) {
-  final waypoints = markers.map(_renderWaypoint).join('\n');
+  final waypoints =
+      markers.map(_renderWaypoint).whereType<String>().join('\n');
 
+  // A point or marker without finite coordinates is dropped rather than
+  // written as `lat="NaN"`, which every GPX reader refuses; a missing or
+  // non-finite elevation keeps the existing 0 fallback.
   final trackpoints = <String>[];
   for (var i = 0; i < coordinates.length; i++) {
     final lng = coordinates[i][0];
     final lat = coordinates[i][1];
-    final ele = i < elevations.length ? elevations[i] : 0;
+    if (!lat.isFinite || !lng.isFinite) continue;
+    final num ele =
+        i < elevations.length && elevations[i].isFinite ? elevations[i] : 0;
     trackpoints.add(
         '      <trkpt lat="${_gpxNum(lat)}" lon="${_gpxNum(lng)}">'
         '<ele>${_gpxNum(ele)}</ele></trkpt>');
@@ -69,10 +76,10 @@ String toRouteGpxWithMarkers(
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
   <metadata>
-    <name>${_escapeXml(name)}</name>
+    <name>${escapeXmlText(name)}</name>
   </metadata>
 ${waypoints.isNotEmpty ? '$waypoints\n' : ''}  <trk>
-    <name>${_escapeXml(name)}</name>
+    <name>${escapeXmlText(name)}</name>
     <trkseg>
 ${trackpoints.join('\n')}
     </trkseg>
@@ -80,16 +87,17 @@ ${trackpoints.join('\n')}
 </gpx>''';
 }
 
-String _renderWaypoint(RouteGpxMarker m) {
+String? _renderWaypoint(RouteGpxMarker m) {
+  if (!m.lat.isFinite || !m.lng.isFinite) return null;
   final parts = <String>[
     '  <wpt lat="${_gpxNum(m.lat)}" lon="${_gpxNum(m.lng)}">',
-    '<name>${_escapeXml(m.label)}</name>',
-    '<type>${_escapeXml(m.kind)}</type>',
+    '<name>${escapeXmlText(m.label)}</name>',
+    '<type>${escapeXmlText(m.kind)}</type>',
   ];
   final sym = _symByKind[m.kind];
   if (sym != null) parts.add('<sym>$sym</sym>');
   final desc = _buildDesc(m.meta);
-  if (desc.isNotEmpty) parts.add('<desc>${_escapeXml(desc)}</desc>');
+  if (desc.isNotEmpty) parts.add('<desc>${escapeXmlText(desc)}</desc>');
   parts.add('</wpt>');
   return parts.join('');
 }
@@ -115,20 +123,6 @@ String _buildDesc(Map<String, dynamic> meta) {
   }
 
   return segments.join(' | ');
-}
-
-/// The five XML-reserved characters, with the apostrophe as the NUMERIC
-/// `&#39;` rather than `&apos;`. The web twin escapes through the canonical
-/// `util/html_escape.ts`, which chose the numeric form so one escaper serves
-/// HTML4, HTML5 and XML/SVG alike; both spellings parse to `'`, but the two
-/// halves have to emit the same bytes (decisions § 1450).
-String _escapeXml(String str) {
-  return str
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#39;');
 }
 
 /// Render a coordinate the way the web twin's template literal does, so the

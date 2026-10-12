@@ -48,6 +48,9 @@ type Backend interface {
 	// filters by `disconnected_at IS NULL`, so the broken row
 	// stops re-appearing every hour. /audit/strava High #2.
 	MarkIntegrationDisconnected(ctx context.Context, userID, provider, reason string) error
+	// DeleteUserProviderSecrets drops the user's Vault token rows for
+	// `provider` (the `delete_user_provider_secrets` RPC). Idempotent.
+	DeleteUserProviderSecrets(ctx context.Context, userID, provider string) error
 	// TryConsumeStravaQuota gates the aggregate Strava-API call
 	// rate at 90% of Strava's published limits (90/15min + 900/day).
 	// Returns true → caller may proceed, false → caller must back

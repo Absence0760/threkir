@@ -19,7 +19,7 @@ export function parseAuthHeader(authHeader: string | null | undefined): string |
 }
 
 /// Clamp the caller's requested `recent_runs_limit` against the tier
-/// max (free: 30, pro: 200). Falls back to `DEFAULT_RUNS_LIMIT` when
+/// max (`TIER_LIMITS`: free 30, pro 75). Falls back to `DEFAULT_RUNS_LIMIT` when
 /// the input is missing or non-finite. Floors at 1 — a zero-runs
 /// context is never useful for the coach.
 export function clampRunsLimit(requested: unknown, tier: Tier): number {
@@ -39,12 +39,20 @@ export function validateRunsLimit(
 	requested: unknown,
 ): { ok: true } | { ok: false; reason: string } {
 	if (requested === undefined || requested === null) return { ok: true };
-	if (typeof requested === 'boolean') {
+	// A number, or a string of decimal digits. `Number()` alone also turns
+	// `true`, `[5]`, `'0x10'` and `' 7 '` into integers, none of which a
+	// well-formed client sends.
+	if (typeof requested !== 'number' && !(typeof requested === 'string' && /^\d+$/.test(requested))) {
 		return { ok: false, reason: 'recent_runs_limit must be a number' };
 	}
 	const n = Number(requested);
 	if (!Number.isFinite(n)) {
 		return { ok: false, reason: 'recent_runs_limit must be a finite number' };
+	}
+	// A fraction is not a run count; `clampRunsLimit` would silently floor it,
+	// which is the quiet coercion this check exists to refuse.
+	if (!Number.isInteger(n)) {
+		return { ok: false, reason: 'recent_runs_limit must be a whole number' };
 	}
 	if (n < 1) {
 		return { ok: false, reason: 'recent_runs_limit must be >= 1' };

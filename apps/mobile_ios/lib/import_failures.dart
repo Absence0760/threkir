@@ -266,7 +266,16 @@ List<ImportFailureGroup> groupImportFailures(ImportFailureLog log) {
   return out;
 }
 
-String _csvField(String value) => '"${value.replaceAll('"', '""')}"';
+/// Activity names come out of the runner's archive and `detail` out of a
+/// server's error text, so a cell starting `=` / `+` / `-` / `@` (or a tab /
+/// CR a spreadsheet strips first) is prefixed with `'` before quoting —
+/// quoting alone does not stop a spreadsheet evaluating it. Same guard as
+/// the web twin's `neutraliseSpreadsheetFormula` (`util/csv_formula.ts`).
+String _csvField(String value) {
+  final neutralised =
+      RegExp(r'^[=+\-@\t\r]').hasMatch(value) ? "'$value" : value;
+  return '"${neutralised.replaceAll('"', '""')}"';
+}
 
 /// A downloadable report of what did not import. Column headers are
 /// English identifiers, not localized copy — the file is a data artefact

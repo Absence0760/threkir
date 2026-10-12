@@ -161,3 +161,53 @@ test('a shorter window scopes the count', () => {
 test('a non-positive window is rejected', () => {
 	assert.equal(computeConsistency([weeksAgo(0), weeksAgo(1)], 'monday', 0, NOW), null);
 });
+
+function inZone<T>(tz: string, fn: () => T): T {
+	const prev = process.env.TZ;
+	process.env.TZ = tz;
+	try {
+		return fn();
+	} finally {
+		if (prev === undefined) delete process.env.TZ;
+		else process.env.TZ = prev;
+	}
+}
+
+// A week holding a DST change is 167 or 169 hours, so indexing by elapsed
+// milliseconds alone lands a run at its edges one week off. These pin the
+// Math.round the module relies on, in zones that actually change.
+test('a run at either edge of a DST week lands in that week (London, spring forward)', () => {
+	inZone('Europe/London', () => {
+		// Sun 29 Mar 2026 01:00 GMT -> 02:00 BST. Mon-start weeks.
+		const now = new Date(2026, 3, 8, 10, 0); // Wed 8 Apr
+		const stats = computeConsistency(
+			[
+				{ started_at: new Date(2026, 2, 23, 0, 30).toISOString(), distance_m: 5000 }, // Mon of DST week
+				{ started_at: new Date(2026, 2, 29, 23, 30).toISOString(), distance_m: 7000 }, // Sun of DST week
+				{ started_at: new Date(2026, 2, 30, 0, 30).toISOString(), distance_m: 9000 } // Mon after
+			],
+			'monday',
+			4,
+			now
+		)!;
+		assert.deepEqual(stats.weeklyDistanceM, [0, 12_000, 9000, 0]);
+	});
+});
+
+test('a run at either edge of a DST week lands in that week (Auckland, fall back, Sunday start)', () => {
+	inZone('Pacific/Auckland', () => {
+		// Sun 5 Apr 2026 03:00 NZDT -> 02:00 NZST. Sun-start weeks.
+		const now = new Date(2026, 3, 15, 10, 0); // Wed 15 Apr
+		const stats = computeConsistency(
+			[
+				{ started_at: new Date(2026, 3, 5, 0, 15).toISOString(), distance_m: 4000 }, // Sun DST day
+				{ started_at: new Date(2026, 3, 11, 23, 45).toISOString(), distance_m: 6000 }, // Sat end of week
+				{ started_at: new Date(2026, 3, 12, 0, 15).toISOString(), distance_m: 8000 } // next Sun
+			],
+			'sunday',
+			3,
+			now
+		)!;
+		assert.deepEqual(stats.weeklyDistanceM, [0, 10_000, 8000]);
+	});
+});

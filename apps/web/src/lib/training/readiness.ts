@@ -77,7 +77,10 @@ function bandFor(score: number): ReadinessBand {
  *               risk" / blunted edge — small but real)
  */
 function scoreTsb(tsb: number | null): ReadinessContribution | null {
-	if (tsb == null) return null;
+	// A non-finite TSB (a NaN out of a poisoned load series) is no signal:
+	// every comparison below is false for NaN, so it used to land on the
+	// final "over-tapered" branch and cost the score 3 points.
+	if (tsb == null || !Number.isFinite(tsb)) return null;
 	let delta = 0;
 	let note = '';
 	if (tsb < -20) {
@@ -106,7 +109,7 @@ function scoreTsb(tsb: number | null): ReadinessContribution | null {
 }
 
 function scoreSleep(hours: number | null | undefined): ReadinessContribution | null {
-	if (hours == null) return null;
+	if (hours == null || !Number.isFinite(hours)) return null;
 	let delta = 0;
 	let note = '';
 	if (hours < 5) {
@@ -132,7 +135,7 @@ function scoreRestingHr(
 	resting: number | null | undefined,
 	baseline: number | null | undefined,
 ): ReadinessContribution | null {
-	if (resting == null || baseline == null) return null;
+	if (resting == null || baseline == null || !Number.isFinite(resting - baseline)) return null;
 	const diff = resting - baseline;
 	let delta = 0;
 	let note = '';

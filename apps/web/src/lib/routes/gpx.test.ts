@@ -97,3 +97,63 @@ test('toKml — escapes the name in both the Document and the Placemark', () => 
 	const occurrences = (xml.match(/A &amp; B/g) ?? []).length;
 	assert.ok(occurrences >= 2, 'name escaped in both Document and Placemark');
 });
+
+/// Every code point XML 1.0 forbids in a document (the `Char` production).
+const XML_FORBIDDEN = /[^\t\n\r -퟿-�\u{10000}-\u{10FFFF}]/u;
+
+test('toRunGpx — escapes the start time and every point timestamp, not only the name', () => {
+	// Both come from a stored row and a stored track blob; an unescaped one
+	// closes the element and the file stops being GPX.
+	const xml = toRunGpx('Run', '2026-04-01T00:00:00Z</time><x>', [
+		{ lat: 1, lng: 2, ts: '2026-04-01T00:00:01Z</time><evil/>' },
+	]);
+	assert.ok(!xml.includes('<x>') && !xml.includes('<evil/>'), xml);
+	assert.ok(xml.includes('&lt;/time&gt;&lt;evil/&gt;'), xml);
+});
+
+test('toRunGpx — a point whose coordinates are not numbers is dropped, never written into an attribute', () => {
+	const track = [
+		{ lat: 47.37, lng: 8.54 },
+		{ lat: '47" onload="x' as unknown as number, lng: 8.541 },
+		{ lat: Number.NaN, lng: 8.542 },
+		{ lat: 47.373, lng: 8.543 },
+	];
+	const xml = toRunGpx('Run', '2026-04-01T00:00:00Z', track);
+	assert.equal((xml.match(/<trkpt /g) ?? []).length, 2, xml);
+	assert.ok(!xml.includes('onload') && !xml.includes('NaN'), xml);
+});
+
+test('toRunGpx — an elevation that is not a number is omitted, not printed', () => {
+	const xml = toRunGpx('Run', '2026-04-01T00:00:00Z', [
+		{ lat: 1, lng: 2, ele: '12</ele><x>' as unknown as number },
+		{ lat: 1, lng: 2.001, ele: Number.NaN },
+		{ lat: 1, lng: 2.002, ele: 0 },
+	]);
+	assert.equal((xml.match(/<ele>/g) ?? []).length, 1, 'only the real 0 m reading is kept');
+	assert.ok(xml.includes('<ele>0</ele>'));
+	assert.ok(!xml.includes('<x>'));
+});
+
+test('toGpx / toKml — a non-finite coordinate is dropped and a non-finite elevation reads as the 0 fallback', () => {
+	const coords: [number, number][] = [[8.54, 47.37], [Number.NaN, 47.371], [8.542, Infinity], [8.543, 47.373]];
+	const eles = [400, 410, 420, Number.NaN];
+	const gpx = toGpx('Loop', coords, eles);
+	assert.equal((gpx.match(/<trkpt /g) ?? []).length, 2, gpx);
+	assert.ok(!/NaN|Infinity/.test(gpx), gpx);
+	assert.ok(gpx.includes('lat="47.373" lon="8.543"><ele>0</ele>'), gpx);
+	const kml = toKml('Loop', coords, eles);
+	assert.ok(!/NaN|Infinity/.test(kml), kml);
+	assert.ok(kml.includes('8.54,47.37,400') && kml.includes('8.543,47.373,0'), kml);
+});
+
+test('toGpx / toRunGpx / toKml — a control character in the name cannot make the file unparseable', () => {
+	const name = 'Bell\u0007 lap\u000B \uD83C';
+	for (const xml of [
+		toGpx(name, COORDS_3, ELEVS_3),
+		toRunGpx(name, '2026-04-01T00:00:00Z', [{ lat: 1, lng: 2 }]),
+		toKml(name, COORDS_3, ELEVS_3),
+	]) {
+		assert.ok(!XML_FORBIDDEN.test(xml), JSON.stringify(xml.slice(0, 400)));
+		assert.ok(xml.includes('Bell� lap� �'), 'the name keeps every character it can');
+	}
+});

@@ -84,3 +84,26 @@ test('GeoJSON import — skips non-numeric lng/lat, no NaN distance', async () =
 	assert.ok(Number.isFinite(routes[0].distance_m), 'distance must be a finite number');
 	assert.ok(routes[0].distance_m > 0);
 });
+
+test('GeoJSON import — an out-of-range coordinate is skipped, never a NaN distance', async () => {
+	// [lng, lat] order: the second and third points are off the globe.
+	const routes = await parseRouteFile(geojsonFile([
+		[-0.1, 51.5],
+		[0, 1e308],
+		[200, 51.5],
+		[-0.1, 51.501],
+	]));
+	assert.equal(routes.length, 1);
+	assert.equal(routes[0].waypoints.length, 2);
+	assert.ok(Number.isFinite(routes[0].distance_m), `distance ${routes[0].distance_m}`);
+	assert.ok(Math.abs(routes[0].distance_m - 111.19) < 0.5, `distance ${routes[0].distance_m}`);
+});
+
+test('GeoJSON import — a lat/lng written in the wrong order is refused, not mapped', async () => {
+	// A [lat, lng] export of a point at 51.5 N, 120 W puts -120 in the
+	// latitude slot; no such latitude exists, so the file has no route.
+	await assert.rejects(
+		parseRouteFile(geojsonFile([[51.5, -120], [51.6, -120.1]])),
+		/no line-based routes/,
+	);
+});

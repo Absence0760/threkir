@@ -132,6 +132,27 @@ type StravaEventPayload struct {
 	AspectType string `json:"aspect_type"` // "create" | "update" | "delete"
 	OwnerID    int64  `json:"owner_id"`    // Strava athlete id (== integrations.external_id for the user)
 	EventTime  int64  `json:"event_time"`  // unix seconds
+	// Updates carries the changed fields of an "update" event. The one the
+	// worker acts on is an athlete's `authorized: "false"` (deauthorization).
+	Updates map[string]any `json:"updates,omitempty"`
+}
+
+// IsAthleteDeauthorization reports Strava's athlete-revoked-access event:
+// object_type "athlete", aspect_type "update", `updates.authorized` the
+// string "false" (a boolean false is accepted too). Mirrors
+// `isAthleteDeauthorization` in the Edge Function's
+// `_shared/strava_disconnect.ts`.
+func (p StravaEventPayload) IsAthleteDeauthorization() bool {
+	if p.ObjectType != "athlete" || p.AspectType != "update" {
+		return false
+	}
+	switch v := p.Updates["authorized"].(type) {
+	case string:
+		return v == "false"
+	case bool:
+		return !v
+	}
+	return false
 }
 
 // NotificationEmailPayload is the payload the notifications AFTER INSERT

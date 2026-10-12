@@ -55,13 +55,18 @@ export interface IcsEventInput {
 }
 
 /** Escape a TEXT value per RFC 5545 §3.3.11 (backslash, semicolon, comma,
- * newline). Colon needs no escaping in a TEXT value. */
+ * newline). Colon needs no escaping in a TEXT value. The grammar's TSAFE-CHAR
+ * excludes every CONTROL character but HTAB, and no escape spells one, so
+ * once the line breaks are escaped every other control character is dropped —
+ * a NUL or vertical tab pasted into an event title made strict parsers refuse
+ * the whole file. */
 function escapeText(value: string): string {
 	return value
 		.replace(/\\/g, '\\\\')
 		.replace(/;/g, '\\;')
 		.replace(/,/g, '\\,')
-		.replace(/\r\n|\r|\n/g, '\\n');
+		.replace(/\r\n|\r|\n/g, '\\n')
+		.replace(/[\u0000-\u0008\u000A-\u001F\u007F]/g, '');
 }
 
 /** Format an ISO instant as a UTC iCalendar date-time (`YYYYMMDDTHHMMSSZ`).

@@ -5,6 +5,7 @@
 // output onto account-optional `event_results` rows.
 
 import type { FinisherStatus } from '../types';
+import { neutraliseSpreadsheetFormula } from '../util/csv_formula';
 
 export interface ParsedResultRow {
 	bib: string;
@@ -217,12 +218,10 @@ function formatDurationCsv(totalS: number): string {
 }
 
 function escapeCsvField(value: string): string {
-	// Formula-injection guard: a field a spreadsheet would evaluate as a
-	// formula (leading = + - @, or a tab/CR it strips first) is prefixed
-	// with a single quote so Sheets/Excel render it as text. Finisher
-	// names + bibs are user-controlled (imported from an external sheet),
-	// so this matters even though only an organiser downloads the export.
-	const neutralised = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+	// Finisher names + bibs are user-controlled (imported from an external
+	// sheet), so the formula guard matters even though only an organiser
+	// downloads the export.
+	const neutralised = neutraliseSpreadsheetFormula(value);
 	return /[",\n\r]/.test(neutralised)
 		? `"${neutralised.replace(/"/g, '""')}"`
 		: neutralised;

@@ -51,7 +51,11 @@ export async function parseBackupArchive(
 	if (!manifestFile) {
 		throw new Error('Not a valid backup — missing manifest.json');
 	}
-	const manifest = JSON.parse(await manifestFile.async('string')) as {
+	const rawManifest: unknown = JSON.parse(await manifestFile.async('string'));
+	if (!isPlainObject(rawManifest)) {
+		throw new Error('Not a valid backup — manifest.json is not an object');
+	}
+	const manifest = rawManifest as {
 		format?: unknown;
 		version?: unknown;
 		[k: string]: unknown;
@@ -66,15 +70,8 @@ export async function parseBackupArchive(
 		);
 	}
 
-	const runsFile = zip.file('runs.json');
-	const runs = runsFile
-		? (JSON.parse(await runsFile.async('string')) as JsonObject[])
-		: [];
-
-	const routesFile = zip.file('routes.json');
-	const routes = routesFile
-		? (JSON.parse(await routesFile.async('string')) as JsonObject[])
-		: [];
+	const runs = await readRowList(zip, 'runs.json');
+	const routes = await readRowList(zip, 'routes.json');
 
 	let profile: JsonObject | null = null;
 	let settingsPrefs: JsonObject = {};
@@ -84,10 +81,10 @@ export async function parseBackupArchive(
 			profile?: unknown;
 			settings_prefs?: unknown;
 		};
-		if (parsed.profile && typeof parsed.profile === 'object') {
+		if (isPlainObject(parsed?.profile)) {
 			profile = parsed.profile as JsonObject;
 		}
-		if (parsed.settings_prefs && typeof parsed.settings_prefs === 'object') {
+		if (isPlainObject(parsed?.settings_prefs)) {
 			settingsPrefs = parsed.settings_prefs as JsonObject;
 		}
 	}
@@ -108,6 +105,25 @@ export async function parseBackupArchive(
 			return entry.async('uint8array');
 		}
 	};
+}
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+	return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+/// A section file that is present must be a JSON list. Anything else is a
+/// damaged archive, and is refused here rather than handed to the restore
+/// loop, which would throw part-way with nothing to say which file was wrong.
+/// A non-object ELEMENT is left for the restore to skip with a warning, so
+/// one bad row does not cost the rest of the section.
+async function readRowList(zip: JSZip, name: string): Promise<JsonObject[]> {
+	const file = zip.file(name);
+	if (!file) return [];
+	const parsed: unknown = JSON.parse(await file.async('string'));
+	if (!Array.isArray(parsed)) {
+		throw new Error(`Not a valid backup — ${name} is not a list`);
+	}
+	return parsed as JsonObject[];
 }
 
 /**
@@ -184,7 +200,7 @@ export function extractEventIds(runs: Record<string, unknown>[]): string[] {
 	return [
 		...new Set(
 			runs
-				.map((r) => r.event_id)
+				.map((r) => (isPlainObject(r) ? r.event_id : undefined))
 				.filter((v): v is string => typeof v === 'string' && v.length > 0)
 		)
 	];

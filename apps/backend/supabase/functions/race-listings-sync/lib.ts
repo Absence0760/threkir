@@ -19,6 +19,7 @@
 // nothing but crowd submissions.
 
 import { isIsoCalendarDate } from '../_shared/calendar_date.ts';
+import { clipText } from '../_shared/text_clip.ts';
 
 /// Bound the batch independently of upstream input, the same rule the two
 /// importers apply to theirs. A provider feed for one region is tens of races;
@@ -69,9 +70,8 @@ export interface RaceListingUpsert {
 function text(raw: unknown, max: number): string | null {
   if (typeof raw === 'number' && Number.isFinite(raw)) return String(raw);
   if (typeof raw !== 'string') return null;
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-  return trimmed.length <= max ? trimmed : trimmed.slice(0, max);
+  const clipped = clipText(raw, max);
+  return clipped ? clipped : null;
 }
 
 /// A URL only if it satisfies `race_listings_{entry,results}_url_scheme_check`.

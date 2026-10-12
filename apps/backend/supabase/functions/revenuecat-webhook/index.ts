@@ -201,7 +201,10 @@ async function applyRevenueCatEvent(
     currentTier = data?.subscription_tier ?? null;
   }
 
-  const newTier = mapEventToTier(event.type, event.product_id ?? null, currentTier);
+  const newTier = mapEventToTier(event.type, event.product_id ?? null, currentTier, {
+    expirationAtMs: event.expiration_at_ms,
+    cancelReason: event.cancel_reason,
+  });
   const billingIssueAt = mapEventToBillingIssue(event.type);
 
   // Build the patch — at most one round trip per webhook. Tier and
@@ -254,6 +257,8 @@ interface RevenueCatEvent {
   product_id?: string;
   id?: string;
   event_timestamp_ms?: number;
+  expiration_at_ms?: number | null;
+  cancel_reason?: string;
   [key: string]: unknown;
 }
 

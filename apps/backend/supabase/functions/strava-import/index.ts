@@ -4,6 +4,7 @@ import { checkRateLimit, checkRateLimitTiered } from '../_shared/rate_limit.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import { type StravaTokens, refreshStravaToken } from '../_shared/strava.ts';
+import { disconnectStravaLocally } from '../_shared/strava_disconnect.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
 import { isExactRedirectAllowed, parseRedirectAllowlist } from '../_shared/redirect_allowlist.ts';
 import { backfill } from './backfill.ts';
@@ -222,31 +223,9 @@ async function handleDisconnect(
 		}
 	}
 
-	// Drop vault rows + clear FK + clear token_expiry. Idempotent
-	// — re-running yields 0 deletes + clean state.
-	const { error: rpcErr } = await supabase.rpc('delete_user_provider_secrets', {
-		p_user_id: userId,
-		p_provider: 'strava',
-	});
-	if (rpcErr) {
-		console.error('strava-import: delete_user_provider_secrets failed', rpcErr.message);
-		return Response.json({ error: 'vault_cleanup_failed' }, { status: 500 });
-	}
-
-	// Stamp `disconnected_at` so subsequent token-refresh sweeps
-	// skip the row + the UI shows Reconnect Strava.
-	const { error: stampErr } = await supabase
-		.from('integrations')
-		.update({
-			disconnected_at: new Date().toISOString(),
-			disconnected_reason: 'user_initiated',
-			sync_cursor: null,
-		})
-		.eq('user_id', userId)
-		.eq('provider', 'strava');
-	if (stampErr) {
-		console.error('strava-import: stamp disconnected_at failed', stampErr.message);
-		return Response.json({ error: 'stamp_failed' }, { status: 500 });
+	const result = await disconnectStravaLocally(supabase, userId, 'user_initiated');
+	if (result !== 'ok') {
+		return Response.json({ error: result }, { status: 500 });
 	}
 
 	return Response.json({ ok: true, strava_deauth: stravaDeauthOutcome });

@@ -1507,6 +1507,17 @@ func buildGpxDoc(runID, startedAt, title string, track []TrackPoint) string {
 }
 
 func xmlEscape(s string) string {
+	// A code point outside XML 1.0's Char production (a C0 control other
+	// than tab/LF/CR, a surrogate, U+FFFE/U+FFFF) cannot be entity-escaped,
+	// and one in a run title made every parser refuse the whole GPX file.
+	// Replaced with U+FFFD, like the Edge Function twin in
+	// supabase/functions/export-data/render.ts.
+	s = strings.Map(func(c rune) rune {
+		if isXMLChar(c) {
+			return c
+		}
+		return '\uFFFD'
+	}, s)
 	r := strings.NewReplacer(
 		"&", "&amp;",
 		"<", "&lt;",
@@ -1515,6 +1526,13 @@ func xmlEscape(s string) string {
 		"'", "&apos;",
 	)
 	return r.Replace(s)
+}
+
+func isXMLChar(c rune) bool {
+	return c == 0x09 || c == 0x0A || c == 0x0D ||
+		(c >= 0x20 && c <= 0xD7FF) ||
+		(c >= 0xE000 && c <= 0xFFFD) ||
+		(c >= 0x10000 && c <= 0x10FFFF)
 }
 
 // DecodeTrackBytes is a helper exposed so the SupabaseClient

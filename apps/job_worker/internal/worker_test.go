@@ -183,6 +183,8 @@ type fakeBackend struct {
 	getTokenCalls         []string
 	setTokenCalls         []setTokenCall
 	markDisconnectedCalls []markDisconnectedCall
+	deleteSecretsCalls    []string
+	deleteSecretsErr      error
 	// quotaAllowOverride: nil → always allow. Pointer-to-false →
 	// always deny. /audit/strava M7 test seam.
 	quotaAllowOverride *bool
@@ -925,6 +927,18 @@ func (f *fakeBackend) SetIntegrationTokensCAS(_ context.Context, userID, provide
 	})
 	f.tokensByUser[userID] = TokenPair{AccessToken: access, RefreshToken: refresh}
 	return true, nil
+}
+
+func (f *fakeBackend) DeleteUserProviderSecrets(_ context.Context, userID, provider string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.deleteSecretsErr != nil {
+		err := f.deleteSecretsErr
+		f.deleteSecretsErr = nil
+		return err
+	}
+	f.deleteSecretsCalls = append(f.deleteSecretsCalls, userID+":"+provider)
+	return nil
 }
 
 func (f *fakeBackend) MarkIntegrationDisconnected(_ context.Context, userID, provider, reason string) error {

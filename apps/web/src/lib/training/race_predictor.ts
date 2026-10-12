@@ -103,8 +103,16 @@ function recencyWeight(ageDays: number): number {
 /// chosen anchor's ACTUAL distance + time, so the predictions are honest Riegel
 /// equivalences, not weighted fabrications.
 export function predictRaceLadder(efforts: EffortForPrediction[]): RacePrediction | null {
+	// `> 0` alone admits Infinity, which projects to NaN, can never win the
+	// anchor, and still counted toward `qualifyingCount` — and a pool of
+	// nothing else left no anchor at all and threw.
 	const pool = efforts.filter(
-		(e) => e.distanceM > 0 && e.durationS > 0 && Number.isFinite(e.ageDays),
+		(e) =>
+			Number.isFinite(e.distanceM) &&
+			Number.isFinite(e.durationS) &&
+			e.distanceM > 0 &&
+			e.durationS > 0 &&
+			Number.isFinite(e.ageDays),
 	);
 	if (pool.length === 0) return null;
 

@@ -63,7 +63,9 @@ ReadinessBand _bandFor(int score) {
 }
 
 ReadinessContribution? _scoreTsb(double? tsb) {
-  if (tsb == null) return null;
+  // A non-finite TSB is no signal: every comparison below is false for NaN,
+  // so it used to land on the final "over-tapered" branch.
+  if (tsb == null || !tsb.isFinite) return null;
   int delta;
   String note;
   if (tsb < -20) {
@@ -93,7 +95,7 @@ ReadinessContribution? _scoreTsb(double? tsb) {
 }
 
 ReadinessContribution? _scoreSleep(double? hours) {
-  if (hours == null) return null;
+  if (hours == null || !hours.isFinite) return null;
   int delta;
   String note;
   if (hours < 5) {

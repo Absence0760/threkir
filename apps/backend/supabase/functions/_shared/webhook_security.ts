@@ -97,6 +97,7 @@ export async function verifyTimestampedHmac(
 
   const parts = sigHeader.split(',');
   let timestamp: number | null = null;
+  let timestampText = '';
   const v1Sigs: string[] = [];
   for (const part of parts) {
     const idx = part.indexOf('=');
@@ -110,10 +111,15 @@ export async function verifyTimestampedHmac(
       // signed payload is rebuilt from the PARSED integer rather than from
       // the header text, a change to sign the text instead would have been
       // invisible to every test, since a clean header round-trips. Requiring
-      // the two to be the same string removes the distinction.
+      // the two to be the same string removes the distinction — so the
+      // payload is signed over the header TEXT, which also refuses a
+      // zero-padded `t=01700000000` that parses to a validly-signed value.
       if (!/^\d+$/.test(value)) continue;
       const n = Number.parseInt(value, 10);
-      if (Number.isFinite(n)) timestamp = n;
+      if (Number.isFinite(n)) {
+        timestamp = n;
+        timestampText = value;
+      }
     } else if (key === 'v1') {
       v1Sigs.push(value);
     }
@@ -125,7 +131,7 @@ export async function verifyTimestampedHmac(
   const ageSec = Math.abs(nowMs / 1000 - timestamp);
   if (ageSec > toleranceSec) return false;
 
-  const expected = await hmacHex(secret, `${timestamp}.${rawBody}`);
+  const expected = await hmacHex(secret, `${timestampText}.${rawBody}`);
   for (const candidate of v1Sigs) {
     if (timingSafeEqual(candidate, expected)) return true;
   }

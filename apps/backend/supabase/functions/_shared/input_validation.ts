@@ -20,7 +20,19 @@ export function isValidUuid(s: unknown): boolean {
 }
 
 const TIMESTAMPTZ_RE =
-  /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,9})?)?(?:[Zz]|([+-])(\d{2})(?::?(\d{2}))?)?$/;
+  /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,9}))?)?(?:[Zz]|([+-])(\d{2})(?::?(\d{2}))?)?$/;
+
+/// A fractional-seconds digit string as whole microseconds, rounded the way
+/// Postgres stores it: to six digits, an exact half going to the even
+/// neighbour (it rounds with `rint`).
+function roundedMicros(fraction: string | undefined): number {
+  if (fraction === undefined) return 0;
+  const whole = Number((fraction + '000000').slice(0, 6));
+  const rest = fraction.slice(6);
+  if (rest === '' || rest[0] < '5') return whole;
+  const exactHalf = rest[0] === '5' && /^0*$/.test(rest.slice(1));
+  return exactHalf && whole % 2 === 0 ? whole : whole + 1;
+}
 
 function daysInMonth(year: number, month: number): number {
   if (month === 2) {
@@ -59,13 +71,20 @@ export function isValidTimestamptz(s: unknown): boolean {
   if (day < 1 || day > daysInMonth(year, month)) return false;
   // 24:00:00 is a legal end-of-day literal, which Postgres also takes;
   // 24:00:01 is not. `:60` is the leap second.
-  if (hour > 24 || (hour === 24 && (minute > 0 || second > 0))) return false;
-  if (minute > 59 || second > 60) return false;
+  if (hour > 24 || minute > 59 || second > 60) return false;
+  // The bound is on the whole time of day, fraction included, because that
+  // is what Postgres checks: 24:00:00.5 and 23:59:60.5 (which rolls to
+  // 24:00:00.5) are out of range, 12:30:60.2 is not. Postgres keeps
+  // microseconds, so the fraction is rounded to six digits first —
+  // 24:00:00.0000001 is accepted as 24:00:00.
+  const micros = hour * 3_600_000_000 + minute * 60_000_000 + second * 1_000_000 +
+    roundedMicros(m[7]);
+  if (micros > 86_400_000_000) return false;
 
-  if (m[8] !== undefined) {
+  if (m[9] !== undefined) {
     // Postgres tops out at ±15:59.
-    const offsetHour = Number(m[8]);
-    const offsetMinute = m[9] === undefined ? 0 : Number(m[9]);
+    const offsetHour = Number(m[9]);
+    const offsetMinute = m[10] === undefined ? 0 : Number(m[10]);
     if (offsetHour > 15 || offsetMinute > 59) return false;
   }
   return true;

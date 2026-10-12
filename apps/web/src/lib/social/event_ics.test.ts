@@ -365,3 +365,30 @@ test('icsFilename slugs the title and always ends in .ics', () => {
 	assert.equal(icsFilename('  !!!  '), 'event.ics');
 	assert.equal(icsFilename('Café 10K — Île'), 'caf-10k-le.ics');
 });
+
+// RFC 5545 §3.3.11: TSAFE-CHAR excludes every CONTROL character except HTAB,
+// and there is no escape for one. A NUL or vertical tab in an event title (the
+// column has no control-character CHECK) made strict parsers refuse the file.
+test('buildEventIcs drops control characters TEXT cannot carry, keeping tab and line breaks', () => {
+	const ics = buildEventIcs({
+		...BASE,
+		title: 'Tempo\u0000 run\u000B',
+		description: 'Bring\twater\r\nand a \u001Blight\u007F',
+		location: 'Gate\u0007 3'
+	})!;
+	assert.match(ics, /\r\nSUMMARY:Tempo run\r\n/);
+	assert.match(ics, /\r\nDESCRIPTION:Bring\twater\\nand a light\r\n/);
+	assert.match(ics, /\r\nLOCATION:Gate 3\r\n/);
+	// Only CRLF line ends remain as raw control characters.
+	assert.ok(!/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(ics));
+	assert.ok(!/[^\r]\n/.test(ics), 'every LF is part of a CRLF line end');
+});
+
+test('buildEventIcs escapes a backslash before the escapes it introduces', () => {
+	const bs = '\\';
+	const ics = buildEventIcs({ ...BASE, title: `a${bs};b${bs}nc` })!;
+	// A literal backslash-semicolon and backslash-n come out as an escaped
+	// backslash followed by their own escapes, never as a bare escaped
+	// semicolon or a line break.
+	assert.ok(ics.includes(`SUMMARY:a${bs}${bs}${bs};b${bs}${bs}nc\r\n`));
+});

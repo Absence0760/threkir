@@ -63,3 +63,41 @@ Deno.test('postgrest error with details but NO code → message only, no spuriou
 		'details row value must be stripped',
 	);
 });
+
+Deno.test('row data nested in a non-string details or hint is stripped too', () => {
+	const out = sanitizeErrorForCapture({
+		message: 'new row violates check constraint "runs_distance_check"',
+		code: '23514',
+		details: { row: { email: 'secret@user.com', lat: 51.5011, lng: -0.1416 } },
+		hint: ['Failing row contains (secret@user.com, 51.5011, -0.1416)'],
+	});
+	assert(out instanceof Error);
+	const serialised = JSON.stringify(out) + String(out) + Object.keys(out as object).join(',');
+	for (const leak of ['secret@user.com', '51.5011', '-0.1416']) {
+		assert(!serialised.includes(leak), `${leak} survived sanitisation`);
+	}
+	assertEquals((out as Error).message, 'new row violates check constraint "runs_distance_check" [23514]');
+});
+
+Deno.test('a PostgREST error carrying only a hint is still treated as one', () => {
+	const out = sanitizeErrorForCapture({
+		message: 'permission denied for table user_profiles',
+		hint: 'Key (handle)=(secret_handle) is not yours',
+	});
+	assert(out instanceof Error);
+	assert(!JSON.stringify(out).includes('secret_handle'));
+	assert(!String((out as Error).message).includes('secret_handle'));
+});
+
+Deno.test('the sanitised error has no details or hint property for an SDK to serialise', () => {
+	const out = sanitizeErrorForCapture({
+		message: 'duplicate key',
+		code: '23505',
+		details: 'Key (email)=(secret@user.com) already exists.',
+		hint: 'x',
+	}) as Error & Record<string, unknown>;
+	assertEquals(out.name, 'PostgrestError', 'the class stays triageable');
+	assertEquals('details' in out, false);
+	assertEquals('hint' in out, false);
+	assertEquals('code' in out, false, 'the code rides in the message, not as a field');
+});

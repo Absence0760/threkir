@@ -56,6 +56,7 @@ import '../widgets/segments_panel.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/undo_bar.dart';
+import '../xml_text.dart';
 
 /// Pure helper — filter the viewer's club memberships down to clubs
 /// they can transfer a route into (owner or admin). Mirrors the
@@ -2089,23 +2090,22 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
 }
 
 String _routeToKml(cm.Route route) {
-  String esc(String s) => s
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;');
-
   final coords = StringBuffer();
+  // A waypoint without finite coordinates is dropped rather than written as
+  // `NaN`, which every KML reader refuses; a non-finite elevation is 0.
   for (final w in route.waypoints) {
-    coords.writeln('          ${w.lng},${w.lat},${w.elevationMetres ?? 0}');
+    if (!w.lat.isFinite || !w.lng.isFinite) continue;
+    final ele = w.elevationMetres;
+    coords.writeln(
+        '          ${w.lng},${w.lat},${ele != null && ele.isFinite ? ele : 0}');
   }
 
   return '<?xml version="1.0" encoding="UTF-8"?>\n'
       '<kml xmlns="http://www.opengis.net/kml/2.2">\n'
       '  <Document>\n'
-      '    <name>${esc(route.name)}</name>\n'
+      '    <name>${escapeXmlText(route.name)}</name>\n'
       '    <Placemark>\n'
-      '      <name>${esc(route.name)}</name>\n'
+      '      <name>${escapeXmlText(route.name)}</name>\n'
       '      <Style>\n'
       '        <LineStyle>\n'
       '          <color>ffff0000</color>\n'
@@ -2123,27 +2123,23 @@ String _routeToKml(cm.Route route) {
 }
 
 String _routeToGpx(cm.Route route) {
-  String esc(String s) => s
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;');
-
   final buf = StringBuffer();
   buf.writeln('<?xml version="1.0" encoding="UTF-8"?>');
   buf.writeln(
       '<gpx version="1.1" creator="Run" xmlns="http://www.topografix.com/GPX/1/1">');
   buf.writeln('  <metadata>');
-  buf.writeln('    <name>${esc(route.name)}</name>');
+  buf.writeln('    <name>${escapeXmlText(route.name)}</name>');
   buf.writeln('    <time>${DateTime.now().toUtc().toIso8601String()}</time>');
   buf.writeln('  </metadata>');
   buf.writeln('  <trk>');
-  buf.writeln('    <name>${esc(route.name)}</name>');
+  buf.writeln('    <name>${escapeXmlText(route.name)}</name>');
   buf.writeln('    <trkseg>');
   for (final w in route.waypoints) {
+    if (!w.lat.isFinite || !w.lng.isFinite) continue;
     buf.write('      <trkpt lat="${w.lat}" lon="${w.lng}">');
-    if (w.elevationMetres != null) {
-      buf.write('<ele>${w.elevationMetres}</ele>');
+    final ele = w.elevationMetres;
+    if (ele != null && ele.isFinite) {
+      buf.write('<ele>$ele</ele>');
     }
     buf.writeln('</trkpt>');
   }

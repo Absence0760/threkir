@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -441,5 +442,102 @@ func TestBuildTrackFromStreams_EmptyLatLngYieldsEmpty(t *testing.T) {
 	track := BuildTrackFromStreams(map[string]StravaStream{}, "2026-05-11T10:00:00Z")
 	if len(track) != 0 {
 		t.Errorf("expected empty track; got %d points", len(track))
+	}
+}
+
+func runStravaJob(t *testing.T, be *fakeBackend, st StravaIngestor, p StravaEventPayload) {
+	t.Helper()
+	be.jobs = []*Job{{ID: 1, Kind: "strava_event", Payload: stravaEventPayload(t, p)}}
+	w := newStravaWorker(be, st)
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	_ = w.Run(ctx)
+}
+
+func deauthPayload(owner int64) StravaEventPayload {
+	return StravaEventPayload{
+		ObjectType: "athlete", AspectType: "update",
+		ObjectID: owner, OwnerID: owner, EventTime: time.Now().Unix(),
+		Updates: map[string]any{"authorized": "false"},
+	}
+}
+
+func TestStravaEvent_DeauthorizationDisconnectsTheIntegration(t *testing.T) {
+	be := newFakeBackend()
+	be.integrationByAthlete[200] = "user-A"
+	st := &fakeStrava{}
+	runStravaJob(t, be, st, deauthPayload(200))
+
+	if len(be.finished) != 1 || be.finished[0].Status != "done" {
+		t.Fatalf("deauthorization should finish done; got %v", be.finished)
+	}
+	if len(be.deleteSecretsCalls) != 1 || be.deleteSecretsCalls[0] != "user-A:strava" {
+		t.Errorf("vault cleanup calls=%v, want [user-A:strava]", be.deleteSecretsCalls)
+	}
+	if len(be.markDisconnectedCalls) != 1 {
+		t.Fatalf("mark-disconnected calls=%d, want 1", len(be.markDisconnectedCalls))
+	}
+	if c := be.markDisconnectedCalls[0]; c.UserID != "user-A" || c.Provider != "strava" || c.Reason != "athlete_deauthorized" {
+		t.Errorf("marked %+v, want user-A/strava/athlete_deauthorized", c)
+	}
+	if len(st.activityCalls) != 0 {
+		t.Errorf("a deauthorization must not call Strava; got %d", len(st.activityCalls))
+	}
+}
+
+func TestStravaEvent_DeauthorizationRunsWithoutAStravaClient(t *testing.T) {
+	be := newFakeBackend()
+	be.integrationByAthlete[200] = "user-A"
+	runStravaJob(t, be, nil, deauthPayload(200))
+	if len(be.finished) != 1 || be.finished[0].Status != "done" {
+		t.Fatalf("deauthorization needs no Strava client; got %v", be.finished)
+	}
+	if len(be.markDisconnectedCalls) != 1 {
+		t.Errorf("mark-disconnected calls=%d, want 1", len(be.markDisconnectedCalls))
+	}
+}
+
+func TestStravaEvent_DeauthorizationForUnlinkedAthleteIsANoOp(t *testing.T) {
+	be := newFakeBackend()
+	runStravaJob(t, be, &fakeStrava{}, deauthPayload(999))
+	if len(be.finished) != 1 || be.finished[0].Status != "done" {
+		t.Fatalf("unlinked athlete should finish done; got %v", be.finished)
+	}
+	if len(be.deleteSecretsCalls) != 0 || len(be.markDisconnectedCalls) != 0 {
+		t.Errorf("nothing to disconnect; got vault=%v marks=%v", be.deleteSecretsCalls, be.markDisconnectedCalls)
+	}
+}
+
+func TestStravaEvent_DeauthorizationVaultFailureDoesNotStampAndIsNotDone(t *testing.T) {
+	be := newFakeBackend()
+	be.integrationByAthlete[200] = "user-A"
+	be.deleteSecretsErr = errors.New("supabase 503")
+	runStravaJob(t, be, &fakeStrava{}, deauthPayload(200))
+	if len(be.markDisconnectedCalls) != 0 {
+		t.Errorf("a failed vault cleanup must not stamp the row disconnected; got %v", be.markDisconnectedCalls)
+	}
+	for _, f := range be.finished {
+		if f.Status == "done" {
+			t.Fatalf("a failed vault cleanup must not finish done; got %v", be.finished)
+		}
+	}
+}
+
+func TestStravaEventPayload_IsAthleteDeauthorization(t *testing.T) {
+	cases := []struct {
+		p    StravaEventPayload
+		want bool
+	}{
+		{StravaEventPayload{ObjectType: "athlete", AspectType: "update", Updates: map[string]any{"authorized": "false"}}, true},
+		{StravaEventPayload{ObjectType: "athlete", AspectType: "update", Updates: map[string]any{"authorized": false}}, true},
+		{StravaEventPayload{ObjectType: "athlete", AspectType: "update", Updates: map[string]any{"authorized": "true"}}, false},
+		{StravaEventPayload{ObjectType: "athlete", AspectType: "update"}, false},
+		{StravaEventPayload{ObjectType: "activity", AspectType: "update", Updates: map[string]any{"authorized": "false"}}, false},
+		{StravaEventPayload{ObjectType: "athlete", AspectType: "create", Updates: map[string]any{"authorized": "false"}}, false},
+	}
+	for i, c := range cases {
+		if got := c.p.IsAthleteDeauthorization(); got != c.want {
+			t.Errorf("case %d: got %v, want %v", i, got, c.want)
+		}
 	}
 }

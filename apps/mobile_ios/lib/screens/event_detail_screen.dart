@@ -380,7 +380,15 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
     );
     if (Platform.isAndroid) {
-      final q = label != null ? '?q=$lat,$lng(${Uri.encodeComponent(label)})' : '';
+      // The label sits inside `(...)`, which `encodeComponent` leaves as is,
+      // so a ")" in it closed the label early; parentheses are encoded too
+      // (the web `geoUri` in static_map.ts does the same).
+      final encodedLabel = label == null
+          ? ''
+          : Uri.encodeComponent(label)
+              .replaceAll('(', '%28')
+              .replaceAll(')', '%29');
+      final q = label != null ? '?q=$lat,$lng($encodedLabel)' : '';
       final geo = Uri.parse('geo:$lat,$lng$q');
       try {
         if (await canLaunchUrl(geo)) {

@@ -104,8 +104,16 @@ double _recencyWeight(double ageDays) {
 /// whose recency-weighted equivalent time is fastest; the ladder then projects
 /// from the chosen anchor's ACTUAL distance + time.
 RacePrediction? predictRaceLadder(List<EffortForPrediction> efforts) {
+  // `> 0` alone admits an infinite distance (durationS is an int, so only
+  // the double can be one), which projects to NaN, can never win the
+  // anchor, and still counted toward `qualifyingCount` — and a pool of
+  // nothing else left no anchor at all and threw.
   final pool = efforts
-      .where((e) => e.distanceM > 0 && e.durationS > 0 && e.ageDays.isFinite)
+      .where((e) =>
+          e.distanceM.isFinite &&
+          e.distanceM > 0 &&
+          e.durationS > 0 &&
+          e.ageDays.isFinite)
       .toList();
   if (pool.isEmpty) return null;
 

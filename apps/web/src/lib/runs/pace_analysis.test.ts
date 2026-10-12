@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { analysePacing, gradeAdjustedSplitPaces, EVEN_BAND_PCT } from './pace_analysis';
-import { computeRealSplits } from './run_stats';
+import { computeRealSplits, haversineMetres } from './run_stats';
 import type { TrackPoint } from '../types';
 
 const METRES_PER_DEG_LNG = 111_320;
@@ -193,4 +193,48 @@ test('halves stay sane across the antimeridian', () => {
 	assert.ok(a);
 	assert.ok(Math.abs(a.raw.first.distanceM - a.raw.second.distanceM) < 1);
 	assert.ok(a.raw.first.distanceM < 3000);
+});
+
+// The halves are cut at an interpolated point both slices share, so no metre
+// and no second of the run falls between them — whatever the cut lands on.
+test('the two halves split the distance evenly and their durations add up to the whole run', () => {
+	// 13 steps of 300 m: the midpoint (1950 m) falls inside a step, not on a fix.
+	const t: TrackPoint[] = [];
+	const t0 = Date.parse(START_TS);
+	for (let i = 0; i <= 13; i++) {
+		t.push({
+			lat: 0,
+			lng: (i * 300) / METRES_PER_DEG_LNG,
+			ts: new Date(t0 + i * (i < 7 ? 90_000 : 100_000)).toISOString()
+		});
+	}
+	const r = analysePacing(t)!;
+	const total = r.raw.first.distanceM + r.raw.second.distanceM;
+	assert.ok(Math.abs(r.raw.first.distanceM - r.raw.second.distanceM) < 0.01);
+	let whole = 0;
+	for (let i = 1; i < t.length; i++) whole += haversineMetres(t[i - 1].lat, t[i - 1].lng, t[i].lat, t[i].lng);
+	assert.ok(Math.abs(total - whole) < 0.01);
+	const elapsedS = (Date.parse(t[13].ts!) - t0) / 1000;
+	assert.ok(Math.abs(r.raw.first.durationS + r.raw.second.durationS - elapsedS) < 0.01);
+	assert.equal(r.raw.verdict, 'positive');
+});
+
+test('grade-adjusted halves need elevation on both halves, not just one', () => {
+	const t = track({ halfM: 2000, stepM: 50, paces: [300, 300] });
+	// Elevation only on the first half's points.
+	const half = Math.floor(t.length / 2);
+	const partial = t.map((p, i) => (i < half - 1 ? { ...p, ele: 100 + i } : p));
+	const r = analysePacing(partial)!;
+	assert.equal(r.gradeAdjusted, null);
+	assert.equal(r.raw.verdict, 'even');
+});
+
+test('the even band is measured against the first half, so it scales with pace', () => {
+	// At 4:00/km the band is 4.8 s; at 7:00/km it is 8.4 s. A 6 s fade is
+	// even for the slow runner and a positive split for the fast one.
+	const fast = analysePacing(track({ halfM: 2500, stepM: 50, paces: [240, 246] }))!;
+	const slow = analysePacing(track({ halfM: 2500, stepM: 50, paces: [420, 426] }))!;
+	assert.equal(240 * EVEN_BAND_PCT < 6, true);
+	assert.equal(fast.raw.verdict, 'positive');
+	assert.equal(slow.raw.verdict, 'even');
 });

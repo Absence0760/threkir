@@ -27,7 +27,7 @@ export type RecapOgInput = {
 };
 
 import { OG_CARD_DARK } from './og_card_palette';
-import { escapeHtml } from '../util/html_escape';
+import { escapeXml } from '../util/html_escape';
 
 const W = 1200;
 const H = 630;
@@ -66,12 +66,12 @@ export function buildRecapOgSvg(input: RecapOgInput, unit: 'km' | 'mi' = 'km'): 
 	const period = (input.periodLabel ?? (input.year != null ? String(input.year) : '')).trim();
 	const kicker = period ? `MY ${period.toUpperCase()} IN RUNNING` : 'MY YEAR IN RUNNING';
 	parts.push(
-		`<text x="${PAD}" y="${PAD + 84}" font-family="${F}" font-size="28" font-weight="700" fill="${LABEL_FILL}" letter-spacing="3">${escapeHtml(kicker)}</text>`,
+		`<text x="${PAD}" y="${PAD + 84}" font-family="${F}" font-size="28" font-weight="700" fill="${LABEL_FILL}" letter-spacing="3">${escapeXml(kicker)}</text>`,
 	);
 
 	// Hero — total distance.
 	parts.push(
-		`<text x="${PAD}" y="${PAD + 230}" font-family="${F}" font-size="150" font-weight="900" fill="${HERO_FILL}">${escapeHtml(fmtDistanceKm(input.totalDistanceM, unit))}</text>`,
+		`<text x="${PAD}" y="${PAD + 230}" font-family="${F}" font-size="150" font-weight="900" fill="${HERO_FILL}">${escapeXml(fmtDistanceKm(input.totalDistanceM, unit))}</text>`,
 	);
 
 	// Subhead — run count (+ attribution).
@@ -80,7 +80,7 @@ export function buildRecapOgSvg(input: RecapOgInput, unit: 'km' | 'mi' = 'km'): 
 	const by = input.displayName?.trim();
 	const subhead = by ? `${n} ${runWord} · ${by}` : `across ${n} ${runWord}`;
 	parts.push(
-		`<text x="${PAD}" y="${PAD + 296}" font-family="${F}" font-size="40" font-weight="600" fill="${STAT_FILL}">${escapeHtml(subhead)}</text>`,
+		`<text x="${PAD}" y="${PAD + 296}" font-family="${F}" font-size="40" font-weight="600" fill="${STAT_FILL}">${escapeXml(subhead)}</text>`,
 	);
 
 	// Stat row along the bottom — three headline cells.
@@ -94,10 +94,10 @@ export function buildRecapOgSvg(input: RecapOgInput, unit: 'km' | 'mi' = 'km'): 
 	cells.forEach((cell, i) => {
 		const x = PAD + i * colW;
 		parts.push(
-			`<text x="${x}" y="${rowY}" font-family="${F}" font-size="24" font-weight="700" fill="${LABEL_FILL}" letter-spacing="2">${escapeHtml(cell.label)}</text>`,
+			`<text x="${x}" y="${rowY}" font-family="${F}" font-size="24" font-weight="700" fill="${LABEL_FILL}" letter-spacing="2">${escapeXml(cell.label)}</text>`,
 		);
 		parts.push(
-			`<text x="${x}" y="${rowY + 46}" font-family="${F}" font-size="48" font-weight="800" fill="${STAT_FILL}">${escapeHtml(cell.value)}</text>`,
+			`<text x="${x}" y="${rowY + 46}" font-family="${F}" font-size="48" font-weight="800" fill="${STAT_FILL}">${escapeXml(cell.value)}</text>`,
 		);
 	});
 

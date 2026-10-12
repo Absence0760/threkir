@@ -300,3 +300,17 @@ Deno.test('the provider URL carries the credential and the region, per provider'
   assert(!us.includes('radius='), 'no hint means no region params');
   assert(us !== rs, 'the two providers must not resolve to one endpoint');
 });
+
+// The listings land in one batch upsert. A name capped through the middle of an
+// emoji leaves half a character, Postgres refuses the request body's JSON, and
+// every race in the batch goes with it.
+Deno.test('a capped race name never ends in half an emoji', () => {
+  const race = readRunSignUpRace({
+    race_id: 9,
+    name: 'a'.repeat(MAX_LISTING_NAME_LEN - 1) + '\u{1F383} Pumpkin Run',
+    next_date: '2027-10-30',
+  });
+  assert(race);
+  assertEquals(race.name, 'a'.repeat(MAX_LISTING_NAME_LEN - 1));
+  assertEquals(/[\uD800-\uDFFF]/.test(race.name), false);
+});

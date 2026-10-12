@@ -206,4 +206,25 @@ void main() {
       );
     });
   });
+
+  group('proPlanForProduct', () {
+    test('names the App Store products', () {
+      expect(proPlanForProduct('pro_monthly'), ProPlan.monthly);
+      expect(proPlanForProduct('pro_annual'), ProPlan.annual);
+    });
+
+    test('reads a Play product:base-plan identifier', () {
+      expect(proPlanForProduct('pro_monthly:monthly'), ProPlan.monthly);
+      expect(proPlanForProduct('pro_annual:yearly'), ProPlan.annual);
+    });
+
+    test('names no plan for an unrecognisable product', () {
+      expect(proPlanForProduct('lifetime'), isNull);
+    });
+  });
+
+  test('loadProEntitlement returns null when the SDK has no API key',
+      () async {
+    expect(await loadProEntitlement('user-1', keyOverride: ''), isNull);
+  });
 }

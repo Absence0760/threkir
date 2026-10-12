@@ -525,7 +525,8 @@ class _HomeScreenState extends State<HomeScreen>
             preferences: widget.preferences,
           ),
         SettingsDestination.about => const SettingsAboutScreen(),
-        SettingsDestination.pro => const SettingsProScreen(),
+        SettingsDestination.pro =>
+            SettingsProScreen(apiClient: widget.apiClient),
       };
 
   Future<void> _pushClubsHub(ApiClient api) => _pushScreen(ClubsScreen(

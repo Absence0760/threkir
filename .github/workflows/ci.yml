@@ -20,7 +20,16 @@ on:
   # would rebuild ~19 jobs on every description typo — against the runner
   # budget the concurrency block below is already rationing — so it stays
   # out. Push a commit, or close and reopen the PR, to force a run.
+  #
+  # Draft PRs build nothing: every root job below carries
+  # `if: github.event.pull_request.draft != true`, so the whole graph skips,
+  # and `ready_for_review` starts the full run the moment the PR is marked
+  # ready. The CI gate FAILS on a draft rather than skipping, because a
+  # skipped required check counts as a pass — a draft-era skip on the same
+  # SHA could otherwise satisfy branch protection in the window between
+  # "ready" and the real gate reporting.
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
   # A run is ~19 jobs at ~85-90 min, and every workflow in the repo competes
@@ -88,6 +97,7 @@ jobs:
   # and the gate below already counts `skipped` as a pass.
   changes:
     name: Detect non-docs changes
+    if: github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -1301,6 +1311,7 @@ jobs:
 
   parity-matrix:
     name: Doc registry drift (parity matrix, iOS column, TS↔Dart pairs, checkboxes, watch counts, doc links, test counts, release table)
+    if: github.event.pull_request.draft != true
     # Lightweight markdown audits of the registries that describe what ships
     # where, which helpers must move together, and how a doc says a thing is
     # only half done.
@@ -1721,6 +1732,7 @@ jobs:
 
   watch-ios-locale-parity:
     name: watchOS source-level guards (catalog, declarations, duplicated sources)
+    if: github.event.pull_request.draft != true
     # decisions.md § 761 — apps/watch_ios/scripts/check_xcstrings_parity.sh has
     # existed since the catalog did and ran in NO job: a translation missing
     # from Localizable.xcstrings, or a locale translated but absent from
@@ -1807,6 +1819,7 @@ jobs:
 
   watch-garmin-source:
     name: Garmin data-field source-level guards (grade reset, annotations, permissions, strings)
+    if: github.event.pull_request.draft != true
     # The Garmin tier is the least verified thing in the monorepo. No job
     # compiles the Monkey C, no job runs its `(:test)` suite, and the Connect IQ
     # SDK is on no machine here — so until now the ONLY automated claim about it
@@ -2071,6 +2084,7 @@ jobs:
   # exits 1 on a detection. Nothing else about the scan reaches a reader.
   gitleaks:
     name: Secret scan (gitleaks)
+    if: github.event.pull_request.draft != true
     permissions:
       contents: read
       # The action lists a PR's existing review comments before deciding
@@ -4244,6 +4258,11 @@ jobs:
       - e2e-web-sso
       - test-watch-ios
     steps:
+      - name: Refuse to pass a draft
+        if: github.event.pull_request.draft == true
+        run: |
+          echo "::error::Draft PR: CI was not run. Mark it ready for review to run it."
+          exit 1
       - name: Require every upstream job to have passed
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}

@@ -379,8 +379,8 @@ export const PR_ADVISORY = new Map([
 	],
 	[
 		'pr-title-lint.yml',
-		'it triggers on `edited`, which is how a corrected title re-lints. `ci.yml` carries no ' +
-			'`types:` and therefore not `edited`, deliberately — adding it rebuilds every job on ' +
+		'it triggers on `edited`, which is how a corrected title re-lints. `ci.yml`\'s ' +
+			'`types:` leaves out `edited`, deliberately — adding it rebuilds every job on ' +
 			'a description typo — so folding this in would leave a retitled PR wearing the ' +
 			'verdict on the title it no longer has.',
 	],

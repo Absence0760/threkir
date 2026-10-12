@@ -4,9 +4,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../lib/l10n/date_format.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/legal_links.dart';
 import '../lib/pro_sellable.dart';
@@ -17,10 +19,23 @@ import 'pro_plan_fixtures.dart';
 import 'pump_until.dart';
 
 class _FakeProStore implements ProStore {
-  _FakeProStore(this._load);
+  _FakeProStore(
+    this._load, {
+    this.entitlement,
+    this.purchaseResult = PurchaseResult.cancelled,
+    this.entitlementOnSuccess,
+  });
 
   final Future<ProPlanOptions?> Function() _load;
   final purchased = <ProPlan>[];
+  var restores = 0;
+
+  /// What the store reports as the active Pro entitlement right now.
+  ProEntitlement? entitlement;
+  final PurchaseResult purchaseResult;
+
+  /// The entitlement a successful purchase or restore leaves behind.
+  final ProEntitlement? entitlementOnSuccess;
 
   @override
   bool get configured => true;
@@ -31,8 +46,23 @@ class _FakeProStore implements ProStore {
   @override
   Future<PurchaseResult> purchase(ProPlan plan) async {
     purchased.add(plan);
-    return PurchaseResult.cancelled;
+    if (purchaseResult == PurchaseResult.purchased) {
+      entitlement = entitlementOnSuccess;
+    }
+    return purchaseResult;
   }
+
+  @override
+  Future<PurchaseResult> restore() async {
+    restores++;
+    entitlement = entitlementOnSuccess;
+    return entitlement == null
+        ? PurchaseResult.cancelled
+        : PurchaseResult.purchased;
+  }
+
+  @override
+  Future<ProEntitlement?> loadEntitlement() async => entitlement;
 }
 
 /// Pins two things about the mobile Pro storefront:
@@ -56,6 +86,7 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
     SharedPreferences.setMockInitialValues({});
     await Supabase.initialize(url: 'http://127.0.0.1:24321', anonKey: 'eyJ.local.test');
+    await initializeDateFormatting();
   });
 
   Future<void> pumpPro(WidgetTester tester, ProPerks perks) async {
@@ -406,6 +437,168 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.text('Restore purchases'), findsOneWidget);
       expect(find.text('Manage subscription'), findsOneWidget);
+    });
+  });
+  // Issue #1122: after buying Pro the screen kept offering the plans, as if
+  // the subscriber were free. Pro status is the store entitlement (instant
+  // after a purchase) or the server tier (authoritative, lags the webhook).
+  group('subscriber state', () {
+    const livePerks = ProPerks(coach: true, routeGen: false);
+    final bothPlans = ProPlanOptions(
+      monthly: proMonthlyPackage,
+      annual: proAnnualPackage,
+    );
+    final renewsAt = DateTime.utc(2026, 11, 11, 12);
+
+    Future<_FakeProStore> pumpSubscriber(
+      WidgetTester tester, {
+      ProEntitlement? entitlement,
+      PurchaseResult purchaseResult = PurchaseResult.cancelled,
+      ProEntitlement? entitlementOnSuccess,
+      bool? serverPro,
+    }) async {
+      final store = _FakeProStore(
+        () async => bothPlans,
+        entitlement: entitlement,
+        purchaseResult: purchaseResult,
+        entitlementOnSuccess: entitlementOnSuccess,
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SettingsProScreen(
+            loadPerks: () async => livePerks,
+            store: store,
+            loadServerPro: serverPro == null ? null : () async => serverPro,
+          ),
+        ),
+      );
+      await tester.pump();
+      return store;
+    }
+
+    Future<void> waitForText(WidgetTester tester, String text) => pumpUntil(
+          tester,
+          () => find.text(text).evaluate().isNotEmpty,
+          describe: '"$text" to show',
+        );
+
+    void expectNoStorefront() {
+      expect(find.textContaining('Subscribe to Pro'), findsNothing);
+      expect(find.text(r'Yearly — $79.99/year'), findsNothing);
+      expect(find.text(r'Monthly — $9.99/month'), findsNothing);
+      expect(find.text('Pro — coming soon'), findsNothing);
+      expect(find.text('Restore purchases'), findsOneWidget);
+      expect(find.text('Manage subscription'), findsOneWidget);
+    }
+
+    testWidgets('a store entitlement shows the plan and renewal, not the plans',
+        (tester) async {
+      await pumpSubscriber(
+        tester,
+        entitlement: ProEntitlement(plan: ProPlan.monthly, expiresAt: renewsAt),
+        serverPro: true,
+      );
+      await waitForText(tester, "You're on Pro");
+
+      expect(
+        find.text('Monthly plan · Renews ${formatDateMed(renewsAt, 'en')}'),
+        findsOneWidget,
+      );
+      expectNoStorefront();
+      // The server agrees, so nothing is still unlocking.
+      expect(find.textContaining('can take a minute'), findsNothing);
+    });
+
+    testWidgets('a cancelled subscription says when it ends', (tester) async {
+      await pumpSubscriber(
+        tester,
+        entitlement: ProEntitlement(
+          plan: ProPlan.annual,
+          expiresAt: renewsAt,
+          willRenew: false,
+        ),
+        serverPro: true,
+      );
+      await waitForText(tester,
+          "Yearly plan · Ends ${formatDateMed(renewsAt, 'en')}, won't renew");
+      expectNoStorefront();
+    });
+
+    testWidgets('the server tier alone is enough (Pro bought on web)',
+        (tester) async {
+      await pumpSubscriber(tester, serverPro: true);
+      await waitForText(tester, "You're on Pro");
+
+      expect(
+        find.text('Your Pro benefits are active. Thanks for supporting the app.'),
+        findsOneWidget,
+      );
+      expectNoStorefront();
+    });
+
+    testWidgets('a free user still gets the storefront', (tester) async {
+      await pumpSubscriber(tester, serverPro: false);
+      await waitForText(tester, r'Subscribe to Pro — $79.99/year');
+
+      expect(find.text("You're on Pro"), findsNothing);
+    });
+
+    testWidgets('a purchase turns the storefront into the subscriber state',
+        (tester) async {
+      final store = await pumpSubscriber(
+        tester,
+        purchaseResult: PurchaseResult.purchased,
+        entitlementOnSuccess:
+            ProEntitlement(plan: ProPlan.monthly, expiresAt: renewsAt),
+        serverPro: false,
+      );
+      await waitForText(tester, r'Subscribe to Pro — $79.99/year');
+
+      await tester.tap(find.text(r'Monthly — $9.99/month'));
+      await tester.pump();
+      await tester.tap(
+          find.widgetWithIcon(ListTile, Icons.workspace_premium_outlined));
+      await waitForText(tester, "You're on Pro");
+
+      expect(store.purchased, [ProPlan.monthly]);
+      expectNoStorefront();
+      // The webhook has not flipped the server tier yet: say so rather than
+      // implying the benefits are already live.
+      expect(
+        find.text('Your purchase went through. Unlocking your Pro benefits '
+            'on your account can take a minute.'),
+        findsOneWidget,
+      );
+      // Let the welcome banner's auto-dismiss timer run out; the screen's
+      // own server re-check timer is cancelled when the tree is disposed.
+      await tester.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets('a restore that finds Pro shows the subscriber state',
+        (tester) async {
+      final store = await pumpSubscriber(
+        tester,
+        entitlementOnSuccess:
+            ProEntitlement(plan: ProPlan.annual, expiresAt: renewsAt),
+        // A server tier that already says Pro would show the subscriber
+        // state before the restore, leaving it nothing to prove.
+        serverPro: false,
+      );
+      await waitForText(tester, r'Subscribe to Pro — $79.99/year');
+
+      await tester.tap(find.text('Restore purchases'));
+      await waitForText(tester, "You're on Pro");
+
+      expect(store.restores, 1);
+      expect(
+        find.text('Yearly plan · Renews ${formatDateMed(renewsAt, 'en')}'),
+        findsOneWidget,
+      );
+      expectNoStorefront();
+      // Let the restore banner's auto-dismiss timer run out.
+      await tester.pump(const Duration(seconds: 4));
     });
   });
 }

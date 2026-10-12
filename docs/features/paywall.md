@@ -184,6 +184,24 @@ regardless. The release workflow gives the manifest the short
 HTML-style `cache-control` rather than the immutable-asset one, so a
 perk switched off propagates instead of sticking in caches for a year.
 
+**A subscriber sees their subscription, not the storefront.** The mobile
+Pro screen counts the user as Pro when **either** the RevenueCat
+`CustomerInfo` entitlement `pro` is active (`ProStore.loadEntitlement` →
+`loadProEntitlement`, true the instant the store completes a purchase) **or**
+the server tier is paid (`ApiClient.isPro()` → `is_pro`, authoritative for
+gating but only flipped once `revenuecat-webhook` lands, and the only signal
+for Pro bought on web or a `lifetime` tier). It then replaces the plan picker
+and Subscribe tile with a "You're on Pro" status tile, carrying the plan and
+its renewal date ("Renews …", or "Ends …, won't renew" once cancelled) when
+the store knows them, else a thank-you line. Manage subscription and Restore
+purchases stay below it. A successful purchase or restore re-reads both
+signals and switches the screen in place. While the store says Pro and the
+server does not yet, a note says the benefits can take a minute to unlock and
+the screen re-asks the server (up to 6 × 5 s). Both are re-read on app
+resume, so a cancellation made on the store's page shows on return. Web
+`/settings/upgrade` already renders the Active Pro card from `auth.isPro`.
+[decisions.md § 1827](../architecture/decisions.md).
+
 The same `coachEnabled()` flag hides every other **web** entry point into
 the AI Coach so rock-bottom shows no door that only 503s:
 

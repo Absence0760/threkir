@@ -7294,9 +7294,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get proRestoreFailed => 'Restore failed. Try again later.';
 
   @override
-  String get proRestoreUnavailable => 'Restore unavailable in this build.';
-
-  @override
   String proSubscribeTitle(String price) {
     return 'Subscribe to Pro — $price/month';
   }
@@ -7357,6 +7354,33 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get proManageSubscriptionSubtitle =>
       'Cancel, change plan, or update payment method';
+
+  @override
+  String get proActiveTitle => 'You\'re on Pro';
+
+  @override
+  String get proActivePlanMonthly => 'Monthly plan';
+
+  @override
+  String get proActivePlanAnnual => 'Yearly plan';
+
+  @override
+  String proActiveRenews(String date) {
+    return 'Renews $date';
+  }
+
+  @override
+  String proActiveEnds(String date) {
+    return 'Ends $date, won\'t renew';
+  }
+
+  @override
+  String get proActiveThanks =>
+      'Your Pro benefits are active. Thanks for supporting the app.';
+
+  @override
+  String get proActivePending =>
+      'Your purchase went through. Unlocking your Pro benefits on your account can take a minute.';
 
   @override
   String get proSupport => 'Support the app';

@@ -6962,9 +6962,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get proRestoreFailed => '復元に失敗しました。後でもう一度お試しください。';
 
   @override
-  String get proRestoreUnavailable => 'このビルドでは復元を利用できません。';
-
-  @override
   String proSubscribeTitle(String price) {
     return 'Proに登録 — $price/月';
   }
@@ -7022,6 +7019,32 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get proManageSubscriptionSubtitle => '解約、プラン変更、支払い方法の更新';
+
+  @override
+  String get proActiveTitle => 'Proに登録済みです';
+
+  @override
+  String get proActivePlanMonthly => '月額プラン';
+
+  @override
+  String get proActivePlanAnnual => '年額プラン';
+
+  @override
+  String proActiveRenews(String date) {
+    return '$dateに更新';
+  }
+
+  @override
+  String proActiveEnds(String date) {
+    return '$dateに終了（自動更新なし）';
+  }
+
+  @override
+  String get proActiveThanks => 'Proの特典が有効です。アプリへのご支援ありがとうございます。';
+
+  @override
+  String get proActivePending =>
+      '購入が完了しました。アカウントでProの特典が有効になるまで1分ほどかかる場合があります。';
 
   @override
   String get proSupport => 'アプリを支援する';

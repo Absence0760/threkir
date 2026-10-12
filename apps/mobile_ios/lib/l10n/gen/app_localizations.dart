@@ -11986,12 +11986,6 @@ abstract class AppLocalizations {
   /// **'Restore failed. Try again later.'**
   String get proRestoreFailed;
 
-  /// Banner shown when restore isn't available in the build
-  ///
-  /// In en, this message translates to:
-  /// **'Restore unavailable in this build.'**
-  String get proRestoreUnavailable;
-
   /// Tile title for the Pro subscription; price is a localized currency amount
   ///
   /// In en, this message translates to:
@@ -12081,6 +12075,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancel, change plan, or update payment method'**
   String get proManageSubscriptionSubtitle;
+
+  /// Title of the Pro screen status tile when the user already has Pro
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re on Pro'**
+  String get proActiveTitle;
+
+  /// Which plan an active Pro subscriber is on: monthly billing
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly plan'**
+  String get proActivePlanMonthly;
+
+  /// Which plan an active Pro subscriber is on: yearly billing
+  ///
+  /// In en, this message translates to:
+  /// **'Yearly plan'**
+  String get proActivePlanAnnual;
+
+  /// When an active Pro subscription next renews; date is a localized medium date
+  ///
+  /// In en, this message translates to:
+  /// **'Renews {date}'**
+  String proActiveRenews(String date);
+
+  /// When a cancelled Pro subscription stops; date is a localized medium date
+  ///
+  /// In en, this message translates to:
+  /// **'Ends {date}, won\'t renew'**
+  String proActiveEnds(String date);
+
+  /// Pro status subtitle when the store reports no plan details (e.g. Pro bought on the web)
+  ///
+  /// In en, this message translates to:
+  /// **'Your Pro benefits are active. Thanks for supporting the app.'**
+  String get proActiveThanks;
+
+  /// Note under the Pro status right after a purchase, before the server has unlocked the benefits
+  ///
+  /// In en, this message translates to:
+  /// **'Your purchase went through. Unlocking your Pro benefits on your account can take a minute.'**
+  String get proActivePending;
 
   /// Tile title for a one-off donation
   ///

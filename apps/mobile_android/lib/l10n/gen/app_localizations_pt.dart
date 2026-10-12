@@ -7373,9 +7373,6 @@ class AppLocalizationsPt extends AppLocalizations {
       'A restauração falhou. Tente novamente mais tarde.';
 
   @override
-  String get proRestoreUnavailable => 'Restauração indisponível nesta versão.';
-
-  @override
   String proSubscribeTitle(String price) {
     return 'Assinar o Pro — $price/mês';
   }
@@ -7436,6 +7433,33 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get proManageSubscriptionSubtitle =>
       'Cancelar, mudar de plano ou atualizar a forma de pagamento';
+
+  @override
+  String get proActiveTitle => 'O seu Pro está ativo';
+
+  @override
+  String get proActivePlanMonthly => 'Plano mensal';
+
+  @override
+  String get proActivePlanAnnual => 'Plano anual';
+
+  @override
+  String proActiveRenews(String date) {
+    return 'Renova a $date';
+  }
+
+  @override
+  String proActiveEnds(String date) {
+    return 'Termina a $date, sem renovação';
+  }
+
+  @override
+  String get proActiveThanks =>
+      'Os seus benefícios Pro estão ativos. Obrigado por apoiar a app.';
+
+  @override
+  String get proActivePending =>
+      'A sua compra foi concluída. A ativação dos seus benefícios Pro na sua conta pode demorar um minuto.';
 
   @override
   String get proSupport => 'Apoiar o app';
@@ -21952,9 +21976,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'A restauração falhou. Tente novamente mais tarde.';
 
   @override
-  String get proRestoreUnavailable => 'Restauração indisponível nesta versão.';
-
-  @override
   String proSubscribeTitle(String price) {
     return 'Assinar o Pro — $price/mês';
   }
@@ -22015,6 +22036,33 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get proManageSubscriptionSubtitle =>
       'Cancelar, mudar de plano ou atualizar a forma de pagamento';
+
+  @override
+  String get proActiveTitle => 'Seu Pro está ativo';
+
+  @override
+  String get proActivePlanMonthly => 'Plano mensal';
+
+  @override
+  String get proActivePlanAnnual => 'Plano anual';
+
+  @override
+  String proActiveRenews(String date) {
+    return 'Renova em $date';
+  }
+
+  @override
+  String proActiveEnds(String date) {
+    return 'Termina em $date, sem renovação';
+  }
+
+  @override
+  String get proActiveThanks =>
+      'Seus benefícios Pro estão ativos. Obrigado por apoiar o app.';
+
+  @override
+  String get proActivePending =>
+      'Sua compra foi concluída. A ativação dos seus benefícios Pro na sua conta pode levar um minuto.';
 
   @override
   String get proSupport => 'Apoiar o app';

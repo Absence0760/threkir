@@ -237,7 +237,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: Icons.favorite_outline,
               label: l10n.proTitle,
               subtitle: l10n.settingsTabProSubtitle,
-              onTap: () => _open((_) => const SettingsProScreen()),
+              onTap: () => _open(
+                  (_) => SettingsProScreen(apiClient: widget.apiClient)),
             ),
             _tab(
               icon: Icons.info_outline,

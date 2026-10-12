@@ -121,3 +121,29 @@ test('future-dated effort (clock skew) is treated as weight 1, not amplified', (
 	assert.ok(out);
 	assert.equal(out.anchor.ageDays, -3);
 });
+
+// "Non-finite efforts are filtered out" has to include Infinity: `> 0` admits
+// it, it projects to NaN and never wins the anchor, but it still counted toward
+// the pool size that grades every rung's confidence.
+test('an effort with an infinite distance or duration is filtered out, not counted', () => {
+	const real: EffortForPrediction = { distanceM: 10_000, durationS: 2700, ageDays: 3 };
+	const out = predictRaceLadder([
+		real,
+		{ distanceM: Infinity, durationS: 2700, ageDays: 1 },
+		{ distanceM: 5000, durationS: Infinity, ageDays: 1 },
+	]);
+	assert.ok(out);
+	assert.equal(out.qualifyingCount, 1);
+	assert.deepEqual(out.anchor, real);
+	assert.deepEqual(out, predictRaceLadder([real]));
+});
+
+test('a pool of only infinite efforts is empty: null, not a throw', () => {
+	assert.equal(
+		predictRaceLadder([
+			{ distanceM: Infinity, durationS: 1200, ageDays: 1 },
+			{ distanceM: 5000, durationS: Infinity, ageDays: 1 },
+		]),
+		null,
+	);
+});

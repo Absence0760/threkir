@@ -21,3 +21,21 @@ test('validLatLon — rejects a non-numeric attribute', () => {
 	assert.equal(validLatLon('40.7', 'NaN'), null);
 	assert.equal(validLatLon('', ''), null);
 });
+
+test('validLatLon — a finite value outside the globe is not a coordinate', () => {
+	// `1e308` is finite and clears a NaN check, then overflows the haversine
+	// to NaN, so the route would save with a NaN distance. The Dart twin
+	// (packages/gpx_parser _isUsableLat / _isUsableLng) already refuses it.
+	assert.equal(validLatLon('1e308', '0'), null);
+	assert.equal(validLatLon('0', '-1e308'), null);
+	assert.equal(validLatLon('90.0001', '0'), null);
+	assert.equal(validLatLon('-90.5', '0'), null);
+	assert.equal(validLatLon('45', '180.5'), null);
+	assert.equal(validLatLon('45', '-181'), null);
+	assert.equal(validLatLon('Infinity', '0'), null);
+});
+
+test('validLatLon — the poles and the antimeridian are real places', () => {
+	assert.deepEqual(validLatLon('90', '180'), { lat: 90, lng: 180 });
+	assert.deepEqual(validLatLon('-90', '-180'), { lat: -90, lng: -180 });
+});

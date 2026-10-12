@@ -92,7 +92,7 @@ function parseTcx(xml: string): ImportedRoute[] {
 			if (!latStr || !lngStr) continue;
 			const lat = parseFloat(latStr);
 			const lng = parseFloat(lngStr);
-			if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+			if (!isUsableLatLng(lat, lng)) continue;
 			const eleStr = tp.querySelector('AltitudeMeters')?.textContent;
 			const ele = eleStr ? parseFloat(eleStr) : undefined;
 			const tsStr = tp.querySelector('Time')?.textContent;
@@ -175,8 +175,25 @@ export function validLatLon(
 ): { lat: number; lng: number } | null {
 	const lat = parseFloat(latAttr ?? '');
 	const lng = parseFloat(lonAttr ?? '');
-	if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+	if (!isUsableLatLng(lat, lng)) return null;
 	return { lat, lng };
+}
+
+/**
+ * Whether a parsed pair is a place. Finite is not enough: `lat="1e308"`
+ * clears every NaN check and then overflows the haversine to NaN, so the
+ * route saves with a NaN distance. GPX's `latitudeType`, the KML spec and
+ * RFC 7946 all bound latitude to ±90 and longitude to ±180, so a value
+ * outside that is a malformed file, not a coordinate. Same bound as the Dart
+ * twin's `_isUsableLat` / `_isUsableLng` in packages/gpx_parser.
+ */
+function isUsableLatLng(lat: number, lng: number): boolean {
+	return (
+		Number.isFinite(lat) &&
+		Number.isFinite(lng) &&
+		Math.abs(lat) <= 90 &&
+		Math.abs(lng) <= 180
+	);
 }
 
 function toWaypoints(points: Element[]): TrackPoint[] {
@@ -279,7 +296,7 @@ function parseKmlCoordinates(text: string): TrackPoint[] {
 		if (parts.length < 2) continue;
 		const lng = parseFloat(parts[0]);
 		const lat = parseFloat(parts[1]);
-		if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+		if (!isUsableLatLng(lat, lng)) continue;
 		const ele = parts.length >= 3 ? parseEle(parts[2]) : undefined;
 		out.push({ lat, lng, ele });
 	}
@@ -317,12 +334,7 @@ function parseGeoJson(text: string): ImportedRoute[] {
 			// wrote a string into a TrackPoint's lng/lat, poisoning the
 			// haversine sum into NaN distance. Skip the point instead,
 			// matching the GPX `validLatLon` discipline and the Dart twin.
-			if (
-				typeof c[0] !== 'number' ||
-				typeof c[1] !== 'number' ||
-				!Number.isFinite(c[0]) ||
-				!Number.isFinite(c[1])
-			)
+			if (typeof c[0] !== 'number' || typeof c[1] !== 'number' || !isUsableLatLng(c[1], c[0]))
 				continue;
 			const ele = typeof c[2] === 'number' && Number.isFinite(c[2]) ? c[2] : undefined;
 			out.push({ lng: c[0], lat: c[1], ele });

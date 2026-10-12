@@ -90,3 +90,34 @@ Deno.test('both secret paths are compared in constant time', () => {
 		'the supplied secret must never be compared with === / !== — use timingSafeEqual',
 	);
 });
+
+Deno.test('an athlete deauthorization is acted on before the activity-only filter, and always 200s', () => {
+	// Strava API terms require acting on `athlete` / `update` with
+	// `updates.authorized: "false"`. The activity filter returns 'OK' for
+	// every non-activity event, so the deauthorization branch has to sit
+	// between the body read and that filter or it is silently dropped.
+	const bodyRead = SRC.indexOf('readJsonWithLimit<');
+	const branch = SRC.indexOf('if (isAthleteDeauthorization(event))');
+	const filter = SRC.indexOf("event.object_type !== 'activity'");
+	assert(branch !== -1, 'the deauthorization branch is gone');
+	assert(bodyRead < branch && branch < filter, 'the deauthorization branch must precede the activity filter');
+	const region = SRC.slice(branch, filter);
+	assert(region.includes('disconnectDeauthorizedAthlete('), 'the branch must disconnect the athlete');
+	const returns = [...region.matchAll(/return\s+([^;]+);/g)].map((m) => m[1].trim());
+	assert(returns.length >= 2, 'expected the stale-event and the acted-on returns');
+	for (const r of returns) {
+		assert(r === "new Response('OK')", `every deauthorization exit must 200, found: ${r}`);
+	}
+});
+
+Deno.test('the user-initiated Disconnect and the deauthorization share one teardown', async () => {
+	const importSrc = await Deno.readTextFile(new URL('../strava-import/index.ts', import.meta.url));
+	assert(
+		importSrc.includes("disconnectStravaLocally(supabase, userId, 'user_initiated')"),
+		'strava-import Disconnect must go through disconnectStravaLocally',
+	);
+	assert(
+		!importSrc.includes("'delete_user_provider_secrets'"),
+		'strava-import must not hand-roll the vault teardown beside the shared helper',
+	);
+});

@@ -43,6 +43,7 @@ func (e *stravaJobEnqueuer) EnqueueStravaEvent(ctx context.Context, p stravahook
 		"aspect_type": p.AspectType,
 		"owner_id":    p.OwnerID,
 		"event_time":  p.EventTime,
+		"updates":     p.Updates,
 	})
 }
 

@@ -922,6 +922,14 @@ func (c *SupabaseClient) SetIntegrationTokens(ctx context.Context, userID, provi
 	return c.rpc(ctx, "set_integration_tokens", params, nil)
 }
 
+// DeleteUserProviderSecrets calls the `delete_user_provider_secrets` RPC
+// (migration 20261005_001): drops the Vault token rows for the user +
+// provider and clears the integration's token references. Idempotent.
+func (c *SupabaseClient) DeleteUserProviderSecrets(ctx context.Context, userID, provider string) error {
+	return c.rpc(ctx, "delete_user_provider_secrets",
+		map[string]string{"p_user_id": userID, "p_provider": provider}, nil)
+}
+
 // FindIntegrationUserByAthlete maps a Strava athlete id (the external
 // id Strava sends in webhook payloads) back to the Supabase user id
 // that owns the integration row. Returns "" + nil when no integration

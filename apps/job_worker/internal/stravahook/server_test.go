@@ -581,3 +581,119 @@ func TestIPRateLimiterEvictsIdleButKeepsLiveThrottle(t *testing.T) {
 		t.Fatal("bucket idle past the refill interval should have been evicted")
 	}
 }
+
+func postStrava(t *testing.T, base, body string) (int, map[string]any) {
+	t.Helper()
+	resp, err := http.Post(base+"/v1/strava/webhook?secret=url-secret-32-chars-long-deadbeef", "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var out map[string]any
+	_ = json.NewDecoder(resp.Body).Decode(&out)
+	return resp.StatusCode, out
+}
+
+// Strava sends `subscription_id` and `updates` on every delivery, and the
+// decoder refuses unknown fields: a payload in Strava's real shape must
+// decode rather than 400.
+func TestServer_PostAcceptsStravasRealPayloadShape(t *testing.T) {
+	enqueuer := &fakeEnqueuer{}
+	srv := &Server{
+		WebhookSecret: "url-secret-32-chars-long-deadbeef", VerifyToken: "verify-tok",
+		Enqueuer: enqueuer, WebhookEvents: newFakeWebhookEvents(),
+	}
+	base, teardown := newTestServer(t, srv)
+	defer teardown()
+
+	body := `{"aspect_type":"create","event_time":` + jsonInt(time.Now().Unix()) +
+		`,"object_id":1360128428,"object_type":"activity","owner_id":134815,"subscription_id":120475,"updates":{}}`
+	status, _ := postStrava(t, base, body)
+	if status != 200 {
+		t.Fatalf("status=%d, want 200", status)
+	}
+	if len(enqueuer.calls) != 1 {
+		t.Fatalf("a real-shape create must enqueue; got %d", len(enqueuer.calls))
+	}
+}
+
+func TestServer_PostEnqueuesAthleteDeauthorization(t *testing.T) {
+	enqueuer := &fakeEnqueuer{}
+	events := newFakeWebhookEvents()
+	srv := &Server{
+		WebhookSecret: "url-secret-32-chars-long-deadbeef", VerifyToken: "verify-tok",
+		Enqueuer: enqueuer, WebhookEvents: events,
+	}
+	base, teardown := newTestServer(t, srv)
+	defer teardown()
+
+	body := `{"aspect_type":"update","event_time":` + jsonInt(time.Now().Unix()) +
+		`,"object_id":134815,"object_type":"athlete","owner_id":134815,"subscription_id":120475,"updates":{"authorized":"false"}}`
+	status, _ := postStrava(t, base, body)
+	if status != 200 {
+		t.Fatalf("status=%d, want 200", status)
+	}
+	if len(enqueuer.calls) != 1 {
+		t.Fatalf("a deauthorization must enqueue; got %d", len(enqueuer.calls))
+	}
+	got := enqueuer.calls[0]
+	if got.OwnerID != 134815 || got.Updates["authorized"] != "false" {
+		t.Errorf("enqueued %+v, want owner 134815 with authorized=false", got)
+	}
+	if len(events.seen) != 0 {
+		t.Errorf("a deauthorization is idempotent and must not burn a dedupe row; got %d", len(events.seen))
+	}
+}
+
+func TestServer_PostDeauthorizationAlways200s(t *testing.T) {
+	stale := time.Now().Add(-30 * 24 * time.Hour).Unix()
+	cases := []struct {
+		name     string
+		body     string
+		enqueErr error
+	}{
+		{"stale", `{"aspect_type":"update","event_time":` + jsonInt(stale) +
+			`,"object_id":1,"object_type":"athlete","owner_id":1,"updates":{"authorized":"false"}}`, nil},
+		{"no owner", `{"aspect_type":"update","event_time":` + jsonInt(time.Now().Unix()) +
+			`,"object_id":1,"object_type":"athlete","updates":{"authorized":"false"}}`, nil},
+		{"enqueue fails", `{"aspect_type":"update","event_time":` + jsonInt(time.Now().Unix()) +
+			`,"object_id":1,"object_type":"athlete","owner_id":1,"updates":{"authorized":"false"}}`, fmt.Errorf("db down")},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			enqueuer := &fakeEnqueuer{err: tc.enqueErr}
+			srv := &Server{
+				WebhookSecret: "url-secret-32-chars-long-deadbeef", VerifyToken: "verify-tok",
+				Enqueuer: enqueuer, WebhookEvents: newFakeWebhookEvents(),
+			}
+			base, teardown := newTestServer(t, srv)
+			defer teardown()
+			status, _ := postStrava(t, base, tc.body)
+			if status != 200 {
+				t.Fatalf("status=%d, want 200", status)
+			}
+			if len(enqueuer.calls) != 0 {
+				t.Errorf("nothing should have been enqueued; got %d", len(enqueuer.calls))
+			}
+		})
+	}
+}
+
+func TestServer_PostAthleteUpdateOtherThanDeauthorizationIsSkipped(t *testing.T) {
+	enqueuer := &fakeEnqueuer{}
+	srv := &Server{
+		WebhookSecret: "url-secret-32-chars-long-deadbeef", VerifyToken: "verify-tok",
+		Enqueuer: enqueuer, WebhookEvents: newFakeWebhookEvents(),
+	}
+	base, teardown := newTestServer(t, srv)
+	defer teardown()
+	body := `{"aspect_type":"update","event_time":` + jsonInt(time.Now().Unix()) +
+		`,"object_id":1,"object_type":"athlete","owner_id":1,"updates":{"authorized":"true"}}`
+	status, out := postStrava(t, base, body)
+	if status != 200 || out["skipped"] != "non_activity" {
+		t.Fatalf("status=%d body=%v, want 200 non_activity", status, out)
+	}
+	if len(enqueuer.calls) != 0 {
+		t.Errorf("must not enqueue; got %d", len(enqueuer.calls))
+	}
+}

@@ -192,7 +192,8 @@ Native in-app OAuth via `flutter_web_auth_2` — Chrome Custom Tabs on Android, 
    POSTs to `strava-import` with `action: 'connect'` — same code-for-token
    exchange + 90-day backfill as web.
 6. "Sync now" tile calls `ApiClient.syncStrava` (`action: 'sync'`).
-   "Disconnect" deletes the integrations row.
+   "Disconnect" calls `action: 'disconnect'`, which revokes the grant at
+   Strava, drops the Vault tokens and stamps the row `disconnected_at`.
 ```
 
 ### What a sync is allowed to claim
@@ -300,6 +301,7 @@ Important properties of the real implementation:
 - **Tokens live in Vault** (decisions §41). The integration row exposes `user_id` + `external_id` + `scope`; the actual `access_token` / `refresh_token` go through `get_integration_tokens` / `set_integration_tokens` SECURITY DEFINER RPCs.
 - **Dedupe key is `metadata.strava_id`** (jsonb), not a column, not `external_id`. The shared `isAlreadyImported` helper checks both the legacy `external_id LIKE 'strava:%'` shape and the metadata shape so historic and current rows both block re-ingestion.
 - **Sport-type filter narrows to run / walk / hike.** A user's bike ride or swim is acknowledged but not ingested.
+- **An athlete deauthorization disconnects the integration.** When an athlete revokes our access from their Strava settings, Strava pushes `object_type: "athlete"`, `aspect_type: "update"`, `updates: { authorized: "false" }`, and its API terms require acting on it. Both receivers do: the Edge Function calls `disconnectDeauthorizedAthlete` (`_shared/strava_disconnect.ts`), and the Go endpoint enqueues a `strava_event` job whose handler does the same work. Either way the Vault tokens are dropped (`delete_user_provider_secrets`) and the row is stamped `disconnected_at` with `disconnected_reason = 'athlete_deauthorized'` — the same teardown as the user-initiated Disconnect (`disconnectStravaLocally`, reason `user_initiated`), minus the `/oauth/deauthorize` call, since the grant is already dead at Strava. The event is freshness-gated but not deduped (disconnecting is idempotent), and every exit is a 200. The Go decoder now also declares `subscription_id` and `updates`, which Strava sends on every event and which its refuse-unknown-fields decoder used to answer with a 400.
 
 ### Key endpoints
 

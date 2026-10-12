@@ -19,11 +19,11 @@ const EVIL = '"><script>alert(1)</script><img src=x onerror=alert(2)>';
 function assertOnlyJsonLdScript(html: string) {
 	const opens = html.match(/<script\b[^>]*>/gi) ?? [];
 	assert.deepEqual(opens, ['<script type="application/ld+json">']);
-	assert.equal((html.match(/<\/script\s*>/gi) ?? []).length, 1);
+	assert.equal((html.match(/<\/script(?=[\s/>])[^>]*>/gi) ?? []).length, 1);
 	assert.ok(!/<img\b/i.test(html), 'no injected element');
 	// Escaped hostile text may still READ "onerror=" inside <title> or an
 	// attribute value; what must never exist is a real tag carrying it.
-	const tags = html.replace(/<title>[^<]*<\/title>/g, '').replace(/"[^"]*"/g, '""');
+	const tags = html.replace(/<title>[^<]*<\/title(?=[\s/>])[^>]*>/g, '').replace(/"[^"]*"/g, '""');
 	assert.ok(!/<[^>]*\sonerror=/i.test(tags), 'no injected attribute');
 }
 
@@ -93,7 +93,7 @@ test('run head: the same title reaches <title>, og:title and twitter:title', () 
 	const html = renderShareRunHeadTags(
 		buildShareRunMeta({ id: ID, run: run(), displayName: 'Ana & Bo', siteUrl: SITE }),
 	);
-	const title = html.match(/<title>([^<]*)<\/title>/)?.[1];
+	const title = html.match(/<title>([^<]*)<\/title(?=[\s/>])[^>]*>/)?.[1];
 	assert.ok(title && title.includes('Ana &amp; Bo'), `unexpected <title>: ${title}`);
 	assert.ok(html.includes(`<meta property="og:title" content="${title}">`));
 	assert.ok(html.includes(`<meta name="twitter:title" content="${title}">`));
@@ -103,7 +103,7 @@ test('run head: a run with no data still renders a complete, safe head', () => {
 	const html = renderShareRunHeadTags(
 		buildShareRunMeta({ id: ID, run: null, displayName: null, siteUrl: SITE }),
 	);
-	assert.match(html, /<title>[^<]+<\/title>/);
+	assert.match(html, /<title>[^<]+<\/title(?=[\s/>])[^>]*>/);
 	assert.ok(html.includes('og:image'));
 	assertAttributesClosed(html);
 });
@@ -137,7 +137,7 @@ test('route head: a name built to close the JSON-LD block cannot', () => {
 		}),
 	);
 	assertOnlyJsonLdScript(html);
-	assert.ok(!/<\/script\s*>/i.test(html.slice(0, html.lastIndexOf('</script>'))));
+	assert.ok(!/<\/script(?=[\s/>])[^>]*>/i.test(html.slice(0, html.lastIndexOf('</script>'))));
 });
 
 test('route head: canonical and og:image are absolute and single-slashed', () => {
@@ -149,7 +149,7 @@ test('route head: canonical and og:image are absolute and single-slashed', () =>
 
 test('route head: a null route still renders a complete, safe head', () => {
 	const html = renderShareRouteHeadTags(buildShareRouteHead({ id: ID, route: null, siteUrl: SITE }));
-	assert.match(html, /<title>[^<]+<\/title>/);
+	assert.match(html, /<title>[^<]+<\/title(?=[\s/>])[^>]*>/);
 	assertOnlyJsonLdScript(html);
 	assertAttributesClosed(html);
 });

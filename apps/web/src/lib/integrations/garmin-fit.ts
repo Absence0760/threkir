@@ -525,12 +525,18 @@ export async function parseFitBuffer(buf: ArrayBuffer): Promise<ParsedFitRun | n
 	const hrSeries: { bpm: number; ts?: string }[] = [];
 	for (const r of records) {
 		// FIT positions arrive in semicircles by default but the parser
-		// converts them to degrees once `lengthUnit` is set.
+		// converts them to degrees once `lengthUnit` is set. Any sint32
+		// decodes into [-180, 180), so a corrupt or misaligned field still
+		// reads as a number: a latitude past ±90 is not a place, and is
+		// refused like a missing fix — the same bound as the Dart twin in
+		// packages/gpx_parser/lib/src/fit_parser.dart.
 		const hasFix =
 			typeof r.position_lat === 'number' &&
 			typeof r.position_long === 'number' &&
 			Number.isFinite(r.position_lat) &&
-			Number.isFinite(r.position_long);
+			Number.isFinite(r.position_long) &&
+			Math.abs(r.position_lat) <= 90 &&
+			Math.abs(r.position_long) <= 180;
 		const validHr =
 			typeof r.heart_rate === 'number' && r.heart_rate >= 30 && r.heart_rate <= 230;
 		const ts = (r as { timestamp?: string }).timestamp;

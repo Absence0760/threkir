@@ -4,6 +4,25 @@
 
 import { escapeHtml } from '../util/html_escape';
 
+/// Code points outside XML 1.0's `Char` production — C0 controls other than
+/// tab / LF / CR, lone surrogates, U+FFFE / U+FFFF. No entity can carry them,
+/// so one in a name made every reader refuse the whole file. Same set and
+/// U+FFFD replacement as the Art 20 exporter (export-data/render.ts).
+const XML_FORBIDDEN_CHARS = /[^\t\n\r\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/gu;
+
+/// A string as XML character data or attribute text.
+function xmlText(v: string): string {
+	return escapeHtml(v.replace(XML_FORBIDDEN_CHARS, '\uFFFD'));
+}
+
+/// A stored value as an XML number, or null when it is not a finite number.
+/// The tracks are JSON blobs with no schema between them and this writer, and
+/// `lat` / `lon` land inside quoted attributes, so anything else is dropped
+/// rather than written as `NaN` or as markup.
+function xmlNumber(v: unknown): string | null {
+	return typeof v === 'number' && Number.isFinite(v) ? String(v) : null;
+}
+
 export function toGpx(
 	name: string,
 	coordinates: [number, number][],
@@ -12,9 +31,12 @@ export function toGpx(
 	const now = new Date().toISOString();
 
 	const trackpoints = coordinates
-		.map(([lng, lat], i) => {
-			const ele = elevations[i] ?? 0;
-			return `      <trkpt lat="${lat}" lon="${lng}"><ele>${ele}</ele></trkpt>`;
+		.flatMap(([lng, lat], i) => {
+			const latText = xmlNumber(lat);
+			const lngText = xmlNumber(lng);
+			if (latText === null || lngText === null) return [];
+			const ele = xmlNumber(elevations[i]) ?? '0';
+			return [`      <trkpt lat="${latText}" lon="${lngText}"><ele>${ele}</ele></trkpt>`];
 		})
 		.join('\n');
 
@@ -24,11 +46,11 @@ export function toGpx(
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
   <metadata>
-    <name>${escapeHtml(name)}</name>
+    <name>${xmlText(name)}</name>
     <time>${now}</time>
   </metadata>
   <trk>
-    <name>${escapeHtml(name)}</name>
+    <name>${xmlText(name)}</name>
     <trkseg>
 ${trackpoints}
     </trkseg>
@@ -48,12 +70,16 @@ export function toRunGpx(
 	track: Array<{ lat: number; lng: number; ele?: number | null; ts?: string | null }>,
 ): string {
 	const trackpoints = track
-		.map((p) => {
-			const parts: string[] = [`<trkpt lat="${p.lat}" lon="${p.lng}">`];
-			if (p.ele != null) parts.push(`<ele>${p.ele}</ele>`);
-			if (p.ts) parts.push(`<time>${p.ts}</time>`);
+		.flatMap((p) => {
+			const latText = xmlNumber(p.lat);
+			const lngText = xmlNumber(p.lng);
+			if (latText === null || lngText === null) return [];
+			const parts: string[] = [`<trkpt lat="${latText}" lon="${lngText}">`];
+			const ele = xmlNumber(p.ele);
+			if (ele !== null) parts.push(`<ele>${ele}</ele>`);
+			if (p.ts) parts.push(`<time>${xmlText(String(p.ts))}</time>`);
 			parts.push('</trkpt>');
-			return '      ' + parts.join('');
+			return ['      ' + parts.join('')];
 		})
 		.join('\n');
 
@@ -63,11 +89,11 @@ export function toRunGpx(
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
   <metadata>
-    <name>${escapeHtml(name)}</name>
-    <time>${startedAtIso}</time>
+    <name>${xmlText(name)}</name>
+    <time>${xmlText(startedAtIso)}</time>
   </metadata>
   <trk>
-    <name>${escapeHtml(name)}</name>
+    <name>${xmlText(name)}</name>
     <trkseg>
 ${trackpoints}
     </trkseg>
@@ -97,15 +123,20 @@ export function toKml(
 	elevations: number[]
 ): string {
 	const coordString = coordinates
-		.map(([lng, lat], i) => `${lng},${lat},${elevations[i] ?? 0}`)
+		.flatMap(([lng, lat], i) => {
+			const latText = xmlNumber(lat);
+			const lngText = xmlNumber(lng);
+			if (latText === null || lngText === null) return [];
+			return [`${lngText},${latText},${xmlNumber(elevations[i]) ?? '0'}`];
+		})
 		.join('\n          ');
 
 	return `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
-    <name>${escapeHtml(name)}</name>
+    <name>${xmlText(name)}</name>
     <Placemark>
-      <name>${escapeHtml(name)}</name>
+      <name>${xmlText(name)}</name>
       <Style>
         <LineStyle>
           <color>ffff0000</color>

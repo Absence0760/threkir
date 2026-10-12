@@ -12,6 +12,7 @@
 /// lockstep.
 
 import 'route_markers.dart';
+import 'xml_text.dart';
 
 class RouteGpxMarker {
   final String label;
@@ -75,10 +76,10 @@ String toRouteGpxWithMarkers(
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
   <metadata>
-    <name>${_escapeXml(name)}</name>
+    <name>${escapeXmlText(name)}</name>
   </metadata>
 ${waypoints.isNotEmpty ? '$waypoints\n' : ''}  <trk>
-    <name>${_escapeXml(name)}</name>
+    <name>${escapeXmlText(name)}</name>
     <trkseg>
 ${trackpoints.join('\n')}
     </trkseg>
@@ -90,13 +91,13 @@ String? _renderWaypoint(RouteGpxMarker m) {
   if (!m.lat.isFinite || !m.lng.isFinite) return null;
   final parts = <String>[
     '  <wpt lat="${_gpxNum(m.lat)}" lon="${_gpxNum(m.lng)}">',
-    '<name>${_escapeXml(m.label)}</name>',
-    '<type>${_escapeXml(m.kind)}</type>',
+    '<name>${escapeXmlText(m.label)}</name>',
+    '<type>${escapeXmlText(m.kind)}</type>',
   ];
   final sym = _symByKind[m.kind];
   if (sym != null) parts.add('<sym>$sym</sym>');
   final desc = _buildDesc(m.meta);
-  if (desc.isNotEmpty) parts.add('<desc>${_escapeXml(desc)}</desc>');
+  if (desc.isNotEmpty) parts.add('<desc>${escapeXmlText(desc)}</desc>');
   parts.add('</wpt>');
   return parts.join('');
 }
@@ -122,39 +123,6 @@ String _buildDesc(Map<String, dynamic> meta) {
   }
 
   return segments.join(' | ');
-}
-
-/// The five XML-reserved characters, with the apostrophe as the NUMERIC
-/// `&#39;` rather than `&apos;`. The web twin escapes through the canonical
-/// `util/html_escape.ts`, which chose the numeric form so one escaper serves
-/// HTML4, HTML5 and XML/SVG alike; both spellings parse to `'`, but the two
-/// halves have to emit the same bytes (decisions § 1450).
-///
-/// Code points XML 1.0 cannot carry at all — C0 controls other than tab / LF
-/// / CR, lone surrogates, U+FFFE / U+FFFF — become U+FFFD first, as on web
-/// (`escapeXml` in `util/html_escape.ts`): one in a label otherwise made
-/// every GPX reader refuse the whole course file.
-String _escapeXml(String str) {
-  return _xmlChars(str)
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#39;');
-}
-
-String _xmlChars(String s) {
-  final out = StringBuffer();
-  for (final r in s.runes) {
-    final legal = r == 0x9 ||
-        r == 0xA ||
-        r == 0xD ||
-        (r >= 0x20 && r <= 0xD7FF) ||
-        (r >= 0xE000 && r <= 0xFFFD) ||
-        (r >= 0x10000 && r <= 0x10FFFF);
-    out.writeCharCode(legal ? r : 0xFFFD);
-  }
-  return out.toString();
 }
 
 /// Render a coordinate the way the web twin's template literal does, so the

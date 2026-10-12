@@ -47,7 +47,9 @@ export interface HostEarningsMonth {
   instances: HostEarningsInstance[];
 }
 
-const MONTH_RE = /^(\d{4})-(\d{2})-\d{2}$/;
+// Month 01-12 only: `Date.UTC` rolls a month 13 into the next January, so a
+// looser pattern would print a label as a different month than it names.
+const MONTH_RE = /^(\d{4})-(0[1-9]|1[0-2])-\d{2}$/;
 
 function count(value: unknown): number {
   const n = typeof value === "string" ? Number(value) : value;

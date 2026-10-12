@@ -137,3 +137,30 @@ test('annualSavingPercent states nothing for a zero or negative price', () => {
 	assert.equal(annualSavingPercent(9.99, 0), null);
 	assert.equal(annualSavingPercent(-1, 79.99), null);
 });
+
+// buildCheckoutUrl appends `/<user id>` and its own query to the base, so a
+// base carrying a query, fragment, second segment, port or credentials put the
+// App User ID somewhere RevenueCat never reads it — a purchase keyed to no one.
+test('checkoutBaseProblem refuses a base whose extra parts would swallow the appended user id', () => {
+	for (const bad of [
+		'https://pay.rev.cat/abc123?ref=web',
+		'https://pay.rev.cat/abc123#pro',
+		'https://pay.rev.cat/abc123/extra',
+		'https://pay.rev.cat:8443/abc123',
+		'https://user:pass@pay.rev.cat/abc123',
+	]) {
+		assert.notEqual(checkoutBaseProblem(bad), null, bad);
+		assert.equal(buildCheckoutUrl(bad, 'user-1'), null, `${bad} must not build a URL`);
+	}
+});
+
+test('every URL built from an accepted base ends its path in the encoded user id', () => {
+	for (const base of [BASE, `${BASE}/`, `  ${BASE}  `]) {
+		const url = new URL(buildCheckoutUrl(base, 'a/b c', 'https://threkir.com/upgrade', '$rc_annual')!);
+		assert.equal(url.host, 'pay.rev.cat');
+		assert.equal(url.pathname, '/abc123/a%2Fb%20c');
+		assert.equal(url.searchParams.get('package_id'), '$rc_annual');
+		assert.equal(url.searchParams.get('redirect_url'), 'https://threkir.com/upgrade');
+		assert.equal(url.hash, '');
+	}
+});

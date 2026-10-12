@@ -38,9 +38,22 @@ export function checkoutBaseProblem(base: string): string | null {
 	if (parsed.hostname !== CHECKOUT_HOST) {
 		return `Host is \`${parsed.hostname}\`, not ${CHECKOUT_HOST}. Buyers would be sent to a page that is not RevenueCat's hosted checkout.`;
 	}
+	// `buildCheckoutUrl` appends `/<user id>` and its own query to this base,
+	// so anything past a single path segment lands in the wrong place: a
+	// query or fragment swallows the user id (`/tok?x=1/<uid>`), a second
+	// segment or a port names a page that is not the link.
+	if (parsed.username || parsed.password || parsed.port) {
+		return 'Carries credentials or a port. A Web Purchase Link is https://pay.rev.cat/<token> and nothing else.';
+	}
+	if (parsed.search || parsed.hash) {
+		return 'Carries a query or fragment, which would swallow the App User ID appended after it.';
+	}
 	const token = parsed.pathname.replace(/^\/+|\/+$/g, '');
 	if (!token) {
 		return 'Has no link token after the host. RevenueCat 404s on the bare host.';
+	}
+	if (token.includes('/')) {
+		return `Path \`/${token}\` has more than one segment; the link token is a single segment.`;
 	}
 	if (PLACEHOLDER_TOKEN_RE.test(token)) {
 		return `Token \`${token}\` is a placeholder, not a link token from the RevenueCat dashboard.`;

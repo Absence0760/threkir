@@ -11,7 +11,7 @@ test('currencyFractionDigits: two-decimal currencies', () => {
 });
 
 test('currencyFractionDigits: Stripe zero-decimal currencies carry no minor unit', () => {
-	for (const code of ['JPY', 'KRW', 'VND', 'CLP', 'ISK', 'XOF', 'UGX', 'PYG']) {
+	for (const code of ['JPY', 'KRW', 'VND', 'CLP', 'XOF', 'PYG']) {
 		assert.equal(currencyFractionDigits(code), 0, `${code} must be zero-decimal`);
 	}
 });
@@ -88,6 +88,31 @@ function sourceFiles(dir: string): string[] {
 	}
 	return out;
 }
+
+// Stripe's table, not ISO 4217's: the runtime's currency data gives these 0
+// decimals, Stripe counts them in hundredths (its own minimum charge is
+// "0.50 COP", "0.50 IDR", "175.00 HUF"). Reading Intl first sent a 50,000 COP
+// price to Stripe as 500.00 COP.
+test('currencyFractionDigits: currencies ISO calls zero-decimal but Stripe counts in hundredths', () => {
+	for (const code of ['COP', 'IDR', 'HUF', 'TWD', 'ALL', 'LBP', 'IQD']) {
+		assert.equal(currencyFractionDigits(code), 2, code);
+		assert.equal(toMinorUnits(50_000, code), 5_000_000, code);
+		assert.equal(fromMinorUnits(5_000_000, code), 50_000, code);
+	}
+});
+
+// docs.stripe.com/currencies "Special cases": ISK and UGX are zero-decimal
+// currencies the API still takes as two-decimal with a 00 fraction — 5 ISK is
+// `500` — and cannot be charged in fractions.
+test('toMinorUnits: ISK and UGX are hundredths of a whole unit, never a fraction', () => {
+	for (const code of ['ISK', 'UGX', 'isk']) {
+		assert.equal(currencyFractionDigits(code), 2, code);
+		assert.equal(toMinorUnits(5, code), 500, code);
+		assert.equal(toMinorUnits(5.4, code), 500, code);
+		assert.equal(toMinorUnits(5.5, code), 600, code);
+		assert.equal(fromMinorUnits(500, code), 5, code);
+	}
+});
 
 test('source guard: no money surface hard-codes a 100 conversion', () => {
 	// Reason: 100 is not the minor-unit scale of every currency. A ¥1,000

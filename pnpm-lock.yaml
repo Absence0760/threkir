@@ -4,14 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  cookie: ^1.0.2
-  devalue: ^5.9.4
-  brace-expansion: ^5.0.12
-  source-map-js: ^1.2.2
-  '@sveltejs/kit>cookie': ^1.0.2
-  '@sveltejs/kit>devalue': ^5.9.4
-
 importers:
 
   .:
@@ -35,10 +27,10 @@ importers:
         version: 2.6.2
       '@sentry/node':
         specifier: ^11.2.0
-        version: 11.2.0(@babel/core@7.29.7)
+        version: 11.2.0(@babel/core@7.29.7(supports-color@8.1.1))
       '@sentry/sveltekit':
         specifier: ^11.2.0
-        version: 11.2.0(@babel/core@7.29.7)(@sveltejs/kit@2.70.3(@opentelemetry/api@1.9.1)(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15)))(svelte@5.57.1)(typescript@6.0.3)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15)))(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15))
+        version: 11.2.0(@babel/core@7.29.7(supports-color@8.1.1))(@sveltejs/kit@2.70.3(@opentelemetry/api@1.9.1)(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15)))(svelte@5.57.1)(typescript@6.0.3)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15)))(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15))
       '@supabase/ssr':
         specifier: ^0.12.7
         version: 0.12.7(@supabase/supabase-js@2.117.2(@opentelemetry/api@1.9.1))
@@ -74,8 +66,8 @@ importers:
         specifier: ^1.63.0
         version: 1.63.0
       '@sveltejs/adapter-static':
-        specifier: 3.0.10
-        version: 3.0.10(@sveltejs/kit@2.70.3(@opentelemetry/api@1.9.1)(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15)))(svelte@5.57.1)(typescript@6.0.3)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15)))
+        specifier: 4.0.0
+        version: 4.0.0(@sveltejs/kit@2.70.3(@opentelemetry/api@1.9.1)(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15)))(svelte@5.57.1)(typescript@6.0.3)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15)))
       '@sveltejs/kit':
         specifier: 2.70.3
         version: 2.70.3(@opentelemetry/api@1.9.1)(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15)))(svelte@5.57.1)(typescript@6.0.3)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15))
@@ -915,10 +907,10 @@ packages:
     peerDependencies:
       acorn: ^8.9.0
 
-  '@sveltejs/adapter-static@3.0.10':
-    resolution: {integrity: sha512-7D9lYFWJmB7zxZyTE/qxjksvMqzMuYrrsyh1f4AlZqeZeACPRySjbC3aFiY55wb1tWUaKOQG9PVbm74JcN2Iew==}
+  '@sveltejs/adapter-static@4.0.0':
+    resolution: {integrity: sha512-aF1J23R1ebKqUxQ4/qLr/Lxu63NFmLAtg8UZl3HFLxaoA1D/nhTVGcD9lTqx65iUbjNR2iOL0TgOxSX82x6Paw==}
     peerDependencies:
-      '@sveltejs/kit': ^2.0.0
+      '@sveltejs/kit': ^3.0.0-next.0
 
   '@sveltejs/kit@2.70.3':
     resolution: {integrity: sha512-UDvEYuZqAMbfB/oXIoqKvbKcb7YczK5zYrzmsGV1zRJk03jntwp8dXiYoIJotxAndsKvcPFtx9H1GRSKFdSHgg==}
@@ -1032,6 +1024,10 @@ packages:
 
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
+
+  cookie@0.6.0:
+    resolution: {integrity: sha512-U71cyTamuh1CRNCfpGY6to28lxvNwPG4Guz/EVjgf3Jmzv0vlDp1atT9eS5dDjMYHucpHbWns6Lwf3BKz6svdw==}
+    engines: {node: '>= 0.6'}
 
   cookie@1.1.1:
     resolution: {integrity: sha512-ei8Aos7ja0weRpFzJnEA9UHJ/7XQmqglbRwnf2ATjcB9Wq874VKH9kfjjirM6UhU2/E5fFYadylyhFldcqSidQ==}
@@ -1716,20 +1712,20 @@ snapshots:
   '@babel/compat-data@7.29.7':
     optional: true
 
-  '@babel/core@7.29.7':
+  '@babel/core@7.29.7(supports-color@8.1.1)':
     dependencies:
       '@babel/code-frame': 7.29.7
       '@babel/generator': 7.29.8
       '@babel/helper-compilation-targets': 7.29.7
-      '@babel/helper-module-transforms': 7.29.7(@babel/core@7.29.7)
+      '@babel/helper-module-transforms': 7.29.7(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1)
       '@babel/helpers': 7.29.7
       '@babel/parser': 7.29.8
       '@babel/template': 7.29.7
-      '@babel/traverse': 7.29.8
+      '@babel/traverse': 7.29.8(supports-color@8.1.1)
       '@babel/types': 7.29.8
       '@jridgewell/remapping': 2.3.5
       convert-source-map: 2.0.0
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@8.1.1)
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 6.3.1
@@ -1758,20 +1754,20 @@ snapshots:
   '@babel/helper-globals@7.29.7':
     optional: true
 
-  '@babel/helper-module-imports@7.29.7':
+  '@babel/helper-module-imports@7.29.7(supports-color@8.1.1)':
     dependencies:
-      '@babel/traverse': 7.29.8
+      '@babel/traverse': 7.29.8(supports-color@8.1.1)
       '@babel/types': 7.29.8
     transitivePeerDependencies:
       - supports-color
     optional: true
 
-  '@babel/helper-module-transforms@7.29.7(@babel/core@7.29.7)':
+  '@babel/helper-module-transforms@7.29.7(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1)':
     dependencies:
-      '@babel/core': 7.29.7
-      '@babel/helper-module-imports': 7.29.7
+      '@babel/core': 7.29.7(supports-color@8.1.1)
+      '@babel/helper-module-imports': 7.29.7(supports-color@8.1.1)
       '@babel/helper-validator-identifier': 7.29.7
-      '@babel/traverse': 7.29.8
+      '@babel/traverse': 7.29.8(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
     optional: true
@@ -1805,7 +1801,7 @@ snapshots:
       '@babel/types': 7.29.8
     optional: true
 
-  '@babel/traverse@7.29.8':
+  '@babel/traverse@7.29.8(supports-color@8.1.1)':
     dependencies:
       '@babel/code-frame': 7.29.7
       '@babel/generator': 7.29.8
@@ -1813,7 +1809,7 @@ snapshots:
       '@babel/parser': 7.29.8
       '@babel/template': 7.29.7
       '@babel/types': 7.29.8
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
     optional: true
@@ -2172,7 +2168,7 @@ snapshots:
       '@sentry/replay': 11.2.0
       '@sentry/replay-canvas': 11.2.0
 
-  '@sentry/bundler-plugins@11.2.0(@babel/core@7.29.7)':
+  '@sentry/bundler-plugins@11.2.0(@babel/core@7.29.7(supports-color@8.1.1))':
     dependencies:
       '@sentry/core': 11.2.0
       dotenv: 17.4.2
@@ -2182,7 +2178,7 @@ snapshots:
       sentry: 0.45.0
       supports-color: 8.1.1
     optionalDependencies:
-      '@babel/core': 7.29.7
+      '@babel/core': 7.29.7(supports-color@8.1.1)
 
   '@sentry/cloudflare@11.2.0':
     dependencies:
@@ -2203,10 +2199,10 @@ snapshots:
     dependencies:
       '@sentry/core': 11.2.0
 
-  '@sentry/node@11.2.0(@babel/core@7.29.7)':
+  '@sentry/node@11.2.0(@babel/core@7.29.7(supports-color@8.1.1))':
     dependencies:
       '@opentelemetry/api': 1.9.1
-      '@sentry/bundler-plugins': 11.2.0(@babel/core@7.29.7)
+      '@sentry/bundler-plugins': 11.2.0(@babel/core@7.29.7(supports-color@8.1.1))
       '@sentry/conventions': 0.24.0
       '@sentry/core': 11.2.0
       '@sentry/opentelemetry': 11.2.0(@opentelemetry/api@1.9.1)
@@ -2252,14 +2248,14 @@ snapshots:
       magic-string: 0.30.21
       svelte: 5.57.1
 
-  '@sentry/sveltekit@11.2.0(@babel/core@7.29.7)(@sveltejs/kit@2.70.3(@opentelemetry/api@1.9.1)(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15)))(svelte@5.57.1)(typescript@6.0.3)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15)))(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15))':
+  '@sentry/sveltekit@11.2.0(@babel/core@7.29.7(supports-color@8.1.1))(@sveltejs/kit@2.70.3(@opentelemetry/api@1.9.1)(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15)))(svelte@5.57.1)(typescript@6.0.3)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15)))(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15))':
     dependencies:
       '@opentelemetry/api': 1.9.1
-      '@sentry/bundler-plugins': 11.2.0(@babel/core@7.29.7)
+      '@sentry/bundler-plugins': 11.2.0(@babel/core@7.29.7(supports-color@8.1.1))
       '@sentry/cloudflare': 11.2.0
       '@sentry/conventions': 0.24.0
       '@sentry/core': 11.2.0
-      '@sentry/node': 11.2.0(@babel/core@7.29.7)
+      '@sentry/node': 11.2.0(@babel/core@7.29.7(supports-color@8.1.1))
       '@sentry/server-runtime-injection': 11.2.0
       '@sentry/server-utils': 11.2.0
       '@sentry/svelte': 11.2.0(svelte@5.57.1)
@@ -2325,7 +2321,7 @@ snapshots:
     dependencies:
       acorn: 8.18.0
 
-  '@sveltejs/adapter-static@3.0.10(@sveltejs/kit@2.70.3(@opentelemetry/api@1.9.1)(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15)))(svelte@5.57.1)(typescript@6.0.3)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15)))':
+  '@sveltejs/adapter-static@4.0.0(@sveltejs/kit@2.70.3(@opentelemetry/api@1.9.1)(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15)))(svelte@5.57.1)(typescript@6.0.3)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15)))':
     dependencies:
       '@sveltejs/kit': 2.70.3(@opentelemetry/api@1.9.1)(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15)))(svelte@5.57.1)(typescript@6.0.3)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15))
 
@@ -2336,7 +2332,7 @@ snapshots:
       '@sveltejs/vite-plugin-svelte': 7.3.1(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15))
       '@types/cookie': 0.6.0
       acorn: 8.18.0
-      cookie: 1.1.1
+      cookie: 0.6.0
       devalue: 5.9.4
       esm-env: 1.2.2
       kleur: 4.1.5
@@ -2433,6 +2429,8 @@ snapshots:
   convert-source-map@2.0.0:
     optional: true
 
+  cookie@0.6.0: {}
+
   cookie@1.1.1: {}
 
   core-util-is@1.0.3: {}
@@ -2449,9 +2447,11 @@ snapshots:
     transitivePeerDependencies:
       - '@noble/hashes'
 
-  debug@4.4.3:
+  debug@4.4.3(supports-color@8.1.1):
     dependencies:
       ms: 2.1.3
+    optionalDependencies:
+      supports-color: 8.1.1
     optional: true
 
   decimal.js@10.6.0: {}

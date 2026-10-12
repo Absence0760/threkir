@@ -80,7 +80,7 @@ function parseTcx(xml: string): ImportedRoute[] {
 			scope.querySelector('Notes')?.textContent?.trim() ||
 			scope.querySelector('Id')?.textContent?.trim() ||
 			scope.querySelector('Name')?.textContent?.trim() ||
-			'Imported Route';
+			DEFAULT_ROUTE_NAME;
 
 		const tps = Array.from(scope.querySelectorAll('Trackpoint'));
 		const waypoints: TrackPoint[] = [];
@@ -122,7 +122,8 @@ function parseTcx(xml: string): ImportedRoute[] {
 
 function parseGpx(xml: string): ImportedRoute[] {
 	const doc = new DOMParser().parseFromString(xml, 'text/xml');
-	const defaultName = doc.querySelector('metadata > name')?.textContent?.trim() ?? 'Imported Route';
+	const metadata = Array.from(doc.documentElement?.children ?? []).find((c) => c.localName === 'metadata');
+	const defaultName = metadata ? childName(metadata, DEFAULT_ROUTE_NAME) : DEFAULT_ROUTE_NAME;
 
 	const routes: ImportedRoute[] = [];
 
@@ -131,7 +132,7 @@ function parseGpx(xml: string): ImportedRoute[] {
 	// so we concatenate them into the single route.
 	const tracks = Array.from(doc.querySelectorAll('trk'));
 	for (const trk of tracks) {
-		const name = trk.querySelector('name')?.textContent?.trim() ?? defaultName;
+		const name = childName(trk, defaultName);
 		const waypoints = toWaypoints(Array.from(trk.querySelectorAll('trkpt')));
 		if (waypoints.length > 0) routes.push(buildRoute(name, waypoints));
 	}
@@ -141,7 +142,7 @@ function parseGpx(xml: string): ImportedRoute[] {
 	if (routes.length === 0) {
 		const rtes = Array.from(doc.querySelectorAll('rte'));
 		for (const rte of rtes) {
-			const name = rte.querySelector('name')?.textContent?.trim() ?? defaultName;
+			const name = childName(rte, defaultName);
 			const waypoints = toWaypoints(Array.from(rte.querySelectorAll('rtept')));
 			if (waypoints.length > 0) routes.push(buildRoute(name, waypoints));
 		}
@@ -246,7 +247,8 @@ export function parseEle(text: string | null | undefined): number | undefined {
 
 function parseKml(xml: string): ImportedRoute[] {
 	const doc = new DOMParser().parseFromString(xml, 'text/xml');
-	const defaultName = doc.querySelector('Document > name')?.textContent?.trim() ?? 'Imported Route';
+	const kmlDocument = doc.querySelector('Document');
+	const defaultName = kmlDocument ? childName(kmlDocument, DEFAULT_ROUTE_NAME) : DEFAULT_ROUTE_NAME;
 
 	const routes: ImportedRoute[] = [];
 
@@ -256,7 +258,7 @@ function parseKml(xml: string): ImportedRoute[] {
 	// treated as segments of the same route — flatten into one polyline.
 	const placemarks = Array.from(doc.querySelectorAll('Placemark'));
 	for (const pm of placemarks) {
-		const name = pm.querySelector('name')?.textContent?.trim() ?? defaultName;
+		const name = childName(pm, defaultName);
 		const coordElements = pm.querySelectorAll('LineString coordinates, LinearRing coordinates');
 		const waypoints: TrackPoint[] = [];
 		coordElements.forEach((el) => {
@@ -323,7 +325,10 @@ async function parseKmz(file: File): Promise<ImportedRoute[]> {
 function parseGeoJson(text: string): ImportedRoute[] {
 	const geo = JSON.parse(text);
 	const routes: ImportedRoute[] = [];
-	const defaultName = geo.properties?.name ?? geo.name ?? 'Imported Route';
+	if (!geo || typeof geo !== 'object') {
+		throw new Error('GeoJSON file contains no line-based routes');
+	}
+	const defaultName = geoJsonName(geo.properties?.name, geoJsonName(geo.name, DEFAULT_ROUTE_NAME));
 
 	function lineStringToWaypoints(coords: number[][]): TrackPoint[] {
 		const out: TrackPoint[] = [];
@@ -365,11 +370,14 @@ function parseGeoJson(text: string): ImportedRoute[] {
 
 	if (geo.type === 'FeatureCollection' && Array.isArray(geo.features)) {
 		for (const feature of geo.features) {
-			const name = feature.properties?.name ?? defaultName;
+			// A null or non-object feature is skipped, not dereferenced: one
+			// malformed entry must not abort every route beside it.
+			if (!feature || typeof feature !== 'object') continue;
+			const name = geoJsonName(feature.properties?.name, defaultName);
 			addGeometry(feature.geometry, name);
 		}
 	} else if (geo.type === 'Feature') {
-		const name = geo.properties?.name ?? defaultName;
+		const name = geoJsonName(geo.properties?.name, defaultName);
 		addGeometry(geo.geometry, name);
 	} else if (geo.type) {
 		// Bare geometry (e.g. `{ type: 'LineString', coordinates: [...] }`)
@@ -384,6 +392,33 @@ function parseGeoJson(text: string): ImportedRoute[] {
 }
 
 // --- Shared ---
+
+const DEFAULT_ROUTE_NAME = 'Imported Route';
+
+/**
+ * The text of `el`'s own `<name>` child, trimmed, or `fallback` when it has
+ * none or it is blank. Direct children only: `querySelector('name')` searches
+ * every descendant, so a `<trk>` with no name of its own took its first
+ * `<trkpt>`'s, and an empty `<name/>` (which `??` does not catch) imported a
+ * route named "". Mirrors `_elementName` in packages/gpx_parser's
+ * route_parser.dart.
+ */
+export function childName(
+	el: { children: ArrayLike<{ localName: string; textContent: string | null }> },
+	fallback: string,
+): string {
+	for (const c of Array.from(el.children)) {
+		if (c.localName !== 'name') continue;
+		const text = c.textContent?.trim();
+		return text ? text : fallback;
+	}
+	return fallback;
+}
+
+/** A GeoJSON `name` property when it is a non-blank string, else `fallback`. */
+export function geoJsonName(value: unknown, fallback: string): string {
+	return typeof value === 'string' && value.trim() !== '' ? value.trim() : fallback;
+}
 
 function buildRoute(name: string, waypoints: TrackPoint[]): ImportedRoute {
 	let distance = 0;
@@ -403,8 +438,12 @@ function buildRoute(name: string, waypoints: TrackPoint[]): ImportedRoute {
 		// `prev != null && curr != null && curr > prev` guard.
 		const prevEle = waypoints[i - 1].ele;
 		const currEle = waypoints[i].ele;
+		// A finite pair can still overflow (`-1e308` then `1e308` climbs by
+		// Infinity), so the climb itself has to be finite to count — the Dart
+		// twin's `_buildRoute` skips the same pair.
 		if (typeof prevEle === 'number' && typeof currEle === 'number' && currEle > prevEle) {
-			elevGain += currEle - prevEle;
+			const climb = currEle - prevEle;
+			if (Number.isFinite(climb)) elevGain += climb;
 		}
 	}
 

@@ -230,8 +230,16 @@ export function csvRow(r: RenderRunRow): string {
 	].join(',');
 }
 
+/// Every code point outside XML 1.0's `Char` production: the C0 controls
+/// other than tab / LF / CR, a lone surrogate, and U+FFFE / U+FFFF. Entity
+/// escaping cannot carry these — `&#x7;` is just as ill-formed — so one in a
+/// run title made every parser refuse the whole GPX file. Replaced with
+/// U+FFFD rather than dropped, so the reader can see something was there.
+const XML_FORBIDDEN_CHARS = /[^\t\n\r\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/gu;
+
 export function xmlEscape(v: string): string {
 	return v
+		.replace(XML_FORBIDDEN_CHARS, '\uFFFD')
 		.replace(/&/g, '&amp;')
 		.replace(/</g, '&lt;')
 		.replace(/>/g, '&gt;')

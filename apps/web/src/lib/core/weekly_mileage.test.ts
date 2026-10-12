@@ -193,3 +193,97 @@ for (const [weekStartDay, expected, prior] of [
 		assert.equal(bars[10].distance_m, prior, 'and the seam run left of it is the prior week');
 	});
 }
+
+/// Run `fn` with the process in `tz`, restoring the previous zone after. The
+/// bucketing is local-calendar by design, so the week a run lands in is a
+/// claim about the runner's zone and has to be tested in one.
+function inZone<T>(tz: string, fn: () => T): T {
+	const prev = process.env.TZ;
+	process.env.TZ = tz;
+	try {
+		return fn();
+	} finally {
+		if (prev === undefined) delete process.env.TZ;
+		else process.env.TZ = prev;
+	}
+}
+
+test('bucketWeeklyMileage — the week edge is the runner\'s local midnight, not UTC', () => {
+	inZone('America/Los_Angeles', () => {
+		// Sunday 4 Jan 2026 at 21:00 in Los Angeles is Monday 05:00 UTC. It
+		// was run on the Sunday, so it closes the PREVIOUS Monday-week.
+		const now = new Date(2026, 0, 8, 12);
+		const out = bucketWeeklyMileage(
+			[
+				{ started_at: '2026-01-05T05:00:00Z', distance_m: 10000 },
+				{ started_at: '2026-01-05T08:30:00Z', distance_m: 4000 },
+			],
+			2,
+			'en-US',
+			'monday',
+			now,
+		);
+		assert.deepEqual(distances(out), [10000, 4000], 'Sunday-night run stays in last week');
+	});
+});
+
+test('bucketWeeklyMileage — east of UTC, a Monday-morning run is this week even while UTC is still Sunday', () => {
+	inZone('Pacific/Auckland', () => {
+		// Sunday 4 Jan 2026 20:00 UTC is Monday 09:00 in Auckland (NZDT).
+		const now = new Date(2026, 0, 8, 12);
+		const out = bucketWeeklyMileage(
+			[{ started_at: '2026-01-04T20:00:00Z', distance_m: 6000 }],
+			2,
+			'en-NZ',
+			'monday',
+			now,
+		);
+		assert.deepEqual(distances(out), [0, 6000]);
+	});
+});
+
+test('bucketWeeklyMileage — a window spanning a DST change keeps seven-day weeks and no lost bucket', () => {
+	inZone('Europe/London', () => {
+		// Clocks go forward on Sunday 29 March 2026. Runs on the Saturday
+		// before, the Sunday of the change and the Monday after must land in
+		// two adjacent weeks, with every week in the window present.
+		const now = new Date(2026, 3, 2, 12);
+		const out = bucketWeeklyMileage(
+			[
+				{ started_at: '2026-03-28T12:00:00Z', distance_m: 1000 },
+				{ started_at: '2026-03-29T23:30:00Z', distance_m: 2000 },
+				{ started_at: '2026-03-30T12:00:00Z', distance_m: 4000 },
+			],
+			4,
+			'en-GB',
+			'monday',
+			now,
+		);
+		assert.equal(out.length, 4);
+		// 23:30Z on the 29th is 00:30 BST on Monday the 30th.
+		assert.deepEqual(distances(out), [0, 0, 1000, 6000]);
+		assert.deepEqual(
+			out.map((b) => b.week),
+			['9 Mar', '16 Mar', '23 Mar', '30 Mar'],
+		);
+	});
+});
+
+test('bucketWeeklyMileage — a Sunday-anchored week starts on Sunday in the runner\'s zone', () => {
+	inZone('America/New_York', () => {
+		// Saturday 10 Jan 23:30 in New York is Sunday 04:30 UTC: still the
+		// week that began Sunday 4 Jan.
+		const now = new Date(2026, 0, 14, 12);
+		const out = bucketWeeklyMileage(
+			[
+				{ started_at: '2026-01-11T04:30:00Z', distance_m: 3000 },
+				{ started_at: '2026-01-11T15:00:00Z', distance_m: 5000 },
+			],
+			2,
+			'en-US',
+			'sunday',
+			now,
+		);
+		assert.deepEqual(distances(out), [3000, 5000]);
+	});
+});

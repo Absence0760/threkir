@@ -167,3 +167,36 @@ test('trackEntersAnyZone — raw in-zone fixes count, and no zones never warns',
 	assert.equal(trackEntersAnyZone([inZone], []), false);
 	assert.equal(trackEntersAnyZone([], [home]), false);
 });
+
+test('clipPointsToZones — a coordinate-less leading fix does not end the trim', () => {
+	const out1 = offset(home.lat, home.lng, 0.01);
+	const out2 = offset(home.lat, home.lng, 0.02);
+	const pts = [
+		{ lat: Number.NaN, lng: Number.NaN },
+		{ lat: home.lat, lng: home.lng },
+		{ lat: home.lat + 0.0001, lng: home.lng },
+		out1,
+		out2,
+		{ lat: home.lat, lng: home.lng },
+		{ lat: null, lng: undefined } as unknown as LatLng,
+	];
+	assert.deepEqual(clipPointsToZones(pts, [home]), [out1, out2]);
+});
+
+test('clipPointsToZones — a null element at an end is dropped, not thrown on', () => {
+	const out1 = offset(home.lat, home.lng, 0.01);
+	const pts = [null as unknown as LatLng, { lat: home.lat, lng: home.lng }, out1];
+	assert.deepEqual(clipPointsToZones(pts, [home]), [out1]);
+});
+
+test('clipPointsToZones — a fix placed only by its smoothed pair ends the trim when out', () => {
+	const out1 = offset(home.lat, home.lng, 0.01);
+	const smoothedOnly = { lat: Number.NaN, lng: Number.NaN, smoothedLat: out1.lat, smoothedLng: out1.lng };
+	const pts = [smoothedOnly, { lat: home.lat, lng: home.lng }, out1];
+	assert.deepEqual(clipPointsToZones(pts, [home]), pts);
+});
+
+test('clipPointsToZones — an all-coordinate-less track with zones returns empty', () => {
+	const pts = [{ lat: Number.NaN, lng: Number.NaN }, { lat: Number.NaN, lng: 1 }];
+	assert.deepEqual(clipPointsToZones(pts, [home]), []);
+});

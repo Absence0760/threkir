@@ -81,7 +81,10 @@ bool trackEntersAnyZone(List<Waypoint> track, List<PrivacyZone> zones) {
 /// owner exports carries the same trimmed line a stranger is served. The
 /// smoothed accessors are required, not defaulted, so no caller can drop the
 /// smoothed half of the test by omission; pass `(_) => null` for a point type
-/// that has none. Mirrors `clipPointsToZones` in `privacy.ts`.
+/// that has none. A fix with no usable position (neither a finite raw pair
+/// nor a smoothed one) draws nothing, so the walks drop it and keep going:
+/// stopping there would publish every in-zone fix behind it. Mirrors
+/// `clipPointsToZones` in `privacy.ts`.
 List<T> clipPointsToZones<T>(
   List<T> points,
   List<PrivacyZone> zones, {
@@ -91,9 +94,18 @@ List<T> clipPointsToZones<T>(
   required double? Function(T) smoothedLngOf,
 }) {
   if (zones.isEmpty || points.isEmpty) return points;
-  bool inZone(T p) =>
-      isFixInAnyZone(latOf(p), lngOf(p), smoothedLatOf(p), smoothedLngOf(p),
-          zones);
+  bool inZone(T p) {
+    final lat = latOf(p);
+    final lng = lngOf(p);
+    final sLat = smoothedLatOf(p);
+    final sLng = smoothedLngOf(p);
+    final hasRaw = lat.isFinite && lng.isFinite;
+    final hasSmoothed =
+        sLat != null && sLng != null && sLat.isFinite && sLng.isFinite;
+    if (!hasRaw && !hasSmoothed) return true;
+    return isFixInAnyZone(lat, lng, sLat, sLng, zones);
+  }
+
   var start = 0;
   while (start < points.length && inZone(points[start])) {
     start++;

@@ -153,6 +153,48 @@ void main() {
     });
   });
 
+  group('clipPointsToZones — coordinate-less fixes', () {
+    test('a coordinate-less leading fix does not end the trim', () {
+      final pts = [
+        const _Pt(double.nan, double.nan),
+        _Pt(_home.lat, _home.lng),
+        _Pt(_home.lat + 0.0001, _home.lng),
+        _offset(_home.lat, _home.lng, 0.01),
+        _offset(_home.lat, _home.lng, 0.02),
+        _Pt(_home.lat, _home.lng),
+        const _Pt(double.nan, double.infinity),
+      ];
+      final out = clipPointsToZones<_Pt>(pts, const [_home],
+          latOf: _lat, lngOf: _lng, smoothedLatOf: _sLat, smoothedLngOf: _sLng);
+      expect(out.length, 2);
+      expect(identical(out[0], pts[3]), isTrue);
+      expect(identical(out[1], pts[4]), isTrue);
+    });
+
+    test('a fix placed only by its smoothed pair ends the trim when out', () {
+      final out1 = _offset(_home.lat, _home.lng, 0.01);
+      final pts = [
+        _Pt(double.nan, double.nan,
+            smoothedLat: out1.lat, smoothedLng: out1.lng),
+        _Pt(_home.lat, _home.lng),
+        out1,
+      ];
+      final out = clipPointsToZones<_Pt>(pts, const [_home],
+          latOf: _lat, lngOf: _lng, smoothedLatOf: _sLat, smoothedLngOf: _sLng);
+      expect(out, equals(pts));
+    });
+
+    test('an all-coordinate-less track with zones returns empty', () {
+      final pts = [
+        const _Pt(double.nan, double.nan),
+        const _Pt(double.nan, 1),
+      ];
+      final out = clipPointsToZones<_Pt>(pts, const [_home],
+          latOf: _lat, lngOf: _lng, smoothedLatOf: _sLat, smoothedLngOf: _sLng);
+      expect(out, isEmpty);
+    });
+  });
+
   // The make-public confirm's warning (decisions §33): a fix whose raw
   // position is ~843 m east of the zone but whose stored smoothed position is
   // the zone centre is drawn inside the zone, so the track enters it.

@@ -62,6 +62,16 @@ export function trackEntersAnyZone(track: LinePointSource[], zones: PrivacyZone[
 	return track.some((p) => isFixInAnyZone(p, zones));
 }
 
+function hasRawPosition(p: LinePointSource): boolean {
+	return Number.isFinite(p.lat) && Number.isFinite(p.lng);
+}
+
+function isHiddenAtEdge(p: LinePointSource | null | undefined, zones: PrivacyZone[]): boolean {
+	if (!p || typeof p !== 'object') return true;
+	if (!hasRawPosition(p) && !hasSmoothedPosition(p)) return true;
+	return isFixInAnyZone(p, zones);
+}
+
 /// Walk forward from index 0 and drop fixes in any zone; walk
 /// backward from the end with the same predicate; keep the
 /// contiguous middle. A fix is in a zone when its raw OR its
@@ -74,6 +84,11 @@ export function trackEntersAnyZone(track: LinePointSource[], zones: PrivacyZone[
 /// you've ever been," and (b) gapping the polyline mid-track looks
 /// broken.
 ///
+/// A fix with no usable position (neither a finite raw pair nor a smoothed
+/// one) draws nothing, so the walks drop it and keep going: stopping there
+/// would publish every in-zone fix behind it. Mirrors the server's walk
+/// (migration 20270724000001).
+///
 /// When the result would be empty (every point is in a zone), we
 /// return an empty array — callers should render no polyline at all
 /// rather than a single point that gives the location away.
@@ -81,11 +96,11 @@ export function clipPointsToZones<T extends LinePointSource>(points: T[], zones:
 	if (zones.length === 0 || points.length === 0) return points;
 
 	let start = 0;
-	while (start < points.length && isFixInAnyZone(points[start], zones)) start++;
+	while (start < points.length && isHiddenAtEdge(points[start], zones)) start++;
 	if (start >= points.length) return [];
 
 	let end = points.length - 1;
-	while (end > start && isFixInAnyZone(points[end], zones)) end--;
+	while (end > start && isHiddenAtEdge(points[end], zones)) end--;
 
 	return points.slice(start, end + 1);
 }

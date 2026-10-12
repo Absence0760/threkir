@@ -346,7 +346,7 @@ class _SettingsProScreenState extends State<SettingsProScreen>
         e!.willRenew ? l10n.proActiveRenews(when) : l10n.proActiveEnds(when),
     ];
     return ListTile(
-      leading: Icon(Icons.workspace_premium, color: theme.colorScheme.primary),
+      leading: Icon(Icons.workspace_premium_outlined, color: theme.colorScheme.primary),
       title: Text(
         l10n.proActiveTitle,
         style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),

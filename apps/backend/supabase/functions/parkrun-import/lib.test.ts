@@ -193,3 +193,31 @@ Deno.test('isUsableParkrunResult — a usable date does not throw on parse', () 
 	// invalid date must still be rejected, not crash.
 	assertEquals(isUsableParkrunResult('18:30', '99/99/9999'), false);
 });
+
+// V8's Date.parse rolls an impossible ISO day forward (2026-02-31 -> 3 March)
+// and calls it valid; Postgres refuses the same literal for timestamptz, so a
+// row that passed this check still failed the whole batch insert.
+Deno.test('isUsableParkrunResult — a day past the end of its month is rejected', () => {
+	assertEquals(isUsableParkrunResult('18:30', '31/02/2026'), false);
+	assertEquals(isUsableParkrunResult('18:30', '30/02/2026'), false);
+	assertEquals(isUsableParkrunResult('18:30', '31/04/2026'), false);
+	assertEquals(isUsableParkrunResult('18:30', '00/04/2026'), false);
+	assertEquals(isUsableParkrunResult('18:30', '30/04/2026'), true);
+	assertEquals(isUsableParkrunResult('18:30', '31/12/2026'), true);
+});
+
+Deno.test('isUsableParkrunResult — 29 February only in a leap year', () => {
+	assertEquals(isUsableParkrunResult('18:30', '29/02/2024'), true);
+	assertEquals(isUsableParkrunResult('18:30', '29/02/2026'), false);
+	assertEquals(isUsableParkrunResult('18:30', '29/02/2000'), true);
+	assertEquals(isUsableParkrunResult('18:30', '29/02/2100'), false);
+});
+
+Deno.test('isUsableParkrunResult — only the DD/MM/YYYY shape parkrun prints is read', () => {
+	// Each of these would otherwise reach the timestamptz column as a literal
+	// Postgres reads differently or not at all.
+	assertEquals(isUsableParkrunResult('18:30', '2026-04-15'), false);
+	assertEquals(isUsableParkrunResult('18:30', '15/04/2026 extra'), false);
+	assertEquals(isUsableParkrunResult('18:30', '15/04/26'), false);
+	assertEquals(isUsableParkrunResult('18:30', '15-04-2026'), false);
+});

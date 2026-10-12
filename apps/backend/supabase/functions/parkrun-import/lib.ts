@@ -5,6 +5,7 @@
 // can exercise them without importing the EF module (whose top-level
 // `serve(...)` binds a port at module-load time).
 
+import { isIsoCalendarDate } from '../_shared/calendar_date.ts';
 import { SYNTHETIC_START_TIME_UTC } from '../_shared/synthetic_start_time.ts';
 
 /// Parkrun returns its result date as DD/MM/YYYY with no time-of-day
@@ -50,9 +51,15 @@ export function parseParkrunTime(time: string): number {
 ///
 /// Skipping such rows is the durable fix: only a row that yields both a
 /// valid finish time AND a valid calendar date becomes a run.
+///
+/// The date is checked against the real calendar (`isIsoCalendarDate`), not
+/// `Date.parse`: V8 rolls `2026-02-31` forward to 3 March and calls it
+/// valid, while Postgres refuses the same literal for `timestamptz` — the
+/// whole-batch failure of mode 1 again, behind a check that said yes.
 export function isUsableParkrunResult(time: string, date: string): boolean {
 	if (parseParkrunTime(time) <= 0) return false;
-	return Number.isFinite(Date.parse(parseParkrunDate(date)));
+	const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(date);
+	return m != null && isIsoCalendarDate(`${m[3]}-${m[2]}-${m[1]}`);
 }
 
 // ──────────────────────────────────────────────────────────────────

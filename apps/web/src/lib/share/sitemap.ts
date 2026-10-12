@@ -13,7 +13,7 @@ import { buildClubShareCanonical } from './share_club_meta';
 import { buildEventShareCanonical } from './share_event_meta';
 import { buildRaceShareCanonical } from './share_race_meta';
 import { buildRouteShareCanonical, buildRunShareCanonical } from './share_meta';
-import { escapeHtml } from '../util/html_escape';
+import { escapeXml } from '../util/html_escape';
 
 export type SitemapEntry = {
 	loc: string;
@@ -37,8 +37,8 @@ export function buildSitemap(entries: SitemapEntry[]): string {
 	lines.push('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
 	for (const e of entries) {
 		lines.push('  <url>');
-		lines.push(`    <loc>${escapeHtml(e.loc)}</loc>`);
-		if (e.lastmod) lines.push(`    <lastmod>${escapeHtml(e.lastmod)}</lastmod>`);
+		lines.push(`    <loc>${escapeXml(e.loc)}</loc>`);
+		if (e.lastmod) lines.push(`    <lastmod>${escapeXml(e.lastmod)}</lastmod>`);
 		if (e.changefreq) lines.push(`    <changefreq>${e.changefreq}</changefreq>`);
 		if (e.priority != null) {
 			lines.push(`    <priority>${e.priority.toFixed(1)}</priority>`);

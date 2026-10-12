@@ -10,7 +10,7 @@
 import type { TrackPoint } from '../types';
 import { projectTrack } from '../routes/track_projection';
 import { OG_CARD_LIGHT } from './og_card_palette';
-import { escapeHtml } from '../util/html_escape';
+import { escapeXml } from '../util/html_escape';
 import { clipToWidthPx } from './svg_text_width';
 
 const W = 1200;
@@ -91,11 +91,11 @@ export function buildRouteOgSvg(input: RouteImageInput): string {
 	const meta = buildMetaLine(input.distance_m, input.surface);
 	const titleY = H - 160;
 	parts.push(
-		`<text x="${PAD}" y="${titleY}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="${TITLE_SIZE}" font-weight="700" fill="${TEXT_FILL}">${escapeHtml(clipToWidthPx(name, W - PAD * 2, TITLE_SIZE))}</text>`,
+		`<text x="${PAD}" y="${titleY}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="${TITLE_SIZE}" font-weight="700" fill="${TEXT_FILL}">${escapeXml(clipToWidthPx(name, W - PAD * 2, TITLE_SIZE))}</text>`,
 	);
 	if (meta) {
 		parts.push(
-			`<text x="${PAD}" y="${titleY + 60}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="36" font-weight="500" fill="${TEXT_MUTED}">${escapeHtml(meta)}</text>`,
+			`<text x="${PAD}" y="${titleY + 60}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="36" font-weight="500" fill="${TEXT_MUTED}">${escapeXml(meta)}</text>`,
 		);
 	}
 

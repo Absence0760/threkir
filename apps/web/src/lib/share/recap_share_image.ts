@@ -8,7 +8,7 @@
 
 import type { YearInRunningRecap } from '../runs/recap';
 import { OG_CARD_DARK } from './og_card_palette';
-import { escapeHtml } from '../util/html_escape';
+import { escapeXml } from '../util/html_escape';
 
 const SIZE = 1080; // square — friendliest aspect for social shares
 const PAD = 72;
@@ -89,12 +89,12 @@ export function buildRecapShareSvg(
 	// Kicker.
 	const kickerPeriod = (periodLabel ?? String(recap.year)).toUpperCase();
 	parts.push(
-		`<text x="${PAD}" y="${PAD + 110}" font-family="${F}" font-size="34" font-weight="700" fill="${LABEL_FILL}" letter-spacing="3">MY ${escapeHtml(kickerPeriod)} IN RUNNING</text>`,
+		`<text x="${PAD}" y="${PAD + 110}" font-family="${F}" font-size="34" font-weight="700" fill="${LABEL_FILL}" letter-spacing="3">MY ${escapeXml(kickerPeriod)} IN RUNNING</text>`,
 	);
 
 	// Hero — total distance.
 	parts.push(
-		`<text x="${PAD}" y="${PAD + 280}" font-family="${F}" font-size="200" font-weight="900" fill="${HERO_FILL}">${escapeHtml(fmtDistance(recap.totalDistanceM, unit))}</text>`,
+		`<text x="${PAD}" y="${PAD + 280}" font-family="${F}" font-size="200" font-weight="900" fill="${HERO_FILL}">${escapeXml(fmtDistance(recap.totalDistanceM, unit))}</text>`,
 	);
 
 	// Subhead — run count.
@@ -114,10 +114,10 @@ export function buildRecapShareSvg(
 		const x = PAD + col * colW;
 		const y = gridTop + row * rowH;
 		parts.push(
-			`<text x="${x}" y="${y}" font-family="${F}" font-size="28" font-weight="700" fill="${LABEL_FILL}" letter-spacing="2">${escapeHtml(cell.label.toUpperCase())}</text>`,
+			`<text x="${x}" y="${y}" font-family="${F}" font-size="28" font-weight="700" fill="${LABEL_FILL}" letter-spacing="2">${escapeXml(cell.label.toUpperCase())}</text>`,
 		);
 		parts.push(
-			`<text x="${x}" y="${y + 58}" font-family="${F}" font-size="64" font-weight="800" fill="${STAT_FILL}">${escapeHtml(cell.value)}</text>`,
+			`<text x="${x}" y="${y + 58}" font-family="${F}" font-size="64" font-weight="800" fill="${STAT_FILL}">${escapeXml(cell.value)}</text>`,
 		);
 	});
 

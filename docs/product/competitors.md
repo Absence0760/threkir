@@ -346,7 +346,7 @@ Backlog items are tracked in `docs/product/roadmap.md § Competitor-parity backl
 
 | App | Free tier | Paid tier | What's paywalled |
 |---|---|---|---|
-| **This app** | Full core features incl. training plans + 5 / day AI coach | ~$9.99/month (Pro) | Unlimited AI coach + priority job-queue processing (see [decisions.md § 23](../architecture/decisions.md)) |
+| **This app** | Full core features incl. training plans + 2 / day AI coach | ~$9.99/month (Pro) | 10 / day AI coach + priority processing + server route generation (see [paywall.md](../features/paywall.md)) |
 | Strava | Basic tracking + social | ~$11.99/month | Route builder, GPX, segment leaderboards, training plans |
 | Garmin Connect | Everything | N/A (hardware cost) | Nothing — hardware is the business model |
 | Nike Run Club | Everything | N/A | Nothing |

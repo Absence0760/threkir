@@ -7382,7 +7382,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get proSubscribeSubtitleConfigured =>
-      'Treinador de IA ilimitado + processamento prioritário. Renova automaticamente todo mês até ser cancelado em Definições → Assinaturas.';
+      '10 mensagens por dia ao treinador de IA + processamento prioritário. Renova automaticamente todo mês até ser cancelado em Definições → Assinaturas.';
 
   @override
   String get proSubscribeSubtitleWeb =>
@@ -7410,7 +7410,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get proSubscribeSubtitleConfiguredAnnual =>
-      'Cobrado uma vez por ano. Renova automaticamente todos os anos até ser cancelado em Definições → Assinaturas.';
+      '10 mensagens por dia ao treinador de IA + processamento prioritário. Cobrado uma vez por ano. Renova automaticamente todos os anos até ser cancelado em Definições → Assinaturas.';
 
   @override
   String get proComingSoonTitle => 'Pro — em breve';
@@ -21961,7 +21961,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get proSubscribeSubtitleConfigured =>
-      'Treinador de IA ilimitado + processamento prioritário. Renova automaticamente todo mês até ser cancelado em Configurações → Assinaturas.';
+      '10 mensagens por dia para o treinador de IA + processamento prioritário. Renova automaticamente todo mês até ser cancelado em Configurações → Assinaturas.';
 
   @override
   String get proSubscribeSubtitleWeb =>
@@ -21989,7 +21989,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get proSubscribeSubtitleConfiguredAnnual =>
-      'Cobrado uma vez por ano. Renova automaticamente todo ano até ser cancelado em Configurações → Assinaturas.';
+      '10 mensagens por dia para o treinador de IA + processamento prioritário. Cobrado uma vez por ano. Renova automaticamente todo ano até ser cancelado em Configurações → Assinaturas.';
 
   @override
   String get proComingSoonTitle => 'Pro — em breve';

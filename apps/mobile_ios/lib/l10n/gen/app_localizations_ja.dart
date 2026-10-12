@@ -6971,7 +6971,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get proSubscribeSubtitleConfigured =>
-      '無制限のAIコーチ + 優先処理。設定 → サブスクリプションで解約するまで毎月自動更新されます。';
+      'AIコーチへのメッセージ1日10件 + 優先処理。設定 → サブスクリプションで解約するまで毎月自動更新されます。';
 
   @override
   String get proSubscribeSubtitleWeb =>
@@ -6999,7 +6999,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get proSubscribeSubtitleConfiguredAnnual =>
-      '年に1回請求されます。設定 → サブスクリプションで解約するまで毎年自動更新されます。';
+      'AIコーチへのメッセージ1日10件 + 優先処理。年に1回請求されます。設定 → サブスクリプションで解約するまで毎年自動更新されます。';
 
   @override
   String get proComingSoonTitle => 'Pro — 近日公開';

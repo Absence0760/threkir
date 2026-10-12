@@ -7405,7 +7405,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get proSubscribeSubtitleConfigured =>
-      'Coach IA illimité + traitement prioritaire. Renouvellement mensuel automatique jusqu\'à résiliation dans Réglages → Abonnements.';
+      '10 messages au coach IA par jour + traitement prioritaire. Renouvellement mensuel automatique jusqu\'à résiliation dans Réglages → Abonnements.';
 
   @override
   String get proSubscribeSubtitleWeb =>
@@ -7433,7 +7433,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get proSubscribeSubtitleConfiguredAnnual =>
-      'Facturé une fois par an. Renouvellement annuel automatique jusqu\'à résiliation dans Réglages → Abonnements.';
+      '10 messages au coach IA par jour + traitement prioritaire. Facturé une fois par an. Renouvellement annuel automatique jusqu\'à résiliation dans Réglages → Abonnements.';
 
   @override
   String get proComingSoonTitle => 'Pro — bientôt disponible';

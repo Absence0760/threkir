@@ -1300,8 +1300,9 @@ cascade`. pgtap `achievements_distance_recompute_revoke_test.sql`.
 
 Time-series store for Pro-tier training-load metrics (VDOT, VO2 max,
 ATL, CTL, TSB). Prepared in migration `20260507_001_fitness_snapshots.sql`.
-No endpoint writes to it yet — the Pro tier today unlocks "unlimited AI
-Coach" and "priority processing" (see `decisions.md § 23`); the
+No endpoint writes to it yet — the Pro tier today unlocks a higher AI
+Coach daily cap (10/day vs 2/day) and "priority processing" (see
+`docs/features/paywall.md`); the
 recovery-advisor / race-predictor features that will consume this table
 are tracked under `roadmap.md § Phase 3 — Premium tier`.
 

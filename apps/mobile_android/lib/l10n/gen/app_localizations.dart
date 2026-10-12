@@ -12001,7 +12001,7 @@ abstract class AppLocalizations {
   /// Pro tile subtitle when in-app purchase is configured
   ///
   /// In en, this message translates to:
-  /// **'Unlimited AI coach + priority processing. Auto-renews monthly until cancelled in Settings → Subscriptions.'**
+  /// **'10 AI coach messages a day + priority processing. Auto-renews monthly until cancelled in Settings → Subscriptions.'**
   String get proSubscribeSubtitleConfigured;
 
   /// Pro tile subtitle when falling back to the web portal
@@ -12037,7 +12037,7 @@ abstract class AppLocalizations {
   /// Pro subscribe tile subtitle when the yearly plan is selected: billing period and renewal terms
   ///
   /// In en, this message translates to:
-  /// **'Billed once a year. Auto-renews yearly until cancelled in Settings → Subscriptions.'**
+  /// **'10 AI coach messages a day + priority processing. Billed once a year. Auto-renews yearly until cancelled in Settings → Subscriptions.'**
   String get proSubscribeSubtitleConfiguredAnnual;
 
   /// Pro tile title when the deploy has no live Pro perk to sell

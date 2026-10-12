@@ -3349,6 +3349,55 @@ void main() {
       );
     });
 
+    test('Subscribe-to-Pro copy never promises unlimited coach use', () {
+      // Reason: Pro caps the AI coach at a daily message limit
+      // (docs/features/paywall.md), so "Unlimited AI coach" on the purchase
+      // tile misstated the entitlement to buyers and to App Review
+      // (Guideline 2.3, issue #1120). Every locale is checked because a
+      // translation can reintroduce the claim the English no longer makes.
+      final unlimited = RegExp(
+        r'unlimit|unbegrenzt|illimit|ilimitad|無制限',
+        caseSensitive: false,
+      );
+      final arbs = Directory('lib/l10n')
+          .listSync()
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.arb'))
+          .toList();
+      expect(arbs.length, greaterThanOrEqualTo(7));
+      for (final file in arbs) {
+        final catalogue =
+            jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+        for (final entry in catalogue.entries) {
+          if (!entry.key.startsWith('proSubscribe')) continue;
+          expect(
+            unlimited.hasMatch(entry.value as String),
+            isFalse,
+            reason: '${file.path} ${entry.key} must not claim unlimited use: '
+                '"${entry.value}"',
+          );
+        }
+      }
+
+      final coach = File('lib/screens/coach_screen.dart').readAsStringSync();
+      final cap = RegExp(r'static const _proDailyLimit = (\d+);')
+          .firstMatch(coach)!
+          .group(1);
+      final en = jsonDecode(File('lib/l10n/app_en.arb').readAsStringSync())
+          as Map<String, dynamic>;
+      for (final key in [
+        'proSubscribeSubtitleConfigured',
+        'proSubscribeSubtitleConfiguredAnnual',
+      ]) {
+        expect(
+          en[key] as String,
+          startsWith('$cap AI coach messages a day'),
+          reason: '$key must state the same Pro coach cap the coach screen '
+              'enforces (_proDailyLimit = $cap), on both plans alike.',
+        );
+      }
+    });
+
     test('revenuecat.dart exports a restorePurchases helper', () {
       final source = File('lib/revenuecat.dart').readAsStringSync();
       expect(

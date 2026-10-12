@@ -7381,7 +7381,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get proSubscribeSubtitleConfigured =>
-      'Entrenador de IA ilimitado + procesamiento prioritario. Se renueva automáticamente cada mes hasta que se cancele en Ajustes → Suscripciones.';
+      '10 mensajes al entrenador de IA al día + procesamiento prioritario. Se renueva automáticamente cada mes hasta que se cancele en Ajustes → Suscripciones.';
 
   @override
   String get proSubscribeSubtitleWeb =>
@@ -7409,7 +7409,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get proSubscribeSubtitleConfiguredAnnual =>
-      'Se factura una vez al año. Se renueva automáticamente cada año hasta que se cancele en Ajustes → Suscripciones.';
+      '10 mensajes al entrenador de IA al día + procesamiento prioritario. Se factura una vez al año. Se renueva automáticamente cada año hasta que se cancele en Ajustes → Suscripciones.';
 
   @override
   String get proComingSoonTitle => 'Pro: próximamente';

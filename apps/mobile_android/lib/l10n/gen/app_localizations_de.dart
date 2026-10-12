@@ -7396,7 +7396,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get proSubscribeSubtitleConfigured =>
-      'Unbegrenzter KI-Coach + bevorzugte Verarbeitung. Verlängert sich monatlich automatisch, bis es unter Einstellungen → Abonnements gekündigt wird.';
+      '10 KI-Coach-Nachrichten pro Tag + bevorzugte Verarbeitung. Verlängert sich monatlich automatisch, bis es unter Einstellungen → Abonnements gekündigt wird.';
 
   @override
   String get proSubscribeSubtitleWeb =>
@@ -7424,7 +7424,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get proSubscribeSubtitleConfiguredAnnual =>
-      'Einmal im Jahr abgerechnet. Verlängert sich jährlich automatisch, bis es unter Einstellungen → Abonnements gekündigt wird.';
+      '10 KI-Coach-Nachrichten pro Tag + bevorzugte Verarbeitung. Einmal im Jahr abgerechnet. Verlängert sich jährlich automatisch, bis es unter Einstellungen → Abonnements gekündigt wird.';
 
   @override
   String get proComingSoonTitle => 'Pro – demnächst';

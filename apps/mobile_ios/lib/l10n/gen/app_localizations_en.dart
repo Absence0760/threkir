@@ -7303,7 +7303,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get proSubscribeSubtitleConfigured =>
-      'Unlimited AI coach + priority processing. Auto-renews monthly until cancelled in Settings → Subscriptions.';
+      '10 AI coach messages a day + priority processing. Auto-renews monthly until cancelled in Settings → Subscriptions.';
 
   @override
   String get proSubscribeSubtitleWeb =>
@@ -7331,7 +7331,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get proSubscribeSubtitleConfiguredAnnual =>
-      'Billed once a year. Auto-renews yearly until cancelled in Settings → Subscriptions.';
+      '10 AI coach messages a day + priority processing. Billed once a year. Auto-renews yearly until cancelled in Settings → Subscriptions.';
 
   @override
   String get proComingSoonTitle => 'Pro — coming soon';

@@ -9738,7 +9738,7 @@
       }
     }
   },
-  "proSubscribeSubtitleConfigured": "Unlimited AI coach + priority processing. Auto-renews monthly until cancelled in Settings → Subscriptions.",
+  "proSubscribeSubtitleConfigured": "10 AI coach messages a day + priority processing. Auto-renews monthly until cancelled in Settings → Subscriptions.",
   "@proSubscribeSubtitleConfigured": {
     "description": "Pro tile subtitle when in-app purchase is configured"
   },
@@ -9782,7 +9782,7 @@
       }
     }
   },
-  "proSubscribeSubtitleConfiguredAnnual": "Billed once a year. Auto-renews yearly until cancelled in Settings → Subscriptions.",
+  "proSubscribeSubtitleConfiguredAnnual": "10 AI coach messages a day + priority processing. Billed once a year. Auto-renews yearly until cancelled in Settings → Subscriptions.",
   "@proSubscribeSubtitleConfiguredAnnual": {
     "description": "Pro subscribe tile subtitle when the yearly plan is selected: billing period and renewal terms"
   },

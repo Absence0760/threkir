@@ -228,6 +228,62 @@ Future<ProPlanOptions?> loadProPlans(
   }
 }
 
+/// The RevenueCat entitlement both Pro products grant.
+const proEntitlementId = 'pro';
+
+/// What the store says about the buyer's active Pro entitlement.
+class ProEntitlement {
+  const ProEntitlement({this.plan, this.expiresAt, this.willRenew = true});
+
+  /// Null when the product identifier names neither billing period.
+  final ProPlan? plan;
+  final DateTime? expiresAt;
+  final bool willRenew;
+}
+
+/// The billing period [productId] sells. Play reports a subscription as
+/// `product:base-plan`, so this matches on the name rather than equality.
+ProPlan? proPlanForProduct(String productId) {
+  if (RegExp(r'annual|year', caseSensitive: false).hasMatch(productId)) {
+    return ProPlan.annual;
+  }
+  if (RegExp(r'month', caseSensitive: false).hasMatch(productId)) {
+    return ProPlan.monthly;
+  }
+  return null;
+}
+
+/// The active Pro entitlement in [info], or null when there is none.
+ProEntitlement? proEntitlementFrom(CustomerInfo info) {
+  final e = info.entitlements.active[proEntitlementId];
+  if (e == null || !e.isActive) return null;
+  final expires = e.expirationDate;
+  return ProEntitlement(
+    plan: proPlanForProduct(e.productIdentifier),
+    expiresAt: expires == null ? null : DateTime.tryParse(expires),
+    willRenew: e.willRenew,
+  );
+}
+
+/// [userId]'s active Pro entitlement as the store reports it. This is the
+/// signal that moves the moment a purchase completes; the server's
+/// `subscription_tier` follows only once the `revenuecat-webhook` lands.
+/// Null when the SDK isn't configured, the fetch fails, or there is none.
+Future<ProEntitlement?> loadProEntitlement(
+  String userId, {
+  String? keyOverride,
+}) async {
+  if (!await configureRevenueCat(userId, keyOverride: keyOverride)) {
+    return null;
+  }
+  try {
+    return proEntitlementFrom(await Purchases.getCustomerInfo());
+  } catch (e) {
+    debugPrint('RevenueCat customer info fetch failed: $e');
+    return null;
+  }
+}
+
 /// The store operations the Pro screen drives. [RevenueCatProStore] is the
 /// live one; widget tests substitute a fake, since the native SDK has no
 /// host-test platform channel.
@@ -235,6 +291,11 @@ abstract class ProStore {
   bool get configured;
   Future<ProPlanOptions?> loadPlans();
   Future<PurchaseResult> purchase(ProPlan plan);
+
+  /// [PurchaseResult.notConfigured] when there is no signed-in user or the
+  /// SDK can't be configured.
+  Future<PurchaseResult> restore();
+  Future<ProEntitlement?> loadEntitlement();
 }
 
 class RevenueCatProStore implements ProStore {
@@ -259,6 +320,20 @@ class RevenueCatProStore implements ProStore {
     final userId = configured ? currentUserId() : null;
     if (userId == null) return PurchaseResult.notConfigured;
     return startProCheckout(userId, plan: plan);
+  }
+
+  @override
+  Future<PurchaseResult> restore() async {
+    final userId = configured ? currentUserId() : null;
+    if (userId == null) return PurchaseResult.notConfigured;
+    return restorePurchases(userId);
+  }
+
+  @override
+  Future<ProEntitlement?> loadEntitlement() async {
+    final userId = configured ? currentUserId() : null;
+    if (userId == null) return null;
+    return loadProEntitlement(userId);
   }
 }
 

@@ -1,8 +1,13 @@
+import 'dart:async';
+
+import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../l10n/locale_support.dart';
 import '../legal_links.dart';
 import '../pro_sellable.dart';
 import '../revenuecat.dart';
@@ -19,13 +24,27 @@ class SettingsProScreen extends StatefulWidget {
   /// and the purchase it leads to without the native RevenueCat SDK.
   final ProStore? store;
 
-  const SettingsProScreen({super.key, this.loadPerks, this.store});
+  /// Reads the server tier (`is_pro`) for the Pro status.
+  final ApiClient? apiClient;
+
+  /// Injection seam for the server-tier check; defaults to
+  /// [ApiClient.isPro] on [apiClient].
+  final Future<bool> Function()? loadServerPro;
+
+  const SettingsProScreen({
+    super.key,
+    this.loadPerks,
+    this.store,
+    this.apiClient,
+    this.loadServerPro,
+  });
 
   @override
   State<SettingsProScreen> createState() => _SettingsProScreenState();
 }
 
-class _SettingsProScreenState extends State<SettingsProScreen> {
+class _SettingsProScreenState extends State<SettingsProScreen>
+    with WidgetsBindingObserver {
   // USD list price — the fallback shown only until/unless RevenueCat returns
   // the territory-localised price. Apple Guideline 3.1.1 / Play subscription
   // policy require the displayed amount to come from the store (it varies by
@@ -56,11 +75,96 @@ class _SettingsProScreenState extends State<SettingsProScreen> {
   // teaser is what shows while we don't know (decisions §466).
   ProPerks? _perks;
 
+  // Pro status comes from two places that disagree for a while after every
+  // purchase. The store entitlement is true the moment the purchase
+  // completes; `subscription_tier` is the authoritative tier the server
+  // gates on, but only flips once the revenuecat-webhook lands, and it is
+  // also the only one that knows about Pro bought on web or a lifetime
+  // tier. Either one makes the user Pro here. Null server tier = unknown.
+  ProEntitlement? _entitlement;
+  bool? _serverPro;
+
+  // While the store says Pro and the server does not yet, re-ask the server
+  // a bounded number of times so the "unlocking" note clears on its own.
+  static const _serverRecheckDelay = Duration(seconds: 5);
+  static const _maxServerRechecks = 6;
+  Timer? _serverRecheck;
+  int _serverRechecks = 0;
+
+  bool get _isPro => _entitlement != null || _serverPro == true;
+
+  bool get _awaitingServer => _entitlement != null && _serverPro == false;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadPlans();
     _loadPerks();
+    _loadStatus();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _serverRecheck?.cancel();
+    super.dispose();
+  }
+
+  // Back from the store's subscription page, a cancel or plan change has to
+  // show without reopening the screen.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _loadStatus();
+  }
+
+  Future<void> _loadStatus() async {
+    _serverRechecks = 0;
+    await Future.wait([_loadEntitlement(), _loadServerTier()]);
+    _scheduleServerRecheck();
+  }
+
+  Future<void> _loadEntitlement() async {
+    final ProEntitlement? entitlement;
+    try {
+      entitlement = await _store.loadEntitlement();
+    } catch (e) {
+      debugPrint('Pro entitlement load failed: $e');
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _entitlement = entitlement);
+  }
+
+  Future<void> _loadServerTier() async {
+    final check = widget.loadServerPro ?? widget.apiClient?.isPro;
+    if (check == null) return;
+    final bool pro;
+    try {
+      pro = await check();
+    } catch (e) {
+      debugPrint('Pro server tier load failed: $e');
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _serverPro = pro);
+  }
+
+  void _scheduleServerRecheck() {
+    if (!mounted || !_awaitingServer) {
+      _serverRecheck?.cancel();
+      _serverRecheck = null;
+      return;
+    }
+    if (_serverRecheck != null || _serverRechecks >= _maxServerRechecks) {
+      return;
+    }
+    _serverRecheck = Timer(_serverRecheckDelay, () async {
+      _serverRecheck = null;
+      _serverRechecks++;
+      await _loadServerTier();
+      _scheduleServerRecheck();
+    });
   }
 
   Future<void> _loadPerks() async {
@@ -130,6 +234,14 @@ class _SettingsProScreenState extends State<SettingsProScreen> {
       switch (r) {
         case PurchaseResult.purchased:
           showTopBanner(context, l10n.proWelcome);
+          final bought = _selectedPlan;
+          await _loadStatus();
+          // The store just said yes; a lagging CustomerInfo read must not
+          // put the Subscribe tiles back in front of a subscriber.
+          if (mounted && _entitlement == null) {
+            setState(() => _entitlement = ProEntitlement(plan: bought));
+            _scheduleServerRecheck();
+          }
           break;
         case PurchaseResult.cancelled:
           break;
@@ -151,20 +263,18 @@ class _SettingsProScreenState extends State<SettingsProScreen> {
     if (_proBusy) return;
     setState(() => _proBusy = true);
     try {
-      final supabase = Supabase.instance.client;
-      final userId = supabase.auth.currentUser?.id;
-      if (!isRevenueCatConfigured() || userId == null) {
-        if (!context.mounted) return;
+      if (!_store.configured) {
         showTopBanner(
             context, AppLocalizations.of(context).proRestoreNeedsSignIn);
         return;
       }
-      final r = await restorePurchases(userId);
+      final r = await _store.restore();
       if (!context.mounted) return;
       final l10n = AppLocalizations.of(context);
       switch (r) {
         case PurchaseResult.purchased:
           showTopBanner(context, l10n.proRestored);
+          await _loadStatus();
           break;
         case PurchaseResult.cancelled:
           showTopBanner(context, l10n.proRestoreNone);
@@ -173,7 +283,7 @@ class _SettingsProScreenState extends State<SettingsProScreen> {
           showTopBanner(context, l10n.proRestoreFailed);
           break;
         case PurchaseResult.notConfigured:
-          showTopBanner(context, l10n.proRestoreUnavailable);
+          showTopBanner(context, l10n.proRestoreNeedsSignIn);
           break;
       }
     } finally {
@@ -221,9 +331,44 @@ class _SettingsProScreenState extends State<SettingsProScreen> {
     );
   }
 
+  Widget _proStatusTile(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final e = _entitlement;
+    final expiresAt = e?.expiresAt;
+    final when = expiresAt == null
+        ? null
+        : formatDateMed(expiresAt, localeToTag(Localizations.localeOf(context)));
+    final details = <String>[
+      if (e?.plan == ProPlan.monthly) l10n.proActivePlanMonthly,
+      if (e?.plan == ProPlan.annual) l10n.proActivePlanAnnual,
+      if (when != null)
+        e!.willRenew ? l10n.proActiveRenews(when) : l10n.proActiveEnds(when),
+    ];
+    return ListTile(
+      leading: Icon(Icons.workspace_premium, color: theme.colorScheme.primary),
+      title: Text(
+        l10n.proActiveTitle,
+        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+      ),
+      subtitle: Text(details.isEmpty ? l10n.proActiveThanks : details.join(' · ')),
+    );
+  }
+
+  Widget _footnote(BuildContext context, String text) => Padding(
+        padding: const EdgeInsets.fromLTRB(72, 0, 16, 8),
+        child: Text(
+          text,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final isPro = _isPro;
     final rcConfigured = _store.configured;
     final plans = _plans;
     final plan = _selectedPlan;
@@ -249,50 +394,49 @@ class _SettingsProScreenState extends State<SettingsProScreen> {
       body: SafeArea(
         child: ListView(
           children: [
-            if (sellable && choices.length > 1)
-              for (final choice in choices)
-                _planTile(context, plans!, choice, selected: choice == plan),
-            if (sellable)
-              ListTile(
-                leading: const Icon(Icons.workspace_premium_outlined),
-                title: Text(annual
-                    ? l10n.proSubscribeTitleAnnual(priceLabel)
-                    : l10n.proSubscribeTitle(priceLabel)),
-                subtitle: Text(
-                  annual
-                      ? l10n.proSubscribeSubtitleConfiguredAnnual
-                      : rcConfigured
-                          ? l10n.proSubscribeSubtitleConfigured
-                          : l10n.proSubscribeSubtitleWeb,
+            // A subscriber is shown what they have, not a storefront that
+            // sells it to them again.
+            if (isPro) ...[
+              _proStatusTile(context),
+              if (_awaitingServer) _footnote(context, l10n.proActivePending),
+            ] else ...[
+              if (sellable && choices.length > 1)
+                for (final choice in choices)
+                  _planTile(context, plans!, choice, selected: choice == plan),
+              if (sellable)
+                ListTile(
+                  leading: const Icon(Icons.workspace_premium_outlined),
+                  title: Text(annual
+                      ? l10n.proSubscribeTitleAnnual(priceLabel)
+                      : l10n.proSubscribeTitle(priceLabel)),
+                  subtitle: Text(
+                    annual
+                        ? l10n.proSubscribeSubtitleConfiguredAnnual
+                        : rcConfigured
+                            ? l10n.proSubscribeSubtitleConfigured
+                            : l10n.proSubscribeSubtitleWeb,
+                  ),
+                  trailing: Icon(
+                    rcConfigured ? Icons.chevron_right : Icons.open_in_new,
+                    size: 18,
+                  ),
+                  enabled: !_proBusy,
+                  onTap: () => _startProCheckout(context),
+                )
+              else
+                ListTile(
+                  leading: const Icon(Icons.workspace_premium_outlined),
+                  title: Text(l10n.proComingSoonTitle),
+                  subtitle: Text(l10n.proComingSoon),
                 ),
-                trailing: Icon(
-                  rcConfigured ? Icons.chevron_right : Icons.open_in_new,
-                  size: 18,
-                ),
-                enabled: !_proBusy,
-                onTap: () => _startProCheckout(context),
-              )
-            else
-              ListTile(
-                leading: const Icon(Icons.workspace_premium_outlined),
-                title: Text(l10n.proComingSoonTitle),
-                subtitle: Text(l10n.proComingSoon),
-              ),
-            // Honesty note mirroring web /settings/upgrade (audit-findings
-            // 2026-05-30 Medium [regional]). Shown only when we're falling
-            // back to the $9.99 USD list price (RevenueCat unconfigured or
-            // offering not yet loaded); once the store returns a localised
-            // price the note is dropped. See followups.md § Mobile.
-            if (sellable && showRegionalNote)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(72, 0, 16, 8),
-                child: Text(
-                  l10n.proRegionalNote,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                ),
-              ),
+              // Honesty note mirroring web /settings/upgrade (audit-findings
+              // 2026-05-30 Medium [regional]). Shown only when we're falling
+              // back to the $9.99 USD list price (RevenueCat unconfigured or
+              // offering not yet loaded); once the store returns a localised
+              // price the note is dropped. See followups.md § Mobile.
+              if (sellable && showRegionalNote)
+                _footnote(context, l10n.proRegionalNote),
+            ],
             // App Store Guideline 3.1.2: the terms and the privacy policy must
             // be reachable from the auto-renewing purchase itself.
             Padding(

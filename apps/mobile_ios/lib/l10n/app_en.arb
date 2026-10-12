@@ -9725,10 +9725,6 @@
   "@proRestoreFailed": {
     "description": "Banner shown when restore fails"
   },
-  "proRestoreUnavailable": "Restore unavailable in this build.",
-  "@proRestoreUnavailable": {
-    "description": "Banner shown when restore isn't available in the build"
-  },
   "proSubscribeTitle": "Subscribe to Pro — {price}/month",
   "@proSubscribeTitle": {
     "description": "Tile title for the Pro subscription; price is a localized currency amount",
@@ -9813,6 +9809,44 @@
   "proManageSubscriptionSubtitle": "Cancel, change plan, or update payment method",
   "@proManageSubscriptionSubtitle": {
     "description": "Subtitle of the Manage subscription tile"
+  },
+  "proActiveTitle": "You're on Pro",
+  "@proActiveTitle": {
+    "description": "Title of the Pro screen status tile when the user already has Pro"
+  },
+  "proActivePlanMonthly": "Monthly plan",
+  "@proActivePlanMonthly": {
+    "description": "Which plan an active Pro subscriber is on: monthly billing"
+  },
+  "proActivePlanAnnual": "Yearly plan",
+  "@proActivePlanAnnual": {
+    "description": "Which plan an active Pro subscriber is on: yearly billing"
+  },
+  "proActiveRenews": "Renews {date}",
+  "@proActiveRenews": {
+    "description": "When an active Pro subscription next renews; date is a localized medium date",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "proActiveEnds": "Ends {date}, won't renew",
+  "@proActiveEnds": {
+    "description": "When a cancelled Pro subscription stops; date is a localized medium date",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "proActiveThanks": "Your Pro benefits are active. Thanks for supporting the app.",
+  "@proActiveThanks": {
+    "description": "Pro status subtitle when the store reports no plan details (e.g. Pro bought on the web)"
+  },
+  "proActivePending": "Your purchase went through. Unlocking your Pro benefits on your account can take a minute.",
+  "@proActivePending": {
+    "description": "Note under the Pro status right after a purchase, before the server has unlocked the benefits"
   },
   "proSupport": "Support the app",
   "@proSupport": {

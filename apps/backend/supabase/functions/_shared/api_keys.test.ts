@@ -94,3 +94,42 @@ Deno.test('secretKeyHeaders sends an sb_secret key as apikey alone', () => {
     assertEquals(secretKeyHeaders(), { apikey: 'sb_secret_new' });
   });
 });
+
+Deno.test('secretKey skips an empty default and any non-string entry for the next usable name', () => {
+  withEnv({
+    SUPABASE_SECRET_KEYS: JSON.stringify({ default: '', broken: 42, nested: { k: 'v' }, rotated: 'sb_secret_rotated' }),
+    SUPABASE_SERVICE_ROLE_KEY: 'legacy-jwt',
+  }, () => {
+    assertEquals(secretKey(), 'sb_secret_rotated');
+  });
+  withEnv({
+    SUPABASE_SECRET_KEYS: JSON.stringify({ default: '', broken: null }),
+    SUPABASE_SERVICE_ROLE_KEY: 'legacy-jwt',
+  }, () => {
+    assertEquals(secretKey(), 'legacy-jwt', 'a map with no usable key is no key');
+  });
+});
+
+// The new vars are a JSON OBJECT keyed by name. Valid JSON of any other
+// shape is not that format and must not be mistaken for a key.
+Deno.test('secretKey and publishableKey fall back to the legacy var on JSON that is not an object', () => {
+  for (const raw of ['"sb_secret_bare"', '42', 'null', 'true']) {
+    withEnv({
+      SUPABASE_SECRET_KEYS: raw,
+      SUPABASE_SERVICE_ROLE_KEY: 'legacy-jwt',
+      SUPABASE_PUBLISHABLE_KEYS: raw,
+      SUPABASE_ANON_KEY: 'legacy-anon',
+    }, () => {
+      assertEquals(secretKey(), 'legacy-jwt', raw);
+      assertEquals(publishableKey(), 'legacy-anon', raw);
+    });
+  }
+});
+
+Deno.test('an empty legacy var is no key: the resolver throws rather than authenticate with ""', () => {
+  withEnv({ SUPABASE_SERVICE_ROLE_KEY: '', SUPABASE_ANON_KEY: '' }, () => {
+    assertThrows(() => secretKey());
+    assertThrows(() => publishableKey());
+    assertThrows(() => secretKeyHeaders());
+  });
+});

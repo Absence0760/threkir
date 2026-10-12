@@ -361,3 +361,11 @@ test('a trailing slash on the base is normalised the same way the builders do', 
 	const entries = entityEntries('https://threkir.com/', [], [{ slug: 'club-a' }], []);
 	assert.equal(entries[0].loc, buildClubShareCanonical('https://threkir.com', 'club-a'));
 });
+
+// The sitemap is XML a crawler parses whole; a control character in one <loc>
+// (a slug built from an imported name) would make it refuse every URL in it.
+test('buildSitemap — a character XML forbids becomes U+FFFD, never reaches the document', () => {
+	const xml = buildSitemap([{ loc: 'https://threkir.com/share/club/a\u0001b', lastmod: '2026-01-01\u000B' }]);
+	assert.ok(!/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(xml));
+	assert.ok(xml.includes('<loc>https://threkir.com/share/club/a�b</loc>'));
+});

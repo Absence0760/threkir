@@ -230,3 +230,14 @@ test('resultsToCsv output round-trips through parseChipTimingCsv', () => {
 	assert.equal(rows[2].finisherStatus, 'dnf');
 	assert.equal(rows[2].durationS, 0);
 });
+
+// The guard moved to util/csv_formula.ts this round; the results export keeps
+// its own shape on top of it: only fields that need it are quoted, and a
+// neutralised cell that also holds a delimiter is both prefixed and quoted.
+test('resultsToCsv quotes a neutralised cell only when it also carries a delimiter', () => {
+	const csv = resultsToCsv([
+		{ bib: '-12', finisherName: '=A1, "x"', durationS: 61, distanceM: 5000, finisherStatus: 'finished', rank: 2 },
+	]);
+	const row = csv.split('\r\n')[1];
+	assert.equal(row, `2,'-12,"'=A1, ""x""",1:01,5000,finished`);
+});

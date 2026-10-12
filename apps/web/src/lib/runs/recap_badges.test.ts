@@ -7,7 +7,7 @@ import { computeRecapBadges } from './recap';
 // that stacks instead of replacing the lower one, is a visible wrong claim
 // on a page people share.
 
-const NONE = {
+const NONE: Parameters<typeof computeRecapBadges>[0] = {
 	totalDistanceM: 0,
 	runCount: 0,
 	bestStreakDays: 0,

@@ -94,7 +94,7 @@ test('run head: the same title reaches <title>, og:title and twitter:title', () 
 		buildShareRunMeta({ id: ID, run: run(), displayName: 'Ana & Bo', siteUrl: SITE }),
 	);
 	const title = html.match(/<title>([^<]*)<\/title>/)?.[1];
-	assert.ok(title && title.includes('Ana &amp; Bo'), title);
+	assert.ok(title && title.includes('Ana &amp; Bo'), `unexpected <title>: ${title}`);
 	assert.ok(html.includes(`<meta property="og:title" content="${title}">`));
 	assert.ok(html.includes(`<meta name="twitter:title" content="${title}">`));
 });

@@ -6,6 +6,7 @@
 // `serve(...)` binds a port at module-load time).
 
 import { isIsoCalendarDate } from '../_shared/calendar_date.ts';
+import { clipText } from '../_shared/text_clip.ts';
 import { SYNTHETIC_START_TIME_UTC } from '../_shared/synthetic_start_time.ts';
 
 /// Parkrun returns its result date as DD/MM/YYYY with no time-of-day
@@ -91,9 +92,7 @@ export function capParkrunField(
 	max: number = MAX_PARKRUN_FIELD_LEN,
 ): string {
 	if (typeof raw !== 'string') return '';
-	const trimmed = raw.trim();
-	if (trimmed.length <= max) return trimmed;
-	return trimmed.slice(0, max);
+	return clipText(raw, max);
 }
 
 /**

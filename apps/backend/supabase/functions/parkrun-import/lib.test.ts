@@ -221,3 +221,11 @@ Deno.test('isUsableParkrunResult — only the DD/MM/YYYY shape parkrun prints is
 	assertEquals(isUsableParkrunResult('18:30', '15/04/26'), false);
 	assertEquals(isUsableParkrunResult('18:30', '15-04-2026'), false);
 });
+
+// Scraped event names and ids go into one batch insert of runs; half an emoji
+// at the 200-unit cap made Postgres refuse the whole request body.
+Deno.test('capParkrunField — a cap through a surrogate pair drops the stranded half', () => {
+	const capped = capParkrunField('x'.repeat(MAX_PARKRUN_FIELD_LEN - 1) + '\u{1F3C3}');
+	assertEquals(capped, 'x'.repeat(MAX_PARKRUN_FIELD_LEN - 1));
+	assertEquals(/[\uD800-\uDFFF]/.test(capped), false);
+});

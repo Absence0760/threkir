@@ -554,3 +554,11 @@ Deno.test('isIsoCalendarDate accepts the date half only, and the real calendar',
   assertEquals(isIsoCalendarDate(null), false);
   assertEquals(isIsoCalendarDate(20250921), false);
 });
+
+// Imported finisher names land in one batch insert, so half an emoji at the
+// cap (or a lone escape in the provider's JSON) failed every result with it.
+Deno.test('capField never leaves half a surrogate pair, at the cap or in the input', () => {
+  const capped = capField('a'.repeat(MAX_FIELD_LEN - 1) + '\u{1F3C3}xyz');
+  assertEquals(capped, 'a'.repeat(MAX_FIELD_LEN - 1));
+  assertEquals(capField('Ana\uD83C Silva'), 'Ana Silva');
+});

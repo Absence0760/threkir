@@ -93,9 +93,10 @@ test('registrationOpen: sold-out when going >= capacity', () => {
 	const now = new Date('2026-07-01T12:00:00.000Z');
 	assert.equal(registrationOpen(now, START, 0, 10, 10, false), 'sold_out');
 	assert.equal(registrationOpen(now, START, 0, 10, 11, false), 'sold_out');
-	// null / 0 capacity = unlimited
+	// null capacity = unlimited; 0 is zero seats, as checkout and the
+	// capacity trigger read it (client_money_parity.test.ts).
 	assert.equal(registrationOpen(now, START, 0, null, 999, false), 'open');
-	assert.equal(registrationOpen(now, START, 0, 0, 999, false), 'open');
+	assert.equal(registrationOpen(now, START, 0, 0, 0, false), 'sold_out');
 });
 
 test('registrationOpen: already-registered outranks sold-out AND sales-closed', () => {

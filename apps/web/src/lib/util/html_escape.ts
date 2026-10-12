@@ -28,13 +28,16 @@ export function escapeHtml(s: string): string {
  * fixed root-relative or http(s) template must pass through here first.
  *
  * Returns the URL when it is root-relative (`/…`, but not protocol-relative
- * `//host` which the browser resolves to an external origin) or http(s);
- * otherwise `#`. Pair with `escapeHtml` for the attribute-context encoding:
+ * `//host` or `/\host`, which the browser resolves to an external origin) or
+ * http(s); otherwise `#`. Pair with `escapeHtml` for the attribute-context encoding:
  * `href="${escapeHtml(safeHref(url))}"`.
  */
 export function safeHref(url: string): string {
-	const u = url.trim();
+	// The URL parser drops ASCII tab / LF / CR wherever they appear, so check
+	// the string the browser will actually follow: `/\t/evil.com` is `//evil.com`.
+	const u = url.trim().replace(/[\t\n\r]/g, '');
 	if (/^https?:\/\//i.test(u)) return u;
-	if (u.startsWith('/') && !u.startsWith('//')) return u;
+	// `\` reads as `/` in an http(s) URL, so `/\host` is protocol-relative too.
+	if (u[0] === '/' && u[1] !== '/' && u[1] !== '\\') return u;
 	return '#';
 }

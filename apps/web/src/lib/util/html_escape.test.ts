@@ -52,3 +52,32 @@ test('safeHref: rejects protocol-relative and bare-word hrefs', () => {
 	assert.equal(safeHref('mailto:x@y.com'), '#');
 	assert.equal(safeHref('tel:+15551234'), '#');
 });
+
+test('safeHref: a backslash after the first slash is protocol-relative too', () => {
+	// Browsers treat `\` as `/` in http(s) URLs, so `/\evil.com` resolves to
+	// `//evil.com` — the same external origin the `//` rule exists to refuse.
+	assert.equal(safeHref('/\\evil.com'), '#');
+	assert.equal(safeHref('/\\/evil.com'), '#');
+	assert.equal(safeHref('\\\\evil.com'), '#');
+});
+
+test('safeHref: a tab or newline inside the slashes cannot split the // check', () => {
+	// The URL parser strips ASCII tab / LF / CR anywhere in the string, so
+	// `/\t/evil.com` is `//evil.com` by the time the browser follows it.
+	assert.equal(safeHref('/\t/evil.com'), '#');
+	assert.equal(safeHref('/\n/evil.com'), '#');
+	assert.equal(safeHref('/\r\n\\evil.com'), '#');
+	// Same stripping defeats a scheme split across a newline.
+	assert.equal(safeHref('java\nscript:alert(1)'), '#');
+});
+
+test('safeHref: an inner double slash on a root-relative path is still internal', () => {
+	assert.equal(safeHref('/routes//123'), '/routes//123');
+	assert.equal(safeHref('/search?next=//evil.com'), '/search?next=//evil.com');
+});
+
+test('escapeHtml + safeHref: an http URL carrying a quote cannot break out of the attribute', () => {
+	const href = escapeHtml(safeHref('https://x.com/"onmouseover="alert(1)'));
+	assert.ok(!href.includes('"'), href);
+	assert.equal(href, 'https://x.com/&quot;onmouseover=&quot;alert(1)');
+});

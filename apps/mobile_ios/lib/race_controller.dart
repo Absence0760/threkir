@@ -836,11 +836,12 @@ class RaceController extends ChangeNotifier {
   /// the line somewhere with no signal. The result is queued to disk on
   /// failure instead and replayed by [drainPendingResults].
   ///
-  /// Chip time runs from this recording's Start to the finish instant on the
-  /// device clock, pauses included; [durationS] stands in only when there is
-  /// no finish instant (a DNF). The submitted `duration_s` is the gun time
-  /// whenever the race had a GO, else the chip time (decisions § 1843). A race the host ended first submits nothing: the
-  /// server has already marked this runner DNF.
+  /// The timing columns come from [raceResultTiming]: a finish carries gun
+  /// and chip time and ranks on the gun time when the race had a GO
+  /// (decisions § 1843); a DNF carries neither, with [durationS] — the
+  /// recording's elapsed seconds — as its `duration_s` (§ R6MOBILE-1). A
+  /// race the host ended while this runner was still running submits
+  /// nothing: the server has already marked them DNF.
   Future<void> submitResult({
     required String runId,
     required int durationS,
@@ -855,22 +856,23 @@ class RaceController extends ChangeNotifier {
       detachRecorder();
       return;
     }
-    final finishAt = outcome.finishAt;
-    final began = _recordingStartedAt;
-    final gun = finishAt == null ? null : gunTimeTo(finishAt);
-    final chip = finishAt != null && began != null
-        ? raceChipTimeS(finishAtDevice: finishAt, recordingStartedAt: began)
-        : null;
+    final timing = raceResultTiming(
+      outcome: outcome,
+      gunAt: _gunAt,
+      clockOffset: clockOffset.offset,
+      recordingStartedAt: _recordingStartedAt,
+      elapsedS: durationS,
+    );
     final result = PendingRaceResult(
       eventId: eid,
       instanceStart: inst,
       runId: runId,
-      durationS: gun ?? chip ?? durationS,
+      durationS: timing.durationS,
       distanceM: distanceM,
       finisherStatus: outcome.finisherStatus,
       courseId: _course?.courseId,
-      gunTimeS: gun,
-      chipTimeS: chip ?? durationS,
+      gunTimeS: timing.gunTimeS,
+      chipTimeS: timing.chipTimeS,
       finishMethod: outcome.method?.wire,
     );
     try {

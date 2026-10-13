@@ -860,8 +860,48 @@ void main() {
       final r = social.submitted.single;
       expect(r.finisherStatus, 'dnf');
       expect(r.gunTimeS, isNull);
+      expect(r.chipTimeS, isNull,
+          reason: 'a DNF has no finish, so no time to it (§ R6MOBILE-1)');
       expect(r.finishMethod, isNull);
       expect(r.durationS, 1700);
+      expect(r.distanceM, 4400);
+      expect(r.courseId, 'course-10k');
+    });
+
+    test('a queued DNF replays with the same shape', () async {
+      final social = _FakeSocial(failing: true);
+      final c = RaceController(social);
+      await _attachRacing(c, gun);
+      c.decideStop(coveredM: 1200);
+      await c.submitResult(runId: 'run-1', durationS: 600, distanceM: 1200);
+
+      social.failing = false;
+      await c.drainPendingResults();
+      final r = social.submitted.single;
+      expect(r.finisherStatus, 'dnf');
+      expect(r.gunTimeS, isNull);
+      expect(r.chipTimeS, isNull);
+      expect(r.finishMethod, isNull);
+      expect(r.durationS, 600);
+    });
+
+    test('a finish with no GO on record ranks on the chip time', () async {
+      final social = _FakeSocial();
+      final c = RaceController(social);
+      c.courseLoader = (_, _) async => _course;
+      c.attachRecorder(
+        eventId: 'event-1',
+        instance: DateTime.utc(2026, 5, 22, 18),
+        recordingStartedAt: gun,
+      );
+      await pumpEventQueue();
+      c.decideStop(coveredM: 5000, now: gun.add(const Duration(minutes: 22)));
+      await c.submitResult(runId: 'run-1', durationS: 1300, distanceM: 5000);
+
+      final r = social.submitted.single;
+      expect(r.gunTimeS, isNull);
+      expect(r.chipTimeS, 22 * 60);
+      expect(r.durationS, 22 * 60);
     });
 
     test('a race the host ended submits nothing and stops expecting one',

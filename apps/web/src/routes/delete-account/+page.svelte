@@ -1,119 +1,106 @@
 <script lang="ts">
+	import { m } from '#lib/i18n/store.svelte.ts';
+
 	const lastUpdated = '2026-07-14';
+	const privacyEmail = 'privacy@threkir.com';
 </script>
 
 <svelte:head>
-	<title>Delete your account — Threkir</title>
-	<meta
-		name="description"
-		content="How to delete your Threkir account and all associated data, with or without the app installed."
-	/>
+	<title>{m('deleteAccount.documentTitle')}</title>
+	<meta name="description" content={m('deleteAccount.metaDescription')} />
 </svelte:head>
 
 <div class="legal-page">
-	<h1>Delete your account</h1>
-	<p class="lead">
-		This page explains how to permanently delete your Threkir account and the data associated
-		with it. You do not need the app installed to request deletion.
-	</p>
-	<p class="meta">Last updated: {lastUpdated}</p>
+	<h1>{m('deleteAccount.h1')}</h1>
+	<p class="lead">{m('deleteAccount.lead')}</p>
+	<p class="meta">{m('deleteAccount.lastUpdated', { date: lastUpdated })}</p>
 
-	<h2>1. Delete your account yourself</h2>
-	<p>Deletion is self-service and takes effect immediately:</p>
+	<h2>{m('deleteAccount.s1Heading')}</h2>
+	<p>{m('deleteAccount.s1Intro')}</p>
 	<ul>
 		<li>
-			<strong>On the web</strong>: sign in, open
-			<a href="/settings/account">Settings → Account</a>, and choose
-			<strong>Delete account</strong>. You will be asked to type your account email to confirm.
-			(Opening that link while signed out takes you through sign-in and back.)
+			<strong>{m('deleteAccount.s1WebLabel')}</strong>{m('deleteAccount.s1WebPrefix')}<a
+				href="/settings/account">{m('deleteAccount.s1WebLink')}</a
+			>{m('deleteAccount.s1WebMiddle')}<strong>{m('deleteAccount.s1WebAction')}</strong>{m(
+				'deleteAccount.s1WebSuffix'
+			)}
 		</li>
 		<li>
-			<strong>In the mobile app</strong>: Settings → Account → Delete account, with the same
-			typed confirmation.
+			<strong>{m('deleteAccount.s1MobileLabel')}</strong>{m('deleteAccount.s1MobileBody')}
 		</li>
 	</ul>
 	<p>
-		Deletion is <strong>permanent and cannot be undone</strong>. When it completes we send a
-		one-time confirmation email to the account address as a receipt.
+		{m('deleteAccount.s1PermanentPrefix')}<strong>{m('deleteAccount.s1PermanentEmphasis')}</strong>{m(
+			'deleteAccount.s1PermanentSuffix'
+		)}
 	</p>
 
-	<h2>2. If you can't sign in</h2>
+	<h2>{m('deleteAccount.s2Heading')}</h2>
 	<p>
-		Email <a href="mailto:privacy@threkir.com">privacy@threkir.com</a> from the email address on
-		the account and ask us to delete it. We verify the request by matching (or confirming a link
-		sent to) that address, then run the same deletion described below and confirm when it is
-		done — within one month at the latest, usually much sooner.
+		{m('deleteAccount.s2Prefix')}<a href="mailto:{privacyEmail}">{privacyEmail}</a>{m(
+			'deleteAccount.s2Suffix'
+		)}
 	</p>
 
-	<h2>3. What is deleted</h2>
-	<p>
-		Deleting the account removes your data across our database and file storage, including:
-	</p>
+	<h2>{m('deleteAccount.s3Heading')}</h2>
+	<p>{m('deleteAccount.s3Intro')}</p>
 	<ul>
-		<li>your profile (name, avatar, settings, follower relationships);</li>
-		<li>runs and their GPS tracks, routes, race results, and personal records;</li>
-		<li>photos and every other file you uploaded, including generated data exports;</li>
-		<li>gym workouts, routines, session plans, food logs, and body metrics;</li>
-		<li>training plans, coach chat history, and AI Coach consent records;</li>
-		<li>posts, comments, kudos, direct messages, and club memberships;</li>
-		<li>notifications and push-notification tokens;</li>
-		<li>
-			linked third-party resources: a connected Strava authorisation is revoked, a RevenueCat
-			subscriber record is deleted, and a connected Stripe payout account is unlinked and
-			closed (Stripe retains transaction records under its own legal obligations).
-		</li>
+		<li>{m('deleteAccount.s3Profile')}</li>
+		<li>{m('deleteAccount.s3Runs')}</li>
+		<li>{m('deleteAccount.s3Files')}</li>
+		<li>{m('deleteAccount.s3Gym')}</li>
+		<li>{m('deleteAccount.s3Training')}</li>
+		<li>{m('deleteAccount.s3Social')}</li>
+		<li>{m('deleteAccount.s3Notifications')}</li>
+		<li>{m('deleteAccount.s3ThirdParty')}</li>
 	</ul>
 
-	<h2>4. What is retained, and for how long</h2>
+	<h2>{m('deleteAccount.s4Heading')}</h2>
 	<ul>
 		<li>
-			<strong>Encrypted backups</strong>: a deleted account may persist in point-in-time-recovery
-			backups for up to <strong>28 days</strong> before they roll off. Backups are never used to
-			restore a deleted account.
+			<strong>{m('deleteAccount.s4BackupsLabel')}</strong>{m('deleteAccount.s4BackupsPrefix')}<strong
+				>{m('deleteAccount.s4BackupsWindow')}</strong
+			>{m('deleteAccount.s4BackupsSuffix')}
 		</li>
 		<li>
-			<strong>A minimal deletion audit record</strong>: a one-way hashed identifier and outcome
-			counts, kept so we can prove the deletion happened. It cannot be used to identify you or
-			recover any data.
+			<strong>{m('deleteAccount.s4AuditLabel')}</strong>{m('deleteAccount.s4AuditBody')}
 		</li>
 		<li>
-			<strong>Payment transaction records</strong>: retained by the payment processors (Stripe,
-			the app stores) under their own legal obligations; we hold no card details ourselves.
+			<strong>{m('deleteAccount.s4PaymentsLabel')}</strong>{m('deleteAccount.s4PaymentsBody')}
 		</li>
 	</ul>
 	<p>
-		The full retention schedule for every data category is in the
-		<a href="/privacy">Privacy Policy</a>.
+		{m('deleteAccount.s4PolicyPrefix')}<a href="/privacy">{m('deleteAccount.privacyPolicy')}</a>{m(
+			'deleteAccount.s4PolicySuffix'
+		)}
 	</p>
 
-	<h2>5. Deleting some data without closing the account</h2>
-	<p>To delete individual data without deleting the account:</p>
+	<h2>{m('deleteAccount.s5Heading')}</h2>
+	<p>{m('deleteAccount.s5Intro')}</p>
 	<ul>
 		<li>
-			<strong>Runs, routes, photos, gym workouts, food-log entries, posts, comments</strong>:
-			open the item and use its Delete control. Runs can also be bulk-deleted from the Runs
-			list via multi-select.
+			<strong>{m('deleteAccount.s5ItemsLabel')}</strong>{m('deleteAccount.s5ItemsBody')}
 		</li>
 		<li>
-			<strong>Connected services</strong> (Strava, parkrun, and similar): disconnect them in
-			Settings → Integrations; disconnecting revokes our access.
+			<strong>{m('deleteAccount.s5ServicesLabel')}</strong>{m('deleteAccount.s5ServicesBody')}
 		</li>
 		<li>
-			<strong>Anything else, or if you prefer not to do it in the app</strong>: email
-			<a href="mailto:privacy@threkir.com">privacy@threkir.com</a> describing the data to
-			delete, and we will action it with the same verification and timeline as section 2.
+			<strong>{m('deleteAccount.s5OtherLabel')}</strong>{m('deleteAccount.s5OtherPrefix')}<a
+				href="mailto:{privacyEmail}">{privacyEmail}</a
+			>{m('deleteAccount.s5OtherSuffix')}
 		</li>
 	</ul>
 	<p>
-		Deleted items leave encrypted backups within the same 28-day window described above. You can
-		also <a href="/settings/account">export your data</a> before deleting anything.
+		{m('deleteAccount.s5BackupsPrefix')}<a href="/settings/account">{m('deleteAccount.s5ExportLink')}</a
+		>{m('deleteAccount.s5BackupsSuffix')}
 	</p>
 
-	<h2>6. Related documents</h2>
+	<h2>{m('deleteAccount.s6Heading')}</h2>
 	<p>
-		<a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a> ·
-		<a href="/health-data-notice">Consumer Health Data Privacy Policy</a> ·
-		<a href="/cookie-notice">Cookie Notice</a>
+		<a href="/privacy">{m('deleteAccount.privacyPolicy')}</a> ·
+		<a href="/terms">{m('deleteAccount.terms')}</a> ·
+		<a href="/health-data-notice">{m('deleteAccount.healthNotice')}</a> ·
+		<a href="/cookie-notice">{m('deleteAccount.cookieNotice')}</a>
 	</p>
 </div>
 

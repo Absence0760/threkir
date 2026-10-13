@@ -48,7 +48,9 @@
 		type EventResultClaimWithUser,
 		fetchEventExceptions,
 		cancelEventInstance,
+		cancelEventSeries,
 		cancelPaidEventInstance,
+		PAID_EVENT_DELETE_REFUSAL,
 		fetchCancelledOccurrenceRefunds,
 		reinstateEventInstance,
 		fetchEventPhotos,
@@ -81,7 +83,7 @@
 	import { isAthleticCategory } from '#lib/social/event_category.ts';
 	import type { FinisherStatus } from '#lib/types.ts';
 	import { sameInstant } from '#lib/social/event_instance.ts';
-	import { upcomingCancelledOccurrences } from '#lib/social/event_occurrence.ts';
+	import { isSeriesCancelled, upcomingCancelledOccurrences } from '#lib/social/event_occurrence.ts';
 	import { workoutDraftFromTemplate, workoutDraftFromSession } from '#lib/social/event_gym_template.ts';
 	import { expandSessionSteps, type SessionPlanInput } from '#lib/social/session_steps.ts';
 	import { formatDistance, getUnit, fmtPace } from '#lib/format/units.svelte.ts';
@@ -233,6 +235,8 @@
 	let exceptions = $state<EventException[]>([]);
 	let showCancelInstance = $state(false);
 	let cancelReason = $state('');
+	let showCancelSeries = $state(false);
+	let seriesCancelReason = $state('');
 	// What cancelled occurrences still owe their registrants (M8), for the
 	// event's organisers: one entry per cancelled occurrence with anything
 	// unsettled. Empty when nothing is owed, for a non-organiser, or unreadable.
@@ -312,11 +316,25 @@
 	// list an organiser could only ever reinstate the one they happened to be
 	// looking at — calling off anything beyond the next occurrence was
 	// irreversible.
+	// A one-off event's only occurrence is the page itself, which carries the
+	// cancelled banner and its own Reinstate. An occurrence past the end of a
+	// series the host cancelled no longer exists, so reinstating it would bring
+	// nothing back.
 	let cancelledUpcoming = $derived(
-		upcomingCancelledOccurrences(exceptions.map((e) => e.instance_start)).map((iso) => ({
-			iso,
-			reason: exceptions.find((e) => sameInstant(e.instance_start, iso))?.reason ?? null
-		}))
+		event && event.recurrence_freq
+			? upcomingCancelledOccurrences(exceptions.map((e) => e.instance_start))
+					.filter(
+						(iso) =>
+							!event?.recurrence_until || Date.parse(iso) <= Date.parse(event.recurrence_until)
+					)
+					.map((iso) => ({
+						iso,
+						reason: exceptions.find((e) => sameInstant(e.instance_start, iso))?.reason ?? null
+					}))
+			: []
+	);
+	let seriesCancelled = $derived(
+		event ? isSeriesCancelled(event, exceptions.map((e) => e.instance_start)) : false
 	);
 	let showAllInstances = $state(false);
 	const INSTANCE_PREVIEW_COUNT = 8;
@@ -1626,6 +1644,10 @@
 		try {
 			await deleteEvent(event.id);
 		} catch (e) {
+			if (e instanceof Error && e.message === PAID_EVENT_DELETE_REFUSAL) {
+				showToast(m('clubEvent.deleteEventHasPayments'), 'error');
+				return;
+			}
 			showToast(
 				m('clubHome.deleteEventFailed', { error: e instanceof Error ? e.message : String(e) }),
 				'error'
@@ -1667,23 +1689,76 @@
 	}
 
 	/// A failed refund is an error toast, never folded into the success one.
-	function reportOccurrenceRefunds(refunds: OccurrenceRefundSummary) {
+	/// `scope` picks the sentence: an occurrence of a series, a one-off event,
+	/// or the whole series.
+	function reportOccurrenceRefunds(
+		refunds: OccurrenceRefundSummary,
+		scope: 'occurrence' | 'event' | 'series' = event?.recurrence_freq ? 'occurrence' : 'event'
+	) {
 		if (refunds.outcome === 'incomplete') {
-			showToast(m('clubEvent.occurrenceRefundsIncomplete', { n: refunds.failed }), 'error');
+			const key =
+				scope === 'series'
+					? 'clubEvent.seriesRefundsIncomplete'
+					: scope === 'event'
+						? 'clubEvent.eventRefundsIncomplete'
+						: 'clubEvent.occurrenceRefundsIncomplete';
+			showToast(m(key, { n: refunds.failed }), 'error');
 			return;
 		}
 		const refunded = refunds.initiated + refunds.already_refunded;
 		if (refunded > 0) {
-			showToast(m('clubEvent.occurrenceRefundsStarted', { n: refunded }), 'success');
+			const key =
+				scope === 'series'
+					? 'clubEvent.seriesRefundsStarted'
+					: scope === 'event'
+						? 'clubEvent.eventRefundsStarted'
+						: 'clubEvent.occurrenceRefundsStarted';
+			showToast(m(key, { n: refunded }), 'success');
+		} else if (scope === 'series') {
+			showToast(m('clubEvent.seriesCancelledToast'), 'success');
 		}
 	}
 
-	function occurrenceCancelError(e: unknown): string {
+	function occurrenceCancelError(
+		e: unknown,
+		scope: 'occurrence' | 'event' | 'series' = event?.recurrence_freq ? 'occurrence' : 'event'
+	): string {
 		const code = e instanceof Error ? e.message : '';
-		if (code === 'stripe_not_configured') return m('clubEvent.occurrenceCancelNotConfigured');
+		if (code === 'stripe_not_configured') {
+			return m(
+				scope === 'series'
+					? 'clubEvent.seriesCancelNotConfigured'
+					: scope === 'event'
+						? 'clubEvent.eventCancelNotConfigured'
+						: 'clubEvent.occurrenceCancelNotConfigured'
+			);
+		}
 		if (code === 'not_event_organiser') return m('clubEvent.occurrenceCancelNotOrganiser');
 		console.error('occurrence cancel failed:', e);
-		return m('clubEvent.cancelOccurrenceFailed');
+		return m(
+			scope === 'series'
+				? 'clubEvent.cancelSeriesFailed'
+				: scope === 'event'
+					? 'clubEvent.cancelEventFailed'
+					: 'clubEvent.cancelOccurrenceFailed'
+		);
+	}
+
+	async function confirmCancelSeries() {
+		if (!event || busy) return;
+		busy = true;
+		try {
+			const { refunds } = await cancelEventSeries(event.id, seriesCancelReason || null);
+			seriesCancelReason = '';
+			showCancelSeries = false;
+			reportOccurrenceRefunds(refunds, 'series');
+			activeInstance = null;
+			await load();
+		} catch (e: unknown) {
+			error = occurrenceCancelError(e, 'series');
+		} finally {
+			busy = false;
+		}
 	}
 
 	async function reinstateInstance(instanceIso: string | null = activeInstance) {
@@ -1970,11 +2045,23 @@
 						</div>
 					</div>
 				{/if}
+				{#if seriesCancelled && !activeException}
+					<div class="cancelled-banner" role="status" data-testid="series-cancelled">
+						<span class="material-symbols" aria-hidden="true">event_busy</span>
+						<div>
+							<strong>{m('clubEvent.seriesWasCancelled')}</strong>
+						</div>
+					</div>
+				{/if}
 				{#if activeException}
 					<div class="cancelled-banner" role="status">
 						<span class="material-symbols" aria-hidden="true">event_busy</span>
 						<div>
-							<strong>{m('clubEvent.occurrenceCancelled')}</strong>
+							<strong>
+								{event.recurrence_freq
+									? m('clubEvent.occurrenceCancelled')
+									: m('clubEvent.eventCancelled')}
+							</strong>
 							{#if activeException.reason}
 								<span class="cancel-reason">{activeException.reason}</span>
 							{/if}
@@ -1988,7 +2075,9 @@
 							disabled={busy}
 						>
 							<span class="material-symbols" aria-hidden="true">event_available</span>
-							{m('clubEvent.reinstateOccurrence')}
+							{event.recurrence_freq
+								? m('clubEvent.reinstateOccurrence')
+								: m('clubEvent.reinstateEvent')}
 						</button>
 					{/if}
 				{:else if !isPast && pricing}
@@ -2238,15 +2327,29 @@
 						</button>
 					</div>
 				{/if}
-				{#if isEventOrganiser && event.recurrence_freq && activeInstance && !activeException}
+				{#if isEventOrganiser && activeInstance && !activeException && (event.recurrence_freq ? liveInstances.length > 0 : !isPast)}
 					<div class="admin-actions">
 						<button
 							type="button"
 							class="btn-ghost danger"
 							onclick={() => (showCancelInstance = true)}
+							data-testid="cancel-occurrence"
 						>
 							<span class="material-symbols" aria-hidden="true">event_busy</span>
-							{m('clubEvent.cancelOccurrence')}
+							{event.recurrence_freq ? m('clubEvent.cancelOccurrence') : m('clubEvent.cancelEvent')}
+						</button>
+					</div>
+				{/if}
+				{#if isEventOrganiser && event.recurrence_freq && liveInstances.length > 0}
+					<div class="admin-actions">
+						<button
+							type="button"
+							class="btn-ghost danger"
+							onclick={() => (showCancelSeries = true)}
+							data-testid="cancel-series"
+						>
+							<span class="material-symbols" aria-hidden="true">event_repeat</span>
+							{m('clubEvent.cancelSeries')}
 						</button>
 					</div>
 				{/if}
@@ -3009,15 +3112,19 @@
 
 <Modal
 	open={showCancelInstance}
-	title={m('clubEvent.cancelOccurrence')}
+	title={event?.recurrence_freq ? m('clubEvent.cancelOccurrence') : m('clubEvent.cancelEvent')}
 	onclose={() => (showCancelInstance = false)}
 >
 	<div class="cancel-instance-form">
 		<p>
-			{m('clubEvent.cancelInstanceBody')}
+			{event?.recurrence_freq ? m('clubEvent.cancelInstanceBody') : m('clubEvent.cancelEventBody')}
 		</p>
 		{#if pricing}
-			<p data-testid="cancel-instance-refund-note">{m('clubEvent.cancelInstancePaidBody')}</p>
+			<p data-testid="cancel-instance-refund-note">
+				{event?.recurrence_freq
+					? m('clubEvent.cancelInstancePaidBody')
+					: m('clubEvent.cancelEventPaidBody')}
+			</p>
 		{/if}
 		<label>
 			<span>{m('clubEvent.reasonOptional')}</span>
@@ -3043,7 +3150,51 @@
 				onclick={confirmCancelInstance}
 				disabled={busy}
 			>
-				{busy ? m('clubEvent.cancelling') : m('clubEvent.cancelOccurrence')}
+				{busy
+					? m('clubEvent.cancelling')
+					: event?.recurrence_freq
+						? m('clubEvent.cancelOccurrence')
+						: m('clubEvent.cancelEvent')}
+			</button>
+		</div>
+	</div>
+</Modal>
+
+<Modal
+	open={showCancelSeries}
+	title={m('clubEvent.cancelSeries')}
+	onclose={() => (showCancelSeries = false)}
+>
+	<div class="cancel-instance-form">
+		<p>{m('clubEvent.cancelSeriesBody')}</p>
+		{#if pricing}
+			<p data-testid="cancel-series-refund-note">{m('clubEvent.cancelSeriesPaidBody')}</p>
+		{/if}
+		<label>
+			<span>{m('clubEvent.reasonOptional')}</span>
+			<textarea
+				bind:value={seriesCancelReason}
+				rows="2"
+				maxlength="300"
+				placeholder={m('clubEvent.cancelReasonPlaceholder')}
+			></textarea>
+		</label>
+		<div class="cancel-instance-actions">
+			<button
+				type="button"
+				class="btn btn-secondary"
+				onclick={() => (showCancelSeries = false)}
+				disabled={busy}
+			>
+				{m('clubEvent.keepIt')}
+			</button>
+			<button
+				type="button"
+				class="btn btn-danger"
+				onclick={confirmCancelSeries}
+				disabled={busy}
+			>
+				{busy ? m('clubEvent.cancelling') : m('clubEvent.cancelSeries')}
 			</button>
 		</div>
 	</div>

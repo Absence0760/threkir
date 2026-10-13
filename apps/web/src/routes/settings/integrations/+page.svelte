@@ -39,6 +39,7 @@
 		type GateVerdict,
 	} from '#lib/integrations/integration_visibility.ts';
 	import InfoTip from '#lib/components/InfoTip.svelte';
+	import UltraSignUpLinkPanel from '#lib/components/UltraSignUpLinkPanel.svelte';
 
 	interface IntegrationUI {
 		provider: string;
@@ -75,8 +76,10 @@
 	const visibleConnect = $derived(
 		visibleIntegrations(CONNECT_INTEGRATIONS, verdicts, connectedProviders)
 	);
-	// The race cards hold no `integrations` row — the import is a per-race act
-	// on /races, not a stored connection — so nothing can be connected here.
+	// The race cards are not connections — the import is a per-race act on
+	// /races — so none of them reads as "connected" here. UltraSignup does keep
+	// an `integrations` row, but it records WHO the runner is there (the person
+	// its name-keyed feed is scoped by), and its own panel owns that row.
 	const visibleRace = $derived(visibleIntegrations(RACE_INTEGRATIONS, verdicts, []));
 
 	function uiFor(provider: string): IntegrationUI {
@@ -677,6 +680,9 @@
 					<a class="btn btn-connect" href="/races" data-testid="{gated.spec.provider}-open">
 						{m(`integrations.${gated.spec.provider}Open` as MessageKey)}
 					</a>
+					{#if gated.spec.provider === 'ultrasignup'}
+						<UltraSignUpLinkPanel />
+					{/if}
 				</div>
 			</section>
 		{/each}

@@ -9,7 +9,9 @@
 		importRaceResult,
 		type RaceResultForRun,
 		type RaceListingResult,
-		RACE_IMPORT_UNAVAILABLE
+		RACE_IMPORT_UNAVAILABLE,
+		ULTRASIGNUP_NOT_LINKED,
+		ULTRASIGNUP_PERSON_NOT_FOUND
 	} from '#lib/core/data.ts';
 	import { raceMatchScore, isRaceMatchCandidate } from '#lib/integrations/race_match.ts';
 	import {
@@ -114,11 +116,6 @@
 					provider !== 'paste' && RACE_IMPORT_LEGS[provider].scopeField === 'bib'
 						? matchBib.trim() || undefined
 						: undefined,
-				ultraSignUpAthleteId:
-					provider !== 'paste' &&
-					RACE_IMPORT_LEGS[provider].scopeField === 'ultraSignUpAthleteId'
-						? matchBib.trim() || undefined
-						: undefined,
 				result:
 					provider === 'paste'
 						? {
@@ -138,10 +135,15 @@
 			// Any leg's unconfigured signal drops to the manual paste form. Keyed
 			// off the map rather than the one literal, or a ChronoTrack candidate
 			// on an unconfigured leg reports a generic failure and offers nothing.
-			if (
-				Object.values(RACE_IMPORT_UNAVAILABLE).includes((e as Error).message)
-			) {
+			const message = (e as Error).message;
+			if (Object.values(RACE_IMPORT_UNAVAILABLE).includes(message)) {
 				pasting = true;
+			} else if (message === ULTRASIGNUP_NOT_LINKED) {
+				// UltraSignup is scoped by the person linked in Settings; without
+				// one the pull has nobody to look for.
+				showToast(m('races.ultraSignUpNotLinked'), 'error');
+			} else if (message === ULTRASIGNUP_PERSON_NOT_FOUND) {
+				showToast(m('races.ultraSignUpPersonNotFound'), 'error');
 			} else {
 				showToast(m('races.importFailed'), 'error');
 			}
@@ -246,7 +248,9 @@
 					</div>
 				</form>
 			{:else}
-				{#if matchSpec}
+				{#if matchSpec?.scopeField === 'linkedPerson'}
+					<p class="match-hint">{m(matchSpec.hintKey)}</p>
+				{:else if matchSpec}
 					<label class="match-bib">
 						<span>{m(matchSpec.labelKey)}</span>
 						<input
@@ -265,7 +269,8 @@
 					<button
 						type="button"
 						class="btn btn-primary btn-sm"
-						disabled={busy || (matchSpec?.scopeRequired === true && !matchBib.trim())}
+						disabled={busy ||
+							(matchSpec?.scopeField === 'bib' && matchSpec.scopeRequired && !matchBib.trim())}
 						onclick={() => confirmMatch(matchLeg ?? 'paste')}
 						data-testid="match-confirm"
 					>

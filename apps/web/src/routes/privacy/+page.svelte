@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { NOT_PROVIDED, OPERATOR, OPERATOR_FACTS_COMPLETE } from '#lib/legal/operator.ts';
 
-	const lastUpdated = '2026-10-06';
+	const lastUpdated = '2026-10-13';
 </script>
 
 <svelte:head>
@@ -245,7 +245,9 @@
 		<li>
 			<strong>RunSignUp / ChronoTrack / UltraSignup</strong> — race-result import, only when you
 			import or link a race. We may send an optional race-platform user id and receive finisher
-			results (names, bib numbers, times).
+			results (names, bib numbers, times). For UltraSignup we send the first and last name you
+			enter to find your profile, and keep the profile you pick with that name on your account
+			until you unlink it.
 		</li>
 		<li>
 			<strong>Strava / parkrun / Garmin Connect / Health Connect / HealthKit</strong> — only when

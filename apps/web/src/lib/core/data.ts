@@ -105,6 +105,12 @@ import {
 } from '../types';
 import type { RaceImportLeg } from '../integrations/race_import_providers';
 import {
+	parseUltraSignUpCandidates,
+	ultraSignUpLinkFromRow,
+	type UltraSignUpCandidate,
+	type UltraSignUpPersonLink
+} from '../integrations/ultrasignup_person';
+import {
 	filterRelinkCandidates,
 	DEFAULT_RELINK_WINDOW_DAYS,
 	type RelinkCandidateRun
@@ -2553,7 +2559,10 @@ export interface ImportRaceResultInput {
 	provider: 'runsignup' | 'ultrasignup' | 'chronotrack' | 'paste';
 	listingId: string;
 	runSignUpUserId?: string;
-	ultraSignUpAthleteId?: string;
+	/// UltraSignup: who the runner is there. Omit it and the stored link is
+	/// read (`fetchUltraSignUpLink`); with neither, the call throws
+	/// `ULTRASIGNUP_NOT_LINKED` before reaching the function.
+	ultraSignUpPerson?: UltraSignUpPersonLink;
 	/// ChronoTrack: filter the event's results to one bib.
 	bib?: string;
 	/// When set, enrich THIS existing run in place (the auto-match seam) instead
@@ -2587,13 +2596,23 @@ export interface ImportRaceResultOutcome {
 export async function importRaceResult(
 	input: ImportRaceResultInput
 ): Promise<ImportRaceResultOutcome> {
+	// UltraSignup's feed is keyed by name and the import is scoped by the
+	// person the runner picked in Settings (decisions § 1841). Without one there
+	// is nothing to send, and the honest answer is "link yourself first".
+	let person: UltraSignUpPersonLink | null = null;
+	if (input.provider === 'ultrasignup') {
+		person = input.ultraSignUpPerson ?? (await fetchUltraSignUpLink());
+		if (!person) throw new Error(ULTRASIGNUP_NOT_LINKED);
+	}
 	markListsStale('runs', 'history', 'routes');
 	const { data, error } = await supabase.functions.invoke('race-results-import', {
 		body: {
 			provider: input.provider,
 			listingId: input.listingId,
 			runSignUpUserId: input.runSignUpUserId,
-			ultraSignUpAthleteId: input.ultraSignUpAthleteId,
+			ultraSignUpPersonId: person?.personId,
+			ultraSignUpFirstName: person?.firstName,
+			ultraSignUpLastName: person?.lastName,
 			bib: input.bib,
 			matchRunId: input.matchRunId,
 			result: input.result
@@ -2606,9 +2625,88 @@ export async function importRaceResult(
 		if (input.provider !== 'paste' && (await isProviderGateRefusal(error))) {
 			throw new Error(RACE_IMPORT_UNAVAILABLE[input.provider]);
 		}
-		throw error;
+		// The function's own code, not supabase-js's fixed non-2xx sentence, so a
+		// caller can branch on what the function refused (decisions § 904).
+		const code = await edgeFunctionErrorMessage(error, 'race_import_failed');
+		// The stored person is no longer among the people their name answers
+		// with. That is a link to redo, not a race with no result in it.
+		throw new Error(code === 'ultrasignup_person_not_found' ? ULTRASIGNUP_PERSON_NOT_FOUND : code);
 	}
 	return data as ImportRaceResultOutcome;
+}
+
+/// `importRaceResult` refuses an UltraSignup import before the call when the
+/// runner has not picked themselves in Settings.
+export const ULTRASIGNUP_NOT_LINKED = 'ULTRASIGNUP_NOT_LINKED';
+/// The function could not find the linked person under their name any more.
+export const ULTRASIGNUP_PERSON_NOT_FOUND = 'ULTRASIGNUP_PERSON_NOT_FOUND';
+
+/// The people UltraSignup knows by this name, for the runner to pick
+/// themselves from. Throws `ULTRASIGNUP_UNAVAILABLE` when the leg is off on
+/// this deployment, otherwise the function's own error code.
+export async function lookupUltraSignUpPeople(
+	firstName: string,
+	lastName: string
+): Promise<UltraSignUpCandidate[]> {
+	const { data, error } = await supabase.functions.invoke('race-results-import', {
+		body: {
+			provider: 'ultrasignup',
+			lookup: true,
+			ultraSignUpFirstName: firstName.trim(),
+			ultraSignUpLastName: lastName.trim()
+		}
+	});
+	if (error) {
+		if (await isProviderGateRefusal(error)) throw new Error(RACE_IMPORT_UNAVAILABLE.ultrasignup);
+		throw new Error(await edgeFunctionErrorMessage(error, 'ultrasignup_lookup_failed'));
+	}
+	return parseUltraSignUpCandidates(data);
+}
+
+/// The runner's stored UltraSignup person, or null when they have not linked
+/// one. Owner-only by RLS, like every `integrations` row.
+export async function fetchUltraSignUpLink(): Promise<UltraSignUpPersonLink | null> {
+	const userId = auth.user?.id;
+	if (!userId) return null;
+	const { data, error } = await supabase
+		.from(TABLES.integrations)
+		.select('external_id, external_first_name, external_last_name')
+		.eq('user_id', userId)
+		.eq('provider', 'ultrasignup')
+		.maybeSingle();
+	if (error) throw error;
+	return ultraSignUpLinkFromRow(data);
+}
+
+/// Store the person the runner picked. One row per runner per provider, so a
+/// re-pick replaces the last one.
+export async function linkUltraSignUpPerson(link: UltraSignUpPersonLink): Promise<void> {
+	const userId = auth.user?.id;
+	if (!userId) throw new Error('Not authenticated');
+	const { error } = await supabase.from(TABLES.integrations).upsert(
+		{
+			user_id: userId,
+			provider: 'ultrasignup',
+			external_id: link.personId,
+			external_first_name: link.firstName,
+			external_last_name: link.lastName
+		},
+		{ onConflict: 'user_id,provider' }
+	);
+	if (error) throw error;
+}
+
+/// Forget the stored person. Results already imported stay — they are the
+/// runner's runs, not the link's.
+export async function unlinkUltraSignUpPerson(): Promise<void> {
+	const userId = auth.user?.id;
+	if (!userId) throw new Error('Not authenticated');
+	const { error } = await supabase
+		.from(TABLES.integrations)
+		.delete()
+		.eq('user_id', userId)
+		.eq('provider', 'ultrasignup');
+	if (error) throw error;
 }
 
 /// The error `importRaceResult` throws when a leg's credentials are unset
@@ -2654,16 +2752,15 @@ export async function isRunSignUpConfigured(): Promise<boolean> {
 /// fail-closed shape as isRunSignUpConfigured.
 ///
 /// Probes `race-results-import`, not `race-listings-sync`. The two legs are
-/// separately gated and no longer agree: the sync answers on
-/// ULTRASIGNUP_API_KEY alone, while the results leg refuses unconditionally
-/// since decisions § 975 — an athlete feed carries no race identifier, so
-/// nothing it returns can be attributed to the listing a caller names. The card
-/// this gates says "Import trail and ultra results", so it has to ask the leg
-/// that would run; asking the sync advertises an import whose very next call
-/// 503s the moment the key is provisioned.
+/// separately gated: the sync answers on ULTRASIGNUP_API_KEY, while the results
+/// leg reads a keyless feed and answers on the deployment's
+/// ULTRASIGNUP_RESULTS_ENABLED opt-in (decisions § 1841). The card this gates
+/// says "Import trail and ultra results", so it has to ask the leg that would
+/// run. `ultraSignUpFlow: 'person'` says this client speaks the person flow; a
+/// client that does not is told the leg is unavailable.
 export async function isUltraSignUpConfigured(): Promise<boolean> {
 	const { error } = await supabase.functions.invoke('race-results-import', {
-		body: { provider: 'ultrasignup', probe: true }
+		body: { provider: 'ultrasignup', probe: true, ultraSignUpFlow: 'person' }
 	});
 	return probeSaysConfigured(error);
 }

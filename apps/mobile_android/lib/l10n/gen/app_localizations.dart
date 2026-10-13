@@ -7678,6 +7678,18 @@ abstract class AppLocalizations {
   /// **'An event occurrence you paid for was cancelled — your payment is being refunded'**
   String get profileNotifEventCancelRefunded;
 
+  /// Notification text when a place has opened in a paid event the recipient is waitlisted for and is being held for them until a deadline (event title known). They must pay to claim it; nothing has been charged.
+  ///
+  /// In en, this message translates to:
+  /// **'A place opened in \"{title}\" and is held for you — pay to claim it'**
+  String profileNotifWaitlistSlotTitled(String title);
+
+  /// Notification text when a place has opened in a paid event the recipient is waitlisted for and is being held for them, when the title is unavailable. They must pay to claim it.
+  ///
+  /// In en, this message translates to:
+  /// **'A place opened in an event you\'re waitlisted for and is held for you — pay to claim it'**
+  String get profileNotifWaitlistSlot;
+
   /// Notification text for an upcoming event reminder, when the event title is known
   ///
   /// In en, this message translates to:

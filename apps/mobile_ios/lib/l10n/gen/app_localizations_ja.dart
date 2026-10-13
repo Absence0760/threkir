@@ -4413,6 +4413,15 @@ class AppLocalizationsJa extends AppLocalizations {
       'お支払い済みのイベントの開催がキャンセルされました。お支払いは返金手続き中です';
 
   @override
+  String profileNotifWaitlistSlotTitled(String title) {
+    return '「$title」に空きが出ました。あなたのために確保中です。お支払いで確定します';
+  }
+
+  @override
+  String get profileNotifWaitlistSlot =>
+      'キャンセル待ち中のイベントに空きが出ました。あなたのために確保中です。お支払いで確定します';
+
+  @override
   String profileNotifEventReminderTitled(String title) {
     return '「$title」がもうすぐ始まります';
   }

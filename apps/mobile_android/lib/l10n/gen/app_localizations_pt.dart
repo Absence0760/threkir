@@ -4680,6 +4680,15 @@ class AppLocalizationsPt extends AppLocalizations {
       'Uma ocorrência de um evento que pagou foi cancelada — o seu pagamento está a ser reembolsado';
 
   @override
+  String profileNotifWaitlistSlotTitled(String title) {
+    return 'Abriu um lugar em \"$title\" e está reservado para si — pague para o garantir';
+  }
+
+  @override
+  String get profileNotifWaitlistSlot =>
+      'Abriu um lugar num evento em cuja lista de espera está e está reservado para si — pague para o garantir';
+
+  @override
   String profileNotifEventReminderTitled(String title) {
     return '\"$title\" está a chegar';
   }
@@ -19296,6 +19305,15 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get profileNotifEventCancelRefunded =>
       'Uma ocorrência de evento que você pagou foi cancelada — seu pagamento está sendo reembolsado';
+
+  @override
+  String profileNotifWaitlistSlotTitled(String title) {
+    return 'Abriu uma vaga em \"$title\" e ela está reservada para você — pague para garanti-la';
+  }
+
+  @override
+  String get profileNotifWaitlistSlot =>
+      'Abriu uma vaga em um evento da sua lista de espera e ela está reservada para você — pague para garanti-la';
 
   @override
   String profileNotifEventReminderTitled(String title) {

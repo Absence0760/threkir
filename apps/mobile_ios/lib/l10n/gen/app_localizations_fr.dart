@@ -4696,6 +4696,15 @@ class AppLocalizationsFr extends AppLocalizations {
       'Une occurrence d\'événement que tu avais payée a été annulée — ton paiement est en cours de remboursement';
 
   @override
+  String profileNotifWaitlistSlotTitled(String title) {
+    return 'Une place s’est libérée pour « $title » et vous est réservée — payez pour l’obtenir';
+  }
+
+  @override
+  String get profileNotifWaitlistSlot =>
+      'Une place s’est libérée pour un événement sur la liste d’attente duquel vous êtes inscrit, et elle vous est réservée — payez pour l’obtenir';
+
+  @override
   String profileNotifEventReminderTitled(String title) {
     return '« $title » approche';
   }

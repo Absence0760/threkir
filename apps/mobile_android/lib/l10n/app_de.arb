@@ -1308,6 +1308,8 @@
   "profileNotifEventCancel": "Ein Event-Termin, für den du zugesagt hattest, wurde abgesagt",
   "profileNotifEventCancelRefundedTitled": "Ein Termin von \"{title}\" wurde abgesagt – deine Zahlung wird erstattet",
   "profileNotifEventCancelRefunded": "Ein bezahlter Event-Termin wurde abgesagt – deine Zahlung wird erstattet",
+  "profileNotifWaitlistSlotTitled": "Bei „{title}“ ist ein Platz frei geworden und für dich reserviert – bezahle, um ihn zu sichern",
+  "profileNotifWaitlistSlot": "Bei einem Event, auf dessen Warteliste du stehst, ist ein Platz frei geworden und für dich reserviert – bezahle, um ihn zu sichern",
   "profileNotifEventReminderTitled": "\"{title}\" steht bevor",
   "profileNotifEventReminder": "Eine Veranstaltung, zu der du gehst, steht bevor",
   "profileNotifAchievement": "Du hast einen neuen Erfolg erzielt",

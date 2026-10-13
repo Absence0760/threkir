@@ -1308,6 +1308,8 @@
   "profileNotifEventCancel": "Uma ocorrência de evento que você confirmou foi cancelada",
   "profileNotifEventCancelRefundedTitled": "Uma ocorrência de \"{title}\" foi cancelada — seu pagamento está sendo reembolsado",
   "profileNotifEventCancelRefunded": "Uma ocorrência de evento que você pagou foi cancelada — seu pagamento está sendo reembolsado",
+  "profileNotifWaitlistSlotTitled": "Abriu uma vaga em \"{title}\" e ela está reservada para você — pague para garanti-la",
+  "profileNotifWaitlistSlot": "Abriu uma vaga em um evento da sua lista de espera e ela está reservada para você — pague para garanti-la",
   "profileNotifEventReminderTitled": "\"{title}\" está chegando",
   "profileNotifEventReminder": "Um evento ao qual você vai comparecer está chegando",
   "profileNotifAchievement": "Você conquistou uma nova conquista",

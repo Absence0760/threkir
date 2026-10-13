@@ -4639,6 +4639,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'An event occurrence you paid for was cancelled — your payment is being refunded';
 
   @override
+  String profileNotifWaitlistSlotTitled(String title) {
+    return 'A place opened in \"$title\" and is held for you — pay to claim it';
+  }
+
+  @override
+  String get profileNotifWaitlistSlot =>
+      'A place opened in an event you\'re waitlisted for and is held for you — pay to claim it';
+
+  @override
   String profileNotifEventReminderTitled(String title) {
     return '\"$title\" is coming up';
   }

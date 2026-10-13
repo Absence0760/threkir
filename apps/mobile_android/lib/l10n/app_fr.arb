@@ -1308,6 +1308,8 @@
   "profileNotifEventCancel": "Une occurrence d'événement à laquelle vous avez répondu a été annulée",
   "profileNotifEventCancelRefundedTitled": "Une occurrence de « {title} » a été annulée — ton paiement est en cours de remboursement",
   "profileNotifEventCancelRefunded": "Une occurrence d'événement que tu avais payée a été annulée — ton paiement est en cours de remboursement",
+  "profileNotifWaitlistSlotTitled": "Une place s’est libérée pour « {title} » et vous est réservée — payez pour l’obtenir",
+  "profileNotifWaitlistSlot": "Une place s’est libérée pour un événement sur la liste d’attente duquel vous êtes inscrit, et elle vous est réservée — payez pour l’obtenir",
   "profileNotifEventReminderTitled": "« {title} » approche",
   "profileNotifEventReminder": "Un événement auquel vous participez approche",
   "profileNotifAchievement": "Vous avez obtenu un nouveau succès",

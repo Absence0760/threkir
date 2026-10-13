@@ -49,6 +49,7 @@ String _targetKeyFor(NotificationRow n) {
     case 'event_rsvp':
     case 'event_cancel':
     case 'event_reminder':
+    case 'event_waitlist_slot':
       return n.eventId != null ? 'event:${n.eventId}' : solo;
     case 'club_post':
       return n.clubId != null ? 'club:${n.clubId}' : solo;

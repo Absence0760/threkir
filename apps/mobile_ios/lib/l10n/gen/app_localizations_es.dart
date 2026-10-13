@@ -4677,6 +4677,15 @@ class AppLocalizationsEs extends AppLocalizations {
       'Se canceló una ocurrencia de un evento que pagaste: te estamos reembolsando el pago';
 
   @override
+  String profileNotifWaitlistSlotTitled(String title) {
+    return 'Se ha liberado una plaza en «$title» y te la guardamos: paga para conseguirla';
+  }
+
+  @override
+  String get profileNotifWaitlistSlot =>
+      'Se ha liberado una plaza en un evento en cuya lista de espera estás y te la guardamos: paga para conseguirla';
+
+  @override
   String profileNotifEventReminderTitled(String title) {
     return '\"$title\" está por comenzar';
   }

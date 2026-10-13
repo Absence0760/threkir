@@ -1157,7 +1157,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     await _markNotifRead(item);
     if (!mounted) return;
     final kind = item.row.kind;
-    if (kind == 'event_rsvp' &&
+    if ((kind == 'event_rsvp' || kind == 'event_waitlist_slot') &&
         item.row.eventId != null &&
         item.eventClubSlug != null) {
       await Navigator.of(context).push(
@@ -1250,6 +1250,12 @@ class _ProfileScreenState extends State<ProfileScreen>
         return item.eventTitle != null
             ? l10n.profileNotifEventReminderTitled(item.eventTitle!)
             : l10n.profileNotifEventReminder;
+      case 'event_waitlist_slot':
+        // A paid occurrence's freed seat, held for this waitlister until a
+        // deadline (migration 20270726000002). Claiming it is a web checkout.
+        return item.eventTitle != null
+            ? l10n.profileNotifWaitlistSlotTitled(item.eventTitle!)
+            : l10n.profileNotifWaitlistSlot;
       case 'plan_update':
         return l10n.profileNotifPlanUpdate(name);
       case 'plan_assigned':

@@ -6239,6 +6239,19 @@
   "@profileNotifEventCancelRefunded": {
     "description": "Notification text for a cancelled event occurrence the recipient had paid for, when the title is unavailable. The refund has been issued, not necessarily received."
   },
+  "profileNotifWaitlistSlotTitled": "A place opened in \"{title}\" and is held for you — pay to claim it",
+  "@profileNotifWaitlistSlotTitled": {
+    "description": "Notification text when a place has opened in a paid event the recipient is waitlisted for and is being held for them until a deadline (event title known). They must pay to claim it; nothing has been charged.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "profileNotifWaitlistSlot": "A place opened in an event you're waitlisted for and is held for you — pay to claim it",
+  "@profileNotifWaitlistSlot": {
+    "description": "Notification text when a place has opened in a paid event the recipient is waitlisted for and is being held for them, when the title is unavailable. They must pay to claim it."
+  },
   "profileNotifEventReminderTitled": "\"{title}\" is coming up",
   "@profileNotifEventReminderTitled": {
     "description": "Notification text for an upcoming event reminder, when the event title is known",

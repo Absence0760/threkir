@@ -4696,6 +4696,15 @@ class AppLocalizationsDe extends AppLocalizations {
       'Ein bezahlter Event-Termin wurde abgesagt – deine Zahlung wird erstattet';
 
   @override
+  String profileNotifWaitlistSlotTitled(String title) {
+    return 'Bei „$title“ ist ein Platz frei geworden und für dich reserviert – bezahle, um ihn zu sichern';
+  }
+
+  @override
+  String get profileNotifWaitlistSlot =>
+      'Bei einem Event, auf dessen Warteliste du stehst, ist ein Platz frei geworden und für dich reserviert – bezahle, um ihn zu sichern';
+
+  @override
   String profileNotifEventReminderTitled(String title) {
     return '\"$title\" steht bevor';
   }

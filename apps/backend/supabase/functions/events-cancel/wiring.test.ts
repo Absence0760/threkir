@@ -33,14 +33,22 @@ async function functionSources(): Promise<Record<string, string>> {
   return out;
 }
 
-/// The body of the occurrence handler, so an ordering assertion cannot be
-/// satisfied by the buyer path's code further down the file.
-function occurrenceBody(): string {
-  const start = SRC.indexOf('async function cancelOccurrence(');
-  assert(start >= 0, 'cancelOccurrence is gone — has the host cancel path moved?');
+/// The body of one top-level function in index.ts, so an ordering assertion
+/// cannot be satisfied by another path's code further down the file.
+function fnBody(name: string): string {
+  const start = SRC.indexOf(`async function ${name}(`);
+  assert(start >= 0, `${name} is gone — has the host cancel path moved?`);
   const end = SRC.indexOf('\n}\n', start);
-  assert(end > start, 'cancelOccurrence has no closing brace at column 0');
+  assert(end > start, `${name} has no closing brace at column 0`);
   return SRC.slice(start, end);
+}
+
+function occurrenceBody(): string {
+  return fnBody('cancelOccurrence');
+}
+
+function seriesBody(): string {
+  return fnBody('cancelSeries');
 }
 
 Deno.test('the refund params come from buildRefundParams, not an inline literal', () => {
@@ -107,9 +115,12 @@ Deno.test('every refund in the tier goes through ONE refundOrder over ONE transp
   const call = REFUND.indexOf('createRefund(buildRefundParams(');
   const next = REFUND.indexOf('\nexport ', helper + 1);
   assert(helper >= 0 && call > helper && call < next, 'the refund must be created inside refundOrder');
-  // Both cancel paths reach it, and so does the webhook's cancelled-occurrence arm.
-  assert(/results\.push\(await refundOrder\(createRefund, service, order\)\)/.test(occurrenceBody()));
-  assert(/const createRefund = stripeRestRefundCreator\(stripeSecretKey!\);/.test(occurrenceBody()));
+  // Every cancel path reaches it, and so does the webhook's cancelled-occurrence arm.
+  const settle = fnBody('settleOrders');
+  assert(/results\.push\(await refundOrder\(createRefund, service, order\)\)/.test(settle));
+  assert(/const createRefund = stripeRestRefundCreator\(stripeSecretKey!\);/.test(settle));
+  assert(/await settleOrders\(planned, service, stripeSecretKey\)/.test(occurrenceBody()));
+  assert(/await settleOrders\(planned, service, stripeSecretKey\)/.test(seriesBody()));
   assert(
     /const result = await refundOrder\(stripeRestRefundCreator\(stripeSecretKey!\), service, order\)/
       .test(SRC),
@@ -151,7 +162,7 @@ Deno.test('occurrence cancel: authority, then the Stripe gate, then the cancel, 
   const forbidden = body.indexOf("'not_event_organiser'");
   const gate = body.indexOf("{ error: 'stripe_not_configured' }");
   const cancel = body.indexOf(".from('event_exceptions')");
-  const refunds = body.indexOf('await refundOrder(');
+  const refunds = body.indexOf('await settleOrders(');
   for (const [name, at] of Object.entries({ authz, forbidden, gate, cancel, refunds })) {
     assert(at >= 0, `${name} not found in cancelOccurrence`);
   }
@@ -180,5 +191,45 @@ Deno.test('an occurrence cancel with a failed refund is reported, not swallowed'
   assert(
     /refunds: summarizeOccurrenceRefunds\(results\)/.test(occurrenceBody()),
     'the occurrence response must carry the per-order refund summary',
+  );
+});
+
+Deno.test('series cancel: authority, Stripe gate, end the series, cancel by name, then refunds', () => {
+  const body = seriesBody();
+  const authz = body.indexOf(".rpc(\n    'can_cancel_event_occurrence'");
+  const forbidden = body.indexOf("'not_event_organiser'");
+  const gate = body.indexOf("{ error: 'stripe_not_configured' }");
+  const end = body.indexOf('.update({ recurrence_until: until })');
+  const cancel = body.search(/\.from\('event_exceptions'\)\s*\.upsert\(/);
+  const refunds = body.indexOf('await settleOrders(');
+  for (const [name, at] of Object.entries({ authz, forbidden, gate, end, cancel, refunds })) {
+    assert(at >= 0, `${name} not found in cancelSeries`);
+  }
+  assert(authz < forbidden && forbidden < gate, 'the organiser check must precede everything');
+  // The Stripe gate before anything changes, as for one occurrence.
+  assert(gate < end, 'the stripe_not_configured gate must precede ending the series');
+  // Ending the series closes checkout for every later instant before the
+  // occurrences are cancelled and refunded.
+  assert(end < cancel && cancel < refunds, 'end the series, then cancel, then refund');
+  assert(
+    /\.in\('status', \[\.\.\.OCCURRENCE_CANCEL_STATUSES\]\)/.test(body),
+    'the series order read must use OCCURRENCE_CANCEL_STATUSES',
+  );
+  assert(
+    /refunds: summarizeOccurrenceRefunds\(results\)/.test(body),
+    'the series response must carry the per-order refund summary',
+  );
+});
+
+Deno.test('checkout refuses an instant past an ended series', async () => {
+  const checkout = await Deno.readTextFile(new URL('../events-checkout/index.ts', import.meta.url));
+  assert(
+    /\.select\('host_user_id, capacity, title, recurrence_until'\)/.test(checkout),
+    'events-checkout must read recurrence_until to know a series has ended',
+  );
+  assert(
+    /if \(isPastSeriesEnd\(event\.recurrence_until, Date\.parse\(instanceStart\)\)\) \{\n\s+return Response\.json\(\{ error: 'instance_cancelled' \}, \{ status: 409 \}\);/
+      .test(checkout),
+    'events-checkout must refuse an instant past recurrence_until as a cancelled occurrence',
   );
 });

@@ -181,7 +181,11 @@ type NotificationRow struct {
 	PlanID        *string `json:"plan_id"`
 	AchievementID *string `json:"achievement_id"`
 	ChallengeID   *string `json:"challenge_id"`
-	EmailSentAt   *string `json:"email_sent_at"`
+	// Refunded is set on an event_cancel row whose recipient held a paid order
+	// on the cancelled occurrence (migration 20270725000002); copyKeyFor reads
+	// it to pick the copy that says the payment is being refunded.
+	Refunded    bool    `json:"refunded"`
+	EmailSentAt *string `json:"email_sent_at"`
 	// WebPushSentAt is the web-push channel's idempotency guard — the
 	// sibling of EmailSentAt for the kind='web_push' consumer (migration
 	// 20261219_001). Only the FetchNotificationForWebPush projection selects

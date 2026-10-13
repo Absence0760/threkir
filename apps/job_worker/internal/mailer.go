@@ -436,7 +436,7 @@ func shouldEmail(kind string, prefs map[string]interface{}) bool {
 func renderNotificationEmail(n NotificationRow, baseURL, locale string) Email {
 	base := strings.TrimRight(baseURL, "/")
 	loc := normalizeEmailLocale(locale)
-	s := lookupEmailStrings(loc, keyForKind(n.Kind))
+	s := lookupEmailStrings(loc, copyKeyFor(n))
 	shared := lookupEmailShared(loc)
 	return composeEmail(emailContent{
 		logoURL:         emailLogoURL(baseURL),

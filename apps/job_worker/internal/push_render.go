@@ -75,7 +75,7 @@ type webPushPayload struct {
 func renderWebPushPayload(n NotificationRow, baseURL, locale string) ([]byte, error) {
 	base := strings.TrimRight(baseURL, "/")
 	loc := normalizeEmailLocale(locale)
-	s := lookupEmailStrings(loc, keyForKind(n.Kind))
+	s := lookupEmailStrings(loc, copyKeyFor(n))
 
 	body := s.preheader
 	if body == "" && len(s.body) > 0 {
@@ -102,7 +102,7 @@ func renderWebPushPayload(n NotificationRow, baseURL, locale string) ([]byte, er
 func renderNativeMessage(n NotificationRow, baseURL, locale string) nativepush.Message {
 	base := strings.TrimRight(baseURL, "/")
 	loc := normalizeEmailLocale(locale)
-	s := lookupEmailStrings(loc, keyForKind(n.Kind))
+	s := lookupEmailStrings(loc, copyKeyFor(n))
 
 	body := s.preheader
 	if body == "" && len(s.body) > 0 {

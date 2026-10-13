@@ -1792,7 +1792,7 @@ func (c *SupabaseClient) FetchUserSettingsPrefs(ctx context.Context, userID stri
 func (c *SupabaseClient) FetchNotificationForEmail(ctx context.Context, notificationID string) (*NotificationRow, error) {
 	q := url.Values{}
 	q.Set("id", "eq."+notificationID)
-	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,email_sent_at")
+	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,refunded,email_sent_at")
 	q.Set("limit", "1")
 	u := c.BaseURL + "/rest/v1/" + schema.TableNotifications + "?" + q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
@@ -1867,7 +1867,7 @@ func (c *SupabaseClient) MarkNotificationEmailed(ctx context.Context, notificati
 func (c *SupabaseClient) FetchNotificationForWebPush(ctx context.Context, notificationID string) (*NotificationRow, error) {
 	q := url.Values{}
 	q.Set("id", "eq."+notificationID)
-	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,web_push_sent_at")
+	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,refunded,web_push_sent_at")
 	q.Set("limit", "1")
 	u := c.BaseURL + "/rest/v1/" + schema.TableNotifications + "?" + q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
@@ -1977,7 +1977,7 @@ func (c *SupabaseClient) ClearPushSubscription(ctx context.Context, userID, devi
 func (c *SupabaseClient) FetchNotificationForNativePush(ctx context.Context, notificationID string) (*NotificationRow, error) {
 	q := url.Values{}
 	q.Set("id", "eq."+notificationID)
-	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,native_push_sent_at")
+	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,refunded,native_push_sent_at")
 	q.Set("limit", "1")
 	u := c.BaseURL + "/rest/v1/" + schema.TableNotifications + "?" + q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)

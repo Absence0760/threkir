@@ -85,3 +85,28 @@ Deno.test('the sales window is graded on the occurrence being bought', () => {
     'the handler must not grade or price anything off the series starts_at',
   );
 });
+
+Deno.test('the capacity precheck counts waitlist offers held for someone else', () => {
+  // A paid occurrence's freed seat is OFFERED to a waitlister and held for
+  // them (20270726000002). Without the hold in this count a stranger could
+  // start paying for the promised seat and the claim would arrive to a full
+  // class. The caller's own id has to reach the count, or an offered
+  // attendee would be refused by their own hold.
+  const fn = SRC.slice(SRC.indexOf('async function precheckCapacity('));
+  assert(fn.length > 0, 'precheckCapacity is gone — has the gate moved?');
+  assert(/\.not\('offer_expires_at', 'is', null\)/.test(fn), 'the precheck no longer reads the offers');
+  assert(/heldOfferCount\(/.test(fn), 'the offers are not counted through heldOfferCount');
+  assert(
+    /precheckCapacity\(\s*service,\s*eventId,\s*instanceStart,[\s\S]*?user\.id,\s*\);/.test(SRC),
+    'the caller id must be passed so their own offer is excluded',
+  );
+});
+
+Deno.test('an unreadable hold refuses the sale instead of selling the seat', () => {
+  const call = SRC.indexOf("if (capacityOutcome === 'unknown')");
+  assert(call !== -1, "the 'unknown' precheck outcome is not handled");
+  assert(
+    call < SRC.indexOf('checkout.sessions.create('),
+    'the refusal must come before a session is opened',
+  );
+});

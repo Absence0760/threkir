@@ -16,7 +16,10 @@
 ///   - the instance is not a cancelled occurrence (event_exceptions),
 ///   - the sales window is still open,
 ///   - the host has a charges-enabled payout account (else 409),
-///   - capacity is not already full counting going + non-expired pending.
+///   - capacity is not already full counting going + non-expired pending
+///     + seats held for someone else by a waitlist offer (20270726000002).
+///     A waitlister who has been OFFERED a seat claims it here: their own
+///     offer is the one hold the count leaves out.
 ///
 /// PCI: Checkout is fully Stripe-hosted — SAQ A. No card form here.
 /// Idempotency: the Stripe create call is keyed on the pending ORDER, and
@@ -46,6 +49,7 @@ import {
   checkoutExpiresAtUnix,
   checkoutIdempotencyKey,
   computeApplicationFeeCents,
+  heldOfferCount,
   isSalesWindowOpen,
   type PendingOrderRow,
   reservationExpiry,
@@ -282,7 +286,11 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
       eventId,
       instanceStart,
       (event.capacity as number | null) ?? null,
+      user.id,
     );
+    if (capacityOutcome === 'unknown') {
+      return Response.json({ error: 'checkout_failed' }, { status: 500 });
+    }
     if (capacityOutcome === 'full') {
       return Response.json({ error: 'event_full' }, { status: 409 });
     }
@@ -384,15 +392,19 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
   return Response.json({ checkout_url: session.url, order_id: orderId });
 }));
 
-/// going + non-expired-pending count against capacity, the single shared
-/// decision. Pending orders whose reserved_until has lapsed do not count
-/// (they're swept / released on expiry).
+/// going + non-expired pending + other people's waitlist offers count
+/// against capacity, the single shared decision. Pending orders whose
+/// reserved_until has lapsed do not count (they're swept / released on
+/// expiry). A failed read of the holds answers 'unknown' rather than
+/// 'available': a seat promised to a waitlister must not be sold because a
+/// read errored.
 async function precheckCapacity(
   service: DbClient,
   eventId: string,
   instanceStart: string,
   capacity: number | null,
-): Promise<'available' | 'full'> {
+  callerId: string,
+): Promise<'available' | 'full' | 'unknown'> {
   if (capacity === null) return 'available';
 
   const { count: goingCount } = await service
@@ -402,13 +414,37 @@ async function precheckCapacity(
     .eq('instance_start', instanceStart)
     .eq('status', 'going');
 
-  const { count: pendingCount } = await service
+  const nowIso = new Date().toISOString();
+  const { data: pendingRows, error: pendingErr } = await service
     .from('event_orders')
-    .select('id', { count: 'exact', head: true })
+    .select('buyer_user_id')
     .eq('event_id', eventId)
     .eq('instance_start', instanceStart)
     .eq('status', 'pending')
-    .gt('reserved_until', new Date().toISOString());
+    .gt('reserved_until', nowIso);
+  if (pendingErr) {
+    console.error('pending hold read failed (code):', pendingErr?.code ?? 'unknown');
+    return 'unknown';
+  }
 
-  return capacityDecision(goingCount ?? 0, pendingCount ?? 0, capacity);
+  const { data: offers, error: offersErr } = await service
+    .from('event_attendees')
+    .select('user_id, offer_expires_at')
+    .eq('event_id', eventId)
+    .eq('instance_start', instanceStart)
+    .eq('status', 'waitlisted')
+    .not('offer_expires_at', 'is', null);
+  if (offersErr) {
+    console.error('waitlist offer read failed (code):', offersErr?.code ?? 'unknown');
+    return 'unknown';
+  }
+
+  const pending = pendingRows ?? [];
+  const held = heldOfferCount(
+    offers ?? [],
+    new Set(pending.map((r) => r.buyer_user_id)),
+    callerId,
+    Date.now(),
+  );
+  return capacityDecision(goingCount ?? 0, pending.length + held, capacity);
 }

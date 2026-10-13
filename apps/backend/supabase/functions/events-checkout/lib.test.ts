@@ -10,6 +10,7 @@ import {
   checkoutExpiresAtUnix,
   checkoutIdempotencyKey,
   computeApplicationFeeCents,
+  heldOfferCount,
   isSalesWindowOpen,
   type PendingOrderRow,
   reservationExpiry,
@@ -235,4 +236,60 @@ Deno.test('isSalesWindowOpen — an unparseable instant refuses the sale', () =>
   // would rather refuse a sale than open one against an instant we cannot
   // place.
   assertEquals(isSalesWindowOpen(NaN, 0, Date.parse('2026-02-27T09:00:00Z')), false);
+});
+
+// ── waitlist offers (migration 20270726000002) ──
+
+const NOW = Date.parse('2026-10-13T12:00:00Z');
+const LATER = '2026-10-13T20:00:00Z';
+const EARLIER = '2026-10-13T11:00:00Z';
+
+Deno.test('heldOfferCount: someone else\'s live offer holds a seat against the caller', () => {
+  const held = heldOfferCount([{ user_id: 'w1', offer_expires_at: LATER }], new Set(), 'stranger', NOW);
+  assertStrictEquals(held, 1);
+  // With one seat left, that hold makes the class full for the stranger.
+  assertStrictEquals(capacityDecision(9, held, 10), 'full');
+});
+
+Deno.test('heldOfferCount: the offered caller is not blocked by their own offer', () => {
+  const held = heldOfferCount([{ user_id: 'w1', offer_expires_at: LATER }], new Set(), 'w1', NOW);
+  assertStrictEquals(held, 0);
+  assertStrictEquals(capacityDecision(9, held, 10), 'available');
+});
+
+Deno.test('heldOfferCount: a lapsed offer holds nothing', () => {
+  assertStrictEquals(
+    heldOfferCount([{ user_id: 'w1', offer_expires_at: EARLIER }], new Set(), 'stranger', NOW),
+    0,
+  );
+});
+
+Deno.test('heldOfferCount: a holder mid-checkout is counted once, through the pending count', () => {
+  // Their pending order already holds the seat, deadline or not.
+  assertStrictEquals(
+    heldOfferCount(
+      [
+        { user_id: 'w1', offer_expires_at: LATER },
+        { user_id: 'w2', offer_expires_at: EARLIER },
+      ],
+      new Set(['w1', 'w2']),
+      'stranger',
+      NOW,
+    ),
+    0,
+  );
+});
+
+Deno.test('heldOfferCount: an unreadable deadline holds the seat (fail closed)', () => {
+  assertStrictEquals(
+    heldOfferCount([{ user_id: 'w1', offer_expires_at: 'not-a-date' }], new Set(), 'stranger', NOW),
+    1,
+  );
+});
+
+Deno.test('heldOfferCount: a row with no offer is ignored', () => {
+  assertStrictEquals(
+    heldOfferCount([{ user_id: 'w1', offer_expires_at: null }], new Set(), 'stranger', NOW),
+    0,
+  );
 });

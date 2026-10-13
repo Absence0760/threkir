@@ -514,6 +514,20 @@ Dashboard → Auth → Hooks in prod):
   no account to reach and is skipped in the trigger. Goes live with the shared
   `SMTP_HOST` worker gate; no new credential.
 
+- [x] **The cancel email says a paid registrant is being refunded** — SHIPPED
+  2026-10-13 (migration `20270725000002`, `decisions.md § 1834`). Not a new
+  kind: an `event_cancel` row carries `notifications.refunded`, set by
+  `notify_event_cancel` for a recipient holding a `paid` / `partially_refunded`
+  order on the occurrence. `copyKeyFor(row)` resolves such a row to the
+  `event_cancel_refunded` catalogue entry, and the email, web-push and
+  native-push renders all go through it, so one flag changes all three. The
+  key sits apart from the kind table (it is not a kind, so the
+  kind-coverage guards ignore it) and carries copy in all seven locales. The
+  wording is "is being refunded", never "has been": `events-cancel` records the
+  cancel before it calls Stripe, so the row is written while the refund is
+  still owed. Deep link and `importantKinds` membership are the plain
+  `event_cancel`'s.
+
 ### Not planned (with reason)
 
 - **New-device sign-in alerts** — there's no sign-in/device tracking to key

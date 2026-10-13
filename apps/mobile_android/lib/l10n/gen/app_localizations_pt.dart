@@ -14829,6 +14829,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get helpGuideMissing => 'Este guia não está disponível.';
 
   @override
+  String get helpGuideInEnglish =>
+      'Este guia ainda não foi traduzido para o seu idioma, por isso é apresentado em inglês.';
+
+  @override
   String get helpHowThisWorks => 'Como funciona';
 
   @override
@@ -29808,7 +29812,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get helpSettingsSubtitle =>
-      'Como funcionam as corridas, as aulas, os clubes e o app';
+      'Como funcionam as provas, as aulas, os clubes e o app';
 
   @override
   String get helpSearchHint => 'Buscar na ajuda';
@@ -29838,10 +29842,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get helpAudienceInstructor => 'Instrutores';
 
   @override
-  String get helpAudienceClubAdmin => 'Administradores de clubes';
+  String get helpAudienceClubAdmin => 'Administradores de clube';
 
   @override
-  String get helpCategoryRaces => 'Corridas';
+  String get helpCategoryRaces => 'Provas';
 
   @override
   String get helpCategoryPaidClasses => 'Aulas pagas';
@@ -29865,10 +29869,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get helpRequiresPro => 'Requer Pro';
 
   @override
-  String get helpRequiresClubAdmin => 'Apenas administradores de clubes';
+  String get helpRequiresClubAdmin => 'Somente administradores de clube';
 
   @override
-  String get helpRequiresRaceDirector => 'Apenas diretores de prova';
+  String get helpRequiresRaceDirector => 'Somente diretores de prova';
 
   @override
   String get helpRequiresStripeConnected => 'Requer Stripe conectado';
@@ -29921,6 +29925,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get helpGuideMissing => 'Este guia não está disponível.';
+
+  @override
+  String get helpGuideInEnglish =>
+      'Este guia ainda não foi traduzido para o seu idioma, por isso é exibido em inglês.';
 
   @override
   String get helpHowThisWorks => 'Como funciona';

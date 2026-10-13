@@ -4280,6 +4280,7 @@
   "helpLoading": "A carregar guias",
   "helpUnavailable": "Não foi possível carregar os guias de ajuda.",
   "helpGuideMissing": "Este guia não está disponível.",
+  "helpGuideInEnglish": "Este guia ainda não foi traduzido para o seu idioma, por isso é apresentado em inglês.",
   "helpHowThisWorks": "Como funciona",
   "helpForThisScreen": "Guias para este ecrã",
   "helpBrowseAll": "Ver todos os guias",

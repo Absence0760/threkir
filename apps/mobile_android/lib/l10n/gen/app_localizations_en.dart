@@ -14679,6 +14679,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get helpGuideMissing => 'This guide is not available.';
 
   @override
+  String get helpGuideInEnglish =>
+      'This guide has not been translated into your language yet, so it is shown in English.';
+
+  @override
   String get helpHowThisWorks => 'How this works';
 
   @override

@@ -14803,17 +14803,18 @@ class AppLocalizationsFr extends AppLocalizations {
   String get helpRequiresPro => 'Nécessite Pro';
 
   @override
-  String get helpRequiresClubAdmin => 'Admins de club uniquement';
+  String get helpRequiresClubAdmin => 'Réservé aux admins de club';
 
   @override
-  String get helpRequiresRaceDirector => 'Directeurs de course uniquement';
+  String get helpRequiresRaceDirector => 'Réservé aux directeurs de course';
 
   @override
-  String get helpRequiresStripeConnected => 'Nécessite Stripe connecté';
+  String get helpRequiresStripeConnected =>
+      'Nécessite un compte Stripe connecté';
 
   @override
   String get helpRequiresPaidRailLive =>
-      'Nécessite l\'inscription payante activée';
+      'L\'inscription payante doit être activée';
 
   @override
   String get helpPlatformsLabel => 'Disponible sur';
@@ -14860,6 +14861,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get helpGuideMissing => 'Ce guide n\'est pas disponible.';
+
+  @override
+  String get helpGuideInEnglish =>
+      'Ce guide n\'a pas encore été traduit dans votre langue : il est donc affiché en anglais.';
 
   @override
   String get helpHowThisWorks => 'Comment ça marche';

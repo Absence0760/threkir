@@ -14746,7 +14746,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get helpAudienceOrganiser => 'Veranstalter';
 
   @override
-  String get helpAudienceParticipant => 'Teilnehmer';
+  String get helpAudienceParticipant => 'Teilnehmende';
 
   @override
   String get helpAudienceSpectator => 'Zuschauer';
@@ -14779,19 +14779,20 @@ class AppLocalizationsDe extends AppLocalizations {
   String get helpCategoryOther => 'Weitere Anleitungen';
 
   @override
-  String get helpRequiresPro => 'Benötigt Pro';
+  String get helpRequiresPro => 'Erfordert Pro';
 
   @override
   String get helpRequiresClubAdmin => 'Nur für Club-Admins';
 
   @override
-  String get helpRequiresRaceDirector => 'Nur für die Rennleitung';
+  String get helpRequiresRaceDirector => 'Nur für Renndirektoren';
 
   @override
-  String get helpRequiresStripeConnected => 'Benötigt verbundenes Stripe';
+  String get helpRequiresStripeConnected =>
+      'Erfordert verbundenes Stripe-Konto';
 
   @override
-  String get helpRequiresPaidRailLive => 'Benötigt aktive Bezahlanmeldung';
+  String get helpRequiresPaidRailLive => 'Bezahlte Anmeldung muss aktiv sein';
 
   @override
   String get helpPlatformsLabel => 'Verfügbar auf';
@@ -14841,7 +14842,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String get helpGuideMissing => 'Diese Anleitung ist nicht verfügbar.';
 
   @override
-  String get helpHowThisWorks => 'So funktioniert es';
+  String get helpGuideInEnglish =>
+      'Diese Anleitung wurde noch nicht in deine Sprache übersetzt und wird daher auf Englisch angezeigt.';
+
+  @override
+  String get helpHowThisWorks => 'So funktioniert das';
 
   @override
   String get helpForThisScreen => 'Anleitungen zu diesem Bildschirm';

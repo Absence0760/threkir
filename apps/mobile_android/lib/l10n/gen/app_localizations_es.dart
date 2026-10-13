@@ -14814,7 +14814,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get helpNoResultsBody =>
-      'Prueba con otra palabra o muestra las guías para todos.';
+      'Prueba con otra palabra o muestra las guías para todos los grupos.';
 
   @override
   String get helpLoading => 'Cargando guías';
@@ -14824,6 +14824,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get helpGuideMissing => 'Esta guía no está disponible.';
+
+  @override
+  String get helpGuideInEnglish =>
+      'Esta guía aún no está traducida a tu idioma, así que se muestra en inglés.';
 
   @override
   String get helpHowThisWorks => 'Cómo funciona';

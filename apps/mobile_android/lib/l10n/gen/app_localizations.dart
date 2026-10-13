@@ -24549,6 +24549,12 @@ abstract class AppLocalizations {
   /// **'This guide is not available.'**
   String get helpGuideMissing;
 
+  /// Note under a help guide's summary, shown only when the guide has no translation in the app language and its English text is shown instead
+  ///
+  /// In en, this message translates to:
+  /// **'This guide has not been translated into your language yet, so it is shown in English.'**
+  String get helpGuideInEnglish;
+
   /// Button and tooltip opening the guides about the current screen
   ///
   /// In en, this message translates to:

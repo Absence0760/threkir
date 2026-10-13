@@ -14090,10 +14090,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get helpRequiresRaceDirector => 'レースディレクターのみ';
 
   @override
-  String get helpRequiresStripeConnected => 'Stripe の連携が必要';
+  String get helpRequiresStripeConnected => 'Stripe アカウントの接続が必要';
 
   @override
-  String get helpRequiresPaidRailLive => '有料受付の有効化が必要';
+  String get helpRequiresPaidRailLive => '有料登録の有効化が必要';
 
   @override
   String get helpPlatformsLabel => '対応環境';
@@ -14141,7 +14141,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get helpGuideMissing => 'このガイドは利用できません。';
 
   @override
-  String get helpHowThisWorks => '使い方';
+  String get helpGuideInEnglish => 'このガイドはまだお使いの言語に翻訳されていないため、英語で表示しています。';
+
+  @override
+  String get helpHowThisWorks => '使い方ガイド';
 
   @override
   String get helpForThisScreen => 'この画面のガイド';

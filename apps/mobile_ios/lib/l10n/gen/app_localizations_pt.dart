@@ -1090,7 +1090,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get safetyOverdueSaved => 'Alerta de atraso atualizado';
 
   @override
-  String get safetyAutoLiveShareTitle => 'Partilha em direto automático';
+  String get safetyAutoLiveShareTitle => 'Partilha em direto automática';
 
   @override
   String get safetyAutoLiveShareSubtitle =>
@@ -1191,7 +1191,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get authErrorNotSignedIn =>
-      'Precisa estar conectado para fazer isto. Entre e tente novamente.';
+      'Precisa de ter sessão iniciada para fazer isto. Inicie sessão e tente novamente.';
 
   @override
   String get authErrorEmailExists =>
@@ -1222,7 +1222,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get signInSubtitle =>
-      'Entre para fazer backup das corridas e vê-las no app web.';
+      'Inicie sessão para fazer backup das corridas e vê-las no app web.';
 
   @override
   String get signInButton => 'Entrar';
@@ -1446,7 +1446,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get setupOfflineHint =>
-      'Não foi possível conectar ao servidor agora. Pode concluir a configuração mais tarde — tudo aqui pode ser editado em Definições.';
+      'Não foi possível contactar o servidor neste momento. Pode concluir a configuração mais tarde — tudo aqui pode ser editado em Definições.';
 
   @override
   String get setupFinishLater => 'Concluir mais tarde';
@@ -1649,10 +1649,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runLiveShareStop => 'Parar partilha';
 
   @override
-  String get runLiveShareExpectedReturn => 'Sem voltar até…';
+  String get runLiveShareExpectedReturn => 'Se não regressar até…';
 
   @override
-  String get runExpectedReturnTitle => 'Sem voltar até…';
+  String get runExpectedReturnTitle => 'Se não regressar até…';
 
   @override
   String get runExpectedReturnIntro =>
@@ -1745,7 +1745,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runRaceFallbackTitle => 'Prova';
 
   @override
-  String get runRaceArmed => 'Prova pronta';
+  String get runRaceArmed => 'Corrida preparada';
 
   @override
   String get runRaceLive => 'Prova EM DIRETO';
@@ -1843,7 +1843,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'Mantenha premido para parar a corrida';
 
   @override
-  String get runHoldToStopHint => 'Segure para parar';
+  String get runHoldToStopHint => 'Mantenha premido para parar';
 
   @override
   String get runResumeA11yLabel => 'Retomar corrida';
@@ -2052,10 +2052,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Passadeira perdida — distância a voltar para o GPS';
 
   @override
-  String get runTreadmillNotFound => 'Não foi possível conectar à passadeira';
+  String get runTreadmillNotFound => 'Não foi possível ligar à passadeira';
 
   @override
-  String get runTreadmillConnecting => 'A conectar à passadeira…';
+  String get runTreadmillConnecting => 'A ligar à passadeira…';
 
   @override
   String get runTreadmillNoBeltData =>
@@ -4026,7 +4026,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get exploreRoutesSignInRequired =>
-      'Faça login e conecte-se à internet para explorar rotas';
+      'Inicie sessão e ligue-se à internet para explorar rotas';
 
   @override
   String get exploreRoutesTimeout =>
@@ -4245,11 +4245,11 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runHeatmapSignedOutTitle =>
-      'Entre para ver o seu mapa de calor sincronizado';
+      'Inicie sessão para ver o seu mapa de calor sincronizado';
 
   @override
   String get runHeatmapSignedOutBody =>
-      'As corridas gravadas neste dispositivo aparecem aqui. Entre para incluir também as suas corridas sincronizadas.';
+      'As corridas gravadas neste dispositivo aparecem aqui. Inicie sessão para incluir também as suas corridas sincronizadas.';
 
   @override
   String get runHeatmapErrorTitle =>
@@ -4930,8 +4930,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'A ligação expirou. Verifique a sua rede e tente novamente.';
 
   @override
-  String get clubDetailRequestSent =>
-      'Solicitação enviada aos administradores.';
+  String get clubDetailRequestSent => 'Pedido enviado aos administradores.';
 
   @override
   String clubDetailLeaveTitle(String club) {
@@ -4953,7 +4952,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get clubDetailMemberFallback => 'Membro';
 
   @override
-  String get clubDetailRequestPending => 'Solicitação pendente';
+  String get clubDetailRequestPending => 'Pedido pendente';
 
   @override
   String get clubDetailInviteOnly => 'Apenas com convite';
@@ -5049,7 +5048,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String clubDetailPendingRequests(int count) {
-    return 'Solicitações pendentes ($count)';
+    return 'Pedidos pendentes ($count)';
   }
 
   @override
@@ -5402,7 +5401,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get liveSpectatorTitle => 'Acompanhamento em direto';
 
   @override
-  String get liveSpectatorConnectError => 'Não foi possível conectar.';
+  String get liveSpectatorConnectError => 'Não foi possível ligar.';
 
   @override
   String get liveSpectatorWaiting =>
@@ -5415,7 +5414,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get liveSpectatorBadgeIdle => 'Parado';
 
   @override
-  String get liveSpectatorBadgeConnecting => 'A conectar';
+  String get liveSpectatorBadgeConnecting => 'A ligar';
 
   @override
   String get liveSpectatorBadgeStale => 'Atrasado';
@@ -5579,7 +5578,8 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get plansSignInTitle => 'Entre para utilizar os planos de treino';
+  String get plansSignInTitle =>
+      'Inicie sessão para utilizar os planos de treino';
 
   @override
   String get plansSignInBody =>
@@ -6325,7 +6325,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get coachConsentIntro =>
-      'As funcionalidades de IA da Threkir — o Coach e o assistente de rotas com IA — enviam uma parte dos seus dados à Anthropic, nosso provedor de modelos de IA nos Estados Unidos. Consoante a funcionalidade utilizada, essa parte inclui:';
+      'As funcionalidades de IA da Threkir — o Coach e o assistente de rotas com IA — enviam uma parte dos seus dados à Anthropic, o nosso fornecedor de modelos de IA nos Estados Unidos. Consoante a funcionalidade utilizada, essa parte inclui:';
 
   @override
   String get coachConsentBulletProfile =>
@@ -6806,7 +6806,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsAccountRestoreBodyOffline =>
-      'Não está conectado. As corridas serão restauradas neste dispositivo e sincronizadas com a sua conta na próxima vez que entrar.';
+      'Não tem sessão iniciada. As corridas serão restauradas neste dispositivo e sincronizadas com a sua conta na próxima vez que iniciar sessão.';
 
   @override
   String get settingsAccountRestoreBodyOnline =>
@@ -6847,7 +6847,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsAccountSignInToSync =>
-      'Entre para sincronizar corridas entre dispositivos';
+      'Inicie sessão para sincronizar corridas entre dispositivos';
 
   @override
   String get settingsAccountSignOut => 'Sair';
@@ -7095,11 +7095,11 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String integrationsStravaConnectFailed(String error) {
-    return 'Falha ao conectar com o Strava: $error';
+    return 'Falha ao ligar o Strava: $error';
   }
 
   @override
-  String get integrationsStravaConnected => 'Strava conectado.';
+  String get integrationsStravaConnected => 'Strava ligado.';
 
   @override
   String integrationsSyncResult(int imported, int skipped) {
@@ -7127,7 +7127,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String integrationsStravaConnectedPartial(int imported, int skipped) {
-    return 'Strava conectado, mas a primeira importação parou antes do fim. $imported importadas, $skipped já presentes — sincronize novamente para concluir.';
+    return 'Strava ligado, mas a primeira importação parou antes do fim. $imported importadas, $skipped já presentes — sincronize novamente para concluir.';
   }
 
   @override
@@ -7135,7 +7135,7 @@ class AppLocalizationsPt extends AppLocalizations {
     int imported,
     int skipped,
   ) {
-    return 'Strava conectado, mas o Strava está a limitar os pedidos, pelo que a primeira importação parou antes do fim. $imported importadas, $skipped já presentes. Sincronize novamente dentro de cerca de 15 minutos.';
+    return 'Strava ligado, mas o Strava está a limitar os pedidos, pelo que a primeira importação parou antes do fim. $imported importadas, $skipped já presentes. Sincronize novamente dentro de cerca de 15 minutos.';
   }
 
   @override
@@ -7144,7 +7144,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get integrationsStravaDisconnectTitle => 'Desconectar o Strava?';
+  String get integrationsStravaDisconnectTitle => 'Desligar o Strava?';
 
   @override
   String get integrationsStravaDisconnectBody =>
@@ -7154,14 +7154,14 @@ class AppLocalizationsPt extends AppLocalizations {
   String get integrationsCancel => 'Cancelar';
 
   @override
-  String get integrationsDisconnect => 'Desconectar';
+  String get integrationsDisconnect => 'Desligar';
 
   @override
-  String get integrationsStravaDisconnected => 'Strava desconectado.';
+  String get integrationsStravaDisconnected => 'Strava desligado.';
 
   @override
   String integrationsDisconnectFailed(Object error) {
-    return 'Falha ao desconectar: $error';
+    return 'Falha ao desligar: $error';
   }
 
   @override
@@ -7220,15 +7220,15 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get integrationsStravaConnectSubtitle =>
-      'Conecte para sincronizar atividades automaticamente';
+      'Ligue a conta para sincronizar atividades automaticamente';
 
   @override
   String get integrationsStravaWaitingFirstSync =>
-      'Conectado · a aguardar a primeira sincronização';
+      'Ligado · a aguardar a primeira sincronização';
 
   @override
   String integrationsStravaLastSync(String time) {
-    return 'Conectado · última sincronização $time';
+    return 'Ligado · última sincronização $time';
   }
 
   @override
@@ -7270,7 +7270,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'O parkrun está presente apenas em alguns países e pode não haver eventos perto de si — ainda assim, pode importar resultados com um número de atleta do parkrun.';
 
   @override
-  String get integrationsSignInTitle => 'Entre para conectar serviços';
+  String get integrationsSignInTitle => 'Inicie sessão para ligar serviços';
 
   @override
   String get integrationsSignInSubtitle =>
@@ -7407,7 +7407,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String proSubscribeTitle(String price) {
-    return 'Assinar o Pro — $price/mês';
+    return 'Subscrever o Pro — $price/mês';
   }
 
   @override
@@ -7435,7 +7435,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String proSubscribeTitleAnnual(String price) {
-    return 'Assinar o Pro — $price/ano';
+    return 'Subscrever o Pro — $price/ano';
   }
 
   @override
@@ -7574,7 +7574,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get aboutLegalSection => 'Informação legal';
 
   @override
-  String get devicesTitle => 'Dispositivos conectados';
+  String get devicesTitle => 'Dispositivos com sessão iniciada';
 
   @override
   String get devicesRenameTitle => 'Renomear dispositivo';
@@ -7595,11 +7595,11 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get devicesRemoveBodyCurrent =>
-      'Este é o dispositivo que está a utilizar. Removê-lo apaga as substituições de preferências por dispositivo; o dispositivo continua conectado.';
+      'Este é o dispositivo que está a utilizar. Removê-lo apaga as substituições de preferências por dispositivo; o dispositivo mantém a sessão iniciada.';
 
   @override
   String get devicesRemoveBodyOther =>
-      'Remove a entrada do dispositivo e quaisquer substituições de preferências por dispositivo. O dispositivo continua conectado até abrir o app novamente.';
+      'Remove a entrada do dispositivo e quaisquer substituições de preferências por dispositivo. O dispositivo mantém a sessão iniciada até voltar a abrir o app.';
 
   @override
   String get devicesRemove => 'Remover';
@@ -7619,7 +7619,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get devicesEmpty =>
-      'Ainda não há dispositivos — eles são registados na primeira vez que um dispositivo abre o app conectado.';
+      'Ainda não há dispositivos — são registados na primeira vez que um dispositivo abre o app com sessão iniciada.';
 
   @override
   String get devicesThisDevice => 'Este dispositivo';
@@ -8279,7 +8279,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get prefsSignInToEdit =>
-      'Entre para editar definições de perfil que sincronizam entre dispositivos.';
+      'Inicie sessão para editar as definições de perfil que são sincronizadas entre dispositivos.';
 
   @override
   String get prefsUseMiles => 'Utilizar milhas';
@@ -8344,7 +8344,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get prefsStravaAutoShareSubtitle =>
-      'Envia automaticamente cada nova corrida para o Strava. Requer uma integração do Strava conectada quando estiver disponível.';
+      'Envia automaticamente cada nova corrida para o Strava. Requer uma integração do Strava ligada quando estiver disponível.';
 
   @override
   String get prefsDiscoverable => 'Aparecer na pesquisa por nome';
@@ -9412,7 +9412,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get clubFormJoinOpen => 'Aberto — qualquer um entra';
 
   @override
-  String get clubFormJoinRequest => 'Solicitação — admins aprovam';
+  String get clubFormJoinRequest => 'Pedido — os administradores aprovam';
 
   @override
   String get clubFormJoinInvite => 'Apenas por convite';
@@ -10282,7 +10282,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsDevicesSignedOutSubtitle =>
-      'Entre para ver onde está conectado';
+      'Inicie sessão para ver onde tem sessão iniciada';
 
   @override
   String get verifiedClubTooltip => 'Clube verificado oficial';
@@ -10313,7 +10313,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsTabDevicesSubtitle =>
-      'Onde está conectado e as substituições por dispositivo — pareie cinta ou passadeira em Integrações';
+      'Onde tem sessão iniciada e as substituições por dispositivo — emparelhe uma cinta ou passadeira em Integrações';
 
   @override
   String get settingsTabGearSubtitle =>
@@ -10325,7 +10325,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsTabProSubtitle =>
-      'Assine, restaure compras, gira a cobrança';
+      'Subscreva, restaure compras, gira a cobrança';
 
   @override
   String get settingsTabAboutSubtitle =>
@@ -12138,7 +12138,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get routeMarkerCutoffInvalid =>
-      'Introduz o corte como HH:MM (24 horas)';
+      'Introduza a hora de corte como HH:MM (24 horas)';
 
   @override
   String get routeMarkerTimeClock => 'Relógio';
@@ -12282,7 +12282,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get roadbookPlanGoalInvalid =>
-      'Introduz um tempo objetivo como 4:30:00';
+      'Introduza um tempo objetivo como 4:30:00';
 
   @override
   String get roadbookEffort => 'Esforço';
@@ -13388,7 +13388,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get backendUnavailableMessage =>
-      'Não foi possível conectar ao servidor no momento. Os recursos online estão indisponíveis.';
+      'Não foi possível contactar o servidor neste momento. As funcionalidades online estão indisponíveis.';
 
   @override
   String get feedSignedOutMessage =>
@@ -13642,7 +13642,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get routeMarkerTargetInvalid =>
-      'Introduz o tempo objetivo como h:mm:ss';
+      'Introduza o tempo objetivo como h:mm:ss';
 
   @override
   String get routeMarkerOfficialBadge => 'Dono da rota';
@@ -13652,7 +13652,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get routeMarkerDistanceInvalid =>
-      'Introduz uma distância válida ao longo da rota.';
+      'Introduza uma distância válida ao longo da rota.';
 
   @override
   String get watchScreensTitle => 'Ecrãs do relógio';

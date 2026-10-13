@@ -128,7 +128,7 @@ abstract class AppLocalizations {
   /// Instruction text above the invite-code field
   ///
   /// In en, this message translates to:
-  /// **'Paste the invite code your club admin shared with you.'**
+  /// **'Paste the invite link or code your club admin shared with you.'**
   String get clubInviteIntro;
 
   /// Text field label for the club invite code
@@ -142,6 +142,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Join'**
   String get clubInviteJoinButton;
+
+  /// Title of the dialog asking for a club's activity-risk acknowledgement before joining
+  ///
+  /// In en, this message translates to:
+  /// **'One thing before you join'**
+  String get clubWaiverTitle;
+
+  /// Body of the activity-risk acknowledgement dialog
+  ///
+  /// In en, this message translates to:
+  /// **'This club asks every member to acknowledge the physical risks of running together before joining.'**
+  String get clubWaiverBody;
+
+  /// Checkbox label: the member acknowledges the physical risk of group running (same text as web clubHome.waiverAck)
+  ///
+  /// In en, this message translates to:
+  /// **'I understand the physical risks of group running and join at my own risk.'**
+  String get clubWaiverAck;
+
+  /// Dialog button that records the acknowledgement and joins the club; enabled only once the box is ticked
+  ///
+  /// In en, this message translates to:
+  /// **'Accept and join'**
+  String get clubWaiverAccept;
 
   /// First line of the shared year-in-running recap summary
   ///

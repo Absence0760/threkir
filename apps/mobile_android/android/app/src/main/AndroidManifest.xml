@@ -144,6 +144,13 @@
             <meta-data
               android:name="health_permissions"
               android:resource="@xml/health_permissions" />
+            <!-- Incoming links are routed by app_links listeners (auth
+                 callback, club invites), never by Flutter's own deep-link
+                 handler, which would push the URL path as a named route the
+                 app does not define. -->
+            <meta-data
+              android:name="flutter_deeplinking_enabled"
+              android:value="false" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -162,6 +169,26 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="com.threkir.app" android:host="login-callback" />
+            </intent-filter>
+            <!-- Club invite links (lib/club_invite_link.dart). The app scheme
+                 `com.threkir.app://clubs/join/<token>` needs no verification.
+                 The web link `https://threkir.com/clubs/join/<token>` is an
+                 App Link: it opens here without a chooser only once
+                 https://threkir.com/.well-known/assetlinks.json names this
+                 package and its Play app-signing SHA-256 fingerprint
+                 (decisions § R7CLUBS-2); until then Android leaves it to the
+                 browser unless the user enables the link in app settings. -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.threkir.app" android:host="clubs" android:pathPrefix="/join/" />
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="threkir.com" android:pathPrefix="/clubs/join/" />
             </intent-filter>
             <!-- Health Connect privacy-policy rationale entry-point.
                  Android invokes this intent when the user taps "Privacy

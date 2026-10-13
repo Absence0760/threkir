@@ -60,6 +60,20 @@ List<Weekday>? parseBydayCodes(dynamic raw) {
   return ws.isEmpty ? null : ws;
 }
 
+/// The message `join_club_by_token` raises when a club requires the
+/// activity-risk acknowledgement and the call did not carry it.
+const String kActivityWaiverRequired = 'activity_waiver_required';
+
+/// [SocialService.joinClubByToken] refused because the club requires the
+/// activity-risk acknowledgement. The caller asks for it and calls again
+/// with `ackWaiver: true`.
+class ActivityWaiverRequired implements Exception {
+  const ActivityWaiverRequired();
+
+  @override
+  String toString() => 'ActivityWaiverRequired';
+}
+
 /// View-model for a club enriched with the current user's membership and the
 /// live member count. Mirrors `ClubWithMeta` on web.
 class ClubView {
@@ -1050,7 +1064,13 @@ class SocialService extends ChangeNotifier {
     );
   }
 
-  Future<String> joinClub(String clubId, String policy) async {
+  /// [ackWaiver] records the activity-risk acknowledgement; a club that
+  /// requires it refuses the row without one (§ R7CLUBS-1).
+  Future<String> joinClub(
+    String clubId,
+    String policy, {
+    bool ackWaiver = false,
+  }) async {
     final uid = _uid;
     if (uid == null) throw Exception('Not authenticated');
     final status = policy == 'request' ? 'pending' : 'active';
@@ -1059,26 +1079,39 @@ class SocialService extends ChangeNotifier {
       'user_id': uid,
       'role': 'member',
       'status': status,
+      if (ackWaiver)
+        'activity_waiver_ack_at': DateTime.now().toUtc().toIso8601String(),
     });
     notifyListeners();
     return status;
   }
 
-  /// Redeem a club invite token. Returns the slug of the club the
-  /// user just joined so the caller can navigate to its detail
-  /// screen. Mirrors `apps/web/src/lib/core/data.ts:joinClubByToken`.
-  /// Surfaces the RPC's own error messages on failure ("expired",
-  /// "already a member", "invalid token") so the caller can render
-  /// them as-is.
-  Future<String> joinClubByToken(String token) async {
+  /// Redeem a club invite token. Mirrors
+  /// `apps/web/src/lib/core/data.ts:joinClubByToken`. Returns the joined
+  /// club's slug so the caller can open it, or null when the join landed but
+  /// the slug read did not. Throws [ActivityWaiverRequired] when the club
+  /// requires the activity-risk acknowledgement and [ackWaiver] is false;
+  /// any other refusal surfaces as the RPC's own exception.
+  Future<String?> joinClubByToken(
+    String token, {
+    bool ackWaiver = false,
+  }) async {
     final uid = _uid;
     if (uid == null) throw Exception('Not authenticated');
-    final result = await _c.rpc(
-      'join_club_by_token',
-      params: {'p_token': token.trim()},
-    );
+    final Object? clubId;
+    try {
+      clubId = await _c.rpc(
+        'join_club_by_token',
+        params: {'token': token.trim(), 'activity_waiver_ack': ackWaiver},
+      );
+    } on PostgrestException catch (e) {
+      if (e.message == kActivityWaiverRequired) {
+        throw const ActivityWaiverRequired();
+      }
+      rethrow;
+    }
     notifyListeners();
-    return result as String;
+    return fetchClubSlugById(clubId as String);
   }
 
   Future<void> leaveClub(String clubId) async {

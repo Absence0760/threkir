@@ -18,13 +18,26 @@ class AppLocalizationsJa extends AppLocalizations {
   String get clubInviteTitle => 'クラブに参加';
 
   @override
-  String get clubInviteIntro => 'クラブ管理者から共有された招待コードを貼り付けてください。';
+  String get clubInviteIntro => 'クラブ管理者から共有された招待リンクまたは招待コードを貼り付けてください。';
 
   @override
   String get clubInviteCodeLabel => '招待コード';
 
   @override
   String get clubInviteJoinButton => '参加';
+
+  @override
+  String get clubWaiverTitle => '参加の前にご確認ください';
+
+  @override
+  String get clubWaiverBody =>
+      'このクラブでは、参加前にグループで走ることの身体的リスクを確認していただくようお願いしています。';
+
+  @override
+  String get clubWaiverAck => 'グループランニングの身体的リスクを理解し、自己責任で参加します。';
+
+  @override
+  String get clubWaiverAccept => '同意して参加';
 
   @override
   String recapShareHeadline(Object year) {

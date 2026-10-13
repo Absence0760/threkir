@@ -20,13 +20,27 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get clubInviteIntro =>
-      'Cole o código de convite que o administrador do clube partilhou consigo.';
+      'Cole a ligação ou o código de convite que o administrador do clube partilhou consigo.';
 
   @override
   String get clubInviteCodeLabel => 'Código de convite';
 
   @override
   String get clubInviteJoinButton => 'Entrar';
+
+  @override
+  String get clubWaiverTitle => 'Antes de aderir ao clube';
+
+  @override
+  String get clubWaiverBody =>
+      'Este clube pede a cada membro que reconheça os riscos físicos de correr em grupo antes de aderir.';
+
+  @override
+  String get clubWaiverAck =>
+      'Entendo os riscos físicos de correr em grupo e participo por minha conta e risco.';
+
+  @override
+  String get clubWaiverAccept => 'Aceitar e aderir';
 
   @override
   String recapShareHeadline(Object year) {
@@ -14913,13 +14927,27 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get clubInviteIntro =>
-      'Cole o código de convite que o administrador do clube compartilhou com você.';
+      'Cole o link ou o código de convite que o administrador do clube compartilhou com você.';
 
   @override
   String get clubInviteCodeLabel => 'Código de convite';
 
   @override
   String get clubInviteJoinButton => 'Entrar';
+
+  @override
+  String get clubWaiverTitle => 'Uma coisa antes de entrar';
+
+  @override
+  String get clubWaiverBody =>
+      'Este clube pede que cada membro reconheça os riscos físicos de correr em grupo antes de entrar.';
+
+  @override
+  String get clubWaiverAck =>
+      'Entendo os riscos físicos de correr em grupo e participo por minha conta e risco.';
+
+  @override
+  String get clubWaiverAccept => 'Aceitar e entrar';
 
   @override
   String recapShareHeadline(Object year) {

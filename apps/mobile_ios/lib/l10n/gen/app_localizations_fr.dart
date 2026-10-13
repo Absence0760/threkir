@@ -20,13 +20,27 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get clubInviteIntro =>
-      'Collez le code d\'invitation que l\'administrateur du club vous a communiqué.';
+      'Collez le lien ou le code d\'invitation que l\'administrateur du club vous a communiqué.';
 
   @override
   String get clubInviteCodeLabel => 'Code d\'invitation';
 
   @override
   String get clubInviteJoinButton => 'Rejoindre';
+
+  @override
+  String get clubWaiverTitle => 'Une dernière chose avant de rejoindre le club';
+
+  @override
+  String get clubWaiverBody =>
+      'Ce club demande à chaque membre de reconnaître les risques physiques de la course en groupe avant de le rejoindre.';
+
+  @override
+  String get clubWaiverAck =>
+      'Je comprends les risques physiques de la course en groupe et participe à mes propres risques.';
+
+  @override
+  String get clubWaiverAccept => 'Accepter et rejoindre';
 
   @override
   String recapShareHeadline(Object year) {

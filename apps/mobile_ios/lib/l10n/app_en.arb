@@ -12,7 +12,7 @@
   "@clubInviteTitle": {
     "description": "App bar title for the club-invite redemption screen"
   },
-  "clubInviteIntro": "Paste the invite code your club admin shared with you.",
+  "clubInviteIntro": "Paste the invite link or code your club admin shared with you.",
   "@clubInviteIntro": {
     "description": "Instruction text above the invite-code field"
   },
@@ -23,6 +23,22 @@
   "clubInviteJoinButton": "Join",
   "@clubInviteJoinButton": {
     "description": "Button to redeem the club invite code"
+  },
+  "clubWaiverTitle": "One thing before you join",
+  "@clubWaiverTitle": {
+    "description": "Title of the dialog asking for a club's activity-risk acknowledgement before joining"
+  },
+  "clubWaiverBody": "This club asks every member to acknowledge the physical risks of running together before joining.",
+  "@clubWaiverBody": {
+    "description": "Body of the activity-risk acknowledgement dialog"
+  },
+  "clubWaiverAck": "I understand the physical risks of group running and join at my own risk.",
+  "@clubWaiverAck": {
+    "description": "Checkbox label: the member acknowledges the physical risk of group running (same text as web clubHome.waiverAck)"
+  },
+  "clubWaiverAccept": "Accept and join",
+  "@clubWaiverAccept": {
+    "description": "Dialog button that records the acknowledgement and joins the club; enabled only once the box is ticked"
   },
   "recapShareHeadline": "My {year} in running:",
   "@recapShareHeadline": {

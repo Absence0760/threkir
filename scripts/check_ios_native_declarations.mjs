@@ -307,6 +307,25 @@ export const PURPOSE_STRINGS = [
 	},
 ];
 
+/// Boolean-valued Info.plist keys, each derived from the code that needs the
+/// value. The usage-string sweep cannot see a Bool, so these get their own
+/// shape: the pattern obliges the key AND the exact value.
+/** @type {{ key: string, value: boolean, source: SourceKind, pattern: RegExp, needed_by: string, why: string }[]} */
+export const PLIST_FLAGS = [
+	{
+		key: 'FlutterDeepLinkingEnabled',
+		value: false,
+		source: 'dart',
+		pattern: /package:app_links\//,
+		needed_by: 'incoming links are routed by app_links listeners (club_invite_link.dart)',
+		why:
+			"Flutter's own deep-link handler is on by default since 3.27 and pushes " +
+			"an incoming URL's path as a named route; the app defines none, so a " +
+			'club invite link would land on an unknown route instead of the ' +
+			'invite screen (decisions § R7CLUBS-2).',
+	},
+];
+
 /// Declarations no pattern can derive, each carried with the reason it is
 /// here. Listing them beats deriving them dishonestly: a rule keyed on a
 /// plugin that does not actually perform the action would read as evidence.
@@ -338,8 +357,7 @@ export const FIXED_PLIST_KEYS = [
 			'It is a Bool rather than a usage string, so the UsageDescription ' +
 			'reverse sweep above cannot see it; a derived rule keyed on ' +
 			'`import ActivityKit` in Runner/LiveActivityBridge.swift would be the ' +
-			'stronger form and needs a boolean-valued rule list this script has ' +
-			'no shape for yet.',
+			'stronger form, as a PLIST_FLAGS entry.',
 	},
 ];
 
@@ -1308,6 +1326,19 @@ export function evaluate(input) {
 				'needed it was deleted (drop the key), or a new capability arrived ' +
 				'without a derivation rule (add one to PURPOSE_STRINGS, or name it in ' +
 				'FIXED_PLIST_KEYS with the reason).',
+		);
+	}
+
+	for (const rule of PLIST_FLAGS) {
+		const where = firstMatch(sourcesFor(rule.source), rule.pattern, root);
+		if (!where) continue;
+		if (infoPlist.get(rule.key) === rule.value) {
+			ok.push(`Info.plist sets \`${rule.key}\` to ${rule.value} (${where}: ${rule.needed_by})`);
+			continue;
+		}
+		errors.push(
+			`Info.plist must set \`${rule.key}\` to <${rule.value}/>, because ${where} means ` +
+				`${rule.needed_by}.\n  ${rule.why}`,
 		);
 	}
 

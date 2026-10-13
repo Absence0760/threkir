@@ -131,38 +131,30 @@ void main() {
       await links.close();
     });
 
-    test('the platform registers the link shapes the parser reads', () {
-      // Each twin carries one native project: Android pins the intent
-      // filters, iOS the URL scheme. Flutter's own deep-link routing is off
-      // on both, or it would push the invite path as an undefined route.
+    test('the Android manifest registers the link shapes the parser reads',
+        () {
+      // Only mobile_android carries android/, and only mobile_android runs in
+      // CI, so the twin copy skips. The iOS half (the com.threkir.app scheme
+      // and FlutterDeepLinkingEnabled off) is derived from the app_links
+      // import by scripts/check_ios_native_declarations.mjs.
       final manifest = File('android/app/src/main/AndroidManifest.xml');
-      if (manifest.existsSync()) {
-        final body = manifest.readAsStringSync();
-        expect(
-          body,
-          contains('android:scheme="com.threkir.app" android:host="clubs" '
-              'android:pathPrefix="/join/"'),
-        );
-        expect(
-          body,
-          contains('android:scheme="https" android:host="threkir.com" '
-              'android:pathPrefix="/clubs/join/"'),
-        );
-        expect(
-          body,
-          matches(RegExp(
-              r'flutter_deeplinking_enabled"\s+android:value="false"')),
-        );
-      }
-      final plist = File('ios/Runner/Info.plist');
-      if (plist.existsSync()) {
-        final body = plist.readAsStringSync();
-        expect(body, contains('<string>com.threkir.app</string>'));
-        expect(
-          body,
-          matches(RegExp(r'<key>FlutterDeepLinkingEnabled</key>\s*<false/>')),
-        );
-      }
+      if (!manifest.existsSync()) return;
+      final body = manifest.readAsStringSync();
+      expect(
+        body,
+        contains('android:scheme="com.threkir.app" android:host="clubs" '
+            'android:pathPrefix="/join/"'),
+      );
+      expect(
+        body,
+        contains('android:scheme="https" android:host="threkir.com" '
+            'android:pathPrefix="/clubs/join/"'),
+      );
+      expect(
+        body,
+        matches(
+            RegExp(r'flutter_deeplinking_enabled"\s+android:value="false"')),
+      );
     });
 
     test('a failing initial-link read does not throw', () async {

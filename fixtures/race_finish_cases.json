@@ -1,0 +1,386 @@
+{
+ "spec": "race_finish v1",
+ "reference": "docs/architecture/parity_pairs.md (Dart<->Kotlin pairs, race_finish); decisions § 1843, § 1845, § R6MOBILE-2",
+ "readers": [
+  "apps/mobile_android/test/race_finish_test.dart",
+  "apps/watch_wear/android/app/src/test/kotlin/com/runapp/watchwear/RaceFinishTest.kt"
+ ],
+ "schema": {
+  "general": [
+   "Every reader loads this whole file and runs every case in every section below; a section a reader skips is a rule that side no longer has to keep.",
+   "A number field may instead hold the string \"NaN\", \"Infinity\" or \"-Infinity\" (JSON has no literal for them); readers decode those to the IEEE value. Only fields documented as 'number-or-special' carry them.",
+   "Instants are integer milliseconds relative to t0EpochMs (UTC). A reader builds the absolute instant as t0EpochMs + value. Fix times are whole seconds relative to t0EpochMs (atS).",
+   "A field documented as nullable is present with the JSON value null when absent; readers must not treat a missing key as null.",
+   "distanceToleranceM applies to every compared distance in metres; offsetToleranceMs to every compared clock offset. Every other comparison is exact."
+  ],
+  "constants": "FINISH_ZONE_M, MIN_COVERAGE, LATE_START_AFTER_MS, LATE_START_FAR_M, EARTH_RADIUS_M. Each reader asserts its own constants equal these.",
+  "origin": "finishLat / finishLng: the course finish point every detector case uses. A fix's northM (number-or-special) places it northM metres due north of the finish: lat = finishLat + northM / (EARTH_RADIUS_M * PI / 180), lng = finishLng.",
+  "distance": "{name, a: [lat, lng], b: [lat, lng], expectM}: great-circle distance between a and b, within distanceToleranceM.",
+  "zone": "{name, distanceM (number-or-special), inZone: bool}: whether a fix that far from the finish is inside the finish zone. Inclusive at FINISH_ZONE_M; a non-finite distance is outside.",
+  "coverage": "{name, coveredM, courseDistanceM (number-or-special, nullable), met: bool}: the coverage gate. coveredM >= MIN_COVERAGE * courseDistanceM, inclusive. A course distance that is null, non-finite or <= 0 cannot gate, so it is met.",
+  "detector": "{name, courseDistanceM, fixes: [{northM (number-or-special), atS, coveredM (number-or-special)}], fixesAfterSettle?: [same], expect: {finalisesAtFix: int|null, finish: {atS, distanceToFinishM, coveredM}|null, candidateAtS: int|null, settleAtS: int|null}}. Build a detector for origin + courseDistanceM and offer the fixes in order. finalisesAtFix is the 0-based index of the FIRST offer that returns a finish (null when none does), and finish is that finish. Offers after it must not change the finish (Dart returns null on them, Kotlin returns the same finish again; both conform). candidateAtS is the open candidate's atS after the last fix (null when none is open, including after a finish). Then call settle (Kotlin: finaliseNow): settleAtS is the atS of what it returns, or null. When fixesAfterSettle is present, offer them after settling: the settled finish must not change.",
+  "startFlag": "{name, gunMs, recordingStartedMs, firstFixFromStartM (number-or-special, nullable), flagged: bool}: the late-start flag. Flagged when recordingStartedMs - gunMs > LATE_START_AFTER_MS (strictly), or when firstFixFromStartM is finite and > LATE_START_FAR_M (strictly). Both instants are on the server clock.",
+  "clockOffset": "{name, samples: [{sentMs, receivedMs, serverMs}], expect: {known: bool, offsetMs}}: the device-to-server clock offset estimator, fed every sample in order. A sample whose round trip (receivedMs - sentMs) is negative is ignored. Otherwise it replaces the current estimate when its round trip is <= the best so far (an equal round trip replaces: the later sample wins). The estimate is serverMs - (sentMs + roundTrip / 2). With no accepted sample, known is false and offsetMs is 0. offsetMs is compared within offsetToleranceMs, which absorbs Dart's microsecond midpoint against Kotlin's millisecond one on an odd round trip.",
+  "gunTime": "{name, finishMs, gunMs, offsetMs, gunTimeS: int|null}: seconds from GO to the finish, the finish moved onto the server clock by offsetMs. Integer division of the non-negative millisecond difference by 1000 (floor). Null, never clamped, when the difference is negative.",
+  "chipTime": "{name, finishMs, startMs, chipTimeS: int|null}: seconds from the runner's own Start to the finish, both device clock, pauses included. Floor of the non-negative millisecond difference / 1000; null, never clamped, when negative.",
+  "stopOutcome": "{name, candidate: {atMs, distanceToFinishM, coveredM}|null, coveredM, courseDistanceM (number-or-special, nullable), nowMs, expect: {finisherStatus, method: 'auto'|'manual'|null, finishAtMs: int|null}}: what a stop records. An open candidate is 'finished' / 'auto' at the candidate's instant; else coverage met (the coverage rule above) is 'finished' / 'manual' at nowMs, the instant the runner stopped; else 'dnf' with no method and no finish instant.",
+  "resultTiming": "{name, outcome: {finisherStatus, method, finishAtMs|null}, gunMs: int|null, offsetMs, recordingStartedMs: int|null, elapsedS, expect: {durationS, gunTimeS: int|null, chipTimeS: int|null}}: the timing columns of the event_results row for an outcome. A 'finished' outcome carries gunTimeS (gunTime rule; null with no GO) and chipTimeS (chipTime rule; null with no recording start), and durationS is the first non-null of gunTimeS, chipTimeS, elapsedS. A 'dnf' carries no gunTimeS and no chipTimeS, and durationS is elapsedS, the recording's elapsed seconds. finish_method on the row is outcome.method, so a DNF row has none."
+ },
+ "constants": {
+  "FINISH_ZONE_M": 30.0,
+  "MIN_COVERAGE": 0.9,
+  "LATE_START_AFTER_MS": 300000,
+  "LATE_START_FAR_M": 200.0,
+  "EARTH_RADIUS_M": 6371000.0
+ },
+ "t0EpochMs": 1791882000000,
+ "distanceToleranceM": 0.01,
+ "offsetToleranceMs": 1,
+ "origin": {"finishLat": 51.5, "finishLng": -0.1},
+ "distance": [
+  {"name": "one degree of latitude is ~111.2 km", "a": [0.0, 0.0], "b": [1.0, 0.0], "expectM": 111194.9266},
+  {"name": "the same point is zero", "a": [51.5, -0.1], "b": [51.5, -0.1], "expectM": 0.0},
+  {"name": "a tenth of a degree of longitude at 51.5 N", "a": [51.5, -0.1], "b": [51.5, 0.0], "expectM": 6922.0464},
+  {"name": "a diagonal", "a": [51.5, -0.1], "b": [51.6, -0.2], "expectM": 13093.9933}
+ ],
+ "zone": [
+  {"name": "exactly on the 30 m edge counts", "distanceM": 30.0, "inZone": true},
+  {"name": "a hair outside the edge does not", "distanceM": 30.000000001, "inZone": false},
+  {"name": "on the line", "distanceM": 0.0, "inZone": true},
+  {"name": "just inside", "distanceM": 29.99, "inZone": true},
+  {"name": "just outside", "distanceM": 30.01, "inZone": false},
+  {"name": "a NaN distance is outside", "distanceM": "NaN", "inZone": false},
+  {"name": "an infinite distance is outside", "distanceM": "Infinity", "inZone": false}
+ ],
+ "coverage": [
+  {"name": "exactly 90% is enough", "coveredM": 4500.0, "courseDistanceM": 5000.0, "met": true},
+  {"name": "just under 90% is not", "coveredM": 4499.9, "courseDistanceM": 5000.0, "met": false},
+  {"name": "the whole course", "coveredM": 5000.0, "courseDistanceM": 5000.0, "met": true},
+  {"name": "nothing covered", "coveredM": 0.0, "courseDistanceM": 5000.0, "met": false},
+  {"name": "an unknown distance cannot gate", "coveredM": 10.0, "courseDistanceM": null, "met": true},
+  {"name": "a zero distance cannot gate", "coveredM": 10.0, "courseDistanceM": 0.0, "met": true},
+  {"name": "a negative distance cannot gate", "coveredM": 10.0, "courseDistanceM": -1.0, "met": true},
+  {"name": "a NaN distance cannot gate", "coveredM": 10.0, "courseDistanceM": "NaN", "met": true},
+  {"name": "an infinite distance cannot gate", "coveredM": 10.0, "courseDistanceM": "Infinity", "met": true}
+ ],
+ "detector": [
+  {
+   "name": "the finish time is the closest fix, not the first in-zone fix",
+   "courseDistanceM": 5000.0,
+   "fixes": [
+    {"northM": -60, "atS": 0, "coveredM": 4940},
+    {"northM": -28, "atS": 6, "coveredM": 4972},
+    {"northM": -12, "atS": 9, "coveredM": 4988},
+    {"northM": -2, "atS": 11, "coveredM": 4998},
+    {"northM": 9, "atS": 13, "coveredM": 5009},
+    {"northM": 20, "atS": 15, "coveredM": 5020}
+   ],
+   "expect": {"finalisesAtFix": 4, "finish": {"atS": 11, "distanceToFinishM": 2.0, "coveredM": 4998}, "candidateAtS": null, "settleAtS": 11}
+  },
+  {
+   "name": "the first strictly farther fix finalises",
+   "courseDistanceM": 5000.0,
+   "fixes": [
+    {"northM": -20, "atS": 0, "coveredM": 4980},
+    {"northM": -4, "atS": 3, "coveredM": 4996},
+    {"northM": 5, "atS": 5, "coveredM": 5005}
+   ],
+   "expect": {"finalisesAtFix": 2, "finish": {"atS": 3, "distanceToFinishM": 4.0, "coveredM": 4996}, "candidateAtS": null, "settleAtS": 3}
+  },
+  {
+   "name": "nothing finalises while the runner is still closing",
+   "courseDistanceM": 5000.0,
+   "fixes": [
+    {"northM": -29, "atS": 0, "coveredM": 4971},
+    {"northM": -15, "atS": 3, "coveredM": 4985},
+    {"northM": -4, "atS": 5, "coveredM": 4996}
+   ],
+   "expect": {"finalisesAtFix": null, "finish": null, "candidateAtS": 5, "settleAtS": 5}
+  },
+  {
+   "name": "a fix outside the zone is never a candidate",
+   "courseDistanceM": 5000.0,
+   "fixes": [
+    {"northM": -31, "atS": 0, "coveredM": 4969},
+    {"northM": -45, "atS": 3, "coveredM": 4955}
+   ],
+   "expect": {"finalisesAtFix": null, "finish": null, "candidateAtS": null, "settleAtS": null}
+  },
+  {
+   "name": "a fix 30 m out is a candidate and one 30.1 m out is not",
+   "courseDistanceM": 5000.0,
+   "fixes": [
+    {"northM": -30.1, "atS": 0, "coveredM": 4969.9},
+    {"northM": -30, "atS": 1, "coveredM": 4970},
+    {"northM": 31, "atS": 2, "coveredM": 5031}
+   ],
+   "expect": {"finalisesAtFix": 2, "finish": {"atS": 1, "distanceToFinishM": 30.0, "coveredM": 4970}, "candidateAtS": null, "settleAtS": 1}
+  },
+  {
+   "name": "settle finalises an open approach on its closest fix and takes no more fixes",
+   "courseDistanceM": 5000.0,
+   "fixes": [
+    {"northM": -20, "atS": 0, "coveredM": 4980},
+    {"northM": -3, "atS": 4, "coveredM": 4997}
+   ],
+   "fixesAfterSettle": [
+    {"northM": -1, "atS": 6, "coveredM": 4999},
+    {"northM": 50, "atS": 20, "coveredM": 5050}
+   ],
+   "expect": {"finalisesAtFix": null, "finish": null, "candidateAtS": 4, "settleAtS": 4}
+  },
+  {
+   "name": "a tie keeps the earlier fix and does not finalise",
+   "courseDistanceM": 5000.0,
+   "fixes": [
+    {"northM": -5, "atS": 0, "coveredM": 4995},
+    {"northM": -5, "atS": 2, "coveredM": 4995},
+    {"northM": 15, "atS": 4, "coveredM": 5015}
+   ],
+   "expect": {"finalisesAtFix": 2, "finish": {"atS": 0, "distanceToFinishM": 5.0, "coveredM": 4995}, "candidateAtS": null, "settleAtS": 0}
+  },
+  {
+   "name": "jitter outside the zone before reaching it changes nothing",
+   "courseDistanceM": 5000.0,
+   "fixes": [
+    {"northM": -33, "atS": 0, "coveredM": 4967},
+    {"northM": -31, "atS": 1, "coveredM": 4969},
+    {"northM": -40, "atS": 2, "coveredM": 4970},
+    {"northM": -29, "atS": 3, "coveredM": 4971},
+    {"northM": -14, "atS": 7, "coveredM": 4986},
+    {"northM": -3, "atS": 10, "coveredM": 4997},
+    {"northM": 4, "atS": 12, "coveredM": 5004}
+   ],
+   "expect": {"finalisesAtFix": 6, "finish": {"atS": 10, "distanceToFinishM": 3.0, "coveredM": 4997}, "candidateAtS": null, "settleAtS": 10}
+  },
+  {
+   "name": "a fix jittering out of the zone ends the approach on the best so far",
+   "courseDistanceM": 5000.0,
+   "fixes": [
+    {"northM": -20, "atS": 0, "coveredM": 4980},
+    {"northM": -12, "atS": 2, "coveredM": 4988},
+    {"northM": -31, "atS": 3, "coveredM": 4990},
+    {"northM": -4, "atS": 4, "coveredM": 4996}
+   ],
+   "expect": {"finalisesAtFix": 2, "finish": {"atS": 2, "distanceToFinishM": 12.0, "coveredM": 4988}, "candidateAtS": null, "settleAtS": 2}
+  },
+  {
+   "name": "jitter inside the zone that is not farther keeps it open",
+   "courseDistanceM": 5000.0,
+   "fixes": [
+    {"northM": -10, "atS": 0, "coveredM": 4990},
+    {"northM": -10, "atS": 1, "coveredM": 4990},
+    {"northM": -6, "atS": 2, "coveredM": 4994}
+   ],
+   "expect": {"finalisesAtFix": null, "finish": null, "candidateAtS": 2, "settleAtS": 2}
+  },
+  {
+   "name": "a loop course does not finish on its start",
+   "courseDistanceM": 5000.0,
+   "fixes": [
+    {"northM": -5, "atS": 0, "coveredM": 0},
+    {"northM": 10, "atS": 4, "coveredM": 15},
+    {"northM": 40, "atS": 10, "coveredM": 45},
+    {"northM": 80, "atS": 20, "coveredM": 85}
+   ],
+   "expect": {"finalisesAtFix": null, "finish": null, "candidateAtS": null, "settleAtS": null}
+  },
+  {
+   "name": "a loop course passing the finish below 90% does not finish, the pass above it does",
+   "courseDistanceM": 10000.0,
+   "fixes": [
+    {"northM": -20, "atS": 0, "coveredM": 8900},
+    {"northM": -1, "atS": 4, "coveredM": 8919},
+    {"northM": 20, "atS": 8, "coveredM": 8940},
+    {"northM": 40, "atS": 12, "coveredM": 8960},
+    {"northM": -20, "atS": 2000, "coveredM": 9990},
+    {"northM": -2, "atS": 2004, "coveredM": 10008},
+    {"northM": 20, "atS": 2008, "coveredM": 10030},
+    {"northM": 40, "atS": 2012, "coveredM": 10050}
+   ],
+   "expect": {"finalisesAtFix": 6, "finish": {"atS": 2004, "distanceToFinishM": 2.0, "coveredM": 10008}, "candidateAtS": null, "settleAtS": 2004}
+  },
+  {
+   "name": "an out-and-back course finishes on the return only",
+   "courseDistanceM": 2000.0,
+   "fixes": [
+    {"northM": 0, "atS": 0, "coveredM": 0},
+    {"northM": -100, "atS": 30, "coveredM": 100},
+    {"northM": -200, "atS": 60, "coveredM": 200},
+    {"northM": -300, "atS": 90, "coveredM": 300},
+    {"northM": -400, "atS": 120, "coveredM": 400},
+    {"northM": -500, "atS": 150, "coveredM": 500},
+    {"northM": -600, "atS": 180, "coveredM": 600},
+    {"northM": -700, "atS": 210, "coveredM": 700},
+    {"northM": -800, "atS": 240, "coveredM": 800},
+    {"northM": -900, "atS": 270, "coveredM": 900},
+    {"northM": -1000, "atS": 300, "coveredM": 1000},
+    {"northM": -1000, "atS": 600, "coveredM": 1000},
+    {"northM": -900, "atS": 630, "coveredM": 1100},
+    {"northM": -800, "atS": 660, "coveredM": 1200},
+    {"northM": -700, "atS": 690, "coveredM": 1300},
+    {"northM": -600, "atS": 720, "coveredM": 1400},
+    {"northM": -500, "atS": 750, "coveredM": 1500},
+    {"northM": -400, "atS": 780, "coveredM": 1600},
+    {"northM": -300, "atS": 810, "coveredM": 1700},
+    {"northM": -200, "atS": 840, "coveredM": 1800},
+    {"northM": -100, "atS": 870, "coveredM": 1900},
+    {"northM": 0, "atS": 900, "coveredM": 2000},
+    {"northM": 15, "atS": 930, "coveredM": 2015},
+    {"northM": 30, "atS": 935, "coveredM": 2030}
+   ],
+   "expect": {"finalisesAtFix": 22, "finish": {"atS": 900, "distanceToFinishM": 0.0, "coveredM": 2000}, "candidateAtS": null, "settleAtS": 900}
+  },
+  {
+   "name": "the coverage gate is inclusive in the stream",
+   "courseDistanceM": 5000.0,
+   "fixes": [
+    {"northM": -10, "atS": 0, "coveredM": 4499.9},
+    {"northM": -5, "atS": 1, "coveredM": 4500},
+    {"northM": 10, "atS": 2, "coveredM": 4510}
+   ],
+   "expect": {"finalisesAtFix": 2, "finish": {"atS": 1, "distanceToFinishM": 5.0, "coveredM": 4500}, "candidateAtS": null, "settleAtS": 1}
+  },
+  {
+   "name": "a non-finite fix is ignored, not taken as leaving the zone",
+   "courseDistanceM": 5000.0,
+   "fixes": [
+    {"northM": -20, "atS": 0, "coveredM": 4980},
+    {"northM": "NaN", "atS": 1, "coveredM": 4985},
+    {"northM": "Infinity", "atS": 2, "coveredM": 4990},
+    {"northM": -4, "atS": 3, "coveredM": 4996},
+    {"northM": -2, "atS": 4, "coveredM": "NaN"},
+    {"northM": 5, "atS": 5, "coveredM": 5005}
+   ],
+   "expect": {"finalisesAtFix": 5, "finish": {"atS": 3, "distanceToFinishM": 4.0, "coveredM": 4996}, "candidateAtS": null, "settleAtS": 3}
+  },
+  {
+   "name": "a non-finite fix before any candidate opens nothing",
+   "courseDistanceM": 5000.0,
+   "fixes": [
+    {"northM": "NaN", "atS": 0, "coveredM": 4990},
+    {"northM": 0, "atS": 1, "coveredM": "Infinity"}
+   ],
+   "expect": {"finalisesAtFix": null, "finish": null, "candidateAtS": null, "settleAtS": null}
+  },
+  {
+   "name": "kt: closest approach inside the zone, settled when the distance grows",
+   "courseDistanceM": 5000.0,
+   "fixes": [
+    {"northM": 50, "atS": 0, "coveredM": 4950},
+    {"northM": 25, "atS": 5, "coveredM": 4975},
+    {"northM": 12, "atS": 8, "coveredM": 4988},
+    {"northM": 4, "atS": 11, "coveredM": 4996},
+    {"northM": 9, "atS": 14, "coveredM": 5005}
+   ],
+   "expect": {"finalisesAtFix": 4, "finish": {"atS": 11, "distanceToFinishM": 4.0, "coveredM": 4996}, "candidateAtS": null, "settleAtS": 11}
+  },
+  {
+   "name": "kt: jitter out of the zone settles at the best fix seen inside it, and a fix back in cannot move it",
+   "courseDistanceM": 5000.0,
+   "fixes": [
+    {"northM": 40, "atS": 0, "coveredM": 4960},
+    {"northM": 28, "atS": 3, "coveredM": 4972},
+    {"northM": 31, "atS": 6, "coveredM": 4975},
+    {"northM": 2, "atS": 9, "coveredM": 4980}
+   ],
+   "expect": {"finalisesAtFix": 2, "finish": {"atS": 3, "distanceToFinishM": 28.0, "coveredM": 4972}, "candidateAtS": null, "settleAtS": 3}
+  },
+  {
+   "name": "kt: a loop course does not finish at the start or on an early pass",
+   "courseDistanceM": 5000.0,
+   "fixes": [
+    {"northM": 0, "atS": 0, "coveredM": 0},
+    {"northM": 10, "atS": 4, "coveredM": 10},
+    {"northM": 40, "atS": 12, "coveredM": 40},
+    {"northM": 8, "atS": 900, "coveredM": 2500},
+    {"northM": 50, "atS": 915, "coveredM": 2550},
+    {"northM": 15, "atS": 1800, "coveredM": 4985},
+    {"northM": 6, "atS": 1803, "coveredM": 4994},
+    {"northM": 12, "atS": 1806, "coveredM": 5000}
+   ],
+   "expect": {"finalisesAtFix": 7, "finish": {"atS": 1803, "distanceToFinishM": 6.0, "coveredM": 4994}, "candidateAtS": null, "settleAtS": 1803}
+  },
+  {
+   "name": "kt: an out-and-back past the line on the way out finishes only on the way back",
+   "courseDistanceM": 10000.0,
+   "fixes": [
+    {"northM": -20, "atS": 300, "coveredM": 980},
+    {"northM": 0, "atS": 306, "coveredM": 1000},
+    {"northM": 20, "atS": 312, "coveredM": 1020},
+    {"northM": 20, "atS": 3000, "coveredM": 9980},
+    {"northM": 1, "atS": 3006, "coveredM": 9999},
+    {"northM": -18, "atS": 3012, "coveredM": 10018}
+   ],
+   "expect": {"finalisesAtFix": 5, "finish": {"atS": 3006, "distanceToFinishM": 1.0, "coveredM": 9999}, "candidateAtS": null, "settleAtS": 3006}
+  },
+  {
+   "name": "kt: settle on a pending closest approach",
+   "courseDistanceM": 5000.0,
+   "fixes": [
+    {"northM": 20, "atS": 0, "coveredM": 4980},
+    {"northM": 7, "atS": 4, "coveredM": 4993}
+   ],
+   "expect": {"finalisesAtFix": null, "finish": null, "candidateAtS": 4, "settleAtS": 4}
+  }
+ ],
+ "startFlag": [
+  {"name": "five minutes after GO near the start line is not flagged", "gunMs": 0, "recordingStartedMs": 300000, "firstFixFromStartM": 200.0, "flagged": false},
+  {"name": "one millisecond past five minutes is flagged", "gunMs": 0, "recordingStartedMs": 300001, "firstFixFromStartM": null, "flagged": true},
+  {"name": "five minutes and a second after GO is flagged", "gunMs": 0, "recordingStartedMs": 301000, "firstFixFromStartM": null, "flagged": true},
+  {"name": "a first fix 201 m from the start is flagged", "gunMs": 0, "recordingStartedMs": 0, "firstFixFromStartM": 201.0, "flagged": true},
+  {"name": "a first fix exactly 200 m from the start is not", "gunMs": 0, "recordingStartedMs": 0, "firstFixFromStartM": 200.0, "flagged": false},
+  {"name": "an unknown first-fix distance does not flag", "gunMs": 0, "recordingStartedMs": 0, "firstFixFromStartM": null, "flagged": false},
+  {"name": "a NaN first-fix distance does not flag", "gunMs": 0, "recordingStartedMs": 0, "firstFixFromStartM": "NaN", "flagged": false},
+  {"name": "an infinite first-fix distance does not flag", "gunMs": 0, "recordingStartedMs": 0, "firstFixFromStartM": "Infinity", "flagged": false},
+  {"name": "a recording started before GO is not late", "gunMs": 0, "recordingStartedMs": -60000, "firstFixFromStartM": 50.0, "flagged": false}
+ ],
+ "clockOffset": [
+  {"name": "zero and unknown until a sample lands", "samples": [], "expect": {"known": false, "offsetMs": 0}},
+  {"name": "measured against the midpoint of the round trip", "samples": [{"sentMs": 0, "receivedMs": 400, "serverMs": 3200}], "expect": {"known": true, "offsetMs": 3000}},
+  {"name": "a server clock behind the device gives a negative offset", "samples": [{"sentMs": 0, "receivedMs": 400, "serverMs": -300}], "expect": {"known": true, "offsetMs": -500}},
+  {"name": "the shortest round trip is kept", "samples": [{"sentMs": 0, "receivedMs": 100, "serverMs": 1050}, {"sentMs": 0, "receivedMs": 4000, "serverMs": 9000}], "expect": {"known": true, "offsetMs": 1000}},
+  {"name": "a later, shorter round trip replaces the estimate", "samples": [{"sentMs": 0, "receivedMs": 4000, "serverMs": 9000}, {"sentMs": 10000, "receivedMs": 10100, "serverMs": 11050}], "expect": {"known": true, "offsetMs": 1000}},
+  {"name": "an equal round trip replaces: the later sample wins", "samples": [{"sentMs": 0, "receivedMs": 200, "serverMs": 1100}, {"sentMs": 5000, "receivedMs": 5200, "serverMs": 7100}], "expect": {"known": true, "offsetMs": 2000}},
+  {"name": "a sample whose clock ran backwards is ignored", "samples": [{"sentMs": 0, "receivedMs": -1000, "serverMs": 0}], "expect": {"known": false, "offsetMs": 0}},
+  {"name": "a backwards sample after a good one leaves the estimate", "samples": [{"sentMs": 0, "receivedMs": 200, "serverMs": 1100}, {"sentMs": 5000, "receivedMs": 4000, "serverMs": 9999}], "expect": {"known": true, "offsetMs": 1000}},
+  {"name": "a zero round trip is a valid sample", "samples": [{"sentMs": 0, "receivedMs": 0, "serverMs": 500}], "expect": {"known": true, "offsetMs": 500}},
+  {"name": "an odd round trip lands within the tolerance on either clock resolution", "samples": [{"sentMs": 0, "receivedMs": 401, "serverMs": 3200}], "expect": {"known": true, "offsetMs": 2999.5}}
+ ],
+ "gunTime": [
+  {"name": "corrects the device instant onto the server clock", "finishMs": 1200000, "gunMs": 0, "offsetMs": -7000, "gunTimeS": 1193},
+  {"name": "is omitted, not clamped, when negative", "finishMs": -5000, "gunMs": 0, "offsetMs": 0, "gunTimeS": null},
+  {"name": "one millisecond before GO is omitted", "finishMs": -1, "gunMs": 0, "offsetMs": 0, "gunTimeS": null},
+  {"name": "a finish at GO is zero", "finishMs": 0, "gunMs": 0, "offsetMs": 0, "gunTimeS": 0},
+  {"name": "sub-second remainders floor", "finishMs": 1999, "gunMs": 0, "offsetMs": 0, "gunTimeS": 1},
+  {"name": "an offset that moves the finish before GO omits it", "finishMs": 3000, "gunMs": 0, "offsetMs": -4000, "gunTimeS": null},
+  {"name": "an offset that moves the finish after GO keeps it", "finishMs": -3000, "gunMs": 0, "offsetMs": 4000, "gunTimeS": 1},
+  {"name": "kt: a device clock 4 s behind the server", "finishMs": 3596000, "gunMs": 0, "offsetMs": 4000, "gunTimeS": 3600},
+  {"name": "kt: no estimate takes the device clock as-is", "finishMs": 3596000, "gunMs": 0, "offsetMs": 0, "gunTimeS": 3596}
+ ],
+ "chipTime": [
+  {"name": "runs from the runner's Start to the finish, pauses included", "finishMs": 1263000, "startMs": 0, "chipTimeS": 1263},
+  {"name": "sub-second remainders floor", "finishMs": 1830500, "startMs": 0, "chipTimeS": 1830},
+  {"name": "a finish at Start is zero", "finishMs": 5000, "startMs": 5000, "chipTimeS": 0},
+  {"name": "is omitted, not clamped, when negative", "finishMs": -1000, "startMs": 0, "chipTimeS": null},
+  {"name": "five milliseconds negative is omitted too", "finishMs": -5, "startMs": 0, "chipTimeS": null}
+ ],
+ "stopOutcome": [
+  {"name": "an open approach finishes automatically at its closest fix", "candidate": {"atMs": 0, "distanceToFinishM": 3.0, "coveredM": 4997.0}, "coveredM": 5010.0, "courseDistanceM": 5000.0, "nowMs": 3600000, "expect": {"finisherStatus": "finished", "method": "auto", "finishAtMs": 0}},
+  {"name": "90% covered without an approach is a manual finish at the stop", "candidate": null, "coveredM": 4600.0, "courseDistanceM": 5000.0, "nowMs": 3600000, "expect": {"finisherStatus": "finished", "method": "manual", "finishAtMs": 3600000}},
+  {"name": "exactly 90% covered is a manual finish", "candidate": null, "coveredM": 4500.0, "courseDistanceM": 5000.0, "nowMs": 1800000, "expect": {"finisherStatus": "finished", "method": "manual", "finishAtMs": 1800000}},
+  {"name": "under 90% covered is a DNF with no method and no finish instant", "candidate": null, "coveredM": 4400.0, "courseDistanceM": 5000.0, "nowMs": 3600000, "expect": {"finisherStatus": "dnf", "method": null, "finishAtMs": null}},
+  {"name": "an unknown course distance finishes manually", "candidate": null, "coveredM": 10.0, "courseDistanceM": null, "nowMs": 60000, "expect": {"finisherStatus": "finished", "method": "manual", "finishAtMs": 60000}},
+  {"name": "a zero course distance finishes manually", "candidate": null, "coveredM": 10.0, "courseDistanceM": 0.0, "nowMs": 60000, "expect": {"finisherStatus": "finished", "method": "manual", "finishAtMs": 60000}},
+  {"name": "a NaN course distance finishes manually", "candidate": null, "coveredM": 10.0, "courseDistanceM": "NaN", "nowMs": 60000, "expect": {"finisherStatus": "finished", "method": "manual", "finishAtMs": 60000}}
+ ],
+ "resultTiming": [
+  {"name": "an auto finish carries gun and chip, and duration is the gun time", "outcome": {"finisherStatus": "finished", "method": "auto", "finishAtMs": 1504000}, "gunMs": 0, "offsetMs": 0, "recordingStartedMs": 0, "elapsedS": 1490, "expect": {"durationS": 1504, "gunTimeS": 1504, "chipTimeS": 1504}},
+  {"name": "a late Start splits gun from chip, and the offset moves only the gun", "outcome": {"finisherStatus": "finished", "method": "manual", "finishAtMs": 1800000}, "gunMs": 0, "offsetMs": 2000, "recordingStartedMs": 120000, "elapsedS": 1600, "expect": {"durationS": 1802, "gunTimeS": 1802, "chipTimeS": 1680}},
+  {"name": "no GO on record: duration is the chip time", "outcome": {"finisherStatus": "finished", "method": "manual", "finishAtMs": 1200000}, "gunMs": null, "offsetMs": 0, "recordingStartedMs": 0, "elapsedS": 1190, "expect": {"durationS": 1200, "gunTimeS": null, "chipTimeS": 1200}},
+  {"name": "no GO and no Start: duration is the elapsed recording", "outcome": {"finisherStatus": "finished", "method": "manual", "finishAtMs": 1200000}, "gunMs": null, "offsetMs": 0, "recordingStartedMs": null, "elapsedS": 1190, "expect": {"durationS": 1190, "gunTimeS": null, "chipTimeS": null}},
+  {"name": "a gun time negative by a clock fault is omitted and the chip time ranks", "outcome": {"finisherStatus": "finished", "method": "auto", "finishAtMs": 5000}, "gunMs": 0, "offsetMs": -10000, "recordingStartedMs": 0, "elapsedS": 5, "expect": {"durationS": 5, "gunTimeS": null, "chipTimeS": 5}},
+  {"name": "a DNF carries neither time, and duration is the elapsed recording", "outcome": {"finisherStatus": "dnf", "method": null, "finishAtMs": null}, "gunMs": 0, "offsetMs": 0, "recordingStartedMs": 0, "elapsedS": 1700, "expect": {"durationS": 1700, "gunTimeS": null, "chipTimeS": null}},
+  {"name": "a DNF with no GO is the same row", "outcome": {"finisherStatus": "dnf", "method": null, "finishAtMs": null}, "gunMs": null, "offsetMs": 0, "recordingStartedMs": null, "elapsedS": 42, "expect": {"durationS": 42, "gunTimeS": null, "chipTimeS": null}}
+ ]
+}

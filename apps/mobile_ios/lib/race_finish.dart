@@ -7,9 +7,9 @@
 /// [raceGunTimeS] and a [ServerClockOffset].
 ///
 /// Kotlin twin: `apps/watch_wear/android/app/src/main/kotlin/com/runapp/watchwear/RaceFinish.kt`
-/// (the `race_finish` pair in `docs/architecture/parity_pairs.md`). Keep the
-/// constants, the edge rules (`<=` 30 m, `>=` 90%, strictly-farther
-/// finalises) and the test cases in lockstep.
+/// (the `race_finish` pair in `docs/architecture/parity_pairs.md`). Both
+/// sides read their cases from `fixtures/race_finish_cases.json` at the repo
+/// root, so a rule changes there or nowhere.
 library;
 
 import 'dart:math' as math;
@@ -71,6 +71,10 @@ class RaceFinish {
   final double coveredM;
 }
 
+/// Whether a fix [distanceM] from the finish is inside the zone. Inclusive;
+/// a non-finite distance is not.
+bool raceInFinishZone(double distanceM) => distanceM <= kRaceFinishZoneM;
+
 /// Whether [coveredM] clears the coverage gate for a course of
 /// [courseDistanceM]. An unknown course distance cannot be gated, so it
 /// passes: a runner is never marked DNF for data the course never carried.
@@ -82,25 +86,25 @@ bool raceCoverageMet(double coveredM, double? courseDistanceM) {
 
 /// Closest-approach finish detection over a stream of fixes.
 ///
-/// A fix is a candidate when it is within [zoneM] of the finish (inclusive)
-/// AND its covered distance clears the coverage gate (inclusive). The best
-/// candidate is the closest one (the earlier on a tie). Once there is one,
-/// the first fix that is strictly farther from the finish than the best, or
-/// that no longer qualifies, finalises the finish at the best candidate's
-/// time. A fix that jitters out of the zone therefore ends the approach on
-/// the closest fix so far.
+/// A fix is a candidate when it is inside the finish zone
+/// ([raceInFinishZone]) AND its covered distance clears the coverage gate
+/// (inclusive). The best candidate is the closest one (the earlier on a
+/// tie). Once there is one, the first fix that is strictly farther from the
+/// finish than the best, or that no longer qualifies, finalises the finish
+/// at the best candidate's time. A fix that jitters out of the zone
+/// therefore ends the approach on the closest fix so far. A fix with a
+/// non-finite position or covered distance is ignored outright: it is no
+/// evidence the runner left the zone.
 class RaceFinishDetector {
   RaceFinishDetector({
     required this.finishLat,
     required this.finishLng,
     required this.courseDistanceM,
-    this.zoneM = kRaceFinishZoneM,
   });
 
   final double finishLat;
   final double finishLng;
   final double courseDistanceM;
-  final double zoneM;
 
   RaceFix? _best;
   double _bestD = double.infinity;
@@ -126,7 +130,7 @@ class RaceFinishDetector {
     }
     final d = raceDistanceM(fix.lat, fix.lng, finishLat, finishLng);
     final qualifies =
-        d <= zoneM && raceCoverageMet(fix.coveredM, courseDistanceM);
+        raceInFinishZone(d) && raceCoverageMet(fix.coveredM, courseDistanceM);
     final best = _best;
     if (best != null && (!qualifies || d > _bestD)) return _finalise(best);
     if (qualifies && (best == null || d < _bestD)) {
@@ -211,7 +215,8 @@ int? raceGunTimeS({
 }
 
 /// Seconds from the runner's own Start to [finishAtDevice], both on the
-/// device clock, pauses included. Null when negative.
+/// device clock, pauses included. Null when negative, like the gun time: a
+/// zero would be written as a real time.
 int? raceChipTimeS({
   required DateTime finishAtDevice,
   required DateTime recordingStartedAt,
@@ -252,7 +257,8 @@ class RaceOutcome {
 
 /// The outcome of a stop: an open in-zone approach is an automatic finish
 /// at its closest fix; otherwise a runner who covered enough finishes
-/// manually at [now], and one who did not is a DNF.
+/// manually at [now], and one who did not is a DNF. [now] is the instant the
+/// runner stopped, not the later tap that confirmed it.
 RaceOutcome raceStopOutcome({
   required RaceFinish? candidate,
   required double coveredM,
@@ -277,5 +283,52 @@ RaceOutcome raceStopOutcome({
     finisherStatus: 'dnf',
     method: null,
     finishAt: null,
+  );
+}
+
+/// The timing columns of a race result row.
+class RaceResultTiming {
+  const RaceResultTiming({
+    required this.durationS,
+    required this.gunTimeS,
+    required this.chipTimeS,
+  });
+
+  final int durationS;
+  final int? gunTimeS;
+  final int? chipTimeS;
+}
+
+/// The timing a result row carries for [outcome].
+///
+/// A finish carries the gun time (when the race had a GO) and the chip time
+/// (when the recording's Start is known), and `duration_s` is the first of
+/// gun, chip and [elapsedS] that exists. A DNF has no finish instant, so it
+/// carries neither time and `duration_s` is [elapsedS] — the recording's own
+/// elapsed seconds, the quantity its race pings carry and so the one the
+/// server writes on a host-filed DNF (decisions § R6MOBILE-1).
+RaceResultTiming raceResultTiming({
+  required RaceOutcome outcome,
+  required DateTime? gunAt,
+  Duration clockOffset = Duration.zero,
+  required DateTime? recordingStartedAt,
+  required int elapsedS,
+}) {
+  final finishAt = outcome.finishAt;
+  if (!outcome.finished || finishAt == null) {
+    return RaceResultTiming(durationS: elapsedS, gunTimeS: null, chipTimeS: null);
+  }
+  final gun = gunAt == null
+      ? null
+      : raceGunTimeS(
+          finishAtDevice: finishAt, gunAt: gunAt, clockOffset: clockOffset);
+  final began = recordingStartedAt;
+  final chip = began == null
+      ? null
+      : raceChipTimeS(finishAtDevice: finishAt, recordingStartedAt: began);
+  return RaceResultTiming(
+    durationS: gun ?? chip ?? elapsedS,
+    gunTimeS: gun,
+    chipTimeS: chip,
   );
 }

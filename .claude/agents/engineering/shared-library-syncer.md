@@ -169,7 +169,7 @@ Not web↔mobile, so not in the table above, which `scripts/check_parity_pair_re
 
 | Mobile (Dart) | Wear OS (Kotlin) | Mirror test pair |
 |---|---|---|
-| `apps/mobile_android/lib/race_finish.dart` | `apps/watch_wear/android/app/src/main/kotlin/com/runapp/watchwear/RaceFinish.kt` | `test/race_finish_test.dart` ↔ `apps/watch_wear/android/app/src/test/kotlin/com/runapp/watchwear/RaceFinishTest.kt` |
+| `apps/mobile_android/lib/race_finish.dart` | `apps/watch_wear/android/app/src/main/kotlin/com/runapp/watchwear/RaceFinish.kt` | `test/race_finish_test.dart` ↔ `apps/watch_wear/android/app/src/test/kotlin/com/runapp/watchwear/RaceFinishTest.kt`, both reading `fixtures/race_finish_cases.json` |
 
 ## When you fire
 

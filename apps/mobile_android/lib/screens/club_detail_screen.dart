@@ -880,7 +880,11 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
       clubId: c.row.id,
       clubIsPublic: c.row.isPublic ?? true,
     );
-    if (ok != null) _load();
+    if (ok == null) return;
+    // Anything but 'ok' is the form's message for a follow-up write (the
+    // price, the session plan) that failed after the event was created.
+    if (ok != 'ok' && mounted) showTopBanner(context, ok);
+    _load();
   }
 
   Widget _buildEventsTab(ThemeData theme, ClubView c) {

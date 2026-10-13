@@ -1236,9 +1236,8 @@ class _ProfileScreenState extends State<ProfileScreen>
             ? l10n.profileNotifEventRsvpTitled(name, item.eventTitle!)
             : l10n.profileNotifEventRsvp(name);
       case 'event_cancel':
-        // `refunded` is a paid registrant's cancel (migration
-        // 20270725000002): the refund was issued in the same request that
-        // cancelled the class, so the line says it is on its way.
+        // `refunded` marks a refund that is owed, not one Stripe has
+        // confirmed, so the copy says it is being refunded.
         if (item.row.refunded) {
           return item.eventTitle != null
               ? l10n.profileNotifEventCancelRefundedTitled(item.eventTitle!)

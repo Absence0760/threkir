@@ -517,7 +517,8 @@ export type NotificationKind =
 	| 'challenge_complete'
 	| 'content_hidden'
 	| 'data_export_ready'
-	| 'refund_failed';
+	| 'refund_failed'
+	| 'event_waitlist_slot';
 
 // `invite_token` is excluded from the base type because the column-
 // level grant lockdown (migrations 20260801_001 + 20260818_001 redo)

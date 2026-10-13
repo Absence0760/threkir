@@ -14,6 +14,7 @@
 	import { fmtKm } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { eventCancelMessage } from '#lib/social/event_cancel_copy.ts';
+	import { waitlistSlotMessage } from '#lib/social/event_waitlist_offer.ts';
 	import { notificationLinkFor } from '#lib/social/notification_link.ts';
 
 	let open = $state(false);
@@ -139,6 +140,10 @@
 					: m('notificationBell.eventRsvp', { name });
 			case 'event_cancel': {
 				const msg = eventCancelMessage('notificationBell', item.row, item.event_title);
+				return m(msg.key, msg.params);
+			}
+			case 'event_waitlist_slot': {
+				const msg = waitlistSlotMessage('notificationBell', item.event_title);
 				return m(msg.key, msg.params);
 			}
 			case 'event_reminder':

@@ -43,7 +43,7 @@ test('follow links to the actor profile', () => {
 });
 
 test('event kinds link to the club event, needing both event id and club slug', () => {
-	for (const kind of ['event_rsvp', 'event_cancel', 'event_reminder']) {
+	for (const kind of ['event_rsvp', 'event_cancel', 'event_reminder', 'event_waitlist_slot']) {
 		assert.equal(
 			notificationLinkFor(make({ kind, event_id: 'e1', event_club_slug: 'trail-club' })),
 			'/clubs/trail-club/events/e1',

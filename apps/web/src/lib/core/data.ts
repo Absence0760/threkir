@@ -3962,6 +3962,30 @@ export async function fetchMyOrder(
 	return data[0] as EventOrder;
 }
 
+/// The viewer's own attendee row for one occurrence, as far as the paid
+/// waitlist needs it: whether they are queued, and whether a seat is being
+/// held for them (`offer_expires_at`, migration 20270726000002). Read through
+/// RLS, which shows every user their own RSVP. A failed read throws rather
+/// than answering "not on the waitlist", which would offer the viewer a
+/// second place in a queue they are already in.
+export async function fetchMyWaitlistPlace(
+	eventId: string,
+	instanceStart: string
+): Promise<{ status: RsvpStatus; offer_expires_at: string | null } | null> {
+	const userId = auth.user?.id;
+	if (!userId) return null;
+	const { data, error } = await supabase
+		.from(TABLES.event_attendees)
+		.select('status, offer_expires_at')
+		.eq('event_id', eventId)
+		.eq('instance_start', instanceStart)
+		.eq('user_id', userId)
+		.maybeSingle();
+	if (error) throw error;
+	if (!data) return null;
+	return { status: data.status as RsvpStatus, offer_expires_at: data.offer_expires_at };
+}
+
 /// Buyer self-cancel of their OWN paid/pending registration for an event
 /// instance (club_events.md slice P2). Calls the events-cancel Edge
 /// Function, which initiates the Stripe refund (paid order, refund-eligible

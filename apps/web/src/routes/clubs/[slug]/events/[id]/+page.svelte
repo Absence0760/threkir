@@ -52,6 +52,7 @@
 		fetchEventPricing,
 		startEventCheckout,
 		fetchMyOrder,
+		fetchMyWaitlistPlace,
 		cancelEventOrder,
 		type EventResultWithUser,
 		type RecentRunOption,
@@ -87,6 +88,7 @@
 		type OccurrenceRefundState,
 		type OccurrenceRefundSummary
 	} from '#lib/social/paid_registration.ts';
+	import { waitlistOfferState } from '#lib/social/event_waitlist_offer.ts';
 	import { buildEventIcs, buildEventSeriesIcs, icsFilename } from '#lib/social/event_ics.ts';
 	import { PUBLIC_MAPTILER_KEY, PUBLIC_SITE_URL } from '$app/env/public';
 	import { buildStaticMarkerMapUrl, mapsDirectionsUrl, geoUri } from '#lib/routes/static_map.ts';
@@ -225,6 +227,14 @@
 	let myOrder = $state<EventOrder | null>(null);
 	let cancellingRegistration = $state(false);
 	let showCancelRegistration = $state(false);
+	// The viewer's own place on a paid occurrence's waitlist, and whether a
+	// seat is being held for them (migration 20270726000002). `placeUnknown`
+	// is a failed read: the page then says it cannot tell, rather than
+	// offering a place in a queue the viewer may already be in.
+	let myPlace = $state<{ status: RsvpStatus; offer_expires_at: string | null } | null>(null);
+	let placeUnknown = $state(false);
+	let waitlistBusy = $state(false);
+	let showLeaveWaitlist = $state(false);
 
 	/** The instance the user is currently RSVPing to. For one-off events this
 	 * stays equal to `event.starts_at`; for recurring events, the user can
@@ -446,9 +456,25 @@
 	});
 
 	// A paid registration is the order-backed `going` row (not maybe/declined).
+	// A `waitlisted` row is one only when an order backs it — a buyer the
+	// capacity trigger demoted after paying. Since 20270726000002 a priced
+	// occurrence also has an UNPAID waitlist, and those rows hold no seat.
 	let viewerHasPaidSlot = $derived(
 		pricing != null &&
-			(viewerRsvpForActive === 'going' || viewerRsvpForActive === 'waitlisted')
+			(viewerRsvpForActive === 'going' ||
+				(viewerRsvpForActive === 'waitlisted' &&
+					(myOrder?.status === 'paid' || myOrder?.status === 'partially_refunded')))
+	);
+
+	let offerState = $derived(waitlistOfferState(myPlace, nowTick));
+
+	// Whether the occurrence still sells at all, capacity aside — joining a
+	// waitlist for a class nobody can pay for any more promises nothing.
+	let salesOpen = $derived(
+		pricing != null &&
+			activeInstance != null &&
+			registrationOpen(new Date(nowTick), activeInstance, pricing.sales_close_offset_minutes, null, 0, false) ===
+				'open'
 	);
 
 	let priceFormatted = $derived(
@@ -466,6 +492,9 @@
 		// could not find out, not because the viewer has no slot — offering
 		// the sale again here would take a second payment for the same place.
 		if (instanceError) return 'unknown';
+		// Same for the viewer's own waitlist row: without it the page cannot
+		// tell a held seat from an open sale.
+		if (placeUnknown) return 'unknown';
 		return registrationOpen(
 			new Date(nowTick),
 			activeInstance,
@@ -583,6 +612,14 @@
 		// surface can offer Cancel + reflect an in-flight refund (P2). Only
 		// meaningful on a priced event with a signed-in viewer.
 		myOrder = pricing && myUserId ? await fetchMyOrder(event.id, activeInstance) : null;
+		placeUnknown = false;
+		try {
+			myPlace = pricing && myUserId ? await fetchMyWaitlistPlace(event.id, activeInstance) : null;
+		} catch (e) {
+			console.error('waitlist place read failed:', e);
+			myPlace = null;
+			placeUnknown = true;
+		}
 		// A cancelled occurrence can still owe registrants money (a refund that
 		// failed, or a buyer who paid in the moment before the cancel), so its
 		// organisers see what is left and can re-run the refunds. Read
@@ -1356,6 +1393,37 @@
 		}
 	}
 
+	/// Join a paid occurrence's waitlist. A waitlist row on a priced event
+	/// needs no order (20270726000002): it is a request to be offered a seat,
+	/// and the offer is what Register then claims.
+	async function joinWaitlist() {
+		if (!event || !activeInstance || waitlistBusy) return;
+		waitlistBusy = true;
+		try {
+			await rsvpEvent(event.id, 'waitlisted', activeInstance);
+			showToast(m('clubEvent.waitlistJoined'), 'success');
+			await load();
+		} catch (e: unknown) {
+			showToast(e instanceof Error ? e.message : m('clubEvent.rsvpFailed'), 'error');
+		} finally {
+			waitlistBusy = false;
+		}
+	}
+
+	async function confirmLeaveWaitlist() {
+		if (!event || !activeInstance || waitlistBusy) return;
+		waitlistBusy = true;
+		try {
+			await clearRsvp(event.id, activeInstance);
+			showLeaveWaitlist = false;
+			await load();
+		} catch (e: unknown) {
+			showToast(e instanceof Error ? e.message : m('clubEvent.rsvpFailed'), 'error');
+		} finally {
+			waitlistBusy = false;
+		}
+	}
+
 	/// Reconcile a ?paid=1 redirect. The stripe-events webhook flips the
 	/// order to paid + writes the attendee row asynchronously, so poll the
 	/// buyer's own order for up to ~5s (the <5s pattern from /settings/upgrade
@@ -1850,11 +1918,52 @@
 									{m('clubEvent.cancelRegistration')}
 								</button>
 							{/if}
+						{:else if offerState.kind === 'offered'}
+							<div class="register-status offered" role="status" data-testid="waitlist-offer">
+								<span class="material-symbols" aria-hidden="true">hourglass_top</span>
+								{m('clubEvent.waitlistOfferHeld', { time: fmtDate(offerState.deadline) })}
+							</div>
+							<button
+								type="button"
+								class="btn btn-primary register-cta"
+								onclick={register}
+								disabled={registering}
+								data-testid="claim-cta"
+							>
+								{registering
+									? m('clubEvent.registering')
+									: m('clubEvent.claimForPrice', { price: priceFormatted })}
+							</button>
 						{:else if regState === 'sold_out'}
 							<div class="register-status closed" role="status">
 								<span class="material-symbols" aria-hidden="true">block</span>
 								{m('clubEvent.registerSoldOut')}
 							</div>
+							{#if offerState.kind === 'waiting'}
+								<p class="register-status processing" role="status" data-testid="waitlist-waiting">
+									<span class="material-symbols" aria-hidden="true">schedule</span>
+									{m('clubEvent.waitlistJoined')}
+								</p>
+								<button
+									type="button"
+									class="btn btn-secondary register-cancel"
+									onclick={() => (showLeaveWaitlist = true)}
+									disabled={waitlistBusy}
+									data-testid="leave-waitlist"
+								>
+									{m('clubEvent.leaveWaitlist')}
+								</button>
+							{:else if offerState.kind === 'none' && salesOpen}
+								<button
+									type="button"
+									class="btn btn-outline register-cta"
+									onclick={joinWaitlist}
+									disabled={waitlistBusy}
+									data-testid="join-waitlist"
+								>
+									{m('clubEvent.joinWaitlist')}
+								</button>
+							{/if}
 						{:else if regState === 'sales_closed'}
 							<div class="register-status closed" role="status">
 								<span class="material-symbols" aria-hidden="true">lock_clock</span>
@@ -2619,6 +2728,17 @@
 />
 
 <ConfirmDialog
+	open={showLeaveWaitlist}
+	title={m('clubEvent.leaveWaitlistTitle')}
+	message={m('clubEvent.leaveWaitlistMessage')}
+	confirmLabel={m('clubEvent.leaveWaitlist')}
+	onconfirm={confirmLeaveWaitlist}
+	oncancel={() => (showLeaveWaitlist = false)}
+	danger
+	data-testid="leave-waitlist-dialog"
+/>
+
+<ConfirmDialog
 	open={showCancelRegistration}
 	title={m('clubEvent.cancelRegistrationTitle')}
 	message={myOrder?.status === 'pending'
@@ -3239,6 +3359,9 @@
 	}
 	.register-status.processing {
 		color: var(--color-text-secondary);
+	}
+	.register-status.offered {
+		color: var(--color-text);
 	}
 	.rsvp-tri {
 		display: grid;

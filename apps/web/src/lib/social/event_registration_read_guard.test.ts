@@ -68,6 +68,22 @@ test('the event page keeps a failed instance read apart from a loaded one', () =
 	assert.match(page, /data-testid="club-event-instance-retry"/, 'the failure needs a retry');
 });
 
+test('a failed read of the viewer\'s waitlist place is unknown, never "not on the waitlist"', () => {
+	// Since 20270726000002 a priced occurrence has an unpaid waitlist, and a
+	// seat may be HELD for the viewer. Reading that row as absent on an error
+	// would offer them a second place in the queue, or hide a held seat.
+	const page = read(PAGE);
+	assert.match(page, /if \(placeUnknown\) return 'unknown';/);
+	const body = page.slice(page.indexOf('async function readInstance()'));
+	assert.match(body, /fetchMyWaitlistPlace\(/);
+	assert.match(body, /placeUnknown = true;/);
+	const offeredAt = page.indexOf("offerState.kind === 'offered'");
+	assert.ok(
+		offeredAt > page.indexOf("regState === 'unknown'"),
+		'a held seat must not be offered for payment while the page cannot read the registration',
+	);
+});
+
 test('reloadInstance reports its own failure rather than rethrowing into an action handler', () => {
 	const page = read(PAGE);
 	const start = page.indexOf('async function reloadInstance()');

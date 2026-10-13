@@ -190,6 +190,28 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="threkir.com" android:pathPrefix="/clubs/join/" />
             </intent-filter>
+            <!-- Run and route links (lib/entity_link.dart): the in-app
+                 `/runs/<id>` and `/routes/<id>` links an owner hands out to
+                 followers and named people (decisions § 1879), plus the app
+                 scheme `com.threkir.app://runs/<id>` / `routes/<id>`. The
+                 https filter matches a UUID id only, so `/runs/new`,
+                 `/routes/heatmap` and `/routes/<id>/roadbook` stay with the
+                 browser. Same App Link verification caveat as the invite
+                 filter above. -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.threkir.app" android:host="runs" />
+                <data android:scheme="com.threkir.app" android:host="routes" />
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="threkir.com" android:pathPattern="/runs/........-....-....-....-............" />
+                <data android:scheme="https" android:host="threkir.com" android:pathPattern="/routes/........-....-....-....-............" />
+            </intent-filter>
             <!-- Health Connect privacy-policy rationale entry-point.
                  Android invokes this intent when the user taps "Privacy
                  policy" inside the Health Connect permission sheet.

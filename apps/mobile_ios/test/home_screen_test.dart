@@ -12,6 +12,7 @@ import '../lib/audio_cues.dart';
 import '../lib/ble_heart_rate.dart';
 import '../lib/ble_treadmill.dart';
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/entity_link.dart';
 import '../lib/local_food_store.dart';
 import '../lib/local_gear_store.dart';
 import '../lib/local_gym_store.dart';
@@ -29,6 +30,8 @@ import '../lib/screens/gym_screen.dart';
 import '../lib/fab_clearance.dart';
 import '../lib/screens/home_screen.dart';
 import '../lib/screens/nutrition_screen.dart';
+import '../lib/screens/public_route_screen.dart';
+import '../lib/screens/public_run_screen.dart';
 import '../lib/screens/run_screen.dart';
 import '../lib/screens/settings_about_screen.dart';
 import '../lib/screens/settings_account_screen.dart';
@@ -185,6 +188,22 @@ Finder _semanticsLabelled(String label) => find.ancestor(
     of: find.byType(FloatingActionButton),
     matching: find.byWidgetPredicate(
         (w) => w is Semantics && w.properties.label == label));
+
+/// Answers the non-owner reads as "nothing you can see", so a pushed
+/// PublicRunScreen / PublicRouteScreen settles on its empty state offline.
+class _LinkApi extends _WizardApi {
+  @override
+  Future<({cm.RunRow? row, bool shared})> fetchViewableRunById(
+    String runId,
+  ) async =>
+      (row: null, shared: false);
+
+  @override
+  Future<({cm.Route? route, String? ownerId})> fetchRouteById(
+    String routeId,
+  ) async =>
+      (route: null, ownerId: null);
+}
 
 class _StampApi extends ApiClient {
   int markOnboardedCalls = 0;
@@ -1569,6 +1588,59 @@ void main() {
           reason: 'the shell removes its listener on dispose');
       expect(pendingSettingsDestination.value, SettingsDestination.safety,
           reason: 'nothing drained it, so it waits');
+    });
+  });
+
+  group('run and route links (decisions § 1879)', () {
+    const id = '0b6f2f4e-8c1d-4a7e-9f3b-2d5c6a7b8c9d';
+    setUp(() => pendingEntityLink.value = null);
+    tearDown(() => pendingEntityLink.value = null);
+
+    Future<void> settle(WidgetTester tester) async {
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      tester.takeException();
+    }
+
+    testWidgets('a run link for a run not on the device opens the non-owner '
+        'view', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s, api: _LinkApi());
+      pendingEntityLink.value = const EntityLink(EntityLinkKind.run, id);
+      await settle(tester);
+
+      expect(find.byType(PublicRunScreen), findsOneWidget);
+      expect(pendingEntityLink.value, isNull);
+    });
+
+    testWidgets('a route link for a route not on the device opens the '
+        'non-owner view', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s, api: _LinkApi());
+      pendingEntityLink.value = const EntityLink(EntityLinkKind.route, id);
+      await settle(tester);
+
+      expect(find.byType(PublicRouteScreen), findsOneWidget);
+    });
+
+    testWidgets('a link parked before the shell mounts still opens',
+        (tester) async {
+      final s = await _makeStores();
+      pendingEntityLink.value = const EntityLink(EntityLinkKind.run, id);
+      await _pump(tester, s, api: _LinkApi());
+      await settle(tester);
+
+      expect(find.byType(PublicRunScreen), findsOneWidget);
+    });
+
+    testWidgets('with no backend a link pushes nothing', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      pendingEntityLink.value = const EntityLink(EntityLinkKind.route, id);
+      await settle(tester);
+
+      expect(find.byType(PublicRouteScreen), findsNothing);
+      expect(find.byType(PublicRunScreen), findsNothing);
     });
   });
 }

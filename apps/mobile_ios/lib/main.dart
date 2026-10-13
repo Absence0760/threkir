@@ -35,6 +35,7 @@ import 'screens/onboarding_screen.dart';
 import 'settings_cache.dart';
 import 'settings_sync.dart';
 import 'club_invite_link.dart';
+import 'entity_link.dart';
 import 'shared_file_import.dart';
 import 'social_service.dart';
 import 'sync_service.dart';
@@ -692,6 +693,16 @@ void main() async {
     unawaited(inviteLinks.processInitial());
   } catch (e) {
     debugPrint('club invite link init failed: $e');
+  }
+
+  // Run and route links (`/runs/<id>`, `/routes/<id>` on the web host, or the
+  // `com.threkir.app://runs|routes/<id>` scheme), the links an owner hands out
+  // to followers and named people: HomeScreen drains pendingEntityLink.
+  try {
+    final entityLinks = EntityLinkService()..start();
+    unawaited(entityLinks.processInitial());
+  } catch (e) {
+    debugPrint('entity link init failed: $e');
   }
 }
 

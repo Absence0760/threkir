@@ -10,6 +10,7 @@ import '../auth_change_aware.dart';
 import '../ble_heart_rate.dart';
 import '../ble_treadmill.dart';
 import '../club_invite_link.dart' show pendingClubInviteToken;
+import '../entity_link.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../local_food_store.dart';
 import '../local_gear_store.dart';
@@ -53,9 +54,11 @@ import '../onboarding.dart';
 import 'plan_new_screen.dart';
 import 'plans_screen.dart';
 import 'profile_screen.dart';
+import 'public_route_screen.dart';
 import 'public_run_screen.dart';
 import 'races_screen.dart';
 import 'route_detail_screen.dart';
+import 'run_detail_screen.dart';
 import 'run_screen.dart';
 import 'settings_about_screen.dart';
 import 'settings_account_screen.dart';
@@ -233,6 +236,7 @@ class _HomeScreenState extends State<HomeScreen>
     pendingSettingsDestination.addListener(_onPendingSettingsDestination);
     pendingHelpDestination.addListener(_onPendingHelpDestination);
     pendingClubInviteToken.addListener(_onPendingClubInvite);
+    pendingEntityLink.addListener(_onPendingEntityLink);
     // A GPX/KML opened while the app was closed sets the notifier during
     // main() before this screen mounts, so drain any already-present value
     // once the first frame is up (the listener only fires on later shares).
@@ -244,6 +248,7 @@ class _HomeScreenState extends State<HomeScreen>
       _onPendingSettingsDestination();
       _onPendingHelpDestination();
       _onPendingClubInvite();
+      _onPendingEntityLink();
     });
     // Surface the recovery banner from main.dart's in-progress
     // evaluation. Casual #3: this also fires on DISCARD ("Discarded a
@@ -626,6 +631,58 @@ class _HomeScreenState extends State<HomeScreen>
     ));
   }
 
+  /// A run or route link the OS opened the app with. The runner's own run or
+  /// route opens its owner screen from the device; anything else opens the
+  /// non-owner view, which reads public first and then what the owner shared
+  /// with this viewer (decisions § 1874), with the clipped track only. An L4
+  /// effect: a failure is logged, never thrown into the shell.
+  Future<void> _onPendingEntityLink() async {
+    final link = pendingEntityLink.value;
+    if (link == null || !mounted) return;
+    pendingEntityLink.value = null;
+    try {
+      await _openEntityLink(link);
+    } catch (e) {
+      debugPrint('entity link navigation failed: $e');
+    }
+  }
+
+  Future<void> _openEntityLink(EntityLink link) async {
+    final api = widget.apiClient;
+    switch (link.kind) {
+      case EntityLinkKind.run:
+        final own = await widget.runStore.runById(link.id);
+        if (!mounted) return;
+        if (own != null) {
+          return _pushScreen(RunDetailScreen(
+            run: own,
+            runStore: widget.runStore,
+            routeStore: widget.routeStore,
+            preferences: widget.preferences,
+            apiClient: api,
+            settingsSync: widget.settingsSync,
+          ));
+        }
+        if (api == null) return;
+        await _pushScreen(PublicRunScreen(api: api, runId: link.id));
+      case EntityLinkKind.route:
+        final own = widget.routeStore.routes
+            .where((r) => r.id == link.id)
+            .firstOrNull;
+        if (own != null) {
+          return _pushScreen(RouteDetailScreen(
+            route: own,
+            routeStore: widget.routeStore,
+            preferences: widget.preferences,
+            apiClient: api,
+            isOwner: true,
+          ));
+        }
+        if (api == null) return;
+        await _pushScreen(PublicRouteScreen(api: api, routeId: link.id));
+    }
+  }
+
   /// A GPX/KML handed to the app by another app (WhatsApp "Open with" /
   /// share, iOS document open) was imported into the route library; drain
   /// the handoff, confirm it, and open the freshly-imported route. Every
@@ -759,6 +816,7 @@ class _HomeScreenState extends State<HomeScreen>
         .removeListener(_onPendingSettingsDestination);
     pendingHelpDestination.removeListener(_onPendingHelpDestination);
     pendingClubInviteToken.removeListener(_onPendingClubInvite);
+    pendingEntityLink.removeListener(_onPendingEntityLink);
     _pageController.dispose();
     _currentIndex.dispose();
     _fitnessTab.dispose();

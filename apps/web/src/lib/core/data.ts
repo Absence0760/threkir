@@ -16,7 +16,13 @@ import { markListsStale } from './list_freshness';
 import { probeSaysConfigured } from './provider_probe';
 import { loadSettings, effective } from '../settings/settings';
 import type { Modality } from '../settings/modality_visibility';
-import { privacyDefaultToIsPublic } from '../social/run_visibility';
+import {
+	audienceColumns,
+	levelRevokesGrants,
+	privacyDefaultToAudience,
+	type AudienceColumns,
+	type AudienceLevel,
+} from '../social/run_visibility';
 import { bandsToRanges, type DistanceBandKey } from '../routes/distance_bands';
 import { assemblePublicRoute } from '../routes/public_route_assembly';
 import { stripExifFromFile } from '../util/exif_strip';
@@ -1037,6 +1043,39 @@ export async function fetchPublicRun(
 	return { run: { ...data, track: null } as Run, error: null };
 }
 
+/// The non-owner read of a run that is NOT public but whose audience admits
+/// the caller — the owner's followers for a followers-only run, or a named
+/// recipient of a `run_shares` grant (migration 20270730000003). `shared_runs`
+/// carries exactly `public_runs`' redacted projection, never a public run and
+/// never the caller's own, so everything said about `fetchPublicRun` holds
+/// here: no track (the clipped one comes from `fetchClippedTrackForRun`), and
+/// a failed read is reported apart from "not shared with you".
+export async function fetchSharedRun(
+	id: string,
+): Promise<{ run: Run | null; error: string | null }> {
+	const { data, error } = await supabase
+		.from('shared_runs')
+		.select('*')
+		.eq('id', id)
+		.maybeSingle();
+	if (error) return { run: null, error: error.message };
+	if (!data) return { run: null, error: null };
+	return { run: { ...data, track: null } as Run, error: null };
+}
+
+/// Every non-owner read of a run in one call: public first, then shared with
+/// this caller. Anonymous callers stop at public — they belong to no audience,
+/// and `shared_runs` is not granted to anon.
+export async function fetchViewableRun(
+	id: string,
+): Promise<{ run: Run | null; error: string | null; shared: boolean }> {
+	const pub = await fetchPublicRun(id);
+	if (pub.error || pub.run) return { ...pub, shared: false };
+	if (!(await currentViewerId())) return { run: null, error: null, shared: false };
+	const shared = await fetchSharedRun(id);
+	return { ...shared, shared: shared.run !== null };
+}
+
 export interface PublicRunAttribution {
 	ownerId: string;
 	displayName: string | null;
@@ -1074,7 +1113,19 @@ export async function fetchPublicRunAttribution(
 		.eq('id', runId)
 		.maybeSingle();
 	if (error) return { attribution: null, error: error.message };
-	const ownerId = (run as { user_id?: string | null } | null)?.user_id;
+	let ownerId = (run as { user_id?: string | null } | null)?.user_id;
+	if (!ownerId) {
+		// Not public: the run may still be shared with this viewer — a
+		// followers-only run they follow the owner for, or a named-person grant
+		// (20270730000003). Same projection, same single column.
+		const { data: shared, error: sharedError } = await supabase
+			.from('shared_runs')
+			.select('user_id')
+			.eq('id', runId)
+			.maybeSingle();
+		if (sharedError) return { attribution: null, error: sharedError.message };
+		ownerId = (shared as { user_id?: string | null } | null)?.user_id;
+	}
 	if (!ownerId) return { attribution: null, error: null };
 	// The display name is decoration on an entitlement already established by
 	// the row above, so its own failure degrades to an unnamed owner rather
@@ -1203,6 +1254,140 @@ export async function setRunPublic(id: string, isPublic: boolean): Promise<void>
 		.update({ is_public: isPublic })
 		.eq('id', id);
 	if (error) throw error;
+}
+
+/// Which entity an audience control is acting on. The two grant tables and
+/// the two base tables have the same shape, so one set of helpers serves both.
+export type ShareableKind = 'run' | 'route';
+
+/// One named person a run or route is shared with, for the owner's list.
+export interface ShareRecipient {
+	recipientId: string;
+	displayName: string | null;
+	avatarUrl: string | null;
+	createdAt: string;
+}
+
+/// Whether the followers level and named-person shares are live (the server's
+/// `private.feature_flags` row, decisions § R7SHARE-1). The audience control
+/// renders only when this is true. Fail-closed: any read failure is "off", and
+/// is not cached, so a later mount can find out.
+let audienceSharingProbe: Promise<boolean> | null = null;
+export function audienceSharingEnabled(): Promise<boolean> {
+	if (audienceSharingProbe) return audienceSharingProbe;
+	const probe = (async () => {
+		try {
+			const { data, error } = await supabase.rpc('audience_sharing_enabled', undefined, { get: true });
+			if (error) {
+				audienceSharingProbe = null;
+				return false;
+			}
+			return data === true;
+		} catch {
+			audienceSharingProbe = null;
+			return false;
+		}
+	})();
+	audienceSharingProbe = probe;
+	return probe;
+}
+
+/// The owner's live grants on one run or route, oldest first, with each
+/// recipient's display name. RLS returns only the owner's own grants (and a
+/// recipient's own), so a non-owner calling this gets at most their own row.
+export async function fetchShares(kind: ShareableKind, id: string): Promise<ShareRecipient[]> {
+	const { data: rows, error } =
+		kind === 'run'
+			? await supabase
+					.from('run_shares')
+					.select('recipient_id, created_at')
+					.eq('run_id', id)
+					.order('created_at', { ascending: true })
+					.order('recipient_id', { ascending: true })
+			: await supabase
+					.from('route_shares')
+					.select('recipient_id, created_at')
+					.eq('route_id', id)
+					.order('created_at', { ascending: true })
+					.order('recipient_id', { ascending: true });
+	if (error) throw error;
+	const ids = (rows ?? []).map((r) => r.recipient_id);
+	if (ids.length === 0) return [];
+	const { data: profiles, error: profilesError } = await supabase
+		.from('user_profiles')
+		.select('id, display_name, avatar_url')
+		.in('id', ids);
+	if (profilesError) throw profilesError;
+	const byId = new Map((profiles ?? []).map((p) => [p.id, p] as const));
+	return (rows ?? []).map((r) => ({
+		recipientId: r.recipient_id,
+		displayName: byId.get(r.recipient_id)?.display_name ?? null,
+		avatarUrl: byId.get(r.recipient_id)?.avatar_url ?? null,
+		createdAt: r.created_at,
+	}));
+}
+
+/// Share one run or route with one person. The INSERT policy admits only the
+/// owner, only while audience sharing is on, and only for a recipient with a
+/// follow edge either way and no block (20270730000002) — the same set the
+/// picker offers. A repeat share of the same person is a no-op, not an error.
+export async function addShare(kind: ShareableKind, id: string, recipientId: string): Promise<void> {
+	const ownerId = await currentViewerId();
+	if (!ownerId) throw new Error('Not authenticated');
+	const { error } =
+		kind === 'run'
+			? await supabase.from('run_shares').insert({ run_id: id, owner_id: ownerId, recipient_id: recipientId })
+			: await supabase
+					.from('route_shares')
+					.insert({ route_id: id, owner_id: ownerId, recipient_id: recipientId });
+	if (error && !isDuplicateKeyError(error)) throw error;
+}
+
+/// Revoke one person's access. It ends on their next read: nothing is copied
+/// to them, so there is nothing to recall. A delete RLS refused comes back as
+/// zero rows rather than an error, so the row count is checked and a refusal
+/// is reported instead of being shown as a revoke.
+export async function revokeShare(kind: ShareableKind, id: string, recipientId: string): Promise<void> {
+	const { data, error } =
+		kind === 'run'
+			? await supabase
+					.from('run_shares')
+					.delete()
+					.eq('run_id', id)
+					.eq('recipient_id', recipientId)
+					.select('recipient_id')
+			: await supabase
+					.from('route_shares')
+					.delete()
+					.eq('route_id', id)
+					.eq('recipient_id', recipientId)
+					.select('recipient_id');
+	if (error) throw error;
+	if (!data || data.length === 0) throw new Error(m('audience.revokeRefused'));
+}
+
+/// Move a run or route to a level. Only me revokes every grant first, so the
+/// row never claims "only me" while a named reader is still admitted; the
+/// other levels leave grants in place (moot while wider, back in force if the
+/// owner narrows again). Specific people writes the same columns as Only me —
+/// its audience is the grants the caller adds with [addShare].
+export async function setAudience(kind: ShareableKind, id: string, level: AudienceLevel): Promise<void> {
+	if (kind === 'run') markListsStale('runs', 'history', 'routes');
+	else markListsStale('routes');
+	if (levelRevokesGrants(level)) {
+		const { error } =
+			kind === 'run'
+				? await supabase.from('run_shares').delete().eq('run_id', id)
+				: await supabase.from('route_shares').delete().eq('route_id', id);
+		if (error) throw error;
+	}
+	const columns = audienceColumns(level);
+	const { data, error } =
+		kind === 'run'
+			? await supabase.from(TABLES.runs).update(columns).eq('id', id).select('id')
+			: await supabase.from('routes').update(columns).eq('id', id).select('id');
+	if (error) throw error;
+	if (!data || data.length === 0) throw new Error(m('audience.updateRefused'));
 }
 
 /// Persist at most one fitness snapshot per user per UTC day. The dashboard
@@ -1348,21 +1533,34 @@ export async function saveRunAsRoute(
 /// `'app'` so the run picks up the "Recorded" label in the UI; the
 /// `metadata.manual_entry = true` flag lets the detail page show
 /// "Manual entry" instead of the map.
-/// Map the user's `privacy_default` preference to the `runs.is_public`
-/// boolean for a newly-created run. Only `public` yields a public run;
-/// `followers` and `private` stay private (runs have no followers-only
-/// visibility tier — see docs/backend/settings.md). Mirrors mobile
-/// `Preferences.newRunsArePublic`. Web previously ignored this entirely
-/// (runs always landed at the `is_public default false`), so a runner who
-/// chose `public` still got private runs from web saves + imports
-/// (comeback persona #27). Fail-closed: any settings-read failure → private.
-async function defaultRunIsPublic(userId: string): Promise<boolean> {
+/// Map the user's `privacy_default` preference to the visibility columns of a
+/// newly-created run: `public` → public, `followers` → `followers_only`, else
+/// owner-only (`social/run_visibility.ts`, decisions § R7SHARE-2). Web once
+/// ignored the preference entirely, so a runner who chose `public` still got
+/// private runs from web saves + imports (comeback persona #27); until the
+/// followers level existed, `followers` collapsed to owner-only. Fail-closed:
+/// any settings-read failure → owner-only.
+async function defaultRunAudience(userId: string): Promise<AudienceColumns> {
 	try {
 		const settings = await loadSettings(userId);
-		return privacyDefaultToIsPublic(effective<string>(settings, 'privacy_default', 'followers'));
+		return privacyDefaultToAudience(effective<string>(settings, 'privacy_default', 'followers'));
 	} catch {
-		return false;
+		return audienceColumns('private');
 	}
+}
+
+/// The columns a writer stores: an explicit per-run choice wins, otherwise the
+/// runner's default. A caller that passes only `isPublic` (the importers'
+/// historical shape) chose between public and owner-only.
+async function runAudienceFor(
+	userId: string,
+	input: { isPublic?: boolean; followersOnly?: boolean },
+): Promise<AudienceColumns> {
+	if (input.isPublic === undefined && input.followersOnly === undefined) {
+		return defaultRunAudience(userId);
+	}
+	const isPublic = input.isPublic === true;
+	return { is_public: isPublic, followers_only: !isPublic && input.followersOnly === true };
 }
 
 export async function createManualRun(input: {
@@ -1372,14 +1570,16 @@ export async function createManualRun(input: {
 	activityType?: 'run' | 'walk' | 'hike' | 'cycle' | 'stroller';
 	notes?: string | null;
 	routeId?: string | null;
-	/// Per-run visibility override. When omitted, falls back to the user's
-	/// `privacy_default` preference (`public` → public, else private).
+	/// Per-run visibility override. When both are omitted, falls back to the
+	/// user's `privacy_default` preference (`public` → public, `followers` →
+	/// followers-only, else owner-only).
 	isPublic?: boolean;
+	followersOnly?: boolean;
 }): Promise<{ id: string }> {
 	const { data: authUser } = await supabase.auth.getUser();
 	const userId = authUser.user?.id;
 	if (!userId) throw new Error('Not authenticated');
-	const isPublic = input.isPublic ?? (await defaultRunIsPublic(userId));
+	const audience = await runAudienceFor(userId, input);
 
 	const metadata: JsonObject = {
 		[METADATA_KEYS.manual_entry]: true,
@@ -1398,7 +1598,8 @@ export async function createManualRun(input: {
 			activity_type: input.activityType ?? 'run',
 			metadata,
 			route_id: input.routeId ?? null,
-			is_public: isPublic,
+			is_public: audience.is_public,
+			followers_only: audience.followers_only,
 		})
 		.select('id')
 		.single();
@@ -1447,15 +1648,16 @@ export async function saveRun(input: {
 	/// Saved into runs.external_id so a subsequent import of the same
 	/// activity by any path can detect + skip. /audit/strava M3.
 	external_id?: string | null;
-	/// Per-run visibility override. When omitted, falls back to the user's
-	/// `privacy_default` preference. Importers omit it so a bulk import
-	/// honours the runner's default visibility.
+	/// Per-run visibility override. When both are omitted, falls back to the
+	/// user's `privacy_default` preference. Importers omit them so a bulk
+	/// import honours the runner's default visibility.
 	isPublic?: boolean;
+	followersOnly?: boolean;
 }): Promise<{ id: string; trackUploaded: boolean; trackError?: string }> {
 	const { data: authUser } = await supabase.auth.getUser();
 	const userId = authUser.user?.id;
 	if (!userId) throw new Error('Not authenticated');
-	const isPublic = input.isPublic ?? (await defaultRunIsPublic(userId));
+	const audience = await runAudienceFor(userId, input);
 
 	// `title` has no DB column, so it survives the round-trip in metadata only.
 	// `elevation_m` is different: migration 20270302_001 promoted total ascent to
@@ -1476,7 +1678,8 @@ export async function saveRun(input: {
 		source: input.source,
 		activity_type: input.activity_type ?? 'run',
 		metadata: mergedMetadata,
-		is_public: isPublic,
+		is_public: audience.is_public,
+		followers_only: audience.followers_only,
 	};
 	if (input.elevation_m != null) row.elevation_gain_m = input.elevation_m;
 	if (input.embedded_bests) Object.assign(row, input.embedded_bests);
@@ -2057,11 +2260,21 @@ export async function fetchRouteById(id: string): Promise<Route | null> {
 
 	// The metadata read and the server-clip RPC both key only on `id`, so
 	// fire them concurrently instead of serialising two round trips.
+	//
+	// A route that is not public may still be shared with this viewer — a
+	// followers-only route whose owner they follow, or a named-person grant
+	// (20270730000003). `shared_routes` has `public_routes`' projection, and
+	// `clip_route_for_viewer` admits the same audience, so the assembled
+	// shape is identical and the polyline is clipped exactly as for a public
+	// route.
 	const assembled = await assemblePublicRoute(
 		async () => {
 			const read = await supabase.from('public_routes').select('*').eq('id', id).maybeSingle();
 			if (read.error) throw read.error;
-			return read.data;
+			if (read.data || !viewerId) return read.data;
+			const shared = await supabase.from('shared_routes').select('*').eq('id', id).maybeSingle();
+			if (shared.error) throw shared.error;
+			return shared.data;
 		},
 		() => fetchClippedRouteForViewer(id),
 	);

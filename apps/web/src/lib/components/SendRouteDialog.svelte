@@ -3,7 +3,7 @@
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
 	import { initial } from '#lib/format/avatar.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
-	import { fetchFollowers, fetchFollowing, sendDm } from '#lib/core/data.ts';
+	import { addShare, fetchFollowers, fetchFollowing, sendDm } from '#lib/core/data.ts';
 	import {
 		dmRecipientCandidates,
 		filterDmRecipients,
@@ -12,12 +12,20 @@
 
 	interface Props {
 		open: boolean;
-		/// The public /share/route/[id] URL, already made reachable by the
-		/// host's ensure-public step. Still sent verbatim as the message body:
-		/// it is the forwardable artifact the dialog's own copy promises the
-		/// recipient gets, and it is what the inbox preview line and the Art 20
-		/// export read, neither of which resolves the attachment below.
+		/// The link sent as the message body. For a public route it is the
+		/// /share/route/[id] URL, already made reachable by the host's
+		/// ensure-public step: the forwardable artifact the dialog's own copy
+		/// promises the recipient gets, and what the inbox preview line and the
+		/// Art 20 export read, neither of which resolves the attachment below.
+		/// For a private send (`grantAccess`) it is the in-app /routes/[id]
+		/// link, which opens only for the people the route is shared with.
 		shareUrl: string;
+		/// Share the route with the recipient (a `route_shares` grant) before
+		/// sending, instead of the host having made it public. The route stays
+		/// private and the owner can revoke the grant at any time (decisions
+		/// § R7SHARE-1). Only the owner sends this way; the INSERT policy
+		/// refuses anyone else.
+		grantAccess?: boolean;
 		/// The typed attachment (route_direct_share.md v2). The thread renders
 		/// it as a card whose polyline is clipped for the reader; the INSERT
 		/// policy refuses an id the sender cannot see.
@@ -25,7 +33,7 @@
 		onclose: () => void;
 	}
 
-	let { open, shareUrl, routeId, onclose }: Props = $props();
+	let { open, shareUrl, routeId, grantAccess = false, onclose }: Props = $props();
 
 	let loading = $state(false);
 	let loadFailed = $state(false);
@@ -87,6 +95,9 @@
 		sendingTo = recipient.id;
 		sendError = null;
 		try {
+			// Grant first: a message whose link does not open for its reader is
+			// worse than no message, so a refused grant stops the send.
+			if (grantAccess) await addShare('route', routeId, recipient.id);
 			await sendDm(recipient.id, shareUrl, routeId);
 			sentTo = recipient;
 		} catch (e) {
@@ -122,7 +133,9 @@
 		</div>
 	{:else}
 		<p class="intro">{tr('routeDetail.sendDm.intro')}</p>
-		<p class="note">{tr('routeDetail.sendDm.linkNote')}</p>
+		<p class="note" data-testid="send-route-note">
+			{grantAccess ? tr('routeDetail.sendDm.privateNote') : tr('routeDetail.sendDm.linkNote')}
+		</p>
 
 		{#if sendError}
 			<p class="send-error" role="alert" data-testid="send-route-error">

@@ -46,9 +46,13 @@
 		enqueueRunRematch,
 		requestDistanceRecompute,
 		fetchHrSeries,
+		audienceSharingEnabled,
+		fetchShares,
 		type RunMatchInfo,
 		type RouteMatchCandidate,
 	} from '#lib/core/data.ts';
+	import AudienceDialog from '#lib/components/AudienceDialog.svelte';
+	import { audienceOf, type AudienceColumns } from '#lib/social/run_visibility.ts';
 	import { applyRunMetadataPatch } from '#lib/core/data_normalise.ts';
 	import { ageFromDob } from '#lib/nutrition/nutrition_targets.ts';
 	import type { PlanWorkout } from '#lib/types.ts';
@@ -192,6 +196,13 @@
 	let shareConfirmIntersectsZone = $state(false);
 	let shareConfirmHasZones = $state(false);
 	let shareBusy = $state(false);
+	/// Audience sharing (followers level + named people, decisions
+	/// § R7SHARE-1) is a server-gated feature; the control and the narrower
+	/// share link render only when the server says it is on.
+	let audienceSharingOn = $state(false);
+	let shareCount = $state(0);
+	let showAudience = $state(false);
+	let audienceLevel = $derived(run ? audienceOf(run, shareCount) : 'private');
 	let bodyWeightKg = $state<number | null>(null);
 	// Hide-calories opt-out (universal `show_calories` pref, default on) —
 	// hunt-newrunner: a weight-conscious runner can suppress the estimate.
@@ -268,6 +279,7 @@
 			return;
 		}
 		loading = false;
+		void loadAudience();
 		// Best-effort matched-track fetch in the background. The map
 		// will swap to the matched line once it lands; until then it
 		// shows the raw track.
@@ -665,6 +677,34 @@
 		return ownerZones;
 	}
 
+	/// Whether audience sharing is live, and how many named people this run is
+	/// shared with. Both decorate the owner view; a failure leaves the page on
+	/// the public / private controls it had before the feature existed.
+	async function loadAudience() {
+		audienceSharingOn = await audienceSharingEnabled();
+		if (!audienceSharingOn || !run) return;
+		try {
+			shareCount = (await fetchShares('run', run.id)).length;
+		} catch (e) {
+			console.warn('run shares unknown', e);
+		}
+	}
+
+	function applyAudienceColumns(columns: AudienceColumns) {
+		if (!run) return;
+		run = { ...run, ...columns } as Run;
+	}
+
+	async function closeAudience() {
+		showAudience = false;
+		await loadAudience();
+	}
+
+	function requestPublicFromAudience() {
+		showAudience = false;
+		void requestMakePublic();
+	}
+
 	async function handleShare() {
 		if (!run || !auth.user || shareBusy) return;
 		// Skip the prompt when the run is already public — Share becomes
@@ -673,6 +713,23 @@
 			await proceedShare();
 			return;
 		}
+		// A run whose owner chose a narrower audience is shared as the in-app
+		// link, which opens only for that audience. Making it public is the
+		// audience control's job, never a side effect of Share.
+		if (audienceSharingOn && audienceLevel !== 'private') {
+			try {
+				await navigator.clipboard.writeText(`${window.location.origin}/runs/${run.id}`);
+				showToast(m('audience.linkCopied'), 'success');
+			} catch (e) {
+				showToast(m('runDetail.shareFailed', { error: String(e) }), 'error');
+			}
+			return;
+		}
+		await requestMakePublic();
+	}
+
+	async function requestMakePublic() {
+		if (!run || !auth.user || shareBusy) return;
 		// Visibility-change consent: making a previously-private run
 		// public is a non-trivial state change. A first-time / casual
 		// user has typically never set up a privacy zone, so without
@@ -705,7 +762,7 @@
 			// Reflect the flip in-page immediately — the visibility chip and
 			// the share button both read `run.is_public` and would otherwise
 			// keep showing "Private" / "Make public" until a reload.
-			run = { ...run, is_public: true } as Run;
+			run = { ...run, is_public: true, followers_only: false } as Run;
 			const url = buildRunShareCanonical(window.location.origin, run.id);
 			await navigator.clipboard.writeText(url);
 			showToast(m('runDetail.shareLinkCopied'), 'success');
@@ -1654,9 +1711,19 @@
 							<span class="meta-source-dot"></span>
 							{sourceLabel(run.source)}
 						</span>
-						<span class="meta-item visibility-chip" class:is-public={run.is_public}>
-							<span class="material-symbols">{run.is_public ? 'public' : 'lock'}</span>
-							{run.is_public ? m('runDetail.public') : m('runDetail.private')}
+						<span
+							class="meta-item visibility-chip"
+							class:is-public={run.is_public}
+							data-testid="run-visibility-chip"
+						>
+							<span class="material-symbols">{audienceLevel === 'public' ? 'public' : audienceLevel === 'followers' ? 'group' : audienceLevel === 'specific' ? 'person_add' : 'lock'}</span>
+							{audienceLevel === 'public'
+								? m('runDetail.public')
+								: audienceLevel === 'followers'
+									? m('audience.chipFollowers')
+									: audienceLevel === 'specific'
+										? m('audience.chipShared')
+										: m('runDetail.private')}
 						</span>
 						{#if guidedRunId}
 							{#if guidedRun}
@@ -1705,13 +1772,32 @@
 						</button>
 						<button
 							class="icon-btn"
-							aria-label={run.is_public ? m('runDetail.copyShareLink') : m('runDetail.makePublicCopyLink')}
-							title={run.is_public ? m('runDetail.copyShareLink') : m('runDetail.shareLink')}
+							aria-label={run.is_public
+								? m('runDetail.copyShareLink')
+								: audienceSharingOn && audienceLevel !== 'private'
+									? m('audience.copyLink')
+									: m('runDetail.makePublicCopyLink')}
+							title={run.is_public
+								? m('runDetail.copyShareLink')
+								: audienceSharingOn && audienceLevel !== 'private'
+									? m('audience.copyLink')
+									: m('runDetail.shareLink')}
 							onclick={handleShare}
 							disabled={shareBusy}
 						>
 							<span class="material-symbols">share</span>
 						</button>
+						{#if audienceSharingOn}
+							<button
+								class="icon-btn"
+								aria-label={m('audience.button')}
+								title={m('audience.button')}
+								onclick={() => (showAudience = true)}
+								data-testid="run-audience-btn"
+							>
+								<span class="material-symbols">group</span>
+							</button>
+						{/if}
 						{#if run.is_public}
 							<button
 								class="icon-btn"
@@ -2331,6 +2417,19 @@
 	oncancel={() => (showShareConfirm = false)}
 	data-testid="share-confirm-dialog"
 />
+
+{#if run}
+	<AudienceDialog
+		open={showAudience}
+		kind="run"
+		entityId={run.id}
+		isPublic={run.is_public === true}
+		followersOnly={run.followers_only === true}
+		onlevel={applyAudienceColumns}
+		onrequestpublic={requestPublicFromAudience}
+		onclose={closeAudience}
+	/>
+{/if}
 
 <ConfirmDialog
 	open={showMakePrivateConfirm}

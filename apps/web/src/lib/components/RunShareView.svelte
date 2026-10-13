@@ -3,7 +3,7 @@
 	import { formatPace, formatDistance, sourceLabel } from '#lib/core/mock-data.ts';
 	import { sourceColor, sourceInk } from '#lib/runs/source_badge.ts';
 	import { formatDate, formatDuration } from '#lib/format/time.ts';
-	import { fetchPublicRun, fetchClippedTrackForRun, fetchTrackByPath } from '#lib/core/data.ts';
+	import { fetchViewableRun, fetchClippedTrackForRun, fetchTrackByPath } from '#lib/core/data.ts';
 	import RunMap from '#lib/components/RunMap.svelte';
 	import ElevationProfile from '#lib/components/ElevationProfile.svelte';
 	import { computeElevationGain } from '#lib/routes/route_simplify.ts';
@@ -35,12 +35,16 @@
 	// them it could not be loaded is the truth, and it is the one they can act
 	// on by retrying.
 	let loadError = $state(false);
+	/// The run is not public: it reached this viewer through its owner's
+	/// followers level or a named-person share (decisions § R7SHARE-1).
+	let sharedWithMe = $state(false);
 
 	async function load() {
 		loading = true;
 		notFound = false;
 		loadError = false;
-		const { run: r, error } = await fetchPublicRun(runId);
+		const { run: r, error, shared } = await fetchViewableRun(runId);
+		sharedWithMe = shared;
 		if (error) {
 			loadError = true;
 			loading = false;
@@ -169,6 +173,13 @@
 		<span>{formatPace(run.duration_s, run.distance_m)}</span>
 		<span class="meta-sep">&middot;</span>
 		<span class="source-badge" style="background: {sourceColor(run.source)}; color: {sourceInk(run.source)}">{sourceLabel(run.source)}</span>
+		{#if sharedWithMe}
+			<span class="meta-sep">&middot;</span>
+			<span class="shared-chip" data-testid="run-shared-with-you" title={m('audience.sharedWithYouHint')}>
+				<span class="material-symbols" aria-hidden="true">group</span>
+				{m('audience.sharedWithYou')}
+			</span>
+		{/if}
 		{#if canReport}
 			<button
 				type="button"
@@ -335,5 +346,14 @@
 	.cta p {
 		margin-bottom: var(--space-md);
 		color: var(--color-text-secondary);
+	}
+	.shared-chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		color: var(--color-text-secondary);
+	}
+	.shared-chip .material-symbols {
+		font-size: 1rem;
 	}
 </style>

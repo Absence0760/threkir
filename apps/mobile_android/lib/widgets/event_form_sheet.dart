@@ -13,6 +13,7 @@ import '../social_service.dart';
 import '../typed_decimal.dart';
 import 'full_screen_form.dart';
 import 'gym_routine_picker.dart';
+import 'session_plan_picker.dart';
 
 /// Full-screen dialog for creating a new event under a club. Mirrors
 /// the web `EventEditor.svelte` (one-off / weekly / biweekly / monthly, with
@@ -417,36 +418,14 @@ class _EventFormState extends State<_EventForm> {
                 ),
               ),
               const SizedBox(height: 8),
-              // Re-keyed on the value so picking the other source, which clears
-              // this one, rebuilds the field with its new initial value.
-              KeyedSubtree(
-                key: ValueKey('plan-${_sessionPlanId ?? ''}'),
-                child: DropdownButtonFormField<String?>(
-                  key: const Key('event-form-session-plan'),
-                  initialValue: _sessionPlanId,
-                  isExpanded: true,
-                  decoration: InputDecoration(
-                    labelText: l10n.eventFormSessionPlan,
-                    helperText: _sessionPlans.isEmpty
-                        ? l10n.eventFormSessionPlanEmpty
-                        : null,
-                  ),
-                  items: [
-                    DropdownMenuItem<String?>(
-                      value: null,
-                      child: Text(l10n.eventFormSessionPlanNone),
-                    ),
-                    for (final p in _sessionPlans)
-                      DropdownMenuItem<String?>(
-                        value: p.id,
-                        child: Text(p.title, overflow: TextOverflow.ellipsis),
-                      ),
-                  ],
-                  onChanged: (v) => setState(() {
-                    _sessionPlanId = v;
-                    if (v != null) _gymRoutineId = null;
-                  }),
-                ),
+              SessionPlanPicker(
+                fieldKey: const Key('event-form-session-plan'),
+                value: _sessionPlanId,
+                plans: _sessionPlans,
+                onChanged: (v) => setState(() {
+                  _sessionPlanId = v;
+                  if (v != null) _gymRoutineId = null;
+                }),
               ),
               const SizedBox(height: 8),
               GymRoutinePicker(

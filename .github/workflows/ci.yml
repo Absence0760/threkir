@@ -139,7 +139,13 @@ jobs:
             exit 0
           fi
           echo "$files"
-          if echo "$files" | grep -qvE '^(docs/|\.claude/)|\.md$'; then
+          # Every test below reads the list from a here-string, never
+          # `echo "$files" | grep -q`: under pipefail, grep -q exits on its
+          # first match, echo dies of SIGPIPE once the list outgrows the pipe
+          # buffer, and the pipeline reads as NO match — which classified a
+          # 1,118-file PR as docs-only and skipped every heavy job green
+          # (decisions § 1880).
+          if grep -qvE '^(docs/|\.claude/)|\.md$' <<<"$files"; then
             echo "code=true" >> "$GITHUB_OUTPUT"
           else
             echo "::notice::docs-only diff — heavy jobs skip, CI gate still reports"
@@ -170,7 +176,7 @@ jobs:
           # scripts/, and the sim CI job replicates bin/watch-sim.sh rather
           # than calling it) — a bin/ edit alongside firmware work was pulling
           # the full Playwright suite back in.
-          if echo "$files" | grep -qvE '^(docs/|\.claude/|infra/|bin/|packages/|apps/(custom_watch|watch_wear|watch_ios|watch_garmin|mobile_android|mobile_ios)/)|\.md$|^(analysis_options\.yaml|melos\.yaml|pubspec\.yaml)$'; then
+          if grep -qvE '^(docs/|\.claude/|infra/|bin/|packages/|apps/(custom_watch|watch_wear|watch_ios|watch_garmin|mobile_android|mobile_ios)/)|\.md$|^(analysis_options\.yaml|melos\.yaml|pubspec\.yaml)$' <<<"$files"; then
             echo "web_e2e=true" >> "$GITHUB_OUTPUT"
           else
             echo "::notice::nothing the web suite can reach changed — web e2e skips"
@@ -195,7 +201,7 @@ jobs:
           # wiring without ever exercising it. actionlint catches a reference
           # that does not resolve; it cannot catch a permission that is too
           # narrow, which only shows up when the call actually runs.
-          if echo "$files" | grep -qE '^(infra/|\.trivyignore$|\.github/workflows/(terraform|ci)\.yml$)'; then
+          if grep -qE '^(infra/|\.trivyignore$|\.github/workflows/(terraform|ci)\.yml$)' <<<"$files"; then
             echo "infra=true" >> "$GITHUB_OUTPUT"
           else
             echo "::notice::nothing under infra/ changed — the Terraform checks skip"
@@ -229,7 +235,7 @@ jobs:
           # decisions § 39: lib/ and test/ are byte-identical to
           # apps/mobile_ios/, so a mirrored change touches this tree too, and
           # an unmirrored one is `twin-parity`'s red rather than this lane's.
-          if echo "$files" | grep -qvE '^(docs/|\.claude/|infra/|bin/|apps/(web|backend|job_worker|graph_cycle|custom_watch|watch_wear|watch_ios|watch_garmin|mobile_android)/)|\.md$'; then
+          if grep -qvE '^(docs/|\.claude/|infra/|bin/|apps/(web|backend|job_worker|graph_cycle|custom_watch|watch_wear|watch_ios|watch_garmin|mobile_android)/)|\.md$' <<<"$files"; then
             echo "mobile_ios=true" >> "$GITHUB_OUTPUT"
           else
             echo "::notice::nothing the iOS toolchain can reach changed — the macOS iOS build skips"

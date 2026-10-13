@@ -134,7 +134,7 @@ The shell's filename is named in three trees, and
 
 | Tree | Rail |
 |---|---|
-| `apps/web/svelte.config.js` | the adapter's `fallback` — writes the file |
+| `apps/web/vite.config.ts` | the adapter's `fallback` — writes the file |
 | `apps/web/lambda/*/build.mjs` | `spaShellPath` — embeds it in each share Lambda at bundle time |
 | `infra/modules/web-stack/main.tf` | the 403 `custom_error_response`'s `response_page_path` — the body of every deep link |
 
@@ -332,11 +332,11 @@ e2e-tested without standing up the Lambda.
 
 ## Shared marketing/brand pieces
 
-- **`$lib/components/SeoHead.svelte`** — reusable `<svelte:head>` (title,
+- **`#lib/components/SeoHead.svelte`** — reusable `<svelte:head>` (title,
   description, canonical, OG, Twitter, JSON-LD) for prerendered pages, so
   they stop hand-rolling — and drifting — their head. Per-entity share
   pages keep inline heads (their prod path is the Lambda injector).
-- **`$lib/share/site_meta.ts`** — `Organization` + `WebSite` JSON-LD.
+- **`#lib/share/site_meta.ts`** — `Organization` + `WebSite` JSON-LD.
   `WebSite` carries **no** `SearchAction` (no public search endpoint to
   target); `Organization` carries no `sameAs` until real profiles exist.
 - **First paint** (under the hash-based CSP, which forbids a hand-written
@@ -349,7 +349,7 @@ e2e-tested without standing up the Lambda.
 - **`static/robots.txt`** — allows `/`, disallows the auth-gated app paths
   (`/dashboard`, `/settings`, …), points at `/sitemap.xml`. `/share/*` is
   allowed.
-- **`/sitemap.xml`** (`sitemap.xml/+server.ts` + `$lib/share/sitemap.ts`)
+- **`/sitemap.xml`** (`sitemap.xml/+server.ts` + `#lib/share/sitemap.ts`)
   — build-time, anon-fetched: the top-level surfaces (`/`, `/feed`,
   `/routes?tab=explore`, `/segments`), public routes + runs
   (popularity-weighted), learn pages, and public **events + clubs + races**
@@ -368,8 +368,8 @@ e2e-tested without standing up the Lambda.
   `www_redirect.test.mjs` beside the function, in the `parity-types` job.
 - **The five share Lambdas answer GET and HEAD only.** Anything else is a
   `405` carrying `Allow: GET, HEAD` and `Cache-Control: no-store`, from
-  `$lib/share/share_method_gate` — which since
-  [decisions § 1035](../architecture/decisions.md) is `$lib/core/method_gate`
+  `#lib/share/share_method_gate` — which since
+  [decisions § 1035](../architecture/decisions.md) is `#lib/core/method_gate`
   instantiated at GET/HEAD, the same refusal the coach, generate-route and
   osrm-proxy Lambdas now answer with at their own allowed sets. Their CloudFront behaviours declare
   `allowed_methods = ["GET", "HEAD", "OPTIONS"]` and `cached_methods =
@@ -382,7 +382,7 @@ e2e-tested without standing up the Lambda.
   still asserted separately ([§ 972](../architecture/decisions.md)) — only the
   behaviour can stop a POST body being uploaded before a handler runs.
 - **The absolute origin every `<head>` resolves against** is
-  `PUBLIC_SITE_URL`, folded through `siteOrigin` (`$lib/core/site_url`) by
+  `PUBLIC_SITE_URL`, folded through `siteOrigin` (`#lib/core/site_url`) by
   **every** caller — the five share Lambdas and all twenty-two in-app reads
   under `src/routes/` (the `+page.ts` loaders for `/learn*`, `/recap/share/*`
   and the nine `/share/*` routes, the canonical `<svelte:head>` blocks, the
@@ -479,7 +479,7 @@ assembled with an exact count, so a new hand-spelled one fails. Note the
 one path that is not under `/share/`: a recap's public page is
 `/recap/share/[id]`, from `buildRecapShareCanonical`.
 
-**Build the JSON-LD with `serialiseJsonLd` from `$lib/util/json_ld` and never
+**Build the JSON-LD with `serialiseJsonLd` from `#lib/util/json_ld` and never
 spell the escape again.** It stringifies and escapes in one step, because the
 two were previously composed by hand at twelve call sites over nine private
 copies of one three-line function — and a thirteenth builder that stringified
@@ -491,7 +491,7 @@ value instead. `util/json_ld_escaping.test.ts` censuses every exported
 builder fails the suite until it is registered with an invocation that proves
 it escapes.
 
-**Clip user text with `clipText` / `collapseAndClip` from `$lib/util/clip_text`.**
+**Clip user text with `clipText` / `collapseAndClip` from `#lib/util/clip_text`.**
 A `<head>` budget is measured in **grapheme clusters** — what a reader counts
 as characters, and what the author counted when they wrote the description —
 and the cut lands only on a cluster boundary. Neither was true of a raw

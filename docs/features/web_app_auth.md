@@ -26,7 +26,7 @@ Any one user can have **multiple identities linked**. A user who signed up with 
 A Svelte 5 runes module that wraps Supabase's `supabase.auth.*` and exposes a reactive `user` / `loggedIn` / `loading` triple. Import it anywhere:
 
 ```typescript
-import { auth } from '$lib/stores/auth.svelte';
+import { auth } from '#lib/stores/auth.svelte';
 ```
 
 ### Reactive properties

@@ -30,7 +30,7 @@ node lambda/share-recap/build.mjs
 # → apps/web/lambda/share-recap/dist/share-recap.zip
 ```
 
-The zip bundles `src/index.ts` + its `$lib` imports (supabase-js inlined) and
+The zip bundles `src/index.ts` + its `#lib` imports (supabase-js inlined) and
 copies the arm64 `@resvg/resvg-js` native package into `node_modules`. Needs
 `@resvg/resvg-js-linux-arm64-gnu` resolvable — npm ci only installs
 host-platform optional deps, so on x64 fetch it via `npm pack` + untar into

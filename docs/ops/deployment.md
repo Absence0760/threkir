@@ -578,7 +578,7 @@ last-match-wins, so it uploads with the 60 s HTML cache like any other page.
 section was written the repo was mid-move and the paragraph here warned that
 the five share Lambdas still embedded `build/index.html` at bundle time, so
 step 3 would bake the landing page into every share handler whatever the
-ordering. That is no longer the state. Verified in the tree: `svelte.config.js`
+ordering. That is no longer the state. Verified in the tree: `vite.config.ts`
 emits `fallback: "200.html"`, all five `apps/web/lambda/share-*/build.mjs`
 resolve `build/200.html`, `spa_shell_head_signals.test.ts` reads that artifact,
 and the `custom_error_response` in `infra/modules/web-stack/main.tf` names

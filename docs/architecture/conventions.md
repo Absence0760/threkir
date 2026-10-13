@@ -199,8 +199,19 @@ become a flat dumping ground: `core/` (Supabase queries + client),
   several source files by path (`privacy_guards.test.ts`,
   `contrast_guard.test.ts`, …) and tests of the two root modules stay at the
   lib root.
-- **Import across folders with the `$lib/<folder>/<stem>` alias**, not deep
-  relative `../../` chains; siblings within a folder use `./`.
+- **Import across folders with the `#lib/<folder>/<file>` subpath import**,
+  not deep relative `../../` chains; siblings within a folder use `./`. `#lib`
+  is declared in `apps/web/package.json`'s `imports`, and a `#lib` specifier
+  names its file with its extension (`#lib/format/time.ts`,
+  `#lib/stores/auth.svelte.ts`) because TypeScript adds none to a subpath
+  import. Node and `tsx` resolve it without `svelte-kit sync`; `$app/*` is a
+  Vite virtual module they cannot load at all.
+- **Environment variables are declared once in `apps/web/src/env.ts`**
+  (`defineEnvVars`) and read as named imports from `$app/env/public` or
+  `$app/env/private` — never `$env/*`, which SvelteKit 3 deprecates. Declare a
+  new optional variable with `schema: optional` so an unset one reads as
+  `undefined`; mark it `static: true` only when the value must be inlined at
+  build, and leave a deploy-time feature gate non-static.
 - A **TS↔Dart parity helper** is registered in two places: the root
   `CLAUDE.md` lockstep bullet (what a session reads) and the
   `shared-library-syncer` agent's table (what the agent works from). Adding,
@@ -596,7 +607,7 @@ The criterion, which four rounds each re-derived from scratch
 [§ 1383](decisions.md), [§ 1400](decisions.md)):
 
 - **A module with a Dart twin folds.** Use `compareFoldedNames` from
-  `$lib/segments/catalogue_browse` (`catalogue_browse.dart` on the phone). It is
+  `#lib/segments/catalogue_browse` (`catalogue_browse.dart` on the phone). It is
   answered by a table committed beside the code, so both platforms give the same
   answer and a test can pin it. The residual is stated where the function lives:
   a fold is not a collation, so `ø`, `đ`, `ł`, `ß` and `æ` file after `z`.
@@ -1308,7 +1319,7 @@ Canonical modal classes live in `apps/web/src/app.css` (`.modal-backdrop`, `.mod
 A destructive action gets **exactly one** guard. Pick it by asking whether the
 action can honestly be reversed:
 
-- **Undoable** → call `deferDestructive` (`$lib/stores/undo.svelte`) and drop the
+- **Undoable** → call `deferDestructive` (`#lib/stores/undo.svelte`) and drop the
   `ConfirmDialog`. The row leaves the caller's local list immediately and the
   server mutation is **held** for the undo window, so `Undo` cancels a timer
   rather than compensating for a completed delete — it cannot fail. Restore by
@@ -1405,7 +1416,7 @@ delete that removes a whole entity other people depend on — a club, a
 challenge, the account — is never a primary action. It does not share a row
 with Join / Leave / Edit / New, and it is never a bare verb.
 
-- **Web** renders it in `DangerZone` (`$lib/components/DangerZone.svelte`)
+- **Web** renders it in `DangerZone` (`#lib/components/DangerZone.svelte`)
   after the page's own content: a labelled region, one line saying what the
   delete removes, and a `btn-danger` named for what it deletes ("Delete club",
   "Delete challenge"), still routed through `ConfirmDialog`. `/settings/account`,
@@ -1611,11 +1622,11 @@ Every public path an entity has is spelled in exactly one builder, and the build
 
 A detail / create page reachable from **more than one surface** must not send `back` to a hardcoded parent. A gym routine opened from a club's Templates tab, a session plan opened from a club event, a route builder launched from a club's Routes tab — each should return to where the user *came from*, not to `/gym/routines` / `/sessions` / `/routes`.
 
-Use the shared `smartBack` helper (`$lib/util/smart_back`): it registers an `afterNavigate` that latches whether there was an in-app referrer, and its `handle` pops history (`history.back()`) when there was one, falling through to the anchor's static `href` on a hard load / deep link. Because `history.back()` is a popstate, it also re-triggers the source list's `snapshot.restore` (see the section above) — so popping to the referrer is strictly better than a hardcoded `href` for scroll/filter preservation too.
+Use the shared `smartBack` helper (`#lib/util/smart_back`): it registers an `afterNavigate` that latches whether there was an in-app referrer, and its `handle` pops history (`history.back()`) when there was one, falling through to the anchor's static `href` on a hard load / deep link. Because `history.back()` is a popstate, it also re-triggers the source list's `snapshot.restore` (see the section above) — so popping to the referrer is strictly better than a hardcoded `href` for scroll/filter preservation too.
 
 ```svelte
 <script lang="ts">
-  import { smartBack } from '$lib/util/smart_back';
+  import { smartBack } from '#lib/util/smart_back.ts';
   const back = smartBack(); // omit the arg to pop for ANY in-app referrer
 </script>
 
@@ -1954,7 +1965,7 @@ must read the same in Auckland and Los Angeles; a `timestamptz` names an
 instant and genuinely belongs to different days in different places.
 
 Web's shared `formatDate` / `formatDateShort` / `formatRelativeTime`
-(`$lib/format/time`) now handle both: a bare `yyyy-mm-dd` is built from its
+(`#lib/format/time`) now handle both: a bare `yyyy-mm-dd` is built from its
 calendar components (local midnight), anything else falls through to the normal
 parse. **Prefer them over a hand-rolled parse** — the older idioms
 (`new Date(iso + 'T00:00:00')`, a `split('-')` + `new Date(y, m-1, d)` helper)

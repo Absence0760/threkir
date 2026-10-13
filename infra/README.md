@@ -278,7 +278,7 @@ While you're in the GitHub Secrets UI, add the **build-input** secrets too. Thes
 | `PUBLIC_REVENUECAT_WEB_PORTAL_URL` | RevenueCat dashboard → customer portal link | optional (manage-subscription button degrades to a hint) |
 | `PUBLIC_SENTRY_DSN` | Sentry → Settings → Projects → Client Keys (DSN) | optional |
 
-If a secret is unset, the workflow writes an empty string into `.env` and `svelte-check` errors with `Module '$env/static/public' has no exported member 'PUBLIC_X'`. Set the required three before the first deploy.
+If a secret is unset, the workflow writes an empty string into `.env`, and `apps/web/scripts/check_production_env.mjs` refuses the release before the build runs (an empty string satisfies `src/env.ts`'s required declarations, so the build alone would not catch it). Set the required three before the first deploy.
 
 ### 4. Preview env (apply first to flush out config issues against a non-prod blast radius)
 
@@ -371,7 +371,7 @@ Push a no-op commit to `main` (or push a `web@*` tag for prod) — `.github/work
 
 If the workflow fails with `Could not load credentials from any providers` on the `aws-actions/configure-aws-credentials` step, the GitHub secret for that env's role ARN is missing — re-check step 3.
 
-If it fails on `npm run check` with `Module '$env/static/public' has no exported member 'PUBLIC_X'`, the corresponding `PUBLIC_*` GitHub secret from step 3 is missing.
+If it fails on the production-env check naming a `PUBLIC_*` variable, or the build stops at `env_invalid`, the corresponding `PUBLIC_*` GitHub secret from step 3 is missing.
 
 Once green: visit `preview.<your-apex>` (or `<your-apex>` for prod) and confirm the SvelteKit static site renders.
 

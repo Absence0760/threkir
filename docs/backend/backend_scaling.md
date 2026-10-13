@@ -649,7 +649,7 @@ run-app/
 │   ├── watch_wear/          # Native Kotlin + Compose-for-Wear (Wear OS)
 │   ├── watch_ios/           # Native SwiftUI (watchOS)
 │   ├── custom_watch/        # Rust + Embassy firmware (ultra-watch research)
-│   ├── web/                 # SvelteKit 2 + Svelte 5
+│   ├── web/                 # SvelteKit 3 + Svelte 5
 │   ├── backend/
 │   │   └── supabase/        # Postgres schema, migrations, Edge Functions, seed.sql
 │   └── job_worker/          # Go service — background jobs + real-time + premium HTTP

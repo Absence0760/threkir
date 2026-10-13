@@ -1,6 +1,6 @@
 # Local testing — Web app (SvelteKit)
 
-The web app is a SvelteKit 2 + Svelte 5 project at `apps/web/`. The canonical package manager is **npm** via the root workspace ([decisions.md § 7](../../docs/architecture/decisions.md)) — that's what CI runs. The historical `apps/web/pnpm-lock.yaml` lets `pnpm` work locally too; either is fine, just don't mix in the same checkout.
+The web app is a SvelteKit 3 + Svelte 5 project at `apps/web/`. The canonical package manager is **npm** via the root workspace ([decisions.md § 7](../../docs/architecture/decisions.md)) — that's what CI runs. The historical `apps/web/pnpm-lock.yaml` lets `pnpm` work locally too; either is fine, just don't mix in the same checkout.
 
 ---
 
@@ -263,7 +263,7 @@ A short orientation, organised by capability rather than by folder:
 - **Manual creation**: `routes/runs/new/` (alongside the modal-hosted `RunEditor`).
 - **Lib**: `lib/data.ts` (every Supabase query), `lib/types.ts` (overlays), `lib/training.ts` (VDOT engine), `lib/training_load.ts` (TRIMP / fitness / fatigue / form), `lib/segments.ts`, `lib/privacy.ts`, `lib/route_history.ts`, `lib/strava-zip.ts`, `lib/garmin-zip.ts`, `lib/garmin-fit.ts`, `lib/push.ts`, `lib/settings.ts`, `lib/units.svelte.ts`, `lib/map-style.svelte.ts`, `lib/theme.ts`. Stores under `lib/stores/` (`auth`, `toast`, `notifications`).
 - **Components** (under `lib/components/`): `RunMap`, `RunTrackPreview`, `TrackPreview`, `ElevationProfile`, `RouteBuilder`, `RouteExplorer`, `ImportRoute`, `RunEditor`, `ClubEditor`, `EventEditor`, `PlanEditor`, `PlanMetaEditor`, `PlanCalendar`, `TrainingLoadChart`, `PeriodSummary`, `CoachChat`, `RunSocial`, `RunPhotos`, `RunSegmentEfforts`, `SegmentsPanel`, `RunShareView`, `NotificationBell`, `NotificationsList`, `PrivacyZonePicker`, `LicenseList`, `Modal`, `ConfirmDialog`, `ToastContainer`, `ProGate`, `SplitPane`, `WorkoutEditor`.
-- **Top-level files**: `src/app.html`, `src/app.css`, `src/app.d.ts`, `svelte.config.js`, `vite.config.ts`, `package.json`. The repo bootstrapped with pnpm so `apps/web/pnpm-lock.yaml` exists alongside the npm workspace; CI uses npm.
+- **Top-level files**: `src/app.html`, `src/app.css`, `src/app.d.ts`, `src/env.ts`, `vite.config.ts` (which carries the SvelteKit config — Kit 3 has no `svelte.config.js`), `package.json`. The repo bootstrapped with pnpm so `apps/web/pnpm-lock.yaml` exists alongside the npm workspace; CI uses npm.
 
 ---
 

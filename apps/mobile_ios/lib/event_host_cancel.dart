@@ -1,6 +1,6 @@
 /// The organiser's side of calling off a club event from the phone: one
 /// occurrence, a one-off event, or a whole recurring series (club_events.md
-/// § Refunds & cancellation coupling, decisions § 1818 and § R7PAID-2). The
+/// § Refunds & cancellation coupling, decisions § 1818 and § 1868). The
 /// refunds themselves run in the `events-cancel` Edge Function; this file reads
 /// what it answers.
 

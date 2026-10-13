@@ -1672,7 +1672,7 @@ class SocialService extends ChangeNotifier {
 
   /// End a recurring series now and call off every remaining occurrence anyone
   /// signed up for, refunding all of them, through `events-cancel`'s `series`
-  /// scope (decisions § R7PAID-2). Mirrors web's `cancelEventSeries`.
+  /// scope (decisions § 1868). Mirrors web's `cancelEventSeries`.
   Future<OccurrenceRefundSummary> cancelEventSeries(
     String eventId, {
     String? reason,

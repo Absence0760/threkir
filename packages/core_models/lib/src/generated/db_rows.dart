@@ -1303,6 +1303,7 @@ class EventAttendeeRow {
   static const String colInstanceStart = 'instance_start';
   static const String colOrderId = 'order_id';
   static const String colAttendance = 'attendance';
+  static const String colOfferExpiresAt = 'offer_expires_at';
 
   final String eventId;
   final String userId;
@@ -1311,6 +1312,7 @@ class EventAttendeeRow {
   final DateTime instanceStart;
   final String? orderId;
   final String? attendance;
+  final DateTime? offerExpiresAt;
 
   const EventAttendeeRow({
     required this.eventId,
@@ -1320,6 +1322,7 @@ class EventAttendeeRow {
     required this.instanceStart,
     this.orderId,
     this.attendance,
+    this.offerExpiresAt,
   });
 
   factory EventAttendeeRow.fromJson(Map<String, dynamic> json) => EventAttendeeRow(
@@ -1330,6 +1333,7 @@ class EventAttendeeRow {
     instanceStart: parseIsoStrictRequired(json['instance_start'], 'instance_start'),
     orderId: json['order_id'] as String?,
     attendance: json['attendance'] as String?,
+    offerExpiresAt: parseIsoStrictValue(json['offer_expires_at']),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -1340,6 +1344,7 @@ class EventAttendeeRow {
     colInstanceStart: instanceStart.toIso8601String(),
     colOrderId: orderId,
     colAttendance: attendance,
+    colOfferExpiresAt: offerExpiresAt?.toIso8601String(),
   };
 
   EventAttendeeRow copyWith({
@@ -1350,6 +1355,7 @@ class EventAttendeeRow {
     DateTime? instanceStart,
     String? orderId,
     String? attendance,
+    DateTime? offerExpiresAt,
   }) => EventAttendeeRow(
     eventId: eventId ?? this.eventId,
     userId: userId ?? this.userId,
@@ -1358,6 +1364,7 @@ class EventAttendeeRow {
     instanceStart: instanceStart ?? this.instanceStart,
     orderId: orderId ?? this.orderId,
     attendance: attendance ?? this.attendance,
+    offerExpiresAt: offerExpiresAt ?? this.offerExpiresAt,
   );
 }
 

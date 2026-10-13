@@ -914,6 +914,7 @@ export type Database = {
           event_id: string
           instance_start: string
           joined_at: string | null
+          offer_expires_at: string | null
           order_id: string | null
           status: string
           user_id: string
@@ -923,6 +924,7 @@ export type Database = {
           event_id: string
           instance_start: string
           joined_at?: string | null
+          offer_expires_at?: string | null
           order_id?: string | null
           status?: string
           user_id: string
@@ -932,6 +934,7 @@ export type Database = {
           event_id?: string
           instance_start?: string
           joined_at?: string | null
+          offer_expires_at?: string | null
           order_id?: string | null
           status?: string
           user_id?: string

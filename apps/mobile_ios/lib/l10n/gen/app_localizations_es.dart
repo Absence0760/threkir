@@ -15223,4 +15223,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get audienceShareLink => 'Enlace para compartir';
+
+  @override
+  String get audienceSharedWithYou => 'Compartido contigo';
+
+  @override
+  String get audienceSharedWithYouHint =>
+      'Compartido contigo. No es público: solo las personas con las que se ha compartido pueden abrirlo.';
 }

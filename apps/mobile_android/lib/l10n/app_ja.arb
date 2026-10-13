@@ -4385,5 +4385,7 @@
   "audienceRevokeAllTitle": "すべての共有を解除しますか？",
   "audienceRevokeAllBody": "共有した全員がこれを開けなくなります。",
   "audienceRevokeAllConfirm": "自分のみ",
-  "audienceShareLink": "共有リンク"
+  "audienceShareLink": "共有リンク",
+  "audienceSharedWithYou": "あなたに共有",
+  "audienceSharedWithYouHint": "あなたに共有されています。公開ではなく、共有された人だけが開けます。"
 }

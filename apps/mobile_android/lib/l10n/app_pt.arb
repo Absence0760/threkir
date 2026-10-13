@@ -4385,5 +4385,7 @@
   "audienceRevokeAllTitle": "Deixar de partilhar com todos?",
   "audienceRevokeAllBody": "Todas as pessoas com quem partilhou deixarão de poder abrir.",
   "audienceRevokeAllConfirm": "Só eu",
-  "audienceShareLink": "Partilhar ligação"
+  "audienceShareLink": "Partilhar ligação",
+  "audienceSharedWithYou": "Partilhado consigo",
+  "audienceSharedWithYouHint": "Partilhado consigo. Não é público: só as pessoas com quem foi partilhado podem abrir."
 }

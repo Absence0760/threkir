@@ -25184,6 +25184,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Share link'**
   String get audienceShareLink;
+
+  /// Marker on a run or route someone else shared with the viewer through their followers level or by name; it is not public
+  ///
+  /// In en, this message translates to:
+  /// **'Shared with you'**
+  String get audienceSharedWithYou;
+
+  /// Longer explanation of the Shared with you marker, read as its tooltip / screen-reader label
+  ///
+  /// In en, this message translates to:
+  /// **'Shared with you. It isn't public — only the people it's shared with can open it.'**
+  String get audienceSharedWithYouHint;
 }
 
 class _AppLocalizationsDelegate

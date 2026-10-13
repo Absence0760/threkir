@@ -19353,5 +19353,13 @@
   "audienceShareLink": "Share link",
   "@audienceShareLink": {
     "description": "Button that hands the in-app link (it opens only for the people who can see it) to the share sheet"
+  },
+  "audienceSharedWithYou": "Shared with you",
+  "@audienceSharedWithYou": {
+    "description": "Marker on a run or route someone else shared with the viewer through their followers level or by name; it is not public"
+  },
+  "audienceSharedWithYouHint": "Shared with you. It isn't public — only the people it's shared with can open it.",
+  "@audienceSharedWithYouHint": {
+    "description": "Longer explanation of the Shared with you marker, read as its tooltip / screen-reader label"
   }
 }

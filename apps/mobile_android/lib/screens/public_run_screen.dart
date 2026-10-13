@@ -17,11 +17,13 @@ import '../widgets/run_photos.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/run_segment_efforts.dart';
 import '../widgets/run_social_section.dart';
+import '../widgets/shared_with_you_chip.dart';
 
-/// Read-only public view of a single run. Mirrors the web
-/// `/share/run/[id]` route — anyone with the link can view a public
-/// run; private runs return null via RLS and we render a "not
-/// available" empty state.
+/// Read-only non-owner view of a single run. Mirrors the web
+/// `/share/run/[id]` route for a public run, and the non-owner branch of
+/// `/runs/[id]` for a run shared with the viewer through its owner's
+/// followers level or a named-person grant (decisions § 1874). Anything
+/// else renders a "not available" empty state.
 class PublicRunScreen extends StatefulWidget {
   final ApiClient api;
   final String runId;
@@ -42,6 +44,7 @@ class _PublicRunScreenState extends State<PublicRunScreen> {
   RunRow? _row;
   List<Waypoint> _track = const [];
   PublicProfile? _author;
+  bool _shared = false;
 
   @override
   void initState() {
@@ -55,11 +58,13 @@ class _PublicRunScreenState extends State<PublicRunScreen> {
       _loadError = null;
     });
     try {
-      final row = await widget.api.fetchPublicRunById(widget.runId);
+      final viewable = await widget.api.fetchViewableRunById(widget.runId);
+      final row = viewable.row;
       if (row == null) {
         if (!mounted) return;
         setState(() {
           _row = null;
+          _shared = false;
           _loading = false;
         });
         return;
@@ -102,6 +107,7 @@ class _PublicRunScreenState extends State<PublicRunScreen> {
       if (!mounted) return;
       setState(() {
         _row = row;
+        _shared = viewable.shared;
         _track = track;
         final profileRow = results[1] as UserProfileRow?;
         _author = profileRow == null
@@ -198,6 +204,14 @@ class _PublicRunScreenState extends State<PublicRunScreen> {
         // the seam: the spectator arrives from the feed, sees the run IS live,
         // and gets there. Mirrors the /share/run/[id] CTA on web.
         if (isLiveBroadcast(row)) _LiveBanner(runId: row.id, api: widget.api),
+        if (_shared)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: SharedWithYouChip(),
+            ),
+          ),
         if (_author != null)
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),

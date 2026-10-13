@@ -15225,6 +15225,13 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get audienceShareLink => 'Partilhar ligação';
+
+  @override
+  String get audienceSharedWithYou => 'Partilhado consigo';
+
+  @override
+  String get audienceSharedWithYouHint =>
+      'Partilhado consigo. Não é público: só as pessoas com quem foi partilhado podem abrir.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -30440,4 +30447,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get audienceShareLink => 'Link de compartilhamento';
+
+  @override
+  String get audienceSharedWithYou => 'Compartilhado com você';
+
+  @override
+  String get audienceSharedWithYouHint =>
+      'Compartilhado com você. Não é público: só as pessoas com quem foi compartilhado podem abrir.';
 }

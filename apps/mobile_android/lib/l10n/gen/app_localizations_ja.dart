@@ -14513,4 +14513,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get audienceShareLink => '共有リンク';
+
+  @override
+  String get audienceSharedWithYou => 'あなたに共有';
+
+  @override
+  String get audienceSharedWithYouHint => 'あなたに共有されています。公開ではなく、共有された人だけが開けます。';
 }

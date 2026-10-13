@@ -36,6 +36,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
 import '../lib/apple_watch_race_bridge.dart';
 import '../lib/race_controller.dart';
@@ -57,6 +58,11 @@ class _FakeSocial extends SocialService {
 
   /// Thrown by [submitEventResult] instead of the generic network error.
   Object? submitError;
+
+  /// Per-call outcomes, consumed in order before [submitError]: an error to
+  /// throw, or null to succeed.
+  final List<Object?> submitScript = [];
+  int submitCalls = 0;
 
   /// What the default course loader reads. It reaches nothing else: no
   /// route read, and no ApiClient is initialised in a host test.
@@ -113,6 +119,11 @@ class _FakeSocial extends SocialService {
     int? chipTimeS,
     String? finishMethod,
   }) async {
+    submitCalls++;
+    if (submitScript.isNotEmpty) {
+      final scripted = submitScript.removeAt(0);
+      if (scripted != null) throw scripted;
+    }
     final err = submitError;
     if (err != null) throw err;
     if (failing) throw Exception('network unreachable');
@@ -480,6 +491,118 @@ void main() {
 
       expect(social.submitted, hasLength(1));
       expect(social.submitted.single.runId, 'run-2');
+    });
+  });
+
+  group('a result the server refuses outright is not retried', () {
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    PostgrestException pg(String? code, [String message = 'refused']) =>
+        PostgrestException(message: message, code: code);
+
+    test('400 / 403 / 404 / 422 are permanent, as on Wear', () {
+      for (final code in [
+        '400', '403', '404', '422',
+        '23514', // check_violation: a CHECK, or race_result_window_closed
+        '23502', '22P02', '42703',
+        '42501', // RLS
+        '42P01', '42883',
+        'P0001',
+        'PGRST204', 'PGRST202', 'PGRST100',
+      ]) {
+        expect(isRetryableRaceResultFailure(pg(code)), isFalse, reason: code);
+      }
+    });
+
+    test('everything else is kept for the next drain', () {
+      for (final code in [
+        null, '', '500', '502', '503', '409',
+        '23505', '23503', // 409
+        '08006', '53300', '40001', '57014',
+        'PGRST000', 'PGRST003', 'PGRST301', 'PGRST999',
+        'garbage',
+      ]) {
+        expect(isRetryableRaceResultFailure(pg(code)), isTrue, reason: '$code');
+      }
+      expect(isRetryableRaceResultFailure(Exception('offline')), isTrue);
+      expect(isRetryableRaceResultFailure(TimeoutException('slow')), isTrue);
+    });
+
+    test('a rate-limit refusal clears by itself, so it is kept', () {
+      expect(
+          isRetryableRaceResultFailure(pg('P0001',
+              'rate limit exceeded for event_results, retry in 30s')),
+          isTrue);
+    });
+
+    test('a drain drops a refused result and keeps a transient one',
+        () async {
+      // Before this every failure stayed queued, so a result refused for
+      // good was retried forever and, at the 20-entry cap, pushed a real
+      // finisher time out of the queue.
+      SharedPreferences.setMockInitialValues({
+        kPendingRaceResultsKey: jsonEncode([
+          {
+            'event_id': 'event-closed',
+            'instance_start': '2026-05-22T18:00:00.000Z',
+            'run_id': 'run-a',
+            'duration_s': 100,
+            'distance_m': 1000.0,
+          },
+          {
+            'event_id': 'event-offline',
+            'instance_start': '2026-05-22T18:00:00.000Z',
+            'run_id': 'run-b',
+            'duration_s': 200,
+            'distance_m': 2000.0,
+          },
+        ]),
+      });
+      final social = _FakeSocial()
+        ..submitScript.addAll([
+          pg('23514', 'race_result_window_closed: race is cancelled'),
+          Exception('offline'),
+        ]);
+      await RaceController(social).drainPendingResults();
+
+      expect(social.submitCalls, 2);
+      final raw = (await SharedPreferences.getInstance())
+          .getString(kPendingRaceResultsKey);
+      final left = (jsonDecode(raw!) as List).cast<Map<String, dynamic>>();
+      expect(left.map((e) => e['event_id']), ['event-offline']);
+    });
+
+    test('a first submit refused outright is not queued at all', () async {
+      final social = _FakeSocial()..submitError = pg('42501');
+      final c = RaceController(social);
+      c.attachRecorder(
+          eventId: 'event-1', instance: DateTime.utc(2026, 5, 22, 18));
+      await c.submitResult(runId: 'run-1', durationS: 60, distanceM: 400);
+
+      expect(
+          (await SharedPreferences.getInstance())
+              .getString(kPendingRaceResultsKey),
+          isNull);
+      expect(c.isHosting, isFalse);
+    });
+
+    test('a watch result refused outright is accounted for and not queued',
+        () async {
+      final social = _FakeSocial()..submitError = pg('23514');
+      final c = RaceController(social);
+      final accounted = await c.ingestWatchResult(WatchRaceResult(
+        eventId: 'event-1',
+        instanceStart: DateTime.utc(2026, 5, 22, 18),
+        runId: 'watch-run-1',
+        durationS: 3600,
+        distanceM: 10000,
+      ));
+      expect(accounted, isTrue,
+          reason: 'redelivering it would be refused the same way');
+      expect(
+          (await SharedPreferences.getInstance())
+              .getString(kPendingRaceResultsKey),
+          isNull);
     });
   });
 

@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'apple_watch_race_bridge.dart';
 import 'race_finish.dart';
+import 'rate_limit_errors.dart';
 import 'social_service.dart';
 
 /// SharedPreferences key holding the finisher times that haven't reached
@@ -19,6 +20,71 @@ const kPendingRaceResultsKey = 'race_pending_results';
 /// is generous; the cap only exists so a permanently-failing write can't
 /// grow the stored list without limit. Oldest entries drop first.
 const kPendingRaceResultsMax = 20;
+
+/// The HTTP status PostgREST answers an error [code] with, after its error
+/// table (docs.postgrest.org, "Errors"): `supabase_flutter` surfaces the
+/// SQLSTATE or `PGRST` code, and only a body it could not parse carries the
+/// status itself. Null when the code is unknown or absent.
+@visibleForTesting
+int? postgrestHttpStatus(String? code) {
+  if (code == null) return null;
+  if (RegExp(r'^\d{3}$').hasMatch(code)) return int.parse(code);
+  if (code.startsWith('PGRST')) return _pgrstStatus[code];
+  if (code.length != 5) return null;
+  switch (code) {
+    case '23503' || '23505':
+      return 409;
+    case '25006':
+      return 405;
+    case '42501':
+      return 403;
+    case '42883' || '42P01':
+      return 404;
+    case '42P17':
+      return 500;
+    case 'P0001':
+      return 400;
+  }
+  return switch (code.substring(0, 2)) {
+    '08' || '53' => 503,
+    '54' => 413,
+    '0L' || '0P' || '28' => 403,
+    '09' || '25' || '2D' || '38' || '39' || '3B' || '40' || '55' || '57' ||
+    '58' || 'F0' || 'HV' || 'P0' || 'XX' =>
+      500,
+    _ => 400,
+  };
+}
+
+const Map<String, int> _pgrstStatus = {
+  'PGRST000': 503, 'PGRST001': 503, 'PGRST002': 503, 'PGRST003': 504,
+  'PGRST100': 400, 'PGRST101': 405, 'PGRST102': 400, 'PGRST103': 416,
+  'PGRST105': 405, 'PGRST106': 406, 'PGRST107': 415, 'PGRST108': 400,
+  'PGRST111': 500, 'PGRST112': 500, 'PGRST114': 400, 'PGRST115': 400,
+  'PGRST116': 406, 'PGRST117': 405, 'PGRST118': 400, 'PGRST120': 400,
+  'PGRST121': 500, 'PGRST122': 400, 'PGRST123': 400, 'PGRST124': 400,
+  'PGRST125': 404, 'PGRST126': 404, 'PGRST127': 400, 'PGRST128': 400,
+  'PGRST200': 400, 'PGRST201': 300, 'PGRST202': 404, 'PGRST203': 300,
+  'PGRST204': 400, 'PGRST205': 404,
+  'PGRST300': 500, 'PGRST301': 401, 'PGRST302': 401, 'PGRST303': 401,
+};
+
+/// Whether a failed finisher-time write is worth replaying. A 400, 403, 404
+/// or 422 answers the same way on every retry — a CHECK, the closed result
+/// window, RLS, a row that is gone — so replaying it only holds a slot in
+/// the capped queue until a real result is pushed out; it is dropped, as
+/// Wear's `isRetryableRaceResultFailure` drops it. Everything else is kept:
+/// no network, a 5xx, an expired session (401), a code this cannot read,
+/// and a rate-limit refusal, which PostgREST also answers 400 but which
+/// clears by itself.
+bool isRetryableRaceResultFailure(Object e) {
+  if (e is! PostgrestException) return true;
+  if (parseRateLimitError(code: e.code, message: e.message) != null) {
+    return true;
+  }
+  final status = postgrestHttpStatus(e.code);
+  return status == null || !const {400, 403, 404, 422}.contains(status);
+}
 
 /// A finisher time that couldn't be submitted when the run finished.
 ///
@@ -499,7 +565,9 @@ class RaceController extends ChangeNotifier {
   /// value in the feature nobody can re-derive, so a failed write goes to the
   /// same on-disk queue [submitResult] uses and is replayed by
   /// [drainPendingResults]. Returns whether the time is accounted for — the
-  /// native side re-delivers anything this says it is not.
+  /// native side re-delivers anything this says it is not. A time the
+  /// server refuses outright is accounted for by being dropped: redelivering
+  /// it would be refused the same way.
   Future<bool> ingestWatchResult(WatchRaceResult result) async {
     try {
       await _social.submitEventResult(
@@ -512,7 +580,8 @@ class RaceController extends ChangeNotifier {
       );
       return true;
     } catch (e) {
-      debugPrint('[RaceController.ingestWatchResult] $e');
+      debugPrint('[RaceController.ingestWatchResult] ${safeErrorLabel(e)}');
+      if (!isRetryableRaceResultFailure(e)) return true;
     }
     return _queuePendingResult(PendingRaceResult(
       eventId: result.eventId,
@@ -807,8 +876,8 @@ class RaceController extends ChangeNotifier {
     try {
       await _submitPending(result);
     } catch (e) {
-      debugPrint('[RaceController.submitResult] $e');
-      await _queuePendingResult(result);
+      debugPrint('[RaceController.submitResult] ${safeErrorLabel(e)}');
+      if (isRetryableRaceResultFailure(e)) await _queuePendingResult(result);
     }
     detachRecorder();
   }
@@ -831,7 +900,8 @@ class RaceController extends ChangeNotifier {
   /// Replay every finisher time [submitResult] couldn't deliver. Runs off
   /// the session poll (and therefore also off [start]), so a result queued
   /// in a dead spot lands as soon as the phone is back on the network or
-  /// the app is next opened.
+  /// the app is next opened. A result the server refuses outright is
+  /// dropped ([isRetryableRaceResultFailure]).
   Future<void> drainPendingResults() async {
     if (_draining) return;
     final queued = await _readPendingResults();
@@ -843,8 +913,10 @@ class RaceController extends ChangeNotifier {
         try {
           await _submitPending(r);
         } catch (e) {
-          debugPrint('[RaceController.drainPendingResults] $e');
-          remaining.add(r);
+          final keep = isRetryableRaceResultFailure(e);
+          debugPrint('[RaceController.drainPendingResults] '
+              '${keep ? 'kept' : 'dropped'}: ${safeErrorLabel(e)}');
+          if (keep) remaining.add(r);
         }
       }
       await _writePendingResults(remaining);

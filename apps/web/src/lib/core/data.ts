@@ -3775,7 +3775,7 @@ export async function eventHasAthleticData(eventId: string): Promise<boolean> {
 
 /// The message `guard_paid_event_delete` (20270731000001) raises when a client
 /// deletes an event, or a club holding one, that has taken payments. The event
-/// is cancelled instead, and its payment records stay (decisions § R7PAID-1).
+/// is cancelled instead, and its payment records stay (decisions § 1867).
 export const PAID_EVENT_DELETE_REFUSAL = 'paid_event_has_orders';
 
 /// Throws `Error(PAID_EVENT_DELETE_REFUSAL)` when the event has taken payments,
@@ -4126,7 +4126,7 @@ export async function cancelPaidEventInstance(
 
 /// End a recurring series now and call off every remaining occurrence anyone
 /// signed up for, refunding all of their registrations, through the
-/// events-cancel function's `series` scope (decisions § R7PAID-2). The function
+/// events-cancel function's `series` scope (decisions § 1868). The function
 /// moves `recurrence_until` to the moment of the cancel, so later occurrences
 /// stop existing rather than each being cancelled. Re-running it resumes any
 /// refund that failed, exactly as an occurrence cancel does. Throws an Error

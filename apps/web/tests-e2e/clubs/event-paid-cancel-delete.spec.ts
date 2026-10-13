@@ -7,8 +7,8 @@ import { USER_A, USER_B } from '../fixtures/users';
 
 /**
  * Calling off a class that took payments, from the organiser's side
- * (club_events.md § Refunds & cancellation coupling, decisions § R7PAID-1 and
- * § R7PAID-2):
+ * (club_events.md § Refunds & cancellation coupling, decisions § 1867 and
+ * § 1868):
  *   (a) Delete on an event that took a payment is refused by
  *       `guard_paid_event_delete`, the page says why, and the event and its
  *       order are still there;

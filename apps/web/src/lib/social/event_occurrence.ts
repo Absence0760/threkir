@@ -63,7 +63,7 @@ export function upcomingCancelledOccurrences(
 }
 
 /// Whether an organiser cancelled this whole series. A series cancel
-/// (events-cancel `scope: 'series'`, decisions § R7PAID-2) ends the series at
+/// (events-cancel `scope: 'series'`, decisions § 1868) ends the series at
 /// the moment of the cancel and calls off by name every later occurrence
 /// someone had signed up for, so those cancelled instants sit past
 /// `recurrence_until`; a series that simply ran out has none there. A series

@@ -1,5 +1,5 @@
 -- An event that has moved money cannot be deleted by a client; it is cancelled
--- (decisions § R7PAID-1, club_events.md § Refunds & cancellation coupling).
+-- (decisions § 1867, club_events.md § Refunds & cancellation coupling).
 --
 -- `event_orders.event_id` and `fundraisers.event_id` cascade on `events`
 -- delete (20261229_001, 20270213_001), and `payment_refunds` / `donations`

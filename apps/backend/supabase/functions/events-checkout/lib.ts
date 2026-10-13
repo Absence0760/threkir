@@ -26,7 +26,7 @@ export function isSalesWindowOpen(
 }
 
 /// Is the instant being bought past the end of its series? A series cancel
-/// (events-cancel `scope: 'series'`, decisions § R7PAID-2) ends a recurring
+/// (events-cancel `scope: 'series'`, decisions § 1868) ends a recurring
 /// event by moving `recurrence_until` to the moment it was cancelled, and only
 /// the occurrences someone had signed up for get an `event_exceptions` row; the
 /// rest stop existing. Checkout names its instant directly, so without this an

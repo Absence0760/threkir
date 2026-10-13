@@ -18,7 +18,7 @@
 /// an instant past it), every remaining occurrence that holds an order or an
 /// RSVP is called off by name (so each is told, through `notify_event_cancel`),
 /// and every one of their orders is refunded exactly as an occurrence cancel
-/// refunds (decisions § R7PAID-2).
+/// refunds (decisions § 1868).
 ///
 /// Either way this EF only INITIATES. The stripe-events-webhook — still the
 /// SOLE, idempotent, service-role-only writer of event_orders.status —

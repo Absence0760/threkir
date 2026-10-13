@@ -1,4 +1,4 @@
--- Pins migration 20270731000001 (decisions § R7PAID-1): an event that has
+-- Pins migration 20270731000001 (decisions § 1867): an event that has
 -- moved money cannot be deleted by a client.
 --   * guard_paid_event_delete refuses an organiser's delete of an event with a
 --     paid, a pending or an already refunded order, and of one whose

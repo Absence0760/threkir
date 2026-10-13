@@ -115,9 +115,10 @@ Deno.test('every refund in the tier goes through ONE refundOrder over ONE transp
       .test(SRC),
   );
   assert(
-    /refundOrder\(stripeRestRefundCreator\(stripeSecretKey\), service, order\)/
-      .test(files['stripe-events-webhook/index.ts']),
-    'the webhook no longer refunds a cancelled occurrence through refundOrder',
+    /refundOrder\(refunds\.transport\(stripeSecretKey\), service, order\)/
+      .test(files['stripe-events-webhook/completed.ts']) &&
+      /transport: stripeRestRefundCreator,/.test(files['stripe-events-webhook/index.ts']),
+    'the webhook no longer refunds a cancelled occurrence through refundOrder over the one transport',
   );
   assert(
     /refundOrder\(createRefund, service, order\)/.test(files['events-refund-sweep/index.ts']) &&

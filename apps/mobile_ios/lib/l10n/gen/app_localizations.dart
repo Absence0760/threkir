@@ -25086,19 +25086,19 @@ abstract class AppLocalizations {
   /// Save button of the session plan attach sheet
   ///
   /// In en, this message translates to:
-  /// **'Attach'**
+  /// **'Save'**
   String get clubEventSessionPlanSave;
 
   /// Banner after the organiser attaches, changes or clears the class session plan
   ///
   /// In en, this message translates to:
-  /// **'Plan attached to the event.'**
+  /// **'Session plan updated.'**
   String get clubEventSessionPlanSaved;
 
   /// Banner when attaching, changing or clearing the class session plan failed
   ///
   /// In en, this message translates to:
-  /// **'Could not save the session.'**
+  /// **'Couldn\'t update the session plan.'**
   String get clubEventSessionPlanSaveFailed;
 
   /// Note in the session plan attach sheet when the class already carries a gym routine

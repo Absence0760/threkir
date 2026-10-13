@@ -14461,13 +14461,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get clubEventSessionPlanAttach => 'クラスイベントに紐付ける';
 
   @override
-  String get clubEventSessionPlanSave => '紐付ける';
+  String get clubEventSessionPlanSave => '保存';
 
   @override
-  String get clubEventSessionPlanSaved => 'プランをイベントに紐付けました。';
+  String get clubEventSessionPlanSaved => 'セッションプランを更新しました。';
 
   @override
-  String get clubEventSessionPlanSaveFailed => 'セッションを保存できませんでした。';
+  String get clubEventSessionPlanSaveFailed => 'セッションプランを更新できませんでした。';
 
   @override
   String get clubEventSessionPlanReplacesRoutine =>

@@ -19261,15 +19261,15 @@
   "@clubEventSessionPlanAttach": {
     "description": "Organiser's button on the session sequence card that opens the session plan picker, and that sheet's title"
   },
-  "clubEventSessionPlanSave": "Attach",
+  "clubEventSessionPlanSave": "Save",
   "@clubEventSessionPlanSave": {
     "description": "Save button of the session plan attach sheet"
   },
-  "clubEventSessionPlanSaved": "Plan attached to the event.",
+  "clubEventSessionPlanSaved": "Session plan updated.",
   "@clubEventSessionPlanSaved": {
     "description": "Banner after the organiser attaches, changes or clears the class session plan"
   },
-  "clubEventSessionPlanSaveFailed": "Could not save the session.",
+  "clubEventSessionPlanSaveFailed": "Couldn't update the session plan.",
   "@clubEventSessionPlanSaveFailed": {
     "description": "Banner when attaching, changing or clearing the class session plan failed"
   },

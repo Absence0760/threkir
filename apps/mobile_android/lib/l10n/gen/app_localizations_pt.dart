@@ -15169,14 +15169,14 @@ class AppLocalizationsPt extends AppLocalizations {
   String get clubEventSessionPlanAttach => 'Vincular a um evento de aula';
 
   @override
-  String get clubEventSessionPlanSave => 'Vincular';
+  String get clubEventSessionPlanSave => 'Guardar';
 
   @override
-  String get clubEventSessionPlanSaved => 'Plano vinculado ao evento.';
+  String get clubEventSessionPlanSaved => 'Plano de sessão atualizado.';
 
   @override
   String get clubEventSessionPlanSaveFailed =>
-      'Não foi possível guardar a sessão.';
+      'Não foi possível atualizar o plano de sessão.';
 
   @override
   String get clubEventSessionPlanReplacesRoutine =>
@@ -30462,14 +30462,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get clubEventSessionPlanAttach => 'Vincular a um evento de aula';
 
   @override
-  String get clubEventSessionPlanSave => 'Vincular';
+  String get clubEventSessionPlanSave => 'Salvar';
 
   @override
-  String get clubEventSessionPlanSaved => 'Plano vinculado ao evento.';
+  String get clubEventSessionPlanSaved => 'Plano de sessão atualizado.';
 
   @override
   String get clubEventSessionPlanSaveFailed =>
-      'Não foi possível salvar a sessão.';
+      'Não foi possível atualizar o plano de sessão.';
 
   @override
   String get clubEventSessionPlanReplacesRoutine =>

@@ -15204,14 +15204,14 @@ class AppLocalizationsFr extends AppLocalizations {
   String get clubEventSessionPlanAttach => 'Associer à un événement de cours';
 
   @override
-  String get clubEventSessionPlanSave => 'Associer';
+  String get clubEventSessionPlanSave => 'Enregistrer';
 
   @override
-  String get clubEventSessionPlanSaved => 'Plan associé à l’événement.';
+  String get clubEventSessionPlanSaved => 'Plan de séance mis à jour.';
 
   @override
   String get clubEventSessionPlanSaveFailed =>
-      'Impossible d’enregistrer la séance.';
+      'Impossible de mettre à jour le plan de séance.';
 
   @override
   String get clubEventSessionPlanReplacesRoutine =>

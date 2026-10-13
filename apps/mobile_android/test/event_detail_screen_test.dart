@@ -1661,7 +1661,7 @@ void main() {
       expect(social.planWrites, ['plan-core']);
       expect(inCard('Cat-Cow · flow 30s'), findsNothing);
       expect(inCard('Core Pilates'), findsOneWidget);
-      expect(find.text('Plan attached to the event.'), findsOneWidget);
+      expect(find.text('Session plan updated.'), findsOneWidget);
     });
 
     realtimeWidgetTest('the organiser clears the plan', (tester) async {
@@ -1737,7 +1737,10 @@ void main() {
       await tester.tap(find.byKey(const Key('session-sequence-save')));
       await pumpUntil(
         tester,
-        () => find.text('Could not save the session.').evaluate().isNotEmpty,
+        () => find
+            .text("Couldn't update the session plan.")
+            .evaluate()
+            .isNotEmpty,
         describe: 'the failure banner',
       );
       expect(social.planWrites, ['plan-core']);

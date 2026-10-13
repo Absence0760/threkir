@@ -3274,7 +3274,7 @@ class _GymRoutineAttachSheetState extends State<_GymRoutineAttachSheet> {
 }
 
 /// The organiser's session-plan attach sheet: the shared [SessionPlanPicker],
-/// the note that a plan replaces the gym routine, and Cancel / Attach. Pops
+/// the note that a plan replaces the gym routine, and Cancel / Save. Pops
 /// `(id: <choice>)`, where a null id clears the plan; dismissing pops null.
 class _SessionPlanAttachSheet extends StatefulWidget {
   final String? initial;

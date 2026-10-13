@@ -15016,13 +15016,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clubEventSessionPlanAttach => 'Attach to a class event';
 
   @override
-  String get clubEventSessionPlanSave => 'Attach';
+  String get clubEventSessionPlanSave => 'Save';
 
   @override
-  String get clubEventSessionPlanSaved => 'Plan attached to the event.';
+  String get clubEventSessionPlanSaved => 'Session plan updated.';
 
   @override
-  String get clubEventSessionPlanSaveFailed => 'Could not save the session.';
+  String get clubEventSessionPlanSaveFailed =>
+      'Couldn\'t update the session plan.';
 
   @override
   String get clubEventSessionPlanReplacesRoutine =>

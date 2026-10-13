@@ -21,7 +21,8 @@ test.describe('/help — in-app help centre', () => {
 	test('contents lists guides by category and the audience chips narrow them', async ({ page }) => {
 		await page.goto('/help');
 		await expect(page.getByRole('heading', { level: 1, name: 'Help' })).toBeVisible();
-		await expect(page.getByTestId('help-language-note')).toContainText('English');
+		// English guides in an English app are not a fallback, so no guide says it is in English.
+		await expect(page.getByTestId('help-language-note')).toHaveCount(0);
 		await expect(page.getByRole('heading', { level: 2, name: 'Your account' })).toBeVisible();
 
 		const card = page.getByRole('link', { name: /Finding help in the app/ });
@@ -65,7 +66,7 @@ test.describe('/help — in-app help centre', () => {
 		await expect(page).toHaveURL(/\/help\/using-help#searching-the-guides$/);
 		await expect(page.getByRole('heading', { level: 2, name: 'Searching the guides' })).toBeInViewport();
 
-		await expect(guide.getByText('Caution')).toBeVisible();
+		await expect(guide.getByText('Tip', { exact: true }).first()).toBeVisible();
 		await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
 	});
 

@@ -16,7 +16,7 @@ export const guide: Guide = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Race control appears on the event page for club owners, admins and members with the **Race director** role. On the web it is the **Race control** card; in the phone app it is the **RACE CONTROL** card on the event screen. Approving and editing results is web only.'
+					text: 'Race control appears on the event page for club owners, admins and members with the **Race director** role. On the web it is the **Race control** card; in the phone app it is the **RACE CONTROL** card on the event screen. Both can approve and edit results.'
 				},
 				{
 					type: 'p',
@@ -60,7 +60,7 @@ export const guide: Guide = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: "GO does not start anyone's recording. Racers still press Start on their own phone or watch. Remind them to start after they see **Race LIVE**."
+					text: "GO does not start anyone's recording. Racers press Start on their own phone or watch, either on the line while the race is armed (the recording joins the race at GO) or after they see **Race LIVE**. Remind them to start one."
 				}
 			]
 		},
@@ -84,7 +84,7 @@ export const guide: Guide = {
 					type: 'steps',
 					items: [
 						'When the last racer is in (or your cut-off has passed), choose **End race**.',
-						'On the web the confirmation tells you how many racers who started have no result. Those racers will be marked DNF.',
+						'The confirmation, on the web and in the phone app, tells you how many racers who started have no result. Those racers will be marked DNF.',
 						'Confirm with **End race**.'
 					]
 				},
@@ -108,7 +108,7 @@ export const guide: Guide = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'On the web you can cancel only while the race is armed: choose **Cancel** next to **GO**, then **Cancel race**. In the phone app, **Cancel** is offered while armed and **Cancel race** while running.'
+					text: 'You can cancel only while the race is armed: choose **Cancel** next to **GO** (**Fire Go** in the phone app), then **Cancel race**. Once you have fired GO the race can only be ended.'
 				},
 				{
 					type: 'p',
@@ -126,7 +126,7 @@ export const guide: Guide = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Results are on the event page under **Results**, with one board per course. This part is on the web only.'
+					text: 'Results are on the event page under **Results**, with one board per course. In the phone app, each result has a menu with the same **Approve**, **Unverify** and **Edit** actions.'
 				},
 				{
 					type: 'list',

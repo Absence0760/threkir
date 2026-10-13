@@ -2,13 +2,13 @@
 	/// Help search results for `?q=`. Ranked by `searchGuides`: a word in the
 	/// title outranks one in the summary, which outranks one further down.
 	import { page } from '$app/state';
-	import { searchGuides } from '#lib/help/index.ts';
+	import { helpIndex } from '#lib/help/localized.svelte.ts';
 	import { KIND_LABEL } from '#lib/help/labels.ts';
 	import HelpSearchForm from '#lib/components/help/HelpSearchForm.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 
 	const query = $derived((page.url.searchParams.get('q') ?? '').trim());
-	const results = $derived(searchGuides(query));
+	const results = $derived(helpIndex().searchGuides(query));
 </script>
 
 <svelte:head>
@@ -41,8 +41,8 @@
 				<li>
 					<a class="result" href="/help/{guide.id}">
 						<span class="result-kind">{m(KIND_LABEL[guide.kind])}</span>
-						<span class="result-title">{guide.title}</span>
-						<span class="result-summary">{guide.summary}</span>
+						<span class="result-title" lang={guide.lang}>{guide.title}</span>
+						<span class="result-summary" lang={guide.lang}>{guide.summary}</span>
 					</a>
 				</li>
 			{/each}

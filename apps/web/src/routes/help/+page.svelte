@@ -2,7 +2,8 @@
 	/// The in-app help contents (docs/features/help.md): every guide, grouped by
 	/// category, narrowed by who it is written for. Signed-in only and never
 	/// indexed — the public, crawlable guides are /learn, a different surface.
-	import { AUDIENCES, guidesByCategory, type Audience } from '#lib/help/index.ts';
+	import { AUDIENCES, type Audience } from '#lib/help/index.ts';
+	import { helpIndex } from '#lib/help/localized.svelte.ts';
 	import { AUDIENCE_LABEL, CATEGORY_LABEL, KIND_LABEL } from '#lib/help/labels.ts';
 	import HelpSearchForm from '#lib/components/help/HelpSearchForm.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -14,7 +15,8 @@
 	let audience = $state<Audience | null>(null);
 
 	const groups = $derived(
-		guidesByCategory()
+		helpIndex()
+			.guidesByCategory()
 			.map((group) => ({
 				...group,
 				guides: group.guides.filter(
@@ -35,8 +37,6 @@
 		<h1>{m('help.title')}</h1>
 		<p class="subtitle">{m('help.intro')}</p>
 	</header>
-
-	<p class="language-note" data-testid="help-language-note">{m('help.englishOnly')}</p>
 
 	<HelpSearchForm />
 
@@ -78,8 +78,8 @@
 					<li>
 						<a class="guide-card" href="/help/{guide.id}" data-testid="help-guide-card">
 							<span class="guide-kind">{m(KIND_LABEL[guide.kind])}</span>
-							<span class="guide-title">{guide.title}</span>
-							<span class="guide-summary">{guide.summary}</span>
+							<span class="guide-title" lang={guide.lang}>{guide.title}</span>
+							<span class="guide-summary" lang={guide.lang}>{guide.summary}</span>
 						</a>
 					</li>
 				{/each}
@@ -98,11 +98,6 @@
 	}
 	.subtitle {
 		margin: 0;
-		color: var(--color-text-secondary);
-	}
-	.language-note {
-		margin: var(--space-md) 0;
-		font-size: 0.875rem;
 		color: var(--color-text-secondary);
 	}
 	.audience-row {

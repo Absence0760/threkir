@@ -17,11 +17,12 @@ import { join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { AUDIENCES, GUIDE_CATEGORIES, GUIDE_KINDS, PLATFORMS, REQUIREMENTS } from './catalogue';
-import { markupProblems, parseMarkup, plainText, sectionId } from './markup';
-import type { Block, Guide } from './types';
+import { markupProblems, parseMarkup, plainText, sectionId, type HelpToken } from './markup';
+import type { Block, Guide, GuideTranslation } from './types';
 
 const HELP_DIR = import.meta.dirname;
 const GUIDES_DIR = join(HELP_DIR, 'guides');
+const TRANSLATIONS_DIR = join(HELP_DIR, 'translations');
 const SRC = resolve(HELP_DIR, '..', '..');
 const ROUTES = join(SRC, 'routes');
 const REPO_ROOT = resolve(SRC, '..', '..', '..');
@@ -40,6 +41,16 @@ for (const file of files) {
 	if (mod.guide) guides.push({ file, guide: mod.guide });
 }
 const byId = new Map(guides.map(({ guide }) => [guide.id, guide]));
+
+const translations: { locale: string; translation: GuideTranslation }[] = [];
+for (const locale of existsSync(TRANSLATIONS_DIR) ? readdirSync(TRANSLATIONS_DIR).sort() : []) {
+	for (const file of readdirSync(join(TRANSLATIONS_DIR, locale)).filter((f) => GUIDE_FILE.test(f)).sort()) {
+		const mod = (await import(pathToFileURL(join(TRANSLATIONS_DIR, locale, file)).href)) as {
+			translation?: GuideTranslation;
+		};
+		if (mod.translation) translations.push({ locale, translation: mod.translation });
+	}
+}
 
 function blockTexts(block: Block): string[] {
 	return block.type === 'steps' || block.type === 'list' ? block.items : [block.text];
@@ -260,13 +271,84 @@ test('tagAttributes reads past a `>` inside an attribute expression', () => {
 	assert.deepEqual(tagAttributes(src, 'HelpLink'), [' route="/races"/']);
 });
 
-test("the mobile apps' guides.en.json matches the guide files", () => {
+test('every per-locale guides.<locale>.json matches the guide and translation files', () => {
 	try {
 		execFileSync(process.execPath, [join(REPO_ROOT, 'scripts', 'gen_help_guides.mjs'), '--check'], {
 			stdio: 'pipe',
 		});
 	} catch (e) {
 		const err = e as { stderr?: Buffer };
-		assert.fail(`guides.en.json is stale — run \`pnpm gen:help-guides\` and commit both files.\n${err.stderr ?? ''}`);
+		assert.fail(`the per-locale guide JSON is stale — run \`pnpm gen:help-guides\` and commit every file it writes.\n${err.stderr ?? ''}`);
+	}
+});
+
+/// Each translated string beside the English string it translates.
+function translatedPairs(t: GuideTranslation, g: Guide): { where: string; english: string; text: string }[] {
+	const out: { where: string; english: string; text: string }[] = [];
+	g.sections.forEach((section, si) => {
+		section.blocks.forEach((block, bi) => {
+			const theirs = t.sections[si]?.blocks[bi];
+			if (!theirs) return;
+			const english = blockTexts(block);
+			blockTexts(theirs).forEach((text, i) =>
+				out.push({ where: `section ${si + 1} block ${bi + 1}${english.length > 1 ? ` item ${i + 1}` : ''}`, english: english[i] ?? '', text }),
+			);
+		});
+	});
+	return out;
+}
+
+const linkTargets = (tokens: HelpToken[]) =>
+	tokens.flatMap((t) => (t.kind === 'guide' ? [`guide:${t.id}`] : t.kind === 'route' ? [`route:${t.routeId}`] : []));
+const strongCount = (tokens: HelpToken[]) => tokens.filter((t) => t.kind === 'strong').length;
+
+test('translated titles, summaries and headings fit, read as one sentence, and carry no markup', () => {
+	const problems: string[] = [];
+	for (const { locale, translation: t } of translations) {
+		const where = `translations/${locale}/${t.id}`;
+		if (!(t.title.trim().length > 0 && t.title.length <= 80)) problems.push(`${where}: title must be 1-80 chars`);
+		if (!(t.summary.trim().length > 0 && t.summary.length <= 200)) {
+			problems.push(`${where}: summary must be 1-200 chars (is ${t.summary.length})`);
+		}
+		if (/[.!?]\s+\p{Lu}|[。！？](?!$)/u.test(t.summary)) problems.push(`${where}: summary must be one sentence`);
+		for (const value of [t.title, t.summary, ...t.sections.map((s) => s.heading)]) {
+			if (plainText(value) !== value) problems.push(`${where}: "${value}" may not carry markup`);
+		}
+		const anchors = t.sections.map((s) => sectionId(s.heading));
+		if (anchors.some((a) => a === '')) problems.push(`${where}: a heading has no usable anchor`);
+		if (new Set(anchors).size !== anchors.length) problems.push(`${where}: two section headings share an anchor`);
+	}
+	assert.deepEqual(problems, []);
+});
+
+test('translated text keeps the English markup: every link, in order, and every bold label', () => {
+	const problems: string[] = [];
+	for (const { locale, translation: t } of translations) {
+		const g = byId.get(t.id);
+		if (!g) continue;
+		for (const { where, english, text } of translatedPairs(t, g)) {
+			const at = `translations/${locale}/${t.id} › ${where}`;
+			if (text.trim().length === 0) problems.push(`${at}: empty text`);
+			for (const p of markupProblems(text)) problems.push(`${at}: ${p}`);
+			const ours = parseMarkup(english);
+			const theirs = parseMarkup(text);
+			if (linkTargets(theirs).join(' ') !== linkTargets(ours).join(' ')) {
+				problems.push(`${at}: links [${linkTargets(theirs).join(', ')}], the English has [${linkTargets(ours).join(', ')}]`);
+			}
+			if (strongCount(theirs) !== strongCount(ours)) {
+				problems.push(`${at}: ${strongCount(theirs)} **labels**, the English has ${strongCount(ours)}`);
+			}
+		}
+		if (PICTOGRAPH.test(JSON.stringify(t))) problems.push(`translations/${locale}/${t.id}: emoji in guide text`);
+	}
+	assert.deepEqual(problems, []);
+});
+
+test('no help-guide translation is stale or out of line with its guide', () => {
+	try {
+		execFileSync(process.execPath, [join(REPO_ROOT, 'scripts', 'check_help_translations.mjs')], { stdio: 'pipe' });
+	} catch (e) {
+		const err = e as { stderr?: Buffer };
+		assert.fail(`scripts/check_help_translations.mjs failed:\n${err.stderr ?? ''}`);
 	}
 });

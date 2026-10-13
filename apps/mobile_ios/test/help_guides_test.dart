@@ -1,8 +1,31 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/help_guides.dart';
+import '../lib/help_loader.dart';
+import '../lib/l10n/locale_support.dart';
+
+/// An asset bundle holding exactly [files].
+class _MapBundle extends CachingAssetBundle {
+  _MapBundle(this.files);
+
+  final Map<String, String> files;
+
+  @override
+  Future<ByteData> load(String key) async {
+    final text = files[key];
+    if (text == null) throw FlutterError('no asset $key');
+    return ByteData.sublistView(Uint8List.fromList(utf8.encode(text)));
+  }
+}
+
+String _guides(String lang, String title) => jsonEncode([
+  {'id': 'g', 'lang': lang, 'title': title, 'sections': []},
+]);
 
 HelpLibrary _fixture() => HelpLibrary.parse(
   File('test/fixtures/help_guides.json').readAsStringSync(),
@@ -126,6 +149,17 @@ void main() {
       expect(g.related, isEmpty);
       expect(g.audience, isEmpty);
       expect(g.platforms, isEmpty);
+      expect(g.lang, 'en', reason: 'a guide that names no language is English');
+    });
+
+    test('lang says which language the guide text is in', () {
+      final g = Guide.fromJson({
+        'id': 'g',
+        'lang': 'pt-BR',
+        'title': 'Título',
+        'sections': [],
+      })!;
+      expect(g.lang, 'pt-BR');
     });
 
     test('an unknown block type is skipped, known ones keep their order', () {
@@ -302,6 +336,66 @@ void main() {
             'a mapped route id names no web page — the guide link it '
             'serves can never be written against the contract',
       );
+    });
+  });
+
+  group('per-locale guides', () {
+    test('helpLocaleTag names the asset for each app locale', () {
+      expect(helpLocaleTag(const Locale('de')), 'de');
+      expect(helpLocaleTag(const Locale('pt', 'PT')), 'pt-PT');
+      expect(helpLocaleTag(const Locale('pt')), 'pt-PT');
+      expect(helpLocaleTag(const Locale('pt', 'BR')), 'pt-BR');
+      expect(helpLocaleTag(const Locale('fr', 'CA')), 'fr');
+      expect(helpGuidesAsset('ja'), 'assets/help/guides.ja.json');
+    });
+
+    test('loads the locale file, and English when it is missing or empty', () async {
+      final bundle = _MapBundle({
+        helpGuidesAsset('en'): _guides('en', 'Guide'),
+        helpGuidesAsset('de'): _guides('de', 'Anleitung'),
+        helpGuidesAsset('fr'): '[]',
+      });
+      Future<String?> titleIn(String tag) async =>
+          (await loadHelpLibraryFromAssets(
+            bundle: bundle,
+            localeTag: tag,
+          ))?.guides.single.title;
+      expect(await titleIn('de'), 'Anleitung');
+      expect(await titleIn('ja'), 'Guide');
+      expect(await titleIn('fr'), 'Guide');
+      expect(await titleIn('en'), 'Guide');
+      expect(
+        await loadHelpLibraryFromAssets(
+          bundle: _MapBundle({}),
+          localeTag: 'de',
+        ),
+        isNull,
+      );
+    });
+
+    test('every app locale ships a guide file holding every English guide', () {
+      final english = HelpLibrary.parse(
+        File('assets/help/guides.en.json').readAsStringSync(),
+      )!;
+      expect(english.guides, isNotEmpty);
+      for (final locale in supportedLocales) {
+        final tag = localeToTag(locale);
+        final file = File(helpGuidesAsset(tag));
+        expect(file.existsSync(), isTrue, reason: '${file.path} is missing');
+        final library = HelpLibrary.parse(file.readAsStringSync())!;
+        expect(
+          library.guides.map((g) => g.id).toSet(),
+          english.guides.map((g) => g.id).toSet(),
+          reason: '${file.path} must hold every guide, translated or not',
+        );
+        for (final g in library.guides) {
+          expect(
+            g.lang == tag || g.lang == 'en',
+            isTrue,
+            reason: '${file.path}: ${g.id} is in ${g.lang}',
+          );
+        }
+      }
     });
   });
 }

@@ -1,8 +1,10 @@
 // The shapes of an in-app help guide (docs/features/help.md). Type-only, so a
-// guide file (`./guides/<id>.ts`, which imports nothing but these types) loads
-// under plain Node: scripts/gen_help_guides.mjs reads every guide that way to
-// write the mobile apps' JSON copy, and the mobile renderer parses the same
-// fields. Change a shape here and the Flutter reader has to change with it.
+// guide file (`./guides/<id>.ts`) or a translation
+// (`./translations/<locale>/<id>.ts`), each importing nothing but these types,
+// loads under plain Node: scripts/gen_help_guides.mjs reads every one that way
+// to write the per-locale JSON the phone apps and the web load, and the mobile
+// renderer parses the same fields. Change a shape here and the Flutter reader
+// has to change with it.
 
 export type GuideKind = 'start' | 'how-to' | 'explainer';
 export type Audience = 'everyone' | 'runner' | 'organiser' | 'participant' | 'spectator' | 'instructor' | 'club-admin';
@@ -38,3 +40,20 @@ export interface Guide {
 }
 
 export type GuideCategory = Guide['category'];
+
+/// One guide's text in another locale. Everything else (kind, audience,
+/// routes, related …) is the English guide's; the sections mirror its
+/// sections block for block, so a translation can only change words.
+export interface GuideTranslation {
+	/** the English guide's id, equal to the file name */
+	id: string;
+	/** `node scripts/check_help_translations.mjs --hash <id>` of the English text this was translated from */
+	source: string;
+	title: string;
+	summary: string;
+	sections: GuideSection[];
+}
+
+/// A guide as a reader sees it: the English guide with a translation's words
+/// in place, and `lang` saying which language they are in.
+export type LocalizedGuide = Guide & { lang: string };

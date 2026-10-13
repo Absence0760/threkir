@@ -5653,12 +5653,12 @@ export const en = {
 	"live.statRecentPaceStale": "When last seen",
 	"live.motionStopped": "Not moving — {n} min in the same spot",
 	"live.motionStoppedAtLeast": "Not moving — at least {n} min in the same spot",
-	// In-app help centre chrome (routes/help, HelpLink, InfoTip guide link). Guide text itself is English-only for now (docs/features/help.md).
+	// In-app help centre chrome (routes/help, HelpLink, InfoTip guide link). Guide text is translated separately, under lib/help/translations (docs/features/help.md).
 	"shell.help": "Help",
 	"help.pageTitle": "Help — Threkir",
 	"help.title": "Help",
 	"help.intro": "Guides to every part of Threkir: what a feature does, who it is for and where to find it.",
-	"help.englishOnly": "Guides are in English for now. Translations into the other app languages are coming.",
+	"help.guideInEnglish": "This guide has not been translated into your language yet, so it is shown in English.",
 	"help.searchLabel": "Search the guides",
 	"help.searchSubmit": "Search",
 	"help.audienceFilter": "Show guides for",

@@ -4277,6 +4277,7 @@
   "helpLoading": "ガイドを読み込み中",
   "helpUnavailable": "ヘルプガイドを読み込めませんでした。",
   "helpGuideMissing": "このガイドは利用できません。",
+  "helpGuideInEnglish": "このガイドはまだお使いの言語に翻訳されていないため、英語で表示しています。",
   "helpHowThisWorks": "使い方",
   "helpForThisScreen": "この画面のガイド",
   "helpBrowseAll": "すべてのガイドを見る",

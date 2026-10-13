@@ -1,6 +1,7 @@
 [
   {
     "id": "using-help",
+    "lang": "en",
     "title": "Finding help in the app",
     "summary": "Where the help guides live, how to search them, and how to jump from a screen to the guide that explains it.",
     "kind": "start",
@@ -72,8 +73,8 @@
           },
           {
             "type": "note",
-            "tone": "caution",
-            "text": "Guides are in English for now, whatever language the app is set to. Translations are coming."
+            "tone": "tip",
+            "text": "Guides are shown in the language the app is set to. A guide that has not been translated into it yet is shown in English, with a note at the top saying so."
           }
         ]
       }
@@ -81,6 +82,7 @@
   },
   {
     "id": "what-pro-includes",
+    "lang": "en",
     "title": "What Pro includes",
     "summary": "Every screen in Threkir is free; Pro raises your AI Coach allowance and moves some background work to the front of the queue.",
     "kind": "explainer",
@@ -174,6 +176,7 @@
   },
   {
     "id": "your-data-and-privacy",
+    "lang": "en",
     "title": "Your data and privacy",
     "summary": "See what other people can see, choose who sees new runs, download everything we hold about you, and delete your account.",
     "kind": "explainer",
@@ -284,6 +287,7 @@
   },
   {
     "id": "create-a-club",
+    "lang": "en",
     "title": "Create a club",
     "summary": "Start a club for your running group, choose who can find it and how people join, then post your first event.",
     "kind": "how-to",
@@ -372,6 +376,7 @@
   },
   {
     "id": "invite-members-and-roles",
+    "lang": "en",
     "title": "Invite members and give them roles",
     "summary": "Share an invite link, approve join requests, and give trusted members the admin, event organiser or race director role.",
     "kind": "how-to",
@@ -428,12 +433,12 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "An invite link lets people straight in: it skips the approval queue, so only share it with people you are happy to admit."
+            "text": "An invite link lets people straight in: it skips the approval queue, so only share it with people you are happy to admit. If the club requires the activity-risk acknowledgement, the link asks for it before letting anyone in."
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "In the phone app, a member can also tap **Join with invite code** on the **Clubs** tab of **Social** and enter the code from the link: only the part after /clubs/join/, not the whole link. Opening the link in a phone browser works too."
+            "text": "In the phone app, a member can also tap **Join with invite code** on the **Clubs** tab of **Social** and paste the whole link or just the code after /clubs/join/. Opening the link in a phone browser works too."
           }
         ]
       },
@@ -493,6 +498,7 @@
   },
   {
     "id": "recurring-events",
+    "lang": "en",
     "title": "Set up a recurring club event",
     "summary": "Turn a club event into a weekly, fortnightly or monthly series, RSVP to a single date, and call off one occurrence without touching the rest.",
     "kind": "how-to",
@@ -602,6 +608,7 @@
   },
   {
     "id": "build-a-gym-routine",
+    "lang": "en",
     "title": "Build a gym routine",
     "summary": "Turn a workout you teach or repeat into a reusable routine with sets, reps, load, rest and supersets, then run it guided or share it with your club.",
     "kind": "how-to",
@@ -697,6 +704,7 @@
   },
   {
     "id": "build-a-session-plan",
+    "lang": "en",
     "title": "Build a session plan for yoga, pilates or mobility",
     "summary": "Write a timed sequence of holds, flows and reps with per-side movements and cues, then teach from it, attach it to a class and follow along.",
     "kind": "how-to",
@@ -807,6 +815,7 @@
   },
   {
     "id": "take-attendance",
+    "lang": "en",
     "title": "Take attendance at a class",
     "summary": "Mark who actually came to each occurrence of a class, separately from who said they would, on the web or the phone app.",
     "kind": "how-to",
@@ -879,6 +888,7 @@
   },
   {
     "id": "cancel-a-class",
+    "lang": "en",
     "title": "Cancel a class and refund everyone who paid",
     "summary": "Call off one occurrence of a repeating class; everyone who paid for it is refunded in full automatically, with an hourly retry and a Refund now fallback.",
     "kind": "how-to",
@@ -990,6 +1000,7 @@
   },
   {
     "id": "get-paid-with-stripe",
+    "lang": "en",
     "title": "Get paid for the events you host",
     "summary": "Connect a Stripe payout account once so the classes and events you host can take payment, with the money going to you rather than the club.",
     "kind": "how-to",
@@ -1101,6 +1112,7 @@
   },
   {
     "id": "host-a-paid-gym-class",
+    "lang": "en",
     "title": "Host a paid HIIT, strength or bootcamp class",
     "summary": "Schedule a recurring gym class with a spot limit and drop-in price, share the workout as a club routine, and let attendees log it to their own history.",
     "kind": "how-to",
@@ -1218,6 +1230,7 @@
   },
   {
     "id": "host-a-paid-yoga-class",
+    "lang": "en",
     "title": "Host a paid yoga or pilates class",
     "summary": "Schedule a recurring class for your club, cap the mats, set a drop-in price and refund policy, and attach a timed sequence people can follow.",
     "kind": "how-to",
@@ -1343,6 +1356,7 @@
   },
   {
     "id": "refund-policies",
+    "lang": "en",
     "title": "Refund policies and cancelling your registration",
     "summary": "How the three refund policies work, how a participant cancels a paid registration, and what they see when they do.",
     "kind": "explainer",
@@ -1450,6 +1464,7 @@
   },
   {
     "id": "waitlist-and-claim-window",
+    "lang": "en",
     "title": "Waitlists and the 12-hour claim window",
     "summary": "How joining a full class works, how a freed place is held for you for 12 hours on a paid class, and what happens if you don't claim it.",
     "kind": "explainer",
@@ -1556,6 +1571,7 @@
   },
   {
     "id": "follow-a-race-live",
+    "lang": "en",
     "title": "Follow a race live",
     "summary": "Watch a race as it happens on the live race page: runners on a map, who is on course, and who has finished on each course.",
     "kind": "how-to",
@@ -1608,7 +1624,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "The **On course** board lists every runner who has sent a position, furthest first, with distance, pace and elapsed time. Each row also says how long ago it was last updated."
+            "text": "The **On course** board lists every runner who has sent a position, furthest first, with distance, pace and elapsed time, with one board per course when the race has more than one. Each row also says how long ago it was last updated."
           },
           {
             "type": "p",
@@ -1656,6 +1672,7 @@
   },
   {
     "id": "race-day-for-hosts",
+    "lang": "en",
     "title": "Race day for hosts",
     "summary": "Arm the race, fire GO, watch it live, end it, then approve and correct the results.",
     "kind": "how-to",
@@ -1680,7 +1697,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Race control appears on the event page for club owners, admins and members with the **Race director** role. On the web it is the **Race control** card; in the phone app it is the **RACE CONTROL** card on the event screen. Approving and editing results is web only."
+            "text": "Race control appears on the event page for club owners, admins and members with the **Race director** role. On the web it is the **Race control** card; in the phone app it is the **RACE CONTROL** card on the event screen. Both can approve and edit results."
           },
           {
             "type": "p",
@@ -1724,7 +1741,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "GO does not start anyone's recording. Racers still press Start on their own phone or watch. Remind them to start after they see **Race LIVE**."
+            "text": "GO does not start anyone's recording. Racers press Start on their own phone or watch, either on the line while the race is armed (the recording joins the race at GO) or after they see **Race LIVE**. Remind them to start one."
           }
         ]
       },
@@ -1748,7 +1765,7 @@
             "type": "steps",
             "items": [
               "When the last racer is in (or your cut-off has passed), choose **End race**.",
-              "On the web the confirmation tells you how many racers who started have no result. Those racers will be marked DNF.",
+              "The confirmation, on the web and in the phone app, tells you how many racers who started have no result. Those racers will be marked DNF.",
               "Confirm with **End race**."
             ]
           },
@@ -1772,7 +1789,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "On the web you can cancel only while the race is armed: choose **Cancel** next to **GO**, then **Cancel race**. In the phone app, **Cancel** is offered while armed and **Cancel race** while running."
+            "text": "You can cancel only while the race is armed: choose **Cancel** next to **GO** (**Fire Go** in the phone app), then **Cancel race**. Once you have fired GO the race can only be ended."
           },
           {
             "type": "p",
@@ -1790,7 +1807,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Results are on the event page under **Results**, with one board per course. This part is on the web only."
+            "text": "Results are on the event page under **Results**, with one board per course. In the phone app, each result has a menu with the same **Approve**, **Unverify** and **Edit** actions."
           },
           {
             "type": "list",
@@ -1813,8 +1830,9 @@
   },
   {
     "id": "race-results-explained",
+    "lang": "en",
     "title": "Race results explained",
-    "summary": "What gun and chip time mean, how places are worked out per course, and what the Auto, Manual, Host, DNF, DNS and pending marks say.",
+    "summary": "What gun and chip time mean, how places are worked out per course, and what the Manual, Host, DNF, DNS and pending marks say.",
     "kind": "explainer",
     "category": "races",
     "audience": [
@@ -1866,7 +1884,7 @@
           {
             "type": "list",
             "items": [
-              "**Auto**: the racer's phone or watch detected the finish line. The phone app shows this badge; the web shows no badge for it, because it is the normal case.",
+              "**No badge**: the racer's phone or watch detected the finish line. This is the normal case, so neither the web nor the phone app marks it.",
               "**Manual**: the racer finished by hand, either with **Finish race** after covering at least 90% of the course, or by using **Submit my time** on the web during the race.",
               "**Host** (on the web, **Host edited**): the host entered or corrected this result, or the racer was marked DNF when the host ended the race."
             ]
@@ -1891,7 +1909,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "If the host turned off auto-approve, each new result waits for the host. On the event page it shows **PENDING** with no place yet; on the live page it shows **Pending**. Once the host chooses **Approve**, it takes its place on the board."
+            "text": "If the host turned off auto-approve, each new result waits for the host. On the web event page it shows **PENDING** with no place yet; in the phone app and on the live page it shows **Pending**. Once the host chooses **Approve**, it takes its place on the board."
           },
           {
             "type": "note",
@@ -1926,8 +1944,9 @@
   },
   {
     "id": "racing-in-a-race",
+    "lang": "en",
     "title": "Racing in a live race",
-    "summary": "Sign up, pick your course, start recording after GO and let your phone or watch time you over the finish line.",
+    "summary": "Sign up, pick your course, start recording on the line or after GO and let your phone or watch time you over the finish line.",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -1987,7 +2006,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Your phone does not start recording by itself. Press Start yourself once you see **Race LIVE**. If you start your phone's recording before GO, that run is not linked to the race: it sends no live position and no result. On a Wear OS watch, a run started early is picked up once the watch sees the race go live."
+            "text": "Your phone or watch does not start recording by itself: press Start yourself. You can start on the line while the race shows **Race armed**, or once you see **Race LIVE**. A recording started early joins the race at GO, on the phone and on a Wear OS watch, and your chip time then counts from GO rather than from when you pressed Start."
           },
           {
             "type": "p",
@@ -2062,8 +2081,8 @@
             "type": "list",
             "items": [
               "**Gun time** runs from the moment the host fired GO to your finish. It is the time you are ranked on.",
-              "**Chip time** runs from when you pressed Start to your finish, including any pauses.",
-              "If you start more than 5 minutes after GO, the phone app shows a late-start notice. Your gun time still counts from GO, so a late start makes it longer than your chip time."
+              "**Chip time** runs from when you pressed Start to your finish, including any pauses. If you pressed Start before GO, it runs from GO, so it is never longer than your gun time.",
+              "If you start more than 5 minutes after GO, or your first position is more than 200 m from the course start, the phone app shows a late-start notice. Your gun time still counts from GO, so a late start makes it longer than your chip time."
             ]
           },
           {
@@ -2091,6 +2110,7 @@
   },
   {
     "id": "set-up-a-race",
+    "lang": "en",
     "title": "Set up a race",
     "summary": "Create a club event with one or more courses so racers can pick a distance, be timed live and land on a leaderboard per course.",
     "kind": "how-to",
@@ -2228,6 +2248,7 @@
   },
   {
     "id": "import-your-history",
+    "lang": "en",
     "title": "Import your running history",
     "summary": "Bring your past runs in from Strava, a Garmin export, or your phone's health app, and know what happens to GPX files.",
     "kind": "how-to",
@@ -2337,6 +2358,7 @@
   },
   {
     "id": "link-ultrasignup-results",
+    "lang": "en",
     "title": "Link your UltraSignup results",
     "summary": "Find your UltraSignup profile by name, confirm which person is you, then import an ultra or trail result from the race calendar.",
     "kind": "how-to",
@@ -2425,6 +2447,7 @@
   },
   {
     "id": "live-tracking-and-safety",
+    "lang": "en",
     "title": "Live tracking and safety contacts",
     "summary": "Let someone follow your run live, and have trusted contacts emailed when you finish, go quiet or are not back on time.",
     "kind": "how-to",
@@ -2545,6 +2568,7 @@
   },
   {
     "id": "privacy-zones",
+    "lang": "en",
     "title": "Hide your home with privacy zones",
     "summary": "Draw a circle around home, work or anywhere else so the start and end of your runs and routes inside it are hidden from everyone but you.",
     "kind": "how-to",
@@ -2642,6 +2666,7 @@
   },
   {
     "id": "record-your-first-run",
+    "lang": "en",
     "title": "Record your first run",
     "summary": "Start a run on your phone, pause and stop it safely, get a good GPS signal, and see what gets saved afterwards.",
     "kind": "start",

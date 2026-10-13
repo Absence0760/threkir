@@ -87,7 +87,7 @@ void main() {
     final library = HelpLibrary.parse(
       File('test/fixtures/help_guides.json').readAsStringSync(),
     )!;
-    helpLibraryLoader = () => Future.value(library);
+    helpLibraryLoader = (_) => Future.value(library);
     addTearDown(() => helpLibraryLoader = loadHelpLibraryCached);
     final open = await _open(tester, coverageMet: true, onChoice: (_) {});
     await open();

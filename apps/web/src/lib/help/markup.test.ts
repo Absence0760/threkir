@@ -66,3 +66,10 @@ test('sectionId is a url-safe slug, accents folded', () => {
 	assert.equal(sectionId('Café & results!'), 'cafe-results');
 	assert.equal(sectionId('  Step 2: pay  '), 'step-2-pay');
 });
+
+test('sectionId keeps letters of any script, so a translated heading has an anchor', () => {
+	assert.equal(sectionId('Größe & Übersicht'), 'große-ubersicht');
+	assert.equal(sectionId('ヘルプを開く'), 'ヘルフを開く');
+	assert.equal(sectionId('「ガイド」の検索'), 'カイト-の検索');
+	assert.notEqual(sectionId('ガイドを探す'), '');
+});

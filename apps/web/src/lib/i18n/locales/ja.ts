@@ -5623,7 +5623,7 @@ export const messages = {
 	"help.pageTitle": "ヘルプ — Threkir",
 	"help.title": "ヘルプ",
 	"help.intro": "Threkir の各機能のガイドです。機能の内容、対象となる人、見つけ方を説明します。",
-	"help.englishOnly": "ガイドは現在英語のみです。アプリの他の言語への翻訳は準備中です。",
+	"help.guideInEnglish": "このガイドはまだお使いの言語に翻訳されていないため、英語で表示しています。",
 	"help.searchLabel": "ガイドを検索",
 	"help.searchSubmit": "検索",
 	"help.audienceFilter": "表示するガイドの対象",

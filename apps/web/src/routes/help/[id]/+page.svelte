@@ -4,15 +4,18 @@
 	/// here is {@html}. Section anchors come from `sectionId`, the same function
 	/// the guard checks for uniqueness.
 	import { page } from '$app/state';
-	import { guideFor } from '#lib/help/index.ts';
+	import { helpIndex } from '#lib/help/localized.svelte.ts';
 	import { sectionId } from '#lib/help/markup.ts';
 	import { KIND_LABEL, PLATFORM_LABEL, REQUIREMENT_LABEL } from '#lib/help/labels.ts';
 	import HelpRichText from '#lib/components/help/HelpRichText.svelte';
 	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
 
 	const id = $derived(page.params.id ?? '');
-	const guide = $derived(guideFor(id));
-	const related = $derived((guide?.related ?? []).map((r) => guideFor(r)).filter((g) => g !== undefined));
+	const index = $derived(helpIndex());
+	const guide = $derived(index.guideFor(id));
+	const related = $derived((guide?.related ?? []).map((r) => index.guideFor(r)).filter((g) => g !== undefined));
+	// A guide with no translation in the app's language is shown in English.
+	const inEnglish = $derived(guide !== undefined && guide.lang !== currentLocale());
 </script>
 
 <svelte:head>
@@ -30,13 +33,16 @@
 		<h1>{m('help.notFoundTitle')}</h1>
 		<p>{m('help.notFoundBody', { id })}</p>
 	{:else}
-		<!-- Guide text is English-only for now (docs/features/help.md), so it
-		     carries lang="en" while the chrome around it follows the app locale. -->
+		<!-- Guide text carries its own lang: a guide with no translation in the
+		     app locale is English inside chrome that follows the app locale. -->
 		<article class="guide" data-testid="help-guide">
 			<header class="guide-header">
 				<p class="guide-kind">{m(KIND_LABEL[guide.kind])}</p>
-				<h1 lang="en">{guide.title}</h1>
-				<p class="lede" lang="en">{guide.summary}</p>
+				<h1 lang={guide.lang}>{guide.title}</h1>
+				<p class="lede" lang={guide.lang}>{guide.summary}</p>
+				{#if inEnglish}
+					<p class="language-note" data-testid="help-language-note">{m('help.guideInEnglish')}</p>
+				{/if}
 				<dl class="badges">
 					<div class="badge-row">
 						<dt>{m('help.platformsLabel')}</dt>
@@ -60,14 +66,14 @@
 					<h2 id="help-on-page" class="on-page-title">{m('help.onThisPage')}</h2>
 					<ul>
 						{#each guide.sections as s (s.heading)}
-							<li><a href="#{sectionId(s.heading)}" lang="en">{s.heading}</a></li>
+							<li><a href="#{sectionId(s.heading)}" lang={guide.lang}>{s.heading}</a></li>
 						{/each}
 					</ul>
 				</nav>
 			{/if}
 
 			{#each guide.sections as s (s.heading)}
-				<section aria-labelledby={sectionId(s.heading)} lang="en">
+				<section aria-labelledby={sectionId(s.heading)} lang={guide.lang}>
 					<h2 id={sectionId(s.heading)} tabindex="-1">{s.heading}</h2>
 					{#each s.blocks as b, i (i)}
 						{#if b.type === 'p'}
@@ -93,9 +99,9 @@
 			{#if related.length}
 				<nav class="related" aria-labelledby="help-related">
 					<h2 id="help-related">{m('help.related')}</h2>
-					<ul lang="en">
+					<ul>
 						{#each related as r (r.id)}
-							<li>
+							<li lang={r.lang}>
 								<a href="/help/{r.id}">{r.title}</a>
 								<span class="related-summary">{r.summary}</span>
 							</li>
@@ -137,6 +143,11 @@
 	.lede {
 		margin: 0 0 var(--space-md);
 		font-size: 1.05rem;
+		color: var(--color-text-secondary);
+	}
+	.language-note {
+		margin: 0 0 var(--space-md);
+		font-size: 0.875rem;
 		color: var(--color-text-secondary);
 	}
 	.badges {

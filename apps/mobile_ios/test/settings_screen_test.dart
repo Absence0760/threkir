@@ -197,7 +197,7 @@ void main() {
     testWidgets('the Help tile opens the guide list', (tester) async {
       final library = HelpLibrary.parse(
           File('test/fixtures/help_guides.json').readAsStringSync())!;
-      helpLibraryLoader = () => Future.value(library);
+      helpLibraryLoader = (_) => Future.value(library);
       final s = await _makeStores();
       await _pump(tester, prefs: s.prefs, heartRate: s.heartRate);
       await tester.scrollUntilVisible(

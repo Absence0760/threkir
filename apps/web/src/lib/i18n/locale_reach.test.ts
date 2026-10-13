@@ -1,8 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { SUPPORTED_LOCALES, LOCALE_LABELS } from "./locale";
 import { CATALOGUE_LOADERS } from "./catalogues";
@@ -607,6 +607,45 @@ test("a Portuguese Learn guide reads as its own variant, in the catalogue's regi
 		offenders,
 		[],
 		"a Portuguese Learn guide uses the other variant's word, or addresses its reader " +
+			"as `tu` where every catalogue string uses the third person (decisions § 755).",
+	);
+});
+
+test("a Portuguese help guide reads as its own variant, in the catalogue's register", async () => {
+	// The in-app help guides are prose outside the catalogues too
+	// (lib/help/translations/<locale>/<id>.ts, docs/features/help.md), long texts
+	// written in one sitting like the Learn guides above. Only the strings are
+	// scanned: the ids, route ids and block types around them are English.
+	const offenders: string[] = [];
+	let scanned = 0;
+	for (const tag of PORTUGUESE) {
+		const dir = join(SRC, "lib", "help", "translations", tag);
+		if (!existsSync(dir)) continue;
+		for (const file of readdirSync(dir).filter((f) => f.endsWith(".ts")).sort()) {
+			const mod = (await import(pathToFileURL(join(dir, file)).href)) as {
+				translation?: { title: string; summary: string; sections: { heading: string; blocks: { text?: string; items?: string[] }[] }[] };
+			};
+			const t = mod.translation;
+			if (!t) continue;
+			scanned++;
+			const text = [
+				t.title,
+				t.summary,
+				...t.sections.flatMap((s) => [s.heading, ...s.blocks.flatMap((b) => b.items ?? [b.text ?? ""])]),
+			].join("\n");
+			for (const word of VARIANT_WORDS[tag]) {
+				if (new RegExp(`(?<![a-zà-ÿ])${word}(s|es)?(?![a-zà-ÿ])`, "iu").test(text)) {
+					offenders.push(`${tag}/${file}: "${word}"`);
+				}
+			}
+			for (const marker of tuMarkersIn(text, tag)) offenders.push(`${tag}/${file}: ${marker}`);
+		}
+	}
+	assert.ok(scanned > 0, "found no Portuguese help guide translation — has lib/help/translations moved?");
+	assert.deepEqual(
+		offenders,
+		[],
+		"a Portuguese help guide uses the other variant's word, or addresses its reader " +
 			"as `tu` where every catalogue string uses the third person (decisions § 755).",
 	);
 });

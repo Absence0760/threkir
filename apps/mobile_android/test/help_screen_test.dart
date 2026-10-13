@@ -18,12 +18,13 @@ HelpLibrary _fixture() => HelpLibrary.parse(
 
 /// Hands every Help screen [library] instead of the generated asset.
 void _useLibrary(HelpLibrary library) {
-  helpLibraryLoader = () => Future.value(library);
+  helpLibraryLoader = (_) => Future.value(library);
 }
 
-Future<void> _pump(WidgetTester tester, Widget home) async {
+Future<void> _pump(WidgetTester tester, Widget home, {Locale? locale}) async {
   await tester.pumpWidget(
     MaterialApp(
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: home,
@@ -168,7 +169,7 @@ void main() {
       'an unreadable guide asset is an unavailable state with retry',
       (tester) async {
         var loads = 0;
-        helpLibraryLoader = () {
+        helpLibraryLoader = (_) {
           loads++;
           return Future.value(loads == 1 ? null : library);
         };
@@ -192,6 +193,57 @@ void main() {
   });
 
   group('Guide screen', () {
+    testWidgets('asks for the app locale\'s guides and marks an English fallback', (
+      tester,
+    ) async {
+      final asked = <String>[];
+      helpLibraryLoader = (tag) {
+        asked.add(tag);
+        return Future.value(library);
+      };
+      await _pump(
+        tester,
+        const GuideScreen(guideId: 'racing-an-event'),
+        locale: const Locale('pt', 'BR'),
+      );
+      expect(asked, ['pt-BR']);
+      expect(find.byKey(const Key('help-guide-in-english')), findsOneWidget);
+    });
+
+    testWidgets('a translated guide carries no fallback note', (tester) async {
+      final translated = HelpLibrary([
+        for (final g in library.guides)
+          Guide(
+            id: g.id,
+            title: g.title,
+            summary: g.summary,
+            kind: g.kind,
+            category: g.category,
+            audience: g.audience,
+            requires: g.requires,
+            platforms: g.platforms,
+            routes: g.routes,
+            sections: g.sections,
+            related: g.related,
+            lang: 'de',
+          ),
+      ]);
+      _useLibrary(translated);
+      await _pump(
+        tester,
+        const GuideScreen(guideId: 'racing-an-event'),
+        locale: const Locale('de'),
+      );
+      expect(find.byKey(const Key('help-guide-in-english')), findsNothing);
+      _useLibrary(library);
+      await _pump(tester, const GuideScreen(guideId: 'following-live'));
+      expect(
+        find.byKey(const Key('help-guide-in-english')),
+        findsNothing,
+        reason: 'an English guide in an English app is not a fallback',
+      );
+    });
+
     testWidgets('renders summary, chips, steps, notes and related guides', (
       tester,
     ) async {

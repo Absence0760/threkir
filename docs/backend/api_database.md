@@ -2158,10 +2158,10 @@ grant  execute on function public.<fn>(<args>) to authenticated;   -- and/or ser
 
 Add `authenticated` to the revoke list when no client role should hold it at all
 (the `cleanup_*` / `enqueue_*` cron family, and helpers only a SECURITY DEFINER
-trigger calls). 78 migrations write a function-level `from public, anon` revoke
-today (65 as `revoke execute`, 13 as `revoke all`); it is the house form for
+trigger calls). 79 migrations write a function-level `from public, anon` revoke
+today (66 as `revoke execute`, 13 as `revoke all`); it is the house form for
 exactly this reason, and `check_migration_function_revoke_noop.mjs` is what
-keeps it — it replays all 511 migrations in version order and fails the PR on
+keeps it — it replays all 512 migrations in version order and fails the PR on
 any EXECUTE revoke that leaves the other channel at its image-dependent
 default, in either direction. **Those four figures are derived, not typed**: the
 guard prints them and `check_migration_function_revoke_noop.test.mjs` asserts
@@ -2377,9 +2377,11 @@ SECURITY DEFINER — the organiser read path for the live-results board. Returns
 
 SECURITY DEFINER boolean — `select user_profiles.subscription_tier in ('pro','lifetime')` for `auth.uid()`. Used by Edge Functions and the `/api/coach` server route to gate paywalled features without a separate column lookup per request. Granted to `authenticated` + `service_role`, and revoked from `public, anon` in `20270626000001` — no RLS policy names it, so the grant narrows freely. Migration `20260429_001_subscription_paywall.sql` (the predecessor `is_user_pro(uuid)` was dropped in `20260516_001`).
 
-### `join_club_by_token(token text)`
+### `join_club_by_token(token text, activity_waiver_ack boolean default false) → uuid`
 
-SECURITY DEFINER. Validates a `club_invites.token`, checks expiry / max-uses, inserts a `club_members` row for the caller, and bumps the invite's redemption counter. Atomic — partial failures roll back. Granted to `authenticated`. Migration `20260417_001_club_invites.sql`.
+SECURITY DEFINER. Looks the club up by `clubs.invite_token`, raises `invalid invite token` when none matches, and upserts an **active** `club_members` row for the caller (an existing pending or rejected row flips to active). Returns the club id. Granted to `authenticated`; revoked from `public, anon`. Migration `20260417_001_phase2_social.sql`, rewritten by `20270801000001`.
+
+**Activity-risk acknowledgement** (§ R7CLUBS-1). When `clubs.requires_activity_waiver` is true, the call raises `activity_waiver_required` (`P0001`) and plants nothing unless `activity_waiver_ack` is true or the caller's existing membership row already carries `activity_waiver_ack_at`. An admitted join server-stamps `activity_waiver_ack_at = now()` and never overwrites an earlier one. The same rule binds the direct self-join path: the `self-join open clubs` and `self-request join request-policy clubs` INSERT policies refuse a waiver club's row whose `activity_waiver_ack_at` is null. Pinned by `club_join_activity_waiver_test.sql`.
 
 ### `redeem_coach_invite(token text)`
 

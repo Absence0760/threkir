@@ -5755,7 +5755,10 @@ export type Database = {
       jobs_backlog_summary: { Args: { p_queued_after?: string }; Returns: Json }
       jobs_failed_summary: { Args: { p_failed_within?: string }; Returns: Json }
       jobs_stuck_summary: { Args: { p_stuck_after?: string }; Returns: Json }
-      join_club_by_token: { Args: { token: string }; Returns: string }
+      join_club_by_token: {
+        Args: { activity_waiver_ack?: boolean; token: string }
+        Returns: string
+      }
       latest_fitness_snapshot: {
         Args: never
         Returns: {

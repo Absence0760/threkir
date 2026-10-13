@@ -3201,11 +3201,26 @@ export async function joinClub(
 	return status;
 }
 
+/** Raised by `join_club_by_token` when the club requires the activity-risk
+ * acknowledgement and the call did not carry it (§ R7CLUBS-1). */
+export const ACTIVITY_WAIVER_REQUIRED = 'activity_waiver_required';
+
+export function isActivityWaiverRequired(e: unknown): boolean {
+	return (
+		typeof e === 'object' &&
+		e !== null &&
+		(e as { message?: unknown }).message === ACTIVITY_WAIVER_REQUIRED
+	);
+}
+
 /** Redeem a shareable invite token. Returns the joined club id. */
-export async function joinClubByToken(token: string): Promise<string> {
-	const { data, error } = await supabase.rpc('join_club_by_token', { token });
+export async function joinClubByToken(token: string, ackWaiver = false): Promise<string> {
+	const { data, error } = await supabase.rpc('join_club_by_token', {
+		token,
+		activity_waiver_ack: ackWaiver,
+	});
 	if (error) throw error;
-	return data as string;
+	return data;
 }
 
 /// Fetch `display_name` + `avatar_url` for a set of user ids, chunked.

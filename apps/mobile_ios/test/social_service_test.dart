@@ -242,6 +242,37 @@ void main() {
     });
   });
 
+  group('SocialService.rsvpRow', () {
+    final instance = DateTime.utc(2026, 10, 18, 8);
+
+    test('carries the chosen course', () {
+      final row = SocialService.rsvpRow(
+        eventId: 'e1',
+        userId: 'u1',
+        status: 'going',
+        instance: instance,
+        courseId: 'c-10k',
+      );
+      expect(row, {
+        'event_id': 'e1',
+        'user_id': 'u1',
+        'status': 'going',
+        'instance_start': '2026-10-18T08:00:00.000Z',
+        'course_id': 'c-10k',
+      });
+    });
+
+    test('omits course_id when none was chosen, keeping an earlier pick', () {
+      final row = SocialService.rsvpRow(
+        eventId: 'e1',
+        userId: 'u1',
+        status: 'maybe',
+        instance: instance,
+      );
+      expect(row.containsKey('course_id'), isFalse);
+    });
+  });
+
   group('SocialService.normaliseClubLink', () {
     test('returns null for empty / whitespace input', () {
       expect(SocialService.normaliseClubLink(null), isNull);

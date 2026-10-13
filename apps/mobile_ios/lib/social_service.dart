@@ -1379,17 +1379,35 @@ class SocialService extends ChangeNotifier {
     final uid = _uid;
     if (uid == null) throw Exception('Not authenticated');
     await _c.from('event_attendees').upsert(
-      {
-        'event_id': eventId,
-        'user_id': uid,
-        'status': status,
-        'instance_start': instanceStartKey(instance),
-        if (courseId != null) 'course_id': courseId,
-      },
+      rsvpRow(
+        eventId: eventId,
+        userId: uid,
+        status: status,
+        instance: instance,
+        courseId: courseId,
+      ),
       onConflict: 'event_id,user_id,instance_start',
     );
     notifyListeners();
   }
+
+  /// The `event_attendees` row an RSVP upserts. [courseId] is sent only when
+  /// chosen: an omitted key leaves a racer's earlier pick in place.
+  @visibleForTesting
+  static Map<String, dynamic> rsvpRow({
+    required String eventId,
+    required String userId,
+    required String status,
+    required DateTime instance,
+    String? courseId,
+  }) =>
+      {
+        'event_id': eventId,
+        'user_id': userId,
+        'status': status,
+        'instance_start': instanceStartKey(instance),
+        if (courseId != null) 'course_id': courseId,
+      };
 
   Future<void> clearRsvp(String eventId, DateTime instance) async {
     final uid = _uid;

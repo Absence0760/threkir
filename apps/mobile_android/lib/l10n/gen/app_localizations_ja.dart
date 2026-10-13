@@ -14420,7 +14420,39 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get eventFormGymRoutineFailed =>
-      'イベントは作成されましたが、ルーティンを添付できませんでした。ウェブのイベントページから添付してください。';
+      'イベントは作成されましたが、ルーティンを添付できませんでした。イベントページから添付してください。';
+
+  @override
+  String get clubEventGymRoutineTitle => 'クラスのルーティン';
+
+  @override
+  String get clubEventGymRoutineAttach => 'ルーティンを添付';
+
+  @override
+  String get clubEventGymRoutineNone => 'ルーティンは添付されていません。';
+
+  @override
+  String clubEventGymRoutineSets(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countセット',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get clubEventGymRoutineSave => '保存';
+
+  @override
+  String get clubEventGymRoutineSaved => 'クラスのルーティンを更新しました。';
+
+  @override
+  String get clubEventGymRoutineSaveFailed => 'クラスのルーティンを更新できませんでした。';
+
+  @override
+  String get clubEventGymRoutineReplacesPlan =>
+      'ルーティンを添付するとセッションプランは外れます。クラスにはどちらか一方しか添付できません。';
 
   @override
   String get audienceTitle => '公開範囲';

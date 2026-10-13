@@ -37,6 +37,7 @@ import '../widgets/event_photos.dart';
 import '../widgets/fundraiser_section.dart';
 import '../widgets/finisher_certificate_card.dart';
 import '../widgets/gym_compose_sheet.dart';
+import '../widgets/gym_routine_picker.dart';
 import '../widgets/help_button.dart';
 import '../widgets/top_banner.dart';
 
@@ -132,11 +133,16 @@ class EventDetailScreen extends StatefulWidget {
   final SocialService social;
   final String clubSlug;
   final String eventId;
+
+  /// The class-content reads (attached gym routine, session plan). Null in
+  /// production, which resolves `ApiClient()` lazily on first use.
+  final ApiClient? api;
   const EventDetailScreen({
     super.key,
     required this.social,
     required this.clubSlug,
     required this.eventId,
+    this.api,
   });
 
   @override
@@ -208,9 +214,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   /// template, read and never cloned: it only seeds the attendee's own log.
   PlannedRoutine? _gymRoutine;
 
+  /// Set while an organiser's routine attach / change / clear is in flight.
+  bool _routineBusy = false;
+
   @override
   void initState() {
     super.initState();
+    _api = widget.api;
     _load();
   }
 
@@ -260,19 +270,24 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
   }
 
-  /// Best-effort load + expand the class's attached session plan so
-  /// [_logAsWorkout] can seed the composer from the class content. Mirrors
-  /// web's `loadSessionPlan` + `sessionExpansion`. A failure leaves the flat
-  /// gym_template path intact (L4).
   /// Best-effort load of the class's attached gym routine, the counterpart of
   /// [_maybeLoadSessionPlan] and of web's `loadGymRoutine`. A routine the
   /// viewer cannot read leaves the flat gym_template path intact (L4).
   Future<void> _maybeLoadGymRoutine(EventView event) async {
-    final routineId = event.row.gymRoutineId;
-    if (routineId == null || event.row.category != 'class') return;
+    final routineId =
+        event.row.category == 'class' ? event.row.gymRoutineId : null;
+    if (routineId == null) {
+      if (mounted && _gymRoutine != null) setState(() => _gymRoutine = null);
+      return;
+    }
     try {
       final data = await (_api ??= ApiClient()).fetchGymRoutineDetail(routineId);
-      if (!mounted || data == null) return;
+      // An organiser may have changed the routine while this read was out.
+      if (!mounted || _event?.row.gymRoutineId != routineId) return;
+      if (data == null) {
+        setState(() => _gymRoutine = null);
+        return;
+      }
       setState(() {
         _gymRoutine = PlannedRoutine(
           title: data.routine.title,
@@ -303,12 +318,29 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
   }
 
+  /// Best-effort load + expand the class's attached session plan so
+  /// [_logAsWorkout] can seed the composer from the class content. Mirrors
+  /// web's `loadSessionPlan` + `sessionExpansion`. A failure leaves the flat
+  /// gym_template path intact (L4).
   Future<void> _maybeLoadSessionPlan(EventView event) async {
-    final planId = event.row.sessionPlanId;
-    if (planId == null || event.row.category != 'class') return;
+    final planId =
+        event.row.category == 'class' ? event.row.sessionPlanId : null;
+    if (planId == null) {
+      // Attaching a routine detaches the plan (decisions § 1884), so a stale
+      // expansion must not keep seeding Log-as-workout.
+      if (mounted && _sessionExpansion != null) {
+        setState(() {
+          _sessionExpansion = null;
+          _sessionPlanTitle = null;
+        });
+      }
+      return;
+    }
     try {
       final data = await (_api ??= ApiClient()).fetchSessionPlan(planId);
-      if (!mounted || data == null) return;
+      if (!mounted || _event?.row.sessionPlanId != planId || data == null) {
+        return;
+      }
       final input = SessionPlanInput(
         blocks: [
           for (final b in data.blocks)
@@ -337,6 +369,141 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     } catch (e) {
       debugPrint('EventDetailScreen session-plan load failed: $e');
     }
+  }
+
+  /// Attach, change or clear the class's gym routine after creation, web's
+  /// `openRoutineAttach` + `saveRoutineAttach`. The picker lists the club's
+  /// templates (decisions § 1884 (4)); attaching one detaches any session plan
+  /// in the same write, which the sheet says before the organiser saves.
+  Future<void> _editGymRoutine(EventView e) async {
+    if (_routineBusy) return;
+    final l10n = AppLocalizations.of(context);
+    setState(() => _routineBusy = true);
+    final options = [
+      ...await widget.social.fetchClubGymRoutineOptions(e.row.clubId),
+    ];
+    // The attached routine may not be in a failed or narrowed options read; it
+    // stays selectable so opening the sheet never reads as "none".
+    final current = e.row.gymRoutineId;
+    final title = _gymRoutine?.title;
+    if (current != null &&
+        title != null &&
+        !options.any((o) => o.id == current)) {
+      options.insert(0, (id: current, title: title));
+    }
+    if (!mounted) return;
+    setState(() => _routineBusy = false);
+    final picked = await showModalBottomSheet<({String? id})>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => _GymRoutineAttachSheet(
+        initial: current,
+        routines: options,
+        hasSessionPlan: e.row.sessionPlanId != null,
+      ),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _routineBusy = true);
+    try {
+      await widget.social.setEventGymRoutine(e.row.id, picked.id);
+    } catch (err) {
+      debugPrint('EventDetailScreen setEventGymRoutine failed: $err');
+      if (mounted) {
+        setState(() => _routineBusy = false);
+        showTopBanner(context, l10n.clubEventGymRoutineSaveFailed);
+      }
+      return;
+    }
+    if (!mounted) return;
+    showTopBanner(context, l10n.clubEventGymRoutineSaved);
+    // The write landed; re-read the row so the card, the session-plan seed
+    // and Log-as-workout all follow it. A failed re-read leaves the old card
+    // until the next load rather than reporting a save that happened as failed.
+    try {
+      final fresh = await widget.social.fetchEventById(e.row.id);
+      if (!mounted) return;
+      if (fresh != null) {
+        setState(() => _event = fresh);
+        await Future.wait([
+          _maybeLoadGymRoutine(fresh),
+          _maybeLoadSessionPlan(fresh),
+        ]);
+      }
+    } catch (err) {
+      debugPrint('EventDetailScreen event re-read after routine save: $err');
+    } finally {
+      if (mounted) setState(() => _routineBusy = false);
+    }
+  }
+
+  /// The class's routine card, web's `class-routine` section: the routine's
+  /// exercises with their planned set counts for anyone who can read it, and
+  /// for the organiser an attach / change control and a "none" line.
+  Widget _buildGymRoutineCard(
+    ThemeData theme,
+    AppLocalizations l10n,
+    EventView e, {
+    required bool isOrganiser,
+  }) {
+    final routine = _gymRoutine;
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    return Card(
+      key: const Key('class-routine'),
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 8, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l10n.clubEventGymRoutineTitle,
+                    style: theme.textTheme.titleSmall,
+                  ),
+                ),
+                if (isOrganiser)
+                  TextButton(
+                    key: const Key('class-routine-attach'),
+                    onPressed: _routineBusy ? null : () => _editGymRoutine(e),
+                    child: Text(l10n.clubEventGymRoutineAttach),
+                  ),
+              ],
+            ),
+            if (routine != null) ...[
+              Text(routine.title, style: theme.textTheme.bodyLarge),
+              const SizedBox(height: 4),
+              for (final (i, ex) in routine.exercises.indexed)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, right: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${i + 1}. ', style: theme.textTheme.bodyMedium),
+                      Expanded(
+                        child: Text(
+                          ex.exerciseName,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        l10n.clubEventGymRoutineSets(ex.sets.length),
+                        style: muted,
+                      ),
+                    ],
+                  ),
+                ),
+            ] else
+              Text(l10n.clubEventGymRoutineNone, style: muted),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _load() async {
@@ -1101,6 +1268,16 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
+              ),
+            ],
+            if (e.row.category == 'class' &&
+                (_gymRoutine != null || _club?.isEventOrganiser == true)) ...[
+              const SizedBox(height: 12),
+              _buildGymRoutineCard(
+                theme,
+                l10n,
+                e,
+                isOrganiser: _club?.isEventOrganiser == true,
               ),
             ],
             if (e.row.description != null && e.row.description!.isNotEmpty) ...[
@@ -2836,4 +3013,85 @@ class _SubmitTimeSheetState extends State<_SubmitTimeSheet> {
 
   static String _dateLabel(DateTime dt, String localeTag) =>
       formatDateMed(dt.toLocal(), localeTag);
+}
+
+/// The organiser's routine attach sheet: the shared [GymRoutinePicker], the
+/// note that a routine replaces the session plan, and Cancel / Save. Pops
+/// `(id: <choice>)`, where a null id clears the routine; dismissing pops null.
+class _GymRoutineAttachSheet extends StatefulWidget {
+  final String? initial;
+  final List<({String id, String title})> routines;
+  final bool hasSessionPlan;
+  const _GymRoutineAttachSheet({
+    required this.initial,
+    required this.routines,
+    required this.hasSessionPlan,
+  });
+
+  @override
+  State<_GymRoutineAttachSheet> createState() => _GymRoutineAttachSheetState();
+}
+
+class _GymRoutineAttachSheetState extends State<_GymRoutineAttachSheet> {
+  late String? _choice = widget.routines.any((r) => r.id == widget.initial)
+      ? widget.initial
+      : null;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          0,
+          16,
+          16 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l10n.clubEventGymRoutineAttach,
+                style: theme.textTheme.titleMedium),
+            const SizedBox(height: 12),
+            GymRoutinePicker(
+              fieldKey: const Key('class-routine-picker'),
+              value: _choice,
+              routines: widget.routines,
+              onChanged: (v) => setState(() => _choice = v),
+            ),
+            if (widget.hasSessionPlan && _choice != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                l10n.clubEventGymRoutineReplacesPlan,
+                key: const Key('class-routine-replaces-plan'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(l10n.commonCancel),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  key: const Key('class-routine-save'),
+                  onPressed: () =>
+                      Navigator.of(context).pop((id: _choice)),
+                  child: Text(l10n.clubEventGymRoutineSave),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

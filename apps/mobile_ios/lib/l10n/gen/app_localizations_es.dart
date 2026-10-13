@@ -15123,7 +15123,41 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get eventFormGymRoutineFailed =>
-      'Evento creado, pero no se pudo adjuntar la rutina. Adjúntala desde la página del evento en la web.';
+      'Evento creado, pero no se pudo adjuntar la rutina. Adjúntala desde la página del evento.';
+
+  @override
+  String get clubEventGymRoutineTitle => 'Rutina de la clase';
+
+  @override
+  String get clubEventGymRoutineAttach => 'Adjuntar una rutina';
+
+  @override
+  String get clubEventGymRoutineNone => 'No hay ninguna rutina adjunta.';
+
+  @override
+  String clubEventGymRoutineSets(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count series',
+      one: '1 serie',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get clubEventGymRoutineSave => 'Guardar';
+
+  @override
+  String get clubEventGymRoutineSaved => 'Rutina de la clase actualizada.';
+
+  @override
+  String get clubEventGymRoutineSaveFailed =>
+      'No se pudo actualizar la rutina de la clase.';
+
+  @override
+  String get clubEventGymRoutineReplacesPlan =>
+      'Al adjuntar una rutina se quita el plan de sesión: una clase lleva uno u otro.';
 
   @override
   String get audienceTitle => 'Quién puede ver esto';

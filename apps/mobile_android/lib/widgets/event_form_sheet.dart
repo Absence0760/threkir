@@ -12,6 +12,7 @@ import '../minor_units.dart';
 import '../social_service.dart';
 import '../typed_decimal.dart';
 import 'full_screen_form.dart';
+import 'gym_routine_picker.dart';
 
 /// Full-screen dialog for creating a new event under a club. Mirrors
 /// the web `EventEditor.svelte` (one-off / weekly / biweekly / monthly, with
@@ -448,35 +449,14 @@ class _EventFormState extends State<_EventForm> {
                 ),
               ),
               const SizedBox(height: 8),
-              KeyedSubtree(
-                key: ValueKey('routine-${_gymRoutineId ?? ''}'),
-                child: DropdownButtonFormField<String?>(
-                  key: const Key('event-form-gym-routine'),
-                  initialValue: _gymRoutineId,
-                  isExpanded: true,
-                  decoration: InputDecoration(
-                    labelText: l10n.eventFormGymRoutine,
-                    helperText: _gymRoutines.isEmpty
-                        ? l10n.eventFormGymRoutineEmpty
-                        : l10n.eventFormGymRoutineHint,
-                    helperMaxLines: 3,
-                  ),
-                  items: [
-                    DropdownMenuItem<String?>(
-                      value: null,
-                      child: Text(l10n.eventFormGymRoutineNone),
-                    ),
-                    for (final r in _gymRoutines)
-                      DropdownMenuItem<String?>(
-                        value: r.id,
-                        child: Text(r.title, overflow: TextOverflow.ellipsis),
-                      ),
-                  ],
-                  onChanged: (v) => setState(() {
-                    _gymRoutineId = v;
-                    if (v != null) _sessionPlanId = null;
-                  }),
-                ),
+              GymRoutinePicker(
+                fieldKey: const Key('event-form-gym-routine'),
+                value: _gymRoutineId,
+                routines: _gymRoutines,
+                onChanged: (v) => setState(() {
+                  _gymRoutineId = v;
+                  if (v != null) _sessionPlanId = null;
+                }),
               ),
               const SizedBox(height: 8),
             ],

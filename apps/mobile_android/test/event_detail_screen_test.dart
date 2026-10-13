@@ -1,3 +1,4 @@
+import 'package:api_client/api_client.dart' show ApiClient;
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -14,6 +15,7 @@ import '../lib/preferences.dart';
 import '../lib/screens/event_detail_screen.dart';
 import '../lib/session_steps.dart';
 import '../lib/social_service.dart';
+import 'pump_until.dart';
 import 'realtime_drain.dart';
 
 ClubView _club(String? viewerRole) => ClubView(
@@ -271,6 +273,124 @@ class _SubmitFailSocial extends _EventSocial {
     submitCalls++;
     throw Exception('network down');
   }
+}
+
+/// A class event carrying an attached gym routine (decisions § 1869). The
+/// fake applies the organiser's write the way the database does: attaching a
+/// routine clears the session plan in the same write (§ 1884).
+class _ClassRoutineSocial extends _EventSocial {
+  _ClassRoutineSocial({super.club, this.gymRoutineId, this.sessionPlanId})
+      : super(category: 'class');
+  String? gymRoutineId;
+  String? sessionPlanId;
+  bool failWrite = false;
+  final List<String?> routineWrites = [];
+
+  @override
+  Future<EventView?> fetchEventById(String eventId) async => EventView(
+    row: EventRow(
+      id: 'e1',
+      clubId: 'club-1',
+      title: 'Strength Class',
+      startsAt: DateTime.utc(2026, 6, 20, 8),
+      authorId: 'host',
+      category: 'class',
+      isPublic: true,
+      gymRoutineId: gymRoutineId,
+      sessionPlanId: sessionPlanId,
+    ),
+    byday: null,
+    attendeeCount: 0,
+    viewerRsvp: null,
+    nextInstanceStart: DateTime.utc(2026, 6, 20, 8),
+  );
+
+  @override
+  Future<List<({String id, String title})>> fetchClubGymRoutineOptions(
+    String clubId,
+  ) async => const [
+    (id: 'r-lower', title: 'Lower Body'),
+    (id: 'r-upper', title: 'Upper Body'),
+  ];
+
+  @override
+  Future<void> setEventGymRoutine(String eventId, String? id) async {
+    routineWrites.add(id);
+    if (failWrite) throw Exception('rls');
+    gymRoutineId = id;
+    if (id != null) sessionPlanId = null;
+  }
+}
+
+/// Answers the routine read for the routines this viewer can read; any other
+/// id reads as null, which is what RLS hands a non-member.
+class _RoutineApi extends ApiClient {
+  _RoutineApi({this.readable = const {'r-lower', 'r-upper'}});
+  final Set<String> readable;
+
+  static final _at = DateTime.utc(2026, 6, 1);
+
+  static GymRoutineExerciseRow _exercise(String routineId, String name, int pos) =>
+      GymRoutineExerciseRow(
+        id: '$routineId-$pos',
+        routineId: routineId,
+        exerciseName: name,
+        exerciseKey: name.toLowerCase(),
+        position: pos,
+        modality: 'reps',
+        progression: 'none',
+        progressionParams: const <String, dynamic>{},
+      );
+
+  static List<GymRoutineSetRow> _sets(String exerciseId, int n) => [
+    for (var i = 0; i < n; i++)
+      GymRoutineSetRow(
+        id: '$exerciseId-s$i',
+        routineExerciseId: exerciseId,
+        setIndex: i,
+        setType: 'working',
+        targetRepsMin: 5,
+      ),
+  ];
+
+  @override
+  Future<({
+    GymRoutineRow routine,
+    List<({GymRoutineExerciseRow exercise, List<GymRoutineSetRow> sets})> exercises,
+  })?> fetchGymRoutineDetail(String id) async {
+    if (!readable.contains(id)) return null;
+    final lower = id == 'r-lower';
+    final plan = lower
+        ? [('Back Squat', 3), ('Romanian Deadlift', 1)]
+        : [('Bench Press', 2)];
+    final exercises = [
+      for (final (i, (name, _)) in plan.indexed) _exercise(id, name, i),
+    ];
+    return (
+      routine: GymRoutineRow(
+        id: id,
+        authorId: 'host',
+        title: lower ? 'Lower Body' : 'Upper Body',
+        periodisation: 'none',
+        exerciseCount: exercises.length,
+        lastModifiedAt: _at,
+        createdAt: _at,
+        clubId: 'club-1',
+        isPublicTemplate: false,
+      ),
+      exercises: [
+        for (final (i, ex) in exercises.indexed)
+          (exercise: ex, sets: _sets(ex.id, plan[i].$2)),
+      ],
+    );
+  }
+
+  @override
+  Future<({
+    SessionPlanRow plan,
+    List<SessionPlanBlockRow> blocks,
+    List<SessionPlanItemRow> items,
+  })?> fetchSessionPlan(String id) async => null;
 }
 
 bool _supabaseReady = false;
@@ -1162,6 +1282,189 @@ void main() {
 
       expect(social.lastRsvpStatus, 'going');
       expect(social.lastRsvpCourseId, 'c-10k');
+    });
+  });
+
+  group('EventDetailScreen — class gym routine card (decisions § 1869)', () {
+    Future<void> pumpClass(
+      WidgetTester tester,
+      _ClassRoutineSocial social, {
+      _RoutineApi? api,
+    }) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: EventDetailScreen(
+            social: social,
+            clubSlug: 'club-1',
+            eventId: 'e1',
+            api: api ?? _RoutineApi(),
+          ),
+        ),
+      );
+      await pumpUntil(
+        tester,
+        () => find.byType(FullBodyLoader).evaluate().isEmpty,
+        describe: 'the event to load',
+      );
+    }
+
+    Future<void> openSheetAndPick(WidgetTester tester, String label) async {
+      final attach = find.byKey(const Key('class-routine-attach'));
+      await tester.ensureVisible(attach);
+      await tester.tap(attach);
+      await pumpUntil(
+        tester,
+        () => find.byKey(const Key('class-routine-picker')).evaluate().isNotEmpty,
+        describe: 'the routine attach sheet',
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.byKey(const Key('class-routine-picker')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.text(label).last);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    realtimeWidgetTest('an attendee sees the routine with its set counts', (
+      tester,
+    ) async {
+      final social = _ClassRoutineSocial(
+        club: _club('member'),
+        gymRoutineId: 'r-lower',
+      );
+      await pumpClass(tester, social);
+      await pumpUntil(
+        tester,
+        () => find.text('Back Squat').evaluate().isNotEmpty,
+        describe: 'the routine card',
+      );
+      final card = find.byKey(const Key('class-routine'));
+      expect(card, findsOneWidget);
+      expect(find.descendant(of: card, matching: find.text('Class routine')),
+          findsOneWidget);
+      expect(find.descendant(of: card, matching: find.text('Lower Body')),
+          findsOneWidget);
+      expect(find.text('3 sets'), findsOneWidget);
+      expect(find.text('Romanian Deadlift'), findsOneWidget);
+      expect(find.text('1 set'), findsOneWidget);
+      // Only the organiser can change it.
+      expect(find.byKey(const Key('class-routine-attach')), findsNothing);
+    });
+
+    realtimeWidgetTest('a viewer who cannot read the routine sees no card', (
+      tester,
+    ) async {
+      final social = _ClassRoutineSocial(
+        club: _club('member'),
+        gymRoutineId: 'r-lower',
+      );
+      await pumpClass(tester, social, api: _RoutineApi(readable: const {}));
+      await tester.pump();
+      expect(find.byKey(const Key('class-routine')), findsNothing);
+      expect(find.text('Class routine'), findsNothing);
+    });
+
+    realtimeWidgetTest('the organiser changes the routine after creation', (
+      tester,
+    ) async {
+      final social = _ClassRoutineSocial(
+        club: _club('event_organiser'),
+        gymRoutineId: 'r-lower',
+      );
+      await pumpClass(tester, social);
+      await pumpUntil(
+        tester,
+        () => find.text('Back Squat').evaluate().isNotEmpty,
+        describe: 'the routine card',
+      );
+      await openSheetAndPick(tester, 'Upper Body');
+      await tester.tap(find.byKey(const Key('class-routine-save')));
+      await pumpUntil(
+        tester,
+        () => find.text('Bench Press').evaluate().isNotEmpty,
+        describe: 'the card to show the new routine',
+      );
+      expect(social.routineWrites, ['r-upper']);
+      expect(find.text('Back Squat'), findsNothing);
+      expect(find.text('2 sets'), findsOneWidget);
+      expect(find.text('Class routine updated.'), findsOneWidget);
+    });
+
+    realtimeWidgetTest('the organiser clears the routine', (tester) async {
+      final social = _ClassRoutineSocial(
+        club: _club('event_organiser'),
+        gymRoutineId: 'r-lower',
+      );
+      await pumpClass(tester, social);
+      await pumpUntil(
+        tester,
+        () => find.text('Back Squat').evaluate().isNotEmpty,
+        describe: 'the routine card',
+      );
+      await openSheetAndPick(tester, 'None');
+      await tester.tap(find.byKey(const Key('class-routine-save')));
+      await pumpUntil(
+        tester,
+        () => find.text('No routine attached.').evaluate().isNotEmpty,
+        describe: 'the card to show no routine',
+      );
+      expect(social.routineWrites, [null]);
+      expect(find.text('Back Squat'), findsNothing);
+      // The organiser keeps the card, so a routine can be attached again.
+      expect(find.byKey(const Key('class-routine-attach')), findsOneWidget);
+    });
+
+    realtimeWidgetTest(
+      'attaching a routine to a class with a session plan says it replaces it',
+      (tester) async {
+        final social = _ClassRoutineSocial(
+          club: _club('event_organiser'),
+          sessionPlanId: 'plan-1',
+        );
+        await pumpClass(tester, social);
+        expect(find.text('No routine attached.'), findsOneWidget);
+        await openSheetAndPick(tester, 'Lower Body');
+        expect(find.byKey(const Key('class-routine-replaces-plan')),
+            findsOneWidget);
+        await tester.tap(find.byKey(const Key('class-routine-save')));
+        await pumpUntil(
+          tester,
+          () => find.text('Back Squat').evaluate().isNotEmpty,
+          describe: 'the card to show the attached routine',
+        );
+        expect(social.routineWrites, ['r-lower']);
+        expect(social.sessionPlanId, isNull);
+      },
+    );
+
+    realtimeWidgetTest('a failed write says so and keeps the routine', (
+      tester,
+    ) async {
+      final social = _ClassRoutineSocial(
+        club: _club('event_organiser'),
+        gymRoutineId: 'r-lower',
+      )..failWrite = true;
+      await pumpClass(tester, social);
+      await pumpUntil(
+        tester,
+        () => find.text('Back Squat').evaluate().isNotEmpty,
+        describe: 'the routine card',
+      );
+      await openSheetAndPick(tester, 'Upper Body');
+      await tester.tap(find.byKey(const Key('class-routine-save')));
+      await pumpUntil(
+        tester,
+        () => find
+            .text("Couldn't update the class routine.")
+            .evaluate()
+            .isNotEmpty,
+        describe: 'the failure banner',
+      );
+      expect(social.routineWrites, ['r-upper']);
+      expect(find.text('Back Squat'), findsOneWidget);
     });
   });
 }

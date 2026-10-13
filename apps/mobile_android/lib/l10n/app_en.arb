@@ -19212,9 +19212,46 @@
   "@eventFormGymRoutineEmpty": {
     "description": "Helper text under the gym routine picker when the club has no routine templates"
   },
-  "eventFormGymRoutineFailed": "Event created, but the routine couldn't be attached. Attach it from the event on the web.",
+  "eventFormGymRoutineFailed": "Event created, but the routine couldn't be attached. Attach it from the event page.",
   "@eventFormGymRoutineFailed": {
     "description": "Banner when the event was created but its gym routine was not attached"
+  },
+  "clubEventGymRoutineTitle": "Class routine",
+  "@clubEventGymRoutineTitle": {
+    "description": "Heading of the class routine card on the event page"
+  },
+  "clubEventGymRoutineAttach": "Attach a routine",
+  "@clubEventGymRoutineAttach": {
+    "description": "Organiser's button on the class routine card that opens the routine picker, and that sheet's title"
+  },
+  "clubEventGymRoutineNone": "No routine attached.",
+  "@clubEventGymRoutineNone": {
+    "description": "Class routine card line when no readable routine is attached (organiser only)"
+  },
+  "clubEventGymRoutineSets": "{count, plural, =1{1 set} other{{count} sets}}",
+  "@clubEventGymRoutineSets": {
+    "description": "Planned set count beside an exercise on the class routine card",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clubEventGymRoutineSave": "Save",
+  "@clubEventGymRoutineSave": {
+    "description": "Save button of the class routine attach sheet"
+  },
+  "clubEventGymRoutineSaved": "Class routine updated.",
+  "@clubEventGymRoutineSaved": {
+    "description": "Banner after the organiser attaches, changes or clears the class routine"
+  },
+  "clubEventGymRoutineSaveFailed": "Couldn't update the class routine.",
+  "@clubEventGymRoutineSaveFailed": {
+    "description": "Banner when attaching, changing or clearing the class routine failed"
+  },
+  "clubEventGymRoutineReplacesPlan": "Attaching a routine removes the session plan — a class carries one or the other.",
+  "@clubEventGymRoutineReplacesPlan": {
+    "description": "Note in the routine attach sheet when the class already carries a session plan"
   },
   "audienceTitle": "Who can see this",
   "@audienceTitle": {

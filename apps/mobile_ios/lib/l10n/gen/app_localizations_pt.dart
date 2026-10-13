@@ -15126,7 +15126,41 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get eventFormGymRoutineFailed =>
-      'Evento criado, mas não foi possível anexar a rotina. Anexe-a na página do evento na web.';
+      'Evento criado, mas não foi possível anexar a rotina. Anexe-a a partir da página do evento.';
+
+  @override
+  String get clubEventGymRoutineTitle => 'Rotina da aula';
+
+  @override
+  String get clubEventGymRoutineAttach => 'Anexar uma rotina';
+
+  @override
+  String get clubEventGymRoutineNone => 'Nenhuma rotina anexada.';
+
+  @override
+  String clubEventGymRoutineSets(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count séries',
+      one: '1 série',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get clubEventGymRoutineSave => 'Guardar';
+
+  @override
+  String get clubEventGymRoutineSaved => 'Rotina da aula atualizada.';
+
+  @override
+  String get clubEventGymRoutineSaveFailed =>
+      'Não foi possível atualizar a rotina da aula.';
+
+  @override
+  String get clubEventGymRoutineReplacesPlan =>
+      'Anexar uma rotina remove o plano de sessão — uma aula leva um ou outro.';
 
   @override
   String get audienceTitle => 'Quem pode ver isto';
@@ -30365,7 +30399,41 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get eventFormGymRoutineFailed =>
-      'Evento criado, mas não deu para anexar a rotina. Anexe-a na página do evento na web.';
+      'Evento criado, mas não deu para anexar a rotina. Anexe-a pela página do evento.';
+
+  @override
+  String get clubEventGymRoutineTitle => 'Rotina da aula';
+
+  @override
+  String get clubEventGymRoutineAttach => 'Anexar uma rotina';
+
+  @override
+  String get clubEventGymRoutineNone => 'Nenhuma rotina anexada.';
+
+  @override
+  String clubEventGymRoutineSets(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count séries',
+      one: '1 série',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get clubEventGymRoutineSave => 'Salvar';
+
+  @override
+  String get clubEventGymRoutineSaved => 'Rotina da aula atualizada.';
+
+  @override
+  String get clubEventGymRoutineSaveFailed =>
+      'Não foi possível atualizar a rotina da aula.';
+
+  @override
+  String get clubEventGymRoutineReplacesPlan =>
+      'Anexar uma rotina remove o plano de sessão — uma aula leva um ou outro.';
 
   @override
   String get audienceTitle => 'Quem pode ver isto';

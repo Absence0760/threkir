@@ -25020,8 +25020,56 @@ abstract class AppLocalizations {
   /// Banner when the event was created but its gym routine was not attached
   ///
   /// In en, this message translates to:
-  /// **'Event created, but the routine couldn\'t be attached. Attach it from the event on the web.'**
+  /// **'Event created, but the routine couldn\'t be attached. Attach it from the event page.'**
   String get eventFormGymRoutineFailed;
+
+  /// Heading of the class routine card on the event page
+  ///
+  /// In en, this message translates to:
+  /// **'Class routine'**
+  String get clubEventGymRoutineTitle;
+
+  /// Organiser's button on the class routine card that opens the routine picker, and that sheet's title
+  ///
+  /// In en, this message translates to:
+  /// **'Attach a routine'**
+  String get clubEventGymRoutineAttach;
+
+  /// Class routine card line when no readable routine is attached (organiser only)
+  ///
+  /// In en, this message translates to:
+  /// **'No routine attached.'**
+  String get clubEventGymRoutineNone;
+
+  /// Planned set count beside an exercise on the class routine card
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 set} other{{count} sets}}'**
+  String clubEventGymRoutineSets(int count);
+
+  /// Save button of the class routine attach sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get clubEventGymRoutineSave;
+
+  /// Banner after the organiser attaches, changes or clears the class routine
+  ///
+  /// In en, this message translates to:
+  /// **'Class routine updated.'**
+  String get clubEventGymRoutineSaved;
+
+  /// Banner when attaching, changing or clearing the class routine failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the class routine.'**
+  String get clubEventGymRoutineSaveFailed;
+
+  /// Note in the routine attach sheet when the class already carries a session plan
+  ///
+  /// In en, this message translates to:
+  /// **'Attaching a routine removes the session plan — a class carries one or the other.'**
+  String get clubEventGymRoutineReplacesPlan;
 
   /// Title of the sheet where the owner chooses who can see a run or route
   ///

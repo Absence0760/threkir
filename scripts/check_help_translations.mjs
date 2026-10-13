@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Guard: every string of a translated help guide translates the English
 // string at the same place as it reads NOW (docs/features/help.md
-// § Translation, decisions § R8I18N-1).
+// § Translation, decisions § 1871).
 //
 // Each file at apps/web/src/lib/help/translations/<locale>/<id>.ts records, in
 // `sources`, a hash of the English each string was translated from, keyed by

@@ -1132,7 +1132,7 @@ jobs:
       # Each string of a translated help guide records a hash of the English
       # it was translated from; an English edit without a re-translation of
       # the strings it touched (or the file's deletion, which falls back to
-      # English) fails here (decisions § R8I18N-1, § R8I18N-3).
+      # English) fails here (decisions § 1871, § 1873).
       - name: Verify no help-guide translation is stale against its English guide
         run: |
           if ! node scripts/check_help_translations.mjs; then

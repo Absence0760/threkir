@@ -845,11 +845,25 @@ async function handleCompleted(
     return Response.json({ ok: true, skipped: 'cas_lost' });
   }
 
+  // Ask again now that the order is `paid`. A host who calls the occurrence off
+  // between the read above and the CAS met this order as `pending`, could not
+  // expire a session that had already completed, and refunded nothing; read
+  // only before the CAS, this delivery would then seat the buyer on a class
+  // that is not happening. After the CAS the race has no gap left:
+  // `events-cancel` records the exception BEFORE it reads the orders, so a
+  // cancel this read misses reads this order as `paid` and refunds it itself
+  // (decisions § 1839). A failed re-read cannot 500 — the order is already
+  // `paid`, so a Stripe retry finds no transition — and it does not unseat a
+  // buyer whose class may well be on: it seats, and the reconciliation sweep
+  // (`events-refund-sweep`) refunds any paid order on a cancelled occurrence,
+  // whose `charge.refunded` then releases the seat.
+  const cancelledAfterPay = cancelled !== null || await recheckOccurrenceCancelled(service, order);
+
   // The class is not happening: never seat, and give the money back the way
   // the host's own cancel would have (decisions § 1833). The order is `paid`
   // first because that is the truth — the money arrived — and because the
   // `charge.refunded` this refund produces transitions out of `paid`.
-  if (cancelled) {
+  if (cancelledAfterPay) {
     return await refundCancelledOccurrenceOrder(service, {
       id: updated.id,
       status: updated.status,
@@ -932,6 +946,31 @@ async function handleCompleted(
   }
 
   return Response.json({ ok: true, seated: true, order_id: order.id });
+}
+
+/// The post-CAS cancellation read (decisions § 1839). A read error answers
+/// "not cancelled" and is logged: the order is already `paid`, so failing the
+/// delivery would buy no retry, and the sweep refunds whatever this misses.
+async function recheckOccurrenceCancelled(
+  service: DbClient,
+  order: { id: string; event_id: string; instance_start: string },
+): Promise<boolean> {
+  const { data, error } = await service
+    .from('event_exceptions')
+    .select('event_id')
+    .eq('event_id', order.event_id)
+    .eq('instance_start', order.instance_start)
+    .maybeSingle();
+  if (error) {
+    console.error(
+      'occurrence cancel re-read failed after paid; seating, the refund sweep is the backstop. code:',
+      error?.code ?? 'unknown',
+      'order:',
+      order.id,
+    );
+    return false;
+  }
+  return data !== null;
 }
 
 /// Refund a paid order on a cancelled occurrence through the same

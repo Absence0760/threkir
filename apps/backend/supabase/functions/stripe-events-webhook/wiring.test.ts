@@ -520,7 +520,7 @@ Deno.test('a cancelled occurrence is read before the order is marked paid, and f
 
 Deno.test('a cancelled occurrence never seats, and refunds through the shared refundOrder', () => {
   const src = completedHandler();
-  const branch = src.indexOf('if (cancelled) {');
+  const branch = src.indexOf('if (cancelledAfterPay) {');
   const capacity = src.indexOf(".from('events')");
   const seat = src.indexOf(".from('event_attendees')");
   const cas = src.indexOf(".eq('status', 'pending')");
@@ -538,6 +538,37 @@ Deno.test('a cancelled occurrence never seats, and refunds through the shared re
   for (const own of ['buildRefundParams(', 'refundIdempotencyKey(', 'idempotencyKey', 'api.stripe.com']) {
     assert(!SRC.includes(own), `the webhook builds its own refund (${own}); go through refundOrder`);
   }
+});
+
+Deno.test('the occurrence is asked again AFTER the paid CAS, before any seat (§ 1839)', () => {
+  // A host cancel landing between the pre-CAS read and the CAS met the order as
+  // `pending`, so it refunded nothing; only a read after the CAS sees it.
+  const src = completedHandler();
+  const cas = src.indexOf(".eq('status', 'pending')");
+  const recheck = src.indexOf(
+    'const cancelledAfterPay = cancelled !== null || await recheckOccurrenceCancelled(service, order);',
+  );
+  const branch = src.indexOf('if (cancelledAfterPay) {');
+  const capacity = src.indexOf(".from('events')");
+  const seat = src.indexOf(".from('event_attendees')");
+  assert(recheck !== -1, 'the post-CAS cancellation re-read is gone');
+  assert(cas < recheck && recheck < branch, 'the re-read must sit between the CAS and the refund branch');
+  assert(branch < capacity && branch < seat, 'the re-read must decide before any seat logic');
+});
+
+Deno.test('a failed post-CAS re-read seats rather than 500s, and logs the order', () => {
+  // The order is already paid: a 500 buys no retry (no transition is left), and
+  // treating the failure as cancelled would unseat a buyer whose class is on.
+  // The refund sweep refunds any paid order on a cancelled occurrence.
+  const start = SRC.indexOf('async function recheckOccurrenceCancelled(');
+  assert(start !== -1, 'recheckOccurrenceCancelled is gone');
+  const src = SRC.slice(start, SRC.indexOf('\n}\n', start));
+  assert(src.includes(".from('event_exceptions')"));
+  assert(src.includes(".eq('event_id', order.event_id)"));
+  assert(src.includes(".eq('instance_start', order.instance_start)"));
+  assert(!src.includes('status: 500'), 'the order is already paid; a 500 cannot be retried into anything');
+  assert(/if \(error\) \{[\s\S]*console\.error\([\s\S]*order\.id[\s\S]*return false;/.test(src));
+  assert(/return data !== null;/.test(src));
 });
 
 Deno.test('a refund the webhook could not make is still a 200, and names the order', () => {

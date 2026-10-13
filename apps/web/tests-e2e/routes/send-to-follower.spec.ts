@@ -119,7 +119,7 @@ test.describe('/routes/[id] — send to a follower', () => {
 		// Sending to one person must not widen the route's exposure. With
 		// audience sharing on (the seed opens it), the send grants that one
 		// person access and carries the in-app link; the route stays private
-		// and no public-flip confirm appears (decisions § R7SHARE-1).
+		// and no public-flip confirm appears (decisions § R8SHARE-1).
 		const admin = getAdminClient();
 		await admin.from('routes').update({ is_public: false }).eq('id', RUNNER_PUBLIC_ROUTE_ID);
 

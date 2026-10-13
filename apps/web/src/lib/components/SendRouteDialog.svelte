@@ -23,7 +23,7 @@
 		/// Share the route with the recipient (a `route_shares` grant) before
 		/// sending, instead of the host having made it public. The route stays
 		/// private and the owner can revoke the grant at any time (decisions
-		/// § R7SHARE-1). Only the owner sends this way; the INSERT policy
+		/// § R8SHARE-1). Only the owner sends this way; the INSERT policy
 		/// refuses anyone else.
 		grantAccess?: boolean;
 		/// The typed attachment (route_direct_share.md v2). The thread renders

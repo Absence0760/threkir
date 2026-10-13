@@ -5730,7 +5730,7 @@ export const en = {
 	"help.howThisWorks": "How this works",
 	"help.guidesForThisPage": "Guides for this page",
 	"help.readGuide": "Read the guide",
-	// Audience sharing (followers level + named-person shares, decisions § R7SHARE-1)
+	// Audience sharing (followers level + named-person shares, decisions § R8SHARE-1)
 	"audience.title": "Who can see this",
 	"audience.button": "Who can see this",
 	"audience.levelPrivate": "Only me",

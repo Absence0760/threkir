@@ -1142,7 +1142,7 @@ func (c *SupabaseClient) FetchRunIdentitiesNear(ctx context.Context, userID stri
 // whose registered fallback is 'followers' — writes followers_only, anything
 // else is owner-only. A read error falls closed to owner-only. Mirrors the web
 // `privacyDefaultToAudience` mapping and the EF importers'
-// `_shared/privacy_default.ts` (persona #27, decisions § R7SHARE-2). The
+// `_shared/privacy_default.ts` (persona #27, decisions § R8SHARE-2). The
 // server stores followers_only as owner-only until audience sharing is on.
 func (c *SupabaseClient) privacyDefaultAudience(ctx context.Context, userID string) (isPublic, followersOnly bool) {
 	prefs, err := c.FetchUserSettingsPrefs(ctx, userID)

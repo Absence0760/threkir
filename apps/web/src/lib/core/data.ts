@@ -1269,7 +1269,7 @@ export interface ShareRecipient {
 }
 
 /// Whether the followers level and named-person shares are live (the server's
-/// `private.feature_flags` row, decisions § R7SHARE-1). The audience control
+/// `private.feature_flags` row, decisions § R8SHARE-1). The audience control
 /// renders only when this is true. Fail-closed: any read failure is "off", and
 /// is not cached, so a later mount can find out.
 let audienceSharingProbe: Promise<boolean> | null = null;
@@ -1535,7 +1535,7 @@ export async function saveRunAsRoute(
 /// "Manual entry" instead of the map.
 /// Map the user's `privacy_default` preference to the visibility columns of a
 /// newly-created run: `public` → public, `followers` → `followers_only`, else
-/// owner-only (`social/run_visibility.ts`, decisions § R7SHARE-2). Web once
+/// owner-only (`social/run_visibility.ts`, decisions § R8SHARE-2). Web once
 /// ignored the preference entirely, so a runner who chose `public` still got
 /// private runs from web saves + imports (comeback persona #27); until the
 /// followers level existed, `followers` collapsed to owner-only. Fail-closed:

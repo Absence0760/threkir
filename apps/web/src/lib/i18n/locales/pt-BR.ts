@@ -5699,7 +5699,7 @@ export const messages = {
 	"help.howThisWorks": "Como funciona",
 	"help.guidesForThisPage": "Guias desta página",
 	"help.readGuide": "Ler o guia",
-	// Audience sharing (followers level + named-person shares, decisions § R7SHARE-1)
+	// Audience sharing (followers level + named-person shares, decisions § R8SHARE-1)
 	"audience.title": "Quem pode ver isto",
 	"audience.button": "Quem pode ver isto",
 	"audience.levelPrivate": "Só eu",

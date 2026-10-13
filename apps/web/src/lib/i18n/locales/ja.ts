@@ -5695,7 +5695,7 @@ export const messages = {
 	"help.howThisWorks": "使い方ガイド",
 	"help.guidesForThisPage": "このページのガイド",
 	"help.readGuide": "ガイドを読む",
-	// Audience sharing (followers level + named-person shares, decisions § R7SHARE-1)
+	// Audience sharing (followers level + named-person shares, decisions § R8SHARE-1)
 	"audience.title": "公開範囲",
 	"audience.button": "公開範囲",
 	"audience.levelPrivate": "自分のみ",

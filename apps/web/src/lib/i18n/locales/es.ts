@@ -5700,7 +5700,7 @@ export const messages = {
 	"help.howThisWorks": "Cómo funciona",
 	"help.guidesForThisPage": "Guías de esta página",
 	"help.readGuide": "Leer la guía",
-	// Audience sharing (followers level + named-person shares, decisions § R7SHARE-1)
+	// Audience sharing (followers level + named-person shares, decisions § R8SHARE-1)
 	"audience.title": "Quién puede ver esto",
 	"audience.button": "Quién puede ver esto",
 	"audience.levelPrivate": "Solo yo",

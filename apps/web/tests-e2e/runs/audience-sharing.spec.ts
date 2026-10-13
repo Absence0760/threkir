@@ -7,7 +7,7 @@ import { USER_A, USER_B, USER_C_PRO, type SeededUser } from '../fixtures/users';
 import { readMaybeRow, readRow, readRows } from '../fixtures/db-read';
 
 /**
- * Audience sharing (decisions § R7SHARE-1): a run or route can be shared with
+ * Audience sharing (decisions § R8SHARE-1): a run or route can be shared with
  * the owner's followers, or with named people, without becoming public.
  *
  * Seed follow graph:

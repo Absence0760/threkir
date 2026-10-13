@@ -3,10 +3,10 @@
 /// `public_runs` holds every public run and nothing else; `shared_runs`
 /// (migration 20270802000003) holds the non-public runs whose audience — the
 /// owner's followers, or a named-person grant — admits THIS caller, and never
-/// the caller's own. Both are column-redacted views evaluated as the caller,
-/// so a row from either is the database's own answer to "may this caller see
-/// this run", and the track is served clipped against the owner's zones in
-/// both cases (decisions § 33, § R7SHARE-5).
+/// the caller's own. Both are column-redacted views that filter on the
+/// caller's JWT, so a row from either is the database's own answer to "may
+/// this caller see this run", and the track is served clipped against the
+/// owner's zones in both cases (decisions § 33, § R8SHARE-5).
 ///
 /// Order matters only for cost: a public run is answered by the first read,
 /// and an anonymous caller has no audience to be in, so it never makes the

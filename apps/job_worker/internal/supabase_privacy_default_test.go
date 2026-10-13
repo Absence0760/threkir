@@ -1,7 +1,7 @@
 package internal
 
 // Coverage for privacyDefaultAudience, the helper that makes Strava-synced
-// runs honour the user's privacy_default (persona #27, decisions § R7SHARE-2).
+// runs honour the user's privacy_default (persona #27, decisions § R8SHARE-2).
 // 'public' publishes, 'followers' and an unset pref write followers_only, and
 // 'private', unknown values and any read error are owner-only. Uses the same
 // httptest harness as the data-export tests.

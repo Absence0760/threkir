@@ -106,7 +106,9 @@ insert into write_lockdown_registry (role, tbl, verb, col, reason) values
   ('authenticated', 'event_attendees', 'UPDATE', 'order_id',   'the paid-order link; enforce_paid_order_for_priced_event validates it'),
   ('authenticated', 'event_attendees', 'UPDATE', 'attendance', 'the organiser''s attendance mark, not the attendee''s'),
   ('authenticated', 'event_attendees', 'INSERT', 'order_id',   'ditto — the 20270520_001 half of the 584 fix'),
-  ('authenticated', 'event_attendees', 'INSERT', 'attendance', 'ditto — self-marking `attended` at INSERT was the 584 exploit');
+  ('authenticated', 'event_attendees', 'INSERT', 'attendance', 'ditto — self-marking `attended` at INSERT was the 584 exploit'),
+  ('authenticated', 'event_attendees', 'INSERT', 'offer_expires_at', 'the paid-waitlist claim deadline (20270726000002); only the definer offer mover sets it, or a waiter could hold a seat forever'),
+  ('authenticated', 'event_attendees', 'UPDATE', 'offer_expires_at', 'ditto — extending your own offer would starve the next waiter');
 
 -- Columns a client may set once, at row creation, and never change. Each needs
 -- a reason why write-once is safe — this is the register assertion (5) reads.

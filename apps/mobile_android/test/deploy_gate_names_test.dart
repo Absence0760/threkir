@@ -45,8 +45,12 @@ const String _parser = 'lib/env_flag.dart';
 
 String _read(String path) => File(path).readAsStringSync();
 
-/// The `PUBLIC_*` env key a web flag module reads.
+/// The `PUBLIC_*` env key a web flag module reads: a named import from
+/// SvelteKit 3's `$app/env/public`, or an `env.` / `import.meta.env.` member.
 String? _webKey(String source) =>
+    RegExp(r"import\s*\{\s*(PUBLIC_[A-Z0-9_]+)\s*\}\s*from\s*'\$app/env/public'")
+        .firstMatch(source)
+        ?.group(1) ??
     RegExp(r'\benv\.(PUBLIC_[A-Z0-9_]+)\b').firstMatch(source)?.group(1);
 
 /// The dart-define / dotenv key a Dart flag module reads, taken from its

@@ -1,0 +1,31 @@
+{
+  "corrections": {
+    "web:help.racing-in-a-race.s6.b0.i2": "GOから5分を超えて遅れてスタートするか、最初の位置がコースのスタート地点から200 mを超えて離れていると、スマートフォンアプリに遅れスタートの通知が表示されます。グロスタイムはGOから計測されるため、遅れてスタートするとネットタイムより長くなります。",
+    "web:help.racing-in-a-race.s2.b1": "スマートフォンやウォッチが自動で記録を開始することはありません。自分でスタートを押してください。**レース準備完了**と表示されている間にスタートラインで開始することも、**レース ライブ**が表示されてから開始することもできます。早めに開始した記録は、スマートフォンでもWear OSウォッチでもGOの時点でレースに加わり、ネットタイムはスタートを押したときではなくGOから計測されます。",
+    "web:help.race-day-for-hosts.s2.b2": "GOを出しても、誰の記録も開始されません。ランナーは自分のスマートフォンやウォッチでスタートを押します。レースが準備完了の間にスタートラインで押すか（記録はGOの時点でレースに加わります）、**レース ライブ**が表示されてから押します。記録を開始するよう伝えてください。",
+    "web:help.race-day-for-hosts.s5.b0": "レースを中止できるのは準備完了の間だけです。**スタート**（スマートフォンアプリでは**GO**）の隣の**キャンセル**を選び、続いて**レースをキャンセル**を選びます。GOを出したあとは、レースを終了することしかできません。"
+  },
+  "findings": [
+    { "id": "web:help.racing-in-a-race.s6.b0.i2", "severity": "error", "rule": "meaning", "problem": "\"more than 5 minutes\" / \"more than 200 m\" rendered 5分以上 / 200 m以上 (≥). The code is strict: race_finish.dart (r7/race) `difference(gunAt) > kRaceLateStartAfter` and `d > kRaceLateStartFarM`, so a start exactly 5 min / 200 m out shows no notice. The 5-minute clause was carried over from batch 1 with the same slip.", "fix": "5分を超えて / 200 mを超えて" },
+    { "id": "web:help.racing-in-a-race.s2.b1", "severity": "warning", "rule": "meaning", "problem": "「レースが**レース準備完了**と表示されている間に」 doubles レース and makes the race the thing that displays the label; the label is shown on the runner's screen (runRaceArmed).", "fix": "「**レース準備完了**と表示されている間に」" },
+    { "id": "web:help.race-day-for-hosts.s2.b2", "severity": "warning", "rule": "term", "problem": "「準備完了中」 is a new coinage; s5.b0 and batch 1 say 「準備完了の間」.", "fix": "「レースが準備完了の間に」" },
+    { "id": "web:help.race-day-for-hosts.s5.b0", "severity": "warning", "rule": "meaning", "problem": "「レースは終了することしかできません」 makes the race the subject; the English means the host's only remaining action is End.", "fix": "「レースを終了することしかできません」" },
+    { "id": "web:help.race-day-for-hosts.s5.b0", "severity": "warning", "rule": "term", "problem": "The sentence now covers both platforms, but **レースをキャンセル** is only the web label (clubEvent.cancelRaceTitle); the phone's eventRaceCancelRace reads 「レースを中止」. The guide can't add a span, so the fix belongs in the catalogue (see catalogueFindings).", "fix": "No change in the batch; align the catalogue." }
+  ],
+  "terms": {
+    "arm / armed": "準備する / 準備完了 (Race armed label = レース準備完了)",
+    "fire GO": "GOを出す; web button **スタート**, phone **GO**",
+    "on the line": "スタートラインで",
+    "joins the race at GO": "GOの時点でレースに加わる",
+    "Approve / Unverify / Edit": "承認 / 検証を解除 / 編集 (web and phone identical)",
+    "PENDING / Pending": "保留中 (both)",
+    "activity-risk acknowledgement": "活動リスクの同意 (clubEditor.waiverLabel)",
+    "more than": "〜を超え(て); 以上 only for \"or more\"",
+    "No badge": "バッジなし (pseudo-label, no catalogue string)",
+    "chip time / gun time": "ネットタイム / グロスタイム"
+  },
+  "catalogueFindings": [
+    { "keys": ["web:clubEvent.cancelRaceTitle", "mobile:eventRaceCancelRace"], "problem": "Cancel race is 「レースをキャンセル」 on web and 「レースを中止」 on the phone (r7/race). The guide term (batch 1: cancel the race = レースを中止する) and race-day-for-hosts s5.b0, now a both-platform sentence, need one label; recommend web → 「レースを中止」." },
+    { "keys": ["web:clubEvent.go", "mobile:eventRaceFireGo"], "problem": "The GO button is 「スタート」 on web but 「GO」 on the phone, while guide prose everywhere says 「GOを出す」. A web host reading 「GOを出したあと」 sees no button called GO. Consider web clubEvent.go → 「GO」 (it's also a race-word the English keeps in caps)." }
+  ]
+}

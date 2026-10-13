@@ -77,7 +77,7 @@ class RaceRunStateTest {
             settled = d.finaliseNow(),
             coveredM = 5001.0,
             courseDistanceM = 5000.0,
-            nowDeviceMs = t0 + 60_000L,
+            stoppedAtMs = t0 + 60_000L,
         )
         assertEquals(RaceFinish.Outcome.AUTO_FINISH, decision.outcome)
         assertEquals(t0 + 4_000L, decision.finishEpochMs)
@@ -98,6 +98,7 @@ class RaceRunStateTest {
     fun `with no candidate, short of 90 percent is a DNF`() {
         val dnf = raceFinishDecision(null, 4499.0, 5000.0, t0)
         assertEquals(RaceFinish.Outcome.DNF, dnf.outcome)
+        assertNull("a DNF has no finish instant", dnf.finishEpochMs)
         assertEquals("dnf", dnf.outcome.finisherStatus)
         assertNull(dnf.outcome.finishMethod)
     }
@@ -111,11 +112,15 @@ class RaceRunStateTest {
 
     @Test
     fun `host End while running or paused ends the race for an undecided runner`() {
-        assertTrue(hostEndsRace("finished", decided = false))
-        assertTrue(hostEndsRace("cancelled", decided = false))
-        assertFalse(hostEndsRace("running", decided = false))
-        assertFalse(hostEndsRace("armed", decided = false))
-        assertFalse("an unreadable status is not an End", hostEndsRace(null, decided = false))
+        assertEquals(RaceHostEnd.END, raceHostEnd("finished", decided = false, stopPending = false))
+        assertEquals(RaceHostEnd.END, raceHostEnd("cancelled", decided = false, stopPending = false))
+        assertEquals(RaceHostEnd.NONE, raceHostEnd("running", decided = false, stopPending = false))
+        assertEquals(RaceHostEnd.NONE, raceHostEnd("armed", decided = false, stopPending = false))
+        assertEquals(
+            "an unreadable status is not an End",
+            RaceHostEnd.NONE,
+            raceHostEnd(null, decided = false, stopPending = false),
+        )
         // Ended while paused: the race is unbound, so the next Stop stops the
         // run rather than asking to finish a race that is over.
         assertEquals(RaceStopAction.STOP, raceStopAction(paused = true, raceBound = false, decided = false))
@@ -123,8 +128,26 @@ class RaceRunStateTest {
 
     @Test
     fun `host End after this runner's finish does not swallow the result`() {
-        assertFalse(hostEndsRace("finished", decided = true))
-        assertFalse(hostEndsRace("cancelled", decided = true))
+        assertEquals(RaceHostEnd.NONE, raceHostEnd("finished", decided = true, stopPending = false))
+        assertEquals(RaceHostEnd.NONE, raceHostEnd("cancelled", decided = true, stopPending = true))
+    }
+
+    @Test
+    fun `host End after the runner pressed Stop keeps the Finish, timed at that Stop`() {
+        assertEquals(RaceHostEnd.END_AFTER_STOP, raceHostEnd("finished", decided = false, stopPending = true))
+        assertEquals(RaceHostEnd.END_AFTER_STOP, raceHostEnd("cancelled", decided = false, stopPending = true))
+        // The race stays bound, so the paused screen's press is still Finish
+        // race, and the decision is timed at the Stop, not at the press.
+        assertEquals(
+            RaceStopAction.FINISH_RACE,
+            raceStopAction(paused = true, raceBound = true, decided = false),
+        )
+        val stoppedAt = t0 + 1_500_000L
+        val finish = raceFinishDecision(null, 4800.0, 5000.0, stoppedAt)
+        assertEquals(RaceFinish.Outcome.MANUAL_FINISH, finish.outcome)
+        assertEquals(stoppedAt, finish.finishEpochMs)
+        // Short of the gate it is still filed, as the runner's own DNF.
+        assertEquals(RaceFinish.Outcome.DNF, raceFinishDecision(null, 4000.0, 5000.0, stoppedAt).outcome)
     }
 
     // ───────────── Binding ─────────────
@@ -270,7 +293,11 @@ class RaceRunStateTest {
         )
         assertTrue(src.contains("raceFixDeviceMs("))
         assertTrue(src.contains("raceStopAction("))
-        assertTrue(src.contains("hostEndsRace("))
+        assertTrue(src.contains("raceHostEnd("))
+        assertTrue(
+            "a Finish race is timed at the Stop instant",
+            src.contains("stoppedAtMs = raceStoppedAtMs ?: System.currentTimeMillis()"),
+        )
         assertTrue(src.contains("raceToBind("))
         assertTrue(src.contains("raceFixOfferable("))
     }

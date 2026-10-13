@@ -22,19 +22,23 @@ internal fun raceStopAction(paused: Boolean, raceBound: Boolean, decided: Boolea
 /// "Finish race", or a run that reached `Finished` with no decision: a
 /// closest approach still open in the zone ([settled], from
 /// [RaceFinishDetector.finaliseNow]) is an automatic finish at that fix;
-/// otherwise the 90 % gate makes it a manual finish or a DNF at
-/// [nowDeviceMs]. Mirrors `raceStopOutcome` in `race_finish.dart`.
+/// otherwise the 90 % gate makes it a manual finish at [stoppedAtMs] — the
+/// instant the runner stopped, not the later press that confirmed it — or a
+/// DNF with no finish instant. Mirrors `raceStopOutcome` in
+/// `race_finish.dart`.
 internal fun raceFinishDecision(
     settled: RaceFinish.Finish?,
     coveredM: Double,
     courseDistanceM: Double?,
-    nowDeviceMs: Long,
-): RaceStopDecision =
+    stoppedAtMs: Long,
+): RaceStopDecision {
     if (settled != null) {
-        RaceStopDecision(RaceFinish.Outcome.AUTO_FINISH, settled.epochMs, settled.coveredM)
-    } else {
-        RaceStopDecision(RaceFinish.manualOutcome(coveredM, courseDistanceM), nowDeviceMs, coveredM)
+        return RaceStopDecision(RaceFinish.Outcome.AUTO_FINISH, settled.epochMs, settled.coveredM)
     }
+    val outcome = RaceFinish.manualOutcome(coveredM, courseDistanceM)
+    val at = if (outcome == RaceFinish.Outcome.DNF) null else stoppedAtMs
+    return RaceStopDecision(outcome, at, coveredM)
+}
 
 /// The race a recording binds to, or null. Only an unbound run binds, only to
 /// a race that is running, and never the run the host already ended a race
@@ -51,11 +55,32 @@ internal fun raceToBind(
     return active?.takeIf { it.isRunning }
 }
 
-/// Whether a polled session status is the host's End for this runner. A
-/// finish already decided is a result already owed, so End racing the
-/// service's stop never swallows it.
-internal fun hostEndsRace(status: String?, decided: Boolean): Boolean =
-    !decided && (status == "finished" || status == "cancelled")
+/// What a polled session status means for this runner.
+internal enum class RaceHostEnd {
+    /// Not an End, or one that changes nothing: the race is still on, or this
+    /// runner's outcome is already decided and owed.
+    NONE,
+
+    /// The host ended the race while the runner was still racing: unbind, and
+    /// no result is owed.
+    END,
+
+    /// The host ended the race after the runner pressed Stop: the race stays
+    /// bound so the Finish chosen on the paused screen is still filed, timed
+    /// at that Stop. A Resume instead means no result.
+    END_AFTER_STOP,
+}
+
+/// The host's End for this runner, if [status] is one. A finish already
+/// decided is a result already owed, so End racing the service's stop never
+/// swallows it; and a Stop pressed before End arrived keeps the runner's own
+/// Finish (decisions § R6MOBILE-3).
+internal fun raceHostEnd(status: String?, decided: Boolean, stopPending: Boolean): RaceHostEnd =
+    when {
+        decided || (status != "finished" && status != "cancelled") -> RaceHostEnd.NONE
+        stopPending -> RaceHostEnd.END_AFTER_STOP
+        else -> RaceHostEnd.END
+    }
 
 /// Whether a fix goes to the finish detector: only while recording (a paused
 /// watch is not racing toward the line), only before an outcome, and only

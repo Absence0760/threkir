@@ -301,6 +301,9 @@ data class RaceRunState(
     /// The host pressed End before this runner finished: no result is owed,
     /// and Stop means Stop again.
     val ended: Boolean = false,
+    /// The End arrived after the runner pressed Stop: the paused screen still
+    /// offers Finish, filed at that Stop (decisions § R6MOBILE-3).
+    val finishPending: Boolean = false,
 )
 
 /// What the PostRun screen says about a race result this run produced.
@@ -314,35 +317,43 @@ data class RaceSummary(
 /// whenever the service got round to publishing `Finished`.
 internal data class RaceStopDecision(
     val outcome: RaceFinish.Outcome,
-    val finishEpochMs: Long,
+    /// The finish on the device clock; null for a DNF, which has none.
+    val finishEpochMs: Long?,
     val coveredM: Double,
 )
 
 /// The `event_results` row a race run owes. Pure, so the gun / chip / DNF
-/// arithmetic is pinned without a ViewModel.
+/// arithmetic is pinned without a ViewModel; the timing columns follow
+/// [RaceFinish.resultTiming], the fixture's `resultTiming` rule.
 internal fun buildRaceResult(
     race: ActiveRaceState,
     decision: RaceStopDecision,
     userId: String,
     runId: String,
     runStartedAtMs: Long,
-    recordedDurationS: Int,
+    elapsedS: Int,
     serverOffsetMs: Long?,
 ): PendingRaceResult {
-    val chip = RaceFinish.chipTimeS(decision.finishEpochMs, runStartedAtMs)
-    val gun = RaceFinish.gunTimeS(decision.finishEpochMs, serverOffsetMs, race.startedAtMs)
+    val timing = RaceFinish.resultTiming(
+        finished = decision.outcome.finisherStatus == "finished",
+        finishAtMs = decision.finishEpochMs,
+        gunMs = race.startedAtMs,
+        serverOffsetMs = serverOffsetMs,
+        recordingStartedMs = runStartedAtMs,
+        elapsedS = elapsedS,
+    )
     return PendingRaceResult(
         userId = userId,
         eventId = race.eventId,
         instanceStart = race.instanceStart,
         runId = runId,
-        durationS = RaceFinish.durationS(gun, chip, recordedDurationS),
+        durationS = timing.durationS,
         distanceM = decision.coveredM,
         finisherStatus = decision.outcome.finisherStatus,
         finishMethod = decision.outcome.finishMethod,
         courseId = race.course?.id,
-        gunTimeS = gun,
-        chipTimeS = chip ?: recordedDurationS,
+        gunTimeS = timing.gunTimeS,
+        chipTimeS = timing.chipTimeS,
     )
 }
 
@@ -544,6 +555,12 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     /// The last fix offered to the detector, by its GPS time: a dedupe key.
     private var lastRaceFixKey: Long = Long.MIN_VALUE
     private var raceStopDecision: RaceStopDecision? = null
+    /// The device-clock instant the runner stopped racing (Stop or pause on
+    /// a bound race), while the paused screen's choice is open. A Finish is
+    /// timed here, not at the press that chose it.
+    private var raceStoppedAtMs: Long? = null
+    /// The host ended the race after that Stop; a Resume now drops the race.
+    private var raceEndedAfterStop = false
 
     init {
         observeRecording()
@@ -800,9 +817,21 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun refreshBoundRace(token: String, uid: String, bound: ActiveRaceState) {
         try {
             val status = raceClient.fetchSessionStatus(token, bound.eventId, bound.instanceStart)
-            if (hostEndsRace(status, decided = raceStopDecision != null)) {
-                onRaceEndedByHost()
-                return
+            val end = raceHostEnd(
+                status,
+                decided = raceStopDecision != null,
+                stopPending = raceStoppedAtMs != null,
+            )
+            when (end) {
+                RaceHostEnd.END -> {
+                    onRaceEndedByHost()
+                    return
+                }
+                RaceHostEnd.END_AFTER_STOP -> {
+                    onRaceEndedAfterStop()
+                    return
+                }
+                RaceHostEnd.NONE -> Unit
             }
         } catch (e: Throwable) {
             Log.w(TAG, "race session status poll failed", e)
@@ -817,7 +846,17 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun onRaceEndedAfterStop() {
+        raceEndedAfterStop = true
+        _state.value = _state.value.copy(
+            activeRace = null,
+            raceRun = _state.value.raceRun?.copy(ended = true, finishPending = true),
+        )
+    }
+
     private fun onRaceEndedByHost() {
+        raceEndedAfterStop = false
+        raceStoppedAtMs = null
         raceEndedRunId = boundRunId
         boundRace = null
         boundRunId = null
@@ -842,6 +881,8 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         }
         lastRaceFixKey = Long.MIN_VALUE
         raceStopDecision = null
+        raceStoppedAtMs = null
+        raceEndedAfterStop = false
         _state.value = _state.value.copy(
             raceRun = RaceRunState(
                 gunStartDeviceMs = gunStartDeviceMs(race.startedAtMs, serverClock.offsetMs),
@@ -880,9 +921,16 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                 settled = settleRaceDetector(raceDetector),
                 coveredM = _state.value.distanceM,
                 courseDistanceM = race.course?.distanceM,
-                nowDeviceMs = System.currentTimeMillis(),
+                stoppedAtMs = raceStoppedAtMs ?: System.currentTimeMillis(),
             ),
         )
+    }
+
+    /// The runner stopped racing: remember when, so a Finish chosen on the
+    /// paused screen is timed here.
+    private fun markRaceStopped() {
+        if (boundRace == null || raceStopDecision != null) return
+        if (raceStoppedAtMs == null) raceStoppedAtMs = System.currentTimeMillis()
     }
 
     private fun settleRaceDetector(detector: RaceFinishDetector?): RaceFinish.Finish? = try {
@@ -1561,7 +1609,10 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             decided = raceStopDecision != null,
         )
         when (action) {
-            RaceStopAction.PAUSE -> RunRecordingService.pause(getApplication())
+            RaceStopAction.PAUSE -> {
+                markRaceStopped()
+                RunRecordingService.pause(getApplication())
+            }
             RaceStopAction.FINISH_RACE -> race?.let { finishRaceNow(it) }
             RaceStopAction.STOP -> RunRecordingService.stop(getApplication())
         }
@@ -1569,11 +1620,16 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
 
     fun pause() {
         if (_state.value.stage != Stage.Running) return
+        markRaceStopped()
         RunRecordingService.pause(getApplication())
     }
 
+    /// Resuming takes back the Stop. If the host ended the race in between,
+    /// the runner is now running on after End, which owes no result.
     fun resume() {
         if (_state.value.stage != Stage.Paused) return
+        raceStoppedAtMs = null
+        if (raceEndedAfterStop) onRaceEndedByHost()
         RunRecordingService.resume(getApplication())
     }
 
@@ -1588,10 +1644,13 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         val race = boundRace?.takeIf { boundRunId == runId }
         val decision = raceStopDecision
         val detector = raceDetector
+        val stoppedAt = raceStoppedAtMs
         boundRace = null
         boundRunId = null
         raceDetector = null
         raceStopDecision = null
+        raceStoppedAtMs = null
+        raceEndedAfterStop = false
         lastRaceFixKey = Long.MIN_VALUE
         val uidForRace = supabase.authedUserId
         val raceResult = if (race != null && uidForRace != null) {
@@ -1600,17 +1659,17 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     race = race,
                     // A run that reached `Finished` without Stop or a finish
                     // (a recovered or system-stopped run) is judged as if
-                    // "Finish race" had been pressed now.
+                    // "Finish race" had been pressed at its Stop, or now.
                     decision = decision ?: raceFinishDecision(
                         settled = settleRaceDetector(detector),
                         coveredM = m.distanceM,
                         courseDistanceM = race.course?.distanceM,
-                        nowDeviceMs = System.currentTimeMillis(),
+                        stoppedAtMs = stoppedAt ?: System.currentTimeMillis(),
                     ),
                     userId = uidForRace,
                     runId = runId,
                     runStartedAtMs = m.startedAtMs,
-                    recordedDurationS = durationS,
+                    elapsedS = durationS,
                     serverOffsetMs = serverClock.offsetMs,
                 )
             } catch (e: Throwable) {

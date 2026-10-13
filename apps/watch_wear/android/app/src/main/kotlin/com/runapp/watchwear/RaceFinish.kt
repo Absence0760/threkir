@@ -4,7 +4,9 @@ import com.runapp.watchwear.recording.RouteMath
 
 /// Race-mode finish detection, a pure port of the `race_finish` parity pair
 /// (Dart side in `apps/mobile_android/lib/`). No Android, no I/O, no clock:
-/// every timestamp it handles arrives on a [Fix].
+/// every timestamp it handles arrives on a [Fix]. Both sides read their cases
+/// from `fixtures/race_finish_cases.json` at the repo root, so a rule changes
+/// there or nowhere.
 ///
 /// The rule, shared with every client that can record a race:
 ///
@@ -24,6 +26,17 @@ import com.runapp.watchwear.recording.RouteMath
 object RaceFinish {
     const val FINISH_RADIUS_M = 30.0
     const val MIN_DISTANCE_FRACTION = 0.9
+    const val LATE_START_AFTER_MS = 300_000L
+    const val LATE_START_FAR_M = 200.0
+    const val EARTH_RADIUS_M = 6_371_000.0
+
+    /// Great-circle distance in metres, on [EARTH_RADIUS_M].
+    fun distanceM(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double =
+        RouteMath.haversineM(lat1, lng1, lat2, lng2)
+
+    /// Whether a fix [distanceM] from the finish is inside the zone.
+    /// Inclusive; a non-finite distance is not.
+    fun inFinishZone(distanceM: Double): Boolean = distanceM <= FINISH_RADIUS_M
 
     /// One GPS fix with the covered distance the recorder credited by then.
     /// [epochMs] is the fix's instant on the DEVICE clock — the clock the
@@ -44,21 +57,29 @@ object RaceFinish {
     )
 
     /// True when [coveredM] clears the 90 % gate for a course of
-    /// [courseDistanceM]. A course without a usable distance never clears it:
-    /// there is no fraction of nothing to have covered.
-    fun meetsDistanceGate(coveredM: Double, courseDistanceM: Double): Boolean =
-        courseDistanceM > 0.0 && coveredM >= MIN_DISTANCE_FRACTION * courseDistanceM
+    /// [courseDistanceM], inclusive. A course distance that is null,
+    /// non-finite or <= 0 cannot gate, so it passes: a runner is never marked
+    /// DNF for data the course never carried.
+    fun meetsDistanceGate(coveredM: Double, courseDistanceM: Double?): Boolean {
+        val d = courseDistanceM
+        if (d == null || !d.isFinite() || d <= 0.0) return true
+        return coveredM >= MIN_DISTANCE_FRACTION * d
+    }
 
-    /// What a "Finish race" press records: a manual finish once the gate is
-    /// cleared, a DNF short of it. A race with no course to measure against
-    /// has no gate to apply, and is recorded as the manual finish the runner
-    /// asked for — the pre-course behaviour.
+    /// What a "Finish race" press records with no open approach: a manual
+    /// finish once the gate is cleared, a DNF short of it.
     fun manualOutcome(coveredM: Double, courseDistanceM: Double?): Outcome =
-        when {
-            courseDistanceM == null || courseDistanceM <= 0.0 -> Outcome.MANUAL_FINISH
-            meetsDistanceGate(coveredM, courseDistanceM) -> Outcome.MANUAL_FINISH
-            else -> Outcome.DNF
-        }
+        if (meetsDistanceGate(coveredM, courseDistanceM)) Outcome.MANUAL_FINISH else Outcome.DNF
+
+    /// The late-start flag: recording began strictly more than
+    /// [LATE_START_AFTER_MS] after GO, or the first fix was a finite distance
+    /// strictly more than [LATE_START_FAR_M] from the course start. Both
+    /// instants are on the server clock. An unknown distance does not flag.
+    fun startFlagged(gunMs: Long, recordingStartedMs: Long, firstFixFromStartM: Double?): Boolean {
+        if (recordingStartedMs - gunMs > LATE_START_AFTER_MS) return true
+        val d = firstFixFromStartM
+        return d != null && d.isFinite() && d > LATE_START_FAR_M
+    }
 
     enum class Outcome(val finisherStatus: String, val finishMethod: String?) {
         AUTO_FINISH("finished", "auto"),
@@ -90,11 +111,28 @@ object RaceFinish {
         return (ms / 1000).toInt()
     }
 
-    /// The leaderboard's `duration_s`: gun time when the session has a gun,
-    /// chip time otherwise, and the recorder's own duration when neither
-    /// could be measured.
-    fun durationS(gunTimeS: Int?, chipTimeS: Int?, recordedS: Int): Int =
-        gunTimeS ?: chipTimeS ?: recordedS
+    /// The timing columns of a race result row.
+    data class ResultTiming(val durationS: Int, val gunTimeS: Int?, val chipTimeS: Int?)
+
+    /// The timing a result row carries. A finish carries the gun time (when
+    /// the race had a GO) and the chip time (when the recording's Start is
+    /// known), and `duration_s` is the first of gun, chip and [elapsedS] that
+    /// exists. A DNF, or any outcome with no finish instant, carries neither
+    /// time and `duration_s` is [elapsedS] — the recording's own elapsed
+    /// seconds, which is what the server writes on a host-filed DNF.
+    fun resultTiming(
+        finished: Boolean,
+        finishAtMs: Long?,
+        gunMs: Long?,
+        serverOffsetMs: Long?,
+        recordingStartedMs: Long?,
+        elapsedS: Int,
+    ): ResultTiming {
+        if (!finished || finishAtMs == null) return ResultTiming(elapsedS, null, null)
+        val gun = gunTimeS(finishAtMs, serverOffsetMs, gunMs)
+        val chip = recordingStartedMs?.let { chipTimeS(finishAtMs, it) }
+        return ResultTiming(gun ?: chip ?: elapsedS, gun, chip)
+    }
 }
 
 /// Device-to-server clock offset, estimated from request round trips — the
@@ -128,7 +166,6 @@ class RaceFinishDetector(
     private val finishLat: Double,
     private val finishLng: Double,
     private val courseDistanceM: Double,
-    private val zoneM: Double = RaceFinish.FINISH_RADIUS_M,
 ) {
     private var best: RaceFinish.Fix? = null
     private var bestDistanceM = Double.MAX_VALUE
@@ -140,6 +177,14 @@ class RaceFinishDetector(
     /// closest approach is still being decided.
     val isCandidate: Boolean get() = finish == null && best != null
 
+    /// The best in-zone fix so far, while the approach is still open.
+    val candidate: RaceFinish.Finish?
+        get() {
+            val b = best ?: return null
+            if (finish != null) return null
+            return RaceFinish.Finish(b.epochMs, bestDistanceM, b.coveredM)
+        }
+
     /// Feed one fix. Returns the finish on the call that finalises it and
     /// null on every other call, including every call after it. A fix with
     /// a non-finite coordinate or covered distance is ignored, not judged:
@@ -147,8 +192,8 @@ class RaceFinishDetector(
     fun offer(fix: RaceFinish.Fix): RaceFinish.Finish? {
         if (finish != null) return null
         if (!fix.lat.isFinite() || !fix.lng.isFinite() || !fix.coveredM.isFinite()) return null
-        val d = RouteMath.haversineM(fix.lat, fix.lng, finishLat, finishLng)
-        val eligible = d <= zoneM &&
+        val d = RaceFinish.distanceM(fix.lat, fix.lng, finishLat, finishLng)
+        val eligible = RaceFinish.inFinishZone(d) &&
             RaceFinish.meetsDistanceGate(fix.coveredM, courseDistanceM)
         val current = best
         if (current == null) {

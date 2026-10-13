@@ -84,7 +84,7 @@ class RaceModeWireTest {
             userId = "u1",
             runId = "run1",
             runStartedAtMs = 1_030_000L,
-            recordedDurationS = 1_900,
+            elapsedS = 1_900,
             serverOffsetMs = 2_000L,
         )
         assertEquals(2002, r.gunTimeS)
@@ -104,41 +104,43 @@ class RaceModeWireTest {
     }
 
     @Test
-    fun `a DNF has no finish method and a session without a gun falls back to chip`() {
-        val noGun = race.copy(startedAtMs = null, course = null)
+    fun `a DNF row carries no method, no gun and no chip, and its duration is the elapsed recording`() {
         val r = buildRaceResult(
-            race = noGun,
-            decision = RaceStopDecision(RaceFinish.Outcome.DNF, 2_000_000L, 4_000.0),
+            race = race,
+            decision = RaceStopDecision(RaceFinish.Outcome.DNF, null, 4_000.0),
             userId = "u1",
             runId = "run1",
             runStartedAtMs = 1_000_000L,
-            recordedDurationS = 900,
-            serverOffsetMs = null,
+            elapsedS = 900,
+            serverOffsetMs = 2_000L,
         )
         assertEquals("dnf", r.finisherStatus)
         assertNull(r.gunTimeS)
-        assertEquals(1000, r.durationS)
+        assertNull(r.chipTimeS)
+        assertEquals(900, r.durationS)
+        assertEquals("c1", r.courseId)
         val body = RaceSessionClient.resultBody(r)
         assertFalse(body.containsKey("finish_method"))
         assertFalse(body.containsKey("gun_time_s"))
-        assertFalse(body.containsKey("course_id"))
-        assertTrue(body.containsKey("chip_time_s"))
+        assertFalse(body.containsKey("chip_time_s"))
+        assertEquals(900, body["duration_s"]!!.jsonPrimitive.intOrNull)
     }
 
     @Test
-    fun `a finish before the runner's own start falls back to the recorded duration`() {
+    fun `a finish before the runner's own start carries no chip time and ranks on the elapsed recording`() {
         val r = buildRaceResult(
             race = race.copy(startedAtMs = null),
             decision = RaceStopDecision(RaceFinish.Outcome.MANUAL_FINISH, 999_000L, 9_500.0),
             userId = "u1",
             runId = "run1",
             runStartedAtMs = 1_000_000L,
-            recordedDurationS = 1_234,
+            elapsedS = 1_234,
             serverOffsetMs = null,
         )
         assertNull(r.gunTimeS)
-        assertEquals(1_234, r.chipTimeS)
+        assertNull(r.chipTimeS)
         assertEquals(1_234, r.durationS)
+        assertFalse(RaceSessionClient.resultBody(r).containsKey("chip_time_s"))
     }
 
     @Test

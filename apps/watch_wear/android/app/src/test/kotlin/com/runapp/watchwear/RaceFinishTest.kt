@@ -1,6 +1,18 @@
 package com.runapp.watchwear
 
-import com.runapp.watchwear.recording.RouteMath
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.double
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -8,152 +20,334 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/// Pins the Kotlin half of the `race_finish` parity pair. The cases mirror
-/// the Dart suite: in-zone closest approach, jitter in and out of the zone,
-/// a loop course's early pass, and an out-and-back that runs past the line on
-/// the way out.
+/// The Kotlin half of the `race_finish` parity pair, held to the shared case
+/// table `fixtures/race_finish_cases.json` that `race_finish_test.dart` reads
+/// too. Every section of the file is run here; a section this reader does not
+/// know fails the suite rather than going unchecked, because a section one
+/// side skips is a rule that side no longer has to keep.
 class RaceFinishTest {
 
-    private val finishLat = 51.5
-    private val finishLng = -0.1
-    private val metresPerDegLat = 6_371_000.0 * Math.PI / 180.0
-    private val t0 = 1_800_000_000_000L
+    private val root: JsonObject = run {
+        val f = WearLocales.findUp("fixtures/race_finish_cases.json")
+            ?: error("fixtures/race_finish_cases.json not found above ${java.io.File(".").absolutePath}")
+        Json.parseToJsonElement(f.readText()).jsonObject
+    }
 
-    /// A fix [northM] metres due north of the finish line.
-    private fun fix(northM: Double, coveredM: Double, atS: Int) = RaceFinish.Fix(
-        lat = finishLat + northM / metresPerDegLat,
-        lng = finishLng,
-        epochMs = t0 + atS * 1000L,
-        coveredM = coveredM,
+    private val sections = listOf(
+        "distance", "zone", "coverage", "detector", "startFlag",
+        "clockOffset", "gunTime", "chipTime", "stopOutcome", "resultTiming",
+    )
+    private val metaKeys = setOf(
+        "spec", "reference", "readers", "schema", "constants",
+        "t0EpochMs", "distanceToleranceM", "offsetToleranceMs", "origin",
     )
 
-    private fun detector(courseM: Double = 5000.0) =
-        RaceFinishDetector(finishLat, finishLng, courseM)
+    private val t0 = root["t0EpochMs"]!!.jsonPrimitive.long
+    private val distTol = root["distanceToleranceM"]!!.jsonPrimitive.double
+    private val offsetTol = root["offsetToleranceMs"]!!.jsonPrimitive.double
+    private val origin = root["origin"]!!.jsonObject
+    private val finishLat = origin["finishLat"]!!.jsonPrimitive.double
+    private val finishLng = origin["finishLng"]!!.jsonPrimitive.double
+
+    private fun cases(section: String): List<JsonObject> =
+        root[section]!!.jsonArray.map { it.jsonObject }
+
+    private fun JsonObject.name(): String = this["name"]!!.jsonPrimitive.content
+
+    /// A number-or-special field: a JSON number, or "NaN" / "Infinity" /
+    /// "-Infinity".
+    private fun num(el: JsonElement?): Double {
+        val p = el as? JsonPrimitive ?: error("expected a number, got $el")
+        if (!p.isString) return p.double
+        return when (p.content) {
+            "NaN" -> Double.NaN
+            "Infinity" -> Double.POSITIVE_INFINITY
+            "-Infinity" -> Double.NEGATIVE_INFINITY
+            else -> error("not a number-or-special: ${p.content}")
+        }
+    }
+
+    /// A nullable field must be present; a missing key is not a null.
+    private fun JsonObject.req(key: String): JsonElement =
+        this[key] ?: error("case ${this["name"]} has no '$key' (nullable fields are explicit)")
+
+    private fun JsonObject.numOrNull(key: String): Double? =
+        req(key).let { if (it is JsonNull) null else num(it) }
+
+    private fun JsonObject.longOrNull(key: String): Long? =
+        req(key).let { if (it is JsonNull) null else it.jsonPrimitive.long }
+
+    private fun JsonObject.intOrNull(key: String): Int? =
+        req(key).let { if (it is JsonNull) null else it.jsonPrimitive.int }
+
+    private fun JsonObject.objOrNull(key: String): JsonObject? =
+        req(key).let { if (it is JsonNull) null else it.jsonObject }
+
+    private val metresPerDegLat = RaceFinish.EARTH_RADIUS_M * Math.PI / 180.0
+
+    private fun fixOf(o: JsonObject) = RaceFinish.Fix(
+        lat = finishLat + num(o["northM"]) / metresPerDegLat,
+        lng = finishLng,
+        epochMs = t0 + o["atS"]!!.jsonPrimitive.long * 1000L,
+        coveredM = num(o["coveredM"]),
+    )
+
+    private fun atS(epochMs: Long): Long = (epochMs - t0) / 1000L
+
+    // ───────────── the file itself ─────────────
 
     @Test
-    fun `finish is the closest approach inside the zone, settled when distance grows`() {
-        val d = detector()
-        assertNull(d.offer(fix(50.0, 4950.0, 0)))
-        assertNull(d.offer(fix(25.0, 4975.0, 5)))
-        assertNull(d.offer(fix(12.0, 4988.0, 8)))
-        assertNull(d.offer(fix(4.0, 4996.0, 11)))
-        assertTrue(d.isCandidate)
-        val f = d.offer(fix(9.0, 5005.0, 14))
-        assertNotNull(f)
-        assertEquals(t0 + 11_000L, f!!.epochMs)
-        assertEquals(4.0, f.distanceToFinishM, 0.05)
-        assertEquals(4996.0, f.coveredM, 0.0)
-        assertFalse(d.isCandidate)
+    fun `every section in the file is one this reader runs`() {
+        val unknown = root.keys - metaKeys - sections.toSet()
+        assertTrue("unknown section(s) in race_finish_cases.json: $unknown", unknown.isEmpty())
+        val schemaSections = root["schema"]!!.jsonObject.keys - setOf("general", "constants", "origin")
+        assertEquals(sections.toSet(), schemaSections)
+        for (s in sections) assertTrue("section $s is empty", cases(s).isNotEmpty())
     }
 
     @Test
-    fun `jitter out of the zone settles at the best fix seen inside it`() {
-        val d = detector()
-        assertNull(d.offer(fix(40.0, 4960.0, 0)))
-        assertNull(d.offer(fix(28.0, 4972.0, 3)))
-        val f = d.offer(fix(31.0, 4975.0, 6))
-        assertEquals(t0 + 3_000L, f!!.epochMs)
-        // Once settled, a fix that jitters back in cannot move the finish:
-        // the finish is answered on the call that settles it and held after.
-        assertNull(d.offer(fix(2.0, 4980.0, 9)))
-        assertEquals(f, d.finish)
+    fun `the constants match the file`() {
+        val c = root["constants"]!!.jsonObject
+        assertEquals(c["FINISH_ZONE_M"]!!.jsonPrimitive.double, RaceFinish.FINISH_RADIUS_M, 0.0)
+        assertEquals(c["MIN_COVERAGE"]!!.jsonPrimitive.double, RaceFinish.MIN_DISTANCE_FRACTION, 0.0)
+        assertEquals(c["LATE_START_AFTER_MS"]!!.jsonPrimitive.long, RaceFinish.LATE_START_AFTER_MS)
+        assertEquals(c["LATE_START_FAR_M"]!!.jsonPrimitive.double, RaceFinish.LATE_START_FAR_M, 0.0)
+        assertEquals(c["EARTH_RADIUS_M"]!!.jsonPrimitive.double, RaceFinish.EARTH_RADIUS_M, 0.0)
+    }
+
+    // ───────────── sections ─────────────
+
+    @Test
+    fun distance() {
+        for (c in cases("distance")) {
+            val a = c["a"]!!.jsonArray
+            val b = c["b"]!!.jsonArray
+            val d = RaceFinish.distanceM(
+                a[0].jsonPrimitive.double, a[1].jsonPrimitive.double,
+                b[0].jsonPrimitive.double, b[1].jsonPrimitive.double,
+            )
+            assertEquals(c.name(), c["expectM"]!!.jsonPrimitive.double, d, distTol)
+        }
     }
 
     @Test
-    fun `a fix exactly on the zone edge counts`() {
-        val edge = fix(-30.0, 4970.0, 0)
-        val d = RaceFinishDetector(
-            finishLat,
-            finishLng,
-            5000.0,
-            zoneM = RouteMath.haversineM(edge.lat, edge.lng, finishLat, finishLng),
-        )
-        assertNull(d.offer(edge))
-        assertTrue(d.isCandidate)
-        assertEquals(t0, d.finaliseNow()!!.epochMs)
+    fun zone() {
+        for (c in cases("zone")) {
+            assertEquals(
+                c.name(),
+                c["inZone"]!!.jsonPrimitive.boolean,
+                RaceFinish.inFinishZone(num(c["distanceM"])),
+            )
+        }
     }
 
     @Test
-    fun `a tie keeps the earlier fix and does not finalise`() {
-        val d = detector()
-        assertNull(d.offer(fix(5.0, 4990.0, 0)))
-        assertNull(d.offer(fix(5.0, 4992.0, 2)))
-        assertTrue(d.isCandidate)
-        val f = d.offer(fix(9.0, 4996.0, 4))
-        assertEquals(t0, f!!.epochMs)
+    fun coverage() {
+        for (c in cases("coverage")) {
+            assertEquals(
+                c.name(),
+                c["met"]!!.jsonPrimitive.boolean,
+                RaceFinish.meetsDistanceGate(num(c["coveredM"]), c.numOrNull("courseDistanceM")),
+            )
+        }
     }
 
     @Test
-    fun `a non-finite fix is ignored, not read as leaving the zone`() {
-        val d = detector()
-        assertNull(d.offer(fix(10.0, 4990.0, 0)))
-        assertNull(d.offer(fix(10.0, Double.NaN, 1)))
-        assertNull(d.offer(RaceFinish.Fix(Double.NaN, finishLng, t0 + 2_000L, 4992.0)))
-        assertNull(d.offer(RaceFinish.Fix(finishLat, Double.POSITIVE_INFINITY, t0 + 3_000L, 4993.0)))
-        assertTrue(d.isCandidate)
-        val f = d.offer(fix(4.0, 4994.0, 4))
-        assertNull(f)
-        assertEquals(t0 + 4_000L, d.finaliseNow()!!.epochMs)
+    fun detector() {
+        for (c in cases("detector")) {
+            val name = c.name()
+            val d = RaceFinishDetector(finishLat, finishLng, num(c["courseDistanceM"]))
+            val expect = c["expect"]!!.jsonObject
+            var finalisedAt: Int? = null
+            var finish: RaceFinish.Finish? = null
+            for ((i, el) in c["fixes"]!!.jsonArray.withIndex()) {
+                val r = d.offer(fixOf(el.jsonObject))
+                if (r != null && finalisedAt == null) {
+                    finalisedAt = i
+                    finish = r
+                } else if (finalisedAt != null) {
+                    assertEquals("$name: an offer after the finish moved it", finish, d.finish)
+                }
+            }
+            assertEquals("$name: finalisesAtFix", expect.intOrNull("finalisesAtFix"), finalisedAt)
+            val ef = expect.objOrNull("finish")
+            if (ef == null) {
+                assertNull("$name: finish", finish)
+            } else {
+                assertNotNull("$name: expected a finish", finish)
+                val f = finish!!
+                assertEquals("$name: finish atS", ef["atS"]!!.jsonPrimitive.long, atS(f.epochMs))
+                assertEquals(
+                    "$name: finish distance",
+                    ef["distanceToFinishM"]!!.jsonPrimitive.double,
+                    f.distanceToFinishM,
+                    distTol,
+                )
+                assertEquals("$name: finish covered", num(ef["coveredM"]), f.coveredM, 0.0)
+            }
+            assertEquals(
+                "$name: candidateAtS",
+                expect.longOrNull("candidateAtS"),
+                d.candidate?.let { atS(it.epochMs) },
+            )
+            val settled = d.finaliseNow()
+            assertEquals("$name: settleAtS", expect.longOrNull("settleAtS"), settled?.let { atS(it.epochMs) })
+            c["fixesAfterSettle"]?.jsonArray?.forEach { el ->
+                d.offer(fixOf(el.jsonObject))
+                assertEquals("$name: a fix after settle moved the finish", settled, d.finish)
+            }
+        }
     }
 
     @Test
-    fun `a single fix outside the zone before entry is not a finish`() {
-        val d = detector()
-        assertNull(d.offer(fix(31.0, 4990.0, 0)))
-        assertNull(d.offer(fix(35.0, 4995.0, 3)))
-        assertFalse(d.isCandidate)
-        assertNull(d.finaliseNow())
+    fun startFlag() {
+        for (c in cases("startFlag")) {
+            assertEquals(
+                c.name(),
+                c["flagged"]!!.jsonPrimitive.boolean,
+                RaceFinish.startFlagged(
+                    gunMs = t0 + c["gunMs"]!!.jsonPrimitive.long,
+                    recordingStartedMs = t0 + c["recordingStartedMs"]!!.jsonPrimitive.long,
+                    firstFixFromStartM = c.numOrNull("firstFixFromStartM"),
+                ),
+            )
+        }
     }
 
     @Test
-    fun `loop course does not finish at the start or on an early pass`() {
-        val d = detector()
-        // Start line == finish line: inside the zone at zero distance.
-        assertNull(d.offer(fix(0.0, 0.0, 0)))
-        assertNull(d.offer(fix(10.0, 10.0, 4)))
-        assertNull(d.offer(fix(40.0, 40.0, 12)))
-        // A mid-course pass by the line, well short of 90 %.
-        assertNull(d.offer(fix(8.0, 2500.0, 900)))
-        assertNull(d.offer(fix(50.0, 2550.0, 915)))
-        assertFalse(d.isCandidate)
-        // The real finish.
-        assertNull(d.offer(fix(15.0, 4985.0, 1800)))
-        assertNull(d.offer(fix(6.0, 4994.0, 1803)))
-        val f = d.offer(fix(12.0, 5000.0, 1806))
-        assertEquals(t0 + 1_803_000L, f!!.epochMs)
+    fun clockOffset() {
+        for (c in cases("clockOffset")) {
+            val o = ServerClockOffset()
+            for (el in c["samples"]!!.jsonArray) {
+                val s = el.jsonObject
+                o.addSample(
+                    sentAtMs = s["sentMs"]!!.jsonPrimitive.long,
+                    receivedAtMs = s["receivedMs"]!!.jsonPrimitive.long,
+                    serverAtMs = s["serverMs"]!!.jsonPrimitive.long,
+                )
+            }
+            val expect = c["expect"]!!.jsonObject
+            assertEquals("${c.name()}: known", expect["known"]!!.jsonPrimitive.boolean, o.offsetMs != null)
+            assertEquals(
+                "${c.name()}: offsetMs",
+                expect["offsetMs"]!!.jsonPrimitive.double,
+                (o.offsetMs ?: 0L).toDouble(),
+                offsetTol,
+            )
+        }
     }
 
     @Test
-    fun `out-and-back past the line on the way out finishes only on the way back`() {
-        val d = detector(courseM = 10_000.0)
-        // Outbound: the line sits 1 km in, so the runner crosses it at 10 %.
-        assertNull(d.offer(fix(-20.0, 980.0, 300)))
-        assertNull(d.offer(fix(0.0, 1000.0, 306)))
-        assertNull(d.offer(fix(20.0, 1020.0, 312)))
-        assertFalse(d.isCandidate)
-        // Back: approaching from the north at 99 %+.
-        assertNull(d.offer(fix(20.0, 9980.0, 3000)))
-        assertNull(d.offer(fix(1.0, 9999.0, 3006)))
-        val f = d.offer(fix(-18.0, 10_018.0, 3012))
-        assertEquals(t0 + 3_006_000L, f!!.epochMs)
+    fun gunTime() {
+        for (c in cases("gunTime")) {
+            assertEquals(
+                c.name(),
+                c.intOrNull("gunTimeS"),
+                RaceFinish.gunTimeS(
+                    finishEpochMs = t0 + c["finishMs"]!!.jsonPrimitive.long,
+                    serverOffsetMs = c["offsetMs"]!!.jsonPrimitive.long,
+                    startedAtMs = t0 + c["gunMs"]!!.jsonPrimitive.long,
+                ),
+            )
+        }
     }
 
     @Test
-    fun `the distance gate is inclusive at exactly 90 percent`() {
-        assertTrue(RaceFinish.meetsDistanceGate(4500.0, 5000.0))
-        assertFalse(RaceFinish.meetsDistanceGate(4499.9, 5000.0))
-        assertFalse(RaceFinish.meetsDistanceGate(9_999.0, 0.0))
+    fun chipTime() {
+        for (c in cases("chipTime")) {
+            assertEquals(
+                c.name(),
+                c.intOrNull("chipTimeS"),
+                RaceFinish.chipTimeS(
+                    finishEpochMs = t0 + c["finishMs"]!!.jsonPrimitive.long,
+                    runStartedAtMs = t0 + c["startMs"]!!.jsonPrimitive.long,
+                ),
+            )
+        }
     }
 
     @Test
-    fun `finaliseNow settles a pending closest approach`() {
-        val d = detector()
-        assertNull(d.offer(fix(20.0, 4980.0, 0)))
-        assertNull(d.offer(fix(7.0, 4993.0, 4)))
-        val f = d.finaliseNow()
-        assertEquals(t0 + 4_000L, f!!.epochMs)
-        assertEquals(f, d.finish)
+    fun stopOutcome() {
+        for (c in cases("stopOutcome")) {
+            val cand = c.objOrNull("candidate")?.let {
+                RaceFinish.Finish(
+                    epochMs = t0 + it["atMs"]!!.jsonPrimitive.long,
+                    distanceToFinishM = it["distanceToFinishM"]!!.jsonPrimitive.double,
+                    coveredM = it["coveredM"]!!.jsonPrimitive.double,
+                )
+            }
+            val decision = raceFinishDecision(
+                settled = cand,
+                coveredM = num(c["coveredM"]),
+                courseDistanceM = c.numOrNull("courseDistanceM"),
+                stoppedAtMs = t0 + c["nowMs"]!!.jsonPrimitive.long,
+            )
+            val expect = c["expect"]!!.jsonObject
+            assertEquals(
+                "${c.name()}: status",
+                expect["finisherStatus"]!!.jsonPrimitive.content,
+                decision.outcome.finisherStatus,
+            )
+            assertEquals(
+                "${c.name()}: method",
+                expect.req("method").jsonPrimitive.contentOrNull,
+                decision.outcome.finishMethod,
+            )
+            assertEquals(
+                "${c.name()}: finishAtMs",
+                expect.longOrNull("finishAtMs"),
+                decision.finishEpochMs?.let { it - t0 },
+            )
+        }
     }
+
+    private fun outcomeOf(status: String, method: String?): RaceFinish.Outcome =
+        RaceFinish.Outcome.values().single { it.finisherStatus == status && it.finishMethod == method }
+
+    @Test
+    fun resultTiming() {
+        for (c in cases("resultTiming")) {
+            val name = c.name()
+            val o = c["outcome"]!!.jsonObject
+            val status = o["finisherStatus"]!!.jsonPrimitive.content
+            val method = o.req("method").jsonPrimitive.contentOrNull
+            val finishAt = o.longOrNull("finishAtMs")?.let { t0 + it }
+            val gun = c.longOrNull("gunMs")?.let { t0 + it }
+            val offset = c["offsetMs"]!!.jsonPrimitive.long
+            val started = c.longOrNull("recordingStartedMs")?.let { t0 + it }
+            val elapsed = c["elapsedS"]!!.jsonPrimitive.int
+            val expect = c["expect"]!!.jsonObject
+            val durationS = expect["durationS"]!!.jsonPrimitive.int
+            val gunTimeS = expect.intOrNull("gunTimeS")
+            val chipTimeS = expect.intOrNull("chipTimeS")
+
+            val t = RaceFinish.resultTiming(status == "finished", finishAt, gun, offset, started, elapsed)
+            assertEquals("$name: durationS", durationS, t.durationS)
+            assertEquals("$name: gunTimeS", gunTimeS, t.gunTimeS)
+            assertEquals("$name: chipTimeS", chipTimeS, t.chipTimeS)
+
+            // The row the watch actually files, where the recording's Start
+            // is always known, must carry the same timing and method.
+            if (started != null) {
+                val row = buildRaceResult(
+                    race = ActiveRaceState("e1", "i1", "running", gun, null),
+                    decision = RaceStopDecision(outcomeOf(status, method), finishAt, 1000.0),
+                    userId = "u1",
+                    runId = "r1",
+                    runStartedAtMs = started,
+                    elapsedS = elapsed,
+                    serverOffsetMs = offset,
+                )
+                assertEquals("$name: row durationS", durationS, row.durationS)
+                assertEquals("$name: row gunTimeS", gunTimeS, row.gunTimeS)
+                assertEquals("$name: row chipTimeS", chipTimeS, row.chipTimeS)
+                assertEquals("$name: row finish_method", method, row.finishMethod)
+                assertEquals("$name: row status", status, row.finisherStatus)
+            }
+        }
+    }
+
+    // ───────────── Kotlin-only surface ─────────────
 
     @Test
     fun `forCourse needs the course's finish point and a positive distance`() {
@@ -162,70 +356,20 @@ class RaceFinishTest {
         assertNull(RaceFinishDetector.forCourse(finishLat, finishLng, null))
         assertNull(RaceFinishDetector.forCourse(finishLat, finishLng, 0.0))
         assertNull(RaceFinishDetector.forCourse(finishLat, finishLng, Double.NaN))
-        val d = RaceFinishDetector.forCourse(finishLat, finishLng, 5000.0)!!
-        assertNull(d.offer(fix(3.0, 4990.0, 0)))
-        assertTrue(d.isCandidate)
+        assertNotNull(RaceFinishDetector.forCourse(finishLat, finishLng, 5000.0))
     }
 
     @Test
-    fun `manual finish at 90 percent or more, DNF short of it, finish without a course`() {
-        assertEquals(RaceFinish.Outcome.MANUAL_FINISH, RaceFinish.manualOutcome(4500.0, 5000.0))
-        assertEquals(RaceFinish.Outcome.DNF, RaceFinish.manualOutcome(4499.0, 5000.0))
-        assertEquals(RaceFinish.Outcome.MANUAL_FINISH, RaceFinish.manualOutcome(10.0, null))
-        assertEquals("dnf", RaceFinish.Outcome.DNF.finisherStatus)
-        assertNull(RaceFinish.Outcome.DNF.finishMethod)
-        assertEquals("auto", RaceFinish.Outcome.AUTO_FINISH.finishMethod)
-    }
-
-    @Test
-    fun `gun time corrects the device clock by the server offset`() {
-        val gun = t0
-        // Device clock runs 4 s behind the server: offset = +4000.
-        val finishDevice = t0 + 3_600_000L - 4_000L
-        assertEquals(3600, RaceFinish.gunTimeS(finishDevice, 4_000L, gun))
-        // No estimate: the device clock is taken as-is.
-        assertEquals(3596, RaceFinish.gunTimeS(finishDevice, null, gun))
-        assertNull(RaceFinish.gunTimeS(finishDevice, 4_000L, null))
-        assertNull(RaceFinish.gunTimeS(t0 - 10_000L, 0L, gun))
-    }
-
-    @Test
-    fun `chip time is wall time from the runner's own start and duration prefers gun`() {
-        assertEquals(1830, RaceFinish.chipTimeS(t0 + 1_830_500L, t0))
-        assertEquals(0, RaceFinish.chipTimeS(t0, t0))
-        assertEquals(1845, RaceFinish.durationS(1845, 1830, 1700))
-        assertEquals(1830, RaceFinish.durationS(null, 1830, 1700))
-        assertEquals(1700, RaceFinish.durationS(null, null, 1700))
-    }
-
-    @Test
-    fun `a chip time before the runner's own start is omitted, not clamped`() {
-        assertNull(RaceFinish.chipTimeS(t0 - 5L, t0))
-    }
-
-    @Test
-    fun `clock offset is taken against the round-trip midpoint`() {
-        val c = ServerClockOffset()
-        assertNull(c.offsetMs)
-        // Sent at 1000, received at 1400, server stamped 5200: midpoint 1200.
-        c.addSample(sentAtMs = 1_000L, receivedAtMs = 1_400L, serverAtMs = 5_200L)
-        assertEquals(4_000L, c.offsetMs)
-    }
-
-    @Test
-    fun `the shortest round trip wins and a negative one is discarded`() {
-        val c = ServerClockOffset()
-        c.addSample(sentAtMs = 1_000L, receivedAtMs = 1_400L, serverAtMs = 5_200L)
-        // A slower round trip says less about the instant; it is ignored.
-        c.addSample(sentAtMs = 2_000L, receivedAtMs = 3_000L, serverAtMs = 9_000L)
-        assertEquals(4_000L, c.offsetMs)
-        // A clock that stepped backwards mid-request is no sample at all.
-        c.addSample(sentAtMs = 4_000L, receivedAtMs = 3_900L, serverAtMs = 0L)
-        assertEquals(4_000L, c.offsetMs)
-        // A faster one replaces it, and so does an equal one.
-        c.addSample(sentAtMs = 5_000L, receivedAtMs = 5_100L, serverAtMs = 4_750L)
-        assertEquals(-300L, c.offsetMs)
-        c.addSample(sentAtMs = 6_000L, receivedAtMs = 6_100L, serverAtMs = 6_250L)
-        assertEquals(200L, c.offsetMs)
+    fun `the finish is answered once and held after`() {
+        val d = RaceFinishDetector(finishLat, finishLng, 5000.0)
+        val north = { m: Double, s: Long, cov: Double ->
+            RaceFinish.Fix(finishLat + m / metresPerDegLat, finishLng, t0 + s * 1000L, cov)
+        }
+        assertNull(d.offer(north(-10.0, 0L, 4990.0)))
+        val f = d.offer(north(10.0, 2L, 5010.0))
+        assertNotNull(f)
+        assertNull(d.offer(north(0.0, 4L, 5020.0)))
+        assertEquals(f, d.finish)
+        assertFalse(d.isCandidate)
     }
 }

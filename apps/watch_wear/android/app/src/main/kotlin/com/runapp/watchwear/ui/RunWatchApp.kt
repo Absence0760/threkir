@@ -1653,7 +1653,7 @@ private fun RunningScreen(
     onStop: () -> Unit,
 ) {
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
-    val raceLive = raceRun != null && !raceRun.ended
+    val raceLive = raceRun != null && (!raceRun.ended || raceRun.finishPending)
 
     // Off-route hysteresis: alert above 40 m, clear below 20 m. Single
     // haptic pulse when the state flips to "off" — drivers an alert

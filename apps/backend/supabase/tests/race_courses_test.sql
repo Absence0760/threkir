@@ -4,8 +4,9 @@
 --   1-5.   event_courses RLS: read follows the event, write is the organiser.
 --   6-9.   event_attendees.course_id: must belong to the event, and is required
 --          on a self-RSVP to a multi-course event (but not a single-course one).
---   10-13. The result write window and course defaulting: refused before GO,
---          lands while running and takes the racer's RSVP'd course.
+--   10-13. The result write window and course defaulting: an armed race does
+--          not close it (20270728000002), a result lands while running and
+--          takes the racer's RSVP'd course.
 --   14.    recompute_event_ranks partitions by course.
 --   15.    An organiser's edit of someone else's time stamps finish_method host.
 --   16-17. race_pending_dnf_count: the director's count, NULL for anyone else.
@@ -203,14 +204,20 @@ set local role service_role;
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"e7270000-0000-0000-0000-000000000002","role":"authenticated"}';
 
-select throws_ok(
-  $$ insert into event_results (event_id, instance_start, user_id, duration_s, distance_m)
+select lives_ok(
+  $$ insert into event_results (event_id, instance_start, user_id, duration_s, distance_m,
+                               finisher_status)
      values ('e7270000-0000-0000-0000-0000000000e1', '2026-08-01 08:00+00',
-             'e7270000-0000-0000-0000-000000000002', 2400, 10000) $$,
-  '23514',
-  null,
-  'a result cannot be written while the race is only armed'
+             'e7270000-0000-0000-0000-000000000002', 0, 0, 'dns') $$,
+  'an armed race does not lock a racer out of filing their own result'
 );
+
+set local role service_role;
+set local "request.jwt.claims" = '{"role":"service_role"}';
+delete from event_results
+ where event_id = 'e7270000-0000-0000-0000-0000000000e1'
+   and user_id = 'e7270000-0000-0000-0000-000000000002';
+set local role authenticated;
 
 set local "request.jwt.claims" = '{"sub":"e7270000-0000-0000-0000-000000000001","role":"authenticated"}';
 update race_sessions
@@ -353,6 +360,7 @@ select is(
 );
 
 set local role service_role;
+set local "request.jwt.claims" = '{"role":"service_role"}';
 update race_sessions set finished_at = now() - interval '25 hours'
  where event_id = 'e7270000-0000-0000-0000-0000000000e1'
    and instance_start = '2026-08-01 08:00+00';

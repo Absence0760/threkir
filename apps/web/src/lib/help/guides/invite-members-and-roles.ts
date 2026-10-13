@@ -46,12 +46,12 @@ export const guide: Guide = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'An invite link lets people straight in: it skips the approval queue, so only share it with people you are happy to admit.',
+					text: 'An invite link lets people straight in: it skips the approval queue, so only share it with people you are happy to admit. If the club requires the activity-risk acknowledgement, the link asks for it before letting anyone in.',
 				},
 				{
 					type: 'note',
 					tone: 'tip',
-					text: 'In the phone app, a member can also tap **Join with invite code** on the **Clubs** tab of **Social** and enter the code from the link: only the part after /clubs/join/, not the whole link. Opening the link in a phone browser works too.',
+					text: 'In the phone app, a member can also tap **Join with invite code** on the **Clubs** tab of **Social** and paste the whole link or just the code after /clubs/join/. Opening the link in a phone browser works too.',
 				},
 			],
 		},

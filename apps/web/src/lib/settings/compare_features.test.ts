@@ -72,6 +72,16 @@ test('COMPARE_SECTIONS: at least one row has us=yes / Strava Free=no (showcases 
 	assert.ok(count >= 5, `expected at least 5 rows where we beat Strava Free, got ${count}`);
 });
 
+test('COMPARE_SECTIONS: no row claims live auto-pause, which the recorder does not have', () => {
+	// docs/features/run_recording.md § Pause: manual only, moving time derived: the
+	// clock runs continuously and moving time is derived after the run.
+	for (const section of COMPARE_SECTIONS) {
+		for (const row of section.rows) {
+			assert.doesNotMatch(row.name, /auto-?pause/i, `${section.title}: ${row.name}`);
+		}
+	}
+});
+
 test('COMPARE_HEADLINE: us = Free', () => {
 	assert.equal(COMPARE_HEADLINE.usPrice, 'Free');
 });

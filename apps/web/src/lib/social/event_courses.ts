@@ -1,7 +1,8 @@
 // Pure logic for multi-course races (clubs.md § Live race mode, decisions
 // § 1842): ordering an event's courses, diffing the editor's draft list into
-// the writes that reach `event_courses`, splitting a results list into one
-// leaderboard per course, and the finish-method badge a result carries.
+// the writes that reach `event_courses`, splitting a results list (and the
+// spectator page's on-course list) into one board per course, and the
+// finish-method badge a result carries.
 
 import type { FinishMethod } from '../types';
 
@@ -173,14 +174,40 @@ export function groupResultsByCourse<R extends { course_id: string | null }>(
 	results: readonly R[],
 	courses: readonly EventCourse[]
 ): CourseBoard<R>[] {
+	return groupByCourse(results, courses, (r) => r.course_id);
+}
+
+/// The spectator page's on-course board split like its finisher boards: one
+/// per course, in course order, each keeping the input's furthest-first
+/// order. A ping carries no course, so a runner's is the one on their RSVP
+/// ([courseByUser]); a runner with none — no RSVP, or no pick — trails in a
+/// course-less board. Empty boards are dropped, and a race with at most one
+/// course is a single course-less board, so it renders as it always did.
+export function groupRunnersByCourse<P extends { user_id: string }>(
+	pings: readonly P[],
+	courses: readonly EventCourse[],
+	courseByUser: ReadonlyMap<string, string>
+): CourseBoard<P>[] {
+	if (courses.length <= 1) return pings.length > 0 ? [{ course: null, results: [...pings] }] : [];
+	return groupByCourse(pings, courses, (p) => courseByUser.get(p.user_id) ?? null).filter(
+		(b) => b.results.length > 0
+	);
+}
+
+function groupByCourse<R>(
+	rows: readonly R[],
+	courses: readonly EventCourse[],
+	courseOf: (row: R) => string | null
+): CourseBoard<R>[] {
 	const ordered = sortCourses([...courses]);
-	if (ordered.length === 0) return [{ course: null, results: [...results] }];
+	if (ordered.length === 0) return [{ course: null, results: [...rows] }];
 	const boards = new Map<string, CourseBoard<R>>(
 		ordered.map((c) => [c.id, { course: c, results: [] as R[] }])
 	);
 	const orphans: R[] = [];
-	for (const r of results) {
-		const board = r.course_id ? boards.get(r.course_id) : undefined;
+	for (const r of rows) {
+		const id = courseOf(r);
+		const board = id ? boards.get(id) : undefined;
 		if (board) board.results.push(r);
 		else orphans.push(r);
 	}

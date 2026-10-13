@@ -4856,6 +4856,27 @@ export async function saveEventCourses(
 	});
 }
 
+/// Each attendee's chosen course for one occurrence, keyed by user id; an
+/// attendee with no pick is absent. Read under the same club-visibility gate
+/// as `race_pings`, so whoever can see a runner on course can see their
+/// course. Throws on a failed read so the spectator page can keep the split
+/// it already has rather than collapse every runner into "no course".
+export async function fetchAttendeeCourses(
+	eventId: string,
+	instanceStart: string
+): Promise<Map<string, string>> {
+	const { data, error } = await supabase
+		.from(TABLES.event_attendees)
+		.select('user_id, course_id')
+		.eq('event_id', eventId)
+		.eq('instance_start', instanceStart)
+		.not('course_id', 'is', null);
+	if (error) throw error;
+	const out = new Map<string, string>();
+	for (const r of data ?? []) if (r.course_id) out.set(r.user_id, r.course_id);
+	return out;
+}
+
 /// The signed-in viewer's chosen course for one occurrence, or null.
 export async function fetchMyEventCourse(
 	eventId: string,

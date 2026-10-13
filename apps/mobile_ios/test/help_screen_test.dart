@@ -195,6 +195,7 @@ void main() {
     testWidgets('renders summary, chips, steps, notes and related guides', (
       tester,
     ) async {
+      final handle = tester.ensureSemantics();
       await _pump(tester, const GuideScreen(guideId: 'racing-an-event'));
       expect(find.text('Racing an event'), findsOneWidget);
       expect(find.text('Web'), findsOneWidget);
@@ -218,6 +219,7 @@ void main() {
         find.byKey(const ValueKey('help-guide-missing-guide')),
         findsNothing,
       );
+      handle.dispose();
     });
 
     testWidgets('a gated guide shows its requirements', (tester) async {

@@ -51,7 +51,7 @@ const translation = (/** @type {Record<string, unknown>} */ over = {}) => ({
 	...over,
 });
 
-const file = (/** @type {Record<string, unknown>} */ t, extra = {}) => ({
+const file = (/** @type {Record<string, unknown> | undefined} */ t, extra = {}) => ({
 	locale: 'de',
 	file: 'g.ts',
 	translation: t,

@@ -368,7 +368,7 @@ test.describe('/runs/[id] share confirm — a smoothed position inside a zone wa
 			await expect(page.locator('button[title="Download GPX"]')).toBeEnabled({
 				timeout: 15_000
 			});
-			await shareChoosingPublic(page, page.locator('button[title="Share link"]'));
+			await shareChoosingPublic(page, page.getByTestId('run-share-btn'));
 
 			const dialog = page.locator('[data-testid="share-confirm-dialog"]');
 			await expect(dialog).toBeVisible({ timeout: 5_000 });

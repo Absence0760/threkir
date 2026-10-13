@@ -144,12 +144,52 @@ class AttendeeView {
   // 'attended' | 'no_show' | null. Orthogonal to RSVP status; host-written
   // via mark_attendance (instructor_business.md M6).
   final String? attendance;
+  /// The `event_courses` row this racer picked at RSVP; null on an event
+  /// with no courses or an RSVP made before courses existed.
+  final String? courseId;
   const AttendeeView({
     required this.userId,
     required this.status,
     this.displayName,
     this.attendance,
+    this.courseId,
   });
+}
+
+/// One `event_courses` row: a course a race event offers, backed by a saved
+/// route. Hand-modelled from the raw map until the generated row type lands.
+class EventCourseView {
+  final String id;
+  final String eventId;
+  final String? routeId;
+  final String name;
+  final double? distanceM;
+  final int sortOrder;
+  const EventCourseView({
+    required this.id,
+    required this.eventId,
+    required this.routeId,
+    required this.name,
+    required this.distanceM,
+    required this.sortOrder,
+  });
+
+  static EventCourseView? fromJson(Map<String, dynamic> m) {
+    final id = m['id'];
+    final eventId = m['event_id'];
+    final name = m['name'];
+    if (id is! String || eventId is! String || name is! String) return null;
+    final distance = m['distance_m'];
+    final sort = m['sort_order'];
+    return EventCourseView(
+      id: id,
+      eventId: eventId,
+      routeId: m['route_id'] as String?,
+      name: name,
+      distanceM: distance is num ? distance.toDouble() : null,
+      sortOrder: sort is num ? sort.toInt() : 0,
+    );
+  }
 }
 
 /// A challenge plus the caller-relative meta the list + detail surfaces need.
@@ -286,6 +326,13 @@ class EventResultView {
   final double? ageGradePct;
   final String? note;
   final DateTime createdAt;
+  /// Live-race timing (decisions § 1843). [durationS] is already the gun time
+  /// when the race had a GO; these carry both clocks and how the result was
+  /// recorded (`auto` / `manual` / `host`). Null on a hand-submitted result.
+  final String? courseId;
+  final int? gunTimeS;
+  final int? chipTimeS;
+  final String? finishMethod;
 
   const EventResultView({
     required this.userId,
@@ -301,6 +348,10 @@ class EventResultView {
     required this.ageGradePct,
     required this.note,
     required this.createdAt,
+    this.courseId,
+    this.gunTimeS,
+    this.chipTimeS,
+    this.finishMethod,
   });
 }
 
@@ -1294,7 +1345,10 @@ class SocialService extends ChangeNotifier {
 
   List<Weekday>? _parseByday(dynamic raw) => parseBydayCodes(raw);
 
-  Future<void> rsvpEvent(String eventId, String status, DateTime instance) async {
+  /// [courseId] is the racer's course on a multi-course race; omitted, the
+  /// upsert leaves whatever course the row already carries.
+  Future<void> rsvpEvent(String eventId, String status, DateTime instance,
+      {String? courseId}) async {
     final uid = _uid;
     if (uid == null) throw Exception('Not authenticated');
     await _c.from('event_attendees').upsert(
@@ -1303,6 +1357,7 @@ class SocialService extends ChangeNotifier {
         'user_id': uid,
         'status': status,
         'instance_start': instanceStartKey(instance),
+        if (courseId != null) 'course_id': courseId,
       },
       onConflict: 'event_id,user_id,instance_start',
     );
@@ -1425,8 +1480,42 @@ class SocialService extends ChangeNotifier {
           status: a['status'] as String,
           displayName: byId[a['user_id']],
           attendance: a['attendance'] as String?,
+          courseId: a['course_id'] as String?,
         ),
     ];
+  }
+
+  /// The courses a race event offers, in the host's order. Fails closed to
+  /// none: a read error leaves RSVP working as it did before courses existed.
+  Future<List<EventCourseView>> fetchEventCourses(String eventId) async {
+    try {
+      final rows = await _c
+          .from('event_courses')
+          .select('id, event_id, route_id, name, distance_m, sort_order')
+          .eq('event_id', eventId)
+          .order('sort_order', ascending: true);
+      return [
+        for (final r in (rows as List).whereType<Map>())
+          ?EventCourseView.fromJson(r.cast<String, dynamic>()),
+      ];
+    } catch (e) {
+      debugPrint('fetchEventCourses failed for $eventId: $e');
+      return const [];
+    }
+  }
+
+  /// The course the signed-in racer picked for one occurrence, or null.
+  Future<String?> fetchMyCourseId(String eventId, DateTime instance) async {
+    final uid = _uid;
+    if (uid == null) return null;
+    final row = await _c
+        .from('event_attendees')
+        .select('course_id')
+        .eq('event_id', eventId)
+        .eq('user_id', uid)
+        .eq('instance_start', instanceStartKey(instance))
+        .maybeSingle();
+    return row?['course_id'] as String?;
   }
 
   // ─────────────────────── Event results ───────────────────────
@@ -1453,7 +1542,8 @@ class SocialService extends ChangeNotifier {
         .select(
           'user_id, bib, finisher_name, run_id, duration_s, distance_m, '
           'rank, finisher_status, age_grade_pct, note, created_at, '
-          'organiser_approved',
+          'organiser_approved, course_id, gun_time_s, chip_time_s, '
+          'finish_method',
         )
         .eq('event_id', eventId)
         .eq('instance_start', instanceStartKey(instance))
@@ -1497,6 +1587,10 @@ class SocialService extends ChangeNotifier {
           ageGradePct: (r['age_grade_pct'] as num?)?.toDouble(),
           note: r['note'] as String?,
           createdAt: parseIsoStrictRequired(r['created_at'], 'created_at'),
+          courseId: r['course_id'] as String?,
+          gunTimeS: (r['gun_time_s'] as num?)?.toInt(),
+          chipTimeS: (r['chip_time_s'] as num?)?.toInt(),
+          finishMethod: r['finish_method'] as String?,
         ),
     ];
   }
@@ -1517,6 +1611,10 @@ class SocialService extends ChangeNotifier {
     String finisherStatus = 'finished',
     double? ageGradePct,
     String? note,
+    String? courseId,
+    int? gunTimeS,
+    int? chipTimeS,
+    String? finishMethod,
   }) async {
     final uid = _uid;
     if (uid == null) throw Exception('Not authenticated');
@@ -1533,6 +1631,10 @@ class SocialService extends ChangeNotifier {
         'distance_m': distanceM,
         'finisher_status': finisherStatus,
         if (ageGradePct != null) 'age_grade_pct': ageGradePct,
+        if (courseId != null) 'course_id': courseId,
+        if (gunTimeS != null) 'gun_time_s': gunTimeS,
+        if (chipTimeS != null) 'chip_time_s': chipTimeS,
+        if (finishMethod != null) 'finish_method': finishMethod,
         // Trim + collapse empty-after-trim to null. Matches web's
         // submitEventResult and the trim-and-null contract used
         // across createClub / createEvent / saveRoute / etc.

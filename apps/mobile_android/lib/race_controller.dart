@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'apple_watch_race_bridge.dart';
+import 'race_finish.dart';
 import 'social_service.dart';
 
 /// SharedPreferences key holding the finisher times that haven't reached
@@ -31,6 +32,11 @@ class PendingRaceResult {
     required this.runId,
     required this.durationS,
     required this.distanceM,
+    this.finisherStatus = 'finished',
+    this.courseId,
+    this.gunTimeS,
+    this.chipTimeS,
+    this.finishMethod,
   });
 
   final String eventId;
@@ -38,6 +44,11 @@ class PendingRaceResult {
   final String runId;
   final int durationS;
   final double distanceM;
+  final String finisherStatus;
+  final String? courseId;
+  final int? gunTimeS;
+  final int? chipTimeS;
+  final String? finishMethod;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
         'event_id': eventId,
@@ -45,6 +56,11 @@ class PendingRaceResult {
         'run_id': runId,
         'duration_s': durationS,
         'distance_m': distanceM,
+        'finisher_status': finisherStatus,
+        if (courseId != null) 'course_id': courseId,
+        if (gunTimeS != null) 'gun_time_s': gunTimeS,
+        if (chipTimeS != null) 'chip_time_s': chipTimeS,
+        if (finishMethod != null) 'finish_method': finishMethod,
       };
 
   static PendingRaceResult? fromJson(Map<String, dynamic> json) {
@@ -62,14 +78,61 @@ class PendingRaceResult {
     }
     final parsed = parseIsoStrict(instance);
     if (parsed == null) return null;
+    // Entries queued before live-race timing carry none of the fields below;
+    // they replay exactly as they were queued.
+    final status = json['finisher_status'];
+    final gun = json['gun_time_s'];
+    final chip = json['chip_time_s'];
     return PendingRaceResult(
       eventId: eventId,
       instanceStart: parsed,
       runId: runId,
       durationS: durationS.toInt(),
       distanceM: distanceM.toDouble(),
+      finisherStatus: status is String ? status : 'finished',
+      courseId: json['course_id'] as String?,
+      gunTimeS: gun is num ? gun.toInt() : null,
+      chipTimeS: chip is num ? chip.toInt() : null,
+      finishMethod: json['finish_method'] as String?,
     );
   }
+}
+
+/// The course a racer is running: what the finish detector and the coverage
+/// gate need, resolved once when the recorder attaches.
+class RaceCourse {
+  const RaceCourse({
+    required this.courseId,
+    required this.distanceM,
+    this.startLat,
+    this.startLng,
+    this.finishLat,
+    this.finishLng,
+  });
+
+  /// Null for an event with no `event_courses` rows, raced on the event's
+  /// own route and distance.
+  final String? courseId;
+  final double? distanceM;
+  final double? startLat;
+  final double? startLng;
+  final double? finishLat;
+  final double? finishLng;
+
+  bool get hasFinish => finishLat != null && finishLng != null;
+}
+
+/// Which of an event's [courses] a racer runs: the one they picked at RSVP,
+/// else the only one. Null when there are several and none was picked — the
+/// race still records and can be finished by hand, but nothing is assumed.
+EventCourseView? pickRaceCourse(
+    List<EventCourseView> courses, String? myCourseId) {
+  if (myCourseId != null) {
+    for (final c in courses) {
+      if (c.id == myCourseId) return c;
+    }
+  }
+  return courses.length == 1 ? courses.single : null;
 }
 
 /// Tracks live race sessions for events the user has RSVP'd to and is
@@ -131,9 +194,10 @@ Map<String, dynamic> racePingRow({
     };
 
 class RaceController extends ChangeNotifier {
-  RaceController(this._social);
+  RaceController(this._social, {ApiClient? api}) : _api = api;
 
   final SocialService _social;
+  final ApiClient? _api;
   SupabaseClient get _c {
     if (!ApiClient.isInitialized) {
       throw StateError(
@@ -155,6 +219,60 @@ class RaceController extends ChangeNotifier {
   /// changing to `finished/cancelled` and posts pings until then.
   String? _hostingEventId;
   DateTime? _hostingInstance;
+
+  /// GO, on the server clock. Null until the session row says so.
+  DateTime? _gunAt;
+  DateTime? _recordingStartedAt;
+  RaceCourse? _course;
+  RaceFinishDetector? _detector;
+  RaceOutcome? _outcome;
+  bool _raceEnded = false;
+  bool _lateStart = false;
+  bool _firstFixSeen = false;
+  double? _firstFixLat;
+  double? _firstFixLng;
+
+  /// Device-to-server clock offset, sampled off every ping's server-stamped
+  /// `at` (decisions § 1843).
+  final ServerClockOffset clockOffset = ServerClockOffset();
+
+  /// Whether a recorder is attached to a running race.
+  bool get isHosting => _hostingEventId != null;
+
+  /// The host ended the race before this runner finished. The server marks
+  /// the runner DNF; nothing is submitted from here.
+  bool get raceEnded => _raceEnded;
+
+  /// The recording started late or far from the course start. Surfaced on
+  /// the run screen; not yet carried on the result (decisions § 1843).
+  bool get lateStart => _lateStart;
+
+  RaceCourse? get course => _course;
+  RaceOutcome? get outcome => _outcome;
+
+  /// Stop while racing is a pause until the runner says otherwise: true when
+  /// a hosted race has no outcome yet, was not ended by the host, and the
+  /// runner is not mid-approach at the finish (a stop there IS the finish).
+  bool get stopNeedsRaceChoice =>
+      isHosting &&
+      _outcome == null &&
+      !_raceEnded &&
+      _detector?.candidate == null;
+
+  /// Whether [coveredM] clears the 90% gate on this racer's course.
+  bool coverageMet(double coveredM) =>
+      raceCoverageMet(coveredM, _course?.distanceM);
+
+  /// Gun time to [finishAtDevice], or null with no GO on record.
+  int? gunTimeTo(DateTime finishAtDevice) {
+    final gun = _gunAt;
+    if (gun == null) return null;
+    return raceGunTimeS(
+      finishAtDevice: finishAtDevice,
+      gunAt: gun,
+      clockOffset: clockOffset.offset,
+    );
+  }
 
   /// Attach the controller to a user session. Starts polling for armed
   /// sessions on events the user has RSVP'd to. Idempotent.
@@ -206,6 +324,14 @@ class RaceController extends ChangeNotifier {
       return;
     }
     await drainPendingResults();
+    final hostEid = _hostingEventId;
+    final hostInst = _hostingInstance;
+    if (hostEid != null && hostInst != null) {
+      // Read the hosted session directly: the RSVP window below can age out
+      // of a long race, and a race that left it must not read as ended.
+      final s = await _social.fetchRaceSession(hostEid, hostInst);
+      if (s != null) observeHostedSession(s.status, s.startedAt);
+    }
     // Events the user is `going` to within the next 24h (window for
     // live races). Keeps the fetch small for a single user.
     final now = DateTime.now().toUtc();
@@ -402,20 +528,205 @@ class RaceController extends ChangeNotifier {
   }
 
   /// Called by the run screen when it starts a recorder while a race is
-  /// running. Enables live pings at a 10s cadence.
+  /// running. Enables live pings at a 10s cadence and resolves the racer's
+  /// course for finish detection. [startedAt] is the session's GO;
+  /// [recordingStartedAt] is when this recording began (device clock).
   void attachRecorder({
     required String eventId,
     required DateTime instance,
+    DateTime? startedAt,
+    DateTime? recordingStartedAt,
   }) {
     _hostingEventId = eventId;
     _hostingInstance = instance;
+    _gunAt = startedAt;
+    _recordingStartedAt = recordingStartedAt;
+    _course = null;
+    _detector = null;
+    _outcome = null;
+    _raceEnded = false;
+    _lateStart = false;
+    _firstFixSeen = false;
+    _firstFixLat = null;
+    _firstFixLng = null;
+    unawaited(_resolveCourse(eventId, instance));
   }
 
   void detachRecorder() {
     _hostingEventId = null;
     _hostingInstance = null;
+    _gunAt = null;
+    _recordingStartedAt = null;
+    _course = null;
+    _detector = null;
+    _outcome = null;
+    _raceEnded = false;
+    _lateStart = false;
+    _firstFixSeen = false;
+    _firstFixLat = null;
+    _firstFixLng = null;
     _pingTimer?.cancel();
     _pingTimer = null;
+  }
+
+  /// The course lookup, as a seam: the default reaches Supabase, which no
+  /// host test can initialize.
+  @visibleForTesting
+  Future<RaceCourse?> Function(String eventId, DateTime instance)? courseLoader;
+
+  /// L4: a course that cannot be resolved leaves the race recording with no
+  /// auto-finish and an ungated manual finish, never a broken recording.
+  Future<void> _resolveCourse(String eventId, DateTime instance) async {
+    try {
+      final loader = courseLoader ?? _loadCourse;
+      final course = await loader(eventId, instance);
+      if (_hostingEventId != eventId || _hostingInstance != instance) return;
+      setCourse(course);
+    } catch (e) {
+      debugPrint('[RaceController._resolveCourse] $e');
+    }
+  }
+
+  /// Install the racer's course. Public for the run-screen tests, which
+  /// drive a race without a network.
+  @visibleForTesting
+  void setCourse(RaceCourse? course) {
+    _course = course;
+    final distance = course?.distanceM;
+    _detector = course != null &&
+            course.hasFinish &&
+            distance != null &&
+            distance.isFinite &&
+            distance > 0
+        ? RaceFinishDetector(
+            finishLat: course.finishLat!,
+            finishLng: course.finishLng!,
+            courseDistanceM: distance,
+          )
+        : null;
+    // The first fix can beat the course lookup; judge it now that the
+    // course start is known.
+    if (_firstFixSeen) _evaluateLateStart();
+  }
+
+  Future<RaceCourse?> _loadCourse(String eventId, DateTime instance) async {
+    final courses = await _social.fetchEventCourses(eventId);
+    String? routeId;
+    double? distanceM;
+    String? courseId;
+    if (courses.isNotEmpty) {
+      final mine = pickRaceCourse(
+          courses, await _social.fetchMyCourseId(eventId, instance));
+      if (mine == null) return null;
+      courseId = mine.id;
+      routeId = mine.routeId;
+      distanceM = mine.distanceM;
+    } else {
+      final row = await _c
+          .from('events')
+          .select('route_id, distance_m')
+          .eq('id', eventId)
+          .maybeSingle();
+      routeId = row?['route_id'] as String?;
+      distanceM = (row?['distance_m'] as num?)?.toDouble();
+    }
+    List<Waypoint> points = const [];
+    if (routeId != null) {
+      // Through fetchRouteById so a non-owner gets the privacy-clipped
+      // polyline, never the raw one.
+      final route = (await (_api ?? ApiClient()).fetchRouteById(routeId)).route;
+      points = route?.waypoints ?? const [];
+      distanceM ??= route?.distanceMetres;
+    }
+    return RaceCourse(
+      courseId: courseId,
+      distanceM: distanceM,
+      startLat: points.isEmpty ? null : points.first.lat,
+      startLng: points.isEmpty ? null : points.first.lng,
+      finishLat: points.isEmpty ? null : points.last.lat,
+      finishLng: points.isEmpty ? null : points.last.lng,
+    );
+  }
+
+  /// Feed one fresh fix of the hosted recording. Returns the finish on the
+  /// fix that finalises it — the caller then stops the recorder — and
+  /// null otherwise. [at] is the device clock at the fix.
+  RaceFinish? offerFix({
+    required double lat,
+    required double lng,
+    required double coveredM,
+    required DateTime at,
+  }) {
+    if (!isHosting || _outcome != null || _raceEnded) return null;
+    if (!_firstFixSeen) {
+      _firstFixSeen = true;
+      _firstFixLat = lat;
+      _firstFixLng = lng;
+      _evaluateLateStart();
+    }
+    final finish = _detector?.offer(
+        RaceFix(lat: lat, lng: lng, at: at, coveredM: coveredM));
+    if (finish == null) return null;
+    _outcome = RaceOutcome(
+      finisherStatus: 'finished',
+      method: RaceFinishMethod.auto,
+      finishAt: finish.at,
+    );
+    notifyListeners();
+    return finish;
+  }
+
+  void _evaluateLateStart() {
+    final gun = _gunAt;
+    final began = _recordingStartedAt;
+    final lat = _firstFixLat;
+    final lng = _firstFixLng;
+    if (_lateStart || gun == null || began == null) return;
+    if (lat == null || lng == null) return;
+    final c = _course;
+    final sLat = c?.startLat;
+    final sLng = c?.startLng;
+    final fromStart = sLat != null && sLng != null
+        ? raceDistanceM(lat, lng, sLat, sLng)
+        : null;
+    if (raceStartFlagged(
+      gunAt: gun,
+      recordingStartedAt: clockOffset.toServer(began),
+      firstFixFromStartM: fromStart,
+    )) {
+      _lateStart = true;
+      notifyListeners();
+    }
+  }
+
+  /// The runner chose "Finish race" (or stopped mid-approach): settle the
+  /// outcome from what they covered.
+  RaceOutcome decideStop({required double coveredM, DateTime? now}) {
+    final existing = _outcome;
+    if (existing != null) return existing;
+    final o = raceStopOutcome(
+      candidate: _detector?.settle(),
+      coveredM: coveredM,
+      courseDistanceM: _course?.distanceM,
+      now: now ?? DateTime.now(),
+    );
+    _outcome = o;
+    notifyListeners();
+    return o;
+  }
+
+  /// The hosted session's status as last read. A terminal status before
+  /// this runner has an outcome is the host's End.
+  @visibleForTesting
+  void observeHostedSession(String status, DateTime? startedAt) {
+    if (!isHosting) return;
+    if (startedAt != null) _gunAt = startedAt;
+    if ((status == 'finished' || status == 'cancelled') &&
+        _outcome == null &&
+        !_raceEnded) {
+      _raceEnded = true;
+      notifyListeners();
+    }
   }
 
   /// Fire once per GPS sample the recorder produces while a race is
@@ -460,7 +771,15 @@ class RaceController extends ChangeNotifier {
   Future<void> _insertPing(Map<String, dynamic> row) async {
     final writer = pingWriter;
     if (writer != null) return writer(row);
-    await _c.from('race_pings').insert(row);
+    final sentAt = DateTime.now();
+    final res =
+        await _c.from('race_pings').insert(row).select('at').maybeSingle();
+    final receivedAt = DateTime.now();
+    final serverAt = parseIsoStrictValue(res?['at']);
+    if (serverAt != null) {
+      clockOffset.addSample(
+          sentAt: sentAt, receivedAt: receivedAt, serverAt: serverAt);
+    }
   }
 
   String? get _currentUserId => ApiClient.isInitialized
@@ -475,6 +794,11 @@ class RaceController extends ChangeNotifier {
   /// official time outright — the common case being a runner who crossed
   /// the line somewhere with no signal. The result is queued to disk on
   /// failure instead and replayed by [drainPendingResults].
+  ///
+  /// [durationS] is the recording's own duration — the chip time. The
+  /// submitted `duration_s` is the gun time whenever the race had a GO
+  /// (decisions § 1843). A race the host ended first submits nothing: the
+  /// server has already marked this runner DNF.
   Future<void> submitResult({
     required String runId,
     required int durationS,
@@ -483,27 +807,47 @@ class RaceController extends ChangeNotifier {
     final eid = _hostingEventId;
     final inst = _hostingInstance;
     if (eid == null || inst == null) return;
+    final outcome = _outcome ??
+        (_raceEnded ? null : decideStop(coveredM: distanceM));
+    if (outcome == null) {
+      detachRecorder();
+      return;
+    }
+    final finishAt = outcome.finishAt;
+    final gun = finishAt == null ? null : gunTimeTo(finishAt);
+    final result = PendingRaceResult(
+      eventId: eid,
+      instanceStart: inst,
+      runId: runId,
+      durationS: gun ?? durationS,
+      distanceM: distanceM,
+      finisherStatus: outcome.finisherStatus,
+      courseId: _course?.courseId,
+      gunTimeS: gun,
+      chipTimeS: durationS,
+      finishMethod: outcome.method.wire,
+    );
     try {
-      await _social.submitEventResult(
-        eventId: eid,
-        instance: inst,
-        durationS: durationS,
-        distanceM: distanceM,
-        runId: runId,
-        finisherStatus: 'finished',
-      );
+      await _submitPending(result);
     } catch (e) {
       debugPrint('[RaceController.submitResult] $e');
-      await _queuePendingResult(PendingRaceResult(
-        eventId: eid,
-        instanceStart: inst,
-        runId: runId,
-        durationS: durationS,
-        distanceM: distanceM,
-      ));
+      await _queuePendingResult(result);
     }
     detachRecorder();
   }
+
+  Future<void> _submitPending(PendingRaceResult r) => _social.submitEventResult(
+        eventId: r.eventId,
+        instance: r.instanceStart,
+        durationS: r.durationS,
+        distanceM: r.distanceM,
+        runId: r.runId,
+        finisherStatus: r.finisherStatus,
+        courseId: r.courseId,
+        gunTimeS: r.gunTimeS,
+        chipTimeS: r.chipTimeS,
+        finishMethod: r.finishMethod,
+      );
 
   bool _draining = false;
 
@@ -520,14 +864,7 @@ class RaceController extends ChangeNotifier {
       final remaining = <PendingRaceResult>[];
       for (final r in queued) {
         try {
-          await _social.submitEventResult(
-            eventId: r.eventId,
-            instance: r.instanceStart,
-            durationS: r.durationS,
-            distanceM: r.distanceM,
-            runId: r.runId,
-            finisherStatus: 'finished',
-          );
+          await _submitPending(r);
         } catch (e) {
           debugPrint('[RaceController.drainPendingResults] $e');
           remaining.add(r);

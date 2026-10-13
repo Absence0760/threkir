@@ -87,8 +87,9 @@ class _RsvpFailSocial extends SocialService {
   Future<void> rsvpEvent(
     String eventId,
     String status,
-    DateTime instance,
-  ) async {
+    DateTime instance, {
+    String? courseId,
+  }) async {
     rsvpCalls++;
     throw Exception('network down');
   }
@@ -167,8 +168,9 @@ class _EventSocial extends SocialService {
   Future<void> rsvpEvent(
     String eventId,
     String status,
-    DateTime instance,
-  ) async {
+    DateTime instance, {
+    String? courseId,
+  }) async {
     rsvpCalls++;
     lastRsvpStatus = status;
   }
@@ -221,6 +223,10 @@ class _SubmitFailSocial extends _EventSocial {
     String finisherStatus = 'finished',
     double? ageGradePct,
     String? note,
+    String? courseId,
+    int? gunTimeS,
+    int? chipTimeS,
+    String? finishMethod,
   }) async {
     submitCalls++;
     throw Exception('network down');

@@ -43,7 +43,7 @@ class _FakeApiClient extends ApiClient {
   String? get userId => fakeUserId;
 
   @override
-  Future<void> saveRun(Run run, {bool? isPublic}) async {
+  Future<void> saveRun(Run run, {bool? isPublic, bool followersOnly = false}) async {
     final wait = gate;
     if (wait != null) await wait.future;
     final error = failWith;

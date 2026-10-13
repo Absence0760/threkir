@@ -137,7 +137,7 @@ class _JourneyApi extends ApiClient {
   }) async => const <cm.RouteMatchCandidate>[];
 
   @override
-  Future<void> saveRun(cm.Run run, {bool? isPublic}) async {
+  Future<void> saveRun(cm.Run run, {bool? isPublic, bool followersOnly = false}) async {
     saveRunAttempts++;
     if (offline) throw const SocketException('network unreachable');
     savedRunIds.add(run.id);

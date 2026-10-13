@@ -99,23 +99,20 @@ class PendingRaceResult {
 }
 
 /// The course a racer is running: what the finish detector and the coverage
-/// gate need, resolved once when the recorder attaches.
+/// gate need, resolved once when the recorder attaches. Read off the
+/// `event_courses` row alone — never the route.
 class RaceCourse {
   const RaceCourse({
     required this.courseId,
     required this.distanceM,
-    this.startLat,
-    this.startLng,
     this.finishLat,
     this.finishLng,
   });
 
   /// Null for an event with no `event_courses` rows, raced on the event's
-  /// own route and distance.
+  /// own distance with no finish point.
   final String? courseId;
   final double? distanceM;
-  final double? startLat;
-  final double? startLng;
   final double? finishLat;
   final double? finishLng;
 
@@ -194,10 +191,9 @@ Map<String, dynamic> racePingRow({
     };
 
 class RaceController extends ChangeNotifier {
-  RaceController(this._social, {ApiClient? api}) : _api = api;
+  RaceController(this._social);
 
   final SocialService _social;
-  final ApiClient? _api;
   SupabaseClient get _c {
     if (!ApiClient.isInitialized) {
       throw StateError(
@@ -229,8 +225,6 @@ class RaceController extends ChangeNotifier {
   bool _raceEnded = false;
   bool _lateStart = false;
   bool _firstFixSeen = false;
-  double? _firstFixLat;
-  double? _firstFixLng;
 
   /// Device-to-server clock offset, sampled off every ping's server-stamped
   /// `at` (decisions § 1843).
@@ -243,8 +237,10 @@ class RaceController extends ChangeNotifier {
   /// the runner DNF; nothing is submitted from here.
   bool get raceEnded => _raceEnded;
 
-  /// The recording started late or far from the course start. Surfaced on
-  /// the run screen; not yet carried on the result (decisions § 1843).
+  /// The recording started more than five minutes after GO (the
+  /// far-from-start arm is dormant: no start point on the course row,
+  /// decisions § 1845). Surfaced on the run screen; not yet carried on the
+  /// result (decisions § 1843).
   bool get lateStart => _lateStart;
 
   RaceCourse? get course => _course;
@@ -547,8 +543,6 @@ class RaceController extends ChangeNotifier {
     _raceEnded = false;
     _lateStart = false;
     _firstFixSeen = false;
-    _firstFixLat = null;
-    _firstFixLng = null;
     unawaited(_resolveCourse(eventId, instance));
   }
 
@@ -563,8 +557,6 @@ class RaceController extends ChangeNotifier {
     _raceEnded = false;
     _lateStart = false;
     _firstFixSeen = false;
-    _firstFixLat = null;
-    _firstFixLng = null;
     _pingTimer?.cancel();
     _pingTimer = null;
   }
@@ -604,47 +596,33 @@ class RaceController extends ChangeNotifier {
             courseDistanceM: distance,
           )
         : null;
-    // The first fix can beat the course lookup; judge it now that the
-    // course start is known.
-    if (_firstFixSeen) _evaluateLateStart();
   }
 
+  /// The finish point comes off the course row, never the route: a
+  /// non-owner is served the route privacy-clipped (moving the line) and a
+  /// private route not at all. A course with no finish point, or an event
+  /// with no courses, races with a manual finish only.
   Future<RaceCourse?> _loadCourse(String eventId, DateTime instance) async {
     final courses = await _social.fetchEventCourses(eventId);
-    String? routeId;
-    double? distanceM;
-    String? courseId;
     if (courses.isNotEmpty) {
       final mine = pickRaceCourse(
           courses, await _social.fetchMyCourseId(eventId, instance));
       if (mine == null) return null;
-      courseId = mine.id;
-      routeId = mine.routeId;
-      distanceM = mine.distanceM;
-    } else {
-      final row = await _c
-          .from('events')
-          .select('route_id, distance_m')
-          .eq('id', eventId)
-          .maybeSingle();
-      routeId = row?['route_id'] as String?;
-      distanceM = (row?['distance_m'] as num?)?.toDouble();
+      return RaceCourse(
+        courseId: mine.id,
+        distanceM: mine.distanceM,
+        finishLat: mine.finishLat,
+        finishLng: mine.finishLng,
+      );
     }
-    List<Waypoint> points = const [];
-    if (routeId != null) {
-      // Through fetchRouteById so a non-owner gets the privacy-clipped
-      // polyline, never the raw one.
-      final route = (await (_api ?? ApiClient()).fetchRouteById(routeId)).route;
-      points = route?.waypoints ?? const [];
-      distanceM ??= route?.distanceMetres;
-    }
+    final row = await _c
+        .from('events')
+        .select('distance_m')
+        .eq('id', eventId)
+        .maybeSingle();
     return RaceCourse(
-      courseId: courseId,
-      distanceM: distanceM,
-      startLat: points.isEmpty ? null : points.first.lat,
-      startLng: points.isEmpty ? null : points.first.lng,
-      finishLat: points.isEmpty ? null : points.last.lat,
-      finishLng: points.isEmpty ? null : points.last.lng,
+      courseId: null,
+      distanceM: (row?['distance_m'] as num?)?.toDouble(),
     );
   }
 
@@ -660,8 +638,6 @@ class RaceController extends ChangeNotifier {
     if (!isHosting || _outcome != null || _raceEnded) return null;
     if (!_firstFixSeen) {
       _firstFixSeen = true;
-      _firstFixLat = lat;
-      _firstFixLng = lng;
       _evaluateLateStart();
     }
     final finish = _detector?.offer(
@@ -679,20 +655,12 @@ class RaceController extends ChangeNotifier {
   void _evaluateLateStart() {
     final gun = _gunAt;
     final began = _recordingStartedAt;
-    final lat = _firstFixLat;
-    final lng = _firstFixLng;
     if (_lateStart || gun == null || began == null) return;
-    if (lat == null || lng == null) return;
-    final c = _course;
-    final sLat = c?.startLat;
-    final sLng = c?.startLng;
-    final fromStart = sLat != null && sLng != null
-        ? raceDistanceM(lat, lng, sLat, sLng)
-        : null;
+    // No first-fix-from-start distance: the course row carries no start
+    // point and the route is not read (decisions § 1845).
     if (raceStartFlagged(
       gunAt: gun,
       recordingStartedAt: clockOffset.toServer(began),
-      firstFixFromStartM: fromStart,
     )) {
       _lateStart = true;
       notifyListeners();

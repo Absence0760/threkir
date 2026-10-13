@@ -44,9 +44,26 @@ import '../lib/social_service.dart';
 /// Records finisher submissions and can be told to fail them, standing in
 /// for the network leg `submitEventResult` would otherwise take.
 class _FakeSocial extends SocialService {
-  _FakeSocial({this.failing = false});
+  _FakeSocial({this.failing = false, this.courses = const [], this.myCourseId});
 
   bool failing;
+
+  /// What the default course loader reads. It reaches nothing else: no
+  /// route read, and no ApiClient is initialised in a host test.
+  final List<EventCourseView> courses;
+  final String? myCourseId;
+  int courseReads = 0;
+
+  @override
+  Future<List<EventCourseView>> fetchEventCourses(String eventId) async {
+    courseReads++;
+    return courses;
+  }
+
+  @override
+  Future<String?> fetchMyCourseId(String eventId, DateTime instance) async =>
+      myCourseId;
+
   final List<
       ({
         String eventId,
@@ -94,12 +111,10 @@ class _FakeSocial extends SocialService {
 
 const _mPerDegLat = 6371000 * 3.141592653589793 / 180;
 
-/// A 5 km course finishing at (51.5, -0.1) and starting 5 km south of it.
+/// A 5 km course finishing at (51.5, -0.1).
 const _course = RaceCourse(
   courseId: 'course-10k',
   distanceM: 5000,
-  startLat: 51.5 - 5000 / _mPerDegLat,
-  startLng: -0.1,
   finishLat: 51.5,
   finishLng: -0.1,
 );
@@ -756,11 +771,14 @@ void main() {
       expect(c.lateStart, isTrue);
     });
 
-    test('a first fix far from the course start is flagged', () async {
+    test('a first fix far from the start is not flagged: no start point',
+        () async {
+      // The course row carries a finish point only, and the route is not
+      // read, so the far-from-start arm has nothing to measure against.
       final c = RaceController(_FakeSocial());
       await _attachRacing(c, gun);
       _offer(c, -4500, gun.add(const Duration(seconds: 30)), 0);
-      expect(c.lateStart, isTrue);
+      expect(c.lateStart, isFalse);
     });
 
     test('a first fix on the start line, on time, is not flagged', () async {
@@ -821,6 +839,123 @@ void main() {
       expect(back.finisherStatus, 'finished');
       expect(back.gunTimeS, isNull);
       expect(back.finishMethod, isNull);
+    });
+  });
+
+  group('course from the event_courses row', () {
+    final gun = DateTime.utc(2026, 5, 22, 18);
+    const tenK = EventCourseView(
+      id: 'course-10k',
+      eventId: 'event-1',
+      routeId: 'route-private',
+      name: '10K',
+      distanceM: 5000,
+      sortOrder: 0,
+      finishLat: 51.5,
+      finishLng: -0.1,
+    );
+
+    Future<RaceController> attachWithDefaultLoader(_FakeSocial social) async {
+      final c = RaceController(social);
+      c.attachRecorder(
+        eventId: 'event-1',
+        instance: DateTime.utc(2026, 5, 22, 18),
+        startedAt: gun,
+        recordingStartedAt: gun,
+      );
+      await pumpEventQueue();
+      return c;
+    }
+
+    test('the finish point comes off the course row, with no route read',
+        () async {
+      // Reading the route would need an initialised ApiClient, which a host
+      // test has none of: the course would fail to resolve and nothing
+      // would auto-finish.
+      const fiveK = EventCourseView(
+        id: 'course-5k',
+        eventId: 'event-1',
+        routeId: 'route-5k',
+        name: '5K',
+        distanceM: 2500,
+        sortOrder: 1,
+        finishLat: 52.0,
+        finishLng: 0.0,
+      );
+      final social = _FakeSocial(
+          courses: const [tenK, fiveK], myCourseId: 'course-10k');
+      final c = await attachWithDefaultLoader(social);
+      expect(social.courseReads, 1);
+
+      final t = gun.add(const Duration(minutes: 20));
+      expect(_offer(c, 6, t, 4994), isNull);
+      final f = _offer(c, 12, t.add(const Duration(seconds: 3)), 5000);
+      expect(f, isNotNull);
+      expect(f!.at, t);
+      expect(c.outcome!.method, RaceFinishMethod.auto);
+    });
+
+    test('a course with no finish point finishes by hand, gated on distance',
+        () async {
+      const noFinish = EventCourseView(
+        id: 'course-10k',
+        eventId: 'event-1',
+        routeId: null,
+        name: '10K',
+        distanceM: 5000,
+        sortOrder: 0,
+      );
+      final social = _FakeSocial(courses: const [noFinish]);
+      final c = await attachWithDefaultLoader(social);
+
+      expect(_offer(c, 0, gun.add(const Duration(minutes: 20)), 5000), isNull);
+      expect(c.outcome, isNull);
+      expect(c.coverageMet(4499), isFalse);
+      expect(c.coverageMet(4500), isTrue);
+      final o = c.decideStop(
+          coveredM: 5000, now: gun.add(const Duration(minutes: 21)));
+      expect(o.method, RaceFinishMethod.manual);
+    });
+
+    test('a course with no distance has no auto-finish and an ungated Finish',
+        () async {
+      const noDistance = EventCourseView(
+        id: 'course-10k',
+        eventId: 'event-1',
+        routeId: 'route-1',
+        name: '10K',
+        distanceM: null,
+        sortOrder: 0,
+        finishLat: 51.5,
+        finishLng: -0.1,
+      );
+      final c = await attachWithDefaultLoader(
+          _FakeSocial(courses: const [noDistance]));
+
+      expect(_offer(c, 0, gun.add(const Duration(minutes: 20)), 5000), isNull);
+      expect(c.coverageMet(10), isTrue);
+    });
+
+    test('a half finish pair on the wire parses as no finish', () {
+      final v = EventCourseView.fromJson({
+        'id': 'c1',
+        'event_id': 'e1',
+        'name': '10K',
+        'distance_m': 5000,
+        'finish_lat': 51.5,
+        'finish_lng': null,
+      })!;
+      expect(v.finishLat, isNull);
+      expect(v.finishLng, isNull);
+      final both = EventCourseView.fromJson({
+        'id': 'c1',
+        'event_id': 'e1',
+        'name': '10K',
+        'finish_lat': 51.5,
+        'finish_lng': -0.1,
+      })!;
+      expect(both.finishLat, 51.5);
+      expect(both.finishLng, -0.1);
     });
   });
 

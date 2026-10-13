@@ -157,7 +157,11 @@ class AttendeeView {
 }
 
 /// One `event_courses` row: a course a race event offers, backed by a saved
-/// route. Hand-modelled from the raw map until the generated row type lands.
+/// route. Hand-written rather than the generated `EventCourseRow` so a
+/// malformed row is dropped instead of throwing, as every view beside it
+/// does. [finishLat] / [finishLng] are the server's copy of the route's last
+/// waypoint — racers read the finish here and never the route, which a
+/// non-owner is served privacy-clipped and a private route not at all.
 class EventCourseView {
   final String id;
   final String eventId;
@@ -165,6 +169,8 @@ class EventCourseView {
   final String name;
   final double? distanceM;
   final int sortOrder;
+  final double? finishLat;
+  final double? finishLng;
   const EventCourseView({
     required this.id,
     required this.eventId,
@@ -172,6 +178,8 @@ class EventCourseView {
     required this.name,
     required this.distanceM,
     required this.sortOrder,
+    this.finishLat,
+    this.finishLng,
   });
 
   static EventCourseView? fromJson(Map<String, dynamic> m) {
@@ -181,6 +189,10 @@ class EventCourseView {
     if (id is! String || eventId is! String || name is! String) return null;
     final distance = m['distance_m'];
     final sort = m['sort_order'];
+    final lat = m['finish_lat'];
+    final lng = m['finish_lng'];
+    // Both-or-neither in the schema; a half pair is no finish.
+    final hasFinish = lat is num && lng is num;
     return EventCourseView(
       id: id,
       eventId: eventId,
@@ -188,6 +200,8 @@ class EventCourseView {
       name: name,
       distanceM: distance is num ? distance.toDouble() : null,
       sortOrder: sort is num ? sort.toInt() : 0,
+      finishLat: hasFinish ? lat.toDouble() : null,
+      finishLng: hasFinish ? lng.toDouble() : null,
     );
   }
 }
@@ -1491,7 +1505,8 @@ class SocialService extends ChangeNotifier {
     try {
       final rows = await _c
           .from('event_courses')
-          .select('id, event_id, route_id, name, distance_m, sort_order')
+          .select(
+              'id, event_id, route_id, name, distance_m, sort_order, finish_lat, finish_lng')
           .eq('event_id', eventId)
           .order('sort_order', ascending: true);
       return [

@@ -84,7 +84,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Le côté coureur est expliqué dans [[guide:racing-in-a-race|Participer à une course]].',
+					text: 'Le côté coureur est expliqué dans [[guide:racing-in-a-race|Participer à une course en direct]].',
 				},
 			],
 		},
@@ -145,7 +145,7 @@ export const translation: GuideTranslation = {
 		's3.b0.i1': '76dc29eb1e584662',
 		's3.b0.i2': '295fb740c0b19c57',
 		's3.b0.i3': 'f12d86e7aff3dc0e',
-		's3.b1': 'b238271b4620d5dc',
+		's3.b1': 'd636d4186f153c0f',
 		's4.heading': 'ff04ee128bd05b1f',
 		's4.b0': '8887aff2546f155b',
 		's5.heading': '05127d2bcbe7e55c',

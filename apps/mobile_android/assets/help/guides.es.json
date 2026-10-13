@@ -558,7 +558,7 @@
           {
             "type": "steps",
             "items": [
-              "Abre el evento y usa **Elige una ocurrencia** para escoger la fecha. Se muestran las próximas fechas, y **Mostrar las próximas** despliega todas las fechas del próximo año.",
+              "Abre el evento y usa **Elige una ocurrencia** para escoger la fecha. Se muestran las próximas fechas, y **Mostrar las 12 próximas** (el número indica cuántas fechas quedan) despliega todas las fechas del próximo año.",
               "Elige **Me apunto**, **Quizás** o **No puedo** para esa fecha."
             ]
           },

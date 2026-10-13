@@ -44,7 +44,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Ouvrez l\'événement et utilisez **Choisir une occurrence** pour sélectionner la date. Les prochaines dates sont affichées, et **Afficher tout** déroule toutes les dates à venir sur l\'année qui suit.',
+						'Ouvrez l\'événement et utilisez **Choisir une occurrence** pour sélectionner la date. Les prochaines dates sont affichées, et **Afficher les 12 à venir** (le nombre indique combien de dates restent) déroule toutes les dates à venir sur l\'année qui suit.',
 						'Choisissez **Je participe**, **Peut-être** ou **Je ne peux pas** pour cette date.',
 					],
 				},
@@ -101,7 +101,7 @@ export const translation: GuideTranslation = {
 		's0.b3': 'c40bdc990b5425db',
 		's1.heading': 'd0f06618475ee3d1',
 		's1.b0': 'fb3d5e80f695a45d',
-		's1.b1.i0': '11bf9a8e15037b7c',
+		's1.b1.i0': 'af04da638393359f',
 		's1.b1.i1': 'e208d82edea8262f',
 		's1.b2': 'c2477719db027ba7',
 		's2.heading': 'f95356ca142cc32c',

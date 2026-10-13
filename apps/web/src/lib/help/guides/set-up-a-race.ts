@@ -89,7 +89,7 @@ export const guide: Guide = {
 				},
 				{
 					type: 'p',
-					text: 'The racer side is covered in [[guide:racing-in-a-race|Racing in a race]].'
+					text: 'The racer side is covered in [[guide:racing-in-a-race|Racing in a live race]].'
 				}
 			]
 		},

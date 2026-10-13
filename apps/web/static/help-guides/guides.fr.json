@@ -558,7 +558,7 @@
           {
             "type": "steps",
             "items": [
-              "Ouvrez l'événement et utilisez **Choisir une occurrence** pour sélectionner la date. Les prochaines dates sont affichées, et **Afficher tout** déroule toutes les dates à venir sur l'année qui suit.",
+              "Ouvrez l'événement et utilisez **Choisir une occurrence** pour sélectionner la date. Les prochaines dates sont affichées, et **Afficher les 12 à venir** (le nombre indique combien de dates restent) déroule toutes les dates à venir sur l'année qui suit.",
               "Choisissez **Je participe**, **Peut-être** ou **Je ne peux pas** pour cette date."
             ]
           },
@@ -2207,7 +2207,7 @@
           },
           {
             "type": "p",
-            "text": "Le côté coureur est expliqué dans [[guide:racing-in-a-race|Participer à une course]]."
+            "text": "Le côté coureur est expliqué dans [[guide:racing-in-a-race|Participer à une course en direct]]."
           }
         ]
       },

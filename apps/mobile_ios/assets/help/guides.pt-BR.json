@@ -558,7 +558,7 @@
           {
             "type": "steps",
             "items": [
-              "Abra o evento e use **Escolha uma ocorrência** para escolher a data. As próximas datas aparecem, e **Mostrar as próximas** expande para todas as datas futuras do próximo ano.",
+              "Abra o evento e use **Escolha uma ocorrência** para escolher a data. As próximas datas aparecem, e **Mostrar as 12 próximas** (o número indica quantas datas faltam) expande para todas as datas futuras do próximo ano.",
               "Escolha **Eu vou**, **Talvez** ou **Não posso** para essa data."
             ]
           },

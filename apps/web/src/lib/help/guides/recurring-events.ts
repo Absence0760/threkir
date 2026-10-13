@@ -49,7 +49,7 @@ export const guide: Guide = {
 				{
 					type: 'steps',
 					items: [
-						'Open the event and use **Pick an occurrence** to choose the date. The next few dates are shown, and **Show all** expands to every upcoming date in the next year.',
+						'Open the event and use **Pick an occurrence** to choose the date. The next few dates are shown, and **Show all 12 upcoming** (the number is how many dates are left) expands the list to every upcoming date in the next year.',
 						'Choose **I\'m in**, **Maybe** or **Can\'t make it** for that date.',
 					],
 				},

@@ -35,6 +35,10 @@
 		endRace,
 		approveEventResult,
 		approveEventResultById,
+		editEventResultAsHost,
+		fetchRaceDnfPreview,
+		fetchEventCourses,
+		fetchMyEventCourse,
 		bulkImportEventResults,
 		requestEventResultClaim,
 		fetchMyEventResultClaims,
@@ -95,7 +99,19 @@
 	import { staticMapSlugFromPreference } from '#lib/routes/map-style.svelte.ts';
 	import { buildFinisherCertificateSvg, CERT_WIDTH, CERT_HEIGHT } from '#lib/runs/finisher_certificate.ts';
 	import { rasterizeSvgToPng, downloadBlob } from '#lib/format/svg_raster.ts';
-	import { parseChipTimingCsv, resultsToCsv, type ParsedResultRow } from '#lib/runs/event_results_csv.ts';
+	import {
+		parseChipTimingCsv,
+		parseDurationToSeconds,
+		resultsToCsv,
+		type ParsedResultRow
+	} from '#lib/runs/event_results_csv.ts';
+	import {
+		finishMethodBadge,
+		groupResultsByCourse,
+		hostTimeEditPatch,
+		needsCoursePick,
+		type EventCourse
+	} from '#lib/social/event_courses.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { consent } from '#lib/settings/consent.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -182,6 +198,21 @@
 	let error = $state<string | null>(null);
 	let draftPost = $state('');
 	let results = $state<EventResultWithUser[]>([]);
+	// Race courses (decisions § 1842). `courseChoice` is the viewer's pick in
+	// the RSVP course select — seeded from their stored RSVP and written with
+	// the next RSVP (or straight away when they already have one).
+	let courses = $state<EventCourse[]>([]);
+	let courseChoice = $state('');
+	let courseError = $state<string | null>(null);
+	let resultBoards = $derived(groupResultsByCourse(results, courses));
+	// End-race preview: how many racers End will mark DNF (null = unknown).
+	let dnfPreview = $state<number | null>(null);
+	// Organiser time edit.
+	let editingResult = $state<EventResultWithUser | null>(null);
+	let editTime = $state('');
+	let editStatus = $state<FinisherStatus>('finished');
+	let editError = $state<string | null>(null);
+	let editBusy = $state(false);
 	let eventPhotos = $state<EventPhoto[]>([]);
 	let photoUploading = $state(false);
 	let showResultPicker = $state(false);
@@ -560,6 +591,15 @@
 			activeInstance = prevInstance ?? event.next_instance_start ?? event.starts_at;
 			// Members-only meetup coordinates (null for non-members / no point set).
 			meetPoint = await fetchEventMeetPoint(event.id);
+			// Courses are a layer over the event, not the event: a failed read
+			// leaves the page working as a single-course event rather than
+			// failing the whole load.
+			try {
+				courses = await fetchEventCourses(event.id);
+			} catch (ce) {
+				console.warn('fetchEventCourses failed', ce);
+				courses = [];
+			}
 			await loadSessionPlan();
 			await reloadInstance();
 		} catch (e) {
@@ -605,6 +645,11 @@
 		);
 		results = res[3];
 		raceSession = res[4];
+		try {
+			courseChoice = (await fetchMyEventCourse(event.id, activeInstance)) ?? '';
+		} catch (ce) {
+			console.warn('fetchMyEventCourse failed', ce);
+		}
 		eventPhotos = res[5];
 		rsvpSummary = res[6];
 		pricing = await fetchEventPricing(event.id, activeInstance);
@@ -796,8 +841,9 @@
 		}
 	}
 
-	function handleEnd(status: 'finished' | 'cancelled') {
+	async function handleEnd(status: 'finished' | 'cancelled') {
 		if (!event || !activeInstance || raceBusy) return;
+		dnfPreview = status === 'finished' ? await fetchRaceDnfPreview(event.id, activeInstance) : null;
 		showEndRaceConfirm = status;
 	}
 
@@ -809,6 +855,8 @@
 		try {
 			raceSession = await endRace(event.id, activeInstance, status);
 			broadcastRaceStateChanged();
+			// Ending files the host DNFs server-side; show them.
+			if (status === 'finished') await reloadInstance();
 		} catch (e: unknown) {
 			error = e instanceof Error ? e.message : m('clubEvent.endFailed');
 		} finally {
@@ -880,7 +928,11 @@
 				durationS: run.duration_s,
 				distanceM: run.distance_m,
 				runId: run.id,
-				finisherStatus: 'finished'
+				finisherStatus: 'finished',
+				// On a raced occurrence this is the racer's own submission and
+				// the run's clock is the chip time; the gun time only exists
+				// where a device recorded the finish against the GO.
+				...(raceSession ? { finishMethod: 'manual' as const, chipTimeS: run.duration_s } : {})
 			});
 			showResultPicker = false;
 			await reloadInstance();
@@ -900,7 +952,8 @@
 				instanceStart: activeInstance,
 				durationS: 0,
 				distanceM: 0,
-				finisherStatus: status
+				finisherStatus: status,
+				...(raceSession ? { finishMethod: 'manual' as const } : {})
 			});
 			showResultPicker = false;
 			await reloadInstance();
@@ -914,6 +967,46 @@
 		} finally {
 			submitting = false;
 		}
+	}
+
+	function openEditResult(r: EventResultWithUser) {
+		editingResult = r;
+		editTime = r.duration_s > 0 ? baseDuration(r.duration_s) : '';
+		editStatus = r.finisher_status;
+		editError = null;
+	}
+
+	async function saveEditResult() {
+		if (!editingResult || editBusy) return;
+		const parsed = parseDurationToSeconds(editTime);
+		if (editStatus === 'finished' && (parsed == null || parsed <= 0)) {
+			editError = m('clubEvent.editResultTimeInvalid');
+			return;
+		}
+		editBusy = true;
+		editError = null;
+		try {
+			const seconds = parsed ?? editingResult.duration_s;
+			await editEventResultAsHost(editingResult.id, {
+				...hostTimeEditPatch(seconds, !!raceSession?.started_at),
+				finisher_status: editStatus
+			});
+			editingResult = null;
+			await reloadInstance();
+		} catch (e: unknown) {
+			editError = e instanceof Error ? e.message : m('clubEvent.editResultFailed');
+		} finally {
+			editBusy = false;
+		}
+	}
+
+	function timeSplit(r: EventResultWithUser): string | null {
+		const gun = r.gun_time_s != null ? baseDuration(r.gun_time_s) : null;
+		const chip = r.chip_time_s != null ? baseDuration(r.chip_time_s) : null;
+		if (gun && chip) return m('clubEvent.timeSplitGunChip', { gun, chip });
+		if (chip && r.chip_time_s !== r.duration_s) return m('clubEvent.timeSplitChip', { chip });
+		if (gun) return m('clubEvent.timeSplitGun', { gun });
+		return null;
 	}
 
 	async function removeMyResult() {
@@ -1335,7 +1428,12 @@
 			if (shouldClear) {
 				await clearRsvp(event.id, activeInstance);
 			} else {
-				await rsvpEvent(event.id, status, activeInstance);
+				if (status === 'going' && needsCoursePick(courses) && !courseChoice) {
+					courseError = m('clubEvent.pickCourseFirst');
+					return;
+				}
+				courseError = null;
+				await rsvpEvent(event.id, status, activeInstance, rsvpCourseId());
 			}
 			await load();
 		} catch (e: unknown) {
@@ -1343,6 +1441,35 @@
 		} finally {
 			busy = false;
 		}
+	}
+
+	// The course an RSVP write carries: the viewer's pick, or the only course
+	// when there is no choice; undefined leaves the stored course alone.
+	function rsvpCourseId(): string | undefined {
+		if (courseChoice) return courseChoice;
+		if (courses.length === 1) return courses[0].id;
+		return undefined;
+	}
+
+	// Changing course with an RSVP already on file rewrites it straight away;
+	// without one the pick is held for the next RSVP click.
+	async function chooseCourse(id: string) {
+		courseChoice = id;
+		courseError = null;
+		if (!event || !activeInstance || !viewerRsvpForActive || viewerRsvpForActive === 'declined') return;
+		busy = true;
+		try {
+			await rsvpEvent(event.id, viewerRsvpForActive, activeInstance, id);
+			showToast(m('clubEvent.courseChanged'), 'success');
+		} catch (e: unknown) {
+			error = e instanceof Error ? e.message : m('clubEvent.rsvpFailed');
+		} finally {
+			busy = false;
+		}
+	}
+
+	function courseLabel(c: EventCourse): string {
+		return c.distance_m != null ? `${c.name} · ${formatDistance(c.distance_m)}` : c.name;
 	}
 
 	async function setAttendance(userId: string, current: EventAttendance | null, value: EventAttendance) {
@@ -1400,7 +1527,12 @@
 		if (!event || !activeInstance || waitlistBusy) return;
 		waitlistBusy = true;
 		try {
-			await rsvpEvent(event.id, 'waitlisted', activeInstance);
+			if (needsCoursePick(courses) && !courseChoice) {
+				courseError = m('clubEvent.pickCourseFirst');
+				return;
+			}
+			courseError = null;
+			await rsvpEvent(event.id, 'waitlisted', activeInstance, rsvpCourseId());
 			showToast(m('clubEvent.waitlistJoined'), 'success');
 			await load();
 		} catch (e: unknown) {
@@ -1984,6 +2116,26 @@
 						{/if}
 					</div>
 				{:else if !isPast && auth.user}
+					{#if courses.length > 1}
+						<label class="course-pick">
+							<span>{m('clubEvent.yourCourse')}</span>
+							<select
+								value={courseChoice}
+								onchange={(e) => chooseCourse(e.currentTarget.value)}
+								disabled={busy}
+								data-testid="rsvp-course-select"
+								aria-describedby={courseError ? 'rsvp-course-error' : undefined}
+							>
+								<option value="" disabled>{m('clubEvent.pickCourse')}</option>
+								{#each courses as c (c.id)}
+									<option value={c.id}>{courseLabel(c)}</option>
+								{/each}
+							</select>
+						</label>
+						{#if courseError}
+							<p class="course-error" id="rsvp-course-error" role="alert">{courseError}</p>
+						{/if}
+					{/if}
 					<div
 						class="rsvp-tri"
 						role="group"
@@ -2364,8 +2516,17 @@
 			{#if results.length === 0}
 				<p class="muted">{m('clubEvent.noResultsYet')}</p>
 			{:else}
-				<ol class="results">
-					{#each results as r (rowKey(r))}
+				{#each resultBoards as board (board.course?.id ?? 'none')}
+				{#if resultBoards.length > 1}
+					<h4 class="course-board-title" data-testid="course-board-title">
+						{board.course ? courseLabel(board.course) : m('clubEvent.noCourseBoard')}
+					</h4>
+				{/if}
+				{#if board.results.length === 0}
+					<p class="muted">{m('clubEvent.noCourseResultsYet')}</p>
+				{:else}
+				<ol class="results" data-testid="course-board">
+					{#each board.results as r (rowKey(r))}
 						<li class="result" class:me={r.user_id !== null && r.user_id === myUserId} class:pending={!r.organiser_approved}>
 							<span class="rank">{r.organiser_approved ? (r.rank ?? '—') : '…'}</span>
 							<Avatar name={r.display_name} size="2rem" font="0.85rem" bg="seed" seedHue={hashHue(rowKey(r))} />
@@ -2376,9 +2537,17 @@
 								{#if r.finisher_status !== 'finished'}
 									<span class="dnf-tag">{r.finisher_status.toUpperCase()}</span>
 								{/if}
+								{#if finishMethodBadge(r.finish_method) === 'manual'}
+									<span class="method-tag" data-testid="finish-method-badge">{m('clubEvent.finishManual')}</span>
+								{:else if finishMethodBadge(r.finish_method) === 'host'}
+									<span class="method-tag host" data-testid="finish-method-badge">{m('clubEvent.finishHostEdited')}</span>
+								{/if}
 							</div>
 							{#if r.finisher_status === 'finished'}
-								<span class="time">{formatDuration(r.duration_s)}</span>
+								<span class="time">
+									{formatDuration(r.duration_s)}
+									{#if timeSplit(r)}<small class="time-split muted">{timeSplit(r)}</small>{/if}
+								</span>
 								<span class="dist muted">{formatDistance(r.distance_m)}</span>
 							{/if}
 							{#if r.finisher_status === 'finished' && r.organiser_approved}
@@ -2401,6 +2570,15 @@
 							{:else if isRaceDirector && r.user_id === null && r.organiser_approved}
 								<button type="button" class="btn-link reject" disabled={resultActionBusy !== null} onclick={() => handleApproveById(r.id, false)}>{m('clubEvent.unverify')}</button>
 							{/if}
+							{#if isRaceDirector || (isEventOrganiser && r.user_id === null)}
+								<button
+									type="button"
+									class="btn-link edit-result"
+									disabled={editBusy}
+									onclick={() => openEditResult(r)}
+									data-testid="edit-result"
+								>{m('clubEvent.editResult')}</button>
+							{/if}
 							{#if myUserId && r.user_id === null && !hasMyResult}
 								{#if myClaims.get(r.id) === 'pending'}
 									<span class="claim-pending">{m('clubEvent.claimPending')}</span>
@@ -2411,6 +2589,42 @@
 						</li>
 					{/each}
 				</ol>
+				{/if}
+				{/each}
+			{/if}
+
+			{#if editingResult}
+				<div class="picker edit-result-panel" data-testid="edit-result-panel">
+					<h4>{m('clubEvent.editResultTitle', { name: editingResult.display_name ?? m('clubEvent.runnerFallback') })}</h4>
+					<p class="muted">{m('clubEvent.editResultHelp')}</p>
+					<div class="edit-result-fields">
+						<label>
+							<span>{m('clubEvent.editResultTime')}</span>
+							<input
+								type="text"
+								inputmode="numeric"
+								bind:value={editTime}
+								placeholder="1:02:03"
+								data-testid="edit-result-time"
+							/>
+						</label>
+						<label>
+							<span>{m('clubEvent.editResultStatus')}</span>
+							<select bind:value={editStatus} data-testid="edit-result-status">
+								<option value="finished">{m('clubEvent.statusFinished')}</option>
+								<option value="dnf">{m('clubEvent.statusDnf')}</option>
+								<option value="dns">{m('clubEvent.statusDns')}</option>
+							</select>
+						</label>
+					</div>
+					{#if editError}<p class="course-error" role="alert">{editError}</p>{/if}
+					<div class="picker-actions">
+						<button type="button" class="btn btn-primary-sm" onclick={saveEditResult} disabled={editBusy} data-testid="edit-result-save">
+							{editBusy ? m('clubEvent.submitting') : m('clubEvent.editResultSave')}
+						</button>
+						<button type="button" class="btn-link" onclick={() => (editingResult = null)} disabled={editBusy}>{m('clubEvent.cancel')}</button>
+					</div>
+				</div>
 			{/if}
 
 			{#if isEventOrganiser && pendingClaims.length > 0}
@@ -2710,7 +2924,11 @@
 <ConfirmDialog
 	open={showEndRaceConfirm !== null}
 	title={showEndRaceConfirm === 'cancelled' ? m('clubEvent.cancelRaceTitle') : m('clubEvent.endRaceTitle')}
-	message={showEndRaceConfirm === 'cancelled' ? m('clubEvent.cancelRaceMessage') : m('clubEvent.endRaceMessage')}
+	message={showEndRaceConfirm === 'cancelled'
+		? m('clubEvent.cancelRaceMessage')
+		: dnfPreview != null && dnfPreview > 0
+			? m('clubEvent.endRaceMessageDnf', { n: dnfPreview })
+			: m('clubEvent.endRaceMessage')}
 	confirmLabel={showEndRaceConfirm === 'cancelled' ? m('clubEvent.cancelRaceTitle') : m('clubEvent.endRaceTitle')}
 	onconfirm={confirmEndRace}
 	oncancel={() => showEndRaceConfirm = null}
@@ -3962,6 +4180,59 @@
 	.time {
 		font-weight: 600;
 		font-variant-numeric: tabular-nums;
+	}
+	.time-split {
+		display: block;
+		font-weight: 400;
+		font-size: 0.78rem;
+	}
+	.method-tag {
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-secondary);
+		font-size: var(--font-size-section-label);
+		font-weight: 700;
+		padding: 0.1rem 0.35rem;
+		border-radius: var(--radius-sm);
+	}
+	.method-tag.host {
+		background: var(--color-warning-light);
+		color: var(--color-warning-text);
+	}
+	.course-board-title {
+		margin: 1rem 0 0.4rem;
+		font-size: 0.95rem;
+	}
+	.course-pick {
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+		margin-bottom: 0.6rem;
+		font-size: 0.88rem;
+		font-weight: 600;
+	}
+	.course-pick select {
+		min-height: 2.75rem;
+	}
+	.course-error {
+		color: var(--color-danger-text);
+		font-size: 0.85rem;
+		margin: 0 0 0.6rem;
+	}
+	.edit-result-fields {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-sm);
+		margin: 0.5rem 0;
+	}
+	.edit-result-fields label {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		font-size: 0.85rem;
+	}
+	.edit-result-fields input,
+	.edit-result-fields select {
+		min-height: 2.75rem;
 	}
 	.dist {
 		font-size: 0.8rem;

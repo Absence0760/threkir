@@ -12,8 +12,17 @@
 		setEventPricing,
 		fetchSessionPlans,
 		setEventSessionPlan,
+		fetchEventCourses,
+		saveEventCourses,
 		type SessionPlan
 	} from '#lib/core/data.ts';
+	import {
+		COURSE_NAME_MAX,
+		validateCourseDrafts,
+		type CourseDraft,
+		type CourseDraftError,
+		type EventCourse
+	} from '#lib/social/event_courses.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import UnsavedChangesGuard from '#lib/components/UnsavedChangesGuard.svelte';
 	import { trackDirty } from '#lib/core/form_dirty.ts';
@@ -96,6 +105,23 @@
 	let paceUnitLabel = $derived(getUnit() === 'mi' ? 'per mi' : 'per km');
 	let metresPerUnit = $derived(getUnit() === 'mi' ? METRES_PER_MILE : 1000);
 	let capacity = $state<number | null>(untrack(() => existing?.capacity ?? null));
+	// Race courses (decisions § 1842). The route + distance fields above
+	// describe the MAIN course; `extraCourses` are the alternatives a racer can
+	// pick instead. `storedCourses` is what the database held when the editor
+	// opened, so a save writes only the difference.
+	interface ExtraCourse {
+		key: number;
+		id?: string;
+		name: string;
+		routeId: string;
+		distanceInUnit: number | null;
+		storedDistanceM: number | null;
+	}
+	let storedCourses = $state<EventCourse[]>([]);
+	let coursesLoadFailed = $state(false);
+	let mainCourseName = $state('');
+	let extraCourses = $state<ExtraCourse[]>([]);
+	let nextCourseKey = 0;
 	let busy = $state(false);
 	let error = $state<string | null>(null);
 	// Set on mount for an athletic event being edited: true when it carries
@@ -142,6 +168,13 @@
 		paceMin,
 		paceSec,
 		capacity,
+		mainCourseName,
+		extraCourses: extraCourses.map((c) => ({
+			id: c.id,
+			name: c.name,
+			routeId: c.routeId,
+			distanceInUnit: c.distanceInUnit
+		})),
 		charge,
 		priceMajor,
 		currency,
@@ -177,6 +210,8 @@
 			distanceInUnit = null;
 			paceMin = null;
 			paceSec = null;
+			mainCourseName = '';
+			extraCourses = [];
 		}
 		if (next !== 'class') {
 			discipline = '';
@@ -245,9 +280,126 @@
 				console.error('fetchSessionPlans failed', e);
 			}
 		} else if (isAthleticCategory(existing.category)) {
+			try {
+				const loaded = await fetchEventCourses(existing.id);
+				dirty.seed(() => {
+					storedCourses = loaded;
+					mainCourseName = loaded[0]?.name ?? '';
+					extraCourses = loaded.slice(1).map((c) => ({
+						key: nextCourseKey++,
+						id: c.id,
+						name: c.name,
+						routeId: c.route_id ?? '',
+						distanceInUnit: c.distance_m != null ? +(c.distance_m / metresPerUnit).toFixed(2) : null,
+						storedDistanceM: c.distance_m
+					}));
+				});
+			} catch (e) {
+				// Without the stored list a save could not tell an existing
+				// course from a new one, so the course section stays read-only
+				// for this edit rather than duplicating every course.
+				console.error('fetchEventCourses failed', e);
+				coursesLoadFailed = true;
+			}
 			athleticDataAtRisk = await eventHasAthleticData(existing.id);
 		}
 	});
+
+	function routeById(id: string): { name: string; distance_m: number } | undefined {
+		if (!id) return undefined;
+		return myRoutes.find((x) => x.id === id) ?? clubRoutes.find((x) => x.id === id);
+	}
+
+	function addCourse() {
+		extraCourses = [
+			...extraCourses,
+			{ key: nextCourseKey++, name: '', routeId: '', distanceInUnit: null, storedDistanceM: null }
+		];
+	}
+
+	function removeCourse(i: number) {
+		extraCourses = extraCourses.filter((_, j) => j !== i);
+	}
+
+	function moveCourse(i: number, dir: -1 | 1) {
+		const j = i + dir;
+		if (j < 0 || j >= extraCourses.length) return;
+		const next = [...extraCourses];
+		[next[i], next[j]] = [next[j], next[i]];
+		extraCourses = next;
+	}
+
+	function pickCourseRoute(i: number, id: string) {
+		const r = routeById(id);
+		extraCourses = extraCourses.map((c, j) =>
+			j === i
+				? {
+						...c,
+						routeId: id,
+						name: c.name.trim() ? c.name : (r?.name ?? '').slice(0, COURSE_NAME_MAX),
+						distanceInUnit: r ? +(r.distance_m / metresPerUnit).toFixed(2) : c.distanceInUnit
+					}
+				: c
+		);
+	}
+
+	// The unit field round-trips through 2 decimals, so a stored distance the
+	// organiser did not touch is written back as stored, not re-derived — a
+	// miles user would otherwise nudge every course by a few metres per save.
+	function courseMetres(inUnit: number | null, stored: number | null): number | null {
+		if (inUnit == null || !(inUnit > 0)) return null;
+		if (stored != null && +(stored / metresPerUnit).toFixed(2) === inUnit) return stored;
+		return inUnit * metresPerUnit;
+	}
+
+	function courseDrafts(): CourseDraft[] {
+		if (!isAthleticCategory(category)) return [];
+		if (!routeId && extraCourses.length === 0) return [];
+		const main = routeById(routeId);
+		const drafts: CourseDraft[] = [
+			{
+				id: storedCourses[0]?.id,
+				name:
+					mainCourseName.trim() ||
+					(main?.name ?? '').trim().slice(0, COURSE_NAME_MAX) ||
+					m('eventEditor.courseDefaultName'),
+				routeId: routeId || null,
+				distanceM: courseMetres(distanceInUnit, storedCourses[0]?.distance_m ?? null)
+			}
+		];
+		for (const c of extraCourses) {
+			drafts.push({
+				id: c.id,
+				name: c.name,
+				routeId: c.routeId || null,
+				distanceM: courseMetres(c.distanceInUnit, c.storedDistanceM)
+			});
+		}
+		return drafts;
+	}
+
+	const COURSE_ERRORS: Record<CourseDraftError, () => string> = {
+		name_required: () => m('eventEditor.courseNameRequired'),
+		name_too_long: () => m('eventEditor.courseNameTooLong', { max: COURSE_NAME_MAX }),
+		name_duplicate: () => m('eventEditor.courseNameDuplicate'),
+		distance_invalid: () => m('eventEditor.courseDistanceInvalid')
+	};
+
+	// Persist the course list once the event row exists. Returns the failure
+	// message, or null.
+	async function persistCourses(eventId: string): Promise<string | null> {
+		if (coursesLoadFailed) return null;
+		try {
+			await saveEventCourses(eventId, storedCourses, courseDrafts());
+			storedCourses = await fetchEventCourses(eventId);
+			return null;
+		} catch (ce: unknown) {
+			console.error('saveEventCourses failed', ce);
+			return m('eventEditor.coursesSaveFailed', {
+				error: ce instanceof Error ? ce.message : String(ce)
+			});
+		}
+	}
 
 	$effect(() => {
 		if (routeId) {
@@ -260,6 +412,11 @@
 	function submit(e: Event) {
 		e.preventDefault();
 		if (!title.trim() || busy) return;
+		const badCourse = coursesLoadFailed ? null : validateCourseDrafts(courseDrafts());
+		if (badCourse) {
+			error = COURSE_ERRORS[badCourse.error]();
+			return;
+		}
 		// Switching an athletic event that already has race sessions / results
 		// to a class or social type hides its leaderboard + race controls (they
 		// gate on isAthleticCategory) and orphans those rows. Warn first;
@@ -309,6 +466,11 @@
 					capacity: capacity ?? null,
 					is_public: showVisibilityToggle ? isPublic : true
 				});
+				const courseFailure = await persistCourses(existing.id);
+				if (courseFailure) {
+					error = courseFailure;
+					return;
+				}
 				dirty.rebaseline();
 				onsaved?.();
 				return;
@@ -375,6 +537,11 @@
 					showToast(m('session.event.planFailed'), 'error');
 				}
 			}
+			// The event exists either way, so a course failure is reported and
+			// the host still lands on the new event, where Edit can retry it —
+			// returning here would invite a second submit and a duplicate event.
+			const courseFailure = await persistCourses(event.id);
+			if (courseFailure) showToast(courseFailure, 'error');
 			dirty.rebaseline();
 			oncreated?.(event);
 		} catch (e: unknown) {
@@ -388,6 +555,24 @@
 </script>
 
 <UnsavedChangesGuard isDirty={dirty.isDirty} />
+
+{#snippet routeOptions()}
+	<option value="">{m('eventEditor.noRoute')}</option>
+	{#if clubRoutes.length > 0}
+		<optgroup label={m('eventEditor.clubRoutes', { clubName })}>
+			{#each clubRoutes as r}
+				<option value={r.id}>{r.name} ({formatDistance(r.distance_m)})</option>
+			{/each}
+		</optgroup>
+	{/if}
+	{#if myRoutes.length > 0}
+		<optgroup label={m('eventEditor.myRoutes')}>
+			{#each myRoutes as r}
+				<option value={r.id}>{r.name} ({formatDistance(r.distance_m)})</option>
+			{/each}
+		</optgroup>
+	{/if}
+{/snippet}
 
 <form onsubmit={submit} class="editor-form event-editor">
 	<p class="sub">{existing ? m('eventEditor.editSub', { clubName }) : m('eventEditor.sub', { clubName })}</p>
@@ -541,25 +726,107 @@
 					data-testid="event-route-select"
 					aria-describedby="event-route-hint"
 				>
-					<option value="">{m('eventEditor.noRoute')}</option>
-					{#if clubRoutes.length > 0}
-						<optgroup label={m('eventEditor.clubRoutes', { clubName })}>
-							{#each clubRoutes as r}
-								<option value={r.id}>{r.name} ({formatDistance(r.distance_m)})</option>
-							{/each}
-						</optgroup>
-					{/if}
-					{#if myRoutes.length > 0}
-						<optgroup label={m('eventEditor.myRoutes')}>
-							{#each myRoutes as r}
-								<option value={r.id}>{r.name} ({formatDistance(r.distance_m)})</option>
-							{/each}
-						</optgroup>
-					{/if}
+					{@render routeOptions()}
 				</select>
 			</label>
 			<span class="hint" id="event-route-hint">{m('eventEditor.routeHint')}</span>
 		</div>
+
+		<fieldset class="courses" data-testid="event-courses" disabled={coursesLoadFailed}>
+			<legend>{m('eventEditor.coursesLegend')} <span class="optional">{m('eventEditor.optional')}</span></legend>
+			<span class="hint" id="event-courses-hint">
+				{coursesLoadFailed ? m('eventEditor.coursesLoadFailed') : m('eventEditor.coursesHint')}
+			</span>
+			{#if extraCourses.length > 0}
+				<label class="course-main">
+					<span>{m('eventEditor.mainCourseName')}</span>
+					<input
+						type="text"
+						bind:value={mainCourseName}
+						maxlength={COURSE_NAME_MAX}
+						placeholder={routeById(routeId)?.name ?? m('eventEditor.courseDefaultName')}
+						data-testid="event-main-course-name"
+						aria-describedby="event-courses-hint"
+					/>
+				</label>
+				<ol class="course-list">
+					{#each extraCourses as c, i (c.key)}
+						<li class="course-row" data-testid="event-course-row">
+							<label>
+								<span>{m('eventEditor.courseName')}</span>
+								<input
+									type="text"
+									bind:value={c.name}
+									maxlength={COURSE_NAME_MAX}
+									data-testid="event-course-name"
+									aria-describedby="event-courses-hint"
+								/>
+							</label>
+							<label>
+								<span>{m('eventEditor.courseRoute')}</span>
+								<select
+									value={c.routeId}
+									onchange={(e) => pickCourseRoute(i, e.currentTarget.value)}
+									data-testid="event-course-route"
+									aria-describedby="event-courses-hint"
+								>
+									{@render routeOptions()}
+								</select>
+							</label>
+							<label>
+								<span>{m('eventEditor.courseDistance', { unit: distanceUnitLabel })}</span>
+								<input
+									type="number"
+									step="0.1"
+									min="0"
+									bind:value={c.distanceInUnit}
+									data-testid="event-course-distance"
+									aria-describedby="event-courses-hint"
+								/>
+							</label>
+							<div class="course-actions">
+								<button
+									type="button"
+									class="course-icon"
+									aria-label={m('eventEditor.moveCourseUp', { name: c.name || m('eventEditor.courseDefaultName') })}
+									disabled={i === 0}
+									onclick={() => moveCourse(i, -1)}
+								>
+									<span class="material-symbols" aria-hidden="true">arrow_upward</span>
+								</button>
+								<button
+									type="button"
+									class="course-icon"
+									aria-label={m('eventEditor.moveCourseDown', { name: c.name || m('eventEditor.courseDefaultName') })}
+									disabled={i === extraCourses.length - 1}
+									onclick={() => moveCourse(i, 1)}
+								>
+									<span class="material-symbols" aria-hidden="true">arrow_downward</span>
+								</button>
+								<button
+									type="button"
+									class="course-icon"
+									aria-label={m('eventEditor.removeCourse', { name: c.name || m('eventEditor.courseDefaultName') })}
+									onclick={() => removeCourse(i)}
+									data-testid="event-remove-course"
+								>
+									<span class="material-symbols" aria-hidden="true">delete</span>
+								</button>
+							</div>
+						</li>
+					{/each}
+				</ol>
+			{/if}
+			<button
+				type="button"
+				class="btn btn-secondary btn-sm add-course"
+				onclick={addCourse}
+				data-testid="event-add-course"
+			>
+				<span class="material-symbols" aria-hidden="true">add</span>
+				{m('eventEditor.addCourse')}
+			</button>
+		</fieldset>
 	{/if}
 
 	{#if !existing}
@@ -924,5 +1191,59 @@
 		font-weight: 400;
 		color: var(--color-text-secondary);
 		line-height: 1.45;
+	}
+	.courses .hint {
+		display: block;
+		margin-bottom: 0.6rem;
+	}
+	.course-main {
+		margin-bottom: 0.6rem;
+	}
+	.course-list {
+		list-style: none;
+		margin: 0 0 0.6rem;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.6rem;
+	}
+	.course-row {
+		display: grid;
+		grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 0.7fr) auto;
+		gap: var(--space-sm);
+		align-items: end;
+		padding: 0.6rem;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+	}
+	.course-actions {
+		display: flex;
+		gap: 0.25rem;
+	}
+	.course-icon {
+		background: transparent;
+		border: 1px solid var(--color-border);
+		color: var(--color-text);
+		border-radius: var(--radius-md);
+		min-width: 2.75rem;
+		min-height: 2.75rem;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+	}
+	.course-icon:disabled {
+		opacity: 0.4;
+		cursor: default;
+	}
+	.add-course {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+	}
+	@media (max-width: 40rem) {
+		.course-row {
+			grid-template-columns: minmax(0, 1fr);
+		}
 	}
 </style>

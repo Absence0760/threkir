@@ -26,6 +26,7 @@
 		fetchRaceSession,
 		fetchEventById,
 		fetchEventResults,
+		fetchEventCourses,
 		type RacePingRow,
 		type RaceSessionRow,
 		type EventResultWithUser
@@ -38,6 +39,11 @@
 	import { freshnessFor, type Freshness } from '#lib/runs/live_freshness.ts';
 	import { CoalescingRefetcher } from '#lib/runs/live_refetch.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import {
+		finishMethodBadge,
+		groupResultsByCourse,
+		type EventCourse
+	} from '#lib/social/event_courses.ts';
 
 	let eventId = $derived(page.params.id as string);
 	let instance = $derived(decodeURIComponent(page.params.instance as string));
@@ -47,6 +53,8 @@
 	let recentPings = $state<RacePingRow[]>([]);
 	let leaderPings = $state<RacePingRow[]>([]);
 	let results = $state<EventResultWithUser[]>([]);
+	// Courses of a multi-course race: one finisher board per course.
+	let courses = $state<EventCourse[]>([]);
 	let profiles = $state<Map<string, { display_name: string | null }>>(new Map());
 	let nowTick = $state(Date.now());
 	let loading = $state(true);
@@ -158,6 +166,14 @@
 			leaderPings = lp;
 			results = rr;
 			profiles = await buildProfiles(lp, rr);
+			// A failed course read degrades to the single combined board
+			// rather than failing the tracker.
+			try {
+				courses = await fetchEventCourses(eventId);
+			} catch (ce) {
+				console.warn('live/event: courses read failed', ce);
+				courses = [];
+			}
 		} catch (e) {
 			// Public spectator page — a rejected fetch would otherwise hang on
 			// "Loading…" forever with no recourse. Surface it with a retry.
@@ -427,6 +443,21 @@
 
 	let finishedResults = $derived(results.filter((r) => r.finisher_status === 'finished'));
 	let dnfResults = $derived(results.filter((r) => r.finisher_status !== 'finished'));
+	let finishedBoards = $derived(
+		groupResultsByCourse(finishedResults, courses).filter((b) => b.results.length > 0)
+	);
+
+	function courseTitle(c: EventCourse | null): string {
+		if (!c) return m('liveEvent.noCourse');
+		return c.distance_m != null ? `${c.name} · ${formatDistance(c.distance_m)}` : c.name;
+	}
+
+	// Gun time is the ranked time on a gun-started race; the chip time is
+	// shown beside it when it differs.
+	function chipNote(r: EventResultWithUser): string | null {
+		if (r.chip_time_s == null || r.chip_time_s === r.duration_s) return null;
+		return m('liveEvent.chipTime', { time: formatDuration(r.chip_time_s) });
+	}
 
 	let statusCopy = $derived.by(() => {
 		if (!race) return { label: m('liveEvent.statusPreRaceLabel'), sub: m('liveEvent.statusPreRaceSub') };
@@ -738,22 +769,35 @@
 						<h2>{m('liveEvent.finished')}</h2>
 						<span class="count">{finishedResults.length}</span>
 					</header>
-					<ol class="runners">
-						{#each finishedResults as r (keyOf(r))}
-							<li class="runner" class:pending={!r.organiser_approved}>
-								<span class="pos">{r.organiser_approved ? (r.rank ?? '—') : '…'}</span>
-								<span class="avatar" style="background: {tintFor(keyOf(r))}; color: {colorFor(keyOf(r))};">
-									{initialsFor(keyOf(r))}
-								</span>
-								<span class="name">{nameFor(keyOf(r))}</span>
-								<span class="dist">{formatDistance(r.distance_m)}</span>
-								<span class="elapsed">{formatDuration(r.duration_s)}</span>
-								{#if !r.organiser_approved}
-									<span class="pending-tag">{m('liveEvent.pending')}</span>
-								{/if}
-							</li>
-						{/each}
-					</ol>
+					{#each finishedBoards as board (board.course?.id ?? 'none')}
+						{#if finishedBoards.length > 1 || courses.length > 1}
+							<h3 class="course-title" data-testid="live-course-title">{courseTitle(board.course)}</h3>
+						{/if}
+						<ol class="runners" data-testid="live-course-board">
+							{#each board.results as r (keyOf(r))}
+								<li class="runner" class:pending={!r.organiser_approved}>
+									<span class="pos">{r.organiser_approved ? (r.rank ?? '—') : '…'}</span>
+									<span class="avatar" style="background: {tintFor(keyOf(r))}; color: {colorFor(keyOf(r))};">
+										{initialsFor(keyOf(r))}
+									</span>
+									<span class="name">
+										{nameFor(keyOf(r))}
+										{#if finishMethodBadge(r.finish_method) === 'manual'}
+											<span class="method-chip" data-testid="live-finish-method">{m('liveEvent.finishManual')}</span>
+										{:else if finishMethodBadge(r.finish_method) === 'host'}
+											<span class="method-chip" data-testid="live-finish-method">{m('liveEvent.finishHostEdited')}</span>
+										{/if}
+										{#if chipNote(r)}<span class="freshness">{chipNote(r)}</span>{/if}
+									</span>
+									<span class="dist">{formatDistance(r.distance_m)}</span>
+									<span class="elapsed">{formatDuration(r.duration_s)}</span>
+									{#if !r.organiser_approved}
+										<span class="pending-tag">{m('liveEvent.pending')}</span>
+									{/if}
+								</li>
+							{/each}
+						</ol>
+					{/each}
 				{/if}
 
 				{#if dnfResults.length > 0}
@@ -1108,6 +1152,22 @@
 		font-weight: 700;
 		font-size: 0.75rem;
 		letter-spacing: 0.05em;
+	}
+	.course-title {
+		margin: var(--space-md) 0 var(--space-xs);
+		font-size: 0.95rem;
+	}
+	.method-chip {
+		margin-inline-start: 0.35rem;
+		padding: 0.05rem 0.4rem;
+		border-radius: 9999px;
+		font-size: var(--font-size-section-label);
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+		vertical-align: middle;
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-secondary);
 	}
 	.pending-tag {
 		background: color-mix(in srgb, var(--color-warning) 18%, transparent);

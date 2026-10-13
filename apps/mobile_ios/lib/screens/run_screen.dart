@@ -3600,7 +3600,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         // is_public=true at insert time so the user doesn't have to
         // tap "share" on every run. `followers` → followers_only, the
         // followers level (stored private until audience sharing is on,
-        // decisions § R8SHARE-2). `private` / unknown → leave is_public
+        // decisions § 1875). `private` / unknown → leave is_public
         // null (reads as "not public" everywhere). A live broadcast does NOT
         // override this: the live window's public opt-in ends with
         // the run, and keeping the saved run public is an explicit

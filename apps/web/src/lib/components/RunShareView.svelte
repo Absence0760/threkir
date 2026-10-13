@@ -36,7 +36,7 @@
 	// on by retrying.
 	let loadError = $state(false);
 	/// The run is not public: it reached this viewer through its owner's
-	/// followers level or a named-person share (decisions § R8SHARE-1).
+	/// followers level or a named-person share (decisions § 1874).
 	let sharedWithMe = $state(false);
 
 	async function load() {

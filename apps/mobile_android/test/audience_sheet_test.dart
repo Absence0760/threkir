@@ -1,4 +1,4 @@
-// "Who can see this" on the phone (decisions § R8SHARE-1): the four levels,
+// "Who can see this" on the phone (decisions § 1874): the four levels,
 // named people, revoke, and the two exits the caller acts on.
 
 import 'package:flutter/material.dart';

@@ -403,7 +403,7 @@ void main() {
     test('"followers" writes the followers level, not public', () async {
       // `followers` used to collapse to private because `runs` had only
       // `is_public`. The followers level gives it a column of its own
-      // (decisions § R8SHARE-2); the server stores it private until audience
+      // (decisions § 1875); the server stores it private until audience
       // sharing is switched on.
       SharedPreferences.setMockInitialValues({'privacy_default': 'followers'});
       final prefs = Preferences();

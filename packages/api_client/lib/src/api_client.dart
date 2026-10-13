@@ -974,7 +974,7 @@ class ApiClient {
   /// row class — any stale field reference fails to compile here.
   ///
   /// [followersOnly] is the followers level a new run is born at (the
-  /// `followers` privacy default, decisions § R8SHARE-2). Only `true` is ever
+  /// `followers` privacy default, decisions § 1875). Only `true` is ever
   /// sent: see [_runUpsertBody].
   Future<void> saveRun(Run run, {bool? isPublic, bool followersOnly = false}) async {
     final userId = _client.auth.currentUser?.id;
@@ -2449,7 +2449,7 @@ class ApiClient {
   //
   // Mirror of `apps/web/src/lib/core/data.ts` `audienceSharingEnabled` /
   // `fetchShares` / `addShare` / `revokeShare` / `setAudience`
-  // (decisions § R8SHARE-1). The server gates all of it on the
+  // (decisions § 1874). The server gates all of it on the
   // `audience_sharing` flag, so these calls only ever narrow what the
   // existing public / private controls could already do.
 

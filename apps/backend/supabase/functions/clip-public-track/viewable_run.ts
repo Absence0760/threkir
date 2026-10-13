@@ -6,7 +6,7 @@
 /// the caller's own. Both are column-redacted views that filter on the
 /// caller's JWT, so a row from either is the database's own answer to "may
 /// this caller see this run", and the track is served clipped against the
-/// owner's zones in both cases (decisions § 33, § R8SHARE-5).
+/// owner's zones in both cases (decisions § 33, § 1878).
 ///
 /// Order matters only for cost: a public run is answered by the first read,
 /// and an anonymous caller has no audience to be in, so it never makes the

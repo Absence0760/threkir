@@ -25,7 +25,7 @@
 --    move, and a constant-default boolean is a catalogue-only ADD COLUMN with
 --    no backfill on either populated table. The level a client shows is
 --    derived: is_public -> public, followers_only -> followers, a live grant
---    -> specific people, else only me (§ R8SHARE-1).
+--    -> specific people, else only me (§ 1874).
 --
 -- 3. private.normalize_audience(), a BEFORE INSERT OR UPDATE trigger on both
 --    tables, keeps the pair coherent without a CHECK a client could trip:
@@ -36,7 +36,7 @@
 --        that maps the `followers` privacy default to followers_only (web
 --        now, mobile + importers next) changes nothing before sign-off and a
 --        run saved today cannot widen retroactively on the day the flag
---        flips (§ R8SHARE-2).
+--        flips (§ 1875).
 --
 -- Locks: ADD COLUMN ... NOT NULL DEFAULT false is catalogue-only on PG 11+
 -- (no rewrite, no scan); CREATE TRIGGER takes SHARE ROW EXCLUSIVE briefly.
@@ -86,7 +86,7 @@ grant execute on function public.audience_sharing_enabled() to authenticated, se
 
 comment on function public.audience_sharing_enabled() is
   'Whether the followers level and named-person shares are live (decisions '
-  '§ R8SHARE-1). Clients hide the audience control when false.';
+  '§ 1874). Clients hide the audience control when false.';
 
 alter table public.runs add column followers_only boolean not null default false;
 alter table public.routes add column followers_only boolean not null default false;

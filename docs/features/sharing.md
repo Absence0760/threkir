@@ -1,6 +1,6 @@
 # Sharing a run or a route without making it public
 
-Status: **built on web, backend and mobile (Android + iOS twin), behind a default-OFF server gate.** Prod stays closed until the CISO / Security Analyst review below. Decisions § R8SHARE-1 to § R8SHARE-6. Migrations `20270802000001` (gate + followers level), `20270802000002` (grant tables), `20270802000003` (visibility).
+Status: **built on web, backend and mobile (Android + iOS twin), behind a default-OFF server gate.** Prod stays closed until the CISO / Security Analyst review below. Decisions § 1874 to § 1879. Migrations `20270802000001` (gate + followers level), `20270802000002` (grant tables), `20270802000003` (visibility).
 
 ## What the owner gets
 

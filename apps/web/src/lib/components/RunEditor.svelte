@@ -44,7 +44,7 @@
 	// choice the user made before it resolved. While audience sharing is off
 	// the control is the old public checkbox, and a `followers` default still
 	// writes followers_only — the server stores that as owner-only until the
-	// feature is switched on (decisions § R8SHARE-2).
+	// feature is switched on (decisions § 1875).
 	type RunAudience = 'private' | 'followers' | 'public';
 	let audience = $state<RunAudience>('private');
 	let touched = $state(false);

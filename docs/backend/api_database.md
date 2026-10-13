@@ -72,7 +72,7 @@ create index runs_public on runs (is_public, started_at desc) where is_public = 
 
 **Indoor/trackless HR series** live in a sibling sidecar object in the *same* `runs` bucket at `{user_id}/{run_id}.hr.json.gz` (gzipped JSON array of `{ bpm, ts? }`), pointed to by `hr_series_url`. An indoor or treadmill FIT carries heart rate but no GPS fix, so the run imports with an empty `track` and the per-point `bpm` the HR-zone breakdown needs would otherwise be lost. The sidecar is owner-only audit data: it carries **no location**, is gated by the same `{user_id}/...` bucket RLS as the track, is pinned to its canonical path by the `runs_hr_series_url_path_shape` CHECK (mirrors `runs_track_url_path_shape`), and is **never** exposed through `public_runs` or `clip_track_for_user` (it never enters the coordinate pipeline). See [decisions.md § 116](../architecture/decisions.md). Migration `20261127_001`.
 
-**Audience levels** (migrations `20270802000001..3`, [sharing.md](../features/sharing.md), decisions § R8SHARE-1). A run or route the owner can see sits at one of four levels: **Public** (`is_public`), **Followers** (`followers_only`), **Specific people** (owner-only columns plus live rows in `run_shares` / `route_shares`), or **Only me**. The BEFORE INSERT/UPDATE trigger `private.normalize_audience()` on both tables clears `followers_only` when `is_public` is set and stores it `false` while the server gate `private.audience_sharing_enabled()` is off, so nothing written before the gate opens widens on the day it does. Every non-public level is read through `private.run_audience_admits` / `private.route_audience_admits`, which the visibility helpers and the `shared_runs` / `shared_routes` views call; feeds, notifications, `public_runs` / `public_routes`, the sitemap, heatmap and challenges key on `is_public` only and never see a shared row (§ 96).
+**Audience levels** (migrations `20270802000001..3`, [sharing.md](../features/sharing.md), decisions § 1874). A run or route the owner can see sits at one of four levels: **Public** (`is_public`), **Followers** (`followers_only`), **Specific people** (owner-only columns plus live rows in `run_shares` / `route_shares`), or **Only me**. The BEFORE INSERT/UPDATE trigger `private.normalize_audience()` on both tables clears `followers_only` when `is_public` is set and stores it `false` while the server gate `private.audience_sharing_enabled()` is off, so nothing written before the gate opens widens on the day it does. Every non-public level is read through `private.run_audience_admits` / `private.route_audience_admits`, which the visibility helpers and the `shared_runs` / `shared_routes` views call; feeds, notifications, `public_runs` / `public_routes`, the sitemap, heatmap and challenges key on `is_public` only and never see a shared row (§ 96).
 
 **`source` values:**
 
@@ -364,7 +364,7 @@ create index run_matched_tracks_pending
 
 #### `run_shares` / `route_shares`
 
-Named-person read grants on one run / one route (migration `20270802000002`, decisions § R8SHARE-3). One row = "the owner lets this one person read this one entity".
+Named-person read grants on one run / one route (migration `20270802000002`, decisions § 1876). One row = "the owner lets this one person read this one entity".
 
 ```sql
 create table run_shares (
@@ -2044,7 +2044,7 @@ Receives RevenueCat subscription events (initial purchase, renewal, cancellation
 
 ### `GET /clip-public-track`
 
-Serves the clipped track JSON for a non-owner viewer of a public run, or of a non-public run whose audience admits the caller (a follower of a followers-level run, or the recipient of a live `run_shares` grant — read through `shared_runs` after `public_runs` misses, for a signed-in caller only; decisions § R8SHARE-5). Either way the track is clipped against the owner's privacy zones. Replaces the dropped bare-table Storage SELECT policy on the `runs` bucket (migration `20260619_001`) — anonymous and signed-in non-owners can no longer read raw track files; they must go through this function, which applies `clip_track_for_user` (decisions §33) before returning.
+Serves the clipped track JSON for a non-owner viewer of a public run, or of a non-public run whose audience admits the caller (a follower of a followers-level run, or the recipient of a live `run_shares` grant — read through `shared_runs` after `public_runs` misses, for a signed-in caller only; decisions § 1878). Either way the track is clipped against the owner's privacy zones. Replaces the dropped bare-table Storage SELECT policy on the `runs` bucket (migration `20260619_001`) — anonymous and signed-in non-owners can no longer read raw track files; they must go through this function, which applies `clip_track_for_user` (decisions §33) before returning.
 
 **Request:**
 ```
@@ -2519,7 +2519,7 @@ SECURITY DEFINER RPC for the routes equivalent of `clip_track_for_user` (decisio
 
 ### `audience_sharing_enabled() → boolean`
 
-The one client-readable answer to "is the followers level and named-person sharing live" (migration `20270802000001`, decisions § R8SHARE-1). Wraps `private.audience_sharing_enabled()`, which reads the `audience_sharing` row of `private.feature_flags`; an absent row is OFF, and no migration writes one, so every environment starts closed (`seed.sql` opens it for local + CI). Granted to `authenticated` and `service_role`. Clients hide the audience control when it is false.
+The one client-readable answer to "is the followers level and named-person sharing live" (migration `20270802000001`, decisions § 1874). Wraps `private.audience_sharing_enabled()`, which reads the `audience_sharing` row of `private.feature_flags`; an absent row is OFF, and no migration writes one, so every environment starts closed (`seed.sql` opens it for local + CI). Granted to `authenticated` and `service_role`. Clients hide the audience control when it is false.
 
 ### `private.run_audience_admits(run, owner, followers_only, viewer)` / `private.route_audience_admits(...)`
 

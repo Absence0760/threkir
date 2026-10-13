@@ -7,7 +7,7 @@
 -- private.is_run_visible_to / is_route_visible_to and the shared_* views
 -- (20270802000003), so a revoke ends access on the next request.
 --
--- Revocation is a hard DELETE, not a `revoked_at` stamp (§ R8SHARE-3). Access
+-- Revocation is a hard DELETE, not a `revoked_at` stamp (§ 1876). Access
 -- is the row's existence, so a stamped row would need every one of the read
 -- paths to remember a second predicate, and the only thing a tombstone keeps
 -- is a record of who the owner once shared with — personal data with no
@@ -55,9 +55,9 @@ create index route_shares_owner_id_idx on public.route_shares (owner_id);
 create index route_shares_recipient_id_idx on public.route_shares (recipient_id);
 
 comment on table public.run_shares is
-  'Named-person read grants on a private run (decisions § R8SHARE-3). Revoke = delete.';
+  'Named-person read grants on a private run (decisions § 1876). Revoke = delete.';
 comment on table public.route_shares is
-  'Named-person read grants on a private route (decisions § R8SHARE-3). Revoke = delete.';
+  'Named-person read grants on a private route (decisions § 1876). Revoke = delete.';
 
 -- The connection test both INSERT policies share. A definer because
 -- user_blocks is owner-read only: an RLS-visible subquery would see only the

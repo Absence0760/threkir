@@ -197,7 +197,7 @@
 	let shareConfirmHasZones = $state(false);
 	let shareBusy = $state(false);
 	/// Audience sharing (followers level + named people, decisions
-	/// § R8SHARE-1) is a server-gated feature; the control and the narrower
+	/// § 1874) is a server-gated feature; the control and the narrower
 	/// share link render only when the server says it is on.
 	let audienceSharingOn = $state(false);
 	let shareCount = $state(0);

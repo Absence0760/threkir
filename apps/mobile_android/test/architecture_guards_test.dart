@@ -1404,7 +1404,7 @@ void main() {
     });
 
     test('run_screen._stop passes the followers level to saveRun', () {
-      // `followers` used to collapse to private (decisions § R8SHARE-2).
+      // `followers` used to collapse to private (decisions § 1875).
       final source = File('lib/screens/run_screen.dart').readAsStringSync();
       expect(
         source,

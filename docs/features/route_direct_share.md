@@ -62,7 +62,7 @@ A route polyline can start at someone's front door, so "who can now see this lin
 
 ## Private send
 
-Built with audience sharing ([sharing.md](sharing.md), decisions § R8SHARE-1), and only while its server gate is on. When the owner sends a **non-public** route to a follower, the send no longer goes through the public flip: `SendRouteDialog` first writes a `route_shares` grant for that one recipient, then sends the in-app `/routes/{id}` link, which opens only for the people the route is shared with. The dialog says so ("It stays private"), a refused grant stops the send, and the owner can revoke it from **Who can see this**. With the gate off, the public-flip path above is unchanged. The phone has no DM screen, so on mobile the same narrowing is reached through Specific people in the audience sheet.
+Built with audience sharing ([sharing.md](sharing.md), decisions § 1874), and only while its server gate is on. When the owner sends a **non-public** route to a follower, the send no longer goes through the public flip: `SendRouteDialog` first writes a `route_shares` grant for that one recipient, then sends the in-app `/routes/{id}` link, which opens only for the people the route is shared with. The dialog says so ("It stays private"), a refused grant stops the send, and the owner can revoke it from **Who can see this**. With the gate off, the public-flip path above is unchanged. The phone has no DM screen, so on mobile the same narrowing is reached through Specific people in the audience sheet.
 
 ## Non-goals
 

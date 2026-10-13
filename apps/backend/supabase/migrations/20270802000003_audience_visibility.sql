@@ -14,7 +14,7 @@
 --   * private.is_run_photo_visible_to — the run's photos (table + Storage
 --     bytes). The coach tier stays excluded (§ 98 amendment): a coaching link
 --     was never consent to photos, while a share is the owner choosing THIS
---     run for THIS audience (§ R8SHARE-4).
+--     run for THIS audience (§ 1877).
 --   * private.is_route_visible_to — markers, conditions, route photos,
 --     reviews, segments, DM route attachments.
 --   * clip_route_for_viewer — the route polyline, CLIPPED to the owner's
@@ -32,7 +32,7 @@
 -- They key on is_public, which neither level touches, so a shared run is
 -- never broadcast. The raw track stays owner-only in Storage; the recipient's
 -- track comes from clip-public-track, which this change teaches to read
--- shared_runs (§ R8SHARE-5).
+-- shared_runs (§ 1878).
 --
 -- A block either way silences both levels (a block already deletes the
 -- follow edge, 20261012_001; this also covers a grant made before it), and a

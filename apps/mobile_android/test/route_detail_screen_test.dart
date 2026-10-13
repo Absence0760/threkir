@@ -323,7 +323,7 @@ void main() {
 
     testWidgets(
         'with audience sharing on, Share link asks who can see the route '
-        'before anything is made public (decisions § R8SHARE-6)',
+        'before anything is made public (decisions § 1879)',
         (tester) async {
       final api = _AudienceOnApi();
       SharedPreferences.setMockInitialValues({});

@@ -1590,7 +1590,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     if (_isOwner && !_isPublic && api != null && api.userId != null) {
       // With audience sharing on, Share asks who should see the route; public
       // is one answer of four, never a side effect of the button (decisions
-      // § R8SHARE-6).
+      // § 1879).
       if (await api.audienceSharingEnabled()) {
         if (!context.mounted) return;
         final choice = await showAudienceSheet(

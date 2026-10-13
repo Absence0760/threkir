@@ -1,5 +1,5 @@
 /// Who can see a run or a route, as the owner chooses it and as the row
-/// stores it (decisions § R8SHARE-1). The Dart half of the web
+/// stores it (decisions § 1874). The Dart half of the web
 /// `social/run_visibility.ts` parity pair.
 ///
 /// `is_public` is Public, `followers_only` is Followers, a live grant in
@@ -57,7 +57,7 @@ AudienceLevel audienceOf({
 /// The universal `privacy_default` preference, mapped to the columns a new
 /// run is written with. `followers` writes `followers_only` instead of
 /// collapsing to owner-only; the server stores it owner-only until audience
-/// sharing is switched on (§ R8SHARE-2). Unknown values fail closed.
+/// sharing is switched on (§ 1875). Unknown values fail closed.
 AudienceColumns privacyDefaultToAudience(String? pref) {
   if (pref == 'public') return audienceColumns(AudienceLevel.public);
   if (pref == 'followers') return audienceColumns(AudienceLevel.followers);

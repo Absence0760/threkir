@@ -429,7 +429,7 @@ class Preferences extends ChangeNotifier {
 
   /// Should newly-saved runs be born at the followers level
   /// (`followers_only`)? True only when `privacyDefault == 'followers'`,
-  /// which used to collapse to private (decisions § R8SHARE-2). The server
+  /// which used to collapse to private (decisions § 1875). The server
   /// stores it private until audience sharing is switched on.
   bool get newRunsAreFollowersOnly =>
       privacyDefaultToAudience(_privacyDefault).followersOnly;

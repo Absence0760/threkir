@@ -407,7 +407,7 @@ void main() {
 
     testWidgets(
         'with audience sharing on, Share asks who can see the run before '
-        'anything is made public (decisions § R8SHARE-6)', (tester) async {
+        'anything is made public (decisions § 1879)', (tester) async {
       final api = _AudienceShareApi();
       await _pump(tester, _run(title: 'Morning Tempo'),
           apiClient: api,

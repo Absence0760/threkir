@@ -2819,7 +2819,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       if (api != null && api.userId != null) {
         // With audience sharing on, Share asks who should see the run;
         // public is one answer of four, never a side effect of the button
-        // (decisions § R8SHARE-6).
+        // (decisions § 1879).
         if (await api.audienceSharingEnabled()) {
           if (!mounted) return;
           final choice = await showAudienceSheet(

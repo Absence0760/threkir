@@ -1,5 +1,5 @@
 /// Who can see a run or a route, as the owner chooses it and as the row
-/// stores it (migrations 20270802000001..3, decisions § R8SHARE-1).
+/// stores it (migrations 20270802000001..3, decisions § 1874).
 ///
 /// Three columns' worth of state reach the owner as one of four levels:
 /// `is_public` is Public, `followers_only` is Followers, a live grant in
@@ -48,7 +48,7 @@ export function audienceOf(
 /// run is written with. `followers` now writes `followers_only` instead of
 /// collapsing to owner-only, which is the bug the followers level fixes; the
 /// server stores it as owner-only until audience sharing is switched on, so
-/// nothing saved before the switch widens on the day it flips (§ R8SHARE-2).
+/// nothing saved before the switch widens on the day it flips (§ 1875).
 /// Unknown values fail closed to owner-only. Callers pass the effective value
 /// (`effective(settings, 'privacy_default', 'followers')`), so the registered
 /// unset fallback is theirs to apply.

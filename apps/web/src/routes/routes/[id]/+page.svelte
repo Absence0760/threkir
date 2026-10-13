@@ -179,7 +179,7 @@
 
 	let isOwner = $derived(route !== null && auth.user?.id === route.user_id);
 	/// Audience sharing (followers level + named people, decisions
-	/// § R8SHARE-1) is server-gated; the owner's audience control and the
+	/// § 1874) is server-gated; the owner's audience control and the
 	/// narrower share link render only when the server says it is on.
 	let audienceSharingOn = $state(false);
 	let shareCount = $state(0);

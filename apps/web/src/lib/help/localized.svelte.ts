@@ -4,7 +4,7 @@
 // is needed. Until it arrives, or if it never does, the reader gets the
 // English guides, each marked `lang: 'en'` so the page says so.
 
-import { browser } from '$app/environment';
+import { browser } from '$app/env';
 import { currentLocale } from '#lib/i18n/store.svelte.ts';
 import { createHelpIndex, type HelpIndex } from './catalogue';
 import { allGuides } from './index';

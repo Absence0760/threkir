@@ -2457,7 +2457,8 @@ class ApiClient {
   /// closed: any read failure is "off", and the caller hides the control.
   Future<bool> audienceSharingEnabled() async {
     try {
-      final result = await _client.rpc('audience_sharing_enabled');
+      final result = await _client
+          .rpc('audience_sharing_enabled', params: const {}, get: true);
       return result == true;
     } catch (e) {
       debugPrint('audience_sharing_enabled failed: $e');

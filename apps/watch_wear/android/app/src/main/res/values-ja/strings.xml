@@ -68,6 +68,12 @@
     <string name="event">イベント</string>
     <string name="race_wait_for_go">%1$s · GO を待つ</string>
     <string name="race_tap_start">%1$s · 開始をタップ</string>
+    <string name="race_finish_short">完了</string>
+    <string name="cd_finish_race">レースを終了</string>
+    <string name="race_ended">レース終了</string>
+    <string name="race_clock">レース %1$s</string>
+    <string name="race_result_finished">完走 %1$s</string>
+    <string name="race_result_dnf">レース DNF</string>
     <string name="battery_consider_charging">バッテリー %1$d%% · 充電を検討</string>
     <string name="route">ルート</string>
     <string name="pace">ペース</string>

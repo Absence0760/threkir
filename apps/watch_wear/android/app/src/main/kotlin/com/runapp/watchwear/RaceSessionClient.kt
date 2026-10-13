@@ -6,7 +6,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.net.URLEncoder
@@ -14,6 +15,12 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+
+/// Epoch millis of a PostgREST `timestamptz`, which arrives as
+/// `2026-05-22T18:00:00+00:00` (an offset, not `Z`) with optional fractional
+/// seconds. Null when unparseable: a race with no readable gun has no gun time.
+internal fun parseServerInstantMs(iso: String): Long? =
+    runCatching { java.time.OffsetDateTime.parse(iso).toInstant().toEpochMilli() }.getOrNull()
 
 /// Thin REST client for the `race_sessions`, `race_pings`, and
 /// `event_results` endpoints. Shares the wire format with
@@ -33,6 +40,18 @@ class RaceSessionClient(
         val status: String,
         val startedAtIso: String?,
         val eventTitle: String?,
+        /// Server-minus-device clock offset measured on the `race_sessions`
+        /// read, or null when the response carried no usable `Date`.
+        val serverOffsetMs: Long? = null,
+    )
+
+    /// The runner's chosen course for a race: `event_attendees.course_id` →
+    /// `event_courses` → the course route's polyline.
+    data class RaceCourse(
+        val id: String,
+        val name: String?,
+        val distanceM: Double?,
+        val waypoints: List<com.runapp.watchwear.recording.RouteMath.LatLng>,
     )
 
     /// Return the most relevant armed/running race for the signed-in
@@ -56,7 +75,7 @@ class RaceSessionClient(
             val obj = el as? JsonObject ?: continue
             val eventId = obj["event_id"]?.jsonPrimitive?.content ?: continue
             val instance = obj["instance_start"]?.jsonPrimitive?.content ?: continue
-            val raceRes = get(
+            val raceRes = getTimed(
                 "$baseUrl/rest/v1/race_sessions" +
                     "?event_id=eq.${enc(eventId)}" +
                     "&instance_start=eq.${enc(instance)}" +
@@ -64,7 +83,7 @@ class RaceSessionClient(
                     "&select=status,started_at",
                 accessToken,
             )
-            val races = (json.parseToJsonElement(raceRes) as? JsonArray) ?: continue
+            val races = (json.parseToJsonElement(raceRes.body) as? JsonArray) ?: continue
             if (races.isEmpty()) continue
             val r = races[0] as JsonObject
             val status = r["status"]?.jsonPrimitive?.content ?: continue
@@ -75,10 +94,70 @@ class RaceSessionClient(
             )
             val title = (json.parseToJsonElement(titleRes) as? JsonArray)
                 ?.firstOrNull()?.let { (it as JsonObject)["title"]?.jsonPrimitive?.content }
-            return ActiveRace(eventId, instance, status, startedAt, title)
+            return ActiveRace(eventId, instance, status, startedAt, title, raceRes.serverOffsetMs)
         }
         return null
     }
+
+    /// The course the runner picked at RSVP, with the geometry the finish
+    /// detector needs. Null when they picked none or the course has no route.
+    /// Three hops rather than an embedded select, so nothing here depends on
+    /// a foreign-key name PostgREST would have to resolve.
+    suspend fun fetchCourse(
+        accessToken: String,
+        userId: String,
+        eventId: String,
+        instanceStart: String,
+    ): RaceCourse? {
+        val courseId = parseCourseId(
+            get(
+                "$baseUrl/rest/v1/event_attendees?user_id=eq.${enc(userId)}" +
+                    "&event_id=eq.${enc(eventId)}" +
+                    "&instance_start=eq.${enc(instanceStart)}" +
+                    "&select=course_id",
+                accessToken,
+            ),
+        ) ?: return null
+        val course = parseCourse(
+            get(
+                "$baseUrl/rest/v1/event_courses?id=eq.${enc(courseId)}" +
+                    "&select=id,route_id,name,distance_m",
+                accessToken,
+            ),
+        ) ?: return null
+        val routeId = course.routeId ?: return null
+        val route = parseRouteGeometry(
+            get(
+                "$baseUrl/rest/v1/routes?id=eq.${enc(routeId)}&select=waypoints,distance_m",
+                accessToken,
+            ),
+        ) ?: return null
+        return RaceCourse(
+            id = course.id,
+            name = course.name,
+            distanceM = course.distanceM ?: route.distanceM,
+            waypoints = route.waypoints,
+        )
+    }
+
+    /// Status of one race session regardless of phase, so a host's End can be
+    /// told apart from "no race found". Null when the row is not readable.
+    suspend fun fetchSessionStatus(
+        accessToken: String,
+        eventId: String,
+        instanceStart: String,
+    ): SessionStatus? {
+        val res = getTimed(
+            "$baseUrl/rest/v1/race_sessions?event_id=eq.${enc(eventId)}" +
+                "&instance_start=eq.${enc(instanceStart)}&select=status",
+            accessToken,
+        )
+        val row = (json.parseToJsonElement(res.body) as? JsonArray)?.firstOrNull() as? JsonObject
+        val status = row?.get("status")?.jsonPrimitive?.contentOrNull ?: return null
+        return SessionStatus(status, res.serverOffsetMs)
+    }
+
+    data class SessionStatus(val status: String, val serverOffsetMs: Long?)
 
     /// Fire-and-forget ping post. Caller debounces to every 10s or so.
     suspend fun pushPing(
@@ -105,31 +184,14 @@ class RaceSessionClient(
         post("$baseUrl/rest/v1/race_pings", body.toString(), accessToken)
     }
 
-    suspend fun submitResult(
-        accessToken: String,
-        userId: String,
-        eventId: String,
-        instanceStart: String,
-        runId: String,
-        durationS: Int,
-        distanceM: Double,
-    ) {
-        val body = buildJsonObject {
-            put("event_id", eventId)
-            put("instance_start", instanceStart)
-            put("user_id", userId)
-            put("run_id", runId)
-            put("duration_s", durationS)
-            put("distance_m", distanceM)
-            put("finisher_status", "finished")
-        }
+    suspend fun submitResult(accessToken: String, result: PendingRaceResult) {
         val req = Request.Builder()
-            .url("$baseUrl/rest/v1/event_results")
+            .url("$baseUrl/rest/v1/event_results?on_conflict=event_id,instance_start,user_id")
             .header("apikey", anonKey)
             .header("Authorization", "Bearer $accessToken")
             .header("Content-Type", "application/json")
             .header("Prefer", "resolution=merge-duplicates,return=minimal")
-            .post(body.toString().toRequestBody(jsonMedia))
+            .post(resultBody(result).toString().toRequestBody(jsonMedia))
             .build()
         execute(req)
     }
@@ -144,6 +206,31 @@ class RaceSessionClient(
             .get()
             .build()
         return execute(req)
+    }
+
+    private class Timed(val body: String, val serverOffsetMs: Long?)
+
+    private suspend fun getTimed(url: String, token: String): Timed {
+        val req = Request.Builder()
+            .url(url)
+            .header("apikey", anonKey)
+            .header("Authorization", "Bearer $token")
+            .get()
+            .build()
+        return withContext(Dispatchers.IO) {
+            val sentAt = System.currentTimeMillis()
+            http.newCall(req).execute().use { resp ->
+                val receivedAt = System.currentTimeMillis()
+                val body = resp.body.string()
+                if (!resp.isSuccessful) {
+                    throw RuntimeException("HTTP ${resp.code}: $body")
+                }
+                val offset = resp.headers.getDate("Date")?.time?.let {
+                    RaceFinish.clockOffsetMs(it, sentAt, receivedAt)
+                }
+                Timed(body, offset)
+            }
+        }
     }
 
     private suspend fun post(url: String, body: String, token: String): String {
@@ -179,6 +266,72 @@ class RaceSessionClient(
     private fun enc(s: String): String = encodeQueryValue(s)
 
     companion object {
+        internal data class CourseRow(
+            val id: String,
+            val routeId: String?,
+            val name: String?,
+            val distanceM: Double?,
+        )
+
+        internal data class RouteGeometry(
+            val waypoints: List<com.runapp.watchwear.recording.RouteMath.LatLng>,
+            val distanceM: Double?,
+        )
+
+        private val parser = Json { ignoreUnknownKeys = true }
+
+        private fun firstRow(body: String): JsonObject? =
+            (parser.parseToJsonElement(body) as? JsonArray)?.firstOrNull() as? JsonObject
+
+        @JvmStatic
+        internal fun parseCourseId(body: String): String? =
+            firstRow(body)?.get("course_id")?.jsonPrimitive?.contentOrNull
+
+        @JvmStatic
+        internal fun parseCourse(body: String): CourseRow? {
+            val row = firstRow(body) ?: return null
+            val id = row["id"]?.jsonPrimitive?.contentOrNull ?: return null
+            return CourseRow(
+                id = id,
+                routeId = row["route_id"]?.jsonPrimitive?.contentOrNull,
+                name = row["name"]?.jsonPrimitive?.contentOrNull,
+                distanceM = row["distance_m"]?.jsonPrimitive?.doubleOrNull,
+            )
+        }
+
+        /// The same `{lat, lng}` waypoint shape `SupabaseClient.fetchRoutes`
+        /// reads. Null below two points: a single point is not a course.
+        @JvmStatic
+        internal fun parseRouteGeometry(body: String): RouteGeometry? {
+            val row = firstRow(body) ?: return null
+            val pts = (row["waypoints"] as? JsonArray)?.mapNotNull { el ->
+                val wp = el as? JsonObject ?: return@mapNotNull null
+                val lat = wp["lat"]?.jsonPrimitive?.doubleOrNull ?: return@mapNotNull null
+                val lng = wp["lng"]?.jsonPrimitive?.doubleOrNull ?: return@mapNotNull null
+                com.runapp.watchwear.recording.RouteMath.LatLng(lat, lng)
+            } ?: return null
+            if (pts.size < 2) return null
+            return RouteGeometry(pts, row["distance_m"]?.jsonPrimitive?.doubleOrNull)
+        }
+
+        /// The `event_results` upsert body. The race-mode columns are written
+        /// only when known, so a result with no course or no gun says nothing
+        /// about them rather than writing nulls over a host's correction.
+        @JvmStatic
+        internal fun resultBody(r: PendingRaceResult): JsonObject = buildJsonObject {
+            put("event_id", r.eventId)
+            put("instance_start", r.instanceStart)
+            put("user_id", r.userId)
+            put("run_id", r.runId)
+            put("duration_s", r.durationS)
+            put("distance_m", r.distanceM)
+            put("finisher_status", r.finisherStatus)
+            r.finishMethod?.let { put("finish_method", it) }
+            r.courseId?.let { put("course_id", it) }
+            r.gunTimeS?.let { put("gun_time_s", it) }
+            r.chipTimeS?.let { put("chip_time_s", it) }
+        }
+
         /// URL-encode a value for interpolation into a PostgREST query
         /// string. Critically defensive for `instance_start` values
         /// that come BACK from PostgREST as timestamptz — Postgres

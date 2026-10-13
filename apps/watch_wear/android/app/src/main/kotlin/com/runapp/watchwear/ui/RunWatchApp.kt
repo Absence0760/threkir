@@ -34,6 +34,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -318,6 +319,7 @@ fun RunWatchApp(vm: RunViewModel, activity: Activity, isAmbient: Boolean = false
                     fallbackLatLng = state.lastKnownLatLng,
                     trackOverlayPoints = state.trackOverlayPoints,
                     ambient = isAmbient,
+                    raceRun = state.raceRun,
                     onPause = vm::pause,
                     onResume = vm::resume,
                     onLap = vm::markLap,
@@ -1642,12 +1644,16 @@ private fun RunningScreen(
     fallbackLatLng: com.runapp.watchwear.recording.RouteMath.LatLng?,
     trackOverlayPoints: List<com.runapp.watchwear.recording.RouteMath.LatLng>,
     ambient: Boolean,
+    /// Race mode for this run. While it is live (not ended), Stop pauses and
+    /// the held button on the paused screen is "Finish race".
+    raceRun: com.runapp.watchwear.RaceRunState?,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onLap: () -> Unit,
     onStop: () -> Unit,
 ) {
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val raceLive = raceRun != null && !raceRun.ended
 
     // Off-route hysteresis: alert above 40 m, clear below 20 m. Single
     // haptic pulse when the state flips to "off" — drivers an alert
@@ -1791,6 +1797,9 @@ private fun RunningScreen(
                     style = MaterialTheme.typography.caption3.copy(shadow = captionShadow),
                     color = DuskPalette.warning,
                 )
+            }
+            if (raceRun != null) {
+                RaceCaption(raceRun = raceRun, shadow = captionShadow)
             }
             Text(
                 formatElapsed(elapsedMs),
@@ -1949,6 +1958,16 @@ private fun RunningScreen(
                 }
                 HoldToStopButton(
                     onStop = onStop,
+                    label = if (raceLive && paused) {
+                        stringResource(R.string.race_finish_short)
+                    } else {
+                        stringResource(R.string.stop)
+                    },
+                    contentDescription = if (raceLive && paused) {
+                        stringResource(R.string.cd_finish_race)
+                    } else {
+                        null
+                    },
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(end = 28.dp, bottom = 32.dp),
@@ -2077,6 +2096,34 @@ private fun RoutePickerScreen(
     }
 }
 
+/// The race line on the running screen: the gun clock while the race is
+/// live, ticking from the device clock against the offset-corrected gun so it
+/// keeps counting through a pause; "Race ended" once the host has ended it.
+@Composable
+private fun RaceCaption(raceRun: com.runapp.watchwear.RaceRunState, shadow: Shadow) {
+    if (raceRun.ended) {
+        Text(
+            stringResource(R.string.race_ended),
+            style = MaterialTheme.typography.caption3.copy(shadow = shadow),
+            color = DuskPalette.warning,
+        )
+        return
+    }
+    val gun = raceRun.gunStartDeviceMs ?: return
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(gun) {
+        while (true) {
+            now = System.currentTimeMillis()
+            delay(1_000)
+        }
+    }
+    Text(
+        stringResource(R.string.race_clock, formatElapsed((now - gun).coerceAtLeast(0L))),
+        style = MaterialTheme.typography.caption3.copy(shadow = shadow),
+        color = MaterialTheme.colors.primary,
+    )
+}
+
 /// Stop button that requires an ~800 ms press before firing `onStop`.
 /// A circular progress ring fills around the button during the hold;
 /// releasing early cancels. Prevents a single accidental tap from ending
@@ -2084,6 +2131,8 @@ private fun RoutePickerScreen(
 @Composable
 private fun HoldToStopButton(
     onStop: () -> Unit,
+    label: String,
+    contentDescription: String?,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
@@ -2140,9 +2189,14 @@ private fun HoldToStopButton(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                stringResource(R.string.stop),
+                label,
                 style = MaterialTheme.typography.caption2,
                 color = MaterialTheme.colors.onPrimary,
+                modifier = if (contentDescription != null) {
+                    Modifier.semantics { this.contentDescription = contentDescription }
+                } else {
+                    Modifier
+                },
             )
         }
     }
@@ -2208,6 +2262,17 @@ private fun PostRunScreen(
                     style = MaterialTheme.typography.caption2.copy(shadow = captionShadow),
                     color = DuskPalette.mistMuted,
                 )
+                summary.race?.let { race ->
+                    Text(
+                        if (race.finished) {
+                            stringResource(R.string.race_result_finished, formatDuration(race.durationS))
+                        } else {
+                            stringResource(R.string.race_result_dnf)
+                        },
+                        style = MaterialTheme.typography.caption2.copy(shadow = captionShadow),
+                        color = MaterialTheme.colors.primary,
+                    )
+                }
                 if (summary.avgBpm != null) {
                     Text(
                         stringResource(R.string.bpm_avg, summary.avgBpm.toInt()),

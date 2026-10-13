@@ -43,6 +43,10 @@ class SignOutLifecycleWiringTest {
         assertTrue("must clear the route store", body.contains("routeStore.clear()"))
         assertTrue("must clear the run queue", body.contains("store.clear()"))
         assertTrue(
+            "must clear the pending race results, or the next account replays them",
+            body.contains("raceResults.clear()"),
+        )
+        assertTrue(
             "must clear the tile cache",
             Regex("""TileSource\.get\(.*\)\.clear\(\)""").containsMatchIn(body),
         )

@@ -75,6 +75,12 @@
     <string name="event">Evento</string>
     <string name="race_wait_for_go">%1$s · aguarde o GO</string>
     <string name="race_tap_start">%1$s · toque em Iniciar</string>
+    <string name="race_finish_short">Fim</string>
+    <string name="cd_finish_race">Encerrar corrida</string>
+    <string name="race_ended">Corrida encerrada</string>
+    <string name="race_clock">Corrida %1$s</string>
+    <string name="race_result_finished">Chegada %1$s</string>
+    <string name="race_result_dnf">Corrida DNF</string>
     <string name="battery_consider_charging">Bateria %1$d%% · considere carregar</string>
     <string name="route">Rota</string>
     <string name="pace">Ritmo</string>

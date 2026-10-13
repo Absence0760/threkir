@@ -126,7 +126,7 @@ class RaceFinishDetector(
             }
             return null
         }
-        if (!eligible || d > bestDistanceM) return finalise()
+        if (!eligible || d > bestDistanceM) return finalise(current)
         if (d < bestDistanceM) {
             best = fix
             bestDistanceM = d
@@ -136,16 +136,14 @@ class RaceFinishDetector(
 
     /// Settle a pending closest approach now — the runner pressed "Finish
     /// race" while standing in the zone. Null when there was none.
-    fun finaliseNow(): RaceFinish.Finish? = finish ?: if (best != null) finalise() else null
+    fun finaliseNow(): RaceFinish.Finish? = finish ?: best?.let { finalise(it) }
 
-    private fun finalise(): RaceFinish.Finish {
-        val b = best!!
-        return RaceFinish.Finish(
+    private fun finalise(b: RaceFinish.Fix): RaceFinish.Finish =
+        RaceFinish.Finish(
             epochMs = b.epochMs,
             distanceToFinishM = bestDistanceM,
             coveredM = b.coveredM,
         ).also { finish = it }
-    }
 
     companion object {
         /// Detector for a course polyline, or null when the course cannot be

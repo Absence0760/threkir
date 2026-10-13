@@ -97,6 +97,12 @@
     <string name="event">Event</string>
     <string name="race_wait_for_go">%1$s · wait for GO</string>
     <string name="race_tap_start">%1$s · tap Start</string>
+    <string name="race_finish_short">Finish</string>
+    <string name="cd_finish_race">Finish race</string>
+    <string name="race_ended">Race ended</string>
+    <string name="race_clock">Race %1$s</string>
+    <string name="race_result_finished">Race finish %1$s</string>
+    <string name="race_result_dnf">Race DNF</string>
     <string name="battery_consider_charging">Battery %1$d%% · consider charging</string>
     <string name="route">Route</string>
     <string name="pace">Pace</string>

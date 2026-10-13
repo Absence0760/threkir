@@ -523,29 +523,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     final now = DateTime.now();
     setState(() {
       _notifications = _notifications
-          .map(
-            (n) => n.row.id == item.row.id
-                ? NotificationView(
-                    row: NotificationRow(
-                      id: n.row.id,
-                      userId: n.row.userId,
-                      actorId: n.row.actorId,
-                      kind: n.row.kind,
-                      runId: n.row.runId,
-                      commentId: n.row.commentId,
-                      readAt: now,
-                      createdAt: n.row.createdAt,
-                      eventId: n.row.eventId,
-                      refunded: n.row.refunded,
-                    ),
-                    actor: n.actor,
-                    runDistanceM: n.runDistanceM,
-                    commentExcerpt: n.commentExcerpt,
-                    eventTitle: n.eventTitle,
-                    eventClubSlug: n.eventClubSlug,
-                  )
-                : n,
-          )
+          .map((n) => n.row.id == item.row.id ? n.markedRead(now) : n)
           .toList();
     });
     try {
@@ -561,29 +539,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       if (!mounted) return;
       final now = DateTime.now();
       setState(() {
-        _notifications = _notifications
-            .map(
-              (n) => NotificationView(
-                row: NotificationRow(
-                  id: n.row.id,
-                  userId: n.row.userId,
-                  actorId: n.row.actorId,
-                  kind: n.row.kind,
-                  runId: n.row.runId,
-                  commentId: n.row.commentId,
-                  readAt: n.row.readAt ?? now,
-                  createdAt: n.row.createdAt,
-                  eventId: n.row.eventId,
-                  refunded: n.row.refunded,
-                ),
-                actor: n.actor,
-                runDistanceM: n.runDistanceM,
-                commentExcerpt: n.commentExcerpt,
-                eventTitle: n.eventTitle,
-                eventClubSlug: n.eventClubSlug,
-              ),
-            )
-            .toList();
+        _notifications = _notifications.map((n) => n.markedRead(now)).toList();
       });
     } catch (e) {
       debugPrint('profile mark all read failed: $e');

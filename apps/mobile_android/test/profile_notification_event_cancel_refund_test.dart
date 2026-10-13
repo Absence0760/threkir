@@ -2,8 +2,8 @@
 // was refunded". A paid registrant's event_cancel row carries `refunded`
 // (migration 20270725000002) and must read the refund sentence; a free
 // attendee's must not. The rendered text is the contract, so this renders it.
-// The inbox rebuilds each row by hand when it marks it read, which is the one
-// place the flag could be dropped, so that path is pinned too.
+// Mark-all-read rebuilds each row, the one place the flag could be dropped,
+// so that path is pinned too.
 
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';

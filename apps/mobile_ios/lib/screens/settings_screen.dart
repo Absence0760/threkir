@@ -20,6 +20,7 @@ import 'coaching_screen.dart';
 import 'devices_screen.dart';
 import 'gear_screen.dart';
 import 'guided_runs_screen.dart';
+import 'help_screen.dart';
 import 'settings_about_screen.dart';
 import 'settings_account_screen.dart';
 import 'settings_integrations_screen.dart';
@@ -245,6 +246,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               label: l10n.aboutTitle,
               subtitle: l10n.settingsTabAboutSubtitle,
               onTap: () => _open((_) => const SettingsAboutScreen()),
+            ),
+            _tab(
+              icon: Icons.help_outline,
+              label: l10n.helpTitle,
+              subtitle: l10n.helpSettingsSubtitle,
+              onTap: () => _open((_) => const HelpScreen()),
             ),
             if (localBackend || rawGpsAvailable) ...[
               Padding(

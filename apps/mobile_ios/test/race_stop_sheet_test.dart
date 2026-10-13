@@ -1,7 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../lib/help_guides.dart';
+import '../lib/help_loader.dart';
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/screens/help_screen.dart';
 import '../lib/widgets/race_stop_sheet.dart';
 
 Future<Future<void> Function()> _open(
@@ -74,5 +79,28 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(choice, RaceStopChoice.resume);
+  });
+
+  testWidgets('How this works opens the participant guide for the event', (
+    tester,
+  ) async {
+    final library = HelpLibrary.parse(
+      File('test/fixtures/help_guides.json').readAsStringSync(),
+    )!;
+    helpLibraryLoader = () => Future.value(library);
+    addTearDown(() => helpLibraryLoader = loadHelpLibraryCached);
+    final open = await _open(tester, coverageMet: true, onChoice: (_) {});
+    await open();
+
+    await tester.tap(find.byKey(const Key('race-stop-help')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump();
+
+    expect(find.byType(HelpForRouteScreen), findsOneWidget);
+    // The organiser's paid-class guide shares the event route; a runner
+    // mid-race gets only the guide written for participants.
+    expect(find.text('Racing an event'), findsOneWidget);
+    expect(find.text('Charging for a class'), findsNothing);
   });
 }

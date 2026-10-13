@@ -33,6 +33,7 @@ import '../widgets/event_photos.dart';
 import '../widgets/fundraiser_section.dart';
 import '../widgets/finisher_certificate_card.dart';
 import '../widgets/gym_compose_sheet.dart';
+import '../widgets/help_button.dart';
 import '../widgets/top_banner.dart';
 
 /// Host-only attendance marking is offered iff the viewer organises the
@@ -834,7 +835,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final canMarkAttendance = canMarkEventAttendance(_club, e.row.category);
 
     return Scaffold(
-      appBar: AppBar(title: Text(e.row.title)),
+      appBar: AppBar(
+        title: Text(e.row.title),
+        actions: const [
+          HelpButton(routes: ['/clubs/[slug]/events/[id]']),
+        ],
+      ),
       body: contentColumn(
         context,
         ListView(

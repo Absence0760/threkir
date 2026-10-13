@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/gen/app_localizations.dart';
+import '../screens/help_screen.dart';
 
 /// The small "(i)" a runner taps to find out what a feature IS and how to use
 /// it, without leaving the screen it sits on.
@@ -20,11 +21,16 @@ class InfoTipButton extends StatelessWidget {
   final String title;
   final String body;
 
+  /// A help guide that explains the feature in full. When set, the dialog
+  /// offers "Read the guide" beside Dismiss.
+  final String? guideId;
+
   const InfoTipButton({
     super.key,
     required this.label,
     required this.title,
     required this.body,
+    this.guideId,
   });
 
   @override
@@ -43,6 +49,15 @@ class InfoTipButton extends StatelessWidget {
           title: Text(title),
           content: SingleChildScrollView(child: Text(body)),
           actions: [
+            if (guideId case final id?)
+              TextButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  openGuide(context, id);
+                },
+                child: Text(
+                    AppLocalizations.of(dialogContext).infoTipReadGuide),
+              ),
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
               child: Text(AppLocalizations.of(dialogContext).commonDismiss),

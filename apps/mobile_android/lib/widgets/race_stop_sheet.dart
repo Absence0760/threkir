@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/gen/app_localizations.dart';
+import '../screens/help_screen.dart';
 
 enum RaceStopChoice { resume, finish }
 
@@ -64,6 +65,19 @@ class RaceStopSheet extends StatelessWidget {
               icon: const Icon(Icons.sports_score),
               label: Text(
                   coverageMet ? l10n.runRaceFinish : l10n.runRaceFinishDnf),
+            ),
+            const SizedBox(height: 8),
+            // Pausing to ask is the moment the rules matter, and the
+            // recording stays paused while the guide is open.
+            TextButton.icon(
+              key: const Key('race-stop-help'),
+              onPressed: () => openHelpForRoutes(
+                context,
+                const ['/clubs/[slug]/events/[id]'],
+                audience: 'participant',
+              ),
+              icon: const Icon(Icons.help_outline),
+              label: Text(l10n.helpHowThisWorks),
             ),
           ],
         ),

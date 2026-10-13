@@ -23,6 +23,7 @@ import '../race_service.dart';
 import '../settings_sync.dart';
 import '../share_sheet.dart';
 import '../strava.dart';
+import '../widgets/help_button.dart';
 import '../widgets/info_tip.dart';
 import '../widgets/top_banner.dart';
 import 'races_screen.dart';
@@ -562,7 +563,10 @@ class _SettingsIntegrationsScreenState
     final l10n = AppLocalizations.of(context);
     final signedIn = widget.apiClient?.userId != null;
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.integrationsTitle)),
+      appBar: AppBar(
+        title: Text(l10n.integrationsTitle),
+        actions: const [HelpButton(routes: ['/settings/integrations'])],
+      ),
       body: SafeArea(
         child: ListView(
           children: [

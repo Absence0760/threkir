@@ -888,10 +888,14 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// Every Stop entry point lands here. During a live race with no outcome
   /// yet, Stop is a pause: the recorder pauses and the runner picks Resume
   /// race or Finish race (decisions § 1843). Anything else stops outright.
+  /// A Finish race is timed at this Stop, not at the later tap that chose
+  /// it, and is still filed if the host ends the race while the choice is
+  /// open (decisions § R6MOBILE-3).
   Future<void> _requestStop() async {
     final rc = widget.raceController;
     if (rc == null || !rc.stopNeedsRaceChoice) return _stop();
     if (_raceStopSheetOpen || _stopRequested || _recorder == null) return;
+    final stoppedAt = DateTime.now();
     if (!_manualPaused) _toggleManualPause();
     _raceStopSheetOpen = true;
     final RaceStopChoice? choice;
@@ -906,7 +910,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       case RaceStopChoice.resume:
         if (_manualPaused) _toggleManualPause();
       case RaceStopChoice.finish:
-        rc.decideStop(coveredM: _distanceMetres);
+        rc.decideStop(coveredM: _distanceMetres, now: stoppedAt);
         await _stop();
       case null:
         break;

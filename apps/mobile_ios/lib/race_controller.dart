@@ -741,7 +741,9 @@ class RaceController extends ChangeNotifier {
   }
 
   /// The runner chose "Finish race" (or stopped mid-approach): settle the
-  /// outcome from what they covered.
+  /// outcome from what they covered, timed at [now] — the instant they
+  /// pressed Stop. A host End that arrived while they were choosing does
+  /// not void it: the stop came first, so it is filed (§ R6MOBILE-3).
   RaceOutcome decideStop({required double coveredM, DateTime? now}) {
     final existing = _outcome;
     if (existing != null) return existing;

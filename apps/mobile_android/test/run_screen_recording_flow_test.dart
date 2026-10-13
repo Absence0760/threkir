@@ -179,6 +179,32 @@ class _NoOpWakelock extends WakelockPlusPlatformInterface {
 
 // Most callers move 12 m every 2 s; the Doppler speed matches, since the
 // distance estimator credits the chip's speed rather than the position hop.
+/// Counts the fixes the run screen offers the finish detector and records
+/// the instant a stop is decided at.
+class _RaceStopSpy extends RaceController {
+  _RaceStopSpy(super.social);
+
+  int fixesOffered = 0;
+  DateTime? decidedAt;
+
+  @override
+  RaceFinish? offerFix({
+    required double lat,
+    required double lng,
+    required double coveredM,
+    required DateTime at,
+  }) {
+    fixesOffered++;
+    return super.offerFix(lat: lat, lng: lng, coveredM: coveredM, at: at);
+  }
+
+  @override
+  RaceOutcome decideStop({required double coveredM, DateTime? now}) {
+    decidedAt ??= now ?? DateTime.now();
+    return super.decideStop(coveredM: coveredM, now: now);
+  }
+}
+
 /// Captures the live-race result the run screen submits on Finish race.
 class _RaceResultSocial extends SocialService {
   final List<({String finisherStatus, String? finishMethod})> submitted = [];
@@ -204,8 +230,8 @@ class _RaceResultSocial extends SocialService {
 
 /// A race controller already watching a race that went live a minute ago,
 /// with no course and no network.
-RaceController _runningRace(SocialService social) {
-  final rc = RaceController(social)
+RaceController _runningRace(SocialService social, [RaceController? base]) {
+  final rc = (base ?? RaceController(social))
     ..courseLoader = ((_, _) async => null)
     ..pingWriter = ((_) async {});
   rc.setActiveForTest(ActiveRace(
@@ -1883,11 +1909,12 @@ void main() {
 
   group('RunScreen — Stop during a live race is a pause (decisions § 1843)', () {
     Future<({_CapturingRunStore runStore, RaceController race})> pumpRacing(
-        WidgetTester tester, _RaceResultSocial raceSocial) async {
+        WidgetTester tester, _RaceResultSocial raceSocial,
+        {RaceController? base}) async {
       final runStore = _CapturingRunStore();
       await runStore.init(overrideDirectory: runsDir);
       final s = await makeStores();
-      final race = _runningRace(raceSocial);
+      final race = _runningRace(raceSocial, base);
       await tester.pumpWidget(
         MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -1978,6 +2005,93 @@ void main() {
           RaceFinishMethod.manual.wire,
           reason: 'no course means Finish race is an ungated manual finish');
       expect(r.race.isHosting, isFalse);
+      await unmount(tester);
+    });
+
+    testWidgets('Finish race is timed at the Stop, not at the tap',
+        (tester) async {
+      final raceSocial = _RaceResultSocial();
+      final spy = _RaceStopSpy(raceSocial);
+      await pumpRacing(tester, raceSocial, base: spy);
+
+      final beforeStop = DateTime.now();
+      final stopped = await holdFinish(tester,
+          until: sheetShowing, describe: 'the race-stop sheet to open');
+      await tester.pump(const Duration(milliseconds: 400));
+      // The runner stands at the line deciding; the wall clock moves on.
+      await tester
+          .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+      final tapAt = DateTime.now();
+      await tester.tap(find.byKey(const Key('race-stop-finish')));
+      await pumpUntil(tester, stopped, describe: 'Finish race to stop the run');
+      await pumpUntil(tester, () => raceSocial.submitted.isNotEmpty,
+          describe: 'the race result to be submitted');
+
+      final decided = spy.decidedAt!;
+      expect(decided.isBefore(tapAt), isTrue,
+          reason: 'the finish is the moment Stop was pressed');
+      expect(decided.isBefore(beforeStop), isFalse);
+      await unmount(tester);
+    });
+
+    testWidgets('a host End while the choice is open still files the Finish',
+        (tester) async {
+      // The runner crossed the line and pressed Stop; the host ended the
+      // race before they answered the sheet. Their Finish is a stop that
+      // happened before the End, so it is filed (decisions § R6MOBILE-3).
+      final raceSocial = _RaceResultSocial();
+      final r = await pumpRacing(tester, raceSocial);
+
+      final stopped = await holdFinish(tester,
+          until: sheetShowing, describe: 'the race-stop sheet to open');
+      await tester.pump(const Duration(milliseconds: 400));
+      r.race.observeHostedSession('finished', null);
+      await tester.pump();
+      expect(r.race.raceEnded, isTrue);
+
+      await tester.tap(find.byKey(const Key('race-stop-finish')));
+      await pumpUntil(tester, stopped, describe: 'Finish race to stop the run');
+      await pumpUntil(tester, () => raceSocial.submitted.isNotEmpty,
+          describe: 'the race result to be submitted');
+      await tester.pump(const Duration(seconds: 9));
+      tester.takeException();
+
+      expect(raceSocial.submitted.single.finisherStatus, 'finished');
+      expect(raceSocial.submitted.single.finishMethod,
+          RaceFinishMethod.manual.wire);
+      await unmount(tester);
+    });
+
+    testWidgets('no fix reaches the detector while paused, and Resume restarts '
+        'the feed', (tester) async {
+      final raceSocial = _RaceResultSocial();
+      final spy = _RaceStopSpy(raceSocial);
+      await pumpRacing(tester, raceSocial, base: spy);
+      expect(spy.fixesOffered, greaterThan(0));
+
+      final stopped = await holdFinish(tester,
+          until: sheetShowing, describe: 'the race-stop sheet to open');
+      await tester.pump(const Duration(milliseconds: 400));
+      final atPause = spy.fixesOffered;
+      for (var i = 4; i < 7; i++) {
+        geolocator.emit(_pos(metresEast: i * 12.0, secondsFromStart: i * 2));
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+      expect(spy.fixesOffered, atPause,
+          reason: 'a paused pass through the zone is not a finish');
+
+      await tester.tap(find.byKey(const Key('race-stop-resume')));
+      await pumpUntil(tester, stopped, describe: 'the sheet to resolve');
+      await tester.pump(const Duration(milliseconds: 400));
+      for (var i = 7; i < 10; i++) {
+        geolocator.emit(_pos(metresEast: i * 12.0, secondsFromStart: i * 2));
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+      expect(spy.fixesOffered, greaterThan(atPause),
+          reason: 'Resume race puts the recording and the detector back on');
+      expect(spy.stopNeedsRaceChoice, isTrue);
       await unmount(tester);
     });
 

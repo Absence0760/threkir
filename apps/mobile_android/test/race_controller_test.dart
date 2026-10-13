@@ -936,6 +936,63 @@ void main() {
       expect(social.submitted.single.finisherStatus, 'finished');
     });
 
+    test('a host End during the pause still files the runner\'s Finish',
+        () async {
+      // The run screen pauses on Stop and asks; the host's End can land
+      // before the runner answers. The stop was before the End, so the
+      // Finish is filed, timed at the stop (decisions § R6MOBILE-3).
+      final social = _FakeSocial();
+      final c = RaceController(social);
+      await _attachRacing(c, gun);
+      final stoppedAt = gun.add(const Duration(minutes: 24));
+
+      c.observeHostedSession('finished', null);
+      expect(c.raceEnded, isTrue);
+      final o = c.decideStop(coveredM: 4800, now: stoppedAt);
+      expect(o.method, RaceFinishMethod.manual);
+      expect(o.finishAt, stoppedAt);
+      await c.submitResult(runId: 'run-1', durationS: 1400, distanceM: 4800);
+
+      final r = social.submitted.single;
+      expect(r.finisherStatus, 'finished');
+      expect(r.gunTimeS, 24 * 60);
+    });
+
+    test('a status read with no started_at keeps the GO already known',
+        () async {
+      final c = RaceController(_FakeSocial());
+      await _attachRacing(c, gun);
+      c.observeHostedSession('running', null);
+      expect(c.gunTimeTo(gun.add(const Duration(minutes: 5))), 300);
+      final later = gun.add(const Duration(seconds: 2));
+      c.observeHostedSession('running', later);
+      expect(c.gunTimeTo(gun.add(const Duration(minutes: 5))), 298,
+          reason: 'a started_at on the row is the server\'s GO');
+    });
+
+    test('a pause between fixes keeps the open approach', () async {
+      // The screen stops offering fixes while paused; the detector must
+      // carry the approach across the gap rather than start over.
+      final c = RaceController(_FakeSocial());
+      await _attachRacing(c, gun);
+      final t = gun.add(const Duration(minutes: 25));
+      expect(_offer(c, -12, t, 4988), isNull);
+      expect(_offer(c, -3, t.add(const Duration(seconds: 3)), 4997), isNull);
+      expect(c.stopNeedsRaceChoice, isFalse);
+      final f = _offer(c, 8, t.add(const Duration(seconds: 40)), 5008);
+      expect(f!.at, t.add(const Duration(seconds: 3)));
+    });
+
+    test('a fix after the outcome is decided changes nothing', () async {
+      final c = RaceController(_FakeSocial());
+      await _attachRacing(c, gun);
+      final stop = gun.add(const Duration(minutes: 22));
+      c.decideStop(coveredM: 4700, now: stop);
+      expect(_offer(c, 0, stop.add(const Duration(seconds: 5)), 5000), isNull);
+      expect(c.outcome!.method, RaceFinishMethod.manual);
+      expect(c.outcome!.finishAt, stop);
+    });
+
     test('no course resolved: no auto-finish, and Finish race is ungated',
         () async {
       final social = _FakeSocial();

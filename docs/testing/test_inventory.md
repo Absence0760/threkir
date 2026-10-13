@@ -527,7 +527,7 @@ The seven ARB catalogues against the checked-in `lib/l10n/gen/` ([decisions § 8
 
 The Apple Watch hand-off contract ([decisions § 1801](../architecture/decisions.md)). `WatchIngestBridge.swift` lets go of a run when the channel answers `true`, so `WatchIngest.handle` must say `true` only once the run is on disk, and it must say it in every state: signed out, no Supabase, signed in and online (queued first, then uploaded and deleted), signed in with the signed-in user as the stamp, offline (stays queued, not quarantined), and a `TrackTooLargeException` (quarantined, never re-sent). `false` is pinned for the three disk-failure shapes: signed out, signed in with a failed direct save, and the one rescue where the direct save lands and answers `true`. Also: `enqueue` reports whether the write landed, a NaN payload lands (encoded as null) and is quarantined by the drain rather than failing every write, overlapping `drain` calls join one pass and upload each run once, and `SyncService` drains the queue on a connectivity trigger when signed in and leaves it alone when not.
 
-### `apps/mobile_ios/test/` — 600 files, byte-for-byte
+### `apps/mobile_ios/test/` — 601 files, byte-for-byte
 
 After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kept identical to `apps/mobile_android/test/` via `diff -rq`. Every test file documented above runs on the iOS target too **locally** — `melos run test` has no scope filter — but **not in CI**: the `test-packages` job scopes `melos exec` to `run_recorder`, `mobile_android`, `api_client`, `gpx_parser`, `ui_kit` and `core_models`, and `mobile_ios` is not among them. That is not a gap for byte-identical Dart, but it is why a test gated on an `ios/` file being present asserts nothing on any CI run — two such groups existed and were removed in favour of `scripts/check_ios_native_declarations.mjs` (decisions.md § 742). Per-target counts: `flutter test` compiles separately, so each test file is executed twice when you run both apps locally. Don't add iOS-specific test files — every test belongs in both apps. The architecture-guard tests under `apps/mobile_android/test/architecture_guards_test.dart` read `lib/screens/run_screen.dart` from the working directory, so they pin the same invariants on both targets.
 
@@ -958,7 +958,7 @@ Three source-level resilience guards were added on 2026-09-03 in the same idiom 
 
 The handful of Wear OS surfaces NOT covered (need instrumentation): `Pedometer` sensor binding itself, `HeartRateMonitor.MeasureCallback` registration with Health Services, `GpsRecorder` `FusedLocationProviderClient` callback, foreground-service lifecycle, Compose UI screen rendering (the team deliberately stayed off Robolectric — `ScreenWiringTest`'s source-grep approach is the cheap-but-effective alternative).
 
-### `apps/job_worker/internal/**/*_test.go` — 937 tests across 83 files (Go unit tests)
+### `apps/job_worker/internal/**/*_test.go` — 939 tests across 84 files (Go unit tests)
 
 Run with `go test ./...` from `apps/job_worker`. No network or Postgres dependency — the worker tests use a fake `Backend`, the matcher tests use `httptest.Server` to stand in for OSRM. Gated in CI by the `test-worker` job (`go vet` + `go test ./...`), so a Go-side guard like `internal/personal_data_export_guard_test.go` (the GDPR Art 20 export-completeness tripwire — fails the build when a new `user_id`-bearing table isn't wired into `exportPersonalDataSpecs` or the reasoned exclusion list) now fails a PR, not just a local run. Files:
 

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
@@ -174,6 +175,7 @@
 	{#if hasResult && result}
 		<section class="section race-result" data-testid="race-result">
 			<h2>{m('races.officialResult')}</h2>
+			<HelpLink route="/runs/[id]" />
 			<dl class="race-grid">
 				{#if result.race_name}
 					<div><dt>{m('races.title')}</dt><dd data-testid="race-result-name">{result.race_name}</dd></div>

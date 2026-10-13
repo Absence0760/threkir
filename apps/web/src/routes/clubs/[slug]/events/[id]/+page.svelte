@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { siteOrigin } from '#lib/core/site_url.ts';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { onMount, onDestroy } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
@@ -1832,6 +1833,7 @@
 					{/if}
 				</span>
 				<h1>{event.title}</h1>
+				<HelpLink route="/clubs/[slug]/events/[id]" />
 				{#if event.is_public === false}
 					<p class="members-only-badge" data-testid="members-only-badge">
 						<span class="material-symbols" aria-hidden="true">lock</span>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { activeFormatLocale } from '#lib/format/time.ts';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { onMount } from 'svelte';
@@ -374,6 +375,7 @@
 	<header class="page-head">
 		<p class="kicker">{m('shell.settings')}</p>
 		<h1>{m('settingsIntegrations.title')}</h1>
+		<HelpLink route="/settings/integrations" />
 		<p class="tagline">
 			{m('settingsIntegrations.tagline')}
 		</p>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
 	import { fetchClubBySlug } from '#lib/core/data.ts';
@@ -90,6 +91,7 @@
 		<header class="page-header">
 			<span class="kicker">{club.name}</span>
 			<h1>{m('eventNew.title')}</h1>
+			<HelpLink route="/clubs/[slug]/events/new" />
 			<p class="tagline">
 				{m('eventNew.tagline')}
 			</p>

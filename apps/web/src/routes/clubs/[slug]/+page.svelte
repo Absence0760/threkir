@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { siteOrigin } from '#lib/core/site_url.ts';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
@@ -855,6 +856,7 @@
 						<span class="badge">{tr('clubHome.privateBadge')}</span>
 					{/if}
 				</div>
+				<HelpLink route="/clubs/[slug]" />
 				{#if club.location_label}
 					<p class="location">
 						<span class="material-symbols" aria-hidden="true">place</span>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { parseImportCompleteness } from '#lib/integrations/import_completeness.ts';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import {
@@ -294,6 +295,7 @@
 	<header class="races-header">
 		<div>
 			<h1>{m('races.title')}</h1>
+			<HelpLink route="/races" />
 			<p class="subtitle">{m('races.subtitle')}</p>
 		</div>
 		<button

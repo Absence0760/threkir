@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type * as GeoJSON from 'geojson';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { onMount, onDestroy } from 'svelte';
 	import { formatDuration as baseDuration } from '#lib/format/time.ts';
 	import { page } from '$app/state';
@@ -659,6 +660,7 @@
 	<header class="hero">
 		<p class="kicker">{m('liveEvent.kicker')}</p>
 		<h1>{event?.title ?? m('liveEvent.heroFallback')}</h1>
+		<HelpLink route="/live/event/[id]/[instance]" />
 		<div class="status-row">
 			<span class="status-dot status-{race?.status ?? 'idle'}"></span>
 			<strong class="status-label">{statusCopy.label}</strong>

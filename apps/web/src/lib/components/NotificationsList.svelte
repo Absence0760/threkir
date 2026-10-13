@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { activeFormatLocale } from '#lib/format/time.ts';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { onMount } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import { goto } from '$app/navigation';
@@ -249,6 +250,7 @@
 
 <div class="wrap">
 	<header class="head">
+		<HelpLink route="/notifications" />
 		<div class="filter-tabs">
 			<button class="filter" class:active={filter === 'all'} onclick={() => (filter = 'all')}>
 				{m('notificationsList.tabAll')}

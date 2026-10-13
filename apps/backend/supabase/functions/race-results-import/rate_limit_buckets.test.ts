@@ -9,11 +9,12 @@
 // which both clients grade as "provider unavailable", so the failure is silent
 // and total rather than a limit anyone can see.
 //
-// Source-level rather than behavioural because the limiter needs a database:
-// the claim is about which bucket the code selects, which is readable.
+// Source-level: the claim is about the RELATIVE sizes of the three buckets as
+// written. handler.test.ts drives which bucket each mode actually spends, and
+// the lookup's exact 20/60, against a fake limiter.
 import { assert, assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 
-const SRC = await Deno.readTextFile(new URL('./index.ts', import.meta.url));
+const SRC = await Deno.readTextFile(new URL('./handler.ts', import.meta.url));
 
 function limits(bucket: string): [number, number] {
   const re = new RegExp(

@@ -25,7 +25,7 @@ import { ultraSignUpImportRows } from './lib.ts';
 const PAYLOAD: unknown = JSON.parse(
   Deno.readTextFileSync(new URL('./fixtures/ultrasignup_historybyname.json', import.meta.url)),
 );
-const SRC = Deno.readTextFileSync(new URL('./index.ts', import.meta.url));
+const SRC = Deno.readTextFileSync(new URL('./handler.ts', import.meta.url));
 
 /// The listing for the race both namesakes ran.
 const PEAKS = {
@@ -125,7 +125,7 @@ Deno.test('the attribution gate is gone and the import goes through the attribut
   assert(branch !== -1 && end !== -1, 'the ultrasignup branch is gone — re-anchor this guard');
   const body = SRC.slice(branch, end);
   const scope = body.indexOf('ultraSignUpScopeGate(');
-  const fetchAt = body.indexOf('await fetch(');
+  const fetchAt = body.indexOf('await deps.fetch(');
   assert(scope !== -1 && fetchAt !== -1 && scope < fetchAt, 'the person must be scoped before the fetch');
   assert(body.includes('ultraSignUpImportRows('), 'the branch no longer maps through the attributing helper');
   assert(!body.includes('mapUltraSignUpResult('), 'the branch maps rows without attributing them');

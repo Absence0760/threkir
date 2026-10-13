@@ -835,6 +835,7 @@ Reusable yoga/pilates/class movement sequences (a sibling of the gym routine eng
 - **`session_plan_blocks`** — `id` PK, `plan_id` (FK, cascade), `position` (int), `name` (nullable — a flat plan has no blocks). RLS inherits the parent plan's visibility (a single FOR ALL policy keyed on the parent's author/public/member predicate, with WITH CHECK gating writes to author-or-club-admin).
 - **`session_plan_items`** — `id` PK, `plan_id` (FK, cascade), `block_id` (nullable FK → blocks, cascade), `position`, `movement_name`, `kind` (CHECK `in ('hold','reps','flow')` — narrow union `SessionItemKind`, in `check_constraint_unions.mjs`), `duration_s` (nullable, for hold/flow), `reps` (nullable, for reps), `per_side` (default false — split into L/R at expand time by `expandSessionSteps`), `tempo` (nullable), `cue` (nullable). RLS inherits the parent.
 - **`events.session_plan_id`** — nullable FK → `session_plans` (`on delete set null`). A `class` event optionally attaches a full sequence (the rich successor to the `gym_template` jsonb hint). Set **only by an event organiser** — the `enforce_event_session_plan_organiser` BEFORE trigger raises `42501` for a non-organiser (defence-in-depth behind the events UPDATE RLS), with a trusted-caller bypass for the service role + direct SQL. The column carries an explicit `grant select (session_plan_id) ... to authenticated, anon` because `events` is under a column-level SELECT lockdown.
+- **`events.gym_routine_id`** — nullable FK → `gym_routines` (`on delete set null`, migration `20270803000001`, decisions § 1869). A strength / HIIT `class` attaches one of its club's routine templates or a public template; the attendee's Log-as-workout pre-fills their own new workout from it, and the template is never cloned (1883). Partial index `events_gym_routine_idx`, and `grant select (gym_routine_id) ... to authenticated, anon` under the `events` column lockdown. The `events_gym_routine_organiser` BEFORE INSERT / UPDATE OF `gym_routine_id, club_id` trigger (`private.enforce_event_gym_routine_organiser()`, SECURITY DEFINER, EXECUTE revoked `from public, anon`) raises `42501` for a non-organiser changing the attachment (service role + direct SQL bypass that half) and, for every writer, for a routine that is neither a template of the event's own club nor a public template, including when the event moves to another club; an unknown id is `23503`. The `events_one_class_content` CHECK (`num_nonnulls(session_plan_id, gym_routine_id) <= 1`) is added `NOT VALID` there and validated in `20270803000002`; both clients' attach calls clear the other column in the same UPDATE. pgtap: `supabase/tests/event_gym_routine_test.sql`.
 
 **Narrow union**: `SessionItemKind = 'hold' | 'reps' | 'flow'`. pgtap coverage: `supabase/tests/session_plans_rls_test.sql` (author own read/write, public world-read, club member-read / admin-write, the kind CHECK, organiser-only `events.session_plan_id`); `clone_session_template_test.sql` (club-member adopt, copy fidelity, non-member reject).
 
@@ -2188,10 +2189,10 @@ grant  execute on function public.<fn>(<args>) to authenticated;   -- and/or ser
 
 Add `authenticated` to the revoke list when no client role should hold it at all
 (the `cleanup_*` / `enqueue_*` cron family, and helpers only a SECURITY DEFINER
-trigger calls). 83 migrations write a function-level `from public, anon` revoke
-today (70 as `revoke execute`, 13 as `revoke all`); it is the house form for
+trigger calls). 84 migrations write a function-level `from public, anon` revoke
+today (71 as `revoke execute`, 13 as `revoke all`); it is the house form for
 exactly this reason, and `check_migration_function_revoke_noop.mjs` is what
-keeps it — it replays all 516 migrations in version order and fails the PR on
+keeps it — it replays all 518 migrations in version order and fails the PR on
 any EXECUTE revoke that leaves the other channel at its image-dependent
 default, in either direction. **Those four figures are derived, not typed**: the
 guard prints them and `check_migration_function_revoke_noop.test.mjs` asserts

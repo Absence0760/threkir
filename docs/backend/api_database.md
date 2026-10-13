@@ -481,9 +481,12 @@ create table notifications (
   activity_kind text check (activity_kind is null or activity_kind in ('run','lift','meal')),
   activity_id   uuid,
   read_at       timestamptz,
+  refunded      boolean not null default false,         -- event_cancel only (migration 20270725000002)
   created_at    timestamptz not null default now()
 );
 ```
+
+`refunded` (migration `20270725000002`) is set only on an `event_cancel` row, by `notify_event_cancel`, when the recipient held a `paid` / `partially_refunded` `event_orders` row on the cancelled occurrence. It means the refund is **being issued** (events-cancel records the exception before it calls Stripe), not that it has landed, and every rail — the web and mobile inbox, email, web push, native push — renders it as "your payment is being refunded". Since the same migration the `event_cancel` row also carries `event_instance_start`.
 
 The `achievement` kind (migration `20270208_001`) fires from the
 `notify_achievement_earned` AFTER-INSERT trigger on `achievements` for each new

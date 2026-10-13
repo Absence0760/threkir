@@ -2484,6 +2484,7 @@ export type Database = {
           native_push_sent_at: string | null
           plan_id: string | null
           read_at: string | null
+          refunded: boolean
           run_id: string | null
           user_id: string
           web_push_sent_at: string | null
@@ -2505,6 +2506,7 @@ export type Database = {
           native_push_sent_at?: string | null
           plan_id?: string | null
           read_at?: string | null
+          refunded?: boolean
           run_id?: string | null
           user_id: string
           web_push_sent_at?: string | null
@@ -2526,6 +2528,7 @@ export type Database = {
           native_push_sent_at?: string | null
           plan_id?: string | null
           read_at?: string | null
+          refunded?: boolean
           run_id?: string | null
           user_id?: string
           web_push_sent_at?: string | null

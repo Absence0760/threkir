@@ -2866,6 +2866,7 @@ class NotificationRow {
   static const String colAchievementId = 'achievement_id';
   static const String colChallengeId = 'challenge_id';
   static const String colNativePushSentAt = 'native_push_sent_at';
+  static const String colRefunded = 'refunded';
 
   final String id;
   final String userId;
@@ -2886,6 +2887,7 @@ class NotificationRow {
   final String? achievementId;
   final String? challengeId;
   final DateTime? nativePushSentAt;
+  final bool refunded;
 
   const NotificationRow({
     required this.id,
@@ -2907,6 +2909,7 @@ class NotificationRow {
     this.achievementId,
     this.challengeId,
     this.nativePushSentAt,
+    required this.refunded,
   });
 
   factory NotificationRow.fromJson(Map<String, dynamic> json) => NotificationRow(
@@ -2929,6 +2932,7 @@ class NotificationRow {
     achievementId: json['achievement_id'] as String?,
     challengeId: json['challenge_id'] as String?,
     nativePushSentAt: parseIsoStrictValue(json['native_push_sent_at']),
+    refunded: (json['refunded'] as bool?) ?? false,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -2951,6 +2955,7 @@ class NotificationRow {
     colAchievementId: achievementId,
     colChallengeId: challengeId,
     colNativePushSentAt: nativePushSentAt?.toIso8601String(),
+    colRefunded: refunded,
   };
 }
 

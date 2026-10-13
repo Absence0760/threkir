@@ -1,6 +1,6 @@
 {
  "spec": "race_finish v1",
- "reference": "docs/architecture/parity_pairs.md (Dart<->Kotlin pairs, race_finish); decisions § 1843, § 1845, § R6MOBILE-2",
+ "reference": "docs/architecture/parity_pairs.md (Dart<->Kotlin pairs, race_finish); decisions § 1843, § 1845, § 1856",
  "readers": [
   "apps/mobile_android/test/race_finish_test.dart",
   "apps/watch_wear/android/app/src/test/kotlin/com/runapp/watchwear/RaceFinishTest.kt"

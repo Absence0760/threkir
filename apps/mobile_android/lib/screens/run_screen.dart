@@ -890,7 +890,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// race or Finish race (decisions § 1843). Anything else stops outright.
   /// A Finish race is timed at this Stop, not at the later tap that chose
   /// it, and is still filed if the host ends the race while the choice is
-  /// open (decisions § R6MOBILE-3).
+  /// open (decisions § 1857).
   Future<void> _requestStop() async {
     final rc = widget.raceController;
     if (rc == null || !rc.stopNeedsRaceChoice) return _stop();

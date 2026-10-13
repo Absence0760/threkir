@@ -1,4 +1,4 @@
--- Pins migration 20270728000003 (decisions § R6SQL-4): race_sessions'
+-- Pins migration 20270728000003 (decisions § 1851): race_sessions'
 -- started_at and finished_at are the database clock for a client caller and
 -- cannot be rewritten afterwards; the service role keeps what it writes.
 --

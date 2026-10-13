@@ -2046,7 +2046,7 @@ void main() {
         (tester) async {
       // The runner crossed the line and pressed Stop; the host ended the
       // race before they answered the sheet. Their Finish is a stop that
-      // happened before the End, so it is filed (decisions § R6MOBILE-3).
+      // happened before the End, so it is filed (decisions § 1857).
       final raceSocial = _RaceResultSocial();
       final r = await pumpRacing(tester, raceSocial);
 

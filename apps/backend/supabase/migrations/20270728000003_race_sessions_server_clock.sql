@@ -1,5 +1,5 @@
 -- race_sessions.started_at and finished_at are the database's clock for every
--- client caller (decisions § R6SQL-4).
+-- client caller (decisions § 1851).
 --
 -- 20270727000001 stamped started_at = now() on the move to running, but the
 -- trigger fired only on a status change, so a race director could rewrite

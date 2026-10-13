@@ -1,5 +1,5 @@
 -- An UltraSignup identity row must carry the whole identity (decisions
--- § R6MONEY-2, following § 1841).
+-- § 1853, following § 1841).
 --
 -- integrations_ultrasignup_identity_chk (20270726000003) read
 --

@@ -875,7 +875,7 @@ void main() {
       expect(r.finisherStatus, 'dnf');
       expect(r.gunTimeS, isNull);
       expect(r.chipTimeS, isNull,
-          reason: 'a DNF has no finish, so no time to it (§ R6MOBILE-1)');
+          reason: 'a DNF has no finish, so no time to it (§ 1855)');
       expect(r.finishMethod, isNull);
       expect(r.durationS, 1700);
       expect(r.distanceM, 4400);
@@ -954,7 +954,7 @@ void main() {
         () async {
       // The run screen pauses on Stop and asks; the host's End can land
       // before the runner answers. The stop was before the End, so the
-      // Finish is filed, timed at the stop (decisions § R6MOBILE-3).
+      // Finish is filed, timed at the stop (decisions § 1857).
       final social = _FakeSocial();
       final c = _rc(social);
       await _attachRacing(c, gun);

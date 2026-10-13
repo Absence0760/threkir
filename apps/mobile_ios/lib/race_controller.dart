@@ -801,7 +801,7 @@ class RaceController extends ChangeNotifier {
   /// The runner chose "Finish race" (or stopped mid-approach): settle the
   /// outcome from what they covered, timed at [now] — the instant they
   /// pressed Stop. A host End that arrived while they were choosing does
-  /// not void it: the stop came first, so it is filed (§ R6MOBILE-3).
+  /// not void it: the stop came first, so it is filed (§ 1857).
   RaceOutcome decideStop({required double coveredM, DateTime? now}) {
     final existing = _outcome;
     if (existing != null) return existing;
@@ -908,7 +908,7 @@ class RaceController extends ChangeNotifier {
   /// The timing columns come from [raceResultTiming]: a finish carries gun
   /// and chip time and ranks on the gun time when the race had a GO
   /// (decisions § 1843); a DNF carries neither, with [durationS] — the
-  /// recording's elapsed seconds — as its `duration_s` (§ R6MOBILE-1). A
+  /// recording's elapsed seconds — as its `duration_s` (§ 1855). A
   /// race the host ended while this runner was still running submits
   /// nothing: the server has already marked them DNF.
   Future<void> submitResult({

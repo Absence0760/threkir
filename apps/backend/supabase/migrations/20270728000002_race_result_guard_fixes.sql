@@ -1,5 +1,5 @@
 -- Three corrections to the race write guards 20270727000001 added
--- (decisions § R6SQL-2, § R6SQL-3).
+-- (decisions § 1849, § 1850).
 --
 --   * The result write window closed on any race_sessions row that was not
 --     running or freshly finished. A race the host armed and then cancelled

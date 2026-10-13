@@ -1,5 +1,5 @@
 -- A course's published start and finish points are the route OWNER's
--- privacy-clipped geometry, kept current with the route (decisions § R6SQL-1).
+-- privacy-clipped geometry, kept current with the route (decisions § 1848).
 --
 -- 20270727000001 copied the raw last waypoint of the course's route onto
 -- event_courses.finish_lat / finish_lng. event_courses is readable by everyone

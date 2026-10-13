@@ -1,6 +1,6 @@
 -- Pins migration 20270729000001 (the cancel notification reaches a buyer whose
 -- payment lands after the host called the occurrence off, decisions
--- § R6MONEY-1), and the recipient edges of notify_event_cancel it re-emits:
+-- § 1852), and the recipient edges of notify_event_cancel it re-emits:
 --   * the canceller and a declined attendee are not notified;
 --   * a buyer holding two paid orders on the occurrence is notified once;
 --   * a buyer holding a paid order and no attendee row (paid in the window

@@ -74,7 +74,7 @@ internal enum class RaceHostEnd {
 /// The host's End for this runner, if [status] is one. A finish already
 /// decided is a result already owed, so End racing the service's stop never
 /// swallows it; and a Stop pressed before End arrived keeps the runner's own
-/// Finish (decisions § R6MOBILE-3).
+/// Finish (decisions § 1857).
 internal fun raceHostEnd(status: String?, decided: Boolean, stopPending: Boolean): RaceHostEnd =
     when {
         decided || (status != "finished" && status != "cancelled") -> RaceHostEnd.NONE

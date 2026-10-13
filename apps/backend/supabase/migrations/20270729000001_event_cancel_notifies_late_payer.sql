@@ -1,5 +1,5 @@
 -- A buyer whose payment completes AFTER the host called the occurrence off is
--- told their payment is being refunded (decisions § R6MONEY-1, following
+-- told their payment is being refunded (decisions § 1852, following
 -- § 1833 / § 1834).
 --
 -- What happened before this file. notify_event_cancel (20270725000002) fans
@@ -143,7 +143,7 @@ revoke execute on function public.notify_event_cancel_late_payer() from public, 
 comment on function public.notify_event_cancel_late_payer() is
   'Tell a buyer whose payment completed on an already-cancelled occurrence that '
   'it is being refunded: one refunded event_cancel row per buyer per '
-  'occurrence, on the pending -> paid transition. decisions § R6MONEY-1.';
+  'occurrence, on the pending -> paid transition. decisions § 1852.';
 
 create trigger notify_event_cancel_late_payer
   after update of status on event_orders

@@ -302,7 +302,7 @@ data class RaceRunState(
     /// and Stop means Stop again.
     val ended: Boolean = false,
     /// The End arrived after the runner pressed Stop: the paused screen still
-    /// offers Finish, filed at that Stop (decisions § R6MOBILE-3).
+    /// offers Finish, filed at that Stop (decisions § 1857).
     val finishPending: Boolean = false,
 )
 

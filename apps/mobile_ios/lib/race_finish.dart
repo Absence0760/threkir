@@ -306,7 +306,7 @@ class RaceResultTiming {
 /// gun, chip and [elapsedS] that exists. A DNF has no finish instant, so it
 /// carries neither time and `duration_s` is [elapsedS] — the recording's own
 /// elapsed seconds, the quantity its race pings carry and so the one the
-/// server writes on a host-filed DNF (decisions § R6MOBILE-1).
+/// server writes on a host-filed DNF (decisions § 1855).
 RaceResultTiming raceResultTiming({
   required RaceOutcome outcome,
   required DateTime? gunAt,

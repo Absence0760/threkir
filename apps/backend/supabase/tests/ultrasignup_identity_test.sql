@@ -1,5 +1,5 @@
 -- Pins the UltraSignup identity on `integrations` (migrations 20270726000003 +
--- 20270729000002, decisions § 1841 + § R6MONEY-2):
+-- 20270729000002, decisions § 1841 + § 1853):
 --   * a whole identity (canonical numeric id up to 12 digits, both names, each
 --     at most 60 characters) is stored and read back by its owner;
 --   * a non-numeric, 13-digit, zero, zero-padded or absent id is refused, and

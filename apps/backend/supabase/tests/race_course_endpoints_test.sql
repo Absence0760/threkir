@@ -1,4 +1,4 @@
--- Pins migration 20270728000001 (decisions § R6SQL-1) and the event_courses
+-- Pins migration 20270728000001 (decisions § 1848) and the event_courses
 -- table contract from 20270727000001.
 --
 --   1-4.   A course's start and finish are the route owner's privacy-clipped

@@ -1,4 +1,4 @@
--- Pins migration 20270728000002 (decisions § R6SQL-2, § R6SQL-3) and the parts
+-- Pins migration 20270728000002 (decisions § 1849, § 1850) and the parts
 -- of the 20270727000001 race guards race_courses_test does not reach.
 --
 --   1-2.   An armed race and a cancelled race do not close the result window.

@@ -12,9 +12,26 @@ import { assert, assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.t
 import { OCCURRENCE_CANCEL_STATUSES } from './lib.ts';
 
 const SRC = await Deno.readTextFile(new URL('./index.ts', import.meta.url));
+const REFUND = await Deno.readTextFile(new URL('./refund.ts', import.meta.url));
 const GUARD_SQL = await Deno.readTextFile(
   new URL('../../migrations/20270723000003_host_cancel_refunds.sql', import.meta.url),
 );
+
+/// Every non-test source under supabase/functions, keyed `<dir>/<file>`.
+async function functionSources(): Promise<Record<string, string>> {
+  const root = new URL('../', import.meta.url);
+  const out: Record<string, string> = {};
+  for await (const dir of Deno.readDir(root)) {
+    if (!dir.isDirectory) continue;
+    for await (const file of Deno.readDir(new URL(`${dir.name}/`, root))) {
+      if (!file.isFile || !file.name.endsWith('.ts') || file.name.endsWith('.test.ts')) continue;
+      out[`${dir.name}/${file.name}`] = await Deno.readTextFile(
+        new URL(`${dir.name}/${file.name}`, root),
+      );
+    }
+  }
+  return out;
+}
 
 /// The body of the occurrence handler, so an ordering assertion cannot be
 /// satisfied by the buyer path's code further down the file.
@@ -27,13 +44,19 @@ function occurrenceBody(): string {
 }
 
 Deno.test('the refund params come from buildRefundParams, not an inline literal', () => {
-  const call = SRC.match(/stripe\.refunds\.create\(\s*([^\n,]+)/);
-  assert(call, 'no stripe.refunds.create call found — has the refund moved?');
+  const call = REFUND.match(/createRefund\(\s*([^\n,]+),/);
+  assert(call, 'no createRefund call found in refundOrder — has the refund moved?');
   assert(
     call[1].trim() === 'buildRefundParams(paymentIntent)',
     'the refund body must be built by buildRefundParams, whose keys the ' +
       '`RefundParamsAreStripeParams` alias checks against the SDK and whose ' +
       `flags lib.test.ts pins. Got: ${call[1]}`,
+  );
+  // The SDK transport passes the params through untouched; a literal spread or
+  // an extra key there would bypass the builder as surely as an inline object.
+  assert(
+    /stripe\.refunds\.create\(params, \{ idempotencyKey \}\)/.test(SRC),
+    'sdkRefundCreator must hand the params and the key to Stripe unchanged',
   );
 });
 
@@ -54,7 +77,7 @@ Deno.test('the refund stamp is guarded on the status read, not a hardcoded paid'
   // A refundable order may be `partially_refunded`. Matching only 'paid'
   // updates zero rows and reports no error, so the stamp silently never lands
   // and the "refund in progress" badge never shows.
-  const stamps = SRC.match(/refund_initiated_at:[^}]*\}\)[\s\S]{0,200}?\.eq\('status', ([^)]+)\)/g);
+  const stamps = REFUND.match(/refund_initiated_at:[^}]*\}\)[\s\S]{0,200}?\.eq\('status', ([^)]+)\)/g);
   assert(stamps && stamps.length === 2, `expected the stamp + its rollback, got ${stamps?.length}`);
   for (const stamp of stamps) {
     assert(
@@ -64,24 +87,46 @@ Deno.test('the refund stamp is guarded on the status read, not a hardcoded paid'
   }
 });
 
-Deno.test('both cancel scopes refund through ONE call site', () => {
-  // A second `stripe.refunds.create` is a second place for the params and the
-  // key to drift; the host path reaching Stripe by its own route is exactly how
-  // § 769 shipped.
-  const calls = SRC.match(/stripe\.refunds\.create\(/g) ?? [];
-  assertEquals(calls.length, 1, 'expected exactly one refunds.create, inside refundOrder');
-  const helper = SRC.indexOf('async function refundOrder(');
-  const call = SRC.indexOf('stripe.refunds.create(');
-  const next = SRC.indexOf('\nasync function ', helper + 1);
-  assert(helper >= 0 && call > helper && call < next, 'refunds.create must live inside refundOrder');
-  // And both paths reach it.
-  assert(/results\.push\(await refundOrder\(stripe, service, order\)\)/.test(occurrenceBody()));
-  assert(/const result = await refundOrder\(stripe, service, order\)/.test(SRC));
+Deno.test('every refund in the tier goes through ONE refundOrder', async () => {
+  // A second place that builds the params or the key is a second place for
+  // them to drift; the host path reaching Stripe by its own route is exactly
+  // how § 769 shipped. Two transports exist on purpose (the webhook cannot
+  // bundle the SDK, decisions § 1833), and each one only forwards what
+  // refundOrder built.
+  const files = await functionSources();
+  const count = (re: RegExp) =>
+    Object.entries(files).flatMap(([path, src]) => (src.match(re) ?? []).map(() => path));
+  assertEquals(count(/stripe\.refunds\.create\(/g), ['events-cancel/index.ts']);
+  assertEquals(count(/api\.stripe\.com\/v1\/refunds/g), ['events-cancel/refund.ts']);
+  assertEquals(count(/buildRefundParams\(paymentIntent\)/g), ['events-cancel/refund.ts']);
+  const helper = REFUND.indexOf('export async function refundOrder(');
+  const call = REFUND.indexOf('createRefund(buildRefundParams(');
+  const next = REFUND.indexOf('\nexport ', helper + 1);
+  assert(helper >= 0 && call > helper && call < next, 'the refund must be created inside refundOrder');
+  // Both cancel paths reach it, and so does the webhook's cancelled-occurrence arm.
+  assert(/results\.push\(await refundOrder\(createRefund, service, order\)\)/.test(occurrenceBody()));
+  assert(/const result = await refundOrder\(sdkRefundCreator\(stripe\), service, order\)/.test(SRC));
+  assert(
+    /refundOrder\(stripeRestRefundCreator\(stripeSecretKey\), service, order\)/
+      .test(files['stripe-events-webhook/index.ts']),
+    'the webhook no longer refunds a cancelled occurrence through refundOrder',
+  );
 });
 
-Deno.test('the refund idempotency key is the shared per-order key, nothing hand-built', () => {
-  const keys = [...SRC.matchAll(/idempotencyKey:\s*([^}\n]+)/g)].map((m) => m[1].trim());
-  assertEquals(keys, ['refundIdempotencyKey(order.id)']);
+Deno.test('the refund idempotency key is the shared per-order key, nothing hand-built', async () => {
+  const call = REFUND.match(/createRefund\(buildRefundParams\(paymentIntent\), ([^)]+\))\)/);
+  assert(call, 'refundOrder no longer passes a key beside the params');
+  assertEquals(call[1], 'refundIdempotencyKey(order.id)');
+  // No transport may mint a key of its own.
+  assertEquals([...SRC.matchAll(/idempotencyKey:\s*([^}\n]+)/g)].map((m) => m[1].trim()), []);
+  assert(
+    /'Idempotency-Key': idempotencyKey,/.test(REFUND),
+    'the REST transport must send the key it was given',
+  );
+  const minted = Object.entries(await functionSources())
+    .filter(([path, src]) => path !== 'events-cancel/lib.ts' && src.includes('event-order-refund:'))
+    .map(([path]) => path);
+  assertEquals(minted, [], 'only refundIdempotencyKey may spell the key');
 });
 
 Deno.test('occurrence cancel: authority, then the Stripe gate, then the cancel, then the refunds', () => {

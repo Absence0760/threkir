@@ -5,7 +5,7 @@
 ///
 /// Keep this file dependency-free — no `Deno.env`, no `createClient`,
 /// no `fetch`, no Stripe import. The Stripe refund + DB writes live in
-/// index.ts; this file only decides.
+/// refund.ts and index.ts; this file only decides.
 ///
 /// The refund-eligibility rule mirrors the web pure helper
 /// (apps/web/src/lib/social/paid_registration.ts resolveRefundEligibility)

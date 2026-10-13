@@ -4,7 +4,9 @@
 /// Handles nine event types; everything else is 200-ignored:
 ///   checkout.session.completed -> only once `payment_status` says the money
 ///     arrived: CAS pending->paid, confirm-time capacity recheck, seat the
-///     'going' attendee with order_id. If the class filled via another path,
+///     'going' attendee with order_id. If the host cancelled the occurrence
+///     while the buyer was paying, seat nothing and refund through the shared
+///     `refundOrder` (events-cancel/refund.ts). If the class filled via another path,
 ///     the order is left paid + logged + flagged for MANUAL refund (P1 has no
 ///     automated refund).
 ///   checkout.session.async_payment_succeeded -> the same path, for the
@@ -74,6 +76,11 @@ import {
   verifyStripeSignature,
 } from './lib.ts';
 import { secretKey } from '../_shared/api_keys.ts';
+import {
+  type RefundableOrder,
+  refundOrder,
+  stripeRestRefundCreator,
+} from '../events-cancel/refund.ts';
 
 const WEBHOOK_PROVIDER = 'stripe';
 
@@ -799,6 +806,21 @@ async function handleCompleted(
     return Response.json({ ok: true, skipped: 'no_transition' });
   }
 
+  // A host can call the occurrence off while this buyer is still on Stripe's
+  // page: the cancel closes checkout and expires every session it can see, but
+  // a payment already in flight completes anyway. Read it before any write so
+  // a failed read retries cleanly.
+  const { data: cancelled, error: cancelledErr } = await service
+    .from('event_exceptions')
+    .select('event_id')
+    .eq('event_id', order.event_id)
+    .eq('instance_start', order.instance_start)
+    .maybeSingle();
+  if (cancelledErr) {
+    console.error('occurrence cancel read failed (code):', cancelledErr?.code ?? 'unknown');
+    return Response.json({ ok: false, error: 'occurrence_read_failed' }, { status: 500 });
+  }
+
   const paymentIntent = session.paymentIntentId;
 
   // Mark the order paid (compound match on status='pending' makes the
@@ -812,7 +834,7 @@ async function handleCompleted(
     })
     .eq('id', order.id)
     .eq('status', 'pending')
-    .select('id')
+    .select('id, status')
     .maybeSingle();
   if (updErr) {
     console.error('order paid update failed (code):', updErr?.code ?? 'unknown');
@@ -821,6 +843,18 @@ async function handleCompleted(
   if (!updated) {
     // Lost the CAS race to a concurrent delivery — that one seated it.
     return Response.json({ ok: true, skipped: 'cas_lost' });
+  }
+
+  // The class is not happening: never seat, and give the money back the way
+  // the host's own cancel would have (decisions § 1833). The order is `paid`
+  // first because that is the truth — the money arrived — and because the
+  // `charge.refunded` this refund produces transitions out of `paid`.
+  if (cancelled) {
+    return await refundCancelledOccurrenceOrder(service, {
+      id: updated.id,
+      status: updated.status,
+      stripe_payment_intent_id: paymentIntent,
+    });
   }
 
   // Confirm-time capacity recheck against the event's hard cap.
@@ -898,6 +932,53 @@ async function handleCompleted(
   }
 
   return Response.json({ ok: true, seated: true, order_id: order.id });
+}
+
+/// Refund a paid order on a cancelled occurrence through the same
+/// `refundOrder` as `events-cancel`, over the SDK-free transport. Always a 200:
+/// the order is already `paid`, so a Stripe retry would find no transition and
+/// do nothing. An order this cannot refund stays `paid` with no
+/// `refund_initiated_at` on a cancelled occurrence, which is exactly what the
+/// event page lists as owed with a **Refund now** — that is the backstop, and
+/// the response and the log name the order for it.
+async function refundCancelledOccurrenceOrder(
+  service: DbClient,
+  order: RefundableOrder,
+): Promise<Response> {
+  const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY') || null;
+  if (!stripeSecretKey) {
+    console.error(
+      'CANCELLED OCCURRENCE: paid order seats no slot and Stripe is unset; refund owed. order:',
+      order.id,
+    );
+    return Response.json({
+      ok: true,
+      occurrence_cancelled: true,
+      refund: 'owed',
+      order_id: order.id,
+    });
+  }
+  const result = await refundOrder(stripeRestRefundCreator(stripeSecretKey), service, order);
+  if (result.outcome === 'failed') {
+    console.error(
+      'CANCELLED OCCURRENCE: paid order seats no slot and the refund failed; refund owed. code:',
+      result.code ?? 'unknown',
+      'order:',
+      order.id,
+    );
+    return Response.json({
+      ok: true,
+      occurrence_cancelled: true,
+      refund: 'owed',
+      order_id: order.id,
+    });
+  }
+  return Response.json({
+    ok: true,
+    occurrence_cancelled: true,
+    refund: result.outcome,
+    order_id: order.id,
+  });
 }
 
 async function handleNotPaid(

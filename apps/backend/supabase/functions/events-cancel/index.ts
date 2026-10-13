@@ -33,7 +33,8 @@
 ///     window) -> 409 policy_no_refund; the buyer keeps the seat (we never
 ///     free a seat without refunding the money).
 ///
-/// Every refund, from both scopes, goes through `refundOrder` and is keyed
+/// Every refund, from both scopes, goes through `refundOrder` (refund.ts, which
+/// the webhook shares) and is keyed
 /// `refundIdempotencyKey(order.id)`: a retried or doubled cancel, or a buyer
 /// cancel followed by the host's, replays one refund instead of making two.
 ///
@@ -64,16 +65,15 @@ import {
   buildRefundParams,
   cancelAction,
   hostCancelAction,
-  isAlreadyRefundedError,
   normalizeCancelReason,
   OCCURRENCE_CANCEL_STATUSES,
   type OrderRefundResult,
   parseCancelScope,
-  refundIdempotencyKey,
   resolveRefundEligibility,
   type RefundPolicy,
   summarizeOccurrenceRefunds,
 } from './lib.ts';
+import { type CreateRefund, refundOrder } from './refund.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
 
 /// Every key of the hand-shaped params must be one Stripe declares. This is
@@ -93,12 +93,6 @@ interface CancelBody {
   instance_start?: string;
   scope?: unknown;
   reason?: unknown;
-}
-
-interface RefundableOrder {
-  id: string;
-  status: string;
-  stripe_payment_intent_id: string | null;
 }
 
 Deno.serve(withSentry('events-cancel', async (req: Request) => {
@@ -238,7 +232,7 @@ Deno.serve(withSentry('events-cancel', async (req: Request) => {
     return Response.json({ ok: true, action: 'noop' });
   }
 
-  const result = await refundOrder(stripe, service, order);
+  const result = await refundOrder(sdkRefundCreator(stripe), service, order);
   if (result.outcome === 'failed') {
     return result.code === 'stripe_refund_failed'
       ? Response.json({ error: 'stripe_refund_failed' }, { status: 502 })
@@ -323,6 +317,7 @@ async function cancelOccurrence(args: {
   const results: OrderRefundResult[] = [];
   if (planned.length > 0) {
     const stripe = newStripe(stripeSecretKey!);
+    const createRefund = sdkRefundCreator(stripe);
     // Sequential on purpose: a class is tens of orders, and one at a time keeps
     // a Stripe rate-limit from turning into a burst of half-recorded failures.
     for (const { order, action } of planned) {
@@ -331,7 +326,7 @@ async function cancelOccurrence(args: {
         results.push({ orderId: order.id, outcome: 'released' });
         continue;
       }
-      results.push(await refundOrder(stripe, service, order));
+      results.push(await refundOrder(createRefund, service, order));
     }
   }
 
@@ -346,71 +341,11 @@ async function cancelOccurrence(args: {
   });
 }
 
-/// Refund one charged order through the one shape and the one key. Returns the
-/// outcome instead of a Response so the occurrence cancel can fold many of
-/// them; the buyer path maps it to its own status codes.
-///
-/// The `refund_initiated_at` stamp is written only when absent and rolled back
-/// only when it is still the one this call wrote, so a failed retry cannot wipe
-/// the "refund in progress" mark an earlier, successful refund left behind.
-/// Both writes are guarded on the status we READ, not a hardcoded 'paid': a
-/// refundable order may be 'partially_refunded', and matching only 'paid'
-/// silently stamped nothing while reporting success.
-async function refundOrder(
-  stripe: Stripe,
-  service: DbClient,
-  order: RefundableOrder,
-): Promise<OrderRefundResult> {
-  const paymentIntent = order.stripe_payment_intent_id;
-  if (!paymentIntent) {
-    console.error('charged order missing payment_intent; cannot refund. order:', order.id);
-    return { orderId: order.id, outcome: 'failed', code: 'missing_payment_intent' };
-  }
-
-  // NOT a status write — status stays where it is until the webhook confirms
-  // (sole-writer invariant).
-  const orderStatus = order.status;
-  const stampedAt = new Date().toISOString();
-  const { error: stampErr } = await service
-    .from('event_orders')
-    .update({ refund_initiated_at: stampedAt })
-    .eq('id', order.id)
-    .eq('status', orderStatus)
-    .is('refund_initiated_at', null);
-  if (stampErr) {
-    console.error('refund stamp failed (code):', stampErr?.code ?? 'unknown', 'order:', order.id);
-    return { orderId: order.id, outcome: 'failed', code: 'stamp_failed' };
-  }
-
-  try {
-    await stripe.refunds.create(
-      buildRefundParams(paymentIntent),
-      { idempotencyKey: refundIdempotencyKey(order.id) },
-    );
-  } catch (e) {
-    if (isAlreadyRefundedError(e)) {
-      // The money is already on its way back; charge.refunded reconciles the
-      // order. Keep the stamp — "refund in progress" is the truth.
-      return { orderId: order.id, outcome: 'already_refunded' };
-    }
-    // Clear our optimistic stamp so the UI doesn't show "refund in progress"
-    // forever, and report the failure (the order is untouched — status stays
-    // charged, the seat is held, and a retry resumes here).
-    await service
-      .from('event_orders')
-      .update({ refund_initiated_at: null })
-      .eq('id', order.id)
-      .eq('status', orderStatus)
-      .eq('refund_initiated_at', stampedAt);
-    console.error(
-      'stripe refund create failed:',
-      e instanceof Error ? e.message : 'unknown',
-      'order:',
-      order.id,
-    );
-    return { orderId: order.id, outcome: 'failed', code: 'stripe_refund_failed' };
-  }
-  return { orderId: order.id, outcome: 'initiated' };
+/// The SDK transport for `refundOrder`. This is the tier's one
+/// `stripe.refunds.create`; the webhook reaches the same endpoint with the same
+/// params and key through `stripeRestRefundCreator` (refund.ts).
+function sdkRefundCreator(stripe: Stripe): CreateRefund {
+  return (params, idempotencyKey) => stripe.refunds.create(params, { idempotencyKey });
 }
 
 /// Expire a pending order's Checkout Session; the resulting

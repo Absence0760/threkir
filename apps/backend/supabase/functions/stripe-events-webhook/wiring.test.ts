@@ -487,3 +487,74 @@ Deno.test('the refund branch records which API era the endpoint is pinned to', (
     'parseStripeEventEnvelope no longer carries api_version',
   );
 });
+
+// ── a checkout that completes on a cancelled occurrence (§ 1833) ─────────────
+
+const REFUND = await Deno.readTextFile(new URL('../events-cancel/refund.ts', import.meta.url));
+
+function completedHandler(): string {
+  const start = SRC.indexOf('async function handleCompleted(');
+  assert(start !== -1, 'handleCompleted is gone — has the confirm arm moved?');
+  const end = SRC.indexOf('\n}\n', start);
+  assert(end > start, 'could not find the end of handleCompleted');
+  return SRC.slice(start, end);
+}
+
+Deno.test('a cancelled occurrence is read before the order is marked paid, and fails loudly', () => {
+  const src = completedHandler();
+  const read = src.indexOf(".from('event_exceptions')");
+  const cas = src.indexOf(".from('event_orders')\n    .update(");
+  assert(read !== -1, 'handleCompleted no longer asks whether the occurrence was called off');
+  assert(cas !== -1, 'the pending->paid CAS is gone');
+  assert(read < cas, 'the cancel read must precede every write, so a failed read retries cleanly');
+  const readStmt = src.slice(read, src.indexOf('.maybeSingle()', read));
+  // Same predicate as events-checkout's cancelled-occurrence guard, keyed on
+  // the order row rather than on the session's metadata.
+  assert(readStmt.includes(".eq('event_id', order.event_id)"));
+  assert(readStmt.includes(".eq('instance_start', order.instance_start)"));
+  assert(
+    /error: cancelledErr[\s\S]*if \(cancelledErr\)[\s\S]*status: 500/.test(src),
+    'a failed cancel read must 500 so the dedupe row is released and Stripe retries',
+  );
+});
+
+Deno.test('a cancelled occurrence never seats, and refunds through the shared refundOrder', () => {
+  const src = completedHandler();
+  const branch = src.indexOf('if (cancelled) {');
+  const capacity = src.indexOf(".from('events')");
+  const seat = src.indexOf(".from('event_attendees')");
+  const cas = src.indexOf(".eq('status', 'pending')");
+  assert(branch !== -1, 'handleCompleted has no cancelled-occurrence branch');
+  assert(cas < branch, 'the order is marked paid first — charge.refunded transitions out of paid');
+  assert(branch < capacity && branch < seat, 'the cancelled branch must return before any seat logic');
+  const body = src.slice(branch, src.indexOf('\n  }\n', branch));
+  assert(body.includes('return await refundCancelledOccurrenceOrder('), 'the branch must return the refund');
+  assert(body.includes('status: updated.status'), 'the stamp must be guarded on the status the CAS wrote');
+  assert(
+    SRC.includes('refundOrder(stripeRestRefundCreator(stripeSecretKey), service, order)'),
+    'the cancelled-occurrence refund must go through refundOrder, not a call of its own',
+  );
+  // The webhook builds no refund itself: no params, no key, no endpoint.
+  for (const own of ['buildRefundParams(', 'refundIdempotencyKey(', 'idempotencyKey', 'api.stripe.com']) {
+    assert(!SRC.includes(own), `the webhook builds its own refund (${own}); go through refundOrder`);
+  }
+});
+
+Deno.test('a refund the webhook could not make is still a 200, and names the order', () => {
+  // The order is already paid, so a Stripe retry would find no transition and
+  // do nothing; the owed order is what the event page's Refund now lists.
+  const start = SRC.indexOf('async function refundCancelledOccurrenceOrder(');
+  assert(start !== -1, 'refundCancelledOccurrenceOrder is gone');
+  const src = SRC.slice(start, SRC.indexOf('\n}\n', start));
+  assert(!src.includes('status: 500'), 'a retry cannot help here; answer 200 and log the owed order');
+  assertEquals([...src.matchAll(/refund: 'owed'/g)].length, 2, 'unset Stripe and a failed refund both report owed');
+  assertEquals([...src.matchAll(/console\.error\(/g)].length, 2, 'both owed arms must log the order id');
+});
+
+Deno.test('the shared refund module stays SDK-free, because the webhook bundles it', () => {
+  assert(
+    !/^import(?! type)[^\n]*_shared\/stripe\.ts';$/m.test(REFUND),
+    'events-cancel/refund.ts value-imports the Stripe SDK, which now lands in the webhook eszip',
+  );
+  assert(!/esm\.sh\/stripe@/.test(REFUND), 'events-cancel/refund.ts imports Stripe from a URL');
+});

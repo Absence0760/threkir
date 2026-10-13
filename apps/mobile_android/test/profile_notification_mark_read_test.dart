@@ -144,6 +144,43 @@ void main() {
     expect(view.markedRead(DateTime.utc(2026, 10, 14)).row.readAt, first);
   });
 
+  testWidgets('a single tap marks one row read and keeps its columns', (
+    tester,
+  ) async {
+    // The tap path is `_markNotifRead`, the per-row half of the rebuild
+    // § 1836 fixed; an event reminder has no route, so the inbox stays put
+    // and the read row is what is left to read.
+    final reminder = NotificationView(
+      row: _fullRow().copyWith(kind: 'event_reminder'),
+      eventTitle: 'Hill reps',
+      eventClubSlug: 'hill-club',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: ProfileScreen(
+          api: _NotifApi([reminder]),
+          userId: 'me',
+          initialTab: ProfileTab.notifications,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    final titled = l10n.profileNotifEventReminderTitled('Hill reps');
+    expect(find.text(titled), findsOneWidget);
+
+    await tester.tap(find.text(titled));
+    await tester.pump();
+    await tester.pump();
+    tester.takeException();
+
+    expect(find.text(titled), findsOneWidget);
+    expect(find.text(l10n.profileNotifEventReminder), findsNothing);
+  });
+
   testWidgets('marking all read keeps a club post named and linked', (
     tester,
   ) async {

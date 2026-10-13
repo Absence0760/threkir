@@ -12,6 +12,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/notification_groups.dart';
+import '../lib/screens/event_detail_screen.dart';
 import '../lib/screens/profile_screen.dart';
 
 NotificationRow _slot({String id = 'n1', String eventId = 'e1'}) =>
@@ -125,6 +126,49 @@ void main() {
     await _pump(tester, _NotifApi([NotificationView(row: _slot())]));
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
     expect(find.text(l10n.profileNotifWaitlistSlot), findsOneWidget);
+  });
+
+  testWidgets('tapping a held seat opens the event it is held on', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _NotifApi([
+        NotificationView(
+          row: _slot(eventId: 'e-reformer'),
+          eventTitle: 'Reformer',
+          eventClubSlug: 'studio',
+        ),
+      ]),
+    );
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    await tester.tap(find.text(l10n.profileNotifWaitlistSlotTitled('Reformer')));
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    tester.takeException();
+
+    final screen = tester.widget<EventDetailScreen>(
+      find.byType(EventDetailScreen),
+    );
+    expect(screen.eventId, 'e-reformer');
+    expect(screen.clubSlug, 'studio');
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(milliseconds: 100));
+    tester.takeException();
+  });
+
+  testWidgets('a held seat with no club to address stays on the inbox', (
+    tester,
+  ) async {
+    await _pump(tester, _NotifApi([NotificationView(row: _slot())]));
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    await tester.tap(find.text(l10n.profileNotifWaitlistSlot));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    tester.takeException();
+    expect(find.byType(EventDetailScreen), findsNothing);
   });
 
   test('offers on the same event group together, different events apart', () {

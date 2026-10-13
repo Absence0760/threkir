@@ -1882,7 +1882,7 @@ export const messages = {
 	"clubEvent.runningElapsed": "— transcurrido {time}",
 	"clubEvent.endRace": "Finalizar carrera",
 	"clubEvent.raceArmedLabel": "Carrera preparada",
-	"clubEvent.raceArmedHint": "— el organizador empezará pronto. Tu reloj o teléfono comenzará a grabar automáticamente.",
+	"clubEvent.raceArmedHint": "— el organizador empezará pronto. Inicia la grabación en tu teléfono o reloj y se unirá a la carrera en la salida; nada se graba solo.",
 	"clubEvent.raceRunningLabel": "Carrera en curso",
 	"clubEvent.raceRunningHint": "— {time} transcurrido. ¡Sigue!",
 	"clubEvent.resultsTitle": "Resultados ({n})",

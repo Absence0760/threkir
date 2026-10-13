@@ -1895,7 +1895,7 @@ export const en = {
 	"clubEvent.runningElapsed": "— elapsed {time}",
 	"clubEvent.endRace": "End race",
 	"clubEvent.raceArmedLabel": "Race armed",
-	"clubEvent.raceArmedHint": "— the organiser will start shortly. Your watch / phone will begin recording automatically.",
+	"clubEvent.raceArmedHint": "— the organiser will start shortly. Start recording on your phone or watch and it joins the race at GO; nothing records on its own.",
 	"clubEvent.raceRunningLabel": "Race running",
 	"clubEvent.raceRunningHint": "— {time} elapsed. Keep moving!",
 	"clubEvent.resultsTitle": "Results ({n})",

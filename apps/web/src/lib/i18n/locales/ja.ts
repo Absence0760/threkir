@@ -1877,7 +1877,7 @@ export const messages = {
 	"clubEvent.runningElapsed": "— 経過 {time}",
 	"clubEvent.endRace": "レースを終了",
 	"clubEvent.raceArmedLabel": "レース準備完了",
-	"clubEvent.raceArmedHint": "— まもなく主催者が開始します。時計やスマホが自動的に記録を始めます。",
+	"clubEvent.raceArmedHint": "— まもなく主催者が開始します。スマホや時計で記録を開始すると、スタートの合図でレースに参加します。自動では記録されません。",
 	"clubEvent.raceRunningLabel": "レース進行中",
 	"clubEvent.raceRunningHint": "— 経過 {time}。動き続けて!",
 	"clubEvent.resultsTitle": "結果 ({n})",

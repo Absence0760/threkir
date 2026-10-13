@@ -2236,7 +2236,7 @@ export const messages = {
 	"coachingAccept.errorKicker": "Hmm",
 	"coachingAccept.errorHeading": "Problema com o convite",
 	"coachingAccept.errorBody": "Este link de convite pode ter sido revogado, já usado, ou você já pode estar vinculado a este treinador. Peça para ele compartilhar um novo.",
-	"coachingAccept.goToCoaching": "Ir para Treinamento",
+	"coachingAccept.goToCoaching": "Ir para Atletas e treinadores",
 	"coachingAccept.goToDashboard": "Ir para o painel",
 	"coachingAthlete.athleteFallback": "Atleta",
 	"coachingAthlete.notOnRosterTitle": "Não está no seu elenco",

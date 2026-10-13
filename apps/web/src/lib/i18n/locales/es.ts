@@ -2237,7 +2237,7 @@ export const messages = {
 	"coachingAccept.errorKicker": "Vaya",
 	"coachingAccept.errorHeading": "Problema con la invitación",
 	"coachingAccept.errorBody": "Es posible que este enlace de invitación se haya revocado, ya se haya usado o que ya estés vinculado a este entrenador. Pídele que comparta uno nuevo.",
-	"coachingAccept.goToCoaching": "Ir a Entrenamiento",
+	"coachingAccept.goToCoaching": "Ir a Atletas y entrenadores",
 	"coachingAccept.goToDashboard": "Ir al panel",
 	"coachingAthlete.athleteFallback": "Atleta",
 	"coachingAthlete.notOnRosterTitle": "No está en tu plantel",

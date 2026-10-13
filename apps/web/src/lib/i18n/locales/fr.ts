@@ -2237,7 +2237,7 @@ export const messages = {
 	"coachingAccept.errorKicker": "Hmm",
 	"coachingAccept.errorHeading": "Problème d'invitation",
 	"coachingAccept.errorBody": "Ce lien d'invitation a peut-être été révoqué, déjà utilisé, ou tu es peut-être déjà lié à ce coach. Demande-lui d'en partager un nouveau.",
-	"coachingAccept.goToCoaching": "Aller au coaching",
+	"coachingAccept.goToCoaching": "Aller à Athlètes et coachs",
 	"coachingAccept.goToDashboard": "Aller au tableau de bord",
 	"coachingAthlete.athleteFallback": "Athlète",
 	"coachingAthlete.notOnRosterTitle": "Pas dans ton effectif",

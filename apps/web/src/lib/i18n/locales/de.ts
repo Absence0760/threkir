@@ -2237,7 +2237,7 @@ export const messages = {
 	"coachingAccept.errorKicker": "Hmm",
 	"coachingAccept.errorHeading": "Problem mit der Einladung",
 	"coachingAccept.errorBody": "Dieser Einladungslink wurde möglicherweise widerrufen, bereits eingelöst, oder du bist schon mit diesem Coach verknüpft. Bitte ihn um einen neuen Link.",
-	"coachingAccept.goToCoaching": "Zum Coaching",
+	"coachingAccept.goToCoaching": "Zu Athleten & Trainer",
 	"coachingAccept.goToDashboard": "Zum Dashboard",
 	"coachingAthlete.athleteFallback": "Athlet",
 	"coachingAthlete.notOnRosterTitle": "Nicht in deinem Kader",

@@ -2250,7 +2250,7 @@ export const en = {
 	"coachingAccept.errorKicker": "Hmm",
 	"coachingAccept.errorHeading": "Invite problem",
 	"coachingAccept.errorBody": "This invite link may have been revoked, already redeemed, or you may already be linked to this coach. Ask them to share a fresh one.",
-	"coachingAccept.goToCoaching": "Go to coaching",
+	"coachingAccept.goToCoaching": "Go to Athletes & coaches",
 	"coachingAccept.goToDashboard": "Go to dashboard",
 	"coachingAthlete.athleteFallback": "Athlete",
 	"coachingAthlete.notOnRosterTitle": "Not on your roster",

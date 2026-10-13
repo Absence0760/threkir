@@ -2232,7 +2232,7 @@ export const messages = {
 	"coachingAccept.errorKicker": "うーん",
 	"coachingAccept.errorHeading": "招待に問題があります",
 	"coachingAccept.errorBody": "この招待リンクは取り消されたか、すでに使用されたか、またはすでにこのコーチとリンクされている可能性があります。新しいリンクを共有してもらってください。",
-	"coachingAccept.goToCoaching": "コーチングへ",
+	"coachingAccept.goToCoaching": "アスリートとコーチへ",
 	"coachingAccept.goToDashboard": "ダッシュボードへ",
 	"coachingAthlete.athleteFallback": "アスリート",
 	"coachingAthlete.notOnRosterTitle": "あなたのロスターにいません",

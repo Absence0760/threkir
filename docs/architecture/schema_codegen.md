@@ -89,8 +89,11 @@ class RunRow {
   const RunRow({ required this.id, required this.userId, /*...*/ });
   factory RunRow.fromJson(Map<String, dynamic> json) => /*...*/;
   Map<String, dynamic> toJson() => /*...*/;
+  RunRow copyWith({ String? id, String? userId, /*...*/ }) => /*...*/;
 }
 ```
+
+Derive a changed row with `copyWith`, never by calling the constructor field by field: a hand-written rebuild silently drops every column added after it was written. A null argument means "keep the current value", so `copyWith` cannot clear a nullable column — see [decisions § 1836](decisions.md).
 
 Every `double` column reads through the `_toDoubleOrNull` / `_toDouble` helpers the generator emits at the top of the file, never through a bare `as num` cast: Postgres renders a `numeric` value JSON has no literal for as a JSON *string* (`{"distance_m":"NaN"}`), which a cast can only throw on. An unusable value resolves to `null` for a nullable column and `double.nan` for a non-nullable one — see [decisions § 985](decisions.md). Integer columns keep the cast; no integer Postgres type has a value `to_json` quotes.
 

@@ -593,6 +593,24 @@ void _emitClass(
     out.writeln('    col${_pascal(c.name)}: ${_toJsonExpr(c, enums)},');
   }
   out.writeln('  };');
+  out.writeln();
+
+  // copyWith — the only way a client should derive a changed row. A
+  // hand-written `XRow(...)` rebuild silently drops every column added after
+  // it was written (decisions § 1836). An argument left null keeps the
+  // current value, so this cannot clear a nullable column back to null.
+  out.writeln('  $className copyWith({');
+  for (final c in cols.values) {
+    final dartType = _dartType(c, enums);
+    final nullable = dartType != 'dynamic' ? '?' : '';
+    out.writeln('    $dartType$nullable ${_camel(c.name)},');
+  }
+  out.writeln('  }) => $className(');
+  for (final c in cols.values) {
+    final f = _camel(c.name);
+    out.writeln('    $f: $f ?? this.$f,');
+  }
+  out.writeln('  );');
 
   out.writeln('}');
 }

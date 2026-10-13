@@ -77,6 +77,28 @@ class AchievementRow {
     colEarnedAt: earnedAt.toIso8601String(),
     colIsPublic: isPublic,
   };
+
+  AchievementRow copyWith({
+    String? id,
+    String? userId,
+    String? badgeKey,
+    String? tier,
+    String? sourceKind,
+    String? sourceId,
+    double? valueNum,
+    DateTime? earnedAt,
+    bool? isPublic,
+  }) => AchievementRow(
+    id: id ?? this.id,
+    userId: userId ?? this.userId,
+    badgeKey: badgeKey ?? this.badgeKey,
+    tier: tier ?? this.tier,
+    sourceKind: sourceKind ?? this.sourceKind,
+    sourceId: sourceId ?? this.sourceId,
+    valueNum: valueNum ?? this.valueNum,
+    earnedAt: earnedAt ?? this.earnedAt,
+    isPublic: isPublic ?? this.isPublic,
+  );
 }
 
 /// Row shape for the `body_metrics` table. Mirrors the Supabase schema
@@ -118,6 +140,20 @@ class BodyMetricRow {
     colWeightKg: weightKg,
     colCreatedAt: createdAt.toIso8601String(),
   };
+
+  BodyMetricRow copyWith({
+    String? id,
+    String? userId,
+    DateTime? recordedAt,
+    double? weightKg,
+    DateTime? createdAt,
+  }) => BodyMetricRow(
+    id: id ?? this.id,
+    userId: userId ?? this.userId,
+    recordedAt: recordedAt ?? this.recordedAt,
+    weightKg: weightKg ?? this.weightKg,
+    createdAt: createdAt ?? this.createdAt,
+  );
 }
 
 /// Row shape for the `challenge_badges` table. Mirrors the Supabase schema
@@ -164,6 +200,22 @@ class ChallengeBadgeRow {
     colFinalValue: finalValue,
     colAwardedAt: awardedAt.toIso8601String(),
   };
+
+  ChallengeBadgeRow copyWith({
+    String? id,
+    String? userId,
+    String? challengeId,
+    String? metric,
+    double? finalValue,
+    DateTime? awardedAt,
+  }) => ChallengeBadgeRow(
+    id: id ?? this.id,
+    userId: userId ?? this.userId,
+    challengeId: challengeId ?? this.challengeId,
+    metric: metric ?? this.metric,
+    finalValue: finalValue ?? this.finalValue,
+    awardedAt: awardedAt ?? this.awardedAt,
+  );
 }
 
 /// Row shape for the `challenge_participants` table. Mirrors the Supabase schema
@@ -205,6 +257,20 @@ class ChallengeParticipantRow {
     colJoinedAt: joinedAt.toIso8601String(),
     colCompletedAt: completedAt?.toIso8601String(),
   };
+
+  ChallengeParticipantRow copyWith({
+    String? challengeId,
+    String? userId,
+    String? teamClubId,
+    DateTime? joinedAt,
+    DateTime? completedAt,
+  }) => ChallengeParticipantRow(
+    challengeId: challengeId ?? this.challengeId,
+    userId: userId ?? this.userId,
+    teamClubId: teamClubId ?? this.teamClubId,
+    joinedAt: joinedAt ?? this.joinedAt,
+    completedAt: completedAt ?? this.completedAt,
+  );
 }
 
 /// Row shape for the `challenges` table. Mirrors the Supabase schema
@@ -291,6 +357,38 @@ class ChallengeRow {
     colCreatedAt: createdAt.toIso8601String(),
     colParticipantCount: participantCount,
   };
+
+  ChallengeRow copyWith({
+    String? id,
+    String? creatorId,
+    String? clubId,
+    String? title,
+    String? description,
+    String? metric,
+    String? scope,
+    double? goalValue,
+    String? activityType,
+    DateTime? startsAt,
+    DateTime? endsAt,
+    bool? isPublic,
+    DateTime? createdAt,
+    int? participantCount,
+  }) => ChallengeRow(
+    id: id ?? this.id,
+    creatorId: creatorId ?? this.creatorId,
+    clubId: clubId ?? this.clubId,
+    title: title ?? this.title,
+    description: description ?? this.description,
+    metric: metric ?? this.metric,
+    scope: scope ?? this.scope,
+    goalValue: goalValue ?? this.goalValue,
+    activityType: activityType ?? this.activityType,
+    startsAt: startsAt ?? this.startsAt,
+    endsAt: endsAt ?? this.endsAt,
+    isPublic: isPublic ?? this.isPublic,
+    createdAt: createdAt ?? this.createdAt,
+    participantCount: participantCount ?? this.participantCount,
+  );
 }
 
 /// Row shape for the `checkpoint_crossings` table. Mirrors the Supabase schema
@@ -382,6 +480,40 @@ class CheckpointCrossingRow {
     colRecordedAt: recordedAt.toIso8601String(),
     colUpdatedAt: updatedAt.toIso8601String(),
   };
+
+  CheckpointCrossingRow copyWith({
+    String? id,
+    String? eventId,
+    DateTime? instanceStart,
+    String? userId,
+    String? bib,
+    String? runnerName,
+    DateTime? inTime,
+    DateTime? outTime,
+    double? bodyWeightKg,
+    double? bodyWeightPct,
+    bool? medicalHold,
+    String? medicalNote,
+    String? recordedBy,
+    DateTime? recordedAt,
+    DateTime? updatedAt,
+  }) => CheckpointCrossingRow(
+    id: id ?? this.id,
+    eventId: eventId ?? this.eventId,
+    instanceStart: instanceStart ?? this.instanceStart,
+    userId: userId ?? this.userId,
+    bib: bib ?? this.bib,
+    runnerName: runnerName ?? this.runnerName,
+    inTime: inTime ?? this.inTime,
+    outTime: outTime ?? this.outTime,
+    bodyWeightKg: bodyWeightKg ?? this.bodyWeightKg,
+    bodyWeightPct: bodyWeightPct ?? this.bodyWeightPct,
+    medicalHold: medicalHold ?? this.medicalHold,
+    medicalNote: medicalNote ?? this.medicalNote,
+    recordedBy: recordedBy ?? this.recordedBy,
+    recordedAt: recordedAt ?? this.recordedAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 }
 
 /// Row shape for the `club_members` table. Mirrors the Supabase schema
@@ -428,6 +560,22 @@ class ClubMemberRow {
     colStatus: status,
     colActivityWaiverAckAt: activityWaiverAckAt?.toIso8601String(),
   };
+
+  ClubMemberRow copyWith({
+    String? clubId,
+    String? userId,
+    String? role,
+    DateTime? joinedAt,
+    String? status,
+    DateTime? activityWaiverAckAt,
+  }) => ClubMemberRow(
+    clubId: clubId ?? this.clubId,
+    userId: userId ?? this.userId,
+    role: role ?? this.role,
+    joinedAt: joinedAt ?? this.joinedAt,
+    status: status ?? this.status,
+    activityWaiverAckAt: activityWaiverAckAt ?? this.activityWaiverAckAt,
+  );
 }
 
 /// Row shape for the `club_photos` table. Mirrors the Supabase schema
@@ -484,6 +632,26 @@ class ClubPhotoRow {
     colPositionIdx: positionIdx,
     colCreatedAt: createdAt.toIso8601String(),
   };
+
+  ClubPhotoRow copyWith({
+    String? id,
+    String? clubId,
+    String? ownerId,
+    String? storagePath,
+    String? thumb512Path,
+    String? caption,
+    int? positionIdx,
+    DateTime? createdAt,
+  }) => ClubPhotoRow(
+    id: id ?? this.id,
+    clubId: clubId ?? this.clubId,
+    ownerId: ownerId ?? this.ownerId,
+    storagePath: storagePath ?? this.storagePath,
+    thumb512Path: thumb512Path ?? this.thumb512Path,
+    caption: caption ?? this.caption,
+    positionIdx: positionIdx ?? this.positionIdx,
+    createdAt: createdAt ?? this.createdAt,
+  );
 }
 
 /// Row shape for the `club_posts` table. Mirrors the Supabase schema
@@ -540,6 +708,26 @@ class ClubPostRow {
     colEventInstanceStart: eventInstanceStart?.toIso8601String(),
     colParentPostId: parentPostId,
   };
+
+  ClubPostRow copyWith({
+    String? id,
+    String? clubId,
+    String? eventId,
+    String? authorId,
+    String? body,
+    DateTime? createdAt,
+    DateTime? eventInstanceStart,
+    String? parentPostId,
+  }) => ClubPostRow(
+    id: id ?? this.id,
+    clubId: clubId ?? this.clubId,
+    eventId: eventId ?? this.eventId,
+    authorId: authorId ?? this.authorId,
+    body: body ?? this.body,
+    createdAt: createdAt ?? this.createdAt,
+    eventInstanceStart: eventInstanceStart ?? this.eventInstanceStart,
+    parentPostId: parentPostId ?? this.parentPostId,
+  );
 }
 
 /// Row shape for the `clubs` table. Mirrors the Supabase schema
@@ -661,6 +849,52 @@ class ClubRow {
     colFacebookUrl: facebookUrl,
     colShadowHidden: shadowHidden,
   };
+
+  ClubRow copyWith({
+    String? id,
+    String? ownerId,
+    String? name,
+    String? slug,
+    String? description,
+    String? avatarUrl,
+    String? locationLabel,
+    bool? isPublic,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? joinPolicy,
+    String? inviteToken,
+    dynamic locationPoint,
+    int? memberCount,
+    bool? isVerified,
+    bool? requiresActivityWaiver,
+    String? websiteUrl,
+    String? instagramUrl,
+    String? stravaUrl,
+    String? facebookUrl,
+    bool? shadowHidden,
+  }) => ClubRow(
+    id: id ?? this.id,
+    ownerId: ownerId ?? this.ownerId,
+    name: name ?? this.name,
+    slug: slug ?? this.slug,
+    description: description ?? this.description,
+    avatarUrl: avatarUrl ?? this.avatarUrl,
+    locationLabel: locationLabel ?? this.locationLabel,
+    isPublic: isPublic ?? this.isPublic,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    joinPolicy: joinPolicy ?? this.joinPolicy,
+    inviteToken: inviteToken ?? this.inviteToken,
+    locationPoint: locationPoint ?? this.locationPoint,
+    memberCount: memberCount ?? this.memberCount,
+    isVerified: isVerified ?? this.isVerified,
+    requiresActivityWaiver: requiresActivityWaiver ?? this.requiresActivityWaiver,
+    websiteUrl: websiteUrl ?? this.websiteUrl,
+    instagramUrl: instagramUrl ?? this.instagramUrl,
+    stravaUrl: stravaUrl ?? this.stravaUrl,
+    facebookUrl: facebookUrl ?? this.facebookUrl,
+    shadowHidden: shadowHidden ?? this.shadowHidden,
+  );
 }
 
 /// Row shape for the `coach_athletes` table. Mirrors the Supabase schema
@@ -722,6 +956,28 @@ class CoachAthleteRow {
     colAcceptedAt: acceptedAt?.toIso8601String(),
     colEndedAt: endedAt?.toIso8601String(),
   };
+
+  CoachAthleteRow copyWith({
+    String? id,
+    String? coachId,
+    String? athleteId,
+    String? status,
+    String? inviteToken,
+    String? note,
+    DateTime? createdAt,
+    DateTime? acceptedAt,
+    DateTime? endedAt,
+  }) => CoachAthleteRow(
+    id: id ?? this.id,
+    coachId: coachId ?? this.coachId,
+    athleteId: athleteId ?? this.athleteId,
+    status: status ?? this.status,
+    inviteToken: inviteToken ?? this.inviteToken,
+    note: note ?? this.note,
+    createdAt: createdAt ?? this.createdAt,
+    acceptedAt: acceptedAt ?? this.acceptedAt,
+    endedAt: endedAt ?? this.endedAt,
+  );
 }
 
 /// Row shape for the `coach_messages` table. Mirrors the Supabase schema
@@ -778,6 +1034,26 @@ class CoachMessageRow {
     colArchivedAt: archivedAt?.toIso8601String(),
     colReaction: reaction,
   };
+
+  CoachMessageRow copyWith({
+    String? id,
+    String? userId,
+    String? planId,
+    String? role,
+    String? content,
+    DateTime? createdAt,
+    DateTime? archivedAt,
+    String? reaction,
+  }) => CoachMessageRow(
+    id: id ?? this.id,
+    userId: userId ?? this.userId,
+    planId: planId ?? this.planId,
+    role: role ?? this.role,
+    content: content ?? this.content,
+    createdAt: createdAt ?? this.createdAt,
+    archivedAt: archivedAt ?? this.archivedAt,
+    reaction: reaction ?? this.reaction,
+  );
 }
 
 /// Row shape for the `device_tokens` table. Mirrors the Supabase schema
@@ -844,6 +1120,30 @@ class DeviceTokenRow {
     colUpdatedAt: updatedAt.toIso8601String(),
     colIsNotificationsEnabled: isNotificationsEnabled,
   };
+
+  DeviceTokenRow copyWith({
+    String? id,
+    String? userId,
+    String? platform,
+    String? token,
+    String? appVersion,
+    String? locale,
+    DateTime? lastSeenAt,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? isNotificationsEnabled,
+  }) => DeviceTokenRow(
+    id: id ?? this.id,
+    userId: userId ?? this.userId,
+    platform: platform ?? this.platform,
+    token: token ?? this.token,
+    appVersion: appVersion ?? this.appVersion,
+    locale: locale ?? this.locale,
+    lastSeenAt: lastSeenAt ?? this.lastSeenAt,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    isNotificationsEnabled: isNotificationsEnabled ?? this.isNotificationsEnabled,
+  );
 }
 
 /// Row shape for the `donations` table. Mirrors the Supabase schema
@@ -950,6 +1250,46 @@ class DonationRow {
     colClientRequestId: clientRequestId,
     colRefundedCents: refundedCents,
   };
+
+  DonationRow copyWith({
+    String? id,
+    String? fundraiserId,
+    String? donorUserId,
+    String? ownerUserId,
+    String? displayName,
+    String? message,
+    String? stripeCheckoutSessionId,
+    String? stripePaymentIntentId,
+    int? amountCents,
+    String? currency,
+    int? platformFeeCents,
+    String? status,
+    bool? isAnonymous,
+    DateTime? createdAt,
+    DateTime? paidAt,
+    DateTime? refundedAt,
+    String? clientRequestId,
+    int? refundedCents,
+  }) => DonationRow(
+    id: id ?? this.id,
+    fundraiserId: fundraiserId ?? this.fundraiserId,
+    donorUserId: donorUserId ?? this.donorUserId,
+    ownerUserId: ownerUserId ?? this.ownerUserId,
+    displayName: displayName ?? this.displayName,
+    message: message ?? this.message,
+    stripeCheckoutSessionId: stripeCheckoutSessionId ?? this.stripeCheckoutSessionId,
+    stripePaymentIntentId: stripePaymentIntentId ?? this.stripePaymentIntentId,
+    amountCents: amountCents ?? this.amountCents,
+    currency: currency ?? this.currency,
+    platformFeeCents: platformFeeCents ?? this.platformFeeCents,
+    status: status ?? this.status,
+    isAnonymous: isAnonymous ?? this.isAnonymous,
+    createdAt: createdAt ?? this.createdAt,
+    paidAt: paidAt ?? this.paidAt,
+    refundedAt: refundedAt ?? this.refundedAt,
+    clientRequestId: clientRequestId ?? this.clientRequestId,
+    refundedCents: refundedCents ?? this.refundedCents,
+  );
 }
 
 /// Row shape for the `event_attendees` table. Mirrors the Supabase schema
@@ -1001,6 +1341,24 @@ class EventAttendeeRow {
     colOrderId: orderId,
     colAttendance: attendance,
   };
+
+  EventAttendeeRow copyWith({
+    String? eventId,
+    String? userId,
+    String? status,
+    DateTime? joinedAt,
+    DateTime? instanceStart,
+    String? orderId,
+    String? attendance,
+  }) => EventAttendeeRow(
+    eventId: eventId ?? this.eventId,
+    userId: userId ?? this.userId,
+    status: status ?? this.status,
+    joinedAt: joinedAt ?? this.joinedAt,
+    instanceStart: instanceStart ?? this.instanceStart,
+    orderId: orderId ?? this.orderId,
+    attendance: attendance ?? this.attendance,
+  );
 }
 
 /// Row shape for the `event_checkpoints` table. Mirrors the Supabase schema
@@ -1077,6 +1435,34 @@ class EventCheckpointRow {
     colCreatedAt: createdAt.toIso8601String(),
     colUpdatedAt: updatedAt.toIso8601String(),
   };
+
+  EventCheckpointRow copyWith({
+    String? id,
+    String? eventId,
+    String? name,
+    int? ordinal,
+    String? routeMarkerId,
+    double? positionM,
+    int? cutoffElapsedS,
+    String? cutoffClock,
+    bool? requiresWeighIn,
+    String? createdBy,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => EventCheckpointRow(
+    id: id ?? this.id,
+    eventId: eventId ?? this.eventId,
+    name: name ?? this.name,
+    ordinal: ordinal ?? this.ordinal,
+    routeMarkerId: routeMarkerId ?? this.routeMarkerId,
+    positionM: positionM ?? this.positionM,
+    cutoffElapsedS: cutoffElapsedS ?? this.cutoffElapsedS,
+    cutoffClock: cutoffClock ?? this.cutoffClock,
+    requiresWeighIn: requiresWeighIn ?? this.requiresWeighIn,
+    createdBy: createdBy ?? this.createdBy,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 }
 
 /// Row shape for the `event_orders` table. Mirrors the Supabase schema
@@ -1173,6 +1559,42 @@ class EventOrderRow {
     colReservedUntil: reservedUntil?.toIso8601String(),
     colRefundInitiatedAt: refundInitiatedAt?.toIso8601String(),
   };
+
+  EventOrderRow copyWith({
+    String? id,
+    String? eventId,
+    DateTime? instanceStart,
+    String? buyerUserId,
+    String? hostUserId,
+    String? stripeCheckoutSessionId,
+    String? stripePaymentIntentId,
+    int? amountCents,
+    String? currency,
+    int? platformFeeCents,
+    String? status,
+    DateTime? createdAt,
+    DateTime? paidAt,
+    DateTime? refundedAt,
+    DateTime? reservedUntil,
+    DateTime? refundInitiatedAt,
+  }) => EventOrderRow(
+    id: id ?? this.id,
+    eventId: eventId ?? this.eventId,
+    instanceStart: instanceStart ?? this.instanceStart,
+    buyerUserId: buyerUserId ?? this.buyerUserId,
+    hostUserId: hostUserId ?? this.hostUserId,
+    stripeCheckoutSessionId: stripeCheckoutSessionId ?? this.stripeCheckoutSessionId,
+    stripePaymentIntentId: stripePaymentIntentId ?? this.stripePaymentIntentId,
+    amountCents: amountCents ?? this.amountCents,
+    currency: currency ?? this.currency,
+    platformFeeCents: platformFeeCents ?? this.platformFeeCents,
+    status: status ?? this.status,
+    createdAt: createdAt ?? this.createdAt,
+    paidAt: paidAt ?? this.paidAt,
+    refundedAt: refundedAt ?? this.refundedAt,
+    reservedUntil: reservedUntil ?? this.reservedUntil,
+    refundInitiatedAt: refundInitiatedAt ?? this.refundInitiatedAt,
+  );
 }
 
 /// Row shape for the `event_pricing` table. Mirrors the Supabase schema
@@ -1234,6 +1656,28 @@ class EventPricingRow {
     colCreatedAt: createdAt.toIso8601String(),
     colUpdatedAt: updatedAt.toIso8601String(),
   };
+
+  EventPricingRow copyWith({
+    String? eventId,
+    DateTime? instanceStart,
+    int? priceCents,
+    String? currency,
+    String? modality,
+    String? refundPolicy,
+    int? salesCloseOffsetMinutes,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => EventPricingRow(
+    eventId: eventId ?? this.eventId,
+    instanceStart: instanceStart ?? this.instanceStart,
+    priceCents: priceCents ?? this.priceCents,
+    currency: currency ?? this.currency,
+    modality: modality ?? this.modality,
+    refundPolicy: refundPolicy ?? this.refundPolicy,
+    salesCloseOffsetMinutes: salesCloseOffsetMinutes ?? this.salesCloseOffsetMinutes,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 }
 
 /// Row shape for the `event_results` table. Mirrors the Supabase schema
@@ -1340,6 +1784,46 @@ class EventResultRow {
     colBib: bib,
     colFinisherName: finisherName,
   };
+
+  EventResultRow copyWith({
+    String? eventId,
+    DateTime? instanceStart,
+    String? userId,
+    String? runId,
+    int? durationS,
+    double? distanceM,
+    int? rank,
+    String? finisherStatus,
+    double? ageGradePct,
+    String? note,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? organiserApproved,
+    String? organiserApprovedBy,
+    DateTime? organiserApprovedAt,
+    String? id,
+    String? bib,
+    String? finisherName,
+  }) => EventResultRow(
+    eventId: eventId ?? this.eventId,
+    instanceStart: instanceStart ?? this.instanceStart,
+    userId: userId ?? this.userId,
+    runId: runId ?? this.runId,
+    durationS: durationS ?? this.durationS,
+    distanceM: distanceM ?? this.distanceM,
+    rank: rank ?? this.rank,
+    finisherStatus: finisherStatus ?? this.finisherStatus,
+    ageGradePct: ageGradePct ?? this.ageGradePct,
+    note: note ?? this.note,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    organiserApproved: organiserApproved ?? this.organiserApproved,
+    organiserApprovedBy: organiserApprovedBy ?? this.organiserApprovedBy,
+    organiserApprovedAt: organiserApprovedAt ?? this.organiserApprovedAt,
+    id: id ?? this.id,
+    bib: bib ?? this.bib,
+    finisherName: finisherName ?? this.finisherName,
+  );
 }
 
 /// Row shape for the `events` table. Mirrors the Supabase schema
@@ -1491,6 +1975,64 @@ class EventRow {
     colTimezone: timezone,
     colIsPublic: isPublic,
   };
+
+  EventRow copyWith({
+    String? id,
+    String? clubId,
+    String? title,
+    String? description,
+    DateTime? startsAt,
+    int? durationMin,
+    double? meetLat,
+    double? meetLng,
+    String? meetLabel,
+    String? routeId,
+    double? distanceM,
+    int? paceTargetSec,
+    int? capacity,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? recurrenceFreq,
+    List<String>? recurrenceByday,
+    DateTime? recurrenceUntil,
+    int? recurrenceCount,
+    String? authorId,
+    String? category,
+    String? discipline,
+    String? hostUserId,
+    dynamic gymTemplate,
+    String? sessionPlanId,
+    String? timezone,
+    bool? isPublic,
+  }) => EventRow(
+    id: id ?? this.id,
+    clubId: clubId ?? this.clubId,
+    title: title ?? this.title,
+    description: description ?? this.description,
+    startsAt: startsAt ?? this.startsAt,
+    durationMin: durationMin ?? this.durationMin,
+    meetLat: meetLat ?? this.meetLat,
+    meetLng: meetLng ?? this.meetLng,
+    meetLabel: meetLabel ?? this.meetLabel,
+    routeId: routeId ?? this.routeId,
+    distanceM: distanceM ?? this.distanceM,
+    paceTargetSec: paceTargetSec ?? this.paceTargetSec,
+    capacity: capacity ?? this.capacity,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    recurrenceFreq: recurrenceFreq ?? this.recurrenceFreq,
+    recurrenceByday: recurrenceByday ?? this.recurrenceByday,
+    recurrenceUntil: recurrenceUntil ?? this.recurrenceUntil,
+    recurrenceCount: recurrenceCount ?? this.recurrenceCount,
+    authorId: authorId ?? this.authorId,
+    category: category ?? this.category,
+    discipline: discipline ?? this.discipline,
+    hostUserId: hostUserId ?? this.hostUserId,
+    gymTemplate: gymTemplate ?? this.gymTemplate,
+    sessionPlanId: sessionPlanId ?? this.sessionPlanId,
+    timezone: timezone ?? this.timezone,
+    isPublic: isPublic ?? this.isPublic,
+  );
 }
 
 /// Row shape for the `exercises` table. Mirrors the Supabase schema
@@ -1552,6 +2094,28 @@ class ExerciseRow {
     colLastModifiedAt: lastModifiedAt.toIso8601String(),
     colCreatedAt: createdAt.toIso8601String(),
   };
+
+  ExerciseRow copyWith({
+    String? id,
+    String? authorId,
+    String? name,
+    String? nameKey,
+    String? category,
+    String? modality,
+    String? externalId,
+    DateTime? lastModifiedAt,
+    DateTime? createdAt,
+  }) => ExerciseRow(
+    id: id ?? this.id,
+    authorId: authorId ?? this.authorId,
+    name: name ?? this.name,
+    nameKey: nameKey ?? this.nameKey,
+    category: category ?? this.category,
+    modality: modality ?? this.modality,
+    externalId: externalId ?? this.externalId,
+    lastModifiedAt: lastModifiedAt ?? this.lastModifiedAt,
+    createdAt: createdAt ?? this.createdAt,
+  );
 }
 
 /// Row shape for the `fitness_snapshots` table. Mirrors the Supabase schema
@@ -1633,6 +2197,36 @@ class FitnessSnapshotRow {
     colCreatedAt: createdAt.toIso8601String(),
     colSnapshotDay: snapshotDay?.toIso8601String(),
   };
+
+  FitnessSnapshotRow copyWith({
+    String? id,
+    String? userId,
+    DateTime? computedAt,
+    double? vdot,
+    double? vo2Max,
+    double? acuteLoad,
+    double? chronicLoad,
+    double? trainingStressBal,
+    int? qualifyingRunCount,
+    String? source,
+    String? notes,
+    DateTime? createdAt,
+    DateTime? snapshotDay,
+  }) => FitnessSnapshotRow(
+    id: id ?? this.id,
+    userId: userId ?? this.userId,
+    computedAt: computedAt ?? this.computedAt,
+    vdot: vdot ?? this.vdot,
+    vo2Max: vo2Max ?? this.vo2Max,
+    acuteLoad: acuteLoad ?? this.acuteLoad,
+    chronicLoad: chronicLoad ?? this.chronicLoad,
+    trainingStressBal: trainingStressBal ?? this.trainingStressBal,
+    qualifyingRunCount: qualifyingRunCount ?? this.qualifyingRunCount,
+    source: source ?? this.source,
+    notes: notes ?? this.notes,
+    createdAt: createdAt ?? this.createdAt,
+    snapshotDay: snapshotDay ?? this.snapshotDay,
+  );
 }
 
 /// Row shape for the `food_log` table. Mirrors the Supabase schema
@@ -1739,6 +2333,46 @@ class FoodLogRow {
     colSaturatedFatG: saturatedFatG,
     colCholesterolMg: cholesterolMg,
   };
+
+  FoodLogRow copyWith({
+    String? id,
+    String? userId,
+    String? itemName,
+    String? mealSlot,
+    double? calories,
+    double? proteinG,
+    double? carbsG,
+    double? fatG,
+    bool? isPublic,
+    String? externalId,
+    DateTime? lastModifiedAt,
+    DateTime? createdAt,
+    DateTime? startedAt,
+    double? fiberG,
+    double? sugarG,
+    double? sodiumMg,
+    double? saturatedFatG,
+    double? cholesterolMg,
+  }) => FoodLogRow(
+    id: id ?? this.id,
+    userId: userId ?? this.userId,
+    itemName: itemName ?? this.itemName,
+    mealSlot: mealSlot ?? this.mealSlot,
+    calories: calories ?? this.calories,
+    proteinG: proteinG ?? this.proteinG,
+    carbsG: carbsG ?? this.carbsG,
+    fatG: fatG ?? this.fatG,
+    isPublic: isPublic ?? this.isPublic,
+    externalId: externalId ?? this.externalId,
+    lastModifiedAt: lastModifiedAt ?? this.lastModifiedAt,
+    createdAt: createdAt ?? this.createdAt,
+    startedAt: startedAt ?? this.startedAt,
+    fiberG: fiberG ?? this.fiberG,
+    sugarG: sugarG ?? this.sugarG,
+    sodiumMg: sodiumMg ?? this.sodiumMg,
+    saturatedFatG: saturatedFatG ?? this.saturatedFatG,
+    cholesterolMg: cholesterolMg ?? this.cholesterolMg,
+  );
 }
 
 /// Row shape for the `fundraisers` table. Mirrors the Supabase schema
@@ -1820,6 +2454,36 @@ class FundraiserRow {
     colCreatedAt: createdAt.toIso8601String(),
     colUpdatedAt: updatedAt.toIso8601String(),
   };
+
+  FundraiserRow copyWith({
+    String? id,
+    String? ownerUserId,
+    String? runId,
+    String? eventId,
+    String? charityName,
+    String? charityUrl,
+    String? title,
+    String? story,
+    int? goalCents,
+    String? currency,
+    String? status,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => FundraiserRow(
+    id: id ?? this.id,
+    ownerUserId: ownerUserId ?? this.ownerUserId,
+    runId: runId ?? this.runId,
+    eventId: eventId ?? this.eventId,
+    charityName: charityName ?? this.charityName,
+    charityUrl: charityUrl ?? this.charityUrl,
+    title: title ?? this.title,
+    story: story ?? this.story,
+    goalCents: goalCents ?? this.goalCents,
+    currency: currency ?? this.currency,
+    status: status ?? this.status,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 }
 
 /// Row shape for the `gear` table. Mirrors the Supabase schema
@@ -1901,6 +2565,36 @@ class GearRow {
     colUpdatedAt: updatedAt.toIso8601String(),
     colIsDefault: isDefault,
   };
+
+  GearRow copyWith({
+    String? id,
+    String? ownerId,
+    String? kind,
+    String? name,
+    String? brand,
+    String? model,
+    DateTime? purchasedAt,
+    DateTime? retiredAt,
+    int? targetDistanceM,
+    String? notes,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? isDefault,
+  }) => GearRow(
+    id: id ?? this.id,
+    ownerId: ownerId ?? this.ownerId,
+    kind: kind ?? this.kind,
+    name: name ?? this.name,
+    brand: brand ?? this.brand,
+    model: model ?? this.model,
+    purchasedAt: purchasedAt ?? this.purchasedAt,
+    retiredAt: retiredAt ?? this.retiredAt,
+    targetDistanceM: targetDistanceM ?? this.targetDistanceM,
+    notes: notes ?? this.notes,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    isDefault: isDefault ?? this.isDefault,
+  );
 }
 
 /// Row shape for the `gear_rotation_members` table. Mirrors the Supabase schema
@@ -1932,6 +2626,16 @@ class GearRotationMemberRow {
     colGearId: gearId,
     colCreatedAt: createdAt.toIso8601String(),
   };
+
+  GearRotationMemberRow copyWith({
+    String? rotationId,
+    String? gearId,
+    DateTime? createdAt,
+  }) => GearRotationMemberRow(
+    rotationId: rotationId ?? this.rotationId,
+    gearId: gearId ?? this.gearId,
+    createdAt: createdAt ?? this.createdAt,
+  );
 }
 
 /// Row shape for the `gear_rotations` table. Mirrors the Supabase schema
@@ -1973,6 +2677,20 @@ class GearRotationRow {
     colCreatedAt: createdAt.toIso8601String(),
     colUpdatedAt: updatedAt.toIso8601String(),
   };
+
+  GearRotationRow copyWith({
+    String? id,
+    String? ownerId,
+    String? name,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => GearRotationRow(
+    id: id ?? this.id,
+    ownerId: ownerId ?? this.ownerId,
+    name: name ?? this.name,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 }
 
 /// Row shape for the `gear_wear_logs` table. Mirrors the Supabase schema
@@ -2029,6 +2747,26 @@ class GearWearLogRow {
     colCreatedAt: createdAt.toIso8601String(),
     colUpdatedAt: updatedAt.toIso8601String(),
   };
+
+  GearWearLogRow copyWith({
+    String? id,
+    String? gearId,
+    String? ownerId,
+    DateTime? loggedOn,
+    String? area,
+    String? note,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => GearWearLogRow(
+    id: id ?? this.id,
+    gearId: gearId ?? this.gearId,
+    ownerId: ownerId ?? this.ownerId,
+    loggedOn: loggedOn ?? this.loggedOn,
+    area: area ?? this.area,
+    note: note ?? this.note,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 }
 
 /// Row shape for the `global_segment_efforts` table. Mirrors the Supabase schema
@@ -2080,6 +2818,24 @@ class GlobalSegmentEffortRow {
     colStartedAt: startedAt.toIso8601String(),
     colCreatedAt: createdAt.toIso8601String(),
   };
+
+  GlobalSegmentEffortRow copyWith({
+    String? id,
+    String? globalSegmentId,
+    String? runId,
+    String? userId,
+    double? timeSeconds,
+    DateTime? startedAt,
+    DateTime? createdAt,
+  }) => GlobalSegmentEffortRow(
+    id: id ?? this.id,
+    globalSegmentId: globalSegmentId ?? this.globalSegmentId,
+    runId: runId ?? this.runId,
+    userId: userId ?? this.userId,
+    timeSeconds: timeSeconds ?? this.timeSeconds,
+    startedAt: startedAt ?? this.startedAt,
+    createdAt: createdAt ?? this.createdAt,
+  );
 }
 
 /// Row shape for the `global_segments` table. Mirrors the Supabase schema
@@ -2156,6 +2912,34 @@ class GlobalSegmentRow {
     colIsActive: isActive,
     colCreatedAt: createdAt.toIso8601String(),
   };
+
+  GlobalSegmentRow copyWith({
+    String? id,
+    String? name,
+    String? description,
+    List<Map<String, dynamic>>? waypoints,
+    double? distanceM,
+    double? elevationM,
+    String? surface,
+    String? region,
+    String? countryCode,
+    String? createdBy,
+    bool? isActive,
+    DateTime? createdAt,
+  }) => GlobalSegmentRow(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    description: description ?? this.description,
+    waypoints: waypoints ?? this.waypoints,
+    distanceM: distanceM ?? this.distanceM,
+    elevationM: elevationM ?? this.elevationM,
+    surface: surface ?? this.surface,
+    region: region ?? this.region,
+    countryCode: countryCode ?? this.countryCode,
+    createdBy: createdBy ?? this.createdBy,
+    isActive: isActive ?? this.isActive,
+    createdAt: createdAt ?? this.createdAt,
+  );
 }
 
 /// Row shape for the `gym_routine_exercises` table. Mirrors the Supabase schema
@@ -2227,6 +3011,32 @@ class GymRoutineExerciseRow {
     colProgressionParams: progressionParams,
     colNotes: notes,
   };
+
+  GymRoutineExerciseRow copyWith({
+    String? id,
+    String? routineId,
+    String? exerciseName,
+    String? exerciseKey,
+    int? position,
+    int? supersetGroup,
+    int? supersetOrder,
+    String? modality,
+    String? progression,
+    dynamic progressionParams,
+    String? notes,
+  }) => GymRoutineExerciseRow(
+    id: id ?? this.id,
+    routineId: routineId ?? this.routineId,
+    exerciseName: exerciseName ?? this.exerciseName,
+    exerciseKey: exerciseKey ?? this.exerciseKey,
+    position: position ?? this.position,
+    supersetGroup: supersetGroup ?? this.supersetGroup,
+    supersetOrder: supersetOrder ?? this.supersetOrder,
+    modality: modality ?? this.modality,
+    progression: progression ?? this.progression,
+    progressionParams: progressionParams ?? this.progressionParams,
+    notes: notes ?? this.notes,
+  );
 }
 
 /// Row shape for the `gym_routine_sets` table. Mirrors the Supabase schema
@@ -2308,6 +3118,36 @@ class GymRoutineSetRow {
     colTargetDurationS: targetDurationS,
     colTargetDistanceM: targetDistanceM,
   };
+
+  GymRoutineSetRow copyWith({
+    String? id,
+    String? routineExerciseId,
+    int? setIndex,
+    String? setType,
+    int? targetRepsMin,
+    int? targetRepsMax,
+    double? targetWeightKg,
+    double? targetPercent1rm,
+    double? targetRpe,
+    int? restS,
+    String? tempo,
+    int? targetDurationS,
+    double? targetDistanceM,
+  }) => GymRoutineSetRow(
+    id: id ?? this.id,
+    routineExerciseId: routineExerciseId ?? this.routineExerciseId,
+    setIndex: setIndex ?? this.setIndex,
+    setType: setType ?? this.setType,
+    targetRepsMin: targetRepsMin ?? this.targetRepsMin,
+    targetRepsMax: targetRepsMax ?? this.targetRepsMax,
+    targetWeightKg: targetWeightKg ?? this.targetWeightKg,
+    targetPercent1rm: targetPercent1rm ?? this.targetPercent1rm,
+    targetRpe: targetRpe ?? this.targetRpe,
+    restS: restS ?? this.restS,
+    tempo: tempo ?? this.tempo,
+    targetDurationS: targetDurationS ?? this.targetDurationS,
+    targetDistanceM: targetDistanceM ?? this.targetDistanceM,
+  );
 }
 
 /// Row shape for the `gym_routines` table. Mirrors the Supabase schema
@@ -2379,6 +3219,32 @@ class GymRoutineRow {
     colClubId: clubId,
     colIsPublicTemplate: isPublicTemplate,
   };
+
+  GymRoutineRow copyWith({
+    String? id,
+    String? authorId,
+    String? title,
+    String? notes,
+    String? periodisation,
+    int? exerciseCount,
+    String? externalId,
+    DateTime? lastModifiedAt,
+    DateTime? createdAt,
+    String? clubId,
+    bool? isPublicTemplate,
+  }) => GymRoutineRow(
+    id: id ?? this.id,
+    authorId: authorId ?? this.authorId,
+    title: title ?? this.title,
+    notes: notes ?? this.notes,
+    periodisation: periodisation ?? this.periodisation,
+    exerciseCount: exerciseCount ?? this.exerciseCount,
+    externalId: externalId ?? this.externalId,
+    lastModifiedAt: lastModifiedAt ?? this.lastModifiedAt,
+    createdAt: createdAt ?? this.createdAt,
+    clubId: clubId ?? this.clubId,
+    isPublicTemplate: isPublicTemplate ?? this.isPublicTemplate,
+  );
 }
 
 /// Row shape for the `gym_sets` table. Mirrors the Supabase schema
@@ -2450,6 +3316,32 @@ class GymSetRow {
     colSetType: setType,
     colExerciseKey: exerciseKey,
   };
+
+  GymSetRow copyWith({
+    String? id,
+    String? workoutId,
+    int? setIndex,
+    String? exerciseName,
+    int? reps,
+    double? weightKg,
+    double? rpe,
+    int? durationS,
+    String? exerciseId,
+    String? setType,
+    String? exerciseKey,
+  }) => GymSetRow(
+    id: id ?? this.id,
+    workoutId: workoutId ?? this.workoutId,
+    setIndex: setIndex ?? this.setIndex,
+    exerciseName: exerciseName ?? this.exerciseName,
+    reps: reps ?? this.reps,
+    weightKg: weightKg ?? this.weightKg,
+    rpe: rpe ?? this.rpe,
+    durationS: durationS ?? this.durationS,
+    exerciseId: exerciseId ?? this.exerciseId,
+    setType: setType ?? this.setType,
+    exerciseKey: exerciseKey ?? this.exerciseKey,
+  );
 }
 
 /// Row shape for the `gym_workouts` table. Mirrors the Supabase schema
@@ -2531,6 +3423,36 @@ class GymWorkoutRow {
     colVolumeKg: volumeKg,
     colMetadata: metadata,
   };
+
+  GymWorkoutRow copyWith({
+    String? id,
+    String? userId,
+    String? title,
+    DateTime? startedAt,
+    int? durationS,
+    String? notes,
+    bool? isPublic,
+    String? externalId,
+    DateTime? lastModifiedAt,
+    DateTime? createdAt,
+    int? setCount,
+    double? volumeKg,
+    dynamic metadata,
+  }) => GymWorkoutRow(
+    id: id ?? this.id,
+    userId: userId ?? this.userId,
+    title: title ?? this.title,
+    startedAt: startedAt ?? this.startedAt,
+    durationS: durationS ?? this.durationS,
+    notes: notes ?? this.notes,
+    isPublic: isPublic ?? this.isPublic,
+    externalId: externalId ?? this.externalId,
+    lastModifiedAt: lastModifiedAt ?? this.lastModifiedAt,
+    createdAt: createdAt ?? this.createdAt,
+    setCount: setCount ?? this.setCount,
+    volumeKg: volumeKg ?? this.volumeKg,
+    metadata: metadata ?? this.metadata,
+  );
 }
 
 /// Row shape for the `instructor_payout_accounts` table. Mirrors the Supabase schema
@@ -2597,6 +3519,30 @@ class InstructorPayoutAccountRow {
     colCreatedAt: createdAt.toIso8601String(),
     colUpdatedAt: updatedAt.toIso8601String(),
   };
+
+  InstructorPayoutAccountRow copyWith({
+    String? userId,
+    String? stripeConnectAccountId,
+    bool? chargesEnabled,
+    bool? payoutsEnabled,
+    bool? detailsSubmitted,
+    String? country,
+    String? defaultCurrency,
+    DateTime? onboardedAt,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => InstructorPayoutAccountRow(
+    userId: userId ?? this.userId,
+    stripeConnectAccountId: stripeConnectAccountId ?? this.stripeConnectAccountId,
+    chargesEnabled: chargesEnabled ?? this.chargesEnabled,
+    payoutsEnabled: payoutsEnabled ?? this.payoutsEnabled,
+    detailsSubmitted: detailsSubmitted ?? this.detailsSubmitted,
+    country: country ?? this.country,
+    defaultCurrency: defaultCurrency ?? this.defaultCurrency,
+    onboardedAt: onboardedAt ?? this.onboardedAt,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 }
 
 /// Row shape for the `integrations` table. Mirrors the Supabase schema
@@ -2683,6 +3629,38 @@ class IntegrationRow {
     colDisconnectedAt: disconnectedAt?.toIso8601String(),
     colDisconnectedReason: disconnectedReason,
   };
+
+  IntegrationRow copyWith({
+    String? id,
+    String? userId,
+    String? provider,
+    DateTime? tokenExpiry,
+    String? externalId,
+    String? scope,
+    DateTime? lastSyncAt,
+    String? syncCursor,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? accessTokenSecretId,
+    String? refreshTokenSecretId,
+    DateTime? disconnectedAt,
+    String? disconnectedReason,
+  }) => IntegrationRow(
+    id: id ?? this.id,
+    userId: userId ?? this.userId,
+    provider: provider ?? this.provider,
+    tokenExpiry: tokenExpiry ?? this.tokenExpiry,
+    externalId: externalId ?? this.externalId,
+    scope: scope ?? this.scope,
+    lastSyncAt: lastSyncAt ?? this.lastSyncAt,
+    syncCursor: syncCursor ?? this.syncCursor,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    accessTokenSecretId: accessTokenSecretId ?? this.accessTokenSecretId,
+    refreshTokenSecretId: refreshTokenSecretId ?? this.refreshTokenSecretId,
+    disconnectedAt: disconnectedAt ?? this.disconnectedAt,
+    disconnectedReason: disconnectedReason ?? this.disconnectedReason,
+  );
 }
 
 /// Row shape for the `meal_template_items` table. Mirrors the Supabase schema
@@ -2749,6 +3727,30 @@ class MealTemplateItemRow {
     colFatG: fatG,
     colExternalId: externalId,
   };
+
+  MealTemplateItemRow copyWith({
+    String? id,
+    String? templateId,
+    int? position,
+    String? itemName,
+    String? mealSlot,
+    double? calories,
+    double? proteinG,
+    double? carbsG,
+    double? fatG,
+    String? externalId,
+  }) => MealTemplateItemRow(
+    id: id ?? this.id,
+    templateId: templateId ?? this.templateId,
+    position: position ?? this.position,
+    itemName: itemName ?? this.itemName,
+    mealSlot: mealSlot ?? this.mealSlot,
+    calories: calories ?? this.calories,
+    proteinG: proteinG ?? this.proteinG,
+    carbsG: carbsG ?? this.carbsG,
+    fatG: fatG ?? this.fatG,
+    externalId: externalId ?? this.externalId,
+  );
 }
 
 /// Row shape for the `meal_templates` table. Mirrors the Supabase schema
@@ -2805,6 +3807,26 @@ class MealTemplateRow {
     colLastModifiedAt: lastModifiedAt.toIso8601String(),
     colCreatedAt: createdAt.toIso8601String(),
   };
+
+  MealTemplateRow copyWith({
+    String? id,
+    String? userId,
+    String? name,
+    String? mealSlot,
+    int? itemCount,
+    String? externalId,
+    DateTime? lastModifiedAt,
+    DateTime? createdAt,
+  }) => MealTemplateRow(
+    id: id ?? this.id,
+    userId: userId ?? this.userId,
+    name: name ?? this.name,
+    mealSlot: mealSlot ?? this.mealSlot,
+    itemCount: itemCount ?? this.itemCount,
+    externalId: externalId ?? this.externalId,
+    lastModifiedAt: lastModifiedAt ?? this.lastModifiedAt,
+    createdAt: createdAt ?? this.createdAt,
+  );
 }
 
 /// Row shape for the `monthly_funding` table. Mirrors the Supabase schema
@@ -2841,6 +3863,18 @@ class MonthlyFundingRow {
     colDonorCount: donorCount,
     colUpdatedAt: updatedAt.toIso8601String(),
   };
+
+  MonthlyFundingRow copyWith({
+    DateTime? month,
+    double? amountReceived,
+    int? donorCount,
+    DateTime? updatedAt,
+  }) => MonthlyFundingRow(
+    month: month ?? this.month,
+    amountReceived: amountReceived ?? this.amountReceived,
+    donorCount: donorCount ?? this.donorCount,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 }
 
 /// Row shape for the `notifications` table. Mirrors the Supabase schema
@@ -2957,6 +3991,50 @@ class NotificationRow {
     colNativePushSentAt: nativePushSentAt?.toIso8601String(),
     colRefunded: refunded,
   };
+
+  NotificationRow copyWith({
+    String? id,
+    String? userId,
+    String? actorId,
+    String? kind,
+    String? runId,
+    String? commentId,
+    DateTime? readAt,
+    DateTime? createdAt,
+    String? eventId,
+    String? planId,
+    String? clubId,
+    DateTime? emailSentAt,
+    DateTime? eventInstanceStart,
+    String? activityKind,
+    String? activityId,
+    DateTime? webPushSentAt,
+    String? achievementId,
+    String? challengeId,
+    DateTime? nativePushSentAt,
+    bool? refunded,
+  }) => NotificationRow(
+    id: id ?? this.id,
+    userId: userId ?? this.userId,
+    actorId: actorId ?? this.actorId,
+    kind: kind ?? this.kind,
+    runId: runId ?? this.runId,
+    commentId: commentId ?? this.commentId,
+    readAt: readAt ?? this.readAt,
+    createdAt: createdAt ?? this.createdAt,
+    eventId: eventId ?? this.eventId,
+    planId: planId ?? this.planId,
+    clubId: clubId ?? this.clubId,
+    emailSentAt: emailSentAt ?? this.emailSentAt,
+    eventInstanceStart: eventInstanceStart ?? this.eventInstanceStart,
+    activityKind: activityKind ?? this.activityKind,
+    activityId: activityId ?? this.activityId,
+    webPushSentAt: webPushSentAt ?? this.webPushSentAt,
+    achievementId: achievementId ?? this.achievementId,
+    challengeId: challengeId ?? this.challengeId,
+    nativePushSentAt: nativePushSentAt ?? this.nativePushSentAt,
+    refunded: refunded ?? this.refunded,
+  );
 }
 
 /// Row shape for the `personal_records` table. Mirrors the Supabase schema
@@ -3003,6 +4081,22 @@ class PersonalRecordRow {
     colAchievedAt: achievedAt.toIso8601String(),
     colUpdatedAt: updatedAt.toIso8601String(),
   };
+
+  PersonalRecordRow copyWith({
+    String? userId,
+    String? distance,
+    int? bestTimeS,
+    String? runId,
+    DateTime? achievedAt,
+    DateTime? updatedAt,
+  }) => PersonalRecordRow(
+    userId: userId ?? this.userId,
+    distance: distance ?? this.distance,
+    bestTimeS: bestTimeS ?? this.bestTimeS,
+    runId: runId ?? this.runId,
+    achievedAt: achievedAt ?? this.achievedAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 }
 
 /// Row shape for the `plan_weeks` table. Mirrors the Supabase schema
@@ -3049,6 +4143,22 @@ class PlanWeekRow {
     colTargetVolumeM: targetVolumeM,
     colNotes: notes,
   };
+
+  PlanWeekRow copyWith({
+    String? id,
+    String? planId,
+    int? weekIndex,
+    String? phase,
+    double? targetVolumeM,
+    String? notes,
+  }) => PlanWeekRow(
+    id: id ?? this.id,
+    planId: planId ?? this.planId,
+    weekIndex: weekIndex ?? this.weekIndex,
+    phase: phase ?? this.phase,
+    targetVolumeM: targetVolumeM ?? this.targetVolumeM,
+    notes: notes ?? this.notes,
+  );
 }
 
 /// Row shape for the `plan_workouts` table. Mirrors the Supabase schema
@@ -3155,6 +4265,46 @@ class PlanWorkoutRow {
     colUpdatedAt: updatedAt?.toIso8601String(),
     colSkippedAt: skippedAt?.toIso8601String(),
   };
+
+  PlanWorkoutRow copyWith({
+    String? id,
+    String? weekId,
+    DateTime? scheduledDate,
+    String? kind,
+    double? targetDistanceM,
+    int? targetDurationSeconds,
+    int? targetPaceSecPerKm,
+    int? targetPaceToleranceSec,
+    dynamic structure,
+    String? notes,
+    String? completedRunId,
+    DateTime? completedAt,
+    String? paceZone,
+    int? targetPaceEndSecPerKm,
+    bool? manuallyCompleted,
+    String? updatedBy,
+    DateTime? updatedAt,
+    DateTime? skippedAt,
+  }) => PlanWorkoutRow(
+    id: id ?? this.id,
+    weekId: weekId ?? this.weekId,
+    scheduledDate: scheduledDate ?? this.scheduledDate,
+    kind: kind ?? this.kind,
+    targetDistanceM: targetDistanceM ?? this.targetDistanceM,
+    targetDurationSeconds: targetDurationSeconds ?? this.targetDurationSeconds,
+    targetPaceSecPerKm: targetPaceSecPerKm ?? this.targetPaceSecPerKm,
+    targetPaceToleranceSec: targetPaceToleranceSec ?? this.targetPaceToleranceSec,
+    structure: structure ?? this.structure,
+    notes: notes ?? this.notes,
+    completedRunId: completedRunId ?? this.completedRunId,
+    completedAt: completedAt ?? this.completedAt,
+    paceZone: paceZone ?? this.paceZone,
+    targetPaceEndSecPerKm: targetPaceEndSecPerKm ?? this.targetPaceEndSecPerKm,
+    manuallyCompleted: manuallyCompleted ?? this.manuallyCompleted,
+    updatedBy: updatedBy ?? this.updatedBy,
+    updatedAt: updatedAt ?? this.updatedAt,
+    skippedAt: skippedAt ?? this.skippedAt,
+  );
 }
 
 /// Row shape for the `race_listings` table. Mirrors the Supabase schema
@@ -3241,6 +4391,38 @@ class RaceListingRow {
     colCreatedAt: createdAt.toIso8601String(),
     colUpdatedAt: updatedAt.toIso8601String(),
   };
+
+  RaceListingRow copyWith({
+    String? id,
+    String? provider,
+    String? providerRaceId,
+    String? name,
+    DateTime? raceDate,
+    int? distanceM,
+    String? locationLabel,
+    dynamic locationPoint,
+    String? entryUrl,
+    String? resultsUrl,
+    String? submittedBy,
+    bool? isVerified,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => RaceListingRow(
+    id: id ?? this.id,
+    provider: provider ?? this.provider,
+    providerRaceId: providerRaceId ?? this.providerRaceId,
+    name: name ?? this.name,
+    raceDate: raceDate ?? this.raceDate,
+    distanceM: distanceM ?? this.distanceM,
+    locationLabel: locationLabel ?? this.locationLabel,
+    locationPoint: locationPoint ?? this.locationPoint,
+    entryUrl: entryUrl ?? this.entryUrl,
+    resultsUrl: resultsUrl ?? this.resultsUrl,
+    submittedBy: submittedBy ?? this.submittedBy,
+    isVerified: isVerified ?? this.isVerified,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 }
 
 /// Row shape for the `race_pings` table. Mirrors the Supabase schema
@@ -3312,6 +4494,32 @@ class RacePingRow {
     colBpm: bpm,
     colCoarse: coarse,
   };
+
+  RacePingRow copyWith({
+    dynamic id,
+    String? eventId,
+    DateTime? instanceStart,
+    String? userId,
+    DateTime? at,
+    double? lat,
+    double? lng,
+    double? distanceM,
+    int? elapsedS,
+    int? bpm,
+    bool? coarse,
+  }) => RacePingRow(
+    id: id ?? this.id,
+    eventId: eventId ?? this.eventId,
+    instanceStart: instanceStart ?? this.instanceStart,
+    userId: userId ?? this.userId,
+    at: at ?? this.at,
+    lat: lat ?? this.lat,
+    lng: lng ?? this.lng,
+    distanceM: distanceM ?? this.distanceM,
+    elapsedS: elapsedS ?? this.elapsedS,
+    bpm: bpm ?? this.bpm,
+    coarse: coarse ?? this.coarse,
+  );
 }
 
 /// Row shape for the `race_sessions` table. Mirrors the Supabase schema
@@ -3373,6 +4581,28 @@ class RaceSessionRow {
     colUpdatedAt: updatedAt.toIso8601String(),
     colIsAutoApprove: isAutoApprove,
   };
+
+  RaceSessionRow copyWith({
+    String? eventId,
+    DateTime? instanceStart,
+    String? status,
+    DateTime? startedAt,
+    String? startedBy,
+    DateTime? finishedAt,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? isAutoApprove,
+  }) => RaceSessionRow(
+    eventId: eventId ?? this.eventId,
+    instanceStart: instanceStart ?? this.instanceStart,
+    status: status ?? this.status,
+    startedAt: startedAt ?? this.startedAt,
+    startedBy: startedBy ?? this.startedBy,
+    finishedAt: finishedAt ?? this.finishedAt,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    isAutoApprove: isAutoApprove ?? this.isAutoApprove,
+  );
 }
 
 /// Row shape for the `recipe_ingredients` table. Mirrors the Supabase schema
@@ -3439,6 +4669,30 @@ class RecipeIngredientRow {
     colFatG: fatG,
     colExternalId: externalId,
   };
+
+  RecipeIngredientRow copyWith({
+    String? id,
+    String? recipeId,
+    int? position,
+    String? itemName,
+    double? quantity,
+    double? calories,
+    double? proteinG,
+    double? carbsG,
+    double? fatG,
+    String? externalId,
+  }) => RecipeIngredientRow(
+    id: id ?? this.id,
+    recipeId: recipeId ?? this.recipeId,
+    position: position ?? this.position,
+    itemName: itemName ?? this.itemName,
+    quantity: quantity ?? this.quantity,
+    calories: calories ?? this.calories,
+    proteinG: proteinG ?? this.proteinG,
+    carbsG: carbsG ?? this.carbsG,
+    fatG: fatG ?? this.fatG,
+    externalId: externalId ?? this.externalId,
+  );
 }
 
 /// Row shape for the `recipes` table. Mirrors the Supabase schema
@@ -3500,6 +4754,28 @@ class RecipeRow {
     colLastModifiedAt: lastModifiedAt.toIso8601String(),
     colCreatedAt: createdAt.toIso8601String(),
   };
+
+  RecipeRow copyWith({
+    String? id,
+    String? userId,
+    String? name,
+    double? servings,
+    String? mealSlot,
+    int? ingredientCount,
+    String? externalId,
+    DateTime? lastModifiedAt,
+    DateTime? createdAt,
+  }) => RecipeRow(
+    id: id ?? this.id,
+    userId: userId ?? this.userId,
+    name: name ?? this.name,
+    servings: servings ?? this.servings,
+    mealSlot: mealSlot ?? this.mealSlot,
+    ingredientCount: ingredientCount ?? this.ingredientCount,
+    externalId: externalId ?? this.externalId,
+    lastModifiedAt: lastModifiedAt ?? this.lastModifiedAt,
+    createdAt: createdAt ?? this.createdAt,
+  );
 }
 
 /// Row shape for the `route_conditions` table. Mirrors the Supabase schema
@@ -3566,6 +4842,30 @@ class RouteConditionRow {
     colPositionM: positionM,
     colCreatedAt: createdAt.toIso8601String(),
   };
+
+  RouteConditionRow copyWith({
+    String? id,
+    String? routeId,
+    String? userId,
+    String? condition,
+    String? severity,
+    String? note,
+    double? lat,
+    double? lng,
+    double? positionM,
+    DateTime? createdAt,
+  }) => RouteConditionRow(
+    id: id ?? this.id,
+    routeId: routeId ?? this.routeId,
+    userId: userId ?? this.userId,
+    condition: condition ?? this.condition,
+    severity: severity ?? this.severity,
+    note: note ?? this.note,
+    lat: lat ?? this.lat,
+    lng: lng ?? this.lng,
+    positionM: positionM ?? this.positionM,
+    createdAt: createdAt ?? this.createdAt,
+  );
 }
 
 /// Row shape for the `route_markers` table. Mirrors the Supabase schema
@@ -3637,6 +4937,32 @@ class RouteMarkerRow {
     colCreatedAt: createdAt.toIso8601String(),
     colUpdatedAt: updatedAt.toIso8601String(),
   };
+
+  RouteMarkerRow copyWith({
+    String? id,
+    String? routeId,
+    String? userId,
+    String? kind,
+    String? label,
+    double? lat,
+    double? lng,
+    double? positionM,
+    dynamic meta,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => RouteMarkerRow(
+    id: id ?? this.id,
+    routeId: routeId ?? this.routeId,
+    userId: userId ?? this.userId,
+    kind: kind ?? this.kind,
+    label: label ?? this.label,
+    lat: lat ?? this.lat,
+    lng: lng ?? this.lng,
+    positionM: positionM ?? this.positionM,
+    meta: meta ?? this.meta,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 }
 
 /// Row shape for the `route_photos` table. Mirrors the Supabase schema
@@ -3693,6 +5019,26 @@ class RoutePhotoRow {
     colPositionIdx: positionIdx,
     colCreatedAt: createdAt.toIso8601String(),
   };
+
+  RoutePhotoRow copyWith({
+    String? id,
+    String? routeId,
+    String? ownerId,
+    String? storagePath,
+    String? thumb512Path,
+    String? caption,
+    int? positionIdx,
+    DateTime? createdAt,
+  }) => RoutePhotoRow(
+    id: id ?? this.id,
+    routeId: routeId ?? this.routeId,
+    ownerId: ownerId ?? this.ownerId,
+    storagePath: storagePath ?? this.storagePath,
+    thumb512Path: thumb512Path ?? this.thumb512Path,
+    caption: caption ?? this.caption,
+    positionIdx: positionIdx ?? this.positionIdx,
+    createdAt: createdAt ?? this.createdAt,
+  );
 }
 
 /// Row shape for the `route_reviews` table. Mirrors the Supabase schema
@@ -3744,6 +5090,24 @@ class RouteReviewRow {
     colCreatedAt: createdAt?.toIso8601String(),
     colUpdatedAt: updatedAt?.toIso8601String(),
   };
+
+  RouteReviewRow copyWith({
+    String? id,
+    String? routeId,
+    String? userId,
+    int? rating,
+    String? comment,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => RouteReviewRow(
+    id: id ?? this.id,
+    routeId: routeId ?? this.routeId,
+    userId: userId ?? this.userId,
+    rating: rating ?? this.rating,
+    comment: comment ?? this.comment,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 }
 
 /// Row shape for the `routes` table. Mirrors the Supabase schema
@@ -3870,6 +5234,54 @@ class RouteRow {
     colShadowHidden: shadowHidden,
     colGeomPublic: geomPublic,
   };
+
+  RouteRow copyWith({
+    String? id,
+    String? userId,
+    String? name,
+    List<Map<String, dynamic>>? waypoints,
+    double? distanceM,
+    double? elevationM,
+    String? surface,
+    bool? isPublic,
+    String? slug,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    dynamic startPoint,
+    List<String>? tags,
+    DateTime? featuredAt,
+    int? runCount,
+    String? clubId,
+    bool? isStarred,
+    dynamic geom,
+    String? description,
+    bool? isFeatured,
+    bool? shadowHidden,
+    dynamic geomPublic,
+  }) => RouteRow(
+    id: id ?? this.id,
+    userId: userId ?? this.userId,
+    name: name ?? this.name,
+    waypoints: waypoints ?? this.waypoints,
+    distanceM: distanceM ?? this.distanceM,
+    elevationM: elevationM ?? this.elevationM,
+    surface: surface ?? this.surface,
+    isPublic: isPublic ?? this.isPublic,
+    slug: slug ?? this.slug,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    startPoint: startPoint ?? this.startPoint,
+    tags: tags ?? this.tags,
+    featuredAt: featuredAt ?? this.featuredAt,
+    runCount: runCount ?? this.runCount,
+    clubId: clubId ?? this.clubId,
+    isStarred: isStarred ?? this.isStarred,
+    geom: geom ?? this.geom,
+    description: description ?? this.description,
+    isFeatured: isFeatured ?? this.isFeatured,
+    shadowHidden: shadowHidden ?? this.shadowHidden,
+    geomPublic: geomPublic ?? this.geomPublic,
+  );
 }
 
 /// Row shape for the `run_comments` table. Mirrors the Supabase schema
@@ -3921,6 +5333,24 @@ class RunCommentRow {
     colCreatedAt: createdAt.toIso8601String(),
     colUpdatedAt: updatedAt.toIso8601String(),
   };
+
+  RunCommentRow copyWith({
+    String? id,
+    String? runId,
+    String? authorId,
+    String? parentCommentId,
+    String? body,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => RunCommentRow(
+    id: id ?? this.id,
+    runId: runId ?? this.runId,
+    authorId: authorId ?? this.authorId,
+    parentCommentId: parentCommentId ?? this.parentCommentId,
+    body: body ?? this.body,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 }
 
 /// Row shape for the `run_gear` table. Mirrors the Supabase schema
@@ -3952,6 +5382,16 @@ class RunGearRow {
     colGearId: gearId,
     colCreatedAt: createdAt.toIso8601String(),
   };
+
+  RunGearRow copyWith({
+    String? runId,
+    String? gearId,
+    DateTime? createdAt,
+  }) => RunGearRow(
+    runId: runId ?? this.runId,
+    gearId: gearId ?? this.gearId,
+    createdAt: createdAt ?? this.createdAt,
+  );
 }
 
 /// Row shape for the `run_kudos` table. Mirrors the Supabase schema
@@ -3983,6 +5423,16 @@ class RunKudosRow {
     colRunId: runId,
     colGivenAt: givenAt.toIso8601String(),
   };
+
+  RunKudosRow copyWith({
+    String? userId,
+    String? runId,
+    DateTime? givenAt,
+  }) => RunKudosRow(
+    userId: userId ?? this.userId,
+    runId: runId ?? this.runId,
+    givenAt: givenAt ?? this.givenAt,
+  );
 }
 
 /// Row shape for the `run_matched_tracks` table. Mirrors the Supabase schema
@@ -4054,6 +5504,32 @@ class RunMatchedTrackRow {
     colUpdatedAt: updatedAt.toIso8601String(),
     colSourceTrackUrl: sourceTrackUrl,
   };
+
+  RunMatchedTrackRow copyWith({
+    String? runId,
+    String? status,
+    String? matchedTrackUrl,
+    int? attempts,
+    DateTime? matchedAt,
+    String? algorithm,
+    String? algorithmVersion,
+    String? errorMessage,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? sourceTrackUrl,
+  }) => RunMatchedTrackRow(
+    runId: runId ?? this.runId,
+    status: status ?? this.status,
+    matchedTrackUrl: matchedTrackUrl ?? this.matchedTrackUrl,
+    attempts: attempts ?? this.attempts,
+    matchedAt: matchedAt ?? this.matchedAt,
+    algorithm: algorithm ?? this.algorithm,
+    algorithmVersion: algorithmVersion ?? this.algorithmVersion,
+    errorMessage: errorMessage ?? this.errorMessage,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    sourceTrackUrl: sourceTrackUrl ?? this.sourceTrackUrl,
+  );
 }
 
 /// Row shape for the `run_photos` table. Mirrors the Supabase schema
@@ -4120,6 +5596,30 @@ class RunPhotoRow {
     colEventId: eventId,
     colEventInstanceStart: eventInstanceStart?.toIso8601String(),
   };
+
+  RunPhotoRow copyWith({
+    String? id,
+    String? runId,
+    String? ownerId,
+    String? storagePath,
+    String? caption,
+    int? positionIdx,
+    DateTime? createdAt,
+    String? thumb512Path,
+    String? eventId,
+    DateTime? eventInstanceStart,
+  }) => RunPhotoRow(
+    id: id ?? this.id,
+    runId: runId ?? this.runId,
+    ownerId: ownerId ?? this.ownerId,
+    storagePath: storagePath ?? this.storagePath,
+    caption: caption ?? this.caption,
+    positionIdx: positionIdx ?? this.positionIdx,
+    createdAt: createdAt ?? this.createdAt,
+    thumb512Path: thumb512Path ?? this.thumb512Path,
+    eventId: eventId ?? this.eventId,
+    eventInstanceStart: eventInstanceStart ?? this.eventInstanceStart,
+  );
 }
 
 /// Row shape for the `runs` table. Mirrors the Supabase schema
@@ -4256,6 +5756,58 @@ class RunRow {
     colFastestMarathonS: fastestMarathonS,
     colConcludedAt: concludedAt?.toIso8601String(),
   };
+
+  RunRow copyWith({
+    String? id,
+    String? userId,
+    DateTime? startedAt,
+    int? durationS,
+    double? distanceM,
+    String? routeId,
+    String? source,
+    String? externalId,
+    dynamic metadata,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? trackUrl,
+    bool? isPublic,
+    String? eventId,
+    String? hrSeriesUrl,
+    String? activityType,
+    bool? isDnf,
+    String? raceListingId,
+    double? elevationGainM,
+    int? fastest5kS,
+    int? fastest10kS,
+    int? fastestHalfMarathonS,
+    int? fastestMarathonS,
+    DateTime? concludedAt,
+  }) => RunRow(
+    id: id ?? this.id,
+    userId: userId ?? this.userId,
+    startedAt: startedAt ?? this.startedAt,
+    durationS: durationS ?? this.durationS,
+    distanceM: distanceM ?? this.distanceM,
+    routeId: routeId ?? this.routeId,
+    source: source ?? this.source,
+    externalId: externalId ?? this.externalId,
+    metadata: metadata ?? this.metadata,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    trackUrl: trackUrl ?? this.trackUrl,
+    isPublic: isPublic ?? this.isPublic,
+    eventId: eventId ?? this.eventId,
+    hrSeriesUrl: hrSeriesUrl ?? this.hrSeriesUrl,
+    activityType: activityType ?? this.activityType,
+    isDnf: isDnf ?? this.isDnf,
+    raceListingId: raceListingId ?? this.raceListingId,
+    elevationGainM: elevationGainM ?? this.elevationGainM,
+    fastest5kS: fastest5kS ?? this.fastest5kS,
+    fastest10kS: fastest10kS ?? this.fastest10kS,
+    fastestHalfMarathonS: fastestHalfMarathonS ?? this.fastestHalfMarathonS,
+    fastestMarathonS: fastestMarathonS ?? this.fastestMarathonS,
+    concludedAt: concludedAt ?? this.concludedAt,
+  );
 }
 
 /// Row shape for the `safety_contacts` table. Mirrors the Supabase schema
@@ -4322,6 +5874,30 @@ class SafetyContactRow {
     colContactPhone: contactPhone,
     colSmsOptInAt: smsOptInAt?.toIso8601String(),
   };
+
+  SafetyContactRow copyWith({
+    String? id,
+    String? ownerId,
+    String? contactUserId,
+    String? contactEmail,
+    DateTime? confirmedAt,
+    String? confirmToken,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? contactPhone,
+    DateTime? smsOptInAt,
+  }) => SafetyContactRow(
+    id: id ?? this.id,
+    ownerId: ownerId ?? this.ownerId,
+    contactUserId: contactUserId ?? this.contactUserId,
+    contactEmail: contactEmail ?? this.contactEmail,
+    confirmedAt: confirmedAt ?? this.confirmedAt,
+    confirmToken: confirmToken ?? this.confirmToken,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    contactPhone: contactPhone ?? this.contactPhone,
+    smsOptInAt: smsOptInAt ?? this.smsOptInAt,
+  );
 }
 
 /// Row shape for the `saved_routes` table. Mirrors the Supabase schema
@@ -4353,6 +5929,16 @@ class SavedRouteRow {
     colRouteId: routeId,
     colSavedAt: savedAt.toIso8601String(),
   };
+
+  SavedRouteRow copyWith({
+    String? userId,
+    String? routeId,
+    DateTime? savedAt,
+  }) => SavedRouteRow(
+    userId: userId ?? this.userId,
+    routeId: routeId ?? this.routeId,
+    savedAt: savedAt ?? this.savedAt,
+  );
 }
 
 /// Row shape for the `segment_efforts` table. Mirrors the Supabase schema
@@ -4404,6 +5990,24 @@ class SegmentEffortRow {
     colStartedAt: startedAt.toIso8601String(),
     colCreatedAt: createdAt.toIso8601String(),
   };
+
+  SegmentEffortRow copyWith({
+    String? id,
+    String? segmentId,
+    String? runId,
+    String? userId,
+    double? timeSeconds,
+    DateTime? startedAt,
+    DateTime? createdAt,
+  }) => SegmentEffortRow(
+    id: id ?? this.id,
+    segmentId: segmentId ?? this.segmentId,
+    runId: runId ?? this.runId,
+    userId: userId ?? this.userId,
+    timeSeconds: timeSeconds ?? this.timeSeconds,
+    startedAt: startedAt ?? this.startedAt,
+    createdAt: createdAt ?? this.createdAt,
+  );
 }
 
 /// Row shape for the `segments` table. Mirrors the Supabase schema
@@ -4460,6 +6064,26 @@ class SegmentRow {
     colCreatedAt: createdAt.toIso8601String(),
     colAuthorId: authorId,
   };
+
+  SegmentRow copyWith({
+    String? id,
+    String? routeId,
+    String? name,
+    double? startDistanceM,
+    double? endDistanceM,
+    double? lengthM,
+    DateTime? createdAt,
+    String? authorId,
+  }) => SegmentRow(
+    id: id ?? this.id,
+    routeId: routeId ?? this.routeId,
+    name: name ?? this.name,
+    startDistanceM: startDistanceM ?? this.startDistanceM,
+    endDistanceM: endDistanceM ?? this.endDistanceM,
+    lengthM: lengthM ?? this.lengthM,
+    createdAt: createdAt ?? this.createdAt,
+    authorId: authorId ?? this.authorId,
+  );
 }
 
 /// Row shape for the `session_plan_blocks` table. Mirrors the Supabase schema
@@ -4496,6 +6120,18 @@ class SessionPlanBlockRow {
     colPosition: position,
     colName: name,
   };
+
+  SessionPlanBlockRow copyWith({
+    String? id,
+    String? planId,
+    int? position,
+    String? name,
+  }) => SessionPlanBlockRow(
+    id: id ?? this.id,
+    planId: planId ?? this.planId,
+    position: position ?? this.position,
+    name: name ?? this.name,
+  );
 }
 
 /// Row shape for the `session_plan_items` table. Mirrors the Supabase schema
@@ -4567,6 +6203,32 @@ class SessionPlanItemRow {
     colTempo: tempo,
     colCue: cue,
   };
+
+  SessionPlanItemRow copyWith({
+    String? id,
+    String? planId,
+    String? blockId,
+    int? position,
+    String? movementName,
+    String? kind,
+    int? durationS,
+    int? reps,
+    bool? perSide,
+    String? tempo,
+    String? cue,
+  }) => SessionPlanItemRow(
+    id: id ?? this.id,
+    planId: planId ?? this.planId,
+    blockId: blockId ?? this.blockId,
+    position: position ?? this.position,
+    movementName: movementName ?? this.movementName,
+    kind: kind ?? this.kind,
+    durationS: durationS ?? this.durationS,
+    reps: reps ?? this.reps,
+    perSide: perSide ?? this.perSide,
+    tempo: tempo ?? this.tempo,
+    cue: cue ?? this.cue,
+  );
 }
 
 /// Row shape for the `session_plans` table. Mirrors the Supabase schema
@@ -4633,6 +6295,30 @@ class SessionPlanRow {
     colCreatedAt: createdAt.toIso8601String(),
     colUpdatedAt: updatedAt.toIso8601String(),
   };
+
+  SessionPlanRow copyWith({
+    String? id,
+    String? authorId,
+    String? clubId,
+    String? title,
+    String? discipline,
+    String? equipment,
+    int? estDurationMin,
+    bool? isPublic,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => SessionPlanRow(
+    id: id ?? this.id,
+    authorId: authorId ?? this.authorId,
+    clubId: clubId ?? this.clubId,
+    title: title ?? this.title,
+    discipline: discipline ?? this.discipline,
+    equipment: equipment ?? this.equipment,
+    estDurationMin: estDurationMin ?? this.estDurationMin,
+    isPublic: isPublic ?? this.isPublic,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 }
 
 /// Row shape for the `training_plans` table. Mirrors the Supabase schema
@@ -4759,6 +6445,54 @@ class TrainingPlanRow {
     colAssignedByCoachId: assignedByCoachId,
     colIsPublicTemplate: isPublicTemplate,
   };
+
+  TrainingPlanRow copyWith({
+    String? id,
+    String? userId,
+    String? name,
+    String? goalEvent,
+    double? goalDistanceM,
+    int? goalTimeSeconds,
+    DateTime? startDate,
+    DateTime? endDate,
+    int? daysPerWeek,
+    double? vdot,
+    int? current5kSeconds,
+    String? status,
+    String? notes,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? source,
+    dynamic rules,
+    bool? isTemplate,
+    String? parentTemplateId,
+    String? clubId,
+    String? assignedByCoachId,
+    bool? isPublicTemplate,
+  }) => TrainingPlanRow(
+    id: id ?? this.id,
+    userId: userId ?? this.userId,
+    name: name ?? this.name,
+    goalEvent: goalEvent ?? this.goalEvent,
+    goalDistanceM: goalDistanceM ?? this.goalDistanceM,
+    goalTimeSeconds: goalTimeSeconds ?? this.goalTimeSeconds,
+    startDate: startDate ?? this.startDate,
+    endDate: endDate ?? this.endDate,
+    daysPerWeek: daysPerWeek ?? this.daysPerWeek,
+    vdot: vdot ?? this.vdot,
+    current5kSeconds: current5kSeconds ?? this.current5kSeconds,
+    status: status ?? this.status,
+    notes: notes ?? this.notes,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    source: source ?? this.source,
+    rules: rules ?? this.rules,
+    isTemplate: isTemplate ?? this.isTemplate,
+    parentTemplateId: parentTemplateId ?? this.parentTemplateId,
+    clubId: clubId ?? this.clubId,
+    assignedByCoachId: assignedByCoachId ?? this.assignedByCoachId,
+    isPublicTemplate: isPublicTemplate ?? this.isPublicTemplate,
+  );
 }
 
 /// Row shape for the `user_coach_usage` table. Mirrors the Supabase schema
@@ -4790,6 +6524,16 @@ class UserCoachUsageRow {
     colUsageDate: usageDate.toIso8601String(),
     colMessageCount: messageCount,
   };
+
+  UserCoachUsageRow copyWith({
+    String? userId,
+    DateTime? usageDate,
+    int? messageCount,
+  }) => UserCoachUsageRow(
+    userId: userId ?? this.userId,
+    usageDate: usageDate ?? this.usageDate,
+    messageCount: messageCount ?? this.messageCount,
+  );
 }
 
 /// Row shape for the `user_device_settings` table. Mirrors the Supabase schema
@@ -4841,6 +6585,24 @@ class UserDeviceSettingRow {
     colLastSeenAt: lastSeenAt.toIso8601String(),
     colUpdatedAt: updatedAt.toIso8601String(),
   };
+
+  UserDeviceSettingRow copyWith({
+    String? userId,
+    String? deviceId,
+    String? platform,
+    String? label,
+    dynamic prefs,
+    DateTime? lastSeenAt,
+    DateTime? updatedAt,
+  }) => UserDeviceSettingRow(
+    userId: userId ?? this.userId,
+    deviceId: deviceId ?? this.deviceId,
+    platform: platform ?? this.platform,
+    label: label ?? this.label,
+    prefs: prefs ?? this.prefs,
+    lastSeenAt: lastSeenAt ?? this.lastSeenAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 }
 
 /// Row shape for the `user_follows` table. Mirrors the Supabase schema
@@ -4872,6 +6634,16 @@ class UserFollowRow {
     colFolloweeId: followeeId,
     colFollowedAt: followedAt.toIso8601String(),
   };
+
+  UserFollowRow copyWith({
+    String? followerId,
+    String? followeeId,
+    DateTime? followedAt,
+  }) => UserFollowRow(
+    followerId: followerId ?? this.followerId,
+    followeeId: followeeId ?? this.followeeId,
+    followedAt: followedAt ?? this.followedAt,
+  );
 }
 
 /// Row shape for the `user_profiles` table. Mirrors the Supabase schema
@@ -4993,6 +6765,52 @@ class UserProfileRow {
     colHandle: handle,
     colAiDisclosureVersion: aiDisclosureVersion,
   };
+
+  UserProfileRow copyWith({
+    String? id,
+    String? displayName,
+    String? avatarUrl,
+    String? parkrunNumber,
+    String? preferredUnit,
+    String? subscriptionTier,
+    DateTime? subscriptionAt,
+    DateTime? createdAt,
+    DateTime? billingIssueAt,
+    String? gender,
+    DateTime? dateOfBirth,
+    DateTime? coachConsentAt,
+    DateTime? healthDataConsentAt,
+    DateTime? ageConfirmedAt,
+    DateTime? termsAcceptedAt,
+    DateTime? onboardedAt,
+    double? heightCm,
+    bool? shadowHidden,
+    int? tierUpdatedEventTs,
+    String? handle,
+    int? aiDisclosureVersion,
+  }) => UserProfileRow(
+    id: id ?? this.id,
+    displayName: displayName ?? this.displayName,
+    avatarUrl: avatarUrl ?? this.avatarUrl,
+    parkrunNumber: parkrunNumber ?? this.parkrunNumber,
+    preferredUnit: preferredUnit ?? this.preferredUnit,
+    subscriptionTier: subscriptionTier ?? this.subscriptionTier,
+    subscriptionAt: subscriptionAt ?? this.subscriptionAt,
+    createdAt: createdAt ?? this.createdAt,
+    billingIssueAt: billingIssueAt ?? this.billingIssueAt,
+    gender: gender ?? this.gender,
+    dateOfBirth: dateOfBirth ?? this.dateOfBirth,
+    coachConsentAt: coachConsentAt ?? this.coachConsentAt,
+    healthDataConsentAt: healthDataConsentAt ?? this.healthDataConsentAt,
+    ageConfirmedAt: ageConfirmedAt ?? this.ageConfirmedAt,
+    termsAcceptedAt: termsAcceptedAt ?? this.termsAcceptedAt,
+    onboardedAt: onboardedAt ?? this.onboardedAt,
+    heightCm: heightCm ?? this.heightCm,
+    shadowHidden: shadowHidden ?? this.shadowHidden,
+    tierUpdatedEventTs: tierUpdatedEventTs ?? this.tierUpdatedEventTs,
+    handle: handle ?? this.handle,
+    aiDisclosureVersion: aiDisclosureVersion ?? this.aiDisclosureVersion,
+  );
 }
 
 /// Row shape for the `user_settings` table. Mirrors the Supabase schema
@@ -5034,5 +6852,19 @@ class UserSettingRow {
     colDiscoverableArea: discoverableArea,
     colDiscoverableAreaLabel: discoverableAreaLabel,
   };
+
+  UserSettingRow copyWith({
+    String? userId,
+    dynamic prefs,
+    DateTime? updatedAt,
+    dynamic discoverableArea,
+    String? discoverableAreaLabel,
+  }) => UserSettingRow(
+    userId: userId ?? this.userId,
+    prefs: prefs ?? this.prefs,
+    updatedAt: updatedAt ?? this.updatedAt,
+    discoverableArea: discoverableArea ?? this.discoverableArea,
+    discoverableAreaLabel: discoverableAreaLabel ?? this.discoverableAreaLabel,
+  );
 }
 

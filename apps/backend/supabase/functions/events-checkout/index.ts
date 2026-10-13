@@ -36,7 +36,7 @@ import Stripe, {
   type UnknownParamKeys,
 } from '../_shared/stripe.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0';
-import type { Database, DbClient } from '../_shared/database.ts';
+import type { Database } from '../_shared/database.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { selectEffectivePricing } from '../_shared/event_instance.ts';
 import { readPlatformFeeBps } from '../_shared/platform_fees.ts';
@@ -45,17 +45,16 @@ import { checkRateLimit } from '../_shared/rate_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import {
   buildCheckoutSessionParams,
-  capacityDecision,
   checkoutExpiresAtUnix,
   checkoutIdempotencyKey,
   computeApplicationFeeCents,
-  heldOfferCount,
   isSalesWindowOpen,
   type PendingOrderRow,
   reservationExpiry,
   resolveHold,
 } from './lib.ts';
 import { validateReturnUrl } from '../events-connect-onboard/lib.ts';
+import { precheckCapacity } from './capacity.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
 import { parseRedirectAllowlist } from '../_shared/redirect_allowlist.ts';
 
@@ -391,60 +390,3 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
 
   return Response.json({ checkout_url: session.url, order_id: orderId });
 }));
-
-/// going + non-expired pending + other people's waitlist offers count
-/// against capacity, the single shared decision. Pending orders whose
-/// reserved_until has lapsed do not count (they're swept / released on
-/// expiry). A failed read of the holds answers 'unknown' rather than
-/// 'available': a seat promised to a waitlister must not be sold because a
-/// read errored.
-async function precheckCapacity(
-  service: DbClient,
-  eventId: string,
-  instanceStart: string,
-  capacity: number | null,
-  callerId: string,
-): Promise<'available' | 'full' | 'unknown'> {
-  if (capacity === null) return 'available';
-
-  const { count: goingCount } = await service
-    .from('event_attendees')
-    .select('event_id', { count: 'exact', head: true })
-    .eq('event_id', eventId)
-    .eq('instance_start', instanceStart)
-    .eq('status', 'going');
-
-  const nowIso = new Date().toISOString();
-  const { data: pendingRows, error: pendingErr } = await service
-    .from('event_orders')
-    .select('buyer_user_id')
-    .eq('event_id', eventId)
-    .eq('instance_start', instanceStart)
-    .eq('status', 'pending')
-    .gt('reserved_until', nowIso);
-  if (pendingErr) {
-    console.error('pending hold read failed (code):', pendingErr?.code ?? 'unknown');
-    return 'unknown';
-  }
-
-  const { data: offers, error: offersErr } = await service
-    .from('event_attendees')
-    .select('user_id, offer_expires_at')
-    .eq('event_id', eventId)
-    .eq('instance_start', instanceStart)
-    .eq('status', 'waitlisted')
-    .not('offer_expires_at', 'is', null);
-  if (offersErr) {
-    console.error('waitlist offer read failed (code):', offersErr?.code ?? 'unknown');
-    return 'unknown';
-  }
-
-  const pending = pendingRows ?? [];
-  const held = heldOfferCount(
-    offers ?? [],
-    new Set(pending.map((r) => r.buyer_user_id)),
-    callerId,
-    Date.now(),
-  );
-  return capacityDecision(goingCount ?? 0, pending.length + held, capacity);
-}

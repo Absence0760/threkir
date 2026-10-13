@@ -952,8 +952,9 @@
 				instanceStart: activeInstance,
 				durationS: 0,
 				distanceM: 0,
-				finisherStatus: status,
-				...(raceSession ? { finishMethod: 'manual' as const } : {})
+				// A non-finish carries no finish method: there is no finish time
+				// whose provenance the badge would describe.
+				finisherStatus: status
 			});
 			showResultPicker = false;
 			await reloadInstance();

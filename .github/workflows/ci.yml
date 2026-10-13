@@ -2738,6 +2738,108 @@ jobs:
       - working-directory: apps/mobile_android/android
         run: ./gradlew :app:testDebugUnitTest --no-daemon
 
+  mobile-android-e2e:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    name: mobile_android integration_test (emulator)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # Runs the `integration_test/` harness (decisions § 1820) on a real
+    # Android emulator: the real `main()`, real plugins, real
+    # SharedPreferences — the layer `test-packages`' headless widget tests
+    # cannot reach. No Supabase stack is started, on purpose. Neither suite
+    # touches the backend: onboarding is device-local, and Home is reachable
+    # without a session (main.dart routes on the device-scoped `onboarded`
+    # flag, not on auth). `.env.example` replaces `.env.development` exactly
+    # as in build-mobile-android, so the debug build carries no seed
+    # credentials and dev auto-login never fires; its SUPABASE_URL points at
+    # 10.0.2.2, where nothing listens, so every sync call takes the offline
+    # path the app already ships. A suite that needs the backend adds
+    # `.github/actions/start-supabase` here and says so (decisions § 1838).
+    #
+    # API 34 x86_64 `google_apis`: inside minSdk 26..targetSdk 36, a
+    # KVM-accelerated x86_64 image (an arm64 image on an x86 runner is
+    # emulated and an order of magnitude slower), and Google APIs present so
+    # plugins that probe for Play services find what a real phone has.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      # Same key shape as build-mobile-android, for the same reason: the
+      # runner OS in the key AND the restore key (decisions § 1702).
+      - name: Cache pub-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.pub-cache
+          key: pub-cache-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: pub-cache-${{ runner.os }}-
+      - run: dart pub global activate melos 7.8.2
+      - run: melos bootstrap
+      - name: Cache Gradle
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-mobile-android-${{ hashFiles('apps/mobile_android/android/**/*.gradle*', 'apps/mobile_android/android/gradle/wrapper/gradle-wrapper.properties', 'pubspec.lock') }}
+          restore-keys: |
+            gradle-mobile-android-
+      - run: cp apps/mobile_android/.env.example apps/mobile_android/.env.development
+      # GitHub's Ubuntu runners expose /dev/kvm but not to the runner user;
+      # without this rule the emulator falls back to software emulation and
+      # the boot alone outlasts the timeout.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      # The AVD and its cold-boot snapshot are cached so a run restores a
+      # booted image instead of creating one and cold-booting it (minutes).
+      # The key names everything the image is built from, so changing the
+      # API level, target or arch below starts a fresh AVD rather than
+      # restoring a mismatched one.
+      - name: Cache AVD
+        id: avd-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ runner.os }}-34-google_apis-x86_64
+      - name: Create AVD and snapshot it for the cache
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "AVD snapshot generated for the cache."
+      # `-d emulator-5554` names the device: the runner also offers Linux
+      # desktop as a Flutter device, and with two attached `flutter test`
+      # refuses to pick. `-no-snapshot-save` keeps the cached snapshot clean,
+      # so one run's SharedPreferences cannot leak into the next.
+      - name: Run integration_test on the emulator
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          working-directory: apps/mobile_android
+          script: flutter test integration_test -d emulator-5554
+
   build-mobile-ios:
     needs: changes
     if: needs.changes.outputs.mobile_ios == 'true'
@@ -4245,6 +4347,7 @@ jobs:
       - sim-firmware
       - sim-scenarios
       - build-mobile-android
+      - mobile-android-e2e
       - build-mobile-ios
       - twin-parity
       - schema-codegen-drift

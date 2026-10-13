@@ -1,0 +1,62 @@
+{
+  "corrections": {
+    "web:help.audienceClubAdmin": "Club-Admins",
+    "web:help.categoryClubs": "Clubs",
+    "web:help.requiresClubAdmin": "Nur für Club-Admins",
+    "web:help.audienceInstructor": "Kursleiter",
+    "web:help.categoryInstructors": "Kursleiter",
+    "web:help.requiresRaceDirector": "Nur für Renndirektoren",
+    "mobile:helpRequiresRaceDirector": "Nur für Renndirektoren",
+    "web:help.categoryPaidClasses": "Bezahlte Kurse",
+    "web:help.requiresPaidRailLive": "Bezahlte Anmeldung muss aktiv sein",
+    "mobile:helpRequiresPaidRailLive": "Bezahlte Anmeldung muss aktiv sein",
+    "mobile:helpRequiresPro": "Erfordert Pro",
+    "mobile:helpRequiresStripeConnected": "Erfordert verbundenes Stripe-Konto",
+    "mobile:helpAudienceParticipant": "Teilnehmende",
+    "mobile:helpHowThisWorks": "So funktioniert das",
+    "web:help.kindHowTo": "Schritt für Schritt"
+  },
+  "findings": [
+    {"id": "web:help.audienceClubAdmin", "severity": "error", "rule": "term", "problem": "\"Vereinsadmins\": the glossary term is Club (Verein is recorded inconsistency 5); the mobile twin says \"Club-Admins\" and the de guides say \"Club\" 43x / \"Club-Admins\".", "fix": "Club-Admins"},
+    {"id": "web:help.categoryClubs", "severity": "error", "rule": "term", "problem": "\"Vereine\" vs glossary Club/Clubs, mobile helpCategoryClubs \"Clubs\", and the guides (\"Clubs\" 24x, never Verein).", "fix": "Clubs"},
+    {"id": "web:help.requiresClubAdmin", "severity": "error", "rule": "term", "problem": "\"Nur für Vereinsadmins\" disagrees with mobile \"Nur für Club-Admins\" and the guides.", "fix": "Nur für Club-Admins"},
+    {"id": "web:help.audienceInstructor", "severity": "error", "rule": "term", "problem": "\"Trainer\" names the human coach roster elsewhere on web (shell.coaching \"Athleten & Trainer\"), so a class instructor and a coach read the same; mobile says \"Kursleiter\", and the guides call the thing taught a \"Kurs\" (59x).", "fix": "Kursleiter"},
+    {"id": "web:help.categoryInstructors", "severity": "error", "rule": "term", "problem": "Same as help.audienceInstructor: \"Trainer\" vs mobile \"Kursleiter\"; collides with the coach sense.", "fix": "Kursleiter"},
+    {"id": "web:help.requiresRaceDirector", "severity": "error", "rule": "term", "problem": "\"Nur für Rennleitungen\" doesn't name the club role. The role is \"Renndirektor\" (clubRole.race_director, clubHome.viewerRoleDirector, guides invite-members-and-roles / race-day-for-hosts / set-up-a-race), so a reader can't map the badge to the role to assign.", "fix": "Nur für Renndirektoren"},
+    {"id": "mobile:helpRequiresRaceDirector", "severity": "error", "rule": "term", "problem": "\"Nur für die Rennleitung\": same role-name problem, and it differs from web.", "fix": "Nur für Renndirektoren"},
+    {"id": "mobile:helpRequiresStripeConnected", "severity": "warning", "rule": "typography", "problem": "\"Benötigt verbundenes Stripe\" is ungrammatical (Stripe used as a neuter noun, the account is missing). It also differs from web (\"Erfordert ein verbundenes Stripe-Konto\") and the guides (\"Stripe-Konto\" 8x).", "fix": "Erfordert verbundenes Stripe-Konto (34 chars vs English 22; it is a wrapping chip, but check on 360 dp)"},
+    {"id": "mobile:helpRequiresPaidRailLive", "severity": "warning", "rule": "term", "problem": "\"Bezahlanmeldung\" is a coinage found nowhere else. The guides say \"Bezahlte Anmeldung\", and web uses a different wording.", "fix": "Bezahlte Anmeldung muss aktiv sein (same on both surfaces)"},
+    {"id": "web:help.requiresPaidRailLive", "severity": "warning", "rule": "term", "problem": "\"Kostenpflichtige Anmeldung\" vs the guides' \"Bezahlte Anmeldung\" (get-paid-with-stripe, refund-policies, host-a-paid-yoga-class); mobile used a third form.", "fix": "Bezahlte Anmeldung muss aktiv sein"},
+    {"id": "web:help.categoryPaidClasses", "severity": "warning", "rule": "term", "problem": "\"Kostenpflichtige Kurse\" vs mobile and guide headings \"Bezahlte Kurse\" (8x).", "fix": "Bezahlte Kurse"},
+    {"id": "mobile:helpRequiresPro", "severity": "warning", "rule": "term", "problem": "\"Benötigt Pro\" vs web \"Erfordert Pro\" for the same badge.", "fix": "Erfordert Pro"},
+    {"id": "mobile:helpAudienceParticipant", "severity": "warning", "rule": "term", "problem": "\"Teilnehmer\" vs web \"Teilnehmende\" and the guides (\"Teilnehmende/n\" 40x).", "fix": "Teilnehmende"},
+    {"id": "mobile:helpHowThisWorks", "severity": "warning", "rule": "term", "problem": "\"So funktioniert es\" vs web help.howThisWorks \"So funktioniert das\" (also quoted in the using-help guide) for the same English. On web, \"So funktioniert es\" is kindExplainer (\"How it works\").", "fix": "So funktioniert das"},
+    {"id": "web:help.kindHowTo", "severity": "warning", "rule": "meaning", "problem": "The eyebrow \"Anleitung\" sits on every guide card, and every guide is already called an \"Anleitung\", so it doesn't tell a how-to apart from an explainer or a start guide.", "fix": "Schritt für Schritt"}
+  ],
+  "terms": {
+    "help / help centre": "Hilfe",
+    "guide": "Anleitung / Anleitungen",
+    "Organisers (audience)": "Veranstalter",
+    "Participants": "Teilnehmende",
+    "Spectators": "Zuschauer",
+    "Runners": "Läufer",
+    "Instructors": "Kursleiter",
+    "Club admins": "Club-Admins",
+    "Clubs": "Clubs",
+    "race director (role)": "Renndirektor / Renndirektoren",
+    "Paid classes": "Bezahlte Kurse",
+    "paid registration": "Bezahlte Anmeldung",
+    "Needs …": "Erfordert …",
+    "How this works": "So funktioniert das",
+    "How it works": "So funktioniert es",
+    "Start here": "Hier starten",
+    "Works on": "Verfügbar auf",
+    "Tip / Caution": "Tipp / Achtung"
+  },
+  "catalogueFindings": [
+    {"keys": ["web:rateLimit.createClub", "mobile:rateLimitCreateClub", "web:eventEditor.membersOnlyHint", "mobile:eventEditorMembersOnlyHint", "web:admin.reports.kind.club"], "problem": "Club vs Verein (inconsistency 5) reaches beyond the plan-template keys the de guide lists: \"Vereine\", \"Vereinsmitglieder\" and \"Verein\" here, while the glossary and the guides say Club."},
+    {"keys": ["web:clubEvent.claimSubmitted", "web:clubEvent.raceArmedHint", "web:checkpoint.notOrganiser", "web:clubEvent.occurrenceCancelNotOrganiser"], "problem": "Organiser has three renderings: \"Organisator\", \"Renn-Organisatoren\" and \"Organisator*innen\". The last is the only gender-star form in either catalogue. The help chips and guides use \"Veranstalter\", and the role is \"Eventorganisator\"."},
+    {"keys": ["web:eventEditor.inPersonOnlyNote"], "problem": "\"Kostenpflichtige Anmeldung\", while the de help guides and (after this review) the help chrome say \"Bezahlte Anmeldung\"."},
+    {"keys": ["web:learn.readGuide", "web:help.readGuide", "mobile:infoTipReadGuide"], "problem": "Learn calls its guides \"Leitfaden\" (\"Leitfaden lesen\"), and help calls them \"Anleitung\" (\"Anleitung lesen\"). That may be intentional (different surfaces), but the English uses \"guide\" for both. Decide whether to unify."}
+  ]
+}

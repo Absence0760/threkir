@@ -1,0 +1,147 @@
+{
+ "corrections": {
+  "web:help.live-tracking-and-safety.s0.b4": "毎回操作しなくてもすべてのランを共有するには、**あなた**タブの**緊急連絡先**で**自動ライブ共有**をオンにします。この設定はそのスマートフォンにのみ適用され、進行中のランはリンクを持つ誰でも見ることができます。",
+  "web:help.record-your-first-run.s0.b1.i2": "GPSの準備中に3秒のカウントダウンが表示され、その後タイマーが始まります。",
+  "web:help.racing-in-a-race.s0.b0.i2": "Wear OSウォッチ：自動ゴールを含め、ウォッチ上で完全対応。参加登録とコースの選択は、引き続きWebまたはスマートフォンで行います。",
+  "web:help.racing-in-a-race.s3.b1.i0": "フィニッシュラインから30 m以内にいること",
+  "web:help.racing-in-a-race.s3.b1.i1": "コース距離の90%以上を走っていること。",
+  "web:help.create-a-club.s2.heading": "クラブを作成したあと",
+  "web:help.import-your-history.s4.b1": "インポートしたランには、ランのデフォルトプライバシー設定が適用されます。何年分ものランが一度に公開されるのを避けたい場合は、大量にインポートする前に確認してください。[[guide:your-data-and-privacy|あなたのデータとプライバシー]]を参照してください。"
+ },
+ "findings": [
+  {
+   "id": "web:help.live-tracking-and-safety.s0.b4",
+   "severity": "warning",
+   "rule": "meaning",
+   "problem": "「忘れずにすべてのランを共有するには」 reads 'to make sure you share every run'; the English is 'without having to remember to' (the point of Auto live share). Safety copy, so worth the precision.",
+   "fix": "「毎回操作しなくてもすべてのランを共有するには、…」"
+  },
+  {
+   "id": "web:help.racing-in-a-race.s0.b0.i2",
+   "severity": "warning",
+   "rule": "meaning",
+   "problem": "「手首だけで完全対応」 implies the watch alone does everything, contradicting the next sentence (sign-up still on web/phone). English 'full support on the wrist' means racing itself is fully supported on the watch.",
+   "fix": "「ウォッチ上で完全対応」"
+  },
+  {
+   "id": "web:help.racing-in-a-race.s3.b1.i0",
+   "severity": "warning",
+   "rule": "meaning",
+   "problem": "「…いる、かつ」 is an ungrammatical calque of the English list-with-'and'; the lead-in already says 次の両方の条件を満たすと.",
+   "fix": "Parallel conditions: i0 「…30 m以内にいること」, i1 「…90%以上を走っていること。」 (i1 corrected to match)."
+  },
+  {
+   "id": "web:help.record-your-first-run.s0.b1.i2",
+   "severity": "warning",
+   "rule": "meaning",
+   "problem": "「カウントダウンが流れ」 is unidiomatic for an on-screen countdown.",
+   "fix": "「カウントダウンが表示され」"
+  },
+  {
+   "id": "web:help.create-a-club.s2.heading",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "「作成したあとに」 is a dangling adverbial as a heading and drops the object; headings in this batch are noun phrases or 〜する.",
+   "fix": "「クラブを作成したあと」"
+  },
+  {
+   "id": "web:help.import-your-history.s4.b1",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "'default run privacy' rendered 「ランのデフォルトの公開設定」, while the same setting is bolded as **ランのデフォルトプライバシー** (its real label) in record-your-first-run.s3.b2. Align so the reader can find the setting.",
+   "fix": "「ランのデフォルトプライバシー設定」"
+  },
+  {
+   "id": "web:help.race-day-for-hosts.s2.b0",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Correct per catalogue (web clubEvent.go = 「スタート」, mobile eventRaceFireGo = 「GO」), but the guide prose says 「GOを出す」 everywhere while the web button reads スタート, and racers press their own スタート. Not changed: the label must match the app; see catalogueFindings.",
+   "fix": "Fix the catalogue (web clubEvent.go → 「GO」), then this sentence becomes **GO** / **GO**."
+  }
+ ],
+ "terms": {
+  "guide title / heading style": "Mirror the English shape. Imperative or gerund task (Import…, Set up…, Pausing…, Cancelling) → plain dictionary form 〜する / 〜を〜する, never です・ます, 〜しよう or 〜しましょう (「レースを設定する」「自動でゴールする」). Descriptive noun title/heading (Race results explained, Live tracking and safety contacts, The map, Before you start) → noun phrase / 体言止め (「レース結果の見方」「地図」「始める前に」). No final 。 in titles or headings.",
+  "summary style": "One です・ます sentence ending in 。; either a task statement (「…をインポートします。」) or 「…を説明します。」 for explainers.",
+  "host (event / race host) / organiser (generic)": "主催者 (matches help.audienceOrganiser, liveEvent.statusCancelledSub, eventFinishMethodHost). Only the club role 'Event organiser' is イベント主催者 (clubRole.event_organiser).",
+  "Race director": "レースディレクター",
+  "arm the race / armed": "レースを準備する / 準備完了",
+  "fire GO": "GOを出す",
+  "end the race (host) / cancel the race": "レースを終了する / レースを中止する",
+  "gun time / chip time": "グロスタイム / ネットタイム (catalogue races.gunTime / races.chipTime)",
+  "racer": "ランナー",
+  "occurrence": "開催回",
+  "course": "コース; main course = メインコース",
+  "board / leaderboard": "ボード / リーダーボード",
+  "finish line": "フィニッシュライン; finish (the act) = ゴール; finisher = 完走者",
+  "DNF / DNS": "DNF（途中棄権） / DNS（不出走）",
+  "safety contact": "緊急連絡先",
+  "live link / live sharing": "ライブリンク / ライブ共有",
+  "privacy zone": "プライバシーゾーン",
+  "auto-pause": "自動一時停止",
+  "the phone app / the web": "スマートフォンアプリ / Web",
+  "clock (recording timer)": "タイマー",
+  "signal (GPS/phone)": "電波 (phone signal), GPS信号 (GPS)",
+  "track (GPS trace)": "トラック",
+  "approve / reject (results, join requests)": "承認 / 却下 (web); mobile Deny = 拒否",
+  "guide link labels": "Use the target guide's ja title verbatim: [[guide:your-data-and-privacy|あなたのデータとプライバシー]] is already used here, so b2's title for your-data-and-privacy must be 「あなたのデータとプライバシー」 or this link label must be updated to match."
+ },
+ "catalogueFindings": [
+  {
+   "keys": [
+    "web:clubEvent.go",
+    "mobile:eventRaceFireGo",
+    "mobile:eventRaceArmed",
+    "mobile:runRaceWaitingForGo"
+   ],
+   "problem": "GO is named two ways: web host button clubEvent.go = 「スタート」 but mobile eventRaceFireGo = 「GO」 and eventRaceArmed 「準備完了 — GO待ち」, while the racer banner runRaceWaitingForGo = 「スタート待ち」. On web the host's GO button reads the same as the racer's own Start (スタート), which the guides explicitly say are different actions. Suggest 「GO」 on web and 「GO待ち」 in runRaceWaitingForGo."
+  },
+  {
+   "keys": [
+    "mobile:runRaceFinish",
+    "mobile:eventRaceEnd",
+    "web:clubEvent.endRace"
+   ],
+   "problem": "Racer 'Finish race' and host 'End race' are both 「レースを終了」; the guides have to use the same label for two different actions with different consequences (manual finish vs. ending the race for everyone)."
+  },
+  {
+   "keys": [
+    "web:safety.decline",
+    "web:safety.contactOfWithdraw",
+    "mobile:safetyDecline",
+    "mobile:safetyContactOfWithdraw"
+   ],
+   "problem": "'Decline' (a pending request) and 'Withdraw' (stop being someone's safety contact) are both 「辞退する」; safety copy, two distinct actions."
+  },
+  {
+   "keys": [
+    "web:clubEvent.cancelRaceTitle",
+    "mobile:eventRaceCancelRace",
+    "web:liveEvent.statusCancelledLabel"
+   ],
+   "problem": "'Cancel race' is 「レースをキャンセル」 on web but 「レースを中止」 on mobile; the status is 中止 on both."
+  },
+  {
+   "keys": [
+    "web:runDetail.moving",
+    "mobile:runStatMoving"
+   ],
+   "problem": "'Moving' (moving time stat) is 「移動中」 on web but 「移動時間」 on mobile (watch: 「動作時間」)."
+  },
+  {
+   "keys": [
+    "web:live.badgeFinished",
+    "web:liveEvent.statusFinishedLabel",
+    "web:clubEvent.statusFinished",
+    "mobile:eventRaceFinished"
+   ],
+   "problem": "'Finished' rendered 終了 / 完了 / 完走 (known inconsistency 3 in ja.md); the guides follow each label as shipped."
+  },
+  {
+   "keys": [
+    "web:admin.earnings.colHost",
+    "mobile:eventFinishMethodHost"
+   ],
+   "problem": "'Host' is 「ホスト」 in admin earnings but 「主催者」 everywhere runner-facing."
+  }
+ ]
+}

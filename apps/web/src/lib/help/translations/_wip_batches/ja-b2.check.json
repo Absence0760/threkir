@@ -1,0 +1,85 @@
+{
+ "corrections": {
+  "web:help.host-a-paid-yoga-class.s3.b0.i1": "決済画面に進む*登録 · $22*（あなたの価格が入ります）というボタン。戻ってくると**支払いが確認されました。登録が完了しました。**と表示されます。",
+  "web:help.host-a-paid-yoga-class.s3.b0.i2": "マットが埋まると**満員**と表示され、販売期間中は**キャンセル待ちに登録**が表示されます（[[guide:waitlist-and-claim-window|キャンセル待ちの仕組み]]）。販売が終了すると**登録は締め切りました**と表示されます。",
+  "web:help.cancel-a-class.s1.heading": "1つの開催回だけ中止する"
+ },
+ "findings": [
+  {
+   "id": "web:help.host-a-paid-yoga-class.s3.b0.i1",
+   "severity": "error",
+   "rule": "units",
+   "problem": "Literal sample *Register · $22* became *登録 · $22.00*: a number changed (payment copy; no numbers may be added or altered).",
+   "fix": "*登録 · $22*"
+  },
+  {
+   "id": "web:help.host-a-paid-yoga-class.s3.b0.i2",
+   "severity": "warning",
+   "rule": "meaning",
+   "problem": "Prose link label 'how the waitlist works' was replaced by the target guide's full title, which adds '12' that this sentence doesn't state (no-numbers-added rule). The English uses an inline prose label here, as get-paid-with-stripe.s3.b1 does, and those were translated as prose.",
+   "fix": "[[guide:waitlist-and-claim-window|キャンセル待ちの仕組み]]"
+  },
+  {
+   "id": "web:help.cancel-a-class.s1.heading",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "The same English heading 'Cancel one occurrence' is 「1つの開催回だけ中止する」 in recurring-events.s2 and 「1つの開催回だけキャンセルする」 here. The batch-1 term (cancel = 中止する) and this guide's own title (クラスを中止し…) both use 中止.",
+   "fix": "「1つの開催回だけ中止する」"
+  },
+  {
+   "id": "web:help.recurring-events.s1.b1.i0",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Unmatched label: **Show all** has no exact catalogue string. The button is clubEvent.showAllUpcoming 「今後の{n}件をすべて表示」, and the English guide also shortens it. 「すべて表示」 is a substring of the real label, so a reader will find it.",
+   "fix": "None needed. Keep 「すべて表示」."
+  }
+ ],
+ "terms": {
+  "occurrence": "開催回 (prose); the button labels use 「この回」 (この回をキャンセル / この回を再開する / この回を追加), as in the catalogue",
+  "cancel an occurrence / call off (headings, titles)": "中止する; キャンセル inside the real button labels and in step prose that follows them",
+  "host": "主催者; event organiser (club role) = イベント主催者; admin = 管理者",
+  "paid rail switched on": "プラットフォーム側での有料登録の有効化",
+  "not live yet": "まだ提供されていません",
+  "payout account": "支払いアカウント; payouts = 支払い (route label)",
+  "earnings": "収益",
+  "platform fee": "プラットフォーム手数料",
+  "refund policy / refund window": "返金ポリシー / 返金期限",
+  "waitlist / hold / claim": "キャンセル待ち / 確保（確保期間） / 確定する",
+  "capacity / spot": "定員 / 枠",
+  "drop-in": "ドロップイン",
+  "RSVP": "参加表明（する）",
+  "attendance / attended / no-show": "出欠 / 出席 / 欠席",
+  "routine / session plan / sequence": "ルーティン / セッションプラン / シーケンス",
+  "attach": "紐付ける",
+  "follow along": "一緒に進める",
+  "Hold / Flow / Reps (session item types)": "キープ / フロー / 回数",
+  "adopt (a template)": "採用",
+  "the phone app / the web": "スマートフォンアプリ / Web (unchanged from batch 1)",
+  "guide link labels": "Where the English label is the target guide's title, use the ja title verbatim. Where it is inline prose, translate it as prose and add no numbers."
+ },
+ "catalogueFindings": [
+  {
+   "keys": [
+    "web:eventEditor.freqBiweekly",
+    "web:discover.biweekly",
+    "mobile:discoverBiweekly"
+   ],
+   "problem": "'Every 2 weeks' is 「2週間ごと」 in the web event editor but 「隔週」 in discover (web and mobile) and in the phone's recurrence picker. The guides have to name the same frequency two ways, depending on platform."
+  },
+  {
+   "keys": [
+    "web:notificationBell.eventCancelTitled",
+    "web:notificationsList.verbEventCancelTitled",
+    "mobile:profileNotifEventCancelTitled"
+   ],
+   "problem": "Same English 'An occurrence of \"{title}\" was cancelled': the bell says 「…の開催が中止されました」, while the list and the phone say 「…の開催が1回キャンセルされました」."
+  },
+  {
+   "keys": [
+    "mobile:app_ja.arb (時計 x13 / ウォッチ x35)",
+    "web:ja.ts (時計 x8 / ウォッチ x21)"
+   ],
+   "problem": "'watch' is rendered both 時計 and ウォッチ across both catalogues. what-pro-includes.s0.b0 uses 時計, but batch 1 used ウォッチ (Wear OSウォッチ). This batch was left as-is, pending a glossary decision."
+  }
+ ]
+}

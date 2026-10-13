@@ -1,0 +1,118 @@
+{
+  "corrections": {
+    "mobile:helpRequiresStripeConnected": "Nécessite un compte Stripe connecté",
+    "mobile:helpRequiresPaidRailLive": "L'inscription payante doit être activée",
+    "mobile:helpRequiresClubAdmin": "Réservé aux admins de club",
+    "mobile:helpRequiresRaceDirector": "Réservé aux directeurs de course",
+    "web:help.kindStart": "Pour commencer",
+    "web:help.intro": "Des guides pour chaque partie de Threkir : ce que fait une fonctionnalité, à qui elle s'adresse et où la trouver.",
+    "web:help.kindHowTo": "Mode d'emploi",
+    "web:help.requiresPaidRailLive": "L'inscription payante doit être activée",
+    "web:help.noGuidesForAudience": "Aucun guide pour ce groupe pour l'instant.",
+    "web:help.notFoundBody": "Il n'existe aucun guide nommé « {id} ».",
+    "web:help.searchPageTitle": "Rechercher dans l'aide — Threkir",
+    "web:help.searchTitle": "Rechercher dans l'aide",
+    "web:help.searchResultsFor": "Guides correspondant à « {query} »",
+    "web:help.searchEmpty": "Aucun guide ne correspond à « {query} ». Essayez un autre mot ou parcourez tous les guides."
+  },
+  "findings": [
+    {
+      "id": "mobile:helpRequiresStripeConnected",
+      "severity": "error",
+      "rule": "meaning",
+      "problem": "\"Nécessite Stripe connecté\" is ungrammatical French: there is no noun for \"connecté\" to agree with. It reads as broken text on a payment requirement badge, and it doesn't match the web badge (\"Nécessite un compte Stripe connecté\") or the guides (\"compte Stripe connecté\").",
+      "fix": "Nécessite un compte Stripe connecté"
+    },
+    {
+      "id": "mobile:helpRequiresPaidRailLive",
+      "severity": "warning",
+      "rule": "term",
+      "problem": "\"Nécessite l'inscription payante activée\" is a calque of the shortened English. The web twin says the same thing idiomatically and is just as long.",
+      "fix": "L'inscription payante doit être activée (same as web)"
+    },
+    {
+      "id": "mobile:helpRequiresClubAdmin",
+      "severity": "warning",
+      "rule": "term",
+      "problem": "The same requirement badge reads \"Admins de club uniquement\" on mobile and \"Réservé aux admins de club\" on web. The catalogue's established phrasing is \"Réservé aux …\" (eventEditorMembersOnlyToggle), and there is no length difference that would justify two forms.",
+      "fix": "Réservé aux admins de club"
+    },
+    {
+      "id": "mobile:helpRequiresRaceDirector",
+      "severity": "warning",
+      "rule": "term",
+      "problem": "This is the same split as helpRequiresClubAdmin: \"Directeurs de course uniquement\" on mobile against \"Réservé aux directeurs de course\" on web.",
+      "fix": "Réservé aux directeurs de course"
+    },
+    {
+      "id": "web:help.kindStart",
+      "severity": "warning",
+      "rule": "meaning",
+      "problem": "This is a guide-type badge (KIND_LABEL), not a button. \"Commencer ici\" reads as an instruction or a call to action. The idiomatic French label for an introductory guide is \"Pour commencer\".",
+      "fix": "Pour commencer"
+    },
+    {
+      "id": "web:help.intro",
+      "severity": "warning",
+      "rule": "typography",
+      "problem": "Nine web help.* strings use a curly apostrophe (’): intro, kindHowTo, requiresPaidRailLive, noGuidesForAudience, notFoundBody, searchPageTitle, searchTitle, searchResultsFor and searchEmpty. The fr guide's norm is the straight ' (602 / 939), and the mobile twins and the help guide translations (using-help.ts) all use '.",
+      "fix": "Replace ’ with ' in all nine strings (corrections given for each)."
+    },
+    {
+      "id": "web:help.audienceInstructor",
+      "severity": "warning",
+      "rule": "term",
+      "problem": "\"Instructeurs\" is a Canadian/military-leaning calque for a gym, yoga or pilates class leader. In France this person is usually a \"coach\" or \"professeur\". \"Coach\" already names the Coach IA, so the change isn't obvious. No help guide translation uses the word, so nothing in the guides forces a choice. It is consistent across all four keys today (web and mobile audienceInstructor and categoryInstructors).",
+      "fix": "Native reviewer to decide: keep \"Instructeurs\", or switch all four keys together to \"Professeurs\" or \"Coachs\". Not corrected here."
+    },
+    {
+      "id": "web:help.categoryRaces",
+      "severity": "warning",
+      "rule": "term",
+      "problem": "On the contents page, \"Courses\" (races) sits next to \"Course à pied\" (running). This is a local case of known inconsistency 1 (run and race are both \"course\"). The guides also use \"course\" for race (\"Organiser une course\", \"Suivre une course en direct\"), so the chrome agrees with them. The two categories can still be told apart.",
+      "fix": "No change in this batch. Resolve it together with the run/race decision (\"Courses\" vs \"Compétitions\" / \"Épreuves\")."
+    },
+    {
+      "id": "web:help.kindExplainer",
+      "severity": "warning",
+      "rule": "term",
+      "problem": "\"Comment ça marche\" is used both for the explainer badge (\"How it works\") and the HelpLink (\"How this works\", web and mobile). They appear on different surfaces, so this is acceptable, but the badge and the link now say exactly the same thing.",
+      "fix": "Optional: use \"Explications\" for the badge. Not corrected."
+    }
+  ],
+  "terms": {
+    "Help": "Aide",
+    "guide / guides": "guide / guides",
+    "Show guides for": "Afficher les guides pour",
+    "All (audience filter)": "Tous",
+    "Everyone": "Tout le monde",
+    "Runners": "Coureurs",
+    "Organisers": "Organisateurs",
+    "Participants": "Participants",
+    "Spectators": "Spectateurs",
+    "Instructors": "Instructeurs (pending native review)",
+    "Club admins": "Admins de club",
+    "race director": "directeur de course",
+    "Running (category)": "Course à pied",
+    "Races (category)": "Courses",
+    "Paid classes": "Cours payants",
+    "Works on": "Disponible sur",
+    "Before you start": "Prérequis",
+    "Needs Pro": "Nécessite Pro",
+    "X only (requirement)": "Réservé aux …",
+    "connected Stripe account": "compte Stripe connecté",
+    "paid registration": "inscription payante",
+    "Tip / Caution": "Astuce / Attention",
+    "On this page": "Sur cette page",
+    "Related guides": "Guides associés",
+    "How this works": "Comment ça marche",
+    "Read the guide": "Lire le guide",
+    "Search help / Search the guides": "Rechercher dans l'aide / Rechercher dans les guides"
+  },
+  "catalogueFindings": [
+    {
+      "keys": ["web:clubHome.viewerRoleOwner", "web:clubHome.viewerRoleAdmin", "web:clubHome.viewerRoleDirector"],
+      "problem": "These club role strings use tu (\"Tu es admin\", \"Tu es directeur de course\"), but the help chrome and guides that name the same roles use vous. This is a register split covered by known inconsistency 3."
+    }
+  ]
+}

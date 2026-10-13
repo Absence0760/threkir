@@ -1,0 +1,54 @@
+{
+ "corrections": {
+  "web:help.racing-in-a-race.summary": "Apúntate, elige tu recorrido, empieza a grabar en la línea de salida o después de la salida y deja que tu móvil o tu reloj te cronometre al cruzar la meta.",
+  "web:help.racing-in-a-race.s2.b1": "Tu móvil o tu reloj no empieza a grabar por sí solo: pulsa Iniciar tú mismo. Puedes empezar en la línea de salida mientras la carrera muestra **Carrera lista**, o cuando veas **Carrera EN VIVO**. Una grabación iniciada antes de tiempo se une a la carrera en la salida, en el móvil y en un reloj Wear OS, y tu tiempo chip cuenta entonces desde la salida y no desde que pulsaste Iniciar.",
+  "web:help.race-day-for-hosts.s2.b2": "Dar la salida no inicia la grabación de nadie. Los corredores pulsan Iniciar en su propio móvil o reloj, ya sea en la línea de salida mientras la carrera está preparada (la grabación se une a la carrera en la salida) o después de ver **Carrera EN VIVO**. Recuérdales que inicien la grabación.",
+  "web:help.race-day-for-hosts.s5.b0": "Solo puedes cancelar mientras la carrera está preparada: elige **Cancelar** junto a **YA** (**Dar la salida** en la app del móvil) y luego **Cancelar carrera**. Una vez dada la salida, la carrera solo se puede finalizar."
+ },
+ "findings": [
+  {
+   "id": "web:help.racing-in-a-race.s2.b1",
+   "severity": "warning",
+   "rule": "meaning",
+   "problem": "«en la línea» for «on the line» is unclear on its own in Spanish (it can read as «online»). Same in the summary and race-day-for-hosts.s2.b2.",
+   "fix": "«en la línea de salida»."
+  },
+  {
+   "id": "web:help.racing-in-a-race.summary",
+   "severity": "warning",
+   "rule": "meaning",
+   "problem": "Same «en la línea» ambiguity.",
+   "fix": "«en la línea de salida o después de la salida»."
+  },
+  {
+   "id": "web:help.race-day-for-hosts.s2.b2",
+   "severity": "warning",
+   "rule": "meaning",
+   "problem": "«Recuérdales que inicien una.» leaves «una» with no clear antecedent («Iniciar» and «la salida» sit between it and «grabación»). Also «en la línea» ambiguity.",
+   "fix": "«Recuérdales que inicien la grabación.» and «en la línea de salida»."
+  },
+  {
+   "id": "web:help.race-day-for-hosts.s5.b0",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "«solo se puede terminar» for «can only be ended»: the end action is «Finalizar carrera» on both surfaces (clubEvent.endRace, eventRaceEnd), and this guide's own heading is «4. Finalizar la carrera».",
+   "fix": "«… la carrera solo se puede finalizar.»"
+  }
+ ],
+ "terms": {
+  "GO (fire)": "dar la salida / la salida; web button **YA**, phone **Dar la salida**",
+  "Race armed (phone)": "**Carrera lista**; armed state in prose: preparada",
+  "Race LIVE": "**Carrera EN VIVO**",
+  "on the line": "en la línea de salida",
+  "end (race)": "finalizar",
+  "Approve / Unverify / Edit (result menu)": "**Aprobar** / **Quitar verificación** / **Editar** (r7/race eventResult*, clubEvent.*)",
+  "Pending": "web event page **PENDIENTE**; phone and live page **Pendiente**",
+  "No badge": "**Sin insignia** (no app label; badge = insignia as elsewhere in the guides)",
+  "activity-risk acknowledgement": "reconocimiento de los riesgos de la actividad (r7/clubs clubEditor.waiverLabel)",
+  "chip time / gun time": "tiempo chip / tiempo oficial",
+  "board": "panel",
+  "course": "recorrido",
+  "host": "organizador"
+ },
+ "catalogueFindings": []
+}

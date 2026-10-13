@@ -1,0 +1,192 @@
+{
+ "corrections": {
+  "web:help.recurring-events.s2.b4": "Si l'événement est un cours payant, annuler une occurrence rembourse intégralement toutes les personnes inscrites à celle-ci. Voir [[guide:host-a-paid-yoga-class|Organiser un cours payant de yoga]].",
+  "web:help.host-a-paid-yoga-class.s3.b0.i1": "Un bouton *S’inscrire · 22,00 $US* (avec votre prix) qui les mène au paiement. À leur retour, il indique **Paiement confirmé — vous êtes inscrit.**",
+  "web:help.waitlist-and-claim-window.s1.b2.i2": "Ouvrez le cours sur le web. Il indique quand votre réservation prend fin, par exemple *Une place vous est réservée jusqu’à mardi 6 mai à 18:00. Payez pour l’obtenir, sinon elle revient à la personne suivante sur la liste d’attente.*",
+  "web:help.waitlist-and-claim-window.s1.b2.i3": "Appuyez sur le bouton de réclamation (il affiche *Obtenir ma place* avec le prix) puis finalisez le paiement. Une fois le paiement effectué, vous êtes inscrit comme tout le monde.",
+  "web:help.host-a-paid-gym-class.s2.b0": "Un cours ne peut pas encore être associé directement à une routine de muscu. Publiez plutôt votre routine dans le club, où les membres peuvent la copier dans leurs propres routines et la suivre.",
+  "web:help.build-a-session-plan.s1.b0.i2": "Appuyez si vous le souhaitez sur **Ajouter un bloc** pour le découper en sections comme Échauffement, Debout et Retour au calme. Un plan sans blocs se déroule d'une traite.",
+  "web:help.take-attendance.s0.b0": "L'appel concerne les événements de type **Cours**, et seuls les admins et organisateurs d'événements du club peuvent le faire. Il fonctionne de la même façon sur le web et dans l'app mobile : vous pouvez donc le faire depuis votre téléphone, face à votre groupe.",
+  "web:help.take-attendance.s1.b0.i3": "Vous vous êtes trompé de bouton ? Appuyez de nouveau sur le même bouton pour effacer votre choix.",
+  "web:help.using-help.s0.b1": "La page de sommaire liste tous les guides par thème. Les filtres sous **Afficher les guides pour** restreignent la liste aux guides écrits pour vous, comme **Organisateurs** ou **Spectateurs** ; **Tous** affiche de nouveau l'ensemble."
+ },
+ "findings": [
+  {
+   "id": "web:help.recurring-events.s2.b4",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Link label word order differs from the target guide's fr title 'Organiser un cours payant de yoga ou de pilates'.",
+   "fix": "Si l'événement est un cours payant, annuler une occurrence rembourse intégralement toutes les personnes inscrites à celle-ci. Voir [[guide:host-a-paid-yoga-class|Organiser un cours payant de yoga]]."
+  },
+  {
+   "id": "web:help.host-a-paid-yoga-class.s3.b0.i1",
+   "severity": "warning",
+   "rule": "units",
+   "problem": "Sample price: formatPrice (apps/web/src/lib/format/format_price.ts) renders USD 22 in fr as '22,00 $US', not '22 $' (which a fr-CA reader takes as CAD). Number and $ symbol kept.",
+   "fix": "Un bouton *S’inscrire · 22,00 $US* (avec votre prix) qui les mène au paiement. À leur retour, il indique **Paiement confirmé — vous êtes inscrit.**"
+  },
+  {
+   "id": "web:help.waitlist-and-claim-window.s1.b2.i2",
+   "severity": "warning",
+   "rule": "units",
+   "problem": "Sample time: the page's fmtDate (weekday/month long) renders 'mardi 6 mai à 18:00' in fr; 'mar. 6 mai, 18:00' is not what the runner sees.",
+   "fix": "Ouvrez le cours sur le web. Il indique quand votre réservation prend fin, par exemple *Une place vous est réservée jusqu’à mardi 6 mai à 18:00. Payez pour l’obtenir, sinon elle revient à la personne suivante sur la liste d’attente.*"
+  },
+  {
+   "id": "web:help.waitlist-and-claim-window.s1.b2.i3",
+   "severity": "warning",
+   "rule": "meaning",
+   "problem": "'payez lors du paiement' is a tautology (pay at payment).",
+   "fix": "Appuyez sur le bouton de réclamation (il affiche *Obtenir ma place* avec le prix) puis finalisez le paiement. Une fois le paiement effectué, vous êtes inscrit comme tout le monde."
+  },
+  {
+   "id": "web:help.host-a-paid-gym-class.s2.b0",
+   "severity": "warning",
+   "rule": "meaning",
+   "problem": "'porter une routine' is a calque of 'carry'.",
+   "fix": "Un cours ne peut pas encore être associé directement à une routine de muscu. Publiez plutôt votre routine dans le club, où les membres peuvent la copier dans leurs propres routines et la suivre."
+  },
+  {
+   "id": "web:help.build-a-session-plan.s1.b0.i2",
+   "severity": "warning",
+   "rule": "meaning",
+   "problem": "'it' is the plan (masculine); 'la' reads as the sequence.",
+   "fix": "Appuyez si vous le souhaitez sur **Ajouter un bloc** pour le découper en sections comme Échauffement, Debout et Retour au calme. Un plan sans blocs se déroule d'une traite."
+  },
+  {
+   "id": "web:help.take-attendance.s0.b0",
+   "severity": "warning",
+   "rule": "meaning",
+   "problem": "'at the front of the room' is where the instructor stands, not the entrance.",
+   "fix": "L'appel concerne les événements de type **Cours**, et seuls les admins et organisateurs d'événements du club peuvent le faire. Il fonctionne de la même façon sur le web et dans l'app mobile : vous pouvez donc le faire depuis votre téléphone, face à votre groupe."
+  },
+  {
+   "id": "web:help.take-attendance.s1.b0.i3",
+   "severity": "warning",
+   "rule": "meaning",
+   "problem": "'annuler' in a guide about cancelling classes reads as cancel; the English is 'clear it'.",
+   "fix": "Vous vous êtes trompé de bouton ? Appuyez de nouveau sur le même bouton pour effacer votre choix."
+  },
+  {
+   "id": "web:help.using-help.s0.b1",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "'puces' reads as bullet points; these chips are filters.",
+   "fix": "La page de sommaire liste tous les guides par thème. Les filtres sous **Afficher les guides pour** restreignent la liste aux guides écrits pour vous, comme **Organisateurs** ou **Spectateurs** ; **Tous** affiche de nouveau l'ensemble."
+  },
+  {
+   "id": "web:help.cancel-a-class.s2.b0",
+   "severity": "warning",
+   "rule": "register",
+   "problem": "Quotes the shipped notification verbatim, which is tu ('ton paiement') inside vous prose. Kept: the guide says what the notification 'reads like' and must match what the runner receives. If the catalogue notification is moved to vous (see catalogueFindings), update this quote in the same change.",
+   "fix": "none"
+  },
+  {
+   "id": "web:help.host-a-paid-yoga-class.s0.b1.i0",
+   "severity": "warning",
+   "rule": "register",
+   "problem": "**Tu es admin** / **Tu es organisateur d'événements** are the real fr labels (clubHome.viewerRoleAdmin/Organiser), so verbatim is correct for a **label**. Mixed register on screen is a catalogue issue.",
+   "fix": "none"
+  },
+  {
+   "id": "web:help.recurring-events.s1.b1.i0",
+   "severity": "warning",
+   "rule": "source",
+   "problem": "English **Show all** matches no catalogue string; the button is clubEvent.showAllUpcoming 'Show all {n} upcoming' (fr 'Afficher les {n} à venir'). 'Afficher tout' is unmatched in fr. Fix the English label (e.g. 'Show all … upcoming') and re-derive fr.",
+   "fix": "none"
+  },
+  {
+   "id": "web:help.your-data-and-privacy.title",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Cross-batch drift: fr batch 1 (scratchpad fr-b1work/p1.json) links this guide as [[guide:your-data-and-privacy|Vos données et votre confidentialité]] while this title is 'Vos données et votre vie privée'. Align the batch-1 link label to this title.",
+   "fix": "none"
+  },
+  {
+   "id": "web:help.host-a-paid-yoga-class.s3.b0.i1",
+   "severity": "warning",
+   "rule": "source",
+   "problem": "English samples '$22' and 'Tue 6 May, 18:00' (waitlist-and-claim-window.s1.b2.i2) don't match the en renderers either ('$22.00', 'Tuesday 6 May at 18:00').",
+   "fix": "none"
+  },
+  {
+   "id": "web:help.cancel-a-class.s1.b1",
+   "severity": "warning",
+   "rule": "source",
+   "problem": "The sample *Occurrence annulée. 8 personnes inscrites…* is a good translation, but fr.ts clubEvent.occurrenceRefundsStarted is still untranslated English, so fr hosts currently see English. Fix the catalogue key.",
+   "fix": "none"
+  }
+ ],
+ "terms": {
+  "class": "cours",
+  "occurrence": "occurrence",
+  "RSVP": "répondre / réponse",
+  "waitlist": "liste d'attente",
+  "hold / held place": "réservation / place réservée",
+  "claim": "réclamer / obtenir (label 'Obtenir ma place')",
+  "host / organiser": "organisateur",
+  "payout": "versement; payout account = compte de paiement; Payouts tab = Paiements",
+  "refund policy": "politique de remboursement",
+  "refund window": "délai de remboursement",
+  "platform fee": "frais de plateforme",
+  "earnings": "revenus",
+  "merchant of record": "marchand officiel",
+  "gym routine": "routine de muscu (prose) / Routine de gym (catalogue labels)",
+  "session plan": "plan de séance",
+  "cue": "indication",
+  "hold / flow / reps (session types)": "Tenue / Flow / Répét.",
+  "attendance": "présence; take attendance = faire l'appel",
+  "attended / no-show": "Présent / Absent",
+  "Pro & support": "Pro et soutien",
+  "AI Coach": "Coach IA",
+  "privacy zones": "zones de confidentialité",
+  "tap / press / select": "touchez (phone) / appuyez sur / sélectionnez"
+ },
+ "catalogueFindings": [
+  {
+   "keys": [
+    "web:notificationBell.eventCancelRefundedTitled",
+    "web:notificationBell.eventCancelRefunded",
+    "web:notificationsList.verbEventCancelRefundedTitled",
+    "web:notificationsList.verbEventCancelRefunded",
+    "mobile:profileNotifEventCancelRefundedTitled",
+    "mobile:profileNotifEventCancelRefunded"
+   ],
+   "problem": "Refund-on-cancel notifications are tu ('ton paiement', 'que tu avais payée') while their siblings waitlistSlot* in the same family are vous ('vous est réservée'). Payment copy; move to vous ('votre paiement') and update help.cancel-a-class.s2.b0 in lockstep."
+  },
+  {
+   "keys": [
+    "web:clubHome.viewerRoleAdmin",
+    "web:clubHome.viewerRoleOrganiser"
+   ],
+   "problem": "tu register ('Tu es admin') in the clubs area, which the fr guide says is vous territory. Suggest 'Vous êtes admin' / 'Vous êtes organisateur d'événements' (and update help.host-a-paid-yoga-class.s0.b1.i0)."
+  },
+  {
+   "keys": [
+    "web:clubEvent.occurrenceRefundsStarted"
+   ],
+   "problem": "Untranslated English in fr.ts ('Occurrence cancelled. {n, plural, one {# registrant is} …}'). Note fr one = 0 and 1, so use '#' in both branches."
+  },
+  {
+   "keys": [
+    "mobile:eventFormRecurBiweekly"
+   ],
+   "problem": "'Bimensuel' means twice a month (or is ambiguous); the option is every two weeks. Web uses 'Toutes les 2 semaines'. Suggest 'Toutes les 2 semaines' (not 'Bihebdomadaire', which is twice a week)."
+  },
+  {
+   "keys": [
+    "web:gym.routine.*",
+    "web:rateLimit.adoptGymRoutine",
+    "mobile:gymTitle"
+   ],
+   "problem": "Gym is named three ways: glossary 'Muscu', labels 'Routine de gym' / 'Modèles de routine de gym', and 'routines de renfo' in rateLimit.adoptGymRoutine. Guide prose follows the glossary (muscu) while quoting 'gym' labels."
+  },
+  {
+   "keys": [
+    "web:payouts.setupCta",
+    "web:eventEditor.chargeSetupLink"
+   ],
+   "problem": "'Set up payments' and 'Set up payouts' both render 'Configurer les paiements', and the Payouts tab is 'Paiements' while prose uses 'versements' for payouts. Same destination so not a defect today, but payment vs payout is collapsed in fr."
+  }
+ ]
+}

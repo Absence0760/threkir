@@ -1,0 +1,193 @@
+{
+  "corrections": {
+    "web:help.cancel-a-class.title": "Einen Kurs absagen und allen Zahlenden ihr Geld erstatten",
+    "web:help.cancel-a-class.s0.b0": "Bezahlte Kurse sind noch nicht live: Dafür muss das Stripe-Konto des Veranstalters verbunden und das Bezahlsystem der Plattform eingeschaltet sein. Sind Zahlungen nicht verfügbar, wenn du einen Termin mit bezahlten Anmeldungen absagen willst, siehst du **Für diesen Termin gibt es bezahlte Anmeldungen, und Zahlungen sind gerade nicht verfügbar. Deshalb kann er noch nicht abgesagt werden. Es wurde nichts geändert.** Der Kurs bleibt bestehen, damit niemand auf einer Zahlung für einen Kurs sitzen bleibt, der nicht stattfindet.",
+    "web:help.get-paid-with-stripe.s0.b0": "Bezahlte Anmeldung ist noch nicht live. Um für ein Event Geld zu verlangen, braucht es zwei Dinge: dein eigenes, hier verbundenes Stripe-Konto und die Plattform, die ihr Bezahlsystem einschaltet. Solange nicht beides zutrifft, kann niemand belastet werden. Erscheint nach dem Drücken von **Zahlungen einrichten** die Meldung **Zahlungen sind in diesem Build noch nicht konfiguriert.**, fehlt noch das Zweite, und du musst vorerst nichts tun.",
+    "web:help.host-a-paid-gym-class.s3.b0": "Auf der Kursseite sieht jede teilnehmende Person, die in ihrem Konto angemeldet ist, **Als Training erfassen**. Das öffnet einen Gym-Eintrag, der bereits nach dem Kurs benannt ist und vor dem Speichern mit eigenen Sätzen und Gewichten angepasst werden kann. Danach erscheint **Zu deinem Gym-Log hinzugefügt**, und der Kurs zählt in ihrem Trainingsverlauf wie jedes andere Training. Das funktioniert im Web und in der Handy-App.",
+    "web:help.host-a-paid-yoga-class.s3.b0.i1": "Einen Button mit der Aufschrift *Anmelden · 22,00 $* (mit deinem Preis), der zur Kasse führt. Wenn sie zurückkommen, steht dort **Zahlung bestätigt – du bist angemeldet.**",
+    "web:help.host-a-paid-yoga-class.s3.b0.i3": "Deine Abfolge unter **Session-Abfolge**. Teilnehmende können sie öffnen und **Einheit starten** drücken, um zu Hause mitzumachen.",
+    "web:help.build-a-gym-routine.summary": "Mach ein Training, das du leitest oder wiederholst, zur wiederverwendbaren Routine mit Sätzen, Wiederholungen, Gewicht, Pausen und Supersätzen, die du geführt absolvierst oder mit deinem Club teilst.",
+    "web:help.build-a-session-plan.summary": "Schreib eine zeitgesteuerte Abfolge aus Haltepositionen, Flows und Wiederholungen mit Bewegungen pro Seite und Hinweisen, unterrichte damit, häng sie an einen Kurs und mach mit.",
+    "web:help.build-a-session-plan.s1.b0.i2": "Drücke optional **Block hinzufügen**, um den Plan in Abschnitte wie Aufwärmen, Stehende Haltungen und Abkühlen zu gliedern. Ein Plan ohne Blöcke läuft am Stück durch."
+  },
+  "findings": [
+    {
+      "id": "web:help.cancel-a-class.s0.b0",
+      "severity": "warning",
+      "rule": "meaning",
+      "problem": "\"so nobody is left holding a payment for a class that isn't happening\" became \"damit niemand für einen Kurs bezahlt hat, der nicht stattfindet\" — payment copy; the point is nobody is stuck with money paid for a dead class.",
+      "fix": "\"… damit niemand auf einer Zahlung für einen Kurs sitzen bleibt, der nicht stattfindet.\""
+    },
+    {
+      "id": "web:help.cancel-a-class.title",
+      "severity": "warning",
+      "rule": "meaning",
+      "problem": "\"allen Zahlenden erstatten\" lacks the accusative object; reads truncated in a title.",
+      "fix": "\"… allen Zahlenden ihr Geld erstatten\" (57 chars)."
+    },
+    {
+      "id": "web:help.get-paid-with-stripe.s0.b0",
+      "severity": "warning",
+      "rule": "meaning",
+      "problem": "\"Zeigt **Zahlungen einrichten** die Meldung\" says the button shows the message; EN: pressing it shows the message.",
+      "fix": "\"Erscheint nach dem Drücken von **Zahlungen einrichten** die Meldung …\""
+    },
+    {
+      "id": "web:help.host-a-paid-gym-class.s3.b0",
+      "severity": "warning",
+      "rule": "meaning",
+      "problem": "\"jede angemeldete teilnehmende Person\" in a registration guide reads as \"registered attendee\"; EN means signed-in (and free classes need no registration).",
+      "fix": "\"jede teilnehmende Person, die in ihrem Konto angemeldet ist\" (keeps the catalogue's \"angemeldet\" = signed in)."
+    },
+    {
+      "id": "web:help.host-a-paid-yoga-class.s3.b0.i3",
+      "severity": "warning",
+      "rule": "register",
+      "problem": "Sentence-initial \"Sie können sie öffnen\" (they = attendees) reads as formal Sie in a du-register guide.",
+      "fix": "\"Teilnehmende können sie öffnen …\""
+    },
+    {
+      "id": "web:help.host-a-paid-yoga-class.s3.b0.i1",
+      "severity": "warning",
+      "rule": "units",
+      "problem": "Sample \"*Anmelden · $22*\" keeps English currency order; clubEvent.registerForPrice gets {price} from formatPrice (Intl, de locale, USD), which renders \"22,00 $\" in German. Translator's own doubt.",
+      "fix": "\"*Anmelden · 22,00 $*\" (same number and currency, de rendering)."
+    },
+    {
+      "id": "web:help.build-a-gym-routine.summary",
+      "severity": "warning",
+      "rule": "meaning",
+      "problem": "\"reusable\" dropped (\"eine Routine\"); the second half became a verbless dash fragment.",
+      "fix": "Restore \"wiederverwendbare\" in one finite sentence (199 chars)."
+    },
+    {
+      "id": "web:help.build-a-session-plan.summary",
+      "severity": "warning",
+      "rule": "meaning",
+      "problem": "\"unterrichte danach\" reads as \"teach afterwards\", not \"teach from it\"; \"seitenweisen Bewegungen\" is not idiomatic for per-side movements.",
+      "fix": "\"… mit Bewegungen pro Seite und Hinweisen, unterrichte damit, …\""
+    },
+    {
+      "id": "web:help.build-a-session-plan.s1.b0.i2",
+      "severity": "warning",
+      "rule": "term",
+      "problem": "\"Standing\" (yoga standing-pose block) rendered \"Stand\" — reads as a status/stand, not a section name.",
+      "fix": "\"Stehende Haltungen\"."
+    },
+    {
+      "id": "web:help.recurring-events.s1.b1.i0",
+      "severity": "warning",
+      "rule": "term",
+      "problem": "**Alle anzeigen** matches no catalogue label: the real button is clubEvent.showAllUpcoming \"Alle {n} anstehenden anzeigen\" (EN guide also drops the count, so this is the closest faithful form). No correction.",
+      "fix": "Accept, or have the English guide name the label differently."
+    }
+  ],
+  "terms": {
+    "occurrence": "Termin",
+    "recurring / series": "wiederkehrend / Serie",
+    "class (event type)": "Kurs",
+    "event": "Event (prose); labels per catalogue (some say Veranstaltung)",
+    "host (person)": "Veranstalter",
+    "event organiser (role)": "Eventorganisator",
+    "organisers (prose)": "Organisatoren",
+    "owner": "Inhaber",
+    "attendees / participants": "Teilnehmende",
+    "RSVP": "Zusage / zusagen; RSVP'd = geantwortet",
+    "waitlist": "Warteliste",
+    "claim (a place)": "sichern",
+    "hold (a place)": "reservieren / Reservierung",
+    "claim window": "12-Stunden-Frist",
+    "refund window": "Erstattungsfrist",
+    "refund policy": "Rückerstattungsrichtlinie (label)",
+    "refund": "Erstattung / erstatten",
+    "checkout": "Kasse (catalogue: clubEvent.registering) / Bezahlvorgang",
+    "paid rail": "Bezahlsystem der Plattform",
+    "payout account": "Auszahlungskonto",
+    "earnings": "Einnahmen",
+    "platform fee": "Plattformgebühr",
+    "merchant of record": "Händler (Merchant of Record)",
+    "drop-in": "Drop-in",
+    "capacity": "Kapazität",
+    "routine": "Routine / Gym-Routine",
+    "session plan": "Session-Plan",
+    "sequence": "Abfolge",
+    "session (follow-along / gym run)": "Einheit",
+    "hold / flow / reps (session item kinds)": "Halten / Flow / Wdh.",
+    "cue": "Hinweis",
+    "superset": "Supersatz",
+    "set": "Satz",
+    "gym log": "Gym-Log",
+    "log (verb)": "erfassen",
+    "phone app": "Handy-App",
+    "help guide": "Anleitung",
+    "privacy zones": "Datenschutzzonen",
+    "AI Coach": "KI-Coach",
+    "signed in": "angemeldet (im Konto)"
+  },
+  "catalogueFindings": [
+    {
+      "keys": [
+        "web:clubEvent.editEvent",
+        "web:clubEvent.deleteEvent",
+        "web:eventEditor.category",
+        "web:clubHome.newEvent",
+        "web:eventEditor.createEvent",
+        "mobile:eventFormTitle",
+        "mobile:eventFormCreate",
+        "mobile:clubDetailCreateEvent"
+      ],
+      "problem": "Event vs Veranstaltung drift in one flow: web \"Neues Event\" / \"Event erstellen\" but \"Veranstaltung bearbeiten\" / \"Veranstaltung löschen\" / \"Veranstaltungstyp\"; mobile \"Neue Veranstaltung\" and \"Veranstaltung erstellen\" beside clubDetailCreateEvent \"Event erstellen\". The guide must quote both words for the same object."
+    },
+    {
+      "keys": [
+        "web:settingsLayout.tabProSupport",
+        "web:upgrade.heroTitle",
+        "mobile:proTitle"
+      ],
+      "problem": "The same destination is \"Pro & Unterstützung\" on web and \"Pro & Support\" on the phone."
+    },
+    {
+      "keys": [
+        "web:clubHome.sessionTemplatesTitle",
+        "mobile:clubDetailSessionTemplatesTitle"
+      ],
+      "problem": "\"Session-Vorlagen\" (web) vs \"Sitzungsvorlagen\" (mobile); session plan is \"Session-Plan\" everywhere else."
+    },
+    {
+      "keys": [
+        "web:upgrade.manageSubscription",
+        "mobile:proManageSubscription"
+      ],
+      "problem": "\"Abo verwalten\" (web) vs \"Abonnement verwalten\" (mobile)."
+    },
+    {
+      "keys": [
+        "web:session.run.pause",
+        "mobile:sessionRunPause",
+        "web:gym.session.finish",
+        "mobile:gymSessionFinish"
+      ],
+      "problem": "Runner buttons differ by surface: Pause \"Pausieren\"/\"Pause\"; gym Finish \"Beenden\"/\"Fertig\"."
+    },
+    {
+      "keys": [
+        "web:help.audienceClubAdmin",
+        "web:help.audienceOrganiser"
+      ],
+      "problem": "\"Vereinsadmins\" uses Verein (guide inconsistency 5; Club elsewhere), and the audience \"Organisers\" = \"Veranstalter\", the same word the paid-event copy uses for host (clubEvent \"Wende dich … an den Veranstalter\")."
+    },
+    {
+      "keys": [
+        "web:eventEditor.refundPolicy",
+        "web:clubEvent.cancelInstancePaidBody"
+      ],
+      "problem": "The refund policy is named \"Rückerstattungsrichtlinie\" on the event form but \"Erstattungsbedingungen\" in the cancel dialog body; Rückerstattung/Erstattung also alternate."
+    },
+    {
+      "keys": [
+        "web:gym.routine.publishPublicHint"
+      ],
+      "problem": "\"Protokollierte Workouts\" where the catalogue otherwise logs as \"erfassen\" and calls them \"Training(s)\"."
+    }
+  ]
+}

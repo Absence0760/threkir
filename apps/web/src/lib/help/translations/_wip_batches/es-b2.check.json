@@ -1,0 +1,579 @@
+{
+ "corrections": {
+  "web:help.cancel-a-class.s0.b0": "Las clases de pago aún no están activas: necesitan que el organizador tenga conectada su cuenta de Stripe y que la plataforma active su sistema de pagos. Si los pagos no están disponibles cuando intentas cancelar una ocurrencia que tiene inscripciones pagadas, verás **Esta ocurrencia tiene inscripciones pagadas y los pagos no están disponibles ahora mismo, así que todavía no se puede cancelar. No se ha cambiado nada.** La clase sigue en pie, para que nadie se quede con un pago hecho por una clase que no se va a celebrar.",
+  "web:help.refund-policies.s0.b0": "La inscripción de pago aún no está activa. Necesita que el organizador tenga conectada su cuenta de Stripe y que la plataforma active su sistema de pagos. Hasta entonces no se puede cobrar por ningún evento, así que no hay nada que reembolsar.",
+  "web:help.refund-policies.s1.b0": "El organizador elige una **Política de reembolso** al crear un evento de pago. Decide qué recupera alguien si cancela *por su cuenta*, y se muestra en la página del evento antes de que nadie pague.",
+  "web:help.refund-policies.s1.b3": "La política solo cubre la cancelación por parte de un participante. Si el organizador cancela una clase, a todas las personas que pagaron se les reembolsa el importe completo, diga lo que diga la política: consulta [[guide:cancel-a-class|Cancelar una clase]].",
+  "web:help.waitlist-and-claim-window.s1.b0": "Las clases de pago aún no están activas: necesitan que el organizador tenga conectada su cuenta de Stripe y que la plataforma active su sistema de pagos. Todo lo de esta sección se aplica una vez que lo estén.",
+  "web:help.waitlist-and-claim-window.s2.b0.i1": "La reserva se acorta cuando se cierran las ventas de esa clase (la hora de cierre de ventas que fija el organizador antes del inicio). No se ofrece ninguna plaza después del cierre de ventas, porque nadie podría pagarla.",
+  "web:help.waitlist-and-claim-window.s4.heading": "Para organizadores",
+  "web:help.build-a-gym-routine.summary": "Convierte un entrenamiento que impartes o repites en una rutina reutilizable con series, repeticiones, carga, descanso y superseries, y síguela de forma guiada o compártela con tu club.",
+  "web:help.recurring-events.s0.b1.i4": "Decide cuándo termina la serie: pon una fecha en **Termina el**, un número de ocurrencias en **Termina tras**, o ambas cosas, y manda lo que llegue antes. Si dejas los dos vacíos, se sigue repitiendo.",
+  "web:help.get-paid-with-stripe.s0.b1": "Los pagos te corresponden *a ti*, no a un club. El dinero de un evento va a la persona que lo organiza, así que un coorganizador que nunca organiza una clase nunca ve dinero que no es suyo, y conservas tus ingresos si dejas de organizar para un club. Una sola cuenta de pagos cubre todos los clubes para los que organizas y todo tipo de eventos, incluida una [[guide:set-up-a-race|carrera]].",
+  "web:help.get-paid-with-stripe.s3.b0": "La plataforma se queda una pequeña comisión de cada inscripción, que aparece como **Comisión de la plataforma** en tus ingresos. La plataforma es el comerciante registrado: el cargo aparece a su nombre en el extracto de quien compra, los reembolsos los emite la plataforma según la política de reembolso que fijes en cada evento, y un cargo disputado se debita de la cuenta de Stripe de la plataforma, no de la tuya. Cuando un pedido se reembolsa por completo, también se devuelve la comisión de la plataforma de ese pedido.",
+  "web:help.recurring-events.s1.b1.i0": "Abre el evento y usa **Elige una ocurrencia** para escoger la fecha. Se muestran las próximas fechas, y **Mostrar las próximas** despliega todas las fechas del próximo año."
+ },
+ "findings": [
+  {
+   "id": "web:help.cancel-a-class.s0.b0",
+   "severity": "error",
+   "rule": "term",
+   "problem": "Host (event host) rendered «anfitrión»; the es catalogue's runner-facing word for the event host is «organizador» (clubEvent.cancelPolicyNoRefund, clubEvent.attendanceOnly, clubEvent.finishHostEdited, help.audienceOrganiser «Organizadores»; batch 1 uses it 38 times). «anfitrión» appears only in the admin earnings view and one string.",
+   "fix": "«el anfitrión» → «el organizador»"
+  },
+  {
+   "id": "web:help.refund-policies.s0.b0",
+   "severity": "error",
+   "rule": "term",
+   "problem": "Host (event host) rendered «anfitrión»; the es catalogue's runner-facing word for the event host is «organizador» (clubEvent.cancelPolicyNoRefund, clubEvent.attendanceOnly, clubEvent.finishHostEdited, help.audienceOrganiser «Organizadores»; batch 1 uses it 38 times). «anfitrión» appears only in the admin earnings view and one string.",
+   "fix": "«el anfitrión» → «el organizador»"
+  },
+  {
+   "id": "web:help.refund-policies.s1.b0",
+   "severity": "error",
+   "rule": "term",
+   "problem": "Host (event host) rendered «anfitrión»; the es catalogue's runner-facing word for the event host is «organizador» (clubEvent.cancelPolicyNoRefund, clubEvent.attendanceOnly, clubEvent.finishHostEdited, help.audienceOrganiser «Organizadores»; batch 1 uses it 38 times). «anfitrión» appears only in the admin earnings view and one string.",
+   "fix": "«El anfitrión» → «El organizador»"
+  },
+  {
+   "id": "web:help.refund-policies.s1.b3",
+   "severity": "error",
+   "rule": "term",
+   "problem": "Host (event host) rendered «anfitrión»; the es catalogue's runner-facing word for the event host is «organizador» (clubEvent.cancelPolicyNoRefund, clubEvent.attendanceOnly, clubEvent.finishHostEdited, help.audienceOrganiser «Organizadores»; batch 1 uses it 38 times). «anfitrión» appears only in the admin earnings view and one string.",
+   "fix": "«el anfitrión» → «el organizador»"
+  },
+  {
+   "id": "web:help.waitlist-and-claim-window.s1.b0",
+   "severity": "error",
+   "rule": "term",
+   "problem": "Host (event host) rendered «anfitrión»; the es catalogue's runner-facing word for the event host is «organizador» (clubEvent.cancelPolicyNoRefund, clubEvent.attendanceOnly, clubEvent.finishHostEdited, help.audienceOrganiser «Organizadores»; batch 1 uses it 38 times). «anfitrión» appears only in the admin earnings view and one string.",
+   "fix": "«el anfitrión» → «el organizador»"
+  },
+  {
+   "id": "web:help.waitlist-and-claim-window.s2.b0.i1",
+   "severity": "error",
+   "rule": "term",
+   "problem": "Host (event host) rendered «anfitrión»; the es catalogue's runner-facing word for the event host is «organizador» (clubEvent.cancelPolicyNoRefund, clubEvent.attendanceOnly, clubEvent.finishHostEdited, help.audienceOrganiser «Organizadores»; batch 1 uses it 38 times). «anfitrión» appears only in the admin earnings view and one string.",
+   "fix": "«el anfitrión» → «el organizador»"
+  },
+  {
+   "id": "web:help.waitlist-and-claim-window.s4.heading",
+   "severity": "error",
+   "rule": "term",
+   "problem": "Host (event host) rendered «anfitrión»; the es catalogue's runner-facing word for the event host is «organizador» (clubEvent.cancelPolicyNoRefund, clubEvent.attendanceOnly, clubEvent.finishHostEdited, help.audienceOrganiser «Organizadores»; batch 1 uses it 38 times). «anfitrión» appears only in the admin earnings view and one string.",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.recurring-events.title",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Guide title in the infinitive while batch 1 titles every task guide with the tú imperative («Organiza una carrera», «Crea un club», «Oculta tu casa con zonas de privacidad»); the help index lists all 25 titles together and guides link to each other by title, so the two batches must share one form. Aligned to batch 1 (the catalogue's own payouts.heroTitle is also imperative: «Cobra por organizar eventos»).",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.cancel-a-class.title",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Guide title in the infinitive while batch 1 titles every task guide with the tú imperative («Organiza una carrera», «Crea un club», «Oculta tu casa con zonas de privacidad»); the help index lists all 25 titles together and guides link to each other by title, so the two batches must share one form. Aligned to batch 1 (the catalogue's own payouts.heroTitle is also imperative: «Cobra por organizar eventos»).",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.get-paid-with-stripe.title",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Guide title in the infinitive while batch 1 titles every task guide with the tú imperative («Organiza una carrera», «Crea un club», «Oculta tu casa con zonas de privacidad»); the help index lists all 25 titles together and guides link to each other by title, so the two batches must share one form. Aligned to batch 1 (the catalogue's own payouts.heroTitle is also imperative: «Cobra por organizar eventos»).",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.host-a-paid-gym-class.title",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Guide title in the infinitive while batch 1 titles every task guide with the tú imperative («Organiza una carrera», «Crea un club», «Oculta tu casa con zonas de privacidad»); the help index lists all 25 titles together and guides link to each other by title, so the two batches must share one form. Aligned to batch 1 (the catalogue's own payouts.heroTitle is also imperative: «Cobra por organizar eventos»).",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.host-a-paid-yoga-class.title",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Guide title in the infinitive while batch 1 titles every task guide with the tú imperative («Organiza una carrera», «Crea un club», «Oculta tu casa con zonas de privacidad»); the help index lists all 25 titles together and guides link to each other by title, so the two batches must share one form. Aligned to batch 1 (the catalogue's own payouts.heroTitle is also imperative: «Cobra por organizar eventos»).",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.build-a-gym-routine.title",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Guide title in the infinitive while batch 1 titles every task guide with the tú imperative («Organiza una carrera», «Crea un club», «Oculta tu casa con zonas de privacidad»); the help index lists all 25 titles together and guides link to each other by title, so the two batches must share one form. Aligned to batch 1 (the catalogue's own payouts.heroTitle is also imperative: «Cobra por organizar eventos»).",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.build-a-session-plan.title",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Guide title in the infinitive while batch 1 titles every task guide with the tú imperative («Organiza una carrera», «Crea un club», «Oculta tu casa con zonas de privacidad»); the help index lists all 25 titles together and guides link to each other by title, so the two batches must share one form. Aligned to batch 1 (the catalogue's own payouts.heroTitle is also imperative: «Cobra por organizar eventos»).",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.take-attendance.title",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Guide title in the infinitive while batch 1 titles every task guide with the tú imperative («Organiza una carrera», «Crea un club», «Oculta tu casa con zonas de privacidad»); the help index lists all 25 titles together and guides link to each other by title, so the two batches must share one form. Aligned to batch 1 (the catalogue's own payouts.heroTitle is also imperative: «Cobra por organizar eventos»).",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.using-help.title",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Bare infinitive title «Encontrar ayuda en la app» reads as an instruction label beside batch 1's imperative/noun titles; «Cómo …» renders the English gerund title naturally.",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.recurring-events.s2.b4",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Link label quotes another guide's title; must match that guide's es title (now imperative, as in batch 1).",
+   "fix": "«Organizar una clase de pago de yoga» → «Organiza una clase de pago de yoga»"
+  },
+  {
+   "id": "web:help.host-a-paid-gym-class.s0.b0",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Link label quotes another guide's title; must match that guide's es title (now imperative, as in batch 1).",
+   "fix": "«|Cobrar por los eventos que organizas]]» → «|Cobra por los eventos que organizas]]»"
+  },
+  {
+   "id": "web:help.host-a-paid-yoga-class.s0.b0",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Link label quotes another guide's title; must match that guide's es title (now imperative, as in batch 1).",
+   "fix": "«|Cobrar por los eventos que organizas]]» → «|Cobra por los eventos que organizas]]»"
+  },
+  {
+   "id": "web:help.host-a-paid-gym-class.s2.b1.i0",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Link label quotes another guide's title; must match that guide's es title (now imperative, as in batch 1).",
+   "fix": "«|Crear una rutina de gimnasio]]» → «|Crea una rutina de gimnasio]]»"
+  },
+  {
+   "id": "web:help.host-a-paid-gym-class.s4.b0.i2",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Link label quotes another guide's title; must match that guide's es title (now imperative, as in batch 1).",
+   "fix": "«|Pasar lista]]» → «|Pasa lista]]»"
+  },
+  {
+   "id": "web:help.host-a-paid-yoga-class.s4.b0.i0",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Link label quotes another guide's title; must match that guide's es title (now imperative, as in batch 1).",
+   "fix": "«|Pasar lista]]» → «|Pasa lista]]»"
+  },
+  {
+   "id": "web:help.host-a-paid-gym-class.s4.b0.i3",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Link label quotes another guide's title; must match that guide's es title (now imperative, as in batch 1).",
+   "fix": "«|Cancelar una clase]]» → «|Cancela una clase]]»"
+  },
+  {
+   "id": "web:help.refund-policies.s1.b3",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Link label quotes another guide's title; must match that guide's es title (now imperative, as in batch 1).",
+   "fix": "«|Cancelar una clase]]» → «|Cancela una clase]]»"
+  },
+  {
+   "id": "web:help.waitlist-and-claim-window.s4.b0.i2",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Link label quotes another guide's title; must match that guide's es title (now imperative, as in batch 1).",
+   "fix": "«|Cancelar una clase]]» → «|Cancela una clase]]»"
+  },
+  {
+   "id": "web:help.host-a-paid-yoga-class.s4.b0.i1",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Link label quotes another guide's title; must match that guide's es title (now imperative, as in batch 1). The link label was also the grammatical subject («Cancelar una clase reembolsa…»), which no longer parses with an imperative title; restructured, same link, same meaning.",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.host-a-paid-yoga-class.s0.b1.i2",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Link label quotes another guide's title; must match that guide's es title (now imperative, as in batch 1).",
+   "fix": "«|Crear un plan de sesión]]» → «|Crea un plan de sesión]]»"
+  },
+  {
+   "id": "web:help.take-attendance.s2.b1",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Link label quotes another guide's title; must match that guide's es title (now imperative, as in batch 1).",
+   "fix": "«|Crear un plan de sesión]]» → «|Crea un plan de sesión]]»"
+  },
+  {
+   "id": "web:help.build-a-gym-routine.s3.b1",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Link label quotes another guide's title; must match that guide's es title (now imperative, as in batch 1).",
+   "fix": "«|Organizar una clase de pago de HIIT, fuerza o bootcamp]]» → «|Organiza una clase de pago de HIIT, fuerza o bootcamp]]»"
+  },
+  {
+   "id": "web:help.your-data-and-privacy.s0.b1",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Link label must match batch 1's es title for privacy-zones («Oculta tu casa con zonas de privacidad»).",
+   "fix": "«|Ocultar tu casa con zonas de privacidad]]» → «|Oculta tu casa con zonas de privacidad]]»"
+  },
+  {
+   "id": "web:help.recurring-events.s0.heading",
+   "severity": "warning",
+   "rule": "register",
+   "problem": "Section heading for an English imperative in the infinitive; batch 1 headings use the tú imperative («Crea el evento», «Añade más recorridos», «Comparte un enlace en directo»). Aligned so the 25 guides read in one voice. Anchors stay unique.",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.recurring-events.s1.heading",
+   "severity": "warning",
+   "rule": "register",
+   "problem": "Section heading for an English imperative in the infinitive; batch 1 headings use the tú imperative («Crea el evento», «Añade más recorridos», «Comparte un enlace en directo»). Aligned so the 25 guides read in one voice. Anchors stay unique.",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.recurring-events.s2.heading",
+   "severity": "warning",
+   "rule": "register",
+   "problem": "Section heading for an English imperative in the infinitive; batch 1 headings use the tú imperative («Crea el evento», «Añade más recorridos», «Comparte un enlace en directo»). Aligned so the 25 guides read in one voice. Anchors stay unique.",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.cancel-a-class.s1.heading",
+   "severity": "warning",
+   "rule": "register",
+   "problem": "Section heading for an English imperative in the infinitive; batch 1 headings use the tú imperative («Crea el evento», «Añade más recorridos», «Comparte un enlace en directo»). Aligned so the 25 guides read in one voice. Anchors stay unique.",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.get-paid-with-stripe.s1.heading",
+   "severity": "warning",
+   "rule": "register",
+   "problem": "Section heading for an English imperative in the infinitive; batch 1 headings use the tú imperative («Crea el evento», «Añade más recorridos», «Comparte un enlace en directo»). Aligned so the 25 guides read in one voice. Anchors stay unique.",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.get-paid-with-stripe.s4.heading",
+   "severity": "warning",
+   "rule": "register",
+   "problem": "Section heading for an English imperative in the infinitive; batch 1 headings use the tú imperative («Crea el evento», «Añade más recorridos», «Comparte un enlace en directo»). Aligned so the 25 guides read in one voice. Anchors stay unique.",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.host-a-paid-gym-class.s1.heading",
+   "severity": "warning",
+   "rule": "register",
+   "problem": "Section heading for an English imperative in the infinitive; batch 1 headings use the tú imperative («Crea el evento», «Añade más recorridos», «Comparte un enlace en directo»). Aligned so the 25 guides read in one voice. Anchors stay unique.",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.host-a-paid-gym-class.s2.heading",
+   "severity": "warning",
+   "rule": "register",
+   "problem": "Section heading for an English imperative in the infinitive; batch 1 headings use the tú imperative («Crea el evento», «Añade más recorridos», «Comparte un enlace en directo»). Aligned so the 25 guides read in one voice. Anchors stay unique.",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.host-a-paid-yoga-class.s1.heading",
+   "severity": "warning",
+   "rule": "register",
+   "problem": "Section heading for an English imperative in the infinitive; batch 1 headings use the tú imperative («Crea el evento», «Añade más recorridos», «Comparte un enlace en directo»). Aligned so the 25 guides read in one voice. Anchors stay unique.",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.refund-policies.s2.heading",
+   "severity": "warning",
+   "rule": "register",
+   "problem": "Section heading for an English imperative in the infinitive; batch 1 headings use the tú imperative («Crea el evento», «Añade más recorridos», «Comparte un enlace en directo»). Aligned so the 25 guides read in one voice. Anchors stay unique.",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.build-a-gym-routine.s1.heading",
+   "severity": "warning",
+   "rule": "register",
+   "problem": "Section heading for an English imperative in the infinitive; batch 1 headings use the tú imperative («Crea el evento», «Añade más recorridos», «Comparte un enlace en directo»). Aligned so the 25 guides read in one voice. Anchors stay unique.",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.build-a-gym-routine.s3.heading",
+   "severity": "warning",
+   "rule": "register",
+   "problem": "Section heading for an English imperative in the infinitive; batch 1 headings use the tú imperative («Crea el evento», «Añade más recorridos», «Comparte un enlace en directo»). Aligned so the 25 guides read in one voice. Anchors stay unique.",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.build-a-session-plan.s1.heading",
+   "severity": "warning",
+   "rule": "register",
+   "problem": "Section heading for an English imperative in the infinitive; batch 1 headings use the tú imperative («Crea el evento», «Añade más recorridos», «Comparte un enlace en directo»). Aligned so the 25 guides read in one voice. Anchors stay unique.",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.build-a-session-plan.s2.heading",
+   "severity": "warning",
+   "rule": "register",
+   "problem": "Section heading for an English imperative in the infinitive; batch 1 headings use the tú imperative («Crea el evento», «Añade más recorridos», «Comparte un enlace en directo»). Aligned so the 25 guides read in one voice. Anchors stay unique.",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.build-a-session-plan.s3.heading",
+   "severity": "warning",
+   "rule": "register",
+   "problem": "Section heading for an English imperative in the infinitive; batch 1 headings use the tú imperative («Crea el evento», «Añade más recorridos», «Comparte un enlace en directo»). Aligned so the 25 guides read in one voice. Anchors stay unique.",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.build-a-session-plan.s4.heading",
+   "severity": "warning",
+   "rule": "register",
+   "problem": "Section heading for an English imperative in the infinitive; batch 1 headings use the tú imperative («Crea el evento», «Añade más recorridos», «Comparte un enlace en directo»). Aligned so the 25 guides read in one voice. Anchors stay unique.",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.take-attendance.s1.heading",
+   "severity": "warning",
+   "rule": "register",
+   "problem": "Section heading for an English imperative in the infinitive; batch 1 headings use the tú imperative («Crea el evento», «Añade más recorridos», «Comparte un enlace en directo»). Aligned so the 25 guides read in one voice. Anchors stay unique.",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.your-data-and-privacy.s1.heading",
+   "severity": "warning",
+   "rule": "register",
+   "problem": "Section heading for an English imperative in the infinitive; batch 1 headings use the tú imperative («Crea el evento», «Añade más recorridos», «Comparte un enlace en directo»). Aligned so the 25 guides read in one voice. Anchors stay unique.",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.your-data-and-privacy.s2.heading",
+   "severity": "warning",
+   "rule": "register",
+   "problem": "Section heading for an English imperative in the infinitive; batch 1 headings use the tú imperative («Crea el evento», «Añade más recorridos», «Comparte un enlace en directo»). Aligned so the 25 guides read in one voice. Anchors stay unique.",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.your-data-and-privacy.s3.heading",
+   "severity": "warning",
+   "rule": "register",
+   "problem": "Section heading for an English imperative in the infinitive; batch 1 headings use the tú imperative («Crea el evento», «Añade más recorridos», «Comparte un enlace en directo»). Aligned so the 25 guides read in one voice. Anchors stay unique.",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.build-a-gym-routine.s2.heading",
+   "severity": "warning",
+   "rule": "meaning",
+   "problem": "«Hacerla» (\"Do it\") is vague for \"Run it\" (run the routine as a guided session) and in the infinitive; «Entrena con ella» says what the section is about, imperative as batch 1.",
+   "fix": "Corrected in place."
+  },
+  {
+   "id": "web:help.build-a-gym-routine.summary",
+   "severity": "warning",
+   "rule": "meaning",
+   "problem": "«hazla guiada» (\"make it guided\") misreads \"run it guided\" (follow the routine as a guided session).",
+   "fix": "«y hazla guiada o compártela» → «y síguela de forma guiada o compártela»"
+  },
+  {
+   "id": "web:help.recurring-events.s0.b1.i4",
+   "severity": "warning",
+   "rule": "meaning",
+   "problem": "\"where the series stops\" is temporal (an end date or a count); «dónde» reads as a place.",
+   "fix": "«Decide dónde termina la serie» → «Decide cuándo termina la serie»"
+  },
+  {
+   "id": "web:help.get-paid-with-stripe.s0.b1",
+   "severity": "warning",
+   "rule": "meaning",
+   "problem": "Payout copy: the money follows the person who *hosts* the event, not who teaches it. «imparte» (teaches) shifts who gets paid; use the host verb «organizar», as the rest of the sentence does.",
+   "fix": "«un coorganizador que nunca imparte una clase» → «un coorganizador que nunca organiza una clase»"
+  },
+  {
+   "id": "web:help.get-paid-with-stripe.s3.b0",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "\"merchant of record\" is a fixed payments term; Stripe's Spanish documentation renders it «comerciante registrado». «comerciante responsable» is a paraphrase in payment/liability copy. Native/legal check advised.",
+   "fix": "«el comerciante responsable» → «el comerciante registrado»"
+  },
+  {
+   "id": "web:help.recurring-events.s1.b1.i0",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "No es catalogue string «Mostrar todas» exists. The button is clubEvent.showAllUpcoming «Mostrar las {n} próximas»; the English guide drops the count, so the es label should too: «Mostrar las próximas» is what a reader will recognise on screen.",
+   "fix": "«**Mostrar todas**» → «**Mostrar las próximas**»"
+  },
+  {
+   "id": "web:help.host-a-paid-yoga-class.s3.b0.i1",
+   "severity": "warning",
+   "rule": "units",
+   "problem": "Literal sample «*Register · $22*» became «*Inscribirse · 22,00 US$*»: two digits and a currency symbol added. It does match what formatPrice (Intl, currency USD, no fraction override) renders for es («22,00 US$»), and the English sample itself abbreviates the real en rendering «$22.00».",
+   "fix": "Left as is (it is what an es reader sees). If the parent applies 'no numbers added' strictly, use «*Inscribirse · 22 US$*». See the source finding."
+  },
+  {
+   "id": "web:help.host-a-paid-yoga-class.s3.b0.i1",
+   "severity": "warning",
+   "rule": "source",
+   "problem": "English sample «Register · $22» does not match what the app renders in en (formatPrice → «$22.00»), so every locale has to choose between the guide's figure and the screen's.",
+   "fix": "Change the English sample to «Register · $22.00»."
+  },
+  {
+   "id": "web:help.host-a-paid-yoga-class.s3.b0.i3",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "**Iniciar sesión** for \"Start session\" is verbatim from the catalogue (gym.session.start, session.run.start, mobile gymSessionStart) so it is correct here, but it is the same words as the sign-in button (landing.signIn etc.).",
+   "fix": "No change in the batch; see catalogueFindings."
+  },
+  {
+   "id": "web:help.build-a-gym-routine.s2.b0",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "**Iniciar sesión** for \"Start session\" is verbatim from the catalogue (gym.session.start, session.run.start, mobile gymSessionStart) so it is correct here, but it is the same words as the sign-in button (landing.signIn etc.).",
+   "fix": "No change in the batch; see catalogueFindings."
+  },
+  {
+   "id": "web:help.build-a-session-plan.s3.b0",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "**Iniciar sesión** for \"Start session\" is verbatim from the catalogue (gym.session.start, session.run.start, mobile gymSessionStart) so it is correct here, but it is the same words as the sign-in button (landing.signIn etc.).",
+   "fix": "No change in the batch; see catalogueFindings."
+  }
+ ],
+ "terms": {
+  "host (event host)": "organizador",
+  "event organiser (club role)": "organizador de eventos",
+  "occurrence": "ocurrencia",
+  "paid rail": "sistema de pagos (de la plataforma)",
+  "payout account": "cuenta de pagos",
+  "platform fee": "comisión de la plataforma",
+  "merchant of record": "comerciante registrado",
+  "refund policy": "política de reembolso",
+  "refund window": "plazo de reembolso",
+  "waitlist": "lista de espera",
+  "hold / held place": "reserva / plaza reservada",
+  "claim (a place)": "reclamar / conseguir la plaza",
+  "capacity": "aforo",
+  "drop-in": "precio por sesión / sesión suelta",
+  "attendee": "asistente",
+  "registration": "inscripción",
+  "RSVP": "confirmar asistencia / confirmación de asistencia",
+  "routine": "rutina",
+  "session plan": "plan de sesión",
+  "cue": "indicación",
+  "AI Coach": "Entrenador IA (body); label **Coach IA — 10/día** verbatim",
+  "guide titles": "tú imperative for task guides (as batch 1)"
+ },
+ "catalogueFindings": [
+  {
+   "keys": [
+    "web:gym.session.start",
+    "web:session.run.start",
+    "mobile:gymSessionStart",
+    "web:landing.signIn"
+   ],
+   "problem": "«Iniciar sesión» is both \"Start session\" (gym / follow-along) and \"Sign in\" (clubJoin.signIn, landing.signIn, shareRun.signIn…). The help guides must quote it verbatim, so a reader is told to press «Iniciar sesión» to start a workout. Suggest «Empezar sesión» or «Iniciar entrenamiento» for the start keys."
+  },
+  {
+   "keys": [
+    "web:upgrade.proFeatCoachTitle",
+    "web:upgrade.comingSoon*"
+   ],
+   "problem": "AI Coach has three es names in web es.ts: «Coach IA» (3, incl. upgrade.proFeatCoachTitle «Coach IA — 10/día»), «Entrenador IA» (3, the guide's glossary form) and «entrenador con IA» (4, incl. the Pro card's «Pro desbloquea el entrenador con IA: próximamente.»). The what-pro-includes guide has to quote two of them in one section."
+  },
+  {
+   "keys": [
+    "web:settingsAccount.deleteRequireTextLabel"
+   ],
+   "problem": "es value «Escribe \"{word}\" para confirmar» uses straight quotes; the guide's typography is « » («Escribe «{word}» para confirmar»)."
+  },
+  {
+   "keys": [
+    "web:admin.earnings.colHost",
+    "web:admin.earnings.viewHosts",
+    "web:admin.earnings.hostsTitle",
+    "web:admin.earnings.hostsFailed",
+    "web:admin.earnings.unnamedHost",
+    "web:clubEvent.registerHostUnavailable"
+   ],
+   "problem": "Event host is «anfitrión» in these six keys and «organizador» in the runner-facing ones (clubEvent.cancelPolicyNoRefund, finishHostEdited, attendanceOnly…). clubEvent.registerHostUnavailable even uses both in one sentence («El anfitrión no puede… contacta con la organización»)."
+  },
+  {
+   "keys": [
+    "web:clubEvent.showAllUpcoming"
+   ],
+   "problem": "(source) The English guides quote this button as **Show all** while the catalogue says «Show all {n} upcoming»; every locale has to invent a shortened label. Consider quoting it as «Show all … upcoming» in the English guide."
+  },
+  {
+   "keys": [
+    "route:/delete-account"
+   ],
+   "problem": "apps/web/src/routes/delete-account/+page.svelte hardcodes «Delete your account» (title and h1); the page is not localized, so the es guide links to an English page."
+  },
+  {
+   "keys": [
+    "out/es-b1.json (batch 1)"
+   ],
+   "problem": "Batch 1 renders \"occurrence\" as «fecha» (race-day-for-hosts.s1.b0.i0, s4.b3; set-up-a-race.s1.b0.i2) while the catalogue labels and batch 2 use «ocurrencia» (clubEvent.pickOccurrence «Elige una ocurrencia», «Cancelar esta ocurrencia»). For the parallel b1 check. Also: this check aligned batch 2 titles/headings to batch 1's tú-imperative; if the b1 checker moves b1 to infinitives instead, revert the title/link/heading corrections here."
+  }
+ ],
+ "corrections_original": {
+  "web:help.cancel-a-class.s0.b0": "Las clases de pago aún no están activas: necesitan que el organizador tenga conectada su cuenta de Stripe y que la plataforma active su sistema de pagos. Si los pagos no están disponibles cuando intentas cancelar una ocurrencia que tiene inscripciones pagadas, verás **Esta ocurrencia tiene inscripciones pagadas y los pagos no están disponibles ahora mismo, así que todavía no se puede cancelar. No se ha cambiado nada.** La clase sigue en pie, para que nadie se quede con un pago hecho por una clase que no se va a celebrar.",
+  "web:help.refund-policies.s0.b0": "La inscripción de pago aún no está activa. Necesita que el organizador tenga conectada su cuenta de Stripe y que la plataforma active su sistema de pagos. Hasta entonces no se puede cobrar por ningún evento, así que no hay nada que reembolsar.",
+  "web:help.refund-policies.s1.b0": "El organizador elige una **Política de reembolso** al crear un evento de pago. Decide qué recupera alguien si cancela *por su cuenta*, y se muestra en la página del evento antes de que nadie pague.",
+  "web:help.refund-policies.s1.b3": "La política solo cubre la cancelación por parte de un participante. Si el organizador cancela una clase, a todas las personas que pagaron se les reembolsa el importe completo, diga lo que diga la política: consulta [[guide:cancel-a-class|Cancela una clase]].",
+  "web:help.waitlist-and-claim-window.s1.b0": "Las clases de pago aún no están activas: necesitan que el organizador tenga conectada su cuenta de Stripe y que la plataforma active su sistema de pagos. Todo lo de esta sección se aplica una vez que lo estén.",
+  "web:help.waitlist-and-claim-window.s2.b0.i1": "La reserva se acorta cuando se cierran las ventas de esa clase (la hora de cierre de ventas que fija el organizador antes del inicio). No se ofrece ninguna plaza después del cierre de ventas, porque nadie podría pagarla.",
+  "web:help.waitlist-and-claim-window.s4.heading": "Para organizadores",
+  "web:help.recurring-events.title": "Configura un evento recurrente del club",
+  "web:help.cancel-a-class.title": "Cancela una clase y reembolsa a quienes pagaron",
+  "web:help.get-paid-with-stripe.title": "Cobra por los eventos que organizas",
+  "web:help.host-a-paid-gym-class.title": "Organiza una clase de pago de HIIT, fuerza o bootcamp",
+  "web:help.host-a-paid-yoga-class.title": "Organiza una clase de pago de yoga o pilates",
+  "web:help.build-a-gym-routine.title": "Crea una rutina de gimnasio",
+  "web:help.build-a-session-plan.title": "Crea un plan de sesión de yoga, pilates o movilidad",
+  "web:help.take-attendance.title": "Pasa lista en una clase",
+  "web:help.using-help.title": "Cómo encontrar ayuda en la app",
+  "web:help.recurring-events.s2.b4": "Si el evento es una clase de pago, cancelar una ocurrencia reembolsa el importe completo a todas las personas inscritas en ella. Consulta [[guide:host-a-paid-yoga-class|Organiza una clase de pago de yoga]].",
+  "web:help.host-a-paid-gym-class.s0.b0": "Las clases de pago aún no están activas. Para cobrar necesitas tener conectada tu propia cuenta de Stripe ([[guide:get-paid-with-stripe|Cobra por los eventos que organizas]]) y que la plataforma active su sistema de pagos. Hasta entonces, el interruptor **Cobrar por este evento** sigue desactivado y puedes impartir la clase gratis.",
+  "web:help.host-a-paid-yoga-class.s0.b0": "Las clases de pago aún no están activas. Para cobrar necesitas tener conectada tu propia cuenta de Stripe ([[guide:get-paid-with-stripe|Cobra por los eventos que organizas]]) y que la plataforma active su sistema de pagos. Hasta entonces, el interruptor **Cobrar por este evento** sigue desactivado y puedes impartir la clase gratis.",
+  "web:help.host-a-paid-gym-class.s2.b1.i0": "Crea la rutina: consulta [[guide:build-a-gym-routine|Crea una rutina de gimnasio]].",
+  "web:help.host-a-paid-gym-class.s4.b0.i2": "Marca quién vino: [[guide:take-attendance|Pasa lista]].",
+  "web:help.host-a-paid-yoga-class.s4.b0.i0": "Marca quién vino: [[guide:take-attendance|Pasa lista]].",
+  "web:help.host-a-paid-gym-class.s4.b0.i3": "Cancelar una sesión reembolsa a todas las personas que pagaron: [[guide:cancel-a-class|Cancela una clase]].",
+  "web:help.waitlist-and-claim-window.s4.b0.i2": "Si alguien cancela con reembolso, su plaza pasa a la lista de espera. Si cancelas una ocurrencia, nadie de la lista de espera pasa a ella: consulta [[guide:cancel-a-class|Cancela una clase]].",
+  "web:help.host-a-paid-yoga-class.s4.b0.i1": "¿Tienes que cancelar una? A todas las personas que pagaron se les reembolsa el importe: [[guide:cancel-a-class|Cancela una clase]].",
+  "web:help.host-a-paid-yoga-class.s0.b1.i2": "Si quieres asociar una secuencia, créala primero: consulta [[guide:build-a-session-plan|Crea un plan de sesión]].",
+  "web:help.take-attendance.s2.b1": "La asistencia no añade la clase al historial de entrenamiento de nadie. Eso lo hacen los propios asistentes con **Registrar como entrenamiento** en la página de la clase, o siguiendo el plan de sesión de la clase: consulta [[guide:build-a-session-plan|Crea un plan de sesión]].",
+  "web:help.build-a-gym-routine.s3.b1": "¿Vas a impartir una clase de pago basada en la rutina? Consulta [[guide:host-a-paid-gym-class|Organiza una clase de pago de HIIT, fuerza o bootcamp]].",
+  "web:help.your-data-and-privacy.s0.b1": "Las zonas de privacidad recortan el inicio y el final de tus trazas en todos los sitios donde otra persona las ve. Consulta [[guide:privacy-zones|Oculta tu casa con zonas de privacidad]].",
+  "web:help.recurring-events.s0.heading": "Crea la serie",
+  "web:help.recurring-events.s1.heading": "Confirma tu asistencia a una fecha",
+  "web:help.recurring-events.s2.heading": "Cancela una ocurrencia",
+  "web:help.cancel-a-class.s1.heading": "Cancela una ocurrencia",
+  "web:help.get-paid-with-stripe.s1.heading": "Conecta tu cuenta de pagos",
+  "web:help.get-paid-with-stripe.s4.heading": "Consulta lo que has ganado",
+  "web:help.host-a-paid-gym-class.s1.heading": "Crea la clase",
+  "web:help.host-a-paid-gym-class.s2.heading": "Comparte el entrenamiento con tu clase",
+  "web:help.host-a-paid-yoga-class.s1.heading": "Crea la clase",
+  "web:help.refund-policies.s2.heading": "Cancela tu propia inscripción",
+  "web:help.build-a-gym-routine.s1.heading": "Rellénala",
+  "web:help.build-a-gym-routine.s3.heading": "Compártela con una clase",
+  "web:help.build-a-session-plan.s1.heading": "Rellénalo",
+  "web:help.build-a-session-plan.s2.heading": "Asócialo a una clase",
+  "web:help.build-a-session-plan.s3.heading": "Síguelo",
+  "web:help.build-a-session-plan.s4.heading": "Compártelo",
+  "web:help.take-attendance.s1.heading": "Marca quién vino",
+  "web:help.your-data-and-privacy.s1.heading": "Elige quién ve tus nuevas carreras",
+  "web:help.your-data-and-privacy.s2.heading": "Descarga tus datos",
+  "web:help.your-data-and-privacy.s3.heading": "Elimina tu cuenta",
+  "web:help.build-a-gym-routine.s2.heading": "Entrena con ella",
+  "web:help.build-a-gym-routine.summary": "Convierte un entrenamiento que impartes o repites en una rutina reutilizable con series, repeticiones, carga, descanso y superseries, y síguela de forma guiada o compártela con tu club.",
+  "web:help.recurring-events.s0.b1.i4": "Decide cuándo termina la serie: pon una fecha en **Termina el**, un número de ocurrencias en **Termina tras**, o ambas cosas, y manda lo que llegue antes. Si dejas los dos vacíos, se sigue repitiendo.",
+  "web:help.get-paid-with-stripe.s0.b1": "Los pagos te corresponden *a ti*, no a un club. El dinero de un evento va a la persona que lo organiza, así que un coorganizador que nunca organiza una clase nunca ve dinero que no es suyo, y conservas tus ingresos si dejas de organizar para un club. Una sola cuenta de pagos cubre todos los clubes para los que organizas y todo tipo de eventos, incluida una [[guide:set-up-a-race|carrera]].",
+  "web:help.get-paid-with-stripe.s3.b0": "La plataforma se queda una pequeña comisión de cada inscripción, que aparece como **Comisión de la plataforma** en tus ingresos. La plataforma es el comerciante registrado: el cargo aparece a su nombre en el extracto de quien compra, los reembolsos los emite la plataforma según la política de reembolso que fijes en cada evento, y un cargo disputado se debita de la cuenta de Stripe de la plataforma, no de la tuya. Cuando un pedido se reembolsa por completo, también se devuelve la comisión de la plataforma de ese pedido.",
+  "web:help.recurring-events.s1.b1.i0": "Abre el evento y usa **Elige una ocurrencia** para escoger la fecha. Se muestran las próximas fechas, y **Mostrar las próximas** despliega todas las fechas del próximo año."
+ }
+}

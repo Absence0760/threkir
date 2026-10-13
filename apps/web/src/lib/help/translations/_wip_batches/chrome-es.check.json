@@ -1,0 +1,55 @@
+{
+ "corrections": {
+  "web:help.noteCaution": "Precaución",
+  "mobile:helpNoResultsBody": "Prueba con otra palabra o muestra las guías para todos los grupos."
+ },
+ "findings": [
+  {
+   "id": "web:help.noteCaution",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "Web renders the caution note label «Atención» while mobile helpNoteCaution says «Precaución»; the same note tag in the same guide reads two ways across surfaces. The catalogue already uses «Precaución» for caution (routeConditions.severity.caution, routeConditionSeverityCaution).",
+   "fix": "«Precaución» on both surfaces."
+  },
+  {
+   "id": "mobile:helpNoResultsBody",
+   "severity": "warning",
+   "rule": "meaning",
+   "problem": "«muestra las guías para todos» is ambiguous (for everyone? all of them?). The English means switching the audience filter to All. This body also shows when an audience chip alone yields nothing, with no query.",
+   "fix": "«… o muestra las guías para todos los grupos.» (matches «grupo» in web help.noGuidesForAudience)."
+  },
+  {
+   "id": "web:help.kindExplainer",
+   "severity": "warning",
+   "rule": "term",
+   "problem": "«Cómo funciona» is identical to help.howThisWorks / mobile helpHowThisWorks («Cómo funciona»), though the English separates them («How it works» kind badge vs the «How this works» link). They don't share a screen today (the kind badge is on help cards/guide headers, the link near other pages' titles), so it isn't a collision, but a reader sees one phrase meaning two things.",
+   "fix": "Acceptable as is; if a distinct badge is wanted, «Explicación»."
+  },
+  {
+   "id": "web:help.categoryAccount",
+   "severity": "warning",
+   "rule": "source",
+   "problem": "The same guide category is «Your account» on web and «Account» on mobile in the English, so es follows with «Tu cuenta» / «Cuenta». The two surfaces name the same category two ways.",
+   "fix": "Align the English (one of the two), then es follows; no es change in this batch."
+  }
+ ],
+ "terms": {
+  "Help": "Ayuda",
+  "guide": "guía",
+  "Show guides for": "Mostrar guías para",
+  "All (audience chip)": "Todas (guías); Everyone audience: Todos",
+  "Runners / Organisers / Participants / Spectators / Instructors / Club admins": "Corredores / Organizadores / Participantes / Espectadores / Instructores / Administradores de club",
+  "organiser / event host": "organizador (never anfitrión)",
+  "Running / Races / Clubs / Paid classes": "Correr / Carreras / Clubes / Clases de pago",
+  "Works on": "Disponible en",
+  "Needs Pro": "Requiere Pro",
+  "Race directors only": "Solo directores de carrera",
+  "paid registration": "inscripción de pago",
+  "Tip / Caution": "Consejo / Precaución",
+  "How this works": "Cómo funciona",
+  "Read the guide": "Leer la guía",
+  "Related guides": "Guías relacionadas",
+  "On this page": "En esta página"
+ },
+ "catalogueFindings": []
+}

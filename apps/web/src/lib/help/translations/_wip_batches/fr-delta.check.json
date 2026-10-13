@@ -1,0 +1,60 @@
+{
+ "corrections": {
+  "web:help.follow-a-race-live.s2.b0": "Le classement **Sur le parcours** liste chaque coureur qui a envoyé une position, du plus avancé au moins avancé, avec la distance, l'allure et le temps écoulé ; il y a un classement par parcours quand la course en compte plusieurs. Chaque ligne indique aussi depuis combien de temps elle a été mise à jour.",
+  "web:help.race-day-for-hosts.s2.b2": "Le GO ne lance l'enregistrement de personne. Les coureurs appuient eux-mêmes sur Démarrer sur leur téléphone ou leur montre, soit sur la ligne pendant que la course est armée (l'enregistrement est rattaché à la course au GO), soit après avoir vu **Course EN DIRECT**. Rappelez-leur d'en lancer un.",
+  "web:help.racing-in-a-race.s2.b1": "Votre téléphone ou votre montre ne démarre pas l'enregistrement tout seul : appuyez vous-même sur Démarrer. Vous pouvez démarrer sur la ligne pendant que la course affiche **Course armée**, ou dès que vous voyez **Course EN DIRECT**. Un enregistrement lancé en avance est rattaché à la course au GO, sur le téléphone comme sur une montre Wear OS, et votre temps puce compte alors à partir du GO plutôt qu'à partir du moment où vous avez appuyé sur Démarrer."
+ },
+ "findings": [
+  {
+   "id": "web:help.follow-a-race-live.s2.b0",
+   "severity": "warning",
+   "rule": "meaning",
+   "problem": "Stacked 'avec …, avec un classement par parcours' reads as if each runner came with a board.",
+   "fix": "Separate clause after ' ; '."
+  },
+  {
+   "id": "web:help.race-day-for-hosts.s2.b2",
+   "severity": "warning",
+   "rule": "meaning",
+   "problem": "'l'enregistrement rejoint la course' calques 'joins the race' and, with course = run and race, can read as 'joins the run'.",
+   "fix": "'est rattaché à la course au GO' (matches the existing guide's 'liée à l'épreuve' sense of linking)."
+  },
+  {
+   "id": "web:help.racing-in-a-race.s2.b1",
+   "severity": "warning",
+   "rule": "meaning",
+   "problem": "Same calque 'rejoint la course au GO'.",
+   "fix": "'est rattaché à la course au GO'."
+  }
+ ],
+ "terms": {
+  "race armed (phone label)": "Course armée",
+  "Race LIVE": "Course EN DIRECT",
+  "armed (state)": "armée",
+  "GO": "GO",
+  "Fire Go": "Lancer le Go",
+  "Cancel / Cancel race": "Annuler / Annuler la course",
+  "Approve / Unverify / Edit": "Approuver / Retirer la validation / Modifier",
+  "PENDING / Pending": "EN ATTENTE / En attente",
+  "gun time / chip time": "temps officiel / temps puce",
+  "activity-risk acknowledgement": "reconnaissance des risques liés à l'activité",
+  "Join with invite code": "Rejoindre avec un code d'invitation",
+  "on the line": "sur la ligne",
+  "joins the race at GO": "est rattaché à la course au GO",
+  "No badge": "Aucun badge"
+ },
+ "catalogueFindings": [
+  {
+   "keys": [
+    "web:help.race-results-explained.s5.b0.i1"
+   ],
+   "problem": "rule source: on r7/race the English still says the host 'can correct it on the web' while race-day-for-hosts s0.b0/s6.b0 now say the phone app can approve and edit results too; the English (and every locale) is stale. Fix the English first, then re-translate."
+  },
+  {
+   "keys": [
+    "web:help.race-results-explained.s2.b0.i0"
+   ],
+   "problem": "rule source: '**No badge**' is bolded but is not an on-screen label; guide-rules say ** marks a label the app shows. Consider plain text or emphasis in the English."
+  }
+ ]
+}

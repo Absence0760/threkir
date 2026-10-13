@@ -3563,6 +3563,8 @@ class IntegrationRow {
   static const String colRefreshTokenSecretId = 'refresh_token_secret_id';
   static const String colDisconnectedAt = 'disconnected_at';
   static const String colDisconnectedReason = 'disconnected_reason';
+  static const String colExternalFirstName = 'external_first_name';
+  static const String colExternalLastName = 'external_last_name';
 
   final String id;
   final String userId;
@@ -3578,6 +3580,8 @@ class IntegrationRow {
   final String? refreshTokenSecretId;
   final DateTime? disconnectedAt;
   final String? disconnectedReason;
+  final String? externalFirstName;
+  final String? externalLastName;
 
   const IntegrationRow({
     required this.id,
@@ -3594,6 +3598,8 @@ class IntegrationRow {
     this.refreshTokenSecretId,
     this.disconnectedAt,
     this.disconnectedReason,
+    this.externalFirstName,
+    this.externalLastName,
   });
 
   factory IntegrationRow.fromJson(Map<String, dynamic> json) => IntegrationRow(
@@ -3611,6 +3617,8 @@ class IntegrationRow {
     refreshTokenSecretId: json['refresh_token_secret_id'] as String?,
     disconnectedAt: parseIsoStrictValue(json['disconnected_at']),
     disconnectedReason: json['disconnected_reason'] as String?,
+    externalFirstName: json['external_first_name'] as String?,
+    externalLastName: json['external_last_name'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -3628,6 +3636,8 @@ class IntegrationRow {
     colRefreshTokenSecretId: refreshTokenSecretId,
     colDisconnectedAt: disconnectedAt?.toIso8601String(),
     colDisconnectedReason: disconnectedReason,
+    colExternalFirstName: externalFirstName,
+    colExternalLastName: externalLastName,
   };
 
   IntegrationRow copyWith({
@@ -3645,6 +3655,8 @@ class IntegrationRow {
     String? refreshTokenSecretId,
     DateTime? disconnectedAt,
     String? disconnectedReason,
+    String? externalFirstName,
+    String? externalLastName,
   }) => IntegrationRow(
     id: id ?? this.id,
     userId: userId ?? this.userId,
@@ -3660,6 +3672,8 @@ class IntegrationRow {
     refreshTokenSecretId: refreshTokenSecretId ?? this.refreshTokenSecretId,
     disconnectedAt: disconnectedAt ?? this.disconnectedAt,
     disconnectedReason: disconnectedReason ?? this.disconnectedReason,
+    externalFirstName: externalFirstName ?? this.externalFirstName,
+    externalLastName: externalLastName ?? this.externalLastName,
   );
 }
 

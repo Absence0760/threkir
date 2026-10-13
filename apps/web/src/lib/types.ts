@@ -271,7 +271,7 @@ export function parseRouteSurface(raw: string | null | undefined): RouteSurface 
 	}
 }
 
-export type IntegrationProvider = 'strava' | 'garmin' | 'parkrun' | 'runsignup';
+export type IntegrationProvider = 'strava' | 'garmin' | 'parkrun' | 'runsignup' | 'ultrasignup';
 export type PreferredUnit = 'km' | 'mi';
 export type Gender = 'male' | 'female' | 'prefer_not_to_say';
 export type SubscriptionTier = 'free' | 'pro' | 'lifetime';
@@ -308,6 +308,7 @@ export function parseIntegrationProvider(
 		case 'garmin':
 		case 'parkrun':
 		case 'runsignup':
+		case 'ultrasignup':
 			return raw;
 		default:
 			return null;

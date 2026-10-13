@@ -1356,11 +1356,13 @@ OAuth tokens and connection state for each external platform per user.
 create table integrations (
   id                       uuid primary key default gen_random_uuid(),
   user_id                  uuid references auth.users not null,
-  provider                 text not null,            -- 'strava' | 'garmin' | 'parkrun' | 'runsignup'
+  provider                 text not null,            -- 'strava' | 'garmin' | 'parkrun' | 'runsignup' | 'ultrasignup'
   access_token_secret_id   uuid references vault.secrets(id) on delete set null,
   refresh_token_secret_id  uuid references vault.secrets(id) on delete set null,
   token_expiry             timestamptz,
-  external_id              text,                     -- athlete ID on the provider
+  external_id              text,                     -- athlete ID on the provider; for 'ultrasignup' the numeric person `Id` (CHECK `integrations_ultrasignup_identity_chk`)
+  external_first_name      text,                     -- provider-side name the identity was looked up by (UltraSignup historybyname); <= 60 chars, set together with external_last_name (20270726000003, decisions § 1841)
+  external_last_name       text,                     -- see external_first_name
   scope                    text,                     -- OAuth scopes granted
   last_sync_at             timestamptz,              -- last COMPLETE walk of the lookback window; a truncated backfill leaves it alone (decisions § 766)
   sync_cursor              text,                     -- resume point for a truncated `strava-import` walk: {"v":1,"from","after","before"} epoch seconds. Written on a truncation that made progress, cleared on a finished window / connect / disconnect (decisions § 768)

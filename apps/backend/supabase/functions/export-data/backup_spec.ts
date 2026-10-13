@@ -69,7 +69,7 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			// `20261004_001` introduced these columns; GDPR Art 15
 			// requires the export to reflect them.
 			select:
-				'id,provider,external_id,scope,last_sync_at,sync_cursor,disconnected_at,disconnected_reason,created_at,updated_at',
+				'id,provider,external_id,scope,last_sync_at,sync_cursor,disconnected_at,disconnected_reason,external_first_name,external_last_name,created_at,updated_at',
 		},
 		{ entry: 'run_kudos.json', table: 'run_kudos', filter: uidEq, select: '*' },
 		{

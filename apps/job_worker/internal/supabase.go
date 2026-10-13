@@ -2196,7 +2196,7 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		// (right of access), so the export must reflect them.
 		{
 			name: "integrations.json", table: schema.TableIntegrations, filter: uidEq,
-			sel: "id,provider,external_id,scope,last_sync_at,sync_cursor,disconnected_at,disconnected_reason,created_at,updated_at",
+			sel: "id,provider,external_id,scope,last_sync_at,sync_cursor,disconnected_at,disconnected_reason,external_first_name,external_last_name,created_at,updated_at",
 		},
 		// run_kudos given BY the user (the row where user_id = me).
 		{name: "run_kudos.json", table: schema.TableRunKudos, filter: uidEq, sel: "*"},

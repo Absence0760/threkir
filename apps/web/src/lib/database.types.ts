@@ -2197,7 +2197,9 @@ export type Database = {
           created_at: string | null
           disconnected_at: string | null
           disconnected_reason: string | null
+          external_first_name: string | null
           external_id: string | null
+          external_last_name: string | null
           id: string
           last_sync_at: string | null
           provider: string
@@ -2213,7 +2215,9 @@ export type Database = {
           created_at?: string | null
           disconnected_at?: string | null
           disconnected_reason?: string | null
+          external_first_name?: string | null
           external_id?: string | null
+          external_last_name?: string | null
           id?: string
           last_sync_at?: string | null
           provider: string
@@ -2229,7 +2233,9 @@ export type Database = {
           created_at?: string | null
           disconnected_at?: string | null
           disconnected_reason?: string | null
+          external_first_name?: string | null
           external_id?: string | null
+          external_last_name?: string | null
           id?: string
           last_sync_at?: string | null
           provider?: string

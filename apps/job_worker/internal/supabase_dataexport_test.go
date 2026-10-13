@@ -734,6 +734,13 @@ func TestStreamExportPersonalDataTables_IntegrationsSelectIncludesDisconnectColu
 	if !strings.Contains(integrationsURL, "disconnected_reason") {
 		t.Errorf("integrations select must include disconnected_reason. Got: %q", integrationsURL)
 	}
+	// 20270726000003: the name an UltraSignup person was looked up under is
+	// the runner's own name, so the right-of-access export carries it too.
+	for _, col := range []string{"external_first_name", "external_last_name"} {
+		if !strings.Contains(integrationsURL, col) {
+			t.Errorf("integrations select must include %s. Got: %q", col, integrationsURL)
+		}
+	}
 	// Vault secrets must STILL never surface — the original audit
 	// constraint stays in force.
 	if strings.Contains(integrationsURL, "access_token") {

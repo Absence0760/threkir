@@ -426,6 +426,16 @@ Deno.test('integrations spec includes disconnect timestamps (GDPR Art 15)', () =
 	assertEquals(integ.select.includes('disconnected_reason'), true);
 });
 
+Deno.test('integrations spec includes the provider-side name an identity was found by', () => {
+	// 20270726000003 stores the name an UltraSignup person was looked up under
+	// beside its id. It is the runner's own name as they typed it, so it is
+	// personal data the right-of-access export must carry.
+	const integ = buildBackupSpecs(TEST_UID).find((s) => s.entry === 'integrations.json');
+	assertExists(integ);
+	assertEquals(integ.select.includes('external_first_name'), true);
+	assertEquals(integ.select.includes('external_last_name'), true);
+});
+
 Deno.test('device_tokens spec carries a token-redactor', () => {
 	const dt = buildBackupSpecs(TEST_UID).find((s) => s.entry === 'device_tokens.json');
 	assertExists(dt);

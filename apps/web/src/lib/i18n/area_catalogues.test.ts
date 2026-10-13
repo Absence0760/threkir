@@ -199,13 +199,20 @@ test('the root layout loads the route catalogues in its load', () => {
 test('no other load function can read a message before the catalogues arrive', () => {
 	// SvelteKit runs a route's load functions in parallel, so a page or nested
 	// layout load calling m() would race the root one. Components render after
-	// every load resolves, which is why they are safe and these are not.
+	// every load resolves, which is why they are safe and these are not. A load
+	// whose first statement is `await parent()` runs after the root one, so it
+	// is not in that race.
+	const awaitsParentFirst = (file: string) =>
+		/export const load\b[^=]*=\s*async\s*\(\s*\{[^}]*\bparent\b[^}]*\}\s*\)\s*=>\s*\{\s*await parent\(\);/.test(
+			readFileSync(file, 'utf8')
+		);
 	const store = join(SRC, 'lib', 'i18n', 'store.svelte.ts');
 	const offenders: string[] = [];
 	for (const entry of graph.keys()) {
 		const name = entry.slice(entry.lastIndexOf('/') + 1);
 		if (!/^\+(page|layout)(\.server)?\.(ts|js)$/.test(name)) continue;
 		if (entry === join(ROUTES, '+layout.ts')) continue;
+		if (awaitsParentFirst(entry)) continue;
 		const stack = [entry];
 		const seen = new Set<string>();
 		while (stack.length) {

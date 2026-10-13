@@ -4227,5 +4227,15 @@
   "runRaceFinishedAuto": "Arrivée ! Temps officiel {time}",
   "runRaceFinishRecorded": "Arrivée enregistrée",
   "runRaceEnded": "L'organisateur a clôturé la course. Votre course continue d'être enregistrée, mais aucun résultat ne sera envoyé.",
-  "runRaceLateStart": "Départ tardif : vous êtes parti plus de 5 minutes après le départ ou loin de la ligne de départ."
+  "runRaceLateStart": "Départ tardif : vous êtes parti plus de 5 minutes après le départ ou loin de la ligne de départ.",
+  "eventCoursesTitle": "Parcours",
+  "eventCoursePickTitle": "Choisissez votre parcours",
+  "eventChangeCourse": "Changer de parcours",
+  "eventYourCourse": "Votre parcours",
+  "eventCourseChangeFailed": "Impossible d'enregistrer votre parcours. Réessayez.",
+  "eventResultChipTime": "Temps réel {time}",
+  "eventResultsOtherCourse": "Autres résultats",
+  "eventFinishMethodAuto": "Auto",
+  "eventFinishMethodManual": "Manuel",
+  "eventFinishMethodHost": "Organisateur"
 }

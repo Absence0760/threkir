@@ -4227,5 +4227,15 @@
   "runRaceFinishedAuto": "¡Meta! Tiempo oficial {time}",
   "runRaceFinishRecorded": "Llegada registrada",
   "runRaceEnded": "El organizador terminó la carrera. Tu actividad se sigue grabando, pero no se enviará ningún resultado.",
-  "runRaceLateStart": "Salida tardía: empezaste más de 5 minutos después de la salida o lejos de la línea de salida."
+  "runRaceLateStart": "Salida tardía: empezaste más de 5 minutos después de la salida o lejos de la línea de salida.",
+  "eventCoursesTitle": "Recorridos",
+  "eventCoursePickTitle": "Elige tu recorrido",
+  "eventChangeCourse": "Cambiar recorrido",
+  "eventYourCourse": "Tu recorrido",
+  "eventCourseChangeFailed": "No se pudo guardar tu recorrido. Inténtalo de nuevo.",
+  "eventResultChipTime": "Neto {time}",
+  "eventResultsOtherCourse": "Otros resultados",
+  "eventFinishMethodAuto": "Automático",
+  "eventFinishMethodManual": "Manual",
+  "eventFinishMethodHost": "Organizador"
 }

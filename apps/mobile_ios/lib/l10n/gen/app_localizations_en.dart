@@ -14514,4 +14514,37 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get runRaceLateStart =>
       'Late start: you began more than 5 minutes after GO or away from the start line.';
+
+  @override
+  String get eventCoursesTitle => 'Courses';
+
+  @override
+  String get eventCoursePickTitle => 'Pick your course';
+
+  @override
+  String get eventChangeCourse => 'Change course';
+
+  @override
+  String get eventYourCourse => 'Your course';
+
+  @override
+  String get eventCourseChangeFailed =>
+      'Couldn\'t save your course. Try again.';
+
+  @override
+  String eventResultChipTime(String time) {
+    return 'Chip $time';
+  }
+
+  @override
+  String get eventResultsOtherCourse => 'Other results';
+
+  @override
+  String get eventFinishMethodAuto => 'Auto';
+
+  @override
+  String get eventFinishMethodManual => 'Manual';
+
+  @override
+  String get eventFinishMethodHost => 'Host';
 }

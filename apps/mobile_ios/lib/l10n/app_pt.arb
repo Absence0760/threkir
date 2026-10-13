@@ -4227,5 +4227,15 @@
   "runRaceFinishedAuto": "Meta cortada! Tempo oficial {time}",
   "runRaceFinishRecorded": "Chegada registada",
   "runRaceEnded": "O organizador terminou a prova. A sua corrida continua a ser gravada, mas nenhum resultado será enviado.",
-  "runRaceLateStart": "Partida tardia: começou mais de 5 minutos após a partida ou longe da linha de partida."
+  "runRaceLateStart": "Partida tardia: começou mais de 5 minutos após a partida ou longe da linha de partida.",
+  "eventCoursesTitle": "Percursos",
+  "eventCoursePickTitle": "Escolha o seu percurso",
+  "eventChangeCourse": "Mudar de percurso",
+  "eventYourCourse": "O seu percurso",
+  "eventCourseChangeFailed": "Não foi possível guardar o seu percurso. Tente novamente.",
+  "eventResultChipTime": "Tempo real {time}",
+  "eventResultsOtherCourse": "Outros resultados",
+  "eventFinishMethodAuto": "Automático",
+  "eventFinishMethodManual": "Manual",
+  "eventFinishMethodHost": "Organizador"
 }

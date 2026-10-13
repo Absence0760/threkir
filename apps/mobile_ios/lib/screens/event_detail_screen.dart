@@ -108,6 +108,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   List<AttendeeView> _attendees = const [];
   String? _markingAttendance;
   List<EventResultView> _results = const [];
+  /// The courses a race offers (`event_courses`). Empty for a single-route
+  /// event, which RSVPs and races exactly as before courses existed.
+  List<EventCourseView> _courses = const [];
   RaceSessionRow? _raceSession;
   DateTime? _activeInstance;
   List<DateTime> _instances = const [];
@@ -296,6 +299,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         _loading = false;
       });
       unawaited(_maybeLoadSessionPlan(event));
+      if (isAthleticEventCategory(event.row.category)) {
+        unawaited(_loadCourses(event.row.id));
+      }
       if (_channel == null && club != null) {
         _channel = widget.social.subscribeToEvent(
           event.row.id,
@@ -319,6 +325,83 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           _loadError = _EventLoadError.generic;
         });
       }
+    }
+  }
+
+  /// Off the main load's critical path: a slow or failed course read must
+  /// not hold up the page, and RSVP without a course still works.
+  Future<void> _loadCourses(String eventId) async {
+    final courses = await widget.social.fetchEventCourses(eventId);
+    if (mounted) setState(() => _courses = courses);
+  }
+
+  /// The course on the viewer's own RSVP for the occurrence on screen.
+  String? get _myCourseId {
+    final uid = widget.social.currentUserId;
+    if (uid == null) return null;
+    for (final a in _attendees) {
+      if (a.userId == uid) return a.courseId;
+    }
+    return null;
+  }
+
+  bool get _viewerGoing {
+    final uid = widget.social.currentUserId;
+    return uid != null &&
+        _attendees.any((a) => a.userId == uid && a.status == 'going');
+  }
+
+  /// Ask which course to run. Null when dismissed — the caller then writes
+  /// nothing, so a runner never lands on a course they did not choose.
+  Future<String?> _pickCourse() {
+    final l10n = AppLocalizations.of(context);
+    final current = _myCourseId;
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text(l10n.eventCoursePickTitle),
+        children: [
+          for (final c in _courses)
+            SimpleDialogOption(
+              key: Key('course-option-${c.id}'),
+              onPressed: () => Navigator.pop(ctx, c.id),
+              child: Row(
+                children: [
+                  Icon(
+                    c.id == current
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(c.name)),
+                  if (c.distanceM != null)
+                    Text(formatDistanceForPref(c.distanceM!)),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _changeCourse() async {
+    final e = _event;
+    final inst = _activeInstance;
+    if (e == null || inst == null || _busy) return;
+    final picked = await _pickCourse();
+    if (picked == null || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      await widget.social.rsvpEvent(e.row.id, 'going', inst, courseId: picked);
+      await _load();
+    } catch (err) {
+      if (mounted) {
+        showTopBanner(
+            context, AppLocalizations.of(context).eventCourseChangeFailed);
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -635,15 +718,27 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       return;
     }
     if (!mounted) return;
+    // If user taps the same status they already have for the NEXT instance,
+    // clear it. Otherwise (or for non-next instances) write the RSVP.
+    final isSameNext = inst == e.nextInstanceStart && e.viewerRsvp == status;
+    // Going to a race means going on a course: with several, the runner
+    // picks one here, so the start line knows which finish to watch for.
+    String? courseId;
+    if (status == 'going' && !isSameNext && _courses.isNotEmpty) {
+      if (_courses.length == 1) {
+        courseId = _courses.single.id;
+      } else {
+        courseId = await _pickCourse();
+        if (courseId == null || !mounted) return;
+      }
+    }
     setState(() => _busy = true);
     try {
-      // If user taps the same status they already have for the NEXT instance,
-      // clear it. Otherwise (or for non-next instances) write the RSVP.
-      final isSameNext = inst == e.nextInstanceStart && e.viewerRsvp == status;
       if (isSameNext) {
         await widget.social.clearRsvp(e.row.id, inst);
       } else {
-        await widget.social.rsvpEvent(e.row.id, status, inst);
+        await widget.social
+            .rsvpEvent(e.row.id, status, inst, courseId: courseId);
       }
       await _load();
     } catch (err) {
@@ -901,6 +996,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               )
             else
               _buildRsvpRow(theme, e),
+            if (athletic && _courses.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _buildCourses(theme),
+            ],
             ..._buildCalendarActions(theme, e),
             if (athletic &&
                 (e.row.distanceM != null || e.row.paceTargetSec != null)) ...[
@@ -1056,6 +1155,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 eventTitle: e.row.title,
                 clubName: _club?.row.name,
                 certificateDate: _activeInstance ?? e.row.startsAt,
+                courses: _courses,
               ),
             ],
             if (isMember) ...[
@@ -1184,6 +1284,70 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildCourses(ThemeData theme) {
+    final l10n = AppLocalizations.of(context);
+    final mine = _myCourseId;
+    final canPick = _viewerGoing && _courses.length > 1;
+    return Column(
+      key: const Key('event-courses'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.eventCoursesTitle.toUpperCase(),
+          style: theme.textTheme.labelSmall?.copyWith(
+            letterSpacing: 0.8,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 6),
+        for (final c in _courses)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                Icon(Icons.route, size: 18, color: theme.colorScheme.outline),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(c.name,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight:
+                            c.id == mine ? FontWeight.w700 : FontWeight.w500,
+                      )),
+                ),
+                if (c.id == mine) ...[
+                  StatusPill(
+                    label: l10n.eventYourCourse,
+                    foreground: theme.colorScheme.onPrimaryContainer,
+                    fill: theme.colorScheme.primaryContainer,
+                    icon: Icons.check,
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                if (c.distanceM != null)
+                  Text(formatDistanceForPref(c.distanceM!),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      )),
+              ],
+            ),
+          ),
+        if (canPick)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              key: const Key('change-course'),
+              onPressed: _busy ? null : _changeCourse,
+              icon: const Icon(Icons.swap_horiz, size: 18),
+              label: Text(mine == null
+                  ? l10n.eventCoursePickTitle
+                  : l10n.eventChangeCourse),
             ),
           ),
       ],
@@ -1519,6 +1683,8 @@ class EventResultsSection extends StatelessWidget {
   final String eventTitle;
   final String? clubName;
   final DateTime certificateDate;
+  /// With more than one course, results are listed per course.
+  final List<EventCourseView> courses;
   const EventResultsSection({
     super.key,
     required this.results,
@@ -1529,6 +1695,7 @@ class EventResultsSection extends StatelessWidget {
     required this.eventTitle,
     required this.clubName,
     required this.certificateDate,
+    this.courses = const [],
   });
 
   // The result removal is destructive (it deletes the runner's
@@ -1601,17 +1768,61 @@ class EventResultsSection extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           )
+        else if (courses.length > 1)
+          for (final group in groupResultsByCourse(results, courses)) ...[
+            Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 2),
+              child: Text(
+                group.course?.name ?? l10n.eventResultsOtherCourse,
+                style: theme.textTheme.labelLarge,
+              ),
+            ),
+            ...group.results.map(_row),
+          ]
         else
-          ...results.map((r) => _ResultRow(
-                row: r,
-                isMe: r.userId == myUserId,
-                eventTitle: eventTitle,
-                clubName: clubName,
-                certificateDate: certificateDate,
-              )),
+          ...results.map(_row),
       ],
     );
   }
+
+  Widget _row(EventResultView r) => _ResultRow(
+        row: r,
+        isMe: r.userId == myUserId,
+        eventTitle: eventTitle,
+        clubName: clubName,
+        certificateDate: certificateDate,
+      );
+}
+
+/// [results] split by course in the host's course order, server order kept
+/// within each; results on no listed course trail as one group with a null
+/// course. Empty groups are dropped.
+@visibleForTesting
+List<({EventCourseView? course, List<EventResultView> results})>
+    groupResultsByCourse(
+        List<EventResultView> results, List<EventCourseView> courses) {
+  final known = {for (final c in courses) c.id};
+  final groups = [
+    for (final c in courses)
+      (
+        course: c,
+        results: [
+          for (final r in results)
+            if (r.courseId == c.id) r
+        ],
+      ),
+    (
+      course: null,
+      results: [
+        for (final r in results)
+          if (!known.contains(r.courseId)) r
+      ],
+    ),
+  ];
+  return [
+    for (final g in groups)
+      if (g.results.isNotEmpty) g
+  ];
 }
 
 class _ResultRow extends StatelessWidget {
@@ -1671,6 +1882,15 @@ class _ResultRow extends StatelessWidget {
                         color: theme.colorScheme.onSurfaceVariant,
                       )),
                 ],
+                if (_finishMethodLabel(context, row.finishMethod)
+                    case final method?) ...[
+                  const SizedBox(width: 6),
+                  StatusPill(
+                    label: method,
+                    foreground: theme.colorScheme.onSurfaceVariant,
+                    fill: theme.colorScheme.surfaceContainerHighest,
+                  ),
+                ],
                 if (row.finisherStatus != 'finished') ...[
                   const SizedBox(width: 6),
                   Text(
@@ -1685,10 +1905,25 @@ class _ResultRow extends StatelessWidget {
             ),
           ),
           if (row.finisherStatus == 'finished') ...[
-            Text(time,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                )),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(time,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    )),
+                if (row.chipTimeS case final chip?
+                    when row.gunTimeS != null && chip != row.durationS)
+                  Text(
+                    AppLocalizations.of(context)
+                        .eventResultChipTime(_formatDuration(chip)),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+              ],
+            ),
             const SizedBox(width: 10),
             Text(distance,
                 style: theme.textTheme.labelSmall?.copyWith(
@@ -1720,6 +1955,16 @@ class _ResultRow extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  static String? _finishMethodLabel(BuildContext context, String? method) {
+    final l10n = AppLocalizations.of(context);
+    return switch (method) {
+      'auto' => l10n.eventFinishMethodAuto,
+      'manual' => l10n.eventFinishMethodManual,
+      'host' => l10n.eventFinishMethodHost,
+      _ => null,
+    };
   }
 
   static String _formatDuration(int s) {

@@ -14663,6 +14663,39 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get runRaceLateStart =>
       'Partida tardia: começou mais de 5 minutos após a partida ou longe da linha de partida.';
+
+  @override
+  String get eventCoursesTitle => 'Percursos';
+
+  @override
+  String get eventCoursePickTitle => 'Escolha o seu percurso';
+
+  @override
+  String get eventChangeCourse => 'Mudar de percurso';
+
+  @override
+  String get eventYourCourse => 'O seu percurso';
+
+  @override
+  String get eventCourseChangeFailed =>
+      'Não foi possível guardar o seu percurso. Tente novamente.';
+
+  @override
+  String eventResultChipTime(String time) {
+    return 'Tempo real $time';
+  }
+
+  @override
+  String get eventResultsOtherCourse => 'Outros resultados';
+
+  @override
+  String get eventFinishMethodAuto => 'Automático';
+
+  @override
+  String get eventFinishMethodManual => 'Manual';
+
+  @override
+  String get eventFinishMethodHost => 'Organizador';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -29315,4 +29348,37 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get runRaceLateStart =>
       'Largada tardia: você começou mais de 5 minutos após a largada ou longe da linha de largada.';
+
+  @override
+  String get eventCoursesTitle => 'Percursos';
+
+  @override
+  String get eventCoursePickTitle => 'Escolha seu percurso';
+
+  @override
+  String get eventChangeCourse => 'Trocar de percurso';
+
+  @override
+  String get eventYourCourse => 'Seu percurso';
+
+  @override
+  String get eventCourseChangeFailed =>
+      'Não foi possível salvar seu percurso. Tente novamente.';
+
+  @override
+  String eventResultChipTime(String time) {
+    return 'Tempo líquido $time';
+  }
+
+  @override
+  String get eventResultsOtherCourse => 'Outros resultados';
+
+  @override
+  String get eventFinishMethodAuto => 'Automático';
+
+  @override
+  String get eventFinishMethodManual => 'Manual';
+
+  @override
+  String get eventFinishMethodHost => 'Organizador';
 }

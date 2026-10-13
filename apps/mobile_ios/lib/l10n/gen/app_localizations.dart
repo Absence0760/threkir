@@ -24236,6 +24236,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Late start: you began more than 5 minutes after GO or away from the start line.'**
   String get runRaceLateStart;
+
+  /// Section label above the list of courses a race event offers
+  ///
+  /// In en, this message translates to:
+  /// **'Courses'**
+  String get eventCoursesTitle;
+
+  /// Title of the course picker shown when RSVPing to a race with more than one course, and the button that opens it
+  ///
+  /// In en, this message translates to:
+  /// **'Pick your course'**
+  String get eventCoursePickTitle;
+
+  /// Button that lets a racer who already RSVPed pick a different course
+  ///
+  /// In en, this message translates to:
+  /// **'Change course'**
+  String get eventChangeCourse;
+
+  /// Marker on the course the viewer picked at RSVP
+  ///
+  /// In en, this message translates to:
+  /// **'Your course'**
+  String get eventYourCourse;
+
+  /// Banner when saving the racer's course pick fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save your course. Try again.'**
+  String get eventCourseChangeFailed;
+
+  /// Secondary time on a race result row: the runner's own start-to-finish time, beside the gun time
+  ///
+  /// In en, this message translates to:
+  /// **'Chip {time}'**
+  String eventResultChipTime(String time);
+
+  /// Group heading for race results not tied to any of the event's courses
+  ///
+  /// In en, this message translates to:
+  /// **'Other results'**
+  String get eventResultsOtherCourse;
+
+  /// Badge on a race result recorded automatically at the finish line
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get eventFinishMethodAuto;
+
+  /// Badge on a race result the runner recorded by pressing Finish race
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get eventFinishMethodManual;
+
+  /// Badge on a race result the race host recorded
+  ///
+  /// In en, this message translates to:
+  /// **'Host'**
+  String get eventFinishMethodHost;
 }
 
 class _AppLocalizationsDelegate

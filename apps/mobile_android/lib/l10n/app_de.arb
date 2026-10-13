@@ -4227,5 +4227,15 @@
   "runRaceFinishedAuto": "Im Ziel! Bruttozeit {time}",
   "runRaceFinishRecorded": "Zieleinlauf erfasst",
   "runRaceEnded": "Der Veranstalter hat das Rennen beendet. Dein Lauf wird weiter aufgezeichnet, aber es wird kein Ergebnis eingereicht.",
-  "runRaceLateStart": "Später Start: Du bist mehr als 5 Minuten nach dem Startschuss oder abseits der Startlinie losgelaufen."
+  "runRaceLateStart": "Später Start: Du bist mehr als 5 Minuten nach dem Startschuss oder abseits der Startlinie losgelaufen.",
+  "eventCoursesTitle": "Strecken",
+  "eventCoursePickTitle": "Wähle deine Strecke",
+  "eventChangeCourse": "Strecke ändern",
+  "eventYourCourse": "Deine Strecke",
+  "eventCourseChangeFailed": "Deine Strecke konnte nicht gespeichert werden. Versuche es erneut.",
+  "eventResultChipTime": "Netto {time}",
+  "eventResultsOtherCourse": "Weitere Ergebnisse",
+  "eventFinishMethodAuto": "Automatisch",
+  "eventFinishMethodManual": "Manuell",
+  "eventFinishMethodHost": "Veranstalter"
 }

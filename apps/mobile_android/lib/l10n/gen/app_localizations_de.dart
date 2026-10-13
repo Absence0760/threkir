@@ -14674,4 +14674,37 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get runRaceLateStart =>
       'Später Start: Du bist mehr als 5 Minuten nach dem Startschuss oder abseits der Startlinie losgelaufen.';
+
+  @override
+  String get eventCoursesTitle => 'Strecken';
+
+  @override
+  String get eventCoursePickTitle => 'Wähle deine Strecke';
+
+  @override
+  String get eventChangeCourse => 'Strecke ändern';
+
+  @override
+  String get eventYourCourse => 'Deine Strecke';
+
+  @override
+  String get eventCourseChangeFailed =>
+      'Deine Strecke konnte nicht gespeichert werden. Versuche es erneut.';
+
+  @override
+  String eventResultChipTime(String time) {
+    return 'Netto $time';
+  }
+
+  @override
+  String get eventResultsOtherCourse => 'Weitere Ergebnisse';
+
+  @override
+  String get eventFinishMethodAuto => 'Automatisch';
+
+  @override
+  String get eventFinishMethodManual => 'Manuell';
+
+  @override
+  String get eventFinishMethodHost => 'Veranstalter';
 }

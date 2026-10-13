@@ -93,6 +93,10 @@ class _RsvpFailSocial extends SocialService {
     rsvpCalls++;
     throw Exception('network down');
   }
+
+  @override
+  Future<List<EventCourseView>> fetchEventCourses(String eventId) async =>
+      const [];
 }
 
 /// Configurable fake that drives the happy paths: a club (role configurable),
@@ -110,7 +114,10 @@ class _EventSocial extends SocialService {
     this.viewerRsvp,
     this.cancelled = const {},
     this.paceTargetSec,
+    this.courses = const [],
   });
+  List<EventCourseView> courses;
+  String? lastRsvpCourseId;
   ClubView? club;
   String category;
   List<AttendeeView> attendees;
@@ -173,7 +180,12 @@ class _EventSocial extends SocialService {
   }) async {
     rsvpCalls++;
     lastRsvpStatus = status;
+    lastRsvpCourseId = courseId;
   }
+
+  @override
+  Future<List<EventCourseView>> fetchEventCourses(String eventId) async =>
+      courses;
 
   @override
   Future<void> clearRsvp(String eventId, DateTime instance) async {
@@ -881,6 +893,148 @@ void main() {
       // 300 s/km -> 300 * 1.609344 = 482.8 s/mi -> rounds to 483 -> 8:03.
       expect(find.text('8:03 /mi'), findsOneWidget);
       expect(find.text('5:00 /km'), findsNothing);
+    });
+  });
+
+  group('EventDetailScreen — race courses (decisions § 1843)', () {
+    const fiveK = EventCourseView(
+      id: 'c-5k',
+      eventId: 'e1',
+      routeId: 'r-5k',
+      name: '5K loop',
+      distanceM: 5000,
+      sortOrder: 0,
+    );
+    const tenK = EventCourseView(
+      id: 'c-10k',
+      eventId: 'e1',
+      routeId: 'r-10k',
+      name: '10K out-and-back',
+      distanceM: 10000,
+      sortOrder: 1,
+    );
+
+    Future<void> pumpCourses(WidgetTester tester, _EventSocial social) async {
+      await pumpEvent(tester, social);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    realtimeWidgetTest('the courses are listed under the RSVP row', (
+      tester,
+    ) async {
+      final social = _EventSocial(
+        club: _club('member'),
+        courses: const [fiveK, tenK],
+      );
+      await pumpCourses(tester, social);
+      expect(find.byKey(const Key('event-courses')), findsOneWidget);
+      expect(find.text('5K loop'), findsOneWidget);
+      expect(find.text('10K out-and-back'), findsOneWidget);
+    });
+
+    realtimeWidgetTest('a single-course race RSVPs onto it with no picker', (
+      tester,
+    ) async {
+      final social = _EventSocial(
+        club: _club('member'),
+        courses: const [fiveK],
+      );
+      await pumpCourses(tester, social);
+
+      await tester.tap(find.widgetWithText(OutlinedButton, "I'm in"));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.byType(SimpleDialog), findsNothing);
+      expect(social.rsvpCalls, 1);
+      expect(social.lastRsvpCourseId, 'c-5k');
+    });
+
+    realtimeWidgetTest('a multi-course race asks which course on Going', (
+      tester,
+    ) async {
+      final social = _EventSocial(
+        club: _club('member'),
+        courses: const [fiveK, tenK],
+      );
+      await pumpCourses(tester, social);
+
+      await tester.tap(find.widgetWithText(OutlinedButton, "I'm in"));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Pick your course'), findsOneWidget);
+      expect(social.rsvpCalls, 0, reason: 'nothing is written before a pick');
+
+      await tester.tap(find.byKey(const Key('course-option-c-10k')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(social.rsvpCalls, 1);
+      expect(social.lastRsvpStatus, 'going');
+      expect(social.lastRsvpCourseId, 'c-10k');
+    });
+
+    realtimeWidgetTest('dismissing the course picker writes no RSVP', (
+      tester,
+    ) async {
+      final social = _EventSocial(
+        club: _club('member'),
+        courses: const [fiveK, tenK],
+      );
+      await pumpCourses(tester, social);
+
+      await tester.tap(find.widgetWithText(OutlinedButton, "I'm in"));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.byType(SimpleDialog), findsNothing);
+      expect(social.rsvpCalls, 0);
+    });
+
+    realtimeWidgetTest('Maybe on a multi-course race needs no course', (
+      tester,
+    ) async {
+      final social = _EventSocial(
+        club: _club('member'),
+        courses: const [fiveK, tenK],
+      );
+      await pumpCourses(tester, social);
+
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Maybe'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.byType(SimpleDialog), findsNothing);
+      expect(social.lastRsvpCourseId, isNull);
+    });
+
+    realtimeWidgetTest('a going racer sees their course and can change it', (
+      tester,
+    ) async {
+      final social = _EventSocial(
+        club: _club('member'),
+        courses: const [fiveK, tenK],
+        viewerRsvp: 'going',
+        attendees: const [
+          AttendeeView(userId: 'u-viewer', status: 'going', courseId: 'c-5k'),
+        ],
+      );
+      await pumpCourses(tester, social);
+
+      expect(find.text('Your course'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('change-course')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.byKey(const Key('course-option-c-10k')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(social.lastRsvpStatus, 'going');
+      expect(social.lastRsvpCourseId, 'c-10k');
     });
   });
 }

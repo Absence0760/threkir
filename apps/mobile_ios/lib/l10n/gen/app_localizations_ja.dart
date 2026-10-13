@@ -13979,4 +13979,36 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get runRaceLateStart =>
       '遅れスタート：スタートから5分以上経ってから、またはスタートラインから離れた場所で開始しました。';
+
+  @override
+  String get eventCoursesTitle => 'コース';
+
+  @override
+  String get eventCoursePickTitle => 'コースを選択';
+
+  @override
+  String get eventChangeCourse => 'コースを変更';
+
+  @override
+  String get eventYourCourse => 'あなたのコース';
+
+  @override
+  String get eventCourseChangeFailed => 'コースを保存できませんでした。もう一度お試しください。';
+
+  @override
+  String eventResultChipTime(String time) {
+    return 'ネット $time';
+  }
+
+  @override
+  String get eventResultsOtherCourse => 'その他の結果';
+
+  @override
+  String get eventFinishMethodAuto => '自動';
+
+  @override
+  String get eventFinishMethodManual => '手動';
+
+  @override
+  String get eventFinishMethodHost => '主催者';
 }

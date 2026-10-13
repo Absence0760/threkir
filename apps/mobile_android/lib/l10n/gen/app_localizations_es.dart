@@ -14659,4 +14659,37 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get runRaceLateStart =>
       'Salida tardía: empezaste más de 5 minutos después de la salida o lejos de la línea de salida.';
+
+  @override
+  String get eventCoursesTitle => 'Recorridos';
+
+  @override
+  String get eventCoursePickTitle => 'Elige tu recorrido';
+
+  @override
+  String get eventChangeCourse => 'Cambiar recorrido';
+
+  @override
+  String get eventYourCourse => 'Tu recorrido';
+
+  @override
+  String get eventCourseChangeFailed =>
+      'No se pudo guardar tu recorrido. Inténtalo de nuevo.';
+
+  @override
+  String eventResultChipTime(String time) {
+    return 'Neto $time';
+  }
+
+  @override
+  String get eventResultsOtherCourse => 'Otros resultados';
+
+  @override
+  String get eventFinishMethodAuto => 'Automático';
+
+  @override
+  String get eventFinishMethodManual => 'Manual';
+
+  @override
+  String get eventFinishMethodHost => 'Organizador';
 }

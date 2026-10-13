@@ -207,4 +207,125 @@ void main() {
       expect(certButton(), findsNothing);
     });
   });
+
+  group('EventResultsSection — live-race courses and timing (decisions § 1843)',
+      () {
+    const fiveK = EventCourseView(
+        id: 'c-5k',
+        eventId: 'e',
+        routeId: null,
+        name: '5K loop',
+        distanceM: 5000,
+        sortOrder: 0);
+    const tenK = EventCourseView(
+        id: 'c-10k',
+        eventId: 'e',
+        routeId: null,
+        name: '10K',
+        distanceM: 10000,
+        sortOrder: 1);
+
+    EventResultView timed(String user, String? course,
+            {int duration = 1504,
+            int? gun = 1504,
+            int? chip = 1490,
+            String? method = 'auto'}) =>
+        EventResultView(
+          userId: user,
+          displayName: user,
+          runId: null,
+          durationS: duration,
+          distanceM: 5000,
+          rank: 1,
+          finisherStatus: 'finished',
+          organiserApproved: false,
+          ageGradePct: null,
+          note: null,
+          createdAt: DateTime(2026, 1, 1),
+          courseId: course,
+          gunTimeS: gun,
+          chipTimeS: chip,
+          finishMethod: method,
+        );
+
+    Future<void> pumpTimed(WidgetTester tester, List<EventResultView> results,
+        List<EventCourseView> courses) {
+      return tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: EventResultsSection(
+              results: results,
+              myUserId: null,
+              submitting: false,
+              onSubmit: () {},
+              onRemove: () {},
+              eventTitle: 'Club race',
+              clubName: null,
+              certificateDate: DateTime(2026, 6, 12),
+              courses: courses,
+            ),
+          ),
+        ),
+      ));
+    }
+
+    test('groupResultsByCourse follows the course order and keeps strays last',
+        () {
+      final groups = groupResultsByCourse([
+        timed('a', 'c-10k'),
+        timed('b', 'c-5k'),
+        timed('c', null),
+        timed('d', 'c-10k'),
+        timed('e', 'c-gone'),
+      ], const [fiveK, tenK]);
+      expect(groups.map((g) => g.course?.id), ['c-5k', 'c-10k', null]);
+      expect(groups[1].results.map((r) => r.userId), ['a', 'd']);
+      expect(groups[2].results.map((r) => r.userId), ['c', 'e']);
+    });
+
+    test('a course with no results is dropped', () {
+      final groups = groupResultsByCourse([timed('a', 'c-5k')], const [fiveK, tenK]);
+      expect(groups.map((g) => g.course?.id), ['c-5k']);
+    });
+
+    testWidgets('several courses render one heading each', (tester) async {
+      await pumpTimed(tester, [timed('a', 'c-5k'), timed('b', 'c-10k')],
+          const [fiveK, tenK]);
+      expect(find.text('5K loop'), findsOneWidget);
+      expect(find.text('10K'), findsOneWidget);
+    });
+
+    testWidgets('a single course renders no headings', (tester) async {
+      await pumpTimed(tester, [timed('a', 'c-5k')], const [fiveK]);
+      expect(find.text('5K loop'), findsNothing);
+    });
+
+    testWidgets('a raced result shows gun time, chip time and its method',
+        (tester) async {
+      await pumpTimed(tester, [timed('a', 'c-5k')], const []);
+      expect(find.text('25:04'), findsOneWidget);
+      expect(find.text('Chip 24:50'), findsOneWidget);
+      expect(find.text('Auto'), findsOneWidget);
+    });
+
+    testWidgets('a hand-submitted result shows neither chip nor method',
+        (tester) async {
+      await pumpTimed(tester,
+          [timed('a', null, gun: null, chip: null, method: null)], const []);
+      expect(find.textContaining('Chip'), findsNothing);
+      expect(find.text('Auto'), findsNothing);
+      expect(find.text('Manual'), findsNothing);
+    });
+
+    testWidgets('manual and host results carry their own badge',
+        (tester) async {
+      await pumpTimed(tester,
+          [timed('a', null, method: 'manual'), timed('b', null, method: 'host')],
+          const []);
+      expect(find.text('Manual'), findsOneWidget);
+      expect(find.text('Host'), findsOneWidget);
+    });
+  });
 }

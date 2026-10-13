@@ -14695,4 +14695,37 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get runRaceLateStart =>
       'Départ tardif : vous êtes parti plus de 5 minutes après le départ ou loin de la ligne de départ.';
+
+  @override
+  String get eventCoursesTitle => 'Parcours';
+
+  @override
+  String get eventCoursePickTitle => 'Choisissez votre parcours';
+
+  @override
+  String get eventChangeCourse => 'Changer de parcours';
+
+  @override
+  String get eventYourCourse => 'Votre parcours';
+
+  @override
+  String get eventCourseChangeFailed =>
+      'Impossible d\'enregistrer votre parcours. Réessayez.';
+
+  @override
+  String eventResultChipTime(String time) {
+    return 'Temps réel $time';
+  }
+
+  @override
+  String get eventResultsOtherCourse => 'Autres résultats';
+
+  @override
+  String get eventFinishMethodAuto => 'Auto';
+
+  @override
+  String get eventFinishMethodManual => 'Manuel';
+
+  @override
+  String get eventFinishMethodHost => 'Organisateur';
 }

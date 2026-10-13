@@ -18649,5 +18649,51 @@
   "runRaceLateStart": "Late start: you began more than 5 minutes after GO or away from the start line.",
   "@runRaceLateStart": {
     "description": "Banner when the runner started recording more than 5 minutes after GO or more than 200 m from the course start"
+  },
+  "eventCoursesTitle": "Courses",
+  "@eventCoursesTitle": {
+    "description": "Section label above the list of courses a race event offers"
+  },
+  "eventCoursePickTitle": "Pick your course",
+  "@eventCoursePickTitle": {
+    "description": "Title of the course picker shown when RSVPing to a race with more than one course, and the button that opens it"
+  },
+  "eventChangeCourse": "Change course",
+  "@eventChangeCourse": {
+    "description": "Button that lets a racer who already RSVPed pick a different course"
+  },
+  "eventYourCourse": "Your course",
+  "@eventYourCourse": {
+    "description": "Marker on the course the viewer picked at RSVP"
+  },
+  "eventCourseChangeFailed": "Couldn't save your course. Try again.",
+  "@eventCourseChangeFailed": {
+    "description": "Banner when saving the racer's course pick fails"
+  },
+  "eventResultChipTime": "Chip {time}",
+  "@eventResultChipTime": {
+    "description": "Secondary time on a race result row: the runner's own start-to-finish time, beside the gun time",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "24:51"
+      }
+    }
+  },
+  "eventResultsOtherCourse": "Other results",
+  "@eventResultsOtherCourse": {
+    "description": "Group heading for race results not tied to any of the event's courses"
+  },
+  "eventFinishMethodAuto": "Auto",
+  "@eventFinishMethodAuto": {
+    "description": "Badge on a race result recorded automatically at the finish line"
+  },
+  "eventFinishMethodManual": "Manual",
+  "@eventFinishMethodManual": {
+    "description": "Badge on a race result the runner recorded by pressing Finish race"
+  },
+  "eventFinishMethodHost": "Host",
+  "@eventFinishMethodHost": {
+    "description": "Badge on a race result the race host recorded"
   }
 }

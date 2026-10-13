@@ -966,6 +966,66 @@ export type Database = {
           },
         ]
       }
+      event_checkpoints: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          cutoff_clock: string | null
+          cutoff_elapsed_s: number | null
+          event_id: string
+          id: string
+          name: string
+          ordinal: number
+          position_m: number | null
+          requires_weigh_in: boolean
+          route_marker_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          cutoff_clock?: string | null
+          cutoff_elapsed_s?: number | null
+          event_id: string
+          id?: string
+          name: string
+          ordinal: number
+          position_m?: number | null
+          requires_weigh_in?: boolean
+          route_marker_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          cutoff_clock?: string | null
+          cutoff_elapsed_s?: number | null
+          event_id?: string
+          id?: string
+          name?: string
+          ordinal?: number
+          position_m?: number | null
+          requires_weigh_in?: boolean
+          route_marker_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_checkpoints_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_checkpoints_route_marker_id_fkey"
+            columns: ["route_marker_id"]
+            isOneToOne: false
+            referencedRelation: "route_markers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_courses: {
         Row: {
           created_at: string
@@ -1026,66 +1086,6 @@ export type Database = {
             columns: ["route_id"]
             isOneToOne: false
             referencedRelation: "routes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      event_checkpoints: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          cutoff_clock: string | null
-          cutoff_elapsed_s: number | null
-          event_id: string
-          id: string
-          name: string
-          ordinal: number
-          position_m: number | null
-          requires_weigh_in: boolean
-          route_marker_id: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          cutoff_clock?: string | null
-          cutoff_elapsed_s?: number | null
-          event_id: string
-          id?: string
-          name: string
-          ordinal: number
-          position_m?: number | null
-          requires_weigh_in?: boolean
-          route_marker_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          cutoff_clock?: string | null
-          cutoff_elapsed_s?: number | null
-          event_id?: string
-          id?: string
-          name?: string
-          ordinal?: number
-          position_m?: number | null
-          requires_weigh_in?: boolean
-          route_marker_id?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "event_checkpoints_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "event_checkpoints_route_marker_id_fkey"
-            columns: ["route_marker_id"]
-            isOneToOne: false
-            referencedRelation: "route_markers"
             referencedColumns: ["id"]
           },
         ]
@@ -5080,12 +5080,16 @@ export type Database = {
         Returns: {
           age_grade_pct: number | null
           bib: string | null
+          chip_time_s: number | null
+          course_id: string | null
           created_at: string
           distance_m: number
           duration_s: number
           event_id: string
+          finish_method: string | null
           finisher_name: string | null
           finisher_status: string
+          gun_time_s: number | null
           id: string
           instance_start: string
           note: string | null

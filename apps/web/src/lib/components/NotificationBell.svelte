@@ -13,6 +13,7 @@
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { fmtKm } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { eventCancelMessage } from '#lib/social/event_cancel_copy.ts';
 	import { notificationLinkFor } from '#lib/social/notification_link.ts';
 
 	let open = $state(false);
@@ -136,10 +137,10 @@
 				return item.event_title
 					? m('notificationBell.eventRsvpTitled', { name, title: item.event_title })
 					: m('notificationBell.eventRsvp', { name });
-			case 'event_cancel':
-				return item.event_title
-					? m('notificationBell.eventCancelTitled', { title: item.event_title })
-					: m('notificationBell.eventCancel');
+			case 'event_cancel': {
+				const msg = eventCancelMessage('notificationBell', item.row, item.event_title);
+				return m(msg.key, msg.params);
+			}
 			case 'event_reminder':
 				return item.event_title
 					? m('notificationBell.eventReminderTitled', { title: item.event_title })

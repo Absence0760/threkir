@@ -8807,6 +8807,7 @@ export interface NotificationRow {
 	achievement_id: string | null;
 	challenge_id: string | null;
 	read_at: string | null;
+	refunded: boolean;
 	created_at: string;
 }
 

@@ -11,6 +11,7 @@ import {
   normalizeCancelReason,
   parseCancelScope,
   resolveRefundEligibility,
+  seriesCancelCutoff,
   seriesCancelInstances,
   seriesEndUntil,
 } from './lib.ts';
@@ -201,4 +202,17 @@ Deno.test('seriesEndUntil — ends an open series at the cutoff and never length
   assertStrictEquals(seriesEndUntil('2026-08-01T00:00:00+00:00', cutoff), null);
   assertStrictEquals(seriesEndUntil(cutoff, cutoff), null);
   assertStrictEquals(seriesEndUntil('not a date', cutoff), cutoff);
+});
+
+Deno.test('seriesCancelCutoff — a retry keeps the first call\'s window', () => {
+  const now = '2026-09-02T12:00:00.000Z';
+  assertStrictEquals(seriesCancelCutoff(null, now), now);
+  // An end still ahead: this is the first cancel, so it works from now.
+  assertStrictEquals(seriesCancelCutoff('2027-01-01T00:00:00+00:00', now), now);
+  // Already ended (by the earlier call): resume from that end.
+  assertStrictEquals(
+    seriesCancelCutoff('2026-09-01T12:00:00+00:00', now),
+    '2026-09-01T12:00:00.000Z',
+  );
+  assertStrictEquals(seriesCancelCutoff('garbage', now), now);
 });

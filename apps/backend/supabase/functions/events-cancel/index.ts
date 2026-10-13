@@ -79,6 +79,7 @@ import {
   resolveRefundEligibility,
   type RefundPolicy,
   SERIES_CANCEL_RSVP_STATUSES,
+  seriesCancelCutoff,
   seriesCancelInstances,
   seriesEndUntil,
   summarizeOccurrenceRefunds,
@@ -423,7 +424,7 @@ async function cancelSeries(args: {
     return Response.json({ error: 'not_a_series' }, { status: 400 });
   }
 
-  const cutoff = new Date().toISOString();
+  const cutoff = seriesCancelCutoff(event.recurrence_until, new Date().toISOString());
   const cutoffMs = Date.parse(cutoff);
 
   const readOrders = () =>

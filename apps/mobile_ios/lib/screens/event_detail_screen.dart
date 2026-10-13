@@ -1396,10 +1396,15 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final l10n = AppLocalizations.of(context);
     final recurring = e.freq != null;
     final activeCancelled = _cancelled.contains(active.toUtc());
+    // An occurrence past the end of a series no longer exists, so reinstating
+    // its cancel would bring nothing back (web hides it the same way).
+    final until = e.row.recurrenceUntil;
+    final pastSeriesEnd = recurring && until != null && active.isAfter(until);
     final canCancelActive = !activeCancelled &&
         (recurring ? _instances.isNotEmpty : active.isAfter(DateTime.now()));
     final canCancelSeries = recurring && _instances.isNotEmpty;
-    if (!activeCancelled && !canCancelActive && !canCancelSeries) {
+    final canReinstate = activeCancelled && !pastSeriesEnd;
+    if (!canReinstate && !canCancelActive && !canCancelSeries) {
       return const [];
     }
     return [
@@ -1408,7 +1413,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         spacing: 8,
         runSpacing: 8,
         children: [
-          if (activeCancelled)
+          if (canReinstate)
             OutlinedButton.icon(
               key: const Key('reinstate-occurrence'),
               onPressed: _cancelBusy ? null : () => _reinstate(e, active),

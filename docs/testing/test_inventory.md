@@ -267,7 +267,7 @@ Covers the universal-bag and device-bag overlay logic on `SettingsSyncService` v
 
 **Sign-out account reset (3 tests):** issue #231 — bag-mirrored `Preferences` reset to defaults, the prior user's cached bags dropped when the id is known, idempotent with no cache / no prior id.
 
-### `apps/mobile_android/test/run_screen_recording_flow_test.dart` — 44 tests
+### `apps/mobile_android/test/run_screen_recording_flow_test.dart` — 48 tests
 
 Drives the full RunScreen UI flow on top of the existing data-pipeline integration test. Adds a mock-everything setUp that closes every platform-channel surface RunScreen touches when transitioning out of idle:
 
@@ -1108,11 +1108,11 @@ Round 31, *host-tested*. Both modules had been edited hours earlier by the round
 
 Round 31, *host-tested*. Two panics reachable from data rather than from a coding mistake, on a device where a panic is a reset. `predict_race_ladder` seeds both anchor loops with `f64::INFINITY` and takes the strict `<`, so a candidate whose Riegel equivalent IS infinity never wins — a positive-but-denormal distance overflows `libm::pow` — and `best.unwrap()` panicked on a function whose doc already promises `None` for a pool it cannot anchor; the second case pins that one clean effort beside the bad row still predicts, so the guard fails closed on the pool and not on the presence of one row. `compute_calibration` graded the numerator, and `km <= 0.0` is false for a NaN distance, so `trimp / NaN` reached the list: one such row made the window's fallback rate NaN and a second beside it panicked `median`'s `partial_cmp().unwrap()`. Both rails are pinned separately — the source guard by the infinite-distance case, the `total_cmp` comparator by the NaN one. [decisions § 926](../architecture/decisions.md).
 
-### `apps/mobile_android/test/social_service_test.dart` — 35 tests
+### `apps/mobile_android/test/social_service_test.dart` — 37 tests
 
 Pure-unit coverage for the value classes and helpers exposed by `lib/social_service.dart`. Covers `ClubView.isAdmin` / `isEventOrganiser` / `isRaceDirector` / `isMember` (the booleans that drive admin-only buttons + race-director Arm/Fire on `club_detail_screen` + `event_detail_screen`) — pinning that owner / admin both grant the full ladder, that `event_organiser` and `race_director` are siloed, that `member` carries no special affordances, and that an unrecognised viewerRole string is treated as not-admin so a future role we haven't taught the client about doesn't accidentally inherit admin powers. Plus 6 tests for `parseBydayCodes` (the byday-jsonb parser used by `_enrichEvents` + `fetchNextRsvpedEvent`): valid 'MO','WE','FR' shape, order + duplicate preservation, non-array fallback, empty + all-unknown → null (caller treats as "no override"), mixed known/unknown filters to known.
 
-The Supabase-touching surface of `SocialService` (`browseClubs`, `fetchMyClubs`, the enrichment pipelines, RSVP writes, post creation) is NOT covered here — the class resolves `Supabase.instance.client` inline, so meaningful unit coverage of those branches needs a DI seam refactor (constructor-injected `SupabaseClient`, mirroring the `ApiClient.withClient` pattern). Tracked in [What's not covered](testing.md#whats-not-covered-honest).
+The Supabase-touching surface of `SocialService` (`browseClubs`, `fetchMyClubs`, the enrichment pipelines, the RSVP upsert itself, post creation) is NOT covered here (the RSVP row it sends is, through the pure `SocialService.rsvpRow`): the class resolves `Supabase.instance.client` inline, so meaningful unit coverage of those branches needs a DI seam refactor (constructor-injected `SupabaseClient`, mirroring the `ApiClient.withClient` pattern). Tracked in [What's not covered](testing.md#whats-not-covered-honest).
 
 ### `apps/mobile_android/test/social_service_search_fallback_test.dart` — 3 tests
 

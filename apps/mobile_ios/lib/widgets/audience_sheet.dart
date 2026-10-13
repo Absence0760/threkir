@@ -1,6 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
 
 import '../audience_level.dart';
 import '../auth_error.dart';
@@ -113,6 +114,7 @@ Future<AudienceSheetResult?> showAudienceSheet(
   return showModalBottomSheet<AudienceSheetResult>(
     context: context,
     isScrollControlled: true,
+    useSafeArea: true,
     showDragHandle: true,
     builder: (_) => AudienceSheet(backend: backend),
   );
@@ -338,7 +340,7 @@ class _AudienceSheetState extends State<AudienceSheet> {
 
   IconData _icon(AudienceLevel level) => switch (level) {
     AudienceLevel.private => Icons.lock_outline,
-    AudienceLevel.followers => Icons.group_outlined,
+    AudienceLevel.followers => Icons.group,
     AudienceLevel.specific => Icons.person_add_alt,
     AudienceLevel.public => Icons.public,
   };
@@ -390,10 +392,7 @@ class _AudienceSheetState extends State<AudienceSheet> {
               ),
               const SizedBox(height: 8),
               if (_columnsLoading)
-                const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Center(child: CircularProgressIndicator()),
-                )
+                ListSkeleton.section(label: l10n.commonLoading, rows: 3)
               else if (_columnsFailed)
                 _retry(
                   l10n,
@@ -446,7 +445,7 @@ class _AudienceSheetState extends State<AudienceSheet> {
                 ),
               ),
               if (_sharesLoading)
-                const LinearProgressIndicator()
+                ListSkeleton.section(label: l10n.commonLoading, rows: 2)
               else if (_sharesFailed)
                 _retry(
                   l10n,
@@ -480,7 +479,7 @@ class _AudienceSheetState extends State<AudienceSheet> {
                 ),
               ),
               if (_peopleLoading)
-                const LinearProgressIndicator()
+                ListSkeleton.section(label: l10n.commonLoading, rows: 3)
               else if (_peopleFailed)
                 _retry(
                   l10n,

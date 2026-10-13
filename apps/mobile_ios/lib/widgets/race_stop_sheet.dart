@@ -17,6 +17,7 @@ Future<RaceStopChoice?> showRaceStopSheet(
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
+    useSafeArea: true,
     builder: (ctx) => RaceStopSheet(coverageMet: coverageMet),
   );
 }

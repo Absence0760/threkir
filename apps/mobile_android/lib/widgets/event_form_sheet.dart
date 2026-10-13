@@ -213,9 +213,9 @@ class _EventFormState extends State<_EventForm> {
     final first = DateTime(_starts.year, _starts.month, _starts.day);
     final date = await showDatePicker(
       context: context,
-      initialDate: _until ?? first.add(const Duration(days: 28)),
+      initialDate: _until ?? DateTime(first.year, first.month, first.day + 28),
       firstDate: first,
-      lastDate: first.add(const Duration(days: 365 * 5)),
+      lastDate: DateTime(first.year + 5, first.month, first.day),
     );
     if (date == null || !mounted) return;
     // Inclusive, as web's "Ends on": the series runs to the end of that day.

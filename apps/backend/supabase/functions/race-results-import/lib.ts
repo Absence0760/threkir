@@ -92,6 +92,7 @@ export interface MappedRaceRun {
   source: 'race';
   activity_type: 'run';
   is_public: boolean;
+  followers_only: boolean;
   external_id: string;
   race_listing_id: string;
   metadata: Record<string, Json>;
@@ -116,6 +117,7 @@ export function mapRunSignUpResult(
     raceDate: string;
     distanceM: number | null;
     isPublic: boolean;
+    followersOnly?: boolean;
   },
 ): MappedRaceRun | null {
   const chip = capField(r.chip_time);
@@ -162,6 +164,7 @@ export function mapRunSignUpResult(
     source: 'race',
     activity_type: 'run',
     is_public: opts.isPublic,
+    followers_only: !opts.isPublic && opts.followersOnly === true,
     external_id: raceExternalId(opts.raceName, opts.raceDate, bib),
     race_listing_id: opts.listingId,
     metadata,
@@ -192,6 +195,7 @@ export function parseRaceResultRow(
     raceDate: string;
     distanceM: number | null;
     isPublic: boolean;
+    followersOnly?: boolean;
   },
 ): MappedRaceRun | null {
   return mapRunSignUpResult(
@@ -253,6 +257,7 @@ export function mapChronoTrackResult(
     raceDate: string;
     distanceM: number | null;
     isPublic: boolean;
+    followersOnly?: boolean;
   },
 ): MappedRaceRun | null {
   return mapRunSignUpResult(
@@ -669,6 +674,7 @@ export function mapUltraSignUpResult(
     raceDate: string;
     distanceM: number | null;
     isPublic: boolean;
+    followersOnly?: boolean;
   },
 ): MappedRaceRun | null {
   if (Number(r.status) !== ULTRASIGNUP_STATUS_FINISHED) return null;
@@ -696,6 +702,7 @@ export function ultraSignUpImportRows(
     raceDate: string;
     distanceM: number | null;
     isPublic: boolean;
+    followersOnly?: boolean;
   },
 ): { personFound: boolean; considered: number; mapped: MappedRaceRun[] } {
   const person = extractUltraSignUpPeople(payload).find((p) =>

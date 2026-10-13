@@ -1136,26 +1136,39 @@ func (c *SupabaseClient) FetchRunIdentitiesNear(ctx context.Context, userID stri
 	return out, nil
 }
 
-// privacyDefaultIsPublic resolves whether a newly-imported run for this
-// user should be public, from the universal `privacy_default` pref in
-// user_settings.prefs. Only an explicit 'public' default publishes;
-// followers/private/unset — and any read error — fall closed to private.
-// Mirrors the web `privacyDefaultToIsPublic` mapping + the EF parkrun /
-// strava-import paths (persona #27).
-func (c *SupabaseClient) privacyDefaultIsPublic(ctx context.Context, userID string) bool {
+// privacyDefaultAudience resolves the visibility columns of a newly-imported
+// run for this user from the universal `privacy_default` pref in
+// user_settings.prefs: 'public' publishes, 'followers' — and an unset pref,
+// whose registered fallback is 'followers' — writes followers_only, anything
+// else is owner-only. A read error falls closed to owner-only. Mirrors the web
+// `privacyDefaultToAudience` mapping and the EF importers'
+// `_shared/privacy_default.ts` (persona #27, decisions § R7SHARE-2). The
+// server stores followers_only as owner-only until audience sharing is on.
+func (c *SupabaseClient) privacyDefaultAudience(ctx context.Context, userID string) (isPublic, followersOnly bool) {
 	prefs, err := c.FetchUserSettingsPrefs(ctx, userID)
 	if err != nil {
-		return false
+		return false, false
 	}
-	return prefs["privacy_default"] == "public"
+	pref, ok := prefs["privacy_default"]
+	if !ok || pref == nil {
+		pref = "followers"
+	}
+	switch pref {
+	case "public":
+		return true, false
+	case "followers":
+		return false, true
+	default:
+		return false, false
+	}
 }
 
 // InsertStravaRun inserts a runs row sourced from a Strava activity.
 // Mirrors the EF `ingestActivity` row shape (apps/backend/supabase/
 // functions/_shared/strava.ts) — fields, source='strava', metadata
 // keys all in lockstep so dashboard queries that read across both
-// writers see one consistent shape. is_public honours the user's
-// privacy_default (persona #27), fail-closed to private.
+// writers see one consistent shape. is_public / followers_only honour the
+// user's privacy_default (persona #27), fail-closed to owner-only.
 //
 // Returns the inserted row's id (so the caller can subsequently
 // upload the gzipped track + PATCH track_url).
@@ -1197,16 +1210,18 @@ func (c *SupabaseClient) InsertStravaRun(ctx context.Context, userID string, act
 		duration = act.ElapsedTime
 	}
 
+	isPublic, followersOnly := c.privacyDefaultAudience(ctx, userID)
 	row := map[string]any{
 		"user_id": userID,
 		// activity_type is a real column now (F3 / 20261207_001), no
 		// longer a metadata key. is_dnf defaults to false at the DB.
-		"activity_type": activityType,
-		"started_at":    act.StartDate,
-		"distance_m":    int(math.Round(act.Distance)),
-		"duration_s":    duration,
-		"source":        "strava",
-		"is_public":     c.privacyDefaultIsPublic(ctx, userID),
+		"activity_type":  activityType,
+		"started_at":     act.StartDate,
+		"distance_m":     int(math.Round(act.Distance)),
+		"duration_s":     duration,
+		"source":         "strava",
+		"is_public":      isPublic,
+		"followers_only": followersOnly,
 		// `external_id = 'strava:<id>'` is the cross-source dedupe key
 		// — same shape mobile ZIP writes. /audit/strava M3.
 		"external_id": "strava:" + stravaIDStr,

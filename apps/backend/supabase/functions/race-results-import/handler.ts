@@ -5,6 +5,7 @@
 /// `Deno.env`, a `createClient` carrying the caller's JWT, and the global fetch.
 
 import type { DbClient } from '../_shared/database.ts';
+import { resolveImportAudience } from '../_shared/privacy_default.ts';
 import { checkRateLimitTiered } from '../_shared/rate_limit.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { isValidUuid } from '../_shared/input_validation.ts';
@@ -212,19 +213,8 @@ export function makeRaceResultsImportHandler(
     }
 
     // Honour privacy_default (parity with parkrun / Strava / manual saves); any
-    // read error falls closed to private.
-    let isPublic = false;
-    try {
-      const { data: settings } = await supabase
-        .from('user_settings')
-        .select('prefs')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      const prefs = (settings?.prefs ?? null) as Record<string, unknown> | null;
-      isPublic = prefs?.privacy_default === 'public';
-    } catch (_) {
-      isPublic = false;
-    }
+    // read error falls closed to owner-only.
+    const audience = await resolveImportAudience(supabase, user.id);
 
     const mapOpts = {
       userId: user.id,
@@ -232,7 +222,8 @@ export function makeRaceResultsImportHandler(
       raceName: (listing.name as string) ?? '',
       raceDate: (listing.race_date as string) ?? '',
       distanceM: (listing.distance_m as number | null) ?? null,
-      isPublic,
+      isPublic: audience.isPublic,
+      followersOnly: audience.followersOnly,
     };
 
     let mapped: MappedRaceRun[] = [];

@@ -1,9 +1,10 @@
 package internal
 
-// Coverage for privacyDefaultIsPublic, the helper that makes Strava-synced
-// runs honour the user's privacy_default (persona #27). Only an explicit
-// 'public' default publishes; everything else — and any read error — falls
-// closed to private. Uses the same httptest harness as the data-export tests.
+// Coverage for privacyDefaultAudience, the helper that makes Strava-synced
+// runs honour the user's privacy_default (persona #27, decisions § R7SHARE-2).
+// 'public' publishes, 'followers' and an unset pref write followers_only, and
+// 'private', unknown values and any read error are owner-only. Uses the same
+// httptest harness as the data-export tests.
 
 import (
 	"context"
@@ -11,20 +12,22 @@ import (
 	"testing"
 )
 
-func TestPrivacyDefaultIsPublic(t *testing.T) {
+func TestPrivacyDefaultAudience(t *testing.T) {
 	cases := []struct {
-		name     string
-		body     string
-		status   int
-		expected bool
+		name          string
+		body          string
+		status        int
+		isPublic      bool
+		followersOnly bool
 	}{
-		{"explicit public publishes", `[{"prefs":{"privacy_default":"public"}}]`, 200, true},
-		{"followers stays private", `[{"prefs":{"privacy_default":"followers"}}]`, 200, false},
-		{"private stays private", `[{"prefs":{"privacy_default":"private"}}]`, 200, false},
-		{"unset pref stays private", `[{"prefs":{"preferred_unit":"km"}}]`, 200, false},
-		{"no settings row stays private", `[]`, 200, false},
-		{"null prefs stays private", `[{"prefs":null}]`, 200, false},
-		{"read error falls closed to private", `boom`, 500, false},
+		{"explicit public publishes", `[{"prefs":{"privacy_default":"public"}}]`, 200, true, false},
+		{"followers writes followers_only", `[{"prefs":{"privacy_default":"followers"}}]`, 200, false, true},
+		{"private stays owner-only", `[{"prefs":{"privacy_default":"private"}}]`, 200, false, false},
+		{"unknown value stays owner-only", `[{"prefs":{"privacy_default":"everyone"}}]`, 200, false, false},
+		{"unset pref takes the followers fallback", `[{"prefs":{"preferred_unit":"km"}}]`, 200, false, true},
+		{"no settings row takes the followers fallback", `[]`, 200, false, true},
+		{"null prefs takes the followers fallback", `[{"prefs":null}]`, 200, false, true},
+		{"read error falls closed to owner-only", `boom`, 500, false, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -34,9 +37,10 @@ func TestPrivacyDefaultIsPublic(t *testing.T) {
 				}
 				_, _ = w.Write([]byte(tc.body))
 			})
-			got := client.privacyDefaultIsPublic(context.Background(), "user-A")
-			if got != tc.expected {
-				t.Errorf("privacyDefaultIsPublic = %v; want %v", got, tc.expected)
+			isPublic, followersOnly := client.privacyDefaultAudience(context.Background(), "user-A")
+			if isPublic != tc.isPublic || followersOnly != tc.followersOnly {
+				t.Errorf("privacyDefaultAudience = (%v, %v); want (%v, %v)",
+					isPublic, followersOnly, tc.isPublic, tc.followersOnly)
 			}
 		})
 	}

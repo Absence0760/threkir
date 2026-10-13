@@ -136,6 +136,15 @@ Deno.test('mapRunSignUpResult honours isPublic from privacy_default', () => {
   assertEquals(pub!.is_public, true);
 });
 
+Deno.test('mapRunSignUpResult writes followers_only for a followers default, and never beside is_public', () => {
+  const fol = mapRunSignUpResult({ chip_time: '20:00' }, { ...OPTS, followersOnly: true });
+  assertEquals([fol!.is_public, fol!.followers_only], [false, true]);
+  const both = mapRunSignUpResult({ chip_time: '20:00' }, { ...OPTS, isPublic: true, followersOnly: true });
+  assertEquals([both!.is_public, both!.followers_only], [true, false]);
+  const neither = mapRunSignUpResult({ chip_time: '20:00' }, OPTS);
+  assertEquals(neither!.followers_only, false);
+});
+
 Deno.test('mapRunSignUpResult drops non-positive places', () => {
   const run = mapRunSignUpResult(
     { chip_time: '20:00', place: 0, age_group_place: -1 },

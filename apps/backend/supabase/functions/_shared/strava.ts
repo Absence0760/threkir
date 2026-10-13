@@ -200,10 +200,12 @@ export async function ingestActivity(
 	accessToken: string,
 	act: StravaActivity,
 	// Honour the user's privacy_default for imported runs (persona #27).
-	// The caller resolves the pref once and passes it; defaults to private
-	// (fail-closed) so a caller that doesn't pass it — e.g. the deprecated
-	// strava-webhook rollback path — never publishes.
+	// The caller resolves the pref once (`_shared/privacy_default.ts`) and
+	// passes both columns; they default to owner-only (fail-closed) so a
+	// caller that doesn't pass them — e.g. the deprecated strava-webhook
+	// rollback path — never widens anything.
 	isPublic = false,
+	followersOnly = false,
 ): Promise<void> {
 	// Reject non-run-family payloads ahead of the insert. The webhook +
 	// backfill paths pre-filter, but a future caller that doesn't (or
@@ -252,6 +254,7 @@ export async function ingestActivity(
 			// longer a metadata key. is_dnf defaults to false at the DB.
 			activity_type: activityType,
 			is_public: isPublic,
+			followers_only: !isPublic && followersOnly,
 			// `external_id = 'strava:<id>'` is the cross-source dedupe key
 			// — same shape mobile ZIP writes. A future unique constraint
 			// on `(user_id, external_id) WHERE external_id IS NOT NULL`

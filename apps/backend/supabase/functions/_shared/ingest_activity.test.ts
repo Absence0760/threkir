@@ -131,6 +131,20 @@ Deno.test('ingestActivity — an imported run is private unless the caller says 
   assertEquals(explicitTrue.inserted[0].is_public, true, 'and the caller can still publish');
 });
 
+Deno.test('ingestActivity — followers_only is written only for a non-public run', async () => {
+  const fol = dbStub();
+  await ingestActivity(fol.client, 'u1', 'tok', act({ distance: 100 }), false, true);
+  assertEquals([fol.inserted[0].is_public, fol.inserted[0].followers_only], [false, true]);
+
+  const pub = dbStub();
+  await ingestActivity(pub.client, 'u1', 'tok', act({ distance: 100 }), true, true);
+  assertEquals([pub.inserted[0].is_public, pub.inserted[0].followers_only], [true, false]);
+
+  const legacy = dbStub();
+  await ingestActivity(legacy.client, 'u1', 'tok', act({ distance: 100 }));
+  assertEquals(legacy.inserted[0].followers_only, false, 'a caller that resolves no pref widens nothing');
+});
+
 Deno.test('ingestActivity — a refused insert throws so the caller can count it as failed', async () => {
   // `backfill` counts a throw as `failed`. A resolve on an insert error would
   // report the run as imported and lose it silently.

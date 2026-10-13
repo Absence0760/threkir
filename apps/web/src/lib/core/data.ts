@@ -25,6 +25,12 @@ import { logInputFromRecipe } from '../nutrition/recipe';
 import { challengesToRecomputeForRun } from '../social/challenge_progress';
 import { mergeMyProgress } from '../social/challenge_list';
 import { selectEffectivePricing } from '../social/event_instance';
+import {
+	planCourseSave,
+	sortCourses,
+	type CourseDraft,
+	type EventCourse,
+} from '../social/event_courses';
 import { parseHostEarningsRow, type HostEarningsInstance } from '../social/host_earnings';
 import {
 	cancelledOccurrenceRefunds,
@@ -138,6 +144,7 @@ import { mergeRecapRuns, recapYearWindow } from '../runs/recap_window';
 import type {
 	CoachAthleteStatus,
 	FinisherStatus,
+	FinishMethod,
 	RaceSessionStatus,
 	SessionPlan,
 	SessionPlanBlock,
@@ -4123,19 +4130,29 @@ export async function reinstateEventInstance(
 /// 'waitlisted', so the persisted status can differ from what was requested —
 /// we read it back via the upsert's returning row so the UI can show the
 /// waitlist state without a second fetch.
+///
+/// `courseId` is the racer's chosen course on a multi-course event
+/// (`event_courses`). Leaving it undefined omits the column from the upsert,
+/// so a status change keeps the course already on the row; the server refuses
+/// a going / waitlisted RSVP with no course when the event has more than one.
 export async function rsvpEvent(
 	eventId: string,
 	status: RsvpStatus,
-	instanceStart: string
+	instanceStart: string,
+	courseId?: string | null
 ): Promise<RsvpStatus> {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not authenticated');
+	const row: Insertable<'event_attendees'> = {
+		event_id: eventId,
+		user_id: userId,
+		status,
+		instance_start: instanceStart,
+	};
+	if (courseId !== undefined) row.course_id = courseId;
 	const { data, error } = await supabase
 		.from(TABLES.event_attendees)
-		.upsert(
-			{ event_id: eventId, user_id: userId, status, instance_start: instanceStart },
-			{ onConflict: 'event_id,user_id,instance_start' }
-		)
+		.upsert(row, { onConflict: 'event_id,user_id,instance_start' })
 		.select('status')
 		.single();
 	if (error) throw error;
@@ -4297,6 +4314,13 @@ export interface EventResultRow {
 	note: string | null;
 	created_at: string;
 	organiser_approved: boolean;
+	// Race provenance (migration 20270727000001). `course_id` picks the
+	// leaderboard; `duration_s` stays the ranked time, which on a gun-started
+	// race is `gun_time_s`.
+	course_id: string | null;
+	gun_time_s: number | null;
+	chip_time_s: number | null;
+	finish_method: FinishMethod | null;
 	// organiser_approved_by / organiser_approved_at are admin-side
 	// columns; intentionally omitted from `fetchEventResults`'s public
 	// read path. Add them back via a service-role-only fetcher if/when
@@ -4325,7 +4349,7 @@ export async function fetchEventResults(
 	const { data: results } = await supabase
 		.from('event_results_redacted')
 		.select(
-			'id, user_id, bib, finisher_name, run_id, duration_s, distance_m, rank, finisher_status, age_grade_pct, note, created_at, organiser_approved'
+			'id, user_id, bib, finisher_name, run_id, duration_s, distance_m, rank, finisher_status, age_grade_pct, note, created_at, organiser_approved, course_id, gun_time_s, chip_time_s, finish_method'
 		)
 		.eq('event_id', eventId)
 		.eq('instance_start', instanceStart)
@@ -4362,6 +4386,11 @@ export async function submitEventResult(params: {
 	finisherStatus?: FinisherStatus;
 	ageGradePct?: number | null;
 	note?: string | null;
+	// Set on a raced occurrence: a time the racer submitted themselves is
+	// `manual`, and its run's own duration is the chip time.
+	finishMethod?: FinishMethod | null;
+	chipTimeS?: number | null;
+	courseId?: string | null;
 }): Promise<void> {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not authenticated');
@@ -4381,6 +4410,9 @@ export async function submitEventResult(params: {
 			// DB. Mobile's `SocialService.submitEventResult` applies the
 			// same normalisation.
 			note: noteTrimmed && noteTrimmed.length > 0 ? noteTrimmed : null,
+			...(params.finishMethod !== undefined ? { finish_method: params.finishMethod } : {}),
+			...(params.chipTimeS !== undefined ? { chip_time_s: params.chipTimeS } : {}),
+			...(params.courseId !== undefined ? { course_id: params.courseId } : {}),
 			updated_at: new Date().toISOString(),
 		},
 		{ onConflict: 'event_id,instance_start,user_id' }
@@ -4738,6 +4770,103 @@ export async function approveEventResultById(
 		// (the director RLS policy already bounds it to their own events).
 		.is('user_id', null);
 	if (error) throw error;
+}
+
+/// Organiser edit of one result's time and / or status. Gated by the
+/// `event_results_update_self_or_director` policy (race director) or, for a
+/// bib-only row, `event_results_update_organiser_bib`; the
+/// `event_results_race_guard` trigger stamps `finish_method = 'host'` because
+/// the editor is not the result's runner.
+export async function editEventResultAsHost(
+	resultId: string,
+	patch: { duration_s: number; gun_time_s?: number; finisher_status: FinisherStatus }
+): Promise<void> {
+	const update: Updatable<'event_results'> = {
+		duration_s: patch.duration_s,
+		finisher_status: patch.finisher_status,
+		updated_at: new Date().toISOString(),
+	};
+	if (patch.gun_time_s !== undefined) update.gun_time_s = patch.gun_time_s;
+	const { error } = await supabase.from(TABLES.event_results).update(update).eq('id', resultId);
+	if (error) throw error;
+}
+
+/// How many racers End would mark DNF (pinged the race, filed no result).
+/// Null when the caller is not a race director for the event's club, or the
+/// count could not be read — the End dialog then omits the figure rather than
+/// stating a wrong one.
+export async function fetchRaceDnfPreview(
+	eventId: string,
+	instanceStart: string
+): Promise<number | null> {
+	const { data, error } = await supabase.rpc(
+		'race_pending_dnf_count',
+		{ p_event_id: eventId, p_instance_start: instanceStart },
+		{ get: true }
+	);
+	if (error) {
+		console.warn('fetchRaceDnfPreview failed', error);
+		return null;
+	}
+	return typeof data === 'number' ? data : null;
+}
+
+// --- Event courses (multi-course races) ---
+
+/// An event's courses in display order. Empty for an event with no route and
+/// no courses — a plain club run.
+export async function fetchEventCourses(eventId: string): Promise<EventCourse[]> {
+	const { data, error } = await supabase
+		.from(TABLES.event_courses)
+		.select('id, event_id, route_id, name, distance_m, sort_order')
+		.eq('event_id', eventId)
+		.order('sort_order', { ascending: true })
+		.order('name', { ascending: true });
+	if (error) throw error;
+	return sortCourses(data ?? []);
+}
+
+/// Persist the event editor's course list: delete dropped courses (their
+/// RSVPs and results fall back to no course), then update changed ones, then
+/// insert new ones. Organiser-only through the `event_courses_organiser_*`
+/// policies.
+export async function saveEventCourses(
+	eventId: string,
+	existing: EventCourse[],
+	drafts: CourseDraft[]
+): Promise<void> {
+	const plan = planCourseSave(existing, drafts);
+	if (plan.deletes.length > 0) {
+		const { error } = await supabase.from(TABLES.event_courses).delete().in('id', plan.deletes);
+		if (error) throw error;
+	}
+	for (const u of plan.updates) {
+		const { error } = await supabase.from(TABLES.event_courses).update(u.patch).eq('id', u.id);
+		if (error) throw error;
+	}
+	if (plan.inserts.length > 0) {
+		const { error } = await supabase
+			.from(TABLES.event_courses)
+			.insert(plan.inserts.map((w) => ({ ...w, event_id: eventId })));
+		if (error) throw error;
+	}
+}
+
+/// The signed-in viewer's chosen course for one occurrence, or null.
+export async function fetchMyEventCourse(
+	eventId: string,
+	instanceStart: string
+): Promise<string | null> {
+	const userId = auth.user?.id;
+	if (!userId) return null;
+	const { data } = await supabase
+		.from(TABLES.event_attendees)
+		.select('course_id')
+		.eq('event_id', eventId)
+		.eq('instance_start', instanceStart)
+		.eq('user_id', userId)
+		.maybeSingle();
+	return data?.course_id ?? null;
 }
 
 export interface RacePingRow {

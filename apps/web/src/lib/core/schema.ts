@@ -45,6 +45,7 @@ export const TABLES = {
 	club_posts: 'club_posts',
 	club_photos: 'club_photos',
 	event_attendees: 'event_attendees',
+	event_courses: 'event_courses',
 	event_results: 'event_results',
 	event_checkpoints: 'event_checkpoints',
 	checkpoint_crossings: 'checkpoint_crossings',

@@ -15146,6 +15146,24 @@ class AppLocalizationsFr extends AppLocalizations {
       'Événement créé, mais le plan de séance n’a pas pu être associé. Associez-le depuis la page de l’événement sur le web.';
 
   @override
+  String get eventFormGymRoutine => 'Routine de gym';
+
+  @override
+  String get eventFormGymRoutineNone => 'Aucune';
+
+  @override
+  String get eventFormGymRoutineHint =>
+      'Un modèle de routine de ce club. Les participants enregistrent le cours prérempli à partir de celui-ci. Un cours porte une routine ou un plan de séance, pas les deux.';
+
+  @override
+  String get eventFormGymRoutineEmpty =>
+      'Ce club n’a pas encore de modèle de routine. Publiez d’abord une routine dans le club.';
+
+  @override
+  String get eventFormGymRoutineFailed =>
+      'Événement créé, mais la routine n’a pas pu être associée. Associez-la depuis la page de l’événement sur le web.';
+
+  @override
   String get audienceTitle => 'Qui peut voir ceci';
 
   @override

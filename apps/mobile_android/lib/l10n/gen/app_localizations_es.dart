@@ -15108,6 +15108,24 @@ class AppLocalizationsEs extends AppLocalizations {
       'Evento creado, pero no se pudo adjuntar el plan de sesión. Adjúntalo desde la página del evento en la web.';
 
   @override
+  String get eventFormGymRoutine => 'Rutina de gimnasio';
+
+  @override
+  String get eventFormGymRoutineNone => 'Ninguna';
+
+  @override
+  String get eventFormGymRoutineHint =>
+      'Una plantilla de rutina de este club. Los asistentes registran la clase ya rellenada con ella. Una clase lleva una rutina o un plan de sesión, no ambos.';
+
+  @override
+  String get eventFormGymRoutineEmpty =>
+      'Este club aún no tiene plantillas de rutina. Publica primero una rutina en el club.';
+
+  @override
+  String get eventFormGymRoutineFailed =>
+      'Evento creado, pero no se pudo adjuntar la rutina. Adjúntala desde la página del evento en la web.';
+
+  @override
   String get audienceTitle => 'Quién puede ver esto';
 
   @override

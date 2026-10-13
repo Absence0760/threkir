@@ -20,6 +20,7 @@ import '../event_host_cancel.dart';
 import '../event_occurrence.dart';
 import '../event_waitlist_offer.dart';
 import '../finisher_certificate.dart';
+import '../gym_routine.dart' show PlannedExercise, PlannedRoutine, PlannedSet;
 import '../local_gym_store.dart';
 import 'checkpoint_checkin_screen.dart';
 import '../l10n/date_format.dart';
@@ -73,11 +74,13 @@ SessionItemKind _sessionKindFromString(String raw) {
 }
 
 /// The gym-composer seed for the event-detail "Log as workout" action,
-/// mirroring web's `logWorkoutPrefill`. With an attached, expanded session plan
-/// the seed carries one set per expanded step (a per-side step stays two rows)
-/// and a title of the class discipline / plan title falling back to the flat
-/// gym_template title; without one it is title-only (the flat gym_template
-/// path, [sets] == null).
+/// mirroring web's `logWorkoutPrefill`. With an attached gym routine the seed
+/// carries one set per planned set ([workoutDraftFromRoutine]) and a title of
+/// the class discipline / routine title; with an attached, expanded session
+/// plan it carries one set per expanded step (a per-side step stays two rows)
+/// and a title of the class discipline / plan title. Either falls back to the
+/// flat gym_template title; without content the seed is title-only (the flat
+/// gym_template path, [sets] == null).
 @visibleForTesting
 ({String? title, List<GymSetInput>? sets}) logWorkoutSeed({
   required EventGymTemplate? gymTemplate,
@@ -85,8 +88,27 @@ SessionItemKind _sessionKindFromString(String raw) {
   required String? discipline,
   ExpandedSession? expansion,
   String? sessionPlanTitle,
+  PlannedRoutine? routine,
 }) {
   final base = workoutDraftFromTemplate(gymTemplate, eventTitle);
+  if (routine != null) {
+    final draft = workoutDraftFromRoutine(routine, discipline);
+    return (
+      title: draft.title ?? base.title,
+      sets: [
+        for (final s in draft.sets)
+          (
+            exerciseName: s.exerciseName,
+            reps: s.reps,
+            weightKg: s.weightKg,
+            rpe: s.rpe,
+            setType: null,
+            durationS: null,
+            exerciseId: null,
+          ),
+      ],
+    );
+  }
   if (expansion == null) return (title: base.title, sets: null);
   final draft = workoutDraftFromSession(expansion, sessionPlanTitle, discipline);
   return (
@@ -181,6 +203,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   ExpandedSession? _sessionExpansion;
   String? _sessionPlanTitle;
 
+  /// The class's attached gym routine (decisions § 1869), loaded best-effort
+  /// when a `class` event carries a `gym_routine_id`. It is the club's
+  /// template, read and never cloned: it only seeds the attendee's own log.
+  PlannedRoutine? _gymRoutine;
+
   @override
   void initState() {
     super.initState();
@@ -195,9 +222,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     return parseGymTemplate(e.row.gymTemplate);
   }
 
-  bool get _canLogAsWorkout =>
-      _gymTemplate != null &&
-      Supabase.instance.client.auth.currentUser != null;
+  bool get _canLogAsWorkout {
+    final e = _event;
+    if (e == null || e.row.category != 'class') return false;
+    return (_gymTemplate != null || e.row.gymRoutineId != null) &&
+        Supabase.instance.client.auth.currentUser != null;
+  }
 
   Future<void> _logAsWorkout() async {
     final e = _event;
@@ -208,6 +238,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       discipline: e.row.discipline,
       expansion: _sessionExpansion,
       sessionPlanTitle: _sessionPlanTitle,
+      routine: _gymRoutine,
     );
     final store = _gymStore ??= LocalGymStore();
     await store.init();
@@ -233,6 +264,45 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   /// [_logAsWorkout] can seed the composer from the class content. Mirrors
   /// web's `loadSessionPlan` + `sessionExpansion`. A failure leaves the flat
   /// gym_template path intact (L4).
+  /// Best-effort load of the class's attached gym routine, the counterpart of
+  /// [_maybeLoadSessionPlan] and of web's `loadGymRoutine`. A routine the
+  /// viewer cannot read leaves the flat gym_template path intact (L4).
+  Future<void> _maybeLoadGymRoutine(EventView event) async {
+    final routineId = event.row.gymRoutineId;
+    if (routineId == null || event.row.category != 'class') return;
+    try {
+      final data = await (_api ??= ApiClient()).fetchGymRoutineDetail(routineId);
+      if (!mounted || data == null) return;
+      setState(() {
+        _gymRoutine = PlannedRoutine(
+          title: data.routine.title,
+          exercises: [
+            for (final e in data.exercises)
+              PlannedExercise(
+                exerciseName: e.exercise.exerciseName,
+                position: e.exercise.position,
+                supersetGroup: e.exercise.supersetGroup,
+                supersetOrder: e.exercise.supersetOrder,
+                sets: [
+                  for (final st in e.sets)
+                    PlannedSet(
+                      setIndex: st.setIndex,
+                      targetRepsMin: st.targetRepsMin,
+                      targetRepsMax: st.targetRepsMax,
+                      targetWeightKg: st.targetWeightKg,
+                      targetRpe: st.targetRpe,
+                      setType: st.setType,
+                    ),
+                ],
+              ),
+          ],
+        );
+      });
+    } catch (e) {
+      debugPrint('EventDetailScreen gym-routine load failed: $e');
+    }
+  }
+
   Future<void> _maybeLoadSessionPlan(EventView event) async {
     final planId = event.row.sessionPlanId;
     if (planId == null || event.row.category != 'class') return;
@@ -323,6 +393,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         _loading = false;
       });
       unawaited(_maybeLoadSessionPlan(event));
+      unawaited(_maybeLoadGymRoutine(event));
       if (isAthleticEventCategory(event.row.category)) {
         unawaited(_loadCourses(event.row.id));
       }

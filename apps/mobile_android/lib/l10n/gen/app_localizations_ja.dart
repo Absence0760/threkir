@@ -14405,6 +14405,24 @@ class AppLocalizationsJa extends AppLocalizations {
       'イベントは作成されましたが、セッションプランを添付できませんでした。ウェブのイベントページから添付してください。';
 
   @override
+  String get eventFormGymRoutine => 'ジムルーティン';
+
+  @override
+  String get eventFormGymRoutineNone => 'なし';
+
+  @override
+  String get eventFormGymRoutineHint =>
+      'このクラブのルーティンテンプレートです。参加者はそれをもとに入力済みの状態でクラスを記録できます。クラスに添付できるのはルーティンかセッションプランのどちらか一方です。';
+
+  @override
+  String get eventFormGymRoutineEmpty =>
+      'このクラブにはまだルーティンテンプレートがありません。先にルーティンをクラブに公開しましょう。';
+
+  @override
+  String get eventFormGymRoutineFailed =>
+      'イベントは作成されましたが、ルーティンを添付できませんでした。ウェブのイベントページから添付してください。';
+
+  @override
   String get audienceTitle => '公開範囲';
 
   @override

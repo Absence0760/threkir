@@ -15127,6 +15127,24 @@ class AppLocalizationsDe extends AppLocalizations {
       'Veranstaltung erstellt, aber der Session-Plan konnte nicht angehängt werden. Hänge ihn auf der Veranstaltungsseite im Web an.';
 
   @override
+  String get eventFormGymRoutine => 'Gym-Routine';
+
+  @override
+  String get eventFormGymRoutineNone => 'Keine';
+
+  @override
+  String get eventFormGymRoutineHint =>
+      'Eine Routinevorlage dieses Clubs. Teilnehmende erfassen den Kurs damit vorausgefüllt. Ein Kurs hat entweder eine Routine oder einen Session-Plan, nicht beides.';
+
+  @override
+  String get eventFormGymRoutineEmpty =>
+      'Dieser Club hat noch keine Routinevorlagen. Veröffentliche zuerst eine Routine im Club.';
+
+  @override
+  String get eventFormGymRoutineFailed =>
+      'Veranstaltung erstellt, aber die Routine konnte nicht angehängt werden. Hänge sie auf der Veranstaltungsseite im Web an.';
+
+  @override
   String get audienceTitle => 'Wer das sehen kann';
 
   @override

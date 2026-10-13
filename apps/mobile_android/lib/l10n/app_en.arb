@@ -19196,6 +19196,26 @@
   "@eventFormSessionPlanFailed": {
     "description": "Banner when the event was created but its session plan was not attached"
   },
+  "eventFormGymRoutine": "Gym routine",
+  "@eventFormGymRoutine": {
+    "description": "Label of the event form's picker for a club gym routine template to attach to a class"
+  },
+  "eventFormGymRoutineNone": "None",
+  "@eventFormGymRoutineNone": {
+    "description": "Gym routine picker option for a class with no routine attached"
+  },
+  "eventFormGymRoutineHint": "One of this club's routine templates. Attendees log the class pre-filled from it. A class carries a routine or a session plan, not both.",
+  "@eventFormGymRoutineHint": {
+    "description": "Helper text under the gym routine picker on the event form"
+  },
+  "eventFormGymRoutineEmpty": "This club has no routine templates yet. Publish a routine to the club first.",
+  "@eventFormGymRoutineEmpty": {
+    "description": "Helper text under the gym routine picker when the club has no routine templates"
+  },
+  "eventFormGymRoutineFailed": "Event created, but the routine couldn't be attached. Attach it from the event on the web.",
+  "@eventFormGymRoutineFailed": {
+    "description": "Banner when the event was created but its gym routine was not attached"
+  },
   "audienceTitle": "Who can see this",
   "@audienceTitle": {
     "description": "Title of the sheet where the owner chooses who can see a run or route"

@@ -14,11 +14,13 @@ class _CapturingSocialService extends SocialService {
     this.throwOnCreate,
     this.chargesEnabled = false,
     this.plans = const [],
+    this.routines = const [],
     this.throwOnPricing,
   });
   final Object? throwOnCreate;
   final bool chargesEnabled;
   final List<({String id, String title})> plans;
+  final List<({String id, String title})> routines;
   final Object? throwOnPricing;
 
   int? capturedCapacity;
@@ -26,6 +28,8 @@ class _CapturingSocialService extends SocialService {
   int? capturedCount;
   Map<String, Object?>? capturedPricing;
   String? capturedSessionPlanId;
+  String? capturedGymRoutineId;
+  String? routinesRequestedFor;
 
   @override
   Future<({bool chargesEnabled, String? defaultCurrency})?>
@@ -57,6 +61,19 @@ class _CapturingSocialService extends SocialService {
   @override
   Future<void> setEventSessionPlan(String eventId, String? sessionPlanId) async {
     capturedSessionPlanId = sessionPlanId;
+  }
+
+  @override
+  Future<List<({String id, String title})>> fetchClubGymRoutineOptions(
+    String clubId,
+  ) async {
+    routinesRequestedFor = clubId;
+    return routines;
+  }
+
+  @override
+  Future<void> setEventGymRoutine(String eventId, String? gymRoutineId) async {
+    capturedGymRoutineId = gymRoutineId;
   }
 
   bool createCalled = false;
@@ -521,6 +538,62 @@ void main() {
       await tapCreate(tester);
       expect(fake.capturedSessionPlanId, 'plan-1');
       expect(find.text('result=ok'), findsOneWidget);
+    });
+
+    Future<void> pick(WidgetTester tester, Key key, String label) async {
+      final picker = find.byKey(key);
+      await tester.ensureVisible(picker);
+      await tester.tap(picker);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(label).last);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a class attaches the picked club routine after the create',
+        (tester) async {
+      final fake = _CapturingSocialService(
+          routines: const [(id: 'routine-1', title: 'Lower Body')]);
+      await _openSheet(tester, social: fake);
+      expect(fake.routinesRequestedFor, 'club-1');
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Class'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Title'), 'Strength');
+      await pick(tester, const Key('event-form-gym-routine'), 'Lower Body');
+      await tapCreate(tester);
+      expect(fake.capturedGymRoutineId, 'routine-1');
+      expect(fake.capturedSessionPlanId, isNull);
+      expect(find.text('result=ok'), findsOneWidget);
+    });
+
+    testWidgets('picking a routine clears a picked session plan',
+        (tester) async {
+      final fake = _CapturingSocialService(
+        plans: const [(id: 'plan-1', title: 'Hip openers')],
+        routines: const [(id: 'routine-1', title: 'Lower Body')],
+      );
+      await _openSheet(tester, social: fake);
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Class'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Title'), 'Strength');
+      await pick(tester, const Key('event-form-session-plan'), 'Hip openers');
+      await pick(tester, const Key('event-form-gym-routine'), 'Lower Body');
+      await tapCreate(tester);
+      expect(fake.capturedGymRoutineId, 'routine-1');
+      expect(fake.capturedSessionPlanId, isNull);
+    });
+
+    testWidgets('a club with no routine templates says so under the picker',
+        (tester) async {
+      await _openSheet(tester, social: _CapturingSocialService());
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Class'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text(
+            'This club has no routine templates yet. Publish a routine to the club first.'),
+        findsOneWidget,
+      );
     });
   });
 }

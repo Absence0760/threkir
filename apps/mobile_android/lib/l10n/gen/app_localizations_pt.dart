@@ -15111,6 +15111,24 @@ class AppLocalizationsPt extends AppLocalizations {
       'Evento criado, mas não foi possível associar o plano de sessão. Associe-o na página do evento na web.';
 
   @override
+  String get eventFormGymRoutine => 'Rotina de ginásio';
+
+  @override
+  String get eventFormGymRoutineNone => 'Nenhuma';
+
+  @override
+  String get eventFormGymRoutineHint =>
+      'Um modelo de rotina deste clube. Quem participa regista a aula já preenchida a partir dele. Uma aula leva uma rotina ou um plano de sessão, não os dois.';
+
+  @override
+  String get eventFormGymRoutineEmpty =>
+      'Este clube ainda não tem modelos de rotina. Publique primeiro uma rotina no clube.';
+
+  @override
+  String get eventFormGymRoutineFailed =>
+      'Evento criado, mas não foi possível anexar a rotina. Anexe-a na página do evento na web.';
+
+  @override
   String get audienceTitle => 'Quem pode ver isto';
 
   @override
@@ -30330,6 +30348,24 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get eventFormSessionPlanFailed =>
       'Evento criado, mas não foi possível anexar o plano de sessão. Anexe-o na página do evento na web.';
+
+  @override
+  String get eventFormGymRoutine => 'Rotina de academia';
+
+  @override
+  String get eventFormGymRoutineNone => 'Nenhuma';
+
+  @override
+  String get eventFormGymRoutineHint =>
+      'Um modelo de rotina deste clube. Quem participa registra a aula já preenchida com ele. Uma aula leva uma rotina ou um plano de sessão, não os dois.';
+
+  @override
+  String get eventFormGymRoutineEmpty =>
+      'Este clube ainda não tem modelos de rotina. Publique primeiro uma rotina no clube.';
+
+  @override
+  String get eventFormGymRoutineFailed =>
+      'Evento criado, mas não deu para anexar a rotina. Anexe-a na página do evento na web.';
 
   @override
   String get audienceTitle => 'Quem pode ver isto';

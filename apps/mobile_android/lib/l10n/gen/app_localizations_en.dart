@@ -14958,6 +14958,24 @@ class AppLocalizationsEn extends AppLocalizations {
       'Event created, but the session plan couldn\'t be attached. Attach it from the event on the web.';
 
   @override
+  String get eventFormGymRoutine => 'Gym routine';
+
+  @override
+  String get eventFormGymRoutineNone => 'None';
+
+  @override
+  String get eventFormGymRoutineHint =>
+      'One of this club\'s routine templates. Attendees log the class pre-filled from it. A class carries a routine or a session plan, not both.';
+
+  @override
+  String get eventFormGymRoutineEmpty =>
+      'This club has no routine templates yet. Publish a routine to the club first.';
+
+  @override
+  String get eventFormGymRoutineFailed =>
+      'Event created, but the routine couldn\'t be attached. Attach it from the event on the web.';
+
+  @override
   String get audienceTitle => 'Who can see this';
 
   @override

@@ -77,6 +77,10 @@ class _EventFormState extends State<_EventForm> {
   DateTime? _until;
   String? _sessionPlanId;
   List<({String id, String title})> _sessionPlans = const [];
+  // Or one of the club's gym routine templates (decisions § 1869). A class
+  // carries one or the other, never both.
+  String? _gymRoutineId;
+  List<({String id, String title})> _gymRoutines = const [];
   bool _chargesEnabled = false;
   bool _charge = false;
   String _refundPolicy = kDefaultEventRefundPolicy;
@@ -102,24 +106,28 @@ class _EventFormState extends State<_EventForm> {
     _loadOptions();
   }
 
-  /// The host's payout capability and their session plans. Best-effort: a
-  /// failure leaves the form usable without a price or a plan (L4).
+  /// The host's payout capability, their session plans and the club's gym
+  /// routine templates. Best-effort: a failure leaves the form usable without
+  /// a price, a plan or a routine (L4).
   Future<void> _loadOptions() async {
     try {
       final results = await Future.wait([
         widget.social.fetchPayoutCapability(),
         widget.social.fetchSessionPlanOptions(),
+        widget.social.fetchClubGymRoutineOptions(widget.clubId),
       ]);
       if (!mounted) return;
       final payout =
           results[0] as ({bool chargesEnabled, String? defaultCurrency})?;
       final plans = results[1] as List<({String id, String title})>;
+      final routines = results[2] as List<({String id, String title})>;
       final wasDirty = isDirty;
       setState(() {
         _chargesEnabled = payout?.chargesEnabled ?? false;
         final seeded = payout?.defaultCurrency;
         if (seeded != null && seeded.isNotEmpty) _currency.text = seeded;
         _sessionPlans = plans;
+        _gymRoutines = routines;
       });
       if (!wasDirty) _initialSnapshot = _snapshot();
     } catch (e) {
@@ -142,6 +150,7 @@ class _EventFormState extends State<_EventForm> {
         _count.text,
         _until?.toIso8601String() ?? '',
         _sessionPlanId ?? '',
+        _gymRoutineId ?? '',
         _charge.toString(),
         _price.text,
         _currency.text,
@@ -181,6 +190,7 @@ class _EventFormState extends State<_EventForm> {
       if (next != 'class') {
         _discipline.clear();
         _sessionPlanId = null;
+        _gymRoutineId = null;
       }
     });
   }
@@ -342,6 +352,13 @@ class _EventFormState extends State<_EventForm> {
           debugPrint('event session plan attach failed: $se');
           followUpFailure ??= l10n.eventFormSessionPlanFailed;
         }
+      } else if (_category == 'class' && _gymRoutineId != null) {
+        try {
+          await widget.social.setEventGymRoutine(created.id, _gymRoutineId);
+        } catch (ge) {
+          debugPrint('event gym routine attach failed: $ge');
+          followUpFailure ??= l10n.eventFormGymRoutineFailed;
+        }
       }
       if (!mounted) return;
       Navigator.of(context).pop<String?>(followUpFailure ?? 'ok');
@@ -399,28 +416,67 @@ class _EventFormState extends State<_EventForm> {
                 ),
               ),
               const SizedBox(height: 8),
-              DropdownButtonFormField<String?>(
-                key: const Key('event-form-session-plan'),
-                initialValue: _sessionPlanId,
-                isExpanded: true,
-                decoration: InputDecoration(
-                  labelText: l10n.eventFormSessionPlan,
-                  helperText: _sessionPlans.isEmpty
-                      ? l10n.eventFormSessionPlanEmpty
-                      : null,
-                ),
-                items: [
-                  DropdownMenuItem<String?>(
-                    value: null,
-                    child: Text(l10n.eventFormSessionPlanNone),
+              // Re-keyed on the value so picking the other source, which clears
+              // this one, rebuilds the field with its new initial value.
+              KeyedSubtree(
+                key: ValueKey('plan-${_sessionPlanId ?? ''}'),
+                child: DropdownButtonFormField<String?>(
+                  key: const Key('event-form-session-plan'),
+                  initialValue: _sessionPlanId,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    labelText: l10n.eventFormSessionPlan,
+                    helperText: _sessionPlans.isEmpty
+                        ? l10n.eventFormSessionPlanEmpty
+                        : null,
                   ),
-                  for (final p in _sessionPlans)
+                  items: [
                     DropdownMenuItem<String?>(
-                      value: p.id,
-                      child: Text(p.title, overflow: TextOverflow.ellipsis),
+                      value: null,
+                      child: Text(l10n.eventFormSessionPlanNone),
                     ),
-                ],
-                onChanged: (v) => setState(() => _sessionPlanId = v),
+                    for (final p in _sessionPlans)
+                      DropdownMenuItem<String?>(
+                        value: p.id,
+                        child: Text(p.title, overflow: TextOverflow.ellipsis),
+                      ),
+                  ],
+                  onChanged: (v) => setState(() {
+                    _sessionPlanId = v;
+                    if (v != null) _gymRoutineId = null;
+                  }),
+                ),
+              ),
+              const SizedBox(height: 8),
+              KeyedSubtree(
+                key: ValueKey('routine-${_gymRoutineId ?? ''}'),
+                child: DropdownButtonFormField<String?>(
+                  key: const Key('event-form-gym-routine'),
+                  initialValue: _gymRoutineId,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    labelText: l10n.eventFormGymRoutine,
+                    helperText: _gymRoutines.isEmpty
+                        ? l10n.eventFormGymRoutineEmpty
+                        : l10n.eventFormGymRoutineHint,
+                    helperMaxLines: 3,
+                  ),
+                  items: [
+                    DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text(l10n.eventFormGymRoutineNone),
+                    ),
+                    for (final r in _gymRoutines)
+                      DropdownMenuItem<String?>(
+                        value: r.id,
+                        child: Text(r.title, overflow: TextOverflow.ellipsis),
+                      ),
+                  ],
+                  onChanged: (v) => setState(() {
+                    _gymRoutineId = v;
+                    if (v != null) _sessionPlanId = null;
+                  }),
+                ),
               ),
               const SizedBox(height: 8),
             ],

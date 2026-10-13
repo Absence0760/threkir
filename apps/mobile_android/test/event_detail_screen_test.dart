@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ui_kit/ui_kit.dart';
 import '../lib/event_category.dart';
 import '../lib/event_gym_template.dart';
+import '../lib/gym_routine.dart' show PlannedExercise, PlannedRoutine, PlannedSet;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/event_detail_screen.dart';
@@ -728,6 +729,41 @@ void main() {
         expect(seed.sets, isNotNull);
       },
     );
+
+    test('with an attached gym routine → one seeded set per planned set', () {
+      final seed = logWorkoutSeed(
+        gymTemplate: null,
+        eventTitle: 'Evening Class',
+        discipline: null,
+        routine: const PlannedRoutine(
+          title: 'Lower Body',
+          exercises: [
+            PlannedExercise(
+              exerciseName: 'Back Squat',
+              position: 0,
+              sets: [
+                PlannedSet(
+                  setIndex: 0,
+                  targetRepsMin: 5,
+                  targetWeightKg: 60,
+                  targetRpe: 8,
+                ),
+                PlannedSet(setIndex: 1, targetRepsMin: 5, targetWeightKg: 60),
+              ],
+            ),
+          ],
+        ),
+      );
+      // No discipline: the routine title names the workout.
+      expect(seed.title, 'Lower Body');
+      final sets = seed.sets!;
+      expect(sets.length, 2);
+      expect(sets[0].exerciseName, 'Back Squat');
+      expect(sets[0].reps, 5);
+      expect(sets[0].weightKg, 60.0);
+      expect(sets[0].rpe, 8.0);
+      expect(sets[1].rpe, isNull);
+    });
   });
 
   group('M6 attendance — host-gating predicate', () {

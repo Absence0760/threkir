@@ -24993,6 +24993,36 @@ abstract class AppLocalizations {
   /// **'Event created, but the session plan couldn\'t be attached. Attach it from the event on the web.'**
   String get eventFormSessionPlanFailed;
 
+  /// Label of the event form's picker for a club gym routine template to attach to a class
+  ///
+  /// In en, this message translates to:
+  /// **'Gym routine'**
+  String get eventFormGymRoutine;
+
+  /// Gym routine picker option for a class with no routine attached
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get eventFormGymRoutineNone;
+
+  /// Helper text under the gym routine picker on the event form
+  ///
+  /// In en, this message translates to:
+  /// **'One of this club\'s routine templates. Attendees log the class pre-filled from it. A class carries a routine or a session plan, not both.'**
+  String get eventFormGymRoutineHint;
+
+  /// Helper text under the gym routine picker when the club has no routine templates
+  ///
+  /// In en, this message translates to:
+  /// **'This club has no routine templates yet. Publish a routine to the club first.'**
+  String get eventFormGymRoutineEmpty;
+
+  /// Banner when the event was created but its gym routine was not attached
+  ///
+  /// In en, this message translates to:
+  /// **'Event created, but the routine couldn\'t be attached. Attach it from the event on the web.'**
+  String get eventFormGymRoutineFailed;
+
   /// Title of the sheet where the owner chooses who can see a run or route
   ///
   /// In en, this message translates to:

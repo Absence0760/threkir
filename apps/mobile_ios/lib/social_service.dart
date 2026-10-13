@@ -44,7 +44,7 @@ const String _eventSelectCols =
     'meet_label, route_id, distance_m, pace_target_sec, capacity, '
     'author_id, created_at, updated_at, recurrence_freq, '
     'recurrence_byday, recurrence_until, recurrence_count, '
-    'category, discipline, gym_template, session_plan_id';
+    'category, discipline, gym_template, session_plan_id, gym_routine_id';
 
 /// Parse the `events.recurrence_byday` jsonb array (a list of weekday
 /// short-codes like `['MO','WE']`) into a list of `Weekday`s. Returns
@@ -1620,11 +1620,49 @@ class SocialService extends ChangeNotifier {
   }
 
   /// Attach (or with null, detach) a session plan to a class. The database
-  /// trigger enforces organiser-only, as on web.
+  /// trigger enforces organiser-only, as on web. A class carries a session
+  /// plan or a gym routine, never both (`events_one_class_content`), so
+  /// attaching a plan detaches any routine in the same write.
   Future<void> setEventSessionPlan(String eventId, String? sessionPlanId) async {
-    await _c
-        .from('events')
-        .update({'session_plan_id': sessionPlanId}).eq('id', eventId);
+    await _c.from('events').update(sessionPlanId == null
+        ? {'session_plan_id': null}
+        : {'session_plan_id': sessionPlanId, 'gym_routine_id': null}).eq(
+        'id', eventId);
+  }
+
+  /// The gym routine templates a class in [clubId] can attach: the club's own
+  /// (`gym_routines.club_id`), which its members can read. Mirrors web's
+  /// `fetchClubGymRoutineTemplates` as the editor uses it. Empty on a failed
+  /// read, which leaves the picker showing only "none".
+  Future<List<({String id, String title})>> fetchClubGymRoutineOptions(
+    String clubId,
+  ) async {
+    try {
+      final rows = await _c
+          .from('gym_routines')
+          .select('id, title')
+          .eq('club_id', clubId)
+          .order('last_modified_at', ascending: false);
+      return [
+        for (final r in rows as List)
+          if ((r as Map)['id'] is String && r['title'] is String)
+            (id: r['id'] as String, title: r['title'] as String),
+      ];
+    } catch (e) {
+      debugPrint('fetchClubGymRoutineOptions failed: $e');
+      return const [];
+    }
+  }
+
+  /// Attach (or with null, detach) a gym routine to a class (decisions
+  /// § 1869). The `events_gym_routine_organiser` trigger admits only an
+  /// organiser and only a template of the event's own club or a public
+  /// template; attaching one detaches any session plan, as above.
+  Future<void> setEventGymRoutine(String eventId, String? gymRoutineId) async {
+    await _c.from('events').update(gymRoutineId == null
+        ? {'gym_routine_id': null}
+        : {'gym_routine_id': gymRoutineId, 'session_plan_id': null}).eq(
+        'id', eventId);
   }
 
   /// Call off one occurrence of a series, or a one-off event (whose only

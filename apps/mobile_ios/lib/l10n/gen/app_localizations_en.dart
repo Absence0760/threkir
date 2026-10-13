@@ -407,7 +407,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get importHealthDescriptionAndroid =>
-      'Reads workout summaries (date, distance, duration, type) from the last year. GPS routes are not exposed by Health Connect — runs imported this way won\'t have a map trace.';
+      'Reads workout summaries (date, distance, duration, type) from the last year. A workout\'s GPS map comes too when Health Connect lets Threkir read it; if it holds some back, you can allow map access after the import.';
 
   @override
   String importHealthRoutesWithheld(int count) {
@@ -6871,7 +6871,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAccountImport => 'Import from another app';
 
   @override
-  String get settingsAccountImportSubtitle => 'Strava, GPX, TCX';
+  String get settingsAccountImportSubtitle =>
+      'Strava export, health app, CSV or backup';
 
   @override
   String get settingsAccountAccountExport => 'Account export';

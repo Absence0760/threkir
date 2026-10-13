@@ -411,7 +411,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get importHealthDescriptionAndroid =>
-      'Lê resumos de treino (data, distância, duração, tipo) do último ano. As rotas de GPS não são expostas pelo Health Connect — as corridas importadas assim não terão trajeto no mapa.';
+      'Lê resumos de treino (data, distância, duração, tipo) do último ano. O mapa GPS de um treino também vem quando o Health Connect permite que o Threkir o leia; se retiver algum, pode permitir o acesso aos mapas depois da importação.';
 
   @override
   String importHealthRoutesWithheld(int count) {
@@ -6943,7 +6943,8 @@ class AppLocalizationsPt extends AppLocalizations {
   String get settingsAccountImport => 'Importar de outro app';
 
   @override
-  String get settingsAccountImportSubtitle => 'Strava, GPX, TCX';
+  String get settingsAccountImportSubtitle =>
+      'Exportação do Strava, app de saúde, CSV ou cópia de segurança';
 
   @override
   String get settingsAccountAccountExport => 'Exportação da conta';
@@ -15317,7 +15318,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get importHealthDescriptionAndroid =>
-      'Lê resumos de treino (data, distância, duração, tipo) do último ano. As rotas de GPS não são expostas pelo Health Connect — as corridas importadas assim não terão trajeto no mapa.';
+      'Lê resumos de treino (data, distância, duração, tipo) do último ano. O mapa GPS de um treino também vem quando o Health Connect permite que o Threkir o leia; se ele retiver algum, você pode permitir o acesso aos mapas depois da importação.';
 
   @override
   String importHealthRoutesWithheld(int count) {
@@ -21847,7 +21848,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get settingsAccountImport => 'Importar de outro app';
 
   @override
-  String get settingsAccountImportSubtitle => 'Strava, GPX, TCX';
+  String get settingsAccountImportSubtitle =>
+      'Exportação do Strava, app de saúde, CSV ou backup';
 
   @override
   String get settingsAccountAccountExport => 'Exportação da conta';

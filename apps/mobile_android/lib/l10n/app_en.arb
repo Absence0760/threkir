@@ -583,7 +583,7 @@
   "@importHealthDescriptionIos": {
     "description": "iOS body copy explaining what is imported from Apple Health and the no-track caveat"
   },
-  "importHealthDescriptionAndroid": "Reads workout summaries (date, distance, duration, type) from the last year. GPS routes are not exposed by Health Connect — runs imported this way won't have a map trace.",
+  "importHealthDescriptionAndroid": "Reads workout summaries (date, distance, duration, type) from the last year. A workout's GPS map comes too when Health Connect lets Threkir read it; if it holds some back, you can allow map access after the import.",
   "@importHealthDescriptionAndroid": {
     "description": "Android body copy explaining what is imported from Health Connect and the no-track caveat"
   },
@@ -9190,7 +9190,7 @@
   "@settingsAccountImport": {
     "description": "Tile title for importing runs"
   },
-  "settingsAccountImportSubtitle": "Strava, GPX, TCX",
+  "settingsAccountImportSubtitle": "Strava export, health app, CSV or backup",
   "@settingsAccountImportSubtitle": {
     "description": "Subtitle of the Import tile"
   },

@@ -716,7 +716,7 @@ abstract class AppLocalizations {
   /// Android body copy explaining what is imported from Health Connect and the no-track caveat
   ///
   /// In en, this message translates to:
-  /// **'Reads workout summaries (date, distance, duration, type) from the last year. GPS routes are not exposed by Health Connect — runs imported this way won\'t have a map trace.'**
+  /// **'Reads workout summaries (date, distance, duration, type) from the last year. A workout\'s GPS map comes too when Health Connect lets Threkir read it; if it holds some back, you can allow map access after the import.'**
   String get importHealthDescriptionAndroid;
 
   /// Offer shown after a Health Connect import found routes it was refused
@@ -11352,7 +11352,7 @@ abstract class AppLocalizations {
   /// Subtitle of the Import tile
   ///
   /// In en, this message translates to:
-  /// **'Strava, GPX, TCX'**
+  /// **'Strava export, health app, CSV or backup'**
   String get settingsAccountImportSubtitle;
 
   /// Tile title for the queued server-built GDPR Art 20 export

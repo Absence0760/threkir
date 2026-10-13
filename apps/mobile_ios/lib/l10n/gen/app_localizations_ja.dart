@@ -396,7 +396,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get importHealthDescriptionAndroid =>
-      '過去1年間のワークアウト概要（日付、距離、時間、種類）を読み込みます。GPS ルートは Health Connect から公開されないため、この方法でインポートしたランには地図のトレースがありません。';
+      '過去1年間のワークアウト概要（日付、距離、時間、種類）を読み込みます。Health Connect が Threkir に読み取りを許可している場合は、ワークアウトの GPS マップも取り込まれます。一部が保留された場合は、インポート後にマップへのアクセスを許可できます。';
 
   @override
   String importHealthRoutesWithheld(int count) {
@@ -6548,7 +6548,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsAccountImport => '別のアプリからインポート';
 
   @override
-  String get settingsAccountImportSubtitle => 'Strava、GPX、TCX';
+  String get settingsAccountImportSubtitle =>
+      'Strava のエクスポート、ヘルスケアアプリ、CSV、バックアップ';
 
   @override
   String get settingsAccountAccountExport => 'アカウントのエクスポート';

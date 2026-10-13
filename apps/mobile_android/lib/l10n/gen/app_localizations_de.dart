@@ -410,7 +410,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get importHealthDescriptionAndroid =>
-      'Liest Workout-Zusammenfassungen (Datum, Distanz, Dauer, Typ) des letzten Jahres. GPS-Routen werden von Health Connect nicht bereitgestellt — so importierte Läufe haben keinen Karten-Track.';
+      'Liest Workout-Zusammenfassungen (Datum, Distanz, Dauer, Typ) des letzten Jahres. Die GPS-Karte eines Workouts kommt mit, wenn Health Connect Threkir sie lesen lässt; hält es welche zurück, kannst du den Kartenzugriff nach dem Import erlauben.';
 
   @override
   String importHealthRoutesWithheld(int count) {
@@ -6957,7 +6957,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settingsAccountImport => 'Aus einer anderen App importieren';
 
   @override
-  String get settingsAccountImportSubtitle => 'Strava, GPX, TCX';
+  String get settingsAccountImportSubtitle =>
+      'Strava-Export, Gesundheits-App, CSV oder Backup';
 
   @override
   String get settingsAccountAccountExport => 'Kontoexport';

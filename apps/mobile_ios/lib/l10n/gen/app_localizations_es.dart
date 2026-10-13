@@ -14685,9 +14685,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get eventResultsOtherCourse => 'Otros resultados';
 
   @override
-  String get eventFinishMethodAuto => 'Automático';
-
-  @override
   String get eventFinishMethodManual => 'Manual';
 
   @override
@@ -14829,4 +14826,70 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get infoTipReadGuide => 'Leer la guía';
+
+  @override
+  String eventRaceEndConfirmBodyDnf(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '¿Finalizar la carrera? $count corredores que salieron no tienen resultado y quedarán como DNF. No se puede deshacer.',
+      one:
+          '¿Finalizar la carrera? $count corredor que salió no tiene resultado y quedará como DNF. No se puede deshacer.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get eventResultPending => 'Pendiente';
+
+  @override
+  String eventResultActions(String name) {
+    return 'Acciones del resultado de $name';
+  }
+
+  @override
+  String get eventResultApprove => 'Aprobar';
+
+  @override
+  String get eventResultUnverify => 'Quitar verificación';
+
+  @override
+  String get eventResultEdit => 'Editar';
+
+  @override
+  String eventResultEditTitle(String name) {
+    return 'Editar resultado: $name';
+  }
+
+  @override
+  String get eventResultEditHelp =>
+      'Tu cambio sustituye este tiempo en la clasificación y se marca como editado por el organizador.';
+
+  @override
+  String get eventResultEditTime => 'Tiempo (h:mm:ss)';
+
+  @override
+  String get eventResultEditStatus => 'Estado';
+
+  @override
+  String get eventResultStatusFinished => 'Terminado';
+
+  @override
+  String get eventResultStatusDnf => 'DNF';
+
+  @override
+  String get eventResultStatusDns => 'DNS';
+
+  @override
+  String get eventResultEditSave => 'Guardar resultado';
+
+  @override
+  String get eventResultEditTimeInvalid =>
+      'Introduce un tiempo de llegada como 42:10 o 1:02:03.';
+
+  @override
+  String eventResultActionFailed(String error) {
+    return 'No se pudo actualizar el resultado: $error';
+  }
 }

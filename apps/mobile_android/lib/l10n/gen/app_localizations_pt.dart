@@ -14689,9 +14689,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get eventResultsOtherCourse => 'Outros resultados';
 
   @override
-  String get eventFinishMethodAuto => 'Automático';
-
-  @override
   String get eventFinishMethodManual => 'Manual';
 
   @override
@@ -14832,6 +14829,72 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get infoTipReadGuide => 'Ler o guia';
+
+  @override
+  String eventRaceEndConfirmBodyDnf(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Encerrar a corrida? $count corredores que partiram não têm resultado e vão ficar como DNF. Isto não pode ser desfeito.',
+      one:
+          'Encerrar a corrida? $count corredor que partiu não tem resultado e vai ficar como DNF. Isto não pode ser desfeito.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get eventResultPending => 'Pendente';
+
+  @override
+  String eventResultActions(String name) {
+    return 'Ações do resultado de $name';
+  }
+
+  @override
+  String get eventResultApprove => 'Aprovar';
+
+  @override
+  String get eventResultUnverify => 'Remover verificação';
+
+  @override
+  String get eventResultEdit => 'Editar';
+
+  @override
+  String eventResultEditTitle(String name) {
+    return 'Editar resultado: $name';
+  }
+
+  @override
+  String get eventResultEditHelp =>
+      'A sua edição substitui este tempo na classificação e fica marcada como editada pelo organizador.';
+
+  @override
+  String get eventResultEditTime => 'Tempo (h:mm:ss)';
+
+  @override
+  String get eventResultEditStatus => 'Estado';
+
+  @override
+  String get eventResultStatusFinished => 'Terminou';
+
+  @override
+  String get eventResultStatusDnf => 'DNF';
+
+  @override
+  String get eventResultStatusDns => 'DNS';
+
+  @override
+  String get eventResultEditSave => 'Guardar resultado';
+
+  @override
+  String get eventResultEditTimeInvalid =>
+      'Introduza um tempo de chegada como 42:10 ou 1:02:03.';
+
+  @override
+  String eventResultActionFailed(String error) {
+    return 'Não foi possível atualizar o resultado: $error';
+  }
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -29510,9 +29573,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get eventResultsOtherCourse => 'Outros resultados';
 
   @override
-  String get eventFinishMethodAuto => 'Automático';
-
-  @override
   String get eventFinishMethodManual => 'Manual';
 
   @override
@@ -29653,4 +29713,70 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get infoTipReadGuide => 'Ler o guia';
+
+  @override
+  String eventRaceEndConfirmBodyDnf(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Encerrar a corrida? $count corredores que largaram estão sem resultado e serão marcados como DNF. Isso não pode ser desfeito.',
+      one:
+          'Encerrar a corrida? $count corredor que largou está sem resultado e será marcado como DNF. Isso não pode ser desfeito.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get eventResultPending => 'Pendente';
+
+  @override
+  String eventResultActions(String name) {
+    return 'Ações do resultado de $name';
+  }
+
+  @override
+  String get eventResultApprove => 'Aprovar';
+
+  @override
+  String get eventResultUnverify => 'Remover verificação';
+
+  @override
+  String get eventResultEdit => 'Editar';
+
+  @override
+  String eventResultEditTitle(String name) {
+    return 'Editar resultado: $name';
+  }
+
+  @override
+  String get eventResultEditHelp =>
+      'Sua edição substitui este tempo na classificação e fica marcada como editada pelo organizador.';
+
+  @override
+  String get eventResultEditTime => 'Tempo (h:mm:ss)';
+
+  @override
+  String get eventResultEditStatus => 'Status';
+
+  @override
+  String get eventResultStatusFinished => 'Concluiu';
+
+  @override
+  String get eventResultStatusDnf => 'DNF';
+
+  @override
+  String get eventResultStatusDns => 'DNS';
+
+  @override
+  String get eventResultEditSave => 'Salvar resultado';
+
+  @override
+  String get eventResultEditTimeInvalid =>
+      'Digite um tempo de chegada como 42:10 ou 1:02:03.';
+
+  @override
+  String eventResultActionFailed(String error) {
+    return 'Não foi possível atualizar o resultado: $error';
+  }
 }

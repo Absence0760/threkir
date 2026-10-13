@@ -338,6 +338,9 @@ class RecentRunRow {
 /// newly inserted finishers that the server-side rerank trigger hasn't
 /// caught up on — UIs render null as an em-dash.
 class EventResultView {
+  /// The `event_results` row id: how an organiser approves a bib-only row
+  /// or edits any row.
+  final String id;
   // Null for bib-only finishers imported from a chip-timing CSV (persona
   // #43) — those carry [bib] + [finisherName] instead of an account.
   final String? userId;
@@ -362,6 +365,7 @@ class EventResultView {
   final String? finishMethod;
 
   const EventResultView({
+    required this.id,
     required this.userId,
     this.bib,
     this.finisherName,
@@ -380,6 +384,32 @@ class EventResultView {
     this.chipTimeS,
     this.finishMethod,
   });
+}
+
+/// The `race_sessions` update that ends a race. Only `finished` stamps
+/// `finished_at`: the temporal CHECK requires it null on `cancelled`
+/// (cancelling is pre-start), so a cancel that stamped it was refused.
+/// Mirrors web's `endRace`.
+Map<String, dynamic> raceEndPatch(String status, DateTime now) {
+  final at = now.toUtc().toIso8601String();
+  return {
+    RaceSessionRow.colStatus: status,
+    if (status == 'finished') RaceSessionRow.colFinishedAt: at,
+    RaceSessionRow.colUpdatedAt: at,
+  };
+}
+
+/// The columns an organiser's time edit writes, as web's `hostTimeEditPatch`
+/// writes them. `duration_s` is the ranked time; on a row that carries a gun
+/// time it IS the gun time, so the gun time moves with it and the chip time
+/// is left as measured. A row with no gun time keeps none: an edit is not a
+/// gun reading.
+Map<String, dynamic> hostTimeEditPatch(int durationS, int? priorGunTimeS) {
+  final d = durationS < 0 ? 0 : durationS;
+  return {
+    'duration_s': d,
+    if (priorGunTimeS != null) 'gun_time_s': d,
+  };
 }
 
 /// A charity fundraiser attached to a run or event (fundraising.md). Mobile is
@@ -1594,7 +1624,7 @@ class SocialService extends ChangeNotifier {
     final rows = await _c
         .from('event_results_redacted')
         .select(
-          'user_id, bib, finisher_name, run_id, duration_s, distance_m, '
+          'id, user_id, bib, finisher_name, run_id, duration_s, distance_m, '
           'rank, finisher_status, age_grade_pct, note, created_at, '
           'organiser_approved, course_id, gun_time_s, chip_time_s, '
           'finish_method',
@@ -1624,6 +1654,7 @@ class SocialService extends ChangeNotifier {
     return [
       for (final r in results)
         EventResultView(
+          id: r['id'] as String,
           userId: r['user_id'] as String?,
           bib: r['bib'] as String?,
           finisherName: r['finisher_name'] as String?,
@@ -1803,30 +1834,100 @@ class SocialService extends ChangeNotifier {
     return RaceSessionRow.fromJson(row);
   }
 
-  /// Flip the session to a terminal state — `finished` (happy path) or
-  /// `cancelled` (stopped the race before it began or mid-run for
-  /// weather / safety). In both cases the banner on participants'
-  /// watches clears.
+  /// Flip the session to a terminal state — `finished` (End, from
+  /// running) or `cancelled` (from armed only: the server refuses running →
+  /// cancelled, so a race that has started can only be ended). In both
+  /// cases the banner on participants' watches clears.
   Future<RaceSessionRow> endRace({
     required String eventId,
     required DateTime instance,
     String status = 'finished',
   }) async {
     if (_uid == null) throw Exception('Not authenticated');
-    final now = DateTime.now().toUtc().toIso8601String();
     final row = await _c
         .from(RaceSessionRow.table)
-        .update({
-          RaceSessionRow.colStatus: status,
-          RaceSessionRow.colFinishedAt: now,
-          RaceSessionRow.colUpdatedAt: now,
-        })
+        .update(raceEndPatch(status, DateTime.now()))
         .eq(RaceSessionRow.colEventId, eventId)
         .eq(RaceSessionRow.colInstanceStart, instanceStartKey(instance))
         .select()
         .single();
     notifyListeners();
     return RaceSessionRow.fromJson(row);
+  }
+
+  /// How many racers End would mark DNF: attendees who pinged the race and
+  /// filed no result (`race_pending_dnf_count`). Null when the caller is not
+  /// a race director for the event's club or the count could not be read —
+  /// the End dialog then states no figure rather than a wrong one.
+  Future<int?> fetchRaceDnfPreview(String eventId, DateTime instance) async {
+    try {
+      final n = await _c.rpc(
+        'race_pending_dnf_count',
+        params: {
+          'p_event_id': eventId,
+          'p_instance_start': instanceStartKey(instance),
+        },
+        get: true,
+      );
+      return n is num ? n.toInt() : null;
+    } catch (e) {
+      debugPrint('[SocialService.fetchRaceDnfPreview] ${safeErrorLabel(e)}');
+      return null;
+    }
+  }
+
+  /// Approve or unverify an account runner's result. Mirrors web's
+  /// `approveEventResult`; the RPC checks the caller is a race director.
+  Future<void> approveEventResult({
+    required String eventId,
+    required DateTime instance,
+    required String userId,
+    required bool approve,
+  }) async {
+    await _c.rpc('approve_event_result', params: {
+      'p_event_id': eventId,
+      'p_instance_start': instanceStartKey(instance),
+      'p_user_id': userId,
+      'p_approve': approve,
+    });
+    notifyListeners();
+  }
+
+  /// Approve or unverify a bib-only result, which has no account for
+  /// [approveEventResult] to key on. Mirrors web's `approveEventResultById`:
+  /// constrained to null-user rows, gated by the director update policy.
+  Future<void> approveEventResultById(String resultId, bool approve) async {
+    final directorId = _uid;
+    if (directorId == null) throw Exception('Not authenticated');
+    final now = DateTime.now().toUtc().toIso8601String();
+    await _c
+        .from('event_results')
+        .update({
+          'organiser_approved': approve,
+          'organiser_approved_by': directorId,
+          'organiser_approved_at': now,
+          'updated_at': now,
+        })
+        .eq('id', resultId)
+        .isFilter('user_id', null);
+    notifyListeners();
+  }
+
+  /// An organiser's edit of one result's time and status. Mirrors web's
+  /// `editEventResultAsHost`; the `event_results_race_guard` trigger stamps
+  /// `finish_method = 'host'` because the editor is not the runner.
+  Future<void> editEventResultAsHost({
+    required String resultId,
+    required int durationS,
+    required int? priorGunTimeS,
+    required String finisherStatus,
+  }) async {
+    await _c.from('event_results').update({
+      ...hostTimeEditPatch(durationS, priorGunTimeS),
+      'finisher_status': finisherStatus,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    }).eq('id', resultId);
+    notifyListeners();
   }
 
   /// Recent runs for the current user, newest first. Used by the Submit

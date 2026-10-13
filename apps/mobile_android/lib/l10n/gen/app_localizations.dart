@@ -24279,12 +24279,6 @@ abstract class AppLocalizations {
   /// **'Other results'**
   String get eventResultsOtherCourse;
 
-  /// Badge on a race result recorded automatically at the finish line
-  ///
-  /// In en, this message translates to:
-  /// **'Auto'**
-  String get eventFinishMethodAuto;
-
   /// Badge on a race result the runner recorded by pressing Finish race
   ///
   /// In en, this message translates to:
@@ -24560,6 +24554,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Read the guide'**
   String get infoTipReadGuide;
+
+  /// End-race confirmation when some racers who started have no result and End will mark them DNF
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{End the race? {count} racer who started has no result and will be marked DNF. This can\'t be undone.} other{End the race? {count} racers who started have no result and will be marked DNF. This can\'t be undone.}}'**
+  String eventRaceEndConfirmBodyDnf(int count);
+
+  /// Pill on a race result the race director has not approved yet; it holds no place
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get eventResultPending;
+
+  /// Tooltip / screen-reader label of a race director's per-result actions menu
+  ///
+  /// In en, this message translates to:
+  /// **'Result actions for {name}'**
+  String eventResultActions(String name);
+
+  /// Race director action publishing a pending result
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get eventResultApprove;
+
+  /// Race director action putting an approved result back into pending
+  ///
+  /// In en, this message translates to:
+  /// **'Unverify'**
+  String get eventResultUnverify;
+
+  /// Race director action opening the result edit dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get eventResultEdit;
+
+  /// Title of the race director's result edit dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Edit result: {name}'**
+  String eventResultEditTitle(String name);
+
+  /// Explanation in the result edit dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Your edit replaces this time on the leaderboard and is marked as host edited.'**
+  String get eventResultEditHelp;
+
+  /// Label of the finish time field in the result edit dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Time (h:mm:ss)'**
+  String get eventResultEditTime;
+
+  /// Label of the status picker in the result edit dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get eventResultEditStatus;
+
+  /// Result status option: finished
+  ///
+  /// In en, this message translates to:
+  /// **'Finished'**
+  String get eventResultStatusFinished;
+
+  /// Result status option: did not finish
+  ///
+  /// In en, this message translates to:
+  /// **'DNF'**
+  String get eventResultStatusDnf;
+
+  /// Result status option: did not start
+  ///
+  /// In en, this message translates to:
+  /// **'DNS'**
+  String get eventResultStatusDns;
+
+  /// Save button of the result edit dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Save result'**
+  String get eventResultEditSave;
+
+  /// Error under the time field when a finished result has no valid time
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a finish time like 42:10 or 1:02:03.'**
+  String get eventResultEditTimeInvalid;
+
+  /// Banner when approving, unverifying or editing a result fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the result: {error}'**
+  String eventResultActionFailed(String error);
 }
 
 class _AppLocalizationsDelegate

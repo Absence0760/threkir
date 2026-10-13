@@ -2,7 +2,7 @@
 -- Persona-hunt Round 2 finding Pro #5.
 
 begin;
-select plan(10);
+select plan(11);
 
 -- Seed: a club + event so race_sessions FK to a real event row.
 do $$
@@ -137,5 +137,25 @@ update race_sessions
   where event_id = '99999999-9999-9999-9999-9999accec0e1'
     and instance_start = '2026-04-15 13:00:00+00';
 select pass('armed → cancelled without finished_at is accepted');
+
+-- 11. running → cancelled must fail: a race that has started is ended,
+-- not cancelled. Web and the phone offer Cancel only while armed
+-- (decisions § R7RACE-3); this is the rule they rely on.
+insert into race_sessions (event_id, instance_start, status)
+values ('99999999-9999-9999-9999-9999accec0e1',
+        '2026-04-15 14:00:00+00', 'armed');
+update race_sessions
+  set status = 'running', started_at = '2026-04-15 14:00:00+00'
+  where event_id = '99999999-9999-9999-9999-9999accec0e1'
+    and instance_start = '2026-04-15 14:00:00+00';
+select throws_ok(
+  $$update race_sessions
+    set status = 'cancelled'
+    where event_id = '99999999-9999-9999-9999-9999accec0e1'
+      and instance_start = '2026-04-15 14:00:00+00'$$,
+  '23514',
+  null,
+  'running → cancelled is refused (transition graph)'
+);
 
 rollback;

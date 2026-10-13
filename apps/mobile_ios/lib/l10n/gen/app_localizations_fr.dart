@@ -14721,9 +14721,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get eventResultsOtherCourse => 'Autres résultats';
 
   @override
-  String get eventFinishMethodAuto => 'Auto';
-
-  @override
   String get eventFinishMethodManual => 'Manuel';
 
   @override
@@ -14865,4 +14862,70 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get infoTipReadGuide => 'Lire le guide';
+
+  @override
+  String eventRaceEndConfirmBodyDnf(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Terminer la course ? $count coureurs partis n\'ont pas de résultat et seront marqués DNF. Cette action est irréversible.',
+      one:
+          'Terminer la course ? $count coureur parti n\'a pas de résultat et sera marqué DNF. Cette action est irréversible.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get eventResultPending => 'En attente';
+
+  @override
+  String eventResultActions(String name) {
+    return 'Actions sur le résultat de $name';
+  }
+
+  @override
+  String get eventResultApprove => 'Approuver';
+
+  @override
+  String get eventResultUnverify => 'Retirer la validation';
+
+  @override
+  String get eventResultEdit => 'Modifier';
+
+  @override
+  String eventResultEditTitle(String name) {
+    return 'Modifier le résultat : $name';
+  }
+
+  @override
+  String get eventResultEditHelp =>
+      'Ta modification remplace ce temps au classement et est marquée comme modifiée par l\'organisateur.';
+
+  @override
+  String get eventResultEditTime => 'Temps (h:mm:ss)';
+
+  @override
+  String get eventResultEditStatus => 'Statut';
+
+  @override
+  String get eventResultStatusFinished => 'Arrivé';
+
+  @override
+  String get eventResultStatusDnf => 'DNF';
+
+  @override
+  String get eventResultStatusDns => 'DNS';
+
+  @override
+  String get eventResultEditSave => 'Enregistrer le résultat';
+
+  @override
+  String get eventResultEditTimeInvalid =>
+      'Saisis un temps d\'arrivée comme 42:10 ou 1:02:03.';
+
+  @override
+  String eventResultActionFailed(String error) {
+    return 'Impossible de mettre à jour le résultat : $error';
+  }
 }

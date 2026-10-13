@@ -14540,9 +14540,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get eventResultsOtherCourse => 'Other results';
 
   @override
-  String get eventFinishMethodAuto => 'Auto';
-
-  @override
   String get eventFinishMethodManual => 'Manual';
 
   @override
@@ -14682,4 +14679,70 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get infoTipReadGuide => 'Read the guide';
+
+  @override
+  String eventRaceEndConfirmBodyDnf(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'End the race? $count racers who started have no result and will be marked DNF. This can\'t be undone.',
+      one:
+          'End the race? $count racer who started has no result and will be marked DNF. This can\'t be undone.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get eventResultPending => 'Pending';
+
+  @override
+  String eventResultActions(String name) {
+    return 'Result actions for $name';
+  }
+
+  @override
+  String get eventResultApprove => 'Approve';
+
+  @override
+  String get eventResultUnverify => 'Unverify';
+
+  @override
+  String get eventResultEdit => 'Edit';
+
+  @override
+  String eventResultEditTitle(String name) {
+    return 'Edit result: $name';
+  }
+
+  @override
+  String get eventResultEditHelp =>
+      'Your edit replaces this time on the leaderboard and is marked as host edited.';
+
+  @override
+  String get eventResultEditTime => 'Time (h:mm:ss)';
+
+  @override
+  String get eventResultEditStatus => 'Status';
+
+  @override
+  String get eventResultStatusFinished => 'Finished';
+
+  @override
+  String get eventResultStatusDnf => 'DNF';
+
+  @override
+  String get eventResultStatusDns => 'DNS';
+
+  @override
+  String get eventResultEditSave => 'Save result';
+
+  @override
+  String get eventResultEditTimeInvalid =>
+      'Enter a finish time like 42:10 or 1:02:03.';
+
+  @override
+  String eventResultActionFailed(String error) {
+    return 'Couldn\'t update the result: $error';
+  }
 }

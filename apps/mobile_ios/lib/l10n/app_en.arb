@@ -18684,10 +18684,6 @@
   "@eventResultsOtherCourse": {
     "description": "Group heading for race results not tied to any of the event's courses"
   },
-  "eventFinishMethodAuto": "Auto",
-  "@eventFinishMethodAuto": {
-    "description": "Badge on a race result recorded automatically at the finish line"
-  },
   "eventFinishMethodManual": "Manual",
   "@eventFinishMethodManual": {
     "description": "Badge on a race result the runner recorded by pressing Finish race"
@@ -18872,5 +18868,89 @@
   "infoTipReadGuide": "Read the guide",
   "@infoTipReadGuide": {
     "description": "Action in an info dialog opening the full guide"
+  },
+  "eventRaceEndConfirmBodyDnf": "{count, plural, one{End the race? {count} racer who started has no result and will be marked DNF. This can't be undone.} other{End the race? {count} racers who started have no result and will be marked DNF. This can't be undone.}}",
+  "@eventRaceEndConfirmBodyDnf": {
+    "description": "End-race confirmation when some racers who started have no result and End will mark them DNF",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventResultPending": "Pending",
+  "@eventResultPending": {
+    "description": "Pill on a race result the race director has not approved yet; it holds no place"
+  },
+  "eventResultActions": "Result actions for {name}",
+  "@eventResultActions": {
+    "description": "Tooltip / screen-reader label of a race director's per-result actions menu",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "eventResultApprove": "Approve",
+  "@eventResultApprove": {
+    "description": "Race director action publishing a pending result"
+  },
+  "eventResultUnverify": "Unverify",
+  "@eventResultUnverify": {
+    "description": "Race director action putting an approved result back into pending"
+  },
+  "eventResultEdit": "Edit",
+  "@eventResultEdit": {
+    "description": "Race director action opening the result edit dialog"
+  },
+  "eventResultEditTitle": "Edit result: {name}",
+  "@eventResultEditTitle": {
+    "description": "Title of the race director's result edit dialog",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "eventResultEditHelp": "Your edit replaces this time on the leaderboard and is marked as host edited.",
+  "@eventResultEditHelp": {
+    "description": "Explanation in the result edit dialog"
+  },
+  "eventResultEditTime": "Time (h:mm:ss)",
+  "@eventResultEditTime": {
+    "description": "Label of the finish time field in the result edit dialog"
+  },
+  "eventResultEditStatus": "Status",
+  "@eventResultEditStatus": {
+    "description": "Label of the status picker in the result edit dialog"
+  },
+  "eventResultStatusFinished": "Finished",
+  "@eventResultStatusFinished": {
+    "description": "Result status option: finished"
+  },
+  "eventResultStatusDnf": "DNF",
+  "@eventResultStatusDnf": {
+    "description": "Result status option: did not finish"
+  },
+  "eventResultStatusDns": "DNS",
+  "@eventResultStatusDns": {
+    "description": "Result status option: did not start"
+  },
+  "eventResultEditSave": "Save result",
+  "@eventResultEditSave": {
+    "description": "Save button of the result edit dialog"
+  },
+  "eventResultEditTimeInvalid": "Enter a finish time like 42:10 or 1:02:03.",
+  "@eventResultEditTimeInvalid": {
+    "description": "Error under the time field when a finished result has no valid time"
+  },
+  "eventResultActionFailed": "Couldn't update the result: {error}",
+  "@eventResultActionFailed": {
+    "description": "Banner when approving, unverifying or editing a result fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
   }
 }

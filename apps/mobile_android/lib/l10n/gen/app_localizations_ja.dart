@@ -14004,9 +14004,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get eventResultsOtherCourse => 'その他の結果';
 
   @override
-  String get eventFinishMethodAuto => '自動';
-
-  @override
   String get eventFinishMethodManual => '手動';
 
   @override
@@ -14145,4 +14142,67 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get infoTipReadGuide => 'ガイドを読む';
+
+  @override
+  String eventRaceEndConfirmBodyDnf(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'レースを終了しますか？スタートしたものの結果がない $count 人のランナーは DNF になります。元に戻せません。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get eventResultPending => '保留中';
+
+  @override
+  String eventResultActions(String name) {
+    return '$name の結果の操作';
+  }
+
+  @override
+  String get eventResultApprove => '承認';
+
+  @override
+  String get eventResultUnverify => '検証を解除';
+
+  @override
+  String get eventResultEdit => '編集';
+
+  @override
+  String eventResultEditTitle(String name) {
+    return '結果を編集: $name';
+  }
+
+  @override
+  String get eventResultEditHelp =>
+      '編集した内容でリーダーボードのタイムが置き換わり、主催者による編集として表示されます。';
+
+  @override
+  String get eventResultEditTime => 'タイム (h:mm:ss)';
+
+  @override
+  String get eventResultEditStatus => 'ステータス';
+
+  @override
+  String get eventResultStatusFinished => '完走';
+
+  @override
+  String get eventResultStatusDnf => 'DNF';
+
+  @override
+  String get eventResultStatusDns => 'DNS';
+
+  @override
+  String get eventResultEditSave => '結果を保存';
+
+  @override
+  String get eventResultEditTimeInvalid =>
+      '42:10 や 1:02:03 のようにフィニッシュタイムを入力してください。';
+
+  @override
+  String eventResultActionFailed(String error) {
+    return '結果を更新できませんでした: $error';
+  }
 }

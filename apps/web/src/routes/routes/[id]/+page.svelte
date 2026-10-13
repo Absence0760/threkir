@@ -410,6 +410,12 @@
 			shareCopied = false;
 			return;
 		}
+		if (!route.is_public && isOwner && audienceSharingOn) {
+			// Share asks who should see the route; public is one answer of
+			// four, never a side effect of the button.
+			showAudience = true;
+			return;
+		}
 		if (!route.is_public) {
 			showShareConfirm = true;
 			return;

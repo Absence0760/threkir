@@ -8,6 +8,7 @@ import {
 } from '../fixtures/saga-users';
 import { deleteRun, deleteRoute, insertRun, insertRoute } from '../fixtures/simulate';
 import { readRows } from '../fixtures/db-read';
+import { shareChoosingPublic } from '../fixtures/share';
 
 /**
  * Single-run ENRICHMENT lifecycle — the arc a GPS-recorded run takes
@@ -357,7 +358,7 @@ test.describe('single-run enrichment journey', () => {
 							writeText: () => Promise.resolve(),
 						};
 					});
-					await page.locator('button[title="Share link"]').click();
+					await shareChoosingPublic(page, page.getByTestId('run-share-btn'));
 					const shareDialog = page.locator('.modal', {
 						hasText: 'Make this run public?',
 					});

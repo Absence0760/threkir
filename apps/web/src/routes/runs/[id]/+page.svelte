@@ -725,6 +725,12 @@
 			}
 			return;
 		}
+		if (audienceSharingOn) {
+			// Share asks who should see the run; public is one answer of four,
+			// never a side effect of the button.
+			showAudience = true;
+			return;
+		}
 		await requestMakePublic();
 	}
 
@@ -1776,14 +1782,19 @@
 								? m('runDetail.copyShareLink')
 								: audienceSharingOn && audienceLevel !== 'private'
 									? m('audience.copyLink')
-									: m('runDetail.makePublicCopyLink')}
+									: audienceSharingOn
+										? m('audience.button')
+										: m('runDetail.makePublicCopyLink')}
 							title={run.is_public
 								? m('runDetail.copyShareLink')
 								: audienceSharingOn && audienceLevel !== 'private'
 									? m('audience.copyLink')
-									: m('runDetail.shareLink')}
+									: audienceSharingOn
+										? m('audience.button')
+										: m('runDetail.shareLink')}
 							onclick={handleShare}
 							disabled={shareBusy}
+							data-testid="run-share-btn"
 						>
 							<span class="material-symbols">share</span>
 						</button>

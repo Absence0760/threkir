@@ -11,6 +11,7 @@ import {
 	setUserSetting,
 	clearUserSettingKey,
 } from '../fixtures/simulate';
+import { shareChoosingPublic } from '../fixtures/share';
 
 /**
  * Run-LEVEL visibility (public / private) propagation across surfaces.
@@ -244,10 +245,8 @@ test.describe('run visibility (public/private) propagation across surfaces', () 
 				const chip = page.locator('.visibility-chip');
 				await expect(chip).toBeVisible({ timeout: 10_000 });
 				await expect(chip).toContainText('Private');
-				// Share button on a private run opens the make-public confirm.
-				await page
-					.getByRole('button', { name: 'Make public and copy share link' })
-					.click();
+				// Share on a private run asks who can see it; Public opens the make-public confirm.
+				await shareChoosingPublic(page, page.getByTestId('run-share-btn'));
 				const dialog = page.getByTestId('share-confirm-dialog');
 				await expect(dialog).toBeVisible({ timeout: 10_000 });
 				await dialog.getByRole('button', { name: 'Make public & copy link' }).click();

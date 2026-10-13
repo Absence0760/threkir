@@ -4,6 +4,7 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_ROUTE_ID } from '../fixtures/seeded-data';
 import { USER_A } from '../fixtures/users';
 import { readRow } from '../fixtures/db-read';
+import { shareChoosingPublic } from '../fixtures/share';
 
 /**
  * /routes/[id] — owner-only route detail page.
@@ -74,7 +75,7 @@ test.describe('/routes/[id]', () => {
 		const shareBtn = page.getByRole('button', { name: 'Share', exact: true });
 
 		// First Share click opens the confirm — it must NOT flip the route yet.
-		await shareBtn.click();
+		await shareChoosingPublic(page, shareBtn);
 		await expect(dialog).toBeVisible();
 		await expect(shareBar).toBeHidden();
 
@@ -95,7 +96,7 @@ test.describe('/routes/[id]', () => {
 		}
 
 		// Confirm flips it public, discloses the flip, and reveals the link.
-		await shareBtn.click();
+		await shareChoosingPublic(page, shareBtn);
 		await expect(dialog).toBeVisible();
 		await dialog.getByRole('button', { name: 'Make public & share' }).click();
 		await expect(

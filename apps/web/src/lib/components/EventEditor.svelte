@@ -511,7 +511,11 @@
 				recurrence_freq: recurrenceFreq,
 				recurrence_byday:
 					recurrenceFreq && recurrenceFreq !== 'monthly' && byday.length > 0 ? byday : null,
-				recurrence_until: recurrenceFreq && until ? new Date(until).toISOString() : null,
+				// The end date is inclusive: the series runs to the END of that
+				// local day. `new Date('YYYY-MM-DD')` is UTC midnight, which put the
+				// last day's own occurrence past the end and dropped it.
+				recurrence_until:
+					recurrenceFreq && until ? new Date(`${until}T23:59:59`).toISOString() : null,
 				recurrence_count:
 					recurrenceFreq && count && count > 0 ? Math.floor(count) : null,
 				// In a private club every event is members-only regardless, so the

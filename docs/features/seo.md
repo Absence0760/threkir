@@ -43,6 +43,7 @@ indexed anyway).
 | `/runs/[id]`, `/routes/[id]`, `/u/[id]`, `/races` | CSR (app shell) | generic shell + canonical | — (auth-gated) |
 | `/segments` | CSR (app shell, **anon-reachable**) | inline `<svelte:head>` title | — (in the sitemap; see below) |
 | `/segments/[id]` | CSR (app shell) | generic shell | — (auth-gated, NOT in the sitemap) |
+| `/help`, `/help/[id]`, `/help/search` | CSR (app shell, **anon-reachable**) | inline `<svelte:head>` title + `noindex` | — (`Disallow: /help`, not in the sitemap; decisions § 1866) |
 | `/clubs/[slug]`, `/clubs/[slug]/events/[id]`, `/events/[id]`, `/live/[id]`, `/recap/[year]` | CSR (app shell) | generic shell + canonical | — (anon-reachable, shell-only) |
 | dashboard / feed / settings / … | CSR (app shell) | generic shell | — (auth-gated) |
 

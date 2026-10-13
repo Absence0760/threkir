@@ -48,6 +48,7 @@ import {
   checkoutExpiresAtUnix,
   checkoutIdempotencyKey,
   computeApplicationFeeCents,
+  isPastSeriesEnd,
   isSalesWindowOpen,
   type PendingOrderRow,
   reservationExpiry,
@@ -160,7 +161,7 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
   // event id.
   const { data: event, error: eventErr } = await service
     .from('events')
-    .select('host_user_id, capacity, title')
+    .select('host_user_id, capacity, title, recurrence_until')
     .eq('id', eventId)
     .maybeSingle();
   if (eventErr || !event) {
@@ -213,6 +214,9 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
     .eq('instance_start', instanceStart)
     .maybeSingle();
   if (exception) {
+    return Response.json({ error: 'instance_cancelled' }, { status: 409 });
+  }
+  if (isPastSeriesEnd(event.recurrence_until, Date.parse(instanceStart))) {
     return Response.json({ error: 'instance_cancelled' }, { status: 409 });
   }
 

@@ -390,5 +390,6 @@ Rare, but if it happens (usually for ToS violations the team didn't realise appl
 - [ ] BACKGROUND_LOCATION prominent in-app disclosure on OnboardingScreen verified
 - [ ] First `mobile_android@*` tag built clean, AAB landed on Internal track
 - [ ] Internal smoke test passed (sign-in, record a run, view in history, sync to backend)
+- [ ] Club invite App Link verified (§ 1865): serve `https://threkir.com/.well-known/assetlinks.json` naming `com.threkir.app` and the **Play app-signing** SHA-256 fingerprint (Play Console → App integrity), then on a device run `adb shell pm get-app-links com.threkir.app` and confirm `threkir.com: verified`; tapping a `/clubs/join/<token>` link in a chat app should open the invite screen, not the browser. Also confirm the sign-up email's `com.threkir.app://login-callback` still completes sign-in now that Flutter's own deep-link routing is off
 - [ ] Sentry receiving events from a debug build
 - [ ] [`docs/product/parity.md`](../../docs/product/parity.md) Android column updated when promotion to Production happens

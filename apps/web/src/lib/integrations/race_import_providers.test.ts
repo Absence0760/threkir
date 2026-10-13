@@ -92,7 +92,7 @@ test('every credential-gated leg the Edge Function ships has a row here', () => 
 	// runsignup alone, so provisioning either credential lit up a Settings card
 	// linking to a page where the built leg could not be reached.
 	const source = readFileSync(
-		join(REPO_ROOT, 'apps/backend/supabase/functions/race-results-import/index.ts'),
+		join(REPO_ROOT, 'apps/backend/supabase/functions/race-results-import/handler.ts'),
 		'utf-8'
 	);
 	// The bare local, not `body.provider` — `typeof body.provider === 'string'`
@@ -100,7 +100,7 @@ test('every credential-gated leg the Edge Function ships has a row here', () => 
 	const named = new Set(
 		[...source.matchAll(/(?<![.\w])provider === '([a-z]+)'/g)].map((match) => match[1])
 	);
-	assert.ok(named.size > 0, 'read no provider dispatch out of race-results-import/index.ts');
+	assert.ok(named.size > 0, 'read no provider dispatch out of race-results-import/handler.ts');
 	named.delete('paste');
 	assert.deepEqual(
 		[...named].sort(),
@@ -117,7 +117,7 @@ test('the UltraSignup card probes the results leg, as a client that speaks the p
 	// must ask that one. It must also say it speaks the person flow: the probe
 	// keeps a client that would send the retired athlete id dark.
 	const index = readFileSync(
-		join(REPO_ROOT, 'apps/backend/supabase/functions/race-results-import/index.ts'),
+		join(REPO_ROOT, 'apps/backend/supabase/functions/race-results-import/handler.ts'),
 		'utf8'
 	);
 	const probeAt = index.indexOf('if (isProbe) {');

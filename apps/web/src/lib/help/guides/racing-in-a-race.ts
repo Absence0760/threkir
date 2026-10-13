@@ -3,7 +3,7 @@ import type { Guide } from '../types';
 export const guide: Guide = {
 	id: 'racing-in-a-race',
 	title: 'Racing in a live race',
-	summary: 'Sign up, pick your course, start recording after GO and let your phone or watch time you over the finish line.',
+	summary: 'Sign up, pick your course, start recording on the line or after GO and let your phone or watch time you over the finish line.',
 	kind: 'how-to',
 	category: 'races',
 	audience: ['participant', 'runner'],
@@ -52,7 +52,7 @@ export const guide: Guide = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: "Your phone does not start recording by itself. Press Start yourself once you see **Race LIVE**. If you start your phone's recording before GO, that run is not linked to the race: it sends no live position and no result. On a Wear OS watch, a run started early is picked up once the watch sees the race go live."
+					text: "Your phone or watch does not start recording by itself: press Start yourself. You can start on the line while the race shows **Race armed**, or once you see **Race LIVE**. A recording started early joins the race at GO, on the phone and on a Wear OS watch, and your chip time then counts from GO rather than from when you pressed Start."
 				},
 				{
 					type: 'p',
@@ -127,8 +127,8 @@ export const guide: Guide = {
 					type: 'list',
 					items: [
 						'**Gun time** runs from the moment the host fired GO to your finish. It is the time you are ranked on.',
-						'**Chip time** runs from when you pressed Start to your finish, including any pauses.',
-						'If you start more than 5 minutes after GO, the phone app shows a late-start notice. Your gun time still counts from GO, so a late start makes it longer than your chip time.'
+						'**Chip time** runs from when you pressed Start to your finish, including any pauses. If you pressed Start before GO, it runs from GO, so it is never longer than your gun time.',
+						'If you start more than 5 minutes after GO, or your first position is more than 200 m from the course start, the phone app shows a late-start notice. Your gun time still counts from GO, so a late start makes it longer than your chip time.'
 					]
 				},
 				{

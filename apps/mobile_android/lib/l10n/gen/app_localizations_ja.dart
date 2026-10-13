@@ -18,13 +18,26 @@ class AppLocalizationsJa extends AppLocalizations {
   String get clubInviteTitle => 'クラブに参加';
 
   @override
-  String get clubInviteIntro => 'クラブ管理者から共有された招待コードを貼り付けてください。';
+  String get clubInviteIntro => 'クラブ管理者から共有された招待リンクまたは招待コードを貼り付けてください。';
 
   @override
   String get clubInviteCodeLabel => '招待コード';
 
   @override
   String get clubInviteJoinButton => '参加';
+
+  @override
+  String get clubWaiverTitle => '参加の前にご確認ください';
+
+  @override
+  String get clubWaiverBody =>
+      'このクラブでは、参加前にグループで走ることの身体的リスクを確認していただくようお願いしています。';
+
+  @override
+  String get clubWaiverAck => 'グループランニングの身体的リスクを理解し、自己責任で参加します。';
+
+  @override
+  String get clubWaiverAccept => '同意して参加';
 
   @override
   String recapShareHeadline(Object year) {
@@ -383,7 +396,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get importHealthDescriptionAndroid =>
-      '過去1年間のワークアウト概要（日付、距離、時間、種類）を読み込みます。GPS ルートは Health Connect から公開されないため、この方法でインポートしたランには地図のトレースがありません。';
+      '過去1年間のワークアウト概要（日付、距離、時間、種類）を読み込みます。Health Connect が Threkir に読み取りを許可している場合は、ワークアウトの GPS マップも取り込まれます。一部が保留された場合は、インポート後にマップへのアクセスを許可できます。';
 
   @override
   String importHealthRoutesWithheld(int count) {
@@ -6535,7 +6548,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsAccountImport => '別のアプリからインポート';
 
   @override
-  String get settingsAccountImportSubtitle => 'Strava、GPX、TCX';
+  String get settingsAccountImportSubtitle =>
+      'Strava のエクスポート、ヘルスケアアプリ、CSV、バックアップ';
 
   @override
   String get settingsAccountAccountExport => 'アカウントのエクスポート';
@@ -14004,9 +14018,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get eventResultsOtherCourse => 'その他の結果';
 
   @override
-  String get eventFinishMethodAuto => '自動';
-
-  @override
   String get eventFinishMethodManual => '手動';
 
   @override
@@ -14145,4 +14156,67 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get infoTipReadGuide => 'ガイドを読む';
+
+  @override
+  String eventRaceEndConfirmBodyDnf(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'レースを終了しますか？スタートしたものの結果がない $count 人のランナーは DNF になります。元に戻せません。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get eventResultPending => '保留中';
+
+  @override
+  String eventResultActions(String name) {
+    return '$name の結果の操作';
+  }
+
+  @override
+  String get eventResultApprove => '承認';
+
+  @override
+  String get eventResultUnverify => '検証を解除';
+
+  @override
+  String get eventResultEdit => '編集';
+
+  @override
+  String eventResultEditTitle(String name) {
+    return '結果を編集: $name';
+  }
+
+  @override
+  String get eventResultEditHelp =>
+      '編集した内容でリーダーボードのタイムが置き換わり、主催者による編集として表示されます。';
+
+  @override
+  String get eventResultEditTime => 'タイム (h:mm:ss)';
+
+  @override
+  String get eventResultEditStatus => 'ステータス';
+
+  @override
+  String get eventResultStatusFinished => '完走';
+
+  @override
+  String get eventResultStatusDnf => 'DNF';
+
+  @override
+  String get eventResultStatusDns => 'DNS';
+
+  @override
+  String get eventResultEditSave => '結果を保存';
+
+  @override
+  String get eventResultEditTimeInvalid =>
+      '42:10 や 1:02:03 のようにフィニッシュタイムを入力してください。';
+
+  @override
+  String eventResultActionFailed(String error) {
+    return '結果を更新できませんでした: $error';
+  }
 }

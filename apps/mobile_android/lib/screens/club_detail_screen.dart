@@ -22,6 +22,7 @@ import '../preferences.dart';
 import '../social_service.dart';
 import '../training_service.dart';
 import '../backend_timeout.dart';
+import '../widgets/activity_waiver_dialog.dart';
 import '../widgets/club_form_sheet.dart';
 import '../widgets/club_photos.dart';
 import '../widgets/collapsing_tab_host.dart';
@@ -164,9 +165,16 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
       return;
     }
     if (!mounted) return;
+    final needsWaiver = c.row.requiresActivityWaiver;
+    if (needsWaiver && !await confirmActivityWaiver(context)) return;
+    if (!mounted) return;
     setState(() => _busy = true);
     try {
-      final status = await widget.social.joinClub(c.row.id, c.joinPolicy);
+      final status = await widget.social.joinClub(
+        c.row.id,
+        c.joinPolicy,
+        ackWaiver: needsWaiver,
+      );
       if (status == 'pending' && mounted) {
         showTopBanner(
             context, AppLocalizations.of(context).clubDetailRequestSent);

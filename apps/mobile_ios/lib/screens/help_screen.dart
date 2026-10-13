@@ -120,7 +120,9 @@ class _HelpLibraryBuilderState extends State<HelpLibraryBuilder> {
               : ErrorState(
                   icon: Icons.menu_book_outlined,
                   message: l10n.helpUnavailable,
-                  onRetry: () => setState(() => _future = helpLibraryLoader()),
+                  onRetry: () => setState(() {
+                    _future = helpLibraryLoader();
+                  }),
                 ),
         );
       },
@@ -471,6 +473,7 @@ class _GuideBlockView extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Semantics(
+                      container: true,
                       label: l10n.helpStepLabel(i + 1),
                       excludeSemantics: true,
                       child: Container(

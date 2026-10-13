@@ -848,6 +848,75 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 50));
         expect(social.joinCalls, 1);
+        expect(social.acks, [false]);
+      },
+    );
+
+    Future<void> pumpWaiverClub(
+      WidgetTester tester,
+      _NonMemberSocial social,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ClubDetailScreen(
+            social: social,
+            training: _FakeTraining(),
+            apiClient: _FakeApi(const []),
+            slug: 'track-club',
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.widgetWithText(FilledButton, 'Join'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+
+    realtimeWidgetTest(
+      'a waiver club asks for the acknowledgement and joins with it',
+      (tester) async {
+        final social = _NonMemberSocial(requiresWaiver: true);
+        await pumpWaiverClub(tester, social);
+
+        final dialog = find.byType(AlertDialog);
+        expect(dialog, findsOneWidget);
+        expect(social.joinCalls, 0);
+        final accept = find.descendant(
+          of: dialog,
+          matching: find.widgetWithText(FilledButton, 'Accept and join'),
+        );
+        expect(tester.widget<FilledButton>(accept).onPressed, isNull);
+        await tester.tap(find.descendant(
+          of: dialog,
+          matching: find.byType(CheckboxListTile),
+        ));
+        await tester.pump();
+        await tester.tap(accept);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+
+        expect(social.joinCalls, 1);
+        expect(social.acks, [true]);
+      },
+    );
+
+    realtimeWidgetTest(
+      'cancelling the acknowledgement joins nothing',
+      (tester) async {
+        final social = _NonMemberSocial(requiresWaiver: true);
+        await pumpWaiverClub(tester, social);
+        await tester.tap(find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.widgetWithText(TextButton, 'Cancel'),
+        ));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+
+        expect(find.byType(AlertDialog), findsNothing);
+        expect(social.joinCalls, 0);
       },
     );
   });
@@ -960,7 +1029,7 @@ void main() {
   });
 }
 
-ClubView _nonMemberClub() => ClubView(
+ClubView _nonMemberClub({bool requiresWaiver = false}) => ClubView(
   row: ClubRow(
     shadowHidden: false,
     id: 'club-1',
@@ -971,7 +1040,7 @@ ClubView _nonMemberClub() => ClubView(
     joinPolicy: 'open',
     memberCount: 5,
     isVerified: false,
-    requiresActivityWaiver: false,
+    requiresActivityWaiver: requiresWaiver,
   ),
   memberCount: 5,
   viewerRole: null,
@@ -1049,9 +1118,14 @@ class _PostFailSocial extends SocialService {
 }
 
 class _NonMemberSocial extends SocialService {
+  _NonMemberSocial({this.requiresWaiver = false});
+
+  final bool requiresWaiver;
   int joinCalls = 0;
+  final List<bool> acks = [];
   @override
-  Future<ClubView?> fetchClubBySlug(String slug) async => _nonMemberClub();
+  Future<ClubView?> fetchClubBySlug(String slug) async =>
+      _nonMemberClub(requiresWaiver: requiresWaiver);
   @override
   Future<List<EventView>> fetchUpcomingEvents(String clubId) async => const [];
   @override
@@ -1063,8 +1137,13 @@ class _NonMemberSocial extends SocialService {
   Future<List<ClubMemberRow>> fetchPendingRequests(String clubId) async =>
       const [];
   @override
-  Future<String> joinClub(String clubId, String policy) async {
+  Future<String> joinClub(
+    String clubId,
+    String policy, {
+    bool ackWaiver = false,
+  }) async {
     joinCalls++;
+    acks.add(ackWaiver);
     return 'active';
   }
 

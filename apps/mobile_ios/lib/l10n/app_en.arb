@@ -12,7 +12,7 @@
   "@clubInviteTitle": {
     "description": "App bar title for the club-invite redemption screen"
   },
-  "clubInviteIntro": "Paste the invite code your club admin shared with you.",
+  "clubInviteIntro": "Paste the invite link or code your club admin shared with you.",
   "@clubInviteIntro": {
     "description": "Instruction text above the invite-code field"
   },
@@ -23,6 +23,22 @@
   "clubInviteJoinButton": "Join",
   "@clubInviteJoinButton": {
     "description": "Button to redeem the club invite code"
+  },
+  "clubWaiverTitle": "One thing before you join",
+  "@clubWaiverTitle": {
+    "description": "Title of the dialog asking for a club's activity-risk acknowledgement before joining"
+  },
+  "clubWaiverBody": "This club asks every member to acknowledge the physical risks of running together before joining.",
+  "@clubWaiverBody": {
+    "description": "Body of the activity-risk acknowledgement dialog"
+  },
+  "clubWaiverAck": "I understand the physical risks of group running and join at my own risk.",
+  "@clubWaiverAck": {
+    "description": "Checkbox label: the member acknowledges the physical risk of group running (same text as web clubHome.waiverAck)"
+  },
+  "clubWaiverAccept": "Accept and join",
+  "@clubWaiverAccept": {
+    "description": "Dialog button that records the acknowledgement and joins the club; enabled only once the box is ticked"
   },
   "recapShareHeadline": "My {year} in running:",
   "@recapShareHeadline": {
@@ -567,7 +583,7 @@
   "@importHealthDescriptionIos": {
     "description": "iOS body copy explaining what is imported from Apple Health and the no-track caveat"
   },
-  "importHealthDescriptionAndroid": "Reads workout summaries (date, distance, duration, type) from the last year. GPS routes are not exposed by Health Connect — runs imported this way won't have a map trace.",
+  "importHealthDescriptionAndroid": "Reads workout summaries (date, distance, duration, type) from the last year. A workout's GPS map comes too when Health Connect lets Threkir read it; if it holds some back, you can allow map access after the import.",
   "@importHealthDescriptionAndroid": {
     "description": "Android body copy explaining what is imported from Health Connect and the no-track caveat"
   },
@@ -9174,7 +9190,7 @@
   "@settingsAccountImport": {
     "description": "Tile title for importing runs"
   },
-  "settingsAccountImportSubtitle": "Strava, GPX, TCX",
+  "settingsAccountImportSubtitle": "Strava export, health app, CSV or backup",
   "@settingsAccountImportSubtitle": {
     "description": "Subtitle of the Import tile"
   },
@@ -18684,10 +18700,6 @@
   "@eventResultsOtherCourse": {
     "description": "Group heading for race results not tied to any of the event's courses"
   },
-  "eventFinishMethodAuto": "Auto",
-  "@eventFinishMethodAuto": {
-    "description": "Badge on a race result recorded automatically at the finish line"
-  },
   "eventFinishMethodManual": "Manual",
   "@eventFinishMethodManual": {
     "description": "Badge on a race result the runner recorded by pressing Finish race"
@@ -18872,5 +18884,89 @@
   "infoTipReadGuide": "Read the guide",
   "@infoTipReadGuide": {
     "description": "Action in an info dialog opening the full guide"
+  },
+  "eventRaceEndConfirmBodyDnf": "{count, plural, one{End the race? {count} racer who started has no result and will be marked DNF. This can't be undone.} other{End the race? {count} racers who started have no result and will be marked DNF. This can't be undone.}}",
+  "@eventRaceEndConfirmBodyDnf": {
+    "description": "End-race confirmation when some racers who started have no result and End will mark them DNF",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "eventResultPending": "Pending",
+  "@eventResultPending": {
+    "description": "Pill on a race result the race director has not approved yet; it holds no place"
+  },
+  "eventResultActions": "Result actions for {name}",
+  "@eventResultActions": {
+    "description": "Tooltip / screen-reader label of a race director's per-result actions menu",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "eventResultApprove": "Approve",
+  "@eventResultApprove": {
+    "description": "Race director action publishing a pending result"
+  },
+  "eventResultUnverify": "Unverify",
+  "@eventResultUnverify": {
+    "description": "Race director action putting an approved result back into pending"
+  },
+  "eventResultEdit": "Edit",
+  "@eventResultEdit": {
+    "description": "Race director action opening the result edit dialog"
+  },
+  "eventResultEditTitle": "Edit result: {name}",
+  "@eventResultEditTitle": {
+    "description": "Title of the race director's result edit dialog",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "eventResultEditHelp": "Your edit replaces this time on the leaderboard and is marked as host edited.",
+  "@eventResultEditHelp": {
+    "description": "Explanation in the result edit dialog"
+  },
+  "eventResultEditTime": "Time (h:mm:ss)",
+  "@eventResultEditTime": {
+    "description": "Label of the finish time field in the result edit dialog"
+  },
+  "eventResultEditStatus": "Status",
+  "@eventResultEditStatus": {
+    "description": "Label of the status picker in the result edit dialog"
+  },
+  "eventResultStatusFinished": "Finished",
+  "@eventResultStatusFinished": {
+    "description": "Result status option: finished"
+  },
+  "eventResultStatusDnf": "DNF",
+  "@eventResultStatusDnf": {
+    "description": "Result status option: did not finish"
+  },
+  "eventResultStatusDns": "DNS",
+  "@eventResultStatusDns": {
+    "description": "Result status option: did not start"
+  },
+  "eventResultEditSave": "Save result",
+  "@eventResultEditSave": {
+    "description": "Save button of the result edit dialog"
+  },
+  "eventResultEditTimeInvalid": "Enter a finish time like 42:10 or 1:02:03.",
+  "@eventResultEditTimeInvalid": {
+    "description": "Error under the time field when a finished result has no valid time"
+  },
+  "eventResultActionFailed": "Couldn't update the result: {error}",
+  "@eventResultActionFailed": {
+    "description": "Banner when approving, unverifying or editing a result fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
   }
 }

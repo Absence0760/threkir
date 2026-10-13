@@ -28,6 +28,7 @@
 		fetchEventById,
 		fetchEventResults,
 		fetchEventCourses,
+		fetchAttendeeCourses,
 		type RacePingRow,
 		type RaceSessionRow,
 		type EventResultWithUser
@@ -43,6 +44,7 @@
 	import {
 		finishMethodBadge,
 		groupResultsByCourse,
+		groupRunnersByCourse,
 		type EventCourse
 	} from '#lib/social/event_courses.ts';
 
@@ -56,6 +58,9 @@
 	let results = $state<EventResultWithUser[]>([]);
 	// Courses of a multi-course race: one finisher board per course.
 	let courses = $state<EventCourse[]>([]);
+	// Each runner's RSVP'd course, which splits the on-course board the way
+	// the finisher boards are split. Read only for a multi-course race.
+	let courseByUser = $state<Map<string, string>>(new Map());
 	let profiles = $state<Map<string, { display_name: string | null }>>(new Map());
 	let nowTick = $state(Date.now());
 	let loading = $state(true);
@@ -175,12 +180,25 @@
 				console.warn('live/event: courses read failed', ce);
 				courses = [];
 			}
+			courseByUser = await readCourseByUser();
 		} catch (e) {
 			// Public spectator page — a rejected fetch would otherwise hang on
 			// "Loading…" forever with no recourse. Surface it with a retry.
 			loadError = e instanceof Error ? e.message : String(e);
 		}
 		loading = false;
+	}
+
+	// A failed read keeps the split already on screen: collapsing every
+	// runner into "no course" would read as a fact about them.
+	async function readCourseByUser(): Promise<Map<string, string>> {
+		if (courses.length <= 1) return new Map();
+		try {
+			return await fetchAttendeeCourses(eventId, instance);
+		} catch (err) {
+			console.warn('live/event: attendee courses read failed', err);
+			return courseByUser;
+		}
 	}
 
 	// Privacy gate (mirrors the /live/[id] solo-page contract): a public
@@ -266,15 +284,24 @@
 	function subscribe() {
 		pingRefetcher = new CoalescingRefetcher({
 			fetch: async () => {
-				const [ps, lp] = await Promise.all([
+				// A runner who RSVPs after the page loaded joins their course
+				// board on their first ping, not on a reload.
+				const [ps, lp, byUser] = await Promise.all([
 					fetchRecentRacePings(eventId, instance),
-					fetchLatestRacePings(eventId, instance)
+					fetchLatestRacePings(eventId, instance),
+					readCourseByUser()
 				]);
-				return { recent: ps, leaders: lp, profiles: await buildProfiles(lp, results) };
+				return {
+					recent: ps,
+					leaders: lp,
+					byUser,
+					profiles: await buildProfiles(lp, results)
+				};
 			},
 			apply: (v) => {
 				recentPings = v.recent;
 				leaderPings = v.leaders;
+				courseByUser = v.byUser;
 				profiles = v.profiles;
 			},
 			onError: (err) => {
@@ -447,6 +474,7 @@
 	let finishedBoards = $derived(
 		groupResultsByCourse(finishedResults, courses).filter((b) => b.results.length > 0)
 	);
+	let onCourseBoards = $derived(groupRunnersByCourse(pings, courses, courseByUser));
 
 	function courseTitle(c: EventCourse | null): string {
 		if (!c) return m('liveEvent.noCourse');
@@ -696,8 +724,12 @@
 						<p>{m('liveEvent.noLiveData')}</p>
 					</div>
 				{:else}
-					<ol class="runners">
-						{#each pings as p, i (p.user_id)}
+					{#each onCourseBoards as board (board.course?.id ?? 'none')}
+					{#if courses.length > 1}
+						<h3 class="course-title" data-testid="live-oncourse-title">{courseTitle(board.course)}</h3>
+					{/if}
+					<ol class="runners" data-testid="live-oncourse-board">
+						{#each board.results as p, i (p.user_id)}
 							{@const fresh = freshnessFor_(p)}
 							<li class="runner" class:stale={fresh.stale} class:coarse={p.coarse}>
 								<span class="pos">{i + 1}</span>
@@ -727,6 +759,7 @@
 							</li>
 						{/each}
 					</ol>
+					{/each}
 				{/if}
 			</section>
 

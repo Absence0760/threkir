@@ -12,7 +12,7 @@
 /// root, so a rule changes there or nowhere.
 library;
 
-import 'dart:math' as math;
+import 'run_stats.dart' show haversineMetres;
 
 /// A fix within this distance of the course's last point can be the finish.
 const double kRaceFinishZoneM = 30;
@@ -29,18 +29,9 @@ const Duration kRaceLateStartAfter = Duration(minutes: 5);
 /// A first fix this far from the course start is flagged as a late start.
 const double kRaceLateStartFarM = 200;
 
-const double _earthRadiusM = 6371000;
-
 /// Great-circle distance in metres.
-double raceDistanceM(double lat1, double lng1, double lat2, double lng2) {
-  final p1 = lat1 * math.pi / 180;
-  final p2 = lat2 * math.pi / 180;
-  final dp = (lat2 - lat1) * math.pi / 180;
-  final dl = (lng2 - lng1) * math.pi / 180;
-  final a = math.sin(dp / 2) * math.sin(dp / 2) +
-      math.cos(p1) * math.cos(p2) * math.sin(dl / 2) * math.sin(dl / 2);
-  return 2 * _earthRadiusM * math.atan2(math.sqrt(a), math.sqrt(1 - a));
-}
+double raceDistanceM(double lat1, double lng1, double lat2, double lng2) =>
+    haversineMetres(lat1, lng1, lat2, lng2);
 
 /// One GPS fix as the detector sees it: where, when (device clock), and how
 /// far the recording had covered at that moment.
@@ -303,7 +294,10 @@ class RaceResultTiming {
 ///
 /// A finish carries the gun time (when the race had a GO) and the chip time
 /// (when the recording's Start is known), and `duration_s` is the first of
-/// gun, chip and [elapsedS] that exists. A DNF has no finish instant, so it
+/// gun, chip and [elapsedS] that exists. The chip time never exceeds the gun
+/// time: a recording started while the race was armed joins it at GO, and
+/// the wait on the line before GO is no part of the runner's race
+/// (decisions § 1861). A DNF has no finish instant, so it
 /// carries neither time and `duration_s` is [elapsedS] — the recording's own
 /// elapsed seconds, the quantity its race pings carry and so the one the
 /// server writes on a host-filed DNF (decisions § 1855).
@@ -323,9 +317,11 @@ RaceResultTiming raceResultTiming({
       : raceGunTimeS(
           finishAtDevice: finishAt, gunAt: gunAt, clockOffset: clockOffset);
   final began = recordingStartedAt;
-  final chip = began == null
+  final fromStart = began == null
       ? null
       : raceChipTimeS(finishAtDevice: finishAt, recordingStartedAt: began);
+  final chip =
+      gun != null && fromStart != null && fromStart > gun ? gun : fromStart;
   return RaceResultTiming(
     durationS: gun ?? chip ?? elapsedS,
     gunTimeS: gun,

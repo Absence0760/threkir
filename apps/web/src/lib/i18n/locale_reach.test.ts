@@ -903,6 +903,9 @@ const INTERPOLATED_CAPITAL_EXEMPT: Record<string, string> = {
 	"coachingAthlete.runnerFallback":
 		"stands in for a person's display name. What normally lands in that slot is " +
 		"`Alice`, so the stand-in takes a name's case, not the sentence's.",
+	"clubEvent.runnerFallback":
+		"stands in for a racer's display name in a result row and in `Edit result: " +
+		"{name}`, where the slot normally holds `Alice`, so it takes a name's case.",
 	"liveEvent.eventFallback":
 		"stands in for an event's title, the same way — the slot normally holds " +
 		"whatever the organiser typed, which is capitalised.",

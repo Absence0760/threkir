@@ -128,7 +128,7 @@ abstract class AppLocalizations {
   /// Instruction text above the invite-code field
   ///
   /// In en, this message translates to:
-  /// **'Paste the invite code your club admin shared with you.'**
+  /// **'Paste the invite link or code your club admin shared with you.'**
   String get clubInviteIntro;
 
   /// Text field label for the club invite code
@@ -142,6 +142,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Join'**
   String get clubInviteJoinButton;
+
+  /// Title of the dialog asking for a club's activity-risk acknowledgement before joining
+  ///
+  /// In en, this message translates to:
+  /// **'One thing before you join'**
+  String get clubWaiverTitle;
+
+  /// Body of the activity-risk acknowledgement dialog
+  ///
+  /// In en, this message translates to:
+  /// **'This club asks every member to acknowledge the physical risks of running together before joining.'**
+  String get clubWaiverBody;
+
+  /// Checkbox label: the member acknowledges the physical risk of group running (same text as web clubHome.waiverAck)
+  ///
+  /// In en, this message translates to:
+  /// **'I understand the physical risks of group running and join at my own risk.'**
+  String get clubWaiverAck;
+
+  /// Dialog button that records the acknowledgement and joins the club; enabled only once the box is ticked
+  ///
+  /// In en, this message translates to:
+  /// **'Accept and join'**
+  String get clubWaiverAccept;
 
   /// First line of the shared year-in-running recap summary
   ///
@@ -692,7 +716,7 @@ abstract class AppLocalizations {
   /// Android body copy explaining what is imported from Health Connect and the no-track caveat
   ///
   /// In en, this message translates to:
-  /// **'Reads workout summaries (date, distance, duration, type) from the last year. GPS routes are not exposed by Health Connect — runs imported this way won\'t have a map trace.'**
+  /// **'Reads workout summaries (date, distance, duration, type) from the last year. A workout\'s GPS map comes too when Health Connect lets Threkir read it; if it holds some back, you can allow map access after the import.'**
   String get importHealthDescriptionAndroid;
 
   /// Offer shown after a Health Connect import found routes it was refused
@@ -11328,7 +11352,7 @@ abstract class AppLocalizations {
   /// Subtitle of the Import tile
   ///
   /// In en, this message translates to:
-  /// **'Strava, GPX, TCX'**
+  /// **'Strava export, health app, CSV or backup'**
   String get settingsAccountImportSubtitle;
 
   /// Tile title for the queued server-built GDPR Art 20 export
@@ -24279,12 +24303,6 @@ abstract class AppLocalizations {
   /// **'Other results'**
   String get eventResultsOtherCourse;
 
-  /// Badge on a race result recorded automatically at the finish line
-  ///
-  /// In en, this message translates to:
-  /// **'Auto'**
-  String get eventFinishMethodAuto;
-
   /// Badge on a race result the runner recorded by pressing Finish race
   ///
   /// In en, this message translates to:
@@ -24560,6 +24578,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Read the guide'**
   String get infoTipReadGuide;
+
+  /// End-race confirmation when some racers who started have no result and End will mark them DNF
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{End the race? {count} racer who started has no result and will be marked DNF. This can\'t be undone.} other{End the race? {count} racers who started have no result and will be marked DNF. This can\'t be undone.}}'**
+  String eventRaceEndConfirmBodyDnf(int count);
+
+  /// Pill on a race result the race director has not approved yet; it holds no place
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get eventResultPending;
+
+  /// Tooltip / screen-reader label of a race director's per-result actions menu
+  ///
+  /// In en, this message translates to:
+  /// **'Result actions for {name}'**
+  String eventResultActions(String name);
+
+  /// Race director action publishing a pending result
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get eventResultApprove;
+
+  /// Race director action putting an approved result back into pending
+  ///
+  /// In en, this message translates to:
+  /// **'Unverify'**
+  String get eventResultUnverify;
+
+  /// Race director action opening the result edit dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get eventResultEdit;
+
+  /// Title of the race director's result edit dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Edit result: {name}'**
+  String eventResultEditTitle(String name);
+
+  /// Explanation in the result edit dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Your edit replaces this time on the leaderboard and is marked as host edited.'**
+  String get eventResultEditHelp;
+
+  /// Label of the finish time field in the result edit dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Time (h:mm:ss)'**
+  String get eventResultEditTime;
+
+  /// Label of the status picker in the result edit dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get eventResultEditStatus;
+
+  /// Result status option: finished
+  ///
+  /// In en, this message translates to:
+  /// **'Finished'**
+  String get eventResultStatusFinished;
+
+  /// Result status option: did not finish
+  ///
+  /// In en, this message translates to:
+  /// **'DNF'**
+  String get eventResultStatusDnf;
+
+  /// Result status option: did not start
+  ///
+  /// In en, this message translates to:
+  /// **'DNS'**
+  String get eventResultStatusDns;
+
+  /// Save button of the result edit dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Save result'**
+  String get eventResultEditSave;
+
+  /// Error under the time field when a finished result has no valid time
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a finish time like 42:10 or 1:02:03.'**
+  String get eventResultEditTimeInvalid;
+
+  /// Banner when approving, unverifying or editing a result fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the result: {error}'**
+  String eventResultActionFailed(String error);
 }
 
 class _AppLocalizationsDelegate

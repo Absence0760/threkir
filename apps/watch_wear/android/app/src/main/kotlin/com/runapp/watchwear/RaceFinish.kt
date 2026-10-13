@@ -117,7 +117,9 @@ object RaceFinish {
     /// The timing a result row carries. A finish carries the gun time (when
     /// the race had a GO) and the chip time (when the recording's Start is
     /// known), and `duration_s` is the first of gun, chip and [elapsedS] that
-    /// exists. A DNF, or any outcome with no finish instant, carries neither
+    /// exists. The chip time never exceeds the gun time: a recording started
+    /// while the race was armed joins it at GO, and the wait on the line is no
+    /// part of the race. A DNF, or any outcome with no finish instant, carries neither
     /// time and `duration_s` is [elapsedS] — the recording's own elapsed
     /// seconds, which is what the server writes on a host-filed DNF.
     fun resultTiming(
@@ -130,7 +132,8 @@ object RaceFinish {
     ): ResultTiming {
         if (!finished || finishAtMs == null) return ResultTiming(elapsedS, null, null)
         val gun = gunTimeS(finishAtMs, serverOffsetMs, gunMs)
-        val chip = recordingStartedMs?.let { chipTimeS(finishAtMs, it) }
+        val fromStart = recordingStartedMs?.let { chipTimeS(finishAtMs, it) }
+        val chip = if (gun != null && fromStart != null && fromStart > gun) gun else fromStart
         return ResultTiming(gun ?: chip ?: elapsedS, gun, chip)
     }
 }

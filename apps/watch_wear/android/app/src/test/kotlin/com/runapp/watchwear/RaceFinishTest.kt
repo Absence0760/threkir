@@ -366,7 +366,7 @@ class RaceFinishTest {
             RaceFinish.Fix(finishLat + m / metresPerDegLat, finishLng, t0 + s * 1000L, cov)
         }
         assertNull(d.offer(north(-10.0, 0L, 4990.0)))
-        val f = d.offer(north(10.0, 2L, 5010.0))
+        val f = d.offer(north(15.0, 2L, 5010.0))
         assertNotNull(f)
         assertNull(d.offer(north(0.0, 4L, 5020.0)))
         assertEquals(f, d.finish)

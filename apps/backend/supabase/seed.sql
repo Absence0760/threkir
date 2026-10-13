@@ -153,7 +153,6 @@ INSERT INTO user_settings (user_id, prefs) VALUES (
     'hr_zones', jsonb_build_object('z1', 134, 'z2', 154, 'z3', 173, 'z4', 183, 'z5', 192),
     'weekly_mileage_goal_m', 50000,
     'coach_personality', 'supportive',
-    'auto_pause_enabled', true,
     'preferred_unit', 'km',
     'week_start_day', 'monday',
     -- Activity / goal drive the /nutrition macro targets (TDEE multiplier

@@ -62,7 +62,7 @@ What runs when (`run_screen.dart`):
   - `_recorder.begin()` — synchronous, flips `_recording = true`, starts elapsed-time timer
   - Generate stable `_runId` (UUID) and `_runStartedAtWall` (wall clock)
   - Reset the pedometer baseline to `_latestPedometerSteps` so any steps taken during the countdown don't count toward the run
-  - Start the auto-pause, GPS-lost, incremental-save, and permission watchdog timers
+  - Start the GPS-lost (2 s), incremental-save (10 s), and permission watchdog (5 s) timers. There is no auto-pause timer: see [§ Pause: manual only, moving time derived](#pause-manual-only-moving-time-derived)
   - Speak the start audio cue
   - Flip state to `_ScreenState.recording`
 - **App backgrounded mid-run under a foreground-only grant**: `didChangeAppLifecycleState` stamps `_leftForegroundAt` when a recording (not manually paused) run leaves the screen, and on `resumed` runs `shouldDiscloseBackgroundLocationLimit`. It requires evidence, never a guess: foreground-only grant, still recording, away for at least `kBackgroundLocationDisclosureMinAway` (15 s — one fix interval plus margin), and **no fix accepted while away** (`_lastSnapshotAt` no newer than the moment of leaving). Only then does `_notifyBackgroundLocationLimited` state what actually happened — the clock kept running, nothing already recorded was lost, the ground covered off screen was not counted — with the Settings shortcut to "Allow all the time". Once per run, and never for a run that has had no fix at all (indoor / treadmill) or one that kept receiving fixes in the background, where the claim would be false (#785). The whole path is L4: its own try/catch, so a disclosure failure cannot touch recording.
@@ -109,8 +109,8 @@ The 1-second elapsed-time timer inside `begin()` emits snapshots unconditionally
       1s elapsed-time timer
     - Stable _runId generated; _runStartedAtWall recorded
     - Pedometer baseline reset so countdown steps don't count
-    - Auto-pause, GPS-lost, incremental-save, permission watchdog
-      timers start
+    - GPS-lost, incremental-save, permission watchdog timers start
+      (no auto-pause timer: the clock only stops on a manual pause)
     - State → recording
 7.  While recording:
     - Each valid GPS fix → _onPosition in the recorder:
@@ -121,8 +121,8 @@ The 1-second elapsed-time timer inside `begin()` emits snapshots unconditionally
           + distance accumulation
     - _emitSnapshot publishes a RunSnapshot (elapsed from Stopwatch, total
       distance, track, current position, pace, off-route, remaining route)
-    - _onSnapshot in the screen updates setState, checks movement for
-      auto-pause, fires off-route / pace / split TTS — plus, since #607–#609,
+    - _onSnapshot in the screen updates setState, fires off-route /
+      pace / split TTS — plus, since #607–#609,
       the cutoff catch-up cue (distance + still-sufficient pace when the
       live_cutoff_eta projection turns tight/behind), the course-marker
       target cue (ahead/behind plan when distance-along-route crosses a
@@ -366,7 +366,7 @@ The first fix snaps (no animation). Same-target fixes are ignored.
 
 ## Pause: manual only, moving time derived
 
-The app does **not** have live auto-pause. An earlier version did, and it was the single most bug-prone feature in the recorder — false pauses during GPS warmup, slow walking, urban-canyon signal gaps, and edge cases around the track movement threshold. Each round of hardening fixed one class of false-positive and revealed another.
+The app does **not** have live auto-pause, on any platform: the shared Dart recorder (Android and iOS) has none, and neither do the Wear OS and Apple Watch recorders (the research-tier `custom_watch` firmware has its own). No setting turns one on: `auto_pause_enabled` and `auto_pause_speed_mps` are not in the [settings registry](../backend/settings.md) and no client reads or edits them. An earlier version did, and it was the single most bug-prone feature in the recorder — false pauses during GPS warmup, slow walking, urban-canyon signal gaps, and edge cases around the track movement threshold. Each round of hardening fixed one class of false-positive and revealed another.
 
 Modern Strava and Nike Run Club handle this differently, and so do we: the clock runs **continuously** during a recording (except when the user explicitly taps the manual pause button), and **moving time** is computed as a *derived metric* on the finished-run screen from the GPS track.
 

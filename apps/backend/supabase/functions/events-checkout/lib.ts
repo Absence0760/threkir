@@ -25,6 +25,23 @@ export function isSalesWindowOpen(
   return nowMs < closeAtMs;
 }
 
+/// Is the instant being bought past the end of its series? A series cancel
+/// (events-cancel `scope: 'series'`, decisions § 1868) ends a recurring
+/// event by moving `recurrence_until` to the moment it was cancelled, and only
+/// the occurrences someone had signed up for get an `event_exceptions` row; the
+/// rest stop existing. Checkout names its instant directly, so without this an
+/// ended series still sold every later week. A series with no end, or an
+/// unparseable one, is not past its end (the exception guard still applies).
+export function isPastSeriesEnd(
+  recurrenceUntil: string | null,
+  instanceStartMs: number,
+): boolean {
+  if (recurrenceUntil === null) return false;
+  const untilMs = Date.parse(recurrenceUntil);
+  if (!Number.isFinite(untilMs)) return false;
+  return instanceStartMs > untilMs;
+}
+
 /// The platform's application fee in cents. Floor (never charge a
 /// fractional cent), clamped so it can never exceed the amount (a
 /// misconfigured 10000 bps = 100% would otherwise leave the host $0; we

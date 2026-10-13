@@ -127,6 +127,10 @@ dependencies:
   # sheet* additionally needs a Share Extension target (deferred); document
   # "Open with" needs only the Info.plist declaration.
   receive_sharing_intent: ^1.9.0
+  # Club invite links (`/clubs/join/<token>`) into ClubInviteScreen; see
+  # lib/club_invite_link.dart. Already in the tree through supabase_flutter
+  # and flutter_web_auth_2; the version is pinned by the root override.
+  app_links: any
   flutter_localizations:
     sdk: flutter
   # Pinned by flutter_localizations; kept unconstrained so the resolver

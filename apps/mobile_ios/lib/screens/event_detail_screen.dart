@@ -135,6 +135,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   /// the other.
   bool _raceBusy = false;
   bool _autoApproveOnArm = true;
+  /// Set while a director's approve / unverify / edit is in flight.
+  bool _resultActionBusy = false;
   _EventLoadError? _loadError;
 
   RealtimeChannel? _channel;
@@ -636,6 +638,56 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
   }
 
+  /// A race director's approve or unverify. An account row goes through the
+  /// `approve_event_result` RPC; a bib-only row has no account to key on and
+  /// is updated by its id, as on web.
+  Future<void> _approveResult(EventResultView r, bool approve) async {
+    final e = _event;
+    final inst = _activeInstance;
+    if (e == null || inst == null || _resultActionBusy) return;
+    final uid = r.userId;
+    await _resultAction(() => uid != null
+        ? widget.social.approveEventResult(
+            eventId: e.row.id, instance: inst, userId: uid, approve: approve)
+        : widget.social.approveEventResultById(r.id, approve));
+  }
+
+  Future<void> _editResult(EventResultView r) async {
+    if (_resultActionBusy) return;
+    final l10n = AppLocalizations.of(context);
+    final edit = await showDialog<ResultEdit>(
+      context: context,
+      builder: (_) => ResultEditDialog(
+        result: r,
+        name: r.displayName ?? l10n.eventResultRunner,
+      ),
+    );
+    if (edit == null || !mounted) return;
+    await _resultAction(() => widget.social.editEventResultAsHost(
+          resultId: r.id,
+          durationS: edit.durationS,
+          priorGunTimeS: r.gunTimeS,
+          finisherStatus: edit.finisherStatus,
+        ));
+  }
+
+  Future<void> _resultAction(Future<void> Function() write) async {
+    setState(() => _resultActionBusy = true);
+    try {
+      await write();
+      await _load();
+    } catch (err) {
+      debugPrint('event result action failed: ${safeErrorLabel(err)}');
+      if (mounted) {
+        final l10n = AppLocalizations.of(context);
+        showTopBanner(
+            context, l10n.eventResultActionFailed(friendlyError(l10n, err)));
+      }
+    } finally {
+      if (mounted) setState(() => _resultActionBusy = false);
+    }
+  }
+
   /// Arm / Fire Go / End dispatcher. Uses the current `_raceSession`
   /// state to decide which mutation to run. Errors surface as a
   /// snackbar; successful writes leave the realtime channel to push
@@ -687,15 +739,25 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   /// confirm before firing (mirrors the web ConfirmDialog gate). Arm and
   /// Fire Go stay one-tap.
   Future<void> _confirmRaceAction(_RaceAction action) async {
-    final l10n = AppLocalizations.of(context);
     final isCancel = action == _RaceAction.cancel;
+    final e = _event;
+    final inst = _activeInstance;
+    // End states how many racers it will mark DNF, as web's End does; a
+    // count that cannot be read is omitted rather than guessed.
+    final dnf = isCancel || e == null || inst == null
+        ? null
+        : await widget.social.fetchRaceDnfPreview(e.row.id, inst);
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
           context: context,
           builder: (_) => AlertDialog(
             title: Text(isCancel ? l10n.eventRaceCancelRace : l10n.eventRaceEnd),
             content: Text(isCancel
                 ? l10n.eventRaceCancelConfirmBody
-                : l10n.eventRaceEndConfirmBody),
+                : dnf != null && dnf > 0
+                    ? l10n.eventRaceEndConfirmBodyDnf(dnf)
+                    : l10n.eventRaceEndConfirmBody),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
@@ -1167,6 +1229,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 clubName: _club?.row.name,
                 certificateDate: _activeInstance ?? e.row.startsAt,
                 courses: _courses,
+                moderation: _club?.isRaceDirector == true
+                    ? ResultModeration(
+                        busy: _resultActionBusy,
+                        onApprove: _approveResult,
+                        onEdit: _editResult,
+                      )
+                    : null,
               ),
             ],
             if (isMember) ...[
@@ -1501,19 +1570,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               const SizedBox(height: 8),
               Row(
                 children: [
+                  // No Cancel once running: the server refuses running ->
+                  // cancelled, and web offers only End here.
                   FilledButton.icon(
                     onPressed: _raceBusy
                         ? null
                         : () => _confirmRaceAction(_RaceAction.end),
                     icon: const Icon(Icons.stop_circle),
                     label: Text(l10n.eventRaceEnd),
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: _raceBusy
-                        ? null
-                        : () => _confirmRaceAction(_RaceAction.cancel),
-                    child: Text(l10n.eventRaceCancelRace),
                   ),
                 ],
               ),
@@ -1696,6 +1760,9 @@ class EventResultsSection extends StatelessWidget {
   final DateTime certificateDate;
   /// With more than one course, results are listed per course.
   final List<EventCourseView> courses;
+  /// Present for a race director: each row then offers approve / unverify
+  /// and edit, as the web results card does.
+  final ResultModeration? moderation;
   const EventResultsSection({
     super.key,
     required this.results,
@@ -1707,6 +1774,7 @@ class EventResultsSection extends StatelessWidget {
     required this.clubName,
     required this.certificateDate,
     this.courses = const [],
+    this.moderation,
   });
 
   // The result removal is destructive (it deletes the runner's
@@ -1802,7 +1870,161 @@ class EventResultsSection extends StatelessWidget {
         eventTitle: eventTitle,
         clubName: clubName,
         certificateDate: certificateDate,
+        moderation: moderation,
       );
+}
+
+/// What a race director can do to a result row, and whether a write is in
+/// flight.
+@visibleForTesting
+class ResultModeration {
+  final bool busy;
+  final void Function(EventResultView result, bool approve) onApprove;
+  final void Function(EventResultView result) onEdit;
+  const ResultModeration({
+    required this.busy,
+    required this.onApprove,
+    required this.onEdit,
+  });
+}
+
+/// The approval a director is offered on [r], as the web results card offers
+/// it: true (Approve) on a pending row, false (Unverify) on an approved one,
+/// and null on the director's own approved row, which they do not unverify.
+@visibleForTesting
+bool? resultApprovalAction(EventResultView r, {required String? myUserId}) {
+  if (!r.organiserApproved) return true;
+  if (r.userId != null && r.userId == myUserId) return null;
+  return false;
+}
+
+/// A director's edit: the new ranked time and status.
+typedef ResultEdit = ({int durationS, String finisherStatus});
+
+/// Seconds in an organiser-typed finish time: `h:mm:ss`, `m:ss` or plain
+/// seconds, every field a plain decimal count and minutes / seconds below
+/// 60 — web's `parseDurationToSeconds`. Null when malformed.
+@visibleForTesting
+int? parseResultTimeS(String raw) {
+  final s = raw.trim();
+  if (s.isEmpty) return null;
+  final field = RegExp(r'^\d+(?:\.\d+)?$');
+  final parts = s.split(':');
+  if (parts.length > 3) return null;
+  var total = 0.0;
+  for (var i = 0; i < parts.length; i++) {
+    final p = parts[i].trim();
+    if (!field.hasMatch(p)) return null;
+    final n = double.parse(p);
+    if (i > 0 && n >= 60) return null;
+    total = total * 60 + n;
+  }
+  return total.round();
+}
+
+/// The organiser's edit of one result: a time and a status. A finished
+/// result needs a time; a DNF or DNS keeps the row's time when none is typed.
+@visibleForTesting
+class ResultEditDialog extends StatefulWidget {
+  final EventResultView result;
+  final String name;
+  const ResultEditDialog({super.key, required this.result, required this.name});
+
+  @override
+  State<ResultEditDialog> createState() => _ResultEditDialogState();
+}
+
+class _ResultEditDialogState extends State<ResultEditDialog> {
+  late final TextEditingController _time = TextEditingController(
+    text: widget.result.durationS > 0
+        ? _ResultRow._formatDuration(widget.result.durationS)
+        : '',
+  );
+  late String _status = widget.result.finisherStatus;
+  bool _invalid = false;
+
+  @override
+  void dispose() {
+    _time.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final parsed = parseResultTimeS(_time.text);
+    if (_status == 'finished' && (parsed == null || parsed <= 0)) {
+      setState(() => _invalid = true);
+      return;
+    }
+    Navigator.pop<ResultEdit>(context, (
+      durationS: parsed ?? widget.result.durationS,
+      finisherStatus: _status,
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    return AlertDialog(
+      title: Text(l10n.eventResultEditTitle(widget.name)),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.eventResultEditHelp,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _time,
+              keyboardType: TextInputType.datetime,
+              decoration: InputDecoration(
+                labelText: l10n.eventResultEditTime,
+                hintText: '1:02:03',
+                errorText: _invalid ? l10n.eventResultEditTimeInvalid : null,
+              ),
+              onChanged: (_) {
+                if (_invalid) setState(() => _invalid = false);
+              },
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: _status,
+              decoration:
+                  InputDecoration(labelText: l10n.eventResultEditStatus),
+              items: [
+                DropdownMenuItem(
+                    value: 'finished',
+                    child: Text(l10n.eventResultStatusFinished)),
+                DropdownMenuItem(
+                    value: 'dnf', child: Text(l10n.eventResultStatusDnf)),
+                DropdownMenuItem(
+                    value: 'dns', child: Text(l10n.eventResultStatusDns)),
+              ],
+              onChanged: (v) => setState(() {
+                _status = v ?? _status;
+                _invalid = false;
+              }),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.eventSubmitCancel),
+        ),
+        TextButton(
+          onPressed: _save,
+          child: Text(l10n.eventResultEditSave),
+        ),
+      ],
+    );
+  }
 }
 
 /// [results] split by course in the host's course order, server order kept
@@ -1842,18 +2064,23 @@ class _ResultRow extends StatelessWidget {
   final String eventTitle;
   final String? clubName;
   final DateTime certificateDate;
+  final ResultModeration? moderation;
   const _ResultRow({
     required this.row,
     required this.isMe,
     required this.eventTitle,
     required this.clubName,
     required this.certificateDate,
+    this.moderation,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final rank = row.rank?.toString() ?? '—';
+    final l10n = AppLocalizations.of(context);
+    // A pending result holds no place yet, as on web.
+    final rank =
+        row.organiserApproved ? (row.rank?.toString() ?? '—') : '…';
     final time = _formatDuration(row.durationS);
     final distance = formatDistanceForPref(row.distanceM);
     return Padding(
@@ -1892,6 +2119,14 @@ class _ResultRow extends StatelessWidget {
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       )),
+                ],
+                if (!row.organiserApproved) ...[
+                  const SizedBox(width: 6),
+                  StatusPill(
+                    label: l10n.eventResultPending,
+                    foreground: theme.colorScheme.onTertiaryContainer,
+                    fill: theme.colorScheme.tertiaryContainer,
+                  ),
                 ],
                 if (_finishMethodLabel(context, row.finishMethod)
                     case final method?) ...[
@@ -1963,15 +2198,42 @@ class _ResultRow extends StatelessWidget {
               ),
             ),
           ],
+          if (moderation case final mod?) _actions(context, mod),
         ],
       ),
     );
   }
 
+  Widget _actions(BuildContext context, ResultModeration mod) {
+    final l10n = AppLocalizations.of(context);
+    final approve =
+        resultApprovalAction(row, myUserId: isMe ? row.userId : null);
+    return PopupMenuButton<String>(
+      enabled: !mod.busy,
+      tooltip: l10n.eventResultActions(
+          row.displayName ?? l10n.eventResultRunner),
+      icon: const Icon(Icons.more_vert, size: 20),
+      onSelected: (v) => switch (v) {
+        'approve' => mod.onApprove(row, true),
+        'unverify' => mod.onApprove(row, false),
+        _ => mod.onEdit(row),
+      },
+      itemBuilder: (_) => [
+        if (approve == true)
+          PopupMenuItem(value: 'approve', child: Text(l10n.eventResultApprove)),
+        if (approve == false)
+          PopupMenuItem(
+              value: 'unverify', child: Text(l10n.eventResultUnverify)),
+        PopupMenuItem(value: 'edit', child: Text(l10n.eventResultEdit)),
+      ],
+    );
+  }
+
+  /// The badge flags a time the finish rule did NOT measure, so a device's
+  /// automatic finish wears none, as on web (decisions § 1862).
   static String? _finishMethodLabel(BuildContext context, String? method) {
     final l10n = AppLocalizations.of(context);
     return switch (method) {
-      'auto' => l10n.eventFinishMethodAuto,
       'manual' => l10n.eventFinishMethodManual,
       'host' => l10n.eventFinishMethodHost,
       _ => null,

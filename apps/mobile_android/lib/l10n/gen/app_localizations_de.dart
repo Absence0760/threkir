@@ -20,13 +20,27 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get clubInviteIntro =>
-      'Füge den Einladungscode ein, den dein Club-Admin mit dir geteilt hat.';
+      'Füge den Einladungslink oder -code ein, den dein Club-Admin mit dir geteilt hat.';
 
   @override
   String get clubInviteCodeLabel => 'Einladungscode';
 
   @override
   String get clubInviteJoinButton => 'Beitreten';
+
+  @override
+  String get clubWaiverTitle => 'Eine Sache noch vor dem Beitritt';
+
+  @override
+  String get clubWaiverBody =>
+      'Dieser Club bittet alle Mitglieder, vor dem Beitritt die körperlichen Risiken des gemeinsamen Laufens zu bestätigen.';
+
+  @override
+  String get clubWaiverAck =>
+      'Ich verstehe die körperlichen Risiken des Gruppenlaufens und nehme auf eigenes Risiko teil.';
+
+  @override
+  String get clubWaiverAccept => 'Bestätigen und beitreten';
 
   @override
   String recapShareHeadline(Object year) {
@@ -396,7 +410,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get importHealthDescriptionAndroid =>
-      'Liest Workout-Zusammenfassungen (Datum, Distanz, Dauer, Typ) des letzten Jahres. GPS-Routen werden von Health Connect nicht bereitgestellt — so importierte Läufe haben keinen Karten-Track.';
+      'Liest Workout-Zusammenfassungen (Datum, Distanz, Dauer, Typ) des letzten Jahres. Die GPS-Karte eines Workouts kommt mit, wenn Health Connect Threkir sie lesen lässt; hält es welche zurück, kannst du den Kartenzugriff nach dem Import erlauben.';
 
   @override
   String importHealthRoutesWithheld(int count) {
@@ -6943,7 +6957,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settingsAccountImport => 'Aus einer anderen App importieren';
 
   @override
-  String get settingsAccountImportSubtitle => 'Strava, GPX, TCX';
+  String get settingsAccountImportSubtitle =>
+      'Strava-Export, Gesundheits-App, CSV oder Backup';
 
   @override
   String get settingsAccountAccountExport => 'Kontoexport';
@@ -14700,9 +14715,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get eventResultsOtherCourse => 'Weitere Ergebnisse';
 
   @override
-  String get eventFinishMethodAuto => 'Automatisch';
-
-  @override
   String get eventFinishMethodManual => 'Manuell';
 
   @override
@@ -14844,4 +14856,70 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get infoTipReadGuide => 'Anleitung lesen';
+
+  @override
+  String eventRaceEndConfirmBodyDnf(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Rennen beenden? $count gestartete Personen haben kein Ergebnis und werden als DNF gewertet. Das kann nicht rückgängig gemacht werden.',
+      one:
+          'Rennen beenden? $count gestartete Person hat kein Ergebnis und wird als DNF gewertet. Das kann nicht rückgängig gemacht werden.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get eventResultPending => 'Ausstehend';
+
+  @override
+  String eventResultActions(String name) {
+    return 'Aktionen für das Ergebnis von $name';
+  }
+
+  @override
+  String get eventResultApprove => 'Genehmigen';
+
+  @override
+  String get eventResultUnverify => 'Verifizierung aufheben';
+
+  @override
+  String get eventResultEdit => 'Bearbeiten';
+
+  @override
+  String eventResultEditTitle(String name) {
+    return 'Ergebnis bearbeiten: $name';
+  }
+
+  @override
+  String get eventResultEditHelp =>
+      'Deine Änderung ersetzt diese Zeit in der Rangliste und wird als vom Veranstalter bearbeitet markiert.';
+
+  @override
+  String get eventResultEditTime => 'Zeit (h:mm:ss)';
+
+  @override
+  String get eventResultEditStatus => 'Status';
+
+  @override
+  String get eventResultStatusFinished => 'Im Ziel';
+
+  @override
+  String get eventResultStatusDnf => 'DNF';
+
+  @override
+  String get eventResultStatusDns => 'DNS';
+
+  @override
+  String get eventResultEditSave => 'Ergebnis speichern';
+
+  @override
+  String get eventResultEditTimeInvalid =>
+      'Gib eine Zielzeit wie 42:10 oder 1:02:03 ein.';
+
+  @override
+  String eventResultActionFailed(String error) {
+    return 'Das Ergebnis konnte nicht aktualisiert werden: $error';
+  }
 }

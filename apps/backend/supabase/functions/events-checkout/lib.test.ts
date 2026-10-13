@@ -11,6 +11,7 @@ import {
   checkoutIdempotencyKey,
   computeApplicationFeeCents,
   heldOfferCount,
+  isPastSeriesEnd,
   isSalesWindowOpen,
   type PendingOrderRow,
   reservationExpiry,
@@ -292,4 +293,20 @@ Deno.test('heldOfferCount: a row with no offer is ignored', () => {
     heldOfferCount([{ user_id: 'w1', offer_expires_at: null }], new Set(), 'stranger', NOW),
     0,
   );
+});
+
+Deno.test('isPastSeriesEnd — an instant after an ended series is not for sale', () => {
+  const until = '2026-09-01T12:00:00+00:00';
+  const untilMs = Date.parse(until);
+  assertStrictEquals(isPastSeriesEnd(until, untilMs + 1), true);
+  // The series' last occurrence is still its own.
+  assertStrictEquals(isPastSeriesEnd(until, untilMs), false);
+  assertStrictEquals(isPastSeriesEnd(until, untilMs - 7 * 24 * HOUR), false);
+  // The same instant in the other rendering decides the same way.
+  assertStrictEquals(isPastSeriesEnd('2026-09-01T12:00:00.000Z', untilMs + 1), true);
+});
+
+Deno.test('isPastSeriesEnd — no end, or an unreadable one, is not past it', () => {
+  assertStrictEquals(isPastSeriesEnd(null, Date.parse('2099-01-01T00:00:00Z')), false);
+  assertStrictEquals(isPastSeriesEnd('not a date', Date.parse('2099-01-01T00:00:00Z')), false);
 });

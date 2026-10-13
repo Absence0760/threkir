@@ -20,13 +20,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get clubInviteIntro =>
-      'Paste the invite code your club admin shared with you.';
+      'Paste the invite link or code your club admin shared with you.';
 
   @override
   String get clubInviteCodeLabel => 'Invite code';
 
   @override
   String get clubInviteJoinButton => 'Join';
+
+  @override
+  String get clubWaiverTitle => 'One thing before you join';
+
+  @override
+  String get clubWaiverBody =>
+      'This club asks every member to acknowledge the physical risks of running together before joining.';
+
+  @override
+  String get clubWaiverAck =>
+      'I understand the physical risks of group running and join at my own risk.';
+
+  @override
+  String get clubWaiverAccept => 'Accept and join';
 
   @override
   String recapShareHeadline(Object year) {
@@ -393,7 +407,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get importHealthDescriptionAndroid =>
-      'Reads workout summaries (date, distance, duration, type) from the last year. GPS routes are not exposed by Health Connect — runs imported this way won\'t have a map trace.';
+      'Reads workout summaries (date, distance, duration, type) from the last year. A workout\'s GPS map comes too when Health Connect lets Threkir read it; if it holds some back, you can allow map access after the import.';
 
   @override
   String importHealthRoutesWithheld(int count) {
@@ -6857,7 +6871,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAccountImport => 'Import from another app';
 
   @override
-  String get settingsAccountImportSubtitle => 'Strava, GPX, TCX';
+  String get settingsAccountImportSubtitle =>
+      'Strava export, health app, CSV or backup';
 
   @override
   String get settingsAccountAccountExport => 'Account export';
@@ -14540,9 +14555,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get eventResultsOtherCourse => 'Other results';
 
   @override
-  String get eventFinishMethodAuto => 'Auto';
-
-  @override
   String get eventFinishMethodManual => 'Manual';
 
   @override
@@ -14682,4 +14694,70 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get infoTipReadGuide => 'Read the guide';
+
+  @override
+  String eventRaceEndConfirmBodyDnf(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'End the race? $count racers who started have no result and will be marked DNF. This can\'t be undone.',
+      one:
+          'End the race? $count racer who started has no result and will be marked DNF. This can\'t be undone.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get eventResultPending => 'Pending';
+
+  @override
+  String eventResultActions(String name) {
+    return 'Result actions for $name';
+  }
+
+  @override
+  String get eventResultApprove => 'Approve';
+
+  @override
+  String get eventResultUnverify => 'Unverify';
+
+  @override
+  String get eventResultEdit => 'Edit';
+
+  @override
+  String eventResultEditTitle(String name) {
+    return 'Edit result: $name';
+  }
+
+  @override
+  String get eventResultEditHelp =>
+      'Your edit replaces this time on the leaderboard and is marked as host edited.';
+
+  @override
+  String get eventResultEditTime => 'Time (h:mm:ss)';
+
+  @override
+  String get eventResultEditStatus => 'Status';
+
+  @override
+  String get eventResultStatusFinished => 'Finished';
+
+  @override
+  String get eventResultStatusDnf => 'DNF';
+
+  @override
+  String get eventResultStatusDns => 'DNS';
+
+  @override
+  String get eventResultEditSave => 'Save result';
+
+  @override
+  String get eventResultEditTimeInvalid =>
+      'Enter a finish time like 42:10 or 1:02:03.';
+
+  @override
+  String eventResultActionFailed(String error) {
+    return 'Couldn\'t update the result: $error';
+  }
 }

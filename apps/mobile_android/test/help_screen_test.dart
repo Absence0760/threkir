@@ -103,11 +103,11 @@ void main() {
       expect(find.text('PAID CLASSES'), findsOneWidget);
       expect(find.text('Racing an event'), findsOneWidget);
       await tester.scrollUntilVisible(
-        find.text('MORE GUIDES'),
+        find.text('A guide in a newer category'),
         200,
         scrollable: find.byType(Scrollable).first,
       );
-      expect(find.text('A guide in a newer category'), findsOneWidget);
+      expect(find.text('MORE GUIDES'), findsOneWidget);
     });
 
     testWidgets(
@@ -195,6 +195,7 @@ void main() {
     testWidgets('renders summary, chips, steps, notes and related guides', (
       tester,
     ) async {
+      final handle = tester.ensureSemantics();
       await _pump(tester, const GuideScreen(guideId: 'racing-an-event'));
       expect(find.text('Racing an event'), findsOneWidget);
       expect(find.text('Web'), findsOneWidget);
@@ -218,6 +219,7 @@ void main() {
         find.byKey(const ValueKey('help-guide-missing-guide')),
         findsNothing,
       );
+      handle.dispose();
     });
 
     testWidgets('a gated guide shows its requirements', (tester) async {

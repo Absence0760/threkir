@@ -146,16 +146,56 @@ export function refundIdempotencyKey(orderId: string): string {
 
 /// What the cancel EF was asked to do. `self` is the buyer cancelling their own
 /// registration (the original behaviour, and the default when the field is
-/// absent); `occurrence` is an organiser calling off one occurrence, which
-/// refunds every registrant of it. Anything else is refused rather than
-/// guessed: a typo must not quietly turn a host's "refund everyone" into a
-/// self-cancel of an order they do not have.
-export type CancelScope = 'self' | 'occurrence';
+/// absent); `occurrence` is an organiser calling off one occurrence (a one-off
+/// event is its own single occurrence), which refunds every registrant of it;
+/// `series` is an organiser ending a recurring event, which calls off every
+/// remaining occurrence anyone signed up for and refunds them all. Anything
+/// else is refused rather than guessed: a typo must not quietly turn a host's
+/// "refund everyone" into a self-cancel of an order they do not have.
+export type CancelScope = 'self' | 'occurrence' | 'series';
 
 export function parseCancelScope(raw: unknown): CancelScope | null {
   if (raw === undefined || raw === null) return 'self';
-  if (raw === 'self' || raw === 'occurrence') return raw;
+  if (raw === 'self' || raw === 'occurrence' || raw === 'series') return raw;
   return null;
+}
+
+/// The RSVP statuses whose holders a series cancel tells: the set
+/// `notify_event_cancel` fans out to. A declined member has nothing to hear.
+export const SERIES_CANCEL_RSVP_STATUSES = ['going', 'maybe', 'waitlisted'] as const;
+
+/// Which occurrences a series cancel calls off by name: every distinct instant
+/// at or after `cutoffMs` that holds an order or an RSVP and is not already
+/// cancelled, oldest first. Instants are compared as instants, because the
+/// same occurrence reaches here as `…+00:00` from one table and `….000Z` from
+/// another. An occurrence nobody signed up for needs no row: ending the series
+/// is what removes it.
+export function seriesCancelInstances(
+  rows: readonly { instance_start: string }[],
+  alreadyCancelled: readonly string[],
+  cutoffMs: number,
+): string[] {
+  const cancelled = new Set(
+    alreadyCancelled.map((iso) => Date.parse(iso)).filter((ms) => Number.isFinite(ms)),
+  );
+  const picked = new Map<number, string>();
+  for (const row of rows) {
+    const ms = Date.parse(row.instance_start);
+    if (!Number.isFinite(ms) || ms < cutoffMs || cancelled.has(ms) || picked.has(ms)) continue;
+    picked.set(ms, row.instance_start);
+  }
+  return [...picked.entries()].sort((a, b) => a[0] - b[0]).map(([, iso]) => iso);
+}
+
+/// The `recurrence_until` that ends a series at `cutoffIso`: the cutoff, unless
+/// the series already ends earlier, in which case it is left alone (null means
+/// no write). A cancel must never lengthen a series.
+export function seriesEndUntil(currentUntil: string | null, cutoffIso: string): string | null {
+  if (currentUntil === null) return cutoffIso;
+  const current = Date.parse(currentUntil);
+  const cutoff = Date.parse(cutoffIso);
+  if (!Number.isFinite(current)) return cutoffIso;
+  return current <= cutoff ? null : cutoffIso;
 }
 
 /// `event_exceptions_reason_len_chk` (20270503_001). Checked in the handler so

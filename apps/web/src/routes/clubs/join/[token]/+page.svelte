@@ -2,14 +2,38 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { joinClubByToken } from '#lib/core/data.ts';
+	import { isActivityWaiverRequired, joinClubByToken } from '#lib/core/data.ts';
 	import { supabase } from '#lib/core/supabase.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 
 	let token = $derived(page.params.token as string);
-	let status = $state<'joining' | 'error' | 'not-authed'>('joining');
+	let status = $state<'joining' | 'waiver' | 'error' | 'not-authed'>('joining');
 	let errorMsg = $state<string | null>(null);
+	let waiverAck = $state(false);
+	let waiverBusy = $state(false);
+
+	async function redeem(ackWaiver: boolean) {
+		try {
+			const clubId = await joinClubByToken(token, ackWaiver);
+			const { data } = await supabase.from('clubs').select('slug').eq('id', clubId).single();
+			goto(data?.slug ? `/clubs/${data.slug}` : '/clubs');
+		} catch (e: unknown) {
+			if (!ackWaiver && isActivityWaiverRequired(e)) {
+				status = 'waiver';
+				return;
+			}
+			status = 'error';
+			errorMsg = e instanceof Error ? e.message : m('clubJoin.invalidOrExpired');
+		}
+	}
+
+	async function acceptWaiver() {
+		if (!waiverAck || waiverBusy) return;
+		waiverBusy = true;
+		await redeem(true);
+		waiverBusy = false;
+	}
 
 	onMount(async () => {
 		// Auth-race shape: a hard reload onto the invite URL races
@@ -19,14 +43,7 @@
 			status = 'not-authed';
 			return;
 		}
-		try {
-			const clubId = await joinClubByToken(token);
-			const { data } = await supabase.from('clubs').select('slug').eq('id', clubId).single();
-			goto(data?.slug ? `/clubs/${data.slug}` : '/clubs');
-		} catch (e: unknown) {
-			status = 'error';
-			errorMsg = e instanceof Error ? e.message : m('clubJoin.invalidOrExpired');
-		}
+		await redeem(false);
 	});
 
 	let returnTo = $derived(encodeURIComponent(page.url.pathname));
@@ -52,6 +69,26 @@
 				<p class="muted">{m('clubJoin.joiningBody')}</p>
 				<div class="spinner-dots" aria-hidden="true">
 					<span></span><span></span><span></span>
+				</div>
+			</section>
+		{:else if status === 'waiver'}
+			<section class="invite-card" data-testid="invite-waiver">
+				<p class="kicker">{m('clubJoin.youveBeenInvited')}</p>
+				<h1>{m('clubJoin.waiverTitle')}</h1>
+				<p class="muted">{m('clubJoin.waiverBody')}</p>
+				<label class="waiver-ack">
+					<input type="checkbox" bind:checked={waiverAck} />
+					<span>{m('clubHome.waiverAck')}</span>
+				</label>
+				<div class="invite-actions">
+					<button
+						type="button"
+						class="btn btn-primary"
+						onclick={acceptWaiver}
+						disabled={!waiverAck || waiverBusy}
+					>
+						{waiverBusy ? m('clubJoin.joiningTitle') : m('clubJoin.waiverContinue')}
+					</button>
 				</div>
 			</section>
 		{:else if status === 'not-authed'}
@@ -191,6 +228,22 @@
 	.invite-actions :global(.btn-primary),
 	.invite-actions :global(.btn-outline) {
 		min-width: 12rem;
+	}
+
+	.waiver-ack {
+		display: flex;
+		gap: var(--space-sm);
+		align-items: flex-start;
+		text-align: start;
+		margin: 0 0 var(--space-lg);
+		font-size: 0.92rem;
+		color: var(--color-text);
+		line-height: 1.45;
+		cursor: pointer;
+	}
+	.waiver-ack input {
+		margin-top: 0.2rem;
+		flex-shrink: 0;
 	}
 
 	.footnote {

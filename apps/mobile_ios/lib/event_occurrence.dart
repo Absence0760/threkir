@@ -50,3 +50,13 @@ DateTime? nextLiveInstance(
   }
   return null;
 }
+
+/// Whether an organiser cancelled this whole series. A series cancel ends the
+/// series at the moment of the cancel and calls off by name every later
+/// occurrence someone had signed up for, so those cancelled instants sit past
+/// `until`; a series that simply ran out has none there.
+bool isSeriesCancelled(EventRecurrence e, Iterable<DateTime> cancelled) {
+  final until = e.until;
+  if (e.freq == null || until == null) return false;
+  return cancelled.any((c) => c.isAfter(until));
+}

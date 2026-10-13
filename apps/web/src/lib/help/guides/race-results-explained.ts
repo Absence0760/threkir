@@ -3,7 +3,7 @@ import type { Guide } from '../types';
 export const guide: Guide = {
 	id: 'race-results-explained',
 	title: 'Race results explained',
-	summary: 'What gun and chip time mean, how places are worked out per course, and what the Auto, Manual, Host, DNF, DNS and pending marks say.',
+	summary: 'What gun and chip time mean, how places are worked out per course, and what the Manual, Host, DNF, DNS and pending marks say.',
 	kind: 'explainer',
 	category: 'races',
 	audience: ['everyone'],
@@ -46,7 +46,7 @@ export const guide: Guide = {
 				{
 					type: 'list',
 					items: [
-						"**Auto**: the racer's phone or watch detected the finish line. The phone app shows this badge; the web shows no badge for it, because it is the normal case.",
+						"**No badge**: the racer's phone or watch detected the finish line. This is the normal case, so neither the web nor the phone app marks it.",
 						'**Manual**: the racer finished by hand, either with **Finish race** after covering at least 90% of the course, or by using **Submit my time** on the web during the race.',
 						'**Host** (on the web, **Host edited**): the host entered or corrected this result, or the racer was marked DNF when the host ended the race.'
 					]
@@ -71,7 +71,7 @@ export const guide: Guide = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'If the host turned off auto-approve, each new result waits for the host. On the event page it shows **PENDING** with no place yet; on the live page it shows **Pending**. Once the host chooses **Approve**, it takes its place on the board.'
+					text: 'If the host turned off auto-approve, each new result waits for the host. On the web event page it shows **PENDING** with no place yet; in the phone app and on the live page it shows **Pending**. Once the host chooses **Approve**, it takes its place on the board.'
 				},
 				{
 					type: 'note',

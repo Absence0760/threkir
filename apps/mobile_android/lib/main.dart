@@ -34,6 +34,7 @@ import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'settings_cache.dart';
 import 'settings_sync.dart';
+import 'club_invite_link.dart';
 import 'shared_file_import.dart';
 import 'social_service.dart';
 import 'sync_service.dart';
@@ -681,6 +682,16 @@ void main() async {
     unawaited(sharedFileImport.processInitial());
   } catch (e) {
     debugPrint('shared-file import init failed: $e');
+  }
+
+  // Club invite links (`/clubs/join/<token>` on the web host, or the
+  // `com.threkir.app://clubs/join/<token>` scheme): HomeScreen drains
+  // pendingClubInviteToken into ClubInviteScreen. Guarded the same way.
+  try {
+    final inviteLinks = ClubInviteLinkService()..start();
+    unawaited(inviteLinks.processInitial());
+  } catch (e) {
+    debugPrint('club invite link init failed: $e');
   }
 }
 

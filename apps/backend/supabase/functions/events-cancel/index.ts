@@ -8,10 +8,17 @@
 /// `occurrence` — an ORGANISER calls off one occurrence, which cancels it and
 /// refunds every registrant of it in full, whatever the refund policy says (the
 /// host cancelled; the buyers did not). This is `refund_orders_for_instance`
-/// from the spec. A direct client insert into `event_exceptions` over an
+/// from the spec. A one-off event is its own single occurrence and is cancelled
+/// the same way. A direct client insert into `event_exceptions` over an
 /// occurrence that still holds money is refused by
 /// `guard_paid_occurrence_cancel` (20270723000003), so this is the only way a
 /// paid occurrence can be called off.
+/// `series` — an ORGANISER ends a recurring event: `recurrence_until` moves to
+/// now, so no later occurrence exists or can be bought (events-checkout refuses
+/// an instant past it), every remaining occurrence that holds an order or an
+/// RSVP is called off by name (so each is told, through `notify_event_cancel`),
+/// and every one of their orders is refunded exactly as an occurrence cancel
+/// refunds (decisions § 1868).
 ///
 /// Either way this EF only INITIATES. The stripe-events-webhook — still the
 /// SOLE, idempotent, service-role-only writer of event_orders.status —
@@ -71,6 +78,9 @@ import {
   parseCancelScope,
   resolveRefundEligibility,
   type RefundPolicy,
+  SERIES_CANCEL_RSVP_STATUSES,
+  seriesCancelInstances,
+  seriesEndUntil,
   summarizeOccurrenceRefunds,
 } from './lib.ts';
 import { refundOrder, stripeRestRefundCreator } from './refund.ts';
@@ -118,8 +128,11 @@ Deno.serve(withSentry('events-cancel', async (req: Request) => {
   }
 
   const eventId = typeof body.event_id === 'string' ? body.event_id : null;
-  const instanceStart = typeof body.instance_start === 'string' ? body.instance_start : null;
-  if (!eventId || !instanceStart) {
+  // A series cancel names no occurrence: it ends every one from now on.
+  const instanceStart = scope === 'series'
+    ? ''
+    : typeof body.instance_start === 'string' ? body.instance_start : null;
+  if (!eventId || instanceStart === null) {
     return Response.json({ error: 'missing_event_or_instance' }, { status: 400 });
   }
   // Both go straight into `.eq()` on typed columns below — an unchecked
@@ -127,7 +140,7 @@ Deno.serve(withSentry('events-cancel', async (req: Request) => {
   if (!isValidUuid(eventId)) {
     return Response.json({ error: 'invalid_event_id' }, { status: 400 });
   }
-  if (!isValidTimestamptz(instanceStart)) {
+  if (scope !== 'series' && !isValidTimestamptz(instanceStart)) {
     return Response.json({ error: 'invalid_instance_start' }, { status: 400 });
   }
   const reason = normalizeCancelReason(body.reason);
@@ -156,12 +169,23 @@ Deno.serve(withSentry('events-cancel', async (req: Request) => {
   const denied = await checkRateLimit(
     service,
     user.id,
-    scope === 'occurrence' ? 'events-cancel-occurrence' : 'events-cancel',
+    scope === 'self' ? 'events-cancel' : 'events-cancel-occurrence',
     20,
     3600,
     { failClosed: true },
   );
   if (denied) return denied;
+
+  if (scope === 'series') {
+    return await cancelSeries({
+      userClient,
+      service,
+      userId: user.id,
+      eventId,
+      reason,
+      stripeSecretKey,
+    });
+  }
 
   if (scope === 'occurrence') {
     return await cancelOccurrence({
@@ -315,21 +339,7 @@ async function cancelOccurrence(args: {
     return Response.json({ error: 'cancel_failed' }, { status: 500 });
   }
 
-  const results: OrderRefundResult[] = [];
-  if (planned.length > 0) {
-    const stripe = newStripe(stripeSecretKey!);
-    const createRefund = stripeRestRefundCreator(stripeSecretKey!);
-    // Sequential on purpose: a class is tens of orders, and one at a time keeps
-    // a Stripe rate-limit from turning into a burst of half-recorded failures.
-    for (const { order, action } of planned) {
-      if (action === 'release_reservation') {
-        await expireReservation(stripe, order.stripe_checkout_session_id);
-        results.push({ orderId: order.id, outcome: 'released' });
-        continue;
-      }
-      results.push(await refundOrder(createRefund, service, order));
-    }
-  }
+  const results = await settleOrders(planned, service, stripeSecretKey);
 
   // 200 even when a refund failed: the occurrence IS cancelled, and the body
   // says exactly which orders still hold money. `outcome: 'incomplete'` is the
@@ -338,6 +348,182 @@ async function cancelOccurrence(args: {
   return Response.json({
     ok: true,
     action: 'occurrence_cancelled',
+    refunds: summarizeOccurrenceRefunds(results),
+  });
+}
+
+type CancelableOrder = {
+  id: string;
+  status: string;
+  stripe_checkout_session_id: string | null;
+  stripe_payment_intent_id: string | null;
+};
+
+/// Release or refund each planned order of a host cancel. Sequential on
+/// purpose: a class is tens of orders, and one at a time keeps a Stripe
+/// rate-limit from turning into a burst of half-recorded failures. The caller
+/// has already refused to start without a key when anything is planned.
+async function settleOrders(
+  planned: ReadonlyArray<{ order: CancelableOrder; action: ReturnType<typeof hostCancelAction> }>,
+  service: DbClient,
+  stripeSecretKey: string | null,
+): Promise<OrderRefundResult[]> {
+  const results: OrderRefundResult[] = [];
+  if (planned.length === 0) return results;
+  const stripe = newStripe(stripeSecretKey!);
+  const createRefund = stripeRestRefundCreator(stripeSecretKey!);
+  for (const { order, action } of planned) {
+    if (action === 'release_reservation') {
+      await expireReservation(stripe, order.stripe_checkout_session_id);
+      results.push({ orderId: order.id, outcome: 'released' });
+      continue;
+    }
+    results.push(await refundOrder(createRefund, service, order));
+  }
+  return results;
+}
+
+/// The organiser path for a whole recurring series: end it now, call off every
+/// remaining occurrence someone signed up for, and refund all of their orders.
+async function cancelSeries(args: {
+  userClient: DbClient;
+  service: DbClient;
+  userId: string;
+  eventId: string;
+  reason: string | null;
+  stripeSecretKey: string | null;
+}): Promise<Response> {
+  const { userClient, service, userId, eventId, reason, stripeSecretKey } = args;
+
+  const { data: allowed, error: authzErr } = await userClient.rpc(
+    'can_cancel_event_occurrence',
+    { p_event_id: eventId },
+  );
+  if (authzErr) {
+    console.error('organiser check failed (code):', authzErr?.code ?? 'unknown');
+    return Response.json({ error: 'cancel_failed' }, { status: 500 });
+  }
+  if (allowed !== true) {
+    return Response.json({ error: 'not_event_organiser' }, { status: 403 });
+  }
+
+  const { data: event, error: eventErr } = await service
+    .from('events')
+    .select('recurrence_freq, recurrence_until')
+    .eq('id', eventId)
+    .maybeSingle();
+  if (eventErr) {
+    console.error('series event read failed (code):', eventErr?.code ?? 'unknown');
+    return Response.json({ error: 'cancel_failed' }, { status: 500 });
+  }
+  if (!event) {
+    return Response.json({ error: 'event_not_found' }, { status: 404 });
+  }
+  if (!event.recurrence_freq) {
+    return Response.json({ error: 'not_a_series' }, { status: 400 });
+  }
+
+  const cutoff = new Date().toISOString();
+  const cutoffMs = Date.parse(cutoff);
+
+  const readOrders = () =>
+    service
+      .from('event_orders')
+      .select('id, instance_start, status, stripe_checkout_session_id, stripe_payment_intent_id')
+      .eq('event_id', eventId)
+      .gte('instance_start', cutoff)
+      .in('status', [...OCCURRENCE_CANCEL_STATUSES])
+      .order('created_at', { ascending: true });
+
+  const first = await readOrders();
+  if (first.error) {
+    console.error('series orders read failed (code):', first.error?.code ?? 'unknown');
+    return Response.json({ error: 'cancel_failed' }, { status: 500 });
+  }
+  if (!stripeSecretKey && (first.data ?? []).some((o) => hostCancelAction(o.status) !== 'noop')) {
+    return Response.json({ error: 'stripe_not_configured' }, { status: 503 });
+  }
+
+  // End the series FIRST: events-checkout refuses an instant past
+  // recurrence_until, so no order can start behind the cancels below.
+  const until = seriesEndUntil(event.recurrence_until, cutoff);
+  if (until !== null) {
+    const { error: endErr } = await service
+      .from('events')
+      .update({ recurrence_until: until })
+      .eq('id', eventId);
+    if (endErr) {
+      console.error('series end write failed (code):', endErr?.code ?? 'unknown');
+      return Response.json({ error: 'cancel_failed' }, { status: 500 });
+    }
+  }
+
+  // Call off by name every remaining occurrence that holds an order or an
+  // RSVP. Read twice: a checkout that read the series before it ended can
+  // still land its pending order after the first pass, and the second pass
+  // catches it with its occurrence then cancelled behind it.
+  let cancelledOccurrences = 0;
+  for (let pass = 0; pass < 2; pass++) {
+    const [orders, attendees, exceptions] = await Promise.all([
+      readOrders(),
+      service
+        .from('event_attendees')
+        .select('instance_start')
+        .eq('event_id', eventId)
+        .gte('instance_start', cutoff)
+        .in('status', [...SERIES_CANCEL_RSVP_STATUSES]),
+      service
+        .from('event_exceptions')
+        .select('instance_start')
+        .eq('event_id', eventId)
+        .gte('instance_start', cutoff),
+    ]);
+    if (orders.error || attendees.error || exceptions.error) {
+      const code = (orders.error ?? attendees.error ?? exceptions.error)?.code ?? 'unknown';
+      console.error('series occurrence read failed (code):', code);
+      return Response.json({ error: 'cancel_failed' }, { status: 500 });
+    }
+    const instances = seriesCancelInstances(
+      [...(orders.data ?? []), ...(attendees.data ?? [])],
+      (exceptions.data ?? []).map((e) => e.instance_start),
+      cutoffMs,
+    );
+    if (instances.length === 0) break;
+    const { error: exceptionErr } = await service
+      .from('event_exceptions')
+      .upsert(
+        instances.map((instance_start) => ({
+          event_id: eventId,
+          instance_start,
+          cancelled_by: userId,
+          reason,
+        })),
+        { onConflict: 'event_id,instance_start', ignoreDuplicates: true },
+      );
+    if (exceptionErr) {
+      console.error('series cancel insert failed (code):', exceptionErr?.code ?? 'unknown');
+      return Response.json({ error: 'cancel_failed' }, { status: 500 });
+    }
+    cancelledOccurrences += instances.length;
+  }
+
+  const final = await readOrders();
+  if (final.error) {
+    console.error('series orders re-read failed (code):', final.error?.code ?? 'unknown');
+    return Response.json({ error: 'cancel_failed' }, { status: 500 });
+  }
+  const planned = (final.data ?? [])
+    .map((order) => ({ order, action: hostCancelAction(order.status) }))
+    .filter((p) => p.action !== 'noop');
+  if (planned.length > 0 && !stripeSecretKey) {
+    return Response.json({ error: 'stripe_not_configured' }, { status: 503 });
+  }
+  const results = await settleOrders(planned, service, stripeSecretKey);
+
+  return Response.json({
+    ok: true,
+    action: 'series_cancelled',
+    cancelled_occurrences: cancelledOccurrences,
     refunds: summarizeOccurrenceRefunds(results),
   });
 }

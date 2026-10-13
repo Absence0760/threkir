@@ -866,11 +866,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   bool _raceEndedShown = false;
   bool _raceLateShown = false;
 
-  /// The hosted race moved under the recording: the host ended it, or the
-  /// start was judged late. Each is said once; neither touches L0/L1.
+  /// The race moved under the recording: GO for a recording started while
+  /// it was armed (joined here), the host ended it, or the start was judged
+  /// late. Each is said once; none touches L0/L1.
   void _onRaceChange() {
     final rc = widget.raceController;
     if (rc == null || !mounted || _state != _ScreenState.recording) return;
+    if (!_stopRequested) _attachToRunningRace();
     if (rc.raceEnded && !_raceEndedShown) {
       _raceEndedShown = true;
       _showTopBanner(_l10n.runRaceEnded, duration: const Duration(seconds: 8));
@@ -2141,18 +2143,17 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     );
 
     // If a live race is running, attach this recorder so pings flow and
-    // the finished run auto-submits to the leaderboard.
-    final race = widget.raceController?.active;
-    if (race != null && race.isRunning) {
-      widget.raceController!.attachRecorder(
-        eventId: race.eventId,
-        instance: race.instanceStart,
-        startedAt: race.startedAt,
-        recordingStartedAt: _runStartedAtWall,
-      );
-      _raceEndedShown = false;
-      _raceLateShown = false;
-    }
+    // the finished run auto-submits to the leaderboard. A race still armed
+    // is joined at GO, by [_onRaceChange].
+    _raceEndedShown = false;
+    _raceLateShown = false;
+    _attachToRunningRace();
+  }
+
+  void _attachToRunningRace() {
+    final started = _runStartedAtWall;
+    if (started == null) return;
+    widget.raceController?.attachIfRaceRunning(recordingStartedAt: started);
   }
 
   /// Prompt the user to Resume / Finish / Discard a process-killed partial

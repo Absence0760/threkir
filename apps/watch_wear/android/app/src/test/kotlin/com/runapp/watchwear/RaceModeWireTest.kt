@@ -144,7 +144,7 @@ class RaceModeWireTest {
     }
 
     @Test
-    fun `only a refused body is dropped; offline, 5xx, 409 and 401 are replayed`() {
+    fun `only a refused body is dropped - offline, 5xx, 409 and 401 are replayed`() {
         assertFalse(isRetryableRaceResultFailure(RuntimeException("HTTP 400: bad column")))
         assertFalse(isRetryableRaceResultFailure(RuntimeException("HTTP 422: check")))
         assertTrue(isRetryableRaceResultFailure(RuntimeException("HTTP 409: fk run_id")))

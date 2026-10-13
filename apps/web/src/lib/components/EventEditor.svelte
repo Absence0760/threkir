@@ -12,6 +12,9 @@
 		setEventPricing,
 		fetchSessionPlans,
 		setEventSessionPlan,
+		fetchClubGymRoutineTemplates,
+		setEventGymRoutine,
+		type GymRoutineSummary,
 		fetchEventCourses,
 		saveEventCourses,
 		type SessionPlan
@@ -84,6 +87,10 @@
 	// Optional follow-along session plan to attach to a class event (M5).
 	let sessionPlans = $state<SessionPlan[]>([]);
 	let sessionPlanId = $state<string>('');
+	// Or one of this club's gym routine templates for a strength / HIIT class
+	// (decisions § 1869). A class carries one or the other, never both.
+	let gymRoutines = $state<GymRoutineSummary[]>([]);
+	let gymRoutineId = $state<string>('');
 	let title = $state(untrack(() => existing?.title ?? ''));
 	let description = $state(untrack(() => existing?.description ?? ''));
 	let date = $state(untrack(() => initDate(existing?.starts_at)));
@@ -157,6 +164,7 @@
 		discipline,
 		gymTemplateDurationMin,
 		sessionPlanId,
+		gymRoutineId,
 		title,
 		description,
 		date,
@@ -217,7 +225,18 @@
 			discipline = '';
 			gymTemplateDurationMin = null;
 			sessionPlanId = '';
+			gymRoutineId = '';
 		}
+	}
+
+	function pickSessionPlan(next: string) {
+		sessionPlanId = next;
+		if (next) gymRoutineId = '';
+	}
+
+	function pickGymRoutine(next: string) {
+		gymRoutineId = next;
+		if (next) sessionPlanId = '';
 	}
 
 	function defaultDate(): string {
@@ -279,6 +298,7 @@
 			} catch (e) {
 				console.error('fetchSessionPlans failed', e);
 			}
+			gymRoutines = await fetchClubGymRoutineTemplates(clubId);
 		} else if (isAthleticCategory(existing.category)) {
 			try {
 				const loaded = await fetchEventCourses(existing.id);
@@ -554,6 +574,13 @@
 					console.error('setEventSessionPlan failed', se);
 					showToast(m('session.event.planFailed'), 'error');
 				}
+			} else if (category === 'class' && gymRoutineId) {
+				try {
+					await setEventGymRoutine(event.id, gymRoutineId);
+				} catch (ge) {
+					console.error('setEventGymRoutine failed', ge);
+					showToast(m('eventEditor.gymRoutineFailed'), 'error');
+				}
 			}
 			// The event exists either way, so a course failure is reported and
 			// the host still lands on the new event, where Edit can retry it —
@@ -653,7 +680,8 @@
 				<label>
 					<span>{m('session.event.planPicker')} <span class="optional">{m('eventEditor.optional')}</span></span>
 					<select
-						bind:value={sessionPlanId}
+						value={sessionPlanId}
+						onchange={(e) => pickSessionPlan(e.currentTarget.value)}
 						data-testid="session-plan-picker"
 						aria-describedby="event-session-plan-hint"
 					>
@@ -666,6 +694,26 @@
 				<span class="hint" id="event-session-plan-hint">{m('session.event.planPickerHint')}</span>
 				{#if sessionPlans.length === 0}
 					<span class="hint">{m('session.event.planEmptyHint')}</span>
+				{/if}
+			</div>
+			<div class="field">
+				<label>
+					<span>{m('eventEditor.gymRoutinePicker')} <span class="optional">{m('eventEditor.optional')}</span></span>
+					<select
+						value={gymRoutineId}
+						onchange={(e) => pickGymRoutine(e.currentTarget.value)}
+						data-testid="gym-routine-picker"
+						aria-describedby="event-gym-routine-hint"
+					>
+						<option value="">{m('eventEditor.gymRoutineNone')}</option>
+						{#each gymRoutines as r (r.id)}
+							<option value={r.id}>{r.title}</option>
+						{/each}
+					</select>
+				</label>
+				<span class="hint" id="event-gym-routine-hint">{m('eventEditor.gymRoutineHint')}</span>
+				{#if gymRoutines.length === 0}
+					<span class="hint">{m('eventEditor.gymRoutineEmptyHint')}</span>
 				{/if}
 			</div>
 		{/if}

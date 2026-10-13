@@ -24,6 +24,14 @@
 	import { trackDirty } from '#lib/core/form_dirty.ts';
 	import { noteModalityData } from '#lib/stores/modality_visibility.svelte.ts';
 
+	interface PrefillSetRow {
+		exercise_name: string;
+		reps: number | null;
+		duration_s?: number | null;
+		weight_kg?: number | null;
+		rpe?: number | null;
+	}
+
 	interface Props {
 		existing?: GymWorkoutWithSets | null;
 		/// Seed for a NEW workout (used by the class -> gym seam). Pre-fills the
@@ -31,11 +39,12 @@
 		/// is set (an edit owns its own values).
 		prefill?: {
 			title?: string | null;
-			/// Session-plan-derived rows (class -> gym seam,
-			/// workoutDraftFromSession): pre-populate the exercise blocks of a
-			/// NEW log so an attendee logs the class content, not just its
-			/// title. Ignored when `existing` / `seed` carries real sets.
-			sets?: { exercise_name: string; reps: number | null; duration_s: number | null }[];
+			/// Class-content rows (class -> gym seam: workoutDraftFromSession for
+			/// a session plan, workoutDraftFromRoutine for a gym routine):
+			/// pre-populate the exercise blocks of a NEW log so an attendee logs
+			/// the class content, not just its title. Ignored when `existing` /
+			/// `seed` carries real sets.
+			sets?: PrefillSetRow[];
 		} | null;
 		/// Prefill the editor with these sets/title but save as a NEW workout
 		/// (the "Repeat last" / "Start routine" path) — distinct from `existing`,
@@ -163,16 +172,14 @@
 		return blocks;
 	}
 
-	function initFromPrefillSets(
-		sets: { exercise_name: string; reps: number | null; duration_s: number | null }[] | undefined,
-	): EditExercise[] {
+	function initFromPrefillSets(sets: PrefillSetRow[] | undefined): EditExercise[] {
 		if (!sets || sets.length === 0) return [{ name: '', sets: [emptySet()] }];
 		const blocks: EditExercise[] = [];
 		for (const s of sets) {
 			const row: EditSet = {
 				reps: s.reps == null ? '' : String(s.reps),
-				weight: '',
-				rpe: '',
+				weight: weightInputValue(s.weight_kg),
+				rpe: s.rpe == null ? '' : String(s.rpe),
 				duration: s.duration_s == null ? '' : String(s.duration_s),
 				setType: 'working',
 			};

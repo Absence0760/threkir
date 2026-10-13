@@ -69,6 +69,11 @@
 		fetchSessionPlan,
 		fetchSessionPlans,
 		setEventSessionPlan,
+		fetchGymRoutineDetail,
+		fetchClubGymRoutineTemplates,
+		setEventGymRoutine,
+		type GymRoutineDetail,
+		type GymRoutineSummary,
 		type SessionPlan,
 		type SessionPlanWithItems
 	} from '#lib/core/data.ts';
@@ -84,7 +89,12 @@
 	import type { FinisherStatus } from '#lib/types.ts';
 	import { sameInstant } from '#lib/social/event_instance.ts';
 	import { isSeriesCancelled, upcomingCancelledOccurrences } from '#lib/social/event_occurrence.ts';
-	import { workoutDraftFromTemplate, workoutDraftFromSession } from '#lib/social/event_gym_template.ts';
+	import {
+		workoutDraftFromTemplate,
+		workoutDraftFromSession,
+		workoutDraftFromRoutine
+	} from '#lib/social/event_gym_template.ts';
+	import type { PlannedRoutine } from '#lib/gym/gym_routine.ts';
 	import { expandSessionSteps, type SessionPlanInput } from '#lib/social/session_steps.ts';
 	import { formatDistance, getUnit, fmtPace } from '#lib/format/units.svelte.ts';
 	import { formatPrice } from '#lib/format/format_price.ts';
@@ -364,7 +374,10 @@
 	// AND a non-null gym_template AND a signed-in viewer — a run/cycle/social
 	// event never offers it.
 	let canLogAsWorkout = $derived(
-		!!event && event.category === 'class' && event.gym_template != null && auth.user != null
+		!!event &&
+			event.category === 'class' &&
+			(event.gym_template != null || event.gym_routine_id != null) &&
+			auth.user != null
 	);
 	let showLogWorkout = $state(false);
 
@@ -405,12 +418,45 @@
 	});
 	let sessionSteps = $derived(sessionExpansion?.steps ?? []);
 
-	// Log-as-workout prefill: with an attached session plan the attendee logs
-	// the class CONTENT (one row per expanded step, workoutDraftFromSession);
+	// A class may instead carry one of its club's gym routine templates
+	// (decisions § 1869). It is read, never cloned: the seed below fills the
+	// attendee's own new workout, and the routine stays the club's.
+	let gymRoutine = $state<GymRoutineDetail | null>(null);
+	let clubRoutines = $state<GymRoutineSummary[]>([]);
+	let showRoutineAttach = $state(false);
+	let routineChoice = $state<string>('');
+	let plannedRoutine = $derived.by((): PlannedRoutine | null => {
+		if (!gymRoutine) return null;
+		return {
+			title: gymRoutine.routine.title,
+			exercises: gymRoutine.exercises.map((e) => ({
+				exerciseName: e.exercise_name,
+				position: e.position,
+				supersetGroup: e.superset_group,
+				supersetOrder: e.superset_order,
+				sets: e.sets.map((st) => ({
+					setIndex: st.set_index,
+					setType: st.set_type,
+					targetRepsMin: st.target_reps_min,
+					targetRepsMax: st.target_reps_max,
+					targetWeightKg: st.target_weight_kg,
+					targetRpe: st.target_rpe
+				}))
+			}))
+		};
+	});
+
+	// Log-as-workout prefill: with an attached gym routine or session plan the
+	// attendee logs the class CONTENT (one row per planned set,
+	// workoutDraftFromRoutine; one per expanded step, workoutDraftFromSession);
 	// otherwise just the flat gym_template title.
 	let logWorkoutPrefill = $derived.by(() => {
 		if (!event) return null;
 		const base = workoutDraftFromTemplate(event.gym_template, event.title);
+		if (plannedRoutine) {
+			const draft = workoutDraftFromRoutine(plannedRoutine, event.discipline ?? null);
+			return { title: draft.title ?? base.title, sets: draft.sets };
+		}
 		if (!sessionPlan || !sessionExpansion) return { title: base.title };
 		const draft = workoutDraftFromSession(
 			sessionExpansion,
@@ -437,6 +483,47 @@
 		}
 	}
 
+	// L4 auxiliary read, as loadSessionPlan: a routine the viewer cannot read
+	// (a non-member of the club, or a template since unpublished) reads as no
+	// routine, and Log-as-workout falls back to the gym_template title.
+	async function loadGymRoutine() {
+		const routineId = event?.gym_routine_id ?? null;
+		if (!routineId) {
+			gymRoutine = null;
+			return;
+		}
+		try {
+			gymRoutine = await fetchGymRoutineDetail(routineId);
+		} catch (e) {
+			console.warn('gym routine read failed', e);
+			gymRoutine = null;
+		}
+	}
+
+	async function openRoutineAttach() {
+		if (!event) return;
+		clubRoutines = await fetchClubGymRoutineTemplates(event.club_id);
+		routineChoice = event.gym_routine_id ?? '';
+		showRoutineAttach = true;
+	}
+
+	async function saveRoutineAttach() {
+		if (!event) return;
+		try {
+			await setEventGymRoutine(event.id, routineChoice || null);
+			event = {
+				...event,
+				gym_routine_id: routineChoice || null,
+				session_plan_id: routineChoice ? null : event.session_plan_id
+			};
+			await Promise.all([loadGymRoutine(), loadSessionPlan()]);
+			showRoutineAttach = false;
+			showToast(m('clubEvent.gymRoutineSaved'), 'success');
+		} catch (e) {
+			showToast(e instanceof Error ? e.message : m('clubEvent.gymRoutineSaveFailed'), 'error');
+		}
+	}
+
 	async function openAttach() {
 		try {
 			myPlans = await fetchSessionPlans();
@@ -453,8 +540,12 @@
 		if (!event) return;
 		try {
 			await setEventSessionPlan(event.id, attachChoice || null);
-			event = { ...event, session_plan_id: attachChoice || null };
-			await loadSessionPlan();
+			event = {
+				...event,
+				session_plan_id: attachChoice || null,
+				gym_routine_id: attachChoice ? null : event.gym_routine_id
+			};
+			await Promise.all([loadSessionPlan(), loadGymRoutine()]);
 			showAttach = false;
 			showToast(m('session.attached'), 'success');
 		} catch (e) {
@@ -619,7 +710,7 @@
 				console.warn('fetchEventCourses failed', ce);
 				courses = [];
 			}
-			await loadSessionPlan();
+			await Promise.all([loadSessionPlan(), loadGymRoutine()]);
 			await reloadInstance();
 		} catch (e) {
 			// A rejection anywhere in here used to escape and leave `loading`
@@ -2855,6 +2946,36 @@
 		</section>
 		{/if}
 
+		{#if isClass && (gymRoutine || isEventOrganiser)}
+			<section class="card" data-testid="class-routine">
+				<div class="results-head">
+					<h3>{m('clubEvent.gymRoutineTitle')}</h3>
+					{#if isEventOrganiser}
+						<button type="button" class="btn-link" onclick={openRoutineAttach}>
+							{m('clubEvent.gymRoutineAttach')}
+						</button>
+					{/if}
+				</div>
+				{#if gymRoutine}
+					<p class="session-plan-name">{gymRoutine.routine.title}</p>
+					<ol class="session-steps">
+						{#each gymRoutine.exercises as ex (ex.id)}
+							<li>
+								<span>{ex.exercise_name}</span>
+								<span class="muted session-cue">
+									{m(ex.sets.length === 1 ? 'clubEvent.gymRoutineSetsOne' : 'clubEvent.gymRoutineSetsMany', {
+										n: ex.sets.length
+									})}
+								</span>
+							</li>
+						{/each}
+					</ol>
+				{:else}
+					<p class="muted">{m('clubEvent.gymRoutineNone')}</p>
+				{/if}
+			</section>
+		{/if}
+
 		{#if isClass && (sessionPlan || isEventOrganiser)}
 			<section class="card" data-testid="session-sequence">
 				<div class="results-head">
@@ -3229,6 +3350,9 @@
 					{/each}
 				</select>
 			</label>
+			{#if event.gym_routine_id && attachChoice}
+				<p class="muted">{m('clubEvent.planReplacesRoutine')}</p>
+			{/if}
 			<div class="attach-actions">
 				<button type="button" class="btn btn-secondary" onclick={() => (showAttach = false)}>
 					{m('session.cancel')}
@@ -3238,6 +3362,42 @@
 					class="btn btn-primary"
 					data-testid="attach-plan-save"
 					onclick={saveAttach}
+				>
+					{m('session.attachSave')}
+				</button>
+			</div>
+		</div>
+	</Modal>
+	<Modal
+		open={showRoutineAttach}
+		title={m('clubEvent.gymRoutineAttach')}
+		onclose={() => (showRoutineAttach = false)}
+	>
+		<div class="attach-body">
+			<label class="attach-field">
+				<span>{m('clubEvent.gymRoutineTitle')}</span>
+				<select bind:value={routineChoice} data-testid="attach-routine-select">
+					<option value="">{m('session.attachNone')}</option>
+					{#each clubRoutines as r (r.id)}
+						<option value={r.id}>{r.title}</option>
+					{/each}
+				</select>
+			</label>
+			{#if clubRoutines.length === 0}
+				<p class="muted">{m('clubEvent.gymRoutineEmpty')}</p>
+			{/if}
+			{#if event.session_plan_id && routineChoice}
+				<p class="muted">{m('clubEvent.gymRoutineReplacesPlan')}</p>
+			{/if}
+			<div class="attach-actions">
+				<button type="button" class="btn btn-secondary" onclick={() => (showRoutineAttach = false)}>
+					{m('session.cancel')}
+				</button>
+				<button
+					type="button"
+					class="btn btn-primary"
+					data-testid="attach-routine-save"
+					onclick={saveRoutineAttach}
 				>
 					{m('session.attachSave')}
 				</button>

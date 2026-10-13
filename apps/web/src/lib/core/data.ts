@@ -2525,7 +2525,7 @@ const CLUB_SELECT_COLS =
 // enumerates these safe columns; the two coords are write-only
 // today (no UI consumer).
 const EVENT_SELECT_COLS =
-	'id, club_id, title, description, starts_at, timezone, duration_min, meet_label, route_id, distance_m, pace_target_sec, capacity, author_id, created_at, updated_at, recurrence_freq, recurrence_byday, recurrence_until, recurrence_count, category, discipline, gym_template, session_plan_id, is_public' as const;
+	'id, club_id, title, description, starts_at, timezone, duration_min, meet_label, route_id, distance_m, pace_target_sec, capacity, author_id, created_at, updated_at, recurrence_freq, recurrence_byday, recurrence_until, recurrence_count, category, discipline, gym_template, session_plan_id, gym_routine_id, is_public' as const;
 
 /** Browse public clubs. Most recently created first. */
 export async function browseClubsWithError(
@@ -11885,14 +11885,39 @@ export async function fetchSessionMovementNames(): Promise<string[]> {
 }
 
 /** Attach (or detach with null) a session plan to a class event. Organiser-only
- *  at the DB layer (the events_session_plan_organiser trigger). */
+ *  at the DB layer (the events_session_plan_organiser trigger). A class carries
+ *  a session plan or a gym routine, never both (events_one_class_content), so
+ *  attaching a plan detaches any routine in the same write. */
 export async function setEventSessionPlan(
 	eventId: string,
 	sessionPlanId: string | null
 ): Promise<void> {
 	const { error } = await supabase
 		.from('events')
-		.update({ session_plan_id: sessionPlanId })
+		.update(
+			sessionPlanId == null
+				? { session_plan_id: null }
+				: { session_plan_id: sessionPlanId, gym_routine_id: null }
+		)
+		.eq('id', eventId);
+	if (error) throw error;
+}
+
+/** Attach (or detach with null) a gym routine to a class event (decisions
+ *  § 1869). The events_gym_routine_organiser trigger admits only an organiser
+ *  and only a template of the event's own club or a public template; attaching
+ *  one detaches any session plan in the same write, as above. */
+export async function setEventGymRoutine(
+	eventId: string,
+	gymRoutineId: string | null
+): Promise<void> {
+	const { error } = await supabase
+		.from('events')
+		.update(
+			gymRoutineId == null
+				? { gym_routine_id: null }
+				: { gym_routine_id: gymRoutineId, session_plan_id: null }
+		)
 		.eq('id', eventId);
 	if (error) throw error;
 }

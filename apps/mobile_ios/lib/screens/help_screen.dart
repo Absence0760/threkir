@@ -473,6 +473,7 @@ class _GuideBlockView extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Semantics(
+                      container: true,
                       label: l10n.helpStepLabel(i + 1),
                       excludeSemantics: true,
                       child: Container(

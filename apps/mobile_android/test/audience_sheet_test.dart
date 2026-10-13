@@ -9,7 +9,8 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/widgets/audience_sheet.dart';
 
 class _FakeBackend implements AudienceBackend {
-  AudienceColumns? columns;
+  AudienceColumns? columns =
+      const AudienceColumns(isPublic: false, followersOnly: false);
   List<AudiencePerson> shares;
   List<AudiencePerson> people;
   bool failSetLevel = false;
@@ -17,7 +18,6 @@ class _FakeBackend implements AudienceBackend {
   final List<String> calls = [];
 
   _FakeBackend({
-    this.columns = const AudienceColumns(isPublic: false, followersOnly: false),
     this.shares = const [],
     this.people = const [],
   });

@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
-import 'package:core_models/core_models.dart' show ClubRow;
+import 'package:core_models/core_models.dart' show ClubRow, UserProfileRow;
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';

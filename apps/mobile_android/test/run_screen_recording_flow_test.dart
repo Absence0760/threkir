@@ -240,7 +240,8 @@ class _RaceResultSocial extends SocialService {
 RaceController _runningRace(SocialService social, [RaceController? base]) {
   final rc = (base ?? RaceController(social))
     ..courseLoader = ((_, _) async => null)
-    ..pingWriter = ((_) async {});
+    ..pingWriter = ((_) async {})
+    ..userIdReader = (() => 'user-runner');
   rc.setActiveForTest(ActiveRace(
     eventId: 'event-1',
     instanceStart: DateTime.utc(2026, 10, 13, 9),

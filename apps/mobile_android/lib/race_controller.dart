@@ -86,6 +86,18 @@ bool isRetryableRaceResultFailure(Object e) {
   return status == null || !const {400, 403, 404, 422}.contains(status);
 }
 
+/// Remove every queued finisher time. Called on sign-out: the queue is the
+/// one place a departing account's results would otherwise wait for the
+/// next account to sign in. Never throws.
+Future<void> clearPendingRaceResults() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(kPendingRaceResultsKey);
+  } catch (e) {
+    debugPrint('[clearPendingRaceResults] ${safeErrorLabel(e)}');
+  }
+}
+
 /// A finisher time that couldn't be submitted when the run finished.
 ///
 /// `submitEventResult` upserts on `(event_id, instance_start, user_id)`, so
@@ -93,6 +105,7 @@ bool isRetryableRaceResultFailure(Object e) {
 /// retry we never saw the response to just rewrites the same row.
 class PendingRaceResult {
   const PendingRaceResult({
+    required this.userId,
     required this.eventId,
     required this.instanceStart,
     required this.runId,
@@ -105,6 +118,9 @@ class PendingRaceResult {
     this.finishMethod,
   });
 
+  /// The account the time belongs to. The upsert writes whoever is signed
+  /// in, so an entry only ever replays while this account is.
+  final String userId;
   final String eventId;
   final DateTime instanceStart;
   final String runId;
@@ -117,6 +133,7 @@ class PendingRaceResult {
   final String? finishMethod;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
+        'user_id': userId,
         'event_id': eventId,
         'instance_start': instanceStartKey(instanceStart),
         'run_id': runId,
@@ -129,13 +146,19 @@ class PendingRaceResult {
         if (finishMethod != null) 'finish_method': finishMethod,
       };
 
+  /// Null for an entry that cannot be replayed safely, including one queued
+  /// before entries carried their account: nothing says whose it is, and
+  /// replaying it would file it under whoever is signed in now.
   static PendingRaceResult? fromJson(Map<String, dynamic> json) {
+    final userId = json['user_id'];
     final eventId = json['event_id'];
     final instance = json['instance_start'];
     final runId = json['run_id'];
     final durationS = json['duration_s'];
     final distanceM = json['distance_m'];
-    if (eventId is! String ||
+    if (userId is! String ||
+        userId.isEmpty ||
+        eventId is! String ||
         instance is! String ||
         runId is! String ||
         durationS is! num ||
@@ -150,6 +173,7 @@ class PendingRaceResult {
     final gun = json['gun_time_s'];
     final chip = json['chip_time_s'];
     return PendingRaceResult(
+      userId: userId,
       eventId: eventId,
       instanceStart: parsed,
       runId: runId,
@@ -286,6 +310,10 @@ class RaceController extends ChangeNotifier {
   /// changing to `finished/cancelled` and posts pings until then.
   String? _hostingEventId;
   DateTime? _hostingInstance;
+
+  /// Who was signed in when the recording attached: the account its result
+  /// belongs to, whoever is signed in by the time it is filed.
+  String? _hostingUserId;
 
   /// GO, on the server clock. Null until the session row says so.
   DateTime? _gunAt;
@@ -591,7 +619,10 @@ class RaceController extends ChangeNotifier {
       debugPrint('[RaceController.ingestWatchResult] ${safeErrorLabel(e)}');
       if (!isRetryableRaceResultFailure(e)) return true;
     }
+    final uid = _signedInUserId;
+    if (uid == null) return false;
     return _queuePendingResult(PendingRaceResult(
+      userId: uid,
       eventId: result.eventId,
       instanceStart: result.instanceStart,
       runId: result.runId,
@@ -612,6 +643,7 @@ class RaceController extends ChangeNotifier {
   }) {
     _hostingEventId = eventId;
     _hostingInstance = instance;
+    _hostingUserId = _signedInUserId;
     _gunAt = startedAt;
     _recordingStartedAt = recordingStartedAt;
     _course = null;
@@ -629,6 +661,7 @@ class RaceController extends ChangeNotifier {
     _attachGeneration++;
     _hostingEventId = null;
     _hostingInstance = null;
+    _hostingUserId = null;
     _gunAt = null;
     _recordingStartedAt = null;
     _course = null;
@@ -854,6 +887,15 @@ class RaceController extends ChangeNotifier {
       ? Supabase.instance.client.auth.currentUser?.id
       : null;
 
+  /// The signed-in account, as a seam: no host test can sign in to Supabase.
+  @visibleForTesting
+  String? Function()? userIdReader;
+
+  String? get _signedInUserId {
+    final reader = userIdReader;
+    return reader != null ? reader() : _currentUserId;
+  }
+
   /// Submit an event result tied to the currently hosted race, then
   /// detach. Called by the run screen once the recorder finishes.
   ///
@@ -877,6 +919,12 @@ class RaceController extends ChangeNotifier {
     final eid = _hostingEventId;
     final inst = _hostingInstance;
     if (eid == null || inst == null) return;
+    final owner = _hostingUserId ?? _signedInUserId;
+    if (owner == null) {
+      debugPrint('[RaceController.submitResult] no account to file under');
+      detachRecorder();
+      return;
+    }
     final outcome = _outcome ??
         (_raceEnded ? null : decideStop(coveredM: distanceM));
     if (outcome == null) {
@@ -891,6 +939,7 @@ class RaceController extends ChangeNotifier {
       elapsedS: durationS,
     );
     final result = PendingRaceResult(
+      userId: owner,
       eventId: eid,
       instanceStart: inst,
       runId: runId,
@@ -911,18 +960,26 @@ class RaceController extends ChangeNotifier {
     detachRecorder();
   }
 
-  Future<void> _submitPending(PendingRaceResult r) => _social.submitEventResult(
-        eventId: r.eventId,
-        instance: r.instanceStart,
-        durationS: r.durationS,
-        distanceM: r.distanceM,
-        runId: r.runId,
-        finisherStatus: r.finisherStatus,
-        courseId: r.courseId,
-        gunTimeS: r.gunTimeS,
-        chipTimeS: r.chipTimeS,
-        finishMethod: r.finishMethod,
-      );
+  /// The upsert writes whoever is signed in, so a result is only ever sent
+  /// while its own account is; otherwise it throws, which the callers read
+  /// as retryable and keep on disk for that account's return.
+  Future<void> _submitPending(PendingRaceResult r) {
+    if (_signedInUserId != r.userId) {
+      throw StateError('race result belongs to another account');
+    }
+    return _social.submitEventResult(
+      eventId: r.eventId,
+      instance: r.instanceStart,
+      durationS: r.durationS,
+      distanceM: r.distanceM,
+      runId: r.runId,
+      finisherStatus: r.finisherStatus,
+      courseId: r.courseId,
+      gunTimeS: r.gunTimeS,
+      chipTimeS: r.chipTimeS,
+      finishMethod: r.finishMethod,
+    );
+  }
 
   bool _draining = false;
 
@@ -930,15 +987,22 @@ class RaceController extends ChangeNotifier {
   /// the session poll (and therefore also off [start]), so a result queued
   /// in a dead spot lands as soon as the phone is back on the network or
   /// the app is next opened. A result the server refuses outright is
-  /// dropped ([isRetryableRaceResultFailure]).
+  /// dropped ([isRetryableRaceResultFailure]). Only the signed-in account's
+  /// entries are sent; another account's stay queued, untouched.
   Future<void> drainPendingResults() async {
     if (_draining) return;
+    final uid = _signedInUserId;
+    if (uid == null) return;
     final queued = await _readPendingResults();
     if (queued.isEmpty) return;
     _draining = true;
     try {
       final remaining = <PendingRaceResult>[];
       for (final r in queued) {
+        if (r.userId != uid) {
+          remaining.add(r);
+          continue;
+        }
         try {
           await _submitPending(r);
         } catch (e) {
@@ -961,6 +1025,7 @@ class RaceController extends ChangeNotifier {
     try {
       final queued = await _readPendingResults();
       queued.removeWhere((r) =>
+          r.userId == result.userId &&
           r.eventId == result.eventId &&
           r.instanceStart.isAtSameMomentAs(result.instanceStart));
       queued.add(result);

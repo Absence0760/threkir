@@ -553,6 +553,9 @@ void main() async {
         // account keeps its own history), but the in-progress snapshot is
         // not tagged and would be adopted by whoever signs in next.
         wipeInProgressRecording(store);
+        // Queued race finisher times are filed under whoever is signed in
+        // when they replay; the departing account's go with it, as on Wear.
+        clearPendingRaceResults();
       }
     });
     WearAuthBridge().attach(url: supabaseUrl, anonKey: anonKey);

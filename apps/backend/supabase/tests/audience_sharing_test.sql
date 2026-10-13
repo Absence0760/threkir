@@ -337,10 +337,11 @@ set local "request.jwt.claims" = '';
 -- ── Never broadcast: feeds and notifications key on is_public ──
 -- (33)
 select is(
-  (select count(*)::int from public_runs
-    where id in ('a5a5aaaa-0000-0000-0000-000000000002', 'a5a5aaaa-0000-0000-0000-000000000003')),
-  0,
-  'public_runs (feeds, profiles, the share page) carries neither the followers-only nor the shared run');
+  (select array_agg(id::text order by id) from public_runs
+    where id in ('a5a5aaaa-0000-0000-0000-000000000002', 'a5a5aaaa-0000-0000-0000-000000000003',
+                 'a5a5aaaa-0000-0000-0000-000000000004')),
+  array['a5a5aaaa-0000-0000-0000-000000000004'],
+  'public_runs (feeds, profiles, the share page) carries the public run but neither the followers-only nor the shared run');
 
 insert into runs (id, user_id, started_at, distance_m, duration_s, source, is_public, followers_only, metadata)
 values

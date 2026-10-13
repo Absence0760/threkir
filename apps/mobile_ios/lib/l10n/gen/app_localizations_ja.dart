@@ -14011,4 +14011,138 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get eventFinishMethodHost => '主催者';
+
+  @override
+  String get helpTitle => 'ヘルプ';
+
+  @override
+  String get helpSettingsSubtitle => 'レース、クラス、クラブ、アプリの使い方';
+
+  @override
+  String get helpSearchHint => 'ヘルプを検索';
+
+  @override
+  String get helpSearchClear => '検索をクリア';
+
+  @override
+  String get helpAudienceLabel => '表示するガイドの対象';
+
+  @override
+  String get helpAudienceAll => 'すべて';
+
+  @override
+  String get helpAudienceRunner => 'ランナー';
+
+  @override
+  String get helpAudienceOrganiser => '主催者';
+
+  @override
+  String get helpAudienceParticipant => '参加者';
+
+  @override
+  String get helpAudienceSpectator => '観戦者';
+
+  @override
+  String get helpAudienceInstructor => 'インストラクター';
+
+  @override
+  String get helpAudienceClubAdmin => 'クラブ管理者';
+
+  @override
+  String get helpCategoryRaces => 'レース';
+
+  @override
+  String get helpCategoryPaidClasses => '有料クラス';
+
+  @override
+  String get helpCategoryInstructors => 'インストラクター';
+
+  @override
+  String get helpCategoryClubs => 'クラブ';
+
+  @override
+  String get helpCategoryRunning => 'ランニング';
+
+  @override
+  String get helpCategoryAccount => 'アカウント';
+
+  @override
+  String get helpCategoryOther => 'その他のガイド';
+
+  @override
+  String get helpRequiresPro => 'Pro が必要';
+
+  @override
+  String get helpRequiresClubAdmin => 'クラブ管理者のみ';
+
+  @override
+  String get helpRequiresRaceDirector => 'レースディレクターのみ';
+
+  @override
+  String get helpRequiresStripeConnected => 'Stripe の連携が必要';
+
+  @override
+  String get helpRequiresPaidRailLive => '有料受付の有効化が必要';
+
+  @override
+  String get helpPlatformsLabel => '対応環境';
+
+  @override
+  String get helpPlatformWeb => 'Web';
+
+  @override
+  String get helpPlatformAndroid => 'Android';
+
+  @override
+  String get helpPlatformIos => 'iPhone';
+
+  @override
+  String get helpPlatformWear => 'Wear OS';
+
+  @override
+  String get helpPlatformAppleWatch => 'Apple Watch';
+
+  @override
+  String get helpNoteTip => 'ヒント';
+
+  @override
+  String get helpNoteCaution => '注意';
+
+  @override
+  String get helpRelated => '関連ガイド';
+
+  @override
+  String get helpResultsHeader => '検索結果';
+
+  @override
+  String get helpNoResultsTitle => '一致するガイドがありません';
+
+  @override
+  String get helpNoResultsBody => '別の言葉で検索するか、すべての対象のガイドを表示してください。';
+
+  @override
+  String get helpLoading => 'ガイドを読み込み中';
+
+  @override
+  String get helpUnavailable => 'ヘルプガイドを読み込めませんでした。';
+
+  @override
+  String get helpGuideMissing => 'このガイドは利用できません。';
+
+  @override
+  String get helpHowThisWorks => '使い方';
+
+  @override
+  String get helpForThisScreen => 'この画面のガイド';
+
+  @override
+  String get helpBrowseAll => 'すべてのガイドを見る';
+
+  @override
+  String helpStepLabel(int n) {
+    return 'ステップ $n';
+  }
+
+  @override
+  String get infoTipReadGuide => 'ガイドを読む';
 }

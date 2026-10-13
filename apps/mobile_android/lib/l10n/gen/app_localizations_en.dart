@@ -14547,4 +14547,139 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get eventFinishMethodHost => 'Host';
+
+  @override
+  String get helpTitle => 'Help';
+
+  @override
+  String get helpSettingsSubtitle =>
+      'How races, classes, clubs and the app work';
+
+  @override
+  String get helpSearchHint => 'Search help';
+
+  @override
+  String get helpSearchClear => 'Clear search';
+
+  @override
+  String get helpAudienceLabel => 'Show guides for';
+
+  @override
+  String get helpAudienceAll => 'All';
+
+  @override
+  String get helpAudienceRunner => 'Runners';
+
+  @override
+  String get helpAudienceOrganiser => 'Organisers';
+
+  @override
+  String get helpAudienceParticipant => 'Participants';
+
+  @override
+  String get helpAudienceSpectator => 'Spectators';
+
+  @override
+  String get helpAudienceInstructor => 'Instructors';
+
+  @override
+  String get helpAudienceClubAdmin => 'Club admins';
+
+  @override
+  String get helpCategoryRaces => 'Races';
+
+  @override
+  String get helpCategoryPaidClasses => 'Paid classes';
+
+  @override
+  String get helpCategoryInstructors => 'Instructors';
+
+  @override
+  String get helpCategoryClubs => 'Clubs';
+
+  @override
+  String get helpCategoryRunning => 'Running';
+
+  @override
+  String get helpCategoryAccount => 'Account';
+
+  @override
+  String get helpCategoryOther => 'More guides';
+
+  @override
+  String get helpRequiresPro => 'Needs Pro';
+
+  @override
+  String get helpRequiresClubAdmin => 'Club admins only';
+
+  @override
+  String get helpRequiresRaceDirector => 'Race directors only';
+
+  @override
+  String get helpRequiresStripeConnected => 'Needs Stripe connected';
+
+  @override
+  String get helpRequiresPaidRailLive => 'Needs paid registration on';
+
+  @override
+  String get helpPlatformsLabel => 'Works on';
+
+  @override
+  String get helpPlatformWeb => 'Web';
+
+  @override
+  String get helpPlatformAndroid => 'Android';
+
+  @override
+  String get helpPlatformIos => 'iPhone';
+
+  @override
+  String get helpPlatformWear => 'Wear OS';
+
+  @override
+  String get helpPlatformAppleWatch => 'Apple Watch';
+
+  @override
+  String get helpNoteTip => 'Tip';
+
+  @override
+  String get helpNoteCaution => 'Caution';
+
+  @override
+  String get helpRelated => 'Related guides';
+
+  @override
+  String get helpResultsHeader => 'Results';
+
+  @override
+  String get helpNoResultsTitle => 'No matching guides';
+
+  @override
+  String get helpNoResultsBody => 'Try another word, or show guides for all.';
+
+  @override
+  String get helpLoading => 'Loading guides';
+
+  @override
+  String get helpUnavailable => 'Help guides could not be loaded.';
+
+  @override
+  String get helpGuideMissing => 'This guide is not available.';
+
+  @override
+  String get helpHowThisWorks => 'How this works';
+
+  @override
+  String get helpForThisScreen => 'Guides for this screen';
+
+  @override
+  String get helpBrowseAll => 'Browse all guides';
+
+  @override
+  String helpStepLabel(int n) {
+    return 'Step $n';
+  }
+
+  @override
+  String get infoTipReadGuide => 'Read the guide';
 }

@@ -24296,6 +24296,270 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Host'**
   String get eventFinishMethodHost;
+
+  /// Help screen title and Settings row label
+  ///
+  /// In en, this message translates to:
+  /// **'Help'**
+  String get helpTitle;
+
+  /// Subtitle of the Help row in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'How races, classes, clubs and the app work'**
+  String get helpSettingsSubtitle;
+
+  /// Hint in the Help search field
+  ///
+  /// In en, this message translates to:
+  /// **'Search help'**
+  String get helpSearchHint;
+
+  /// Tooltip of the button clearing the Help search
+  ///
+  /// In en, this message translates to:
+  /// **'Clear search'**
+  String get helpSearchClear;
+
+  /// Label above the Help audience filter chips
+  ///
+  /// In en, this message translates to:
+  /// **'Show guides for'**
+  String get helpAudienceLabel;
+
+  /// Help audience filter chip: no filter
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get helpAudienceAll;
+
+  /// Help audience filter chip
+  ///
+  /// In en, this message translates to:
+  /// **'Runners'**
+  String get helpAudienceRunner;
+
+  /// Help audience filter chip: people who organise events
+  ///
+  /// In en, this message translates to:
+  /// **'Organisers'**
+  String get helpAudienceOrganiser;
+
+  /// Help audience filter chip: people taking part in an event
+  ///
+  /// In en, this message translates to:
+  /// **'Participants'**
+  String get helpAudienceParticipant;
+
+  /// Help audience filter chip: people following someone live
+  ///
+  /// In en, this message translates to:
+  /// **'Spectators'**
+  String get helpAudienceSpectator;
+
+  /// Help audience filter chip: class instructors
+  ///
+  /// In en, this message translates to:
+  /// **'Instructors'**
+  String get helpAudienceInstructor;
+
+  /// Help audience filter chip: club administrators
+  ///
+  /// In en, this message translates to:
+  /// **'Club admins'**
+  String get helpAudienceClubAdmin;
+
+  /// Help category heading
+  ///
+  /// In en, this message translates to:
+  /// **'Races'**
+  String get helpCategoryRaces;
+
+  /// Help category heading
+  ///
+  /// In en, this message translates to:
+  /// **'Paid classes'**
+  String get helpCategoryPaidClasses;
+
+  /// Help category heading
+  ///
+  /// In en, this message translates to:
+  /// **'Instructors'**
+  String get helpCategoryInstructors;
+
+  /// Help category heading
+  ///
+  /// In en, this message translates to:
+  /// **'Clubs'**
+  String get helpCategoryClubs;
+
+  /// Help category heading
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get helpCategoryRunning;
+
+  /// Help category heading
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get helpCategoryAccount;
+
+  /// Help category heading for guides in a category this app version does not know
+  ///
+  /// In en, this message translates to:
+  /// **'More guides'**
+  String get helpCategoryOther;
+
+  /// Chip on a guide whose feature needs a Pro subscription
+  ///
+  /// In en, this message translates to:
+  /// **'Needs Pro'**
+  String get helpRequiresPro;
+
+  /// Chip on a guide whose feature is for club admins only
+  ///
+  /// In en, this message translates to:
+  /// **'Club admins only'**
+  String get helpRequiresClubAdmin;
+
+  /// Chip on a guide whose feature is for race directors only
+  ///
+  /// In en, this message translates to:
+  /// **'Race directors only'**
+  String get helpRequiresRaceDirector;
+
+  /// Chip on a guide whose feature needs the host's Stripe account connected
+  ///
+  /// In en, this message translates to:
+  /// **'Needs Stripe connected'**
+  String get helpRequiresStripeConnected;
+
+  /// Chip on a guide whose feature needs paid registration switched on
+  ///
+  /// In en, this message translates to:
+  /// **'Needs paid registration on'**
+  String get helpRequiresPaidRailLive;
+
+  /// Label before the platform chips on a guide
+  ///
+  /// In en, this message translates to:
+  /// **'Works on'**
+  String get helpPlatformsLabel;
+
+  /// Platform chip on a guide: the website
+  ///
+  /// In en, this message translates to:
+  /// **'Web'**
+  String get helpPlatformWeb;
+
+  /// Platform chip on a guide
+  ///
+  /// In en, this message translates to:
+  /// **'Android'**
+  String get helpPlatformAndroid;
+
+  /// Platform chip on a guide: the iPhone app
+  ///
+  /// In en, this message translates to:
+  /// **'iPhone'**
+  String get helpPlatformIos;
+
+  /// Platform chip on a guide: the Wear OS watch app
+  ///
+  /// In en, this message translates to:
+  /// **'Wear OS'**
+  String get helpPlatformWear;
+
+  /// Platform chip on a guide: the Apple Watch app
+  ///
+  /// In en, this message translates to:
+  /// **'Apple Watch'**
+  String get helpPlatformAppleWatch;
+
+  /// Label of a tip note inside a guide
+  ///
+  /// In en, this message translates to:
+  /// **'Tip'**
+  String get helpNoteTip;
+
+  /// Label of a caution note inside a guide
+  ///
+  /// In en, this message translates to:
+  /// **'Caution'**
+  String get helpNoteCaution;
+
+  /// Heading above links to related guides
+  ///
+  /// In en, this message translates to:
+  /// **'Related guides'**
+  String get helpRelated;
+
+  /// Heading above Help search results
+  ///
+  /// In en, this message translates to:
+  /// **'Results'**
+  String get helpResultsHeader;
+
+  /// Empty state when a Help search finds nothing
+  ///
+  /// In en, this message translates to:
+  /// **'No matching guides'**
+  String get helpNoResultsTitle;
+
+  /// Body of the empty Help search state
+  ///
+  /// In en, this message translates to:
+  /// **'Try another word, or show guides for all.'**
+  String get helpNoResultsBody;
+
+  /// Loading label while the Help guides load
+  ///
+  /// In en, this message translates to:
+  /// **'Loading guides'**
+  String get helpLoading;
+
+  /// Shown when the Help guides cannot be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Help guides could not be loaded.'**
+  String get helpUnavailable;
+
+  /// Shown when a linked guide does not exist
+  ///
+  /// In en, this message translates to:
+  /// **'This guide is not available.'**
+  String get helpGuideMissing;
+
+  /// Button and tooltip opening the guides about the current screen
+  ///
+  /// In en, this message translates to:
+  /// **'How this works'**
+  String get helpHowThisWorks;
+
+  /// Heading above the guides about the screen Help was opened from
+  ///
+  /// In en, this message translates to:
+  /// **'Guides for this screen'**
+  String get helpForThisScreen;
+
+  /// Row opening the full Help guide list
+  ///
+  /// In en, this message translates to:
+  /// **'Browse all guides'**
+  String get helpBrowseAll;
+
+  /// Screen-reader label for a numbered step in a guide
+  ///
+  /// In en, this message translates to:
+  /// **'Step {n}'**
+  String helpStepLabel(int n);
+
+  /// Action in an info dialog opening the full guide
+  ///
+  /// In en, this message translates to:
+  /// **'Read the guide'**
+  String get infoTipReadGuide;
 }
 
 class _AppLocalizationsDelegate

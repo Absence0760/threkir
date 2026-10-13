@@ -14692,4 +14692,141 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get eventFinishMethodHost => 'Organizador';
+
+  @override
+  String get helpTitle => 'Ayuda';
+
+  @override
+  String get helpSettingsSubtitle =>
+      'Cómo funcionan las carreras, las clases, los clubes y la app';
+
+  @override
+  String get helpSearchHint => 'Buscar en la ayuda';
+
+  @override
+  String get helpSearchClear => 'Borrar búsqueda';
+
+  @override
+  String get helpAudienceLabel => 'Mostrar guías para';
+
+  @override
+  String get helpAudienceAll => 'Todas';
+
+  @override
+  String get helpAudienceRunner => 'Corredores';
+
+  @override
+  String get helpAudienceOrganiser => 'Organizadores';
+
+  @override
+  String get helpAudienceParticipant => 'Participantes';
+
+  @override
+  String get helpAudienceSpectator => 'Espectadores';
+
+  @override
+  String get helpAudienceInstructor => 'Instructores';
+
+  @override
+  String get helpAudienceClubAdmin => 'Administradores de club';
+
+  @override
+  String get helpCategoryRaces => 'Carreras';
+
+  @override
+  String get helpCategoryPaidClasses => 'Clases de pago';
+
+  @override
+  String get helpCategoryInstructors => 'Instructores';
+
+  @override
+  String get helpCategoryClubs => 'Clubes';
+
+  @override
+  String get helpCategoryRunning => 'Correr';
+
+  @override
+  String get helpCategoryAccount => 'Cuenta';
+
+  @override
+  String get helpCategoryOther => 'Más guías';
+
+  @override
+  String get helpRequiresPro => 'Requiere Pro';
+
+  @override
+  String get helpRequiresClubAdmin => 'Solo administradores de club';
+
+  @override
+  String get helpRequiresRaceDirector => 'Solo directores de carrera';
+
+  @override
+  String get helpRequiresStripeConnected => 'Requiere Stripe conectado';
+
+  @override
+  String get helpRequiresPaidRailLive =>
+      'Requiere la inscripción de pago activa';
+
+  @override
+  String get helpPlatformsLabel => 'Disponible en';
+
+  @override
+  String get helpPlatformWeb => 'Web';
+
+  @override
+  String get helpPlatformAndroid => 'Android';
+
+  @override
+  String get helpPlatformIos => 'iPhone';
+
+  @override
+  String get helpPlatformWear => 'Wear OS';
+
+  @override
+  String get helpPlatformAppleWatch => 'Apple Watch';
+
+  @override
+  String get helpNoteTip => 'Consejo';
+
+  @override
+  String get helpNoteCaution => 'Precaución';
+
+  @override
+  String get helpRelated => 'Guías relacionadas';
+
+  @override
+  String get helpResultsHeader => 'Resultados';
+
+  @override
+  String get helpNoResultsTitle => 'No hay guías que coincidan';
+
+  @override
+  String get helpNoResultsBody =>
+      'Prueba con otra palabra o muestra las guías para todos.';
+
+  @override
+  String get helpLoading => 'Cargando guías';
+
+  @override
+  String get helpUnavailable => 'No se pudieron cargar las guías de ayuda.';
+
+  @override
+  String get helpGuideMissing => 'Esta guía no está disponible.';
+
+  @override
+  String get helpHowThisWorks => 'Cómo funciona';
+
+  @override
+  String get helpForThisScreen => 'Guías de esta pantalla';
+
+  @override
+  String get helpBrowseAll => 'Ver todas las guías';
+
+  @override
+  String helpStepLabel(int n) {
+    return 'Paso $n';
+  }
+
+  @override
+  String get infoTipReadGuide => 'Leer la guía';
 }

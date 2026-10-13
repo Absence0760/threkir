@@ -14696,6 +14696,142 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get eventFinishMethodHost => 'Organizador';
+
+  @override
+  String get helpTitle => 'Ajuda';
+
+  @override
+  String get helpSettingsSubtitle =>
+      'Como funcionam as corridas, as aulas, os clubes e a app';
+
+  @override
+  String get helpSearchHint => 'Pesquisar na ajuda';
+
+  @override
+  String get helpSearchClear => 'Limpar pesquisa';
+
+  @override
+  String get helpAudienceLabel => 'Mostrar guias para';
+
+  @override
+  String get helpAudienceAll => 'Todos';
+
+  @override
+  String get helpAudienceRunner => 'Corredores';
+
+  @override
+  String get helpAudienceOrganiser => 'Organizadores';
+
+  @override
+  String get helpAudienceParticipant => 'Participantes';
+
+  @override
+  String get helpAudienceSpectator => 'Espectadores';
+
+  @override
+  String get helpAudienceInstructor => 'Instrutores';
+
+  @override
+  String get helpAudienceClubAdmin => 'Administradores de clubes';
+
+  @override
+  String get helpCategoryRaces => 'Corridas';
+
+  @override
+  String get helpCategoryPaidClasses => 'Aulas pagas';
+
+  @override
+  String get helpCategoryInstructors => 'Instrutores';
+
+  @override
+  String get helpCategoryClubs => 'Clubes';
+
+  @override
+  String get helpCategoryRunning => 'Corrida';
+
+  @override
+  String get helpCategoryAccount => 'Conta';
+
+  @override
+  String get helpCategoryOther => 'Mais guias';
+
+  @override
+  String get helpRequiresPro => 'Requer Pro';
+
+  @override
+  String get helpRequiresClubAdmin => 'Apenas administradores de clubes';
+
+  @override
+  String get helpRequiresRaceDirector => 'Apenas diretores de prova';
+
+  @override
+  String get helpRequiresStripeConnected => 'Requer Stripe ligado';
+
+  @override
+  String get helpRequiresPaidRailLive => 'Requer inscrições pagas ativas';
+
+  @override
+  String get helpPlatformsLabel => 'Disponível em';
+
+  @override
+  String get helpPlatformWeb => 'Web';
+
+  @override
+  String get helpPlatformAndroid => 'Android';
+
+  @override
+  String get helpPlatformIos => 'iPhone';
+
+  @override
+  String get helpPlatformWear => 'Wear OS';
+
+  @override
+  String get helpPlatformAppleWatch => 'Apple Watch';
+
+  @override
+  String get helpNoteTip => 'Dica';
+
+  @override
+  String get helpNoteCaution => 'Atenção';
+
+  @override
+  String get helpRelated => 'Guias relacionados';
+
+  @override
+  String get helpResultsHeader => 'Resultados';
+
+  @override
+  String get helpNoResultsTitle => 'Nenhum guia encontrado';
+
+  @override
+  String get helpNoResultsBody =>
+      'Tente outra palavra ou mostre os guias para todos.';
+
+  @override
+  String get helpLoading => 'A carregar guias';
+
+  @override
+  String get helpUnavailable => 'Não foi possível carregar os guias de ajuda.';
+
+  @override
+  String get helpGuideMissing => 'Este guia não está disponível.';
+
+  @override
+  String get helpHowThisWorks => 'Como funciona';
+
+  @override
+  String get helpForThisScreen => 'Guias para este ecrã';
+
+  @override
+  String get helpBrowseAll => 'Ver todos os guias';
+
+  @override
+  String helpStepLabel(int n) {
+    return 'Passo $n';
+  }
+
+  @override
+  String get infoTipReadGuide => 'Ler o guia';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -29381,4 +29517,140 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get eventFinishMethodHost => 'Organizador';
+
+  @override
+  String get helpTitle => 'Ajuda';
+
+  @override
+  String get helpSettingsSubtitle =>
+      'Como funcionam as corridas, as aulas, os clubes e o app';
+
+  @override
+  String get helpSearchHint => 'Buscar na ajuda';
+
+  @override
+  String get helpSearchClear => 'Limpar busca';
+
+  @override
+  String get helpAudienceLabel => 'Mostrar guias para';
+
+  @override
+  String get helpAudienceAll => 'Todos';
+
+  @override
+  String get helpAudienceRunner => 'Corredores';
+
+  @override
+  String get helpAudienceOrganiser => 'Organizadores';
+
+  @override
+  String get helpAudienceParticipant => 'Participantes';
+
+  @override
+  String get helpAudienceSpectator => 'Espectadores';
+
+  @override
+  String get helpAudienceInstructor => 'Instrutores';
+
+  @override
+  String get helpAudienceClubAdmin => 'Administradores de clubes';
+
+  @override
+  String get helpCategoryRaces => 'Corridas';
+
+  @override
+  String get helpCategoryPaidClasses => 'Aulas pagas';
+
+  @override
+  String get helpCategoryInstructors => 'Instrutores';
+
+  @override
+  String get helpCategoryClubs => 'Clubes';
+
+  @override
+  String get helpCategoryRunning => 'Corrida';
+
+  @override
+  String get helpCategoryAccount => 'Conta';
+
+  @override
+  String get helpCategoryOther => 'Mais guias';
+
+  @override
+  String get helpRequiresPro => 'Requer Pro';
+
+  @override
+  String get helpRequiresClubAdmin => 'Apenas administradores de clubes';
+
+  @override
+  String get helpRequiresRaceDirector => 'Apenas diretores de prova';
+
+  @override
+  String get helpRequiresStripeConnected => 'Requer Stripe conectado';
+
+  @override
+  String get helpRequiresPaidRailLive => 'Requer inscrições pagas ativas';
+
+  @override
+  String get helpPlatformsLabel => 'Disponível em';
+
+  @override
+  String get helpPlatformWeb => 'Web';
+
+  @override
+  String get helpPlatformAndroid => 'Android';
+
+  @override
+  String get helpPlatformIos => 'iPhone';
+
+  @override
+  String get helpPlatformWear => 'Wear OS';
+
+  @override
+  String get helpPlatformAppleWatch => 'Apple Watch';
+
+  @override
+  String get helpNoteTip => 'Dica';
+
+  @override
+  String get helpNoteCaution => 'Atenção';
+
+  @override
+  String get helpRelated => 'Guias relacionados';
+
+  @override
+  String get helpResultsHeader => 'Resultados';
+
+  @override
+  String get helpNoResultsTitle => 'Nenhum guia encontrado';
+
+  @override
+  String get helpNoResultsBody =>
+      'Tente outra palavra ou mostre os guias para todos.';
+
+  @override
+  String get helpLoading => 'Carregando guias';
+
+  @override
+  String get helpUnavailable => 'Não foi possível carregar os guias de ajuda.';
+
+  @override
+  String get helpGuideMissing => 'Este guia não está disponível.';
+
+  @override
+  String get helpHowThisWorks => 'Como funciona';
+
+  @override
+  String get helpForThisScreen => 'Guias para esta tela';
+
+  @override
+  String get helpBrowseAll => 'Ver todos os guias';
+
+  @override
+  String helpStepLabel(int n) {
+    return 'Passo $n';
+  }
+
+  @override
+  String get infoTipReadGuide => 'Ler o guia';
 }

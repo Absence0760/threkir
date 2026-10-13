@@ -18695,5 +18695,182 @@
   "eventFinishMethodHost": "Host",
   "@eventFinishMethodHost": {
     "description": "Badge on a race result the race host recorded"
+  },
+  "helpTitle": "Help",
+  "@helpTitle": {
+    "description": "Help screen title and Settings row label"
+  },
+  "helpSettingsSubtitle": "How races, classes, clubs and the app work",
+  "@helpSettingsSubtitle": {
+    "description": "Subtitle of the Help row in Settings"
+  },
+  "helpSearchHint": "Search help",
+  "@helpSearchHint": {
+    "description": "Hint in the Help search field"
+  },
+  "helpSearchClear": "Clear search",
+  "@helpSearchClear": {
+    "description": "Tooltip of the button clearing the Help search"
+  },
+  "helpAudienceLabel": "Show guides for",
+  "@helpAudienceLabel": {
+    "description": "Label above the Help audience filter chips"
+  },
+  "helpAudienceAll": "All",
+  "@helpAudienceAll": {
+    "description": "Help audience filter chip: no filter"
+  },
+  "helpAudienceRunner": "Runners",
+  "@helpAudienceRunner": {
+    "description": "Help audience filter chip"
+  },
+  "helpAudienceOrganiser": "Organisers",
+  "@helpAudienceOrganiser": {
+    "description": "Help audience filter chip: people who organise events"
+  },
+  "helpAudienceParticipant": "Participants",
+  "@helpAudienceParticipant": {
+    "description": "Help audience filter chip: people taking part in an event"
+  },
+  "helpAudienceSpectator": "Spectators",
+  "@helpAudienceSpectator": {
+    "description": "Help audience filter chip: people following someone live"
+  },
+  "helpAudienceInstructor": "Instructors",
+  "@helpAudienceInstructor": {
+    "description": "Help audience filter chip: class instructors"
+  },
+  "helpAudienceClubAdmin": "Club admins",
+  "@helpAudienceClubAdmin": {
+    "description": "Help audience filter chip: club administrators"
+  },
+  "helpCategoryRaces": "Races",
+  "@helpCategoryRaces": {
+    "description": "Help category heading"
+  },
+  "helpCategoryPaidClasses": "Paid classes",
+  "@helpCategoryPaidClasses": {
+    "description": "Help category heading"
+  },
+  "helpCategoryInstructors": "Instructors",
+  "@helpCategoryInstructors": {
+    "description": "Help category heading"
+  },
+  "helpCategoryClubs": "Clubs",
+  "@helpCategoryClubs": {
+    "description": "Help category heading"
+  },
+  "helpCategoryRunning": "Running",
+  "@helpCategoryRunning": {
+    "description": "Help category heading"
+  },
+  "helpCategoryAccount": "Account",
+  "@helpCategoryAccount": {
+    "description": "Help category heading"
+  },
+  "helpCategoryOther": "More guides",
+  "@helpCategoryOther": {
+    "description": "Help category heading for guides in a category this app version does not know"
+  },
+  "helpRequiresPro": "Needs Pro",
+  "@helpRequiresPro": {
+    "description": "Chip on a guide whose feature needs a Pro subscription"
+  },
+  "helpRequiresClubAdmin": "Club admins only",
+  "@helpRequiresClubAdmin": {
+    "description": "Chip on a guide whose feature is for club admins only"
+  },
+  "helpRequiresRaceDirector": "Race directors only",
+  "@helpRequiresRaceDirector": {
+    "description": "Chip on a guide whose feature is for race directors only"
+  },
+  "helpRequiresStripeConnected": "Needs Stripe connected",
+  "@helpRequiresStripeConnected": {
+    "description": "Chip on a guide whose feature needs the host's Stripe account connected"
+  },
+  "helpRequiresPaidRailLive": "Needs paid registration on",
+  "@helpRequiresPaidRailLive": {
+    "description": "Chip on a guide whose feature needs paid registration switched on"
+  },
+  "helpPlatformsLabel": "Works on",
+  "@helpPlatformsLabel": {
+    "description": "Label before the platform chips on a guide"
+  },
+  "helpPlatformWeb": "Web",
+  "@helpPlatformWeb": {
+    "description": "Platform chip on a guide: the website"
+  },
+  "helpPlatformAndroid": "Android",
+  "@helpPlatformAndroid": {
+    "description": "Platform chip on a guide"
+  },
+  "helpPlatformIos": "iPhone",
+  "@helpPlatformIos": {
+    "description": "Platform chip on a guide: the iPhone app"
+  },
+  "helpPlatformWear": "Wear OS",
+  "@helpPlatformWear": {
+    "description": "Platform chip on a guide: the Wear OS watch app"
+  },
+  "helpPlatformAppleWatch": "Apple Watch",
+  "@helpPlatformAppleWatch": {
+    "description": "Platform chip on a guide: the Apple Watch app"
+  },
+  "helpNoteTip": "Tip",
+  "@helpNoteTip": {
+    "description": "Label of a tip note inside a guide"
+  },
+  "helpNoteCaution": "Caution",
+  "@helpNoteCaution": {
+    "description": "Label of a caution note inside a guide"
+  },
+  "helpRelated": "Related guides",
+  "@helpRelated": {
+    "description": "Heading above links to related guides"
+  },
+  "helpResultsHeader": "Results",
+  "@helpResultsHeader": {
+    "description": "Heading above Help search results"
+  },
+  "helpNoResultsTitle": "No matching guides",
+  "@helpNoResultsTitle": {
+    "description": "Empty state when a Help search finds nothing"
+  },
+  "helpNoResultsBody": "Try another word, or show guides for all.",
+  "@helpNoResultsBody": {
+    "description": "Body of the empty Help search state"
+  },
+  "helpLoading": "Loading guides",
+  "@helpLoading": {
+    "description": "Loading label while the Help guides load"
+  },
+  "helpUnavailable": "Help guides could not be loaded.",
+  "@helpUnavailable": {
+    "description": "Shown when the Help guides cannot be loaded"
+  },
+  "helpGuideMissing": "This guide is not available.",
+  "@helpGuideMissing": {
+    "description": "Shown when a linked guide does not exist"
+  },
+  "helpHowThisWorks": "How this works",
+  "@helpHowThisWorks": {
+    "description": "Button and tooltip opening the guides about the current screen"
+  },
+  "helpForThisScreen": "Guides for this screen",
+  "@helpForThisScreen": {
+    "description": "Heading above the guides about the screen Help was opened from"
+  },
+  "helpBrowseAll": "Browse all guides",
+  "@helpBrowseAll": {
+    "description": "Row opening the full Help guide list"
+  },
+  "helpStepLabel": "Step {n}",
+  "@helpStepLabel": {
+    "description": "Screen-reader label for a numbered step in a guide",
+    "placeholders": {"n": {"type": "int"}}
+  },
+  "infoTipReadGuide": "Read the guide",
+  "@infoTipReadGuide": {
+    "description": "Action in an info dialog opening the full guide"
   }
 }

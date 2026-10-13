@@ -186,6 +186,13 @@ class _RaceStopSpy extends RaceController {
 
   int fixesOffered = 0;
   DateTime? decidedAt;
+  double? lastCoverageAsked;
+
+  @override
+  bool coverageMet(double coveredM) {
+    lastCoverageAsked = coveredM;
+    return super.coverageMet(coveredM);
+  }
 
   @override
   RaceFinish? offerFix({
@@ -2092,6 +2099,45 @@ void main() {
       expect(spy.fixesOffered, greaterThan(atPause),
           reason: 'Resume race puts the recording and the detector back on');
       expect(spy.stopNeedsRaceChoice, isTrue);
+      await unmount(tester);
+    });
+
+    testWidgets('the stop sheet offers Finish race at 90% and DNF just under',
+        (tester) async {
+      final raceSocial = _RaceResultSocial();
+      final spy = _RaceStopSpy(raceSocial);
+      await pumpRacing(tester, raceSocial, base: spy);
+
+      Future<void> stopAndRead(String expected, String absent) async {
+        final stopped = await holdFinish(tester,
+            until: sheetShowing, describe: 'the race-stop sheet to open');
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(find.text(expected), findsOneWidget);
+        expect(find.text(absent), findsNothing);
+        await tester.tap(find.byKey(const Key('race-stop-resume')));
+        await pumpUntil(tester, stopped, describe: 'the sheet to resolve');
+        await tester.pump(const Duration(milliseconds: 400));
+      }
+
+      // An unknown course distance cannot gate: Finish race, not DNF.
+      spy.setCourse(const RaceCourse(courseId: 'c', distanceM: null));
+      await stopAndRead('Finish race', 'Finish as DNF');
+      final covered = spy.lastCoverageAsked!;
+      expect(covered, greaterThan(0));
+
+      // A course the covered distance is exactly 90% of.
+      final atNinety = covered / kRaceFinishMinCoverage;
+      expect(raceCoverageMet(covered, atNinety), isTrue,
+          reason: 'precondition: the course is at the inclusive edge');
+      spy.setCourse(RaceCourse(courseId: 'c', distanceM: atNinety));
+      await stopAndRead('Finish race', 'Finish as DNF');
+
+      final justOver = atNinety * 1.001;
+      expect(raceCoverageMet(covered, justOver), isFalse);
+      spy.setCourse(RaceCourse(courseId: 'c', distanceM: justOver));
+      await stopAndRead('Finish as DNF', 'Finish race');
+      expect(spy.lastCoverageAsked, covered,
+          reason: 'no fix moved the distance between the three stops');
       await unmount(tester);
     });
 

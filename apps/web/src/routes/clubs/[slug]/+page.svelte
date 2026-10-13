@@ -45,7 +45,8 @@
 		leaveClub,
 		createClubPost,
 		deleteClubPost,
-		deleteClub
+		deleteClub,
+		PAID_EVENT_DELETE_REFUSAL
 	} from '#lib/core/data.ts';
 	import { formatDistance } from '#lib/core/mock-data.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -737,6 +738,10 @@
 		try {
 			await deleteClub(club.id);
 		} catch (e) {
+			if (e instanceof Error && e.message === PAID_EVENT_DELETE_REFUSAL) {
+				showToast(tr('clubHome.deleteClubHasPayments'), 'error');
+				return;
+			}
 			showToast(
 				tr('clubHome.deleteClubFailed', { error: e instanceof Error ? e.message : String(e) }),
 				'error'

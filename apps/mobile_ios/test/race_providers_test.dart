@@ -42,7 +42,7 @@ void main() {
     // ran PAST its credential gate. The theory is refuted by the endpoint
     // itself, twice, so these read the function rather than restating it.
     final fn =
-        File('../backend/supabase/functions/race-results-import/index.ts')
+        File('../backend/supabase/functions/race-results-import/handler.ts')
             .readAsStringSync();
 
     int at(String needle) {
@@ -68,7 +68,6 @@ void main() {
       // client needs to check the caller at all, not an answer about a leg.
       for (final key in const [
         'RUNSIGNUP_API_KEY',
-        'ULTRASIGNUP_API_KEY',
         'CHRONOTRACK_CLIENT_ID',
       ]) {
         expect(firstUnauthorized, lessThan(at(key)),
@@ -181,13 +180,12 @@ void main() {
 
   test('the leg with a refusal beyond its credential is probed on its own leg', () {
     // `race-listings-sync` gates UltraSignup on ULTRASIGNUP_API_KEY alone.
-    // `race-results-import` refuses the same provider unconditionally (§ 975):
-    // an athlete feed carries no race identifier, so nothing it returns can be
-    // attributed to the listing a caller names. The two legs no longer agree,
-    // and the tile is about the results one — probing the sync advertises an
-    // import whose very next call 503s once the key is provisioned.
+    // `race-results-import` reads a keyless feed and answers on its own opt-in
+    // and on whether the caller speaks the person flow (decisions § 1841), so
+    // the two legs disagree, and the tile is about the results one — probing
+    // the sync would advertise an import the results leg then refuses.
     final src =
-        File('../backend/supabase/functions/race-results-import/index.ts')
+        File('../backend/supabase/functions/race-results-import/handler.ts')
             .readAsStringSync();
     final probeBranch = src.indexOf('if (isProbe) {');
     expect(probeBranch, greaterThan(-1),
@@ -196,12 +194,12 @@ void main() {
     final listingId = src.indexOf('listingId required', probeBranch);
     final branch = src.substring(probeBranch, listingId);
     expect(
-      branch.contains('ultraSignUpAttributionGate()'),
+      RegExp(r"provider === 'ultrasignup'[\s\S]*ultraSignUpProbe\(")
+          .hasMatch(branch),
       isTrue,
-      reason: 'the probe branch no longer refuses UltraSignup independently of '
-          'its credential. If § 975 was lifted, this guard has lost its '
-          'premise — re-decide which function the tile should probe rather '
-          'than deleting the assertion below',
+      reason: 'the probe branch no longer answers UltraSignup through its own '
+          'gate (§ 1841). Re-decide which function the tile should probe '
+          'rather than deleting the assertion below',
     );
     expect(
       raceImportProviderFor('ultrasignup')!.probeFunction,
@@ -218,7 +216,7 @@ void main() {
 
   test('the catalogue names exactly the tokens the Edge Function accepts', () {
     final src =
-        File('../backend/supabase/functions/race-results-import/index.ts')
+        File('../backend/supabase/functions/race-results-import/handler.ts')
             .readAsStringSync();
     final m = RegExp(r'\[([^\]]*)\]\.includes\(provider\)').firstMatch(src);
     expect(m, isNotNull,
@@ -260,7 +258,7 @@ void main() {
     // the provider unavailable (§ 1007, § 1073), making the failure silent and
     // total rather than a limit the runner can see.
     final src =
-        File('../backend/supabase/functions/race-results-import/index.ts')
+        File('../backend/supabase/functions/race-results-import/handler.ts')
             .readAsStringSync();
     expect(src.contains('const denied = isProbe'), isTrue,
         reason: 'race-results-import no longer selects its bucket on the probe '

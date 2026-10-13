@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
 	isOccurrenceCancelled,
+	isSeriesCancelled,
 	nextLiveInstance,
 	upcomingCancelledOccurrences
 } from './event_occurrence';
@@ -134,3 +135,21 @@ test('upcomingCancelledOccurrences — an occurrence starting exactly now still 
 		'2026-04-15T08:00:00Z'
 	]);
 });
+
+test('isSeriesCancelled — a cancelled instant past the series end means the host ended it', () => {
+	const ended = ev({ ...weekly, recurrence_until: '2026-04-10T12:00:00+00:00' });
+	assert.equal(isSeriesCancelled(ended, ['2026-04-15T08:00:00.000Z']), true);
+	// Cancelled occurrences inside the series are single cancels, not a series one.
+	assert.equal(isSeriesCancelled(ended, ['2026-04-08T08:00:00+00:00']), false);
+	// A series that ran out with nothing cancelled past its end just ended.
+	assert.equal(isSeriesCancelled(ended, []), false);
+});
+
+test('isSeriesCancelled — an open series, a one-off and an unreadable end are never cancelled series', () => {
+	assert.equal(isSeriesCancelled(weekly, ['2026-04-15T08:00:00Z']), false);
+	const oneOff = ev({ starts_at: '2026-04-01T08:00:00Z', recurrence_until: '2026-04-01T00:00:00Z' });
+	assert.equal(isSeriesCancelled(oneOff, ['2026-04-15T08:00:00Z']), false);
+	const garbled = ev({ ...weekly, recurrence_until: 'not a date' });
+	assert.equal(isSeriesCancelled(garbled, ['2026-04-15T08:00:00Z']), false);
+});
+

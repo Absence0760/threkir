@@ -4,6 +4,8 @@
 // `event_waitlist_slot` notification. This module is the two pure halves the
 // web renders from: which sentence the notification reads as on the bell and
 // the inbox, and what the viewer's own row says about their place.
+// `waitlistOfferState` has a Dart twin, apps/mobile_android/lib/event_waitlist_offer.dart
+// (docs/architecture/parity_pairs.md); keep the two in lockstep.
 import type { MessageKey } from '#lib/i18n/messages.ts';
 
 export type WaitlistSlotSurface = 'notificationBell' | 'notificationsList';

@@ -16,6 +16,9 @@ import '../auth_error.dart';
 import '../calendar_intent.dart';
 import '../event_category.dart';
 import '../event_gym_template.dart';
+import '../event_host_cancel.dart';
+import '../event_occurrence.dart';
+import '../event_waitlist_offer.dart';
 import '../finisher_certificate.dart';
 import '../local_gym_store.dart';
 import 'checkpoint_checkin_screen.dart';
@@ -42,6 +45,21 @@ import '../widgets/top_banner.dart';
 @visibleForTesting
 bool canMarkEventAttendance(ClubView? club, String category) =>
     club?.isEventOrganiser == true && category == 'class';
+
+/// The event page on the web, where a held waitlist seat is paid for: the
+/// phone has no checkout (club_events.md P3 is the web-checkout handoff). The
+/// host comes from `WEB_BASE_URL`, falling back to production, as every other
+/// web link does.
+@visibleForTesting
+String eventWebUrl(String clubSlug, String eventId, {String? webBase}) {
+  var base = (webBase ??
+          (dotenv.isInitialized ? dotenv.maybeGet('WEB_BASE_URL') : null) ??
+          '')
+      .trim();
+  if (base.isEmpty) base = 'https://threkir.com';
+  if (base.endsWith('/')) base = base.substring(0, base.length - 1);
+  return '$base/clubs/${Uri.encodeComponent(clubSlug)}/events/${Uri.encodeComponent(eventId)}';
+}
 
 SessionItemKind _sessionKindFromString(String raw) {
   switch (raw) {
@@ -135,6 +153,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   /// the other.
   bool _raceBusy = false;
   bool _autoApproveOnArm = true;
+  /// Set while a director's approve / unverify / edit is in flight.
+  bool _resultActionBusy = false;
+  /// Set while a host cancel or reinstate is in flight, so a second press
+  /// cannot start a second refund run.
+  bool _cancelBusy = false;
   _EventLoadError? _loadError;
 
   RealtimeChannel? _channel;
@@ -636,6 +659,56 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
   }
 
+  /// A race director's approve or unverify. An account row goes through the
+  /// `approve_event_result` RPC; a bib-only row has no account to key on and
+  /// is updated by its id, as on web.
+  Future<void> _approveResult(EventResultView r, bool approve) async {
+    final e = _event;
+    final inst = _activeInstance;
+    if (e == null || inst == null || _resultActionBusy) return;
+    final uid = r.userId;
+    await _resultAction(() => uid != null
+        ? widget.social.approveEventResult(
+            eventId: e.row.id, instance: inst, userId: uid, approve: approve)
+        : widget.social.approveEventResultById(r.id, approve));
+  }
+
+  Future<void> _editResult(EventResultView r) async {
+    if (_resultActionBusy) return;
+    final l10n = AppLocalizations.of(context);
+    final edit = await showDialog<ResultEdit>(
+      context: context,
+      builder: (_) => ResultEditDialog(
+        result: r,
+        name: r.displayName ?? l10n.eventResultRunner,
+      ),
+    );
+    if (edit == null || !mounted) return;
+    await _resultAction(() => widget.social.editEventResultAsHost(
+          resultId: r.id,
+          durationS: edit.durationS,
+          priorGunTimeS: r.gunTimeS,
+          finisherStatus: edit.finisherStatus,
+        ));
+  }
+
+  Future<void> _resultAction(Future<void> Function() write) async {
+    setState(() => _resultActionBusy = true);
+    try {
+      await write();
+      await _load();
+    } catch (err) {
+      debugPrint('event result action failed: ${safeErrorLabel(err)}');
+      if (mounted) {
+        final l10n = AppLocalizations.of(context);
+        showTopBanner(
+            context, l10n.eventResultActionFailed(friendlyError(l10n, err)));
+      }
+    } finally {
+      if (mounted) setState(() => _resultActionBusy = false);
+    }
+  }
+
   /// Arm / Fire Go / End dispatcher. Uses the current `_raceSession`
   /// state to decide which mutation to run. Errors surface as a
   /// snackbar; successful writes leave the realtime channel to push
@@ -687,15 +760,25 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   /// confirm before firing (mirrors the web ConfirmDialog gate). Arm and
   /// Fire Go stay one-tap.
   Future<void> _confirmRaceAction(_RaceAction action) async {
-    final l10n = AppLocalizations.of(context);
     final isCancel = action == _RaceAction.cancel;
+    final e = _event;
+    final inst = _activeInstance;
+    // End states how many racers it will mark DNF, as web's End does; a
+    // count that cannot be read is omitted rather than guessed.
+    final dnf = isCancel || e == null || inst == null
+        ? null
+        : await widget.social.fetchRaceDnfPreview(e.row.id, inst);
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
           context: context,
           builder: (_) => AlertDialog(
             title: Text(isCancel ? l10n.eventRaceCancelRace : l10n.eventRaceEnd),
             content: Text(isCancel
                 ? l10n.eventRaceCancelConfirmBody
-                : l10n.eventRaceEndConfirmBody),
+                : dnf != null && dnf > 0
+                    ? l10n.eventRaceEndConfirmBodyDnf(dnf)
+                    : l10n.eventRaceEndConfirmBody),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
@@ -979,6 +1062,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               ),
               const SizedBox(height: 16),
             ],
+            if (_instances.isEmpty &&
+                isSeriesCancelled(e.toRecurrence(), _cancelled) &&
+                !_cancelled.contains(active.toUtc())) ...[
+              _cancelledBanner(theme, l10n.eventSeriesWasCancelled,
+                  key: const Key('series-cancelled')),
+              const SizedBox(height: 12),
+            ],
             if (_activeInstance != null &&
                 _cancelled.contains(_activeInstance!.toUtc()))
               // A cancelled occurrence reached by a direct link (the picker
@@ -997,7 +1087,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        l10n.eventOccurrenceCancelled,
+                        e.freq == null
+                            ? l10n.eventEventCancelled
+                            : l10n.eventOccurrenceCancelled,
                         style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onErrorContainer),
                       ),
@@ -1011,7 +1103,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               const SizedBox(height: 16),
               _buildCourses(theme),
             ],
+            ..._buildWaitlistOffer(theme, e),
             ..._buildCalendarActions(theme, e),
+            ..._buildHostCancelActions(theme, e),
             if (athletic &&
                 (e.row.distanceM != null || e.row.paceTargetSec != null)) ...[
               const SizedBox(height: 16),
@@ -1167,6 +1261,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 clubName: _club?.row.name,
                 certificateDate: _activeInstance ?? e.row.startsAt,
                 courses: _courses,
+                moderation: _club?.isRaceDirector == true
+                    ? ResultModeration(
+                        busy: _resultActionBusy,
+                        onApprove: _approveResult,
+                        onEdit: _editResult,
+                      )
+                    : null,
               ),
             ],
             if (isMember) ...[
@@ -1239,6 +1340,330 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           ),
         ),
     ];
+  }
+
+  Widget _cancelledBanner(ThemeData theme, String text, {Key? key}) {
+    return Container(
+      key: key,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.event_busy,
+              size: 18, color: theme.colorScheme.onErrorContainer),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onErrorContainer),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The viewer's held waitlist seat on a paid occurrence, with its deadline
+  /// and the way to claim it (decisions § 1840). Mirrors web's register box:
+  /// a waiting place is already shown by the RSVP row, and a lapsed offer
+  /// promises nothing.
+  List<Widget> _buildWaitlistOffer(ThemeData theme, EventView e) {
+    final me = widget.social.currentUserId;
+    final active = _activeInstance;
+    if (me == null || active == null || _cancelled.contains(active.toUtc())) {
+      return const [];
+    }
+    AttendeeView? mine;
+    for (final a in _attendees) {
+      if (a.userId == me) mine = a;
+    }
+    final state = waitlistOfferState(
+      status: mine?.status,
+      offerExpiresAt: mine?.offerExpiresAt,
+      now: DateTime.now(),
+    );
+    if (state is! WaitlistOffered) return const [];
+    final l10n = AppLocalizations.of(context);
+    final locale = localeToTag(Localizations.localeOf(context));
+    return [
+      const SizedBox(height: 12),
+      Container(
+        key: const Key('waitlist-offer'),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.tertiaryContainer,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.hourglass_top,
+                    size: 18, color: theme.colorScheme.onTertiaryContainer),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    l10n.eventWaitlistOfferHeld(
+                        formatDateTime(state.deadline.toLocal(), locale)),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onTertiaryContainer),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              l10n.eventWaitlistOfferClaimHint,
+              style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onTertiaryContainer),
+            ),
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              key: const Key('waitlist-claim'),
+              onPressed: () => _claimOnWeb(e),
+              icon: const Icon(Icons.open_in_new, size: 18),
+              label: Text(l10n.eventWaitlistOfferClaim),
+            ),
+          ],
+        ),
+      ),
+    ];
+  }
+
+  Future<void> _claimOnWeb(EventView e) async {
+    final slug = _club?.row.slug ?? widget.clubSlug;
+    final url = eventWebUrl(slug, e.row.id);
+    try {
+      final ok = await launchUrl(Uri.parse(url),
+          mode: LaunchMode.externalApplication);
+      if (!ok && mounted) {
+        showTopBanner(
+            context, AppLocalizations.of(context).legalCouldNotOpen(url));
+      }
+    } catch (err) {
+      debugPrint('EventDetailScreen claim link failed: $err');
+      if (mounted) {
+        showTopBanner(
+            context, AppLocalizations.of(context).legalCouldNotOpen(url));
+      }
+    }
+  }
+
+  /// The organiser's cancel controls, mirroring web: call off the occurrence
+  /// on screen (a one-off event is its own single occurrence), cancel the
+  /// whole series, or reinstate what was called off. A paid occurrence is
+  /// refunded by the server in the same request.
+  List<Widget> _buildHostCancelActions(ThemeData theme, EventView e) {
+    if (_club?.isEventOrganiser != true) return const [];
+    final active = _activeInstance;
+    if (active == null) return const [];
+    final l10n = AppLocalizations.of(context);
+    final recurring = e.freq != null;
+    final activeCancelled = _cancelled.contains(active.toUtc());
+    // An occurrence past the end of a series no longer exists, so reinstating
+    // its cancel would bring nothing back (web hides it the same way).
+    final until = e.row.recurrenceUntil;
+    final pastSeriesEnd = recurring && until != null && active.isAfter(until);
+    final canCancelActive = !activeCancelled &&
+        (recurring ? _instances.isNotEmpty : active.isAfter(DateTime.now()));
+    final canCancelSeries = recurring && _instances.isNotEmpty;
+    final canReinstate = activeCancelled && !pastSeriesEnd;
+    if (!canReinstate && !canCancelActive && !canCancelSeries) {
+      return const [];
+    }
+    return [
+      const SizedBox(height: 16),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          if (canReinstate)
+            OutlinedButton.icon(
+              key: const Key('reinstate-occurrence'),
+              onPressed: _cancelBusy ? null : () => _reinstate(e, active),
+              icon: const Icon(Icons.event_available, size: 18),
+              label: Text(recurring
+                  ? l10n.eventReinstateOccurrence
+                  : l10n.eventReinstateEvent),
+            ),
+          if (canCancelActive)
+            OutlinedButton.icon(
+              key: const Key('cancel-occurrence'),
+              style: OutlinedButton.styleFrom(
+                  foregroundColor: theme.colorScheme.error),
+              onPressed: _cancelBusy ? null : () => _cancelActive(e, active),
+              icon: const Icon(Icons.event_busy, size: 18),
+              label: Text(recurring
+                  ? l10n.eventCancelOccurrence
+                  : l10n.eventCancelEvent),
+            ),
+          if (canCancelSeries)
+            OutlinedButton.icon(
+              key: const Key('cancel-series'),
+              style: OutlinedButton.styleFrom(
+                  foregroundColor: theme.colorScheme.error),
+              onPressed: _cancelBusy ? null : () => _cancelSeries(e),
+              icon: const Icon(Icons.event_repeat, size: 18),
+              label: Text(l10n.eventCancelSeries),
+            ),
+        ],
+      ),
+    ];
+  }
+
+  /// Asks for confirmation and an optional reason. Null when the organiser
+  /// backs out; the (possibly empty) reason otherwise.
+  Future<String?> _confirmCancel({
+    required String title,
+    required String body,
+    required String confirmLabel,
+  }) async {
+    final l10n = AppLocalizations.of(context);
+    final reason = TextEditingController();
+    try {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(title),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(body),
+                const SizedBox(height: 8),
+                Text(l10n.eventCancelPaidNote,
+                    key: const Key('cancel-paid-note')),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: reason,
+                  maxLength: 300,
+                  maxLines: 2,
+                  decoration:
+                      InputDecoration(labelText: l10n.eventCancelReasonLabel),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l10n.eventCancelKeep),
+            ),
+            TextButton(
+              key: const Key('cancel-confirm'),
+              style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(ctx).colorScheme.error),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(confirmLabel),
+            ),
+          ],
+        ),
+      );
+      return ok == true ? reason.text : null;
+    } finally {
+      reason.dispose();
+    }
+  }
+
+  Future<void> _cancelActive(EventView e, DateTime active) async {
+    final l10n = AppLocalizations.of(context);
+    final recurring = e.freq != null;
+    final reason = await _confirmCancel(
+      title: recurring ? l10n.eventCancelOccurrence : l10n.eventCancelEvent,
+      body: recurring
+          ? l10n.eventCancelOccurrenceBody
+          : l10n.eventCancelEventBody,
+      confirmLabel:
+          recurring ? l10n.eventCancelOccurrence : l10n.eventCancelEvent,
+    );
+    if (reason == null || !mounted) return;
+    setState(() => _cancelBusy = true);
+    try {
+      final refunds = await widget.social
+          .cancelEventOccurrence(e.row.id, active, reason: reason);
+      if (!mounted) return;
+      _reportCancel(refunds, series: false);
+      await _load();
+    } catch (err) {
+      debugPrint('EventDetailScreen cancel failed: $err');
+      if (mounted) showTopBanner(context, _cancelErrorMessage(err));
+    } finally {
+      if (mounted) setState(() => _cancelBusy = false);
+    }
+  }
+
+  Future<void> _cancelSeries(EventView e) async {
+    final l10n = AppLocalizations.of(context);
+    final reason = await _confirmCancel(
+      title: l10n.eventCancelSeries,
+      body: l10n.eventCancelSeriesBody,
+      confirmLabel: l10n.eventCancelSeries,
+    );
+    if (reason == null || !mounted) return;
+    setState(() => _cancelBusy = true);
+    try {
+      final refunds =
+          await widget.social.cancelEventSeries(e.row.id, reason: reason);
+      if (!mounted) return;
+      _reportCancel(refunds, series: true);
+      _activeInstance = null;
+      await _load();
+    } catch (err) {
+      debugPrint('EventDetailScreen series cancel failed: $err');
+      if (mounted) showTopBanner(context, _cancelErrorMessage(err));
+    } finally {
+      if (mounted) setState(() => _cancelBusy = false);
+    }
+  }
+
+  Future<void> _reinstate(EventView e, DateTime active) async {
+    setState(() => _cancelBusy = true);
+    try {
+      await widget.social.reinstateEventOccurrence(e.row.id, active);
+      if (!mounted) return;
+      await _load();
+    } catch (err) {
+      debugPrint('EventDetailScreen reinstate failed: $err');
+      if (mounted) {
+        showTopBanner(context, AppLocalizations.of(context).eventReinstateFailed);
+      }
+    } finally {
+      if (mounted) setState(() => _cancelBusy = false);
+    }
+  }
+
+  /// A failed refund is reported as such, never folded into a success.
+  void _reportCancel(OccurrenceRefundSummary? refunds, {required bool series}) {
+    final l10n = AppLocalizations.of(context);
+    if (refunds != null && !refunds.complete) {
+      showTopBanner(context, l10n.eventCancelRefundsIncomplete(refunds.failed));
+      return;
+    }
+    if (refunds != null && refunds.refunded > 0) {
+      showTopBanner(context, l10n.eventCancelRefundsStarted(refunds.refunded));
+      return;
+    }
+    showTopBanner(context,
+        series ? l10n.eventSeriesCancelledToast : l10n.eventCancelledToast);
+  }
+
+  String _cancelErrorMessage(Object err) {
+    final l10n = AppLocalizations.of(context);
+    final code = err is EventCancelRefused ? err.code : null;
+    switch (code) {
+      case 'stripe_not_configured':
+        return l10n.eventCancelNotConfigured;
+      case 'not_event_organiser':
+        return l10n.eventCancelNotOrganiser;
+      default:
+        return l10n.eventCancelFailed;
+    }
   }
 
   Widget _buildRsvpRow(ThemeData theme, EventView e) {
@@ -1501,19 +1926,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               const SizedBox(height: 8),
               Row(
                 children: [
+                  // No Cancel once running: the server refuses running ->
+                  // cancelled, and web offers only End here.
                   FilledButton.icon(
                     onPressed: _raceBusy
                         ? null
                         : () => _confirmRaceAction(_RaceAction.end),
                     icon: const Icon(Icons.stop_circle),
                     label: Text(l10n.eventRaceEnd),
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: _raceBusy
-                        ? null
-                        : () => _confirmRaceAction(_RaceAction.cancel),
-                    child: Text(l10n.eventRaceCancelRace),
                   ),
                 ],
               ),
@@ -1696,6 +2116,9 @@ class EventResultsSection extends StatelessWidget {
   final DateTime certificateDate;
   /// With more than one course, results are listed per course.
   final List<EventCourseView> courses;
+  /// Present for a race director: each row then offers approve / unverify
+  /// and edit, as the web results card does.
+  final ResultModeration? moderation;
   const EventResultsSection({
     super.key,
     required this.results,
@@ -1707,6 +2130,7 @@ class EventResultsSection extends StatelessWidget {
     required this.clubName,
     required this.certificateDate,
     this.courses = const [],
+    this.moderation,
   });
 
   // The result removal is destructive (it deletes the runner's
@@ -1802,7 +2226,161 @@ class EventResultsSection extends StatelessWidget {
         eventTitle: eventTitle,
         clubName: clubName,
         certificateDate: certificateDate,
+        moderation: moderation,
       );
+}
+
+/// What a race director can do to a result row, and whether a write is in
+/// flight.
+@visibleForTesting
+class ResultModeration {
+  final bool busy;
+  final void Function(EventResultView result, bool approve) onApprove;
+  final void Function(EventResultView result) onEdit;
+  const ResultModeration({
+    required this.busy,
+    required this.onApprove,
+    required this.onEdit,
+  });
+}
+
+/// The approval a director is offered on [r], as the web results card offers
+/// it: true (Approve) on a pending row, false (Unverify) on an approved one,
+/// and null on the director's own approved row, which they do not unverify.
+@visibleForTesting
+bool? resultApprovalAction(EventResultView r, {required String? myUserId}) {
+  if (!r.organiserApproved) return true;
+  if (r.userId != null && r.userId == myUserId) return null;
+  return false;
+}
+
+/// A director's edit: the new ranked time and status.
+typedef ResultEdit = ({int durationS, String finisherStatus});
+
+/// Seconds in an organiser-typed finish time: `h:mm:ss`, `m:ss` or plain
+/// seconds, every field a plain decimal count and minutes / seconds below
+/// 60 — web's `parseDurationToSeconds`. Null when malformed.
+@visibleForTesting
+int? parseResultTimeS(String raw) {
+  final s = raw.trim();
+  if (s.isEmpty) return null;
+  final field = RegExp(r'^\d+(?:\.\d+)?$');
+  final parts = s.split(':');
+  if (parts.length > 3) return null;
+  var total = 0.0;
+  for (var i = 0; i < parts.length; i++) {
+    final p = parts[i].trim();
+    if (!field.hasMatch(p)) return null;
+    final n = double.parse(p);
+    if (i > 0 && n >= 60) return null;
+    total = total * 60 + n;
+  }
+  return total.round();
+}
+
+/// The organiser's edit of one result: a time and a status. A finished
+/// result needs a time; a DNF or DNS keeps the row's time when none is typed.
+@visibleForTesting
+class ResultEditDialog extends StatefulWidget {
+  final EventResultView result;
+  final String name;
+  const ResultEditDialog({super.key, required this.result, required this.name});
+
+  @override
+  State<ResultEditDialog> createState() => _ResultEditDialogState();
+}
+
+class _ResultEditDialogState extends State<ResultEditDialog> {
+  late final TextEditingController _time = TextEditingController(
+    text: widget.result.durationS > 0
+        ? _ResultRow._formatDuration(widget.result.durationS)
+        : '',
+  );
+  late String _status = widget.result.finisherStatus;
+  bool _invalid = false;
+
+  @override
+  void dispose() {
+    _time.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final parsed = parseResultTimeS(_time.text);
+    if (_status == 'finished' && (parsed == null || parsed <= 0)) {
+      setState(() => _invalid = true);
+      return;
+    }
+    Navigator.pop<ResultEdit>(context, (
+      durationS: parsed ?? widget.result.durationS,
+      finisherStatus: _status,
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    return AlertDialog(
+      title: Text(l10n.eventResultEditTitle(widget.name)),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.eventResultEditHelp,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _time,
+              keyboardType: TextInputType.datetime,
+              decoration: InputDecoration(
+                labelText: l10n.eventResultEditTime,
+                hintText: '1:02:03',
+                errorText: _invalid ? l10n.eventResultEditTimeInvalid : null,
+              ),
+              onChanged: (_) {
+                if (_invalid) setState(() => _invalid = false);
+              },
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: _status,
+              decoration:
+                  InputDecoration(labelText: l10n.eventResultEditStatus),
+              items: [
+                DropdownMenuItem(
+                    value: 'finished',
+                    child: Text(l10n.eventResultStatusFinished)),
+                DropdownMenuItem(
+                    value: 'dnf', child: Text(l10n.eventResultStatusDnf)),
+                DropdownMenuItem(
+                    value: 'dns', child: Text(l10n.eventResultStatusDns)),
+              ],
+              onChanged: (v) => setState(() {
+                _status = v ?? _status;
+                _invalid = false;
+              }),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.eventSubmitCancel),
+        ),
+        TextButton(
+          onPressed: _save,
+          child: Text(l10n.eventResultEditSave),
+        ),
+      ],
+    );
+  }
 }
 
 /// [results] split by course in the host's course order, server order kept
@@ -1842,18 +2420,23 @@ class _ResultRow extends StatelessWidget {
   final String eventTitle;
   final String? clubName;
   final DateTime certificateDate;
+  final ResultModeration? moderation;
   const _ResultRow({
     required this.row,
     required this.isMe,
     required this.eventTitle,
     required this.clubName,
     required this.certificateDate,
+    this.moderation,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final rank = row.rank?.toString() ?? '—';
+    final l10n = AppLocalizations.of(context);
+    // A pending result holds no place yet, as on web.
+    final rank =
+        row.organiserApproved ? (row.rank?.toString() ?? '—') : '…';
     final time = _formatDuration(row.durationS);
     final distance = formatDistanceForPref(row.distanceM);
     return Padding(
@@ -1892,6 +2475,14 @@ class _ResultRow extends StatelessWidget {
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       )),
+                ],
+                if (!row.organiserApproved) ...[
+                  const SizedBox(width: 6),
+                  StatusPill(
+                    label: l10n.eventResultPending,
+                    foreground: theme.colorScheme.onTertiaryContainer,
+                    fill: theme.colorScheme.tertiaryContainer,
+                  ),
                 ],
                 if (_finishMethodLabel(context, row.finishMethod)
                     case final method?) ...[
@@ -1963,15 +2554,42 @@ class _ResultRow extends StatelessWidget {
               ),
             ),
           ],
+          if (moderation case final mod?) _actions(context, mod),
         ],
       ),
     );
   }
 
+  Widget _actions(BuildContext context, ResultModeration mod) {
+    final l10n = AppLocalizations.of(context);
+    final approve =
+        resultApprovalAction(row, myUserId: isMe ? row.userId : null);
+    return PopupMenuButton<String>(
+      enabled: !mod.busy,
+      tooltip: l10n.eventResultActions(
+          row.displayName ?? l10n.eventResultRunner),
+      icon: const Icon(Icons.more_vert, size: 20),
+      onSelected: (v) => switch (v) {
+        'approve' => mod.onApprove(row, true),
+        'unverify' => mod.onApprove(row, false),
+        _ => mod.onEdit(row),
+      },
+      itemBuilder: (_) => [
+        if (approve == true)
+          PopupMenuItem(value: 'approve', child: Text(l10n.eventResultApprove)),
+        if (approve == false)
+          PopupMenuItem(
+              value: 'unverify', child: Text(l10n.eventResultUnverify)),
+        PopupMenuItem(value: 'edit', child: Text(l10n.eventResultEdit)),
+      ],
+    );
+  }
+
+  /// The badge flags a time the finish rule did NOT measure, so a device's
+  /// automatic finish wears none, as on web (decisions § 1862).
   static String? _finishMethodLabel(BuildContext context, String? method) {
     final l10n = AppLocalizations.of(context);
     return switch (method) {
-      'auto' => l10n.eventFinishMethodAuto,
       'manual' => l10n.eventFinishMethodManual,
       'host' => l10n.eventFinishMethodHost,
       _ => null,

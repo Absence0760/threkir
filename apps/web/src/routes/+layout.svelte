@@ -275,7 +275,12 @@
 		// order to donate — the anchor-visibility RLS and the donations
 		// checkout both admit anon (fundraising.md). Without the prefix the
 		// auth guard bounced exactly that visitor to /login.
-		path.startsWith('/fundraisers/');
+		path.startsWith('/fundraisers/') ||
+		// The help centre is static guide data with no per-user read, and the
+		// public live-event page links a signed-out spectator into it
+		// (decisions § 1866). Still noindex + robots-disallowed.
+		path === '/help' ||
+		path.startsWith('/help/');
 
 	function isActive(href: string, path: string): boolean {
 		return path.startsWith(href);

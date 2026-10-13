@@ -29,7 +29,8 @@ import { USER_A, USER_B } from '../fixtures/users';
  *   - removing a course racers picked drops their pick to no course,
  *   - End with nobody out on course states no DNF count and files none,
  *   - a one-course event asks for no pick and files the RSVP on that course,
- *   - the spectator page shows one finisher board per course.
+ *   - the spectator page shows one finisher board per course, and splits its
+ *     on-course board by each runner's RSVP'd course the same way.
  */
 
 const RICHMOND_RUN_CLUB_ID = 'c1111111-0000-0000-0000-000000000001';
@@ -434,6 +435,11 @@ test.describe('/clubs/[slug]/events/[id] — race courses (organiser)', () => {
 		});
 
 		await page.goto(`/clubs/richmond-run-club/events/${eventId}`);
+		const panel = page.locator('.race-panel');
+		await expect(panel.getByRole('button', { name: 'End race' })).toBeVisible({ timeout: 10_000 });
+		// A started race is ended, never cancelled: the server refuses running
+		// -> cancelled, and the phone offers the same (decisions § 1863).
+		await expect(panel.getByRole('button', { name: /Cancel/ })).toHaveCount(0);
 		await page.getByRole('button', { name: 'End race' }).click();
 		const dialog = page.getByRole('dialog');
 		await expect(dialog).toContainText('End the race?', { timeout: 10_000 });
@@ -600,6 +606,69 @@ test.describe('/live/event/[id]/[instance] — one finisher board per course', (
 			await expect(titles.nth(1)).toContainText('5K');
 			await expect(page.getByTestId('live-course-board')).toHaveCount(2);
 			await expect(page.getByTestId('live-finish-method')).toHaveText('Manual');
+		} finally {
+			await deleteEvent(eventId);
+		}
+	});
+
+	test("the on-course board splits by each runner's course", async ({ page }) => {
+		const startsAt = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+		const eventId = await insertEvent({
+			club_id: RICHMOND_RUN_CLUB_ID,
+			author_id: USER_A.id,
+			title: `e2e-race-courses-live-oncourse ${Date.now()}`,
+			starts_at: startsAt
+		});
+		try {
+			const [tenK, fiveK] = await insertCourses(eventId, [
+				{ name: '10K', distance_m: 10000 },
+				{ name: '5K', distance_m: 5000 }
+			]);
+			const { error: rsvpErr } = await getAdminClient()
+				.from('event_attendees')
+				.insert(
+					[
+						{ user_id: USER_A.id, course_id: tenK },
+						{ user_id: USER_B.id, course_id: fiveK }
+					].map((r) => ({ ...r, event_id: eventId, instance_start: startsAt, status: 'going' }))
+				);
+			if (rsvpErr) throw new Error(`rsvp insert failed: ${rsvpErr.message}`);
+			await insertRaceSession({
+				event_id: eventId,
+				instance_start: startsAt,
+				status: 'running',
+				started_at: startsAt,
+				started_by: USER_A.id
+			});
+			// The 5K runner is further along, so a combined board would put the
+			// 10K runner second.
+			await insertRacePings({
+				event_id: eventId,
+				instance_start: startsAt,
+				runners: [
+					{
+						user_id: USER_A.id,
+						points: [{ lat: -37.82, lng: 144.98, distance_m: 3000, elapsed_s: 900 }]
+					},
+					{
+						user_id: USER_B.id,
+						points: [{ lat: -37.82, lng: 144.985, distance_m: 4200, elapsed_s: 1200 }]
+					}
+				]
+			});
+
+			await page.goto(`/live/event/${eventId}/${encodeURIComponent(startsAt)}`);
+
+			const titles = page.getByTestId('live-oncourse-title');
+			await expect(titles).toHaveCount(2, { timeout: 10_000 });
+			await expect(titles.nth(0)).toContainText('10K');
+			await expect(titles.nth(1)).toContainText('5K');
+			const boards = page.getByTestId('live-oncourse-board');
+			await expect(boards).toHaveCount(2);
+			for (const i of [0, 1]) {
+				await expect(boards.nth(i).locator('.runner')).toHaveCount(1);
+				await expect(boards.nth(i).locator('.pos')).toHaveText('1');
+			}
 		} finally {
 			await deleteEvent(eventId);
 		}

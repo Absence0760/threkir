@@ -229,16 +229,17 @@ EventCourseView? pickRaceCourse(
 
 /// Tracks live race sessions for events the user has RSVP'd to and is
 /// therefore likely participating in. When the organiser arms a race, the
-/// run screen surfaces a "Race armed — waiting for GO" banner. When the
-/// session flips to `running`, clients hosting a recorder tag the
-/// resulting run with `event_id` and push pings while it's in progress.
+/// run screen surfaces a "Race armed — waiting for GO" banner. Once the
+/// session is `running`, a recording joins it ([attachIfRaceRunning]) —
+/// one started after GO at Start, one started while the race was armed at
+/// GO — and pushes pings until it stops.
 ///
 /// This is deliberately a lightweight notifier rather than a full state
 /// machine — the existing `RunRecorder` state machine in run_screen is
-/// complex enough already. When the race flips to running the user still
-/// taps Start manually for v1 (the recorder already handles permissions
-/// + countdown correctly); auto-start from the remote signal is a
-/// follow-up that needs permission-flow plumbing.
+/// complex enough already. Nothing starts a recording on the remote
+/// signal: the runner taps Start (the recorder already handles permissions
+/// + countdown correctly); auto-start is a follow-up that needs
+/// permission-flow plumbing.
 class ActiveRace {
   final String eventId;
   final DateTime instanceStart;
@@ -631,10 +632,30 @@ class RaceController extends ChangeNotifier {
     ));
   }
 
-  /// Called by the run screen when it starts a recorder while a race is
-  /// running. Enables live pings at a 10s cadence and resolves the racer's
-  /// course for finish detection. [startedAt] is the session's GO;
-  /// [recordingStartedAt] is when this recording began (device clock).
+  /// Join a recording in progress to the user's race if that race is
+  /// running: at Start, and again on every race change, so a recording
+  /// started while the race was armed joins at GO, as Wear's `raceToBind`
+  /// does. A recording already attached is never re-attached, including one
+  /// whose race the host has since ended — it stays attached, ended, until
+  /// it stops. [recordingStartedAt] is the recording's Start on the device
+  /// clock. Returns whether it attached.
+  bool attachIfRaceRunning({required DateTime recordingStartedAt}) {
+    if (isHosting) return false;
+    final race = _active;
+    if (race == null || !race.isRunning) return false;
+    attachRecorder(
+      eventId: race.eventId,
+      instance: race.instanceStart,
+      startedAt: race.startedAt,
+      recordingStartedAt: recordingStartedAt,
+    );
+    return true;
+  }
+
+  /// Attach a recording to a running race. Enables live pings at a 10s
+  /// cadence and resolves the racer's course for finish detection.
+  /// [startedAt] is the session's GO; [recordingStartedAt] is when this
+  /// recording began (device clock), which may be before GO.
   void attachRecorder({
     required String eventId,
     required DateTime instance,

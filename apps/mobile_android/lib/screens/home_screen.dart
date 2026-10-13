@@ -9,6 +9,7 @@ import '../audio_cues.dart';
 import '../auth_change_aware.dart';
 import '../ble_heart_rate.dart';
 import '../ble_treadmill.dart';
+import '../club_invite_link.dart' show pendingClubInviteToken;
 import '../l10n/gen/app_localizations.dart';
 import '../local_food_store.dart';
 import '../local_gear_store.dart';
@@ -42,6 +43,7 @@ import '../widgets/log_speed_dial.dart';
 import '../widgets/top_banner.dart';
 import 'challenges_screen.dart';
 import 'club_detail_screen.dart';
+import 'club_invite_screen.dart';
 import 'clubs_screen.dart';
 import 'confirm_age_screen.dart';
 import 'dashboard_screen.dart';
@@ -230,6 +232,7 @@ class _HomeScreenState extends State<HomeScreen>
     pendingPushTarget.addListener(_onPendingPushTarget);
     pendingSettingsDestination.addListener(_onPendingSettingsDestination);
     pendingHelpDestination.addListener(_onPendingHelpDestination);
+    pendingClubInviteToken.addListener(_onPendingClubInvite);
     // A GPX/KML opened while the app was closed sets the notifier during
     // main() before this screen mounts, so drain any already-present value
     // once the first frame is up (the listener only fires on later shares).
@@ -240,6 +243,7 @@ class _HomeScreenState extends State<HomeScreen>
       _onPendingPushTarget();
       _onPendingSettingsDestination();
       _onPendingHelpDestination();
+      _onPendingClubInvite();
     });
     // Surface the recovery banner from main.dart's in-progress
     // evaluation. Casual #3: this also fires on DISCARD ("Discarded a
@@ -608,6 +612,20 @@ class _HomeScreenState extends State<HomeScreen>
         .push(MaterialPageRoute<void>(builder: (_) => screen));
   }
 
+  /// An invite link the OS opened the app with: hand the token to the invite
+  /// screen, which redeems it on mount (and asks for the activity-risk
+  /// acknowledgement when the club requires it).
+  Future<void> _onPendingClubInvite() async {
+    final token = pendingClubInviteToken.value;
+    if (token == null || !mounted) return;
+    pendingClubInviteToken.value = null;
+    await _pushScreen(ClubInviteScreen(
+      social: widget.social,
+      training: widget.training,
+      initialToken: token,
+    ));
+  }
+
   /// A GPX/KML handed to the app by another app (WhatsApp "Open with" /
   /// share, iOS document open) was imported into the route library; drain
   /// the handoff, confirm it, and open the freshly-imported route. Every
@@ -740,6 +758,7 @@ class _HomeScreenState extends State<HomeScreen>
     pendingSettingsDestination
         .removeListener(_onPendingSettingsDestination);
     pendingHelpDestination.removeListener(_onPendingHelpDestination);
+    pendingClubInviteToken.removeListener(_onPendingClubInvite);
     _pageController.dispose();
     _currentIndex.dispose();
     _fitnessTab.dispose();

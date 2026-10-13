@@ -5073,13 +5073,6 @@ class ApiClient {
     await _client.from(ClubRow.table).update(patch).eq(ClubRow.colId, clubId);
   }
 
-  /// Redeem a join token from a public invite link.
-  Future<String> joinClubByToken(String token) async {
-    final result =
-        await _client.rpc('join_club_by_token', params: {'p_token': token});
-    return result as String;
-  }
-
   /// Request to join a club whose policy is `request`. Status starts
   /// `pending`; an admin approves via the methods below.
   Future<void> requestJoinClub(String clubId) async {

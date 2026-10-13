@@ -152,7 +152,6 @@ export function makeRaceResultsImportHandler(
             { status: gate.status },
           );
         }
-        return Response.json({ configured: true });
       }
       if (!['runsignup', 'ultrasignup', 'chronotrack', 'paste'].includes(provider)) {
         // An unrecognised provider is not "configured" — answering true for it is

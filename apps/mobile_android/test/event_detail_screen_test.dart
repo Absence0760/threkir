@@ -115,8 +115,15 @@ class _EventSocial extends SocialService {
     this.cancelled = const {},
     this.paceTargetSec,
     this.courses = const [],
+    this.raceStatus,
+    this.dnfCount,
   });
   List<EventCourseView> courses;
+  /// The occurrence's race session status, or null for none.
+  String? raceStatus;
+  /// What `race_pending_dnf_count` answers; null when it cannot be read.
+  int? dnfCount;
+  int dnfPreviewCalls = 0;
   String? lastRsvpCourseId;
   ClubView? club;
   String category;
@@ -166,7 +173,27 @@ class _EventSocial extends SocialService {
   Future<RaceSessionRow?> fetchRaceSession(
     String eventId,
     DateTime instance,
-  ) async => null;
+  ) async {
+    final status = raceStatus;
+    if (status == null) return null;
+    final at = DateTime.utc(2026, 6, 20, 8);
+    return RaceSessionRow(
+      eventId: eventId,
+      instanceStart: instance,
+      status: status,
+      startedAt: status == 'armed' ? null : at,
+      createdAt: at,
+      updatedAt: at,
+      isAutoApprove: true,
+    );
+  }
+
+  @override
+  Future<int?> fetchRaceDnfPreview(String eventId, DateTime instance) async {
+    dnfPreviewCalls++;
+    return dnfCount;
+  }
+
   @override
   Future<({double lat, double lng})?> fetchEventMeetPoint(
     String eventId,
@@ -318,15 +345,17 @@ void main() {
       (tester) async {
         // event_exceptions was never read on mobile, so a cancelled occurrence
         // stayed selectable and RSVP-able with nothing saying it was called off.
+        // The fixture is a one-off event, whose only occurrence is the event
+        // itself, so the banner names the event.
         await pumpWith(tester, {DateTime.utc(2026, 6, 20, 8)});
-        expect(find.text('This occurrence was cancelled.'), findsOneWidget);
+        expect(find.text('This event was cancelled.'), findsOneWidget);
         expect(find.text("I'm in"), findsNothing);
       },
     );
 
     realtimeWidgetTest('a live occurrence keeps the RSVP row', (tester) async {
       await pumpWith(tester, const {});
-      expect(find.text('This occurrence was cancelled.'), findsNothing);
+      expect(find.text('This event was cancelled.'), findsNothing);
       expect(find.text("I'm in"), findsOneWidget);
     });
   });
@@ -539,6 +568,67 @@ void main() {
       final social = _EventSocial(club: _club('member'), category: 'run');
       await pumpEvent(tester, social);
       expect(find.text('Not armed'), findsNothing);
+    });
+
+    realtimeWidgetTest('a running race offers End and no Cancel, as on web', (
+      tester,
+    ) async {
+      // The server refuses running -> cancelled, so a Cancel here could
+      // only ever fail.
+      final social = _EventSocial(club: _club('owner'), raceStatus: 'running');
+      await pumpEvent(tester, social);
+      expect(find.text('End race'), findsOneWidget);
+      expect(find.text('Cancel race'), findsNothing);
+      expect(find.text('Cancel'), findsNothing);
+    });
+
+    realtimeWidgetTest('an armed race offers Fire Go and Cancel', (
+      tester,
+    ) async {
+      final social = _EventSocial(club: _club('owner'), raceStatus: 'armed');
+      await pumpEvent(tester, social);
+      expect(find.text('Cancel'), findsOneWidget);
+    });
+
+    realtimeWidgetTest('End states how many racers it will mark DNF', (
+      tester,
+    ) async {
+      final social = _EventSocial(
+        club: _club('owner'),
+        raceStatus: 'running',
+        dnfCount: 2,
+      );
+      await pumpEvent(tester, social);
+      await tester.ensureVisible(find.text('End race'));
+      await tester.tap(find.text('End race'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(social.dnfPreviewCalls, 1);
+      expect(
+        find.text(
+          "End the race? 2 racers who started have no result and will be "
+          "marked DNF. This can't be undone.",
+        ),
+        findsOneWidget,
+      );
+    });
+
+    realtimeWidgetTest('End with no count to state keeps the plain body', (
+      tester,
+    ) async {
+      final social = _EventSocial(club: _club('owner'), raceStatus: 'running');
+      await pumpEvent(tester, social);
+      await tester.ensureVisible(find.text('End race'));
+      await tester.tap(find.text('End race'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(
+        find.text(
+          "End the race? This finalizes the event for every runner and can't "
+          'be undone.',
+        ),
+        findsOneWidget,
+      );
     });
 
     realtimeWidgetTest('a class event hides Race control even for an organiser', (
@@ -799,6 +889,7 @@ void main() {
               EventResultsSection(
                 results: [
                   EventResultView(
+                    id: 'r-1',
                     userId: 'u-1',
                     displayName: 'Backmarker',
                     runId: null,

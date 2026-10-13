@@ -16,6 +16,7 @@ import {
 	GOOGLE_REVERSED_SCHEME,
 	GOOGLE_SIGN_IN_IMPORT,
 	IOS_ROOT,
+	PLIST_FLAGS,
 	PRIVACY_API_TYPES,
 	PRIVACY_DATA_TYPES,
 	PURPOSE_STRINGS,
@@ -274,6 +275,25 @@ const plistWith = (key, value) => new Map(baseline().infoPlist).set(key, value);
 test('the baseline passes, so every mutation below is the only cause of its failure', () => {
 	const { errors } = evaluate(baseline());
 	assert.deepEqual(errors, []);
+});
+
+test('importing app_links obliges switching off Flutter deep-link routing', () => {
+	const sources = dart(
+		'IosTextToSpeechAudioCategory.playback\n' +
+			"import 'package:firebase_messaging/x.dart';\n" +
+			"import 'package:app_links/app_links.dart';",
+	);
+	const missing = evaluate(baseline({ dartSources: sources })).errors;
+	assert.equal(missing.filter((e) => e.includes('FlutterDeepLinkingEnabled')).length, 1);
+	const on = evaluate(
+		baseline({ dartSources: sources, infoPlist: plistWith('FlutterDeepLinkingEnabled', true) }),
+	).errors;
+	assert.equal(on.filter((e) => e.includes('FlutterDeepLinkingEnabled')).length, 1);
+	const off = evaluate(
+		baseline({ dartSources: sources, infoPlist: plistWith('FlutterDeepLinkingEnabled', false) }),
+	).errors;
+	assert.deepEqual(off, []);
+	assert.ok(PLIST_FLAGS.some((f) => f.key === 'FlutterDeepLinkingEnabled'));
 });
 
 test('declaring document types obliges saying how they are opened', () => {

@@ -30,7 +30,13 @@ export const COMPARE_SECTIONS: CompareSection[] = [
 	{
 		title: 'Recording + privacy',
 		rows: [
-			{ name: 'GPS run recording with auto-pause', ours: 'yes', stravaFree: 'yes', stravaPro: 'yes' },
+			{
+				name: 'GPS run recording',
+				ours: 'yes',
+				stravaFree: 'yes',
+				stravaPro: 'yes',
+				note: 'The clock runs until you pause it; moving time is worked out from the track afterwards.',
+			},
 			{
 				name: 'Privacy zones (hide start / end of public tracks)',
 				ours: 'yes',

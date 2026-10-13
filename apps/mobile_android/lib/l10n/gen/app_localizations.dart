@@ -128,7 +128,7 @@ abstract class AppLocalizations {
   /// Instruction text above the invite-code field
   ///
   /// In en, this message translates to:
-  /// **'Paste the invite code your club admin shared with you.'**
+  /// **'Paste the invite link or code your club admin shared with you.'**
   String get clubInviteIntro;
 
   /// Text field label for the club invite code
@@ -142,6 +142,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Join'**
   String get clubInviteJoinButton;
+
+  /// Title of the dialog asking for a club's activity-risk acknowledgement before joining
+  ///
+  /// In en, this message translates to:
+  /// **'One thing before you join'**
+  String get clubWaiverTitle;
+
+  /// Body of the activity-risk acknowledgement dialog
+  ///
+  /// In en, this message translates to:
+  /// **'This club asks every member to acknowledge the physical risks of running together before joining.'**
+  String get clubWaiverBody;
+
+  /// Checkbox label: the member acknowledges the physical risk of group running (same text as web clubHome.waiverAck)
+  ///
+  /// In en, this message translates to:
+  /// **'I understand the physical risks of group running and join at my own risk.'**
+  String get clubWaiverAck;
+
+  /// Dialog button that records the acknowledgement and joins the club; enabled only once the box is ticked
+  ///
+  /// In en, this message translates to:
+  /// **'Accept and join'**
+  String get clubWaiverAccept;
 
   /// First line of the shared year-in-running recap summary
   ///
@@ -692,7 +716,7 @@ abstract class AppLocalizations {
   /// Android body copy explaining what is imported from Health Connect and the no-track caveat
   ///
   /// In en, this message translates to:
-  /// **'Reads workout summaries (date, distance, duration, type) from the last year. GPS routes are not exposed by Health Connect — runs imported this way won\'t have a map trace.'**
+  /// **'Reads workout summaries (date, distance, duration, type) from the last year. A workout\'s GPS map comes too when Health Connect lets Threkir read it; if it holds some back, you can allow map access after the import.'**
   String get importHealthDescriptionAndroid;
 
   /// Offer shown after a Health Connect import found routes it was refused
@@ -11328,7 +11352,7 @@ abstract class AppLocalizations {
   /// Subtitle of the Import tile
   ///
   /// In en, this message translates to:
-  /// **'Strava, GPX, TCX'**
+  /// **'Strava export, health app, CSV or backup'**
   String get settingsAccountImportSubtitle;
 
   /// Tile title for the queued server-built GDPR Art 20 export
@@ -24279,12 +24303,6 @@ abstract class AppLocalizations {
   /// **'Other results'**
   String get eventResultsOtherCourse;
 
-  /// Badge on a race result recorded automatically at the finish line
-  ///
-  /// In en, this message translates to:
-  /// **'Auto'**
-  String get eventFinishMethodAuto;
-
   /// Badge on a race result the runner recorded by pressing Finish race
   ///
   /// In en, this message translates to:
@@ -24560,6 +24578,414 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Read the guide'**
   String get infoTipReadGuide;
+
+  /// End-race confirmation when some racers who started have no result and End will mark them DNF
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{End the race? {count} racer who started has no result and will be marked DNF. This can\'t be undone.} other{End the race? {count} racers who started have no result and will be marked DNF. This can\'t be undone.}}'**
+  String eventRaceEndConfirmBodyDnf(int count);
+
+  /// Pill on a race result the race director has not approved yet; it holds no place
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get eventResultPending;
+
+  /// Tooltip / screen-reader label of a race director's per-result actions menu
+  ///
+  /// In en, this message translates to:
+  /// **'Result actions for {name}'**
+  String eventResultActions(String name);
+
+  /// Race director action publishing a pending result
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get eventResultApprove;
+
+  /// Race director action putting an approved result back into pending
+  ///
+  /// In en, this message translates to:
+  /// **'Unverify'**
+  String get eventResultUnverify;
+
+  /// Race director action opening the result edit dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get eventResultEdit;
+
+  /// Title of the race director's result edit dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Edit result: {name}'**
+  String eventResultEditTitle(String name);
+
+  /// Explanation in the result edit dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Your edit replaces this time on the leaderboard and is marked as host edited.'**
+  String get eventResultEditHelp;
+
+  /// Label of the finish time field in the result edit dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Time (h:mm:ss)'**
+  String get eventResultEditTime;
+
+  /// Label of the status picker in the result edit dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get eventResultEditStatus;
+
+  /// Result status option: finished
+  ///
+  /// In en, this message translates to:
+  /// **'Finished'**
+  String get eventResultStatusFinished;
+
+  /// Result status option: did not finish
+  ///
+  /// In en, this message translates to:
+  /// **'DNF'**
+  String get eventResultStatusDnf;
+
+  /// Result status option: did not start
+  ///
+  /// In en, this message translates to:
+  /// **'DNS'**
+  String get eventResultStatusDns;
+
+  /// Save button of the result edit dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Save result'**
+  String get eventResultEditSave;
+
+  /// Error under the time field when a finished result has no valid time
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a finish time like 42:10 or 1:02:03.'**
+  String get eventResultEditTimeInvalid;
+
+  /// Banner when approving, unverifying or editing a result fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the result: {error}'**
+  String eventResultActionFailed(String error);
+
+  /// Organiser action calling off the selected occurrence of a recurring event
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel this occurrence'**
+  String get eventCancelOccurrence;
+
+  /// Organiser action calling off a one-off event
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel event'**
+  String get eventCancelEvent;
+
+  /// Organiser action ending a recurring event and calling off every upcoming occurrence
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel the whole series'**
+  String get eventCancelSeries;
+
+  /// Confirmation body when cancelling one occurrence of a series
+  ///
+  /// In en, this message translates to:
+  /// **'Only this occurrence is called off — the rest of the series is unaffected. Everyone who RSVP\'d to it (going, maybe, or waitlisted) is notified.'**
+  String get eventCancelOccurrenceBody;
+
+  /// Confirmation body when cancelling a one-off event
+  ///
+  /// In en, this message translates to:
+  /// **'The event is called off. Everyone who RSVP\'d (going, maybe, or waitlisted) is notified.'**
+  String get eventCancelEventBody;
+
+  /// Confirmation body when cancelling a whole series
+  ///
+  /// In en, this message translates to:
+  /// **'The series ends now and no later occurrences are scheduled. Every upcoming occurrence someone RSVP\'d to is called off, and they are notified.'**
+  String get eventCancelSeriesBody;
+
+  /// Confirmation note that a host cancel refunds everyone who paid
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone who paid is refunded in full, whatever the refund policy says.'**
+  String get eventCancelPaidNote;
+
+  /// Label of the optional cancel reason field
+  ///
+  /// In en, this message translates to:
+  /// **'Reason (optional)'**
+  String get eventCancelReasonLabel;
+
+  /// Dismiss the cancel confirmation without cancelling
+  ///
+  /// In en, this message translates to:
+  /// **'Keep it'**
+  String get eventCancelKeep;
+
+  /// Banner after a host cancel started refunds
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Cancelled. 1 registrant is being refunded in full.} other{Cancelled. {count} registrants are being refunded in full.}}'**
+  String eventCancelRefundsStarted(int count);
+
+  /// Banner after a host cancel where some refunds could not be started
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled, but {count, plural, one{1 refund couldn\'t be started. Retry it} other{{count} refunds couldn\'t be started. Retry them}} from the event on the web.'**
+  String eventCancelRefundsIncomplete(int count);
+
+  /// Banner after a host cancelled an occurrence or event with no refunds involved
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled.'**
+  String get eventCancelledToast;
+
+  /// Banner after a host cancelled a whole series with no refunds involved
+  ///
+  /// In en, this message translates to:
+  /// **'Series cancelled.'**
+  String get eventSeriesCancelledToast;
+
+  /// Error when a paid cancel cannot run because payments are unavailable
+  ///
+  /// In en, this message translates to:
+  /// **'There are paid registrations and payments aren\'t available right now, so this can\'t be cancelled yet. Nothing has changed.'**
+  String get eventCancelNotConfigured;
+
+  /// Error when the viewer may not cancel
+  ///
+  /// In en, this message translates to:
+  /// **'Only an organiser of this club can cancel an occurrence.'**
+  String get eventCancelNotOrganiser;
+
+  /// Generic cancel failure
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t cancel. Please try again.'**
+  String get eventCancelFailed;
+
+  /// Organiser action putting a cancelled occurrence back
+  ///
+  /// In en, this message translates to:
+  /// **'Reinstate this occurrence'**
+  String get eventReinstateOccurrence;
+
+  /// Organiser action putting a cancelled one-off event back
+  ///
+  /// In en, this message translates to:
+  /// **'Reinstate this event'**
+  String get eventReinstateEvent;
+
+  /// Error when reinstating fails
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reinstate this occurrence'**
+  String get eventReinstateFailed;
+
+  /// Banner on a cancelled one-off event
+  ///
+  /// In en, this message translates to:
+  /// **'This event was cancelled.'**
+  String get eventEventCancelled;
+
+  /// Banner on a series its organiser cancelled
+  ///
+  /// In en, this message translates to:
+  /// **'This series was cancelled.'**
+  String get eventSeriesWasCancelled;
+
+  /// A waitlist seat is held for the viewer until the given time
+  ///
+  /// In en, this message translates to:
+  /// **'A place is held for you until {time}. Pay to claim it, or it goes to the next person on the waitlist.'**
+  String eventWaitlistOfferHeld(String time);
+
+  /// The held seat is paid for on the web
+  ///
+  /// In en, this message translates to:
+  /// **'Payment happens on the web.'**
+  String get eventWaitlistOfferClaimHint;
+
+  /// Button opening the event on the web to pay for the held seat
+  ///
+  /// In en, this message translates to:
+  /// **'Claim on the web'**
+  String get eventWaitlistOfferClaim;
+
+  /// Event form capacity field label
+  ///
+  /// In en, this message translates to:
+  /// **'Capacity'**
+  String get eventFormCapacity;
+
+  /// Event form capacity helper text
+  ///
+  /// In en, this message translates to:
+  /// **'Once this many people are going, the next person to say yes joins a waitlist instead of being turned away. Leave it empty for no limit.'**
+  String get eventFormCapacityHint;
+
+  /// Event form capacity validation error
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a whole number of 1 or more, or leave it empty.'**
+  String get eventFormErrCapacity;
+
+  /// Event form label of the optional series end date
+  ///
+  /// In en, this message translates to:
+  /// **'Ends on'**
+  String get eventFormEndsOn;
+
+  /// Shown when no series end date is set
+  ///
+  /// In en, this message translates to:
+  /// **'No end date'**
+  String get eventFormEndsOnNone;
+
+  /// Tooltip clearing the series end date
+  ///
+  /// In en, this message translates to:
+  /// **'Clear end date'**
+  String get eventFormEndsOnClear;
+
+  /// Event form label of the optional occurrence count
+  ///
+  /// In en, this message translates to:
+  /// **'End after'**
+  String get eventFormEndAfter;
+
+  /// Helper text explaining the series end fields
+  ///
+  /// In en, this message translates to:
+  /// **'Where the series stops. Set either, or both — whichever comes first wins. Leave both empty and it keeps repeating.'**
+  String get eventFormRepeatEndHint;
+
+  /// Event form occurrence count validation error
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a whole number from 1 to 520, or leave it empty.'**
+  String get eventFormErrCount;
+
+  /// Event form session plan picker label
+  ///
+  /// In en, this message translates to:
+  /// **'Session plan'**
+  String get eventFormSessionPlan;
+
+  /// Session plan picker option for no plan
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get eventFormSessionPlanNone;
+
+  /// Helper text when the host has no session plans
+  ///
+  /// In en, this message translates to:
+  /// **'No session plans yet. Build one on the web.'**
+  String get eventFormSessionPlanEmpty;
+
+  /// Event form toggle to charge for the event
+  ///
+  /// In en, this message translates to:
+  /// **'Charge for this event'**
+  String get eventFormCharge;
+
+  /// Helper text of the charge toggle
+  ///
+  /// In en, this message translates to:
+  /// **'Takes a fee at registration. The money settles into your own payout account rather than the club\'s, and only an in-person event can charge.'**
+  String get eventFormChargeHint;
+
+  /// Shown when the host cannot take payments yet
+  ///
+  /// In en, this message translates to:
+  /// **'Set up payouts on the web to charge for events.'**
+  String get eventFormChargeNeedsPayout;
+
+  /// Event form price field label
+  ///
+  /// In en, this message translates to:
+  /// **'Price'**
+  String get eventFormPrice;
+
+  /// Event form currency field label
+  ///
+  /// In en, this message translates to:
+  /// **'Currency'**
+  String get eventFormCurrency;
+
+  /// Event form price validation error
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a price of at least 0.50.'**
+  String get eventFormErrPrice;
+
+  /// Event form currency validation error
+  ///
+  /// In en, this message translates to:
+  /// **'Use a three-letter currency code, like USD.'**
+  String get eventFormErrCurrency;
+
+  /// Event form sales close field label
+  ///
+  /// In en, this message translates to:
+  /// **'Stop sales (minutes before start)'**
+  String get eventFormSalesClose;
+
+  /// Helper text of the sales close field
+  ///
+  /// In en, this message translates to:
+  /// **'How long before the start registration shuts. Zero keeps it open right up to the start time.'**
+  String get eventFormSalesCloseHint;
+
+  /// Event form sales close validation error
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a whole number of minutes from 0 to 10080.'**
+  String get eventFormErrSalesClose;
+
+  /// Event form refund policy picker label
+  ///
+  /// In en, this message translates to:
+  /// **'Refund policy'**
+  String get eventFormRefundPolicy;
+
+  /// Refund policy: full refund until the start
+  ///
+  /// In en, this message translates to:
+  /// **'Full refund until start time'**
+  String get eventFormRefundFullUntilStart;
+
+  /// Refund policy: full refund until 24 hours before
+  ///
+  /// In en, this message translates to:
+  /// **'Full refund until 24h before'**
+  String get eventFormRefundFullUntil24h;
+
+  /// Refund policy: no refunds
+  ///
+  /// In en, this message translates to:
+  /// **'No refunds'**
+  String get eventFormRefundNone;
+
+  /// Banner when the event was created but its price was not saved
+  ///
+  /// In en, this message translates to:
+  /// **'Event created, but saving the price failed. Set the price from the event on the web.'**
+  String get eventFormPricingFailed;
+
+  /// Banner when the event was created but its session plan was not attached
+  ///
+  /// In en, this message translates to:
+  /// **'Event created, but the session plan couldn\'t be attached. Attach it from the event on the web.'**
+  String get eventFormSessionPlanFailed;
 }
 
 class _AppLocalizationsDelegate

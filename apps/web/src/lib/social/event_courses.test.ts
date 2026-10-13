@@ -8,6 +8,7 @@ import {
 	applyCourseSave,
 	finishMethodBadge,
 	groupResultsByCourse,
+	groupRunnersByCourse,
 	hostTimeEditPatch,
 	needsCoursePick,
 	planCourseSave,
@@ -128,6 +129,56 @@ test('groupResultsByCourse on an event with no courses is the one board it alway
 	assert.equal(boards.length, 1);
 	assert.equal(boards[0].course, null);
 	assert.deepEqual(boards[0].results.map((r) => r.id), ['r1', 'r2']);
+});
+
+test('groupRunnersByCourse splits the on-course board by each runner\'s RSVP course', () => {
+	const courses = [course('k5', '5K', 1), course('k10', '10K', 0)];
+	// Furthest-first, as latest_race_pings returns them.
+	const pings = [{ user_id: 'a' }, { user_id: 'b' }, { user_id: 'c' }, { user_id: 'd' }];
+	const byUser = new Map([
+		['a', 'k5'],
+		['b', 'k10'],
+		['c', 'k5']
+	]);
+	const boards = groupRunnersByCourse(pings, courses, byUser);
+	assert.deepEqual(
+		boards.map((b) => [b.course?.id ?? null, b.results.map((p) => p.user_id)]),
+		[
+			['k10', ['b']],
+			['k5', ['a', 'c']],
+			[null, ['d']]
+		]
+	);
+});
+
+test('groupRunnersByCourse drops a course nobody is on and keeps a lost course as no course', () => {
+	const courses = [course('k5', '5K', 0), course('k10', '10K', 1)];
+	const boards = groupRunnersByCourse(
+		[{ user_id: 'a' }, { user_id: 'b' }],
+		courses,
+		new Map([
+			['a', 'k5'],
+			['b', 'k-deleted']
+		])
+	);
+	assert.deepEqual(
+		boards.map((b) => [b.course?.id ?? null, b.results.map((p) => p.user_id)]),
+		[
+			['k5', ['a']],
+			[null, ['b']]
+		]
+	);
+});
+
+test('groupRunnersByCourse leaves a one-course or course-less race as one board', () => {
+	const pings = [{ user_id: 'a' }, { user_id: 'b' }];
+	for (const courses of [[], [course('only', '10K', 0)]]) {
+		const boards = groupRunnersByCourse(pings, courses, new Map([['a', 'only']]));
+		assert.equal(boards.length, 1);
+		assert.equal(boards[0].course, null);
+		assert.deepEqual(boards[0].results.map((p) => p.user_id), ['a', 'b']);
+	}
+	assert.deepEqual(groupRunnersByCourse([], [], new Map()), []);
 });
 
 test('finishMethodBadge flags only times the finish rule did not measure', () => {

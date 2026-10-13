@@ -534,4 +534,31 @@ void main() {
     });
   });
 
+  group('race control writes', () {
+    final now = DateTime.utc(2026, 5, 22, 18, 30);
+
+    test('End stamps finished_at; Cancel does not', () {
+      // The temporal CHECK requires finished_at null on cancelled, so a
+      // cancel that stamped it was refused and the phone's Cancel never
+      // landed (web's endRace had the same bug, pgtap 9 pins it).
+      expect(raceEndPatch('finished', now), {
+        'status': 'finished',
+        'finished_at': '2026-05-22T18:30:00.000Z',
+        'updated_at': '2026-05-22T18:30:00.000Z',
+      });
+      expect(raceEndPatch('cancelled', now), {
+        'status': 'cancelled',
+        'updated_at': '2026-05-22T18:30:00.000Z',
+      });
+    });
+
+    test('a host edit moves the gun time only on a row that has one', () {
+      expect(hostTimeEditPatch(2450, 2600),
+          {'duration_s': 2450, 'gun_time_s': 2450});
+      expect(hostTimeEditPatch(-3, 2600), {'duration_s': 0, 'gun_time_s': 0});
+      expect(hostTimeEditPatch(2450, 0),
+          {'duration_s': 2450, 'gun_time_s': 2450});
+      expect(hostTimeEditPatch(2450, null), {'duration_s': 2450});
+    });
+  });
 }

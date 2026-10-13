@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'challenge_list.dart';
 import 'challenge_progress.dart';
 import 'event_category.dart';
+import 'event_host_cancel.dart';
 import 'event_occurrence.dart';
 import 'event_gym_template.dart';
 import 'geocoding.dart';
@@ -58,6 +59,20 @@ List<Weekday>? parseBydayCodes(dynamic raw) {
   final codes = raw.cast<String>();
   final ws = codes.map(weekdayFromCode).whereType<Weekday>().toList();
   return ws.isEmpty ? null : ws;
+}
+
+/// The message `join_club_by_token` raises when a club requires the
+/// activity-risk acknowledgement and the call did not carry it.
+const String kActivityWaiverRequired = 'activity_waiver_required';
+
+/// [SocialService.joinClubByToken] refused because the club requires the
+/// activity-risk acknowledgement. The caller asks for it and calls again
+/// with `ackWaiver: true`.
+class ActivityWaiverRequired implements Exception {
+  const ActivityWaiverRequired();
+
+  @override
+  String toString() => 'ActivityWaiverRequired';
 }
 
 /// View-model for a club enriched with the current user's membership and the
@@ -147,12 +162,16 @@ class AttendeeView {
   /// The `event_courses` row this racer picked at RSVP; null on an event
   /// with no courses or an RSVP made before courses existed.
   final String? courseId;
+  /// The claim deadline of a waitlist seat offer on a paid occurrence
+  /// (20270726000002, decisions § 1840); null when nothing is offered.
+  final DateTime? offerExpiresAt;
   const AttendeeView({
     required this.userId,
     required this.status,
     this.displayName,
     this.attendance,
     this.courseId,
+    this.offerExpiresAt,
   });
 }
 
@@ -338,6 +357,9 @@ class RecentRunRow {
 /// newly inserted finishers that the server-side rerank trigger hasn't
 /// caught up on — UIs render null as an em-dash.
 class EventResultView {
+  /// The `event_results` row id: how an organiser approves a bib-only row
+  /// or edits any row.
+  final String id;
   // Null for bib-only finishers imported from a chip-timing CSV (persona
   // #43) — those carry [bib] + [finisherName] instead of an account.
   final String? userId;
@@ -362,6 +384,7 @@ class EventResultView {
   final String? finishMethod;
 
   const EventResultView({
+    required this.id,
     required this.userId,
     this.bib,
     this.finisherName,
@@ -380,6 +403,32 @@ class EventResultView {
     this.chipTimeS,
     this.finishMethod,
   });
+}
+
+/// The `race_sessions` update that ends a race. Only `finished` stamps
+/// `finished_at`: the temporal CHECK requires it null on `cancelled`
+/// (cancelling is pre-start), so a cancel that stamped it was refused.
+/// Mirrors web's `endRace`.
+Map<String, dynamic> raceEndPatch(String status, DateTime now) {
+  final at = now.toUtc().toIso8601String();
+  return {
+    RaceSessionRow.colStatus: status,
+    if (status == 'finished') RaceSessionRow.colFinishedAt: at,
+    RaceSessionRow.colUpdatedAt: at,
+  };
+}
+
+/// The columns an organiser's time edit writes, as web's `hostTimeEditPatch`
+/// writes them. `duration_s` is the ranked time; on a row that carries a gun
+/// time it IS the gun time, so the gun time moves with it and the chip time
+/// is left as measured. A row with no gun time keeps none: an edit is not a
+/// gun reading.
+Map<String, dynamic> hostTimeEditPatch(int durationS, int? priorGunTimeS) {
+  final d = durationS < 0 ? 0 : durationS;
+  return {
+    'duration_s': d,
+    if (priorGunTimeS != null) 'gun_time_s': d,
+  };
 }
 
 /// A charity fundraiser attached to a run or event (fundraising.md). Mobile is
@@ -1020,7 +1069,13 @@ class SocialService extends ChangeNotifier {
     );
   }
 
-  Future<String> joinClub(String clubId, String policy) async {
+  /// [ackWaiver] records the activity-risk acknowledgement; a club that
+  /// requires it refuses the row without one (§ 1864).
+  Future<String> joinClub(
+    String clubId,
+    String policy, {
+    bool ackWaiver = false,
+  }) async {
     final uid = _uid;
     if (uid == null) throw Exception('Not authenticated');
     final status = policy == 'request' ? 'pending' : 'active';
@@ -1029,26 +1084,39 @@ class SocialService extends ChangeNotifier {
       'user_id': uid,
       'role': 'member',
       'status': status,
+      if (ackWaiver)
+        'activity_waiver_ack_at': DateTime.now().toUtc().toIso8601String(),
     });
     notifyListeners();
     return status;
   }
 
-  /// Redeem a club invite token. Returns the slug of the club the
-  /// user just joined so the caller can navigate to its detail
-  /// screen. Mirrors `apps/web/src/lib/core/data.ts:joinClubByToken`.
-  /// Surfaces the RPC's own error messages on failure ("expired",
-  /// "already a member", "invalid token") so the caller can render
-  /// them as-is.
-  Future<String> joinClubByToken(String token) async {
+  /// Redeem a club invite token. Mirrors
+  /// `apps/web/src/lib/core/data.ts:joinClubByToken`. Returns the joined
+  /// club's slug so the caller can open it, or null when the join landed but
+  /// the slug read did not. Throws [ActivityWaiverRequired] when the club
+  /// requires the activity-risk acknowledgement and [ackWaiver] is false;
+  /// any other refusal surfaces as the RPC's own exception.
+  Future<String?> joinClubByToken(
+    String token, {
+    bool ackWaiver = false,
+  }) async {
     final uid = _uid;
     if (uid == null) throw Exception('Not authenticated');
-    final result = await _c.rpc(
-      'join_club_by_token',
-      params: {'p_token': token.trim()},
-    );
+    final Object? clubId;
+    try {
+      clubId = await _c.rpc(
+        'join_club_by_token',
+        params: {'token': token.trim(), 'activity_waiver_ack': ackWaiver},
+      );
+    } on PostgrestException catch (e) {
+      if (e.message == kActivityWaiverRequired) {
+        throw const ActivityWaiverRequired();
+      }
+      rethrow;
+    }
     notifyListeners();
-    return result as String;
+    return fetchClubSlugById(clubId as String);
   }
 
   Future<void> leaveClub(String clubId) async {
@@ -1470,6 +1538,177 @@ class SocialService extends ChangeNotifier {
     }
   }
 
+  /// Whether the signed-in host can take payments, and the currency their
+  /// payout account settles in. Mirrors web's `fetchPayoutAccount`: the
+  /// own-row policy lets a host read their account, and only the capability
+  /// columns are projected (the Stripe account id is column-revoked). Null when
+  /// there is no account or the read fails, which the form reads as "cannot
+  /// charge" — the `event_pricing` trigger refuses a price otherwise anyway.
+  Future<({bool chargesEnabled, String? defaultCurrency})?>
+      fetchPayoutCapability() async {
+    final uid = _uid;
+    if (uid == null) return null;
+    try {
+      final row = await _c
+          .from('instructor_payout_accounts')
+          .select('charges_enabled, default_currency')
+          .eq('user_id', uid)
+          .maybeSingle();
+      if (row == null) return null;
+      return (
+        chargesEnabled: row['charges_enabled'] == true,
+        defaultCurrency: row['default_currency'] as String?,
+      );
+    } catch (e) {
+      debugPrint('fetchPayoutCapability failed: $e');
+      return null;
+    }
+  }
+
+  /// Session plans the host can attach to a class: their own plus those of a
+  /// club they belong to, as web's `fetchSessionPlans` scopes it (a stranger's
+  /// public plan is not "mine"). Empty on a failed read, which leaves the
+  /// picker showing only "no plan".
+  Future<List<({String id, String title})>> fetchSessionPlanOptions() async {
+    final uid = _uid;
+    if (uid == null) return const [];
+    try {
+      final memberships =
+          await _c.from('club_members').select('club_id').eq('user_id', uid);
+      final clubIds = [
+        for (final m in memberships as List)
+          if ((m as Map)['club_id'] is String) m['club_id'] as String,
+      ];
+      final query = _c.from('session_plans').select('id, title');
+      final rows = await (clubIds.isEmpty
+              ? query.eq('author_id', uid)
+              : query.or('author_id.eq.$uid,club_id.in.(${clubIds.join(',')})'))
+          .order('updated_at', ascending: false);
+      return [
+        for (final r in rows as List)
+          if ((r as Map)['id'] is String && r['title'] is String)
+            (id: r['id'] as String, title: r['title'] as String),
+      ];
+    } catch (e) {
+      debugPrint('fetchSessionPlanOptions failed: $e');
+      return const [];
+    }
+  }
+
+  /// The series price of a paid event, in the currency's minor units. Mirrors
+  /// web's `setEventPricing` for the series row (`instance_start` null):
+  /// in-person only, upserted on the one non-partial arbiter.
+  Future<void> setEventPricing({
+    required String eventId,
+    required int priceCents,
+    required String currency,
+    required String refundPolicy,
+    required int salesCloseOffsetMinutes,
+  }) async {
+    await _c.from('event_pricing').upsert(
+      {
+        'event_id': eventId,
+        'instance_start': null,
+        'price_cents': priceCents,
+        'currency': currency,
+        'modality': 'in_person',
+        'refund_policy': refundPolicy,
+        'sales_close_offset_minutes': salesCloseOffsetMinutes,
+      },
+      onConflict: 'event_id,instance_start',
+    );
+  }
+
+  /// Attach (or with null, detach) a session plan to a class. The database
+  /// trigger enforces organiser-only, as on web.
+  Future<void> setEventSessionPlan(String eventId, String? sessionPlanId) async {
+    await _c
+        .from('events')
+        .update({'session_plan_id': sessionPlanId}).eq('id', eventId);
+  }
+
+  /// Call off one occurrence of a series, or a one-off event (whose only
+  /// occurrence is its start), as an organiser. Mirrors web's
+  /// `cancelEventInstance`: the direct `event_exceptions` insert is tried first,
+  /// and an occurrence that still holds money is refused there by
+  /// `guard_paid_occurrence_cancel`, so it goes through the `events-cancel`
+  /// function, which cancels and refunds every registrant in one request.
+  /// Returns that function's refund summary, or null when no money was
+  /// involved. Throws [EventCancelRefused] with the function's machine code on
+  /// a refusal.
+  Future<OccurrenceRefundSummary?> cancelEventOccurrence(
+    String eventId,
+    DateTime instance, {
+    String? reason,
+  }) async {
+    final uid = _uid;
+    if (uid == null) throw Exception('Not authenticated');
+    final trimmed = reason?.trim();
+    try {
+      await _c.from('event_exceptions').upsert(
+        {
+          'event_id': eventId,
+          'instance_start': instanceStartKey(instance),
+          'cancelled_by': uid,
+          'reason': (trimmed == null || trimmed.isEmpty) ? null : trimmed,
+        },
+        onConflict: 'event_id,instance_start',
+        ignoreDuplicates: true,
+      );
+      return null;
+    } on PostgrestException catch (e) {
+      if (e.message != paidOccurrenceRefusal) rethrow;
+    }
+    final body = await _invokeEventsCancel({
+      'event_id': eventId,
+      'instance_start': instanceStartKey(instance),
+      'scope': 'occurrence',
+      'reason': (trimmed == null || trimmed.isEmpty) ? null : trimmed,
+    });
+    final refunds = parseOccurrenceRefundSummary(body['refunds']);
+    if (refunds == null) throw const EventCancelRefused('cancel_failed');
+    return refunds;
+  }
+
+  /// End a recurring series now and call off every remaining occurrence anyone
+  /// signed up for, refunding all of them, through `events-cancel`'s `series`
+  /// scope (decisions § 1868). Mirrors web's `cancelEventSeries`.
+  Future<OccurrenceRefundSummary> cancelEventSeries(
+    String eventId, {
+    String? reason,
+  }) async {
+    final trimmed = reason?.trim();
+    final body = await _invokeEventsCancel({
+      'event_id': eventId,
+      'scope': 'series',
+      'reason': (trimmed == null || trimmed.isEmpty) ? null : trimmed,
+    });
+    final refunds = parseOccurrenceRefundSummary(body['refunds']);
+    if (refunds == null) throw const EventCancelRefused('cancel_failed');
+    return refunds;
+  }
+
+  Future<Map<String, dynamic>> _invokeEventsCancel(
+      Map<String, dynamic> body) async {
+    try {
+      final res = await _c.functions.invoke('events-cancel', body: body);
+      final data = res.data;
+      return data is Map<String, dynamic> ? data : const {};
+    } on FunctionException catch (e) {
+      throw EventCancelRefused(eventCancelErrorCode(e.details));
+    }
+  }
+
+  /// Put a cancelled occurrence (or a cancelled one-off event) back. Moves no
+  /// money, so the guard that refuses a paid cancel does not apply.
+  Future<void> reinstateEventOccurrence(String eventId, DateTime instance) async {
+    await _c
+        .from('event_exceptions')
+        .delete()
+        .eq('event_id', eventId)
+        .eq('instance_start', instanceStartKey(instance));
+  }
+
   /// Instance starts of this event's CANCELLED occurrences
   /// (`event_exceptions`, migration `20261019_001`). Mirrors web's
   /// `fetchEventExceptions`: without it a cancelled occurrence stayed
@@ -1525,6 +1764,7 @@ class SocialService extends ChangeNotifier {
           status: a['status'] as String,
           displayName: byId[a['user_id']],
           attendance: a['attendance'] as String?,
+          offerExpiresAt: parseIsoStrictValue(a['offer_expires_at']),
           courseId: a['course_id'] as String?,
         ),
     ];
@@ -1594,7 +1834,7 @@ class SocialService extends ChangeNotifier {
     final rows = await _c
         .from('event_results_redacted')
         .select(
-          'user_id, bib, finisher_name, run_id, duration_s, distance_m, '
+          'id, user_id, bib, finisher_name, run_id, duration_s, distance_m, '
           'rank, finisher_status, age_grade_pct, note, created_at, '
           'organiser_approved, course_id, gun_time_s, chip_time_s, '
           'finish_method',
@@ -1624,6 +1864,7 @@ class SocialService extends ChangeNotifier {
     return [
       for (final r in results)
         EventResultView(
+          id: r['id'] as String,
           userId: r['user_id'] as String?,
           bib: r['bib'] as String?,
           finisherName: r['finisher_name'] as String?,
@@ -1803,30 +2044,100 @@ class SocialService extends ChangeNotifier {
     return RaceSessionRow.fromJson(row);
   }
 
-  /// Flip the session to a terminal state — `finished` (happy path) or
-  /// `cancelled` (stopped the race before it began or mid-run for
-  /// weather / safety). In both cases the banner on participants'
-  /// watches clears.
+  /// Flip the session to a terminal state — `finished` (End, from
+  /// running) or `cancelled` (from armed only: the server refuses running →
+  /// cancelled, so a race that has started can only be ended). In both
+  /// cases the banner on participants' watches clears.
   Future<RaceSessionRow> endRace({
     required String eventId,
     required DateTime instance,
     String status = 'finished',
   }) async {
     if (_uid == null) throw Exception('Not authenticated');
-    final now = DateTime.now().toUtc().toIso8601String();
     final row = await _c
         .from(RaceSessionRow.table)
-        .update({
-          RaceSessionRow.colStatus: status,
-          RaceSessionRow.colFinishedAt: now,
-          RaceSessionRow.colUpdatedAt: now,
-        })
+        .update(raceEndPatch(status, DateTime.now()))
         .eq(RaceSessionRow.colEventId, eventId)
         .eq(RaceSessionRow.colInstanceStart, instanceStartKey(instance))
         .select()
         .single();
     notifyListeners();
     return RaceSessionRow.fromJson(row);
+  }
+
+  /// How many racers End would mark DNF: attendees who pinged the race and
+  /// filed no result (`race_pending_dnf_count`). Null when the caller is not
+  /// a race director for the event's club or the count could not be read —
+  /// the End dialog then states no figure rather than a wrong one.
+  Future<int?> fetchRaceDnfPreview(String eventId, DateTime instance) async {
+    try {
+      final n = await _c.rpc(
+        'race_pending_dnf_count',
+        params: {
+          'p_event_id': eventId,
+          'p_instance_start': instanceStartKey(instance),
+        },
+        get: true,
+      );
+      return n is num ? n.toInt() : null;
+    } catch (e) {
+      debugPrint('[SocialService.fetchRaceDnfPreview] ${safeErrorLabel(e)}');
+      return null;
+    }
+  }
+
+  /// Approve or unverify an account runner's result. Mirrors web's
+  /// `approveEventResult`; the RPC checks the caller is a race director.
+  Future<void> approveEventResult({
+    required String eventId,
+    required DateTime instance,
+    required String userId,
+    required bool approve,
+  }) async {
+    await _c.rpc('approve_event_result', params: {
+      'p_event_id': eventId,
+      'p_instance_start': instanceStartKey(instance),
+      'p_user_id': userId,
+      'p_approve': approve,
+    });
+    notifyListeners();
+  }
+
+  /// Approve or unverify a bib-only result, which has no account for
+  /// [approveEventResult] to key on. Mirrors web's `approveEventResultById`:
+  /// constrained to null-user rows, gated by the director update policy.
+  Future<void> approveEventResultById(String resultId, bool approve) async {
+    final directorId = _uid;
+    if (directorId == null) throw Exception('Not authenticated');
+    final now = DateTime.now().toUtc().toIso8601String();
+    await _c
+        .from('event_results')
+        .update({
+          'organiser_approved': approve,
+          'organiser_approved_by': directorId,
+          'organiser_approved_at': now,
+          'updated_at': now,
+        })
+        .eq('id', resultId)
+        .isFilter('user_id', null);
+    notifyListeners();
+  }
+
+  /// An organiser's edit of one result's time and status. Mirrors web's
+  /// `editEventResultAsHost`; the `event_results_race_guard` trigger stamps
+  /// `finish_method = 'host'` because the editor is not the runner.
+  Future<void> editEventResultAsHost({
+    required String resultId,
+    required int durationS,
+    required int? priorGunTimeS,
+    required String finisherStatus,
+  }) async {
+    await _c.from('event_results').update({
+      ...hostTimeEditPatch(durationS, priorGunTimeS),
+      'finisher_status': finisherStatus,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    }).eq('id', resultId);
+    notifyListeners();
   }
 
   /// Recent runs for the current user, newest first. Used by the Submit

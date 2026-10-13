@@ -1118,6 +1118,107 @@ void main() {
     });
   });
 
+  group('a recording started while the race is armed joins it at GO', () {
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+    final gun = DateTime.utc(2026, 5, 22, 18, 0, 5);
+    final instance = DateTime.utc(2026, 5, 22, 18);
+    final began = gun.subtract(const Duration(minutes: 3));
+
+    RaceController armedThenRunning(SocialService social) {
+      final c = _rc(social)..courseLoader = (_, _) async => _course;
+      c.setActiveForTest(race(status: 'armed', instanceStart: instance));
+      return c;
+    }
+
+    test('an armed race attaches nothing; GO attaches the recording', () async {
+      final c = armedThenRunning(_FakeSocial());
+      expect(c.attachIfRaceRunning(recordingStartedAt: began), isFalse);
+      expect(c.isHosting, isFalse);
+
+      c.setActiveForTest(
+          race(status: 'running', instanceStart: instance, startedAt: gun));
+      expect(c.attachIfRaceRunning(recordingStartedAt: began), isTrue);
+      expect(c.isHosting, isTrue);
+      await pumpEventQueue();
+      expect(c.course?.courseId, 'course-10k');
+    });
+
+    test('once joined, its pings are keyed to the race', () async {
+      final c = armedThenRunning(_FakeSocial());
+      final rows = <Map<String, dynamic>>[];
+      c.pingWriter = (row) async => rows.add(row);
+      await c.pushPing(lat: 51.5, lng: -0.1);
+      expect(rows, isEmpty, reason: 'no race to ping while armed');
+
+      c.setActiveForTest(
+          race(status: 'running', instanceStart: instance, startedAt: gun));
+      c.attachIfRaceRunning(recordingStartedAt: began);
+      await c.pushPing(lat: 51.5, lng: -0.1);
+      expect(rows.single['event_id'], 'event-1');
+      expect(rows.single['instance_start'], '2026-05-22T18:00:00.000Z');
+    });
+
+    test('an attached recording is never re-attached, ended or not', () async {
+      final c = armedThenRunning(_FakeSocial());
+      c.setActiveForTest(
+          race(status: 'running', instanceStart: instance, startedAt: gun));
+      expect(c.attachIfRaceRunning(recordingStartedAt: began), isTrue);
+      expect(c.attachIfRaceRunning(recordingStartedAt: began), isFalse);
+
+      c.observeHostedSession('finished', gun);
+      expect(c.raceEnded, isTrue);
+      c.setActiveForTest(race(
+          eventId: 'event-2', status: 'running', startedAt: gun));
+      expect(c.attachIfRaceRunning(recordingStartedAt: began), isFalse);
+      expect(c.raceEnded, isTrue,
+          reason: 'the ended race stays attached until the recording stops');
+    });
+
+    test('its chip time starts at GO, not at the earlier Start', () async {
+      final social = _FakeSocial();
+      final c = armedThenRunning(social);
+      c.setActiveForTest(
+          race(status: 'running', instanceStart: instance, startedAt: gun));
+      c.attachIfRaceRunning(recordingStartedAt: began);
+      await pumpEventQueue();
+
+      final t = gun.add(const Duration(minutes: 25));
+      _offer(c, -1, t, 4999);
+      expect(_offer(c, 10, t.add(const Duration(seconds: 2)), 5010), isNotNull);
+      await c.submitResult(runId: 'run-1', durationS: 28 * 60, distanceM: 5010);
+
+      final r = social.submitted.single;
+      expect(r.gunTimeS, 25 * 60);
+      expect(r.chipTimeS, 25 * 60,
+          reason: 'the three minutes waiting on the line are not racing');
+      expect(r.durationS, 25 * 60);
+    });
+
+    test('the run screen joins on every race change, not only at Start', () {
+      // The run screen's recording loop is not mountable against a live race
+      // from a host test, so this reads the wiring the tests above rely on.
+      final code =
+          blankNonCode(File('lib/screens/run_screen.dart').readAsStringSync());
+      final at = code.indexOf('void _onRaceChange()');
+      expect(at, greaterThan(0),
+          reason: '_onRaceChange has moved — retarget this guard');
+      final body = code.substring(at, code.indexOf('\n  }\n', at));
+      expect(body.contains('_attachToRunningRace()'), isTrue);
+      expect(code.contains('.attachRecorder('), isFalse,
+          reason: 'every join goes through attachIfRaceRunning');
+    });
+
+    test('a Start before GO is not a late start', () async {
+      final c = armedThenRunning(_FakeSocial());
+      c.setActiveForTest(
+          race(status: 'running', instanceStart: instance, startedAt: gun));
+      c.attachIfRaceRunning(recordingStartedAt: began);
+      await pumpEventQueue();
+      _offer(c, -5000, gun.add(const Duration(seconds: 5)), 0);
+      expect(c.lateStart, isFalse);
+    });
+  });
+
   group('course resolution is L4', () {
     final gun = DateTime.utc(2026, 5, 22, 18);
     final instance = DateTime.utc(2026, 5, 22, 18);

@@ -42,8 +42,10 @@ You enforce the "TS↔Dart parity helper" invariant. Several pure-logic modules 
 | `apps/web/src/lib/nutrition/hydration.ts` | `apps/mobile_android/lib/hydration.dart` | `nutrition/hydration.test.ts` ↔ `test/hydration_test.dart` |
 | `apps/web/src/lib/nutrition/nutrition_week.ts` | `apps/mobile_android/lib/nutrition_week.dart` | `nutrition/nutrition_week.test.ts` ↔ `test/nutrition_week_test.dart` |
 | `apps/web/src/lib/social/event_category.ts` | `apps/mobile_android/lib/event_category.dart` | `social/event_category.test.ts` ↔ `test/event_category_test.dart` |
-| `apps/web/src/lib/social/event_occurrence.ts` (`isOccurrenceCancelled` + `nextLiveInstance`; `upcomingCancelledOccurrences` is web-only — mobile has no organiser reinstate picker) | `apps/mobile_android/lib/event_occurrence.dart` | `social/event_occurrence.test.ts` ↔ `test/event_occurrence_test.dart` |
+| `apps/web/src/lib/social/event_occurrence.ts` (`isOccurrenceCancelled` + `nextLiveInstance` + `isSeriesCancelled`; `upcomingCancelledOccurrences` is web-only — mobile has no organiser reinstate picker) | `apps/mobile_android/lib/event_occurrence.dart` | `social/event_occurrence.test.ts` ↔ `test/event_occurrence_test.dart` |
 | `apps/web/src/lib/social/event_gym_template.ts` | `apps/mobile_android/lib/event_gym_template.dart` | `social/event_gym_template.test.ts` ↔ `test/event_gym_template_test.dart` |
+| `apps/web/src/lib/social/event_waitlist_offer.ts` (`waitlistOfferState`; `waitlistSlotMessage` is web-only) | `apps/mobile_android/lib/event_waitlist_offer.dart` | `social/event_waitlist_offer.test.ts` ↔ `test/event_waitlist_offer_test.dart` |
+| `apps/web/src/lib/format/minor_units.ts` | `apps/mobile_android/lib/minor_units.dart` | `format/minor_units.test.ts` ↔ `test/minor_units_test.dart` |
 | `apps/web/src/lib/runs/live_freshness.ts` | `apps/mobile_android/lib/live_freshness.dart` | `runs/live_freshness.test.ts` ↔ `test/live_freshness_test.dart` |
 | `apps/web/src/lib/runs/live_cutoff_eta.ts` | `apps/mobile_android/lib/live_cutoff_eta.dart` | `runs/live_cutoff_eta.test.ts` ↔ `test/live_cutoff_eta_test.dart` |
 | `apps/web/src/lib/runs/streak_card.ts` (`streakCardState` — the Dart-only `mergeAllTimeStreaks` is a documented mobile extra outside the pair) | `apps/mobile_android/lib/streak_card.dart` | `runs/streak_card.test.ts` ↔ `test/streak_card_test.dart` |

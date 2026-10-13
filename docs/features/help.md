@@ -2,11 +2,11 @@
 
 > **Status:** Framework shipped web (2026-10-13): `/help`, `/help/[id]`, `/help/search`, the per-page **How this works** link and the InfoTip guide link. Mobile renders the same guides from generated per-locale JSON assets. Every guide is **translated into all six non-English locales** (de, fr, es, ja, pt-PT, pt-BR); a guide with no translation falls back to English with a note, and a translation made from older English fails CI. ADRs: [decisions.md § 1846](../architecture/decisions.md), § R7I18N-1, § R7I18N-2.
 
-In-app help is a **signed-in reference** to the app itself: what a feature does, who it is for, where it lives and what it needs first. It is a different surface from the public [Learn guides](learn.md) (`/learn`), and the two stay separate:
+In-app help is a **reference to the app itself**, written for someone using it: what a feature does, who it is for, where it lives and what it needs first. It is a different surface from the public [Learn guides](learn.md) (`/learn`), and the two stay separate:
 
 | | `/learn` | `/help` |
 |---|---|---|
-| Reader | anyone, signed out, arriving from search | a signed-in user inside the app |
+| Reader | anyone, signed out, arriving from search | someone using the app; readable signed out (§ 1866), because the public live-event page links spectators to it |
 | Purpose | evergreen running topics that funnel to sign-up | how *this app* works, screen by screen |
 | Source | mdsvex `.md` under `lib/learn/guides/` | typed TypeScript under `lib/help/guides/` |
 | Rendering | prerendered static HTML, indexed, JSON-LD | app shell, not prerendered, `noindex` + `Disallow: /help` |

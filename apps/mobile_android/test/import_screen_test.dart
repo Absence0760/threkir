@@ -61,6 +61,31 @@ void main() {
       expect(find.text('Health Connect'), findsOneWidget);
     });
 
+    test('the Settings import tile names only the importers this screen has',
+        () {
+      // GPX and TCX arrive inside the Strava export ZIP, or as routes from
+      // the Routes tab; there is no standalone GPX/TCX run import, so the
+      // tile that opens this screen must not promise one in any locale.
+      for (final locale in AppLocalizations.supportedLocales) {
+        final subtitle =
+            lookupAppLocalizations(locale).settingsAccountImportSubtitle;
+        expect(subtitle, isNot(contains('GPX')), reason: '$locale');
+        expect(subtitle, isNot(contains('TCX')), reason: '$locale');
+      }
+    });
+
+    testWidgets('the Health Connect card does not deny the map import it offers',
+        (tester) async {
+      // Health Connect hands over a workout's GPS route when it is allowed
+      // to, and the card offers "Allow map import" when it holds one back,
+      // so the description must not say routes can never come across.
+      final store = await _makeStore();
+      await _pump(tester, store);
+      expect(find.textContaining('GPS map comes too'), findsOneWidget);
+      expect(find.textContaining('not exposed'), findsNothing);
+      expect(find.textContaining("won't have a map trace"), findsNothing);
+    });
+
     testWidgets('Import Strava ZIP button is present and enabled', (tester) async {
       final store = await _makeStore();
       await _pump(tester, store);

@@ -5417,6 +5417,9 @@ void main() {
       'screens/route_builder_screen.dart::l10n.routeBuilderSaveDialogTitle': 1,
       'screens/route_detail_screen.dart::l10n.routeDetailRateDialogTitle': 1,
       'screens/run_detail_screen.dart::l10n.runDetailEditTitle': 1,
+      // A race director's result correction form: the save is the edit, and
+      // the same form makes the next one.
+      'screens/event_detail_screen.dart::l10n.eventResultEditTitle(widget.name)': 1,
       'screens/settings_account_screen.dart::l10n.settingsAccountDisplayName': 1,
       'screens/settings_preferences_screen.dart::l10n.prefsTargetPace': 1,
       'screens/settings_preferences_screen.dart::l10n.prefsHrZonesDialogTitle': 1,

@@ -3175,9 +3175,14 @@ export function normaliseClubLink(raw: string | null | undefined): string | null
 	return /^https?:\/\//i.test(v) ? v : null;
 }
 
+/// A club delete cascades into its events, so a club holding an event that has
+/// taken payments is refused by the same guard as `deleteEvent`.
 export async function deleteClub(id: string): Promise<void> {
 	const { error } = await supabase.from('clubs').delete().eq('id', id);
-	if (error) throw error;
+	if (error) {
+		if (error.message === PAID_EVENT_DELETE_REFUSAL) throw new Error(PAID_EVENT_DELETE_REFUSAL);
+		throw error;
+	}
 }
 
 export async function joinClub(
@@ -3201,11 +3206,26 @@ export async function joinClub(
 	return status;
 }
 
+/** Raised by `join_club_by_token` when the club requires the activity-risk
+ * acknowledgement and the call did not carry it (§ 1864). */
+export const ACTIVITY_WAIVER_REQUIRED = 'activity_waiver_required';
+
+export function isActivityWaiverRequired(e: unknown): boolean {
+	return (
+		typeof e === 'object' &&
+		e !== null &&
+		(e as { message?: unknown }).message === ACTIVITY_WAIVER_REQUIRED
+	);
+}
+
 /** Redeem a shareable invite token. Returns the joined club id. */
-export async function joinClubByToken(token: string): Promise<string> {
-	const { data, error } = await supabase.rpc('join_club_by_token', { token });
+export async function joinClubByToken(token: string, ackWaiver = false): Promise<string> {
+	const { data, error } = await supabase.rpc('join_club_by_token', {
+		token,
+		activity_waiver_ack: ackWaiver,
+	});
 	if (error) throw error;
-	return data as string;
+	return data;
 }
 
 /// Fetch `display_name` + `avatar_url` for a set of user ids, chunked.
@@ -3753,9 +3773,19 @@ export async function eventHasAthleticData(eventId: string): Promise<boolean> {
 	}
 }
 
+/// The message `guard_paid_event_delete` (20270731000001) raises when a client
+/// deletes an event, or a club holding one, that has taken payments. The event
+/// is cancelled instead, and its payment records stay (decisions § 1867).
+export const PAID_EVENT_DELETE_REFUSAL = 'paid_event_has_orders';
+
+/// Throws `Error(PAID_EVENT_DELETE_REFUSAL)` when the event has taken payments,
+/// so the page can say why rather than show the database's raw message.
 export async function deleteEvent(id: string): Promise<void> {
 	const { error } = await supabase.from('events').delete().eq('id', id);
-	if (error) throw error;
+	if (error) {
+		if (error.message === PAID_EVENT_DELETE_REFUSAL) throw new Error(PAID_EVENT_DELETE_REFUSAL);
+		throw error;
+	}
 }
 
 export interface EventException {
@@ -4023,7 +4053,8 @@ export async function cancelEventOrder(
 }
 
 /// Cancel a single occurrence of a recurring event (the rest of the series
-/// is untouched). Organiser-only via RLS; the fan-out trigger notifies every
+/// is untouched), or a one-off event, whose only occurrence is its
+/// `starts_at`. Organiser-only via RLS; the fan-out trigger notifies every
 /// going / maybe / waitlisted attendee of this instance.
 ///
 /// An occurrence that still holds money (a pending, paid or partially
@@ -4091,6 +4122,31 @@ export async function cancelPaidEventInstance(
 	const refunds = parseOccurrenceRefundSummary((data as { refunds?: unknown } | null)?.refunds);
 	if (!refunds) throw new Error('cancel_failed');
 	return refunds;
+}
+
+/// End a recurring series now and call off every remaining occurrence anyone
+/// signed up for, refunding all of their registrations, through the
+/// events-cancel function's `series` scope (decisions § 1868). The function
+/// moves `recurrence_until` to the moment of the cancel, so later occurrences
+/// stop existing rather than each being cancelled. Re-running it resumes any
+/// refund that failed, exactly as an occurrence cancel does. Throws an Error
+/// whose message is the function's machine code on a non-2xx.
+export async function cancelEventSeries(
+	eventId: string,
+	reason: string | null
+): Promise<{ cancelledOccurrences: number; refunds: OccurrenceRefundSummary }> {
+	const { data, error } = await supabase.functions.invoke('events-cancel', {
+		body: { event_id: eventId, scope: 'series', reason: reason?.trim() || null }
+	});
+	if (error) {
+		const code = await edgeFunctionErrorCode(error);
+		throw new Error(code ?? (error instanceof Error ? error.message : 'cancel_failed'));
+	}
+	const body = data as { refunds?: unknown; cancelled_occurrences?: unknown } | null;
+	const refunds = parseOccurrenceRefundSummary(body?.refunds);
+	if (!refunds) throw new Error('cancel_failed');
+	const n = body?.cancelled_occurrences;
+	return { cancelledOccurrences: typeof n === 'number' && n >= 0 ? n : 0, refunds };
 }
 
 /// What is still owed on each cancelled occurrence of an event, for its
@@ -4854,6 +4910,27 @@ export async function saveEventCourses(
 			return { error, rows: data?.length ?? 0 };
 		}
 	});
+}
+
+/// Each attendee's chosen course for one occurrence, keyed by user id; an
+/// attendee with no pick is absent. Read under the same club-visibility gate
+/// as `race_pings`, so whoever can see a runner on course can see their
+/// course. Throws on a failed read so the spectator page can keep the split
+/// it already has rather than collapse every runner into "no course".
+export async function fetchAttendeeCourses(
+	eventId: string,
+	instanceStart: string
+): Promise<Map<string, string>> {
+	const { data, error } = await supabase
+		.from(TABLES.event_attendees)
+		.select('user_id, course_id')
+		.eq('event_id', eventId)
+		.eq('instance_start', instanceStart)
+		.not('course_id', 'is', null);
+	if (error) throw error;
+	const out = new Map<string, string>();
+	for (const r of data ?? []) if (r.course_id) out.set(r.user_id, r.course_id);
+	return out;
 }
 
 /// The signed-in viewer's chosen course for one occurrence, or null.

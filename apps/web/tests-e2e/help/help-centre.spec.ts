@@ -141,3 +141,31 @@ test.describe('/help — in-app help centre', () => {
 		});
 	});
 });
+
+/**
+ * The public live-event page links a signed-out spectator to the guides
+ * (decisions § 1866), so the help centre must answer them rather than
+ * bounce them to /login. Waiting past the auth guard's first effect is what
+ * gives a redirect the chance to happen.
+ */
+test.describe('/help — signed out', () => {
+	test.use({ storageState: { cookies: [], origins: [] } });
+
+	test('a signed-out reader opens the contents, a spectator guide and search', async ({ page }) => {
+		await page.goto('/help');
+		await expect(page.getByTestId('help-guide-card').first()).toBeVisible({ timeout: 10_000 });
+		await expect(page).toHaveURL(/\/help$/);
+
+		await page.goto('/help/follow-a-race-live');
+		const guide = page.getByTestId('help-guide');
+		await expect(guide.getByRole('heading', { level: 1, name: 'Follow a race live' })).toBeVisible({
+			timeout: 10_000,
+		});
+		await page.waitForLoadState('networkidle');
+		await expect(page).toHaveURL(/\/help\/follow-a-race-live$/);
+
+		await page.goto('/help/search?q=race');
+		await expect(page.getByTestId('help-search-results')).toBeVisible({ timeout: 10_000 });
+		await expect(page).not.toHaveURL(/\/login/);
+	});
+});

@@ -84,7 +84,7 @@ func exportRunFromRow(r internal.ExportRunRow) dataexport.ExportRun {
 		Source: r.Source, ActivityType: r.ActivityType, IsDNF: r.IsDNF,
 		ExternalID: r.ExternalID,
 		Metadata:   r.Metadata, TrackURL: r.TrackURL, HrSeriesURL: r.HrSeriesURL,
-		IsPublic: r.IsPublic, EventID: r.EventID, RouteID: r.RouteID,
+		IsPublic: r.IsPublic, FollowersOnly: r.FollowersOnly, EventID: r.EventID, RouteID: r.RouteID,
 		RaceListingID: r.RaceListingID,
 		Fastest5kS:    r.Fastest5kS, Fastest10kS: r.Fastest10kS,
 		FastestHalfMarathonS: r.FastestHalfMarathonS, FastestMarathonS: r.FastestMarathonS,
@@ -123,7 +123,7 @@ func (b *dataexportBackend) StreamExportRoutes(ctx context.Context, userID strin
 			out[i] = dataexport.ExportRoute{
 				ID: r.ID, Name: r.Name, Waypoints: r.Waypoints,
 				DistanceM: r.DistanceM, ElevationM: r.ElevationM,
-				Surface: r.Surface, IsPublic: r.IsPublic, Slug: r.Slug,
+				Surface: r.Surface, IsPublic: r.IsPublic, FollowersOnly: r.FollowersOnly, Slug: r.Slug,
 				Tags: r.Tags, Featured: r.Featured, RunCount: r.RunCount,
 				IsStarred: r.IsStarred, Description: r.Description,
 				ClubID: r.ClubID, CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt,

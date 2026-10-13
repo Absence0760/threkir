@@ -3158,6 +3158,38 @@ class ApiClient {
     return row == null ? null : RunRow.fromJson(row);
   }
 
+  /// The non-owner read of a run that is NOT public but whose audience admits
+  /// the caller: the owner's followers for a followers-only run, or a named
+  /// recipient of a `run_shares` grant (decisions § 1874). `shared_runs`
+  /// carries `public_runs`' redacted projection column for column, never a
+  /// public run and never the caller's own, so the row has no track: the
+  /// clipped one comes from [fetchClippedTrackForRun]. With the server's
+  /// `audience_sharing` gate closed the view returns nothing. Mirrors web
+  /// `fetchSharedRun`.
+  Future<RunRow?> fetchSharedRunById(String runId) async {
+    final row = await _client
+        .from('shared_runs')
+        .select()
+        .eq(RunRow.colId, runId)
+        .maybeSingle();
+    return row == null ? null : RunRow.fromJson(row);
+  }
+
+  /// Every non-owner read of a run in one call: public first, then shared
+  /// with this caller. A signed-out caller stops at public, because it is in
+  /// no audience and `shared_runs` is not granted to anon. A failed read
+  /// throws rather than answering "not shared with you". Mirrors web
+  /// `fetchViewableRun`.
+  Future<({RunRow? row, bool shared})> fetchViewableRunById(
+    String runId,
+  ) async {
+    final public = await fetchPublicRunById(runId);
+    if (public != null) return (row: public, shared: false);
+    if (userId == null) return (row: null, shared: false);
+    final shared = await fetchSharedRunById(runId);
+    return (row: shared, shared: shared != null);
+  }
+
   /// Toggle the owner's `is_starred` flag on a route. Drives the
   /// watch's starred-only route picker (see watch_wear/SupabaseClient).
   /// RLS restricts updates to the owner.
@@ -3181,7 +3213,8 @@ class ApiClient {
   ///    active club members see the full row, which carries the
   ///    unclipped polyline for owners' own surfaces.
   /// 2. If that returns nothing (anon, or non-owner viewing a public
-  ///    route), falls back to the `public_routes` view (which strips
+  ///    route), falls back to the `public_routes` view, then for a
+  ///    signed-in caller the `shared_routes` view (both strip
   ///    `waypoints` / `geom` / `start_point` / `is_starred` server-
   ///    side) and overlays the polyline from `clip_route_for_viewer`
   ///    so the runner's privacy zones are respected.
@@ -3217,17 +3250,29 @@ class ApiClient {
       return (route: _routeFromRow(routeRow), ownerId: ownerId);
     }
 
-    final publicRow = await _client
+    // A route that is not public may still be shared with this viewer: a
+    // followers-only route whose owner they follow, or a named-person grant
+    // (decisions § 1874). `shared_routes` has `public_routes`' projection and
+    // `clip_route_for_viewer` admits the same audience, so the assembled shape
+    // is identical. Mirrors web `fetchRouteById`.
+    var viewRow = await _client
         .from('public_routes')
         .select()
         .eq(RouteRow.colId, routeId)
         .maybeSingle();
-    if (publicRow == null) return (route: null, ownerId: null);
+    if (viewRow == null && viewerId != null) {
+      viewRow = await _client
+          .from('shared_routes')
+          .select()
+          .eq(RouteRow.colId, routeId)
+          .maybeSingle();
+    }
+    if (viewRow == null) return (route: null, ownerId: null);
 
-    // public_routes carries no `waypoints`; fetch the clipped polyline
+    // Neither view carries `waypoints`; fetch the clipped polyline
     // separately so the response respects the owner's privacy zones.
-    final ownerId = publicRow[RouteRow.colUserId] as String?;
-    final routeRow = Map<String, dynamic>.from(publicRow);
+    final ownerId = viewRow[RouteRow.colUserId] as String?;
+    final routeRow = Map<String, dynamic>.from(viewRow);
     routeRow['waypoints'] =
         _waypointsToJson(await _clipRouteForViewer(routeId));
     return (route: _routeFromRow(routeRow), ownerId: ownerId);

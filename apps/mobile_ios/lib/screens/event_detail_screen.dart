@@ -23,11 +23,13 @@ import '../finisher_certificate.dart';
 import '../gym_routine.dart' show PlannedExercise, PlannedRoutine, PlannedSet;
 import '../local_gym_store.dart';
 import 'checkpoint_checkin_screen.dart';
+import 'session_detail_screen.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../preferences.dart';
 import '../recurrence.dart';
+import '../session_step_label.dart';
 import '../session_steps.dart';
 import '../social_service.dart';
 import '../backend_timeout.dart';
@@ -39,6 +41,7 @@ import '../widgets/finisher_certificate_card.dart';
 import '../widgets/gym_compose_sheet.dart';
 import '../widgets/gym_routine_picker.dart';
 import '../widgets/help_button.dart';
+import '../widgets/session_plan_picker.dart';
 import '../widgets/top_banner.dart';
 
 /// Host-only attendance marking is offered iff the viewer organises the
@@ -214,8 +217,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   /// template, read and never cloned: it only seeds the attendee's own log.
   PlannedRoutine? _gymRoutine;
 
-  /// Set while an organiser's routine attach / change / clear is in flight.
-  bool _routineBusy = false;
+  /// Set while an organiser's routine or session-plan attach / change / clear
+  /// is in flight. One flag for both: each write clears the other column
+  /// (decisions § 1884), so two in flight at once would race on the same row.
+  bool _contentBusy = false;
 
   @override
   void initState() {
@@ -328,17 +333,15 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     if (planId == null) {
       // Attaching a routine detaches the plan (decisions § 1884), so a stale
       // expansion must not keep seeding Log-as-workout.
-      if (mounted && _sessionExpansion != null) {
-        setState(() {
-          _sessionExpansion = null;
-          _sessionPlanTitle = null;
-        });
-      }
+      if (mounted) _clearSessionPlan();
       return;
     }
     try {
       final data = await (_api ??= ApiClient()).fetchSessionPlan(planId);
-      if (!mounted || _event?.row.sessionPlanId != planId || data == null) {
+      // An organiser may have changed the plan while this read was out.
+      if (!mounted || _event?.row.sessionPlanId != planId) return;
+      if (data == null) {
+        _clearSessionPlan();
         return;
       }
       final input = SessionPlanInput(
@@ -368,7 +371,16 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       });
     } catch (e) {
       debugPrint('EventDetailScreen session-plan load failed: $e');
+      if (mounted && _event?.row.sessionPlanId == planId) _clearSessionPlan();
     }
+  }
+
+  void _clearSessionPlan() {
+    if (_sessionExpansion == null && _sessionPlanTitle == null) return;
+    setState(() {
+      _sessionExpansion = null;
+      _sessionPlanTitle = null;
+    });
   }
 
   /// Attach, change or clear the class's gym routine after creation, web's
@@ -376,9 +388,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   /// templates (decisions § 1884 (4)); attaching one detaches any session plan
   /// in the same write, which the sheet says before the organiser saves.
   Future<void> _editGymRoutine(EventView e) async {
-    if (_routineBusy) return;
+    if (_contentBusy) return;
     final l10n = AppLocalizations.of(context);
-    setState(() => _routineBusy = true);
+    setState(() => _contentBusy = true);
     final options = [
       ...await widget.social.fetchClubGymRoutineOptions(e.row.clubId),
     ];
@@ -392,7 +404,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       options.insert(0, (id: current, title: title));
     }
     if (!mounted) return;
-    setState(() => _routineBusy = false);
+    setState(() => _contentBusy = false);
     final picked = await showModalBottomSheet<({String? id})>(
       context: context,
       isScrollControlled: true,
@@ -404,24 +416,30 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       ),
     );
     if (picked == null || !mounted) return;
-    setState(() => _routineBusy = true);
+    setState(() => _contentBusy = true);
     try {
       await widget.social.setEventGymRoutine(e.row.id, picked.id);
     } catch (err) {
       debugPrint('EventDetailScreen setEventGymRoutine failed: $err');
       if (mounted) {
-        setState(() => _routineBusy = false);
+        setState(() => _contentBusy = false);
         showTopBanner(context, l10n.clubEventGymRoutineSaveFailed);
       }
       return;
     }
     if (!mounted) return;
     showTopBanner(context, l10n.clubEventGymRoutineSaved);
-    // The write landed; re-read the row so the card, the session-plan seed
-    // and Log-as-workout all follow it. A failed re-read leaves the old card
-    // until the next load rather than reporting a save that happened as failed.
+    await _rereadClassContent(e.row.id);
+  }
+
+  /// After an organiser's routine or session-plan write lands: re-read the row
+  /// so both cards and the Log-as-workout seed follow it — either write may
+  /// have cleared the other column (decisions § 1884). A failed re-read leaves
+  /// the old cards until the next load rather than reporting a save that
+  /// happened as failed.
+  Future<void> _rereadClassContent(String eventId) async {
     try {
-      final fresh = await widget.social.fetchEventById(e.row.id);
+      final fresh = await widget.social.fetchEventById(eventId);
       if (!mounted) return;
       if (fresh != null) {
         setState(() => _event = fresh);
@@ -431,10 +449,158 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         ]);
       }
     } catch (err) {
-      debugPrint('EventDetailScreen event re-read after routine save: $err');
+      debugPrint('EventDetailScreen event re-read after class content save: $err');
     } finally {
-      if (mounted) setState(() => _routineBusy = false);
+      if (mounted) setState(() => _contentBusy = false);
     }
+  }
+
+  /// Attach, change or clear the class's session plan after creation, web's
+  /// `openAttach` + `saveAttach`. The picker lists the organiser's own plans
+  /// and their clubs' (the create form's list); attaching one detaches any gym
+  /// routine in the same write, which the sheet says before the organiser
+  /// saves.
+  Future<void> _editSessionPlan(EventView e) async {
+    if (_contentBusy) return;
+    final l10n = AppLocalizations.of(context);
+    setState(() => _contentBusy = true);
+    final options = [...await widget.social.fetchSessionPlanOptions()];
+    // The attached plan may not be in a failed or narrowed options read; it
+    // stays selectable so opening the sheet never reads as "none".
+    final current = e.row.sessionPlanId;
+    final title = _sessionPlanTitle;
+    if (current != null &&
+        title != null &&
+        !options.any((o) => o.id == current)) {
+      options.insert(0, (id: current, title: title));
+    }
+    if (!mounted) return;
+    setState(() => _contentBusy = false);
+    final picked = await showModalBottomSheet<({String? id})>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => _SessionPlanAttachSheet(
+        initial: current,
+        plans: options,
+        hasGymRoutine: e.row.gymRoutineId != null,
+      ),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _contentBusy = true);
+    try {
+      await widget.social.setEventSessionPlan(e.row.id, picked.id);
+    } catch (err) {
+      debugPrint('EventDetailScreen setEventSessionPlan failed: $err');
+      if (mounted) {
+        setState(() => _contentBusy = false);
+        showTopBanner(context, l10n.clubEventSessionPlanSaveFailed);
+      }
+      return;
+    }
+    if (!mounted) return;
+    showTopBanner(context, l10n.clubEventSessionPlanSaved);
+    await _rereadClassContent(e.row.id);
+  }
+
+  /// The class's session-sequence card, web's `session-sequence` section: the
+  /// plan's title (opening the plan) and its expanded steps with their cues
+  /// for anyone who can read it, and for the organiser an attach / change
+  /// control and a "none" line.
+  Widget _buildSessionPlanCard(
+    ThemeData theme,
+    AppLocalizations l10n,
+    EventView e, {
+    required bool isOrganiser,
+  }) {
+    final expansion = _sessionExpansion;
+    final planId = e.row.sessionPlanId;
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    return Card(
+      key: const Key('session-sequence'),
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 8, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l10n.clubEventSessionPlanTitle,
+                    style: theme.textTheme.titleSmall,
+                  ),
+                ),
+                if (isOrganiser)
+                  TextButton(
+                    key: const Key('session-sequence-attach'),
+                    onPressed: _contentBusy ? null : () => _editSessionPlan(e),
+                    child: Text(l10n.clubEventSessionPlanAttach),
+                  ),
+              ],
+            ),
+            if (expansion != null && planId != null) ...[
+              InkWell(
+                onTap: () => _openSessionPlan(planId),
+                child: Text(
+                  _sessionPlanTitle ?? '',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              for (final (i, step) in expansion.steps.indexed)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, right: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${i + 1}. ', style: theme.textTheme.bodyMedium),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              sessionStepLabel(l10n, step),
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                            if (step.cue != null && step.cue!.isNotEmpty)
+                              Text(step.cue!, style: muted),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ] else
+              Text(l10n.eventFormSessionPlanNone, style: muted),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// The attached plan's own screen, web's `/sessions/{id}` link: the full
+  /// sequence and the follow-along runner, which logs into the viewer's gym
+  /// history.
+  Future<void> _openSessionPlan(String planId) async {
+    final store = _gymStore ??= LocalGymStore();
+    await store.init();
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SessionDetailScreen(
+          api: _api ??= ApiClient(),
+          gymStore: store,
+          planId: planId,
+          titleHint: _sessionPlanTitle,
+        ),
+      ),
+    );
   }
 
   /// The class's routine card, web's `class-routine` section: the routine's
@@ -469,7 +635,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 if (isOrganiser)
                   TextButton(
                     key: const Key('class-routine-attach'),
-                    onPressed: _routineBusy ? null : () => _editGymRoutine(e),
+                    onPressed: _contentBusy ? null : () => _editGymRoutine(e),
                     child: Text(l10n.clubEventGymRoutineAttach),
                   ),
               ],
@@ -1274,6 +1440,17 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 (_gymRoutine != null || _club?.isEventOrganiser == true)) ...[
               const SizedBox(height: 12),
               _buildGymRoutineCard(
+                theme,
+                l10n,
+                e,
+                isOrganiser: _club?.isEventOrganiser == true,
+              ),
+            ],
+            if (e.row.category == 'class' &&
+                (_sessionExpansion != null ||
+                    _club?.isEventOrganiser == true)) ...[
+              const SizedBox(height: 12),
+              _buildSessionPlanCard(
                 theme,
                 l10n,
                 e,
@@ -3086,6 +3263,86 @@ class _GymRoutineAttachSheetState extends State<_GymRoutineAttachSheet> {
                   onPressed: () =>
                       Navigator.of(context).pop((id: _choice)),
                   child: Text(l10n.clubEventGymRoutineSave),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The organiser's session-plan attach sheet: the shared [SessionPlanPicker],
+/// the note that a plan replaces the gym routine, and Cancel / Attach. Pops
+/// `(id: <choice>)`, where a null id clears the plan; dismissing pops null.
+class _SessionPlanAttachSheet extends StatefulWidget {
+  final String? initial;
+  final List<({String id, String title})> plans;
+  final bool hasGymRoutine;
+  const _SessionPlanAttachSheet({
+    required this.initial,
+    required this.plans,
+    required this.hasGymRoutine,
+  });
+
+  @override
+  State<_SessionPlanAttachSheet> createState() =>
+      _SessionPlanAttachSheetState();
+}
+
+class _SessionPlanAttachSheetState extends State<_SessionPlanAttachSheet> {
+  late String? _choice =
+      widget.plans.any((p) => p.id == widget.initial) ? widget.initial : null;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          0,
+          16,
+          16 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l10n.clubEventSessionPlanAttach,
+                style: theme.textTheme.titleMedium),
+            const SizedBox(height: 12),
+            SessionPlanPicker(
+              fieldKey: const Key('session-sequence-picker'),
+              value: _choice,
+              plans: widget.plans,
+              onChanged: (v) => setState(() => _choice = v),
+            ),
+            if (widget.hasGymRoutine && _choice != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                l10n.clubEventSessionPlanReplacesRoutine,
+                key: const Key('session-sequence-replaces-routine'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(l10n.commonCancel),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  key: const Key('session-sequence-save'),
+                  onPressed: () => Navigator.of(context).pop((id: _choice)),
+                  child: Text(l10n.clubEventSessionPlanSave),
                 ),
               ],
             ),

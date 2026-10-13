@@ -24990,7 +24990,7 @@ abstract class AppLocalizations {
   /// Banner when the event was created but its session plan was not attached
   ///
   /// In en, this message translates to:
-  /// **'Event created, but the session plan couldn\'t be attached. Attach it from the event on the web.'**
+  /// **'Event created, but the session plan couldn\'t be attached. Attach it from the event page.'**
   String get eventFormSessionPlanFailed;
 
   /// Label of the event form's picker for a club gym routine template to attach to a class
@@ -25070,6 +25070,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Attaching a routine removes the session plan — a class carries one or the other.'**
   String get clubEventGymRoutineReplacesPlan;
+
+  /// Heading of the session sequence card on a class event page
+  ///
+  /// In en, this message translates to:
+  /// **'Session sequence'**
+  String get clubEventSessionPlanTitle;
+
+  /// Organiser's button on the session sequence card that opens the session plan picker, and that sheet's title
+  ///
+  /// In en, this message translates to:
+  /// **'Attach to a class event'**
+  String get clubEventSessionPlanAttach;
+
+  /// Save button of the session plan attach sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Attach'**
+  String get clubEventSessionPlanSave;
+
+  /// Banner after the organiser attaches, changes or clears the class session plan
+  ///
+  /// In en, this message translates to:
+  /// **'Plan attached to the event.'**
+  String get clubEventSessionPlanSaved;
+
+  /// Banner when attaching, changing or clearing the class session plan failed
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save the session.'**
+  String get clubEventSessionPlanSaveFailed;
+
+  /// Note in the session plan attach sheet when the class already carries a gym routine
+  ///
+  /// In en, this message translates to:
+  /// **'Attaching a session plan removes the gym routine — a class carries one or the other.'**
+  String get clubEventSessionPlanReplacesRoutine;
 
   /// Title of the sheet where the owner chooses who can see a run or route
   ///

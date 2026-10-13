@@ -14955,7 +14955,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get eventFormSessionPlanFailed =>
-      'Event created, but the session plan couldn\'t be attached. Attach it from the event on the web.';
+      'Event created, but the session plan couldn\'t be attached. Attach it from the event page.';
 
   @override
   String get eventFormGymRoutine => 'Gym routine';
@@ -15008,6 +15008,25 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get clubEventGymRoutineReplacesPlan =>
       'Attaching a routine removes the session plan — a class carries one or the other.';
+
+  @override
+  String get clubEventSessionPlanTitle => 'Session sequence';
+
+  @override
+  String get clubEventSessionPlanAttach => 'Attach to a class event';
+
+  @override
+  String get clubEventSessionPlanSave => 'Attach';
+
+  @override
+  String get clubEventSessionPlanSaved => 'Plan attached to the event.';
+
+  @override
+  String get clubEventSessionPlanSaveFailed => 'Could not save the session.';
+
+  @override
+  String get clubEventSessionPlanReplacesRoutine =>
+      'Attaching a session plan removes the gym routine — a class carries one or the other.';
 
   @override
   String get audienceTitle => 'Who can see this';

@@ -15143,7 +15143,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get eventFormSessionPlanFailed =>
-      'Événement créé, mais le plan de séance n’a pas pu être associé. Associez-le depuis la page de l’événement sur le web.';
+      'Événement créé, mais le plan de séance n’a pas pu être associé. Associez-le depuis la page de l’événement.';
 
   @override
   String get eventFormGymRoutine => 'Routine de gym';
@@ -15196,6 +15196,26 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get clubEventGymRoutineReplacesPlan =>
       'Associer une routine retire le plan de séance — un cours porte l\'un ou l\'autre.';
+
+  @override
+  String get clubEventSessionPlanTitle => 'Séquence de la séance';
+
+  @override
+  String get clubEventSessionPlanAttach => 'Associer à un événement de cours';
+
+  @override
+  String get clubEventSessionPlanSave => 'Associer';
+
+  @override
+  String get clubEventSessionPlanSaved => 'Plan associé à l’événement.';
+
+  @override
+  String get clubEventSessionPlanSaveFailed =>
+      'Impossible d’enregistrer la séance.';
+
+  @override
+  String get clubEventSessionPlanReplacesRoutine =>
+      'Associer un plan de séance retire la routine de gym — un cours porte l\'un ou l\'autre.';
 
   @override
   String get audienceTitle => 'Qui peut voir ceci';

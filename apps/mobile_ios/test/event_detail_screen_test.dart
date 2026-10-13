@@ -275,16 +275,33 @@ class _SubmitFailSocial extends _EventSocial {
   }
 }
 
-/// A class event carrying an attached gym routine (decisions § 1869). The
-/// fake applies the organiser's write the way the database does: attaching a
-/// routine clears the session plan in the same write (§ 1884).
+/// A class event carrying an attached gym routine (decisions § 1869) or
+/// session plan. The fake applies the organiser's writes the way the database
+/// does: attaching either one clears the other in the same write (§ 1884).
 class _ClassRoutineSocial extends _EventSocial {
   _ClassRoutineSocial({super.club, this.gymRoutineId, this.sessionPlanId})
       : super(category: 'class');
   String? gymRoutineId;
   String? sessionPlanId;
   bool failWrite = false;
+  bool failPlanWrite = false;
   final List<String?> routineWrites = [];
+  final List<String?> planWrites = [];
+
+  @override
+  Future<List<({String id, String title})>> fetchSessionPlanOptions() async =>
+      const [
+        (id: 'plan-flow', title: 'Morning Flow'),
+        (id: 'plan-core', title: 'Core Pilates'),
+      ];
+
+  @override
+  Future<void> setEventSessionPlan(String eventId, String? id) async {
+    planWrites.add(id);
+    if (failPlanWrite) throw Exception('rls');
+    sessionPlanId = id;
+    if (id != null) gymRoutineId = null;
+  }
 
   @override
   Future<EventView?> fetchEventById(String eventId) async => EventView(
@@ -325,8 +342,14 @@ class _ClassRoutineSocial extends _EventSocial {
 /// Answers the routine read for the routines this viewer can read; any other
 /// id reads as null, which is what RLS hands a non-member.
 class _RoutineApi extends ApiClient {
-  _RoutineApi({this.readable = const {'r-lower', 'r-upper'}});
+  _RoutineApi({
+    this.readable = const {'r-lower', 'r-upper'},
+    this.readablePlans = const {},
+  });
   final Set<String> readable;
+
+  /// Session plans this viewer can read, as [readable] is for routines.
+  final Set<String> readablePlans;
 
   static final _at = DateTime.utc(2026, 6, 1);
 
@@ -390,7 +413,57 @@ class _RoutineApi extends ApiClient {
     SessionPlanRow plan,
     List<SessionPlanBlockRow> blocks,
     List<SessionPlanItemRow> items,
-  })?> fetchSessionPlan(String id) async => null;
+  })?> fetchSessionPlan(String id) async {
+    if (!readablePlans.contains(id)) return null;
+    final flow = id == 'plan-flow';
+    return (
+      plan: SessionPlanRow(
+        id: id,
+        authorId: 'host',
+        title: flow ? 'Morning Flow' : 'Core Pilates',
+        isPublic: false,
+        createdAt: _at,
+        updatedAt: _at,
+      ),
+      blocks: [SessionPlanBlockRow(id: '$id-b0', planId: id, position: 0)],
+      items: flow
+          ? [
+              SessionPlanItemRow(
+                id: '$id-i0',
+                planId: id,
+                blockId: '$id-b0',
+                position: 0,
+                movementName: 'Cat-Cow',
+                kind: 'flow',
+                durationS: 30,
+                perSide: false,
+                cue: 'Breathe with the spine',
+              ),
+              SessionPlanItemRow(
+                id: '$id-i1',
+                planId: id,
+                blockId: '$id-b0',
+                position: 1,
+                movementName: 'Pigeon',
+                kind: 'hold',
+                durationS: 45,
+                perSide: true,
+              ),
+            ]
+          : [
+              SessionPlanItemRow(
+                id: '$id-i0',
+                planId: id,
+                blockId: '$id-b0',
+                position: 0,
+                movementName: 'Hundred',
+                kind: 'reps',
+                reps: 100,
+                perSide: false,
+              ),
+            ],
+    );
+  }
 }
 
 bool _supabaseReady = false;
@@ -1465,6 +1538,211 @@ void main() {
       );
       expect(social.routineWrites, ['r-upper']);
       expect(find.text('Back Squat'), findsOneWidget);
+    });
+  });
+
+  group('EventDetailScreen — class session-plan card (session_planner.md P1)', () {
+    const plans = {'plan-flow', 'plan-core'};
+
+    Future<void> pumpClass(
+      WidgetTester tester,
+      _ClassRoutineSocial social, {
+      Set<String> readablePlans = plans,
+    }) async {
+      // Tall enough that the session card, below the routine card, is built
+      // by the lazy ListView without a scroll.
+      tester.view.physicalSize = const Size(800, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: EventDetailScreen(
+            social: social,
+            clubSlug: 'club-1',
+            eventId: 'e1',
+            api: _RoutineApi(readablePlans: readablePlans),
+          ),
+        ),
+      );
+      await pumpUntil(
+        tester,
+        () => find.byType(FullBodyLoader).evaluate().isEmpty,
+        describe: 'the event to load',
+      );
+    }
+
+    Future<void> openSheetAndPick(WidgetTester tester, String label) async {
+      final attach = find.byKey(const Key('session-sequence-attach'));
+      await tester.ensureVisible(attach);
+      await tester.tap(attach);
+      await pumpUntil(
+        tester,
+        () => find
+            .byKey(const Key('session-sequence-picker'))
+            .evaluate()
+            .isNotEmpty,
+        describe: 'the session plan attach sheet',
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.byKey(const Key('session-sequence-picker')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.text(label).last);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    Finder inCard(String text) => find.descendant(
+      of: find.byKey(const Key('session-sequence')),
+      matching: find.text(text),
+    );
+
+    realtimeWidgetTest('an attendee sees the sequence with its cues', (
+      tester,
+    ) async {
+      final social = _ClassRoutineSocial(
+        club: _club('member'),
+        sessionPlanId: 'plan-flow',
+      );
+      await pumpClass(tester, social);
+      await pumpUntil(
+        tester,
+        () => inCard('Cat-Cow · flow 30s').evaluate().isNotEmpty,
+        describe: 'the session-plan card',
+      );
+      expect(inCard('Session sequence'), findsOneWidget);
+      expect(inCard('Morning Flow'), findsOneWidget);
+      expect(inCard('Breathe with the spine'), findsOneWidget);
+      // A per-side item expands into a left and a right step.
+      expect(inCard('Pigeon (Left) · hold 45s'), findsOneWidget);
+      expect(inCard('Pigeon (Right) · hold 45s'), findsOneWidget);
+      // Only the organiser can change it.
+      expect(find.byKey(const Key('session-sequence-attach')), findsNothing);
+    });
+
+    realtimeWidgetTest('a viewer who cannot read the plan sees no card', (
+      tester,
+    ) async {
+      final social = _ClassRoutineSocial(
+        club: _club('member'),
+        sessionPlanId: 'plan-flow',
+      );
+      await pumpClass(tester, social, readablePlans: const {});
+      await tester.pump();
+      expect(find.byKey(const Key('session-sequence')), findsNothing);
+      expect(find.text('Session sequence'), findsNothing);
+    });
+
+    realtimeWidgetTest('the organiser changes the plan after creation', (
+      tester,
+    ) async {
+      final social = _ClassRoutineSocial(
+        club: _club('event_organiser'),
+        sessionPlanId: 'plan-flow',
+      );
+      await pumpClass(tester, social);
+      await pumpUntil(
+        tester,
+        () => inCard('Cat-Cow · flow 30s').evaluate().isNotEmpty,
+        describe: 'the session-plan card',
+      );
+      await openSheetAndPick(tester, 'Core Pilates');
+      // No routine is attached, so there is nothing to warn about replacing.
+      expect(find.byKey(const Key('session-sequence-replaces-routine')),
+          findsNothing);
+      await tester.tap(find.byKey(const Key('session-sequence-save')));
+      await pumpUntil(
+        tester,
+        () => inCard('Hundred · 100 reps').evaluate().isNotEmpty,
+        describe: 'the card to show the new plan',
+      );
+      expect(social.planWrites, ['plan-core']);
+      expect(inCard('Cat-Cow · flow 30s'), findsNothing);
+      expect(inCard('Core Pilates'), findsOneWidget);
+      expect(find.text('Plan attached to the event.'), findsOneWidget);
+    });
+
+    realtimeWidgetTest('the organiser clears the plan', (tester) async {
+      final social = _ClassRoutineSocial(
+        club: _club('event_organiser'),
+        sessionPlanId: 'plan-flow',
+      );
+      await pumpClass(tester, social);
+      await pumpUntil(
+        tester,
+        () => inCard('Cat-Cow · flow 30s').evaluate().isNotEmpty,
+        describe: 'the session-plan card',
+      );
+      await openSheetAndPick(tester, 'None');
+      await tester.tap(find.byKey(const Key('session-sequence-save')));
+      await pumpUntil(
+        tester,
+        () => inCard('None').evaluate().isNotEmpty,
+        describe: 'the card to show no plan',
+      );
+      expect(social.planWrites, [null]);
+      expect(social.sessionPlanId, isNull);
+      expect(inCard('Cat-Cow · flow 30s'), findsNothing);
+      // The organiser keeps the card, so a plan can be attached again.
+      expect(find.byKey(const Key('session-sequence-attach')), findsOneWidget);
+    });
+
+    realtimeWidgetTest(
+      'attaching a plan to a class with a routine says it replaces it',
+      (tester) async {
+        final social = _ClassRoutineSocial(
+          club: _club('event_organiser'),
+          gymRoutineId: 'r-lower',
+        );
+        await pumpClass(tester, social);
+        await pumpUntil(
+          tester,
+          () => find.text('Back Squat').evaluate().isNotEmpty,
+          describe: 'the routine card',
+        );
+        expect(inCard('None'), findsOneWidget);
+        await openSheetAndPick(tester, 'Morning Flow');
+        expect(find.byKey(const Key('session-sequence-replaces-routine')),
+            findsOneWidget);
+        await tester.tap(find.byKey(const Key('session-sequence-save')));
+        await pumpUntil(
+          tester,
+          () => inCard('Cat-Cow · flow 30s').evaluate().isNotEmpty,
+          describe: 'the card to show the attached plan',
+        );
+        expect(social.planWrites, ['plan-flow']);
+        expect(social.gymRoutineId, isNull);
+        // The re-read follows the cleared routine, so its card empties too.
+        expect(find.text('Back Squat'), findsNothing);
+        expect(find.text('No routine attached.'), findsOneWidget);
+      },
+    );
+
+    realtimeWidgetTest('a failed write says so and keeps the plan', (
+      tester,
+    ) async {
+      final social = _ClassRoutineSocial(
+        club: _club('event_organiser'),
+        sessionPlanId: 'plan-flow',
+      )..failPlanWrite = true;
+      await pumpClass(tester, social);
+      await pumpUntil(
+        tester,
+        () => inCard('Cat-Cow · flow 30s').evaluate().isNotEmpty,
+        describe: 'the session-plan card',
+      );
+      await openSheetAndPick(tester, 'Core Pilates');
+      await tester.tap(find.byKey(const Key('session-sequence-save')));
+      await pumpUntil(
+        tester,
+        () => find.text('Could not save the session.').evaluate().isNotEmpty,
+        describe: 'the failure banner',
+      );
+      expect(social.planWrites, ['plan-core']);
+      expect(social.sessionPlanId, 'plan-flow');
+      expect(inCard('Cat-Cow · flow 30s'), findsOneWidget);
     });
   });
 }

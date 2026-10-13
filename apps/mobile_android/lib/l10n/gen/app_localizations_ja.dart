@@ -14402,7 +14402,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get eventFormSessionPlanFailed =>
-      'イベントは作成されましたが、セッションプランを添付できませんでした。ウェブのイベントページから添付してください。';
+      'イベントは作成されましたが、セッションプランを添付できませんでした。イベントページから添付してください。';
 
   @override
   String get eventFormGymRoutine => 'ジムルーティン';
@@ -14453,6 +14453,25 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get clubEventGymRoutineReplacesPlan =>
       'ルーティンを添付するとセッションプランは外れます。クラスにはどちらか一方しか添付できません。';
+
+  @override
+  String get clubEventSessionPlanTitle => 'セッションのシーケンス';
+
+  @override
+  String get clubEventSessionPlanAttach => 'クラスイベントに紐付ける';
+
+  @override
+  String get clubEventSessionPlanSave => '紐付ける';
+
+  @override
+  String get clubEventSessionPlanSaved => 'プランをイベントに紐付けました。';
+
+  @override
+  String get clubEventSessionPlanSaveFailed => 'セッションを保存できませんでした。';
+
+  @override
+  String get clubEventSessionPlanReplacesRoutine =>
+      'セッションプランを添付するとジムルーティンは外れます。クラスにはどちらか一方しか添付できません。';
 
   @override
   String get audienceTitle => '公開範囲';

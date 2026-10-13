@@ -15108,7 +15108,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get eventFormSessionPlanFailed =>
-      'Evento criado, mas não foi possível associar o plano de sessão. Associe-o na página do evento na web.';
+      'Evento criado, mas não foi possível associar o plano de sessão. Associe-o a partir da página do evento.';
 
   @override
   String get eventFormGymRoutine => 'Rotina de ginásio';
@@ -15161,6 +15161,26 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get clubEventGymRoutineReplacesPlan =>
       'Anexar uma rotina remove o plano de sessão — uma aula leva um ou outro.';
+
+  @override
+  String get clubEventSessionPlanTitle => 'Sequência da sessão';
+
+  @override
+  String get clubEventSessionPlanAttach => 'Vincular a um evento de aula';
+
+  @override
+  String get clubEventSessionPlanSave => 'Vincular';
+
+  @override
+  String get clubEventSessionPlanSaved => 'Plano vinculado ao evento.';
+
+  @override
+  String get clubEventSessionPlanSaveFailed =>
+      'Não foi possível guardar a sessão.';
+
+  @override
+  String get clubEventSessionPlanReplacesRoutine =>
+      'Anexar um plano de sessão remove a rotina de ginásio — uma aula leva um ou outro.';
 
   @override
   String get audienceTitle => 'Quem pode ver isto';
@@ -30381,7 +30401,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get eventFormSessionPlanFailed =>
-      'Evento criado, mas não foi possível anexar o plano de sessão. Anexe-o na página do evento na web.';
+      'Evento criado, mas não foi possível anexar o plano de sessão. Anexe-o pela página do evento.';
 
   @override
   String get eventFormGymRoutine => 'Rotina de academia';
@@ -30434,6 +30454,26 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get clubEventGymRoutineReplacesPlan =>
       'Anexar uma rotina remove o plano de sessão — uma aula leva um ou outro.';
+
+  @override
+  String get clubEventSessionPlanTitle => 'Sequência da sessão';
+
+  @override
+  String get clubEventSessionPlanAttach => 'Vincular a um evento de aula';
+
+  @override
+  String get clubEventSessionPlanSave => 'Vincular';
+
+  @override
+  String get clubEventSessionPlanSaved => 'Plano vinculado ao evento.';
+
+  @override
+  String get clubEventSessionPlanSaveFailed =>
+      'Não foi possível salvar a sessão.';
+
+  @override
+  String get clubEventSessionPlanReplacesRoutine =>
+      'Anexar um plano de sessão remove a rotina de academia — uma aula leva um ou outro.';
 
   @override
   String get audienceTitle => 'Quem pode ver isto';

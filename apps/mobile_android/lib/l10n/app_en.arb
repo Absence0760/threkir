@@ -19192,7 +19192,7 @@
   "@eventFormPricingFailed": {
     "description": "Banner when the event was created but its price was not saved"
   },
-  "eventFormSessionPlanFailed": "Event created, but the session plan couldn't be attached. Attach it from the event on the web.",
+  "eventFormSessionPlanFailed": "Event created, but the session plan couldn't be attached. Attach it from the event page.",
   "@eventFormSessionPlanFailed": {
     "description": "Banner when the event was created but its session plan was not attached"
   },
@@ -19252,6 +19252,30 @@
   "clubEventGymRoutineReplacesPlan": "Attaching a routine removes the session plan — a class carries one or the other.",
   "@clubEventGymRoutineReplacesPlan": {
     "description": "Note in the routine attach sheet when the class already carries a session plan"
+  },
+  "clubEventSessionPlanTitle": "Session sequence",
+  "@clubEventSessionPlanTitle": {
+    "description": "Heading of the session sequence card on a class event page"
+  },
+  "clubEventSessionPlanAttach": "Attach to a class event",
+  "@clubEventSessionPlanAttach": {
+    "description": "Organiser's button on the session sequence card that opens the session plan picker, and that sheet's title"
+  },
+  "clubEventSessionPlanSave": "Attach",
+  "@clubEventSessionPlanSave": {
+    "description": "Save button of the session plan attach sheet"
+  },
+  "clubEventSessionPlanSaved": "Plan attached to the event.",
+  "@clubEventSessionPlanSaved": {
+    "description": "Banner after the organiser attaches, changes or clears the class session plan"
+  },
+  "clubEventSessionPlanSaveFailed": "Could not save the session.",
+  "@clubEventSessionPlanSaveFailed": {
+    "description": "Banner when attaching, changing or clearing the class session plan failed"
+  },
+  "clubEventSessionPlanReplacesRoutine": "Attaching a session plan removes the gym routine — a class carries one or the other.",
+  "@clubEventSessionPlanReplacesRoutine": {
+    "description": "Note in the session plan attach sheet when the class already carries a gym routine"
   },
   "audienceTitle": "Who can see this",
   "@audienceTitle": {

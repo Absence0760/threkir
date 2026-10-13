@@ -195,7 +195,7 @@ test.describe('UltraSignup person link — edges', () => {
 		const people = card.getByTestId('ultrasignup-candidate');
 		await expect(people).toHaveCount(2, { timeout: 15_000 });
 		await expect(card).toContainText('Which of these is you?');
-		await expect(people.nth(0)).toContainText('Age 41 · 4 results');
+		await expect(people.nth(0)).toContainText(/Age 41\s*·\s*4 results/);
 		await expect(people.nth(0)).toContainText('Example Peaks 100 Mile (2025)');
 		await expect(people.nth(1)).toContainText('1 result');
 		await expect(people.nth(1)).not.toContainText('Age');

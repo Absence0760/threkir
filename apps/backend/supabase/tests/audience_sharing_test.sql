@@ -332,6 +332,7 @@ select throws_ok(
   'anon holds no privilege on shared_runs');
 
 reset role;
+set local "request.jwt.claims" = '';
 
 -- ── Never broadcast: feeds and notifications key on is_public ──
 -- (33)

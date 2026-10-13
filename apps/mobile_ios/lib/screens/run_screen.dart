@@ -3598,9 +3598,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       try {
         // Honour the user's privacy_default setting. `public` →
         // is_public=true at insert time so the user doesn't have to
-        // tap "share" on every run. `followers` / `private` /
-        // unknown → leave is_public null (the legacy default; reads
-        // as "not public" everywhere). A live broadcast does NOT
+        // tap "share" on every run. `followers` → followers_only, the
+        // followers level (stored private until audience sharing is on,
+        // decisions § R8SHARE-2). `private` / unknown → leave is_public
+        // null (reads as "not public" everywhere). A live broadcast does NOT
         // override this: the live window's public opt-in ends with
         // the run, and keeping the saved run public is an explicit
         // post-stop choice (_resolvePostLiveVisibility, issue #664).
@@ -3614,6 +3615,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
             .saveRun(
               run,
               isPublic: widget.preferences.newRunsArePublic ? true : null,
+              followersOnly: widget.preferences.newRunsAreFollowersOnly,
             )
             .timeout(kBackendLoadTimeout);
         await widget.runStore.markSynced(run.id);

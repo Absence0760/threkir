@@ -1402,6 +1402,17 @@ void main() {
             'privacy_default setting reaches RunRow.isPublic at upsert.',
       );
     });
+
+    test('run_screen._stop passes the followers level to saveRun', () {
+      // `followers` used to collapse to private (decisions § R8SHARE-2).
+      final source = File('lib/screens/run_screen.dart').readAsStringSync();
+      expect(
+        source,
+        contains(
+            'followersOnly: widget.preferences.newRunsAreFollowersOnly'),
+        reason: 'the followers privacy default must reach the run row',
+      );
+    });
   });
 
   group('sync paths use saveRunsBatch', () {

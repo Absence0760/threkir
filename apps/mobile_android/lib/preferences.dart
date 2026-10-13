@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import 'apple_watch_prefs_bridge.dart';
+import 'audience_level.dart';
 import 'column_limits.dart';
 import 'goals.dart';
 import 'l10n/locale_support.dart';
@@ -423,7 +424,15 @@ class Preferences extends ChangeNotifier {
   /// True only when `privacyDefault == 'public'`. `followers` /
   /// `private` / unknown all return false. Wired into the run-save
   /// path on `run_screen` + `add_run_screen`.
-  bool get newRunsArePublic => _privacyDefault == 'public';
+  bool get newRunsArePublic =>
+      privacyDefaultToAudience(_privacyDefault).isPublic;
+
+  /// Should newly-saved runs be born at the followers level
+  /// (`followers_only`)? True only when `privacyDefault == 'followers'`,
+  /// which used to collapse to private (decisions § R8SHARE-2). The server
+  /// stores it private until audience sharing is switched on.
+  bool get newRunsAreFollowersOnly =>
+      privacyDefaultToAudience(_privacyDefault).followersOnly;
 
   /// Display + entry unit for body / lift weights, mirrored from the
   /// universal `weight_unit` settings-bag key. Storage stays canonical

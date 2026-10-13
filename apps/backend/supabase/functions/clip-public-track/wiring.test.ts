@@ -38,13 +38,17 @@ Deno.test('the clip is taken against the OWNER, never the viewer', () => {
 });
 
 Deno.test('a row whose owner cannot be resolved is refused, not served', () => {
-  // `public_runs` is a view, so Postgres cannot carry `runs.user_id`'s NOT
-  // NULL through it and the generated type is nullable. A null owner would
-  // build the Storage path `null/<id>.json.gz` and would reach the clip RPC
-  // with no owner to redact against.
+  // `public_runs` and `shared_runs` are views, so Postgres cannot carry
+  // `runs.user_id`'s NOT NULL through them and the generated type is
+  // nullable. A null owner would build the Storage path `null/<id>.json.gz`
+  // and would reach the clip RPC with no owner to redact against.
   assert(
-    /if \(runErr \|\| !run \|\| run\.user_id === null\) \{/.test(SRC),
+    /if \(!run \|\| run\.user_id === null\) \{/.test(SRC),
     'the row read must fail closed on a null owner',
+  );
+  assert(
+    /if \(lookup\.kind === 'failed'\) \{[\s\S]{0,120}status: 502/.test(SRC),
+    'a failed lookup must answer 502, not read as a missing run',
   );
   const idx = SRC.indexOf('run.user_id === null');
   assert(idx !== -1);
@@ -63,9 +67,43 @@ Deno.test('the owner bypass demands an identified caller', () => {
     'the visibility bypass must require a non-null caller AND an owner match',
   );
   assert(
-    /if \(!run\.is_public && !isOwnerBypass\) \{/.test(SRC),
-    'a non-public row must be refused to everyone but its owner',
+    /if \(!run\.is_public && !isAudienceMember && !isOwnerBypass\) \{/.test(SRC),
+    'a non-public row must be refused to everyone but its owner and its admitted audience',
   );
+});
+
+Deno.test('an audience member is only ever a caller shared_runs returned the row for', () => {
+  // The followers level and named-person grants (20270730000003) admit a
+  // non-owner to a non-public run. The EF's own gate must name that branch
+  // by where the row came from — `shared_runs`, evaluated as the caller —
+  // and never by a flag a request could carry, and it must not admit an
+  // anonymous caller or treat the owner as their own audience.
+  assert(
+    /const isAudienceMember = audience === 'shared' && callerId !== null && callerId !== ownerId;/.test(SRC),
+    'the audience branch must come from the shared_runs read, for an identified non-owner',
+  );
+  assert(
+    /const audience = lookup\.kind === 'found' \? lookup\.audience : null;/.test(SRC),
+    'the audience must be the lookup\'s own answer',
+  );
+  assert(
+    /findViewableRun\([\s\S]{0,400}\.from\(view\)[\s\S]{0,200}callerId,\s*\)/.test(SRC),
+    'both reads go through the caller-scoped client, with the caller id deciding whether shared_runs is asked',
+  );
+  assert(
+    /userClient\s*\.from\(view\)/.test(SRC),
+    'the views must be read as the caller — the service role would see every audience at once',
+  );
+});
+
+Deno.test('a shared run is clipped exactly like a public one', () => {
+  // The audience branch reaches the same clip call: the only unclipped
+  // return is the owner's, keyed on the caller id, never on the audience.
+  const ownerReturn = SRC.indexOf('if (callerId === ownerId) {');
+  assert(ownerReturn !== -1, 'the owner return is gone');
+  assert(!/audience === 'shared'[^\n]*\{\s*return Response\.json\(\{ points: served/.test(SRC),
+    'no audience branch may return the unclipped points');
+  assert(SRC.indexOf("'clip_track_for_user'") > ownerReturn, 'every non-owner falls through to the clip');
 });
 
 Deno.test('the anon bucket is IP-derived and spent through the service role', () => {

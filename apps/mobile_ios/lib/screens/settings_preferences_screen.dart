@@ -791,7 +791,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
       title: l10n.prefsDefaultRunVisibility,
       options: opts,
       labels: labels,
-      current: _bagValue<String>(SettingsKeys.privacyDefault) ?? 'followers',
+      current: _bagValue<String>(SettingsKeys.privacyDefault) ?? 'private',
     );
     if (picked != null) {
       await _putUniversal(SettingsKeys.privacyDefault, picked);

@@ -14,9 +14,9 @@ Deno.test('followers writes followers_only, never public', () => {
   assertEquals(importAudience({ privacy_default: 'followers' }), { isPublic: false, followersOnly: true });
 });
 
-Deno.test('an unset pref takes the registered followers fallback', () => {
-  assertEquals(importAudience({}), { isPublic: false, followersOnly: true });
-  assertEquals(importAudience(null), { isPublic: false, followersOnly: true });
+Deno.test('an unset pref takes the registered private fallback', () => {
+  assertEquals(importAudience({}), { isPublic: false, followersOnly: false });
+  assertEquals(importAudience(null), { isPublic: false, followersOnly: false });
 });
 
 Deno.test('private and unknown values are owner-only', () => {

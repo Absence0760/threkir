@@ -2,9 +2,9 @@
 // universal `privacy_default` preference (docs/backend/settings.md).
 //
 // Mirrors the web writer (`apps/web/src/lib/social/run_visibility.ts`
-// `privacyDefaultToAudience`): `public` publishes, `followers` — and an unset
-// pref, whose registered fallback is `followers` — writes `followers_only`,
-// and anything else is owner-only. `followers_only` is stored as owner-only by
+// `privacyDefaultToAudience`): `public` publishes, `followers` writes
+// `followers_only`, and anything else is owner-only, including an unset pref,
+// whose registered fallback is `private` (decisions § 1881). `followers_only` is stored as owner-only by
 // the server until audience sharing is switched on (migration 20270802000001,
 // decisions § 1875), and a followers-only run is never in a feed or a
 // notification, so importing history with the default never publishes it.
@@ -20,7 +20,7 @@ export interface ImportAudience {
 export const OWNER_ONLY: ImportAudience = { isPublic: false, followersOnly: false };
 
 export function importAudience(prefs: Record<string, unknown> | null | undefined): ImportAudience {
-  const pref = prefs?.privacy_default ?? 'followers';
+  const pref = prefs?.privacy_default ?? 'private';
   if (pref === 'public') return { isPublic: true, followersOnly: false };
   if (pref === 'followers') return { isPublic: false, followersOnly: true };
   return OWNER_ONLY;

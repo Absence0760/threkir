@@ -84,7 +84,7 @@
 				]);
 				audienceSharingOn = sharingOn;
 				const seeded = audienceOf(
-					privacyDefaultToAudience(effective<string>(settings, 'privacy_default', 'followers')),
+					privacyDefaultToAudience(effective<string>(settings, 'privacy_default', 'private')),
 					0,
 				) as RunAudience;
 				dirty.seed(() => {

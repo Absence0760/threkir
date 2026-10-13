@@ -38,7 +38,7 @@
 	}
 
 	const prefs = createPrefsPage(async ({ settings }) => {
-		privacyDefault = effective(settings, 'privacy_default', 'followers') ?? 'followers';
+		privacyDefault = effective(settings, 'privacy_default', 'private') ?? 'private';
 		stravaAutoShare = effective(settings, 'strava_auto_share', false) ?? false;
 		discoverableInSearch = effective(settings, 'discoverable_in_search', true) ?? true;
 		discoverableNearby = effective(settings, 'discoverable_nearby', false) ?? false;

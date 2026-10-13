@@ -1543,7 +1543,7 @@ export async function saveRunAsRoute(
 async function defaultRunAudience(userId: string): Promise<AudienceColumns> {
 	try {
 		const settings = await loadSettings(userId);
-		return privacyDefaultToAudience(effective<string>(settings, 'privacy_default', 'followers'));
+		return privacyDefaultToAudience(effective<string>(settings, 'privacy_default', 'private'));
 	} catch {
 		return audienceColumns('private');
 	}

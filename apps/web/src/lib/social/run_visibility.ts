@@ -50,7 +50,7 @@ export function audienceOf(
 /// server stores it as owner-only until audience sharing is switched on, so
 /// nothing saved before the switch widens on the day it flips (§ 1875).
 /// Unknown values fail closed to owner-only. Callers pass the effective value
-/// (`effective(settings, 'privacy_default', 'followers')`), so the registered
+/// (`effective(settings, 'privacy_default', 'private')`), so the registered
 /// unset fallback is theirs to apply.
 export function privacyDefaultToAudience(pref: string | null | undefined): AudienceColumns {
 	if (pref === 'public') return audienceColumns('public');

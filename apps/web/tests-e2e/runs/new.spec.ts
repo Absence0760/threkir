@@ -135,11 +135,9 @@ test.describe('/runs/new', () => {
 		expect(row.is_public).toBe(true);
 	});
 
-	test('default (no privacy_default set) lands a manual run followers-only, never public', async ({
-		page
-	}) => {
-		// The unset default is `followers` (decisions § 1874): with the seed's
-		// audience_sharing flag on, that writes followers_only, not is_public.
+	test('default (no privacy_default set) keeps a manual run private', async ({ page }) => {
+		// The unset default is `private` (decisions § 1881), so the seed's open
+		// audience_sharing flag does not widen it to followers.
 		const admin = getAdminClient();
 		await clearUserSettingKey(USER_A.id, 'privacy_default');
 
@@ -147,7 +145,7 @@ test.describe('/runs/new', () => {
 		await expect(
 			page.getByRole('heading', { level: 1, name: 'Add a run' })
 		).toBeVisible({ timeout: 10_000 });
-		await expect(page.getByTestId('run-editor-audience')).toHaveValue('followers');
+		await expect(page.getByTestId('run-editor-audience')).toHaveValue('private');
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('8');
@@ -165,7 +163,7 @@ test.describe('/runs/new', () => {
 				.single()
 		);
 		expect(row.is_public).toBe(false);
-		expect(row.followers_only).toBe(true);
+		expect(row.followers_only).toBe(false);
 	});
 
 	test('renders page chrome (kicker, h1, tagline, back link)', async ({ page }) => {

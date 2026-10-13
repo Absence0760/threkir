@@ -1138,9 +1138,9 @@ func (c *SupabaseClient) FetchRunIdentitiesNear(ctx context.Context, userID stri
 
 // privacyDefaultAudience resolves the visibility columns of a newly-imported
 // run for this user from the universal `privacy_default` pref in
-// user_settings.prefs: 'public' publishes, 'followers' — and an unset pref,
-// whose registered fallback is 'followers' — writes followers_only, anything
-// else is owner-only. A read error falls closed to owner-only. Mirrors the web
+// user_settings.prefs: 'public' publishes, 'followers' writes followers_only,
+// and anything else is owner-only, including an unset pref, whose registered
+// fallback is 'private' (decisions § 1881). A read error falls closed to owner-only. Mirrors the web
 // `privacyDefaultToAudience` mapping and the EF importers'
 // `_shared/privacy_default.ts` (persona #27, decisions § 1875). The
 // server stores followers_only as owner-only until audience sharing is on.
@@ -1151,7 +1151,7 @@ func (c *SupabaseClient) privacyDefaultAudience(ctx context.Context, userID stri
 	}
 	pref, ok := prefs["privacy_default"]
 	if !ok || pref == nil {
-		pref = "followers"
+		pref = "private"
 	}
 	switch pref {
 	case "public":

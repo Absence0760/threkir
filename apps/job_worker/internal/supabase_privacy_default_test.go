@@ -24,9 +24,9 @@ func TestPrivacyDefaultAudience(t *testing.T) {
 		{"followers writes followers_only", `[{"prefs":{"privacy_default":"followers"}}]`, 200, false, true},
 		{"private stays owner-only", `[{"prefs":{"privacy_default":"private"}}]`, 200, false, false},
 		{"unknown value stays owner-only", `[{"prefs":{"privacy_default":"everyone"}}]`, 200, false, false},
-		{"unset pref takes the followers fallback", `[{"prefs":{"preferred_unit":"km"}}]`, 200, false, true},
-		{"no settings row takes the followers fallback", `[]`, 200, false, true},
-		{"null prefs takes the followers fallback", `[{"prefs":null}]`, 200, false, true},
+		{"unset pref takes the private fallback", `[{"prefs":{"preferred_unit":"km"}}]`, 200, false, false},
+		{"no settings row takes the private fallback", `[]`, 200, false, false},
+		{"null prefs takes the private fallback", `[{"prefs":null}]`, 200, false, false},
 		{"read error falls closed to owner-only", `boom`, 500, false, false},
 	}
 	for _, tc := range cases {

@@ -637,6 +637,10 @@ Before flipping any service from "Plan" to live in the table at the top:
 7. Tick the corresponding box in [roadmap.md](../product/roadmap.md).
 8. If this enables a feature, flip the cell in [parity.md](../product/parity.md).
 
+### Audience sharing — after the CISO / Security Analyst review
+
+The followers level and named-person run / route shares ([sharing.md](../features/sharing.md), decisions § R8SHARE-1) ship closed: no migration writes the `audience_sharing` row of `private.feature_flags`, so prod answers exactly as before. Open it only after the CISO / Security Analyst has reviewed the audience oracles, the `shared_runs` / `shared_routes` projections, the `clip-public-track` branch and the default-`followers` widening for accounts that never set a privacy default — then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('audience_sharing', true) on conflict (name) do update set enabled = true, updated_at = now();`. Closing it again is the same statement with `false`; every read path falls back at once, and existing grants stay inert until it reopens.
+
 ### Lambda secrets — one apply, before the next web deploy
 
 [decisions § 1671](../architecture/decisions.md) moved the coach and

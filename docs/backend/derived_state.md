@@ -121,7 +121,10 @@ retention cron referenced in a comment that was never created.
   re-count until its `route_id` is next touched (`20260716_001`); a flip on the
   *route* is likewise unwatched. Since the trigger recomputes rather than
   increments, that drift **heals** on the next `route_id` touch instead of
-  compounding on top of a stale value.
+  compounding on top of a stale value. Audience sharing (`20270802000003`)
+  adds more unwatched inputs to the same visibility test: a follow edge, a
+  `route_shares` grant or the `audience_sharing` gate changing can admit or
+  drop a runner without touching a run row. Same drift, same healing.
 - **Manual rebuild:** `select refresh_route_run_count(id) from routes;` (batch it
   by id range on a populated database — `20270526_001`'s backfill is the worked
   form). A bare `count(*)` would overcount by including private runs and runs

@@ -39,6 +39,7 @@ create table runs (
   track_url     text,                       -- Storage path: {user_id}/{run_id}.json.gz
   hr_series_url text,                        -- Storage path: {user_id}/{run_id}.hr.json.gz (indoor/trackless HR series)
   is_public     boolean default false,      -- visible at /share/run/{id}
+  followers_only boolean not null default false, -- the followers level (20270802000001): readable by the owner's followers, never public, never in a feed; cleared when is_public is set, stored false while audience sharing is off
   concluded_at  timestamptz,                 -- positive live-broadcast terminal marker; stamped by concludeLiveBroadcast on stop, null while live or never broadcast. Exposed via public_runs so spectators detect finish honestly. 20270427_001 (issue #613)
   created_at    timestamptz default now(),
   updated_at    timestamptz default now()
@@ -70,6 +71,8 @@ create index runs_public on runs (is_public, started_at desc) where is_public = 
 **GPS tracks** are stored as gzipped JSON files in the `runs` Storage bucket at `{user_id}/{run_id}.json.gz`. The `track_url` column points to the file. Tracks are never returned by list queries -- they are fetched on demand when the run detail screen is opened.
 
 **Indoor/trackless HR series** live in a sibling sidecar object in the *same* `runs` bucket at `{user_id}/{run_id}.hr.json.gz` (gzipped JSON array of `{ bpm, ts? }`), pointed to by `hr_series_url`. An indoor or treadmill FIT carries heart rate but no GPS fix, so the run imports with an empty `track` and the per-point `bpm` the HR-zone breakdown needs would otherwise be lost. The sidecar is owner-only audit data: it carries **no location**, is gated by the same `{user_id}/...` bucket RLS as the track, is pinned to its canonical path by the `runs_hr_series_url_path_shape` CHECK (mirrors `runs_track_url_path_shape`), and is **never** exposed through `public_runs` or `clip_track_for_user` (it never enters the coordinate pipeline). See [decisions.md § 116](../architecture/decisions.md). Migration `20261127_001`.
+
+**Audience levels** (migrations `20270802000001..3`, [sharing.md](../features/sharing.md), decisions § R8SHARE-1). A run or route the owner can see sits at one of four levels: **Public** (`is_public`), **Followers** (`followers_only`), **Specific people** (owner-only columns plus live rows in `run_shares` / `route_shares`), or **Only me**. The BEFORE INSERT/UPDATE trigger `private.normalize_audience()` on both tables clears `followers_only` when `is_public` is set and stores it `false` while the server gate `private.audience_sharing_enabled()` is off, so nothing written before the gate opens widens on the day it does. Every non-public level is read through `private.run_audience_admits` / `private.route_audience_admits`, which the visibility helpers and the `shared_runs` / `shared_routes` views call; feeds, notifications, `public_runs` / `public_routes`, the sitemap, heatmap and challenges key on `is_public` only and never see a shared row (§ 96).
 
 **`source` values:**
 
@@ -358,6 +361,32 @@ create index run_matched_tracks_pending
 - **`source_track_url`** (added in migration `20260611_001`): the `runs.track_url` value the row's match output is tagged against. Set by the trigger on every insert and every reset. Since `runs_track_url_path_shape` (`20260621_001`) pins `track_url` to one path per run, this only ever changes to or from that path, so it cannot tell two uploads of the track apart; the CAS below uses the Storage object's version for that.
 - **Re-upload in place** (migration `20270719000020`): a client that rewrites the track (web save, mobile sync, a backup restore) overwrites `{user_id}/{run_id}.json.gz`, and storage-api stamps the object row with a fresh `version`. The AFTER INSERT/UPDATE trigger `runs_track_object_rewritten` on `storage.objects` (bucket `runs`, the canonical track name of an existing run whose track_url is that name, version changed) resets this row to `pending` exactly as above, drops `metadata.distance_map_matched_m` / `distance_map_matched_track_version` from the run, and queues a `map_match` job — each step in its own exception block, so a failure is a logged warning and never fails the upload. A metadata-only update of the object, and the worker's own `.matched.json.gz` / `.smoothed.json.gz` objects, are not rewrites.
 - **Worker CAS**: the Go worker reads `track_url` and the object's version together through `map_match_track_source(p_run_id)` before downloading, and records its result through `record_map_match_result(...)`, which locks this row and writes only while `runs.track_url` and the object version still equal what the worker read; otherwise it returns `false` and the worker discards its result. Because the lock serialises it against the rewrite trigger's reset of the same row, a match of replaced bytes can never land. Both functions are SECURITY DEFINER, `service_role` only. `finish_job` then re-queues the job (below), since the dedupe index made the rewrite's own enqueue a no-op while it ran. pgtap `runs_track_rewrite_invalidates_match_test.sql`.
+
+#### `run_shares` / `route_shares`
+
+Named-person read grants on one run / one route (migration `20270802000002`, decisions § R8SHARE-3). One row = "the owner lets this one person read this one entity".
+
+```sql
+create table run_shares (
+  id           uuid primary key default gen_random_uuid(),
+  run_id       uuid not null references runs(id) on delete cascade,
+  owner_id     uuid not null references auth.users(id) on delete cascade,
+  recipient_id uuid not null references auth.users(id) on delete cascade,
+  created_at   timestamptz not null default now(),
+  check (recipient_id <> owner_id),
+  unique (run_id, recipient_id)
+);
+-- route_shares: identical, keyed on route_id references routes(id).
+-- Indexes: (owner_id), (recipient_id) on each.
+```
+
+- **RLS:** SELECT to the owner and the recipient; INSERT only as the owner, only on an entity the caller owns, only while `private.audience_sharing_enabled()`, and only to a recipient `private.can_share_with(owner, recipient)` admits (a follow edge either way, no block either way — the same set the DM gate admits); DELETE by the owner only. No UPDATE grant, so `owner_id` cannot drift from the entity's owner. `service_role` holds all four.
+- **Revoke is a hard DELETE**, read at request time: there is no `revoked_at`, so a revoke ends access on the recipient's next read and leaves no record of who the owner once shared with.
+- **Erasure and export:** every FK cascades (entity, owner, recipient), so account deletion needs no explicit drain. The Art 20 export ships both legs of each table (`run_shares_owned.json` / `run_shares_received.json`, same for routes) from both `export-data` and the Go worker.
+
+#### `shared_runs` / `shared_routes` (views)
+
+The redacted non-owner ROW read for a non-public entity whose audience admits the caller (migration `20270802000003`). Column for column and metadata key for key the projection of `public_runs` / `public_routes` (`check_shared_constants.mjs` holds the two metadata denylists equal), filtered on `is_public = false` and the audience oracle with the caller's JWT. They hold no public row and none of the caller's own, so no reader of the public views changes. Granted to `authenticated` only; `anon` holds no privilege, which is why a `/share/run|route/{id}` link to a non-public entity is not-found for a signed-out viewer and in the `share-run` / `share-route` Lambdas.
 
 ### Social graph & feed
 
@@ -2015,7 +2044,7 @@ Receives RevenueCat subscription events (initial purchase, renewal, cancellation
 
 ### `GET /clip-public-track`
 
-Serves the clipped track JSON for a non-owner viewer of a public run. Replaces the dropped bare-table Storage SELECT policy on the `runs` bucket (migration `20260619_001`) — anonymous and signed-in non-owners can no longer read raw track files; they must go through this function, which applies `clip_track_for_user` (decisions §33) before returning.
+Serves the clipped track JSON for a non-owner viewer of a public run, or of a non-public run whose audience admits the caller (a follower of a followers-level run, or the recipient of a live `run_shares` grant — read through `shared_runs` after `public_runs` misses, for a signed-in caller only; decisions § R8SHARE-5). Either way the track is clipped against the owner's privacy zones. Replaces the dropped bare-table Storage SELECT policy on the `runs` bucket (migration `20260619_001`) — anonymous and signed-in non-owners can no longer read raw track files; they must go through this function, which applies `clip_track_for_user` (decisions §33) before returning.
 
 **Request:**
 ```
@@ -2486,7 +2515,15 @@ SECURITY DEFINER RPC for privacy-zone clipping (decisions §33). Reads `user_set
 
 ### `clip_route_for_viewer(p_route_id uuid)`
 
-SECURITY DEFINER RPC for the routes equivalent of `clip_track_for_user` (decisions §33, migration `20260625_001`). Self-contained: caller passes only the route id. Looks up the row internally, applies the same visibility gate as `private.is_route_visible_to` (owner / public-and-not-`shadow_hidden` / club member — the shadow-hidden exclusion landed in `20270329_001`, decisions §206; raises `42501` otherwise so private- or hidden-route reads are loud), and returns either the unclipped `waypoints` (owner) or the clipped output (non-owner, delegated to `clip_track_for_user` so the zone walk has one implementation). Granted to `anon` + `authenticated`. Anon callers can only read non-hidden `is_public = true` routes. Routes carry waypoints inline (no Storage indirection like runs) so this is a straight RPC rather than an Edge Function.
+SECURITY DEFINER RPC for the routes equivalent of `clip_track_for_user` (decisions §33, migration `20260625_001`). Self-contained: caller passes only the route id. Looks up the row internally, applies the same visibility gate as `private.is_route_visible_to` (owner / public-and-not-`shadow_hidden` / club member / since `20270802000003` a follower of a followers-level route or a named `route_shares` recipient, not shadow-hidden and only while audience sharing is on — the shadow-hidden exclusion landed in `20270329_001`, decisions §206; raises `42501` otherwise so private- or hidden-route reads are loud), and returns either the unclipped `waypoints` (owner) or the clipped output (non-owner, delegated to `clip_track_for_user` so the zone walk has one implementation). Granted to `anon` + `authenticated`. Anon callers can only read non-hidden `is_public = true` routes. Routes carry waypoints inline (no Storage indirection like runs) so this is a straight RPC rather than an Edge Function.
+
+### `audience_sharing_enabled() → boolean`
+
+The one client-readable answer to "is the followers level and named-person sharing live" (migration `20270802000001`, decisions § R8SHARE-1). Wraps `private.audience_sharing_enabled()`, which reads the `audience_sharing` row of `private.feature_flags`; an absent row is OFF, and no migration writes one, so every environment starts closed (`seed.sql` opens it for local + CI). Granted to `authenticated` and `service_role`. Clients hide the audience control when it is false.
+
+### `private.run_audience_admits(run, owner, followers_only, viewer)` / `private.route_audience_admits(...)`
+
+The audience oracles (migration `20270802000003`). True only for a signed-in non-owner, only while the gate is on, when the entity is followers-only and the viewer follows the owner, or a live grant names the viewer — and never across a block either way. `private.is_run_visible_to`, `private.is_run_photo_visible_to` (still no coach branch, § 98), `private.is_route_visible_to` (not for a shadow-hidden route), `clip_route_for_viewer` and the two `shared_*` views each gained them as one OR'd branch, so kudos, comments, photos, gear, live pings, markers, reviews, segment efforts and DM route attachments follow without a policy of their own. `private.can_share_with(owner, recipient)` is the grant tables' INSERT test.
 
 ### `segment_effort_ranks(p_run_id uuid)`
 

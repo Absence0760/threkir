@@ -150,6 +150,9 @@ done
   UltraSignup needs no key — it is opted in with `ULTRASIGNUP_RESULTS_ENABLED=true`, which
   sends the runner's name to UltraSignup, so it waits on CISO/counsel sign-off
   ([decisions § 1841](../architecture/decisions.md)).
+  Audience sharing (followers level + named-person shares) needs no deploy step and
+  ships closed; opening its `private.feature_flags` row waits on the CISO / Security
+  Analyst review in [deployment.md § Audience sharing](deployment.md#audience-sharing--after-the-ciso--security-analyst-review).
 - **Skip**: `strava-import` (needs Strava OAuth creds, and token refresh lives on the
   deferred worker — connections would go stale; Strava re-attaches with the worker rung),
   `refresh-tokens` + `strava-webhook` (deprecated worker rollback paths, nothing calls

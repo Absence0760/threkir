@@ -1,6 +1,6 @@
 # In-app help guides
 
-> **Status:** Framework shipped web (2026-10-13): `/help`, `/help/[id]`, `/help/search`, the per-page **How this works** link and the InfoTip guide link. Mobile renders the same guides from generated per-locale JSON assets. Every guide is **translated into all six non-English locales** (de, fr, es, ja, pt-PT, pt-BR); a guide with no translation falls back to English with a note, and a translation made from older English fails CI. ADRs: [decisions.md § 1846](../architecture/decisions.md), § R7I18N-1, § R7I18N-2.
+> **Status:** Framework shipped web (2026-10-13): `/help`, `/help/[id]`, `/help/search`, the per-page **How this works** link and the InfoTip guide link. Mobile renders the same guides from generated per-locale JSON assets. Every guide is **translated into all six non-English locales** (de, fr, es, ja, pt-PT, pt-BR); a guide with no translation falls back to English with a note, and a translated string made from older English fails CI, naming that string. ADRs: [decisions.md § 1846](../architecture/decisions.md), § R8I18N-1, § R8I18N-2, § R8I18N-3.
 
 In-app help is a **reference to the app itself**, written for someone using it: what a feature does, who it is for, where it lives and what it needs first. It is a different surface from the public [Learn guides](learn.md) (`/learn`), and the two stay separate:
 
@@ -22,8 +22,8 @@ apps/web/src/lib/help/
   guides/<id>.ts    one guide per file: `export const guide: Guide = {...}` (English)
   translations/<locale>/<id>.ts
                     `export const translation: GuideTranslation = {...}`: the
-                    guide's words in one locale, plus the `source` hash
-  translate.ts      translatableText / structureProblems / localizeGuide /
+                    guide's words in one locale, plus a `sources` hash per string
+  translate.ts      translatableStrings / structureProblems / localizeGuide /
                     mergeFetchedGuides — pure, no run-time imports
   markup.ts         parseMarkup / plainText / markupProblems / routeHref / sectionId
   catalogue.ts      createHelpIndex(guides, lang) — pure; the enum value lists
@@ -125,10 +125,17 @@ import type { GuideTranslation } from '../../types';
 
 export const translation: GuideTranslation = {
 	id: '<id>',
-	source: '<16 hex digits>',
 	title: '…',
 	summary: '…',
 	sections: [/* the guide's sections, block for block, words translated */],
+	sources: {
+		title: '<16 hex digits>',
+		summary: '<16 hex digits>',
+		's0.heading': '<16 hex digits>',
+		's0.b0': '<16 hex digits>',     // a paragraph or note
+		's0.b1.i0': '<16 hex digits>',  // a step or list item
+		// … one entry per translated string
+	},
 };
 ```
 
@@ -136,6 +143,8 @@ A translation carries **only words**. Kind, category, audience, requirements, pl
 
 **Fallback is per guide.** `localizeGuide` returns the English guide, marked `lang: 'en'`, when there is no translation or it does not line up. Web bundles English and, for any other locale, fetches the generated `/help-guides/guides.<locale>.json` once (the help layout's load waits for it, so a help page opens in the reader's language); a failed fetch leaves English. A guide shown in English in another locale carries `help.guideInEnglish` (web) / `helpGuideInEnglish` (mobile) under its summary, and its text is marked with its own `lang`.
 
-**Staleness fails CI** (§ R7I18N-1). `source` is `node scripts/check_help_translations.mjs --hash <id>`: the first 16 hex digits of the SHA-256 of the English guide's title, summary and section text, so editing any of those words, and nothing else, makes the six translations stale. The guard then fails, naming each file and the new hash. Re-translate the changed strings and set the new `source`; or, for a fix that cannot wait, delete the stale files, which puts the guide back to English (with the note) in those locales until it is translated again. Nothing checks hashes at run time: a stale translation cannot reach `main`.
+**Staleness fails CI, string by string** (§ R8I18N-1, § R8I18N-3). Every translated string has a path — `title`, `summary`, `s<n>.heading`, `s<n>.b<m>` for a paragraph or note, `s<n>.b<m>.i<k>` for a step or list item, all counted from 0 (`translatableStrings` in `translate.ts`) — and `sources` records, per path, the first 16 hex digits of the SHA-256 of the English string it was translated from. Editing one English string stales exactly that string in every locale. `node scripts/check_help_translations.mjs` then fails with one line per stale string, naming the file, the path, where it sits ("section 3 block 1 item 2"), what the English now reads and the new hash. It also fails a `sources` map that misses a string or names one the guide does not have, and a translation whose sections or blocks no longer line up (an English edit that adds or removes a block or item is a structure change, reported as such rather than hash by hash). Nothing checks hashes at run time: a stale translation cannot reach `main`.
 
-**Translating.** Run the `i18n-translator` agent per locale with a JSON batch of the guide strings, then the `i18n-checker` agent over its output, and apply the checker's corrections; the agents keep the catalogues' terminology. Write each file with `source` set to the hash above, run `pnpm gen:help-guides`, and commit the translation files with the regenerated JSON.
+**Re-translating a stale string.** Take the paths the guard names, send the new English for those strings alone to the `i18n-translator` agent (keyed `web:help.<id>.<path>`, the same keys the batches use), check its output with the `i18n-checker`, put each corrected string at its path in the translation file and set that path's `sources` entry to the "now" hash the guard printed (`node scripts/check_help_translations.mjs --hash <id> <path>` prints one hash, `--hash <id>` the whole map). After a structure change, rewrite the affected section to line up and re-hash it. For a fix that cannot wait, deleting the locale's file instead puts the whole guide back to English (with the note) in that locale until it is translated again; there is no per-string English fallback, so a reader never gets a guide in two languages.
+
+**Translating.** Run the `i18n-translator` agent per locale with a JSON batch of the guide strings, then the `i18n-checker` agent over its output, and apply the checker's corrections; the agents keep the catalogues' terminology. Write each file with `sources` set to `--hash <id>`'s map, run `pnpm gen:help-guides`, and commit the translation files with the regenerated JSON.

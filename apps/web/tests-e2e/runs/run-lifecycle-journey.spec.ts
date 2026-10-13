@@ -92,9 +92,7 @@ test.describe('run lifecycle journey', () => {
 				await page.locator('input[type="number"]').first().fill('5'); // distance km
 				await page.locator('input[type="number"]').nth(1).fill('25'); // duration min
 				await page.locator('textarea').fill(createNotes);
-				await page
-					.getByRole('checkbox', { name: /Make this run public/ })
-					.check();
+				await page.getByTestId('run-editor-audience').selectOption('public');
 
 				await page.locator('form button[type="submit"]').click();
 

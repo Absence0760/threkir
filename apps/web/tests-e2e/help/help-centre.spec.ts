@@ -28,6 +28,9 @@ test.describe('/help — in-app help centre', () => {
 		const card = page.getByRole('link', { name: /Finding help in the app/ });
 		await expect(card).toBeVisible();
 
+		// The page is prerendered, so the chips are on screen before Svelte binds
+		// their handlers; a press that early is lost (see fixtures/helpers.ts).
+		await page.waitForLoadState('networkidle');
 		const all = page.getByRole('button', { name: 'All', exact: true });
 		const spectators = page.getByRole('button', { name: 'Spectators' });
 		await expect(all).toHaveAttribute('aria-pressed', 'true');
@@ -94,6 +97,7 @@ test.describe('/help — in-app help centre', () => {
 		await expect(page).toHaveURL(/\/help\/search\?q=search$/);
 
 		await page.goto('/help');
+		await page.waitForLoadState('networkidle');
 		const organisers = page.getByRole('button', { name: 'Organisers' });
 		await organisers.focus();
 		await page.keyboard.press('Space');

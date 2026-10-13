@@ -85,7 +85,7 @@ test.describe('/runs/new', () => {
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('6');
 		await numberInputs.nth(1).fill('30');
-		await page.getByRole('checkbox', { name: /Make this run public/ }).check();
+		await page.getByTestId('run-editor-audience').selectOption('public');
 		await page.getByRole('button', { name: /Save/ }).click();
 		const newId = await captureCreatedRunId(page);
 		await page.waitForLoadState('networkidle');
@@ -114,10 +114,8 @@ test.describe('/runs/new', () => {
 		await expect(
 			page.getByRole('heading', { level: 1, name: 'Add a run' })
 		).toBeVisible({ timeout: 10_000 });
-		// Toggle reflects the standing preference.
-		await expect(
-			page.getByRole('checkbox', { name: /Make this run public/ })
-		).toBeChecked();
+		// The audience control reflects the standing preference.
+		await expect(page.getByTestId('run-editor-audience')).toHaveValue('public');
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('7');
@@ -137,7 +135,11 @@ test.describe('/runs/new', () => {
 		expect(row.is_public).toBe(true);
 	});
 
-	test('default (no privacy_default set) keeps a manual run private', async ({ page }) => {
+	test('default (no privacy_default set) lands a manual run followers-only, never public', async ({
+		page
+	}) => {
+		// The unset default is `followers` (decisions § 1874): with the seed's
+		// audience_sharing flag on, that writes followers_only, not is_public.
 		const admin = getAdminClient();
 		await clearUserSettingKey(USER_A.id, 'privacy_default');
 
@@ -145,9 +147,7 @@ test.describe('/runs/new', () => {
 		await expect(
 			page.getByRole('heading', { level: 1, name: 'Add a run' })
 		).toBeVisible({ timeout: 10_000 });
-		await expect(
-			page.getByRole('checkbox', { name: /Make this run public/ })
-		).not.toBeChecked();
+		await expect(page.getByTestId('run-editor-audience')).toHaveValue('followers');
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('8');
@@ -160,11 +160,12 @@ test.describe('/runs/new', () => {
 			'runs by id',
 			admin
 				.from('runs')
-				.select('is_public')
+				.select('is_public, followers_only')
 				.eq('id', newId)
 				.single()
 		);
 		expect(row.is_public).toBe(false);
+		expect(row.followers_only).toBe(true);
 	});
 
 	test('renders page chrome (kicker, h1, tagline, back link)', async ({ page }) => {
@@ -511,9 +512,7 @@ test.describe('/runs/new', () => {
 
 		const routesLoaded = page.waitForResponse(/\/rest\/v1\/routes\b/);
 		releaseSettings();
-		await expect(
-			page.getByRole('checkbox', { name: /Make this run public/ })
-		).toBeChecked();
+		await expect(page.getByTestId('run-editor-audience')).toHaveValue('public');
 		await routesLoaded;
 
 		await page.getByRole('link', { name: /Back to runs/ }).click();

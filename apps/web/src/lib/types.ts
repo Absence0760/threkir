@@ -407,6 +407,13 @@ export type EventModality = 'in_person';
 // (20261222_001) partitions on `= 'finished'`, so a new value lands OUTSIDE
 // the ranked set by default. Keep in lockstep (check_constraint_unions.mjs).
 export type FinisherStatus = 'finished' | 'dnf' | 'dns';
+// event_results.finish_method — where a result's time came from: the device's
+// finish detection (`auto`), the racer's own Finish / Submit-my-time
+// (`manual`), or the race director (`host` — an edited time or the DNF End
+// files). NULL on a pre-20270727000001 row and on a bulk import. Enforced by
+// the event_results CHECK (migration 20270727000001); keep in lockstep
+// (check_constraint_unions.mjs PAIRS).
+export type FinishMethod = 'auto' | 'manual' | 'host';
 // race_sessions.status — the club-event race-mode lifecycle. Enforced by the
 // race_sessions CHECK (migration 20260425_001) — keep this union in lockstep
 // (check_constraint_unions.mjs PAIRS).

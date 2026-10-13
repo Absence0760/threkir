@@ -911,6 +911,7 @@ export type Database = {
       event_attendees: {
         Row: {
           attendance: string | null
+          course_id: string | null
           event_id: string
           instance_start: string
           joined_at: string | null
@@ -921,6 +922,7 @@ export type Database = {
         }
         Insert: {
           attendance?: string | null
+          course_id?: string | null
           event_id: string
           instance_start: string
           joined_at?: string | null
@@ -931,6 +933,7 @@ export type Database = {
         }
         Update: {
           attendance?: string | null
+          course_id?: string | null
           event_id?: string
           instance_start?: string
           joined_at?: string | null
@@ -940,6 +943,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "event_attendees_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "event_courses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "event_attendees_event_id_fkey"
             columns: ["event_id"]
@@ -952,6 +962,58 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "event_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_courses: {
+        Row: {
+          created_at: string
+          distance_m: number | null
+          event_id: string
+          id: string
+          name: string
+          route_id: string | null
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          distance_m?: number | null
+          event_id: string
+          id?: string
+          name: string
+          route_id?: string | null
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          distance_m?: number | null
+          event_id?: string
+          id?: string
+          name?: string
+          route_id?: string | null
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_courses_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_courses_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "public_routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_courses_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
             referencedColumns: ["id"]
           },
         ]
@@ -1206,12 +1268,16 @@ export type Database = {
         Row: {
           age_grade_pct: number | null
           bib: string | null
+          chip_time_s: number | null
+          course_id: string | null
           created_at: string
           distance_m: number
           duration_s: number
           event_id: string
+          finish_method: string | null
           finisher_name: string | null
           finisher_status: string
+          gun_time_s: number | null
           id: string
           instance_start: string
           note: string | null
@@ -1226,12 +1292,16 @@ export type Database = {
         Insert: {
           age_grade_pct?: number | null
           bib?: string | null
+          chip_time_s?: number | null
+          course_id?: string | null
           created_at?: string
           distance_m: number
           duration_s: number
           event_id: string
+          finish_method?: string | null
           finisher_name?: string | null
           finisher_status?: string
+          gun_time_s?: number | null
           id?: string
           instance_start: string
           note?: string | null
@@ -1246,12 +1316,16 @@ export type Database = {
         Update: {
           age_grade_pct?: number | null
           bib?: string | null
+          chip_time_s?: number | null
+          course_id?: string | null
           created_at?: string
           distance_m?: number
           duration_s?: number
           event_id?: string
+          finish_method?: string | null
           finisher_name?: string | null
           finisher_status?: string
+          gun_time_s?: number | null
           id?: string
           instance_start?: string
           note?: string | null
@@ -1264,6 +1338,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "event_results_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "event_courses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "event_results_event_id_fkey"
             columns: ["event_id"]
@@ -4420,12 +4501,16 @@ export type Database = {
         Row: {
           age_grade_pct: number | null
           bib: string | null
+          chip_time_s: number | null
+          course_id: string | null
           created_at: string | null
           distance_m: number | null
           duration_s: number | null
           event_id: string | null
+          finish_method: string | null
           finisher_name: string | null
           finisher_status: string | null
+          gun_time_s: number | null
           id: string | null
           instance_start: string | null
           note: string | null
@@ -4438,12 +4523,16 @@ export type Database = {
         Insert: {
           age_grade_pct?: never
           bib?: string | null
+          chip_time_s?: number | null
+          course_id?: string | null
           created_at?: string | null
           distance_m?: number | null
           duration_s?: number | null
           event_id?: string | null
+          finish_method?: string | null
           finisher_name?: string | null
           finisher_status?: string | null
+          gun_time_s?: number | null
           id?: string | null
           instance_start?: string | null
           note?: never
@@ -4456,12 +4545,16 @@ export type Database = {
         Update: {
           age_grade_pct?: never
           bib?: string | null
+          chip_time_s?: number | null
+          course_id?: string | null
           created_at?: string | null
           distance_m?: number | null
           duration_s?: number | null
           event_id?: string | null
+          finish_method?: string | null
           finisher_name?: string | null
           finisher_status?: string | null
+          gun_time_s?: number | null
           id?: string | null
           instance_start?: string | null
           note?: never
@@ -4472,6 +4565,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "event_results_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "event_courses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "event_results_event_id_fkey"
             columns: ["event_id"]
@@ -5840,6 +5940,10 @@ export type Database = {
       publish_gym_routine_as_template: {
         Args: { p_club_id: string; p_routine_id: string }
         Returns: string
+      }
+      race_pending_dnf_count: {
+        Args: { p_event_id: string; p_instance_start: string }
+        Returns: number
       }
       recompute_challenge_completion: {
         Args: { p_challenge_id: string; p_user_id: string }

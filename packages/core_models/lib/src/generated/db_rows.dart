@@ -1304,6 +1304,7 @@ class EventAttendeeRow {
   static const String colOrderId = 'order_id';
   static const String colAttendance = 'attendance';
   static const String colOfferExpiresAt = 'offer_expires_at';
+  static const String colCourseId = 'course_id';
 
   final String eventId;
   final String userId;
@@ -1313,6 +1314,7 @@ class EventAttendeeRow {
   final String? orderId;
   final String? attendance;
   final DateTime? offerExpiresAt;
+  final String? courseId;
 
   const EventAttendeeRow({
     required this.eventId,
@@ -1323,6 +1325,7 @@ class EventAttendeeRow {
     this.orderId,
     this.attendance,
     this.offerExpiresAt,
+    this.courseId,
   });
 
   factory EventAttendeeRow.fromJson(Map<String, dynamic> json) => EventAttendeeRow(
@@ -1334,6 +1337,7 @@ class EventAttendeeRow {
     orderId: json['order_id'] as String?,
     attendance: json['attendance'] as String?,
     offerExpiresAt: parseIsoStrictValue(json['offer_expires_at']),
+    courseId: json['course_id'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -1345,6 +1349,7 @@ class EventAttendeeRow {
     colOrderId: orderId,
     colAttendance: attendance,
     colOfferExpiresAt: offerExpiresAt?.toIso8601String(),
+    colCourseId: courseId,
   };
 
   EventAttendeeRow copyWith({
@@ -1356,6 +1361,7 @@ class EventAttendeeRow {
     String? orderId,
     String? attendance,
     DateTime? offerExpiresAt,
+    String? courseId,
   }) => EventAttendeeRow(
     eventId: eventId ?? this.eventId,
     userId: userId ?? this.userId,
@@ -1365,6 +1371,7 @@ class EventAttendeeRow {
     orderId: orderId ?? this.orderId,
     attendance: attendance ?? this.attendance,
     offerExpiresAt: offerExpiresAt ?? this.offerExpiresAt,
+    courseId: courseId ?? this.courseId,
   );
 }
 
@@ -1469,6 +1476,75 @@ class EventCheckpointRow {
     createdBy: createdBy ?? this.createdBy,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
+  );
+}
+
+/// Row shape for the `event_courses` table. Mirrors the Supabase schema
+/// exactly — field names are snake_case to match the JSON wire format.
+class EventCourseRow {
+  static const String table = 'event_courses';
+  static const String colId = 'id';
+  static const String colEventId = 'event_id';
+  static const String colRouteId = 'route_id';
+  static const String colName = 'name';
+  static const String colDistanceM = 'distance_m';
+  static const String colSortOrder = 'sort_order';
+  static const String colCreatedAt = 'created_at';
+
+  final String id;
+  final String eventId;
+  final String? routeId;
+  final String name;
+  final double? distanceM;
+  final int sortOrder;
+  final DateTime createdAt;
+
+  const EventCourseRow({
+    required this.id,
+    required this.eventId,
+    this.routeId,
+    required this.name,
+    this.distanceM,
+    required this.sortOrder,
+    required this.createdAt,
+  });
+
+  factory EventCourseRow.fromJson(Map<String, dynamic> json) => EventCourseRow(
+    id: json['id'] as String,
+    eventId: json['event_id'] as String,
+    routeId: json['route_id'] as String?,
+    name: json['name'] as String,
+    distanceM: _toDoubleOrNull(json['distance_m']),
+    sortOrder: (json['sort_order'] as num).toInt(),
+    createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    colId: id,
+    colEventId: eventId,
+    colRouteId: routeId,
+    colName: name,
+    colDistanceM: distanceM,
+    colSortOrder: sortOrder,
+    colCreatedAt: createdAt.toIso8601String(),
+  };
+
+  EventCourseRow copyWith({
+    String? id,
+    String? eventId,
+    String? routeId,
+    String? name,
+    double? distanceM,
+    int? sortOrder,
+    DateTime? createdAt,
+  }) => EventCourseRow(
+    id: id ?? this.id,
+    eventId: eventId ?? this.eventId,
+    routeId: routeId ?? this.routeId,
+    name: name ?? this.name,
+    distanceM: distanceM ?? this.distanceM,
+    sortOrder: sortOrder ?? this.sortOrder,
+    createdAt: createdAt ?? this.createdAt,
   );
 }
 
@@ -1709,6 +1785,10 @@ class EventResultRow {
   static const String colId = 'id';
   static const String colBib = 'bib';
   static const String colFinisherName = 'finisher_name';
+  static const String colCourseId = 'course_id';
+  static const String colGunTimeS = 'gun_time_s';
+  static const String colChipTimeS = 'chip_time_s';
+  static const String colFinishMethod = 'finish_method';
 
   final String eventId;
   final DateTime instanceStart;
@@ -1728,6 +1808,10 @@ class EventResultRow {
   final String id;
   final String? bib;
   final String? finisherName;
+  final String? courseId;
+  final int? gunTimeS;
+  final int? chipTimeS;
+  final String? finishMethod;
 
   const EventResultRow({
     required this.eventId,
@@ -1748,6 +1832,10 @@ class EventResultRow {
     required this.id,
     this.bib,
     this.finisherName,
+    this.courseId,
+    this.gunTimeS,
+    this.chipTimeS,
+    this.finishMethod,
   });
 
   factory EventResultRow.fromJson(Map<String, dynamic> json) => EventResultRow(
@@ -1769,6 +1857,10 @@ class EventResultRow {
     id: json['id'] as String,
     bib: json['bib'] as String?,
     finisherName: json['finisher_name'] as String?,
+    courseId: json['course_id'] as String?,
+    gunTimeS: (json['gun_time_s'] as num?)?.toInt(),
+    chipTimeS: (json['chip_time_s'] as num?)?.toInt(),
+    finishMethod: json['finish_method'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -1790,6 +1882,10 @@ class EventResultRow {
     colId: id,
     colBib: bib,
     colFinisherName: finisherName,
+    colCourseId: courseId,
+    colGunTimeS: gunTimeS,
+    colChipTimeS: chipTimeS,
+    colFinishMethod: finishMethod,
   };
 
   EventResultRow copyWith({
@@ -1811,6 +1907,10 @@ class EventResultRow {
     String? id,
     String? bib,
     String? finisherName,
+    String? courseId,
+    int? gunTimeS,
+    int? chipTimeS,
+    String? finishMethod,
   }) => EventResultRow(
     eventId: eventId ?? this.eventId,
     instanceStart: instanceStart ?? this.instanceStart,
@@ -1830,6 +1930,10 @@ class EventResultRow {
     id: id ?? this.id,
     bib: bib ?? this.bib,
     finisherName: finisherName ?? this.finisherName,
+    courseId: courseId ?? this.courseId,
+    gunTimeS: gunTimeS ?? this.gunTimeS,
+    chipTimeS: chipTimeS ?? this.chipTimeS,
+    finishMethod: finishMethod ?? this.finishMethod,
   );
 }
 

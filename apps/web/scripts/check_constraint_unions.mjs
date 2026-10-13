@@ -298,6 +298,10 @@ export const PAIRS = [
 		clients: [{ file: TS_TYPES, decl: 'FinisherStatus', shape: 'union' }],
 	},
 	{
+		tableColumn: 'event_results.finish_method',
+		clients: [{ file: TS_TYPES, decl: 'FinishMethod', shape: 'union' }],
+	},
+	{
 		tableColumn: 'events.category',
 		clients: [
 			{ file: TS_TYPES, decl: 'EventCategory', shape: 'union' },

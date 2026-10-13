@@ -47,12 +47,17 @@ Deno.test('resolveImportAudience reads the stored pref', async () => {
   );
 });
 
-Deno.test('a failed settings read is owner-only, not the followers fallback', async () => {
-  // An answered read with no row takes the followers fallback; a FAILED one
-  // must not, so the two are asserted side by side.
+Deno.test('a failed settings read is owner-only, not the stored followers pref', async () => {
+  // An answered read honours a stored followers pref; a FAILED one must not,
+  // so the two are asserted side by side. An answered read with no row takes
+  // the private fallback (§ 1881).
+  assertEquals(
+    await resolveImportAudience(client({ data: { prefs: { privacy_default: 'followers' } } }), 'u1'),
+    { isPublic: false, followersOnly: true },
+  );
   assertEquals(
     await resolveImportAudience(client({ data: null }), 'u1'),
-    { isPublic: false, followersOnly: true },
+    { isPublic: false, followersOnly: false },
   );
   const ownerOnly = { isPublic: false, followersOnly: false };
   assertEquals(await resolveImportAudience(client({ error: { message: 'x' } }), 'u1'), ownerOnly);

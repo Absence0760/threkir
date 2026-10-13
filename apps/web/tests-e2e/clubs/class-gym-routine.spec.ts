@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
-import { readRow, readRows } from '../fixtures/db-read';
+import { readCount, readRow, readRows } from '../fixtures/db-read';
 import { deleteEvent } from '../fixtures/simulate';
 import { USER_A, USER_B } from '../fixtures/users';
 
@@ -97,10 +97,13 @@ test.describe('class event — attached gym routine', () => {
 		await expect(routineCard.getByText(CLUB_TEMPLATE_TITLE)).toBeVisible({ timeout: 10_000 });
 		await expect(routineCard.getByText('Back Squat')).toBeVisible();
 
-		const { count: routinesBefore } = await admin
-			.from('gym_routines')
-			.select('id', { count: 'exact', head: true })
-			.eq('author_id', USER_B.id);
+		const routinesBefore = await readCount(
+			'USER_B routines',
+			admin
+				.from('gym_routines')
+				.select('id', { count: 'exact', head: true })
+				.eq('author_id', USER_B.id)
+		);
 
 		const ctx = await browser.newContext({ storageState: USER_B.storageStatePath });
 		try {
@@ -153,10 +156,13 @@ test.describe('class event — attached gym routine', () => {
 		expect(sets[0]).toEqual({ exercise_name: 'Back Squat', reps: 5 });
 
 		// The template was read, not cloned into the attendee's library.
-		const { count: routinesAfter } = await admin
-			.from('gym_routines')
-			.select('id', { count: 'exact', head: true })
-			.eq('author_id', USER_B.id);
+		const routinesAfter = await readCount(
+			'USER_B routines',
+			admin
+				.from('gym_routines')
+				.select('id', { count: 'exact', head: true })
+				.eq('author_id', USER_B.id)
+		);
 		expect(routinesAfter).toBe(routinesBefore);
 	});
 });

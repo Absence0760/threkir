@@ -6137,6 +6137,10 @@ void main() {
       // every Brazilian proparoxytone taking ô/ê where Portugal takes ó/é.
       'cronômetro', 'oxigênio', 'autônomo', 'autônoma',
       'planilha', 'usuário', 'deletar', 'esporte',
+      // Brazil's progressive gerund, which Portugal writes as `a` + infinitive
+      // (`A carregar…`), and three nouns Portugal says another way.
+      'carregando', 'aguardando', 'procurando', 'enviando', 'criando',
+      'salvando', 'desconectar', 'provedor', 'treinamento',
     ];
     const europeanOnly = <String>[
       'palavra-passe', 'ecrã', 'ficheiro', 'telemóvel', 'passadeira',

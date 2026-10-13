@@ -31,7 +31,7 @@ import {
   ultraSignUpHistoryUrl,
   ultraSignUpNamePart,
   ultraSignUpNumericId,
-  ultraSignUpPersonScope,
+  ultraSignUpScopeGate,
   ultraSignUpProbe,
   ultraSignUpResultIsForListing,
 } from './lib.ts';
@@ -351,15 +351,15 @@ Deno.test('ultraSignUpCandidates gives the picker enough to tell namesakes apart
   assertEquals(ultraSignUpCandidates(many).length, MAX_ULTRASIGNUP_CANDIDATES);
 });
 
-Deno.test('ultraSignUpPersonScope needs the id and both halves of the name', () => {
+Deno.test('ultraSignUpScopeGate needs the id and both halves of the name', () => {
   const refused = { ok: false, status: 400, error: 'ultrasignup_person_required' } as const;
-  assertEquals(ultraSignUpPersonScope({}), refused);
-  assertEquals(ultraSignUpPersonScope({ personId: '900001', firstName: 'Alex' }), refused);
-  assertEquals(ultraSignUpPersonScope({ firstName: 'Alex', lastName: 'Sample' }), refused);
+  assertEquals(ultraSignUpScopeGate({}), refused);
+  assertEquals(ultraSignUpScopeGate({ personId: '900001', firstName: 'Alex' }), refused);
+  assertEquals(ultraSignUpScopeGate({ firstName: 'Alex', lastName: 'Sample' }), refused);
   // The old athlete-id shape is not a person.
-  assertEquals(ultraSignUpPersonScope({ personId: 'uid-42', firstName: 'A', lastName: 'B' }), refused);
+  assertEquals(ultraSignUpScopeGate({ personId: 'uid-42', firstName: 'A', lastName: 'B' }), refused);
   assertEquals(
-    ultraSignUpPersonScope({ personId: 900001, firstName: ' Alex ', lastName: 'Sample' }),
+    ultraSignUpScopeGate({ personId: 900001, firstName: ' Alex ', lastName: 'Sample' }),
     { ok: true, personId: '900001', firstName: 'Alex', lastName: 'Sample' },
   );
 });

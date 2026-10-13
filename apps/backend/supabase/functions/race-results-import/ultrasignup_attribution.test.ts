@@ -124,7 +124,7 @@ Deno.test('the attribution gate is gone and the import goes through the attribut
   const end = SRC.indexOf("} else if (provider === 'chronotrack') {", branch);
   assert(branch !== -1 && end !== -1, 'the ultrasignup branch is gone — re-anchor this guard');
   const body = SRC.slice(branch, end);
-  const scope = body.indexOf('ultraSignUpPersonScope(');
+  const scope = body.indexOf('ultraSignUpScopeGate(');
   const fetchAt = body.indexOf('await fetch(');
   assert(scope !== -1 && fetchAt !== -1 && scope < fetchAt, 'the person must be scoped before the fetch');
   assert(body.includes('ultraSignUpImportRows('), 'the branch no longer maps through the attributing helper');

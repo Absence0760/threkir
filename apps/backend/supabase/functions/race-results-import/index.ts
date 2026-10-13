@@ -24,8 +24,8 @@ import {
   ultraSignUpHistoryUrl,
   ultraSignUpImportRows,
   ultraSignUpNamePart,
-  ultraSignUpPersonScope,
   ultraSignUpProbe,
+  ultraSignUpScopeGate,
   type MappedRaceRun,
 } from './lib.ts';
 import { publishableKey } from '../_shared/api_keys.ts';
@@ -289,7 +289,7 @@ Deno.serve(withSentry('race-results-import', async (req: Request) => {
     // same-named person, so without the picked `Id` there is no telling which
     // of them is the caller (issue #360's failure mode, by name instead of by
     // race).
-    const person = ultraSignUpPersonScope({
+    const person = ultraSignUpScopeGate({
       personId: body.ultraSignUpPersonId,
       firstName: body.ultraSignUpFirstName,
       lastName: body.ultraSignUpLastName,

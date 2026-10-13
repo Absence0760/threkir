@@ -711,7 +711,7 @@ export function ultraSignUpImportRows(
 }
 
 /** A request's UltraSignup person, validated, or the 400 that refuses it. */
-export type UltraSignUpPersonScope =
+export type UltraSignUpScope =
   | { ok: true; personId: string; firstName: string; lastName: string }
   | { ok: false; status: number; error: string };
 
@@ -722,11 +722,11 @@ export type UltraSignUpPersonScope =
  * `ultrasignup_person_required` — never a fetch, and never a fallback onto the
  * listing's `provider_race_id`, which is a RACE id.
  */
-export function ultraSignUpPersonScope(raw: {
+export function ultraSignUpScopeGate(raw: {
   personId?: unknown;
   firstName?: unknown;
   lastName?: unknown;
-}): UltraSignUpPersonScope {
+}): UltraSignUpScope {
   const personId = ultraSignUpNumericId(raw.personId);
   const firstName = ultraSignUpNamePart(raw.firstName);
   const lastName = ultraSignUpNamePart(raw.lastName);

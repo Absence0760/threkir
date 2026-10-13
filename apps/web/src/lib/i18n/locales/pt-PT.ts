@@ -5710,7 +5710,7 @@ export const messages = {
 	"audience.levelSpecificHint": "Só as pessoas que escolher podem abrir. Pode deixar de partilhar com qualquer pessoa a qualquer momento.",
 	"audience.levelPublic": "Público",
 	"audience.levelPublicHint": "Qualquer pessoa com a ligação pode abrir, e pode aparecer nos feeds e na pesquisa.",
-	"audience.clipNote": "Todos, exceto o próprio, veem o mapa sem as suas zonas de privacidade.",
+	"audience.clipNote": "Quem não for o titular vê o mapa sem as suas zonas de privacidade.",
 	"audience.sharedWith": "Partilhado com",
 	"audience.sharedWithNobody": "Ainda não partilhado com ninguém.",
 	"audience.revoke": "Deixar de partilhar",

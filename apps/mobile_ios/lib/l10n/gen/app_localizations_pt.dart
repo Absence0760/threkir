@@ -15142,7 +15142,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get audienceClipNote =>
-      'Todos, exceto o próprio, veem o mapa sem as suas zonas de privacidade.';
+      'Quem não for o titular vê o mapa sem as suas zonas de privacidade.';
 
   @override
   String get audienceSharedWith => 'Partilhado com';
@@ -15224,7 +15224,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get audienceRevokeAllConfirm => 'Só eu';
 
   @override
-  String get audienceShareLink => 'Link de partilha';
+  String get audienceShareLink => 'Partilhar ligação';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).

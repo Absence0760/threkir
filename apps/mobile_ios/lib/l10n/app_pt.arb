@@ -4363,7 +4363,7 @@
   "audienceLevelSpecificHint": "Só as pessoas que escolher podem abrir. Pode deixar de partilhar com qualquer pessoa a qualquer momento.",
   "audienceLevelPublic": "Público",
   "audienceLevelPublicHint": "Qualquer pessoa com a ligação pode abrir, e pode aparecer nos feeds e na pesquisa.",
-  "audienceClipNote": "Todos, exceto o próprio, veem o mapa sem as suas zonas de privacidade.",
+  "audienceClipNote": "Quem não for o titular vê o mapa sem as suas zonas de privacidade.",
   "audienceSharedWith": "Partilhado com",
   "audienceSharedWithNobody": "Ainda não partilhado com ninguém.",
   "audienceRevokeTooltip": "Deixar de partilhar com {name}",
@@ -4385,5 +4385,5 @@
   "audienceRevokeAllTitle": "Deixar de partilhar com todos?",
   "audienceRevokeAllBody": "Todas as pessoas com quem partilhou deixarão de poder abrir.",
   "audienceRevokeAllConfirm": "Só eu",
-  "audienceShareLink": "Link de partilha"
+  "audienceShareLink": "Partilhar ligação"
 }

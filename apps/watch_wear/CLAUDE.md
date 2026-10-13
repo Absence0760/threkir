@@ -73,7 +73,8 @@ apps/watch_wear/
             │   ├── SessionStore.kt          # EncryptedSharedPreferences cache of the auth session (tokens encrypted at rest)
             │   ├── SingleFlight.kt          # coalesces concurrent token refreshes (rotating refresh token)
             │   ├── RaceSessionClient.kt     # race-mode REST client: armed/running poll, chosen course, pings, `event_results` upsert
-            │   ├── RaceFinish.kt            # finish detector, Kotlin half of the `race_finish` parity pair (30 m zone, 90 % gate, closest approach)
+            │   ├── RaceFinish.kt            # finish detector, Kotlin half of the `race_finish` parity pair (30 m zone, 90 % gate, closest approach) + `ServerClockOffset`
+            │   ├── RaceRun.kt               # pure race-mode transitions RunViewModel acts on (Stop, Finish race, bind, host End, device-clock fix stamp)
             │   ├── RaceResultStore.kt       # DataStore queue of race results owed the server, replayed off the race poll
             │   ├── ui/RunWatchApp.kt        # Compose-for-Wear screens
             │   ├── ui/RouteMiniMap.kt       # Polyline + position-dot + track-so-far + raster tiles

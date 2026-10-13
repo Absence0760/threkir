@@ -184,7 +184,7 @@
 					<div><dt>{m('races.chipTime')}</dt><dd data-testid="race-result-chip">{result.chip_time}</dd></div>
 				{/if}
 				{#if result.gun_time}
-					<div><dt>{m('races.gunTime')}</dt><dd>{result.gun_time}</dd></div>
+					<div><dt>{m('races.gunTime')}</dt><dd data-testid="race-result-gun">{result.gun_time}</dd></div>
 				{/if}
 				{#if result.overall_place != null}
 					<div><dt>{m('races.overallPlace')}</dt><dd>{result.overall_place}</dd></div>

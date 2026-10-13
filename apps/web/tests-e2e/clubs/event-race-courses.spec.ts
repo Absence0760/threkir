@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 
+import { readCount, readRow, readRows } from '../fixtures/db-read';
 import { getAdminClient } from '../fixtures/local-supabase';
 import {
 	deleteEvent,
@@ -23,7 +24,11 @@ import { USER_A, USER_B } from '../fixtures/users';
  *   - the results card ranks each course separately, with the gun / chip split
  *     and the host-edited badge,
  *   - End states how many racers it will mark DNF and files those DNFs,
- *   - an organiser's time edit lands and is badged host-edited,
+ *   - an organiser's time edit lands and is badged host-edited, and on a
+ *     chip-only row it gives the row no gun time,
+ *   - removing a course racers picked drops their pick to no course,
+ *   - End with nobody out on course states no DNF count and files none,
+ *   - a one-course event asks for no pick and files the RSVP on that course,
  *   - the spectator page shows one finisher board per course.
  */
 
@@ -99,12 +104,11 @@ test.describe('/clubs/[slug]/events/[id] — race courses (organiser)', () => {
 		const { data: ev } = await admin.from('events').select('id').eq('title', title).single();
 		eventId = ev?.id ?? null;
 		expect(eventId).not.toBeNull();
-		const { data: courses } = await admin
-			.from('event_courses')
-			.select('name, sort_order')
-			.eq('event_id', eventId!)
-			.order('sort_order');
-		expect((courses ?? []).map((c) => c.name)).toEqual(['Half', '10K']);
+		const courses = await readRows(
+			'event_courses by event',
+			admin.from('event_courses').select('name, sort_order').eq('event_id', eventId!).order('sort_order')
+		);
+		expect(courses.map((c) => c.name)).toEqual(['Half', '10K']);
 	});
 
 	test('results rank per course, with the gun/chip split and the host-edited badge', async ({
@@ -265,13 +269,196 @@ test.describe('/clubs/[slug]/events/[id] — race courses (organiser)', () => {
 		await expect(panel).toHaveCount(0, { timeout: 10_000 });
 
 		await expect(page.getByTestId('finish-method-badge')).toHaveText('Host edited');
-		const { data } = await getAdminClient()
-			.from('event_results')
-			.select('duration_s, gun_time_s, finish_method')
-			.eq('event_id', eventId)
-			.eq('user_id', USER_B.id)
-			.single();
+		const data = await readRow(
+			'edited result',
+			getAdminClient()
+				.from('event_results')
+				.select('duration_s, gun_time_s, finish_method')
+				.eq('event_id', eventId)
+				.eq('user_id', USER_B.id)
+				.single()
+		);
 		expect(data).toEqual({ duration_s: 2700, gun_time_s: 2700, finish_method: 'host' });
+	});
+
+	test('a host edit on a chip-only result keeps it chip-only', async ({ page }) => {
+		const startsAt = new Date(Date.now() - 2 * 3600 * 1000).toISOString();
+		eventId = await insertEvent({
+			club_id: RICHMOND_RUN_CLUB_ID,
+			author_id: USER_A.id,
+			title: `e2e-race-courses-edit-chip ${Date.now()}`,
+			starts_at: startsAt
+		});
+		const [tenK] = await insertCourses(eventId, [{ name: '10K', distance_m: 10000 }]);
+		await insertRaceSession({
+			event_id: eventId,
+			instance_start: startsAt,
+			status: 'finished',
+			started_at: startsAt,
+			finished_at: new Date(Date.now() - 3600 * 1000).toISOString(),
+			started_by: USER_A.id
+		});
+		// A web "Submit my time" during a race: chip time only, no gun reading.
+		await insertResult({
+			event_id: eventId,
+			instance_start: startsAt,
+			user_id: USER_B.id,
+			course_id: tenK,
+			duration_s: 2500,
+			distance_m: 10000,
+			chip_time_s: 2500,
+			gun_time_s: null,
+			finish_method: 'manual'
+		});
+
+		await page.goto(`/clubs/richmond-run-club/events/${eventId}`);
+		await page.getByTestId('edit-result').first().click();
+		const panel = page.getByTestId('edit-result-panel');
+		await panel.getByTestId('edit-result-time').fill('45:00');
+		await panel.getByTestId('edit-result-save').click();
+		await expect(panel).toHaveCount(0, { timeout: 10_000 });
+
+		await expect(page.getByTestId('finish-method-badge')).toHaveText('Host edited');
+		const data = await readRow(
+			'edited chip-only result',
+			getAdminClient()
+				.from('event_results')
+				.select('duration_s, gun_time_s, chip_time_s, finish_method')
+				.eq('event_id', eventId)
+				.eq('user_id', USER_B.id)
+				.single()
+		);
+		expect(data).toEqual({
+			duration_s: 2700,
+			gun_time_s: null,
+			chip_time_s: 2500,
+			finish_method: 'host'
+		});
+	});
+
+	test('removing a course racers picked drops their pick to no course and keeps the rest', async ({
+		page
+	}) => {
+		const title = `e2e-race-courses-remove ${Date.now()}`;
+		const startsAt = new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString();
+		eventId = await insertEvent({
+			club_id: RICHMOND_RUN_CLUB_ID,
+			author_id: USER_A.id,
+			title,
+			starts_at: startsAt,
+			distance_m: 10000
+		});
+		const [, half, kids] = await insertCourses(eventId, [
+			{ name: 'Main', distance_m: 10000 },
+			{ name: 'Half', distance_m: 21097 },
+			{ name: 'Kids', distance_m: 2000 }
+		]);
+		const { error: rsvpErr } = await getAdminClient().from('event_attendees').insert({
+			event_id: eventId,
+			instance_start: startsAt,
+			user_id: USER_B.id,
+			status: 'going',
+			course_id: half
+		});
+		if (rsvpErr) throw new Error(`rsvp insert failed: ${rsvpErr.message}`);
+
+		await page.goto(`/clubs/richmond-run-club/events/${eventId}`);
+		await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible({
+			timeout: 10_000
+		});
+		await page.getByTestId('edit-event').click();
+		const modal = page.locator('.modal', { hasText: 'Edit event' });
+		await expect(modal.getByTestId('event-course-row')).toHaveCount(2, { timeout: 10_000 });
+		await modal.getByRole('button', { name: 'Remove Half' }).click();
+		await expect(modal.getByTestId('event-course-row')).toHaveCount(1);
+		await modal.getByRole('button', { name: 'Save changes' }).click();
+		await expect(modal).toHaveCount(0, { timeout: 10_000 });
+
+		const admin = getAdminClient();
+		await expect
+			.poll(
+				async () => {
+					const { data } = await admin
+						.from('event_courses')
+						.select('id, name, sort_order')
+						.eq('event_id', eventId!)
+						.order('sort_order');
+					return (data ?? []).map((c) => `${c.name}@${c.sort_order}`);
+				},
+				{ timeout: 10_000 }
+			)
+			.toEqual(['Main@0', 'Kids@1']);
+		const kept = await readRow(
+			'surviving course',
+			admin.from('event_courses').select('id').eq('id', kids).single()
+		);
+		expect(kept.id, 'the surviving course was updated in place, not re-created').toBe(kids);
+		const rsvp = await readRow(
+			'rsvp on the removed course',
+			admin
+				.from('event_attendees')
+				.select('status, course_id')
+				.eq('event_id', eventId)
+				.eq('user_id', USER_B.id)
+				.single()
+		);
+		expect(rsvp).toEqual({ status: 'going', course_id: null });
+	});
+
+	test('End with nobody out on course states no DNF count and files none', async ({ page }) => {
+		const startsAt = new Date(Date.now() - 3600 * 1000).toISOString();
+		eventId = await insertEvent({
+			club_id: RICHMOND_RUN_CLUB_ID,
+			author_id: USER_A.id,
+			title: `e2e-race-courses-end-zero ${Date.now()}`,
+			starts_at: startsAt
+		});
+		const [tenK] = await insertCourses(eventId, [
+			{ name: '10K', distance_m: 10000 },
+			{ name: '5K', distance_m: 5000 }
+		]);
+		// Going, but never pinged the race: not a racer who started.
+		await getAdminClient().from('event_attendees').insert({
+			event_id: eventId,
+			instance_start: startsAt,
+			user_id: USER_B.id,
+			status: 'going',
+			course_id: tenK
+		});
+		await insertRaceSession({
+			event_id: eventId,
+			instance_start: startsAt,
+			status: 'running',
+			started_at: startsAt,
+			started_by: USER_A.id
+		});
+
+		await page.goto(`/clubs/richmond-run-club/events/${eventId}`);
+		await page.getByRole('button', { name: 'End race' }).click();
+		const dialog = page.getByRole('dialog');
+		await expect(dialog).toContainText('End the race?', { timeout: 10_000 });
+		await expect(dialog).not.toContainText('DNF');
+		await dialog.getByRole('button', { name: 'End race' }).click();
+
+		const admin = getAdminClient();
+		await expect
+			.poll(
+				async () => {
+					const { data } = await admin
+						.from('race_sessions')
+						.select('status')
+						.eq('event_id', eventId!)
+						.single();
+					return data?.status ?? null;
+				},
+				{ timeout: 10_000 }
+			)
+			.toBe('finished');
+		const results = await readCount(
+			'results after End',
+			admin.from('event_results').select('id', { count: 'exact', head: true }).eq('event_id', eventId)
+		);
+		expect(results).toBe(0);
 	});
 });
 
@@ -326,6 +513,40 @@ test.describe('/clubs/[slug]/events/[id] — race courses (member RSVP)', () => 
 				{ timeout: 10_000 }
 			)
 			.toBe(`going/${fiveK}`);
+	});
+
+	test('a one-course event asks for no pick and files the RSVP on that course', async ({
+		page
+	}) => {
+		eventId = await insertEvent({
+			club_id: RICHMOND_RUN_CLUB_ID,
+			author_id: USER_A.id,
+			title: `e2e-race-courses-single ${Date.now()}`,
+			starts_at: new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString()
+		});
+		const [only] = await insertCourses(eventId, [{ name: '10K', distance_m: 10000 }]);
+
+		await page.goto(`/clubs/richmond-run-club/events/${eventId}`);
+		const goingButton = page.getByRole('button', { name: "I'm in" });
+		await expect(goingButton).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByTestId('rsvp-course-select')).toHaveCount(0);
+		await goingButton.click();
+		await expect(page.getByText('Pick your course first.')).toHaveCount(0);
+
+		await expect
+			.poll(
+				async () => {
+					const { data } = await getAdminClient()
+						.from('event_attendees')
+						.select('status, course_id')
+						.eq('event_id', eventId!)
+						.eq('user_id', USER_B.id)
+						.maybeSingle();
+					return data ? `${data.status}/${data.course_id}` : null;
+				},
+				{ timeout: 10_000 }
+			)
+			.toBe(`going/${only}`);
 	});
 });
 

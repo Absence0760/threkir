@@ -84,7 +84,7 @@
     "id": "what-pro-includes",
     "lang": "pt-BR",
     "title": "O que o Pro inclui",
-    "summary": "Todas as telas do Threkir são gratuitas; o Pro aumenta o seu limite do Treinador IA e coloca alguns processamentos em segundo plano na frente da fila.",
+    "summary": "Todas as telas do Threkir são gratuitas; o Pro aumenta o seu limite do Coach de IA e coloca alguns processamentos em segundo plano na frente da fila.",
     "kind": "explainer",
     "category": "account",
     "audience": [
@@ -115,8 +115,8 @@
           {
             "type": "list",
             "items": [
-              "**Coach IA — 10/dia**: dez mensagens ao Treinador IA por dia em vez de duas. A contagem é zerada à meia-noite UTC.",
-              "Respostas do Treinador IA mais longas e completas, que podem levar em conta mais das suas corridas.",
+              "**Coach de IA — 10/dia**: dez mensagens ao Coach de IA por dia em vez de duas. A contagem é zerada à meia-noite UTC.",
+              "Respostas do Coach de IA mais longas e completas, que podem levar em conta mais das suas corridas.",
               "**Map-matching prioritário**: os seus trajetos de GPS são ajustados às vias antes dos das contas gratuitas, então ficam prontos mais cedo.",
               "**Exportações para a nuvem prioritárias**: até 8 exportações de pacotes GPX por hora em vez de 2.",
               "**Geração de rotas no servidor**: circuitos traçados na rede de ruas real quando você gera uma rota por distância. Contas gratuitas continuam tendo a geração de circuitos, calculada no navegador.",
@@ -140,7 +140,7 @@
           {
             "type": "list",
             "items": [
-              "Em um iPhone, abra **Pro e suporte** na aba **Você** e assine pela App Store.",
+              "Em um iPhone, abra **Pro e apoio** na aba **Você** e assine pela App Store.",
               "Na web, abra [[route:/settings/upgrade|Pro e apoio]] em Configurações. Se aparecer **A assinatura pela web chega em breve.**, assine pelo app para iPhone."
             ]
           },
@@ -162,7 +162,7 @@
             "type": "list",
             "items": [
               "Cancele ou mude o seu plano onde você o iniciou: na App Store, na Play Store ou no portal de cobrança da web. **Gerenciar assinatura** leva você até lá.",
-              "Em um celular novo, toque em **Restaurar compras** em **Pro e suporte** para trazer uma assinatura existente.",
+              "Em um celular novo, toque em **Restaurar compras** em **Pro e apoio** para trazer uma assinatura existente.",
               "Prefere uma contribuição única? **Doar** fica na mesma página."
             ]
           }
@@ -595,7 +595,7 @@
           {
             "type": "note",
             "tone": "tip",
-            "text": "Se o evento for uma aula paga, cancelar uma ocorrência reembolsa integralmente todos os inscritos nela. Veja [[guide:host-a-paid-yoga-class|Oferecer uma aula paga de yoga]]."
+            "text": "Se o evento for uma aula paga, cancelar uma ocorrência reembolsa integralmente todos os inscritos nela. Veja [[guide:host-a-paid-yoga-class|Oferecer uma aula paga de ioga]]."
           }
         ]
       }
@@ -705,7 +705,7 @@
   {
     "id": "build-a-session-plan",
     "lang": "pt-BR",
-    "title": "Montar um plano de sessão de yoga, pilates ou mobilidade",
+    "title": "Montar um plano de sessão de ioga, pilates ou mobilidade",
     "summary": "Escreva uma sequência cronometrada de posturas sustentadas, flows e repetições, com movimentos por lado e indicações, e depois dê aula com ela, vincule-a a uma aula e acompanhe-a.",
     "kind": "how-to",
     "category": "instructors",
@@ -749,7 +749,7 @@
             "type": "steps",
             "items": [
               "Dê a ele um **Título** que nomeie a sequência, como “Flow de abertura de quadril, 45 min”.",
-              "Adicione uma **Disciplina** (por exemplo, yoga vinyasa) e o **Equipamento** que as pessoas devem ter à mão, como um tapete ou um reformer.",
+              "Adicione uma **Modalidade** (por exemplo, ioga vinyasa) e o **Equipamento** que as pessoas devem ter à mão, como um tapete ou um reformer.",
               "Se quiser, clique em **Adicionar bloco** para dividi-lo em seções como Aquecimento, Em pé e Desaquecimento. Um plano sem blocos é executado de uma vez, do início ao fim.",
               "Clique em **Adicionar movimento** para cada postura ou exercício e digite o nome em **Movimento**.",
               "Escolha o **Tipo**: **Sustentar** para uma postura cronometrada, **Flow** para uma sequência de movimentos cronometrada, ou **Reps.** para um exercício contado. Depois, informe os **Segundos** ou as **Repetições** e o **Bloco** a que ele pertence.",
@@ -1002,7 +1002,7 @@
     "id": "get-paid-with-stripe",
     "lang": "pt-BR",
     "title": "Receber pelos eventos que você organiza",
-    "summary": "Conecte uma conta de repasse Stripe uma única vez para que as aulas e os eventos que você organiza possam receber pagamentos, com o dinheiro indo para você e não para o clube.",
+    "summary": "Conecte uma conta de repasses Stripe uma única vez para que as aulas e os eventos que você organiza possam receber pagamentos, com o dinheiro indo para você e não para o clube.",
     "kind": "how-to",
     "category": "paid-classes",
     "audience": [
@@ -1031,17 +1031,17 @@
           },
           {
             "type": "p",
-            "text": "Os repasses pertencem a *você*, não a um clube. O dinheiro de um evento vai para a pessoa que o organiza, então um coorganizador que nunca organiza uma aula nunca vê dinheiro que não é dele, e você mantém seus ganhos se deixar de organizar para um clube. Uma única conta de repasse cobre todos os clubes para os quais você organiza e todos os tipos de evento, inclusive uma [[guide:set-up-a-race|prova]]."
+            "text": "Os repasses pertencem a *você*, não a um clube. O dinheiro de um evento vai para a pessoa que o organiza, então um coorganizador que nunca organiza uma aula nunca vê dinheiro que não é dele, e você mantém seus ganhos se deixar de organizar para um clube. Uma única conta de repasses cobre todos os clubes para os quais você organiza e todos os tipos de evento, inclusive uma [[guide:set-up-a-race|prova]]."
           }
         ]
       },
       {
-        "heading": "Conectar sua conta de repasse",
+        "heading": "Conectar sua conta de repasses",
         "blocks": [
           {
             "type": "steps",
             "items": [
-              "Abra [[route:/settings/payouts|Configurações, Pagamentos]] na web.",
+              "Abra [[route:/settings/payouts|Configurações, Repasses]] na web.",
               "Clique em **Configurar pagamentos**. Você é levado ao Stripe para informar seus dados e a conta bancária em que quer receber.",
               "Conclua as etapas do Stripe. Quando você voltar, a página mostra a sua situação.",
               "Se aparecer **Cadastro incompleto — conclua para começar a cobrar** ou **Sua conta de pagamentos precisa de atenção antes de você poder receber**, clique em **Concluir a configuração de pagamentos** para voltar ao Stripe e continuar de onde parou."
@@ -1158,7 +1158,7 @@
             "items": [
               "Abra o seu clube, vá até a aba **Eventos** e clique em **Novo evento**.",
               "Em **Tipo de evento**, escolha **Aula**. Rota, distância, ritmo e resultados de prova ficam ocultos em uma aula.",
-              "Preencha a **Disciplina**, por exemplo “HIIT” ou “Bootcamp”, e um **Título** que as pessoas reconheçam no calendário.",
+              "Preencha a **Modalidade**, por exemplo “HIIT” ou “Bootcamp”, e um **Título** que as pessoas reconheçam no calendário.",
               "Defina a **Duração padrão do treino** como a duração da aula em minutos. É isso que permite aos participantes registrar a aula com um toque depois.",
               "Defina a **Data**, o **Horário de início**, a **Duração** e o **Ponto de encontro**.",
               "Em **Repetição**, escolha **Semanal**, **A cada 2 semanas** ou **Mensal** e os dias. Você só pode escolher isso enquanto cria o evento.",
@@ -1231,7 +1231,7 @@
   {
     "id": "host-a-paid-yoga-class",
     "lang": "pt-BR",
-    "title": "Oferecer uma aula paga de yoga ou pilates",
+    "title": "Oferecer uma aula paga de ioga ou pilates",
     "summary": "Agende uma aula recorrente para o seu clube, limite o número de tapetes, defina um preço avulso e uma política de reembolso e vincule uma sequência cronometrada que as pessoas possam acompanhar.",
     "kind": "how-to",
     "category": "paid-classes",
@@ -1280,7 +1280,7 @@
             "items": [
               "Abra o seu clube, vá até a aba **Eventos** e clique em **Novo evento**.",
               "Em **Tipo de evento**, escolha **Aula**. Rota, distância, ritmo e resultados de prova desaparecem, porque uma aula não precisa deles.",
-              "Preencha a **Disciplina**, por exemplo “Pilates reformer”. Ela indica o estilo na listagem.",
+              "Preencha a **Modalidade**, por exemplo “Pilates reformer”. Ela indica o estilo na listagem.",
               "Se quiser, defina a **Duração padrão do treino** em minutos. Com uma disciplina ou uma duração definida, os participantes ganham um botão **Registrar como treino** na página da aula.",
               "Se quiser, escolha um **Plano de sessão** para vincular a sua sequência cronometrada. Deixando em **Nenhum**, a aula acontece sem sequência.",
               "Dê a ela um **Título** e depois a **Data**, o **Horário de início**, a **Duração** e um **Ponto de encontro** que um desconhecido consiga encontrar, como o endereço do estúdio."
@@ -1335,7 +1335,7 @@
             "items": [
               "Marque quem compareceu: [[guide:take-attendance|Registrar a presença]].",
               "Precisa cancelar uma? [[guide:cancel-a-class|Cancelar uma aula]] reembolsa todos que pagaram.",
-              "O dinheiro vai para a sua própria conta de repasse, descontada a taxa da plataforma, e aparece em **Ganhos** em [[route:/settings/payouts|Pagamentos]]."
+              "O dinheiro vai para a sua própria conta de repasses, descontada a taxa da plataforma, e aparece em **Ganhos** em [[route:/settings/payouts|Repasses]]."
             ]
           },
           {

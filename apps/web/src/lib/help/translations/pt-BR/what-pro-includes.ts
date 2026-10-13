@@ -3,7 +3,7 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'what-pro-includes',
 	title: 'O que o Pro inclui',
-	summary: 'Todas as telas do Threkir são gratuitas; o Pro aumenta o seu limite do Treinador IA e coloca alguns processamentos em segundo plano na frente da fila.',
+	summary: 'Todas as telas do Threkir são gratuitas; o Pro aumenta o seu limite do Coach de IA e coloca alguns processamentos em segundo plano na frente da fila.',
 	sections: [
 		{
 			heading: 'O que continua grátis',
@@ -20,8 +20,8 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'**Coach IA — 10/dia**: dez mensagens ao Treinador IA por dia em vez de duas. A contagem é zerada à meia-noite UTC.',
-						'Respostas do Treinador IA mais longas e completas, que podem levar em conta mais das suas corridas.',
+						'**Coach de IA — 10/dia**: dez mensagens ao Coach de IA por dia em vez de duas. A contagem é zerada à meia-noite UTC.',
+						'Respostas do Coach de IA mais longas e completas, que podem levar em conta mais das suas corridas.',
 						'**Map-matching prioritário**: os seus trajetos de GPS são ajustados às vias antes dos das contas gratuitas, então ficam prontos mais cedo.',
 						'**Exportações para a nuvem prioritárias**: até 8 exportações de pacotes GPX por hora em vez de 2.',
 						'**Geração de rotas no servidor**: circuitos traçados na rede de ruas real quando você gera uma rota por distância. Contas gratuitas continuam tendo a geração de circuitos, calculada no navegador.',
@@ -45,7 +45,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'Em um iPhone, abra **Pro e suporte** na aba **Você** e assine pela App Store.',
+						'Em um iPhone, abra **Pro e apoio** na aba **Você** e assine pela App Store.',
 						'Na web, abra [[route:/settings/upgrade|Pro e apoio]] em Configurações. Se aparecer **A assinatura pela web chega em breve.**, assine pelo app para iPhone.',
 					],
 				},
@@ -67,7 +67,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'Cancele ou mude o seu plano onde você o iniciou: na App Store, na Play Store ou no portal de cobrança da web. **Gerenciar assinatura** leva você até lá.',
-						'Em um celular novo, toque em **Restaurar compras** em **Pro e suporte** para trazer uma assinatura existente.',
+						'Em um celular novo, toque em **Restaurar compras** em **Pro e apoio** para trazer uma assinatura existente.',
 						'Prefere uma contribuição única? **Doar** fica na mesma página.',
 					],
 				},

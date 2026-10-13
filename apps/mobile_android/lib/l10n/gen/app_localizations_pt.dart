@@ -16092,7 +16092,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get gymPeerSessions => 'Planos de sessão';
 
   @override
-  String get homeAskCoach => 'Pergunte ao seu treinador';
+  String get homeAskCoach => 'Pergunte ao Coach';
 
   @override
   String get homeAskCoachSubtitle =>
@@ -21618,7 +21618,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Dia de descanso — se precisar se mexer, caminhe ou alongue.';
 
   @override
-  String get coachTitle => 'Treinador IA';
+  String get coachTitle => 'Coach de IA';
 
   @override
   String get coachNewConversation => 'Nova conversa';
@@ -22674,7 +22674,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get proTitle => 'Pro e suporte';
+  String get proTitle => 'Pro e apoio';
 
   @override
   String proCouldNotOpen(Object error) {
@@ -22710,7 +22710,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get proSubscribeSubtitleConfigured =>
-      '10 mensagens por dia para o treinador de IA + processamento prioritário. Renova automaticamente todo mês até ser cancelado em Configurações → Assinaturas.';
+      '10 mensagens por dia para o Coach de IA + processamento prioritário. Renova automaticamente todo mês até ser cancelado em Configurações → Assinaturas.';
 
   @override
   String get proSubscribeSubtitleWeb =>
@@ -22738,7 +22738,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get proSubscribeSubtitleConfiguredAnnual =>
-      '10 mensagens por dia para o treinador de IA + processamento prioritário. Cobrado uma vez por ano. Renova automaticamente todo ano até ser cancelado em Configurações → Assinaturas.';
+      '10 mensagens por dia para o Coach de IA + processamento prioritário. Cobrado uma vez por ano. Renova automaticamente todo ano até ser cancelado em Configurações → Assinaturas.';
 
   @override
   String get proComingSoonTitle => 'Pro — em breve';
@@ -23448,7 +23448,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get prefsDefaultRunVisibility => 'Visibilidade padrão das corridas';
 
   @override
-  String get prefsCoachPersonality => 'Personalidade do treinador';
+  String get prefsCoachPersonality => 'Personalidade do Coach';
 
   @override
   String get prefsCoachSupportive => 'Apoiador';
@@ -23572,7 +23572,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get prefsSectionPrivacySharing => 'Privacidade e compartilhamento';
 
   @override
-  String get prefsSectionAiCoach => 'Treinador de IA';
+  String get prefsSectionAiCoach => 'Coach de IA';
 
   @override
   String get prefsSignInToEdit =>
@@ -23651,7 +23651,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Quando desativado, sua conta não aparece quando outros corredores buscam pelo nome de exibição. Suas corridas públicas e seu perfil continuam acessíveis para qualquer pessoa com o URL.';
 
   @override
-  String get dashboardCoachTooltip => 'Treinador';
+  String get dashboardCoachTooltip => 'Coach';
 
   @override
   String get dashboardFeedTooltip => 'Feed de atividades';
@@ -26884,7 +26884,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get sessionEmptyHint =>
-      'Crie na web uma sequência reutilizável de yoga, pilates ou aula.';
+      'Crie na web uma sequência reutilizável de ioga, pilates ou aula.';
 
   @override
   String get sessionUntitled => 'Sessão sem título';
@@ -30352,7 +30352,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get eventFormChargeHint =>
-      'Cobra uma taxa na inscrição. O dinheiro cai na sua própria conta de repasse, não na do clube, e só um evento presencial pode cobrar.';
+      'Cobra uma taxa na inscrição. O dinheiro cai na sua própria conta de repasses, não na do clube, e só um evento presencial pode cobrar.';
 
   @override
   String get eventFormChargeNeedsPayout =>

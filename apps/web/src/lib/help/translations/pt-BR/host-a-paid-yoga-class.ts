@@ -2,7 +2,7 @@ import type { GuideTranslation } from '../../types';
 
 export const translation: GuideTranslation = {
 	id: 'host-a-paid-yoga-class',
-	title: 'Oferecer uma aula paga de yoga ou pilates',
+	title: 'Oferecer uma aula paga de ioga ou pilates',
 	summary: 'Agende uma aula recorrente para o seu clube, limite o número de tapetes, defina um preço avulso e uma política de reembolso e vincule uma sequência cronometrada que as pessoas possam acompanhar.',
 	sections: [
 		{
@@ -31,7 +31,7 @@ export const translation: GuideTranslation = {
 					items: [
 						'Abra o seu clube, vá até a aba **Eventos** e clique em **Novo evento**.',
 						'Em **Tipo de evento**, escolha **Aula**. Rota, distância, ritmo e resultados de prova desaparecem, porque uma aula não precisa deles.',
-						'Preencha a **Disciplina**, por exemplo “Pilates reformer”. Ela indica o estilo na listagem.',
+						'Preencha a **Modalidade**, por exemplo “Pilates reformer”. Ela indica o estilo na listagem.',
 						'Se quiser, defina a **Duração padrão do treino** em minutos. Com uma disciplina ou uma duração definida, os participantes ganham um botão **Registrar como treino** na página da aula.',
 						'Se quiser, escolha um **Plano de sessão** para vincular a sua sequência cronometrada. Deixando em **Nenhum**, a aula acontece sem sequência.',
 						'Dê a ela um **Título** e depois a **Data**, o **Horário de início**, a **Duração** e um **Ponto de encontro** que um desconhecido consiga encontrar, como o endereço do estúdio.',
@@ -86,7 +86,7 @@ export const translation: GuideTranslation = {
 					items: [
 						'Marque quem compareceu: [[guide:take-attendance|Registrar a presença]].',
 						'Precisa cancelar uma? [[guide:cancel-a-class|Cancelar uma aula]] reembolsa todos que pagaram.',
-						'O dinheiro vai para a sua própria conta de repasse, descontada a taxa da plataforma, e aparece em **Ganhos** em [[route:/settings/payouts|Pagamentos]].',
+						'O dinheiro vai para a sua própria conta de repasses, descontada a taxa da plataforma, e aparece em **Ganhos** em [[route:/settings/payouts|Repasses]].',
 					],
 				},
 				{

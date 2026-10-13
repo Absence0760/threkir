@@ -2,7 +2,7 @@ import type { GuideTranslation } from '../../types';
 
 export const translation: GuideTranslation = {
 	id: 'build-a-session-plan',
-	title: 'Montar um plano de sessão de yoga, pilates ou mobilidade',
+	title: 'Montar um plano de sessão de ioga, pilates ou mobilidade',
 	summary: 'Escreva uma sequência cronometrada de posturas sustentadas, flows e repetições, com movimentos por lado e indicações, e depois dê aula com ela, vincule-a a uma aula e acompanhe-a.',
 	sections: [
 		{
@@ -28,7 +28,7 @@ export const translation: GuideTranslation = {
 					type: 'steps',
 					items: [
 						'Dê a ele um **Título** que nomeie a sequência, como “Flow de abertura de quadril, 45 min”.',
-						'Adicione uma **Disciplina** (por exemplo, yoga vinyasa) e o **Equipamento** que as pessoas devem ter à mão, como um tapete ou um reformer.',
+						'Adicione uma **Modalidade** (por exemplo, ioga vinyasa) e o **Equipamento** que as pessoas devem ter à mão, como um tapete ou um reformer.',
 						'Se quiser, clique em **Adicionar bloco** para dividi-lo em seções como Aquecimento, Em pé e Desaquecimento. Um plano sem blocos é executado de uma vez, do início ao fim.',
 						'Clique em **Adicionar movimento** para cada postura ou exercício e digite o nome em **Movimento**.',
 						'Escolha o **Tipo**: **Sustentar** para uma postura cronometrada, **Flow** para uma sequência de movimentos cronometrada, ou **Reps.** para um exercício contado. Depois, informe os **Segundos** ou as **Repetições** e o **Bloco** a que ele pertence.',

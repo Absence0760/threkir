@@ -95,7 +95,13 @@ literal `1` in a `one` branch — 11 mobile strings already do (e.g.
 | log (verb) | Registrar | `navLog` |
 | streak | Sequência | |
 | goal | Meta / Metas | "Objetivo" occasionally on web |
-| coach | Treinador; AI Coach = **Treinador IA** | web `coachChat.coach` "Coach" |
+| coach (a person) | **Treinador** | `coaching.*`, guided-run "voz de treinador" |
+| AI Coach (the product) | **Coach** as its name (capital C, also mid-sentence: "o Coach está pensando"); **Coach de IA** where the English says *AI Coach* | settled 2026-10-13; never "Treinador IA", "Coach IA" or "AI Coach" |
+| event host | **Organizador** | `admin.earnings.*`; never "Anfitrião" |
+| payouts / payout account | **Repasses** / **conta de repasses** | `payouts.pageTitle`, `fundraiser.setUpPayouts`; *payment* (a charge) stays "pagamento" |
+| activity discipline (yoga, pilates…) | **Modalidade** | `eventEditor.discipline`, `session.discipline` |
+| yoga | **ioga** (lower case; "Ioga vinyasa" at a sentence start) | never "yoga" |
+| Pro & support | **Pro e apoio** | *support* here is supporting the app ("apoiar o app"); "suporte" is tech support |
 | auto-pause | — | no catalogue string yet; build from "Corrida pausada" / "Pausar" → "Pausa automática", and flag it as a new term |
 | kudos | kudos ("dar kudos", "remover kudos") | |
 | workout | Treino | |

@@ -3,7 +3,7 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'get-paid-with-stripe',
 	title: 'Receber pelos eventos que você organiza',
-	summary: 'Conecte uma conta de repasse Stripe uma única vez para que as aulas e os eventos que você organiza possam receber pagamentos, com o dinheiro indo para você e não para o clube.',
+	summary: 'Conecte uma conta de repasses Stripe uma única vez para que as aulas e os eventos que você organiza possam receber pagamentos, com o dinheiro indo para você e não para o clube.',
 	sections: [
 		{
 			heading: 'Antes de começar',
@@ -15,17 +15,17 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Os repasses pertencem a *você*, não a um clube. O dinheiro de um evento vai para a pessoa que o organiza, então um coorganizador que nunca organiza uma aula nunca vê dinheiro que não é dele, e você mantém seus ganhos se deixar de organizar para um clube. Uma única conta de repasse cobre todos os clubes para os quais você organiza e todos os tipos de evento, inclusive uma [[guide:set-up-a-race|prova]].',
+					text: 'Os repasses pertencem a *você*, não a um clube. O dinheiro de um evento vai para a pessoa que o organiza, então um coorganizador que nunca organiza uma aula nunca vê dinheiro que não é dele, e você mantém seus ganhos se deixar de organizar para um clube. Uma única conta de repasses cobre todos os clubes para os quais você organiza e todos os tipos de evento, inclusive uma [[guide:set-up-a-race|prova]].',
 				},
 			],
 		},
 		{
-			heading: 'Conectar sua conta de repasse',
+			heading: 'Conectar sua conta de repasses',
 			blocks: [
 				{
 					type: 'steps',
 					items: [
-						'Abra [[route:/settings/payouts|Configurações, Pagamentos]] na web.',
+						'Abra [[route:/settings/payouts|Configurações, Repasses]] na web.',
 						'Clique em **Configurar pagamentos**. Você é levado ao Stripe para informar seus dados e a conta bancária em que quer receber.',
 						'Conclua as etapas do Stripe. Quando você voltar, a página mostra a sua situação.',
 						'Se aparecer **Cadastro incompleto — conclua para começar a cobrar** ou **Sua conta de pagamentos precisa de atenção antes de você poder receber**, clique em **Concluir a configuração de pagamentos** para voltar ao Stripe e continuar de onde parou.',

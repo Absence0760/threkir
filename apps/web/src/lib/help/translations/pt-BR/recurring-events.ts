@@ -81,7 +81,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'tip',
-					text: 'Se o evento for uma aula paga, cancelar uma ocorrência reembolsa integralmente todos os inscritos nela. Veja [[guide:host-a-paid-yoga-class|Oferecer uma aula paga de yoga]].',
+					text: 'Se o evento for uma aula paga, cancelar uma ocorrência reembolsa integralmente todos os inscritos nela. Veja [[guide:host-a-paid-yoga-class|Oferecer uma aula paga de ioga]].',
 				},
 			],
 		},

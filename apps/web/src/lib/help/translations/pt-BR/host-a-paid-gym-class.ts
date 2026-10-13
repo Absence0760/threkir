@@ -27,7 +27,7 @@ export const translation: GuideTranslation = {
 					items: [
 						'Abra o seu clube, vá até a aba **Eventos** e clique em **Novo evento**.',
 						'Em **Tipo de evento**, escolha **Aula**. Rota, distância, ritmo e resultados de prova ficam ocultos em uma aula.',
-						'Preencha a **Disciplina**, por exemplo “HIIT” ou “Bootcamp”, e um **Título** que as pessoas reconheçam no calendário.',
+						'Preencha a **Modalidade**, por exemplo “HIIT” ou “Bootcamp”, e um **Título** que as pessoas reconheçam no calendário.',
 						'Defina a **Duração padrão do treino** como a duração da aula em minutos. É isso que permite aos participantes registrar a aula com um toque depois.',
 						'Defina a **Data**, o **Horário de início**, a **Duração** e o **Ponto de encontro**.',
 						'Em **Repetição**, escolha **Semanal**, **A cada 2 semanas** ou **Mensal** e os dias. Você só pode escolher isso enquanto cria o evento.',

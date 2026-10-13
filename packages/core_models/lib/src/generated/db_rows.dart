@@ -1492,6 +1492,8 @@ class EventCourseRow {
   static const String colFinishLat = 'finish_lat';
   static const String colFinishLng = 'finish_lng';
   static const String colCreatedAt = 'created_at';
+  static const String colStartLat = 'start_lat';
+  static const String colStartLng = 'start_lng';
 
   final String id;
   final String eventId;
@@ -1502,6 +1504,8 @@ class EventCourseRow {
   final double? finishLat;
   final double? finishLng;
   final DateTime createdAt;
+  final double? startLat;
+  final double? startLng;
 
   const EventCourseRow({
     required this.id,
@@ -1513,6 +1517,8 @@ class EventCourseRow {
     this.finishLat,
     this.finishLng,
     required this.createdAt,
+    this.startLat,
+    this.startLng,
   });
 
   factory EventCourseRow.fromJson(Map<String, dynamic> json) => EventCourseRow(
@@ -1525,6 +1531,8 @@ class EventCourseRow {
     finishLat: _toDoubleOrNull(json['finish_lat']),
     finishLng: _toDoubleOrNull(json['finish_lng']),
     createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+    startLat: _toDoubleOrNull(json['start_lat']),
+    startLng: _toDoubleOrNull(json['start_lng']),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -1537,6 +1545,8 @@ class EventCourseRow {
     colFinishLat: finishLat,
     colFinishLng: finishLng,
     colCreatedAt: createdAt.toIso8601String(),
+    colStartLat: startLat,
+    colStartLng: startLng,
   };
 
   EventCourseRow copyWith({
@@ -1549,6 +1559,8 @@ class EventCourseRow {
     double? finishLat,
     double? finishLng,
     DateTime? createdAt,
+    double? startLat,
+    double? startLng,
   }) => EventCourseRow(
     id: id ?? this.id,
     eventId: eventId ?? this.eventId,
@@ -1559,6 +1571,8 @@ class EventCourseRow {
     finishLat: finishLat ?? this.finishLat,
     finishLng: finishLng ?? this.finishLng,
     createdAt: createdAt ?? this.createdAt,
+    startLat: startLat ?? this.startLat,
+    startLng: startLng ?? this.startLng,
   );
 }
 

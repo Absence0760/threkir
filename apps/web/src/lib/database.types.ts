@@ -977,6 +977,8 @@ export type Database = {
           name: string
           route_id: string | null
           sort_order: number
+          start_lat: number | null
+          start_lng: number | null
         }
         Insert: {
           created_at?: string
@@ -988,6 +990,8 @@ export type Database = {
           name: string
           route_id?: string | null
           sort_order?: number
+          start_lat?: number | null
+          start_lng?: number | null
         }
         Update: {
           created_at?: string
@@ -999,6 +1003,8 @@ export type Database = {
           name?: string
           route_id?: string | null
           sort_order?: number
+          start_lat?: number | null
+          start_lng?: number | null
         }
         Relationships: [
           {

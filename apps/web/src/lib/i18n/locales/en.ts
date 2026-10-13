@@ -2540,6 +2540,8 @@ export const en = {
 	"landing.footerHealthData": "Health data",
 	"live.pageTitle": "Live Run — Threkir",
 	"live.pageDescription": "Watch a runner's progress in real time",
+	"live.runnerHandle": "Runner #{slug}",
+	"live.runnerAnonymous": "Runner",
 	"live.badgeConnecting": "Connecting…",
 	"live.badgeLive": "LIVE",
 	"live.badgeStale": "DELAYED",

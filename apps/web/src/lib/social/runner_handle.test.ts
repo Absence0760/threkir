@@ -1,15 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { runnerHandle, shouldRevealDisplayName } from './runner_handle';
+import { runnerHandle, shouldRevealDisplayName, type RunnerHandleLabels } from './runner_handle';
+
+const EN: RunnerHandleLabels = { handle: (slug) => `Runner #${slug}`, anonymous: 'Runner' };
 
 test('runnerHandle: returns Runner #ABCD for a v4 uuid (first 4 hex chars, uppercased)', () => {
 	assert.equal(
-		runnerHandle('a1b2c3d4-e5f6-7890-abcd-ef1234567890'),
+		runnerHandle('a1b2c3d4-e5f6-7890-abcd-ef1234567890', EN),
 		'Runner #A1B2',
 	);
 	assert.equal(
-		runnerHandle('00000000-0000-0000-0000-000000000bad'),
+		runnerHandle('00000000-0000-0000-0000-000000000bad', EN),
 		'Runner #0000',
 	);
 });
@@ -18,20 +20,26 @@ test('runnerHandle: drops hyphens from the uuid before taking the slice', () => 
 	// If we kept hyphens, the first 4 chars of a uuid starting `aaa-`
 	// would be `aaa-` — using "-" as part of the user-facing handle
 	// is ugly. Strip first, then slice.
-	assert.equal(runnerHandle('aaa-b2c3-...'), 'Runner #AAAB');
+	assert.equal(runnerHandle('aaa-b2c3-...', EN), 'Runner #AAAB');
 });
 
 test('runnerHandle: returns plain "Runner" for null / undefined / empty / too-short input', () => {
-	assert.equal(runnerHandle(null), 'Runner');
-	assert.equal(runnerHandle(undefined), 'Runner');
-	assert.equal(runnerHandle(''), 'Runner');
+	assert.equal(runnerHandle(null, EN), 'Runner');
+	assert.equal(runnerHandle(undefined, EN), 'Runner');
+	assert.equal(runnerHandle('', EN), 'Runner');
 	// 3 hex chars after hyphen strip — not enough for the suffix.
-	assert.equal(runnerHandle('a-1'), 'Runner');
+	assert.equal(runnerHandle('a-1', EN), 'Runner');
 });
 
 test('runnerHandle: deterministic — same uuid produces same handle on every call', () => {
 	const id = 'b2c3d4e5-f6a7-8901-bcde-f23456789012';
-	assert.equal(runnerHandle(id), runnerHandle(id));
+	assert.equal(runnerHandle(id, EN), runnerHandle(id, EN));
+});
+
+test('runnerHandle: wraps the slug in the caller\'s localised labels', () => {
+	const pt: RunnerHandleLabels = { handle: (slug) => `Corredor #${slug}`, anonymous: 'Corredor' };
+	assert.equal(runnerHandle('a1b2c3d4-e5f6-7890-abcd-ef1234567890', pt), 'Corredor #A1B2');
+	assert.equal(runnerHandle(null, pt), 'Corredor');
 });
 
 test('shouldRevealDisplayName: anon viewer → false', () => {

@@ -15321,4 +15321,12 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get audienceSharedWithYouHint =>
       'Mit dir geteilt. Nicht öffentlich – nur die Personen, mit denen es geteilt ist, können es öffnen.';
+
+  @override
+  String liveRunnerHandle(String slug) {
+    return 'Läufer #$slug';
+  }
+
+  @override
+  String get liveRunnerAnonymous => 'Läufer';
 }

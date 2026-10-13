@@ -69,7 +69,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'O nome verdadeiro de um corredor só é mostrado para quem segue esse corredor ou é seguido por ele. Todos os demais veem um apelido anônimo, como Runner #A1B2.',
+						'O nome verdadeiro de um corredor só é mostrado para quem segue esse corredor ou é seguido por ele. Todos os demais veem um apelido anônimo, como Corredor #A1B2.',
 						'Perto da zona de privacidade de um corredor, a posição exata dele fica oculta. Em vez disso, você vê **Visto pela última vez perto daqui · aproximado**, mostrado como um anel vazado em vez de um ponto.',
 						'Os concluintes importados pelo organizador de uma lista de números de peito não têm conta, então mantêm o nome que o organizador digitou.',
 					],

@@ -69,7 +69,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'El nombre real de un corredor solo se muestra a las personas conectadas con él por un seguimiento, en cualquier dirección. Los demás ven un alias anónimo, como Runner #A1B2.',
+						'El nombre real de un corredor solo se muestra a las personas conectadas con él por un seguimiento, en cualquier dirección. Los demás ven un alias anónimo, como Corredor #A1B2.',
 						'Cerca de la zona de privacidad de un corredor, su posición exacta se oculta. En su lugar ves **Visto por última vez cerca de aquí · aproximado**, representado con un anillo hueco en vez de un punto.',
 						'Los corredores que el organizador importa desde una lista de dorsales no tienen cuenta, así que conservan el nombre que introdujo el organizador.',
 					],

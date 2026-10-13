@@ -25310,6 +25310,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Shared with you. It isn't public — only the people it's shared with can open it.'**
   String get audienceSharedWithYouHint;
+
+  /// Anonymous handle shown to a live spectator who does not follow the runner: the first four characters of the runner's id
+  ///
+  /// In en, this message translates to:
+  /// **'Runner #{slug}'**
+  String liveRunnerHandle(String slug);
+
+  /// Anonymous handle for a live runner whose id is missing, so no four-character suffix can be shown
+  ///
+  /// In en, this message translates to:
+  /// **'Runner'**
+  String get liveRunnerAnonymous;
 }
 
 class _AppLocalizationsDelegate

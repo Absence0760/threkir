@@ -2522,6 +2522,8 @@ export const messages = {
 	"landing.footerHealthData": "健康データ",
 	"live.pageTitle": "ライブラン — Threkir",
 	"live.pageDescription": "ランナーの進捗をリアルタイムで観戦",
+	"live.runnerHandle": "ランナー #{slug}",
+	"live.runnerAnonymous": "ランナー",
 	"live.badgeConnecting": "接続中…",
 	"live.badgeLive": "ライブ",
 	"live.badgeStale": "遅延",

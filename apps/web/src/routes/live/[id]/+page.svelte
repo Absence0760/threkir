@@ -525,7 +525,13 @@
 				viewerFollowsRunner,
 				runnerFollowsViewer,
 			});
-			runnerName = reveal && dn ? dn : runnerHandle(row.user_id as string);
+			runnerName =
+				reveal && dn
+					? dn
+					: runnerHandle(row.user_id as string, {
+							handle: (slug) => m('live.runnerHandle', { slug }),
+							anonymous: m('live.runnerAnonymous')
+						});
 
 			isOwner = viewerId != null && viewerId === row.user_id;
 			if (isOwner) {

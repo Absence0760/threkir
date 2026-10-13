@@ -2527,6 +2527,8 @@ export const messages = {
 	"landing.footerHealthData": "Gesundheitsdaten",
 	"live.pageTitle": "Live-Lauf — Threkir",
 	"live.pageDescription": "Verfolge den Fortschritt eines Läufers in Echtzeit",
+	"live.runnerHandle": "Läufer #{slug}",
+	"live.runnerAnonymous": "Läufer",
 	"live.badgeConnecting": "Verbinde…",
 	"live.badgeLive": "LIVE",
 	"live.badgeStale": "VERZÖGERT",

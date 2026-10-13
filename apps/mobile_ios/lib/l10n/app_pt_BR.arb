@@ -4406,5 +4406,7 @@
   "audienceRevokeAllConfirm": "Só eu",
   "audienceShareLink": "Link de compartilhamento",
   "audienceSharedWithYou": "Compartilhado com você",
-  "audienceSharedWithYouHint": "Compartilhado com você. Não é público: só as pessoas com quem foi compartilhado podem abrir."
+  "audienceSharedWithYouHint": "Compartilhado com você. Não é público: só as pessoas com quem foi compartilhado podem abrir.",
+  "liveRunnerHandle": "Corredor #{slug}",
+  "liveRunnerAnonymous": "Corredor"
 }

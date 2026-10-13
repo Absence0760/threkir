@@ -1651,7 +1651,7 @@
           {
             "type": "list",
             "items": [
-              "Les vrais noms des coureurs ne sont visibles que par les personnes liées à eux par un abonnement, dans un sens ou dans l'autre. Tous les autres voient un pseudonyme anonyme, par exemple Runner #A1B2.",
+              "Les vrais noms des coureurs ne sont visibles que par les personnes liées à eux par un abonnement, dans un sens ou dans l'autre. Tous les autres voient un pseudonyme anonyme, par exemple Coureur #A1B2.",
               "Près de la zone de confidentialité d'un coureur, sa position exacte est masquée. Vous voyez à la place **Vu pour la dernière fois près d'ici · approximatif**, affiché sous la forme d'un anneau vide plutôt que d'un point.",
               "Les coureurs arrivés importés par l'organisateur depuis une liste de dossards n'ont pas de compte : ils gardent donc le nom saisi par l'organisateur."
             ]

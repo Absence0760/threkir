@@ -15306,6 +15306,14 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get audienceSharedWithYouHint =>
       'Partilhado consigo. Não é público: só as pessoas com quem foi partilhado podem abrir.';
+
+  @override
+  String liveRunnerHandle(String slug) {
+    return 'Corredor #$slug';
+  }
+
+  @override
+  String get liveRunnerAnonymous => 'Corredor';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -30600,4 +30608,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get audienceSharedWithYouHint =>
       'Compartilhado com você. Não é público: só as pessoas com quem foi compartilhado podem abrir.';
+
+  @override
+  String liveRunnerHandle(String slug) {
+    return 'Corredor #$slug';
+  }
+
+  @override
+  String get liveRunnerAnonymous => 'Corredor';
 }

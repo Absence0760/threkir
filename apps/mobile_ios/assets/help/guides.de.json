@@ -1651,7 +1651,7 @@
           {
             "type": "list",
             "items": [
-              "Die echten Namen der Teilnehmenden sehen nur Personen, die über ein Folgen mit ihnen verbunden sind, egal in welche Richtung. Alle anderen sehen ein anonymes Kürzel wie Runner #A1B2.",
+              "Die echten Namen der Teilnehmenden sehen nur Personen, die über ein Folgen mit ihnen verbunden sind, egal in welche Richtung. Alle anderen sehen ein anonymes Kürzel wie Läufer #A1B2.",
               "In der Nähe der Datenschutzzone einer teilnehmenden Person wird ihre genaue Position verborgen. Du siehst stattdessen **Zuletzt hier in der Nähe gesehen · ungefähr**, dargestellt als hohler Ring statt als Punkt.",
               "Teilnehmende, die der Veranstalter aus einer Startnummernliste importiert hat, haben kein Konto und behalten daher den Namen, den der Veranstalter eingegeben hat."
             ]

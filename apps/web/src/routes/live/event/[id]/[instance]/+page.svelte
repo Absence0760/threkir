@@ -267,7 +267,12 @@
 		}
 		for (const id of runnerIds) {
 			map.set(id, {
-				display_name: realNames.has(id) ? realNames.get(id)! : runnerHandle(id)
+				display_name: realNames.has(id)
+					? realNames.get(id)!
+					: runnerHandle(id, {
+							handle: (slug) => m('live.runnerHandle', { slug }),
+							anonymous: m('live.runnerAnonymous')
+						})
 			});
 		}
 

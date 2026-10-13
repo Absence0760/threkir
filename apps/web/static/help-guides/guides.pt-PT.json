@@ -1651,7 +1651,7 @@
           {
             "type": "list",
             "items": [
-              "Os nomes reais dos corredores só são mostrados a pessoas ligadas a eles por um seguimento, em qualquer dos sentidos. Todas as outras pessoas veem um identificador anónimo, como Runner #A1B2.",
+              "Os nomes reais dos corredores só são mostrados a pessoas ligadas a eles por um seguimento, em qualquer dos sentidos. Todas as outras pessoas veem um identificador anónimo, como Corredor #A1B2.",
               "Perto da zona de privacidade de um corredor, a sua posição exata fica oculta. Em vez disso, vê **Visto pela última vez perto daqui · aproximado**, mostrado como um anel vazio em vez de um ponto.",
               "Os corredores que o organizador importou de uma lista de dorsais não têm conta, por isso mantêm o nome que o organizador introduziu."
             ]

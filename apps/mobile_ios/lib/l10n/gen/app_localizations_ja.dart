@@ -14588,4 +14588,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get audienceSharedWithYouHint => 'あなたに共有されています。公開ではなく、共有された人だけが開けます。';
+
+  @override
+  String liveRunnerHandle(String slug) {
+    return 'ランナー #$slug';
+  }
+
+  @override
+  String get liveRunnerAnonymous => 'ランナー';
 }

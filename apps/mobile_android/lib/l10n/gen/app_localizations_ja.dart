@@ -13946,4 +13946,37 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get dashboardLeadAddRun => 'ランを追加';
+
+  @override
+  String get runRaceStopTitle => 'レース一時停止中';
+
+  @override
+  String get runRaceStopBody => 'レースの時計は動き続けています。再開して続けるか、今すぐレースを終了してください。';
+
+  @override
+  String get runRaceStopBodyDnf => 'コースの90%未満しか走っていないため、今終了するとDNFとして記録されます。';
+
+  @override
+  String get runRaceResume => 'レースを再開';
+
+  @override
+  String get runRaceFinish => 'レースを終了';
+
+  @override
+  String get runRaceFinishDnf => 'DNFとして終了';
+
+  @override
+  String runRaceFinishedAuto(String time) {
+    return 'ゴール！グロスタイム $time';
+  }
+
+  @override
+  String get runRaceFinishRecorded => 'ゴールを記録しました';
+
+  @override
+  String get runRaceEnded => '主催者がレースを終了しました。ランの記録は続きますが、結果は送信されません。';
+
+  @override
+  String get runRaceLateStart =>
+      '遅れスタート：スタートから5分以上経ってから、またはスタートラインから離れた場所で開始しました。';
 }

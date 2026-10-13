@@ -14627,6 +14627,42 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get dashboardLeadAddRun => 'Adicionar corrida';
+
+  @override
+  String get runRaceStopTitle => 'Prova em pausa';
+
+  @override
+  String get runRaceStopBody =>
+      'O relógio da prova continua a contar. Retome para continuar ou termine a prova agora.';
+
+  @override
+  String get runRaceStopBodyDnf =>
+      'Percorreu menos de 90% do percurso, por isso terminar agora regista um DNF.';
+
+  @override
+  String get runRaceResume => 'Retomar prova';
+
+  @override
+  String get runRaceFinish => 'Terminar prova';
+
+  @override
+  String get runRaceFinishDnf => 'Terminar como DNF';
+
+  @override
+  String runRaceFinishedAuto(String time) {
+    return 'Meta cortada! Tempo oficial $time';
+  }
+
+  @override
+  String get runRaceFinishRecorded => 'Chegada registada';
+
+  @override
+  String get runRaceEnded =>
+      'O organizador terminou a prova. A sua corrida continua a ser gravada, mas nenhum resultado será enviado.';
+
+  @override
+  String get runRaceLateStart =>
+      'Partida tardia: começou mais de 5 minutos após a partida ou longe da linha de partida.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -29243,4 +29279,40 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get dashboardLeadAddRun => 'Adicionar corrida';
+
+  @override
+  String get runRaceStopTitle => 'Prova pausada';
+
+  @override
+  String get runRaceStopBody =>
+      'O relógio da prova continua correndo. Retome para continuar ou finalize a prova agora.';
+
+  @override
+  String get runRaceStopBodyDnf =>
+      'Você percorreu menos de 90% do percurso, então finalizar agora registra um DNF.';
+
+  @override
+  String get runRaceResume => 'Retomar prova';
+
+  @override
+  String get runRaceFinish => 'Finalizar prova';
+
+  @override
+  String get runRaceFinishDnf => 'Finalizar como DNF';
+
+  @override
+  String runRaceFinishedAuto(String time) {
+    return 'Chegada! Tempo oficial $time';
+  }
+
+  @override
+  String get runRaceFinishRecorded => 'Chegada registrada';
+
+  @override
+  String get runRaceEnded =>
+      'O organizador encerrou a prova. Sua corrida continua sendo gravada, mas nenhum resultado será enviado.';
+
+  @override
+  String get runRaceLateStart =>
+      'Largada tardia: você começou mais de 5 minutos após a largada ou longe da linha de largada.';
 }

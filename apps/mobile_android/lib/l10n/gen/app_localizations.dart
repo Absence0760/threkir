@@ -24176,6 +24176,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add a run'**
   String get dashboardLeadAddRun;
+
+  /// Title of the sheet shown when a runner presses Stop during a live race; the recording is paused, not stopped
+  ///
+  /// In en, this message translates to:
+  /// **'Race paused'**
+  String get runRaceStopTitle;
+
+  /// Body of the race-stop sheet: the gun clock keeps running while paused
+  ///
+  /// In en, this message translates to:
+  /// **'The race clock keeps running. Resume to carry on, or finish the race now.'**
+  String get runRaceStopBody;
+
+  /// Extra line on the race-stop sheet when the runner has covered less than 90% of the course
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve covered less than 90% of the course, so finishing now records a DNF.'**
+  String get runRaceStopBodyDnf;
+
+  /// Race-stop sheet action that resumes the paused race recording
+  ///
+  /// In en, this message translates to:
+  /// **'Resume race'**
+  String get runRaceResume;
+
+  /// Race-stop sheet action that ends the race recording and records a finish
+  ///
+  /// In en, this message translates to:
+  /// **'Finish race'**
+  String get runRaceFinish;
+
+  /// Race-stop sheet action when the runner has covered under 90%: ends the race recording and records a DNF
+  ///
+  /// In en, this message translates to:
+  /// **'Finish as DNF'**
+  String get runRaceFinishDnf;
+
+  /// Banner when the runner reaches the finish line and the race recording stops automatically
+  ///
+  /// In en, this message translates to:
+  /// **'Finished! Gun time {time}'**
+  String runRaceFinishedAuto(String time);
+
+  /// Banner when a race finish is recorded but no gun time is known
+  ///
+  /// In en, this message translates to:
+  /// **'Race finish recorded'**
+  String get runRaceFinishRecorded;
+
+  /// Banner when the race host ends the race before this runner finished
+  ///
+  /// In en, this message translates to:
+  /// **'The host ended the race. Your run keeps recording, but no result will be submitted.'**
+  String get runRaceEnded;
+
+  /// Banner when the runner started recording more than 5 minutes after GO or more than 200 m from the course start
+  ///
+  /// In en, this message translates to:
+  /// **'Late start: you began more than 5 minutes after GO or away from the start line.'**
+  String get runRaceLateStart;
 }
 
 class _AppLocalizationsDelegate

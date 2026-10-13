@@ -14623,4 +14623,40 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get dashboardLeadAddRun => 'Añadir carrera';
+
+  @override
+  String get runRaceStopTitle => 'Carrera en pausa';
+
+  @override
+  String get runRaceStopBody =>
+      'El reloj de la carrera sigue corriendo. Reanuda para continuar o termina la carrera ahora.';
+
+  @override
+  String get runRaceStopBodyDnf =>
+      'Has recorrido menos del 90 % del recorrido, así que terminar ahora registra un DNF.';
+
+  @override
+  String get runRaceResume => 'Reanudar carrera';
+
+  @override
+  String get runRaceFinish => 'Terminar carrera';
+
+  @override
+  String get runRaceFinishDnf => 'Terminar como DNF';
+
+  @override
+  String runRaceFinishedAuto(String time) {
+    return '¡Meta! Tiempo oficial $time';
+  }
+
+  @override
+  String get runRaceFinishRecorded => 'Llegada registrada';
+
+  @override
+  String get runRaceEnded =>
+      'El organizador terminó la carrera. Tu actividad se sigue grabando, pero no se enviará ningún resultado.';
+
+  @override
+  String get runRaceLateStart =>
+      'Salida tardía: empezaste más de 5 minutos después de la salida o lejos de la línea de salida.';
 }

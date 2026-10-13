@@ -4217,5 +4217,15 @@
   "dashboardLeadToday": "Hoy",
   "dashboardLeadTomorrow": "Mañana",
   "dashboardLeadNoNextSession": "No quedan más sesiones programadas en tu plan.",
-  "dashboardLeadAddRun": "Añadir carrera"
+  "dashboardLeadAddRun": "Añadir carrera",
+  "runRaceStopTitle": "Carrera en pausa",
+  "runRaceStopBody": "El reloj de la carrera sigue corriendo. Reanuda para continuar o termina la carrera ahora.",
+  "runRaceStopBodyDnf": "Has recorrido menos del 90 % del recorrido, así que terminar ahora registra un DNF.",
+  "runRaceResume": "Reanudar carrera",
+  "runRaceFinish": "Terminar carrera",
+  "runRaceFinishDnf": "Terminar como DNF",
+  "runRaceFinishedAuto": "¡Meta! Tiempo oficial {time}",
+  "runRaceFinishRecorded": "Llegada registrada",
+  "runRaceEnded": "El organizador terminó la carrera. Tu actividad se sigue grabando, pero no se enviará ningún resultado.",
+  "runRaceLateStart": "Salida tardía: empezaste más de 5 minutos después de la salida o lejos de la línea de salida."
 }

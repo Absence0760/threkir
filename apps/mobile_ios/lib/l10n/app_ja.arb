@@ -4217,5 +4217,15 @@
   "dashboardLeadToday": "今日",
   "dashboardLeadTomorrow": "明日",
   "dashboardLeadNoNextSession": "プランに予定されているセッションはもうありません。",
-  "dashboardLeadAddRun": "ランを追加"
+  "dashboardLeadAddRun": "ランを追加",
+  "runRaceStopTitle": "レース一時停止中",
+  "runRaceStopBody": "レースの時計は動き続けています。再開して続けるか、今すぐレースを終了してください。",
+  "runRaceStopBodyDnf": "コースの90%未満しか走っていないため、今終了するとDNFとして記録されます。",
+  "runRaceResume": "レースを再開",
+  "runRaceFinish": "レースを終了",
+  "runRaceFinishDnf": "DNFとして終了",
+  "runRaceFinishedAuto": "ゴール！グロスタイム {time}",
+  "runRaceFinishRecorded": "ゴールを記録しました",
+  "runRaceEnded": "主催者がレースを終了しました。ランの記録は続きますが、結果は送信されません。",
+  "runRaceLateStart": "遅れスタート：スタートから5分以上経ってから、またはスタートラインから離れた場所で開始しました。"
 }

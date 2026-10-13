@@ -4217,5 +4217,15 @@
   "dashboardLeadToday": "Heute",
   "dashboardLeadTomorrow": "Morgen",
   "dashboardLeadNoNextSession": "In deinem Plan sind keine weiteren Einheiten geplant.",
-  "dashboardLeadAddRun": "Lauf hinzufügen"
+  "dashboardLeadAddRun": "Lauf hinzufügen",
+  "runRaceStopTitle": "Rennen pausiert",
+  "runRaceStopBody": "Die Rennuhr läuft weiter. Setze fort, um weiterzulaufen, oder beende das Rennen jetzt.",
+  "runRaceStopBodyDnf": "Du hast weniger als 90 % der Strecke zurückgelegt, daher wird ein Beenden jetzt als DNF gewertet.",
+  "runRaceResume": "Rennen fortsetzen",
+  "runRaceFinish": "Rennen beenden",
+  "runRaceFinishDnf": "Als DNF beenden",
+  "runRaceFinishedAuto": "Im Ziel! Bruttozeit {time}",
+  "runRaceFinishRecorded": "Zieleinlauf erfasst",
+  "runRaceEnded": "Der Veranstalter hat das Rennen beendet. Dein Lauf wird weiter aufgezeichnet, aber es wird kein Ergebnis eingereicht.",
+  "runRaceLateStart": "Später Start: Du bist mehr als 5 Minuten nach dem Startschuss oder abseits der Startlinie losgelaufen."
 }

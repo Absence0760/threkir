@@ -18603,5 +18603,51 @@
   "dashboardLeadAddRun": "Add a run",
   "@dashboardLeadAddRun": {
     "description": "Button on the dashboard week card that opens the manual add-a-run form"
+  },
+  "runRaceStopTitle": "Race paused",
+  "@runRaceStopTitle": {
+    "description": "Title of the sheet shown when a runner presses Stop during a live race; the recording is paused, not stopped"
+  },
+  "runRaceStopBody": "The race clock keeps running. Resume to carry on, or finish the race now.",
+  "@runRaceStopBody": {
+    "description": "Body of the race-stop sheet: the gun clock keeps running while paused"
+  },
+  "runRaceStopBodyDnf": "You've covered less than 90% of the course, so finishing now records a DNF.",
+  "@runRaceStopBodyDnf": {
+    "description": "Extra line on the race-stop sheet when the runner has covered less than 90% of the course"
+  },
+  "runRaceResume": "Resume race",
+  "@runRaceResume": {
+    "description": "Race-stop sheet action that resumes the paused race recording"
+  },
+  "runRaceFinish": "Finish race",
+  "@runRaceFinish": {
+    "description": "Race-stop sheet action that ends the race recording and records a finish"
+  },
+  "runRaceFinishDnf": "Finish as DNF",
+  "@runRaceFinishDnf": {
+    "description": "Race-stop sheet action when the runner has covered under 90%: ends the race recording and records a DNF"
+  },
+  "runRaceFinishedAuto": "Finished! Gun time {time}",
+  "@runRaceFinishedAuto": {
+    "description": "Banner when the runner reaches the finish line and the race recording stops automatically",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "25:04"
+      }
+    }
+  },
+  "runRaceFinishRecorded": "Race finish recorded",
+  "@runRaceFinishRecorded": {
+    "description": "Banner when a race finish is recorded but no gun time is known"
+  },
+  "runRaceEnded": "The host ended the race. Your run keeps recording, but no result will be submitted.",
+  "@runRaceEnded": {
+    "description": "Banner when the race host ends the race before this runner finished"
+  },
+  "runRaceLateStart": "Late start: you began more than 5 minutes after GO or away from the start line.",
+  "@runRaceLateStart": {
+    "description": "Banner when the runner started recording more than 5 minutes after GO or more than 200 m from the course start"
   }
 }

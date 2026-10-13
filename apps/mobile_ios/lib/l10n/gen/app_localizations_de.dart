@@ -14638,4 +14638,40 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get dashboardLeadAddRun => 'Lauf hinzufügen';
+
+  @override
+  String get runRaceStopTitle => 'Rennen pausiert';
+
+  @override
+  String get runRaceStopBody =>
+      'Die Rennuhr läuft weiter. Setze fort, um weiterzulaufen, oder beende das Rennen jetzt.';
+
+  @override
+  String get runRaceStopBodyDnf =>
+      'Du hast weniger als 90 % der Strecke zurückgelegt, daher wird ein Beenden jetzt als DNF gewertet.';
+
+  @override
+  String get runRaceResume => 'Rennen fortsetzen';
+
+  @override
+  String get runRaceFinish => 'Rennen beenden';
+
+  @override
+  String get runRaceFinishDnf => 'Als DNF beenden';
+
+  @override
+  String runRaceFinishedAuto(String time) {
+    return 'Im Ziel! Bruttozeit $time';
+  }
+
+  @override
+  String get runRaceFinishRecorded => 'Zieleinlauf erfasst';
+
+  @override
+  String get runRaceEnded =>
+      'Der Veranstalter hat das Rennen beendet. Dein Lauf wird weiter aufgezeichnet, aber es wird kein Ergebnis eingereicht.';
+
+  @override
+  String get runRaceLateStart =>
+      'Später Start: Du bist mehr als 5 Minuten nach dem Startschuss oder abseits der Startlinie losgelaufen.';
 }

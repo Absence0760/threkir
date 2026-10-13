@@ -14659,4 +14659,40 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get dashboardLeadAddRun => 'Ajouter une course';
+
+  @override
+  String get runRaceStopTitle => 'Course en pause';
+
+  @override
+  String get runRaceStopBody =>
+      'Le chrono de la course continue de tourner. Reprenez pour continuer ou terminez la course maintenant.';
+
+  @override
+  String get runRaceStopBodyDnf =>
+      'Vous avez parcouru moins de 90 % du parcours : terminer maintenant enregistre un abandon (DNF).';
+
+  @override
+  String get runRaceResume => 'Reprendre la course';
+
+  @override
+  String get runRaceFinish => 'Terminer la course';
+
+  @override
+  String get runRaceFinishDnf => 'Terminer en abandon (DNF)';
+
+  @override
+  String runRaceFinishedAuto(String time) {
+    return 'Arrivée ! Temps officiel $time';
+  }
+
+  @override
+  String get runRaceFinishRecorded => 'Arrivée enregistrée';
+
+  @override
+  String get runRaceEnded =>
+      'L\'organisateur a clôturé la course. Votre course continue d\'être enregistrée, mais aucun résultat ne sera envoyé.';
+
+  @override
+  String get runRaceLateStart =>
+      'Départ tardif : vous êtes parti plus de 5 minutes après le départ ou loin de la ligne de départ.';
 }

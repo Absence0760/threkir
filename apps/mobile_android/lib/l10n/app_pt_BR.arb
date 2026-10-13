@@ -4217,5 +4217,15 @@
   "dashboardLeadToday": "Hoje",
   "dashboardLeadTomorrow": "Amanhã",
   "dashboardLeadNoNextSession": "Não há mais sessões programadas no seu plano.",
-  "dashboardLeadAddRun": "Adicionar corrida"
+  "dashboardLeadAddRun": "Adicionar corrida",
+  "runRaceStopTitle": "Prova pausada",
+  "runRaceStopBody": "O relógio da prova continua correndo. Retome para continuar ou finalize a prova agora.",
+  "runRaceStopBodyDnf": "Você percorreu menos de 90% do percurso, então finalizar agora registra um DNF.",
+  "runRaceResume": "Retomar prova",
+  "runRaceFinish": "Finalizar prova",
+  "runRaceFinishDnf": "Finalizar como DNF",
+  "runRaceFinishedAuto": "Chegada! Tempo oficial {time}",
+  "runRaceFinishRecorded": "Chegada registrada",
+  "runRaceEnded": "O organizador encerrou a prova. Sua corrida continua sendo gravada, mas nenhum resultado será enviado.",
+  "runRaceLateStart": "Largada tardia: você começou mais de 5 minutos após a largada ou longe da linha de largada."
 }

@@ -1726,7 +1726,7 @@ resource "aws_cloudfront_response_headers_policy" "security" {
     # `script-src 'unsafe-inline'` is kept HERE on purpose, but it is no
     # longer the binding policy. The static build inlines a per-page
     # hydration script, so this header must permit inline scripts at all —
-    # but SvelteKit's `kit.csp` (hash mode) now emits a SECOND CSP as a
+    # but the `csp` option of the `sveltekit()` Vite plugin (hash mode) now emits a SECOND CSP as a
     # per-page `<meta http-equiv>` tag whose `script-src` is `'self'` plus
     # the SHA-256 hash of that page's inline script and NOTHING else (no
     # `'unsafe-inline'`). Browsers enforce header + meta as separate
@@ -2725,7 +2725,7 @@ resource "aws_cloudfront_distribution" "this" {
   # request path, so nothing loads under /runs/<id>) and its hydration payload
   # names route "/". Pointing this back at /index.html serves the landing page,
   # broken, for every client route. `apps/web/src/lib/seo/spa_shell_filename.test.ts`
-  # reads this block, apps/web/svelte.config.js's adapter fallback and the five
+  # reads this block, apps/web/vite.config.ts's adapter fallback and the five
   # share Lambdas' build scripts, and fails when they disagree.
   #
   # Changing this value has a deploy order: /200.html must exist in the bucket

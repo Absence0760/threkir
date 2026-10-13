@@ -37,7 +37,7 @@ test('packageOf ignores what is not a package', () => {
 	assert.equal(packageOf('./local'), null);
 	assert.equal(packageOf('../up'), null);
 	assert.equal(packageOf('/abs'), null);
-	assert.equal(packageOf('$lib/types'), null);
+	assert.equal(packageOf('#lib/types'), null);
 	assert.equal(packageOf('node:fs'), null);
 	assert.equal(packageOf('@scope'), null);
 	assert.equal(packageOf(''), null);

@@ -1,6 +1,6 @@
 // Transport-agnostic handler for the AI route-request enhancement — the
 // REQUEST half of the AI route assistant (the DESCRIBE half lives in
-// `$lib/routes/route_describe/handler`). It turns a plain-English request
+// `#lib/routes/route_describe/handler`). It turns a plain-English request
 // ("a flat 10k loop avoiding main roads") into a STRICTLY-VALIDATED
 // constraints object the existing deterministic generator already
 // understands.

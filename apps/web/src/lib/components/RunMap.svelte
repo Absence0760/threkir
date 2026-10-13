@@ -1,17 +1,17 @@
 <script lang="ts">
 	import type * as GeoJSON from 'geojson';
 	import { onMount, onDestroy, untrack } from 'svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import maplibregl from '$lib/routes/maplibre';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import maplibregl from '#lib/routes/maplibre.ts';
 	import 'maplibre-gl/dist/maplibre-gl.css';
-	import { env } from '$env/dynamic/public';
-	const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
-	import { getUnit } from '$lib/format/units.svelte';
+	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV } from '$app/env/public';
+	const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
+	import { getUnit } from '#lib/format/units.svelte.ts';
 	import {
 		basemapIsDarkFromEnv,
 		getMapStyle,
 		mapStyleUrlFromEnv as mapStyleUrl,
-	} from '$lib/routes/map-style.svelte';
+	} from '#lib/routes/map-style.svelte.ts';
 	import {
 		mapAccentColour,
 		mapFinishColour,
@@ -22,25 +22,25 @@
 		mapOverlayOutline,
 		mapStartColour,
 		mapTrackLine,
-	} from '$lib/routes/basemap_contrast';
-	import { watchMapResize } from '$lib/routes/map_resize';
-	import { minMax } from '$lib/util/min_max';
-	import type { TrackPoint } from '$lib/types';
-	import { lineLngLat } from '$lib/runs/track_line';
+	} from '#lib/routes/basemap_contrast.ts';
+	import { watchMapResize } from '#lib/routes/map_resize.ts';
+	import { minMax } from '#lib/util/min_max.ts';
+	import type { TrackPoint } from '#lib/types.ts';
+	import { lineLngLat } from '#lib/runs/track_line.ts';
 	import {
 		PACE_GRADIENT_RAMP,
 		paceGradientColour,
 		paceGradientStops,
 		type ActivityKind,
 		type PaceStop,
-	} from '$lib/segments/pace_segments';
-	import { snapToPolyline } from '$lib/routes/route_snap';
+	} from '#lib/segments/pace_segments.ts';
+	import { snapToPolyline } from '#lib/routes/route_snap.ts';
 	import {
 		haversineMetres as haversine,
 		buildTrackIndex,
 		nearestIndex,
 		type TrackIndex,
-	} from '$lib/routes/nearest_track_point';
+	} from '#lib/routes/nearest_track_point.ts';
 
 	/// Segment-detail callback. When set, clicks anywhere on the map
 	/// snap to the nearest track point, compute a small window (±150 m
@@ -159,7 +159,7 @@
 		snapToRoute = false,
 	}: Props = $props();
 
-	import { hasAcceptedConsent } from '$lib/settings/consent.svelte';
+	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
 	// Drives the placeholder ↔ map swap. MapTiler logs the requester IP
 	// per tile fetch, so we never auto-instantiate maplibregl before the
 	// user has accepted the cookie banner — on authenticated surfaces too
@@ -860,7 +860,7 @@
 		});
 		// Resize-on-container-change wiring — catches the
 		// flex-mismeasure-at-mount + SplitPane-drag bugs. See
-		// `$lib/routes/map_resize`.
+		// `#lib/routes/map_resize`.
 		stopResizeWatch = watchMapResize(mapContainer, map);
 
 		map.addControl(new maplibregl.NavigationControl(), 'top-right');

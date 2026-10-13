@@ -7,7 +7,7 @@
 /// These run both halves over the same grid.
 ///
 /// The web module is loaded by a computed specifier so `deno check` does not
-/// walk into the SvelteKit tree (its `$lib/...` type import has no meaning
+/// walk into the SvelteKit tree (its `#lib/...` type import has no meaning
 /// here); with `--no-check` that type-only import is erased.
 ///
 /// Run with:

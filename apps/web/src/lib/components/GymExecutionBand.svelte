@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { RoutineStep } from '$lib/gym/gym_routine';
-	import type { EnteredSet } from '$lib/gym/gym_session_types';
+	import type { RoutineStep } from '#lib/gym/gym_routine.ts';
+	import type { EnteredSet } from '#lib/gym/gym_session_types.ts';
 	import {
 		idleStopwatch,
 		isRunning,
@@ -9,10 +9,10 @@
 		stopStopwatch,
 		parseDurationInput,
 		type StopwatchState,
-	} from '$lib/gym/gym_stopwatch';
-	import { weightInputValue, parseWeight, weightUnitLabel } from '$lib/format/units.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import MetricLabel from '$lib/components/MetricLabel.svelte';
+	} from '#lib/gym/gym_stopwatch.ts';
+	import { weightInputValue, parseWeight, weightUnitLabel } from '#lib/format/units.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
 
 	interface Props {
 		step: RoutineStep;

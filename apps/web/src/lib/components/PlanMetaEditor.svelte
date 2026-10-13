@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { lengthLimit } from '$lib/core/column_limits';
+	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import Modal from './Modal.svelte';
-	import { updatePlanMeta } from '$lib/core/data';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { TrainingPlan } from '$lib/types';
+	import { updatePlanMeta } from '#lib/core/data.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { TrainingPlan } from '#lib/types.ts';
 
 	interface Props {
 		plan: TrainingPlan;

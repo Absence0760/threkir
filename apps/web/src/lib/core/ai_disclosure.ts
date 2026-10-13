@@ -17,7 +17,7 @@
 // a new version with new copy, not a new boolean column and not quietly
 // widening what an existing acceptance covers.
 //
-// This module lives outside `$lib/coach` on purpose: the route-AI handlers
+// This module lives outside `#lib/coach` on purpose: the route-AI handlers
 // need it, and importing from the coach barrel drags the Anthropic SDK
 // into bundles that have no business carrying it.
 

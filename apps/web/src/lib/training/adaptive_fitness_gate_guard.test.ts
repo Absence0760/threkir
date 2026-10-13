@@ -33,8 +33,15 @@ test('the P2 fitness gate is fail-closed and reads PUBLIC_ADAPTIVE_FITNESS_GATE'
 	const flag = read('src/lib/training/adaptive_fitness_flag.ts');
 	assert.match(flag, /PUBLIC_ADAPTIVE_FITNESS_GATE/,
 		'the flag must read PUBLIC_ADAPTIVE_FITNESS_GATE');
-	assert.match(flag, /from\s+'\$env\/dynamic\/public'/,
+	assert.match(flag, /from\s+'\$app\/env\/public'/,
 		'the flag must read the deploy-time public env, not a build-time constant');
+	// `$app/env/public` serves both kinds of variable; whether one is baked in
+	// at build is declared in src/env.ts, so that is where "deploy-time" lives.
+	assert.doesNotMatch(
+		read('src/env.ts'),
+		/\bPUBLIC_ADAPTIVE_FITNESS_GATE:[^}]*\bstatic:\s*true/,
+		'PUBLIC_ADAPTIVE_FITNESS_GATE must not be declared `static: true` in src/env.ts — that bakes it in at build',
+	);
 	// Delegating to the parity-pair parser is what keeps web and mobile from
 	// accepting different values for the same documented flag.
 	assert.match(flag, /adaptiveFitnessGateEnabled\(/,

@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { parseRouteFile, type ImportedRoute } from '$lib/integrations/import';
-	import { saveRoute } from '$lib/core/data';
-	import { formatDistance } from '$lib/core/mock-data';
+	import { parseRouteFile, type ImportedRoute } from '#lib/integrations/import.ts';
+	import { saveRoute } from '#lib/core/data.ts';
+	import { formatDistance } from '#lib/core/mock-data.ts';
 	import { goto } from '$app/navigation';
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import Modal from './Modal.svelte';
 
 	let {

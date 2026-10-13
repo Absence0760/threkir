@@ -1,6 +1,6 @@
 /// Pure URL + body shape helpers for the cloud-export flip. Lives in
 /// its own module so unit tests can pin the wire shape without the
-/// SvelteKit `$env` / `supabase-js` imports. Mirrors the layering in
+/// SvelteKit `$app/env` / `supabase-js` imports. Mirrors the layering in
 /// `live_hub_helpers.ts`.
 ///
 /// The legacy `export-data` Edge Function accepts

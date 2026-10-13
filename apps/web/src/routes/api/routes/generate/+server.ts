@@ -1,17 +1,17 @@
-// Thin SvelteKit wrapper around `$lib/routes/generate/handler`. Dev-only —
+// Thin SvelteKit wrapper around `#lib/routes/generate/handler`. Dev-only —
 // under `@sveltejs/adapter-static` (the canonical adapter, see decisions §53)
 // this `+server.ts` is not built. In production the same handler is reached via
 // `apps/web/lambda/generate-route/src/index.ts`, fronted by CloudFront's
 // `/api/routes/generate*` behaviour.
 //
-// The shared core lives at `$lib/routes/generate/handler.ts`; this file just
+// The shared core lives at `#lib/routes/generate/handler.ts`; this file just
 // adapts the SvelteKit `Request` to the core's transport-agnostic signature.
 
 import type { RequestHandler } from './$types';
-import { env } from '$env/dynamic/private';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
-import { GENERATE_BODY_LIMIT_BYTES, handleGenerate } from '$lib/routes/generate/handler';
-import { checkBodyByteLimit } from '$lib/coach/body';
+import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$app/env/public';
+import { BYPASS_PAYWALL, GRAPHHOPPER_API_KEY, GRAPHHOPPER_URL, GRAPH_CYCLE_API_KEY, GRAPH_CYCLE_URL, NODE_ENV } from '$app/env/private';
+import { GENERATE_BODY_LIMIT_BYTES, handleGenerate } from '#lib/routes/generate/handler.ts';
+import { checkBodyByteLimit } from '#lib/coach/body.ts';
 
 export const prerender = false;
 
@@ -42,8 +42,8 @@ export const POST: RequestHandler = async ({ request }) => {
 	//   3. BYPASS_PAYWALL must be the literal string 'true'.
 	const isLocalSupabase =
 		PUBLIC_SUPABASE_URL.includes('127.0.0.1') || PUBLIC_SUPABASE_URL.includes('localhost');
-	const isProdEnv = env.NODE_ENV === 'production';
-	const bypassPaywallEnabled = !isProdEnv && isLocalSupabase && env.BYPASS_PAYWALL === 'true';
+	const isProdEnv = NODE_ENV === 'production';
+	const bypassPaywallEnabled = !isProdEnv && isLocalSupabase && BYPASS_PAYWALL === 'true';
 
 	// GRAPH_CYCLE_URL + GRAPHHOPPER_URL are server-only envs (never PUBLIC_): the
 	// browser routes generation through this endpoint, so user start-coordinates
@@ -51,10 +51,10 @@ export const POST: RequestHandler = async ({ request }) => {
 	// the client falls back to its in-browser OSRM heuristic.
 	const result = await handleGenerate(request.headers.get('x-supabase-authorization'), rawBody, {
 		// graph_cycle sidecar — the v3 graph-cycle generator, tried FIRST.
-		graphCycleUrl: env.GRAPH_CYCLE_URL,
-		graphCycleApiKey: env.GRAPH_CYCLE_API_KEY,
-		graphhopperUrl: env.GRAPHHOPPER_URL,
-		graphhopperApiKey: env.GRAPHHOPPER_API_KEY,
+		graphCycleUrl: GRAPH_CYCLE_URL,
+		graphCycleApiKey: GRAPH_CYCLE_API_KEY,
+		graphhopperUrl: GRAPHHOPPER_URL,
+		graphhopperApiKey: GRAPHHOPPER_API_KEY,
 		publicSupabaseUrl: PUBLIC_SUPABASE_URL,
 		publicSupabaseAnonKey: PUBLIC_SUPABASE_ANON_KEY,
 		bypassPaywallEnabled,

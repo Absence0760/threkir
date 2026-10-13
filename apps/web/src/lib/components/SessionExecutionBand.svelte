@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import type { SessionStep } from '$lib/social/session_steps';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { SessionStep } from '#lib/social/session_steps.ts';
 
 	interface Props {
 		step: SessionStep;

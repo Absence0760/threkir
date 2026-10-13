@@ -1,42 +1,42 @@
 <script lang="ts">
-	import { siteOrigin } from '$lib/core/site_url';
+	import { siteOrigin } from '#lib/core/site_url.ts';
 	import { onMount } from 'svelte';
-	import { formatDistance } from '$lib/core/mock-data';
-	import { toGpx, toKml, downloadFile } from '$lib/routes/gpx';
-	import { toRouteGpxWithMarkers, type RouteGpxMarker } from '$lib/routes/route_gpx';
-	import { fetchRouteById, fetchRouteMarkers, getRouteReviews, upsertRouteReview, deleteRouteReview, updateRouteTags, setRoutePublic, setRouteStar } from '$lib/core/data';
-	import type { RouteMarker } from '$lib/types';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { deferDestructive } from '$lib/stores/undo.svelte';
-	import RunMap from '$lib/components/RunMap.svelte';
-	import ElevationProfile from '$lib/components/ElevationProfile.svelte';
-	import SplitPane from '$lib/components/SplitPane.svelte';
-	import SegmentsPanel from '$lib/components/SegmentsPanel.svelte';
-	import RouteMarkerEditor from '$lib/components/RouteMarkerEditor.svelte';
-	import type { MapMarkerPin } from '$lib/components/RunMap.svelte';
-	import RoutePhotos from '$lib/components/RoutePhotos.svelte';
-	import RouteConditions from '$lib/components/RouteConditions.svelte';
-	import ReportDialog from '$lib/components/ReportDialog.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import SendRouteDialog from '$lib/components/SendRouteDialog.svelte';
-	import RoutePreviewScrubber from '$lib/components/RoutePreviewScrubber.svelte';
-	import { interpolateAlongRoute } from '$lib/routes/route_geometry';
-	import { routeElevation } from '$lib/routes/route_elevation';
-	import { buildRouteShareCanonical } from '$lib/share/share_meta';
-	import { describeRoute, localisedTemplate } from '$lib/routes/route_description';
-	import { requestAiDescription } from '$lib/routes/route_describe_client';
-	import { AI_DISCLOSURE_ERROR } from '$lib/core/ai_disclosure';
-	import { coachEnabled } from '$lib/coach/coach_flag';
+	import { formatDistance } from '#lib/core/mock-data.ts';
+	import { toGpx, toKml, downloadFile } from '#lib/routes/gpx.ts';
+	import { toRouteGpxWithMarkers, type RouteGpxMarker } from '#lib/routes/route_gpx.ts';
+	import { fetchRouteById, fetchRouteMarkers, getRouteReviews, upsertRouteReview, deleteRouteReview, updateRouteTags, setRoutePublic, setRouteStar } from '#lib/core/data.ts';
+	import type { RouteMarker } from '#lib/types.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { deferDestructive } from '#lib/stores/undo.svelte.ts';
+	import RunMap from '#lib/components/RunMap.svelte';
+	import ElevationProfile from '#lib/components/ElevationProfile.svelte';
+	import SplitPane from '#lib/components/SplitPane.svelte';
+	import SegmentsPanel from '#lib/components/SegmentsPanel.svelte';
+	import RouteMarkerEditor from '#lib/components/RouteMarkerEditor.svelte';
+	import type { MapMarkerPin } from '#lib/components/RunMap.svelte';
+	import RoutePhotos from '#lib/components/RoutePhotos.svelte';
+	import RouteConditions from '#lib/components/RouteConditions.svelte';
+	import ReportDialog from '#lib/components/ReportDialog.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import SendRouteDialog from '#lib/components/SendRouteDialog.svelte';
+	import RoutePreviewScrubber from '#lib/components/RoutePreviewScrubber.svelte';
+	import { interpolateAlongRoute } from '#lib/routes/route_geometry.ts';
+	import { routeElevation } from '#lib/routes/route_elevation.ts';
+	import { buildRouteShareCanonical } from '#lib/share/share_meta.ts';
+	import { describeRoute, localisedTemplate } from '#lib/routes/route_description.ts';
+	import { requestAiDescription } from '#lib/routes/route_describe_client.ts';
+	import { AI_DISCLOSURE_ERROR } from '#lib/core/ai_disclosure.ts';
+	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 
 	// The "Describe this route" button always works (offline template); the
 	// AI-enhancement upsell below it only makes sense when the Coach is live.
 	const coachOn = coachEnabled();
-	import { env } from '$env/dynamic/public';
-	import { m } from '$lib/i18n/store.svelte';
-	import { routeSurfaceLabel } from '$lib/i18n/enum_labels.svelte';
-	import type { MessageKey } from '$lib/i18n/messages';
-	import type { Route } from '$lib/types';
+	import { PUBLIC_SITE_URL } from '$app/env/public';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
+	import type { Route } from '#lib/types.ts';
 
 	let { data } = $props();
 
@@ -46,7 +46,7 @@
 	// sitemap-listed, anon-readable copy. No own SEO meta otherwise:
 	// the app shell is behind the SPA and not meant to be indexed.
 	let canonicalUrl = $derived(
-		buildRouteShareCanonical(siteOrigin(env.PUBLIC_SITE_URL), data.id)
+		buildRouteShareCanonical(siteOrigin(PUBLIC_SITE_URL), data.id)
 	);
 
 	let route = $state<Route | null>(null);

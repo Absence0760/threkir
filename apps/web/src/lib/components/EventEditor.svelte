@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
-	import { lengthLimit } from '$lib/core/column_limits';
-	import { formatISO } from '$lib/training/training';
+	import { lengthLimit } from '#lib/core/column_limits.ts';
+	import { formatISO } from '#lib/training/training.ts';
 	import {
 		fetchRoutes,
 		fetchClubRoutes,
@@ -13,19 +13,19 @@
 		fetchSessionPlans,
 		setEventSessionPlan,
 		type SessionPlan
-	} from '$lib/core/data';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import UnsavedChangesGuard from '$lib/components/UnsavedChangesGuard.svelte';
-	import { trackDirty } from '$lib/core/form_dirty';
-	import { toMinorUnits } from '$lib/format/minor_units';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { WEEKDAY_CHOICES } from '$lib/social/recurrence';
-	import { EVENT_CATEGORIES, isAthleticCategory } from '$lib/social/event_category';
-	import { gymTemplateFromInputs } from '$lib/social/event_gym_template';
-	import { formatDistance, getUnit } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { Route, RecurrenceFreq, Weekday, EventCategory, RefundPolicy, Event as ClubEvent } from '$lib/types';
-	import type { RouteListItem } from '$lib/routes/route_list_columns';
+	} from '#lib/core/data.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import UnsavedChangesGuard from '#lib/components/UnsavedChangesGuard.svelte';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
+	import { toMinorUnits } from '#lib/format/minor_units.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { WEEKDAY_CHOICES } from '#lib/social/recurrence.ts';
+	import { EVENT_CATEGORIES, isAthleticCategory } from '#lib/social/event_category.ts';
+	import { gymTemplateFromInputs } from '#lib/social/event_gym_template.ts';
+	import { formatDistance, getUnit } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { Route, RecurrenceFreq, Weekday, EventCategory, RefundPolicy, Event as ClubEvent } from '#lib/types.ts';
+	import type { RouteListItem } from '#lib/routes/route_list_columns.ts';
 
 	// Conversion factor for the unit label / pace target. The form
 	// keeps its working value in the user's preferred unit (km or mi)

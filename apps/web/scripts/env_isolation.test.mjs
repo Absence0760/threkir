@@ -270,6 +270,10 @@ test('every URL-shaped env var the web tree reads is guarded or declared exempt'
 			)) {
 				if (/(?:_URL|_URI|_ENDPOINT)$/.test(m[1])) read.add(m[1]);
 			}
+			// SvelteKit code reads its variables as named imports (src/env.ts).
+			for (const [, names] of src.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"]\$app\/env\/(?:public|private)['"]/g)) {
+				for (const [name] of names.matchAll(/\b[A-Z][A-Z0-9_]*(?:_URL|_URI|_ENDPOINT)\b/g)) read.add(name);
+			}
 		}
 	}
 

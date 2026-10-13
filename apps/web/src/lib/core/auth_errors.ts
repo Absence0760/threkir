@@ -1,4 +1,4 @@
-import type { MessageKey } from '$lib/i18n/messages';
+import type { MessageKey } from '#lib/i18n/messages.ts';
 
 /// Friendly, actionable categories an auth failure maps to. Supabase's
 /// raw `err.message` ("AuthApiException…", "Failed to fetch") is

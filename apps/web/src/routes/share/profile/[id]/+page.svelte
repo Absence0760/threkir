@@ -1,15 +1,15 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import SharePageShell from '$lib/components/SharePageShell.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import SharePageShell from '#lib/components/SharePageShell.svelte';
 	import {
 		buildProfileJsonLd,
 		buildProfileShareCanonical,
 		buildProfileShareDescription,
 		buildProfileShareTitle,
 		profileDisplayName,
-	} from '$lib/share/share_profile_meta';
+	} from '#lib/share/share_profile_meta.ts';
 
 	let { data } = $props();
 

@@ -1,33 +1,33 @@
 <script lang="ts">
 	import '../app.css';
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { browser } from '$app/environment';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { accountLabel } from '$lib/format/account_label';
-	import { initTheme } from '$lib/settings/theme';
-	import { setMapStyle, type MapStyle } from '$lib/routes/map-style.svelte';
-	import { setUnit, setWeightUnit } from '$lib/format/units.svelte';
-	import { defaultWeightUnitForDistanceUnit } from '$lib/format/weight';
-	import BillingIssueBanner from '$lib/components/BillingIssueBanner.svelte';
-	import CookieConsentBanner from '$lib/components/CookieConsentBanner.svelte';
-	import ToastContainer from '$lib/components/ToastContainer.svelte';
-	import UndoBar from '$lib/components/UndoBar.svelte';
-	import { setUndoWindowS } from '$lib/stores/undo.svelte';
-	import NotificationBell from '$lib/components/NotificationBell.svelte';
-	import { notificationStore } from '$lib/stores/notifications.svelte';
-	import { m, initLocale } from '$lib/i18n/store.svelte';
-	import type { MessageKey } from '$lib/i18n/messages';
-	import { coachEnabled } from '$lib/coach/coach_flag';
+	import { browser } from '$app/env';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { accountLabel } from '#lib/format/account_label.ts';
+	import { initTheme } from '#lib/settings/theme.ts';
+	import { setMapStyle, type MapStyle } from '#lib/routes/map-style.svelte.ts';
+	import { setUnit, setWeightUnit } from '#lib/format/units.svelte.ts';
+	import { defaultWeightUnitForDistanceUnit } from '#lib/format/weight.ts';
+	import BillingIssueBanner from '#lib/components/BillingIssueBanner.svelte';
+	import CookieConsentBanner from '#lib/components/CookieConsentBanner.svelte';
+	import ToastContainer from '#lib/components/ToastContainer.svelte';
+	import UndoBar from '#lib/components/UndoBar.svelte';
+	import { setUndoWindowS } from '#lib/stores/undo.svelte.ts';
+	import NotificationBell from '#lib/components/NotificationBell.svelte';
+	import { notificationStore } from '#lib/stores/notifications.svelte.ts';
+	import { m, initLocale } from '#lib/i18n/store.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
+	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 	import {
 		hydrateModalityVisibility,
 		modalityVisible,
 		resetModalityVisibility,
-	} from '$lib/stores/modality_visibility.svelte';
-	import type { Modality } from '$lib/settings/modality_visibility';
-	import { strayConfirmationTarget } from '$lib/core/auth_confirmation';
-	import { env } from '$env/dynamic/public';
+	} from '#lib/stores/modality_visibility.svelte.ts';
+	import type { Modality } from '#lib/settings/modality_visibility.ts';
+	import { strayConfirmationTarget } from '#lib/core/auth_confirmation.ts';
+	import { PUBLIC_SUPABASE_URL } from '$app/env/public';
 
 	// Warm the connection to the Supabase origin every page hits on
 	// mount (the auth-session check + all data fetches). A preconnect
@@ -37,7 +37,7 @@
 	// can't throw during render.
 	const supabaseOrigin = (() => {
 		try {
-			return env.PUBLIC_SUPABASE_URL ? new URL(env.PUBLIC_SUPABASE_URL).origin : '';
+			return PUBLIC_SUPABASE_URL ? new URL(PUBLIC_SUPABASE_URL).origin : '';
 		} catch {
 			return '';
 		}
@@ -60,12 +60,12 @@
 			)
 		: null;
 	onMount(() => {
-		if (strayLanding) goto(strayLanding, { replaceState: true });
+		if (strayLanding) goto(strayLanding, { replace: true });
 	});
 
 	// Apply the persisted theme on first client mount. A blocking
 	// bootstrap <script> in app.html would kill the first-paint flash
-	// entirely, but the hash-based CSP (svelte.config.js) forbids a
+	// entirely, but the hash-based CSP (vite.config.ts) forbids a
 	// hand-written inline script; the `<meta name="color-scheme">` in
 	// app.html is the CSP-safe partial mitigation (correct UA default
 	// background before CSS), and this reconciles to the exact
@@ -125,7 +125,7 @@
 		(async () => {
 			try {
 				const { loadSettings, effective, effectivePreferredUnit } = await import(
-					'$lib/settings/settings'
+					'#lib/settings/settings.ts'
 				);
 				const settings = await loadSettings(uid);
 				void hydrateModalityVisibility(uid, settings).catch((e) =>
@@ -288,8 +288,8 @@
 	// to /runs/<id> gets bounced to the dashboard after sign-in and has to
 	// hunt for the destination.
 	$effect(() => {
-		if (browser && !auth.loading && !auth.loggedIn && !isAnonAllowed($page.url.pathname)) {
-			const returnTo = $page.url.pathname + $page.url.search;
+		if (browser && !auth.loading && !auth.loggedIn && !isAnonAllowed(page.url.pathname)) {
+			const returnTo = page.url.pathname + page.url.search;
 			const isDefault = returnTo === '/dashboard' || returnTo === '/';
 			goto(isDefault ? '/login' : `/login?return_to=${encodeURIComponent(returnTo)}`);
 		}
@@ -308,7 +308,7 @@
 		if (!browser) return;
 		if (auth.loading || !auth.loggedIn || !auth.user) return;
 		if (auth.user.consent_recorded) return;
-		const path = $page.url.pathname;
+		const path = page.url.pathname;
 		if (path === '/auth/confirm-age') return;
 		if (isAnonAllowed(path)) return;
 		goto('/auth/confirm-age');
@@ -327,7 +327,7 @@
 		if (auth.loading || !auth.loggedIn || !auth.user) return;
 		if (auth.user.onboarded_at != null) return;
 		if (!auth.user.consent_recorded) return;
-		const path = $page.url.pathname;
+		const path = page.url.pathname;
 		if (path === '/onboarding') return;
 		if (isAnonAllowed(path)) return;
 		goto('/onboarding');
@@ -476,7 +476,7 @@
 	{/if}
 </div>
 
-{#if isShellless($page.url.pathname)}
+{#if isShellless(page.url.pathname)}
 	<!-- Landing, login, share, live, club-invite — these have their own
 	     chrome and render shell-less regardless of auth state. -->
 	<!-- WCAG 2.4.1. The other two branches have had a skip link since the
@@ -486,7 +486,7 @@
 	     why the landmark work had to land first. -->
 	<a href="#main-content" class="skip-link">{m('shell.skipToMain')}</a>
 	<slot />
-{:else if !auth.loggedIn && isAnonAllowed($page.url.pathname)}
+{:else if !auth.loggedIn && isAnonAllowed(page.url.pathname)}
 	<!-- Anon viewer on an anon-allowed content page (/privacy, /terms,
 	     /cookie-notice, /compare, /guided, /guided/*, /recap/*). Render
 	     the slot without the signed-in shell. Bypasses the auth.loading
@@ -528,7 +528,7 @@
 						<a
 							href={item.href}
 							class="nav-link"
-							class:active={isActive(item.href, $page.url.pathname)}
+							class:active={isActive(item.href, page.url.pathname)}
 							style="--accent: var(--section-{item.section}); --accent-ink: var(--section-{item.section}-ink);"
 							title={sidebarCollapsed ? m(item.labelKey) : undefined}
 						>

@@ -219,7 +219,7 @@ test('route-builder OSRM traffic goes through the server-side proxy, never brows
 	const routingSource = read('src/lib/routes/routing.ts');
 	assert.doesNotMatch(
 		routingSource,
-		/PUBLIC_OSRM_URL|\$env\/dynamic\/public|router\.project-osrm\.org/,
+		/PUBLIC_OSRM_URL|\$app\/env\/public|router\.project-osrm\.org/,
 		'routing.ts must not read a PUBLIC_ OSRM env or reference the OSRM ' +
 			'host/demo — the browser only ever talks to /api/routes/osrm.',
 	);

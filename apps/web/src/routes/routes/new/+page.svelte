@@ -1,31 +1,31 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { tick } from 'svelte';
-	import { smartBack } from '$lib/util/smart_back';
-	import { nudgeLatLng, waypointKeyAction } from '$lib/routes/waypoint_keyboard';
-	import type { TrackPoint } from '$lib/types';
-	import { page } from '$app/stores';
-	import RouteBuilder from '$lib/components/RouteBuilder.svelte';
-	import ElevationProfile from '$lib/components/ElevationProfile.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import UnsavedChangesGuard from '$lib/components/UnsavedChangesGuard.svelte';
-	import SplitPane from '$lib/components/SplitPane.svelte';
-	import { toGpx, toKml, downloadFile } from '$lib/routes/gpx';
-	import { saveRoute } from '$lib/core/data';
-	import { pickSavePolyline } from '$lib/routes/route_save_polyline';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { distanceInPreferred, getUnit } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { MessageKey } from '$lib/i18n/messages';
-	import { routeSurfaceLabel } from '$lib/i18n/enum_labels.svelte';
-	import { env } from '$env/dynamic/public';
-	import { routeGenEnabled } from '$lib/routes/route_gen_flag';
+	import { smartBack } from '#lib/util/smart_back.ts';
+	import { nudgeLatLng, waypointKeyAction } from '#lib/routes/waypoint_keyboard.ts';
+	import type { TrackPoint } from '#lib/types.ts';
+	import { page } from '$app/state';
+	import RouteBuilder from '#lib/components/RouteBuilder.svelte';
+	import ElevationProfile from '#lib/components/ElevationProfile.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import UnsavedChangesGuard from '#lib/components/UnsavedChangesGuard.svelte';
+	import SplitPane from '#lib/components/SplitPane.svelte';
+	import { toGpx, toKml, downloadFile } from '#lib/routes/gpx.ts';
+	import { saveRoute } from '#lib/core/data.ts';
+	import { pickSavePolyline } from '#lib/routes/route_save_polyline.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { distanceInPreferred, getUnit } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
+	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
+	import { PUBLIC_TILE_STYLE_URL } from '$app/env/public';
+	import { routeGenEnabled } from '#lib/routes/route_gen_flag.ts';
 	import {
 		requestRouteConstraints,
 		RouteRequestError,
-	} from '$lib/routes/route_request_client';
-	import type { RoutePreference } from '$lib/routes/generate/graphhopper';
+	} from '#lib/routes/route_request_client.ts';
+	import type { RoutePreference } from '#lib/routes/generate/graphhopper.ts';
 
 	// True when the local Protomaps tile-style override is set —
 	// in that mode all three map-style buttons (streets/satellite/
@@ -35,14 +35,14 @@
 	// the override is on so only the "Streets" affordance shows.
 	// See decisions.md § 68 + the May 2026 audit pass.
 	const tileOverrideActive =
-		(env.PUBLIC_TILE_STYLE_URL ?? '').trim().length > 0;
+		(PUBLIC_TILE_STYLE_URL ?? '').trim().length > 0;
 
 	const METRES_PER_MILE = 1609.344;
 
 	// `?club=<uuid>` makes the new route club-owned. The club home page's
 	// Routes tab links here with this param so route creation lands the
 	// row directly under the club rather than the user.
-	let clubId = $derived($page.url.searchParams.get('club'));
+	let clubId = $derived(page.url.searchParams.get('club'));
 
 	let routeName = $state('');
 	let routeDescription = $state('');

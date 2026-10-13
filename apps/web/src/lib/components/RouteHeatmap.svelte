@@ -1,22 +1,22 @@
 <script lang="ts">
 	import type * as GeoJSON from 'geojson';
 	import { onMount, onDestroy } from 'svelte';
-	import maplibregl from '$lib/routes/maplibre';
+	import maplibregl from '#lib/routes/maplibre.ts';
 	import 'maplibre-gl/dist/maplibre-gl.css';
-	import { env } from '$env/dynamic/public';
-	const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
+	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV } from '$app/env/public';
+	const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
 	import {
 		basemapIsDarkFromEnv,
 		mapStyleUrlFromEnv as mapStyleUrl,
-	} from '$lib/routes/map-style.svelte';
+	} from '#lib/routes/map-style.svelte.ts';
 	import {
 		mapFeaturedHalo,
 		mapHoverLine,
 		mapLabelInk,
 		mapOverlayOutline,
 		mapPinnedLine,
-	} from '$lib/routes/basemap_contrast';
-	import { watchMapResize } from '$lib/routes/map_resize';
+	} from '#lib/routes/basemap_contrast.ts';
+	import { watchMapResize } from '#lib/routes/map_resize.ts';
 	import {
 		fetchHeatmapPoints,
 		fetchRouteById,
@@ -24,19 +24,19 @@
 		fetchDiscoverableRoutesInBbox,
 		type DiscoverFilter,
 		type DiscoverableRoutePin,
-	} from '$lib/core/data';
-	import { formatDistance } from '$lib/format/units.svelte';
-	import { searchPlaces, type PlaceSearchResult } from '$lib/routes/geocoding';
+	} from '#lib/core/data.ts';
+	import { formatDistance } from '#lib/format/units.svelte.ts';
+	import { searchPlaces, type PlaceSearchResult } from '#lib/routes/geocoding.ts';
 	import {
 		DISTANCE_BANDS,
 		bandForDistance,
 		type DistanceBandKey,
-	} from '$lib/routes/distance_bands';
-	import { m } from '$lib/i18n/store.svelte';
-	import { routeSurfaceLabel } from '$lib/i18n/enum_labels.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { escapeHtml, safeHref } from '$lib/util/html_escape';
-	import { hasAcceptedConsent } from '$lib/settings/consent.svelte';
+	} from '#lib/routes/distance_bands.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { escapeHtml, safeHref } from '#lib/util/html_escape.ts';
+	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
 
 	let mapEl: HTMLDivElement;
 	let map: maplibregl.Map | null = null;
@@ -64,7 +64,7 @@
 	let wantDataFit = false;
 
 	// --- Search ---
-	// Uses `$lib/routes/geocoding.searchPlaces`, which transparently picks
+	// Uses `#lib/routes/geocoding.searchPlaces`, which transparently picks
 	// MapTiler when its key is set and falls back to Nominatim
 	// (OSM's free geocoder) otherwise. Either path lets the user
 	// pan the map to a named place — works whether or not we have

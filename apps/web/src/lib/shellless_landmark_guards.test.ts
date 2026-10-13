@@ -179,7 +179,7 @@ test('the layout gives the shell-less branch no landmark of its own', () => {
 	// branch in a <main>, the per-page landmarks below become NESTED (invalid,
 	// and two main landmarks to a screen reader) and this file should be
 	// rewritten rather than kept passing.
-	const branch = /\{#if isShellless\(\$page\.url\.pathname\)\}([\s\S]*?)\{:else if/.exec(layout);
+	const branch = /\{#if isShellless\(page\.url\.pathname\)\}([\s\S]*?)\{:else if/.exec(layout);
 	assert.ok(branch, 'could not find the shell-less branch in +layout.svelte');
 	assert.ok(
 		!stripHtmlComments(branch[1]).includes('<main'),
@@ -251,7 +251,7 @@ test('the shell-less branch renders a skip link to that target', () => {
 	// and this branch was the one the 2026-05-30 audit missed. The link has to
 	// live in the LAYOUT rather than on each page — 24 copies is 24 chances to
 	// omit one, which is exactly how the landmark defect happened.
-	const branch = /\{#if isShellless\(\$page\.url\.pathname\)\}([\s\S]*?)\{:else if/.exec(layout);
+	const branch = /\{#if isShellless\(page\.url\.pathname\)\}([\s\S]*?)\{:else if/.exec(layout);
 	assert.ok(branch, 'could not find the shell-less branch in +layout.svelte');
 	const src = stripHtmlComments(branch[1]);
 	assert.match(

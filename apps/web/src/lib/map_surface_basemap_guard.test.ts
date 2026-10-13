@@ -86,7 +86,7 @@ function read(key: string): string {
 
 test('every file that instantiates MapLibre is a registered map surface', () => {
 	const unregistered = sourceFiles(srcRoot)
-		.filter((f) => /routes\/maplibre'|from 'maplibre-gl'/.test(readFileSync(f, 'utf-8')))
+		.filter((f) => /routes\/maplibre(?:\.ts)?'|from 'maplibre-gl'/.test(readFileSync(f, 'utf-8')))
 		.map(rel)
 		.filter((key) => !NOT_SURFACES.has(key) && !(key in MAP_SURFACES));
 	assert.deepEqual(
@@ -277,7 +277,7 @@ test('the style-resolver scan flags a raw endpoint call and spares the resolver'
 	for (const line of [
 		"\tstreets: styleUrlForSlug(BUILDER_SLUGS.streets, KEY, OVERRIDE),",
 		'\tstyle: mapStyleUrlFromEnv(PUBLIC_MAPTILER_KEY, prefersDark),',
-		"\timport { maptilerStyleUrl } from '$lib/routes/map-style-url';",
+		"\timport { maptilerStyleUrl } from '#lib/routes/map-style-url.ts';",
 	]) {
 		assert.ok(!RAW_ENDPOINT.test(line), `must spare: ${line}`);
 	}
@@ -348,7 +348,7 @@ const STATIC_IMAGE_INFRA = new Set([
 ]);
 
 const STATIC_IMAGE_CONSUMER =
-	/routes\/static_map'|\btrackThumbnailUrlFromEnv\(|\bstaticMapSlugFromPreference\(|api\.maptiler\.com\/maps\/|\/static\/auto\//;
+	/routes\/static_map(?:\.ts)?'|\btrackThumbnailUrlFromEnv\(|\bstaticMapSlugFromPreference\(|api\.maptiler\.com\/maps\/|\/static\/auto\//;
 
 /// A quoted MapTiler slug. In a thumbnail that is a basemap chosen by the
 /// widget rather than by the runner, which is the defect.
@@ -426,7 +426,7 @@ test('the thumbnail scan flags a slug literal and a raw builder, and spares the 
 	}
 	for (const line of [
 		'\t\t\tstyle: staticMapSlugFromPreference(prefersDark),',
-		"\timport { trackThumbnailUrlFromEnv } from '$lib/routes/map-style.svelte';",
+		"\timport { trackThumbnailUrlFromEnv } from '#lib/routes/map-style.svelte.ts';",
 		"\t\t\tlabel: 'Satellite view',",
 	]) {
 		assert.ok(!MAPTILER_SLUG_LITERAL.test(line), `must spare: ${line}`);

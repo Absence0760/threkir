@@ -1,15 +1,15 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import SharePageShell from '$lib/components/SharePageShell.svelte';
-	import { safeHref } from '$lib/util/html_escape';
-	import { formatKmStable, formatDateStable } from '$lib/share/share_meta';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import SharePageShell from '#lib/components/SharePageShell.svelte';
+	import { safeHref } from '#lib/util/html_escape.ts';
+	import { formatKmStable, formatDateStable } from '#lib/share/share_meta.ts';
 	import {
 		buildRaceJsonLd,
 		buildRaceShareCanonical,
 		buildRaceShareDescription,
 		buildRaceShareTitle,
-	} from '$lib/share/share_race_meta';
+	} from '#lib/share/share_race_meta.ts';
 
 	let { data } = $props();
 

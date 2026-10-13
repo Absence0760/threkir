@@ -1,24 +1,24 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { compareOrdinal } from '$lib/util/ordinal_compare';
-	import { page } from '$app/stores';
+	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { handleTablistKeydown } from '$lib/util/tablist';
-	import { formatDistance } from '$lib/core/mock-data';
-	import { getUnit } from '$lib/format/units.svelte';
-	import { fetchRoutesWithError, setRouteStar } from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { routeSurfaceLabel } from '$lib/i18n/enum_labels.svelte';
-	import { fold, compareFoldedNames } from '$lib/segments/catalogue_browse';
-	import ImportRoute from '$lib/components/ImportRoute.svelte';
-	import RunSurfaceTabs from '$lib/components/RunSurfaceTabs.svelte';
-	import RouteExplorer from '$lib/components/RouteExplorer.svelte';
-	import RouteTrackPreview from '$lib/components/RouteTrackPreview.svelte';
-	import type { RouteListItem } from '$lib/routes/route_list_columns';
+	import { handleTablistKeydown } from '#lib/util/tablist.ts';
+	import { formatDistance } from '#lib/core/mock-data.ts';
+	import { getUnit } from '#lib/format/units.svelte.ts';
+	import { fetchRoutesWithError, setRouteStar } from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
+	import { fold, compareFoldedNames } from '#lib/segments/catalogue_browse.ts';
+	import ImportRoute from '#lib/components/ImportRoute.svelte';
+	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
+	import RouteExplorer from '#lib/components/RouteExplorer.svelte';
+	import RouteTrackPreview from '#lib/components/RouteTrackPreview.svelte';
+	import type { RouteListItem } from '#lib/routes/route_list_columns.ts';
 	import type { Snapshot } from './$types';
-	import { isListStale, listToken } from '$lib/core/list_freshness';
+	import { isListStale, listToken } from '#lib/core/list_freshness.ts';
 
 	let tab = $state<'mine' | 'explore' | 'heatmap'>('mine');
 	let routes = $state<RouteListItem[]>([]);
@@ -90,20 +90,19 @@
 		tab = next;
 		const path = next === 'mine' ? '/routes' : `/routes?tab=${next}`;
 		goto(path, {
-			replaceState: true,
-			noScroll: true,
-			keepFocus: true,
+			replace: true,
+			reset: false,
 		});
 	}
 
 	onMount(() => {
-		const initial = $page.url.searchParams.get('tab');
+		const initial = page.url.searchParams.get('tab');
 		if (initial === 'explore') tab = 'explore';
 		else if (initial === 'heatmap') {
 			// Deep-link compat: `/routes?tab=heatmap` now bounces to
 			// the standalone `/routes/heatmap` page. Use replaceState
 			// so the back button skips the redirect hop.
-			void goto('/routes/heatmap', { replaceState: true });
+			void goto('/routes/heatmap', { replace: true });
 			return;
 		}
 		// Snapshot restore (SvelteKit back-nav) runs BEFORE onMount and

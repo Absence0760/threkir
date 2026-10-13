@@ -44,6 +44,8 @@ test('the site origin default is spelled in exactly one place', () => {
 		for (const file of sourceFiles(join(webRoot, root))) {
 			const rel = file.slice(webRoot.length + 1);
 			if (rel === join('src', 'lib', 'core', 'site_url.ts')) continue;
+			// Declares the variable; reads nothing.
+			if (rel === join('src', 'env.ts')) continue;
 			scanned++;
 			const src = stripComments(readFileSync(file, 'utf-8'));
 			for (const line of src.split('\n')) {
@@ -65,7 +67,7 @@ test('the site origin default is spelled in exactly one place', () => {
 		offenders.sort(),
 		[],
 		'these spell the site origin instead of importing DEFAULT_SITE_URL from ' +
-			'$lib/core/site_url. An email address or an iCal uid is a different ' +
+			'#lib/core/site_url. An email address or an iCal uid is a different ' +
 			'concept and is already spared.'
 	);
 });
@@ -107,13 +109,16 @@ test('every read of PUBLIC_SITE_URL folds through siteOrigin', () => {
 		for (const file of sourceFiles(join(webRoot, root))) {
 			const rel = file.slice(webRoot.length + 1);
 			if (rel === join('src', 'lib', 'core', 'site_url.ts')) continue;
+			// Declares the variable; reads nothing.
+			if (rel === join('src', 'env.ts')) continue;
 			for (const line of stripComments(readFileSync(file, 'utf-8')).split('\n')) {
 				if (!line.includes('PUBLIC_SITE_URL')) continue;
+				if (/^\s*import\s*\{[^}]*\}\s*from\s*'\$app\/env\/public'/.test(line)) continue;
 				reads++;
-				// `env.PUBLIC_SITE_URL` in a route, `process.env.PUBLIC_SITE_URL`
+				// A `$app/env/public` import in a route, `process.env.PUBLIC_SITE_URL`
 				// in a Lambda — the two runtimes expose it differently, which is
 				// why the helper takes the value rather than reading it itself.
-				if (!/siteOrigin\(\s*(?:process\.)?env\.PUBLIC_SITE_URL\s*\)/.test(line)) {
+				if (!/siteOrigin\(\s*(?:process\.env\.)?PUBLIC_SITE_URL\s*\)/.test(line)) {
 					offenders.push(`${rel}: ${line.trim().slice(0, 90)}`);
 				}
 			}
@@ -129,6 +134,6 @@ test('every read of PUBLIC_SITE_URL folds through siteOrigin', () => {
 		[],
 		'these resolve the site origin by hand. `??` keeps an empty env var as the ' +
 			'origin and `||` keeps a whitespace-only one; neither trims a trailing ' +
-			'slash. Fold through siteOrigin from $lib/core/site_url.',
+			'slash. Fold through siteOrigin from #lib/core/site_url.',
 	);
 });

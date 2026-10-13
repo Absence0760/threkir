@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 	import Modal from './Modal.svelte';
 	import FundraiserCard from './FundraiserCard.svelte';
 	import FundraiserEditor from './FundraiserEditor.svelte';
@@ -8,9 +8,9 @@
 		fetchFundraiserForRun,
 		fetchFundraiserForEvent,
 		fetchFundraiserTotals
-	} from '$lib/core/data';
-	import { fundraisingEnabled } from '$lib/social/fundraising_flag';
-	import type { Fundraiser, FundraiserTotals } from '$lib/types';
+	} from '#lib/core/data.ts';
+	import { fundraisingEnabled } from '#lib/social/fundraising_flag.ts';
+	import type { Fundraiser, FundraiserTotals } from '#lib/types.ts';
 
 	// Fail-closed: hide every donation affordance until Stripe Connect +
 	// the compliance sign-off land (PUBLIC_FUNDRAISING_ENABLED). Off → the

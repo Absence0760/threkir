@@ -862,7 +862,7 @@ export type RouteMatchCandidate = {
 /// with that distance match is auto-link-worthy; multiple candidates
 /// or a length mismatch should defer to user confirmation.
 export async function fetchRoutesIntersectingTrack(
-	track: import('$lib/types').TrackPoint[],
+	track: import('#lib/types.ts').TrackPoint[],
 	toleranceM = 100,
 	maxResults = 10,
 ): Promise<RouteMatchCandidate[]> {
@@ -910,7 +910,7 @@ export type RunMatchInfo = {
 	algorithm: string | null;
 	algorithmVersion: string | null;
 	matchedAt: string | null;
-	track: import('$lib/types').TrackPoint[] | null;
+	track: import('#lib/types.ts').TrackPoint[] | null;
 };
 
 /// Fetch the run_matched_tracks row for a run + lazily download the
@@ -930,10 +930,10 @@ export async function fetchRunMatchedTrack(
 		.maybeSingle();
 	if (error || !data) return null;
 
-	let track: import('$lib/types').TrackPoint[] | null = null;
+	let track: import('#lib/types.ts').TrackPoint[] | null = null;
 	if (data.status === 'matched' && data.matched_track_url) {
 		try {
-			track = (await fetchTrack(data.matched_track_url)) as import('$lib/types').TrackPoint[];
+			track = (await fetchTrack(data.matched_track_url)) as import('#lib/types.ts').TrackPoint[];
 		} catch (e) {
 			console.warn('Failed to fetch matched track', e);
 		}
@@ -8472,7 +8472,7 @@ export async function computeSegmentEffortsForRun(input: {
 	if (segments.length === 0) return 0;
 
 	const { buildSegmentEffortRows } = await import('../segments/auto_segment_effort');
-	const rows = buildSegmentEffortRows(segments, input.track as import('$lib/types').TrackPoint[], {
+	const rows = buildSegmentEffortRows(segments, input.track as import('#lib/types.ts').TrackPoint[], {
 		run_id: input.run_id,
 		user_id: userId,
 	});
@@ -10233,7 +10233,7 @@ export interface GymRoutineDetail {
 }
 
 /// The shape routineFromWorkout / the RoutineEditor produce. Mirrors the
-/// RoutineDraft from $lib/gym/gym_routine.ts.
+/// RoutineDraft from #lib/gym/gym_routine.ts.
 export interface GymRoutineInput {
 	title: string;
 	notes?: string | null;
@@ -10682,7 +10682,7 @@ export interface MealTemplateDetail {
 }
 
 /// The shape templateFromEntries / the save-as-meal flow hand to the create
-/// call. Mirrors MealTemplateDraft from $lib/nutrition/meal_template.ts.
+/// call. Mirrors MealTemplateDraft from #lib/nutrition/meal_template.ts.
 export interface MealTemplateInput {
 	name: string;
 	meal_slot?: MealSlot | null;
@@ -10877,7 +10877,7 @@ export interface RecipeDetail {
 }
 
 /// The shape recipeFromEntries / the save-as-recipe flow hand to the create
-/// call. Mirrors RecipeDraft from $lib/nutrition/recipe.ts.
+/// call. Mirrors RecipeDraft from #lib/nutrition/recipe.ts.
 export interface RecipeInput {
 	name: string;
 	servings?: number;

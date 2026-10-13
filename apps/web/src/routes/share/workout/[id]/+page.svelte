@@ -1,18 +1,18 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import SharePageShell from '$lib/components/SharePageShell.svelte';
-	import { formatWeight } from '$lib/format/units.svelte';
-	import { formatDateStable } from '$lib/share/share_meta';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import SharePageShell from '#lib/components/SharePageShell.svelte';
+	import { formatWeight } from '#lib/format/units.svelte.ts';
+	import { formatDateStable } from '#lib/share/share_meta.ts';
 	import {
 		buildWorkoutJsonLd,
 		buildWorkoutShareCanonical,
 		buildWorkoutShareDescription,
 		buildWorkoutShareTitle,
 		distinctExerciseCount
-	} from '$lib/share/share_workout_meta';
-	import type { SharedWorkoutSet } from '$lib/share/share_workout_lookup';
-	import { normaliseExerciseName } from '$lib/gym/gym_prs';
+	} from '#lib/share/share_workout_meta.ts';
+	import type { SharedWorkoutSet } from '#lib/share/share_workout_lookup.ts';
+	import { normaliseExerciseName } from '#lib/gym/gym_prs.ts';
 
 	let { data } = $props();
 

@@ -40,7 +40,7 @@ const BUILD = resolve(webRoot, 'build');
 /// An end tag closes at `</title` followed by whitespace, `/` or `>`, then
 /// junk to the first `>` -- the parser rule `raw_text_end_tag_guard.test.ts`
 /// requires and `js/bad-tag-filter` is about. Spelled here rather than
-/// imported from `$lib/share/head_splice` because that module is the share
+/// imported from `#lib/share/head_splice` because that module is the share
 /// Lambdas' sanitiser: it may narrow to what a shell carries, and this guard
 /// must keep counting what a browser would parse.
 const TITLE = /<title(?=[\s/>])[^>]*>[\s\S]*?<\/title(?=[\s/>])[^>]*>/gi;

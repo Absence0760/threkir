@@ -1,22 +1,22 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { formatPace, formatDistance, sourceLabel } from '$lib/core/mock-data';
-	import { sourceColor, sourceInk } from '$lib/runs/source_badge';
-	import { formatDate, formatDuration } from '$lib/format/time';
-	import { fetchPublicRun, fetchClippedTrackForRun, fetchTrackByPath } from '$lib/core/data';
-	import RunMap from '$lib/components/RunMap.svelte';
-	import ElevationProfile from '$lib/components/ElevationProfile.svelte';
-	import { computeElevationGain } from '$lib/routes/route_simplify';
-	import { elevationSourceTrack } from '$lib/runs/key_stats';
-	import RunSocial from '$lib/components/RunSocial.svelte';
-	import RunPhotos from '$lib/components/RunPhotos.svelte';
-	import RunGearChips from '$lib/components/RunGearChips.svelte';
-	import FundraiserSection from '$lib/components/FundraiserSection.svelte';
-	import ReportDialog from '$lib/components/ReportDialog.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { resolveTrackOwnership } from '$lib/runs/track_ownership';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { Run, TrackPoint } from '$lib/types';
+	import { formatPace, formatDistance, sourceLabel } from '#lib/core/mock-data.ts';
+	import { sourceColor, sourceInk } from '#lib/runs/source_badge.ts';
+	import { formatDate, formatDuration } from '#lib/format/time.ts';
+	import { fetchPublicRun, fetchClippedTrackForRun, fetchTrackByPath } from '#lib/core/data.ts';
+	import RunMap from '#lib/components/RunMap.svelte';
+	import ElevationProfile from '#lib/components/ElevationProfile.svelte';
+	import { computeElevationGain } from '#lib/routes/route_simplify.ts';
+	import { elevationSourceTrack } from '#lib/runs/key_stats.ts';
+	import RunSocial from '#lib/components/RunSocial.svelte';
+	import RunPhotos from '#lib/components/RunPhotos.svelte';
+	import RunGearChips from '#lib/components/RunGearChips.svelte';
+	import FundraiserSection from '#lib/components/FundraiserSection.svelte';
+	import ReportDialog from '#lib/components/ReportDialog.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { resolveTrackOwnership } from '#lib/runs/track_ownership.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { Run, TrackPoint } from '#lib/types.ts';
 
 	let {
 		runId,

@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { goto, replaceState } from '$app/navigation';
-	import { supabase } from '$lib/core/supabase';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { checkPasswordPair } from '$lib/core/auth_gates';
-	import { emailOtpLink } from '$lib/core/auth_confirmation';
-	import { PASSWORD_MIN_LENGTH } from '$lib/core/auth_rules';
-	import { m } from '$lib/i18n/store.svelte';
-	import PasswordInput from '$lib/components/PasswordInput.svelte';
-	import AuthShell from '$lib/components/auth/AuthShell.svelte';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { checkPasswordPair } from '#lib/core/auth_gates.ts';
+	import { emailOtpLink } from '#lib/core/auth_confirmation.ts';
+	import { PASSWORD_MIN_LENGTH } from '#lib/core/auth_rules.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import PasswordInput from '#lib/components/PasswordInput.svelte';
+	import AuthShell from '#lib/components/auth/AuthShell.svelte';
 
 	let password = $state('');
 	let confirmPassword = $state('');

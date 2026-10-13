@@ -1,6 +1,6 @@
 /// Pure helper for the Strava ZIP importer — kept in its own file so
 /// `npx tsx --test` can exercise it without dragging in the SvelteKit
-/// `$env` chain that `strava-zip.ts` imports via supabase.ts.
+/// `$app/env` chain that `strava-zip.ts` imports via supabase.ts.
 ///
 /// Persona-hunt finding Intermediate #1: pre-fix the importer queried
 /// only `source='strava'` + metadata.strava_id, so older rows from

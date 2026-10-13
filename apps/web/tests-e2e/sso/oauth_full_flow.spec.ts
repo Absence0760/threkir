@@ -13,7 +13,7 @@ import { readRow } from '../fixtures/db-read';
  * oauth2-mock-server (see ../scripts/start-mock-oidc.mjs + ../README in
  * tests-e2e/sso/README.md). This lane initiates the OAuth flow against
  * the REAL running app (the dev-only window.__supabase seam exposed in
- * $lib/core/supabase) and drives it to completion.
+ * #lib/core/supabase) and drives it to completion.
  *
  * The ONE thing not exercised is provider IDENTITY: the mock is keycloak,
  * not Google. Everything downstream of the provider redirect IS the real

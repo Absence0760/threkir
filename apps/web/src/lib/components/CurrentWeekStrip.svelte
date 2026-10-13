@@ -1,18 +1,18 @@
 <script lang="ts">
-	import type { PlanWorkout, PlanWeek } from '$lib/types';
+	import type { PlanWorkout, PlanWeek } from '#lib/types.ts';
 	import {
 		addDays,
 		isWorkoutCompleted,
 		isWorkoutSkipped,
 		parseISO,
 		formatISO
-	} from '$lib/training/training';
-	import { planWorkoutProgress } from '$lib/training/plan_progress';
-	import { workoutKindLabel } from '$lib/training/workout_labels';
-	import { workoutKindMarkVar } from '$lib/training/workout_kind_color';
-	import { fmtKm } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { WeekStart } from '$lib/format/calendar';
+	} from '#lib/training/training.ts';
+	import { planWorkoutProgress } from '#lib/training/plan_progress.ts';
+	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
+	import { workoutKindMarkVar } from '#lib/training/workout_kind_color.ts';
+	import { fmtKm } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { WeekStart } from '#lib/format/calendar.ts';
 
 	type Props = {
 		/// The plan's start date (yyyy-mm-dd). The strip's 7-day window is

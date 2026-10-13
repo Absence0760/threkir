@@ -1,17 +1,17 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { createManualRun, fetchRoutes } from '$lib/core/data';
-	import { loadSettings, effective } from '$lib/settings/settings';
-	import { privacyDefaultToIsPublic } from '$lib/social/run_visibility';
-	import { supabase } from '$lib/core/supabase';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { getUnit } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { ACTIVITY_TYPES } from '$lib/runs/activity_type';
-	import { activityTypeLabel } from '$lib/runs/activity_type.svelte';
-	import type { ActivityType, Route } from '$lib/types';
-	import type { RouteListItem } from '$lib/routes/route_list_columns';
-	import { trackDirty } from '$lib/core/form_dirty';
+	import { createManualRun, fetchRoutes } from '#lib/core/data.ts';
+	import { loadSettings, effective } from '#lib/settings/settings.ts';
+	import { privacyDefaultToIsPublic } from '#lib/social/run_visibility.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { getUnit } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { ACTIVITY_TYPES } from '#lib/runs/activity_type.ts';
+	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
+	import type { ActivityType, Route } from '#lib/types.ts';
+	import type { RouteListItem } from '#lib/routes/route_list_columns.ts';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
 	import UnsavedChangesGuard from './UnsavedChangesGuard.svelte';
 
 	interface Props {

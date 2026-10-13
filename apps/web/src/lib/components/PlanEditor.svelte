@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { activeFormatLocale } from '$lib/format/time';
-	import { lengthLimit } from '$lib/core/column_limits';
+	import { activeFormatLocale } from '#lib/format/time.ts';
+	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { onMount, untrack } from 'svelte';
-	import { createTrainingPlan, fetchActivePlanOverview, fetchRuns } from '$lib/core/data';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import MetricLabel from '$lib/components/MetricLabel.svelte';
+	import { createTrainingPlan, fetchActivePlanOverview, fetchRuns } from '#lib/core/data.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import {
 		GOAL_DISTANCES_M,
 		defaultPlanWeeks,
@@ -12,15 +12,15 @@
 		generatePlan,
 		formatISO,
 		parseISO,
-	} from '$lib/training/training';
-	import { workoutKindLabel, planPhaseLabel } from '$lib/training/workout_labels';
+	} from '#lib/training/training.ts';
+	import { workoutKindLabel, planPhaseLabel } from '#lib/training/workout_labels.ts';
 	import type {
 		GoalEvent,
 		GeneratedPlan,
 		WorkoutKind,
 		TrainingGender,
-	} from '$lib/training/training';
-	import { isSundayIso, nextSundayIso } from '$lib/training/plan_start';
+	} from '#lib/training/training.ts';
+	import { isSundayIso, nextSundayIso } from '#lib/training/plan_start.ts';
 	import {
 		CHRONIC_WINDOW_WEEKS,
 		openingWeekVolumeM,
@@ -29,15 +29,15 @@
 		recentRunVolume,
 		shouldSurfaceRampNote,
 		type RecentVolume,
-	} from '$lib/training/plan_ramp';
-	import { parsePlanMarkdown, parsePlanJson } from '$lib/training/plan_serialize';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { ageFromDob } from '$lib/nutrition/nutrition_targets';
-	import { healthUseDob } from '$lib/core/health_consent';
-	import { supabase } from '$lib/core/supabase';
-	import { fmtKm, fmtPace, getUnit } from '$lib/format/units.svelte';
-	import { paceMinutesSeconds } from '$lib/format/pace_format';
-	import { m as t } from '$lib/i18n/store.svelte';
+	} from '#lib/training/plan_ramp.ts';
+	import { parsePlanMarkdown, parsePlanJson } from '#lib/training/plan_serialize.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { ageFromDob } from '#lib/nutrition/nutrition_targets.ts';
+	import { healthUseDob } from '#lib/core/health_consent.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { fmtKm, fmtPace, getUnit } from '#lib/format/units.svelte.ts';
+	import { paceMinutesSeconds } from '#lib/format/pace_format.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
 
 	// Persona-hunt Round 3 finding Woman #3. Pull the runner's gender
 	// off user_profiles so generatePlan can apply the gender-aware

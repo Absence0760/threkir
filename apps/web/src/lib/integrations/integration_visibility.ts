@@ -11,7 +11,7 @@
 /// programme rather than on a key anyone can set.
 ///
 /// This module is the one place that grades them. It is deliberately pure —
-/// it takes a resolved verdict rather than reaching for `$env` or supabase-js —
+/// it takes a resolved verdict rather than reaching for `$app/env` or supabase-js —
 /// so the rules below are reachable from a unit test; `availability.ts` is the
 /// thin layer that wires each gate to its real source.
 ///

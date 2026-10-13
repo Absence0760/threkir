@@ -2,7 +2,7 @@
 // answer. Invocation:
 //   npx tsx --test src/lib/backup/cloud_export_transport.test.ts
 //
-// `cloud_export.ts` reads `$env/dynamic/public` and supabase-js, so it
+// `cloud_export.ts` reads `$app/env/public` and supabase-js, so it
 // cannot be executed here; `cloud_export_helpers.test.ts` covers every
 // pure piece it composes. What neither covers is the composition, and the
 // composition is where decisions § 717 and § 724 live: the Go service's

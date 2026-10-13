@@ -1,15 +1,15 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import type { MessageKey } from '$lib/i18n/messages';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import {
 		searchPublicEvents,
 		type PublicEventResult,
 		type PublicEventFilters,
 		type EventWeekday,
-	} from '$lib/core/data';
-	import { formatDistance } from '$lib/format/units.svelte';
-	import { formatPrice } from '$lib/format/format_price';
-	import { fromMinorUnits } from '$lib/format/minor_units';
+	} from '#lib/core/data.ts';
+	import { formatDistance } from '#lib/format/units.svelte.ts';
+	import { formatPrice } from '#lib/format/format_price.ts';
+	import { fromMinorUnits } from '#lib/format/minor_units.ts';
 
 	let query = $state('');
 	let category = $state<'' | 'run' | 'cycle' | 'class' | 'social'>('');
@@ -106,7 +106,7 @@
 			return;
 		}
 		placeTimer = setTimeout(async () => {
-			const { geocodePlace } = await import('$lib/routes/geocoding');
+			const { geocodePlace } = await import('#lib/routes/geocoding.ts');
 			const place = await geocodePlace(term);
 			if (place) {
 				center = place.center;

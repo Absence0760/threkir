@@ -2,7 +2,7 @@
 //
 // The pure, locale/unit-aware templated renderer lives in
 // `route_description.ts` (`localisedTemplate`) so it stays free of the
-// SvelteKit `$env` graph and unit-testable. This module is the part that
+// SvelteKit `$app/env` graph and unit-testable. This module is the part that
 // needs the Supabase client + fetch: it posts the route's stats to the
 // Pro-gated enhancement endpoint and resolves to `{ description, source,
 // upgrade }`. It refreshes the JWT once on a 401, mirroring CoachChat.

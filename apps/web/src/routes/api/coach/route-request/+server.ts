@@ -1,4 +1,4 @@
-// Thin SvelteKit wrapper around `$lib/routes/route_request/handler`.
+// Thin SvelteKit wrapper around `#lib/routes/route_request/handler`.
 // Dev-only — under @sveltejs/adapter-static this `+server.ts` is not
 // built; in production the same handler is reached via the coach
 // Lambda's `/route-request` route (decisions.md § 53).
@@ -7,10 +7,10 @@
 // `/api/coach/route-describe/+server.ts`.
 
 import type { RequestHandler } from './$types';
-import { env } from '$env/dynamic/private';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
-import { handleRouteRequest } from '$lib/routes/route_request/handler';
-import { checkBodyByteLimit, ROUTE_REQUEST_BODY_LIMIT_BYTES } from '$lib/coach/body';
+import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$app/env/public';
+import { ANTHROPIC_API_KEY, BYPASS_PAYWALL, NODE_ENV } from '$app/env/private';
+import { handleRouteRequest } from '#lib/routes/route_request/handler.ts';
+import { checkBodyByteLimit, ROUTE_REQUEST_BODY_LIMIT_BYTES } from '#lib/coach/body.ts';
 
 export const prerender = false;
 
@@ -43,15 +43,15 @@ export const POST: RequestHandler = async ({ request }) => {
 	const isLocalSupabase =
 		PUBLIC_SUPABASE_URL.includes('127.0.0.1') ||
 		PUBLIC_SUPABASE_URL.includes('localhost');
-	const isProdEnv = env.NODE_ENV === 'production';
+	const isProdEnv = NODE_ENV === 'production';
 	const bypassPaywallEnabled =
-		!isProdEnv && isLocalSupabase && env.BYPASS_PAYWALL === 'true';
+		!isProdEnv && isLocalSupabase && BYPASS_PAYWALL === 'true';
 
 	const result = await handleRouteRequest(
 		request.headers.get('x-supabase-authorization'),
 		rawBody,
 		{
-			anthropicApiKey: env.ANTHROPIC_API_KEY,
+			anthropicApiKey: ANTHROPIC_API_KEY,
 			publicSupabaseUrl: PUBLIC_SUPABASE_URL,
 			publicSupabaseAnonKey: PUBLIC_SUPABASE_ANON_KEY,
 			bypassPaywallEnabled,

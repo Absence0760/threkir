@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import { CATEGORIES } from '$lib/learn/categories';
-	import { guidesByCategory } from '$lib/learn/guides';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { CATEGORIES } from '#lib/learn/categories.ts';
+	import { guidesByCategory } from '#lib/learn/guides.ts';
 
 	// The hub and every category page carry the same chip row, which is what
 	// stops a category page reading as a different site: it is the only way

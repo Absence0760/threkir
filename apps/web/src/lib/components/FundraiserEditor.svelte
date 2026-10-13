@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import {
 		createFundraiser,
 		updateFundraiser,
 		fetchPayoutAccount,
 		type CreateFundraiserInput
-	} from '$lib/core/data';
-	import type { Fundraiser } from '$lib/types';
-	import { fromMinorUnits, toMinorUnits } from '$lib/format/minor_units';
+	} from '#lib/core/data.ts';
+	import type { Fundraiser } from '#lib/types.ts';
+	import { fromMinorUnits, toMinorUnits } from '#lib/format/minor_units.ts';
 	import { onMount, untrack } from 'svelte';
 
 	let {

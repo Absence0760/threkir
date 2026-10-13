@@ -1,29 +1,29 @@
 <script lang="ts">
-	import { TEXT_LIMITS } from '$lib/core/text_limits';
+	import { TEXT_LIMITS } from '#lib/core/text_limits.ts';
 	import { onMount, tick } from 'svelte';
-	import AuthShell from '$lib/components/auth/AuthShell.svelte';
-	import { browser } from '$app/environment';
-	import { m } from '$lib/i18n/store.svelte';
-	import { defaultUnitForLocale } from '$lib/format/locale_defaults';
+	import AuthShell from '#lib/components/auth/AuthShell.svelte';
+	import { browser } from '$app/env';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { defaultUnitForLocale } from '#lib/format/locale_defaults.ts';
 	import {
 		parseWeightToKg,
 		roundWeight,
 		isBodyWeightInRangeKg,
 		weightBoundsIn,
 		type WeightUnit,
-	} from '$lib/format/weight';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { supabase } from '$lib/core/supabase';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { updateUniversal } from '$lib/settings/settings';
-	import type { PrefsBag } from '$lib/settings/settings';
-	import type { Updatable } from '$lib/core/database';
+	} from '#lib/format/weight.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { updateUniversal } from '#lib/settings/settings.ts';
+	import type { PrefsBag } from '#lib/settings/settings.ts';
+	import type { Updatable } from '#lib/core/database.ts';
 	import {
 		isPushSupported,
 		pushPermission,
 		subscribeToPush,
 		getCurrentSubscription,
-	} from '$lib/util/push';
+	} from '#lib/util/push.ts';
 	import {
 		ONBOARDING_STEPS,
 		PRIMARY_GOAL_KEY,
@@ -31,7 +31,7 @@
 		visibleOnboardingSteps,
 		type OnboardingStep,
 		type PrimaryGoal,
-	} from '$lib/settings/onboarding';
+	} from '#lib/settings/onboarding.ts';
 
 	/// Step state, a 1-based index into `steps`. Persona-hunt
 	/// new-runner finding-area #1: a Garmin-style step-by-step is

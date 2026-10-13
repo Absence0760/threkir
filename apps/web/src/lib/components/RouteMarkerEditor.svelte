@@ -1,17 +1,17 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { deferDestructive } from '$lib/stores/undo.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { deferDestructive } from '#lib/stores/undo.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import type { MapMarkerPin } from './RunMap.svelte';
-	import type { RouteMarker, RouteMarkerKind } from '$lib/types';
-	import type { JsonObject } from '$lib/types';
+	import type { RouteMarker, RouteMarkerKind } from '#lib/types.ts';
+	import type { JsonObject } from '#lib/types.ts';
 	import {
 		fetchRouteMarkers,
 		addRouteMarker,
 		updateRouteMarker,
 		deleteRouteMarker
-	} from '$lib/core/data';
+	} from '#lib/core/data.ts';
 	import {
 		ROUTE_MARKER_KINDS,
 		AID_SERVICES,
@@ -20,9 +20,9 @@
 		parseCutoff,
 		parseTarget,
 		isOfficialMarker
-	} from '$lib/routes/route_markers';
-	import { markerPointAtDistance, polylineLengthMetres } from '$lib/routes/route_geometry';
-	import { formatDistance, getUnit } from '$lib/format/units.svelte';
+	} from '#lib/routes/route_markers.ts';
+	import { markerPointAtDistance, polylineLengthMetres } from '#lib/routes/route_geometry.ts';
+	import { formatDistance, getUnit } from '#lib/format/units.svelte.ts';
 
 	interface Props {
 		routeId: string;

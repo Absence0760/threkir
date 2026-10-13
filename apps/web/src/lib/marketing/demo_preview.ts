@@ -1,6 +1,6 @@
 import { formatDuration } from '../format/time';
 import { paceMinutesSeconds } from '../format/pace_format';
-import type { TrackPoint } from '$lib/types';
+import type { TrackPoint } from '#lib/types.ts';
 
 /// Static demo data for the public landing page's product preview.
 ///

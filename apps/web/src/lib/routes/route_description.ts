@@ -144,7 +144,7 @@ const ELEVATION_WORD: Record<ElevationProfile, string> = {
 export interface DescribeI18n {
 	/** The project's `m(key, params)` translator. */
 	t: (key: string, params?: Record<string, string | number>) => string;
-	/** `formatDistance(metres)` — unit-aware, from $lib/format/units. */
+	/** `formatDistance(metres)` — unit-aware, from #lib/format/units. */
 	formatDistance: (metres: number) => string;
 }
 
@@ -174,7 +174,7 @@ const ELEV_I18N_KEY: Record<ElevationProfile, string> = {
  * Distance + gain run through the injected `formatDistance` so a
  * mi-preference viewer reads miles; every word is translated via the
  * injected `t`. Pure — no env / store imports — so it stays unit-testable
- * and free of the SvelteKit `$env` graph.
+ * and free of the SvelteKit `$app/env` graph.
  */
 export function localisedTemplate(
 	parts: RouteDescriptionParts,

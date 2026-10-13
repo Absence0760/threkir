@@ -2,9 +2,9 @@
 // (decisions § 1802) and one per derived group (§ 1812). Only
 // `store.svelte.ts` imports it.
 declare module 'virtual:i18n-catalogues' {
-	import type { Catalogue } from '$lib/i18n/catalogue_set';
-	import type { Locale } from '$lib/i18n/locale';
-	import type { GroupTable } from '$lib/i18n/areas';
+	import type { Catalogue } from '#lib/i18n/catalogue_set.ts';
+	import type { Locale } from '#lib/i18n/locale.ts';
+	import type { GroupTable } from '#lib/i18n/areas.ts';
 
 	/// The default locale's core, bundled synchronously: the `m()` fallback
 	/// and the prerender default.

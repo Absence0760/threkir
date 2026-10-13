@@ -163,7 +163,7 @@ export function entityEntries(
 
 /// Learn-hub sitemap entries: the hub, one per category, one per guide.
 /// Pure — the caller passes plain `{ slug, updated, category }` rows (the
-/// build-time guide index from `$lib/learn/guides`) + the category ids so
+/// build-time guide index from `#lib/learn/guides`) + the category ids so
 /// this module stays import.meta.glob-free and tsx-testable. The Learn
 /// entries are build-time constants, so the endpoint emits them even when
 /// the Supabase fetch for routes/runs fails.

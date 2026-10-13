@@ -1,5 +1,5 @@
 <script lang="ts" module>
-	import type { TrackPoint } from '$lib/types';
+	import type { TrackPoint } from '#lib/types.ts';
 
 	// Module-level cache keyed by track URL + clip variant. Populated the
 	// first time a card scrolls into view and re-read on subsequent
@@ -25,18 +25,18 @@
 
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { env } from '$env/dynamic/public';
+	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV } from '$app/env/public';
 	import TrackPreview from './TrackPreview.svelte';
 	import StaticMapImage from './StaticMapImage.svelte';
-	import { fetchTrackByPath, fetchClippedTrackForRun } from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { isTrackOwner } from '$lib/runs/track_ownership';
-	import { consent } from '$lib/settings/consent.svelte';
-	import { trackThumbnailUrlFromEnv } from '$lib/routes/map-style.svelte';
-	import { thumbnailSize } from '$lib/routes/static_map';
-	import { isTrackRenderable } from '$lib/routes/track_projection';
+	import { fetchTrackByPath, fetchClippedTrackForRun } from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { isTrackOwner } from '#lib/runs/track_ownership.ts';
+	import { consent } from '#lib/settings/consent.svelte.ts';
+	import { trackThumbnailUrlFromEnv } from '#lib/routes/map-style.svelte.ts';
+	import { thumbnailSize } from '#lib/routes/static_map.ts';
+	import { isTrackRenderable } from '#lib/routes/track_projection.ts';
 
-	const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
+	const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
 	// Same OS read RunMap makes, so `streets` resolves to the same light or
 	// dark rung here as on the live map.
 	const prefersDark =

@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { activeFormatLocale } from '$lib/format/time';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import MetricLabel from '$lib/components/MetricLabel.svelte';
-	import type { TrainingLoadPoint } from '$lib/training/training_load';
+	import { activeFormatLocale } from '#lib/format/time.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import type { TrainingLoadPoint } from '#lib/training/training_load.ts';
 
 	interface Props {
 		points: TrainingLoadPoint[];

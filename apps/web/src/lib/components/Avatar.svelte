@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { initial, hashHue, seedBackground, seedForeground } from '$lib/format/avatar';
-	import { safeImageSrc } from '$lib/util/safe_image_src';
+	import { initial, hashHue, seedBackground, seedForeground } from '#lib/format/avatar.ts';
+	import { safeImageSrc } from '#lib/util/safe_image_src.ts';
 
 	type BgMode = 'gradient' | 'primary' | 'seed';
 

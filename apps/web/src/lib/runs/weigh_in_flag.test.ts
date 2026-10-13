@@ -2,7 +2,7 @@
 // behind it. Invocation:
 //   npx tsx --test src/lib/runs/weigh_in_flag.test.ts
 //
-// `isWeighInEnabled` reads `$env/dynamic/public`, so the module cannot be
+// `isWeighInEnabled` reads `$app/env/public`, so the module cannot be
 // imported under `tsx --test`; its parse is pinned in `core/env_flag.test
 // .ts` (which walks every `*_flag.ts`). What has no coverage anywhere is
 // the half that matters: that body weight, the medical-hold flag and the
@@ -31,7 +31,7 @@ test('the gate is fail-closed and routed through the canonical parse', () => {
 	// gate delegates rather than carrying a copy (decisions § 709).
 	assert.match(
 		source,
-		/isTruthyFlagValue\(env\.PUBLIC_WEIGH_IN_ENABLED\)/,
+		/isTruthyFlagValue\(PUBLIC_WEIGH_IN_ENABLED\)/,
 		'the gate must delegate to isTruthyFlagValue',
 	);
 	assert.doesNotMatch(

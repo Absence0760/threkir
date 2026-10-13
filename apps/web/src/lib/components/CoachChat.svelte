@@ -1,18 +1,18 @@
 <script lang="ts">
-	import { activeFormatLocale } from '$lib/format/time';
-	import { compareOrdinal } from '$lib/util/ordinal_compare';
+	import { activeFormatLocale } from '#lib/format/time.ts';
+	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
 	import { onMount, onDestroy, tick } from 'svelte';
-	import { renderCoachMarkdown } from '$lib/coach/markdown';
-	import { supabase } from '$lib/core/supabase';
-	import { payloadSha256Hex } from '$lib/util/payload_hash';
-	import { TABLES } from '$lib/core/schema';
-	import { fmtKm } from '$lib/format/units.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import ChipDropdown from '$lib/components/ChipDropdown.svelte';
-	import { TIER_LIMITS } from '$lib/coach/types';
-	import type { CoachMessageRole } from '$lib/coach/types';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import type { TrainingPlan } from '$lib/types';
+	import { renderCoachMarkdown } from '#lib/coach/markdown.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { payloadSha256Hex } from '#lib/util/payload_hash.ts';
+	import { TABLES } from '#lib/core/schema.ts';
+	import { fmtKm } from '#lib/format/units.svelte.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import ChipDropdown from '#lib/components/ChipDropdown.svelte';
+	import { TIER_LIMITS } from '#lib/coach/types.ts';
+	import type { CoachMessageRole } from '#lib/coach/types.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import type { TrainingPlan } from '#lib/types.ts';
 
 	interface Props {
 		planId: string | null;
@@ -412,7 +412,7 @@
 					]
 	);
 
-	// Markdown rendering hoisted to $lib/coach/markdown so the DOMPurify
+	// Markdown rendering hoisted to #lib/coach/markdown so the DOMPurify
 	// hook registers exactly once at module load.
 	const renderMarkdown = renderCoachMarkdown;
 

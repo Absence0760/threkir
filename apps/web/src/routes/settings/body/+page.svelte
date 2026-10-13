@@ -1,23 +1,23 @@
 <script lang="ts">
-	import { auth } from '$lib/stores/auth.svelte';
-	import { supabase } from '$lib/core/supabase';
-	import { effective, updateUniversal } from '$lib/settings/settings';
-	import { m } from '$lib/i18n/store.svelte';
-	import { fetchLatestWeightKg, recordWeightKg } from '$lib/core/data';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { effective, updateUniversal } from '#lib/settings/settings.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { fetchLatestWeightKg, recordWeightKg } from '#lib/core/data.ts';
 	import {
 		kgToDisplay,
 		displayToKg,
 		roundWeight,
 		defaultWeightUnitForDistanceUnit,
 		weightBoundsIn,
-	} from '$lib/format/weight';
-	import { valueLimit, withinValueLimit } from '$lib/core/column_limits';
-	import { ACTIVITY_LEVELS, type ActivityLevel, type WeightGoal } from '$lib/nutrition/nutrition_targets';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import type { Updatable } from '$lib/core/database';
-	import { createPrefsPage } from '$lib/settings/prefs_page.svelte';
-	import PrefsPage from '$lib/components/settings/PrefsPage.svelte';
+	} from '#lib/format/weight.ts';
+	import { valueLimit, withinValueLimit } from '#lib/core/column_limits.ts';
+	import { ACTIVITY_LEVELS, type ActivityLevel, type WeightGoal } from '#lib/nutrition/nutrition_targets.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import type { Updatable } from '#lib/core/database.ts';
+	import { createPrefsPage } from '#lib/settings/prefs_page.svelte.ts';
+	import PrefsPage from '#lib/components/settings/PrefsPage.svelte';
 
 	// Demographics card has its own explicit save (GDPR Art 9 consent gate).
 	let savingDemographics = $state(false);

@@ -1,7 +1,7 @@
 // The read-side narrowing a `runs` row goes through before it is a `Run`.
 //
 // Split out of `core/data.ts` so it can be run rather than only read: that
-// module evaluates the `supabase` singleton and `$env/static/public` at
+// module evaluates the `supabase` singleton and `$app/env/public` at
 // import, so everything in it is pinned by source guards. Which key a
 // projection may carry is a runtime rule, and a runtime rule earns a runtime
 // test.

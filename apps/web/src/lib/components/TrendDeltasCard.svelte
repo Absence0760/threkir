@@ -3,10 +3,10 @@
 		computeTrendDeltas,
 		type MetricDelta,
 		type WeekStartDay,
-	} from '$lib/training/trend_deltas';
-	import { fmtKm } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { Run } from '$lib/types';
+	} from '#lib/training/trend_deltas.ts';
+	import { fmtKm } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { Run } from '#lib/types.ts';
 
 	interface Props {
 		runs: readonly Pick<Run, 'started_at' | 'distance_m' | 'duration_s'>[];

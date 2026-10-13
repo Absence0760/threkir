@@ -158,7 +158,8 @@ export function readBy(dep, usage) {
  */
 export function packageOf(specifier) {
 	if (!specifier || specifier.startsWith('.') || specifier.startsWith('/')) return null;
-	if (specifier.startsWith('$') || specifier.includes(':')) return null;
+	// `$app/...` is a SvelteKit virtual module and `#lib/...` a package.json subpath import; neither names a package.
+	if (specifier.startsWith('$') || specifier.startsWith('#') || specifier.includes(':')) return null;
 	const parts = specifier.split('/');
 	if (specifier.startsWith('@')) {
 		if (parts.length < 2 || !parts[1]) return null;

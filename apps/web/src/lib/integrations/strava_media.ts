@@ -1,6 +1,6 @@
 /// Pure helpers for importing photos out of a Strava bulk-export ZIP
 /// (strava persona #19). Split from strava-zip.ts (which pulls in JSZip +
-/// ./data → supabase + $env) so it's unit-testable with `tsx --test`.
+/// ./data → supabase + $app/env) so it's unit-testable with `tsx --test`.
 
 /// Split a Strava `Media` CSV cell into individual in-ZIP photo paths.
 /// Strava separates multiple media with `|`; older exports used `,`. Paths

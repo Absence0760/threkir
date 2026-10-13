@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { activeFormatLocale } from '$lib/format/time';
+	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { onMount, tick } from 'svelte';
 	import { afterNavigate } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import {
 		fetchPlan,
 		fetchMyClubs,
@@ -18,37 +18,37 @@
 		pausePlan,
 		resumePlan,
 		ActivePlanExistsError,
-	} from '$lib/core/data';
-	import { shiftIsoDate, recoveryWorkoutPatch, recoveryWeekVolume } from '$lib/training/plan_bulk_ops';
-	import { cyclePlanWorkoutPatch, type CyclePlanConfig } from '$lib/training/cycle_plan';
-	import { isCyclePlansEnabled } from '$lib/training/cycle_plan_flag';
-	import { replanRemaining, type ReplanChange, type ReplanWeek } from '$lib/training/plan_replan';
+	} from '#lib/core/data.ts';
+	import { shiftIsoDate, recoveryWorkoutPatch, recoveryWeekVolume } from '#lib/training/plan_bulk_ops.ts';
+	import { cyclePlanWorkoutPatch, type CyclePlanConfig } from '#lib/training/cycle_plan.ts';
+	import { isCyclePlansEnabled } from '#lib/training/cycle_plan_flag.ts';
+	import { replanRemaining, type ReplanChange, type ReplanWeek } from '#lib/training/plan_replan.ts';
 	import {
 		adaptiveReplanRemaining,
 		type AdaptiveReason,
 		type AdaptiveConfidence
-	} from '$lib/training/plan_adaptive_replan';
-	import { computeTrainingLoadSeries } from '$lib/training/training_load';
-	import { workoutKindMarkVar } from '$lib/training/workout_kind_color';
-	import { isAdaptiveFitnessGateEnabled } from '$lib/training/adaptive_fitness_flag';
-	import WorkoutEditor from '$lib/components/WorkoutEditor.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import MetricLabel from '$lib/components/MetricLabel.svelte';
-	import PlanMetaEditor from '$lib/components/PlanMetaEditor.svelte';
-	import PlanCalendar from '$lib/components/PlanCalendar.svelte';
-	import CurrentWeekStrip from '$lib/components/CurrentWeekStrip.svelte';
-	import RaceDayPanel from '$lib/components/RaceDayPanel.svelte';
-	import DisclosureSection from '$lib/components/DisclosureSection.svelte';
+	} from '#lib/training/plan_adaptive_replan.ts';
+	import { computeTrainingLoadSeries } from '#lib/training/training_load.ts';
+	import { workoutKindMarkVar } from '#lib/training/workout_kind_color.ts';
+	import { isAdaptiveFitnessGateEnabled } from '#lib/training/adaptive_fitness_flag.ts';
+	import WorkoutEditor from '#lib/components/WorkoutEditor.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import PlanMetaEditor from '#lib/components/PlanMetaEditor.svelte';
+	import PlanCalendar from '#lib/components/PlanCalendar.svelte';
+	import CurrentWeekStrip from '#lib/components/CurrentWeekStrip.svelte';
+	import RaceDayPanel from '#lib/components/RaceDayPanel.svelte';
+	import DisclosureSection from '#lib/components/DisclosureSection.svelte';
 	import {
 		readDisclosureState,
 		writeDisclosureState,
 		type DisclosureState
-	} from '$lib/util/disclosure_state';
-	import { daysUntilRace } from '$lib/runs/race_day';
-	import type { Run } from '$lib/types';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
+	} from '#lib/util/disclosure_state.ts';
+	import { daysUntilRace } from '#lib/runs/race_day.ts';
+	import type { Run } from '#lib/types.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
 		addDays,
 		fmtHms,
@@ -57,25 +57,25 @@
 		isWorkoutSkipped,
 		parseISO,
 		todayISO
-	} from '$lib/training/training';
-	import { weeklyDriftToDate, missedWorkoutAdvice } from '$lib/training/plan_adherence';
-	import { currentPlanWeekIndex } from '$lib/training/plan_week';
+	} from '#lib/training/training.ts';
+	import { weeklyDriftToDate, missedWorkoutAdvice } from '#lib/training/plan_adherence.ts';
+	import { currentPlanWeekIndex } from '#lib/training/plan_week.ts';
 	import {
 		orderedPlanPhases,
 		longestCompletedLongRunMetres,
 		planDistanceBanked,
 		planWorkoutProgress
-	} from '$lib/training/plan_progress';
-	import { planToMarkdown, planToJson, type ExportPlan } from '$lib/training/plan_serialize';
-	import { planSlug } from '$lib/training/plan_slug';
-	import { workoutKindLabel, planPhaseLabel } from '$lib/training/workout_labels';
-	import { fmtKm, fmtPace } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { loadSettings, effective } from '$lib/settings/settings';
-	import type { WeekStart } from '$lib/format/calendar';
-	import type { TrainingPlan, PlanWeek, PlanWorkout, ClubWithMeta } from '$lib/types';
+	} from '#lib/training/plan_progress.ts';
+	import { planToMarkdown, planToJson, type ExportPlan } from '#lib/training/plan_serialize.ts';
+	import { planSlug } from '#lib/training/plan_slug.ts';
+	import { workoutKindLabel, planPhaseLabel } from '#lib/training/workout_labels.ts';
+	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { loadSettings, effective } from '#lib/settings/settings.ts';
+	import type { WeekStart } from '#lib/format/calendar.ts';
+	import type { TrainingPlan, PlanWeek, PlanWorkout, ClubWithMeta } from '#lib/types.ts';
 
-	let id = $derived($page.params.id as string);
+	let id = $derived(page.params.id as string);
 	let plan = $state<TrainingPlan | null>(null);
 	let weeks = $state<PlanWeek[]>([]);
 	let workouts = $state<PlanWorkout[]>([]);

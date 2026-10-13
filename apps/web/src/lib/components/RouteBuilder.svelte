@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import maplibregl from '$lib/routes/maplibre';
+	import maplibregl from '#lib/routes/maplibre.ts';
 	import 'maplibre-gl/dist/maplibre-gl.css';
-	import { env } from '$env/dynamic/public';
-	const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
-	import { osrmProxyFetch } from '$lib/routes/routing';
-	import { SegmentCache, segmentCacheKey } from '$lib/routes/segment_cache';
+	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV, PUBLIC_TILE_STYLE_URL } from '$app/env/public';
+	const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
+	import { osrmProxyFetch } from '#lib/routes/routing.ts';
+	import { SegmentCache, segmentCacheKey } from '#lib/routes/segment_cache.ts';
 	import {
 		DEFAULT_SCALE_FACTOR,
 		NEAR_POINT_M,
@@ -15,19 +15,19 @@
 		isValidTargetDistance,
 		isWithinAcceptBand,
 		selectLoopAnchors,
-	} from '$lib/routes/route_loop';
-	import { nearestInsertIndex } from '$lib/routes/insert_index';
-	import type { RoutePreference } from '$lib/routes/generate/graphhopper';
-	import { supabase } from '$lib/core/supabase';
-	import { payloadSha256Hex } from '$lib/util/payload_hash';
-	import { formatDistance, getUnit } from '$lib/format/units.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import { haversineMetres } from '$lib/runs/run_stats';
-	import { searchPlaces } from '$lib/routes/geocoding';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { watchMapResize } from '$lib/routes/map_resize';
-	import { fetchElevations, sampleCoordinates, calculateElevationGain } from '$lib/routes/elevation';
-	import { hasAcceptedConsent } from '$lib/settings/consent.svelte';
+	} from '#lib/routes/route_loop.ts';
+	import { nearestInsertIndex } from '#lib/routes/insert_index.ts';
+	import type { RoutePreference } from '#lib/routes/generate/graphhopper.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { payloadSha256Hex } from '#lib/util/payload_hash.ts';
+	import { formatDistance, getUnit } from '#lib/format/units.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { haversineMetres } from '#lib/runs/run_stats.ts';
+	import { searchPlaces } from '#lib/routes/geocoding.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { watchMapResize } from '#lib/routes/map_resize.ts';
+	import { fetchElevations, sampleCoordinates, calculateElevationGain } from '#lib/routes/elevation.ts';
+	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
 	import {
 		closestPointDistanceM,
 		formatWaypointRanges,
@@ -38,7 +38,7 @@
 		qualityWarning,
 		validateRouteQuality,
 		type RoutedSegment,
-	} from '$lib/routes/routing_quality';
+	} from '#lib/routes/routing_quality.ts';
 	import {
 		mapDraftLine,
 		mapFinishColour,
@@ -46,13 +46,13 @@
 		mapOverlapLine,
 		mapOverlayOutline,
 		mapStartColour,
-	} from '$lib/routes/basemap_contrast';
+	} from '#lib/routes/basemap_contrast.ts';
 	import {
 		basemapIsDarkForSlug,
 		styleUrlForSlug,
 		type MaptilerSlug,
-	} from '$lib/routes/map-style-url';
-	import type { TrackPoint } from '$lib/types';
+	} from '#lib/routes/map-style-url.ts';
+	import type { TrackPoint } from '#lib/types.ts';
 
 	// Bound the recentre pan to a fixed, snappy duration. maplibre's default
 	// flyTo scales the duration by travel distance, so recentring from the
@@ -269,7 +269,7 @@
 	// MapTiler slug. This surface owns WHICH slug it asks for and nothing else:
 	// assembling the URL itself is what left it as the only map in the app that
 	// showed a blank canvas — and no basemap credit — on a missing key.
-	const TILE_STYLE_OVERRIDE = (env.PUBLIC_TILE_STYLE_URL ?? '').trim();
+	const TILE_STYLE_OVERRIDE = (PUBLIC_TILE_STYLE_URL ?? '').trim();
 	const MAP_STYLES: Record<string, string> = {
 		streets: styleUrlForSlug(BUILDER_SLUGS.streets, PUBLIC_MAPTILER_KEY, TILE_STYLE_OVERRIDE),
 		satellite: styleUrlForSlug(BUILDER_SLUGS.satellite, PUBLIC_MAPTILER_KEY, TILE_STYLE_OVERRIDE),
@@ -2140,7 +2140,7 @@
 		// Auto-resize on any container dimension change. Catches the
 		// initial-mount mismeasurement (flex children don't always
 		// have their final rect at mount) AND any later SplitPane
-		// drag. See `$lib/routes/map_resize` for the why.
+		// drag. See `#lib/routes/map_resize` for the why.
 		stopResizeWatch = watchMapResize(mapContainer, map);
 
 		// Single load handler for all map setup

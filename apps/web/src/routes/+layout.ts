@@ -1,5 +1,5 @@
 import type { LayoutLoad } from './$types';
-import { loadRouteCatalogues } from '$lib/i18n/store.svelte';
+import { loadRouteCatalogues } from '#lib/i18n/store.svelte.ts';
 
 // The message catalogues a route renders with, loaded BEFORE it renders.
 // `m()` is synchronous, so an area catalogue (lib/i18n/areas.ts) that arrived

@@ -1,6 +1,6 @@
 // Pure header-mapping for the Strava bulk-export `activities.csv`.
 // Extracted from strava-zip.ts so it can be unit-tested without dragging
-// in the supabase / $env import chain (same reason strava-zip-classify.ts
+// in the supabase / $app/env import chain (same reason strava-zip-classify.ts
 // and strava-zip-dedupe.ts are standalone).
 
 export interface HeaderIndex {

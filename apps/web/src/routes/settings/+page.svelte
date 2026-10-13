@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { m } from '$lib/i18n/store.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	// `/settings` has no content of its own — it just bounces to the first
 	// tab. A client-side redirect (mirroring /clubs, /feed, /explore) keeps
@@ -12,7 +12,7 @@
 	// `unsafe-inline` — the one page the hash-based CSP couldn't cover
 	// (audit-xss M2 / decisions §70). The <meta refresh> is the no-JS fallback.
 	onMount(() => {
-		goto('/settings/account', { replaceState: true });
+		goto('/settings/account', { replace: true });
 	});
 </script>
 

@@ -356,7 +356,7 @@ test("buildBackupZip: a caller-reported short read joins the writer's own in the
 });
 
 // `createBackup` itself needs supabase-js (and therefore SvelteKit's
-// `$env` virtual module), so its read-grading is pinned at the source
+// `$app/env` virtual module), so its read-grading is pinned at the source
 // level. The claim under test is the whole point of decisions § 675/§ 676:
 // an archive may only say `complete: true` when every read behind it
 // answered in full. The runs + routes reads were fixed there; the profile

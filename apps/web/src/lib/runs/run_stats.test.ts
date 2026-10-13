@@ -123,7 +123,7 @@ test('the run-detail page reads its vert through the one elevation rule', () => 
 	);
 	assert.match(
 		page,
-		/import \{[^}]*\bcomputeElevationGain\b[^}]*\} from '\$lib\/routes\/route_simplify'/,
+		/import \{[^}]*\bcomputeElevationGain\b[^}]*\} from '#lib\/routes\/route_simplify\.ts'/,
 		'imported from the module that owns the rule, not re-exported through another',
 	);
 	assert.doesNotMatch(

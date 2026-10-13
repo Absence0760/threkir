@@ -401,7 +401,7 @@ export function assignCompetitionRanks<T extends { time_seconds: number }>(
  * these strings; pass `null` for "all ages".
  *
  * Lives in this pure module (not `data.ts`) so unit tests can pin
- * its shape without dragging in the SvelteKit `$env`-bound supabase
+ * its shape without dragging in the SvelteKit `$app/env`-bound supabase
  * client.
  */
 export const SEGMENT_AGE_BANDS = [

@@ -1,22 +1,22 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import {
 		fetchHostEarnings,
 		fetchPayoutAccount,
 		startConnectOnboarding,
 		type PayoutAccountStatus
-	} from '$lib/core/data';
-	import { currentLocale, m } from '$lib/i18n/store.svelte';
-	import { formatPrice } from '$lib/format/format_price';
-	import { fromMinorUnits } from '$lib/format/minor_units';
+	} from '#lib/core/data.ts';
+	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
+	import { formatPrice } from '#lib/format/format_price.ts';
+	import { fromMinorUnits } from '#lib/format/minor_units.ts';
 	import {
 		formatClassStart,
 		formatEarningsMonth,
 		rollupEarningsByMonth,
 		type HostEarningsMonth
-	} from '$lib/social/host_earnings';
+	} from '#lib/social/host_earnings.ts';
 
 	let account = $state<PayoutAccountStatus | null>(null);
 	let loaded = $state(false);

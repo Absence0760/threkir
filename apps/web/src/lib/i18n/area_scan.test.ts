@@ -83,7 +83,7 @@ test('englishSourceBytes measures the keys it is given, as JSON', () => {
 	assert.equal(bytes(['a.b', 'c.d', 'missing.key']), Buffer.byteLength('{"a.b":"x","c.d":"ü"}'));
 });
 
-test('keyUsage follows $lib, relative, extensionless, dynamic and re-export imports', () => {
+test('keyUsage follows #lib, relative, extensionless, dynamic and re-export imports', () => {
 	const root = mkdtempSync(join(tmpdir(), 'area-scan-'));
 	try {
 		const src = join(root, 'src');
@@ -91,14 +91,14 @@ test('keyUsage follows $lib, relative, extensionless, dynamic and re-export impo
 			mkdirSync(dirname(join(src, path)), { recursive: true });
 			writeFileSync(join(src, path), text);
 		};
-		put('routes/+layout.svelte', `<script>import Shell from '$lib/components/Shell.svelte';</script>`);
+		put('routes/+layout.svelte', `<script>import Shell from '#lib/components/Shell.svelte';</script>`);
 		put('lib/components/Shell.svelte', `<script>m('common.cancel');</script>`);
 		put('routes/gym/+page.svelte', `<script>import { label } from './helpers';</script>`);
-		put('routes/gym/helpers.ts', `export { slots } from '$lib/gym/index'; export const label = 'gym.title';`);
+		put('routes/gym/helpers.ts', `export { slots } from '#lib/gym/index'; export const label = 'gym.title';`);
 		put('lib/gym/index.ts', 'export const slots = (s: string) => `gym.slot_${s}`;');
 		// Spelled in two halves so unit_suite_resolvable_imports.test.ts does not
 		// read the fixture as this suite importing through an alias.
-		put('routes/nutrition/+page.svelte', '<script>const Lazy = import' + "('$lib/components/Nutri.svelte');</script>");
+		put('routes/nutrition/+page.svelte', '<script>const Lazy = import' + "('#lib/components/Nutri.svelte');</script>");
 		put('lib/components/Nutri.svelte', `<script>m(('nutrition.source_' + s));</script>`);
 		put('lib/Dead.svelte', `<script>m('settingsIntegrations.stravaLookback30');</script>`);
 		put('lib/i18n/locales/en.ts', `export const en = { 'gym.title': 'Gym' };`);

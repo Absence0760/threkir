@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { PrefsLoadPhase } from '$lib/settings/prefs_page.svelte';
-	import type { PrefsSaveStatus } from '$lib/settings/prefs_save_queue';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { PrefsLoadPhase } from '#lib/settings/prefs_page.svelte.ts';
+	import type { PrefsSaveStatus } from '#lib/settings/prefs_save_queue.ts';
 
 	let {
 		heading,

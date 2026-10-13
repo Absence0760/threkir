@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { formatDistance } from '$lib/format/units.svelte';
-	import { minMax } from '$lib/util/min_max';
-	import { elevationDomain } from '$lib/runs/elevation_profile';
-	import { m } from '$lib/i18n/store.svelte';
+	import { formatDistance } from '#lib/format/units.svelte.ts';
+	import { minMax } from '#lib/util/min_max.ts';
+	import { elevationDomain } from '#lib/runs/elevation_profile.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	/// `onhover` is fired with the elevations-index the user is
 	/// currently inspecting (null when the pointer leaves the chart).

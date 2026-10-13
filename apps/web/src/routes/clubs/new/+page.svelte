@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto, afterNavigate } from '$app/navigation';
-	import ClubEditor from '$lib/components/ClubEditor.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import ClubEditor from '#lib/components/ClubEditor.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	let cameFromClubs = $state(false);
 	afterNavigate(({ from }) => {

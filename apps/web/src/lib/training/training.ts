@@ -1078,7 +1078,7 @@ export function addDays(d: Date, n: number): Date {
 // `fmtKm` / `fmtPace` (unit-aware, used by every plan surface) live in
 // `./units.svelte` so that this file stays pure TS — `training.test.ts`
 // runs under `tsx --test` which can't resolve Svelte runes. Import
-// them from `$lib/format/units.svelte` at the call site.
+// them from `#lib/format/units.svelte` at the call site.
 
 export function fmtHms(sec: number | null | undefined): string {
 	// `!sec` catches 0/null/NaN but a NEGATIVE is truthy and would format a

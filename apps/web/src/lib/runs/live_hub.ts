@@ -19,9 +19,9 @@
 /// Wire shape mirrors `apps/job_worker/internal/livehub/types.go` —
 /// keep them in lockstep when extending. Pure helpers (URL building,
 /// reconnect-delay math) live in `./live_hub_helpers.ts` so they're
-/// testable without the SvelteKit `$env` import.
+/// testable without the SvelteKit `$app/env` import.
 
-import { env } from '$env/dynamic/public';
+import { PUBLIC_LIVE_HUB_URL as PUBLIC_LIVE_HUB_URL_ENV } from '$app/env/public';
 import {
 	type LivePing,
 	type LiveHubStatus,
@@ -31,7 +31,7 @@ import {
 
 export type { LivePing, LiveHubStatus } from './live_hub_helpers';
 
-const PUBLIC_LIVE_HUB_URL = env.PUBLIC_LIVE_HUB_URL ?? '';
+const PUBLIC_LIVE_HUB_URL = PUBLIC_LIVE_HUB_URL_ENV ?? '';
 
 export function isLiveHubConfigured(): boolean {
 	return PUBLIC_LIVE_HUB_URL !== '';

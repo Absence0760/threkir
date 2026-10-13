@@ -4,14 +4,14 @@
 		fetchRouteConditionsWithError,
 		addRouteCondition,
 		deleteRouteCondition,
-	} from '$lib/core/data';
-	import type { RouteCondition, RouteConditionKind, RouteConditionSeverity } from '$lib/types';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { deferDestructive } from '$lib/stores/undo.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { formatRelativeTime } from '$lib/format/time';
-	import { formatDistance } from '$lib/format/units.svelte';
+	} from '#lib/core/data.ts';
+	import type { RouteCondition, RouteConditionKind, RouteConditionSeverity } from '#lib/types.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { deferDestructive } from '#lib/stores/undo.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { formatRelativeTime } from '#lib/format/time.ts';
+	import { formatDistance } from '#lib/format/units.svelte.ts';
 
 	interface Props {
 		routeId: string;

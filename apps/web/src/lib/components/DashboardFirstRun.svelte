@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import { modalityExplicit, revealOnNavigate } from '$lib/stores/modality_visibility.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { modalityExplicit, revealOnNavigate } from '#lib/stores/modality_visibility.svelte.ts';
 
 	interface Props {
 		/// Onboarding's closing CTA creates a training plan before any run

@@ -1,15 +1,15 @@
 <script lang="ts">
-	import { siteOrigin } from '$lib/core/site_url';
-	import { lengthLimit } from '$lib/core/column_limits';
+	import { siteOrigin } from '#lib/core/site_url.ts';
+	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { onMount, onDestroy } from 'svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import StaticMapImage from '$lib/components/StaticMapImage.svelte';
-	import { initial, hashHue } from '$lib/format/avatar';
-	import { formatDuration as baseDuration, activeFormatLocale } from '$lib/format/time';
-	import { page } from '$app/stores';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import StaticMapImage from '#lib/components/StaticMapImage.svelte';
+	import { initial, hashHue } from '#lib/format/avatar.ts';
+	import { formatDuration as baseDuration, activeFormatLocale } from '#lib/format/time.ts';
+	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
-	import { buildEventShareCanonical } from '$lib/share/share_event_meta';
-	import { supabase } from '$lib/core/supabase';
+	import { buildEventShareCanonical } from '#lib/share/share_event_meta.ts';
+	import { supabase } from '#lib/core/supabase.ts';
 	import type { RealtimeChannel } from '@supabase/supabase-js';
 	import {
 		fetchEventById,
@@ -63,42 +63,42 @@
 		setEventSessionPlan,
 		type SessionPlan,
 		type SessionPlanWithItems
-	} from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import EventEditor from '$lib/components/EventEditor.svelte';
-	import GymEditor from '$lib/components/GymEditor.svelte';
-	import CheckpointManager from '$lib/components/CheckpointManager.svelte';
-	import FundraiserSection from '$lib/components/FundraiserSection.svelte';
-	import { expandInstances, describeRecurrence } from '$lib/social/recurrence';
-	import { isAthleticCategory } from '$lib/social/event_category';
-	import type { FinisherStatus } from '$lib/types';
-	import { sameInstant } from '$lib/social/event_instance';
-	import { upcomingCancelledOccurrences } from '$lib/social/event_occurrence';
-	import { workoutDraftFromTemplate, workoutDraftFromSession } from '$lib/social/event_gym_template';
-	import { expandSessionSteps, type SessionPlanInput } from '$lib/social/session_steps';
-	import { formatDistance, getUnit, fmtPace } from '$lib/format/units.svelte';
-	import { formatPrice } from '$lib/format/format_price';
-	import { fromMinorUnits } from '$lib/format/minor_units';
+	} from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import EventEditor from '#lib/components/EventEditor.svelte';
+	import GymEditor from '#lib/components/GymEditor.svelte';
+	import CheckpointManager from '#lib/components/CheckpointManager.svelte';
+	import FundraiserSection from '#lib/components/FundraiserSection.svelte';
+	import { expandInstances, describeRecurrence } from '#lib/social/recurrence.ts';
+	import { isAthleticCategory } from '#lib/social/event_category.ts';
+	import type { FinisherStatus } from '#lib/types.ts';
+	import { sameInstant } from '#lib/social/event_instance.ts';
+	import { upcomingCancelledOccurrences } from '#lib/social/event_occurrence.ts';
+	import { workoutDraftFromTemplate, workoutDraftFromSession } from '#lib/social/event_gym_template.ts';
+	import { expandSessionSteps, type SessionPlanInput } from '#lib/social/session_steps.ts';
+	import { formatDistance, getUnit, fmtPace } from '#lib/format/units.svelte.ts';
+	import { formatPrice } from '#lib/format/format_price.ts';
+	import { fromMinorUnits } from '#lib/format/minor_units.ts';
 	import {
 		registrationOpen,
 		resolveRefundEligibility,
 		type OccurrenceRefundState,
 		type OccurrenceRefundSummary
-	} from '$lib/social/paid_registration';
-	import { buildEventIcs, buildEventSeriesIcs, icsFilename } from '$lib/social/event_ics';
-	import { env } from '$env/dynamic/public';
-	import { buildStaticMarkerMapUrl, mapsDirectionsUrl, geoUri } from '$lib/routes/static_map';
-	import { staticMapSlugFromPreference } from '$lib/routes/map-style.svelte';
-	import { buildFinisherCertificateSvg, CERT_WIDTH, CERT_HEIGHT } from '$lib/runs/finisher_certificate';
-	import { rasterizeSvgToPng, downloadBlob } from '$lib/format/svg_raster';
-	import { parseChipTimingCsv, resultsToCsv, type ParsedResultRow } from '$lib/runs/event_results_csv';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { consent } from '$lib/settings/consent.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { rsvpStatusLabel } from '$lib/i18n/enum_labels.svelte';
-	import { activityTypeLabel } from '$lib/runs/activity_type.svelte';
+	} from '#lib/social/paid_registration.ts';
+	import { buildEventIcs, buildEventSeriesIcs, icsFilename } from '#lib/social/event_ics.ts';
+	import { PUBLIC_MAPTILER_KEY, PUBLIC_SITE_URL } from '$app/env/public';
+	import { buildStaticMarkerMapUrl, mapsDirectionsUrl, geoUri } from '#lib/routes/static_map.ts';
+	import { staticMapSlugFromPreference } from '#lib/routes/map-style.svelte.ts';
+	import { buildFinisherCertificateSvg, CERT_WIDTH, CERT_HEIGHT } from '#lib/runs/finisher_certificate.ts';
+	import { rasterizeSvgToPng, downloadBlob } from '#lib/format/svg_raster.ts';
+	import { parseChipTimingCsv, resultsToCsv, type ParsedResultRow } from '#lib/runs/event_results_csv.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { consent } from '#lib/settings/consent.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { rsvpStatusLabel } from '#lib/i18n/enum_labels.svelte.ts';
+	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import type {
 		EventWithMeta,
 		ClubWithMeta,
@@ -109,15 +109,15 @@
 		EventAttendance,
 		EventPricing,
 		EventOrder
-	} from '$lib/types';
+	} from '#lib/types.ts';
 
-	let slug = $derived($page.params.slug as string);
-	let eventId = $derived($page.params.id as string);
+	let slug = $derived(page.params.slug as string);
+	let eventId = $derived(page.params.id as string);
 	// Fold this in-app (CSR) event page onto the public, crawlable
 	// /share/event/[id] twin so search engines consolidate ranking signal
 	// there rather than splitting it across two URLs.
 	let canonicalUrl = $derived(
-		buildEventShareCanonical(siteOrigin(env.PUBLIC_SITE_URL), eventId)
+		buildEventShareCanonical(siteOrigin(PUBLIC_SITE_URL), eventId)
 	);
 
 	let club = $state<ClubWithMeta | null>(null);
@@ -152,7 +152,7 @@
 					w: 320,
 					h: 180,
 					style: staticMapSlugFromPreference(prefersDark),
-					key: env.PUBLIC_MAPTILER_KEY ?? ''
+					key: PUBLIC_MAPTILER_KEY ?? ''
 				})
 			: null
 	);
@@ -1088,7 +1088,7 @@
 		await auth.ready();
 		await load();
 		// Returned from Stripe Checkout: reconcile the order (?paid=1).
-		if ($page.url.searchParams.get('paid') === '1') {
+		if (page.url.searchParams.get('paid') === '1') {
 			void pollForPaidOrder();
 		}
 		// Guard each side-effect: if subscribeRealtime throws (the
@@ -1328,7 +1328,7 @@
 	async function register() {
 		if (!event || !activeInstance || registering) return;
 		if (!auth.user) {
-			goto(`/login?next=${encodeURIComponent($page.url.pathname)}`);
+			goto(`/login?next=${encodeURIComponent(page.url.pathname)}`);
 			return;
 		}
 		registering = true;
@@ -1710,7 +1710,7 @@
 									</a>
 								{/snippet}
 							</StaticMapImage>
-						{:else if (env.PUBLIC_MAPTILER_KEY ?? '') && !consent.accepted && !meetMapConsented}
+						{:else if (PUBLIC_MAPTILER_KEY ?? '') && !consent.accepted && !meetMapConsented}
 							<div class="meet-map-consent" data-testid="meet-map-consent">
 								<h3>{m('runMap.consentTitle')}</h3>
 								<p>
@@ -1813,7 +1813,7 @@
 							</p>
 						{/if}
 						{#if !auth.user}
-							<a class="btn btn-primary register-cta" href={`/login?next=${encodeURIComponent($page.url.pathname)}`}>
+							<a class="btn btn-primary register-cta" href={`/login?next=${encodeURIComponent(page.url.pathname)}`}>
 								{m('clubEvent.registerSignInFirst')}
 							</a>
 						{:else if regState === 'unknown'}

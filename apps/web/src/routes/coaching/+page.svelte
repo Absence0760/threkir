@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { activeFormatLocale } from '$lib/format/time';
+	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
 	import {
 		fetchMyAthletesWithError,
 		fetchPendingCoachInvites,
@@ -14,15 +14,15 @@
 		type CoachAthleteLink,
 		type CoachRosterRow,
 		type PendingCoachInvite
-	} from '$lib/core/data';
-	import { formatRelativeTime } from '$lib/format/time';
-	import { formatDistance } from '$lib/format/units.svelte';
-	import { loadTrend } from '$lib/training/coach_load';
+	} from '#lib/core/data.ts';
+	import { formatRelativeTime } from '#lib/format/time.ts';
+	import { formatDistance } from '#lib/format/units.svelte.ts';
+	import { loadTrend } from '#lib/training/coach_load.ts';
 	import { rosterRisk, sortRoster, type RosterSortKey } from './roster_sort';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 
 	let athletes = $state<CoachAthleteLink[]>([]);
 	let pending = $state<PendingCoachInvite[]>([]);

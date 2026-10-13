@@ -1,4 +1,4 @@
-import { m } from '$lib/i18n/store.svelte';
+import { m } from '#lib/i18n/store.svelte.ts';
 import { activityTypeKey, isActivityType } from './activity_type';
 
 /// Localized label for a stored `activity_type`. A null/absent value is `run`

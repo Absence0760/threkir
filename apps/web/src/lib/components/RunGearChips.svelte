@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { fetchRunGear, fetchMyGear, setRunGear, type Gear, type GearWithDistance } from '$lib/core/data';
-	import Modal from '$lib/components/Modal.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { fetchRunGear, fetchMyGear, setRunGear, type Gear, type GearWithDistance } from '#lib/core/data.ts';
+	import Modal from '#lib/components/Modal.svelte';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	interface Props {
 		runId: string;

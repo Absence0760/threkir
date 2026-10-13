@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
-	import TrackPreview from '$lib/components/TrackPreview.svelte';
+	import { browser } from '$app/env';
+	import TrackPreview from '#lib/components/TrackPreview.svelte';
 	import MapBackdrop from './MapBackdrop.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { DEFAULT_SITE_URL } from '$lib/core/site_url';
-	import { countUp } from '$lib/motion/actions';
-	import { motion } from '$lib/motion/motion.svelte';
-	import { tickClock } from '$lib/motion/motion';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { DEFAULT_SITE_URL } from '#lib/core/site_url.ts';
+	import { countUp } from '#lib/motion/actions.ts';
+	import { motion } from '#lib/motion/motion.svelte.ts';
+	import { tickClock } from '#lib/motion/motion.ts';
 	import {
 		DEMO_DISTANCE_KM,
 		DEMO_DISTANCE_LABEL,
@@ -17,7 +17,7 @@
 		DEMO_SPLITS,
 		DEMO_TIME_LABEL,
 		DEMO_TRACK,
-	} from '$lib/marketing/demo_preview';
+	} from '#lib/marketing/demo_preview.ts';
 
 	// The landing hero's product shot. Everything inside the two device
 	// frames is the product's own rendering — TrackPreview draws the route

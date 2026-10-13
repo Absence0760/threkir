@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { auth } from '$lib/stores/auth.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
 		amIAdmin,
 		fetchPendingReports,
@@ -11,12 +11,12 @@
 		type TargetReport,
 		type ReportTargetKind,
 		type ReportResolution,
-	} from '$lib/core/data';
-	import { formatRelativeTime } from '$lib/format/time';
-	import Modal from '$lib/components/Modal.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
+	} from '#lib/core/data.ts';
+	import { formatRelativeTime } from '#lib/format/time.ts';
+	import Modal from '#lib/components/Modal.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
 
 	let isAdmin = $state<boolean | null>(null);
 	let loading = $state(true);

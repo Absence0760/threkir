@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { supabase } from '$lib/core/supabase';
-	import { valueLimit } from '$lib/core/column_limits';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { valueLimit } from '#lib/core/column_limits.ts';
 	import {
 		fetchFoodLogWithError,
 		fetchLatestWeightKg,
@@ -24,32 +24,32 @@
 		type FoodEntry,
 		type MealTemplateSummary,
 		type RecipeSummary,
-	} from '$lib/core/data';
-	import { templateFromEntries } from '$lib/nutrition/meal_template';
-	import { recipeFromEntries } from '$lib/nutrition/recipe';
-	import { loadSettings, effective } from '$lib/settings/settings';
+	} from '#lib/core/data.ts';
+	import { templateFromEntries } from '#lib/nutrition/meal_template.ts';
+	import { recipeFromEntries } from '#lib/nutrition/recipe.ts';
+	import { loadSettings, effective } from '#lib/settings/settings.ts';
 	import {
 		computeNutritionTargets,
 		ageFromDob,
 		type ActivityLevel,
 		type WeightGoal,
 		type NutritionTargets,
-	} from '$lib/nutrition/nutrition_targets';
-	import { healthUseDob } from '$lib/core/health_consent';
-	import { exerciseCaloriesForDay } from '$lib/nutrition/exercise_calories';
+	} from '#lib/nutrition/nutrition_targets.ts';
+	import { healthUseDob } from '#lib/core/health_consent.ts';
+	import { exerciseCaloriesForDay } from '#lib/nutrition/exercise_calories.ts';
 	import {
 		sumMacros,
 		groupByMealSlot,
 		ringFraction,
 		type MealSlotGroup,
-	} from '$lib/nutrition/nutrition_totals';
-	import { computeDayBudget, type MacroKind } from '$lib/nutrition/nutrition_budget';
-	import { hydrationTargetMl, hydrationBudget } from '$lib/nutrition/hydration';
+	} from '#lib/nutrition/nutrition_totals.ts';
+	import { computeDayBudget, type MacroKind } from '#lib/nutrition/nutrition_budget.ts';
+	import { hydrationTargetMl, hydrationBudget } from '#lib/nutrition/hydration.ts';
 	import {
 		extendedNutrientTargets,
 		extendedNutrientBudgets,
-	} from '$lib/nutrition/extended_nutrients';
-	import { weeklyIntakeSummary, weeklyProteinSummary } from '$lib/nutrition/nutrition_week';
+	} from '#lib/nutrition/extended_nutrients.ts';
+	import { weeklyIntakeSummary, weeklyProteinSummary } from '#lib/nutrition/nutrition_week.ts';
 	import {
 		DIARY_DATE_PARAM,
 		diaryWindow,
@@ -61,16 +61,16 @@
 		stepDiaryDate,
 		trailingDates,
 		waterDayKey,
-	} from '$lib/nutrition/diary_day';
-	import { formatDate } from '$lib/format/time';
-	import type { FoodMacros } from '$lib/nutrition/food_search';
-	import { currentLocale, m } from '$lib/i18n/store.svelte';
-	import { formatDecimal } from '$lib/format/number';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { deferDestructive } from '$lib/stores/undo.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import FoodLogEditor from '$lib/components/FoodLogEditor.svelte';
+	} from '#lib/nutrition/diary_day.ts';
+	import { formatDate } from '#lib/format/time.ts';
+	import type { FoodMacros } from '#lib/nutrition/food_search.ts';
+	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
+	import { formatDecimal } from '#lib/format/number.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { deferDestructive } from '#lib/stores/undo.svelte.ts';
+	import Modal from '#lib/components/Modal.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import FoodLogEditor from '#lib/components/FoodLogEditor.svelte';
 
 	// The diary day the page is showing — today unless `?date=` names an
 	// earlier one. Held as state rather than derived so `load()` and every
@@ -150,7 +150,7 @@
 	// browser's back button steps days. `?date=` is resolved fail-closed —
 	// a malformed or future value lands on today rather than an empty day.
 	$effect(() => {
-		const requested = $page.url.searchParams.get(DIARY_DATE_PARAM);
+		const requested = page.url.searchParams.get(DIARY_DATE_PARAM);
 		const now = new Date();
 		todayIso = isoDateOf(now);
 		yesterdayIso = stepDiaryDate(todayIso, -1, now);
@@ -194,7 +194,7 @@
 			// while an explicit past `?date=` stays exactly where it is and only
 			// changes its label. Writing these does not re-arm the effect above —
 			// it reads neither.
-			const next = resolveDiaryDate($page.url.searchParams.get(DIARY_DATE_PARAM), now);
+			const next = resolveDiaryDate(page.url.searchParams.get(DIARY_DATE_PARAM), now);
 			if (next !== viewDate) {
 				viewDate = next;
 				loadedDate = next;
@@ -349,7 +349,7 @@
 		const target = isDiaryToday(iso, new Date())
 			? '/nutrition'
 			: `/nutrition?${DIARY_DATE_PARAM}=${iso}`;
-		return goto(target, { keepFocus: true, noScroll: true });
+		return goto(target, { reset: false });
 	}
 
 	let prevDayBtn = $state<HTMLButtonElement | null>(null);

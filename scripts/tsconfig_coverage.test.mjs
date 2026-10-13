@@ -7,7 +7,7 @@
 // site (decisions § 757). `apps/web` had the same hole and closed it in § 752.
 //
 // Two guards rather than one, deliberately. The `apps/web` half must resolve
-// SvelteKit's GENERATED `.svelte-kit/tsconfig.json`, so it cannot run before a
+// SvelteKit's GENERATED `$app/tsconfig`, so it cannot run before a
 // `svelte-kit sync`; this half must run with nothing built and nothing
 // installed. Neither can state the other's coverage, so each states its own
 // and this one asserts the other still exists — the seam between them is what

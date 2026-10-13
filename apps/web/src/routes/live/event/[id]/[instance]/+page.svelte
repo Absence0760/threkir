@@ -1,25 +1,25 @@
 <script lang="ts">
 	import type * as GeoJSON from 'geojson';
 	import { onMount, onDestroy } from 'svelte';
-	import { formatDuration as baseDuration } from '$lib/format/time';
-	import { page } from '$app/stores';
-	import maplibregl from '$lib/routes/maplibre';
+	import { formatDuration as baseDuration } from '#lib/format/time.ts';
+	import { page } from '$app/state';
+	import maplibregl from '#lib/routes/maplibre.ts';
 	import 'maplibre-gl/dist/maplibre-gl.css';
-	import { env } from '$env/dynamic/public';
-	const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
+	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV } from '$app/env/public';
+	const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
 	import {
 		basemapIsDarkFromEnv,
 		getMapStyle,
 		mapStyleUrlFromEnv as mapStyleUrl,
-	} from '$lib/routes/map-style.svelte';
+	} from '#lib/routes/map-style.svelte.ts';
 	import {
 		mapAccentColour,
 		mapLabelHalo,
 		mapLabelInk,
 		mapOverlayOutline,
-	} from '$lib/routes/basemap_contrast';
-	import { watchMapResize } from '$lib/routes/map_resize';
-	import { supabase } from '$lib/core/supabase';
+	} from '#lib/routes/basemap_contrast.ts';
+	import { watchMapResize } from '#lib/routes/map_resize.ts';
+	import { supabase } from '#lib/core/supabase.ts';
 	import {
 		fetchRecentRacePings,
 		fetchLatestRacePings,
@@ -29,18 +29,18 @@
 		type RacePingRow,
 		type RaceSessionRow,
 		type EventResultWithUser
-	} from '$lib/core/data';
-	import type { EventWithMeta } from '$lib/types';
+	} from '#lib/core/data.ts';
+	import type { EventWithMeta } from '#lib/types.ts';
 	import type { RealtimeChannel } from '@supabase/supabase-js';
-	import { formatDistance, fmtPace } from '$lib/format/units.svelte';
-	import { hasAcceptedConsent } from '$lib/settings/consent.svelte';
-	import { runnerHandle, shouldRevealDisplayName } from '$lib/social/runner_handle';
-	import { freshnessFor, type Freshness } from '$lib/runs/live_freshness';
-	import { CoalescingRefetcher } from '$lib/runs/live_refetch';
-	import { m } from '$lib/i18n/store.svelte';
+	import { formatDistance, fmtPace } from '#lib/format/units.svelte.ts';
+	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
+	import { runnerHandle, shouldRevealDisplayName } from '#lib/social/runner_handle.ts';
+	import { freshnessFor, type Freshness } from '#lib/runs/live_freshness.ts';
+	import { CoalescingRefetcher } from '#lib/runs/live_refetch.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
-	let eventId = $derived($page.params.id as string);
-	let instance = $derived(decodeURIComponent($page.params.instance as string));
+	let eventId = $derived(page.params.id as string);
+	let instance = $derived(decodeURIComponent(page.params.instance as string));
 
 	let event = $state<EventWithMeta | null>(null);
 	let race = $state<RaceSessionRow | null>(null);

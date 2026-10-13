@@ -1,17 +1,17 @@
-// Thin SvelteKit wrapper around `$lib/coach/handler`. Dev-only — under
+// Thin SvelteKit wrapper around `#lib/coach/handler`. Dev-only — under
 // `@sveltejs/adapter-static` (the canonical adapter, see decisions
 // § 53), this `+server.ts` is not built. In production the same
 // handler is reached via `apps/web/lambda/coach/src/index.ts`, fronted
 // by CloudFront's `/api/coach/*` behaviour.
 //
-// The shared core lives at `$lib/coach/handler.ts`; this file just
+// The shared core lives at `#lib/coach/handler.ts`; this file just
 // adapts the SvelteKit `Request` to the core's transport-agnostic
 // signature and returns a streaming `Response` for SSE.
 
 import type { RequestHandler } from './$types';
-import { env } from '$env/dynamic/private';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
-import { handleCoach } from '$lib/coach/handler';
+import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$app/env/public';
+import { ANTHROPIC_API_KEY, BYPASS_PAYWALL, COACH_PROVIDER, NODE_ENV, OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, SUPABASE_SECRET_KEY } from '$app/env/private';
+import { handleCoach } from '#lib/coach/handler.ts';
 
 export const prerender = false;
 
@@ -23,12 +23,12 @@ export const prerender = false;
 // from the assistant cost the same regardless.
 //
 // Single source of truth for the cap + the byte-count helper lives
-// in $lib/coach/body.ts so this and the production Lambda wrapper
+// in #lib/coach/body.ts so this and the production Lambda wrapper
 // stay in lockstep.
-import { COACH_BODY_LIMIT_BYTES, checkBodyByteLimit } from '$lib/coach/body';
+import { COACH_BODY_LIMIT_BYTES, checkBodyByteLimit } from '#lib/coach/body.ts';
 
 export const POST: RequestHandler = async ({ request }) => {
-	const provider = (env.COACH_PROVIDER ?? 'anthropic').toLowerCase();
+	const provider = (COACH_PROVIDER ?? 'anthropic').toLowerCase();
 	if (provider !== 'anthropic' && provider !== 'openai') {
 		console.error(`[coach] invalid COACH_PROVIDER value: '${provider}'`);
 		return new Response(
@@ -81,9 +81,9 @@ export const POST: RequestHandler = async ({ request }) => {
 	const isLocalSupabase =
 		PUBLIC_SUPABASE_URL.includes('127.0.0.1') ||
 		PUBLIC_SUPABASE_URL.includes('localhost');
-	const isProdEnv = env.NODE_ENV === 'production';
+	const isProdEnv = NODE_ENV === 'production';
 	const bypassPaywallEnabled =
-		!isProdEnv && isLocalSupabase && env.BYPASS_PAYWALL === 'true';
+		!isProdEnv && isLocalSupabase && BYPASS_PAYWALL === 'true';
 
 	// Mirrors the production Lambda: read the user JWT from
 	// `X-Supabase-Authorization` so dev and prod clients send the same
@@ -91,13 +91,13 @@ export const POST: RequestHandler = async ({ request }) => {
 	// signs sigv4 in that slot.)
 	const result = await handleCoach(request.headers.get('x-supabase-authorization'), rawBody, {
 		provider,
-		anthropicApiKey: env.ANTHROPIC_API_KEY,
-		openaiBaseUrl: env.OPENAI_BASE_URL ?? 'http://localhost:11434/v1',
-		openaiApiKey: env.OPENAI_API_KEY ?? 'ollama',
-		openaiModel: env.OPENAI_MODEL ?? 'llama3.2',
+		anthropicApiKey: ANTHROPIC_API_KEY,
+		openaiBaseUrl: OPENAI_BASE_URL ?? 'http://localhost:11434/v1',
+		openaiApiKey: OPENAI_API_KEY ?? 'ollama',
+		openaiModel: OPENAI_MODEL ?? 'llama3.2',
 		publicSupabaseUrl: PUBLIC_SUPABASE_URL,
 		publicSupabaseAnonKey: PUBLIC_SUPABASE_ANON_KEY,
-		supabaseSecretKey: env.SUPABASE_SECRET_KEY,
+		supabaseSecretKey: SUPABASE_SECRET_KEY,
 		bypassPaywallEnabled,
 	});
 

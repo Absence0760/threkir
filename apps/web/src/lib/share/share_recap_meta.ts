@@ -1,8 +1,8 @@
 /// Per-recap `<head>` meta-tag builder for the public recap share page.
 /// Pure string helpers — shared between the SvelteKit +page.svelte
-/// (dev-server SSR via $lib reads) and the production share-recap Lambda
+/// (dev-server SSR via #lib reads) and the production share-recap Lambda
 /// (which injects these into the SPA-shell HTML). Kept in apps/web/src/lib
-/// so the Lambda build pulls it without dragging in $env / SvelteKit-only
+/// so the Lambda build pulls it without dragging in $app/env / SvelteKit-only
 /// modules. Mirrors share_run_meta.ts.
 
 import type { SharedRecap } from './share_recap_lookup';

@@ -1,18 +1,18 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import RunSurfaceTabs from '$lib/components/RunSurfaceTabs.svelte';
-	import type { MessageKey } from '$lib/i18n/messages';
-	import { routeSurfaceLabel } from '$lib/i18n/enum_labels.svelte';
-	import { distanceInPreferred, formatElevation } from '$lib/format/units.svelte';
-	import { fetchGlobalSegmentsWithError, type GlobalSegment } from '$lib/core/data';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
+	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
+	import { distanceInPreferred, formatElevation } from '#lib/format/units.svelte.ts';
+	import { fetchGlobalSegmentsWithError, type GlobalSegment } from '#lib/core/data.ts';
 	import {
 		catalogueRegions,
 		catalogueSurfaces,
 		filterCatalogue,
 		sortCatalogue,
 		type CatalogueSort,
-	} from '$lib/segments/catalogue_browse';
+	} from '#lib/segments/catalogue_browse.ts';
 
 	let segments = $state<GlobalSegment[]>([]);
 	let loading = $state(true);

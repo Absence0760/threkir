@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { auth } from '$lib/stores/auth.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
 		fetchMySafetyContacts,
 		addSafetyContact,
@@ -13,14 +13,14 @@
 		type SafetyContact,
 		type PendingSafetyRequest,
 		type SafetyContactOf,
-	} from '$lib/core/data';
+	} from '#lib/core/data.ts';
 	import { SvelteSet } from 'svelte/reactivity';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { effective, loadSettings, updateUniversal } from '$lib/settings/settings';
-	import { isOffRouteEscalationEnabled } from '$lib/safety/off_route_flag';
-	import { normaliseE164 } from '$lib/safety/e164';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { effective, loadSettings, updateUniversal } from '#lib/settings/settings.ts';
+	import { isOffRouteEscalationEnabled } from '#lib/safety/off_route_flag.ts';
+	import { normaliseE164 } from '#lib/safety/e164.ts';
 
 	let contacts = $state<SafetyContact[]>([]);
 	let pending = $state<PendingSafetyRequest[]>([]);

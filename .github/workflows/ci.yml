@@ -979,7 +979,7 @@ jobs:
             echo "Reproduce locally with: npm ci && npm run test:unit --workspace=apps/web."
             exit 1
           fi
-      # The Playwright tree is outside `.svelte-kit/tsconfig.json`'s include, so
+      # The Playwright tree is outside apps/web/tsconfig.json's include, so
       # `npm run check` (svelte-check, in build-web) never saw it, and Playwright
       # transpiles specs with esbuild without type-checking them — a spec could
       # carry a real type error indefinitely, and ten did. `tsconfig.tests-e2e.json`
@@ -993,14 +993,14 @@ jobs:
           fi
       # The same hole as the Playwright tree, in three more places at once:
       # apps/web/scripts, apps/web/lambda (eight production handlers) and
-      # static/sw.js are outside `.svelte-kit/tsconfig.json`'s include too, so
+      # static/sw.js are outside apps/web/tsconfig.json's include too, so
       # `npm run check` has never read any of them. Two roots because a
       # service worker's globals come from the WebWorker lib, which cannot
       # share a program with DOM; decisions § 752.
       - name: Node + service-worker tree typecheck
         run: |
           if ! npm run check:node-types --workspace=apps/web; then
-            echo "::error::apps/web's Node side (scripts/, lambda/, svelte.config.js) does not typecheck. Nothing here involves the migrations, the schema or the generated row types — read the TS error above."
+            echo "::error::apps/web's Node side (scripts/, lambda/) does not typecheck. Nothing here involves the migrations, the schema or the generated row types — read the TS error above."
             echo "Reproduce locally with: npm ci && npm run check:node-types --workspace=apps/web."
             exit 1
           fi
@@ -1143,11 +1143,11 @@ jobs:
           fi
       # This is a COMPILE GATE, not a deploy — it never uploads or
       # releases anything (the prod/preview release is tag-gated in
-      # release-web.yml). The SvelteKit build resolves the PUBLIC_* keys
-      # through `$env/static/public` at build time, so without them every
-      # importing module fails with MISSING_EXPORT before the compiler is
-      # even reached. Feed placeholder values — real secrets are irrelevant
-      # to a compile check and must never appear here.
+      # release-web.yml). apps/web/src/env.ts declares the two Supabase
+      # PUBLIC_* keys required and inlined at build time, so without them the
+      # build stops at `env_invalid` before the compiler is even reached.
+      # Feed placeholder values — real secrets are irrelevant to a compile
+      # check and must never appear here.
       - name: Build web (production)
         run: |
           if ! npm run build --workspace=apps/web; then
@@ -3767,10 +3767,10 @@ jobs:
             # unset so paywall-wire.spec.ts still exercises the 429.
             echo "PUBLIC_BYPASS_PAYWALL=true"
           } > ../web/.env
-      # Playwright resolves apps/web/tsconfig.json, which extends the
-      # `svelte-kit sync`-generated ./.svelte-kit/tsconfig.json. That file is
-      # gitignored, so a fresh checkout doesn't have it and Playwright >= 1.62
-      # hard-errors on the unresolvable `extends` instead of ignoring it.
+      # Playwright resolves apps/web/tsconfig.json, which extends
+      # `$app/tsconfig` — node_modules/$app/tsconfig.json, written by
+      # `svelte-kit sync`. A fresh install doesn't have it, and Playwright
+      # >= 1.62 hard-errors on the unresolvable `extends` instead of ignoring it.
       - name: Sync SvelteKit generated types
         working-directory: apps/web
         run: pnpm exec svelte-kit sync

@@ -1,20 +1,20 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { fetchFoodLogWithError, type FoodEntry } from '$lib/core/data';
-	import { sumMacros, MEAL_SLOTS, type MealSlot } from '$lib/nutrition/nutrition_totals';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { fetchFoodLogWithError, type FoodEntry } from '#lib/core/data.ts';
+	import { sumMacros, MEAL_SLOTS, type MealSlot } from '#lib/nutrition/nutrition_totals.ts';
 	import {
 		entriesForSlotOnDay,
 		slotCalorieTrend,
-	} from '$lib/nutrition/meal_detail';
-	import { formatDateShort } from '$lib/format/time';
-	import ActivityLoader from '$lib/components/ActivityLoader.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	} from '#lib/nutrition/meal_detail.ts';
+	import { formatDateShort } from '#lib/format/time.ts';
+	import ActivityLoader from '#lib/components/ActivityLoader.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
-	let date = $derived($page.params.date as string);
-	let slot = $derived($page.params.slot as MealSlot);
+	let date = $derived(page.params.date as string);
+	let slot = $derived(page.params.slot as MealSlot);
 	let validSlot = $derived(MEAL_SLOTS.includes(slot));
 
 	let loading = $state(true);

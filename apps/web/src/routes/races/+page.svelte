@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { parseImportCompleteness } from '$lib/integrations/import_completeness';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { MessageKey } from '$lib/i18n/messages';
+	import { parseImportCompleteness } from '#lib/integrations/import_completeness.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import {
 		searchRaceListings,
 		importRaceResult,
@@ -10,17 +10,17 @@
 		type RaceListingResult,
 		type RaceListingFilters,
 		type RaceDistanceBand
-	} from '$lib/core/data';
+	} from '#lib/core/data.ts';
 	import {
 		RACE_IMPORT_LEGS,
 		raceImportLegFor,
 		type RaceImportLeg
-	} from '$lib/integrations/race_import_providers';
-	import RunSurfaceTabs from '$lib/components/RunSurfaceTabs.svelte';
-	import RaceCalendarCard from '$lib/components/RaceCalendarCard.svelte';
-	import RaceListingEditor from '$lib/components/RaceListingEditor.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
+	} from '#lib/integrations/race_import_providers.ts';
+	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
+	import RaceCalendarCard from '#lib/components/RaceCalendarCard.svelte';
+	import RaceListingEditor from '#lib/components/RaceListingEditor.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
 
 	let query = $state('');
 	let distance = $state<'' | RaceDistanceBand>('');
@@ -133,7 +133,7 @@
 			return;
 		}
 		placeTimer = setTimeout(async () => {
-			const { geocodePlace } = await import('$lib/routes/geocoding');
+			const { geocodePlace } = await import('#lib/routes/geocoding.ts');
 			const place = await geocodePlace(term);
 			if (place) {
 				center = place.center;

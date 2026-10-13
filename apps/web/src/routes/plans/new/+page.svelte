@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { lengthLimit } from '$lib/core/column_limits';
-	import { formatISO, todayISO } from '$lib/training/training';
-	import { racePlanPreset } from '$lib/training/race_plan_preset';
+	import { lengthLimit } from '#lib/core/column_limits.ts';
+	import { formatISO, todayISO } from '#lib/training/training.ts';
+	import { racePlanPreset } from '#lib/training/race_plan_preset.ts';
 	import { goto, afterNavigate } from '$app/navigation';
-	import { page } from '$app/stores';
-	import PlanEditor from '$lib/components/PlanEditor.svelte';
-	import SessionPlanEditor from '$lib/components/SessionPlanEditor.svelte';
-	import RoutineEditor from '$lib/components/RoutineEditor.svelte';
+	import { page } from '$app/state';
+	import PlanEditor from '#lib/components/PlanEditor.svelte';
+	import SessionPlanEditor from '#lib/components/SessionPlanEditor.svelte';
+	import RoutineEditor from '#lib/components/RoutineEditor.svelte';
 	import {
 		fetchMyClubs,
 		fetchClubTemplatesForClubs,
@@ -15,13 +15,13 @@
 		createTrainingPlan,
 		fetchGymExerciseNames,
 		publishGymRoutineAsTemplate,
-	} from '$lib/core/data';
-	import { STARTER_PLANS, starterById, instantiateStarter } from '$lib/training/starter_plans';
-	import { PRIMARY_GOAL_VALUES, planPresetForGoal, type PrimaryGoal } from '$lib/settings/onboarding';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { TrainingPlan } from '$lib/types';
-	import type { MessageKey } from '$lib/i18n/messages';
+	} from '#lib/core/data.ts';
+	import { STARTER_PLANS, starterById, instantiateStarter } from '#lib/training/starter_plans.ts';
+	import { PRIMARY_GOAL_VALUES, planPresetForGoal, type PrimaryGoal } from '#lib/settings/onboarding.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { TrainingPlan } from '#lib/types.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
 
 	interface TemplateOption {
 		template: TrainingPlan;
@@ -31,7 +31,7 @@
 	type PlanKind = 'training' | 'session' | 'gym';
 
 	function initialKind(): PlanKind {
-		const t = $page.url.searchParams.get('type');
+		const t = page.url.searchParams.get('type');
 		return t === 'session' || t === 'gym' ? t : 'training';
 	}
 
@@ -39,12 +39,12 @@
 	// new artifact at that club. Honoured one-step only by the session branch —
 	// session_plans support a club-owned create; training + gym templates are
 	// build-then-publish, so the club param is informational there.
-	const clubId = $page.url.searchParams.get('club');
+	const clubId = page.url.searchParams.get('club');
 
 	// An explicit `?type=` means the caller already chose the kind (a club's
 	// contextual "New …" link) — skip the chooser so we don't ask twice. The
 	// bare /plans/new entry (no type) shows the chooser to disambiguate.
-	const explicitType = $page.url.searchParams.get('type');
+	const explicitType = page.url.searchParams.get('type');
 	const showChooser = !(
 		explicitType === 'training' || explicitType === 'session' || explicitType === 'gym'
 	);
@@ -52,7 +52,7 @@
 	// `?goal=<primary_goal>` (the onboarding "create my training plan" CTA)
 	// preselects the goal distance + walk-run toggle so a brand-new runner
 	// lands on the right plan shape without hunting for the beginner checkbox.
-	const goalParam = $page.url.searchParams.get('goal');
+	const goalParam = page.url.searchParams.get('goal');
 	const goalPreset =
 		goalParam && (PRIMARY_GOAL_VALUES as readonly string[]).includes(goalParam)
 			? planPresetForGoal(goalParam as PrimaryGoal)
@@ -63,12 +63,12 @@
 	// day. The URL carries the race's facts rather than the derived dates so
 	// the arithmetic has one home — a hand-edited or bookmarked link is
 	// re-derived against today, not replayed stale.
-	const raceDateParam = $page.url.searchParams.get('raceDate');
-	const raceNameParam = $page.url.searchParams.get('raceName');
+	const raceDateParam = page.url.searchParams.get('raceDate');
+	const raceNameParam = page.url.searchParams.get('raceName');
 	// Absent and empty both coerce to 0 through `Number`, so the parse has to
 	// test the string, not the number — an "is this present" check written as
 	// `Number.isFinite` silently reads a missing param as a zero-metre race.
-	const raceDistanceParam = $page.url.searchParams.get('raceDistance')?.trim();
+	const raceDistanceParam = page.url.searchParams.get('raceDistance')?.trim();
 	const raceDistanceM = (() => {
 		if (!raceDistanceParam) return null;
 		const n = Number(raceDistanceParam);
@@ -207,7 +207,7 @@
 			// (/plans/new?from=<templateId>). Only honour it when it's one of
 			// the user's loaded club templates — a stale or foreign id leaves
 			// the picker on its placeholder rather than a phantom selection.
-			const from = $page.url.searchParams.get('from');
+			const from = page.url.searchParams.get('from');
 			if (from && templates.some((t) => t.template.id === from)) {
 				selectedTemplateId = from;
 			}

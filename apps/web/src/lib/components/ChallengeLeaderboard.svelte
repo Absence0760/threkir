@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import { formatDistance, formatElevation } from '$lib/format/units.svelte';
-	import { formatDuration } from '$lib/format/time';
-	import type { ChallengeLeaderboardRow, ChallengeMetric, ChallengeScope } from '$lib/types';
-	import { teamLabel } from '$lib/social/challenge_list';
-	import { standingFor } from '$lib/social/leaderboard_standing';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { formatDistance, formatElevation } from '#lib/format/units.svelte.ts';
+	import { formatDuration } from '#lib/format/time.ts';
+	import type { ChallengeLeaderboardRow, ChallengeMetric, ChallengeScope } from '#lib/types.ts';
+	import { teamLabel } from '#lib/social/challenge_list.ts';
+	import { standingFor } from '#lib/social/leaderboard_standing.ts';
 
 	let {
 		rows,

@@ -4,7 +4,7 @@
 //
 // Output: apps/web/lambda/generate-route/dist/generate-route.zip
 //
-// esbuild bundles src/index.ts (and the pure $lib/routes/generate/ core it
+// esbuild bundles src/index.ts (and the pure #lib/routes/generate/ core it
 // imports) into a single index.mjs. The core has no SDK / native deps — it
 // only does fetch() to the GraphHopper engine — so the bundle is tiny and
 // nothing is marked external.

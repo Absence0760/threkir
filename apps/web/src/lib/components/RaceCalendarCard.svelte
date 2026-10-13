@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { formatDistance } from '$lib/format/units.svelte';
-	import { formatDate } from '$lib/format/time';
-	import { m } from '$lib/i18n/store.svelte';
-	import { racePlanPreset } from '$lib/training/race_plan_preset';
-	import { todayISO } from '$lib/training/training';
-	import type { RaceListingResult } from '$lib/core/data';
+	import { formatDistance } from '#lib/format/units.svelte.ts';
+	import { formatDate } from '#lib/format/time.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { racePlanPreset } from '#lib/training/race_plan_preset.ts';
+	import { todayISO } from '#lib/training/training.ts';
+	import type { RaceListingResult } from '#lib/core/data.ts';
 
 	interface Props {
 		race: RaceListingResult;

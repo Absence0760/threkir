@@ -6,7 +6,7 @@
 /// — keep the two in lockstep.
 ///
 /// Lives in its own supabase-free module so it's unit-testable with
-/// `tsx --test` (data.ts pulls in `./supabase` → `$env`, which the tsx
+/// `tsx --test` (data.ts pulls in `./supabase` → `$app/env`, which the tsx
 /// loader can't resolve).
 export function privacyDefaultToIsPublic(pref: string | null | undefined): boolean {
 	return pref === 'public';

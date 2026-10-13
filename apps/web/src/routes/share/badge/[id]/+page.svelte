@@ -1,10 +1,10 @@
 <script lang="ts">
-	import SharePageShell from '$lib/components/SharePageShell.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { tierFor, type AchievementTier } from '$lib/social/badges';
-	import { formatDateStable } from '$lib/share/share_meta';
-	import { buildBadgeOgImageUrl } from '$lib/share/share_badge_meta';
+	import SharePageShell from '#lib/components/SharePageShell.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { tierFor, type AchievementTier } from '#lib/social/badges.ts';
+	import { formatDateStable } from '#lib/share/share_meta.ts';
+	import { buildBadgeOgImageUrl } from '#lib/share/share_badge_meta.ts';
 
 	let { data } = $props();
 

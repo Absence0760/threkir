@@ -26,15 +26,15 @@ import { relative, resolve } from "node:path";
 
 const webRoot = resolve(import.meta.dirname, "..", "..", "..");
 const BUILD = resolve(webRoot, "build");
-const SVELTE_CONFIG = resolve(webRoot, "svelte.config.js");
+const VITE_CONFIG = resolve(webRoot, "vite.config.ts");
 const SEO_DOC = resolve(webRoot, "..", "..", "docs", "features", "seo.md");
 const ROOT_PAGE = resolve(webRoot, "src", "routes", "+page.ts");
 
 const SHELL = (() => {
   const found = /\bfallback:\s*["']([^"']+)["']/.exec(
-    readFileSync(SVELTE_CONFIG, "utf8"),
+    readFileSync(VITE_CONFIG, "utf8"),
   );
-  assert.ok(found, "svelte.config.js sets no adapter fallback");
+  assert.ok(found, "vite.config.ts sets no adapter fallback");
   return found[1];
 })();
 

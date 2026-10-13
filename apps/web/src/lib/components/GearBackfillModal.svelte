@@ -1,11 +1,11 @@
 <script lang="ts">
-	import Modal from '$lib/components/Modal.svelte';
-	import { addGearToRuns } from '$lib/core/data';
-	import { formatDate } from '$lib/format/time';
-	import { formatDistance } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { activityTypeIcon } from '$lib/runs/activity_type';
-	import { showToast } from '$lib/stores/toast.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import { addGearToRuns } from '#lib/core/data.ts';
+	import { formatDate } from '#lib/format/time.ts';
+	import { formatDistance } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { activityTypeIcon } from '#lib/runs/activity_type.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
 
 	interface BackfillCandidate {
 		id: string;

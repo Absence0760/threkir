@@ -5,7 +5,7 @@ declare global {
 		// interface Error {}
 		interface Locals {
 			supabase: import('@supabase/supabase-js').SupabaseClient<
-				import('$lib/core/database').AppDatabase
+				import('#lib/core/database.ts').AppDatabase
 			>;
 			getSession: () => Promise<import('@supabase/supabase-js').Session | null>;
 		}

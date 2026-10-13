@@ -1,27 +1,27 @@
 <script lang="ts">
-	import { createChallenge, updateChallenge, fetchMyClubs } from '$lib/core/data';
+	import { createChallenge, updateChallenge, fetchMyClubs } from '#lib/core/data.ts';
 	import type {
 		Challenge,
 		ChallengeMetric,
 		ChallengeScope,
 		ActivityType,
 		ClubWithMeta
-	} from '$lib/types';
-	import { m } from '$lib/i18n/store.svelte';
-	import { ACTIVITY_TYPES } from '$lib/runs/activity_type';
-	import { activityTypeLabel } from '$lib/runs/activity_type.svelte';
-	import { getUnit, formatDistance, formatElevation } from '$lib/format/units.svelte';
-	import { formatDuration } from '$lib/format/time';
+	} from '#lib/types.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { ACTIVITY_TYPES } from '#lib/runs/activity_type.ts';
+	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
+	import { getUnit, formatDistance, formatElevation } from '#lib/format/units.svelte.ts';
+	import { formatDuration } from '#lib/format/time.ts';
 	import {
 		challengeGoalUnit,
 		challengeGoalToStored,
 		challengeGoalFromStored,
 		maxStreakDaysInWindow,
 		checkChallengeGoal
-	} from '$lib/social/challenge_goal';
-	import { showToast } from '$lib/stores/toast.svelte';
+	} from '#lib/social/challenge_goal.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { untrack } from 'svelte';
-	import { trackDirty } from '$lib/core/form_dirty';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
 	import UnsavedChangesGuard from './UnsavedChangesGuard.svelte';
 
 	interface Props {

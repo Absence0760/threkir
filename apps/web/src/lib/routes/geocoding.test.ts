@@ -52,7 +52,7 @@ test('bboxRadius measures the corner distance, not the axis extent', () => {
 import { searchPlacesWithKey } from './geocoding_math';
 
 // Helper: call the env-free dispatcher directly so the tests don't
-// depend on SvelteKit's `$env/dynamic/public` runtime. Production
+// depend on SvelteKit's `$app/env/public` runtime. Production
 // behavior is identical — `geocoding.searchPlaces` just injects
 // `PUBLIC_MAPTILER_KEY` and delegates here.
 const searchPlaces = (q: string, limit?: number, signal?: AbortSignal) =>
@@ -269,7 +269,7 @@ test('searchPlaces (Nominatim path) includes the `email` contact-channel '
 
 import { geocodePlaceWithKey } from './geocoding_math';
 // Test the env-free dispatcher directly so we don't need Vite's
-// `$env/dynamic/public` runtime.
+// `$app/env/public` runtime.
 const geocodePlace = (q: string, signal?: AbortSignal) =>
 	geocodePlaceWithKey('', q, signal);
 

@@ -1,6 +1,6 @@
-import type { MessageKey } from '$lib/i18n/messages';
-import type { ImportRaceResultInput } from '$lib/core/data';
-import type { RaceProvider } from '$lib/types';
+import type { MessageKey } from '#lib/i18n/messages.ts';
+import type { ImportRaceResultInput } from '#lib/core/data.ts';
+import type { RaceProvider } from '#lib/types.ts';
 
 /// Every provider the `race-results-import` Edge Function has a leg for, read
 /// off the call it accepts rather than spelled out again.

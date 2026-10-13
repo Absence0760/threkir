@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { fetchGymRoutinesWithError, type GymRoutineSummary } from '$lib/core/data';
-	import { formatDate } from '$lib/format/time';
-	import ActivityLoader from '$lib/components/ActivityLoader.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { fetchGymRoutinesWithError, type GymRoutineSummary } from '#lib/core/data.ts';
+	import { formatDate } from '#lib/format/time.ts';
+	import ActivityLoader from '#lib/components/ActivityLoader.svelte';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
 
 	let routines = $state<GymRoutineSummary[]>([]);
 	let loading = $state(true);

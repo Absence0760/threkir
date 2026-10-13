@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto, afterNavigate } from '$app/navigation';
-	import RunEditor from '$lib/components/RunEditor.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import RunEditor from '#lib/components/RunEditor.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	let cameFromRuns = $state(false);
 	afterNavigate(({ from }) => {

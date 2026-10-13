@@ -6,7 +6,7 @@
 /// (`/learn/category/<id>`). `labelKey` resolves through the i18n `m()`
 /// helper; `order` controls section ordering on the hub.
 
-import type { MessageKey } from '$lib/i18n/messages';
+import type { MessageKey } from '#lib/i18n/messages.ts';
 
 export type LearnCategory = {
 	id: string;

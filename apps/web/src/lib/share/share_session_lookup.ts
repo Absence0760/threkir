@@ -12,7 +12,7 @@
 /// leaks past what the owner chose to make public.
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import type { SessionItemKind } from '$lib/social/session_steps';
+import type { SessionItemKind } from '#lib/social/session_steps.ts';
 import { isEntityId } from '../core/entity_id';
 
 export interface SharedSessionBlock {

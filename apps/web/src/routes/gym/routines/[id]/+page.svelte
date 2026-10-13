@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { smartBack } from '$lib/util/smart_back';
-	import { auth } from '$lib/stores/auth.svelte';
+	import { smartBack } from '#lib/util/smart_back.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
 		fetchGymRoutineDetail,
 		deleteGymRoutine,
@@ -11,14 +11,14 @@
 		publishGymRoutineAsTemplate,
 		setGymRoutinePublic,
 		type GymRoutineDetail,
-	} from '$lib/core/data';
-	import type { ClubWithMeta } from '$lib/types';
-	import { formatWeight } from '$lib/format/units.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import GymRoutineHistory from '$lib/components/GymRoutineHistory.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import MetricLabel from '$lib/components/MetricLabel.svelte';
+	} from '#lib/core/data.ts';
+	import type { ClubWithMeta } from '#lib/types.ts';
+	import { formatWeight } from '#lib/format/units.svelte.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import GymRoutineHistory from '#lib/components/GymRoutineHistory.svelte';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
 
 	let detail = $state<GymRoutineDetail | null>(null);
 	let loading = $state(true);
@@ -30,7 +30,7 @@
 	let publicBusy = $state(false);
 
 	const back = smartBack();
-	const routineId = $derived($page.params.id ?? '');
+	const routineId = $derived(page.params.id ?? '');
 	const isOwner = $derived(!!detail && !!auth.user && detail.routine.author_id === auth.user.id);
 
 	async function load() {

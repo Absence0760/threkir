@@ -4,10 +4,10 @@
 		submitReport,
 		type ReportReason,
 		type ReportTargetKind,
-	} from '$lib/core/data';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { MessageKey } from '$lib/i18n/messages';
+	} from '#lib/core/data.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
 
 	interface Props {
 		open: boolean;

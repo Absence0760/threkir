@@ -5,12 +5,12 @@ import { join } from 'node:path';
 /**
  * Static source-level guards for the hash-based CSP (audit-xss M2 /
  * decisions §70). These don't drive a browser — the CSP `<meta>` is
- * injected by SvelteKit's `kit.csp` at BUILD/prerender time, so it never
+ * injected by the `csp` option of the `sveltekit()` Vite plugin at BUILD/prerender time, so it never
  * appears under the `vite dev` server the e2e suite runs against. Instead
  * they pin the two things that, if regressed, silently reopen the
  * `script-src 'unsafe-inline'` gap:
  *
- *   1. The `kit.csp` hash config must stay in `svelte.config.js`, scoped to
+ *   1. The `csp` hash config must stay in `vite.config.ts`, scoped to
  *      `script-src` with no `'unsafe-inline'`. SvelteKit then SHA-256-hashes
  *      every inline script it emits and ships a per-page `<meta http-equiv>`
  *      CSP — the binding `script-src` layer enforced alongside the CloudFront
@@ -39,10 +39,10 @@ function listPageLoads(dir: string): string[] {
 }
 
 test.describe('hash-based CSP guards (no browser)', () => {
-	test('svelte.config.js keeps the script-src hash CSP with no unsafe-inline', () => {
-		const cfg = readFileSync('svelte.config.js', 'utf-8');
+	test('vite.config.ts keeps the script-src hash CSP with no unsafe-inline', () => {
+		const cfg = readFileSync('vite.config.ts', 'utf-8');
 		// The csp block must exist in hash mode.
-		expect(cfg, 'kit.csp must be configured').toMatch(/csp\s*:/);
+		expect(cfg, 'sveltekit({ csp }) must be configured').toMatch(/csp\s*:/);
 		expect(cfg, "csp.mode must be 'hash' (nonces are impossible for a fully prerendered site)").toMatch(
 			/mode\s*:\s*['"]hash['"]/,
 		);

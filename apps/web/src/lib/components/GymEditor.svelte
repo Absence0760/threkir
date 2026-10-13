@@ -5,24 +5,24 @@
 		updateGymWorkout,
 		type GymWorkoutWithSets,
 		type GymSetInput,
-	} from '$lib/core/data';
-	import type { Exercise, GymSetType } from '$lib/types';
-	import { dedupeShadowedExercises } from '$lib/gym/exercise_catalogue';
+	} from '#lib/core/data.ts';
+	import type { Exercise, GymSetType } from '#lib/types.ts';
+	import { dedupeShadowedExercises } from '#lib/gym/exercise_catalogue.ts';
 	import {
 		namesAnExercise,
 		normaliseExerciseName,
 		sameExerciseName as sameExercise,
-	} from '$lib/gym/gym_prs';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import { parseWeight, weightInputValue, weightUnitLabel } from '$lib/format/units.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import MetricLabel from '$lib/components/MetricLabel.svelte';
-	import { metricName } from '$lib/metrics/metric_name';
-	import ExerciseCataloguePicker from '$lib/components/ExerciseCataloguePicker.svelte';
-	import UnsavedChangesGuard from '$lib/components/UnsavedChangesGuard.svelte';
-	import { trackDirty } from '$lib/core/form_dirty';
-	import { noteModalityData } from '$lib/stores/modality_visibility.svelte';
+	} from '#lib/gym/gym_prs.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { parseWeight, weightInputValue, weightUnitLabel } from '#lib/format/units.svelte.ts';
+	import Modal from '#lib/components/Modal.svelte';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import { metricName } from '#lib/metrics/metric_name.ts';
+	import ExerciseCataloguePicker from '#lib/components/ExerciseCataloguePicker.svelte';
+	import UnsavedChangesGuard from '#lib/components/UnsavedChangesGuard.svelte';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
+	import { noteModalityData } from '#lib/stores/modality_visibility.svelte.ts';
 
 	interface Props {
 		existing?: GymWorkoutWithSets | null;

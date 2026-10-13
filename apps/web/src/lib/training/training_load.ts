@@ -5,7 +5,7 @@
 // CTL / ATL / TSB EWMA trio, and returns a 90-day daily series ready
 // for chart rendering.
 //
-// We don't import the Run type from $lib/types here so the module
+// We don't import the Run type from #lib/types here so the module
 // stays runnable under `npx tsx --test` without dragging in the
 // Supabase generated types. Callers shape Run rows into RunForLoad.
 

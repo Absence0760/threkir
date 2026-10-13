@@ -7,7 +7,7 @@
 /// register (P3); like nutrition_budget.ts / hydration.ts this file is
 /// web-only for now (no parity-pair obligation yet).
 
-import type { RefundPolicy } from '$lib/types';
+import type { RefundPolicy } from '#lib/types.ts';
 
 /// The platform's application fee for a destination charge, in cents.
 ///

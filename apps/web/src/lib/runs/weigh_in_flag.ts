@@ -24,9 +24,9 @@
  * `deploy_gate_names_test.dart` re-measures both the exception and the fact
  * that both headers state it (decisions §1354).
  */
-import { env } from '$env/dynamic/public';
+import { PUBLIC_WEIGH_IN_ENABLED } from '$app/env/public';
 import { isTruthyFlagValue } from '../core/env_flag';
 
 export function isWeighInEnabled(): boolean {
-	return isTruthyFlagValue(env.PUBLIC_WEIGH_IN_ENABLED);
+	return isTruthyFlagValue(PUBLIC_WEIGH_IN_ENABLED);
 }

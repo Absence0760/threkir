@@ -1,8 +1,8 @@
 import { onMount, tick } from 'svelte';
 import { beforeNavigate } from '$app/navigation';
-import { auth } from '$lib/stores/auth.svelte';
-import { m, currentLocale } from '$lib/i18n/store.svelte';
-import { showToast } from '$lib/stores/toast.svelte';
+import { auth } from '#lib/stores/auth.svelte.ts';
+import { m, currentLocale } from '#lib/i18n/store.svelte.ts';
+import { showToast } from '#lib/stores/toast.svelte.ts';
 import {
 	loadSettings,
 	updateUniversal,

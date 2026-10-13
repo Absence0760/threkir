@@ -1,30 +1,30 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import { goto, replaceState } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { supabase } from '$lib/core/supabase';
+	import { page } from '$app/state';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { supabase } from '#lib/core/supabase.ts';
 	import {
 		checkPasswordPair,
 		checkSignUpGates,
 		type PasswordPairReason,
 		type SignUpGateReason,
-	} from '$lib/core/auth_gates';
+	} from '#lib/core/auth_gates.ts';
 	import {
 		classifyAuthError,
 		authErrorMessageKey,
 		signUpErrorRevealsAccountExistence,
-	} from '$lib/core/auth_errors';
-	import { PASSWORD_MIN_LENGTH } from '$lib/core/auth_rules';
-	import { defaultUnitForLocale } from '$lib/format/locale_defaults';
-	import { verifyConsentStamped } from '$lib/core/auth_confirmation';
-	import { safeReturnTo as resolveReturnTo } from '$lib/core/safe_redirect';
-	import { googleAuthEnabled } from '$lib/core/google_auth_flag';
-	import { appleAuthEnabled } from '$lib/core/apple_auth_flag';
-	import { m } from '$lib/i18n/store.svelte';
-	import PasswordInput from '$lib/components/PasswordInput.svelte';
-	import AuthShell from '$lib/components/auth/AuthShell.svelte';
+	} from '#lib/core/auth_errors.ts';
+	import { PASSWORD_MIN_LENGTH } from '#lib/core/auth_rules.ts';
+	import { defaultUnitForLocale } from '#lib/format/locale_defaults.ts';
+	import { verifyConsentStamped } from '#lib/core/auth_confirmation.ts';
+	import { safeReturnTo as resolveReturnTo } from '#lib/core/safe_redirect.ts';
+	import { googleAuthEnabled } from '#lib/core/google_auth_flag.ts';
+	import { appleAuthEnabled } from '#lib/core/apple_auth_flag.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import PasswordInput from '#lib/components/PasswordInput.svelte';
+	import AuthShell from '#lib/components/auth/AuthShell.svelte';
 
 	// Fail-closed: each provider is off until it is wired on the Supabase
 	// side (PUBLIC_GOOGLE_AUTH_ENABLED / PUBLIC_APPLE_AUTH_ENABLED). When off
@@ -50,8 +50,8 @@
 	let email = $state('');
 	let password = $state('');
 	let confirmPassword = $state('');
-	let isSignUp = $state($page.url.searchParams.get('signup') === '1');
-	let isReset = $state($page.url.searchParams.get('reset') === '1');
+	let isSignUp = $state(page.url.searchParams.get('signup') === '1');
+	let isReset = $state(page.url.searchParams.get('reset') === '1');
 	let confirmAdult = $state(false);
 	let acceptTerms = $state(false);
 	let hydrated = $state(false);
@@ -60,7 +60,7 @@
 	let resendFor = $state<string | null>(null);
 	// Snapshot return_to at mount, BEFORE either the post-sign-in $effect
 	// or the explicit handler goto can fire. The previous version re-read
-	// $page.url.searchParams every call, but the $effect's goto mutates
+	// page.url.searchParams every call, but the $effect's goto mutates
 	// the URL to the return_to target on the same tick — caching once
 	// removes the race. resolveReturnTo rejects off-origin targets
 	// (//evil.com, /\evil.com, absolute URLs) so the attacker-controllable
@@ -68,7 +68,7 @@
 	let returnToOnMount = $state<string>('/dashboard');
 	onMount(() => {
 		hydrated = true;
-		returnToOnMount = resolveReturnTo($page.url.searchParams.get('return_to'));
+		returnToOnMount = resolveReturnTo(page.url.searchParams.get('return_to'));
 	});
 
 	function safeReturnTo(): string {
@@ -77,7 +77,7 @@
 
 	$effect(() => {
 		if (browser && !auth.loading && auth.loggedIn) {
-			goto(safeReturnTo(), { replaceState: true });
+			goto(safeReturnTo(), { replace: true });
 		}
 	});
 
@@ -146,7 +146,7 @@
 		acceptTerms = false;
 		// ?signup=1 seeds the initial mode only, but leaving it on the
 		// URL means a refresh restores the form we just dismissed.
-		const url = new URL($page.url);
+		const url = new URL(page.url.href);
 		if (url.searchParams.has('signup')) {
 			url.searchParams.delete('signup');
 			replaceState(`${url.pathname}${url.search}`, {});

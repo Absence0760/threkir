@@ -1,5 +1,5 @@
 /// Pure helpers extracted from `live_hub.ts` so they're testable
-/// without the SvelteKit `$env/dynamic/public` import. The wire
+/// without the SvelteKit `$app/env/public` import. The wire
 /// shape mirrors `apps/job_worker/internal/livehub/types.go` — keep
 /// them in lockstep when extending.
 

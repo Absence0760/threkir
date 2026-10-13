@@ -1,17 +1,17 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
-	import { page } from '$app/stores';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { fetchExerciseSetHistoryWithError } from '$lib/core/data';
-	import { exerciseProgress, type ExerciseProgress, type ExerciseSession } from '$lib/gym/exercise_history';
-	import { formatDate } from '$lib/format/time';
-	import { formatWeight } from '$lib/format/units.svelte';
-	import { smartBack } from '$lib/util/smart_back';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import MetricLabel from '$lib/components/MetricLabel.svelte';
+	import { page } from '$app/state';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { fetchExerciseSetHistoryWithError } from '#lib/core/data.ts';
+	import { exerciseProgress, type ExerciseProgress, type ExerciseSession } from '#lib/gym/exercise_history.ts';
+	import { formatDate } from '#lib/format/time.ts';
+	import { formatWeight } from '#lib/format/units.svelte.ts';
+	import { smartBack } from '#lib/util/smart_back.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
 
 	const back = smartBack();
-	const name = $derived($page.url.searchParams.get('name') ?? '');
+	const name = $derived(page.url.searchParams.get('name') ?? '');
 
 	let progress = $state<ExerciseProgress | null>(null);
 	let loading = $state(true);

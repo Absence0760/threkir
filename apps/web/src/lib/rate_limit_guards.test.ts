@@ -240,7 +240,7 @@ test('every LLM-spending endpoint carries a per-user rate-limit bucket', () => {
 	// claude-opus-4-8 calls on the operator's key. The only backstop was the
 	// per-IP WAF rule in infra/modules/web-stack/waf.tf, which by construction
 	// cannot see one JWT spread across an IP pool — the exact hole
-	// $lib/routes/rate_limit.ts was written for. Every handler that reaches a
+	// #lib/routes/rate_limit.ts was written for. Every handler that reaches a
 	// billed provider must hold a durable per-user ceiling, and it must be
 	// taken BEFORE the provider call.
 	for (const [file, marker] of [

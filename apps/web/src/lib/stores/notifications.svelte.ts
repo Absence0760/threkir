@@ -17,9 +17,9 @@
  *     page modifies state
  */
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { fetchUnreadNotificationCount } from '$lib/core/data';
-import { supabase } from '$lib/core/supabase';
-import { CoalescingRefetcher } from '$lib/runs/live_refetch';
+import { fetchUnreadNotificationCount } from '#lib/core/data.ts';
+import { supabase } from '#lib/core/supabase.ts';
+import { CoalescingRefetcher } from '#lib/runs/live_refetch.ts';
 import { auth } from './auth.svelte';
 
 class NotificationStore {

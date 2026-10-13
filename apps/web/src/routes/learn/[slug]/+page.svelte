@@ -1,23 +1,23 @@
 <script lang="ts">
-	import { m, structureLocale } from '$lib/i18n/store.svelte';
-	import { formatDate } from '$lib/format/time';
+	import { m, structureLocale } from '#lib/i18n/store.svelte.ts';
+	import { formatDate } from '#lib/format/time.ts';
 	import {
 		buildGuideDescription,
 		buildGuideJsonLd,
 		buildGuideTitle,
 		buildLearnCanonical,
-	} from '$lib/learn/learn_meta';
+	} from '#lib/learn/learn_meta.ts';
 	import {
 		getGuide,
 		isEnglishFallback,
 		listGuides,
 		readingMinutes,
-	} from '$lib/learn/guides';
-	import { getCategory } from '$lib/learn/categories';
-	import GuideCard from '$lib/components/GuideCard.svelte';
-	import LearnCta from '$lib/components/LearnCta.svelte';
-	import LearnPage from '$lib/components/LearnPage.svelte';
-	import LearnBreadcrumb from '$lib/components/LearnBreadcrumb.svelte';
+	} from '#lib/learn/guides.ts';
+	import { getCategory } from '#lib/learn/categories.ts';
+	import GuideCard from '#lib/components/GuideCard.svelte';
+	import LearnCta from '#lib/components/LearnCta.svelte';
+	import LearnPage from '#lib/components/LearnPage.svelte';
+	import LearnBreadcrumb from '#lib/components/LearnBreadcrumb.svelte';
 
 	let { data } = $props();
 

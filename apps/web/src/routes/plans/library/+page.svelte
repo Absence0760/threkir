@@ -4,9 +4,9 @@
 	import {
 		fetchPublicPlanLibrary,
 		type PublicPlanLibraryEntry,
-	} from '$lib/core/data';
-	import { formatDistance } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	} from '#lib/core/data.ts';
+	import { formatDistance } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	let plans = $state<PublicPlanLibraryEntry[]>([]);
 	let loading = $state(true);

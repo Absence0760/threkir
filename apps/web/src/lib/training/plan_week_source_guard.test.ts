@@ -21,7 +21,7 @@ test('every plan surface derives its week index from plan_week.ts', () => {
 		const source = readFileSync(resolve(rel), 'utf-8');
 		assert.match(
 			source,
-			/import \{ currentPlanWeekIndex \} from '\$lib\/training\/plan_week'/,
+			/import \{ currentPlanWeekIndex \} from '#lib\/training\/plan_week\.ts'/,
 			`${rel} must import currentPlanWeekIndex`,
 		);
 		assert.match(source, /currentPlanWeekIndex\(/, `${rel} must call currentPlanWeekIndex`);

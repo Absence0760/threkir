@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { activeFormatLocale } from '$lib/format/time';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { MessageKey } from '$lib/i18n/messages';
+	import { activeFormatLocale } from '#lib/format/time.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { fetchIntegrations, connectIntegration, disconnectIntegration } from '$lib/core/data';
-	import { showToast } from '$lib/stores/toast.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { fetchIntegrations, connectIntegration, disconnectIntegration } from '#lib/core/data.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import {
 		stravaAuthUrl,
 		completeStravaOAuth,
@@ -15,30 +15,30 @@
 		storeStravaOAuthState,
 		syncStrava,
 		isStravaConfigured,
-	} from '$lib/integrations/strava';
+	} from '#lib/integrations/strava.ts';
 	import {
 		STRAVA_LOOKBACK_DEFAULT_DAYS,
 		STRAVA_LOOKBACK_OPTIONS,
-	} from '$lib/integrations/strava_sync_result';
-	import { importStravaZip, type StravaZipProgress } from '$lib/integrations/strava-zip';
-	import { importGarminBundle, type GarminZipProgress } from '$lib/integrations/garmin-zip';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import ImportFailureReport from '$lib/components/ImportFailureReport.svelte';
-	import { newImportFailureLog, type ImportFailureLog } from '$lib/integrations/import_failures';
-	import { importRefusalMessage } from '$lib/i18n/import_refusal_message';
-	import { browser } from '$app/environment';
-	import { parkrunLikelyUnavailable } from '$lib/integrations/parkrun_regions';
+	} from '#lib/integrations/strava_sync_result.ts';
+	import { importStravaZip, type StravaZipProgress } from '#lib/integrations/strava-zip.ts';
+	import { importGarminBundle, type GarminZipProgress } from '#lib/integrations/garmin-zip.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import ImportFailureReport from '#lib/components/ImportFailureReport.svelte';
+	import { newImportFailureLog, type ImportFailureLog } from '#lib/integrations/import_failures.ts';
+	import { importRefusalMessage } from '#lib/i18n/import_refusal_message.ts';
+	import { browser } from '$app/env';
+	import { parkrunLikelyUnavailable } from '#lib/integrations/parkrun_regions.ts';
 	import {
 		CONNECT_INTEGRATIONS,
 		RACE_INTEGRATIONS,
 		resolveIntegrationVerdicts,
-	} from '$lib/integrations/availability';
+	} from '#lib/integrations/availability.ts';
 	import {
 		integrationIsStranded,
 		visibleIntegrations,
 		type GateVerdict,
-	} from '$lib/integrations/integration_visibility';
-	import InfoTip from '$lib/components/InfoTip.svelte';
+	} from '#lib/integrations/integration_visibility.ts';
+	import InfoTip from '#lib/components/InfoTip.svelte';
 
 	interface IntegrationUI {
 		provider: string;
@@ -116,12 +116,12 @@
 		// OAuth callback: Strava redirects back to this page with a
 		// `code` in the URL. Exchange it for tokens, then strip the
 		// params so a refresh doesn't replay a dead single-use code.
-		const params = $page.url.searchParams;
+		const params = page.url.searchParams;
 		if (params.has('code') && params.has('scope')) {
 			const strava = integrations.find((i) => i.provider === 'strava');
 			if (strava) strava.loading = true;
 			try {
-				const result = await completeStravaOAuth(params, $page.url.origin);
+				const result = await completeStravaOAuth(params, page.url.origin);
 				await refreshIntegrations();
 				// A first-connect backfill that Strava throttled — or that hit
 				// any other early exit — is a PARTIAL import. Saying "connected,
@@ -157,7 +157,7 @@
 			} finally {
 				if (strava) strava.loading = false;
 				// Remove the OAuth params from history so a refresh is clean.
-				goto('/settings/integrations', { replaceState: true, noScroll: true });
+				goto('/settings/integrations', { replace: true, reset: false });
 			}
 		}
 

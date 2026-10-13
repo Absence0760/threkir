@@ -1,21 +1,21 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
-	import { m } from '$lib/i18n/store.svelte';
-	import { formatDuration } from '$lib/format/time';
+	import { page } from '$app/state';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { formatDuration } from '#lib/format/time.ts';
 	import {
 		fetchEventById,
 		fetchEventCheckpoints,
 		fetchPublicCrossings,
 		fetchRaceSession,
 		type EventCheckpoint
-	} from '$lib/core/data';
-	import { buildBoard, type BoardCheckpoint, type BoardRunner } from '$lib/runs/checkpoint_board';
-	import type { EventWithMeta } from '$lib/types';
+	} from '#lib/core/data.ts';
+	import { buildBoard, type BoardCheckpoint, type BoardRunner } from '#lib/runs/checkpoint_board.ts';
+	import type { EventWithMeta } from '#lib/types.ts';
 
-	let eventId = $derived($page.params.id as string);
+	let eventId = $derived(page.params.id as string);
 	// Optional ?instance= for a recurring event; defaults to the event start.
-	let instanceParam = $derived($page.url.searchParams.get('instance') ?? '');
+	let instanceParam = $derived(page.url.searchParams.get('instance') ?? '');
 
 	let event = $state<EventWithMeta | null>(null);
 	let checkpoints = $state<EventCheckpoint[]>([]);

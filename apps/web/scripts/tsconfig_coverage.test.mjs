@@ -10,9 +10,8 @@
 // checked by nothing at all (decisions § 752).
 //
 // This walks the tracked files rather than a list of trees, and derives what
-// is covered from the configs themselves — including the generated
-// `.svelte-kit/tsconfig.json`, so SvelteKit changing what it claims changes
-// what this expects, and a root added later counts the moment it exists.
+// is covered from the configs themselves, so a root added later counts the
+// moment it exists.
 //
 // Run: `npm run test:tsconfig-coverage --workspace=apps/web`
 // CI:  the `parity-types` job in .github/workflows/ci.yml.
@@ -79,7 +78,7 @@ function effectivePatterns(absPath) {
 		assert.ok(
 			existsSync(current),
 			`${relative(REPO_ROOT, current)} does not exist, so a tsc root here resolves to ` +
-				'nothing. If it is .svelte-kit/tsconfig.json, run `svelte-kit sync` first.',
+				'nothing. If it is node_modules/$app/tsconfig.json, run `svelte-kit sync` first.',
 		);
 		const config = readConfig(current);
 		if (config.include) {
@@ -189,8 +188,8 @@ test('the coverage guard itself runs in CI', () => {
 		body.includes('tsconfig_coverage.test.mjs'),
 	);
 	assert.ok(entry, 'apps/web/package.json must declare a script that runs this guard.');
-	// The chain bottoms out in the generated .svelte-kit/tsconfig.json, which a
-	// clean checkout does not have.
+	// The chain bottoms out in `$app/tsconfig`, which `svelte-kit sync` writes
+	// into node_modules and a clean install does not have.
 	assert.match(
 		entry[1],
 		/svelte-kit sync/,

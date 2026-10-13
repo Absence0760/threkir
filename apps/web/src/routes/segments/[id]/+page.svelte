@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { routeSurfaceLabel } from '$lib/i18n/enum_labels.svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { formatDuration } from '$lib/format/time';
-	import { distanceInPreferred, formatElevation } from '$lib/format/units.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { formatDuration } from '#lib/format/time.ts';
+	import { distanceInPreferred, formatElevation } from '#lib/format/units.svelte.ts';
 	import {
 		fetchGlobalSegment,
 		fetchGlobalSegmentLeaderboard,
@@ -13,11 +13,11 @@
 		type GlobalSegmentLeaderboardEntry,
 		type SegmentGenderFilter,
 		type SegmentAgeBand,
-	} from '$lib/core/data';
-	import { crownLabel } from '$lib/segments/segments';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import RunMap from '$lib/components/RunMap.svelte';
-	import type { TrackPoint } from '$lib/types';
+	} from '#lib/core/data.ts';
+	import { crownLabel } from '#lib/segments/segments.ts';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import RunMap from '#lib/components/RunMap.svelte';
+	import type { TrackPoint } from '#lib/types.ts';
 
 	let { data } = $props();
 

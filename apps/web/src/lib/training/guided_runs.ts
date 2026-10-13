@@ -19,10 +19,10 @@
  * only the spoken/displayed text comes from the catalogue.
  */
 
-import type { MessageKey } from '$lib/i18n/messages';
+import type { MessageKey } from '#lib/i18n/messages.ts';
 
 /**
- * A catalogue lookup — the runtime `m` from `$lib/i18n/store.svelte`
+ * A catalogue lookup — the runtime `m` from `#lib/i18n/store.svelte`
  * satisfies this. Call sites pass `m` so the library re-renders on a
  * locale switch (build it inside a `$derived`, never a top-level const).
  */

@@ -1,18 +1,18 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import {
 		fetchGymRoutineDetail,
 		fetchPublicGymRoutineLibrary,
 		cloneGymRoutineTemplate,
 		type GymRoutineDetail,
-	} from '$lib/core/data';
-	import { formatWeight } from '$lib/format/units.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
+	} from '#lib/core/data.ts';
+	import { formatWeight } from '#lib/format/units.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
 
-	const routineId = $derived($page.params.id ?? '');
+	const routineId = $derived(page.params.id ?? '');
 
 	let detail = $state<GymRoutineDetail | null>(null);
 	let authorHandle = $state<string | null>(null);

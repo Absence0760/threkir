@@ -1,11 +1,11 @@
 <script lang="ts">
-	import type { PlanWorkout } from '$lib/types';
-	import { isWorkoutCompleted, parseISO, todayISO, formatISO } from '$lib/training/training';
-	import { workoutKindLabel } from '$lib/training/workout_labels';
-	import { workoutKindMarkVar } from '$lib/training/workout_kind_color';
-	import { fmtKm } from '$lib/format/units.svelte';
-	import { currentLocale, m } from '$lib/i18n/store.svelte';
-	import { monthName, weekdayAbbrevs, leadingBlanks, type WeekStart } from '$lib/format/calendar';
+	import type { PlanWorkout } from '#lib/types.ts';
+	import { isWorkoutCompleted, parseISO, todayISO, formatISO } from '#lib/training/training.ts';
+	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
+	import { workoutKindMarkVar } from '#lib/training/workout_kind_color.ts';
+	import { fmtKm } from '#lib/format/units.svelte.ts';
+	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
+	import { monthName, weekdayAbbrevs, leadingBlanks, type WeekStart } from '#lib/format/calendar.ts';
 
 	type Props = {
 		startDate: string;

@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { fetchExerciseRecordsWithError, type ExerciseRecord } from '$lib/core/data';
-	import { formatDate } from '$lib/format/time';
-	import { formatWeight } from '$lib/format/units.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import MetricLabel from '$lib/components/MetricLabel.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { fetchExerciseRecordsWithError, type ExerciseRecord } from '#lib/core/data.ts';
+	import { formatDate } from '#lib/format/time.ts';
+	import { formatWeight } from '#lib/format/units.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
 
 	let records = $state<ExerciseRecord[]>([]);
 	let loading = $state(true);

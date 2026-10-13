@@ -1,18 +1,18 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
-	import { activeFormatLocale } from '$lib/format/time';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { fetchRunsForRecap, fetchRecapExtras, publishRecap, type RecapRun } from '$lib/core/data';
-	import { buildMonthInRunningRecap, type YearInRunningRecap } from '$lib/runs/recap';
-	import { buildRecapShareSvg } from '$lib/share/recap_share_image';
-	import { buildRecapShareCanonical } from '$lib/share/share_recap_meta';
-	import { rasterizeSvgToPng } from '$lib/format/svg_raster';
-	import RecapView from '$lib/components/RecapView.svelte';
-	import { fmtKm, getUnit } from '$lib/format/units.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import type { Run } from '$lib/types';
+	import { page } from '$app/state';
+	import { activeFormatLocale } from '#lib/format/time.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { fetchRunsForRecap, fetchRecapExtras, publishRecap, type RecapRun } from '#lib/core/data.ts';
+	import { buildMonthInRunningRecap, type YearInRunningRecap } from '#lib/runs/recap.ts';
+	import { buildRecapShareSvg } from '#lib/share/recap_share_image.ts';
+	import { buildRecapShareCanonical } from '#lib/share/share_recap_meta.ts';
+	import { rasterizeSvgToPng } from '#lib/format/svg_raster.ts';
+	import RecapView from '#lib/components/RecapView.svelte';
+	import { fmtKm, getUnit } from '#lib/format/units.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import type { Run } from '#lib/types.ts';
 
 	let runs = $state<RecapRun[]>([]);
 	let extras = $state<{ photoCount: number; personalRecordCount: number }>({
@@ -23,8 +23,8 @@
 	let recap = $state<YearInRunningRecap | null>(null);
 	let publishing = $state(false);
 
-	let year = $derived(parseInt($page.params.year ?? '0', 10));
-	let month = $derived(parseInt($page.params.month ?? '0', 10));
+	let year = $derived(parseInt(page.params.year ?? '0', 10));
+	let month = $derived(parseInt(page.params.month ?? '0', 10));
 	let valid = $derived(
 		!Number.isNaN(year) && year >= 2010 && year <= 2100 && !Number.isNaN(month) && month >= 1 && month <= 12
 	);

@@ -10,7 +10,7 @@
 	/// it can sit on a surface whose copy lives in a catalogue it knows nothing
 	/// about.
 	import { onDestroy, onMount } from 'svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	interface Props {
 		/// Accessible name for the trigger. Must name the SUBJECT ("About

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import {
 		fetchRaceResultForRun,
 		findRaceMatchCandidates,
@@ -10,13 +10,13 @@
 		type RaceResultForRun,
 		type RaceListingResult,
 		RACE_IMPORT_UNAVAILABLE
-	} from '$lib/core/data';
-	import { raceMatchScore, isRaceMatchCandidate } from '$lib/integrations/race_match';
+	} from '#lib/core/data.ts';
+	import { raceMatchScore, isRaceMatchCandidate } from '#lib/integrations/race_match.ts';
 	import {
 		RACE_IMPORT_LEGS,
 		type RaceImportLeg,
 		type RaceImportProvider
-	} from '$lib/integrations/race_import_providers';
+	} from '#lib/integrations/race_import_providers.ts';
 
 	interface Props {
 		runId: string;

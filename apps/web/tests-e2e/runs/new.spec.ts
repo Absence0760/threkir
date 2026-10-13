@@ -15,7 +15,7 @@ import { readRow } from '../fixtures/db-read';
  * hand-capitalisation the activity vocabulary replaced — `hike` renders as
  * "Trail run", so the derived "Hike" matched no chip and the click timed out.
  * Read by regex rather than imported: this file runs under Playwright, where the
- * `$lib` alias the catalogue module uses internally does not resolve.
+ * `#lib` alias the catalogue module uses internally does not resolve.
  */
 function activityLabel(value: string): string {
 	const catalogue = readFileSync(

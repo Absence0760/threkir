@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fetchPublicGymRoutineLibrary, type PublicGymRoutineEntry } from '$lib/core/data';
-	import { m as t } from '$lib/i18n/store.svelte';
+	import { fetchPublicGymRoutineLibrary, type PublicGymRoutineEntry } from '#lib/core/data.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
 
 	let routines = $state<PublicGymRoutineEntry[]>([]);
 	let loading = $state(true);

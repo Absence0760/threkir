@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { m } from '$lib/i18n/store.svelte';
-	import { supabase } from '$lib/core/supabase';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { checkSignUpGates } from '$lib/core/auth_gates';
-	import { defaultUnitForLocale } from '$lib/format/locale_defaults';
-	import AuthShell from '$lib/components/auth/AuthShell.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { checkSignUpGates } from '#lib/core/auth_gates.ts';
+	import { defaultUnitForLocale } from '#lib/format/locale_defaults.ts';
+	import AuthShell from '#lib/components/auth/AuthShell.svelte';
 
 	// Consent gate. Reached from /auth/callback, the /login sign-up branch,
 	// or the root layout's consent gate whenever the user's user_profiles

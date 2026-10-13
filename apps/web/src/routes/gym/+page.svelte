@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { auth } from '$lib/stores/auth.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
 		fetchGymWorkoutsWithError,
 		fetchGymWorkoutSummariesWithError,
@@ -13,21 +13,21 @@
 		deleteGymWorkout,
 		type GymWorkout,
 		type GymWorkoutSummary,
-	} from '$lib/core/data';
+	} from '#lib/core/data.ts';
 	import {
 		draftLoggedCount,
 		draftRoutineId,
 		hasSessionDraft,
 		stripSessionDraft,
-	} from '$lib/gym/gym_session_draft';
-	import type { Exercise } from '$lib/types';
-	import { formatDate } from '$lib/format/time';
-	import { formatWeight } from '$lib/format/units.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import GymEditor from '$lib/components/GymEditor.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
+	} from '#lib/gym/gym_session_draft.ts';
+	import type { Exercise } from '#lib/types.ts';
+	import { formatDate } from '#lib/format/time.ts';
+	import { formatWeight } from '#lib/format/units.svelte.ts';
+	import Modal from '#lib/components/Modal.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import GymEditor from '#lib/components/GymEditor.svelte';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
 
 	let workouts = $state<GymWorkout[]>([]);
 	let summaries = $state<GymWorkoutSummary[]>([]);

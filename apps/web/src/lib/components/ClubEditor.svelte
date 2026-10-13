@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { createClub, updateClub } from '$lib/core/data';
-	import { geocodePlace } from '$lib/routes/geocoding';
-	import type { Club, JoinPolicy } from '$lib/types';
-	import { m } from '$lib/i18n/store.svelte';
-	import { joinPolicyLabel } from '$lib/i18n/enum_labels.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
+	import { createClub, updateClub } from '#lib/core/data.ts';
+	import { geocodePlace } from '#lib/routes/geocoding.ts';
+	import type { Club, JoinPolicy } from '#lib/types.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { joinPolicyLabel } from '#lib/i18n/enum_labels.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { untrack } from 'svelte';
-	import { trackDirty } from '$lib/core/form_dirty';
-	import { TEXT_LIMITS } from '$lib/core/text_limits';
-	import { clubNameNamesSomething } from '$lib/social/club_slug';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
+	import { TEXT_LIMITS } from '#lib/core/text_limits.ts';
+	import { clubNameNamesSomething } from '#lib/social/club_slug.ts';
 	import UnsavedChangesGuard from './UnsavedChangesGuard.svelte';
 
 	interface Props {

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { m } from '$lib/i18n/store.svelte';
-	import { getCtaTarget } from '$lib/learn/categories';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { getCtaTarget } from '#lib/learn/categories.ts';
 
 	let { feature }: { feature?: string } = $props();
 

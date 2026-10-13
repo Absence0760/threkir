@@ -103,9 +103,9 @@ function lambdaReachableLibSources(): Array<{ rel: string; src: string }> {
 			/** @see the closure test at the bottom of this file */
 			let base: string;
 			if (specifier.startsWith('.')) base = resolve(dirname(file), specifier);
-			else if (specifier.startsWith('$lib/')) base = join(libRoot, specifier.slice(5));
+			else if (specifier.startsWith('#lib/')) base = join(libRoot, specifier.slice(5));
 			else continue;
-			for (const candidate of [`${base}.ts`, join(base, 'index.ts')]) {
+			for (const candidate of [base, `${base}.ts`, join(base, 'index.ts')]) {
 				try {
 					if (statSync(candidate).isFile()) {
 						queue.push(candidate);
@@ -276,7 +276,7 @@ test('no lambda-reachable core hands a caught value straight to CloudWatch', () 
 
 // The walk is by reachability precisely so it cannot go stale, and a specifier
 // spelling it does not follow is exactly the way it would go stale anyway: a
-// module one importer names through the `$lib` alias and another names
+// module one importer names through the `#lib` alias and another names
 // relatively runs in the Lambda's process and writes to its log group either
 // way. The walk followed only the relative spelling until this test was
 // written.
@@ -295,13 +295,13 @@ test('the reachable set is closed under both import spellings src/lib uses', () 
 		const from = resolve(webRoot, rel);
 		for (const m of src.matchAll(/from '([^']+)'/g)) {
 			const specifier = m[1];
-			const base = specifier.startsWith('$lib/')
+			const base = specifier.startsWith('#lib/')
 				? join(libRoot, specifier.slice(5))
 				: specifier.startsWith('.')
 					? resolve(dirname(from), specifier)
 					: null;
 			if (base === null) continue;
-			for (const candidate of [`${base}.ts`, join(base, 'index.ts')]) {
+			for (const candidate of [base, `${base}.ts`, join(base, 'index.ts')]) {
 				let isFile = false;
 				try {
 					isFile = statSync(candidate).isFile();

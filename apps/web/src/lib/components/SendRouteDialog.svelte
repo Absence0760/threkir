@@ -1,14 +1,14 @@
 <script lang="ts">
 	import Modal from './Modal.svelte';
-	import { m as tr } from '$lib/i18n/store.svelte';
-	import { initial } from '$lib/format/avatar';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { fetchFollowers, fetchFollowing, sendDm } from '$lib/core/data';
+	import { m as tr } from '#lib/i18n/store.svelte.ts';
+	import { initial } from '#lib/format/avatar.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { fetchFollowers, fetchFollowing, sendDm } from '#lib/core/data.ts';
 	import {
 		dmRecipientCandidates,
 		filterDmRecipients,
 		type DmRecipient
-	} from '$lib/social/dm_recipients';
+	} from '#lib/social/dm_recipients.ts';
 
 	interface Props {
 		open: boolean;

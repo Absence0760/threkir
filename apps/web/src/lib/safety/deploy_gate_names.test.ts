@@ -75,9 +75,14 @@ function read(path: string): string {
 	return readFileSync(resolve(path), 'utf-8');
 }
 
-/// The `PUBLIC_*` env key a web flag module reads.
+/// The `PUBLIC_*` env key a web flag module reads: imported from `$app/env/public`
+/// (src/env.ts), or read as Vite's build-time `import.meta.env`.
 export function webKey(source: string): string | null {
-	return /\benv\.(PUBLIC_[A-Z0-9_]+)\b/.exec(source)?.[1] ?? null;
+	return (
+		/import\s*\{[^}]*?\b(PUBLIC_[A-Z0-9_]+)\b[^}]*\}\s*from\s*'\$app\/env\/public'/.exec(source)?.[1] ??
+		/\bimport\.meta\.env\.(PUBLIC_[A-Z0-9_]+)\b/.exec(source)?.[1] ??
+		null
+	);
 }
 
 /// The dart-define / dotenv key a Dart flag module reads, taken from the `k…EnvKey`

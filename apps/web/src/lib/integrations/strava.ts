@@ -8,7 +8,7 @@
 /// days of activities in the same call. A subsequent "Sync now" click
 /// posts `{ action: 'sync' }` to the same function.
 
-import { env } from '$env/dynamic/public';
+import { PUBLIC_STRAVA_CLIENT_ID as PUBLIC_STRAVA_CLIENT_ID_ENV } from '$app/env/public';
 import { supabase } from '../core/supabase';
 import { edgeFunctionErrorMessage } from '../core/edge_function_error';
 import { markListsStale } from '../core/list_freshness';
@@ -18,11 +18,10 @@ import {
 	type StravaSyncResult,
 } from './strava_sync_result';
 
-// Read via `$env/dynamic/public` rather than `static/public` so a build
-// without `PUBLIC_STRAVA_CLIENT_ID` set falls back gracefully to "not
-// configured" instead of crashing the page with a 500. The static
-// import would have failed the entire SvelteKit build.
-const PUBLIC_STRAVA_CLIENT_ID = env.PUBLIC_STRAVA_CLIENT_ID ?? '';
+// Declared optional in src/env.ts so a build without
+// `PUBLIC_STRAVA_CLIENT_ID` set falls back gracefully to "not configured".
+// A required declaration would fail the entire SvelteKit build.
+const PUBLIC_STRAVA_CLIENT_ID = PUBLIC_STRAVA_CLIENT_ID_ENV ?? '';
 
 /// Returns `true` when the Vite build has a public Strava client ID
 /// baked in. The UI uses this to decide whether to show a real Connect
@@ -97,7 +96,7 @@ export function consumeStravaOAuthState(): string | null {
 /// Function, and strips the params from `history` so a refresh doesn't
 /// re-run the exchange (Strava codes are single-use).
 export async function completeStravaOAuth(
-	searchParams: URLSearchParams,
+	searchParams: Pick<URLSearchParams, 'get'>,
 	origin: string,
 ): Promise<StravaSyncResult> {
 	const code = searchParams.get('code');

@@ -1,19 +1,19 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { formatISO } from '$lib/training/training';
+	import { formatISO } from '#lib/training/training.ts';
 	import {
 		fetchPlan,
 		fetchPublicPlanLibrary,
 		clonePublicPlan,
-	} from '$lib/core/data';
-	import { formatDistance } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import type { TrainingPlan, PlanWeek, PlanWorkout } from '$lib/types';
+	} from '#lib/core/data.ts';
+	import { formatDistance } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import type { TrainingPlan, PlanWeek, PlanWorkout } from '#lib/types.ts';
 
-	const planId = $page.params.id ?? '';
+	const planId = page.params.id ?? '';
 
 	let plan = $state<TrainingPlan | null>(null);
 	let weeks = $state<PlanWeek[]>([]);

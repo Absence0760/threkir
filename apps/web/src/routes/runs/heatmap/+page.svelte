@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { afterNavigate } from '$app/navigation';
-	import { auth } from '$lib/stores/auth.svelte';
-	import PersonalHeatmap from '$lib/components/PersonalHeatmap.svelte';
-	import ActivityLoader from '$lib/components/ActivityLoader.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import PersonalHeatmap from '#lib/components/PersonalHeatmap.svelte';
+	import ActivityLoader from '#lib/components/ActivityLoader.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	let ready = $state(false);
 	onMount(async () => {

@@ -5,7 +5,7 @@
 // Output: apps/web/lambda/share-recap/dist/share-recap.zip
 //
 // Same strategy as lambda/share-run/build.mjs: esbuild bundles src/index.ts
-// (+ everything it imports from $lib/*) into one index.mjs; supabase-js is
+// (+ everything it imports from #lib/*) into one index.mjs; supabase-js is
 // inlined; @resvg/resvg-js is a native addon kept external and copied into
 // the zip's node_modules; the SPA shell 200.html is substituted in as
 // __SPA_SHELL_HTML__. See lambda/share-run/README.md for the rationale.

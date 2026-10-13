@@ -85,8 +85,8 @@ test('the typecheck is reachable as an npm script and runs in CI', () => {
 		new RegExp(CONFIG.replace('.', '\\.')),
 		`"${SCRIPT}" must point at ${CONFIG}.`
 	);
-	// `svelte-kit sync` first: the config chain bottoms out in the generated
-	// .svelte-kit/tsconfig.json, which a clean checkout does not have.
+	// `svelte-kit sync` first: the config chain bottoms out in `$app/tsconfig`,
+	// which sync writes into node_modules and a clean install does not have.
 	assert.match(script, /svelte-kit sync/, `"${SCRIPT}" must sync SvelteKit before running tsc.`);
 
 	const ci = readFileSync(join(REPO_ROOT, '.github', 'workflows', 'ci.yml'), 'utf8');

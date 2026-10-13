@@ -6,7 +6,7 @@
 // Output: apps/web/lambda/share-run/dist/share-run.zip
 //
 // Strategy: esbuild bundles src/index.ts (and everything it imports
-// transitively from $lib/*) into a single index.mjs. supabase-js is
+// transitively from #lib/*) into a single index.mjs. supabase-js is
 // inlined. @resvg/resvg-js is a NATIVE addon — esbuild can't inline a
 // `.node` binary, so the loader package + its arm64 binary are marked
 // external and copied into the zip's node_modules instead (see
@@ -76,7 +76,7 @@ await build({
 	outfile: resolve(distDir, 'index.mjs'),
 	// Bundle everything except the native PNG rasteriser. Lambda's
 	// managed runtime only ships AWS SDK v3, which we don't use, so
-	// supabase-js + $lib helpers get inlined. @resvg/resvg-js is a
+	// supabase-js + #lib helpers get inlined. @resvg/resvg-js is a
 	// native addon — kept external and copied into node_modules below.
 	external: RESVG_EXTERNAL,
 	// Some transitive deps (e.g. inside @supabase/realtime-js) still

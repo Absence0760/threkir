@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { predictRaceLadder, type EffortForPrediction } from '$lib/training/race_predictor';
-	import { qualifyingRuns, type RunForFitness } from '$lib/training/fitness';
-	import { fmtSplitTime } from '$lib/runs/race_day';
-	import { fmtKm, fmtPace } from '$lib/format/units.svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import MetricLabel from '$lib/components/MetricLabel.svelte';
+	import { predictRaceLadder, type EffortForPrediction } from '#lib/training/race_predictor.ts';
+	import { qualifyingRuns, type RunForFitness } from '#lib/training/fitness.ts';
+	import { fmtSplitTime } from '#lib/runs/race_day.ts';
+	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
 
 	interface Props {
 		runs: readonly RunForFitness[];

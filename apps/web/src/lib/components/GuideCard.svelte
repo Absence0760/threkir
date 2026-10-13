@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { m, currentLocale } from '$lib/i18n/store.svelte';
-	import { getCategory } from '$lib/learn/categories';
-	import { localizedGuideMeta, readingMinutes, type GuideIndexEntry } from '$lib/learn/guides';
+	import { m, currentLocale } from '#lib/i18n/store.svelte.ts';
+	import { getCategory } from '#lib/learn/categories.ts';
+	import { localizedGuideMeta, readingMinutes, type GuideIndexEntry } from '#lib/learn/guides.ts';
 
 	let { guide, featured = false }: { guide: GuideIndexEntry; featured?: boolean } = $props();
 

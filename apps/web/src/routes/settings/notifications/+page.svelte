@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { auth } from '$lib/stores/auth.svelte';
-	import { supabase } from '$lib/core/supabase';
-	import { effective } from '$lib/settings/settings';
-	import { m } from '$lib/i18n/store.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { createPrefsPage } from '$lib/settings/prefs_page.svelte';
-	import PrefsPage from '$lib/components/settings/PrefsPage.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { effective } from '#lib/settings/settings.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { createPrefsPage } from '#lib/settings/prefs_page.svelte.ts';
+	import PrefsPage from '#lib/components/settings/PrefsPage.svelte';
 
 	let emailNotifications = $state<'all' | 'important' | 'off'>('important');
 	// Independent of email_notifications — muting email must not mute push.

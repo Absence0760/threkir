@@ -1,17 +1,17 @@
 <script lang="ts">
-	import { auth } from '$lib/stores/auth.svelte';
-	import { effective, updateUniversal } from '$lib/settings/settings';
-	import { m } from '$lib/i18n/store.svelte';
-	import { setDiscoverableArea, clearDiscoverableArea, fetchMyDiscoverableArea } from '$lib/core/data';
-	import { NEARBY_RUNNERS_ENABLED } from '$lib/social/nearby_flag';
-	import { geocodePlace } from '$lib/routes/geocoding';
-	import { PRIVACY_ZONES_KEY, type PrivacyZone } from '$lib/routes/privacy';
-	import Modal from '$lib/components/Modal.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { consent } from '$lib/settings/consent.svelte';
-	import { createPrefsPage } from '$lib/settings/prefs_page.svelte';
-	import PrefsPage from '$lib/components/settings/PrefsPage.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { effective, updateUniversal } from '#lib/settings/settings.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { setDiscoverableArea, clearDiscoverableArea, fetchMyDiscoverableArea } from '#lib/core/data.ts';
+	import { NEARBY_RUNNERS_ENABLED } from '#lib/social/nearby_flag.ts';
+	import { geocodePlace } from '#lib/routes/geocoding.ts';
+	import { PRIVACY_ZONES_KEY, type PrivacyZone } from '#lib/routes/privacy.ts';
+	import Modal from '#lib/components/Modal.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { consent } from '#lib/settings/consent.svelte.ts';
+	import { createPrefsPage } from '#lib/settings/prefs_page.svelte.ts';
+	import PrefsPage from '#lib/components/settings/PrefsPage.svelte';
 
 	let privacyDefault = $state<'public' | 'followers' | 'private'>('followers');
 	let stravaAutoShare = $state(false);
@@ -29,10 +29,10 @@
 	// PrivacyZonePicker pulls in maplibre-gl (~250KB gz). Lazy-load it the first
 	// time the picker opens so a visit to this page doesn't ship the map engine
 	// in its initial chunk.
-	let PrivacyZonePicker = $state<typeof import('$lib/components/PrivacyZonePicker.svelte').default | null>(null);
+	let PrivacyZonePicker = $state<typeof import('#lib/components/PrivacyZonePicker.svelte').default | null>(null);
 	async function openZonePicker() {
 		if (!PrivacyZonePicker) {
-			PrivacyZonePicker = (await import('$lib/components/PrivacyZonePicker.svelte')).default;
+			PrivacyZonePicker = (await import('#lib/components/PrivacyZonePicker.svelte')).default;
 		}
 		showZonePicker = true;
 	}

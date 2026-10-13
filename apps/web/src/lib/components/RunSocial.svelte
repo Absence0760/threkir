@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import { formatRelativeTime } from '$lib/format/time';
-	import { currentLocale, m as t } from '$lib/i18n/store.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import { formatRelativeTime } from '#lib/format/time.ts';
+	import { currentLocale, m as t } from '#lib/i18n/store.svelte.ts';
 	import {
 		fetchKudosForRunWithError,
 		giveKudos,
@@ -12,11 +12,11 @@
 		deleteRunComment,
 		type RunKudosSummary,
 		type RunCommentWithAuthor,
-	} from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { deferDestructive } from '$lib/stores/undo.svelte';
-	import ReportDialog from '$lib/components/ReportDialog.svelte';
+	} from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { deferDestructive } from '#lib/stores/undo.svelte.ts';
+	import ReportDialog from '#lib/components/ReportDialog.svelte';
 
 	interface Props {
 		runId: string;

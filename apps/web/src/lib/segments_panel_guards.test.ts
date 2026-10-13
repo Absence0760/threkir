@@ -274,7 +274,7 @@ test('/segments shapes the catalogue through the pure browse helpers', () => {
 	// them back out of reach of every test — bug class: logic that only a
 	// browser can exercise.
 	const source = read('src/routes/segments/+page.svelte');
-	assert.match(source, /from '\$lib\/segments\/catalogue_browse'/, 'page must import the helpers');
+	assert.match(source, /from '#lib\/segments\/catalogue_browse\.ts'/, 'page must import the helpers');
 	assert.match(source, /filterCatalogue\(/, 'page must filter through filterCatalogue');
 	assert.match(source, /sortCatalogue\(/, 'page must sort through sortCatalogue');
 });
@@ -395,7 +395,7 @@ test('the catalogue-browse copy is localized in all six catalogues', () => {
 test('data.ts re-exports the moved constants from segments.ts', () => {
 	// Reason: SEGMENT_AGE_BANDS / SegmentAgeBand / SegmentGenderFilter
 	// moved out of data.ts into the pure segments module so unit tests
-	// can import them without dragging in $env. Existing callers still
+	// can import them without dragging in $app/env. Existing callers still
 	// reach for the data.ts path — keep the re-export so they compile.
 	const source = read('src/lib/core/data.ts');
 	assert.match(

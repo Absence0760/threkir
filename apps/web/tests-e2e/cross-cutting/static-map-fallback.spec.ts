@@ -16,7 +16,7 @@ import { USER_A } from '../fixtures/users';
  *
  * The e2e server boots with no MapTiler key, which is exactly the case the old
  * code already handled, so the spec has to put the image on the page before it
- * can take the image away. `$env/dynamic/public` is `__sveltekit_dev.env` on a
+ * can take the image away. `$app/env/public` is `__sveltekit_dev.env` on a
  * dev-server client, assigned by the document's inline bootstrap script, so an
  * init script traps that assignment and adds a key. Rewriting the document
  * instead would not work: Chromium treats a fulfilled document as outside the

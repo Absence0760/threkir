@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { auth } from '$lib/stores/auth.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
 		fetchMyGear,
 		fetchRuns,
@@ -25,20 +25,20 @@
 		type GearWearLog,
 		type GearRotationWithMembers,
 		type RunColumns,
-	} from '$lib/core/data';
-	import type { Run } from '$lib/types';
-	import { getUnit } from '$lib/format/units.svelte';
-	import { gearWear } from '$lib/gear/gear_wear';
-	import { rotationPick } from '$lib/gear/rotation_pick';
-	import { gearBackfillCandidates, gearPurchaseSince } from '$lib/gear/gear_backfill';
-	import GearBackfillModal from '$lib/components/GearBackfillModal.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import UnsavedChangesGuard from '$lib/components/UnsavedChangesGuard.svelte';
-	import { trackDirty } from '$lib/core/form_dirty';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { deferDestructive } from '$lib/stores/undo.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
+	} from '#lib/core/data.ts';
+	import type { Run } from '#lib/types.ts';
+	import { getUnit } from '#lib/format/units.svelte.ts';
+	import { gearWear } from '#lib/gear/gear_wear.ts';
+	import { rotationPick } from '#lib/gear/rotation_pick.ts';
+	import { gearBackfillCandidates, gearPurchaseSince } from '#lib/gear/gear_backfill.ts';
+	import GearBackfillModal from '#lib/components/GearBackfillModal.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import UnsavedChangesGuard from '#lib/components/UnsavedChangesGuard.svelte';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { deferDestructive } from '#lib/stores/undo.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
 
 	let gear = $state<GearWithDistance[]>([]);
 	let loading = $state(true);

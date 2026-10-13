@@ -1,6 +1,6 @@
 /// Pure window contract for the dashboard's recency run fetch, kept out
 /// of `data.ts` so it is unit-testable (data.ts pulls in the supabase
-/// singleton + `$env`, which the tsx test runner can't load).
+/// singleton + `$app/env`, which the tsx test runner can't load).
 ///
 /// The dashboard reasons only about *recent* training — the 90-day load
 /// curve, the last-12-weeks consistency card, the race predictor's

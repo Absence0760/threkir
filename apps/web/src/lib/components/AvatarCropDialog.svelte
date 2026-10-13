@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Modal from './Modal.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 	import {
 		AVATAR_MAX_ZOOM,
 		AVATAR_MIN_ZOOM,
@@ -9,14 +9,14 @@
 		rezoom,
 		rotate,
 		type CropState,
-	} from '$lib/util/avatar_crop';
+	} from '#lib/util/avatar_crop.ts';
 	import {
 		drawAvatarCrop,
 		encodeAvatarCrop,
 		loadOrientedImage,
 		sourceSize,
 		type AvatarSource,
-	} from '$lib/util/avatar_render';
+	} from '#lib/util/avatar_render.ts';
 
 	interface Props {
 		/// The picked file. The dialog is open while this is non-null.

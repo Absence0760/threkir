@@ -1,19 +1,19 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { createGymRoutine, type GymRoutineInput } from '$lib/core/data';
-	import { namesAnExercise, normaliseExerciseName } from '$lib/gym/gym_prs';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import MetricLabel from '$lib/components/MetricLabel.svelte';
-	import { metricName } from '$lib/metrics/metric_name';
-	import { parseWeight, weightInputValue, weightUnitLabel } from '$lib/format/units.svelte';
-	import type { PrefillExercise } from '$lib/gym/gym_routine';
-	import { assignSupersetGroups } from '$lib/gym/routine_editor_build';
-	import { floatOrNull, intOrNull } from '$lib/gym/numeric_input';
-	import type { GymExerciseModality, GymProgressionScheme, GymSetType } from '$lib/types';
-	import { trackDirty } from '$lib/core/form_dirty';
+	import { createGymRoutine, type GymRoutineInput } from '#lib/core/data.ts';
+	import { namesAnExercise, normaliseExerciseName } from '#lib/gym/gym_prs.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import { metricName } from '#lib/metrics/metric_name.ts';
+	import { parseWeight, weightInputValue, weightUnitLabel } from '#lib/format/units.svelte.ts';
+	import type { PrefillExercise } from '#lib/gym/gym_routine.ts';
+	import { assignSupersetGroups } from '#lib/gym/routine_editor_build.ts';
+	import { floatOrNull, intOrNull } from '#lib/gym/numeric_input.ts';
+	import type { GymExerciseModality, GymProgressionScheme, GymSetType } from '#lib/types.ts';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
 	import UnsavedChangesGuard from './UnsavedChangesGuard.svelte';
-	import type { JsonObject } from '$lib/types';
+	import type { JsonObject } from '#lib/types.ts';
 
 	interface Props {
 		/// Optional in-memory blocks to seed the editor with (e.g. the output of

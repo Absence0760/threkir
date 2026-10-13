@@ -83,9 +83,11 @@ test('release-web.yml threads every feature-flag env var into the build', () => 
 			if (e.isDirectory()) {
 				if (e.name !== 'node_modules') walk(p);
 			} else if (/_flag\.ts$/.test(e.name) && e.name !== 'env_flag.ts') {
-				for (const m of readFileSync(p, 'utf-8').matchAll(/env\.(PUBLIC_[A-Z0-9_]+)/g)) {
-					vars.add(m[1]);
+				const src = readFileSync(p, 'utf-8');
+				for (const [, names] of src.matchAll(/import\s*\{([^}]*)\}\s*from\s*'\$app\/env\/public'/g)) {
+					for (const m of names.matchAll(/\bPUBLIC_[A-Z0-9_]+\b/g)) vars.add(m[0]);
 				}
+				for (const m of src.matchAll(/\bimport\.meta\.env\.(PUBLIC_[A-Z0-9_]+)/g)) vars.add(m[1]);
 			}
 		}
 	};

@@ -7,7 +7,7 @@
 ///
 /// Mirror of share_run_meta.ts. Kept in apps/web/src/lib so the Lambda
 /// build can pull this + the related helpers from a single tree
-/// without dragging in $env or SvelteKit-only modules.
+/// without dragging in $app/env or SvelteKit-only modules.
 
 import {
 	buildRouteShareTitle,

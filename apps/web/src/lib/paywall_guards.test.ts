@@ -44,7 +44,7 @@ test('BYPASS_PAYWALL gate requires three independent conditions', () => {
 });
 
 test('Client PUBLIC_BYPASS_PAYWALL gate requires three independent conditions', () => {
-	// Reason: the client-side bypass in `$lib/settings/features.ts::bypassEnabled`
+	// Reason: the client-side bypass in `#lib/settings/features.ts::bypassEnabled`
 	// mirrors the server gate in `/api/coach/+server.ts`. Loosening any
 	// one of (vite dev, local Supabase URL, literal 'true' env var) to
 	// `||` re-opens the gate in production builds — a vendored
@@ -80,12 +80,12 @@ test('/settings/upgrade gates the Get Pro CTA on a live perk (never sells a holl
 	const page = read('src/routes/settings/upgrade/+page.svelte');
 	assert.match(
 		page,
-		/import \{ coachEnabled \} from '\$lib\/coach\/coach_flag'/,
+		/import \{ coachEnabled \} from '#lib\/coach\/coach_flag\.ts'/,
 		'upgrade page must import coachEnabled from the fail-closed coach_flag gate.',
 	);
 	assert.match(
 		page,
-		/import \{ routeGenEnabled \} from '\$lib\/routes\/route_gen_flag'/,
+		/import \{ routeGenEnabled \} from '#lib\/routes\/route_gen_flag\.ts'/,
 		'upgrade page must import routeGenEnabled from the fail-closed route_gen_flag gate.',
 	);
 	assert.match(
@@ -142,12 +142,12 @@ test('/app-capabilities.json publishes the same perk flags and web-checkout gate
 	const manifest = read('src/routes/app-capabilities.json/+server.ts');
 	assert.match(
 		manifest,
-		/import \{ coachEnabled \} from '\$lib\/coach\/coach_flag'/,
+		/import \{ coachEnabled \} from '#lib\/coach\/coach_flag\.ts'/,
 		'the capability manifest must derive `coach` from the shared coachEnabled() gate.',
 	);
 	assert.match(
 		manifest,
-		/import \{ routeGenEnabled \} from '\$lib\/routes\/route_gen_flag'/,
+		/import \{ routeGenEnabled \} from '#lib\/routes\/route_gen_flag\.ts'/,
 		'the capability manifest must derive `route_gen` from the shared routeGenEnabled() gate.',
 	);
 	assert.match(
@@ -160,7 +160,7 @@ test('/app-capabilities.json publishes the same perk flags and web-checkout gate
 	// same fail-closed gate the web buy button renders under.
 	assert.match(
 		manifest,
-		/import \{ webCheckoutAvailable \} from '\$lib\/billing\/revenuecat'/,
+		/import \{ webCheckoutAvailable \} from '#lib\/billing\/revenuecat\.ts'/,
 		'the capability manifest must derive `web_checkout` from the shared webCheckoutAvailable() gate.',
 	);
 	assert.match(

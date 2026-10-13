@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { effective } from '$lib/settings/settings';
-	import { m, currentLocale } from '$lib/i18n/store.svelte';
+	import { effective } from '#lib/settings/settings.ts';
+	import { m, currentLocale } from '#lib/i18n/store.svelte.ts';
 	import {
 		MAX_HR_BPM_MIN,
 		MAX_HR_BPM_MAX,
@@ -8,8 +8,8 @@
 		RESTING_HR_BPM_MIN,
 		RESTING_HR_BPM_MAX,
 		isUsableRestingHrBpm,
-	} from '$lib/training/hr_zones';
-	import { numberInputValue } from '$lib/settings/number_input';
+	} from '#lib/training/hr_zones.ts';
+	import { numberInputValue } from '#lib/settings/number_input.ts';
 	import {
 		WEEKLY_GOAL_KEY,
 		WEEKLY_GOAL_MAX,
@@ -17,10 +17,10 @@
 		isUsableWeeklyGoalInput,
 		weeklyGoalFromInput,
 		weeklyGoalToInput,
-	} from '$lib/settings/weekly_goal';
-	import { formatDecimal, formatInteger } from '$lib/format/number';
-	import { createPrefsPage } from '$lib/settings/prefs_page.svelte';
-	import PrefsPage from '$lib/components/settings/PrefsPage.svelte';
+	} from '#lib/settings/weekly_goal.ts';
+	import { formatDecimal, formatInteger } from '#lib/format/number.ts';
+	import { createPrefsPage } from '#lib/settings/prefs_page.svelte.ts';
+	import PrefsPage from '#lib/components/settings/PrefsPage.svelte';
 
 	let preferredUnit = $state<'km' | 'mi'>('km');
 

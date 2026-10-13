@@ -1,9 +1,9 @@
 import type { EntryGenerator, PageLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import { env } from '$env/dynamic/public';
-import { guidesByCategory } from '$lib/learn/guides';
-import { CATEGORIES, getCategory } from '$lib/learn/categories';
-import { siteOrigin } from '$lib/core/site_url';
+import { PUBLIC_SITE_URL } from '$app/env/public';
+import { guidesByCategory } from '#lib/learn/guides.ts';
+import { CATEGORIES, getCategory } from '#lib/learn/categories.ts';
+import { siteOrigin } from '#lib/core/site_url.ts';
 
 export const prerender = true;
 
@@ -13,7 +13,7 @@ export const entries: EntryGenerator = () => CATEGORIES.map((c) => ({ category: 
 export const load: PageLoad = ({ params }) => {
 	const category = getCategory(params.category);
 	if (!category) throw error(404, 'Category not found');
-	const siteUrl = siteOrigin(env.PUBLIC_SITE_URL);
+	const siteUrl = siteOrigin(PUBLIC_SITE_URL);
 	return {
 		siteUrl,
 		category,

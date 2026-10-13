@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { confirmSafetyContactByToken } from '$lib/core/data';
-	import { m } from '$lib/i18n/store.svelte';
+	import { confirmSafetyContactByToken } from '#lib/core/data.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	type Phase = 'prompt' | 'working' | 'success' | 'failure' | 'missing';
 	// The anon token flow can't read whether the owner stored a phone, so we

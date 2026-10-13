@@ -1,4 +1,4 @@
-import { m } from '$lib/i18n/store.svelte';
+import { m } from '#lib/i18n/store.svelte.ts';
 import { METRICS, type MetricEntry, type MetricId } from './metric_registry';
 
 /**

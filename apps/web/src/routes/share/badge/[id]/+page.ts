@@ -1,8 +1,7 @@
 import type { PageLoad } from './$types';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
-import { env } from '$env/dynamic/public';
-import { lookupSharedBadge } from '$lib/share/share_badge_lookup';
-import { siteOrigin } from '$lib/core/site_url';
+import { PUBLIC_SITE_URL, PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$app/env/public';
+import { lookupSharedBadge } from '#lib/share/share_badge_lookup.ts';
+import { siteOrigin } from '#lib/core/site_url.ts';
 
 // Canonical host for the absolute og:image URL, same source + fallback as the
 // sibling share loaders and /sitemap.xml. An og:image is fetched by a remote
@@ -25,6 +24,6 @@ export const load: PageLoad = async ({ params }) => {
 		id: params.id,
 		badge: lookup.badge,
 		displayName: lookup.displayName,
-		siteUrl: siteOrigin(env.PUBLIC_SITE_URL),
+		siteUrl: siteOrigin(PUBLIC_SITE_URL),
 	};
 };

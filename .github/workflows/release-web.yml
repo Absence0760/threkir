@@ -122,13 +122,13 @@ jobs:
         # stripped after the build step so they don't leak into the
         # uploaded build zip's source artifacts.
         #
-        # We write `.env` (not `.env.production`) because the preceding
-        # `npm run check` step runs `svelte-kit sync` in default
-        # (development) mode, which loads `.env` and `.env.local` but
-        # NOT `.env.production`. Without `.env`, the env-typegen produces
-        # an empty `$env/static/public` and svelte-check fails on every
-        # PUBLIC_* import. `vite build` reads `.env` in either mode too,
-        # so the build step picks the values up the same way.
+        # We write `.env` (not `.env.production`) because `vite build`
+        # reads `.env` in either mode, and so does the preceding `npm run
+        # check` step's `svelte-kit sync`, which runs in default
+        # (development) mode and never loads `.env.production`. The
+        # variables' types come from apps/web/src/env.ts, not from this file;
+        # their values come from here, and the build fails `env_invalid` if
+        # one src/env.ts requires is missing.
         env:
           PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
           PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PUBLIC_SUPABASE_ANON_KEY }}
@@ -190,7 +190,7 @@ jobs:
       - name: Guard production env (no placeholder / empty secrets)
         # Without this, a missing repo secret in the release workflow
         # writes an empty PUBLIC_SUPABASE_URL into apps/web/.env, the
-        # build's `entries()` calls all return [], svelte.config.js's
+        # build's `entries()` calls all return [], vite.config.ts's
         # `handleUnseenRoutes: 'warn'` quietly accepts the empty set,
         # and we ship a static artifact whose share + og pages are
         # all missing. The guard fails loud instead. See

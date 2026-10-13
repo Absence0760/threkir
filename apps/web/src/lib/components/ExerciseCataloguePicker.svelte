@@ -1,11 +1,11 @@
 <script lang="ts">
-	import type { Exercise, ExerciseCategory } from '$lib/types';
-	import { createCustomExercise } from '$lib/core/data';
+	import type { Exercise, ExerciseCategory } from '#lib/types.ts';
+	import { createCustomExercise } from '#lib/core/data.ts';
 	import { cataloguePickerView, shadowsSeededGlobal } from './exercise_catalogue_picker';
-	import { dedupeShadowedExercises } from '$lib/gym/exercise_catalogue';
-	import { namesAnExercise } from '$lib/gym/gym_prs';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
+	import { dedupeShadowedExercises } from '#lib/gym/exercise_catalogue.ts';
+	import { namesAnExercise } from '#lib/gym/gym_prs.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
 
 	interface Props {
 		/// The catalogue to browse — seeded globals + the user's customs, as

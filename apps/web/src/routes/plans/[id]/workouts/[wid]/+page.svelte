@@ -1,29 +1,29 @@
 <script lang="ts">
-	import { activeFormatLocale } from '$lib/format/time';
+	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { afterNavigate } from '$app/navigation';
-	import { auth } from '$lib/stores/auth.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
 		fetchWorkout,
 		markWorkoutCompleted,
 		markWorkoutSkipped,
 		fetchRelinkCandidateRuns,
 		type RelinkCandidateRun
-	} from '$lib/core/data';
-	import { fmtHms, isWorkoutCompleted, isWorkoutSkipped } from '$lib/training/training';
-	import { workoutKindLabel } from '$lib/training/workout_labels';
-	import { fmtKm, fmtPace } from '$lib/format/units.svelte';
-	import { formatDateShort } from '$lib/format/time';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
-	import type { PlanWorkout } from '$lib/types';
-	import type { WorkoutStructure } from '$lib/training/training';
+	} from '#lib/core/data.ts';
+	import { fmtHms, isWorkoutCompleted, isWorkoutSkipped } from '#lib/training/training.ts';
+	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
+	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
+	import { formatDateShort } from '#lib/format/time.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import type { PlanWorkout } from '#lib/types.ts';
+	import type { WorkoutStructure } from '#lib/training/training.ts';
 
-	let planId = $derived($page.params.id as string);
-	let wid = $derived($page.params.wid as string);
+	let planId = $derived(page.params.id as string);
+	let wid = $derived(page.params.wid as string);
 	let workout = $state<PlanWorkout | null>(null);
 	let loading = $state(true);
 	let loadError = $state(false);

@@ -19,13 +19,13 @@
 	import { onMount } from 'svelte';
 	import TrackPreview from './TrackPreview.svelte';
 	import StaticMapImage from './StaticMapImage.svelte';
-	import { fetchClippedRouteForViewer } from '$lib/core/data';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { consent } from '$lib/settings/consent.svelte';
-	import { env } from '$env/dynamic/public';
-	const PUBLIC_MAPTILER_KEY = env.PUBLIC_MAPTILER_KEY ?? '';
-	import { trackThumbnailUrlFromEnv } from '$lib/routes/map-style.svelte';
-	import { thumbnailSize } from '$lib/routes/static_map';
+	import { fetchClippedRouteForViewer } from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { consent } from '#lib/settings/consent.svelte.ts';
+	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV } from '$app/env/public';
+	const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
+	import { trackThumbnailUrlFromEnv } from '#lib/routes/map-style.svelte.ts';
+	import { thumbnailSize } from '#lib/routes/static_map.ts';
 
 	// Same OS read RunMap makes, so `streets` resolves to the same light or
 	// dark rung here as on the live map.

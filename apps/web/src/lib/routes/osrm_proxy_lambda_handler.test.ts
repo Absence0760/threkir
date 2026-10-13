@@ -1,6 +1,6 @@
 // The osrm-proxy Lambda's own wrapper layer.
 //
-// `$lib/routes/osrm_proxy/handler.ts` is the transport-agnostic core and is
+// `#lib/routes/osrm_proxy/handler.ts` is the transport-agnostic core and is
 // covered by its own suite; this is the production Function URL wrapper around
 // it, and nothing had ever executed it — the same gap decisions § 896 closed
 // for the coach and generate-route wrappers, still open on the third.

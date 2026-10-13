@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
 
 	// The notification inbox is a tab on the viewer's own profile, so it has no
 	// standalone URL to link to. Emails and push payloads sent before that was
@@ -12,7 +12,7 @@
 	onMount(async () => {
 		await auth.ready();
 		const id = auth.user?.id;
-		await goto(id ? `/u/${id}?tab=notifications` : '/dashboard', { replaceState: true });
+		await goto(id ? `/u/${id}?tab=notifications` : '/dashboard', { replace: true });
 	});
 </script>
 

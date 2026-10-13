@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { m } from '$lib/i18n/store.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 	import {
 		BODY_METRICS_PAGE,
 		PREFERENCES_PAGES,
 		legacyPreferencesTarget,
-	} from '$lib/settings/preferences_ia';
+	} from '#lib/settings/preferences_ia.ts';
 
 	const groups = [...PREFERENCES_PAGES, BODY_METRICS_PAGE];
 
@@ -16,7 +16,7 @@
 	// each group says what it holds.
 	onMount(() => {
 		const target = legacyPreferencesTarget(location.hash);
-		if (target) void goto(target, { replaceState: true });
+		if (target) void goto(target, { replace: true });
 	});
 </script>
 

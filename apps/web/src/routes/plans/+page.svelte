@@ -1,24 +1,24 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { compareOrdinal } from '$lib/util/ordinal_compare';
-	import { formatDuration } from '$lib/format/time';
-	import { formatDateShort } from '$lib/format/time';
+	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
+	import { formatDuration } from '#lib/format/time.ts';
+	import { formatDateShort } from '#lib/format/time.ts';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
-	import { fetchMyPlansWithError, deletePlan, updatePlanStatus } from '$lib/core/data';
-	import { m } from '$lib/i18n/store.svelte';
-	import { currentPlanWeekIndex } from '$lib/training/plan_week';
-	import { todayISO } from '$lib/training/training';
-	import { showToast } from '$lib/stores/toast.svelte';
+	import { page } from '$app/state';
+	import { fetchMyPlansWithError, deletePlan, updatePlanStatus } from '#lib/core/data.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import { currentPlanWeekIndex } from '#lib/training/plan_week.ts';
+	import { todayISO } from '#lib/training/training.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
 
-	import RunSurfaceTabs from '$lib/components/RunSurfaceTabs.svelte';
-	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import MetricLabel from '$lib/components/MetricLabel.svelte';
-	import PlanEditor from '$lib/components/PlanEditor.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import type { TrainingPlan, PlanStatus } from '$lib/types';
+	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import PlanEditor from '#lib/components/PlanEditor.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import type { TrainingPlan, PlanStatus } from '#lib/types.ts';
 	import type { Snapshot } from './$types';
-	import { isListStale, listToken } from '$lib/core/list_freshness';
+	import { isListStale, listToken } from '#lib/core/list_freshness.ts';
 
 	let plans = $state<TrainingPlan[]>([]);
 	let loading = $state(true);
@@ -52,9 +52,9 @@
 		// Deep-link from the dashboard's "Pick a goal race" CTA: opening
 		// `/plans?new=1` lands here with the create-plan modal already
 		// open. Strip the query so a refresh doesn't re-open the modal.
-		if ($page.url.searchParams.get('new') === '1') {
+		if (page.url.searchParams.get('new') === '1') {
 			showPlanModal = true;
-			goto('/plans', { replaceState: true, noScroll: true });
+			goto('/plans', { replace: true, reset: false });
 		}
 	});
 

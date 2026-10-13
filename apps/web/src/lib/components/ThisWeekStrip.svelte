@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { currentWeek, type WeekActivity, type WeekStart } from '$lib/training/current_week';
-	import { weekdayAbbrevs } from '$lib/format/calendar';
-	import { fmtKm } from '$lib/format/units.svelte';
-	import { m, currentLocale } from '$lib/i18n/store.svelte';
+	import { currentWeek, type WeekActivity, type WeekStart } from '#lib/training/current_week.ts';
+	import { weekdayAbbrevs } from '#lib/format/calendar.ts';
+	import { fmtKm } from '#lib/format/units.svelte.ts';
+	import { m, currentLocale } from '#lib/i18n/store.svelte.ts';
 
 	type Props = {
 		/// The runner's logged activities — the dashboard passes its

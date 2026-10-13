@@ -17,10 +17,10 @@
 	/// stays in the DOM beside its trigger either way, so reading order, focus
 	/// order and the live region are the same with or without the API.
 	import { untrack } from 'svelte';
-	import { m } from '$lib/i18n/store.svelte';
-	import type { MessageKey } from '$lib/i18n/messages';
-	import { METRICS, splitAtTerm, type MetricEntry, type MetricId } from '$lib/metrics/metric_registry';
-	import { metricName } from '$lib/metrics/metric_name';
+	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
+	import { METRICS, splitAtTerm, type MetricEntry, type MetricId } from '#lib/metrics/metric_registry.ts';
+	import { metricName } from '#lib/metrics/metric_name.ts';
 
 	interface Props {
 		metric: MetricId;

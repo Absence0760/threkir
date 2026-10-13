@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { fetchChallenges, browsePublicChallenges } from '$lib/core/data';
-	import type { ChallengeWithMeta } from '$lib/types';
-	import ChallengeEditor from '$lib/components/ChallengeEditor.svelte';
-	import ChallengeProgressBar from '$lib/components/ChallengeProgressBar.svelte';
-	import { myProgressView } from '$lib/social/challenge_list';
-	import Modal from '$lib/components/Modal.svelte';
-	import { m } from '$lib/i18n/store.svelte';
+	import { fetchChallenges, browsePublicChallenges } from '#lib/core/data.ts';
+	import type { ChallengeWithMeta } from '#lib/types.ts';
+	import ChallengeEditor from '#lib/components/ChallengeEditor.svelte';
+	import ChallengeProgressBar from '#lib/components/ChallengeProgressBar.svelte';
+	import { myProgressView } from '#lib/social/challenge_list.ts';
+	import Modal from '#lib/components/Modal.svelte';
+	import { m } from '#lib/i18n/store.svelte.ts';
 	import { goto } from '$app/navigation';
-	import { smartBack } from '$lib/util/smart_back';
+	import { smartBack } from '#lib/util/smart_back.ts';
 
 	const back = smartBack();
 	const BROWSE_PAGE = 24;

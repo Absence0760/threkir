@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { auth } from '$lib/stores/auth.svelte';
-	import { fetchGymExerciseNames } from '$lib/core/data';
-	import RoutineEditor from '$lib/components/RoutineEditor.svelte';
-	import { m as t } from '$lib/i18n/store.svelte';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { fetchGymExerciseNames } from '#lib/core/data.ts';
+	import RoutineEditor from '#lib/components/RoutineEditor.svelte';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
 
 	let suggestions = $state<string[]>([]);
 

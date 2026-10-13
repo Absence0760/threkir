@@ -1,5 +1,5 @@
 // Pure math + env-free geocoding helpers. Split out from
-// `geocoding.ts` (which binds to the SvelteKit `$env/dynamic/public`
+// `geocoding.ts` (which binds to the SvelteKit `$app/env/public`
 // runtime) so node:test can import these without setting up Vite.
 // `geocoding.ts` re-exports thin wrappers that inject the env-read
 // key.
@@ -91,7 +91,7 @@ function abortedOutcome(e: unknown, signal?: AbortSignal): boolean {
 }
 
 /// Provider-selecting search dispatcher. Pure in that it takes the
-/// MapTiler key as a parameter rather than reading from `$env`; that
+/// MapTiler key as a parameter rather than reading from `$app/env`; that
 /// makes the network-mocked path testable from `node:test`.
 ///
 /// When [maptilerKey] is non-empty (production / paid path), routes
@@ -160,7 +160,7 @@ async function searchViaMapTiler(
 
 /// Env-free counterpart to `geocodePlace` in `geocoding.ts`.
 /// Takes the MapTiler key as a parameter so node:test can drive it
-/// without setting up Vite + `$env/dynamic/public`. See
+/// without setting up Vite + `$app/env/public`. See
 /// `geocoding.ts` for the production-shape wrapper.
 export async function geocodePlaceWithKey(
 	maptilerKey: string,

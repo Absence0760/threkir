@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { fetchGymRoutineHistory } from '$lib/core/data';
+	import { fetchGymRoutineHistory } from '#lib/core/data.ts';
 	import {
 		routineHistoryFromAggregate,
 		type RoutineHistory,
 		type RoutineSessionVerdict,
-	} from '$lib/gym/routine_history';
-	import { formatDate } from '$lib/format/time';
-	import { m as t } from '$lib/i18n/store.svelte';
+	} from '#lib/gym/routine_history.ts';
+	import { formatDate } from '#lib/format/time.ts';
+	import { m as t } from '#lib/i18n/store.svelte.ts';
 
 	interface Props {
 		routineId: string;
